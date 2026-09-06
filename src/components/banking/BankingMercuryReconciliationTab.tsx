@@ -1,6 +1,7 @@
 import { useCallback, useState, type ReactNode } from 'react'
 import { useToastContext } from '../../contexts/ToastContext'
 import { fetchMercuryReconciliation } from '../../lib/fetchMercuryReconciliation'
+import { MercuryReconcileRunsList } from './MercuryReconcileRunsList'
 import {
   classifyCurrent,
   classifyMonth,
@@ -155,12 +156,15 @@ export function BankingMercuryReconciliationTab() {
   const [monthsBack, setMonthsBack] = useState<number>(6)
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState<ReconResult | null>(null)
+  /** T5-06: bumps after a run so the "Last reconciled" list re-reads. */
+  const [runsRefreshKey, setRunsRefreshKey] = useState(0)
 
   const run = useCallback(async () => {
     setLoading(true)
     try {
       const r = await fetchMercuryReconciliation(monthsBack)
       setResult(r)
+      setRunsRefreshKey((k) => k + 1)
     } catch (e) {
       showToast(e instanceof Error ? e.message : 'Could not check the books against the bank statements', 'error')
     } finally {
@@ -191,15 +195,18 @@ export function BankingMercuryReconciliationTab() {
           {loading ? 'Checking statements…' : result ? 'Check again' : 'Check against bank statements'}
         </button>
         {result ? (
-          <span style={{ fontSize: '0.75rem', color: 'var(--text-slate-400)' }}>checked against bank statements {new Date(result.generatedAt).toLocaleString()} · not saved</span>
+          <span style={{ fontSize: '0.75rem', color: 'var(--text-slate-400)' }}>
+            checked against bank statements {new Date(result.generatedAt).toLocaleString()} · {result.receiptSaved ? 'receipt saved below' : 'receipt not saved'}
+          </span>
         ) : null}
       </div>
 
       <p style={{ margin: '0 0 1rem', fontSize: '0.85rem', color: 'var(--text-slate-500)' }}>
         Checks each account against its Mercury bank statements (by transaction, so timezones can't fake a gap)
-        and against the live balance for the open month. Read-only: it writes nothing and the result is gone when
-        you leave the tab. This is not the 30-minute sync that backfills missed bank transactions — that runs on
-        its own. Manually-entered transactions have no bank statement and aren't checked here.
+        and against the live balance for the open month. It changes nothing in the books; each check leaves a
+        receipt under <strong>Last reconciled</strong> saying who ran it, when, and what it compared. This is not the
+        30-minute sync that backfills missed bank transactions — that runs on its own. Manually-entered transactions
+        have no bank statement and aren't checked here.
       </p>
 
       {summary ? (
@@ -221,6 +228,15 @@ export function BankingMercuryReconciliationTab() {
         </div>
       ) : null}
 
+      {result?.receipt ? (
+        <div
+          role="status"
+          style={{ marginBottom: '1rem', padding: '0.5rem 0.9rem', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg-subtle)', fontSize: '0.85rem', color: 'var(--text-700)', maxWidth: '80ch' }}
+        >
+          <strong>Receipt.</strong> {result.receipt.scope}
+        </div>
+      ) : null}
+
       {loading && !result ? <div style={{ color: 'var(--text-slate-500)' }}>Fetching statements & balances from Mercury…</div> : null}
       {!loading && !result ? (
         <div style={{ color: 'var(--text-slate-500)', fontSize: '0.9rem' }}>Click “Check against bank statements” to compare your books with Mercury's statements.</div>
@@ -229,6 +245,8 @@ export function BankingMercuryReconciliationTab() {
       {result?.accounts.map((a) => (
         <AccountCard key={a.id} a={a} />
       ))}
+
+      <MercuryReconcileRunsList refreshKey={runsRefreshKey} />
     </div>
   )
 }

@@ -122,7 +122,7 @@ company, not just the program.
 | 3 | Scheduled shadow-agent batches (full auto-coverage) | ops/harness | scheduled task live 2026-09-06 (weekday batch on the operator machine) |
 | 4 | Standing-rulings queue (dedupe `twin_questions` into canonical rulings) | app | shipped v2.2939 (topics) + v2.2941 (panel + answer-all) |
 | 5 | Audit queue triage by doctrine-at-stake | app | shipped v2.2941 (`auditTriage.ts`) |
-| 6 | Holdout set flag + holdout-only gate denominators | app + owner decision | mechanism shipped v2.2942 + harness enforcement v2.2946 (open_backtest refuses; next_backtest skips; gate_run override); WHICH references still needs the owner (Queue lens toggle, target 20–25) |
+| 6 | Holdout set flag + holdout-only gate denominators | app + owner decision | mechanism shipped v2.2942 + harness enforcement v2.2952 (open_backtest refuses; next_backtest skips; gate_run override); WHICH references still needs the owner (Queue lens toggle, target 20–25) |
 | 7 | Doctrine-promotion regression gate (propose → measure → bank) | process (FEEDBACK_LOOP.md) | shipped v2.2940 |
 | 8 | Scoreboard shadow-coverage pill | app | shipped v2.2943 |
 | 9 | Record repair sweep (98 missing plans links; b216, b323) | office work | worklist generated 2026-09-06; the Drive shares need a human |

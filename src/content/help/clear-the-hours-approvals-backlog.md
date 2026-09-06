@@ -50,3 +50,5 @@ Approved sessions leave the list right away and the hours land in payroll behind
 :::example Salaried schedule time never shows here
 Sessions the system creates from a salary schedule approve themselves within the hour. Only real punches wait in this queue.
 :::
+
+If you have payroll access, approving raises a green chip at the top of the Hours tab — **Draft payroll for <week> →** — that opens Draft Payroll on that pay week. See [run the pay week from Hours to Tally](?g=run-the-pay-week).

@@ -1,8 +1,11 @@
+import { resolveOrgDefault } from './orgDefaults'
+import { getOrgDefaultRowsSync } from './orgDefaultsStore'
+
 const LS_KEY = 'pipetooling-billing-stripe-mode-pref'
 
 export type BillingStripeModePref = 'test' | 'live'
 
-export function getBillingStripeModePref(): BillingStripeModePref {
+export function getBillingStripeModePref(role?: string | null): BillingStripeModePref {
   try {
     const v = localStorage.getItem(LS_KEY)
     if (v === 'test' || v === 'live') return v
@@ -13,7 +16,9 @@ export function getBillingStripeModePref(): BillingStripeModePref {
   } catch {
     /* private mode */
   }
-  return 'live'
+  // T5-08 (X16): nothing on this device → the org / role default, if the session has it.
+  const org = resolveOrgDefault('billing.stripe_mode', role ?? null, getOrgDefaultRowsSync(), null).value
+  return org === 'test' ? 'test' : 'live'
 }
 
 export function setBillingStripeModePref(p: BillingStripeModePref): void {

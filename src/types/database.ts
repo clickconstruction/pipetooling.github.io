@@ -6181,6 +6181,44 @@ export type Database = {
         }
         Relationships: []
       }
+      identity_aliases: {
+        Row: {
+          alias_key: string
+          canonical_key: string
+          canonical_name: string
+          created_at: string
+          created_by: string | null
+          decision: string
+          kind: string
+        }
+        Insert: {
+          alias_key: string
+          canonical_key: string
+          canonical_name?: string
+          created_at?: string
+          created_by?: string | null
+          decision?: string
+          kind: string
+        }
+        Update: {
+          alias_key?: string
+          canonical_key?: string
+          canonical_name?: string
+          created_at?: string
+          created_by?: string | null
+          decision?: string
+          kind?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "identity_aliases_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       inspection_portal_credentials: {
         Row: {
           created_at: string
@@ -9465,6 +9503,56 @@ export type Database = {
         }
         Relationships: []
       }
+      mercury_reconcile_runs: {
+        Row: {
+          accounts_checked: number
+          current_within_epsilon: boolean | null
+          id: string
+          months_back: number
+          months_with_missing: number
+          ran_at: string
+          ran_by: string | null
+          scope: string
+          statement_lines: number
+          statement_lines_present: number
+          summary: Json
+        }
+        Insert: {
+          accounts_checked: number
+          current_within_epsilon?: boolean | null
+          id?: string
+          months_back: number
+          months_with_missing?: number
+          ran_at?: string
+          ran_by?: string | null
+          scope: string
+          statement_lines: number
+          statement_lines_present: number
+          summary?: Json
+        }
+        Update: {
+          accounts_checked?: number
+          current_within_epsilon?: boolean | null
+          id?: string
+          months_back?: number
+          months_with_missing?: number
+          ran_at?: string
+          ran_by?: string | null
+          scope?: string
+          statement_lines?: number
+          statement_lines_present?: number
+          summary?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mercury_reconcile_runs_ran_by_fkey"
+            columns: ["ran_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       mercury_tally_payroll_flags: {
         Row: {
           created_at: string
@@ -10184,6 +10272,38 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: []
+      }
+      org_defaults: {
+        Row: {
+          key: string
+          role: string
+          updated_at: string
+          updated_by: string | null
+          value: string
+        }
+        Insert: {
+          key: string
+          role?: string
+          updated_at?: string
+          updated_by?: string | null
+          value: string
+        }
+        Update: {
+          key?: string
+          role?: string
+          updated_at?: string
+          updated_by?: string | null
+          value?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "org_defaults_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       paid_job_email_queue: {
         Row: {
@@ -16351,6 +16471,35 @@ export type Database = {
             foreignKeyName: "user_dashboard_preferences_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: true
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_dismissals: {
+        Row: {
+          key: string
+          state: Json
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          key: string
+          state?: Json
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          key?: string
+          state?: Json
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_dismissals_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]
           },

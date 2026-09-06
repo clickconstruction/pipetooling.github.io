@@ -3,11 +3,13 @@ import type { ReleaseNote } from '../../lib/releaseNotes'
 const note: ReleaseNote = {
   version: 'v2.2946',
   date: '2026-09-06',
-  title: 'Robots: holdout bids refuse to be practiced on',
-  kind: 'infra',
+  title: 'The pay week points at its next stop: Hours → Draft Payroll → Tally',
+  kind: 'feature',
   highlights: [
-    'A reference marked holdout now refuses to open as robot practice at the server — it exists to measure whether the robots generalize, and practicing on the measuring stick would fake the grade.',
-    'Only an operator-ordered gate run can open one, and the dispatcher quietly skips them when handing out work.',
+    'After you approve hours on People → Hours, a green chip says how many sessions you approved and offers "Draft payroll for <week> →" — one tap opens Draft Payroll on that pay week.',
+    'On Draft Payroll, once every person with hours has a report, a line under the buttons says what comes next and offers "Open Tally →".',
+    '"Mark payroll" on the Job Parts Tally now works for everyone with payroll access — dev, controller and pay-approved masters — not just dev. Payroll auto-mark rules stay a dev tool.',
+    'New guide: "run the pay week from Hours to Tally".',
   ],
 }
 

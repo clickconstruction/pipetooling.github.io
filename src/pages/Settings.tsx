@@ -64,6 +64,7 @@ import BillCustomerMemoDevSettingsBlock from '../components/settings/BillCustome
 import BidCoverLetterDefaultsSettingsBlock from '../components/settings/BidCoverLetterDefaultsSettingsBlock'
 import BidBoardValueRuleSettingsBlock from '../components/settings/BidBoardValueRuleSettingsBlock'
 import JobBookSettingsSection from '../components/settings/JobBookSettingsSection'
+import { SettingsOrgDefaultsSection } from '../components/settings/SettingsOrgDefaultsSection'
 import SettingsSearchBar from '../components/settings/SettingsSearchBar'
 import { pollScrollToSettingsAnchor, settingsSearchGuideQuery } from '../lib/settingsSearch'
 
@@ -1218,6 +1219,7 @@ export default function Settings() {
           description={settingsGroupHint('settings-company')}
         >
           <SettingsCompanyDocumentsSection isDev={myRole === 'dev'} />
+          {myRole === 'dev' || myRole === 'master_technician' ? <SettingsOrgDefaultsSection /> : null}
           {myRole === 'dev' && <OfficeAddressSettingsBlock />}
           {myRole === 'dev' && <MapDefaultViewSettingsBlock />}
         </SettingsGroup>

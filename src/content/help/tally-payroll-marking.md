@@ -1,11 +1,11 @@
 ---
 title: mark payroll transactions in the tally
 category: Office
-roles: dev
+roles: dev, master_technician, controller
 keywords: payroll, tally, mercury, transactions, rules, auto-mark
 order: 60
 ---
-Payroll runs show up in the Job Parts Tally like any other bank transaction, but they should never be split to jobs. Marking one as **payroll** resolves it without any job allocation, so job spend isn't double-counted.
+Payroll runs show up in the Job Parts Tally like any other bank transaction, but they should never be split to jobs. Marking one as **payroll** resolves it without any job allocation, so job spend isn't double-counted. Anyone with payroll access can mark — dev, controller, or a pay-approved master; the auto-mark **rules** below are a dev tool. This is the last stop of the pay week — see [run the pay week from Hours to Tally](?g=run-the-pay-week).
 
 ## Marking a transaction
 

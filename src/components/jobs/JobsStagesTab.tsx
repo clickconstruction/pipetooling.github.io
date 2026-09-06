@@ -15,6 +15,9 @@ import {
   type ReactNode,
   type SetStateAction,
 } from 'react'
+import { useOrgDefault } from '../../hooks/useOrgDefault'
+import { orgDefaultBool } from '../../lib/orgDefaults'
+import { readDeviceString } from '../../lib/deviceString'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { formatCurrency, formatCurrencyAbbrevTruncated, formatCurrencyNoCents, formatJobNameTwoLines } from '../../lib/jobs/jobFormatting'
@@ -1122,6 +1125,14 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
       return false
     }
   })
+  // T5-08 (X16): with nothing stored on this device, the org / role default decides once it loads
+  // ('auto' keeps the width gate). A device that chose for itself is never overridden.
+  const mobileCardsOrgDefault = useOrgDefault('jobs.stages.mobile_cards', authRole, readDeviceString('jobs-stages-mobile-cards'))
+  useEffect(() => {
+    if (!mobileCardsOrgDefault.loaded || mobileCardsOrgDefault.source === 'device' || mobileCardsOrgDefault.source === 'fallback') return
+    const b = orgDefaultBool(mobileCardsOrgDefault.value)
+    if (b !== null) setStagesMobileCards(b)
+  }, [mobileCardsOrgDefault.loaded, mobileCardsOrgDefault.source, mobileCardsOrgDefault.value])
   const [stagesFollowMoves, setStagesFollowMoves] = useState(() => {
     try {
       return localStorage.getItem('jobs-stages-follow-moves') === 'true'

@@ -2,18 +2,24 @@
 title: move between a job's Job, Edit, and Bill tabs
 category: Office
 roles: dev, master_technician, assistant, controller
-keywords: job window, tabs, job detail, edit job, billing, bill tab, invoices, payments, line items, one window
+keywords: job window, tabs, history, day grid, days worked, job detail, edit job, billing, bill tab, invoices, payments, line items, one window
 order: 65
 ---
-A job now opens as **one window with three tabs** — no more separate Job Detail and Edit Job modals bouncing you between each other. One **✕** (or **Escape**) closes the whole thing.
+A job now opens as **one window with four tabs** — no more separate Job Detail and Edit Job modals bouncing you between each other. One **✕** (or **Escape**) closes the whole thing.
 
 Under the tab bar, **every tab** shows the same job header: the job name, the action icons (share · supply house · send as task · calendar · mail · ⚙), and the **Street View photo** with the 📍 map link. The icons work from any tab — open the job calendar while billing, share the job while editing — and the address stays one glance away so you always know which house you're on.
 
-## The three tabs
+## The four tabs
 
 - {{chip:blue|Job}} — the read view: photo and address, customer and contacts, the numbered activity feed, work/bill dates, and the profit summary. This is where "open job detail" lands.
 - {{chip:blue|Edit}} — the job itself: numbers, name, address, service type, and the people-and-customer rows (below). The row's ✎ Edit button lands here, and so does the ⚙ on the Job tab.
 - {{chip:blue|Bill}} — all the money, starting with the **Line Items** (the job's scope and Job Total) right at the top, then the billing summary bar, the segment bar with the break-off slider, **New Invoice**, the Invoices and Payments received tables, and Labor & Parts Cost with the Cost Timeline.
+
+- {{chip:blue|History}} — the day grid: one row per day worked, coloured by how many people were on site. The same view Projects → Job History shows, now for every job, project or not.
+
+## The History tab
+
+**History** looks back 180 days by default (move the range to see more). Tap a day to see who was there and what it cost. Nothing on this tab edits anything.
 
 ## The Edit tab reads as rows
 

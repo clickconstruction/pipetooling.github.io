@@ -12,7 +12,11 @@ import {
   type BidTabRow,
   type BidTabValues,
 } from '../../lib/bidTabCapture'
-import { useEffect, useMemo, useState, type CSSProperties } from 'react'
+import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
+import { useIdentityAliases } from '../../hooks/useIdentityAliases'
+import { builderNameKey, canonicalIdentityName } from '../../lib/identityAliases'
+import { normalizeIdentityKey } from '../../lib/identityKey'
+import { BuilderMergePrompt, builderMergePairs } from './BuilderMergePrompt'
 
 import { supabase } from '../../lib/supabase'
 import { withSupabaseRetry } from '../../utils/errorHandling'
@@ -133,17 +137,25 @@ export function BidsWhyWeLostLens({
   const [tabEntriesByBid, setTabEntriesByBid] = useState<Record<string, BidTabEntryRow[]>>({})
   /** "bids by" estimator scope (v2.2053) — '' = all; scopes the WHOLE lens (headline, rail, queue). */
   const [estimatorFilter, setEstimatorFilter] = useState('')
+  /** T5-07: builder aliases (merge / keep) — every name-keyed group re-keys through them. */
+  const { aliases: builderAliases, refresh: refreshBuilderAliases } = useIdentityAliases('builder')
+  const bidLevelBuilderKey = useCallback(
+    (b: { customer_id?: string | null }, builderName: string) => b.customer_id ?? builderNameKey(builderName, builderAliases),
+    [builderAliases],
+  )
 
   /** Every GC-level row across all bids (won / lost / pending / unsent) — the lens's unit of work. */
   const allRows = useMemo(() => {
     const out: Array<{ bid: BidWithBuilder; row: GcOutcomeRow }> = []
     for (const b of bids) {
       const builderName = (b.customers?.name ?? '').trim() || (b.bids_gc_builders?.name ?? '').trim() || 'No builder'
-      const builderKey = b.customer_id ?? b.gc_builder_id ?? builderName
-      for (const row of gcOutcomeRowsForBid(b, { key: builderKey, name: builderName }, gcPacketsByBid[b.id])) out.push({ bid: b, row })
+      // T5-07 (X7): a customer-linked bid keys by the customer; a name-only builder keys by the
+      // shared identity key (+ aliases), so "H & I" and "H&I" are one card.
+      const builderKey = bidLevelBuilderKey(b, builderName)
+      for (const row of gcOutcomeRowsForBid(b, { key: builderKey, name: canonicalIdentityName(normalizeIdentityKey(builderName), builderAliases) ?? builderName }, gcPacketsByBid[b.id])) out.push({ bid: b, row })
     }
     return out
-  }, [bids, gcPacketsByBid])
+  }, [bids, gcPacketsByBid, bidLevelBuilderKey, builderAliases])
 
   const allLensBids = useMemo<LensBid[]>(() => {
     return allRows
@@ -226,6 +238,15 @@ export function BidsWhyWeLostLens({
   const expandedLensBids = searchedLensBids
 
   const groups = useMemo(() => groupLossTriageByBuilder(expandedLensBids), [expandedLensBids])
+  const mergePair = useMemo(() => {
+    const counts = new Map<string, number>()
+    for (const b of expandedLensBids) counts.set(b.builderKey, (counts.get(b.builderKey) ?? 0) + 1)
+    const pairs = builderMergePairs(
+      groups.map((g) => ({ key: g.builderKey, name: g.builderName, bids: counts.get(g.builderKey) ?? 0 })),
+      builderAliases,
+    )
+    return pairs[0] ?? null
+  }, [groups, expandedLensBids, builderAliases])
 
   const pendingCountByBuilderKey = useMemo(() => {
     const map = new Map<string, number>()
@@ -522,6 +543,8 @@ export function BidsWhyWeLostLens({
           style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', maxHeight: 'min(72vh, 42rem)', overflowY: 'auto' }}
           aria-label="Builder call queue"
         >
+          {/* T5-07 (X7): the one pair the loose rule would merge but the key could not — a person decides. */}
+          {mergePair ? <BuilderMergePrompt pair={mergePair} onSaved={() => void refreshBuilderAliases()} /> : null}
           {groups.map((g) => {
             const active = selectedGroup?.builderKey === g.builderKey
             return (
@@ -562,7 +585,7 @@ export function BidsWhyWeLostLens({
             <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '0.5rem' }}>
               <span style={{ fontSize: '0.9375rem', fontWeight: 600 }}>{selectedGroup.builderName}</span>
               {(() => {
-                const phone = selectedBid.gc.sharedLetter || selectedBid.gc.gcKey !== (selectedBid.raw.customer_id ?? selectedBid.raw.gc_builder_id ?? '') ? (recipientsByBidId[selectedBid.id] ?? []).find((r) => r.customerId === selectedBid.gc.gcKey)?.phone ?? null : builderPhoneOf(selectedBid.raw)
+                const phone = selectedBid.gc.sharedLetter || selectedBid.gc.gcKey !== bidLevelBuilderKey(selectedBid.raw, selectedGroup.builderName) ? (recipientsByBidId[selectedBid.id] ?? []).find((r) => r.customerId === selectedBid.gc.gcKey)?.phone ?? null : builderPhoneOf(selectedBid.raw)
                 return phone ? (
                   <a
                     href={`tel:${phone}`}

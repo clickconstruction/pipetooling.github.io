@@ -837,7 +837,7 @@ The frontend (`src/pages/DevLogin.tsx`, v2.1526) no longer follows the returned 
 
 **Rulings groundwork (v2.2939 / v1.3.8)**: `ask_question` gains `topic` — one kebab slug per doctrine issue (`travel-bands`) written to `twin_questions.topic` (migration `20260906110000`) so duplicate asks group into single standing rulings; `get_answers` returns it. `submit_report` accepts `label` as an alias for `mission` (batch reports were filing "unlabeled"). `get_work_state` returns `twin_source_bid_id` so a shell can verify its own pairing.
 
-**Holdout enforcement (v2.2946 / v1.3.9)**: `openBacktestShell` reads `bids.holdout` (migration `20260906120000`) and REFUSES a holdout reference — reserved for gate measurement, never practice — unless `open_backtest` is called with `gate_run: true` (operator-ordered gate runs only); `next_backtest` auto-skips holdout candidates via the shared refusal. The read-side pairing: doctrine must never quote holdout values, and the Queue lens (v2.2942) excludes them from practice slates.
+**Holdout enforcement (v2.2952 / v1.3.9)**: `openBacktestShell` reads `bids.holdout` (migration `20260906120000`) and REFUSES a holdout reference — reserved for gate measurement, never practice — unless `open_backtest` is called with `gate_run: true` (operator-ordered gate runs only); `next_backtest` auto-skips holdout candidates via the shared refusal. The read-side pairing: doctrine must never quote holdout values, and the Queue lens (v2.2942) excludes them from practice slates.
 
 **Required secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, and for CT minting **`CT_TWIN_LOGIN_URL`** + **`COUNTTOOLING_TWIN_LOGIN_SECRET`** (twin-login's own `TWIN_LOGIN_SECRET` is not needed here — the per-twin token is the credential).
 
@@ -3443,7 +3443,7 @@ Migration **`20270605150000_sync_mercury_transactions_pg_cron.sql`** schedules t
 
 ### mercury-reconcile
 
-**Purpose**: Reconcile the books (`mercury_transactions`) against Mercury **statements** and live balances, per account per month: fetches non-archived accounts + up to `monthsBack` statements each (singular `/account/{id}/statements` with plural fallback), checks which statement transaction ids exist in the books via the service-role RPC **`list_present_mercury_ids`** (ids batched 2000-per-call in the POST body — a giant `in.(...)` GET filter would blow PostgREST's URL limit), and reports per-month present/missing counts, missing value + a sample (cap 50), statement net vs. transaction sum, and a **current open period** check (`expectedCurrent = latest ending balance + book activity since close`, `delta` vs. Mercury's live balance).
+**Purpose**: Reconcile the books (`mercury_transactions`) against Mercury **statements** and live balances, per account per month: fetches non-archived accounts + up to `monthsBack` statements each (singular `/account/{id}/statements` with plural fallback), checks which statement transaction ids exist in the books via the service-role RPC **`list_present_mercury_ids`** (ids batched 2000-per-call in the POST body — a giant `in.(...)` GET filter would blow PostgREST's URL limit), and reports per-month present/missing counts, missing value + a sample (cap 50), statement net vs. transaction sum, and a **current open period** check (`expectedCurrent = latest ending balance + book activity since close`, `delta` vs. Mercury's live balance). **Since v2.2949 (Tier 5 X4)** every run also leaves a **receipt**: `buildReconcileReceipt` (`_shared/reconcileReceipt.ts`) turns the result into N-of-M presence counts, months with something missing, a live-balance verdict and a scope sentence ("presence only, statement → books — books-only rows and amount differences are not checked"), persisted service-role as one `mercury_reconcile_runs` row (`ran_by` = the caller). Persist failures never fail the check (`receiptSaved: false`).
 
 **Endpoint**: `POST /functions/v1/mercury-reconcile`
 
@@ -3472,12 +3472,15 @@ Migration **`20270605150000_sync_mercury_transactions_pg_cron.sql`** schedules t
                     statementNet, statementTxSum }>,
     current: { mercuryCurrentBalance, availableBalance, latestStatementEnd,
                bookActivitySinceClose?, expectedCurrent, delta }
-  }>
+  }>,
+  receipt: ReconcileReceipt,   // v2.2949 — scope sentence + per-account summary (_shared/reconcileReceipt.ts)
+  runId: string | null,        // the mercury_reconcile_runs row, when saved
+  receiptSaved: boolean
 }
 // or { error: string } with 401/403/405/500; 502 on Mercury API failure
 ```
 
-**Used by**: Banking reconciliation view via [`fetchMercuryReconciliation.ts`](../src/lib/fetchMercuryReconciliation.ts) + [`mercuryReconciliation.ts`](../src/lib/mercuryReconciliation.ts).
+**Used by**: Banking reconciliation view via [`fetchMercuryReconciliation.ts`](../src/lib/fetchMercuryReconciliation.ts) + [`mercuryReconciliation.ts`](../src/lib/mercuryReconciliation.ts); the "Last reconciled" list ([`MercuryReconcileRunsList.tsx`](../src/components/banking/MercuryReconcileRunsList.tsx)) reads `mercury_reconcile_runs` directly (SELECT for `is_banking_staff()`).
 
 ---
 

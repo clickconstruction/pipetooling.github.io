@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
+import { DRAFT_PAYROLL_NEXT_TALLY_COPY, TALLY_PAYROLL_HREF, draftPayrollAllGenerated } from '../../lib/people/payWeekLinks'
 import { formatCurrency } from '../../lib/format'
 import {
   isPayStubFullyPaid,
@@ -554,6 +556,34 @@ export function DraftPayrollModal({
                   {bulkMissingCount === 0 ? 'No one needs a report for this period.' : `${bulkMissingCount} with hours and no report yet`}
                 </span>
               </div>
+              {/* T5-03 (J7-9): the pointer across the Draft Payroll → Tally seam, once every report exists. */}
+              {draftPayrollAllGenerated({
+                peopleCount: peopleNames.length,
+                missingCount: bulkMissingCount,
+                stubsInPeriod: payStubs.filter((s) => s.period_start <= end && s.period_end >= start).length,
+              }) ? (
+                <div
+                  role="status"
+                  style={{
+                    display: 'flex',
+                    flexWrap: 'wrap',
+                    alignItems: 'center',
+                    gap: '0.5rem 0.75rem',
+                    padding: '0.5rem 0.75rem',
+                    marginBottom: '0.75rem',
+                    border: '1px solid #22c55e',
+                    background: 'var(--bg-green-tint)',
+                    color: 'var(--text-green-800)',
+                    borderRadius: 8,
+                    fontSize: '0.8125rem',
+                  }}
+                >
+                  <span style={{ flex: '1 1 260px' }}>{DRAFT_PAYROLL_NEXT_TALLY_COPY}</span>
+                  <Link to={TALLY_PAYROLL_HREF} style={{ fontWeight: 600, color: 'var(--text-link)', whiteSpace: 'nowrap' }}>
+                    Open Tally →
+                  </Link>
+                </div>
+              ) : null}
               <div style={{ overflowX: 'auto', marginBottom: '1rem' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
                   <thead>

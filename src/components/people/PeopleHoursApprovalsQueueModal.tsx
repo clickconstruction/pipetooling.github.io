@@ -42,6 +42,8 @@ type Props = {
   zIndex?: number
   /** Which door opened this queue — `hours_approved{surface}` telemetry (Tier-1 #15). */
   surface?: HoursApprovedSurface
+  /** T5-03: fired with the approved count so the host can point at Draft Payroll. */
+  onApproved?: (approved: number) => void
 }
 
 const BTN: CSSProperties = {
@@ -93,7 +95,7 @@ function FlagSummary({ counts, prefix }: { counts: ApprovalsQueueFlagCounts; pre
   )
 }
 
-export function PeopleHoursApprovalsQueueModal({ onClose, onChanged, onEditSession, authUserId, reloadKey, pinUserId, pinDisplayName, zIndex = 60, surface = 'approvals-queue' }: Props) {
+export function PeopleHoursApprovalsQueueModal({ onClose, onChanged, onEditSession, authUserId, reloadKey, pinUserId, pinDisplayName, zIndex = 60, surface = 'approvals-queue', onApproved }: Props) {
   const { showToast } = useToastContext()
   const confirmDialog = useConfirmDialog()
   const prefixMap = useLedgerPrefixMap()
@@ -178,6 +180,7 @@ export function PeopleHoursApprovalsQueueModal({ onClose, onChanged, onEditSessi
     recordHoursApproved(authUserId ?? authUser?.id, role, surface, approved)
     const outcome = describeApproveOutcome(ids.length, approved)
     showToast(outcome.message, outcome.variant)
+    if (approved > 0) onApproved?.(approved)
     if (approved >= ids.length) removeLocally(ids)
     else await load()
     onChanged()

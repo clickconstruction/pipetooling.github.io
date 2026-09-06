@@ -20,7 +20,7 @@ export async function buildDirectDeposit() {
 
   p.fieldRow([
     { box: { key: 'contractor_name', type: 'text', label: 'Your full name', labelEs: 'Su nombre completo', required: true, prefill: 'person_name', sample: 'Taunya Rachelle' }, label: 'Contractor name', frac: 0.62 },
-    { box: { key: 'contractor_phone', type: 'digits', label: 'Your phone', labelEs: 'Su teléfono', mask: '###-###-####', prefill: 'person_phone', sample: '5125550142' }, label: 'Phone', frac: 0.38 },
+    { box: { key: 'contractor_phone', type: 'digits', label: 'Your phone — in case our bookkeeper has a question', labelEs: 'Su teléfono — por si nuestro contador tiene una pregunta', mask: '###-###-####', prefill: 'person_phone', sample: '5125550142' }, label: 'Phone (in case our bookkeeper has a question)', frac: 0.38 },
   ])
 
   // Owner ask (2026-09-06): the bank is known from the routing number — collect the person's address on the account instead.
@@ -54,20 +54,18 @@ export async function buildDirectDeposit() {
   // Owner ask (2026-09-06): a third choice — a percentage of what is due — beside all-or-fixed.
   p.paragraph('How much to deposit', { bold: true, gapAfter: 0 })
   p.checkRow('', [
-    { key: 'deposit_all', label: 'My entire net pay', labelEs: 'Todo mi pago neto', sample: 'true' },
-    { key: 'deposit_partial', label: 'A fixed dollar amount (write it below)', labelEs: 'Una cantidad fija en dólares' },
-  ], 'deposit_kind', 'How much to deposit', true)
-  p.checkRow('', [
-    { key: 'deposit_percent', label: 'A percentage of the amount due to me (write it below)', labelEs: 'Un porcentaje de la cantidad que se me debe' },
+    { key: 'deposit_all', label: 'All payments due to me', labelEs: 'Todos los pagos que se me deben', sample: 'true' },
+    { key: 'deposit_partial', label: 'A fixed dollar amount', labelEs: 'Una cantidad fija en dólares' },
+    { key: 'deposit_percent', label: 'A percentage of the amount due to me', labelEs: 'Un porcentaje de la cantidad que se me debe' },
   ], 'deposit_kind', 'How much to deposit', true)
   p.fieldRow([
-    { box: { key: 'deposit_amount', type: 'text', label: 'Fixed dollar amount', labelEs: 'Cantidad fija en dólares', advanced: true, help: 'Only if you chose a fixed amount above. The rest of your pay is paid by check.', helpEs: 'Solo si eligió una cantidad fija. El resto se paga con cheque.' }, label: 'Fixed amount ($)', frac: 0.26 },
-    { box: { key: 'deposit_percent_value', type: 'digits', label: 'Percentage of the amount due', labelEs: 'Porcentaje de la cantidad debida', mask: '###', maxLength: 3, advanced: true, help: 'Only if you chose a percentage above — 1 to 100. The rest of your pay is paid by check.', helpEs: 'Solo si eligió un porcentaje — de 1 a 100. El resto se paga con cheque.' }, label: 'Percentage (%)', frac: 0.22 },
+    { box: { key: 'deposit_amount', type: 'text', label: 'Fixed dollar amount', labelEs: 'Cantidad fija en dólares', advanced: true, help: 'Only if you chose a fixed amount above. The rest of each payment is made by check.', helpEs: 'Solo si eligió una cantidad fija. El resto de cada pago se hace con cheque.' }, label: 'Fixed amount ($)', frac: 0.26 },
+    { box: { key: 'deposit_percent_value', type: 'digits', label: 'Percentage of the amount due', labelEs: 'Porcentaje de la cantidad debida', mask: '###', maxLength: 3, advanced: true, help: 'Only if you chose a percentage above — 1 to 100. The rest of each payment is made by check.', helpEs: 'Solo si eligió un porcentaje — de 1 a 100. El resto de cada pago se hace con cheque.' }, label: 'Percentage (%)', frac: 0.22 },
     { box: { key: 'notes', type: 'text', label: 'Anything the office should know', labelEs: 'Algo que la oficina deba saber', advanced: true }, label: 'Notes (optional)', frac: 0.52 },
   ])
 
   p.paragraph(
-    'Attach a voided check or a bank letter showing the routing and account numbers. Your first deposit may be a test deposit, with that pay period paid by paper check.',
+    'Attach a voided check or a bank letter showing the routing and account numbers. Your first deposit may be a test deposit, with that payment made by paper check.',
     { size: 8.5, gapAfter: 4 },
   )
   p.paragraph('By signing, I confirm the account above is mine and the numbers are correct.', { size: 9.5, bold: true, gapAfter: 0 })

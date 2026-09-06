@@ -1,3 +1,4 @@
+import { pushDismissal } from './dismissalStore'
 const PREFIX = 'pipetooling.devRejectedNotification.'
 
 export type DevRejectedDismissState = {
@@ -18,6 +19,7 @@ export function loadDevRejectedDismissState(userId: string): DevRejectedDismissS
 }
 
 export function saveDevRejectedDismissState(userId: string, state: DevRejectedDismissState): void {
+  pushDismissal(PREFIX, userId, state)
   localStorage.setItem(PREFIX + userId, JSON.stringify(state))
 }
 

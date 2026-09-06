@@ -11,6 +11,8 @@ vi.mock('../../hooks/useAuth', () => ({ useAuth: () => ({ role, user: { id: 'u1'
 vi.mock('../../contexts/JobFormModalContext', () => ({
   useJobFormModal: () => ({ isOpen: false, openNewJob, openEditJob, closeJobForm: vi.fn() }),
 }))
+vi.mock('../../contexts/ConfirmDialogContext', () => ({ useConfirmDialog: () => vi.fn(async () => true) }))
+vi.mock('../../contexts/ToastContext', () => ({ useToastContext: () => ({ showToast: vi.fn(), showActionToast: vi.fn() }) }))
 vi.mock('../../lib/supabase', async () => {
   const { makeSupabaseStub } = await import('../../test/renderSmokeMocks')
   return { supabase: makeSupabaseStub() }
