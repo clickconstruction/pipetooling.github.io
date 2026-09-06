@@ -1,6 +1,6 @@
 ---
 title: add a job to my schedule and move my day around
-category: Field
+category: Field Work
 roles: all
 keywords: my schedule, add job, self schedule, move block, request job, my day, reschedule, field request
 order: 65

@@ -1,6 +1,6 @@
 ---
 title: read the Bridge
-category: Money
+category: Billing & Money
 roles: dev
 keywords: bridge, net position, cash forecast, cash on hand, cash floor, bills due, receipts expected, profit rate, overhead, earned revenue
 order: 62

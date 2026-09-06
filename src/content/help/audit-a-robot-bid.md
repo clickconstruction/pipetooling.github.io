@@ -1,6 +1,6 @@
 ---
 title: audit a robot bid and teach it what you know
-category: Bids
+category: Bids & Estimating
 roles: dev, master_technician, assistant, controller, estimator
 keywords: audit, robot, twin, review, feedback, counts, footage, pricing, scope, receipts, counttooling, takeoff, standing rulings, questions
 ---

@@ -1,6 +1,6 @@
 ---
 title: schedule people onto jobs
-category: Scheduling
+category: Jobs & Scheduling
 roles: assistant, superintendent, master_technician
 keywords: schedule, dispatch, assign, blocks, not coming in, share schedule
 order: 10

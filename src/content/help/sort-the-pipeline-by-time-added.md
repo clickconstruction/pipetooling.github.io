@@ -1,6 +1,6 @@
 ---
 title: sort the pipeline by when jobs were added
-category: Jobs
+category: Jobs & Scheduling
 roles: dev, master_technician, assistant, controller, primary
 keywords: pipeline, sort, recently added, time added, job order, stages board, newest
 order: 46

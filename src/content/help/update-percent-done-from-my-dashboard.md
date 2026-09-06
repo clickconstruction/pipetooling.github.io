@@ -1,6 +1,6 @@
 ---
 title: update how done a job is from my dashboard
-category: Field
+category: Field Work
 roles: subcontractor, helpers
 keywords: percent done, % done, progress, my schedule, update progress, how done, field progress
 order: 66

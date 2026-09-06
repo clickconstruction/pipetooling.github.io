@@ -1,6 +1,6 @@
 ---
 title: write up a change order from the field
-category: Field
+category: Field Work
 roles: dev, master_technician, primary, estimator, superintendent, subcontractor
 keywords: quick estimate, change order, field, dispatch, write up, extra work, ballpark, photos, send to dispatch, wizard
 ---
