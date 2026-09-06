@@ -3,6 +3,7 @@ import { ComingUpWaitingGroupList, useComingUpWaitingGroups } from '../checklist
 import { buildWaitingForStripSummary } from '../../lib/dashboardWaitingForStrip'
 import { Link } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
+import { activeUsersQuery } from '../../lib/people/fetchActiveUsers'
 import type { UserRole } from '../../hooks/useAuth'
 import { useToastContext } from '../../contexts/ToastContext'
 import { DashboardGroupCard } from './DashboardGroupCard'
@@ -146,10 +147,10 @@ export function DashboardMyInboxCard({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [authUserId, visibleInstanceIdsKey])
 
-  // Load users for Forward modal (all users, for Outstanding Forward)
+  // Load users for Forward modal (Outstanding Forward). Tier-2 #19: active people only.
   useEffect(() => {
     if (!authUserId) return
-    supabase.from('users').select('id, name, email').order('name').then(({ data }) => {
+    activeUsersQuery('id, name, email', { includeDev: true }).then(({ data }) => {
       setSendTaskUsers((data ?? []) as Array<{ id: string; name: string; email: string }>)
     })
   }, [authUserId])

@@ -4,6 +4,7 @@ import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../hooks/useAuth'
 import { usePeopleAccess } from '../../hooks/usePeopleAccess'
 import { loadRailFacts } from '../../lib/people/loadRailFacts'
+import { activeRosterOnly } from '../../lib/people/activeRoster'
 import { buildRailSections, normaliseKind, type RailFacts, type RailPersonInput, type RailRow } from '../../lib/people/deskRailAttention'
 import { parsePersonDeskParam, personDeskParam } from '../../lib/people/personKey'
 import { denverCalendarDayKey } from '../../utils/dateUtils'
@@ -17,7 +18,7 @@ import { PersonDeskBody } from './PersonDeskBody'
  */
 export function PersonDeskPage() {
   const [searchParams, setSearchParams] = useSearchParams()
-  const { user: authUser } = useAuth()
+  const { user: authUser, role } = useAuth()
   const access = usePeopleAccess(authUser?.id)
   const [people, setPeople] = useState<RailPersonInput[]>([])
   const [facts, setFacts] = useState<RailFacts>({ pendingByUserId: {}, unsentDocsByName: {}, expiringByName: {}, expiredByName: {} })
@@ -42,12 +43,17 @@ export function PersonDeskPage() {
       setLoading(true)
       const todayYmd = denverCalendarDayKey(Date.now())
       const [usersRes, peopleRes, facts] = await Promise.all([
-        supabase.from('users').select('id, name, role, archived_at'),
+        supabase.from('users').select('id, name, role, archived_at, is_digital_twin'),
         supabase.from('people').select('id, name, kind, archived_at, account_user_id'),
         loadRailFacts(access, todayYmd),
       ])
       if (cancelled) return
-      const users = ((usersRes.data ?? []) as Array<{ id: string; name: string | null; role: string | null; archived_at: string | null }>)
+      // Tier-2 #19 (J32-F3): the rail folds archived rows itself, so keep those — but twins never
+      // sit on a human rail, and dev rows (the `test` fixture) show only to dev viewers.
+      const users = activeRosterOnly(
+        (usersRes.data ?? []) as Array<{ id: string; name: string | null; role: string | null; archived_at: string | null; is_digital_twin: boolean | null }>,
+        { includeArchived: true, includeDev: role === 'dev' },
+      )
       const roster = ((peopleRes.data ?? []) as Array<{ id: string; name: string; kind: string; archived_at: string | null; account_user_id: string | null }>)
       const rosterByAccount = new Map<string, (typeof roster)[number]>()
       for (const p of roster) if (p.account_user_id) rosterByAccount.set(p.account_user_id, p)
@@ -69,7 +75,7 @@ export function PersonDeskPage() {
     return () => {
       cancelled = true
     }
-  }, [access.canAccessHours, access.canAccessPay, access.canAccessContracts, access.canAccessLicenses, changeKey])
+  }, [access.canAccessHours, access.canAccessPay, access.canAccessContracts, access.canAccessLicenses, changeKey, role])
 
   const rail = useMemo(() => buildRailSections(people, facts, search), [people, facts, search])
 

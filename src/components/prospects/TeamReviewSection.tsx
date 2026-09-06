@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { supabase } from '../../lib/supabase'
+import { activeUsersQuery } from '../../lib/people/fetchActiveUsers'
 import { APP_CALENDAR_TZ } from '../../utils/dateUtils'
 // Short spoken role names ("Master", "Sub") — the long displayLabelForUserRole
 // slugs ("Master_technician") overflowed the phone-width person picker.
@@ -137,7 +138,8 @@ export default function TeamReviewSection({
     setLoading(true)
     setError(null)
     const [usersRes, reviewsRes, jobsRes, tenureRes] = await Promise.all([
-      supabase.from('users').select('id, name, role').is('archived_at', null),
+      // Tier-2 #19 (J25-F7): the Rate deck and Leaderboard never seat a digital twin.
+      activeUsersQuery<RatableUser>('id, name, role', { includeDev: true, orderByName: false }),
       // Office rows only: crew rows (v2.2824) are anonymous and reach Reflect through crew_review_aggregates.
       supabase.from('team_member_reviews').select('*').eq('source', 'office'),
       supabase.rpc('list_team_member_recent_jobs'),

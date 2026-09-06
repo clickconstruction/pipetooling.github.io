@@ -1,6 +1,10 @@
 import { useEffect, useState, type Dispatch, type MutableRefObject, type SetStateAction } from 'react'
 import { supabase } from '../lib/supabase'
 import { cascadePersonNameInPayTables } from '../lib/cascadePersonName'
+import { fetchActiveUsers } from '../lib/people/fetchActiveUsers'
+
+/** Account roles that belong on the People roster (dev is appended only for dev viewers). */
+const PEOPLE_ROSTER_ROLES = ['assistant', 'master_technician', 'subcontractor', 'helpers', 'estimator', 'primary', 'superintendent', 'controller'] as const
 
 export type Person = {
   id: string
@@ -78,21 +82,24 @@ export function usePeopleRoster(
       return
     }
     deps.setError(null)
+    // Tier-2 #19: the roster is the shared "active people" query — archived and
+    // digital-twin accounts never reach the People tabs or their pickers; dev
+    // rows (the `test` fixture) only when the viewer is dev.
     const [peopleRes, usersRes, meRes] = await Promise.all([
       supabase.from('people').select('id, master_user_id, kind, name, email, phone, notes, account_user_id').is('archived_at', null).order('kind').order('name'),
-      supabase.from('users').select('id, email, name, role, notes, phone').is('archived_at', null).in('role', ['assistant', 'master_technician', 'subcontractor', 'helpers', 'estimator', 'primary', 'superintendent', 'controller' as 'assistant']),
+      fetchActiveUsers<UserRow>('id, email, name, role, notes, phone', { roles: PEOPLE_ROSTER_ROLES, orderByName: false }),
       supabase.from('users').select('role').eq('id', authUserId).single(),
     ])
     if (peopleRes.error) deps.setError(peopleRes.error.message)
     else setPeople((peopleRes.data as Person[]) ?? [])
-    let usersList = (usersRes.data as UserRow[]) ?? []
+    let usersList = usersRes.data
     const myRole = (meRes.data as { role?: string } | null)?.role ?? null
     deps.setAuthUserRole(myRole)
     if (myRole === 'dev') {
-      const { data: devUsers } = await supabase.from('users').select('id, email, name, role, notes, phone').is('archived_at', null).eq('role', 'dev')
-      if (devUsers && devUsers.length > 0) {
+      const { data: devUsers } = await fetchActiveUsers<UserRow>('id, email, name, role, notes, phone', { roles: [], includeDev: true, orderByName: false })
+      if (devUsers.length > 0) {
         const existingIds = new Set(usersList.map((u) => u.id))
-        const newDevs = (devUsers as UserRow[]).filter((u) => !existingIds.has(u.id))
+        const newDevs = devUsers.filter((u) => !existingIds.has(u.id))
         usersList = [...usersList, ...newDevs]
       }
     }

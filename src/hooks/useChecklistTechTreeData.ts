@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
+import { activeUsersQuery } from '../lib/people/fetchActiveUsers'
 import { withSupabaseRetry } from '../utils/errorHandling'
 import type { BridgeState } from '../lib/roadmapBridge'
 import type { Database } from '../types/database'
@@ -90,8 +91,8 @@ export function useChecklistTechTreeData(
           'load checklist_tech_tree_edges',
         ),
         withSupabaseRetry(
-          () =>
-            supabase.from('users').select('id, name, email').is('archived_at', null).order('name'),
+          // Tier-2 #19: assignee picker = active people (no twins); dev rows stay.
+          () => activeUsersQuery<{ id: string; name: string; email: string }>('id, name, email', { includeDev: true }),
           'load users for tech tree',
         ),
       ] as const)

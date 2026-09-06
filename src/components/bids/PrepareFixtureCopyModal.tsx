@@ -31,6 +31,7 @@ import { AUDIT_PIN_PRIORITY } from '../../lib/specSectionAudit'
 import { SearchableSelect, type SearchableSelectOption } from '../SearchableSelect'
 import { supabase } from '../../lib/supabase'
 import { withSupabaseRetry } from '../../utils/errorHandling'
+import { fetchSupplyHousePickerRows } from '../../lib/supplyHousePickerRows'
 import { useToastContext } from '../../contexts/ToastContext'
 import { useAuth } from '../../hooks/useAuth'
 import { recordNavClick } from '../../lib/navClickTelemetry'
@@ -167,11 +168,9 @@ export function PrepareFixtureCopyModal({
     let cancelled = false
     void (async () => {
       try {
-        const data = await withSupabaseRetry(
-          () => supabase.from('supply_houses').select('id, name').order('name'),
-          'load supply houses',
-        )
-        if (!cancelled) setHouses((data ?? []).map((h) => ({ id: h.id, name: h.name })))
+        // Tier-2 #19 (J34-N2): quote-able houses only — insurers and payee-only vendors are hidden.
+        const rows = await fetchSupplyHousePickerRows()
+        if (!cancelled) setHouses(rows)
       } catch {
         if (!cancelled) setHouses([])
       }

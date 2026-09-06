@@ -20,7 +20,7 @@ import {
   nextMonthlyPaymentDueYmd,
   type AgingBucketKey,
 } from '../lib/supplyHouseAging'
-import { SupplyHouseForm } from './SupplyHouseForm'
+import { SupplyHouseForm, type SupplyHouseFormData } from './SupplyHouseForm'
 import { SupplyHouseWebsiteLink } from './SupplyHouseWebsiteLink'
 import type { Database } from '../types/database'
 import { isAssistantLike } from '../lib/subcontractorLikeRole'
@@ -435,7 +435,7 @@ export function SupplyHousesTab({
     }
   }
 
-  async function handleSupplyHouseSubmit(data: { name: string; contact_name: string; phone: string; email: string; address: string; website_url: string | null; notes: string; monthly_payment_day: number | null }) {
+  async function handleSupplyHouseSubmit(data: SupplyHouseFormData) {
     if (!data.name.trim()) {
       setError('Supply house name is required')
       return
@@ -455,6 +455,7 @@ export function SupplyHousesTab({
           website_url: data.website_url,
           notes: data.notes.trim() || null,
           monthly_payment_day: data.monthly_payment_day,
+          is_insurer: data.is_insurer,
         })
         .eq('id', editingSupplyHouse.id)
       if (e) setError(e.message)
@@ -475,6 +476,7 @@ export function SupplyHousesTab({
           website_url: data.website_url,
           notes: data.notes.trim() || null,
           monthly_payment_day: data.monthly_payment_day,
+          is_insurer: data.is_insurer,
         })
       if (e) setError(e.message)
       else {

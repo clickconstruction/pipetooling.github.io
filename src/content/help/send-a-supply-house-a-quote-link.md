@@ -13,6 +13,7 @@ Texting a parts list works — but then the rep texts prices back and someone re
 2. Scope the list like always — {{chip:blue|Whole job}}, {{chip:blue|Pipe &amp; fittings}}, or hand-picked rows.
 3. In the strip above the footer, **pick the supply house** the link is for, set a **needed by** date if there's a deadline, and tap {{button:blue|Copy with quote link}}.
    - Picking the house also shows what they've quoted before — "Moore Supply has last-quoted prices for 12 of these 63 items · newest 3 days ago" — so you know which vendor already knows this scope.
+   - Only suppliers you quote from are listed. A vendor that is really an insurer, a rental yard or a payee-only account is hidden here once someone ticks **Not a supplier we quote from** on its card under Materials → Supply Houses — it stays there for bills and POs.
 4. Paste into your text or email like always. The list now ends with a `Price it here:` link.
 
 The request is made **when you copy it** — the link goes onto your clipboard first, and only then does the request appear on the desk. If your browser blocks the clipboard, the link shows in a box to copy by hand; tap {{button:blue|Link is ready — I copied it}} to save the request, or {{button:outline|Cancel}} and nothing is created. No request ever exists that you didn't get a link for.

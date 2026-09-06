@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import './Calendar.css'
 import { supabase } from '../lib/supabase'
+import { fetchTwinUserIds } from '../lib/fetchTwinUserIds'
+import { partitionBidsByScope } from '../lib/bidBoardScope'
 import { useAuth } from '../hooks/useAuth'
 import { useMatchMedia } from '../hooks/useMatchMedia'
 import type { Database } from '../types/database'
@@ -629,13 +631,13 @@ export default function Calendar() {
     // Include bids where outcome is null OR outcome != 'lost' (SQL excludes null from neq)
     let query = supabase
       .from('bids')
-      .select('id, project_name, bid_due_date, bid_date_sent, service_type_id, service_type:service_types(name)')
+      .select('id, project_name, bid_due_date, bid_date_sent, service_type_id, estimator_id, created_by, service_type:service_types(name)')
       .not('bid_due_date', 'is', null)
       .or('outcome.is.null,outcome.neq.lost')
     if (userRole === 'estimator' && estServiceTypeIds && estServiceTypeIds.length > 0) {
       query = query.in('service_type_id', estServiceTypeIds)
     }
-    const { data: bidData, error: bidError } = await query
+    const [{ data: bidData, error: bidError }, twinIds] = await Promise.all([query, fetchTwinUserIds()])
     if (bidError) {
       setError(bidError.message)
       return
@@ -644,14 +646,22 @@ export default function Calendar() {
       setBids([])
       return
     }
-    const calendarBids: CalendarBid[] = (bidData as Array<{
-      id: string
-      project_name: string | null
-      bid_due_date: string
-      bid_date_sent: string | null
-      service_type_id: string
-      service_type: { name: string } | null
-    }>).map((b) => ({
+    // Tier-2 #19 (J15-F12): "Bid due" entries are people bids only — the twin fleet's backtest
+    // specimens (44 of this month's 66 at the walk) stay on the Robot Board, not the calendar.
+    const peopleBidRows = partitionBidsByScope(
+      bidData as Array<{
+        id: string
+        project_name: string | null
+        bid_due_date: string
+        bid_date_sent: string | null
+        service_type_id: string
+        estimator_id: string | null
+        created_by: string | null
+        service_type: { name: string } | null
+      }>,
+      twinIds,
+    ).people
+    const calendarBids: CalendarBid[] = peopleBidRows.map((b) => ({
       id: b.id,
       project_name: b.project_name ?? 'Untitled',
       bid_due_date: b.bid_due_date,

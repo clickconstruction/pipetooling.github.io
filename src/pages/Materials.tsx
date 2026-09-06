@@ -25,7 +25,7 @@ import { useMaterialsPurchaseOrders } from '../hooks/useMaterialsPurchaseOrders'
 import { useMaterialsCatalog } from '../hooks/useMaterialsCatalog'
 import { useMaterialsAssemblies } from '../hooks/useMaterialsAssemblies'
 import { PartPricesManager } from '../components/materials/PartPricesManager'
-import { SupplyHouseForm } from '../components/SupplyHouseForm'
+import { SupplyHouseForm, type SupplyHouseFormData } from '../components/SupplyHouseForm'
 
 type SupplyHouse = Database['public']['Tables']['supply_houses']['Row']
 type MaterialPart = Database['public']['Tables']['material_parts']['Row']
@@ -727,7 +727,7 @@ export default function Materials() {
     setEditingSupplyHouse(null)
   }
 
-  async function saveSupplyHouseFromFormData(data: { name: string; contact_name: string; phone: string; email: string; address: string; website_url: string | null; notes: string; monthly_payment_day: number | null }) {
+  async function saveSupplyHouseFromFormData(data: SupplyHouseFormData) {
     if (!data.name.trim()) {
       setError('Supply house name is required')
       return
@@ -747,6 +747,7 @@ export default function Materials() {
           website_url: data.website_url,
           notes: data.notes.trim() || null,
           monthly_payment_day: data.monthly_payment_day,
+          is_insurer: data.is_insurer,
         })
         .eq('id', editingSupplyHouse.id)
       if (err) {
@@ -767,6 +768,7 @@ export default function Materials() {
           website_url: data.website_url,
           notes: data.notes.trim() || null,
           monthly_payment_day: data.monthly_payment_day,
+          is_insurer: data.is_insurer,
         })
       if (err) {
         setError(err.message)

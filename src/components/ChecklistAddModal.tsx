@@ -1,6 +1,7 @@
 import { useState, useEffect, useLayoutEffect, useRef, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
+import { activeUsersQuery } from '../lib/people/fetchActiveUsers'
 import { useAuth } from '../hooks/useAuth'
 import { useChecklistAddModal } from '../contexts/ChecklistAddModalContext'
 import { getNextDisplayOrders } from '../utils/checklistOrder'
@@ -156,11 +157,8 @@ export default function ChecklistAddModal({
 
   useEffect(() => {
     if (!modalContext?.isOpen) return
-    supabase
-      .from('users')
-      .select('id, name, email')
-      .is('archived_at', null)
-      .order('name')
+    // Tier-2 #19 (J30-2): assignee picker = active people (no twins); dev rows stay — tasks go to the owner.
+    activeUsersQuery('id, name, email', { includeDev: true })
       .then(({ data }) => {
         setUsers((data ?? []) as Array<{ id: string; name: string; email: string }>)
       })

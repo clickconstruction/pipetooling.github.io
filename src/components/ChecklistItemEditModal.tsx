@@ -1,5 +1,6 @@
 import { useState, useEffect, useLayoutEffect, useRef, useMemo } from 'react'
 import { supabase } from '../lib/supabase'
+import { activeUsersQuery } from '../lib/people/fetchActiveUsers'
 import { getNextDisplayOrders } from '../utils/checklistOrder'
 import { SearchableSelect } from './SearchableSelect'
 import { SearchableMultiSelect } from './SearchableMultiSelect'
@@ -177,7 +178,8 @@ export function ChecklistItemEditModal({
         .eq('id', itemId)
         .single(),
       supabase.from('checklist_item_assignees').select('user_id').eq('checklist_item_id', itemId),
-      supabase.from('users').select('id, name, email').is('archived_at', null).order('name'),
+      // Tier-2 #19 (J30-2): assignee picker = active people (no twins); dev rows stay.
+      activeUsersQuery('id, name, email', { includeDev: true }),
     ]).then(([itemRes, assigneesRes, usersRes]) => {
       const item = itemRes.data as ChecklistItem | null
       const assigneeIds = (assigneesRes.data ?? []).map((r: { user_id: string }) => r.user_id)
