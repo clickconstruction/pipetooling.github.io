@@ -1,7 +1,9 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { getDefaultWeekRange } from '../../utils/dateUtils'
 import { pendingOffsetSignedAmount } from '../../lib/partnerLedger/partnerLedgerJournal'
+import { balanceBridgeText, ledgerHours, officeBalanceLabel } from '../../lib/partnerLedger/partnerBalance'
+import { useOfficePartnerLedger } from '../../hooks/useOfficePartnerLedger'
 import { planStatementClose } from '../../lib/partnerLedger/statementCloseWeeks'
 
 /**
@@ -11,20 +13,11 @@ import { planStatementClose } from '../../lib/partnerLedger/statementCloseWeeks'
  * unless the logged override), then track the archive: hours, gross, both §9b
  * acknowledgment chips, and payments against each statement.
  *
- * Reads ride the dev's payroll-access RLS on the pay_stubs family — no extra
- * RPCs needed office-side. Fail-soft before the PR 3 migration is pushed.
+ * Reads the SAME `get_partner_ledger_as` payload the Ledger and Timeline tabs
+ * and the partner's statement read (useOfficePartnerLedger) — one journal, so
+ * the archive's hours are the partner's hours and the "attaching" figure is
+ * exactly the gap between the Timeline's posted balance and the Ledger's.
  */
-
-type StubRow = {
-  id: string
-  period_start: string
-  period_end: string
-  hours_total: number
-  gross_pay: number
-  paid_at: string | null
-}
-type PendingOffsetRow = { id: string; type: string; amount: number; occurred_date: string; description: string | null }
-type PaymentRow = { pay_stub_id: string; amount: number }
 
 const money = (n: number) => `$${n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 
@@ -39,14 +32,13 @@ export function PartnershipStatementsTab({
   personName: string
   weeklyStatementOn: boolean
 }) {
-  const [stubs, setStubs] = useState<StubRow[] | null>(null)
-  const [payments, setPayments] = useState<PaymentRow[]>([])
-  const [pendingOffsets, setPendingOffsets] = useState<PendingOffsetRow[]>([])
+  const ledger = useOfficePartnerLedger(partnershipId, personId)
+  const stubs = ledger.status === 'ok' ? ledger.stubs : null
+  const pendingOffsets = ledger.pending
   const [excluded, setExcluded] = useState<Set<string>>(new Set())
   // Charges book at their occurred date (charges-at-date, v2.1967) — the
   // attach list is bookkeeping detail, so it starts collapsed.
   const [chargesOpen, setChargesOpen] = useState(false)
-  const [loadFailed, setLoadFailed] = useState(false)
   const [generating, setGenerating] = useState(false)
   const [override, setOverride] = useState(false)
   const [genMessage, setGenMessage] = useState<string | null>(null)
@@ -57,42 +49,12 @@ export function PartnershipStatementsTab({
     [stubs],
   )
 
-  const load = useCallback(async () => {
-    const { data, error } = await supabase
-      .from('pay_stubs')
-      .select('id, period_start, period_end, hours_total, gross_pay, paid_at')
-      .eq('person_id', personId)
-      .order('period_start', { ascending: false })
-      .limit(30)
-    if (error) {
-      setLoadFailed(true)
-      setStubs([])
-      return
-    }
-    setLoadFailed(false)
-    const rows = (data ?? []) as StubRow[]
-    setStubs(rows)
-    if (rows.length > 0) {
-      const ids = rows.map((r) => r.id)
-      const payRes = await supabase.from('pay_stub_payments').select('pay_stub_id, amount').in('pay_stub_id', ids)
-      setPayments((payRes.data ?? []) as PaymentRow[])
-    } else {
-      setPayments([])
-    }
-    const pendRes = await supabase
-      .from('person_offsets')
-      .select('id, type, amount, occurred_date, description')
-      .eq('person_id', personId)
-      .is('pay_stub_id', null)
-      .order('occurred_date', { ascending: false })
-    setPendingOffsets(((pendRes.data ?? []) as PendingOffsetRow[]) || [])
-    setExcluded(new Set())
-  }, [personId])
-
+  // A fresh pending list (after a close, a reload) starts with everything checked.
   useEffect(() => {
-    setStubs(null)
-    void load()
-  }, [load])
+    setExcluded(new Set())
+  }, [pendingOffsets])
+
+  const load = ledger.reload
 
   async function generate(weekStart: string) {
     setGenerating(true)
@@ -130,11 +92,26 @@ export function PartnershipStatementsTab({
       </p>
     )
   }
-  if (stubs == null) {
+  if (ledger.status === 'loading' || stubs == null) {
     return <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', margin: '0.5rem 0 0' }}>Loading…</p>
   }
+  if (ledger.status === 'failed') {
+    return (
+      <p style={{ fontSize: '0.875rem', color: 'var(--text-700)', margin: '0.5rem 0 0' }}>
+        Couldn’t load statements — check dev access and that the partner ledger migrations are pushed (<code>supabase db push</code>).
+      </p>
+    )
+  }
+  if (!ledger.exists) {
+    return (
+      <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', margin: '0.5rem 0 0' }}>
+        This partnership is paused or ended, so its statements are hidden — the same nothing {personName} sees. Set it
+        back to active on the Deal tab to read them.
+      </p>
+    )
+  }
 
-  const paidFor = (stubId: string) => payments.filter((p) => p.pay_stub_id === stubId).reduce((s, p) => s + Number(p.amount || 0), 0)
+  const paidFor = (s: (typeof stubs)[number]) => s.payments.reduce((sum, p) => sum + Number(p.amount || 0), 0)
   const attachingNet = pendingOffsets.filter((o) => !excluded.has(o.id)).reduce((s, o) => s + pendingOffsetSignedAmount(o), 0)
 
   return (
@@ -197,6 +174,11 @@ export function PartnershipStatementsTab({
                   {chargesOpen ? 'hide ▴' : 'show ▾'}
                 </button>
               </span>
+            </div>
+            <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
+              {excluded.size === 0
+                ? balanceBridgeText(ledger.split, personName)
+                : `attaching everything would take the posted ${officeBalanceLabel(ledger.split.postedBalance, personName)} to ${officeBalanceLabel(ledger.split.ledgerBalance, personName)} — unchecked charges stay pending`}
             </div>
             {chargesOpen ? (
               <>
@@ -271,21 +253,17 @@ export function PartnershipStatementsTab({
       <div style={{ fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-muted)', margin: '1rem 0 0.25rem' }}>
         Statement archive
       </div>
-      {loadFailed ? (
-        <p style={{ fontSize: '0.875rem', color: 'var(--text-700)', margin: 0 }}>
-          Couldn’t load statements — if the PR 3 migration hasn’t been pushed, run <code>supabase db push</code>.
-        </p>
-      ) : stubs.length === 0 ? (
+      {stubs.length === 0 ? (
         <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', margin: 0 }}>No statements yet.</p>
       ) : (
         stubs.map((s) => {
-          const paid = paidFor(s.id)
+          const paid = paidFor(s)
           return (
             <div key={s.id} style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', gap: '0.5rem 0.75rem', padding: '0.55rem 0', borderBottom: '1px solid var(--border)', fontSize: '0.85rem' }}>
               <div style={{ flex: '1 1 220px', minWidth: 0 }}>
                 <b>Week {s.period_start} – {s.period_end}</b>
                 <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                  {Number(s.hours_total).toFixed(1)} h · gross {money(Number(s.gross_pay))}
+                  {ledgerHours(s).toFixed(2)} h · gross {money(Number(s.gross_pay))}
                   {paid > 0 ? ` · paid ${money(paid)}` : ''}
                 </div>
               </div>
@@ -294,8 +272,8 @@ export function PartnershipStatementsTab({
         })
       )}
       <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)', margin: '0.6rem 0 0' }}>
-        Each closing balance opens the next week — the chain is the ledger (see the Ledger tab). The partner views the
-        same records from their dashboard.
+        Each closing balance opens the next week — the chain is the ledger (see the Ledger tab). {personName} reads the
+        same records from their statement: same hours, same balance.
       </p>
     </div>
   )

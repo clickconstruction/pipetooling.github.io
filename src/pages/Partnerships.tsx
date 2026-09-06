@@ -698,7 +698,7 @@ export default function Partnerships() {
                   weeklyStatementOn={draft.modules.weekly_statement}
                 />
               ) : activeTab === 'timeline' ? (
-                <PartnershipTimelineTab personId={selected.person_id} personName={selected.display_name || 'the partner'} />
+                <PartnershipTimelineTab partnershipId={selected.id} personId={selected.person_id} personName={selected.display_name || 'the partner'} />
               ) : activeTab === 'ledger' ? (
                 <PartnershipLedgerTab personId={selected.person_id} partnershipId={selected.id} personName={selected.display_name || 'the partner'} />
               ) : (

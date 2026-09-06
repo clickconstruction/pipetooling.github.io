@@ -122,6 +122,9 @@ export function partnerStubsToJournal(
       date: o.occurred_date,
       label: o.description || o.type,
       amount: pendingOffsetSignedAmount(o),
+      // The office Ledger tab drills into a charge row by its offset id; the
+      // partner's renderers never read it. Same journal either way (vNEXT).
+      offset_id: o.id,
     })),
   })
 }
