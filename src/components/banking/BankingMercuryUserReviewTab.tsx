@@ -22,6 +22,14 @@ import {
 import { BankingMercuryUserReviewLedgerModal } from './BankingMercuryUserReviewLedgerModal'
 import { BankingMercuryUserReviewPieView } from './BankingMercuryUserReviewPieView'
 import { readUserReviewChartView, writeUserReviewChartView, type UserReviewChartView } from '../../lib/bankingDragSortStorage'
+import {
+  CARD_REVIEW_KIND_ALL,
+  CARD_REVIEW_STORAGE_KEYS,
+  buildCardReviewKindOptions,
+  filterCardReviewRowsByKind,
+  normalizeCardReviewKindFilter,
+  readMigratedStorageItem,
+} from '../../lib/bankingCardReviewPrefs'
 import { TransactionDetailModal } from './TransactionDetailModal'
 import { fetchMercuryTransactionRawById } from '../../lib/fetchMercuryTransactionRaws'
 import type { SearchableSelectOption } from '../SearchableSelect'
@@ -54,16 +62,22 @@ function amountColor(amount: number): string {
   return '#374151'
 }
 
-const HIDE_EMPTY_STORAGE_KEY = 'banking_mercury_user_review_hide_empty_v1'
-const TIME_WINDOW_STORAGE_KEY = 'banking_mercury_user_review_time_window_v1'
+// Device-local prefs. Keys say `card_review` since v2.2899; a value left under the
+// old `user_review` key is migrated on first read (see bankingCardReviewPrefs.ts).
+const HIDE_EMPTY_STORAGE_KEY = CARD_REVIEW_STORAGE_KEYS.hideEmpty.key
+const TIME_WINDOW_STORAGE_KEY = CARD_REVIEW_STORAGE_KEYS.timeWindow.key
+const KIND_FILTER_STORAGE_KEY = CARD_REVIEW_STORAGE_KEYS.kindFilter.key
+
+function storageOrNull(): Storage | null {
+  try {
+    return typeof window === 'undefined' ? null : window.localStorage
+  } catch {
+    return null
+  }
+}
 
 function readHideEmptyFromStorage(): boolean {
-  try {
-    const v = localStorage.getItem(HIDE_EMPTY_STORAGE_KEY)
-    return v === '1'
-  } catch {
-    return false
-  }
+  return readMigratedStorageItem(storageOrNull(), HIDE_EMPTY_STORAGE_KEY, CARD_REVIEW_STORAGE_KEYS.hideEmpty.legacy) === '1'
 }
 
 function writeHideEmptyToStorage(value: boolean): void {
@@ -75,14 +89,23 @@ function writeHideEmptyToStorage(value: boolean): void {
 }
 
 function readTimeWindowFromStorage(): UserReviewTimeWindow {
+  const v = readMigratedStorageItem(storageOrNull(), TIME_WINDOW_STORAGE_KEY, CARD_REVIEW_STORAGE_KEYS.timeWindow.legacy)
+  const match = USER_REVIEW_TIME_WINDOW_OPTIONS.find((o) => o.value === v)
+  return match ? match.value : USER_REVIEW_TIME_WINDOW_DEFAULT
+}
+
+/** Raw stored kind filter; normalized against the live options once rows arrive. */
+function readKindFilterFromStorage(): string {
+  return readMigratedStorageItem(storageOrNull(), KIND_FILTER_STORAGE_KEY, CARD_REVIEW_STORAGE_KEYS.kindFilter.legacy) ?? CARD_REVIEW_KIND_ALL
+}
+
+function writeKindFilterToStorage(value: string): void {
   try {
-    const v = localStorage.getItem(TIME_WINDOW_STORAGE_KEY)
-    const match = USER_REVIEW_TIME_WINDOW_OPTIONS.find((o) => o.value === v)
-    if (match) return match.value
+    if (value === CARD_REVIEW_KIND_ALL) localStorage.removeItem(KIND_FILTER_STORAGE_KEY)
+    else localStorage.setItem(KIND_FILTER_STORAGE_KEY, value)
   } catch {
     /* ignore */
   }
-  return USER_REVIEW_TIME_WINDOW_DEFAULT
 }
 
 function writeTimeWindowToStorage(value: UserReviewTimeWindow): void {
@@ -121,6 +144,10 @@ export function BankingMercuryUserReviewTab({
   const [detailTx, setDetailTx] = useState<MercuryTxRow | null>(null)
   const [expandedColKeys, setExpandedColKeys] = useState<Set<string>>(() => new Set())
   const [timeWindow, setTimeWindow] = useState<UserReviewTimeWindow>(() => readTimeWindowFromStorage())
+  // Kind filter (v2.2899, J33-adj-2): the RPC returns every kind, so without this
+  // the pinned "Unassigned" row counts transfers, payouts and fees as if they were
+  // card charges nobody has claimed.
+  const [kindFilterRaw, setKindFilterRaw] = useState<string>(() => readKindFilterFromStorage())
   const [selectedRowKey, setSelectedRowKey] = useState<string | null>(null)
   const [expandedDetailCategoryKeys, setExpandedDetailCategoryKeys] = useState<Set<string>>(() => new Set())
 
@@ -212,9 +239,13 @@ export function BankingMercuryUserReviewTab({
 
   // The RPC rows carry the standard Banking list columns (minus `raw`), so they're
   // shape-compatible with the `MercuryTxRow` the drill-down / detail / search expect.
+  const kindOptions = useMemo(() => buildCardReviewKindOptions(userReviewRows), [userReviewRows])
+  const kindFilter = useMemo(() => normalizeCardReviewKindFilter(kindFilterRaw, kindOptions), [kindFilterRaw, kindOptions])
+  const kindFilteredRows = useMemo(() => filterCardReviewRowsByKind(userReviewRows, kindFilter), [userReviewRows, kindFilter])
+
   const windowedTransactions = useMemo<MercuryTxRow[]>(
-    () => userReviewRows as unknown as MercuryTxRow[],
-    [userReviewRows],
+    () => kindFilteredRows as unknown as MercuryTxRow[],
+    [kindFilteredRows],
   )
 
   // Attribution + label maps + display names, derived from the joined RPC rows
@@ -225,7 +256,7 @@ export function BankingMercuryUserReviewTab({
     const lById = new Map<string, string | null>()
     const uNames: Record<string, string> = {}
     const pNames: Record<string, string> = {}
-    for (const r of userReviewRows) {
+    for (const r of kindFilteredRows) {
       uById.set(r.id, r.user_id)
       pById.set(r.id, r.person_id)
       lById.set(r.id, r.label_id)
@@ -233,7 +264,7 @@ export function BankingMercuryUserReviewTab({
       if (r.person_id && r.person_name) pNames[r.person_id] = r.person_name
     }
     return { userIdByTxId: uById, personIdByTxId: pById, userNameById: uNames, personNameById: pNames, labelIdByTxId: lById }
-  }, [userReviewRows])
+  }, [kindFilteredRows])
 
   const pivot = useMemo(() => {
     return buildUserReviewPivot({
@@ -400,7 +431,8 @@ export function BankingMercuryUserReviewTab({
         <div>
           <div style={{ fontSize: '0.875rem', color: 'var(--text-700)' }}>
             Rows = users (or persons) attributed to a Mercury transaction. Columns = accounting labels
-            from the Drag Sort / Accounting tabs.
+            from the Drag Sort / Accounting tabs. Read-only except Assign to. The Unassigned row includes
+            transfers and payouts until Kind is narrowed to card charges.
           </div>
           <div style={{ marginTop: '0.25rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
             Click any cell to open a searchable ledger; click a user name to see their per-category
@@ -451,6 +483,42 @@ export function BankingMercuryUserReviewTab({
             {windowedRangeLabel ? (
               <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>{windowedRangeLabel}</span>
             ) : null}
+          </label>
+          <label
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '0.4rem',
+              fontSize: '0.8125rem',
+              color: 'var(--text-700)',
+            }}
+          >
+            <span style={{ color: 'var(--text-muted)' }}>Kind</span>
+            <select
+              value={kindFilter}
+              onChange={(e) => {
+                const next = e.target.value
+                setKindFilterRaw(next)
+                writeKindFilterToStorage(next)
+              }}
+              aria-label="Filter Card Review by transaction kind"
+              title="Transfers, payouts and fees count in the Unassigned row until you narrow to card charges"
+              style={{
+                padding: '0.35rem 0.5rem',
+                borderRadius: 6,
+                border: '1px solid var(--border-strong)',
+                background: 'var(--surface)',
+                fontSize: '0.8125rem',
+                color: 'var(--text-strong)',
+                cursor: 'pointer',
+              }}
+            >
+              {kindOptions.map((o) => (
+                <option key={o.value} value={o.value}>
+                  {o.label}
+                </option>
+              ))}
+            </select>
           </label>
           <label
             style={{

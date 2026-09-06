@@ -3,6 +3,7 @@ import {
   parseMercuryLedgerSortJson,
   type MercuryLedgerSortState,
 } from './bankingMercuryLedgerTableSort'
+import { CARD_REVIEW_STORAGE_KEYS, readMigratedStorageItem } from './bankingCardReviewPrefs'
 
 /** Per-user preference: Drag Sort table hides rows that already have an Accounting Label. */
 const STORAGE_PREFIX = 'banking_drag_sort_hide_labeled_v1_'
@@ -232,17 +233,20 @@ export function writeAccountingApprovalsGroupByLabel(userId: string, value: bool
   }
 }
 
-/** Banking Mercury User Review view mode: pivot **table** (default) or **pie** chart. Device-global (matches this tab's other prefs). */
+/** Banking Mercury Card Review view mode: pivot **table** (default) or **pie** chart. Device-global (matches this tab's other prefs).
+ * Key says `card_review` since v2.2899; a value under the old `user_review` key is migrated on first read. */
 export type UserReviewChartView = 'table' | 'pie'
-const USER_REVIEW_CHART_VIEW_KEY = 'banking_mercury_user_review_chart_view_v1'
+const USER_REVIEW_CHART_VIEW_KEY = CARD_REVIEW_STORAGE_KEYS.chartView.key
 
 export function readUserReviewChartView(): UserReviewChartView {
   if (typeof window === 'undefined') return 'table'
+  let storage: Storage | null = null
   try {
-    return window.localStorage.getItem(USER_REVIEW_CHART_VIEW_KEY) === 'pie' ? 'pie' : 'table'
+    storage = window.localStorage
   } catch {
     return 'table'
   }
+  return readMigratedStorageItem(storage, USER_REVIEW_CHART_VIEW_KEY, CARD_REVIEW_STORAGE_KEYS.chartView.legacy) === 'pie' ? 'pie' : 'table'
 }
 
 export function writeUserReviewChartView(value: UserReviewChartView): void {

@@ -53,7 +53,7 @@ function MonthRow({ m }: { m: ReconMonth }) {
         </td>
         <td style={{ padding: '0.4rem 0.6rem' }}>
           <StatusPill status={ok ? 'ok' : 'warn'}>
-            {status === 'ok' ? '✓ Reconciled' : `⚠ ${m.missingCount} missing`}
+            {status === 'ok' ? '✓ Matches statement' : `⚠ ${m.missingCount} missing`}
           </StatusPill>
         </td>
         <td style={{ padding: '0.4rem 0.6rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: 'var(--text-slate-600)' }}>
@@ -95,7 +95,7 @@ function AccountCard({ a }: { a: ReconAccount }) {
         <div style={{ fontWeight: 700, fontSize: '1rem' }}>
           {a.name}
           <StatusPill status={summary.status === 'ok' ? 'ok' : 'warn'}>
-            {summary.status === 'ok' ? '✓ All reconciled' : `⚠ ${summary.totalMissing} missing`}
+            {summary.status === 'ok' ? '✓ All match statements' : `⚠ ${summary.totalMissing} missing`}
           </StatusPill>
         </div>
       </div>
@@ -162,7 +162,7 @@ export function BankingMercuryReconciliationTab() {
       const r = await fetchMercuryReconciliation(monthsBack)
       setResult(r)
     } catch (e) {
-      showToast(e instanceof Error ? e.message : 'Reconciliation failed', 'error')
+      showToast(e instanceof Error ? e.message : 'Could not check the books against the bank statements', 'error')
     } finally {
       setLoading(false)
     }
@@ -173,7 +173,7 @@ export function BankingMercuryReconciliationTab() {
   return (
     <div>
       <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem' }}>
-        <h2 style={{ fontSize: '1.1rem', fontWeight: 700, margin: 0 }}>Reconciliation</h2>
+        <h2 style={{ fontSize: '1.1rem', fontWeight: 700, margin: 0 }}>Reconciliation against bank statements</h2>
         <label style={{ fontSize: '0.82rem', color: 'var(--text-slate-600)', display: 'flex', alignItems: 'center', gap: 6 }}>
           Window
           <select value={monthsBack} onChange={(e) => setMonthsBack(Number(e.target.value))} disabled={loading} style={{ padding: '0.3rem 0.5rem', borderRadius: 6, border: '1px solid var(--border-strong)' }}>
@@ -188,17 +188,18 @@ export function BankingMercuryReconciliationTab() {
           disabled={loading}
           style={{ padding: '0.45rem 1rem', fontWeight: 600, background: loading ? '#94a3b8' : '#2563eb', color: '#fff', border: 'none', borderRadius: 6, cursor: loading ? 'not-allowed' : 'pointer' }}
         >
-          {loading ? 'Reconciling…' : result ? 'Re-run' : 'Run reconciliation'}
+          {loading ? 'Checking statements…' : result ? 'Check again' : 'Check against bank statements'}
         </button>
         {result ? (
-          <span style={{ fontSize: '0.75rem', color: 'var(--text-slate-400)' }}>as of {new Date(result.generatedAt).toLocaleString()}</span>
+          <span style={{ fontSize: '0.75rem', color: 'var(--text-slate-400)' }}>checked against bank statements {new Date(result.generatedAt).toLocaleString()} · not saved</span>
         ) : null}
       </div>
 
       <p style={{ margin: '0 0 1rem', fontSize: '0.85rem', color: 'var(--text-slate-500)' }}>
         Checks each account against its Mercury bank statements (by transaction, so timezones can't fake a gap)
-        and against the live balance for the open month. Manually-entered transactions have no bank statement and
-        aren't reconciled here.
+        and against the live balance for the open month. Read-only: it writes nothing and the result is gone when
+        you leave the tab. This is not the 30-minute sync that backfills missed bank transactions — that runs on
+        its own. Manually-entered transactions have no bank statement and aren't checked here.
       </p>
 
       {summary ? (
@@ -215,14 +216,14 @@ export function BankingMercuryReconciliationTab() {
           }}
         >
           {summary.accountsWithIssues === 0
-            ? `✓ All ${result!.accounts.length} accounts reconcile over the last ${result!.monthsBack} months.`
+            ? `✓ All ${result!.accounts.length} accounts match their bank statements over the last ${result!.monthsBack} months — every statement transaction is in the books.`
             : `⚠ ${summary.accountsWithIssues} account${summary.accountsWithIssues === 1 ? '' : 's'} need review · ${summary.totalMissing.toLocaleString()} transaction${summary.totalMissing === 1 ? '' : 's'} missing from the books.`}
         </div>
       ) : null}
 
       {loading && !result ? <div style={{ color: 'var(--text-slate-500)' }}>Fetching statements & balances from Mercury…</div> : null}
       {!loading && !result ? (
-        <div style={{ color: 'var(--text-slate-500)', fontSize: '0.9rem' }}>Click “Run reconciliation” to compare your books against Mercury.</div>
+        <div style={{ color: 'var(--text-slate-500)', fontSize: '0.9rem' }}>Click “Check against bank statements” to compare your books with Mercury's statements.</div>
       ) : null}
 
       {result?.accounts.map((a) => (

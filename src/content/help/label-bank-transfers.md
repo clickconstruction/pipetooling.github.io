@@ -2,7 +2,7 @@
 title: label bank transfers and wires
 category: Billing & Money
 roles: dev, controller
-keywords: bank transfer, ACH, wire, check, attribution, unattributed, mercury, overhead, office job, payroll, card bill, moneyfill, banking, label, card charges, not split, user sort, rules, suggestions, approve all, approve themselves, auto-approve, needs you
+keywords: bank transfer, ACH, wire, check, attribution, unattributed, mercury, overhead, office job, payroll, card bill, moneyfill, banking, label, card charges, not split, user sort, rules, suggestions, approve all, approve themselves, auto-approve, needs you, card review, reconciliation, bank statements, tabs, nickname
 order: 60
 ---
 Card purchases get sorted on the Banking page, but money that leaves by **ACH, wire, or check** — rent, insurance, contract labor, credit-card bill payments — used to have no home. Until it's labeled, that spending never reaches the overhead numbers or any job's costs.
@@ -45,6 +45,20 @@ Wed, Aug 26 · 6783 · Ferguson · $412.18 {{button:blue|Sort in Banking → Use
 :::
 
 {{button:blue|Sort in Banking → User Sort}} opens **Banking → User Sort** with that counterparty already in the search box, so the charge is on screen. Press **Link…** on its row to split it across jobs (or onto the office job). Moneyfill and Banking read the same splits, so the charge leaves this queue as soon as the split saves — come back to Moneyfill and the count is one lower.
+
+## Finding your way around the Banking tabs
+
+The Banking page has eight tabs and several of them sound alike. A caption row under the tab strip says what each one is for:
+
+:::example The caption row
+User Sort — who spent it · Drag Sort — what kind · Accounting — rules & approvals · Reviews — read-only · Reconciliation — against bank statements, read-only · Jobs are sorted in Job Parts Tally; labels live here.
+:::
+
+- **User Sort** answers *who* spent it (the person on a card charge) and is where **Link…** splits a charge to jobs.
+- **Drag Sort** answers *what kind* of spend it is (the accounting label); **Accounting** is the rules and the approvals queue from the previous section.
+- **Card Review** and **Category Review** are read-only pivots of the same labels. Card Review's **Unassigned** row counts every transaction in the window — transfers and payouts included — until you set its {{chip:gray|Kind}} filter to **Card charges only**.
+- **Reconciliation** checks the books **against Mercury's bank statements**, one closed month at a time. It writes nothing and saves nothing, and it is not the sync that pulls new bank transactions in every half hour — that runs by itself.
+- A dev may also see an amber line under the strip saying an account has no nickname: {{button:amber|Name accounts…}} opens the nickname list so the account stops showing as a raw ID in every account filter.
 
 ## Undoing a label
 

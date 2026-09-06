@@ -25,7 +25,8 @@ Other extracted siblings (not re-mapped; healthy sizes): `BankingMercuryUserRevi
 View routing (see `parseBankingView`): `?product=mercury|stripe` (dev only; non-devs are forced to Mercury), `?tab=`: `?q=<text>` (any role) pre-fills the search box on mount (v2.2849).
 
 ```
-mercury: 'ledger' | 'sorting' | 'drag_sort' | 'accounting' | 'user_review' | 'category_review' | 'reconciliation' | 'visuals'
+mercury: 'ledger' | 'sorting' | 'drag_sort' | 'accounting' | 'card_review' | 'category_review' | 'reconciliation' | 'visuals'
+// `?tab=user_review` (pre-v2.2899) is read as an alias for `card_review` by `mercuryTabFromParam` and rewritten once in the address bar; it is never written.
 stripe:  'invoices' | 'data'
 ```
 
@@ -54,10 +55,12 @@ Each section lists: render location (symbol/JSX anchor — line numbers are "as 
 | `ledger` — Ledger tab (dev-only) | `bankingView.mercuryTab === 'ledger'` panel | ~170 | inline | med-high (Advanced menu drives sync/backfill/import/manual-accounts; nickname CRUD) | med | Extract → `BankingMercuryLedgerTab`; sync/backfill/import handlers stay in parent |
 | `drag_sort` — Drag Sort tab | thin wrapper → `BankingMercuryDragSortTab` | ~29 (wrapper) / 1,392 (component) | **extracted** | med (16 props off the shared engine) | — | Sub-decompose later (bucket-stats kernel → lib; add-label modal → file) |
 | `accounting` — Accounting tab | thin wrapper → `BankingMercuryAccountingTab` | ~33 (wrapper) / 2,304 (component) | **extracted** | high (23 props; lifted prefs; assignment-change callback loop) | — | Sub-decompose: rules-engine hook + approvals hook + section components |
-| `user_review` — Card Review tab | thin wrapper → `BankingMercuryUserReviewTab` | ~12 / 1,098 | **extracted** | low (self-sources via `user_review_rows` RPC) | — | Done |
+| `card_review` — Card Review tab (key was `user_review` until v2.2899) | thin wrapper → `BankingMercuryUserReviewTab` | ~12 / 1,098 | **extracted** | low (self-sources via `user_review_rows` RPC) | — | Done |
 | `category_review` — Category Review tab | thin wrapper → `BankingMercuryCategoryReviewTab` | ~19 / 1,073 | **extracted** | med (reads shared engine) | — | Done |
 | `reconciliation` — Reconciliation tab | `<BankingMercuryReconciliationTab />` | ~5 / 233 | **extracted** | none (zero props) | — | Done — the target end-state |
 | `visuals` — Visuals tab (v2.1712) | `<BankingMercuryVisualsTab />` | ~5 / ~400 | **born extracted** (Reconciliation mold) | none (zero props; own fetches; dispatcher early-returns like Card Review) | — | Done — Sankey kernels in `src/lib/banking/` (`mercurySankeyLayout`, `mercuryVisualsFlows`), both unit-tested |
+
+**Strip furniture (v2.2899, B13):** a caption row under the Mercury tab strip (`MERCURY_TAB_CAPTIONS` in `Banking.tsx`: "User Sort — who spent it · Drag Sort — what kind · Accounting — rules & approvals · Reviews — read-only · Reconciliation — against bank statements, read-only · Jobs are sorted in Job Parts Tally; labels live here"), the active tab's caption bolded. Below the strip, **dev only**, an amber nudge lists Mercury accounts present in the loaded rows that have no `mercury_account_nicknames` row (they render as raw UUIDs in every account filter) with a **Name accounts…** button into `BankingAccountNicknamesModal`; kernel [`bankingAccountNicknameNudge.ts`](../src/lib/bankingAccountNicknameNudge.ts). The nudge targets dev because that table is dev-write only (RLS).
 | Stripe `invoices` / `data` | `BankingStripeInvoicesPanel` / `BankingStripeWebhookEventsPanel` | ~11 | **extracted** | none | — | Done |
 | Parent shell: role gate, URL router, data engine, prefs, modals | `export default function Banking()` | ~1,150 after extractions | permanent parent | — | — | Compress via seam hooks (`useBankingMercuryTransactions`, `useBankingMercuryRelations`, `useBankingNicknames`, `useBankingAccountingPrefs`) |
 
@@ -171,9 +174,11 @@ All were props-only (no parent closure), so the moves were verbatim cut/paste (~
 - **Props from parent (23):** everything Drag Sort gets (minus the account/kind filter pair) plus `mercurySearchNicknameCtx`, `mercurySearchEnrich`, the lifted prefs (`hideLabeledTransactions`/`onHideLabeledTransactionsChange`, `applyRulesByDefault`/`onApplyRulesByDefaultChange`, `autoApplyResetTick`, `myRole` — gates the org-wide **Rule matches approve themselves** switch, v2.2889), `onAfterAssignmentChange={() => loadRowsForActiveView({silent: true})}` (the label⇄list feedback loop), and the keyset trio `labeledHasMore` (gated by `isAccountingLabeledView`), `labeledLoadingMore`, `onLoadMoreLabeled`.
 - **Status:** extracted; its dossier is below.
 
-### `user_review` — Card Review (extracted, done; key `user_review`, tab label renamed from "User Review" in v2.1262 — the Dashboard clock-strip "User Review" modal kept its name)
+### `card_review` — Card Review (extracted, done; key renamed from `user_review` in v2.2899 — the tab label had been "Card Review" since v2.1262; the Dashboard clock-strip "User Review" modal is a different feature and kept its name)
 
 - Wrapper (~2762–2773) passes only `mercurySearchNicknameCtx`, `attributionOptions` (memo: [`buildBankingAttributionOptions`](../src/lib/bankingAttributionOptions.ts) merging `usersSelectOptions` + `peopleAttribRows` with `u:`/`p:` prefixed values), `recentPersonPicksStorageKey`, and `onAttributionChanged={loadMercuryAllocations}`. The tab **self-sources** its rows from the `user_review_rows` RPC — the parent dispatcher deliberately skips the master fetch when this tab is active. The attribution option sources are loaded page-level via RPCs `list_users_for_banking_attribution` and `list_people_with_kind_for_banking_attribution` (the latter cast `as unknown as` — not yet in generated types).
+- **Kind filter (v2.2899, J33-adj-2):** the RPC returns every non-duplicate tx in the window regardless of `kind`, so the pinned Unassigned row counted transfers/payouts/fees. A `Kind` select (All kinds · Card charges only · each kind present) narrows the rows *before* `buildUserReviewPivot`; kernel [`bankingCardReviewPrefs.ts`](../src/lib/bankingCardReviewPrefs.ts) (`buildCardReviewKindOptions` / `filterCardReviewRowsByKind` / `normalizeCardReviewKindFilter`), unit-tested. Default stays All kinds so nobody's totals move silently.
+- **Device prefs** (`hide empty`, `time window`, `chart view`, `kind filter`) live under `banking_mercury_card_review_*_v1`; `readMigratedStorageItem` moves a value found under the old `banking_mercury_user_review_*_v1` key on first read.
 
 ### `category_review` — Category Review (extracted, done)
 
