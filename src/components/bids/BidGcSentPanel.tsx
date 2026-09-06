@@ -7,6 +7,8 @@ import { BID_UPDATE_NOT_APPLIED_MESSAGE, updateApplied } from '../../lib/bids/up
 import { APP_CALENDAR_TZ } from '../../utils/dateUtils'
 import { formatCurrency } from '../../lib/format'
 import { firstSentOn, latestSendByVersion, type VersionSendRow } from '../../lib/bids/versionSends'
+import { sentDateAfterLedgerWrite } from '../../lib/bids/bidSentDate'
+import { recordBidSentLane } from '../../lib/bids/bidSentTelemetry'
 import { groupVersionsByGc, type GcPacket, type GcVersionLike } from '../../lib/bids/gcPackets'
 import { lastContactByGc, type ContactEntryLike } from '../../lib/bids/bidContacts'
 import { setGcPacketOutcome, setGcPacketLossCategory, type PacketOutcome } from '../../lib/bids/gcPacketOutcome'
@@ -135,12 +137,16 @@ export function BidGcSentPanel({ bidId, ownGcName, ownGcCustomerId, bidOutcome, 
   const today = () =>
     new Intl.DateTimeFormat('en-CA', { timeZone: APP_CALENDAR_TZ, year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date())
 
-  /** After any send write: refresh, derive the FIRST send, and mirror it onto the bid + parent form. */
+  /**
+   * After any send write: refresh, derive the roll-up under the ONE sent-date rule
+   * (`bidSentDate.ts`: earliest ledger row; null once the last row is un-sent — the same rule
+   * the server trigger enforces), and mirror it onto the bid + parent form.
+   */
   async function syncRollupAfterWrite() {
     const { data } = await supabase.from('bid_version_sends').select('bid_version_id, sent_on, value, is_alternate, created_at').eq('bid_id', bidId)
     const rows = (data ?? []) as VersionSendRow[]
     setSends(rows)
-    const first = firstSentOn(rows)
+    const first = sentDateAfterLedgerWrite(rows)
     const rollupRows = await withSupabaseRetry(async () => supabase.from('bids').update({ bid_date_sent: first }).eq('id', bidId).select('id'), 'per-GC sent roll-up')
     if (!updateApplied(rollupRows)) {
       showToast(BID_UPDATE_NOT_APPLIED_MESSAGE, 'error')
@@ -168,6 +174,7 @@ export function BidGcSentPanel({ bidId, ownGcName, ownGcCustomerId, bidOutcome, 
         return
       }
       await syncRollupAfterWrite()
+      recordBidSentLane(authUser?.id, authRole, 'ledger')
       showToast(`${p.name} marked sent ${dateStr}.`, 'success')
     } finally {
       setBusyKey(null)

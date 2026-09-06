@@ -18,6 +18,7 @@ import { supabase } from '../../lib/supabase'
 import { withSupabaseRetry } from '../../utils/errorHandling'
 import { BID_UPDATE_NOT_APPLIED_MESSAGE, updateApplied } from '../../lib/bids/updateGuard'
 import { formatCurrency } from '../../lib/format'
+import { bidSentCounts, bidsAndPacketsLabel, scopeLabel, type BidSentScope } from '../../lib/bids/bidSentCounts'
 import { bidAddressMapsUrl } from '../../lib/buildBidPricingPackageHtml'
 import { openInExternalBrowser } from '../../lib/openInExternalBrowser'
 import {
@@ -45,6 +46,8 @@ import { setGcPacketLossCategory } from '../../lib/bids/gcPacketOutcome'
 
 export type BidsWhyWeLostLensProps = {
   bids: BidWithBuilder[]
+  /** Tier-2 #20: the trade pill's scope — the headline counts BIDS in it; GC rows are the second figure. */
+  sentScope: BidSentScope
   /** Bids by GC (v2.2164): per-bid GC packets — the lens triages each GC's loss, not the bid's. */
   gcPacketsByBid: Record<string, GcPacket[]>
   ledgerPrefixMap: LedgerPrefixMap
@@ -108,6 +111,7 @@ function builderPhoneOf(bid: BidWithBuilder): string | null {
 
 export function BidsWhyWeLostLens({
   bids,
+  sentScope,
   gcPacketsByBid,
   ledgerPrefixMap,
   recipientsByBidId,
@@ -395,7 +399,15 @@ export function BidsWhyWeLostLens({
     return () => window.removeEventListener('keydown', onKeyDown)
   })
 
-  const needTotal = rollup.uncategorizedCount
+  // Tier-2 #20: the headline counts BIDS (the board's pile rule, the estimator scope respected);
+  // the per-GC rows the queue works stay as the second figure.
+  const scopedBids = useMemo(
+    () => (estimatorFilter ? bids.filter((b) => (estimatorNameOf(b) ?? 'No estimator') === estimatorFilter) : bids),
+    [bids, estimatorFilter],
+  )
+  const bidCounts = useMemo(() => bidSentCounts(scopedBids, { scope: sentScope, packetsByBid: gcPacketsByBid }), [scopedBids, sentScope, gcPacketsByBid])
+  const needTotal = bidCounts.lostNeedingReason
+  const needRows = rollup.uncategorizedCount
 
   if (allLensBids.length === 0) {
     return (
@@ -448,7 +460,9 @@ export function BidsWhyWeLostLens({
           {needTotal > 0 ? `${needTotal} lost bid${needTotal === 1 ? ' needs' : 's need'} a reason` : 'Every lost bid has a reason'}
         </span>
         <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
-          {`of ${rollup.lostCount} lost · $${formatCurrency(rollup.uncategorizedValue)} unexplained`}
+          {`of ${bidsAndPacketsLabel(bidCounts.lost, rollup.lostCount, 'lost')} · ${scopeLabel(sentScope)}`}
+          {needRows !== needTotal ? ` · ${needRows} GC packets need a reason` : ''}
+          {` · $${formatCurrency(rollup.uncategorizedValue)} unexplained`}
           {rollup.lossRatePct != null ? ` · loss rate ${rollup.lossRatePct}%` : ''}
           {rollup.lossRateExclGcLostPct != null ? `, excluding GC-lost ${rollup.lossRateExclGcLostPct}%` : ''}
         </span>

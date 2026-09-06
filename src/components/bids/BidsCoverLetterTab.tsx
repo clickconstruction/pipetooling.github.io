@@ -1,6 +1,10 @@
 import { useEffect, useState, type Dispatch, type SetStateAction } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useToastContext } from '../../contexts/ToastContext'
+import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
+import { useAuth } from '../../hooks/useAuth'
+import { restampConfirmMessage, sentDateAfterLaneStamp, type BidSentLane } from '../../lib/bids/bidSentDate'
+import { recordBidSentLane } from '../../lib/bids/bidSentTelemetry'
 import { formatErrorMessage, withSupabaseRetry } from '../../utils/errorHandling'
 import { BID_UPDATE_NOT_APPLIED_MESSAGE, updateApplied } from '../../lib/bids/updateGuard'
 import { formatCurrency } from '../../lib/format'
@@ -166,6 +170,8 @@ export function BidsCoverLetterTab({
   isMyBid,
 }: BidsCoverLetterTabProps) {
   const { showToast } = useToastContext()
+  const confirmDialog = useConfirmDialog()
+  const { user: authUser, role: authRole } = useAuth()
   // Cover-letter-only UI state
   const [coverLetterSearchQuery, setCoverLetterSearchQuery] = useState('')
   const [coverLetterBidSubmissionQuickAddBidId, setCoverLetterBidSubmissionQuickAddBidId] = useState<string | null>(null)
@@ -577,12 +583,34 @@ export function BidsCoverLetterTab({
     )
   }
 
-  /** Mark sent for a version-less bid (v2.2389): no send rows to write — just today + the letter amount onto the bid. */
-  async function markSentTodaySimple(bidId: string, amount: number) {
+  /**
+   * Mark sent for a version-less bid (v2.2389): no send rows to write — the date + the letter
+   * amount go onto the bid. Tier-2 #20 / J13-F2: one rule (`bidSentDate.ts`) for both lanes —
+   * the bid room's first link send (`room`) only fills an EMPTY date (it never moves a hand-marked
+   * one later), and the button (`hand`) on a bid that already has a date is an explicit re-stamp
+   * that asks first. Every lane leaves a `bid_sent #lane=…` telemetry row.
+   */
+  async function markSentTodaySimple(bidId: string, amount: number, lane: Extract<BidSentLane, 'hand' | 'room'>, currentDateSent: string | null) {
+    const today = new Intl.DateTimeFormat('en-CA', { timeZone: APP_CALENDAR_TZ, year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date())
+    const cur = (currentDateSent ?? '').slice(0, 10) || null
+    let next: string | null
+    if (lane === 'hand' && cur) {
+      const ok = await confirmDialog({ message: restampConfirmMessage(cur, today), confirmLabel: 'Move to today' })
+      if (!ok) return
+      next = sentDateAfterLaneStamp(cur, today, { explicit: true }).next
+    } else {
+      const r = sentDateAfterLaneStamp(cur, today)
+      if (!r.write) {
+        // The room link went out on a bid that already has its sent day — the send still counts for
+        // telemetry, the date stays where the hand put it.
+        recordBidSentLane(authUser?.id, authRole, lane)
+        return
+      }
+      next = r.next
+    }
     setMarkingSent(true)
     try {
-      const today = new Intl.DateTimeFormat('en-CA', { timeZone: APP_CALENDAR_TZ, year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date())
-      const patch: { bid_date_sent: string; bid_value?: number } = { bid_date_sent: today }
+      const patch: { bid_date_sent: string | null; bid_value?: number } = { bid_date_sent: next }
       if (amount > 0) patch.bid_value = amount
       const { data: rows, error } = await supabase.from('bids').update(patch).eq('id', bidId).select('id')
       if (error) {
@@ -593,8 +621,9 @@ export function BidsCoverLetterTab({
         showToast(BID_UPDATE_NOT_APPLIED_MESSAGE, 'error')
         return
       }
+      recordBidSentLane(authUser?.id, authRole, lane)
       await loadBids()
-      showToast('Marked sent today.', 'success')
+      showToast(cur ? 'Sent date moved to today.' : 'Marked sent today.', 'success')
     } finally {
       setMarkingSent(false)
     }
@@ -604,7 +633,7 @@ export function BidsCoverLetterTab({
       v2.2407 (Option A): the roll-up date is the FIRST send (never moved later by a later GC),
       and the board VALUE stamps only when this is the bid's OWN GC's letter — marking another
       GC's packet no longer overwrites it (the old last-GC-wins bug). */
-  async function markSentToday(bidId: string, sections: BundleSection[], boardValue: number | null, opts: { isOwnGc: boolean; currentDateSent: string | null }) {
+  async function markSentToday(bidId: string, sections: BundleSection[], boardValue: number | null, opts: { isOwnGc: boolean; currentDateSent: string | null; lane?: BidSentLane }) {
     // $0 rule (v2.2213): unpriced sections aren't on the letter, so they don't get send rows either.
     const inLetter = sections.filter((s) => s.bidVersionId && s.revenueSum > 0)
     if (inLetter.length === 0) return
@@ -619,14 +648,15 @@ export function BidsCoverLetterTab({
         showToast('Could not record the send: ' + error.message, 'error')
         return
       }
-      // Derived-first roll-up (the sync trigger enforces the same rule server-side).
-      const cur = (opts.currentDateSent ?? '').slice(0, 10) || null
-      const firstSent = cur && cur < today ? cur : today
+      // Derived-first roll-up: the one sent-date rule (`bidSentDate.ts` — earliest send stands; the
+      // `sync_bid_date_sent_from_sends` trigger enforces the same rule server-side).
+      const firstSent = sentDateAfterLaneStamp(opts.currentDateSent, today).next ?? today
       const patch: { bid_date_sent: string; bid_value?: number } = { bid_date_sent: firstSent }
       if (opts.isOwnGc && boardValue != null && boardValue > 0) patch.bid_value = boardValue
       const { data: bidRows, error: bidErr } = await supabase.from('bids').update(patch).eq('id', bidId).select('id')
       if (bidErr) showToast('Sends recorded, but the bid did not update: ' + bidErr.message, 'error')
       else if (!updateApplied(bidRows)) showToast(BID_UPDATE_NOT_APPLIED_MESSAGE, 'error')
+      recordBidSentLane(authUser?.id, authRole, opts.lane ?? 'ledger')
       window.dispatchEvent(new Event('bid-version-sends-changed'))
       await loadBids()
       showToast(`Marked sent today — ${inLetter.length} bid${inLetter.length === 1 ? '' : 's'} in the letter.`, 'success')
@@ -1058,18 +1088,20 @@ export function BidsCoverLetterTab({
                                   type="button"
                                   disabled={markingSent || headlineAmount <= 0}
                                   title={headlineAmount <= 0 ? 'Nothing to send until this bid has a priced letter amount' : undefined}
-                                  onClick={() => void markSentTodaySimple(bid.id, headlineAmount)}
+                                  onClick={() => void markSentTodaySimple(bid.id, headlineAmount, 'hand', bid.bid_date_sent ?? null)}
                                   style={{ fontSize: '0.78rem', padding: '0.3rem 0.7rem', border: 'none', borderRadius: 5, background: '#3b82f6', color: '#fff', cursor: markingSent ? 'wait' : headlineAmount <= 0 ? 'not-allowed' : 'pointer', opacity: headlineAmount <= 0 ? 0.5 : 1 }}
                                 >
-                                  {markingSent ? 'Marking…' : 'Mark sent today'}
+                                  {/* Tier-2 #20: on a bid that already has a sent day this is the explicit re-stamp — it asks first. */}
+                                  {markingSent ? 'Marking…' : bid.bid_date_sent ? 'Move sent date to today' : 'Mark sent today'}
                                 </button>
                                 {roomPresenceByKey[`${bid.id}:own`] === false && !roomOpenByKey[`${bid.id}:own`] ? (
                                   <BidRoomSetupButton gcShort={letterCustomerName} onClick={() => setRoomOpenByKey((m) => ({ ...m, [`${bid.id}:own`]: true }))} />
                                 ) : null}
                                 <OpenRfiChip bidId={bid.id} />
                                 <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
-                                  stamps the bid with today as its sent date and this letter's amount as its value
-                                  {bid.bid_date_sent ? <> · sent {bid.bid_date_sent.slice(5).replace('-', '/')}</> : null}
+                                  {bid.bid_date_sent
+                                    ? <>sent {bid.bid_date_sent.slice(5).replace('-', '/')} · sending the room link keeps this date; only this button moves it</>
+                                    : <>stamps the bid with today as its sent date and this letter's amount as its value — or the bid room's first link send does it for you</>}
                                 </span>
                               </div>
                               <BidRoomPanel
@@ -1088,7 +1120,7 @@ export function BidsCoverLetterTab({
                                 exclusions={exclusions}
                                 terms={terms}
                                 crmCustomerId={bid.customers?.id ?? null}
-                                onFirstLinkSent={() => void markSentTodaySimple(bid.id, headlineAmount)}
+                                onFirstLinkSent={() => void markSentTodaySimple(bid.id, headlineAmount, 'room', bid.bid_date_sent ?? null)}
                                 open={roomOpenByKey[`${bid.id}:own`] ?? false}
                                 onOpenChange={(v) => setRoomOpenByKey((m) => ({ ...m, [`${bid.id}:own`]: v }))}
                                 onRoomPresence={(has) => setRoomPresenceByKey((m) => (m[`${bid.id}:own`] === has ? m : { ...m, [`${bid.id}:own`]: has }))}
@@ -1224,7 +1256,7 @@ export function BidsCoverLetterTab({
                                 exclusions={exclusions}
                                 terms={terms}
                                 crmCustomerId={selectedKey === 'bid-default' ? bid.customers?.id ?? null : selectedKey}
-                                onFirstLinkSent={() => void markSentToday(bid.id, gcSections.filter((s) => !s.offeredPricingId), headlineAmount > 0 ? headlineAmount : null, { isOwnGc: !multi || selectedKey === 'bid-default', currentDateSent: bid.bid_date_sent ?? null })}
+                                onFirstLinkSent={() => void markSentToday(bid.id, gcSections.filter((s) => !s.offeredPricingId), headlineAmount > 0 ? headlineAmount : null, { isOwnGc: !multi || selectedKey === 'bid-default', currentDateSent: bid.bid_date_sent ?? null, lane: 'room' })}
                                 open={roomOpenByKey[`${bid.id}:${selectedKey}`] ?? false}
                                 onOpenChange={(v) => setRoomOpenByKey((m) => ({ ...m, [`${bid.id}:${selectedKey}`]: v }))}
                                 onRoomPresence={(has) => setRoomPresenceByKey((m) => (m[`${bid.id}:${selectedKey}`] === has ? m : { ...m, [`${bid.id}:${selectedKey}`]: has }))}

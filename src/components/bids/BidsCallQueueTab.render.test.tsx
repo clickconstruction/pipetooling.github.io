@@ -44,6 +44,7 @@ function renderTab(bids: BidWithBuilder[]) {
   renderWithProviders(
     <BidsCallQueueTab
       bids={bids}
+      sentScope={{ kind: 'trade', tradeId: 'st1', tradeName: 'Plumbing' }}
       gcPacketsByBid={{}}
       ledgerPrefixMap={{}}
       lastContactFromEntries={{}}
@@ -64,6 +65,8 @@ describe('BidsCallQueueTab', () => {
       bid({ project_name: 'Animal Hospital', outcome: 'lost', bid_value: 300000 }), // needs reason + tab
     ])
     expect(screen.getByText(/1 builder worth a call/)).toBeTruthy()
+    // Tier-2 #20: the scope is named where the numbers are, and bids lead the count.
+    expect(screen.getByText(/· Plumbing · 1 bid to chase · 1 loss needs a reason/)).toBeTruthy()
     expect(screen.getByText('Knight Contracting')).toBeTruthy()
     expect(screen.getByText(/Chase/)).toBeTruthy()
     expect(screen.getByText(/Loss reasons/)).toBeTruthy()

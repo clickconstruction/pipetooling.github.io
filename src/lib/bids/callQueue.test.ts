@@ -82,7 +82,7 @@ describe('buildCallQueue', () => {
     expect(knight.tabs.recordedCount).toBe(1)
     const structura = builders[1]!
     expect(structura.hasWork).toBe(false)
-    expect(totals).toEqual({ buildersWithWork: 1, chaseCount: 1, reasonsCount: 1, reasonsDollars: 300_000, tabsCount: 2 })
+    expect(totals).toEqual({ buildersWithWork: 1, chaseCount: 1, chasePacketRows: 1, reasonsCount: 1, reasonsPacketRows: 1, reasonsDollars: 300_000, tabsCount: 2 })
   })
 
   it('drops builders with nothing decided or in flight; sorts quiet-longest first', () => {

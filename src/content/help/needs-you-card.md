@@ -50,7 +50,7 @@ Each item's button drops you exactly where the work happens. What you see depend
 
 **Bids** *(estimators and devs)*
 
-- **N lost bids have no reason recorded** — {{button:outline|Start call mode}} on the Why we lost lens. The card counts every trade; the lens opens on one trade at a time.
+- **N lost bids have no reason recorded · all trades** — {{button:outline|Start call mode}} on the Why we lost lens. The card counts every trade and says so on its number; the lens opens on one trade at a time and names it the same way ("59 need a reason · Plumbing").
 - **N robot bids are waiting on your audit** — {{button:outline|Open Audits}}; **N fixture names have no Division 22 code** — {{button:outline|Pin codes}} opens the audit, which folds spellings the same way the card counts them.
 
 **Dev only**

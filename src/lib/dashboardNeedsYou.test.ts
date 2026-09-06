@@ -527,7 +527,7 @@ describe('buildNeedsYouItems', () => {
     const items = buildNeedsYouItems(inputs({ arBankUnallocatedCount: 1, tallyStaleUnlinkedCount: 1, lostBidNudge: { count: 1, value: 0 } }))
     expect(items[0]?.title).toBe('Allocate a bank deposit')
     expect(items[1]?.title).toBe('One purchase needs a job')
-    expect(items[2]?.title).toBe('One lost bid has no reason recorded')
+    expect(items[2]?.title).toBe('One lost bid has no reason recorded · all trades')
     // v2.2896: the all-trade scope gloss leads even when there is no dollar figure.
     expect(items[2]?.detail.startsWith('Across every trade — work them')).toBe(true)
   })

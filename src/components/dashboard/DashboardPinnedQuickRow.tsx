@@ -1,8 +1,6 @@
-import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
+import { useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { supabase } from '../../lib/supabase'
 import { isAssistantLike } from '../../lib/subcontractorLikeRole'
-import { withSupabaseRetry } from '../../utils/errorHandling'
 import { TALLY_STALE_MIN_AGE_DAYS } from '../../lib/tallyStaleMinAgeDays'
 import { useTallyUnlinkedCounts } from '../../hooks/useTallyUnlinkedCounts'
 import {
@@ -20,7 +18,7 @@ import { DashboardNeedsYouCard } from './DashboardNeedsYouCard'
 import { GcReviewWeekDoneNotice } from '../DashboardGcReviewWeeklyBanner'
 import { useGcReviewWeekNudge } from '../../hooks/useGcReviewWeekNudge'
 import { gcReviewNudgeState, gcReviewWeekdayIndex } from '../../lib/jobs/gcReviewCertification'
-import { buildLostBidNudge, type LostBidNudge } from '../../lib/dashboardLostBidNudge'
+import { useLostBidNudge } from '../../hooks/useLostBidNudge'
 import { useBulkDeleteNudge } from '../../hooks/useBulkDeleteNudge'
 import { useBidAuditsPendingCount } from '../../hooks/useBidAuditsPendingCount'
 import { canWorkRobotAudits } from '../../lib/bids/bidAudits'
@@ -320,8 +318,13 @@ export function DashboardPinnedQuickRow({
   const [tallyStaffFollowUpModalOpen, setTallyStaffFollowUpModalOpen] = useState(false)
   /** Needs You "Match deposits" opens Accounts Receivable in place (Tier-2 #17; the v2.2751 pattern). */
   const [arDepositsModalOpen, setArDepositsModalOpen] = useState(false)
-  const [lostBidNudge, setLostBidNudge] = useState<LostBidNudge | null>(null)
-  const [lostBidNudgeLoading, setLostBidNudgeLoading] = useState(true)
+  // Why-we-lost nudge (v2.1800): same audience as the lens — the superintendent gate on
+  // ?tab=why-we-lost redirects them, so they never see this banner. Tier-2 #20: one hook
+  // (shared with Quickfill) reading the one count kernel — no inline query here any more.
+  const lostBidNudgeEnabled =
+    Boolean(authUserId) &&
+    (role === 'dev' || role === 'master_technician' || isAssistantLike(role) || role === 'estimator' || role === 'primary')
+  const { nudge: lostBidNudge, loading: lostBidNudgeLoading } = useLostBidNudge(lostBidNudgeEnabled)
   const {
     peopleCount: tallyStaffStalePeopleCount,
     transactionCount: tallyStaffStaleTxCount,
@@ -449,50 +452,6 @@ export function DashboardPinnedQuickRow({
     hrReportsMinAgeDays: HR_REPORTS_MIN_AGE_DAYS,
     hrReportsRedDays: HR_PENDING_REPORT_AGE.redDays,
   })
-
-  useEffect(() => {
-    // Why-we-lost nudge (v2.1800): same audience as the lens — the superintendent
-    // gate on ?tab=why-we-lost redirects them, so they never see this banner.
-    const hasLensAccess =
-      role === 'dev' ||
-      role === 'master_technician' ||
-      isAssistantLike(role) ||
-      role === 'estimator' ||
-      role === 'primary'
-    if (!authUserId || !hasLensAccess) {
-      setLostBidNudge(null)
-      setLostBidNudgeLoading(false)
-      return
-    }
-    let cancelled = false
-    setLostBidNudgeLoading(true)
-    void (async () => {
-      try {
-        // Whole-team queue, matching the Why we lost lens (which is not personal):
-        // most lost bids have someone else — or nobody — as estimator/account man,
-        // so a personal filter would hide the backlog from the person clearing it.
-        const rawRows = await withSupabaseRetry(
-          async () =>
-            supabase
-              .from('bids')
-              .select('loss_category, bid_value')
-              .eq('outcome', 'lost')
-              .limit(1000),
-          'dashboard lost bids missing loss reason',
-        )
-        if (cancelled) return
-        const rows = (rawRows ?? []) as Array<{ loss_category: string | null; bid_value: number | null }>
-        if (!cancelled) setLostBidNudge(buildLostBidNudge(rows))
-      } catch {
-        if (!cancelled) setLostBidNudge(null)
-      } finally {
-        if (!cancelled) setLostBidNudgeLoading(false)
-      }
-    })()
-    return () => {
-      cancelled = true
-    }
-  }, [authUserId, role])
 
   const pinsToShow = filterPinsToShow(visiblePins)
 
