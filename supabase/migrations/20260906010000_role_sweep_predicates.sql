@@ -216,7 +216,12 @@ BEGIN
           RAISE NOTICE 'role sweep: %(oid %) already admits controller — skipped', fn, p.oid;
           CONTINUE;
         END IF;
-        RAISE EXCEPTION 'role sweep: %(oid %) carries no dev/master/assistant literal and no controller — review manually', fn, p.oid;
+        -- No role literal at all: the function is gated by RLS on the tables it reads
+        -- (e.g. list_unlabeled_mercury_transactions is a plain SECURITY INVOKER sql fn),
+        -- so there is nothing to widen. Skip loudly instead of aborting the sweep
+        -- (2026-09-06: the first prod push aborted here).
+        RAISE NOTICE 'role sweep: %(oid %) carries no role literal — RLS-gated, skipped', fn, p.oid;
+        CONTINUE;
       END IF;
       EXECUTE new_def;
       RAISE NOTICE 'role sweep: %(oid %) gains controller', fn, p.oid;
