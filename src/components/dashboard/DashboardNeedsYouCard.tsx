@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { UserRole } from '../../hooks/useAuth'
 import {
+  needsYouClickTarget,
   readNeedsYouMode,
   writeNeedsYouMode,
   type NeedsYouItem,
@@ -83,7 +84,7 @@ export function DashboardNeedsYouCard({
   }
 
   const act = (item: NeedsYouItem) => {
-    recordNavClick(userId, role, 'needs-you', `#${item.key}`)
+    recordNavClick(userId, role, 'needs-you', needsYouClickTarget(item))
     onAction(item)
   }
 

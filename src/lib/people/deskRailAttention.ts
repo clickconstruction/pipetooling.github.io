@@ -15,6 +15,11 @@ export type RailPersonInput = {
   archived: boolean
 }
 
+/** "2 contracts never sent" — the rail's reason line, word for word the Users-tab chip's long text. */
+export function railUnsentReason(unsent: number): string {
+  return `${unsent} contract${unsent === 1 ? '' : 's'} never sent`
+}
+
 export type RailFacts = {
   pendingByUserId: Record<string, { count: number; hours: number }>
   unsentDocsByName: Record<string, number>
@@ -92,9 +97,13 @@ export function buildRailRow(p: RailPersonInput, f: RailFacts): RailRow {
   }
   const unsent = f.unsentDocsByName[p.name.trim()] ?? 0
   if (unsent > 0) {
-    reasons.push(`${unsent} document${unsent === 1 ? '' : 's'} unsent`)
+    // Same words as the Users-tab paperwork chip (`rowNeeds.ts`) for the same
+    // `unsentDocsByName` count (v2.2896, journey-map J32-adj-1): contract rows on
+    // file that were never sent — packet documents waiting on a send, since
+    // v2.2851 stopped an abandoned quick-send pick from minting one.
+    reasons.push(railUnsentReason(unsent))
     badge.push('doc')
-    signals.push({ key: 'unsent', label: `${unsent} doc${unsent === 1 ? '' : 's'} unsent`, tone: 'amber' })
+    signals.push({ key: 'unsent', label: `${unsent} unsent`, tone: 'amber' })
     attention = 'amber'
   }
   const expiring = f.expiringByName[p.name.trim()] ?? 0

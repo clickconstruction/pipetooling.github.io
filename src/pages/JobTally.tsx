@@ -18,6 +18,9 @@ import { APP_SETTINGS_KEY_JOB_TALLY_MIN_POSTED_YMD, normalizeJobTallyMinPostedYm
 import { mercuryRowPassesSortingStartDate } from '../lib/bankingSortingConfig'
 import { parseTallyJobSplitsJson } from '../lib/tallyJobSplits'
 import { filterTallyLinkedMercuryRowsBySearchQuery } from '../lib/tallyTransactionSearch'
+import { tallyStaleGloss } from '../lib/tally/tallyStaleGloss'
+import { useTallyUnlinkedCounts } from '../hooks/useTallyUnlinkedCounts'
+import { TALLY_STALE_MIN_AGE_DAYS } from '../lib/tallyStaleMinAgeDays'
 import {
   type TallyLinkedMercuryRow,
   mercuryTxRowFromTallyRpc,
@@ -270,6 +273,11 @@ export default function JobTally() {
   const [tallySortModeStartTxId, setTallySortModeStartTxId] = useState<string | null>(null)
   const [tallyJobDrilldown, setTallyJobDrilldown] = useState<{ jobId: string; label: string } | null>(null)
   const [tallyDebitCardFilterId, setTallyDebitCardFilterId] = useState<string | null>(null)
+  // The Dashboard card's own counts (v2.2896): the same hook the Needs You
+  // "N purchases need a job" card reads, so the header can say the card's
+  // number beside this page's — "105 unlinked · 100 over 2 days old".
+  const tallyCardCounts = useTallyUnlinkedCounts(Boolean(authUser?.id))
+  const refetchTallyCardCounts = tallyCardCounts.refetch
   const [tallyTxScope, setTallyTxScope] = useState<TallyTxScope>('unlinked')
   const [tallyTxSearchQuery, setTallyTxSearchQuery] = useState('')
   const [tallyOpenNoteTxId, setTallyOpenNoteTxId] = useState<string | null>(null)
@@ -307,6 +315,7 @@ export default function JobTally() {
     if (!authUser?.id) return
     setTallyTxLoading(true)
     setTallyTxError(null)
+    refetchTallyCardCounts()
     try {
       const [txData, cardData] = await Promise.all([
         withSupabaseRetry(
@@ -356,7 +365,7 @@ export default function JobTally() {
     } finally {
       setTallyTxLoading(false)
     }
-  }, [authUser?.id, role])
+  }, [authUser?.id, role, refetchTallyCardCounts])
 
   const setTallyPayrollFlag = useCallback(
     async (mercuryTransactionId: string, isPayroll: boolean) => {
@@ -962,6 +971,11 @@ export default function JobTally() {
                   ) : (
                     <span>{` ${tallyUnlinkedCountInScope} unlinked`}</span>
                   )}
+                  {tallyDebitCardFilterId == null && tallyStaleGloss(tallyCardCounts.staleUnlinked, TALLY_STALE_MIN_AGE_DAYS) != null ? (
+                    <span style={{ color: 'var(--text-slate-500)' }} title="The Dashboard's “purchases need a job” card counts only the rows over this age.">
+                      {` · ${tallyStaleGloss(tallyCardCounts.staleUnlinked, TALLY_STALE_MIN_AGE_DAYS)} (the Dashboard card's count)`}
+                    </span>
+                  ) : null}
                   {tallyTxSearchQuery.trim() !== '' ? (
                     <span style={{ color: 'var(--text-slate-500)' }}>
                       {' '}

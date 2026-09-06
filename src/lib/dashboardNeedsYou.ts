@@ -66,6 +66,15 @@ export type NeedsYouItem = {
   actionLabel: string
   /** Small link-style follow-ups (v2.2491) — e.g. snooze/dismiss on alert items. Parent dispatches by key. */
   secondary?: Array<{ key: string; label: string }>
+  /**
+   * The number the destination will show when this card opens it (v2.2896,
+   * journey-map Tier-2 #16), when the destination counts a wider pile than the
+   * card — e.g. the tally card's "100 over 2 days" opens a page saying "105
+   * unlinked". Recorded on the click (`needsYouClickTarget`) so the two can be
+   * audited against each other; omitted when card and destination say the same
+   * number by construction.
+   */
+  destinationFigure?: string
 }
 
 /**
@@ -129,6 +138,8 @@ export type NeedsYouInputs = {
   arBankUnallocatedCount: number | null
   arBankEnabled: boolean
   tallyStaleUnlinkedCount: number | null
+  /** Every unlinked row (no age filter) — what `/tally` will say on open (v2.2896). Null while loading. */
+  tallyUnlinkedCount?: number | null
   tallyStaffStalePeopleCount: number | null
   tallyStaffStaleTxCount: number | null
   tallyStaffEligible: boolean
@@ -446,6 +457,11 @@ export function buildNeedsYouItems(inputs: NeedsYouInputs): NeedsYouItem[] {
 
   if (inputs.role != null && (inputs.tallyStaleUnlinkedCount ?? 0) > 0) {
     const n = inputs.tallyStaleUnlinkedCount as number
+    const total = inputs.tallyUnlinkedCount ?? null
+    // The page this opens counts every unlinked row; the card counts the ones
+    // over the age floor. Say both here in the page's words (v2.2896) — the
+    // page says both in the card's words (`tallyStaleGloss`).
+    const totalGloss = total != null && total > n ? ` (${total} unlinked in all)` : ''
     items.push({
       key: 'tally-self',
       severity: 'amber',
@@ -453,9 +469,10 @@ export function buildNeedsYouItems(inputs: NeedsYouInputs): NeedsYouItem[] {
       title: n === 1 ? 'One purchase needs a job' : `${n} purchases need a job`,
       detail:
         (n === 1 ? `One purchase over ${inputs.tallyMinAgeDays} days old isn't` : `Purchases over ${inputs.tallyMinAgeDays} days old aren't`) +
-        ' on a job yet — sort in Job Parts Tally.',
+        ` on a job yet${totalGloss} — sort in Job Parts Tally.`,
       figure: String(n),
       actionLabel: 'Open tally',
+      ...(total != null && total !== n ? { destinationFigure: String(total) } : {}),
     })
   }
 
@@ -484,9 +501,11 @@ export function buildNeedsYouItems(inputs: NeedsYouInputs): NeedsYouItem[] {
       severity: 'gray',
       kicker: 'Win/loss hygiene',
       title: count === 1 ? 'One lost bid has no reason recorded' : `${count} lost bids have no reason recorded`,
+      // Scope gloss (v2.2896): this counts every trade; the lens it opens is
+      // scoped to the trade pill and says so in its own header.
       detail:
-        (value > 0 ? `${formatLostBidNudgeValue(value)} unexplained — ` : '') +
-        'work them one GC call at a time on the Why we lost lens.',
+        (value > 0 ? `${formatLostBidNudgeValue(value)} unexplained across every trade — ` : 'Across every trade — ') +
+        'work them one GC call at a time on the Why we lost lens (it opens on one trade).',
       figure: count > 99 ? '99+' : String(count),
       actionLabel: 'Start call mode',
     })
@@ -735,6 +754,17 @@ export function buildNeedsYouItems(inputs: NeedsYouInputs): NeedsYouItem[] {
   }
 
   return rankNeedsYouItems(items)
+}
+
+/**
+ * `ui_nav_clicks` target for a Needs You action (v2.2896): `#<key>`, plus
+ * `&dest=<n>` when the destination will show a different number than the card
+ * (`destinationFigure`). One row per click; the count on it is the one the
+ * user is about to see, so card-vs-page drift is measurable after the fact.
+ */
+export function needsYouClickTarget(item: Pick<NeedsYouItem, 'key' | 'figure' | 'destinationFigure'>): string {
+  const dest = item.destinationFigure
+  return dest != null && dest !== item.figure ? `#${item.key}&dest=${dest}` : `#${item.key}`
 }
 
 /** localStorage key for the per-user Cards/Walk preference. */

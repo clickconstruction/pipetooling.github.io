@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { buildRailRow, buildRailSections, normaliseKind, type RailFacts, type RailPersonInput } from './deskRailAttention'
+import { buildRailRow, buildRailSections, normaliseKind, railUnsentReason, type RailFacts, type RailPersonInput } from './deskRailAttention'
+import { buildRowNeeds } from './rowNeeds'
 
 const facts: RailFacts = {
   pendingByUserId: { u1: { count: 23, hours: 136.6 } },
@@ -13,9 +14,22 @@ function p(x: Partial<RailPersonInput> & { name: string }): RailPersonInput {
   return { userId: null, personId: 'p', kind: 'helper', archived: false, ...x }
 }
 
+describe('rail ↔ Users-tab unsent gloss (J32-adj-1)', () => {
+  it('the rail reason and the Users row chip say the same words for the same unsentDocsByName count', () => {
+    const f: RailFacts = { ...facts, unsentDocsByName: { Isiah: 2 } }
+    const rail = buildRailRow(p({ name: 'Isiah', userId: 'u1' }), f)
+    const row = buildRowNeeds({ person: { name: 'Isiah', userId: 'u1', personId: 'p', kind: 'helper', archived: false }, facts: f, signingLight: 'green' })
+    const paperwork = row.needs.find((n) => n.key === 'paperwork')
+    expect(rail.reasons).toContain(railUnsentReason(2))
+    expect(paperwork?.long).toContain(railUnsentReason(2))
+    expect(paperwork?.short).toBe('2 unsent')
+    expect(rail.signals.find((s) => s.key === 'unsent')?.label).toBe('2 unsent')
+  })
+})
+
 describe('buildRailRow', () => {
   it('stacks reasons into one badge and escalates to red on expired paperwork; hours alone stay green', () => {
-    expect(buildRailRow(p({ name: 'Isiah', userId: 'u1' }), facts)).toMatchObject({ attention: 'amber', badge: '23 · doc', reasons: ['23 sessions waiting', '1 document unsent'] })
+    expect(buildRailRow(p({ name: 'Isiah', userId: 'u1' }), facts)).toMatchObject({ attention: 'amber', badge: '23 · doc', reasons: ['23 sessions waiting', '1 contract never sent'] })
     // v2.2818: sessions waiting are a queue, not an alarm — badge and reason, no dot.
     expect(buildRailRow(p({ name: 'Only Hours', userId: 'u1', personId: 'p-oh' }), { ...facts, unsentDocsByName: {} })).toMatchObject({ attention: 'green', badge: '23', reasons: ['23 sessions waiting'] })
     expect(buildRailRow(p({ name: 'Texas R & A Electrical', kind: 'sub' }), facts)).toMatchObject({ attention: 'red', badge: 'exp!' })
@@ -27,7 +41,7 @@ describe('buildRailRow', () => {
     const isiah = buildRailRow(p({ name: 'Isiah', userId: 'u1' }), facts)
     expect(isiah.signals).toEqual([
       { key: 'pending', label: '23 waiting', tone: 'gray' },
-      { key: 'unsent', label: '1 doc unsent', tone: 'amber' },
+      { key: 'unsent', label: '1 unsent', tone: 'amber' },
     ])
     const dv = buildRailRow(p({ name: 'DV Mechanical', kind: 'sub', personId: 'p-dv' }), facts)
     expect(dv.attention).toBe('green')

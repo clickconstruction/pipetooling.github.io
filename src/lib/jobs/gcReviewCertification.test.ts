@@ -113,6 +113,24 @@ describe('gcReviewCertification', () => {
     expect(p).toEqual({ gcs: 2, certified: 1, sent: 1 })
   })
 
+  it('card and modal say the same "N of M" — the paid-up $0 group is out on both sides (J20-F2, v2.2705 verified)', () => {
+    // Ten certified GC groups plus one $0.00 group the modal used to count as an eleventh:
+    // the kernel (modal strip) and the v2 RPC (Dashboard card, outstanding = live total > 0)
+    // both leave it out, so "10 of 10" is what both surfaces read.
+    const tenCerts = Array.from({ length: 10 }, (_, i) =>
+      cert({ gc_customer_id: `gc-${i}`, job_count: 1, total: 100, snapshot: { rows: [{ key: `r${i}`, jobId: `j${i}`, remaining: 100 }], total: 100, jobCount: 1 } }),
+    )
+    const groups = [
+      ...Array.from({ length: 10 }, (_, i) => ({ gcId: `gc-${i}`, isNoGc: false, rows: [{ key: `r${i}`, remaining: 100 }] as never[], subtotal: 100 })),
+      { gcId: 'gc-paid-up', isNoGc: false, rows: [{ key: 'z', remaining: 0 }] as never[], subtotal: 0 },
+    ]
+    const p = gcReviewWeekProgress(groups, latestCertByGc(tenCerts), {}, '2026-08-24')
+    expect(`${p.certified} of ${p.gcs}`).toBe('10 of 10')
+    const rpc = { gcs_outstanding: p.gcs, gcs_certified: p.certified, gcs_sent: p.sent, gcs_done: 0 }
+    expect(`${rpc.gcs_certified} of ${rpc.gcs_outstanding}`).toBe('10 of 10')
+    expect(gcReviewGcsToDo(rpc)).toBe(10)
+  })
+
   it('gcs to do = outstanding − done, falling back to min(certified, sent) on a v1 payload', () => {
     expect(gcReviewGcsToDo({ gcs_outstanding: 10, gcs_certified: 10, gcs_sent: 0 })).toBe(10)
     expect(gcReviewGcsToDo({ gcs_outstanding: 10, gcs_certified: 7, gcs_sent: 5 })).toBe(5)

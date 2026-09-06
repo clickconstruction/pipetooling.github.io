@@ -16,8 +16,12 @@ export type FixtureNameAuditInput = {
 }
 
 export type FixtureNameAuditRow = {
+  /** The most-used spelling of this name (case-folded group, v2.2896). */
   fixture: string
+  /** Bids across every spelling of the name (a bid using two spellings counts once per spelling). */
   bidCount: number
+  /** Every distinct spelling seen, most bids first — `fixture` is `spellings[0]`. */
+  spellings: string[]
   outcome: 'matched' | 'no-code' | 'unmatched'
   sectionCode: string | null
   /** Human label of the rule that decided a matched/no-code row ("starts with WC-"). */
@@ -46,6 +50,36 @@ export function ruleLabel(rule: SpecSectionMatchRule): string {
   return `${KIND_LABEL[rule.matchKind]} ${rule.pattern.trim()}`
 }
 
+/**
+ * Fold the audit RPC's case-preserving rows ("WC-1" and "wc-1" arrive as two
+ * rows) into one name per `lower(trim())` — the same key the Dashboard card's
+ * `spec_section_uncoded_name_count` RPC counts (v2.2896, journey-map J29-F4).
+ * Matching is case-insensitive on both sides, so the two spellings were always
+ * one decision; counting them twice made the modal say 1,187 under a card that
+ * said 1,145. The spelling with the most bids names the group.
+ */
+export function foldFixtureNameSpellings(names: ReadonlyArray<FixtureNameAuditInput>): Array<FixtureNameAuditInput & { spellings: string[] }> {
+  const groups = new Map<string, Array<{ fixture: string; bidCount: number }>>()
+  for (const n of names) {
+    const fixture = n.fixture.trim()
+    if (!fixture) continue
+    const key = fixture.toLowerCase()
+    const g = groups.get(key)
+    if (g) g.push({ fixture, bidCount: n.bidCount })
+    else groups.set(key, [{ fixture, bidCount: n.bidCount }])
+  }
+  const out: Array<FixtureNameAuditInput & { spellings: string[] }> = []
+  for (const g of groups.values()) {
+    g.sort((a, b) => b.bidCount - a.bidCount || a.fixture.localeCompare(b.fixture))
+    out.push({
+      fixture: g[0]!.fixture,
+      bidCount: g.reduce((sum, v) => sum + v.bidCount, 0),
+      spellings: g.map((v) => v.fixture),
+    })
+  }
+  return out
+}
+
 export function buildFixtureNameAudit(
   names: ReadonlyArray<FixtureNameAuditInput>,
   rules: ReadonlyArray<SpecSectionMatchRule>,
@@ -53,18 +87,18 @@ export function buildFixtureNameAudit(
   const uncoded: FixtureNameAuditRow[] = []
   const coded: FixtureNameAuditRow[] = []
 
-  for (const n of names) {
-    const fixture = n.fixture.trim()
-    if (!fixture) continue
+  for (const n of foldFixtureNameSpellings(names)) {
+    const { fixture, bidCount, spellings } = n
     const match = classifySpecSection(fixture, rules)
     if (match.outcome === 'unmatched') {
-      uncoded.push({ fixture, bidCount: n.bidCount, outcome: 'unmatched', sectionCode: null, ruleLabel: null })
+      uncoded.push({ fixture, bidCount, spellings, outcome: 'unmatched', sectionCode: null, ruleLabel: null })
     } else if (match.outcome === 'no-code') {
-      coded.push({ fixture, bidCount: n.bidCount, outcome: 'no-code', sectionCode: null, ruleLabel: ruleLabel(match.rule) })
+      coded.push({ fixture, bidCount, spellings, outcome: 'no-code', sectionCode: null, ruleLabel: ruleLabel(match.rule) })
     } else {
       coded.push({
         fixture,
-        bidCount: n.bidCount,
+        bidCount,
+        spellings,
         outcome: 'matched',
         sectionCode: match.sectionCode,
         ruleLabel: ruleLabel(match.rule),

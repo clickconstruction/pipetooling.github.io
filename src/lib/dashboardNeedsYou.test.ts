@@ -506,7 +506,8 @@ describe('buildNeedsYouItems', () => {
     expect(items[0]?.title).toBe('Allocate a bank deposit')
     expect(items[1]?.title).toBe('One purchase needs a job')
     expect(items[2]?.title).toBe('One lost bid has no reason recorded')
-    expect(items[2]?.detail.startsWith('work them')).toBe(true)
+    // v2.2896: the all-trade scope gloss leads even when there is no dollar figure.
+    expect(items[2]?.detail.startsWith('Across every trade — work them')).toBe(true)
   })
 
   it('hours-approvals: appears only once the oldest pending day crosses the age gate', () => {
@@ -596,5 +597,15 @@ describe('statement round (v2.2771)', () => {
     expect(sr?.actionLabel).toBe('Start round')
     expect(buildNeedsYouItems(inputs({ statementRoundEnabled: true, statementRound: null }))).toEqual([])
     expect(buildNeedsYouItems(inputs({ statementRoundEnabled: false, statementRound: { count: 1, total: 5, gcNames: ['x'] } }))).toEqual([])
+  })
+})
+
+describe('lost-bids card ↔ Why we lost lens scope gloss (J14-F6)', () => {
+  it('the card names its all-trade scope and says the lens opens on one trade, so 60 → 59 reads as scope, not drift', () => {
+    const items = buildNeedsYouItems(inputs({ role: 'estimator', lostBidNudge: { count: 60, value: 1_250_000 }, lostBidNudgeLoading: false }))
+    const card = items.find((i) => i.key === 'lost-bids')
+    expect(card?.figure).toBe('60')
+    expect(card?.detail).toContain('across every trade')
+    expect(card?.detail).toContain('it opens on one trade')
   })
 })

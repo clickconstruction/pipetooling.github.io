@@ -1,9 +1,8 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../hooks/useAuth'
-import { supabase } from '../../lib/supabase'
-import { withSupabaseRetry } from '../../utils/errorHandling'
 import { TALLY_STALE_MIN_AGE_DAYS } from '../../lib/tallyStaleMinAgeDays'
+import { useTallyUnlinkedCounts } from '../../hooks/useTallyUnlinkedCounts'
 import {
   canRoleSeeArBankUnallocatedDashboardBanner,
   useArBankUnallocatedCount,
@@ -57,7 +56,10 @@ export function QuickfillNeedsYouSection({
   const [staffModalOpen, setStaffModalOpen] = useState(false)
   /** "Match deposits" opens Accounts Receivable in place (Tier-2 #17) — the office keeps its Quickfill spot. */
   const [arDepositsModalOpen, setArDepositsModalOpen] = useState(false)
-  const [tallyStaleUnlinkedCount, setTallyStaleUnlinkedCount] = useState<number | null>(null)
+  // Same hook as the Dashboard card and the /tally header (v2.2896).
+  const { unlinked: tallyUnlinkedCount, staleUnlinked: tallyStaleUnlinkedCount } = useTallyUnlinkedCounts(
+    Boolean(authUser?.id) && role != null,
+  )
 
   const arBankEnabled = Boolean(authUser?.id) && canRoleSeeArBankUnallocatedDashboardBanner(role)
   const { count: arBankUnallocatedCount, refetch: refetchArBankUnallocatedCount } = useArBankUnallocatedCount({
@@ -88,26 +90,6 @@ export function QuickfillNeedsYouSection({
   const hrReportsEnabled = Boolean(authUser?.id) && role === 'dev'
   const { aged: hrReportsAged } = usePendingHrReportsNudge(hrReportsEnabled)
 
-  const loadTallyStale = useCallback(async () => {
-    if (!authUser?.id || role == null) return
-    try {
-      const n = await withSupabaseRetry(
-        async () =>
-          await supabase.rpc('count_unlinked_mercury_transactions_for_tally_stale', {
-            min_age_days: TALLY_STALE_MIN_AGE_DAYS,
-          }),
-        'quickfill needs-you stale tally count',
-      )
-      setTallyStaleUnlinkedCount(typeof n === 'number' && Number.isFinite(n) ? n : 0)
-    } catch {
-      setTallyStaleUnlinkedCount(null)
-    }
-  }, [authUser?.id, role])
-
-  useEffect(() => {
-    void loadTallyStale()
-  }, [loadTallyStale])
-
   const items = buildNeedsYouItems({
     role,
     // Division 22 is an estimator/dev dashboard item — Quickfill is the billing station.
@@ -116,6 +98,7 @@ export function QuickfillNeedsYouSection({
     arBankUnallocatedCount,
     arBankEnabled,
     tallyStaleUnlinkedCount,
+    tallyUnlinkedCount,
     tallyStaffStalePeopleCount,
     tallyStaffStaleTxCount,
     tallyStaffEligible,

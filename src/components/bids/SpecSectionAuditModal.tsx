@@ -240,7 +240,7 @@ export function SpecSectionAuditModal({ open, onClose }: { open: boolean; onClos
               <span style={{ fontSize: '0.8125rem', whiteSpace: 'nowrap', color: 'var(--text-strong)' }}>
                 <span style={{ fontWeight: 700, color: '#15803d' }}>{audit.codedCount} coded</span>
                 {' · '}
-                <span style={{ fontWeight: 700, color: 'var(--text-amber-700)' }}>{audit.uncodedCount} uncoded</span>
+                <span style={{ fontWeight: 700, color: 'var(--text-amber-700)' }} title="The same count as the Dashboard's Division 22 card — names are folded by case on both sides.">{audit.uncodedCount} uncoded</span>
                 {' · '}
                 {audit.coveragePct}%
               </span>
@@ -263,7 +263,14 @@ export function SpecSectionAuditModal({ open, onClose }: { open: boolean; onClos
                 ) : (
                   audit.uncoded.slice(0, uncodedShown).map((row) => (
                     <div key={row.fixture} style={{ ...rowGrid, background: 'var(--bg-yellow-tint)' }}>
-                      <span style={{ fontFamily: 'ui-monospace, Menlo, monospace', fontSize: '0.8125rem', color: 'var(--text-strong)', overflowWrap: 'anywhere' }}>{row.fixture}</span>
+                      <span style={{ fontFamily: 'ui-monospace, Menlo, monospace', fontSize: '0.8125rem', color: 'var(--text-strong)', overflowWrap: 'anywhere' }}>
+                        {row.fixture}
+                        {row.spellings.length > 1 ? (
+                          <span style={{ ...smallMuted, fontFamily: 'inherit', marginLeft: '0.35rem' }} title="Rules match without regard to case — one pin codes every spelling.">
+                            also spelled {row.spellings.slice(1).join(', ')}
+                          </span>
+                        ) : null}
+                      </span>
                       <span style={smallMuted}>{row.bidCount} bid{row.bidCount === 1 ? '' : 's'}</span>
                       <SearchableSelect
                         value={picked[row.fixture] ?? ''}
