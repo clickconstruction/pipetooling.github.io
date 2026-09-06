@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { buildSubBadgesByCell, buildSubLanes, dayKeysBetween, type SubDispatchOrder } from '../../lib/subs/subDispatch'
-import { fetchSubOrdersForRange, fetchTeamMembersByJobId } from '../../lib/subs/subDispatchFetch'
+import { fetchSubOffDaysForRange, fetchSubOrdersForRange, fetchTeamMembersByJobId } from '../../lib/subs/subDispatchFetch'
 import { Navigate, useNavigate, useSearchParams } from 'react-router-dom'
 import { resolveScheduleDispatchLinkedDay, scheduleDispatchDayTabWorkDate } from '../../lib/scheduleDispatchDayLink'
 import { useNarrowViewport640 } from '../../hooks/useNarrowViewport640'
@@ -381,6 +381,7 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
   /** v2.2929: live sub work orders touching the week, and who is assigned to their jobs. */
   const [hubSubOrders, setHubSubOrders] = useState<SubDispatchOrder[]>([])
   const [hubTeamByJobId, setHubTeamByJobId] = useState<Map<string, string[]>>(() => new Map())
+  const [hubSubOffDays, setHubSubOffDays] = useState<Map<string, string[]>>(() => new Map())
   const [hubRoleByUserId, setHubRoleByUserId] = useState<Map<string, string>>(() => new Map())
   const [hubArchivedUserIds, setHubArchivedUserIds] = useState<ReadonlySet<string>>(() => new Set())
   const [hubPeopleNameById, setHubPeopleNameById] = useState<Map<string, string>>(() => new Map())
@@ -542,7 +543,7 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
   )
   const hubHiddenByCell = useMemo(() => buildScheduleHiddenByCell(hubHiddenBlockCounts), [hubHiddenBlockCounts])
   const hubWeekDayKeys = useMemo(() => dayKeysBetween(weekStart, weekEnd), [weekStart, weekEnd])
-  const hubSubLanes = useMemo(() => buildSubLanes(hubSubOrders, hubWeekDayKeys), [hubSubOrders, hubWeekDayKeys])
+  const hubSubLanes = useMemo(() => buildSubLanes(hubSubOrders, hubWeekDayKeys, hubSubOffDays), [hubSubOrders, hubWeekDayKeys, hubSubOffDays])
   const hubSubBadgeByCell = useMemo(() => buildSubBadgesByCell(hubSubOrders, hubTeamByJobId, hubWeekDayKeys), [hubSubOrders, hubTeamByJobId, hubWeekDayKeys])
 
   const hubBlockById = useMemo(() => {
@@ -647,8 +648,9 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
         showToast(`Subs on the board: ${subRes.error}`, 'warning')
       } else {
         setHubSubOrders(subRes.data)
-        const teamRes = await fetchTeamMembersByJobId(subRes.data.map((o) => o.jobId).filter((id): id is string => !!id))
+        const [teamRes, offRes] = await Promise.all([fetchTeamMembersByJobId(subRes.data.map((o) => o.jobId).filter((id): id is string => !!id)), fetchSubOffDaysForRange(weekStart, weekEnd)])
         setHubTeamByJobId(teamRes.data)
+        setHubSubOffDays(offRes.data)
       }
 
       // Busy-elsewhere placeholders degrade to a warning — the board is still usable without them.

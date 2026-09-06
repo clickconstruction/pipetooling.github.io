@@ -231,6 +231,53 @@ serve(async (req) => {
       return jsonResponse({ ok: true })
     }
 
+    // ── day_off (v2.2930): mark or take back a day off; a day under a pick tells the office ──
+    if (kind === 'day_off') {
+      const day = ymdField(body.day)
+      const off = body.off === true
+      if (!day) return jsonResponse({ error: 'Bad request' }, 400)
+      const todayYmd = todayYmdInAppTz()
+      if (day < todayYmd) return jsonResponse({ error: 'That day is already behind us.' }, 400)
+      if (off) {
+        const { error } = await admin.from('person_availability').upsert({ person_id: link.person_id, day, kind: 'off', source: 'portal' }, { onConflict: 'person_id,day' })
+        if (error) {
+          console.error('day_off upsert failed', error)
+          return jsonResponse({ error: 'Something went wrong. Please try again.' }, 500)
+        }
+        const { data: hits } = await admin
+          .from('step_commitments')
+          .select('id, job_id, labor_job_id, offer_scope_snapshot, job:job_id(hcp_number)')
+          .eq('person_id', link.person_id)
+          .in('status', ['accepted', 'approved'])
+          .lte('picked_start', day)
+          .gte('picked_end', day)
+          .limit(5)
+        const collisions = (hits ?? []) as Array<{ id: string; job_id: string | null; labor_job_id: string | null; offer_scope_snapshot: unknown; job: { hcp_number: string | null } | { hcp_number: string | null }[] | null }>
+        if (collisions.length > 0) {
+          const first = collisions[0]!
+          const job = Array.isArray(first.job) ? first.job[0] ?? null : first.job
+          const label = parseScopeExtras(first.offer_scope_snapshot).sheetLabel ?? (job?.hcp_number ? `#${job.hcp_number}` : 'a work order')
+          await insertDispatchNote(admin, link, `${personName} marked ${day} off — ${label} is scheduled over it`, {
+            kind: 'sub_day_off_collision',
+            personId: link.person_id,
+            personName,
+            day,
+            commitmentId: first.id,
+            laborJobId: first.labor_job_id,
+            jobId: first.job_id,
+            collisions: collisions.length,
+          })
+        }
+        return jsonResponse({ ok: true, collisions: collisions.length })
+      }
+      const { error } = await admin.from('person_availability').delete().eq('person_id', link.person_id).eq('day', day)
+      if (error) {
+        console.error('day_off delete failed', error)
+        return jsonResponse({ error: 'Something went wrong. Please try again.' }, 500)
+      }
+      return jsonResponse({ ok: true, collisions: 0 })
+    }
+
     // ── sign_link: fresh signing token for one of the sub's own documents ─
     if (kind === 'sign_link') {
       const docId = typeof body.documentId === 'string' && /^[0-9a-f-]{36}$/.test(body.documentId) ? body.documentId : null

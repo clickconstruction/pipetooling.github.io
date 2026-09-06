@@ -86,9 +86,25 @@ export function ProjectsForecastSubsTab() {
     }
   }, [])
 
+  // v2.2930: the subs' days off — striped on the lane; a bar over one gets the red outline.
+  const [offDays, setOffDays] = useState<Map<string, string[]>>(() => new Map())
+  useEffect(() => {
+    let cancelled = false
+    void (async () => {
+      const { data } = await supabase.from('person_availability').select('person_id, day').eq('kind', 'off').gte('day', windowStart).lte('day', windowEnd).limit(2000)
+      if (cancelled) return
+      const m = new Map<string, string[]>()
+      for (const r of (data ?? []) as Array<{ person_id: string; day: string }>) m.set(r.person_id, [...(m.get(r.person_id) ?? []), r.day])
+      setOffDays(m)
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [windowStart, windowEnd])
+
   const board = useMemo(
-    () => buildSubBoardLanes(commitments ?? [], windowStart, windowEnd),
-    [commitments, windowStart, windowEnd],
+    () => buildSubBoardLanes(commitments ?? [], windowStart, windowEnd, offDays),
+    [commitments, windowStart, windowEnd, offDays],
   )
 
   const dayLabels = useMemo(() => {
@@ -118,7 +134,8 @@ export function ProjectsForecastSubsTab() {
         <span style={{ display: 'flex', gap: '1rem', color: 'var(--text-muted)', fontSize: '0.75rem' }}>
           <span><span style={{ display: 'inline-block', width: 10, height: 10, borderRadius: 3, background: '#059669', marginRight: 4, verticalAlign: -1 }} />accepted</span>
           <span><span style={{ display: 'inline-block', width: 10, height: 10, borderRadius: 3, background: '#2563eb', opacity: 0.6, marginRight: 4, verticalAlign: -1 }} />offered · awaiting answer</span>
-          <span style={{ color: 'var(--text-red-700)', fontWeight: 650 }}>red outline = overlapping bookings</span>
+          <span><span style={{ display: 'inline-block', width: 10, height: 10, borderRadius: 3, background: 'repeating-linear-gradient(45deg, var(--border) 0 3px, var(--bg-subtle) 3px 6px)', marginRight: 4, verticalAlign: -1 }} />day off</span>
+          <span style={{ color: 'var(--text-red-700)', fontWeight: 650 }}>red outline = overlapping bookings, or a booking over a day off</span>
         </span>
       </div>
 
@@ -143,11 +160,14 @@ export function ProjectsForecastSubsTab() {
                   {lane.name}
                 </div>
                 <div style={{ position: 'relative', height: 26, background: 'var(--bg-subtle)', borderRadius: 6, overflow: 'hidden' }}>
+                  {lane.offDays.map((d) => (
+                    <span key={d.ymd} title={`Day off · ${d.ymd}`} style={{ position: 'absolute', top: 0, bottom: 0, left: `${d.startPct}%`, width: `${d.widthPct}%`, background: 'repeating-linear-gradient(45deg, var(--border) 0 4px, var(--bg-subtle) 4px 8px)' }} />
+                  ))}
                   {lane.bars.map((bar) => (
                     <Link
                       key={bar.commitmentId}
                       to={bar.projectId ? `/workflows/${bar.projectId}` : '/projects'}
-                      title={bar.title}
+                      title={bar.overOffDay ? `${bar.title} · over a day off` : bar.title}
                       style={{
                         position: 'absolute',
                         top: 3,
@@ -157,7 +177,7 @@ export function ProjectsForecastSubsTab() {
                         borderRadius: 5,
                         background: bar.ghost ? '#2563eb' : '#059669',
                         opacity: bar.ghost ? 0.6 : 1,
-                        outline: bar.overlapping ? '2px solid #dc2626' : 'none',
+                        outline: bar.overlapping || bar.overOffDay ? '2px solid #dc2626' : 'none',
                         color: 'white',
                         fontSize: '0.66rem',
                         fontWeight: 650,

@@ -57,10 +57,10 @@ export function subDispatchLabel(o: SubDispatchOrder): string {
 }
 
 export type SubLaneItem = { orderId: string; jobId: string | null; label: string; kind: SubDispatchSpan['kind']; title: string }
-export type SubLane = { personId: string; name: string; cells: Map<string, SubLaneItem[]>; total: number }
+export type SubLane = { personId: string; name: string; cells: Map<string, SubLaneItem[]>; total: number; /** v2.2930: days the sub marked off (inside dayKeys). */ offDays: Set<string> }
 
 /** One lane per sub with something dated inside `dayKeys`; sorted by name. */
-export function buildSubLanes(orders: SubDispatchOrder[], dayKeys: readonly string[]): SubLane[] {
+export function buildSubLanes(orders: SubDispatchOrder[], dayKeys: readonly string[], offDaysByPerson: ReadonlyMap<string, readonly string[]> = new Map()): SubLane[] {
   const lanes = new Map<string, SubLane>()
   for (const o of orders) {
     const sp = subDispatchSpan(o)
@@ -69,7 +69,7 @@ export function buildSubLanes(orders: SubDispatchOrder[], dayKeys: readonly stri
     if (days.length === 0) continue
     let lane = lanes.get(o.personId)
     if (!lane) {
-      lane = { personId: o.personId, name: o.personName, cells: new Map(), total: 0 }
+      lane = { personId: o.personId, name: o.personName, cells: new Map(), total: 0, offDays: new Set((offDaysByPerson.get(o.personId) ?? []).filter((d) => dayKeys.includes(d))) }
       lanes.set(o.personId, lane)
     }
     const label = subDispatchLabel(o)
