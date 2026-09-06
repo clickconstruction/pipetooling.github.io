@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildVerdictDraft, diffTakeoffs, entrySection, parseRowSignature, rollupSystems, signatureKey } from './takeoffDiff'
+import { buildVerdictDraft, diffTakeoffs, diffWaterfall, entrySection, parseRowSignature, rollupSystems, signatureKey } from './takeoffDiff'
 
 describe('parseRowSignature', () => {
   it('parses the robot naming style', () => {
@@ -134,5 +134,77 @@ describe('rollupSystems', () => {
       { label: 'Water', unit: 'ft', robot: 735, ours: 1131 },
       { label: 'Fixtures', unit: 'ea', robot: 12, ours: 12 },
     ])
+  })
+})
+
+describe('rate gaps (v2.2934) — same count, different money', () => {
+  it('splits a quantity-matched row into rates when the unit price disagrees beyond tolerance', () => {
+    const d = diffTakeoffs(
+      [{ name: 'ft of 2" Sanitary Waste', count: 100, ext: 14000 }], // $140/ft — the CI tier
+      [{ name: '2IN WASTE', count: 100, ext: 2500 }], // her $25/ft dirt rate
+    )
+    expect(d.gaps).toHaveLength(0)
+    expect(d.rates).toHaveLength(1)
+    expect(d.rates[0]!.impact).toBe(11500)
+    expect(d.matchedOkCount).toBe(0)
+  })
+
+  it('keeps rate-matched rows in matchedOkCount and leaves quantity gaps in gaps', () => {
+    const d = diffTakeoffs(
+      [
+        { name: 'WC', count: 12, ext: 9000 }, // $750 vs $800 — within 15%
+        { name: 'ft of 3/4" Cold Water', count: 100, ext: 3600 }, // qty gap dominates
+      ],
+      [
+        { name: 'Water Closet', count: 12, ext: 9600 },
+        { name: '3/4IN WATER', count: 400, ext: 14400 },
+      ],
+    )
+    expect(d.rates).toHaveLength(0)
+    expect(d.gaps).toHaveLength(1)
+    expect(d.matchedOkCount).toBe(1)
+  })
+
+  it('never invents a rate gap against an unpriced side', () => {
+    const d = diffTakeoffs(
+      [{ name: 'WC', count: 12, ext: 9000 }],
+      [{ name: 'Water Closet', count: 12, ext: 0 }], // her row unpriced — no rate to disagree with
+    )
+    expect(d.rates).toHaveLength(0)
+    expect(d.matchedOkCount).toBe(1)
+  })
+
+  it('drafts rate verdicts about money and routes them to pricing', () => {
+    const rate = { label: '2IN WASTE', robotCount: 100, ourCount: 100, robotExt: 14000, ourExt: 2500 }
+    expect(buildVerdictDraft('teach', rate, 'rates')).toBe('[verdict:teach] 2IN WASTE — repriced wrong: robot $140/u vs ours $25/u (×100). ')
+    expect(buildVerdictDraft('record', rate, 'rates')).toBe('[verdict:record] 2IN WASTE — our rate looks off: robot $140/u vs ours $25/u (×100). ')
+    expect(buildVerdictDraft('ok', rate, 'rates')).toBe('[verdict:ok] 2IN WASTE — both fine (pricing judgment call): robot $140/u vs ours $25/u (×100).')
+    expect(entrySection('2IN WASTE', 'rates')).toBe('pricing')
+    expect(entrySection('2IN WASTE')).toBe('footage') // bucketless callers unchanged
+  })
+})
+
+describe('diffWaterfall', () => {
+  it('decomposes the headline delta into bucket dollars that sum back to it', () => {
+    const d = diffTakeoffs(
+      [
+        { name: 'Trap primer', count: 10, ext: 7500 }, // added +7500
+        { name: 'ft of 2" Sanitary Waste', count: 100, ext: 14000 }, // rate gap +11500
+        { name: 'ft of 3/4" Cold Water', count: 100, ext: 3600 }, // qty gap -10800
+      ],
+      [
+        { name: 'Demo fixtures', count: 27, ext: 13500 }, // missed -13500
+        { name: '2IN WASTE', count: 100, ext: 2500 },
+        { name: '3/4IN WATER', count: 400, ext: 14400 },
+      ],
+    )
+    const wf = diffWaterfall(d, 100000, 120000)
+    expect(wf.missed).toBe(-13500)
+    expect(wf.added).toBe(7500)
+    expect(wf.gaps).toBe(-10800)
+    expect(wf.rates).toBe(11500)
+    expect(wf.delta).toBe(-20000)
+    // other absorbs what the row diff cannot see (letter uplift, unrowed money)
+    expect(wf.missed + wf.added + wf.gaps + wf.rates + wf.other).toBe(wf.delta)
   })
 })

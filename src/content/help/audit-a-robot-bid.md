@@ -27,11 +27,11 @@ Mention pin numbers in your notes — "pin 3: those are by others" — and the r
 
 ## Answer its questions and leave your notes
 
-1. **The differences, in three lists**: the card matches the robot's rows against ours by name and shows only where they differ — {{chip:red|ROBOT MISSED}} (rows we carry that it doesn't — the dangerous kind), {{chip:yellow|ROBOT ADDED}} (rows it carries that we don't), and {{chip:blue|QUANTITY GAPS}} (same row, different number) — biggest dollars first. Judge each one with one tap:
+1. **The differences, in four lists**: the card matches the robot's rows against ours by name and shows only where they differ — {{chip:red|ROBOT MISSED}} (rows we carry that it doesn't — the dangerous kind), {{chip:yellow|ROBOT ADDED}} (rows it carries that we don't), {{chip:blue|QUANTITY GAPS}} (same row, different number), and {{chip:purple|PRICED DIFFERENTLY}} (same row, same count — different money: its rate per foot or per fixture vs ours) — biggest dollars first. A **Where the delta lives** strip above them splits the headline difference into those same dollars — missed, added, counts, rates, and everything else (like the sent letter's markup over raw rows) — so you can see at a glance whether the robot miscounted or mispriced. Judge each row with one tap:
    - {{button:red|✗ Robot's wrong}} — drafts a teaching note for you; edit if you like and hit **Post**.
    - {{button:amber|📋 Our record's off}} — the robot found a hole in OUR bid; posting files a record-repair.
    - {{button:green|✓ Both fine}} — scope difference or judgment call; posts instantly.
-   Rows that match within 15% aren't shown — there's nothing to judge there. (When there's no reference bid to compare against, the card falls back to listing the robot's biggest rows with 👍 / 🚩.)
+   Rows that match within 15% on both count and price aren't shown — there's nothing to judge there. (When there's no reference bid to compare against, the card falls back to listing the robot's biggest rows with 👍 / 🚩.)
 2. The card lists **the robot's questions** (🤖), each anchored to the plan sheet it came from. Type in the box and hit {{button:blue|Answer}} — short is fine.
 3. Anything else goes in the **one note box** at the bottom — pick a section chip (Counts / Footage / Pricing / Scope / General) if it fits, or leave it on General. Type each thing you'd tell a junior estimator — "we always carry travel past 200 miles."
 4. When you're done, hit {{button:green|Finish audit}}. The card flips to {{chip:blue|Waiting on robot digest}}, the ledger records it, and the next waiting audit opens automatically.

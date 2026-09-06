@@ -25,10 +25,12 @@ import {
 } from '../../lib/bids/bidAudits'
 import {
   diffTakeoffs,
+  diffWaterfall,
   rollupSystems,
   buildVerdictDraft,
   entrySection,
   type AuditVerdict,
+  type DiffBucketKey,
   type DiffEntry,
 } from '../../lib/bids/takeoffDiff'
 
@@ -104,7 +106,7 @@ const VERDICT_BUTTONS: Array<{ verdict: AuditVerdict; label: string; onBg: strin
 ]
 
 const DIFF_BUCKETS: Array<{
-  bucket: 'missed' | 'added' | 'gaps'
+  bucket: 'missed' | 'added' | 'gaps' | 'rates'
   tag: string
   tagBg: string
   tagFg: string
@@ -113,6 +115,21 @@ const DIFF_BUCKETS: Array<{
   { bucket: 'missed', tag: 'ROBOT MISSED', tagBg: 'var(--bg-red-100)', tagFg: 'var(--text-red-600)', blurb: 'rows we carry that it doesn’t — the dangerous kind' },
   { bucket: 'added', tag: 'ROBOT ADDED', tagBg: 'var(--bg-amber-tint)', tagFg: 'var(--text-amber-800)', blurb: 'rows it carries that we don’t — overreach, or something we missed?' },
   { bucket: 'gaps', tag: 'QUANTITY GAPS', tagBg: 'var(--bg-blue-tint, var(--bg-muted))', tagFg: 'var(--text-blue-700, var(--text-700))', blurb: 'same row, different number' },
+  // v2.2934 — the bucket the 2026-09-05 regression batch showed carries most of
+  // the robots' remaining error: quantities agree, the money doesn't (tier
+  // rates, uplift overrides, all-in boundaries).
+  { bucket: 'rates', tag: 'PRICED DIFFERENTLY', tagBg: 'var(--bg-violet-100, var(--bg-muted))', tagFg: 'var(--text-violet-700, var(--text-700))', blurb: 'same row, same count — different money' },
+]
+
+/** Per-unit rate for a rate-gap row: 'robot $140/ft · ours $25/ft'. */
+const fmtRate = (ext: number, count: number) => (count > 0 ? `$${(ext / count) % 1 === 0 ? (ext / count).toLocaleString() : (ext / count).toFixed(2)}` : '$0')
+
+const WATERFALL_SEGMENTS: Array<{ key: 'missed' | 'added' | 'gaps' | 'rates' | 'other'; label: string }> = [
+  { key: 'missed', label: 'missed' },
+  { key: 'added', label: 'added' },
+  { key: 'gaps', label: 'counts' },
+  { key: 'rates', label: 'rates' },
+  { key: 'other', label: 'everything else' },
 ]
 
 export function BidsAuditsTab({ authUser, myRole }: { authUser: User | null; myRole: string | null }) {
@@ -355,12 +372,12 @@ export function BidsAuditsTab({ authUser, myRole }: { authUser: User | null; myR
 
   // One-tap verdicts: 'ok' posts immediately (the ack IS the signal); teach/record
   // open the drafted note for a quick edit first.
-  const tapVerdict = (audit: AuditWithBid, entry: DiffEntry, verdict: AuditVerdict) => {
+  const tapVerdict = (audit: AuditWithBid, entry: DiffEntry, verdict: AuditVerdict, bucket?: DiffBucketKey) => {
     const stateKey = `${audit.id}:${entry.key}`
     if (verdictPosted[stateKey]) return
     if (verdict === 'ok') {
       setVerdictPosted((p) => ({ ...p, [stateKey]: 'ok' }))
-      void insertNote(audit, entrySection(entry.label), 'note', buildVerdictDraft('ok', entry), null, `verdict:${stateKey}`)
+      void insertNote(audit, entrySection(entry.label, bucket), 'note', buildVerdictDraft('ok', entry, bucket), null, `verdict:${stateKey}`)
       return
     }
     setVerdictDraft((p) => {
@@ -368,10 +385,10 @@ export function BidsAuditsTab({ authUser, myRole }: { authUser: User | null; myR
         const { [stateKey]: _drop, ...rest } = p
         return rest
       }
-      return { ...p, [stateKey]: { verdict, text: buildVerdictDraft(verdict, entry) } }
+      return { ...p, [stateKey]: { verdict, text: buildVerdictDraft(verdict, entry, bucket) } }
     })
   }
-  const postVerdictDraft = async (audit: AuditWithBid, entry: DiffEntry) => {
+  const postVerdictDraft = async (audit: AuditWithBid, entry: DiffEntry, bucket?: DiffBucketKey) => {
     const stateKey = `${audit.id}:${entry.key}`
     const draft = verdictDraft[stateKey]
     if (!draft) return
@@ -380,7 +397,7 @@ export function BidsAuditsTab({ authUser, myRole }: { authUser: User | null; myR
       const { [stateKey]: _drop, ...rest } = p
       return rest
     })
-    await insertNote(audit, entrySection(entry.label), 'note', draft.text, null, `verdict:${stateKey}`)
+    await insertNote(audit, entrySection(entry.label, bucket), 'note', draft.text, null, `verdict:${stateKey}`)
   }
 
   // Finish/reopen go through the audit-finish edge fn (v2.2518): one gesture does the
@@ -628,6 +645,36 @@ export function BidsAuditsTab({ authUser, myRole }: { authUser: User | null; myR
                   ) : null}
                 </div>
 
+                {/* Delta waterfall (v2.2934): the headline decomposed into named
+                    dollars that sum back to it — scope, counts, rates, and the
+                    remainder the row diff cannot see (letter uplift, in-tolerance
+                    drift). Rates was the invisible bucket until now. */}
+                {diff && draft && !unpriced && ref?.refValue != null ? (() => {
+                  const wf = diffWaterfall(diff, draft.total, ref.refValue)
+                  const segs = WATERFALL_SEGMENTS.filter((s) => Math.abs(wf[s.key]) >= 1)
+                  if (!segs.length) return null
+                  return (
+                    <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.35rem', marginBottom: '1rem', fontSize: '0.75rem' }}>
+                      <span style={{ fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--text-muted)', fontSize: '0.65rem' }}>Where the delta lives</span>
+                      {segs.map((s, i) => (
+                        <span key={s.key} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
+                          {i > 0 ? <span style={{ color: 'var(--text-muted)' }}>·</span> : null}
+                          <span style={{ border: '1px solid var(--border)', borderRadius: 999, padding: '0.1rem 0.55rem', background: 'var(--bg-subtle)' }}>
+                            {s.label}{' '}
+                            <span style={{ fontFamily: 'ui-monospace, monospace', fontWeight: 700, color: wf[s.key] < 0 ? 'var(--text-red-600)' : 'var(--text-amber-800)' }}>
+                              {wf[s.key] < 0 ? '−' : '+'}{fmtUsd(wf[s.key])}
+                            </span>
+                          </span>
+                        </span>
+                      ))}
+                      <span style={{ color: 'var(--text-muted)' }}>=</span>
+                      <span style={{ fontFamily: 'ui-monospace, monospace', fontWeight: 700 }}>
+                        {wf.delta < 0 ? '−' : '+'}{fmtUsd(wf.delta)} vs ours
+                      </span>
+                    </div>
+                  )
+                })() : null}
+
                 {/* System scoreboard: where the money diverges, before any row. */}
                 {rollup && rollup.length > 0 ? (
                   <div style={{ marginBottom: '1rem', overflowX: 'auto' }}>
@@ -683,6 +730,10 @@ export function BidsAuditsTab({ authUser, myRole }: { authUser: User | null; myR
                                   <span>{entry.label}</span>
                                   {bucket === 'gaps' ? (
                                     <span style={{ fontFamily: 'ui-monospace, monospace', color: 'var(--text-muted)' }}>robot ×{fmtQty(entry.robotCount)} · ours ×{fmtQty(entry.ourCount)}</span>
+                                  ) : bucket === 'rates' ? (
+                                    <span style={{ fontFamily: 'ui-monospace, monospace', color: 'var(--text-muted)' }}>
+                                      robot {fmtRate(entry.robotExt, entry.robotCount)}/u · ours {fmtRate(entry.ourExt, entry.ourCount)}/u ×{fmtQty(entry.ourCount)}
+                                    </span>
                                   ) : (
                                     <span style={{ fontFamily: 'ui-monospace, monospace', color: 'var(--text-muted)' }}>×{fmtQty(bucket === 'missed' ? entry.ourCount : entry.robotCount)}</span>
                                   )}
@@ -698,7 +749,7 @@ export function BidsAuditsTab({ authUser, myRole }: { authUser: User | null; myR
                                             key={verdict}
                                             type="button"
                                             disabled={!!posted}
-                                            onClick={() => tapVerdict(audit, entry, verdict)}
+                                            onClick={() => tapVerdict(audit, entry, verdict, bucket)}
                                             style={{ border: `1px solid ${on ? onFg : 'var(--border-strong)'}`, background: on ? onBg : 'var(--surface)', color: on ? onFg : 'var(--text-700)', borderRadius: 6, padding: '0.12rem 0.5rem', cursor: posted ? 'default' : 'pointer', fontSize: '0.75rem', fontWeight: on ? 700 : 400, opacity: posted && posted !== verdict ? 0.4 : 1 }}
                                           >
                                             {posted === verdict ? `${label} ✓` : label}
@@ -714,14 +765,14 @@ export function BidsAuditsTab({ authUser, myRole }: { authUser: User | null; myR
                                         value={open.text}
                                         onChange={(e) => setVerdictDraft((p) => ({ ...p, [stateKey]: { ...open, text: e.target.value } }))}
                                         onKeyDown={(e) => {
-                                          if (e.key === 'Enter') void postVerdictDraft(audit, entry)
+                                          if (e.key === 'Enter') void postVerdictDraft(audit, entry, bucket)
                                         }}
                                         style={{ flex: 1, padding: '0.3rem 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.8125rem', boxSizing: 'border-box' }}
                                       />
                                       <button
                                         type="button"
                                         disabled={busy === `verdict:${stateKey}` || !open.text.trim()}
-                                        onClick={() => void postVerdictDraft(audit, entry)}
+                                        onClick={() => void postVerdictDraft(audit, entry, bucket)}
                                         style={{ padding: '0.3rem 0.75rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: '0.8125rem' }}
                                       >
                                         Post
@@ -742,7 +793,7 @@ export function BidsAuditsTab({ authUser, myRole }: { authUser: User | null; myR
                     })}
                     {diff.matchedOkCount > 0 ? (
                       <div style={{ fontSize: '0.75rem', color: 'var(--text-emerald-800)' }}>
-                        ✓ {diff.matchedOkCount} row{diff.matchedOkCount === 1 ? '' : 's'} match within 15% — nothing to judge there
+                        ✓ {diff.matchedOkCount} row{diff.matchedOkCount === 1 ? '' : 's'} match within 15% on count and rate — nothing to judge there
                       </div>
                     ) : null}
                   </div>
