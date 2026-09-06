@@ -704,7 +704,7 @@ export function BidFormModal(props: BidFormModalProps) {
                       ownGcName={gcCustomerSearch || 'To Plans'}
                       ownGcCustomerId={editingBid.customer_id ?? null}
                       bidOutcome={outcome || null}
-                      onOutcomeRollupChanged={(next) => setOutcome(next)}
+                      onOutcomeRollupChanged={(next) => setOutcome(next ?? '')}
                       currentBidDateSent={editingBid.bid_date_sent ?? null}
                       onRollupDateChanged={onGcRollupDateChanged}
                     />

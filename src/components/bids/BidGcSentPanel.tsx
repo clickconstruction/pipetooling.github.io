@@ -9,7 +9,10 @@ import { formatCurrency } from '../../lib/format'
 import { firstSentOn, latestSendByVersion, type VersionSendRow } from '../../lib/bids/versionSends'
 import { groupVersionsByGc, type GcPacket, type GcVersionLike } from '../../lib/bids/gcPackets'
 import { lastContactByGc, type ContactEntryLike } from '../../lib/bids/bidContacts'
-import { setGcPacketOutcome, setGcPacketLossCategory } from '../../lib/bids/gcPacketOutcome'
+import { setGcPacketOutcome, setGcPacketLossCategory, type PacketOutcome } from '../../lib/bids/gcPacketOutcome'
+import { wonCascadeConfirmMessage, wonCascadeNeedsConfirm, wonCascadePlan } from '../../lib/bids/wonCascade'
+import { undoneToast } from './BidBoardGcRows'
+import { useAuth } from '../../hooks/useAuth'
 import { BidLossCategoryChips } from './BidLossCategoryChips'
 import { bidLossCategoryLabel, type BidLossCategoryKey } from '../../lib/bidLossCategories'
 
@@ -29,8 +32,8 @@ type PanelProps = {
   ownGcCustomerId?: string | null
   /** The bid's current outcome ('' form value → null) — the roll-up guard needs it (Phase 2). */
   bidOutcome?: string | null
-  /** The packet write rolled the bid-level outcome — sync the form's Win/Loss segment (Phase 2). */
-  onOutcomeRollupChanged?: (next: 'won' | 'lost') => void
+  /** The packet write rolled the bid-level outcome — sync the form's Win/Loss segment (Phase 2). Null = an undo put it back to Not set (Tier-2 #21). */
+  onOutcomeRollupChanged?: (next: 'won' | 'lost' | 'started_or_complete' | null) => void
   /** bids.bid_date_sent as loaded — the pre-per-GC fallback for packets with no send rows. */
   currentBidDateSent: string | null
   /** Keeps the parent form's date state in sync so Save never clobbers the derived roll-up. */
@@ -63,6 +66,7 @@ const rowBtnStyle: React.CSSProperties = {
 export function BidGcSentPanel({ bidId, ownGcName, ownGcCustomerId, bidOutcome, onOutcomeRollupChanged, currentBidDateSent, onRollupDateChanged }: PanelProps) {
   const { showToast } = useToastContext()
   const confirmDialog = useConfirmDialog()
+  const { user: authUser, role: authRole } = useAuth()
   const [versions, setVersions] = useState<GcVersionLike[]>([])
   const [sends, setSends] = useState<VersionSendRow[]>([])
   const [contactEntries, setContactEntries] = useState<ContactEntryLike[]>([])
@@ -234,18 +238,24 @@ export function BidGcSentPanel({ bidId, ownGcName, ownGcCustomerId, bidOutcome, 
   /** Phase 2: mark a packet won / lost / back-to-waiting — the same write the board's GC pills
       use (a win auto-losses the other sent, unanswered packets; the bid-level outcome rolls up). */
   async function setPacketOutcome(p: GcPacket, next: 'won' | 'lost' | null, category?: BidLossCategoryKey | null, note?: string) {
+    const ids = p.versions.map((v) => v.id)
+    const prev: PacketOutcome = p.outcome === 'won' || p.outcome === 'lost' ? p.outcome : null
+    const packetsAfter = packets.map((x) => ({
+      key: x.key,
+      name: x.name,
+      outcome: x.key === p.key ? next : x.outcome,
+      sentOn: x.sentOn,
+      versionIds: x.versions.map((v) => v.id),
+      sharedLetter: x.sharedLetter,
+    }))
+    // Tier-2 #21: the cascade (other GCs Lost, bid Won — even over a hand-set Lost) is said BEFORE the write.
+    if (next === 'won') {
+      const plan = wonCascadePlan({ outcome: bidOutcome || null }, packetsAfter, p.key)
+      if (wonCascadeNeedsConfirm(plan) && !(await confirmDialog({ message: wonCascadeConfirmMessage(plan, { gcName: p.name }), confirmLabel: 'Mark won' }))) return
+    }
     setBusyKey(p.key)
     try {
-      const ids = p.versions.map((v) => v.id)
-      const packetsAfter = packets.map((x) => ({
-        key: x.key,
-        name: x.name,
-        outcome: x.key === p.key ? next : x.outcome,
-        sentOn: x.sentOn,
-        versionIds: x.versions.map((v) => v.id),
-        sharedLetter: x.sharedLetter,
-      }))
-      const res = await setGcPacketOutcome({ bidId, bidOutcome: bidOutcome || null, versionIds: ids, outcome: next, packetsAfter })
+      const res = await setGcPacketOutcome({ bidId, bidOutcome: bidOutcome || null, versionIds: ids, outcome: next, packetsAfter, previousOutcome: prev, actor: { userId: authUser?.id, role: authRole, path: 'edit-bid' } })
       if (res.error) {
         showToast('Could not record the outcome: ' + res.error, 'error')
         return
@@ -255,14 +265,21 @@ export function BidGcSentPanel({ bidId, ownGcName, ownGcCustomerId, bidOutcome, 
         if (cat.error) showToast('Outcome saved, but the reason did not: ' + cat.error, 'error')
       }
       if (res.bidOutcomeSet && onOutcomeRollupChanged) onOutcomeRollupChanged(res.bidOutcomeSet)
+      // "↩ waiting" on the winner un-rolled the bid too — the form's Win/Loss segment follows.
+      if (res.undone && res.undone.bidOutcomeRestoredTo !== undefined && onOutcomeRollupChanged) {
+        const back = res.undone.bidOutcomeRestoredTo
+        onOutcomeRollupChanged(back === 'won' || back === 'lost' || back === 'started_or_complete' ? back : null)
+      }
       window.dispatchEvent(new Event('bid-gc-outcome-changed'))
       await loadAll()
       showToast(
-        next === 'won'
-          ? `${p.name} marked won${res.autoLost.length > 0 ? ` — ${res.autoLost.join(', ')} marked lost (their GC lost the project)` : ''}.`
-          : next === 'lost'
-            ? `${p.name} marked lost.`
-            : `${p.name} back to waiting.`,
+        res.undone
+          ? undoneToast(p.name, res.undone)
+          : next === 'won'
+            ? `${p.name} marked won${res.autoLost.length > 0 ? ` — ${res.autoLost.join(', ')} marked lost (their GC lost the project)` : ''}.`
+            : next === 'lost'
+              ? `${p.name} marked lost.`
+              : `${p.name} back to waiting.`,
         'success',
       )
     } finally {
@@ -381,7 +398,7 @@ export function BidGcSentPanel({ bidId, ownGcName, ownGcCustomerId, bidOutcome, 
                       </button>
                     </>
                   ) : (
-                    <button type="button" disabled={busy} onClick={() => void setPacketOutcome(p, null)} title="Clear this GC's answer — back to waiting" style={rowBtnStyle}>
+                    <button type="button" disabled={busy} onClick={() => void setPacketOutcome(p, null)} title={p.outcome === 'won' ? "Undo the win — this GC back to waiting, the GCs it marked lost back to waiting, the bid back to what it was" : "Clear this GC's answer — back to waiting"} style={rowBtnStyle}>
                       ↩ waiting
                     </button>
                   )}

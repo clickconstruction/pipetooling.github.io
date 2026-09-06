@@ -23,6 +23,9 @@ import { buildCallQueue, type CallQueueBid, type CallQueueBuilder } from '../../
 import type { GcPacket } from '../../lib/bids/gcPackets'
 import { gcOutcomeRowsForBid, gcRowIsPacketScoped, type GcOutcomeRow } from '../../lib/bids/gcOutcomeRows'
 import { setGcPacketLossCategory, setGcPacketOutcome } from '../../lib/bids/gcPacketOutcome'
+import { cascadePackets, wonCascadeConfirmMessage, wonCascadeNeedsConfirm, wonCascadePlan } from '../../lib/bids/wonCascade'
+import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
+import { useAuth } from '../../hooks/useAuth'
 import { BidLossCategoryChips } from './BidLossCategoryChips'
 import { BidTabCapturePanel } from './BidTabCapturePanel'
 import { clearBidTabEntries, replaceBidTabEntries } from '../../lib/bids/bidTabEntriesData'
@@ -105,6 +108,8 @@ export function BidsCallQueueTab({
   onReloadBids,
   onOpenBuilderCard,
 }: BidsCallQueueTabProps) {
+  const confirmDialog = useConfirmDialog()
+  const { role: authRole } = useAuth()
   const [searchQuery, setSearchQuery] = useState('')
   const [filterKey, setFilterKey] = useState<'all' | QueueRowKey>('all')
   const [openRow, setOpenRow] = useState<{ builderKey: string; row: QueueRowKey } | null>(null)
@@ -189,8 +194,22 @@ export function BidsCallQueueTab({
     return gcRowIsPacketScoped(b.gc)
   }
 
-  /** One chase tap — entry + last_contact stamp (+ outcome / tab when given), then reload. */
+  /** One chase tap — entry + last_contact stamp (+ outcome / tab when given), then reload.
+      Tier-2 #21: a Won on a multi-GC row states the cascade (other GCs Lost, bid Won) before writing. */
   function chaseAction(b: MappedBid, action: PendingChaseActionKey, lossCategory: BidLossCategoryKey | null = null, tab: BidTabValues | null = null, tabEntries: BidTabEntryDraft[] | null = null) {
+    if (action === 'won' && packetScoped(b) && b.gc.packetKey != null) {
+      const plan = wonCascadePlan({ outcome: b.raw.outcome ?? null }, cascadePackets(gcPacketsByBid[b.id] ?? []), b.gc.packetKey)
+      if (wonCascadeNeedsConfirm(plan)) {
+        void confirmDialog({ message: wonCascadeConfirmMessage(plan, { gcName: b.gc.gcName }), confirmLabel: 'Mark won' }).then((ok) => {
+          if (ok) chaseActionNow(b, action, lossCategory, tab, tabEntries)
+        })
+        return
+      }
+    }
+    chaseActionNow(b, action, lossCategory, tab, tabEntries)
+  }
+
+  function chaseActionNow(b: MappedBid, action: PendingChaseActionKey, lossCategory: BidLossCategoryKey | null = null, tab: BidTabValues | null = null, tabEntries: BidTabEntryDraft[] | null = null) {
     if (!authUserId) {
       onError('You must be signed in to log a call.')
       return
@@ -224,6 +243,7 @@ export function BidsCallQueueTab({
             versionIds: b.gc.versionIds,
             outcome: writes.outcomeUpdate.outcome,
             packetsAfter: packets.map((x) => ({ key: x.key, name: x.name, outcome: x.key === b.gc.packetKey ? writes.outcomeUpdate!.outcome : x.outcome, sentOn: x.sentOn, versionIds: x.versions.map((v) => v.id), sharedLetter: x.sharedLetter })),
+            actor: { userId: authUserId, role: authRole, path: 'call-queue' },
           })
           if (res.error) throw new Error(res.error)
           if (writes.outcomeUpdate.outcome === 'lost' && writes.outcomeUpdate.loss_category) {

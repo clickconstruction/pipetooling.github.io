@@ -23,6 +23,7 @@ export function PickWinningGcModal({
   bidName,
   options,
   writesWin,
+  bidOutcome = null,
   onPick,
   onCancel,
 }: {
@@ -30,6 +31,8 @@ export function PickWinningGcModal({
   options: WinningGcOption[]
   /** True when no winner is recorded yet — the pick writes the packet's Won. */
   writesWin: boolean
+  /** The bid's current outcome — a hand-set Lost is named, because the pick flips it to Won (Tier-2 #21). */
+  bidOutcome?: string | null
   onPick: (opt: WinningGcOption) => void
   onCancel: () => void
 }) {
@@ -41,7 +44,7 @@ export function PickWinningGcModal({
         <p style={{ margin: '0 0 0.75rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
           {bidName} went to {options.length} GCs.{' '}
           {writesWin
-            ? 'Picking one records their Won (other sent, unanswered GCs are marked lost — their GC lost the project) and the job imports from their packet.'
+            ? `Picking one marks the other sent, unanswered GCs Lost (GC lost the project) and the bid Won${bidOutcome === 'lost' ? ' — the bid is currently marked Lost by hand; it flips to Won' : ''}, and the job imports from their packet. ↩ waiting on the winner (Edit Bid or the Bid Board) puts all of it back.`
             : 'More than one GC is marked Won — pick which one this job is for. Nothing is changed on the bid.'}
         </p>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>

@@ -7,8 +7,11 @@ import { supabase } from '../../lib/supabase'
 import { formatSendBadge, latestSendByVersion, type VersionSendRow } from '../../lib/bids/versionSends'
 import { groupVersionsByGc } from '../../lib/bids/gcPackets'
 import { setGcPacketOutcome, type PacketOutcome } from '../../lib/bids/gcPacketOutcome'
+import { wonCascadeConfirmMessage, wonCascadeNeedsConfirm, wonCascadePlan } from '../../lib/bids/wonCascade'
 import { useToastContext } from '../../contexts/ToastContext'
-import { GcOutcomePill } from './BidBoardGcRows'
+import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
+import { useAuth } from '../../hooks/useAuth'
+import { GcOutcomePill, undoneToast } from './BidBoardGcRows'
 import { BidWonJobActions } from './BidWonJobActions'
 import { formatCurrency } from '../../lib/format'
 
@@ -16,6 +19,8 @@ type VersionRow = { id: string; name: string; sort_order: number; include_in_sub
 
 export function BidPackageSendsDetails({ bidId, bidOutcome = null, bidGcName = null, bidDateSent = null }: { bidId: string; bidOutcome?: string | null; bidGcName?: string | null; bidDateSent?: string | null }) {
   const { showToast } = useToastContext()
+  const confirmDialog = useConfirmDialog()
+  const { user: authUser, role: authRole } = useAuth()
   const [versions, setVersions] = useState<VersionRow[]>([])
   const [sends, setSends] = useState<VersionSendRow[]>([])
   const [gcNames, setGcNames] = useState<Record<string, string>>({})
@@ -50,10 +55,17 @@ export function BidPackageSendsDetails({ bidId, bidOutcome = null, bidGcName = n
   async function change(pKey: string, next: PacketOutcome) {
     const p = packets.find((x) => x.key === pKey)
     if (!p) return
+    const prev: PacketOutcome = p.outcome === 'won' || p.outcome === 'lost' ? p.outcome : null
     const after = packets.map((x) => ({ key: x.key, name: x.name, outcome: x.key === pKey ? next : x.outcome, sentOn: x.sentOn, versionIds: x.versions.map((v) => v.id), sharedLetter: x.sharedLetter }))
-    const res = await setGcPacketOutcome({ bidId, bidOutcome, versionIds: p.versions.map((v) => v.id), outcome: next, packetsAfter: after })
+    // Tier-2 #21: the cascade is stated before the tap, and "waiting" on the winner undoes it.
+    if (next === 'won') {
+      const plan = wonCascadePlan({ outcome: bidOutcome }, after, p.key)
+      if (wonCascadeNeedsConfirm(plan) && !(await confirmDialog({ message: wonCascadeConfirmMessage(plan, { gcName: p.name }), confirmLabel: 'Mark won' }))) return
+    }
+    const res = await setGcPacketOutcome({ bidId, bidOutcome, versionIds: p.versions.map((v) => v.id), outcome: next, packetsAfter: after, previousOutcome: prev, actor: { userId: authUser?.id, role: authRole, path: 'followup-details' } })
     if (res.error) { showToast('Could not save: ' + res.error, 'error'); return }
     window.dispatchEvent(new Event('bid-gc-outcome-changed'))
+    if (res.undone) { showToast(undoneToast(p.name, res.undone), 'success'); return }
     const autoNote = res.autoLost.length > 0 ? ` — ${res.autoLost.join(', ')} marked lost · GC lost the project.` : ''
     if (res.bidOutcomeSet) showToast(`Bid marked ${res.bidOutcomeSet}${autoNote}`, 'success')
     else if (autoNote) showToast(`${p.name} marked won${autoNote}`, 'success')

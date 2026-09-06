@@ -5,12 +5,15 @@
  * the loss-reason chips, and the filter chips narrowing the list.
  */
 import { describe, expect, it, vi } from 'vitest'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, screen } from '@testing-library/react'
+import { renderWithProviders, useAuthModuleMock } from '../../test/renderSmokeMocks'
 
 import { BidsCallQueueTab } from './BidsCallQueueTab'
 import type { BidWithBuilder } from '../../types/bidWithBuilder'
 
 vi.mock('../../lib/supabase', () => ({ supabase: { from: vi.fn() } }))
+// Tier-2 #21: the tab reads useAuth (role for bid_outcome_set telemetry) and useConfirmDialog (the Won cascade confirm).
+vi.mock('../../hooks/useAuth', async () => useAuthModuleMock())
 
 function bid(over: Partial<BidWithBuilder>): BidWithBuilder {
   return {
@@ -38,7 +41,7 @@ function bid(over: Partial<BidWithBuilder>): BidWithBuilder {
 
 function renderTab(bids: BidWithBuilder[]) {
   const onOpenBuilderCard = vi.fn()
-  render(
+  renderWithProviders(
     <BidsCallQueueTab
       bids={bids}
       gcPacketsByBid={{}}

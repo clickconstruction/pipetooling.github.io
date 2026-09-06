@@ -198,6 +198,10 @@ phase (roll-up keeps them correct).
 - 2026-08-28 — **Phase 2 SHIPPED** (v2.2414, PR #2119): per-GC Won / Lost… / ↩ waiting on
   the Sent panel's GC rows via `setGcPacketOutcome`; Edit Bid's Won/Lost segment locks on
   version bids (Open stays as the reset); form syncs on roll-up.
+- 2026-09-05 — **Won cascade made legible + reversible** (v2.2894, journey-map Tier-2 #21):
+  every Won writer confirms with `wonCascadeConfirmMessage` first; `setGcPacketOutcome`
+  snapshots before the win and "↩ waiting" on the winner un-rolls siblings + `bids.outcome`
+  (`wonCascade.ts`); the packet path writes the Win/Loss note; `bid_outcome_set` telemetry.
 - 2026-08-28 — **Phase 3 SHIPPED** (v2.2415, PR #2120): `resolveWinningPacket` kernel +
   `PickWinningGcModal`; bid→job import resolves the winning GC (silent single winner /
   ask-once with Won write / ambiguous choose-only), seeds `bids.agreed_value`. Job revenue

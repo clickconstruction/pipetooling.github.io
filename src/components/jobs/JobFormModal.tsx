@@ -1833,7 +1833,8 @@ export default function JobFormModal({
             versionIds: p.versions.map((v) => v.id),
             sharedLetter: !!p.sharedLetter,
           }))
-          const res = await setGcPacketOutcome({ bidId: pick.bidId, bidOutcome: pick.bidOutcome, versionIds, outcome: 'won', packetsAfter })
+          // Tier-2 #21: the picker's sentence IS the confirm; the write snapshots the cascade so "↩ waiting" on the bid can undo it.
+          const res = await setGcPacketOutcome({ bidId: pick.bidId, bidOutcome: pick.bidOutcome, versionIds, outcome: 'won', packetsAfter, previousOutcome: packet?.outcome === 'lost' ? 'lost' : null, actor: { userId: authUser?.id, role: authRole, path: 'job-import' } })
           if (res.error) {
             showToast(res.error, 'error')
           } else {
@@ -4550,6 +4551,7 @@ export default function JobFormModal({
           bidName={winningGcPick.bidName}
           options={winningGcPick.options}
           writesWin={winningGcPick.writesWin}
+          bidOutcome={winningGcPick.bidOutcome}
           onPick={(opt) => void handleWinningGcPick(opt)}
           onCancel={() => {
             const closeTheForm = winningGcPick.closeOnCancel
