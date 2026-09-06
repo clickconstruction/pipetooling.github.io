@@ -7,6 +7,9 @@ export type ToastAnchor = { clientX: number; clientY: number }
 /** When `anchor` is set, anchored positioning wins and `placement` is ignored. */
 export type ToastPlacement = 'corner' | 'center'
 
+/** One inline action on the toast (v2 Tier-2 #42): e.g. "Undo" after a bulk import. Clicking it also dismisses the toast. */
+export type ToastAction = { label: string; onClick: () => void }
+
 interface ToastProps {
   message: string
   type?: ToastType
@@ -14,6 +17,7 @@ interface ToastProps {
   anchor?: ToastAnchor
   /** Default `corner` (top-right). Ignored when `anchor` is set. */
   placement?: ToastPlacement
+  action?: ToastAction
   onClose: () => void
 }
 
@@ -78,6 +82,7 @@ export function Toast({
   duration = 5000,
   anchor,
   placement = 'corner',
+  action,
   onClose,
 }: ToastProps) {
   const messageId = useId()
@@ -151,6 +156,28 @@ export function Toast({
       <span id={messageId} style={{ whiteSpace: 'pre-line' }}>
         {message}
       </span>
+      {action ? (
+        <button
+          type="button"
+          onClick={() => {
+            action.onClick()
+            onClose()
+          }}
+          style={{
+            background: 'rgba(255,255,255,0.18)',
+            border: '1px solid rgba(255,255,255,0.7)',
+            color: 'white',
+            borderRadius: 4,
+            padding: '0.25rem 0.6rem',
+            fontSize: '0.8125rem',
+            fontWeight: 600,
+            cursor: 'pointer',
+            whiteSpace: 'nowrap',
+          }}
+        >
+          {action.label}
+        </button>
+      ) : null}
       <button
         type="button"
         onClick={onClose}

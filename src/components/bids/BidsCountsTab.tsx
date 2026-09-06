@@ -7,6 +7,9 @@ import { formatErrorMessage, withSupabaseRetry } from '../../utils/errorHandling
 import { BID_UPDATE_NOT_APPLIED_MESSAGE, updateApplied } from '../../lib/bids/updateGuard'
 import { useToastContext } from '../../contexts/ToastContext'
 import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
+import { useAuth } from '../../hooks/useAuth'
+import { recordNavClick } from '../../lib/navClickTelemetry'
+import { importUndoIsEmpty, importUndoPlan, type ImportUndoPlan } from '../../lib/bids/countsImportUndo'
 import type { useBidPreview } from '../../contexts/BidPreviewModalContext'
 import type { BidWithBuilder } from '../../types/bidWithBuilder'
 import type { BidCountRow } from '../../types/bids'
@@ -97,8 +100,9 @@ export function BidsCountsTab({
   isMyBid,
   onCountSourceLinkSaved,
 }: BidsCountsTabProps) {
-  const { showToast } = useToastContext()
+  const { showToast, showActionToast } = useToastContext()
   const confirmDialog = useConfirmDialog()
+  const { user: authUser, role: authRole } = useAuth()
 
   const [countsSearchQuery, setCountsSearchQuery] = useState('')
   const [movingCountRow, setMovingCountRow] = useState(false)
@@ -391,7 +395,7 @@ export function BidsCountsTab({
   async function insertCountRows(
     bidId: string,
     rows: Array<{ fixture: string; count: number; group_tag: string | null; page: string | null; unit?: CountUnit | null }>
-  ): Promise<{ inserted: number; error?: string }> {
+  ): Promise<{ inserted: number; insertedIds: string[]; error?: string }> {
     const { data: maxSeqData } = await supabase
       .from('bids_count_rows')
       .select('sequence_order')
@@ -400,10 +404,12 @@ export function BidsCountsTab({
       .limit(1)
     const maxSeq = maxSeqData?.[0]?.sequence_order ?? 0
     let inserted = 0
+    // Ids come back per insert so an import can be undone row-for-row (Tier-2 #42).
+    const insertedIds: string[] = []
     for (let i = 0; i < rows.length; i++) {
       const row = rows[i]
       if (!row) continue
-      const { error } = await supabase.from('bids_count_rows').insert({
+      const { data: insertedRow, error } = await supabase.from('bids_count_rows').insert({
         bid_id: bidId,
         bid_version_id: activeBidVersionId,
         fixture: row.fixture,
@@ -413,18 +419,65 @@ export function BidsCountsTab({
         sequence_order: maxSeq + 1 + i,
         // Explicit when the caller knows (import stamps from the name; quick add from its toggle); NULL = infer.
         unit: row.unit ?? null,
-      })
-      if (error) return { inserted, error: error.message }
+      }).select('id').single()
+      if (error) return { inserted, insertedIds, error: error.message }
       inserted++
+      if (insertedRow?.id) insertedIds.push(insertedRow.id)
     }
-    return { inserted }
+    return { inserted, insertedIds }
+  }
+
+  /**
+   * Tier-2 #42 (J11-F3): "Import from /Tooling" used to insert rows with no undo.
+   * The success toast now carries Undo for ~10 s; it deletes exactly the rows
+   * the import inserted and puts the source link back only if the import
+   * changed it (`importUndoPlan`).
+   */
+  async function undoCountsImport(bidId: string, plan: ImportUndoPlan) {
+    if (importUndoIsEmpty(plan)) return
+    try {
+      if (plan.deleteRowIds.length > 0) {
+        for (let i = 0; i < plan.deleteRowIds.length; i += 200) {
+          const chunk = plan.deleteRowIds.slice(i, i + 200)
+          const { error } = await supabase.from('bids_count_rows').delete().in('id', chunk)
+          if (error) throw error
+        }
+      }
+      if (plan.restoreSourceLink) {
+        const { error } = await supabase.from('bids').update({ count_tooling_plans_link: plan.restoreSourceLink.to }).eq('id', bidId)
+        if (error) throw error
+        await onCountSourceLinkSaved?.(bidId)
+      }
+      refreshAfterCountsChange()
+      showToast(`Import undone — ${plan.deleteRowIds.length} row${plan.deleteRowIds.length === 1 ? '' : 's'} removed.`, 'success')
+    } catch (e) {
+      refreshAfterCountsChange()
+      showToast(formatErrorMessage(e, 'Could not undo the import'), 'error')
+    }
+  }
+
+  function showImportedToastWithUndo(args: {
+    bidId: string
+    insertedIds: string[]
+    sourceLinkBefore: string | null | undefined
+    sourceLinkWritten: string | null
+    message: string
+  }) {
+    const plan = importUndoPlan({ insertedIds: args.insertedIds, sourceLinkBefore: args.sourceLinkBefore, sourceLinkWritten: args.sourceLinkWritten })
+    if (importUndoIsEmpty(plan)) {
+      showToast(args.message, 'success')
+      return
+    }
+    recordNavClick(authUser?.id, authRole, 'discard_guard_shown', 'counts_import_undo')
+    showActionToast(args.message, { label: 'Undo', onClick: () => void undoCountsImport(args.bidId, plan) }, { durationMs: 10000 })
   }
 
   // Persist the CountTooling source view-link captured from the import payload onto the
   // bid. Non-fatal: the counts themselves already imported; only the link write failed.
   // Set-if-found only — never clears an existing link when a paste has no footer.
-  async function persistCountSourceLink(bidId: string, sourceLink: string | null) {
-    if (!sourceLink) return
+  /** Resolves the link written (for undo), or null when nothing was written. */
+  async function persistCountSourceLink(bidId: string, sourceLink: string | null): Promise<string | null> {
+    if (!sourceLink) return null
     try {
       const rows = await withSupabaseRetry(
         async () => supabase.from('bids').update({ count_tooling_plans_link: sourceLink }).eq('id', bidId).select('id'),
@@ -432,8 +485,10 @@ export function BidsCountsTab({
       )
       if (!updateApplied(rows)) throw new Error(BID_UPDATE_NOT_APPLIED_MESSAGE)
       await onCountSourceLinkSaved?.(bidId)
+      return sourceLink
     } catch (e) {
       showToast(formatErrorMessage(e, 'Imported counts, but failed to save the source link'), 'error')
+      return null
     }
   }
 
@@ -446,7 +501,8 @@ export function BidsCountsTab({
     }
     const bidId = selectedBidForCounts?.id
     if (!bidId) return
-    const { inserted, error } = await insertCountRows(bidId, rows)
+    const sourceLinkBefore = selectedBidForCounts?.count_tooling_plans_link
+    const { inserted, insertedIds, error } = await insertCountRows(bidId, rows)
     if (error) {
       setCountsImportError(`Failed to insert: ${error}`)
       if (inserted > 0) refreshAfterCountsChange()
@@ -455,9 +511,9 @@ export function BidsCountsTab({
     setCountsImportText('')
     setCountsImportOpen(false)
     refreshAfterCountsChange()
-    await persistCountSourceLink(bidId, sourceLink)
+    const sourceLinkWritten = await persistCountSourceLink(bidId, sourceLink)
     const msg = `Imported ${inserted} rows: ${summarizeRowsByUnit(rows)}.${skippedCount > 0 ? ` ${skippedCount} lines skipped.` : ''}`
-    showToast(msg, 'success')
+    showImportedToastWithUndo({ bidId, insertedIds, sourceLinkBefore, sourceLinkWritten, message: msg })
   }
 
   async function handleCountsImportClick() {
@@ -468,16 +524,17 @@ export function BidsCountsTab({
       const trimmed = text.trim()
       const { rows, skippedCount, sourceLink } = parseCountsImportText(trimmed)
       if (rows.length > 0) {
-        const { inserted, error } = await insertCountRows(bidId, rows)
+        const sourceLinkBefore = selectedBidForCounts?.count_tooling_plans_link
+        const { inserted, insertedIds, error } = await insertCountRows(bidId, rows)
         if (error) {
           showToast(`Failed to insert: ${error}`, 'error')
           if (inserted > 0) refreshAfterCountsChange()
           return
         }
         refreshAfterCountsChange()
-        await persistCountSourceLink(bidId, sourceLink)
+        const sourceLinkWritten = await persistCountSourceLink(bidId, sourceLink)
         const msg = `Imported ${inserted} rows: ${summarizeRowsByUnit(rows)}.${skippedCount > 0 ? ` ${skippedCount} lines skipped.` : ''}`
-        showToast(msg, 'success')
+        showImportedToastWithUndo({ bidId, insertedIds, sourceLinkBefore, sourceLinkWritten, message: msg })
         return
       }
       if (trimmed && skippedCount > 0) {

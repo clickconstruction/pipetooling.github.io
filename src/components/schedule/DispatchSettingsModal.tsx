@@ -56,6 +56,19 @@ export function DispatchSettingsModal({
   /** app_settings writes are dev-only per RLS, so the Travel section renders for devs only. */
   const isDev = role === 'dev'
   const [travel, setTravel] = useState<TravelHintsConfig>(TRAVEL_HINTS_DEFAULTS)
+  // Tier-2 #42 (J18-F10): the swim-lane and office-schedule sections are live
+  // list editors that write per row, while the footer's Save covers note
+  // requirements + travel. Rather than pretend Cancel undoes the live half, the
+  // footer says so once either section has written something this open.
+  const [liveSectionWrote, setLiveSectionWrote] = useState(false)
+  const onSwimLanesWrote = useCallback(() => {
+    setLiveSectionWrote(true)
+    onSwimLanesChanged?.()
+  }, [onSwimLanesChanged])
+  const onOfficeRosterWrote = useCallback(() => {
+    setLiveSectionWrote(true)
+    onOfficeRosterChanged?.()
+  }, [onOfficeRosterChanged])
 
   const [requireIds, setRequireIds] = useState<string[]>([])
   const [skipIds, setSkipIds] = useState<string[]>([])
@@ -375,9 +388,14 @@ export function DispatchSettingsModal({
         </div>
         ) : null}
 
-        <DispatchSwimLanesSettingsSection roster={roster} onChanged={onSwimLanesChanged} />
+        <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--text-muted)', borderTop: '1px solid var(--border)', paddingTop: '0.75rem' }}>
+          The two sections below <strong>save as you go</strong> — each change writes for everyone the moment you make
+          it. <strong>Cancel</strong> at the bottom only drops unsaved changes to job instructions{isDev ? ' and travel hints' : ''}.
+        </p>
 
-        <DispatchOfficeRosterSettingsSection onChanged={onOfficeRosterChanged} />
+        <DispatchSwimLanesSettingsSection roster={roster} onChanged={onSwimLanesWrote} />
+
+        <DispatchOfficeRosterSettingsSection onChanged={onOfficeRosterWrote} />
 
         {isDev ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6, borderTop: '1px solid var(--border)', paddingTop: '0.75rem' }}>
@@ -476,11 +494,12 @@ export function DispatchSettingsModal({
             marginTop: '0.25rem',
           }}
         >
-          <div style={{ flex: '1 1 0', display: 'flex', justifyContent: 'flex-start', minWidth: 0 }}>
+          <div style={{ flex: '1 1 0', display: 'flex', alignItems: 'center', gap: '0.5rem', justifyContent: 'flex-start', minWidth: 0 }}>
             <button
               type="button"
               disabled={busy}
               onClick={onClose}
+              title={liveSectionWrote ? 'Lane and office-schedule changes are already saved; this only drops unsaved changes above.' : undefined}
               style={{
                 padding: '0.45rem 1rem',
                 fontSize: '0.875rem',
@@ -492,6 +511,9 @@ export function DispatchSettingsModal({
             >
               Cancel
             </button>
+            {liveSectionWrote ? (
+              <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Lane / office-schedule changes already saved.</span>
+            ) : null}
           </div>
           <div style={{ flex: '1 1 0', display: 'flex', justifyContent: 'flex-end', minWidth: 0 }}>
             <button

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { canNudge, coverageFromCompareRows, deriveRfqChip, deriveRfqTrail, scopeDriftCount, type DeskRfq } from './rfqDesk'
+import { canNudge, coverageFromCompareRows, deriveRfqChip, deriveRfqTrail, rfqReopenStatus, scopeDriftCount, type DeskRfq } from './rfqDesk'
 import { type CompareRow } from './quoteCompare'
 
 const base: DeskRfq = {
@@ -134,5 +134,14 @@ describe('rfqUrgency + sortRfqsByUrgency', () => {
       { ...fresh, id: 'risk', neededBy: '2026-09-06' },
     ]
     expect(sortRfqsByUrgency(rows, now).map((r) => r.id)).toEqual(['bounce-old', 'bounce-new', 'risk', 'fresh', 'quoted'])
+  })
+})
+
+describe('rfqReopenStatus', () => {
+  it('a closed request with a quote on file reopens as quoted', () => {
+    expect(rfqReopenStatus({ hasQuote: true })).toBe('quoted')
+  })
+  it('a closed request with no quote reopens as sent — the link works again', () => {
+    expect(rfqReopenStatus({ hasQuote: false })).toBe('sent')
   })
 })

@@ -4005,17 +4005,6 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
       showToast('Choose a customer before sending.', 'error')
       return
     }
-    // Rail decision 1 (soft gate): a $0 document sends only after a confirm —
-    // schedule-only change orders are legitimate, silent $0 sends are not.
-    if (
-      totalCents === 0 &&
-      !(await confirmDialog({
-        message: isCO ? 'Send with a $0.00 net change to contract?' : 'Send with a $0.00 total?',
-        confirmLabel: 'Send anyway',
-      }))
-    ) {
-      return
-    }
     let sel = customers.find((c) => c.id === customerId)
     if (!sel) {
       try {
@@ -4054,6 +4043,17 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
       showToast('Enter a valid email address.', 'error')
       return
     }
+    // Tier-2 #42 (J17-F4): one confirm that names the recipient — this emails a
+    // real customer. Rail decision 1's $0 soft gate (schedule-only change
+    // orders are legitimate, silent $0 sends are not) folds into the same ask.
+    recordNavClick(user.id, role, 'discard_guard_shown', 'estimate_send')
+    const zeroNote = totalCents === 0 ? (isCO ? ' The net change to contract is $0.00.' : ' The total is $0.00.') : ''
+    const okSend = await confirmDialog({
+      title: isCO ? 'Send for signature?' : 'Send to customer?',
+      message: `Send to ${payloadEmail}?${zeroNote}`,
+      confirmLabel: totalCents === 0 ? 'Send anyway' : 'Send',
+    })
+    if (!okSend) return
     setSending(true)
     try {
       await saveDraft()

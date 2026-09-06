@@ -9,6 +9,7 @@ import {
 } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useNarrowViewport640 } from '../../hooks/useNarrowViewport640'
+import { useModalStackEntry } from '../../hooks/useModalStackEntry'
 import { buildServiceTypeTradePill } from '../../lib/serviceTypeTradePill'
 import { JOB_FORM_SECTION_HEADER_STYLE } from '../../lib/jobFormSectionHeaderStyle'
 import { supabase } from '../../lib/supabase'
@@ -129,6 +130,7 @@ import {
   newJobFormHasBlockingContent,
   paymentRowsFromJob,
 } from '../../lib/jobs/jobFormRows'
+import { newJobDraftIsDirty, type NewJobDraftSnapshot } from '../../lib/jobs/newJobDraftDirty'
 import { moveRowById } from '../../lib/jobs/jobFormReorder'
 import {
   buildJobSegmentsBar,
@@ -282,6 +284,10 @@ export default function JobFormModal({
   const confirmDialog = useConfirmDialog()
   const { showToast } = useToastContext()
   const navigate = useNavigate()
+  // Tier-2 #42 (J1-N1): Escape acts only when this is the topmost open modal, so
+  // closing New Job never also closes the Edit Bid underneath. Embedded in the
+  // Job window the shell owns Escape — no registration.
+  const isTopmostModal = useModalStackEntry(!embedded)
   /** Phone footer layout (v2.1239): status line above one deliberate button row. */
   const narrowViewport = useNarrowViewport640()
   const prefixMap = useLedgerPrefixMap()
@@ -434,6 +440,14 @@ export default function JobFormModal({
   const initialNewJobServiceTypeIdRef = useRef('')
   /** Avoid duplicate applyPrefillFromBid before bidId state updates (e.g. Strict Mode). */
   const newJobPrefillBidAppliedRef = useRef<string | null>(null)
+  // Tier-2 #42 (J1-F2) New Job discard guard: the sheet as it looked once init
+  // (and any bid prefill) landed; closing compares against it. Armed → captured
+  // on the next render so batched state lands first.
+  const newJobInitialSnapshotRef = useRef<NewJobDraftSnapshot | null>(null)
+  const newJobSnapshotArmedRef = useRef(false)
+  const newJobDiscardPromptOpenRef = useRef(false)
+  /** Set right before the post-create close — a saved job is not a discard. */
+  const newJobSkipDiscardGuardRef = useRef(false)
   const [customers, setCustomers] = useState<CustomerRow[]>([])
   const [users, setUsers] = useState<UserRow[]>([])
   const [customerSearch, setCustomerSearch] = useState('')
@@ -585,11 +599,12 @@ export default function JobFormModal({
     if (escCloseBlocked) return
     const onKeyDown = (ev: WindowEventMap['keydown']) => {
       if (ev.key !== 'Escape' || ev.defaultPrevented) return
+      if (!isTopmostModal()) return
       void closeFormRef.current?.()
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [escCloseBlocked])
+  }, [escCloseBlocked, isTopmostModal])
 
   // Job-window embedding: hand the shell the guarded close (autosave flush) so
   // its ✕ routes through the same path as the Close button and Escape.
@@ -1340,6 +1355,64 @@ export default function JobFormModal({
   const jobFormProjectDisconnectRef = useRef<HTMLButtonElement | null>(null)
   const jobFormGoogleDriveInputRef = useRef<HTMLInputElement | null>(null)
 
+  function currentNewJobSnapshot(): NewJobDraftSnapshot {
+    return {
+      jobName,
+      jobAddress,
+      hcpNumber,
+      customerName,
+      customerEmail,
+      customerPhone,
+      dateMet,
+      customerId,
+      bidId,
+      projectId,
+      formServiceTypeId,
+      googleDriveLink,
+      jobPicturesLink,
+      jobPlansLink,
+      fixtures,
+      materials,
+      payments,
+      teamMemberIds,
+    }
+  }
+  // Arm once init finishes in new mode; the capture effect below (same commit,
+  // declared after) then snapshots the post-init sheet. applyPrefillFromBid
+  // re-arms after an import so imported rows are baseline, not dirt.
+  useEffect(() => {
+    if (mode === 'new' && initDone) newJobSnapshotArmedRef.current = true
+  }, [mode, initDone])
+  useEffect(() => {
+    if (mode !== 'new' || !newJobSnapshotArmedRef.current) return
+    newJobSnapshotArmedRef.current = false
+    newJobInitialSnapshotRef.current = currentNewJobSnapshot()
+  })
+
+  /**
+   * Tier-2 #42 (J1-F2): a dirty New Job asks before Cancel / Escape / backdrop
+   * throw it away. Resolves false when the user keeps editing. One prompt at a
+   * time — a second Escape while it's up is ignored rather than re-asking.
+   */
+  async function confirmDiscardNewJobIfDirty(): Promise<boolean> {
+    if (mode !== 'new' || newJobSkipDiscardGuardRef.current) return true
+    if (newJobDiscardPromptOpenRef.current) return false
+    if (!newJobDraftIsDirty(currentNewJobSnapshot(), newJobInitialSnapshotRef.current)) return true
+    newJobDiscardPromptOpenRef.current = true
+    recordNavClick(authUser?.id, authRole, 'discard_guard_shown', 'new_job')
+    try {
+      return await confirmDialog({
+        title: 'Discard this job?',
+        message: 'Nothing has been saved yet — what you typed here will be lost.',
+        confirmLabel: 'Discard',
+        cancelLabel: 'Keep editing',
+        danger: true,
+      })
+    } finally {
+      newJobDiscardPromptOpenRef.current = false
+    }
+  }
+
   /** The original unconditional close: reset transient UI state and unmount. */
   function finishClose() {
     setJobProjectLinkChoiceOpen(false)
@@ -1436,6 +1509,7 @@ export default function JobFormModal({
 
   async function closeForm(): Promise<boolean> {
     if (closeFlushStateRef.current === 'saving') return false
+    if (!(await confirmDiscardNewJobIfDirty())) return false
     for (const slice of editAutosaveSlices) slice.cancelPending()
     if (!editAutosaveSlices.some((s) => s.needsFlush() || s.isRunning()) && !editCloseSideEffectsNeeded()) {
       finishClose()
@@ -1809,6 +1883,8 @@ export default function JobFormModal({
         setGoogleDriveLink((prev) => (prev.trim() ? prev : (b.drive_link ?? '').trim()))
         setJobPlansLink((prev) => (prev.trim() ? prev : (b.plans_link ?? '').trim()))
         showToast('Imported from bid.', 'success')
+        // The import is the new baseline for the discard guard, not the user's typing.
+        newJobSnapshotArmedRef.current = true
       } catch (e) {
         showToast(formatPostgrestOrUnknownError(e, 'Could not load bid'), 'error')
       }
@@ -3205,6 +3281,7 @@ export default function JobFormModal({
           await supabase.from('customers').update({ date_met: dateMet.trim(), date_met_source: 'manual' }).eq('id', customerId)
         }
       }
+      newJobSkipDiscardGuardRef.current = true
       await closeForm()
       onSavedRef.current?.()
     } catch (err: unknown) {

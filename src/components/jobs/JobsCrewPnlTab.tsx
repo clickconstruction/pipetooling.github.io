@@ -21,6 +21,9 @@ import { formatCurrency } from '../../lib/jobs/jobFormatting'
 import { formatDecimalWorkHoursToHhMm } from '../../lib/formatDecimalWorkHoursHhMm'
 import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
 import { APP_SETTINGS_KEY_CREW_PNL_SUB_EQUIVALENT_RATE } from '../../lib/appSettingsKeys'
+import { subRateSaveDecision } from '../../lib/jobs/crewPnlSubRate'
+import { useToastContext } from '../../contexts/ToastContext'
+import { formatErrorMessage } from '../../utils/errorHandling'
 import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 import type { JobWithDetails } from '../../types/jobWithDetails'
 import type { LaborJob } from '../../types/laborJob'
@@ -74,6 +77,7 @@ export default function JobsCrewPnlTab({
   driveTimePerMile: number | null
   onOpenJobDetail: (jobId: string) => void
 }) {
+  const { showToast } = useToastContext()
   const [people, setPeople] = useState<CrewPnlRosterPerson[] | null>(null)
   /** Complete jobs list, all statuses (v2.976) — the shared cache lazily omits Paid in Full. */
   const [allJobs, setAllJobs] = useState<CrewPnlAllJobRow[] | null>(null)
@@ -105,18 +109,32 @@ export default function JobsCrewPnlTab({
     }
   }, [])
 
+  // Tier-2 #42 (J8-F3): the rate is org-wide, so it saves on an explicit Save
+  // (or Enter) — never on blur — and an empty box means "no change", never a
+  // reset to the $50 default. Errors surface instead of vanishing.
+  const rateDecision = subRateSaveDecision(rateDraft, subEquivalentRate)
   async function saveEquivalentRate() {
     if (rateSaving) return
-    const raw = rateDraft.trim()
-    const n = Number(raw)
-    const valueNum = raw !== '' && Number.isFinite(n) && n > 0 ? n : null
+    if (rateDecision.kind === 'keep') {
+      setRateDraft('')
+      return
+    }
+    if (rateDecision.kind === 'invalid') {
+      showToast('Enter a rate above $0 per hour.', 'error')
+      return
+    }
+    const valueNum = rateDecision.value
     setRateSaving(true)
     try {
       const { error } = await supabase
         .from('app_settings')
         .upsert({ key: APP_SETTINGS_KEY_CREW_PNL_SUB_EQUIVALENT_RATE, value_num: valueNum }, { onConflict: 'key' })
       if (error) throw error
-      setSubEquivalentRate(valueNum ?? DEFAULT_SUB_LABOR_EQUIVALENT_RATE)
+      setSubEquivalentRate(valueNum)
+      setRateDraft('')
+      showToast(`Sub rate saved: $${valueNum}/hr for every Crew P&L view.`, 'success')
+    } catch (e) {
+      showToast(formatErrorMessage(e, 'Could not save the sub rate'), 'error')
     } finally {
       setRateSaving(false)
     }
@@ -288,22 +306,32 @@ export default function JobsCrewPnlTab({
           <option value="this_year">This year</option>
           <option value="custom">Custom…</option>
         </select>
-        <label style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }} title="Flat-rate sub sheets count as cost ÷ this rate in equivalent hours — weighing a $3,000 sheet at $30/hr like 100 clocked hours">
-          Sub $/hr eq.
+        <label style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }} title="Flat-rate sub sheets count as cost ÷ this rate in equivalent hours — weighing a $3,000 sheet at $30/hr like 100 clocked hours. One number for the whole company; leave the box empty to keep the current rate.">
+          Org-wide sub rate (applies everywhere) $/hr
           <input
             type="number"
             min={1}
             value={rateDraft}
             onChange={(e) => setRateDraft(e.target.value)}
-            onBlur={() => void saveEquivalentRate()}
             onKeyDown={(e) => {
               if (e.key === 'Enter') void saveEquivalentRate()
+              if (e.key === 'Escape') setRateDraft('')
             }}
             placeholder={String(subEquivalentRate)}
-            aria-label="Sub labor equivalent hourly rate"
+            aria-label="Org-wide sub labor equivalent hourly rate"
             style={{ width: '4.5rem', padding: '0.35rem 0.45rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.8125rem', background: 'var(--surface)', color: 'var(--text-base)' }}
           />
-          {rateSaving ? <span>…</span> : null}
+          {rateDecision.kind !== 'keep' ? (
+            <button
+              type="button"
+              onClick={() => void saveEquivalentRate()}
+              disabled={rateSaving}
+              aria-label={`Save the org-wide sub rate for everyone`}
+              style={{ padding: '0.3rem 0.6rem', fontSize: '0.75rem', fontWeight: 600, background: '#2563eb', color: 'white', border: 'none', borderRadius: 4, cursor: rateSaving ? 'wait' : 'pointer' }}
+            >
+              {rateSaving ? 'Saving…' : 'Save for everyone'}
+            </button>
+          ) : null}
         </label>
         {preset === 'custom' && (
           <>
