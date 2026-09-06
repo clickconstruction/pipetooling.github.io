@@ -19,7 +19,7 @@ Turning it **off** is remembered on that phone even if your role has it on by de
 Your helper gets a replacement phone, signs in, and lands straight on the Job Mode card with {{button:green|Clock In}} on top — no gear menu, no guide. If they'd rather see the whole Dashboard, one gear-menu tap turns Job Mode off for that phone.
 :::
 
-The header also changes: the three task buttons become a **Contact:** row — a green phone button that calls the office, plus {{button:blue|dispatch}}, {{button:purple|estimating}}, and {{button:blue|teammate}} spelled out. On a narrow phone screen they stay as the compact icon buttons, with the phone button on the left.
+The header also changes: the three task buttons become a **Contact:** row — a green phone button that calls the office, plus {{button:blue|dispatch}}, {{button:purple|estimating}}, and {{button:blue|teammate}} spelled out. On a narrow phone screen they stay as the compact icon buttons, with the phone button on the left. The purple one is **Ask estimating** — it sends a question to the estimators; you are not opening anyone's inbox.
 
 ## The Job Mode card
 
@@ -70,6 +70,12 @@ While you're clocked into a job, the card keeps going below the buttons:
 {{gif:job-mode-clocking.gif|Starting the day: the Ready to start card, Start First Job with intent notes, and the clocked-in card}}
 
 - Tap {{button:green|Clock In}} to start your day. If you have a schedule, the card offers your scheduled job; otherwise you can pick a job manually.
+- **Nothing listed?** The sheet says so and stays that way — **Nothing on your schedule today, and no jobs assigned to you** — with dispatch's number to tap and a pointer to the search box. Call, or type the job's name or number.
+
+:::example Day one, no schedule yet
+Your new helper taps {{button:green|Clock In}}. No jobs appear, so the sheet says **Nothing on your schedule today, and no jobs assigned to you — call dispatch at 512 360 0599**. One tap dials the office; dispatch adds the block, and the job shows up as a pick.
+:::
+- Switching jobs from the full Dashboard uses {{button:blue|Update Focus}}: the job you're clocked into is listed first with a {{chip:green|You are here}} tag; tap any other job to switch. The same tag shows on the clock-out review.
 - Moving on? Tap {{button:green|Next Job}} — you'll be asked for brief notes about the job you're leaving, and the sheet shows **where you can go**: your suggested next job is preselected, but you can pick any open job instead, or choose **Done for the day** to clock out.
 - Your location is captured when you punch, and your hours flow to the office automatically for approval.
 

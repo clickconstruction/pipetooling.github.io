@@ -1892,7 +1892,7 @@ pipetooling.github.io/
 
 #### `src/components/Layout.tsx`
 - Main navigation bar
-- **Header action cluster** (right, before calendar/settings icons): **Task Dispatch**, **Estimator Inbox**, **Task** (square icon buttons), and **Bid** (text button for **estimators**) share **`HEADER_ACTION_BUTTON_HEIGHT`** (`calc(1rem + 1.25em)`) and **`headerActionButtonBase`** styles (`height`, `boxSizing: border-box`, flex centering) so icon and label buttons align to one row height.
+- **Header action cluster** (right, before calendar/settings icons): **Task Dispatch**, **Ask estimating** (purple; `HEADER_ASK_ESTIMATING_LABEL` in [`headerTaskDispatchEstimatorEligible.ts`](../src/lib/headerTaskDispatchEstimatorEligible.ts) is the title/aria on both the desktop text pair and the mobile icon pair — v2.2918), **Task** (square icon buttons), and **Bid** (text button for **estimators**) share **`HEADER_ACTION_BUTTON_HEIGHT`** (`calc(1rem + 1.25em)`) and **`headerActionButtonBase`** styles (`height`, `boxSizing: border-box`, flex centering) so icon and label buttons align to one row height.
 - **iOS safe area**: Nav uses `padding-top: max(var(--app-nav-pad-y), env(safe-area-inset-top))` so menu/settings stay below status bar on iOS
 - **Customers on mobile (dev only)**: Devs on mobile see Customers link in hamburger dropdown instead of header icon
 - Role-based link visibility

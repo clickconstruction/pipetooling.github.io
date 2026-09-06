@@ -706,7 +706,7 @@ Route access for the restricted roles above comes from the per-role allowed-path
 
 ### Redirection Rules
 
-**Subcontractors**: Any page except Dashboard/Calendar/Checklist/Settings/Tally/Help → `/dashboard`. On those allowed routes, **Task Dispatch**, **Estimator Inbox**, and **Task** (checklist add) in the header behave like other roles that pass [`headerTaskDispatchEstimatorEligible.ts`](../src/lib/headerTaskDispatchEstimatorEligible.ts) (`helpers` matches — see **helpers** section above).
+**Subcontractors**: Any page except Dashboard/Calendar/Checklist/Settings/Tally/Help → `/dashboard`. On those allowed routes, **Task Dispatch**, **Ask estimating** (the purple estimator-request button — titled "Estimator Inbox" before v2.2918), and **Task** (checklist add) in the header behave like other roles that pass [`headerTaskDispatchEstimatorEligible.ts`](../src/lib/headerTaskDispatchEstimatorEligible.ts) (`helpers` matches — see **helpers** section above).
 
 **Estimators**: Any page except Dashboard/**Map**/Materials/Estimates/**Documents**/Bids/**Customers**/Calendar/Checklist/People/Settings/Tally/Help/Prospects (if enabled) → `/bids`
 
@@ -739,7 +739,7 @@ Converted so far: Jobs Crew P&L / Team Labor / off-strip tabs (primary, superint
 | **Job Mode** (header gear-menu toggle; replaces top of Dashboard with focused **Leave Report** / **Next Job** card driven by today's `job_schedule_blocks` and the open `clock_sessions` row; per-user `localStorage` — **on by default for subcontractor / helpers, off by default for every other role, explicit off stored as `'0'` (v2.2877, `isJobModeEnabled`)**; masters and superintendents get a one-time "Working in the field? Turn on Job Mode" Dashboard card; **[`canLeaveJobFieldReport(role)`](../src/lib/canLeaveJobFieldReport.ts)** gates visibility of the toggle — same predicate as the existing **Leave Report** flows so every role that can file field reports can use Job Mode; **`RECENT_FEATURES.md`** **v2.545**) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | Configure dashboard buttons (Job, Job Labor, Bid, Project, Part, Assembly, New Prospect) | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
 | Task Dispatch (**header**: send `dispatch_requests`; optional job/bid reference — recipients are **Dispatch group** members on Dashboard, not the sender) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Estimator Inbox (**header**: send `estimator_requests`; same “send vs inbox” split as Task Dispatch) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Ask estimating (**header** purple button, `HEADER_ASK_ESTIMATING_LABEL`: send `estimator_requests`; same “send vs inbox” split as Task Dispatch — the office **Estimator Inbox** card is a different surface) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | Dispatch inbox (Dashboard, Quickfill, Checklist Review: open requests, mark closed; **`dispatch_group_members`**, **dev** bypass in [`useDispatchInbox`](../src/hooks/useDispatchInbox.ts); narrow card layout **v2.452**) | ✅ | ❌ | If in Dispatch group | ❌ | ❌ | ❌ | ❌ |
 | Estimator inbox (Dashboard, Checklist Review: open requests, mark closed; **`estimator_group_members`**, **dev** bypass in [`useEstimatorInbox`](../src/hooks/useEstimatorInbox.ts); narrow layout **v2.452**) | ✅ | ❌ | If in Estimator group | ❌ | If in Estimator group | ❌ | ❌ |
 | My Team (pending clock sessions for assigned members; approve/reject/assign job) | ✅ if leader | ✅ if leader | ✅ if leader | ✅ if leader | ✅ if leader | ✅ if leader | ✅ if leader |
