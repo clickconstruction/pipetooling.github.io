@@ -14,6 +14,55 @@ import type { ChecklistCardEvent } from './checklistCardEvents'
 
 export const REVIEW_QUEUE_DAYS = 7
 
+/**
+ * Server-side cap on the queue read. It is applied AFTER the reviewer scope
+ * (v2.2917, J30-N1): the 50 newest rows are the viewer's 50 newest, not the
+ * company's — a master whose cards sat past the 50 newest company-wide
+ * completions used to see none of them, and TO SIGN OFF undercounted.
+ */
+export const REVIEW_QUEUE_LIMIT = 50
+
+export type ReviewQueueScope = { currentUserId: string; isDev: boolean }
+
+/**
+ * Select list for the queue read. Non-devs embed `checklist_items!inner` so
+ * the reviewer filter on the item (see `reviewQueueServerFilters`) drops the
+ * parent instance row too; devs see every item and keep the left join, so an
+ * instance whose item is unreadable still renders as "Untitled".
+ */
+export function reviewQueueSelect(isDev: boolean): string {
+  const embed = isDev ? 'checklist_items' : 'checklist_items!inner'
+  return `id, checklist_item_id, scheduled_date, completed_at, completed_by_user_id, reviewed_at, ${embed}(title, created_by_user_id, notify_on_complete_user_id, roadmap_group_task_id)`
+}
+
+/**
+ * PostgREST `or` filter strings the section applies BEFORE `.limit()`.
+ * `reviewerOr` targets the embedded `checklist_items` (pass it with
+ * `{ referencedTable: 'checklist_items' }`); null for devs, who review all.
+ * `completerOr` is top-level: nobody self-reviews, but a row with no recorded
+ * completer still queues. User ids are UUIDs, so interpolating them is safe.
+ */
+export function reviewQueueServerFilters(scope: ReviewQueueScope): { reviewerOr: string | null; completerOr: string } {
+  const id = scope.currentUserId
+  return {
+    reviewerOr: scope.isDev ? null : `created_by_user_id.eq.${id},notify_on_complete_user_id.eq.${id}`,
+    completerOr: `completed_by_user_id.is.null,completed_by_user_id.neq.${id}`,
+  }
+}
+
+/**
+ * In-memory mirror of `reviewQueueSelect` + `reviewQueueServerFilters` — what
+ * the server keeps. Tests pin it to `buildReviewQueueRows`' own scope so the
+ * two can't drift.
+ */
+export function matchesReviewQueueScope(inst: ReviewQueueInstance, scope: ReviewQueueScope): boolean {
+  if (inst.completed_by_user_id === scope.currentUserId) return false
+  if (scope.isDev) return true
+  const item = inst.checklist_items
+  if (!item) return false
+  return item.created_by_user_id === scope.currentUserId || item.notify_on_complete_user_id === scope.currentUserId
+}
+
 export function reviewQueueCutoffIso(now: Date = new Date()): string {
   return new Date(now.getTime() - REVIEW_QUEUE_DAYS * 86_400_000).toISOString()
 }
