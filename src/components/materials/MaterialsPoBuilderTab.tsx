@@ -7,6 +7,7 @@ import type { MaterialTemplate, TemplateItemWithDetails } from '../../hooks/useM
 import { loadPOItemsWithDetails, type PurchaseOrderWithItems } from '../../lib/materials/poItemDetails'
 import { supabase } from '../../lib/supabase'
 import { TemplatePricesManager } from './TemplatePricesManager'
+import { MaterialsPoLaneSignpost } from './MaterialsPoLaneSignpost'
 
 type SupplyHouse = Database['public']['Tables']['supply_houses']['Row']
 
@@ -16,6 +17,8 @@ export type MaterialsPoBuilderTabProps = {
   active: boolean
   setActiveTab: (tab: MaterialsTabKey) => void
   setSearchParams: (update: (prev: URLSearchParams) => URLSearchParams, opts?: { replace?: boolean }) => void
+  /** Signpost link to PO Generator (counter codes); omitted for roles that cannot open that tab. */
+  onOpenPoGenerator?: () => void
   // Assembly engine (parent-owned)
   selectedTemplate: MaterialTemplate | null
   setSelectedTemplate: Dispatch<SetStateAction<MaterialTemplate | null>>
@@ -129,6 +132,7 @@ export function MaterialsPoBuilderTab(props: MaterialsPoBuilderTabProps) {
     active,
     setActiveTab,
     setSearchParams,
+    onOpenPoGenerator,
     selectedTemplate,
     setSelectedTemplate,
     templateItems,
@@ -228,6 +232,8 @@ export function MaterialsPoBuilderTab(props: MaterialsPoBuilderTabProps) {
   if (!active) return null
 
   return (
+        <div>
+        <MaterialsPoLaneSignpost lane="assemblies-po" onOpenPoGenerator={onOpenPoGenerator} />
         <div className="po-builder-grid" style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: '2rem' }}>
           {/* Left Panel: Material Assemblies */}
           <div>
@@ -1185,6 +1191,6 @@ export function MaterialsPoBuilderTab(props: MaterialsPoBuilderTabProps) {
             )}
           </div>
         </div>
-
+        </div>
   )
 }

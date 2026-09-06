@@ -5,6 +5,7 @@ import { useLedgerPrefixMap } from '../../contexts/LedgerDisplayPrefixContext'
 import { UnifiedSearchResultRow } from '../search/UnifiedSearchResultRow'
 import { useJobBidSearchEvidence } from '../../hooks/useJobBidSearchEvidence'
 import { isAssistantLike } from '../../lib/subcontractorLikeRole'
+import { MaterialsPoLaneSignpost } from './MaterialsPoLaneSignpost'
 import { withSupabaseRetry, formatErrorMessage } from '../../utils/errorHandling'
 import { useToastContext } from '../../contexts/ToastContext'
 import type { Database } from '../../types/database'
@@ -283,6 +284,7 @@ export function MaterialsPoGeneratorTab({
 
   return (
     <div>
+      <MaterialsPoLaneSignpost lane="po-generator" />
       <div
         style={{
           border: '1px solid var(--border)',

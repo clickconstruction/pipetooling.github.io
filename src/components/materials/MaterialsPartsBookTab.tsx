@@ -1,6 +1,6 @@
 import { Fragment, type Dispatch, type SetStateAction } from 'react'
 import type { Database } from '../../types/database'
-import { computeLoadAllDisplayParts } from '../../lib/materials/materialsFilters'
+import { computeLoadAllDisplayParts, manufacturerFacetOptions } from '../../lib/materials/materialsFilters'
 import type { PartType, PartWithPrices } from '../../hooks/useMaterialsCatalog'
 
 type MaterialPart = Database['public']['Tables']['material_parts']['Row']
@@ -88,8 +88,8 @@ export function MaterialsPartsBookTab({
     ? computeLoadAllDisplayParts(allParts, { filterPartTypeId, filterManufacturer, clientSearchQuery, sortByPriceCountAsc })
     : sortedParts
 
-  // Get unique manufacturers for filters
-  const manufacturers = [...new Set((allParts.length > 0 ? allParts : parts).map(p => p.manufacturer).filter(Boolean))].sort()
+  // One facet option per manufacturer, however the rows spell it ("WATTS" / "watts" → one chip; v2.2903)
+  const manufacturers = manufacturerFacetOptions(allParts.length > 0 ? allParts : parts)
 
   if (!active) return null
 
@@ -99,8 +99,13 @@ export function MaterialsPartsBookTab({
             <button type="button" onClick={openAddPart} style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}>
               Add Part
             </button>
-            <button type="button" onClick={openSupplyHousesModal} style={{ padding: '0.5rem 1rem', background: '#059669', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}>
-              Supply Houses
+            <button
+              type="button"
+              onClick={openSupplyHousesModal}
+              title="How much of each service type's Parts Book has a price, per supply house — plus the supply-house list"
+              style={{ padding: '0.5rem 1rem', background: '#059669', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}
+            >
+              Price coverage
             </button>
             <input
               type="text"

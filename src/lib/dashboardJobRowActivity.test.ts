@@ -37,6 +37,12 @@ describe('formatTimeSince', () => {
     expect(formatTimeSince('2026-06-24T12:00:00Z', NOW)).toBe('3 weeks')
   })
 
+  it('never says "0 months": 28–29 days are "4 weeks" (v2.2903, J29-F6)', () => {
+    expect(formatTimeSince(new Date(NOW.getTime() - 28 * 86_400_000).toISOString(), NOW)).toBe('4 weeks')
+    expect(formatTimeSince(new Date(NOW.getTime() - 29 * 86_400_000).toISOString(), NOW)).toBe('4 weeks')
+    expect(formatTimeSince(new Date(NOW.getTime() - 30 * 86_400_000).toISOString(), NOW)).toBe('1 month')
+  })
+
   it('formats months under a year (30-day months)', () => {
     expect(formatTimeSince('2026-06-15T12:00:00Z', NOW)).toBe('1 month')
     expect(formatTimeSince('2025-09-17T12:00:00Z', NOW)).toBe('10 months')

@@ -51,14 +51,17 @@ describe('compactTimeAgo', () => {
     expect(compactTimeAgo(isoDaysAgo(6), NOW)).toBe('6d ago')
   })
 
-  it('formats weeks as "Nw ago" (7-27 days)', () => {
+  it('formats weeks as "Nw ago" (7-29 days) — never "0mo ago" (v2.2903, J29-F6/N3)', () => {
     expect(compactTimeAgo(isoDaysAgo(7), NOW)).toBe('1w ago')
     expect(compactTimeAgo(isoDaysAgo(21), NOW)).toBe('3w ago')
     expect(compactTimeAgo(isoDaysAgo(27), NOW)).toBe('3w ago')
+    expect(compactTimeAgo(isoDaysAgo(28), NOW)).toBe('4w ago')
+    expect(compactTimeAgo(isoDaysAgo(29), NOW)).toBe('4w ago')
+    expect(compactTimeAgo(isoDaysAgo(29.9), NOW)).toBe('4w ago')
   })
 
-  it('formats months as "Nmo ago" (28 days through ~12 months)', () => {
-    // 30-day month boundary kicks in at ~30d (2592000000 ms / 30d)
+  it('formats months as "Nmo ago" (30 days through ~12 months)', () => {
+    // 30-day month boundary kicks in at 30d (2592000000 ms / 30d)
     expect(compactTimeAgo(isoDaysAgo(30), NOW)).toBe('1mo ago')
     expect(compactTimeAgo(isoDaysAgo(120), NOW)).toBe('4mo ago')
   })
@@ -88,6 +91,13 @@ describe('longTimeAgoPhrase', () => {
     expect(longTimeAgoPhrase(isoHoursAgo(23), NOW)).toBe('23 hours ago')
     expect(longTimeAgoPhrase(isoDaysAgo(1), NOW)).toBe('1 day ago')
     expect(longTimeAgoPhrase(isoDaysAgo(2), NOW)).toBe('2 days ago')
+  })
+
+  it('never says "0 months ago": 28–29 days read as weeks, 30 days as 1 month (v2.2903, J29-F6)', () => {
+    expect(longTimeAgoPhrase(isoDaysAgo(27), NOW)).toBe('3 weeks ago')
+    expect(longTimeAgoPhrase(isoDaysAgo(28), NOW)).toBe('4 weeks ago')
+    expect(longTimeAgoPhrase(isoDaysAgo(29), NOW)).toBe('4 weeks ago')
+    expect(longTimeAgoPhrase(isoDaysAgo(30), NOW)).toBe('1 month ago')
   })
 })
 

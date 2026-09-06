@@ -25,6 +25,9 @@ export type SubcontractorLastActivityFields = {
  * - < 1 minute ago or any future instant → `just now`
  * - else → `5m ago / 23h ago / 2d ago / 3w ago / 4mo ago / 1y ago`
  *
+ * Weeks run through day 29 (so 28–29 days is `4w ago`, never `0mo ago`); the
+ * 30-day month starts at day 30 (v2.2903, J29-F6/N3).
+ *
  * `mo` (months) is two letters to avoid colliding with `m` (minutes).
  */
 export function compactTimeAgo(iso: string | null | undefined, now?: Date): string {
@@ -46,7 +49,7 @@ export function compactTimeAgo(iso: string | null | undefined, now?: Date): stri
   if (diffMins < 60) return `${diffMins}m ago`
   if (diffHours < 24) return `${diffHours}h ago`
   if (diffDays < 7) return `${diffDays}d ago`
-  if (diffWeeks < 4) return `${diffWeeks}w ago`
+  if (diffDays < 30) return `${diffWeeks}w ago`
   if (diffMonths < 12) return `${diffMonths}mo ago`
   return `${Math.floor(diffMonths / 12)}y ago`
 }
@@ -73,7 +76,7 @@ export function longTimeAgoPhrase(iso: string | null | undefined, now?: Date): s
   if (diffMins < 60) return plural(diffMins, 'minute')
   if (diffHours < 24) return plural(diffHours, 'hour')
   if (diffDays < 7) return plural(diffDays, 'day')
-  if (diffWeeks < 4) return plural(diffWeeks, 'week')
+  if (diffDays < 30) return plural(diffWeeks, 'week')
   if (diffMonths < 12) return plural(diffMonths, 'month')
   const diffYears = Math.floor(diffMonths / 12)
   return plural(diffYears, 'year')

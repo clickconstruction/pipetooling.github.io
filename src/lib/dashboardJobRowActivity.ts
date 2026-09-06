@@ -29,7 +29,7 @@ export function formatTimeSince(iso: string | null, now: Date = new Date()): str
   if (diffMins < 60) return `${diffMins} minute${diffMins !== 1 ? 's' : ''}`
   if (diffHours < 24) return `${diffHours} hour${diffHours !== 1 ? 's' : ''}`
   if (diffDays < 7) return `${diffDays} day${diffDays !== 1 ? 's' : ''}`
-  if (diffWeeks < 4) return `${diffWeeks} week${diffWeeks !== 1 ? 's' : ''}`
+  if (diffDays < 30) return `${diffWeeks} week${diffWeeks !== 1 ? 's' : ''}`
   if (diffMonths < 12) return `${diffMonths} month${diffMonths !== 1 ? 's' : ''}`
   return `${Math.floor(diffMonths / 12)} year${Math.floor(diffMonths / 12) !== 1 ? 's' : ''}`
 }

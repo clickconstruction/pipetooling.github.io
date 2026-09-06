@@ -75,7 +75,9 @@ import { useDispatchModeEnabled } from '../hooks/useDispatchModeEnabled'
 import { useFirstAssistantDispatchPhone } from '../hooks/useFirstAssistantDispatchPhone'
 import {
   DISPATCH_MODE_PO_CHANGED_EVENT,
+  dispatchModePoRoleAllowed as dispatchModePoRoleAllowed_,
   readDispatchModePoEnabled,
+  resolveDispatchModePoEnabled,
   writeDispatchModePoEnabled,
 } from '../lib/dispatchModePoToggle'
 import { DispatchModeFooter, DispatchModeFooterLive, DISPATCH_MODE_FOOTER_HEIGHT_PX } from './dispatchMode/DispatchModeFooter'
@@ -204,9 +206,9 @@ export default function Layout() {
     window.addEventListener(DISPATCH_MODE_PO_CHANGED_EVENT, onChange)
     return () => window.removeEventListener(DISPATCH_MODE_PO_CHANGED_EVENT, onChange)
   }, [authUser?.id])
-  const dispatchModePoRoleAllowed = role === 'dev' || role === 'master_technician' || role === 'assistant'
-  // No explicit choice yet → assistants get the tab by default; everyone else opts in.
-  const dispatchModePoEnabled = dispatchModePoStored ?? isAssistantLike(role)
+  const dispatchModePoRoleAllowed = dispatchModePoRoleAllowed_(role)
+  // No explicit choice yet → the daily minters (assistants, master technicians) get the tab; dev opts in (v2.2903).
+  const dispatchModePoEnabled = resolveDispatchModePoEnabled(dispatchModePoStored, role)
   const dispatchModePoTabActive = dispatchModeActive && dispatchModePoRoleAllowed && dispatchModePoEnabled
   const { gateOpen: dailyGoalsGateOpen } = useDailyGoalsGate()
   const [impersonating, setImpersonating] = useState(

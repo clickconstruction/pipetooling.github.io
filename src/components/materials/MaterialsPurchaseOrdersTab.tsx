@@ -8,6 +8,7 @@ import { buildPOForSupplyHousePrintHtml, buildPOPrintHtml } from '../../lib/mate
 import { formatCurrency } from '../../lib/format'
 import { formatTimeSinceAgo } from '../../lib/formatTimeSinceAgo'
 import { SupplyHouseWebsiteLink } from '../SupplyHouseWebsiteLink'
+import { MaterialsPoLaneSignpost } from './MaterialsPoLaneSignpost'
 
 type SupplyHouse = Database['public']['Tables']['supply_houses']['Row']
 type PurchaseOrder = Database['public']['Tables']['purchase_orders']['Row']
@@ -23,6 +24,8 @@ export type MaterialsPurchaseOrdersTabProps = {
   selectedServiceTypeId: string
   setError: (message: string | null) => void
   setActiveTab: (tab: MaterialsTabKey) => void
+  /** Signpost link to PO Generator (counter codes); omitted for roles that cannot open that tab. */
+  onOpenPoGenerator?: () => void
   /** Parent-owned scroll anchor: the ?po= deep-link router scrolls to it. */
   selectedPODetailRef: RefObject<HTMLDivElement>
   // PO engine (useMaterialsPurchaseOrders, parent-owned)
@@ -75,6 +78,7 @@ export function MaterialsPurchaseOrdersTab({
   selectedServiceTypeId,
   setError,
   setActiveTab,
+  onOpenPoGenerator,
   selectedPODetailRef,
   allPOs,
   selectedPO,
@@ -485,6 +489,7 @@ export function MaterialsPurchaseOrdersTab({
 
   return (
         <div>
+          <MaterialsPoLaneSignpost lane="purchase-orders" onOpenPoGenerator={onOpenPoGenerator} />
           {/* Selected PO section (inline, above Search) */}
           {selectedPO && (
             <div ref={selectedPODetailRef} style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '1.5rem 2rem', background: 'var(--surface)', marginBottom: '1.5rem' }}>
