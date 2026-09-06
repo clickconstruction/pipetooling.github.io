@@ -5,6 +5,8 @@ import { HOURS_GRID_FIRST_COL_LABEL } from '../../constants/hoursGridFirstCol'
 import { decimalToHms, hmsToDecimal } from '../../lib/people/hoursGridTime'
 import { shouldOfferManualHoursSession } from '../../lib/people/shouldOfferManualHoursSession'
 import { formatDaySheetDayLabel, hoursGridCellStatus } from '../../lib/people/hoursGridDaySheet'
+import { type HoursGridLiveByWorkDate, liveDayChipLabel, liveDayChipTitle } from '../../lib/people/hoursGridLiveByCell'
+import { pendingCellChipAriaLabel, pendingCellChipTitle } from '../../lib/people/hoursGridPendingChipCopy'
 import { useNarrowViewport640 } from '../../hooks/useNarrowViewport640'
 import {
   type PeopleHoursPendingByCellMap,
@@ -22,6 +24,8 @@ export interface PeopleHoursGridProps {
   hoursDays: string[]
   showPeopleForHours: string[]
   peopleHoursPendingByCellMap: PeopleHoursPendingByCellMap
+  /** Open sessions per day column (J7-4): the header says "+N on the clock" because the cells count closed sessions only. */
+  liveByWorkDate: HoursGridLiveByWorkDate
   jobHighlightPeople: Set<string>
   jobHighlightCells: Set<string>
   hoursFlashWorkDate: string | null
@@ -54,6 +58,7 @@ export function PeopleHoursGrid({
   hoursDays,
   showPeopleForHours,
   peopleHoursPendingByCellMap,
+  liveByWorkDate,
   jobHighlightPeople,
   jobHighlightCells,
   hoursFlashWorkDate,
@@ -123,6 +128,7 @@ export function PeopleHoursGrid({
           </th>
           {hoursDays.map((d) => {
             const dayHasPending = workDateHasAnyPendingExcess(peopleHoursPendingByCellMap, d)
+            const liveDay = liveByWorkDate.get(d)
             return (
               <th
                 key={d}
@@ -160,6 +166,23 @@ export function PeopleHoursGrid({
                     />
                   ) : null}
                 </span>
+                {liveDay ? (
+                  <span
+                    title={liveDayChipTitle(liveDay)}
+                    aria-label={liveDayChipTitle(liveDay)}
+                    style={{
+                      display: 'block',
+                      marginTop: 2,
+                      fontSize: '0.65rem',
+                      fontWeight: 600,
+                      lineHeight: 1.2,
+                      color: 'var(--text-green-700)',
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    {liveDayChipLabel(liveDay)}
+                  </span>
+                ) : null}
               </th>
             )
           })}
@@ -480,8 +503,8 @@ export function PeopleHoursGrid({
                     {!isNarrow && showPendingBadge && pendingEntry ? (
                       <button
                         type="button"
-                        aria-label={`${pendingEntry.count} pending session${pendingEntry.count === 1 ? '' : 's'} for ${personName} on ${d} — adds ${pendingEntry.diffHours.toFixed(2)} hours to payroll. Click to review and approve.`}
-                        title={`+${pendingEntry.diffHours.toFixed(2)} h pending — click to approve`}
+                        aria-label={pendingCellChipAriaLabel({ personName, workDate: d, count: pendingEntry.count, diffHours: pendingEntry.diffHours })}
+                        title={pendingCellChipTitle(pendingEntry)}
                         onClick={(e) => {
                           e.stopPropagation()
                           const target = e.currentTarget

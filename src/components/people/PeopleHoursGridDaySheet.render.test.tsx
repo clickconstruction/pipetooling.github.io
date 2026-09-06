@@ -47,6 +47,7 @@ describe('PeopleHoursGrid mobile day sheet', () => {
         hoursDays={[DAY]}
         showPeopleForHours={[PERSON]}
         peopleHoursPendingByCellMap={pendingMap}
+        liveByWorkDate={new Map()}
         jobHighlightPeople={new Set()}
         jobHighlightCells={new Set()}
         hoursFlashWorkDate={null}

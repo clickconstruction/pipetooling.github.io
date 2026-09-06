@@ -132,6 +132,8 @@ import { HoursUnassignedModal } from '../components/HoursUnassignedModal'
 import { MatchClockSessionsModal, fetchUnassignedClockSessionCount } from '../components/people/MatchClockSessionsModal'
 import { PeopleHoursDayAuditModal } from '../components/PeopleHoursDayAuditModal'
 import { PeopleHoursDashboardClockStrip } from '../components/people/PeopleHoursDashboardClockStrip'
+import { buildHoursGridLiveByWorkDate } from '../lib/people/hoursGridLiveByCell'
+import { buildHoursGridRoster } from '../lib/people/hoursGridRoster'
 import { ClockSessionEditSplitModal } from '../components/ClockSessionEditSplitModal'
 import { DashboardMyTimeDayEditorModal } from '../components/DashboardMyTimeDayEditorModal'
 import { ReviewHoursModal } from '../components/ReviewHoursModal'
@@ -2314,10 +2316,13 @@ export default function People() {
         )
       }
       if (canAccessPay) {
-        loads.push(
-          loadTeams(),
-          loadArchivedUserNames(),
-        )
+        loads.push(loadTeams())
+      }
+      // J7-6: the archived-name set decides which pay-config rows the grid hides. It used to load
+      // only under canAccessPay, so an hours-only assistant saw every archived helper as a
+      // zero-hour row the owner's grid did not have. Every viewer who can open the grid loads it.
+      if (canAccessHours || canAccessPay) {
+        loads.push(loadArchivedUserNames())
       }
       void Promise.all(loads).finally(() => setHoursTabLoading(false))
     }, 80)
@@ -2891,24 +2896,14 @@ export default function People() {
     if (workDate > hoursDateEnd) setHoursDateEnd(workDate)
   }
 
-  const showPeopleForHours = Object.keys(payConfig)
-    .filter((n) => !archivedUserNames.has(n.trim()))
-    .sort((a, b) => {
-      const orderA = hoursDisplayOrder[a] ?? 999999
-      const orderB = hoursDisplayOrder[b] ?? 999999
-      return orderA !== orderB ? orderA - orderB : a.localeCompare(b)
-    })
+  // One roster for every role (J7-6): pay-config keys minus archived accounts, org display order.
+  // The archived set now loads for hours-only viewers too (see the hours-tab load cycle).
+  const showPeopleForHours = buildHoursGridRoster({ payConfigNames: Object.keys(payConfig), archivedUserNames, displayOrder: hoursDisplayOrder })
   const addSessionPeople = useMemo(
     () => buildAddSessionPeople(showPeopleForHours, users),
     [showPeopleForHours, users],
   )
-  const showPeopleForMatrixBase = Object.keys(payConfig)
-    .filter((n) => !archivedUserNames.has(n.trim()))
-    .sort((a, b) => {
-      const orderA = hoursDisplayOrder[a] ?? 999999
-      const orderB = hoursDisplayOrder[b] ?? 999999
-      return orderA !== orderB ? orderA - orderB : a.localeCompare(b)
-    })
+  const showPeopleForMatrixBase = showPeopleForHours
 
   // Cost-desc, the old cost-matrix default order — Due summaries keep reading this list.
   const showPeopleForMatrix = [...showPeopleForMatrixBase].sort((a, b) => {
@@ -3052,6 +3047,19 @@ export default function People() {
       }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [pendingClockSessions, peopleHours, showPeopleForHours, hoursDays, users, payConfig],
+  )
+  /** People → Hours (J7-4): open sessions per day column, so the header can say "+N on the clock" next to a closed-sessions-only total. */
+  const hoursGridLiveByWorkDate = useMemo(
+    () =>
+      buildHoursGridLiveByWorkDate({
+        activeClockSessions,
+        peopleNames: showPeopleForHours,
+        workDates: hoursDays,
+        users,
+        nowMs: Date.now(),
+      }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- showPeopleForHours is rebuilt each render; payConfig/archived/order are its inputs
+    [activeClockSessions, hoursDays, users, payConfig, archivedUserNames, hoursDisplayOrder],
   )
   const peopleHoursPendingSummary = useMemo(
     () => summarizePeopleHoursPendingByCell(peopleHoursPendingByCellMap),
@@ -3953,6 +3961,7 @@ export default function People() {
                 hoursDays={hoursDays}
                 showPeopleForHours={showPeopleForHours}
                 peopleHoursPendingByCellMap={peopleHoursPendingByCellMap}
+                liveByWorkDate={hoursGridLiveByWorkDate}
                 jobHighlightPeople={jobHighlightPeople}
                 jobHighlightCells={jobHighlightCells}
                 hoursFlashWorkDate={hoursFlashWorkDate}

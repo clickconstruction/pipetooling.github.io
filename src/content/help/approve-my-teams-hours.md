@@ -2,7 +2,7 @@
 title: approve my team's hours
 category: Field
 roles: subcontractor, helpers, master_technician, assistant, controller
-keywords: my team, approve hours, pending sessions, clock sessions, team lead, approve all, long day, clock strip pill, salary flat hours, midnight, who can approve
+keywords: my team, approve hours, pending sessions, clock sessions, team lead, approve all, long day, clock strip pill, salary flat hours, midnight, who can approve, on the clock, click to review, hours grid
 order: 67
 ---
 If you lead a team, your Dashboard has a **My Team** section where your members' clock sessions come to you for approval. The header wears an amber chip — {{chip:yellow|7 to approve}} — whenever hours are waiting, even while the section is collapsed.
@@ -40,7 +40,7 @@ A session longer than **12 hours** wears an amber **⚠ long day** tag — like 
 
 Office roles (assistant, controller, master) approve from more than the My Team card — every one of these adds the hours to payroll the same way, through the same rule:
 
-- **People → Hours** — the amber banner's {{button:amber|Review & approve}} (the week on screen), the {{button:outline-amber|All weeks}} queue, the {{chip:yellow|+9.5 h pending}} chip on a grid cell (opens a small popover with its own Approve), and the per-session {{button:green|Approve}} in the Clock sessions list.
+- **People → Hours** — the amber banner's {{button:amber|Review & approve}} (the week on screen), the {{button:outline-amber|All weeks}} queue, the {{chip:yellow|+9.5 h pending}} chip on a grid cell (its tooltip says *click to review* — it opens a small popover, and the Approve button is in there), and the per-session {{button:green|Approve}} in the Clock sessions list. While people are still clocked in, the day's column header adds a green **+3 on the clock** line: the grid totals count finished sessions only, so those hours land in the cell when they clock out — the clock strip above the grid is where the live ones show.
 - **The clock strip** on the Dashboard, People → Hours, and Quickfill → People Hours — the small square pill beside a finished session. A short click asks first — *"Approve Paige's session (7:12 AM – 3:40 PM)? This adds the hours to payroll."* — so a slip on the tiny pill never writes silently. Long-press (or Shift+click) still opens **Session actions** for Approve, Reject, Edit.
 - **People → Users** — the hours cell on a person's row opens their all-weeks queue.
 - **Moneyfill → Sessions pending approval** — the same Sunday–Saturday pay week Draft Payroll opens to.

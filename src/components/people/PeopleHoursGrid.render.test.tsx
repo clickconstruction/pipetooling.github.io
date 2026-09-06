@@ -28,6 +28,7 @@ function renderGrid(overrides?: {
       hoursDays={[DAY]}
       showPeopleForHours={[PERSON]}
       peopleHoursPendingByCellMap={new Map()}
+      liveByWorkDate={new Map()}
       jobHighlightPeople={new Set()}
       jobHighlightCells={new Set()}
       hoursFlashWorkDate={null}
