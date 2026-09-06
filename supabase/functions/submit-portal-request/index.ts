@@ -1,5 +1,6 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { askProblem } from '../_shared/stageAsk.ts'
+import { todayYmdInAppTz } from '../_shared/appTimeZone.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { sendEmailViaResend } from '../_shared/resendSendEmail.ts'
 
@@ -115,7 +116,7 @@ serve(async (req) => {
       const end = typeof body.end === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(body.end) ? body.end : null
       const note = typeof body.note === 'string' ? body.note.trim().slice(0, 500) : ''
       if (!stageId || !start || !end) return jsonResponse({ error: 'Pick both days.' }, 400)
-      const todayYmd = new Date().toISOString().slice(0, 10)
+      const todayYmd = todayYmdInAppTz()
       const problem = askProblem(start, end, todayYmd)
       if (problem) return jsonResponse({ error: problem }, 400)
       // The window by id, or every window in the bundle.
