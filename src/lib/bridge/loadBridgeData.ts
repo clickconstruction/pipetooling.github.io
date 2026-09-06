@@ -256,7 +256,10 @@ export async function loadBridgeData(): Promise<BridgeData> {
             .from('supply_house_invoice_job_allocations')
             .select('invoice_id, job_id, pct')
             .in('invoice_id', chunk)
-            .order('id')
+            // The allocation table has no `id` (PK is invoice_id + job_id); ordering by a
+            // missing column failed the whole Bridge load (X17 walk, 2026-09-06).
+            .order('invoice_id')
+            .order('job_id')
             .range(from, to),
         'bridge supply allocations',
       )) as SupplyAllocRow[] | null,
