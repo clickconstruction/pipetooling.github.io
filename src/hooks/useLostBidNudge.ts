@@ -1,14 +1,20 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { withSupabaseRetry } from '../utils/errorHandling'
-import { buildLostBidNudge, type LostBidNudge } from '../lib/dashboardLostBidNudge'
+import { lostBidNudgeFromCounts, type LostBidNudge } from '../lib/dashboardLostBidNudge'
+import { bidSentCounts, type BidSentCountsBid, type BidSentScope } from '../lib/bids/bidSentCounts'
+
+/** The Dashboard card is company-wide by design — the label it wears (Tier-2 #20). */
+export const LOST_BID_NUDGE_SCOPE: BidSentScope = { kind: 'all' }
 
 /**
  * Lost-bids-missing-reason nudge data (v2.2347): the whole-team queue, matching
  * the Why we lost lens — most lost bids have someone else (or nobody) as
  * estimator/account man, so a personal filter would hide the backlog from the
- * person clearing it. Same query the Dashboard quick row runs inline; when the
- * Needs You follow-ups touch that file next, point it here too.
+ * person clearing it. Tier-2 #20: one hook for the Dashboard quick row AND the
+ * Quickfill twin, reading the one count kernel (`bidSentCounts`, scope `all`) so
+ * the card's number is the `/bids` lens number summed over every trade pill —
+ * adopted bids excluded here as they are there.
  */
 export function useLostBidNudge(enabled: boolean): { nudge: LostBidNudge | null; loading: boolean } {
   const [nudge, setNudge] = useState<LostBidNudge | null>(null)
@@ -28,14 +34,14 @@ export function useLostBidNudge(enabled: boolean): { nudge: LostBidNudge | null;
           async () =>
             supabase
               .from('bids')
-              .select('loss_category, bid_value')
+              .select('id, outcome, bid_date_sent, loss_category, bid_value, service_type_id, adopted_into_bid_id')
               .eq('outcome', 'lost')
               .limit(1000),
           'quickfill lost bids missing loss reason',
         )
         if (cancelled) return
-        const rows = (rawRows ?? []) as Array<{ loss_category: string | null; bid_value: number | null }>
-        setNudge(buildLostBidNudge(rows))
+        const rows = (rawRows ?? []) as BidSentCountsBid[]
+        setNudge(lostBidNudgeFromCounts(bidSentCounts(rows, { scope: LOST_BID_NUDGE_SCOPE })))
       } catch {
         if (!cancelled) setNudge(null)
       } finally {

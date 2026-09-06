@@ -1,11 +1,13 @@
 import { formatLostBidNudgeValue, type LostBidNudge } from '../lib/dashboardLostBidNudge'
+import { LOST_BID_NUDGE_SCOPE } from '../hooks/useLostBidNudge'
+import { withScopeLabel } from '../lib/bids/bidSentCounts'
 
 /**
  * Dashboard nudge into the Why we lost lens — why-we-lost train PR 4 (v2.1800).
  *
- * Threshold-gated upstream (buildLostBidNudge returns null below
- * LOST_BID_NUDGE_MIN_COUNT), personal (bids where the viewer is estimator or
- * account man), and it counts by `loss_category` like the lens queue does.
+ * Threshold-gated upstream (`lostBidNudgeFromCounts` returns null below
+ * LOST_BID_NUDGE_MIN_COUNT), company-wide (every trade — the title says so, Tier-2 #20),
+ * and it counts by `loss_category` like the lens queue does.
  * Renders nothing while loading or when the nudge is null.
  */
 
@@ -20,7 +22,7 @@ export default function DashboardLostBidsMissingReasonBanner({ nudge, loading, o
     return null
   }
   const { count, value } = nudge
-  const ariaLabel = `Start call mode for ${count} lost bid${count === 1 ? '' : 's'} with no reason recorded`
+  const ariaLabel = withScopeLabel(`Start call mode for ${count} lost bid${count === 1 ? '' : 's'} with no reason recorded`, LOST_BID_NUDGE_SCOPE)
   return (
     <button
       type="button"
@@ -63,7 +65,7 @@ export default function DashboardLostBidsMissingReasonBanner({ nudge, loading, o
       </span>
       <div style={{ flex: '1 1 200px', minWidth: 0 }}>
         <div style={{ fontWeight: 600, fontSize: '1rem', color: 'var(--text-orange-700)' }}>
-          {count === 1 ? 'One lost bid has no reason recorded' : `${count} lost bids have no reason recorded`}
+          {withScopeLabel(count === 1 ? 'One lost bid has no reason recorded' : `${count} lost bids have no reason recorded`, LOST_BID_NUDGE_SCOPE)}
         </div>
         <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginTop: 2 }}>
           {value > 0 ? `${formatLostBidNudgeValue(value)} unexplained — ` : ''}work them one GC call at a time on the Why we lost lens.

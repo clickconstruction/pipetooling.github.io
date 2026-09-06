@@ -20,6 +20,18 @@ export type LostBidNudge = {
   value: number
 }
 
+/**
+ * Tier-2 #20: the card reads the one count kernel (`bidSentCounts`, scope `all`) — per BID, adopted
+ * bids excluded, the same `loss_category` rule as the Why-we-lost lens — then applies the threshold.
+ */
+export function lostBidNudgeFromCounts(
+  counts: { lostNeedingReason: number; lostNeedingReasonValue: number },
+  minCount: number = LOST_BID_NUDGE_MIN_COUNT,
+): LostBidNudge | null {
+  const count = counts.lostNeedingReason
+  return count > 0 && count >= minCount ? { count, value: counts.lostNeedingReasonValue } : null
+}
+
 export function buildLostBidNudge(
   rows: ReadonlyArray<{ loss_category: string | null; bid_value: number | null }>,
   minCount: number = LOST_BID_NUDGE_MIN_COUNT,

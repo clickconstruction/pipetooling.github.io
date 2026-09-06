@@ -30,6 +30,7 @@ import { extractContactInfo } from '../../lib/bids/bidContactInfo'
 import { getSubmissionSectionKey } from '../../lib/bids/submissionSections'
 import type { GcPacket } from '../../lib/bids/gcPackets'
 import { gcOutcomeRowsForBid, gcRowIsPacketScoped, type GcOutcomeRow } from '../../lib/bids/gcOutcomeRows'
+import { bidSentCounts, bidsAndPacketsLabel, scopeLabel, type BidSentScope } from '../../lib/bids/bidSentCounts'
 import { formatBidStaffDisplayName } from '../../lib/bids/bidBoardStaffOutcomes'
 import { useNarrowViewport640 } from '../../hooks/useNarrowViewport640'
 import { useBidPreview } from '../../contexts/BidPreviewModalContext'
@@ -61,6 +62,8 @@ type SectionRow = { bid: BidWithBuilder; gc: GcOutcomeRow; rowKey: string }
 
 type BidSubmissionFollowupTabProps = {
   bids: BidWithBuilder[]
+  /** Tier-2 #20: the trade pill's scope — section headers count BIDS in it, GC rows second. */
+  sentScope: BidSentScope
   /** Bids by GC: per-bid GC packets — the status lists show one row per GC, in that GC's bucket. */
   gcPacketsByBid: Record<string, GcPacket[]>
   authUser: User | null
@@ -93,6 +96,7 @@ type BidSubmissionFollowupTabProps = {
 
 export function BidSubmissionFollowupTab({
   bids,
+  sentScope,
   gcPacketsByBid,
   authUser,
   selectedBid,
@@ -273,6 +277,9 @@ export function BidSubmissionFollowupTab({
       }),
     [filteredBidsForSubmission, gcPacketsByBid],
   )
+  // Tier-2 #20: section headers count BIDS (one kernel, the board's pile rule); the per-GC rows
+  // the tables draw are the second figure — "Not yet won or lost (101 bids · 107 GC packets)".
+  const statusCounts = useMemo(() => bidSentCounts(filteredBidsForSubmission, { scope: sentScope, packetsByBid: gcPacketsByBid }), [filteredBidsForSubmission, sentScope, gcPacketsByBid])
   const submissionPending = sectionRows.filter((r) => r.gc.outcome === 'pending')
   // "Started or Complete" is the bid's own state: its primary-GC row lists there; a packet win for
   // another GC lists under Won.
@@ -1608,6 +1615,9 @@ export function BidSubmissionFollowupTab({
       >
         <span aria-hidden>{submissionSectionOpen.unsent ? '\u25BC' : '\u25B6'}</span>
         {SUBMISSION_UNSENT_SECTION_LABEL} ({submissionUnsent.length})
+        <span style={{ fontSize: '0.72rem', fontWeight: 500, color: 'var(--text-muted)' }} title="Every section below counts bids in this trade; where a bid went to several GCs, the GC packet count follows.">
+          · {scopeLabel(sentScope)}
+        </span>
       </button>
       {submissionSectionOpen.unsent && (
         <div style={{ border: '1px solid var(--border)', borderRadius: 4, overflow: 'hidden' }}>
@@ -1721,7 +1731,7 @@ export function BidSubmissionFollowupTab({
         style={{ margin: '1.5rem 0 0.5rem', fontSize: '1rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem', padding: 0, border: 'none', background: 'none', cursor: 'pointer', color: 'inherit' }}
       >
         <span aria-hidden>{submissionSectionOpen.pending ? '\u25BC' : '\u25B6'}</span>
-        Not yet won or lost ({submissionPending.length})
+        Not yet won or lost ({bidsAndPacketsLabel(statusCounts.waiting, submissionPending.length)})
       </button>
       {submissionSectionOpen.pending && (
         <div style={{ border: '1px solid var(--border)', borderRadius: 4, overflow: 'hidden' }}>
@@ -1851,7 +1861,7 @@ export function BidSubmissionFollowupTab({
         style={{ margin: '1.5rem 0 0.5rem', fontSize: '1rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem', padding: 0, border: 'none', background: 'none', cursor: 'pointer', color: 'inherit' }}
       >
         <span aria-hidden>{submissionSectionOpen.won ? '\u25BC' : '\u25B6'}</span>
-        Won ({submissionWon.length})
+        Won ({bidsAndPacketsLabel(statusCounts.won, submissionWon.length)})
       </button>
       {submissionSectionOpen.won && (
         <div style={{ border: '1px solid var(--border)', borderRadius: 4, overflow: 'hidden' }}>
@@ -2075,7 +2085,7 @@ export function BidSubmissionFollowupTab({
         style={{ margin: '1.5rem 0 0.5rem', fontSize: '1rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem', padding: 0, border: 'none', background: 'none', cursor: 'pointer', color: 'inherit' }}
       >
         <span aria-hidden>{submissionSectionOpen.lost ? '\u25BC' : '\u25B6'}</span>
-        Lost ({submissionLost.length})
+        Lost ({bidsAndPacketsLabel(statusCounts.lost, submissionLost.length)})
       </button>
       {submissionSectionOpen.lost && (
       <div style={{ border: '1px solid var(--border)', borderRadius: 4, overflow: 'hidden' }}>

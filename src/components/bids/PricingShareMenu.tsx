@@ -126,7 +126,8 @@ export function PricingShareMenu({
             font: 'inherit',
           }}
         >
-          Share
+          {/* Tier-2 #20: the audience used to live in a hover title — the label says it now. */}
+          Share with a teammate
         </button>
       ) : null}
       <button

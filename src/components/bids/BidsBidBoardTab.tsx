@@ -23,6 +23,7 @@ import { formatBidDueTime } from '../../lib/bids/formatBidDueTime'
 import { bidBoardDueCellParts, bidBoardLastContactParts, bidBoardNoDueDateParts, bidBoardSentLabel, DUE_SOON_WINDOW_DAYS, UNSENT_NO_DUE_DATE_RED_AFTER_DAYS, type BidBoardDateCellParts } from '../../lib/bids/bidBoardDateCells'
 import { useNarrowViewport660 } from '../../hooks/useNarrowViewport660'
 import { getSubmissionSectionKey, type SubmissionSectionKey } from '../../lib/bids/submissionSections'
+import { bidSentCounts, scopeLabel, type BidSentScope } from '../../lib/bids/bidSentCounts'
 import { buildBidBoardWeeklySentSummaries } from '../../lib/bidBoardWeeklySentStats'
 import { BidBoardNotesPanel, type BidBoardNotesTab } from './BidBoardNotesPanel'
 import { BidBoardLostSummaryModal } from './BidBoardLostSummaryModal'
@@ -43,6 +44,8 @@ type BidBoardSectionOpenState = {
 
 type BidsBidBoardTabProps = {
   bids: BidWithBuilder[]
+  /** Tier-2 #20: the trade pill's scope — the pill counts read the one count kernel and wear its label. */
+  sentScope: BidSentScope
   /** True until the first bids fetch settles — the board shows a skeleton, not "No bids yet" (J10-F8). */
   loading?: boolean
   authUser: { id: string } | null
@@ -161,6 +164,7 @@ const BID_BOARD_DUE_CHIP_COLORS = {
 
 export function BidsBidBoardTab({
   bids,
+  sentScope,
   loading = false,
   authUser,
   isDev,
@@ -248,6 +252,18 @@ export function BidsBidBoardTab({
     buckets.pending.sort(compareBidsForBidBoardPendingRecency)
     return buckets
   }, [filteredBidsForBidBoard])
+
+  // Tier-2 #20: the pill counts come from the one count kernel (per bid, the pill's trade). The
+  // buckets above use the same pile rule (`getSubmissionSectionKey` + the archived-working
+  // exclusion), so a pill and its section header can never disagree.
+  const boardCounts = useMemo(() => bidSentCounts(filteredBidsForBidBoard, { scope: sentScope }), [filteredBidsForBidBoard, sentScope])
+  const pillCounts: Record<SubmissionSectionKey, number> = {
+    unsent: boardCounts.unsent,
+    pending: boardCounts.waiting,
+    won: boardCounts.won,
+    startedOrComplete: boardCounts.started,
+    lost: boardCounts.lost,
+  }
 
   // "Missing" clears when either a structured category or free text exists (v2.1799),
   // matching the Lost summary's red-row rule and the Why we lost lens queue.
@@ -1328,11 +1344,27 @@ export function BidsBidBoardTab({
               margin: '0 0 -0.5rem',
             }}
           >
+            {/* Tier-2 #20: the scope sits where the numbers are — every pill count is this trade's (or all trades'). */}
+            <span
+              title="Every count on this page — pills, section headers, rows — is for the trade selected in the pill row above the tabs. The Dashboard's bid cards count all trades."
+              style={{
+                flex: '0 0 auto',
+                fontSize: '0.72rem',
+                fontWeight: 600,
+                color: 'var(--text-muted)',
+                padding: '0.2rem 0.55rem',
+                border: '1px dashed var(--border-strong)',
+                borderRadius: 999,
+                whiteSpace: 'nowrap',
+              }}
+            >
+              {scopeLabel(sentScope)}
+            </span>
             {[
               ...BID_BOARD_SECTION_CONFIG.map(({ key, jumpLabel }) => ({
                 key: key as SubmissionSectionKey | 'health',
                 jumpLabel,
-                count: bidBoardBuckets[key].length as number | null,
+                count: pillCounts[key] as number | null,
               })),
               { key: 'health' as const, jumpLabel: 'Health', count: null },
             ].map(({ key, jumpLabel, count }) => (

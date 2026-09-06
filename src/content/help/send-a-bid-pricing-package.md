@@ -5,11 +5,11 @@ roles: dev, estimator, master_technician, assistant
 keywords: package and send, share pricing, send pricing, bid package, job plans, address, google maps, open in maps, copy for text, send for me, copy fixtures, parts house, supply house, supply house list, fixture counts
 ---
 
-Package and send bundles everything the field needs to look at a bid — the job address, plans links, and the external pricing table — into one email or text.
+**Share with a teammate** bundles everything the field needs to look at a bid — the job address, plans links, and the external pricing table — into one email or text for someone on your team. It is not how a bid goes to the GC: sharing never marks the bid sent and never counts toward the board or the Followup lenses (the Cover Letter's **Mark sent** and the bid room do that).
 
 ## Open it
 
-On Bids → Pricing with a bid open, tap {{button:green|Share}}. The modal shows exactly what the recipient will get:
+On Bids → Pricing with a bid open, tap {{button:green|Share with a teammate}}. The modal — titled the same, with a one-line reminder that it shares with a teammate and sends nothing to the GC — shows exactly what the recipient will get:
 
 - **Job address** — the bid's address with an {{button:gray|Open in Maps}} button. The recipient's copy gets the same thing: tapping the address in the email (or the Map link in a text) opens it straight in Google Maps.
 - **Job plans** and **CountTooling Plans** — the links on the bid, each openable right from the modal.
@@ -26,12 +26,12 @@ Pick a recipient (master techs appear as one-tap chips), then:
 - {{button:gray|Copy for text}} — copies an SMS-friendly summary (address and map link included) for Messages or WhatsApp.
 
 :::example Getting a master tech to a new job
-Wendi opens BP376's pricing, taps {{button:green|Share}}, taps the {{chip:blue|Malachi}} chip, and {{button:blue|Send for me}}. Malachi's email has the address at the top — one tap and Google Maps is routing him to the site.
+Wendi opens BP376's pricing, taps {{button:green|Share with a teammate}}, taps the {{chip:blue|Malachi}} chip, and {{button:blue|Send for me}}. Malachi's email has the address at the top — one tap and Google Maps is routing him to the site.
 :::
 
 ## Send a supply house the fixture list
 
-Need a supply house to price the job? Don't send them the package — it has your sale prices in it. Instead, open the {{button:green|▾}} menu beside Share and pick **Supply house list**. It copies only fixture names and counts — no prices, no totals, no links — ready to paste into a text or email to the parts house.
+Need a supply house to price the job? Don't send them the package — it has your sale prices in it. Instead, open the {{button:green|▾}} menu beside **Share with a teammate** and pick **Supply house list**. It copies only fixture names and counts — no prices, no totals, no links — ready to paste into a text or email to the parts house.
 
 A prepare screen opens first so you're never copying blind:
 

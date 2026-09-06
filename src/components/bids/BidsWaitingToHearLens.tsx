@@ -7,6 +7,7 @@ import { supabase } from '../../lib/supabase'
 import { withSupabaseRetry } from '../../utils/errorHandling'
 import { BID_UPDATE_NOT_APPLIED_MESSAGE, updateApplied } from '../../lib/bids/updateGuard'
 import { formatCurrency } from '../../lib/format'
+import { bidsAndPacketsLabel, scopeLabel, type BidSentScope } from '../../lib/bids/bidSentCounts'
 import { entryGcIdFromPacketKey } from '../../lib/bids/bidContacts'
 import { bidBoardLastContactParts } from '../../lib/bids/bidBoardDateCells'
 import { bidAddressMapsUrl } from '../../lib/buildBidPricingPackageHtml'
@@ -54,6 +55,8 @@ import type { BidWithBuilder } from '../../types/bidWithBuilder'
 
 export type BidsWaitingToHearLensProps = {
   bids: BidWithBuilder[]
+  /** Tier-2 #20: the trade pill's scope — named beside the per-bid headline; GC rows are the second figure. */
+  sentScope: BidSentScope
   /** Bids by GC (v2.2164): per-bid GC packets — a bid waits under each GC whose packet is still open. */
   gcPacketsByBid: Record<string, GcPacket[]>
   ledgerPrefixMap: LedgerPrefixMap
@@ -135,6 +138,7 @@ function daysAgoLabel(days: number): string {
 
 export function BidsWaitingToHearLens({
   bids,
+  sentScope,
   gcPacketsByBid,
   ledgerPrefixMap,
   lastContactFromEntries,
@@ -551,7 +555,7 @@ export function BidsWaitingToHearLens({
             : 'All caught up — every open bid touched this week'}
         </span>
         <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
-          {`of ${rollup.pendingCount} still open · $${formatCurrency(rollup.pendingValue)} waiting on an answer`}
+          {`of ${bidsAndPacketsLabel(rollup.pendingCount, lensBids.length, 'still open')} · ${scopeLabel(sentScope)} · $${formatCurrency(rollup.pendingValue)} waiting on an answer`}
           {rollup.untouchedCount > 0 ? ` · ${rollup.untouchedCount} never called` : ''}
           {rollup.oldestUntouchedDays != null ? `, oldest ${rollup.oldestUntouchedDays}d` : ''}
         </span>

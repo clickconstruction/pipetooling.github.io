@@ -1,5 +1,6 @@
 import type { UserRole } from '../hooks/useAuth'
 import { formatLostBidNudgeValue, type LostBidNudge } from './dashboardLostBidNudge'
+import { withScopeLabel } from './bids/bidSentCounts'
 import { jobFollowupBreakdownPhrase, type JobFollowupStage } from './jobs/jobFollowupQueue'
 import type { RoadmapNudge } from './dashboardRoadmapNudge'
 import { gcReviewGcsToDo, type GcReviewNudgeState } from './jobs/gcReviewCertification'
@@ -539,7 +540,9 @@ export function buildNeedsYouItems(inputs: NeedsYouInputs): NeedsYouItem[] {
       key: 'lost-bids',
       severity: 'gray',
       kicker: 'Win/loss hygiene',
-      title: count === 1 ? 'One lost bid has no reason recorded' : `${count} lost bids have no reason recorded`,
+      // Tier-2 #20: the scope sits on the number itself ("· all trades"); the lens it opens
+      // wears its trade pill's name the same way, so the two figures explain each other.
+      title: withScopeLabel(count === 1 ? 'One lost bid has no reason recorded' : `${count} lost bids have no reason recorded`, { kind: 'all' }),
       // Scope gloss (v2.2896): this counts every trade; the lens it opens is
       // scoped to the trade pill and says so in its own header.
       detail:

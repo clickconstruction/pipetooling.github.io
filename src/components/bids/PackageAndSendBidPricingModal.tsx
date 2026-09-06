@@ -389,16 +389,20 @@ export function PackageAndSendBidPricingModal({
       <div
         role="dialog"
         aria-modal="true"
-        aria-label={`Package and send pricing for ${bidLabel}`}
+        aria-label={`Share pricing for ${bidLabel} with a teammate`}
         style={panel}
         onMouseDown={(e) => e.stopPropagation()}
       >
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.5rem' }}>
           <div>
-            <h2 style={{ margin: 0, fontSize: '1.125rem', fontWeight: 600, color: 'var(--text-strong)' }}>Package and send</h2>
+            <h2 style={{ margin: 0, fontSize: '1.125rem', fontWeight: 600, color: 'var(--text-strong)' }}>Share with a teammate</h2>
             <p style={{ margin: '0.15rem 0 0', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
               {bidLabel}
               {priceBookVersionName ? ` · ${priceBookVersionName}` : ''}
+            </p>
+            {/* Tier-2 #20: this is truth 3 (a teammate got the pricing table), not a send to the GC. */}
+            <p style={{ margin: '0.3rem 0 0', fontSize: '0.8125rem', color: 'var(--text-700)' }}>
+              Shares this package with a teammate — it does not send anything to the GC and does not mark the bid sent.
             </p>
           </div>
           <button

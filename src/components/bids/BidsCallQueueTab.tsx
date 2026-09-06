@@ -20,6 +20,7 @@ import {
   type BidTabValues,
 } from '../../lib/bidTabCapture'
 import { buildCallQueue, type CallQueueBid, type CallQueueBuilder } from '../../lib/bids/callQueue'
+import { bidsAndPacketsLabel, scopeLabel, type BidSentScope } from '../../lib/bids/bidSentCounts'
 import type { GcPacket } from '../../lib/bids/gcPackets'
 import { gcOutcomeRowsForBid, gcRowIsPacketScoped, type GcOutcomeRow } from '../../lib/bids/gcOutcomeRows'
 import { setGcPacketLossCategory, setGcPacketOutcome } from '../../lib/bids/gcPacketOutcome'
@@ -40,6 +41,8 @@ import type { BidWithBuilder } from '../../types/bidWithBuilder'
 
 export type BidsCallQueueTabProps = {
   bids: BidWithBuilder[]
+  /** Tier-2 #20: the trade pill's scope — named in the header beside the counts. */
+  sentScope: BidSentScope
   /** Per-bid GC packets — builder stats and rows count each GC's packet, not the bid. */
   gcPacketsByBid: Record<string, GcPacket[]>
   ledgerPrefixMap: LedgerPrefixMap
@@ -99,6 +102,7 @@ function shortDate(iso: string): string {
  */
 export function BidsCallQueueTab({
   bids,
+  sentScope,
   gcPacketsByBid,
   ledgerPrefixMap,
   lastContactFromEntries,
@@ -544,7 +548,8 @@ export function BidsCallQueueTab({
           <strong style={{ color: 'var(--text-700)' }}>
             {queue.totals.buildersWithWork} builder{queue.totals.buildersWithWork === 1 ? '' : 's'} worth a call
           </strong>
-          {` · ${queue.totals.chaseCount} bids to chase · ${queue.totals.reasonsCount} losses need a reason · $${formatCurrency(queue.totals.reasonsDollars)} unexplained · ${queue.totals.tabsCount} tabs gettable`}
+          {/* Tier-2 #20: bids lead, GC packets follow — "96 bids · 99 GC packets to chase". */}
+          {` · ${scopeLabel(sentScope)} · ${bidsAndPacketsLabel(queue.totals.chaseCount, queue.totals.chasePacketRows)} to chase · ${bidsAndPacketsLabel(queue.totals.reasonsCount, queue.totals.reasonsPacketRows, { one: 'loss', many: 'losses' })} need${queue.totals.reasonsCount === 1 ? 's' : ''} a reason · $${formatCurrency(queue.totals.reasonsDollars)} unexplained · ${queue.totals.tabsCount} tabs gettable`}
         </span>
         <input
           type="text"
