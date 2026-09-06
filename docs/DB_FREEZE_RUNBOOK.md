@@ -431,6 +431,11 @@ within 15000ms`. Nobody in the office reported it.
   storage upload, one row update), a Form Studio Save/Republish, and three
   short read-only psql sessions. Nothing heavy; the restart is not explained
   by this session's load.
+- **Second episode 50 minutes later**: 21:23–21:25 UTC. `http-only` 401 in
+  0.11s while `db-touching` returned **000 after 20s** twice (21:24:45,
+  21:25:20) and a fresh psql got `ECHECKOUTTIMEOUT`; first 200 at
+  **21:25:35**. `pg_postmaster_start_time()` = **21:25:25 UTC** — a second
+  self-restart. Two crashes in one hour, both while the office was quiet.
 - **Not done here**: Postgres logs (Dashboard → Logs) for the OOM /
   `terminated` lines — the MCP server was not authorized in this session.
   That is the next step: confirm the kill reason and compare memory headroom
