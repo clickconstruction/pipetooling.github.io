@@ -39,6 +39,9 @@ function inputs(overrides: Partial<NeedsYouInputs> = {}): NeedsYouInputs {
     hoursApprovalsEnabled: true,
     hoursApprovals: null,
     hoursApprovalsMinAgeDays: 3,
+    labelApprovalsEnabled: true,
+    labelApprovals: null,
+    labelApprovalsMinAgeDays: 3,
     ...overrides,
   }
 }
@@ -482,6 +485,50 @@ describe('buildNeedsYouItems', () => {
     expect(items[0]?.title).toBe('A clock session is waiting on approval')
     expect(items[0]?.detail.startsWith('One person has 8h unapproved')).toBe(true)
     expect(items[0]?.figure).toBe('1')
+  })
+})
+
+describe('label approvals (journey-map Tier-2 #27)', () => {
+  const backlog = { pending: 349, stale: 340, staleAmount: 139_250.5, oldestAgeDays: 16 }
+
+  it('counts only the stale exceptions, once the oldest crosses the age gate; quiet when disabled, loading, fresh, or empty', () => {
+    expect(buildNeedsYouItems(inputs({ labelApprovalsEnabled: false, labelApprovals: backlog }))).toEqual([])
+    expect(buildNeedsYouItems(inputs({ labelApprovals: null }))).toEqual([])
+    // A same-week trickle: pending rows exist but none is old enough.
+    expect(buildNeedsYouItems(inputs({ labelApprovals: { pending: 12, stale: 0, staleAmount: 0, oldestAgeDays: 1 } }))).toEqual([])
+    expect(buildNeedsYouItems(inputs({ labelApprovals: { ...backlog, oldestAgeDays: 2 } }))).toEqual([])
+
+    const items = buildNeedsYouItems(inputs({ labelApprovals: backlog }))
+    expect(items).toHaveLength(1)
+    expect(items[0]?.key).toBe('label-approvals')
+    expect(items[0]?.severity).toBe('amber')
+    expect(items[0]?.figure).toBe('99+')
+    expect(items[0]?.title).toBe('340 bank-label suggestions have waited 3+ days for an OK')
+    expect(items[0]?.detail).toContain('$139,251 of card charges and transfers')
+    expect(items[0]?.detail).toContain('16 days ago')
+    expect(items[0]?.detail).toContain('plus 9 newer still inside the 3-day window')
+    expect(items[0]?.actionLabel).toBe('Open approvals')
+  })
+
+  it('singular copy reads naturally and omits the "newer" tail when everything pending is stale', () => {
+    const items = buildNeedsYouItems(
+      inputs({ labelApprovals: { pending: 1, stale: 1, staleAmount: 412.18, oldestAgeDays: 5 } }),
+    )
+    expect(items[0]?.title).toBe('A bank-label suggestion has waited 3+ days for an OK')
+    expect(items[0]?.figure).toBe('1')
+    expect(items[0]?.detail.startsWith('$412 of card charges')).toBe(true)
+    expect(items[0]?.detail).not.toContain('newer')
+  })
+
+  it('ranks as billing accuracy: above hours approvals, below a stale tally', () => {
+    const items = buildNeedsYouItems(
+      inputs({
+        labelApprovals: backlog,
+        hoursApprovals: { sessions: 3, totalHours: 20, people: 1, oldestAgeDays: 9 },
+        tallyStaleUnlinkedCount: 2,
+      }),
+    )
+    expect(items.map((i) => i.key)).toEqual(['tally-self', 'label-approvals', 'hours-approvals'])
   })
 })
 

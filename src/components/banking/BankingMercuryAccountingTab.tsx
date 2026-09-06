@@ -66,9 +66,11 @@ import {
   shouldAutoApplyAccountingRules,
 } from '../../lib/accountingApplyRulesAutoTrigger'
 import {
-  buildApproveByDefaultSignature,
-  shouldAutoApproveAccountingSuggestions,
-} from '../../lib/accountingApproveByDefaultAutoTrigger'
+  ACCOUNTING_LABEL_AUTO_APPROVE_SETTING_KEY,
+  parseAutoApproveSettingValue,
+  shouldAutoApproveSuggestion,
+} from '../../lib/accountingLabelAutoApprove'
+import { recordNavClick } from '../../lib/navClickTelemetry'
 import { BankingMercuryAccountingOverlapsModal } from './BankingMercuryAccountingOverlapsModal'
 import { BankingMercuryAccountingApplyRulesConfirmModal } from './BankingMercuryAccountingApplyRulesConfirmModal'
 import { BankingMercuryAccountingRulesModal } from './BankingMercuryAccountingRulesModal'
@@ -171,15 +173,14 @@ export type BankingMercuryAccountingTabProps = {
    */
   autoApplyResetTick: number
   /**
-   * **Approve by default** toggle (RECENT_FEATURES v2.581). When on, the
-   * Approvals section auto-runs `handleApproveAll` whenever a new pending
-   * suggestion appears. Internal Transfers conflicts (job-split rows) are
-   * still skipped by `handleApproveAll` itself, so those persist in the
-   * pending list and surface for manual review. Lifted to `Banking.tsx`
-   * for per-user persistence.
+   * The caller's role (Banking's `myRole`). Gates the org-level **Rule matches
+   * approve themselves** switch (dev / master_technician may flip it; everyone
+   * else sees its state) and tags `label_suggestion_approved` telemetry. The
+   * switch replaced the per-user v2.581 "Approve by default" browser effect —
+   * approval now happens server-side where the suggestion is minted
+   * (`auto_approve_pending_accounting_label_suggestions`).
    */
-  approveByDefault: boolean
-  onApproveByDefaultChange: (v: boolean) => void
+  myRole: string | null
   /**
    * Called after a successful mutation that adds or removes a row in
    * `mercury_transaction_drag_sort_assignments` (manual label apply / clear,
@@ -325,8 +326,7 @@ export function BankingMercuryAccountingTab({
   applyRulesByDefault,
   onApplyRulesByDefaultChange,
   autoApplyResetTick,
-  approveByDefault,
-  onApproveByDefaultChange,
+  myRole,
   onAfterAssignmentChange,
   onAttributionChange,
   labeledHasMore = false,
@@ -337,6 +337,64 @@ export function BankingMercuryAccountingTab({
   const { showToast } = useToastContext()
   const confirmDialog = useConfirmDialog()
   const [accountingSearchText, setAccountingSearchText] = useState('')
+
+  // Org-level auto-approve switch (Tier-2 #27): `app_settings.accounting_label_auto_approve_rule_matches`.
+  // null = not loaded yet. Read by everyone on the tab; flipped by dev/master.
+  // The approving itself happens server-side (bulk_insert RPC + mercury-webhook
+  // → auto_approve_pending_accounting_label_suggestions) — nothing here runs it.
+  const canFlipAutoApprove = myRole === 'dev' || myRole === 'master_technician'
+  const [autoApproveOrgOn, setAutoApproveOrgOn] = useState<boolean | null>(null)
+  const [autoApproveSaving, setAutoApproveSaving] = useState(false)
+  useEffect(() => {
+    let cancelled = false
+    void (async () => {
+      try {
+        const { data, error } = await supabase
+          .from('app_settings')
+          .select('value_text')
+          .eq('key', ACCOUNTING_LABEL_AUTO_APPROVE_SETTING_KEY)
+          .maybeSingle()
+        if (error) throw new Error(error.message)
+        const row = data as { value_text: string | null } | null
+        if (!cancelled) setAutoApproveOrgOn(parseAutoApproveSettingValue(row?.value_text))
+      } catch {
+        if (!cancelled) setAutoApproveOrgOn(false)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [])
+  const handleAutoApproveOrgChange = useCallback(
+    async (next: boolean) => {
+      if (!canFlipAutoApprove || autoApproveSaving) return
+      const prev = autoApproveOrgOn
+      setAutoApproveOrgOn(next)
+      setAutoApproveSaving(true)
+      try {
+        // UPDATE, not upsert: the row is seeded by migration 20260905180000 and
+        // the master_technician RLS policy is UPDATE-only on this one key.
+        const { error } = await supabase
+          .from('app_settings')
+          .update({ value_text: next ? 'true' : 'false' })
+          .eq('key', ACCOUNTING_LABEL_AUTO_APPROVE_SETTING_KEY)
+        if (error) throw new Error(error.message)
+        recordNavClick(userId, myRole, 'label_auto_approve_switch', next ? '#on' : '#off')
+        showToast(
+          next
+            ? 'On for the whole org: new rule matches now approve themselves as they arrive. Anything already pending still needs Approve all.'
+            : 'Off: new rule matches wait here for approval again.',
+          'success',
+        )
+      } catch (e) {
+        setAutoApproveOrgOn(prev)
+        showToast(e instanceof Error ? e.message : 'Could not change the auto-approve switch', 'error')
+      } finally {
+        setAutoApproveSaving(false)
+      }
+    },
+    [autoApproveOrgOn, autoApproveSaving, canFlipAutoApprove, myRole, showToast, userId],
+  )
   // When the parent has already narrowed `filteredTransactions` to the
   // unlabeled set (Hide labeled = on, Accounting tab), the per-row
   // assignment-marking sweep would re-confirm that none of them have a
@@ -1128,18 +1186,25 @@ export function BankingMercuryAccountingTab({
     return `${formatUsd(Number(tx.amount))} · ${tx.counterparty_name ?? '—'}`
   }, [quickAssignTxId, sortedDisplayTransactions, displayTransactions, filteredTransactions])
 
-  // Suggestion ids that can't be auto-approved: Internal Transfers suggested for
-  // a transaction that already has job splits (mutually exclusive). Shared by the
-  // bulk approvers, the auto-approve gate, and the grouped-view conflict badges.
+  // Suggestion ids that can't be approved in bulk: Internal Transfers suggested
+  // for a transaction that already has job splits (mutually exclusive). Decided
+  // by the same kernel the server-side auto-approver runs, so what stays pending
+  // here is exactly what the server left for a human. Shared by the bulk
+  // approvers and the grouped-view conflict badges.
   const conflictSuggestionIds = useMemo(() => {
     const s = new Set<string>()
     for (const p of pendingApprovals) {
-      if (
-        isInternalTransfersLabel(labels.find((L) => L.id === p.suggestedLabelId)) &&
-        (allocationsByTxId.get(p.txId) ?? []).length > 0
-      ) {
-        s.add(p.suggestionId)
-      }
+      const decision = shouldAutoApproveSuggestion(
+        {
+          status: 'pending',
+          suggestedLabelDefaultKey: labels.find((L) => L.id === p.suggestedLabelId)?.default_key ?? null,
+          txHasJobSplits: (allocationsByTxId.get(p.txId) ?? []).length > 0,
+          txHasAssignment: false,
+        },
+        { enabled: true },
+        { autoApproveRuleMatches: true },
+      )
+      if (!decision.approve && decision.reason === 'internal_transfers_conflict') s.add(p.suggestionId)
     }
     return s
   }, [pendingApprovals, labels, allocationsByTxId])
@@ -1245,6 +1310,9 @@ export function BankingMercuryAccountingTab({
         setAssignmentLabelByTxId(next)
         setPendingApprovals((rows) => rows.filter((r) => r.suggestionId !== p.suggestionId))
         setRuleUsageApproved((u) => ({ ...u, [p.ruleId]: (u[p.ruleId] ?? 0) + 1 }))
+        // Telemetry: label_suggestion_approved{by: user} (the rule half is the
+        // server's resolved_by NULL + the webhook log line).
+        recordNavClick(userId, myRole, 'label_suggestion_approved', '#by:user')
         showToast('Accounting label applied.', 'success')
         void loadRulesAndUsage()
         onAfterAssignmentChange?.()
@@ -1258,6 +1326,7 @@ export function BankingMercuryAccountingTab({
       assignmentLabelByTxId,
       labels,
       loadRulesAndUsage,
+      myRole,
       onAfterAssignmentChange,
       ruleById,
       showToast,
@@ -1298,8 +1367,9 @@ export function BankingMercuryAccountingTab({
   // Reusable bulk-approve core: approve a set of pending suggestions to each
   // row's suggested label. Splits off Internal-Transfers-with-splits conflicts
   // (they need manual cleanup), applies the rest via the chunked bulk RPC, and
-  // optimistically updates assignments. Used by the global Approve all, the
-  // grouped per-label Approve all, and the auto-approve effect.
+  // optimistically updates assignments. Used by the global Approve all and the
+  // grouped per-label Approve all (the v2.581 browser auto-approve effect is
+  // gone — rule matches approve themselves server-side behind the org switch).
   const approvePendingItems = useCallback(
     async (items: PendingApproval[]) => {
       if (pendingLoading || items.length === 0) return
@@ -1345,6 +1415,7 @@ export function BankingMercuryAccountingTab({
           }
           return out
         })
+        recordNavClick(userId, myRole, 'label_suggestion_approved', `#by:user:${snapshot.length}`)
         const approvedMsg =
           snapshot.length === 1 ? 'Approved 1 suggestion.' : `Approved ${snapshot.length.toLocaleString()} suggestions.`
         const skippedMsg =
@@ -1372,9 +1443,11 @@ export function BankingMercuryAccountingTab({
       loadAssignmentsForList,
       loadPending,
       loadRulesAndUsage,
+      myRole,
       onAfterAssignmentChange,
       pendingLoading,
       showToast,
+      userId,
     ],
   )
 
@@ -1578,8 +1651,11 @@ export function BankingMercuryAccountingTab({
         if (created === 0) {
           showToast('No new suggestions (all matched txs already labeled or pending).', 'success')
         } else {
-          const base =
-            created === 1
+          const base = autoApproveOrgOn
+            ? created === 1
+              ? 'Created 1 suggestion — it approves itself (org switch on); only conflicts wait here.'
+              : `Created ${created.toLocaleString()} suggestions — rule matches approve themselves (org switch on); only conflicts wait here.`
+            : created === 1
               ? 'Created 1 pending suggestion.'
               : `Created ${created.toLocaleString()} pending suggestions.`
           const tail =
@@ -1595,7 +1671,7 @@ export function BankingMercuryAccountingTab({
         setApplyRulesBusy(false)
       }
     },
-    [loadPending, showToast],
+    [autoApproveOrgOn, loadPending, showToast],
   )
 
   const applyRulesWithSnapshot = useCallback(
@@ -1665,49 +1741,6 @@ export function BankingMercuryAccountingTab({
     assignmentsLoading,
     applyRulesBusy,
     runAutoApply,
-  ])
-
-  // Pre-filter pending approvals to the rows `handleApproveAll` would
-  // actually take — i.e. drop Internal Transfers suggestions for txs with
-  // existing job splits (those need manual cleanup first). Feeding the
-  // **filtered** list into the signature builder means a residue of
-  // pure-conflict rows (post-approve all) produces a stable empty
-  // signature so the auto-approve effect quiets cleanly without firing
-  // `handleApproveAll`'s "All pending suggestions are conflicts" toast on
-  // every re-render.
-  const autoApprovablePending = useMemo(
-    () => pendingApprovals.filter((p) => !conflictSuggestionIds.has(p.suggestionId)),
-    [pendingApprovals, conflictSuggestionIds],
-  )
-
-  // Tracks the last `pendingSuggestionId-set` we ran auto-approve on. The
-  // signature naturally shrinks as suggestions get approved (server flips
-  // them to `'approved'`, `loadPending` filters them out), so once a load
-  // settles into a stable set the effect quiets.
-  const lastAutoApprovedSignatureRef = useRef<string | null>(null)
-
-  useEffect(() => {
-    const sig = buildApproveByDefaultSignature(autoApprovablePending)
-    const allow = shouldAutoApproveAccountingSuggestions({
-      enabled: approveByDefault,
-      pendingLoading,
-      approveAllBusy,
-      pendingCount: autoApprovablePending.length,
-      currentSignature: sig,
-      lastSignature: lastAutoApprovedSignatureRef.current,
-    })
-    if (!allow) return
-    lastAutoApprovedSignatureRef.current = sig
-    // Automation approves the full approvable set regardless of any manual
-    // search filter the user may have typed.
-    void approvePendingItems(pendingApprovals)
-  }, [
-    approveByDefault,
-    autoApprovablePending,
-    pendingApprovals,
-    pendingLoading,
-    approveAllBusy,
-    approvePendingItems,
   ])
 
   const cancelApplyRulesConfirm = useCallback(() => {
@@ -2089,19 +2122,37 @@ export function BankingMercuryAccountingTab({
             Group by label
           </label>
           <label
-            style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.85rem', cursor: 'pointer' }}
-            title="When on, runs Approve all automatically every time new pending suggestions appear. Internal Transfers conflicts (rows with job splits) are still skipped and stay pending for manual review."
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              fontSize: '0.85rem',
+              cursor: canFlipAutoApprove && autoApproveOrgOn != null && !autoApproveSaving ? 'pointer' : 'default',
+              opacity: autoApproveOrgOn == null ? 0.6 : 1,
+            }}
+            title={
+              canFlipAutoApprove
+                ? 'Org-wide, server-side: when on, every new rule match approves itself the moment it is created — from the Mercury webhook or Apply rules — whether or not anyone has this tab open. Internal Transfers on a transaction with job splits still waits here for a person. Does not touch what is already pending; use Approve all for that.'
+                : 'Org-wide switch (dev or master technician flips it): when on, new rule matches approve themselves server-side; only conflicts wait here.'
+            }
           >
             <input
               type="checkbox"
-              checked={approveByDefault}
-              onChange={(e) => onApproveByDefaultChange(e.target.checked)}
+              checked={autoApproveOrgOn === true}
+              disabled={!canFlipAutoApprove || autoApproveOrgOn == null || autoApproveSaving}
+              onChange={(e) => void handleAutoApproveOrgChange(e.target.checked)}
+              aria-label="Rule matches approve themselves (org-wide)"
             />
-            Approve by default
+            Rule matches approve themselves
+            <span style={{ fontSize: '0.75rem', color: 'var(--text-slate-500)' }}>
+              {autoApproveOrgOn == null ? '(loading…)' : autoApproveOrgOn ? '(org-wide · on)' : '(org-wide · off)'}
+            </span>
           </label>
         </div>
         <p style={{ margin: '0 0 0.75rem', fontSize: '0.875rem', color: 'var(--text-slate-500)' }}>
-          Transactions matched by rules await confirmation. Choose a label if different from the suggestion, then Approve.
+          {autoApproveOrgOn
+            ? 'New rule matches approve themselves as they arrive. What waits here is the exception list — Internal Transfers on split transactions, and anything created before the switch was turned on. Approve all clears the backlog.'
+            : 'Transactions matched by rules await confirmation. Choose a label if different from the suggestion, then Approve.'}
         </p>
         {pendingLoading ? (
           <div style={{ color: 'var(--text-slate-500)' }}>Loading…</div>

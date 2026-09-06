@@ -63,10 +63,8 @@ import {
 } from '../lib/fetchMercuryTransactionRaws'
 import {
   readAccountingApplyRulesByDefault,
-  readAccountingApproveByDefault,
   readAccountingHideLabeledTransactions,
   writeAccountingApplyRulesByDefault,
-  writeAccountingApproveByDefault,
   writeAccountingHideLabeledTransactions,
 } from '../lib/bankingDragSortStorage'
 import { fetchAccountingPrefs, saveBankingPref } from '../lib/bankingUserPrefs'
@@ -278,7 +276,6 @@ export default function Banking() {
   // When on, auto-runs `handleApproveAll` whenever a new pending suggestion
   // appears. Defaults **off** (opt-in — committing assignments without
   // per-row review is the bigger trust step).
-  const [approveByDefault, setApproveByDefault] = useState(false)
 
   const isDevBanking = myRole === 'dev'
   const canAccessBanking = myRole === 'dev' || isAssistantLike(myRole) || myRole === 'master_technician'
@@ -381,7 +378,7 @@ export default function Banking() {
   // Each toggle change writes the instant localStorage cache AND the per-user
   // `banking_user_prefs` row so the setting follows the user across devices.
   const syncPrefAcrossDevices = useCallback(
-    (column: 'accounting_hide_labeled' | 'accounting_apply_rules_by_default' | 'accounting_approve_by_default', v: boolean) => {
+    (column: 'accounting_hide_labeled' | 'accounting_apply_rules_by_default', v: boolean) => {
       if (!user?.id) return
       void saveBankingPref(user.id, column, v).catch(() =>
         showToast('Saved here, but could not sync this preference across devices.', 'error'),
@@ -413,20 +410,6 @@ export default function Banking() {
     [user?.id, syncPrefAcrossDevices],
   )
 
-  useEffect(() => {
-    if (!user?.id) return
-    setApproveByDefault(readAccountingApproveByDefault(user.id))
-  }, [user?.id])
-
-  const onApproveByDefaultChange = useCallback(
-    (v: boolean) => {
-      setApproveByDefault(v)
-      if (user?.id) writeAccountingApproveByDefault(user.id, v)
-      syncPrefAcrossDevices('accounting_approve_by_default', v)
-    },
-    [user?.id, syncPrefAcrossDevices],
-  )
-
   // Source of truth: after the instant localStorage hydration above, load the
   // per-user prefs row and apply any value set on another device (mirroring it
   // back into localStorage so this device is instant-correct next time).
@@ -445,10 +428,6 @@ export default function Banking() {
         if (row.accounting_apply_rules_by_default != null) {
           setApplyRulesByDefault(row.accounting_apply_rules_by_default)
           writeAccountingApplyRulesByDefault(uid, row.accounting_apply_rules_by_default)
-        }
-        if (row.accounting_approve_by_default != null) {
-          setApproveByDefault(row.accounting_approve_by_default)
-          writeAccountingApproveByDefault(uid, row.accounting_approve_by_default)
         }
       } catch {
         /* prefs sync is best-effort; the localStorage values already applied */
@@ -1856,8 +1835,7 @@ export default function Banking() {
             applyRulesByDefault={applyRulesByDefault}
             onApplyRulesByDefaultChange={onApplyRulesByDefaultChange}
             autoApplyResetTick={autoApplyResetTick}
-            approveByDefault={approveByDefault}
-            onApproveByDefaultChange={onApproveByDefaultChange}
+            myRole={myRole}
             onAfterAssignmentChange={() => void loadRowsForActiveView({ silent: true })}
             onAttributionChange={(txId, patch) => {
               setPersonIdByTxId((prev) => new Map(prev).set(txId, patch.personId))
