@@ -71,6 +71,14 @@ const notes: Array<Partial<BidAuditNoteRow> & { audit_id: string }> = [
   { id: 'r1', audit_id: 'a1', bid_id: 'bid-405', section: 'footage', kind: 'receipt', body: 'Learned: developed-length multiplier.', parent_id: 'n1', created_at: '2026-08-30T22:00:00Z', author_id: null, digested_at: null, digest_outcome: 'doctrine' },
 ]
 
+// Standing rulings (v2.2941): two open questions share the travel-bands topic
+// (they collapse into one ruling), one is topicless (lists individually).
+const twinQuestions = [
+  { id: 'tq1', twin_user_id: 'tw1', about_bid_id: 'bid-405', mission: 'BT-12', question: 'Do we band travel by distance?', status: 'open', answer: null, answered_by: null, answered_at: null, created_at: '2026-09-03T10:00:00Z', topic: 'travel-bands' },
+  { id: 'tq2', twin_user_id: 'tw2', about_bid_id: 'bid-422', mission: 'BT-13', question: 'Travel past 200 miles — carry $20k?', status: 'open', answer: null, answered_by: null, answered_at: null, created_at: '2026-09-01T10:00:00Z', topic: 'travel-bands' },
+  { id: 'tq3', twin_user_id: 'tw1', about_bid_id: null, mission: null, question: 'Is a strip mall shell a no-go?', status: 'open', answer: null, answered_by: null, answered_at: null, created_at: '2026-09-02T10:00:00Z', topic: null },
+]
+
 // Chainable thenable PostgREST stub: every builder method returns itself; awaiting
 // resolves to the table's canned rows.
 function tableResult(table: string): unknown {
@@ -79,6 +87,7 @@ function tableResult(table: string): unknown {
     table === 'bid_audit_notes' ? notes :
     table === 'bids_count_rows' ? countRows :
     table === 'bid_pricing_assignments' ? assignments :
+    table === 'twin_questions' ? twinQuestions :
     []
   const chain: Record<string, unknown> = {}
   const self = () => chain
@@ -132,6 +141,20 @@ describe('BidsAuditsTab', () => {
     expect(screen.getAllByText(/draft \$3,000/).length).toBeGreaterThan(0) // the priced card, not $0
     expect(screen.queryByText(/draft \$0\b/)).toBeNull()
     expect(screen.queryByText(/-100\.0% vs ours/)).toBeNull()
+
+    // v2.2941 — Standing rulings: the two travel-bands questions collapse into
+    // one ruling (newest text on top, one answer box for both); the topicless
+    // one lists individually. Expanded by default because N > 0.
+    expect(await screen.findByText(/Standing rulings · 3/)).toBeTruthy()
+    expect(screen.getByText(/fifteen minutes here unblocks every robot/)).toBeTruthy()
+    expect(screen.getByText('Travel bands')).toBeTruthy()
+    expect(screen.getByText(/Do we band travel by distance\?/)).toBeTruthy()
+    expect(screen.getByText('asked 2 times across 2 bids')).toBeTruthy()
+    expect(screen.getByText('Answer all 2')).toBeTruthy()
+    expect(screen.getByText(/Is a strip mall shell a no-go\?/)).toBeTruthy()
+
+    // v2.2941 — doctrine-at-stake triage caption on a multi-pending queue.
+    expect(screen.getByText('sorted by what your verdict unblocks')).toBeTruthy()
   })
 
   it('read-only roles (write RLS mirror) see the card without composers or Finish audit', async () => {
@@ -149,5 +172,8 @@ describe('BidsAuditsTab', () => {
     expect(screen.queryByPlaceholderText(/Anything off\?/)).toBeNull()
     expect(screen.queryByText('Finish audit')).toBeNull()
     expect(screen.getByText(/view only for your role/)).toBeTruthy()
+
+    // v2.2941 — the Standing rulings panel is write-audience only.
+    expect(screen.queryByText(/Standing rulings/)).toBeNull()
   })
 })

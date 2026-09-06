@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { User } from '@supabase/supabase-js'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { supabase } from '../../lib/supabase'
@@ -33,6 +33,8 @@ import {
   type DiffBucketKey,
   type DiffEntry,
 } from '../../lib/bids/takeoffDiff'
+import { groupStandingRulings, rulingAskedLine, type TwinQuestionRow } from '../../lib/bids/standingRulings'
+import { orderPendingByStake } from '../../lib/bids/auditTriage'
 
 /**
  * The Audits tab, cockpit v2 (v2.2553): judge the differences, coach the robot.
@@ -157,6 +159,13 @@ export function BidsAuditsTab({ authUser, myRole }: { authUser: User | null; myR
   // Fallback judge list (no reference rows to diff against): local 👍 acks / 🚩 flags.
   const [rowJudgments, setRowJudgments] = useState<Record<string, 'ok' | 'flagged'>>({})
   const [composerSection, setComposerSection] = useState<Record<string, AuditSection>>({})
+  // Standing rulings (v2.2941, LEARNING_PLAN item 4): the robots' open
+  // twin_questions, deduped by topic — one answer fans out to every open copy.
+  const [rulingQuestions, setRulingQuestions] = useState<TwinQuestionRow[]>([])
+  const [rulingsAvailable, setRulingsAvailable] = useState(false)
+  // null = follow the default (open when there are questions, collapsed at 0).
+  const [rulingsOpen, setRulingsOpen] = useState<boolean | null>(null)
+  const [rulingDrafts, setRulingDrafts] = useState<Record<string, string>>({})
 
   // Sealed shadow: the reference bid hasn't gone out yet, so even the robot's
   // takeoff rows are off-limits (anchoring) — the audit holds until scoring.
@@ -294,15 +303,104 @@ export function BidsAuditsTab({ authUser, myRole }: { authUser: User | null; myR
     void load()
   }, [load])
 
-  // Auto-expand the first workable pending card — never a sealed shadow. Re-runs
-  // when the refs land so a briefly-expanded sealed card snaps shut.
+  // Open twin questions for the Standing rulings panel. `topic` ships with the
+  // 20260906110000 migration (PR #2684); select('*') simply omits the column
+  // until then, so the panel degrades to individual questions, never an error.
+  const loadRulings = useCallback(async () => {
+    if (!canWrite) return
+    try {
+      const { data, error } = await auditDb
+        .from('twin_questions')
+        .select('*')
+        .eq('status', 'open')
+        .order('created_at', { ascending: false })
+        .limit(200)
+      if (error) throw new Error(error.message)
+      setRulingQuestions((data ?? []) as TwinQuestionRow[])
+      setRulingsAvailable(true)
+    } catch {
+      // RLS-closed or table missing: the panel just doesn't render.
+      setRulingsAvailable(false)
+    }
+  }, [canWrite])
+  useEffect(() => {
+    void loadRulings()
+  }, [loadRulings])
+
+  const rulingsView = useMemo(() => groupStandingRulings(rulingQuestions), [rulingQuestions])
+
+  // One submit answers EVERY open question in the ruling's topic (or the one
+  // topicless question) — answer + status flip, stamped with who and when.
+  const answerRuling = async (questionIds: string[], draftKey: string) => {
+    const text = (rulingDrafts[draftKey] ?? '').trim()
+    if (!text) return
+    setBusy(`ruling:${draftKey}`)
+    try {
+      const { data: rows, error } = await auditDb
+        .from('twin_questions')
+        .update({
+          status: 'answered',
+          answer: text,
+          answered_by: authUser?.id ?? null,
+          answered_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        })
+        .in('id', questionIds)
+        .eq('status', 'open')
+        .select('id')
+      if (error) throw new Error(error.message)
+      const n = (rows ?? []).length
+      if (n === 0) {
+        showToast('Already handled elsewhere — refreshing.', 'error')
+      } else {
+        setRulingDrafts((p) => ({ ...p, [draftKey]: '' }))
+        showToast(
+          n > 1
+            ? `Ruling saved — ${n} open questions answered at once; every robot pulls it next run.`
+            : 'Answer saved — the robot pulls it on its next run.',
+          'success',
+        )
+      }
+      await loadRulings()
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : String(e), 'error')
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  const deltaPctFor = useCallback(
+    (a: AuditWithBid): number | null => {
+      const ref = refByBidId[a.bid_id]
+      const draft = draftByAudit[a.id]
+      if (!ref?.refValue || !draft || isUnpricedAudit(draft)) return null
+      return ((draft.total - ref.refValue) / ref.refValue) * 100
+    },
+    [refByBidId, draftByAudit],
+  )
+
+  // Doctrine-at-stake triage (v2.2941, LEARNING_PLAN item 5): pending cards
+  // order by what a verdict unblocks — open questions first, then |delta|,
+  // then age — instead of oldest-first. Done/digested keep sortAuditsForTab's
+  // order; sealed shadows sort by the same rule but still render locked.
+  const triaged = useMemo(
+    () =>
+      orderPendingByStake(audits, (a) => ({
+        openQuestions: openQuestionCount(threadAuditNotes(notesByAudit[a.id] ?? [])),
+        deltaPct: deltaPctFor(a),
+      })),
+    [audits, notesByAudit, deltaPctFor],
+  )
+
+  // Auto-expand the top-stake workable pending card — never a sealed shadow.
+  // Re-runs when the refs land so a briefly-expanded sealed card snaps shut.
   useEffect(() => {
     setExpandedId((cur) => {
-      const current = audits.find((a) => a.id === cur)
+      const current = triaged.find((a) => a.id === cur)
       if (current && !isSealed(current)) return cur
-      return audits.find((a) => a.status === 'pending' && !isSealed(a) && !isUnpricedAudit(draftByAudit[a.id]))?.id ?? null
+      return triaged.find((a) => a.status === 'pending' && !isSealed(a) && !isUnpricedAudit(draftByAudit[a.id]))?.id ?? null
     })
-  }, [audits, isSealed, draftByAudit])
+  }, [triaged, isSealed, draftByAudit])
 
   // Priced active-version rows for the expanded card — the twin's draft AND (once
   // the reference has gone out) the reference bid's rows, so the diff has both sides.
@@ -447,13 +545,14 @@ export function BidsAuditsTab({ authUser, myRole }: { authUser: User | null; myR
   }
   const finishAudit = async (audit: AuditWithBid) => {
     await setAuditStatus(audit, 'finish')
-    const next = audits.find((a) => a.id !== audit.id && a.status === 'pending' && !isSealed(a))
+    const next = triaged.find((a) => a.id !== audit.id && a.status === 'pending' && !isSealed(a))
     setExpandedId(next?.id ?? null)
   }
   const reopenAudit = (audit: AuditWithBid) => setAuditStatus(audit, 'reopen')
 
-  const visible = audits.filter((a) => a.status !== 'digested' || showDigested)
+  const visible = triaged.filter((a) => a.status !== 'digested' || showDigested)
   const digestedCount = audits.filter((a) => a.status === 'digested').length
+  const pendingCount = audits.filter((a) => a.status === 'pending').length
 
   // Coaching record: what the team's past notes became, and the recent error runs.
   const allNotes = Object.values(notesByAudit).flat()
@@ -472,8 +571,115 @@ export function BidsAuditsTab({ authUser, myRole }: { authUser: User | null; myR
     .filter((x): x is { num: string | null; pct: number } => !!x)
     .slice(0, 5)
 
+  const rulingsExpanded = rulingsOpen ?? rulingsView.openCount > 0
+  const rulingCardStyle: React.CSSProperties = {
+    border: '1px solid var(--border)',
+    borderRadius: 6,
+    background: 'var(--surface)',
+    padding: '0.55rem 0.75rem',
+  }
+  const rulingInputStyle: React.CSSProperties = {
+    flex: 1,
+    padding: '0.4rem 0.5rem',
+    border: '1px solid var(--border-strong)',
+    borderRadius: 4,
+    fontSize: '0.875rem',
+    boxSizing: 'border-box',
+  }
+
   return (
     <div>
+      {/* Standing rulings (v2.2941): the robots' open questions, deduped by
+          doctrine topic — the highest-leverage minutes on this whole page. */}
+      {canWrite && rulingsAvailable ? (
+        <div style={{ border: '1px solid var(--border)', borderRadius: 8, background: 'var(--bg-subtle)', marginBottom: '1rem' }}>
+          <button
+            type="button"
+            onClick={() => setRulingsOpen(!rulingsExpanded)}
+            style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', width: '100%', padding: '0.6rem 0.9rem', background: 'transparent', border: 'none', cursor: 'pointer', textAlign: 'left', font: 'inherit', color: 'inherit' }}
+          >
+            <span style={{ fontWeight: 600, fontSize: '0.875rem' }}>📜 Standing rulings · {rulingsView.openCount}</span>
+            <span style={{ color: 'var(--text-muted)', fontSize: '0.8125rem' }}>— fifteen minutes here unblocks every robot</span>
+            <span style={{ marginLeft: 'auto', color: 'var(--text-muted)', fontSize: '0.75rem' }}>{rulingsExpanded ? '▾' : '▸'}</span>
+          </button>
+          {rulingsExpanded ? (
+            <div style={{ padding: '0 0.9rem 0.75rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+              {rulingsView.openCount === 0 ? (
+                <div style={{ color: 'var(--text-muted)', fontSize: '0.8125rem' }}>No open questions — every robot has its answer.</div>
+              ) : (
+                <div style={{ color: 'var(--text-muted)', fontSize: '0.78rem' }}>
+                  One answer lands on every open copy of the question; the robots pull it on their next run.
+                </div>
+              )}
+              {rulingsView.rulings.map((r) => {
+                const draftKey = `topic:${r.topic}`
+                return (
+                  <div key={r.topic} style={rulingCardStyle}>
+                    <div style={{ fontSize: '0.875rem' }}>
+                      <span style={{ display: 'inline-block', marginRight: '0.5rem', padding: '0.05rem 0.45rem', borderRadius: 9999, border: '1px solid var(--border)', background: 'var(--bg-subtle)', color: 'var(--text-700)', fontSize: '0.6875rem', fontWeight: 600, verticalAlign: 'middle' }}>
+                        {r.label}
+                      </span>
+                      🤖 {r.newest.question}
+                    </div>
+                    <div style={{ marginTop: '0.2rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>{rulingAskedLine(r)}</div>
+                    <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.45rem' }}>
+                      <input
+                        type="text"
+                        value={rulingDrafts[draftKey] ?? ''}
+                        onChange={(e) => setRulingDrafts((p) => ({ ...p, [draftKey]: e.target.value }))}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') void answerRuling(r.questionIds, draftKey)
+                        }}
+                        placeholder="Your ruling — answers every copy at once…"
+                        style={rulingInputStyle}
+                      />
+                      <button
+                        type="button"
+                        disabled={busy === `ruling:${draftKey}` || !(rulingDrafts[draftKey] ?? '').trim()}
+                        onClick={() => void answerRuling(r.questionIds, draftKey)}
+                        style={{ padding: '0.4rem 0.9rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: '0.875rem' }}
+                      >
+                        {r.askCount > 1 ? `Answer all ${r.askCount}` : 'Answer'}
+                      </button>
+                    </div>
+                  </div>
+                )
+              })}
+              {rulingsView.singles.map((s) => {
+                const draftKey = `q:${s.id}`
+                return (
+                  <div key={s.id} style={rulingCardStyle}>
+                    <div style={{ fontSize: '0.875rem' }}>🤖 {s.question}</div>
+                    {s.mission ? (
+                      <div style={{ marginTop: '0.2rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>{s.mission}</div>
+                    ) : null}
+                    <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.45rem' }}>
+                      <input
+                        type="text"
+                        value={rulingDrafts[draftKey] ?? ''}
+                        onChange={(e) => setRulingDrafts((p) => ({ ...p, [draftKey]: e.target.value }))}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') void answerRuling([s.id], draftKey)
+                        }}
+                        placeholder="Your answer — the robot pulls it next run…"
+                        style={rulingInputStyle}
+                      />
+                      <button
+                        type="button"
+                        disabled={busy === `ruling:${draftKey}` || !(rulingDrafts[draftKey] ?? '').trim()}
+                        onClick={() => void answerRuling([s.id], draftKey)}
+                        style={{ padding: '0.4rem 0.9rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: '0.875rem' }}
+                      >
+                        Answer
+                      </button>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          ) : null}
+        </div>
+      ) : null}
       <div style={{ marginBottom: '1rem', color: 'var(--text-muted)', fontSize: '0.875rem' }}>
         {canWrite ? (
           <>
@@ -515,6 +721,9 @@ export function BidsAuditsTab({ authUser, myRole }: { authUser: User | null; myR
         <div style={{ color: 'var(--text-muted)' }}>No audits yet — the robot opens one here whenever it finishes a draft bid.</div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+          {pendingCount > 1 ? (
+            <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>sorted by what your verdict unblocks</div>
+          ) : null}
           {visible.map((audit) => {
             const threaded = threadAuditNotes(notesByAudit[audit.id] ?? [])
             const openQ = openQuestionCount(threaded)
