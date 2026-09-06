@@ -1,3 +1,4 @@
+import { pushDismissal } from './dismissalStore'
 /**
  * Dismiss state for the dev "someone is trying to become a dev" notice.
  *
@@ -26,6 +27,7 @@ export function loadClaimDevAlertDismissState(userId: string): ClaimDevAlertDism
 }
 
 export function saveClaimDevAlertDismissState(userId: string, state: ClaimDevAlertDismissState): void {
+  pushDismissal(PREFIX, userId, state)
   try {
     localStorage.setItem(PREFIX + userId, JSON.stringify(state))
   } catch {

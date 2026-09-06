@@ -41,6 +41,7 @@ export const SETTINGS_SEARCH_INDEX: readonly SettingsSearchEntry[] = [
   { label: 'Personal time off', keywords: ['pto', 'vacation', 'time off', 'holiday'], tabId: 'settings-account', anchorId: 'settings-salary-workday' },
   { label: 'Back up my data', keywords: ['backup', 'export', 'download my data'], tabId: 'settings-account' },
   // Dashboard & alerts
+  { label: 'Defaults for everyone', keywords: ['defaults', 'org defaults', 'role defaults', 'mobile cards', 'payroll auto-apply', 'stripe mode', 'new device'], tabId: 'settings-company', anchorId: 'settings-org-defaults' },
   { label: 'Dashboard quick buttons', keywords: ['quick add', 'new job button', 'shortcuts'], tabId: 'settings-dashboard' },
   { label: 'Quick-Add Task icon', keywords: ['add task', 'home screen'], tabId: 'settings-dashboard' },
   { label: 'Daily goals', keywords: ['goals', 'checklist goals'], tabId: 'settings-dashboard' },
