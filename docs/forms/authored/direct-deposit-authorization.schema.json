@@ -171,8 +171,8 @@
         "h": 10
       },
       "order": 100,
-      "label": "My entire net pay",
-      "labelEs": "Todo mi pago neto",
+      "label": "All payments due to me",
+      "labelEs": "Todos los pagos que se me deben",
       "group": "deposit_kind",
       "sample": "true"
     },
@@ -181,7 +181,7 @@
       "type": "checkbox",
       "page": 1,
       "rect": {
-        "x": 158.58,
+        "x": 184.98,
         "y": 401.55,
         "w": 10,
         "h": 10
@@ -212,8 +212,8 @@
       "label": "Fixed dollar amount",
       "labelEs": "Cantidad fija en dólares",
       "advanced": true,
-      "help": "Only if you chose a fixed amount above. The rest of your pay is paid by check.",
-      "helpEs": "Solo si eligió una cantidad fija. El resto se paga con cheque.",
+      "help": "Only if you chose a fixed amount above. The rest of each payment is made by check.",
+      "helpEs": "Solo si eligió una cantidad fija. El resto de cada pago se hace con cheque.",
       "page": 1,
       "rect": {
         "x": 54,
@@ -231,8 +231,8 @@
       "mask": "###",
       "maxLength": 3,
       "advanced": true,
-      "help": "Only if you chose a percentage above — 1 to 100. The rest of your pay is paid by check.",
-      "helpEs": "Solo si eligió un porcentaje — de 1 a 100. El resto se paga con cheque.",
+      "help": "Only if you chose a percentage above — 1 to 100. The rest of each payment is made by check.",
+      "helpEs": "Solo si eligió un porcentaje — de 1 a 100. El resto de cada pago se hace con cheque.",
       "page": 1,
       "rect": {
         "x": 187.64,
