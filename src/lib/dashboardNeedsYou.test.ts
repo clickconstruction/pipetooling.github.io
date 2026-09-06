@@ -59,6 +59,55 @@ function burst(over: Partial<{ actor_name: string; bundles: number; window_start
   }
 }
 
+describe('aging queues (journey-map #40): dispatch requests + HR reports', () => {
+  it('dispatch: amber past the min age, red once the oldest passes the red line, quiet otherwise', () => {
+    const on = buildNeedsYouItems(inputs({
+      dispatchAgedEnabled: true,
+      dispatchAged: { count: 2, total: 5, oldestAgeDays: 4 },
+      dispatchMinAgeDays: 3,
+      dispatchRedDays: 7,
+    }))
+    const item = on.find((i) => i.key === 'dispatch-requests-aged')
+    expect(item).toMatchObject({ severity: 'amber', kicker: 'Dispatch inbox', figure: '2', actionLabel: 'Open Dispatch inbox' })
+    expect(item?.title).toBe('2 dispatch requests have waited 3+ days')
+    expect(item?.detail).toContain('the oldest asked 4 days ago')
+    expect(item?.detail).toContain('(5 open in all)')
+
+    const red = buildNeedsYouItems(inputs({ dispatchAgedEnabled: true, dispatchAged: { count: 1, total: 1, oldestAgeDays: 46 }, dispatchMinAgeDays: 3, dispatchRedDays: 7 }))
+    expect(red.find((i) => i.key === 'dispatch-requests-aged')).toMatchObject({ severity: 'red', title: 'A dispatch request has waited 3+ days' })
+    expect(red.find((i) => i.key === 'dispatch-requests-aged')?.detail).not.toContain('open in all')
+
+    expect(buildNeedsYouItems(inputs({ dispatchAgedEnabled: true, dispatchAged: null })).some((i) => i.key === 'dispatch-requests-aged')).toBe(false)
+    expect(buildNeedsYouItems(inputs({ dispatchAgedEnabled: false, dispatchAged: { count: 3, total: 3, oldestAgeDays: 40 } })).some((i) => i.key === 'dispatch-requests-aged')).toBe(false)
+    expect(buildNeedsYouItems(inputs({ dispatchAged: { count: 3, total: 3, oldestAgeDays: 40 } })).some((i) => i.key === 'dispatch-requests-aged')).toBe(false)
+  })
+
+  it('hr reports: same shape, dev-gated by the caller, names the oldest', () => {
+    const on = buildNeedsYouItems(inputs({ hrReportsEnabled: true, hrReportsAged: { count: 1, total: 2, oldestAgeDays: 11 }, hrReportsMinAgeDays: 3, hrReportsRedDays: 7 }))
+    const item = on.find((i) => i.key === 'hr-reports-pending')
+    expect(item).toMatchObject({ severity: 'red', kicker: 'HR reports', figure: '1', actionLabel: 'Open pending reports' })
+    expect(item?.title).toBe('A field report has waited 3+ days to be filed')
+    expect(item?.detail).toContain('the oldest 11 days ago (2 pending in all)')
+    const amber = buildNeedsYouItems(inputs({ hrReportsEnabled: true, hrReportsAged: { count: 3, total: 3, oldestAgeDays: 4 }, hrReportsMinAgeDays: 3, hrReportsRedDays: 7 }))
+    expect(amber.find((i) => i.key === 'hr-reports-pending')).toMatchObject({ severity: 'amber', title: '3 field reports have waited 3+ days to be filed' })
+    expect(buildNeedsYouItems(inputs({ hrReportsEnabled: false, hrReportsAged: { count: 3, total: 3, oldestAgeDays: 40 } })).some((i) => i.key === 'hr-reports-pending')).toBe(false)
+    expect(buildNeedsYouItems(inputs({ hrReportsEnabled: true, hrReportsAged: null })).some((i) => i.key === 'hr-reports-pending')).toBe(false)
+  })
+
+  it('ranks: dispatch sits with the revenue-chasing tier, HR reports with people/planning', () => {
+    const items = buildNeedsYouItems(inputs({
+      dispatchAgedEnabled: true,
+      dispatchAged: { count: 1, total: 1, oldestAgeDays: 4 },
+      dispatchMinAgeDays: 3,
+      hrReportsEnabled: true,
+      hrReportsAged: { count: 9, total: 9, oldestAgeDays: 4 },
+      hrReportsMinAgeDays: 3,
+      lostBidNudge: { count: 50, value: 0 },
+    }))
+    expect(items.map((i) => i.key)).toEqual(['dispatch-requests-aged', 'hr-reports-pending', 'lost-bids'])
+  })
+})
+
 describe('jobs stale open (v2.2825)', () => {
   it('names the pile, the money, and how many are the reader’s own; quiet while loading or off', () => {
     const on = buildNeedsYouItems(inputs({ staleOpenEnabled: true, staleOpen: { count: 25, total: 343162, mine: 3, minIdleDays: 21 } }))

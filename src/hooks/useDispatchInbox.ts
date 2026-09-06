@@ -16,6 +16,7 @@ import {
   type DispatchBadgeCounts,
 } from '../lib/dispatchInboxBadge'
 import { notifyDispatchRequestClosure } from '../lib/dispatchRequestClosure'
+import { sortDispatchInboxRows } from '../lib/dispatchInboxAging'
 import {
   jobIdsForPicturesRequestSweep,
   pickOrphanedPicturesRequestIds,
@@ -165,15 +166,10 @@ export function useDispatchInbox() {
       )
       const allRows = (requestsRes.data ?? []) as DispatchInboxRow[]
       setDispatchBadgeCounts(computeDispatchBadgeCounts(allRows, dismissedIds))
-      const rows = allRows.filter((r) => !dismissedIds.has(r.id))
-      rows.sort((a, b) => {
-        const aOpen = a.status === 'open' ? 1 : 0
-        const bOpen = b.status === 'open' ? 1 : 0
-        if (aOpen !== bOpen) return bOpen - aOpen
-        const aDate = a.status === 'closed' ? (a.closed_at ?? a.created_at ?? '') : (a.created_at ?? '')
-        const bDate = b.status === 'closed' ? (b.closed_at ?? b.created_at ?? '') : (b.created_at ?? '')
-        return bDate.localeCompare(aDate)
-      })
+      // Open rows OLDEST first (journey-map #40): the request a tech filed 46
+      // days ago no longer sinks under this morning's. Closed rows stay
+      // newest-closed-first — that half reads like a log.
+      const rows = sortDispatchInboxRows(allRows.filter((r) => !dismissedIds.has(r.id)))
 
       let merged: DispatchInboxRow[] = rows.map((r) => ({
         ...r,

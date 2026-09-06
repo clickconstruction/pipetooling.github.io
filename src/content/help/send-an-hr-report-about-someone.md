@@ -2,7 +2,7 @@
 title: send an hr report about someone
 category: Office
 roles: master_technician, dev
-keywords: hr report, report someone, pending reports, hr file, record, write up, observation
+keywords: hr report, report someone, pending reports, hr file, record, write up, observation, oldest first, age chip, needs you
 ---
 Saw something worth remembering about a person — good or bad? Write it down while it's fresh. Your Dashboard has an **HR Report** card (near the bottom, just above **My Team**) that sends what you saw to HR, where it gets filed on that person's record. The same card also sits at the bottom of **Dispatch Mode**'s Dashboard tab, right below the Job Pipeline.
 
@@ -25,6 +25,10 @@ Good news counts too — "stayed late to finish the trim-out so inspection could
 ## What happens after you send it
 
 Your report waits in a **Pending reports** queue that only devs see. During review, it gets filed onto that person's HR record as a dated entry with your name on it — dated the day it *happened*, not the day it was filed.
+
+:::example How the queue reads to the dev
+The queue lists the **oldest report first**, and each one carries an age chip — {{chip:gray|today}} while it's fresh, {{chip:yellow|3 days waiting}} from day 3, {{chip:red|11 days waiting}} from day 7. Once the oldest report is 3+ days old, the dev's Dashboard **Needs You** card adds an **HR reports** item that says how old it is and opens the queue with {{button:blue|Open pending reports}} — so a report can't quietly sit under newer ones.
+:::
 
 Under the card, **Your recent reports** shows each report you've written with its status: {{chip:yellow|pending}} means it's waiting, {{chip:green|filed}} means it's on their record, {{chip:gray|closed}} means a dev set it aside (with a reason — nothing is deleted).
 

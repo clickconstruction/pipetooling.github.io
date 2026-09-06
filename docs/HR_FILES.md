@@ -123,7 +123,14 @@ Masters and devs write observations about a person from the Dashboard's
 `occurred_date` vs `created_at`, free text, status pending/filed/dismissed —
 **no DELETE**; migration `20260824170000`). The queue renders at the top of
 People → HR (dev-only, hides when empty) with per-report **File / Open their
-file / Dismiss…** (reason required).
+file / Dismiss…** (reason required). Since v2.2895 (journey-map #40) it lists
+**oldest first** with an age chip per row — amber at 3 days, red at 7
+(`HR_PENDING_REPORT_AGE` in `src/lib/ageState.ts`; kernels
+`sortPendingReportsOldestFirst` / `summarizePendingReportAging` in
+`src/lib/people/hrPendingReports.ts`) — and the dev's Needs You card carries an
+`hr-reports-pending` item once the oldest report is `HR_REPORTS_MIN_AGE_DAYS`
+(3) old (`usePendingHrReportsNudge`, action → `/people?tab=hr`). Clicking
+**Open their file** on an amber/red row records `aging_item_opened`.
 
 Filing goes through `file_person_report(p_report_id)` — appends the
 append-only `person_file_entries` row (source `report`, `entry_date` =

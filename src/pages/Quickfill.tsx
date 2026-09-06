@@ -44,6 +44,8 @@ import { QuickfillScheduleSection } from '../components/quickfill/QuickfillSched
 import { QuickfillTomorrowsScheduleSection } from '../components/quickfill/QuickfillTomorrowsScheduleSection'
 import { QuickfillProspectsSection } from '../components/quickfill/QuickfillProspectsSection'
 import { DispatchInboxSection } from '../components/DispatchInboxSection'
+import { summarizeOpenDispatchAging } from '../lib/dispatchInboxAging'
+import { DISPATCH_REQUESTS_MIN_AGE_DAYS } from '../lib/ageState'
 import { DispatchDismissedItemsModal } from '../components/DispatchDismissedItemsModal'
 import CreateTripChargeModal, { type CreateTripChargeTarget } from '../components/CreateTripChargeModal'
 import { useJobFormModal } from '../contexts/JobFormModalContext'
@@ -426,6 +428,7 @@ function QuickfillPage() {
     dispatchInboxEligible,
     dispatchRequests,
     dispatchRequestsLoading,
+    dispatchRequestsLoaded,
     dispatchRequestDismissingId,
     expandedDispatchRequestId,
     dispatchThreadNotesByRequestId,
@@ -443,6 +446,14 @@ function QuickfillPage() {
   const { getOutstandingCount } = useQuickfillSectionMetricsContext()
   const unpricedFixturesCount = useUnpricedFixturesCount()
   const quickfillNoCustomerStages = useQuickfillStagesJobsWithoutCustomer()
+  // Needs You (journey-map #40): open dispatch requests past the min age, from the inbox rows this page already holds.
+  const dispatchAged = useMemo(
+    () =>
+      dispatchInboxEligible && dispatchRequestsLoaded
+        ? summarizeOpenDispatchAging(dispatchRequests, DISPATCH_REQUESTS_MIN_AGE_DAYS)
+        : null,
+    [dispatchInboxEligible, dispatchRequestsLoaded, dispatchRequests],
+  )
   const quickfillStagesAlertsUnionCount = useMemo(() => {
     if (!quickfillNoCustomerStages.fetchEnabled) return null
     const ids = new Set<string>()
@@ -1269,7 +1280,14 @@ function QuickfillPage() {
               count={needsYouSectionCount}
               loading={needsYouSectionCount === null}
             />
-            <QuickfillNeedsYouSection onCount={setNeedsYouSectionCount} />
+            <QuickfillNeedsYouSection
+              onCount={setNeedsYouSectionCount}
+              dispatchAged={dispatchAged}
+              onOpenDispatchInbox={() => {
+                openSectionNow('dispatch-inbox')
+                document.getElementById('quickfill-dispatch-inbox')?.scrollIntoView({ behavior: 'smooth' })
+              }}
+            />
           </QuickfillSectionWrapper>
         )
       case 'unpriced-fixtures':

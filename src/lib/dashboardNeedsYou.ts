@@ -54,6 +54,8 @@ export type NeedsYouItem = {
     | 'contract-stale'
     | 'work-orders-unpriced'
     | 'jobs-stale-open'
+    | 'dispatch-requests-aged'
+    | 'hr-reports-pending'
   severity: NeedsYouSeverity
   /** Walk-mode eyebrow. */
   kicker: string
@@ -98,6 +100,8 @@ export const NEEDS_YOU_RANK: Record<NeedsYouItem['key'], number> = {
   'contract-stale': 50,
   'work-orders-unpriced': 40,
   'jobs-stale-open': 40,
+  'dispatch-requests-aged': 40,
+  'hr-reports-pending': 50,
   'lost-bids': 60,
   'd22-uncoded': 60,
 }
@@ -256,6 +260,26 @@ export type NeedsYouInputs = {
   labelApprovalsEnabled: boolean
   labelApprovals: { pending: number; stale: number; staleAmount: number; oldestAgeDays: number } | null
   labelApprovalsMinAgeDays: number
+  /**
+   * Open dispatch requests older than `dispatchMinAgeDays` (journey-map #40 /
+   * C60) — the same min-age shape as hours approvals: the summary is null
+   * until the OLDEST open request has waited that long, so a same-day inbox
+   * never nags. Enabled for dispatch-group members + devs (the people who can
+   * answer); Quickfill's twin passes the same summary from its own inbox rows.
+   * Severity climbs to red once the oldest passes `DISPATCH_REQUEST_AGE.redDays`.
+   */
+  dispatchAgedEnabled?: boolean
+  dispatchAged?: { count: number; total: number; oldestAgeDays: number } | null
+  dispatchMinAgeDays?: number
+  dispatchRedDays?: number
+  /**
+   * HR field reports pending longer than `hrReportsMinAgeDays` (journey-map
+   * #40, J32-F7). Dev-only — People → HR (where they are filed) is dev-only.
+   */
+  hrReportsEnabled?: boolean
+  hrReportsAged?: { count: number; total: number; oldestAgeDays: number } | null
+  hrReportsMinAgeDays?: number
+  hrReportsRedDays?: number
 }
 
 export function buildNeedsYouItems(inputs: NeedsYouInputs): NeedsYouItem[] {
@@ -650,6 +674,46 @@ export function buildNeedsYouItems(inputs: NeedsYouInputs): NeedsYouItem[] {
         '. Approve all on Banking → Accounting clears the backlog; with the org switch on, only Internal Transfers on split transactions come back here.',
       figure: a.stale > 99 ? '99+' : String(a.stale),
       actionLabel: 'Open approvals',
+    })
+  }
+
+  if (inputs.dispatchAgedEnabled && inputs.dispatchAged != null && inputs.dispatchAged.count > 0) {
+    const { count: n, total, oldestAgeDays } = inputs.dispatchAged
+    const minAge = inputs.dispatchMinAgeDays ?? 0
+    const red = inputs.dispatchRedDays != null && oldestAgeDays >= inputs.dispatchRedDays
+    items.push({
+      key: 'dispatch-requests-aged',
+      severity: red ? 'red' : 'amber',
+      kicker: 'Dispatch inbox',
+      title:
+        n === 1
+          ? `A dispatch request has waited ${minAge}+ days`
+          : `${n} dispatch requests have waited ${minAge}+ days`,
+      detail:
+        `${n === 1 ? 'A tech is' : 'Techs are'} still waiting on an answer — the oldest asked ${oldestAgeDays} day${oldestAgeDays === 1 ? '' : 's'} ago` +
+        `${total > n ? ` (${total} open in all)` : ''}. The inbox lists them oldest first; answer or close each with a note and the sender hears back.`,
+      figure: n > 99 ? '99+' : String(n),
+      actionLabel: 'Open Dispatch inbox',
+    })
+  }
+
+  if (inputs.hrReportsEnabled && inputs.hrReportsAged != null && inputs.hrReportsAged.count > 0) {
+    const { count: n, total, oldestAgeDays } = inputs.hrReportsAged
+    const minAge = inputs.hrReportsMinAgeDays ?? 0
+    const red = inputs.hrReportsRedDays != null && oldestAgeDays >= inputs.hrReportsRedDays
+    items.push({
+      key: 'hr-reports-pending',
+      severity: red ? 'red' : 'amber',
+      kicker: 'HR reports',
+      title:
+        n === 1
+          ? `A field report has waited ${minAge}+ days to be filed`
+          : `${n} field reports have waited ${minAge}+ days to be filed`,
+      detail:
+        `Written from the field and still not on anyone's record — the oldest ${oldestAgeDays} day${oldestAgeDays === 1 ? '' : 's'} ago` +
+        `${total > n ? ` (${total} pending in all)` : ''}. File each onto the person's HR record or dismiss it with a reason; the author sees the status flip.`,
+      figure: n > 99 ? '99+' : String(n),
+      actionLabel: 'Open pending reports',
     })
   }
 

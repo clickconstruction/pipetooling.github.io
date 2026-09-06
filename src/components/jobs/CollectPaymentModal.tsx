@@ -739,7 +739,8 @@ export default function CollectPaymentModal({
 
   const dispatchWaitElapsedLabel =
     step === 2
-      ? formatWaitingLabelFromCertifiedAt(dispatchWaitNowMs, payload?.flow?.certified_at)
+      // The tech is standing here watching it — the one stopwatch that stays a stopwatch (journey-map #40).
+      ? formatWaitingLabelFromCertifiedAt(dispatchWaitNowMs, payload?.flow?.certified_at, { liveCountUp: true })
       : null
 
   const collectInv = payload?.collect_invoice

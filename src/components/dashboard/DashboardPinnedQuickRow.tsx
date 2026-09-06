@@ -32,6 +32,14 @@ import { useLienWatchNudge } from '../../hooks/useLienWatchNudge'
 import { CLAIM_DEV_LOOKBACK_DAYS, useClaimDevAttemptsNudge } from '../../hooks/useClaimDevAttemptsNudge'
 import { HOURS_APPROVALS_MIN_AGE_DAYS, usePendingHoursApprovalsNudge } from '../../hooks/usePendingHoursApprovalsNudge'
 import { LABEL_APPROVALS_MIN_AGE_DAYS, usePendingLabelApprovalsNudge } from '../../hooks/usePendingLabelApprovalsNudge'
+import { usePendingHrReportsNudge } from '../../hooks/usePendingHrReportsNudge'
+import {
+  DISPATCH_REQUEST_AGE,
+  DISPATCH_REQUESTS_MIN_AGE_DAYS,
+  HR_PENDING_REPORT_AGE,
+  HR_REPORTS_MIN_AGE_DAYS,
+} from '../../lib/ageState'
+import type { DispatchAgingSummary } from '../../lib/dispatchInboxAging'
 import { DashboardStaleTallyStaffFollowUpModal } from '../DashboardStaleTallyStaffFollowUpModal'
 import { DashboardLienReleaseQueueModal } from './DashboardLienReleaseQueueModal'
 import { DashboardArDepositsModal } from './DashboardArDepositsModal'
@@ -64,6 +72,13 @@ export interface DashboardPinnedQuickRowProps {
   billedTotal: number | null
   supplyHousesAPTotal: number | null
   subLaborDueTotal: number | null
+  /**
+   * Open dispatch requests past `DISPATCH_REQUESTS_MIN_AGE_DAYS` (journey-map
+   * #40), summarised by the parent from its `useDispatchInbox` rows — null when
+   * nothing has aged, the viewer isn't dispatch-eligible, or the inbox hasn't
+   * loaded. The Needs-You action scrolls to the Teams Inbox card on this page.
+   */
+  dispatchAged?: DispatchAgingSummary | null
   /**
    * The tail modals (NewReportModal + staff tally follow-up) historically render
    * only in the main return — the Job Mode early return never mounted them, so
@@ -282,6 +297,7 @@ export function DashboardPinnedQuickRow({
   billedTotal,
   supplyHousesAPTotal,
   subLaborDueTotal,
+  dispatchAged = null,
   renderModals,
   jobReportFirst = false,
   clockSlot,
@@ -342,6 +358,9 @@ export function DashboardPinnedQuickRow({
   // the office set.
   const hoursApprovalsEnabled = !hideBanners && Boolean(authUserId) && officeEligible
   const { approvals: hoursApprovals } = usePendingHoursApprovalsNudge(hoursApprovalsEnabled)
+  // HR pending reports (journey-map #40): dev-only, like the People → HR tab that files them.
+  const hrReportsEnabled = !hideBanners && Boolean(authUserId) && role === 'dev'
+  const { aged: hrReportsAged } = usePendingHrReportsNudge(hrReportsEnabled)
 
   // Pending bank-label suggestions (journey-map Tier-2 #27) — same gate shape:
   // the RPC returns the zero row for anyone who cannot work the Banking →
@@ -413,6 +432,14 @@ export function DashboardPinnedQuickRow({
     labelApprovalsEnabled,
     labelApprovals,
     labelApprovalsMinAgeDays: LABEL_APPROVALS_MIN_AGE_DAYS,
+    dispatchAgedEnabled: !hideBanners && Boolean(authUserId),
+    dispatchAged,
+    dispatchMinAgeDays: DISPATCH_REQUESTS_MIN_AGE_DAYS,
+    dispatchRedDays: DISPATCH_REQUEST_AGE.redDays,
+    hrReportsEnabled,
+    hrReportsAged,
+    hrReportsMinAgeDays: HR_REPORTS_MIN_AGE_DAYS,
+    hrReportsRedDays: HR_PENDING_REPORT_AGE.redDays,
   })
 
   const loadTallyUnlinkedCount = useCallback(async () => {
@@ -634,6 +661,13 @@ export function DashboardPinnedQuickRow({
               navigate('/people?tab=hours&approvals=1')
             } else if (item.key === 'label-approvals') {
               navigate('/banking?tab=accounting')
+            } else if (item.key === 'dispatch-requests-aged') {
+              // The inbox lives further down this page (Teams Inbox card); Dispatch Mode users get its Inbox tab.
+              const card = document.getElementById('dash-teams-inbox')
+              if (card) card.scrollIntoView({ behavior: 'smooth', block: 'start' })
+              else navigate('/dispatch-mode/inbox')
+            } else if (item.key === 'hr-reports-pending') {
+              navigate('/people?tab=hr')
             }
           }}
           onSecondary={(item, key) => {

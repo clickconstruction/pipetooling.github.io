@@ -34,11 +34,13 @@ const subheadStyle: CSSProperties = {
 
 function RequestRow({ view }: { view: MyDispatchRequestView }) {
   const answered = view.state === 'answered'
+  // Open rows: amber rail while waiting, red once past DISPATCH_REQUEST_AGE.redDays (journey-map #40).
+  const rail = answered ? '#16a34a' : view.age === 'red' ? '#dc2626' : '#d97706'
   return (
     <li
       style={{
         listStyle: 'none',
-        borderLeft: `3px solid ${answered ? '#16a34a' : '#d97706'}`,
+        borderLeft: `3px solid ${rail}`,
         paddingLeft: '0.6rem',
         display: 'flex',
         flexDirection: 'column',

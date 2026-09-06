@@ -18,6 +18,14 @@ import { useLienReleasesOwedNudge } from '../../hooks/useLienReleasesOwedNudge'
 import { useDemandDeadlinesNudge } from '../../hooks/useDemandDeadlinesNudge'
 import { useLienWatchNudge } from '../../hooks/useLienWatchNudge'
 import { LABEL_APPROVALS_MIN_AGE_DAYS, usePendingLabelApprovalsNudge } from '../../hooks/usePendingLabelApprovalsNudge'
+import { usePendingHrReportsNudge } from '../../hooks/usePendingHrReportsNudge'
+import {
+  DISPATCH_REQUEST_AGE,
+  DISPATCH_REQUESTS_MIN_AGE_DAYS,
+  HR_PENDING_REPORT_AGE,
+  HR_REPORTS_MIN_AGE_DAYS,
+} from '../../lib/ageState'
+import type { DispatchAgingSummary } from '../../lib/dispatchInboxAging'
 import { isAssistantLike } from '../../lib/subcontractorLikeRole'
 import { buildNeedsYouItems } from '../../lib/dashboardNeedsYou'
 import { DashboardNeedsYouCard } from '../dashboard/DashboardNeedsYouCard'
@@ -33,7 +41,17 @@ import { DashboardArDepositsModal } from '../dashboard/DashboardArDepositsModal'
  * stay complete automatically. The card renders nothing when the list is
  * empty; the section's Mark button still stamps the ritual on a clean day.
  */
-export function QuickfillNeedsYouSection({ onCount }: { onCount?: (n: number | null) => void }) {
+export function QuickfillNeedsYouSection({
+  onCount,
+  dispatchAged = null,
+  onOpenDispatchInbox,
+}: {
+  onCount?: (n: number | null) => void
+  /** Open dispatch requests past the min age (journey-map #40), summarised by the page from its inbox rows. */
+  dispatchAged?: DispatchAgingSummary | null
+  /** Expands + scrolls to this page's Dispatch inbox station. */
+  onOpenDispatchInbox?: () => void
+}) {
   const navigate = useNavigate()
   const { user: authUser, role } = useAuth()
   const [staffModalOpen, setStaffModalOpen] = useState(false)
@@ -67,6 +85,8 @@ export function QuickfillNeedsYouSection({ onCount }: { onCount?: (n: number | n
   // same card the Dashboard shows, so the Quickfill twin never lags it.
   const labelApprovalsEnabled = Boolean(authUser?.id) && tallyStaffEligible
   const { approvals: labelApprovals } = usePendingLabelApprovalsNudge(labelApprovalsEnabled)
+  const hrReportsEnabled = Boolean(authUser?.id) && role === 'dev'
+  const { aged: hrReportsAged } = usePendingHrReportsNudge(hrReportsEnabled)
 
   const loadTallyStale = useCallback(async () => {
     if (!authUser?.id || role == null) return
@@ -135,6 +155,15 @@ export function QuickfillNeedsYouSection({ onCount }: { onCount?: (n: number | n
     labelApprovalsEnabled,
     labelApprovals,
     labelApprovalsMinAgeDays: LABEL_APPROVALS_MIN_AGE_DAYS,
+    // Aging queues (journey-map #40): the dispatch station is on this page; HR files from People.
+    dispatchAgedEnabled: Boolean(authUser?.id) && onOpenDispatchInbox != null,
+    dispatchAged,
+    dispatchMinAgeDays: DISPATCH_REQUESTS_MIN_AGE_DAYS,
+    dispatchRedDays: DISPATCH_REQUEST_AGE.redDays,
+    hrReportsEnabled,
+    hrReportsAged,
+    hrReportsMinAgeDays: HR_REPORTS_MIN_AGE_DAYS,
+    hrReportsRedDays: HR_PENDING_REPORT_AGE.redDays,
   })
 
   useEffect(() => {
@@ -180,6 +209,10 @@ export function QuickfillNeedsYouSection({ onCount }: { onCount?: (n: number | n
             navigate('/jobs?tab=stages')
           } else if (item.key === 'label-approvals') {
             navigate('/banking?tab=accounting')
+          } else if (item.key === 'dispatch-requests-aged') {
+            onOpenDispatchInbox?.()
+          } else if (item.key === 'hr-reports-pending') {
+            navigate('/people?tab=hr')
           }
         }}
         onSecondary={(item, key) => {

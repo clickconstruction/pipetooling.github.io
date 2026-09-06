@@ -6,6 +6,7 @@ import { useToastContext } from '../../contexts/ToastContext'
 import { useAuth } from '../../hooks/useAuth'
 import { useIntervalNowMs } from '../../hooks/useIntervalNowMs'
 import { formatWaitingLabelFromCertifiedAt } from '../../lib/formatElapsedCountUp'
+import { ageState, FIELD_APPROVAL_WAIT_AGE, type AgeState } from '../../lib/ageState'
 import { getBillingStripeModePref, stripeModeInvokeBody, type BillingStripeModePref } from '../../lib/billingStripeModePref'
 import { readEdgeFunctionErrorBody } from '../../lib/readEdgeFunctionErrorBody'
 import { revenueDollarsFromFixtures } from '../../lib/revenueFromJobFixtures'
@@ -21,6 +22,13 @@ import { formatErrorMessage, withSupabaseRetry } from '../../utils/errorHandling
 import type { Database } from '../../types/database'
 import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
 import { isSubcontractorLikeRole } from '../../lib/subcontractorLikeRole'
+
+/** Waiting-label tone per age state: muted while fresh, amber then red as the office falls behind. */
+function waitTone(state: AgeState): { color: string; fontWeight?: number } {
+  if (state === 'red') return { color: 'var(--text-red-700)', fontWeight: 600 }
+  if (state === 'amber') return { color: 'var(--text-amber-800)', fontWeight: 600 }
+  return { color: 'var(--text-muted)' }
+}
 
 type FlowRow = Database['public']['Tables']['job_collect_payment_flows']['Row'] & {
   jobs_ledger: Pick<
@@ -859,7 +867,8 @@ export default function DashboardFieldCollectPaymentQueue({
                       <span
                         style={{
                           fontSize: '0.8125rem',
-                          color: 'var(--text-muted)',
+                          // Past 48 h the stopwatch reads "2 days" and the tone climbs amber → red (journey-map #40).
+                          ...waitTone(ageState(r.certified_at, dispatchQueueNowMs, FIELD_APPROVAL_WAIT_AGE)),
                           fontVariantNumeric: 'tabular-nums',
                           flexShrink: 0,
                         }}
