@@ -28,7 +28,7 @@ Edit tab → tap the **Phone** row → retype the number → tap the row again t
 - **Switching tabs never loses work.** Type half a job name, hop to Bill to check the remaining amount, come back — your keystrokes are still there, and autosave keeps running throughout (see *know when Edit Job saves my changes*).
 - Edits you make on the Edit or Bill tab show up on the Job tab right away — it refreshes itself after each save.
 - {{button:red|Delete}} lives at the bottom of the **Edit** tab only.
-- Creating a **new** job still uses the plain New Job form — a job with nothing to read or bill yet doesn't need tabs.
+- Creating a **new** job still uses the plain New Job form — a job with nothing to read or bill yet doesn't need tabs. If you've typed anything, Cancel, Escape or clicking outside asks **Discard this job?** first — an untouched form just closes. Escape closes only the window on top, so a New Job opened from a bid never takes the bid window with it.
 
 :::example A billing round-trip
 Open the job → **Bill** tab → drag the slider to 80% → Create invoice → hop to **Job** to confirm the billed bar moved. One window the whole time.

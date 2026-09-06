@@ -89,7 +89,7 @@ Every block also carries a small **clock button** tucked into the top-left corne
 
 Swim lanes are named crews everyone in the office shares — useful when the same people tend to ride together. The People grid starts out grouped **by swim lanes**: each lane appears as its own section (in your office's lane order), with anyone unassigned collected under **Everyone else**. Click the **Person** header cell to cycle to the other groupings — alphabetical → by role → back to lanes; your pick is remembered on that device.
 
-To manage the lanes, open {{button:outline|Dispatch Settings}} and find **Swim lanes (People grid crews)**:
+To manage the lanes, open {{button:outline|Dispatch Settings}} and find **Swim lanes (People grid crews)**: Lanes and the office schedule **save as you go** — each change writes for everyone the moment you make it, and the footer's **Cancel** only drops unsaved changes to job instructions (the modal says so once you've edited a lane).
 
 :::example Swim lanes manager
 **Underground crew** &nbsp; {{button:outline|↑}} {{button:outline|↓}} {{button:outline|Rename}} {{button:outline|Delete}}

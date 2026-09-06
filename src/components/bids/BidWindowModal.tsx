@@ -1,6 +1,7 @@
 import { useEffect, useState, type CSSProperties, type ReactNode } from 'react'
 import { BidPreviewModal, type BidPreviewTabUrl } from './BidPreviewModal'
 import { fetchBidForPreview } from '../../lib/fetchBidForPreview'
+import { useModalStackEntry } from '../../hooks/useModalStackEntry'
 import type { BidWithBuilder } from '../../types/bidWithBuilder'
 
 /**
@@ -78,14 +79,17 @@ export function BidWindowModal({
     }
   }, [bidId, refreshKey])
 
+  // Tier-2 #42 (J1-N1): a modal stacked above this window (New Job opened from
+  // the bid, which the Bids page can't see) owns Escape while it is topmost.
+  const isTopmostModal = useModalStackEntry()
   useEffect(() => {
     if (escBlocked) return
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onRequestClose()
+      if (e.key === 'Escape' && isTopmostModal()) onRequestClose()
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [escBlocked, onRequestClose])
+  }, [escBlocked, onRequestClose, isTopmostModal])
 
   return (
     <div

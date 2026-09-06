@@ -26,7 +26,7 @@ Next to the copy buttons, **Send by email…** opens the request composer. Each 
 
 {{gif:rfq-desk-and-compose.gif|The desk sorts by what needs you — then a new request: tick the house, the contact chip is already To, preview the exact email}}
 
-The **RFQs chip** by Share then becomes your desk: every request as a trail — {{chip:green|Sent}} → {{chip:green|Delivered}} → {{chip:yellow|Viewed}} → {{chip:gray|Quoted}} — with bounced addresses in red (fix them right on the row and resend), a one-tap **Nudge** that rests 24 hours between sends and shows you the reminder before it goes, a coverage bar for "which items does nobody have priced yet?", and **Close link** when you're done asking.
+The **RFQs chip** by Share then becomes your desk: every request as a trail — {{chip:green|Sent}} → {{chip:green|Delivered}} → {{chip:yellow|Viewed}} → {{chip:gray|Quoted}} — with bounced addresses in red (fix them right on the row and resend), a one-tap **Nudge** that rests 24 hours between sends and shows you the reminder before it goes, a coverage bar for "which items does nobody have priced yet?", and **Close link** when you're done asking — it asks first, and a closed request is never gone for good: the closed list at the bottom of the desk shows each one with a {{button:outline|Reopen link}} that makes the supply house's page work again.
 
 {{gif:send-a-supply-house-a-quote-link.gif|Pick the house, set needed-by, Copy with quote link — the toast confirms and an RFQ sent chip appears by Share}}
 

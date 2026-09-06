@@ -17,7 +17,7 @@ In CountTooling, open the project and click {{button:blue|Copy to /Tooling}} in 
 
 ## Paste in ClickTooling
 
-Open the bid in **Bids → Counts** and click {{button:outline|Import from /Tooling}} (top-right, beside the ×). ClickTooling reads the clipboard and adds the rows straight onto the bid; if the browser won't share the clipboard, a paste box opens instead — paste and click **Import**.
+Open the bid in **Bids → Counts** and click {{button:outline|Import from /Tooling}} (top-right, beside the ×). ClickTooling reads the clipboard and adds the rows straight onto the bid; if the browser won't share the clipboard, a paste box opens instead — paste and click **Import**. The green toast carries an {{button:outline|Undo}} for ten seconds — click it and the rows that import just added are removed and the plans link goes back to what it was, nothing else touched.
 
 The toast tells you what arrived: *Imported 35 rows: 29 counts (1,122 ea) · 6 line types (444.74 ft).* Each row lands with its unit set — counters as **ea**, line types as **ft**, unscaled runs as **px** — so the Count Sheet totals them apart without guessing. The view link is saved to the bid as its **CountTooling plans** link (the crosshair icon on the Bid Board), so anyone pricing it can open the marked-up drawings.
 

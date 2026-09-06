@@ -196,3 +196,13 @@ export function coverageFromCompareRows(rows: ReadonlyArray<CompareRow>): {
   }
   return { total: rows.length, priced, bare }
 }
+
+/**
+ * Reopen door for a closed request (Tier-2 #42, J12-F2): "Close link" is no
+ * longer one-click-forever. A request that already has a quote on file goes
+ * back to `quoted`; anything else returns to `sent` (the token works again and
+ * the trail resumes where it was).
+ */
+export function rfqReopenStatus(args: { hasQuote: boolean }): 'sent' | 'quoted' {
+  return args.hasQuote ? 'quoted' : 'sent'
+}

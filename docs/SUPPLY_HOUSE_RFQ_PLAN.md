@@ -128,7 +128,9 @@ ends with all three fence appliers. Names snapshot as text.
 - Quotes-received signal: "Quotes (n)" chip turns green + RFQ status chip
   on the Pricing header (Sent → Quoted). No email/push in this phase.
 - Token hygiene: RFQ `closed` (manual, or bid marked lost/dead) → page
-  shows "this request is closed"; re-submit allowed until closed
+  shows "this request is closed"; re-submit allowed until closed.
+  Close link asks first, and the desk lists closed requests with a Reopen
+  door (status back to sent, or quoted when a quote exists) — v2.2897
   (latest-wins in compare, prior quotes kept).
 
 ## Phase 3 — price memory pays off (1 PR) — SHIPPED v2.2632 (the compare "Last quoted" column shipped early in v2.2630)

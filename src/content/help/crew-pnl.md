@@ -25,7 +25,7 @@ Pick a preset (This month, Last month, Quarter, Year) or a custom range. It filt
 
 ## Drill down
 
-Click any person to expand their per-job lines (hours, labor cost, billing credit); click a job number to open Job Detail. Sub-sheet labor shows as separate lines. People are matched to the roster, so different spellings of the same name land in one row — a small **unmatched** tag means the name only exists in free-text fields.
+Click any person to expand their per-job lines (hours, labor cost, billing credit); click a job number to open Job Detail. Sub-sheet labor shows as separate lines. Flat-rate sub sheets are weighed as cost ÷ the **Org-wide sub rate** in the toolbar — one number for the whole company. Type a new rate and click {{button:blue|Save for everyone}} (or press Enter); leaving the box empty keeps the current rate, it never resets. People are matched to the roster, so different spellings of the same name land in one row — a small **unmatched** tag means the name only exists in free-text fields.
 
 ## Not the same as team leads
 

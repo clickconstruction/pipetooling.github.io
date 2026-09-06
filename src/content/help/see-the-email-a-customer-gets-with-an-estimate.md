@@ -5,7 +5,7 @@ roles: dev, master_technician, assistant, controller, estimator
 keywords: estimate email, send to customer, accept link, email preview, subject line, letterhead, reply-to, body template, customer experience, resend link, lost link, copy customer link, customer never got the email
 order: 64
 ---
-When you press {{button:amber|Send to customer}} on an estimate, the customer gets one email with a private link to the acceptance page. Since v2.2747 it is a proper letter, and the link is a button.
+When you press {{button:amber|Send to customer}} on an estimate, ClickTooling first asks **Send to …?** with their email address filled in, so you see exactly who is about to get it (a $0 total is called out in the same ask); confirm, and the customer gets one email with a private link to the acceptance page. Since v2.2747 it is a proper letter, and the link is a button.
 
 ## What the customer sees
 

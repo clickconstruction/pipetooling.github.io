@@ -14,6 +14,7 @@ import {
   canNudge,
   coverageFromCompareRows,
   deriveRfqTrail,
+  rfqReopenStatus,
   rfqUrgency,
   scopeDriftCount,
   sortRfqsByUrgency,
@@ -24,6 +25,9 @@ import { buildQuoteComparison, type CompareQuote } from '../../lib/rfq/quoteComp
 import { supabase } from '../../lib/supabase'
 import { withSupabaseRetry } from '../../utils/errorHandling'
 import { useToastContext } from '../../contexts/ToastContext'
+import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
+import { useAuth } from '../../hooks/useAuth'
+import { recordNavClick } from '../../lib/navClickTelemetry'
 import { todayYmdInAppTz } from '../../utils/dateUtils'
 
 const MODAL_Z = 10050
@@ -97,8 +101,12 @@ export function RfqDeskModal({
   rows: Array<{ id: string; fixture: string; count: number }>
 }) {
   const { showToast } = useToastContext()
+  const confirmDialog = useConfirmDialog()
+  const { user: authUser, role: authRole } = useAuth()
   const [loading, setLoading] = useState(true)
   const [rfqs, setRfqs] = useState<DeskRow[]>([])
+  /** rfq ids that already have a quote on file — a reopened one goes back to `quoted`. */
+  const [quotedRfqIds, setQuotedRfqIds] = useState<Set<string>>(new Set())
   const [quotes, setQuotes] = useState<CompareQuote[]>([])
   const [busy, setBusy] = useState<string | null>(null)
   const [showBare, setShowBare] = useState(false)
@@ -124,7 +132,7 @@ export function RfqDeskModal({
           () =>
             supabase
               .from('bid_quotes')
-              .select('id, supply_house_id, received_at, valid_until, bid_quote_lines(fixture, unit_price_each_cents, cant_supply, picked)')
+              .select('id, supply_house_id, rfq_id, received_at, valid_until, bid_quote_lines(fixture, unit_price_each_cents, cant_supply, picked)')
               .eq('bid_id', bidId)
               .order('received_at'),
           'load quotes for coverage',
@@ -164,6 +172,7 @@ export function RfqDeskModal({
           }
         }),
       )
+      setQuotedRfqIds(new Set((quoteRows ?? []).map((q) => q.rfq_id).filter((x): x is string => !!x)))
       setQuotes(
         (quoteRows ?? [])
           .filter((q) => q.supply_house_id)
@@ -232,13 +241,33 @@ export function RfqDeskModal({
     }
   }
 
-  async function act(rfq: DeskRow, mode: 'remind' | 'resend' | 'close') {
+  // Tier-2 #42 (J12-F2): Close link asks first and is no longer forever — a
+  // closed request keeps a Reopen door (status back to sent, or quoted when a
+  // quote is already on file).
+  async function closeLink(rfq: DeskRow) {
+    recordNavClick(authUser?.id, authRole, 'discard_guard_shown', 'rfq_close_link')
+    const ok = await confirmDialog({
+      title: 'Close this quote link?',
+      message: `${rfq.houseName ?? 'The supply house'} won't be able to open it. You can reopen it from the closed list below.`,
+      confirmLabel: 'Close link',
+      danger: true,
+    })
+    if (!ok) return
+    await act(rfq, 'close')
+  }
+
+  async function act(rfq: DeskRow, mode: 'remind' | 'resend' | 'close' | 'reopen') {
     setBusy(rfq.id)
     try {
       if (mode === 'close') {
         const { error } = await supabase.from('bid_rfqs').update({ status: 'closed' }).eq('id', rfq.id)
         if (error) throw error
-        showToast(`Closed the link for ${rfq.houseName ?? 'that vendor'} — the page now says so.`, 'success')
+        showToast(`Closed the link for ${rfq.houseName ?? 'that vendor'} — the page now says so. Reopen it from the closed list if you change your mind.`, 'success')
+      } else if (mode === 'reopen') {
+        const next = rfqReopenStatus({ hasQuote: quotedRfqIds.has(rfq.id) })
+        const { error } = await supabase.from('bid_rfqs').update({ status: next }).eq('id', rfq.id)
+        if (error) throw error
+        showToast(`Reopened the link for ${rfq.houseName ?? 'that vendor'} — the page works again.`, 'success')
       } else {
         const { data, error } = await supabase.functions.invoke('send-rfq-email', {
           body: mode === 'remind' ? { mode, rfqId: rfq.id } : { mode, rfqId: rfq.id, email: (rfq.fixEmail ?? rfq.sentEmail ?? '').trim() },
@@ -367,7 +396,7 @@ export function RfqDeskModal({
                       <button type="button" style={nudge.ok ? blueBtn : { ...ghostBtn, color: 'var(--text-faint)', cursor: 'not-allowed' }} disabled={!nudge.ok || busy === r.id} title={nudge.reason ?? 'Preview the reminder before it sends'} onClick={() => void previewNudge(r)}>Nudge</button>
                     ) : null}
                     <button type="button" style={ghostBtn} onClick={() => void copyLink(r)}>Copy link</button>
-                    <button type="button" style={ghostBtn} disabled={busy === r.id} onClick={() => void act(r, 'close')}>Close link</button>
+                    <button type="button" style={ghostBtn} disabled={busy === r.id} onClick={() => void closeLink(r)}>Close link</button>
                   </div>
                   {nudgePreview?.rfqId === r.id ? (
                     <div style={{ width: '100%', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--bg-subtle)', padding: '0.5rem 0.75rem', display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
@@ -384,8 +413,14 @@ export function RfqDeskModal({
               )
             })}
             {closedRows.length > 0 ? (
-              <div style={{ padding: '0.4rem 0.8rem', ...mini }}>
-                {closedRows.length} closed request{closedRows.length === 1 ? '' : 's'}: {closedRows.map((r) => r.houseName ?? '—').join(', ')}
+              <div style={{ padding: '0.4rem 0.8rem', display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
+                <span style={mini}>{closedRows.length} closed request{closedRows.length === 1 ? '' : 's'} — the page says "closed" until you reopen it:</span>
+                {closedRows.map((r) => (
+                  <div key={r.id} style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
+                    <span style={{ ...mini, color: 'var(--text-muted)' }}>{r.houseName ?? '—'}{r.sentEmail ? ` · ${r.sentEmail}` : ''}</span>
+                    <button type="button" style={ghostBtn} disabled={busy === r.id} onClick={() => void act(r, 'reopen')}>Reopen link</button>
+                  </div>
+                ))}
               </div>
             ) : null}
           </div>
