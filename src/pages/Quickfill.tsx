@@ -6,6 +6,7 @@ import { SectionDock } from '../components/SectionDock'
 import { markStampInitial, markStampTime } from '../lib/quickfillMarkStamp'
 import { useNarrowViewport640 } from '../hooks/useNarrowViewport640'
 import { quickfillFreshnessSummary } from '../lib/quickfill/freshnessSummary'
+import { quickfillOutstandingLabel } from '../lib/quickfill/outstandingLabel'
 import { defaultQuickfillSectionBanner } from '../lib/quickfill/sectionBanners'
 import { quickfillStationTelemetryTarget, resolveQuickfillStation } from '../lib/quickfill/stationDeepLink'
 import { recordNavClick } from '../lib/navClickTelemetry'
@@ -1530,6 +1531,15 @@ function QuickfillPage() {
         )
       case 'dispatch-inbox':
         return (
+          <>
+            {/* The open-requests count lives beside the wrapper, not inside it (v2.2896,
+                journey-map J19-F4): a collapsed desktop strip never mounts its children,
+                so a reporter placed inside read "—" while the requests were open. */}
+            <QuickfillMetricReporter
+              sectionId="dispatch-inbox"
+              count={dispatchRequestsLoading ? null : dispatchRequests.filter((r) => r.status === 'open').length}
+              loading={dispatchRequestsLoading}
+            />
           <QuickfillSectionWrapper
             id={id}
             sectionId={sectionId}
@@ -1543,15 +1553,6 @@ function QuickfillPage() {
             onOpenNow={() => openSectionNow('dispatch-inbox')}
             onOpenHistory={() => setMarkHistoryModal({ sectionId: 'dispatch-inbox', label: 'Dispatch inbox' })}
           >
-            <QuickfillMetricReporter
-              sectionId="dispatch-inbox"
-              count={
-                dispatchRequestsLoading
-                  ? null
-                  : dispatchRequests.filter((r) => r.status === 'open').length
-              }
-              loading={dispatchRequestsLoading}
-            />
             <DispatchInboxSection
               variant="embedded"
               sectionOpen={!isCollapsed('dispatch-inbox') || forceExpandedSections.has('dispatch-inbox')}
@@ -1583,6 +1584,7 @@ function QuickfillPage() {
               }
             />
           </QuickfillSectionWrapper>
+          </>
         )
       case 'schedule':
         return (
@@ -2094,7 +2096,7 @@ function QuickfillSectionWrapper({
   children: ReactNode
 }) {
   const metric = useQuickfillSectionMetric(sectionId)
-  const outstandingLabel = metric.loading ? '…' : metric.count !== null ? `${metric.count} open` : '—'
+  const outstandingLabel = quickfillOutstandingLabel(metric)
   const narrow = useNarrowViewport640()
 
   // Desktop: a marked-complete section shrinks to one slim strip (title + stamp +

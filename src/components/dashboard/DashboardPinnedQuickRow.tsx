@@ -1,9 +1,10 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { isAssistantLike } from '../../lib/subcontractorLikeRole'
 import { withSupabaseRetry } from '../../utils/errorHandling'
 import { TALLY_STALE_MIN_AGE_DAYS } from '../../lib/tallyStaleMinAgeDays'
+import { useTallyUnlinkedCounts } from '../../hooks/useTallyUnlinkedCounts'
 import {
   canRoleSeeArBankUnallocatedDashboardBanner,
   useArBankUnallocatedCount,
@@ -309,8 +310,11 @@ export function DashboardPinnedQuickRow({
   const navigate = useNavigate()
 
   const [newReportModalOpen, setNewReportModalOpen] = useState(false)
-  const [tallyUnlinkedCount, setTallyUnlinkedCount] = useState<number | null>(null)
-  const [tallyStaleUnlinkedCount, setTallyStaleUnlinkedCount] = useState<number | null>(null)
+  // One hook feeds the tally badge, the Needs You card and the /tally header
+  // (v2.2896) — the card's figure and the page's gloss can't disagree.
+  const { unlinked: tallyUnlinkedCount, staleUnlinked: tallyStaleUnlinkedCount } = useTallyUnlinkedCounts(
+    Boolean(authUserId) && role != null,
+  )
   const [tallyStaffFollowUpModalOpen, setTallyStaffFollowUpModalOpen] = useState(false)
   /** Needs You "Match deposits" opens Accounts Receivable in place (Tier-2 #17; the v2.2751 pattern). */
   const [arDepositsModalOpen, setArDepositsModalOpen] = useState(false)
@@ -389,6 +393,7 @@ export function DashboardPinnedQuickRow({
     arBankUnallocatedCount,
     arBankEnabled: arBankCountEnabled,
     tallyStaleUnlinkedCount,
+    tallyUnlinkedCount,
     tallyStaffStalePeopleCount,
     tallyStaffStaleTxCount,
     tallyStaffEligible: officeEligible,
@@ -441,55 +446,6 @@ export function DashboardPinnedQuickRow({
     hrReportsMinAgeDays: HR_REPORTS_MIN_AGE_DAYS,
     hrReportsRedDays: HR_PENDING_REPORT_AGE.redDays,
   })
-
-  const loadTallyUnlinkedCount = useCallback(async () => {
-    if (!authUserId || role == null) return
-    try {
-      const n = await withSupabaseRetry(
-        async () => await supabase.rpc('count_unlinked_mercury_transactions_for_tally'),
-        'count unlinked tally transactions',
-      )
-      setTallyUnlinkedCount(typeof n === 'number' && Number.isFinite(n) ? n : 0)
-    } catch {
-      setTallyUnlinkedCount(null)
-    }
-  }, [authUserId, role])
-
-  const loadTallyStaleUnlinkedCount = useCallback(async () => {
-    if (!authUserId || role == null) return
-    try {
-      const n = await withSupabaseRetry(
-        async () =>
-          await supabase.rpc('count_unlinked_mercury_transactions_for_tally_stale', {
-            min_age_days: TALLY_STALE_MIN_AGE_DAYS,
-          }),
-        'count stale unlinked tally transactions',
-      )
-      setTallyStaleUnlinkedCount(typeof n === 'number' && Number.isFinite(n) ? n : 0)
-    } catch {
-      setTallyStaleUnlinkedCount(null)
-    }
-  }, [authUserId, role])
-
-  useEffect(() => {
-    if (!authUserId || role == null) {
-      setTallyUnlinkedCount(null)
-      setTallyStaleUnlinkedCount(null)
-      return
-    }
-    void loadTallyUnlinkedCount()
-    void loadTallyStaleUnlinkedCount()
-  }, [authUserId, role, loadTallyUnlinkedCount, loadTallyStaleUnlinkedCount])
-
-  useEffect(() => {
-    if (!authUserId || role == null) return
-    const onFocus = () => {
-      void loadTallyUnlinkedCount()
-      void loadTallyStaleUnlinkedCount()
-    }
-    window.addEventListener('focus', onFocus)
-    return () => window.removeEventListener('focus', onFocus)
-  }, [authUserId, role, loadTallyUnlinkedCount, loadTallyStaleUnlinkedCount])
 
   useEffect(() => {
     // Why-we-lost nudge (v2.1800): same audience as the lens — the superintendent

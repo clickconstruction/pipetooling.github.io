@@ -12,7 +12,7 @@ People → **Users** lists everyone the company works with — the ones who sign
 Every row reads the same way, left to right:
 
 - **Imitate** (devs only) — the face-in-brackets icon signs you in as them in one click, the same as always.
-- A **dot** — green means nothing needs you; amber means something does (a document unsent or expiring, no roster row); red means expired paperwork. Hours waiting never color the dot — they are a queue, not an alarm. Hover it for the reasons.
+- A **dot** — green means nothing needs you; amber means something does (a contract never sent, a document expiring, no roster row); red means expired paperwork. Hours waiting never color the dot — they are a queue, not an alarm. Hover it for the reasons.
 - Their **name** — tap it to open their desk.
 - {{chip:gray|login}} or {{chip:gray|no login}} — whether they have an app account. A person with no login still has everything else: a portal (subs), paperwork, pay, a truck.
 - Contact, then the **status column**. On a wide screen it is three small cells under a **Hours · Paper · Acct** header: a clock with how many sessions wait for approval, a document with how many paperwork items need you (unsent, expiring, expired, or unsigned — the cell goes red when something has expired), and a person for the account (no roster row, no login, no push, portal on). Hover a cell for the words. Tap the clock to open **Hours approvals** pinned to that person, ready to approve; tap the document or the person to open their desk at that section. Empty cells stay faint so the columns line up.
