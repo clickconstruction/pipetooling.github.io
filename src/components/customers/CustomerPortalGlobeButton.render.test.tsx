@@ -78,9 +78,11 @@ describe('CustomerPortalGlobeButton', () => {
     expect(rpcMock).toHaveBeenCalledTimes(1)
     // Hero: editable custom address, prefilled from the customer name.
     const addressInput = (await screen.findByLabelText('Portal address')) as HTMLInputElement
-    expect(addressInput.value).toBe('knight-contracting')
+    // B18 / J21-F6: the default address is the name PLUS a random tail — the bare name is the edit.
+    expect(addressInput.value).toMatch(/^knight-contracting-[a-km-np-z2-9]{4}$/)
     expect(screen.getByText('Editable until first shared')).toBeTruthy()
-    expect(screen.getByText('✓ hard to guess')).toBeTruthy()
+    expect(screen.getByText('✓ hard to guess — random tail')).toBeTruthy()
+    expect(screen.getByLabelText('New random tail')).toBeTruthy()
     expect(screen.getByText('Copy link')).toBeTruthy()
     expect(screen.getByText('Preview as customer')).toBeTruthy()
     expect(screen.getByTitle('Portal preview — Knight Contracting')).toBeTruthy()

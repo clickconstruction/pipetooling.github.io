@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   buildPortalLinkHistory,
   buildPortalTimeline,
+  computePortalGlobeStates,
   computePortalMainOffCustomerIds,
   computePortalOffKeys,
   portalGlobeInitialState,
@@ -156,5 +157,31 @@ describe('portalGlobeInitialState', () => {
   it('rows without customer_id (sub-portal adapter shape) belong to the asked-for id', () => {
     expect(portalGlobeInitialState([{ audience: 'all', revoked_at: null }], 'p1')).toBe('active')
     expect(portalGlobeInitialState([{ audience: 'all', revoked_at: '2026-08-02T00:00:00Z' }], 'p1')).toBe('off')
+  })
+})
+
+describe('computePortalGlobeStates (the list-level map every globe reads)', () => {
+  const row = (customer_id: string, audience: string, revoked_at: string | null) => ({ customer_id, audience, revoked_at })
+
+  it('agrees with portalGlobeInitialState for every customer, and omits never-minted ones', () => {
+    const rows = [
+      row('active', 'all', null),
+      row('off', 'all', '2026-08-02T00:00:00Z'),
+      row('legacy', 'gc', null),
+      row('legacy-off', 'customer', '2026-08-02T00:00:00Z'),
+    ]
+    const map = computePortalGlobeStates(rows)
+    expect(map.get('active')).toBe('active')
+    expect(map.get('off')).toBe('off')
+    expect(map.get('legacy')).toBe('legacy-active')
+    expect(map.get('legacy-off')).toBe('off')
+    expect(map.has('never')).toBe(false)
+    for (const id of ['active', 'off', 'legacy', 'legacy-off']) {
+      expect(map.get(id)).toBe(portalGlobeInitialState(rows, id))
+    }
+  })
+
+  it('rows without a customer_id are skipped (the list query always selects it)', () => {
+    expect(computePortalGlobeStates([{ audience: 'all', revoked_at: null }]).size).toBe(0)
   })
 })

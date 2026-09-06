@@ -4,7 +4,10 @@ import {
   isValidSlug,
   normalizeSlugInput,
   slugGuessability,
+  slugGuessabilityDetail,
+  slugGuessabilityLabel,
   suggestSlugFromName,
+  suggestSlugWithTail,
 } from './portalSlug'
 
 describe('isValidSlug', () => {
@@ -73,5 +76,47 @@ describe('appendRandomTail', () => {
   })
   it('handles an empty base', () => {
     expect(appendRandomTail('', () => 0)).toBe('aaaa')
+  })
+})
+
+describe('suggestSlugWithTail (the default for a new address — B18 / J21-F6)', () => {
+  it('is the name plus a 4-char tail, and hands back the tail-less base for re-rolls', () => {
+    const out = suggestSlugWithTail('Knight Contracting', () => 0.5)
+    expect(out.base).toBe('knight-contracting')
+    expect(out.slug).toMatch(/^knight-contracting-[a-km-np-z2-9]{4}$/)
+    expect(out.slug.startsWith(out.base + '-')).toBe(true)
+  })
+  it('is empty when the name yields nothing usable (no tail-only slug)', () => {
+    expect(suggestSlugWithTail('AB', () => 0)).toEqual({ base: '', slug: '' })
+  })
+  it('stays within the 60-char constraint for long names', () => {
+    const out = suggestSlugWithTail('x'.repeat(80), () => 0)
+    expect(out.slug.length).toBeLessThanOrEqual(60)
+  })
+})
+
+describe('slugGuessabilityDetail — the meter says why', () => {
+  it('the bare name grades easy however long it is, and says so', () => {
+    const d = slugGuessabilityDetail('knight-contracting', 'knight-contracting')
+    expect(d).toEqual({ grade: 'easy', reason: 'just-their-name' })
+    expect(slugGuessabilityLabel(d)).toBe("⚠ easy to guess — it's just their name")
+    // ...but the same slug with no name to compare against keeps the old composite verdict
+    expect(slugGuessabilityDetail('knight-contracting')).toEqual({ grade: 'hard', reason: 'composite' })
+    expect(slugGuessability('knight-contracting')).toBe('hard')
+  })
+  it('the name plus a tail grades hard, reason has-tail', () => {
+    const { slug } = suggestSlugWithTail('Knight Contracting', () => 0.5)
+    const d = slugGuessabilityDetail(slug, 'knight-contracting')
+    expect(d).toEqual({ grade: 'hard', reason: 'has-tail' })
+    expect(slugGuessabilityLabel(d)).toBe('✓ hard to guess — random tail')
+  })
+  it('short and single plain words keep their reasons', () => {
+    expect(slugGuessabilityDetail('dsi')).toEqual({ grade: 'easy', reason: 'short' })
+    expect(slugGuessabilityLabel(slugGuessabilityDetail('dsi'))).toBe('⚠ easy to guess — too short')
+    expect(slugGuessabilityDetail('knight')).toEqual({ grade: 'easy', reason: 'plain-word' })
+    expect(slugGuessabilityDetail('knight-gc')).toEqual({ grade: 'hard', reason: 'composite' })
+  })
+  it('ignores a trailing dash while typing', () => {
+    expect(slugGuessabilityDetail('knight-contracting-', 'knight-contracting').reason).toBe('just-their-name')
   })
 })

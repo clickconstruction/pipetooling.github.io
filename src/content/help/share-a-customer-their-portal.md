@@ -12,11 +12,13 @@ Once a customer has a portal, every new Stripe bill's footer ends with *See your
 
 Click the **globe icon** next to any customer's name — on the **Customers** page, on **Jobs → Pipeline** rows, in **Job Detail**, in **Edit Job**, or beside each GC in **GC Review** (whose Share menu also offers **Copy portal link**, and whose Draft Message can carry a portal card).
 
+**The globe's colour is its state**, so you can tell who has a portal without opening anything: a **faint grey** globe means no link has ever been created, a **blue** globe means their portal is live, and a **red** globe means it was turned off. Hover it for the words ("portal is live"). The sub globe on People → Subs uses the very same colours.
+
 For a customer who has **never** been given a portal, the modal opens to **No portal link yet** — just looking creates nothing. Click {{button:blue|Create their link}} when you're ready: their page goes live, a "Portal link created" toast confirms it, and the modal switches to the address view below. Everyone who already has a portal opens straight to it.
 
-The top of the modal is their **portal address**, something like `my.clickplumbing.com/knight-contracting`:
+The top of the modal is their **portal address**, something like `my.clickplumbing.com/knight-contracting-x7kq`:
 
-- The address is **editable until it's first shared** — type anything short and recognizable (letters, numbers, dashes). A meter tells you if it's ⚠ easy or ✓ hard to guess; it never blocks you.
+- The address is **editable until it's first shared**. It starts as their name **plus a short random tail** — the bare name alone would let anyone who knows our short address and who we work for open their statement — and the 🎲 beside it rolls a new tail. Type anything short and recognizable instead if you prefer (letters, numbers, dashes). A meter tells you if it's ⚠ easy or ✓ hard to guess **and why** — a plain company name is graded easy on purpose ("it's just their name"); it never blocks you.
 - {{button:blue|Copy link}} — copies the address for a text or email, and **locks** it (printed and texted copies should never go stale). The link is the key, no password needed.
 - {{button:outline|Preview as customer}} — opens the page exactly as they see it, and a **live preview** sits right in the modal. Your previews (and any open from a signed-in staff browser) are never counted as the customer looking.
 - The preview's corner buttons **⤢ Expand** (grow it in place) and **Full screen ↗** (open the portal in a new tab) are yours too.
@@ -27,9 +29,9 @@ The top of the modal is their **portal address**, something like `my.clickplumbi
 The {{icon:gear}} button opens one flat list:
 
 - **Direct link** — the long token link. Always works, even while the address changes; use it if you don't want to touch the address.
-- **Address** — before the first share, 🎲 **Random tail** adds a hard-to-guess ending. After it's locked you can still change it here — with a warning, because the old address stops working.
+- **Address** — before the first share, 🎲 **Random tail** adds a hard-to-guess ending (the hero's 🎲 does the same). After it's locked you can still change it here — with a warning, because the old address stops working.
 - **Separate views** — need to give a GC's office *only* their GC bills, or only their own jobs? Create a scoped link on demand; each has its own Copy and Turn off.
-- **Reset** — {{button:outline|Rotate}} makes a new link and kills the old one immediately (the custom address follows automatically); {{button:outline|Turn off}} shuts the whole portal down. A turned-off customer's globe turns **red** everywhere, and the modal offers {{button:blue|Turn portal back on}} when you're ready.
+- **Reset** — {{button:outline|Rotate}} makes a new link and kills the old one immediately (the custom address follows automatically); {{button:outline|Turn off}} shuts the whole portal down. A turned-off customer's globe turns **red** everywhere (a live one is blue, a never-created one faint grey), and the modal offers {{button:blue|Turn portal back on}} when you're ready.
 - **Opened** — has the customer actually looked? **Opened 3 times · last Sep 3**, or **Not opened yet**. Customer opens only: your previews and staff opens don't count, so the number means what it says before a follow-up call.
 - **History** — every link and address change: what, when, and by whom.
 

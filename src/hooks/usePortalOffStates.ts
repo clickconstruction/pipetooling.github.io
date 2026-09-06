@@ -1,20 +1,25 @@
 import { useEffect, useSyncExternalStore } from 'react'
 import { supabase } from '../lib/supabase'
-import { computePortalMainOffCustomerIds } from '../lib/portal/portalLinkState'
+import { computePortalGlobeStates, type PortalGlobeInitialState } from '../lib/portal/portalLinkState'
 
 /**
- * Module-level cache of which customers' MAIN portal is TURNED OFF — one
- * small query per session shared by every globe button, so 400 list rows
- * never mean 400 queries. Since the merged 'all' audience (custom-links
- * train), red means the merged portal is off: every 'all' row revoked, or —
- * for customers with only legacy 'customer'/'gc' rows — every row revoked.
- * Turning off just a scoped "Separate view" link never paints red. The globe
- * modal updates the cache locally after turn-off / re-mint so reds appear
- * without a refetch. Office-only data (RLS): non-office roles never mount a
- * globe, so the query never runs for them.
+ * Module-level cache of every customer's portal-link STATE — one small query
+ * per session shared by every globe button, so 400 list rows never mean 400
+ * queries. It began as the red-globe "turned off" set (portal train v2.2001);
+ * since journey-map B18 (J21-F3) it carries the full verdict the modal opens
+ * into — 'unminted' / 'active' / 'legacy-active' / 'off' — so a shared
+ * portal no longer looks identical to one that was never created. `null`
+ * means the rows have not loaded yet (the globe stays neutral grey).
+ *
+ * The globe modal updates the cache locally after create / turn-off / turn
+ * back on so the list repaints without a refetch; local updates survive the
+ * initial fetch resolving late. Office-only data (RLS): non-office roles never
+ * mount a globe, so the query never runs for them.
  */
 
-let offIds = new Set<string>()
+let loaded = false
+let fetched = new Map<string, PortalGlobeInitialState>()
+let overrides = new Map<string, PortalGlobeInitialState>()
 let loadStarted = false
 const subscribers = new Set<() => void>()
 
@@ -30,7 +35,8 @@ function ensureLoaded() {
       .from('customer_portal_links')
       .select('customer_id, audience, revoked_at')
     if (error || !data) return
-    offIds = new Set(computePortalMainOffCustomerIds(data))
+    fetched = computePortalGlobeStates(data)
+    loaded = true
     emit()
   })()
 }
@@ -40,22 +46,28 @@ function subscribe(cb: () => void): () => void {
   return () => subscribers.delete(cb)
 }
 
+function read(customerId: string): PortalGlobeInitialState | null {
+  const local = overrides.get(customerId)
+  if (local) return local
+  if (!loaded) return null
+  return fetched.get(customerId) ?? 'unminted'
+}
+
 /**
- * Local update after a modal action (turn off → red, mint/turn back on →
- * clear). Only the main portal's state moves the red globe, so callers pass
- * the customer-level verdict — scoped-link actions should not call this.
+ * Local update after a modal action (create / turn back on → 'active',
+ * turn off → 'off', or the verdict the modal just loaded). Only the MAIN
+ * portal's state moves the globe — scoped-link actions should not call this.
  */
-export function setPortalMainOff(customerId: string, off: boolean) {
-  if (off === offIds.has(customerId)) return
-  const next = new Set(offIds)
-  if (off) next.add(customerId)
-  else next.delete(customerId)
-  offIds = next
+export function setPortalGlobeState(customerId: string, state: PortalGlobeInitialState) {
+  if (overrides.get(customerId) === state) return
+  const next = new Map(overrides)
+  next.set(customerId, state)
+  overrides = next
   emit()
 }
 
-/** True when this customer's main portal has been turned off. */
-export function usePortalLinkOff(customerId: string): boolean {
+/** This customer's globe state, or null while the list-level rows load. */
+export function usePortalGlobeState(customerId: string): PortalGlobeInitialState | null {
   useEffect(ensureLoaded, [])
-  return useSyncExternalStore(subscribe, () => offIds.has(customerId))
+  return useSyncExternalStore(subscribe, () => read(customerId))
 }

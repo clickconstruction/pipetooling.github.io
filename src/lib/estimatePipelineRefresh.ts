@@ -37,8 +37,20 @@ function lineIsMeaningful(l: { line_item: string; description: string; amount_ce
   return li !== '' || desc !== ''
 }
 
+/**
+ * The ONE line-count rule (journey-map B18 / J17-F5): the list's "1 left:
+ * cost lines" and the editor rail's "✓ Line items" must count the same
+ * lines. The editor holds normalized lines already, so it calls this
+ * directly; the list normalizes the JSON snapshot first (below).
+ */
+export function countMeaningfulEstimateLines(
+  lines: ReadonlyArray<{ line_item: string; description: string; amount_cents: number }>,
+): number {
+  return lines.filter(lineIsMeaningful).length
+}
+
 export function estimateDraftMeaningfulLineCount(raw: unknown, isCO: boolean): number {
-  return normalizeEstimateLineItemsFromJson(raw, { allowNegative: isCO }).filter(lineIsMeaningful).length
+  return countMeaningfulEstimateLines(normalizeEstimateLineItemsFromJson(raw, { allowNegative: isCO }))
 }
 
 /**

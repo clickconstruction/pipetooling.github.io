@@ -8,13 +8,14 @@ Every subcontractor can have a private, no-login **Work & pay portal**: their jo
 
 ## Turn it on
 
-Click the **globe icon** 🌐 next to any sub's name on **People → Subs**. A sub who has never had a portal opens to **No portal link yet** — looking creates nothing; click {{button:blue|Create their link}} and their private link is minted (a "Portal link created" toast confirms it). From then on the top of the modal is their **portal address**, something like `my.clickplumbing.com/dv-mechanical`:
+Click the **globe icon** next to any sub's name on **People → Subs**. **Its colour is its state**: a **faint grey** globe means no link has ever been created, **blue** means their portal is live, **red** means it was turned off — the same colours as the customer globe, so you can see at a glance who has a portal. A sub who has never had a portal opens to **No portal link yet** — looking creates nothing; click {{button:blue|Create their link}} and their private link is minted (a "Portal link created" toast confirms it). From then on the top of the modal is their **portal address**, something like `my.clickplumbing.com/dv-mechanical-k4tp`:
 
+- The address starts as their name **plus a short random tail**, so nobody opens their pay page by guessing our short address and their company name; the 🎲 beside it rolls a new tail, and the meter under it says ⚠ easy or ✓ hard to guess **and why** (a bare company name is graded easy on purpose). Edit it until the first share.
 - {{button:blue|Copy link}} saves the address and copies it — text it to the sub.
 - **Preview as them** opens exactly what they'll see.
 - The {{icon:gear}} holds the **direct link**, an address changer (with a {{button:outline|🎲}} random tail for guess-proofing), **Rotate link** and {{button:red|Turn off portal}}, and the link's **history**.
 
-A red globe means the portal is turned off — nobody can open their page until you turn it back on (which mints a brand-new link).
+A red globe means the portal is turned off — nobody can open their page until you turn it back on (which mints a brand-new link). Blue means it's live; faint grey means it was never created.
 
 :::example Texting the link
 "Here's your page with us — it always shows your jobs, your pay, and your paperwork: my.clickplumbing.com/dv-mechanical"

@@ -18,13 +18,17 @@ import {
   appendRandomTail,
   isValidSlug,
   normalizeSlugInput,
-  slugGuessability,
+  slugGuessabilityDetail,
+  slugGuessabilityLabel,
   suggestSlugFromName,
+  suggestSlugWithTail,
 } from '../../lib/portal/portalSlug'
 import { PORTAL_SHORT_ORIGIN, portalShortUrl } from '../../lib/portal/portalShortOrigin'
 import { formatPortalDate, formatPortalUsd, parsePortalPayload, PORTAL_TRADE_COLORS, type PortalTradeTag } from '../../lib/portal/portalPayload'
 import { buildStatementBillRows, type StatementBillRow } from '../../lib/portal/portalStatementJobLinks'
-import { setPortalMainOff, usePortalLinkOff } from '../../hooks/usePortalOffStates'
+import { setPortalGlobeState, usePortalGlobeState } from '../../hooks/usePortalOffStates'
+import { portalGlobeTint, portalGlobeTitle } from '../../lib/portal/portalGlobeTint'
+import PortalGlobeIcon from '../shared/PortalGlobeIcon'
 import { staffAwarePublicHeaders } from '../../lib/publicFunctionStaffHeaders'
 import { withPreviewFlag } from '../../lib/publicViewCounting'
 import { parseOfficeViewStats, portalOpenedLabel, type OfficeViewStats } from '../../lib/portal/portalOpenedLabel'
@@ -84,7 +88,8 @@ export default function CustomerPortalGlobeButton({
   const [timeline, setTimeline] = useState<PortalTimelineEntry[]>([])
   const [creatorNames, setCreatorNames] = useState<Record<string, string>>({})
   const diceBase = useRef<{ base: string; out: string } | null>(null)
-  const mainOff = usePortalLinkOff(customerId)
+  const globeState = usePortalGlobeState(customerId)
+  const globeTint = portalGlobeTint(globeState)
   const navigate = useNavigate()
   const [billRows, setBillRows] = useState<StatementBillRow[]>([])
   const [previewExpanded, setPreviewExpanded] = useState(false)
@@ -202,7 +207,15 @@ export default function CustomerPortalGlobeButton({
       const slugRow = (slugRes.data ?? null) as { slug: string; locked_at: string | null } | null
       setSlugSaved(slugRow?.slug ?? null)
       setSlugLocked(!!slugRow?.locked_at)
-      setSlugInput(slugRow?.slug ?? suggestSlugFromName(customerName))
+      if (slugRow?.slug) {
+        setSlugInput(slugRow.slug)
+      } else {
+        // Default = their name + a random tail (journey-map B18 / J21-F6); remember the
+        // base so the hero 🎲 re-rolls the tail instead of stacking one.
+        const suggested = suggestSlugWithTail(customerName)
+        setSlugInput(suggested.slug)
+        diceBase.current = suggested.slug ? { base: suggested.base, out: suggested.slug } : null
+      }
       setAddrInput(slugRow?.slug ?? '')
 
       const activeFor = (aud: Audience) => rows.find((r) => r.audience === aud && r.revoked_at === null)
@@ -217,24 +230,24 @@ export default function CustomerPortalGlobeButton({
       const verdict = portalGlobeInitialState(rows, customerId)
       if (verdict === 'active' && activeAll?.token) {
         setMain({ kind: 'active', token: activeAll.token })
-        setPortalMainOff(customerId, false)
+        setPortalGlobeState(customerId, 'active')
         return
       }
       if (verdict === 'off') {
         setMain({ kind: 'off' })
-        setPortalMainOff(customerId, true)
+        setPortalGlobeState(customerId, 'off')
         return
       }
       if (verdict === 'unminted') {
         setMain({ kind: 'unminted' })
-        setPortalMainOff(customerId, false)
+        setPortalGlobeState(customerId, 'unminted')
         return
       }
       // 'legacy-active': continue the live pre-merge link as the merged one.
       const token = await mint('all', false)
       if (!token) throw new Error('No link returned')
       setMain({ kind: 'active', token })
-      setPortalMainOff(customerId, false)
+      setPortalGlobeState(customerId, 'active')
       setTimeline((prev) => [
         { kind: 'link', at: new Date().toISOString(), createdBy: null, audience: 'all', outcome: 'active', revokedAt: null },
         ...prev,
@@ -409,7 +422,7 @@ export default function CustomerPortalGlobeButton({
       if (scoped.customer) await revokeAudience('customer')
       if (scoped.gc) await revokeAudience('gc')
       showToast('Portal turned off.', 'success')
-      setPortalMainOff(customerId, true)
+      setPortalGlobeState(customerId, 'off')
       await loadState()
     } catch (e) {
       showToast(formatErrorMessage(e, 'Could not turn off the portal'), 'error')
@@ -424,7 +437,7 @@ export default function CustomerPortalGlobeButton({
       const token = await mint('all', false)
       if (!token) throw new Error('No link returned')
       showToast('Portal turned back on — this is a brand-new link.', 'success')
-      setPortalMainOff(customerId, false)
+      setPortalGlobeState(customerId, 'active')
       await loadState()
     } catch (e) {
       showToast(formatErrorMessage(e, 'Could not turn the portal back on'), 'error')
@@ -444,7 +457,7 @@ export default function CustomerPortalGlobeButton({
       const token = await mint('all', false)
       if (!token) throw new Error('No link returned')
       setMain({ kind: 'active', token })
-      setPortalMainOff(customerId, false)
+      setPortalGlobeState(customerId, 'active')
       setTimeline((prev) => [
         { kind: 'link', at: new Date().toISOString(), createdBy: user?.id ?? null, audience: 'all', outcome: 'active', revokedAt: null },
         ...prev,
@@ -509,7 +522,8 @@ export default function CustomerPortalGlobeButton({
     padding: '0.5rem 0.6rem',
   }
 
-  const guess = slugInput.replace(/-+$/, '') ? slugGuessability(slugInput.replace(/-+$/, '')) : null
+  // The meter knows the name-derived suggestion, so the bare name grades easy however long it is.
+  const guess = slugInput.replace(/-+$/, '') ? slugGuessabilityDetail(slugInput, suggestSlugFromName(customerName)) : null
 
   // Expand grows the preview in place (v2.2064); Full screen opens a tab.
   const previewScale = previewExpanded ? 0.85 : 0.62
@@ -557,26 +571,21 @@ export default function CustomerPortalGlobeButton({
           e.stopPropagation()
           openModal()
         }}
-        title={
-          mainOff
-            ? `Portal is turned off for ${customerName} — click to manage`
-            : `Customer portal — copy or preview what ${customerName} sees`
-        }
+        title={`${portalGlobeTitle(customerName, globeState)} — click to manage`}
+        data-portal-tone={globeTint.tone}
         aria-label={`Open ${customerName}'s customer portal link`}
         style={{
           padding: '0.15rem',
           background: 'none',
           border: 'none',
           cursor: 'pointer',
-          color: mainOff ? 'var(--text-red-600)' : 'var(--text-muted)',
+          color: globeTint.color,
           display: 'inline-flex',
           alignItems: 'center',
           verticalAlign: 'middle',
         }}
       >
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={size} height={size} fill="currentColor" aria-hidden>
-          <path d="M415.9 344L225 344C227.9 408.5 242.2 467.9 262.5 511.4C273.9 535.9 286.2 553.2 297.6 563.8C308.8 574.3 316.5 576 320.5 576C324.5 576 332.2 574.3 343.4 563.8C354.8 553.2 367.1 535.8 378.5 511.4C398.8 467.9 413.1 408.5 416 344zM224.9 296L415.8 296C413 231.5 398.7 172.1 378.4 128.6C367 104.2 354.7 86.8 343.3 76.2C332.1 65.7 324.4 64 320.4 64C316.4 64 308.7 65.7 297.5 76.2C286.1 86.8 273.8 104.2 262.4 128.6C242.1 172.1 227.8 231.5 224.9 296zM176.9 296C180.4 210.4 202.5 130.9 234.8 78.7C142.7 111.3 74.9 195.2 65.5 296L176.9 296zM65.5 344C74.9 444.8 142.7 528.7 234.8 561.3C202.5 509.1 180.4 429.6 176.9 344L65.5 344zM463.9 344C460.4 429.6 438.3 509.1 406 561.3C498.1 528.6 565.9 444.8 575.3 344L463.9 344zM575.3 296C565.9 195.2 498.1 111.3 406 78.7C438.3 130.9 460.4 210.4 463.9 296L575.3 296z" />
-        </svg>
+        <PortalGlobeIcon size={size} />
       </button>
       {open && (
         <div
@@ -657,14 +666,25 @@ export default function CustomerPortalGlobeButton({
                       }}
                     />
                   )}
+                  {!slugLocked && (
+                    <button
+                      type="button"
+                      onClick={() => rollDice(slugInput, setSlugInput)}
+                      title="New random tail"
+                      aria-label="New random tail"
+                      style={{ ...secondaryBtn, padding: '0.1rem 0.4rem', fontSize: '0.75rem', lineHeight: 1.2, flex: 'none' }}
+                    >
+                      🎲
+                    </button>
+                  )}
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.5rem', marginTop: '0.3rem' }}>
                   <span style={{ fontSize: '0.72rem', color: 'var(--text-faint)' }}>
                     {slugLocked ? '' : 'Editable until first shared'}
                   </span>
                   {guess && (
-                    <span style={{ fontSize: '0.72rem', color: guess === 'hard' ? 'var(--text-green-600, #16a34a)' : 'var(--text-amber-600, #d97706)' }}>
-                      {guess === 'hard' ? '✓ hard to guess' : '⚠ easy to guess'}
+                    <span style={{ fontSize: '0.72rem', color: guess.grade === 'hard' ? 'var(--text-green-600, #16a34a)' : 'var(--text-amber-600, #d97706)' }}>
+                      {slugGuessabilityLabel(guess)}
                     </span>
                   )}
                 </div>

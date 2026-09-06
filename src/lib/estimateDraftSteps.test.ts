@@ -3,6 +3,7 @@ import {
   computeEstimateDraftSteps,
   type EstimateDraftStepsInput,
 } from './estimateDraftSteps'
+import { countMeaningfulEstimateLines } from './estimatePipelineRefresh'
 
 function input(overrides: Partial<EstimateDraftStepsInput>): EstimateDraftStepsInput {
   return {
@@ -111,5 +112,22 @@ describe('send gate', () => {
       input({ customerSelected: true, customerEmailPresent: true, lineCount: 1, totalCents: 100, notifyCount: 0 }),
     ).sendGate
     expect(gate.sentence).toBe('1 step left: delivery')
+  })
+})
+
+describe('rail ↔ list agreement (B18 / J17-F5)', () => {
+  const stub = { line_item: 'Custom Service Visit', description: '', quantity: 1, unit_price_cents: 0, amount_cents: 0 }
+
+  it('the seeded $0 stub leaves Line items at attention on the rail, exactly as the list says "1 left: cost lines"', () => {
+    const { steps, sendGate } = computeEstimateDraftSteps(input({ customerSelected: true, customerEmailPresent: true, lineCount: countMeaningfulEstimateLines([stub]) }))
+    expect(steps.find((s) => s.key === 'cost')?.status).toBe('attention')
+    expect(steps.find((s) => s.key === 'cost')?.sublabel).toBe('no lines yet')
+    expect(sendGate.remaining).toContain('cost lines')
+    expect(sendGate.sentence).toBe('1 step left: cost lines')
+  })
+
+  it('one priced line flips both surfaces to done', () => {
+    const { steps } = computeEstimateDraftSteps(input({ lineCount: countMeaningfulEstimateLines([{ ...stub, amount_cents: 12500 }]), totalCents: 12500 }))
+    expect(steps.find((s) => s.key === 'cost')?.status).toBe('done')
   })
 })
