@@ -1,5 +1,5 @@
 /**
- * Click's Direct Deposit Authorization — a one-page form the employee fills
+ * Click's Direct Deposit Authorization — a one-page form the contractor fills
  * and signs on the signing page. Routing and account numbers are sensitive:
  * they live only in the signed PDF; the row keeps the last four.
  */
@@ -19,8 +19,8 @@ export async function buildDirectDeposit() {
   )
 
   p.fieldRow([
-    { box: { key: 'employee_name', type: 'text', label: 'Your full name', labelEs: 'Su nombre completo', required: true, prefill: 'person_name', sample: 'Taunya Rachelle' }, label: 'Employee name', frac: 0.62 },
-    { box: { key: 'employee_phone', type: 'digits', label: 'Your phone', labelEs: 'Su teléfono', mask: '###-###-####', prefill: 'person_phone', sample: '5125550142' }, label: 'Phone', frac: 0.38 },
+    { box: { key: 'contractor_name', type: 'text', label: 'Your full name', labelEs: 'Su nombre completo', required: true, prefill: 'person_name', sample: 'Taunya Rachelle' }, label: 'Contractor name', frac: 0.62 },
+    { box: { key: 'contractor_phone', type: 'digits', label: 'Your phone', labelEs: 'Su teléfono', mask: '###-###-####', prefill: 'person_phone', sample: '5125550142' }, label: 'Phone', frac: 0.38 },
   ])
 
   p.paragraph('Bank account', { bold: true, gapAfter: 0 })
@@ -71,7 +71,7 @@ export async function buildDirectDeposit() {
     { size: 8.5, gapAfter: 4 },
   )
   p.paragraph('By signing, I confirm the account above is mine and the numbers are correct.', { size: 9.5, bold: true, gapAfter: 0 })
-  p.signatureBlock({ signature: 'signature', date: 'date' }, { signature: 'Employee signature', date: 'Date' }, undefined, { signature: 'Firma del empleado', date: 'Fecha' })
+  p.signatureBlock({ signature: 'signature', date: 'date' }, { signature: 'Contractor signature', date: 'Date' }, undefined, { signature: 'Firma del contratista', date: 'Fecha' })
   p.footer(`${COMPANY} · Direct Deposit Authorization · v1 (2026-09)`)
 
   await writeAuthored(doc, p.schema(1), `${OUT_DIR}/direct-deposit-authorization`, 'Direct Deposit Authorization')
