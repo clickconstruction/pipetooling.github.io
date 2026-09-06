@@ -49,8 +49,14 @@ export type CallQueueBuilder = {
 
 export type CallQueueTotals = {
   buildersWithWork: number
+  /** Distinct BIDS needing a chase (Tier-2 #20: the unit is the bid — a bid quiet under two GCs is one bid to chase). */
   chaseCount: number
+  /** Per-GC chase rows behind `chaseCount` (the sub-count the header prints as "· N GC packets"). */
+  chasePacketRows: number
+  /** Distinct BIDS lost with no reason recorded. */
   reasonsCount: number
+  /** Per-GC loss rows behind `reasonsCount`. */
+  reasonsPacketRows: number
   reasonsDollars: number
   tabsCount: number
 }
@@ -163,12 +169,17 @@ export function buildCallQueue(bids: readonly CallQueueBid[], nowIso: string): {
   builders.sort(compareCallQueueBuilders)
 
   const withWork = builders.filter((b) => b.hasWork)
+  // Headline totals count BIDS (one per `id`); the per-GC rows stay as the secondary figure.
+  const chaseRows = builders.flatMap((b) => b.chase.todo)
+  const reasonRows = builders.flatMap((b) => b.reasons.todo)
   return {
     builders,
     totals: {
       buildersWithWork: withWork.length,
-      chaseCount: builders.reduce((s, b) => s + b.chase.todo.length, 0),
-      reasonsCount: builders.reduce((s, b) => s + b.reasons.todo.length, 0),
+      chaseCount: new Set(chaseRows.map((b) => b.id)).size,
+      chasePacketRows: chaseRows.length,
+      reasonsCount: new Set(reasonRows.map((b) => b.id)).size,
+      reasonsPacketRows: reasonRows.length,
       reasonsDollars: builders.reduce((s, b) => s + b.reasons.dollars, 0),
       tabsCount: builders.reduce((s, b) => s + b.tabs.todo.length, 0),
     },

@@ -173,7 +173,7 @@ ends with all three fence appliers. Names snapshot as text.
 
 ## Deferred (deliberate, revisit on demand)
 
-> Still-open items tracked in [`to-dos/rfq-apply-picks-to-bid-costs.md`](../to-dos/rfq-apply-picks-to-bid-costs.md); lane B, contacts and file replies shipped (2026-09-05 sweep).
+> Rung G (apply picks to costs, lots) shipped as v2.2655; lane B, contacts and file replies shipped (v2.2636 / v2.2648 / v2.2651). Still open, tracked here only (2026-09-06): vendor-page lot capture, the PO Generator handoff, `material_part_prices` writes, the scanned-PDF lane.
 
 - ~~**Lane B, the RFQ desk**~~ — SHIPPED v2.2636 on owner request
   (2026-09-02): send-rfq-email edge function + RfqDeskModal/RfqComposeModal,

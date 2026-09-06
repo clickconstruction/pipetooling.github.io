@@ -11,6 +11,7 @@ import {
 } from '../lib/outcomeChangeBidNote'
 import { upsertBidNotesReadWatermark } from '../lib/userBidNotesReadState'
 import { isRobotBid, partitionBidsByScope } from '../lib/bidBoardScope'
+import { bidSentCounts, withScopeLabel, type BidSentScope } from '../lib/bids/bidSentCounts'
 import { formatErrorMessage, withSupabaseRetry } from '../utils/errorHandling'
 import { useAuth } from '../hooks/useAuth'
 import { isAssistantLike } from '../lib/subcontractorLikeRole'
@@ -74,7 +75,7 @@ import { BidsCallQueueTab } from '../components/bids/BidsCallQueueTab'
 import { BidsWaitingToHearLens } from '../components/bids/BidsWaitingToHearLens'
 import { fetchBidGcRecipientsMap, type BidGcRecipientsMap } from '../lib/bids/bidGcRecipients'
 import { useBidGcPackets } from '../hooks/useBidGcPackets'
-import { isBidLossCategoryKey, type BidLossCategoryKey } from '../lib/bidLossCategories'
+import { type BidLossCategoryKey } from '../lib/bidLossCategories'
 import { BidChangeOrderTab } from '../components/bids/BidChangeOrderTab'
 import { BidLienReleaseTab } from '../components/bids/BidLienReleaseTab'
 import {
@@ -290,11 +291,6 @@ export default function Bids() {
   const [bids, setBids] = useState<BidWithBuilder[]>([])
   /** False until the first `loadBids` settles (success or error) — the board's skeleton gate (J10-F8). */
   const [bidsLoaded, setBidsLoaded] = useState(false)
-  /** Lost bids in this trade with no structured loss reason yet — the Why we lost queue size. */
-  const lostBidsNeedingReasonCount = useMemo(
-    () => bids.filter((b) => b.outcome === 'lost' && !isBidLossCategoryKey(b.loss_category)).length,
-    [bids],
-  )
   const [customers, setCustomers] = useState<Customer[]>([])
   const [lastContactFromEntries, setLastContactFromEntries] = useState<Record<string, string>>({})
   // Method entries only (v2.2413: notes are not contacts) — feeds the chase lenses.
@@ -427,6 +423,22 @@ export default function Bids() {
     () => partitionBidsByScope(bids, twinUserIds),
     [bids, twinUserIds],
   )
+  /**
+   * Tier-2 #20 (decision 8): the scope every number on this page lives in — the trade pill's
+   * trade, or every trade when the pill is cleared — and the ONE count kernel the Bid Board
+   * pills, the Followup lens headers and the "need a reason" chip all read (per BID; GC
+   * packets are the secondary figure). The Dashboard card reads the same kernel with `all`.
+   */
+  const sentScope = useMemo<BidSentScope>(
+    () =>
+      selectedServiceTypeId
+        ? { kind: 'trade', tradeId: selectedServiceTypeId, tradeName: serviceTypes.find((st) => st.id === selectedServiceTypeId)?.name ?? null }
+        : { kind: 'all' },
+    [selectedServiceTypeId, serviceTypes],
+  )
+  const sentCounts = useMemo(() => bidSentCounts(peopleBids, { scope: sentScope, packetsByBid: gcPacketsByBid }), [peopleBids, sentScope, gcPacketsByBid])
+  /** Lost bids in this trade with no structured loss reason yet — the Why we lost queue size (kernel: per bid). */
+  const lostBidsNeedingReasonCount = sentCounts.lostNeedingReason
 
   // v2.2741: J#### chips on the board — only for roles that can open Jobs (estimators can't).
   const [jobsByBidId, setJobsByBidId] = useState<Map<string, BidBoardJobLink>>(() => new Map())
@@ -3394,6 +3406,7 @@ export default function Bids() {
       {(activeTab === 'bid-board' || activeTab === 'robot-board') && (
         <BidsBidBoardTab
           bids={activeTab === 'robot-board' ? robotBids : peopleBids}
+          sentScope={sentScope}
           loading={!bidsLoaded}
           authUser={authUser}
           isDev={myRole === 'dev'}
@@ -3573,7 +3586,7 @@ export default function Bids() {
                 cursor: 'pointer',
               }}
             >
-              {lostBidsNeedingReasonCount} need a reason
+              {withScopeLabel(`${lostBidsNeedingReasonCount} need a reason`, sentScope)}
             </button>
           ) : null}
           <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
@@ -3592,6 +3605,7 @@ export default function Bids() {
       {activeTab === 'call-queue' && (
         <BidsCallQueueTab
           bids={peopleBids}
+          sentScope={sentScope}
           gcPacketsByBid={gcPacketsByBid}
           ledgerPrefixMap={ledgerPrefixMap}
           lastContactFromEntries={lastMethodContactFromEntries}
@@ -3605,6 +3619,7 @@ export default function Bids() {
       {activeTab === 'why-we-lost' && (
         <BidsWhyWeLostLens
           bids={peopleBids}
+          sentScope={sentScope}
           gcPacketsByBid={gcPacketsByBid}
           ledgerPrefixMap={ledgerPrefixMap}
           recipientsByBidId={bidGcRecipientsByBidId}
@@ -3617,6 +3632,7 @@ export default function Bids() {
       {activeTab === 'waiting-to-hear' && (
         <BidsWaitingToHearLens
           bids={peopleBids}
+          sentScope={sentScope}
           gcPacketsByBid={gcPacketsByBid}
           roomStatesByBid={roomStatesByBid}
           ledgerPrefixMap={ledgerPrefixMap}
@@ -4080,6 +4096,7 @@ export default function Bids() {
       {activeTab === 'submission-followup' && (
         <BidSubmissionFollowupTab
           bids={bids}
+          sentScope={sentScope}
           gcPacketsByBid={gcPacketsByBid}
           authUser={authUser}
           selectedBid={selectedBidForSubmission}

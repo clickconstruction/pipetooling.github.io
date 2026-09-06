@@ -141,9 +141,9 @@ Once A–E settle the desk's final shape: screen-record the desk +
 compose-preview flow into the quote-link guide (matching the house
 gif standard set in v2.2633).
 
-## Rung G — "apply picks to bid costs" — OWNER APPROVED option (a) 2026-09-02; next build rung (lot capture office-side first; vendor-page lots later)
+## Rung G — "apply picks to bid costs" — SHIPPED v2.2655 (2026-09-02; option (a), lot capture office-side; vendor-page lots still later)
 
-> Tracked in [`to-dos/rfq-apply-picks-to-bid-costs.md`](../to-dos/rfq-apply-picks-to-bid-costs.md) (2026-09-05 sweep).
+> Shipped as v2.2655: `bid_count_row_custom_costs`, the Apply-picks modal with margin preview / tag / revert, lots in Plug-in and compare. The takeoff unit price turned out to be blended, so the override replaces the materials component only. Residuals (vendor-page lots, PO Generator handoff, `material_part_prices` writes, scanned-PDF lane) are listed in `SUPPLY_HOUSE_RFQ_PLAN.md` → Deferred. The design text below is kept as the record.
 
 **The problem in plain terms**: the Workbench's COST/UNIT per fixture is
 *derived* — each fixture name maps (via Takeoffs) to an assigned part or

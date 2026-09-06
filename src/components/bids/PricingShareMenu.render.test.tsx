@@ -26,7 +26,7 @@ function setup(over: Partial<Parameters<typeof PricingShareMenu>[0]> = {}) {
 describe('PricingShareMenu', () => {
   it('Share stays one click; the caret opens the menu with Print / CSV / review', () => {
     const h = setup()
-    fireEvent.click(screen.getByText('Share'))
+    fireEvent.click(screen.getByText('Share with a teammate'))
     expect(h.onShare).toHaveBeenCalledTimes(1)
     expect(screen.queryByRole('menu')).toBeNull()
     fireEvent.click(screen.getByLabelText(/More ways/))
@@ -72,7 +72,7 @@ describe('PricingShareMenu', () => {
   })
   it('without the share role it renders as a single Export ▾ over the same menu', () => {
     setup({ canShare: false })
-    expect(screen.queryByText('Share')).toBeNull()
+    expect(screen.queryByText('Share with a teammate')).toBeNull()
     fireEvent.click(screen.getByText('Export ▾'))
     expect(screen.getByRole('menu')).toBeTruthy()
     expect(screen.getByText('Print all prices — review')).toBeTruthy()

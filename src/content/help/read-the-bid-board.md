@@ -13,11 +13,11 @@ Above the sections sits one tools row — the search box, {{button:outline|Archi
 
 A pill row stays pinned at the top of the board:
 
-{{chip:gray|Unsent 17}} {{chip:yellow|Pending 102}} {{chip:gray|Won 26}} {{chip:gray|Started 10}} {{chip:gray|Lost 99}} {{chip:gray|Health}}
+{{chip:gray|Plumbing}} {{chip:gray|Unsent 17}} {{chip:yellow|Pending 101}} {{chip:gray|Won 26}} {{chip:gray|Started 10}} {{chip:gray|Lost 114}} {{chip:gray|Health}}
 
 Tap a pill to jump straight to that section — it opens automatically if it was collapsed. **Health** takes you to the Estimating Pulse at the bottom. Each pill shows the live bid count; **Pending** is highlighted because it's usually where the action is.
 
-**The counts follow the trade pill.** Every number on this page — the section pills, the section headers, the rows — is for the trade selected in the pill row above the tabs (Plumbing, Electrical…). Switch the trade pill and the board and its counts switch with it. The bid cards on the **Dashboard** count the whole company, so "Pending 102" here and a bigger number there are both right — they are answering different questions.
+**The counts follow the trade pill — and the row says so.** The dashed chip at the front of the pill row names the trade every number on this page is for (Plumbing, Electrical…, or *all trades* when no pill is selected); switch the trade pill and the chip, the board and its counts switch together. **Every count is a count of bids**: a bid you sent to three GCs is one bid in Pending, not three (the GC lines under its row keep the per-GC detail). The lost-bids card on the **Dashboard** counts the whole company and says *· all trades* on its number, so "59 need a reason · Plumbing" here and "60 lost bids … · all trades" there are both right — the labels tell you which question each answers.
 
 The two biggest sections (**Not yet won or lost** and **Lost**) start with their first 25 bids showing. Use {{button:outline-blue|Show all N ▾}} at the bottom of the list to see the rest; search always looks through every bid either way.
 
