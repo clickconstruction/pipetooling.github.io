@@ -1,37 +1,34 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { denverCalendarDayKey } from '../../utils/dateUtils'
 import {
   DRAFT_NOTE_PREVIEW_ID,
   POSITIVE_OFFSET_TYPES,
-  buildPartnerJournal,
   mergeNotesIntoDisplay,
   mergePendingIntoJournal,
-  netPosition,
   pendingOffsetSignedAmount,
-  summarizePendingOffsets,
   withDraftNotePreview,
-  type JournalAdditionalLine,
-  type JournalDeduction,
-  type JournalPayment,
   type JournalPendingOffset,
-  type JournalRow,
-  type JournalStub,
   type LedgerDisplayRow,
   type LedgerNote,
 } from '../../lib/partnerLedger/partnerLedgerJournal'
+import { partnerStubsToJournal } from '../../lib/partnerLedger/partnerWeeks'
+import { balanceBridgeText, balanceConventionTitle, ledgerHours, officeBalanceWords } from '../../lib/partnerLedger/partnerBalance'
 import { buildPartnerPayReportHtml, type PartnerPayReportDay } from '../../lib/partnerLedger/partnerPayReportHtml'
 import { PayStubViewModal } from '../pay/PayStubViewModal'
 import { PersonOffsetFormModal, type PersonOffsetEditingRow } from '../pay/PersonOffsetFormModal'
 import { useIsMobile } from '../../hooks/useIsMobile'
+import { useOfficePartnerLedger } from '../../hooks/useOfficePartnerLedger'
 import { postingLabel, shortDate } from '../../lib/partnerLedger/partnerLedgerFormat'
 
 /**
  * Partnerships → Ledger tab (PARTNERSHIPS_PLAN.md PR 3): the append-only
  * journal behind the statements — every posting (labor, additions, deductions,
  * payouts) oldest-first with a running balance, plus offsets still pending.
- * Pure view over the pay_stubs family via the dev's payroll-access RLS; the
- * shaping lives in the partnerLedgerJournal kernel.
+ * vNEXT: reads the SAME `get_partner_ledger_as` payload the View-as lens and
+ * the partner's statement read (useOfficePartnerLedger) — one journal, so the
+ * headline here IS the partner's BALANCE and labor hours match to the 0.01 h.
+ * Notes stay an office-side table (they are edited here).
  */
 
 const money = (n: number) => `$${Math.abs(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
@@ -56,13 +53,10 @@ type LedgerOffsetRow = JournalPendingOffset & { id: string; pay_stub_id: string 
 type InfoCard = { title: string; lines: Array<[string, React.ReactNode]>; note: string }
 
 export function PartnershipLedgerTab({ personId, partnershipId, personName }: { personId: string; partnershipId: string; personName: string }) {
-  const [rows, setRows] = useState<JournalRow[] | null>(null)
-  const [balance, setBalance] = useState(0)
-  const [pending, setPending] = useState<{ count: number; net: number }>({ count: 0, net: 0 })
-  const [pendingRows, setPendingRows] = useState<JournalPendingOffset[]>([])
-  const [failed, setFailed] = useState(false)
-  const [stubsById, setStubsById] = useState<Map<string, JournalStub>>(new Map())
-  const [offsetsById, setOffsetsById] = useState<Map<string, LedgerOffsetRow>>(new Map())
+  // One journal: the same get_partner_ledger_as payload the lens and the
+  // partner's statement read. Notes are office-edited here, so they stay a
+  // local select (the payload only carries the partner-visible ones).
+  const ledger = useOfficePartnerLedger(partnershipId, personId)
   const [hoverKey, setHoverKey] = useState<string | null>(null)
   const [payReport, setPayReport] = useState<{ title: string; html: string } | null>(null)
   const [payReportBusy, setPayReportBusy] = useState<string | null>(null)
@@ -81,68 +75,7 @@ export function PartnershipLedgerTab({ personId, partnershipId, personName }: { 
   const isMobile = useIsMobile()
   const nowYear = new Date().getFullYear()
 
-  const load = useCallback(async () => {
-    const stubsRes = await supabase
-      .from('pay_stubs')
-      .select('id, period_start, period_end, hours_total, gross_pay')
-      .eq('person_id', personId)
-      .order('period_start', { ascending: true })
-    if (stubsRes.error) {
-      setFailed(true)
-      setRows([])
-      return
-    }
-    setFailed(false)
-    const stubs = (stubsRes.data ?? []) as JournalStub[]
-    setStubsById(new Map(stubs.map((s) => [s.id, s])))
-    const ids = stubs.map((s) => s.id)
-    let additional: JournalAdditionalLine[] = []
-    let deductions: (JournalDeduction & { person_offset_id: string | null })[] = []
-    let payments: JournalPayment[] = []
-    if (ids.length > 0) {
-      const [aRes, dRes, pRes] = await Promise.all([
-        supabase.from('pay_stub_additional_lines').select('pay_stub_id, description, line_total').in('pay_stub_id', ids),
-        supabase.from('pay_stub_deductions').select('pay_stub_id, description, amount, person_offset_id').in('pay_stub_id', ids),
-        supabase.from('pay_stub_payments').select('pay_stub_id, amount, paid_at, memo').in('pay_stub_id', ids),
-      ])
-      additional = (aRes.data ?? []) as JournalAdditionalLine[]
-      deductions = (dRes.data ?? []) as (JournalDeduction & { person_offset_id: string | null })[]
-      payments = (pRes.data ?? []) as JournalPayment[]
-    }
-    const offRes = await supabase
-      .from('person_offsets')
-      .select('id, type, amount, occurred_date, description, pay_stub_id, person_name')
-      .eq('person_id', personId)
-    const offsets = ((offRes.data ?? []) as LedgerOffsetRow[]) || []
-    setOffsetsById(new Map(offsets.map((o) => [o.id, o])))
-
-    // Charges-at-date: every charge-type offset books at its occurred_date,
-    // attached to a statement or not. Statement deductions that merely mirror
-    // one of those offsets are excluded so nothing counts twice; deductions
-    // from positive-type offsets (e.g. profit-share reversals) and manual
-    // deductions keep booking on the statement week.
-    const chargeOffsets = offsets.filter((o) => !POSITIVE_OFFSET_TYPES.has(o.type))
-    const chargeOffsetIds = new Set(chargeOffsets.map((o) => o.id))
-    const journal = buildPartnerJournal({
-      stubs,
-      additional,
-      deductions: deductions
-        .filter((d) => d.person_offset_id == null || !chargeOffsetIds.has(d.person_offset_id))
-        .map(({ pay_stub_id, description, amount }) => ({ pay_stub_id, description, amount })),
-      payments,
-      charges: chargeOffsets.map((o) => ({
-        date: o.occurred_date,
-        label: o.description || o.type,
-        amount: pendingOffsetSignedAmount(o),
-        offset_id: o.id,
-      })),
-    })
-    setRows(journal.rows)
-    setBalance(journal.balance)
-    const posPending = offsets.filter((o) => POSITIVE_OFFSET_TYPES.has(o.type) && o.pay_stub_id == null)
-    setPending(summarizePendingOffsets(posPending))
-    setPendingRows([...posPending].sort((a, b) => b.occurred_date.localeCompare(a.occurred_date)))
-
+  const loadNotes = useCallback(async () => {
     // Ledger notes — fail-soft until the notes migration is applied.
     const notesRes = await supabase
       .from('partnership_ledger_notes')
@@ -155,12 +88,34 @@ export function PartnershipLedgerTab({ personId, partnershipId, personName }: { 
       setNotesUnavailable(false)
       setNotes((notesRes.data ?? []) as LedgerNote[])
     }
-  }, [personId, partnershipId])
+  }, [partnershipId])
 
   useEffect(() => {
-    setRows(null)
-    void load()
-  }, [load])
+    void loadNotes()
+  }, [loadNotes])
+
+  const { reload } = ledger
+  const load = useCallback(async () => {
+    await Promise.all([reload(), loadNotes()])
+  }, [reload, loadNotes])
+
+  const stubsById = useMemo(() => new Map(ledger.stubs.map((s) => [s.id, s])), [ledger.stubs])
+  // Offsets as the drill-in needs them: payload fields + the office-only
+  // attachment (which statement, payroll name) riding alongside.
+  const offsetsById = useMemo(() => {
+    const m = new Map<string, LedgerOffsetRow>()
+    for (const o of ledger.offsets) {
+      const a = ledger.attachments.get(o.id)
+      m.set(o.id, { ...o, pay_stub_id: a?.pay_stub_id ?? null, person_name: a?.person_name ?? personName })
+    }
+    return m
+  }, [ledger.offsets, ledger.attachments, personName])
+  // Charges-at-date journal — the partner's Full ledger, row for row.
+  const rows = useMemo(() => (ledger.status === 'ok' ? partnerStubsToJournal(ledger.stubs, ledger.offsets).rows : null), [ledger.status, ledger.stubs, ledger.offsets])
+  // Credits still waiting for a statement interleave as pending rows (charges
+  // already sit in the journal at their dates).
+  const pendingRows = useMemo(() => ledger.pending.filter((o) => POSITIVE_OFFSET_TYPES.has(o.type)), [ledger.pending])
+  const split = ledger.split
 
   useEffect(() => {
     if (!infoCard) return
@@ -276,7 +231,7 @@ export function PartnershipLedgerTab({ personId, partnershipId, personName }: { 
       personName,
       periodStart: stub.period_start,
       periodEnd: stub.period_end,
-      hoursTotal: stub.hours_total,
+      hoursTotal: ledgerHours(stub),
       grossPay: stub.gross_pay,
       days: [...merged.values()],
       additionalLines: (addRes.data ?? []) as Array<{ description: string; line_total: number }>,
@@ -373,18 +328,26 @@ export function PartnershipLedgerTab({ personId, partnershipId, personName }: { 
           style: { cursor: 'pointer', background: hoverKey === key ? 'var(--bg-muted)' : undefined },
         }
 
-  if (rows == null) {
+  if (ledger.status === 'loading' || rows == null) {
     return <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', margin: '0.5rem 0 0' }}>Loading…</p>
   }
-  if (failed) {
+  if (ledger.status === 'failed') {
     return (
       <p style={{ fontSize: '0.875rem', color: 'var(--text-700)', margin: '0.5rem 0 0' }}>
-        Couldn’t load the ledger — check payroll access and that the PR 3 migration is pushed.
+        Couldn’t load the ledger — check dev access and that the partner ledger migrations are pushed.
+      </p>
+    )
+  }
+  if (!ledger.exists) {
+    return (
+      <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', margin: '0.5rem 0 0' }}>
+        This partnership is paused or ended, so its ledger is hidden — the same nothing {personName} sees. Set it back
+        to active on the Deal tab to read it.
       </p>
     )
   }
 
-  const net = netPosition(balance, pending.net)
+  const net = split.ledgerBalance
   // While the composer is open, a ghost preview of the draft rides along in
   // the display list — it sits exactly where the note will land and moves as
   // the draft's date changes.
@@ -426,15 +389,24 @@ export function PartnershipLedgerTab({ personId, partnershipId, personName }: { 
   return (
     <div>
       <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.6rem', flexWrap: 'wrap', margin: '0.25rem 0 0.5rem' }}>
-        <span style={{ fontSize: '1.4rem', fontWeight: 750, fontVariantNumeric: 'tabular-nums', color: net < 0 ? 'var(--text-red-600)' : undefined }}>
+        <span
+          title={balanceConventionTitle(personName)}
+          style={{ fontSize: '1.4rem', fontWeight: 750, fontVariantNumeric: 'tabular-nums', color: net < 0 ? 'var(--text-red-600)' : undefined }}
+        >
           {net < 0 ? '−' : ''}{money(net)}
         </span>
-        {pending.count === 0 ? (
-          // Phones: headline + "+ note" share the first line, caption sits under them.
-          <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', ...(isMobile ? { flexBasis: '100%', order: 3, marginTop: '-0.25rem' } : {}) }}>
-            current balance (all postings − payouts)
-          </span>
-        ) : null}
+        <span style={{ fontSize: '0.8rem', fontWeight: 650, color: net < 0 ? 'var(--text-red-600)' : net > 0 ? '#16a34a' : 'var(--text-muted)' }}>
+          {officeBalanceWords(net, personName)}
+        </span>
+        {/* Phones: headline + "+ note" share the first line, caption sits under them. */}
+        <span
+          title={balanceConventionTitle(personName)}
+          style={{ fontSize: '0.75rem', color: 'var(--text-muted)', ...(isMobile ? { flexBasis: '100%', order: 3, marginTop: '-0.25rem' } : {}) }}
+        >
+          {split.pendingCount === 0
+            ? `settle-up balance · the same number ${personName}’s statement shows`
+            : balanceBridgeText(split, personName)}
+        </span>
         {!notesUnavailable ? (
           <button
             type="button"
@@ -503,6 +475,11 @@ export function PartnershipLedgerTab({ personId, partnershipId, personName }: { 
 
       {drillError ? (
         <p style={{ fontSize: '0.78rem', color: 'var(--text-red-600)', margin: '0 0 0.5rem' }}>{drillError}</p>
+      ) : null}
+      {ledger.attachmentsUnavailable ? (
+        <p style={{ fontSize: '0.72rem', color: 'var(--text-amber-700)', margin: '0 0 0.5rem' }}>
+          Couldn’t read which credits are still pending — they show as attached until the page reloads (charges are unaffected).
+        </p>
       ) : null}
 
       {displayRows.length === 0 ? (

@@ -1,14 +1,9 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { withSupabaseRetry } from '../../utils/errorHandling'
 import { buildServiceTypeTradePill } from '../../lib/serviceTypeTradePill'
-import {
-  buildPartnerJournal,
-  type JournalAdditionalLine,
-  type JournalDeduction,
-  type JournalPayment,
-  type JournalStub,
-} from '../../lib/partnerLedger/partnerLedgerJournal'
+import { balanceBridgeText, balanceConventionTitle, officeBalanceWords, partnerStubsToPostedJournal } from '../../lib/partnerLedger/partnerBalance'
+import { useOfficePartnerLedger } from '../../hooks/useOfficePartnerLedger'
 import {
   buildPartnerTimeline,
   filterPartnerTimeline,
@@ -30,6 +25,11 @@ import { todayYmdInAppTz } from '../../utils/dateUtils'
  * rows come from Write-ups (attendance_incidents), declines from the Sub
  * Board (step_commitments). The partner's own surfaces never render NCNS or
  * declines.
+ *
+ * Money rows come from the SAME `get_partner_ledger_as` payload the Ledger tab
+ * and the partner's statement read (useOfficePartnerLedger) — one journal.
+ * The running column here is the statement-posted chain; the headline says
+ * who owes whom and how the pending charges bridge it to the Ledger's number.
  */
 
 const money = (n: number) => `$${Math.abs(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
@@ -60,13 +60,16 @@ const CHARGE_TYPES = [
 ] as const
 
 export function PartnershipTimelineTab({
+  partnershipId,
   personId,
   personName,
 }: {
+  partnershipId: string
   personId: string
   personName: string
 }) {
-  const [rows, setRows] = useState<PartnerTimelineRow[] | null>(null)
+  const ledger = useOfficePartnerLedger(partnershipId, personId)
+  const [events, setEvents] = useState<Omit<TimelineEventInputs, 'pendingCharges' | 'statements'> | null>(null)
   const [filter, setFilter] = useState<PartnerTimelineFilter>('all')
   const [failed, setFailed] = useState(false)
   const [addType, setAddType] = useState('backcharge')
@@ -76,49 +79,30 @@ export function PartnershipTimelineTab({
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState<string | null>(null)
 
-  const load = useCallback(async () => {
-    const stubsRes = await supabase
-      .from('pay_stubs')
-      .select('id, period_start, period_end, hours_total, gross_pay')
-      .eq('person_id', personId)
-      .order('period_start', { ascending: true })
-    if (stubsRes.error) {
-      setFailed(true)
-      setRows([])
-      return
-    }
-    setFailed(false)
-    const stubs = (stubsRes.data ?? []) as JournalStub[]
-    const ids = stubs.map((s) => s.id)
-    let additional: JournalAdditionalLine[] = []
-    let deductions: JournalDeduction[] = []
-    let payments: JournalPayment[] = []
-    let acks: { pay_stub_id: string; party: string; acknowledged_at: string }[] = []
-    if (ids.length > 0) {
-      const [aRes, dRes, pRes, ackRes] = await Promise.all([
-        supabase.from('pay_stub_additional_lines').select('pay_stub_id, description, line_total').in('pay_stub_id', ids),
-        supabase.from('pay_stub_deductions').select('pay_stub_id, description, amount').in('pay_stub_id', ids),
-        supabase.from('pay_stub_payments').select('pay_stub_id, amount, paid_at, memo').in('pay_stub_id', ids),
-        supabase.from('statement_acknowledgments').select('pay_stub_id, party, acknowledged_at').in('pay_stub_id', ids),
-      ])
-      additional = (aRes.data ?? []) as JournalAdditionalLine[]
-      deductions = (dRes.data ?? []) as JournalDeduction[]
-      payments = (pRes.data ?? []) as JournalPayment[]
-      acks = (ackRes.data ?? []) as typeof acks
-    }
-    const [pendRes, personRes, jobsRes] = await Promise.all([
-      supabase
-        .from('person_offsets')
-        .select('type, amount, occurred_date, description')
-        .eq('person_id', personId)
-        .is('pay_stub_id', null),
+  // Accountability trails (NCNS, declines, confirmed jobs) — the office-only
+  // side of the stream; money and statements ride the shared payload.
+  const loadEvents = useCallback(async () => {
+    const [personRes, jobsRes, decRes] = await Promise.all([
       supabase.from('people').select('account_user_id').eq('id', personId).single(),
       supabase
         .from('jobs_ledger')
         .select('hcp_number, click_number, job_name, partner_confirmed_at, service_types(name)')
         .eq('partner_person_id', personId)
         .not('partner_confirmed_at', 'is', null),
+      supabase
+        .from('step_commitments')
+        .select('declined_at, decline_reason, amount')
+        .eq('person_id', personId)
+        .not('declined_at', 'is', null)
+        .order('declined_at', { ascending: false })
+        .limit(50),
     ])
+    if (personRes.error && jobsRes.error && decRes.error) {
+      setFailed(true)
+      setEvents({ ncns: [], declines: [], confirmedJobs: [] })
+      return
+    }
+    setFailed(false)
     const user = (personRes.data as { account_user_id: string | null } | null)?.account_user_id ?? null
     let ncns: TimelineEventInputs['ncns'] = []
     if (user) {
@@ -131,17 +115,7 @@ export function PartnershipTimelineTab({
         .limit(100)
       ncns = nRes.error ? [] : ((nRes.data ?? []) as TimelineEventInputs['ncns'])
     }
-    const decRes = await supabase
-      .from('step_commitments')
-      .select('declined_at, decline_reason, amount')
-      .eq('person_id', personId)
-      .not('declined_at', 'is', null)
-      .order('declined_at', { ascending: false })
-      .limit(50)
-
-    const journal = buildPartnerJournal({ stubs, additional, deductions, payments }).rows
-    const events: TimelineEventInputs = {
-      pendingCharges: (pendRes.data ?? []) as TimelineEventInputs['pendingCharges'],
+    setEvents({
       ncns,
       declines: decRes.error ? [] : ((decRes.data ?? []) as TimelineEventInputs['declines']),
       confirmedJobs: ((jobsRes.data ?? []) as { hcp_number: string | null; click_number: string | null; job_name: string | null; partner_confirmed_at: string | null; service_types: { name: string } | null }[]).map(
@@ -151,20 +125,33 @@ export function PartnershipTimelineTab({
           service_type_name: j.service_types?.name ?? null,
         }),
       ),
-      statements: stubs.map((s) => ({
-        period_start: s.period_start,
-        period_end: s.period_end,
-        partner_ack_at: acks.find((a) => a.pay_stub_id === s.id && a.party === 'partner')?.acknowledged_at ?? null,
-        company_ack_at: acks.find((a) => a.pay_stub_id === s.id && a.party === 'company')?.acknowledged_at ?? null,
-      })),
-    }
-    setRows(buildPartnerTimeline(journal, events))
+    })
   }, [personId])
 
   useEffect(() => {
-    setRows(null)
-    void load()
-  }, [load])
+    setEvents(null)
+    void loadEvents()
+  }, [loadEvents])
+
+  const rows = useMemo<PartnerTimelineRow[] | null>(() => {
+    if (ledger.status !== 'ok' || events == null) return null
+    const journal = partnerStubsToPostedJournal(ledger.stubs).rows
+    return buildPartnerTimeline(journal, {
+      ...events,
+      pendingCharges: ledger.pending,
+      statements: ledger.stubs.map((s) => ({
+        period_start: s.period_start,
+        period_end: s.period_end,
+        partner_ack_at: s.partner_ack_at,
+        company_ack_at: s.company_ack_at,
+      })),
+    })
+  }, [ledger.status, ledger.stubs, ledger.pending, events])
+
+  const { reload } = ledger
+  const load = useCallback(async () => {
+    await Promise.all([reload(), loadEvents()])
+  }, [reload, loadEvents])
 
   async function addCharge() {
     const amt = Number(addAmount)
@@ -201,21 +188,48 @@ export function PartnershipTimelineTab({
     }
   }
 
+  if (ledger.status === 'failed' || failed) {
+    return (
+      <p style={{ fontSize: '0.875rem', color: 'var(--text-700)', margin: '0.5rem 0 0' }}>
+        Couldn’t load the timeline — check dev access and pushed migrations.
+      </p>
+    )
+  }
   if (rows == null) {
     return <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', margin: '0.5rem 0 0' }}>Loading…</p>
   }
-  if (failed) {
+  if (!ledger.exists) {
     return (
-      <p style={{ fontSize: '0.875rem', color: 'var(--text-700)', margin: '0.5rem 0 0' }}>
-        Couldn’t load the timeline — check payroll access and pushed migrations.
+      <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', margin: '0.5rem 0 0' }}>
+        This partnership is paused or ended, so its money is hidden — the same nothing {personName} sees. Set it back
+        to active on the Deal tab to read it.
       </p>
     )
   }
 
   const visible = filterPartnerTimeline(rows, filter)
+  const posted = ledger.split.postedBalance
 
   return (
     <div>
+      {/* Who owes whom, in words — the running column below is the
+          statement-posted chain; the caption bridges it to the Ledger tab. */}
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.6rem', flexWrap: 'wrap', margin: '0.25rem 0 0.5rem' }}>
+        <span
+          title={balanceConventionTitle(personName)}
+          style={{ fontSize: '1.4rem', fontWeight: 750, fontVariantNumeric: 'tabular-nums', color: posted < 0 ? 'var(--text-red-600)' : undefined }}
+        >
+          {posted < 0 ? '−' : ''}{money(posted)}
+        </span>
+        <span style={{ fontSize: '0.8rem', fontWeight: 650, color: posted < 0 ? 'var(--text-red-600)' : posted > 0 ? '#16a34a' : 'var(--text-muted)' }}>
+          {officeBalanceWords(posted, personName)}
+        </span>
+        <span title={balanceConventionTitle(personName)} style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+          {ledger.split.pendingCount === 0
+            ? 'posted balance · nothing pending, so the Ledger tab says the same'
+            : balanceBridgeText(ledger.split, personName)}
+        </span>
+      </div>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem', alignItems: 'center', margin: '0.25rem 0 0.5rem' }}>
         {FILTERS.map(([key, label]) => (
           <button
@@ -290,7 +304,8 @@ export function PartnershipTimelineTab({
         })
       )}
       <p style={{ fontSize: '0.7rem', color: 'var(--text-muted)', margin: '0.6rem 0 0' }}>
-        Newest first. Money rows carry the running balance; infractions and events sit inline without touching it.
+        Newest first. Money rows carry the running balance of what statements have posted (+ we owe {personName}, − {personName} owes us);
+        pending charges sit inline without touching it until a statement attaches them. Infractions and events never move it.
         Dev-only: {personName}’s own view never shows NCNS or declines — charges reach them only as statement
         deductions. Log new NCNS in People → Write-ups; declines record automatically from dispatch.
       </p>

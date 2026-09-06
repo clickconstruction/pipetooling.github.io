@@ -5,7 +5,7 @@ file: docs/PARTNERSHIPS_PLAN.md
 type: Engineering / Feature plan — APPROVED 2026-08-19 (owner signed off with all defaults)
 purpose: Staged plan for the dev-gated /partnerships page (per-partner deal config, job-majority gate, weekly statements, agreements) and the partner-facing ledger surfaces, making the Bryan Herber agreement operational and repeatable for future partners. Written 2026-08-19 from a full code/docs audit; companion clickable prototype in the "Partnerships Prototype" artifact.
 audience: Developers, AI Agents
-last_updated: 2026-08-19
+last_updated: 2026-09-05
 ---
 
 ## Status: SHIPPED (v2.1903–v2.2000, 2026-08-20/21); the off-toggle terms are tracked in [`to-dos/partnerships-off-toggles.md`](../to-dos/partnerships-off-toggles.md)
@@ -81,6 +81,15 @@ Office-side writes (dev-gated in-function; controller where noted):
 - **Partner dashboard section** (extends `DashboardSubMoneySection`): weekly ‹ › ledger card (default = current week in progress, pending-approval hours shown as no-dollar lines, 8 weeks + "Full ledger"), statement view/acknowledge/print (`buildPayStatementHtml` pattern, light-pinned), "Your jobs" (majority only), costing drill-in. Same components desktop/mobile; desktop renders statement + costing inline (prototype behavior).
 - **Job close split panel** on the existing close flow, mounted only when the job carries a majority flag and the partnership has `profit_shares` on.
 - Partner identity: role stays `subcontractor`; capability comes from the `partnerships` row (the `banking_attributors` pattern) — no tenth role.
+
+## Office read: one payload (v2.2891)
+
+The three office money tabs (Ledger, Timeline, Statements) read the SAME `get_partner_ledger_as` payload the View-as lens and the partner's `/my-statement` read — `useOfficePartnerLedger` (`src/hooks/useOfficePartnerLedger.ts`), one RPC call plus one metadata select on `person_offsets` for the attach state of *credits* and the payroll name (charges know their attach state from the payload's deduction links). Kernel `src/lib/partnerLedger/partnerBalance.ts` splits it into the three figures and pins how they relate:
+
+- **posted + attaching = ledger** — `postedBalance` (Timeline running column: what statements have posted) + `attaching` (Statements: Σ pending offsets) = `ledgerBalance` (Ledger headline = the partner statement's BALANCE: charges at their dates + pending credits).
+- Hours everywhere office-side are `ledgerHours` = Σ stamped rate-tier days (`tierHoursTotal`), the partner's number — not `pay_stubs.hours_total`.
+- Words: `+` we owe the partner · `−` the partner owes us (`officeBalanceWords`); `balanceBridgeText` is the one-line caption under each headline.
+- A paused/ended partnership resolves to `exists:false` through the lens gate; the tabs say so rather than rendering a ledger the partner cannot see.
 
 ## PR train (small PRs, one claim each, auto-merge)
 
