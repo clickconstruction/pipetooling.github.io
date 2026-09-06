@@ -11,7 +11,9 @@ It works for **any role**, not just assistants: use it for a new hire finding th
 
 ## Start them in training mode when you invite them
 
-The easiest moment is before they exist. On **Active Accounts**, both {{button:blue|Invite via email}} and {{button:outline|Manually add user}} have a **Start in training mode (read-only)** checkbox under the role. Tick it and the account is flagged before their first sign-in — nothing to remember afterwards. See *invite someone to sign in*.
+The easiest moment is before they exist. On **Active Accounts**, both {{button:blue|Invite via email}} and {{button:outline|Manually add user}} have a **Start in training mode (read-only)** checkbox under the role. Tick it and the account is flagged before their first sign-in — nothing to remember afterwards. The invite email names the role in plain words ("as a Helper", never a database label), and the role itself is a choice you make on the same dialog — there is no default. See [invite someone to sign in](?g=invite-someone-to-sign-in).
+
+If the invite link expires before they use it, run **Invite via email** again for the same address — that replaces the pending account and its link with a fresh one. It is a fresh start, so **tick Start in training mode again** on the re-invite; the second dialog is what the account will carry, not the first.
 
 ## Turn it on for an existing account
 
@@ -36,4 +38,4 @@ Untick the same checkbox. Their normal write access returns the next time the ap
 
 ## Related
 
-- To take away someone's sign-in entirely, see *archive and restore user accounts*.
+- To take away someone's sign-in entirely, see [archive and restore user accounts](?g=archive-user-accounts).
