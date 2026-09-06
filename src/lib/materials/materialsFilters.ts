@@ -1,3 +1,4 @@
+import { normalizeIdentityKey } from '../identityKey'
 /**
  * Pure client-side filters for the Materials page part/assembly pickers and
  * the Parts Book Load-All view — extracted from Materials.tsx (Stage A of the
@@ -94,8 +95,9 @@ export function computeLoadAllDisplayParts<T extends LoadAllPartLike>(
 }
 
 /** Case-fold + trim key for a manufacturer name; `''` for blank/null. */
-export function manufacturerKey(manufacturer: string | null | undefined): string {
-  return (manufacturer ?? '').trim().toLowerCase()
+export function manufacturerKey(v: string | null | undefined): string {
+  // T5-07: the shared identity key, so the facet option and the filter agree.
+  return normalizeIdentityKey(v)
 }
 
 /** Case-insensitive, whitespace-tolerant equality — "WATTS" is "watts" (v2.2903, J29-adj-2). */
@@ -113,7 +115,8 @@ export function manufacturerFacetOptions<T extends { manufacturer?: string | nul
   const spellings = new Map<string, Map<string, number>>()
   for (const p of parts) {
     const raw = (p.manufacturer ?? '').trim()
-    const key = raw.toLowerCase()
+    // T5-07: the shared identity key (case, punctuation, "&").
+    const key = normalizeIdentityKey(raw)
     if (!key) continue
     let counts = spellings.get(key)
     if (!counts) {
