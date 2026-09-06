@@ -10,8 +10,10 @@ import { planStatementClose } from '../../lib/partnerLedger/statementCloseWeeks'
  * Partnerships → Statements tab (PARTNERSHIPS_PLAN.md PR 3): the weekly
  * statement's office-side home. Close the previous Sun–Sat week (guarded by
  * generate_partner_statement — unapproved sessions / unreviewed jobs block
- * unless the logged override), then track the archive: hours, gross, both §9b
- * acknowledgment chips, and payments against each statement.
+ * unless the logged override), then track the archive: hours, gross, and
+ * payments against each statement. (The §9b acknowledgment chips went with the
+ * partner's acknowledge button in v2.2212 — the close still records the
+ * company stamp, but nothing here promises a partner one; v2.2914.)
  *
  * Reads the SAME `get_partner_ledger_as` payload the Ledger and Timeline tabs
  * and the partner's statement read (useOfficePartnerLedger) — one journal, so
@@ -126,7 +128,7 @@ export function PartnershipStatementsTab({
               {closePlan.target ? (
                 <>
                   Sun–Sat · builds the statement from {personName}’s approved hours at the Deal-tab rates, attaches
-                  pending offsets, and stamps your acknowledgment
+                  pending offsets, and posts it to {personName}’s statement page
                 </>
               ) : (
                 <>next close opens Sunday {closePlan.nextOpensOn}</>

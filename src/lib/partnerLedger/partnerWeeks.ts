@@ -18,6 +18,8 @@ export type PartnerSummary = {
   /** v2.2170: the deal's company name (null when blank) and start date — for the statement letterhead. */
   company_name: string | null
   started_on: string | null
+  /** v2.2914: the deal's `partnerships.status` (`draft` / `active` / `paused` / `ended`) — the letterhead says "draft since" while the deal is unsigned. */
+  status: string | null
   balance: number
   modules: { weekly_statement: boolean; costing: boolean; profit_shares: boolean }
   current_week: {
@@ -181,6 +183,7 @@ export function parsePartnerSummary(payload: unknown): PartnerSummary | null {
     display_name: typeof o.display_name === 'string' ? o.display_name : '',
     company_name: typeof o.company_name === 'string' && o.company_name.trim() ? o.company_name.trim() : null,
     started_on: typeof o.started_on === 'string' ? o.started_on : null,
+    status: typeof o.status === 'string' && o.status.trim() ? o.status.trim() : null,
     balance: num(o.balance),
     modules: {
       weekly_statement: mods.weekly_statement === true,

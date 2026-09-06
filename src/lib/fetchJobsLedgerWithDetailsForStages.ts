@@ -53,7 +53,16 @@ function oneEmbed<T>(v: T | T[] | null | undefined): T | null {
 }
 
 export type FetchJobsLedgerWithDetailsResult =
-  | { ok: true; jobs: JobWithDetails[] }
+  | {
+      ok: true
+      jobs: JobWithDetails[]
+      /**
+       * v2.2914: how many primary rows the `minHcpExclusive` floor dropped
+       * before enrichment — the Job Summary footer's "N older jobs hidden"
+       * count. Present only when a floor was applied.
+       */
+      hiddenByMinHcp?: number
+    }
   | { ok: false; error: string }
 
 function buildJobsListStagesQuery(customerFilter: string | null, statusScope: JobsLedgerStatusScope) {
@@ -415,15 +424,18 @@ export async function fetchJobsLedgerWithDetailsForStages(
   } catch (e: unknown) {
     return { ok: false, error: formatErrorMessage(e, 'Failed to load jobs') }
   }
+  let hiddenByMinHcp: number | undefined
   if (minHcp != null && !Number.isNaN(Number(minHcp)) && minHcp >= -1) {
     const floor = minHcp
+    const before = rows.length
     rows = rows.filter((r) => jobSummaryRowMatchesMinHcp(r.hcp_number, floor))
+    hiddenByMinHcp = before - rows.length
   }
   if (rows.length === 0) {
-    return { ok: true, jobs: [] }
+    return { ok: true, jobs: [], hiddenByMinHcp }
   }
   const jobs = jobSummaryEnrich
     ? await enrichJobsLedgerPrimaryRowsJobSummarySlim(rows)
     : await enrichJobsLedgerPrimaryRows(rows)
-  return { ok: true, jobs }
+  return { ok: true, jobs, hiddenByMinHcp }
 }

@@ -8,6 +8,8 @@ If you work with the company as a partner, your Dashboard has a **Your statement
 
 ## Reading the statement
 
+The letterhead's small line names the deal: your company, then **partner since** the date the deal started and your hourly rates. While the deal is still a draft in the office — no signed agreement yet — that line reads **draft since** instead, so the paper never claims more than the agreement does.
+
 The statement opens on the **current week**, laid out like the paper one: **Week opened** at the top, the week's lines in the middle, and a bold total on a double rule where the math finishes. The headline at the top says whose money it is — **YOU OWE CLICK** or **CLICK OWES YOU** — and the week's total reads **So far this week**: approved hours priced at your deal rates, minus payouts and charges. It's what settling up today would actually mean. Hours still waiting on office approval show as a line with no dollars yet — they post when approved.
 
 Charges like a back-charge or a utility overage show as a minus line **in the week they happened**, whether or not a statement has picked them up yet — so the week they hit is the week you see them.

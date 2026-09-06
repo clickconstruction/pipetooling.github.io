@@ -23,7 +23,7 @@ export function applyMinHcpFilter(jobs: JobWithDetails[], minExclusive: number):
 
 const JOBS_JOB_SUMMARY_MIN_HCP_STORAGE_KEY = 'jobs_jobSummary_minHcpExclusive'
 
-const DEFAULT_MIN_HCP_EXCLUSIVE = 500
+export const DEFAULT_MIN_HCP_EXCLUSIVE = 500
 
 export function readJobSummaryMinHcpExclusiveFromStorage(): number {
   if (typeof window === 'undefined') return DEFAULT_MIN_HCP_EXCLUSIVE

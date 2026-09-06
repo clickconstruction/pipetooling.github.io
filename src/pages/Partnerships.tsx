@@ -786,7 +786,7 @@ export default function Partnerships() {
               {cfgRow('Estimate hours to job at award', 'bid hours × estimating rate → direct expense (§4h)', <Toggle on={draft.modules.est_transfer} onClick={() => setModule('est_transfer', !draft.modules.est_transfer)} label="Estimate hours transfer" />)}
 
               <div style={groupHeadStyle}>Visibility &amp; statements</div>
-              {cfgRow('Weekly statement', 'Sun–Sat, mutual acknowledgment (§4, §9b)', <Toggle on={draft.modules.weekly_statement} onClick={() => setModule('weekly_statement', !draft.modules.weekly_statement)} label="Weekly statement" />)}
+              {cfgRow('Weekly statement', 'Sun–Sat, posted to the partner’s statement page (§4)', <Toggle on={draft.modules.weekly_statement} onClick={() => setModule('weekly_statement', !draft.modules.weekly_statement)} label="Weekly statement" />)}
               {cfgRow('Job costing transparency', 'checked-off jobs only (§5)', <Toggle on={draft.modules.costing} onClick={() => setModule('costing', !draft.modules.costing)} label="Job costing transparency" />)}
               {cfgRow('Require signed agreement', 'sign prompts + banner until signed', <Toggle on={draft.modules.require_sign} onClick={() => setModule('require_sign', !draft.modules.require_sign)} label="Require signed agreement" />)}
               {cfgRow('Utilities allowance', 'overage posts monthly (§6a)', numField(draft.utilities_allowance, (n) => setDraft({ ...draft, utilities_allowance: n }), { suffix: '/ mo', step: '1' }))}

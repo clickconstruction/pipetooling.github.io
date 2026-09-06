@@ -8,6 +8,7 @@ const base: PartnerSummary = {
   display_name: 'Bryan',
   company_name: 'Herber Electric',
   started_on: '2026-03-22',
+  status: 'active',
   balance: -1,
   modules: { weekly_statement: true, costing: true, profit_shares: true },
   current_week: { week_start: '2026-08-23', field_hours: 0, office_hours: 0, farm_hours: 0, gross_so_far: 0, pending_sessions: 0 },

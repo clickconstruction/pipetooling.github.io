@@ -71,6 +71,14 @@ Add up a job's days and that's its overhead. The shares across every job on a da
 
 Per-hour lenses barely touch a job that sold well on few hours; a per-revenue lens takes a big bite of it. Day-share lands where the calendar puts it: a job that was most of the field on a heavy office day pays for that day. Switch the method to see the spread on any job before you trust one number.
 
+## Older imported jobs
+
+Under the table sits the tab's one scope control: **Hide older imported jobs with HCP # at or below** {{chip:gray|500}}. The legacy jobs imported with low HCP numbers stay out of the way by default, and the line beneath says exactly what that costs you — *417 shown · 398 older imported jobs (HCP # 500 and below) hidden by the default HCP # 500 floor* — with a **show all** link that drops the floor and reloads the table with every job. Jobs with no HCP # (or a non-numeric one) always show. The floor you pick is remembered on this device.
+
+:::example When the count matters
+Looking for a 2024 job that isn't in the table? Read the footer first: if it says jobs are hidden, click **show all** before assuming the job is missing.
+:::
+
 ## Watch-outs
 
 - Only **approved, closed** sessions count, for hours and for overhead. Approve hours in People → Hours and the numbers move.

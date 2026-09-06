@@ -15,6 +15,7 @@ const summary: PartnerSummary = {
   display_name: 'Bryan',
   company_name: 'Herber Electric',
   started_on: '2026-03-22',
+  status: 'active',
   balance: -1008.13,
   modules: { weekly_statement: true, costing: true, profit_shares: true },
   current_week: { week_start: '2026-08-23', field_hours: 0, office_hours: 0, farm_hours: 0, gross_so_far: 0, pending_sessions: 0 },
@@ -49,6 +50,12 @@ describe('PartnerStatementPaper', () => {
     expect(screen.getByText('partner since Mar 22, 2026 · field $50 · estimating $35 / h')).toBeTruthy()
     expect(screen.getByText(/Partner account · Herber Electric/)).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Costing ›' })).toBeTruthy()
+  })
+
+  it('letterhead says "draft since" while the deal is still draft (v2.2914)', () => {
+    render(<PartnerStatementPaper {...base} summary={{ ...summary, status: 'draft' }} />)
+    expect(screen.getByText('draft since Mar 22, 2026 · field $50 · estimating $35 / h')).toBeTruthy()
+    expect(screen.queryByText(/partner since/)).toBeNull()
   })
 
   it('letterhead falls back when the deal has no company name or start date', () => {
