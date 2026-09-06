@@ -1,14 +1,16 @@
 // @vitest-environment jsdom
 /**
- * Render-smoke tests for Settings → Release notes (v2.944). The section is
- * self-contained (static data, no supabase/auth), so it renders bare: the
- * "Current version" line matches the newest note, each visible card shows its
- * version + title, and the tail collapses behind "Show N earlier updates".
+ * Render-smoke tests for Settings → Release notes (v2.944; paged + role-aware
+ * since B16). The section is self-contained (static data, no supabase/auth),
+ * so it renders bare: the "Current version" line matches the newest note, each
+ * visible card shows its version + title, and the tail sits behind a
+ * "Show N earlier updates" pager that reveals one page per click.
  */
 import { describe, expect, it } from 'vitest'
 import { fireEvent, render, screen } from '@testing-library/react'
 import SettingsReleaseNotesSection from './SettingsReleaseNotesSection'
 import { RELEASE_NOTES } from '../../content/releaseNotes'
+import { RELEASE_NOTES_PAGE_SIZE, releaseNotesForRole } from '../../lib/releaseNotes'
 
 describe('SettingsReleaseNotesSection', () => {
   it('shows the current version from the newest note', () => {
@@ -21,16 +23,31 @@ describe('SettingsReleaseNotesSection', () => {
     expect(screen.getByText(newest.title)).toBeTruthy()
   })
 
-  it('collapses the tail behind Show earlier updates and expands on click', () => {
+  it('pages the tail: one page per click, never the whole list at once', () => {
     render(<SettingsReleaseNotesSection />)
-    const hidden = RELEASE_NOTES.length - 15
-    if (hidden <= 0) return // list still short — nothing to collapse yet
-    const button = screen.getByRole('button', { name: new RegExp(`Show ${hidden} earlier`) })
-    const oldest = RELEASE_NOTES[RELEASE_NOTES.length - 1]
-    if (oldest == null) throw new Error('release notes are empty')
-    expect(screen.queryByText(oldest.version)).toBeNull()
+    const total = RELEASE_NOTES.length
+    if (total <= RELEASE_NOTES_PAGE_SIZE * 2) return // list still short — nothing to page yet
+    const oldest = RELEASE_NOTES[total - 1]
+    const nextPageFirst = RELEASE_NOTES[RELEASE_NOTES_PAGE_SIZE]
+    if (oldest == null || nextPageFirst == null) throw new Error('release notes are empty')
+    expect(screen.queryByText(nextPageFirst.version)).toBeNull()
+    const button = screen.getByRole('button', { name: new RegExp(`Show ${RELEASE_NOTES_PAGE_SIZE} earlier updates`) })
     fireEvent.click(button)
-    expect(screen.getByText(oldest.version)).toBeTruthy()
-    expect(screen.queryByRole('button', { name: /earlier update/ })).toBeNull()
+    expect(screen.getByText(nextPageFirst.version)).toBeTruthy()
+    // Still paged — the oldest note is not mounted after one click.
+    expect(screen.queryByText(oldest.version)).toBeNull()
+    expect(screen.getByRole('button', { name: /earlier update/ })).toBeTruthy()
+  })
+
+  it('hides notes declared for other roles and says so', () => {
+    const forHelpers = releaseNotesForRole(RELEASE_NOTES, 'helpers')
+    render(<SettingsReleaseNotesSection role="helpers" />)
+    if (forHelpers.length === RELEASE_NOTES.length) {
+      expect(screen.queryByText(/apply to your role/)).toBeNull()
+      return
+    }
+    expect(screen.getByText(/apply to your role/)).toBeTruthy()
+    const hiddenNote = RELEASE_NOTES.find((n) => n.roles && !n.roles.includes('helpers'))
+    if (hiddenNote) expect(screen.queryByText(hiddenNote.title)).toBeNull()
   })
 })

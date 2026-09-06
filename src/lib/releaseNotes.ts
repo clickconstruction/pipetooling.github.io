@@ -6,6 +6,8 @@
  * as the PR's docs/RECENT_FEATURES.md entry.
  */
 
+import type { UserRole } from '../hooks/useAuth'
+
 export type ReleaseNoteKind = 'feature' | 'fix' | 'infra'
 
 export interface ReleaseNote {
@@ -18,11 +20,76 @@ export interface ReleaseNote {
   kind: ReleaseNoteKind
   /** 1–4 short bullets; plain sentences, no file paths. */
   highlights: string[]
+  /**
+   * Roles this note is for (J28-F12). Omit = everyone. When set, Settings →
+   * Release notes hides the note from other roles (devs always see everything),
+   * so a helper's feed isn't led by a master's Dispatch inbox change.
+   */
+  roles?: UserRole[]
 }
 
 const VERSION_RE = /^v2\.(\d+)$/
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/
 const KINDS: ReadonlySet<string> = new Set(['feature', 'fix', 'infra'])
+const ROLES: ReadonlySet<string> = new Set<UserRole>([
+  'dev',
+  'master_technician',
+  'assistant',
+  'subcontractor',
+  'helpers',
+  'estimator',
+  'primary',
+  'superintendent',
+  'controller',
+])
+
+/** Whether a note should show for a viewer's role: no `roles` = everyone; devs see all; null role (still loading) sees all. */
+export function releaseNoteVisibleToRole(note: Pick<ReleaseNote, 'roles'>, role: UserRole | null): boolean {
+  if (!note.roles || note.roles.length === 0) return true
+  if (role == null || role === 'dev') return true
+  return note.roles.includes(role)
+}
+
+/** The feed a viewer sees: order preserved, notes for other roles dropped. */
+export function releaseNotesForRole<T extends Pick<ReleaseNote, 'roles'>>(notes: T[], role: UserRole | null): T[] {
+  return notes.filter((n) => releaseNoteVisibleToRole(n, role))
+}
+
+/** Settings → Release notes shows this many at first and adds this many per "Show earlier" click. */
+export const RELEASE_NOTES_PAGE_SIZE = 15
+
+export type ReleaseNotesPage = {
+  /** How many notes to render. */
+  visible: number
+  /** How many are still behind the pager. */
+  remaining: number
+  /** How many the next click reveals (0 = pager hidden). */
+  nextStep: number
+}
+
+/**
+ * Pager arithmetic (J28-F5: "Show N earlier" used to mount ~1,800 cards in one
+ * commit). `shown` is the count the viewer has asked for so far; the page is
+ * clamped to the list, and the next step never overshoots it.
+ */
+export function releaseNotesPage(total: number, shown: number, pageSize = RELEASE_NOTES_PAGE_SIZE): ReleaseNotesPage {
+  const safeTotal = Math.max(0, Math.floor(total))
+  const size = Math.max(1, Math.floor(pageSize))
+  const visible = Math.min(safeTotal, Math.max(size, Math.floor(shown)))
+  const remaining = safeTotal - visible
+  return { visible, remaining, nextStep: Math.min(size, remaining) }
+}
+
+/** Button copy for the pager: "Show 15 earlier updates (1,785 more)"; "Show the last 3 updates" when the step empties the list. */
+export function describeEarlierUpdatesButton(page: ReleaseNotesPage): string | null {
+  if (page.nextStep <= 0) return null
+  const after = page.remaining - page.nextStep
+  const noun = page.nextStep === 1 ? 'update' : 'updates'
+  if (after <= 0) return page.nextStep === page.remaining && page.remaining > 0
+    ? `Show the last ${page.nextStep} ${noun}`
+    : `Show ${page.nextStep} earlier ${noun}`
+  return `Show ${page.nextStep} earlier ${noun} (${after.toLocaleString('en-US')} more)`
+}
 
 /** Numeric minor version from "v2.NNN", or null when malformed. */
 export function releaseNoteVersionNumber(version: string): number | null {
@@ -57,6 +124,12 @@ export function validateReleaseNotes(notes: ReleaseNote[]): string[] {
       problems.push(`${label}: needs 1–4 highlights (has ${note.highlights.length})`)
     }
     if (note.highlights.some((h) => h.trim() === '')) problems.push(`${label}: has an empty highlight`)
+    if (note.roles != null) {
+      if (note.roles.length === 0) problems.push(`${label}: roles must be omitted or non-empty`)
+      const unknown = note.roles.filter((r) => !ROLES.has(r))
+      if (unknown.length > 0) problems.push(`${label}: unknown roles ${unknown.join(', ')}`)
+      if (new Set(note.roles).size !== note.roles.length) problems.push(`${label}: duplicate roles`)
+    }
   })
   return problems
 }

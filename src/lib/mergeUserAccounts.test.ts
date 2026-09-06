@@ -3,6 +3,7 @@ import {
   accountIsInUse,
   eligibleAbsorbCandidates,
   eligibleExternalAbsorbCandidates,
+  ineligibleAbsorbCandidates,
   mergeIneligibilityReason,
 } from './mergeUserAccounts'
 
@@ -48,6 +49,27 @@ describe('eligibleAbsorbCandidates', () => {
     expect(eligibleAbsorbCandidates(liveUsed, all).map((a) => a.id)).toEqual(['b', 'c', 'd'])
     expect(eligibleAbsorbCandidates(archived, all).map((a) => a.id)).toEqual(['d'])
     expect(eligibleAbsorbCandidates(null, all)).toEqual([])
+  })
+})
+
+describe('ineligibleAbsorbCandidates (J27-F4: the reasons the picker used to swallow)', () => {
+  it('lists every non-survivor account the dropdown omits, with its reason', () => {
+    const all = [liveUsed, liveNeverUsed, archived, archived2, estimatorArchived]
+    const out = ineligibleAbsorbCandidates(liveNeverUsed, all)
+    expect(out.map((x) => x.account.id)).toEqual(['a', 'e'])
+    expect(out[0]?.reason).toMatch(/archived, or never signed into/)
+    expect(out[1]?.reason).toMatch(/same role \(Subcontractor vs Estimator\)/)
+  })
+  it('never lists the survivor itself and is empty with no survivor', () => {
+    const all = [liveUsed, archived]
+    expect(ineligibleAbsorbCandidates(liveUsed, all)).toEqual([])
+    expect(ineligibleAbsorbCandidates(null, all)).toEqual([])
+  })
+  it('partitions with eligibleAbsorbCandidates: every non-survivor is in exactly one list', () => {
+    const all = [liveUsed, liveNeverUsed, archived, archived2, estimatorArchived]
+    const eligible = eligibleAbsorbCandidates(archived, all).map((a) => a.id)
+    const ineligible = ineligibleAbsorbCandidates(archived, all).map((x) => x.account.id)
+    expect([...eligible, ...ineligible].sort()).toEqual(['a', 'b', 'd', 'e'])
   })
 })
 

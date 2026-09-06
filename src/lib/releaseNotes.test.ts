@@ -21,6 +21,10 @@ import {
   releaseNotesMissingFromDocumented,
   releaseNotesMissingFromRecentFeatures,
   validateReleaseNotes,
+  describeEarlierUpdatesButton,
+  releaseNoteVisibleToRole,
+  releaseNotesForRole,
+  releaseNotesPage,
 } from './releaseNotes'
 import type { ReleaseNote } from './releaseNotes'
 
@@ -222,5 +226,52 @@ describe('newestRecentFeaturesVersionNumber', () => {
   it('ignores non-heading mentions and returns null when absent', () => {
     expect(newestRecentFeaturesVersionNumber('see Latest Updates (v2.900) inline')).toBeNull()
     expect(newestRecentFeaturesVersionNumber('# Other doc')).toBeNull()
+  })
+})
+
+describe('releaseNotesForRole (J28-F12)', () => {
+  const everyone = note({ version: 'v2.903' })
+  const mastersOnly = note({ version: 'v2.902', roles: ['master_technician'] })
+  const helpersAndSubs = note({ version: 'v2.901', roles: ['helpers', 'subcontractor'] })
+  const all = [everyone, mastersOnly, helpersAndSubs]
+
+  it('a note with no roles is for everyone; devs and an unknown role see all', () => {
+    expect(releaseNotesForRole(all, 'dev')).toEqual(all)
+    expect(releaseNotesForRole(all, null)).toEqual(all)
+    expect(releaseNoteVisibleToRole(everyone, 'helpers')).toBe(true)
+  })
+
+  it('other roles see only the notes that name them, order preserved', () => {
+    expect(releaseNotesForRole(all, 'helpers').map((n) => n.version)).toEqual(['v2.903', 'v2.901'])
+    expect(releaseNotesForRole(all, 'master_technician').map((n) => n.version)).toEqual(['v2.903', 'v2.902'])
+    expect(releaseNotesForRole(all, 'controller').map((n) => n.version)).toEqual(['v2.903'])
+  })
+
+  it('validateReleaseNotes rejects empty, unknown, and duplicate roles', () => {
+    expect(validateReleaseNotes([note({ roles: [] })]).join()).toContain('roles must be omitted or non-empty')
+    expect(validateReleaseNotes([note({ roles: ['dev', 'plumber' as never] })]).join()).toContain('unknown roles plumber')
+    expect(validateReleaseNotes([note({ roles: ['dev', 'dev'] })]).join()).toContain('duplicate roles')
+    expect(validateReleaseNotes([note({ roles: ['helpers'] })])).toEqual([])
+  })
+})
+
+describe('releaseNotesPage (J28-F5: the pager)', () => {
+  it('starts at one page and clamps to the list', () => {
+    expect(releaseNotesPage(1800, 0, 15)).toEqual({ visible: 15, remaining: 1785, nextStep: 15 })
+    expect(releaseNotesPage(1800, 30, 15)).toEqual({ visible: 30, remaining: 1770, nextStep: 15 })
+    expect(releaseNotesPage(10, 15, 15)).toEqual({ visible: 10, remaining: 0, nextStep: 0 })
+    expect(releaseNotesPage(0, 15, 15)).toEqual({ visible: 0, remaining: 0, nextStep: 0 })
+  })
+
+  it('the last step never overshoots', () => {
+    expect(releaseNotesPage(17, 15, 15)).toEqual({ visible: 15, remaining: 2, nextStep: 2 })
+    expect(releaseNotesPage(17, 17, 15)).toEqual({ visible: 17, remaining: 0, nextStep: 0 })
+  })
+
+  it('button copy counts what the click reveals and what stays behind', () => {
+    expect(describeEarlierUpdatesButton(releaseNotesPage(1800, 15, 15))).toBe('Show 15 earlier updates (1,770 more)')
+    expect(describeEarlierUpdatesButton(releaseNotesPage(17, 15, 15))).toBe('Show the last 2 updates')
+    expect(describeEarlierUpdatesButton(releaseNotesPage(16, 15, 15))).toBe('Show the last 1 update')
+    expect(describeEarlierUpdatesButton(releaseNotesPage(15, 15, 15))).toBeNull()
   })
 })

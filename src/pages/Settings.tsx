@@ -1098,13 +1098,13 @@ export default function Settings() {
               borderRadius: 4,
               fontWeight: 600,
               cursor: 'pointer',
-              maxWidth: '14rem',
+              maxWidth: '18rem',
               overflow: 'hidden',
               textOverflow: 'ellipsis',
               whiteSpace: 'nowrap',
             }}
           >
-            {settingsImpersonationExitLabel === 'Back' ? 'Back to my Account' : settingsImpersonationExitLabel}
+            {settingsImpersonationExitLabel}
           </button>
         </div>
       )}
@@ -1766,7 +1766,7 @@ export default function Settings() {
         hidden={activeSettingsTab !== 'settings-release-notes'}
         title="Release notes"
       >
-        <SettingsReleaseNotesSection />
+        <SettingsReleaseNotesSection role={myRole} />
       </SettingsGroup>
     </div>
   )
