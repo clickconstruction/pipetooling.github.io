@@ -177,6 +177,7 @@ const TOOLS = [
         reference_bid: { type: 'string', description: "The human bid to re-estimate blind (e.g. 'b370' or uuid)" },
         due_in_days: { type: 'number', description: 'Optional due date offset for the twin bid (default 7)' },
         round: { type: 'number', description: "Re-run round (v2.2800): 2 or higher opens a NEW shell named 'ZZ Twin <PROJECT> (backtest R<round>)' instead of handing back the first round's bid — a scored round-1 shell carries its scorecard and would unblind you. Omit for the first run." },
+        gate_run: { type: 'boolean', description: 'HOLDOUT references (reserved for gate measurement) refuse to open unless this is true — pass it ONLY when the operator explicitly ordered a gate run (v2.2944).' },
       },
       required: ['reference_bid'],
     },
@@ -550,16 +551,22 @@ async function openBacktestShell(
   admin: ReturnType<typeof createClient>,
   twin: { twinUserId: string; email: string },
   reference: string,
-  opts: { round?: number; dueInDays?: number },
+  opts: { round?: number; dueInDays?: number; gateRun?: boolean },
 ): Promise<BacktestShellResult> {
   const ref = reference.trim()
   if (!ref) return { ok: false, error: 'Missing reference_bid (bid number like b370, or uuid)' }
   const uuidRe = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
-  let rq = admin.from('bids').select('id, bid_number, project_name, address, customer_id, service_type_id, distance_from_office, plans_link, gc_builder_id')
+  let rq = admin.from('bids').select('id, bid_number, project_name, address, customer_id, service_type_id, distance_from_office, plans_link, gc_builder_id, holdout')
   rq = uuidRe.test(ref) ? rq.eq('id', ref) : rq.eq('bid_number', ref.replace(/^(bp|b)/i, ''))
   const { data: refBid, error: refErr } = await rq.maybeSingle()
   if (refErr) return { ok: false, error: `Reference lookup failed: ${refErr.message}` }
   if (!refBid) return { ok: false, error: `No bid found for "${ref}"` }
+  // Holdout enforcement (v2.2944, LEARNING_PLAN lever 3): holdout references are
+  // reserved for gate measurement — never practice, never quoted in doctrine.
+  // Only an operator-ordered gate run may open one; next_backtest auto-skips.
+  if ((refBid as { holdout?: boolean }).holdout && !opts.gateRun) {
+    return { ok: false, error: `b${refBid.bid_number} is a HOLDOUT reference — reserved for gate measurement, never practice. Only an operator-ordered gate run opens it (open_backtest with gate_run: true); pick a different reference.` }
+  }
   // Reference data-grade (v2.2545) — PRESENCE booleans only, blind-safe.
   const [{ count: countRows }, { count: pricingRows }, { data: presence }] = await Promise.all([
     admin.from('bids_count_rows').select('id', { count: 'exact', head: true }).eq('bid_id', refBid.id),
@@ -1050,7 +1057,7 @@ async function callTool(req: Request, name: string, args: Record<string, unknown
       const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, {
         auth: { autoRefreshToken: false, persistSession: false },
       })
-      const r = await openBacktestShell(admin, twin, String(args.reference_bid ?? ''), { round: Number(args.round ?? 1), dueInDays: Number(args.due_in_days ?? 7) })
+      const r = await openBacktestShell(admin, twin, String(args.reference_bid ?? ''), { round: Number(args.round ?? 1), dueInDays: Number(args.due_in_days ?? 7), gateRun: args.gate_run === true })
       if (!r.ok) return textContent(r.error, true)
       return textContent(JSON.stringify({
         ...r,
@@ -1915,7 +1922,7 @@ async function handleRpc(req: Request, msg: { jsonrpc?: string; id?: unknown; me
       return rpcResult(id, {
         protocolVersion: version,
         capabilities: { tools: {} },
-        serverInfo: { name: 'pipetooling-twin-mcp', version: '1.3.8' },
+        serverInfo: { name: 'pipetooling-twin-mcp', version: '1.3.9' },
         instructions:
           "PipeTooling digital-twin seat (estimator-only). Call get_brief first, then get_directory; mint_session gives you a signed-in browser link to the real apps — PipeTooling by default, CountTooling (the PDF-takeoff tool) with app: 'counttooling'. The work happens there. Every call needs your per-twin token (X-Twin-Token or Bearer).",
       })

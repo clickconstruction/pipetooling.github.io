@@ -120,13 +120,13 @@ company, not just the program.
 | 1 | Rate-gap bucket + delta waterfall on audit cards | app | shipped v2.2935 |
 | 2 | `next_shadow` dispatcher + shadow coverage stat | harness | **this PR (v2.2936)** |
 | 3 | Scheduled shadow-agent batches (full auto-coverage) | ops/harness | scheduled task live 2026-09-06 (weekday batch on the operator machine) |
-| 4 | Standing-rulings queue (dedupe `twin_questions` into canonical rulings) | app | in flight (topic column: PR #2684; panel: agent PR) |
-| 5 | Audit queue triage by doctrine-at-stake | app | in flight (agent PR) |
-| 6 | Holdout set flag + holdout-only gate denominators | app + owner decision | mechanism in flight (agent PR); WHICH references still needs the owner |
+| 4 | Standing-rulings queue (dedupe `twin_questions` into canonical rulings) | app | shipped v2.2939 (topics) + v2.2941 (panel + answer-all) |
+| 5 | Audit queue triage by doctrine-at-stake | app | shipped v2.2941 (`auditTriage.ts`) |
+| 6 | Holdout set flag + holdout-only gate denominators | app + owner decision | mechanism shipped v2.2942 + harness enforcement v2.2944 (open_backtest refuses; next_backtest skips; gate_run override); WHICH references still needs the owner (Queue lens toggle, target 20–25) |
 | 7 | Doctrine-promotion regression gate (propose → measure → bank) | process (FEEDBACK_LOOP.md) | shipped v2.2940 |
-| 8 | Scoreboard shadow-coverage pill | app | in flight (agent PR) |
+| 8 | Scoreboard shadow-coverage pill | app | shipped v2.2943 |
 | 9 | Record repair sweep (98 missing plans links; b216, b323) | office work | worklist generated 2026-09-06; the Drive shares need a human |
-| 10 | Loss-categorization nudge at outcome time | app (small) | in flight (agent PR) |
-| 11 | Classify 108 `backtest_axis` candidates | data (Queue lens) | obvious names classified 2026-09-06; ambiguous left for dev judgment |
-| 12 | STG-5 hygiene nudges on human bids (corpus beyond Wendi) | app | in flight (agent PR — record-grade chip) |
+| 10 | Loss-categorization nudge at outcome time | app (small) | shipped v2.2943 |
+| 11 | Classify 108 `backtest_axis` candidates | data (Queue lens) | 26 unambiguous written 2026-09-06 (11 proto, 6 institutional, 5 vet, 4 fitness); 67 ambiguous left for dev judgment |
+| 12 | STG-5 hygiene nudges on human bids (corpus beyond Wendi) | app | shipped v2.2943 (record-grade chip on Counts) |
 | 13 | `submit_report` label parameter (reports file "unlabeled") | harness (tiny) | shipped v2.2939 (with question topics + pairing visibility) |
