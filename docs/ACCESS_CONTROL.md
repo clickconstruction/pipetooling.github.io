@@ -5,7 +5,7 @@ file: ACCESS_CONTROL.md
 type: Reference Matrix
 purpose: Complete role-based permissions matrix and access control patterns
 audience: Developers, Security Auditors, AI Agents
-last_updated: 2026-09-05
+last_updated: 2026-09-06
 estimated_read_time: 15-20 minutes
 difficulty: Intermediate
 
@@ -1238,3 +1238,14 @@ The J#### chip in the Bid Board's Links column (the job made from a bid's signed
 ## Signed agreements stream (v2.2743)
 
 Default recipients of the "Signed — …" email (customer accepted an estimate / GC signed a bid-room proposal) are every active, non-twin `dev`, `master_technician`, `assistant`, and `controller`, filtered to the estimate master's org scope — except masters, who always receive (v2.2748); an explicit list in `app_settings.signed_agreements_notify_recipients_v1` replaces the default. Editing the card (recipients, auto-create switches) writes `app_settings`, which is dev-only under RLS. The auto-create RPC runs as the estimate's `master_user_id`, so the job owner rules are theirs.
+
+## SECURITY DEFINER RPCs and the anon key (v2.2954)
+
+Supabase grants `EXECUTE` on every new function to `PUBLIC`, so the `anon` role — whoever holds the publishable key, which ships in the client bundle — can call any RPC. A `SECURITY DEFINER` body runs as its owner and bypasses RLS, so **the body is the whole boundary**: if it does not check the caller, the anon key gets the owner's view. The 2026-09-06 audit found 28 such RPCs answering or reachable with no session (the paid jobs ledger, the job / bid searches, customer hours, the roster); `20260906180000_revoke_anon_rpc_exposure.sql` revoked them.
+
+Rules for every RPC, existing or new:
+
+- **Gate inside the body, as an allow-list.** `WHERE public.is_dev()`, `auth.uid() = …`, `IF NOT (is_dev() OR is_banking_staff()) THEN RAISE …`. A deny-list (`NOT EXISTS (… WHERE id = auth.uid() AND role IN ('helpers','subcontractor'))`) passes when there is no session at all — that is exactly how `search_jobs_for_tally_mercury_assign` leaked.
+- **No anonymous consumer → `REVOKE EXECUTE ON FUNCTION … FROM PUBLIC, anon;`** in the same migration that creates it (`authenticated` and `service_role` keep the default grants). Service-role-only RPCs also revoke `authenticated` (precedent: the Stripe webhook pair, `20260730160048`; `claim_dev_attempt`).
+- **The public pages need exactly two RPCs**: `get_hazmat_notice_by_token(uuid)` (exact-token lookup) and `list_my_contract_dashboard_prompts()` (session-gated inside). Everything else a public page reads goes through an edge function with the service role. Adding a third is a deliberate choice recorded here.
+- **Verify like the audit did**: `POST /rest/v1/rpc/<name>` with the anon key and no `Authorization` bearer of a user — the correct answers are `401 42501` (revoked) or zero rows / `P0001` (gated). Rows back means a hole.
