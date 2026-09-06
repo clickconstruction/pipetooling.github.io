@@ -1,12 +1,12 @@
 # AI Agent Instructions
 
-> **Start here.** Then read [docs/AI_CONTEXT.md](./docs/AI_CONTEXT.md) for the project overview and [docs/README.md](./docs/README.md) for the full documentation index. This file stays minimal: login, constraints, and drift recovery only. Per-feature detail lives in [docs/RECENT_FEATURES.md](./docs/RECENT_FEATURES.md) — grep it, don't duplicate it here.
+> **Start here.** Then read [docs/AI_CONTEXT.md](./docs/AI_CONTEXT.md) for the project overview and [docs/README.md](./docs/README.md) for the full documentation index. This file stays minimal: login, constraints, and drift recovery only. Per-feature detail lives in `docs/recent-features/` (one fragment per PR since the 2026-08-20 cutover; [docs/RECENT_FEATURES.md](./docs/RECENT_FEATURES.md) is the frozen pre-cutover archive) — grep them, don't duplicate them here.
 
 ---
 
 ## Quick Orientation
 
-**PipeTooling** — Workflow management for master plumbers. React + TypeScript + Supabase, deployed to GitHub Pages. 9 user roles, 4 major systems (Projects/Workflows, Bids, Materials, Checklist) plus significant subsystems (Jobs, Estimates, Banking, People/Payroll, Prospects, Schedule Dispatch, Documents, Map). ~252 tables, all with RLS. ~61 Edge Functions.
+**PipeTooling** — Workflow management for master plumbers. React + TypeScript + Supabase, deployed to GitHub Pages. 9 user roles, 4 major systems (Projects/Workflows, Bids, Materials, Checklist) plus significant subsystems (Jobs, Estimates, Banking, People/Payroll, Prospects, Schedule Dispatch, Documents, Map). ~355 tables, all with RLS. ~104 Edge Functions.
 
 ---
 
@@ -38,7 +38,7 @@ Full index: [docs/README.md](./docs/README.md). Fast pointers for the most commo
 | Role permissions (9 roles) | `docs/ACCESS_CONTROL.md` (authoritative) |
 | Adding a new role | `docs/ADDING_A_NEW_ROLE.md` |
 | Term definitions / feature names | `docs/GLOSSARY.md` |
-| History of any feature or surface | grep `docs/RECENT_FEATURES.md` (append-only changelog, one `v2.NNN` entry per PR) |
+| History of any feature or surface | grep `docs/recent-features/` (one `v2.NNNN.md` fragment per PR since 2026-08-20) and `docs/RECENT_FEATURES.md` (the frozen pre-cutover archive) |
 | Migration history + baseline squash story | `docs/MIGRATIONS.md`; drift check: `npm run check:migration-drift` |
 | Edge Functions reference | `docs/EDGE_FUNCTIONS.md`; drift check: `npm run check:edge-drift` |
 | Bids system / decomposing Bids.tsx | `docs/BIDS_SYSTEM.md` / `docs/BIDS_TABS_ARCHITECTURE.md` |
@@ -70,7 +70,7 @@ Full index: [docs/README.md](./docs/README.md). Fast pointers for the most commo
 8. **Realtime subscriptions** — use `useRealtimeChannel` from `src/hooks/useRealtimeChannel.ts` for every `postgres_changes` listener; filter server-side via the `filter` string; don't add tables to the `supabase_realtime` publication casually.
 9. **Branch + PR workflow** — `main` is branch-protected. Branch → PR (`gh pr create --fill`) → CI `checks` (typecheck + lint + test) green → squash-merge. Run `npm run typecheck && npm run lint && npm test && npm run build` locally first. Never `git add -A` — stage specific files (parallel sessions leave WIP in the tree).
 10. **Theme tokens, not raw hexes** — use CSS variables from `src/index.css`; CI fails on raw neutral hexes (`node scripts/theme-tokenize.mjs --check src`).
-11. **Docs ship with the PR** — `docs/RECENT_FEATURES.md` entry (next `v2.NNN`) **+ a matching `src/content/releaseNotes.ts` entry with the same version** (user-readable; CI-enforced by `src/lib/releaseNotes.test.ts`), plus the matching specialist doc and help guide when the change warrants it (see `CLAUDE.md` → Working conventions). Do **not** append feature detail to this file, `docs/AI_CONTEXT.md`, or `docs/README.md`.
+11. **Docs ship with the PR** — one new `docs/recent-features/v2.NNNN.md` fragment **+ one new `src/content/releaseNotes/v2.NNNN.ts` release note with the same version** (user-readable; drift-tested by `src/lib/releaseNotes.test.ts`; never edit the frozen aggregators `docs/RECENT_FEATURES.md` / `src/content/releaseNotes.ts`), a `docs/migrations/<version>_<slug>.md` fragment per migration, plus the matching specialist doc and help guide when the change warrants it (see `CLAUDE.md` → Working conventions). Do **not** append feature detail to this file, `docs/AI_CONTEXT.md`, or `docs/README.md`.
 
 ---
 
@@ -99,11 +99,11 @@ The Supabase MCP server (when available) is for **read/inspect operations**: `li
 1. Read [docs/AI_CONTEXT.md](./docs/AI_CONTEXT.md) — overview, file map, patterns, glossary
 2. Open the specialist doc for your task ([docs/README.md](./docs/README.md) index)
 3. Review code — `src/pages/` for UI, `supabase/` for backend
-4. Grep [docs/RECENT_FEATURES.md](./docs/RECENT_FEATURES.md) for the history of the surface you're changing
+4. Grep `docs/recent-features/` (and the frozen [docs/RECENT_FEATURES.md](./docs/RECENT_FEATURES.md) archive) for the history of the surface you're changing
 5. Ask before changing when requirements are unclear
 
 ---
 
-*This file stays minimal — feature detail belongs in `docs/RECENT_FEATURES.md` and the specialist docs.*
+*This file stays minimal — feature detail belongs in `docs/recent-features/` fragments and the specialist docs.*
 
-last_updated: 2026-08-10
+last_updated: 2026-09-06

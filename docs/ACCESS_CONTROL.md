@@ -10,7 +10,7 @@ estimated_read_time: 15-20 minutes
 difficulty: Intermediate
 
 total_roles: 9
-tables_with_rls: "50+"
+tables_with_rls: "~355 (every public table; audited 2026-09-06)"
 access_patterns: "Ownership, Adoption, Sharing"
 
 key_sections:

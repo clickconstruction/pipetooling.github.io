@@ -25,7 +25,7 @@ Wheels on Labor (v2.2733 / v2.2735) priced each person's vehicle deal per field 
 
 ## Where it plugs in
 
-- `src/lib/crewPnlSummary.ts`, `src/components/jobs/JobsCrewPnlTab.tsx`, the Wheels kernel used by `PeopleReviewTab` (v2.2735), `src/lib/teamLabor.ts` for the bids side.
+- `src/lib/crewPnlSummary.ts`, `src/components/jobs/JobsCrewPnlTab.tsx`, the Wheels kernel used by `PeopleReviewTab` (v2.2735), `src/utils/teamLabor.ts` for the bids side.
 
 ## How to verify
 

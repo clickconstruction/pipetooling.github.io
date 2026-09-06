@@ -120,7 +120,7 @@ New `jobs_board_section_stats(p_customer_filter uuid default null)`:
 
 0. **PR 0 — paid-search chip (SHIPPED v2.1819)**: search no longer auto-prefetches the full
    paid list on the first keystroke; the "Search Paid in Full too" chip
-   ([`paidSearchChip.ts`](../src/lib/jobs/paidSearchChip.ts)) makes it opt-in — quiet outline
+   (`paidSearchChip.ts`, since retired — the v2.1825 lean search finds paid jobs server-side for any status, and the header hint is [`stagesPaidSearchHint.ts`](../src/lib/jobs/stagesPaidSearchHint.ts)) made it opt-in — quiet outline
    while loaded jobs match, solid when nothing matches, loading → "✓ included". Retires when
    PR 4's server search covers all statuses natively.
 1. **PR 1 — stats RPC** (backend-only migration + `MIGRATIONS.md`; `SET lock_timeout`;

@@ -334,7 +334,7 @@ All routes render inside the authed layout in `src/App.tsx`. Billing-relevant:
 ### Residue after deleting a test job/customer
 
 - Archive bundles (minimal job ≈ 5 rows) visible to all devs for 90 days with your uid.
-- **Bulk-deletion alerts** (`supabase/migrations/20260717120000_bulk_deletion_alerts.sql`, `src/components/DashboardBulkDeleteAlertBanner.tsx`): fire per actor+hour at ≥5 bundles OR ≥200 rows (tunable via `app_settings`; 168 h lookback) and **exclude the viewer's own deletions** — cleaning your own test data never alerts you, but ≥5 bundles/hour will alert other devs.
+- **Bulk-deletion alerts** (`supabase/migrations/20260717120000_bulk_deletion_alerts.sql`, `src/hooks/useBulkDeleteAlerts.ts`, surfaced on the Dashboard quick row, Quickfill → Needs you, and Settings → Data & recovery): fire per actor+hour at ≥5 bundles OR ≥200 rows (tunable via `app_settings`; 168 h lookback) and **exclude the viewer's own deletions** — cleaning your own test data never alerts you, but ≥5 bundles/hour will alert other devs.
 - **Stripe side is never cleaned by app deletes**: voided invoices, invoice numbers, credit notes, and `customers.stripe_customer_id` targets remain in Stripe (test or live). Void+delete are paired in `src/lib/voidStripeInvoiceForRevert.ts`, but Stripe keeps voided invoices in history.
 - HCP/click numbers free up on delete (restore only warns on reuse). Mercury links null out; deposits stay.
 

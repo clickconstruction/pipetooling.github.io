@@ -112,7 +112,7 @@ All plain functions inside the component body that close over the caches only:
 
 ### Send-for-signature modal (`contractSendModalOpen`, ~2852–2978)
 
-- **Owned local state:** `contractSendDocId`, `contractSendEmail`, `contractSendSubject`, `contractSendIntro`, `contractSendSaving`. Memo `contractSendEmailPreview` (live preview via tested [`buildContractSendEmailPreview`](../src/lib/contractSendEmailPreview.ts); origin-based link placeholder).
+- **Owned local state:** `contractSendDocId`, `contractSendEmail`, `contractSendSubject`, `contractSendIntro`, `contractSendSaving`. Memo `contractSendEmailPreview` (live preview built inline since v2.2773 — the `buildContractSendEmailPreview` kernel retired when the sign-this email moved onto the sub portal's paper; origin-based link placeholder).
 - **Handler:** `sendContractForSignature()` — inline email regex validation, then a **raw `fetch`** to edge function `send-contract-for-signature` (`VITE_SUPABASE_URL` + JWT from `supabase.auth.getSession()` + `VITE_SUPABASE_ANON_KEY` apikey header; optional `email_subject`/`email_intro_plain`), toast on `emailed`/`accept_url` variants, then `loadContracts()`.
 - **Extraction:** **low risk — extract first.** Props: `docId`, `documentName`/`personName` (or the doc row), `onClose`, `onSent=loadContracts`. Only coupling is the shared `contractsError` (give it local error state passed back via `onError`, or thread the setter).
 

@@ -9,18 +9,20 @@
 2. [`../AGENTS.md`](../AGENTS.md) — agent entry point: dev login, non-negotiable constraints, migration-drift recovery.
 3. [`AI_CONTEXT.md`](./AI_CONTEXT.md) — project overview: systems, concepts, file map, patterns, glossary.
 4. The specialist doc for your task — see the table below.
-5. [`RECENT_FEATURES.md`](./RECENT_FEATURES.md) — grep it (don't read it top-to-bottom; it's a ~20k-line changelog) for the history of any surface you're touching.
+5. [`recent-features/`](./recent-features/) — one `v2.NNNN.md` fragment per PR since the 2026-08-20 cutover; [`RECENT_FEATURES.md`](./RECENT_FEATURES.md) is the frozen archive before that (grep it, don't read it top-to-bottom; ~20k lines). Between them, the history of any surface you're touching.
 
 ## Specialist docs
 
 | Doc | Purpose |
 |---|---|
-| [`PROJECT_DOCUMENTATION.md`](./PROJECT_DOCUMENTATION.md) | Full technical reference: schema, pages, features. Documents ~55 of 252 tables; feature sections carry the rest. |
+| [`PROJECT_DOCUMENTATION.md`](./PROJECT_DOCUMENTATION.md) | Full technical reference: schema, pages, features. Documents ~55 of ~355 tables; feature sections carry the rest. |
 | [`ACCESS_CONTROL.md`](./ACCESS_CONTROL.md) | Authoritative role/permission matrices for all 9 roles. Prefer this over role notes in other docs. |
 | [`ADDING_A_NEW_ROLE.md`](./ADDING_A_NEW_ROLE.md) | Step-by-step checklist for adding a role (updated with controller-rollout lessons). |
 | [`GLOSSARY.md`](./GLOSSARY.md) | Domain terms, abbreviations, feature names. |
-| [`RECENT_FEATURES.md`](./RECENT_FEATURES.md) | Append-only changelog, one entry per PR (`v2.NNN`). The single home for per-feature detail. |
-| [`MIGRATIONS.md`](./MIGRATIONS.md) | Migration history + the baseline-squash story. Pair with `npm run check:migration-drift`. |
+| [`recent-features/`](./recent-features/) | One `v2.NNNN.md` fragment per PR since 2026-08-20 — the home for per-feature detail (pairs with `src/content/releaseNotes/v2.NNNN.ts`). |
+| [`RECENT_FEATURES.md`](./RECENT_FEATURES.md) | Frozen 2026-08-20: the pre-cutover changelog, one entry per PR (`v2.NNN`). Grep only. |
+| [`migrations/`](./migrations/) | One `.md` fragment per migration since 2026-08-20 (format in its `README.md`). |
+| [`MIGRATIONS.md`](./MIGRATIONS.md) | Frozen 2026-08-20: pre-cutover migration history, the baseline-squash story, best practices and rollback notes; newer migrations document in `migrations/`. Pair with `npm run check:migration-drift`. |
 | [`EDGE_FUNCTIONS.md`](./EDGE_FUNCTIONS.md) | Reference for all Supabase Edge Functions (deploy is manual — see `../CLAUDE.md`). |
 | [`BILLING_FLOWS.md`](./BILLING_FLOWS.md) | Billing system map: job lifecycle, invoices/break-offs, the three billing channels, Stripe test/live plumbing, payments, send-backs, cleanup — plus the live-test safety brief. |
 | [`REPORT_SUBSCRIPTIONS.md`](./REPORT_SUBSCRIPTIONS.md) | The Report Subscriptions system: streams, request tables, cron dispatchers, fresh-at-send builds, My Email Schedule — and the checklist for adding a new stream. |
@@ -82,12 +84,12 @@
 
 ## Maintenance rules (how these docs stay fresh)
 
-- **Per-feature detail goes in `RECENT_FEATURES.md` only** (plus the one matching specialist doc). Entry docs (`AGENTS.md`, `AI_CONTEXT.md`, this index) are lean routers — never append feature detail, version numbers, or component inventories to them.
+- **Per-feature detail goes in the PR's `recent-features/v2.NNNN.md` fragment only** (plus the one matching specialist doc). Entry docs (`AGENTS.md`, `AI_CONTEXT.md`, this index) are lean routers — never append feature detail, version numbers, or component inventories to them.
 - **Surface layer**: every doc's first ~30 lines must be a self-sufficient summary — what this is, when to read it, and where the depth lives — readable via `Read limit=30`. A reader who stops there should know whether to keep reading or where to go instead.
 - **Density**: one fact per bullet; no paragraph longer than ~10 lines; long enumerations become tables or lists. Greppability and partial reads are what make depth-on-demand work — a 3,000-token "line" defeats both.
 - **Route, don't restate**: a shallower layer links to the deeper home with at most one hook sentence — never a compressed restatement that can drift independently. Each fact has exactly one home; every other mention is a link.
 - **One `last_updated` stamp per doc**, in frontmatter. No line-number hints in frontmatter (`key_sections` names only) — line numbers rot immediately.
-- Docs ship with features: `RECENT_FEATURES.md` entry per PR, `MIGRATIONS.md` entry per migration, `EDGE_FUNCTIONS.md` section per function, help guide per user-facing flow (all enforced by convention in `../CLAUDE.md`).
+- Docs ship with features: `recent-features/v2.NNNN.md` fragment + release note per PR, `migrations/<version>_<slug>.md` fragment per migration, `EDGE_FUNCTIONS.md` section per function, help guide per user-facing flow (all enforced by convention in `../CLAUDE.md`).
 - Migration files cited in docs may live in `supabase/archive/migrations-pre-baseline/` — history was squash-baselined at `20250101000000_baseline.sql` (2026-06-04); "2027"-dated filenames in the archive are typos from spring 2026.
 
-last_updated: 2026-09-04
+last_updated: 2026-09-06
