@@ -218,7 +218,7 @@
       "rect": {
         "x": 54,
         "y": 369.05,
-        "w": 123.64,
+        "w": 103.08,
         "h": 16
       },
       "order": 130
@@ -235,12 +235,29 @@
       "helpEs": "Solo si eligió un porcentaje — de 1 a 100. El resto de cada pago se hace con cheque.",
       "page": 1,
       "rect": {
-        "x": 187.64,
+        "x": 167.08,
         "y": 369.05,
-        "w": 103.08,
+        "w": 82.52,
         "h": 16
       },
       "order": 140
+    },
+    {
+      "key": "deposit_term",
+      "type": "text",
+      "label": "How long the split applies — until a date, for a number of payments, or up to a total (optional)",
+      "labelEs": "Por cuánto tiempo aplica la división — hasta una fecha, por un número de pagos o hasta un total (opcional)",
+      "advanced": true,
+      "help": "Leave blank and the split stays until you change it.",
+      "helpEs": "Déjelo en blanco y la división se mantiene hasta que la cambie.",
+      "page": 1,
+      "rect": {
+        "x": 259.6,
+        "y": 369.05,
+        "w": 144.2,
+        "h": 16
+      },
+      "order": 150
     },
     {
       "key": "notes",
@@ -250,12 +267,12 @@
       "advanced": true,
       "page": 1,
       "rect": {
-        "x": 300.72,
+        "x": 413.8,
         "y": 369.05,
-        "w": 257.28,
+        "w": 144.2,
         "h": 16
       },
-      "order": 150
+      "order": 160
     },
     {
       "key": "signature",
@@ -263,11 +280,11 @@
       "page": 1,
       "rect": {
         "x": 54,
-        "y": 286.27,
+        "y": 313.22,
         "w": 312.48,
         "h": 22
       },
-      "order": 160,
+      "order": 170,
       "label": "Contractor signature",
       "labelEs": "Firma del contratista"
     },
@@ -277,11 +294,11 @@
       "page": 1,
       "rect": {
         "x": 386.64,
-        "y": 286.27,
+        "y": 313.22,
         "w": 171.36,
         "h": 16
       },
-      "order": 170,
+      "order": 180,
       "label": "Date",
       "dateMode": "today",
       "labelEs": "Fecha"
