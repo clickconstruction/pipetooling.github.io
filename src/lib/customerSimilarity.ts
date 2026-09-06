@@ -1,3 +1,4 @@
+import { normalizeIdentityKey } from './identityKey'
 /**
  * Customers → "Show similar": cluster likely duplicate customers so they can be
  * merged before they cause trouble (born from a real incident: two identical
@@ -26,11 +27,8 @@ export type SimilarCustomerGroup = {
 }
 
 export function normalizeCustomerName(name: string | null | undefined): string {
-  return (name ?? '')
-    .toLowerCase()
-    .replace(/[^a-z0-9 ]+/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim()
+  // T5-07: the shared identity key (adds diacritic folding and "&" → "and" to the old rule).
+  return normalizeIdentityKey(name)
 }
 
 export function normalizeCustomerAddress(address: string | null | undefined): string {

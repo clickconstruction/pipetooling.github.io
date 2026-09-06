@@ -6181,6 +6181,44 @@ export type Database = {
         }
         Relationships: []
       }
+      identity_aliases: {
+        Row: {
+          alias_key: string
+          canonical_key: string
+          canonical_name: string
+          created_at: string
+          created_by: string | null
+          decision: string
+          kind: string
+        }
+        Insert: {
+          alias_key: string
+          canonical_key: string
+          canonical_name?: string
+          created_at?: string
+          created_by?: string | null
+          decision?: string
+          kind: string
+        }
+        Update: {
+          alias_key?: string
+          canonical_key?: string
+          canonical_name?: string
+          created_at?: string
+          created_by?: string | null
+          decision?: string
+          kind?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "identity_aliases_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       inspection_portal_credentials: {
         Row: {
           created_at: string

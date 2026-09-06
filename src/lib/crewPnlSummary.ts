@@ -1,3 +1,4 @@
+import { normalizeIdentityKey } from './identityKey'
 /** Jobs → Crew P&L (formerly "Teams") kernel. Pure — no React/supabase.
  *
  * Per-person rollup of labor cost vs billing credit:
@@ -111,13 +112,8 @@ function normName(name: string | null | undefined): string {
 
 /** Spelling-tolerant form for the loose tiers (B8, J8-F2): no diacritics, no punctuation, one space between words. */
 export function looseCrewPnlName(name: string | null | undefined): string {
-  return (name ?? '')
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .toLowerCase()
-    .replace(/[^a-z0-9\s]/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim()
+  // T5-07: the shared identity key (same folding + "&" → "and").
+  return normalizeIdentityKey(name)
 }
 
 function nameTokens(loose: string): string[] {
