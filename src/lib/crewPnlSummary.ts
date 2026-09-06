@@ -75,6 +75,10 @@ export type CrewPnlPersonRow = {
   billingPerHour: number | null
   /** True when any billing line is an equal-split estimate. */
   hasEstimatedBilling: boolean
+  /** Billing from equal-split fallback lines only — the tab's least trustworthy math (B8, J8-F1). */
+  fallbackBilling: number
+  /** Equal-split guesses are at least half the billing: badged "≈ estimated" and ranked below real rows in every numeric sort (J8-F1 / N1). */
+  estimateLed: boolean
   /** True when the identity did not resolve to a roster person. */
   unmatched: boolean
   /** Sub-sheet dollars in range that matched NO job — cost with no billing credit (v2.977). */
@@ -105,6 +109,62 @@ function normName(name: string | null | undefined): string {
   return (name ?? '').trim().toLowerCase()
 }
 
+/** Spelling-tolerant form for the loose tiers (B8, J8-F2): no diacritics, no punctuation, one space between words. */
+export function looseCrewPnlName(name: string | null | undefined): string {
+  return (name ?? '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+function nameTokens(loose: string): string[] {
+  return loose ? loose.split(' ') : []
+}
+
+/** "j" covers "jose" (an initial), otherwise tokens must be equal. */
+function tokenCovers(free: string, roster: string): boolean {
+  return free === roster || (free.length === 1 && roster.startsWith(free))
+}
+
+/** Every `needle` token is covered by a distinct `haystack` token (order-free: "Garcia, Jose" ⊆ "Jose Luis Garcia"). */
+function tokensCovered(needle: string[], haystack: string[]): boolean {
+  const used = new Set<number>()
+  for (const n of needle) {
+    const idx = haystack.findIndex((h, i) => !used.has(i) && tokenCovers(n, h))
+    if (idx < 0) return false
+    used.add(idx)
+  }
+  return true
+}
+
+/**
+ * Resolve a free-text spelling to the ONE roster person it can only mean, or null (B8, J8-F2).
+ * Tiers, each accepted only on a single candidate — two hits is "ambiguous", which stays unmatched
+ * because a wrong merge moves money to the wrong person while a split row is merely annoying:
+ *   1. exact normalized name (trim/lower) — the pre-B8 rule, handled by the caller;
+ *   2. loose equality ("José García." = "jose garcia");
+ *   3. token containment with ≥2 tokens on the shorter side ("Jose Garcia" ⊆ "Jose Luis Garcia",
+ *      "J. Garcia" ⊆ "Jose Garcia"). Single first names never merge — too many Joses.
+ */
+export function resolveCrewPnlNameLoosely(name: string | null | undefined, people: CrewPnlRosterPerson[]): CrewPnlRosterPerson | null {
+  const loose = looseCrewPnlName(name)
+  if (!loose) return null
+  const equal = people.filter((p) => looseCrewPnlName(p.name) === loose)
+  if (equal.length === 1) return equal[0] ?? null
+  if (equal.length > 1) return null
+  const free = nameTokens(loose)
+  if (free.length < 2) return null
+  const contained = people.filter((p) => {
+    const roster = nameTokens(looseCrewPnlName(p.name))
+    if (roster.length < 2) return false
+    return tokensCovered(free, roster) || tokensCovered(roster, free)
+  })
+  return contained.length === 1 ? contained[0] ?? null : null
+}
+
 export type CrewPnlPersonResolver = {
   keyForName: (name: string | null | undefined) => string
   /** Stored people.id wins outright (Phase C-1); falls back to name matching when absent. */
@@ -126,11 +186,19 @@ export function buildCrewPnlPersonResolver(people: CrewPnlRosterPerson[]): CrewP
     byId.set(p.id, p)
   }
   const displayByKey = new Map<string, string>()
+  // Loose resolution is O(roster) per distinct spelling; memoize by normalized name (null = stays free text).
+  const looseByNorm = new Map<string, CrewPnlRosterPerson | null>()
   function keyForName(name: string | null | undefined): string {
     const n = normName(name)
     if (!n) return rememberKey('n:', 'Unknown')
     const p = byName.get(n)
     if (p) return rememberKey(`p:${p.id}`, (p.name ?? '').trim() || 'Unknown')
+    let loose = looseByNorm.get(n)
+    if (loose === undefined) {
+      loose = resolveCrewPnlNameLoosely(name, people)
+      looseByNorm.set(n, loose)
+    }
+    if (loose) return rememberKey(`p:${loose.id}`, (loose.name ?? '').trim() || 'Unknown')
     return rememberKey(`n:${n}`, (name ?? '').trim())
   }
   function keyForPerson(personId: string | null | undefined, fallbackName: string | null | undefined): string {
@@ -180,12 +248,12 @@ export function buildCrewPnlSummary(args: {
   const resolver = buildCrewPnlPersonResolver(people)
   const jobById = new Map(jobs.map((j) => [j.id, j]))
 
-  type Acc = { hours: number; laborCost: number; billing: number; perJob: CrewPnlJobLine[]; hasEstimated: boolean; unlinkedSubCost: number }
+  type Acc = { hours: number; laborCost: number; billing: number; fallbackBilling: number; perJob: CrewPnlJobLine[]; hasEstimated: boolean; unlinkedSubCost: number }
   const byKey = new Map<string, Acc>()
   function acc(key: string): Acc {
     let a = byKey.get(key)
     if (!a) {
-      a = { hours: 0, laborCost: 0, billing: 0, perJob: [], hasEstimated: false, unlinkedSubCost: 0 }
+      a = { hours: 0, laborCost: 0, billing: 0, fallbackBilling: 0, perJob: [], hasEstimated: false, unlinkedSubCost: 0 }
       byKey.set(key, a)
     }
     return a
@@ -259,6 +327,7 @@ export function buildCrewPnlSummary(args: {
       const key = resolver.keyForUser(tm.userId, tm.userName)
       const a = acc(key)
       a.billing += share
+      a.fallbackBilling += share
       a.hasEstimated = true
       a.perJob.push({
         kind: 'billing-fallback',
@@ -327,12 +396,14 @@ export function buildCrewPnlSummary(args: {
       profit,
       billingPerHour: a.hours > 0 ? a.billing / a.hours : null,
       hasEstimatedBilling: a.hasEstimated,
+      fallbackBilling: a.fallbackBilling,
+      estimateLed: crewPnlRowIsEstimateLed(a.fallbackBilling, a.billing),
       unmatched: resolver.isUnmatched(key),
       unlinkedSubCost: a.unlinkedSubCost,
       perJob: a.perJob,
     }
   })
-  rows.sort((x, y) => y.profit - x.profit)
+  rows.sort((x, y) => compareCrewPnlRows(x, y, 'profit', 'desc'))
 
   const totals = rows.reduce(
     (t, r) => ({
@@ -346,6 +417,47 @@ export function buildCrewPnlSummary(args: {
 
   unlinkedSheets.sort((a, b) => b.cost - a.cost)
   return { rows, totals, subLabor: { total: subTotal, linkedTotal: subLinkedTotal, unlinkedSheets } }
+}
+
+/**
+ * Estimate-led (B8, J8-F1 / N1): equal-split guesses are at least half the row's billing. Covers the
+ * pure-fallback shape (no hours, no cost, six-figure "profit") and the outlier whose one fallback job
+ * dwarfs its real work (≈7.5× the next $/hr live). Sub-sheet ≈ (equivalent hours) is a calibration,
+ * not a guess, and never demotes a row on its own.
+ */
+export function crewPnlRowIsEstimateLed(fallbackBilling: number, billing: number): boolean {
+  return fallbackBilling > 0 && fallbackBilling * 2 >= billing
+}
+
+export type CrewPnlSortKey = 'name' | 'hours' | 'laborCost' | 'billing' | 'profit' | 'rate'
+
+function crewPnlSortValue(row: CrewPnlPersonRow, key: CrewPnlSortKey): number | string {
+  if (key === 'name') return row.displayName.toLowerCase()
+  if (key === 'hours') return row.hours
+  if (key === 'laborCost') return row.laborCost
+  if (key === 'billing') return row.billing
+  if (key === 'rate') return row.billingPerHour ?? -Infinity
+  return row.profit
+}
+
+/**
+ * Row order for the table (B8): every NUMERIC sort keeps real rows ahead of estimate-led rows in
+ * both directions — the ranking question ("who earns?") must never be answered by an equal-split
+ * artifact, and flipping to ascending should not float the artifacts to the top either. Within a
+ * band: the key in the asked direction, then name A→Z so the order is stable. The name sort is a
+ * lookup, not a ranking, so it is plain alphabetical.
+ */
+export function compareCrewPnlRows(a: CrewPnlPersonRow, b: CrewPnlPersonRow, key: CrewPnlSortKey, direction: 'asc' | 'desc'): number {
+  if (key !== 'name' && a.estimateLed !== b.estimateLed) return a.estimateLed ? 1 : -1
+  const dir = direction === 'asc' ? 1 : -1
+  const va = crewPnlSortValue(a, key)
+  const vb = crewPnlSortValue(b, key)
+  if (va < vb) return -1 * dir
+  if (va > vb) return 1 * dir
+  if (key === 'name') return 0
+  const na = a.displayName.toLowerCase()
+  const nb = b.displayName.toLowerCase()
+  return na < nb ? -1 : na > nb ? 1 : 0
 }
 
 export type CrewPnlRangePreset = 'all' | 'this_month' | 'last_month' | 'this_quarter' | 'this_year'

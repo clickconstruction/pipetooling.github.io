@@ -1,8 +1,12 @@
 import { describe, expect, it } from 'vitest'
 import {
   buildCrewPnlPersonResolver,
+  compareCrewPnlRows,
   crewPnlRangeForPreset,
+  crewPnlRowIsEstimateLed,
   buildCrewPnlSummary,
+  looseCrewPnlName,
+  resolveCrewPnlNameLoosely,
   ymdInRange,
   type CrewPnlJobInput,
   type CrewPnlRosterPerson,
@@ -342,5 +346,135 @@ describe('sub labor revenue share via equivalent hours (v2.974)', () => {
     const paige = summary.rows.find((r) => r.displayName === 'Paige')
     expect(mike?.billing ?? 0).toBe(0) // no fallback share — hours-weighted world now
     expect(paige?.billing).toBeCloseTo(6000)
+  })
+})
+
+describe('loose name resolution (B8, J8-F2)', () => {
+  const roster: CrewPnlRosterPerson[] = [
+    { id: 'per-jose', name: 'José Luis García', accountUserId: null },
+    { id: 'per-mike', name: 'Mike Z', accountUserId: 'user-mike' },
+    { id: 'per-sr', name: 'Tom Reed Sr', accountUserId: null },
+    { id: 'per-jr', name: 'Tom Reed Jr', accountUserId: null },
+    { id: 'per-solo', name: 'Marco', accountUserId: null },
+  ]
+
+  it('looseCrewPnlName drops diacritics and punctuation and collapses spaces', () => {
+    expect(looseCrewPnlName('  José  Luis García. ')).toBe('jose luis garcia')
+    expect(looseCrewPnlName("O'Brien, Pat")).toBe('o brien pat')
+    expect(looseCrewPnlName(null)).toBe('')
+  })
+
+  it('a spelling that differs only by accents or punctuation lands on the roster person', () => {
+    expect(resolveCrewPnlNameLoosely('jose luis garcia', roster)?.id).toBe('per-jose')
+    expect(resolveCrewPnlNameLoosely('Jose Luis Garcia.', roster)?.id).toBe('per-jose')
+  })
+
+  it('a shorter or reordered spelling merges when only one roster name contains it', () => {
+    expect(resolveCrewPnlNameLoosely('Jose Garcia', roster)?.id).toBe('per-jose')
+    expect(resolveCrewPnlNameLoosely('Garcia, Jose', roster)?.id).toBe('per-jose')
+    expect(resolveCrewPnlNameLoosely('J. Garcia', roster)?.id).toBe('per-jose')
+    // The free text may also be the longer one.
+    expect(resolveCrewPnlNameLoosely('Mike Z (sub)', roster)?.id).toBe('per-mike')
+  })
+
+  it('two possible people is ambiguous — stays unmatched rather than moving money to the wrong one', () => {
+    expect(resolveCrewPnlNameLoosely('Tom Reed', roster)).toBeNull()
+    expect(resolveCrewPnlNameLoosely('T. Reed', roster)).toBeNull()
+  })
+
+  it('single first names never merge by containment; a lone roster name matches only by loose equality', () => {
+    expect(resolveCrewPnlNameLoosely('Jose', roster)).toBeNull()
+    expect(resolveCrewPnlNameLoosely('Garcia', roster)).toBeNull()
+    expect(resolveCrewPnlNameLoosely('MARCO', roster)?.id).toBe('per-solo')
+    expect(resolveCrewPnlNameLoosely('Marco Polo', roster)).toBeNull()
+  })
+
+  it('the resolver keys a loose match on the roster person and shows the roster spelling', () => {
+    const r = buildCrewPnlPersonResolver(roster)
+    const k = r.keyForName('jose garcia')
+    expect(k).toBe('p:per-jose')
+    expect(r.displayName(k)).toBe('José Luis García')
+    expect(r.isUnmatched(k)).toBe(false)
+    const amb = r.keyForName('Tom Reed')
+    expect(amb).toBe('n:tom reed')
+    expect(r.isUnmatched(amb)).toBe(true)
+  })
+
+  it('one person stays one row: a sub sheet under a loose spelling merges into the clocked row', () => {
+    const s = buildCrewPnlSummary({
+      jobs: [job({ id: 'j1', revenue: 1000 })],
+      teamLabor: [{ jobId: 'j1', breakdown: [{ personName: 'José Luis García', byWorkDate: [{ workDate: '2026-06-01', hours: 10, cost: 300 }] }] }],
+      subLabor: [{ id: 's1', jobId: 'j1', jobLabel: 'Sub sheet 769', jobDate: '2026-06-02', assignedNames: ['Garcia, Jose'], cost: 500, hours: 0 }],
+      people: roster,
+      range: ALL,
+      subLaborEquivalentRate: 50,
+    })
+    expect(s.rows).toHaveLength(1)
+    expect(s.rows[0]?.key).toBe('p:per-jose')
+    expect(s.rows[0]?.unmatched).toBe(false)
+    expect(s.rows[0]?.perJob.map((l) => l.kind)).toEqual(['crew', 'sub'])
+  })
+})
+
+describe('estimate-led rows and the banded sort (B8, J8-F1 / N1)', () => {
+  const twoJobs: CrewPnlJobInput[] = [
+    // j1: real clocked work, $1,000.
+    job({ id: 'j1', jobLabel: '769', revenue: 1000 }),
+    // j2: revenue but no hours at all → equal split among team members.
+    job({ id: 'j2', jobLabel: '770', revenue: 9000, teamMembers: [{ userId: 'user-mike', userName: 'Mike Z' }, { userId: null, userName: 'Ghost' }], fallbackDate: '2026-06-03' }),
+  ]
+  const teamLabor: CrewPnlTeamLaborInput[] = [
+    {
+      jobId: 'j1',
+      breakdown: [
+        { personName: 'Mike Z', byWorkDate: [{ workDate: '2026-06-01', hours: 8, cost: 240 }] },
+        { personName: 'Paige', byWorkDate: [{ workDate: '2026-06-01', hours: 2, cost: 50 }] },
+      ],
+    },
+  ]
+  const summary = () => buildCrewPnlSummary({ jobs: twoJobs, teamLabor, subLabor: [], people, range: ALL })
+
+  it('crewPnlRowIsEstimateLed: guesses at or above half the billing, never a row with no guess', () => {
+    expect(crewPnlRowIsEstimateLed(0, 500)).toBe(false)
+    expect(crewPnlRowIsEstimateLed(100, 500)).toBe(false)
+    expect(crewPnlRowIsEstimateLed(250, 500)).toBe(true)
+    expect(crewPnlRowIsEstimateLed(500, 500)).toBe(true)
+  })
+
+  it('rows report their equal-split dollars and whether the guess leads', () => {
+    const s = summary()
+    const mike = s.rows.find((r) => r.key === 'p:per-mike')
+    const paige = s.rows.find((r) => r.key === 'p:per-paige')
+    const ghost = s.rows.find((r) => r.key === 'n:ghost')
+    expect(mike?.fallbackBilling).toBe(4500)
+    expect(mike?.estimateLed).toBe(true) // 4,500 of 5,300 is a guess — the live rank-#1 shape
+    expect(paige?.fallbackBilling).toBe(0)
+    expect(paige?.estimateLed).toBe(false)
+    expect(ghost?.hours).toBe(0)
+    expect(ghost?.estimateLed).toBe(true) // no hours, no cost, pure fallback — the live rank-#4 shape
+  })
+
+  it('the kernel order and every numeric sort put real rows first, in both directions', () => {
+    const s = summary()
+    expect(s.rows.map((r) => r.key)).toEqual(['p:per-paige', 'p:per-mike', 'n:ghost'])
+    const byRateDesc = [...s.rows].sort((a, b) => compareCrewPnlRows(a, b, 'rate', 'desc')).map((r) => r.key)
+    expect(byRateDesc[0]).toBe('p:per-paige')
+    const byProfitAsc = [...s.rows].sort((a, b) => compareCrewPnlRows(a, b, 'profit', 'asc')).map((r) => r.key)
+    expect(byProfitAsc).toEqual(['p:per-paige', 'n:ghost', 'p:per-mike'])
+    const byHoursDesc = [...s.rows].sort((a, b) => compareCrewPnlRows(a, b, 'hours', 'desc')).map((r) => r.key)
+    expect(byHoursDesc).toEqual(['p:per-paige', 'p:per-mike', 'n:ghost'])
+  })
+
+  it('the name sort is a lookup, not a ranking — plain alphabetical, no bands', () => {
+    const s = summary()
+    const asc = [...s.rows].sort((a, b) => compareCrewPnlRows(a, b, 'name', 'asc')).map((r) => r.displayName)
+    expect(asc).toEqual(['Ghost', 'Mike Z', 'Paige'])
+  })
+
+  it('ties inside a band break by name so the order is stable', () => {
+    const s = summary()
+    const paige = s.rows.find((r) => r.key === 'p:per-paige')!
+    const twin = { ...paige, key: 'p:twin', displayName: 'Aaron' }
+    expect(compareCrewPnlRows(paige, twin, 'profit', 'desc')).toBeGreaterThan(0)
   })
 })
