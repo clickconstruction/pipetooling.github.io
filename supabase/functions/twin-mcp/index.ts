@@ -389,6 +389,17 @@ const TOOLS = [
     },
   },
   {
+    name: 'next_shadow',
+    description:
+      "The auto-shadow dispatcher (v2.2936): claim the next live bid that needs a shadow — human-requested bids first (oldest ask, no age limit), then the oldest eligible bid inside the lookback. The claim is the shadow shell itself, so parallel agents never share a bid; done: true means every eligible live bid is covered. The whole point (LEARNING_PLAN.md): a shadow costs the estimator zero minutes, locks blind before her number exists, and auto-scores when she sends — run agents on this verb until it says done and the live board is fully covered. Never call it again while your current shadow is unlocked.",
+    inputSchema: {
+      type: 'object',
+      properties: {
+        days: { type: 'number', description: 'Lookback window for unrequested bids (default 30); human-requested bids ignore it' },
+      },
+    },
+  },
+  {
     name: 'open_shadow',
     description:
       "Open a shadow estimate of a LIVE bid (fleet Phase 1): creates a 'ZZ Shadow <PROJECT>' bid owned by YOUR twin with logistics only, and registers the twin_shadow_runs row. Refused if the reference has already been sent (that would be a backtest — use open_backtest). Idempotent per reference. Estimate it exactly like a backtest, then lock_shadow your total BEFORE the human number exists.",
@@ -462,6 +473,67 @@ async function resolveTwin(req: Request): Promise<{ twinUserId: string; email: s
   const { data: user } = await admin.from('users').select('email, is_digital_twin, role').eq('id', cred.twin_user_id).maybeSingle()
   if (!user || user.is_digital_twin !== true || user.role !== 'estimator') return { error: 'Twin account not eligible', status: 403 }
   return { twinUserId: cred.twin_user_id, email: user.email as string, credId: cred.id as string }
+}
+
+// ---------------------------------------------------------------------------
+// Shadow shells (v2.2936): one creator for open_shadow and next_shadow. The
+// twin_shadow_runs row IS the claim; the caller has already verified the
+// reference is unsent (blind by nature — the shadow opens before the human
+// number exists).
+// ---------------------------------------------------------------------------
+type ShadowRefBid = {
+  id: string
+  bid_number: string
+  project_name: string | null
+  address: string | null
+  customer_id: string | null
+  service_type_id: string | null
+  distance_from_office: number | null
+  plans_link: string | null
+  gc_builder_id: string | null
+  bid_due_date: string | null
+}
+
+async function createShadowShell(
+  admin: ReturnType<typeof createClient>,
+  twin: { twinUserId: string; email: string },
+  refBid: ShadowRefBid,
+  axis: string | null,
+): Promise<{ id: string; bid_number: string } | { error: string }> {
+  const ztName = `ZZ Shadow ${String(refBid.project_name ?? 'UNKNOWN').toUpperCase()}`
+  const { data: created, error: insErr } = await admin
+    .from('bids')
+    .insert({
+      project_name: ztName,
+      address: refBid.address,
+      customer_id: refBid.customer_id,
+      service_type_id: refBid.service_type_id,
+      distance_from_office: refBid.distance_from_office,
+      plans_link: refBid.plans_link,
+      gc_builder_id: refBid.gc_builder_id,
+      bid_due_date: refBid.bid_due_date,
+      // v2.2543: pair the shadow with its live source so the Bid Board's
+      // robot icon turns colorful the moment the shadow opens.
+      twin_source_bid_id: refBid.id,
+      created_by: twin.twinUserId,
+      estimator_id: twin.twinUserId,
+      notes: `Shadow estimate of live bid b${refBid.bid_number} (fleet Phase 1). Blind by nature — opened before the human number exists.`,
+    })
+    .select('id, bid_number')
+    .single()
+  if (insErr) return { error: `Shadow bid not created: ${insErr.message}` }
+  const { error: runErr } = await admin.from('twin_shadow_runs').insert({
+    shadow_bid_id: created.id, reference_bid_id: refBid.id, twin_user_id: twin.twinUserId, axis,
+  })
+  if (runErr) {
+    await admin.from('bids').delete().eq('id', created.id).then(() => {}, () => {})
+    return { error: `Shadow run not registered: ${runErr.message}` }
+  }
+  await admin.from('bids_submission_entries').insert({
+    bid_id: created.id,
+    notes: `[shadow STG-0] Shadow of live b${refBid.bid_number} (${refBid.project_name}) opened by ${twin.email}. Axis: ${axis || 'unclassified'}. Lock the blind total with lock_shadow BEFORE the human bid is sent; score_shadows finishes the loop automatically.`,
+  }).then(() => {}, () => {})
+  return { id: created.id as string, bid_number: String(created.bid_number) }
 }
 
 // ---------------------------------------------------------------------------
@@ -1657,7 +1729,19 @@ async function callTool(req: Request, name: string, args: Record<string, unknown
           : {}),
       })
       const queue = [...requested.map(toEntry), ...rest.map(toEntry)]
-      return textContent(JSON.stringify({ eligible: queue.length, requested: requested.length, queue, next: 'open_shadow(reference_bid, axis) on one — requested entries first. Then estimate exactly like a backtest and lock_shadow before the human number exists.' }, null, 2))
+      // Coverage (v2.2936, LEARNING_PLAN.md lever 2): how much of the live board is
+      // shadowed, windowless — the number the auto-shadow program drives to 100%.
+      const { data: allLive } = await admin.from('bids').select('id')
+        .is('bid_date_sent', null).not('plans_link', 'is', null).not('project_name', 'ilike', 'ZZ %').limit(1000)
+      const liveIds = (allLive ?? []).map((b: { id: string }) => b.id)
+      const shadowedLive = liveIds.filter((id) => taken.has(id)).length
+      return textContent(JSON.stringify({
+        eligible: queue.length,
+        requested: requested.length,
+        coverage: { live_with_plans: liveIds.length, shadowed: shadowedLive, unshadowed: liveIds.length - shadowedLive },
+        queue,
+        next: 'next_shadow claims the first one for you (requested entries first) — or open_shadow(reference_bid, axis) to pick. Then estimate exactly like a backtest and lock_shadow before the human number exists.',
+      }, null, 2))
     }
     case 'open_shadow': {
       const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, {
@@ -1679,42 +1763,68 @@ async function callTool(req: Request, name: string, args: Record<string, unknown
         const { data: sb } = await admin.from('bids').select('bid_number').eq('id', existingRun.shadow_bid_id).maybeSingle()
         return textContent(JSON.stringify({ ok: true, reused: true, shadow_bid: `b${sb?.bid_number}`, status: existingRun.status }, null, 2))
       }
-      const ztName = `ZZ Shadow ${String(refBid.project_name ?? 'UNKNOWN').toUpperCase()}`
-      const { data: created, error: insErr } = await admin
-        .from('bids')
-        .insert({
-          project_name: ztName,
-          address: refBid.address,
-          customer_id: refBid.customer_id,
-          service_type_id: refBid.service_type_id,
-          distance_from_office: refBid.distance_from_office,
-          plans_link: refBid.plans_link,
-          gc_builder_id: refBid.gc_builder_id,
-          bid_due_date: refBid.bid_due_date,
-          // v2.2543: pair the shadow with its live source so the Bid Board's
-          // robot icon turns colorful the moment the shadow opens.
-          twin_source_bid_id: refBid.id,
-          created_by: twin.twinUserId,
-          estimator_id: twin.twinUserId,
-          notes: `Shadow estimate of live bid b${refBid.bid_number} (fleet Phase 1). Blind by nature — opened before the human number exists. Opened via twin-mcp open_shadow.`,
-        })
-        .select('id, bid_number')
-        .single()
-      if (insErr) return textContent(`Shadow bid not created: ${insErr.message}`, true)
-      const { error: runErr } = await admin.from('twin_shadow_runs').insert({
-        shadow_bid_id: created.id, reference_bid_id: refBid.id, twin_user_id: twin.twinUserId,
-        axis: String(args.axis ?? '').trim() || null,
-      })
-      if (runErr) return textContent(`Shadow run not registered: ${runErr.message}`, true)
-      await admin.from('bids_submission_entries').insert({
-        bid_id: created.id,
-        notes: `[shadow STG-0] Shadow of live b${refBid.bid_number} (${refBid.project_name}) opened by ${twin.email}. Axis: ${String(args.axis ?? '') || 'unclassified'}. Lock the blind total with lock_shadow BEFORE the human bid is sent; score_shadows finishes the loop automatically.`,
-      }).then(() => {}, () => {})
+      const r = await createShadowShell(admin, twin, refBid as ShadowRefBid, String(args.axis ?? '').trim() || null)
+      if ('error' in r) return textContent(r.error, true)
       return textContent(JSON.stringify({
-        ok: true, reused: false, shadow_bid: `b${created.bid_number}`, shadow_bid_id: created.id,
+        ok: true, reused: false, shadow_bid: `b${r.bid_number}`, shadow_bid_id: r.id,
         reference: `b${refBid.bid_number}`, axis: String(args.axis ?? '') || null,
         next: 'Estimate like a backtest (census -> counts -> pricing), then lock_shadow(bid, total).',
       }, null, 2))
+    }
+    case 'next_shadow': {
+      // The auto-shadow dispatcher (v2.2936, LEARNING_PLAN.md lever 2): claim the
+      // next live bid that needs a shadow — human requests first (oldest ask), then
+      // oldest eligible inside the lookback. The twin_shadow_runs row IS the claim;
+      // an accidental same-instant duplicate deletes itself in favour of the
+      // earliest-created run, so parallel agents never share a bid.
+      const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, {
+        auth: { autoRefreshToken: false, persistSession: false },
+      })
+      const days = Number(args.days ?? 30)
+      const since = new Date(Date.now() - (Number.isFinite(days) && days > 0 ? days : 30) * 86400_000).toISOString()
+      const CLAIM_COLS = 'id, bid_number, project_name, address, customer_id, service_type_id, distance_from_office, plans_link, gc_builder_id, bid_due_date, bid_date_sent, created_at, robot_requested_at, backtest_axis'
+      const [requestedRes, recentRes] = await Promise.all([
+        admin.from('bids').select(CLAIM_COLS)
+          .is('bid_date_sent', null).not('plans_link', 'is', null).not('robot_requested_at', 'is', null)
+          .not('project_name', 'ilike', 'ZZ %').order('robot_requested_at', { ascending: true }).limit(25),
+        admin.from('bids').select(CLAIM_COLS)
+          .is('bid_date_sent', null).not('plans_link', 'is', null).gte('created_at', since)
+          .not('project_name', 'ilike', 'ZZ %').order('created_at', { ascending: true }).limit(50),
+      ])
+      if (requestedRes.error) return textContent(`Queue lookup failed: ${requestedRes.error.message}`, true)
+      if (recentRes.error) return textContent(`Queue lookup failed: ${recentRes.error.message}`, true)
+      const { data: shadowed } = await admin.from('twin_shadow_runs').select('reference_bid_id')
+      const taken = new Set((shadowed ?? []).map((r: { reference_bid_id: string }) => r.reference_bid_id))
+      const seen = new Set<string>()
+      const candidates = [...(requestedRes.data ?? []), ...(recentRes.data ?? [])].filter((b) => {
+        if (taken.has(b.id) || seen.has(b.id) || !String(b.plans_link ?? '').trim()) return false
+        seen.add(b.id)
+        return true
+      }) as ShadowRefBid[]
+      if (!candidates.length) {
+        return textContent(JSON.stringify({ done: true, note: `Every eligible live bid (requested, or created in the last ${days} days) already has a shadow.` }, null, 2))
+      }
+      for (const refBid of candidates) {
+        const axis = String((refBid as { backtest_axis?: string | null }).backtest_axis ?? '').trim() || null
+        const r = await createShadowShell(admin, twin, refBid, axis)
+        if ('error' in r) continue // someone else claimed between the list and the insert — next candidate
+        // Same-instant duplicate check: earliest-created run for this reference wins.
+        const { data: runs } = await admin.from('twin_shadow_runs')
+          .select('id, shadow_bid_id, created_at').eq('reference_bid_id', refBid.id).order('created_at', { ascending: true })
+        if (runs && runs.length > 1 && runs[0]!.shadow_bid_id !== r.id) {
+          await admin.from('twin_shadow_runs').delete().eq('shadow_bid_id', r.id).then(() => {}, () => {})
+          await admin.from('bids').delete().eq('id', r.id).then(() => {}, () => {})
+          continue
+        }
+        return textContent(JSON.stringify({
+          ok: true, shadow_bid: `b${r.bid_number}`, shadow_bid_id: r.id,
+          reference: `b${refBid.bid_number}`, project: refBid.project_name, axis,
+          requested: !!(refBid as { robot_requested_at?: string | null }).robot_requested_at,
+          remaining_unshadowed: candidates.length - 1,
+          next: 'This shadow is yours alone. Estimate like a backtest (substrate -> takeoff -> paste_counts) and lock_shadow BEFORE the human number exists. Do not call next_shadow again until this one is locked.',
+        }, null, 2))
+      }
+      return textContent(JSON.stringify({ done: true, note: 'All current candidates were claimed by parallel agents — nothing left to shadow right now.' }, null, 2))
     }
     case 'lock_shadow': {
       const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, {
@@ -1799,7 +1909,7 @@ async function handleRpc(req: Request, msg: { jsonrpc?: string; id?: unknown; me
       return rpcResult(id, {
         protocolVersion: version,
         capabilities: { tools: {} },
-        serverInfo: { name: 'pipetooling-twin-mcp', version: '1.3.6' },
+        serverInfo: { name: 'pipetooling-twin-mcp', version: '1.3.7' },
         instructions:
           "PipeTooling digital-twin seat (estimator-only). Call get_brief first, then get_directory; mint_session gives you a signed-in browser link to the real apps — PipeTooling by default, CountTooling (the PDF-takeoff tool) with app: 'counttooling'. The work happens there. Every call needs your per-twin token (X-Twin-Token or Bearer).",
       })
