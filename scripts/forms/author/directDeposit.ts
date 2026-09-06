@@ -65,10 +65,6 @@ export async function buildDirectDeposit() {
     { box: { key: 'notes', type: 'text', label: 'Anything the office should know', labelEs: 'Algo que la oficina deba saber', advanced: true }, label: 'Notes (optional)', frac: 0.30 },
   ])
 
-  p.paragraph(
-    'Attach a voided check or a bank letter showing the routing and account numbers. Your first deposit may be a test deposit, with that payment made by paper check.',
-    { size: 8.5, gapAfter: 4 },
-  )
   p.paragraph('By signing, I confirm the account above is mine and the numbers are correct.', { size: 9.5, bold: true, gapAfter: 0 })
   p.signatureBlock({ signature: 'signature', date: 'date' }, { signature: 'Contractor signature', date: 'Date' }, undefined, { signature: 'Firma del contratista', date: 'Fecha' })
   p.footer(`${COMPANY} · Direct Deposit Authorization · v1 (2026-09)`)
