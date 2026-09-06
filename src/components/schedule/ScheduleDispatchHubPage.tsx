@@ -7,6 +7,7 @@ import { useAuth } from '../../hooks/useAuth'
 import { OPEN_BID_EDIT_QUERY } from '../../contexts/BidPreviewModalContext'
 import { recordNavClick } from '../../lib/navClickTelemetry'
 import { bidOpenPath, scheduleBlockTarget } from '../../lib/scheduleBlockTarget'
+import { blocksToBidWeekMatrixRows, collectScheduledBidIds, scheduleBlockTitle } from '../../lib/scheduleBlockTitle'
 import { useToastContext } from '../../contexts/ToastContext'
 import { useJobFormModal } from '../../contexts/JobFormModalContext'
 import { useJobDetailModal } from '../../contexts/JobDetailModalContext'
@@ -63,6 +64,7 @@ import {
   buildPersonDayBlockMap,
   fetchArchivedUserIdSetForIds,
   hubPersonDayKey,
+  fetchBidTitlesForScheduleBlocks,
   fetchBidsForScheduleDispatchHub,
   fetchJobsLedgerForScheduleDispatchHub,
   fetchTeamMemberUserIdsForJobIds,
@@ -362,6 +364,12 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
   const [hubJobs, setHubJobs] = useState<ScheduleDispatchHubJobRow[]>([])
   /** Schedulable bids (v2.1613) — picker rows + `bid:<id>` title/address map entries. */
   const [hubBids, setHubBids] = useState<ScheduleDispatchHubBidRow[]>([])
+  /**
+   * Titles for bids that have a block this week but are no longer in `hubBids`
+   * (marked lost / archived after being scheduled) — keyed by bid uuid. Without
+   * this the block fell to the "— · Job" placeholder (Tier-2 #22, J18-F4).
+   */
+  const [hubScheduledBidTitleById, setHubScheduledBidTitleById] = useState<Map<string, string>>(() => new Map())
   const [hubWeekBlocks, setHubWeekBlocks] = useState<JobScheduleBlockRow[]>([])
   /** Blocks the viewer's RLS hides, per person/day (superintendent board only; `[]` for office roles). */
   const [hubHiddenBlockCounts, setHubHiddenBlockCounts] = useState<ScheduleHiddenBlockCount[]>([])
@@ -429,11 +437,18 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
       m.set(j.id, formatScheduleDispatchHubJobTitle(j.hcp_number, j.job_name, j.click_number))
     }
     // Bid anchors key on their `bid:<uuid>` anchor id, so every id-keyed lookup just works.
+    // A bid visit reads as a bid visit: "Bid visit · B408 · Project" (Tier-2 #22).
+    for (const [bidId, title] of hubScheduledBidTitleById) {
+      m.set(`bid:${bidId}`, scheduleBlockTitle({ kind: 'bid', bidTitle: title }))
+    }
     for (const b of hubBids) {
-      m.set(`bid:${b.id}`, formatScheduleDispatchHubBidTitle(b.bid_number, b.project_name))
+      m.set(
+        `bid:${b.id}`,
+        scheduleBlockTitle({ kind: 'bid', bidTitle: formatScheduleDispatchHubBidTitle(b.bid_number, b.project_name) }),
+      )
     }
     return m
-  }, [hubJobs, hubBids])
+  }, [hubJobs, hubBids, hubScheduledBidTitleById])
 
   const hubAllPeopleRows = useMemo(() => {
     const idSet = new Set<string>([...hubTeamMemberUserIds, ...hubWeekBlocks.map((b) => b.assignee_user_id)])
@@ -548,6 +563,12 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
   const getHubJobDisplayTitle = useCallback(
     (id: string) => hubJobTitleById.get(id) ?? formatScheduleDispatchHubJobTitle(null, null),
     [hubJobTitleById],
+  )
+
+  /** Jobs-tab commitment matrix: one row per bid with a block this week (J18-F7). */
+  const hubBidMatrixRows = useMemo(
+    () => blocksToBidWeekMatrixRows(hubWeekBlocks, getHubJobDisplayTitle),
+    [hubWeekBlocks, getHubJobDisplayTitle],
   )
 
   const hubJobAddressById = useMemo(() => {
@@ -668,12 +689,20 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
       const assigneeIds = [...new Set(blocksData.map((b) => b.assignee_user_id))]
       const rosterIds = [...new Set([...mergedHubBaseIds, ...assigneeIds])]
 
-      // Phase C: names + archived + time-off in parallel (all depend only on rosterIds).
-      const [nameRes, archivedSet, timeOffRes] = await Promise.all([
+      // Bids scheduled this week that the schedulable-bids list no longer carries (lost /
+      // archived after being scheduled) still need a title — otherwise the block reads "— · Job".
+      const knownBidIds = new Set((bidsRes.error ? [] : bidsRes.data).map((b) => b.id))
+      const scheduledOnlyBidIds = collectScheduledBidIds(blocksData).filter((id) => !knownBidIds.has(id))
+
+      // Phase C: names + archived + time-off (+ stray bid titles) in parallel (all depend only on phase A).
+      const [nameRes, archivedSet, timeOffRes, scheduledBidTitlesRes] = await Promise.all([
         fetchUserNamesForIds(rosterIds),
         fetchArchivedUserIdSetForIds(rosterIds),
         fetchUserTimeOffForUsersInRange(rosterIds, weekStart, weekEnd),
+        fetchBidTitlesForScheduleBlocks(scheduledOnlyBidIds, null, 'scheduleDispatchHubScheduledBidTitles'),
       ])
+      setHubScheduledBidTitleById(scheduledBidTitlesRes.data)
+      if (scheduledBidTitlesRes.error) showToast(`Bid names: ${scheduledBidTitlesRes.error}`, 'warning')
       setHubPeopleNameById(nameRes.data)
       if (nameRes.error) showToast(`People names: ${nameRes.error}`, 'warning')
       setHubArchivedUserIds(archivedSet)
@@ -2571,6 +2600,7 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
             }
             columnFocusDayYmd={columnFocusDayYmd}
             rows={hubMergedRows}
+            bidRows={hubBidMatrixRows}
             loading={hubLoading}
             jobsError={hubJobsError}
             summariesError={hubSummariesError}

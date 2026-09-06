@@ -10,9 +10,9 @@ import { formatErrorMessage, withSupabaseRetry } from '../utils/errorHandling'
 import { useLedgerPrefixMap } from '../contexts/LedgerDisplayPrefixContext'
 import {
   fetchJobsLedgerForScheduleDispatchHub,
-  formatScheduleDispatchHubJobTitle,
+  fetchBidTitlesForScheduleBlocks,
 } from '../lib/scheduleDispatchHub'
-import { formatBidLedgerShortLine } from '../lib/ledgerDisplayPrefixes'
+import { addBidAnchorTitles, collectScheduledBidIds, scheduleBlockTitle } from '../lib/scheduleBlockTitle'
 import { ymdAddDays } from '../utils/dateUtils'
 
 /** Rolling-window length (days) for the Month mode in the User Review modal. */
@@ -144,7 +144,10 @@ export function usePersonMonthScheduleData(
             const jobsRes = await fetchJobsLedgerForScheduleDispatchHub()
             if (!jobsRes.error) {
               for (const j of jobsRes.data) {
-                jMap.set(j.id, formatScheduleDispatchHubJobTitle(j.hcp_number, j.job_name))
+                jMap.set(
+                  j.id,
+                  scheduleBlockTitle({ kind: 'job', hcpNumber: j.hcp_number, jobTitle: j.job_name, clickNumber: j.click_number }),
+                )
               }
             }
           } catch (e) {
@@ -153,40 +156,14 @@ export function usePersonMonthScheduleData(
         }
         setJobTitleById(jMap)
 
-        const bidIds = new Set<string>()
-        for (const r of sessionRows) {
-          if (r.bid_id) bidIds.add(r.bid_id)
-        }
-        const bidMap = new Map<string, string>()
-        if (bidIds.size > 0) {
-          try {
-            const bidRows = await withSupabaseRetry(
-              async () =>
-                await supabase
-                  .from('bids')
-                  .select('id, bid_number, project_name, service_type_id')
-                  .in('id', [...bidIds]),
-              'person month schedule bids for clock',
-            )
-            for (const br of bidRows ?? []) {
-              const b = br as {
-                id: string
-                bid_number: string | null
-                project_name: string | null
-                service_type_id: string | null
-              }
-              const num = b.bid_number?.trim()
-              const pn = (b.project_name ?? '').trim()
-              const label = num
-                ? formatBidLedgerShortLine(ledgerPrefixMap, b.service_type_id, b.bid_number, b.project_name)
-                : pn || 'Bid'
-              bidMap.set(b.id, label)
-            }
-          } catch (e) {
-            onDataError(formatErrorMessage(e, 'Could not load bid names for clock sessions'), 'warning')
-          }
-        }
+        // Bids to name: SCHEDULED (block anchors) plus CLOCKED (sessions) — Tier-2 #22, J18-F4.
+        const bidIds = collectScheduledBidIds(blocksRes.data, sessionRows)
+        const bidRes = await fetchBidTitlesForScheduleBlocks(bidIds, ledgerPrefixMap, 'person month schedule bid titles')
+        if (bidRes.error) onDataError(bidRes.error, 'warning')
+        const bidMap = bidRes.data
         setBidTitleById(bidMap)
+        // `bid:<uuid>` anchor entries so the block renderers' id-keyed lookups resolve for bids too.
+        setJobTitleById(addBidAnchorTitles(jMap, bidMap))
       } catch (e) {
         onDataError(formatErrorMessage(e, 'Could not load schedule'), 'error')
         setBlocksByDayYmd(new Map())

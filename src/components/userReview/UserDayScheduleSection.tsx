@@ -23,6 +23,7 @@ import { scheduleFormatWeekdayLong } from '../../lib/jobScheduleChicago'
 import { blocksToSegments, segmentsToOccupiedBands } from '../../lib/quickfillScheduleSegments'
 import { recordNotComingInForUserAsStaff } from '../../lib/notComingInTimeOff'
 import { formatScheduleDispatchHubJobTitle } from '../../lib/scheduleDispatchHub'
+import { scheduleBlockTitle } from '../../lib/scheduleBlockTitle'
 import { findJobsByNumber } from '../../lib/jobs/stagesJobNumberJump'
 import { clockSessionsToDispatchSecondaryBands } from '../../lib/clockSessionsToDispatchSecondaryBands'
 import {
@@ -354,12 +355,12 @@ export function UserDayScheduleSection({
         (j) =>
           (j.hcp_number ?? '').toLowerCase().includes(q) ||
           (j.job_name ?? '').toLowerCase().includes(q) ||
-          formatScheduleDispatchHubJobTitle(j.hcp_number, j.job_name).toLowerCase().includes(q),
+          scheduleBlockTitle({ kind: 'job', hcpNumber: j.hcp_number, jobTitle: j.job_name, clickNumber: j.click_number }).toLowerCase().includes(q),
       )
     }
     return list.map((j) => ({
       id: j.id,
-      displayTitle: formatScheduleDispatchHubJobTitle(j.hcp_number, j.job_name),
+      displayTitle: scheduleBlockTitle({ kind: 'job', hcpNumber: j.hcp_number, jobTitle: j.job_name, clickNumber: j.click_number }),
       sessionToday: sessionTodaySet.has(j.id),
     }))
   }, [assignJobPickerSearch, assignJobPickerNumberQuery, quickfillOrderedSessionJobLedgerIds, quickfillPickerJobsSorted])
@@ -487,7 +488,7 @@ export function UserDayScheduleSection({
     if (!blockPreview) return ''
     const fromMap = (blockPreview.job_id != null ? jobTitleById.get(blockPreview.job_id) : bidTitleById.get(blockPreview.bid_id ?? ''))?.trim()
     return fromMap && fromMap.length > 0 ? fromMap : formatScheduleDispatchHubJobTitle(null, null)
-  }, [blockPreview, jobTitleById])
+  }, [blockPreview, jobTitleById, bidTitleById])
 
   const jobLabelsRecord = useMemo(() => Object.fromEntries(jobTitleById), [jobTitleById])
   const bidLabelsRecord = useMemo(() => Object.fromEntries(bidTitleById), [bidTitleById])

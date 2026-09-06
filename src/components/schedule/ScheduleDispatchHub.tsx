@@ -36,6 +36,7 @@ import {
 } from '../../lib/dispatchSwimLaneSections'
 import type { LinkedGroupCardAccent } from '../../lib/scheduleDispatchLinkedGroupPalette'
 import { hubPersonDayKey, type ScheduleDispatchHubJobRow } from '../../lib/scheduleDispatchHub'
+import { SCHEDULE_BID_VISIT_LABEL, type ScheduleDispatchHubBidMatrixRow } from '../../lib/scheduleBlockTitle'
 import {
   formatManpowerWithHidden,
   scheduleHiddenManpowerForDayKeys,
@@ -138,6 +139,8 @@ function hubDayColumnHeaderStacked(dateKey: string) {
 
 type HubJobsPanelProps = {
   rows: ScheduleDispatchHubMergedRow[]
+  /** Bid visits with a block this week — rendered under the job rows (Tier-2 #22, J18-F7). */
+  bidRows: ScheduleDispatchHubBidMatrixRow[]
   loading: boolean
   jobsError: string | null
   summariesError: string | null
@@ -152,6 +155,7 @@ type HubJobsPanelProps = {
 
 function HubJobsPanel({
   rows,
+  bidRows,
   loading,
   jobsError,
   summariesError,
@@ -210,6 +214,13 @@ function HubJobsPanel({
     }
     return list
   }, [rows, search, onlyWithBlocks])
+
+  // Bid rows exist only because they have blocks, so the "only with blocks" filter is moot for them.
+  const filteredBidRows = useMemo(() => {
+    const q = search.trim().toLowerCase()
+    if (!q) return bidRows
+    return bidRows.filter((r) => r.displayTitle.toLowerCase().includes(q))
+  }, [bidRows, search])
 
   return (
     <>
@@ -412,19 +423,20 @@ function HubJobsPanel({
             </tr>
           </thead>
           <tbody>
-            {filteredRows.length === 0 && !loading ? (
+            {filteredRows.length === 0 && filteredBidRows.length === 0 && !loading ? (
               <tr>
                 <td
                   colSpan={2 + visibleDayKeys.length + 1}
                   style={{ padding: '1rem', border: '1px solid var(--border)', color: 'var(--text-muted)', textAlign: 'center' }}
                 >
-                  {rows.length === 0 && !jobsError
+                  {rows.length === 0 && bidRows.length === 0 && !jobsError
                     ? 'No jobs to show.'
                     : 'No jobs match your search or filter.'}
                 </td>
               </tr>
             ) : (
-              filteredRows.map((r) => (
+              <>
+              {filteredRows.map((r) => (
                 <tr key={r.id}>
                   <td
                     style={{
@@ -500,7 +512,86 @@ function HubJobsPanel({
                     </button>
                   </td>
                 </tr>
-              ))
+              ))}
+              {filteredBidRows.map((r) => (
+                <tr key={r.id}>
+                  <td
+                    style={{
+                      padding: '0.5rem',
+                      border: '1px solid var(--border)',
+                      position: 'sticky',
+                      left: 0,
+                      background: 'var(--bg-violet-100)',
+                      zIndex: 1,
+                      minWidth: 130,
+                      maxWidth: 280,
+                    }}
+                  >
+                    <button
+                      type="button"
+                      onClick={() => onOpenJob(r.id)}
+                      title={`${r.displayTitle} — opens the bid`}
+                      style={{
+                        padding: 0,
+                        margin: 0,
+                        border: 'none',
+                        background: 'none',
+                        color: 'var(--text-violet-800)',
+                        cursor: 'pointer',
+                        font: 'inherit',
+                        textAlign: 'left',
+                        textDecoration: 'underline',
+                        textUnderlineOffset: 2,
+                        display: '-webkit-box',
+                        WebkitLineClamp: 2,
+                        WebkitBoxOrient: 'vertical',
+                        overflow: 'hidden',
+                      }}
+                    >
+                      {r.displayTitle}
+                    </button>
+                  </td>
+                  <td style={{ textAlign: 'center', padding: '0.5rem', border: '1px solid var(--border)', fontWeight: 600 }}>
+                    {r.totalBlocks}
+                  </td>
+                  {visibleDayKeys.map((dk) => (
+                    <td
+                      key={dk}
+                      style={{
+                        textAlign: 'center',
+                        padding: '0.35rem',
+                        border: '1px solid var(--border)',
+                        color: 'var(--text-600)',
+                        background: scheduleDispatchDayColumnJobsSummaryCellBg(dk, {
+                          scheduleTodayYmd,
+                          columnFocusDayYmd,
+                        }),
+                      }}
+                    >
+                      {r.byDay[dk] ?? '—'}
+                    </td>
+                  ))}
+                  <td style={{ padding: '0.5rem', border: '1px solid var(--border)', textAlign: 'center' }}>
+                    <button
+                      type="button"
+                      onClick={() => onOpenJob(r.id)}
+                      title="Open the bid (Edit Bid)"
+                      style={{
+                        padding: '0.3rem 0.65rem',
+                        fontSize: '0.75rem',
+                        background: '#7c3aed',
+                        color: '#fff',
+                        border: 'none',
+                        borderRadius: 4,
+                        cursor: 'pointer',
+                      }}
+                    >
+                      Open
+                    </button>
+                  </td>
+                </tr>
+              ))}
+              </>
             )}
           </tbody>
         </table>
@@ -611,6 +702,10 @@ function HubPeopleBlockCard({
   const disabledStripAriaLabel =
     'Cannot drag: you do not have permission to reassign schedule blocks. Click for an explanation.'
 
+  // Bid-anchored block (v2.1613): violet tint + "bid" chip so a bid visit never reads as
+  // just another job card (Tier-2 #22, J18-F6). Both card buttons open the bid — there is no
+  // Job Detail or job week for it; `onOpenJob` routes the anchor through `scheduleBlockTarget`.
+  const isBidBlock = block.job_id == null
   const groupId = block.shared_block_group_id
   const showLinkedFloat = Boolean(groupId && linkPeerCount > 1)
   const showEditNoteBtn = canEdit && !placementPickingActive && !linkedCopyActive && !!onRequestEditBlockNote
@@ -638,13 +733,13 @@ function HubPeopleBlockCard({
         flexDirection: 'row',
         alignItems: 'stretch',
         marginBottom: 4,
-        background: linkedAccent?.background ?? 'var(--bg-blue-tint)',
+        background: linkedAccent?.background ?? (isBidBlock ? 'var(--bg-violet-100)' : 'var(--bg-blue-tint)'),
         borderStyle: 'solid',
-        borderColor: linkedAccent?.borderColor ?? '#93c5fd',
+        borderColor: linkedAccent?.borderColor ?? (isBidBlock ? 'var(--border-violet)' : '#93c5fd'),
         borderWidth: linkedAccent ? '3px 1px 1px 1px' : 1,
         borderRadius: 4,
         fontSize: '0.72rem',
-        color: 'var(--text-blue-900)',
+        color: isBidBlock ? 'var(--text-violet-800)' : 'var(--text-blue-900)',
         overflow: 'visible',
         ...(linkedCopySelected ? { boxShadow: '0 0 0 2px #4338ca' } : {}),
         ...(linkedCopyActive && !linkedCopySelected && linkedCopyStage === 2 ? { opacity: 0.55 } : {}),
@@ -694,8 +789,10 @@ function HubPeopleBlockCard({
           cursor: dragDisabled ? 'pointer' : 'grab',
           background: dragDisabled
             ? 'linear-gradient(90deg, var(--bg-red-100) 0%, var(--bg-red-200) 100%)'
-            : 'linear-gradient(90deg, var(--bg-blue-200) 0%, var(--bg-blue-tint) 100%)',
-          borderRight: `1px solid ${dragDisabled ? 'var(--border-red)' : 'var(--border-blue)'}`,
+            : isBidBlock
+              ? 'linear-gradient(90deg, var(--bg-violet-200) 0%, var(--bg-violet-100) 100%)'
+              : 'linear-gradient(90deg, var(--bg-blue-200) 0%, var(--bg-blue-tint) 100%)',
+          borderRight: `1px solid ${dragDisabled ? 'var(--border-red)' : isBidBlock ? 'var(--border-violet)' : 'var(--border-blue)'}`,
           outline: 'none',
         }}
         title={
@@ -721,7 +818,7 @@ function HubPeopleBlockCard({
             fontSize: '0.7rem',
             lineHeight: 1,
             letterSpacing: '-1px',
-            color: dragDisabled ? 'var(--text-red-600)' : 'var(--text-blue-900)',
+            color: dragDisabled ? 'var(--text-red-600)' : isBidBlock ? 'var(--text-violet-800)' : 'var(--text-blue-900)',
             opacity: 0.6,
           }}
         >
@@ -743,15 +840,20 @@ function HubPeopleBlockCard({
           onClick={() => {
             if (moveLongPress.consumeLongPress()) return
             if (placementPickingActive) return
+            if (isBidBlock) {
+              onOpenJob(scheduleBlockAnchorId(block))
+              return
+            }
             onOpenHubJobDetail(block, workDate)
           }}
+          title={isBidBlock ? 'Open this bid' : undefined}
           style={{
             display: 'block',
             width: '100%',
             padding: '0.35rem 0.45rem',
             margin: 0,
             border: 'none',
-            borderBottom: '1px solid var(--border-blue)',
+            borderBottom: `1px solid ${isBidBlock ? 'var(--border-violet)' : 'var(--border-blue)'}`,
             background: 'transparent',
             cursor: placementPickingActive ? 'default' : 'pointer',
             textAlign: 'left',
@@ -759,7 +861,35 @@ function HubPeopleBlockCard({
             color: 'inherit',
           }}
         >
-          <span style={{ fontWeight: 700, color: 'var(--text-blue-900)', wordBreak: 'break-word' }}>
+          {isBidBlock ? (
+            <span
+              aria-label={SCHEDULE_BID_VISIT_LABEL}
+              style={{
+                display: 'inline-block',
+                verticalAlign: 'middle',
+                marginRight: 4,
+                padding: '0 0.35rem',
+                fontSize: '0.6rem',
+                fontWeight: 700,
+                lineHeight: 1.5,
+                textTransform: 'uppercase',
+                letterSpacing: '0.03em',
+                color: 'var(--text-violet-800)',
+                background: 'var(--bg-violet-200)',
+                border: '1px solid var(--border-violet)',
+                borderRadius: 999,
+              }}
+            >
+              bid
+            </span>
+          ) : null}
+          <span
+            style={{
+              fontWeight: 700,
+              color: isBidBlock ? 'var(--text-violet-800)' : 'var(--text-blue-900)',
+              wordBreak: 'break-word',
+            }}
+          >
             {getJobDisplayTitle(scheduleBlockAnchorId(block))}
           </span>
           {(() => {
@@ -806,7 +936,7 @@ function HubPeopleBlockCard({
         >
           <div
             style={{
-              color: 'var(--text-blue-800)',
+              color: isBidBlock ? 'var(--text-violet-700)' : 'var(--text-blue-800)',
               display: 'flex',
               alignItems: 'center',
               flexWrap: 'wrap',
@@ -3058,6 +3188,8 @@ type Props = {
   columnFocusDayYmd?: string
   /** Sorted full list (before search / filter). */
   rows: ScheduleDispatchHubMergedRow[]
+  /** Jobs tab: bid visits with a block this week, one row each (Tier-2 #22). */
+  bidRows?: ScheduleDispatchHubBidMatrixRow[]
   loading: boolean
   jobsError: string | null
   summariesError: string | null
@@ -3187,6 +3319,7 @@ export function ScheduleDispatchHub({
   weekNavDateRangeOverride,
   columnFocusDayYmd = '',
   rows,
+  bidRows = [],
   loading,
   jobsError,
   summariesError,
@@ -3701,6 +3834,7 @@ export function ScheduleDispatchHub({
       ) : hubTab === 'jobs' ? (
         <HubJobsPanel
           rows={rows}
+          bidRows={bidRows}
           loading={loading}
           jobsError={jobsError}
           summariesError={summariesError}

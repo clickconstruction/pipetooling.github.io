@@ -2,7 +2,8 @@ import { supabase } from './supabase'
 import type { JobScheduleBlockRow } from './jobScheduleBlocks'
 import type { Database } from '../types/database'
 import { formatErrorMessage, withSupabaseRetry } from '../utils/errorHandling'
-import { effectiveJobLedgerNumber } from './ledgerDisplayPrefixes'
+import type { LedgerPrefixMap } from './ledgerDisplayPrefixes'
+import { buildBidTitleById, scheduleBlockTitle, type ScheduleBidTitleSourceRow } from './scheduleBlockTitle'
 
 type SupabaseUserRole = Database['public']['Enums']['user_role']
 
@@ -82,16 +83,44 @@ export function findDuplicateJobAddress(
   return best
 }
 
+/**
+ * Positional wrapper over {@link scheduleBlockTitle} (`kind: 'job'`) — one
+ * implementation of the job identity line. New sites should call the kernel
+ * with `clickNumber` explicitly; the 2-arg form drops it (J18-F5).
+ */
 export function formatScheduleDispatchHubJobTitle(
   hcp: string | null | undefined,
   jobName: string | null | undefined,
   clickNumber?: string | null | undefined,
 ): string {
-  // Plain J prefix (search-standard identity): schedule surfaces are job-only,
-  // and the picker rows carry the trade pill, so the per-service-type letter
-  // would be redundant. Typing a bare "927" still matches as a substring.
-  const num = effectiveJobLedgerNumber(hcp, clickNumber)
-  return `${num ? `J${num}` : '—'} · ${(jobName ?? '').trim() || 'Job'}`
+  return scheduleBlockTitle({ kind: 'job', hcpNumber: hcp, jobTitle: jobName, clickNumber })
+}
+
+/**
+ * Bid identity lines for the bids a schedule loader shows (block anchors +
+ * clock-session bids — collect them with `collectScheduledBidIds`). One
+ * `bids` SELECT, RLS-limited like every other bid read: a superintendent who
+ * cannot see a bid gets no entry and the block renders as a bare "Bid visit".
+ * With a prefix map the line carries the per-trade prefix; without one, plain
+ * `B<number>` (the hub's convention).
+ */
+export async function fetchBidTitlesForScheduleBlocks(
+  bidIds: readonly string[],
+  prefixMap: LedgerPrefixMap | null,
+  operationName = 'fetchBidTitlesForScheduleBlocks',
+): Promise<{ data: Map<string, string>; error: string | null }> {
+  const unique = [...new Set(bidIds)].filter(Boolean)
+  if (unique.length === 0) return { data: new Map(), error: null }
+  try {
+    const rows = await withSupabaseRetry(
+      async () =>
+        await supabase.from('bids').select('id, bid_number, project_name, service_type_id').in('id', unique),
+      operationName,
+    )
+    return { data: buildBidTitleById((rows ?? []) as ScheduleBidTitleSourceRow[], prefixMap), error: null }
+  } catch (e) {
+    return { data: new Map(), error: formatErrorMessage(e, 'Could not load bid names') }
+  }
 }
 
 /** `B{bid_number} · project name` — the schedule surfaces' bid identity line (v2.1613). */
