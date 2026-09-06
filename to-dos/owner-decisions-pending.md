@@ -4,7 +4,7 @@ Status: standing list · each line is a yes/no or a number; answer it here or in
 
 | Decision | Asked by | Source |
 |---|---|---|
-| Publish the Direct Deposit form and the four lien waivers as drafted? (`contract_form_templates` has no deposit or waiver row) | contract forms PR 10 | [`contract-forms-publish-authored.md`](./contract-forms-publish-authored.md) |
+| Publish the four lien waivers as drafted? (The Direct Deposit form was approved and published 2026-09-06; `contract_form_templates` has no waiver row) | contract forms PR 10 | [`contract-forms-publish-authored.md`](./contract-forms-publish-authored.md) |
 | Seed the RH / EDF spec sections and rule on med gas? Does Wendi want the full rules manager? | Division 22 | [`division-22-rules-manager.md`](./division-22-rules-manager.md) |
 | Aging heat map: exclude job-account invoices or shade them? (Taunya — no answer in any fragment since; the heat map still counts them) | v2.2669 | [`supply-house-job-account-aging.md`](./supply-house-job-account-aging.md) |
 | Wendi's travel bands (small proto vs $300k job at ~50/100/200/300 mi) to replace the interim 10% cap — still unanswered; `docs/twins/LEARNING_PLAN.md` lists it as an open doctrine question | v2.2795 | `docs/recent-features/v2.2795.md` |

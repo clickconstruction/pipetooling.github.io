@@ -25,7 +25,7 @@ Index (validated against code on 2026-09-06 at v2.2935 — the 2026-09-05 sweep 
 | [`job-summary-follow-ups.md`](./job-summary-follow-ups.md) | not started | Days delta strip, the under-60% Needs-you card, Bid vs actual (now unblocked), PTO / overtime on Capacity, the J963 loader reconcile, the earned-revenue kernel. |
 | [`subs-residuals.md`](./subs-residuals.md) | not started | Derived sheet stage (now unblocked), Spanish signature form, compliance chips, offer templates, benched subs in the sheet form, roster hygiene. |
 | [`dispatch-residuals.md`](./dispatch-residuals.md) | low | Phone-request self-heal, dispatch blocks / nudge history on the sheet rows, the tag-slice refresh. |
-| [`contract-forms-publish-authored.md`](./contract-forms-publish-authored.md) | blocked on owner review | Publish Direct Deposit and the four lien waivers once the wording is approved. |
+| [`contract-forms-publish-authored.md`](./contract-forms-publish-authored.md) | blocked on owner review | Publish the four lien waivers once the wording is approved (Direct Deposit published 2026-09-06). |
 | [`division-22-rules-manager.md`](./division-22-rules-manager.md) | owner-gated | Rules manager UI; RH / EDF / med-gas seed call. Gas and the Needs You card shipped. |
 | [`crew-pnl-and-wheels.md`](./crew-pnl-and-wheels.md) | not started, optional | Vehicle rates on Crew P&L and Bids; the $50 sub-equivalent default; the backlog lines still true. |
 | [`person-identity-phase-e.md`](./person-identity-phase-e.md) | gated | NOT NULL, re-PK off `person_name`, retire the name cascade — after a quiet quarter. |
