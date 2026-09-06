@@ -6,7 +6,7 @@ Status: not started, owner-optional · sources: [`docs/CREW_PNL_DATA_FLOW.md`](.
 
 Wheels on Labor (v2.2733 / v2.2735) priced each person's vehicle deal per field hour on **Review**. The proposal's optional PR 3 was Bids and Crew P&L picking up the same rates, plus wear in the truck rate. Crew P&L's own backlog (2026-08-02) also listed six weaknesses.
 
-## Validation 2026-09-05 (what is still true)
+## Validation 2026-09-06 (what is still true; v2.2912 added loose person-name matching, not sheet job-number linking)
 
 | Backlog item | State |
 |---|---|
@@ -14,7 +14,7 @@ Wheels on Labor (v2.2733 / v2.2735) priced each person's vehicle deal per field 
 | 2. `revenue` is bid value, not cash | Design choice, not a to-do (documented). |
 | 3. Sheet linking beyond trim/lower (e.g. "HCP " prefix) | Still exact-match; decide after reading the audit footer's raw job # texts. |
 | 4. Employee cost is bare wage, subs are market price | Still true on Crew P&L; Review now carries the vehicle burden (Wheels) — **this is the PR 3 gap**. |
-| 5. `DEFAULT_SUB_LABOR_EQUIVALENT_RATE = 50` is a manual literal | Still literal (`crewPnlSummary.ts:165`); could track the field crew's real loaded average. |
+| 5. `DEFAULT_SUB_LABOR_EQUIVALENT_RATE = 50` is a manual literal | Still literal (`crewPnlSummary.ts`, `DEFAULT_SUB_LABOR_EQUIVALENT_RATE`); could track the field crew's real loaded average. |
 | 6. Sub data rides the Jobs page's `laborJobs` loader | Still true (`Jobs.tsx` passes `laborJobs` into `JobsCrewPnlTab`); the audit footer dropping to $0 remains the tell. |
 
 ## The plan
