@@ -47,6 +47,7 @@ import {
   markProspectConverted,
   recordProspectConverted,
 } from '../lib/prospects/prospectConversion'
+import { readRememberedProspectsTopTab, rememberProspectsTopTab, resolveProspectsLanding } from '../lib/prospects/prospectsLanding'
 import TeamProspectsTab from '../components/prospects/TeamProspectsTab'
 
 const COPY_TEMPLATE_KEYS = ['no_response_email', 'phone_followup_email', 'just_checking_in_email'] as const
@@ -408,6 +409,9 @@ export default function Prospects() {
   const canAccessActivityTab = authRole === 'dev' || isAssistantLike(authRole)
 
   useEffect(() => {
+    // The per-user grants arrive with the role; deciding a cold landing before
+    // they settle would send every Hiring holder to the calling deck.
+    if (authLoading) return
     const params = new URLSearchParams(location.search)
     const tab = params.get('tab')
     if (tab === 'team') {
@@ -437,13 +441,21 @@ export default function Prospects() {
         setActiveTab(tab as ProspectsTab)
       }
     } else if (!tab) {
+      // No tab named (the nav link): a Hiring holder who cannot work the
+      // customer deck lands on Hiring, not a live prospect card with a timer
+      // (v2.2910, J25-F1). Kernel: resolveProspectsLanding.
+      const landing = resolveProspectsLanding({
+        canAccessFollowUp: !!authUser && canAccessProspectPipeline(authRole, estimatorProspectsAccess),
+        teamProspectsAccess,
+        remembered: readRememberedProspectsTopTab(),
+      })
       setSearchParams((p) => {
         const next = new URLSearchParams(p)
-        next.set('tab', 'follow-up')
+        next.set('tab', landing)
         return next
       }, { replace: true })
     }
-  }, [location.search, setSearchParams, authRole, canAccessActivityTab, teamProspectsAccess])
+  }, [location.search, setSearchParams, authLoading, authUser, authRole, estimatorProspectsAccess, canAccessActivityTab, teamProspectsAccess])
 
   // Open New Prospect modal when navigating from Dashboard button
   useEffect(() => {
@@ -459,6 +471,7 @@ export default function Prospects() {
   }, [location.search, setSearchParams])
 
   const setTab = (tab: ProspectsTab) => {
+    rememberProspectsTopTab('follow-up')
     setTopTab('customers')
     setActiveTab(tab)
     setSearchParams((p) => {
@@ -470,6 +483,7 @@ export default function Prospects() {
   }
 
   const openTeamTab = () => {
+    rememberProspectsTopTab('team')
     setTopTab('team')
     setSearchParams((p) => {
       const next = new URLSearchParams(p)

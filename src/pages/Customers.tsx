@@ -8,6 +8,7 @@ import { legacyListOpenBalance, reportBillTruthShadow } from '../lib/billing/bil
 import { fetchAllRowsChunkedIn } from '../lib/supabasePaging'
 import { formatErrorMessage } from '../utils/errorHandling'
 import { useNewCustomerModal } from '../contexts/NewCustomerModalContext'
+import { useAuth } from '../hooks/useAuth'
 import { useEditCustomerModal } from '../contexts/EditCustomerModalContext'
 import { CustomerNotesTable } from '../components/customerNotes/CustomerNotesTable'
 import { isCustomerArchived, partitionCustomersByArchived } from '../lib/customerArchive'
@@ -67,8 +68,29 @@ function signalChipStyle(variant: 'blue' | 'amber' | 'red' | 'gray'): CSSPropert
   }
 }
 
+/**
+ * Roles the `jobs_ledger` / `jobs_ledger_invoices` / `jobs_ledger_payments` SELECT
+ * policies never admit (role arrays: dev, master_technician, assistant, primary; plus
+ * sub / team-lead / own-clock-session branches). An estimator's rollup is therefore an
+ * honest empty read, not "$0 with this customer" — the rail says so instead of
+ * rendering zeros (v2.2910, journey-map J34-adj4; ACCESS_CONTROL → estimator → Customers).
+ */
+function moneyHiddenByRls(role: string | null | undefined): boolean {
+  return role === 'estimator'
+}
+
 /** Money rail (v2.1791): paid · billed · unbilled triplet over a proportion bar. */
-function CustomerMoneyRail({ rollup }: { rollup: CustomerListRollup | undefined }) {
+function CustomerMoneyRail({ rollup, hiddenByRls }: { rollup: CustomerListRollup | undefined; hiddenByRls?: boolean }) {
+  if (hiddenByRls) {
+    return (
+      <span
+        title="Jobs and money are not readable by estimators — the ledger policies stop at the office roles, so this is not a $0 customer."
+        style={{ fontSize: '0.7rem', color: 'var(--text-faint)', whiteSpace: 'nowrap', flexShrink: 0 }}
+      >
+        money not shown for estimators
+      </span>
+    )
+  }
   const paid = rollup?.lifetimePaid ?? 0
   const billed = rollup?.lcv ?? 0
   const unbilled = rollup?.unbilled ?? 0
@@ -176,6 +198,8 @@ function customerTypeTagLabel(c: Customer): string {
 }
 
 export default function Customers() {
+  const { role: authRole } = useAuth()
+  const moneyHidden = moneyHiddenByRls(authRole)
   const location = useLocation()
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
@@ -1161,7 +1185,7 @@ export default function Customers() {
                       >
                         notes{counts.notes > 0 ? ` ${counts.notes}` : ''}
                       </button>
-                      <CustomerMoneyRail rollup={rollup} />
+                      <CustomerMoneyRail rollup={rollup} hiddenByRls={moneyHidden} />
                     </>
                   )
                 })()}
