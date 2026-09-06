@@ -1,7 +1,21 @@
 import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useToastContext } from '../../contexts/ToastContext'
-import { formatHrReportWhen } from '../../lib/people/hrPendingReports'
+import { useAuth } from '../../hooks/useAuth'
+import { recordNavClick } from '../../lib/navClickTelemetry'
+import {
+  AGING_ITEM_OPENED_CONTROL,
+  ageChipStyle,
+  agingItemOpenedTarget,
+  describeAge,
+  HR_PENDING_REPORT_AGE,
+  shouldRecordAgingOpen,
+} from '../../lib/ageState'
+import {
+  formatHrReportWhen,
+  sortPendingReportsOldestFirst,
+  summarizePendingReportAging,
+} from '../../lib/people/hrPendingReports'
 
 /**
  * People → HR → "Pending reports" (v2.2235): the queue of field reports
@@ -13,6 +27,9 @@ import { formatHrReportWhen } from '../../lib/people/hrPendingReports'
  * reporter — then marks the report filed. Dismissing keeps the text and a
  * required reason; nothing is deleted. The whole section hides when the queue
  * is empty, so the tab doesn't carry a permanent empty box.
+ *
+ * Oldest first with an age chip (journey-map #40): the report that has waited
+ * eleven days leads the list and reads red, not gray under this morning's.
  */
 
 export type PendingReport = {
@@ -34,6 +51,7 @@ export function HrPendingReportsSection({
   onFiled: () => void
 }) {
   const { showToast } = useToastContext()
+  const { user: authUser, role } = useAuth()
   const [rows, setRows] = useState<PendingReport[] | null>(null)
   const [busyId, setBusyId] = useState<string | null>(null)
   const [dismissId, setDismissId] = useState<string | null>(null)
@@ -44,12 +62,12 @@ export function HrPendingReportsSection({
       .from('person_reports')
       .select('id, subject_person_id, author_name, occurred_date, content, created_at')
       .eq('status', 'pending')
-      .order('created_at', { ascending: false })
+      .order('created_at', { ascending: true })
     if (error) {
       setRows([])
       return
     }
-    setRows((data ?? []) as PendingReport[])
+    setRows(sortPendingReportsOldestFirst((data ?? []) as PendingReport[]))
   }, [])
 
   useEffect(() => {
@@ -57,6 +75,18 @@ export function HrPendingReportsSection({
   }, [load])
 
   if (rows == null || rows.length === 0) return null
+
+  const aging = summarizePendingReportAging(rows, 0)
+  // Rows are oldest-first, so the head of the list is the oldest report.
+  const oldestAge = describeAge(rows[0]!.created_at, undefined, HR_PENDING_REPORT_AGE)
+
+  function openPerson(r: PendingReport) {
+    const age = describeAge(r.created_at, undefined, HR_PENDING_REPORT_AGE)
+    if (age && shouldRecordAgingOpen(age.state)) {
+      recordNavClick(authUser?.id, role, AGING_ITEM_OPENED_CONTROL, agingItemOpenedTarget('hr-pending-report', age.days, age.state))
+    }
+    onOpenPerson(r.subject_person_id)
+  }
 
   async function file(id: string) {
     setBusyId(id)
@@ -101,16 +131,30 @@ export function HrPendingReportsSection({
         <span style={{ fontSize: '0.7rem', fontWeight: 700, padding: '0.1rem 0.45rem', borderRadius: 999, background: 'var(--bg-subtle)', color: 'var(--text-amber-700)' }}>
           {rows.length} waiting
         </span>
+        {aging && aging.oldestAgeDays > 0 ? (
+          <span style={{ fontSize: '0.72rem', fontWeight: 600, color: ageChipStyle(oldestAge?.state ?? 'fresh').color }}>
+            oldest {aging.oldestAgeDays} {aging.oldestAgeDays === 1 ? 'day' : 'days'}
+          </span>
+        ) : null}
         <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
-          written from the field — filing appends a dated entry on that person’s record
+          written from the field, oldest first — filing appends a dated entry on that person’s record
         </span>
       </div>
 
-      {rows.map((r) => (
-        <div key={r.id} style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '0.65rem 0.75rem', marginBottom: '0.5rem', background: 'var(--surface)' }}>
+      {rows.map((r) => {
+        const age = describeAge(r.created_at, undefined, HR_PENDING_REPORT_AGE)
+        return (
+        <div key={r.id} style={{ border: `1px solid ${age?.state === 'red' ? 'var(--border-red)' : age?.state === 'amber' ? 'var(--border-amber)' : 'var(--border)'}`, borderRadius: 8, padding: '0.65rem 0.75rem', marginBottom: '0.5rem', background: 'var(--surface)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '0.5rem', flexWrap: 'wrap' }}>
             <span style={{ fontWeight: 700, fontSize: '0.9rem' }}>About {nameForPerson(r.subject_person_id)}</span>
-            <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{formatHrReportWhen(r)}</span>
+            <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: '0.4rem', flexWrap: 'wrap' }}>
+              {age ? (
+                <span style={{ fontSize: '0.72rem', fontWeight: 600, padding: '0.08rem 0.45rem', borderRadius: 7, whiteSpace: 'nowrap', ...ageChipStyle(age.state) }}>
+                  {age.label}
+                </span>
+              ) : null}
+              <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{formatHrReportWhen(r)}</span>
+            </span>
           </div>
           <p style={{ fontSize: '0.85rem', color: 'var(--text-700)', margin: '0.45rem 0 0', whiteSpace: 'pre-wrap', borderLeft: '3px solid var(--border)', paddingLeft: '0.65rem' }}>
             {r.content}
@@ -119,7 +163,7 @@ export function HrPendingReportsSection({
             <button type="button" style={btn(true)} disabled={busyId === r.id} onClick={() => void file(r.id)}>
               {busyId === r.id ? 'Filing…' : `File to ${nameForPerson(r.subject_person_id)}’s record`}
             </button>
-            <button type="button" style={btn(false)} onClick={() => onOpenPerson(r.subject_person_id)}>
+            <button type="button" style={btn(false)} onClick={() => openPerson(r)}>
               Open their file
             </button>
             <button type="button" style={btn(false)} onClick={() => { setDismissId(dismissId === r.id ? null : r.id); setReason('') }}>
@@ -141,7 +185,8 @@ export function HrPendingReportsSection({
             </div>
           ) : null}
         </div>
-      ))}
+        )
+      })}
     </div>
   )
 }

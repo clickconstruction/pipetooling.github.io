@@ -47,6 +47,10 @@ A big amber slice is the signal to bill: work is finished but the money hasn't b
 
 Know the job's number? The small **#** chip left of the Pipeline search bar is the fast lane: click it, type a C# or HCP number, press Enter — the board opens the right section and scrolls to the job with a highlight flash. Partial numbers land on the first match. The big search bar stays what it was: the broad filter for names, addresses, and notes.
 
+## How long the field has been waiting
+
+Each row in **Field: Waiting for Approval** shows how long the tech has been waiting on the office since they tapped {{button:blue|Collect Payment}}. Under two days it's a running clock (`1:02:03`); after that it reads in whole days — {{chip:yellow|Waiting 2 days}}, then {{chip:red|Waiting 3 days}} and up — so a stuck approval stands out instead of showing a number like `282:59:39`. The tech's own Collect Payment screen keeps the live clock, because they're standing there watching it.
+
 ## The Dashboard card explains itself
 
 The Dashboard's **Billing Pipeline** card has a round **i** button next to its title — tap it for a compact map of the whole flow: the upstream Waiting/Working stages, the card's three numbered stages, who taps what at each one (including the field crew's — subcontractor, helper, or superintendent — {{button:blue|Collect Payment}} → office {{button:green|Approve}} handshake at stage 1), and where paid jobs go. Its "Full guide in Help" link lands right here.

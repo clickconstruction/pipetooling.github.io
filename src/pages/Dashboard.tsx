@@ -63,6 +63,8 @@ import { useDashboardMyTeamSectionState } from '../hooks/useDashboardMyTeamSecti
 import { useApplyScheduleProportions } from '../hooks/useApplyScheduleProportions'
 import { ApplyScheduleApprovedConfirmModal } from '../components/clock-sessions/ApplyScheduleApprovedConfirmModal'
 import { useDispatchInbox } from '../hooks/useDispatchInbox'
+import { summarizeOpenDispatchAging } from '../lib/dispatchInboxAging'
+import { DISPATCH_REQUESTS_MIN_AGE_DAYS } from '../lib/ageState'
 import { useEstimatorInbox } from '../hooks/useEstimatorInbox'
 import { DispatchDismissedItemsModal } from '../components/DispatchDismissedItemsModal'
 import CreateTripChargeModal, { type CreateTripChargeTarget } from '../components/CreateTripChargeModal'
@@ -558,6 +560,14 @@ export default function Dashboard() {
   // needs fetchDismissedDispatchInboxRows.
   const dispatchInbox = useDispatchInbox()
   const { dispatchInboxEligible, fetchDismissedDispatchInboxRows } = dispatchInbox
+  // Needs You (journey-map #40): open requests past the min age, from the rows the inbox already holds.
+  const dispatchAged = useMemo(
+    () =>
+      dispatchInboxEligible && dispatchInbox.dispatchRequestsLoaded
+        ? summarizeOpenDispatchAging(dispatchInbox.dispatchRequests, DISPATCH_REQUESTS_MIN_AGE_DAYS)
+        : null,
+    [dispatchInboxEligible, dispatchInbox.dispatchRequestsLoaded, dispatchInbox.dispatchRequests],
+  )
   const estimatorInbox = useEstimatorInbox()
   const { estimatorInboxEligible } = estimatorInbox
   const billCustomer = useBillCustomerModal()
@@ -1075,6 +1085,7 @@ export default function Dashboard() {
     billedTotal,
     supplyHousesAPTotal,
     subLaborDueTotal,
+    dispatchAged,
   }
 
   /** Above-the-fold: quick actions and clock first; checklist/assigned use skeletons until data arrives. */

@@ -9,6 +9,16 @@ import {
   getDispatchNoteDisplayMeta,
 } from '../utils/dispatchNoteDisplay'
 import { useNarrowViewport640 } from '../hooks/useNarrowViewport640'
+import { useAuth } from '../hooks/useAuth'
+import { recordNavClick } from '../lib/navClickTelemetry'
+import {
+  AGING_ITEM_OPENED_CONTROL,
+  ageChipStyle,
+  agingItemOpenedTarget,
+  describeAge,
+  DISPATCH_REQUEST_AGE,
+  shouldRecordAgingOpen,
+} from '../lib/ageState'
 
 export type DispatchInboxRow = {
   id: string
@@ -114,6 +124,7 @@ export function DispatchInboxSection({
   onCreateTripCharge,
 }: DispatchInboxSectionProps) {
   const narrow = useNarrowViewport640()
+  const { user: authUser, role } = useAuth()
   const body = (
         <div
           style={
@@ -147,6 +158,21 @@ export function DispatchInboxSection({
                 const noteCount = req.note_count ?? 0
                 const noteCountLabel =
                   noteCount === 0 ? 'No messages' : noteCount === 1 ? '1 message' : `${noteCount} messages`
+                // Age chip on OPEN rows (journey-map #40): fresh / amber / red at
+                // DISPATCH_REQUEST_AGE — 46 days no longer looks like 4. Opening an
+                // aging row records `aging_item_opened` so the backlog stays measurable.
+                const openAge = isClosed ? null : describeAge(req.created_at, undefined, DISPATCH_REQUEST_AGE)
+                const toggleThread = () => {
+                  if (!expanded && openAge && shouldRecordAgingOpen(openAge.state)) {
+                    recordNavClick(
+                      authUser?.id,
+                      role,
+                      AGING_ITEM_OPENED_CONTROL,
+                      agingItemOpenedTarget('dispatch-request', openAge.days, openAge.state),
+                    )
+                  }
+                  onToggleExpandRequest(req.id)
+                }
                 // Narrow closed rows: full-width green bar across the card bottom —
                 // the phone-sized counterpart of the desktop Dismiss rail.
                 const dismissBottomBar = (
@@ -383,12 +409,12 @@ export function DispatchInboxSection({
                         if ((e.target as HTMLElement).closest('a, button, input, textarea, select')) return
                         if (e.key === 'Enter' || e.key === ' ') {
                           e.preventDefault()
-                          onToggleExpandRequest(req.id)
+                          toggleThread()
                         }
                       }}
                       onClick={(e) => {
                         if ((e.target as HTMLElement).closest('a, button, input, textarea, select')) return
-                        onToggleExpandRequest(req.id)
+                        toggleThread()
                       }}
                       style={
                         narrow
@@ -436,7 +462,24 @@ export function DispatchInboxSection({
                           From {fromLabel}
                           {req.created_at ? (
                             <span style={{ marginLeft: '0.5rem' }} title={formatDatetime(req.created_at)}>
-                              · {formatDateShort(req.created_at)} ({formatDispatchNoteDaysAgoShort(req.created_at)})
+                              · {formatDateShort(req.created_at)}
+                              {openAge ? (
+                                <span
+                                  style={{
+                                    marginLeft: '0.35rem',
+                                    fontSize: '0.72rem',
+                                    fontWeight: 600,
+                                    padding: '0.08rem 0.45rem',
+                                    borderRadius: 7,
+                                    whiteSpace: 'nowrap',
+                                    ...ageChipStyle(openAge.state),
+                                  }}
+                                >
+                                  {openAge.label}
+                                </span>
+                              ) : (
+                                <> ({formatDispatchNoteDaysAgoShort(req.created_at)})</>
+                              )}
                             </span>
                           ) : null}
                           <span style={{ marginLeft: '0.5rem' }}>

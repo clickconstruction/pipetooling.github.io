@@ -32,6 +32,16 @@ import { ChecklistItemActivity } from '../components/checklist/ChecklistItemActi
 import { completeChecklistInstance } from '../lib/checklistCompleteInstance'
 import { qualifiesOutstanding, sortOutstanding, weekStartSunday } from '../lib/checklistHistoryLedger'
 import { BOARD_RANGE_LABELS, BOARD_RANGE_ORDER, ageSeverity, initialsFor, oldestAgeDays, type BoardRange } from '../lib/checklistTeamBoard'
+import { recordNavClick } from '../lib/navClickTelemetry'
+import {
+  AGING_ITEM_OPENED_CONTROL,
+  ageStateForDays,
+  agingItemOpenedTarget,
+  compareOldestFirst,
+  ONE_OFF_TASK_AGE,
+  shouldRecordAgingOpen,
+  ymdAgeDays,
+} from '../lib/ageState'
 import { dueChipLabel } from '../lib/checklistDueDates'
 import { pushedChipLabel, summarizeDuePushes, type DueChangeRow } from '../lib/checklistDuePushes'
 import { ChecklistManageTimeline } from '../components/checklist/ChecklistManageTimeline'
@@ -3822,7 +3832,7 @@ type ChecklistItem = {
   checklist_tech_tree_group_tasks?: RoadmapTaskEmbed | null
   checklist_item_assignees?: Array<{ user_id: string; users?: { name?: string; email?: string } | null }>
 }
-function ChecklistManageTab({ authUserId, setError, setEditItemId, onOpenRoadmap }: { authUserId: string | null; role: UserRole | null; setError: (s: string | null) => void; setEditItemId: (id: string) => void; onOpenRoadmap?: (roadmapId: string) => void }) {
+function ChecklistManageTab({ authUserId, role, setError, setEditItemId, onOpenRoadmap }: { authUserId: string | null; role: UserRole | null; setError: (s: string | null) => void; setEditItemId: (id: string) => void; onOpenRoadmap?: (roadmapId: string) => void }) {
   const checklistAddModal = useChecklistAddModal()
   const [items, setItems] = useState<ChecklistItem[]>([])
   const [users, setUsers] = useState<Array<{ id: string; name: string; email: string }>>([])
@@ -3984,7 +3994,17 @@ function ChecklistManageTab({ authUserId, setError, setEditItemId, onOpenRoadmap
   const incompleteItems = filteredItems.filter((i) => !isRepeating(i) && !isItemComplete(i)).sort(byCreatedDesc)
   // Scheduled split (v2.2346): "open" means actionable today — future-dated
   // one-offs park in their own section, soonest start first.
-  const openOneOffs = incompleteItems.filter((i) => !isScheduledAhead(oldestOpenByItem.get(i.id), todayLocalStr))
+  // Open one-offs OLDEST first (journey-map #40 / J30-3): the 128-day task
+  // leads the list instead of sinking under this week's. Oldest open instance
+  // date wins; an item with no instance yet falls back to its created date.
+  const openOneOffs = incompleteItems
+    .filter((i) => !isScheduledAhead(oldestOpenByItem.get(i.id), todayLocalStr))
+    .sort((a, b) =>
+      compareOldestFirst(
+        oldestOpenByItem.get(a.id) ?? a.created_at ?? undefined,
+        oldestOpenByItem.get(b.id) ?? b.created_at ?? undefined,
+      ),
+    )
   const scheduledOneOffs = incompleteItems
     .filter((i) => isScheduledAhead(oldestOpenByItem.get(i.id), todayLocalStr))
     .sort((a, b) => (oldestOpenByItem.get(a.id) ?? '').localeCompare(oldestOpenByItem.get(b.id) ?? ''))
@@ -4007,7 +4027,17 @@ function ChecklistManageTab({ authUserId, setError, setEditItemId, onOpenRoadmap
           : ''
     const menuOpen = openMenuItemId === item.id
     const expanded = expandedItemId === item.id
-    const toggleExpanded = () => setExpandedItemId(expanded ? null : item.id)
+    const toggleExpanded = () => {
+      // Opening an aging one-off records `aging_item_opened` (journey-map #40) — scheduled-ahead rows aren't aging.
+      if (!expanded && showOpenAge && oldestOpen && !isScheduledAhead(oldestOpen, todayLocalStr)) {
+        const days = ymdAgeDays(oldestOpen, todayLocalStr)
+        const state = ageStateForDays(days, ONE_OFF_TASK_AGE)
+        if (days != null && shouldRecordAgingOpen(state)) {
+          recordNavClick(authUserId, role, AGING_ITEM_OPENED_CONTROL, agingItemOpenedTarget('one-off-task', days, state))
+        }
+      }
+      setExpandedItemId(expanded ? null : item.id)
+    }
     return (
       <li key={item.id} style={{ borderBottom: '1px solid var(--border)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', padding: '0.65rem 0.75rem', position: 'relative', background: expanded ? 'var(--bg-muted)' : undefined }}>
@@ -4295,7 +4325,7 @@ function ChecklistManageTab({ authUserId, setError, setEditItemId, onOpenRoadmap
       </div>
       {filteredItems.length > 0 && manageView === 'one_offs' ? (
         <>
-          {librarySection(`ONE-OFFS · ${openOneOffs.length} open`, openOneOffs, true)}
+          {librarySection(`ONE-OFFS · ${openOneOffs.length} open · oldest first`, openOneOffs, true)}
           {scheduledOneOffs.length > 0 ? librarySection(`SCHEDULED · ${scheduledOneOffs.length}`, scheduledOneOffs, true) : null}
         </>
       ) : null}
@@ -4320,7 +4350,7 @@ function ChecklistManageTab({ authUserId, setError, setEditItemId, onOpenRoadmap
         : null}
       {filteredItems.length > 0 && manageView === 'all' ? (
         <>
-          {librarySection(`ONE-OFFS · ${openOneOffs.length} open`, openOneOffs, true)}
+          {librarySection(`ONE-OFFS · ${openOneOffs.length} open · oldest first`, openOneOffs, true)}
           {scheduledOneOffs.length > 0 ? librarySection(`SCHEDULED · ${scheduledOneOffs.length}`, scheduledOneOffs, true) : null}
           {librarySection(`REPEATING · ${repeatingItems.length}`, repeatingItems, false)}
           <div style={{ border: '1px solid var(--border)', borderRadius: 10, marginBottom: '1rem', overflow: 'hidden' }}>

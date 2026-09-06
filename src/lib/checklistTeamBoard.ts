@@ -1,3 +1,4 @@
+import { ageStateForDays, ONE_OFF_TASK_AGE } from './ageState'
 /**
  * Pure helpers for the Review tab's team board (office view): per-person
  * outstanding cards with an oldest-age signal, summary tiles, and the
@@ -44,10 +45,10 @@ export function ageChipLabel(dateStr: string, todayStr: string): string {
  */
 export type AgeSeverity = 'ok' | 'warn' | 'late'
 
+/** Same scale, now read off the shared `ageState` convention (`ONE_OFF_TASK_AGE`, journey-map #40). */
 export function ageSeverity(days: number): AgeSeverity {
-  if (days > 30) return 'late'
-  if (days >= 7) return 'warn'
-  return 'ok'
+  const state = ageStateForDays(days, ONE_OFF_TASK_AGE)
+  return state === 'red' ? 'late' : state === 'amber' ? 'warn' : 'ok'
 }
 
 export type BoardRange = 'next_day' | 'next_week' | 'non_repeating' | 'missed'

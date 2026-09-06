@@ -20,6 +20,7 @@ import type { StepCommitmentRow } from '../lib/workflow/stepCommitments'
 import { sendStepLifecycleNotifications } from '../lib/workflow/stepLifecycleNotifications'
 import { toDatetimeLocal, fromDatetimeLocal } from '../utils/datetimeLocal'
 import { APP_CALENDAR_TZ } from '../utils/dateUtils'
+import { ageChipStyle, dueState, type DueDescription } from '../lib/ageState'
 import type { Database } from '../types/database'
 
 type Step = Database['public']['Tables']['project_workflow_steps']['Row']
@@ -93,6 +94,20 @@ function formatScheduledDateShort(value: string | null | undefined): string {
   const d = new Date(`${ymd}T12:00:00`)
   if (Number.isNaN(d.getTime())) return '\u2014'
   return d.toLocaleDateString(undefined, { month: 'numeric', day: 'numeric', year: '2-digit' })
+}
+
+/**
+ * Planned window vs today for a step still in flight (journey-map #40): red
+ * "N days late" once the expected end has passed, amber "due today" / "start N
+ * days past" for a pending step whose start slipped. Finished steps never age.
+ */
+function expectedDueState(s: { status: string; scheduled_start_date?: string | null; scheduled_end_date?: string | null }): DueDescription | null {
+  if (s.status !== 'pending' && s.status !== 'in_progress') return null
+  const todayYmd = new Date().toLocaleDateString('en-CA', { timeZone: APP_CALENDAR_TZ })
+  return dueState(ymdFromDateLike(s.scheduled_end_date), todayYmd, {
+    startYmd: ymdFromDateLike(s.scheduled_start_date),
+    started: s.status === 'in_progress',
+  })
 }
 
 function ymdAddDays(ymd: string, days: number): string {
@@ -2795,14 +2810,21 @@ export default function Workflow() {
                         const d = s.status === 'in_progress' ? daysOpen(s.started_at, s.ended_at) : daysBetween(s.started_at, s.ended_at)
                         const daysPrefix = d != null ? `[${d === 1 ? '1 day' : `${d} days`}] ` : ''
                         const hasExpected = !!s.scheduled_start_date || !!s.scheduled_end_date
+                        // Expected dates against today (journey-map #40 / J31-5): a window months
+                        // past no longer reads calm blue — red "N days late", amber on the due day.
+                        const due = hasExpected ? expectedDueState(s) : null
+                        const duePillStyle = due && due.state !== 'fresh'
+                          ? { ...pillStyle, ...ageChipStyle(due.state), fontWeight: 600 }
+                          : expectedPillStyle
                         return (
                           <div style={{ flexBasis: '100%', minWidth: 0, marginTop: 4, marginLeft: 20, display: 'flex', gap: '0.35rem', flexWrap: 'wrap', alignItems: 'center', alignSelf: 'flex-start' }}>
                             <span style={pillStyle}>
                               {daysPrefix}{formatDateShort(s.started_at)} → {formatDateShort(s.ended_at)}
                             </span>
                             {hasExpected && (
-                              <span style={expectedPillStyle} title="Expected start → Expected end">
+                              <span style={duePillStyle} title={due?.label ? `Expected start → Expected end · ${due.label}` : 'Expected start → Expected end'}>
                                 Exp: {formatScheduledDateShort(s.scheduled_start_date)} → {formatScheduledDateShort(s.scheduled_end_date)}
+                                {due?.label ? ` · ${due.label}` : null}
                               </span>
                             )}
                             {canManageStages && count > 0 && (
@@ -2912,6 +2934,7 @@ export default function Workflow() {
                       <span>{'\u2014'}</span>
                     )
                   }
+                  const due = startYmd || endYmd ? expectedDueState(s) : null
                   return (
                     <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8, marginBottom: 4, fontSize: '0.75rem', color: 'var(--text-muted)' }}>
                       <span style={{ marginLeft: 'auto' }}>
@@ -2919,6 +2942,11 @@ export default function Workflow() {
                         {' \u00B7 '}
                         End {renderField(endYmd, 'end')}
                         {lengthLabel ? ` · ${lengthLabel}` : null}
+                        {due?.label ? (
+                          <span style={{ marginLeft: 4, fontWeight: 600, color: due.state === 'red' ? 'var(--text-red-700)' : 'var(--text-amber-800)' }}>
+                            · {due.label}
+                          </span>
+                        ) : null}
                       </span>
                     </div>
                   )

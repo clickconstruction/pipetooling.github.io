@@ -59,7 +59,7 @@ describe('summarizeMyDispatchRequest', () => {
 })
 
 describe('splitMyDispatchRequests', () => {
-  it('open newest-first, answered newest-closed-first, cap with a hidden count', () => {
+  it('open OLDEST-first (journey-map #40), answered newest-closed-first, cap with a hidden count', () => {
     const rows = [
       row({ id: 'o-old', created_at: '2026-09-01T15:00:00Z' }),
       row({ id: 'o-new', created_at: '2026-09-05T15:00:00Z' }),
@@ -68,9 +68,21 @@ describe('splitMyDispatchRequests', () => {
       row({ id: 'c3', status: 'closed', closed_at: '2026-09-03T15:00:00Z' }),
     ]
     const split = splitMyDispatchRequests(rows, now, 2)
-    expect(split.open.map((v) => v.id)).toEqual(['o-new', 'o-old'])
+    expect(split.open.map((v) => v.id)).toEqual(['o-old', 'o-new'])
     expect(split.answered.map((v) => v.id)).toEqual(['c2', 'c3'])
     expect(split.answeredHidden).toBe(1)
+  })
+
+  it('open rows carry the shared age state; answered rows are always fresh', () => {
+    const rows = [
+      row({ id: 'fresh', created_at: '2026-09-05T09:00:00Z' }),
+      row({ id: 'amber', created_at: '2026-09-01T09:00:00Z' }),
+      row({ id: 'red', created_at: '2026-07-21T09:00:00Z' }),
+      row({ id: 'done', status: 'closed', created_at: '2026-07-01T09:00:00Z', closed_at: '2026-09-04T09:00:00Z' }),
+    ]
+    const split = splitMyDispatchRequests(rows, now)
+    expect(split.open.map((v) => [v.id, v.age])).toEqual([['red', 'red'], ['amber', 'amber'], ['fresh', 'fresh']])
+    expect(split.answered[0]?.age).toBe('fresh')
   })
 
   it('empty in, empty out', () => {

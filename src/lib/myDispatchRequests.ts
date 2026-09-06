@@ -7,6 +7,7 @@
  * ("No push notifications have been logged").
  */
 import { formatDispatchNoteDaysAgoShortPhrase } from '../utils/dispatchNoteDisplay'
+import { ageState, compareOldestFirst, DISPATCH_REQUEST_AGE, type AgeState } from './ageState'
 
 export type MyDispatchRequestRow = {
   id: string
@@ -27,6 +28,8 @@ export type MyDispatchRequestView = {
   headline: string
   /** The office's closing note, trimmed; null while open or when the closer left none. */
   answer: string | null
+  /** Open rows only (journey-map #40): fresh / amber / red at `DISPATCH_REQUEST_AGE`; answered rows are always fresh. */
+  age: AgeState
 }
 
 /** Answered rows shown before the strip collapses to a count. */
@@ -54,6 +57,7 @@ export function summarizeMyDispatchRequest(row: MyDispatchRequestRow, now: Date 
       title,
       headline: `${MY_DISPATCH_REQUESTS_COPY.answeredPrefix}${by ? ` (${by})` : ''}${age}`,
       answer: row.closed_note?.trim() || null,
+      age: 'fresh',
     }
   }
   const age = row.created_at ? ` · ${formatDispatchNoteDaysAgoShortPhrase(row.created_at, now)}` : ''
@@ -63,11 +67,13 @@ export function summarizeMyDispatchRequest(row: MyDispatchRequestRow, now: Date 
     title,
     headline: `${MY_DISPATCH_REQUESTS_COPY.waitingPrefix}${age}`,
     answer: null,
+    age: ageState(row.created_at, now, DISPATCH_REQUEST_AGE),
   }
 }
 
 /**
- * Open rows newest-first, answered rows newest-closed-first (capped), plus how
+ * Open rows OLDEST-first (journey-map #40 — the request that has waited longest
+ * is the one to chase), answered rows newest-closed-first (capped), plus how
  * many answered rows the cap hid.
  */
 export function splitMyDispatchRequests(
@@ -77,7 +83,7 @@ export function splitMyDispatchRequests(
 ): { open: MyDispatchRequestView[]; answered: MyDispatchRequestView[]; answeredHidden: number } {
   const open = rows
     .filter((r) => r.status === 'open')
-    .sort((a, b) => (b.created_at ?? '').localeCompare(a.created_at ?? ''))
+    .sort((a, b) => compareOldestFirst(a.created_at, b.created_at))
     .map((r) => summarizeMyDispatchRequest(r, now))
   const answeredAll = rows
     .filter((r) => r.status === 'closed')
