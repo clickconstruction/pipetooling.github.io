@@ -18,6 +18,7 @@ const NOW = new Date('2026-08-06T22:00:00Z') // Thu Aug 6, 5 PM Central
 function row(over: Partial<PendingGcStatementSend> = {}): PendingGcStatementSend {
   return {
     id: 'r1',
+    requested_by: 'u-dev',
     sent_to: 'todd@example.com',
     group_by: 'gc',
     gc_customer_id: null,
