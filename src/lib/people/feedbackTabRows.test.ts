@@ -110,9 +110,21 @@ describe('buildFeedbackRows', () => {
     expect(feedbackFilterCounts(rows)).toEqual({ clocks_out: 2, due: 3, words: 1, everyone: 4 })
   })
 
-  it('stats count due people, subjects rated this month, and words this month; due is null when off', () => {
-    expect(feedbackStats(rows, reviews, submissions, '2026-09-01', true)).toEqual({ dueNow: 3, ratedThisMonth: 1, wordsThisMonth: 1 })
-    expect(feedbackStats(rows, reviews, submissions, '2026-09-01', false).dueNow).toBeNull()
+  it('stats count due people, subjects rated this month, words this month, and skipped last deals; due/skipped are null when off', () => {
+    expect(feedbackStats(rows, reviews, submissions, '2026-09-01', true)).toEqual({ dueNow: 3, ratedThisMonth: 1, wordsThisMonth: 1, skippedLately: 0 })
+    const off = feedbackStats(rows, reviews, submissions, '2026-09-01', false)
+    expect(off.dueNow).toBeNull()
+    expect(off.skippedLately).toBeNull()
+  })
+
+  it('skipped last deal (J32-F5): a person whose newest deal was a skip counts; one who answered after skipping does not', () => {
+    const skipStates = new Map([
+      ['grace', state({ user_id: 'grace', last_completed_at: iso(10), last_skipped_at: iso(2) })],
+      ['isiah', state({ user_id: 'isiah', last_skipped_at: iso(1) })],
+      ['bryan', state({ user_id: 'bryan', last_skipped_at: iso(9), last_completed_at: iso(3) })],
+    ])
+    const skipRows = buildFeedbackRows({ users, states: skipStates, settings: settings(true), reviews, submissions, recentJobs, nowMs: NOW })
+    expect(feedbackStats(skipRows, reviews, submissions, '2026-09-01', true).skippedLately).toBe(2)
   })
 
   it('unread words count respects the device read marker and ignores blank submissions', () => {

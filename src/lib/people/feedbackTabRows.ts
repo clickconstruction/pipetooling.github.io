@@ -156,9 +156,19 @@ export function feedbackFilterCounts(rows: FeedbackPersonRow[]): FeedbackFilterC
   }
 }
 
-export type FeedbackStats = { dueNow: number | null; ratedThisMonth: number; wordsThisMonth: number }
+export type FeedbackStats = {
+  dueNow: number | null
+  ratedThisMonth: number
+  wordsThisMonth: number
+  /**
+   * People whose most recent deal was skipped rather than answered (journey-map J32-F5):
+   * a skip re-arms the whole cadence, so an "Enabled" loop can sit silent for months with
+   * nothing on the tab saying why. Null when the feature is off.
+   */
+  skippedLately: number | null
+}
 
-/** The strip's three numbers. `dueNow` is null when the feature is off (nobody is due). */
+/** The strip's four numbers. `dueNow` / `skippedLately` are null when the feature is off (nobody is dealt). */
 export function feedbackStats(rows: FeedbackPersonRow[], reviews: SourcedReviewRow[], submissions: WordsSubmission[], reviewMonth: string, enabled: boolean): FeedbackStats {
   const rated = new Set<string>()
   for (const r of reviews) if (r.source === 'crew' && r.review_month === reviewMonth) rated.add(r.subject_user_id)
@@ -168,6 +178,7 @@ export function feedbackStats(rows: FeedbackPersonRow[], reviews: SourcedReviewR
     dueNow: enabled ? rows.filter((r) => r.deck.kind === 'due').length : null,
     ratedThisMonth: rated.size,
     wordsThisMonth,
+    skippedLately: enabled ? rows.filter((r) => r.deck.kind === 'done' && r.deck.skipped).length : null,
   }
 }
 

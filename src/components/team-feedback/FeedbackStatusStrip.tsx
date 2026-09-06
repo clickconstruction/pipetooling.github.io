@@ -44,6 +44,11 @@ export default function FeedbackStatusStrip({ enabled, saving, cadenceDays, last
         <Stat n={stats.dueNow == null ? '—' : String(stats.dueNow)} label="due now" />
         <Stat n={String(stats.ratedThisMonth)} label="rated this month" />
         <Stat n={String(stats.wordsThisMonth)} label="words this month" />
+        <Stat
+          n={stats.skippedLately == null ? '—' : String(stats.skippedLately)}
+          label="skipped last deal"
+          title={`People whose most recent deal was skipped instead of answered. A skip re-arms the full ${cadenceDays}-day wait, so this is why an "On" deck can go quiet.`}
+        />
       </div>
       <button type="button" onClick={onTryDeck} title="Deal yourself the deck with your real teammates. Nothing is saved." style={primary}>
         Try the deck
@@ -55,9 +60,9 @@ export default function FeedbackStatusStrip({ enabled, saving, cadenceDays, last
   )
 }
 
-function Stat({ n, label }: { n: string; label: string }) {
+function Stat({ n, label, title }: { n: string; label: string; title?: string }) {
   return (
-    <div style={{ background: 'var(--bg-subtle)', border: '1px solid var(--border)', borderRadius: 7, padding: '0.3rem 0.65rem', minWidth: 78 }}>
+    <div title={title} style={{ background: 'var(--bg-subtle)', border: '1px solid var(--border)', borderRadius: 7, padding: '0.3rem 0.65rem', minWidth: 78 }}>
       <div style={{ fontSize: '1.05rem', fontWeight: 800, color: 'var(--text-strong)', fontVariantNumeric: 'tabular-nums', lineHeight: 1.1 }}>{n}</div>
       <div style={{ fontSize: '0.62rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{label}</div>
     </div>
