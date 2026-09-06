@@ -1102,7 +1102,7 @@ export default function Prospects() {
           .from('users')
           .select('id, name, email, role')
           // Same audience as loadProspectTeamActivity: office roles + estimators with Prospects access.
-          .or('role.in.(dev,master_technician,assistant),and(role.eq.estimator,estimator_prospects_access.eq.true)'),
+          .or('role.in.(dev,master_technician,assistant,controller),and(role.eq.estimator,estimator_prospects_access.eq.true)'),
         supabase
           .from('prospect_comments')
           .select('created_by, interaction_type, created_at')

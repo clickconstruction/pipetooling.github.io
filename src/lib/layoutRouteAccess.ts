@@ -20,8 +20,10 @@ export const PRIMARY_PATHS = [
   '/documents',
   '/jobs',
   '/bids',
-  // '/workflows' dropped (v2.2836): the project_workflow_steps SELECT policy has no primary
+  // '/workflows' dropped (v2.2836): the project_workflow_steps SELECT policy had no primary
   // branch, so /workflows/:id was structurally empty for primaries and nothing linked to it.
+  // 20260906010000_role_sweep_predicates (v2.2920) added that branch (adopted/shared project or
+  // step assignee); re-adding the route is a separate nav decision — nothing links to it yet.
   '/calendar',
   '/checklist',
   // Tier-2 #41: primaries are in the roadmap RLS edit set (is_checklist_tech_tree_staff_or_primary).
@@ -68,7 +70,9 @@ function estimatorAllowedPaths(estimatorProspectsAccess: boolean): string[] {
     ...(estimatorProspectsAccess ? ['/prospects'] : []),
     '/calendar',
     '/checklist',
-    '/people',
+    // '/people' dropped (v2.2920, journey map J32-N5): ACCESS_CONTROL's matrix has estimators ❌ on
+    // People, but this list admitted them to a two-tab roster with every address — a door the matrix
+    // never granted. Layout hides the nav entry for the role as well.
     '/settings',
     '/tally',
     '/help',

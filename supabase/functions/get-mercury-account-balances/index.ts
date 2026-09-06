@@ -10,7 +10,9 @@ const corsHeaders = {
 }
 
 // Roles that can view Banking (and therefore the Balance Sheet cash line).
-const ALLOWED_ROLES = new Set(['dev', 'master_technician', 'assistant'])
+// Mirrors public.is_banking_staff() (20260906010000): dev, master_technician, and the
+// assistant-LIKE roles (assistant, controller — is_assistant() since v2.662).
+const ALLOWED_ROLES = new Set(['dev', 'master_technician', 'assistant', 'controller'])
 
 function jsonResponse(body: Record<string, unknown>, status = 200) {
   return new Response(JSON.stringify(body), {

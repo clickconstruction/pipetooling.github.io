@@ -182,11 +182,27 @@ export function computeAuditDraftTotal(
 // primary and superintendent can read audits but every write is denied, and twin
 // accounts are fenced to the API lanes (question/receipt) — so the tab renders
 // view-only for them instead of surfacing raw 42501 errors on Add/Answer/Finish.
-export const AUDIT_WRITE_ROLES = ['dev', 'master_technician', 'assistant', 'controller', 'estimator'] as const
+/**
+ * The robot-audit audience (v2.2920, journey map C24): ONE list owns the Needs-You
+ * card, the Bids 🤖 door and the Audits tab's write controls. It mirrors the
+ * `bid_audits` write policy ("Bid pricing users can write bid_audits",
+ * `20260830230000_bid_audits.sql`) — the roles the DB lets finish an audit. The
+ * SELECT policy is wider (primary, superintendent can read), which is why the
+ * door used to appear for seven roles while the card showed for two and the
+ * verdict controls worked for five; presence now follows the write set.
+ */
+export const ROBOT_AUDIT_ROLES = ['dev', 'master_technician', 'assistant', 'controller', 'estimator'] as const
+/** @deprecated alias — the write set and the audience are the same list. */
+export const AUDIT_WRITE_ROLES = ROBOT_AUDIT_ROLES
+
+/** Card + door gate: is this role in the robot-audit audience (the bid_audits write set)? */
+export function canWorkRobotAudits(role: string | null | undefined): boolean {
+  return (ROBOT_AUDIT_ROLES as readonly string[]).includes(role ?? '')
+}
 
 export function canWriteBidAudit(role: string | null | undefined, isDigitalTwin = false): boolean {
   if (isDigitalTwin) return false
-  return (AUDIT_WRITE_ROLES as readonly string[]).includes(role ?? '')
+  return canWorkRobotAudits(role)
 }
 
 // "requested Aug 30, 2:14 PM · 19h ago" — the Audits tab stamp (v2.2533). Relative part

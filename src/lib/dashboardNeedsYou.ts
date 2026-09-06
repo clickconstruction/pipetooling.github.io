@@ -256,7 +256,8 @@ export type NeedsYouInputs = {
    * Robot bids awaiting a human audit (v2.2573) — the twin program's
    * bottleneck. The count comes from useBidAuditsPendingCount, which already
    * holds back sealed shadows (their reference bid hasn't gone out, so the
-   * audit isn't workable yet). Enabled for the auditing roles only.
+   * audit isn't workable yet). Enabled for the auditing roles only —
+   * `canWorkRobotAudits(role)`, the bid_audits write set (v2.2920).
    */
   robotAuditsEnabled: boolean
   /** Division 22 (v2.2627): dev + estimator only — the ledger-teaching roles. */

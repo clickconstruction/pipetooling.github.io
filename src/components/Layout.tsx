@@ -661,7 +661,6 @@ export default function Layout() {
             <NavLink to="/prospects" style={linkStyle} onClick={onNavClick}>Prospects</NavLink>
           )}
           {onNavClick ? <NavLink to="/checklist" style={linkStyle} onClick={onNavClick}>Checklist</NavLink> : null}
-          {onNavClick ? <NavLink to="/people" style={linkStyle} onClick={onNavClick}>People</NavLink> : null}
         </>
       )
     }
@@ -1214,7 +1213,7 @@ export default function Layout() {
                   <CustomerContactCardIcon size={20} />
                 </NavLink>
               )}
-              {!(role === 'estimator' && isMobile) && (
+              {role !== 'estimator' && (
               <NavLink
               to="/people"
               style={({ isActive }) => ({

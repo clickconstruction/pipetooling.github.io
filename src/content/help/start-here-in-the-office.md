@@ -41,4 +41,4 @@ Open a link to a page your role can't use — the owner's Crew P&L, the controll
 
 ## Controller-only
 
-Payroll, wage detail, and money visibility that assistants don't have. Everything else on this page is shared.
+Payroll, wage detail, and money visibility that assistants don't have. Everything else on this page is shared — including **Banking** (User Sort, Drag Sort, Accounting, Card Review, Category Review, Reconciliation) and the tabbed **Job window**: a controller sees the same queues, can split and label the same transactions, and opens the same {{chip:blue|Job · Edit · Bill}} window an assistant does. If a Banking queue looks empty or a split is refused for a controller, that is a bug, not a permission.

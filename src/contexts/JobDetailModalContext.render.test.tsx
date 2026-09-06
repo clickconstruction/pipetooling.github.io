@@ -6,6 +6,8 @@
  * pane for everyone else. Before this branch, superintendent / estimator /
  * controller got the window, whose embedded edit form fetched null and closed
  * the whole thing ~1 s later — every desktop door to a job was dead for them.
+ * Controller moved back to the window in v2.2920 once the jobs_ledger-family
+ * policies admitted it (20260906010000_role_sweep_predicates).
  * What matters here: the read-only roles get a dialog with NO tab strip and no
  * "Job not found" toast, and the window roles still get the tabs.
  */
@@ -37,7 +39,7 @@ const windowJob = makeJob({ id: 'job-1', hcp_number: '9001', job_name: 'Kitchen 
 // The full-ledger fetch: resolves for the window roles (RLS would admit them);
 // returns null for everyone else — exactly what prod RLS does, and what made the
 // embedded edit form toast + close the window.
-const fullFetch = vi.fn(async () => (mockRole === 'dev' ? windowJob : null))
+const fullFetch = vi.fn(async () => (mockRole === 'dev' || mockRole === 'controller' ? windowJob : null))
 vi.mock('../lib/fetchJobWithDetailsById', () => ({
   fetchJobWithDetailsById: () => fullFetch(),
 }))
@@ -113,8 +115,8 @@ describe('JobDetailModalProvider role branch', () => {
     expect(recordNavClick).toHaveBeenCalledWith(expect.any(String), 'superintendent', 'job_window_opened', '#read-only')
   })
 
-  it('estimator and controller take the same read-only branch', async () => {
-    for (const role of ['estimator', 'controller']) {
+  it('estimator takes the same read-only branch', async () => {
+    for (const role of ['estimator']) {
       const view = renderTree(role)
       fireEvent.click(screen.getByRole('button', { name: 'open job' }))
       await screen.findByRole('dialog')
@@ -123,6 +125,14 @@ describe('JobDetailModalProvider role branch', () => {
       expect(recordNavClick).toHaveBeenCalledWith(expect.any(String), role, 'job_window_opened', '#read-only')
       view.unmount()
     }
+  })
+
+  it('controller: gets the tabbed Job window now that the jobs_ledger policies admit it (v2.2920)', async () => {
+    renderTree('controller')
+    fireEvent.click(screen.getByRole('button', { name: 'open job' }))
+    await waitFor(() => expect(screen.getByRole('tab', { name: 'Edit' })).toBeTruthy())
+    expect(screen.getByRole('tab', { name: 'Bill' })).toBeTruthy()
+    expect(recordNavClick).toHaveBeenCalledWith(expect.any(String), 'controller', 'job_window_opened', '#window')
   })
 
   it('dev: still gets the tabbed Job window', async () => {

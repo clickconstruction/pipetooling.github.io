@@ -54,6 +54,7 @@ import { BidsRobotShadowsTab } from '../components/bids/BidsRobotShadowsTab'
 import { BidsRobotScoreboardTab } from '../components/bids/BidsRobotScoreboardTab'
 import { buildRobotQueue } from '../lib/bids/robotQueue'
 import { useBidAuditsPendingCount } from '../hooks/useBidAuditsPendingCount'
+import { canWorkRobotAudits } from '../lib/bids/bidAudits'
 import { BidSubmissionFollowupTab } from '../components/bids/BidSubmissionFollowupTab'
 import { BidsBidCostsTab } from '../components/bids/BidsBidCostsTab'
 import { BidsCountsTab } from '../components/bids/BidsCountsTab'
@@ -519,7 +520,9 @@ export default function Bids() {
   }, [authUser?.id, showToast])
   // Audits tab gating (v2.2517): tab shows whenever audits exist; label carries the
   // pending count so a waiting robot bid is visible from anywhere on the Bids page.
-  const auditGate = useBidAuditsPendingCount(!!authUser?.id)
+  // Presence follows the robot-audit audience (v2.2920): the bid_audits write set,
+  // the same list the Needs-You card reads — not "whoever RLS lets SELECT".
+  const auditGate = useBidAuditsPendingCount(!!authUser?.id && canWorkRobotAudits(myRole))
   const [lostSummaryModalOpen, setLostSummaryModalOpen] = useState(false)
   const [lostSummaryInitialStaffTab, setLostSummaryInitialStaffTab] = useState<string | null>(null)
   const [bidBoardDeepLinkHighlightId, setBidBoardDeepLinkHighlightId] = useState<string | null>(null)

@@ -33,8 +33,8 @@ describe('filterPinnedByRole (v2.2325: driven by the layoutRouteAccess allowlist
     expect(filterPinnedByRole(pins, 'primary').map((p) => p.path)).toEqual(['/jobs', '/tally'])
   })
 
-  it('lets estimators keep /people pins', () => {
-    expect(filterPinnedByRole(pins, 'estimator').map((p) => p.path)).toEqual(['/people', '/tally'])
+  it('drops /people pins for estimators (v2.2920: the route left estimatorAllowedPaths — the matrix always said ❌)', () => {
+    expect(filterPinnedByRole(pins, 'estimator').map((p) => p.path)).toEqual(['/tally'])
   })
 
   it('treats null role as primary (prevents flash before role loads)', () => {
