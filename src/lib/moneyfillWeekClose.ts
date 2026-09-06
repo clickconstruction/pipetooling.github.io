@@ -17,7 +17,6 @@
  */
 import { supabase } from './supabase'
 import { chicagoYmdOf } from './gcStatementStandingCopies'
-import { mondayOfWeekYmd } from './jobs/stagesWeeklyMovement'
 import { addDaysYmd } from './emailSchedule/emailScheduleWeek'
 import { parseNoncardAttributionQueueRows, type NoncardAttributionQueueRow } from './banking/noncardAttributionQueue'
 import { mercuryDebitCardIdFromRaw } from './mercuryRawDebitCard'
@@ -37,6 +36,7 @@ import { fetchAllRows } from './supabasePaging'
 import { fetchJobAllocationsByMercuryTxIds } from './fetchMercuryRelationsByTxIds'
 import { buildWeeklyMoneyRow, type WeeklyMoneyPayload, type WeeklyMoneyJobRow } from './jobs/weeklyMoneyMovement'
 import { payWeekForCloseWeek, type PayWeek } from './payWeekAnchor'
+import { previousCompleteCloseWeekMonday } from './closeWeekAnchor'
 
 export type MoneyfillQueueKey =
   | 'bank-transfers'
@@ -72,9 +72,43 @@ export const MONEYFILL_QUEUE_LABELS: Record<MoneyfillQueueKey, string> = {
   'sub-sheets': 'Sub sheets',
 }
 
-/** Monday (YYYY-MM-DD, Central calendar) of the previous complete week. */
+/**
+ * Monday (YYYY-MM-DD, Central calendar) of the previous complete week — the
+ * close-week anchor (`closeWeekAnchor.ts`, Tier-2 #18). One implementation:
+ * Moneyfill's picker and the Weekly Money Movement report both open here.
+ */
 export function previousCompleteWeekMonday(now: Date = new Date()): string {
-  return addDaysYmd(mondayOfWeekYmd(chicagoYmdOf(now)), -7)
+  return previousCompleteCloseWeekMonday(now)
+}
+
+/**
+ * The bank-transfers queue is the one Moneyfill section whose LIST is not
+ * week-scoped: the RPC returns every unlabeled transfer and the section shows
+ * the last 90 days, while the header chip (and the report's confidence footer,
+ * the chip's consumers) count only transfers posted in the close week. Both
+ * are right; before this line they read as a contradiction (~$12k vs ~$177k).
+ * Null when there is nothing to reconcile (no rows in the window).
+ */
+export function noncardScopeNote(
+  weekChip: MoneyfillQueueCount,
+  windowDays: number,
+  windowCount: number,
+  windowDollars: number,
+  weekLabelText: string,
+): string | null {
+  if (windowCount <= 0 && (weekChip.count ?? 0) <= 0) return null
+  const money = (n: number) => `$${Math.abs(n).toLocaleString('en-US', { maximumFractionDigits: 0 })}`
+  const weekPart =
+    weekChip.count == null
+      ? `The Bank transfers chip above counts only the week of ${weekLabelText}.`
+      : weekChip.count === 0
+        ? `The Bank transfers chip above counts only the week of ${weekLabelText}: nothing posted that week is unlabeled.`
+        : `The Bank transfers chip above counts only the week of ${weekLabelText}: ${weekChip.count} transfer${weekChip.count === 1 ? '' : 's'} · ${money(weekChip.dollars ?? 0)}.`
+  const listPart =
+    windowCount > 0
+      ? ` This list is everything still unlabeled from the last ${windowDays} days (${windowCount} · ${money(windowDollars)}) — older transfers belong to earlier weeks' closes.`
+      : ` This list covers the last ${windowDays} days.`
+  return weekPart + listPart
 }
 
 /** "Aug 3 – 9" style label reused from the sibling reports would need the

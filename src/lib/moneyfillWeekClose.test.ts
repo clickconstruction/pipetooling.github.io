@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   buildWeekCloseConfidenceLine,
   filterNoncardRowsToWeek,
+  noncardScopeNote,
   noncardWeekQueueCount,
   previousCompleteWeekMonday,
   summarizeWeekClose,
@@ -145,5 +146,25 @@ describe('card charges queue', () => {
       expect(cardChargeSortHref(undefined)).toBe('/banking?tab=sorting')
       expect(cardChargeSortHref('   ')).toBe('/banking?tab=sorting')
     })
+  })
+})
+
+describe('noncardScopeNote — the 90-day list and the week chip, reconciled on the surface', () => {
+  const chip = (count: number | null, dollars: number | null): MoneyfillQueueCount => ({ key: 'bank-transfers', label: 'Bank transfers', count, dollars })
+
+  it('names both scopes with both numbers', () => {
+    expect(noncardScopeNote(chip(2, -11_980), 90, 31, -177_000, 'Aug 24 – 30')).toBe(
+      'The Bank transfers chip above counts only the week of Aug 24 – 30: 2 transfers · $11,980. This list is everything still unlabeled from the last 90 days (31 · $177,000) — older transfers belong to earlier weeks\' closes.',
+    )
+  })
+
+  it('says the week is clean when the chip is zero but the list is not', () => {
+    expect(noncardScopeNote(chip(0, 0), 90, 5, -900, 'Aug 24 – 30')).toContain('nothing posted that week is unlabeled')
+    expect(noncardScopeNote(chip(1, -50), 90, 1, -50, 'Aug 24 – 30')).toContain('1 transfer ·')
+  })
+
+  it('still explains the chip when its count could not load; null when there is nothing at all', () => {
+    expect(noncardScopeNote(chip(null, null), 90, 3, -100, 'Aug 24 – 30')).toMatch(/^The Bank transfers chip above counts only the week of Aug 24 – 30\. This list/)
+    expect(noncardScopeNote(chip(0, 0), 90, 0, 0, 'Aug 24 – 30')).toBeNull()
   })
 })

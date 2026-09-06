@@ -9,7 +9,16 @@ import { quickfillFreshnessSummary } from '../lib/quickfill/freshnessSummary'
 import { defaultQuickfillSectionBanner } from '../lib/quickfill/sectionBanners'
 import { quickfillStationTelemetryTarget, resolveQuickfillStation } from '../lib/quickfill/stationDeepLink'
 import { recordNavClick } from '../lib/navClickTelemetry'
-import { useLocation, useNavigate } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { fetchWeekCloseCounts, type MoneyfillQueueCount } from '../lib/moneyfillWeekClose'
+import { previousCompleteCloseWeekMonday } from '../lib/closeWeekAnchor'
+import {
+  WEEK_CLOSE_OPENED_CONTROL,
+  canOpenMoneyfill,
+  closeWeekChipModel,
+  weekCloseOpenedTarget,
+  type CloseWeekChipModel,
+} from '../lib/quickfill/closeWeekChip'
 import DashboardTallyStaleStaffBanner from '../components/DashboardTallyStaleStaffBanner'
 import { DashboardStaleTallyStaffFollowUpModal } from '../components/DashboardStaleTallyStaffFollowUpModal'
 import DashboardLostBidsMissingReasonBanner from '../components/DashboardLostBidsMissingReasonBanner'
@@ -468,6 +477,31 @@ function QuickfillPage() {
   } = useStaleTallyStaffFollowUp(TALLY_STALE_MIN_AGE_DAYS)
   const [warningsModalOpen, setWarningsModalOpen] = useState(false)
   const [sectionMarks, setSectionMarks] = useState<Record<string, { marked_at: string; marked_by?: string; marked_by_name?: string | null }>>({})
+  // "Close week: $N open" chip on the money stations (journey-map Tier-2 #18).
+  // Reads the SAME counts Moneyfill's header and the report's confidence footer
+  // use, for the previous complete Mon–Sun close week — no second mark system.
+  // Only the roles Moneyfill admits fetch; every other viewer gets the model's
+  // inert line (never a link into a page that would redirect them).
+  const closeWeekMonday = useMemo(() => previousCompleteCloseWeekMonday(), [])
+  const [closeWeekCounts, setCloseWeekCounts] = useState<MoneyfillQueueCount[] | null>(null)
+  useEffect(() => {
+    if (!canOpenMoneyfill(role)) return
+    let cancelled = false
+    fetchWeekCloseCounts(closeWeekMonday, authUser?.id ?? undefined)
+      .then((c) => {
+        if (!cancelled) setCloseWeekCounts(c)
+      })
+      .catch(() => {
+        /* each queue is already fail-soft; the chip stays "…" */
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [role, authUser?.id, closeWeekMonday])
+  const closeWeekFor = (sectionId: string): CloseWeekChipModel | null =>
+    closeWeekChipModel(sectionId, closeWeekCounts, closeWeekMonday, role)
+  const onCloseWeekOpen = (sectionId: string) =>
+    recordNavClick(authUser?.id, role, WEEK_CLOSE_OPENED_CONTROL, weekCloseOpenedTarget('station-chip', closeWeekMonday, sectionId))
   const [forceExpandedSections, setForceExpandedSections] = useState<Set<string>>(new Set(['cant-reach']))
   /** app_settings layout read has landed — station deep links wait for it so an org-hidden section reads as hidden, not missing. */
   const [layoutSettingsLoaded, setLayoutSettingsLoaded] = useState(false)
@@ -1031,6 +1065,8 @@ function QuickfillPage() {
             color={getButtonColor(sectionMarks['people-hours-new']?.marked_at ?? null)}
             collapsed={isCollapsed('people-hours-new') && !forceExpandedSections.has('people-hours-new')}
             mark={sectionMarks['people-hours-new']}
+            closeWeek={closeWeekFor('people-hours-new')}
+            onCloseWeekOpen={() => onCloseWeekOpen('people-hours-new')}
             onMarkUpToDate={() => markSectionUpToDate('people-hours-new')}
             onOpenNow={() => openSectionNow('people-hours-new')}
             onOpenHistory={() => setMarkHistoryModal({ sectionId: 'people-hours-new', label: 'People Hours' })}
@@ -1052,6 +1088,8 @@ function QuickfillPage() {
               !forceExpandedSections.has('unassigned-field-time')
             }
             mark={sectionMarks['unassigned-field-time']}
+            closeWeek={closeWeekFor('unassigned-field-time')}
+            onCloseWeekOpen={() => onCloseWeekOpen('unassigned-field-time')}
             onMarkUpToDate={() => markSectionUpToDate('unassigned-field-time')}
             onOpenNow={() => openSectionNow('unassigned-field-time')}
             onOpenHistory={() =>
@@ -1133,6 +1171,8 @@ function QuickfillPage() {
             color={getButtonColor(sectionMarks['banking-sorting']?.marked_at ?? null)}
             collapsed={isCollapsed('banking-sorting') && !forceExpandedSections.has('banking-sorting')}
             mark={sectionMarks['banking-sorting']}
+            closeWeek={closeWeekFor('banking-sorting')}
+            onCloseWeekOpen={() => onCloseWeekOpen('banking-sorting')}
             onMarkUpToDate={() => markSectionUpToDate('banking-sorting')}
             onOpenNow={() => openSectionNow('banking-sorting')}
             onOpenHistory={() => setMarkHistoryModal({ sectionId: 'banking-sorting', label: 'Banking sorting' })}
@@ -1338,6 +1378,8 @@ function QuickfillPage() {
             color={getButtonColor(sectionMarks['supply-houses']?.marked_at ?? null)}
             collapsed={isCollapsed('supply-houses') && !forceExpandedSections.has('supply-houses')}
             mark={sectionMarks['supply-houses']}
+            closeWeek={closeWeekFor('supply-houses')}
+            onCloseWeekOpen={() => onCloseWeekOpen('supply-houses')}
             onMarkUpToDate={() => markSectionUpToDate('supply-houses')}
             onOpenNow={() => openSectionNow('supply-houses')}
             onOpenHistory={() => setMarkHistoryModal({ sectionId: 'supply-houses', label: 'Supply Houses' })}
@@ -1942,6 +1984,52 @@ function QuickfillSectionHistoryIcon() {
   )
 }
 
+/**
+ * The close's number ON the station (Tier-2 #18). A green daily mark says
+ * "checked today"; this chip says what the week still owes, from the same
+ * counts Moneyfill shows — so a marked-green Supply Houses with two uncovered
+ * invoices for the close week no longer reads as "reviewed and done".
+ * Non-money roles get the inert line; dev/controller get a link into
+ * Moneyfill pinned to the week the chip quotes.
+ */
+function CloseWeekChip({ model, onOpen }: { model: CloseWeekChipModel | null | undefined; onOpen?: () => void }) {
+  if (!model) return null
+  const base: CSSProperties = {
+    fontSize: '0.75rem',
+    fontWeight: 600,
+    whiteSpace: 'nowrap',
+    padding: '0.1rem 0.55rem',
+    borderRadius: 999,
+    border: '1px solid var(--border)',
+    lineHeight: 1.5,
+    flexShrink: 0,
+  }
+  if (model.kind === 'inert') {
+    return (
+      <span title={model.title} style={{ ...base, fontWeight: 500, color: 'var(--text-muted)', background: 'var(--bg-subtle)' }}>
+        {model.text}
+      </span>
+    )
+  }
+  const tone: CSSProperties =
+    model.kind === 'open'
+      ? { color: 'var(--text-amber-700)', background: 'var(--bg-amber-tint)', border: '1px solid var(--border-amber)' }
+      : model.kind === 'clear'
+        ? { color: 'var(--text-green-800)', background: 'var(--bg-green-tint)', border: '1px solid var(--border-green)' }
+        : { color: 'var(--text-muted)', background: 'var(--bg-subtle)' }
+  return (
+    <Link
+      to={model.href}
+      onClick={onOpen}
+      title={model.title}
+      aria-label={`${model.text} — open Moneyfill on this week`}
+      style={{ ...base, ...tone, textDecoration: 'none' }}
+    >
+      {model.text}
+    </Link>
+  )
+}
+
 function QuickfillSectionWrapper({
   id,
   sectionId,
@@ -1955,6 +2043,8 @@ function QuickfillSectionWrapper({
   showOutstandingInHeader = true,
   showMarkHistoryButton = true,
   showLastMarked = true,
+  closeWeek = null,
+  onCloseWeekOpen,
   onMarkUpToDate,
   onOpenNow,
   onOpenHistory,
@@ -1976,6 +2066,10 @@ function QuickfillSectionWrapper({
   showMarkHistoryButton?: boolean
   /** When false, omit the "Last marked:" header stamp (per-user sections are never marked). */
   showLastMarked?: boolean
+  /** Close-week chip model for the money stations (Tier-2 #18); null/undefined = no chip. */
+  closeWeek?: CloseWeekChipModel | null
+  /** Telemetry hook for a live chip click (`week_close_opened`). */
+  onCloseWeekOpen?: () => void
   onMarkUpToDate: () => void
   onOpenNow: () => void
   onOpenHistory: () => void
@@ -2057,6 +2151,7 @@ function QuickfillSectionWrapper({
             {mark?.marked_by_name ? ` by ${mark.marked_by_name}` : ''} · Reloads in{' '}
             {mark ? `${hoursUntilExpand(mark.marked_at)}h` : '12h'}
           </span>
+          <CloseWeekChip model={closeWeek} onOpen={onCloseWeekOpen} />
           <span style={{ flex: 1 }} />
           {showMarkHistoryButton ? (
             <button
@@ -2153,6 +2248,7 @@ function QuickfillSectionWrapper({
             Last marked: {formatHeaderLastMarked(mark?.marked_at ?? null)}
           </span>
         ) : null}
+        <CloseWeekChip model={closeWeek} onOpen={onCloseWeekOpen} />
         {/* Header mark (v2.2184): the same action as the big button at the foot, reachable
             without scrolling a long section. Sections that ask for a note first
             (Texts / Email / Physical) keep their own button only. */}
@@ -2214,8 +2310,11 @@ function QuickfillSectionWrapper({
             gap: '1rem',
           }}
         >
-          <span>
-            Marked at {mark ? formatTime(mark.marked_at) : ''}{mark?.marked_by_name ? ` by ${mark.marked_by_name}` : ''}. Reloads in {mark ? `${hoursUntilExpand(mark.marked_at)}h` : '12h'}.
+          <span style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.4rem 0.6rem' }}>
+            <span>
+              Marked at {mark ? formatTime(mark.marked_at) : ''}{mark?.marked_by_name ? ` by ${mark.marked_by_name}` : ''}. Reloads in {mark ? `${hoursUntilExpand(mark.marked_at)}h` : '12h'}.
+            </span>
+            <CloseWeekChip model={closeWeek} onOpen={onCloseWeekOpen} />
           </span>
           <button
             type="button"

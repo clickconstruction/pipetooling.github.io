@@ -11,6 +11,8 @@ Money goes out into jobs all week — team labor, sub sheets, materials — and 
 
 On **Jobs → Pipeline**, open the hamburger menu at the left of the stage strip — the **Pipeline** group holds {{button:outline|Weekly money movement}} (visible to devs and controllers only).
 
+The report opens on the **close week** — the previous complete Monday–Sunday week, the same week Moneyfill's picker shows — and the header says so (*Week of Aug 24 – 30 · close week*). Use ‹ › to move; stepping into the week still in progress shows *still running*, because its close can't be final yet. Moneyfill's {{button:outline|See the week's report}} opens the report pinned to whichever week you were closing.
+
 ## The two lenses
 
 - **Earned** — did the work performed this week cover its cost? Each job's **Value created** is its % done movement for the week × the job total; the net is value created minus money out.
