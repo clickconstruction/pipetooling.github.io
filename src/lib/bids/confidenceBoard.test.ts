@@ -85,6 +85,60 @@ describe('buildAxisCards', () => {
     const cards = buildAxisCards([], [shadow({ axis: 'vet/medical', shadow_bid_number: '419' })])
     expect(cards[0]!.chip).toEqual({ text: 'AWAITING SCORE', tone: 'awaiting' })
   })
+
+  it('counts zero holdout runs when no holdout set is given — current gate semantics untouched', () => {
+    const cards = buildAxisCards(
+      [score({ run_label: 'BT-12', delta_pct: -2.6, reference_bid_number: 'b67' })],
+      [],
+    )
+    const card = cards[0]!
+    expect(card.holdoutRuns).toBe(0)
+    expect(card.practiceRuns).toBe(1)
+    expect(card.streakHoldoutRuns).toBe(0)
+    expect(card.chip).toEqual({ text: 'GATE B · 1/5', tone: 'progress' }) // unchanged
+  })
+
+  it('splits holdout vs practice runs by reference number (b-prefix insensitive), from scores and shadows', () => {
+    const cards = buildAxisCards(
+      [
+        score({ run_label: 'BT-1', delta_pct: -2, reference_bid_number: 'B301', scored_at: '2026-08-30T00:00:00Z' }),
+        score({ run_label: 'BT-2', delta_pct: 3, reference_bid_number: '302', scored_at: '2026-08-31T00:00:00Z' }),
+      ],
+      [
+        shadow({
+          shadow_bid_number: '423',
+          reference_bid_number: '303',
+          status: 'scored',
+          delta_pct: 1,
+          scored_at: '2026-09-01T00:00:00Z',
+        }),
+      ],
+      { holdoutReferenceNumbers: new Set(['301', '303']) },
+    )
+    const card = cards[0]!
+    expect(card.scoredCount).toBe(3)
+    expect(card.holdoutRuns).toBe(2) // BT-1 (b-prefixed) + the scored shadow
+    expect(card.practiceRuns).toBe(1)
+    expect(card.streak).toBe(3)
+    expect(card.streakHoldoutRuns).toBe(2)
+  })
+
+  it('counts holdout runs only inside the current streak for streakHoldoutRuns', () => {
+    const cards = buildAxisCards(
+      [
+        // holdout run, then an out-of-band miss breaks the streak, then a practice run
+        score({ run_label: 'BT-1', delta_pct: -2, reference_bid_number: '301', scored_at: '2026-08-29T00:00:00Z' }),
+        score({ run_label: 'BT-2', delta_pct: 20, reference_bid_number: '302', scored_at: '2026-08-30T00:00:00Z' }),
+        score({ run_label: 'BT-3', delta_pct: 1, reference_bid_number: '303', scored_at: '2026-08-31T00:00:00Z' }),
+      ],
+      [],
+      { holdoutReferenceNumbers: new Set(['301']) },
+    )
+    const card = cards[0]!
+    expect(card.holdoutRuns).toBe(1) // still counted overall
+    expect(card.streak).toBe(1) // only BT-3 survives the miss
+    expect(card.streakHoldoutRuns).toBe(0) // the streak holds no holdout evidence
+  })
 })
 
 describe('buildLedger', () => {

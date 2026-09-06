@@ -28,6 +28,13 @@ export interface RunScoreRow {
 export const GATE_B_PCT = 8
 export const GATE_B_STREAK = 5
 
+/** 'B376' / 'b376' / 376 → '376', for matching bids against run-table reference numbers. */
+export function normalizeBidNumber(n: number | string | null | undefined): string | null {
+  if (n == null) return null
+  const s = String(n).trim().replace(/^[bB]/, '')
+  return s.length > 0 ? s : null
+}
+
 export interface GateSlot {
   state: 'in' | 'out' | 'pending'
   /** Short label shown inside the slot: a delta ("−2.6") or a bid ("b423"). */
@@ -42,6 +49,16 @@ export interface AxisCard {
   scoredCount: number
   streak: number
   nextLine: string
+  /**
+   * Holdout awareness (v2.2942, LEARNING_PLAN lever 3): how many of this
+   * axis's scored gate entries ran against a holdout reference vs a practice
+   * one, plus how many of the CURRENT streak's runs are holdout. Counts only —
+   * the gate itself still takes every eligible run; restricting denominators
+   * to holdout runs is a future owner decision.
+   */
+  holdoutRuns: number
+  practiceRuns: number
+  streakHoldoutRuns: number
 }
 
 export interface LedgerRow {
@@ -61,16 +78,31 @@ export interface LedgerRow {
 const fmtDelta = (d: number) => `${d > 0 ? '+' : '−'}${Math.abs(d).toFixed(1)}`
 
 /** Scored, gate-eligible entries for an axis, oldest → newest. */
-function scoredEntries(scores: readonly RunScoreRow[], shadows: readonly ShadowRunRow[], axis: string) {
+function scoredEntries(
+  scores: readonly RunScoreRow[],
+  shadows: readonly ShadowRunRow[],
+  axis: string,
+  holdoutRefs: ReadonlySet<string>,
+) {
+  const isHoldout = (ref: string | null | undefined) => {
+    const n = normalizeBidNumber(ref)
+    return n != null && holdoutRefs.has(n)
+  }
   const fromScores = scores
     .filter((s) => s.gate_eligible && (s.axis ?? '') === axis && s.delta_pct != null)
-    .map((s) => ({ delta: Number(s.delta_pct), label: s.run_label, at: s.scored_at ?? '' }))
+    .map((s) => ({
+      delta: Number(s.delta_pct),
+      label: s.run_label,
+      at: s.scored_at ?? '',
+      holdout: isHoldout(s.reference_bid_number),
+    }))
   const fromShadows = shadows
     .filter((r) => r.status === 'scored' && (r.axis ?? '') === axis && r.delta_pct != null)
     .map((r) => ({
       delta: Number(r.delta_pct),
       label: r.shadow_bid_number ? `b${r.shadow_bid_number}` : 'shadow',
       at: r.scored_at ?? '',
+      holdout: isHoldout(r.reference_bid_number),
     }))
   return [...fromScores, ...fromShadows].sort((a, b) => a.at.localeCompare(b.at))
 }
@@ -89,14 +121,19 @@ function pendingEntries(shadows: readonly ShadowRunRow[], axis: string) {
 export function buildAxisCards(
   scores: readonly RunScoreRow[],
   shadows: readonly ShadowRunRow[],
+  opts?: {
+    /** Normalized bid numbers (see normalizeBidNumber) of holdout references. */
+    holdoutReferenceNumbers?: ReadonlySet<string>
+  },
 ): AxisCard[] {
+  const holdoutRefs = opts?.holdoutReferenceNumbers ?? new Set<string>()
   const axes = new Set<string>()
   for (const s of scores) if (s.axis) axes.add(s.axis)
   for (const r of shadows) if (r.axis) axes.add(r.axis)
 
   const cards: AxisCard[] = []
   for (const axis of [...axes].sort()) {
-    const scored = scoredEntries(scores, shadows, axis)
+    const scored = scoredEntries(scores, shadows, axis, holdoutRefs)
     const pending = pendingEntries(shadows, axis)
     const hits = scored.map((e) => Math.abs(e.delta) <= GATE_B_PCT)
     let streak = 0
@@ -133,7 +170,20 @@ export function buildAxisCards(
     if (lastScore?.note) bits.push(lastScore.note)
     if (bits.length === 0) bits.push(gateMet ? 'Gate B met — hold the streak' : 'No runs yet')
 
-    cards.push({ axis, chip, slots, scoredCount: scored.length, streak, nextLine: bits.join(' · ') })
+    const holdoutRuns = scored.filter((e) => e.holdout).length
+    const streakHoldoutRuns = streak > 0 ? scored.slice(-streak).filter((e) => e.holdout).length : 0
+
+    cards.push({
+      axis,
+      chip,
+      slots,
+      scoredCount: scored.length,
+      streak,
+      nextLine: bits.join(' · '),
+      holdoutRuns,
+      practiceRuns: scored.length - holdoutRuns,
+      streakHoldoutRuns,
+    })
   }
   return cards
 }

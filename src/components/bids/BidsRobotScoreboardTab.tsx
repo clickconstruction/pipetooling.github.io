@@ -5,6 +5,7 @@ import type { ShadowRunRow } from '../../lib/bids/shadowStory'
 import {
   buildAxisCards,
   buildLedger,
+  normalizeBidNumber,
   type AxisCard,
   type GateSlot,
   type RunScoreRow,
@@ -64,27 +65,38 @@ const money = (v: number | null) =>
 export function BidsRobotScoreboardTab({ auditPending }: BidsRobotScoreboardTabProps) {
   const [scores, setScores] = useState<RunScoreRow[] | null>(null)
   const [shadows, setShadows] = useState<ShadowRunRow[] | null>(null)
+  const [holdoutRefs, setHoldoutRefs] = useState<ReadonlySet<string>>(() => new Set())
   const [loadError, setLoadError] = useState<string | null>(null)
 
   useEffect(() => {
     let cancelled = false
     void (async () => {
-      const [scoreRes, shadowRes] = await Promise.all([
+      const [scoreRes, shadowRes, holdoutRes] = await Promise.all([
         boardDb.from('twin_run_scores').select('*').order('scored_at', { ascending: false }),
         boardDb.rpc('list_shadow_runs'),
+        // bids.holdout (v2.2942) — a missing column (client ahead of the
+        // migration) reads as "no holdout designated yet", never an error.
+        boardDb.from('bids').select('bid_number').eq('holdout', true),
       ])
       if (cancelled) return
       if (scoreRes.error) setLoadError(scoreRes.error.message)
       else setScores((scoreRes.data ?? []) as RunScoreRow[])
       if (shadowRes.error) setLoadError((prev) => prev ?? shadowRes.error.message)
       else setShadows((shadowRes.data ?? []) as ShadowRunRow[])
+      const holdoutNums = ((holdoutRes.data ?? []) as Array<{ bid_number: number | string | null }>)
+        .map((b) => normalizeBidNumber(b.bid_number))
+        .filter((n): n is string => n != null)
+      setHoldoutRefs(new Set(holdoutNums))
     })()
     return () => {
       cancelled = true
     }
   }, [])
 
-  const cards = useMemo(() => buildAxisCards(scores ?? [], shadows ?? []), [scores, shadows])
+  const cards = useMemo(
+    () => buildAxisCards(scores ?? [], shadows ?? [], { holdoutReferenceNumbers: holdoutRefs }),
+    [scores, shadows, holdoutRefs],
+  )
   const ledger = useMemo(() => buildLedger(scores ?? [], shadows ?? []), [scores, shadows])
   const gatedAxes = cards.filter((c) => c.chip.tone === 'met').length
   const lockedShadows = (shadows ?? []).filter((r) => r.status === 'locked' || r.status === 'open').length
@@ -149,6 +161,17 @@ export function BidsRobotScoreboardTab({ auditPending }: BidsRobotScoreboardTabP
               <div style={{ fontSize: '0.76rem', color: 'var(--text-muted)', borderTop: '1px dashed var(--border)', paddingTop: '0.45rem' }}>
                 {card.nextLine}
               </div>
+              {/* Holdout awareness (v2.2942): a streak built only on practiced
+                  references can overstate readiness — say so, mutedly. The gate
+                  math itself is unchanged; holdout-only denominators are a
+                  future owner decision. */}
+              {card.scoredCount > 0 ? (
+                <div style={{ fontSize: '0.7rem', color: 'var(--text-faint, var(--text-muted))', paddingTop: '0.3rem' }}>
+                  {card.streakHoldoutRuns === 0
+                    ? 'no holdout evidence yet'
+                    : `${card.streakHoldoutRuns} of streak on holdout refs · ${card.holdoutRuns} holdout / ${card.practiceRuns} practice runs`}
+                </div>
+              ) : null}
             </div>
           )
         })}

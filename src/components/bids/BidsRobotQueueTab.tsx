@@ -8,6 +8,7 @@ import { buildRobotBidPrompt } from '../../lib/bids/robotBidReadiness'
 import {
   buildBacktestCandidateGroups,
   buildBacktestPrompt,
+  holdoutSummary,
   normalizeBidNumber,
   starvationLine,
   type BacktestCandidate,
@@ -30,6 +31,9 @@ type BidsRobotQueueTabProps = {
 
 const bidAxis = (bid: BidWithBuilder): string | null =>
   (bid as unknown as { backtest_axis?: string | null }).backtest_axis ?? null
+
+const bidHoldout = (bid: BidWithBuilder): boolean =>
+  (bid as unknown as { holdout?: boolean | null }).holdout === true
 
 /** '2026-07-10' → 'Jul 2026' without a timezone round-trip. */
 function decidedMonth(ymd: string | null): string {
@@ -62,6 +66,8 @@ export function BidsRobotQueueTab({ bids, twinBidBySourceId, referencePresence, 
   const [shadowRuns, setShadowRuns] = useState<ShadowRunRow[] | null>(null)
   const [axisOverrides, setAxisOverrides] = useState<Record<string, string>>({})
   const [savingAxisBidId, setSavingAxisBidId] = useState<string | null>(null)
+  const [holdoutOverrides, setHoldoutOverrides] = useState<Record<string, boolean>>({})
+  const [savingHoldoutBidId, setSavingHoldoutBidId] = useState<string | null>(null)
   const [showFlaggedAxes, setShowFlaggedAxes] = useState<ReadonlySet<string>>(() => new Set())
   const [showAllUnclassified, setShowAllUnclassified] = useState(false)
 
@@ -99,9 +105,11 @@ export function BidsRobotQueueTab({ bids, twinBidBySourceId, referencePresence, 
       usedReferenceNumbers: used,
       axisCards,
       todayYmd: todayYmdInAppTz(),
+      holdoutOf: (bid) => holdoutOverrides[bid.id] ?? bidHoldout(bid),
     })
-  }, [bids, axisOverrides, referencePresence, runScores, shadowRuns, axisCards])
+  }, [bids, axisOverrides, holdoutOverrides, referencePresence, runScores, shadowRuns, axisCards])
   const backtestCount = backtestGroups.reduce((sum, g) => sum + g.eligible.length, 0)
+  const holdouts = useMemo(() => holdoutSummary(backtestGroups), [backtestGroups])
   const knownAxes = useMemo(() => axisCards.map((c) => c.axis).sort(), [axisCards])
 
   async function assignAxis(bid: BidWithBuilder, axis: string) {
@@ -114,6 +122,19 @@ export function BidsRobotQueueTab({ bids, twinBidBySourceId, referencePresence, 
       showToast(`Couldn't assign the axis: ${e instanceof Error ? e.message : 'unknown error'}`, 'error')
     } finally {
       setSavingAxisBidId(null)
+    }
+  }
+
+  async function setHoldout(bid: BidWithBuilder, holdout: boolean) {
+    setSavingHoldoutBidId(bid.id)
+    try {
+      const { error } = await queueDb.from('bids').update({ holdout }).eq('id', bid.id)
+      if (error) throw new Error(error.message)
+      setHoldoutOverrides((prev) => ({ ...prev, [bid.id]: holdout }))
+    } catch (e) {
+      showToast(`Couldn't ${holdout ? 'hold out' : 'release'} the reference: ${e instanceof Error ? e.message : 'unknown error'}`, 'error')
+    } finally {
+      setSavingHoldoutBidId(null)
     }
   }
 
@@ -263,6 +284,14 @@ export function BidsRobotQueueTab({ bids, twinBidBySourceId, referencePresence, 
         <span style={dotStyle('#3b82f6')} />
         Backtest candidates · {backtestCount} — graded history, no run yet
       </h4>
+      {runScores != null && shadowRuns != null ? (
+        <p style={{ margin: '0 0 0.5rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+          Holdout: {holdouts.count} reference{holdouts.count === 1 ? '' : 's'} (target 20–25, spread across axes)
+          {holdouts.count > 0
+            ? ` — ${[...holdouts.axes, ...(holdouts.unclassified > 0 ? [`${holdouts.unclassified} unclassified`] : [])].join(', ')}`
+            : ''}
+        </p>
+      ) : null}
       {runScores == null || shadowRuns == null ? (
         <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-faint, var(--text-muted))' }}>Loading run history…</p>
       ) : backtestGroups.length === 0 ? (
@@ -280,13 +309,32 @@ export function BidsRobotQueueTab({ bids, twinBidBySourceId, referencePresence, 
           const shownEligible =
             group.axis == null && !showAllUnclassified ? group.eligible.slice(0, UNCLASSIFIED_PREVIEW) : group.eligible
           const hiddenUnclassified = group.eligible.length - shownEligible.length
-          const renderCandidate = (c: BacktestCandidate<BidWithBuilder>, flagged: boolean) => {
+          const renderCandidate = (c: BacktestCandidate<BidWithBuilder>, kind: 'eligible' | 'flagged' | 'holdout') => {
+            const flagged = kind === 'flagged'
+            const held = kind === 'holdout'
             const rowAxis = group.axis ?? axisOverrides[c.bid.id] ?? null
             const hot = group.demand === 'open' || group.demand === 'new'
             return (
               <div key={c.bid.id} style={{ ...rowStyle, opacity: dim || flagged ? 0.55 : 1 }}>
                 <span style={{ color: 'var(--text-blue-500)', fontWeight: 600 }}>b{normalizeBidNumber(c.bid.bid_number) ?? '?'}</span>
                 <span style={{ fontWeight: 600 }}>{c.bid.project_name ?? 'Untitled'}</span>
+                {held ? (
+                  <span
+                    title="Holdout reference — reserved for gate measurement: never run as practice, never quoted in doctrine, never named in audits."
+                    style={{
+                      fontSize: '0.68rem',
+                      fontWeight: 700,
+                      letterSpacing: '0.04em',
+                      borderRadius: 5,
+                      padding: '1px 6px',
+                      color: '#7c3aed',
+                      background: 'var(--bg-muted)',
+                      border: '1px solid #7c3aed',
+                    }}
+                  >
+                    HOLDOUT
+                  </span>
+                ) : null}
                 <span
                   title={c.grade === 'A' ? 'Grade A — plans + value + counts + pricing: full scorecard' : 'Grade B — plans + value: dollar scorecard only'}
                   style={{
@@ -338,12 +386,30 @@ export function BidsRobotQueueTab({ bids, twinBidBySourceId, referencePresence, 
                   </select>
                 ) : null}
                 <span style={{ flex: 1 }} />
+                {held ? (
+                  // No kickoff prompt for a holdout reference — practice slates never include them.
+                  <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>gate measurement only — no practice prompt</span>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => void copyBacktestPrompt(c.bid, rowAxis)}
+                    style={hot && !flagged ? { ...btnStyle, background: '#3b82f6', borderColor: '#3b82f6', color: 'white', fontWeight: 600 } : btnStyle}
+                  >
+                    {copiedBidId === c.bid.id ? 'Copied ✓' : 'Copy backtest prompt'}
+                  </button>
+                )}
                 <button
                   type="button"
-                  onClick={() => void copyBacktestPrompt(c.bid, rowAxis)}
-                  style={hot && !flagged ? { ...btnStyle, background: '#3b82f6', borderColor: '#3b82f6', color: 'white', fontWeight: 600 } : btnStyle}
+                  disabled={savingHoldoutBidId === c.bid.id}
+                  title={
+                    held
+                      ? 'Return this reference to the practice pool.'
+                      : 'Reserve this reference for gate measurement — robots will never practice on it.'
+                  }
+                  onClick={() => void setHoldout(c.bid, !held)}
+                  style={{ ...btnStyle, color: held ? undefined : '#7c3aed' }}
                 >
-                  {copiedBidId === c.bid.id ? 'Copied ✓' : 'Copy backtest prompt'}
+                  {savingHoldoutBidId === c.bid.id ? 'saving…' : held ? 'Release holdout' : 'Hold out'}
                 </button>
                 <button type="button" onClick={() => onOpenBid(c.bid)} style={btnStyle}>
                   Open bid
@@ -389,7 +455,7 @@ export function BidsRobotQueueTab({ bids, twinBidBySourceId, referencePresence, 
                 </div>
               ) : (
                 <>
-                  {shownEligible.map((c) => renderCandidate(c, false))}
+                  {shownEligible.map((c) => renderCandidate(c, 'eligible'))}
                   {hiddenUnclassified > 0 ? (
                     <p style={{ margin: '0.1rem 0 0.3rem', fontSize: '0.75rem', color: 'var(--text-faint, var(--text-muted))' }}>
                       + {hiddenUnclassified} more unclassified — assign axes to surface them where they're needed, or{' '}
@@ -404,9 +470,10 @@ export function BidsRobotQueueTab({ bids, twinBidBySourceId, referencePresence, 
                   ) : null}
                 </>
               )}
+              {group.holdout.map((c) => renderCandidate(c, 'holdout'))}
               {group.eligible.length > 0 && group.flagged.length > 0 ? (
                 showFlaggedAxes.has(axisKey) ? (
-                  group.flagged.map((c) => renderCandidate(c, true))
+                  group.flagged.map((c) => renderCandidate(c, 'flagged'))
                 ) : (
                   <p style={{ margin: '0.1rem 0 0.3rem', fontSize: '0.75rem', color: 'var(--text-faint, var(--text-muted))' }}>
                     {group.flagged.length} flagged reference{group.flagged.length === 1 ? '' : 's'} hidden — can't move gates.{' '}

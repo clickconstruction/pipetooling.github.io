@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   buildBacktestCandidateGroups,
   buildBacktestPrompt,
+  holdoutSummary,
   normalizeBidNumber,
   starvationLine,
   type BacktestCandidateBidFields,
@@ -33,6 +34,9 @@ function card(axis: string, over: Partial<AxisCard> = {}): AxisCard {
     scoredCount: 1,
     streak: 1,
     nextLine: '4 more in-band to gate',
+    holdoutRuns: 0,
+    practiceRuns: 1,
+    streakHoldoutRuns: 0,
     ...over,
   }
 }
@@ -146,6 +150,40 @@ describe('buildBacktestCandidateGroups', () => {
   it('omits the unclassified bucket when empty', () => {
     const groups = groupsOf([bid({ id: 'a', bid_number: 301 })])
     expect(groups.some((g) => g.axis === null)).toBe(false)
+  })
+
+  it('routes holdout references out of eligible AND flagged — never in a practice slate', () => {
+    const groups = groupsOf(
+      [
+        bid({ id: 'clean', bid_number: 301 }),
+        bid({ id: 'held-clean', bid_number: 302 }),
+        bid({ id: 'held-round', bid_number: 303, bid_value: 250_000 }), // holdout wins over quality flags
+      ],
+      { holdoutOf: (b) => b.id.startsWith('held') },
+    )
+    const g = groups.find((x) => x.axis === 'small TI')
+    expect(g?.eligible.map((c) => c.bid.id)).toEqual(['clean'])
+    expect(g?.flagged).toEqual([])
+    expect(g?.holdout.map((c) => c.bid.id).sort()).toEqual(['held-clean', 'held-round'])
+  })
+
+  it('keeps the unclassified bucket alive for holdout-only contents, and holdoutSummary counts across groups', () => {
+    const groups = groupsOf(
+      [bid({ id: 'held-axis', bid_number: 301 }), bid({ id: 'held-unclassified', bid_number: 302 })],
+      {
+        axisOf: (b) => (b.id === 'held-axis' ? 'small TI' : null),
+        holdoutOf: () => true,
+      },
+    )
+    expect(groups.some((g) => g.axis === null)).toBe(true)
+    expect(holdoutSummary(groups)).toEqual({ count: 2, axes: ['small TI'], unclassified: 1 })
+  })
+
+  it('starvationLine says held out (not missing) when holdout refs are all that remain', () => {
+    const groups = groupsOf([bid({ id: 'held', bid_number: 301 })], { holdoutOf: () => true })
+    const g = groups.find((x) => x.axis === 'small TI')!
+    expect(g.eligible).toEqual([])
+    expect(starvationLine(g)).toContain('held out for gate measurement')
   })
 })
 

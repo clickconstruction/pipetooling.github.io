@@ -36,11 +36,17 @@ const shadowRows = [
 
 vi.mock('../../lib/supabase', () => ({
   supabase: {
-    from: () => ({
-      select: () => ({
-        order: () => Promise.resolve({ data: scoreRows, error: null }),
-      }),
-    }),
+    from: (table: string) =>
+      table === 'bids'
+        ? {
+            // the holdout lookup (v2.2942): none designated in this smoke
+            select: () => ({ eq: () => Promise.resolve({ data: [], error: null }) }),
+          }
+        : {
+            select: () => ({
+              order: () => Promise.resolve({ data: scoreRows, error: null }),
+            }),
+          },
     rpc: () => Promise.resolve({ data: shadowRows, error: null }),
   },
 }))
@@ -61,5 +67,9 @@ describe('BidsRobotScoreboardTab', () => {
     // ledger: void run visible with VOID verdict, not hidden
     expect(screen.getByText(/TSAOG campus/)).toBeTruthy()
     expect(screen.getByText('VOID')).toBeTruthy()
+
+    // holdout awareness (v2.2942): no holdout refs designated, so every scored
+    // card carries the muted no-evidence line
+    expect(screen.getAllByText('no holdout evidence yet').length).toBeGreaterThan(0)
   })
 })
