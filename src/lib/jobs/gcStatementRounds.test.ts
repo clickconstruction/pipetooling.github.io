@@ -10,6 +10,7 @@ import {
   sendChannelLabel,
   senderRoundQueue,
   summarizeStatementRound,
+  heldRoundHeadline,
   type RoundMarkRow,
 } from './gcStatementRounds'
 
@@ -208,5 +209,16 @@ describe('contacted marks (v2.2813)', () => {
     expect(s.readyForUser).toEqual([])
     expect(s.senderProgress.get('u2')).toEqual({ sent: 0, contacted: 1, total: 1 })
     expect(describeRoundMark(m, 'Thu, Sep 4')).toBe("Spoke with them by Malachi · Thu, Sep 4 · call · warm · no statement\nTemperature: Dave says the 10th\nThey said they'd pay by 2026-09-10")
+  })
+})
+
+describe('heldRoundHeadline (B6 / J20-F7)', () => {
+  it('counts GCs, not rounds, and the verb agrees with the count', () => {
+    expect(heldRoundHeadline(1, '$12,700')).toBe('1 GC statement waits on sign-off — $12,700')
+    expect(heldRoundHeadline(5, '$154,166')).toBe('5 GC statements wait on sign-off — $154,166')
+  })
+  it('zero and fractional counts stay grammatical', () => {
+    expect(heldRoundHeadline(0, '$0')).toBe('0 GC statements wait on sign-off — $0')
+    expect(heldRoundHeadline(2.7, '$9')).toBe('2 GC statements wait on sign-off — $9')
   })
 })

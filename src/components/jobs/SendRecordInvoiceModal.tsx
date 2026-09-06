@@ -2153,6 +2153,15 @@ export default function SendRecordInvoiceModal({
             {kind === 'job' && !ensureLoading && ensureError && (
               <p style={{ color: 'var(--text-red-700)', fontSize: '0.875rem', marginBottom: '0.75rem' }}>{ensureError}</p>
             )}
+            {/* B6 / J3-5: the one channel whose semantics are invisible is the one
+                that silently marks a job billed — say so where the Save button is. */}
+            <p
+              data-testid="bill-customer-hcp-record-only-caption"
+              style={{ margin: '0 0 0.75rem', fontSize: '0.8rem', color: 'var(--text-muted)', lineHeight: 1.4 }}
+            >
+              Records the bill as sent through HouseCall Pro — ClickTooling emails nobody. The job moves to Billed Awaiting Payment; the
+              customer sees nothing from here.
+            </p>
             <div style={{ marginBottom: '0.75rem' }}>
               <label style={BILL_CUSTOMER_FIELD_LABEL_STYLE}>Date</label>
               <input type="date" value={sentDate} onChange={(e) => setSentDate(e.target.value)} style={billDateInputStyle} />

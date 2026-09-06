@@ -416,3 +416,63 @@ export function summarizePaymentChase(queue: PaymentChaseQueue | null): PaymentC
     disputeCount: queue.disputes.length,
   }
 }
+
+/**
+ * Call-mode phone display (B6 / J4-6): the customer record stores whatever
+ * was typed — usually ten raw digits. Ten digits (or eleven with a leading 1)
+ * render as (555) 123-4567; anything else is shown as stored, trimmed. The
+ * `tel:` href keeps the raw value — dialers want digits, not punctuation.
+ */
+export function formatChasePhone(raw: string | null | undefined): string {
+  const s = (raw ?? '').trim()
+  if (!s) return ''
+  const digits = s.replace(/\D/g, '')
+  const ten = digits.length === 11 && digits.startsWith('1') ? digits.slice(1) : digits
+  if (ten.length !== 10) return s
+  return `(${ten.slice(0, 3)}) ${ten.slice(3, 6)}-${ten.slice(6)}`
+}
+
+/**
+ * Whether the customer has ever been emailed one of these bills (B6 / J4-6):
+ * a Stripe channel (Stripe emails on send) or a stamped `sent_to_customer_at`
+ * (the physical PDF path). HouseCall Pro records email nobody, so a call is
+ * the only door there — no mailto is offered.
+ */
+export function chaseBillsWereEmailed(bills: readonly Pick<ChaseBill, 'sentChannel' | 'sentAtIso'>[]): boolean {
+  return bills.some((b) => b.sentChannel === 'stripe' || (b.sentAtIso != null && b.sentAtIso.trim() !== ''))
+}
+
+/**
+ * mailto for the call card, only when there is an address AND a bill actually
+ * went out by email — otherwise null and the card offers the phone alone.
+ * Subject names the bills so the reply threads back to the right money.
+ */
+export function chaseEmailHref(
+  email: string | null | undefined,
+  bills: readonly Pick<ChaseBill, 'label' | 'sentChannel' | 'sentAtIso'>[],
+): string | null {
+  const to = (email ?? '').trim()
+  if (!to || !to.includes('@')) return null
+  if (!chaseBillsWereEmailed(bills)) return null
+  const labels = bills.map((b) => b.label.trim()).filter(Boolean)
+  const subject = labels.length === 1 ? `Following up on ${labels[0]}` : `Following up on your open bills`
+  return `mailto:${encodeURIComponent(to)}?subject=${encodeURIComponent(subject)}`
+}
+
+/**
+ * Jobs a call-mode "Move to Collections…" can flag (B6 / J4-7): one entry per
+ * distinct job among the customer's late bills, labelled by the first bill on
+ * that job. The board's typed confirm still owns the write.
+ */
+export function collectionsCandidatesForChase(
+  bills: readonly Pick<ChaseBill, 'jobId' | 'label'>[],
+): Array<{ jobId: string; label: string }> {
+  const seen = new Set<string>()
+  const out: Array<{ jobId: string; label: string }> = []
+  for (const b of bills) {
+    if (!b.jobId || seen.has(b.jobId)) continue
+    seen.add(b.jobId)
+    out.push({ jobId: b.jobId, label: b.label })
+  }
+  return out
+}

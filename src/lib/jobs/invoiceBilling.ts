@@ -59,12 +59,22 @@ export function stageRowBilledRemainingAmount(r: StageRow): number {
  * a hand-set est. bill date wins (it exists to correct the date — bills
  * entered after the fact, backdated lines), otherwise the `billed_at` the DB
  * trigger stamped when the line became billed (its Chicago calendar day).
- * Job-shell rows (billed job, no bill line) have neither and can't age.
+ * Job-shell rows (billed job, no bill line) have neither and can't age —
+ * EXCEPT in Collections (B6 / J4-10): a shell someone flagged difficult to
+ * collect has a clock the office set on purpose, `collections_at`, so it ages
+ * from the flag day (`source: 'collections'`) instead of hiding as un-ageable
+ * money in the section meant for the hardest receivables.
  * Every age on the board — Who owes what, the 30+/90+ chips, the money card's
  * age bar, the "Chase the 90+ tail" move — reads this one function.
  */
-export function stageRowBilledAgeReference(r: StageRow): { ymd: string; handSet: boolean } | null {
-  if (r.kind === 'job') return null
+export function stageRowBilledAgeReference(r: StageRow): { ymd: string; handSet: boolean; source?: 'collections' } | null {
+  if (r.kind === 'job') {
+    if (!jobInCollections(r.job)) return null
+    const flagged = r.job.collections_at?.trim()
+    if (!flagged) return null
+    const ymd = calendarYmdInAppTzFromIso(flagged)
+    return ymd ? { ymd, handSet: false, source: 'collections' } : null
+  }
   const est = effectiveInvoiceEstBillDate(r.inv)
   if (est) return { ymd: est, handSet: true }
   const billedAt = r.inv.billed_at?.trim()

@@ -8,7 +8,10 @@ import { formatYmdMonthDay, type PaySpeedData } from '../../lib/jobs/billedExpec
 import { addPaymentChaseTouch, recordPromiseForJobs } from '../../lib/jobs/paymentChaseIo'
 import {
   CHASE_COLLECTIONS_SUGGESTION_THRESHOLD,
+  chaseEmailHref,
+  collectionsCandidatesForChase,
   DEFAULT_SNOOZE_DAYS,
+  formatChasePhone,
   PROMISE_DAY_CHIPS,
   resolvePromiseDates,
   TOUCH_QUIET_DAYS,
@@ -62,6 +65,7 @@ export default function PaymentChaseModal({
   onClose,
   onRecorded,
   onOpenInvoice,
+  onMoveToCollections,
 }: {
   /** Built from the FULL billed rows; null while the billed scope is still merging. */
   queue: PaymentChaseQueue | null
@@ -74,6 +78,12 @@ export default function PaymentChaseModal({
   onRecorded: () => void
   /** Jump the board to a bill (closes the modal upstream). */
   onOpenInvoice: (invoiceId: string) => void
+  /**
+   * B6 / J4-7: open the board's typed "Move to Collections?" confirm for a job
+   * without leaving call mode — offered when the broken-promise banner fires.
+   * Absent = the caller can't flag (the chips don't render).
+   */
+  onMoveToCollections?: (jobId: string) => void
 }) {
   const { showToast } = useToastContext()
   // Snapshot on the first loaded queue — the session works a fixed list.
@@ -669,8 +679,10 @@ export default function PaymentChaseModal({
                     {currentDispute.touch.note ? ` · "${currentDispute.touch.note}"` : ''}
                   </div>
                   <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', margin: 0 }}>
-                    Resolving puts the bill back in the follow-up queue. To escalate instead, open the bill on the board and use its
-                    Collections button.
+                    Resolving puts the bill back in the follow-up queue.
+                    {onMoveToCollections && currentDispute.bill
+                      ? ' To escalate instead, move the job to Collections from here.'
+                      : ' To escalate instead, open the bill on the board and use its Collections button.'}
                   </p>
                   <div style={{ display: 'flex', gap: '0.45rem', flexWrap: 'wrap' }}>
                     <button
@@ -681,6 +693,17 @@ export default function PaymentChaseModal({
                     >
                       Resolved — back to the queue
                     </button>
+                    {onMoveToCollections && currentDispute.bill ? (
+                      <button
+                        type="button"
+                        disabled={saving}
+                        onClick={() => onMoveToCollections(currentDispute.bill!.jobId)}
+                        title="Flags the job difficult to collect — it stays Billed; this only moves it to the Collections section"
+                        style={{ ...chipBtn, borderColor: 'var(--text-amber-800)', color: 'var(--text-amber-800)' }}
+                      >
+                        Move to Collections…
+                      </button>
+                    ) : null}
                     {currentDispute.bill ? (
                       <button type="button" onClick={() => onOpenInvoice(currentDispute.bill!.invoiceId)} style={chipBtn}>
                         Open the bill on the board →
@@ -695,13 +718,29 @@ export default function PaymentChaseModal({
                     {contacts[current.customerId]?.phone ? (
                       <a
                         href={`tel:${contacts[current.customerId]?.phone ?? ''}`}
+                        title="Call — the dialer gets the number as stored"
                         style={{ color: 'var(--text-link)', fontSize: '0.85rem', fontWeight: 600, textDecoration: 'none', whiteSpace: 'nowrap' }}
                       >
-                        {contacts[current.customerId]?.phone}
+                        {/* B6 / J4-6: readable at the moment of the call; the href keeps the raw digits. */}
+                        {formatChasePhone(contacts[current.customerId]?.phone)}
                       </a>
                     ) : (
                       <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>no phone on file</span>
                     )}
+                    {(() => {
+                      // B6 / J4-6: an email door only when a bill actually went out
+                      // by email — HouseCall Pro records reached nobody's inbox.
+                      const href = chaseEmailHref(contacts[current.customerId]?.email, current.bills)
+                      return href ? (
+                        <a
+                          href={href}
+                          title={`Email ${contacts[current.customerId]?.email ?? ''} — the bill went out by email, so a reply threads back to it`}
+                          style={{ color: 'var(--text-link)', fontSize: '0.78rem', fontWeight: 600, textDecoration: 'none', whiteSpace: 'nowrap' }}
+                        >
+                          ✉ email
+                        </a>
+                      ) : null
+                    })()}
                     <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{speedLine(current)}</span>
                   </div>
                   <div
@@ -972,8 +1011,40 @@ export default function PaymentChaseModal({
                       </button>
                     </div>
                     {current.brokenPromiseTouches >= CHASE_COLLECTIONS_SUGGESTION_THRESHOLD ? (
-                      <div style={{ fontSize: '0.75rem', fontWeight: 600, background: 'var(--bg-amber-tint)', color: 'var(--text-amber-800)', borderRadius: 8, padding: '0.4rem 0.6rem' }}>
-                        ⚠️ {current.brokenPromiseTouches} promises have come and gone — consider Collections (open the bill on the board for the button)
+                      <div
+                        style={{
+                          fontSize: '0.75rem',
+                          fontWeight: 600,
+                          background: 'var(--bg-amber-tint)',
+                          color: 'var(--text-amber-800)',
+                          borderRadius: 8,
+                          padding: '0.4rem 0.6rem',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '0.45rem',
+                          flexWrap: 'wrap',
+                        }}
+                      >
+                        <span>
+                          ⚠️ {current.brokenPromiseTouches} promises have come and gone — consider Collections
+                          {onMoveToCollections ? '' : ' (open the bill on the board for the button)'}
+                        </span>
+                        {/* B6 / J4-7: the one moment the app knows escalation is due,
+                            the button is here — the board's typed confirm still owns the write. */}
+                        {onMoveToCollections
+                          ? collectionsCandidatesForChase(current.bills).map((c) => (
+                              <button
+                                key={c.jobId}
+                                type="button"
+                                disabled={saving}
+                                onClick={() => onMoveToCollections(c.jobId)}
+                                title="Flags the job difficult to collect — it stays Billed; this only moves it to the Collections section"
+                                style={{ ...chipBtn, borderColor: 'var(--text-amber-800)', color: 'var(--text-amber-800)' }}
+                              >
+                                Move {c.label} to Collections…
+                              </button>
+                            ))
+                          : null}
                       </div>
                     ) : null}
                     <input

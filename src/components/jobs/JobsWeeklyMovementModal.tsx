@@ -163,7 +163,7 @@ export function JobsWeeklyMovementModal({ open, onClose, users, showToast, canSc
     <div
       role="dialog"
       aria-modal="true"
-      aria-label="Weekly movement — jobs that entered a stage this week"
+      aria-label="Stage moves this week — jobs that entered a stage this week"
       style={{
         position: 'fixed',
         inset: 0,
@@ -190,7 +190,7 @@ export function JobsWeeklyMovementModal({ open, onClose, users, showToast, canSc
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: 2 }}>
-          <h2 style={{ margin: 0, fontSize: '1.25rem', flex: 1, minWidth: 0 }}>Weekly movement</h2>
+          <h2 style={{ margin: 0, fontSize: '1.25rem', flex: 1, minWidth: 0 }}>Stage moves this week</h2>
           <button
             type="button"
             onClick={onClose}

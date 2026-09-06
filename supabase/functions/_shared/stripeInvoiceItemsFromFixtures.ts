@@ -39,6 +39,26 @@ export function scopeFixturesToInvoice<
     const unlinkedBillable = unlinked.filter((r) => scopeLineCents(r) > 0)
     const sumCents = unlinkedBillable.reduce((s, r) => s + scopeLineCents(r), 0)
     if (unlinkedBillable.length > 0 && sumCents === invoice.targetAmountCents) return unlinkedBillable
+    // B6 / J3-6 (mirrors client dropPaymentsCoveredRows): a remainder smaller
+    // than the unlinked work means payments or dollar carves already cover the
+    // first rows in order — rows covered to the last cent never re-list; the
+    // partially covered row and everything after it stay for proration.
+    if (unlinkedBillable.length > 0 && sumCents > invoice.targetAmountCents) {
+      let pool = sumCents - invoice.targetAmountCents
+      const dropped = new Set<T>()
+      for (const r of unlinked) {
+        if (pool <= 0) break
+        const cents = scopeLineCents(r)
+        if (cents <= 0) continue
+        if (cents <= pool) {
+          dropped.add(r)
+          pool -= cents
+        } else {
+          break
+        }
+      }
+      return unlinked.filter((r) => !dropped.has(r))
+    }
   }
   // v2.2589: a row linked to ANOTHER invoice is already listed on that bill —
   // never re-list it here. Proration happens over the unlinked rows only; when

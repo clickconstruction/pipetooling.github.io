@@ -64,6 +64,7 @@ import {
   effectiveInvoiceEstBillDate,
   sortStageRowsForTotalByNameDetail,
   stageRowBilledAgeDays,
+  stageRowBilledAgeReference,
   stageRowBilledLineLabel,
   stageRowBilledRemainingAmount,
 } from '../../lib/jobs/invoiceBilling'
@@ -222,6 +223,7 @@ import {
 } from '../../lib/jobs/stagesSectionPrefs'
 import { useJobsListCache } from '../../contexts/JobsListCacheContext'
 import { buildStagesSectionToolsMenu, type StagesSectionToolKey } from '../../lib/jobs/stagesSectionToolsMenu'
+import { stagesPaidHeaderSearchCount, stagesPaidSearchHint } from '../../lib/jobs/stagesPaidSearchHint'
 import { jobLedgerHasCustomerForBilling } from '../../lib/jobLedgerCustomerForBilling'
 import { extractContactFromCustomer } from '../../lib/jobs/jobFormCustomerDisplay'
 import { setJobCollectionsFlag } from '../../lib/setJobCollectionsFlag'
@@ -1005,9 +1007,20 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
       if (!shell && !model && !canMarkPromisedPay) return null
       const number = effectiveJobLedgerNumber(row.job.hcp_number, row.job.click_number) || '—'
       const label = `${number} · ${(row.job.job_name ?? '').trim() || 'Job'}`
+      // B6 / J4-10: a Collections shell has a clock the office set — the flag
+      // day — so it ages from there instead of wearing "can't age" forever.
+      const collectionsRef = shell ? stageRowBilledAgeReference(row) : null
+      const collectionsDays = collectionsRef?.source === 'collections' ? stageRowBilledAgeDays(row) : null
       return (
         <>
-          {shell ? (
+          {shell && collectionsRef?.source === 'collections' ? (
+            <span
+              title={`Flagged difficult to collect ${collectionsRef.ymd}. Nothing is on a bill line, so the clock runs from the flag — Bill Customer or Edit Job creates the line`}
+              style={{ display: 'inline-flex', alignItems: 'center', padding: '2px 9px', borderRadius: 9999, fontSize: '0.72rem', fontWeight: 600, background: 'var(--bg-amber-tint)', color: 'var(--text-amber-800)' }}
+            >
+              {collectionsDays == null ? 'In Collections' : `In Collections ${collectionsDays} day${collectionsDays === 1 ? '' : 's'}`} · no bill line
+            </span>
+          ) : shell ? (
             <span
               title="This billed job's open money is on no bill line, so it can't age, be chased, or be forecast — Bill Customer or Edit Job creates the line"
               style={{ display: 'inline-flex', alignItems: 'center', padding: '2px 9px', borderRadius: 9999, fontSize: '0.72rem', fontWeight: 600, background: 'var(--bg-amber-tint)', color: 'var(--text-amber-800)' }}
@@ -3743,8 +3756,55 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
             // Server RPC is authoritative; this only controls button visibility (same office pool as other stage moves).
             const canManageCollections =
               authRole === 'dev' || authRole === 'master_technician' || isAssistantLike(authRole)
+            // B6 / J3-3: where did the search land? Paid matches are already on
+            // the client (v2.1825) but the section sits at the bottom of a board
+            // whose open sections all read (0) — say so above the fold.
+            const paidSearchHint = stagesPaidSearchHint({
+              searchActive: stagesSearchActive,
+              openMatchCount:
+                waiting.length + working.length + readyToBillRows.length + billedActiveRows.length + collectionsRows.length,
+              paidMatchCount: paid.length,
+              serverSearchBusy: stagesServerSearchBusy,
+            })
             return (
               <>
+                {paidSearchHint ? (
+                  <div
+                    role="status"
+                    data-testid="stages-paid-search-hint"
+                    style={{
+                      margin: '0.75rem 0 0',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.5rem',
+                      flexWrap: 'wrap',
+                      fontSize: '0.85rem',
+                      color: 'var(--text-muted)',
+                    }}
+                  >
+                    {paidSearchHint.kind === 'paid_matches' ? (
+                      <button
+                        type="button"
+                        onClick={() => document.getElementById('stages-paid')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+                        style={{
+                          border: '1px solid var(--border-strong)',
+                          background: 'var(--surface)',
+                          color: 'var(--text-link)',
+                          borderRadius: 9999,
+                          padding: '0.25rem 0.75rem',
+                          fontSize: '0.8rem',
+                          fontWeight: 600,
+                          cursor: 'pointer',
+                          fontFamily: 'inherit',
+                        }}
+                      >
+                        {paidSearchHint.label}
+                      </button>
+                    ) : (
+                      <span>{paidSearchHint.label}</span>
+                    )}
+                  </div>
+                ) : null}
                 <div id="stages-waiting" style={{ margin: '1.5rem 0 0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap' }}>
                   <button
                     type="button"
@@ -4512,7 +4572,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                 ))}
 
                 {/* Header row mirrors the Billed section: toggle on the left, affordances flushed right. */}
-                <div style={{ margin: '1.5rem 0 0.5rem', display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
+                <div id="stages-paid" style={{ margin: '1.5rem 0 0.5rem', display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
                 <button
                   type="button"
                   onClick={() => {
@@ -4529,12 +4589,17 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                 >
                   <span aria-hidden>{sectionShown('paid') ? '\u25BC' : '\u25B6'}</span>
                   {(() => {
-                    const countPart = paidJobsLoading
-                      ? '…'
-                      : paidJobsMergedForKey === jobsListDataKey && jobsListDataKey != null
-                        ? paid.length
-                        : 'Expand to load'
-                    const suffix = paidJobsLoading ? ' — loading' : ''
+                    // B6 / J3-3: during a search the header counts the MATCHES the
+                    // lean lookup already merged — "Expand to load" was a lie there,
+                    // the one that made a found paid job look lost.
+                    const countPart = stagesSearchActive
+                      ? stagesPaidHeaderSearchCount(paid.length, stagesServerSearchBusy)
+                      : paidJobsLoading
+                        ? '…'
+                        : paidJobsMergedForKey === jobsListDataKey && jobsListDataKey != null
+                          ? paid.length
+                          : 'Expand to load'
+                    const suffix = paidJobsLoading && !stagesSearchActive ? ' — loading' : ''
                     if (countPart === 'Expand to load') {
                       return (
                         <>
@@ -5304,6 +5369,21 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
             setChaseModalOpen(false)
             applyStagesInvoiceFocus(invoiceId)
           }}
+          // B6 / J4-7: the board's typed confirm layers over call mode (z 80 > 70);
+          // the session snapshot stays put while the flag writes.
+          onMoveToCollections={
+            // same office pool as the section's Collections button (server RPC is authoritative)
+            authRole === 'dev' || authRole === 'master_technician' || isAssistantLike(authRole)
+              ? (jobId) => {
+                  const job = jobs.find((j) => j.id === jobId)
+                  if (!job) {
+                    showToast('That job is not on the board any more — refresh and try again.', 'warning')
+                    return
+                  }
+                  setCollectionsConfirm({ job, direction: 'to' })
+                }
+              : undefined
+          }
         />
       )}
       {fixBillLinesOpen && (
@@ -5797,7 +5877,8 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
         </div>
       )}
       {collectionsConfirm && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 60 }}>
+        /* z 80: must paint over call mode (z 70) when opened from its Collections chip (B6 / J4-7). */
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 80 }}>
           <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 320, maxWidth: 420 }}>
             <h2 style={{ margin: '0 0 1rem', fontSize: '1.25rem' }}>
               {collectionsConfirm.direction === 'to' ? 'Move to Collections?' : 'Send back to Billed?'}

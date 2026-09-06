@@ -12,6 +12,17 @@
  * (v2.2589 — rows on other bills never re-list; before this it prorated the
  * whole job) — composition never guesses at partial coverage.
  *
+ * Journey B6 / J3-6: when the remainder is SMALLER than the still-unlinked
+ * work, the gap is money the customer already paid (or carved onto a dollar
+ * bill) against these very rows — the Edit Job bar pours that pool into the
+ * unbilled segments in order (`dollarCoverageForSegments`) and marks them
+ * "covered". Rows covered to the last cent are treated exactly like rows on
+ * other bills: they never re-list. The first partially covered row and every
+ * row after it stay, and the caller's proration runs over those only — the
+ * $185 remainder on a $370 two-segment job lists the second segment at $185
+ * instead of both at $92.50. Riders or extras that inflate the remainder
+ * above the row sum leave the pool empty, so nothing is dropped by mistake.
+ *
  * Mirrored in supabase/functions/_shared/stripeInvoiceItemsFromFixtures.ts
  * (scopeFixturesToInvoice) — the edge functions are authoritative for what
  * Stripe renders (they match against amount minus extra_line_items, which
@@ -42,6 +53,33 @@ function billableLineCents(row: InvoiceScopeFixtureRow): number {
   return Math.max(1, Math.round(dollars * 100))
 }
 
+/**
+ * Rows the remainder still bills after payments-coverage (B6 / J3-6). The
+ * pool `sumCents − amountCents` fills the billable rows in order; a row the
+ * pool swallows whole is dropped, the row it runs out inside — and every row
+ * after — is kept. Zero-cent rows (unnamed / unpriced) ride through untouched,
+ * as before. Returns the input list when nothing is covered.
+ */
+export function dropPaymentsCoveredRows<T extends InvoiceScopeFixtureRow>(unlinked: readonly T[], amountCents: number): T[] {
+  if (!Number.isFinite(amountCents) || amountCents <= 0) return [...unlinked]
+  const sumCents = unlinked.reduce((s, f) => s + billableLineCents(f), 0)
+  let pool = sumCents - amountCents
+  if (pool <= 0) return [...unlinked]
+  const dropped = new Set<T>()
+  for (const f of unlinked) {
+    if (pool <= 0) break
+    const cents = billableLineCents(f)
+    if (cents <= 0) continue
+    if (cents <= pool) {
+      dropped.add(f)
+      pool -= cents
+    } else {
+      break
+    }
+  }
+  return unlinked.filter((f) => !dropped.has(f))
+}
+
 export function fixturesForInvoiceBill<T extends InvoiceScopeFixtureRow>(
   fixtures: T[] | null | undefined,
   invoiceId: string | null | undefined,
@@ -58,6 +96,9 @@ export function fixturesForInvoiceBill<T extends InvoiceScopeFixtureRow>(
       const unlinkedBillable = unlinked.filter((f) => billableLineCents(f) > 0)
       const sumCents = unlinkedBillable.reduce((s, f) => s + billableLineCents(f), 0)
       if (unlinkedBillable.length > 0 && sumCents === amountCents) return unlinkedBillable
+      // B6 / J3-6: a remainder smaller than the unlinked work means payments
+      // (or dollar carves) already cover the first rows — those never re-list.
+      if (unlinkedBillable.length > 0 && sumCents > amountCents) return dropPaymentsCoveredRows(unlinked, amountCents)
     }
   }
   // v2.2589: a row linked to ANOTHER invoice is already listed on that bill —
