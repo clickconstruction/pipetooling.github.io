@@ -43,7 +43,14 @@ export type WorkOrderAssemblerInitial = {
   /** Sheet door (PR 3): the sheet total, pre-filled as the price. */
   amount?: number | null
   stepId?: string | null
+  /** Subs tab (v2.2927): the stage this order fulfils — its window prefills the dates. */
+  stageWindowId?: string | null
+  proposedStart?: string | null
+  proposedEnd?: string | null
 }
+
+/** A stage on the chosen job, offered in the assembler's stage picker. */
+type StageChoice = { id: string; name: string; amount: number; start: string | null; end: string | null }
 
 /** `end_date` set = on the bench (v2.2860) — hidden behind a toggle in the sub step, still pickable. */
 type Roster = { id: string; name: string; email: string | null; notes: string | null; end_date: string | null }
@@ -135,6 +142,8 @@ export function WorkOrderAssemblerModal({
   const [bidLines, setBidLines] = useState<Array<{ stage: string; label: string }>>([])
   const [bidTotals, setBidTotals] = useState<{ rough_in: number; top_out: number; trim_set: number; total: number } | null>(null)
   const [draft, setDraft] = useState<Draft | null>(null)
+  const [stageWindowId, setStageWindowId] = useState<string | null>(null)
+  const [stageChoices, setStageChoices] = useState<StageChoice[]>([])
   const [showAllScope, setShowAllScope] = useState(false)
   const [saving, setSaving] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -169,6 +178,7 @@ export function WorkOrderAssemblerModal({
         }
         if (cancelled) return
         setExisting(row)
+        setStageWindowId(row?.stage_window_id ?? initial?.stageWindowId ?? null)
         const jobId = row?.job_id ?? initial?.jobId ?? null
         const j = jobId ? jobs.find((x) => x.id === jobId) ?? null : null
         setJob(j)
@@ -185,6 +195,30 @@ export function WorkOrderAssemblerModal({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, initial?.commitmentId, initial?.jobId, initial?.personId])
+
+  // The job's stages (line items with a window) — the picker that prefills the dates.
+  useEffect(() => {
+    const jobId = job?.id ?? null
+    if (!open || !jobId) {
+      setStageChoices([])
+      return
+    }
+    let cancelled = false
+    void (async () => {
+      const { data } = await supabase.from('job_stage_windows').select('id, fixture_id, window_start, window_end').eq('job_id', jobId)
+      if (cancelled) return
+      const fixtures = new Map((job?.fixtures ?? []).map((f) => [f.id, f]))
+      setStageChoices(
+        ((data ?? []) as Array<{ id: string; fixture_id: string; window_start: string | null; window_end: string | null }>).map((w) => {
+          const f = fixtures.get(w.fixture_id)
+          return { id: w.id, name: (f?.name ?? '').trim() || 'Line item', amount: f ? Math.round((Number(f.count) || 0) * (Number(f.line_unit_price) || 0) * 100) / 100 : 0, start: w.window_start, end: w.window_end }
+        }),
+      )
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [open, job?.id, job?.fixtures])
 
   // The sub's paperwork + the job's bid, whenever either changes.
   useEffect(() => {
@@ -268,12 +302,12 @@ export function WorkOrderAssemblerModal({
       specialProvisions: prior?.specialProvisions ?? '',
       amount: existing?.amount != null ? String(Number(existing.amount)) : initial?.amount != null && initial.amount > 0 ? String(initial.amount) : '',
       retainagePct: existing ? String(Number(existing.retainage_pct) || 0) : '0',
-      proposedStart: existing?.proposed_start ?? '',
-      proposedEnd: existing?.proposed_end ?? '',
+      proposedStart: existing?.proposed_start ?? initial?.proposedStart ?? '',
+      proposedEnd: existing?.proposed_end ?? initial?.proposedEnd ?? '',
       expires: existing?.offer_expires_at && existing.status === 'offered' ? existing.offer_expires_at : defaultExpires,
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, loading, step, existing, scopeItems, bookDocs, bidLines, serviceTypeIdOfJob, initial?.amount])
+  }, [open, loading, step, existing, scopeItems, bookDocs, bidLines, serviceTypeIdOfJob, initial?.amount, initial?.proposedStart, initial?.proposedEnd])
 
   useEffect(() => {
     if (!open) {
@@ -282,6 +316,7 @@ export function WorkOrderAssemblerModal({
       setPersonId('')
       setExisting(null)
       setDraft(null)
+      setStageWindowId(null)
       setShowAllScope(false)
       setAddSubOpen(false)
     }
@@ -437,6 +472,7 @@ export function WorkOrderAssemblerModal({
       offer_expires_at: status === 'offered' ? draft.expires || null : null,
       offer_scope_snapshot: snapshot as unknown as StepCommitmentRow['offer_scope_snapshot'],
       record_id: recordId,
+      stage_window_id: stageWindowId,
     }
     setSaving(true)
     try {
@@ -691,7 +727,30 @@ export function WorkOrderAssemblerModal({
                       )}
                     </div>
                     <div><span style={{ ...labelStyle, fontWeight: 600 }}>Retainage %</span><input type="number" min="0" max="100" step="1" value={draft.retainagePct} onChange={(e) => setDraft({ ...draft, retainagePct: e.target.value })} style={inputStyle} /></div>
-                    <div><span style={{ ...labelStyle, fontWeight: 600 }}>Work window from</span><input type="date" value={draft.proposedStart} onChange={(e) => setDraft({ ...draft, proposedStart: e.target.value })} style={inputStyle} /></div>
+                    {stageChoices.length > 0 && !readOnly ? (
+                    <div>
+                      <span style={{ ...labelStyle, fontWeight: 600 }}>Stage</span>
+                      <select
+                        value={stageWindowId ?? ''}
+                        onChange={(e) => {
+                          const id = e.target.value || null
+                          setStageWindowId(id)
+                          const c = stageChoices.find((x) => x.id === id)
+                          if (c && draft) setDraft({ ...draft, proposedStart: c.start ?? draft.proposedStart, proposedEnd: c.end ?? draft.proposedEnd, amount: draft.amount.trim() === '' && c.amount > 0 ? String(c.amount) : draft.amount })
+                        }}
+                        style={inputStyle}
+                        aria-label="Stage"
+                      >
+                        <option value="">No stage — dates by hand</option>
+                        {stageChoices.map((c) => (
+                          <option key={c.id} value={c.id}>
+                            {c.name}{c.start && c.end ? ` · ${c.start} → ${c.end}` : ''}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  ) : null}
+                  <div><span style={{ ...labelStyle, fontWeight: 600 }}>Work window from</span><input type="date" value={draft.proposedStart} onChange={(e) => setDraft({ ...draft, proposedStart: e.target.value })} style={inputStyle} /></div>
                     <div><span style={{ ...labelStyle, fontWeight: 600 }}>to</span><input type="date" value={draft.proposedEnd} onChange={(e) => setDraft({ ...draft, proposedEnd: e.target.value })} style={inputStyle} /></div>
                     <div><span style={{ ...labelStyle, fontWeight: 600 }}>Offer good through</span><input type="date" value={draft.expires} onChange={(e) => setDraft({ ...draft, expires: e.target.value })} style={inputStyle} /></div>
                     <div>

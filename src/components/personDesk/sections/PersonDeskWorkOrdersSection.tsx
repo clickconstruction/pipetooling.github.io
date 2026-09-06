@@ -97,7 +97,7 @@ export function PersonDeskWorkOrdersSection({ personId, changeKey }: { personId:
             anchor: r.job_id && !r.labor_job_id ? 'job' : 'sheet',
             label: (r.record_id ? `${r.record_id} · ` : '') + (label || 'Sub sheet'),
             projectName: null,
-            href: `/jobs?tab=work_orders&wo=${r.id}`,
+            href: `/jobs?tab=subs&wo=${r.id}`,
           }
         }),
       )

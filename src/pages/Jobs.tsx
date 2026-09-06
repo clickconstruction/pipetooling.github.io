@@ -27,7 +27,8 @@ import { buildSubLaborOutstandingByPerson, subLaborJobMatchesSearch } from '../l
 import { laborJobSubCost } from '../lib/jobs/subLaborCost'
 import JobsCrewPnlTab from '../components/jobs/JobsCrewPnlTab'
 import JobsSubLaborTab from '../components/jobs/JobsSubLaborTab'
-import JobsWorkOrdersTab from '../components/jobs/JobsWorkOrdersTab'
+import { JobsSubsWorkView } from '../components/jobs/JobsSubsWorkView'
+import { JobsSubsTab, subsViewFromParam, type SubsView } from '../components/jobs/JobsSubsTab'
 import JobsSubLaborFormModal, { type JobsSubLaborFormModalHandle } from '../components/jobs/JobsSubLaborFormModal'
 import SubLaborPaymentModals, { type SubLaborPaymentModalsHandle } from '../components/jobs/SubLaborPaymentModals'
 import type { LaborJob } from '../types/laborJob'
@@ -69,14 +70,16 @@ import { useJobsStagesMutations } from '../hooks/useJobsStagesMutations'
 type CustomerRow = Database['public']['Tables']['customers']['Row']
 export type UserRow = { id: string; name: string; email: string | null; role: string; notes: string | null }
 
-type JobsTab = 'reports' | 'stages' | 'billing' | 'work_orders' | 'sub_sheet_ledger' | 'combined-labor' | 'teams-summary' | 'parts' | 'job-summary' | 'inspections' | 'billed'
+type JobsTab = 'reports' | 'stages' | 'billing' | 'subs' | 'combined-labor' | 'teams-summary' | 'parts' | 'job-summary' | 'inspections' | 'billed'
 
 /** Align with Layout mobile breakpoint; shortens primary create button to "New". */
 const JOBS_SHORT_NEW_JOB_BUTTON_MQ = '(max-width: 640px)'
 
 // Roster (for Labor / Sub Sheet Ledger)
 export type Person = { id: string; master_user_id: string; kind: string; name: string; email: string | null; phone: string | null; notes: string | null }
-const JOBS_TABS: JobsTab[] = ['reports', 'stages', 'billing', 'work_orders', 'sub_sheet_ledger', 'combined-labor', 'teams-summary', 'parts', 'job-summary', 'inspections', 'billed']
+const JOBS_TABS: JobsTab[] = ['reports', 'stages', 'billing', 'subs', 'combined-labor', 'teams-summary', 'parts', 'job-summary', 'inspections', 'billed']
+/** v2.2927: Work Orders and Sub Labor folded into Subs — old links keep landing. */
+const SUBS_TAB_ALIASES: Record<string, SubsView> = { work_orders: 'work', sub_sheet_ledger: 'pay', labor: 'pay' }
 
 type JobDetailPrefillLocationState = {
   jobDetailPrefill?: { prefillRowLabel: string | null; prefillAddress: string | null }
@@ -693,6 +696,18 @@ export default function Jobs() {
     const editLaborHcp = searchParams.get('editLabor')
     const isPrimary = authRole === 'primary' || myRole === 'primary'
     const isSuperintendent = authRole === 'superintendent' || myRole === 'superintendent'
+    // v2.2927: the old tab names (and ?tab=labor) land on Subs with the right view.
+    if (tab && SUBS_TAB_ALIASES[tab]) {
+      const view = SUBS_TAB_ALIASES[tab]!
+      setSearchParams((p) => {
+        const next = new URLSearchParams(p)
+        next.set('tab', 'subs')
+        if (view === 'pay') next.set('view', 'pay')
+        else next.delete('view')
+        return next
+      }, { replace: true })
+      return
+    }
     // When edit=jobId is present, force Stages tab so jobs load
     if (editJobId) {
       setActiveTab('stages')
@@ -705,13 +720,14 @@ export default function Jobs() {
       }
       return
     }
-    // When editLabor=hcp is present, force Sub Sheet Ledger tab so labor jobs load
+    // When editLabor=hcp is present, force Subs → Pay so labor jobs load
     if (editLaborHcp) {
-      setActiveTab('sub_sheet_ledger')
-      if (tab !== 'sub_sheet_ledger') {
+      setActiveTab('subs')
+      if (tab !== 'subs' || searchParams.get('view') !== 'pay') {
         setSearchParams((p) => {
           const next = new URLSearchParams(p)
-          next.set('tab', 'sub_sheet_ledger')
+          next.set('tab', 'subs')
+          next.set('view', 'pay')
           return next
         }, { replace: true })
       }
@@ -792,9 +808,9 @@ export default function Jobs() {
       landOn(roleGateBounce(tab === 'teams-summary' ? 'crew-pnl' : 'team-labor', `/jobs?tab=${tab}`).toTab)
       return
     }
-    // Superintendent: reports, sub_sheet_ledger only; default reports
+    // Superintendent: reports and Subs (Pay view only); default reports
     if (isSuperintendent) {
-      const superintendentTabs = ['reports', 'sub_sheet_ledger']
+      const superintendentTabs = ['reports', 'subs']
       if (tab && superintendentTabs.includes(tab)) {
         setActiveTab(tab as JobsTab)
       } else if (tab) {
@@ -816,14 +832,7 @@ export default function Jobs() {
       }
       return
     }
-    if (tab === 'labor') {
-      setSearchParams((p) => {
-        const next = new URLSearchParams(p)
-        next.set('tab', 'sub_sheet_ledger')
-        return next
-      }, { replace: true })
-      setActiveTab('sub_sheet_ledger')
-    } else if (tab === 'billed') {
+    if (tab === 'billed') {
       setActiveTab('stages')
       setSearchParams((p) => {
         const next = new URLSearchParams(p)
@@ -846,8 +855,8 @@ export default function Jobs() {
   useEffect(() => {
     const newJob = searchParams.get('newJob') === 'true'
     const tab = searchParams.get('tab')
-    if (newJob && (tab === 'sub_sheet_ledger' || tab === 'labor')) {
-      setActiveTab('sub_sheet_ledger')
+    if (newJob && tab === 'subs' && searchParams.get('view') === 'pay') {
+      setActiveTab('subs')
       // Handle-race guard (map rule, v2.834): on the earliest cold-load passes
       // the form modal's ref isn't attached yet, so an ungated call no-ops
       // while the param strips. Wait for the ledger's first load — by then the
@@ -857,7 +866,6 @@ export default function Jobs() {
       setSearchParams((p) => {
         const next = new URLSearchParams(p)
         next.delete('newJob')
-        if (tab === 'labor') next.set('tab', 'sub_sheet_ledger')
         return next
       }, { replace: true })
     } else if (newJob && (tab === 'billing' || tab === 'stages' || !tab)) {
@@ -1179,7 +1187,7 @@ export default function Jobs() {
 
 
   useEffect(() => {
-    if (activeTab === 'sub_sheet_ledger') {
+    if (activeTab === 'subs') {
       const t = setTimeout(() => loadRoster(), 80)
       return () => clearTimeout(t)
     }
@@ -1201,7 +1209,7 @@ export default function Jobs() {
 
 
   useEffect(() => {
-    if ((activeTab === 'billing' || activeTab === 'sub_sheet_ledger' || activeTab === 'work_orders' || activeTab === 'combined-labor' || activeTab === 'teams-summary' || activeTab === 'job-summary') && authUser?.id) {
+    if ((activeTab === 'billing' || activeTab === 'subs' || activeTab === 'combined-labor' || activeTab === 'teams-summary' || activeTab === 'job-summary') && authUser?.id) {
       const t = setTimeout(() => loadLaborJobs(), 80)
       return () => clearTimeout(t)
     }
@@ -1302,7 +1310,7 @@ export default function Jobs() {
   }
 
   useEffect(() => {
-    if ((activeTab === 'sub_sheet_ledger' || activeTab === 'teams-summary' || activeTab === 'job-summary') && authUser?.id) {
+    if ((activeTab === 'subs' || activeTab === 'teams-summary' || activeTab === 'job-summary') && authUser?.id) {
       // v2.1631: the Drive Settings / Default Labor Rate modals are gone —
       // the VALUES still load here (drive cost on legacy rows, the rate that
       // seeds new line items); editing them is Settings-side now.
@@ -1519,6 +1527,7 @@ export default function Jobs() {
   const showTeamLaborTab = authRole !== 'assistant' && myRole !== 'assistant' &&
     authRole !== 'superintendent' && myRole !== 'superintendent'
   const showSuperintendentExtraTabs = !isSuperintendent
+  const subsView = subsViewFromParam(searchParams.get('view'), showSuperintendentExtraTabs)
 
   return (
     <div>
@@ -1608,35 +1617,19 @@ export default function Jobs() {
             Team Labor
           </button>
           )}
-          {showSuperintendentExtraTabs && (
           <button
             type="button"
             onClick={() => {
-              setActiveTab('work_orders')
+              setActiveTab('subs')
               setSearchParams((p) => {
                 const next = new URLSearchParams(p)
-                next.set('tab', 'work_orders')
+                next.set('tab', 'subs')
                 return next
               })
             }}
-            style={pageTabStyle(activeTab === 'work_orders')}
+            style={pageTabStyle(activeTab === 'subs')}
           >
-            Work Orders
-          </button>
-          )}
-          <button
-            type="button"
-            onClick={() => {
-              setActiveTab('sub_sheet_ledger')
-              setSearchParams((p) => {
-                const next = new URLSearchParams(p)
-                next.set('tab', 'sub_sheet_ledger')
-                return next
-              })
-            }}
-            style={pageTabStyle(activeTab === 'sub_sheet_ledger')}
-          >
-            Sub Labor
+            Subs
           </button>
           {showSuperintendentExtraTabs && (
           <button
@@ -1794,49 +1787,64 @@ export default function Jobs() {
         refreshJobThreadStatsForJobIds={refreshJobThreadStatsForJobIds}
       />
 
-      {activeTab === 'work_orders' && (
-        <JobsWorkOrdersTab
-          jobs={jobs}
-          jobsLoading={jobsListLoading}
-          authUserId={authUser?.id}
-          deepLinkWorkOrderId={searchParams.get('wo')}
-          initialFilter={searchParams.get('wof')}
-          onOpenSheet={(sheetId) => {
-            const sheet = laborJobs.find((j) => j.id === sheetId)
-            if (sheet) subLaborFormRef.current?.openEdit(sheet)
-            else showToast('That sheet is still loading — try again in a moment', 'info')
-          }}
-          onDeepLinkConsumed={() =>
+      {activeTab === 'subs' && (
+        <JobsSubsTab
+          view={subsView}
+          canSeeWork={showSuperintendentExtraTabs}
+          onViewChange={(view) =>
             setSearchParams((p) => {
               const next = new URLSearchParams(p)
-              next.delete('wo')
+              if (view === 'pay') next.set('view', 'pay')
+              else next.delete('view')
               return next
-            }, { replace: true })
+            })
           }
-        />
-      )}
-
-      {activeTab === 'sub_sheet_ledger' && (
-        <JobsSubLaborTab
-          error={error}
-          subLaborSearch={subLaborSearch}
-          onSubLaborSearchChange={setSubLaborSearch}
-          laborJobs={laborJobs}
-          laborJobsLoading={laborJobsLoading}
-          laborJobNamesByHcp={laborJobNamesByHcp}
-          jobs={jobs}
-          authUserId={authUser?.id}
-          laborJobAssigneesByJobId={laborJobAssigneesByJobId}
-          subLaborDueTotal={subLaborDueTotal}
-          subLaborOutstandingByPerson={subLaborOutstandingByPerson}
-          onNewLaborJob={() => subLaborFormRef.current?.openNew()}
-          onEditLaborJob={(job) => subLaborFormRef.current?.openEdit(job)}
-          onPrintJobSubSheet={printJobSubSheet}
-          onUpdateLaborJobDate={updateLaborJobDate}
-          onSetLaborJobStage={setLaborJobStage}
-          onOpenMakePayment={(target, defaultAmount) => subLaborPaymentModalsRef.current?.openMakePayment(target, defaultAmount)}
-          onOpenBackcharge={(target) => subLaborPaymentModalsRef.current?.openBackcharge(target)}
-          onReloadLaborJobs={() => void loadLaborJobs()}
+          work={
+            showSuperintendentExtraTabs ? (
+              <JobsSubsWorkView
+                jobs={jobs}
+                jobsLoading={jobsListLoading}
+                authUserId={authUser?.id}
+                deepLinkWorkOrderId={searchParams.get('wo')}
+                initialFilter={searchParams.get('wof')}
+                onOpenSheet={(sheetId) => {
+                  const sheet = laborJobs.find((j) => j.id === sheetId)
+                  if (sheet) subLaborFormRef.current?.openEdit(sheet)
+                  else showToast('That sheet is still loading — try again in a moment', 'info')
+                }}
+                onDeepLinkConsumed={() =>
+                  setSearchParams((p) => {
+                    const next = new URLSearchParams(p)
+                    next.delete('wo')
+                    return next
+                  }, { replace: true })
+                }
+              />
+            ) : null
+          }
+          pay={
+              <JobsSubLaborTab
+                error={error}
+                subLaborSearch={subLaborSearch}
+                onSubLaborSearchChange={setSubLaborSearch}
+                laborJobs={laborJobs}
+                laborJobsLoading={laborJobsLoading}
+                laborJobNamesByHcp={laborJobNamesByHcp}
+                jobs={jobs}
+                authUserId={authUser?.id}
+                laborJobAssigneesByJobId={laborJobAssigneesByJobId}
+                subLaborDueTotal={subLaborDueTotal}
+                subLaborOutstandingByPerson={subLaborOutstandingByPerson}
+                onNewLaborJob={() => subLaborFormRef.current?.openNew()}
+                onEditLaborJob={(job) => subLaborFormRef.current?.openEdit(job)}
+                onPrintJobSubSheet={printJobSubSheet}
+                onUpdateLaborJobDate={updateLaborJobDate}
+                onSetLaborJobStage={setLaborJobStage}
+                onOpenMakePayment={(target, defaultAmount) => subLaborPaymentModalsRef.current?.openMakePayment(target, defaultAmount)}
+                onOpenBackcharge={(target) => subLaborPaymentModalsRef.current?.openBackcharge(target)}
+                onReloadLaborJobs={() => void loadLaborJobs()}
+              />
+          }
         />
       )}
 

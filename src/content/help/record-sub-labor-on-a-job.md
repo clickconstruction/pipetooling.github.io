@@ -5,7 +5,7 @@ roles: dev, master_technician, assistant, controller
 keywords: sub labor, subcontractor, sub sheet, labor book, job picker, stage, inspection, waiting on customer
 order: 62
 ---
-Sub labor lives on **Jobs → Sub Labor**. Every entry belongs to a job — the New Sub Labor form starts with the standard job search, and everything downstream (the job's profit band, Crew P&L, sub sheets) rolls the cost up to that job automatically.
+Sub labor lives on **Jobs → Subs → Pay**. Every entry belongs to a job — the New Sub Labor form starts with the standard job search, and everything downstream (the job's profit band, Crew P&L, sub sheets) rolls the cost up to that job automatically.
 
 ## New entry — three quick steps
 
@@ -30,7 +30,7 @@ New entries no longer ask for miles — the drive-cost math simply isn't applied
 
 ## Where the sheet stands
 
-Every ledger row carries the same spine as **Jobs → Work Orders**: **Agreed · Paid · Due**, then **Where it stands** — the rail the sub sees on their portal. Four big dots are the sub's steps (**Work · Pre-inspection · Post-inspection: Trigger draw · Paid**); the three small dots in front (**Drafted · Sent · Signed**) are the office's agreement steps. The filled terracotta dot is where the sheet is today; a **dashed red run** through the small dots means work is happening with nothing signed, and the Due figure turns the same red.
+Every ledger row carries the same spine as **Jobs → Subs → Work**: **Agreed · Paid · Due**, then **Where it stands** — the rail the sub sees on their portal. Four big dots are the sub's steps (**Work · Pre-inspection · Post-inspection: Trigger draw · Paid**); the three small dots in front (**Drafted · Sent · Signed**) are the office's agreement steps. The filled terracotta dot is where the sheet is today; a **dashed red run** through the small dots means work is happening with nothing signed, and the Due figure turns the same red.
 
 **Next** names the office's move — *Get it in writing* ({{button:blue|Draft a work order…}} opens the assembler on the sheet), *Price it and send*, *Waiting on ‹sub›*, *Wait for "done"*, *Call it in for inspection*, *Bill and collect*, *Pay ‹sub›*, *Nothing — done*.
 

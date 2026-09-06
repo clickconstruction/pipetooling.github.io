@@ -11,7 +11,7 @@ A sub's compliance column on **People → Subs** answers one question: is their 
 
 - **People → Subs** → click **▶ Documents** under the sub → {{button:outline|+ Add document}}.
 - **Person Desk → Paperwork** (open the Desk from any person's name) → {{button:outline|Add document}} on the *On file* row.
-- **Jobs → Sub Labor or Work Orders** → click a sheet's rail to open its story → on the Signed row, click **Binds under** (*no MSA on file · no COI on file*). The Desk opens on Paperwork; the story updates when you close it.
+- **Jobs → Subs** → click a sheet's rail to open its story → on the Signed row, click **Binds under** (*no MSA on file · no COI on file*). The Desk opens on Paperwork; the story updates when you close it.
 
 Both open the same short form. Nothing is saved until you click {{button:blue|Save}}.
 

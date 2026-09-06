@@ -11,7 +11,7 @@ order: 80
 
 - **Sub** — name, whether they have an app login, and their documents.
 - **Open work orders** — every offered/accepted step commitment with its amount and project.
-- **Balance due** — open money across their sub sheets (same numbers as Jobs → Sub Labor).
+- **Balance due** — open money across their sub sheets (same numbers as Jobs → Subs → Pay).
 - **Compliance** — badge per document type:
   - {{chip:green|Agreement signed}} {{chip:green|COI ✓}} — in order
   - {{chip:yellow|COI expiring}} — lapses within 30 days
@@ -38,7 +38,7 @@ Fix a row without leaving the tab:
 
 - {{button:outline-amber|✨ Link to Jesse Ramos}} — one tap when the sheet's name is clearly one roster sub (e.g. "J Ramos"). Shown only when there's exactly one safe match.
 - {{button:outline|Assign…}} — pick the right sub from the roster. For a **Multiple subs** sheet this replaces the multi-name assignment with the one sub you pick.
-- {{button:outline|Open →}} — jump to the sheet in Jobs → Sub Labor to edit it directly.
+- {{button:outline|Open →}} — jump to the sheet in Jobs → Subs → Pay to edit it directly.
 
 :::example Cleaning up a misspelled sheet
 The panel shows **#892** assigned to "MIke Rodrigez" with $1,240 open → tap {{button:outline-amber|✨ Link to Mike Rodriguez}} → the sheet folds into Mike's row and his Balance due grows by $1,240.

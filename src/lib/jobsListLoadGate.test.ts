@@ -3,7 +3,7 @@ import { shouldLoadJobsListForTab } from './jobsListLoadGate'
 
 describe('shouldLoadJobsListForTab', () => {
   it('loads for the tabs whose openers read the shared jobs cache', () => {
-    for (const tab of ['stages', 'billing', 'parts', 'sub_sheet_ledger', 'work_orders']) {
+    for (const tab of ['stages', 'billing', 'parts', 'subs']) {
       expect(shouldLoadJobsListForTab(tab)).toBe(true)
     }
   })

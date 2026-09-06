@@ -7,12 +7,12 @@ order: 63
 ---
 A **work order** is the short document a sub signs before they start: what they're doing, for how much, in what window, under which standing rules. Project steps have had one for a while; any **Sub Labor sheet** can carry one too, so a plain service job gets the same signed scope as a project.
 
-Most work orders now start on **Jobs → Work Orders** (see *assemble a sub work order*), where signing creates the sheet for you. The sheet's own box, below, is the door for a sheet that already exists.
+Most work orders now start on **Jobs → Subs → Work** (see *assemble a sub work order*), where signing creates the sheet for you. The sheet's own box, below, is the door for a sheet that already exists.
 
 ## Write it on the sheet
 
-1. Open the sheet from **Jobs → Sub Labor** ({{button:outline|Edit}}) and scroll to the **Work order** box, just below {{chip:blue|Shown on the sub's portal}}.
-2. {{button:blue|Write a work order for …}} opens the **assembler** (the same one as Jobs → Work Orders) with the job, the sub, and the sheet total as the price already filled — tick the scope and send. Sheets with more than one assignee, or whose job isn't loaded, keep the older inline editor described here.
+1. Open the sheet from **Jobs → Subs → Pay** ({{button:outline|Edit}}) and scroll to the **Work order** box, just below {{chip:blue|Shown on the sub's portal}}.
+2. {{button:blue|Write a work order for …}} opens the **assembler** (the same one as Jobs → Subs → Work) with the job, the sub, and the sheet total as the price already filled — tick the scope and send. Sheets with more than one assignee, or whose job isn't loaded, keep the older inline editor described here.
    - **Scope** comes from the scope library for the job's trade (change the list with the dropdown). Tick what applies; type lines for this job underneath, one per line. Whatever is ticked is what the sub signs, word for word.
    - **Exclusions** are the library's standing exclusions, ticked the same way.
    - **Terms**: the **amount is the sheet total and it's fixed at send** — add the work and cost first. Set the work window, how long the offer is good for, retainage, and whether a bond is furnished. Special provisions is a free line.
@@ -26,7 +26,7 @@ A routine plumbing sheet: open the editor, the library defaults are already tick
 
 ## Reading the rail
 
-The box draws the same seven-dot rail as **Jobs → Work Orders** and **Sub Labor** — **Drafted · Sent · Signed**, then the sheet's own **Work · Pre-inspection · Post-inspection: Trigger draw · Paid** — with a dashed red run while work is under way and nothing is signed. The filled dot is where the sheet stands today.
+The box draws the same seven-dot rail as **Jobs → Subs → Work** and **Sub Labor** — **Drafted · Sent · Signed**, then the sheet's own **Work · Pre-inspection · Post-inspection: Trigger draw · Paid** — with a dashed red run while work is under way and nothing is signed. The filled dot is where the sheet stands today.
 
 While an offer waits: {{button:outline|Nudge}} resends the notification, {{button:outline|Mark accepted}} records an answer the sub gave you by phone, {{button:outline|Withdraw}} takes it back to a draft. A decline shows its reason with {{button:blue|Re-offer…}} ready.
 

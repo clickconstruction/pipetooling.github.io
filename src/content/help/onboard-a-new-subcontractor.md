@@ -81,7 +81,7 @@ Point them at [get started as a sub or helper](?g=start-here-as-a-sub) — it's 
 | Contract text, packets, version dates | People → Contracts → Contract library |
 | Document types, expirations, compliance badges | People → Subs → ▶ Documents |
 | Licenses and hours logs | People → Licenses |
-| Work orders and what you owe them | Workflow step card · People → Subs · Jobs → Sub Labor |
+| Work orders and what you owe them | Workflow step card · People → Subs · Jobs → Subs → Pay |
 
 :::example A clean first week
 Monday: hired from the board, roster entry created, Subs packet and Handbook sent. Tuesday: both signed, COI and W-9 filed and typed on the Subs tab — every badge green. Wednesday: first work order offered and accepted; they clock in Thursday and the *Required Signatures* prompt never appears because there's nothing left to sign.

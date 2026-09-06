@@ -150,7 +150,7 @@ export function buildEndEmploymentChecklist(f: EndEmploymentFacts): LifecycleIte
         ? `${money(f.subBalance.balance)} open${f.subBalance.backcharges > 0 ? ` · ${money(f.subBalance.backcharges)} in backcharges` : ''} across ${f.subBalance.sheets} sheet${f.subBalance.sheets === 1 ? '' : 's'}`
         : `Settled · ${f.subBalance.sheets} sheet${f.subBalance.sheets === 1 ? '' : 's'}`,
       state: owed ? 'open' : 'done',
-      action: owed ? { kind: 'link', href: '/jobs?tab=sub_sheet_ledger', label: 'Sheets' } : null,
+      action: owed ? { kind: 'link', href: '/jobs?tab=subs&view=pay', label: 'Sheets' } : null,
       canLeaveOpen: true,
     })
   }

@@ -51,7 +51,7 @@ export function getPinnedChipDisplay(
   }
   const to = item.tab
     ? isSubLaborDue
-      ? '/jobs?tab=sub_sheet_ledger'
+      ? '/jobs?tab=subs&view=pay'
       : `${item.path}?tab=${encodeURIComponent(isBilled ? 'stages' : item.tab)}${isBilled ? '&showBilledTotalByName=true' : ''}`
     : item.path
   const label = isCostMatrix

@@ -227,7 +227,7 @@ export function QuickfillJobsCleanupSection() {
             </span>
             <button
               type="button"
-              onClick={() => navigate(`/jobs?tab=sub_sheet_ledger&editLabor=${encodeURIComponent(r.id)}`)}
+              onClick={() => navigate(`/jobs?tab=subs&view=pay&editLabor=${encodeURIComponent(r.id)}`)}
               title="Open this sheet in Edit Sub Labor — the Job field's search is one tap away"
               style={{
                 height: 28,

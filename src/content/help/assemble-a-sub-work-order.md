@@ -5,11 +5,11 @@ roles: dev, master_technician, assistant, controller
 keywords: sub, subcontractor, work order, work orders tab, assemble, scope, bid, price, draft, unpriced, sign, signature, portal, record number, WO, needs a work order, sub labor, rail, handshake, no agreement, link to a job, not in pipeline
 order: 62
 ---
-A **work order** is the short numbered document a sub signs before they start: what they're doing, for how much, in what window, under which standing rules. **Jobs → Work Orders** is where they're assembled — like a bid cover letter, with the document taking shape on the right as you tick.
+A **work order** is the short numbered document a sub signs before they start: what they're doing, for how much, in what window, under which standing rules. **Jobs → Subs → Work** is where they're assembled — like a bid cover letter, with the document taking shape on the right as you tick.
 
 ## Start one
 
-1. Open **Jobs → Work Orders**. Every row on the board is a **Sub Labor sheet** with the agreement behind it, and the first group — **Working with no agreement** — is the queue: sheets for roster subs with money still open (or never priced) and nothing signed, including sheets on jobs that are not in the Pipeline. Click {{button:blue|Draft a work order…}} on a row (the assembler opens on that sheet with its total as the price) or {{button:blue|+ New work order}} for a job with no sheet yet.
+1. Open **Jobs → Subs → Work**. Every row on the board is a **Sub Labor sheet** with the agreement behind it, and the first group — **Working with no agreement** — is the queue: sheets for roster subs with money still open (or never priced) and nothing signed, including sheets on jobs that are not in the Pipeline. Click {{button:blue|Draft a work order…}} on a row (the assembler opens on that sheet with its total as the price) or {{button:blue|+ New work order}} for a job with no sheet yet.
 2. **Job**: pick the job. The document's project block, customer, and trade come from it.
 3. **Sub**: pick the sub from the roster chips, or {{button:outline|Add sub}} for someone new — they get a roster row and a portal.
 4. **Scope and terms**:
@@ -28,7 +28,7 @@ Taking a job in and the master already knows who's doing it? Open the job, **Edi
 
 ## The master's queue
 
-Unpriced drafts show on the dashboard's **Needs You** card — *"2 sub work orders are waiting for a price"* — and {{button:blue|Price them}} opens **Jobs → Work Orders** on the Drafts filter. Open each draft, type the price, {{button:blue|Send for signature}}.
+Unpriced drafts show on the dashboard's **Needs You** card — *"2 sub work orders are waiting for a price"* — and {{button:blue|Price them}} opens **Jobs → Subs → Work** on the Drafts filter. Open each draft, type the price, {{button:blue|Send for signature}}.
 
 ## Reading the board
 
@@ -48,7 +48,7 @@ Springtown's $40,000 electrical sheet was written against job 977 before the job
 
 While an offer waits: {{button:outline|Nudge}} resends the notification, {{button:outline|Signed on paper}} records a signature they gave you on a printed copy, {{button:outline|Withdraw}} takes it back to a draft. Signed orders open read-only and {{button:outline|Print}} gives the paper copy.
 
-Crew pay sheets (a teammate on the sheet) never need a work order and are never listed here — they keep their own label on **Jobs → Sub Labor**.
+Crew pay sheets (a teammate on the sheet) never need a work order and are never listed here — they keep their own label on **Jobs → Subs → Pay**.
 
 ## Where the words come from
 
