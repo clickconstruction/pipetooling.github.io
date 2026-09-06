@@ -5,7 +5,7 @@ file: DB_FREEZE_RUNBOOK.md
 type: Runbook
 purpose: What to do (and what Claude does via /db-freeze) when the app looks "database down"
 audience: Devs + AI agents
-last_updated: 2026-08-24
+last_updated: 2026-09-06
 ---
 
 The app going "database down" office-wide has (so far) **never been a crash** —
@@ -399,6 +399,46 @@ acknowledgment email arrives (the form takes no attachments pre-submit).
 Note: the confirmation screen said "logged for No specific project"
 despite the project being selected; the ticket body leads with the
 project ref, but verify the association in the acknowledgment email.
+
+### 2026-09-06 — Mode B (≈4-minute stall 20:31–20:35 UTC, ended by a Postgres self-restart) — and a week of them
+
+Found by accident: an agent-driven live test (the first Direct Deposit form
+signing) hung at "Submitting…", the `accept-contract` edge function died
+with `504 IDLE_TIMEOUT` (150s), and a fresh psql session got Supavisor
+`ECHECKOUTTIMEOUT … Session mode` then `authentication did not complete
+within 15000ms`. Nobody in the office reported it.
+
+- **Step 0 after the fact was green** (200 in 0.19s / 0.31s) — but the
+  probe launched *during* the stall took **121s** to return 200 (the same
+  REST call, 0.29s a moment later). A fresh psql connect succeeded at
+  20:35:13 with 1 active backend and **0 waiting on Lock**.
+- **`inspect db blocking` / `long-running-queries`: empty** (run at 20:35:26,
+  after recovery).
+- **Step 2, decisive**: `monitoring.connection_samples` ran at **20:31:00,
+  then not until 20:36:00 (300s gap)**; the 20:31 sample shows 3 `active`
+  backends with NULL wait event and none on Lock; ~76 conns, sampler 27ms.
+  `cron.job_run_details` has **no failed rows** in the window (silent gap,
+  as on 08-24). `pg_postmaster_start_time()` = **20:35:04 UTC** — Postgres
+  restarted itself; `monitoring.health_checks.ckpt_write_time_ms` fell from
+  84,897 to 58 across the gap (stats reset), which is the restart fingerprint.
+- **Not a one-off**: counting `ckpt_write_time_ms` resets in
+  `monitoring.health_checks` gives **30 restarts in the 7 days to 2026-09-06
+  20:40 UTC** — 2 on 09-03, 3 on 09-04, 11 on 09-05, 14 on 09-06 — i.e. the
+  August crash loop (`docs/recent-features/v2.2917.md` family, Large compute)
+  is back and accelerating. Sampler gaps ≥120s in the last 24h: ten, from
+  120s to 480s.
+- **What was in flight**: the signing (fill + flatten a 1-page PDF, one
+  storage upload, one row update), a Form Studio Save/Republish, and three
+  short read-only psql sessions. Nothing heavy; the restart is not explained
+  by this session's load.
+- **Not done here**: Postgres logs (Dashboard → Logs) for the OOM /
+  `terminated` lines — the MCP server was not authorized in this session.
+  That is the next step: confirm the kill reason and compare memory headroom
+  against the 08-20 sizing.
+- Recovery: the retry of the same signing succeeded at 20:36:57 (200,
+  `signed.pdf` 9,351 bytes in `contract-form-pdfs`). Restart query for next
+  time:
+  `with h as (select sampled_at, ckpt_write_time_ms, lag(ckpt_write_time_ms) over (order by sampled_at) prev from monitoring.health_checks where sampled_at > now() - interval '7 days') select sampled_at from h where ckpt_write_time_ms < prev;`
 
 ### 2026-08-24 — Mode B variant (7-minute stall 19:24–19:31 UTC, self-recovered, REST stayed up)
 
