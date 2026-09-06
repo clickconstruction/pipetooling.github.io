@@ -60,6 +60,12 @@ import { parseStagesMoneyMoveKey } from '../lib/jobs/stagesMoneyMoveLink'
 import { useJobDetailModal } from '../contexts/JobDetailModalContext'
 import { fetchAttributionsByMercuryTxIds } from '../lib/fetchMercuryRelationsByTxIds'
 import { useJobSummaryData } from '../hooks/useJobSummaryData'
+import {
+  MONEY_STORY_JOB_PARAM,
+  MONEY_STORY_MISSING_TOAST,
+  jobSummaryRowDomId,
+  resolveMoneyStoryLanding,
+} from '../lib/jobs/moneyStoryDoor'
 import { PartsUnattributedMercuryListModal } from '../components/jobs/PartsUnattributedMercuryListModal'
 import { PartsUnattributedAllJobsModal } from '../components/jobs/PartsUnattributedAllJobsModal'
 import { MercuryTransactionAllocationsModal } from '../components/MercuryTransactionAllocationsModal'
@@ -1169,6 +1175,32 @@ export default function Jobs() {
       return next
     }, { replace: true })
   }, [stagesJobParam, jobsListLoading, activeTab, setSearchParams])
+
+  // ?tab=job-summary&job=<jobId> — the "money story →" door (T5-02 / J6-9): once the
+  // ledger is loaded, expand the job's row, scroll it into view, and strip the param.
+  // A job not on the list (below the floor / outside the window) gets a toast, not silence.
+  const moneyStoryJobParam = searchParams.get(MONEY_STORY_JOB_PARAM)
+  useEffect(() => {
+    if (activeTab !== 'job-summary') return
+    const landing = resolveMoneyStoryLanding(
+      moneyStoryJobParam,
+      jobSummaryLedgerJobs ? new Set(jobSummaryLedgerJobs.map((j) => j.id)) : null,
+    )
+    if (landing.kind === 'none' || landing.kind === 'wait') return
+    if (landing.kind === 'focus') {
+      setExpandedJobSummaryJobIds((prev) => (prev.has(landing.jobId) ? prev : new Set(prev).add(landing.jobId)))
+      window.setTimeout(() => {
+        document.getElementById(jobSummaryRowDomId(landing.jobId))?.scrollIntoView({ block: 'center' })
+      }, 50)
+    } else {
+      showToast(MONEY_STORY_MISSING_TOAST, 'info')
+    }
+    setSearchParams((p) => {
+      const next = new URLSearchParams(p)
+      next.delete(MONEY_STORY_JOB_PARAM)
+      return next
+    }, { replace: true })
+  }, [moneyStoryJobParam, activeTab, jobSummaryLedgerJobs, setSearchParams, showToast])
 
   // New job saved: wait for the onSaved refetch to land it in the cache, then
   // clear the Pipeline search and scroll to + flash its row (focusJob). Off the
