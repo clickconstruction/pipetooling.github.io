@@ -62,6 +62,7 @@ import { hardReloadFromRoot } from '../lib/hardReload'
 import { prefetchDashboardPhase1 } from '../lib/dashboardPrefetch'
 import { isAssistantLike, isSubcontractorLikeRole } from '../lib/subcontractorLikeRole'
 import { fieldJobLookupEligible, headerSearchEligibleForRole } from '../lib/fieldJobLookup'
+import { startDismissalSync, stopDismissalSync } from '../lib/dismissalSync'
 import { canLeaveJobFieldReport } from '../lib/canLeaveJobFieldReport'
 import { useJobModeEnabled } from '../hooks/useJobModeEnabled'
 import { useFarmModeEnabled } from '../hooks/useFarmModeEnabled'
@@ -134,6 +135,12 @@ export default function Layout() {
   const partnerNav = useIsPartner(role, authUser?.id)
   const { theme, override: themeOverride, setOverride: setThemeOverride } = useTheme()
   useAppActivityHeartbeat(authUser?.id, appActivityPageKey(location.pathname, location.search))
+  // T5-08 (X16): alert dismissals follow the person — mirror saves to the server, seed this device at sign-in.
+  useEffect(() => {
+    if (!authUser?.id) return
+    void startDismissalSync(authUser.id)
+    return () => stopDismissalSync()
+  }, [authUser?.id])
   // Mobile assistants returning after a gap (>~1h) land on Dispatch instead of the dashboard.
   useAssistantDispatchLanding()
   // Role-aware (v2.2877): absent key ⇒ ON for sub-like roles, OFF otherwise; a stored value wins.

@@ -4,6 +4,9 @@ import { Link, useSearchParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
 import { usePeopleAccess } from '../hooks/usePeopleAccess'
+import { useOrgDefault } from '../hooks/useOrgDefault'
+import { orgDefaultBool } from '../lib/orgDefaults'
+import { readDeviceString } from '../lib/deviceString'
 import { canMarkTallyPayroll } from '../lib/people/payWeekLinks'
 import { withSupabaseRetry } from '../utils/errorHandling'
 import type { Database } from '../types/database'
@@ -244,6 +247,13 @@ export default function JobTally() {
       return false
     }
   })
+  // T5-08 (X16): org / role default when this device has not chosen.
+  const autoApplyOrgDefault = useOrgDefault('tally.payroll_auto_apply', role, readDeviceString('jobs-tally-payroll-autoapply'))
+  useEffect(() => {
+    if (!autoApplyOrgDefault.loaded || autoApplyOrgDefault.source === 'device' || autoApplyOrgDefault.source === 'fallback') return
+    const b = orgDefaultBool(autoApplyOrgDefault.value)
+    if (b !== null) setPayrollAutoApply(b)
+  }, [autoApplyOrgDefault.loaded, autoApplyOrgDefault.source, autoApplyOrgDefault.value])
   const [serviceTypes, setServiceTypes] = useState<ServiceType[]>([])
   const [selectedServiceTypeId, setSelectedServiceTypeId] = useState<string | null>(null)
   const [jobs, setJobs] = useState<JobForTally[]>([])

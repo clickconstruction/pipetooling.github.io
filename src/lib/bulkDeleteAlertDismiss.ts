@@ -1,3 +1,4 @@
+import { pushDismissal } from './dismissalStore'
 /**
  * Dismiss state for the dev "bulk deletion detected" dashboard notice.
  *
@@ -29,6 +30,7 @@ export function loadBulkDeleteAlertDismissState(userId: string): BulkDeleteAlert
 }
 
 export function saveBulkDeleteAlertDismissState(userId: string, state: BulkDeleteAlertDismissState): void {
+  pushDismissal(PREFIX, userId, state)
   try {
     localStorage.setItem(PREFIX + userId, JSON.stringify(state))
   } catch {
