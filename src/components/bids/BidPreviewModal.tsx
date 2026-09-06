@@ -11,6 +11,7 @@ import { CustomerSnapshotModal } from '../customers/CustomerSnapshotModal'
 import { BidBoardNotesPanel, type BidBoardNotesTab } from './BidBoardNotesPanel'
 import { useLedgerPrefixMap } from '../../contexts/LedgerDisplayPrefixContext'
 import { formatBidLedgerNumberLabel, resolveBidLedgerPrefix } from '../../lib/ledgerDisplayPrefixes'
+import { toAppTzYmd } from '../../utils/datetimeLocal'
 
 export type BidPreviewTabUrl =
   | 'bid-board'
@@ -327,7 +328,8 @@ export function BidPreviewModal({
         { label: 'GC contact', value: gcContact || '—', empty: !gcContact },
         { label: 'Agreed value', value: money(bid.agreed_value), empty: bid.agreed_value == null },
         { label: 'Profit', value: money(bid.profit), empty: bid.profit == null },
-        { label: 'Last contact', value: formatYmd(bid.last_contact), empty: !bid.last_contact?.trim() },
+        // timestamptz (the four fields above are date columns): slice on the company calendar, not UTC (J10-F1).
+        { label: 'Last contact', value: toAppTzYmd(bid.last_contact) ?? '—', empty: !bid.last_contact?.trim() },
         ...(submittedTo ? [{ label: 'Submitted to', value: submittedTo, empty: false }] : []),
       ]
     : []

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { bidBoardDueCellParts, bidBoardLastContactParts } from './bidBoardDateCells'
+import { bidBoardDueCellParts, bidBoardLastContactParts, bidBoardNoDueDateParts, bidBoardSentLabel, UNSENT_NO_DUE_DATE_RED_AFTER_DAYS } from './bidBoardDateCells'
 
 // Mock "today": Monday 2026-08-03 (mid-afternoon to catch midnight-normalization bugs).
 const TODAY = new Date('2026-08-03T15:30:00')
@@ -76,5 +76,41 @@ describe('bidBoardLastContactParts', () => {
   it('returns null for empty or unparseable input', () => {
     expect(bidBoardLastContactParts(null, TODAY)).toBeNull()
     expect(bidBoardLastContactParts('garbage', TODAY)).toBeNull()
+  })
+})
+
+describe('bidBoardSentLabel (J10-F2: Pending prints the field it sorts by)', () => {
+  it('formats a date-only sent date as "sent Wkd M/D"', () => {
+    expect(bidBoardSentLabel('2026-09-02')).toBe('sent Wed 9/2')
+  })
+  it('is null without a sent date', () => {
+    expect(bidBoardSentLabel(null)).toBeNull()
+    expect(bidBoardSentLabel('')).toBeNull()
+    expect(bidBoardSentLabel('garbage')).toBeNull()
+  })
+})
+
+describe('bidBoardNoDueDateParts (J10-F4: undated Unsent bids can still turn red)', () => {
+  it('is quiet while the bid is younger than the threshold', () => {
+    const p = bidBoardNoDueDateParts({ bid_due_date: null, created_at: '2026-07-25T14:00:00Z', outcome: null, bid_date_sent: null }, TODAY)
+    expect(p).toEqual({ label: 'No due date', ageDays: 9, deltaLabel: '(+9)', urgency: 'normal' })
+  })
+  it(`turns red once older than ${UNSENT_NO_DUE_DATE_RED_AFTER_DAYS} days`, () => {
+    const p = bidBoardNoDueDateParts({ bid_due_date: null, created_at: '2026-07-01T14:00:00Z', outcome: null, bid_date_sent: null }, TODAY)
+    expect(p).toMatchObject({ ageDays: 33, deltaLabel: '(+33)', urgency: 'overdue' })
+    // Exactly at the threshold stays quiet; one day past it goes red.
+    const at = new Date(TODAY); at.setDate(at.getDate() - UNSENT_NO_DUE_DATE_RED_AFTER_DAYS)
+    expect(bidBoardNoDueDateParts({ bid_due_date: null, created_at: at.toISOString() }, TODAY)?.urgency).toBe('normal')
+    at.setDate(at.getDate() - 1)
+    expect(bidBoardNoDueDateParts({ bid_due_date: null, created_at: at.toISOString() }, TODAY)?.urgency).toBe('overdue')
+  })
+  it('shows the chip with no day count when created_at is unknown', () => {
+    expect(bidBoardNoDueDateParts({ bid_due_date: null }, TODAY)).toEqual({ label: 'No due date', ageDays: null, deltaLabel: '', urgency: 'normal' })
+  })
+  it('is null when the bid has a due date, is sent, or is decided', () => {
+    expect(bidBoardNoDueDateParts({ bid_due_date: '2026-08-10', created_at: '2026-07-01T14:00:00Z' }, TODAY)).toBeNull()
+    expect(bidBoardNoDueDateParts({ bid_due_date: null, created_at: '2026-07-01T14:00:00Z', bid_date_sent: '2026-07-20' }, TODAY)).toBeNull()
+    expect(bidBoardNoDueDateParts({ bid_due_date: null, created_at: '2026-07-01T14:00:00Z', outcome: 'won' }, TODAY)).toBeNull()
+    expect(bidBoardNoDueDateParts({ bid_due_date: '  ', created_at: '2026-07-01T14:00:00Z', outcome: 'lost' }, TODAY)).toBeNull()
   })
 })

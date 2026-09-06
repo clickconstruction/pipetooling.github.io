@@ -3934,7 +3934,7 @@ export function BidsPricingTab({
                             title={bookMatches.length === 0 ? 'No unassigned rows exactly match a book entry name' : 'Assign each matching row its book entry — prices fill from the book'}
                             style={{ font: 'inherit', fontSize: '0.78rem', fontWeight: 600, padding: '0.28rem 0.7rem', borderRadius: 6, border: 'none', background: '#3b82f6', color: '#fff', cursor: bookMatches.length === 0 ? 'not-allowed' : 'pointer', opacity: wbFillingBook || bookMatches.length === 0 ? 0.55 : 1 }}
                           >
-                            {wbFillingBook ? 'Filling…' : `Fill ${bookMatches.length} matching from book`}
+                            {wbFillingBook ? 'Filling…' : bookMatches.length === 0 ? '0 unassigned rows match the book' : `Fill ${bookMatches.length} matching from book`}
                           </button>
                         </div>
                       )

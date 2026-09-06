@@ -59,6 +59,7 @@ import { BidWorkflowTabTitleWithPreview } from './BidWorkflowTabTitleWithPreview
 import type { useBidPreview } from '../../contexts/BidPreviewModalContext'
 import type { BidWithBuilder } from '../../types/bidWithBuilder'
 import type { BidCountRow } from '../../types/bids'
+import { gcDisplayName } from '../../lib/bids/gcDisplayName'
 
 const COVER_LETTER_INCLUSIONS_PLACEHOLDER = 'Permits'
 
@@ -745,7 +746,8 @@ export function BidsCoverLetterTab({
       ) : (() => {
         const bid = selectedBidForPricing
         const customer = bid.customers
-        const customerName = customer?.name ?? '—'
+        // One name for an unnamed GC everywhere the letter is shown (J13-F4): letterhead, Bid Room panel, room payload.
+        const customerName = gcDisplayName(customer)
         const customerAddress = customer?.address ?? '—'
         const projectNameVal = bid.project_name ?? '—'
         const projectAddressVal = bid.address ?? '—'
@@ -768,6 +770,11 @@ export function BidsCoverLetterTab({
         const unpricedLeftOff = bundlePricings.length - pricedBundle.length
         const newLetterTotal = letterTotal(pricedBundle)
         const headlineAmount = useCustomAmount && !isNaN(customAmountNum) && customAmountNum >= 0 ? customAmountNum : newBundleActive ? (boardValueForRule(boardValueRule, bundleSectionsForBoard(bundlePricings), coverLetterRevenue) ?? newLetterTotal) : coverLetterRevenue
+        // J13-F3: while Pricing lazy-loads the preview reads "ZERO 00/100 DOLLARS" — Mark sent was
+        // guarded, but Print and Copy were not, so a $0 letter of a $15.8M bid could leave the building.
+        // A custom amount needs no pricing rows, so it is never gated.
+        const totalsResolved = coverLetterPricingRows != null || useCustomAmount
+        const totalsPendingTitle = 'Pricing is still loading — the letter amount is not final yet'
         const latestSends = latestSendByVersion(versionSends)
         const revenueWords = numberToWords(effectiveRevenue).toUpperCase()
         const revenueNumber = `$${formatCurrency(effectiveRevenue)}`
@@ -946,8 +953,10 @@ export function BidsCoverLetterTab({
                 <button
                   type="button"
                   onClick={() => printCoverLetterDocument(finalCoverLetterHtml)}
-                  title="Print combined document"
-                  style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}
+                  disabled={!totalsResolved}
+                  aria-busy={!totalsResolved || undefined}
+                  title={totalsResolved ? 'Print combined document' : totalsPendingTitle}
+                  style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: totalsResolved ? 'pointer' : 'wait', opacity: totalsResolved ? 1 : 0.5 }}
                 >
                   Print
                 </button>
@@ -1527,21 +1536,26 @@ export function BidsCoverLetterTab({
                     <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: '0.7rem 0.9rem' }}>
                       <button
                         type="button"
+                        disabled={!totalsResolved}
+                        aria-busy={!totalsResolved || undefined}
+                        title={totalsResolved ? undefined : totalsPendingTitle}
                         onClick={() => {
                           copyToClipboard()
                           openInExternalBrowser(googleDocsCopyUrl)
                           setCoverLetterBidSubmissionQuickAddBidId(bid.id)
                           setCoverLetterBidSubmissionQuickAddValue(bid.bid_submission_link ?? '')
                         }}
-                        style={{ padding: '0.5rem 0.9rem', fontSize: '0.85rem', fontWeight: 600, background: '#3b82f6', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer' }}
+                        style={{ padding: '0.5rem 0.9rem', fontSize: '0.85rem', fontWeight: 600, background: '#3b82f6', color: 'white', border: 'none', borderRadius: 6, cursor: totalsResolved ? 'pointer' : 'wait', opacity: totalsResolved ? 1 : 0.5 }}
                       >
                         Copy &amp; open in Google Docs
                       </button>
                       <button
                         type="button"
                         onClick={() => printCoverLetterDocument(finalCoverLetterHtml)}
-                        title="Print combined document"
-                        style={{ padding: '0.5rem 0.8rem', fontSize: '0.85rem', background: 'var(--bg-muted)', color: 'var(--text-strong)', border: '1px solid var(--border-strong)', borderRadius: 6, cursor: 'pointer' }}
+                        disabled={!totalsResolved}
+                        aria-busy={!totalsResolved || undefined}
+                        title={totalsResolved ? 'Print combined document' : totalsPendingTitle}
+                        style={{ padding: '0.5rem 0.8rem', fontSize: '0.85rem', background: 'var(--bg-muted)', color: 'var(--text-strong)', border: '1px solid var(--border-strong)', borderRadius: 6, cursor: totalsResolved ? 'pointer' : 'wait', opacity: totalsResolved ? 1 : 0.5 }}
                       >
                         Print
                       </button>

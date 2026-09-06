@@ -88,3 +88,61 @@ export function bidBoardLastContactParts(iso: string | null | undefined, today: 
   if (isNaN(d.getTime())) return null
   return partsFromDate(d, today)
 }
+
+/**
+ * Pending rows print their SENT date beside the due chip (J10-F2). The section
+ * sorts by `bid_date_sent` (v2.1760) while the only date it used to print was
+ * the due date — the column read shuffled unless you knew the hidden key.
+ * Date-only `YYYY-MM-DD` in, `sent Thu 9/2` out; null when there is no sent date.
+ */
+export function bidBoardSentLabel(dateSent: string | null | undefined): string | null {
+  if (!dateSent || !dateSent.trim()) return null
+  const d = new Date(dateSent.trim() + 'T12:00:00')
+  if (isNaN(d.getTime())) return null
+  return `sent ${WEEKDAYS[d.getDay()]} ${d.getMonth() + 1}/${d.getDate()}`
+}
+
+/**
+ * An unsent bid with no due date turns red after this many days on the board
+ * (J10-F4). Due date and value are optional on New Bid, so 6 of 11 Unsent bids
+ * had no due date and could never earn an urgency color — the board's whole
+ * urgency system disarmed itself for exactly the bids most likely to rot.
+ */
+export const UNSENT_NO_DUE_DATE_RED_AFTER_DAYS = 14
+
+export type BidBoardNoDueDateParts = {
+  /** Always `No due date`. */
+  label: string
+  /** Days since the bid was created; null when created_at is unknown. */
+  ageDays: number | null
+  /** `(+N)` days on the board; empty when the age is unknown. */
+  deltaLabel: string
+  /** 'overdue' once older than UNSENT_NO_DUE_DATE_RED_AFTER_DAYS, else 'normal'. */
+  urgency: BidBoardDueUrgency
+}
+
+/**
+ * The "no due date" chip for an UNSENT, undecided bid. Returns null when the
+ * bid has a due date (the due chip renders), is sent, or is decided — those
+ * rows already say what they need to.
+ */
+export function bidBoardNoDueDateParts(
+  bid: { bid_due_date: string | null | undefined; created_at?: string | null; outcome?: string | null; bid_date_sent?: string | null },
+  today: Date = new Date(),
+): BidBoardNoDueDateParts | null {
+  if (bid.bid_due_date && bid.bid_due_date.trim()) return null
+  const decided = bid.outcome === 'won' || bid.outcome === 'lost' || bid.outcome === 'started_or_complete'
+  if (decided) return null
+  if (bid.bid_date_sent && bid.bid_date_sent.trim()) return null
+  let ageDays: number | null = null
+  if (bid.created_at) {
+    const created = new Date(bid.created_at)
+    if (!isNaN(created.getTime())) ageDays = partsFromDate(created, today).deltaDays
+  }
+  return {
+    label: 'No due date',
+    ageDays,
+    deltaLabel: ageDays == null ? '' : `(+${Math.max(0, ageDays)})`,
+    urgency: ageDays != null && ageDays > UNSENT_NO_DUE_DATE_RED_AFTER_DAYS ? 'overdue' : 'normal',
+  }
+}

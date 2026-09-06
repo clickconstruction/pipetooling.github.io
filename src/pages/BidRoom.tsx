@@ -12,6 +12,7 @@ import { publicFunctionHeaders, sampleStateFromToken } from '../lib/customerSamp
 import { staffAwarePublicHeaders } from '../lib/publicFunctionStaffHeaders'
 import { PUBLIC_PREVIEW_PARAM, isPreviewFlag } from '../lib/publicViewCounting'
 import { SampleModeBanner } from '../components/SampleModeBanner'
+import { gcDisplayName } from '../lib/bids/gcDisplayName'
 import { useSearchParams } from 'react-router-dom'
 import AuthPublicLandingLayout from '../components/AuthPublicLandingLayout'
 import EstimateCustomerAttachmentCard from '../components/estimates/EstimateCustomerAttachmentCard'
@@ -243,7 +244,7 @@ export default function BidRoom() {
           <div style={{ flex: '1 1 16rem', minWidth: 0 }}>
             <h1 style={{ margin: 0 }}>Proposal — {payload.project_name || 'your project'}</h1>
             <p style={{ margin: '0.35rem 0 0', fontSize: '0.9rem', color: 'var(--text-700)' }}>
-              <strong>For:</strong> {payload.gc_name || '—'}
+              <strong>For:</strong> {gcDisplayName(payload.gc_name)}
               {payload.project_address ? <> · {payload.project_address}</> : null}
             </p>
             <p style={{ margin: '0.2rem 0 0', fontSize: '0.8rem', color: 'var(--text-muted)' }}>{publishedLine(room.revision)}</p>

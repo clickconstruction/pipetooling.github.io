@@ -35,6 +35,13 @@ export function resolveRoughQtyOnClose(draft: string, originalQty: number | null
   return clampRoughQtyFromDraft(draft)
 }
 
+/**
+ * One-line caption for the By Stage / Combined pills and the switch confirm (J11-F4):
+ * the first structural decision of every takeoff had no on-surface explanation.
+ */
+export const MATERIALS_MODEL_CAPTION =
+  'By Stage = exact assemblies per rough-in / top-out / trim-set stage. Combined = one rough parts list for the whole job.'
+
 export function normalizeMaterialsModel(v: string | null | undefined): MaterialsModel {
   return v === 'rough' ? 'rough' : 'exact'
 }

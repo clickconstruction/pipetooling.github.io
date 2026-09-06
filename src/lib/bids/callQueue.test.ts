@@ -104,3 +104,44 @@ describe('buildCallQueue', () => {
     expect(builders[0]!.builderName).toBe('B')
   })
 })
+
+describe('queue order (J14-F4)', () => {
+  it('never-contacted builders tie-break by who has waited longest, not by name', () => {
+    const { builders } = buildCallQueue(
+      [
+        bid({ builderKey: 'aaron', builderName: 'Aaron Berg', sentIso: '2026-08-15', lastContactIso: null }),
+        bid({ builderKey: 'zed', builderName: 'Zed Builders', sentIso: '2026-05-01', lastContactIso: null }),
+        bid({ builderKey: 'mid', builderName: 'Mid Co', sentIso: '2026-07-01', lastContactIso: null }),
+      ],
+      NOW,
+    )
+    expect(builders.map((b) => b.builderName)).toEqual(['Zed Builders', 'Mid Co', 'Aaron Berg'])
+    expect(builders[0]!.chase.oldestQuietDays).toBeGreaterThan(builders[2]!.chase.oldestQuietDays!)
+  })
+
+  it('a contact on a LOST bid no longer ranks its builder ahead of one never called', () => {
+    const { builders } = buildCallQueue(
+      [
+        // Never called, sent long ago — should be first.
+        bid({ builderKey: 'quiet', builderName: 'Quiet GC', sentIso: '2026-05-01', lastContactIso: null }),
+        // Pending never called + an ancient note on a dead lost bid.
+        bid({ builderKey: 'noisy', builderName: 'Noisy GC', sentIso: '2026-08-10', lastContactIso: null }),
+        bid({ builderKey: 'noisy', builderName: 'Noisy GC', outcome: 'lost', sentIso: '2025-01-01', lastContactIso: '2025-02-01T00:00:00.000Z' }),
+      ],
+      NOW,
+    )
+    expect(builders.map((b) => b.builderName)).toEqual(['Quiet GC', 'Noisy GC'])
+    expect(builders[1]!.oldestContactMs).toBe(-Infinity)
+  })
+
+  it('a real contact on an open bid still ranks oldest-first ahead of the never-contacted band', () => {
+    const { builders } = buildCallQueue(
+      [
+        bid({ builderKey: 'called', builderName: 'Called GC', sentIso: '2026-05-01', lastContactIso: '2026-06-01T00:00:00.000Z' }),
+        bid({ builderKey: 'never', builderName: 'Never GC', sentIso: '2026-05-01', lastContactIso: null }),
+      ],
+      NOW,
+    )
+    expect(builders.map((b) => b.builderName)).toEqual(['Never GC', 'Called GC'])
+  })
+})

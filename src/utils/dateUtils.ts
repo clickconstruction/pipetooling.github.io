@@ -263,7 +263,11 @@ export function getThisAndLastWeekRange(): { start: string; end: string } {
   return { start: lastSun, end: thisSat }
 }
 
-/** YYYY-MM-DD in company calendar (America/Chicago) for an instant. */
+/**
+ * YYYY-MM-DD in the company calendar (`APP_CALENDAR_TZ`, America/Chicago) for an instant.
+ * The `denver*` name is historical — the family predates the Chicago move and is kept for its
+ * call sites; the zone is whatever `APP_CALENDAR_TZ` says (J14-S1).
+ */
 export function denverCalendarDayKey(ms: number): string {
   // formatToParts (not format) so the key is locale-data-proof: runtimes whose 'en-CA'
   // falls back to MM/DD/YYYY ordering still yield labeled year/month/day parts.
@@ -288,7 +292,8 @@ function utcMsFromCalendarYmd(ymd: string): number {
 }
 
 /**
- * Whole calendar days from the instant's company-calendar date to `nowMs`'s company-calendar date (Chicago).
+ * Whole calendar days from the instant's company-calendar date to `nowMs`'s company-calendar date
+ * (`APP_CALENDAR_TZ`, America/Chicago — not Denver; see `denverCalendarDayKey`).
  * 0 = same calendar day; non-negative (clamped).
  */
 export function denverCalendarDaysBetweenInstantAndNow(contactMs: number, nowMs: number = Date.now()): number {

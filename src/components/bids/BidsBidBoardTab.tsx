@@ -20,7 +20,7 @@ import { openInExternalBrowser } from '../../lib/openInExternalBrowser'
 import { formatAddressWithoutZip } from '../../lib/bids/bidContactInfo'
 import { bidDisplayName, formatBidValueShort, formatCompactCurrency } from '../../lib/bids/bidFormatting'
 import { formatBidDueTime } from '../../lib/bids/formatBidDueTime'
-import { bidBoardDueCellParts, bidBoardLastContactParts, DUE_SOON_WINDOW_DAYS, type BidBoardDateCellParts } from '../../lib/bids/bidBoardDateCells'
+import { bidBoardDueCellParts, bidBoardLastContactParts, bidBoardNoDueDateParts, bidBoardSentLabel, DUE_SOON_WINDOW_DAYS, UNSENT_NO_DUE_DATE_RED_AFTER_DAYS, type BidBoardDateCellParts } from '../../lib/bids/bidBoardDateCells'
 import { useNarrowViewport660 } from '../../hooks/useNarrowViewport660'
 import { getSubmissionSectionKey, type SubmissionSectionKey } from '../../lib/bids/submissionSections'
 import { buildBidBoardWeeklySentSummaries } from '../../lib/bidBoardWeeklySentStats'
@@ -43,6 +43,8 @@ type BidBoardSectionOpenState = {
 
 type BidsBidBoardTabProps = {
   bids: BidWithBuilder[]
+  /** True until the first bids fetch settles — the board shows a skeleton, not "No bids yet" (J10-F8). */
+  loading?: boolean
   authUser: { id: string } | null
   isDev: boolean
   /** v2.2741: jobs made from this bid's signed proposal (only passed for roles that can open Jobs). */
@@ -159,6 +161,7 @@ const BID_BOARD_DUE_CHIP_COLORS = {
 
 export function BidsBidBoardTab({
   bids,
+  loading = false,
   authUser,
   isDev,
   jobsByBidId,
@@ -708,9 +711,45 @@ export function BidsBidBoardTab({
 
   function renderBidBoardDueChip(bid: BidWithBuilder, inline = false) {
     const parts = bidBoardDueCellParts(bid.bid_due_date, new Date(), bid.outcome, bid.bid_date_sent)
-    if (!parts) return <span style={{ color: 'var(--text-muted)' }}>—</span>
+    if (!parts) {
+      // J10-F4: an unsent bid with no due date used to render a silent dash and could never turn red.
+      const noDue = bidBoardNoDueDateParts(bid)
+      if (!noDue) return <span style={{ color: 'var(--text-muted)' }}>—</span>
+      const c = BID_BOARD_DUE_CHIP_COLORS[noDue.urgency]
+      return (
+        <span
+          title={
+            noDue.urgency === 'overdue'
+              ? `No due date and on the board ${noDue.ageDays} days — give it a due date or archive it (red after ${UNSENT_NO_DUE_DATE_RED_AFTER_DAYS} days)`
+              : `No due date — turns red after ${UNSENT_NO_DUE_DATE_RED_AFTER_DAYS} days on the board`
+          }
+          style={{
+            display: 'inline-flex',
+            flexDirection: inline ? 'row' : 'column',
+            alignItems: 'center',
+            gap: inline ? '0.3rem' : 0,
+            padding: '0.15rem 0.55rem',
+            borderRadius: inline ? 999 : 10,
+            fontSize: '0.6875rem',
+            fontWeight: 700,
+            whiteSpace: 'nowrap',
+            lineHeight: 1.2,
+            fontVariantNumeric: 'tabular-nums',
+            background: c.background,
+            color: c.color,
+            border: `1px dashed ${c.border}`,
+          }}
+        >
+          <span>{noDue.label}</span>
+          {noDue.deltaLabel ? <span style={{ fontSize: '0.625rem', fontWeight: 600, opacity: 0.85 }}>{noDue.deltaLabel}</span> : null}
+        </span>
+      )
+    }
     const colors = BID_BOARD_DUE_CHIP_COLORS[parts.urgency]
-    return (
+    // J10-F2: Pending sorts by sent date — print it under the due chip so the sort key is visible
+    // on every row (multi-GC rows also carry per-GC sent dates in their pills).
+    const sentLabel = !parts.decided && bid.bid_date_sent ? bidBoardSentLabel(bid.bid_date_sent) : null
+    const chip = (
       <span
         style={{
           display: 'inline-flex',
@@ -733,6 +772,13 @@ export function BidsBidBoardTab({
         {!parts.decided ? (
           <span style={{ fontSize: '0.625rem', fontWeight: 600, opacity: 0.85 }}>{parts.deltaLabel}</span>
         ) : null}
+      </span>
+    )
+    if (!sentLabel) return chip
+    return (
+      <span style={{ display: 'inline-flex', flexDirection: inline ? 'row' : 'column', alignItems: 'center', gap: inline ? '0.35rem' : '0.1rem' }}>
+        {chip}
+        <span style={{ fontSize: '0.625rem', color: 'var(--text-muted)', whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}>{sentLabel}</span>
       </span>
     )
   }
@@ -1251,7 +1297,15 @@ export function BidsBidBoardTab({
           </button>
         </div>
       </div>
-      {filteredBidsForBidBoard.length === 0 ? (
+      {loading && bids.length === 0 ? (
+        // J10-F8: the first fetch has not settled — say so instead of a false "No bids yet".
+        <div role="status" aria-label="Loading bids" style={{ border: '1px solid var(--border)', borderRadius: 4, padding: '1rem', display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+          <div style={{ fontSize: '0.8125rem', fontWeight: 500, color: 'var(--text-muted)' }}>Loading bids…</div>
+          {[0, 1, 2, 3].map((i) => (
+            <div key={i} aria-hidden style={{ height: '1.6rem', borderRadius: 6, background: 'var(--bg-muted)', opacity: 0.9 - i * 0.15 }} />
+          ))}
+        </div>
+      ) : filteredBidsForBidBoard.length === 0 ? (
         <div style={{ border: '1px solid var(--border)', borderRadius: 4, padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>
           {bids.length === 0 ? 'No bids yet. Click New Bid to add one.' : 'No bids match your search.'}
         </div>
