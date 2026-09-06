@@ -35,7 +35,28 @@ export function paymentRowHasUserContent(row: PaymentRow): boolean {
   return false
 }
 
-/** True when the New Job sheet has any user-visible content; hides **Import** to avoid accidental overwrites. */
+/** Hover / tap copy for a blocked Import button (v2.2909, J1-F4). */
+export const NEW_JOB_IMPORT_BLOCKED_HINT =
+  'Import fills a blank New Job from an estimate or bid. Clear what you typed here first, or open a fresh New Job.'
+
+/**
+ * The header Import button's state on New Job (v2.2909, J1-F4): shown for every
+ * new-job render, greyed with an explanation once the sheet has content —
+ * it used to vanish, which read as "the door is gone".
+ */
+export function newJobImportButtonState(args: { mode: 'new' | 'edit'; isEditing: boolean; blocked: boolean }): {
+  visible: boolean
+  disabled: boolean
+  /** Tooltip / toast copy; null when the button is live. */
+  hint: string | null
+} {
+  if (args.mode !== 'new' || args.isEditing) return { visible: false, disabled: false, hint: null }
+  return args.blocked
+    ? { visible: true, disabled: true, hint: NEW_JOB_IMPORT_BLOCKED_HINT }
+    : { visible: true, disabled: false, hint: null }
+}
+
+/** True when the New Job sheet has any user-visible content; disables **Import** to avoid accidental overwrites. */
 export function newJobFormHasBlockingContent(args: {
   jobName: string
   jobAddress: string

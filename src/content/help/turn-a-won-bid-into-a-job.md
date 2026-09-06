@@ -17,10 +17,14 @@ Every place a win gets recorded offers the same door:
 - **Followup → Waiting to hear.** Tap **Won** on the bid you are chasing. The bid leaves the queue and a green **You won it** strip stays at the top with {{button:green|Open the job}} until you use it or dismiss it.
 
 :::example What comes over
-B398 · Take 5 Seguin goes to Southern Post. Tap Won, then Open the job: New Job opens as *Take 5 Seguin*, at the bid's address, with Southern Post as the GC/Builder (name, phone, email, date met), the Project Folder and Job Plans links from the bid, and the bid chip set. Fill in the price and crew, press **Create Job**, and the job is born linked to the bid.
+B398 · Take 5 Seguin goes to Southern Post. Tap Won, then Open the job: New Job opens as *Take 5 Seguin*, at the bid's address, with Southern Post as the GC/Builder (name, phone, email, date met), the Project Folder and Job Plans links from the bid, and the bid chip set. Fill in the crew, press **Create Job**, and the job is born linked to the bid.
 :::
 
-What does **not** come over: line items and the Job Total (starts at $0.00), schedule blocks, crew, dates. Bring the agreed value in yourself.
+## The price is offered, not assumed
+
+When the bid carries a figure — its agreed value, or what the winning GC was sent — New Job asks one question before filling anything: **Start the job at $48,200?** {{button:blue|Carry $48,200 over}} puts it on the job as the first line item ("Bid price"), and if the bid had no agreed value yet, records it there too. {{button:outline|Start at $0}} leaves the Job Total empty and writes nothing — on the job or the bid. Either way you can change the number on the job any time.
+
+What does **not** come over: the bid's own line items, schedule blocks, crew, dates.
 
 ## The bid shows its job
 
@@ -38,5 +42,6 @@ Dev, masters, assistants, controllers, and **estimators** can open a job from a 
 
 ## Tips
 
-- The other way in still works: Jobs → **New** → **Import** → pick the bid. It runs the exact same fill.
+- The other way in still works: Jobs → **New** → **Import** → pick the bid. It runs the exact same fill. Once you have typed anything on a New Job, **Import** greys out instead of disappearing — hover or tap it and it tells you to clear the form (or open a fresh New Job) first.
+- The **C#** box reads *finding…* for a moment while New Job looks up the next number. If you already know the number, type it — the suggestion never overwrites what you typed.
 - Save the bid before opening the job if you just changed the outcome — the Won you clicked is saved with the bid, not by the job.

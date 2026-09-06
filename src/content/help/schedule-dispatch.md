@@ -36,6 +36,8 @@ Search: `Search HCP or job name`
 
 {{gif:schedule-dispatch.gif|Adding a block from a day cell: the + control, the job picker, then times on the slider}}
 
+The **Day** tab's person-row **+** (and the same picker on Quickfill and a Person Desk) offers {{button:outline|Create new job}} too: New Job opens, and when you press Create Job the new job lands straight in the add-block step for that person and day.
+
 Every result carries its billing state — {{chip:gray|Waiting}} {{chip:yellow|Working}} {{chip:purple|Ready to Bill}} {{chip:blue|Billed}} {{chip:green|Paid}} — with active jobs listed first and billed/paid ones greyed under a **Finished jobs** divider (still pickable for warranty callbacks, just never by accident). Active rows also show how many blocks the job already has this week. And when a search turns up **two jobs at the same address** — the classic repeat-customer trap — a warning banner says so, so you check the status chips before picking.
 
 :::example Two jobs, one address

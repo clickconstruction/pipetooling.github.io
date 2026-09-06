@@ -384,6 +384,8 @@ export default function JobFormModal({
   }, [stripeMemoBackfillKey])
   const [hcpNumber, setHcpNumber] = useState('')
   const [clickNumber, setClickNumber] = useState('')
+  /** New Job: `next_job_number_suggestion` in flight (v2.2909, J1-F3) — the C# box says "finding…" instead of sitting blank. */
+  const [clickNumberSuggesting, setClickNumberSuggesting] = useState(false)
   const [jobName, setJobName] = useState('')
   const [jobAddress, setJobAddress] = useState('')
   const [accountManagerUserId, setAccountManagerUserId] = useState<string | null>(null)
@@ -431,7 +433,6 @@ export default function JobFormModal({
     options: WinningGcOption[]
     writesWin: boolean
     bidOutcome: string | null
-    agreedValue: number | null
     packets: GcPacket[]
     /** The form was opened FOR this import (`openNewJob({ prefillBidId })`) — cancelling closes it instead of stranding a blank form. */
     closeOnCancel: boolean
@@ -1759,6 +1760,9 @@ export default function JobFormModal({
         // Per-GC Phase 3: on a multi-GC bid, the job's GC is the WINNING packet's — one recorded
         // winner imports silently; otherwise ask once (the pick records the Won when undecided).
         let chosen: WinningGcOption | null = forcedGc ?? null
+        // The dollar figure the bid was sent for (winner's packet, or the lone packet) — offered
+        // below, never written on its own (v2.2909, J15-F8).
+        let sentValue: number | null = forcedGc?.value ?? null
         if (!chosen) {
           const [vRes, sRes, rRes] = await Promise.all([
             supabase.from('bid_versions').select('id, name, customer_id, sort_order, created_at, outcome').eq('bid_id', b.id).order('sort_order'),
@@ -1786,13 +1790,12 @@ export default function JobFormModal({
             const ownName = (customers.find((c) => c.id === b.customer_id)?.name ?? b.customers?.name ?? '').trim() || 'the GC'
             options.unshift({ key: '', customerId: null, name: ownName, sentOn: b.bid_date_sent ?? null, value: null, outcome: null, sharedLetter: true })
           }
+          if (options.length === 1) sentValue = options[0]?.value ?? null
           if (options.length > 1) {
             const { winner, multiple } = resolveWinningPacket(packets)
             if (winner) {
               chosen = { key: winner.key, customerId: winner.gcId, name: winner.name, sentOn: winner.sentOn, value: winner.sentValue, outcome: winner.outcome, sharedLetter: false }
-              if (b.agreed_value == null && winner.sentValue != null) {
-                void supabase.from('bids').update({ agreed_value: winner.sentValue }).eq('id', b.id).is('agreed_value', null).then(() => undefined)
-              }
+              sentValue = winner.sentValue
             } else {
               setWinningGcPick({
                 bidId: b.id,
@@ -1800,11 +1803,42 @@ export default function JobFormModal({
                 options,
                 writesWin: !multiple,
                 bidOutcome: b.outcome ?? null,
-                agreedValue: b.agreed_value == null ? null : Number(b.agreed_value),
                 packets,
                 closeOnCancel: !!opts?.closeOnCancel,
               })
               return
+            }
+          }
+        }
+        // Tier-3 B5 (J15-F8): the job used to open at $0.00 while `agreed_value` was back-filled
+        // onto the bid behind the office's back. Now one question: carry the figure over as the
+        // job's first line item (and, when the bid has no agreed value yet, record it there too)
+        // or start at $0 — and "No" writes nothing anywhere.
+        const agreedValue = b.agreed_value == null ? null : Number(b.agreed_value)
+        const carryValue = agreedValue != null && Number.isFinite(agreedValue) && agreedValue > 0 ? agreedValue : sentValue != null && sentValue > 0 ? sentValue : null
+        if (carryValue != null) {
+          const bidLabel = [b.bid_number ? `B${String(b.bid_number).trim()}` : null, (b.project_name ?? '').trim() || null].filter(Boolean).join(' · ') || 'the bid'
+          const whoseFigure = agreedValue != null ? `${bidLabel}'s agreed value` : `what ${(chosen?.name ?? b.customers?.name ?? '').trim() || 'the GC'} was sent on ${bidLabel}`
+          const carry = await confirmDialog({
+            title: `Start the job at $${formatCurrency(carryValue)}?`,
+            message: `That's ${whoseFigure}. Yes puts it on the job as the first line item${agreedValue == null ? ' and records it on the bid as the agreed value' : ''}; No starts the job at $0 and writes nothing.`,
+            confirmLabel: `Carry $${formatCurrency(carryValue)} over`,
+            cancelLabel: 'Start at $0',
+          })
+          if (carry) {
+            setFixtures([
+              {
+                id: crypto.randomUUID(),
+                name: 'Bid price',
+                count: 1,
+                line_unit_price: carryValue,
+                line_description: agreedValue != null ? `${bidLabel} — agreed value` : `${bidLabel} — as sent`,
+                invoice_id: null,
+              },
+            ])
+            setFixtureScopeExpandedById({})
+            if (agreedValue == null) {
+              void supabase.from('bids').update({ agreed_value: carryValue }).eq('id', b.id).is('agreed_value', null).then(() => undefined)
             }
           }
         }
@@ -1922,9 +1956,7 @@ export default function JobFormModal({
               'success',
             )
           }
-          if (pick.agreedValue == null && opt.value != null) {
-            await supabase.from('bids').update({ agreed_value: opt.value }).eq('id', pick.bidId).is('agreed_value', null)
-          }
+          // The packet's value is offered (not back-filled) inside applyPrefillFromBid — v2.2909, J15-F8.
         }
       } else if (opt.sharedLetter && opt.key.startsWith('shared:')) {
         showToast(`${opt.name} rode the shared letter — nothing recorded on the bid.`, 'info')
@@ -2097,7 +2129,11 @@ export default function JobFormModal({
         if (mode === 'new') {
           resetNewForm(newJobProjectId)
           // Offer the next global job number (highest numeric HCP-or-C# + 1) as the
-          // default C#, editable. Runs async; only fills if still mounted.
+          // default C#, editable. Runs async; only fills if still mounted. The box
+          // shows "finding…" meanwhile (v2.2909, J1-F3 — it took 3–6 s on a slow
+          // link and read as broken), and a number the office typed while waiting
+          // is never overwritten by the late suggestion.
+          setClickNumberSuggesting(true)
           void (async () => {
             try {
               const suggestion = await withSupabaseRetry(
@@ -2105,10 +2141,12 @@ export default function JobFormModal({
                 'next job number suggestion',
               )
               if (!cancelled && typeof suggestion === 'string' && suggestion.length > 0) {
-                setClickNumber(suggestion)
+                setClickNumber((prev) => (prev.trim() ? prev : suggestion))
               }
             } catch {
               /* leave C# blank if the suggestion can't be fetched */
+            } finally {
+              if (!cancelled) setClickNumberSuggesting(false)
             }
           })()
           const meSt = (meRow as MeServiceTypeColumns | null) ?? null
@@ -3493,6 +3531,7 @@ export default function JobFormModal({
           bidId={bidId}
           projectId={projectId}
           onOpenImport={() => setJobImportSourceOpen(true)}
+          onImportBlockedClick={(hint) => showToast(hint, 'info')}
           onJobDetailClick={() => {
             const id = editing?.id
             if (!id) return
@@ -3532,6 +3571,7 @@ export default function JobFormModal({
             hideHcpNumberField={hideHcpEntryField}
             clickNumber={clickNumber}
             setClickNumber={setClickNumber}
+            clickNumberSuggesting={clickNumberSuggesting}
             jobName={jobName}
             setJobName={setJobName}
             jobAddress={jobAddress}

@@ -1,15 +1,18 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { newJobImportButtonState } from '../../lib/jobs/jobFormRows'
 
 type JobFormHeaderRowProps = {
   mode: 'new' | 'edit'
   isEditing: boolean
   editingId: string | null
-  /** The dirty gate: hides Import once the New Job sheet has user-visible content. */
+  /** The dirty gate: greys Import (with the why) once the New Job sheet has user-visible content (v2.2909). */
   importBlocked: boolean
   bidId: string | null
   projectId: string | null
   onOpenImport: () => void
+  /** Tap on the greyed Import — the shell says why in a toast (no hover on phones). */
+  onImportBlockedClick: (hint: string) => void
   /** Shell callback: guarded close (autosave flush) then Job Detail via the opener bridge. */
   onJobDetailClick: () => void
   onOpenBidLinkChoice: () => void
@@ -40,6 +43,7 @@ export function JobFormHeaderRow({
   bidId,
   projectId,
   onOpenImport,
+  onImportBlockedClick,
   onJobDetailClick,
   onOpenBidLinkChoice,
   onOpenProjectLinkChoice,
@@ -48,6 +52,7 @@ export function JobFormHeaderRow({
 }: JobFormHeaderRowProps) {
   const [hcpHelpOpen, setHcpHelpOpen] = useState(false)
   const hcpHelpRef = useRef<HTMLDivElement | null>(null)
+  const importButton = newJobImportButtonState({ mode, isEditing, blocked: importBlocked })
   useEffect(() => {
     if (!hcpHelpOpen) return
     function onDocMouseDown(e: globalThis.MouseEvent) {
@@ -171,7 +176,7 @@ export function JobFormHeaderRow({
         ) : null}
       </div>
       )}
-      {mode === 'new' && !isEditing && !importBlocked ? (
+      {importButton.visible ? (
         <div
           style={{
             flex: 1,
@@ -181,19 +186,24 @@ export function JobFormHeaderRow({
             minWidth: 0,
           }}
         >
+          {/* Greyed, not gone (v2.2909, J1-F4): the door stays where the eye left it,
+              the title says why it's shut, and a tap repeats that in a toast. Not the
+              `disabled` attribute — disabled buttons swallow hover and tap on phones. */}
           <button
             type="button"
-            onClick={onOpenImport}
+            onClick={() => (importButton.disabled ? onImportBlockedClick(importButton.hint ?? '') : onOpenImport())}
             aria-label="Import from estimate or bid"
+            aria-disabled={importButton.disabled || undefined}
+            title={importButton.hint ?? 'Import from estimate or bid'}
             style={{
               padding: '0.4rem 0.85rem',
               fontSize: '0.875rem',
               fontWeight: 500,
-              color: 'var(--text-blue-700)',
-              background: 'var(--bg-blue-tint)',
-              border: '1px solid var(--border-blue)',
+              color: importButton.disabled ? 'var(--text-muted)' : 'var(--text-blue-700)',
+              background: importButton.disabled ? 'var(--surface-muted)' : 'var(--bg-blue-tint)',
+              border: `1px solid ${importButton.disabled ? 'var(--border)' : 'var(--border-blue)'}`,
               borderRadius: 6,
-              cursor: 'pointer',
+              cursor: importButton.disabled ? 'not-allowed' : 'pointer',
             }}
           >
             Import

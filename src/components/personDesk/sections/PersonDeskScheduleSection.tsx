@@ -22,7 +22,7 @@ export function PersonDeskScheduleSection({ userId, displayName }: { userId: str
     <DeskSection id="schedule" title="Schedule">
       {open ? (
         <div style={{ padding: '0.4rem 0.5rem' }}>
-          <UserDayScheduleSection userId={userId} displayName={displayName} workDateYmd={workDateYmd} onWorkDateYmdChange={setWorkDateYmd} onClose={() => setOpen(false)} titleId={`person-desk-schedule-${userId}`} />
+          <UserDayScheduleSection userId={userId} displayName={displayName} workDateYmd={workDateYmd} onWorkDateYmdChange={setWorkDateYmd} onClose={() => setOpen(false)} titleId={`person-desk-schedule-${userId}`} allowCreateNewJob />
         </div>
       ) : (
         <button type="button" onClick={() => setOpen(true)} style={{ margin: '0.5rem 0.7rem', alignSelf: 'flex-start', padding: '0.2rem 0.55rem', fontSize: '0.78125rem', fontWeight: 600, borderRadius: 4, cursor: 'pointer', border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-700)', fontFamily: 'inherit' }}>

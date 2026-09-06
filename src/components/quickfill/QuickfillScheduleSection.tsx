@@ -4,6 +4,7 @@ import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../hooks/useAuth'
 import { useRealtimeChannel } from '../../hooks/useRealtimeChannel'
 import { useToastContext } from '../../contexts/ToastContext'
+import { useJobFormModal } from '../../contexts/JobFormModalContext'
 import { useReportQuickfillSectionMetric } from '../../contexts/QuickfillSectionMetricsContext'
 import {
   fetchScheduleBlocksForAssigneesOnDay,
@@ -154,6 +155,8 @@ export function QuickfillScheduleSection({
   const [compactSearchOpen, setCompactSearchOpen] = useState(false)
   const { role, user: authUser } = useAuth()
   const { showToast } = useToastContext()
+  // Null outside the provider (render smokes) — then the picker simply has no "Create new job".
+  const jobFormModal = useJobFormModal()
   const ledgerPrefixMap = useLedgerPrefixMap()
   const canEditSchedule = role != null && CAN_USE_SCHEDULE_DISPATCH_EDIT_ROLES.has(role)
   const showClockStripScopeToggle =
@@ -887,6 +890,22 @@ export function QuickfillScheduleSection({
       if (!quiet) setLoading(false)
     }
   }, [workDate, role, showToast, ledgerPrefixMap])
+
+  // Tier-3 B5 (J1-F8): the person-row "+" picker gets the same "Create new job" the hub grid and
+  // Quick Assign pickers have — New Job opens, and the created job lands straight in the add-block
+  // modal for the person and day the office was already adding to.
+  const onCreateNewJobFromQuickfillPicker = useCallback(() => {
+    if (!jobFormModal || !cellAddContext) return
+    const ctx = { ...cellAddContext }
+    closeQuickfillJobPicker()
+    jobFormModal.openNewJob({
+      onCreatedJobId: (newId) => {
+        void loadData({ quiet: true }).then(() =>
+          openQuickfillAddBlock({ assigneeUserId: ctx.assigneeUserId, workDate: ctx.workDate, jobId: newId }),
+        )
+      },
+    })
+  }, [jobFormModal, cellAddContext, closeQuickfillJobPicker, loadData, openQuickfillAddBlock])
 
   /** Rows with the live dot-drag draft applied (bars + dots track the pointer until persist). */
   const effectiveRowsForUser = useCallback(
@@ -1658,6 +1677,7 @@ export function QuickfillScheduleSection({
       <ScheduleDispatchAssignJobPickerModal
         open={assignJobPickerOpen}
         onClose={closeQuickfillJobPicker}
+        onCreateNewJob={jobFormModal && cellAddContext ? onCreateNewJobFromQuickfillPicker : undefined}
         subtitle={quickfillAssignJobPickerSubtitle}
         jobRows={quickfillAssignJobPickerRows}
         searchValue={assignJobPickerSearch}

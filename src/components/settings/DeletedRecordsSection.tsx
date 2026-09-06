@@ -1,4 +1,4 @@
-/** Settings → Data & migration → "Recently deleted (dev)": browse the deleted-records archive and
+/** Settings → Data & recovery → "Recently deleted (dev)": browse the deleted-records archive and
  * put a whole deleted job/bid bundle back.
  *
  * Self-contained (calls its own hook) rather than props-only like the rest of SettingsDataTab: this
