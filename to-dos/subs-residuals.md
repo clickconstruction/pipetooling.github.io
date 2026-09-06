@@ -12,7 +12,7 @@ Status: not started · sources: fragments v2.2667, v2.2844, v2.2860; [`docs/RUN_
 2. **Spanish strings inside the shared signature form internals** (v2.2667). Portal chrome and `subPortalI18n.ts` are bilingual; `SignedSignatureBlock.tsx` / `ReportTemplateSignatureField.tsx` carry no Spanish.
 3. **Run-subs polish never built** (plan deviations, 2026-08-01): assign-modal compliance chips (`src/components/workflow/StepFormModal.tsx` has no compliance code; `StepCommitmentPanel` does), the `AssignedStageCard` commitment chip, and dedicated offer/accept notification templates (no `notify-*` function covers sub offers; offers ride the sub portal and `submit-sub-portal`'s `accept_offer`).
 4. **Benched subs still mix into the Sub Labor sheet form's crew lists** (v2.2860 "not done") — `JobsSubLaborFormModal.tsx` `byKind('sub')` needs the roster `Person` type widened with the bench flag.
-5. **Roster hygiene the owner still owns**: archived "Edgar" name orphan and the "MIke Rodriguez (Rough In)" vs "Miguel Rodriguez" question (People → Subs; Combine people is the tool).
+5. **Roster hygiene the owner still owns**: the archived "Edgar" name orphan (People → Subs; Combine people is the tool). The MIke / Miguel Rodriguez pair was settled 2026-09-06 — nothing to fold, keeper renamed `Miguel "Mike" Rodriguez`. Five older sub sheets still carry the plain "Miguel Rodriguez" label text (display resolves by id; only sheet search reads the text) — the combine tool's step-3 rewrite, if wanted.
 
 ## The plan
 
