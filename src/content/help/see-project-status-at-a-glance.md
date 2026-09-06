@@ -2,7 +2,7 @@
 title: see project status at a glance
 category: Office
 roles: dev, master_technician, assistant, controller, superintendent
-keywords: projects, steps, progress bar, attention, waiting, unassigned, schedule, current step
+keywords: projects, steps, progress bar, attention, waiting, unassigned, schedule, current step, assign, notify, not a user
 order: 77
 ---
 The Projects list reads like a job board: every project row shows a progress bar, who the current step is waiting on, and warning pills when something needs a decision.
@@ -57,6 +57,14 @@ Under the pills, rows with money show **Projected** (the workflow's projections)
 ## Subs on the Workflow page
 
 Opening a project's Workflow shows a **Subs** strip in the header — one chip per subcontractor assigned to any step, with how many of their steps are still open. Hover a chip to see which step they're on right now.
+
+## Who holds a step
+
+On the Workflow page each stage card names its assignee. A card with nobody reads **Unassigned** — pick someone with {{button:outline|Assign}}. The picker offers every active account in the company (office and field) plus your roster of subs and helpers; a name followed by *(not a user)* is a roster person without a login, who is reached by e-mail rather than in the app.
+
+:::example The first assignee turns notifications on
+Assigning a person to a step that had nobody switches on the three **Notify** toggles for that step — started, complete, and reopened — so the person hears about it without anyone opening the Notify fold. Turn any of them off afterwards and the step keeps your choice, even if you reassign it later.
+:::
 
 ## Where to act
 

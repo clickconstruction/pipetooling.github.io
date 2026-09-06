@@ -592,7 +592,7 @@ export function ProjectsJobHistoryTab({ customerId }: Props) {
             </label>
             {!loadingJobs && bars.length > 0 && (
               <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }} aria-live="polite">
-                {linkedCount} of {bars.length} linked
+                {linkedCount} of {bars.length} working jobs linked
               </span>
             )}
           </div>

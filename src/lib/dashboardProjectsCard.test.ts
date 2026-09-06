@@ -46,12 +46,12 @@ describe('daysOpen', () => {
 describe('personDisplay', () => {
   const userNames = new Set(['jane doe', 'bob smith'])
 
-  it('falls back for null name', () => {
-    expect(personDisplay(null, userNames)).toBe('Assigned to: unknown')
+  it('says "Unassigned" for a null name — nobody holds the step, it is not a ghost (J31-4)', () => {
+    expect(personDisplay(null, userNames)).toBe('Unassigned')
   })
 
-  it('falls back for whitespace-only name', () => {
-    expect(personDisplay('   ', userNames)).toBe('Assigned to: unknown')
+  it('says "Unassigned" for a whitespace-only name', () => {
+    expect(personDisplay('   ', userNames)).toBe('Unassigned')
   })
 
   it('returns the trimmed name when it matches a user (case-insensitive)', () => {

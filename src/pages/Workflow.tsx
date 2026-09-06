@@ -13,6 +13,7 @@ import { formatProjectNumberLabel } from '../lib/projectNumberLabel'
 import { buildWorkflowMoneyFlow, type WorkflowMoneyMarker } from '../lib/workflowMoneyFlow'
 import { planStepTransition, type StepLifecyclePlan } from '../lib/workflow/stepLifecycle'
 import { buildProjectSubRoster } from '../lib/workflow/projectSubRoster'
+import { WORKFLOW_ASSIGNABLE_USER_ROLES, buildWorkflowUserRoster, notifyAssignedDefaultsOnAssign, NOTIFY_ASSIGNED_ALL_ON } from '../lib/workflow/stepAssignment'
 import { StepCommitmentPanel } from '../components/workflow/StepCommitmentPanel'
 import { StepFormModal } from '../components/workflow/StepFormModal'
 import { PersonDisplayWithContact, type PersonContactInfo } from '../components/workflow/PersonDisplayWithContact'
@@ -1025,8 +1026,17 @@ export default function Workflow() {
 
       const role = (userData as { role: string } | null)?.role
       let peopleRes: { data: { id: string; name: string; email: string | null; phone: string | null; kind: string }[] | null }
-      let usersRes: { data: { name: string | null; email: string | null; role?: string }[] | null }
+      type WorkflowUserRead = { name: string | null; email: string | null; role: string | null; archived_at: string | null; is_digital_twin: boolean | null }
+      let usersRes: { data: WorkflowUserRead[] | null }
 
+      // One users read for every viewer (J31-N3, v2.2900): the superintendent
+      // branch used to fetch only sub/helper/primary, so every office assignee
+      // rendered "(not a user)" and could not be picked. The role list is the
+      // shared kernel's; RLS trims what each viewer may actually see.
+      const usersQuery = supabase
+        .from('users')
+        .select('name, email, role, archived_at, is_digital_twin')
+        .in('role', WORKFLOW_ASSIGNABLE_USER_ROLES as Database['public']['Enums']['user_role'][])
       if (role === 'superintendent') {
         const { data: adopted } = await supabase
           .from('master_superintendents')
@@ -1037,32 +1047,27 @@ export default function Workflow() {
           adoptedMasterIds.length > 0
             ? supabase.from('people').select('id, name, email, phone, kind').is('archived_at', null).in('master_user_id', adoptedMasterIds).order('name')
             : { data: [] as { id: string; name: string; email: string | null; phone: string | null; kind: string }[] },
-          supabase.from('users').select('name, email, role').in('role', ['subcontractor', 'helpers', 'primary']),
+          usersQuery,
         ])
       } else {
         ;[peopleRes, usersRes] = await Promise.all([
           supabase.from('people').select('id, name, email, phone, kind').is('archived_at', null).eq('master_user_id', authUser.id).order('name'),
-          supabase.from('users').select('name, email, role'),
+          usersQuery,
         ])
       }
       const fromPeople = (peopleRes.data as { id: string; name: string; email: string | null; phone: string | null; kind: string }[] | null) ?? []
-      const fromUsers = (usersRes.data as { name: string; email: string | null; role?: string }[] | null) ?? []
+      const fromUsers = (usersRes.data as WorkflowUserRead[] | null) ?? []
+      // Picker offers active accounts only (twins/archived drop out, #19);
+      // userNames keeps every readable account so no held step looks like a ghost.
+      const { roster: activeUsers, userNamesLower } = buildWorkflowUserRoster(fromUsers)
       // people-sourced entries carry their roster id so assignment can write
       // assigned_person_id explicitly (users-sourced entries resolve server-side)
       const rosterEntries = [
-        ...fromUsers.filter((r): r is { name: string; email: string | null } => !!r.name).map((r) => ({ name: r.name, personId: null as string | null })),
+        ...activeUsers.filter((r): r is WorkflowUserRead & { name: string } => !!r.name).map((r) => ({ name: r.name, personId: null as string | null })),
         ...fromPeople.filter((r) => !!r.name).map((r) => ({ name: r.name, personId: r.id })),
       ].sort((a, b) => a.name.localeCompare(b.name))
       setRoster(rosterEntries)
-      
-      // Build set of user names (case-insensitive comparison)
-      const userNamesSet = new Set<string>()
-      fromUsers.forEach((u) => {
-        if (u.name) {
-          userNamesSet.add(u.name.trim().toLowerCase())
-        }
-      })
-      setUserNames(userNamesSet)
+      setUserNames(userNamesLower)
       
       // Build contact map
       const contacts: Record<string, { email: string | null; phone: string | null }> = {}
@@ -1451,6 +1456,8 @@ export default function Workflow() {
         // set_assigned_person_id_on_write trigger resolve from the name, and
         // an explicit null would strip an id the trigger could re-derive.
         ...(p.assigned_person_id ? { assigned_person_id: p.assigned_person_id } : {}),
+        // First assignee → notify toggles on (J31-4 P2, v2.2900); reassignments keep the office's choice.
+        ...(notifyAssignedDefaultsOnAssign(stepForm.step.assigned_to_name, p.assigned_to_name) ?? {}),
         started_at: p.started_at,
         ended_at: p.ended_at,
       }).eq('id', stepForm.step.id)
@@ -1524,6 +1531,9 @@ export default function Workflow() {
         started_at: p.started_at,
         ended_at: p.ended_at,
         status: 'pending',
+        // New steps start with the assignee notify toggles on (J31-4 P2, v2.2900) —
+        // the DB default is false, which meant a fresh assignment nudged nobody.
+        ...NOTIFY_ASSIGNED_ALL_ON,
       }).select('id')
       if (insErr) {
         setError(`Failed to insert step: ${insErr.message}`)
@@ -2031,6 +2041,13 @@ export default function Workflow() {
       )
       setError(`Failed to assign person: ${err.message}`)
       return
+    }
+    // First assignee on this step → the three "notify the assigned person"
+    // toggles turn on (J31-4 P2, v2.2900). Best-effort: the assignment already
+    // landed, so a refused toggle write is not an assignment failure.
+    const notifyPatch = notifyAssignedDefaultsOnAssign(previousName, name)
+    if (notifyPatch) {
+      await supabase.from('project_workflow_steps').update(notifyPatch).eq('id', step.id)
     }
     refreshSteps()
   }
