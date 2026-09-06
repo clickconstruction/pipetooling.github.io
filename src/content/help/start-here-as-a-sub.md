@@ -33,6 +33,14 @@ If the office offers you a job for a set amount, it arrives as an offer card wit
 
 **Your money** on the Dashboard shows what you're owed, every sheet, and the payments and backcharges on each one — the same numbers the office sees. See [what you're owed as a sub](?g=see-what-youre-owed-as-a-sub) for the details.
 
+## Pick your days
+
+Some work orders come with a **window** — the span the office wants the stage done in. The card shows it as a calendar: the shaded weekdays are the window, and the sentence under it says how many working days the job takes. Tap the day you can start and the days fill to the end. {{button:green|Sign to accept}} carries your pick, so the office knows when you're coming.
+
+If none of the days work, tap **Can't do any of these days**, say when you could, and the office will offer other dates.
+
+Once signed, your job card shows **Your dates**. You can move them inside the window yourself until the day before you start with {{button:outline|Change}}. After that, call the office.
+
 ## The other tabs
 
 - **Schedule / Inbox / Customers** (the Job Mode tab bar) — your schedule and customer contacts for the jobs you're on. **Inbox** also lists **My requests**: everything you've sent to Dispatch, split into *Waiting on Dispatch* and *Answered* — and you get a push, **Dispatch answered**, the moment they close one.

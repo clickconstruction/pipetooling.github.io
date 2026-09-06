@@ -1,3 +1,4 @@
+import { pickWindowFor } from './subPick.ts'
 /**
  * Sub portal statement builders (sub-portal train): pure functions shaping the
  * Work & Pay payload from raw rows. Deno- and Node-safe — unit-tested from
@@ -58,11 +59,24 @@ export type SubOfferRow = {
   step_name: string | null
   /** v2.2789: sheet-anchored work orders (step_id NULL) carry the sheet they belong to. */
   labor_job_id?: string | null
+  /** v2.2928: the stage's window (filled by the function from job_stage_windows) and the office's duration. */
+  window_start?: string | null
+  window_end?: string | null
+  work_days?: number | null
 }
 
 /** A signed sheet work order, joined onto its sheet card as "what you agreed to" (v2.2789). */
 export type SubAgreementRow = {
   labor_job_id: string | null
+  /** v2.2928: the order itself, so the portal can move its dates. */
+  id?: string | null
+  work_days?: number | null
+  picked_start?: string | null
+  picked_end?: string | null
+  proposed_start?: string | null
+  proposed_end?: string | null
+  window_start?: string | null
+  window_end?: string | null
   amount: number | null
   signed_at: string | null
   accepted_at: string | null
@@ -72,6 +86,18 @@ export type SubAgreementRow = {
 }
 
 export type SubPortalReference = { kind: 'book' | 'setting' | 'compliance'; name: string; versionDate: string | null }
+
+/** v2.2928: the dates the sub picked (or the office set) and the room they still have to move them. */
+export type SubPortalDates = {
+  commitmentId: string
+  start: string
+  end: string
+  /** The span they may move inside; null = the office set dates by hand, call to change. */
+  window: { start: string; end: string } | null
+  workDays: number | null
+  /** Last day they may move it themselves (the day before the start); null when the start is behind us. */
+  changeUntil: string | null
+}
 
 export type SubPortalAgreement = {
   signedOn: string | null
@@ -115,6 +141,8 @@ export type SubPortalSheet = {
   agreement: SubPortalAgreement | null
   /** v2.2922: the plans online — the Pipeline job's plans link, else its bid's CountTooling set; null when neither. */
   plansUrl?: string | null
+  /** v2.2928: their dates on this sheet, when a signed order carries a pick. */
+  dates?: SubPortalDates | null
 }
 
 export type SubPortalPaymentLine = {
@@ -138,6 +166,9 @@ export type SubPortalOffer = {
   acknowledgements: string[]
   bond: 'none' | 'furnished'
   specialProvisions: string | null
+  /** v2.2928: the span to pick a start inside (null = sign without dates) and how long the job runs. */
+  window: { start: string; end: string } | null
+  workDays: number | null
 }
 
 export type SubPortalDocState = 'on_file' | 'expiring' | 'action_needed'
@@ -247,12 +278,32 @@ export function buildSubSheets(
       payHoldReason: (sheet.pay_hold_reason ?? '').trim() || null,
       agreement: null,
       plansUrl: (sheet.plans_url ?? '').trim() || null,
+      dates: null,
     }
   })
 }
 
+/** Their dates on a signed order: the pick when there is one, else the office's span; the room to move = the window. */
+export function agreementDates(a: SubAgreementRow, todayYmd: string): SubPortalDates | null {
+  const id = (a.id ?? '').trim()
+  const start = (a.picked_start ?? '').trim() || (a.proposed_start ?? '').trim()
+  const end = (a.picked_end ?? '').trim() || (a.proposed_end ?? '').trim() || start
+  if (!id || !start) return null
+  const ws = (a.window_start ?? '').trim(), we = (a.window_end ?? '').trim()
+  const window = ws && we && we >= ws ? { start: ws, end: we } : null
+  const deadline = addDaysYmd(start, -1)
+  return {
+    commitmentId: id,
+    start,
+    end,
+    window,
+    workDays: a.work_days == null ? null : Number(a.work_days) || null,
+    changeUntil: window && todayYmd <= deadline ? deadline : null,
+  }
+}
+
 /** Join signed sheet work orders onto their sheets (one per sheet; the newest signature wins). */
-export function attachSheetAgreements(sheets: SubPortalSheet[], agreements: SubAgreementRow[]): SubPortalSheet[] {
+export function attachSheetAgreements(sheets: SubPortalSheet[], agreements: SubAgreementRow[], todayYmd?: string): SubPortalSheet[] {
   const bySheet = new Map<string, SubAgreementRow>()
   for (const a of agreements) {
     if (!a.labor_job_id) continue
@@ -267,6 +318,7 @@ export function attachSheetAgreements(sheets: SubPortalSheet[], agreements: SubA
     const extras = parseScopeExtras(a.offer_scope_snapshot)
     return {
       ...sheet,
+      dates: todayYmd ? agreementDates(a, todayYmd) : null,
       agreement: {
         signedOn: (a.signed_at ?? a.accepted_at ?? '').slice(0, 10) || null,
         signerName: (a.signer_printed_name ?? '').trim() || null,
@@ -413,6 +465,8 @@ export function buildSubOffers(offers: SubOfferRow[], todayYmd: string): SubPort
         acknowledgements: extras.acknowledgements,
         bond: extras.bond,
         specialProvisions: extras.specialProvisions,
+        window: pickWindowFor(o),
+        workDays: o.work_days == null ? null : Number(o.work_days) || null,
       }
     })
 }

@@ -30,7 +30,7 @@ export function ProjectsForecastSubsTab() {
     ;(async () => {
       const { data, error: cErr } = await supabase
         .from('step_commitments')
-        .select('id, person_id, display_name, status, amount, proposed_start, proposed_end, step_id')
+        .select('id, person_id, display_name, status, amount, proposed_start, proposed_end, picked_start, picked_end, step_id')
         .in('status', ['offered', 'accepted', 'approved'])
       if (cancelled) return
       if (cErr) {
@@ -38,7 +38,7 @@ export function ProjectsForecastSubsTab() {
         setCommitments([])
         return
       }
-      const rows = (data ?? []) as Array<{ id: string; person_id: string; display_name: string; status: string; amount: number; proposed_start: string | null; proposed_end: string | null; step_id: string }>
+      const rows = (data ?? []) as Array<{ id: string; person_id: string; display_name: string; status: string; amount: number; proposed_start: string | null; proposed_end: string | null; picked_start?: string | null; picked_end?: string | null; step_id: string }>
       const stepIds = [...new Set(rows.map((r) => r.step_id))]
       const stepInfo = new Map<string, { start: string | null; end: string | null; name: string; projectId: string | null; projectName: string | null }>()
       if (stepIds.length > 0) {
@@ -69,6 +69,8 @@ export function ProjectsForecastSubsTab() {
             status: r.status,
             amount: Number(r.amount),
             proposed_start: r.proposed_start,
+            picked_start: r.picked_start ?? null,
+            picked_end: r.picked_end ?? null,
             proposed_end: r.proposed_end,
             stepStart: info?.start ?? null,
             stepEnd: info?.end ?? null,

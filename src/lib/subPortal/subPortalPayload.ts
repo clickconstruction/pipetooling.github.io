@@ -33,6 +33,18 @@ export type SubPortalSheet = {
   agreement: SubPortalAgreement | null
   /** v2.2922: the plans online (the job's plans link, else its bid's CountTooling set); null when neither. */
   plansUrl: string | null
+  /** v2.2928: their dates on this sheet, when a signed order carries a pick. */
+  dates: SubPortalDates | null
+}
+
+/** v2.2928: the dates the sub picked (or the office set) and the room they still have to move them. */
+export type SubPortalDates = {
+  commitmentId: string
+  start: string
+  end: string
+  window: { start: string; end: string } | null
+  workDays: number | null
+  changeUntil: string | null
 }
 
 export type SubPortalPaymentLine = {
@@ -68,6 +80,9 @@ export type SubPortalOffer = {
   acknowledgements: string[]
   bond: 'none' | 'furnished'
   specialProvisions: string | null
+  /** v2.2928: the span to pick a start inside (null = sign without dates) and how long the job runs. */
+  window: { start: string; end: string } | null
+  workDays: number | null
 }
 
 export type SubPortalDocDetail =
@@ -183,6 +198,7 @@ function parseSheet(raw: unknown): SubPortalSheet | null {
     payHoldReason: strOrNull(r.payHoldReason),
     agreement: parseAgreement(r.agreement),
     plansUrl: /^https?:\/\//i.test(str(r.plansUrl).trim()) ? str(r.plansUrl).trim() : null,
+    dates: parseDates(r.dates),
   }
 }
 
@@ -206,6 +222,8 @@ function parseOffer(raw: unknown): SubPortalOffer | null {
     lines,
     total: num(r.total),
     startsLabel: strOrNull(r.startsLabel),
+    window: parseSpan(r.window),
+    workDays: r.workDays == null ? null : Math.max(1, Math.floor(num(r.workDays))) || null,
     expiresOn: strOrNull(r.expiresOn),
     anchor: r.anchor === 'sheet' ? 'sheet' : 'step',
     exclusions: strList(r.exclusions),
@@ -234,6 +252,33 @@ function parseDoc(raw: unknown): SubPortalDoc | null {
   else if (kind === 'needs_signature') detail = { kind: 'needs_signature' }
   else detail = { kind: 'on_file' }
   return { id, name, state, detail, signable: r.signable === true }
+}
+
+const YMD_RE = /^\d{4}-\d{2}-\d{2}$/
+function ymdOrNull(v: unknown): string | null {
+  return typeof v === 'string' && YMD_RE.test(v) ? v : null
+}
+function parseSpan(raw: unknown): { start: string; end: string } | null {
+  if (raw == null || typeof raw !== 'object') return null
+  const r = raw as Record<string, unknown>
+  const start = ymdOrNull(r.start), end = ymdOrNull(r.end)
+  return start && end && end >= start ? { start, end } : null
+}
+function parseDates(raw: unknown): SubPortalDates | null {
+  if (raw == null || typeof raw !== 'object') return null
+  const r = raw as Record<string, unknown>
+  const commitmentId = str(r.commitmentId).trim()
+  const start = ymdOrNull(r.start)
+  if (!commitmentId || !start) return null
+  const end = ymdOrNull(r.end) ?? start
+  return {
+    commitmentId,
+    start,
+    end: end >= start ? end : start,
+    window: parseSpan(r.window),
+    workDays: r.workDays == null ? null : Math.max(1, Math.floor(num(r.workDays))) || null,
+    changeUntil: ymdOrNull(r.changeUntil),
+  }
 }
 
 export function parseSubPortalPayload(raw: unknown): SubPortalPayload | null {

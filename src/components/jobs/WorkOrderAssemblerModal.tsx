@@ -72,6 +72,8 @@ type Draft = {
   retainagePct: string
   proposedStart: string
   proposedEnd: string
+  /** v2.2928: working days the stage takes — a sub's start pick implies its end. */
+  workDays: string
   expires: string
 }
 
@@ -304,6 +306,7 @@ export function WorkOrderAssemblerModal({
       retainagePct: existing ? String(Number(existing.retainage_pct) || 0) : '0',
       proposedStart: existing?.proposed_start ?? initial?.proposedStart ?? '',
       proposedEnd: existing?.proposed_end ?? initial?.proposedEnd ?? '',
+      workDays: existing?.work_days != null ? String(existing.work_days) : '',
       expires: existing?.offer_expires_at && existing.status === 'offered' ? existing.offer_expires_at : defaultExpires,
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -473,6 +476,7 @@ export function WorkOrderAssemblerModal({
       offer_scope_snapshot: snapshot as unknown as StepCommitmentRow['offer_scope_snapshot'],
       record_id: recordId,
       stage_window_id: stageWindowId,
+      work_days: Number.isFinite(Number(draft.workDays)) && Number(draft.workDays) >= 1 ? Math.min(120, Math.floor(Number(draft.workDays))) : null,
     }
     setSaving(true)
     try {
@@ -752,6 +756,7 @@ export function WorkOrderAssemblerModal({
                   ) : null}
                   <div><span style={{ ...labelStyle, fontWeight: 600 }}>Work window from</span><input type="date" value={draft.proposedStart} onChange={(e) => setDraft({ ...draft, proposedStart: e.target.value })} style={inputStyle} /></div>
                     <div><span style={{ ...labelStyle, fontWeight: 600 }}>to</span><input type="date" value={draft.proposedEnd} onChange={(e) => setDraft({ ...draft, proposedEnd: e.target.value })} style={inputStyle} /></div>
+                    <div><span style={{ ...labelStyle, fontWeight: 600 }}>Takes about (working days)</span><input type="number" min={1} max={120} inputMode="numeric" value={draft.workDays} onChange={(e) => setDraft({ ...draft, workDays: e.target.value })} placeholder="e.g. 2" style={inputStyle} title="The sub picks a start inside the window; this many weekdays sets the end" /></div>
                     <div><span style={{ ...labelStyle, fontWeight: 600 }}>Offer good through</span><input type="date" value={draft.expires} onChange={(e) => setDraft({ ...draft, expires: e.target.value })} style={inputStyle} /></div>
                     <div>
                       <span style={{ ...labelStyle, fontWeight: 600 }}>Performance bond</span>

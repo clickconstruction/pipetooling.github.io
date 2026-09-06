@@ -4,8 +4,9 @@
  * sub with positioned bars and overlap flags — "who's booked when, and where
  * am I about to double-book someone."
  *
- * A bar's dates are the STEP's expected dates when set (the accept flow
- * maintains them), else the offer's proposed window. Undated commitments
+ * A bar's dates are the sub's PICK when they made one (v2.2928), else the
+ * STEP's expected dates when set (the accept flow maintains them), else the
+ * offer's proposed window. Undated commitments
  * don't bar (counted so the UI can say so). Offered-but-unanswered bars are
  * ghosts; any two bars in a lane whose ranges intersect both flag overlap.
  */
@@ -18,6 +19,9 @@ export type SubBoardCommitmentInput = {
   amount: number
   proposed_start: string | null
   proposed_end: string | null
+  /** v2.2928: the sub's own pick inside the window, when made. */
+  picked_start?: string | null
+  picked_end?: string | null
   stepStart: string | null
   stepEnd: string | null
   stepName: string | null
@@ -69,8 +73,8 @@ export function buildSubBoardLanes(
 
   for (const c of commitments) {
     if (!BAR_STATUSES.has(c.status)) continue
-    const startYmd = c.stepStart ?? c.proposed_start
-    const endYmd = c.stepEnd ?? c.proposed_end ?? startYmd
+    const startYmd = c.picked_start ?? c.stepStart ?? c.proposed_start
+    const endYmd = (c.picked_start ? c.picked_end : null) ?? c.stepEnd ?? c.proposed_end ?? startYmd
     const effStart = startYmd ?? endYmd
     if (!effStart || !endYmd) {
       undatedCount += 1
