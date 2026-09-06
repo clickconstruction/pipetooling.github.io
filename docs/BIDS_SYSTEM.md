@@ -1354,6 +1354,17 @@ When an org setting is blank/missing, the letter builders fall back to the **bui
 
 **Pure kernel**: [`src/lib/bidDocuments/paymentSchedule.ts`](../src/lib/bidDocuments/paymentSchedule.ts) (timings, labels, 30/30/30/10 default, percent total, line builders; unit-tested). Builders take an optional trailing `paymentSchedule` param (default `null`).
 
+### Bid room (signable link) — v2.2468; link-first since journey Tier-2 #31
+
+Every GC packet can have one durable, signable link (`bid_proposal_rooms` · `bid_proposal_room_revisions` · `bid_proposal_room_events`; migration `20260828215717`). The staff door is [`BidRoomPanel.tsx`](../src/components/bids/BidRoomPanel.tsx), mounted under Mark sent in both Cover Letter layouts (v2.2716's **✍ Setup bid room** button opens it while no room exists). Which buttons render is the pure kernel [`bidRoomPanelActions.ts`](../src/lib/bids/bidRoomPanelActions.ts) (`{ hasRoom, published, everSent, hasEmail, answered }`):
+
+- **Not yet published** — primary **✍ Get the link** (`publish()`: mint the room + rev 1, copy the link, no email); **Send to GC** (needs an address) publishes rev 1 *and* emails via `send-bid-room-link`.
+- **Published** — primary **Publish update** (next revision, nothing emailed); **Send to GC** → **Email link again** once a `link_sent` event exists; **Copy link** and **Open ↗** appear the moment a revision exists (no ever-sent gate). Copy link carries the bare `/bid-room?t=<token>` the email would; Open ↗ adds `?preview=1` (`withPreviewFlag`, `publicViewCounting`) so the office's own peeks never count as GC opens (#37).
+- **Answered** (signed / declined) — no publish or send; the link stays copyable.
+- `onFirstLinkSent` fires on the first *app* send only — never on Get the link — so the sent-stamp keeps meaning "the app emailed it". The room chip's "not sent" (`bidRoomState.ts`) means not sent *from the app*.
+- Telemetry: minting a room records `ui_nav_clicks` control `bid_room_published`, target `#sent_by_app:1|0` (`bid_proposal_room_events.event_type` is CHECK-constrained to the five GC-side kinds, so the mint lives in the nav-click ledger).
+- Public side: [`BidRoom.tsx`](../src/pages/BidRoom.tsx) + edge functions `get-bid-proposal-room` / `send-bid-room-link` / `sign-bid-room` (`docs/EDGE_FUNCTIONS.md`). Help: *send a bid for signature*.
+
 ### Edit Bid Button
 
 **Location**: Cover Letter tab header, next to Close
