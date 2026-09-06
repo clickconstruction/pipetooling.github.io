@@ -49,6 +49,7 @@ export type NeedsYouItem = {
     | 'lien-file-window'
     | 'd22-uncoded'
     | 'hours-approvals'
+    | 'label-approvals'
     | 'contract-missing'
     | 'contract-stale'
     | 'work-orders-unpriced'
@@ -92,6 +93,7 @@ export const NEEDS_YOU_RANK: Record<NeedsYouItem['key'], number> = {
   'roadmap-needs-person': 50,
   'robot-audits': 50,
   'hours-approvals': 50,
+  'label-approvals': 40,
   'contract-missing': 40,
   'contract-stale': 50,
   'work-orders-unpriced': 40,
@@ -242,6 +244,18 @@ export type NeedsYouInputs = {
   hoursApprovalsEnabled: boolean
   hoursApprovals: { sessions: number; totalHours: number; people: number; oldestAgeDays: number } | null
   hoursApprovalsMinAgeDays: number
+  /**
+   * Pending bank-label suggestions (journey-map Tier-2 #27) — null while
+   * loading or when the RPC's internal gate returned the zero row. With the org
+   * switch on, rule matches approve themselves server-side, so what stays
+   * pending is the exception list; the item counts only the rows at least
+   * labelApprovalsMinAgeDays old (the `stale` figure), so a same-week trickle
+   * never nags and a stall (Sep 2026: 349 rows / ~$139K "Unlabeled", oldest
+   * 16 days, waiting for a browser checkbox nobody had open) does.
+   */
+  labelApprovalsEnabled: boolean
+  labelApprovals: { pending: number; stale: number; staleAmount: number; oldestAgeDays: number } | null
+  labelApprovalsMinAgeDays: number
 }
 
 export function buildNeedsYouItems(inputs: NeedsYouInputs): NeedsYouItem[] {
@@ -609,6 +623,32 @@ export function buildNeedsYouItems(inputs: NeedsYouInputs): NeedsYouItem[] {
         `${a.people === 1 ? 'One person has' : `${a.people} people have`} ${hours}h unapproved — the oldest from ${a.oldestAgeDays} days ago. ` +
         'Unapproved time is missing from payroll, the Hours grid, and the Overhead numbers — work the queue on People → Hours.',
       figure: a.sessions > 99 ? '99+' : String(a.sessions),
+      actionLabel: 'Open approvals',
+    })
+  }
+
+  if (
+    inputs.labelApprovalsEnabled &&
+    inputs.labelApprovals != null &&
+    inputs.labelApprovals.stale > 0 &&
+    inputs.labelApprovals.oldestAgeDays >= inputs.labelApprovalsMinAgeDays
+  ) {
+    const a = inputs.labelApprovals
+    const money = a.staleAmount.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 })
+    const fresher = a.pending - a.stale
+    items.push({
+      key: 'label-approvals',
+      severity: 'amber',
+      kicker: 'Bank labels',
+      title:
+        a.stale === 1
+          ? `A bank-label suggestion has waited ${inputs.labelApprovalsMinAgeDays}+ days for an OK`
+          : `${a.stale} bank-label suggestions have waited ${inputs.labelApprovalsMinAgeDays}+ days for an OK`,
+      detail:
+        `${money} of card charges and transfers sit as "Unlabeled" in the P&L, Card Review, and Visuals — the oldest from ${a.oldestAgeDays} days ago` +
+        (fresher > 0 ? `, plus ${fresher} newer still inside the ${inputs.labelApprovalsMinAgeDays}-day window` : '') +
+        '. Approve all on Banking → Accounting clears the backlog; with the org switch on, only Internal Transfers on split transactions come back here.',
+      figure: a.stale > 99 ? '99+' : String(a.stale),
       actionLabel: 'Open approvals',
     })
   }

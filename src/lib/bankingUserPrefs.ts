@@ -5,11 +5,13 @@ import { supabase } from './supabase'
  * helpers in `bankingDragSortStorage.ts` remain an instant-load cache; this is the
  * source of truth so the Accounting toggles follow the user across devices.
  * NULL columns mean "never set on any device" → caller keeps its default.
+ * (`accounting_approve_by_default` still exists on the table but is no longer
+ * read or written — the per-user Approve by default checkbox became the org-level
+ * server-side switch `app_settings.accounting_label_auto_approve_rule_matches`.)
  */
 export type AccountingPrefsRow = {
   accounting_hide_labeled: boolean | null
   accounting_apply_rules_by_default: boolean | null
-  accounting_approve_by_default: boolean | null
 }
 
 export type BankingPrefColumn = keyof AccountingPrefsRow
@@ -18,7 +20,7 @@ export type BankingPrefColumn = keyof AccountingPrefsRow
 export async function fetchAccountingPrefs(userId: string): Promise<AccountingPrefsRow | null> {
   const { data, error } = await supabase
     .from('banking_user_prefs')
-    .select('accounting_hide_labeled, accounting_apply_rules_by_default, accounting_approve_by_default')
+    .select('accounting_hide_labeled, accounting_apply_rules_by_default')
     .eq('user_id', userId)
     .maybeSingle()
   if (error) throw new Error(error.message)

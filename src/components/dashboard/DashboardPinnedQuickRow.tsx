@@ -32,6 +32,7 @@ import { useStaleOpenJobsNudge } from '../../hooks/useStaleOpenJobsNudge'
 import { useLienWatchNudge } from '../../hooks/useLienWatchNudge'
 import { CLAIM_DEV_LOOKBACK_DAYS, useClaimDevAttemptsNudge } from '../../hooks/useClaimDevAttemptsNudge'
 import { HOURS_APPROVALS_MIN_AGE_DAYS, usePendingHoursApprovalsNudge } from '../../hooks/usePendingHoursApprovalsNudge'
+import { LABEL_APPROVALS_MIN_AGE_DAYS, usePendingLabelApprovalsNudge } from '../../hooks/usePendingLabelApprovalsNudge'
 import { DashboardStaleTallyStaffFollowUpModal } from '../DashboardStaleTallyStaffFollowUpModal'
 import { DashboardLienReleaseQueueModal } from './DashboardLienReleaseQueueModal'
 import NewReportModal from '../NewReportModal'
@@ -341,6 +342,12 @@ export function DashboardPinnedQuickRow({
   const hoursApprovalsEnabled = !hideBanners && Boolean(authUserId) && officeEligible
   const { approvals: hoursApprovals } = usePendingHoursApprovalsNudge(hoursApprovalsEnabled)
 
+  // Pending bank-label suggestions (journey-map Tier-2 #27) — same gate shape:
+  // the RPC returns the zero row for anyone who cannot work the Banking →
+  // Accounting queue, so the client enable is just the office set.
+  const labelApprovalsEnabled = !hideBanners && Boolean(authUserId) && officeEligible
+  const { approvals: labelApprovals } = usePendingLabelApprovalsNudge(labelApprovalsEnabled)
+
   // Cleared payments behind conditional lien releases (v2.2582) — office set.
   const lienUnconditionalEnabled = !hideBanners && Boolean(authUserId) && officeEligible
   const { owed: lienUnconditionalOwed, queue: lienReleaseQueue, refetch: refetchLienReleasesOwed } = useLienReleasesOwedNudge(lienUnconditionalEnabled)
@@ -402,6 +409,9 @@ export function DashboardPinnedQuickRow({
     hoursApprovalsEnabled,
     hoursApprovals,
     hoursApprovalsMinAgeDays: HOURS_APPROVALS_MIN_AGE_DAYS,
+    labelApprovalsEnabled,
+    labelApprovals,
+    labelApprovalsMinAgeDays: LABEL_APPROVALS_MIN_AGE_DAYS,
   })
 
   const loadTallyUnlinkedCount = useCallback(async () => {
@@ -620,6 +630,8 @@ export function DashboardPinnedQuickRow({
               navigate('/jobs?tab=stages')
             } else if (item.key === 'hours-approvals') {
               navigate('/people?tab=hours&approvals=1')
+            } else if (item.key === 'label-approvals') {
+              navigate('/banking?tab=accounting')
             }
           }}
           onSecondary={(item, key) => {

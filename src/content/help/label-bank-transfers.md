@@ -2,7 +2,7 @@
 title: label bank transfers and wires
 category: Billing & Money
 roles: dev, controller
-keywords: bank transfer, ACH, wire, check, attribution, unattributed, mercury, overhead, office job, payroll, card bill, moneyfill, banking, label, card charges, not split, user sort
+keywords: bank transfer, ACH, wire, check, attribution, unattributed, mercury, overhead, office job, payroll, card bill, moneyfill, banking, label, card charges, not split, user sort, rules, suggestions, approve all, approve themselves, auto-approve, needs you
 order: 60
 ---
 Card purchases get sorted on the Banking page, but money that leaves by **ACH, wire, or check** — rent, insurance, contract labor, credit-card bill payments — used to have no home. Until it's labeled, that spending never reaches the overhead numbers or any job's costs.
@@ -53,3 +53,21 @@ Everything you label in the current visit is listed under **Labeled this session
 :::example
 You mark a $1,850 ACH as Payroll, then realize it was actually the plumbing-supply autopay. Click Undo, then use Split across jobs… to put it where it belongs.
 :::
+
+## Rules that label for you
+
+On **Banking → Accounting**, rules match bank transactions by counterparty, amount, description, or bank category and suggest a label. Each match lands in the **Approvals** list waiting for an OK — unless the org-wide switch is on:
+
+:::example The Approvals toolbar
+{{button:green|Approve all (12)}} {{chip:gray|Group by label}} {{chip:gray|Rule matches approve themselves (org-wide · on)}}
+:::
+
+- {{chip:gray|Rule matches approve themselves}} is one switch for the whole company (a dev or master technician flips it). When it is **on**, every new rule match is approved the moment it is created — as the bank feed arrives or when someone clicks **Apply rules** — whether or not anyone has this page open. When it is **off**, matches wait in Approvals as before.
+- Two things always wait for a person, even with the switch on: an **Internal Transfers** suggestion on a transaction that already has job splits (the two can't both be true), and anything created **before** the switch was turned on. {{button:green|Approve all}} clears that backlog.
+- A label someone set by hand is never overwritten by a rule.
+
+:::example The nudge
+**340 bank-label suggestions have waited 3+ days for an OK** — $139,251 of card charges and transfers sit as "Unlabeled"… {{button:blue|Open approvals}}
+:::
+
+When suggestions sit for three days or more, the **Needs you** card on the Dashboard (and on Quickfill) counts them and the money they represent, and **Open approvals** takes you straight to the list. A same-week trickle never triggers it — only a stall does.

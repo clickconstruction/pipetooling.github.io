@@ -5,6 +5,11 @@ import {
   matchAccountingLabelRuleCriteria,
   parseAccountingLabelRuleCriteria,
 } from '../_shared/accountingLabelRuleMatch.ts'
+import {
+  ACCOUNTING_LABEL_AUTO_APPROVE_SETTING_KEY,
+  parseAutoApproveSettingValue,
+  shouldAutoApproveSuggestion,
+} from '../_shared/accountingLabelAutoApprove.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -122,12 +127,74 @@ async function generateSuggestion(
       { tagCategoriesById },
     )
     if (matched) {
-      await admin.rpc('insert_accounting_label_suggestion_service', {
+      const { data: inserted } = await admin.rpc('insert_accounting_label_suggestion_service', {
         p_rows: [{ mercury_transaction_id: tx.id, rule_id: rule.id, suggested_label_id: rule.label_id }],
       })
+      if (typeof inserted === 'number' && inserted > 0) {
+        await autoApproveIfSwitchedOn(admin, tx.id, rule)
+      }
       break // first-match-wins, same as the client engine
     }
   }
+}
+
+/**
+ * Tier-2 #27: a rule match approves itself where it is minted when the ORG
+ * switch `app_settings.accounting_label_auto_approve_rule_matches` is on. The
+ * decision is the shared kernel (same order as the SQL writer); the write is
+ * `auto_approve_pending_accounting_label_suggestions`, which writes exactly
+ * what the client's bulk approve writes (assignment + rule attribution +
+ * status) with `resolved_by = NULL` (= by the rule). Internal Transfers on a
+ * transaction with job splits stays pending for a human. Best-effort: the
+ * suggestion row already exists; failures here only leave it pending.
+ */
+async function autoApproveIfSwitchedOn(
+  admin: ReturnType<typeof createClient>,
+  txId: string,
+  rule: { id: string; label_id: string },
+): Promise<void> {
+  const { data: setting } = await admin
+    .from('app_settings')
+    .select('value_text')
+    .eq('key', ACCOUNTING_LABEL_AUTO_APPROVE_SETTING_KEY)
+    .maybeSingle()
+  const settings = {
+    autoApproveRuleMatches: parseAutoApproveSettingValue((setting as { value_text?: string | null } | null)?.value_text),
+  }
+  if (!settings.autoApproveRuleMatches) return // the common case until Will flips it; no reads wasted
+
+  const [{ data: label }, { data: splits }] = await Promise.all([
+    admin.from('mercury_drag_sort_labels').select('default_key').eq('id', rule.label_id).maybeSingle(),
+    admin.from('mercury_transaction_job_allocations').select('id').eq('mercury_transaction_id', txId).limit(1),
+  ])
+  const decision = shouldAutoApproveSuggestion(
+    {
+      status: 'pending',
+      suggestedLabelDefaultKey: (label as { default_key?: string | null } | null)?.default_key ?? null,
+      txHasJobSplits: Array.isArray(splits) && splits.length > 0,
+      // generateSuggestion already returned early when the tx had an assignment.
+      txHasAssignment: false,
+    },
+    { enabled: true }, // the rule matched from the enabled=true read above
+    settings,
+  )
+  if (!decision.approve) {
+    console.log(JSON.stringify({ event: 'label_suggestion_left_pending', reason: decision.reason, tx: txId, rule: rule.id }))
+    return
+  }
+  const { data: approved, error } = await admin.rpc('auto_approve_pending_accounting_label_suggestions', {
+    p_tx_ids: [txId],
+  })
+  if (error) {
+    console.error('mercury-webhook auto-approve (non-fatal)', error)
+    return
+  }
+  // Telemetry: the `by: rule` half of label_suggestion_approved (client approvals
+  // record `by: user` via recordNavClick). The SQL re-checks every gate, so 0
+  // here means a gate closed between the kernel and the write.
+  console.log(
+    JSON.stringify({ event: 'label_suggestion_approved', by: 'rule', count: typeof approved === 'number' ? approved : 0, tx: txId, rule: rule.id }),
+  )
 }
 
 serve(async (req) => {

@@ -18,6 +18,7 @@ import { CLAIM_DEV_LOOKBACK_DAYS, useClaimDevAttemptsNudge } from '../../hooks/u
 import { useLienReleasesOwedNudge } from '../../hooks/useLienReleasesOwedNudge'
 import { useDemandDeadlinesNudge } from '../../hooks/useDemandDeadlinesNudge'
 import { useLienWatchNudge } from '../../hooks/useLienWatchNudge'
+import { LABEL_APPROVALS_MIN_AGE_DAYS, usePendingLabelApprovalsNudge } from '../../hooks/usePendingLabelApprovalsNudge'
 import { isAssistantLike } from '../../lib/subcontractorLikeRole'
 import { buildNeedsYouItems } from '../../lib/dashboardNeedsYou'
 import { DashboardNeedsYouCard } from '../dashboard/DashboardNeedsYouCard'
@@ -61,6 +62,10 @@ export function QuickfillNeedsYouSection({ onCount }: { onCount?: (n: number | n
   const [lienReleaseQueueOpen, setLienReleaseQueueOpen] = useState(false)
   const { overdue: demandDeadlineOverdue } = useDemandDeadlinesNudge(lienUnconditionalEnabled)
   const { watch: lienWatch } = useLienWatchNudge(lienUnconditionalEnabled)
+  // Bank-label approvals ARE close-ritual work (journey-map Tier-2 #27): the
+  // same card the Dashboard shows, so the Quickfill twin never lags it.
+  const labelApprovalsEnabled = Boolean(authUser?.id) && tallyStaffEligible
+  const { approvals: labelApprovals } = usePendingLabelApprovalsNudge(labelApprovalsEnabled)
 
   const loadTallyStale = useCallback(async () => {
     if (!authUser?.id || role == null) return
@@ -126,6 +131,9 @@ export function QuickfillNeedsYouSection({ onCount }: { onCount?: (n: number | n
     hoursApprovalsEnabled: false,
     hoursApprovals: null,
     hoursApprovalsMinAgeDays: 0,
+    labelApprovalsEnabled,
+    labelApprovals,
+    labelApprovalsMinAgeDays: LABEL_APPROVALS_MIN_AGE_DAYS,
   })
 
   useEffect(() => {
@@ -169,6 +177,8 @@ export function QuickfillNeedsYouSection({ onCount }: { onCount?: (n: number | n
             navigate('/jobs?tab=stages')
           } else if (item.key === 'lien-serve-copy' || item.key === 'lien-notice-window' || item.key === 'lien-file-window') {
             navigate('/jobs?tab=stages')
+          } else if (item.key === 'label-approvals') {
+            navigate('/banking?tab=accounting')
           }
         }}
         onSecondary={(item, key) => {

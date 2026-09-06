@@ -125,40 +125,10 @@ export function writeAccountingApplyRulesByDefault(userId: string, value: boolea
   }
 }
 
-/**
- * Per-user: Banking Accounting tab auto-runs the **Approve all** flow on
- * every refresh of the pending-approvals list. Default **off**: presence of
- * `'1'` = on, anything else = off — opt-in for safety because approving
- * commits the rule's suggested label to `mercury_transaction_drag_sort_assignments`
- * (single source of truth for accounting labels), so flipping the toggle on
- * effectively trusts the rules engine to label without per-row review.
- *
- * Pairs with `Apply rules by default` (v2.580) to close the loop: rules
- * create pending suggestions automatically, and approve-by-default commits
- * them automatically. Internal Transfers conflicts (job-split rows) are
- * still skipped by the underlying `handleApproveAll`, so those persist in
- * the pending list and surface a manual review prompt.
- */
-const ACCOUNTING_APPROVE_BY_DEFAULT_PREFIX = 'banking_accounting_approve_by_default_v1_'
-
-export function readAccountingApproveByDefault(userId: string): boolean {
-  if (typeof window === 'undefined') return false
-  try {
-    return window.localStorage.getItem(ACCOUNTING_APPROVE_BY_DEFAULT_PREFIX + userId) === '1'
-  } catch {
-    return false
-  }
-}
-
-export function writeAccountingApproveByDefault(userId: string, value: boolean): void {
-  if (typeof window === 'undefined') return
-  try {
-    if (value) window.localStorage.setItem(ACCOUNTING_APPROVE_BY_DEFAULT_PREFIX + userId, '1')
-    else window.localStorage.removeItem(ACCOUNTING_APPROVE_BY_DEFAULT_PREFIX + userId)
-  } catch {
-    /* quota or private mode */
-  }
-}
+// (The per-user `banking_accounting_approve_by_default_v1_` flag — v2.581 "Approve
+// by default" — was retired when rule matches started approving themselves
+// server-side behind the org switch `app_settings.accounting_label_auto_approve_rule_matches`.
+// Stale localStorage keys are harmless and simply never read again.)
 
 /** Per-user JSON for Banking Mercury Accounting ledger modal filters (`BankingAccountingLedgerFiltersV1`). */
 const ACCOUNTING_LEDGER_FILTERS_PREFIX = 'banking_accounting_ledger_filters_v1_'

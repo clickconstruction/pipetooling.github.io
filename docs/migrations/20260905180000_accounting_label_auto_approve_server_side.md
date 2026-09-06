@@ -1,0 +1,12 @@
+# 20260905180000_accounting_label_auto_approve_server_side.sql (2026-09-05, v2.2889)
+
+Bank-label rule matches approve themselves server-side behind an org switch (journey-map Tier-2 #27). Idempotent, additive; **no data sweep** — pending suggestion rows are untouched.
+
+1. **Seed** `app_settings` key `accounting_label_auto_approve_rule_matches` = `'false'` (`ON CONFLICT DO NOTHING`). Ships OFF.
+2. **Policy** `master_or_dev_update_accounting_label_auto_approve` on `app_settings` — `FOR UPDATE TO authenticated`, `key = <that key> AND is_master_or_dev()`. Devs already have the table-wide manage policy; this lets a master flip this one key from Banking → Accounting.
+3. **Column comment** on `mercury_accounting_label_suggestions.resolved_by`: NULL on an approved row = approved by its rule (the `by: rule` half of `label_suggestion_approved`); client approvals always write `auth.uid()`.
+4. **Writer** `auto_approve_pending_accounting_label_suggestions(p_tx_ids uuid[]) RETURNS integer` — SECURITY DEFINER, `REVOKE` from PUBLIC/anon/authenticated, `GRANT EXECUTE` to `service_role`. Gate order mirrors `shouldAutoApproveSuggestion`: switch on → `status = 'pending'` → rule row exists and `enabled` → no `mercury_transaction_drag_sort_assignments` row → not (`default_key = 'internal_transfers'` and any `mercury_transaction_job_allocations` row). Then the same three writes as `bulk_approve_accounting_label_suggestions` in the same order (assignment upsert, rule attribution `ON CONFLICT DO NOTHING`, suggestion status/final_label_id/resolved_at) with `resolved_by = NULL`.
+5. **`bulk_insert_accounting_label_suggestions(jsonb)`** redefined = baseline body + a tail `PERFORM` of the writer over the distinct tx ids in the payload when anything was inserted. Return value unchanged (rows inserted). `mercury-webhook` calls the writer itself via RPC after `insert_accounting_label_suggestion_service`.
+6. **`count_pending_accounting_label_suggestions(p_min_age_days int default 3)`** → `TABLE(pending int, stale int, stale_amount numeric, oldest_created_at timestamptz)` — STABLE, SECURITY DEFINER, `GRANT EXECUTE` to authenticated; gate inside: `dev` / `master_technician` / `assistant` get numbers, everyone else the zero row. Feeds the Needs You `label-approvals` item.
+
+Apply order: push before or after the client deploy — the client reads the setting and the count RPC fail-soft (switch shows off/disabled, card stays quiet) until this lands. Deploy `mercury-webhook` after the push so its `auto_approve_pending_accounting_label_suggestions` RPC exists.
