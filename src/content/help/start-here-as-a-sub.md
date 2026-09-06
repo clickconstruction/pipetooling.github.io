@@ -11,6 +11,8 @@ Your Dashboard opens in **Job Mode** — one big card with your current job, tod
 
 The header's **Contact:** row is how you reach people: the green phone button calls the office, {{button:blue|dispatch}} sends a note to Dispatch, {{button:purple|estimating}} sends a question to the estimators (its tooltip says **Ask estimating** — you're asking, not opening anyone's inbox), and {{button:blue|teammate}} messages a coworker. On a narrow phone they're the small icon buttons in the top strip, phone on the left.
 
+Need a job's address and nothing else? Tap the {{icon:search}} **search icon** in the top strip, type the number or street, and read it off the card — it never clocks you in. See [find a job's address from the field](?g=find-a-job-address-from-the-field).
+
 ## Your day
 
 1. **Clock in.** The clock button is at the top of your Dashboard. Pick the job or bid you're working on, add a quick note, and you're on the clock. **Nothing to pick?** The sheet says so — *Nothing on your schedule today, and no jobs assigned to you* — with dispatch's number to tap and a search box; call, or type the job's name or number. No signal in the basement? The sheet says **No connection** and offers {{button:outline|Retry}}; nothing was saved, so tap it once you have a bar.
