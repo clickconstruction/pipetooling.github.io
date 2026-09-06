@@ -10,6 +10,7 @@
 import { formatUsdNoCents } from '../../lib/jobs/jobFormatting'
 import type { PipelineFixup, PipelineFixupKey, PipelineMove, PipelineMoveKey } from '../../lib/jobs/pipelineOverview'
 import type { PaymentChaseSummary } from '../../lib/jobs/paymentChase'
+import { heldRoundHeadline } from '../../lib/jobs/gcStatementRounds'
 import { PipelineContractCoverageCard, type PipelineContractCoverage } from './PipelineContractCoverageCard'
 import type { ContractStage } from '../../lib/jobs/jobContractNudge'
 
@@ -180,7 +181,8 @@ export function PipelineMoneyOpportunities({
               <span style={{ display: 'flex', gap: '0.45rem', alignItems: 'baseline', minWidth: 0 }}>
                 <span aria-hidden style={{ fontSize: '0.95rem' }}>🔏</span>
                 <span style={{ fontSize: '0.83rem', fontWeight: 600, minWidth: 0 }}>
-                  {roundHeld.count} statement round{roundHeld.count === 1 ? '' : 's'} wait on sign-off — {formatUsdNoCents(roundHeld.total)}
+                  {/* B6 / J20-F7: held.count is GCs, not rounds — and the verb agrees. */}
+                  {heldRoundHeadline(roundHeld.count, formatUsdNoCents(roundHeld.total))}
                 </span>
               </span>
               <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', flex: 1 }}>

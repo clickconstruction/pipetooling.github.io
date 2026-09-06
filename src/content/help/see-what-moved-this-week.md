@@ -5,11 +5,11 @@ roles: dev, master_technician, assistant, controller
 keywords: weekly movement, stage moves, pipeline history, who moved, ready to bill this week, billed this week, paid this week, sent back
 order: 74
 ---
-Jobs move through the Pipeline all week — into Working, up to Ready to Bill, out as Billed, home as Paid. **Weekly movement** shows a whole week of those moves in one place: which jobs entered each stage, on what day, and who moved them.
+Jobs move through the Pipeline all week — into Working, up to Ready to Bill, out as Billed, home as Paid. **Stage moves this week** (the Pipeline menu item; the emailed copy is still called the Weekly movement report) shows a whole week of those moves in one place: which jobs entered each stage, on what day, and who moved them.
 
 ## Open it
 
-On **Jobs → Pipeline**, open the hamburger menu at the left of the stage strip (Waiting → Working → …) — the **Pipeline** group at the top holds {{button:outline|Weekly movement}}.
+On **Jobs → Pipeline**, open the hamburger menu at the left of the stage strip (Waiting → Working → …) — the **Pipeline** group at the top holds {{button:outline|Stage moves this week}}.
 
 ## Reading the report
 

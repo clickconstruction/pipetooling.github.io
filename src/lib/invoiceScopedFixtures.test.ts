@@ -130,3 +130,83 @@ describe('client/edge scoping parity', () => {
     )
   })
 })
+
+describe('fixturesForInvoiceBill — payments-covered rows never re-list (B6 / J3-6)', () => {
+  const primary = (amount: number) => ({ is_primary_rtb_bundle: true, amount })
+  // The live specimen: a $370 job in two $185 segments, $185 already paid, the
+  // primary remainder is $185. Before: both rows re-listed at $92.50 each.
+  const twoEqual = [
+    { id: 'faucet', invoice_id: null, name: 'Repaired kitchen faucet', count: 1, line_unit_price: 185 },
+    { id: 'extra', invoice_id: null, name: 'Extra', count: 1, line_unit_price: 185 },
+  ]
+
+  it('drops the rows the paid pool swallows whole, in order', () => {
+    expect(fixturesForInvoiceBill(twoEqual, 'auto', primary(185)).map((r) => r.id)).toEqual(['extra'])
+  })
+
+  it('keeps the row the pool runs out inside and every row after it', () => {
+    const rows = [
+      { id: 'a', invoice_id: null, name: 'A', count: 1, line_unit_price: 100 },
+      { id: 'b', invoice_id: null, name: 'B', count: 1, line_unit_price: 100 },
+      { id: 'c', invoice_id: null, name: 'C', count: 1, line_unit_price: 170 },
+    ]
+    // $150 covered: A gone, B half-covered stays, C stays → proration over [b, c]
+    expect(fixturesForInvoiceBill(rows, 'auto', primary(220)).map((r) => r.id)).toEqual(['b', 'c'])
+    // $100 covered exactly one row: [b, c] at their real prices (exact sum → composition)
+    expect(fixturesForInvoiceBill(rows, 'auto', primary(270)).map((r) => r.id)).toEqual(['b', 'c'])
+  })
+
+  it('a positive remainder always keeps at least the last row — the pool can never swallow everything', () => {
+    const rows = [
+      { id: 'a', invoice_id: null, name: 'A', count: 1, line_unit_price: 100 },
+      { id: 'b', invoice_id: null, name: 'B', count: 1, line_unit_price: 100 },
+    ]
+    // 1¢ left to bill: pool = $199.99 eats A whole and runs out inside B
+    expect(fixturesForInvoiceBill(rows, 'auto', primary(0.01)).map((r) => r.id)).toEqual(['b'])
+    // a zero / negative remainder is not a bill; nothing is dropped (the modal's "Nothing left to bill" gate owns that case)
+    expect(fixturesForInvoiceBill(rows, 'auto', primary(0)).map((r) => r.id)).toEqual(['a', 'b'])
+  })
+
+  it('a remainder at or above the unlinked sum drops nothing (riders / extras inflate it)', () => {
+    expect(fixturesForInvoiceBill(twoEqual, 'auto', primary(370)).map((r) => r.id)).toEqual(['faucet', 'extra'])
+    expect(fixturesForInvoiceBill(twoEqual, 'auto', primary(400)).map((r) => r.id)).toEqual(['faucet', 'extra'])
+  })
+
+  it('only the PRIMARY remainder applies the rule; a dollar carve keeps every unlinked row', () => {
+    expect(fixturesForInvoiceBill(twoEqual, 'carve', { is_primary_rtb_bundle: false, amount: 185 }).map((r) => r.id)).toEqual([
+      'faucet',
+      'extra',
+    ])
+    expect(fixturesForInvoiceBill(twoEqual, 'carve').map((r) => r.id)).toEqual(['faucet', 'extra'])
+  })
+
+  it('unpriced / unnamed rows ride through untouched and never count toward the pool', () => {
+    const rows = [
+      { id: 'note', invoice_id: null, name: '', count: 1, line_unit_price: 999 },
+      ...twoEqual,
+      { id: 'free', invoice_id: null, name: 'Courtesy', count: 1, line_unit_price: 0 },
+    ]
+    expect(fixturesForInvoiceBill(rows, 'auto', primary(185)).map((r) => r.id)).toEqual(['note', 'extra', 'free'])
+  })
+
+  it('rows linked to OTHER bills are excluded first, then coverage applies to what is left', () => {
+    const rows = [{ id: 'co', invoice_id: 'inv-9', name: 'Change order', count: 1, line_unit_price: 500 }, ...twoEqual]
+    expect(fixturesForInvoiceBill(rows, 'auto', primary(185)).map((r) => r.id)).toEqual(['extra'])
+  })
+
+  it('edge mirror scopeFixturesToInvoice applies the identical rule', () => {
+    const p = (cents: number) => ({ isPrimaryRtbBundle: true, targetAmountCents: cents })
+    expect(scopeFixturesToInvoice(twoEqual, 'auto', p(18500)).map((r) => r.id)).toEqual(['extra'])
+    const rows = [
+      { id: 'a', invoice_id: null, name: 'A', count: 1, line_unit_price: 100 },
+      { id: 'b', invoice_id: null, name: 'B', count: 1, line_unit_price: 100 },
+      { id: 'c', invoice_id: null, name: 'C', count: 1, line_unit_price: 170 },
+    ]
+    expect(scopeFixturesToInvoice(rows, 'auto', p(22000)).map((r) => r.id)).toEqual(['b', 'c'])
+    expect(scopeFixturesToInvoice(twoEqual, 'auto', p(37000)).map((r) => r.id)).toEqual(['faucet', 'extra'])
+    expect(scopeFixturesToInvoice(twoEqual, 'auto', { isPrimaryRtbBundle: false, targetAmountCents: 18500 }).map((r) => r.id)).toEqual([
+      'faucet',
+      'extra',
+    ])
+  })
+})

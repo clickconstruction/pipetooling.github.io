@@ -11,7 +11,7 @@ Every GC that owes **$10,000 or more** joins the weekly **statement round**: a t
 On **Jobs → Pipeline**, Today's Money Opportunities shows the round's two stages:
 
 :::example Before certification (managers)
-🔏 **5 statement rounds wait on sign-off — $154,166** — certify each GC and their statement lands in the sender's round. {{button:outline|Certify in GC Review}}
+🔏 **5 GC statements wait on sign-off — $154,166** — certify each GC and their statement lands in the sender's round. {{button:outline|Certify in GC Review}}
 :::
 
 :::example After certification (the sender)

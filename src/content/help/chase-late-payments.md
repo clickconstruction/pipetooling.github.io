@@ -18,7 +18,7 @@ Any touch also keeps the customer quiet for 3 days, so yesterday's voicemail doe
 
 ## Working a call
 
-Customers queue **biggest late dollars first**. Each card shows the phone number, their usual pay speed, and every late bill with its evidence — billed date, how it went out, partial payments, days late — so "which invoice?" never puts anyone on hold. Bills are **checkboxes**: when the GC says "898 and 663 are on Friday's run," uncheck the others, tap the date, and keep working the same call.
+Customers queue **biggest late dollars first**. Each card shows the phone number (formatted, tap to dial) and — when a bill actually went out by email — an ✉ email link, their usual pay speed, and every late bill with its evidence — billed date, how it went out, partial payments, days late — so "which invoice?" never puts anyone on hold. Bills are **checkboxes**: when the GC says "898 and 663 are on Friday's run," uncheck the others, tap the date, and keep working the same call.
 
 - **They gave a date** — three ways, matching how the answer actually comes: **📅 A date** ("checks cut the 28th"), **In N days** ("give us two weeks" — chips for 7/14/21/30), or **N days after billing** ("we pay net 45" — chips for net 15/30/45/60). In net-terms mode each bill lands on **its own date**, computed from its bill date — green landing chips appear on the bill lines as you choose, so you see exactly what you're promising before you commit. The button echoes the outcome: {{button:blue|Mark 3 promises · Sep 7 – Sep 23}}. Promises show as {{chip:green|✓ Promised Aug 29}} on the board.
 - **Never got it? Resend** — Stripe-emailed bills resend right from the bill line, and the resend is logged. The resend chip carries a purple **stripe** tag: Stripe sends the email, not ClickTooling.
@@ -33,4 +33,4 @@ Knight has six late bills. Dana says four are on Friday's run, one was never rec
 
 ## The wrap-up
 
-Finishing the queue shows the session's receipts — dollars that now have promised dates, resends, snoozes, and disputes flagged — so "did anyone chase this?" always has an answer. When a customer racks up **2 broken promises**, the flow suggests Collections.
+Finishing the queue shows the session's receipts — dollars that now have promised dates, resends, snoozes, and disputes flagged — so "did anyone chase this?" always has an answer. When a customer racks up **2 broken promises**, the flow suggests Collections and puts {{button:outline|Move … to Collections…}} right in the banner — the same typed confirm the board’s Collections button opens, so you never leave call mode to escalate.

@@ -318,3 +318,26 @@ describe('billedStageRowHasNoBillLine / buildBilledNoLineBucket', () => {
     expect(buildBilledNoLineBucket([shell, paidShell, dated])).toEqual({ count: 1, sum: 400 })
   })
 })
+
+describe('stageRowBilledAgeReference — Collections shells age from the flag (B6 / J4-10)', () => {
+  const now = new Date('2026-09-05T15:00:00Z')
+  it('a billed job in Collections with no bill line ages from collections_at', () => {
+    const r = { kind: 'job', job: job({ status: 'billed', collections_at: '2026-08-06T14:00:00-05:00' }) } as StageRow
+    expect(stageRowBilledAgeReference(r)).toEqual({ ymd: '2026-08-06', handSet: false, source: 'collections' })
+    expect(stageRowBilledAgeDays(r, now)).toBe(30)
+  })
+  it('a billed shell NOT in Collections still cannot age', () => {
+    expect(stageRowBilledAgeReference({ kind: 'job', job: job({ status: 'billed', collections_at: null }) } as StageRow)).toBeNull()
+  })
+  it('a stale flag on a job that is no longer billed is not a clock', () => {
+    expect(stageRowBilledAgeReference({ kind: 'job', job: job({ status: 'working', collections_at: '2026-08-06T14:00:00Z' }) } as StageRow)).toBeNull()
+  })
+  it('invoice rows in Collections keep the bill clock, not the flag', () => {
+    const r = {
+      kind: 'invoice',
+      job: job({ status: 'billed', collections_at: '2026-08-06T14:00:00Z' }),
+      inv: inv({ billed_at: '2026-05-28T15:00:00Z' }),
+    } as StageRow
+    expect(stageRowBilledAgeReference(r)).toEqual({ ymd: '2026-05-28', handSet: false })
+  })
+})

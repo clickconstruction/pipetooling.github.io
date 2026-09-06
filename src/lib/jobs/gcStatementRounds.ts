@@ -233,3 +233,16 @@ export function senderRoundQueue(items: readonly StatementRoundItem[], senderUse
   const queue = [...mine].sort((a, b) => rank(a.state) - rank(b.state) || b.amount - a.amount)
   return { queue, sent: mine.filter((it) => it.state === 'sent').length, assigned: mine.length }
 }
+
+/**
+ * The certifier's Pipeline card headline (B6 / J20-F7). `held.count` is a
+ * count of GCs — one group each waiting on certification — never of rounds,
+ * and the verb agrees with it: "1 GC statement waits on sign-off — $12,700",
+ * "5 GC statements wait on sign-off — $154,166". `totalLabel` is formatted
+ * by the caller so the kernel stays locale-free.
+ */
+export function heldRoundHeadline(count: number, totalLabel: string): string {
+  const n = Math.max(0, Math.floor(count))
+  const noun = n === 1 ? 'GC statement waits' : 'GC statements wait'
+  return `${n} ${noun} on sign-off — ${totalLabel}`
+}

@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest'
 import {
   BROKEN_PROMISE_GRACE_DAYS,
+  chaseBillsWereEmailed,
+  chaseEmailHref,
+  collectionsCandidatesForChase,
+  formatChasePhone,
+  type ChaseBill,
   buildPaymentChaseQueue,
   parseChaseTouchesRpc,
   resolvePromiseDates,
@@ -261,5 +266,55 @@ describe('parseChaseTouchesRpc / summarizePaymentChase', () => {
     const empty = buildPaymentChaseQueue([], speeds, null, [], TODAY)
     expect(summarizePaymentChase(empty)).toBeNull()
     expect(summarizePaymentChase(null)).toBeNull()
+  })
+})
+
+describe('call-mode contact + escalation kernels (B6 / J4-6, J4-7)', () => {
+  it('formatChasePhone renders ten digits as (555) 123-4567 and leaves anything else as typed', () => {
+    expect(formatChasePhone('5551234567')).toBe('(555) 123-4567')
+    expect(formatChasePhone('1-555-123-4567')).toBe('(555) 123-4567')
+    expect(formatChasePhone(' 555.123.4567 ')).toBe('(555) 123-4567')
+    expect(formatChasePhone('+44 20 7946 0958')).toBe('+44 20 7946 0958')
+    expect(formatChasePhone('ext 204')).toBe('ext 204')
+    expect(formatChasePhone('')).toBe('')
+    expect(formatChasePhone(null)).toBe('')
+  })
+
+  const bill = (over: Partial<Pick<ChaseBill, 'jobId' | 'label' | 'sentChannel' | 'sentAtIso'>>) => ({
+    jobId: 'j1',
+    label: 'H100 · Invoice #1',
+    sentChannel: null,
+    sentAtIso: null,
+    ...over,
+  })
+
+  it('chaseBillsWereEmailed: Stripe channel or a sent stamp counts; HouseCall Pro records do not', () => {
+    expect(chaseBillsWereEmailed([bill({ sentChannel: 'stripe' })])).toBe(true)
+    expect(chaseBillsWereEmailed([bill({ sentChannel: 'physical', sentAtIso: '2026-08-01T15:00:00Z' })])).toBe(true)
+    expect(chaseBillsWereEmailed([bill({ sentChannel: 'housecallpro' })])).toBe(false)
+    expect(chaseBillsWereEmailed([bill({ sentAtIso: '  ' })])).toBe(false)
+    expect(chaseBillsWereEmailed([])).toBe(false)
+  })
+
+  it('chaseEmailHref: needs an address AND an emailed bill; subject names a single bill', () => {
+    expect(chaseEmailHref('pat@example.com', [bill({ sentChannel: 'stripe' })])).toBe(
+      'mailto:pat%40example.com?subject=Following%20up%20on%20H100%20%C2%B7%20Invoice%20%231',
+    )
+    expect(chaseEmailHref('pat@example.com', [bill({ sentChannel: 'stripe' }), bill({ label: 'H101 · Invoice #2', sentAtIso: '2026-08-01T15:00:00Z' })])).toBe(
+      'mailto:pat%40example.com?subject=Following%20up%20on%20your%20open%20bills',
+    )
+    expect(chaseEmailHref('pat@example.com', [bill({ sentChannel: 'housecallpro' })])).toBeNull()
+    expect(chaseEmailHref('', [bill({ sentChannel: 'stripe' })])).toBeNull()
+    expect(chaseEmailHref('not-an-email', [bill({ sentChannel: 'stripe' })])).toBeNull()
+  })
+
+  it('collectionsCandidatesForChase: one entry per job, first bill labels it', () => {
+    expect(
+      collectionsCandidatesForChase([bill({ jobId: 'a', label: 'A #1' }), bill({ jobId: 'a', label: 'A #2' }), bill({ jobId: 'b', label: 'B #1' })]),
+    ).toEqual([
+      { jobId: 'a', label: 'A #1' },
+      { jobId: 'b', label: 'B #1' },
+    ])
+    expect(collectionsCandidatesForChase([])).toEqual([])
   })
 })

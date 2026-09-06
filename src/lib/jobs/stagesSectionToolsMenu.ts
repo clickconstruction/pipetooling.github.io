@@ -101,7 +101,7 @@ export function buildStagesSectionToolsMenu(input: StagesSectionToolsMenuInput):
       },
       {
         key: 'weekly-movement',
-        label: 'Weekly movement',
+        label: 'Stage moves this week',
         title: 'Every job that entered a stage in a chosen week, with who moved it',
         disabled: false,
         icon: '📆',
