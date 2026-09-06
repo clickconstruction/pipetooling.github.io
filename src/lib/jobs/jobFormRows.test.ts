@@ -4,6 +4,8 @@ import {
   materialRowHasUserContent,
   newEmptyPaymentRow,
   newJobFormHasBlockingContent,
+  newJobImportButtonState,
+  NEW_JOB_IMPORT_BLOCKED_HINT,
   normalizeFixtureDisplayName,
   paymentRowHasUserContent,
   paymentRowsFromJob,
@@ -72,5 +74,20 @@ describe('newJobFormHasBlockingContent', () => {
     expect(newJobFormHasBlockingContent({ ...base, formServiceTypeId: 'other' })).toBe(true)
     expect(newJobFormHasBlockingContent({ ...base, teamMemberIds: ['u1'] })).toBe(true)
     expect(newJobFormHasBlockingContent({ ...base, fixtures: [fixture({ name: 'v' })] })).toBe(true)
+  })
+})
+
+describe('newJobImportButtonState', () => {
+  it('is live on a blank New Job and greyed-with-hint once the sheet has content', () => {
+    expect(newJobImportButtonState({ mode: 'new', isEditing: false, blocked: false })).toEqual({ visible: true, disabled: false, hint: null })
+    expect(newJobImportButtonState({ mode: 'new', isEditing: false, blocked: true })).toEqual({
+      visible: true,
+      disabled: true,
+      hint: NEW_JOB_IMPORT_BLOCKED_HINT,
+    })
+  })
+  it('never renders on Edit Job', () => {
+    expect(newJobImportButtonState({ mode: 'edit', isEditing: true, blocked: false }).visible).toBe(false)
+    expect(newJobImportButtonState({ mode: 'new', isEditing: true, blocked: false }).visible).toBe(false)
   })
 })

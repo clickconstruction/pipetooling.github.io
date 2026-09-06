@@ -10,6 +10,7 @@ import { Link } from 'react-router-dom'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { useAuth } from '../../hooks/useAuth'
 import { useToastContext } from '../../contexts/ToastContext'
+import { useJobFormModal } from '../../contexts/JobFormModalContext'
 import { usePersonDayScheduleData } from '../../hooks/usePersonDayScheduleData'
 import { useIntervalNowMs } from '../../hooks/useIntervalNowMs'
 import { saveNewScheduleBlockForPersonDay } from '../../lib/scheduleDispatchAddBlockSave'
@@ -146,6 +147,12 @@ export type UserDayScheduleSectionProps = {
   onOpenSwitchUser?: () => void
   /** When true, the name button advertises the switcher affordance (caret + aria copy). */
   canSwitchUser?: boolean
+  /**
+   * Offer "Create new job" in the "+" job picker (v2.2909, J1-F8). Person Desk (page and
+   * drawer, z 60) turns it on; the User Review modal leaves it off because the New Job
+   * form (z 1010) would open BEHIND it (z 1200).
+   */
+  allowCreateNewJob?: boolean
 }
 
 export function UserDayScheduleSection({
@@ -159,9 +166,11 @@ export function UserDayScheduleSection({
   headerExtras,
   onOpenSwitchUser,
   canSwitchUser,
+  allowCreateNewJob = false,
 }: UserDayScheduleSectionProps) {
   const { user: authUser, role } = useAuth()
   const { showToast } = useToastContext()
+  const jobFormModal = useJobFormModal()
   const nowMs = useIntervalNowMs(45_000)
 
   const onDataError = useCallback(
@@ -325,6 +334,21 @@ export function UserDayScheduleSection({
     quickfillOrderedSessionJobLedgerIds.forEach((id, i) => m.set(id, i))
     return m
   }, [quickfillOrderedSessionJobLedgerIds])
+
+  // Tier-3 B5 (J1-F8): same "Create new job" as the hub grid / Quick Assign pickers — the new job
+  // lands straight in the add-block modal for this person and day.
+  const onCreateNewJobFromPicker = useCallback(() => {
+    if (!jobFormModal || !cellAddContext) return
+    const ctx = { ...cellAddContext }
+    closeJobPicker()
+    jobFormModal.openNewJob({
+      onCreatedJobId: (newId) => {
+        void reload({ quiet: true }).then(() =>
+          openAddBlock({ assigneeUserId: ctx.assigneeUserId, workDate: ctx.workDate, jobId: newId }),
+        )
+      },
+    })
+  }, [jobFormModal, cellAddContext, closeJobPicker, reload, openAddBlock])
 
   const quickfillPickerJobsSorted = useMemo(
     () =>
@@ -773,6 +797,7 @@ export function UserDayScheduleSection({
       <ScheduleDispatchAssignJobPickerModal
         open={assignJobPickerOpen}
         onClose={closeJobPicker}
+        onCreateNewJob={allowCreateNewJob && jobFormModal && cellAddContext ? onCreateNewJobFromPicker : undefined}
         subtitle={quickfillAssignJobPickerSubtitle}
         jobRows={quickfillAssignJobPickerRows}
         searchValue={assignJobPickerSearch}

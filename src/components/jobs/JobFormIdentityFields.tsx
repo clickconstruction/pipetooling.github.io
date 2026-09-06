@@ -63,6 +63,8 @@ type JobFormIdentityFieldsProps = {
   hideHcpNumberField?: boolean
   clickNumber: string
   setClickNumber: (v: string) => void
+  /** New Job: the next-number suggestion is still loading (v2.2909, J1-F3) — the box says so instead of sitting blank. */
+  clickNumberSuggesting?: boolean
   jobName: string
   setJobName: (v: string) => void
   jobAddress: string
@@ -96,6 +98,7 @@ export function JobFormIdentityFields({
   hideHcpNumberField = false,
   clickNumber,
   setClickNumber,
+  clickNumberSuggesting = false,
   jobName,
   setJobName,
   jobAddress,
@@ -164,7 +167,10 @@ export function JobFormIdentityFields({
             type="text"
             value={clickNumber}
             onChange={(e) => setClickNumber(e.target.value)}
-            placeholder="C#"
+            placeholder={clickNumberSuggesting ? 'finding…' : 'C#'}
+            title={clickNumberSuggesting ? 'Finding the next number…' : undefined}
+            aria-busy={clickNumberSuggesting || undefined}
+            aria-describedby={clickNumberSuggesting ? 'job-form-click-number-hint' : undefined}
             style={{ width: '100%', boxSizing: 'border-box', height: 36, padding: '0 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.875rem' }}
           />
         </div>
@@ -242,6 +248,11 @@ export function JobFormIdentityFields({
           </div>
         </div>
       </div>
+      {clickNumberSuggesting ? (
+        <div id="job-form-click-number-hint" role="status" style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '-0.25rem' }}>
+          C# — finding the next number… (type your own if you already know it)
+        </div>
+      ) : null}
       <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'flex-end' }}>
         <div style={{ flex: 1, minWidth: 200 }}>
           <label style={{ display: 'block', marginBottom: 4, fontWeight: 500, fontSize: '0.875rem' }}>Job Address <span style={{ color: 'var(--text-red-700)' }}>*</span></label>

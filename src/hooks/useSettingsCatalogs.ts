@@ -135,7 +135,7 @@ export function useSettingsCatalogs({ setError }: { setError: (message: string |
     if (orphanPrices.length === 0) return
     if (
       !(await confirmDialog({
-        message: 'Delete ALL orphaned material prices listed here? A dev can put them back for 90 days from Settings → Data & migration → Recently deleted.',
+        message: 'Delete ALL orphaned material prices listed here? A dev can put them back for 90 days from Settings → Data & recovery → Recently deleted.',
         confirmLabel: 'Delete',
         danger: true,
       }))

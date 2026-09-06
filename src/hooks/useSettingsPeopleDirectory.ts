@@ -185,7 +185,7 @@ export function useSettingsPeopleDirectory({
   async function deleteNonUserPerson(p: PersonRow) {
     if (
       !(await confirmDialog({
-        message: `Delete "${p.name}"? A dev can put them back for 90 days from Settings → Data & migration → Recently deleted.`,
+        message: `Delete "${p.name}"? A dev can put them back for 90 days from Settings → Data & recovery → Recently deleted.`,
         confirmLabel: 'Delete',
         danger: true,
       }))

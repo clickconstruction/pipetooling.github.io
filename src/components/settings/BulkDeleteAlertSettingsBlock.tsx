@@ -41,7 +41,7 @@ const FIELDS = [
 ] as const
 
 /**
- * Settings → Data & migration (dev): thresholds for the "Bulk deletion detected" dashboard notice.
+ * Settings → Data & recovery (dev): thresholds for the "Bulk deletion detected" dashboard notice.
  * Self-contained (loads/saves its own app_settings rows) like TripChargeAmountsSettingsBlock.
  *
  * These same keys are read server-side by list_bulk_deletion_alerts(), so the notice and these numbers

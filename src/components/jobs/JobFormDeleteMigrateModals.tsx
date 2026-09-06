@@ -2,6 +2,7 @@ import { useJobMigrate } from './useJobMigrate'
 import type { JobWithDetails } from '../../types/jobWithDetails'
 import type { TeamLaborRow } from '../../utils/teamLabor'
 import { formatCurrency } from '../../lib/jobs/jobFormMoney'
+import { approxHoursLabel } from '../../lib/approxHoursLabel'
 import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
 import { useMemo } from 'react'
 import { useLedgerPrefixMap } from '../../contexts/LedgerDisplayPrefixContext'
@@ -165,7 +166,7 @@ export function JobFormDeleteMigrateModals({
               </p>
               <p style={{ margin: 0, color: 'var(--text-muted)' }}>
                 This removes the job from Billing along with everything on it — invoices, payments, costs and
-                reports. A dev can put it back for 90 days from <strong>Settings → Data &amp; migration → Recently
+                reports. A dev can put it back for 90 days from <strong>Settings → Data &amp; recovery → Recently
                 deleted</strong>.
               </p>
               {hasMigrateableCosts && !costSnapshotStillLoading ? (
@@ -190,7 +191,7 @@ export function JobFormDeleteMigrateModals({
                     (editJobTeamLaborRow.jobCost > 0 || editJobTeamLaborRow.manHours > 0) ? (
                       <li>
                         Team labor (est.): ${formatCurrency(editJobTeamLaborRow.jobCost)} ·{' '}
-                        {editJobTeamLaborRow.manHours} hrs
+                        {approxHoursLabel(editJobTeamLaborRow.manHours)}
                       </li>
                     ) : null}
                   </ul>
@@ -360,7 +361,7 @@ export function JobFormDeleteMigrateModals({
                 <p style={{ margin: '0 0 1rem', fontSize: '0.8125rem', color: 'var(--text-amber-800)', lineHeight: 1.45 }}>
                   This job’s own invoices and recorded payments are deleted with it — only costs, labor, and revenue
                   move to the target. A dev can restore the deleted job and those invoices/payments for 90 days
-                  (<strong>Settings → Data &amp; migration → Recently deleted</strong>), but anything moved to the target
+                  (<strong>Settings → Data &amp; recovery → Recently deleted</strong>), but anything moved to the target
                   stays there.
                 </p>
               </>
@@ -624,7 +625,7 @@ export function JobFormDeleteMigrateModals({
                       </ul>
                       <p style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
                         These have no place on a bid. A dev can restore the whole job for 90 days from
-                        Settings → Data &amp; migration → Recently deleted, but anything moved to the bid stays there.
+                        Settings → Data &amp; recovery → Recently deleted, but anything moved to the bid stays there.
                       </p>
                     </div>
                   </>
