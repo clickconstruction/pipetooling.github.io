@@ -24,10 +24,10 @@ export function daysOpen(startedAt: string | null, endedAt: string | null): numb
   return result < 0 ? null : result
 }
 
-/** Assignee label; flags names that don't match any known user (identity is by user NAME). */
+/** Assignee label; "Unassigned" for a step with nobody (J31-4), flags names that don't match any known user (identity is by user NAME). */
 export function personDisplay(name: string | null, userNames: Set<string>): string {
   if (!name || !name.trim()) {
-    return 'Assigned to: unknown'
+    return 'Unassigned'
   }
   const trimmedName = name.trim()
   const isUser = userNames.has(trimmedName.toLowerCase())

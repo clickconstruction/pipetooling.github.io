@@ -1,6 +1,7 @@
 /**
  * Assignee name rendered as a contact-info button (with the "(not a user)"
- * suffix when the name is not a registered user). Verbatim move out of
+ * suffix when the name matches no account the viewer can read; "Unassigned"
+ * when the step has nobody). Verbatim move out of
  * src/pages/Workflow.tsx per docs/WORKFLOW_PAGE_ARCHITECTURE.md; used in
  * every stage card row. The contact modal itself stays page-level.
  */
@@ -22,8 +23,9 @@ export function PersonDisplayWithContact({
   userNames: Set<string>
   onOpenContact: (info: PersonContactInfo) => void
 }) {
+  // A null name is an unassigned step, not a ghost — say so (J31-4, v2.2900).
   if (!name || !name.trim()) {
-    return <span>Assigned to: unknown</span>
+    return <span>Unassigned</span>
   }
   const trimmedName = name.trim()
   const contact = contacts[trimmedName]

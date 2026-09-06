@@ -30,7 +30,7 @@ This document provides detailed information about all workflow-related features.
 - **Real-time filtering** as you type (case-insensitive search)
 - **Source indicators**: 
   - Shows "(user)" for people with user accounts
-  - Shows "(not user)" for roster entries without accounts
+  - Shows "(not a user)" for roster entries without accounts; a step with nobody reads **"Unassigned"** (v2.2900 — was "Assigned to: unknown")
 - **Add new person**: 
   - If name entered doesn't match any existing person, shows "Add [name]" option in dropdown
   - Opens modal with fields: Name (pre-filled), Email, Phone, Notes
@@ -38,7 +38,7 @@ This document provides detailed information about all workflow-related features.
   - Validates for duplicate names (case-insensitive)
   - Automatically selects newly added person after creation
 - **Data sources**: 
-  - Queries `users` table for roles `'master_technician'`, `'subcontractor'`, `'helpers'`, and `'primary'`
+  - Queries `users` for every assignable role (`WORKFLOW_ASSIGNABLE_USER_ROLES` in `src/lib/workflow/stepAssignment.ts`, v2.2900 — was the literal `master_technician|subcontractor|helpers|primary`, which could not offer an assistant, the controller or an estimator), active accounts only (`buildWorkflowUserRoster`: no twins, no archived, dev included)
   - Queries `people` table for kinds `'master_technician'`, `'sub'`, and `'helper'`, excluding archived entries (`archived_at IS NULL`); scoped to the current user's roster (`master_user_id`), or to adopted masters' rosters for superintendents (via `master_superintendents`)
   - Combines both sources; since v2.1201 roster entries carry `{ name, personId }` (not name text alone), so duplicate roster names stay distinguishable
 - **Person-id keyed saves** (v2.1201): assignment saves through the 3-arg `update_step_assignment(p_step_id, p_assigned_to_name, p_person_id)` RPC, which writes `project_workflow_steps.assigned_person_id` alongside the display name — an explicit `personId` wins over name resolution (the duplicate-name disambiguator). Fallbacks: the legacy 2-arg `update_step_assigned_to` RPC, then a direct update; on both, a DB trigger (`steps_set_assigned_person_id`) resolves the person id from the name.
@@ -274,6 +274,8 @@ The gates in `src/pages/Workflow.tsx` (`canManageStages`, `canSeePrivateNotesAnd
 - Cross-step notifications (owners/masters only, default to on):
   - Notify next card assignee when complete or approved
   - Notify prior card assignee when marked incomplete
+
+**Defaults** (v2.2900): the three stage-level toggles are `false` at the DB, so a freshly assigned step used to nudge nobody. New steps now insert with all three on, and the first assignee on an existing step turns them on (`notifyAssignedDefaultsOnAssign` in `src/lib/workflow/stepAssignment.ts`); reassigning or clearing leaves the office's choice alone.
 
 **Database**: 
 - Stage-level: `notify_assigned_when_*` fields

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../hooks/useAuth'
 import type { Database } from '../../types/database'
+import { WORKFLOW_ASSIGNABLE_USER_ROLES, buildWorkflowUserRoster } from '../../lib/workflow/stepAssignment'
 
 type Step = Database['public']['Tables']['project_workflow_steps']['Row']
 
@@ -72,13 +73,24 @@ export function StepFormModal({
     }
   }, [step, authUser?.id])
 
+  // Every assignable role, active accounts only (J31-N3, v2.2900) — the old
+  // literal list (master/sub/helper/primary) could not offer an assistant,
+  // the controller or an estimator, and the roster read for a superintendent
+  // was narrower still. RLS trims what each viewer may read.
+  function stepFormUsersQuery() {
+    return supabase
+      .from('users')
+      .select('name, role, archived_at, is_digital_twin')
+      .in('role', WORKFLOW_ASSIGNABLE_USER_ROLES as Database['public']['Enums']['user_role'][])
+  }
+
   async function loadMastersAndSubs() {
     if (!authUser?.id) return
 
     const { data: me } = await supabase.from('users').select('role').eq('id', authUser.id).single()
     const role = (me as { role: string } | null)?.role
 
-    let usersRes: { data: Array<{ name: string | null; role: string }> | null }
+    let usersRes: { data: Array<{ name: string | null; role: string | null; archived_at: string | null; is_digital_twin: boolean | null }> | null }
     let peopleRes: { data: Array<{ name: string; kind: string }> | null }
 
     if (role === 'superintendent') {
@@ -88,20 +100,20 @@ export function StepFormModal({
         .eq('superintendent_id', authUser.id)
       const adoptedMasterIds = (adopted ?? []).map((r) => r.master_id)
       ;[usersRes, peopleRes] = await Promise.all([
-        supabase.from('users').select('name, role').in('role', ['master_technician', 'subcontractor', 'helpers', 'primary']),
+        stepFormUsersQuery(),
         adoptedMasterIds.length > 0
           ? supabase.from('people').select('id, name, kind').is('archived_at', null).in('master_user_id', adoptedMasterIds).in('kind', ['master_technician', 'sub', 'helper'])
           : { data: [] as Array<{ id: string; name: string; kind: string }> },
       ])
     } else {
       ;[usersRes, peopleRes] = await Promise.all([
-        supabase.from('users').select('name, role').in('role', ['master_technician', 'subcontractor', 'helpers', 'primary']),
+        stepFormUsersQuery(),
         supabase.from('people').select('id, name, kind').is('archived_at', null).eq('master_user_id', authUser.id).in('kind', ['master_technician', 'sub', 'helper']),
       ])
     }
 
-    const fromUsers = ((usersRes.data as Array<{name: string | null, role: string}> | null) ?? [])
-      .filter((u): u is {name: string, role: string} => !!u.name)
+    const fromUsers = buildWorkflowUserRoster(usersRes.data ?? []).roster
+      .filter((u): u is typeof u & { name: string } => !!u.name)
       .map(u => ({ name: u.name, source: 'user' as const, personId: null as string | null }))
 
     const fromPeople = ((peopleRes.data as Array<{id: string, name: string, kind: string}> | null) ?? [])
