@@ -18,6 +18,7 @@ import { splitAssignedToNames } from '../people/laborJobPersonMatch'
 import { normalizePersonNameKey } from '../personNameKey'
 import type { PeopleLaborJobItemLike } from '../peopleLaborJobItemLineCost'
 import { buildJobWorkOrderCoverage, type WorkOrderRowLike } from './workOrderCoverage'
+import { isRosterSub, type NeedsWorkOrderRosterPerson } from './rosterSub'
 
 export type NeedsWorkOrderSheet = {
   id: string
@@ -29,13 +30,8 @@ export type NeedsWorkOrderSheet = {
   payments?: Array<{ amount: number }>
 }
 
-export type NeedsWorkOrderRosterPerson = {
-  id: string
-  name: string
-  kind: string
-  /** `users.role` behind `people.account_user_id`; null when the person has no login. */
-  accountRole?: string | null
-}
+export type { NeedsWorkOrderRosterPerson } from './rosterSub'
+export { isRosterSub } from './rosterSub'
 
 export type NeedsWorkOrderJob = { id: string; hcp_number: string; customer_name?: string | null; job_address?: string | null }
 
@@ -65,13 +61,6 @@ export type SheetsNeedingWorkOrderInput = {
 }
 
 const numberKey = (n: string | null | undefined) => (n ?? '').trim().toLowerCase()
-
-/** A roster row is a sub when it is kind `sub` and has no login or a subcontractor login. */
-export function isRosterSub(p: Pick<NeedsWorkOrderRosterPerson, 'kind' | 'accountRole'> | undefined): boolean {
-  if (!p || p.kind !== 'sub') return false
-  const role = (p.accountRole ?? '').trim()
-  return role === '' || role === 'subcontractor'
-}
 
 /** True when every assignee on the sheet is a roster sub (junction first, then the delimited name column). Unresolved names do not count. */
 export function isRosterSubSheet(

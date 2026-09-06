@@ -2,7 +2,7 @@
 title: record sub labor on a job
 category: Office
 roles: dev, master_technician, assistant, controller
-keywords: sub labor, subcontractor, sub sheet, labor book, job picker, stage, walk-through, waiting on customer
+keywords: sub labor, subcontractor, sub sheet, labor book, job picker, stage, inspection, waiting on customer
 order: 62
 ---
 Sub labor lives on **Jobs → Sub Labor**. Every entry belongs to a job — the New Sub Labor form starts with the standard job search, and everything downstream (the job's profit band, Crew P&L, sub sheets) rolls the cost up to that job automatically.
@@ -30,13 +30,15 @@ New entries no longer ask for miles — the drive-cost math simply isn't applied
 
 ## Where the sheet stands
 
-Every ledger row carries the same spine as **Jobs → Work Orders**: **Agreed · Paid · Due**, then **Where it stands** — the rail the sub sees on their portal. Four big dots are the sub's steps (**Work · Walk-through · Customer pays · Paid**); the three small dots in front (**Drafted · Sent · Signed**) are the office's agreement steps. The filled terracotta dot is where the sheet is today; a **dashed red run** through the small dots means work is happening with nothing signed, and the Due figure turns the same red.
+Every ledger row carries the same spine as **Jobs → Work Orders**: **Agreed · Paid · Due**, then **Where it stands** — the rail the sub sees on their portal. Four big dots are the sub's steps (**Work · Pre-inspection · Post-inspection: Trigger draw · Paid**); the three small dots in front (**Drafted · Sent · Signed**) are the office's agreement steps. The filled terracotta dot is where the sheet is today; a **dashed red run** through the small dots means work is happening with nothing signed, and the Due figure turns the same red.
 
-**Next** names the office's move — *Get it in writing* ({{button:blue|Draft a work order…}} opens the assembler on the sheet), *Price it and send*, *Waiting on ‹sub›*, *Wait for "done"*, *Schedule the walk-through*, *Bill and collect*, *Pay ‹sub›*, *Nothing — done*.
+**Next** names the office's move — *Get it in writing* ({{button:blue|Draft a work order…}} opens the assembler on the sheet), *Price it and send*, *Waiting on ‹sub›*, *Wait for "done"*, *Call it in for inspection*, *Bill and collect*, *Pay ‹sub›*, *Nothing — done*.
 
-**The story**: click the rail anywhere but the current dot to open the sheet's story — one row per dot with the dates, people, notes and payments behind it, what the sub sees at that step, and the office's move (Move to Walk-through, Passed → Customer pays, Set payable after…). **Moving the stage**: click the rail's current dot to pick any of the three stages (stepping back is fine), or tap **→** beside the rail to advance one. The sub can move a sheet to *Walk-through* themselves by telling you the work is done — the rail then reads *· sub* with their note behind ✎, and the job's Activity feed keeps the history. Details in [share a sub their portal](/help/share-a-sub-their-portal). Paid sets itself once the balance is $0.
+**The story**: click the rail anywhere but the current dot to open the sheet's story — one row per dot with the dates, people, notes and payments behind it, what the sub sees at that step, and the office's move (Move to Pre-inspection, Passed → Trigger draw, Set payable after…). Beside each *The sub sees* line, **Show me on their portal ›** opens the sub's portal in a new tab, scrolled to that very part with a copper halo around it for a few seconds — handy when you are on the phone with them. Your look is a preview and is not counted as the sub opening their page. On the Signed row, **Binds under** (*MSA signed …*, *no COI on file*) is a door too: click it to open the sub's Person Desk on Paperwork, file the COI or send the MSA, and the line updates when you close the drawer. **Moving the stage**: click the rail's current dot to pick any of the three stages (stepping back is fine), or tap **→** beside the rail to advance one. The sub can move a sheet to *Pre-inspection* themselves by telling you the work is done — the rail then reads *· sub* with their note behind ✎, and the job's Activity feed keeps the history. Details in [share a sub their portal](/help/share-a-sub-their-portal). Paid sets itself once the balance is $0.
 
-**Crew pay** sheets — a teammate on the sheet — wear a {{chip:purple|Crew pay}} label and draw only the four sub dots: they never need a work order. **Subs only** hides them; **No agreement** shows just the sub sheets with money open and nothing signed. Rows sort by money due; switch to Date or Contractor with the sort buttons.
+**Who the sheet is for**: a sheet is named for its subcontractor. When teammates are on the same sheet (*Malachi | Abraham | Behar Kraja*), the row reads **Behar Kraja** with a muted *with Malachi, Abraham* beneath, and **Outstanding by contractor** rolls that money up under Behar — the sub is the contractor, the teammates rode along. Sheets with no sub at all keep every name and wear the {{chip:purple|Crew pay}} tag in the rollup.
+
+**Crew pay** sheets — no roster sub on the sheet — wear a {{chip:purple|Crew pay}} label and pay through payroll; any sheet with a teammate on it draws only the four sub dots and never needs a work order. The ledger groups sheets under their sub, payable first, and the chips over it filter by **Pay when** — Ready now · Queued · Waiting on customer · No agreement · Crew pay · Paid. The whole pay-run read is in [see what I still owe each sub contractor](/help/sub-labor-outstanding).
 
 ## Sending the sub a work order
 

@@ -24,6 +24,12 @@ import { useRosterSubKinds } from '../../hooks/useRosterSubKinds'
 import { emitWorkOrderChanged } from '../../hooks/useJobWorkOrderCoverage'
 import { notifySheetWorkOrderOffered } from '../../lib/workflow/workOrderNotifications'
 import { resolveSubPortalUrl } from '../../lib/subPortal/resolveSubPortalUrl'
+import { withSubPortalFocus, type SubPortalFocus } from '../../lib/subPortal/subPortalFocus'
+import { withPreviewFlag } from '../../lib/publicViewCounting'
+import { useOptionalPersonDesk } from '../../contexts/PersonDeskContext'
+import { useSubPortalVisitSummaries } from '../../hooks/useSubPortalVisitSummaries'
+import { visitLine } from '../../lib/portal/subPortalVisits'
+import { SubPortalVisitsModal } from '../people/SubPortalVisitsModal'
 import type { StepCommitmentRow } from '../../lib/workflow/stepCommitments'
 import type { JobWithDetails } from '../../types/jobWithDetails'
 import { SheetRail } from './SheetRail'
@@ -87,6 +93,8 @@ const money = (n: number) => `$${formatCurrency(n)}`
 export function SheetStoryModal({ sheetId, onClose, jobs, authUserId, onOpenSheet, onSheetChanged }: SheetStoryModalProps) {
   const { showToast } = useToastContext()
   const { roster } = useRosterSubKinds(sheetId != null)
+  const desk = useOptionalPersonDesk()
+  const [visitsOpen, setVisitsOpen] = useState(false)
   const [data, setData] = useState<Loaded | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
@@ -176,6 +184,21 @@ export function SheetStoryModal({ sheetId, onClose, jobs, authUserId, onOpenShee
     setPayableDraft(null)
     if (sheetId) void load()
   }, [sheetId, load])
+
+  // The Person Desk (Paperwork door) reports its writes: a COI filed there should show on Binds under.
+  const storyPersonIds = useMemo(() => { const ids = (data?.sheet.assignees ?? []).map((a) => a.person_id); return ids.length === 1 ? ids : [] }, [data])
+  const visits = useSubPortalVisitSummaries(storyPersonIds, sheetId != null)
+  const deskChangeKey = desk?.changeKey ?? 0
+  useEffect(() => {
+    if (sheetId && deskChangeKey > 0) void load()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [deskChangeKey])
+
+  /** "no MSA on file · no COI on file" → the sub's Person Desk, scrolled to Paperwork. */
+  function openPaperwork() {
+    if (!desk?.canOpen || !story?.personId) return
+    desk.open({ personId: story.personId, displayName: data?.sheet.assigned_to_name ?? null, section: 'paperwork' })
+  }
 
   useEffect(() => {
     if (!sheetId) return
@@ -284,6 +307,30 @@ export function SheetStoryModal({ sheetId, onClose, jobs, authUserId, onOpenShee
     }
   }
 
+  /**
+   * "Show me on their portal": open the sub's page scrolled to — and haloed on —
+   * the part the story's "The sub sees" line describes. The tab opens
+   * synchronously (popup blockers), then lands once the token link resolves;
+   * `?preview=1` keeps the office's look from counting as the sub's.
+   */
+  function showOnPortal(focus: SubPortalFocus) {
+    if (!story?.personId) return
+    const personId = story.personId
+    const tab = window.open('about:blank', '_blank')
+    if (tab) tab.opener = null
+    void (async () => {
+      const base = await resolveSubPortalUrl(personId, { tokenOnly: true })
+      if (!base) {
+        tab?.close()
+        showToast('Could not open their portal — no portal link for this sub', 'error')
+        return
+      }
+      const url = withSubPortalFocus(withPreviewFlag(base), focus)
+      if (tab) tab.location.href = url
+      else window.open(url, '_blank', 'noopener')
+    })()
+  }
+
   function act(action: SheetStoryAction) {
     if (!story || !sheetId) return
     switch (action) {
@@ -344,13 +391,26 @@ export function SheetStoryModal({ sheetId, onClose, jobs, authUserId, onOpenShee
                   ['Paid', money(story.money.paid), false],
                   ['Open', story.money.unpriced ? '—' : money(story.money.open), story.money.open > 0 && story.rail.gap],
                   ['Sheet dated', sheet?.job_date ?? (sheet?.created_at ?? '').slice(0, 10) ?? '—', false],
-                  ['Portal', data?.hasPortalLink ? '🌐 link open' : 'no link yet', false],
                 ].map(([k, v, red]) => (
                   <div key={String(k)}>
                     <div style={{ fontSize: '0.62rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)' }}>{k}</div>
                     <div style={{ fontWeight: 700, color: red ? SHEET_RAIL_GAP : 'inherit' }}>{v}</div>
                   </div>
                 ))}
+                {(() => {
+                  const line = story.personId ? visitLine(visits.byPerson.get(story.personId), { hasLink: data?.hasPortalLink }) : null
+                  const openTrail = () => story.personId && setVisitsOpen(true)
+                  return (
+                    <div>
+                      <div style={{ fontSize: '0.62rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)' }}>Portal</div>
+                      <button type="button" onClick={openTrail} disabled={!story.personId} title={story.personId ? 'Every visit to their portal — click for the trail' : undefined} style={{ background: 'none', border: 'none', padding: 0, font: 'inherit', fontWeight: 700, color: 'inherit', cursor: story.personId ? 'pointer' : 'default', textAlign: 'left' }}>
+                        {data?.hasPortalLink ? '🌐 link open' : 'no link yet'}
+                        {line && line.tone === 'green' ? <span style={{ color: 'var(--text-green-700)' }}> · {line.outside.replace('Opened their page ', 'opened ')}</span> : line && line.tone === 'amber' ? <span style={{ color: 'var(--text-amber-800)' }}> · never opened</span> : null}
+                      </button>
+                      {line?.team ? <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', fontWeight: 400 }}>{line.team}</div> : null}
+                    </div>
+                  )
+                })()}
               </div>
               <div style={{ overflowX: 'auto', paddingBottom: 2 }}>
                 <SheetRail rail={story.rail} />
@@ -370,6 +430,8 @@ export function SheetStoryModal({ sheetId, onClose, jobs, authUserId, onOpenShee
               const primary = row.actions[0]
               const rest = row.actions.slice(1)
               const isPayableEditor = row.key === 'customer_pays' && payableDraft != null
+              const seesFocus: SubPortalFocus | null =
+                !story.personId || !row.seesOn ? null : row.seesOn === 'offer' ? (story.orderRow ? { kind: 'offer', id: story.orderRow.id } : null) : sheetId ? { kind: 'sheet', id: sheetId } : null
               return (
                 <div key={row.key} style={{ display: 'grid', gridTemplateColumns: '30px 1fr auto', gap: 12, padding: '0.7rem 1.1rem', borderBottom: '1px solid var(--border)', background: now ? 'var(--bg-subtle)' : 'transparent', alignItems: 'start' }}>
                   <span
@@ -397,7 +459,13 @@ export function SheetStoryModal({ sheetId, onClose, jobs, authUserId, onOpenShee
                       {row.facts.map((f, i) => (
                         <div key={i} style={f.quote ? { borderLeft: '2px solid var(--border-strong)', paddingLeft: 8, fontStyle: 'italic', color: 'var(--text-muted)' } : undefined}>
                           {f.k ? <span style={{ color: 'var(--text-muted)' }}>{f.k} </span> : null}
-                          {f.text}
+                          {f.link === 'paperwork' && desk?.canOpen && story.personId ? (
+                            <button type="button" style={{ ...ghost, fontSize: 'inherit', fontWeight: 500, whiteSpace: 'normal', textAlign: 'left', textDecoration: 'underline dotted', textUnderlineOffset: 3 }} title="Open their Person Desk on Paperwork — file a COI, send the MSA" onClick={openPaperwork}>
+                              {f.text}
+                            </button>
+                          ) : (
+                            f.text
+                          )}
                         </div>
                       ))}
                       {isPayableEditor ? (
@@ -409,7 +477,19 @@ export function SheetStoryModal({ sheetId, onClose, jobs, authUserId, onOpenShee
                         </div>
                       ) : null}
                     </div>
-                    {row.sees ? <div style={{ marginTop: 4, fontSize: '0.72rem', color: 'var(--text-muted)' }}><b style={{ fontWeight: 600 }}>The sub sees:</b> {row.sees}</div> : null}
+                    {row.sees ? (
+                      <div style={{ marginTop: 4, fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                        <b style={{ fontWeight: 600 }}>The sub sees:</b> {row.sees}
+                        {seesFocus ? (
+                          <>
+                            {' '}
+                            <button type="button" style={{ ...ghost, fontSize: '0.72rem' }} disabled={busy} title="Opens their portal in a new tab, scrolled to this part" onClick={() => showOnPortal(seesFocus)}>
+                              Show me on their portal ›
+                            </button>
+                          </>
+                        ) : null}
+                      </div>
+                    ) : null}
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 6, alignItems: 'flex-end' }}>
                     {primary && !isPayableEditor ? (
@@ -439,6 +519,7 @@ export function SheetStoryModal({ sheetId, onClose, jobs, authUserId, onOpenShee
           </div>
         ) : null}
       </div>
+      <SubPortalVisitsModal personId={visitsOpen && story?.personId ? story.personId : null} personName={data?.sheet.assigned_to_name ?? ''} onClose={() => { setVisitsOpen(false); visits.reload() }} />
       <WorkOrderAssemblerModal
         open={assembler != null}
         onClose={() => setAssembler(null)}

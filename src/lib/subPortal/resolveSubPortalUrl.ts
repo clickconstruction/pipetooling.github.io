@@ -7,10 +7,17 @@
 import { supabase } from '../supabase'
 import { portalShortUrl } from '../portal/portalShortOrigin'
 
-export async function resolveSubPortalUrl(personId: string): Promise<string | null> {
-  const { data: slugRow } = await supabase.from('sub_portal_slugs').select('slug').eq('person_id', personId).maybeSingle()
-  const slug = ((slugRow as { slug?: string | null } | null)?.slug ?? '').trim()
-  if (slug) return portalShortUrl(slug)
+/**
+ * `tokenOnly`: skip the custom short address and answer with the on-origin
+ * token link — for office openers that carry query flags (`?preview=1`,
+ * `?focus=`) the short-link bounce would not be trusted to keep.
+ */
+export async function resolveSubPortalUrl(personId: string, opts?: { tokenOnly?: boolean }): Promise<string | null> {
+  if (!opts?.tokenOnly) {
+    const { data: slugRow } = await supabase.from('sub_portal_slugs').select('slug').eq('person_id', personId).maybeSingle()
+    const slug = ((slugRow as { slug?: string | null } | null)?.slug ?? '').trim()
+    if (slug) return portalShortUrl(slug)
+  }
   const { data: linkRow } = await supabase.from('sub_portal_links').select('token').eq('person_id', personId).is('revoked_at', null).order('created_at', { ascending: false }).limit(1).maybeSingle()
   let token = ((linkRow as { token?: string | null } | null)?.token ?? '').trim()
   if (!token) {

@@ -16,10 +16,10 @@ import { SUB_PORTAL_DEMO_PAYLOAD } from '../lib/subPortal/subPortalDemoFixture'
 
 const TOKEN = 'a'.repeat(32)
 
-function renderPortal() {
+function renderPortal(query = '') {
   installDomShims()
   return render(
-    <MemoryRouter initialEntries={[`/sub?t=${TOKEN}`]} future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+    <MemoryRouter initialEntries={[`/sub?t=${TOKEN}${query}`]} future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
       <Routes>
         <Route path="/sub" element={<SubPortal />} />
       </Routes>
@@ -76,6 +76,23 @@ describe('SubPortal render smoke', () => {
 
     // Short address card
     expect(screen.getAllByText(/dv-mechanical/).length).toBeGreaterThanOrEqual(1)
+  })
+
+  it('scrolls to and halos the card the office asked to be shown (?focus=)', async () => {
+    installDomShims()
+    const scroll = vi.spyOn(Element.prototype, 'scrollIntoView').mockImplementation(() => {})
+    renderPortal('&focus=sheet%3Ademo-s1')
+    await waitFor(() => expect(screen.getByText('Work & pay statement')).toBeTruthy())
+    const target = document.getElementById('sp-focus-sheet-demo-s1')
+    expect(target).toBeTruthy()
+    // The working sheet's sentence + button live inside the haloed block.
+    expect(target!.textContent).toContain('My work here is done')
+    await waitFor(() => expect(target!.className).toBe('sp-focus'))
+    expect(scroll).toHaveBeenCalledTimes(1)
+    // The other cards stay plain.
+    expect(document.getElementById('sp-focus-sheet-demo-s2')!.className).toBe('')
+    expect(document.getElementById('sp-focus-offer-demo-o1')!.className).toBe('')
+    scroll.mockRestore()
   })
 
   it('shows the friendly error when the link is dead', async () => {

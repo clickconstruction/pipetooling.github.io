@@ -22,6 +22,8 @@ export type SubSheetRow = {
   stage_source: string | null
   payable_after: string | null
   pay_hold_reason: string | null
+  /** v2.2922: filled by the function from jobs_ledger.job_plans_link / bids.count_tooling_plans_link. */
+  plans_url?: string | null
 }
 
 export type SubItemRow = {
@@ -111,6 +113,8 @@ export type SubPortalSheet = {
   payHoldReason: string | null
   /** v2.2789: the signed work order behind this sheet, when one exists. */
   agreement: SubPortalAgreement | null
+  /** v2.2922: the plans online — the Pipeline job's plans link, else its bid's CountTooling set; null when neither. */
+  plansUrl?: string | null
 }
 
 export type SubPortalPaymentLine = {
@@ -242,6 +246,7 @@ export function buildSubSheets(
       payableAfter: sheet.payable_after,
       payHoldReason: (sheet.pay_hold_reason ?? '').trim() || null,
       agreement: null,
+      plansUrl: (sheet.plans_url ?? '').trim() || null,
     }
   })
 }

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { publicFunctionHeaders, sampleStateFromToken } from '../lib/customerSampleMode'
 import { staffAwarePublicHeaders } from '../lib/publicFunctionStaffHeaders'
 import { PUBLIC_PREVIEW_PARAM, isPreviewFlag } from '../lib/publicViewCounting'
@@ -20,6 +20,9 @@ import {
   type SubPortalStringKey,
 } from '../lib/subPortal/subPortalI18n'
 import { isSubPortalSheetQueued, subPortalRailStep } from '../lib/subPortal/subPortalRail'
+import { SUB_PORTAL_FOCUS_PARAM, isSubPortalFocused, parseSubPortalFocus, subPortalFocusDomId, type SubPortalFocus } from '../lib/subPortal/subPortalFocus'
+import { PlansPill, SubPortalGuideButton, SubPortalGuideSheet } from '../components/subPortal/SubPortalGuide'
+import { subPortalGuide } from '../lib/subPortal/subPortalGuideStrings'
 import {
   parseSubPortalPayload,
   type SubPortalDoc,
@@ -129,6 +132,8 @@ export default function SubPortal() {
   const sample = sampleStateFromToken(token)
   // Office preview (journey-map #37): forwarded so the load is not counted as the sub looking.
   const preview = isPreviewFlag(params.get(PUBLIC_PREVIEW_PARAM))
+  // "Show me on their portal" from the office's sheet story: scroll to the card and pulse a halo.
+  const focus = useMemo(() => parseSubPortalFocus(params.get(SUB_PORTAL_FOCUS_PARAM)), [params])
   const [lang, setLang] = useState<SubPortalLang>('en')
   const [state, setState] = useState<PageState>({ kind: 'loading' })
 
@@ -212,6 +217,11 @@ export default function SubPortal() {
         .sp-st.done::after,.sp-st.now::after{content:'';position:absolute;top:7px;left:-50%;width:100%;height:2px;background:${PAPER_GREEN};z-index:-1}
         .sp-st:first-child::after{display:none}
         @media (max-width:400px){.sp-st{font-size:9.5px}}
+        /* Office "Show me on their portal": a copper halo that lingers a few seconds, then lets go */
+        .sp-focus{animation:sp-focus-pulse 4.6s ease-out 1 both}
+        @keyframes sp-focus-pulse{0%{box-shadow:0 0 0 6px transparent,0 0 0 9px transparent;background:transparent}10%,74%{box-shadow:0 0 0 6px ${CARD},0 0 0 9px ${COPPER};background:#fbf1e8}100%{box-shadow:0 0 0 6px transparent,0 0 0 9px transparent;background:transparent}}
+        @media (prefers-reduced-motion:reduce){.sp-focus{animation:none;box-shadow:0 0 0 6px ${CARD},0 0 0 9px ${COPPER};background:#fbf1e8}}
+        @media print{.sp-focus{animation:none;box-shadow:none;background:transparent}}
       `}</style>
       <div style={{ maxWidth: 730, margin: '0 auto' }}>
         <div data-screen-only style={{ display: 'flex', justifyContent: 'flex-end', paddingBottom: 8 }}>
@@ -275,7 +285,7 @@ export default function SubPortal() {
         )}
 
         {state.kind === 'ready' && (
-          <SubPortalStatement payload={state.payload} lang={lang} t={t} submitToken={submitToken} />
+          <SubPortalStatement payload={state.payload} lang={lang} t={t} submitToken={submitToken} focus={focus} />
         )}
       </div>
     </div>
@@ -313,13 +323,17 @@ function SubPortalStatement({
   lang,
   t,
   submitToken,
+  focus,
 }: {
   payload: SubPortalPayload
   lang: SubPortalLang
   t: T
   submitToken: string
+  focus: SubPortalFocus | null
 }) {
   const payRunDayLabel = formatPayRunDay(payload.payRun.day, lang)
+  // "How do I get paid?" (v2.2922): the guide at the very bottom, a sheet on phones and a dialog on desktop.
+  const [guideOpen, setGuideOpen] = useState(false)
   const queuedNow = useMemo(() => {
     if (!payload.payRun.nextRun) return 0
     return payload.sheets
@@ -408,6 +422,7 @@ function SubPortalStatement({
             submitToken={submitToken}
             preparedOn={payload.preparedOn}
             payRunDayLabel={payRunDayLabel}
+            focused={isSubPortalFocused(focus, 'sheet', sheet.id)}
           />
         ))
       )}
@@ -420,7 +435,7 @@ function SubPortalStatement({
             <span style={sectionNoteStyle}>{t('newWorkNote')}</span>
           </div>
           {payload.offers.map((offer) => (
-            <OfferCard key={offer.id} offer={offer} payload={payload} lang={lang} t={t} submitToken={submitToken} />
+            <OfferCard key={offer.id} offer={offer} payload={payload} lang={lang} t={t} submitToken={submitToken} focused={isSubPortalFocused(focus, 'offer', offer.id)} />
           ))}
         </div>
       )}
@@ -577,15 +592,41 @@ function SubPortalStatement({
         ) : null}
       </div>
 
+      <SubPortalGuideButton lang={lang} onOpen={() => setGuideOpen(true)} />
       <div style={{ marginTop: 30, fontSize: 11, color: FAINT, textAlign: 'center' }}>
         {t('footer')}
         {payload.company.phone ? `: ${payload.company.phone}` : ''}
       </div>
+      <SubPortalGuideSheet lang={lang} open={guideOpen} onClose={() => setGuideOpen(false)} phone={payload.company.phone || null} />
     </div>
   )
 }
 
 type WorkDoneUi = { kind: 'idle' } | { kind: 'asking' } | { kind: 'sending' } | { kind: 'done' }
+
+/**
+ * The office's "Show me on their portal" landing: once the card is on the
+ * page, scroll it to the middle and wear the copper halo for a few seconds.
+ * Reduced-motion viewers get a plain jump and a steady ring.
+ */
+function useSubPortalFocusPulse(focused: boolean) {
+  const ref = useRef<HTMLDivElement>(null)
+  const [lit, setLit] = useState(false)
+  useEffect(() => {
+    if (!focused) return
+    const reduced = typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    const show = window.setTimeout(() => {
+      ref.current?.scrollIntoView({ block: 'center', behavior: reduced ? 'auto' : 'smooth' })
+      setLit(true)
+    }, 120)
+    const hide = window.setTimeout(() => setLit(false), 5200)
+    return () => {
+      window.clearTimeout(show)
+      window.clearTimeout(hide)
+    }
+  }, [focused])
+  return { ref, className: lit ? 'sp-focus' : undefined }
+}
 
 /**
  * One job card (v2.2767 stages): line items, the Agreed · Paid · Open row,
@@ -600,6 +641,7 @@ function SheetCard({
   submitToken,
   preparedOn,
   payRunDayLabel,
+  focused,
 }: {
   sheet: SubPortalSheet
   lang: SubPortalLang
@@ -607,7 +649,9 @@ function SheetCard({
   submitToken: string
   preparedOn: string
   payRunDayLabel: string | null
+  focused: boolean
 }) {
+  const focusPulse = useSubPortalFocusPulse(focused)
   const [stage, setStage] = useState(sheet.stage)
   const [stageChangedOn, setStageChangedOn] = useState(sheet.stageChangedOn)
   const [stageSource, setStageSource] = useState(sheet.stageSource)
@@ -694,20 +738,23 @@ function SheetCard({
           <span style={{ fontWeight: 700 }}>{sheet.jobNumber ?? t('workOrder')}</span>
           {sheet.address ? <span style={{ color: MUTED }}> · {sheet.address}</span> : null}
         </div>
-        <span
-          style={{
-            fontSize: 10,
-            fontWeight: 700,
-            letterSpacing: '0.07em',
-            textTransform: 'uppercase',
-            borderRadius: 999,
-            padding: '3px 9px',
-            background: chip.bg,
-            color: chip.fg,
-            whiteSpace: 'nowrap',
-          }}
-        >
-          {chip.label}
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+          {sheet.plansUrl ? <span data-screen-only title={subPortalGuide(lang).plansCaption}><PlansPill href={sheet.plansUrl} label={subPortalGuide(lang).plansPill} /></span> : null}
+          <span
+            style={{
+              fontSize: 10,
+              fontWeight: 700,
+              letterSpacing: '0.07em',
+              textTransform: 'uppercase',
+              borderRadius: 999,
+              padding: '3px 9px',
+              background: chip.bg,
+              color: chip.fg,
+              whiteSpace: 'nowrap',
+            }}
+          >
+            {chip.label}
+          </span>
         </span>
       </div>
       <div style={{ padding: '0.65rem 0.9rem 0.8rem' }}>
@@ -744,7 +791,9 @@ function SheetCard({
           ))}
         </div>
 
-        {/* The tracker rail: what stands between the sub and this money */}
+        {/* The tracker rail: what stands between the sub and this money. The wrapper is the
+            office's "Show me on their portal" landing — id + halo when focused. */}
+        <div id={subPortalFocusDomId({ kind: 'sheet', id: sheet.id })} ref={focusPulse.ref} className={focusPulse.className} style={{ margin: '0 -6px', padding: '0 6px 2px', borderRadius: 8 }}>
         <div className="sp-rail" role="list" aria-label={railLabels.join(' → ')}>
           {railLabels.map((label, i) => (
             <div key={label} role="listitem" className={`sp-st${i < stageIndex ? ' done' : i === stageIndex ? ' now' : ''}`} aria-current={i === stageIndex ? 'step' : undefined}>
@@ -833,6 +882,7 @@ function SheetCard({
             <div style={{ fontSize: 11, color: FAINT, marginTop: 8 }}>{t('workDoneFootnote')}</div>
           </div>
         )}
+        </div>
       </div>
     </div>
   )
@@ -852,13 +902,16 @@ function OfferCard({
   lang,
   t,
   submitToken,
+  focused,
 }: {
   offer: SubPortalOffer
   payload: SubPortalPayload
   lang: SubPortalLang
   t: T
   submitToken: string
+  focused: boolean
 }) {
+  const focusPulse = useSubPortalFocusPulse(focused)
   const [ui, setUi] = useState<OfferUiState>({ kind: 'idle' })
   const [printedName, setPrintedName] = useState('')
   const [agreedTerms, setAgreedTerms] = useState(false)
@@ -942,7 +995,7 @@ function OfferCard({
   }
 
   return (
-    <div style={{ ...cardStyle, border: `2px solid ${COPPER}`, padding: '0.85rem 0.95rem', overflow: 'visible' }}>
+    <div id={subPortalFocusDomId({ kind: 'offer', id: offer.id })} ref={focusPulse.ref} className={focusPulse.className} style={{ ...cardStyle, border: `2px solid ${COPPER}`, padding: '0.85rem 0.95rem', overflow: 'visible' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', alignItems: 'baseline' }}>
         <div>
           <div style={{ fontWeight: 700, fontSize: 15 }}>{offer.title}</div>

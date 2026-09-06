@@ -2,7 +2,7 @@
 title: share a sub their portal
 category: Office
 roles: dev, master_technician, assistant, controller
-keywords: sub portal, subcontractor portal, work and pay, portal link, globe, sign to accept, work order, backcharge memo, pay run, paperwork, spanish, español, print statement, stage, walk-through, work done, waiting on customer
+keywords: sub portal, subcontractor portal, work and pay, portal link, globe, sign to accept, work order, backcharge memo, pay run, paperwork, spanish, español, print statement, stage, inspection, work done, waiting on customer
 ---
 Every subcontractor can have a private, no-login **Work & pay portal**: their jobs with the agreed line items, what's been paid (memos included), when the open money becomes payable, open **work offers they can sign to accept**, and the status of their paperwork on file — W-9, insurance, and their signed agreements. It reads in **English or Español**, and the {{button:gray|🖨 Print statement}} button turns it into a paper packet for subs who'd rather hold it.
 
@@ -27,9 +27,23 @@ The portal is a window onto work you already do — it adds no new chores:
 
 - **Jobs & line items** come from their Sub Labor sheets.
 - **Payments and backcharges** come from the payment modals. **Memos are shown to the sub**, so write them like they'll read them; the Edit Payment modal has a *hide this memo* checkbox for the rare office-internal note (the amount always shows).
-- **"When do I get paid"** comes from the sheet's **stage** (below) plus the {{chip:blue|Shown on the sub's portal}} box in the sheet editor — a *payable after* date and a plain-words reason ("Builder's walk-through — scheduled Sep 9"). Leave those blank and the stage sentence speaks for itself.
+- **"When do I get paid"** comes from the sheet's **stage** (below) plus the {{chip:blue|Shown on the sub's portal}} box in the sheet editor — a *payable after* date and a plain-words reason ("Builder's inspection — scheduled Sep 9"). Leave those blank and the stage sentence speaks for itself.
 - The company-wide **pay-run day** and the "How pay works here" wording live at **Settings → Jobs & billing → Sub portal · pay schedule**.
 - **Paperwork status** comes from People → Contracts — signed dates, expirations, and a {{button:amber|Sign now}} button that opens the same signing page your contracts use.
+
+## "How do I get paid?" — the guide at the bottom
+
+The very bottom of the sub's page carries a copper-edged card, **How do I get paid? · How this page works · 2 min**. It opens a bottom sheet on a phone (a dialog on a desktop) that answers that question first, in one paragraph, then walks the four steps with the same dots the job cards use — **Work · Pre-inspection · Post-inspection: Trigger draw · You're paid** — each with the sentence the card shows at that step and a You / Us split (punch lists on Pre-inspection, the occasional advance on Post-inspection, "documents current = same day it hits us, it hits you" on You're paid). Below that: the one button, new work offers, the four documents that keep a sub payable, deductions, and two *Coming soon* cards. English and Spanish follow the page's own toggle. A job card whose Pipeline job has a plans link (Edit Job → Files & Plans, or the bid's CountTooling set) wears a **📐 Plans** pill in its header; the guide points subs to it. A CountTooling plans link opens for the sub **without CountTooling's email prompt**: the portal signs a short-lived pass into the link that says who they are, and CountTooling's access log for that view link shows their name with *via PipeTooling portal*.
+
+## Did they look?
+
+Every visit to a sub's page is written down — the sub (or whoever they forwarded the link to) as **outside**, a signed-in teammate opening the real link as **team**, and your own previews as previews, which are kept off every count. You see it in three places:
+
+- **Jobs → Sub Labor → Who's owed**: one line under the sub's name — {{chip:green|Opened their page Sep 4 · 6 times}} or {{chip:yellow|Never opened}}, with the last team look beside it (*Taunya looked Sep 5*). Tap or click the line, or long-press it on a phone, for the whole trail.
+- **The sheet story** header's **Portal** cell reads *🌐 link open · opened Sep 4*, with the team look under it; click it for the trail.
+- **The globe's gear** has **Opened** (matching the customer globe), **Team**, and **Trail → All visits ›**.
+
+The trail is a modal: outside opens and team looks as two tiles, an **All · Outside · Team** switch, every visit grouped by day with who and how they arrived (direct link or short address), and {{button:blue|Copy link}} / **Preview as ‹sub›** at the bottom. The first outside open is marked, so "they opened it the same evening I shared it" is one glance. A page with no live link reads *Link not shared yet* rather than *Never opened*.
 
 ## Sign to accept work
 
@@ -39,20 +53,20 @@ A work order sent from a sheet shows more on the card: anything **not included**
 
 ## Walk a sheet through its stages
 
-Every sub sheet sits at one of three stages, and the portal draws them as a four-dot tracker under the job — **Work · Walk-through · Customer pays · You're paid** — with one plain sentence saying what stands between the sub and the money.
+Every sub sheet sits at one of three stages, and the portal draws them as a four-dot tracker under the job — **Work · Pre-inspection · Post-inspection: Trigger draw · You're paid** — with one plain sentence saying what stands between the sub and the money.
 
 | On Sub Labor | What the sub reads |
 | --- | --- |
 | {{chip:yellow|Waiting on work}} | "Finish up, then tell us below and we'll come walk it." |
-| {{chip:purple|Waiting on walk-through}} | "You told us the work's done Sep 4. We'll schedule the walk-through and let you know." |
-| {{chip:blue|Waiting on customer}} | "Passed the walk-through Sep 6. The customer's payment is the last thing between you and this money…" |
+| {{chip:purple|Waiting on inspection}} | "You told us the work's done Sep 4. We'll call it in for inspection and let you know." |
+| {{chip:blue|Waiting on customer}} | "Passed the inspection Sep 6. The customer's payment is the last thing between you and this money…" |
 | {{chip:blue|Waiting on customer}} + a *payable after* date | The fourth dot lights with a green {{chip:green|Queued for Friday}} chip: "Queued for the pay run — the date is right below." |
 | {{chip:green|Paid}} | The card leaves *Your jobs* — Paid sets itself when the balance hits $0. |
 
 Move a sheet from the **Where it stands** rail on **Jobs → Sub Labor**: the **→** beside the rail advances one stage, and clicking the rail's current dot opens all three so you can jump or step back. The same control sits in the sheet editor's *Shown on the sub's portal* box.
 
 :::example The sub tells you first
-While a sheet is *Waiting on work*, the sub sees {{button:green|✓ My work here is done}} on that job. Pressing it (with an optional note — "Cleanout is behind the water heater — gate code 4471") moves the sheet to *Waiting on walk-through* by itself. You'll see **Ready to walk — Danny Vasquez · 1004 162 Forest Drive** in the dispatch inbox, and the chip on Sub Labor reads *Waiting on walk-through · sub* with their note behind ✎.
+While a sheet is *Waiting on work*, the sub sees {{button:green|✓ My work here is done}} on that job. Pressing it (with an optional note — "Cleanout is behind the water heater — gate code 4471") moves the sheet to *Waiting on inspection* by itself. You'll see **Ready to walk — Danny Vasquez · 1004 162 Forest Drive** in the dispatch inbox, and the chip on Sub Labor reads *Waiting on inspection · sub* with their note behind ✎.
 :::
 
 Every move, yours or the sub's, writes a **Sub labor** line on the job's Activity feed — who moved it, from what to what, and the note — so the history is always on the job.

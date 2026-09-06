@@ -21,6 +21,7 @@ import {
 } from '../_shared/subPortalStatement.ts'
 import { todayYmdInAppTz } from '../_shared/appTimeZone.ts'
 import { publicViewDecision } from '../_shared/publicViewCounting.ts'
+import { grantPlansLink } from '../_shared/viewGrant.ts'
 
 /**
  * Sub portal payload (sub-portal train): resolves a sub portal link token OR
@@ -134,22 +135,36 @@ serve(async (req) => {
 
     const { data: person } = await admin
       .from('people')
-      .select('id, name')
+      .select('id, name, email')
       .eq('id', link.person_id)
       .maybeSingle()
     if (!person) return jsonResponse({ error: 'Not found' }, 404)
     const personName = ((person as { name: string | null }).name ?? '').trim() || 'Subcontractor'
+    const personEmail = ((person as { email?: string | null }).email ?? '').trim() || null
 
     // View counting — fire-and-forget, the statement never fails on measurement. Office
     // previews (`?preview=1`) and verified staff sessions do not count (journey-map #37;
     // shared predicate in `_shared/publicViewCounting.ts`).
+    // v2.2922 (visit trail): EVERY validated load is written, stamped with who it was —
+    // outside (counts), staff (a signed-in teammate, with their user id) or preview. If the
+    // viewer columns are not there yet (function deployed before the migration), fall back
+    // to the pre-v2.2922 row for counted loads only, so outside opens are never lost.
     const viewDecision = await publicViewDecision(req, admin, Deno.env.get('SUPABASE_ANON_KEY'))
-    if (viewDecision.count) {
-      void admin
-        .from('public_page_views')
-        .insert({ surface: 'sub_portal', entity_id: link.person_id, via: rawToken ? 'token' : 'slug' })
-        .then(() => {}, () => {})
-    }
+    const viaWord = rawToken ? 'token' : 'slug'
+    void admin
+      .from('public_page_views')
+      .insert({ surface: 'sub_portal', entity_id: link.person_id, via: viaWord, viewer: viewDecision.viewer, viewer_user_id: viewDecision.staffUserId })
+      .then(
+        ({ error }: { error: unknown }) => {
+          if (error && viewDecision.count) {
+            void admin
+              .from('public_page_views')
+              .insert({ surface: 'sub_portal', entity_id: link.person_id, via: viaWord })
+              .then(() => {}, () => {})
+          }
+        },
+        () => {},
+      )
 
     const todayYmd = todayYmdInAppTz()
 
@@ -184,6 +199,35 @@ serve(async (req) => {
         .select('job_id, amount, memo, payment_date, created_at, hidden_from_sub, sequence_order')
         .in('job_id', laborJobIds)
       paymentRows = (paymentsRaw ?? []) as SubPaymentRow[]
+    }
+
+    // Plans online (v2.2922): the sheet's Pipeline job carries a plans link (Edit Job → Files &
+    // Plans); its bid carries the CountTooling set. Job link first, bid as the fallback, else none.
+    const jobNumbers = [...new Set(sheetRows.map((s) => (s.job_number ?? '').trim()).filter(Boolean))]
+    if (jobNumbers.length > 0) {
+      const { data: jobsRaw } = await admin
+        .from('jobs_ledger')
+        .select('hcp_number, job_plans_link, bid:bid_id(count_tooling_plans_link)')
+        .in('hcp_number', jobNumbers)
+        .limit(500)
+      const plansByNumber = new Map<string, string>()
+      for (const j of (jobsRaw ?? []) as Array<{ hcp_number: string | null; job_plans_link: string | null; bid: { count_tooling_plans_link: string | null } | { count_tooling_plans_link: string | null }[] | null }>) {
+        const key = (j.hcp_number ?? '').trim().toLowerCase()
+        const bid = Array.isArray(j.bid) ? j.bid[0] ?? null : j.bid
+        const url = (j.job_plans_link ?? '').trim() || (bid?.count_tooling_plans_link ?? '').trim()
+        if (key && url && !plansByNumber.has(key)) plansByNumber.set(key, url)
+      }
+      for (const s of sheetRows) s.plans_url = plansByNumber.get((s.job_number ?? '').trim().toLowerCase()) ?? null
+      // Viewer grants (2026-09-06): a CountTooling view link gets a short-lived, signed grant
+      // (`&g=`) that vouches for this sub, so CountTooling skips its email gate and logs the
+      // visit under their name (_shared/viewGrant.ts; CountTooling verifies with the same
+      // secret). Drive / PDF links pass through untouched; no secret = the bare link.
+      const grantSecret = Deno.env.get('COUNTTOOLING_VIEW_GRANT_SECRET') ?? ''
+      if (grantSecret) {
+        for (const s of sheetRows) {
+          if (s.plans_url) s.plans_url = await grantPlansLink(s.plans_url, { name: personName, email: personEmail, person: link.person_id }, grantSecret)
+        }
+      }
     }
 
     // Signed sheet work orders (v2.2789): "what you agreed to" on each sheet card.

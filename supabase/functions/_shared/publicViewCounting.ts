@@ -88,14 +88,34 @@ export async function requestIsStaff(
   admin: StaffVerifier,
   anonKey: string | null | undefined,
 ): Promise<boolean> {
+  return (await requestStaff(req, admin, anonKey)).isStaff
+}
+
+/**
+ * The staff verdict plus the user behind it (v2.2922 visit trail): `userId` is the
+ * verified session's `users.id` when the request is staff, else null.
+ */
+export async function requestStaff(
+  req: { headers: { get(name: string): string | null } },
+  admin: StaffVerifier,
+  anonKey: string | null | undefined,
+): Promise<{ isStaff: boolean; userId: string | null }> {
   const jwt = userBearerToken(req.headers.get('authorization'), anonKey)
-  if (!jwt) return false
+  if (!jwt) return { isStaff: false, userId: null }
   try {
     const { data, error } = await admin.auth.getUser(jwt)
-    return !error && !!data?.user
+    if (error || !data?.user) return { isStaff: false, userId: null }
+    const id = (data.user as { id?: unknown }).id
+    return { isStaff: true, userId: typeof id === 'string' && id ? id : null }
   } catch {
-    return false
+    return { isStaff: false, userId: null }
   }
+}
+
+/** Who the load was (v2.2922): the office's preview flag wins, then a verified session, else the outside. */
+export type PublicViewer = 'outside' | 'staff' | 'preview'
+export function publicViewerKind(input: { preview: boolean; isStaff: boolean }): PublicViewer {
+  return input.preview ? 'preview' : input.isStaff ? 'staff' : 'outside'
 }
 
 /**
@@ -107,8 +127,9 @@ export async function publicViewDecision(
   req: { url: string; headers: { get(name: string): string | null } },
   admin: StaffVerifier,
   anonKey: string | null | undefined,
-): Promise<{ preview: boolean; isStaff: boolean; count: boolean }> {
+): Promise<{ preview: boolean; isStaff: boolean; staffUserId: string | null; viewer: PublicViewer; count: boolean }> {
   const preview = isPreviewFlag(new URL(req.url).searchParams.get(PUBLIC_PREVIEW_PARAM))
-  const isStaff = await requestIsStaff(req, admin, anonKey)
-  return { preview, isStaff, count: shouldCountPublicView({ preview, isStaff }) }
+  const staff = await requestStaff(req, admin, anonKey)
+  const isStaff = staff.isStaff
+  return { preview, isStaff, staffUserId: staff.userId, viewer: publicViewerKind({ preview, isStaff }), count: shouldCountPublicView({ preview, isStaff }) }
 }

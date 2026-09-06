@@ -35,7 +35,7 @@ describe('buildWorkOrderDocument', () => {
     expect(doc.subcontractor.lines).toEqual(['Kraja Mechanical LLC', 'Master Subcontract Agreement signed Jan 12, 2026'])
     expect(doc.sections.map((s) => s.key)).toEqual(['scope', 'exclusions', 'terms', 'references', 'acknowledgements'])
     const terms = doc.sections.find((s) => s.key === 'terms')!.items
-    expect(terms[0]).toBe('Subcontract amount $6,400.00, fixed. 10% retainage held until the walk-through.')
+    expect(terms[0]).toBe('Subcontract amount $6,400.00, fixed. 10% retainage held until it passes inspection.')
     expect(terms[1]).toBe('Work window Sep 15 → Sep 26. Offer good through Sep 11, 2026.')
     expect(terms).toContain('Special provisions: Owner supplies the water heater.')
     const refs = doc.sections.find((s) => s.key === 'references')!.items

@@ -34,6 +34,7 @@ export const SUB_PORTAL_DEMO_PAYLOAD: SubPortalPayload = {
       open: 1620,
       payableAfter: '2026-09-04',
       payHoldReason: 'Top out passed inspection Aug 29 — queued for the Friday pay run (Sep 4).',
+      plansUrl: 'https://counttooling.com/?t=demo-plans',
       agreement: {
         signedOn: '2026-08-20',
         signerName: 'Danny Vasquez',
@@ -60,7 +61,8 @@ export const SUB_PORTAL_DEMO_PAYLOAD: SubPortalPayload = {
       backcharges: 0,
       open: 2560,
       payableAfter: '2026-09-09',
-      payHoldReason: "Builder's walk-through — scheduled Sep 9. We pay you as soon as the work is accepted.",
+      payHoldReason: 'Inspection called in Sep 9 — punch list first. We pay you as soon as it passes.',
+      plansUrl: null,
       agreement: null,
     },
   ],

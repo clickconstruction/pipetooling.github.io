@@ -31,7 +31,7 @@ describe('subSheetStage', () => {
   })
 
   it('describes a change in the office vocabulary', () => {
-    expect(describeSubSheetStageChange('working', 'walkthrough')).toBe('Waiting on work → Waiting on walk-through')
+    expect(describeSubSheetStageChange('working', 'walkthrough')).toBe('Waiting on work → Waiting on inspection')
     expect(SUB_SHEET_STAGE_LABEL.customer_pay).toBe('Waiting on customer')
   })
 
