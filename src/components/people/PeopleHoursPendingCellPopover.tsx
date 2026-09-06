@@ -19,6 +19,8 @@ type Props = {
   onClose: () => void
   /** Called after a successful approve/reject; parent should reload pending sessions and people_hours. */
   onChanged: () => void
+  /** T5-03: fired with the approved count so the host can point at Draft Payroll. */
+  onApproved?: (approved: number) => void
   onError: (message: string) => void
   onShowToast: (message: string, variant: 'success' | 'error' | 'warning' | 'info') => void
   onOpenInMyTime: () => void
@@ -34,6 +36,7 @@ export function PeopleHoursPendingCellPopover({
   canReject,
   onClose,
   onChanged,
+  onApproved,
   onError,
   onShowToast,
   onOpenInMyTime,
@@ -108,6 +111,7 @@ export function PeopleHoursPendingCellPopover({
       return
     }
     recordHoursApproved(authUserId, viewerRole, 'cell-popover', row?.approved_count ?? entry.sessionIds.length)
+    onApproved?.(row?.approved_count ?? entry.sessionIds.length)
     onShowToast(
       `Approved ${row?.approved_count ?? entry.sessionIds.length} session(s) — added to payroll`,
       'success',
