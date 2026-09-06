@@ -5,7 +5,7 @@ file: docs/twins/LEARNING_PLAN.md
 type: Plan / Build list
 purpose: The program's two scarce resources are Wendi's hours and Wendi's corpus (~130 usable references, growing only as fast as she bids). This is the build list for maximizing learning per hour and per reference, written 2026-09-06 after the first full regression cycle proved the audit→digest loop works (digested lessons land ±8%; undigested rules miss 30–400%).
 audience: The owner, the twins operator, AI agents planning work
-last_updated: 2026-09-06
+last_updated: 2026-09-06 (evening — statuses after the build-out began)
 key_sections:
   - name: "The constraint"
   - name: "Lever 1 — spend her hours on rulings, not rows"
@@ -62,7 +62,14 @@ marginal cost to her.
   grade-A reference — the sample-size ceiling becomes her future output, not
   her past. **Follow-up (build)**: a scheduled shadow-agent batch (operator
   cron or owner-machine routine) so coverage doesn't depend on anyone
-  remembering to run agents; a Scoreboard coverage pill.
+  remembering to run agents; a Scoreboard coverage pill. **Two lessons from
+  the first shadow batch (2026-09-06)**: (a) a shadow scores against whichever
+  estimator sends the reference — record WHOSE number it was (b481 scored
+  against Grace's bid, which is practice, not the calibration standard); gate
+  math should weight teachers accordingly. (b) A live bid whose plans link the
+  Drive service account cannot read is invisible to the shadow program (b480
+  blocked on exactly this) — a "plans readable by robots" indicator on live
+  bids belongs on the board.
 - **Record repair as office work** (process, tickets exist): 98 historical
   bids lack plans links; b216 and b323 are X/void on bad links alone. Every
   repaired record is +1 reference with zero estimating cost. The
@@ -112,14 +119,14 @@ company, not just the program.
 |---|------|------|--------|
 | 1 | Rate-gap bucket + delta waterfall on audit cards | app | shipped v2.2935 |
 | 2 | `next_shadow` dispatcher + shadow coverage stat | harness | **this PR (v2.2936)** |
-| 3 | Scheduled shadow-agent batches (full auto-coverage) | ops/harness | next |
-| 4 | Standing-rulings queue (dedupe `twin_questions` into canonical rulings) | app | next |
-| 5 | Audit queue triage by doctrine-at-stake | app | next |
-| 6 | Holdout set flag + holdout-only gate denominators | app + owner decision | needs owner |
-| 7 | Doctrine-promotion regression gate (propose → measure → bank) | process (FEEDBACK_LOOP.md) | needs a doc PR |
-| 8 | Scoreboard shadow-coverage pill | app | with #3 |
-| 9 | Record repair sweep (98 missing plans links; b216, b323) | office work | tickets exist |
-| 10 | Loss-categorization nudge at outcome time | app (small) | next |
-| 11 | Classify 108 `backtest_axis` candidates | data (Queue lens) | open since v2.2594 |
-| 12 | STG-5 hygiene nudges on human bids (corpus beyond Wendi) | app | later |
-| 13 | `submit_report` label parameter (reports file "unlabeled") | harness (tiny) | later |
+| 3 | Scheduled shadow-agent batches (full auto-coverage) | ops/harness | scheduled task live 2026-09-06 (weekday batch on the operator machine) |
+| 4 | Standing-rulings queue (dedupe `twin_questions` into canonical rulings) | app | in flight (topic column: PR #2684; panel: agent PR) |
+| 5 | Audit queue triage by doctrine-at-stake | app | in flight (agent PR) |
+| 6 | Holdout set flag + holdout-only gate denominators | app + owner decision | mechanism in flight (agent PR); WHICH references still needs the owner |
+| 7 | Doctrine-promotion regression gate (propose → measure → bank) | process (FEEDBACK_LOOP.md) | shipped v2.2940 |
+| 8 | Scoreboard shadow-coverage pill | app | in flight (agent PR) |
+| 9 | Record repair sweep (98 missing plans links; b216, b323) | office work | worklist generated 2026-09-06; the Drive shares need a human |
+| 10 | Loss-categorization nudge at outcome time | app (small) | in flight (agent PR) |
+| 11 | Classify 108 `backtest_axis` candidates | data (Queue lens) | obvious names classified 2026-09-06; ambiguous left for dev judgment |
+| 12 | STG-5 hygiene nudges on human bids (corpus beyond Wendi) | app | in flight (agent PR — record-grade chip) |
+| 13 | `submit_report` label parameter (reports file "unlabeled") | harness (tiny) | shipped v2.2939 (with question topics + pairing visibility) |
