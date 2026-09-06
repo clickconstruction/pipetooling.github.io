@@ -42,19 +42,28 @@ export async function buildDirectDeposit() {
       height: 18,
     },
   ])
-  p.checkRow('Account type:', [
-    { key: 'type_checking', label: 'Checking', labelEs: 'Cuenta de cheques', sample: 'true' },
-    { key: 'type_savings', label: 'Savings', labelEs: 'Cuenta de ahorros' },
+  // Owner ask (2026-09-06): business vs personal matters to the bank file, so four types, one row.
+  p.paragraph('Account type', { bold: true, gapAfter: 0 })
+  p.checkRow('', [
+    { key: 'type_business_checking', label: 'Business checking', labelEs: 'Cheques de negocio', sample: 'true' },
+    { key: 'type_business_savings', label: 'Business savings', labelEs: 'Ahorros de negocio' },
+    { key: 'type_personal_checking', label: 'Personal checking', labelEs: 'Cheques personal' },
+    { key: 'type_personal_savings', label: 'Personal savings', labelEs: 'Ahorros personal' },
   ], 'account_type', 'Account type', true)
 
+  // Owner ask (2026-09-06): a third choice — a percentage of what is due — beside all-or-fixed.
   p.paragraph('How much to deposit', { bold: true, gapAfter: 0 })
   p.checkRow('', [
     { key: 'deposit_all', label: 'My entire net pay', labelEs: 'Todo mi pago neto', sample: 'true' },
-    { key: 'deposit_partial', label: 'A fixed amount each pay period (write it here):', labelEs: 'Una cantidad fija cada período de pago' },
+    { key: 'deposit_partial', label: 'A fixed dollar amount each pay period (write it below)', labelEs: 'Una cantidad fija en dólares cada período de pago' },
+  ], 'deposit_kind', 'How much to deposit', true)
+  p.checkRow('', [
+    { key: 'deposit_percent', label: 'A percentage of the amount due to me each pay period (write it below)', labelEs: 'Un porcentaje de la cantidad que se me debe cada período de pago' },
   ], 'deposit_kind', 'How much to deposit', true)
   p.fieldRow([
-    { box: { key: 'deposit_amount', type: 'text', label: 'Fixed amount per pay period, if not the whole check', labelEs: 'Cantidad fija por período de pago', advanced: true, help: 'Only if you chose a fixed amount above. The rest of your pay is paid by check.', helpEs: 'Solo si eligió una cantidad fija. El resto se paga con cheque.' }, label: 'Fixed amount ($)', frac: 0.34 },
-    { box: { key: 'notes', type: 'text', label: 'Anything the office should know', labelEs: 'Algo que la oficina deba saber', advanced: true }, label: 'Notes (optional)', frac: 0.66 },
+    { box: { key: 'deposit_amount', type: 'text', label: 'Fixed dollar amount per pay period', labelEs: 'Cantidad fija en dólares por período de pago', advanced: true, help: 'Only if you chose a fixed amount above. The rest of your pay is paid by check.', helpEs: 'Solo si eligió una cantidad fija. El resto se paga con cheque.' }, label: 'Fixed amount ($)', frac: 0.26 },
+    { box: { key: 'deposit_percent_value', type: 'digits', label: 'Percentage of the amount due', labelEs: 'Porcentaje de la cantidad debida', mask: '###', maxLength: 3, advanced: true, help: 'Only if you chose a percentage above — 1 to 100. The rest of your pay is paid by check.', helpEs: 'Solo si eligió un porcentaje — de 1 a 100. El resto se paga con cheque.' }, label: 'Percentage (%)', frac: 0.22 },
+    { box: { key: 'notes', type: 'text', label: 'Anything the office should know', labelEs: 'Algo que la oficina deba saber', advanced: true }, label: 'Notes (optional)', frac: 0.52 },
   ])
 
   p.paragraph(

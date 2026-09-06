@@ -115,34 +115,64 @@
       "order": 60
     },
     {
-      "key": "type_checking",
+      "key": "type_business_checking",
       "type": "checkbox",
       "page": 1,
       "rect": {
-        "x": 119.56,
-        "y": 449.2,
+        "x": 54,
+        "y": 436.37,
         "w": 10,
         "h": 10
       },
       "order": 70,
-      "label": "Checking",
-      "labelEs": "Cuenta de cheques",
+      "label": "Business checking",
+      "labelEs": "Cheques de negocio",
       "group": "account_type",
       "sample": "true"
     },
     {
-      "key": "type_savings",
+      "key": "type_business_savings",
       "type": "checkbox",
       "page": 1,
       "rect": {
-        "x": 190.97,
-        "y": 449.2,
+        "x": 164.48,
+        "y": 436.37,
         "w": 10,
         "h": 10
       },
       "order": 80,
-      "label": "Savings",
-      "labelEs": "Cuenta de ahorros",
+      "label": "Business savings",
+      "labelEs": "Ahorros de negocio",
+      "group": "account_type"
+    },
+    {
+      "key": "type_personal_checking",
+      "type": "checkbox",
+      "page": 1,
+      "rect": {
+        "x": 269.68,
+        "y": 436.37,
+        "w": 10,
+        "h": 10
+      },
+      "order": 90,
+      "label": "Personal checking",
+      "labelEs": "Cheques personal",
+      "group": "account_type"
+    },
+    {
+      "key": "type_personal_savings",
+      "type": "checkbox",
+      "page": 1,
+      "rect": {
+        "x": 378.63,
+        "y": 436.37,
+        "w": 10,
+        "h": 10
+      },
+      "order": 100,
+      "label": "Personal savings",
+      "labelEs": "Ahorros personal",
       "group": "account_type"
     },
     {
@@ -151,11 +181,11 @@
       "page": 1,
       "rect": {
         "x": 54,
-        "y": 414.37,
+        "y": 401.55,
         "w": 10,
         "h": 10
       },
-      "order": 90,
+      "order": 110,
       "label": "My entire net pay",
       "labelEs": "Todo mi pago neto",
       "group": "deposit_kind",
@@ -167,31 +197,65 @@
       "page": 1,
       "rect": {
         "x": 158.58,
-        "y": 414.37,
+        "y": 401.55,
         "w": 10,
         "h": 10
       },
-      "order": 100,
-      "label": "A fixed amount each pay period (write it here):",
-      "labelEs": "Una cantidad fija cada período de pago",
+      "order": 120,
+      "label": "A fixed dollar amount each pay period (write it below)",
+      "labelEs": "Una cantidad fija en dólares cada período de pago",
+      "group": "deposit_kind"
+    },
+    {
+      "key": "deposit_percent",
+      "type": "checkbox",
+      "page": 1,
+      "rect": {
+        "x": 54,
+        "y": 379.55,
+        "w": 10,
+        "h": 10
+      },
+      "order": 130,
+      "label": "A percentage of the amount due to me each pay period (write it below)",
+      "labelEs": "Un porcentaje de la cantidad que se me debe cada período de pago",
       "group": "deposit_kind"
     },
     {
       "key": "deposit_amount",
       "type": "text",
-      "label": "Fixed amount per pay period, if not the whole check",
-      "labelEs": "Cantidad fija por período de pago",
+      "label": "Fixed dollar amount per pay period",
+      "labelEs": "Cantidad fija en dólares por período de pago",
       "advanced": true,
       "help": "Only if you chose a fixed amount above. The rest of your pay is paid by check.",
       "helpEs": "Solo si eligió una cantidad fija. El resto se paga con cheque.",
       "page": 1,
       "rect": {
         "x": 54,
-        "y": 381.87,
-        "w": 164.76,
+        "y": 347.05,
+        "w": 123.64,
         "h": 16
       },
-      "order": 110
+      "order": 140
+    },
+    {
+      "key": "deposit_percent_value",
+      "type": "digits",
+      "label": "Percentage of the amount due",
+      "labelEs": "Porcentaje de la cantidad debida",
+      "mask": "###",
+      "maxLength": 3,
+      "advanced": true,
+      "help": "Only if you chose a percentage above — 1 to 100. The rest of your pay is paid by check.",
+      "helpEs": "Solo si eligió un porcentaje — de 1 a 100. El resto se paga con cheque.",
+      "page": 1,
+      "rect": {
+        "x": 187.64,
+        "y": 347.05,
+        "w": 103.08,
+        "h": 16
+      },
+      "order": 150
     },
     {
       "key": "notes",
@@ -201,12 +265,12 @@
       "advanced": true,
       "page": 1,
       "rect": {
-        "x": 228.76,
-        "y": 381.87,
-        "w": 329.24,
+        "x": 300.72,
+        "y": 347.05,
+        "w": 257.28,
         "h": 16
       },
-      "order": 120
+      "order": 160
     },
     {
       "key": "signature",
@@ -214,11 +278,11 @@
       "page": 1,
       "rect": {
         "x": 54,
-        "y": 299.1,
+        "y": 264.27,
         "w": 312.48,
         "h": 22
       },
-      "order": 130,
+      "order": 170,
       "label": "Employee signature",
       "labelEs": "Firma del empleado"
     },
@@ -228,11 +292,11 @@
       "page": 1,
       "rect": {
         "x": 386.64,
-        "y": 299.1,
+        "y": 264.27,
         "w": 171.36,
         "h": 16
       },
-      "order": 140,
+      "order": 180,
       "label": "Date",
       "dateMode": "today",
       "labelEs": "Fecha"
