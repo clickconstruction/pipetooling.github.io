@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { useLocation } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
 import {
@@ -65,7 +65,7 @@ import BidCoverLetterDefaultsSettingsBlock from '../components/settings/BidCover
 import BidBoardValueRuleSettingsBlock from '../components/settings/BidBoardValueRuleSettingsBlock'
 import JobBookSettingsSection from '../components/settings/JobBookSettingsSection'
 import SettingsSearchBar from '../components/settings/SettingsSearchBar'
-import { pollScrollToSettingsAnchor } from '../lib/settingsSearch'
+import { pollScrollToSettingsAnchor, settingsSearchGuideQuery } from '../lib/settingsSearch'
 
 type UserRole =
   | 'dev'
@@ -1010,6 +1010,7 @@ export default function Settings() {
   // (dashboard banners + Calendar). Applied once per unique URL value, re-attempted
   // when the role-filtered groups arrive so a valid target isn't lost to load order.
   const location = useLocation()
+  const navigate = useNavigate()
   const appliedDeepLinkRef = useRef<string | null>(null)
   useEffect(() => {
     const key = `${location.search}|${location.hash}`
@@ -1130,6 +1131,13 @@ export default function Settings() {
         groups={settingsJumpGroups}
         onPick={(entry) => {
           setActiveSettingsTab(entry.tabId)
+          // Guide-backed hit (v2.2902, J28-F4): route through the ?tab=&g= deep link so the
+          // Guides tab mounts with the article open (GuideBrowser reads the guide param).
+          const guideQuery = settingsSearchGuideQuery(location.search, entry)
+          if (guideQuery) {
+            navigate({ pathname: location.pathname, search: guideQuery, hash: '' }, { replace: true })
+            return
+          }
           if (entry.anchorId === 'settings-page-pins') setFinancialPinsSectionOpen(true)
           if (entry.anchorId) pollScrollToSettingsAnchor(entry.anchorId)
         }}

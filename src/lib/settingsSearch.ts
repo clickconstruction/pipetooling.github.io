@@ -14,6 +14,8 @@
  * `searchSettings` only returns entries whose tab the viewer can see.
  */
 
+import { HELP_GUIDE_URL_PARAM } from './helpGuideUrlParam'
+
 export type SettingsSearchEntry = {
   /** Display label — the setting/section name as the page shows it. */
   label: string
@@ -23,6 +25,8 @@ export type SettingsSearchEntry = {
   tabId: string
   /** DOM id to scroll to after the tab opens (only ids that really exist). */
   anchorId?: string
+  /** Help-guide slug (v2.2902): the pick opens this guide on the Guides tab via the `g` URL param. */
+  guideSlug?: string
 }
 
 export const SETTINGS_SEARCH_INDEX: readonly SettingsSearchEntry[] = [
@@ -91,6 +95,8 @@ export const SETTINGS_SEARCH_INDEX: readonly SettingsSearchEntry[] = [
   { label: 'Claim code', keywords: ['redeem code', 'advanced tools', 'dev code', 'probe'], tabId: 'settings-advanced-tools', anchorId: 'settings-claim-code' },
   // Guides
   { label: 'Help guides', keywords: ['how do i', 'help', 'documentation', 'manual'], tabId: 'settings-guides' },
+  // The finder finds itself (v2.2902, J28-F4): "search" lands on the global-search guide.
+  { label: 'Search for jobs, bids, customers, and estimates', keywords: ['search', 'global search', 'search bar', 'find job', 'find bid', 'find customer', 'find estimate', 'magnifier', 'cmd k', 'ctrl k'], tabId: 'settings-guides', guideSlug: 'global-search' },
   // Release notes
   { label: 'Release notes', keywords: ['app updates', "what's new", 'changelog', 'version'], tabId: 'settings-release-notes' },
 ]
@@ -162,4 +168,17 @@ export function pollScrollToSettingsAnchor(anchorId: string): void {
     if (Date.now() < deadline) window.setTimeout(tick, 120)
   }
   window.setTimeout(tick, 120)
+}
+
+/**
+ * Query string that lands a guide-backed hit (v2.2902, J28-F4): the owning tab via the
+ * `?tab=` deep link (so the Settings deep-link effect and the tab switch agree) plus the
+ * GuideBrowser guide param. Other params are preserved. `null` for ordinary entries.
+ */
+export function settingsSearchGuideQuery(currentSearch: string, entry: SettingsSearchEntry): string | null {
+  if (!entry.guideSlug) return null
+  const params = new URLSearchParams(currentSearch)
+  params.set('tab', entry.tabId)
+  params.set(HELP_GUIDE_URL_PARAM, entry.guideSlug)
+  return `?${params.toString()}`
 }

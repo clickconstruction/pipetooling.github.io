@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { computeReorderedSort, filterPinnedByRole, isPinnedIn, PATH_TO_LABEL, PINNABLE_PATHS, pinKey, type PinnedItem } from './pinnedTabs'
+import { computeReorderedSort, filterPinnedByRole, isPinnedIn, PATH_TO_LABEL, PINNABLE_PATHS, pathToLabel, pinKey, type PinnedItem } from './pinnedTabs'
 
 describe('front-door pins (v2.2330)', () => {
   it('makes /tally and /accounts-receivable pinnable with proper labels', () => {
@@ -144,5 +144,17 @@ describe('bid-aware pins (v2.1335)', () => {
       { path: '/jobs', tab: null, bid_id: null, sort_order: 1 },
       { path: '/bids', tab: 'pricing', bid_id: 'bid-1', sort_order: 2 },
     ])
+  })
+})
+
+describe('the Dashboard is not a pin target (v2.2902, J28-N2)', () => {
+  it('leaves /dashboard out of PINNABLE_PATHS so neither the footer nor "Pin for" can create a self-pin', () => {
+    expect(PINNABLE_PATHS).not.toContain('/dashboard')
+    expect(PINNABLE_PATHS).toContain('/quickfill')
+  })
+
+  it('still labels a legacy /dashboard row', () => {
+    expect(pathToLabel('/dashboard')).toBe('Dashboard')
+    expect(PATH_TO_LABEL['/dashboard']).toBe('Dashboard')
   })
 })

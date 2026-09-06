@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { isAssistantLike } from '../lib/subcontractorLikeRole'
 import { HELP_GUIDES } from '../lib/helpGuideRegistry'
+import { HELP_GUIDE_URL_PARAM as GUIDE_PARAM } from '../lib/helpGuideUrlParam'
 import {
   groupGuidesByCategory,
   guideIsRelevantForRole,
@@ -24,7 +25,6 @@ import { HelpGuideFeedbackForm } from '../components/HelpGuideFeedbackForm'
  * so guide deep links keep working everywhere.
  */
 
-const GUIDE_PARAM = 'g'
 
 const cardStyle: React.CSSProperties = {
   border: '1px solid var(--border)',

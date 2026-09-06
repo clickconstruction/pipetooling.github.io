@@ -1410,7 +1410,7 @@ Editing field directly in table/list without opening modal.
 ### Page Pins
 User-customizable shortcut links on the Dashboard. Stored in localStorage and/or `user_pinned_tabs` table.
 
-**Management**: Settings → Dashboard Page Pins → Page pins (Clear all, Remove per pin). Users add pins via the Layout pin icon when on pinnable pages.
+**Management**: Settings → Dashboard Page Pins → Page pins (Clear all, Remove per pin). Users add pins via the Layout pin icon when on pinnable pages. The Dashboard itself is not pinnable (v2.2902) — it is where pins land; with Pin Mode on it shows a one-line note instead of the footer.
 
 **Dev-only pins**: Devs can pin financial totals (Billed Awaiting Payment, Supply Houses AP, Sub Labor Due, Internal Team labor) to masters/devs dashboards via dev-only sections in Settings.
 
