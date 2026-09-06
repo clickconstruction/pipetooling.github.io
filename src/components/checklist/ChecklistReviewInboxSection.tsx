@@ -7,8 +7,11 @@ import { useAuth } from '../../hooks/useAuth'
 import { withSupabaseRetry } from '../../utils/errorHandling'
 import { groupEventsByInstance, stripStamp, type ChecklistCardEvent } from '../../lib/checklistCardEvents'
 import {
+  REVIEW_QUEUE_LIMIT,
   buildReviewQueueRows,
   reviewQueueCutoffIso,
+  reviewQueueSelect,
+  reviewQueueServerFilters,
   type ReviewQueueInstance,
   type ReviewQueueRow,
 } from '../../lib/checklistReviewQueue'
@@ -63,18 +66,22 @@ export function ChecklistReviewInboxSection({
   const load = useCallback(async () => {
     if (!authUser?.id) return
     try {
+      // Reviewer scope runs server-side BEFORE the limit (v2.2917, J30-N1):
+      // the cap is the viewer's 50 newest reviewable completions, not the
+      // company's 50 newest. buildReviewQueueRows re-applies the same scope.
+      const { reviewerOr, completerOr } = reviewQueueServerFilters({ currentUserId: authUser.id, isDev })
       const instances = (await withSupabaseRetry(
-        async () =>
-          supabase
+        async () => {
+          let q = supabase
             .from('checklist_instances')
-            .select(
-              'id, checklist_item_id, scheduled_date, completed_at, completed_by_user_id, reviewed_at, checklist_items(title, created_by_user_id, notify_on_complete_user_id, roadmap_group_task_id)',
-            )
+            .select(reviewQueueSelect(isDev))
             .not('completed_at', 'is', null)
             .is('reviewed_at', null)
             .gte('completed_at', reviewQueueCutoffIso())
-            .order('completed_at', { ascending: false })
-            .limit(50),
+            .or(completerOr)
+          if (reviewerOr) q = q.or(reviewerOr, { referencedTable: 'checklist_items' })
+          return q.order('completed_at', { ascending: false }).limit(REVIEW_QUEUE_LIMIT)
+        },
         'checklist review queue',
       )) as unknown as ReviewQueueInstance[] | null
       const list = instances ?? []

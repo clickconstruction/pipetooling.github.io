@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { withSupabaseRetry } from '../../utils/errorHandling'
+import { activeUsersQuery } from '../../lib/people/fetchActiveUsers'
 import { sequentialWaiting, type SequentialTaskLite } from '../../lib/checklistTechTreeGraph'
 
 export type WaitingGroup = {
@@ -71,8 +72,15 @@ export function useComingUpWaitingGroups(authUserId: string | null): WaitingGrou
             completed_at: string | null
             checklist_tech_tree_task_assignees: Array<{ user_id: string }>
           }> | null>,
+          // Tier-2 #19 roster rule (v2.2917, J30-N2): active people only, so an
+          // archived account or a digital twin on the blocking task falls
+          // through to the unstaffed wording instead of being named. includeDev
+          // because the owner staffs roadmap tasks (same as useChecklistTechTreeData).
           withSupabaseRetry(
-            () => supabase.from('users').select('id, name, email'),
+            () =>
+              activeUsersQuery<{ id: string; name: string | null; email: string | null }>('id, name, email', {
+                includeDev: true,
+              }),
             'load names for coming up',
           ) as Promise<Array<{ id: string; name: string | null; email: string | null }> | null>,
         ])
