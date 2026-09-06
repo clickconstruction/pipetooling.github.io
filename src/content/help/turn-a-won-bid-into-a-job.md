@@ -34,7 +34,7 @@ Need a second job from the same bid (a phase two, a split scope)? Press **Create
 
 ## Which GC gave you the job?
 
-On a bid sent to more than one GC where no GC is marked won yet, Open the job asks **Which GC gave you this job?** Picking one records their Won (the other sent, unanswered GCs are marked lost) and the job imports with that builder's details. If you tap **Cancel import**, nothing is written, a note says so, and the New Job form closes — no blank form left behind. See *bid one project to multiple GCs* for the full picker rules.
+On a bid sent to more than one GC where no GC is marked won yet, Open the job asks **Which GC gave you this job?** The picker's own sentence is the confirm — it names the other GCs that will be marked *lost · GC lost the project*, and says so if the bid was marked Lost by hand and is about to flip to Won. Picking one records their Won and the job imports with that builder's details. If you tap **Cancel import**, nothing is written, a note says so, and the New Job form closes — no blank form left behind. See *bid one project to multiple GCs* for the full picker rules.
 
 ## Who sees the button
 
