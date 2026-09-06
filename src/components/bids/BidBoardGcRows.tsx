@@ -9,9 +9,12 @@ import { roomGcKey, type BidRoomStateSummary } from '../../lib/bids/bidRoomState
 import { BidRoomStateChip } from './BidRoomStateChip'
 import type { GcPacket } from '../../lib/bids/gcPackets'
 import { setGcPacketOutcome, type PacketOutcome } from '../../lib/bids/gcPacketOutcome'
+import { wonCascadeConfirmMessage, wonCascadeNeedsConfirm, wonCascadePlan } from '../../lib/bids/wonCascade'
 import { gcNoteCountKey } from '../../lib/bids/bidGcNotes'
 import { BidGcNotesPopover } from './BidGcNotesPopover'
 import { useToastContext } from '../../contexts/ToastContext'
+import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
+import { useAuth } from '../../hooks/useAuth'
 import { formatCurrency } from '../../lib/format'
 import type { BidBoardJobLink } from '../../lib/bids/bidBoardJobLinks'
 import { BidWonJobActions } from './BidWonJobActions'
@@ -21,6 +24,14 @@ export function gcRowsWorthShowing(packets: GcPacket[] | undefined): boolean {
   // An unsplit bid with only "Also sent to" GCs keeps its +N GCs pill; the lines need a real packet to anchor to.
   if (!packets.some((p) => p.versions.length > 0)) return false
   return packets.length > 1 || packets.some((p) => p.gcId != null)
+}
+
+/** The "↩ waiting on the winner" toast (Tier-2 #21): what the undo put back. */
+export function undoneToast(gcName: string, undone: { restoredSiblings: string[]; bidOutcomeRestoredTo: string | null | undefined }): string {
+  const parts = [`${gcName} back to waiting`]
+  if (undone.restoredSiblings.length > 0) parts.push(`${undone.restoredSiblings.join(', ')} back to waiting`)
+  if (undone.bidOutcomeRestoredTo !== undefined) parts.push(`bid back to ${undone.bidOutcomeRestoredTo === 'lost' ? 'Lost' : undone.bidOutcomeRestoredTo === 'started_or_complete' ? 'Started or Complete' : 'Not set'}`)
+  return parts.join(' · ') + '.'
 }
 
 export function fmtSentShort(ymd: string): string {
@@ -111,19 +122,30 @@ export function GcOutcomePill({ value, gcName, busy, onChange }: { value: Packet
  */
 export function BidBoardGcLines({ bidId, bidLabel, bidOutcome, packets, onChanged, dense, gcNoteCounts, roomStates, jobLink }: { bidId: string; bidLabel?: string; bidOutcome: string | null; packets: GcPacket[]; onChanged: () => void; dense?: boolean; gcNoteCounts?: Record<string, number>; roomStates?: Record<string, BidRoomStateSummary>; /** Tier-1 #8: the job already opened from this bid (board index, v2.2741) — null = none, undefined = look it up. */ jobLink?: BidBoardJobLink | null }) {
   const { showToast } = useToastContext()
+  const confirmDialog = useConfirmDialog()
+  const { user: authUser, role: authRole } = useAuth()
   const [busyKey, setBusyKey] = useState<string | null>(null)
   /** Per-GC notes popover (v2.2217): the open packet's key, one at a time. */
   const [notesKey, setNotesKey] = useState<string | null>(null)
   async function change(p: GcPacket, next: PacketOutcome) {
-    setBusyKey(p.key)
+    const prev: PacketOutcome = p.outcome === 'won' || p.outcome === 'lost' ? p.outcome : null
     const after = packets.map((x) => ({ key: x.key, name: x.name, outcome: x.key === p.key ? next : x.outcome, sentOn: x.sentOn, versionIds: x.versions.map((v) => v.id), sharedLetter: x.sharedLetter }))
-    const res = await setGcPacketOutcome({ bidId, bidOutcome, versionIds: p.versions.map((v) => v.id), outcome: next, packetsAfter: after })
+    // Tier-2 #21: say what the win will do BEFORE writing it — the other GCs Lost, the bid Won.
+    if (next === 'won') {
+      const plan = wonCascadePlan({ outcome: bidOutcome }, after, p.key)
+      if (wonCascadeNeedsConfirm(plan) && !(await confirmDialog({ message: wonCascadeConfirmMessage(plan, { gcName: p.name }), confirmLabel: 'Mark won' }))) return
+    }
+    setBusyKey(p.key)
+    const res = await setGcPacketOutcome({ bidId, bidOutcome, versionIds: p.versions.map((v) => v.id), outcome: next, packetsAfter: after, previousOutcome: prev, actor: { userId: authUser?.id, role: authRole, path: 'board' } })
     setBusyKey(null)
     if (res.error) { showToast('Could not save: ' + res.error, 'error'); return }
     window.dispatchEvent(new Event('bid-gc-outcome-changed'))
-    const autoNote = res.autoLost.length > 0 ? ` — ${res.autoLost.join(', ')} marked lost · GC lost the project.` : ''
-    if (res.bidOutcomeSet) showToast(`Bid marked ${res.bidOutcomeSet} (${next === 'won' ? 'with ' + p.name : 'every GC lost'})${autoNote}`, 'success')
-    else if (autoNote) showToast(`${p.name} marked won${autoNote}`, 'success')
+    if (res.undone) showToast(undoneToast(p.name, res.undone), 'success')
+    else {
+      const autoNote = res.autoLost.length > 0 ? ` — ${res.autoLost.join(', ')} marked lost · GC lost the project.` : ''
+      if (res.bidOutcomeSet) showToast(`Bid marked ${res.bidOutcomeSet} (${next === 'won' ? 'with ' + p.name : 'every GC lost'})${autoNote}`, 'success')
+      else if (autoNote) showToast(`${p.name} marked won${autoNote}`, 'success')
+    }
     onChanged()
   }
   const primaryName = packets.find((x) => !x.sharedLetter)?.name ?? 'the bid’s GC'

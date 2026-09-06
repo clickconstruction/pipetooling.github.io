@@ -38,6 +38,9 @@ import { looksLikeCombinedGcName, type BidGcRecipientsMap } from '../../lib/bids
 import type { GcPacket } from '../../lib/bids/gcPackets'
 import { gcOutcomeRowsForBid, gcRowIsPacketScoped, type GcOutcomeRow } from '../../lib/bids/gcOutcomeRows'
 import { setGcPacketLossCategory, setGcPacketOutcome } from '../../lib/bids/gcPacketOutcome'
+import { cascadePackets, wonCascadeConfirmMessage, wonCascadeNeedsConfirm, wonCascadePlan } from '../../lib/bids/wonCascade'
+import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
+import { useAuth } from '../../hooks/useAuth'
 import {
   type LedgerPrefixMap,
   bidNumberMatchesQuery,
@@ -143,6 +146,8 @@ export function BidsWaitingToHearLens({
   onReloadBids,
   onOpenBuilderCard,
 }: BidsWaitingToHearLensProps) {
+  const confirmDialog = useConfirmDialog()
+  const { role: authRole } = useAuth()
   const [chaseSearchQuery, setChaseSearchQuery] = useState('')
   const [selectedBuilderKey, setSelectedBuilderKey] = useState<string | null>(null)
   const [selectedBidId, setSelectedBidId] = useState<string | null>(null)
@@ -321,7 +326,26 @@ export function BidsWaitingToHearLens({
     setSelectedBidId(null)
   }
 
+  /** Tier-2 #21: a one-tap Won on a multi-GC row says what it will do first (other GCs Lost, bid Won). */
   function runAction(
+    b: LensBid,
+    action: PendingChaseActionKey,
+    lossCategory: BidLossCategoryKey | null = null,
+    tab: { values: BidTabValues; noteLine: string; entries?: BidTabEntryDraft[] | null } | null = null,
+  ) {
+    if (action === 'won' && gcRowIsPacketScoped(b.gc) && b.gc.packetKey != null) {
+      const plan = wonCascadePlan({ outcome: b.raw.outcome ?? null }, cascadePackets(gcPacketsByBid[b.id] ?? []), b.gc.packetKey)
+      if (wonCascadeNeedsConfirm(plan)) {
+        void confirmDialog({ message: wonCascadeConfirmMessage(plan, { gcName: b.gc.gcName }), confirmLabel: 'Mark won' }).then((ok) => {
+          if (ok) runActionNow(b, action, lossCategory, tab)
+        })
+        return
+      }
+    }
+    runActionNow(b, action, lossCategory, tab)
+  }
+
+  function runActionNow(
     b: LensBid,
     action: PendingChaseActionKey,
     lossCategory: BidLossCategoryKey | null = null,
@@ -387,6 +411,7 @@ export function BidsWaitingToHearLens({
             versionIds: b.gc.versionIds,
             outcome: writes.outcomeUpdate.outcome,
             packetsAfter: packets.map((x) => ({ key: x.key, name: x.name, outcome: x.key === b.gc.packetKey ? writes.outcomeUpdate!.outcome : x.outcome, sentOn: x.sentOn, versionIds: x.versions.map((v) => v.id), sharedLetter: x.sharedLetter })),
+            actor: { userId: authUserId, role: authRole, path: 'waiting-to-hear' },
           })
           if (res.error) throw new Error(res.error)
           if (writes.outcomeUpdate.outcome === 'lost' && writes.outcomeUpdate.loss_category) {

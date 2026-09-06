@@ -42,6 +42,15 @@ On **Pricing** (New), the Workbench shows the packet you're on: **This GC — Bu
 
 - On the **Bid Board**, a bid with more than one packet shows a line per GC under its row — name · *sent 7/31* · ★ value · {{chip:gray|waiting…}} / {{chip:green|won}} / {{chip:red|lost}}. Set the answer there. A win rolls the bid up to **Won**; the bid only rolls to **Lost** once every GC you sent to has said no.
 - **Followup → Full bid details** shows the same **Sent to — by GC** list with the same select.
+- **A win is one tap, but it's three changes — so the app says so first.** Wherever you mark a GC {{chip:green|won}} (Edit Bid, the board pill, Followup, Waiting to hear, the Call queue), a confirm reads *"Mark Southern Post Won? This marks the other GC (Burd & Assoc.) Lost — GC lost the project and the bid Won."* If you had set the bid's Win/Loss to **Lost** by hand, it adds *"The bid is currently marked Lost by hand — it flips to Won."* {{button:blue|Mark won}} does all of it; **Cancel** changes nothing.
+- **Mis-tapped? {{button:outline|↩ waiting}} on the winner undoes the whole thing** — the GCs the win marked lost go back to {{chip:gray|waiting}} and the bid goes back to where it was (Not set, or the Lost you'd set). The toast spells it out: *"Southern Post back to waiting · Burd & Assoc. back to waiting · bid back to Not set."* A GC you marked lost yourself with a reason stays lost.
+- Both moves leave a line in the bid's notes — *Marked Won via packet — Southern Post · siblings marked Lost: Burd & Assoc.* and *Won undone via packet — …* — so the story is readable later.
+
+:::example Marking Southern Post Won on a bid that also went to Burd
+Mark Southern Post Won? This marks the other GC (Burd & Assoc.) Lost — GC lost the project and the bid Won. ↩ waiting on the winner puts all of it back.
+
+{{button:outline|Cancel}} {{button:blue|Mark won}}
+:::
 - Each GC also gets its own call in the Followup queues, so a bid sent to three builders is three calls, not one.
 
 ## Turning the bid into a job
