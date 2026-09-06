@@ -23,10 +23,10 @@ export async function buildDirectDeposit() {
     { box: { key: 'contractor_phone', type: 'digits', label: 'Your phone', labelEs: 'Su teléfono', mask: '###-###-####', prefill: 'person_phone', sample: '5125550142' }, label: 'Phone', frac: 0.38 },
   ])
 
+  // Owner ask (2026-09-06): the bank is known from the routing number — collect the person's address on the account instead.
   p.paragraph('Bank account', { bold: true, gapAfter: 0 })
   p.fieldRow([
-    { box: { key: 'bank_name', type: 'text', label: 'Bank or credit union name', labelEs: 'Nombre del banco o cooperativa', required: true, sample: 'Frost Bank' }, label: 'Bank name', frac: 0.62 },
-    { box: { key: 'bank_city_state', type: 'text', label: 'Bank city and state', labelEs: 'Ciudad y estado del banco', sample: 'Austin, TX' }, label: 'City, state', frac: 0.38 },
+    { box: { key: 'address_on_account', type: 'text', label: 'Your address as the bank has it (street, city, state, ZIP)', labelEs: 'Su dirección tal como la tiene el banco (calle, ciudad, estado, código postal)', required: true, sample: '5501 Balcones Dr, Austin, TX 78731' }, label: 'Address on account', frac: 1 },
   ])
   p.fieldRow([
     {
