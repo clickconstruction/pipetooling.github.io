@@ -150,12 +150,7 @@ export function buildPartnerTimeline(journal: JournalRow[], events: TimelineEven
       date: s.period_end,
       kind: 'stmt',
       label: `Statement generated (week of ${s.period_start})`,
-      sub:
-        s.partner_ack_at != null
-          ? 'acknowledged by both'
-          : s.company_ack_at != null
-            ? 'company ✓ · awaiting partner'
-            : 'no acknowledgments yet',
+      sub: statementRowSub(s.partner_ack_at),
       amount: null,
       balance: null,
       seq: 0,
@@ -165,6 +160,17 @@ export function buildPartnerTimeline(journal: JournalRow[], events: TimelineEven
     (a, b) => b.date.localeCompare(a.date) || KIND_ORDER[a.kind] - KIND_ORDER[b.kind] || a.seq - b.seq,
   )
   return rows.map(({ seq: _seq, ...r }) => r)
+}
+
+/**
+ * Statement-row sub-line (v2.2914, J26-F1). The partner lost the acknowledge
+ * button in v2.2212, so "no acknowledgments yet" / "awaiting partner" described
+ * a step nobody can take. Today the office closes the week and the statement
+ * is on the partner's statement page — that is the whole story, except for a
+ * week acknowledged before the button went away, which keeps its stamp.
+ */
+export function statementRowSub(partnerAckAt: string | null | undefined): string {
+  return partnerAckAt != null ? 'acknowledged by both' : 'on the partner’s statement page'
 }
 
 export function filterPartnerTimeline(rows: PartnerTimelineRow[], filter: PartnerTimelineFilter): PartnerTimelineRow[] {

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { JournalRow } from './partnerLedgerJournal'
-import { buildPartnerTimeline, chargeTypeLabel, filterPartnerTimeline, type TimelineEventInputs } from './partnerTimeline'
+import { buildPartnerTimeline, chargeTypeLabel, filterPartnerTimeline, statementRowSub, type TimelineEventInputs } from './partnerTimeline'
 
 const journal: JournalRow[] = [
   { date: '2026-08-15', label: 'Labor — 40.5 h (week of 2026-08-09)', detail: null, amount: 1755, balance: 1755, kind: 'labor', pay_stub_id: 's1', offset_id: null },
@@ -41,7 +41,7 @@ describe('buildPartnerTimeline', () => {
     const rows = buildPartnerTimeline(journal, events)
     expect(rows.find((r) => r.kind === 'decline')?.label).toContain('truck in shop')
     expect(rows.find((r) => r.kind === 'job')?.label).toContain('#781')
-    expect(rows.find((r) => r.kind === 'stmt')?.sub).toContain('awaiting partner')
+    expect(rows.find((r) => r.kind === 'stmt')?.sub).toBe('on the partner’s statement page')
     expect(rows.filter((r) => ['ncns', 'decline', 'job', 'stmt'].includes(r.kind)).every((r) => r.amount === null)).toBe(true)
   })
 
@@ -68,6 +68,18 @@ describe('buildPartnerTimeline', () => {
     })
     expect(rows.some((r) => r.kind === 'decline')).toBe(false)
     expect(rows.find((r) => r.kind === 'stmt')?.sub).toBe('acknowledged by both')
+  })
+
+  it('statement rows no longer wait on an acknowledgment the partner cannot give (v2.2914)', () => {
+    const base = buildPartnerTimeline([], events)
+    expect(base.find((r) => r.kind === 'stmt')?.sub).toBe('on the partner’s statement page')
+    const neither = buildPartnerTimeline([], {
+      ...events,
+      statements: [{ period_start: 'a', period_end: 'b', partner_ack_at: null, company_ack_at: null }],
+    })
+    expect(neither.find((r) => r.kind === 'stmt')?.sub).toBe('on the partner’s statement page')
+    expect(statementRowSub('2026-08-17')).toBe('acknowledged by both')
+    expect(statementRowSub(null)).toBe('on the partner’s statement page')
   })
 })
 

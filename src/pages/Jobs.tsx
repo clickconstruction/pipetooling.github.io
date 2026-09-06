@@ -139,6 +139,7 @@ export default function Jobs() {
   // mercuryCardChargesByJobId back from that later hook.
   const {
     jobSummaryLedgerAllJobs,
+    jobSummaryHiddenByMinHcp,
     jobSummaryMinHcpExclusive,
     setJobSummaryMinHcpExclusive,
     jobSummaryLedgerJobs,
@@ -1925,6 +1926,7 @@ export default function Jobs() {
           jobSummaryLedgerLoading={jobSummaryLedgerLoading}
           jobSummaryLedgerJobs={jobSummaryLedgerJobs}
           jobSummaryLedgerAllJobs={jobSummaryLedgerAllJobs}
+          jobSummaryHiddenByMinHcp={jobSummaryHiddenByMinHcp}
           jobSummaryMinHcpExclusive={jobSummaryMinHcpExclusive}
           setJobSummaryMinHcpExclusive={setJobSummaryMinHcpExclusive}
           jobSummaryData={jobSummaryData}

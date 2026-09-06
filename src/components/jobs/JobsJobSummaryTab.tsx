@@ -20,6 +20,7 @@ import { laborJobSubCost } from '../../lib/jobs/subLaborCost'
 import { formatMercuryDebitCardIdCompact, mercuryDebitCardIdFromRaw } from '../../lib/mercuryRawDebitCard'
 import { formatWorkDateYmdWeekdayLongFriendly } from '../../utils/dateUtils'
 import { writeJobSummaryMinHcpExclusiveToStorage } from '../../lib/jobSummaryHcpFilter'
+import { jobSummaryFloorFooter } from '../../lib/jobSummaryFooterCopy'
 import {
   buildJobSummaryPersonSummaryRows,
   partitionUnattributedFromJobSummaryPersonRows,
@@ -392,6 +393,8 @@ export type JobsJobSummaryTabProps = {
   jobSummaryLedgerLoading: boolean
   jobSummaryLedgerJobs: JobWithDetails[] | null
   jobSummaryLedgerAllJobs: JobWithDetails[] | null
+  /** v2.2914: legacy rows the HCP # floor hides (server + client); null until the ledger loads. */
+  jobSummaryHiddenByMinHcp: number | null
   jobSummaryMinHcpExclusive: number
   setJobSummaryMinHcpExclusive: (n: number) => void
   jobSummaryData: JobSummaryRow[]
@@ -454,6 +457,7 @@ export default function JobsJobSummaryTab({
   jobSummaryLedgerLoading,
   jobSummaryLedgerJobs,
   jobSummaryLedgerAllJobs,
+  jobSummaryHiddenByMinHcp,
   jobSummaryMinHcpExclusive,
   setJobSummaryMinHcpExclusive,
   jobSummaryData,
@@ -3084,7 +3088,7 @@ export default function JobsJobSummaryTab({
                 color: 'var(--text-700)',
               }}
             >
-              <span>Only include jobs with HCP # greater than</span>
+              <span>Hide older imported jobs with HCP # at or below</span>
               <input
                 type="number"
                 min={-1}
@@ -3099,11 +3103,36 @@ export default function JobsJobSummaryTab({
                 style={{ width: '5.5rem', padding: '0.35rem 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.875rem' }}
               />
             </label>
-            {jobSummaryLedgerAllJobs != null && jobSummaryLedgerJobs != null && (
-              <p style={{ margin: '0.5rem 0 0 0', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
-                Showing {jobSummaryLedgerJobs.length} of {jobSummaryLedgerAllJobs.length} jobs after filter.
-              </p>
-            )}
+            {jobSummaryLedgerJobs != null && jobSummaryHiddenByMinHcp != null && (() => {
+              // v2.2914 (J6-7): say what the floor hides. The old "Showing N of N after
+              // filter" compared two already-floored lists and could never disclose the
+              // legacy rows the fetch dropped.
+              const footer = jobSummaryFloorFooter({
+                shown: jobSummaryLedgerJobs.length,
+                hidden: jobSummaryHiddenByMinHcp,
+                floor: jobSummaryMinHcpExclusive,
+              })
+              return (
+                <p role="status" style={{ margin: '0.5rem 0 0 0', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
+                  {footer.sentence}
+                  {footer.offerShowAll && (
+                    <>
+                      {' — '}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setJobSummaryMinHcpExclusive(-1)
+                          writeJobSummaryMinHcpExclusiveToStorage(-1)
+                        }}
+                        style={{ font: 'inherit', padding: 0, border: 'none', background: 'none', color: 'var(--text-link)', cursor: 'pointer', textDecoration: 'underline' }}
+                      >
+                        show all
+                      </button>
+                    </>
+                  )}
+                </p>
+              )
+            })()}
             <p
               style={{
                 margin: jobSummaryLedgerAllJobs != null && jobSummaryLedgerJobs != null ? '0.35rem 0 0 0' : '0.5rem 0 0 0',
@@ -3112,7 +3141,7 @@ export default function JobsJobSummaryTab({
                 color: 'var(--text-muted)',
               }}
             >
-              Jobs with no HCP # (or a non-numeric HCP) are always included. Set to −1 to include every HCP #.
+              Jobs with no HCP # (or a non-numeric one) always show. Set the floor to −1 to show every job.
             </p>
           </div>
         </div>

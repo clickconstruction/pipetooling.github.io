@@ -55,6 +55,18 @@ export function useJobSummaryData({
     if (jobSummaryLedgerAllJobs == null) return null
     return applyMinHcpFilter(jobSummaryLedgerAllJobs, jobSummaryMinHcpExclusive)
   }, [jobSummaryLedgerAllJobs, jobSummaryMinHcpExclusive])
+  /**
+   * v2.2914: rows the server-side floor dropped before enrichment. The fetch
+   * already applies `minHcpExclusive`, so `jobSummaryLedgerAllJobs` never
+   * holds the hidden legacy rows — without this count the footer reads
+   * "417 of 417" forever (J6-7). Raising the floor client-side hides more;
+   * `jobSummaryHiddenByMinHcp` folds both in.
+   */
+  const [jobSummaryHiddenByMinHcpServer, setJobSummaryHiddenByMinHcpServer] = useState(0)
+  const jobSummaryHiddenByMinHcp =
+    jobSummaryLedgerAllJobs == null || jobSummaryLedgerJobs == null
+      ? null
+      : jobSummaryHiddenByMinHcpServer + (jobSummaryLedgerAllJobs.length - jobSummaryLedgerJobs.length)
   const [jobSummaryLedgerLoading, setJobSummaryLedgerLoading] = useState(false)
   const [jobSummaryLedgerError, setJobSummaryLedgerError] = useState<string | null>(null)
   const loadJobSummaryLedgerRef = useRef<() => void>(() => {})
@@ -76,6 +88,7 @@ export function useJobSummaryData({
         return
       }
       setJobSummaryLedgerAllJobs(result.jobs)
+      setJobSummaryHiddenByMinHcpServer(result.hiddenByMinHcp ?? 0)
       jobSummaryLedgerSnapshotLoadedRef.current = true
     } catch (e: unknown) {
       setJobSummaryLedgerError(e instanceof Error ? e.message : String(e))
@@ -282,6 +295,7 @@ export function useJobSummaryData({
 
   return {
     jobSummaryLedgerAllJobs,
+    jobSummaryHiddenByMinHcp,
     jobSummaryMinHcpExclusive,
     setJobSummaryMinHcpExclusive,
     jobSummaryLedgerJobs,

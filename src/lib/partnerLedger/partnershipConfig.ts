@@ -13,7 +13,7 @@ export type PartnershipModules = {
   profit_shares: boolean
   /** §4h — move bid-tagged estimating hours onto awarded jobs */
   est_transfer: boolean
-  /** §4 — generate Sun–Sat statements with mutual acknowledgment */
+  /** §4 — generate Sun–Sat statements, posted to the partner's statement page (the §9b partner acknowledgment step was retired in v2.2212) */
   weekly_statement: boolean
   /** §5 — partner job-costing drill-in (checked-off jobs only) */
   costing: boolean

@@ -31,3 +31,7 @@ Labor lines on all three tabs read the hours from the stamped rate-tier days —
 ## Paused or ended partnerships
 
 A paused or ended partnership hides its money from the partner, and these tabs show the same nothing — with a note saying why. Set the status back to **active** on the **Deal** tab to read the ledger again.
+
+## Closing a week and what the Timeline says about it
+
+On **Statements**, {{button:blue|Close week}} builds the statement from the partner's approved hours at the Deal-tab rates, attaches the pending charges you left ticked, and posts it to the partner's statement page — that is the whole hand-off. The partner reads and prints it there; there is no acknowledge step for them to take (that button was retired), so the **Timeline**'s statement rows simply read *on the partner's statement page*. A week the partner acknowledged back when the button existed keeps its *acknowledged by both* stamp.

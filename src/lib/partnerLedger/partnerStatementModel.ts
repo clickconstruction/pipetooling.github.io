@@ -25,10 +25,32 @@ export function longDate(ymd: string): string {
   return `${mon} ${Number(m[3])}, ${m[1]}`
 }
 
+/**
+ * The letterhead's tenure words (v2.2914, J26-F7): "partner since" once the
+ * deal is live, "draft since" while `partnerships.status` is still `draft` —
+ * the paper stops asserting a partnership the Agreements tab says isn't
+ * signed yet. Paused / ended deals keep "partner since" (the tenure is real).
+ */
+export function partnerSincePrefix(status: string | null | undefined): 'partner since' | 'draft since' {
+  return status === 'draft' ? 'draft since' : 'partner since'
+}
+
 /** "partner since Mar 22, 2026" — the oldest week card's start (cards newest-first). */
-export function partnerSinceLabel(cards: readonly WeekCard[]): string | null {
+export function partnerSinceLabel(cards: readonly WeekCard[], status: string | null | undefined = null): string | null {
   const oldest = cards[cards.length - 1]
-  return oldest ? `partner since ${longDate(oldest.weekStart)}` : null
+  return oldest ? `${partnerSincePrefix(status)} ${longDate(oldest.weekStart)}` : null
+}
+
+/**
+ * The full tenure line: the deal's `started_on` when the record has one, else
+ * the oldest week on file; null when neither exists.
+ */
+export function partnerSinceLine(
+  summary: { started_on: string | null; status: string | null },
+  cards: readonly WeekCard[],
+): string | null {
+  if (summary.started_on) return `${partnerSincePrefix(summary.status)} ${longDate(summary.started_on)}`
+  return partnerSinceLabel(cards, summary.status)
 }
 
 /** Today's long date from a Date (local calendar). */
