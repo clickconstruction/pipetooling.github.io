@@ -50,6 +50,8 @@ export type SubPortalDates = {
   window: { start: string; end: string } | null
   workDays: number | null
   changeUntil: string | null
+  /** v2.2934: the office needs new dates — the calendar opens; Confirm new dates clears it. */
+  changeRequested: { note: string | null; at: string } | null
 }
 
 export type SubPortalPaymentLine = {
@@ -286,6 +288,7 @@ function parseDates(raw: unknown): SubPortalDates | null {
     window: parseSpan(r.window),
     workDays: r.workDays == null ? null : Math.max(1, Math.floor(num(r.workDays))) || null,
     changeUntil: ymdOrNull(r.changeUntil),
+    changeRequested: r.changeRequested != null && typeof r.changeRequested === 'object' && typeof (r.changeRequested as Record<string, unknown>).at === 'string' ? { note: strOrNull((r.changeRequested as Record<string, unknown>).note), at: str((r.changeRequested as Record<string, unknown>).at) } : null,
   }
 }
 

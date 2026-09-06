@@ -44,6 +44,7 @@ import { WorkOrderAssemblerModal, type WorkOrderAssemblerInitial } from './WorkO
 import { buildSubsTabGroups, subsGroupMatches, type SubsJobGroup, type SubsRow, type SubsStage } from '../../lib/subs/subsTabRows'
 import { stageWindowByLabel, stageWindowLabel, stageWindowPhase, type StageWindowLike, type StageWindowSpan } from '../../lib/subs/stageWindow'
 import { StageWindowEditor } from './StageWindowEditor'
+import { answerPatch, askState, pickStillFits, type StageAskWindow } from '../../../supabase/functions/_shared/stageAsk'
 import { JobWatchersPopover } from './JobWatchersPopover'
 
 /** A sheet with its money, its stage and its people — the board derives everything from these. */
@@ -95,6 +96,8 @@ export function JobsSubsWorkView({ jobs, jobsLoading, authUserId, deepLinkWorkOr
   /** job id → GC name for jobs whose Edit Job switch shares stage dates (v2.2933). */
   const [gcSharing, setGcSharing] = useState<Map<string, { gcName: string | null }>>(() => new Map())
   const [bundlePick, setBundlePick] = useState<{ groupKey: string; ids: Set<string> } | null>(null)
+  /** The GC ask being answered with the office's own dates (v2.2934). */
+  const [askAnswer, setAskAnswer] = useState<{ windowId: string; start: string; end: string; note: string } | null>(null)
   const [windowSaving, setWindowSaving] = useState(false)
   const [sheets, setSheets] = useState<SheetLite[]>([])
   const [roster, setRoster] = useState<NeedsWorkOrderRosterPerson[]>([])
@@ -126,7 +129,7 @@ export function JobsSubsWorkView({ jobs, jobsLoading, authUserId, deepLinkWorkOr
         supabase.from('people').select('id, name, kind, account_user_id').order('id').limit(1000),
         supabase.from('users').select('id, role').order('id').limit(1000),
         // Stages: line items with a window (v2.2927).
-        supabase.from('job_stage_windows').select('id, job_id, fixture_id, window_start, window_end, window_by, note, offered_to_gc, bundle_id').limit(2000),
+        supabase.from('job_stage_windows').select('id, job_id, fixture_id, window_start, window_end, window_by, note, offered_to_gc, bundle_id, asked_start, asked_end, asked_note, asked_at, answered_at, answer, answer_note').limit(2000),
       ])
       if (rowsErr) throw rowsErr
       if (sheetsErr) throw sheetsErr
@@ -395,6 +398,28 @@ export function JobsSubsWorkView({ jobs, jobsLoading, authUserId, deepLinkWorkOr
     emitWorkOrderChanged()
   }
 
+  /** Answer a GC ask (v2.2934): accept their span or propose ours; a pick that no longer fits becomes a change request to the sub. */
+  async function answerGcAsk(w: StageWindowLike, a: Parameters<typeof answerPatch>[1], commitmentId: string | null) {
+    const nowIso = new Date().toISOString()
+    const patch = answerPatch(w as unknown as StageAskWindow, a, nowIso)
+    const q = supabase.from('job_stage_windows').update(patch)
+    const { error } = w.bundle_id ? await q.eq('bundle_id', w.bundle_id) : await q.eq('id', w.id)
+    if (error) {
+      showToast(`Could not answer: ${formatErrorMessage(error)}`, 'error')
+      return
+    }
+    const newWindow = { start: String(patch.window_start), end: String(patch.window_end) }
+    const order = commitmentId ? rowsById.get(commitmentId) : null
+    const pick = order?.picked_start ? { start: order.picked_start, end: order.picked_end ?? order.picked_start } : null
+    if (order && pick && !pickStillFits(pick, newWindow)) {
+      const note = a.kind === 'accept' ? `The GC asked for ${stageWindowLabel(newWindow)} — pick your days inside it.` : `The window moved to ${stageWindowLabel(newWindow)}${a.note.trim() ? ` — ${a.note.trim()}` : ''}. Pick your days inside it.`
+      await supabase.from('step_commitments').update({ change_requested_at: nowIso, change_requested_note: note }).eq('id', order.id)
+      showToast(`Answered · ${order.display_name} is asked to re-pick inside ${stageWindowLabel(newWindow)}`, 'success')
+    } else showToast(`Answered · window ${stageWindowLabel(newWindow)}`, 'success')
+    setAskAnswer(null)
+    emitWorkOrderChanged()
+  }
+
   /** Offer / withdraw stage windows to the GC (v2.2933). A bundle shares one id and goes together. */
   async function offerToGc(windowIds: string[], bundle: boolean) {
     if (windowIds.length === 0) return
@@ -565,6 +590,43 @@ export function JobsSubsWorkView({ jobs, jobsLoading, authUserId, deepLinkWorkOr
   const windowCell = (g: SubsJobGroup, r: SubsRow) => {
     const editing = windowEdit && windowEdit.groupKey === g.key && windowEdit.rowKey === r.key
     if (editing) return null
+    const w = r.window
+    if (w && askState(w as unknown as StageAskWindow) === 'open') {
+      const asked = { start: w.asked_start!, end: w.asked_end! }
+      const answering = askAnswer && askAnswer.windowId === w.id ? askAnswer : null
+      return (
+        <div style={{ display: 'grid', gap: 4 }} data-testid="gc-ask">
+          <div style={{ fontSize: '0.78rem' }}>
+            <span style={{ fontWeight: 700, color: 'var(--text-amber-800)' }}>GC asked {stageWindowLabel(asked)}</span>
+            {w.asked_note ? <span style={{ color: 'var(--text-muted)' }}> · “{w.asked_note}”</span> : null}
+            {r.span ? <span style={{ color: 'var(--text-muted)' }}> · now {stageWindowLabel(r.span)}</span> : null}
+          </div>
+          {answering ? (
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+              <input type="date" value={answering.start} onChange={(e) => setAskAnswer({ ...answering, start: e.target.value })} aria-label="Answer start" style={{ padding: '0.25rem 0.4rem', border: '1px solid var(--border-strong)', borderRadius: 6, fontSize: '0.78rem', background: 'var(--surface)', color: 'var(--text-900)' }} />
+              <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>to</span>
+              <input type="date" value={answering.end} onChange={(e) => setAskAnswer({ ...answering, end: e.target.value })} aria-label="Answer end" style={{ padding: '0.25rem 0.4rem', border: '1px solid var(--border-strong)', borderRadius: 6, fontSize: '0.78rem', background: 'var(--surface)', color: 'var(--text-900)' }} />
+              <input value={answering.note} onChange={(e) => setAskAnswer({ ...answering, note: e.target.value.slice(0, 300) })} placeholder="Why (the GC reads this)" style={{ padding: '0.25rem 0.4rem', border: '1px solid var(--border-strong)', borderRadius: 6, fontSize: '0.78rem', background: 'var(--surface)', color: 'var(--text-900)', minWidth: 160 }} />
+              <button type="button" style={smallBtn('primary', !answering.start || !answering.end || answering.end < answering.start)} disabled={!answering.start || !answering.end || answering.end < answering.start} onClick={() => void answerGcAsk(w, { kind: 'propose', start: answering.start, end: answering.end, note: answering.note }, r.board?.commitmentId ?? null)}>
+                Propose
+              </button>
+              <button type="button" style={smallBtn('ghost')} onClick={() => setAskAnswer(null)}>
+                Cancel
+              </button>
+            </div>
+          ) : (
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+              <button type="button" style={smallBtn('primary')} onClick={() => void answerGcAsk(w, { kind: 'accept' }, r.board?.commitmentId ?? null)}>
+                Accept {stageWindowLabel(asked)}
+              </button>
+              <button type="button" style={smallBtn('ghost')} onClick={() => setAskAnswer({ windowId: w.id, start: w.window_start ?? asked.start, end: w.window_end ?? asked.end, note: '' })}>
+                Answer with…
+              </button>
+            </div>
+          )}
+        </div>
+      )
+    }
     if (r.span) {
       const phase = stageWindowPhase(r.span, today)
       return (
@@ -574,7 +636,7 @@ export function JobsSubsWorkView({ jobs, jobsLoading, authUserId, deepLinkWorkOr
           </span>
           <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: 2 }}>
             {pickedLine(r)}
-            {stageWindowByLabel(r.window?.window_by)}{phase === 'past' ? ' · passed' : ''}
+            {stageWindowByLabel(r.window?.window_by)}{phase === 'past' ? ' · passed' : ''}{r.window && askState(r.window as unknown as StageAskWindow) === 'proposed' ? ` · office answered the GC's ask for ${stageWindowLabel({ start: r.window.asked_start!, end: r.window.asked_end! })}` : ''}
             {r.window && g.jobId ? (
               <>
                 {' · '}

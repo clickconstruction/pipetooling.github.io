@@ -36,7 +36,7 @@ export const SUB_PORTAL_DEMO_PAYLOAD: SubPortalPayload = {
       payHoldReason: 'Top out passed inspection Aug 29 — queued for the Friday pay run (Sep 4).',
       plansUrl: 'https://counttooling.com/?t=demo-plans',
       progress: { pct: 50, note: null, on: '2026-09-01' },
-      dates: { commitmentId: 'demo-c1', start: '2026-09-09', end: '2026-09-10', window: { start: '2026-09-08', end: '2026-09-19' }, workDays: 2, changeUntil: '2026-09-08' },
+      dates: { commitmentId: 'demo-c1', start: '2026-09-09', end: '2026-09-10', window: { start: '2026-09-08', end: '2026-09-19' }, workDays: 2, changeUntil: '2026-09-08', changeRequested: null },
       agreement: {
         signedOn: '2026-08-20',
         signerName: 'Danny Vasquez',

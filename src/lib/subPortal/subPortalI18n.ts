@@ -210,6 +210,9 @@ const STRINGS = {
   progressSent: { en: "Sent · {n}% — we'll keep waiting on you.", es: 'Enviado · {n}% — seguimos esperándolo.' },
   noteSent: { en: 'Sent to the office.', es: 'Enviado a la oficina.' },
   lastReported: { en: 'last reported {date}', es: 'último reporte el {date}' },
+  // v2.2934 — a change request from the office
+  changeRequested: { en: 'The office needs new dates', es: 'La oficina necesita nuevas fechas' },
+  changeRequestedBody: { en: 'Pick a start inside {start} – {end} and confirm.', es: 'Elija un inicio entre el {start} y el {end} y confirme.' },
 } as const
 
 export type SubPortalStringKey = keyof typeof STRINGS

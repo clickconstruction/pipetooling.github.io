@@ -81,6 +81,9 @@ export type SubAgreementRow = {
   proposed_end?: string | null
   window_start?: string | null
   window_end?: string | null
+  /** v2.2934: the window moved under their pick — they re-pick. */
+  change_requested_at?: string | null
+  change_requested_note?: string | null
   amount: number | null
   signed_at: string | null
   accepted_at: string | null
@@ -101,6 +104,8 @@ export type SubPortalDates = {
   workDays: number | null
   /** Last day they may move it themselves (the day before the start); null when the start is behind us. */
   changeUntil: string | null
+  /** v2.2934: the office needs new dates — the calendar opens and Confirm new dates clears it. */
+  changeRequested: { note: string | null; at: string } | null
 }
 
 export type SubPortalAgreement = {
@@ -319,6 +324,7 @@ export function agreementDates(a: SubAgreementRow, todayYmd: string): SubPortalD
     window,
     workDays: a.work_days == null ? null : Number(a.work_days) || null,
     changeUntil: window && todayYmd <= deadline ? deadline : null,
+    changeRequested: a.change_requested_at ? { note: (a.change_requested_note ?? '').trim() || null, at: a.change_requested_at } : null,
   }
 }
 
