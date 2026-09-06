@@ -60,7 +60,7 @@ gh pr merge --squash --delete-branch   # once "checks" is green
 | Bids system features | [BIDS_SYSTEM.md](./docs/BIDS_SYSTEM.md) - All 14 tabs documented |
 | Decomposing a large page | [docs/PAGE_DECOMPOSITION_PLAYBOOK.md](./docs/PAGE_DECOMPOSITION_PLAYBOOK.md) - the method + inventory; per-surface `docs/*_ARCHITECTURE.md` maps (Bids, People, Dashboard, Jobs, JobFormModal, Materials, Settings — indexed in [docs/README.md](./docs/README.md)) |
 | Edge Functions / API | [EDGE_FUNCTIONS.md](./docs/EDGE_FUNCTIONS.md) - Complete API reference |
-| Recent changes/features | [RECENT_FEATURES.md](./docs/RECENT_FEATURES.md) - Chronological updates |
+| Recent changes/features | [docs/recent-features/](./docs/recent-features/) - one fragment per PR since 2026-08-20; [RECENT_FEATURES.md](./docs/RECENT_FEATURES.md) - the frozen earlier archive |
 | App crash / outage / Supabase load (AI + CLI triage; Cursor: `.cursor/rules/supabase-incident-triage.mdc`) | [docs/runbooks/AGENT_APP_CRASH_INVESTIGATION.md](./docs/runbooks/AGENT_APP_CRASH_INVESTIGATION.md) → [SUPABASE_INCIDENT_RUNBOOK.md](./docs/runbooks/SUPABASE_INCIDENT_RUNBOOK.md); capture: [`scripts/capture-supabase-incident.sh`](./scripts/capture-supabase-incident.sh); client mitigation: [RECENT_FEATURES.md](./docs/RECENT_FEATURES.md) **v2.454** |
 | Troubleshooting | [TROUBLESHOOTING.md](./docs/TROUBLESHOOTING.md) - White screen, Supabase, sign-in, load investigation |
 | Migration history | [MIGRATIONS.md](./docs/MIGRATIONS.md) - All database changes |
@@ -70,7 +70,7 @@ gh pr merge --squash --delete-branch   # once "checks" is green
 - **Adding a table**: Create migration (`supabase migration new …`) → Update RLS policies → **Apply** (`supabase db push`) → Regenerate types → Document
 - **Adding a page**: Create component → Add route → Update navigation → Verify role access
 - **Fixing RLS issue**: Check user role → Review table policies → Verify adoption/sharing
-- **Understanding feature**: Check RECENT_FEATURES.md → Read relevant system doc → Review code
+- **Understanding feature**: Grep `docs/recent-features/` (then the frozen RECENT_FEATURES.md archive) → Read relevant system doc → Review code
 - **App crash / Supabase load**: Cursor rule [`.cursor/rules/supabase-incident-triage.mdc`](./.cursor/rules/supabase-incident-triage.mdc) — say *Supabase crashed* / *503* etc.; agent follows [docs/runbooks/AGENT_APP_CRASH_INVESTIGATION.md](./docs/runbooks/AGENT_APP_CRASH_INVESTIGATION.md) → Run `./scripts/capture-supabase-incident.sh` (or `supabase inspect`) → Full detail in [SUPABASE_INCIDENT_RUNBOOK.md](./docs/runbooks/SUPABASE_INCIDENT_RUNBOOK.md). Client Realtime mitigation: [RECENT_FEATURES.md](./docs/RECENT_FEATURES.md) **v2.454**.
 
 **Key Constraints to Remember**:
@@ -91,7 +91,7 @@ gh pr merge --squash --delete-branch   # once "checks" is green
 📖 **Main Documentation**:
 - **[PROJECT_DOCUMENTATION.md](./docs/PROJECT_DOCUMENTATION.md)** - Comprehensive project documentation (architecture, database schema, patterns)
 - **[GLOSSARY.md](./docs/GLOSSARY.md)** - Definitions of all domain terms and technical concepts
-- **[RECENT_FEATURES.md](./docs/RECENT_FEATURES.md)** - Summary of all recent features and updates
+- **[docs/recent-features/](./docs/recent-features/)** - One fragment per PR since 2026-08-20; **[RECENT_FEATURES.md](./docs/RECENT_FEATURES.md)** is the frozen earlier archive
 - **[WORKFLOW_FEATURES.md](./docs/WORKFLOW_FEATURES.md)** - Detailed workflow features documentation
 
 📋 **System-Specific Documentation**:
@@ -135,7 +135,7 @@ The app uses strict TypeScript (`strict`, `noUncheckedIndexedAccess`). Supabase 
 
 ## Features (high level)
 
-The major systems, one line each. Feature history lives in [docs/RECENT_FEATURES.md](./docs/RECENT_FEATURES.md) (grep for `v2.NNN` or a feature name); architecture and schema detail lives in [docs/PROJECT_DOCUMENTATION.md](./docs/PROJECT_DOCUMENTATION.md).
+The major systems, one line each. Feature history lives in [docs/recent-features/](./docs/recent-features/) (one fragment per PR; the frozen [docs/RECENT_FEATURES.md](./docs/RECENT_FEATURES.md) archive covers everything before 2026-08-20 — grep for `v2.NNN` or a feature name); architecture and schema detail lives in [docs/PROJECT_DOCUMENTATION.md](./docs/PROJECT_DOCUMENTATION.md).
 
 - **Customers & Projects** — customer records, project workflows with custom stages, templates, superintendent assignment
 - **Workflows / stages** — assignment, lifecycle actions (start/complete/approve/send-back/skip), sub work orders (step commitments), notifications, action ledger, projections and line items (see [docs/WORKFLOW_FEATURES.md](./docs/WORKFLOW_FEATURES.md))

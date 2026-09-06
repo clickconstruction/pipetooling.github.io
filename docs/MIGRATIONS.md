@@ -2826,7 +2826,7 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 **`20260424161028_mercury_debit_card_auto_assign_user.sql`**
 - **Purpose**: **Banking** — optional auto-assignment of Mercury **person**/ **user** on linked-card transactions: switch from **`auto_assign_person_id`** to **`mercury_debit_card_user_links.auto_assign_user_id`** (FK **`public.users`**, same roster as Tally / User Card Link). Replaces trigger logic so **`mercury_transaction_attributions.user_id`** is set for unattributed rows; includes **`backfill_mercury_auto_attributions_for_debit_card`** for staff to backfill a card.
 - **Changes**: **`ADD COLUMN auto_assign_user_id`**; **`DROP COLUMN auto_assign_person_id`**; **`CREATE OR REPLACE`** **`mercury_transactions_apply_debit_card_auto_attribution`**; backfill RPC updated for **`user_id`**
-- **Impact**: [`BankingUserCardLinkModal.tsx`](../src/components/BankingUserCardLinkModal.tsx); see **`RECENT_FEATURES.md`** v2.401, **`PROJECT_DOCUMENTATION.md`** §15 Banking
+- **Impact**: `BankingUserCardLinkModal.tsx` (since folded into [`BankingDebitCardsModal.tsx`](../src/components/banking/BankingDebitCardsModal.tsx)); see **`RECENT_FEATURES.md`** v2.401, **`PROJECT_DOCUMENTATION.md`** §15 Banking
 - **Category**: Banking / Integrations
 
 #### April 25, 2026

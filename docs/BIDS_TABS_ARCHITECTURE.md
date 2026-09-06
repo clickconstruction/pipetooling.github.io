@@ -139,7 +139,7 @@ Each per-tab section lists: render location, **owned local state** (used only by
 - **Handlers (now in the child):** `insertCountRows`, `saveCountRowsOrder` (RPC `update_bids_count_rows_order`), `handleCountsDragEnd`, `handleClearAllCounts`, `handleCountsImport`/`handleCountsImportClick` (uses `parseCountsImportText`), `exportCountsToCsv` (uses `buildCountsCsv`). Toast via `useToastContext()` in the child.
 - **Data dependencies:** `bids_count_rows` — the **root** of the pricing pipeline (takeoffs/labor/pricing all re-read it for the same bid). Count CRUD triggers `refreshAfterCountsChange`, which cascades to takeoffs + labor.
 - **Supabase tables:** `bids_count_rows` (SELECT/INSERT/DELETE + RPC reorder).
-- **Sub-components:** `BidWorkflowTabTitleWithPreview`, `SortableCountRow` ([`CountRow.tsx`](../src/components/bids/CountRow.tsx)), `NewCountRow`, `ClearAllCountsModal`, `ModalShell`, `DndContext`/`SortableContext` (`@dnd-kit`) — all consumed inside `BidsCountsTab`.
+- **Sub-components:** `BidWorkflowTabTitleWithPreview`, `SortableCountRow` (`CountRow.tsx` — retired with the Old Counts view, v2.2707), `NewCountRow`, `ClearAllCountsModal`, `ModalShell`, `DndContext`/`SortableContext` (`@dnd-kit`) — all consumed inside `BidsCountsTab`.
 - **External coupling:** producer for downstream tabs via `refreshAfterCountsChange` (passed in from the hook). Does not read takeoff/labor/pricing state in render.
 - **Extraction status + risk + approach:** **Extracted** (`BidsCountsTab`). The selection stays parent-owned; engine state/loaders are injected as props from `useBidPricingEngine`. First of the cluster tabs extracted now that the engine seam exists.
 
@@ -364,7 +364,6 @@ Components added after the extraction pass (easy to miss in the dossiers above):
 - **[`MyBidsToggle`](../src/components/bids/MyBidsToggle.tsx)** — bid-picker filter chip, rendered inside `BidsCountsTab` / `BidsTakeoffTab` / `BidsLaborTab` / `BidsPricingTab` / `BidsCoverLetterTab`.
 - **[`AssignTakeoffPartModal`](../src/components/bids/AssignTakeoffPartModal.tsx)** — inline takeoff part assignment from the Pricing grid (rendered by `BidsPricingTab`); stamps `bid_version_id` on takeoff writes.
 - **[`BidBoardCustomerReviewModal`](../src/components/bids/BidBoardCustomerReviewModal.tsx)** — per-customer bid counts + team hours (v2.641), rendered by `BidsBidBoardTab`.
-- **[`BidProjectCell`](../src/components/bids/BidProjectCell.tsx)** — small ledger-prefixed project cell used in the takeoff bid table.
 
 ---
 

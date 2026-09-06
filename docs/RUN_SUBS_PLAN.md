@@ -72,7 +72,7 @@ export function planStepTransition(input: {
 ```
 
 - Encodes exactly today's Workflow.tsx semantics (payloads quoted in the audit): start `{started_at, status:'in_progress'}`; complete/approve with `ended_at`/`approved_by`/`approved_at` + the rejected-next-step reopen cascade; reject with the prev-step `in_progress` reopen or notice-stamp; skip (no notifications, `'skipped'` action row — legal after PR 0.0); reopen clears the six fields.
-- Notification intents reproduce the `sendWorkflowNotifications` table (assignee / subscribers / next-assignee "Your turn" push / prior-assignee on reject). Recipient *resolution* (name → users/people email) moves to `src/lib/workflow/stepNotificationRecipients.ts` so both surfaces share `getContactForName`.
+- Notification intents reproduce the `sendWorkflowNotifications` table (assignee / subscribers / next-assignee "Your turn" push / prior-assignee on reject). Recipient *resolution* (name → users/people email) is `getContactForName` in `src/lib/workflow/stepLifecycleNotifications.ts`, shared by both surfaces.
 - Rewire `Workflow.tsx` and `DashboardProjectsCard.tsx` to plan-then-execute. Each keeps its own refresh (`refreshSteps()` vs `loadAssignedSteps()`), toasts, and UI behavior (v2.1189 collapse/advance stays in Workflow.tsx). **The Dashboard card starts sending notifications and adopts the `in_progress` reject cascade** — both called out as behavior changes.
 - Tests pin every transition's payloads, both cascades, and skip's empty notification list.
 

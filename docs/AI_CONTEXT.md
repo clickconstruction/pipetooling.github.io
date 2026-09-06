@@ -1,6 +1,6 @@
 # AI Context - Quick Project Overview
 
-> **Purpose**: A genuinely quick overview of PipeTooling for AI agents and new developers. Read [`../AGENTS.md`](../AGENTS.md) first (constraints + dev login), this second, then the specialist doc for your task ([`README.md`](./README.md) index). Per-feature history lives in [`RECENT_FEATURES.md`](./RECENT_FEATURES.md) — grep it; never append feature detail to this file.
+> **Purpose**: A genuinely quick overview of PipeTooling for AI agents and new developers. Read [`../AGENTS.md`](../AGENTS.md) first (constraints + dev login), this second, then the specialist doc for your task ([`README.md`](./README.md) index). Per-feature history lives in [`recent-features/`](./recent-features/) (fragments since 2026-08-20) and the frozen [`RECENT_FEATURES.md`](./RECENT_FEATURES.md) archive — grep them; never append feature detail to this file.
 
 ---
 
@@ -55,7 +55,7 @@ Merging to `main` triggers the GitHub Pages deploy ([`.github/workflows/deploy.y
 **RLS Everywhere**:
 - Every table has Row Level Security; policies check ownership, role, adoption, sharing
 - Helper/capability functions prevent timeouts and centralize role logic: `is_dev()`, `is_assistant()` (assistant + controller), `has_payroll_access()`, `can_access_project_via_step()`, `can_edit_schedule_dispatch()` (mirror of the client's `CAN_USE_SCHEDULE_DISPATCH_EDIT_ROLES`)
-- **Read-only training mode**: users flagged `users.read_only` are blocked from writes by restrictive policies; every CREATE TABLE migration must end with `SELECT public.apply_read_only_write_blocks();`
+- **Read-only training mode**: users flagged `users.read_only` are blocked from writes by restrictive policies; every CREATE TABLE migration must end with BOTH `SELECT public.apply_read_only_write_blocks();` and `SELECT public.apply_read_only_stmt_blocks();`
 
 ### Data Flow
 
@@ -88,8 +88,8 @@ Customer (has master_user_id)
 - **Themes**: light/dark via CSS variables in `src/index.css` — use tokens (`var(--surface)`, `var(--text-muted)`, …), never raw neutral hexes (CI-enforced)
 
 ### Backend
-- Supabase: PostgreSQL 15 + RLS, Auth, Edge Functions (Deno), some Realtime
-- ~252 tables; ~61 Edge Functions (`docs/EDGE_FUNCTIONS.md`)
+- Supabase: PostgreSQL 17 + RLS, Auth, Edge Functions (Deno), some Realtime
+- ~355 tables; ~104 Edge Functions (`docs/EDGE_FUNCTIONS.md`)
 - Linked prod project: `yewfzhbofbbyvkvtaatw` ("plumbing-stage-manager"); **no staging** — migrations hit prod
 
 ### Deployment (three separate tracks — see `../CLAUDE.md`)
@@ -115,18 +115,21 @@ pipetooling.github.io/
 │   ├── lib/                # Pure logic kernels + Supabase helpers (unit-tested with vitest)
 │   ├── utils/              # errorHandling, dateUtils (APP_CALENDAR_TZ), teamLabor, …
 │   ├── types/              # database.ts (generated), database-functions.ts (manual)
-│   └── content/help/       # User-facing help guides (ship with features)
+│   ├── content/help/       # User-facing help guides (ship with features)
+│   └── content/releaseNotes/ # One v2.NNNN.ts release note per PR (aggregator frozen)
 ├── supabase/
 │   ├── migrations/         # Post-baseline migrations (baseline: 20250101000000_baseline.sql)
 │   ├── archive/            # Pre-baseline migration history (2027-dated names are typos)
 │   └── functions/          # Edge Functions (Deno)
 ├── docs/                   # All documentation (index: docs/README.md)
+│   ├── recent-features/    # One v2.NNNN.md fragment per PR since 2026-08-20
+│   └── migrations/         # One .md fragment per migration since 2026-08-20
 └── scripts/                # CI checks: migrations, drift, theme tokens, timezone
 ```
 
 ### Largest files (extraction candidates — see `PAGE_DECOMPOSITION_PLAYBOOK.md`)
 
-The kept-current inventory (with per-surface architecture maps) lives in `PAGE_DECOMPOSITION_PLAYBOOK.md`. Headlines as of 2026-07-30: `src/pages/Materials.tsx` (~6.9k lines, low-churn, no extraction scheduled), `src/components/bids/BidsTakeoffTab.tsx` (~5.8k), `src/pages/Estimates.tsx` (~5.4k), `src/components/people/PeopleReviewTab.tsx` (~5.0k), `src/pages/Workflow.tsx` (~4.8k), `src/components/jobs/JobFormModal.tsx` (~3.8k, extraction underway). Already decomposed — their maps show the pattern: Jobs.tsx (~2.0k, was ~10.6k), Bids.tsx (~3.8k), People.tsx (~4.4k), Settings.tsx (~1.7k), Dashboard.tsx (~1.7k).
+The kept-current inventory (with per-surface architecture maps) lives in `PAGE_DECOMPOSITION_PLAYBOOK.md`. Headlines as of 2026-09-06: `src/pages/Estimates.tsx` (~6.9k lines), `src/components/jobs/JobsStagesTab.tsx` (~6.1k), `src/components/bids/BidsPricingTab.tsx` (~5.5k), `src/components/jobs/JobFormModal.tsx` (~4.8k), `src/pages/People.tsx` (~4.7k), `src/pages/Bids.tsx` (~4.6k), `src/pages/Workflow.tsx` (~4.3k), `src/components/people/PeopleReviewTab.tsx` (~4.2k). Already decomposed — their maps show the pattern: Materials.tsx (~2.2k, was ~6.9k), BidsTakeoffTab.tsx (~2.9k, was ~5.8k), Jobs.tsx (~2.1k, was ~10.6k), Settings.tsx (~1.8k), Dashboard.tsx (~1.8k).
 
 ### Core infrastructure files
 
@@ -206,7 +209,7 @@ CREATE FUNCTION create_project_with_template(...)
 ```
 
 ### Pure Logic Kernels
-Business logic is extracted into pure `.ts` modules in `src/lib/` with colocated vitest tests (`*.test.ts`) — kernels are the primary test pattern; components stay thin. Component render smokes (`*.render.test.tsx`, jsdom + `renderWithProviders` from `src/test/renderSmokeMocks.tsx`) cover wiring-level behavior. ~440 test files.
+Business logic is extracted into pure `.ts` modules in `src/lib/` with colocated vitest tests (`*.test.ts`) — kernels are the primary test pattern; components stay thin. Component render smokes (`*.render.test.tsx`, jsdom + `renderWithProviders` from `src/test/renderSmokeMocks.tsx`) cover wiring-level behavior. ~1,070 test files (~130 of them render smokes).
 
 ### State Management
 - **Global**: React Context (Toast, ForceReload, modal openers, caches)
@@ -267,11 +270,11 @@ type Customer = Database['public']['Tables']['customers']['Row']
                            │ Supabase JS client
 ┌──────────────────────────┼──────────────────────────────┐
 │                 Supabase Backend (prod only)             │
-│  PostgreSQL: ~252 tables, RLS everywhere, triggers,      │
+│  PostgreSQL: ~355 tables, RLS everywhere, triggers,      │
 │    SECURITY DEFINER helpers, transaction functions       │
 │  Auth: email/password + magic links (dev-login,          │
 │    login-as-user)                                        │
-│  Edge Functions (Deno, ~61): email (Resend), Stripe,     │
+│  Edge Functions (Deno, ~104): email (Resend), Stripe,    │
 │    Mercury sync, geocoding, notifications, cron jobs     │
 └─────────────────────────────────────────────────────────┘
 ```
@@ -305,8 +308,8 @@ See `../AGENTS.md` → Critical Constraints (authoritative list): append-only mi
 
 ## Next Steps
 
-**For AI agents**: consult the specialist doc for your task (`README.md` index) → review code → grep `RECENT_FEATURES.md` for the surface's history.
+**For AI agents**: consult the specialist doc for your task (`README.md` index) → review code → grep `recent-features/` (and the frozen `RECENT_FEATURES.md` archive) for the surface's history.
 
 **For new developers**: `../README.md` for setup → this file → `PROJECT_DOCUMENTATION.md` for depth → run the app (`npm install && npm run dev`).
 
-last_updated: 2026-08-06
+last_updated: 2026-09-06
