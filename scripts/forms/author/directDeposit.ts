@@ -11,7 +11,7 @@ export async function buildDirectDeposit() {
   const p = addPage(1)
   p.letterhead(COMPANY, COMPANY_TAGLINE, [...COMPANY_ADDRESS_LINES])
   p.title('Direct Deposit Authorization')
-  p.subtitle('Payments · complete one form per account. Attach a voided check or a letter from your bank.')
+  p.subtitle('Payments · complete one form per account.')
 
   p.paragraph(
     `I authorize ${COMPANY} to deposit payments due to me electronically to the account below, and to withdraw from that account any amount deposited in error. This authorization stays in effect until I give ${COMPANY} written notice to change or cancel it, and I understand the office may need some time to process a change.`,
