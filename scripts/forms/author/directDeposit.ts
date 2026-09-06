@@ -55,13 +55,13 @@ export async function buildDirectDeposit() {
   p.paragraph('How much to deposit', { bold: true, gapAfter: 0 })
   p.checkRow('', [
     { key: 'deposit_all', label: 'My entire net pay', labelEs: 'Todo mi pago neto', sample: 'true' },
-    { key: 'deposit_partial', label: 'A fixed dollar amount each pay period (write it below)', labelEs: 'Una cantidad fija en dólares cada período de pago' },
+    { key: 'deposit_partial', label: 'A fixed dollar amount (write it below)', labelEs: 'Una cantidad fija en dólares' },
   ], 'deposit_kind', 'How much to deposit', true)
   p.checkRow('', [
-    { key: 'deposit_percent', label: 'A percentage of the amount due to me each pay period (write it below)', labelEs: 'Un porcentaje de la cantidad que se me debe cada período de pago' },
+    { key: 'deposit_percent', label: 'A percentage of the amount due to me (write it below)', labelEs: 'Un porcentaje de la cantidad que se me debe' },
   ], 'deposit_kind', 'How much to deposit', true)
   p.fieldRow([
-    { box: { key: 'deposit_amount', type: 'text', label: 'Fixed dollar amount per pay period', labelEs: 'Cantidad fija en dólares por período de pago', advanced: true, help: 'Only if you chose a fixed amount above. The rest of your pay is paid by check.', helpEs: 'Solo si eligió una cantidad fija. El resto se paga con cheque.' }, label: 'Fixed amount ($)', frac: 0.26 },
+    { box: { key: 'deposit_amount', type: 'text', label: 'Fixed dollar amount', labelEs: 'Cantidad fija en dólares', advanced: true, help: 'Only if you chose a fixed amount above. The rest of your pay is paid by check.', helpEs: 'Solo si eligió una cantidad fija. El resto se paga con cheque.' }, label: 'Fixed amount ($)', frac: 0.26 },
     { box: { key: 'deposit_percent_value', type: 'digits', label: 'Percentage of the amount due', labelEs: 'Porcentaje de la cantidad debida', mask: '###', maxLength: 3, advanced: true, help: 'Only if you chose a percentage above — 1 to 100. The rest of your pay is paid by check.', helpEs: 'Solo si eligió un porcentaje — de 1 a 100. El resto se paga con cheque.' }, label: 'Percentage (%)', frac: 0.22 },
     { box: { key: 'notes', type: 'text', label: 'Anything the office should know', labelEs: 'Algo que la oficina deba saber', advanced: true }, label: 'Notes (optional)', frac: 0.52 },
   ])

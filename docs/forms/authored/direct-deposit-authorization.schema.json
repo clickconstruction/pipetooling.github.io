@@ -187,8 +187,8 @@
         "h": 10
       },
       "order": 110,
-      "label": "A fixed dollar amount each pay period (write it below)",
-      "labelEs": "Una cantidad fija en dólares cada período de pago",
+      "label": "A fixed dollar amount (write it below)",
+      "labelEs": "Una cantidad fija en dólares",
       "group": "deposit_kind"
     },
     {
@@ -202,15 +202,15 @@
         "h": 10
       },
       "order": 120,
-      "label": "A percentage of the amount due to me each pay period (write it below)",
-      "labelEs": "Un porcentaje de la cantidad que se me debe cada período de pago",
+      "label": "A percentage of the amount due to me (write it below)",
+      "labelEs": "Un porcentaje de la cantidad que se me debe",
       "group": "deposit_kind"
     },
     {
       "key": "deposit_amount",
       "type": "text",
-      "label": "Fixed dollar amount per pay period",
-      "labelEs": "Cantidad fija en dólares por período de pago",
+      "label": "Fixed dollar amount",
+      "labelEs": "Cantidad fija en dólares",
       "advanced": true,
       "help": "Only if you chose a fixed amount above. The rest of your pay is paid by check.",
       "helpEs": "Solo si eligió una cantidad fija. El resto se paga con cheque.",
