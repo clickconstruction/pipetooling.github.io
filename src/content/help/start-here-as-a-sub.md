@@ -43,7 +43,7 @@ Some work orders come with a **window** — the span the office wants the stage 
 
 If none of the days work, tap **Can't do any of these days**, say when you could, and the office will offer other dates.
 
-Once signed, your job card shows **Your dates**. You can move them inside the window yourself until the day before you start with {{button:outline|Change}}. After that, call the office.
+Once signed, your job card shows **Your dates**. If the office moves the window under your days, the card says **The office needs new dates** with the reason and opens the calendar — pick a start inside the new window and {{button:outline|Confirm new dates}}. You can move them inside the window yourself until the day before you start with {{button:outline|Change}}. After that, call the office.
 
 ## Your days
 

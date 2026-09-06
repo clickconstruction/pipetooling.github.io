@@ -30,3 +30,7 @@ When several stages fall on the same dates, press **Offer several together…** 
 ## After inspection
 
 When you move a sheet to Post-inspection on its story, the next stage with a window is either offered on its own (the second switch) or a dispatch line asks *"a stage passed — offer Top-out to Summit General?"*
+
+## When the GC asks
+
+Under an offered stage the GC can press **Ask for other dates** — two days and a why. It lands in the dispatch inbox (*Summit General asks for Top-out Sep 22 → Oct 2 on #1004*) and on the stage row on **Jobs → Subs → Work**: *GC asked Sep 22 – Oct 2 · "framing slipped"*. Press {{button:blue|Accept}} to make that the window, or **Answer with…** to propose your own dates with a why the GC reads. If the sub had already picked days that no longer fit, their portal asks them to confirm new dates inside the new window, and the GC sees *Re-scheduling* until they do.

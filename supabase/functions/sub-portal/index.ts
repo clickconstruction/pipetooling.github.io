@@ -235,7 +235,7 @@ serve(async (req) => {
     if (laborJobIds.length > 0) {
       const { data: agreementsRaw } = await admin
         .from('step_commitments')
-        .select('id, labor_job_id, amount, signed_at, accepted_at, signer_printed_name, offer_scope_snapshot, signer_acknowledgements, work_days, picked_start, picked_end, proposed_start, proposed_end, stage_window_id')
+        .select('id, labor_job_id, amount, signed_at, accepted_at, signer_printed_name, offer_scope_snapshot, signer_acknowledgements, work_days, picked_start, picked_end, proposed_start, proposed_end, stage_window_id, change_requested_at, change_requested_note')
         .in('labor_job_id', laborJobIds)
         .is('step_id', null)
         .in('status', ['accepted', 'approved', 'settled'])

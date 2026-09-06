@@ -607,11 +607,11 @@ serve(async (req) => {
       if (!commitmentId) return jsonResponse({ error: 'Bad request' }, 400)
       const { data: commitment } = await admin
         .from('step_commitments')
-        .select('id, person_id, status, labor_job_id, step_id, job_id, proposed_start, proposed_end, picked_start, picked_end, stage_window_id, work_days, offer_scope_snapshot')
+        .select('id, person_id, status, labor_job_id, step_id, job_id, proposed_start, proposed_end, picked_start, picked_end, stage_window_id, work_days, offer_scope_snapshot, change_requested_at')
         .eq('id', commitmentId)
         .maybeSingle()
       const c = commitment as
-        | { id: string; person_id: string; status: string; labor_job_id: string | null; step_id: string | null; job_id: string | null; proposed_start: string | null; proposed_end: string | null; picked_start: string | null; picked_end: string | null; stage_window_id: string | null; work_days: number | null; offer_scope_snapshot: unknown }
+        | { id: string; person_id: string; status: string; labor_job_id: string | null; step_id: string | null; job_id: string | null; proposed_start: string | null; proposed_end: string | null; picked_start: string | null; picked_end: string | null; stage_window_id: string | null; work_days: number | null; offer_scope_snapshot: unknown; change_requested_at: string | null }
         | null
       if (!c || c.person_id !== link.person_id) return jsonResponse({ error: 'Not found' }, 404)
       const todayYmd = todayYmdInAppTz()
@@ -640,7 +640,8 @@ serve(async (req) => {
       // pick_dates
       if (!['accepted', 'approved'].includes(c.status)) return jsonResponse({ error: 'Sign the work order first, then pick your days.' }, 409)
       if (!pickWindow) return jsonResponse({ error: 'These dates were set by the office — call us to move them.' }, 409)
-      if (c.picked_start && !canChangePick(c.picked_start, todayYmd)) return jsonResponse({ error: 'Too close to move it here — call the office.' }, 409)
+      // A change request from the office (v2.2934) reopens the pick regardless of the day-before rule.
+      if (c.picked_start && !c.change_requested_at && !canChangePick(c.picked_start, todayYmd)) return jsonResponse({ error: 'Too close to move it here — call the office.' }, 409)
       const start = ymdField(body.pickedStart)
       const end = ymdField(body.pickedEnd) ?? start
       if (!start || !end) return jsonResponse({ error: 'Pick your start day.' }, 400)
@@ -648,6 +649,7 @@ serve(async (req) => {
       if (!verdict.ok) return jsonResponse({ error: pickProblemMessage(verdict.reason) }, 400)
       const ok = await writePick(admin, c, verdict.start, verdict.end)
       if (!ok) return jsonResponse({ error: 'Something went wrong. Please try again.' }, 500)
+      if (c.change_requested_at) await admin.from('step_commitments').update({ change_requested_at: null, change_requested_note: null }).eq('id', c.id)
       if (c.job_id) await notifyJobWatchers(admin, { jobId: c.job_id, kind: 'dates', subName: personName, line: `${personName} ${c.picked_start ? 'moved to' : 'picked'} ${verdict.start} → ${verdict.end}`, detail: sheetLabel ?? null })
       await insertDispatchNote(admin, link, `${personName} ${c.picked_start ? 'moved' : 'picked'} ${verdict.start} → ${verdict.end} for ${sheetLabel ?? 'a work order'}`, {
         kind: 'sub_dates_picked',

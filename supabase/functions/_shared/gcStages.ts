@@ -8,9 +8,9 @@
  * who, when, and how far along.
  */
 
-export type GcStageWindowRow = { id: string; job_id: string; fixture_id: string; window_start: string | null; window_end: string | null; offered_to_gc: boolean; bundle_id: string | null }
+export type GcStageWindowRow = { id: string; job_id: string; fixture_id: string; window_start: string | null; window_end: string | null; offered_to_gc: boolean; bundle_id: string | null; asked_start?: string | null; asked_end?: string | null; asked_note?: string | null; asked_at?: string | null; answered_at?: string | null; answer?: string | null; answer_note?: string | null }
 export type GcStageFixtureRow = { id: string; name: string | null; sequence_order: number | null }
-export type GcStageOrderRow = { id: string; stage_window_id: string | null; status: string; display_name: string; picked_start: string | null; picked_end: string | null; labor_job_id: string | null }
+export type GcStageOrderRow = { id: string; stage_window_id: string | null; status: string; display_name: string; picked_start: string | null; picked_end: string | null; labor_job_id: string | null; change_requested_at?: string | null }
 export type GcStageSheetRow = { id: string; stage: string | null; progress_pct: number | null }
 
 export type GcStageState = 'window' | 'offered' | 'scheduled' | 'working' | 'inspection' | 'passed'
@@ -27,6 +27,9 @@ export type GcStageEntry = {
   when: { start: string; end: string } | null
   pct: number | null
   state: GcStateForEntry
+  /** v2.2934: the GC's ask and the office's answer; `rescheduling` while the sub re-picks. */
+  asked: { start: string; end: string; note: string | null; answer: 'open' | 'accepted' | 'proposed'; answerNote: string | null } | null
+  rescheduling: boolean
 }
 export type GcStateForEntry = GcStageState
 
@@ -78,6 +81,8 @@ export function buildGcStageEntries(input: { windows: GcStageWindowRow[]; fixtur
       when: order && order.status !== 'offered' ? when : null,
       pct: sheet?.progress_pct ?? null,
       state,
+      asked: first.asked_at && first.asked_start && first.asked_end ? { start: first.asked_start, end: first.asked_end, note: (first.asked_note ?? '').trim() || null, answer: !first.answered_at ? 'open' : first.answer === 'accepted' ? 'accepted' : 'proposed', answerNote: (first.answer_note ?? '').trim() || null } : null,
+      rescheduling: !!order?.change_requested_at,
     })
   }
   return entries.sort((a, b) => (a.window?.start ?? '9999').localeCompare(b.window?.start ?? '9999') || a.name.localeCompare(b.name))

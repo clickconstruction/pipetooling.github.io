@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { PortalStageAsk } from '../components/portal/PortalStageAsk'
 import { publicFunctionHeaders, sampleStateFromToken } from '../lib/customerSampleMode'
 import { staffAwarePublicHeaders } from '../lib/publicFunctionStaffHeaders'
 import { PUBLIC_PREVIEW_PARAM, isPreviewFlag } from '../lib/publicViewCounting'
@@ -263,7 +264,7 @@ export default function CustomerPortal() {
                 <span style={{ color: MUTED }}> — statement updated.</span>
               </div>
             )}
-            <PortalStatement payload={state.payload} today={today} />
+            <PortalStatement requestToken={state.payload.requestToken ?? token} payload={state.payload} today={today} />
             <div data-screen-only>
               <PortalRequestForms token={state.payload.requestToken ?? token} payload={state.payload} />
             </div>
@@ -283,7 +284,7 @@ export default function CustomerPortal() {
   )
 }
 
-function PortalStatement({ payload, today }: { payload: PortalPayload; today: string }) {
+function PortalStatement({ payload, today, requestToken }: { payload: PortalPayload; today: string; requestToken: string }) {
   // Same local-date basis as the header's date line, for the Billed age sub-lines.
   const d = new Date()
   const todayYmd = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
@@ -450,7 +451,10 @@ function PortalStatement({ payload, today }: { payload: PortalPayload; today: st
                         {e.who && e.when ? `${e.who} · ${span(e.when)}` : e.window ? `Between ${span(e.window)}` : 'Dates to come'}
                       </div>
                     </div>
-                    <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', borderRadius: 999, padding: '3px 9px', background: chip.bg, color: chip.fg, whiteSpace: 'nowrap' }}>{chip.t}</span>
+                    <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', borderRadius: 999, padding: '3px 9px', background: e.rescheduling ? '#f6e6d8' : chip.bg, color: e.rescheduling ? COPPER : chip.fg, whiteSpace: 'nowrap' }}>{e.rescheduling ? 'Re-scheduling' : chip.t}</span>
+                    <div data-screen-only style={{ flexBasis: '100%' }}>
+                      <PortalStageAsk entry={e} token={requestToken} todayYmd={todayYmd} />
+                    </div>
                   </div>
                 )
               })}

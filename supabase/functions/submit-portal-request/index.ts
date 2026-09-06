@@ -1,4 +1,5 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
+import { askProblem } from '../_shared/stageAsk.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { sendEmailViaResend } from '../_shared/resendSendEmail.ts'
 
@@ -45,7 +46,7 @@ serve(async (req) => {
     }
 
     const token = typeof body.token === 'string' ? body.token.trim() : ''
-    const kind = body.kind === 'bid' ? 'bid' : body.kind === 'visit' ? 'visit' : null
+    const kind = body.kind === 'bid' ? 'bid' : body.kind === 'visit' ? 'visit' : body.kind === 'stage_window' ? 'stage_window' : null
     const description = typeof body.description === 'string' ? body.description.trim() : ''
     const availability = typeof body.availability === 'string' ? body.availability.trim().slice(0, 300) : ''
     const phone = typeof body.phone === 'string' ? body.phone.trim().slice(0, 40) : ''
@@ -55,7 +56,7 @@ serve(async (req) => {
     if (!token || token.length < 16 || token.length > 128 || !kind) {
       return jsonResponse({ error: 'Bad request' }, 400)
     }
-    if (description.length < 5 || description.length > 2000) {
+    if (kind !== 'stage_window' && (description.length < 5 || description.length > 2000)) {
       return jsonResponse({ error: 'Please tell us a little more about what you need (a sentence or two).' }, 400)
     }
     if (plansLink && !/^https:\/\//.test(plansLink)) {
@@ -106,6 +107,72 @@ serve(async (req) => {
     }
 
     // Attribution: configured portal inbox user, else whoever minted the link,
+    // ── stage_window (v2.2934): the GC asks for other dates on an offered stage ──
+    if (kind === 'stage_window') {
+      if (link.audience !== 'gc' && link.audience !== 'all') return jsonResponse({ error: 'Not found' }, 404)
+      const stageId = typeof body.stageId === 'string' && /^[0-9a-f-]{36}$/.test(body.stageId) ? body.stageId : null
+      const start = typeof body.start === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(body.start) ? body.start : null
+      const end = typeof body.end === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(body.end) ? body.end : null
+      const note = typeof body.note === 'string' ? body.note.trim().slice(0, 500) : ''
+      if (!stageId || !start || !end) return jsonResponse({ error: 'Pick both days.' }, 400)
+      const todayYmd = new Date().toISOString().slice(0, 10)
+      const problem = askProblem(start, end, todayYmd)
+      if (problem) return jsonResponse({ error: problem }, 400)
+      // The window by id, or every window in the bundle.
+      const { data: winRaw } = await admin
+        .from('job_stage_windows')
+        .select('id, job_id, fixture_id, bundle_id, offered_to_gc, window_start, window_end, fixture:fixture_id(name), job:job_id(hcp_number, gc_customer_id, gc_shares_stage_dates)')
+        .or(`id.eq.${stageId},bundle_id.eq.${stageId}`)
+      const wins = (winRaw ?? []) as Array<{ id: string; job_id: string; bundle_id: string | null; offered_to_gc: boolean; fixture: { name: string | null } | { name: string | null }[] | null; job: { hcp_number: string | null; gc_customer_id: string | null; gc_shares_stage_dates: boolean } | { hcp_number: string | null; gc_customer_id: string | null; gc_shares_stage_dates: boolean }[] | null }>
+      const jobOf = (w: (typeof wins)[number]) => (Array.isArray(w.job) ? w.job[0] ?? null : w.job)
+      const mine = wins.filter((w) => w.offered_to_gc && jobOf(w)?.gc_customer_id === link.customer_id && jobOf(w)?.gc_shares_stage_dates === true)
+      if (mine.length === 0) return jsonResponse({ error: 'Not found' }, 404)
+      const nowIso = new Date().toISOString()
+      const { error: askErr } = await admin
+        .from('job_stage_windows')
+        .update({ asked_start: start, asked_end: end, asked_note: note || null, asked_at: nowIso, answered_at: null, answer: null, answer_note: null })
+        .in('id', mine.map((w) => w.id))
+      if (askErr) {
+        console.error('stage ask write failed', askErr)
+        return jsonResponse({ error: 'Something went wrong. Please try again.' }, 500)
+      }
+      const names = mine.map((w) => { const f = Array.isArray(w.fixture) ? w.fixture[0] ?? null : w.fixture; return (f?.name ?? '').trim() || 'a stage' }).join(' + ')
+      const hcp = (jobOf(mine[0]!)?.hcp_number ?? '').trim()
+      const { data: setting } = await admin.from('app_settings').select('value_text').eq('key', 'portal_requests_from_user_id').maybeSingle()
+      let fromUserId = ((setting as { value_text?: string | null } | null)?.value_text ?? '').trim() || (link.created_by ?? '')
+      if (!fromUserId) {
+        const { data: dev } = await admin.from('users').select('id').eq('role', 'dev').order('created_at').limit(1).maybeSingle()
+        fromUserId = (dev as { id?: string } | null)?.id ?? ''
+      }
+      if (fromUserId) {
+        const { data: cust } = await admin.from('customers').select('name').eq('id', link.customer_id).maybeSingle()
+        const gcName = ((cust as { name?: string | null } | null)?.name ?? '').trim() || 'The GC'
+        const { data: inserted } = await admin
+          .from('dispatch_requests')
+          .insert({
+            from_user_id: fromUserId,
+            title: `${gcName} asks for ${names} ${start} → ${end}${hcp ? ` on #${hcp}` : ''}${note ? `: ${note.slice(0, 120)}` : ''}`,
+            links: [],
+            job_ledger_id: mine[0]!.job_id,
+            bid_id: null,
+            reference_summary: hcp ? `#${hcp} · ${names}` : names,
+            pending_action: 'gc_stage_ask',
+            pending_payload: { source: 'customer_portal', kind: 'gc_stage_ask', portalLinkId: link.id, audience: link.audience, stageWindowIds: mine.map((w) => w.id), start, end, note: note || null, gcName },
+          })
+          .select('id')
+          .single()
+        const id = (inserted as { id?: string } | null)?.id
+        if (id) {
+          try {
+            await fetch(`${Deno.env.get('SUPABASE_URL')!}/functions/v1/notify-dispatch-request`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ dispatch_request_id: id }) })
+          } catch (e) {
+            console.error('notify-dispatch-request call failed', e)
+          }
+        }
+      }
+      return jsonResponse({ ok: true })
+    }
+
     // else the first dev (dispatch_requests.from_user_id is NOT NULL).
     let fromUserId: string | null = null
     const { data: setting } = await admin.from('app_settings').select('value_text').eq('key', 'portal_requests_from_user_id').maybeSingle()

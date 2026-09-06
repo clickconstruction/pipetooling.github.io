@@ -320,7 +320,7 @@ serve(async (req) => {
       if (sharing.length > 0) {
         const { data: winRaw } = await admin
           .from('job_stage_windows')
-          .select('id, job_id, fixture_id, window_start, window_end, offered_to_gc, bundle_id')
+          .select('id, job_id, fixture_id, window_start, window_end, offered_to_gc, bundle_id, asked_start, asked_end, asked_note, asked_at, answered_at, answer, answer_note')
           .in('job_id', sharing.map((j) => j.id))
           .eq('offered_to_gc', true)
           .limit(500)
@@ -330,7 +330,7 @@ serve(async (req) => {
           const windowIds = windows.map((w) => w.id)
           const [{ data: fxRaw }, { data: ordRaw }] = await Promise.all([
             admin.from('jobs_ledger_fixtures').select('id, name, sequence_order').in('id', fixtureIds),
-            admin.from('step_commitments').select('id, stage_window_id, status, display_name, picked_start, picked_end, labor_job_id').in('stage_window_id', windowIds).in('status', ['offered', 'accepted', 'approved', 'settled']),
+            admin.from('step_commitments').select('id, stage_window_id, status, display_name, picked_start, picked_end, labor_job_id, change_requested_at').in('stage_window_id', windowIds).in('status', ['offered', 'accepted', 'approved', 'settled']),
           ])
           const orders = (ordRaw ?? []) as GcStageOrderRow[]
           const sheetIds = [...new Set(orders.map((o) => o.labor_job_id).filter((id): id is string => !!id))]
