@@ -27,6 +27,8 @@ import { bidNumberMatchesQuery, type LedgerPrefixMap } from '../../lib/ledgerDis
 import { buildCountSheetPageGroups, countSheetSummary, findDuplicateFixture, parsePlanPageTokens } from '../../lib/bids/countSheet'
 import { COUNT_UNITS, COUNT_UNIT_LABEL, classifyCountRowUnit, effectiveCountUnit, formatUnitTotal, formatUnitTotals, isCountUnit, summarizeRowsByUnit, type CountUnit } from '../../lib/bids/countRowUnit'
 import { breakdownJumpDomId, breakdownJumpMissMessage, countsRowDomId, type BreakdownJumpTarget } from '../../lib/bids/bidTabRowJump'
+import { referenceGradeChip, referenceGradeChipApplies } from '../../lib/bids/referenceGradeChip'
+import { GRADE_COLORS } from './RobotReferenceGradeModal'
 import { usePendingRowFlash } from '../../hooks/usePendingRowFlash'
 
 type BidsCountsTabProps = {
@@ -131,6 +133,23 @@ export function BidsCountsTab({
   const [sheetPendingDeleteId, setSheetPendingDeleteId] = useState<string | null>(null)
   const [sheetChips, setSheetChips] = useState<string[]>([])
   const qaCountRef = useRef<HTMLInputElement | null>(null)
+  // Reference-grade chip (v2.2943): pricing presence for the selected sent/decided
+  // bid — null while loading, so the chip never flashes a wrong grade.
+  const [gradeHasPricing, setGradeHasPricing] = useState<boolean | null>(null)
+
+  useEffect(() => {
+    const bid = selectedBidForCounts
+    setGradeHasPricing(null)
+    if (!bid || !referenceGradeChipApplies({ bid_date_sent: bid.bid_date_sent ?? null, outcome: bid.outcome ?? null })) return
+    let cancelled = false
+    void (async () => {
+      const { data } = await supabase.from('bid_pricing_assignments').select('id').eq('bid_id', bid.id).limit(1)
+      if (!cancelled) setGradeHasPricing((data ?? []).length > 0)
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [selectedBidForCounts])
 
   // Quick-add chips: the service type's counts fixture groups, flattened, first 14.
   useEffect(() => {
@@ -609,6 +628,41 @@ export function BidsCountsTab({
       )
     : bidsScopedForCounts
 
+  /**
+   * Record-grade chip (v2.2943, LEARNING_PLAN item 12): once a bid is sent or
+   * decided it is a future training reference — the header wears its A/B/C/D/X
+   * grade (same kernel as the board's robot badge, never forked) with a muted
+   * line naming the gap when below A. Waits for the pricing-presence read so it
+   * never flashes a wrong letter.
+   */
+  const gradeChipEl = (() => {
+    const bid = selectedBidForCounts
+    if (!bid || gradeHasPricing === null) return null
+    if (!referenceGradeChipApplies({ bid_date_sent: bid.bid_date_sent ?? null, outcome: bid.outcome ?? null })) return null
+    const chip = referenceGradeChip({
+      hasPlans: !!bid.plans_link?.trim(),
+      hasValue: bid.bid_value != null && Number(bid.bid_value) > 0,
+      hasCounts: countRows.length > 0,
+      hasPricing: gradeHasPricing,
+    })
+    return (
+      <span
+        title="How much can the robots learn from this record? Today's bids are tomorrow's training corpus."
+        aria-label={`Reference grade ${chip.grade}${chip.missingLine ? ` — ${chip.missingLine}` : ''}`}
+        style={{ display: 'inline-flex', alignItems: 'baseline', gap: '0.4rem', flexWrap: 'wrap', minWidth: 0 }}
+      >
+        <span
+          aria-hidden
+          style={{ fontFamily: 'ui-monospace, monospace', fontWeight: 800, fontSize: '0.78rem', lineHeight: 1.4, padding: '0 0.45rem', borderRadius: 6, color: 'white', background: GRADE_COLORS[chip.grade], alignSelf: 'center' }}
+        >
+          {chip.grade}
+        </span>
+        <span style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--text-700)', whiteSpace: 'nowrap' }}>Reference grade</span>
+        {chip.missingLine ? <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{chip.missingLine}</span> : null}
+      </span>
+    )
+  })()
+
   return (
     <div>
       {selectedBidForCounts && (
@@ -644,6 +698,7 @@ export function BidsCountsTab({
                   h2Style={{ margin: 0 }}
                 />
               </div>
+              {gradeChipEl}
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', alignItems: 'center', justifyContent: 'flex-end' }}>
                 <button
                   type="button"
@@ -665,6 +720,7 @@ export function BidsCountsTab({
                   onOpenPreview={() => bidPreview?.openBidPreviewFromBid(selectedBidForCounts)}
                   h2Style={{ margin: 0 }}
                 />
+                {gradeChipEl}
               </div>
               <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', justifyContent: 'flex-end', flex: '0 0 auto' }}>
                 <button

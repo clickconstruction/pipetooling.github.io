@@ -9,6 +9,7 @@ import {
   type GateSlot,
   type RunScoreRow,
 } from '../../lib/bids/confidenceBoard'
+import { shadowCoverage, type ShadowCoverageBid } from '../../lib/bids/shadowCoverage'
 
 // twin_run_scores predates the generated types (BidsAuditsTab pattern).
 const boardDb = supabase as unknown as SupabaseClient
@@ -16,6 +17,12 @@ const boardDb = supabase as unknown as SupabaseClient
 type BidsRobotScoreboardTabProps = {
   /** Pending audit count from the page's audit gate — the program bottleneck pill. */
   auditPending?: number
+  /**
+   * The page's (human) bids — feeds the shadow-coverage pill (v2.2943,
+   * LEARNING_PLAN item 8): live shadow-eligible bids vs those already
+   * shadowed. Omit and the pill stays hidden.
+   */
+  bids?: readonly ShadowCoverageBid[]
 }
 
 const chipColors: Record<AxisCard['chip']['tone'], { color: string; bg: string }> = {
@@ -61,7 +68,7 @@ const money = (v: number | null) =>
  * pending slots), the pipeline pills, and the unified run ledger with void
  * runs shown struck-through rather than hidden.
  */
-export function BidsRobotScoreboardTab({ auditPending }: BidsRobotScoreboardTabProps) {
+export function BidsRobotScoreboardTab({ auditPending, bids }: BidsRobotScoreboardTabProps) {
   const [scores, setScores] = useState<RunScoreRow[] | null>(null)
   const [shadows, setShadows] = useState<ShadowRunRow[] | null>(null)
   const [loadError, setLoadError] = useState<string | null>(null)
@@ -88,6 +95,12 @@ export function BidsRobotScoreboardTab({ auditPending }: BidsRobotScoreboardTabP
   const ledger = useMemo(() => buildLedger(scores ?? [], shadows ?? []), [scores, shadows])
   const gatedAxes = cards.filter((c) => c.chip.tone === 'met').length
   const lockedShadows = (shadows ?? []).filter((r) => r.status === 'locked' || r.status === 'open').length
+  // Coverage pill (v2.2943, item 8): every uncovered live bid is a free future
+  // grade-A reference — shadows cost the estimator zero minutes.
+  const coverage = useMemo(
+    () => (bids ? shadowCoverage(bids, (shadows ?? []).map((r) => r.reference_bid_number)) : null),
+    [bids, shadows],
+  )
 
   if (loadError) {
     return <div style={{ color: 'var(--text-red-700)', padding: '1rem 0' }}>Scoreboard failed to load: {loadError}</div>
@@ -130,6 +143,17 @@ export function BidsRobotScoreboardTab({ auditPending }: BidsRobotScoreboardTabP
           <b style={{ display: 'block', fontSize: '1.05rem', color: 'var(--text-strong)' }}>{ledger.filter((r) => r.gate === 'eligible').length}</b>
           scored runs on record
         </div>
+        {coverage && (
+          <div
+            title="Live bids a shadow could still lock blind against (unsent, plans on file, not a ZZ sandbox bid) vs how many already have a shadow run — every uncovered bid is a free future grade-A reference."
+            style={{ background: 'var(--bg-subtle)', border: '1px solid var(--border)', borderRadius: 10, padding: '0.45rem 0.85rem', fontSize: '0.8rem', color: 'var(--text-muted)' }}
+          >
+            <b style={{ display: 'block', fontSize: '1.05rem', color: 'var(--text-strong)' }}>
+              {coverage.covered}/{coverage.live}
+            </b>
+            shadow coverage
+          </div>
+        )}
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '0.8rem', marginBottom: '1.3rem' }}>

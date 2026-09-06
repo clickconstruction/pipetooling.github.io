@@ -27,9 +27,10 @@ import { bidSentCounts, scopeLabel, type BidSentScope } from '../../lib/bids/bid
 import { buildBidBoardWeeklySentSummaries } from '../../lib/bidBoardWeeklySentStats'
 import { BidBoardNotesPanel, type BidBoardNotesTab } from './BidBoardNotesPanel'
 import { BidBoardLostSummaryModal } from './BidBoardLostSummaryModal'
-import { isBidLossCategoryKey, type BidLossCategoryKey } from '../../lib/bidLossCategories'
+import { LOSS_UNCATEGORIZED_NUDGE, bidLossCategoryLabel, isBidLossCategoryKey, suggestLossCategoryFromNote, type BidLossCategoryKey } from '../../lib/bidLossCategories'
 import type { BidGcRecipientsMap } from '../../lib/bids/bidGcRecipients'
 import { BidWorkingBoardArchivedModal } from './BidWorkingBoardArchivedModal'
+import { BidLossCategoryChips } from './BidLossCategoryChips'
 import { BidBoardCustomerReviewModal } from './BidBoardCustomerReviewModal'
 import { BidBoardEstimatingHealthSection } from './BidBoardEstimatingHealthSection'
 import { BidBoardSelfHighlightWheel, useBidBoardSelfHighlight } from './BidBoardSelfHighlightWheel'
@@ -217,6 +218,8 @@ export function BidsBidBoardTab({
     lost: false,
   })
   const [dueLegendOpen, setDueLegendOpen] = useState(false)
+  // Item 10 (v2.2943): the lost strip carries the reason picker on uncategorized losses.
+  const [lossCategorySavingBidId, setLossCategorySavingBidId] = useState<string | null>(null)
   const bidBoardUnreadFetchSeqRef = useRef(0)
   const bidsForBoardUnreadRef = useRef(bids)
   bidsForBoardUnreadRef.current = bids
@@ -1138,10 +1141,7 @@ export function BidsBidBoardTab({
                 wordBreak: 'break-word',
               }}
             >
-              <span style={{ fontWeight: 600, color: 'var(--text-strong)' }}>Why did we lose? </span>
-              <span style={{ color: (bid as { loss_reason?: string | null }).loss_reason?.trim() ? '#374151' : '#9ca3af' }}>
-                {(bid as { loss_reason?: string | null }).loss_reason?.trim() || '—'}
-              </span>
+              {renderLostStripReason(bid)}
             </td>
           </tr>
         ) : null}
@@ -1156,11 +1156,47 @@ export function BidsBidBoardTab({
     )
   }
 
+  /**
+   * The lost strip's "Why did we lose?" content, shared by the table row and the
+   * phone card. Item 10 (v2.2943): an uncategorized loss is flagged out of the
+   * robot gate denominators, so the strip nudges and carries the six reason
+   * chips right there — one tap writes `bids.loss_category` (the same write as
+   * the Lost summary modal) without opening anything.
+   */
+  function renderLostStripReason(bid: BidWithBuilder) {
+    const lossReason = (bid as { loss_reason?: string | null }).loss_reason?.trim()
+    const category = (bid as { loss_category?: string | null }).loss_category ?? null
+    const categorized = isBidLossCategoryKey(category)
+    return (
+      <>
+        <span style={{ fontWeight: 600, color: 'var(--text-strong)' }}>Why did we lose? </span>
+        <span style={{ color: categorized || lossReason ? 'var(--text-700)' : 'var(--text-faint)' }}>
+          {categorized ? `${bidLossCategoryLabel(category)}${lossReason ? ` — ${lossReason}` : ''}` : lossReason || '—'}
+        </span>
+        {!categorized ? (
+          <div onClick={(e) => e.stopPropagation()} style={{ marginTop: '0.4rem', cursor: 'default' }}>
+            <div style={{ fontSize: '0.72rem', color: 'var(--text-amber-700)', marginBottom: '0.3rem' }}>{LOSS_UNCATEGORIZED_NUDGE}</div>
+            <BidLossCategoryChips
+              value={null}
+              size="sm"
+              disabled={lossCategorySavingBidId === bid.id}
+              suggestedKey={suggestLossCategoryFromNote(lossReason)}
+              suggestedHint="suggested from the note — click to confirm"
+              onSelect={(key) => {
+                setLossCategorySavingBidId(bid.id)
+                void onSaveLossReason(bid.id, lossReason ?? '', key).finally(() => setLossCategorySavingBidId(null))
+              }}
+            />
+          </div>
+        ) : null}
+      </>
+    )
+  }
+
   /** Phone (<660px) card row — same data, no horizontal scrolling. */
   function renderBidBoardCard(bid: BidWithBuilder) {
     const expanded = expandedBidBoardBidId === bid.id
     const lcParts = bidBoardLastContactParts(bid.last_contact)
-    const lossReason = (bid as { loss_reason?: string | null }).loss_reason?.trim()
     const estRaw = bid.estimator
     const estNorm = estRaw == null ? null : Array.isArray(estRaw) ? estRaw[0] ?? null : estRaw
     const hasLinks = Boolean(bid.drive_link || bid.plans_link || bid.count_tooling_plans_link || bid.bid_submission_link)
@@ -1252,8 +1288,7 @@ export function BidsBidBoardTab({
         {hasLinks ? <div style={{ marginTop: '0.35rem' }}>{renderBidBoardLinksCluster(bid)}</div> : null}
         {bid.outcome === 'lost' ? (
           <div style={{ marginTop: '0.35rem', fontSize: '0.75rem', color: 'var(--text-700)' }}>
-            <span style={{ fontWeight: 600, color: 'var(--text-strong)' }}>Why did we lose? </span>
-            <span style={{ color: lossReason ? 'var(--text-700)' : 'var(--text-faint)' }}>{lossReason || '—'}</span>
+            {renderLostStripReason(bid)}
           </div>
         ) : null}
         {expanded ? (

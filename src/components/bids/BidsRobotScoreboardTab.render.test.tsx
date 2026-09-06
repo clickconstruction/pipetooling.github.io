@@ -45,9 +45,19 @@ vi.mock('../../lib/supabase', () => ({
   },
 }))
 
+// Coverage pill fodder (v2.2943): two live bids (one shadowed by sh1's
+// reference b381), one sent, one no-plans, one ZZ sandbox.
+const liveBids = [
+  { bid_number: '381', bid_date_sent: null, plans_link: 'https://drive/x', project_name: 'La Villita' },
+  { bid_number: '382', bid_date_sent: null, plans_link: 'https://drive/y', project_name: 'Broadway TI' },
+  { bid_number: '383', bid_date_sent: '2026-08-30', plans_link: 'https://drive/z', project_name: 'Sent already' },
+  { bid_number: '384', bid_date_sent: null, plans_link: null, project_name: 'No plans yet' },
+  { bid_number: '385', bid_date_sent: null, plans_link: 'https://drive/w', project_name: 'ZZ robot sandbox' },
+]
+
 describe('BidsRobotScoreboardTab', () => {
   it('renders axis cards, pending slots, pills, and the void ledger row', async () => {
-    renderWithProviders(<BidsRobotScoreboardTab auditPending={18} />)
+    renderWithProviders(<BidsRobotScoreboardTab auditPending={18} bids={liveBids} />)
     await waitFor(() => expect(screen.getAllByText('small TI').length).toBeGreaterThan(0))
 
     // gate chip + pending shadow slot on the small TI card
@@ -57,6 +67,10 @@ describe('BidsRobotScoreboardTab', () => {
     // bottleneck pill
     expect(screen.getByText('18')).toBeTruthy()
     expect(screen.getByText('audits pending')).toBeTruthy()
+
+    // shadow-coverage pill: b381 shadowed, b382 live-uncovered; sent / no-plans / ZZ excluded
+    expect(screen.getByText('1/2')).toBeTruthy()
+    expect(screen.getByText('shadow coverage')).toBeTruthy()
 
     // ledger: void run visible with VOID verdict, not hidden
     expect(screen.getByText(/TSAOG campus/)).toBeTruthy()

@@ -16,7 +16,7 @@ import { wonCascadeConfirmMessage, wonCascadeNeedsConfirm, wonCascadePlan } from
 import { undoneToast } from './BidBoardGcRows'
 import { useAuth } from '../../hooks/useAuth'
 import { BidLossCategoryChips } from './BidLossCategoryChips'
-import { bidLossCategoryLabel, type BidLossCategoryKey } from '../../lib/bidLossCategories'
+import { LOSS_UNCATEGORIZED_NUDGE, bidLossCategoryLabel, type BidLossCategoryKey } from '../../lib/bidLossCategories'
 
 /**
  * Edit Bid → per-GC sent panel (v2.2407, Option A): on a bid with versions, "sent" lives with
@@ -366,6 +366,9 @@ export function BidGcSentPanel({ bidId, ownGcName, ownGcCustomerId, bidOutcome, 
               ) : lostEditKey === p.key ? (
                 <span style={{ flexBasis: '100%', display: 'flex', flexDirection: 'column', gap: '0.4rem', paddingTop: '0.2rem' }}>
                   <BidLossCategoryChips value={lostCategory} onSelect={(key) => setLostCategory((prev) => (prev === key ? null : key))} />
+                  {lostCategory == null ? (
+                    <span style={{ fontSize: '0.72rem', color: 'var(--text-amber-700)' }}>{LOSS_UNCATEGORIZED_NUDGE}</span>
+                  ) : null}
                   <span style={{ display: 'flex', gap: '0.35rem', alignItems: 'center' }}>
                     <input
                       type="text"

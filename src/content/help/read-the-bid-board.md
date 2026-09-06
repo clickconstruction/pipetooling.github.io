@@ -38,6 +38,8 @@ Each row leads with the bid number, flanked by **jump icons** — Counts, Takeof
 
 Distance to the office lives in the row dropdown, along with the address — tap the address there to open Google Maps.
 
+In the **Lost** section, every bid carries a **Why did we lose?** strip. When the loss has a reason recorded it reads the reason (category first, then what they said); when it doesn't, the strip says so — *Add why: an uncategorized loss can't teach the robots* — and puts the **six reason chips right on the row**, so recording the reason is one tap without opening anything (a note on the bid may even pre-suggest a chip with an amber ring). An uncategorized loss gets left out of the robot estimators' training math, which is why the strip asks.
+
 ## Bids sent to more than one GC
 
 When a bid has a packet per GC (see *bid one project to multiple GCs*), its GC/Builder cell lists each GC on its own line — name · *sent 7/31* · a small state pill {{chip:gray|waiting}} / {{chip:green|won}} / {{chip:red|lost}}. Beside the bid number a small {{chip:yellow|sent 1/2}} badge keeps score of the letters: amber while a GC's letter is still out, green ✓ once every one went. **It counts packets** — GCs with their own counts, prices and send date. A GC on the *Also sent to* list who got the same letter as the bid's GC is not a packet, so a bid sent to one GC with two others on the same letter reads as one packet sent, not three. Hover the badge for the plain words ("1 of 2 GC letters not sent yet"). Tap the pill to set that GC's answer (the three choices pop beside it): a win rolls the bid up to **Won** and marks the other GCs you sent to *lost · GC lost the project* for you — a confirm says exactly that, naming the GCs, before anything is written (and warns when it flips a Win/Loss you set to Lost by hand); the bid only rolls to **Lost** once every GC has said no. Tap the winner's pill again and choose {{chip:gray|waiting}} to undo the whole win: the GCs it marked lost return to waiting and the bid goes back to the section it came from. A GC on the bid's *Also sent to* list without a packet of its own reads *same letter* — its answer is tracked with the bid. On phones the same lines sit in the card. A pill that reads {{chip:green|won}} grows a small **open the job →** link beside it — one tap opens New Job filled from that GC's packet with the bid linked (see *turn a won bid into a job*); once the job exists, the **Links** column's green **J####** chip opens it.
@@ -80,6 +82,11 @@ requested, estimated blind, price sealed 🔒, waiting on our bid, opened & scor
 sealed price stays hidden until our bid goes out, so nobody's estimate can be influenced. The
 tab only appears when there are robot bids or audits, and its badge counts the audits waiting
 on you — opening it lands on Audits when any are pending.
+
+(For the program's operators there's also a **Scoreboard** view: per-axis gate progress plus
+summary pills — audits pending, shadows awaiting score, scored runs, and **shadow coverage**,
+which counts the live bids a shadow run could still practice against vs how many already have
+one. Every uncovered live bid is a free future training reference.)
 
 - A bid moves to the Robot Board when its **Estimator is a twin** (or a twin created it).
   Un-assign the twin and it comes back to the human board.
