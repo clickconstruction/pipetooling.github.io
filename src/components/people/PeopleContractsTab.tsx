@@ -1600,11 +1600,17 @@ export default function PeopleContractsTab({ people, users, archivedPeople, arch
       setContractsError(built.error)
       return
     }
+    // A fillable form's signing content is the Book entry's form_template_id (v2.2955) —
+    // the row-level Send already passes it; the quick path refused every form without it.
+    const pickedBookEntry = built.payload.applied_contract_template_document_id
+      ? contractTemplateDocuments.find((d) => d.id === built.payload.applied_contract_template_document_id) ?? null
+      : null
     if (
       !hasContractSigningContent({
         signing_body_html: built.payload.signing_body_html,
         canonical_document_url: built.payload.canonical_document_url,
         url: built.payload.url,
+        form_template_id: pickedBookEntry?.form_template_id ?? null,
       })
     ) {
       setContractsError(
