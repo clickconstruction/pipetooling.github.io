@@ -41,6 +41,14 @@ Search sections… `bill` → shows **Jobs Billing**, **Billed Awaiting Payment*
 
 The jump buttons above the box always show every section, and the floating section bar follows the search. The filter resets when you leave the page.
 
+Every section also has its own web address, so a link from somewhere else in the app (or one you paste to a teammate) can land right on it — open and scrolled into view, even if it was marked fresh and collapsed. The address is the page plus the section's name after a `#`:
+
+:::example Linking straight to a section
+`/quickfill#supply-houses` opens Quickfill with **Supply Houses** expanded and on screen. `/quickfill#vehicle-odometers` does the same for **Vehicle check-ins** — that is where the link in People → Vehicles → Check-in settings goes.
+:::
+
+If the link names a section that isn't on your Quickfill (your company hides it, or your role doesn't see it), the page stays as it is and a small note says *That section isn't on your Quickfill.*
+
 On a phone the jump buttons are a single row you flick sideways, with a one-line tally under it — **3 of 19 fresh · 16 need a look · oldest 2d** — so the first section starts right under the search box. Every section header also carries a small {{button:red|✓ Mark}} that does the same thing as the big button at the foot, so a long list never stands between you and marking it (sections that ask for a note first — Texts, Email, Physical inbox — keep just their own button).
 
 ## What's on the page

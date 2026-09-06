@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../hooks/useAuth'
 import { supabase } from '../../lib/supabase'
 import { withSupabaseRetry } from '../../utils/errorHandling'
-import { useToastContext } from '../../contexts/ToastContext'
 import { TALLY_STALE_MIN_AGE_DAYS } from '../../lib/tallyStaleMinAgeDays'
 import {
   canRoleSeeArBankUnallocatedDashboardBanner,
@@ -23,6 +22,7 @@ import { buildNeedsYouItems } from '../../lib/dashboardNeedsYou'
 import { DashboardNeedsYouCard } from '../dashboard/DashboardNeedsYouCard'
 import { DashboardStaleTallyStaffFollowUpModal } from '../DashboardStaleTallyStaffFollowUpModal'
 import { DashboardLienReleaseQueueModal } from '../dashboard/DashboardLienReleaseQueueModal'
+import { DashboardArDepositsModal } from '../dashboard/DashboardArDepositsModal'
 
 /**
  * Quickfill's "Needs you" station (v2.2350): the SAME card the Dashboard
@@ -35,12 +35,13 @@ import { DashboardLienReleaseQueueModal } from '../dashboard/DashboardLienReleas
 export function QuickfillNeedsYouSection({ onCount }: { onCount?: (n: number | null) => void }) {
   const navigate = useNavigate()
   const { user: authUser, role } = useAuth()
-  const { showToast } = useToastContext()
   const [staffModalOpen, setStaffModalOpen] = useState(false)
+  /** "Match deposits" opens Accounts Receivable in place (Tier-2 #17) — the office keeps its Quickfill spot. */
+  const [arDepositsModalOpen, setArDepositsModalOpen] = useState(false)
   const [tallyStaleUnlinkedCount, setTallyStaleUnlinkedCount] = useState<number | null>(null)
 
   const arBankEnabled = Boolean(authUser?.id) && canRoleSeeArBankUnallocatedDashboardBanner(role)
-  const { count: arBankUnallocatedCount } = useArBankUnallocatedCount({
+  const { count: arBankUnallocatedCount, refetch: refetchArBankUnallocatedCount } = useArBankUnallocatedCount({
     enabled: arBankEnabled,
     authUserId: authUser?.id,
     authRole: role,
@@ -140,8 +141,7 @@ export function QuickfillNeedsYouSection({ onCount }: { onCount?: (n: number | n
         items={items}
         onAction={(item) => {
           if (item.key === 'ar-deposits') {
-            showToast('Opening Accounts Receivable…', 'info', 2800)
-            navigate('/accounts-receivable')
+            setArDepositsModalOpen(true)
           } else if (item.key === 'tally-self') {
             navigate('/tally?tab=transactions')
           } else if (item.key === 'tally-team') {
@@ -162,7 +162,8 @@ export function QuickfillNeedsYouSection({ onCount }: { onCount?: (n: number | n
           } else if (item.key === 'bulk-delete') {
             navigate('/settings?tab=settings-data#settings-recently-deleted')
           } else if (item.key === 'claim-dev') {
-            navigate('/settings?tab=settings-people')
+            // The code form is on Settings → Advanced, not People (J27-F5).
+            navigate('/settings?tab=settings-advanced-tools#settings-claim-code')
           } else if (item.key === 'lien-unconditional') {
             setLienReleaseQueueOpen(true)
           } else if (item.key === 'demand-deadline') {
@@ -186,6 +187,13 @@ export function QuickfillNeedsYouSection({ onCount }: { onCount?: (n: number | n
         onClose={() => setLienReleaseQueueOpen(false)}
         rows={lienReleaseQueue}
         onChanged={refetchLienReleasesOwed}
+      />
+      <DashboardArDepositsModal
+        open={arDepositsModalOpen}
+        onClose={() => {
+          setArDepositsModalOpen(false)
+          void refetchArBankUnallocatedCount()
+        }}
       />
       <DashboardStaleTallyStaffFollowUpModal
         open={staffModalOpen}

@@ -274,8 +274,8 @@ export type JobsStagesTabHandle = {
   openBankPayments: () => void
   /** `?stagesWeekly=` deep link: open the Weekly movement modal (v2.1436). */
   openWeeklyMovement: () => void
-  /** `?stagesMoney=` deep link: open the Weekly money movement modal (v2.1443). */
-  openWeeklyMoney: () => void
+  /** `?stagesMoney=` deep link: open the Weekly money movement modal (v2.1443). `weekMonday` (Tier-2 #17, `&stagesMoneyWeek=`) pins it to that week. */
+  openWeeklyMoney: (weekMonday?: string | null) => void
   /** `?showBilledTotalByName=` deep link: open the Total by Name modal. */
   showBilledTotalByName: () => void
   /** `?stagesMove=` deep link (v2.2145): open what a Today's Money Opportunities card opens (Quickfill → Jobs Cleanup). */
@@ -621,6 +621,8 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
   const [gcReviewRoundGcId, setGcReviewRoundGcId] = useState<string | null>(null)
   const [weeklyMovementModalOpen, setWeeklyMovementModalOpen] = useState(false)
   const [weeklyMoneyModalOpen, setWeeklyMoneyModalOpen] = useState(false)
+  /** Week the Weekly money modal opens on when a deep link asked for one (Moneyfill's "See the week's report"); null = the modal's own default. */
+  const [weeklyMoneyInitialMonday, setWeeklyMoneyInitialMonday] = useState<string | null>(null)
   /** "Last sent" hints for GC Review's Email… (v2.1416). Best-effort: table may predate the db push. */
   const [gcLastSentByGcId, setGcLastSentByGcId] = useState<Record<string, string>>({})
   const refreshGcLastSent = useCallback(async () => {
@@ -2165,7 +2167,10 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
       focusInvoice: applyStagesInvoiceFocus,
       openBankPayments: () => setBankPaymentsModalOpen(true),
       openWeeklyMovement: () => setWeeklyMovementModalOpen(true),
-      openWeeklyMoney: () => setWeeklyMoneyModalOpen(true),
+      openWeeklyMoney: (weekMonday) => {
+        setWeeklyMoneyInitialMonday(weekMonday ?? null)
+        setWeeklyMoneyModalOpen(true)
+      },
       showBilledTotalByName: () => setBilledTotalByNameModalOpen(true),
       openMoneyMove: (key: StagesMoneyMoveKey) => {
         // Mirrors the PipelineOverview callbacks above (v2.1960: clear a live search first).
@@ -3394,7 +3399,10 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                           const onSelect: Record<StagesSectionToolKey, () => void> = {
                             'recently-added': () => setStagesRecentViewOpen((o) => !o),
                             'weekly-movement': () => setWeeklyMovementModalOpen(true),
-                            'weekly-money': () => setWeeklyMoneyModalOpen(true),
+                            'weekly-money': () => {
+                              setWeeklyMoneyInitialMonday(null)
+                              setWeeklyMoneyModalOpen(true)
+                            },
                             'capable-to-bill': () => setCapableToBillModalOpen(true),
                             'ready-to-bill-notifications': () => setReadyToBillNotifySettingsOpen(true),
                             'gc-review': () => setGcReviewModalOpen(true),
@@ -4648,6 +4656,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                 />
                 <JobsWeeklyMoneyModal
                   open={weeklyMoneyModalOpen}
+                  initialMondayYmd={weeklyMoneyInitialMonday}
                   onClose={() => setWeeklyMoneyModalOpen(false)}
                   showToast={showToast}
                   users={users}

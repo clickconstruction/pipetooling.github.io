@@ -400,7 +400,7 @@ export function buildNeedsYouItems(inputs: NeedsYouInputs): NeedsYouItem[] {
       title: n === 1 ? 'Allocate a bank deposit' : `Allocate ${n} bank deposits`,
       detail:
         (n === 1 ? 'One Mercury transaction still has' : `${n} Mercury transactions still have`) +
-        ' balance to apply — match to billed lines in Accounts Receivable.',
+        ' balance to apply — match to billed lines in Accounts Receivable, right here.',
       figure: n > 99 ? '99+' : String(n),
       actionLabel: 'Match deposits',
     })

@@ -451,7 +451,7 @@ export default function SettingsDashboardTab({
       <QuickEstimateToggleSection authUserId={authUser?.id ?? null} myRole={myRole} />
 
       {myRole != null && (
-        <div style={{ marginBottom: '2rem' }}>
+        <div id="settings-page-pins" style={{ marginBottom: '2rem' }}>
           <button
             type="button"
             onClick={() => setFinancialPinsSectionOpen((prev) => !prev)}

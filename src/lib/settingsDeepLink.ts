@@ -9,6 +9,9 @@
  *                                       v2.1544; the mapping stays so old links still land
  *                                       on the account tab)
  * - /settings#settings-salary-workday  (Calendar ×3)
+ * - /settings?tab=settings-dashboard#settings-page-pins        (Settings search "Page pins" — Tier-2 #17)
+ * - /settings?tab=settings-advanced-tools#settings-claim-code  (Needs You "Someone tried to become a dev" — the
+ *                                       code form is on Advanced, not People; Tier-2 #17)
  *
  * `?tab=` values are settings tab/group ids (e.g. `settings-data`). Hashes are
  * either a section anchor inside a tab (mapped below) or a tab id themselves.
@@ -21,6 +24,8 @@ export const SETTINGS_HASH_ANCHOR_TO_TAB: Readonly<Record<string, string>> = {
   'settings-time-off': 'settings-account',
   'settings-salary-workday': 'settings-account',
   'settings-recently-deleted': 'settings-data',
+  'settings-page-pins': 'settings-dashboard',
+  'settings-claim-code': 'settings-advanced-tools',
 }
 
 export type SettingsDeepLink = {

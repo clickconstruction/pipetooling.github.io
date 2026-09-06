@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo } from 'react'
-import { Link, Navigate, useNavigate } from 'react-router-dom'
+import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom'
+import { hasInAppHistory } from '../lib/inAppHistory'
 import { useAuth } from '../hooks/useAuth'
 import { canRoleSeeArBankUnallocatedOrgNudge } from '../hooks/useArBankUnallocatedCount'
 import { useJobsListCache } from '../contexts/JobsListCacheContext'
@@ -10,7 +11,17 @@ import { buildJobsStagesBoardLists } from '../lib/jobsStagesBoard'
 export default function JobsAccountsReceivable() {
   const { user, role: authRole, loading: authLoading } = useAuth()
   const navigate = useNavigate()
+  const location = useLocation()
   const jobFormModal = useJobFormModal()
+  // A way back (Tier-2 #17, J4-9): the page used to exit only to Jobs or the
+  // Dashboard, so whoever arrived from Quickfill or a Needs You card lost their
+  // place. When this tab has an in-app entry behind it, Back returns there;
+  // a cold open (bookmark, pasted link) keeps the Jobs fallback.
+  const canGoBack = hasInAppHistory(typeof window !== 'undefined' ? window.history.state : null, location.key)
+  const goBack = useCallback(() => {
+    if (canGoBack) navigate(-1)
+    else navigate('/jobs?tab=stages')
+  }, [canGoBack, navigate])
   const { jobs, jobsListLoading, jobsListError, runFetchJobs } = useJobsListCache()
 
   const onApplied = useCallback(() => {
@@ -66,7 +77,7 @@ export default function JobsAccountsReceivable() {
       >
         <button
           type="button"
-          onClick={() => navigate('/jobs?tab=stages')}
+          onClick={goBack}
           style={{
             padding: '0.35rem 0.75rem',
             fontSize: '0.875rem',
@@ -76,17 +87,24 @@ export default function JobsAccountsReceivable() {
             cursor: 'pointer',
           }}
         >
-          Back to Jobs
+          {canGoBack ? '← Back' : 'Back to Jobs'}
         </button>
         <h1 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 600 }}>Accounts Receivable</h1>
-        <Link to="/dashboard" style={{ marginLeft: 'auto', fontSize: '0.875rem', color: 'var(--text-link)' }}>
-          Dashboard
-        </Link>
+        <span style={{ marginLeft: 'auto', display: 'inline-flex', gap: '0.75rem', fontSize: '0.875rem' }}>
+          {canGoBack ? (
+            <Link to="/jobs?tab=stages" style={{ color: 'var(--text-link)' }}>
+              Jobs
+            </Link>
+          ) : null}
+          <Link to="/dashboard" style={{ color: 'var(--text-link)' }}>
+            Dashboard
+          </Link>
+        </span>
       </div>
       {jobsListError ? <p style={{ color: 'var(--text-red-700)', marginBottom: '1rem' }}>{jobsListError}</p> : null}
       <BankPaymentsModal
         open
-        onClose={() => navigate('/jobs?tab=stages')}
+        onClose={goBack}
         authUserId={user.id}
         authRole={authRole}
         billedRows={bankPaymentsModalBilledRows}

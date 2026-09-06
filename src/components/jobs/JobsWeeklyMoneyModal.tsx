@@ -40,6 +40,12 @@ import {
 
 type JobsWeeklyMoneyModalProps = {
   open: boolean
+  /**
+   * Week to open on (a Monday ymd) when the opener knows one — Moneyfill's
+   * "See the week's report" pins the report to the close week the picker was
+   * showing (Tier-2 #17). Null/undefined: this week, as before.
+   */
+  initialMondayYmd?: string | null
   onClose: () => void
   showToast: (msg: string, kind: 'success' | 'error') => void
   /** Recipient pool for scheduled sends — filtered to dev/controller (RLS mirror). */
@@ -131,8 +137,12 @@ function JobRows({ rows, lens }: { rows: WeeklyMoneyJobRow[]; lens: WeeklyMoneyL
   )
 }
 
-export function JobsWeeklyMoneyModal({ open, onClose, showToast, users }: JobsWeeklyMoneyModalProps) {
+export function JobsWeeklyMoneyModal({ open, initialMondayYmd, onClose, showToast, users }: JobsWeeklyMoneyModalProps) {
   const [mondayYmd, setMondayYmd] = useState(() => mondayOfWeekYmd(chicagoYmdOf(new Date())))
+  // Each open that names a week lands on it; ‹ › still move freely afterwards.
+  useEffect(() => {
+    if (open && initialMondayYmd) setMondayYmd(initialMondayYmd)
+  }, [open, initialMondayYmd])
   const [lens, setLens] = useState<WeeklyMoneyLens>('earned')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)

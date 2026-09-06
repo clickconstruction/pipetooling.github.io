@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Navigate, useNavigate, useSearchParams } from 'react-router-dom'
+import { resolveScheduleDispatchLinkedDay, scheduleDispatchDayTabWorkDate } from '../../lib/scheduleDispatchDayLink'
 import { useNarrowViewport640 } from '../../hooks/useNarrowViewport640'
 import { DndContext, PointerSensor, closestCenter, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core'
 import { useAuth } from '../../hooks/useAuth'
@@ -298,8 +299,11 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
     () => (isTomorrow ? [tomorrowYmd] : getScheduleDispatchVisibleDayKeys(weekStart, hideWeekend)),
     [isTomorrow, tomorrowYmd, weekStart, hideWeekend],
   )
+  // One resolver for the `?day=` link (tested in scheduleDispatchDayLink.ts):
+  // it focuses the week-grid column AND is the day the Day tab opens on —
+  // before Tier-2 #17 the Day tab ignored it and rendered today (J18-F11).
   const columnFocusDayYmd = useMemo(
-    () => (isTomorrow ? tomorrowYmd : dayRaw && visibleDayKeys.includes(dayRaw) ? dayRaw : ''),
+    () => resolveScheduleDispatchLinkedDay({ isTomorrow, tomorrowYmd, dayParam: dayRaw, visibleDayKeys }),
     [isTomorrow, tomorrowYmd, dayRaw, visibleDayKeys],
   )
 
@@ -2500,7 +2504,7 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
             onHideWeekendChange={setHideWeekend}
             weekNavDateRangeOverride={dispatchWeekNavDateRangeOverride}
             showExpectedManpower={!isTomorrow}
-            dayTabWorkDateYmd={isTomorrow ? tomorrowYmd : undefined}
+            dayTabWorkDateYmd={scheduleDispatchDayTabWorkDate(columnFocusDayYmd)}
             onDayScheduleChanged={() => void loadHub({ quiet: true })}
             showWeekNavigation={!isTomorrow}
             showHubViewTabs={!isTomorrow}

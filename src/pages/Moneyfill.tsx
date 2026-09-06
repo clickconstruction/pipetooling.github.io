@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Navigate } from 'react-router-dom'
+import { Link, Navigate } from 'react-router-dom'
 import { QuickfillNoncardAttributionSection } from '../components/quickfill/QuickfillNoncardAttributionSection'
 import { useAuth } from '../hooks/useAuth'
 import { useQuickfillNoncardAttribution } from '../hooks/useQuickfillNoncardAttribution'
@@ -14,6 +14,7 @@ import {
   MoneyfillSupplyInvoicesSection,
 } from '../components/moneyfill/MoneyfillMoneyQueuesSections'
 import { addDaysYmd } from '../lib/emailSchedule/emailScheduleWeek'
+import { weeklyMoneyReportHref } from '../lib/weeklyMoneyReportLink'
 import { weekLabel } from '../lib/jobs/stagesWeeklyMovement'
 import {
   fetchWeekCloseCounts,
@@ -157,8 +158,22 @@ export default function Moneyfill() {
             ))}
           </div>
         ) : null}
-        <p style={{ margin: '0.6rem 0 0', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-          The Weekly Money Movement report is only as true as these queues are empty — same counts, same week.
+        <p style={{ margin: '0.6rem 0 0', fontSize: '0.75rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
+          <span>The Weekly Money Movement report is only as true as these queues are empty — same counts, same week.</span>
+          {/* The forward door (Tier-2 #17, J5-2): the report opens ON this close week, not on today's. */}
+          <Link
+            to={weeklyMoneyReportHref(weekMonday)}
+            style={{
+              ...navBtnStyle,
+              display: 'inline-flex',
+              alignItems: 'center',
+              textDecoration: 'none',
+              fontWeight: 600,
+              color: 'var(--text-link)',
+            }}
+          >
+            See the week's report →
+          </Link>
         </p>
       </section>
 

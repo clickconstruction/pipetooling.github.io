@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
+import { quickfillStationHref } from '../../lib/quickfill/stationDeepLink'
 import { fetchUserDisplayNames, missingUserIds, userDisplayLabel } from '../../lib/userDisplayNames'
 import { formatCurrency } from '../../lib/format'
 import { useAuth } from '../../hooks/useAuth'
@@ -2525,8 +2527,12 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
           <div role="dialog" aria-modal="true" style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 320, maxWidth: 520, width: '92%', maxHeight: '85vh', overflowY: 'auto' }} onClick={(e) => e.stopPropagation()}>
             <h3 style={{ marginTop: 0, marginBottom: '0.35rem' }}>Check-in settings</h3>
             <p style={{ margin: '0 0 1rem', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-              Drives Quickfill's <strong>Vehicle check-ins</strong> station: how often each kind of vehicle needs an odometer
-              reading, and the questions the assistant answers while they have the holder on the phone.
+              Drives Quickfill's{' '}
+              <Link to={quickfillStationHref('vehicle-odometers')} style={{ color: 'var(--text-link)', fontWeight: 600 }}>
+                Vehicle check-ins
+              </Link>{' '}
+              station: how often each kind of vehicle needs an odometer reading, and the questions the assistant answers
+              while they have the holder on the phone.
             </p>
             <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', marginBottom: '1rem' }}>
               <label style={{ fontSize: '0.85rem', color: 'var(--text-slate-600)' }}>

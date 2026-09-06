@@ -5,7 +5,7 @@ file: docs/QUICKFILL_ARCHITECTURE.md
 type: Architecture Map / Decomposition
 purpose: Step-0 map for the Quickfill billing-workflow surface (per PAGE_DECOMPOSITION_PLAYBOOK.md) — inventory what src/pages/Quickfill.tsx and src/components/quickfill/QuickfillScheduleSection.tsx own (state, handlers, supabase tables/RPCs, realtime, sub-components, coupling) so future extractions need no re-derivation. Sections: What this surface is; How to read a dossier; Master summary table; Quickfill.tsx region dossiers; QuickfillScheduleSection region dossiers; Shared substrate; Stage-A pure-logic inventory; Preserve-quirks list; Recommended extraction order; What stays in the parent.
 audience: Developers, AI Agents
-last_updated: 2026-08-03
+last_updated: 2026-09-05
 ---
 
 ## What this surface is
@@ -140,6 +140,10 @@ Precedent already exists: `markStampInitial`/`markStampTime` live in [`src/lib/q
 ### Page chrome + page-level modals (stays)
 
 Jump-button grid (unfiltered by search; per-chip freshness color, floating who+when stamp via `markStampInitial`/`markStampTime`, `scrollIntoView` on click), section search input, `SectionDock` (rendered only when >1 chip; hides chips in `dockHiddenThisVisit`; adds `paddingBottom: '4.5rem'`), empty-state paragraphs, and the three page-level modals: `QuickfillSectionMarkHistoryModal` (opened from any section header), `DispatchDismissedItemsModal` (gated `authUser?.id && dispatchInboxEligible`; `loadRows={fetchDismissedDispatchInboxRows}`), `CreateTripChargeModal` (`tripChargeTarget: CreateTripChargeTarget | null`, set from the dispatch-inbox section). All stay in the parent — modals are opened from section wiring, and the grid/dock read the whole mark map.
+
+### Station deep links (v2.2890, journey map Tier-2 #17)
+
+`/quickfill#<sectionId>` (also `#quickfill-<sectionId>` and `?station=<sectionId>`) is the page's one address form; build it with `quickfillStationHref(sectionId)` from [`src/lib/quickfill/stationDeepLink.ts`](../src/lib/quickfill/stationDeepLink.ts) — never a bare `navigate('/quickfill')`. Resolution is the pure kernel `resolveQuickfillStation(location, SECTIONS, sectionWouldRenderOnPage)` → `{ found, hidden, domId }`; the page effect (search `stationRequestKey`) waits for `layoutSettingsLoaded` (the `app_settings` layout read, so an org-hidden section reads as *hidden* rather than racing the fetch), applies once per URL, calls `openSectionNow(sectionId)` (force-expand + dock chip back) and polls ≤4s for the element before `scrollIntoView`. Hidden / role-gated / unknown → toast "That section isn't on your Quickfill." and nothing else (a forced render must never resurrect a hidden section for daily users). Telemetry: `recordNavClick(…, 'station_deep_link', '#<station> found|hidden|unknown')` into `ui_nav_clicks`.
 
 ---
 

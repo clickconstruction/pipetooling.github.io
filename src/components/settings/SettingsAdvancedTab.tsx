@@ -5,7 +5,7 @@
  * reloads (the user's role may have just changed).
  * The role gate (non-subcontractor) stays in the parent; isDev gates the
  * DMARC links only. */
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
 import { FunctionsHttpError } from '@supabase/supabase-js'
 import { supabase } from '../../lib/supabase'
@@ -30,6 +30,12 @@ export default function SettingsAdvancedTab({
   onRoleMaybeChanged: () => void
 }) {
   const [advancedSectionOpen, setAdvancedSectionOpen] = useState(false)
+  // `#settings-claim-code` (Needs You "Someone tried to become a dev", Tier-2 #17):
+  // the code form sits inside this collapsed group, so the deep link opens it.
+  useEffect(() => {
+    if (!active) return
+    if (typeof window !== 'undefined' && window.location.hash === '#settings-claim-code') setAdvancedSectionOpen(true)
+  }, [active])
   const [code, setCode] = useState('')
   const [codeError, setCodeError] = useState<string | null>(null)
   const [codeSubmitting, setCodeSubmitting] = useState(false)
@@ -125,7 +131,7 @@ export default function SettingsAdvancedTab({
               </div>
             </div>
           )}
-          <form onSubmit={handleClaimCode}>
+          <form id="settings-claim-code" onSubmit={handleClaimCode}>
             <label htmlFor="code" style={{ display: 'block', marginBottom: 4 }}>Enter code</label>
             <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
               <input
