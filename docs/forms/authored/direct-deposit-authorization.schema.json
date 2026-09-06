@@ -225,10 +225,9 @@
     },
     {
       "key": "deposit_percent_value",
-      "type": "digits",
-      "label": "Percentage of the amount due",
-      "labelEs": "Porcentaje de la cantidad debida",
-      "mask": "###",
+      "type": "text",
+      "label": "Percentage of the amount due (1 to 100)",
+      "labelEs": "Porcentaje de la cantidad debida (1 a 100)",
       "maxLength": 3,
       "advanced": true,
       "help": "Only if you chose a percentage above — 1 to 100. The rest of each payment is made by check.",
