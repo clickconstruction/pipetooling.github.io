@@ -61,6 +61,7 @@ import { appActivityPageKey } from '../lib/appActivityPage'
 import { hardReloadFromRoot } from '../lib/hardReload'
 import { prefetchDashboardPhase1 } from '../lib/dashboardPrefetch'
 import { isAssistantLike, isSubcontractorLikeRole } from '../lib/subcontractorLikeRole'
+import { fieldJobLookupEligible, headerSearchEligibleForRole } from '../lib/fieldJobLookup'
 import { canLeaveJobFieldReport } from '../lib/canLeaveJobFieldReport'
 import { useJobModeEnabled } from '../hooks/useJobModeEnabled'
 import { useFarmModeEnabled } from '../hooks/useFarmModeEnabled'
@@ -295,8 +296,10 @@ export default function Layout() {
       navigate({ pathname: location.pathname, search: qs ? `?${qs}` : '' }, { replace: true })
     }
   }, [checklistAddModal, location.search, location.pathname, navigate])
-  const headerSearchEligible =
-    (role === 'dev' || role === 'master_technician' || isAssistantLike(role)) && !farmModeActive
+  // Office roles get the full search; helpers + subcontractors get the read-only job
+  // lookup (T5-01 / J28-F2) — jobs only, no money evidence, a card instead of Job Detail.
+  const fieldJobLookup = fieldJobLookupEligible(role, farmModeActive)
+  const headerSearchEligible = headerSearchEligibleForRole(role, farmModeActive)
 
   // Farm Mode is a hard lens: whatever route the user lands on (post-login
   // default, deep link, stale bookmark), bounce to the checklist. The landing
@@ -2211,6 +2214,7 @@ export default function Layout() {
   return (
     <HeaderGlobalSearchProvider
       enabled={headerSearchEligible}
+      fieldLookup={fieldJobLookup}
       authUserId={authUser?.id ?? null}
       navOverlayBackground={navSearchOverlayBg}
       isMobile={isMobile}

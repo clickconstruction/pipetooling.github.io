@@ -36,6 +36,8 @@ import {
 import { UnifiedSearchResultRow } from './search/UnifiedSearchResultRow'
 import { useLedgerDisplayPrefixes } from '../contexts/LedgerDisplayPrefixContext'
 import { effectiveJobLedgerNumber } from '../lib/ledgerDisplayPrefixes'
+import { buildFieldJobLookupCard, officeTelHref, type FieldJobLookupCard } from '../lib/fieldJobLookup'
+import { PORTAL_COMPANY } from '../../supabase/functions/_shared/portalCompany'
 import type { LedgerPrefixMap } from '../lib/ledgerDisplayPrefixes'
 
 const HEADER_ROW_MIN_HEIGHT = 'calc(1rem + 1.25em)'
@@ -69,6 +71,8 @@ type HeaderGlobalSearchContextValue = {
   stripButtonRef: RefObject<HTMLButtonElement | null>
   toolbarButtonRef: RefObject<HTMLButtonElement | null>
   selectResult: (r: UnifiedSearchResult) => void
+  /** Field job lookup (helpers / subcontractor): jobs only, read-only card, no money evidence. */
+  fieldLookup: boolean
   navOverlayBackground: string
   prefixMap: LedgerPrefixMap
   /** Lazy evidence for rich rows (job money rail / bid outcome+value), keyed by row id. */
@@ -86,6 +90,7 @@ const searchIcon = (
 
 export function HeaderGlobalSearchProvider({
   enabled,
+  fieldLookup = false,
   authUserId,
   navOverlayBackground,
   isMobile,
@@ -96,6 +101,8 @@ export function HeaderGlobalSearchProvider({
    * wrapper remounted the whole app body, wiping page state — v2.860); when false, the
    * hotkeys and data load are inert and no UI entry points render (they gate themselves). */
   enabled: boolean
+  /** T5-01: helpers + subcontractors search jobs only and get a read-only card (no Job Detail, no money). */
+  fieldLookup?: boolean
   authUserId: string | null
   navOverlayBackground: string
   isMobile: boolean
@@ -114,6 +121,8 @@ export function HeaderGlobalSearchProvider({
   const [activeResultIndex, setActiveResultIndex] = useState(-1)
   /** Header-owned customer snapshot; opened on selecting a customer result. Kept out of the context value. */
   const [snapshotCustomerId, setSnapshotCustomerId] = useState<string | null>(null)
+  /** Field lookup card (T5-01); opened on selecting a job result in field mode. */
+  const [lookupCard, setLookupCard] = useState<FieldJobLookupCard | null>(null)
   const [serviceTypes, setServiceTypes] = useState<Array<{ id: string; name: string }>>([])
   const [enabledBidServiceTypeIds, setEnabledBidServiceTypeIds] = useState<string[]>([])
   const [subcontractorServiceTypeIds, setSubcontractorServiceTypeIds] = useState<string[] | null>(null)
@@ -124,7 +133,7 @@ export function HeaderGlobalSearchProvider({
   const toolbarButtonRef = useRef<HTMLButtonElement>(null)
 
   useEffect(() => {
-    if (!authUserId || !enabled) return
+    if (!authUserId || !enabled || fieldLookup) return
     const load = async () => {
       const { data: stData } = await supabase.from('service_types').select('id, name').order('sequence_order', { ascending: true })
       const types = (stData ?? []) as Array<{ id: string; name: string }>
@@ -168,7 +177,7 @@ export function HeaderGlobalSearchProvider({
       setServiceTypes(filtered)
     }
     void load()
-  }, [authUserId, enabled])
+  }, [authUserId, enabled, fieldLookup])
 
   const setQuery = useCallback((q: string) => {
     setQueryState(q)
@@ -199,7 +208,9 @@ export function HeaderGlobalSearchProvider({
 
   const selectResult = useCallback(
     (r: UnifiedSearchResult) => {
-      if (r.source === 'job') {
+      if (r.source === 'job' && fieldLookup) {
+        setLookupCard(buildFieldJobLookupCard(r, effectiveJobLedgerNumber(r.hcp_number, r.click_number)))
+      } else if (r.source === 'job') {
         const h = effectiveJobLedgerNumber(r.hcp_number, r.click_number) || '—'
         const n = (r.job_name ?? '').trim() || 'Job'
         jobDetailModal?.openJobDetail({
@@ -214,7 +225,7 @@ export function HeaderGlobalSearchProvider({
       } else navigate(`/estimates/${r.estimate_number}`)
       closeSearch()
     },
-    [navigate, closeSearch, bidPreview, jobDetailModal],
+    [navigate, closeSearch, bidPreview, jobDetailModal, fieldLookup],
   )
 
   useEffect(() => {
@@ -286,6 +297,15 @@ export function HeaderGlobalSearchProvider({
       )
         .then((r) => (r.data ?? []) as CustomerSearchResult[])
         .catch((): CustomerSearchResult[] => [])
+      if (fieldLookup) {
+        // Field lookup: jobs only. Bids, estimates and customers are office surfaces.
+        void supabase.rpc('search_jobs_ledger', { search_text: q }).then((jobsRes) => {
+          const jobs = (jobsRes.data ?? []) as JobSearchResult[]
+          setResults(jobs.map((j) => ({ source: 'job' as const, ...j })))
+          setActiveResultIndex(-1)
+        })
+        return
+      }
       void Promise.all([
         supabase.rpc('search_jobs_ledger', { search_text: q }),
         supabase.rpc('search_bids_for_clock', bidsParams),
@@ -319,12 +339,12 @@ export function HeaderGlobalSearchProvider({
       })
     }, 300)
     return () => clearTimeout(t)
-  }, [open, query, serviceTypes, enabledBidServiceTypeIds, subcontractorServiceTypeIds])
+  }, [open, query, serviceTypes, enabledBidServiceTypeIds, subcontractorServiceTypeIds, fieldLookup])
 
   /** Rich-row evidence for job and bid results. `enabled` is already the office gate
    * (dev/master/assistant-like), so job evidence always uses money mode here. */
   useEffect(() => {
-    if (!open || results.length === 0) return
+    if (!open || results.length === 0 || fieldLookup) return
     const jobIds = results.filter((r) => r.source === 'job').slice(0, 20).map((r) => r.id)
     const bidIds = results.filter((r) => r.source === 'bid').slice(0, 20).map((r) => r.id)
     const missingJobs = jobIds.filter((id) => !jobEvidence.has(id))
@@ -360,7 +380,7 @@ export function HeaderGlobalSearchProvider({
       cancelled = true
       window.clearTimeout(t)
     }
-  }, [open, results, jobEvidence, bidEvidence])
+  }, [open, results, jobEvidence, bidEvidence, fieldLookup])
 
   const value = useMemo(
     () =>
@@ -377,12 +397,13 @@ export function HeaderGlobalSearchProvider({
         stripButtonRef,
         toolbarButtonRef,
         selectResult,
+        fieldLookup,
         navOverlayBackground,
         prefixMap,
         jobEvidence,
         bidEvidence,
       }) satisfies HeaderGlobalSearchContextValue,
-    [open, openSearch, closeSearch, query, setQuery, results, activeResultIndex, selectResult, navOverlayBackground, prefixMap, jobEvidence, bidEvidence],
+    [open, openSearch, closeSearch, query, setQuery, results, activeResultIndex, selectResult, fieldLookup, navOverlayBackground, prefixMap, jobEvidence, bidEvidence],
   )
 
   return (
@@ -394,6 +415,7 @@ export function HeaderGlobalSearchProvider({
         gcBuilder={null}
         onClose={() => setSnapshotCustomerId(null)}
       />
+      {lookupCard ? <FieldJobLookupCardModal card={lookupCard} onClose={() => setLookupCard(null)} /> : null}
     </HeaderGlobalSearchContext.Provider>
   )
 }
@@ -427,8 +449,8 @@ export function HeaderGlobalSearchOpenButton({
     <button
       ref={ref as LegacyRef<HTMLButtonElement>}
       type="button"
-      title="Search jobs, bids, estimates, customers — ⌘K / Ctrl+K toggles"
-      aria-label="Search jobs, bids, estimates, customers"
+      title={ctx.fieldLookup ? 'Find a job — number, name or address' : 'Search jobs, bids, estimates, customers — ⌘K / Ctrl+K toggles'}
+      aria-label={ctx.fieldLookup ? 'Find a job' : 'Search jobs, bids, estimates, customers'}
       aria-expanded={ctx.open}
       aria-haspopup="dialog"
       onClick={() => ctx.openSearch(placement)}
@@ -478,7 +500,7 @@ export function HeaderGlobalSearchNavLayer() {
     <>
       <div
         role="dialog"
-        aria-label="Search jobs, bids, estimates, customers"
+        aria-label={ctx.fieldLookup ? 'Find a job' : 'Search jobs, bids, estimates, customers'}
         style={{
           position: 'absolute',
           inset: 0,
@@ -520,7 +542,7 @@ export function HeaderGlobalSearchNavLayer() {
               }
             }
           }}
-          placeholder="Search jobs, bids, estimates, customers…"
+          placeholder={ctx.fieldLookup ? 'Job number, name or address…' : 'Search jobs, bids, estimates, customers…'}
           autoComplete="off"
           aria-label="Search query"
           role="combobox"
@@ -624,5 +646,88 @@ export function HeaderGlobalSearchNavLayer() {
         )
       ) : null}
     </>
+  )
+}
+
+/**
+ * T5-01: the read-only card a helper / subcontractor gets instead of Job Detail —
+ * number · name · address · trade, Directions and Call office. Nothing here punches
+ * the clock or edits the job; the copy says so.
+ */
+function FieldJobLookupCardModal({ card, onClose }: { card: FieldJobLookupCard; onClose: () => void }) {
+  const tel = officeTelHref(PORTAL_COMPANY.phone)
+  const btn: CSSProperties = {
+    flex: '1 1 auto',
+    textAlign: 'center',
+    padding: '0.6rem 0.75rem',
+    borderRadius: 8,
+    border: '1px solid var(--border-strong)',
+    background: 'var(--bg-subtle)',
+    color: 'var(--text-strong)',
+    textDecoration: 'none',
+    fontWeight: 600,
+    fontSize: '0.95rem',
+  }
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label={`Job ${card.number}`}
+      onClick={onClose}
+      style={{
+        position: 'fixed',
+        inset: 0,
+        zIndex: 1000,
+        background: 'rgba(0,0,0,0.5)',
+        display: 'flex',
+        alignItems: 'flex-end',
+        justifyContent: 'center',
+        padding: 'calc(1rem + env(safe-area-inset-top, 0px)) 0.75rem calc(0.75rem + env(safe-area-inset-bottom, 0px))',
+      }}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          width: '100%',
+          maxWidth: 480,
+          background: 'var(--surface)',
+          color: 'var(--text-strong)',
+          borderRadius: 12,
+          padding: '1rem 1rem 0.9rem',
+          boxSizing: 'border-box',
+          display: 'grid',
+          gap: '0.6rem',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem', flexWrap: 'wrap' }}>
+          <strong style={{ fontSize: '1.15rem' }}>{card.number}</strong>
+          <span style={{ fontSize: '1.05rem' }}>{card.name}</span>
+          {card.serviceType ? (
+            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginLeft: 'auto' }}>{card.serviceType}</span>
+          ) : null}
+        </div>
+        <div style={{ fontSize: '1rem', lineHeight: 1.35 }}>
+          {card.address ?? <span style={{ color: 'var(--text-muted)' }}>No address on this job — call the office.</span>}
+        </div>
+        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+          {card.directionsUrl ? (
+            <a href={card.directionsUrl} target="_blank" rel="noopener noreferrer" style={btn}>
+              Directions
+            </a>
+          ) : null}
+          {tel ? (
+            <a href={tel} style={btn}>
+              Call office
+            </a>
+          ) : null}
+          <button type="button" onClick={onClose} style={{ ...btn, cursor: 'pointer', flex: '0 0 auto' }}>
+            Close
+          </button>
+        </div>
+        <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+          Read only. To start work on it, use the Clock In button.
+        </div>
+      </div>
+    </div>
   )
 }
