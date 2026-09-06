@@ -77,7 +77,52 @@ async function fetchPayloadForUser(admin: Admin, userId: string, day: string): P
   if (!data || typeof data !== 'object') throw new Error('Empty payload')
   const body = data as CrewDayEmailPayload & { error?: string }
   if (body.error) throw new Error(`payload: ${body.error}`)
+  body.subs = await fetchSubsOnSite(admin, day)
   return body
+}
+
+/**
+ * v2.2929: subs on site this day — signed sub work orders whose picked dates
+ * cover it (the sub's own answer to the offered window). Office-wide, like
+ * the rest of this email. Degrades to [] on any error.
+ */
+async function fetchSubsOnSite(admin: Admin, day: string): Promise<NonNullable<CrewDayEmailPayload['subs']>> {
+  try {
+    const { data, error } = await admin
+      .from('step_commitments')
+      .select('display_name, job_id, picked_start, picked_end, stage_window_id, job:job_id(hcp_number, job_address, job_name)')
+      .in('status', ['accepted', 'approved'])
+      .lte('picked_start', day)
+      .gte('picked_end', day)
+      .limit(200)
+    if (error || !data) return []
+    const rows = data as Array<{ display_name: string; job_id: string | null; picked_start: string; picked_end: string; stage_window_id: string | null; job: { hcp_number: string | null; job_address: string | null; job_name: string | null } | { hcp_number: string | null; job_address: string | null; job_name: string | null }[] | null }>
+    const windowIds = [...new Set(rows.map((r) => r.stage_window_id).filter((id): id is string => !!id))]
+    const stageNames = new Map<string, string>()
+    if (windowIds.length > 0) {
+      const { data: wins } = await admin.from('job_stage_windows').select('id, fixture:fixture_id(name)').in('id', windowIds)
+      for (const w of (wins ?? []) as Array<{ id: string; fixture: { name: string | null } | { name: string | null }[] | null }>) {
+        const f = Array.isArray(w.fixture) ? w.fixture[0] ?? null : w.fixture
+        if (f?.name) stageNames.set(w.id, f.name.trim())
+      }
+    }
+    return rows.map((r) => {
+      const job = Array.isArray(r.job) ? r.job[0] ?? null : r.job
+      const num = (job?.hcp_number ?? '').trim()
+      const where = (job?.job_address ?? '').trim() || (job?.job_name ?? '').trim()
+      return {
+        person_name: r.display_name,
+        job_id: r.job_id,
+        job_label: num && where ? `#${num} · ${where}` : num ? `#${num}` : where || null,
+        stage_name: r.stage_window_id ? stageNames.get(r.stage_window_id) ?? null : null,
+        picked_start: r.picked_start,
+        picked_end: r.picked_end,
+      }
+    })
+  } catch (e) {
+    console.error('crew-day subs on site failed', e)
+    return []
+  }
 }
 
 /** Caller JWT → active eligible users row; a Response means the gate failed. */

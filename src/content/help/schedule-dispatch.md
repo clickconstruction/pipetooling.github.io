@@ -228,3 +228,9 @@ Auto-added blocks are ordinary Office-job blocks — drag them, retime them, or 
 ## Daily rhythm
 
 The Quickfill page embeds this schedule twice — **Schedule** ("Are there any obvious schedule conflicts?") and **Tomorrow's Schedule** ("Who is on what job tomorrow?") — so reviewing dispatch is part of the office's daily loop.
+
+## Subs on the board
+
+Subs are not on the crew grid — they are people on work orders, not users with blocks — so the People tab shows them in a **Subs** section under the crew. One row per sub, one chip per day: solid green when they picked those days on their portal, striped when a window is set but they have not picked yet, dashed while an offer is still out. Tap a chip to open the job. There is nothing to drag; to move a sub, change the window on **Jobs → Subs → Work** or let them re-pick.
+
+When a sub is definitely on a job, everyone assigned to that job sees a small {{chip:green|sub}} badge on those days — hover for the names. The **Day** tab lists **Subs on site** above the crew; {{button:outline|Add a site visit ›}} arms place-a-job for that job so you can drop a real block on a superintendent's lane. The Crew Day email ends with the same list.
