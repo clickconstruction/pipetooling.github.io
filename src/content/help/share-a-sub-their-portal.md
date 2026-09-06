@@ -74,3 +74,7 @@ Every move, yours or the sub's, writes a **Sub labor** line on the job's Activit
 ## What they see when an offer has a window
 
 A work order drafted from a stage (see *set a window for a sub's stage*) reaches the portal with the window drawn as a calendar. The sub taps a start day, the job's working days fill to the end, and signing carries the pick. You get a dispatch line — *Behar picked Sep 22 → Sep 23 for #1004 · Top-out* — and the Subs → Work row reads *picked Sep 22 – Sep 23 by the sub*. They can move the dates inside the window until the day before the start; after that the card tells them to call.
+
+## Their days off
+
+Subs mark days off on the portal's **Your days**. Those days stripe their lane on **Projects → Forecast → Subs** (a booking over one gets the red outline) and hatch their row on **Schedule → Dispatch → People → Subs**. If a sub marks off a day their pick already covers, a dispatch line says so — move the window or call them.

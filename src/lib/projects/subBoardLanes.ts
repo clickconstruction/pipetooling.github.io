@@ -37,13 +37,15 @@ export type SubBoardBar = {
   endYmd: string
   ghost: boolean
   overlapping: boolean
+  /** v2.2930: the bar sits on a day the sub marked off. */
+  overOffDay: boolean
   /** Percent geometry within the window (clamped). */
   startPct: number
   widthPct: number
   projectId: string | null
 }
 
-export type SubBoardLane = { key: string; name: string; bars: SubBoardBar[] }
+export type SubBoardLane = { key: string; name: string; bars: SubBoardBar[]; /** v2.2930: off-day stripes, as percent geometry in the window. */ offDays: Array<{ ymd: string; startPct: number; widthPct: number }> }
 
 export type SubBoardResult = {
   lanes: SubBoardLane[]
@@ -62,6 +64,8 @@ export function buildSubBoardLanes(
   commitments: SubBoardCommitmentInput[],
   windowStartYmd: string,
   windowEndYmd: string,
+  /** v2.2930: person_id → off days (YMD). */
+  offDaysByPerson: ReadonlyMap<string, readonly string[]> = new Map(),
 ): SubBoardResult {
   const winStart = dayIndex(windowStartYmd)
   const winEnd = dayIndex(windowEndYmd)
@@ -100,17 +104,23 @@ export function buildSubBoardLanes(
       endYmd,
       ghost: c.status === 'offered',
       overlapping: false,
+      overOffDay: (offDaysByPerson.get(c.person_id) ?? []).some((d) => d >= effStart && d <= endYmd),
       startPct: ((clampedStart - winStart) / winDays) * 100,
       widthPct: Math.max(((clampedEnd - clampedStart + 1) / winDays) * 100, 1.5),
       projectId: c.projectId,
     }
     const key = c.person_id
-    const lane = laneMap.get(key) ?? { key, name: c.display_name, bars: [] }
+    const lane = laneMap.get(key) ?? { key, name: c.display_name, bars: [], offDays: [] }
     lane.bars.push(bar)
     laneMap.set(key, lane)
   }
 
   for (const lane of laneMap.values()) {
+    for (const d of offDaysByPerson.get(lane.key) ?? []) {
+      const di = dayIndex(d)
+      if (di == null || di < winStart || di > winEnd) continue
+      lane.offDays.push({ ymd: d, startPct: ((di - winStart) / winDays) * 100, widthPct: (1 / winDays) * 100 })
+    }
     lane.bars.sort((a, b) => a.startYmd.localeCompare(b.startYmd))
     for (let i = 0; i < lane.bars.length; i++) {
       for (let j = i + 1; j < lane.bars.length; j++) {

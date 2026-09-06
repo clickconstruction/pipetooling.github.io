@@ -101,3 +101,15 @@ export async function fetchTeamMembersByJobId(jobIds: string[]): Promise<{ data:
     return { data: out, error: formatErrorMessage(e) }
   }
 }
+
+/** person_availability (kind off) inside the range, grouped by person (v2.2930). */
+export async function fetchSubOffDaysForRange(startYmd: string, endYmd: string): Promise<{ data: Map<string, string[]>; error: string | null }> {
+  const out = new Map<string, string[]>()
+  try {
+    const rows = await withSupabaseRetry(async () => await supabase.from('person_availability').select('person_id, day').eq('kind', 'off').gte('day', startYmd).lte('day', endYmd).limit(2000), 'fetchSubOffDaysForRange')
+    for (const r of (rows ?? []) as Array<{ person_id: string; day: string }>) out.set(r.person_id, [...(out.get(r.person_id) ?? []), r.day])
+    return { data: out, error: null }
+  } catch (e) {
+    return { data: out, error: formatErrorMessage(e) }
+  }
+}

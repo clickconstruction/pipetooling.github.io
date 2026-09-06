@@ -41,6 +41,10 @@ If none of the days work, tap **Can't do any of these days**, say when you could
 
 Once signed, your job card shows **Your dates**. You can move them inside the window yourself until the day before you start with {{button:outline|Change}}. After that, call the office.
 
+## Your days
+
+Below your jobs, **Your days** shows the coming weeks. Each weekday says how many jobs land on it — *one job*, *two jobs* — or *off*. Tap a day to see every job on it with the address and a {{button:outline|Map ›}} link. If you can't work a day, tap it and {{button:outline|Mark this day off}}; the office board shows it so nobody offers you work then. A day that already has your job on it warns you first — marking it off anyway tells the office to move it or call you.
+
 ## The other tabs
 
 - **Schedule / Inbox / Customers** (the Job Mode tab bar) — your schedule and customer contacts for the jobs you're on. **Inbox** also lists **My requests**: everything you've sent to Dispatch, split into *Waiting on Dispatch* and *Answered* — and you get a push, **Dispatch answered**, the moment they close one.

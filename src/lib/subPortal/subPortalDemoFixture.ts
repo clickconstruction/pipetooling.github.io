@@ -133,6 +133,14 @@ export const SUB_PORTAL_DEMO_PAYLOAD: SubPortalPayload = {
     explainer:
       "We run payments every Friday. When your work passes inspection it's queued for the next run. Final payments on builder jobs release once the builder accepts the work — this page always shows exactly where each dollar stands.",
   },
+  days: {
+    bookings: [
+      { start: '2026-09-09', end: '2026-09-10', label: 'Top out · J-1482', address: '1208 Brazos St, Austin', jobNumber: 'J-1482', source: 'pick', commitmentId: 'demo-c1', note: null },
+      { start: '2026-09-10', end: '2026-09-10', label: '#J-1490', address: '415 Bunton Creek Rd, Kyle', jobNumber: 'J-1490', source: 'office', commitmentId: null, note: null },
+      { start: '2026-09-11', end: '2026-09-12', label: 'Trim · J-1477', address: '894 Lamar Blvd, Austin', jobNumber: 'J-1477', source: 'office', commitmentId: null, note: null },
+    ],
+    offDays: ['2026-09-15'],
+  },
   requestToken: null,
   slug: 'dv-mechanical',
 }

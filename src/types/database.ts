@@ -11355,6 +11355,44 @@ export type Database = {
           },
         ]
       }
+      person_availability: {
+        Row: {
+          created_at: string
+          day: string
+          id: string
+          kind: string
+          note: string | null
+          person_id: string
+          source: string
+        }
+        Insert: {
+          created_at?: string
+          day: string
+          id?: string
+          kind?: string
+          note?: string | null
+          person_id: string
+          source?: string
+        }
+        Update: {
+          created_at?: string
+          day?: string
+          id?: string
+          kind?: string
+          note?: string | null
+          person_id?: string
+          source?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "person_availability_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       person_contract_documents: {
         Row: {
           applied_contract_template_document_id: string | null

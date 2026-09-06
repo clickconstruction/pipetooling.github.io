@@ -4,6 +4,9 @@
  * response renders the friendly error, never a crash.
  */
 
+import type { SubPortalBooking, SubPortalDays } from './subPortalDays'
+export type { SubPortalBooking, SubPortalDays } from './subPortalDays'
+
 export type SubPortalCompany = {
   name: string
   cityLine: string
@@ -112,6 +115,8 @@ export type SubPortalPayload = {
   payRun: { day: string | null; nextRun: string | null; explainer: string | null }
   requestToken: string | null
   slug: string | null
+  /** v2.2930: Your days — dated bookings and days off; empty when the function predates it. */
+  days: SubPortalDays
 }
 
 const str = (v: unknown): string => (typeof v === 'string' ? v : '')
@@ -312,5 +317,31 @@ export function parseSubPortalPayload(raw: unknown): SubPortalPayload | null {
     },
     requestToken: strOrNull(r.requestToken),
     slug: strOrNull(r.slug),
+    days: parseDays(r.days),
   }
+}
+
+function parseDays(raw: unknown): SubPortalDays {
+  if (raw == null || typeof raw !== 'object') return { bookings: [], offDays: [] }
+  const r = raw as Record<string, unknown>
+  const bookings: SubPortalBooking[] = []
+  for (const b of Array.isArray(r.bookings) ? r.bookings : []) {
+    if (b == null || typeof b !== 'object') continue
+    const x = b as Record<string, unknown>
+    const start = ymdOrNull(x.start)
+    if (!start) continue
+    const end = ymdOrNull(x.end) ?? start
+    bookings.push({
+      start,
+      end: end >= start ? end : start,
+      label: str(x.label).trim() || 'Work',
+      address: strOrNull(x.address),
+      jobNumber: strOrNull(x.jobNumber),
+      source: x.source === 'pick' ? 'pick' : 'office',
+      commitmentId: strOrNull(x.commitmentId),
+      note: strOrNull(x.note),
+    })
+  }
+  const offDays = (Array.isArray(r.offDays) ? r.offDays : []).map(ymdOrNull).filter((d): d is string => !!d)
+  return { bookings, offDays }
 }

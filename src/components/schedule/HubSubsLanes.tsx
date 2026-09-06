@@ -50,6 +50,7 @@ export function HubSubsLanes({ lanes, visibleDayKeys, scheduleTodayYmd, onOpenJo
           <span><i style={{ display: 'inline-block', width: 10, height: 10, borderRadius: 2, background: 'var(--bg-green-tint)', border: '1px solid var(--border-green)', marginRight: 4, verticalAlign: -1 }} />picked</span>
           <span><i style={{ display: 'inline-block', width: 10, height: 10, borderRadius: 2, background: 'repeating-linear-gradient(90deg, var(--bg-subtle) 0 3px, var(--surface) 3px 6px)', border: '1px solid var(--border)', marginRight: 4, verticalAlign: -1 }} />window, not picked</span>
           <span><i style={{ display: 'inline-block', width: 10, height: 10, borderRadius: 2, border: '1px dashed var(--border-strong)', marginRight: 4, verticalAlign: -1 }} />offer out</span>
+          <span><i style={{ display: 'inline-block', width: 10, height: 10, borderRadius: 2, background: 'repeating-linear-gradient(45deg, var(--border) 0 3px, var(--bg-subtle) 3px 6px)', marginRight: 4, verticalAlign: -1 }} />day off</span>
         </span>
       </div>
       <table style={{ borderCollapse: 'collapse', width: '100%', minWidth: 120 + visibleDayKeys.length * 96 }}>
@@ -72,8 +73,10 @@ export function HubSubsLanes({ lanes, visibleDayKeys, scheduleTodayYmd, onOpenJo
               </td>
               {visibleDayKeys.map((dk) => {
                 const items = lane.cells.get(dk) ?? []
+                const off = lane.offDays.has(dk)
                 return (
-                  <td key={dk} style={{ padding: '0.3rem 0.35rem', borderBottom: '1px solid var(--border)', borderLeft: '1px solid var(--border)', verticalAlign: 'top', maxWidth: 160, background: dk === scheduleTodayYmd ? 'var(--bg-blue-tint)' : undefined }}>
+                  <td key={dk} title={off ? 'Day off (marked on their portal)' : undefined} style={{ padding: '0.3rem 0.35rem', borderBottom: '1px solid var(--border)', borderLeft: '1px solid var(--border)', verticalAlign: 'top', maxWidth: 160, background: off ? 'repeating-linear-gradient(45deg, var(--border) 0 4px, var(--bg-subtle) 4px 8px)' : dk === scheduleTodayYmd ? 'var(--bg-blue-tint)' : undefined }}>
+                    {off && items.length === 0 ? <span style={{ fontSize: '0.66rem', color: 'var(--text-muted)', fontWeight: 600 }}>off</span> : null}
                     {items.map((it) => (
                       <button key={`${it.orderId}:${dk}`} type="button" title={it.title} onClick={() => it.jobId && onOpenJob(it.jobId)} style={chipStyle(it.kind, !!it.jobId)} disabled={!it.jobId}>
                         {it.kind === 'offered' ? '? ' : ''}{it.label}

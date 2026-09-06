@@ -23,6 +23,7 @@ import { isSubPortalSheetQueued, subPortalRailStep } from '../lib/subPortal/subP
 import { SUB_PORTAL_FOCUS_PARAM, isSubPortalFocused, parseSubPortalFocus, subPortalFocusDomId, type SubPortalFocus } from '../lib/subPortal/subPortalFocus'
 import { PlansPill, SubPortalGuideButton, SubPortalGuideSheet } from '../components/subPortal/SubPortalGuide'
 import { SubPortalDatePicker } from '../components/subPortal/SubPortalDatePicker'
+import { SubPortalYourDays } from '../components/subPortal/SubPortalYourDays'
 import { pickEndFromStart } from '../../supabase/functions/_shared/subPick'
 import { subPortalGuide } from '../lib/subPortal/subPortalGuideStrings'
 import {
@@ -593,6 +594,33 @@ function SubPortalStatement({
           </div>
         ) : null}
       </div>
+
+      {(payload.days.bookings.length > 0 || payload.days.offDays.length > 0 || payload.sheets.length > 0) && (
+        <section style={{ marginTop: 22 }} data-screen-only>
+          <h2 style={sectionTitleStyle}>{t('yourDays')}</h2>
+          <SubPortalYourDays
+            days={payload.days}
+            todayYmd={payload.preparedOn}
+            lang={lang}
+            t={t}
+            onToggleOff={async (day, off) => {
+              if (sampleStateFromToken(submitToken)) return { ok: true }
+              try {
+                const res = await fetch(`${supabaseUrl}/functions/v1/submit-sub-portal`, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ token: submitToken, kind: 'day_off', day, off }),
+                })
+                const json = (await res.json().catch(() => null)) as { ok?: boolean; error?: string } | null
+                if (!res.ok || !json?.ok) return { ok: false, error: json?.error }
+                return { ok: true }
+              } catch {
+                return { ok: false }
+              }
+            }}
+          />
+        </section>
+      )}
 
       <SubPortalGuideButton lang={lang} onOpen={() => setGuideOpen(true)} />
       <div style={{ marginTop: 30, fontSize: 11, color: FAINT, textAlign: 'center' }}>

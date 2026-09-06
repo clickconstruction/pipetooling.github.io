@@ -327,6 +327,48 @@ serve(async (req) => {
       .maybeSingle()
     const slug = ((slugRow as { slug?: string | null } | null)?.slug ?? '').trim() || null
 
+    // Your days (v2.2930): dated work from every live signed order (their pick, else the
+    // office's span), office-set sheets with a date that no order already covers, and days off.
+    const bookings: Array<{ start: string; end: string; label: string; address: string | null; jobNumber: string | null; source: 'pick' | 'office'; commitmentId: string | null; note: string | null }> = []
+    {
+      const { data: liveRaw } = await admin
+        .from('step_commitments')
+        .select('id, labor_job_id, job_id, picked_start, picked_end, proposed_start, proposed_end, stage_window_id, job:job_id(hcp_number, job_address)')
+        .eq('person_id', link.person_id)
+        .in('status', ['accepted', 'approved'])
+        .limit(100)
+      const live = (liveRaw ?? []) as Array<{ id: string; labor_job_id: string | null; job_id: string | null; picked_start: string | null; picked_end: string | null; proposed_start: string | null; proposed_end: string | null; stage_window_id: string | null; job: { hcp_number: string | null; job_address: string | null } | { hcp_number: string | null; job_address: string | null }[] | null }>
+      const stageNames = new Map<string, string>()
+      const winIds = [...new Set(live.map((o) => o.stage_window_id).filter((id): id is string => !!id))]
+      if (winIds.length > 0) {
+        const { data: wins } = await admin.from('job_stage_windows').select('id, fixture:fixture_id(name)').in('id', winIds)
+        for (const w of (wins ?? []) as Array<{ id: string; fixture: { name: string | null } | { name: string | null }[] | null }>) {
+          const f = Array.isArray(w.fixture) ? w.fixture[0] ?? null : w.fixture
+          if (f?.name) stageNames.set(w.id, f.name.trim())
+        }
+      }
+      const coveredSheetIds = new Set<string>()
+      for (const o of live) {
+        const start = (o.picked_start ?? '').trim() || (o.proposed_start ?? '').trim()
+        if (!start) continue
+        const end = ((o.picked_start ? o.picked_end : o.proposed_end) ?? '').trim() || start
+        if (end < todayYmd) continue
+        const job = Array.isArray(o.job) ? o.job[0] ?? null : o.job
+        const num = (job?.hcp_number ?? '').trim() || null
+        const stage = o.stage_window_id ? stageNames.get(o.stage_window_id) ?? null : null
+        bookings.push({ start, end, label: [stage, num ? `#${num}` : null].filter(Boolean).join(' · ') || 'Work order', address: (job?.job_address ?? '').trim() || null, jobNumber: num, source: o.picked_start ? 'pick' : 'office', commitmentId: o.id, note: null })
+        if (o.labor_job_id) coveredSheetIds.add(o.labor_job_id)
+      }
+      for (const sh of sheetRows) {
+        const d = (sh.job_date ?? '').trim()
+        if (!d || d < todayYmd || coveredSheetIds.has(sh.id)) continue
+        const num = (sh.job_number ?? '').trim() || null
+        bookings.push({ start: d, end: d, label: num ? `#${num}` : 'Sheet', address: (sh.address ?? '').trim() || null, jobNumber: num, source: 'office', commitmentId: null, note: null })
+      }
+    }
+    const { data: offRaw } = await admin.from('person_availability').select('day').eq('person_id', link.person_id).eq('kind', 'off').gte('day', addDaysYmd(todayYmd, -7)).limit(200)
+    const offDays = ((offRaw ?? []) as Array<{ day: string }>).map((r) => r.day).sort()
+
     return jsonResponse({
       company: PORTAL_COMPANY,
       subName: personName,
@@ -345,6 +387,7 @@ serve(async (req) => {
       // page submit forms and sign offers.
       requestToken: link.token ?? null,
       slug,
+      days: { bookings, offDays },
     })
   } catch (e) {
     console.error('sub-portal error', e)

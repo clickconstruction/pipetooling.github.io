@@ -171,6 +171,19 @@ export type SubPortalOffer = {
   workDays: number | null
 }
 
+/** v2.2930: where the sub will be — dated work (their pick, else the office's span, else a dated sheet) and their days off. */
+export type SubPortalBooking = {
+  start: string
+  end: string
+  label: string
+  address: string | null
+  jobNumber: string | null
+  source: 'pick' | 'office'
+  commitmentId: string | null
+  note: string | null
+}
+export type SubPortalDays = { bookings: SubPortalBooking[]; offDays: string[] }
+
 export type SubPortalDocState = 'on_file' | 'expiring' | 'action_needed'
 
 export type SubPortalDoc = {

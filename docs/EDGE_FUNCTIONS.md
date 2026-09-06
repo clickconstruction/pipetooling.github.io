@@ -1061,6 +1061,8 @@ Devs: **Settings → Templates & testing → Workflow email (Edge Function)** (c
 
 **Windows and picks** (v2.2928): each open offer carries `window` — the stage's `job_stage_windows` span via `step_commitments.stage_window_id`, else the order's `proposed_start/end`, else null — and `workDays`; each sheet with a signed order carries `dates` (`{ commitmentId, start, end, window, workDays, changeUntil }`, `changeUntil` = the day before the start while it is still ahead). Shaped by `agreementDates` / `pickWindowFor` in `_shared/subPortalStatement.ts` + `_shared/subPick.ts`.
 
+**Your days** (v2.2930): `days.bookings` — every live signed order's dates (the pick, else the office's span; label = stage line-item name + job number; the job's address) plus office-set sheets with a `job_date` not already covered by an order — and `days.offDays` from `person_availability` (a week back onward).
+
 **Endpoint**: `GET /functions/v1/sub-portal?token=<opaque>` or `GET /functions/v1/sub-portal?slug=<address>`
 
 **Dates** (v2.2703): the sheet window's "today" is the Central civil day (`todayYmdInAppTz()`).
@@ -1072,6 +1074,8 @@ Devs: **Settings → Templates & testing → Workflow email (Edge Function)** (c
 ### submit-sub-portal
 
 **Purpose**: Everything a sub can DO from the portal, token-authenticated like submit-portal-request. Five kinds (the fifth, `mark_work_done`, below): `availability` (rate-limited 5/hour per link → `dispatch_requests` with `pending_payload.source='sub_portal'` + `notify-dispatch-request` fan-out); `accept_offer` — **sign-to-accept**: validates the `offered` + unexpired commitment belongs to the link's person, validates/stores a drawn signature PNG (magic bytes, 512 KB cap, `contract-signer-signatures` bucket under `commitments/<id>/`, compensating delete on failure), transitions `offered → accepted` while stamping the full signature record of truth on the row (`signed_at`, `signer_printed_name`, `signer_signature_mode` type|draw, `signer_signature_storage_path`, `signer_consented_at`, `signer_ip`, `signer_user_agent`), then drops a "signed & accepted" dispatch note; `decline_offer` (`offered → declined` with the required reason + dispatch note); `sign_link` — mints a fresh 14-day `/contract/accept` token for one of the sub's own `unsent`/`sent` `person_contract_documents` (send-contract-for-signature mint pattern, no email; the newest link wins).
+
+**Days off** (v2.2930): `day_off` (`day`, `off`) upserts / deletes `person_availability` (kind `off`, source `portal`), refuses past days, and when the day sits under a signed order's pick drops dispatch note `sub_day_off_collision` (with `commitmentId`, `jobId`, `collisions`). Returns `{ ok, collisions }`.
 
 **Picks** (v2.2928): `accept_offer` accepts `pickedStart` / `pickedEnd`; when the order has a window (stage window, else its proposed span) the sign is refused without a weekday start inside it (`evaluatePick` in `_shared/subPick.ts` → `outside` / `past` / `weekend` / `order`); on success it writes `picked_start/end`, `picked_at`, `picked_by = 'sub'`, mirrors the start onto `people_labor_jobs.job_date` and a step-anchored order's `scheduled_start/end_date`, and the accepted dispatch note carries the dates. `pick_dates` (`commitmentId`, `pickedStart`, `pickedEnd`) moves a signed order's dates inside the window until the day before the current start (409 past that, 409 for office-set dates), dispatch note `sub_dates_picked`. `cant_do_dates` (`commitmentId`, optional `note`) drops `sub_dates_askback` with the window; rate-limited like availability.
 
