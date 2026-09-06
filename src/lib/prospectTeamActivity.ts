@@ -31,7 +31,7 @@ export async function loadProspectTeamActivity(
           .from('users')
           .select('id, name, email, role')
           // Office roles plus estimators who were granted Prospects access.
-          .or('role.in.(dev,master_technician,assistant),and(role.eq.estimator,estimator_prospects_access.eq.true)')
+          .or('role.in.(dev,master_technician,assistant,controller),and(role.eq.estimator,estimator_prospects_access.eq.true)')
           .order('name'),
         supabase
           .from('prospect_timer_events')

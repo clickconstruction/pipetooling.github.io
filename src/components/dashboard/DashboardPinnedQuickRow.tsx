@@ -23,6 +23,7 @@ import { gcReviewNudgeState, gcReviewWeekdayIndex } from '../../lib/jobs/gcRevie
 import { buildLostBidNudge, type LostBidNudge } from '../../lib/dashboardLostBidNudge'
 import { useBulkDeleteNudge } from '../../hooks/useBulkDeleteNudge'
 import { useBidAuditsPendingCount } from '../../hooks/useBidAuditsPendingCount'
+import { canWorkRobotAudits } from '../../lib/bids/bidAudits'
 import { useSpecSectionUncodedCount } from '../../hooks/useSpecSectionUncodedCount'
 import { useLienReleasesOwedNudge } from '../../hooks/useLienReleasesOwedNudge'
 import { useStatementRoundNudge } from '../../hooks/useStatementRoundNudge'
@@ -349,9 +350,10 @@ export function DashboardPinnedQuickRow({
   const bulkDelete = useBulkDeleteNudge(hideBanners ? undefined : authUserId)
   const claimDev = useClaimDevAttemptsNudge(hideBanners ? undefined : authUserId)
 
-  // Robot audits (v2.2573): the auditing roles — estimators do the work, dev
-  // sees everything. The hook's sealed-shadow hold keeps unworkable audits out.
-  const robotAuditsEnabled = !hideBanners && Boolean(authUserId) && (role === 'dev' || role === 'estimator')
+  // Robot audits (v2.2573): the auditing roles = the bid_audits write set
+  // (ROBOT_AUDIT_ROLES, v2.2920 — the same list gates the Bids 🤖 door). The
+  // hook's sealed-shadow hold keeps unworkable audits out.
+  const robotAuditsEnabled = !hideBanners && Boolean(authUserId) && canWorkRobotAudits(role)
   const { pending: robotAuditsPending } = useBidAuditsPendingCount(robotAuditsEnabled)
 
   // Division 22 uncoded names (v2.2627) — the ledger-teaching roles only.

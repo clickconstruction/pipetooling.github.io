@@ -81,6 +81,20 @@ describe('superintendent (v2.2325: nav dead ends — dispatch-mode shell stays s
   })
 })
 
+describe('estimator (v2.2920: /people gate matches the ACCESS_CONTROL matrix — J32-N5)', () => {
+  it('blocks /people and its subpaths; the documented estimator pages stay open', () => {
+    expect(isPathAllowedForRole('estimator', '/people', false)).toBe(false)
+    expect(isPathAllowedForRole('estimator', '/people/', false)).toBe(false)
+    for (const p of ['/dashboard', '/bids', '/estimates', '/customers', '/materials', '/documents', '/map', '/calendar', '/checklist', '/settings', '/tally', '/help']) {
+      expect(isPathAllowedForRole('estimator', p, false), p).toBe(true)
+    }
+  })
+  it('keeps the Prospects flag behaviour', () => {
+    expect(isPathAllowedForRole('estimator', '/prospects', false)).toBe(false)
+    expect(isPathAllowedForRole('estimator', '/prospects', true)).toBe(true)
+  })
+})
+
 describe('job-mode tab paths (v2.911 fix: allowlists bounced field roles)', () => {
   const jobModePaths = ['/job-mode/schedule', '/job-mode/inbox', '/job-mode/customers']
   it('allowed for every Job-Mode-eligible restricted role', () => {

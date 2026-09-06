@@ -27,14 +27,14 @@ describe('showJobCostBreakdownTeamLabor', () => {
 })
 
 describe('resolveJobWindowMode', () => {
-  it('gives the tabbed Job window only to roles whose full-ledger fetch RLS admits', () => {
-    for (const role of ['dev', 'master_technician', 'assistant', 'primary']) {
+  it('gives the tabbed Job window only to roles whose full-ledger fetch RLS admits (controller since 20260906010000_role_sweep_predicates)', () => {
+    for (const role of ['dev', 'master_technician', 'assistant', 'controller', 'primary']) {
       expect(resolveJobWindowMode(role)).toBe('window')
     }
   })
 
-  it('gives superintendent, estimator, and controller the read-only pane (the window self-closed for them)', () => {
-    for (const role of ['superintendent', 'estimator', 'controller']) {
+  it('gives superintendent and estimator the read-only pane (the window self-closed for them)', () => {
+    for (const role of ['superintendent', 'estimator']) {
       expect(resolveJobWindowMode(role)).toBe('read-only')
     }
   })

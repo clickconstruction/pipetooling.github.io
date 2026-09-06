@@ -2,11 +2,17 @@ import type { UserRole } from '../hooks/useAuth'
 import { isSubcontractorLikeRole } from './subcontractorLikeRole'
 
 /** Roles that can load full `JobWithDetails` (jobs_ledger + child embeds) for read-only Job details.
- * Mirrors the `jobs_ledger` SELECT policy's literal role array ("Devs, masters, assistants, primary
- * can read jobs ledger") — controller is NOT in it, so a controller's full fetch returns null too. */
+ * Mirrors the `jobs_ledger` SELECT policy's role array ("Devs, masters, assistants, primary can read
+ * jobs ledger"). Controller joined it in migration `20260906010000_role_sweep_predicates` (v2.2920 —
+ * the array gained controller beside assistant on every jobs_ledger-family policy); before that a
+ * controller's full fetch returned null and the window closed itself (v2.2848). */
 export function isStaffFullJobLedgerDetailRole(role: string | null): boolean {
   return (
-    role === 'dev' || role === 'master_technician' || role === 'assistant' || role === 'primary'
+    role === 'dev' ||
+    role === 'master_technician' ||
+    role === 'assistant' ||
+    role === 'controller' ||
+    role === 'primary'
   )
 }
 

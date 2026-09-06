@@ -6,6 +6,9 @@ import {
   computeAuditDraftTotal,
   sortAuditsForTab,
   canWriteBidAudit,
+  canWorkRobotAudits,
+  ROBOT_AUDIT_ROLES,
+  AUDIT_WRITE_ROLES,
   formatAuditRequestedStamp,
   type BidAuditNoteRow,
 } from './bidAudits'
@@ -105,6 +108,22 @@ describe('sortAuditsForTab', () => {
       { id: 'dg-old', status: 'digested' as const, requested_at: '2026-08-22' },
     ]
     expect(sortAuditsForTab(audits).map((a) => a.id)).toEqual(['p-old', 'p-new', 'dn', 'dg-new', 'dg-old'])
+  })
+})
+
+describe('ROBOT_AUDIT_ROLES (v2.2920 — one audience for card, door and verdict)', () => {
+  it('is exactly the bid_audits write policy set from 20260830230000_bid_audits.sql', () => {
+    // "Bid pricing users can write bid_audits" FOR ALL: dev, master_technician, assistant, controller, estimator.
+    // The SELECT policy adds primary + superintendent — readers, never the audience.
+    expect([...ROBOT_AUDIT_ROLES]).toEqual(['dev', 'master_technician', 'assistant', 'controller', 'estimator'])
+    expect(AUDIT_WRITE_ROLES).toBe(ROBOT_AUDIT_ROLES)
+  })
+
+  it('canWorkRobotAudits gates the Needs-You card and the Bids 🤖 door on that list alone', () => {
+    for (const role of ROBOT_AUDIT_ROLES) expect(canWorkRobotAudits(role)).toBe(true)
+    for (const role of ['primary', 'superintendent', 'subcontractor', 'helpers', null, undefined, '']) {
+      expect(canWorkRobotAudits(role)).toBe(false)
+    }
   })
 })
 

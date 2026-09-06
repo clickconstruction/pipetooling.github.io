@@ -11,7 +11,10 @@ const auditDb = supabase as unknown as SupabaseClient
  * Audits-tab gating (v2.2517): how many robot bids are awaiting a human audit, and
  * whether any audits exist at all (the tab shows whenever there is history, so a
  * just-finished audit doesn't make the tab vanish mid-session). Missing table —
- * client shipping ahead of the migration — reads as "no audits".
+ * client shipping ahead of the migration — reads as "no audits". Callers pass
+ * `enabled = signed in && canWorkRobotAudits(role)` (v2.2920): the audience is
+ * the bid_audits write set, so a role that can only read audits never sees the
+ * door or the card.
  *
  * Two kinds of pending audit are NOT workable and don't count (v2.2553, v2.2796):
  * sealed shadows (the reference bid hasn't gone out — anchoring) and unpriced

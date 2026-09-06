@@ -150,6 +150,7 @@ Mutual exclusions are enforced RPC-side: job splits ⟂ payroll flag ⟂ resolut
 - **INSERT**: the helper **AND** an office role — dev, master_technician, assistant, controller, estimator.
 - **UPDATE**: the helper **AND** the office set plus superintendent (client limits supers to offered → accepted; the DB grants row access, not transition logic). Because the helper scopes superintendents per row, a superintendent can edit only work orders on their own jobs/projects.
 - **DELETE**: the helper **AND** dev/master_technician only — money records cancel via status, not deletion.
+- **`create_sheet_for_work_order(commitment_id)`** (v2.2819; gate v2.2920): the service role (`submit-sub-portal` after a sub signs) and the office set pass up front; a **superintendent** passes only once the row is loaded and `superintendent_can_access_sub_work_order(labor_job_id, job_id)` says the job is theirs — the v2.2844 rule. Before v2.2920 the RPC admitted `superintendent` by role literal with no row gate.
 - New table: ends with both read-only sweep calls (training-mode users blocked).
 
 ### `settle_step_commitment` RPC (v2.1210, `20260801170000_settle_step_commitment_rpc.sql`)
@@ -463,10 +464,10 @@ A Contract Book entry can be a **form** (an uploaded PDF the signer fills on the
 **Purpose**: Bid estimation and material pricing specialist
 
 **Access**:
-- Dashboard, Materials, Estimates, Bids, **Map** (`/map`), Calendar, Checklist, People, Settings, Tally, Prospects (if enabled)
+- Dashboard, Materials, Estimates, Bids, **Map** (`/map`), Calendar, Checklist, Settings, Tally, Prospects (if enabled)
 - **Customers** (`/customers`): list, search, notes, create (master required), edit **basic fields** (name, address, contact, customer type, date met). **Advanced** (customer owner), **merge**, and **delete** are not available in the UI; DB blocks changing **owner** (`master_user_id`) and **Stripe** (`stripe_customer_id`) on save.
   - **What the list actually reads for an estimator** (v2.2910, journey-map J34-adj4; code-level RLS recheck, no live impersonation): `Customers.tsx` reads no role — every row renders the same markup for every role the route admits, so what differs is what RLS returns. Estimators read **customers** (blanket estimator branch), **customer_contacts** (role array includes estimator), **bids** (full bid access) and **estimates** (their scope). They read **zero** `jobs_ledger`, `jobs_ledger_invoices` and `jobs_ledger_payments` rows — those SELECT policies' role arrays are dev / master_technician / assistant / primary (plus sub, team-lead and own-clock-session branches), see also "Opening a job" below — and `projects` only via a `project_superintendents` / assigned-step row (`can_access_project_row` has no estimator branch), i.e. effectively none. Consequence: job counts, open-job chips, open balances and the paid / billed / unbilled rail come back empty for estimators. The rail now says **"money not shown for estimators"** instead of rendering $0 (the only role read on the page: `moneyHiddenByRls(role)`); the job / project chips simply do not render at 0. `CustomerDetail.tsx` still reads no role — its Jobs / Invoices tabs are empty-by-RLS for estimators.
-- **Blocked**: Projects, People, Jobs, Templates
+- **Blocked**: Projects, People, Jobs, Templates. **People** (v2.2920, journey map J32-N5): `estimatorAllowedPaths` used to admit `/people` — a two-tab roster with every address — while this matrix said ❌; the route and both nav entries (desktop icon, mobile menu) are now off for estimators
 - **Opening a job** (v2.2848): from Estimates / Customers, a job opens the **read-only Job Detail pane** (`resolveJobWindowMode('estimator') === 'read-only'`), not the tabbed Job window — estimators are outside the `jobs_ledger` SELECT policy's role array, so the window's edit form fetched null and closed itself
 
 **Service Type Filtering**:
@@ -579,7 +580,7 @@ A Contract Book entry can be a **form** (an uploaded PDF the signer fills on the
 
 **Layout Behavior**:
 - Navigation shows: Dashboard, Estimates, Jobs, Bids, **Roadmap** (v2.2916) ([`Layout.tsx`](../src/components/Layout.tsx)); other allowed routes (Materials, Documents, Calendar, Checklist, Roadmap, Settings, Tally, Help — `PRIMARY_PATHS` in [`layoutRouteAccess.ts`](../src/lib/layoutRouteAccess.ts)) are reachable directly or via the gear menu. No Prospects access.
-- Attempts to access blocked pages (e.g. Projects, Workflow) redirect to `/dashboard`. `/workflows` left `PRIMARY_PATHS` in v2.2836: the `project_workflow_steps` SELECT policy has no primary branch, so the page was always empty for a primary and nothing in the app linked to it (journey map D3).
+- Attempts to access blocked pages (e.g. Projects, Workflow) redirect to `/dashboard`. `/workflows` left `PRIMARY_PATHS` in v2.2836: the `project_workflow_steps` SELECT policy had no primary branch, so the page was always empty for a primary and nothing in the app linked to it (journey map D3). **v2.2920** (`20260906010000_role_sweep_predicates`, journey map J31-N4) adds that branch — a primary reads a step when `can_access_project_via_step(id)` passes (adopted by or sharing the project's master) **or** `step_assignee_matches_user(...)` names them — so Dashboard **Assigned Stages** (`get_assigned_steps_for_dashboard`, RLS-bound) is no longer structurally empty; re-adding the route is a separate nav decision.
 
 ---
 
@@ -656,7 +657,10 @@ A Contract Book entry can be a **form** (an uploaded PDF the signer fills on the
 - **Everything an assistant can do** — the DB's `is_assistant()` and client's `isAssistantLike()` are assistant-LIKE (`assistant` OR `controller`), so every assistant capability (clock cards, hours, crew grids, dispatch, contracts, licenses, vehicles, housing, write-ups) applies automatically
 - **Plus the full payroll principal** via `has_payroll_access()` (v2.663 sweep): `people_pay_config` wages (read/write), the entire pay-stub family, `person_offsets`, People → **Payroll** / **Employment** / **Pay Stubs** tabs with pay-config editing, Hours-tab teams/due totals, unredacted Dashboard financials, Jobs → Job Summary **Team Labor**/profit, Job Detail profit band and Cost breakdown team labor, Projects day-modal team labor
 - **Not dev admin**: no user management / Active Accounts, no imitation, no backups, no dev-only deletes, `is_dev()` stays false
-- **Opening a job** (v2.2848): the **read-only Job Detail pane**, not the tabbed window (`resolveJobWindowMode('controller') === 'read-only'`), and no per-project **+ Create Job** link. This is an assistant-parity gap, not a design choice: the baseline `jobs_ledger` SELECT / INSERT / UPDATE / DELETE policies gate on literal role arrays that omit controller (and `is_dev()` is dev-only), so v2.662's `is_assistant()` widening never reached them. Widen the DB first, then `isStaffFullJobLedgerDetailRole` + `canCreateJobsLedgerRow`
+- **Opening a job** (v2.2920, closing the v2.2848 gap): the tabbed **Job window** (Job · Edit · Bill) and the per-project **+ Create Job** link, exactly like an assistant. Migration `20260906010000_role_sweep_predicates` added controller beside assistant on every `jobs_ledger`-family policy (SELECT / INSERT / UPDATE / DELETE on `jobs_ledger`, `_fixtures`, `_team_members`, `_invoices`, `_materials`, `_payments`, `_invoice_stripe_email_sends`); `isStaffFullJobLedgerDetailRole` and `canCreateJobsLedgerRow` widened in the same PR. Between v2.2848 and v2.2920 the controller got the read-only pane because those baseline policies gated on literal role arrays that `is_assistant()` never reached
+- **Banking** (v2.2920): the data layer now matches the shell. The eleven Mercury tables whose policies spelled out `dev / master_technician / assistant` (label rules + suggestions, drag-sort labels + assignments, org notes, duplicate dismissals, attributions, job allocations, debit-card links, supply-house links, AR returned) read **`is_banking_staff()`** (= `is_master_or_dev() OR is_assistant()`), sixteen Banking RPCs (`replace_mercury_transaction_splits`, `list_users_for_banking_attribution`, `upsert_mercury_org_transaction_note`, the accounting-label bulk RPCs, …) admit controller, and both Banking edge functions (`mercury-reconcile`, `get-mercury-account-balances`) list controller in `ALLOWED_ROLES`. Before this a controller opened the assistant Banking shell over data that refused them (empty queues, refused splits, 403s)
+- **Prospects** (v2.2920): `user_has_prospects_staff_access()` includes controller, matching the client `canAccessProspectPipeline`
+- **People roster kind** (v2.2920): `people_kind_check` accepts `'controller'`, matching `PersonKind` and the Users-tab kind picker
 
 **Matrices below**: read the **assistant** column for a controller, then add the pay/financial surfaces above — controller is not broken out as its own column.
 
@@ -672,7 +676,7 @@ A Contract Book entry can be a **form** (an uploaded PDF the signer fills on the
 | **Customers** | ✅ | ✅ | ✅ | ❌ | ✅ limited | ❌ | ❌ |
 | **Customer Hub** (`/customers/:id`, v2.1775–v2.1780) | ✅ | ✅ | ✅ | ❌ | ✅ (route allowed as a `/customers` subpath; sees the same money strip/tabs — mirrors the CustomerProfileModal precedent) | ❌ | ❌ |
 | **Projects** | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ✅ assigned only (RLS, v2.2836) |
-| **Workflow** | ✅ | ✅ | ✅ limited | ❌ | ❌ | ❌ (route dropped v2.2836 — steps SELECT has no primary branch) | ✅ limited, assigned projects only (RLS, v2.2836) |
+| **Workflow** | ✅ | ✅ | ✅ limited | ❌ | ❌ | ❌ (route dropped v2.2836; since v2.2920 the steps SELECT policy has a primary branch — adopted/shared project via `can_access_project_via_step`, or the step's assignee — so a primary's Dashboard **Assigned Stages** fills, but the route stays off pending a nav decision) | ✅ limited, assigned projects only (RLS, v2.2836) |
 | **People** | ✅ | ✅ | ✅ limited | ❌ | ❌ | ❌ | ❌ |
 | **Jobs** | ✅ | ✅ | ✅ limited | ❌ | ❌ | ✅ Reports tab only (`Jobs.tsx` `primaryTabs`); job rows limited to Account-Man jobs (v2.2177) | ✅ Reports + Sub Ledger |
 | **Dispatch** (`/schedule-dispatch`) | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ✅ week grid (same `job_schedule_blocks` rules; **+ → Linked copy** / **Linked** crew rows; DnD reassign **solo** legs only) |
@@ -680,7 +684,9 @@ A Contract Book entry can be a **form** (an uploaded PDF the signer fills on the
 
 Non-dev roles do not see the Banking **Stripe** segment; master/assistant deep links with `product=stripe` normalize to Mercury **User Sort**.
 
-Mercury **Person** attribution (job splits modal): staff use **`list_users_for_banking_attribution`** (**SECURITY DEFINER**, same dev/master/assistant gate as **`replace_mercury_transaction_splits`**) for the user picker; **`mercury_transaction_attributions`** may store **`user_id`** or legacy **`person_id`** (not both).
+**Controller reads the assistant column here for real since v2.2920** (`20260906010000_role_sweep_predicates`): the Mercury table policies and Banking RPCs use `is_banking_staff()` (dev / master_technician / assistant-like) instead of literal three-role arrays, and both Banking edge functions admit controller — see the controller section above.
+
+Mercury **Person** attribution (job splits modal): staff use **`list_users_for_banking_attribution`** (**SECURITY DEFINER**, same dev/master/assistant/controller gate as **`replace_mercury_transaction_splits`**) for the user picker; **`mercury_transaction_attributions`** may store **`user_id`** or legacy **`person_id`** (not both).
 | **Calendar** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | **Bids** | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ | ✅ limited |
 | **Estimates** | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ | ✅ limited (project-linked super visibility) |
@@ -701,7 +707,7 @@ Mercury **Person** attribution (job splits modal): staff use **`list_users_for_b
 | **Accounts Receivable** (`/accounts-receivable`) | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
 | **Help** (`/help`) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 
-Route access for the restricted roles above comes from the per-role allowed-path lists in [`layoutRouteAccess.ts`](../src/lib/layoutRouteAccess.ts) (`SUBCONTRACTOR_PATHS`, `PRIMARY_PATHS`, `SUPERINTENDENT_PATHS`, `estimatorAllowedPaths`); dev / master_technician / assistant-like (assistant, controller) pass every route. Since v2.2325 these lists are the single source of truth (Layout's redirect guard, the Dashboard pin-chip filter, and the dev "Pin for someone" validation all call `isPathAllowedForRole`), and every entry matches its root **plus subpaths** (`/estimates` also admits `/estimates/:id`; the `'/'` entry matches only itself). Prospects additionally gates per page: staff (dev / master_technician / assistant / controller) or estimator with `estimator_prospects_access`; the **Team** tab further requires per-user `users.team_prospects_access`. Checklist and Tally feature access still varies by role (see the feature matrices below).
+Route access for the restricted roles above comes from the per-role allowed-path lists in [`layoutRouteAccess.ts`](../src/lib/layoutRouteAccess.ts) (`SUBCONTRACTOR_PATHS`, `PRIMARY_PATHS`, `SUPERINTENDENT_PATHS`, `estimatorAllowedPaths`); dev / master_technician / assistant-like (assistant, controller) pass every route. Since v2.2325 these lists are the single source of truth (Layout's redirect guard, the Dashboard pin-chip filter, and the dev "Pin for someone" validation all call `isPathAllowedForRole`), and every entry matches its root **plus subpaths** (`/estimates` also admits `/estimates/:id`; the `'/'` entry matches only itself). Prospects additionally gates per page: staff (dev / master_technician / assistant / controller) or estimator with `estimator_prospects_access` (the DB gate `user_has_prospects_staff_access()` has matched that list — controller included — since v2.2920); the **Team** tab further requires per-user `users.team_prospects_access`. Checklist and Tally feature access still varies by role (see the feature matrices below).
 
 *\* **Map**: **dev**, **master_technician**, **assistant**, and **estimator** — page **`/map`**; **[`layoutRouteAccess.ts`](../src/lib/layoutRouteAccess.ts)**, **`Layout.tsx`**: desktop **pin** when `canShowMapNav`; **narrow** hides pin → **Map** under **gear**; **`address_geocodes`** RLS (**`20270520120000_address_geocodes_estimator_map_access.sql`**); Edge **`geocode-address-batch`** (primary load chunks) / **`geocode-one`** (**Review geocodes** Google refresh, Settings default-label). **Subcontractor**, **primary**, and **superintendent** are redirected away from **`/map`** when it is not an allowed route.*
 
@@ -709,7 +715,7 @@ Route access for the restricted roles above comes from the per-role allowed-path
 
 **Subcontractors**: Any page except Dashboard/Calendar/Checklist/Settings/Tally/Help → `/dashboard`. On those allowed routes, **Task Dispatch**, **Ask estimating** (the purple estimator-request button — titled "Estimator Inbox" before v2.2918), and **Task** (checklist add) in the header behave like other roles that pass [`headerTaskDispatchEstimatorEligible.ts`](../src/lib/headerTaskDispatchEstimatorEligible.ts) (`helpers` matches — see **helpers** section above).
 
-**Estimators**: Any page except Dashboard/**Map**/Materials/Estimates/**Documents**/Bids/**Customers**/Calendar/Checklist/People/Settings/Tally/Help/Prospects (if enabled) → `/bids`
+**Estimators**: Any page except Dashboard/**Map**/Materials/Estimates/**Documents**/Bids/**Customers**/Calendar/Checklist/Settings/Tally/Help/Prospects (if enabled) → `/bids` (People dropped v2.2920)
 
 **Primary**: Any page except Dashboard/Materials/Estimates/Documents/Jobs/Bids/Calendar/Checklist/Settings/Tally/Help → `/dashboard`; Jobs shows the Reports tab only (`Jobs.tsx` `primaryTabs`); Bids full access (all tabs); Projects and Prospects hidden
 
