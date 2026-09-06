@@ -36,6 +36,7 @@ import {
 } from '../lib/bankingSortingConfig'
 import { countSortingUnmatched, filterMercuryRowsForSorting } from '../lib/bankingSortingCounts'
 import { shortUuidPrefix } from '../lib/shortUuidPrefix'
+import { accountNicknameNudgeText, unnamedMercuryAccountIds } from '../lib/bankingAccountNicknameNudge'
 import { fetchAllAttributions, fetchAllJobAllocations } from '../lib/fetchMercuryRelationsByTxIds'
 import { buildMercuryRelationMaps } from '../lib/mercuryRelationMaps'
 import { fetchAllRows, SUPABASE_PAGE_SIZE } from '../lib/supabasePaging'
@@ -84,7 +85,36 @@ const MERCURY_TRANSACTIONS_BANKING_LIST_LIMIT = 15000
 const ACCOUNTING_LABELED_PAGE_SIZE = 500
 
 type BankingProduct = 'mercury' | 'stripe'
-type MercuryBankingTab = 'ledger' | 'sorting' | 'drag_sort' | 'accounting' | 'user_review' | 'category_review' | 'reconciliation' | 'visuals'
+type MercuryBankingTab = 'ledger' | 'sorting' | 'drag_sort' | 'accounting' | 'card_review' | 'category_review' | 'reconciliation' | 'visuals'
+/** Pre-v2.2899 `?tab=` key for Card Review (the tab was renamed in v2.1262 but its key was not). Read as an alias; never written. */
+const LEGACY_CARD_REVIEW_TAB_KEY = 'user_review'
+/** `?tab=` value → Mercury tab, with the legacy Card Review alias folded in. `null` when unknown. */
+function mercuryTabFromParam(raw: string | null): MercuryBankingTab | null {
+  switch (raw) {
+    case 'ledger':
+    case 'sorting':
+    case 'drag_sort':
+    case 'accounting':
+    case 'card_review':
+    case 'category_review':
+    case 'reconciliation':
+    case 'visuals':
+      return raw
+    case LEGACY_CARD_REVIEW_TAB_KEY:
+      return 'card_review'
+    default:
+      return null
+  }
+}
+
+/** One caption per staff tab, rendered under the strip (v2.2899, J33-F4): who the tab is for and which verb it owns. */
+const MERCURY_TAB_CAPTIONS: { tab: MercuryBankingTab; caption: string }[] = [
+  { tab: 'sorting', caption: 'User Sort — who spent it' },
+  { tab: 'drag_sort', caption: 'Drag Sort — what kind' },
+  { tab: 'accounting', caption: 'Accounting — rules & approvals' },
+  { tab: 'card_review', caption: 'Reviews — read-only' },
+  { tab: 'reconciliation', caption: 'Reconciliation — against bank statements, read-only' },
+]
 type StripeBankingTab = 'invoices' | 'data'
 
 type BankingView = {
@@ -106,23 +136,9 @@ type BankingPageRole =
 
 function parseBankingView(params: URLSearchParams, role: BankingPageRole): BankingView {
   if (isAssistantLike(role) || role === 'master_technician') {
-    const tabRaw = params.get('tab')
-    const mercuryTab: MercuryBankingTab =
-      tabRaw === 'drag_sort'
-        ? 'drag_sort'
-        : tabRaw === 'accounting'
-          ? 'accounting'
-          : tabRaw === 'user_review'
-            ? 'user_review'
-            : tabRaw === 'category_review'
-              ? 'category_review'
-              : tabRaw === 'reconciliation'
-                ? 'reconciliation'
-                : tabRaw === 'visuals'
-                  ? 'visuals'
-                  : tabRaw === 'sorting'
-                    ? 'sorting'
-                    : 'accounting'
+    const parsed = mercuryTabFromParam(params.get('tab'))
+    // Ledger is dev-only; everything else the strip shows is fair game for staff.
+    const mercuryTab: MercuryBankingTab = parsed && parsed !== 'ledger' ? parsed : 'accounting'
     return { product: 'mercury', mercuryTab, stripeTab: 'invoices' }
   }
   if (role !== 'dev') {
@@ -140,16 +156,8 @@ function parseBankingView(params: URLSearchParams, role: BankingPageRole): Banki
     }
   }
 
-  let mercuryTab: MercuryBankingTab = 'accounting'
-  if (tabRaw === 'sorting') mercuryTab = 'sorting'
-  else if (tabRaw === 'drag_sort') mercuryTab = 'drag_sort'
-  else if (tabRaw === 'accounting') mercuryTab = 'accounting'
-  else if (tabRaw === 'user_review') mercuryTab = 'user_review'
-  else if (tabRaw === 'category_review') mercuryTab = 'category_review'
-  else if (tabRaw === 'reconciliation') mercuryTab = 'reconciliation'
-  else if (tabRaw === 'visuals') mercuryTab = 'visuals'
-  else if (tabRaw === 'ledger') mercuryTab = 'ledger'
-  else if (tabRaw === 'invoices' || tabRaw === 'data') mercuryTab = 'ledger'
+  let mercuryTab: MercuryBankingTab = mercuryTabFromParam(tabRaw) ?? 'accounting'
+  if (tabRaw === 'invoices' || tabRaw === 'data') mercuryTab = 'ledger'
 
   return { product: 'mercury', mercuryTab, stripeTab: 'invoices' }
 }
@@ -319,9 +327,7 @@ export default function Banking() {
           const p = new URLSearchParams(prev)
           if (product === 'mercury') {
             p.set('product', 'mercury')
-            const t = prev.get('tab')
-            if (t === 'sorting' || t === 'ledger' || t === 'drag_sort' || t === 'accounting' || t === 'user_review' || t === 'category_review' || t === 'reconciliation' || t === 'visuals') p.set('tab', t)
-            else p.set('tab', 'ledger')
+            p.set('tab', mercuryTabFromParam(prev.get('tab')) ?? 'ledger')
           } else {
             p.set('product', 'stripe')
             const t = prev.get('tab')
@@ -444,42 +450,32 @@ export default function Banking() {
     }
   }, [myRole, navigate])
 
+  // Pre-v2.2899 deep links say `?tab=user_review`; parse already treats it as Card
+  // Review, this just rewrites the address bar once so bookmarks and telemetry
+  // (`banking:<tab>` activity keys) converge on the one key.
+  useEffect(() => {
+    if (searchParams.get('tab') !== LEGACY_CARD_REVIEW_TAB_KEY) return
+    setSearchParams(
+      (prev) => {
+        const p = new URLSearchParams(prev)
+        p.set('tab', 'card_review')
+        return p
+      },
+      { replace: true },
+    )
+  }, [searchParams, setSearchParams])
+
   useEffect(() => {
     if (myRole !== 'master_technician' && !isAssistantLike(myRole)) return
     const product = searchParams.get('product')
-    const tab = searchParams.get('tab')
-    if (
-      (tab === 'sorting' ||
-        tab === 'drag_sort' ||
-        tab === 'accounting' ||
-        tab === 'user_review' ||
-        tab === 'category_review' ||
-        tab === 'reconciliation' ||
-        tab === 'visuals') &&
-      product !== 'stripe' &&
-      (product === null || product === 'mercury')
-    ) {
+    const tab = mercuryTabFromParam(searchParams.get('tab'))
+    if (tab !== null && tab !== 'ledger' && product !== 'stripe' && (product === null || product === 'mercury')) {
       if (product === null) {
         setSearchParams(
           (prev) => {
             const p = new URLSearchParams(prev)
             p.set('product', 'mercury')
-            p.set(
-              'tab',
-              tab === 'drag_sort'
-                ? 'drag_sort'
-                : tab === 'accounting'
-                  ? 'accounting'
-                  : tab === 'user_review'
-                    ? 'user_review'
-                    : tab === 'category_review'
-                      ? 'category_review'
-                      : tab === 'reconciliation'
-                        ? 'reconciliation'
-                        : tab === 'visuals'
-                          ? 'visuals'
-                          : 'sorting',
-            )
+            p.set('tab', tab)
             return p
           },
           { replace: true },
@@ -703,10 +699,10 @@ export default function Banking() {
       if (bankingView.product === 'mercury' && bankingView.mercuryTab === 'accounting') {
         return hideLabeledTransactions ? loadUnlabeledRows(options) : loadLabeledFirstPage(options)
       }
-      // The User Review tab loads its own windowed, pre-joined rows from the
+      // The Card Review tab loads its own windowed, pre-joined rows from the
       // `user_review_rows` RPC and ignores the parent master list, so don't pull
       // the ~15k `mercury_transactions` fetch when it's the active tab.
-      if (bankingView.product === 'mercury' && bankingView.mercuryTab === 'user_review') {
+      if (bankingView.product === 'mercury' && bankingView.mercuryTab === 'card_review') {
         if (options?.silent !== true) setLoading(false)
         return
       }
@@ -982,6 +978,14 @@ export default function Banking() {
     for (const r of rows) set.add(r.mercury_account_id)
     return Array.from(set).sort()
   }, [rows])
+
+  // Dev-only nudge (v2.2899, J33-F5): accounts with no nickname row render as raw
+  // UUIDs in every account filter, and only dev can write `mercury_account_nicknames`.
+  const unnamedAccountIds = useMemo(
+    () => unnamedMercuryAccountIds(accountOptions, nicknameByAccount),
+    [accountOptions, nicknameByAccount],
+  )
+  const accountNicknameNudge = isDevBanking ? accountNicknameNudgeText(unnamedAccountIds.length) : null
 
   const searchQueryNorm = useMemo(() => bankingSearchText.trim(), [bankingSearchText])
 
@@ -1472,10 +1476,10 @@ export default function Banking() {
                     <button
                       type="button"
                       role="tab"
-                      aria-selected={bankingView.mercuryTab === 'user_review'}
-                      id="banking-tab-user-review"
-                      onClick={() => setMercurySubTab('user_review')}
-                      style={pageTabStyle(bankingView.mercuryTab === 'user_review')}
+                      aria-selected={bankingView.mercuryTab === 'card_review'}
+                      id="banking-tab-card-review"
+                      onClick={() => setMercurySubTab('card_review')}
+                      style={pageTabStyle(bankingView.mercuryTab === 'card_review')}
                     >
                       Card Review
                     </button>
@@ -1536,6 +1540,29 @@ export default function Banking() {
                 )}
               </div>
             </div>
+            {bankingView.product === 'mercury' ? (
+              <div
+                data-testid="banking-tab-captions"
+                style={{
+                  marginTop: '0.25rem',
+                  fontSize: '0.75rem',
+                  lineHeight: 1.4,
+                  color: 'var(--text-muted)',
+                  overflowWrap: 'anywhere',
+                }}
+              >
+                {MERCURY_TAB_CAPTIONS.map((c, i) => (
+                  <span key={c.tab}>
+                    {i > 0 ? <span aria-hidden> · </span> : null}
+                    <span style={{ fontWeight: bankingView.mercuryTab === c.tab || (c.tab === 'card_review' && bankingView.mercuryTab === 'category_review') ? 600 : 400 }}>
+                      {c.caption}
+                    </span>
+                  </span>
+                ))}
+                <span aria-hidden> · </span>
+                <span>Jobs are sorted in Job Parts Tally; labels live here.</span>
+              </div>
+            ) : null}
           </div>
           {!isDevBanking ? (
             <h1
@@ -1605,6 +1632,48 @@ export default function Banking() {
           ) : null}
         </div>
       </div>
+
+      {accountNicknameNudge && bankingView.product === 'mercury' ? (
+        <div
+          role="status"
+          data-testid="banking-account-nickname-nudge"
+          style={{
+            display: 'flex',
+            flexWrap: 'wrap',
+            alignItems: 'center',
+            gap: '0.5rem 0.75rem',
+            margin: '0 0 0.75rem',
+            padding: '0.45rem 0.75rem',
+            fontSize: '0.8125rem',
+            background: 'var(--bg-amber-tint)',
+            border: '1px solid var(--border-amber-soft)',
+            borderRadius: 6,
+            color: 'var(--text-amber-800)',
+          }}
+        >
+          <span style={{ flex: 1, minWidth: 0 }}>
+            {accountNicknameNudge}{' '}
+            <span style={{ opacity: 0.85 }}>({unnamedAccountIds.map((id) => shortUuidPrefix(id)).join(', ')})</span>
+          </span>
+          <button
+            type="button"
+            onClick={() => setNicknamesModalOpen(true)}
+            style={{
+              padding: '0.3rem 0.75rem',
+              borderRadius: 4,
+              border: '1px solid var(--border-amber)',
+              background: 'var(--surface)',
+              color: 'var(--text-amber-800)',
+              cursor: 'pointer',
+              fontSize: '0.8125rem',
+              fontWeight: 600,
+              flexShrink: 0,
+            }}
+          >
+            Name accounts…
+          </button>
+        </div>
+      ) : null}
 
       {bankingView.product === 'mercury' && bankingView.mercuryTab === 'sorting' && (
         <div role="tabpanel" id="banking-panel-mercury-sorting" aria-labelledby="banking-tab-sorting">
@@ -1854,8 +1923,8 @@ export default function Banking() {
         </div>
       ) : null}
 
-      {bankingView.product === 'mercury' && bankingView.mercuryTab === 'user_review' && canAccessBanking ? (
-        <div role="tabpanel" id="banking-panel-mercury-user-review" aria-labelledby="banking-tab-user-review">
+      {bankingView.product === 'mercury' && bankingView.mercuryTab === 'card_review' && canAccessBanking ? (
+        <div role="tabpanel" id="banking-panel-mercury-card-review" aria-labelledby="banking-tab-card-review">
           <BankingMercuryUserReviewTab
             mercurySearchNicknameCtx={nicknameCtx}
             attributionOptions={attributionOptions}
