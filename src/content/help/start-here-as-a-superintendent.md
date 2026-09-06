@@ -2,7 +2,7 @@
 title: get started as a superintendent
 category: Getting Started
 roles: superintendent
-keywords: start here, new, superintendent, orientation, my crews, what subs see, assign
+keywords: start here, new, superintendent, orientation, my crews, what subs see, assign, busy, hidden, schedule, manpower, time off
 order: 6
 ---
 You run the work on the ground: who's on which step, when it's scheduled, and whether it passed. You see project and job detail, but not company financial totals.
@@ -28,6 +28,18 @@ Red needs your decision now (a completed step waiting on approval); amber is wor
 :::example Leaving a note on a job
 Open **706 · Maple St rough-in** from your Dashboard, scroll to the notes, type "Inspector wants the cleanout moved 6 in. — crew back Thursday," and post. The office sees it on the job the moment it lands.
 :::
+
+## Grey busy blocks on the Schedule
+
+The [Schedule](?g=schedule-dispatch) board shows job cards only for work on your projects. When someone is booked on work you can't see, their day shows a grey {{chip:gray|busy}} block instead of an empty cell — no job name or times, just that they're not free. **Expected Manpower** counts those hours too: "83 person-hours · 38 on your projects" means 83 in total, 38 of them on your jobs.
+
+:::example Reading a busy block
+**Marcus · Wed** {{chip:gray|busy}} {{chip:gray|busy}}
+
+Marcus has two blocks on Wednesday on projects you're not assigned to. You can still add him to one of your jobs with the corner triangle, but you'd be double-booking him — call the office first.
+:::
+
+Marking someone **off** (not coming in) is an office action — the `off` button and the "not coming in" option don't appear for your role. Ask a master or the controller.
 
 ## Working from the truck
 

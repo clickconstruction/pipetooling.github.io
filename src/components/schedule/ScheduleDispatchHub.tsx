@@ -37,6 +37,13 @@ import {
 import type { LinkedGroupCardAccent } from '../../lib/scheduleDispatchLinkedGroupPalette'
 import { hubPersonDayKey, type ScheduleDispatchHubJobRow } from '../../lib/scheduleDispatchHub'
 import {
+  formatManpowerWithHidden,
+  scheduleHiddenManpowerForDayKeys,
+  scheduleHiddenPlaceholderTitle,
+  type ScheduleHiddenBlockCount,
+  type ScheduleHiddenCell,
+} from '../../lib/scheduleHiddenBlocks'
+import {
   APP_CALENDAR_TZ,
   formatMmDdSlash,
   formatScheduleDispatchVisibleDateRange,
@@ -1076,6 +1083,49 @@ function HubPeopleBlockCard({
   )
 }
 
+
+/**
+ * Grey "busy" placeholders for blocks the viewer's RLS hides (journey map Tier-2 #23): one box
+ * per hidden block, no job identity, no times. The person is booked — just not on your projects.
+ */
+function HubHiddenBusyPlaceholders({ info }: { info: ScheduleHiddenCell }) {
+  const title = scheduleHiddenPlaceholderTitle(info)
+  return (
+    <div
+      data-testid="hub-hidden-busy"
+      role="note"
+      aria-label={title}
+      title={title}
+      style={{ display: 'flex', flexDirection: 'column', gap: 3, marginTop: 2 }}
+    >
+      {Array.from({ length: Math.min(info.count, 6) }, (_, i) => (
+        <div
+          key={i}
+          style={{
+            padding: '0.2rem 0.35rem',
+            border: '1px dashed var(--border)',
+            borderRadius: 4,
+            background: 'var(--bg-muted)',
+            color: 'var(--text-muted)',
+            fontSize: '0.7rem',
+            fontWeight: 600,
+            lineHeight: 1.2,
+            textAlign: 'center',
+            letterSpacing: '0.02em',
+          }}
+        >
+          busy
+        </div>
+      ))}
+      {info.count > 6 ? (
+        <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', textAlign: 'center' }}>
+          +{info.count - 6} more
+        </div>
+      ) : null}
+    </div>
+  )
+}
+
 function HubPeopleDayCell({
   personUserId,
   workDate,
@@ -1113,6 +1163,7 @@ function HubPeopleDayCell({
   lateInfo,
   onRequestUndoNotComingIn,
   onMarkNotComingInForCell,
+  hiddenInfo = null,
   linkedCopyMode = null,
   onLinkedCopyToggleBlock,
   isBottomRow = false,
@@ -1156,12 +1207,15 @@ function HubPeopleDayCell({
   lateInfo?: PersonDayLateness | null
   onRequestUndoNotComingIn?: (personUserId: string, workDate: string) => void
   onMarkNotComingInForCell?: (personUserId: string, workDate: string) => void
+  /** Blocks on this person-day the viewer's RLS hides (superintendent board) — drawn as grey "busy" placeholders. */
+  hiddenInfo?: ScheduleHiddenCell | null
   linkedCopyMode?: LinkedCopyMode | null
   onLinkedCopyToggleBlock?: (blockId: string) => void
   /** Last grid row closes the orange today-column outline with a bottom edge. */
   isBottomRow?: boolean
 }) {
   const cellHasTimeOff = timeOffInfo != null
+  const hiddenCount = hiddenInfo?.count ?? 0
   const droppableId = scheduleDispatchCellDroppableId(workDate, personUserId)
   const { isOver, setNodeRef } = useDroppable({ id: droppableId, disabled: cellHasTimeOff })
   const idleBg = scheduleDispatchDayColumnCellIdleBg(workDate, {
@@ -1194,6 +1248,7 @@ function HubPeopleDayCell({
   const emptyCellClickable =
     canEdit &&
     cellBlocks.length === 0 &&
+    hiddenCount === 0 &&
     onEmptyCellClick != null &&
     !assignJobPickingActive &&
     !placementPickingActive &&
@@ -1210,7 +1265,7 @@ function HubPeopleDayCell({
   const showCellAddJobTriangle =
     canEdit &&
     onAddJobToScheduleForCell != null &&
-    cellBlocks.length > 0 &&
+    (cellBlocks.length > 0 || hiddenCount > 0) &&
     !assignJobPickingActive &&
     !placementPickingActive &&
     !hubMultiCellAddActive &&
@@ -1310,7 +1365,9 @@ function HubPeopleDayCell({
         </div>
       ) : null}
       {cellBlocks.length === 0 ? (
-        timeOffInfo ? null : emptyCellClickable ? (
+        timeOffInfo ? null : hiddenCount > 0 ? (
+          <HubHiddenBusyPlaceholders info={hiddenInfo!} />
+        ) : emptyCellClickable ? (
           // Empty person-day: the add affordance is a full-width bar (same action
           // as clicking the cell) instead of the corner triangle used on cells
           // that already have blocks; "off" beside it marks the day not-coming-in.
@@ -1411,6 +1468,7 @@ function HubPeopleDayCell({
           )
         })
       )}
+      {cellBlocks.length > 0 && hiddenCount > 0 ? <HubHiddenBusyPlaceholders info={hiddenInfo!} /> : null}
       {showCellAddJobTriangle ? (
         <div
           style={{
@@ -1544,6 +1602,10 @@ type HubPeoplePanelProps = {
   /** Optional click handler for the "Not coming in" chip — opens the undo confirm modal. */
   onRequestUndoNotComingIn?: (personUserId: string, workDate: string) => void
   onMarkNotComingInForCell?: (personUserId: string, workDate: string) => void
+  /** Per person-day RLS-hidden block counts keyed by `hubPersonDayKey` (superintendent board). */
+  hiddenByCell?: ReadonlyMap<string, ScheduleHiddenCell>
+  /** Raw hidden-count rows for the Expected Manpower math (true totals, not just visible). */
+  hiddenBlockCounts?: readonly ScheduleHiddenBlockCount[]
 }
 
 function HubPeoplePanel({
@@ -1612,6 +1674,8 @@ function HubPeoplePanel({
   latenessByCell,
   onRequestUndoNotComingIn,
   onMarkNotComingInForCell,
+  hiddenByCell,
+  hiddenBlockCounts,
 }: HubPeoplePanelProps) {
   /** "View" dropdown consolidating Hide Inactive / Hide weekend / Highlight linked. */
   const [viewMenuOpen, setViewMenuOpen] = useState(false)
@@ -1712,6 +1776,40 @@ function HubPeoplePanel({
       jobCount: jobs.size,
     }
   }, [expectedManpowerDayRows])
+
+  /** Hidden (RLS-excluded) blocks in the current manpower selection; null when nothing is hidden. */
+  const expectedManpowerHiddenSelection = useMemo(() => {
+    if (!hiddenBlockCounts || hiddenBlockCounts.length === 0 || hubExpectedManpowerDayKey == null) return null
+    const keys =
+      hubExpectedManpowerDayKey === HUB_EXPECTED_MANPOWER_ALL_WEEK ? visibleDayKeys : [hubExpectedManpowerDayKey]
+    const r = scheduleHiddenManpowerForDayKeys(hiddenBlockCounts, keys)
+    return r.count > 0 ? r : null
+  }, [hiddenBlockCounts, hubExpectedManpowerDayKey, visibleDayKeys])
+  const expectedManpowerHiddenWeekHours = useMemo(
+    () =>
+      hiddenBlockCounts && hiddenBlockCounts.length > 0
+        ? scheduleHiddenManpowerForDayKeys(hiddenBlockCounts, visibleDayKeys).hours
+        : 0,
+    [hiddenBlockCounts, visibleDayKeys],
+  )
+  const expectedManpowerSelectionHeadline = useMemo(
+    () =>
+      formatManpowerWithHidden(
+        expectedManpowerDayStats?.personHours ?? 0,
+        expectedManpowerHiddenSelection?.hours ?? 0,
+        formatExpectedManpowerPersonHours,
+      ),
+    [expectedManpowerDayStats, expectedManpowerHiddenSelection],
+  )
+  const expectedManpowerWeekHeadline = useMemo(
+    () =>
+      formatManpowerWithHidden(
+        expectedManpowerWeekPersonHours,
+        expectedManpowerHiddenWeekHours,
+        formatExpectedManpowerPersonHours,
+      ),
+    [expectedManpowerWeekPersonHours, expectedManpowerHiddenWeekHours],
+  )
 
   /** Lane-scoped manpower breakdown — [] hides the line (no lanes configured). */
   const expectedManpowerLaneRows = useMemo(() => {
@@ -2397,6 +2495,7 @@ function HubPeoplePanel({
                       userTimeOffByCell?.get(userTimeOffCellKey(person.userId, dk)) ?? null
                     const lateInfo =
                       timeOffInfo ? null : latenessByCell?.get(latenessCellKey(person.userId, dk)) ?? null
+                    const hiddenInfo = hiddenByCell?.get(hubPersonDayKey(person.userId, dk)) ?? null
                     return (
                       <HubPeopleDayCell
                         key={dk}
@@ -2438,6 +2537,7 @@ function HubPeoplePanel({
                         lateInfo={lateInfo}
                         onRequestUndoNotComingIn={onRequestUndoNotComingIn}
                         onMarkNotComingInForCell={onMarkNotComingInForCell}
+                        hiddenInfo={hiddenInfo}
                         isBottomRow={itemIndex === peopleDisplayRows.length - 1}
                       />
                     )
@@ -2560,7 +2660,18 @@ function HubPeoplePanel({
           >
             {hubExpectedManpowerDayKey == null ? null : expectedManpowerDayRows.length === 0 ? (
               <p style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
-                No schedule blocks for {expectedManpowerSelectionLabel}.
+                {expectedManpowerHiddenSelection ? (
+                  <>
+                    No blocks on your projects for {expectedManpowerSelectionLabel} ·{' '}
+                    <strong style={{ color: 'var(--text-700)' }}>
+                      {formatExpectedManpowerPersonHours(expectedManpowerHiddenSelection.hours)}
+                    </strong>{' '}
+                    person-hours busy elsewhere ({expectedManpowerHiddenSelection.people}{' '}
+                    {expectedManpowerHiddenSelection.people === 1 ? 'person' : 'people'})
+                  </>
+                ) : (
+                  <>No schedule blocks for {expectedManpowerSelectionLabel}.</>
+                )}
               </p>
             ) : (
               <>
@@ -2568,12 +2679,18 @@ function HubPeoplePanel({
                   <p style={{ margin: '0 0 0.65rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
                     {expectedManpowerSelectionLabel}:{' '}
                     <strong style={{ color: 'var(--text-700)' }}>
-                      {formatExpectedManpowerPersonHours(expectedManpowerDayStats.personHours)}
+                      {expectedManpowerSelectionHeadline.total}
                     </strong>{' '}
-                    person-hours · {expectedManpowerDayStats.jobCount}{' '}
+                    person-hours
+                    {expectedManpowerSelectionHeadline.detail ? ` · ${expectedManpowerSelectionHeadline.detail}` : ''}
+                    {' · '}
+                    {expectedManpowerDayStats.jobCount}{' '}
                     {expectedManpowerDayStats.jobCount === 1 ? 'job' : 'jobs'} ·{' '}
                     {expectedManpowerDayStats.distinctPeople}{' '}
                     {expectedManpowerDayStats.distinctPeople === 1 ? 'person' : 'people'}
+                    {expectedManpowerHiddenSelection
+                      ? ` · ${expectedManpowerHiddenSelection.people} busy elsewhere`
+                      : ''}
                   </p>
                 ) : null}
                 {expectedManpowerLaneRows.length > 0 ? (
@@ -2920,7 +3037,8 @@ function HubPeoplePanel({
               fontWeight: 500,
             }}
           >
-            This week: {formatExpectedManpowerPersonHours(expectedManpowerWeekPersonHours)} person-hours
+            This week: {expectedManpowerWeekHeadline.total} person-hours
+            {expectedManpowerWeekHeadline.detail ? ` · ${expectedManpowerWeekHeadline.detail}` : ''}
           </p>
         </section>
       ) : null}
@@ -3026,6 +3144,10 @@ type Props = {
   /** Optional click handler for the "Not coming in" chip — opens the undo confirm modal. */
   onRequestUndoNotComingIn?: (personUserId: string, workDate: string) => void
   onMarkNotComingInForCell?: (personUserId: string, workDate: string) => void
+  /** RLS-hidden block counts per person-day (superintendent board) — grey "busy" placeholders. */
+  hiddenByCell?: ReadonlyMap<string, ScheduleHiddenCell>
+  /** Raw hidden-count rows so Expected Manpower shows the true total ("83 · 38 on your projects"). */
+  hiddenBlockCounts?: readonly ScheduleHiddenBlockCount[]
   /** Right-aligned content for the week-nav row (e.g. the Share button). */
   weekNavRightSlot?: ReactNode
 }
@@ -3134,6 +3256,8 @@ export function ScheduleDispatchHub({
   latenessByCell,
   onRequestUndoNotComingIn,
   onMarkNotComingInForCell,
+  hiddenByCell,
+  hiddenBlockCounts,
   weekNavRightSlot,
 }: Props) {
   const tabForKey = showHubViewTabs ? hubTab : 'people'
@@ -3563,6 +3687,8 @@ export function ScheduleDispatchHub({
           latenessByCell={latenessByCell}
           onRequestUndoNotComingIn={onRequestUndoNotComingIn}
           onMarkNotComingInForCell={onMarkNotComingInForCell}
+          hiddenByCell={hiddenByCell}
+          hiddenBlockCounts={hiddenBlockCounts}
         />
       ) : hubTab === 'day' ? (
         <QuickfillScheduleSection
@@ -3663,6 +3789,8 @@ export function ScheduleDispatchHub({
           latenessByCell={latenessByCell}
           onRequestUndoNotComingIn={onRequestUndoNotComingIn}
           onMarkNotComingInForCell={onMarkNotComingInForCell}
+          hiddenByCell={hiddenByCell}
+          hiddenBlockCounts={hiddenBlockCounts}
         />
       )}
       <DispatchSettingsModal

@@ -95,7 +95,18 @@ import {
   getScheduleDispatchVisibleDayKeys,
   ymdAddDays,
 } from '../../utils/dateUtils'
-import { CAN_USE_SCHEDULE_DISPATCH_EDIT_ROLES as CAN_USE_SCHEDULE_DISPATCH } from '../../lib/scheduleDispatchEditRoles'
+import {
+  CAN_USE_SCHEDULE_DISPATCH_EDIT_ROLES as CAN_USE_SCHEDULE_DISPATCH,
+  CAN_VIEW_SCHEDULE_DISPATCH_ROLES,
+  canWriteTimeOff,
+} from '../../lib/scheduleDispatchEditRoles'
+import {
+  buildScheduleHiddenByCell,
+  fetchScheduleHiddenBlockCounts,
+  scheduleHiddenBlocksTotal,
+  scheduleHiddenUserIds,
+  type ScheduleHiddenBlockCount,
+} from '../../lib/scheduleHiddenBlocks'
 import { ensureOfficeScheduleBlocks } from '../../lib/dispatchOfficeRoster'
 import { saveEditedScheduleBlockTimes, saveNewScheduleBlockForPersonDay } from '../../lib/scheduleDispatchAddBlockSave'
 import { compareJobsByCreatedAtDesc } from '../../lib/assignJobPickerOrder'
@@ -352,6 +363,8 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
   /** Schedulable bids (v2.1613) — picker rows + `bid:<id>` title/address map entries. */
   const [hubBids, setHubBids] = useState<ScheduleDispatchHubBidRow[]>([])
   const [hubWeekBlocks, setHubWeekBlocks] = useState<JobScheduleBlockRow[]>([])
+  /** Blocks the viewer's RLS hides, per person/day (superintendent board only; `[]` for office roles). */
+  const [hubHiddenBlockCounts, setHubHiddenBlockCounts] = useState<ScheduleHiddenBlockCount[]>([])
   const [hubTeamMemberUserIds, setHubTeamMemberUserIds] = useState<string[]>([])
   const [hubRoleByUserId, setHubRoleByUserId] = useState<Map<string, string>>(() => new Map())
   const [hubArchivedUserIds, setHubArchivedUserIds] = useState<ReadonlySet<string>>(() => new Set())
@@ -361,6 +374,10 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
   const [hubSalariedUserIds, setHubSalariedUserIds] = useState<Set<string>>(() => new Set())
   const [shareModalOpen, setShareModalOpen] = useState(false)
   const canEdit = role != null && CAN_USE_SCHEDULE_DISPATCH.has(role)
+  /** "off" / undo / picker not-coming-in: only roles the time-off RPC accepts (J18-N2 — superintendent is refused server-side). */
+  const canTimeOff = canEdit && canWriteTimeOff(role)
+  /** A superintendent's `job_schedule_blocks` read is RLS-scoped to assigned projects; ask for what was hidden. */
+  const wantsHiddenBlockCounts = role === 'superintendent'
 
   useEffect(() => {
     if (jobId) return
@@ -498,9 +515,10 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
   }, [refreshHubUserTimeOff, hubVisibleUserIdsSerialized, weekStart, weekEnd])
 
   const hubUserIdsWithBlocksThisWeek = useMemo(
-    () => new Set(hubWeekBlocks.map((b) => b.assignee_user_id)),
-    [hubWeekBlocks],
+    () => new Set([...hubWeekBlocks.map((b) => b.assignee_user_id), ...scheduleHiddenUserIds(hubHiddenBlockCounts)]),
+    [hubWeekBlocks, hubHiddenBlockCounts],
   )
+  const hubHiddenByCell = useMemo(() => buildScheduleHiddenByCell(hubHiddenBlockCounts), [hubHiddenBlockCounts])
 
   const hubBlockById = useMemo(() => {
     const m = new Map<string, JobScheduleBlockRow>()
@@ -577,13 +595,33 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
       setHubSummariesError(null)
       setHubSalariedUserIds(new Set())
 
-      // Phase A: jobs ledger + week blocks + users-tab roster + bids — fully independent, parallel.
-      const [jr, br, usersTabRes, bidsRes] = await Promise.all([
+      // Phase A: jobs ledger + week blocks + users-tab roster + bids (+ RLS-hidden counts for a
+      // superintendent) — fully independent, parallel.
+      const [jr, br, usersTabRes, bidsRes, hiddenRes] = await Promise.all([
         fetchJobsLedgerForScheduleDispatchHub(),
         fetchJobScheduleBlocksForHubDateRange(weekStart, weekEnd),
         fetchUsersTabRosterForScheduleDispatchHub(role === 'dev'),
         fetchBidsForScheduleDispatchHub(),
+        wantsHiddenBlockCounts
+          ? fetchScheduleHiddenBlockCounts(weekStart, weekEnd)
+          : Promise.resolve({ data: [] as ScheduleHiddenBlockCount[], error: null as string | null }),
       ])
+
+      // Busy-elsewhere placeholders degrade to a warning — the board is still usable without them.
+      if (hiddenRes.error) {
+        setHubHiddenBlockCounts([])
+        showToast(`Busy-elsewhere counts: ${hiddenRes.error}`, 'warning')
+      } else {
+        setHubHiddenBlockCounts(hiddenRes.data)
+        if (wantsHiddenBlockCounts && !quiet) {
+          recordNavClick(
+            authUser?.id,
+            role,
+            'schedule_hidden_blocks',
+            `#${scheduleHiddenBlocksTotal(hiddenRes.data)}`,
+          )
+        }
+      }
 
       let hubJobsData: ScheduleDispatchHubJobRow[] = []
       if (jr.error) {
@@ -623,7 +661,8 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
       const teamIds = teamRes.error ? [] : teamRes.data
       if (teamRes.error) showToast(`Team roster: ${teamRes.error}`, 'warning')
 
-      const mergedHubBaseIds = [...new Set([...teamIds, ...usersTabIds])]
+      // People who only have hidden (busy-elsewhere) work still get a row on the board.
+      const mergedHubBaseIds = [...new Set([...teamIds, ...usersTabIds, ...scheduleHiddenUserIds(hiddenRes.data)])]
       setHubTeamMemberUserIds(mergedHubBaseIds)
 
       const assigneeIds = [...new Set(blocksData.map((b) => b.assignee_user_id))]
@@ -711,7 +750,7 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
         setHubLoading(false)
       }
     }
-  }, [jobId, weekStart, weekEnd, role, showToast, canShowHubExpectedManpowerPayroll])
+  }, [jobId, weekStart, weekEnd, role, showToast, canShowHubExpectedManpowerPayroll, wantsHiddenBlockCounts, authUser?.id])
 
   const applyHubMultiCellJob = useCallback(
     async (targetJobId: string, selectionKeys: readonly string[]) => {
@@ -2246,7 +2285,7 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
     return <div style={{ padding: '2rem', textAlign: 'center' }}>Loading…</div>
   }
 
-  if (role != null && !CAN_USE_SCHEDULE_DISPATCH.has(role)) {
+  if (role != null && !CAN_VIEW_SCHEDULE_DISPATCH_ROLES.has(role)) {
     return <Navigate to="/dashboard" replace />
   }
 
@@ -2600,8 +2639,10 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
             }
             userTimeOffByCell={hubUserTimeOffByCell}
             latenessByCell={hubLatenessByCell}
-            onRequestUndoNotComingIn={canEdit ? handleRequestUndoNotComingIn : undefined}
-            onMarkNotComingInForCell={canEdit ? onMarkNotComingInForCell : undefined}
+            onRequestUndoNotComingIn={canTimeOff ? handleRequestUndoNotComingIn : undefined}
+            onMarkNotComingInForCell={canTimeOff ? onMarkNotComingInForCell : undefined}
+            hiddenByCell={hubHiddenByCell}
+            hiddenBlockCounts={hubHiddenBlockCounts}
           />
         </DndContext>
         <ScheduleShareModal
@@ -2740,7 +2781,7 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
           }}
           onCreateNewJob={jobFormModal ? onCreateNewJobFromHubJobPicker : undefined}
           notComingIn={
-            hubAssignJobPickerIntent === 'cell' && hubCellAddContext
+            hubAssignJobPickerIntent === 'cell' && hubCellAddContext && canTimeOff
               ? {
                   personLabel:
                     hubPeopleNameById.get(hubCellAddContext.assigneeUserId) ?? 'Team member',
