@@ -13,7 +13,11 @@ import {
   referenceQualityFlags,
   type ReferenceQualityFlags,
 } from './referenceGrade'
-import { GATE_B_STREAK, type AxisCard } from './confidenceBoard'
+import { GATE_B_STREAK, normalizeBidNumber, type AxisCard } from './confidenceBoard'
+
+// The normalizer moved to confidenceBoard.ts (v2.2942, holdout matching needs
+// it there and this file already imports from it); same function, same name.
+export { normalizeBidNumber } from './confidenceBoard'
 
 export interface BacktestCandidateBidFields {
   id: string
@@ -52,13 +56,12 @@ export interface BacktestAxisGroup<B extends BacktestCandidateBidFields> {
   eligible: BacktestCandidate<B>[]
   /** Gate-ineligible references (round value / weak loss / uncategorized / stale). */
   flagged: BacktestCandidate<B>[]
-}
-
-/** 'B376' / 'b376' / 376 → '376', for matching bids against run-table reference numbers. */
-export function normalizeBidNumber(n: number | string | null | undefined): string | null {
-  if (n == null) return null
-  const s = String(n).trim().replace(/^[bB]/, '')
-  return s.length > 0 ? s : null
+  /**
+   * Holdout references (v2.2942, LEARNING_PLAN lever 3): reserved for gate
+   * measurement — never in `eligible`, never in a practice slate, no kickoff
+   * prompt. Listed separately so the dev can see (and release) them.
+   */
+  holdout: BacktestCandidate<B>[]
 }
 
 function decidedWhen(bid: BacktestCandidateBidFields): string {
@@ -90,13 +93,15 @@ export function buildBacktestCandidateGroups<B extends BacktestCandidateBidField
     axisCards: readonly AxisCard[]
     /** YMD for the staleness flag. */
     todayYmd: string
+    /** Reads bids.holdout (untyped until the post-push gen-types run) + any local override. */
+    holdoutOf?: (bid: B) => boolean
   },
 ): BacktestAxisGroup<B>[] {
-  const byAxis = new Map<string | null, { eligible: BacktestCandidate<B>[]; flagged: BacktestCandidate<B>[] }>()
+  const byAxis = new Map<string | null, { eligible: BacktestCandidate<B>[]; flagged: BacktestCandidate<B>[]; holdout: BacktestCandidate<B>[] }>()
   const bucket = (axis: string | null) => {
     let b = byAxis.get(axis)
     if (!b) {
-      b = { eligible: [], flagged: [] }
+      b = { eligible: [], flagged: [], holdout: [] }
       byAxis.set(axis, b)
     }
     return b
@@ -125,7 +130,10 @@ export function buildBacktestCandidateGroups<B extends BacktestCandidateBidField
     )
     const candidate: BacktestCandidate<B> = { bid, grade, flags }
     const b = bucket(opts.axisOf(bid))
-    ;(flags.gateEligible ? b.eligible : b.flagged).push(candidate)
+    // Holdout wins over quality flags — a held-out reference is out of the
+    // practice pool either way, and the dev should see it under HOLDOUT.
+    if (opts.holdoutOf?.(bid)) b.holdout.push(candidate)
+    else (flags.gateEligible ? b.eligible : b.flagged).push(candidate)
   }
 
   const sortCandidates = (list: BacktestCandidate<B>[]) =>
@@ -138,7 +146,7 @@ export function buildBacktestCandidateGroups<B extends BacktestCandidateBidField
   const groups: BacktestAxisGroup<B>[] = []
   for (const axis of axes) {
     const card = cardByAxis.get(axis)
-    const b = byAxis.get(axis) ?? { eligible: [], flagged: [] }
+    const b = byAxis.get(axis) ?? { eligible: [], flagged: [], holdout: [] }
     let demand: AxisDemand
     let why: string
     if (!card) {
@@ -157,7 +165,7 @@ export function buildBacktestCandidateGroups<B extends BacktestCandidateBidField
       demand = 'open'
       why = `needs ${GATE_B_STREAK - card.streak} more in-band · gate B at ${card.streak}/${GATE_B_STREAK}`
     }
-    groups.push({ axis, demand, why, eligible: sortCandidates(b.eligible), flagged: sortCandidates(b.flagged) })
+    groups.push({ axis, demand, why, eligible: sortCandidates(b.eligible), flagged: sortCandidates(b.flagged), holdout: sortCandidates(b.holdout) })
   }
 
   groups.sort((a, b) => {
@@ -171,24 +179,49 @@ export function buildBacktestCandidateGroups<B extends BacktestCandidateBidField
 
   // Unclassified bucket renders last, and only when it holds something.
   const un = byAxis.get(null)
-  if (un && (un.eligible.length > 0 || un.flagged.length > 0)) {
+  if (un && (un.eligible.length > 0 || un.flagged.length > 0 || un.holdout.length > 0)) {
     groups.push({
       axis: null,
       demand: null,
       why: 'axis unknown until someone assigns one',
       eligible: sortCandidates(un.eligible),
       flagged: sortCandidates(un.flagged),
+      holdout: sortCandidates(un.holdout),
     })
   }
 
   return groups
 }
 
+/**
+ * The Queue lens holdout counter (v2.2942): total held-out references across
+ * every group, plus which axes hold at least one — "spread across axes" is
+ * the owner's target, so the axis list is the actionable half.
+ */
+export function holdoutSummary<B extends BacktestCandidateBidFields>(
+  groups: readonly BacktestAxisGroup<B>[],
+): { count: number; axes: string[]; unclassified: number } {
+  let count = 0
+  let unclassified = 0
+  const axes: string[] = []
+  for (const g of groups) {
+    count += g.holdout.length
+    if (g.axis == null) unclassified += g.holdout.length
+    else if (g.holdout.length > 0) axes.push(g.axis)
+  }
+  return { count, axes: axes.sort(), unclassified }
+}
+
 /** The starvation-card sentence for a group with flagged refs and nothing eligible. */
 export function starvationLine<B extends BacktestCandidateBidFields>(group: BacktestAxisGroup<B>): string {
   if (group.eligible.length > 0) return ''
-  if (group.flagged.length === 0)
+  if (group.flagged.length === 0) {
+    if (group.holdout.length > 0) {
+      const n = group.holdout.length
+      return `No practice references left — ${n} exist${n === 1 ? 's' : ''} here but ${n === 1 ? 'it is' : 'all are'} held out for gate measurement. The next practice rep comes from bidding (or grading) more of these.`
+    }
     return 'No graded references recorded for this axis — the next rep comes from bidding (or grading) more of these.'
+  }
   const n = group.flagged.length
   return `No eligible references left — ${n} exist${n === 1 ? 's' : ''} but ${n === 1 ? 'it is' : 'all are'} flagged (${flagBreakdown(group.flagged)}). The next rep for this axis comes from repairing history, not from running it.`
 }
