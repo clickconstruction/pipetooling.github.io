@@ -6,6 +6,15 @@ keywords: payment follow-up, chase, call mode, promised date, can't reach, broke
 ---
 Every open bill that's past its expected payment date owes us a phone call — and the Pipeline now keeps that queue for you. The **📞 Ask N customers when they'll pay** card in Today's Money Opportunities counts who owes a call and the dollars riding on the answers; {{button:outline-blue|Start call mode →}} works the list one customer at a time.
 
+## Where the chase lives
+
+The card sits in **Today's Money Opportunities** on **Jobs → Pipeline**, and the same cards repeat inside Quickfill's **Jobs Cleanup** station, so the daily pass finds it too. Two neighbours are easy to confuse with it:
+
+- **"Who owes us?"** is the Dashboard's **Accounts Receivable** card — tap it for the customer-grouped drill-down, one row per customer with their open bills and how long they have kept you waiting against their own pay speed. Same bills, same totals as this queue; call mode is the *doing*, the drill is the *reading*.
+- **Accounts Receivable** the page (`/accounts-receivable`, {{button:blue|Match deposits}} on the Needs you card) is the **bank-deposit matching desk** — it applies money that already landed to the bills it pays. Nobody gets called from there. The Needs you item opens it right where you are, on the Dashboard or on Quickfill, and the card recounts when you close it.
+
+The rest of the receivables ritual is spread over three stations, each with its own guide: **Billed Awaiting Payment** on Quickfill (the daily look at every open bill), deposit matching (above), and **GC Review** for certifying and sending the weekly GC statements.
+
 ## The loop
 
 1. A bill goes **past its expected date** (the same clock as the row chips) with no promise → the customer joins the queue.

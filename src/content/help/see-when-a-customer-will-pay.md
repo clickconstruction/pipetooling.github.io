@@ -8,6 +8,10 @@ Every row in **Jobs → Pipeline → Billed Awaiting Payment** now predicts its 
 
 Each billed row's **View Bill** button also carries a small **PDF tail** — the page icon attached to its right edge. One click opens the invoice PDF in a new tab, freshly generated with the current payment history, ready to print or send. It's the same paper the View Bill window's "Open PDF in new tab" produces, without the trip through the window.
 
+## Where this fits in the receivables routine
+
+The chips are the reading; the doing happens in four places. Quickfill's **Billed Awaiting Payment** station is the daily look at every open bill. The Pipeline's **📞 Ask N customers when they'll pay** card (also inside Quickfill → Jobs Cleanup) is **call mode**, where the promises below get recorded. **Accounts Receivable** (`/accounts-receivable`, or {{button:blue|Match deposits}} on the Needs you card — it opens in place) is the bank-deposit matching desk: money that already landed gets applied to the bill it pays, and the row here turns green on its own. **GC Review** certifies and sends the weekly GC statements. "Who owes us?" in one figure is the Dashboard's **Accounts Receivable** card; its drill-down, this board, Quickfill and a customer's page all count the same bills.
+
 ## Reading the chip
 
 Each billed row carries a small chip under its buttons:

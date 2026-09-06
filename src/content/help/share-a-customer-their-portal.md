@@ -29,7 +29,7 @@ The top of the modal is their **portal address**, something like `my.clickplumbi
 The {{icon:gear}} button opens one flat list:
 
 - **Direct link** — the long token link. Always works, even while the address changes; use it if you don't want to touch the address.
-- **Address** — before the first share, 🎲 **Random tail** adds a hard-to-guess ending (the hero's 🎲 does the same). After it's locked you can still change it here — with a warning, because the old address stops working.
+- **Address** — before the first share, 🎲 **Random tail** rolls a fresh hard-to-guess ending (the hero's 🎲 does the same; a new address already starts with one). After it's locked you can still change it here — with a warning, because the old address stops working.
 - **Separate views** — need to give a GC's office *only* their GC bills, or only their own jobs? Create a scoped link on demand; each has its own Copy and Turn off.
 - **Reset** — {{button:outline|Rotate}} makes a new link and kills the old one immediately (the custom address follows automatically); {{button:outline|Turn off}} shuts the whole portal down. A turned-off customer's globe turns **red** everywhere (a live one is blue, a never-created one faint grey), and the modal offers {{button:blue|Turn portal back on}} when you're ready.
 - **Opened** — has the customer actually looked? **Opened 3 times · last Sep 3**, or **Not opened yet**. Customer opens only: your previews and staff opens don't count, so the number means what it says before a follow-up call.

@@ -45,7 +45,7 @@ The customer's name and type at the top, their phone / email / address as tap-to
 ## Read the money strip
 
 - **Lifetime value** — everything ever billed to this customer, with the amount actually collected underneath. This is the same "how much has this customer been worth" number HouseCall Pro showed.
-- **Open balance** — what they still owe, with an aging chip when anything has been waiting 30+ or 90+ days.
+- **Open balance** — what they still owe, with an aging chip when anything has been waiting 30+ or 90+ days. It is the same figure the Dashboard's Accounts Receivable card, the Pipeline money strip and the Customers list show for this customer — one rule counts the bills everywhere.
 - **Pays in** — the median number of days between billing this customer and getting paid, from their last 12 months of payments.
 - **Estimates won** — how many of their decided estimates were accepted.
 

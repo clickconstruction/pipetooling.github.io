@@ -4,7 +4,7 @@ category: Office
 roles: dev, master_technician, assistant, controller
 keywords: gc statement, round, scheduled sends, what went out, lane, duplicate, cancel, certify, sent it, mark sent, text, call, note, send history, personal email, outstanding, weekly, sender, gc review, sign off, email me my round, morning email, dashboard, needs you, send from the app, sender card, as they see it, reassign, undo, spoke with them, contacted, temperature, hot, warm, cool, cold, temperature board, pays by, account man
 ---
-Every GC that owes **$10,000 or more** joins the weekly **statement round**: a to-do for one person to email that GC their outstanding statement — personally, from their own inbox. The app never emails a GC on its own. Two gates keep it honest: a manager **certifies** each GC's numbers first, and the sender marks **Sent it** so the app knows it happened.
+Every GC that owes **$10,000 or more** joins the weekly **statement round**: a to-do for one person to email that GC their outstanding statement — personally, from their own inbox. The app never emails a GC on its own initiative — only when a person presses Send or sets up a schedule. Two gates keep it honest: a manager **certifies** each GC's numbers first, and the sender marks **Sent it** so the app knows it happened.
 
 ## The two Pipeline cards
 
@@ -103,6 +103,10 @@ Aug 20 · Statement · **Draft Message** · Robert · to ap@knight.com +1 · $9,
 
 "Did anything already go to Knight this week, and did it land?" is answered here before you send another one. App-sent statements show their recipient, total, and delivery status; personal-round marks show how, the temperature, and the note.
 
+## The three lanes
+
+A statement reaches a GC one of three ways, and every surface names the lane the same way: **Personal** (your own inbox, marked with {{button:blue|Sent it ✓}} — the round), **Draft Message** (the app sends it for you when you press Send), and **Scheduled send** (a standing weekly copy the dispatcher sends). The **Scheduled statement sends** box below lists the third lane; **What went out** above shows all three for one GC.
+
 ## The Scheduled statement sends box
 
 Above the GC groups, **Scheduled statement sends** lists every scheduled statement the office has set up — the standing "All GCs → Malachi · Mon · Wed · 7:00 AM · weekly" copies and any per-GC schedule — for everyone who can open GC Review, not just the person who created them. Each line says when it goes and, when it isn't yours, **by whom**. Only the person who scheduled a send (or a dev) sees its {{button:outline|Cancel}}; ask them if a chain needs to stop.
@@ -113,7 +117,8 @@ If a statement already went to the same address a few minutes ago — by any lan
 
 ## Good to know
 
-- Nothing is ever emailed uncertified, and nothing is emailed by the system at all — a person always sends.
+- Nothing is ever emailed uncertified, and nothing goes out that a person didn't ask for — you send it yourself, press **Send from the app…** / **Send statement**, or set the schedule.
+- **A $0 statement can't be sent.** When a GC's certified group owes nothing, Draft Message says **Nothing owed — no statement goes out.** and the Send button stays off. **Schedule…** still works — a weekly chain simply skips the weeks the GC is at $0.
 - The per-sender tallies in the panel header ("Malachi 2/3 sent") are how you see Friday afternoon who still owes sends.
 - Each GC row carries its portal globe; **Share → Copy portal link** and the statement's portal card point the GC at their live statement — the card itself says **"Pay online any time at …"**, and it is the same card in {{button:outline|Preview statement}}, {{button:outline|Copy for email}}, Draft Message, and scheduled sends.
 - Every office role sees every scheduled send in GC Review; **Cancel** stays with whoever scheduled it (or a dev). Your own Settings → My email schedule still lists only sends you requested or that are addressed to you.

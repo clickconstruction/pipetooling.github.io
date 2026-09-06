@@ -23,6 +23,10 @@ A job with revenue but **no clocked crew hours** can't be weighted, so its total
 The tab loads the complete job list itself because the page's shared cache leaves out paid jobs. While that loads, a small grey line says the figures come from the page cache; if the load fails, an amber line reads **"Showing cached figures from 3:42 PM — the complete job list didn't load…"** with a {{button:outline|Refresh}} button. Until it clears, paid jobs may be missing and Billed and Profit can read low.
 :::
 
+:::example Why office and admin rows read negative
+Office hours, bid hours and the Office job carry real **Labor Cost** but bill nobody, so their **Billed (gross)** is $0 and **Profit** is minus their wages — by construction. A negative office row is the cost of running the office, not a job that lost money; look for the field rows above it.
+:::
+
 ## Date range
 
 Pick a preset (This month, Last month, Quarter, Year) or a custom range. It filters **work dates** — and billing follows the hours, so a window credits the slice of a job's revenue earned by hours worked inside it.
