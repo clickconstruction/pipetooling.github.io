@@ -171,7 +171,15 @@ export interface TakeoffDiff {
   missed: DiffEntry[]
   added: DiffEntry[]
   gaps: DiffEntry[]
-  /** Matched rows whose quantities agree within tolerance. */
+  /**
+   * Rate gaps (v2.2935): matched rows whose QUANTITIES agree but whose unit
+   * rates don't — the bucket the 2026-09-05 regression batch showed carries
+   * most of the robots' remaining error (tier rates, uplift overrides, all-in
+   * boundaries). Quantity-matched rows used to land silently in matchedOkCount
+   * however far apart the money was.
+   */
+  rates: DiffEntry[]
+  /** Matched rows whose quantities AND unit rates agree within tolerance. */
   matchedOkCount: number
 }
 
@@ -206,13 +214,19 @@ function aggregateBySignature(rows: TakeoffDiffRow[]): Map<string, SideAgg> {
 
 const byImpact = (a: DiffEntry, b: DiffEntry) => Math.abs(b.impact) - Math.abs(a.impact)
 
-/** Quantities agree when within ±tolerance of the larger side (default 15%). */
-export function diffTakeoffs(robotRows: TakeoffDiffRow[], ourRows: TakeoffDiffRow[], tolerance = 0.15): TakeoffDiff {
+/**
+ * Quantities agree when within ±tolerance of the larger side (default 15%);
+ * unit rates on quantity-matched rows likewise within ±rateTolerance. A side
+ * with no pricing (ext 0) has no rate to disagree with — those rows stay
+ * matched-ok rather than inventing a $0 rate gap.
+ */
+export function diffTakeoffs(robotRows: TakeoffDiffRow[], ourRows: TakeoffDiffRow[], tolerance = 0.15, rateTolerance = 0.15): TakeoffDiff {
   const robot = aggregateBySignature(robotRows)
   const ours = aggregateBySignature(ourRows)
   const missed: DiffEntry[] = []
   const added: DiffEntry[] = []
   const gaps: DiffEntry[] = []
+  const rates: DiffEntry[] = []
   let matchedOkCount = 0
   for (const [key, o] of ours) {
     const r = robot.get(key)
@@ -221,8 +235,18 @@ export function diffTakeoffs(robotRows: TakeoffDiffRow[], ourRows: TakeoffDiffRo
       continue
     }
     const spread = Math.abs(r.count - o.count) / Math.max(r.count, o.count)
-    if (spread <= tolerance) matchedOkCount += 1
-    else gaps.push({ key, label: o.label, robotCount: r.count, ourCount: o.count, robotExt: r.ext, ourExt: o.ext, impact: r.ext - o.ext })
+    if (spread > tolerance) {
+      gaps.push({ key, label: o.label, robotCount: r.count, ourCount: o.count, robotExt: r.ext, ourExt: o.ext, impact: r.ext - o.ext })
+      continue
+    }
+    const robotRate = r.count > 0 ? r.ext / r.count : 0
+    const ourRate = o.count > 0 ? o.ext / o.count : 0
+    const rateSpread = robotRate > 0 && ourRate > 0 ? Math.abs(robotRate - ourRate) / Math.max(robotRate, ourRate) : 0
+    if (rateSpread > rateTolerance) {
+      rates.push({ key, label: o.label, robotCount: r.count, ourCount: o.count, robotExt: r.ext, ourExt: o.ext, impact: r.ext - o.ext })
+    } else {
+      matchedOkCount += 1
+    }
   }
   for (const [key, r] of robot) {
     if (ours.has(key)) continue
@@ -231,7 +255,39 @@ export function diffTakeoffs(robotRows: TakeoffDiffRow[], ourRows: TakeoffDiffRo
   missed.sort(byImpact)
   added.sort(byImpact)
   gaps.sort(byImpact)
-  return { missed, added, gaps, matchedOkCount }
+  rates.sort(byImpact)
+  return { missed, added, gaps, rates, matchedOkCount }
+}
+
+export interface DiffWaterfall {
+  /** Σ impact per bucket (signed, robot minus ours). */
+  missed: number
+  added: number
+  gaps: number
+  rates: number
+  /**
+   * Whatever the row diff cannot see: the letter's uplift over raw rows,
+   * in-tolerance drift on matched rows, unpriced rows. delta − Σ buckets.
+   */
+  other: number
+  /** robotTotal − ourTotal, the headline the buckets must sum back to. */
+  delta: number
+}
+
+/**
+ * Decompose the headline delta into the named dollars an auditor can act on:
+ * delta = missed + added + quantity gaps + rate gaps + other. `robotTotal` is
+ * the priced draft; `ourTotal` the reference's sent value (which her rows need
+ * not sum to — the difference lands in `other`, labeled, instead of vanishing).
+ */
+export function diffWaterfall(diff: TakeoffDiff, robotTotal: number, ourTotal: number): DiffWaterfall {
+  const sum = (entries: DiffEntry[]) => entries.reduce((s, e) => s + e.impact, 0)
+  const missed = sum(diff.missed)
+  const added = sum(diff.added)
+  const gaps = sum(diff.gaps)
+  const rates = sum(diff.rates)
+  const delta = robotTotal - ourTotal
+  return { missed, added, gaps, rates, other: delta - missed - added - gaps - rates, delta }
 }
 
 /**
@@ -253,8 +309,19 @@ const fmtQty = (n: number) => (Number.isInteger(n) ? String(n) : n.toFixed(1))
 const fmtUsd = (n: number) => `$${Math.round(Math.abs(n)).toLocaleString()}`
 
 /** Drafted note body for a verdict on a diff entry — posted as-is for 'ok', editable first for the rest. */
-export function buildVerdictDraft(verdict: AuditVerdict, e: Pick<DiffEntry, 'label' | 'robotCount' | 'ourCount' | 'robotExt' | 'ourExt'>): string {
+export type DiffBucketKey = 'missed' | 'added' | 'gaps' | 'rates'
+
+const fmtUnitRate = (ext: number, count: number) => `$${count > 0 ? ((ext / count) % 1 === 0 ? (ext / count).toLocaleString() : (ext / count).toFixed(2)) : '0'}`
+
+export function buildVerdictDraft(verdict: AuditVerdict, e: Pick<DiffEntry, 'label' | 'robotCount' | 'ourCount' | 'robotExt' | 'ourExt'>, bucket?: DiffBucketKey): string {
   const tag = AUDIT_VERDICT_TAG[verdict]
+  // Rate gaps (v2.2935): the quantities agree — describe the money, not the counts.
+  if (bucket === 'rates') {
+    const spread = `robot ${fmtUnitRate(e.robotExt, e.robotCount)}/u vs ours ${fmtUnitRate(e.ourExt, e.ourCount)}/u (×${fmtQty(e.ourCount)})`
+    if (verdict === 'ok') return `${tag} ${e.label} — both fine (pricing judgment call): ${spread}.`
+    if (verdict === 'record') return `${tag} ${e.label} — our rate looks off: ${spread}. `
+    return `${tag} ${e.label} — repriced wrong: ${spread}. `
+  }
   if (verdict === 'ok') return `${tag} ${e.label} — both fine (scope difference / judgment call).`
   if (verdict === 'record') return `${tag} ${e.label} — our record looks off (robot ×${fmtQty(e.robotCount)}, ours ×${fmtQty(e.ourCount)}). `
   if (e.robotCount === 0) return `${tag} ${e.label} — robot missed this (ours ×${fmtQty(e.ourCount)}, ${fmtUsd(e.ourExt)}). `
@@ -262,8 +329,9 @@ export function buildVerdictDraft(verdict: AuditVerdict, e: Pick<DiffEntry, 'lab
   return `${tag} ${e.label} — robot ×${fmtQty(e.robotCount)} vs ours ×${fmtQty(e.ourCount)}. `
 }
 
-/** Which composer section a diff row's verdict note belongs in. */
-export function entrySection(label: string): 'footage' | 'counts' {
+/** Which composer section a diff row's verdict note belongs in. Rate gaps are pricing feedback by definition. */
+export function entrySection(label: string, bucket?: DiffBucketKey): 'footage' | 'counts' | 'pricing' {
+  if (bucket === 'rates') return 'pricing'
   return parseRowSignature(label).kind === 'footage' ? 'footage' : 'counts'
 }
 
