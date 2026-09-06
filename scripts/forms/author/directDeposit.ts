@@ -14,7 +14,7 @@ export async function buildDirectDeposit() {
   p.subtitle('Payments · complete one form per account. Attach a voided check or a letter from your bank.')
 
   p.paragraph(
-    `I authorize ${COMPANY} to deposit my pay electronically to the account below, and to withdraw from that account any amount deposited in error. This authorization stays in effect until I give ${COMPANY} written notice to change or cancel it, and I understand the office needs up to two pay periods to process a change.`,
+    `I authorize ${COMPANY} to deposit my pay electronically to the account below, and to withdraw from that account any amount deposited in error. This authorization stays in effect until I give ${COMPANY} written notice to change or cancel it, and I understand the office may need some time to process a change.`,
     { gapAfter: 8 },
   )
 
