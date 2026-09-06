@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { JobGcStageSharingSwitches } from './JobGcStageSharingSwitches'
 import type { Dispatch, MutableRefObject, SetStateAction } from 'react'
 import { openInExternalBrowser } from '../../lib/openInExternalBrowser'
 import { filterActiveCustomersForPicker } from '../../lib/customerArchive'
@@ -231,6 +232,8 @@ type GcPickerProps = {
   customersLoading: boolean
   /** Hide the block's own label (fact-rows mode provides the row label). */
   showLabel?: boolean
+  /** v2.2933: an existing job shows the GC stage-sharing switches under the picker. */
+  jobId?: string | null
 }
 
 /**
@@ -245,6 +248,7 @@ export function JobFormGcPicker({
   customers,
   customersLoading,
   showLabel = true,
+  jobId = null,
 }: GcPickerProps) {
   const [gcSearch, setGcSearch] = useState('')
   const [gcDropdownOpen, setGcDropdownOpen] = useState(false)
@@ -366,6 +370,7 @@ export function JobFormGcPicker({
           </button>
         )}
       </div>
+      {jobId && gcCustomerId ? <JobGcStageSharingSwitches jobId={jobId} gcName={selectedGc?.name ?? null} /> : null}
     </div>
   )
 }
@@ -413,6 +418,8 @@ type JobFormCustomerSectionProps = {
   /** Shell handler: clipboard → parseCustomerImport → name/address/email/phone fields. */
   onImport: () => void
   onOpenCreateCustomerModal: () => void
+  /** v2.2933: the job being edited (null for a new job) — shows the GC stage-sharing switches. */
+  jobId?: string | null
 }
 
 /**
@@ -462,6 +469,7 @@ export function JobFormCustomerSection({
   googleDriveInputRef,
   onImport,
   onOpenCreateCustomerModal,
+  jobId = null,
 }: JobFormCustomerSectionProps) {
   const selectedGc = gcCustomerId ? customers.find((c) => c.id === gcCustomerId) ?? null : null
 
@@ -620,6 +628,7 @@ export function JobFormCustomerSection({
           </div>
           <div style={{ marginBottom: '0.75rem' }}>
             <JobFormGcPicker
+              jobId={jobId}
               gcCustomerId={gcCustomerId}
               setGcCustomerId={setGcCustomerId}
               linkedBidGc={linkedBidGc}

@@ -7,6 +7,7 @@
  * the sheet's Work order box.
  */
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { offerNextStageAfterPass } from '../../lib/subs/offerNextStage'
 import { supabase } from '../../lib/supabase'
 import { useToastContext } from '../../contexts/ToastContext'
 import { formatErrorMessage } from '../../utils/errorHandling'
@@ -258,6 +259,12 @@ export function SheetStoryModal({ sheetId, onClose, jobs, authUserId, onOpenShee
       if (err) throw err
       await load()
       onSheetChanged?.()
+      // v2.2933: passed inspection → offer the next stage to the GC, or ask the office to.
+      if (stage === 'customer_pay') {
+        const out = await offerNextStageAfterPass({ sheetId, authUserId }).catch(() => ({ kind: 'nothing' as const }))
+        if (out.kind === 'offered') showToast(`${out.stageName} offered to ${out.gcName ?? 'the GC'}`, 'success')
+        else if (out.kind === 'asked') showToast(`Dispatch inbox: offer ${out.stageName} to ${out.gcName ?? 'the GC'}?`, 'info')
+      }
     } catch (e) {
       showToast(`Could not move the stage: ${formatErrorMessage(e)}`, 'error')
     } finally {

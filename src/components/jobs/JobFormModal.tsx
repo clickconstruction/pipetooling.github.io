@@ -3678,6 +3678,7 @@ export default function JobFormModal({
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', marginBottom: '1rem' }}>
             {!editing ? (
               <JobFormCustomerSection
+              jobId={initialJob?.id ?? null}
                 expanded={customerExpanded}
                 setExpanded={setCustomerExpanded}
                 customerId={customerId}

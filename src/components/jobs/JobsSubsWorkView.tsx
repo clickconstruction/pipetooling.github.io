@@ -92,6 +92,9 @@ export function JobsSubsWorkView({ jobs, jobsLoading, authUserId, deepLinkWorkOr
   const [rows, setRows] = useState<StepCommitmentRow[]>([])
   const [windows, setWindows] = useState<StageWindowLike[]>([])
   const [windowEdit, setWindowEdit] = useState<WindowEditTarget | null>(null)
+  /** job id → GC name for jobs whose Edit Job switch shares stage dates (v2.2933). */
+  const [gcSharing, setGcSharing] = useState<Map<string, { gcName: string | null }>>(() => new Map())
+  const [bundlePick, setBundlePick] = useState<{ groupKey: string; ids: Set<string> } | null>(null)
   const [windowSaving, setWindowSaving] = useState(false)
   const [sheets, setSheets] = useState<SheetLite[]>([])
   const [roster, setRoster] = useState<NeedsWorkOrderRosterPerson[]>([])
@@ -123,7 +126,7 @@ export function JobsSubsWorkView({ jobs, jobsLoading, authUserId, deepLinkWorkOr
         supabase.from('people').select('id, name, kind, account_user_id').order('id').limit(1000),
         supabase.from('users').select('id, role').order('id').limit(1000),
         // Stages: line items with a window (v2.2927).
-        supabase.from('job_stage_windows').select('id, job_id, fixture_id, window_start, window_end, window_by, note').limit(2000),
+        supabase.from('job_stage_windows').select('id, job_id, fixture_id, window_start, window_end, window_by, note, offered_to_gc, bundle_id').limit(2000),
       ])
       if (rowsErr) throw rowsErr
       if (sheetsErr) throw sheetsErr
@@ -132,6 +135,14 @@ export function JobsSubsWorkView({ jobs, jobsLoading, authUserId, deepLinkWorkOr
       // The stages table lands with its migration; until it is applied the board still paints, just without stages.
       if (windowErr) console.warn('job_stage_windows unavailable — showing the board without stages', windowErr)
       setWindows(windowErr ? [] : ((windowData ?? []) as StageWindowLike[]))
+      // GC sharing per job (v2.2933): the Edit Job switch decides whether the GC column is live.
+      const { data: gcRaw } = await supabase.from('jobs_ledger').select('id, gc_shares_stage_dates, gc_customer_id, gc:customers!gc_customer_id(name)').eq('gc_shares_stage_dates', true).limit(2000)
+      const gcMap = new Map<string, { gcName: string | null }>()
+      for (const j of (gcRaw ?? []) as Array<{ id: string; gc_shares_stage_dates: boolean; gc: { name: string | null } | { name: string | null }[] | null }>) {
+        const g = Array.isArray(j.gc) ? j.gc[0] ?? null : j.gc
+        gcMap.set(j.id, { gcName: (g?.name ?? '').trim() || null })
+      }
+      setGcSharing(gcMap)
       const list = (rowsData ?? []) as StepCommitmentRow[]
       setRows(list)
       setSheets((sheetsData ?? []) as SheetLite[])
@@ -384,6 +395,31 @@ export function JobsSubsWorkView({ jobs, jobsLoading, authUserId, deepLinkWorkOr
     emitWorkOrderChanged()
   }
 
+  /** Offer / withdraw stage windows to the GC (v2.2933). A bundle shares one id and goes together. */
+  async function offerToGc(windowIds: string[], bundle: boolean) {
+    if (windowIds.length === 0) return
+    const bundleId = bundle && windowIds.length > 1 ? crypto.randomUUID() : null
+    const { error } = await supabase.from('job_stage_windows').update({ offered_to_gc: true, offered_to_gc_at: new Date().toISOString(), ...(bundleId ? { bundle_id: bundleId } : {}) }).in('id', windowIds)
+    if (error) {
+      showToast(`Could not offer: ${formatErrorMessage(error)}`, 'error')
+      return
+    }
+    setBundlePick(null)
+    showToast(bundleId ? `${windowIds.length} stages offered together` : 'Offered — it is on their portal now', 'success')
+    emitWorkOrderChanged()
+  }
+  async function withdrawFromGc(w: StageWindowLike) {
+    const ok = await confirm({ title: 'Take this off the GC\'s portal?', message: w.bundle_id ? 'Every stage in the bundle comes off together. Your dates and orders stay as they are.' : 'The GC no longer sees this stage. Your dates and orders stay as they are.', confirmLabel: 'Withdraw' })
+    if (!ok) return
+    const q = supabase.from('job_stage_windows').update({ offered_to_gc: false, offered_to_gc_at: null, bundle_id: null })
+    const { error } = w.bundle_id ? await q.eq('bundle_id', w.bundle_id) : await q.eq('id', w.id)
+    if (error) {
+      showToast(`Could not withdraw: ${formatErrorMessage(error)}`, 'error')
+      return
+    }
+    emitWorkOrderChanged()
+  }
+
   /** "Draft a work order…" from a stage row: the assembler opens on the job with the stage's dates and amount. */
   function draftForStage(row: Extract<SubsRow, { kind: 'stage' }>) {
     setAssembler({ jobId: row.jobId, stageWindowId: row.window.id, proposedStart: row.span?.start ?? null, proposedEnd: row.span?.end ?? null, amount: row.stage.amount > 0 ? row.stage.amount : null })
@@ -561,6 +597,31 @@ export function JobsSubsWorkView({ jobs, jobsLoading, authUserId, deepLinkWorkOr
     )
   }
 
+  /** The GC column (v2.2933): off for the job, Offer to GC, or Shown · Withdraw. */
+  const gcCell = (g: SubsJobGroup, r: SubsRow) => {
+    const share = g.jobId ? gcSharing.get(g.jobId) : undefined
+    if (!g.jobId) return <span style={{ color: 'var(--text-faint)', fontSize: '0.72rem' }}>—</span>
+    if (!share) return <span title="Edit Job → GC/Builder → Share stage dates with this GC" style={{ display: 'inline-block', padding: '1px 8px', borderRadius: 999, fontSize: '0.68rem', fontWeight: 600, background: 'var(--bg-subtle)', color: 'var(--text-muted)', border: '1px solid var(--border)', whiteSpace: 'nowrap' }}>off for this job</span>
+    if (!r.window) return <span style={{ color: 'var(--text-faint)', fontSize: '0.72rem' }}>set a window first</span>
+    if (r.window.offered_to_gc) {
+      return (
+        <>
+          <span style={{ display: 'inline-block', padding: '1px 8px', borderRadius: 999, fontSize: '0.68rem', fontWeight: 700, background: 'var(--bg-green-tint)', color: 'var(--text-green-700)', border: '1px solid var(--border-green)', whiteSpace: 'nowrap' }}>Shown{r.window.bundle_id ? ' · bundle' : ''}</span>
+          <div>
+            <button type="button" style={{ ...door, fontSize: '0.7rem' }} onClick={() => void withdrawFromGc(r.window!)}>
+              Withdraw
+            </button>
+          </div>
+        </>
+      )
+    }
+    return (
+      <button type="button" style={smallBtn('primary')} onClick={() => void offerToGc([r.window!.id], false)} title={`Show this stage and its window on ${share.gcName ?? 'the GC'}'s portal`}>
+        Offer to GC
+      </button>
+    )
+  }
+
   const linkAffordance = (row: WorkOrderBoardRow) =>
     row.notInPipeline ? (
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4, flexWrap: 'wrap' }}>
@@ -665,9 +726,42 @@ export function JobsSubsWorkView({ jobs, jobsLoading, authUserId, deepLinkWorkOr
 
   const rowEditor = (g: SubsJobGroup, r: SubsRow) => editorFor(g, r.key)
 
+  /** Rare case: several stages on the same dates → one card on the GC portal (v2.2933). */
+  const bundleFoot = (g: SubsJobGroup) => {
+    if (!g.jobId || !gcSharing.get(g.jobId)) return null
+    const candidates = g.rows.filter((r) => r.window && !r.window.offered_to_gc)
+    if (candidates.length < 2) return null
+    const picking = bundlePick && bundlePick.groupKey === g.key ? bundlePick : null
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', padding: '0.35rem 0.6rem', borderBottom: '1px solid var(--border)', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+        <span>Rare case — several stages on the same dates:</span>
+        {picking ? (
+          <>
+            {candidates.map((r) => (
+              <label key={r.key} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, color: 'var(--text-700)' }}>
+                <input type="checkbox" checked={picking.ids.has(r.window!.id)} onChange={(e) => setBundlePick({ groupKey: g.key, ids: new Set(e.target.checked ? [...picking.ids, r.window!.id] : [...picking.ids].filter((id) => id !== r.window!.id)) })} />
+                {r.stage?.name ?? 'stage'}
+              </label>
+            ))}
+            <button type="button" style={smallBtn('primary', picking.ids.size < 2)} disabled={picking.ids.size < 2} onClick={() => void offerToGc([...picking.ids], true)}>
+              Offer {picking.ids.size} together
+            </button>
+            <button type="button" style={smallBtn('ghost')} onClick={() => setBundlePick(null)}>
+              Cancel
+            </button>
+          </>
+        ) : (
+          <button type="button" style={smallBtn('ghost')} onClick={() => setBundlePick({ groupKey: g.key, ids: new Set() })}>
+            Offer several together…
+          </button>
+        )}
+      </div>
+    )
+  }
+
   const table = (
     <div style={{ border: '1px solid var(--border)', borderRadius: 6, overflow: 'auto', WebkitOverflowScrolling: 'touch' }}>
-      <table style={{ borderCollapse: 'collapse', width: '100%', minWidth: 1040, fontVariantNumeric: 'tabular-nums' }}>
+      <table style={{ borderCollapse: 'collapse', width: '100%', minWidth: 1160, fontVariantNumeric: 'tabular-nums' }}>
         <thead style={{ background: 'var(--bg-subtle)' }}>
           <tr>
             <th style={th}>Sub · stage</th>
@@ -677,6 +771,7 @@ export function JobsSubsWorkView({ jobs, jobsLoading, authUserId, deepLinkWorkOr
             <th style={{ ...th, textAlign: 'right' }}>Open</th>
             <th style={th}>Where it stands</th>
             <th style={th}>Next</th>
+            <th style={th}>GC portal</th>
             <th style={th} />
           </tr>
         </thead>
@@ -684,8 +779,9 @@ export function JobsSubsWorkView({ jobs, jobsLoading, authUserId, deepLinkWorkOr
           {visibleGroups.map((g) => (
             <FragmentRows key={g.key}>
               <tr>
-                <td colSpan={8} style={{ padding: 0 }}>
+                <td colSpan={9} style={{ padding: 0 }}>
                   {groupHeader(g)}
+                  {bundleFoot(g)}
                 </td>
               </tr>
               {g.rows.map((r) => {
@@ -702,6 +798,7 @@ export function JobsSubsWorkView({ jobs, jobsLoading, authUserId, deepLinkWorkOr
                           <td style={{ ...td, textAlign: 'right', whiteSpace: 'nowrap', color: 'var(--text-faint)' }}>—</td>
                           <td style={td}>{stageStanding(r)}</td>
                           <td style={td}>{stageNext()}</td>
+                          <td style={td}>{gcCell(g, r)}</td>
                           <td style={{ ...td, whiteSpace: 'nowrap' }}>
                             <div style={{ display: 'flex', gap: 4, justifyContent: 'flex-end', alignItems: 'center', flexWrap: 'wrap' }}>{stageActions(r)}</div>
                           </td>
@@ -715,6 +812,7 @@ export function JobsSubsWorkView({ jobs, jobsLoading, authUserId, deepLinkWorkOr
                             <SheetRail rail={r.board.rail} onClick={r.board.sheetId ? () => setStorySheetId(r.board.sheetId) : undefined} />
                           </td>
                           <td style={td}>{nextCell(r.board)}</td>
+                          <td style={td}>{gcCell(g, r)}</td>
                           <td style={{ ...td, whiteSpace: 'nowrap' }}>
                             <div style={{ display: 'flex', gap: 4, justifyContent: 'flex-end', alignItems: 'center', flexWrap: 'wrap' }}>
                               {primaryAction(r.board)}
@@ -726,7 +824,7 @@ export function JobsSubsWorkView({ jobs, jobsLoading, authUserId, deepLinkWorkOr
                     </tr>
                     {editor ? (
                       <tr>
-                        <td colSpan={8} style={{ ...td, background: 'var(--bg-subtle)' }}>{editor}</td>
+                        <td colSpan={9} style={{ ...td, background: 'var(--bg-subtle)' }}>{editor}</td>
                       </tr>
                     ) : null}
                   </FragmentRows>
@@ -745,6 +843,7 @@ export function JobsSubsWorkView({ jobs, jobsLoading, authUserId, deepLinkWorkOr
       {visibleGroups.map((g) => (
         <div key={g.key} style={{ border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden' }}>
           {groupHeader(g)}
+          {bundleFoot(g)}
           {g.rows.map((r) => (
             <div key={r.key} style={{ padding: '0.6rem 0.7rem', borderTop: '1px solid var(--border)', display: 'grid', gap: 6 }}>
               <div>{firstCell(r)}</div>
@@ -752,6 +851,10 @@ export function JobsSubsWorkView({ jobs, jobsLoading, authUserId, deepLinkWorkOr
                 {label('Window')}
                 {windowCell(g, r)}
                 {rowEditor(g, r)}
+              </div>
+              <div>
+                {label('GC portal')}
+                {gcCell(g, r)}
               </div>
               {r.kind === 'stage' ? (
                 <>

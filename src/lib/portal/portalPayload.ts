@@ -50,7 +50,22 @@ export type PortalPayload = {
   slug: string | null
   /** Job contracts (Contract Desk PR 5): signed records and open signing links. */
   agreements: PortalAgreement[]
+  /** v2.2933: stages the office offered on jobs that share dates with this GC — who, when, how far; no money. */
+  stages: PortalJobStages[]
 }
+
+export type PortalStageState = 'window' | 'offered' | 'scheduled' | 'working' | 'inspection' | 'passed'
+export type PortalStageEntry = {
+  id: string
+  bundle: boolean
+  name: string
+  window: { start: string; end: string } | null
+  who: string | null
+  when: { start: string; end: string } | null
+  pct: number | null
+  state: PortalStageState
+}
+export type PortalJobStages = { jobId: string; jobLabel: string; jobAddress: string | null; entries: PortalStageEntry[] }
 
 export type PortalAgreement = {
   jobLabel: string
@@ -162,6 +177,7 @@ export function parsePortalPayload(raw: unknown): PortalPayload | null {
     requestToken: typeof r.requestToken === 'string' && r.requestToken.trim() ? r.requestToken : null,
     slug: typeof r.slug === 'string' && r.slug.trim() ? r.slug.trim() : null,
     agreements,
+    stages: Array.isArray(r.stages) ? r.stages.map(parseJobStages).filter((x): x is PortalJobStages => x != null) : [],
   }
 }
 
@@ -233,4 +249,39 @@ export function splitPortalAddress(address: string | null): { street: string; re
 /** "$1,700.00" — the portal always shows cents (it is a statement). */
 export function formatPortalUsd(n: number): string {
   return n.toLocaleString('en-US', { style: 'currency', currency: 'USD' })
+}
+
+const STAGE_STATES: PortalStageState[] = ['window', 'offered', 'scheduled', 'working', 'inspection', 'passed']
+const YMD_RE = /^\d{4}-\d{2}-\d{2}$/
+function spanOrNull(raw: unknown): { start: string; end: string } | null {
+  if (raw == null || typeof raw !== 'object') return null
+  const r = raw as Record<string, unknown>
+  const start = typeof r.start === 'string' && YMD_RE.test(r.start) ? r.start : null
+  const end = typeof r.end === 'string' && YMD_RE.test(r.end) ? r.end : start
+  return start && end && end >= start ? { start, end } : null
+}
+function parseJobStages(raw: unknown): PortalJobStages | null {
+  if (raw == null || typeof raw !== 'object') return null
+  const r = raw as Record<string, unknown>
+  const jobId = typeof r.jobId === 'string' ? r.jobId : ''
+  if (!jobId) return null
+  const entries: PortalStageEntry[] = []
+  for (const e of Array.isArray(r.entries) ? r.entries : []) {
+    if (e == null || typeof e !== 'object') continue
+    const x = e as Record<string, unknown>
+    const id = typeof x.id === 'string' ? x.id : ''
+    if (!id) continue
+    const pct = typeof x.pct === 'number' && Number.isFinite(x.pct) ? Math.max(0, Math.min(100, Math.round(x.pct))) : null
+    entries.push({
+      id,
+      bundle: x.bundle === true,
+      name: typeof x.name === 'string' && x.name.trim() ? x.name.trim() : 'Stage',
+      window: spanOrNull(x.window),
+      who: typeof x.who === 'string' && x.who.trim() ? x.who.trim() : null,
+      when: spanOrNull(x.when),
+      pct,
+      state: STAGE_STATES.includes(x.state as PortalStageState) ? (x.state as PortalStageState) : 'window',
+    })
+  }
+  return { jobId, jobLabel: typeof r.jobLabel === 'string' ? r.jobLabel : 'Job', jobAddress: typeof r.jobAddress === 'string' ? r.jobAddress : null, entries }
 }

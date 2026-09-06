@@ -23,6 +23,8 @@ export type PortalJobRow = {
   service_types?: { name: string | null } | null
   customer_id?: string | null
   gc_customer_id?: string | null
+  /** v2.2933: the job-level switch — nothing about stages reaches the GC until this is on. */
+  gc_shares_stage_dates?: boolean | null
 }
 
 export type PortalInvoiceRow = {
