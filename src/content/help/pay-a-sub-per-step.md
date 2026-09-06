@@ -33,7 +33,7 @@ Offered and Accepted green, In progress orange: the sub agreed and is on the job
 
 ## Balance figures
 
-Each work order shows **Paid to date**, **Backcharges**, **Balance**, and (when set) **Retainage held** — pulled live from the linked Sub Labor sheet once one exists, so this panel and Jobs → Sub Labor always agree.
+Each work order shows **Paid to date**, **Backcharges**, **Balance**, and (when set) **Retainage held** — pulled live from the linked Sub Labor sheet once one exists, so this panel and Jobs → Subs → Pay always agree.
 
 ## See who's booked when
 
@@ -44,7 +44,7 @@ Each work order shows **Paid to date**, **Backcharges**, **Balance**, and (when 
 Once the step is **complete or approved**, the work order shows {{button:blue|Settle → release $5,760}}.
 
 1. Click it — a confirmation shows exactly what will be created: the sub, the amount (minus retainage), and the job number when there's one linked job.
-2. {{button:blue|Confirm}} creates the sub's sheet in **Jobs → Sub Labor** automatically, named after the step and project, already tied back to this step.
+2. {{button:blue|Confirm}} creates the sub's sheet in **Jobs → Subs → Pay** automatically, named after the step and project, already tied back to this step.
 
 From there, record payments and backcharges in Sub Labor exactly as you do today — the work order's balance figures follow along.
 

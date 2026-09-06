@@ -419,7 +419,7 @@ export function StepCommitmentPanel({
             {(actions.length > 0 || (!isSuperintendentOnly && (c.status === 'accepted' || c.status === 'approved'))) && (
               <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', alignItems: 'center' }}>
                 {c.status !== 'draft' && (
-                  <a href={`/jobs?tab=work_orders&wo=${c.id}`} style={{ fontSize: '0.75rem', color: 'var(--text-link)', textDecoration: 'none', whiteSpace: 'nowrap' }} title="Open this work order on Jobs → Work Orders">
+                  <a href={`/jobs?tab=subs&wo=${c.id}`} style={{ fontSize: '0.75rem', color: 'var(--text-link)', textDecoration: 'none', whiteSpace: 'nowrap' }} title="Open this work order on Jobs → Work Orders">
                     Work Orders ›
                   </a>
                 )}
@@ -552,7 +552,7 @@ export function StepCommitmentPanel({
             )}
 
             {c.status === 'settled' && (
-              <a href="/jobs?tab=sub_sheet_ledger" style={{ fontSize: '0.78rem', color: 'var(--text-link)' }}>
+              <a href="/jobs?tab=subs&view=pay" style={{ fontSize: '0.78rem', color: 'var(--text-link)' }}>
                 Settled — view in Sub Labor →
               </a>
             )}

@@ -35,4 +35,4 @@ Each sheet shows what it's worth and what's open. Tap one to see the full histor
 "706 · 1875 Co Rd 777 Devine — $4,400.00 open" expands to: Total $6,400 · paid $2,000, with the $2,000 draw dated Jul 28.
 :::
 
-If a number looks wrong, contact the office — they see the same sheet in Jobs → Sub Labor.
+If a number looks wrong, contact the office — they see the same sheet in Jobs → Subs → Pay.

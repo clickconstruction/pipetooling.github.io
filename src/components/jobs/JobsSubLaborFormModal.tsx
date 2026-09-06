@@ -103,7 +103,7 @@ export type JobsSubLaborFormModalProps = {
   setError: Dispatch<SetStateAction<string | null>>
   /** Default Labor Rate setting (its modal stays parent-side). */
   defaultLaborRateValue: string
-  setActiveTab: (tab: 'sub_sheet_ledger') => void
+  setActiveTab: (tab: 'subs') => void
   /** Payment modal trio openers — routed to SubLaborPaymentModals' imperative handle by the parent. */
   onOpenMakePayment: (target: SubLaborPaymentTarget, defaultAmount: string) => void
   onOpenBackcharge: (target: SubLaborBackchargeTarget) => void
@@ -827,7 +827,7 @@ function JobsSubLaborFormModalInner(
       { id: crypto.randomUUID(), fixture: '', count: 1, hrs_per_unit: 0, is_fixed: false, labor_rate: defaultRate, direct_labor_amount: null },
     ])
     setLaborSaving(false)
-    setActiveTab('sub_sheet_ledger')
+    setActiveTab('subs')
     closeLaborModal()
     await loadLaborJobs()
   }

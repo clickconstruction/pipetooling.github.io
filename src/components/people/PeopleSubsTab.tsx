@@ -458,7 +458,7 @@ export default function PeopleSubsTab() {
                 <span style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', marginLeft: 'auto' }}>
                   <button
                     type="button"
-                    onClick={() => navigate(`/jobs?tab=sub_sheet_ledger&editLabor=${encodeURIComponent(g.sheetIds[0] ?? '')}`)}
+                    onClick={() => navigate(`/jobs?tab=subs&view=pay&editLabor=${encodeURIComponent(g.sheetIds[0] ?? '')}`)}
                     style={{ padding: '0.15rem 0.5rem', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface)', cursor: 'pointer', fontSize: '0.75rem', fontFamily: 'inherit' }}
                   >
                     Open →

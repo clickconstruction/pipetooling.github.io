@@ -582,7 +582,7 @@ export function DashboardPinnedQuickRow({
             } else if (item.key === 'contract-stale') {
               navigate('/jobs?tab=stages&contract=sent')
             } else if (item.key === 'work-orders-unpriced') {
-              navigate('/jobs?tab=work_orders&wof=drafts')
+              navigate('/jobs?tab=subs&wof=drafts')
             } else if (item.key === 'jobs-stale-open') {
               navigate('/jobs?tab=job-summary&view=cycle')
             } else if (item.key === 'team-reviews') {

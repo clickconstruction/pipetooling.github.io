@@ -5,7 +5,7 @@ roles: dev, master_technician, assistant, superintendent
 keywords: sub labor, sub sheet ledger, outstanding, owed, contractor, backcharge, payment, due, pay run, ready, queued, payable after, friday
 order: 31
 ---
-**Jobs → Sub Labor** (the Sub Sheet Ledger) answers two questions: **who is owed what**, and **what happened on those sheets**. The toolbar still shows one grand total — {{chip:gray|Sub Labor Due: $47,050.00}} — and the page reads the rest as a pay run: why each dollar isn't paid yet, and what you can pay right now.
+**Jobs → Subs → Pay** (the Sub Sheet Ledger) answers two questions: **who is owed what**, and **what happened on those sheets**. The toolbar still shows one grand total — {{chip:gray|Sub Labor Due: $47,050.00}} — and the page reads the rest as a pay run: why each dollar isn't paid yet, and what you can pay right now.
 
 ## The four tiles
 

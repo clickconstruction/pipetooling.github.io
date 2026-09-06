@@ -76,7 +76,7 @@ export function PersonDeskPortalSection({ personId, displayName, changeKey }: { 
       <DeskRow
         label="Sheets"
         actions={
-          <a href="/jobs?tab=sub_sheet_ledger" style={{ fontSize: '0.75rem', color: 'var(--text-link)', textDecoration: 'none', whiteSpace: 'nowrap' }}>
+          <a href="/jobs?tab=subs&view=pay" style={{ fontSize: '0.75rem', color: 'var(--text-link)', textDecoration: 'none', whiteSpace: 'nowrap' }}>
             Sub Labor ›
           </a>
         }

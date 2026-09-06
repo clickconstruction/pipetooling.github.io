@@ -7593,6 +7593,60 @@ export type Database = {
           },
         ]
       }
+      job_stage_windows: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          fixture_id: string
+          id: string
+          job_id: string
+          note: string | null
+          updated_at: string
+          window_by: string | null
+          window_end: string | null
+          window_start: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          fixture_id: string
+          id?: string
+          job_id: string
+          note?: string | null
+          updated_at?: string
+          window_by?: string | null
+          window_end?: string | null
+          window_start?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          fixture_id?: string
+          id?: string
+          job_id?: string
+          note?: string | null
+          updated_at?: string
+          window_by?: string | null
+          window_end?: string | null
+          window_start?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "job_stage_windows_fixture_id_fkey"
+            columns: ["fixture_id"]
+            isOneToOne: false
+            referencedRelation: "jobs_ledger_fixtures"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_stage_windows_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs_ledger"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       jobs_ledger: {
         Row: {
           account_manager_relationship: string | null
@@ -14039,6 +14093,7 @@ export type Database = {
           signer_signature_storage_path: string | null
           signer_user_agent: string | null
           status: string
+          stage_window_id: string | null
           step_id: string | null
           updated_at: string
         }
@@ -14073,6 +14128,7 @@ export type Database = {
           signer_signature_storage_path?: string | null
           signer_user_agent?: string | null
           status?: string
+          stage_window_id?: string | null
           step_id?: string | null
           updated_at?: string
         }
@@ -14107,10 +14163,18 @@ export type Database = {
           signer_signature_storage_path?: string | null
           signer_user_agent?: string | null
           status?: string
+          stage_window_id?: string | null
           step_id?: string | null
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "step_commitments_stage_window_id_fkey"
+            columns: ["stage_window_id"]
+            isOneToOne: false
+            referencedRelation: "job_stage_windows"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "step_commitments_created_by_fkey"
             columns: ["created_by"]

@@ -122,7 +122,7 @@ describe('getPinnedChipDisplay', () => {
   it('routes the sub-labor-due pin straight to sub_sheet_ledger with a 2-decimal total', () => {
     const pin: PinnedItem = { path: '/jobs', label: 'Jobs · sub sheet ledger', tab: 'sub_sheet_ledger' }
     expect(getPinnedChipDisplay(pin, { ...noTotals, subLaborDueTotal: 250 })).toEqual({
-      to: '/jobs?tab=sub_sheet_ledger',
+      to: '/jobs?tab=subs&view=pay',
       label: 'Sub Labor Due: $250.00',
     })
     expect(getPinnedChipDisplay(pin, noTotals).label).toBe('Jobs · sub sheet ledger')

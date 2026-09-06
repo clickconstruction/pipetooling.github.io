@@ -1053,7 +1053,7 @@ export default function Dashboard() {
     }
     return [
       { key: 'job', label: 'Job', to: '/jobs?tab=billing&newJob=true' },
-      { key: 'job_labor', label: 'Job Labor', to: '/jobs?tab=sub_sheet_ledger&newJob=true' },
+      { key: 'job_labor', label: 'Job Labor', to: '/jobs?tab=subs&view=pay&newJob=true' },
       { key: 'bid', label: 'Bid', to: '/bids?new=true' },
       { key: 'project', label: 'Project', to: '/projects/new' },
       { key: 'part', label: 'Part', to: '/materials?tab=parts-book&addPart=true' },

@@ -12,8 +12,8 @@
  * that tab the load never started.
  *
  * - stages / billing / parts: the original three.
- * - sub_sheet_ledger (v2.1621): the New Sub Labor job picker reads the cache.
- * - work_orders (v2.2819): the board labels orders by job; its assembler picks from the cache.
+ * - subs (v2.2927, was sub_sheet_ledger + work_orders): the pay run's New Sub Labor
+ *   picker, the Work board's labels and its assembler all read the cache.
  * - job-summary (Tier-2 #17): its own ledger loader (`useJobSummaryData`) paints
  *   the tab, but Edit Job and the job-window openers read the shared list.
  */
@@ -21,8 +21,7 @@ export const JOBS_TABS_THAT_LOAD_THE_JOBS_LIST: ReadonlySet<string> = new Set([
   'stages',
   'billing',
   'parts',
-  'sub_sheet_ledger',
-  'work_orders',
+  'subs',
   'job-summary',
 ])
 

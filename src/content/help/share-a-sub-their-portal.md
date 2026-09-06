@@ -39,7 +39,7 @@ The very bottom of the sub's page carries a copper-edged card, **How do I get pa
 
 Every visit to a sub's page is written down — the sub (or whoever they forwarded the link to) as **outside**, a signed-in teammate opening the real link as **team**, and your own previews as previews, which are kept off every count. You see it in three places:
 
-- **Jobs → Sub Labor → Who's owed**: one line under the sub's name — {{chip:green|Opened their page Sep 4 · 6 times}} or {{chip:yellow|Never opened}}, with the last team look beside it (*Taunya looked Sep 5*). Tap or click the line, or long-press it on a phone, for the whole trail.
+- **Jobs → Subs → Pay → Who's owed**: one line under the sub's name — {{chip:green|Opened their page Sep 4 · 6 times}} or {{chip:yellow|Never opened}}, with the last team look beside it (*Taunya looked Sep 5*). Tap or click the line, or long-press it on a phone, for the whole trail.
 - **The sheet story** header's **Portal** cell reads *🌐 link open · opened Sep 4*, with the team look under it; click it for the trail.
 - **The globe's gear** has **Opened** (matching the customer globe), **Team**, and **Trail → All visits ›**.
 
@@ -63,7 +63,7 @@ Every sub sheet sits at one of three stages, and the portal draws them as a four
 | {{chip:blue|Waiting on customer}} + a *payable after* date | The fourth dot lights with a green {{chip:green|Queued for Friday}} chip: "Queued for the pay run — the date is right below." |
 | {{chip:green|Paid}} | The card leaves *Your jobs* — Paid sets itself when the balance hits $0. |
 
-Move a sheet from the **Where it stands** rail on **Jobs → Sub Labor**: the **→** beside the rail advances one stage, and clicking the rail's current dot opens all three so you can jump or step back. The same control sits in the sheet editor's *Shown on the sub's portal* box.
+Move a sheet from the **Where it stands** rail on **Jobs → Subs → Pay**: the **→** beside the rail advances one stage, and clicking the rail's current dot opens all three so you can jump or step back. The same control sits in the sheet editor's *Shown on the sub's portal* box.
 
 :::example The sub tells you first
 While a sheet is *Waiting on work*, the sub sees {{button:green|✓ My work here is done}} on that job. Pressing it (with an optional note — "Cleanout is behind the water heater — gate code 4471") moves the sheet to *Waiting on inspection* by itself. You'll see **Ready to walk — Danny Vasquez · 1004 162 Forest Drive** in the dispatch inbox, and the chip on Sub Labor reads *Waiting on inspection · sub* with their note behind ✎.

@@ -131,7 +131,7 @@ export function JobFormLaborCostPanel({
                     type="button"
                     onClick={() => {
                       onClose()
-                      navigate(`/jobs?tab=sub_sheet_ledger&editLabor=${encodeURIComponent(editJobEffectiveHcp)}`)
+                      navigate(`/jobs?tab=subs&view=pay&editLabor=${encodeURIComponent(editJobEffectiveHcp)}`)
                     }}
                     style={{
                       background: 'none',
