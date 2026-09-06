@@ -1,8 +1,13 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { RELEASE_NOTES } from '../../content/releaseNotes'
-import type { ReleaseNoteKind } from '../../lib/releaseNotes'
-
-const INITIAL_VISIBLE_COUNT = 15
+import type { UserRole } from '../../hooks/useAuth'
+import {
+  RELEASE_NOTES_PAGE_SIZE,
+  describeEarlierUpdatesButton,
+  releaseNotesForRole,
+  releaseNotesPage,
+  type ReleaseNoteKind,
+} from '../../lib/releaseNotes'
 
 const KIND_BADGE: Record<ReleaseNoteKind, { label: string; color: string }> = {
   feature: { label: 'New', color: '#16a34a' },
@@ -10,18 +15,37 @@ const KIND_BADGE: Record<ReleaseNoteKind, { label: string; color: string }> = {
   infra: { label: 'Infra', color: 'var(--text-muted)' },
 }
 
-/** Settings → Release notes: the in-app update feed, one entry per release. */
-export default function SettingsReleaseNotesSection() {
-  const [showAll, setShowAll] = useState(false)
+type Props = {
+  /** Viewer's role; notes that declare `roles` are hidden from other roles (devs and unknown see all). */
+  role?: UserRole | null
+}
+
+/**
+ * Settings → Release notes: the in-app update feed, one entry per release.
+ * Paged (B16 / J28-F5): 15 at a time behind a "Show earlier" button instead of
+ * ~1,800 cards in one commit, and role-aware (J28-F12) when a note says who it is for.
+ */
+export default function SettingsReleaseNotesSection({ role = null }: Props) {
+  const [shown, setShown] = useState(RELEASE_NOTES_PAGE_SIZE)
   const newest = RELEASE_NOTES[0]
-  const visible = showAll ? RELEASE_NOTES : RELEASE_NOTES.slice(0, INITIAL_VISIBLE_COUNT)
-  const hiddenCount = RELEASE_NOTES.length - visible.length
+  const feed = useMemo(() => releaseNotesForRole(RELEASE_NOTES, role), [role])
+  const page = releaseNotesPage(feed.length, shown)
+  const visible = feed.slice(0, page.visible)
+  const buttonLabel = describeEarlierUpdatesButton(page)
+  const hiddenForRole = RELEASE_NOTES.length - feed.length
 
   return (
     <div>
       <p style={{ marginTop: 0, marginBottom: '1rem', color: 'var(--text-muted)' }}>
         Current version: <strong style={{ color: 'var(--text-strong)' }}>{newest?.version ?? '—'}</strong>. Every
         update ships with a note of what changed, newest first.
+        {hiddenForRole > 0 && (
+          <>
+            {' '}
+            Showing the {feed.length.toLocaleString('en-US')} notes that apply to your role
+            {' '}({hiddenForRole.toLocaleString('en-US')} for other roles hidden).
+          </>
+        )}
       </p>
       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
         {visible.map((note) => {
@@ -65,10 +89,10 @@ export default function SettingsReleaseNotesSection() {
           )
         })}
       </div>
-      {hiddenCount > 0 && (
+      {buttonLabel && (
         <button
           type="button"
-          onClick={() => setShowAll(true)}
+          onClick={() => setShown(page.visible + page.nextStep)}
           style={{
             marginTop: '0.75rem',
             padding: '0.4rem 0.9rem',
@@ -79,7 +103,7 @@ export default function SettingsReleaseNotesSection() {
             cursor: 'pointer',
           }}
         >
-          Show {hiddenCount} earlier {hiddenCount === 1 ? 'update' : 'updates'}
+          {buttonLabel}
         </button>
       )}
     </div>

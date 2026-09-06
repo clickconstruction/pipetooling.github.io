@@ -12,7 +12,8 @@ import {
 } from '../lib/acceptInviteState'
 import { recordNavClick } from '../lib/navClickTelemetry'
 
-const INVALID_LINK = 'This invite link is invalid or expired. Ask a dev to resend the invite.'
+const INVALID_LINK =
+  'This invite link is invalid or expired. Ask a dev to run Invite via email again for your address — that replaces this link with a fresh one.'
 
 /**
  * Landing page for invite-user email links (type=invite). The Supabase client's

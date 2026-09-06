@@ -5,6 +5,7 @@ import {
   bundleInAlertWindows,
   clockSessionStatus,
   deriveBundleBadges,
+  describeDeletedBundleKind,
   distinctValues,
   filterDeletedBundles,
   groupBundlesByBurst,
@@ -14,6 +15,21 @@ import {
   summarizeDeletedRowForTable,
   summarizePreviewItems,
 } from './deletedRecordContents'
+
+describe('describeDeletedBundleKind (J9-F6: no raw table names in the type filter)', () => {
+  it('maps the RPC kind words to capitalized human labels', () => {
+    expect(describeDeletedBundleKind('job')).toBe('Job')
+    expect(describeDeletedBundleKind('bid')).toBe('Bid')
+    expect(describeDeletedBundleKind('pay stub')).toBe('Pay report')
+    expect(describeDeletedBundleKind('partial')).toBe('Part of a job or bid')
+  })
+  it('humanizes a raw head table name through the archive label map', () => {
+    expect(describeDeletedBundleKind('jobs_ledger_invoices')).toBe('Job invoices')
+    expect(describeDeletedBundleKind('bid_proposal_rooms')).toBe('Bid rooms')
+    expect(describeDeletedBundleKind('some_unknown_table')).toBe('Some unknown table')
+    expect(describeDeletedBundleKind('')).toBe('Other')
+  })
+})
 
 describe('humanizeArchiveTable', () => {
   it('maps known archive tables to friendly names', () => {

@@ -12,7 +12,7 @@ import { ROLES } from '../../lib/userRoles'
 import { humanRoleLabel } from '../../lib/roleLabels'
 import { inviteFormValid, roleTakesServiceTypes, type RoleChoice } from '../../lib/inviteUserForm'
 import { isSubcontractorLikeRole } from '../../lib/subcontractorLikeRole'
-import { eligibleAbsorbCandidates, eligibleExternalAbsorbCandidates, EXTERNAL_MERGE_OPTION_PREFIX } from '../../lib/mergeUserAccounts'
+import { eligibleAbsorbCandidates, eligibleExternalAbsorbCandidates, ineligibleAbsorbCandidates, EXTERNAL_MERGE_OPTION_PREFIX } from '../../lib/mergeUserAccounts'
 import { archiveChoiceBlocker, eligibleReassignTargets } from '../../lib/archiveUserDialog'
 import { buildServiceTypeTradePill } from '../../lib/serviceTypeTradePill'
 import { filterActiveAccountUsers } from '../../lib/activeAccountsSearch'
@@ -1236,6 +1236,7 @@ export default function ActiveAccountsPanel({ variant, onDataChanged, onOpenFind
         const allAccounts = [...users, ...archivedUsers]
         const survivor = allAccounts.find((u) => u.id === mergeSurvivorId) ?? null
         const absorbCandidates = eligibleAbsorbCandidates(survivor, allAccounts)
+        const ineligible = ineligibleAbsorbCandidates(survivor, allAccounts)
         const externalCandidates = eligibleExternalAbsorbCandidates(survivor, externalSubPeople)
         const accountLabel = (u: UserRow) =>
           `${u.name || u.email} (${u.email})${u.archived_at ? ' — archived' : ''}`
@@ -1310,6 +1311,20 @@ export default function ActiveAccountsPanel({ variant, onDataChanged, onOpenFind
                   <p style={{ margin: '0.35rem 0 0', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
                     No eligible accounts: same role, and archived or never signed into.
                   </p>
+                )}
+                {mergeSurvivorId && ineligible.length > 0 && (
+                  <details style={{ marginTop: '0.35rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
+                    <summary style={{ cursor: 'pointer' }}>
+                      Why isn&apos;t an account listed? ({ineligible.length} left out)
+                    </summary>
+                    <ul style={{ margin: '0.35rem 0 0', paddingLeft: '1.1rem' }}>
+                      {ineligible.map(({ account, reason }) => (
+                        <li key={account.id} style={{ marginBottom: '0.2rem' }}>
+                          <span style={{ color: 'var(--text-base)' }}>{accountLabel(account)}</span> — {reason}
+                        </li>
+                      ))}
+                    </ul>
+                  </details>
                 )}
               </div>
               {mergePreview && (

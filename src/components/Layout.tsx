@@ -429,8 +429,8 @@ export default function Layout() {
   }
 
   const impersonationExitLabel = useMemo(
-    () => impersonationExitDisplayLabel(profileName, authUser?.email ?? null),
-    [profileName, authUser?.email],
+    () => impersonationExitDisplayLabel(profileName, authUser?.email ?? null, { compact: isMobile }),
+    [profileName, authUser?.email, isMobile],
   )
   const impersonationTooltipTitle = useMemo(
     () => impersonationExitTitle(profileName, authUser?.email ?? null),
@@ -1888,7 +1888,7 @@ export default function Layout() {
               aria-label="Back to your original signed-in account"
               style={{
                 ...IMPERSONATION_CHROME_BUTTON_STYLE,
-                maxWidth: isMobile ? '6.5rem' : '14rem',
+                maxWidth: isMobile ? '8.5rem' : '18rem',
                 overflow: 'hidden',
                 textOverflow: 'ellipsis',
                 whiteSpace: 'nowrap',

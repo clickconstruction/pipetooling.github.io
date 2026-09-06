@@ -12,7 +12,7 @@ This is dev-only, and it lives in **Settings → Data & recovery → Recently de
 ## Put a deleted job or bid back
 
 1. Open **Settings → Data & recovery** and expand **Recently deleted (dev)**.
-2. Find the entry. Each one shows what it was (e.g. `J-1042 · Smith Remodel`), who deleted it when, count chips for everything that went with it — money records like {{chip:yellow|3 invoices}} stand out from quieter ones like {{chip:gray|12 line items}} — and the first few lines of what was inside. **What's inside?** still expands the complete contents, with the full raw record one more click down.
+2. Find the entry. The filters above the list narrow it by type (**Job**, **Bid**, **Pay report**, **Bid rooms**, **Part of a job or bid**…), by who deleted it, or by a word in its label. Each one shows what it was (e.g. `J-1042 · Smith Remodel`), who deleted it when, count chips for everything that went with it — money records like {{chip:yellow|3 invoices}} stand out from quieter ones like {{chip:gray|12 line items}} — and the first few lines of what was inside. **What's inside?** still expands the complete contents, with the full raw record one more click down.
 3. Click {{button:outline|Preview restore}}. Nothing is changed yet — this reports exactly what would come back.
 4. Read the preview, then click {{button:blue|Restore}}.
 

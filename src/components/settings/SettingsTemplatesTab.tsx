@@ -3,6 +3,7 @@
  * workflow-email Edge Function test, and report settings.
  * Self-contained: state/handlers come from useSettingsTemplatesEngine (v2.854).
  * The SettingsGroup wrapper and the myRole === dev gate stay in the parent. */
+import { Link } from 'react-router-dom'
 import { useToastContext } from '../../contexts/ToastContext'
 import { useSettingsTemplatesEngine } from '../../hooks/useSettingsTemplatesEngine'
 import SettingsEmailCatalogSection from './SettingsEmailCatalogSection'
@@ -134,6 +135,43 @@ export default function SettingsTemplatesTab({ authUser, users, setError }: Sett
   return (
     <>
           {/* v2.2088: invoice/bid/company/map blocks moved to their page tabs (Jobs & billing, Bids & materials, Company). */}
+          {/* B16 (J28-F14): /templates (project workflow templates) had no nav entry — this is its door. */}
+          <div
+            style={{
+              marginBottom: '1.5rem',
+              padding: '1rem',
+              border: '1px solid var(--border)',
+              borderRadius: 8,
+              background: 'var(--bg-page)',
+              display: 'flex',
+              flexWrap: 'wrap',
+              alignItems: 'center',
+              gap: '0.5rem 1rem',
+            }}
+          >
+            <div style={{ flex: '1 1 16rem' }}>
+              <h3 style={{ margin: '0 0 0.25rem', fontSize: '1rem', fontWeight: 600 }}>Project workflow templates</h3>
+              <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.875rem', lineHeight: 1.5 }}>
+                The step lists a new project starts from (Projects → New project). Edited on their own page.
+              </p>
+            </div>
+            <Link
+              to="/templates"
+              style={{
+                padding: '0.4rem 0.9rem',
+                fontSize: '0.875rem',
+                fontWeight: 600,
+                border: '1px solid var(--border-strong)',
+                borderRadius: 6,
+                background: 'var(--surface)',
+                color: 'var(--text-strong)',
+                textDecoration: 'none',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              Open Templates →
+            </Link>
+          </div>
           <div
             style={{
               marginBottom: '1.5rem',

@@ -1785,7 +1785,7 @@ Clickable addresses (Google Maps), `mailto:`/`tel:` links, and `#step-{id}` deep
 - Anonymous public flows (estimate/contract accept) are unaffected — `is_read_only()` is false without a JWT. See [ACCESS_CONTROL.md](./ACCESS_CONTROL.md) → Read-only training mode.
 
 ### 19. Deleted-records archive, restore, and bulk-deletion alerts
-- **Archive**: `deleted_records_archive` captures every deleted row (payload, `deleted_by`, `deleted_at`, `table_name`, `group_key` bundling a cascade into one logical deletion) across ~83 covered tables. Migrations `20260716120000` (core), `20260716150000` (bids coverage), `20260716230000` (tier 2), `20260717210000` (people).
+- **Archive**: `deleted_records_archive` captures every deleted row (payload, `deleted_by`, `deleted_at`, `table_name`, `group_key` bundling a cascade into one logical deletion) across ~86 covered tables. Migrations `20260716120000` (core), `20260716150000` (bids coverage), `20260716230000` (tier 2), `20260717210000` (people), `20260906000000` (bid rooms + revisions + events, v2.2908).
 - **Restore**: `list_deleted_records()` / `restore_deleted_records()` RPCs power the dev "Recently deleted" UI with one-click restore, including FK-cycle handling (`20260716180000_deleted_records_restore.sql`, `20260716210000_deleted_records_restore_fk_cycles.sql`).
 - **Alerts**: `list_bulk_deletion_alerts()` (`20260717120000_bulk_deletion_alerts.sql`) is a read-side aggregate over the archive that surfaces deletion bursts (measured in bundles, not rows) on the dev dashboard.
 - See [MIGRATIONS.md](./MIGRATIONS.md) and [RECENT_FEATURES.md](./RECENT_FEATURES.md) (v2.695–v2.704) for details.

@@ -43,10 +43,48 @@ const ARCHIVE_TABLE_LABELS: Record<string, string> = {
   person_licenses: 'licences',
   writeups: 'writeups',
   reports: 'reports',
+  jobs_ledger_invoices: 'job invoices',
+  // v2 B16 (J35-N1): bid-room tables joined the archive (20260906000000).
+  bid_proposal_rooms: 'bid rooms',
+  bid_proposal_room_revisions: 'bid room revisions',
+  bid_proposal_room_events: 'bid room events',
 }
 
 export function humanizeArchiveTable(tableName: string): string {
   return ARCHIVE_TABLE_LABELS[tableName] ?? tableName.replace(/_/g, ' ')
+}
+
+/**
+ * Human names for `list_deleted_records().kind` — the RPC emits a short word for
+ * the head tables it knows ('job', 'bid', 'pay stub', …), 'partial' when a
+ * cascade child headed the bundle with no known parent, and the raw head table
+ * name for everything else (J9-F6: the type filter showed `jobs_ledger_invoices`
+ * beside "job"). One map, used by the filter dropdown and the per-bundle tag.
+ */
+const BUNDLE_KIND_LABELS: Record<string, string> = {
+  job: 'Job',
+  bid: 'Bid',
+  partial: 'Part of a job or bid',
+  customer: 'Customer',
+  project: 'Project',
+  estimate: 'Estimate',
+  'pay stub': 'Pay report',
+  'clock session': 'Clock session',
+  'supply house invoice': 'Supply house invoice',
+  'sub labor job': 'Sub labor job',
+  'purchase order': 'Purchase order',
+  'material template': 'Material template',
+  licence: 'Licence',
+  writeup: 'Writeup',
+  person: 'Person',
+}
+
+export function describeDeletedBundleKind(kind: string): string {
+  const known = BUNDLE_KIND_LABELS[kind]
+  if (known) return known
+  const human = humanizeArchiveTable(kind).trim()
+  if (human === '') return 'Other'
+  return human.charAt(0).toUpperCase() + human.slice(1)
 }
 
 /** First non-empty of these names a row's title. Order matters: most specific first. */

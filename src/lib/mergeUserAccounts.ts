@@ -1,6 +1,7 @@
 /** Active Accounts → Merge users: client-side eligibility rules for picking the two
  * accounts. Mirrors the server checks in `merge_user_accounts` (the RPC re-validates
  * everything); pure — no React/supabase. */
+import { humanRoleLabel } from './roleLabels'
 
 export type MergeCandidateAccount = {
   id: string
@@ -27,7 +28,7 @@ export function mergeIneligibilityReason(
 ): string | null {
   if (survivor.id === absorbed.id) return 'Pick two different accounts.'
   if ((survivor.role ?? '') !== (absorbed.role ?? '')) {
-    return `Both accounts must have the same role (${survivor.role ?? '—'} vs ${absorbed.role ?? '—'}).`
+    return `Both accounts must have the same role (${humanRoleLabel(survivor.role)} vs ${humanRoleLabel(absorbed.role)}).`
   }
   if (accountIsInUse(absorbed)) {
     return 'The account being merged away must be archived, or never signed into. Archive it first.'
@@ -45,6 +46,28 @@ export function eligibleAbsorbCandidates<T extends MergeCandidateAccount>(
 ): T[] {
   if (!survivor) return []
   return accounts.filter((a) => mergeIneligibilityReason(survivor, a) === null)
+}
+
+export type IneligibleAbsorbCandidate<T> = { account: T; reason: string }
+
+/**
+ * The accounts the "Merge this account away" dropdown does NOT offer, each with
+ * the reason (J27-F4: the reasons existed here for months with zero UI callers —
+ * the picker silently omitted accounts and the office guessed why). The survivor
+ * itself is left out: "pick two different accounts" is the dropdown's own job.
+ */
+export function ineligibleAbsorbCandidates<T extends MergeCandidateAccount>(
+  survivor: T | null,
+  accounts: T[],
+): IneligibleAbsorbCandidate<T>[] {
+  if (!survivor) return []
+  const out: IneligibleAbsorbCandidate<T>[] = []
+  for (const a of accounts) {
+    if (a.id === survivor.id) continue
+    const reason = mergeIneligibilityReason(survivor, a)
+    if (reason !== null) out.push({ account: a, reason })
+  }
+  return out
 }
 
 export type ExternalPersonCandidate = {

@@ -19,7 +19,7 @@ Open the **Active Accounts** panel (Settings → People & teams, or the **Manage
 
 ## How it works
 
-1. Pick the account to **keep**, then the account to **merge away** (the list only offers eligible accounts).
+1. Pick the account to **keep**, then the account to **merge away**. The list only offers eligible accounts — expand **Why isn't an account listed?** under it to see each left-out account and the rule it fails (wrong role, still signed into, or the live one must be the survivor). The Person Desk's {{button:outline|Manage account…}} opens this same dialog.
 2. Click {{button:outline|Preview merge}} — you'll see exactly what would move (clock sessions, reports, job and bid assignments, notes, banking attributions, and so on), without changing anything.
 3. Click {{button:red|Merge now}}. Everything the merged-away account owned now belongs to the kept account; the merged-away account stays archived with its email intact and its sign-in banned.
 

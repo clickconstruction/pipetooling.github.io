@@ -24,6 +24,7 @@ import {
   buildBundleDigestChips,
   bundleInAlertWindows,
   deriveBundleBadges,
+  describeDeletedBundleKind,
   distinctValues,
   filterDeletedBundles,
   groupBundlesByBurst,
@@ -296,7 +297,7 @@ export default function DeletedRecordsSection() {
                   >
                     <option value="">All types</option>
                     {kinds.map((k) => (
-                      <option key={k} value={k}>{k}</option>
+                      <option key={k} value={k}>{describeDeletedBundleKind(k)}</option>
                     ))}
                   </select>
                   <select
@@ -370,7 +371,7 @@ export default function DeletedRecordsSection() {
                       <div style={{ minWidth: 0 }}>
                         <div style={{ fontWeight: 600 }}>
                           {b.label}{' '}
-                          <span style={{ fontWeight: 400, fontSize: '0.75rem', color: 'var(--text-muted)' }}>({b.kind})</span>
+                          <span style={{ fontWeight: 400, fontSize: '0.75rem', color: 'var(--text-muted)' }}>({describeDeletedBundleKind(b.kind)})</span>
                           {inAlertWindow && (
                             <span
                               style={{
