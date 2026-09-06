@@ -3,12 +3,12 @@ import type { ReleaseNote } from '../../lib/releaseNotes'
 const note: ReleaseNote = {
   version: 'v2.2934',
   date: '2026-09-06',
-  title: 'Robot audits: see whether it miscounted or mispriced',
+  title: 'The GC asks for other dates',
   kind: 'feature',
   highlights: [
-    'A new "Priced differently" list on each robot audit card catches rows where the robot counted right but priced wrong — its rate per foot or per fixture beside ours, biggest dollars first, with the same one-tap verdicts.',
-    'A "Where the delta lives" strip splits the headline difference into named dollars — missed rows, added rows, count gaps, rate gaps, and everything else — so one glance says what kind of miss it was.',
-    'Until now a row the robot counted right but priced five times too high was hidden inside "rows match — nothing to judge there."',
+    'On an offered stage, the GC portal gained Ask for other dates: two days and a why. It lands in the dispatch inbox — "Summit General asks for Top-out Sep 22 → Oct 2 on #1004" — and on the stage row on Jobs → Subs → Work.',
+    'The office answers on the row: Accept their span, or Answer with… your own dates and a why the GC reads. The GC portal shows "You asked for … · accepted" or "the office answered Sep 24 – Oct 2 — crew on 1009".',
+    'If the new window no longer fits the sub\'s picked days, the sub\'s job card says the office needs new dates and opens the calendar to confirm new ones; the GC sees Re-scheduling until they do.',
   ],
 }
 

@@ -64,6 +64,9 @@ export type PortalStageEntry = {
   when: { start: string; end: string } | null
   pct: number | null
   state: PortalStageState
+  /** v2.2934: the GC's own ask and the office's answer; `rescheduling` while the sub re-picks. */
+  asked: { start: string; end: string; note: string | null; answer: 'open' | 'accepted' | 'proposed'; answerNote: string | null } | null
+  rescheduling: boolean
 }
 export type PortalJobStages = { jobId: string; jobLabel: string; jobAddress: string | null; entries: PortalStageEntry[] }
 
@@ -281,7 +284,18 @@ function parseJobStages(raw: unknown): PortalJobStages | null {
       when: spanOrNull(x.when),
       pct,
       state: STAGE_STATES.includes(x.state as PortalStageState) ? (x.state as PortalStageState) : 'window',
+      asked: parseAsked(x.asked),
+      rescheduling: x.rescheduling === true,
     })
   }
   return { jobId, jobLabel: typeof r.jobLabel === 'string' ? r.jobLabel : 'Job', jobAddress: typeof r.jobAddress === 'string' ? r.jobAddress : null, entries }
+}
+
+function parseAsked(raw: unknown): PortalStageEntry['asked'] {
+  if (raw == null || typeof raw !== 'object') return null
+  const r = raw as Record<string, unknown>
+  const sp = spanOrNull({ start: r.start, end: r.end })
+  if (!sp) return null
+  const answer = r.answer === 'accepted' ? 'accepted' : r.answer === 'proposed' ? 'proposed' : 'open'
+  return { start: sp.start, end: sp.end, note: typeof r.note === 'string' && r.note.trim() ? r.note.trim() : null, answer, answerNote: typeof r.answerNote === 'string' && r.answerNote.trim() ? r.answerNote.trim() : null }
 }

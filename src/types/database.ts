@@ -7600,6 +7600,13 @@ export type Database = {
           fixture_id: string
           id: string
           job_id: string
+          answer: string | null
+          answer_note: string | null
+          answered_at: string | null
+          asked_at: string | null
+          asked_end: string | null
+          asked_note: string | null
+          asked_start: string | null
           bundle_id: string | null
           note: string | null
           offered_to_gc: boolean
@@ -7615,6 +7622,13 @@ export type Database = {
           fixture_id: string
           id?: string
           job_id: string
+          answer?: string | null
+          answer_note?: string | null
+          answered_at?: string | null
+          asked_at?: string | null
+          asked_end?: string | null
+          asked_note?: string | null
+          asked_start?: string | null
           bundle_id?: string | null
           note?: string | null
           offered_to_gc?: boolean
@@ -7630,6 +7644,13 @@ export type Database = {
           fixture_id?: string
           id?: string
           job_id?: string
+          answer?: string | null
+          answer_note?: string | null
+          answered_at?: string | null
+          asked_at?: string | null
+          asked_end?: string | null
+          asked_note?: string | null
+          asked_start?: string | null
           bundle_id?: string | null
           note?: string | null
           offered_to_gc?: boolean
@@ -14215,6 +14236,8 @@ export type Database = {
           accepted_at: string | null
           amount: number | null
           approved_at: string | null
+          change_requested_at: string | null
+          change_requested_note: string | null
           created_at: string
           created_by: string | null
           decline_reason: string | null
@@ -14255,6 +14278,8 @@ export type Database = {
           accepted_at?: string | null
           amount?: number | null
           approved_at?: string | null
+          change_requested_at?: string | null
+          change_requested_note?: string | null
           created_at?: string
           created_by?: string | null
           decline_reason?: string | null
@@ -14295,6 +14320,8 @@ export type Database = {
           accepted_at?: string | null
           amount?: number | null
           approved_at?: string | null
+          change_requested_at?: string | null
+          change_requested_note?: string | null
           created_at?: string
           created_by?: string | null
           decline_reason?: string | null

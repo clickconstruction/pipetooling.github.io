@@ -737,7 +737,7 @@ function SheetCard({
 
   // v2.2928: their dates, movable inside the window until the day before.
   const [dates, setDates] = useState(sheet.dates)
-  const [dateUi, setDateUi] = useState<{ kind: 'idle' } | { kind: 'picking'; start: string | null } | { kind: 'sending'; start: string } | { kind: 'moved' }>({ kind: 'idle' })
+  const [dateUi, setDateUi] = useState<{ kind: 'idle' } | { kind: 'picking'; start: string | null } | { kind: 'sending'; start: string } | { kind: 'moved' }>(() => (sheet.dates?.changeRequested && sheet.dates.window ? { kind: 'picking', start: null } : { kind: 'idle' }))
   const [dateError, setDateError] = useState<string | null>(null)
 
   async function moveDates(start: string) {
@@ -746,7 +746,7 @@ function SheetCard({
     setDateUi({ kind: 'sending', start })
     setDateError(null)
     const finish = () => {
-      setDates({ ...dates, start, end })
+      setDates({ ...dates, start, end, changeRequested: null })
       setDateUi({ kind: 'moved' })
     }
     if (sampleStateFromToken(submitToken)) {
@@ -879,6 +879,12 @@ function SheetCard({
                 {formatSubPortalDate(dates.start, lang)}{dates.end !== dates.start ? ` – ${formatSubPortalDate(dates.end, lang)}` : ''}
               </span>
             </div>
+            {dates.changeRequested && dateUi.kind !== 'moved' ? (
+              <div style={{ marginTop: 6, border: `1px solid ${COPPER}`, background: '#f6e6d8', borderRadius: 6, padding: '6px 9px', fontSize: 12.5, lineHeight: 1.5 }}>
+                <strong style={{ color: COPPER }}>{t('changeRequested')}</strong>{dates.changeRequested.note ? ` — ${dates.changeRequested.note}` : ''}
+                {dates.window ? <div>{t('changeRequestedBody', { start: formatSubPortalDate(dates.window.start, lang), end: formatSubPortalDate(dates.window.end, lang) })}</div> : null}
+              </div>
+            ) : null}
             <div style={{ fontSize: 12.5, color: MUTED, marginTop: 4, lineHeight: 1.5 }}>
               {dateUi.kind === 'moved'
                 ? <strong style={{ color: PAPER_GREEN }}>{t('pickMoved')}</strong>
@@ -888,7 +894,7 @@ function SheetCard({
                     : t('yourDatesFixed')
                   : t('yourDatesOffice')}
             </div>
-            {dates.window && dates.changeUntil && dateUi.kind === 'idle' && stage === 'working' ? (
+            {dates.window && (dates.changeUntil || dates.changeRequested) && dateUi.kind === 'idle' && stage === 'working' ? (
               <div data-screen-only style={{ marginTop: 6 }}>
                 <button type="button" onClick={() => setDateUi({ kind: 'picking', start: null })} style={{ background: CARD, color: INK, border: `1px solid ${HAIR}`, borderRadius: 6, padding: '0.4rem 0.9rem', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
                   {t('change')}

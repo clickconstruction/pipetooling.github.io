@@ -115,7 +115,7 @@ const DIFF_BUCKETS: Array<{
   { bucket: 'missed', tag: 'ROBOT MISSED', tagBg: 'var(--bg-red-100)', tagFg: 'var(--text-red-600)', blurb: 'rows we carry that it doesn’t — the dangerous kind' },
   { bucket: 'added', tag: 'ROBOT ADDED', tagBg: 'var(--bg-amber-tint)', tagFg: 'var(--text-amber-800)', blurb: 'rows it carries that we don’t — overreach, or something we missed?' },
   { bucket: 'gaps', tag: 'QUANTITY GAPS', tagBg: 'var(--bg-blue-tint, var(--bg-muted))', tagFg: 'var(--text-blue-700, var(--text-700))', blurb: 'same row, different number' },
-  // v2.2934 — the bucket the 2026-09-05 regression batch showed carries most of
+  // v2.2935 — the bucket the 2026-09-05 regression batch showed carries most of
   // the robots' remaining error: quantities agree, the money doesn't (tier
   // rates, uplift overrides, all-in boundaries).
   { bucket: 'rates', tag: 'PRICED DIFFERENTLY', tagBg: 'var(--bg-violet-100, var(--bg-muted))', tagFg: 'var(--text-violet-700, var(--text-700))', blurb: 'same row, same count — different money' },
@@ -645,7 +645,7 @@ export function BidsAuditsTab({ authUser, myRole }: { authUser: User | null; myR
                   ) : null}
                 </div>
 
-                {/* Delta waterfall (v2.2934): the headline decomposed into named
+                {/* Delta waterfall (v2.2935): the headline decomposed into named
                     dollars that sum back to it — scope, counts, rates, and the
                     remainder the row diff cannot see (letter uplift, in-tolerance
                     drift). Rates was the invisible bucket until now. */}

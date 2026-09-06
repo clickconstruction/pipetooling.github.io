@@ -172,7 +172,7 @@ export interface TakeoffDiff {
   added: DiffEntry[]
   gaps: DiffEntry[]
   /**
-   * Rate gaps (v2.2934): matched rows whose QUANTITIES agree but whose unit
+   * Rate gaps (v2.2935): matched rows whose QUANTITIES agree but whose unit
    * rates don't — the bucket the 2026-09-05 regression batch showed carries
    * most of the robots' remaining error (tier rates, uplift overrides, all-in
    * boundaries). Quantity-matched rows used to land silently in matchedOkCount
@@ -315,7 +315,7 @@ const fmtUnitRate = (ext: number, count: number) => `$${count > 0 ? ((ext / coun
 
 export function buildVerdictDraft(verdict: AuditVerdict, e: Pick<DiffEntry, 'label' | 'robotCount' | 'ourCount' | 'robotExt' | 'ourExt'>, bucket?: DiffBucketKey): string {
   const tag = AUDIT_VERDICT_TAG[verdict]
-  // Rate gaps (v2.2934): the quantities agree — describe the money, not the counts.
+  // Rate gaps (v2.2935): the quantities agree — describe the money, not the counts.
   if (bucket === 'rates') {
     const spread = `robot ${fmtUnitRate(e.robotExt, e.robotCount)}/u vs ours ${fmtUnitRate(e.ourExt, e.ourCount)}/u (×${fmtQty(e.ourCount)})`
     if (verdict === 'ok') return `${tag} ${e.label} — both fine (pricing judgment call): ${spread}.`

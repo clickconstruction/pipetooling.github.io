@@ -137,7 +137,7 @@ describe('rollupSystems', () => {
   })
 })
 
-describe('rate gaps (v2.2934) — same count, different money', () => {
+describe('rate gaps (v2.2935) — same count, different money', () => {
   it('splits a quantity-matched row into rates when the unit price disagrees beyond tolerance', () => {
     const d = diffTakeoffs(
       [{ name: 'ft of 2" Sanitary Waste', count: 100, ext: 14000 }], // $140/ft — the CI tier
