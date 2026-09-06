@@ -42,7 +42,7 @@ Alternates:
 
 ## Sending it
 
-The buttons live right under the letter: {{button:blue|Copy & open in Google Docs}} copies the finished document and opens your proposal template, **Print** prints it, and the paste-the-link field attaches the shared Proposal back onto the bid.
+The buttons live right under the letter: {{button:blue|Copy & open in Google Docs}} copies the finished document and opens your proposal template, **Print** prints it, and the paste-the-link field attaches the shared Proposal back onto the bid. Both wait a moment after you open the tab — they stay greyed while Pricing is still loading, so you can't print or copy a "$0.00" letter. A packet with no GC yet is addressed to **General contractor** everywhere (letterhead, Bid Room panel, the GC's page) until you link one.
 
 :::example Bidding to two GCs?
 When a bid goes to more than one GC, the GC tabs above the form switch whose letter you're writing — each GC only ever sees their own packets and prices. A GC whose packet has no prices yet gets a *No prices yet* note instead of a letter, and its **Mark sent** stays off until it's priced.

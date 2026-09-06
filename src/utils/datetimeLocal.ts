@@ -73,3 +73,18 @@ export function fromDatetimeLocal(value: string): string | null {
   const ms = appTzWallClockToUtcMs(Number(m[1]), Number(m[2]), Number(m[3]), Number(m[4]), Number(m[5]))
   return new Date(ms).toISOString()
 }
+
+/**
+ * Instant ISO → `YYYY-MM-DD` on the company calendar (`APP_CALENDAR_TZ`). Null if blank/invalid.
+ *
+ * The read-side twin of `toDatetimeLocal` for date-only display of a `timestamptz`: slicing the
+ * raw ISO string (`value.slice(0, 10)`) reads the UTC date, so a contact logged after 7 PM Chicago
+ * showed up a day late (J10-F1). Date-only columns (`bid_due_date`, …) need no conversion.
+ */
+export function toAppTzYmd(iso: string | null | undefined): string | null {
+  if (!iso?.trim()) return null
+  const ms = new Date(iso).getTime()
+  if (Number.isNaN(ms)) return null
+  const w = appTzWallPartsAt(ms)
+  return `${w.y}-${z2(w.mo)}-${z2(w.d)}`
+}

@@ -9,7 +9,7 @@ The **Followup** tab (Bids → Followup) is where bid follow-up lives. Opening i
 
 ## The Call queue (new)
 
-The newest lens — {{chip:green|new}} **Call queue** — is Followup as one list: every builder worth a call, whoever has waited longest on top. Each card shows the relationship line (won · lost · pending · hit rate · pending $) and a plain **To do / Done** table with the same three rows on every card:
+The newest lens — {{chip:green|new}} **Call queue** — is Followup as one list: every builder worth a call, whoever has waited longest on top — oldest last contact first, and among builders nobody has ever called, the one whose bid has sat quiet longest (a note on a *lost* bid doesn't count as contact). Each card shows the relationship line (won · lost · pending · hit rate · pending $) and a plain **To do / Done** table with the same three rows on every card:
 
 - **Chase** — pending bids nobody's talked to the GC about in over a week
 - **Loss reasons** — lost bids with no reason recorded

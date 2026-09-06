@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { toDatetimeLocal, fromDatetimeLocal } from './datetimeLocal'
+import { toDatetimeLocal, fromDatetimeLocal, toAppTzYmd } from './datetimeLocal'
 
 /**
  * These assert America/Chicago (Central) wall-clock semantics regardless of the machine's TZ,
@@ -37,5 +37,22 @@ describe('datetimeLocal (America/Chicago wall clock)', () => {
     expect(fromDatetimeLocal('')).toBeNull()
     expect(fromDatetimeLocal('   ')).toBeNull()
     expect(fromDatetimeLocal('garbage')).toBeNull()
+  })
+})
+
+describe('toAppTzYmd', () => {
+  it('reads the Chicago calendar date, not the UTC one (J10-F1: a 10:22 PM CDT contact is 03:22Z next day)', () => {
+    expect(toAppTzYmd('2026-08-28T03:22:00.000Z')).toBe('2026-08-27')
+    // Same wall day once it is after 7 PM CDT but before midnight UTC → both agree.
+    expect(toAppTzYmd('2026-08-27T18:59:00.000Z')).toBe('2026-08-27')
+    // CST (UTC-6): 6 PM local is already the next UTC day.
+    expect(toAppTzYmd('2026-12-16T00:30:00.000Z')).toBe('2026-12-15')
+  })
+
+  it('treats blank/invalid input as null', () => {
+    expect(toAppTzYmd(null)).toBeNull()
+    expect(toAppTzYmd('')).toBeNull()
+    expect(toAppTzYmd('   ')).toBeNull()
+    expect(toAppTzYmd('not-a-date')).toBeNull()
   })
 })

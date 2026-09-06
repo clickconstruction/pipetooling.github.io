@@ -8,8 +8,18 @@ import { usePendingRowFlash } from '../../hooks/usePendingRowFlash'
 import { formatCurrency } from '../../lib/format'
 import { sumEquipmentRows } from '../../lib/bids/bidCostCalc'
 import { bidDetailCloseXStyle, bidDetailCloseFloatMobileStyle } from '../../lib/bids/bidStyles'
-import { normalizeMaterialsModel, type MaterialsModel } from '../../lib/bids/bidTakeoffHelpers'
+import { MATERIALS_MODEL_CAPTION, normalizeMaterialsModel, type MaterialsModel } from '../../lib/bids/bidTakeoffHelpers'
 import { laborRowHours, laborRowRough, laborRowTop, laborRowTrim } from '../../lib/bids/laborRowHours'
+import {
+  EMPTY_LABOR_CELL_SAVE_MAP,
+  LABOR_STAGE_LABELS,
+  beginLaborCellSaves,
+  finishLaborCellSaves,
+  laborCellAriaLabel,
+  laborCellStatusTitle,
+  markLaborCellPending,
+  type LaborCellSaveMap,
+} from '../../lib/bids/laborCellSaveState'
 import type { LaborTabPanel } from '../../lib/bids/laborTabLoadGate'
 import { BidWorkflowTabTitleWithPreview } from './BidWorkflowTabTitleWithPreview'
 import { BidPickerStandardList } from './BidPickerStandardList'
@@ -211,6 +221,27 @@ export function BidsLaborTab({
   })
   const [costEstimateSearchQuery, setCostEstimateSearchQuery] = useState('')
   const [costEstimateAutosaveStatus, setCostEstimateAutosaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle')
+  // J11-F8: per-cell save state for the autosaved inputs — each edit marks its key pending; the
+  // autosave effect moves pending → saving → gone. The cell shows it (underline + title + aria-busy).
+  const [cellSaves, setCellSaves] = useState<LaborCellSaveMap>(EMPTY_LABOR_CELL_SAVE_MAP)
+  const markCell = (key: string) => setCellSaves((m) => markLaborCellPending(m, key))
+  /** Accessible name + live save state for one autosaved input. Spread onto the `<input>`. */
+  const cellA11y = (key: string, label: string) => {
+    const status = cellSaves[key]
+    return {
+      'aria-label': label,
+      'aria-busy': status === 'saving' || undefined,
+      'data-save-state': status,
+      title: laborCellStatusTitle(status),
+    }
+  }
+  /** Style delta for a cell that is unsaved (amber) or saving (blue); nothing once saved. */
+  const cellSaveStyle = (key: string): React.CSSProperties => {
+    const status = cellSaves[key]
+    if (status === 'pending') return { boxShadow: 'inset 0 -2px 0 var(--text-amber-700)' }
+    if (status === 'saving') return { boxShadow: 'inset 0 -2px 0 #3b82f6' }
+    return {}
+  }
   // Collapsible non-row Direct-Cost sections (collapsed by default; show total on the right).
   const [vehicleTravelCollapsed, setVehicleTravelCollapsed] = useState(true)
   const [lodgingCollapsed, setLodgingCollapsed] = useState(true)
@@ -249,6 +280,7 @@ export function BidsLaborTab({
 
     const timer = setTimeout(async () => {
       setCostEstimateAutosaveStatus('saving')
+      setCellSaves(beginLaborCellSaves)
 
       const laborRateNum = laborRateInput.trim() === '' ? null : parseFloat(laborRateInput)
       const drivingCostRateNum = drivingCostRate.trim() === '' ? 0.70 : parseFloat(drivingCostRate)
@@ -375,6 +407,7 @@ export function BidsLaborTab({
       }
 
       setCostEstimateAutosaveStatus('saved')
+      setCellSaves(finishLaborCellSaves)
       setTimeout(() => setCostEstimateAutosaveStatus('idle'), 2000)
     }, 1500) // 1.5 second debounce
 
@@ -1110,6 +1143,9 @@ export function BidsLaborTab({
                 >
                   Combined
                 </button>
+                <span style={{ flexBasis: '100%', textAlign: 'right', fontSize: '0.72rem', color: 'var(--text-muted)', lineHeight: 1.35 }}>
+                  {MATERIALS_MODEL_CAPTION}
+                </span>
               </div>
             )
           })()}
@@ -1245,9 +1281,10 @@ export function BidsLaborTab({
                                 min={0}
                                 step={0.25}
                                 value={row.rough_in_hrs_per_unit}
-                                onChange={(e) => setCostEstimateLaborRow(row.id, { rough_in_hrs_per_unit: parseFloat(e.target.value) || 0 })}
+                                onChange={(e) => { markCell(`labor:${row.id}:rough_in`); setCostEstimateLaborRow(row.id, { rough_in_hrs_per_unit: parseFloat(e.target.value) || 0 }) }}
                                 onWheel={(e) => e.currentTarget.blur()}
-                                style={{ width: '5rem', padding: '0.25rem', border: '1px solid var(--border-strong)', borderRadius: 4, textAlign: 'center' }}
+                                {...cellA11y(`labor:${row.id}:rough_in`, laborCellAriaLabel('Rough In hours per unit', row.fixture))}
+                                style={{ width: '5rem', padding: '0.25rem', border: '1px solid var(--border-strong)', borderRadius: 4, textAlign: 'center', ...cellSaveStyle(`labor:${row.id}:rough_in`) }}
                               />
                             </td>
                             <td style={{ padding: '0.75rem', textAlign: 'center' }}>
@@ -1256,9 +1293,10 @@ export function BidsLaborTab({
                                 min={0}
                                 step={0.25}
                                 value={row.top_out_hrs_per_unit}
-                                onChange={(e) => setCostEstimateLaborRow(row.id, { top_out_hrs_per_unit: parseFloat(e.target.value) || 0 })}
+                                onChange={(e) => { markCell(`labor:${row.id}:top_out`); setCostEstimateLaborRow(row.id, { top_out_hrs_per_unit: parseFloat(e.target.value) || 0 }) }}
                                 onWheel={(e) => e.currentTarget.blur()}
-                                style={{ width: '5rem', padding: '0.25rem', border: '1px solid var(--border-strong)', borderRadius: 4, textAlign: 'center' }}
+                                {...cellA11y(`labor:${row.id}:top_out`, laborCellAriaLabel('Top Out hours per unit', row.fixture))}
+                                style={{ width: '5rem', padding: '0.25rem', border: '1px solid var(--border-strong)', borderRadius: 4, textAlign: 'center', ...cellSaveStyle(`labor:${row.id}:top_out`) }}
                               />
                             </td>
                             <td style={{ padding: '0.75rem', textAlign: 'center' }}>
@@ -1267,9 +1305,10 @@ export function BidsLaborTab({
                                 min={0}
                                 step={0.25}
                                 value={row.trim_set_hrs_per_unit}
-                                onChange={(e) => setCostEstimateLaborRow(row.id, { trim_set_hrs_per_unit: parseFloat(e.target.value) || 0 })}
+                                onChange={(e) => { markCell(`labor:${row.id}:trim_set`); setCostEstimateLaborRow(row.id, { trim_set_hrs_per_unit: parseFloat(e.target.value) || 0 }) }}
                                 onWheel={(e) => e.currentTarget.blur()}
-                                style={{ width: '5rem', padding: '0.25rem', border: '1px solid var(--border-strong)', borderRadius: 4, textAlign: 'center' }}
+                                {...cellA11y(`labor:${row.id}:trim_set`, laborCellAriaLabel('Trim Set hours per unit', row.fixture))}
+                                style={{ width: '5rem', padding: '0.25rem', border: '1px solid var(--border-strong)', borderRadius: 4, textAlign: 'center', ...cellSaveStyle(`labor:${row.id}:trim_set`) }}
                               />
                             </td>
                             <td style={{ padding: '0.75rem', textAlign: 'center', fontWeight: 500 }}>{totalHrs.toFixed(2)}</td>
@@ -1304,9 +1343,10 @@ export function BidsLaborTab({
                       min={0}
                       step={0.01}
                       value={laborRateInput}
-                      onChange={(e) => setLaborRateInput(e.target.value)}
+                      onChange={(e) => { markCell('rate:labor'); setLaborRateInput(e.target.value) }}
                       onWheel={(e) => e.currentTarget.blur()}
-                      style={{ width: '8rem', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
+                      {...cellA11y('rate:labor', 'Labor rate, dollars per hour')}
+                      style={{ width: '8rem', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, ...cellSaveStyle('rate:labor') }}
                     />
                   </div>
                   <div style={{ display: 'flex', gap: '0.5rem' }}>
@@ -1392,6 +1432,7 @@ export function BidsLaborTab({
                             value={costEstimateDistanceInput}
                             onChange={(e) => setCostEstimateDistanceInput(e.target.value)}
                             onWheel={(e) => e.currentTarget.blur()}
+                            aria-label="Distance to the job, miles"
                             placeholder="—"
                             style={{ width: '4rem', padding: '0.25rem 0.375rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.875rem', textAlign: 'right' }}
                           />
@@ -1421,9 +1462,10 @@ export function BidsLaborTab({
                         min={0}
                         step={0.01}
                         value={drivingCostRate}
-                        onChange={(e) => setDrivingCostRate(e.target.value)}
+                        onChange={(e) => { markCell('rate:perMile'); setDrivingCostRate(e.target.value) }}
                         onWheel={(e) => e.currentTarget.blur()}
-                        style={{ width: '6rem', padding: '0.375rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.875rem' }}
+                        {...cellA11y('rate:perMile', 'Rate per mile, dollars')}
+                        style={{ width: '6rem', padding: '0.375rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.875rem', ...cellSaveStyle('rate:perMile') }}
                       />
                     </div>
                     <div>
@@ -1433,9 +1475,10 @@ export function BidsLaborTab({
                         min={0.1}
                         step={0.1}
                         value={hoursPerTrip}
-                        onChange={(e) => setHoursPerTrip(e.target.value)}
+                        onChange={(e) => { markCell('rate:hoursPerTrip'); setHoursPerTrip(e.target.value) }}
                         onWheel={(e) => e.currentTarget.blur()}
-                        style={{ width: '6rem', padding: '0.375rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.875rem' }}
+                        {...cellA11y('rate:hoursPerTrip', 'Hours per trip')}
+                        style={{ width: '6rem', padding: '0.375rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.875rem', ...cellSaveStyle('rate:hoursPerTrip') }}
                       />
                     </div>
                   </div>
@@ -1493,9 +1536,10 @@ export function BidsLaborTab({
                       min={1}
                       step={1}
                       value={travelPeople}
-                      onChange={(e) => setTravelPeople(e.target.value)}
+                      onChange={(e) => { markCell('travel:people'); setTravelPeople(e.target.value) }}
                       onWheel={(e) => e.currentTarget.blur()}
-                      style={{ width: '5rem', padding: '0.375rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.875rem' }}
+                      {...cellA11y('travel:people', 'Travelers')}
+                      style={{ width: '5rem', padding: '0.375rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.875rem', ...cellSaveStyle('travel:people') }}
                     />
                   </div>
                   <div>
@@ -1505,9 +1549,10 @@ export function BidsLaborTab({
                       min={0}
                       step={1}
                       value={travelNights}
-                      onChange={(e) => setTravelNights(e.target.value)}
+                      onChange={(e) => { markCell('travel:nights'); setTravelNights(e.target.value) }}
                       onWheel={(e) => e.currentTarget.blur()}
-                      style={{ width: '5rem', padding: '0.375rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.875rem' }}
+                      {...cellA11y('travel:nights', 'Nights')}
+                      style={{ width: '5rem', padding: '0.375rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.875rem', ...cellSaveStyle('travel:nights') }}
                     />
                   </div>
                   <div>
@@ -1517,10 +1562,11 @@ export function BidsLaborTab({
                       min={0}
                       step={0.01}
                       value={travelMealsRate}
-                      onChange={(e) => setTravelMealsRate(e.target.value)}
+                      onChange={(e) => { markCell('travel:meals'); setTravelMealsRate(e.target.value) }}
                       onWheel={(e) => e.currentTarget.blur()}
                       placeholder="—"
-                      style={{ width: '6rem', padding: '0.375rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.875rem' }}
+                      {...cellA11y('travel:meals', 'Meals per day, dollars')}
+                      style={{ width: '6rem', padding: '0.375rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.875rem', ...cellSaveStyle('travel:meals') }}
                     />
                   </div>
                   <div>
@@ -1530,10 +1576,11 @@ export function BidsLaborTab({
                       min={0}
                       step={0.01}
                       value={travelHotelRate}
-                      onChange={(e) => setTravelHotelRate(e.target.value)}
+                      onChange={(e) => { markCell('travel:hotel'); setTravelHotelRate(e.target.value) }}
                       onWheel={(e) => e.currentTarget.blur()}
                       placeholder="—"
-                      style={{ width: '6rem', padding: '0.375rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.875rem' }}
+                      {...cellA11y('travel:hotel', 'Hotel per night, dollars')}
+                      style={{ width: '6rem', padding: '0.375rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.875rem', ...cellSaveStyle('travel:hotel') }}
                     />
                   </div>
                 </div>
@@ -1545,6 +1592,7 @@ export function BidsLaborTab({
                     maxLength={5}
                     value={travelZip}
                     onChange={(e) => setTravelZip(e.target.value.replace(/[^0-9]/g, '').slice(0, 5))}
+                    aria-label="ZIP code for the travel lookup"
                     placeholder="78701"
                     style={{ width: '5rem', padding: '0.375rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.875rem' }}
                   />
@@ -1624,9 +1672,10 @@ export function BidsLaborTab({
                         min={0}
                         step={0.01}
                         value={estimatorCostFlatAmount}
-                        onChange={(e) => setEstimatorCostFlatAmount(e.target.value)}
+                        onChange={(e) => { markCell('estimator:flat'); setEstimatorCostFlatAmount(e.target.value) }}
                         onWheel={(e) => e.currentTarget.blur()}
-                        style={{ width: '6rem', padding: '0.375rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.875rem' }}
+                        {...cellA11y('estimator:flat', 'Estimator cost, flat amount in dollars')}
+                        style={{ width: '6rem', padding: '0.375rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.875rem', ...cellSaveStyle('estimator:flat') }}
                       />
                     </div>
                   ) : (
@@ -1637,9 +1686,10 @@ export function BidsLaborTab({
                         min={0}
                         step={0.01}
                         value={estimatorCostPerCount}
-                        onChange={(e) => setEstimatorCostPerCount(e.target.value)}
+                        onChange={(e) => { markCell('estimator:perCount'); setEstimatorCostPerCount(e.target.value) }}
                         onWheel={(e) => e.currentTarget.blur()}
-                        style={{ width: '6rem', padding: '0.375rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.875rem' }}
+                        {...cellA11y('estimator:perCount', 'Estimator cost per count row, dollars')}
+                        style={{ width: '6rem', padding: '0.375rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.875rem', ...cellSaveStyle('estimator:perCount') }}
                       />
                     </div>
                   )}
@@ -1702,10 +1752,11 @@ export function BidsLaborTab({
                                   min={0}
                                   step={0.01}
                                   value={row[stage] === 0 ? '' : String(row[stage])}
-                                  onChange={(e) => updateEquipmentRow(row.id, { [stage]: e.target.value === '' ? 0 : parseFloat(e.target.value) } as Partial<Pick<CostEstimateEquipmentRow, 'rough_in' | 'top_out' | 'trim_set'>>)}
+                                  onChange={(e) => { markCell(`equipment:${row.id}:${stage}`); updateEquipmentRow(row.id, { [stage]: e.target.value === '' ? 0 : parseFloat(e.target.value) } as Partial<Pick<CostEstimateEquipmentRow, 'rough_in' | 'top_out' | 'trim_set'>>) }}
                                   onWheel={(e) => e.currentTarget.blur()}
+                                  {...cellA11y(`equipment:${row.id}:${stage}`, laborCellAriaLabel(`${LABOR_STAGE_LABELS[stage]} dollars`, row.note, 'Equipment & Tool Rental'))}
                                   placeholder="0.00"
-                                  style={{ width: '100%', padding: '0.375rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.875rem', textAlign: 'right' }}
+                                  style={{ width: '100%', padding: '0.375rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.875rem', textAlign: 'right', ...cellSaveStyle(`equipment:${row.id}:${stage}`) }}
                                 />
                               </td>
                             ))}
@@ -1774,10 +1825,11 @@ export function BidsLaborTab({
                                   min={0}
                                   step={0.01}
                                   value={row[stage] === 0 ? '' : String(row[stage])}
-                                  onChange={(e) => updatePermitRow(row.id, { [stage]: e.target.value === '' ? 0 : parseFloat(e.target.value) } as Partial<Pick<CostEstimatePermitRow, 'rough_in' | 'top_out' | 'trim_set'>>)}
+                                  onChange={(e) => { markCell(`permit:${row.id}:${stage}`); updatePermitRow(row.id, { [stage]: e.target.value === '' ? 0 : parseFloat(e.target.value) } as Partial<Pick<CostEstimatePermitRow, 'rough_in' | 'top_out' | 'trim_set'>>) }}
                                   onWheel={(e) => e.currentTarget.blur()}
+                                  {...cellA11y(`permit:${row.id}:${stage}`, laborCellAriaLabel(`${LABOR_STAGE_LABELS[stage]} dollars`, row.note, 'Permits, Inspections, and Regulatory Fees'))}
                                   placeholder="0.00"
-                                  style={{ width: '100%', padding: '0.375rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.875rem', textAlign: 'right' }}
+                                  style={{ width: '100%', padding: '0.375rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.875rem', textAlign: 'right', ...cellSaveStyle(`permit:${row.id}:${stage}`) }}
                                 />
                               </td>
                             ))}
@@ -1846,10 +1898,11 @@ export function BidsLaborTab({
                                   min={0}
                                   step={0.01}
                                   value={row[stage] === 0 ? '' : String(row[stage])}
-                                  onChange={(e) => updateSubcontractorRow(row.id, { [stage]: e.target.value === '' ? 0 : parseFloat(e.target.value) } as Partial<Pick<CostEstimateSubcontractorRow, 'rough_in' | 'top_out' | 'trim_set'>>)}
+                                  onChange={(e) => { markCell(`sub:${row.id}:${stage}`); updateSubcontractorRow(row.id, { [stage]: e.target.value === '' ? 0 : parseFloat(e.target.value) } as Partial<Pick<CostEstimateSubcontractorRow, 'rough_in' | 'top_out' | 'trim_set'>>) }}
                                   onWheel={(e) => e.currentTarget.blur()}
+                                  {...cellA11y(`sub:${row.id}:${stage}`, laborCellAriaLabel(`${LABOR_STAGE_LABELS[stage]} dollars`, row.note, 'Subcontractor Fees'))}
                                   placeholder="0.00"
-                                  style={{ width: '100%', padding: '0.375rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.875rem', textAlign: 'right' }}
+                                  style={{ width: '100%', padding: '0.375rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.875rem', textAlign: 'right', ...cellSaveStyle(`sub:${row.id}:${stage}`) }}
                                 />
                               </td>
                             ))}
@@ -1918,10 +1971,11 @@ export function BidsLaborTab({
                                   min={0}
                                   step={0.01}
                                   value={row[stage] === 0 ? '' : String(row[stage])}
-                                  onChange={(e) => updateWasteRow(row.id, { [stage]: e.target.value === '' ? 0 : parseFloat(e.target.value) } as Partial<Pick<CostEstimateWasteRow, 'rough_in' | 'top_out' | 'trim_set'>>)}
+                                  onChange={(e) => { markCell(`waste:${row.id}:${stage}`); updateWasteRow(row.id, { [stage]: e.target.value === '' ? 0 : parseFloat(e.target.value) } as Partial<Pick<CostEstimateWasteRow, 'rough_in' | 'top_out' | 'trim_set'>>) }}
                                   onWheel={(e) => e.currentTarget.blur()}
+                                  {...cellA11y(`waste:${row.id}:${stage}`, laborCellAriaLabel(`${LABOR_STAGE_LABELS[stage]} dollars`, row.note, 'Waste Disposal and Site Cleanup'))}
                                   placeholder="0.00"
-                                  style={{ width: '100%', padding: '0.375rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.875rem', textAlign: 'right' }}
+                                  style={{ width: '100%', padding: '0.375rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.875rem', textAlign: 'right', ...cellSaveStyle(`waste:${row.id}:${stage}`) }}
                                 />
                               </td>
                             ))}
@@ -1990,10 +2044,11 @@ export function BidsLaborTab({
                                   min={0}
                                   step={0.01}
                                   value={row[stage] === 0 ? '' : String(row[stage])}
-                                  onChange={(e) => updateOtherRow(row.id, { [stage]: e.target.value === '' ? 0 : parseFloat(e.target.value) } as Partial<Pick<CostEstimateOtherRow, 'rough_in' | 'top_out' | 'trim_set'>>)}
+                                  onChange={(e) => { markCell(`other:${row.id}:${stage}`); updateOtherRow(row.id, { [stage]: e.target.value === '' ? 0 : parseFloat(e.target.value) } as Partial<Pick<CostEstimateOtherRow, 'rough_in' | 'top_out' | 'trim_set'>>) }}
                                   onWheel={(e) => e.currentTarget.blur()}
+                                  {...cellA11y(`other:${row.id}:${stage}`, laborCellAriaLabel(`${LABOR_STAGE_LABELS[stage]} dollars`, row.note, 'Other'))}
                                   placeholder="0.00"
-                                  style={{ width: '100%', padding: '0.375rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.875rem', textAlign: 'right' }}
+                                  style={{ width: '100%', padding: '0.375rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.875rem', textAlign: 'right', ...cellSaveStyle(`other:${row.id}:${stage}`) }}
                                 />
                               </td>
                             ))}
@@ -2253,15 +2308,15 @@ export function BidsLaborTab({
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.5rem', marginBottom: '0.75rem' }}>
                 <div>
                   <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem' }}>Rough In (hrs)</label>
-                  <input type="number" min={0} step={0.01} value={laborEntryRoughIn} onChange={(e) => setLaborEntryRoughIn(e.target.value)} style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, boxSizing: 'border-box' }} />
+                  <input type="number" min={0} step={0.01} value={laborEntryRoughIn} onChange={(e) => setLaborEntryRoughIn(e.target.value)} aria-label="Rough In hours for this labor book entry" style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, boxSizing: 'border-box' }} />
                 </div>
                 <div>
                   <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem' }}>Top Out (hrs)</label>
-                  <input type="number" min={0} step={0.01} value={laborEntryTopOut} onChange={(e) => setLaborEntryTopOut(e.target.value)} style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, boxSizing: 'border-box' }} />
+                  <input type="number" min={0} step={0.01} value={laborEntryTopOut} onChange={(e) => setLaborEntryTopOut(e.target.value)} aria-label="Top Out hours for this labor book entry" style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, boxSizing: 'border-box' }} />
                 </div>
                 <div>
                   <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem' }}>Trim Set (hrs)</label>
-                  <input type="number" min={0} step={0.01} value={laborEntryTrimSet} onChange={(e) => setLaborEntryTrimSet(e.target.value)} style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, boxSizing: 'border-box' }} />
+                  <input type="number" min={0} step={0.01} value={laborEntryTrimSet} onChange={(e) => setLaborEntryTrimSet(e.target.value)} aria-label="Trim Set hours for this labor book entry" style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, boxSizing: 'border-box' }} />
                 </div>
               </div>
               <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -2330,6 +2385,7 @@ export function BidsLaborTab({
                     value={addMissingFixtureRoughIn}
                     onChange={(e) => setAddMissingFixtureRoughIn(e.target.value)}
                     onWheel={(e) => e.currentTarget.blur()}
+                    aria-label={`Rough In hours for ${addMissingFixtureName}`}
                     style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
                     autoFocus
                   />
@@ -2345,6 +2401,7 @@ export function BidsLaborTab({
                     value={addMissingFixtureTopOut}
                     onChange={(e) => setAddMissingFixtureTopOut(e.target.value)}
                     onWheel={(e) => e.currentTarget.blur()}
+                    aria-label={`Top Out hours for ${addMissingFixtureName}`}
                     style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
                   />
                 </div>
@@ -2359,6 +2416,7 @@ export function BidsLaborTab({
                     value={addMissingFixtureTrimSet}
                     onChange={(e) => setAddMissingFixtureTrimSet(e.target.value)}
                     onWheel={(e) => e.currentTarget.blur()}
+                    aria-label={`Trim Set hours for ${addMissingFixtureName}`}
                     style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
                   />
                 </div>

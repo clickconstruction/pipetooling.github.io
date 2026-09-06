@@ -19,7 +19,11 @@ Tap a pill to jump straight to that section — it opens automatically if it was
 
 The two biggest sections (**Not yet won or lost** and **Lost**) start with their first 25 bids showing. Use {{button:outline-blue|Show all N ▾}} at the bottom of the list to see the rest; search always looks through every bid either way.
 
-**Not yet won or lost** lists the most recently *sent* bid first (falling back to the bid date if a row has no sent date) — the freshest submissions are at the top while you wait for answers. The other sections keep their due-date order, soonest first.
+**Not yet won or lost** lists the most recently *sent* bid first (falling back to the bid date if a row has no sent date) — the freshest submissions are at the top while you wait for answers. Because the section sorts by sent date, every row prints it: a small {{chip:gray|sent Wed 9/2}} line sits under the Due chip, so the order reads as what it is. The other sections keep their due-date order, soonest first.
+
+In **Unsent / Working**, a bid with no due date shows a dashed {{chip:gray|No due date (+N)}} chip counting its days on the board instead of a blank — and it turns {{chip:red|No due date (+15)}} red after 14 days, so an undated bid can't rot quietly. Give it a due date (Edit bid) or archive it.
+
+While the board is still fetching after you open it, you see **Loading bids…** with grey placeholder rows — never a false "No bids yet".
 
 ## Read a row
 
@@ -67,7 +71,7 @@ Open **Customer review**, click the top customer, and the contributors panel sho
 ## The 🤖 tab — where digital-twin bids live
 
 Bids owned or worked by a **digital twin** (an AI estimator account — the 🤖 ones) don't sit
-among the human rows. Everything robot lives under one **🤖** tab next to Bid Board, with views
+among the human rows. Everything robot lives under one **🤖 Robots** tab next to Bid Board (the red count on it is audits waiting on you), with views
 inside: the **Robot Board** (twin bids, with its live count), **Audits** (robot bids waiting on
 a human review), and **Shadows** — every robot practice bid told as a five-step story:
 requested, estimated blind, price sealed 🔒, waiting on our bid, opened & scored. The robot's

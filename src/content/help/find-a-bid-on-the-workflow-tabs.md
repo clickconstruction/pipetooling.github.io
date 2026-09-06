@@ -7,6 +7,8 @@ order: 97
 ---
 The one sentence: **when no bid is selected on a workflow tab, the bid list is sorted — bid number first by default — and the buttons next to the search bar switch the order.**
 
+Once you pick a bid it stays selected across Counts → Takeoffs → Labor → Pricing → Cover Letter, and a **refresh brings it back** (this browser tab remembers your bid until you close the bid or the tab). Only a shared link needs the `bidId` in the URL, which the picker adds for you.
+
 ## Pick the order
 
 1. Open any bid workflow page — **Counts, Takeoffs, Labor, Pricing, Cover Letter, RFI, Change Order,** or **Lien Release** — without a bid selected.

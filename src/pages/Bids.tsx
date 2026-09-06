@@ -103,6 +103,8 @@ import { BID_UPDATE_NOT_APPLIED_MESSAGE, updateApplied } from '../lib/bids/updat
 import { filterActiveCustomersForPicker } from '../lib/customerArchive'
 import { useBidEditForm } from '../lib/bids/useBidEditForm'
 import { pruneUnchangedBidUpdateFields } from '../lib/bids/bidUpdatePrune'
+import { readSharedBidId, rememberSharedBidId } from '../lib/bids/sharedBidPointer'
+import { MATERIALS_MODEL_CAPTION } from '../lib/bids/bidTakeoffHelpers'
 
 type GcBuilder = Database['public']['Tables']['bids_gc_builders']['Row']
 type Customer = Database['public']['Tables']['customers']['Row']
@@ -285,6 +287,8 @@ export default function Bids() {
   }
 
   const [bids, setBids] = useState<BidWithBuilder[]>([])
+  /** False until the first `loadBids` settles (success or error) — the board's skeleton gate (J10-F8). */
+  const [bidsLoaded, setBidsLoaded] = useState(false)
   /** Lost bids in this trade with no structured loss reason yet — the Why we lost queue size. */
   const lostBidsNeedingReasonCount = useMemo(
     () => bids.filter((b) => b.outcome === 'lost' && !isBidLossCategoryKey(b.loss_category)).length,
@@ -890,6 +894,7 @@ export default function Bids() {
 
   /** Set selected bid for Counts, Takeoffs, Labor, Pricing, Submission, RFI, Change Order, and Lien Release so selection stays in sync across tabs. */
   function setSharedBid(bid: BidWithBuilder | null) {
+    rememberSharedBidId(bid?.id ?? null) // survives a refresh after a tab click strips bidId (J11-F2/N2)
     setSelectedBidForCounts(bid)
     setSelectedBidForTakeoff(bid)
     setSelectedBidForCostEstimate(bid)
@@ -1145,6 +1150,7 @@ export default function Bids() {
     const { data, error } = await q.order('bid_due_date', { ascending: false, nullsFirst: true })
     if (error) {
       setError(`Failed to load bids: ${error.message}`)
+      setBidsLoaded(true)
       return []
     }
     type Raw = Bid & {
@@ -1168,6 +1174,7 @@ export default function Bids() {
       }
     })
     setBids(rows)
+    setBidsLoaded(true)
     const { data: entriesData } = await supabase
       .from('bids_submission_entries')
       .select('bid_id, occurred_at, contact_method')
@@ -1574,6 +1581,13 @@ export default function Bids() {
       return
     }
     const bidTabs = ['counts', 'takeoffs', 'labor', 'pricing', 'cover-letter', 'rfi', 'change-order', 'lien-release']
+    if (!bidId && tab && bidTabs.includes(tab) && !selectedBidForCounts) {
+      // J11-F2/N2: a workflow tab with no bidId (a tab click stripped it, then a refresh) — restore
+      // the pointer this browser tab remembered. The URL stays as it is; nothing is re-added.
+      const rememberedId = readSharedBidId()
+      const remembered = rememberedId ? bids.find((b) => b.id === rememberedId) : null
+      if (remembered) setSharedBid(remembered)
+    }
     if (bidId && tab && bidTabs.includes(tab)) {
       const bid = bids.find((b) => b.id === bidId)
       if (bid) {
@@ -2801,11 +2815,13 @@ export default function Bids() {
                 : 'Robots'
             }
           >
-            {'\u{1F916}'}
+            {/* J10-F10: the tab read "🤖 9+" with no word for sighted users — name it. */}
+            {'\u{1F916}'} Robots
           </button>
           {auditGate.pending > 0 ? (
             <span
               aria-hidden
+              title={`${auditGate.pending} robot audit${auditGate.pending === 1 ? '' : 's'} pending`}
               style={{
                 position: 'absolute',
                 top: 2,
@@ -3061,6 +3077,9 @@ export default function Bids() {
               <h3 id="materials-model-switch-title" style={{ margin: '0 0 0.75rem', fontSize: '1.05rem' }}>
                 Switch materials model?
               </h3>
+              <p style={{ margin: '0 0 0.5rem', fontSize: '0.875rem', color: 'var(--text-700)', lineHeight: 1.5 }}>
+                {MATERIALS_MODEL_CAPTION}
+              </p>
               <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: 'var(--text-700)', lineHeight: 1.5 }}>
                 By Stage and Combined data are stored separately. Switching does not copy lines from the other mode.
               </p>
@@ -3372,6 +3391,7 @@ export default function Bids() {
       {(activeTab === 'bid-board' || activeTab === 'robot-board') && (
         <BidsBidBoardTab
           bids={activeTab === 'robot-board' ? robotBids : peopleBids}
+          loading={!bidsLoaded}
           authUser={authUser}
           isDev={myRole === 'dev'}
           jobsByBidId={jobsByBidId}

@@ -1,9 +1,11 @@
 /**
  * Bid GC recipients (bid-recipients train PR 2): shared shapes + the pure
  * per-recipient expansion the Followup lenses use, plus the one fetch that
- * builds the bid → recipients map. A bid sent to three GCs should surface in
- * three call queues; the outcome stays per-bid, so working it under any GC
- * clears it everywhere.
+ * builds the bid → recipients map. A bid sent to three GCs surfaces in three
+ * call queues. Since Bids by GC (v2.2162) the OUTCOME is per GC packet
+ * (`bid_versions.outcome`, see `gcPackets.ts` / `gcPacketOutcome.ts`) — the
+ * bid-level `bids.outcome` is the roll-up, so working a bid under one GC
+ * answers that GC only; the other packets keep waiting (J14-F7).
  */
 
 import { supabase } from '../supabase'

@@ -29,6 +29,7 @@ import {
   mergePartLinesToTakeoffTemplateItems,
   STAGE_LABELS,
   type TakeoffStage,
+  MATERIALS_MODEL_CAPTION,
 } from '../../lib/bids/bidTakeoffHelpers'
 import { loadBundlePartLines, type BundlePartLine } from '../../lib/bids/assemblyBundleBreakdown'
 import { buildPartAssemblyIndex, type PartAssemblyEntry, type PartAssemblyIndexItem } from '../../lib/bids/partAssemblyIndex'
@@ -1909,6 +1910,9 @@ export function BidsTakeoffTab({
                     >
                       Combined
                     </button>
+                    <span style={{ flexBasis: '100%', textAlign: 'right', fontSize: '0.72rem', color: 'var(--text-muted)', lineHeight: 1.35 }}>
+                      {MATERIALS_MODEL_CAPTION}
+                    </span>
                   </div>
                 )
               })()}

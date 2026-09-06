@@ -290,6 +290,7 @@ A single click sets the selected bid for **every** workflow tab at once:
 | `selectBidAndSyncUrl` | `Bids.tsx` (search the symbol) | `setSharedBid(bid)` + writes URL `?tab=…&bidId=…` |
 | `closeSharedBidAndClearUrl` | `Bids.tsx` (search the symbol) | Clears all `selectedBidFor*` + removes `bidId` from URL |
 | URL deep-link restore | search `const BIDS_TABS` / the `bidId` effect | On load, if `bidId` + a workflow `tab` present, calls `setSharedBid` + `setActiveTab` |
+| Session pointer restore (v2.2905, J11-F2/N2) | same effect, the `!bidId && bidTabs.includes(tab)` branch | `setSharedBid` also writes `sessionStorage['bids.sharedBidId']` ([`sharedBidPointer.ts`](../src/lib/bids/sharedBidPointer.ts)); a workflow tab opened with no `bidId` and no selection restores that bid silently — `selectBidsTab` still strips `bidId` on purpose (v2.2043), the URL is never rewritten |
 
 **Implication:** each extracted tab should receive its `selectedBid` + `onSelectBid`/`onClose` as controlled props (the pattern already used by the RFI/CO/Lien tabs), not own it.
 

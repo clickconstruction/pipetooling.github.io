@@ -4,6 +4,7 @@
  * the Bid Board's per-GC rows and Followup.
  */
 import type { LatestSend } from './versionSends'
+import { gcDisplayName } from './gcDisplayName'
 
 export type GcVersionLike = {
   id: string
@@ -73,7 +74,7 @@ export function groupVersionsByGc<V extends GcVersionLike>(
     const key = v.customer_id ?? ''
     let g = groups.find((x) => x.key === key)
     if (!g) {
-      g = { key, gcId: v.customer_id ?? null, name: v.customer_id ? (opts.gcNames[v.customer_id] ?? '…') : (opts.bidGcName ?? 'the GC'), versions: [], sentOn: null, sentValue: null, outcome: null }
+      g = { key, gcId: v.customer_id ?? null, name: v.customer_id ? (opts.gcNames[v.customer_id] ?? '…') : gcDisplayName(opts.bidGcName), versions: [], sentOn: null, sentValue: null, outcome: null }
       groups.push(g)
     }
     g.versions.push(v)

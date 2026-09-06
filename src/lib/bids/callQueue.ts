@@ -82,6 +82,26 @@ export function bidTabGettable(b: Pick<CallQueueBid, 'outcome' | 'hasTab' | 'sen
   return age != null && age >= TAB_GETTABLE_AFTER_DAYS
 }
 
+/**
+ * Queue order: builders with work first; oldest contact first; and among the
+ * never-contacted (all `-Infinity`, which with the chase barely used was 91 of
+ * 101 builders) the one who has been quiet longest — `chase.oldestQuietDays`,
+ * days since the oldest chase-worthy send — comes first (J14-F4). The copy
+ * promises "whoever has waited longest on top"; before this the visible order
+ * inside that band was the alphabet. Name is the last resort only.
+ */
+export function compareCallQueueBuilders(
+  a: Pick<CallQueueBuilder, 'hasWork' | 'oldestContactMs' | 'builderName'> & { chase: Pick<CallQueueBuilder['chase'], 'oldestQuietDays'> },
+  b: Pick<CallQueueBuilder, 'hasWork' | 'oldestContactMs' | 'builderName'> & { chase: Pick<CallQueueBuilder['chase'], 'oldestQuietDays'> },
+): number {
+  if (a.hasWork !== b.hasWork) return a.hasWork ? -1 : 1
+  if (a.oldestContactMs !== b.oldestContactMs) return a.oldestContactMs - b.oldestContactMs
+  const aq = a.chase.oldestQuietDays ?? -1
+  const bq = b.chase.oldestQuietDays ?? -1
+  if (aq !== bq) return bq - aq
+  return a.builderName.localeCompare(b.builderName)
+}
+
 export function buildCallQueue(bids: readonly CallQueueBid[], nowIso: string): { builders: CallQueueBuilder[]; totals: CallQueueTotals } {
   const byKey = new Map<string, CallQueueBid[]>()
   for (const b of bids) {
@@ -109,8 +129,10 @@ export function buildCallQueue(bids: readonly CallQueueBid[], nowIso: string): {
       if (d != null && (oldestQuietDays == null || d > oldestQuietDays)) oldestQuietDays = d
     }
 
+    // Only OPEN bids' contacts rank a builder (J14-F4): a lost bid's ancient
+    // note used to pull its builder ahead of one never called at all.
     let oldestContactMs = Infinity
-    for (const b of [...pendingBids, ...lostBids]) {
+    for (const b of pendingBids) {
       const ms = b.lastContactIso ? Date.parse(b.lastContactIso) : -Infinity
       if (ms < oldestContactMs) oldestContactMs = ms
     }
@@ -138,11 +160,7 @@ export function buildCallQueue(bids: readonly CallQueueBid[], nowIso: string): {
     })
   }
 
-  builders.sort((a, b) => {
-    if (a.hasWork !== b.hasWork) return a.hasWork ? -1 : 1
-    if (a.oldestContactMs !== b.oldestContactMs) return a.oldestContactMs - b.oldestContactMs
-    return a.builderName.localeCompare(b.builderName)
-  })
+  builders.sort(compareCallQueueBuilders)
 
   const withWork = builders.filter((b) => b.hasWork)
   return {
