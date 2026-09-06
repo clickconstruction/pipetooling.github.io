@@ -20,6 +20,31 @@ export function farmModeStorageKey(userId: string): string {
   return `${PREFIX}_${userId}`
 }
 
+/** The one page Farm Mode shows. */
+export const FARM_MODE_HOME = '/checklist'
+
+/**
+ * `ui_nav_clicks.control` for the on-page chip's Exit (journey-map Tier-2 #41):
+ * before the chip, the only way out was knowing the toggle lives in the gear
+ * menu, so nothing measured how often people got stuck in the mode.
+ */
+export const FARM_MODE_EXIT_CONTROL = 'farm_mode_exit'
+
+/**
+ * Where Farm Mode lands a route it doesn't show — `null` when the path is
+ * already the mode's page (no bounce). Pure; Layout's effect applies it.
+ */
+export function farmModeBounceTarget(pathname: string): string | null {
+  const clean = pathname.replace(/\/+$/, '') || '/'
+  return clean === FARM_MODE_HOME ? null : FARM_MODE_HOME
+}
+
+/** The chip's words. Short — it sits on a barn tablet, at the top of the daily list. */
+export const FARM_MODE_CHIP_LABEL = 'Farm Mode'
+export const FARM_MODE_CHIP_EXIT_LABEL = 'Exit'
+export const FARM_MODE_CHIP_TITLE =
+  'Farm Mode is on: this device shows only the checklist. Exit brings the full app back (same as the gear menu).'
+
 export function readFarmModeEnabled(userId: string | null | undefined): boolean {
   if (!userId) return false
   try {

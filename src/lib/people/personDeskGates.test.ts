@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { canArchiveAccount, canEditAccount, canOpenPersonDesk, canSetTrainingMode, type PersonDeskViewer } from './personDeskGates'
+import { canArchiveAccount, canEditAccount, canOpenPersonDesk, canOpenPersonQuickSheet, canSetTrainingMode, type PersonDeskViewer } from './personDeskGates'
 
 function viewer(p: Partial<PersonDeskViewer>): PersonDeskViewer {
   return { role: 'assistant', isDev: false, canAccessPay: false, canAccessHours: true, canAccessVehicles: true, canAccessLicenses: true, canAccessContracts: true, readOnly: false, ...p }
@@ -11,6 +11,16 @@ describe('personDeskGates (v2.2713 widenings)', () => {
     expect(canOpenPersonDesk('master_technician')).toBe(true)
     expect(canOpenPersonDesk('helpers')).toBe(false)
     expect(canOpenPersonDesk(null)).toBe(false)
+  })
+
+  it('the `/` quick sheet is the Desk gate minus Farm Mode (journey-map Tier-2 #41)', () => {
+    for (const role of ['dev', 'master_technician', 'assistant', 'controller']) {
+      expect(canOpenPersonQuickSheet(role, false), `${role} off`).toBe(true)
+      expect(canOpenPersonQuickSheet(role, true), `${role} farm`).toBe(false)
+    }
+    for (const role of ['helpers', 'subcontractor', 'estimator', 'primary', 'superintendent', null]) {
+      expect(canOpenPersonQuickSheet(role, false), `${role}`).toBe(false)
+    }
   })
 
   it('archive / restore and training mode: dev, controller, pay-approved master — never a plain assistant or an unapproved master', () => {

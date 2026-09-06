@@ -5,7 +5,7 @@ roles: dev, master_technician, assistant, controller, primary
 keywords: roadmap, create, rename, new roadmap, members, share, picker, dropdown
 order: 44
 ---
-The roadmap picker at the top of **Checklist → Roadmap** does more than switch roadmaps — its bottom section holds the management actions.
+The roadmap picker at the top of the **Roadmap** page (header → **Roadmap**) does more than switch roadmaps — its bottom section holds the management actions.
 
 ## Create a roadmap
 

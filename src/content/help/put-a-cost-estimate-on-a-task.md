@@ -9,7 +9,7 @@ Devs and the controller can price any checklist or roadmap task: who would do it
 
 ## Add or change an estimate
 
-1. Find the **🖩 calculator** on a task row — on **Checklist → Review** (expand a person, or a stage in Goals) and on the **Roadmap → Plan** view's task rows.
+1. Find the **🖩 calculator** on a task row — on **Checklist → Review** (expand a person), in the **Roadmap** page's Goals (unfold a stage), and on the **Roadmap → Plan** view's task rows.
 2. Pick **who does it** — their **$/hour** fills in from People → Pay config (edit it if needed; salaried people may need a number typed in).
 3. Set **hours** — quick-picks (0.5h–8h) or type — and watch the math: *2h × $50/hr → $100*.
 4. {{button:blue|Save cost}}. The calculator becomes a gold **$100** chip; tap the chip any time to change or **Remove** the estimate.

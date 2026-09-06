@@ -27,6 +27,7 @@ import {
 import type { DispatchAgingSummary } from '../../lib/dispatchInboxAging'
 import { isAssistantLike } from '../../lib/subcontractorLikeRole'
 import { buildNeedsYouItems } from '../../lib/dashboardNeedsYou'
+import { roadmapPath } from '../../lib/roadmapVisibility'
 import { DashboardNeedsYouCard } from '../dashboard/DashboardNeedsYouCard'
 import { DashboardStaleTallyStaffFollowUpModal } from '../DashboardStaleTallyStaffFollowUpModal'
 import { DashboardLienReleaseQueueModal } from '../dashboard/DashboardLienReleaseQueueModal'
@@ -174,11 +175,7 @@ export function QuickfillNeedsYouSection({
             navigate(`/prospects?tab=team&stage=review${first ? `&rate=${first.id}` : ''}`)
           } else if (item.key === 'roadmap-needs-person') {
             const first = roadmapNudges[0]
-            navigate(
-              first
-                ? `/checklist?tab=roadmap&roadmap=${encodeURIComponent(first.roadmapId)}&view=plan`
-                : '/checklist?tab=roadmap',
-            )
+            navigate(roadmapPath(first?.roadmapId, first ? 'plan' : null))
           } else if (item.key === 'bulk-delete') {
             navigate('/settings?tab=settings-data#settings-recently-deleted')
           } else if (item.key === 'claim-dev') {

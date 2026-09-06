@@ -1,22 +1,24 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { useFarmModeEnabled } from './useFarmModeEnabled'
-import { canSeeRoadmapTab } from '../lib/roadmapVisibility'
+import { canSeeRoadmapNeedsYou } from '../lib/roadmapVisibility'
 import { buildRoadmapNudges, type RoadmapNudge } from '../lib/dashboardRoadmapNudge'
 import type { UserRole } from './useAuth'
 
 /**
  * Roadmap "needs a person" nudges (v2.2138), extracted verbatim from
  * DashboardRoadmapNeedsNameBanner for the Needs You card (v2.2489).
- * Self-gating: empty unless the viewer can see the Roadmap tab (same gate as
- * the tab) and a roadmap clears ROADMAP_NUDGE_MIN_COUNT; empty on load error.
+ * Self-gating: empty unless the viewer may see the roadmap Needs-You card
+ * (`canSeeRoadmapNeedsYou` — the owner, not in Farm Mode; Tier-2 #41 widened
+ * the Roadmap PAGE to the office but kept the card the owner's) and a roadmap
+ * clears ROADMAP_NUDGE_MIN_COUNT; empty on load error.
  */
 export function useRoadmapNeedsNameNudges(
   authUserId: string | undefined,
   role: UserRole | null,
 ): { nudges: RoadmapNudge[] } {
   const [farmModeEnabled] = useFarmModeEnabled(authUserId ?? null)
-  const allowed = Boolean(authUserId) && canSeeRoadmapTab(role, farmModeEnabled)
+  const allowed = Boolean(authUserId) && canSeeRoadmapNeedsYou(role, farmModeEnabled)
   const [nudges, setNudges] = useState<RoadmapNudge[]>([])
 
   useEffect(() => {

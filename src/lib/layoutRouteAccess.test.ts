@@ -19,6 +19,15 @@ describe('isPathAllowedForRole', () => {
     }
   })
 
+  it('/roadmap (Tier-2 #41): primary and the staff roles pass; sub-like, estimator, superintendent are bounced', () => {
+    expect(isPathAllowedForRole('primary', '/roadmap', false)).toBe(true)
+    expect(isPathAllowedForRole('dev', '/roadmap', false)).toBe(true)
+    expect(isPathAllowedForRole('subcontractor', '/roadmap', false)).toBe(false)
+    expect(isPathAllowedForRole('helpers', '/roadmap', false)).toBe(false)
+    expect(isPathAllowedForRole('estimator', '/roadmap', false)).toBe(false)
+    expect(isPathAllowedForRole('superintendent', '/roadmap', false)).toBe(false)
+  })
+
   it('still restricts role-specific paths', () => {
     expect(isPathAllowedForRole('subcontractor', '/banking', false)).toBe(false)
     expect(isPathAllowedForRole('primary', '/schedule-dispatch', false)).toBe(false)

@@ -262,7 +262,7 @@ A Contract Book entry can be a **form** (an uploaded PDF the signer fills on the
 **Purpose**: Project and business management
 
 **Access**:
-- Dashboard, Customers, Projects, People, Jobs, Calendar, Bids, Materials, Settings (limited)
+- Dashboard, Customers, Projects, People, Jobs, Calendar, Bids, Materials, **Roadmap** (v2.2916), Settings (limited)
 
 **Permissions**:
 
@@ -331,7 +331,7 @@ A Contract Book entry can be a **form** (an uploaded PDF the signer fills on the
 **Purpose**: Support masters with customer and project work
 
 **Access**:
-- Dashboard, Customers, Projects, People, Jobs, Calendar, Bids, Materials, Prospects
+- Dashboard, Customers, Projects, People, Jobs, Calendar, Bids, Materials, Prospects, **Roadmap** (v2.2916)
 - **Settings** (via gear menu): Change password, push notifications, Dashboard buttons, **Dashboard Page Pins** (Page pins card only—manage own pins, Clear all, Remove per pin), a pointer to the **Team leads** manager (the People → Users **Team leads** modal, which assistants can open). Does NOT see dev-only sections (Pin Billed, Internal Team labor, Supply Houses AP, Sub Labor Due, user management, email templates, etc.). The PAGE_ACCESS table in Settings is a reference display; assistants can navigate to Settings.
 - **Blocked**: Templates
 
@@ -574,7 +574,7 @@ A Contract Book entry can be a **form** (an uploaded PDF the signer fills on the
 - Users who need to send tasks without full project visibility
 
 **Layout Behavior**:
-- Navigation shows: Dashboard, Estimates, Jobs, Bids ([`Layout.tsx`](../src/components/Layout.tsx)); other allowed routes (Materials, Documents, Calendar, Checklist, Settings, Tally, Help — `PRIMARY_PATHS` in [`layoutRouteAccess.ts`](../src/lib/layoutRouteAccess.ts)) are reachable directly or via the gear menu. No Prospects access.
+- Navigation shows: Dashboard, Estimates, Jobs, Bids, **Roadmap** (v2.2916) ([`Layout.tsx`](../src/components/Layout.tsx)); other allowed routes (Materials, Documents, Calendar, Checklist, Roadmap, Settings, Tally, Help — `PRIMARY_PATHS` in [`layoutRouteAccess.ts`](../src/lib/layoutRouteAccess.ts)) are reachable directly or via the gear menu. No Prospects access.
 - Attempts to access blocked pages (e.g. Projects, Workflow) redirect to `/dashboard`. `/workflows` left `PRIMARY_PATHS` in v2.2836: the `project_workflow_steps` SELECT policy has no primary branch, so the page was always empty for a primary and nothing in the app linked to it (journey map D3).
 
 ---
@@ -690,6 +690,7 @@ Mercury **Person** attribution (job splits modal): staff use **`list_users_for_b
 | **The Bridge** (`/bridge`, v2.2677 — **dev only**; `Bridge.tsx` redirects every other role to `/dashboard`) | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
 | **Partnerships** (`/partnerships`, v2.1880 — **dev only**; partner deal config per [`PARTNERSHIPS_PLAN.md`](./PARTNERSHIPS_PLAN.md); `Partnerships.tsx` redirects every other role to `/dashboard`; tables are dev-only RLS — partner-facing surfaces read config via SECURITY DEFINER RPCs, never directly) | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
 | **Checklist** (`/checklist`) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| **Roadmap** (`/roadmap`, v2.2916 — the planner as its own page; `PRIMARY_PATHS` admits it, `canOpenRoadmap` is the door) | ✅ | ✅ | ✅ | ❌ | ❌ | ✅ | ❌ |
 | **Partner statement** (`/my-statement`, v2.2157 — the partner's own statement page, the customer portal's sibling on paper; self-gating through the `get_my_partner_*` RPCs: a caller with no live partnership sees a quiet "no partner statement" note. Partners can be sub-like OR `estimator` accounts (Bryan is an estimator), so the path is in the sub-like, estimator, and (v2.2179) primary allowlists; the nav's Statement link (v2.2165, `useIsPartner`) shows only when `get_my_partner_summary` says the caller is a partner; devs reach the same view through Partnerships → "View as …") | ✅ (lens / own) | — | — | ✅ partners only | ✅ partners only | ✅ partners only | — |
 | **Tally** (`/tally`) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | **Documents** (`/documents`) | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ (hidden since PR #275 (2026-07-13); restored v2.2181 now that rows are scoped to Account-Man jobs) | ✅ |
@@ -763,7 +764,8 @@ Converted so far: Jobs Crew P&L / Team Labor / off-strip tabs (primary, superint
 
 | Feature | dev | master | assistant | sub | estimator | primary | superintendent |
 |---------|-----|--------|-----------|-----|-----------|---------|----------------|
-| **Roadmap** tab — **UI visibility** (temporary, v2.1559): the tab is rendered for **dev only**; other roles' deep links (`?tab=roadmap`) bounce to their default tab. RLS below is unchanged — widen `canSeeRoadmap` in `src/pages/Checklist.tsx` to re-release. | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| **Roadmap page** (`/roadmap`, v2.2916 — was a dev-only tab here): the header **Roadmap** entry + the page are for `canOpenRoadmap` — the RLS edit set (`is_checklist_tech_tree_staff_or_primary`); off in Farm Mode for everyone. Sub-like / estimator / superintendent deep links land on Today with the #29 sentence (`roleGate` surface `roadmap`; helpers quiet). Old `?tab=roadmap` links redirect. The **GOALS** strip lives on this page now (it left Review). | ✅ | ✅ | ✅ | ❌ | ❌ | ✅ | ❌ |
+| Dashboard / Quickfill **"roadmap tasks need a person"** card (`kind: 'roadmap'`, v2.2916) — the owner's only, even though the page widened | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
 | **Roadmap** tab (tech tree): **see** a roadmap row (`can_select_checklist_tech_tree_roadmap`) | ✅ all | ✅ all | ✅ all | ✅ if member **or task assignee** | ✅ if member **or task assignee** | ✅ all | ✅ if member **or task assignee** |
 | **Roadmap**: **create** roadmap, **delete** roadmap | ✅ | ✅ | ✅ | ❌ | ❌ | ✅ | ❌ |
 | **Roadmap**: **edit graph** (groups/tasks/edges) — `can_edit_checklist_tech_tree_structure_for_roadmap` | ✅ | ✅ | ✅ | ✅ if **editor** | ✅ if **editor** | ✅ | ✅ if **editor** |

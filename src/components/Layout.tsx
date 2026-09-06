@@ -47,7 +47,7 @@ import {
   type PinnedItem,
 } from '../lib/pinnedTabs'
 import { isPathAllowedForRole } from '../lib/layoutRouteAccess'
-import { recordNavClickFromEvent } from '../lib/navClickTelemetry'
+import { recordNavClick, recordNavClickFromEvent } from '../lib/navClickTelemetry'
 import { recordJobModeEnabledOncePerSession } from '../lib/jobModeTelemetry'
 import DailyGoalsGateOverlay from './DailyGoalsGateOverlay'
 import {
@@ -64,6 +64,9 @@ import { isAssistantLike, isSubcontractorLikeRole } from '../lib/subcontractorLi
 import { canLeaveJobFieldReport } from '../lib/canLeaveJobFieldReport'
 import { useJobModeEnabled } from '../hooks/useJobModeEnabled'
 import { useFarmModeEnabled } from '../hooks/useFarmModeEnabled'
+import { FARM_MODE_EXIT_CONTROL, farmModeBounceTarget } from '../lib/farmModeToggle'
+import { FarmModeChip } from './FarmModeChip'
+import { canOpenRoadmap } from '../lib/roadmapVisibility'
 import { usePinModeEnabled } from '../hooks/usePinModeEnabled'
 import {
   showEstimatorInboxButton,
@@ -295,13 +298,18 @@ export default function Layout() {
     (role === 'dev' || role === 'master_technician' || isAssistantLike(role)) && !farmModeActive
 
   // Farm Mode is a hard lens: whatever route the user lands on (post-login
-  // default, deep link, stale bookmark), bounce to the checklist. The gear
-  // menu stays reachable, so turning the mode off is always one tap away.
+  // default, deep link, stale bookmark), bounce to the checklist. The landing
+  // is honest (Tier-2 #41): the FarmModeChip above the page says the mode is on
+  // and carries the Exit; the gear toggle stays reachable too.
   useEffect(() => {
     if (!farmModeActive) return
-    if (location.pathname === '/checklist') return
-    navigate('/checklist', { replace: true })
+    const to = farmModeBounceTarget(location.pathname)
+    if (to) navigate(to, { replace: true })
   }, [farmModeActive, location.pathname, navigate])
+  const exitFarmMode = useCallback(() => {
+    recordNavClick(authUser?.id, role, FARM_MODE_EXIT_CONTROL, location.pathname)
+    setFarmModeEnabled(false)
+  }, [authUser?.id, role, location.pathname, setFarmModeEnabled])
   const navSearchOverlayBg = impersonating && isMobile ? 'var(--bg-amber-100)' : 'var(--chrome-bg)'
 
   const scheduleDashboardPrefetch = useCallback(() => {
@@ -462,6 +470,9 @@ export default function Layout() {
       role === 'primary' ||
       role === 'superintendent' ||
       isSubcontractorLikeRole(role))
+
+  // Roadmap (Tier-2 #41): the RLS edit set — dev / master / assistant-like / primary — never under Farm Mode.
+  const canShowRoadmapNav = canOpenRoadmap(role, farmModeActive)
 
   const canShowMapNav =
     (role === 'dev' ||
@@ -672,6 +683,7 @@ export default function Layout() {
           <NavLink to="/estimates" style={linkStyle} onClick={onNavClick}>Estimates</NavLink>
           <NavLink to="/jobs" style={linkStyle} onClick={onNavClick}>Jobs</NavLink>
           <NavLink to="/bids" style={linkStyle} onClick={onNavClick}>Bids</NavLink>
+          {canShowRoadmapNav && <NavLink to="/roadmap" style={linkStyle} onClick={onNavClick}>Roadmap</NavLink>}
         </>
       )
     }
@@ -748,6 +760,9 @@ export default function Layout() {
                 <NavLink to="/bids" style={linkStyle} onClick={onNavClick}>Bids</NavLink>
                 <NavLink to="/prospects" style={linkStyle} onClick={onNavClick}>Prospects</NavLink>
               </>
+            )}
+            {canShowRoadmapNav && (
+              <NavLink to="/roadmap" style={linkStyle} onClick={onNavClick}>Roadmap</NavLink>
             )}
             {role === 'superintendent' && (
               <>
@@ -1921,6 +1936,7 @@ export default function Layout() {
               : '0px',
         }}
       >
+        {farmModeActive ? <FarmModeChip onExit={exitFarmMode} /> : null}
         <AssistantReadyToBillBanner />
         <div
           style={{

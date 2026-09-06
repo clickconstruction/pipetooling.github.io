@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildNeedsYouItems, rankNeedsYouItems, type NeedsYouInputs, type NeedsYouItem } from './dashboardNeedsYou'
+import { buildNeedsYouItems, needsYouKind, rankNeedsYouItems, visibleNeedsYouItems, type NeedsYouInputs, type NeedsYouItem } from './dashboardNeedsYou'
 
 function inputs(overrides: Partial<NeedsYouInputs> = {}): NeedsYouInputs {
   return {
@@ -221,7 +221,7 @@ describe('buildNeedsYouItems', () => {
     expect(items[0]?.detail).toBe('No review from you in 30+ days.')
   })
 
-  it('roadmap nudge shares the people/planning tier and outranks a smaller team-reviews pile', () => {
+  it('roadmap nudge is its own group AFTER the company stack, however big its figure (Tier-2 #41)', () => {
     const items = buildNeedsYouItems(
       inputs({
         teamReviewsOverdue: [{ id: 'u1', name: 'Ana' }],
@@ -231,11 +231,30 @@ describe('buildNeedsYouItems', () => {
         jobFollowupCount: 9,
       }),
     )
-    expect(items.map((i) => i.key)).toEqual(['job-followups', 'roadmap-needs-person', 'team-reviews'])
-    const rm = items[1]
+    expect(items.map((i) => i.key)).toEqual(['job-followups', 'team-reviews', 'roadmap-needs-person'])
+    const rm = items[2]
+    expect(rm?.kind).toBe('roadmap')
+    expect(needsYouKind(rm!)).toBe('roadmap')
+    expect(needsYouKind(items[0]!)).toBe('company')
     expect(rm?.title).toBe('Farm 1 · 56 roadmap tasks need a person')
     expect(rm?.detail).toBe('next: 10.2 setup auto watering — open the Plan to hand them out.')
     expect(rm?.figure).toBe('56')
+  })
+
+  it('roadmap nudge never reaches a non-dev stack — the builder drops it for every other role (Tier-2 #41)', () => {
+    const nudge = [{ roadmapId: 'r1', title: 'Farm 1', needsName: 56, ready: 4, next: null }]
+    for (const role of ['master_technician', 'assistant', 'controller', 'primary', 'estimator', 'superintendent', 'subcontractor', 'helpers', null] as const) {
+      const items = buildNeedsYouItems(inputs({ role, roadmapNudges: nudge, teamReviewsOverdue: [{ id: 'u1', name: 'Ana' }] }))
+      expect(items.map((i) => i.key), `role ${role}`).toEqual(['team-reviews'])
+    }
+    expect(buildNeedsYouItems(inputs({ role: 'dev', roadmapNudges: nudge })).map((i) => i.key)).toEqual(['roadmap-needs-person'])
+  })
+
+  it('visibleNeedsYouItems is the same rule on a prebuilt list', () => {
+    const roadmap: NeedsYouItem = { key: 'roadmap-needs-person', kind: 'roadmap', severity: 'amber', kicker: '', title: '', detail: '', figure: '5', actionLabel: '' }
+    const company: NeedsYouItem = { key: 'team-reviews', severity: 'amber', kicker: '', title: '', detail: '', figure: '1', actionLabel: '' }
+    expect(visibleNeedsYouItems([roadmap, company], 'dev')).toHaveLength(2)
+    expect(visibleNeedsYouItems([roadmap, company], 'assistant').map((i) => i.key)).toEqual(['team-reviews'])
   })
 
   it('roadmap nudge sums and lists multiple roadmaps', () => {
@@ -479,9 +498,9 @@ describe('buildNeedsYouItems', () => {
       'tally-self', // 97 beats the team's 2 in the shared billing tier
       'tally-team',
       'job-followups',
-      'roadmap-needs-person', // 56 beats 1 in the shared people/planning tier
       'team-reviews',
       'lost-bids',
+      'roadmap-needs-person', // kind: roadmap — its own group after the company stack (Tier-2 #41)
     ])
   })
 
@@ -497,8 +516,11 @@ describe('buildNeedsYouItems', () => {
     })
     const ranked = rankNeedsYouItems([item('tally-team', '99'), item('tally-self', '99+')])
     expect(ranked.map((i) => i.key)).toEqual(['tally-self', 'tally-team'])
-    const tie = rankNeedsYouItems([item('team-reviews', '5'), item('roadmap-needs-person', '5')])
-    expect(tie.map((i) => i.key)).toEqual(['team-reviews', 'roadmap-needs-person'])
+    const tie = rankNeedsYouItems([item('team-reviews', '5'), item('robot-audits', '5')])
+    expect(tie.map((i) => i.key)).toEqual(['team-reviews', 'robot-audits'])
+    // A roadmap-kind item groups after company items even when it would outrank them by tier.
+    const grouped = rankNeedsYouItems([{ ...item('roadmap-needs-person', '99+'), kind: 'roadmap' }, item('lost-bids', '1')])
+    expect(grouped.map((i) => i.key)).toEqual(['lost-bids', 'roadmap-needs-person'])
   })
 
   it('singular copy reads naturally', () => {

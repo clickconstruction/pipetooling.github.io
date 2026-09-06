@@ -5,7 +5,7 @@ roles: dev, master_technician, assistant, controller, primary
 keywords: roadmap, next up, shortlist, plan, priority, what to do next, staffing, reasons, stage order
 order: 46
 ---
-The **Plan** view is where **Checklist → Roadmap** now opens (tap **Map** or **Timeline** to switch — your pick sticks on that device). It starts with a small **⚡ Next up** panel: a short list of the tasks worth doing next, and *why*. It doesn't re-order your roadmap — the stage numbers and the full lists below stay exactly as you arranged them. It just points.
+The **Plan** view is where the **Roadmap** page (header → **Roadmap**) opens (tap **Map** or **Timeline** to switch — your pick sticks on that device). It starts with a small **⚡ Next up** panel: a short list of the tasks worth doing next, and *why*. It doesn't re-order your roadmap — the stage numbers and the full lists below stay exactly as you arranged them. It just points.
 
 ## Two lanes
 
@@ -37,7 +37,7 @@ Open any task's card and tap the **★** next to its title (editors only). A pin
 ## The same picks, elsewhere
 
 - **On the Map**, tasks on the shortlist wear a small ⚡ after their title, and a stage with picks shows a {{chip:yellow|⚡ 2 next up}} chip in its header — so a collapsed cluster still tells you there's something worth doing inside.
-- **On the Dashboard**, when a roadmap has three or more unowned tasks in open stages, a card says *Farm 1 · 84 roadmap tasks need a person* with the top pick. Tap {{button:outline|Open Plan →}} to land on that roadmap's Plan with the panel at the top. The card only appears for people who can see the Roadmap tab.
+- **On the Dashboard**, when a roadmap has three or more unowned tasks in open stages, a card says *Farm 1 · 84 roadmap tasks need a person* with the top pick. Tap {{button:outline|Open Plan →}} to land on that roadmap's Plan with the panel at the top. The card is the owner's — it does not appear on other dashboards, even for people who can open the Roadmap page.
 
 ## What it doesn't do
 

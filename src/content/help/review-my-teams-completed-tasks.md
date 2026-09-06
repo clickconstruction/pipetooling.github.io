@@ -37,20 +37,6 @@ If it's not done right, type a comment — it's required, so the person always k
 - Quiet items age out on their own after 7 days — the queue doesn't pile up if you skip a few.
 - Anyone who can see a task can add notes on it, so the conversation can continue right on the card.
 
-## Goals on the board
+## Goals moved to the Roadmap page
 
-If you use Roadmaps, the Review board shows a **Goals** strip: each big goal with its stage progress and what's currently in motion. When a stage finishes, the next stage's tasks land on the assigned people's Today lists automatically — look for the purple {{chip:purple|⛰ goal}} chip on their tasks.
-
-Expand a goal and the stage list now works for you, not just reports:
-
-- **Unlock banners** — when a stage finishes, a green banner names it and exactly which stages it opened ("✓ Stage 6 finished → unlocked stage 9"). Banners cover the last 30 days.
-- **What's next** — tap an open stage to unfold its tasks; the footer tells you what finishing it would unlock, so you know what's riding on it.
-- **{{button:outline|🔔 Remind}}** on an unfolded stage nudges everyone who still has open tasks in it — each person gets their own list, not a generic blast.
-- **⇅ Reorder** (beside "Open roadmap →", structure editors only) opens the same hold-and-drag card tool the roadmap uses — drag stages into a new order and it saves as you go; numbering and the goal bar follow.
-- **What's blocking a locked stage** — tap its 🔒 chip (or the row itself, if it has no tasks) for the full unlock chain: every unfinished stage that has to finish first, the direct blocker tagged *unlocks it*, each with its progress. Tap a stage in the list to jump to it — the board scrolls there and flashes it blue.
-
-The goal's bar is **one segment per stage**, in the order you arranged them: green segments are finished stages, amber-ringed ones are the current work front (they fill blue as their tasks complete), and pale ones are still locked. A **dashed, hollow** segment is a stage that's *not planned yet* — no tasks and nothing leading into it — so it never reads as done by accident.
-
-Tap the goal card to open the **stage ledger** — every stage with its own mini bar and count, plus a chip telling its story: {{chip:green|✓ done}}, {{chip:yellow|current}} with {{chip:blue|2 on lists}} when tasks are already on people's Today lists, or 🔒 with the stage that has to finish first. Long locked tails fold behind "N more locked stages". The **Open roadmap →** link inside the ledger jumps to the canvas when you want to edit rather than glance.
-
-**Tap a stage row to unfold its tasks** right there (one stage at a time) — each task with its number, a ✓ or ○, the full title, and the facts that matter: {{chip:yellow|★ pinned}} or {{chip:yellow|⚡ next up}}, who's on it (or *unassigned*), and its live chip ({{chip:gray|on list}} / {{chip:blue|in review}} / {{chip:green|signed off}}). Tap a task to open **Where this task fits** — the whole road with that stage pinned, what finishing it unlocks, and *Open full roadmap →*. On a phone the stage rows wrap to two lines (title on top, chips and bar underneath) so nothing truncates; the ledger stays read-only — completing happens on Today or the roadmap itself.
+The **Goals** strip — each roadmap's stage progress, unlock banners, 🔔 Remind, ⇅ Reorder, and the stage ledger — now lives at the top of the **Roadmap** page (header → **Roadmap**), where the plan is. Review keeps what it is for: what the team finished and what is still outstanding. Roadmap-born tasks still carry their purple {{chip:purple|⛰ goal}} chip here; tap it to see where the task fits, and **Open full roadmap →** to jump to the plan. See *plan the roadmap and see how each goal is going*.
