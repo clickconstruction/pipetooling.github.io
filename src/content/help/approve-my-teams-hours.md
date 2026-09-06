@@ -1,6 +1,6 @@
 ---
 title: approve my team's hours
-category: Field
+category: Field Work
 roles: subcontractor, helpers, master_technician, assistant, controller
 keywords: my team, approve hours, pending sessions, clock sessions, team lead, approve all, long day, clock strip pill, salary flat hours, midnight, who can approve, on the clock, click to review, hours grid
 order: 67

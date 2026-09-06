@@ -1,6 +1,6 @@
 ---
 title: see what each person's vehicle costs per field hour
-category: people
+category: Office
 roles: dev
 keywords: wheels, vehicle, truck, fuel, gas, own vehicle, company truck, per field hour, rate, arrangement, pay config, review, insurance, registration, service
 ---

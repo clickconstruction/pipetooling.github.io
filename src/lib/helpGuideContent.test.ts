@@ -11,6 +11,21 @@ import { BUTTON_VARIANTS, CHIP_VARIANTS } from './helpGuideIllustrations'
 
 const CONTENT_DIR = join(__dirname, '../content/help')
 
+/**
+ * The Guides browser groups by the literal `category:` string, A–Z. A near
+ * duplicate ("Field" beside "Field Work", lowercase "banking") renders as its
+ * own stray section — 13 guides had drifted into eight of them by 2026-09-06.
+ * Add a category here deliberately; never by typo.
+ */
+export const HELP_GUIDE_CATEGORIES = [
+  'Getting Started',
+  'Office',
+  'Billing & Money',
+  'Bids & Estimating',
+  'Jobs & Scheduling',
+  'Field Work',
+] as const
+
 function loadContent(): Record<string, string> {
   const record: Record<string, string> = {}
   for (const file of readdirSync(CONTENT_DIR)) {
@@ -24,6 +39,17 @@ describe('help guide content', () => {
   it('every guide has valid frontmatter and a body', () => {
     const guides = buildHelpGuideRegistry(loadContent())
     expect(guides.length).toBeGreaterThanOrEqual(8)
+  })
+
+  it('every guide uses one of the canonical categories (a near-duplicate becomes a stray browser section)', () => {
+    const guides = buildHelpGuideRegistry(loadContent())
+    const valid: readonly string[] = HELP_GUIDE_CATEGORIES
+    for (const g of guides) {
+      expect(
+        valid.includes(g.category),
+        `guide "${g.slug}" has category "${g.category}" — use one of: ${valid.join(' · ')} (add a new one to HELP_GUIDE_CATEGORIES deliberately)`,
+      ).toBe(true)
+    }
   })
 
   it('guides use h2+ headings (h1 is the page title from frontmatter)', () => {

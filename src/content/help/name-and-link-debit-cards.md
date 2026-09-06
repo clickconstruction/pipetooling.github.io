@@ -1,6 +1,6 @@
 ---
 title: name company debit cards and link them to people
-category: banking
+category: Billing & Money
 roles: dev, assistant, master_technician
 keywords: debit card, card, nickname, link, person, attribution, auto-assign, company card, fuel, wheels, mercury, sorting
 ---

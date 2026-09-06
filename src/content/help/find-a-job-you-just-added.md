@@ -1,6 +1,6 @@
 ---
 title: find a job you just added
-category: Jobs
+category: Jobs & Scheduling
 roles: dev, master_technician, assistant, controller, primary
 keywords: pipeline, recently added, new job, find job, last 100, where did it go, any status
 order: 47

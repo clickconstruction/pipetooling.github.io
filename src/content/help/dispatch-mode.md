@@ -1,6 +1,6 @@
 ---
 title: run the day from your phone with Dispatch Mode
-category: Scheduling
+category: Jobs & Scheduling
 roles: dev, master_technician, assistant, controller, superintendent
 keywords: dispatch mode, mobile, footer, tabs, schedule, inbox, customers, bell, note to dispatch, badge, open requests, close a request, dismiss, oldest first, age chip, days waiting, needs you
 order: 30

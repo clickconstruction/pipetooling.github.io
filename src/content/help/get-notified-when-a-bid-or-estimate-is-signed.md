@@ -1,6 +1,6 @@
 ---
 title: get notified when a bid or estimate is signed
-category: Settings
+category: Office
 roles: dev, master_technician, assistant, controller
 keywords: signed agreements, signature, notify, email, auto create job, create job, accepted estimate, bid room signed, recipients
 order: 96
