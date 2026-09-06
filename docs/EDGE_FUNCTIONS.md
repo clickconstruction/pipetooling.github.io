@@ -835,6 +835,8 @@ The frontend (`src/pages/DevLogin.tsx`, v2.1526) no longer follows the returned 
 
 **Auto-shadow (v2.2936 / v1.3.7 — `docs/twins/LEARNING_PLAN.md` lever 2)**: `next_shadow(days?)` — the shadow dispatcher, mirroring `next_backtest`: claims the next live bid that needs a shadow (human-requested first by oldest ask with no age limit, then oldest eligible inside the lookback, default 30 days), creates the shell via the shared `createShadowShell` (also behind `open_shadow` now), seeds `axis` from `bids.backtest_axis` when classified, and self-deletes a same-instant duplicate in favour of the earliest run — parallel agents never share a bid. `done: true` = the live board is covered. `get_shadow_queue` gains a windowless `coverage` block (`live_with_plans` / `shadowed` / `unshadowed`) — the number the auto-shadow program drives to 100%, since a shadow costs the estimator zero minutes and matures into a fresh grade-A reference when she sends.
 
+**Rulings groundwork (v2.2939 / v1.3.8)**: `ask_question` gains `topic` — one kebab slug per doctrine issue (`travel-bands`) written to `twin_questions.topic` (migration `20260906110000`) so duplicate asks group into single standing rulings; `get_answers` returns it. `submit_report` accepts `label` as an alias for `mission` (batch reports were filing "unlabeled"). `get_work_state` returns `twin_source_bid_id` so a shell can verify its own pairing.
+
 **Required secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, and for CT minting **`CT_TWIN_LOGIN_URL`** + **`COUNTTOOLING_TWIN_LOGIN_SECRET`** (twin-login's own `TWIN_LOGIN_SECRET` is not needed here — the per-twin token is the credential).
 
 ---

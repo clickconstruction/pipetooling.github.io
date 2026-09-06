@@ -115,6 +115,7 @@ const TOOLS = [
         question: { type: 'string', description: 'The question, self-contained (a human reads it cold)' },
         bid: { type: 'string', description: "Optional bid it concerns (e.g. 'b403' or uuid)" },
         mission: { type: 'string', description: 'Optional mission/run label' },
+        topic: { type: 'string', description: "Standing-rulings key (v2.2939): one kebab slug per doctrine issue — 'travel-bands', 'small-ti-absorption', 'package-boundary' — so duplicate asks collapse into ONE ruling for the estimator. Before parking a doctrine-level question, check get_answers for an existing topic and reuse its slug; leave empty only for genuinely bid-specific asks." },
       },
       required: ['question'],
     },
@@ -734,9 +735,12 @@ async function callTool(req: Request, name: string, args: Record<string, unknown
           : admin.from('bids').select('id').eq('bid_number', bidRef.replace(/^(bp|b)/i, '')).maybeSingle())
         aboutBidId = (b as { id: string } | null)?.id ?? null
       }
+      // topic (v2.2939): the standing-rulings key — one kebab slug per doctrine issue
+      // ('travel-bands', 'small-ti-absorption') so duplicate asks collapse into one ruling.
+      const topic = String(args.topic ?? '').trim().toLowerCase().replace(/[^a-z0-9-]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 60) || null
       const { data: row, error } = await admin
         .from('twin_questions')
-        .insert({ twin_user_id: twin.twinUserId, about_bid_id: aboutBidId, mission: (args.mission as string) ?? null, question: q })
+        .insert({ twin_user_id: twin.twinUserId, about_bid_id: aboutBidId, mission: (args.mission as string) ?? null, question: q, topic })
         .select('id')
         .single()
       if (error) return textContent(`Question not saved: ${error.message}`, true)
@@ -748,7 +752,7 @@ async function callTool(req: Request, name: string, args: Record<string, unknown
       })
       let sel = admin
         .from('twin_questions')
-        .select('id, about_bid_id, mission, question, status, answer, answered_at, promoted_rfi_id, created_at')
+        .select('id, about_bid_id, mission, question, status, answer, answered_at, promoted_rfi_id, created_at, topic')
         .eq('twin_user_id', twin.twinUserId)
         .order('created_at', { ascending: false })
         .limit(50)
@@ -863,7 +867,7 @@ async function callTool(req: Request, name: string, args: Record<string, unknown
       const uuidRe = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
       let q = admin
         .from('bids')
-        .select('id, bid_number, project_name, bid_due_date, bid_due_time, bid_date_sent, outcome, bid_value, address, drive_link, plans_link, count_tooling_plans_link, itb_links, estimator_id, created_by, last_contact, customers(name)')
+        .select('id, bid_number, project_name, bid_due_date, bid_due_time, bid_date_sent, outcome, bid_value, address, drive_link, plans_link, count_tooling_plans_link, itb_links, estimator_id, created_by, last_contact, twin_source_bid_id, customers(name)')
       q = uuidRe.test(ref) ? q.eq('id', ref) : q.eq('bid_number', ref.replace(/^(bp|b)/i, ''))
       const { data: bid, error } = await q.maybeSingle()
       if (error) return textContent(`Bid lookup failed: ${error.message}`, true)
@@ -936,6 +940,8 @@ async function callTool(req: Request, name: string, args: Record<string, unknown
           bid_value: bid.bid_value,
           last_contact: bid.last_contact,
           address: bid.address,
+          // v2.2939: a shadow/backtest shell can now verify its own pairing.
+          twin_source_bid_id: bid.twin_source_bid_id ?? null,
         },
         links: {
           drive: bid.drive_link ?? null,
@@ -1025,7 +1031,7 @@ async function callTool(req: Request, name: string, args: Record<string, unknown
       return textContent(JSON.stringify(body, null, 2))
     }
     case 'submit_report': {
-      const mission = String(args.mission ?? '').trim() || 'unlabeled'
+      const mission = String(args.mission ?? args.label ?? '').trim() || 'unlabeled'
       const report = String(args.report ?? '').trim()
       if (!report) return textContent('Empty report', true)
       const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, {
@@ -1909,7 +1915,7 @@ async function handleRpc(req: Request, msg: { jsonrpc?: string; id?: unknown; me
       return rpcResult(id, {
         protocolVersion: version,
         capabilities: { tools: {} },
-        serverInfo: { name: 'pipetooling-twin-mcp', version: '1.3.7' },
+        serverInfo: { name: 'pipetooling-twin-mcp', version: '1.3.8' },
         instructions:
           "PipeTooling digital-twin seat (estimator-only). Call get_brief first, then get_directory; mint_session gives you a signed-in browser link to the real apps — PipeTooling by default, CountTooling (the PDF-takeoff tool) with app: 'counttooling'. The work happens there. Every call needs your per-twin token (X-Twin-Token or Bearer).",
       })
