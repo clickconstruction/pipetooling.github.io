@@ -153,7 +153,16 @@ On the Dispatch **Day** tab, the {{button:outline|Visible hours ⚙}} button (ri
 
 ## When someone isn't coming in
 
-Fastest path: on an empty person-day, click the small orange **off** button beside the blue **+** bar — it immediately marks that person as not coming in for that day (the cell shows the time-off chip; click the chip if you need to undo it).
+Fastest path: on an empty person-day, click the small orange **off** button beside the blue **+** bar. It asks first — the cell has nothing scheduled, so the confirm says exactly what it does:
+
+:::example Marking an empty day off
+Mark **Paige** as not coming in?
+Wednesday, Sep 2 — records unpaid time off for the day. Nothing is scheduled for them that day, so no blocks are removed. Undo any time from the cell's chip.
+
+{{button:outline|Cancel}} &nbsp; {{button:red|Mark not coming in}}
+:::
+
+Confirm and the cell shows the time-off chip; click the chip if you need to undo it.
 
 For a day that already has jobs, use the **Add job to schedule** modal footer instead: press {{button:outline|Not coming in today}}. You'll get a confirmation — and a warning if it will remove existing schedule blocks for that day:
 
@@ -175,14 +184,26 @@ When someone simply didn't show and didn't call, use **No call, no show** — th
 The cell then shows a solid red **NCNS** chip instead of the softer "Not coming in" one. Clicking the chip clears the schedule marking if plans change — but the attendance incident stays on record; removing an incident is a separate payroll-side action.
 
 
-Once confirmed, the cell shows a {{chip:red|Not coming in}} chip. Click the chip to undo it.
+Once confirmed, the cell shows a {{chip:red|Not coming in}} chip. Click the chip to undo it. The undo modal is honest about what it can do: it makes the person schedulable again, but **any blocks removed when the day was marked off don't come back** — add them again from the cell.
 
 ## Sharing the day's schedule
 
 Press {{button:blue|Share}} to open the **Schedule share** modal:
 
-- **Send now** — pick recipients, choose what to include (☑ **Current day** · ☐ **Next day** · ☐ **Rest of week**), and press {{button:blue|Send now}}.
+- **Send now** — pick recipients, choose what to include (☑ **Current day** · ☐ **Next day** · ☐ **Rest of week**), check the **What will send** panel, and press {{button:blue|Send now}}.
 - **Recurring** — set up automatic shares: recipients, days of the week, and a Central-time send time, then {{button:blue|Create recurring share}}. Existing shares can be paused with {{button:outline|Pause}} and resumed under "Active & paused shares".
+
+**What will send** lists exactly what the email will contain — every block on the days you ticked, grouped by person the way the email is, bid visits included — with a headline like *12 blocks · 5 people · 2 days*. If nothing is scheduled it says so, and so will the email. It's the board as you can see it right now; every recipient gets that same email.
+
+:::example What will send · 3 blocks · 2 people
+**Marcus D**
+7:00 AM–3:30 PM &nbsp; J512 · Smith House Repipe
+**Paige**
+9:00 AM–11:00 AM &nbsp; B412 · Oakmont Clubhouse
+1:00 PM–4:00 PM &nbsp; J498 · Baker Kitchen Remodel
+:::
+
+Press {{chip:gray|Esc}} to close the modal (if a recipient dropdown is open, the first Esc closes that). The **Email schedule** modal on the Dashboard clock strip shows the same panel for the day and recipient you picked, and closes on Esc too.
 
 ## The standing office schedule
 

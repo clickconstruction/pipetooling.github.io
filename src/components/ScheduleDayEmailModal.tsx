@@ -1,7 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useToastContext } from '../contexts/ToastContext'
 import { useAuth } from '../hooks/useAuth'
+import { useModalStackEntry } from '../hooks/useModalStackEntry'
 import { APP_CALENDAR_TZ } from '../utils/dateUtils'
+import { schedulePreviewLines, type SchedulePreviewBlockRow, type SchedulePreviewLine } from '../lib/scheduleSharePreview'
+import { ScheduleEmailPreviewPanel } from './schedule/ScheduleEmailPreviewPanel'
 import { salaryZonedWallClockToUtcMs } from '../lib/salaryZonedWallClock'
 import { supabase } from '../lib/supabase'
 import { DatabaseError, formatErrorMessage, withSupabaseRetry } from '../utils/errorHandling'
@@ -47,6 +50,11 @@ export function ScheduleDayEmailModal({
   const [recipientUserId, setRecipientUserId] = useState(authUserId)
   const [userOptions, setUserOptions] = useState<SearchableSelectOption[]>([])
   const [usersLoadError, setUsersLoadError] = useState<string | null>(null)
+  // "What will send" preview (J18-F9): the recipient-scoped rows the cron emails.
+  const [previewLines, setPreviewLines] = useState<SchedulePreviewLine[]>([])
+  const [previewLoading, setPreviewLoading] = useState(false)
+  const [previewError, setPreviewError] = useState<string | null>(null)
+  const previewRecipientId = isDev ? recipientUserId : authUserId
 
   const dateLabel = useMemo(() => {
     const d = /^(\d{4})-(\d{2})-(\d{2})$/.exec(workDateYmd.trim())
@@ -119,6 +127,51 @@ export function ScheduleDayEmailModal({
     setBusy(false)
     onClose()
   }, [onClose])
+
+  // Escape closes when topmost (J18-F8; Tier-2 #42 modal stack); the recipient
+  // picker's own Escape (preventDefault) is left alone.
+  const isTopmostModal = useModalStackEntry(open)
+  useEffect(() => {
+    if (!open) return
+    const onKeyDown = (ev: WindowEventMap['keydown']) => {
+      if (ev.key !== 'Escape' || ev.defaultPrevented || busy) return
+      if (!isTopmostModal()) return
+      ev.preventDefault()
+      resetAndClose()
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [open, busy, isTopmostModal, resetAndClose])
+
+  // Same RPC the edge function runs per recipient at send time — so this is
+  // what they would get if it sent now.
+  useEffect(() => {
+    if (!open || !previewRecipientId) return
+    let cancelled = false
+    setPreviewLoading(true)
+    setPreviewError(null)
+    ;(async () => {
+      try {
+        const rows = await withSupabaseRetry(
+          () =>
+            supabase.rpc('list_job_schedule_blocks_for_schedule_email', {
+              p_recipient: previewRecipientId,
+              p_work_date: workDateYmd,
+            }),
+          'schedule day email preview',
+        )
+        if (cancelled) return
+        setPreviewLines(schedulePreviewLines((rows ?? []) as SchedulePreviewBlockRow[]))
+      } catch (e: unknown) {
+        if (!cancelled) setPreviewError(formatErrorMessage(e, 'Could not load the preview'))
+      } finally {
+        if (!cancelled) setPreviewLoading(false)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [open, previewRecipientId, workDateYmd])
 
   const insertRequest = useCallback(
     async (recipientId: string, sendAtIso: string) => {
@@ -336,8 +389,20 @@ export function ScheduleDayEmailModal({
             }}
           />
         </div>
+        <ScheduleEmailPreviewPanel
+          lines={previewLines}
+          loading={previewLoading}
+          error={previewError}
+          multiDay={false}
+          groupByPerson={false}
+          caption={
+            isDev && recipientUserId !== authUserId
+              ? 'What that person can see on the schedule right now; the email is built again at send time.'
+              : 'What you can see on the schedule right now; the email is built again at send time.'
+          }
+        />
         {error ? (
-          <p style={{ margin: '0 0 0.65rem', fontSize: '0.8rem', color: 'var(--text-red-700)' }}>{error}</p>
+          <p style={{ margin: '0.65rem 0 0', fontSize: '0.8rem', color: 'var(--text-red-700)' }}>{error}</p>
         ) : null}
         <div
           style={{
@@ -345,7 +410,7 @@ export function ScheduleDayEmailModal({
             flexWrap: 'wrap',
             gap: 8,
             justifyContent: 'flex-end',
-            marginTop: '0.5rem',
+            marginTop: '0.65rem',
           }}
         >
           <button

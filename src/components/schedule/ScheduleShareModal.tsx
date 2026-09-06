@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useToastContext } from '../../contexts/ToastContext'
+import { useAuth } from '../../hooks/useAuth'
+import { useModalStackEntry } from '../../hooks/useModalStackEntry'
 import { APP_CALENDAR_TZ } from '../../utils/dateUtils'
 import { supabase } from '../../lib/supabase'
 import { formatErrorMessage, withSupabaseRetry } from '../../utils/errorHandling'
@@ -9,6 +11,8 @@ import {
   isShareConfigValid,
   type ShareScope,
 } from '../../lib/scheduleShareDates'
+import { schedulePreviewLines, type SchedulePreviewBlockRow, type SchedulePreviewLine } from '../../lib/scheduleSharePreview'
+import { ScheduleEmailPreviewPanel } from './ScheduleEmailPreviewPanel'
 
 const USER_PICK_LIMIT = 500
 const DOW_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'] as const
@@ -120,6 +124,8 @@ export function ScheduleShareModal({
   baseDateYmd: string
 }) {
   const { showToast } = useToastContext()
+  const { user: authUser } = useAuth()
+  const viewerId = authUser?.id ?? null
   const [tab, setTab] = useState<'now' | 'recurring'>('now')
   const [users, setUsers] = useState<UserRow[]>([])
   const [usersError, setUsersError] = useState<string | null>(null)
@@ -131,6 +137,26 @@ export function ScheduleShareModal({
   const [nowScope, setNowScope] = useState<ShareScope>('none')
   const [sending, setSending] = useState(false)
   const [nowError, setNowError] = useState<string | null>(null)
+  // "What will send" preview (J18-F9): the same RPC rows the edge function emails.
+  const [previewLines, setPreviewLines] = useState<SchedulePreviewLine[]>([])
+  const [previewLoading, setPreviewLoading] = useState(false)
+  const [previewError, setPreviewError] = useState<string | null>(null)
+
+  // Escape closes the modal when it is the topmost one (J18-F8; Tier-2 #42
+  // modal stack). A key the recipient picker already handled (its own Escape
+  // closes the dropdown with preventDefault) is left alone.
+  const isTopmostModal = useModalStackEntry(open)
+  useEffect(() => {
+    if (!open) return
+    const onKeyDown = (ev: WindowEventMap['keydown']) => {
+      if (ev.key !== 'Escape' || ev.defaultPrevented || sending) return
+      if (!isTopmostModal()) return
+      ev.preventDefault()
+      onClose()
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [open, sending, isTopmostModal, onClose])
 
   // Recurring state
   const [recurring, setRecurring] = useState<RecurringRow[]>([])
@@ -215,6 +241,45 @@ export function ScheduleShareModal({
     () => computeShareDates(baseDateYmd, { includeCurrentDay: nowInclude, scope: nowScope }),
     [baseDateYmd, nowInclude, nowScope],
   )
+  const nowDatesKey = nowDates.join(',')
+
+  // Same fetch the instant path makes server-side: one board read from the
+  // sharer's visibility over p_start..p_end, filtered to the Include set.
+  useEffect(() => {
+    if (!open || tab !== 'now' || !viewerId) return
+    const dates = nowDatesKey ? nowDatesKey.split(',') : []
+    if (dates.length === 0) {
+      setPreviewLines([])
+      setPreviewError(null)
+      setPreviewLoading(false)
+      return
+    }
+    let cancelled = false
+    setPreviewLoading(true)
+    setPreviewError(null)
+    ;(async () => {
+      try {
+        const rows = await withSupabaseRetry(
+          () =>
+            supabase.rpc('list_schedule_blocks_for_share', {
+              p_viewer: viewerId,
+              p_start: dates[0]!,
+              p_end: dates[dates.length - 1]!,
+            }),
+          'schedule share preview',
+        )
+        if (cancelled) return
+        setPreviewLines(schedulePreviewLines((rows ?? []) as SchedulePreviewBlockRow[], dates))
+      } catch (e: unknown) {
+        if (!cancelled) setPreviewError(formatErrorMessage(e, 'Could not load the preview'))
+      } finally {
+        if (!cancelled) setPreviewLoading(false)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [open, tab, viewerId, nowDatesKey])
 
   const handleAddRecipient = useCallback((id: string) => {
     if (!id) return
@@ -475,6 +540,14 @@ export function ScheduleShareModal({
               <p style={{ margin: '0.35rem 0 0', fontSize: '0.72rem', color: 'var(--text-muted)' }}>
                 Covers: {formatDatePreview(nowDates)}
               </p>
+              <ScheduleEmailPreviewPanel
+                lines={previewLines}
+                loading={previewLoading}
+                error={previewError}
+                multiDay={nowDates.length > 1}
+                groupByPerson
+                caption="The board as you can see it right now — every recipient gets this same email."
+              />
             </div>
 
             {nowError ? (

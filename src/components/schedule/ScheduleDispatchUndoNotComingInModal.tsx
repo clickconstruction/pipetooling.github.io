@@ -1,8 +1,12 @@
+import { undoNotComingInCopy } from '../../lib/scheduleDispatchNotComingInCopy'
+
 /**
  * Confirm modal for undoing a single-day "Not coming in" mark from the
  * Schedule Dispatch grid. Mirrors `RemoveScheduleBlockConfirmModal`'s style,
  * but uses positive blue for the confirm button (this restores normal
- * scheduling, it isn't a destructive action).
+ * scheduling, it isn't a destructive action). Copy lives in
+ * `lib/scheduleDispatchNotComingInCopy.ts` — including the J18-F3 honesty
+ * line: the undo never re-creates blocks the mark removed.
  */
 export function ScheduleDispatchUndoNotComingInModal({
   open,
@@ -23,6 +27,7 @@ export function ScheduleDispatchUndoNotComingInModal({
   isNcns?: boolean
 }) {
   if (!open) return null
+  const copy = undoNotComingInCopy({ personLabel, workDateLabel, isNcns })
   return (
     <div
       style={{
@@ -57,18 +62,22 @@ export function ScheduleDispatchUndoNotComingInModal({
           id="schedule-dispatch-undo-not-coming-in-title"
           style={{ margin: '0 0 0.5rem', fontSize: '1.05rem' }}
         >
-          {isNcns ? 'Clear the NCNS mark from the schedule?' : 'Remove the Not coming in mark?'}
+          {copy.title}
         </h2>
-        <p style={{ margin: '0 0 1rem', color: 'var(--text-700)', fontSize: '0.875rem', lineHeight: 1.4 }}>
-          {personLabel} on {workDateLabel} — they’ll be schedulable again.
-          {isNcns ? (
-            <>
-              {' '}
-              The <strong>attendance incident stays on record</strong> (write-ups &amp; review); removing
-              it is a separate payroll-side action.
-            </>
-          ) : null}
+        <p style={{ margin: '0 0 0.5rem', color: 'var(--text-700)', fontSize: '0.875rem', lineHeight: 1.4 }}>
+          {copy.lead}
         </p>
+        {copy.blocksNote ? (
+          <p style={{ margin: '0 0 0.5rem', color: 'var(--text-700)', fontSize: '0.875rem', lineHeight: 1.4 }}>
+            {copy.blocksNote}
+          </p>
+        ) : null}
+        {copy.ncnsNote ? (
+          <p style={{ margin: '0 0 0.5rem', color: 'var(--text-700)', fontSize: '0.875rem', lineHeight: 1.4 }}>
+            <strong>{copy.ncnsNote}</strong>
+          </p>
+        ) : null}
+        <div style={{ height: '0.5rem' }} />
         <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
           <button
             type="button"
@@ -99,7 +108,7 @@ export function ScheduleDispatchUndoNotComingInModal({
               cursor: busy ? 'not-allowed' : 'pointer',
             }}
           >
-            {busy ? 'Updating…' : 'Mark as coming in'}
+            {busy ? 'Updating…' : copy.confirmLabel}
           </button>
         </div>
       </div>

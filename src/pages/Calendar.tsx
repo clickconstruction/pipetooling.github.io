@@ -28,6 +28,7 @@ import { resolveCalendarWorkday, timeOffKindLabel } from '../lib/resolveCalendar
 import type { ClockSessionRow } from '../types/clockSessions'
 import { PreviewJobModal } from '../components/calendar/PreviewJobModal'
 import { scheduleFormatTimeHm, scheduleFormatWindow } from '../lib/jobScheduleChicago'
+import { CAN_VIEW_SCHEDULE_DISPATCH_ROLES } from '../lib/scheduleDispatchEditRoles'
 import { useLedgerPrefixMap } from '../contexts/LedgerDisplayPrefixContext'
 import { useJobDetailModal } from '../contexts/JobDetailModalContext'
 
@@ -992,6 +993,14 @@ export default function Calendar() {
 
   return (
     <div>
+      {authRole && CAN_VIEW_SCHEDULE_DISPATCH_ROLES.has(authRole) ? (
+        // Journey map J18-K1 P6 (kept, hidden in place): this page is a personal
+        // day + bid-deadline calendar, not a dispatch surface — say where that is.
+        <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem', margin: '0 0 0.75rem' }}>
+          Putting people on jobs happens on the <Link to="/schedule-dispatch">Schedule hub</Link> — this page is your own
+          day and bid due dates.
+        </p>
+      ) : null}
       {!userName && (
         <p style={{ color: 'var(--text-muted)', marginBottom: '1rem' }}>
           No stages assigned. Stages are assigned by name in workflow steps.

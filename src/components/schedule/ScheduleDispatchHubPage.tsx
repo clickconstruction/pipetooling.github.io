@@ -131,6 +131,8 @@ import {
 } from '../../lib/userTimeOffByCell'
 import { computeLatenessByCell, fetchClockInsForUsersInRange, type PersonDayLateness } from '../../lib/scheduleLateness'
 import { ScheduleDispatchUndoNotComingInModal } from './ScheduleDispatchUndoNotComingInModal'
+import ConfirmDialog from '../ConfirmDialog'
+import { markOffConfirmCopy } from '../../lib/scheduleDispatchNotComingInCopy'
 import { stripTrailingZip } from '../../lib/displayAddress'
 
 /** Picker subline: "<N>d Mon D | address" (N calendar days since the job was added, app calendar TZ). Either part optional. */
@@ -1967,14 +1969,34 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
     ],
   )
 
-  /** Empty-cell "off" button: mark that person/day as not coming in directly. */
+  /**
+   * Empty-cell "off" button (J18-F3): asks first. The button only renders on a
+   * cell with zero blocks, so the write is a time-off row and nothing else —
+   * but it sits 20px from `+` on the board's densest row, and the only undo
+   * is the chip's own confirm modal. One confirm makes the pair symmetric.
+   */
+  const [markOffConfirmTarget, setMarkOffConfirmTarget] = useState<
+    { personUserId: string; workDate: string; personLabel: string; workDateLabel: string } | null
+  >(null)
   const onMarkNotComingInForCell = useCallback(
     (personUserId: string, workDate: string) => {
       if (notComingInBusy) return
-      void markNotComingInForPersonDay(personUserId, workDate)
+      setMarkOffConfirmTarget({
+        personUserId,
+        workDate,
+        personLabel: hubPeopleNameById.get(personUserId) ?? 'Team member',
+        workDateLabel: scheduleFormatWeekdayLong(workDate),
+      })
     },
-    [notComingInBusy, markNotComingInForPersonDay],
+    [notComingInBusy, hubPeopleNameById],
   )
+  const cancelMarkOffForCell = useCallback(() => setMarkOffConfirmTarget(null), [])
+  const confirmMarkOffForCell = useCallback(() => {
+    const target = markOffConfirmTarget
+    setMarkOffConfirmTarget(null)
+    if (!target || notComingInBusy) return
+    void markNotComingInForPersonDay(target.personUserId, target.workDate)
+  }, [markOffConfirmTarget, notComingInBusy, markNotComingInForPersonDay])
 
   // ──────────────────────────────────────────────────────────────────────
   // Undo "Not coming in" — confirm modal driven by a click on the cell chip.
@@ -2744,6 +2766,13 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
           addTimeline={addBlockModalTimeline}
         />
         {removeScheduleBlockConfirmModal}
+        {markOffConfirmTarget ? (
+          <ConfirmDialog
+            {...markOffConfirmCopy(markOffConfirmTarget)}
+            onConfirm={confirmMarkOffForCell}
+            onCancel={cancelMarkOffForCell}
+          />
+        ) : null}
         <ScheduleDispatchUndoNotComingInModal
           open={undoNotComingInTarget != null}
           busy={undoNotComingInBusy}
