@@ -115,6 +115,26 @@ describe('lastTouchLabel', () => {
     expect(lastTouchLabel(prospect({ id: 'a' }), { interaction_type: 'didnt_answer', created_at: daysAgo(1) }, NOW)).toBe("didn't answer 1d ago")
   })
 
+  it("shows the bucket's clock beside the call when a later touch moved the prospect (J34-F3)", () => {
+    // Called 187d ago, but a site-visit note 12d ago put it in "last 30 days": the card says both.
+    expect(
+      lastTouchLabel(prospect({ id: 'a', last_contact: daysAgo(12) }), { interaction_type: 'didnt_answer', created_at: daysAgo(187) }, NOW),
+    ).toBe("didn't answer 187d ago · noted 12d ago")
+    expect(
+      lastTouchLabel(prospect({ id: 'a', last_contact: daysAgo(0) }), { interaction_type: 'answered', created_at: daysAgo(3) }, NOW),
+    ).toBe('answered 3d ago · noted today')
+  })
+
+  it('stays a single clock when the call IS the last touch (same day or newer)', () => {
+    expect(
+      lastTouchLabel(prospect({ id: 'a', last_contact: daysAgo(3) }), { interaction_type: 'answered', created_at: daysAgo(3) }, NOW),
+    ).toBe('answered 3d ago')
+    // last_contact older than the call (stale column) — never a confusing "noted" suffix.
+    expect(
+      lastTouchLabel(prospect({ id: 'a', last_contact: daysAgo(40) }), { interaction_type: 'didnt_answer', created_at: daysAgo(2) }, NOW),
+    ).toBe("didn't answer 2d ago")
+  })
+
   it('falls back to noted, then added', () => {
     expect(lastTouchLabel(prospect({ id: 'a', last_contact: daysAgo(12) }), undefined, NOW)).toBe('noted 12d ago')
     expect(lastTouchLabel(prospect({ id: 'a', created_at: daysAgo(182) }), undefined, NOW)).toBe('added 182d ago')

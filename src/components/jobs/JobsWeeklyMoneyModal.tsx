@@ -20,6 +20,7 @@ import {
   fetchWeekCloseCounts,
   type MoneyfillQueueCount,
 } from '../../lib/moneyfillWeekClose'
+import { closeWeekStillRunning, isDefaultCloseWeek, moneyfillHref, resolveWeeklyMoneyReportWeek } from '../../lib/closeWeekAnchor'
 import {
   buildWeeklyMoneyReportHtml,
   buildWeeklyMoneyView,
@@ -43,7 +44,9 @@ type JobsWeeklyMoneyModalProps = {
   /**
    * Week to open on (a Monday ymd) when the opener knows one — Moneyfill's
    * "See the week's report" pins the report to the close week the picker was
-   * showing (Tier-2 #17). Null/undefined: this week, as before.
+   * showing (Tier-2 #17). Null/undefined: the previous complete close week —
+   * the same week Moneyfill's picker opens on (Tier-2 #18; it used to be the
+   * current week, so the two halves of one close disagreed by seven days).
    */
   initialMondayYmd?: string | null
   onClose: () => void
@@ -138,10 +141,10 @@ function JobRows({ rows, lens }: { rows: WeeklyMoneyJobRow[]; lens: WeeklyMoneyL
 }
 
 export function JobsWeeklyMoneyModal({ open, initialMondayYmd, onClose, showToast, users }: JobsWeeklyMoneyModalProps) {
-  const [mondayYmd, setMondayYmd] = useState(() => mondayOfWeekYmd(chicagoYmdOf(new Date())))
-  // Each open that names a week lands on it; ‹ › still move freely afterwards.
+  const [mondayYmd, setMondayYmd] = useState(() => resolveWeeklyMoneyReportWeek(initialMondayYmd))
+  // Each open lands on the pinned week, else the close week (closeWeekAnchor.ts); ‹ › still move freely afterwards.
   useEffect(() => {
-    if (open && initialMondayYmd) setMondayYmd(initialMondayYmd)
+    if (open) setMondayYmd(resolveWeeklyMoneyReportWeek(initialMondayYmd))
   }, [open, initialMondayYmd])
   const [lens, setLens] = useState<WeeklyMoneyLens>('earned')
   const [loading, setLoading] = useState(false)
@@ -290,7 +293,19 @@ export function JobsWeeklyMoneyModal({ open, initialMondayYmd, onClose, showToas
           <button type="button" onClick={() => setMondayYmd((m) => addDaysYmd(m, -7))} aria-label="Previous week" style={{ padding: '0.2rem 0.7rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', cursor: 'pointer', color: 'var(--text-700)' }}>
             ‹
           </button>
-          <span style={{ fontSize: '0.9375rem', fontWeight: 600 }}>Week of {label}</span>
+          <span style={{ fontSize: '0.9375rem', fontWeight: 600 }}>
+            Week of {label}
+            {/* Which week this is, in the close's own words (Tier-2 #18): the default is the week you close Monday morning. */}
+            {closeWeekStillRunning(mondayYmd) ? (
+              <span style={{ marginLeft: 6, fontSize: '0.75rem', fontWeight: 500, color: 'var(--text-amber-700)' }} title="This week hasn't ended yet — its close can't be final.">
+                · still running
+              </span>
+            ) : isDefaultCloseWeek(mondayYmd) ? (
+              <span style={{ marginLeft: 6, fontSize: '0.75rem', fontWeight: 500, color: 'var(--text-muted)' }} title="The previous complete week — the one Moneyfill closes.">
+                · close week
+              </span>
+            ) : null}
+          </span>
           <button type="button" onClick={() => setMondayYmd((m) => addDaysYmd(m, 7))} aria-label="Next week" style={{ padding: '0.2rem 0.7rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', cursor: 'pointer', color: 'var(--text-700)' }}>
             ›
           </button>
@@ -432,7 +447,7 @@ export function JobsWeeklyMoneyModal({ open, initialMondayYmd, onClose, showToas
               return (
                 <p style={{ margin: '0 0 0.4rem', padding: '0.45rem 0.6rem', borderRadius: 6, background: 'var(--bg-subtle)', fontSize: '0.75rem', color: 'var(--text-amber-700)' }}>
                   <b style={{ letterSpacing: '0.06em', textTransform: 'uppercase', fontSize: '0.625rem' }}>Confidence</b>{' '}
-                  — {line} → <a href="/moneyfill" style={{ color: 'var(--text-amber-700)', fontWeight: 700 }}>work Moneyfill to zero</a>
+                  — {line} → <a href={moneyfillHref(mondayYmd)} style={{ color: 'var(--text-amber-700)', fontWeight: 700 }}>work Moneyfill to zero</a>
                 </p>
               )
             })()}

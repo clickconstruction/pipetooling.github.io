@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Link, Navigate } from 'react-router-dom'
+import { Link, Navigate, useSearchParams } from 'react-router-dom'
 import { QuickfillNoncardAttributionSection } from '../components/quickfill/QuickfillNoncardAttributionSection'
 import { useAuth } from '../hooks/useAuth'
 import { useQuickfillNoncardAttribution } from '../hooks/useQuickfillNoncardAttribution'
@@ -18,20 +18,32 @@ import { weeklyMoneyReportHref } from '../lib/weeklyMoneyReportLink'
 import { weekLabel } from '../lib/jobs/stagesWeeklyMovement'
 import {
   fetchWeekCloseCounts,
+  noncardScopeNote,
+  noncardWeekQueueCount,
   previousCompleteWeekMonday,
   summarizeWeekClose,
   type MoneyfillQueueCount,
 } from '../lib/moneyfillWeekClose'
+import { closeWeekStillRunning, MONEYFILL_WEEK_PARAM, parseCloseWeekParam } from '../lib/closeWeekAnchor'
+import { WEEK_CLOSE_OPENED_CONTROL, weekCloseOpenedTarget } from '../lib/quickfill/closeWeekChip'
+import { recordNavClick } from '../lib/navClickTelemetry'
+import {
+  NONCARD_QUEUE_WINDOW_DAYS,
+  noncardQueueTotalOutflow,
+  splitNoncardQueueRowsByWindow,
+} from '../lib/banking/noncardAttributionQueue'
 
 /**
  * Moneyfill — the controller/dev counterpart to Quickfill: financial queues
  * worked to zero, organized as a WEEKLY CLOSE (v2.1444, WEEKLY_MONEY_PLAN.md
  * Phase 3a). The close-week header shows how many queues are at zero for the
  * chosen Mon–Sun Central week (defaults to the previous complete week — the
- * week you close Monday morning); each queue card below is week-scoped where
- * that makes sense and links to the existing fix surface. The same counts
- * feed the Weekly Money Movement report's confidence footer via
- * `moneyfillWeekClose.ts` — one implementation, two surfaces.
+ * week you close Monday morning — `closeWeekAnchor.ts`; `?week=<ymd>` pins
+ * the picker, which is how Quickfill's close-week chips land here); each queue
+ * card below is week-scoped where that makes sense and links to the existing
+ * fix surface. The same counts feed the Weekly Money Movement report's
+ * confidence footer via `moneyfillWeekClose.ts` — one implementation, two
+ * surfaces — and since Tier-2 #18 the report opens on this same default week.
  *
  * Page visibility is role-gated (dev + controller); queue bodies stay
  * capability-probed (e.g. bank transfers needs the banking_attributors grant).
@@ -39,7 +51,10 @@ import {
 export default function Moneyfill() {
   const { role, user: authUser } = useAuth()
   const noncard = useQuickfillNoncardAttribution()
-  const [weekMonday, setWeekMonday] = useState(() => previousCompleteWeekMonday())
+  const [searchParams] = useSearchParams()
+  const [weekMonday, setWeekMonday] = useState(
+    () => parseCloseWeekParam(searchParams.get(MONEYFILL_WEEK_PARAM)) ?? previousCompleteWeekMonday(),
+  )
   const [counts, setCounts] = useState<MoneyfillQueueCount[] | null>(null)
 
   useEffect(() => {
@@ -59,6 +74,20 @@ export default function Moneyfill() {
   }, [weekMonday, authUser?.id])
 
   const summary = useMemo(() => (counts ? summarizeWeekClose(counts) : null), [counts])
+
+  // Bank transfers is the one section whose LIST is 90-day scoped while its chip
+  // is week scoped (Tier-2 #18): say so on the surface, with both numbers.
+  const noncardScope = useMemo(() => {
+    if (!noncard.eligible) return null
+    const { recent } = splitNoncardQueueRowsByWindow(noncard.rows, Date.now())
+    return noncardScopeNote(
+      noncardWeekQueueCount(noncard.rows, weekMonday, true),
+      NONCARD_QUEUE_WINDOW_DAYS,
+      recent.length,
+      noncardQueueTotalOutflow(recent),
+      weekLabel(weekMonday),
+    )
+  }, [noncard.eligible, noncard.rows, weekMonday])
 
   if (role != null && role !== 'dev' && role !== 'controller') {
     return <Navigate to="/dashboard" replace />
@@ -86,6 +115,11 @@ export default function Moneyfill() {
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
           <h2 style={{ fontSize: '1.0625rem', fontWeight: 600, margin: 0 }}>
             Close out: Week of {weekLabel(weekMonday)}
+            {closeWeekStillRunning(weekMonday) ? (
+              <span style={{ marginLeft: 8, fontSize: '0.75rem', fontWeight: 500, color: 'var(--text-amber-700)' }} title="This week hasn't ended yet — its close can't be final.">
+                still running
+              </span>
+            ) : null}
           </h2>
           <button type="button" aria-label="Previous week" style={navBtnStyle} onClick={() => setWeekMonday((m) => addDaysYmd(m, -7))}>
             ‹
@@ -133,6 +167,7 @@ export default function Moneyfill() {
             {counts.map((c) => (
               <span
                 key={c.key}
+                title={`${c.label} — week of ${weekLabel(weekMonday)} only`}
                 style={{
                   display: 'inline-flex',
                   alignItems: 'center',
@@ -163,6 +198,7 @@ export default function Moneyfill() {
           {/* The forward door (Tier-2 #17, J5-2): the report opens ON this close week, not on today's. */}
           <Link
             to={weeklyMoneyReportHref(weekMonday)}
+            onClick={() => recordNavClick(authUser?.id, role, WEEK_CLOSE_OPENED_CONTROL, weekCloseOpenedTarget('moneyfill-report', weekMonday))}
             style={{
               ...navBtnStyle,
               display: 'inline-flex',
@@ -195,7 +231,13 @@ export default function Moneyfill() {
       >
         <h2 style={{ fontSize: '1.125rem', fontWeight: 600, margin: '0 0 0.75rem' }}>
           Bank transfers needing attribution
+          <span style={{ marginLeft: 8, fontSize: '0.8125rem', fontWeight: 500, color: 'var(--text-muted)' }}>
+            — last {NONCARD_QUEUE_WINDOW_DAYS} days, not just this week
+          </span>
         </h2>
+        {noncardScope ? (
+          <p style={{ margin: '-0.25rem 0 0.75rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>{noncardScope}</p>
+        ) : null}
         {noncard.eligible ? (
           <QuickfillNoncardAttributionSection rows={noncard.rows} loading={noncard.loading} refetch={noncard.refetch} />
         ) : noncard.loading ? (

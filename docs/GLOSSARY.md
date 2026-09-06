@@ -7,7 +7,7 @@ file: GLOSSARY.md
 type: Reference
 purpose: Comprehensive definitions of all domain-specific terms and technical concepts
 audience: All users (especially new developers and AI agents)
-last_updated: 2026-09-01
+last_updated: 2026-09-05
 estimated_read_time: 15-20 minutes (reference only)
 difficulty: Beginner
 
@@ -501,6 +501,14 @@ Dev-only safety net for hard deletes: a `BEFORE DELETE` trigger (`archive_delete
 ---
 
 ## Workflow Concepts
+
+### Pay week / Close week
+The app has exactly two week families, each with one anchor helper (v2.2858 / v2.2898):
+
+- **Pay week** — **Sunday–Saturday**, the company payroll calendar ([`payWeekAnchor.ts`](../src/lib/payWeekAnchor.ts)). Used by the People → Hours grid, Draft Payroll, the people-hours approval queues, and Moneyfill's one payroll-lens queue ("Sessions pending approval" reviews the pay week that ends inside the close week).
+- **Close week** — **Monday–Sunday**, Central calendar ([`closeWeekAnchor.ts`](../src/lib/closeWeekAnchor.ts)). The week the **Weekly Money Movement** report scores and **Moneyfill** closes. Its default is the **previous complete week** — the week you close Monday morning — never the week still running; both surfaces open there (`previousCompleteCloseWeek`, `resolveWeeklyMoneyReportWeek`). `/moneyfill?week=<monday>` and `?stagesMoneyWeek=<monday>` pin a specific one.
+
+A Quickfill **daily mark** ("Marked 8:41 AM") is neither: it is an org-wide "checked today" stamp. The money stations carry a **"Close week: $N open"** chip (`closeWeekChip.ts`) that reads Moneyfill's counts for the close week, so a green mark is never mistaken for a closed week.
 
 ### Line Item
 Financial entry on a workflow stage representing materials, labor, or expenses. Has memo, amount, and optional link to external resources. Also called **Line Items For Office** in the UI.

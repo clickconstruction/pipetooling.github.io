@@ -30,6 +30,8 @@ The row disappears from the queue as soon as it's labeled, and the section's cou
 
 The list shows the last **90 days** by default. Older unlabeled transfers stay tucked behind:
 
+On Moneyfill the same list sits inside a one-week page, so the section heading says **last 90 days, not just this week** and a line under it reconciles the two numbers: the **Bank transfers** chip in the close-week header counts only transfers posted in that Monday–Sunday week, while the list is everything still unlabeled from the last 90 days — older transfers belong to earlier weeks' closes.
+
 :::example Bottom of the list
 {{button:outline|Show older (52 more)}}
 :::

@@ -18,7 +18,7 @@ Every section is a card with a **"Mark [Section] up to date!"** button. The butt
 
 {{button:amber|Mark Warnings up to date!}} &nbsp;— 12 to 30 hours ago
 
-{{button:green|Mark Warnings up to date!}} &nbsp;— reviewed within the last 12 hours
+{{button:green|Mark Warnings up to date!}} &nbsp;— marked within the last 12 hours
 :::
 
 Pressing it records who marked it and when, and collapses the section into a green bar:
@@ -28,6 +28,14 @@ Pressing it records who marked it and when, and collapses the section into a gre
 :::
 
 Sections re-expand on their own after 12 hours, so tomorrow's pass starts fresh. Use {{button:outline|Open now}} to peek inside a collapsed section, and the history icon to see who marked it recently.
+
+A mark means *someone checked this today* — it is not the week's close. The four stations that feed the weekly money close — **People Hours**, **Unassigned field time**, **Banking sorting**, **Supply Houses** — carry a second, read-only chip beside the mark that says what the close still owes for the previous complete Monday–Sunday week:
+
+:::example A green mark that is not a closed week
+{{chip:green|Supply Houses — Marked 8:41 AM by Dana · Reloads in 12h}} &nbsp; {{chip:yellow|Close week: $239 open}}
+:::
+
+Controllers and devs can tap the chip to open Moneyfill on that week; the numbers are Moneyfill's own, so the two never disagree. Everyone else sees a plain **Feeds the weekly close** label — hover it for what the daily mark is and is not. {{chip:green|Close week: clear}} means every queue this station feeds is at zero for that week.
 
 Marking a section also removes its chip from the **floating section bar** at the bottom of the screen for the rest of your visit — the bar shrinks toward empty as your pass progresses. The chips all come back the next time you open Quickfill (the sections themselves stay collapsed until their 12 hours are up), and {{button:outline|Open now}} puts a section's chip back immediately.
 

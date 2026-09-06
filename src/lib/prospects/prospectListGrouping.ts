@@ -38,9 +38,9 @@ export const LIST_SECTION_ORDER: readonly ListSectionKey[] = [
 
 export const LIST_SECTION_LABELS: Record<ListSectionKey, string> = {
   never_called: 'Never called',
-  recent: 'Recently contacted — last 30 days',
-  going_cold: 'Going cold — 30–90 days',
-  cold: 'Cold — 90+ days',
+  recent: 'Recently contacted — any touch in the last 30 days',
+  going_cold: 'Going cold — last touch 30–90 days ago',
+  cold: 'Cold — no touch in 90+ days',
   converted: 'Converted',
   cant_reach: "Can't reach",
   not_a_fit: 'No longer a fit',
@@ -167,6 +167,14 @@ function ageWord(days: number | null): string {
  * "Last touch" cell: call outcome when the prospect has been called
  * ("answered 3d ago" / "didn't answer today"), otherwise the same
  * noted/added language as the queue peek (v2.2301).
+ *
+ * Two clocks, one card (journey-map Tier-2 #18, J34-F3): the SECTION buckets
+ * on `last_contact` (any touch), the call phrase reads the last CALL. When a
+ * site-visit note or email is newer than the last call, "didn't answer 187d
+ * ago" sat inside "last 30 days" and read as a sorting bug. The grouping is
+ * designed-in (v2.2453) and stays; the label now carries the bucket's clock
+ * too whenever the two differ by a day or more — "didn't answer 187d ago ·
+ * noted 12d ago" — so the card always shows the number the section used.
  */
 export function lastTouchLabel(
   p: Pick<ListGroupableProspect, 'last_contact' | 'created_at'>,
@@ -175,7 +183,11 @@ export function lastTouchLabel(
 ): string {
   if (lastCall) {
     const word = lastCall.interaction_type === 'answered' ? 'answered' : "didn't answer"
-    return `${word}${ageWord(daysSince(lastCall.created_at, nowMs))}`
+    const callDays = daysSince(lastCall.created_at, nowMs)
+    const touchDays = daysSince(p.last_contact, nowMs)
+    const bucketClock =
+      touchDays != null && (callDays == null || touchDays < callDays) ? ` · noted${ageWord(touchDays)}` : ''
+    return `${word}${ageWord(callDays)}${bucketClock}`
   }
   if (p.last_contact) return `noted${ageWord(daysSince(p.last_contact, nowMs))}`
   const d = daysSince(p.created_at, nowMs)
