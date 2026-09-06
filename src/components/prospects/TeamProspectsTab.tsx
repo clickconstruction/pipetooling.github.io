@@ -30,7 +30,7 @@ import {
   roleKeyOf,
   type TeamProspectRankUpdate,
 } from '../../lib/teamProspectRanking'
-import { distinctTeamProspectSources, summarizeTeamProspectSources } from '../../lib/teamProspectSourceSummary'
+import { describeSourceVariants, distinctTeamProspectSources, summarizeTeamProspectSources } from '../../lib/teamProspectSourceSummary'
 
 export type TeamProspect = {
   id: string
@@ -294,7 +294,7 @@ function CandidateFields({
       </label>
       <label>
         <span style={labelSpanStyle}>Source (referral, job board, walk-in…)</span>
-        {/* Reuse existing spellings so the Source success stats don't fragment */}
+        {/* Offer the grouped labels (board names) — pasted job-board URLs fold into one entry each */}
         <input type="text" list="team-prospect-source-options" value={draft.source} onChange={(e) => setDraft({ ...draft, source: e.target.value })} style={inputStyle} />
         <datalist id="team-prospect-source-options">
           {knownSources.map((s) => (
@@ -1682,7 +1682,12 @@ export default function TeamProspectsTab({ authUserId, isDev, resolveMasterId }:
                 <tbody>
                   {sourceSummary.map((s) => (
                     <tr key={s.key} style={{ borderBottom: '1px solid var(--border)' }}>
-                      <td style={{ padding: '0.5rem 0.75rem' }}>{s.label}</td>
+                      <td style={{ padding: '0.5rem 0.75rem' }} title={describeSourceVariants(s.variants) ?? undefined}>
+                        {s.label}
+                        {s.variants.length > 1 && (
+                          <span style={{ marginLeft: '0.4rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>{s.variants.length} variants</span>
+                        )}
+                      </td>
                       <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{s.total}</td>
                       <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: 'var(--text-muted)' }}>{s.active}</td>
                       <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: s.hired > 0 ? '#16a34a' : undefined, fontWeight: s.hired > 0 ? 600 : undefined }}>{s.hired}</td>

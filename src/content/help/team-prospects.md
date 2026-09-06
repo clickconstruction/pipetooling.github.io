@@ -37,7 +37,7 @@ Neither is final: open the bucket and press **Back to active** to put someone ba
 
 ## See which source is working
 
-Fill in the **Source** field when you add candidates (it suggests spellings you've already used — pick from the list so the stats stay clean). The collapsible **Source success** section below the board then shows, per source, how many candidates came in, how many were hired or passed, and the **hire rate**:
+Fill in the **Source** field when you add candidates — a job board's name, a pasted link to the candidate's profile on that board, "referral", "walk-in", whatever you have (it suggests names you've already used). Pasted links group under their board automatically: every Indeed candidate URL counts as **Indeed**, however long the link, and "indeed.com", "Indeed ad" and "INDEED" all land in the same row. The collapsible **Source success** section below the board then shows, per source, how many candidates came in, how many were hired or passed, and the **hire rate**:
 
 :::example Reading the table
 **Referral** — 6 candidates · 2 active · 3 hired · 1 passed · **75%** hire rate
