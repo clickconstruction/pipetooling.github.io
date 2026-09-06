@@ -40,12 +40,14 @@ import { normalizeAddressForGeocodeKey } from '../../lib/map/normalizeAddressFor
 import { batchGeocodeCacheKeys } from '../../lib/map/geocodeCacheBatches'
 import { mapGeocodeErrorMessage } from '../../lib/map/geocodeErrorMessage'
 import {
+  fetchBidTitlesForScheduleBlocks,
   fetchJobsLedgerForScheduleDispatchHub,
   fetchUserNamesForIds,
   fetchUsersTabRosterForScheduleDispatchHub,
   formatScheduleDispatchHubJobTitle,
   type ScheduleDispatchHubJobRow,
 } from '../../lib/scheduleDispatchHub'
+import { addBidAnchorTitles, collectScheduledBidIds, scheduleBlockTitle } from '../../lib/scheduleBlockTitle'
 import { findJobsByNumber } from '../../lib/jobs/stagesJobNumberJump'
 import {
   defaultNewBlockRangeInFirstGap,
@@ -88,7 +90,6 @@ import {
   ymdAddDays,
 } from '../../utils/dateUtils'
 import { useLedgerPrefixMap } from '../../contexts/LedgerDisplayPrefixContext'
-import { formatBidLedgerShortLine } from '../../lib/ledgerDisplayPrefixes'
 import { QUICKFILL_SECTION_BANNER_BOX_STYLE } from '../../lib/quickfillSectionBannerStyle'
 import { groupRosterUsersByAuthRoleSection } from '../../lib/usersTabRosterRoleSections'
 import { blocksToSegments } from '../../lib/quickfillScheduleSegments'
@@ -660,12 +661,14 @@ export function QuickfillScheduleSection({
         (j) =>
           (j.hcp_number ?? '').toLowerCase().includes(q) ||
           (j.job_name ?? '').toLowerCase().includes(q) ||
-          formatScheduleDispatchHubJobTitle(j.hcp_number, j.job_name).toLowerCase().includes(q),
+          scheduleBlockTitle({ kind: 'job', hcpNumber: j.hcp_number, jobTitle: j.job_name, clickNumber: j.click_number })
+            .toLowerCase()
+            .includes(q),
       )
     }
     return list.map((j) => ({
       id: j.id,
-      displayTitle: formatScheduleDispatchHubJobTitle(j.hcp_number, j.job_name),
+      displayTitle: scheduleBlockTitle({ kind: 'job', hcpNumber: j.hcp_number, jobTitle: j.job_name, clickNumber: j.click_number }),
       sessionToday: sessionTodaySet.has(j.id),
     }))
   }, [assignJobPickerSearch, assignJobPickerNumberQuery, quickfillOrderedSessionJobLedgerIds, quickfillPickerJobsSorted])
@@ -785,11 +788,16 @@ export function QuickfillScheduleSection({
       if (!jobsRes.error) {
         setHubJobsForPicker(jobsRes.data)
         for (const j of jobsRes.data) {
-          jMap.set(j.id, formatScheduleDispatchHubJobTitle(j.hcp_number, j.job_name))
+          jMap.set(
+            j.id,
+            scheduleBlockTitle({ kind: 'job', hcpNumber: j.hcp_number, jobTitle: j.job_name, clickNumber: j.click_number }),
+          )
         }
       } else {
         setHubJobsForPicker([])
       }
+      // Job entries first so the picker can paint; the `bid:` anchor entries join below once the
+      // day's blocks and sessions say which bids need naming.
       setJobTitleById(jMap)
 
       const namesRes = await fetchUserNamesForIds(ids)
@@ -830,40 +838,15 @@ export function QuickfillScheduleSection({
         showToast(formatErrorMessage(e, 'Could not load clock sessions'), 'warning')
       }
 
-      const bidIds = new Set<string>()
-      for (const r of sessionRows) {
-        if (r.bid_id) bidIds.add(r.bid_id)
-      }
-      const bidMap = new Map<string, string>()
-      if (bidIds.size > 0) {
-        try {
-          const bidRows = await withSupabaseRetry(
-            async () =>
-              await supabase
-                .from('bids')
-                .select('id, bid_number, project_name, service_type_id')
-                .in('id', [...bidIds]),
-            'quickfill schedule bids for clock sessions',
-          )
-          for (const br of bidRows ?? []) {
-            const b = br as {
-              id: string
-              bid_number: string | null
-              project_name: string | null
-              service_type_id: string | null
-            }
-            const num = b.bid_number?.trim()
-            const pn = (b.project_name ?? '').trim()
-            const label = num
-              ? formatBidLedgerShortLine(ledgerPrefixMap, b.service_type_id, b.bid_number, b.project_name)
-              : pn || 'Bid'
-            bidMap.set(b.id, label)
-          }
-        } catch (e) {
-          showToast(formatErrorMessage(e, 'Could not load bid names for clock sessions'), 'warning')
-        }
-      }
+      // Bids to name: the ones people are SCHEDULED on (block anchors) and the ones they CLOCKED
+      // on (sessions). Before Tier-2 #22 only the sessions were fetched, so a scheduled bid bar
+      // read "— · Job" while the Clocked line under it named the bid (J18-F4).
+      const bidIds = collectScheduledBidIds(blockErr ? [] : blockRows, sessionRows)
+      const bidRes = await fetchBidTitlesForScheduleBlocks(bidIds, ledgerPrefixMap, 'quickfill schedule bid titles')
+      if (bidRes.error) showToast(bidRes.error, 'warning')
+      const bidMap = bidRes.data
       setBidTitleById(bidMap)
+      setJobTitleById(addBidAnchorTitles(jMap, bidMap))
 
       const sessionsByUser = new Map<string, ClockSessionForDispatchBand[]>()
       for (const id of ids) {
@@ -1696,7 +1679,9 @@ export function QuickfillScheduleSection({
         personName={(reorderUserId ? nameById.get(reorderUserId) : null) ?? 'this person'}
         blocks={(reorderUserId ? blocksByUserId.get(reorderUserId) ?? [] : []).map((r) => ({
           id: r.id,
-          label: jobTitleById.get(r.job_id ?? `bid:${r.bid_id ?? ''}`) ?? (r.job_id == null ? 'Bid visit' : 'Job'),
+          label:
+            jobTitleById.get(r.job_id ?? `bid:${r.bid_id ?? ''}`) ??
+            (r.job_id == null ? scheduleBlockTitle({ kind: 'bid' }) : formatScheduleDispatchHubJobTitle(null, null)),
           time_start: r.time_start,
           time_end: r.time_end,
           linked: r.shared_block_group_id != null,

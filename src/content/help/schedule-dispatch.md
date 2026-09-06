@@ -50,13 +50,19 @@ Pick the job — a schedule block appears in the cell. Jobs the person already c
 
 ### Scheduling bid work
 
-**Bids can go on the calendar too** — site walks, estimating visits, pre-construction work that has no job yet. Below the job rows, the same picker lists open bids (anything not marked lost) with a violet {{chip:purple|Bid}} chip; search matches the bid number, project name, and address. A bid block places, drags, copies, and links exactly like a job block, and everyone sees it as **B123 · Project name** — on this board, on their Dashboard **My Schedule**, and in the day reviews.
+**Bids can go on the calendar too** — site walks, estimating visits, pre-construction work that has no job yet. Below the job rows, the same picker lists open bids (anything not marked lost) with a violet {{chip:purple|Bid}} chip; search matches the bid number, project name, and address. A bid block places, drags, copies, and links exactly like a job block. On this board it is **tinted violet** with a small {{chip:purple|bid}} chip, and everywhere else — the Day view, a person's day, week, and month schedule — it reads **Bid visit · B123 · Project name**, never a bare "— · Job".
 
 :::example Scheduling an estimator's site walk
-Type the bid number in the Assign-work search, pick the {{chip:purple|Bid}} row, then click the person-day cell — the visit lands on their schedule as `B412 · Oakmont Clubhouse`, no placeholder job needed.
+Type the bid number in the Assign-work search, pick the {{chip:purple|Bid}} row, then click the person-day cell — the visit lands on their schedule as `Bid visit · B412 · Oakmont Clubhouse`, no placeholder job needed.
 :::
 
-**Opening a bid block.** Click a job block's time range and you get that job's week grid. A bid has no job to grid, so clicking a bid block's time range opens the **bid** instead — the Edit Bid window on the Bids page. (The title line on a bid block does nothing; Job Detail is for jobs.)
+**Opening a bid block.** Click a job block's time range and you get that job's week grid. A bid has no job to grid, so clicking a bid block — its title or its time range — opens the **bid** instead: the Edit Bid window on the Bids page.
+
+**Bid visits in the Jobs tab.** The Jobs tab's job × day matrix lists bid visits under the job rows, with the same per-day counts and an {{button:purple|Open}} button that goes to the bid — so a week's bid meetings count as commitments too.
+
+:::example The same bid, three places
+People grid: a violet card, {{chip:purple|bid}} **Bid visit · B412 · Oakmont Clubhouse**, 9:00–11:00. Day view: the bar reads **Bid visit · B412 · Oakmont Clubhouse** and the Clocked line under it shows what actually happened. Jobs tab: a **Bid visit · B412 · Oakmont Clubhouse** row with a 1 under Tuesday.
+:::
 
 Each block can carry **job instructions**: click the pencil ("Edit job instructions") to open the **Job instructions** modal and {{button:blue|Save}}. Instructions are what the tech sees about the assignment, so use them for gate codes, scope reminders, and arrival details.
 
