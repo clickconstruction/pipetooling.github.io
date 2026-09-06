@@ -40,4 +40,20 @@ describe('jobActivityEventsFromRpc', () => {
     ])
     expect(items.map((i) => i.event.dedupeKey)).toEqual(['ev:keep'])
   })
+
+  it('keeps the job_created birth row (v2.2904) with its bid detail', () => {
+    const [it0] = jobActivityEventsFromRpc([
+      row({
+        id: 'birth',
+        event_type: 'job_created',
+        actor_name: null,
+        summary: 'Job opened from bid B398',
+        detail: { source: 'bid', bid_number: '398', backfilled: true },
+      }),
+    ])
+    expect(it0!.event.type).toBe('job_created')
+    expect(it0!.event.summary).toBe('Job opened from bid B398')
+    expect(it0!.event.actorName).toBeNull()
+    expect(it0!.event.detail).toEqual({ source: 'bid', bid_number: '398', backfilled: true })
+  })
 })

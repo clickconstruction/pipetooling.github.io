@@ -37,6 +37,7 @@ const ALL_TYPES: JobActivityEventType[] = [
   'contract_shared',
   'sub_stage_change',
   'job_auto_created_from_estimate',
+  'job_created',
 ]
 
 describe('JOB_ACTIVITY_EVENT_RENDER', () => {
@@ -66,5 +67,7 @@ describe('JOB_ACTIVITY_EVENT_RENDER', () => {
     expect(bucketForEvent('progress_updated')).toBe('status')
     expect(bucketForEvent('lien_release_issued')).toBe('billing')
     expect(bucketForEvent('lien_release_signed')).toBe('billing')
+    expect(bucketForEvent('job_created')).toBe('status')
+    expect(eventRenderMeta('job_created').tag).toBe('Opened')
   })
 })

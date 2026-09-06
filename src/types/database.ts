@@ -493,6 +493,8 @@ export type Database = {
           id: string
           price_book_version_id: string
           unit_price: number
+          updated_at: string
+          updated_by: string | null
         }
         Insert: {
           bid_id: string
@@ -501,6 +503,8 @@ export type Database = {
           id?: string
           price_book_version_id: string
           unit_price: number
+          updated_at?: string
+          updated_by?: string | null
         }
         Update: {
           bid_id?: string
@@ -509,6 +513,8 @@ export type Database = {
           id?: string
           price_book_version_id?: string
           unit_price?: number
+          updated_at?: string
+          updated_by?: string | null
         }
         Relationships: [
           {
@@ -530,6 +536,13 @@ export type Database = {
             columns: ["price_book_version_id"]
             isOneToOne: false
             referencedRelation: "price_book_versions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bid_count_row_custom_prices_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
         ]
@@ -764,6 +777,8 @@ export type Database = {
           price_book_entry_id: string
           price_book_version_id: string
           unit_price_override: number | null
+          updated_at: string
+          updated_by: string | null
         }
         Insert: {
           bid_id: string
@@ -774,6 +789,8 @@ export type Database = {
           price_book_entry_id: string
           price_book_version_id: string
           unit_price_override?: number | null
+          updated_at?: string
+          updated_by?: string | null
         }
         Update: {
           bid_id?: string
@@ -784,6 +801,8 @@ export type Database = {
           price_book_entry_id?: string
           price_book_version_id?: string
           unit_price_override?: number | null
+          updated_at?: string
+          updated_by?: string | null
         }
         Relationships: [
           {
@@ -812,6 +831,13 @@ export type Database = {
             columns: ["price_book_version_id"]
             isOneToOne: false
             referencedRelation: "price_book_versions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bid_pricing_assignments_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
         ]

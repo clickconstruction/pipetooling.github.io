@@ -39,6 +39,7 @@ export type JobActivityEventType =
   | 'contract_voided'
   | 'contract_shared'
   | 'job_auto_created_from_estimate'
+  | 'job_created'
 
 export type JobActivityEvent = {
   /** Stable React key + dedupe key: `ev:status:<id>` (Phase 1) / `ev:<rowid>` (Phase 2). */
@@ -117,6 +118,9 @@ export const JOB_ACTIVITY_EVENT_RENDER: Record<JobActivityEventType, EventRender
   contract_shared: { tag: 'Contract', ...BILLING_BLUE, bucket: 'billing' },
   // Auto-create-job guard (v2.2838) — written by auto_create_job_from_signed_estimate on a real create.
   job_auto_created_from_estimate: { tag: 'Opened', ...MONEY_GREEN, bucket: 'status' },
+  // A job's birth (v2.2904, B20) — written by jobs_ledger_birth_to_activity (AFTER INSERT) for
+  // every human-session create; "Job opened from bid B398" when bid_id is set. Backfilled.
+  job_created: { tag: 'Opened', ...MONEY_GREEN, bucket: 'status' },
 }
 
 export function eventRenderMeta(type: JobActivityEventType): EventRenderMeta {
