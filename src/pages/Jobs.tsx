@@ -35,6 +35,8 @@ import JobsReportsTab from '../components/jobs/JobsReportsTab'
 import JobsPartsTab from '../components/jobs/JobsPartsTab'
 import JobsBillingTab from '../components/jobs/JobsBillingTab'
 import JobsStagesTab, { type JobsStagesTabHandle } from '../components/jobs/JobsStagesTab'
+import { shouldLoadJobsListForTab } from '../lib/jobsListLoadGate'
+import { parseStagesMoneyWeekParam, STAGES_MONEY_WEEK_PARAM } from '../lib/weeklyMoneyReportLink'
 import { canRoleSeeArBankUnallocatedOrgNudge } from '../hooks/useArBankUnallocatedCount'
 import JobsJobSummaryTab from '../components/jobs/JobsJobSummaryTab'
 import { ErrorBoundary } from '../components/ErrorBoundary'
@@ -625,12 +627,11 @@ export default function Jobs() {
   }
 
 
-  const shouldLoadJobsListForActiveTab =
-    // sub_sheet_ledger since v2.1621: the New Sub Labor job picker reads the
-    // shared jobs cache — a deep link straight to the tab used to leave the
-    // picker with zero rows ("No jobs match").
-    // work_orders (v2.2819): the board labels orders by job and its assembler picks jobs from the same cache.
-    activeTab === 'stages' || activeTab === 'billing' || activeTab === 'parts' || activeTab === 'sub_sheet_ledger' || activeTab === 'work_orders'
+  // Which tabs kick the shared jobs-list load lives in `jobsListLoadGate.ts`
+  // (tested). job-summary joined in Tier-2 #17: `jobsListLoading` initialises
+  // true and only a load flips it, so Edit Job from a Job Summary row used to
+  // say "Please wait until jobs finish loading" forever (J6-6).
+  const shouldLoadJobsListForActiveTab = shouldLoadJobsListForTab(activeTab)
 
   useEffect(() => {
     if (authLoading || !authUser?.id) return
@@ -952,7 +953,10 @@ export default function Jobs() {
   // and the `get_weekly_money_movement_payload` RPC. Anyone else used to get
   // the report shell and then the RPC's "not allowed"; now the link says whose
   // it is and they stay on the board.
+  // `&stagesMoneyWeek=<ymd>` (Tier-2 #17): Moneyfill's "See the week's report"
+  // pins the modal to the close week the picker was showing.
   const stagesMoneyParam = searchParams.get('stagesMoney')
+  const stagesMoneyWeekParam = searchParams.get(STAGES_MONEY_WEEK_PARAM)
   const stagesMoneyRole = authRole ?? myRole
   useEffect(() => {
     const wantsOpen = stagesMoneyParam === 'true' || stagesMoneyParam === '1'
@@ -962,6 +966,7 @@ export default function Jobs() {
         (p) => {
           const next = new URLSearchParams(p)
           next.delete('stagesMoney')
+          next.delete(STAGES_MONEY_WEEK_PARAM)
           return next
         },
         { replace: true },
@@ -981,9 +986,9 @@ export default function Jobs() {
       return
     }
     if (jobsListLoading) return
-    stagesTabRef.current?.openWeeklyMoney()
+    stagesTabRef.current?.openWeeklyMoney(parseStagesMoneyWeekParam(stagesMoneyWeekParam))
     strip()
-  }, [stagesMoneyParam, stagesMoneyRole, activeTab, jobsListLoading, setSearchParams, roleGateBounce])
+  }, [stagesMoneyParam, stagesMoneyWeekParam, stagesMoneyRole, activeTab, jobsListLoading, setSearchParams, roleGateBounce])
 
   // `?stagesMove=` deep link (v2.2145): Quickfill → Jobs Cleanup card buttons
   // land here and open the same thing the Pipeline card opens. Same

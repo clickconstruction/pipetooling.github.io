@@ -35,7 +35,6 @@ export const SETTINGS_SEARCH_INDEX: readonly SettingsSearchEntry[] = [
   { label: 'My profile', keywords: ['name', 'password', 'email address', 'account'], tabId: 'settings-account' },
   { label: 'Salaried workday', keywords: ['salary', 'auto clock', 'work schedule'], tabId: 'settings-account', anchorId: 'settings-salary-workday' },
   { label: 'Personal time off', keywords: ['pto', 'vacation', 'time off', 'holiday'], tabId: 'settings-account', anchorId: 'settings-salary-workday' },
-  { label: 'Page pins', keywords: ['pinned pages', 'pins'], tabId: 'settings-account' },
   { label: 'Back up my data', keywords: ['backup', 'export', 'download my data'], tabId: 'settings-account' },
   // Dashboard & alerts
   { label: 'Dashboard quick buttons', keywords: ['quick add', 'new job button', 'shortcuts'], tabId: 'settings-dashboard' },
@@ -43,7 +42,9 @@ export const SETTINGS_SEARCH_INDEX: readonly SettingsSearchEntry[] = [
   { label: 'Daily goals', keywords: ['goals', 'checklist goals'], tabId: 'settings-dashboard' },
   { label: 'Report notifications', keywords: ['field reports', 'report emails'], tabId: 'settings-dashboard' },
   { label: 'My reports', keywords: ['report subscriptions', 'email reports'], tabId: 'settings-dashboard' },
-  { label: 'Financial pins', keywords: ['billed pin', 'sub labor due', 'supply houses ap', 'internal team labor', 'money pins'], tabId: 'settings-dashboard' },
+  { label: 'Financial pins', keywords: ['billed pin', 'sub labor due', 'supply houses ap', 'internal team labor', 'money pins'], tabId: 'settings-dashboard', anchorId: 'settings-page-pins' },
+  // Page pins live under Dashboard Page Pins on Your dashboard — the entry used to point at Your account (J28-F3).
+  { label: 'Page pins', keywords: ['pinned pages', 'pins', 'clear pins'], tabId: 'settings-dashboard', anchorId: 'settings-page-pins' },
   // People & accounts (dev + master)
   { label: 'User management', keywords: ['users', 'accounts', 'roles', 'archive user'], tabId: 'settings-people' },
   { label: 'Invite via email', keywords: ['invite user', 'add user', 'new account'], tabId: 'settings-people' },
@@ -87,7 +88,7 @@ export const SETTINGS_SEARCH_INDEX: readonly SettingsSearchEntry[] = [
   // People & teams
   { label: 'Team review cadence', keywords: ['reviews', 'feedback schedule'], tabId: 'settings-people' },
   // Advanced
-  { label: 'Claim code', keywords: ['redeem code', 'advanced tools'], tabId: 'settings-advanced-tools' },
+  { label: 'Claim code', keywords: ['redeem code', 'advanced tools', 'dev code', 'probe'], tabId: 'settings-advanced-tools', anchorId: 'settings-claim-code' },
   // Guides
   { label: 'Help guides', keywords: ['how do i', 'help', 'documentation', 'manual'], tabId: 'settings-guides' },
   // Release notes

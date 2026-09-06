@@ -39,7 +39,7 @@ Concept mockup (visual reference for the report + close checklist): the "Weekly 
 - **Materials by dated allocation**: `supply_house_invoice_job_allocations` by invoice date, `mercury_transaction_job_allocations` by Chicago posted date, tally lines by `created_at` (Chicago), `jobs_ledger_materials` by their date — same date conventions as the Overhead tab loaders.
 - **Money in** = `jobs_ledger_payments` by `paid_on`. Billed-not-collected is visible in the Cash lens as in = 0 rows, not a third lens.
 - **Overhead is a line, not a smear**: office/bid labor and office parts show as their own "Not on jobs" row (the Overhead tab remains the deep dive). No per-job overhead allocation in v1.
-- **Report entry points**: Jobs → Pipeline stage-strip Section tools menu (Pipeline group, beside Weekly movement) + `?stagesMoney=1` deep link (handle-gated + cold-load e2e, per the v2.832 rule) + a card on Moneyfill.
+- **Report entry points**: Jobs → Pipeline stage-strip Section tools menu (Pipeline group, beside Weekly movement) + `?stagesMoney=1` deep link (handle-gated + cold-load e2e, per the v2.832 rule) + Moneyfill's "See the week's report" button (v2.2890; `weeklyMoneyReportHref` adds `&stagesMoneyWeek=<monday>` so the report opens on the close week the picker was showing — `JobsWeeklyMoneyModal.initialMondayYmd`).
 
 ## Phases
 

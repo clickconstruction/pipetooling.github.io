@@ -1,4 +1,4 @@
-import { Fragment, useCallback, useEffect, useMemo, useState, type CSSProperties, type ReactNode } from 'react'
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { DndContext, type DragEndEvent, PointerSensor, useSensor, useSensors } from '@dnd-kit/core'
 import { SortableContext, arrayMove, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
@@ -7,7 +7,9 @@ import { markStampInitial, markStampTime } from '../lib/quickfillMarkStamp'
 import { useNarrowViewport640 } from '../hooks/useNarrowViewport640'
 import { quickfillFreshnessSummary } from '../lib/quickfill/freshnessSummary'
 import { defaultQuickfillSectionBanner } from '../lib/quickfill/sectionBanners'
-import { useNavigate } from 'react-router-dom'
+import { quickfillStationTelemetryTarget, resolveQuickfillStation } from '../lib/quickfill/stationDeepLink'
+import { recordNavClick } from '../lib/navClickTelemetry'
+import { useLocation, useNavigate } from 'react-router-dom'
 import DashboardTallyStaleStaffBanner from '../components/DashboardTallyStaleStaffBanner'
 import { DashboardStaleTallyStaffFollowUpModal } from '../components/DashboardStaleTallyStaffFollowUpModal'
 import DashboardLostBidsMissingReasonBanner from '../components/DashboardLostBidsMissingReasonBanner'
@@ -467,6 +469,8 @@ function QuickfillPage() {
   const [warningsModalOpen, setWarningsModalOpen] = useState(false)
   const [sectionMarks, setSectionMarks] = useState<Record<string, { marked_at: string; marked_by?: string; marked_by_name?: string | null }>>({})
   const [forceExpandedSections, setForceExpandedSections] = useState<Set<string>>(new Set(['cant-reach']))
+  /** app_settings layout read has landed — station deep links wait for it so an org-hidden section reads as hidden, not missing. */
+  const [layoutSettingsLoaded, setLayoutSettingsLoaded] = useState(false)
   // Session-only: chips removed from the floating SectionDock after "Mark up to date".
   // Deliberately NOT derived from the persisted marks — chips must return on reload.
   const [dockHiddenThisVisit, setDockHiddenThisVisit] = useState<Set<string>>(() => new Set())
@@ -600,6 +604,7 @@ function QuickfillPage() {
       } catch (e) {
         console.error(e)
       }
+      if (!cancelled) setLayoutSettingsLoaded(true)
     })()
     return () => {
       cancelled = true
@@ -872,6 +877,45 @@ function QuickfillPage() {
     const hoursAgo = (Date.now() - new Date(mark.marked_at).getTime()) / (1000 * 60 * 60)
     return hoursAgo < 12
   }
+
+  // Station deep links (Tier-2 #17, C11): `/quickfill#<sectionId>` (or
+  // `?station=`) force-expands that section and scrolls it into view, so a
+  // hand-off from anywhere lands ON the station instead of atop 26 chips.
+  // Resolution is the tested kernel; this effect owns the DOM, the toast, and
+  // the `station_deep_link` telemetry row (`ui_nav_clicks`). It waits for the
+  // layout read so an org-hidden section fails soft as "hidden" rather than
+  // racing the settings fetch, applies once per URL, and polls briefly for the
+  // element because section bodies mount after their eligibility hooks settle.
+  const location = useLocation()
+  const stationRequestKey = `${location.hash}|${location.search}`
+  const appliedStationKeyRef = useRef<string | null>(null)
+  const stationPollTokenRef = useRef(0)
+  useEffect(() => {
+    if (!layoutSettingsLoaded) return
+    if (appliedStationKeyRef.current === stationRequestKey) return
+    appliedStationKeyRef.current = stationRequestKey
+    const resolution = resolveQuickfillStation(location, SECTIONS, sectionWouldRenderOnPage)
+    if (!resolution.raw) return
+    recordNavClick(authUser?.id, role, 'station_deep_link', quickfillStationTelemetryTarget(resolution))
+    if (!resolution.found || resolution.domId == null || resolution.sectionId == null) {
+      showToast("That section isn't on your Quickfill.", 'info')
+      return
+    }
+    openSectionNow(resolution.sectionId)
+    const domId = resolution.domId
+    const token = ++stationPollTokenRef.current
+    const deadline = Date.now() + 4000
+    const tick = () => {
+      if (stationPollTokenRef.current !== token) return
+      const el = document.getElementById(domId)
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+        return
+      }
+      if (Date.now() < deadline) window.setTimeout(tick, 120)
+    }
+    tick()
+  }, [layoutSettingsLoaded, stationRequestKey, location, sectionWouldRenderOnPage, authUser?.id, role, showToast, openSectionNow])
 
   function quickfillSectionBlock(meta: QuickfillSectionMeta): ReactNode {
     const { id, sectionId, label } = meta

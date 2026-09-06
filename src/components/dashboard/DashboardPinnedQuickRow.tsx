@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
-import { useToastContext } from '../../contexts/ToastContext'
 import { isAssistantLike } from '../../lib/subcontractorLikeRole'
 import { withSupabaseRetry } from '../../utils/errorHandling'
 import { TALLY_STALE_MIN_AGE_DAYS } from '../../lib/tallyStaleMinAgeDays'
@@ -34,6 +33,7 @@ import { CLAIM_DEV_LOOKBACK_DAYS, useClaimDevAttemptsNudge } from '../../hooks/u
 import { HOURS_APPROVALS_MIN_AGE_DAYS, usePendingHoursApprovalsNudge } from '../../hooks/usePendingHoursApprovalsNudge'
 import { DashboardStaleTallyStaffFollowUpModal } from '../DashboardStaleTallyStaffFollowUpModal'
 import { DashboardLienReleaseQueueModal } from './DashboardLienReleaseQueueModal'
+import { DashboardArDepositsModal } from './DashboardArDepositsModal'
 import NewReportModal from '../NewReportModal'
 import type { PinnedItem } from '../../lib/pinnedTabs'
 import type { UserRole } from '../../hooks/useAuth'
@@ -290,12 +290,13 @@ export function DashboardPinnedQuickRow({
   hideBanners = false,
 }: DashboardPinnedQuickRowProps) {
   const navigate = useNavigate()
-  const { showToast } = useToastContext()
 
   const [newReportModalOpen, setNewReportModalOpen] = useState(false)
   const [tallyUnlinkedCount, setTallyUnlinkedCount] = useState<number | null>(null)
   const [tallyStaleUnlinkedCount, setTallyStaleUnlinkedCount] = useState<number | null>(null)
   const [tallyStaffFollowUpModalOpen, setTallyStaffFollowUpModalOpen] = useState(false)
+  /** Needs You "Match deposits" opens Accounts Receivable in place (Tier-2 #17; the v2.2751 pattern). */
+  const [arDepositsModalOpen, setArDepositsModalOpen] = useState(false)
   const [lostBidNudge, setLostBidNudge] = useState<LostBidNudge | null>(null)
   const [lostBidNudgeLoading, setLostBidNudgeLoading] = useState(true)
   const {
@@ -305,7 +306,7 @@ export function DashboardPinnedQuickRow({
   } = useStaleTallyStaffFollowUp(TALLY_STALE_MIN_AGE_DAYS)
 
   const arBankCountEnabled = Boolean(authUserId) && canRoleSeeArBankUnallocatedDashboardBanner(role)
-  const { count: arBankUnallocatedCount } = useArBankUnallocatedCount({
+  const { count: arBankUnallocatedCount, refetch: refetchArBankUnallocatedCount } = useArBankUnallocatedCount({
     enabled: arBankCountEnabled,
     authUserId,
     authRole: role,
@@ -570,8 +571,8 @@ export function DashboardPinnedQuickRow({
           items={needsYouItems}
           onAction={(item) => {
             if (item.key === 'ar-deposits') {
-              showToast('Opening Accounts Receivable…', 'info', 2800)
-              navigate('/accounts-receivable')
+              // In place (Tier-2 #17): the same Accounts Receivable window, over the card.
+              setArDepositsModalOpen(true)
             } else if (item.key === 'tally-self') {
               navigate('/tally?tab=transactions')
             } else if (item.key === 'tally-team') {
@@ -606,7 +607,8 @@ export function DashboardPinnedQuickRow({
             } else if (item.key === 'bulk-delete') {
               navigate('/settings?tab=settings-data#settings-recently-deleted')
             } else if (item.key === 'claim-dev') {
-              navigate('/settings?tab=settings-people')
+              // The code form is on Settings → Advanced, not People (J27-F5).
+              navigate('/settings?tab=settings-advanced-tools#settings-claim-code')
             } else if (item.key === 'robot-audits') {
               navigate('/bids?tab=audits')
             } else if (item.key === 'd22-uncoded') {
@@ -685,6 +687,15 @@ export function DashboardPinnedQuickRow({
           onClose={() => setLienReleaseQueueOpen(false)}
           rows={lienReleaseQueue}
           onChanged={refetchLienReleasesOwed}
+        />
+      )}
+      {renderModals && (
+        <DashboardArDepositsModal
+          open={arDepositsModalOpen}
+          onClose={() => {
+            setArDepositsModalOpen(false)
+            void refetchArBankUnallocatedCount()
+          }}
         />
       )}
       {renderModals && (role === 'dev' || role === 'master_technician' || isAssistantLike(role)) && (

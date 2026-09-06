@@ -1025,6 +1025,9 @@ export default function Settings() {
     }
     appliedDeepLinkRef.current = key
     if (anchorId) {
+      // Page pins sit inside a collapsed group on Your dashboard — open it so the
+      // anchor has something to land on (Tier-2 #17).
+      if (anchorId === 'settings-page-pins') setFinancialPinsSectionOpen(true)
       // The owning tab mounts conditionally and its sections hydrate from async
       // data, so the anchor can appear well after this effect runs. Poll for it
       // (bounded, ~5s) and scroll once it exists, then stop.
@@ -1039,7 +1042,7 @@ export default function Settings() {
       }
       window.setTimeout(tick, 120)
     }
-  }, [location.search, location.hash, settingsJumpGroups])
+  }, [location.search, location.hash, settingsJumpGroups, setFinancialPinsSectionOpen])
 
   useEffect(() => {
     const first = settingsJumpGroups[0]
@@ -1127,6 +1130,7 @@ export default function Settings() {
         groups={settingsJumpGroups}
         onPick={(entry) => {
           setActiveSettingsTab(entry.tabId)
+          if (entry.anchorId === 'settings-page-pins') setFinancialPinsSectionOpen(true)
           if (entry.anchorId) pollScrollToSettingsAnchor(entry.anchorId)
         }}
       />
