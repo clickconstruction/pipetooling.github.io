@@ -30,11 +30,15 @@ vi.mock('../../lib/fetchJobWithDetailsById', () => ({
   fetchJobWithDetailsById: async () => windowJob,
 }))
 
+vi.mock('../projects/ProjectsJobHistoryTab', () => ({
+  ProjectsJobHistoryTab: ({ jobId }: { jobId?: string | null }) => <div data-testid="history-grid-stub">history for {jobId}</div>,
+}))
+
 beforeAll(() => {
   vi.stubGlobal('scrollTo', vi.fn())
 })
 
-function renderWindow(onClose: () => void, initialTab: 'job' | 'edit' | 'bill' = 'job') {
+function renderWindow(onClose: () => void, initialTab: 'job' | 'edit' | 'bill' | 'history' = 'job') {
   return renderWithProviders(
     <UpdateFocusOpenerBridgeProvider>
       <JobWindowModal
@@ -58,6 +62,17 @@ function renderWindow(onClose: () => void, initialTab: 'job' | 'edit' | 'bill' =
 const tab = (name: string) => screen.getByRole('tab', { name })
 
 describe('JobWindowModal', () => {
+  it('History is the fourth tab: it mounts the single-job day grid on first visit and hides the form pane (T5-05)', async () => {
+    renderWindow(vi.fn())
+    expect(tab('History')).toBeTruthy()
+    expect(screen.queryByTestId('history-grid-stub')).toBeNull()
+    fireEvent.click(tab('History'))
+    await waitFor(() => expect(screen.getByTestId('history-grid-stub').textContent).toBe('history for job-1'))
+    expect(tab('History').getAttribute('aria-selected')).toBe('true')
+    fireEvent.click(tab('Job'))
+    // Stays mounted (state survives), just hidden.
+    expect(screen.getByTestId('history-grid-stub')).toBeTruthy()
+  })
   it('opens on the Job tab with Edit and Bill available, one ✕, no per-pane Close', async () => {
     renderWindow(vi.fn())
     expect(tab('Job').getAttribute('aria-selected')).toBe('true')

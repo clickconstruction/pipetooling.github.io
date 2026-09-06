@@ -1,4 +1,5 @@
-import { useRef, useState, type CSSProperties } from 'react'
+import { lazy, Suspense, useRef, useState, type CSSProperties } from 'react'
+import { JOB_WINDOW_TAB_LABELS, jobWindowFormPaneHidden, type JobWindowTabKey } from '../../lib/jobs/jobHistoryTab'
 import DetailJobModal, {
   type DetailJobModalAssignedJobRow,
   type DetailJobScheduleContext,
@@ -26,12 +27,17 @@ import type { JobWithDetails } from '../../types/jobWithDetails'
  * else, unchanged.
  */
 
-export type JobWindowTab = 'job' | 'edit' | 'bill'
+export type JobWindowTab = JobWindowTabKey
 
 /** Matches JobFormModal's overlay tier so its nested overlays stack above. */
 const JOB_WINDOW_OVERLAY_Z_INDEX = 1010
 
-const TAB_LABELS: Record<JobWindowTab, string> = { job: 'Job', edit: 'Edit', bill: 'Bill' }
+const TAB_LABELS: Record<JobWindowTab, string> = JOB_WINDOW_TAB_LABELS
+
+/** T5-05: the History pane loads on first visit (lazy) — it is the Projects day-grid in single-job mode. */
+const ProjectsJobHistoryTabLazy = lazy(() =>
+  import('../projects/ProjectsJobHistoryTab').then((m) => ({ default: m.ProjectsJobHistoryTab })),
+)
 
 const tabButtonStyle = (active: boolean): CSSProperties => ({
   padding: '0.3rem 0.85rem',
@@ -83,6 +89,7 @@ export function JobWindowModal({
   onSaved,
 }: Props) {
   const [tab, setTab] = useState<JobWindowTab>(initialTab)
+  const [historyMounted, setHistoryMounted] = useState(initialTab === 'history')
   // The Job pane reloads when this bumps — form saves must never leave the
   // read view stale behind a tab switch.
   const [detailRefreshKey, setDetailRefreshKey] = useState(0)
@@ -149,7 +156,10 @@ export function JobWindowModal({
               type="button"
               role="tab"
               aria-selected={tab === t}
-              onClick={() => setTab(t)}
+              onClick={() => {
+                setTab(t)
+                if (t === 'history') setHistoryMounted(true)
+              }}
               style={tabButtonStyle(tab === t)}
             >
               {TAB_LABELS[t]}
@@ -217,7 +227,7 @@ export function JobWindowModal({
           </div>
           {/* Edit + Bill panes — ONE form instance; the region prop picks which
               half shows. Hidden entirely on the Job tab. */}
-          <div style={tab === 'job' ? { display: 'none' } : undefined} role="tabpanel" aria-label={tab === 'bill' ? 'Bill' : 'Edit'}>
+          <div style={jobWindowFormPaneHidden(tab) ? { display: 'none' } : undefined} role="tabpanel" aria-label={tab === 'bill' ? 'Bill' : 'Edit'}>
             <JobFormModal
               mode="edit"
               editJobId={jobId}
@@ -238,6 +248,14 @@ export function JobWindowModal({
               externalEscBlocked={detailEscBlocked}
             />
           </div>
+          {/* History pane (T5-05 / J31-adj3): the Projects day-grid for THIS job — every job, any status. */}
+          {historyMounted ? (
+            <div style={tab !== 'history' ? { display: 'none' } : undefined} role="tabpanel" aria-label="History">
+              <Suspense fallback={<p style={{ color: 'var(--text-muted)' }}>Loading…</p>}>
+                <ProjectsJobHistoryTabLazy customerId={null} jobId={jobId} />
+              </Suspense>
+            </div>
+          ) : null}
         </div>
       </div>
     </div>

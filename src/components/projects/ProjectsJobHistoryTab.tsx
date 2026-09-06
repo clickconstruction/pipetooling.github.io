@@ -36,6 +36,7 @@ import {
   type ProjectsJobHistoryBar,
   type ProjectsJobHistoryJob,
 } from '../../lib/projectsJobHistoryData'
+import { jobHistoryChannelName, singleJobHistoryRange } from '../../lib/jobs/jobHistoryTab'
 import { fetchProjectsJobHistoryClockSessions } from '../../lib/fetchProjectsJobHistoryClockSessions'
 import {
   readProjectsJobHistoryLayoutMode,
@@ -51,6 +52,9 @@ import { ProjectsJobHistoryDayModal } from './ProjectsJobHistoryDayModal'
 
 type Props = {
   customerId: string | null
+  /** T5-05: single-job mode — the job window's History tab. One job (any status), 180-day default range,
+   *  no persisted prefs, no project filter. */
+  jobId?: string | null
 }
 
 type ServiceTypeRow = { id: string; ledger_job_prefix: string | null; ledger_bid_prefix: string | null }
@@ -114,7 +118,7 @@ function writeOnlyWithProjects(value: boolean) {
   }
 }
 
-export function ProjectsJobHistoryTab({ customerId }: Props) {
+export function ProjectsJobHistoryTab({ customerId, jobId = null }: Props) {
   const { user: authUser, role: authRole } = useAuth()
   const authUserId = authUser?.id ?? null
   const isDocVisible = useDocumentVisibility()
@@ -122,14 +126,17 @@ export function ProjectsJobHistoryTab({ customerId }: Props) {
   const jobFormModal = useJobFormModal()
   const [dayModal, setDayModal] = useState<{ bar: ProjectsJobHistoryBar; workDateYmd: string } | null>(null)
 
-  const initialRange = useMemo(() => readPersistedRange() ?? defaultRange(), [])
+  const initialRange = useMemo(
+    () => (jobId ? singleJobHistoryRange(todayChicagoYmd()) : (readPersistedRange() ?? defaultRange())),
+    [jobId],
+  )
   const [rangeStart, setRangeStart] = useState<string>(initialRange.start)
   const [rangeEnd, setRangeEnd] = useState<string>(initialRange.end)
   const [layoutMode, setLayoutModeState] = useState<ProjectsJobHistoryLayoutMode>(
     () => readProjectsJobHistoryLayoutMode(),
   )
   const [searchQuery, setSearchQuery] = useState<string>('')
-  const [onlyWithProjects, setOnlyWithProjectsState] = useState<boolean>(() => readOnlyWithProjects())
+  const [onlyWithProjects, setOnlyWithProjectsState] = useState<boolean>(() => (jobId ? false : readOnlyWithProjects()))
 
   const setOnlyWithProjects = useCallback((value: boolean) => {
     setOnlyWithProjectsState(value)
@@ -150,11 +157,14 @@ export function ProjectsJobHistoryTab({ customerId }: Props) {
 
   const loadGenRef = useRef(0)
 
-  const persistRange = useCallback((start: string, end: string) => {
-    setRangeStart(start)
-    setRangeEnd(end)
-    writePersistedRange(start, end)
-  }, [])
+  const persistRange = useCallback(
+    (start: string, end: string) => {
+      setRangeStart(start)
+      setRangeEnd(end)
+      if (!jobId) writePersistedRange(start, end)
+    },
+    [jobId],
+  )
 
   // ---- Load working jobs + service-type prefix map ----
   const loadJobs = useCallback(
@@ -166,8 +176,10 @@ export function ProjectsJobHistoryTab({ customerId }: Props) {
         let query = supabase
           .from('jobs_ledger')
           .select('id, hcp_number, click_number, job_name, job_address, service_type_id, project_id, customer_id, status')
-          .eq('status', 'working')
           .order('hcp_number', { ascending: false })
+        // Single-job mode reads that job whatever its status; the Projects tab reads the working set.
+        if (jobId) query = query.eq('id', jobId)
+        else query = query.eq('status', 'working')
         if (customerId) query = query.eq('customer_id', customerId)
         const data = (await withSupabaseRetry(
           async () => query,
@@ -215,7 +227,7 @@ export function ProjectsJobHistoryTab({ customerId }: Props) {
         if (gen === loadGenRef.current) setLoadingJobs(false)
       }
     },
-    [customerId],
+    [customerId, jobId],
   )
 
   // ---- Load clock sessions for those jobs and aggregate to bars ----
@@ -271,7 +283,7 @@ export function ProjectsJobHistoryTab({ customerId }: Props) {
         }
       }, REALTIME_DEBOUNCE_MS)
     }
-    const channel = supabase.channel(`projects-job-history-${authUserId}`)
+    const channel = supabase.channel(jobHistoryChannelName(authUserId, jobId))
     const idsSorted = jobIds.filter(Boolean).sort()
     const useIn = idsSorted.length > 0 && idsSorted.length <= MAX_REALTIME_IN_IDS
     if (useIn) {
@@ -297,7 +309,9 @@ export function ProjectsJobHistoryTab({ customerId }: Props) {
     // table is low compared to clock_sessions.
     channel.on(
       'postgres_changes',
-      { event: '*', schema: 'public', table: 'jobs_ledger' },
+      jobId
+        ? { event: '*', schema: 'public', table: 'jobs_ledger', filter: `id=eq.${jobId}` }
+        : { event: '*', schema: 'public', table: 'jobs_ledger' },
       () => schedule('jobs'),
     )
     channel.subscribe()
@@ -305,7 +319,7 @@ export function ProjectsJobHistoryTab({ customerId }: Props) {
       if (debounceTimer != null) clearTimeout(debounceTimer)
       void supabase.removeChannel(channel)
     }
-  }, [authUserId, jobs, isDocVisible, loadJobs, loadSessions])
+  }, [authUserId, jobs, jobId, isDocVisible, loadJobs, loadSessions])
 
   const dayKeys = useMemo(() => enumerateDaysInRange(rangeStart, rangeEnd), [rangeStart, rangeEnd])
   // Today's Chicago calendar key is effectively stable across a session for this UI; we don't
@@ -558,7 +572,7 @@ export function ProjectsJobHistoryTab({ customerId }: Props) {
         </div>
       </div>
 
-      {(() => {
+      {!jobId && (() => {
         const linkedCount = bars.filter((b) => b.projectId != null).length
         return (
           <div
