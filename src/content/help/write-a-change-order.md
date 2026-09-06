@@ -1,8 +1,8 @@
 ---
 title: write a change order and send it for signature
 category: Office
-roles: assistant, master_technician
-keywords: change order, CO, signature, net change, credit, scope change, GC, estimates
+roles: dev, master_technician, assistant, controller, estimator
+keywords: change order, CO, signature, net change, credit, scope change, GC, estimates, confirm sheet, net change to contract, apply to job, bids change order tab
 order: 87
 ---
 

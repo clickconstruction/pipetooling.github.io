@@ -2,7 +2,7 @@
 title: import a takeoff from CountTooling
 category: Bids & Estimating
 roles: dev, master_technician, assistant, controller, estimator
-keywords: counttooling, import, takeoff, copy to tooling, counts, line feet, ft of, unscaled, px, view link, plans link
+keywords: counttooling, import, takeoff, copy to tooling, counts, line feet, ft of, unscaled, px, view link, plans link, undo import, set scale, by stage, combined
 order: 96
 ---
 CountTooling counts the drawings; ClickTooling prices them. The bridge is one clipboard copy — no retyping.
@@ -24,6 +24,10 @@ The toast tells you what arrived: *Imported 35 rows: 29 counts (1,122 ea) · 6 l
 :::example Reading the result
 Switch the Counts tab to {{chip:gray|New}} — the Count Sheet strip shows **Counts** and **Line feet** as separate totals, and each feet row carries a small **ft** tag. A red **Unscaled** tile means some runs came in as pixels: set the scale in CountTooling, copy again, and delete the `px of` rows.
 :::
+
+## Then pick how the materials get priced
+
+Counts are counts either way. Before you price them on **Takeoffs**, the bid needs its **materials model** — **By Stage** (count each fixture's exact assembly per rough-in / top-out / trim-set) or **Combined** (one rough parts list for the whole job). New bids start on Combined; the pills sit at the top of Takeoffs and Labor. See [choose By Stage or Combined for a bid's materials](?g=choose-by-stage-or-combined-for-materials).
 
 ## Keep the names
 

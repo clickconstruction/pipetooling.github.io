@@ -53,6 +53,7 @@ Wendi texts Moore Supply the pipe scope with a quote link. Danny at the counter 
 - The desk sorts by **what needs you**: bounced addresses first (fix them right on the row and resend), then requests whose needed-by is closing in, then ones nobody has opened in two days — each with a plain-words reason chip. A coverage bar answers "which items does nobody have priced yet?".
 - The moment a vendor submits, the {{chip:blue|Quotes (1)}} chip turns **green** — open it to compare (see *get supply house prices on a bid* for the compare view).
 - Vendors can reopen the link to send a **revised quote** — the newest one is what compare shows.
+- Rep texted prices back instead of using the link? **Plug in a quote** (same menu) matches their lines to your fixtures even when the names don't quite agree — "shower tub combos 3 @ $900" finds *Shower/tub combo*, "kitchen sinks" finds *Kitchen sink*. See *get supply house prices on a bid*.
 
 ## When links die
 
