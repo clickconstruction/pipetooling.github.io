@@ -27,8 +27,8 @@
     {
       "key": "contractor_phone",
       "type": "digits",
-      "label": "Your phone",
-      "labelEs": "Su teléfono",
+      "label": "Your phone — in case our bookkeeper has a question",
+      "labelEs": "Su teléfono — por si nuestro contador tiene una pregunta",
       "mask": "###-###-####",
       "prefill": "person_phone",
       "sample": "5125550142",
@@ -187,7 +187,7 @@
         "h": 10
       },
       "order": 110,
-      "label": "A fixed dollar amount (write it below)",
+      "label": "A fixed dollar amount",
       "labelEs": "Una cantidad fija en dólares",
       "group": "deposit_kind"
     },
@@ -196,13 +196,13 @@
       "type": "checkbox",
       "page": 1,
       "rect": {
-        "x": 54,
-        "y": 379.55,
+        "x": 305.93,
+        "y": 401.55,
         "w": 10,
         "h": 10
       },
       "order": 120,
-      "label": "A percentage of the amount due to me (write it below)",
+      "label": "A percentage of the amount due to me",
       "labelEs": "Un porcentaje de la cantidad que se me debe",
       "group": "deposit_kind"
     },
@@ -217,7 +217,7 @@
       "page": 1,
       "rect": {
         "x": 54,
-        "y": 347.05,
+        "y": 369.05,
         "w": 123.64,
         "h": 16
       },
@@ -236,7 +236,7 @@
       "page": 1,
       "rect": {
         "x": 187.64,
-        "y": 347.05,
+        "y": 369.05,
         "w": 103.08,
         "h": 16
       },
@@ -251,7 +251,7 @@
       "page": 1,
       "rect": {
         "x": 300.72,
-        "y": 347.05,
+        "y": 369.05,
         "w": 257.28,
         "h": 16
       },
@@ -263,7 +263,7 @@
       "page": 1,
       "rect": {
         "x": 54,
-        "y": 264.27,
+        "y": 286.27,
         "w": 312.48,
         "h": 22
       },
@@ -277,7 +277,7 @@
       "page": 1,
       "rect": {
         "x": 386.64,
-        "y": 264.27,
+        "y": 286.27,
         "w": 171.36,
         "h": 16
       },
