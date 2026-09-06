@@ -1675,8 +1675,8 @@ A working change-order document generator — [`src/components/bids/BidChangeOrd
 
 1. Search and select a bid (project name or GC/Builder)
 2. Form auto-populates customer/project/address from the bid; per-bid form drafts kept in `changeOrderFormByBid`
-3. Combined document preview updates live via `buildChangeOrderHtml` / `buildChangeOrderText` in [`src/lib/bidDocuments/changeOrder.ts`](../src/lib/bidDocuments/changeOrder.ts)
-4. **Copy to clipboard** (rich HTML via `copyRichHtmlToClipboard`) or **Open in Google Docs** (service-type template copy URL)
+3. Combined document preview updates live via `buildChangeOrderHtml` / `buildChangeOrderText` in [`src/lib/bidDocuments/changeOrder.ts`](../src/lib/bidDocuments/changeOrder.ts). Under **Impact on Cost** a live readout (`describeCostImpactReadout`, [`changeOrderBridge.ts`](../src/lib/bidDocuments/changeOrderBridge.ts), v2.2911) says what the typed text will become — "Reads as a net change of $2,450.00 — this becomes the draft's total…", or that the confirm sheet will ask when no single figure parses.
+4. Three actions, each captioned with whether it leaves a record (v2.2911, journey-map J16-F1): **Copy to clipboard** (rich HTML via `copyRichHtmlToClipboard`) and **Open in Google Docs** (service-type template copy URL) are *paper copies — nothing is saved*; **Send for signature →** is the only one that creates a record — a confirm sheet (v2.2897) asks for the net change, then inserts a `doc_kind='change_order'` estimate draft with a real `total_cents` and one net-change line (`buildBridgedChangeOrderDraft`), and the CO editor shows the typed cost text above "Impact on cost" (`bridgedCostImpactText`).
 
 ---
 

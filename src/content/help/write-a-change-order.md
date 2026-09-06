@@ -56,11 +56,19 @@ The **net change** is computed from the lines, so the customer sees exactly how 
 
 Working a commercial job through **Bids**? The `bids?tab=change-order` form works like always — fill it out, {{button:blue|Copy to clipboard}} or open the Google Docs template for GCs who want their own paper. But now there's also {{button:green|Send for signature →}}: it opens a short confirm sheet before anything is created.
 
+Each of the three buttons now says what it does with your work, right under it:
+
+:::example What leaves a record
+{{button:blue|Copy to clipboard}} — *Paper copy only — nothing is saved here.* · {{button:outline|Open in Google Docs}} — *Paper copy in Docs — nothing is saved here.* · {{button:green|Send for signature →}} — *Creates a tracked change order the GC signs online — the only one of the three that leaves a record.*
+:::
+
+And as you type in **Impact on Cost**, a line under the box reads the money back to you — **$2,450.00** *Reads as a net change of $2,450.00 — this becomes the draft's total and its one cost line when you send for signature.* If your text has several figures and no "Net …" line, it says the confirm sheet will ask you for the number instead of guessing.
+
 :::example The confirm sheet
 **Create a change order draft in Estimates?** · the description, reason, schedule impact, response-by date and your cost text, as they'll land · **Net change to contract ($)** — prefilled when your cost text has one clear number or a "Net …" line; type it otherwise (credits negative, blank = $0 for schedule-only changes) · {{button:outline|Cancel}} creates nothing · {{button:green|Create draft →}}
 :::
 
-Confirm and the draft opens in Estimates, prefilled from the form and linked to the bid, with the net change as a **real cost line** (your typed breakdown becomes its description) — not $0 with the money hidden in a note. Adjust the lines there if you want the breakdown itemized, then send it like any change order.
+Confirm and the draft opens in Estimates, prefilled from the form and linked to the bid, with the net change as a **real cost line** (your typed breakdown becomes its description) — not $0 with the money hidden in a note. Above **Impact on cost** the draft shows *From the Bids form — Impact on Cost as typed:* with your exact text, so you don't have to scroll to the internal notes to remember the breakdown. Adjust the lines there if you want the breakdown itemized, then send it like any change order.
 
 ## After the customer signs
 
@@ -75,3 +83,5 @@ Applying is one-time: once a change order is linked to a job, the button becomes
 ## Keeping track
 
 Change orders appear in the Estimates Pipeline and Ledger alongside estimates, with the amber chip telling them apart. Statuses are the same: Draft → Sent → Accepted (or Declined).
+
+One old estimate (#1) was *titled* "change order" before change orders had their own kind. It carries a quiet dashed tag — {{chip:gray|titled "change order" — an estimate, not a tracked change order}} — in the lists and on its detail page: it follows the estimate rails and has no **Apply to job**. To track a change against a job, start a **New change order**.

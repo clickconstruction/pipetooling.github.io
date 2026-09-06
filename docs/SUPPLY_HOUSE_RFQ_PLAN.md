@@ -72,6 +72,16 @@ ends with all three fence appliers. Names snapshot as text.
   fixture names with confidence; flag outliers (>10× or <0.1× the
   baseline); classify no-stock phrasing → `cant_supply`. Heavily unit-
   tested against real reply shapes (the artboard-7 sample + variants).
+  - **v2.2911 tokenizer fix (journey-map J12-F4):** fixture names and vendor
+    lines now split on the same class (`[^a-z0-9]+`, so `/` is a word break —
+    "Shower/tub combos" is shower · tub · combo) and both sides fold plain
+    plurals (`foldPlural`: sinks → sink, boxes → box; tokens under four
+    letters untouched so `fs`/`gas` survive). The verbatim-name bonus is
+    built from the folded words too. Before this, a fixture with a slash in
+    its name could never match a vendor line (nobody types the slash), and
+    "Kitchen sink" never matched "Kitchen sinks". The Rung E file lane feeds
+    its flattened rows through the same `parseVendorReply`, so it inherits
+    the fix — tests cover the two-space-joined sheet shape.
 - Kernel `src/lib/rfq/quoteCompare.ts`: rows = union of quoted fixture
   names grouped by D22 section (reuse `classifySpecSection`); per part:
   each house's $/each (grayed when `valid_until` passed), baseline

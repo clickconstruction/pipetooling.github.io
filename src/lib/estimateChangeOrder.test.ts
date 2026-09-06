@@ -7,6 +7,7 @@ import {
   EMPTY_ESTIMATE_CHANGE_ORDER_FIELDS,
   formatSignedCentsUsd,
   isChangeOrderDocKind,
+  isLegacyChangeOrderTitledEstimate,
   parseEstimateChangeOrderFields,
   type EstimateChangeOrderDocArgs,
 } from './estimateChangeOrder'
@@ -33,6 +34,22 @@ describe('parseEstimateChangeOrderFields', () => {
     expect(parseEstimateChangeOrderFields(null)).toEqual(EMPTY_ESTIMATE_CHANGE_ORDER_FIELDS)
     expect(parseEstimateChangeOrderFields([1, 2])).toEqual(EMPTY_ESTIMATE_CHANGE_ORDER_FIELDS)
     expect(parseEstimateChangeOrderFields({ description_of_change: 42 })).toEqual(EMPTY_ESTIMATE_CHANGE_ORDER_FIELDS)
+  })
+})
+
+describe('isLegacyChangeOrderTitledEstimate (v2.2911, J16-F4)', () => {
+  it('flags an estimate whose title says change order, in any casing or spacing', () => {
+    expect(isLegacyChangeOrderTitledEstimate(null, 'change order')).toBe(true)
+    expect(isLegacyChangeOrderTitledEstimate('estimate', 'Change Order — bath add')).toBe(true)
+    expect(isLegacyChangeOrderTitledEstimate(undefined, 'CHANGE-ORDER #2')).toBe(true)
+    expect(isLegacyChangeOrderTitledEstimate('estimate', 'Change orders for phase 2')).toBe(true)
+  })
+  it('never flags real change orders, bid proposals, or ordinary titles', () => {
+    expect(isLegacyChangeOrderTitledEstimate('change_order', 'Change order')).toBe(false)
+    expect(isLegacyChangeOrderTitledEstimate('bid_proposal', 'change order')).toBe(false)
+    expect(isLegacyChangeOrderTitledEstimate('estimate', 'Water heater swap')).toBe(false)
+    expect(isLegacyChangeOrderTitledEstimate('estimate', 'Exchange orders')).toBe(false)
+    expect(isLegacyChangeOrderTitledEstimate('estimate', null)).toBe(false)
   })
 })
 

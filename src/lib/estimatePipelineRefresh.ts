@@ -22,6 +22,9 @@ export type EstimatePipelineRowLike = {
   doc_kind?: string | null
   change_order_fields?: unknown
   terms_snapshot?: string | null
+  /** v2.2911 (J16-N1): a typed address or internal note is content too. */
+  for_address?: string | null
+  internal_notes?: string | null
   customers?: { contact_info?: unknown } | null
 }
 
@@ -43,7 +46,10 @@ export function estimateDraftMeaningfulLineCount(raw: unknown, isCO: boolean): n
 
 /**
  * Empty debris: a draft with no customer, no title, no meaningful lines, no CO
- * narrative, and no terms — nothing anyone would miss.
+ * narrative (description / reason / schedule / response-requested-by date), no
+ * terms, no address, and no internal notes — nothing anyone would miss. The
+ * last three joined in v2.2911 (journey-map J16-N1): a draft carrying only a
+ * due date, a job address, or bridged notes used to count as "empty".
  */
 export function isEmptyEstimateDraft(row: EstimatePipelineRowLike): boolean {
   if (row.status !== 'draft') return false
@@ -53,7 +59,10 @@ export function isEmptyEstimateDraft(row: EstimatePipelineRowLike): boolean {
   if (estimateDraftMeaningfulLineCount(row.line_items_snapshot, isCO) > 0) return false
   const co = parseEstimateChangeOrderFields(row.change_order_fields)
   if (co.description_of_change.trim() || co.reason_for_change.trim() || co.impact_on_schedule.trim()) return false
+  if (co.response_requested_by.trim()) return false
   if ((row.terms_snapshot ?? '').trim() !== '') return false
+  if ((row.for_address ?? '').trim() !== '') return false
+  if ((row.internal_notes ?? '').trim() !== '') return false
   return true
 }
 

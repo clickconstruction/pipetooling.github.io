@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import {
   BRIDGED_NET_CHANGE_LINE_LABEL,
+  bridgedCostImpactText,
   buildBridgedChangeOrderDraft,
+  describeCostImpactReadout,
   formatSignedDollars,
   parseCostImpact,
   sanitizeSignedMoneyTyping,
@@ -36,6 +38,42 @@ describe('parseCostImpact — prefill for the confirm sheet, never a guess', () 
     expect(parseCostImpact('')).toBeNull()
     expect(parseCostImpact('No change to contract sum')).toBeNull()
     expect(parseCostImpact('Adds 2 days and 3 fixtures')).toBeNull()
+  })
+})
+
+describe('describeCostImpactReadout — the live line under Impact on Cost (v2.2911)', () => {
+  it('is silent on empty text and names the figure when there is one', () => {
+    expect(describeCostImpactReadout('')).toBeNull()
+    expect(describeCostImpactReadout('   ')).toBeNull()
+    const one = describeCostImpactReadout('Reroute condensate — $2,450.00')
+    expect(one?.cents).toBe(245000)
+    expect(one?.sentence).toMatch(/\$2,450\.00/)
+    const credit = describeCostImpactReadout('Credit for deleted stub-out $390.00')
+    expect(credit?.cents).toBe(-39000)
+    expect(credit?.sentence).toMatch(/−\$390\.00/)
+  })
+  it('says the sheet will ask when the text has no single figure, and names $0 as schedule-only', () => {
+    const many = describeCostImpactReadout('Labor $1,200.00\nMaterials $800.00')
+    expect(many?.cents).toBeNull()
+    expect(many?.sentence).toMatch(/confirm sheet/)
+    expect(describeCostImpactReadout('$0.00 — no cost change')?.sentence).toMatch(/schedule-only/)
+  })
+})
+
+describe('bridgedCostImpactText — the CO editor reads the typed cost, not the note (v2.2911)', () => {
+  it('prefers the bridged line description, falls back to the note for $0 drafts, and is null otherwise', () => {
+    const draft = buildBridgedChangeOrderDraft({
+      form: { detailedDescriptionOfChange: 'x', reasonForChange: 'y', impactOnSchedule: '', impactOnCost: 'Labor $1,200 + materials $1,250 = net $2,450', responseRequestDate: '', submittedTo: '' },
+      netChangeCents: 245000,
+    })
+    expect(bridgedCostImpactText({ lines: draft.line_items_snapshot, internalNotes: draft.internal_notes })).toBe('Labor $1,200 + materials $1,250 = net $2,450')
+    const zero = buildBridgedChangeOrderDraft({
+      form: { detailedDescriptionOfChange: 'x', reasonForChange: 'y', impactOnSchedule: '+2 days', impactOnCost: 'No cost change', responseRequestDate: '', submittedTo: '' },
+      netChangeCents: 0,
+    })
+    expect(zero.line_items_snapshot).toEqual([])
+    expect(bridgedCostImpactText({ lines: zero.line_items_snapshot, internalNotes: zero.internal_notes })).toBe('No cost change')
+    expect(bridgedCostImpactText({ lines: [{ line_item: 'Water heater', description: 'swap' }], internalNotes: 'hand-written note' })).toBeNull()
   })
 })
 

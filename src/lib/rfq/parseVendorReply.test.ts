@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { extractBasis, extractPriceCents, extractSizes, parseVendorReply } from './parseVendorReply'
+import { extractBasis, extractPriceCents, extractSizes, foldPlural, parseVendorReply } from './parseVendorReply'
 
 const FIXTURES = [
   { name: 'ft of 4IN WASTE', count: 752 },
@@ -109,5 +109,60 @@ describe('parseVendorReply', () => {
     const r = parseVendorReply('4" cast iron 1890.00/ft', FIXTURES, baseline)
     expect(r.lines[0]?.outlier).toBe(true)
     expect(r.lines[0]?.unitPriceEachCents).toBe(189000)
+  })
+})
+
+describe('tokenizer: slashes and plurals (v2.2911, J12-F4)', () => {
+  const BP398 = [
+    { name: 'Toilets', count: 12 },
+    { name: 'Kitchen sinks', count: 6 },
+    { name: 'Shower/tub combos', count: 3 },
+  ]
+
+  it('a slash in the fixture name is a word break, not part of the word', () => {
+    const r = parseVendorReply('shower tub combos 3 @ $900', BP398)
+    expect(r.unassigned).toEqual([])
+    expect(r.lines[0]?.fixtures).toEqual(['Shower/tub combos'])
+    expect(r.lines[0]?.unitPriceEachCents).toBe(90000)
+    expect(r.lines[0]?.confidence).toBe('exact')
+  })
+
+  it('the walked line: a slash-named fixture with no-stock phrasing becomes a can’t-supply row', () => {
+    const r = parseVendorReply("Shower tub combo: call for pricing, can't supply until Oct", BP398)
+    expect(r.unassigned).toEqual([])
+    expect(r.lines[0]?.fixtures).toEqual(['Shower/tub combos'])
+    expect(r.lines[0]?.cantSupply).toBe(true)
+    expect(r.lines[0]?.unitPriceEachCents).toBeNull()
+  })
+
+  it('plurals fold both ways — vendor singular vs fixture plural and the reverse', () => {
+    const r = parseVendorReply('Kitchen sink 6 x 1899.00\ntoilet 12 @ 250', BP398)
+    expect(r.unassigned).toEqual([])
+    expect(r.lines[0]?.fixtures).toEqual(['Kitchen sinks'])
+    expect(r.lines[0]?.unitPriceEachCents).toBe(189900)
+    expect(r.lines[1]?.fixtures).toEqual(['Toilets'])
+    const reverse = parseVendorReply('kitchen sinks 1899', [{ name: 'Kitchen sink', count: 6 }])
+    expect(reverse.lines[0]?.fixtures).toEqual(['Kitchen sink'])
+  })
+
+  it('the file-drop lane’s flattened rows (cells joined by two spaces) match the same way a paste does', () => {
+    const sheet = ['Shower/tub combos  3  $900.00', 'Kitchen sinks  6  1899.00', 'Toilets  12  250.00'].join('\n')
+    const r = parseVendorReply(sheet, BP398)
+    expect(r.unassigned).toEqual([])
+    expect(r.lines.map((l) => l.fixtures[0])).toEqual(['Shower/tub combos', 'Kitchen sinks', 'Toilets'])
+    expect(r.lines.map((l) => l.unitPriceEachCents)).toEqual([90000, 189900, 25000])
+  })
+
+  it('short abbreviations never lose their trailing s, and the original sample still parses', () => {
+    expect(foldPlural('fs')).toBe('fs')
+    expect(foldPlural('gas')).toBe('gas')
+    expect(foldPlural('brass')).toBe('brass')
+    expect(foldPlural('boxes')).toBe('box')
+    expect(foldPlural('carriers')).toBe('carrier')
+    expect(foldPlural('tees')).toBe('tee')
+    const r = parseVendorReply(SAMPLE, FIXTURES)
+    const byRaw = new Map(r.lines.map((l) => [l.raw, l]))
+    expect(byRaw.get('GCO/FCO 116 each')?.fixtures.sort()).toEqual(['FCO', 'GCO'])
+    expect(byRaw.get('3/4 viega tees 61.20')?.fixtures).toEqual(['3/4IN T WATER'])
   })
 })

@@ -53,16 +53,18 @@ describe('PricingShareMenu', () => {
     fireEvent.click(row)
     expect(h.onCsv).not.toHaveBeenCalled()
   })
-  it('Supply house list fires, and disables with its own tooltip', () => {
+  it('Supply house prices fires, and the caret names the RFQ lane in visible text (v2.2911)', () => {
     const h = setup()
-    fireEvent.click(screen.getByLabelText(/More ways/))
-    fireEvent.click(screen.getByText('Supply house list'))
+    const caret = screen.getByLabelText(/More ways/)
+    expect(caret.textContent).toMatch(/Supply house prices \(RFQ\)/)
+    fireEvent.click(caret)
+    fireEvent.click(screen.getByText('Supply house prices'))
     expect(h.onCopyFixtures).toHaveBeenCalledTimes(1)
   })
   it('a disabled fixtures row keeps its tooltip and does not fire', () => {
     const h = setup({ fixturesDisabled: true, fixturesTitle: 'Add Counts first — nothing to copy yet' })
     fireEvent.click(screen.getByLabelText(/More ways/))
-    const row = screen.getByText('Supply house list').closest('button')!
+    const row = screen.getByText('Supply house prices').closest('button')!
     expect(row.disabled).toBe(true)
     expect(row.title).toMatch(/Add Counts first/)
     fireEvent.click(row)

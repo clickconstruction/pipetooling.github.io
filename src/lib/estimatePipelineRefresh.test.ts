@@ -49,6 +49,16 @@ describe('isEmptyEstimateDraft', () => {
     expect(isEmptyEstimateDraft(row({ terms_snapshot: 'Net 30' }))).toBe(false)
   })
 
+  it('a due date, an address, or an internal note is content too (v2.2911, J16-N1)', () => {
+    expect(
+      isEmptyEstimateDraft(row({ doc_kind: 'change_order', change_order_fields: { response_requested_by: '2026-09-12' } })),
+    ).toBe(false)
+    expect(isEmptyEstimateDraft(row({ for_address: '1200 Main St' }))).toBe(false)
+    expect(isEmptyEstimateDraft(row({ internal_notes: 'Created from Bids → Change Order.' }))).toBe(false)
+    // Whitespace-only values still read as empty.
+    expect(isEmptyEstimateDraft(row({ for_address: '  ', internal_notes: '\n' }))).toBe(true)
+  })
+
   it('never flags non-drafts', () => {
     expect(isEmptyEstimateDraft(row({ status: 'sent' }))).toBe(false)
   })

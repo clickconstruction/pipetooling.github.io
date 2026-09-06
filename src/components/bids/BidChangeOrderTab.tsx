@@ -11,7 +11,7 @@ import type { User } from '@supabase/supabase-js'
 import type { BidWithBuilder } from '../../types/bidWithBuilder'
 import { bidDisplayName, formatDateYYMMDD } from '../../lib/bids/bidFormatting'
 import { buildChangeOrderHtml, buildChangeOrderText, type ChangeOrderFormData } from '../../lib/bidDocuments/changeOrder'
-import { buildBridgedChangeOrderDraft, formatSignedDollars, parseCostImpact, sanitizeSignedMoneyTyping, signedMoneyToCents } from '../../lib/bidDocuments/changeOrderBridge'
+import { buildBridgedChangeOrderDraft, describeCostImpactReadout, formatSignedDollars, parseCostImpact, sanitizeSignedMoneyTyping, signedMoneyToCents } from '../../lib/bidDocuments/changeOrderBridge'
 import { recordNavClick } from '../../lib/navClickTelemetry'
 import { addressLines } from '../../lib/bidDocuments/htmlDoc'
 import { openInExternalBrowser } from '../../lib/openInExternalBrowser'
@@ -318,6 +318,23 @@ export function BidChangeOrderTab({ bids, onlyMyBids, setOnlyMyBids, isMyBid, au
               <div>
                 <label style={{ display: 'block', marginBottom: 4, fontWeight: 500, fontSize: '0.875rem' }}>Impact on Cost (Contract Sum Adjustment)</label>
                 <textarea value={form.impactOnCost} onChange={(e) => updateChangeOrderForm({ impactOnCost: e.target.value })} rows={4} style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.875rem', boxSizing: 'border-box', resize: 'vertical' }} />
+                {(() => {
+                  // v2.2911 (J16-F2): say what the typed text becomes — the number that
+                  // rides to Estimates as the draft's total, not a line buried in a note.
+                  const readout = describeCostImpactReadout(form.impactOnCost)
+                  if (!readout) return null
+                  return (
+                    <div
+                      role="status"
+                      style={{ marginTop: '0.35rem', fontSize: '0.8125rem', color: readout.cents === null ? 'var(--text-amber-800)' : 'var(--text-700)', display: 'flex', gap: '0.4rem', alignItems: 'baseline', flexWrap: 'wrap' }}
+                    >
+                      {readout.cents !== null ? (
+                        <strong style={{ fontVariantNumeric: 'tabular-nums', fontSize: '0.9375rem' }}>{formatSignedDollars(readout.cents)}</strong>
+                      ) : null}
+                      <span>{readout.sentence}</span>
+                    </div>
+                  )
+                })()}
                 <div style={{ marginTop: '0.75rem', padding: '0.75rem', background: 'var(--bg-subtle)', border: '1px solid var(--border)', borderRadius: 4, fontSize: '0.8125rem', color: 'var(--text-600)' }}>
                   <label style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem', marginBottom: '0.5rem', cursor: 'pointer' }}><input type="checkbox" checked={form.checklistCostBreakdown ?? false} onChange={(e) => updateChangeOrderForm({ checklistCostBreakdown: e.target.checked })} style={{ marginTop: 2 }} /><span>Breakdown of costs (labor, materials, equipment, subcontractors, overhead, profit, taxes, insurance, bonds, etc.)</span></label>
                   <label style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem', marginBottom: '0.5rem', cursor: 'pointer' }}><input type="checkbox" checked={form.checklistNetChange ?? false} onChange={(e) => updateChangeOrderForm({ checklistNetChange: e.target.checked })} style={{ marginTop: 2 }} /><span>Net change amount (increase, decrease, or no change)</span></label>
@@ -338,18 +355,28 @@ export function BidChangeOrderTab({ bids, onlyMyBids, setOnlyMyBids, isMyBid, au
               <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Combined document (copy to send)</label>
               {/* eslint-disable-next-line react/no-danger -- app-generated document HTML; user-entered fields are escaped by the tested changeOrder builder */}
               <div key={`combined-preview-co-${bid.id}-${bid.bid_date_sent ?? ''}-${(bid as { submitted_to?: string | null }).submitted_to ?? ''}-${form.contactPerson}-${form.phoneEmail}-${form.responseRequestDate}-${form.detailedDescriptionOfChange}-${form.reasonForChange}-${form.impactOnCost}-${form.impactOnSchedule}`} style={{ width: '100%', minHeight: 360, padding: '0.75rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontFamily: 'inherit', fontSize: '0.875rem', boxSizing: 'border-box', whiteSpace: 'pre-wrap' }} dangerouslySetInnerHTML={{ __html: combinedHtml }} />
-              <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
-                <button type="button" onClick={copyToClipboard} style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}>{changeOrderCopySuccess ? 'Copied!' : 'Copy to clipboard'}</button>
-                <button type="button" onClick={() => { copyToClipboard(); openInExternalBrowser(googleDocsCopyUrl) }} style={{ padding: '0.5rem 1rem', background: 'var(--bg-muted)', color: 'var(--text-700)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer', fontSize: 'inherit' }}>Open in Google Docs</button>
-                <button
-                  type="button"
-                  disabled={sendingForSignature}
-                  title="Review what will be created, enter the net change, then a signable change order draft opens in Estimates"
-                  onClick={() => openBridgeSheet(bid, form)}
-                  style={{ padding: '0.5rem 1rem', background: '#16a34a', color: 'white', border: 'none', borderRadius: 4, cursor: sendingForSignature ? 'wait' : 'pointer' }}
-                >
-                  {sendingForSignature ? 'Creating…' : 'Send for signature →'}
-                </button>
+              {/* v2.2911 (J16-F1): each action says whether it leaves a record — two make paper, one makes a change order. */}
+              <div style={{ display: 'flex', gap: '0.75rem', marginTop: '0.5rem', flexWrap: 'wrap', alignItems: 'flex-start' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', maxWidth: '13rem' }}>
+                  <button type="button" onClick={copyToClipboard} style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}>{changeOrderCopySuccess ? 'Copied!' : 'Copy to clipboard'}</button>
+                  <span style={{ fontSize: '0.74rem', color: 'var(--text-muted)', lineHeight: 1.3 }}>Paper copy only — nothing is saved here.</span>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', maxWidth: '13rem' }}>
+                  <button type="button" onClick={() => { copyToClipboard(); openInExternalBrowser(googleDocsCopyUrl) }} style={{ padding: '0.5rem 1rem', background: 'var(--bg-muted)', color: 'var(--text-700)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer', fontSize: 'inherit' }}>Open in Google Docs</button>
+                  <span style={{ fontSize: '0.74rem', color: 'var(--text-muted)', lineHeight: 1.3 }}>Paper copy in Docs — nothing is saved here.</span>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', maxWidth: '15rem' }}>
+                  <button
+                    type="button"
+                    disabled={sendingForSignature}
+                    title="Review what will be created, enter the net change, then a signable change order draft opens in Estimates"
+                    onClick={() => openBridgeSheet(bid, form)}
+                    style={{ padding: '0.5rem 1rem', background: '#16a34a', color: 'white', border: 'none', borderRadius: 4, cursor: sendingForSignature ? 'wait' : 'pointer' }}
+                  >
+                    {sendingForSignature ? 'Creating…' : 'Send for signature →'}
+                  </button>
+                  <span style={{ fontSize: '0.74rem', color: 'var(--text-700)', lineHeight: 1.3 }}>Creates a tracked change order the GC signs online — the only one of the three that leaves a record.</span>
+                </div>
               </div>
             </div>
           </div>
