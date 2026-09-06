@@ -2,7 +2,7 @@
 title: turn a won bid into a job
 category: Office
 roles: dev, master_technician, assistant, controller, estimator
-keywords: won, win, bid, job, open the job, convert, import, new job, J number, opened from this bid, cancel import, which GC gave you this job
+keywords: won, win, bid, job, scheduled visits, move visits, schedule blocks, open the job, convert, import, new job, J number, opened from this bid, cancel import, which GC gave you this job
 order: 72
 ---
 The one sentence: **wherever you mark a bid Won, "Open the job" is right there** — one tap opens New Job with the customer, address, plans and folder filled in and the bid linked on the job.
@@ -31,6 +31,16 @@ What does **not** come over: the bid's own line items, schedule blocks, crew, da
 Once a job exists from a bid, the Job block in Edit Bid reads {{chip:green|J1007 opened from this bid}} with {{button:blue|Open the job}} beside it — that opens the job window. The Bid Board's **Links** column shows the same green **J1007** chip. So "did we already open this one?" has an answer on the bid itself.
 
 Need a second job from the same bid (a phase two, a split scope)? Press **Create another job**. New Job asks first — *A job already exists from this bid* — and **Create another job** goes ahead while **Cancel** leaves everything as it was.
+
+## Visits scheduled on the bid
+
+If dispatch had already put site visits on the calendar against the **bid**, they don't move on their own when the job opens. Once the job exists, Edit Bid's **Job** block adds a line under the chip:
+
+:::example Visits still on the bid
+{{chip:green|J1007 opened from this bid}} &nbsp; 2 scheduled visits still sit on the bid (1 upcoming). {{button:outline|Move them to J1007}}
+:::
+
+Tap it and confirm: the visits keep their crew, date and time and now read as the job's on the Schedule hub and the job's week; the bid's schedule reads empty. Nothing moves unless you tap — a visit that really was a bid visit can stay one. The button shows for the roles that edit the schedule (dev, master, assistant, controller).
 
 ## Which GC gave you the job?
 
