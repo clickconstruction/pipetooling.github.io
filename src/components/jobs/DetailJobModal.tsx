@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import { canOpenMoneyStory, moneyStoryHref } from '../../lib/jobs/moneyStoryDoor'
 import { supabase } from '../../lib/supabase'
 import { openInExternalBrowser } from '../../lib/openInExternalBrowser'
 import {
@@ -1352,6 +1353,30 @@ export default function DetailJobModal({
                   </span>
                 )}
               </span>
+            ) : null}
+            {/* T5-02 (J6-9): the door into Job Summary from the job window. Not for assistants. */}
+            {jobId && canOpenMoneyStory(viewerAuthRole) ? (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onClose()
+                  navigate(moneyStoryHref(jobId))
+                }}
+                title="Open this job on Job Summary — revenue, costs, true profit"
+                aria-label="Money story: open this job on Job Summary"
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  padding: '0.25rem 0.35rem',
+                  color: 'var(--text-link)',
+                  fontSize: '0.8125rem',
+                  cursor: 'pointer',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                money story →
+              </button>
             ) : null}
             {/* Pane mode (v2.1706): pill left, every icon pushed right — this
                 zero-width spacer's auto margin does the split. */}

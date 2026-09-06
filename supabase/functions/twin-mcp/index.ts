@@ -177,7 +177,7 @@ const TOOLS = [
         reference_bid: { type: 'string', description: "The human bid to re-estimate blind (e.g. 'b370' or uuid)" },
         due_in_days: { type: 'number', description: 'Optional due date offset for the twin bid (default 7)' },
         round: { type: 'number', description: "Re-run round (v2.2800): 2 or higher opens a NEW shell named 'ZZ Twin <PROJECT> (backtest R<round>)' instead of handing back the first round's bid — a scored round-1 shell carries its scorecard and would unblind you. Omit for the first run." },
-        gate_run: { type: 'boolean', description: 'HOLDOUT references (reserved for gate measurement) refuse to open unless this is true — pass it ONLY when the operator explicitly ordered a gate run (v2.2945).' },
+        gate_run: { type: 'boolean', description: 'HOLDOUT references (reserved for gate measurement) refuse to open unless this is true — pass it ONLY when the operator explicitly ordered a gate run (v2.2946).' },
       },
       required: ['reference_bid'],
     },
@@ -561,7 +561,7 @@ async function openBacktestShell(
   const { data: refBid, error: refErr } = await rq.maybeSingle()
   if (refErr) return { ok: false, error: `Reference lookup failed: ${refErr.message}` }
   if (!refBid) return { ok: false, error: `No bid found for "${ref}"` }
-  // Holdout enforcement (v2.2945, LEARNING_PLAN lever 3): holdout references are
+  // Holdout enforcement (v2.2946, LEARNING_PLAN lever 3): holdout references are
   // reserved for gate measurement — never practice, never quoted in doctrine.
   // Only an operator-ordered gate run may open one; next_backtest auto-skips.
   if ((refBid as { holdout?: boolean }).holdout && !opts.gateRun) {

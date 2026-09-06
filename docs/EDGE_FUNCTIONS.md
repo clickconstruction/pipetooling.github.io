@@ -837,7 +837,7 @@ The frontend (`src/pages/DevLogin.tsx`, v2.1526) no longer follows the returned 
 
 **Rulings groundwork (v2.2939 / v1.3.8)**: `ask_question` gains `topic` — one kebab slug per doctrine issue (`travel-bands`) written to `twin_questions.topic` (migration `20260906110000`) so duplicate asks group into single standing rulings; `get_answers` returns it. `submit_report` accepts `label` as an alias for `mission` (batch reports were filing "unlabeled"). `get_work_state` returns `twin_source_bid_id` so a shell can verify its own pairing.
 
-**Holdout enforcement (v2.2945 / v1.3.9)**: `openBacktestShell` reads `bids.holdout` (migration `20260906120000`) and REFUSES a holdout reference — reserved for gate measurement, never practice — unless `open_backtest` is called with `gate_run: true` (operator-ordered gate runs only); `next_backtest` auto-skips holdout candidates via the shared refusal. The read-side pairing: doctrine must never quote holdout values, and the Queue lens (v2.2942) excludes them from practice slates.
+**Holdout enforcement (v2.2946 / v1.3.9)**: `openBacktestShell` reads `bids.holdout` (migration `20260906120000`) and REFUSES a holdout reference — reserved for gate measurement, never practice — unless `open_backtest` is called with `gate_run: true` (operator-ordered gate runs only); `next_backtest` auto-skips holdout candidates via the shared refusal. The read-side pairing: doctrine must never quote holdout values, and the Queue lens (v2.2942) excludes them from practice slates.
 
 **Required secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, and for CT minting **`CT_TWIN_LOGIN_URL`** + **`COUNTTOOLING_TWIN_LOGIN_SECRET`** (twin-login's own `TWIN_LOGIN_SECRET` is not needed here — the per-twin token is the credential).
 

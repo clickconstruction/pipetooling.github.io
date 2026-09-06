@@ -2,11 +2,21 @@
 title: read true profit on Job Summary
 category: Office
 roles: dev, master_technician, controller
-keywords: cut by, group by, by GC, by service type, by lead tech, concentration, revenue per hour, compare to, prior period, last year, target margin, job summary, true profit, overhead, day-share, margin, finished jobs, percent complete, earned revenue, sort, window, gross profit
+keywords: money story, door, from pipeline, from job window, cut by, group by, by GC, by service type, by lead tech, concentration, revenue per hour, compare to, prior period, last year, target margin, job summary, true profit, overhead, day-share, margin, finished jobs, percent complete, earned revenue, sort, window, gross profit
 order: 36
 ---
 
 **Job Summary** used to stop at gross: revenue minus labor, subs, and parts. Now it charges each job its share of overhead and ends at **true profit**, opens on the jobs that are finished, and lets you sort by whatever you're chasing.
+
+## How to get there
+
+Three doors, all landing on the same table:
+
+- **Jobs → Job Summary**, the tab.
+- **money story →** on a job's activity header on **Jobs → Pipeline** (the panel that opens on a row, and its full-screen view), right after *N% complete*. It opens Job Summary with that job expanded and scrolled into view.
+- **money story →** in the header of the **job window**, next to the trade pill.
+
+The link shows for dev, master and controller. Assistants keep the tab but not the shortcut. If the job isn't on the list — below the job-number floor or outside the **Worked in** window — a note says so instead of scrolling to nothing.
 
 ## The controls
 

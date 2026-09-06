@@ -14,7 +14,7 @@ export async function buildDirectDeposit() {
   p.subtitle('Payments · complete one form per account. Attach a voided check or a letter from your bank.')
 
   p.paragraph(
-    `I authorize ${COMPANY} to deposit my pay electronically to the account below, and to withdraw from that account any amount deposited in error. This authorization stays in effect until I give ${COMPANY} written notice to change or cancel it, and I understand the office may need some time to process a change.`,
+    `I authorize ${COMPANY} to deposit payments due to me electronically to the account below, and to withdraw from that account any amount deposited in error. This authorization stays in effect until I give ${COMPANY} written notice to change or cancel it, and I understand the office may need some time to process a change.`,
     { gapAfter: 8 },
   )
 
@@ -23,10 +23,10 @@ export async function buildDirectDeposit() {
     { box: { key: 'contractor_phone', type: 'digits', label: 'Your phone', labelEs: 'Su teléfono', mask: '###-###-####', prefill: 'person_phone', sample: '5125550142' }, label: 'Phone', frac: 0.38 },
   ])
 
+  // Owner ask (2026-09-06): the bank is known from the routing number — collect the person's address on the account instead.
   p.paragraph('Bank account', { bold: true, gapAfter: 0 })
   p.fieldRow([
-    { box: { key: 'bank_name', type: 'text', label: 'Bank or credit union name', labelEs: 'Nombre del banco o cooperativa', required: true, sample: 'Frost Bank' }, label: 'Bank name', frac: 0.62 },
-    { box: { key: 'bank_city_state', type: 'text', label: 'Bank city and state', labelEs: 'Ciudad y estado del banco', sample: 'Austin, TX' }, label: 'City, state', frac: 0.38 },
+    { box: { key: 'address_on_account', type: 'text', label: 'Your address as the bank has it (street, city, state, ZIP)', labelEs: 'Su dirección tal como la tiene el banco (calle, ciudad, estado, código postal)', required: true, sample: '5501 Balcones Dr, Austin, TX 78731' }, label: 'Address on account', frac: 1 },
   ])
   p.fieldRow([
     {
@@ -55,13 +55,13 @@ export async function buildDirectDeposit() {
   p.paragraph('How much to deposit', { bold: true, gapAfter: 0 })
   p.checkRow('', [
     { key: 'deposit_all', label: 'My entire net pay', labelEs: 'Todo mi pago neto', sample: 'true' },
-    { key: 'deposit_partial', label: 'A fixed dollar amount each pay period (write it below)', labelEs: 'Una cantidad fija en dólares cada período de pago' },
+    { key: 'deposit_partial', label: 'A fixed dollar amount (write it below)', labelEs: 'Una cantidad fija en dólares' },
   ], 'deposit_kind', 'How much to deposit', true)
   p.checkRow('', [
-    { key: 'deposit_percent', label: 'A percentage of the amount due to me each pay period (write it below)', labelEs: 'Un porcentaje de la cantidad que se me debe cada período de pago' },
+    { key: 'deposit_percent', label: 'A percentage of the amount due to me (write it below)', labelEs: 'Un porcentaje de la cantidad que se me debe' },
   ], 'deposit_kind', 'How much to deposit', true)
   p.fieldRow([
-    { box: { key: 'deposit_amount', type: 'text', label: 'Fixed dollar amount per pay period', labelEs: 'Cantidad fija en dólares por período de pago', advanced: true, help: 'Only if you chose a fixed amount above. The rest of your pay is paid by check.', helpEs: 'Solo si eligió una cantidad fija. El resto se paga con cheque.' }, label: 'Fixed amount ($)', frac: 0.26 },
+    { box: { key: 'deposit_amount', type: 'text', label: 'Fixed dollar amount', labelEs: 'Cantidad fija en dólares', advanced: true, help: 'Only if you chose a fixed amount above. The rest of your pay is paid by check.', helpEs: 'Solo si eligió una cantidad fija. El resto se paga con cheque.' }, label: 'Fixed amount ($)', frac: 0.26 },
     { box: { key: 'deposit_percent_value', type: 'digits', label: 'Percentage of the amount due', labelEs: 'Porcentaje de la cantidad debida', mask: '###', maxLength: 3, advanced: true, help: 'Only if you chose a percentage above — 1 to 100. The rest of your pay is paid by check.', helpEs: 'Solo si eligió un porcentaje — de 1 a 100. El resto se paga con cheque.' }, label: 'Percentage (%)', frac: 0.22 },
     { box: { key: 'notes', type: 'text', label: 'Anything the office should know', labelEs: 'Algo que la oficina deba saber', advanced: true }, label: 'Notes (optional)', frac: 0.52 },
   ])
