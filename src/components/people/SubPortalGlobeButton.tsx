@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useMemo, useRef, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../hooks/useAuth'
 import { useToastContext } from '../../contexts/ToastContext'
@@ -26,6 +26,9 @@ import { setSubPortalGlobeState, useSubPortalGlobeState } from '../../hooks/useS
 import { portalGlobeTint, portalGlobeTitle } from '../../lib/portal/portalGlobeTint'
 import PortalGlobeIcon from '../shared/PortalGlobeIcon'
 import { withPreviewFlag } from '../../lib/publicViewCounting'
+import { useSubPortalVisitSummaries } from '../../hooks/useSubPortalVisitSummaries'
+import { visitLine, whenWord } from '../../lib/portal/subPortalVisits'
+import { SubPortalVisitsModal } from './SubPortalVisitsModal'
 
 /**
  * 🌐 next to a sub's name (sub-portal train): office staff manage the sub's
@@ -81,6 +84,10 @@ export default function SubPortalGlobeButton({
   const [slugLocked, setSlugLocked] = useState(false)
   const [addrInput, setAddrInput] = useState('')
   const [timeline, setTimeline] = useState<PortalTimelineEntry[]>([])
+  // Did they look? (v2.2922) — one summary row while the card is open; the visits modal holds the trail.
+  const visitIds = useMemo(() => [personId], [personId])
+  const visits = useSubPortalVisitSummaries(visitIds, open)
+  const [visitsOpen, setVisitsOpen] = useState(false)
   const [creatorNames, setCreatorNames] = useState<Record<string, string>>({})
   const diceBase = useRef<{ base: string; out: string } | null>(null)
   const globeState = useSubPortalGlobeState(personId)
@@ -435,6 +442,7 @@ export default function SubPortalGlobeButton({
       >
         <PortalGlobeIcon size={size} />
       </button>
+      <SubPortalVisitsModal personId={visitsOpen ? personId : null} personName={personName} onClose={() => { setVisitsOpen(false); visits.reload() }} />
       {open && (
         <div
           style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 80, padding: '1rem' }}
@@ -585,6 +593,32 @@ export default function SubPortalGlobeButton({
                         {smallBtn('Turn off portal', () => void turnOff(), true)}
                       </span>,
                     )}
+                    {(() => {
+                      const s = visits.byPerson.get(personId)
+                      const line = visitLine(s, { hasLink: main.kind === 'active' })
+                      return (
+                        <>
+                          {gearRow(
+                            'Opened',
+                            <div>
+                              <span style={{ fontSize: '0.8rem', color: line?.tone === 'green' ? 'var(--text-700)' : 'var(--text-muted)' }}>{s ? (s.outsideOpens > 0 && s.lastOutsideAt ? `Opened ${s.outsideOpens === 1 ? 'once' : s.outsideOpens === 2 ? 'twice' : `${s.outsideOpens} times`} · last ${whenWord(s.lastOutsideAt)}` : 'Not opened yet') : '—'}</span>
+                              <p style={{ margin: '2px 0 0', fontSize: '0.7rem', color: 'var(--text-muted)' }}>Outside opens — the sub, or whoever they sent the link to. Your previews don't count.</p>
+                            </div>,
+                          )}
+                          {gearRow(
+                            'Team',
+                            <div>
+                              <span style={{ fontSize: '0.8rem', color: line?.team ? 'var(--text-700)' : 'var(--text-muted)' }}>{s ? (s.staffLooks > 0 && s.lastStaffAt ? `Last looked: ${s.lastStaffName ?? 'a teammate'} · ${whenWord(s.lastStaffAt)}` : 'Nobody on the team yet') : '—'}</span>
+                              <p style={{ margin: '2px 0 0', fontSize: '0.7rem', color: 'var(--text-muted)' }}>Signed-in teammates opening the real link. Kept apart from the sub's own opens.</p>
+                            </div>,
+                          )}
+                          {gearRow(
+                            'Trail',
+                            <span>{smallBtn('All visits ›', () => setVisitsOpen(true))}</span>,
+                          )}
+                        </>
+                      )
+                    })()}
                     {gearRow(
                       'History',
                       <div style={{ color: 'var(--text-muted)', fontSize: '0.75rem', lineHeight: 1.6 }}>

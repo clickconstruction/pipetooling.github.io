@@ -42,6 +42,8 @@ describe('buildSheetStory — the sheet with nothing signed (977)', () => {
   it('Work is current with the days and the portal sentence; Customer pays explains the missing job', () => {
     expect(rows[3]).toMatchObject({ state: 'now', chip: { label: 'current · 16 days', tone: 'amber' }, actions: ['to_walkthrough', 'open_sheet'] })
     expect(rows[3]!.sees).toContain('My work here is done')
+    expect(rows[3]!.seesOn).toBe('sheet')
+    expect(rows.filter((r) => r.seesOn).map((r) => r.key)).toEqual(['work'])
     expect(rows[5]!.facts[0]!.text).toContain('not in the Pipeline')
     expect(rows[6]!.facts[0]!.text).toContain('No payments yet')
   })
@@ -68,7 +70,7 @@ describe('buildSheetStory — a signed sheet at the walk-through (804)', () => {
     expect(rows[1]!.facts[0]!.text).toContain("to Cale Yarbrough's portal · good through 2026-09-05")
     expect(rows[2]).toMatchObject({ state: 'done', chip: { label: 'WO-804-01', tone: 'green' }, actions: ['view_record'] })
     expect(rows[2]!.facts[0]!.text).toContain('typed signature “Cale Yarbrough”')
-    expect(rows[2]!.facts[1]).toEqual({ k: 'Binds under', text: 'MSA signed 2026-07-02 · General Conditions current · COI through 2026-12-31' })
+    expect(rows[2]!.facts[1]).toEqual({ k: 'Binds under', text: 'MSA signed 2026-07-02 · General Conditions current · COI through 2026-12-31', link: 'paperwork' })
   })
   it('the walk-through row reads the portal event with the note, and offers the two moves', () => {
     const w = rows[4]!

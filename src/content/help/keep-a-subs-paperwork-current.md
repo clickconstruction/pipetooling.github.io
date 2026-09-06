@@ -7,10 +7,11 @@ order: 81
 ---
 A sub's compliance column on **People → Subs** answers one question: is their paperwork in order? {{chip:gray|COI missing}} means no insurance certificate is on file at all — not that nobody looked. This guide is the feed: how a COI, W-9, or license gets *onto* the file so the badge can turn green.
 
-## Two doors, same form
+## Three doors, same form
 
 - **People → Subs** → click **▶ Documents** under the sub → {{button:outline|+ Add document}}.
 - **Person Desk → Paperwork** (open the Desk from any person's name) → {{button:outline|Add document}} on the *On file* row.
+- **Jobs → Sub Labor or Work Orders** → click a sheet's rail to open its story → on the Signed row, click **Binds under** (*no MSA on file · no COI on file*). The Desk opens on Paperwork; the story updates when you close it.
 
 Both open the same short form. Nothing is saved until you click {{button:blue|Save}}.
 

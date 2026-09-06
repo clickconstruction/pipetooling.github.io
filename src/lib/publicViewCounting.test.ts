@@ -96,8 +96,10 @@ describe('requestIsStaff / publicViewDecision', () => {
     expect(await requestIsStaff(fakeReq('https://f/x', 'Bearer any'), boom, ANON)).toBe(false)
   })
   it('the decision combines the flag and the session', async () => {
-    expect(await publicViewDecision(fakeReq('https://f/customer-portal?token=t'), v, ANON)).toEqual({ preview: false, isStaff: false, count: true })
-    expect(await publicViewDecision(fakeReq('https://f/customer-portal?token=t&preview=1'), v, ANON)).toEqual({ preview: true, isStaff: false, count: false })
-    expect(await publicViewDecision(fakeReq('https://f/customer-portal?token=t', 'Bearer good.staff.jwt'), v, ANON)).toEqual({ preview: false, isStaff: true, count: false })
+    expect(await publicViewDecision(fakeReq('https://f/customer-portal?token=t'), v, ANON)).toEqual({ preview: false, isStaff: false, staffUserId: null, viewer: 'outside', count: true })
+    expect(await publicViewDecision(fakeReq('https://f/customer-portal?token=t&preview=1'), v, ANON)).toEqual({ preview: true, isStaff: false, staffUserId: null, viewer: 'preview', count: false })
+    expect(await publicViewDecision(fakeReq('https://f/customer-portal?token=t', 'Bearer good.staff.jwt'), v, ANON)).toEqual({ preview: false, isStaff: true, staffUserId: 'u1', viewer: 'staff', count: false })
+    // The flag wins over the session: a staff preview is a preview, never a team look.
+    expect(await publicViewDecision(fakeReq('https://f/sub-portal?token=t&preview=1', 'Bearer good.staff.jwt'), v, ANON)).toMatchObject({ viewer: 'preview', staffUserId: 'u1', count: false })
   })
 })

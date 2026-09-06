@@ -43,15 +43,15 @@ export function prevSubSheetStage(stage: SubSheetStage): SubSheetStage | null {
 /** The office chip text — what we are waiting on. Mirrors `sub_sheet_stage_label()` in SQL. */
 export const SUB_SHEET_STAGE_LABEL: Record<SubSheetStage, string> = {
   working: 'Waiting on work',
-  walkthrough: 'Waiting on walk-through',
+  walkthrough: 'Waiting on inspection',
   customer_pay: 'Waiting on customer',
 }
 
 /** One-line hint under each stage in the office menu. */
 export const SUB_SHEET_STAGE_HINT: Record<SubSheetStage, string> = {
   working: 'default on every new sheet',
-  walkthrough: 'work is done — schedule the walk-through',
-  customer_pay: 'passed the walk-through — bill the job',
+  walkthrough: 'work is done — call it in for inspection',
+  customer_pay: 'passed inspection — trigger the draw',
 }
 
 export type SubSheetStageTone = 'amber' | 'violet' | 'blue'
@@ -62,7 +62,7 @@ export const SUB_SHEET_STAGE_TONE: Record<SubSheetStage, SubSheetStageTone> = {
   customer_pay: 'blue',
 }
 
-/** "Waiting on work → Waiting on walk-through" — the Activity line's core. */
+/** "Waiting on work → Waiting on inspection" — the Activity line's core. */
 export function describeSubSheetStageChange(from: SubSheetStage, to: SubSheetStage): string {
   return `${SUB_SHEET_STAGE_LABEL[from]} → ${SUB_SHEET_STAGE_LABEL[to]}`
 }

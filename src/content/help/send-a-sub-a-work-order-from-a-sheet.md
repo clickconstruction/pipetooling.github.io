@@ -26,7 +26,7 @@ A routine plumbing sheet: open the editor, the library defaults are already tick
 
 ## Reading the rail
 
-The box draws the same seven-dot rail as **Jobs → Work Orders** and **Sub Labor** — **Drafted · Sent · Signed**, then the sheet's own **Work · Walk-through · Customer pays · Paid** — with a dashed red run while work is under way and nothing is signed. The filled dot is where the sheet stands today.
+The box draws the same seven-dot rail as **Jobs → Work Orders** and **Sub Labor** — **Drafted · Sent · Signed**, then the sheet's own **Work · Pre-inspection · Post-inspection: Trigger draw · Paid** — with a dashed red run while work is under way and nothing is signed. The filled dot is where the sheet stands today.
 
 While an offer waits: {{button:outline|Nudge}} resends the notification, {{button:outline|Mark accepted}} records an answer the sub gave you by phone, {{button:outline|Withdraw}} takes it back to a draft. A decline shows its reason with {{button:blue|Re-offer…}} ready.
 

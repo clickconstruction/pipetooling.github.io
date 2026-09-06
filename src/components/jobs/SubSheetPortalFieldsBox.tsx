@@ -216,7 +216,7 @@ export function SubSheetPortalFieldsBox({
             setDirty(true)
           }}
           disabled={saving}
-          placeholder={'e.g. Builder’s walk-through — scheduled Sep 9'}
+          placeholder={'e.g. Inspection called in Sep 9 — punch list first'}
           style={inputStyle}
         />
         <p style={{ margin: '4px 0 0', fontSize: '0.72rem', color: 'var(--text-muted)' }}>

@@ -6,6 +6,7 @@
 export {
   PUBLIC_PREVIEW_PARAM,
   isPreviewFlag,
+  publicViewerKind,
   shouldCountPublicView,
   userBearerToken,
   withPreviewFlag,

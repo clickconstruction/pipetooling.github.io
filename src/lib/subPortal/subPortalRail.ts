@@ -3,7 +3,7 @@ import type { SubPortalSheet } from './subPortalPayload'
 /**
  * Which dot of the portal's four-dot rail is lit (v2.2767 / v2.2854):
  *
- *   0 Work · 1 Walk-through · 2 Customer pays · 3 You're paid
+ *   0 Work · 1 Pre-inspection · 2 Post-inspection: Trigger draw · 3 You're paid
  *
  * The first three follow the stored stage. The fourth lights when a sheet at
  * Waiting on customer carries a payable-after date — the office has promised

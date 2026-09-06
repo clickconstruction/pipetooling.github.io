@@ -31,6 +31,8 @@ export type SubPortalSheet = {
   payHoldReason: string | null
   /** v2.2789: the signed work order behind this sheet, when one exists. */
   agreement: SubPortalAgreement | null
+  /** v2.2922: the plans online (the job's plans link, else its bid's CountTooling set); null when neither. */
+  plansUrl: string | null
 }
 
 export type SubPortalPaymentLine = {
@@ -180,6 +182,7 @@ function parseSheet(raw: unknown): SubPortalSheet | null {
     payableAfter: strOrNull(r.payableAfter),
     payHoldReason: strOrNull(r.payHoldReason),
     agreement: parseAgreement(r.agreement),
+    plansUrl: /^https?:\/\//i.test(str(r.plansUrl).trim()) ? str(r.plansUrl).trim() : null,
   }
 }
 

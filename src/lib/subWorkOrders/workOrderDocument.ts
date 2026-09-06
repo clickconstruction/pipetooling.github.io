@@ -97,7 +97,7 @@ export function buildWorkOrderDocument(input: {
   const terms: string[] = []
   terms.push(
     amount != null
-      ? `Subcontract amount ${money(amount)}, fixed.${retainage > 0 ? ` ${retainage}% retainage held until the walk-through.` : ''}`
+      ? `Subcontract amount ${money(amount)}, fixed.${retainage > 0 ? ` ${retainage}% retainage held until it passes inspection.` : ''}`
       : 'Subcontract amount to be set before this work order is sent.',
   )
   if (windowLabel) terms.push(`Work window ${windowLabel}.${expires ? ` Offer good through ${expires}.` : ''}`)
