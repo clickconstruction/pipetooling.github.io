@@ -87,6 +87,8 @@ import {
 } from '../lib/payStubPayments'
 import { type PersonOffsetInitialDraft, PersonOffsetFormModal } from '../components/pay/PersonOffsetFormModal'
 import { DraftPayrollModal } from '../components/pay/DraftPayrollModal'
+import { HoursApprovedNudgeChip } from '../components/people/HoursApprovedNudgeChip'
+import { foldHoursApproved, type HoursApprovedNudge } from '../lib/people/payWeekLinks'
 import { PayrollCatchUpModal } from '../components/pay/PayrollCatchUpModal'
 import { scanWeeksBefore, unreportedPayrollWeeks, type UnreportedWeekRow } from '../lib/unreportedPayrollWeeks'
 import { PayrollForecastModal, type PayrollForecastUnpaidRow } from '../components/pay/PayrollForecastModal'
@@ -507,6 +509,24 @@ export default function People() {
   const [generatingPayStubPerson, setGeneratingPayStubPerson] = useState<string | null>(null)
   const [bulkGeneratingPayStubs, setBulkGeneratingPayStubs] = useState(false)
   const [draftPayrollModalOpen, setDraftPayrollModalOpen] = useState(false)
+  /** T5-03 (J7-9): approvals since the Hours → Draft Payroll chip last cleared. */
+  const [hoursApprovedNudge, setHoursApprovedNudge] = useState<HoursApprovedNudge | null>(null)
+  const noteHoursApproved = (approved: number | null) => setHoursApprovedNudge((prev) => foldHoursApproved(prev, approved))
+  const openDraftPayrollFromHours = () => {
+    const week = hoursApprovedNudge?.week
+    if (week) {
+      setPayStubPeriodStart(week.start)
+      setPayStubPeriodEnd(week.end)
+    }
+    setHoursApprovedNudge(null)
+    setSearchParams((p) => {
+      const next = new URLSearchParams(p)
+      next.set('tab', 'pay_stubs')
+      return next
+    })
+    setActiveTab('pay_stubs')
+    setDraftPayrollModalOpen(true)
+  }
   const [forecastModalOpen, setForecastModalOpen] = useState(false)
   const [draftPayrollHoursBreakdownPerson, setDraftPayrollHoursBreakdownPerson] = useState<string | null>(null)
   const [draftPayrollPendingApprovalCount, setDraftPayrollPendingApprovalCount] = useState<number | null>(null)
@@ -3724,6 +3744,13 @@ export default function People() {
           {error && <p style={{ color: 'var(--text-red-700)', marginBottom: '1rem' }}>{error}</p>}
           {canAccessPay ? (
             <>
+              {hoursApprovedNudge ? (
+                <HoursApprovedNudgeChip
+                  nudge={hoursApprovedNudge}
+                  onOpen={openDraftPayrollFromHours}
+                  onDismiss={() => setHoursApprovedNudge(null)}
+                />
+              ) : null}
               <div
                 id="people-hours-pay-tools"
                 style={{
@@ -4434,6 +4461,7 @@ export default function People() {
             loadAllClockSessionsRef.current?.()
             loadPeopleHoursRef.current?.()
           }}
+          onApproved={noteHoursApproved}
           onError={(message) => setError(message)}
           onShowToast={(message, variant) => showToast?.(message, variant)}
           onOpenInMyTime={() =>
@@ -4455,6 +4483,7 @@ export default function People() {
             loadPeopleHoursRef.current?.()
             refreshPendingApprovalsCount()
           }}
+          onApproved={noteHoursApproved}
           onEditSession={(s) => {
             setEditClockSession(s)
             setError(null)
@@ -4470,6 +4499,7 @@ export default function People() {
           onApproved={() => {
             loadAllClockSessionsRef.current?.()
             loadPeopleHoursRef.current?.()
+            noteHoursApproved(null)
           }}
           onError={(message) => setError(message)}
           onShowToast={(message, variant) => showToast?.(message, variant)}

@@ -3,6 +3,8 @@ import { pageTabStyle } from '../lib/pageTabStyle'
 import { Link, useSearchParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
+import { usePeopleAccess } from '../hooks/usePeopleAccess'
+import { canMarkTallyPayroll } from '../lib/people/payWeekLinks'
 import { withSupabaseRetry } from '../utils/errorHandling'
 import type { Database } from '../types/database'
 import type { UserRole } from '../hooks/useAuth'
@@ -222,7 +224,11 @@ export default function JobTally() {
   const [activeTab, setActiveTab] = useState<JobTallyTab>('transactions')
   const [role, setRole] = useState<string | null>(null)
   const isDevTally = role === 'dev'
-  // Dev-only "mark as payroll": tx ids currently flagged payroll (merged onto rows for resolved-ness).
+  // T5-03 (J7-9): "Mark payroll" follows payroll access (dev, controller, pay-approved master) —
+  // DB policy + RPC widened in 20260906130000. Payroll RULES stay dev-only (isDevTally).
+  const { canAccessPay: tallyCanAccessPay } = usePeopleAccess(authUser?.id)
+  const canMarkPayroll = canMarkTallyPayroll({ isDev: isDevTally, canAccessPay: tallyCanAccessPay })
+  // "Mark as payroll": tx ids currently flagged payroll (merged onto rows for resolved-ness).
   const [payrollFlaggedIds, setPayrollFlaggedIds] = useState<Set<string>>(new Set())
   // Tx ids with any flag row (marked or tombstoned) — rules never re-touch these.
   const [payrollDecidedIds, setPayrollDecidedIds] = useState<Set<string>>(new Set())
@@ -1035,7 +1041,7 @@ export default function JobTally() {
               ) : null}
             </div>
           </div>
-          {isDevTally && payrollFlaggedIds.size > 0 ? (
+          {canMarkPayroll && payrollFlaggedIds.size > 0 ? (
             <div style={{ textAlign: 'center', margin: '0 0 0.5rem', fontSize: '0.8125rem', color: '#7c3aed' }}>
               {(() => {
                 const rows = tallyTxRowsFiltered.filter((r) => r.is_payroll)
@@ -1666,7 +1672,7 @@ export default function JobTally() {
                                 Assign jobs
                               </button>
                             )
-                            const markPayrollBtn = isDevTally ? (
+                            const markPayrollBtn = canMarkPayroll ? (
                               <button
                                 type="button"
                                 onClick={() => setPendingPayrollTx(row)}
@@ -1687,7 +1693,7 @@ export default function JobTally() {
                                 Mark payroll
                               </button>
                             ) : null
-                            if (isDevTally && row.is_payroll) {
+                            if (canMarkPayroll && row.is_payroll) {
                               return (
                                 <div style={tallyJobsSubRowBannerStyle(true)}>
                                   <div style={rowFlexEnd}>
@@ -2351,7 +2357,7 @@ export default function JobTally() {
           onRuleSaved={() => void applyPayrollRules()}
         />
       ) : null}
-      {isDevTally ? (
+      {canMarkPayroll ? (
         <TallyMarkPayrollConfirmModal
           open={pendingPayrollTx !== null}
           busy={payrollMarkBusy}
