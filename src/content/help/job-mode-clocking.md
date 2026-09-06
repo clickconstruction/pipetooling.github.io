@@ -93,9 +93,24 @@ The same Retry appears when you save a report offline. Your **Schedule** tab is 
 
 Three ways, depending on your day:
 
-- **End of the day** — when your current job is the last one open, the green button becomes {{button:red|Wrap Up Day}}. Tap it and you'll get the usual clock-out review (notes, and a nudge if a job is missing its report).
+- **End of the day** — when your current job is the last one open, the green button becomes {{button:red|Wrap Up Day}}. Tap it and you'll get the usual clock-out review (below).
 - **From the switch sheet** — pick **Done for the day** at the bottom of the "Where to next?" list.
 - **Any other time** — lunch, a parts run, leaving early: tap the small underlined **Clock out** link under the buttons. Your remaining jobs stay flagged on the card for when you're back.
+
+### What the clock-out review asks, and why
+
+All three doors run the same short stack. Most days you see one screen; the others only appear when there is something to catch.
+
+1. **Assign your spending before you clock out** — appears only when you have card charges from today with no job on them. Pick the job for each (your recent jobs are offered first), or **skip** and sort them later in Job Parts Tally. *Why now:* the charge is easiest to place while you still remember which house you were at.
+2. **Review before clock out** — always. *What did you work on?* takes a one-line note (required), and the job list confirms where the time goes: the job you're clocked into is first with a {{chip:green|You are here}} tag, so the usual answer is just to leave it. *Why:* the note is what the office reads when they approve your hours.
+3. **Missing reports from today (click to make report)** — appears only when a job on today's schedule has no report yet: one red button per job. Tap one to file the report right there, or finish clocking out and file it later with **Job Report** on your Dashboard. *Why:* a report filed the same day beats a phone call tomorrow.
+4. **Team feedback** — a short card about how your teammates did, on a cadence the office sets — days or weeks apart, not daily. {{button:blue|Start}} answers it now; {{button:outline|Not now · remind me in N days}} puts it off, and left alone it closes itself in 30 seconds and comes back when it's due again.
+
+Then {{button:red|Complete clock out}} ends the session. If it fails to reach the server, the same {{button:outline|Retry}} panel as Clock In appears and nothing is recorded until it succeeds.
+
+:::example A normal Tuesday
+Tap **Clock out** → *Review before clock out* → type "trim set, both baths" → the job already shows {{chip:green|You are here}} → {{button:red|Complete clock out}}. One screen, ten seconds.
+:::
 
 Salaried teammates don't clock out manually — their hours are handled automatically, so these buttons don't appear.
 

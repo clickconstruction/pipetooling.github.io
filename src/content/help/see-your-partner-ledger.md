@@ -34,6 +34,10 @@ Field labor 22.50 h × $50, estimating 18.00 h × $35, a profit share from a fin
 
 **Your jobs** on the statement (and the **Your jobs** card on your Dashboard) lists every job the office has confirmed as majority-yours — with any profit share already posted. Tap {{button:outline|Costing ›}} on a job to see its cost sheet: reported **hours by person** (hours only — never anyone's wages), **supply house invoices** with how much of each was allocated to the job, **card charges**, and **direct expenses** including estimating moved onto the job at award. This is the same data behind your profit split, so every number in the split traces to a line you can see.
 
+## The office reads the same page
+
+There is one journal. The office's Partnerships tabs — Ledger, Timeline and Statements — are built from the same list your **Full ledger** shows, row for row, just worded from their side (**we owe Bryan** / **Bryan owes us** where your page says **Click owes you** / **you owe Click**). Your hours there are the same stamped days your week cards show, to the hundredth. So the balance on your statement is the balance the office is looking at; if the two of you ever disagree, you're reading different weeks, not different books. Closing a week posts the statement to your page — there is no acknowledgment step for you to take.
+
 ## What feeds the numbers
 
 Only **approved** hours post. Jobs appear in your profit shares only after the office confirms you did the majority of the work on them. If a week looks short, check whether hours are still pending approval before anything else.

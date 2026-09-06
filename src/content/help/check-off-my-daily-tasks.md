@@ -42,6 +42,8 @@ Your finished task may show **waiting on review** — that just means the person
 
 Below your Today list you may see a red-framed **Outstanding** section: one-off tasks whose day came and went without getting done. Each row shows how overdue it is ("due Thu, Jul 30 · 20 days ago"). Check it off right there when you knock it out, or tap the row to read its notes first. Daily and weekly tasks never pile up here — only work that's still genuinely waiting.
 
+Nothing escalates on its own: an overdue one-off doesn't page anyone or move up someone else's list. What the office *does* see is its age — on Checklist → Manage the open one-offs sort oldest first with a chip that turns {{chip:yellow|amber}} after a week and {{chip:red|red}} after a month — and a **🔔 Remind** from whoever assigned it is a person deciding to nudge you, not a timer.
+
 ## Looking back: the History tab
 
 On your phone, **Checklist → History** shows your days newest-first — each day says how many you finished, and every task carries a chip: {{chip:green|✓ 7:58 AM}} done, {{chip:yellow|✓ by Maria}} someone covered it, {{chip:red|✗ Missed}}, or {{chip:yellow|Reopened}}. The strip up top shows your week percentage and streak. Tap any task to read its whole story and add a note.
