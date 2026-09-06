@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { supabase } from '../../lib/supabase'
+import { activeUsersQuery } from '../../lib/people/fetchActiveUsers'
 import { buildRoadmapTaskContext, type RoadmapTaskContextView } from '../../lib/roadmapTaskContext'
 import { bridgeChipFor, type BridgeState } from '../../lib/roadmapBridge'
 import { useTechTreeTaskMutations, type MutableTechTreeTask } from '../../hooks/useTechTreeTaskMutations'
@@ -83,7 +84,8 @@ export default function RoadmapTaskContextModal({
           .from('checklist_tech_tree_group_tasks')
           .select('id, group_id, title, sort_index, completed_at, pinned_at, checklist_tech_tree_task_assignees(user_id)')
           .in('group_id', groupIds),
-        supabase.from('users').select('id, name, email').is('archived_at', null).order('name'),
+        // Tier-2 #19: assignee picker = active people (no twins); dev rows stay.
+        activeUsersQuery('id, name, email', { includeDev: true }),
       ])
       const rows = (tasks ?? []).map((t) => ({
         id: t.id,

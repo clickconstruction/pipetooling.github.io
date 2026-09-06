@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useMemo, useCallback, Suspense } from 'react'
 import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
+import { activeUsersQuery } from '../lib/people/fetchActiveUsers'
 import { useLedgerPrefixMap } from '../contexts/LedgerDisplayPrefixContext'
 import { DEFAULT_BID_LEDGER_PREFIX } from '../lib/ledgerDisplayPrefixes'
 import { useAuth } from '../hooks/useAuth'
@@ -396,7 +397,8 @@ export default function Layout() {
 
   useEffect(() => {
     if (role === 'dev') {
-      supabase.from('users').select('id, name, email, role, estimator_prospects_access').order('name').then(({ data }) => {
+      // Tier-2 #19 (J28-F10): "Pin for someone" offers live accounts only — no archived ghosts, no twins.
+      activeUsersQuery('id, name, email, role, estimator_prospects_access', { includeDev: true }).then(({ data }) => {
         const rows = (data ?? []) as Array<{ id: string; name: string; email: string; role: string | null; estimator_prospects_access: boolean | null }>
         const users = rows.map((u) => ({
           id: u.id,

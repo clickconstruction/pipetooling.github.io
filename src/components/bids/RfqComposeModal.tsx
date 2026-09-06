@@ -11,6 +11,7 @@ import { useEffect, useMemo, useState, type CSSProperties } from 'react'
 
 import { supabase } from '../../lib/supabase'
 import { withSupabaseRetry } from '../../utils/errorHandling'
+import { fetchSupplyHousePickerRows } from '../../lib/supplyHousePickerRows'
 import { useToastContext } from '../../contexts/ToastContext'
 
 const MODAL_Z = 10060
@@ -100,7 +101,8 @@ export function RfqComposeModal({
     void (async () => {
       try {
         const [houseRows, contactRows] = await Promise.all([
-          withSupabaseRetry(() => supabase.from('supply_houses').select('id, name').order('name'), 'load supply houses'),
+          // Tier-2 #19 (J34-N2): quote-able houses only — insurers and payee-only vendors are hidden.
+          fetchSupplyHousePickerRows(),
           withSupabaseRetry(
             () =>
               supabase
@@ -114,7 +116,7 @@ export function RfqComposeModal({
           ),
         ])
         if (cancelled) return
-        setHouses((houseRows ?? []).map((h) => ({ id: h.id, name: h.name })))
+        setHouses(houseRows)
         const byHouse: Record<string, Array<{ id: string; name: string; email: string; label: string | null; isDefault: boolean }>> = {}
         for (const c of contactRows ?? []) {
           if (!c.supply_house_id) continue

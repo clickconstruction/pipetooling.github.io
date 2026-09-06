@@ -3568,7 +3568,7 @@ export default function Bids() {
       )}
       {activeTab === 'call-queue' && (
         <BidsCallQueueTab
-          bids={bids}
+          bids={peopleBids}
           gcPacketsByBid={gcPacketsByBid}
           ledgerPrefixMap={ledgerPrefixMap}
           lastContactFromEntries={lastMethodContactFromEntries}
@@ -3581,7 +3581,7 @@ export default function Bids() {
       )}
       {activeTab === 'why-we-lost' && (
         <BidsWhyWeLostLens
-          bids={bids}
+          bids={peopleBids}
           gcPacketsByBid={gcPacketsByBid}
           ledgerPrefixMap={ledgerPrefixMap}
           recipientsByBidId={bidGcRecipientsByBidId}
@@ -3593,7 +3593,7 @@ export default function Bids() {
       )}
       {activeTab === 'waiting-to-hear' && (
         <BidsWaitingToHearLens
-          bids={bids}
+          bids={peopleBids}
           gcPacketsByBid={gcPacketsByBid}
           roomStatesByBid={roomStatesByBid}
           ledgerPrefixMap={ledgerPrefixMap}
@@ -3608,7 +3608,7 @@ export default function Bids() {
       )}
       {activeTab === 'builder-review' && (
         <BidsBuilderReviewTab
-          bids={bids}
+          bids={peopleBids}
           gcPacketsByBid={gcPacketsByBid}
           customers={customers}
           customerContacts={customerContacts}

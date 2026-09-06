@@ -5,6 +5,7 @@ import { DndContext, closestCenter, type DragEndEvent, MouseSensor, TouchSensor,
 import { SortableContext, arrayMove, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { supabase } from '../lib/supabase'
+import { activeUsersQuery } from '../lib/people/fetchActiveUsers'
 import { useAuth } from '../hooks/useAuth'
 import { useFarmModeEnabled } from '../hooks/useFarmModeEnabled'
 import { isAssistantLike } from '../lib/subcontractorLikeRole'
@@ -513,11 +514,8 @@ function ChecklistTodayTab({ authUserId, isDev, canOpenVehiclesPage, setError }:
 
   useEffect(() => {
     if (isDev) {
-      supabase
-        .from('users')
-        .select('id, name, email')
-        .is('archived_at', null)
-        .order('name')
+      // Tier-2 #19 (J30-2): person pickers = active people (no twins); dev rows stay.
+      activeUsersQuery('id, name, email', { includeDev: true })
         .then(({ data }) => {
         setUsers((data ?? []) as Array<{ id: string; name: string; email: string }>)
       })
@@ -1214,11 +1212,8 @@ function ChecklistHistoryTab({ authUserId, canViewOthers, canEditHistory, setErr
 
   useEffect(() => {
     if (canViewOthers) {
-      supabase
-        .from('users')
-        .select('id, name, email')
-        .is('archived_at', null)
-        .order('name')
+      // Tier-2 #19 (J30-2): person pickers = active people (no twins); dev rows stay.
+      activeUsersQuery('id, name, email', { includeDev: true })
         .then(({ data }) => {
         setUsers((data ?? []) as Array<{ id: string; name: string; email: string }>)
       })
@@ -2190,7 +2185,7 @@ function ChecklistOutstandingTab({ authUserId, isDev, canSeeCosts, canManageChec
           .from('checklist_tech_tree_group_tasks')
           .select('id, group_id, title, sort_index, completed_at, pinned_at, checklist_tech_tree_task_assignees(user_id)')
           .in('group_id', grps.map((g) => g.id)),
-        supabase.from('users').select('id, name, email').is('archived_at', null),
+        activeUsersQuery<{ id: string; name: string; email: string }>('id, name, email', { includeDev: true, orderByName: false }),
       ])
       if (cancelled) return
       const taskIds = (tsks ?? []).map((t) => t.id)
@@ -2258,11 +2253,8 @@ function ChecklistOutstandingTab({ authUserId, isDev, canSeeCosts, canManageChec
 
   useEffect(() => {
     if (isDev) {
-      supabase
-        .from('users')
-        .select('id, name, email')
-        .is('archived_at', null)
-        .order('name')
+      // Tier-2 #19 (J30-2): person pickers = active people (no twins); dev rows stay.
+      activeUsersQuery('id, name, email', { includeDev: true })
         .then(({ data }) => {
         setUsers((data ?? []) as Array<{ id: string; name: string; email: string }>)
       })
@@ -3871,7 +3863,7 @@ function ChecklistManageTab({ authUserId, setError, setEditItemId, onOpenRoadmap
   }, [])
 
   async function loadUsers() {
-    const { data } = await supabase.from('users').select('id, name, email').is('archived_at', null).order('name')
+    const { data } = await activeUsersQuery('id, name, email', { includeDev: true })
     setUsers((data ?? []) as Array<{ id: string; name: string; email: string }>)
   }
 

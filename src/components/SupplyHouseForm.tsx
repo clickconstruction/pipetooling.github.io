@@ -17,6 +17,8 @@ export interface SupplyHouseFormData {
   website_url: string | null
   notes: string
   monthly_payment_day: number | null
+  /** Tier-2 #19: insurer / payee-only vendor — stays in the ledger, hidden from the quote pickers. */
+  is_insurer: boolean
 }
 
 interface SupplyHouseFormProps {
@@ -76,6 +78,9 @@ export function SupplyHouseForm({
   variant = 'modal',
 }: SupplyHouseFormProps) {
   const [websiteUrlError, setWebsiteUrlError] = useState<string | null>(null)
+  // Owned here (not by the hosts' string-field onChange): a boolean the hosts only need at submit.
+  // `?? false` — the row may predate the is_insurer column (fallback select).
+  const [isInsurer, setIsInsurer] = useState<boolean>(editingSupplyHouse?.is_insurer ?? false)
   const narrow = useNarrowViewport640()
 
   async function handleSubmit(e: React.FormEvent) {
@@ -102,6 +107,7 @@ export function SupplyHouseForm({
       website_url: normalizedWebsite,
       notes: notes.trim() || '',
       monthly_payment_day: day,
+      is_insurer: isInsurer,
     })
   }
 
@@ -158,6 +164,15 @@ export function SupplyHouseForm({
         </FieldRow>
         <FieldRow label="Notes" narrow={narrow} alignTop>
           <textarea value={notes} onChange={(e) => onChange('notes', e.target.value)} rows={2} style={fieldStyles} />
+        </FieldRow>
+        <FieldRow label="Quotes" narrow={narrow} alignTop>
+          <label style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem', fontSize: '0.875rem', cursor: 'pointer' }}>
+            <input type="checkbox" checked={isInsurer} onChange={(e) => setIsInsurer(e.target.checked)} style={{ marginTop: '0.2rem' }} />
+            <span>
+              Not a supplier we quote from (insurer, rental yard, payee only)
+              <span style={{ display: 'block', color: 'var(--text-muted)', fontSize: '0.8125rem' }}>Stays here for bills and POs; hidden from the RFQ and quote pickers.</span>
+            </span>
+          </label>
         </FieldRow>
         {editingSupplyHouse ? <SupplyHouseContactsSection supplyHouseId={editingSupplyHouse.id} /> : null}
       </div>

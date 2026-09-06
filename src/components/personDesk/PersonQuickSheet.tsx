@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { supabase } from '../../lib/supabase'
+import { activeUsersQuery } from '../../lib/people/fetchActiveUsers'
 import { useAuth } from '../../hooks/useAuth'
 import { usePersonDeskContext } from '../../contexts/PersonDeskContext'
 import { canOpenPersonDesk } from '../../lib/people/personDeskGates'
@@ -57,8 +58,10 @@ export function PersonQuickSheet() {
     setActive(0)
     setTimeout(() => inputRef.current?.focus(), 0)
     void (async () => {
+      // Tier-2 #19 (J30-N2): the shared active-people query — no twins, no archived accounts,
+      // dev rows (the `test` fixture) only for dev viewers.
       const [{ data: users }, { data: people }] = await Promise.all([
-        supabase.from('users').select('id, name, role, email').is('archived_at', null),
+        activeUsersQuery('id, name, role, email', { includeDev: role === 'dev', orderByName: false }),
         supabase.from('people').select('id, name, kind, email, account_user_id').is('archived_at', null),
       ])
       const linked = new Set<string>()
@@ -76,7 +79,7 @@ export function PersonQuickSheet() {
       list.sort((a, b) => a.name.localeCompare(b.name))
       setHits(list)
     })()
-  }, [open])
+  }, [open, role])
 
   const filtered = useMemo(() => {
     const needle = q.trim().toLowerCase()

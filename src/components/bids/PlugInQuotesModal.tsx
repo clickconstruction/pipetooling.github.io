@@ -15,7 +15,7 @@ import { parseVendorReply, type ReplyBasis } from '../../lib/rfq/parseVendorRepl
 import { extractReplyText } from '../../lib/rfq/extractReplyText'
 import { SearchableSelect, type SearchableSelectOption } from '../SearchableSelect'
 import { supabase } from '../../lib/supabase'
-import { withSupabaseRetry } from '../../utils/errorHandling'
+import { fetchSupplyHousePickerRows } from '../../lib/supplyHousePickerRows'
 import { useToastContext } from '../../contexts/ToastContext'
 
 const MODAL_Z = 10050
@@ -106,11 +106,8 @@ export function PlugInQuotesModal({
 
   const load = useCallback(async () => {
     try {
-      const data = await withSupabaseRetry(
-        () => supabase.from('supply_houses').select('id, name').order('name'),
-        'load supply houses',
-      )
-      setHouses((data ?? []).map((h) => ({ id: h.id, name: h.name })))
+      // Tier-2 #19 (J34-N2): quote-able houses only — insurers and payee-only vendors are hidden.
+      setHouses(await fetchSupplyHousePickerRows())
     } catch {
       setHouses([])
     }

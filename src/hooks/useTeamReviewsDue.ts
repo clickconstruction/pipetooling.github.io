@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
+import { activeUsersQuery } from '../lib/people/fetchActiveUsers'
 import { APP_SETTINGS_KEY_TEAM_REVIEW_CADENCE_DAYS } from '../lib/appSettingsKeys'
-import { orderUsersForRating } from '../lib/prospects/teamMemberReviews'
+import { orderUsersForRating, type RatableUser } from '../lib/prospects/teamMemberReviews'
 import { overdueReviewSubjects, parseTeamReviewCadenceDays } from '../lib/prospects/teamReviewDue'
 import type { MyReviewStamp } from '../lib/prospects/teamReviewDue'
 
@@ -31,8 +32,10 @@ export function useTeamReviewsDue(authUserId: string | undefined): {
       setOverdue([])
       return
     }
+    // Tier-2 #19 (J25-F7): the nag never names a digital twin — the roster is the
+    // shared active-people query. Dev rows stay: the owner is reviewable.
     const [rosterRes, stampsRes, cadenceRes] = await Promise.all([
-      supabase.from('users').select('id, name, role').is('archived_at', null),
+      activeUsersQuery<RatableUser>('id, name, role', { includeDev: true, orderByName: false }),
       supabase
         .from('team_member_reviews')
         .select('subject_user_id, review_month, updated_at')

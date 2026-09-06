@@ -14688,6 +14688,7 @@ export type Database = {
           created_at: string | null
           email: string | null
           id: string
+          is_insurer: boolean
           monthly_payment_day: number | null
           name: string
           notes: string | null
@@ -14701,6 +14702,7 @@ export type Database = {
           created_at?: string | null
           email?: string | null
           id?: string
+          is_insurer?: boolean
           monthly_payment_day?: number | null
           name: string
           notes?: string | null
@@ -14714,6 +14716,7 @@ export type Database = {
           created_at?: string | null
           email?: string | null
           id?: string
+          is_insurer?: boolean
           monthly_payment_day?: number | null
           name?: string
           notes?: string | null

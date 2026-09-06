@@ -12,6 +12,9 @@ import { useNarrowViewport640 } from '../../hooks/useNarrowViewport640'
 import { buildServiceTypeTradePill } from '../../lib/serviceTypeTradePill'
 import { JOB_FORM_SECTION_HEADER_STYLE } from '../../lib/jobFormSectionHeaderStyle'
 import { supabase } from '../../lib/supabase'
+import { fetchActiveUsers } from '../../lib/people/fetchActiveUsers'
+import { fetchTwinUserIds } from '../../lib/fetchTwinUserIds'
+import { partitionBidsByScope } from '../../lib/bidBoardScope'
 import { titleCaseAddress } from '../../lib/addressTitleCase'
 import { type CustomerAddressRow } from '../../lib/jobs/lienProperty'
 
@@ -1958,17 +1961,16 @@ export default function JobFormModal({
       try {
         async function loadFormUsers(meRole: string | undefined) {
           if (!authUser?.id) return
-          const { data: usersRes } = await supabase
-            .from('users')
-            .select('id, name, email, role')
-            .in('role', ['assistant', 'master_technician', 'subcontractor', 'helpers', 'estimator', 'primary', 'superintendent', 'controller' as Database['public']['Enums']['user_role']])
-            .order('name')
-          let usersList = (usersRes as UserRow[]) ?? []
+          // Tier-2 #19: shared active-people query — no archived or twin accounts in the job form's team list.
+          const { data: usersRes } = await fetchActiveUsers<UserRow>('id, name, email, role', {
+            roles: ['assistant', 'master_technician', 'subcontractor', 'helpers', 'estimator', 'primary', 'superintendent', 'controller'],
+          })
+          let usersList = usersRes
           if (meRole === 'dev') {
-            const { data: devUsers } = await supabase.from('users').select('id, name, email, role').eq('role', 'dev')
-            if (devUsers?.length) {
+            const { data: devUsers } = await fetchActiveUsers<UserRow>('id, name, email, role', { roles: [], includeDev: true })
+            if (devUsers.length) {
               const existingIds = new Set(usersList.map((u) => u.id))
-              const newDevs = (devUsers as UserRow[]).filter((u) => !existingIds.has(u.id))
+              const newDevs = devUsers.filter((u) => !existingIds.has(u.id))
               usersList = [...usersList, ...newDevs]
             }
           }
@@ -1982,12 +1984,13 @@ export default function JobFormModal({
           { data: stData },
           { data: meRow },
           { data: devData },
+          twinIds,
         ] = await Promise.all([
           supabase.from('customers').select('id, name, address, contact_info, date_met, date_met_source, master_user_id, customer_type, archived_at').order('name'),
           supabase.from('projects').select('id, name, customer_id, master_user_id, customers(name)').order('name'),
           supabase
             .from('bids')
-            .select('id, project_name, bid_number, service_type_id, customer_id, customers(name)')
+            .select('id, project_name, bid_number, service_type_id, customer_id, estimator_id, created_by, customers(name)')
             .order('updated_at', { ascending: false })
             .limit(800),
           supabase.from('service_types').select('id, name, color, description, sequence_order').order('sequence_order', { ascending: true }),
@@ -1999,13 +2002,16 @@ export default function JobFormModal({
             .eq('id', authUser.id)
             .single(),
           supabase.from('developments').select('id, name, master_user_id, archived_at').order('name'),
+          fetchTwinUserIds(),
         ])
         if (cancelled) return
         const allServiceTypes = (stData as JobFormServiceType[] | null) ?? []
         setCustomers((custData as CustomerRow[]) ?? [])
         setProjects((projData as ProjectOption[]) ?? [])
         setDevelopments((devData as JobFormDevelopmentRow[]) ?? [])
-        setBids((bidData as JobBidLinkOption[]) ?? [])
+        // Tier-2 #19 (J1-N2): the Import picker hides twin mirrors ("ZZ Twin … (backtest)") of
+        // the real wins they copy — same People|Robots predicate as the Bid Board.
+        setBids(partitionBidsByScope(((bidData ?? []) as Array<JobBidLinkOption & { estimator_id: string | null; created_by: string | null }>), twinIds).people)
         setServiceTypes(allServiceTypes)
         setMeServiceTypeColumns((meRow as MeServiceTypeColumns | null) ?? null)
         await loadFormUsers((meRow as MeServiceTypeColumns | null)?.role)

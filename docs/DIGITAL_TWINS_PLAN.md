@@ -5,7 +5,7 @@ file: docs/DIGITAL_TWINS_PLAN.md
 type: Engineering / Product plan
 purpose: Staged plan for role-impersonating agent accounts ("digital twins") that test, validate, and eventually perform real work in PipeTooling — per-role briefs, an app directory, first-class twin identity in the schema, and a mission harness.
 audience: Developers, AI Agents, Digital Twins
-last_updated: 2026-08-30
+last_updated: 2026-09-05
 sections:
   - The idea
   - Owner decisions (locked)
@@ -103,6 +103,16 @@ explicit per-twin owner decision, reviewed like a junior estimator's output — 
 **Metrics exclusions**: add `AND NOT is_digital_twin` to human-metric surfaces as twins
 actually touch them (precedent: `hide_dev_tally_transactions`'s `role <> 'dev'` predicate).
 Not blanket-applied — twin activity IS the signal on twin scorecards.
+
+**Roster exclusions (v2.2893, journey-map Tier-2 #19)**: human rosters and pickers share one
+active-people query — [`activeUsersQuery`](../src/lib/people/fetchActiveUsers.ts) /
+[`isActiveRosterPerson`](../src/lib/people/activeRoster.ts) — that always drops
+`is_digital_twin` rows (People roster, crew pickers, Person rail, `/` quick sheet, checklist
+assignee pickers, Review deck, "Team reviews due"). Twin **bids** leave the human lenses the
+same way the board does (`partitionBidsByScope` → Followup lenses, `/calendar` "Bid due",
+New Job → Import; the id set comes from [`fetchTwinUserIds`](../src/lib/fetchTwinUserIds.ts)).
+Twins remain fully reachable where they live: Settings → Digital twins / Active accounts
+(both read `is_digital_twin = true` directly), the Robot Board and the Robot queue.
 
 ## Phase E — Cloud twins & the estimator sandbox (build)
 

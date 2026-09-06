@@ -8,6 +8,7 @@ import {
 } from 'react'
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
+import { fetchActiveUsers } from '../lib/people/fetchActiveUsers'
 import { pageTabStyle } from '../lib/pageTabStyle'
 import { filterActiveCustomersForPicker } from '../lib/customerArchive'
 import { useAuth } from '../hooks/useAuth'
@@ -451,18 +452,22 @@ export default function Jobs() {
 
   async function loadUsers() {
     if (!authUser?.id) return
+    // Tier-2 #19: the crew picker (ScheduleJobModal team checklist, job-form team) reads the
+    // shared active-people query — archived debris ("delete", "Merge Test…") and twins drop out.
     const [usersRes, meRes] = await Promise.all([
-      supabase.from('users').select('id, name, email, role, notes').in('role', ['assistant', 'controller' as 'assistant', 'master_technician', 'subcontractor', 'helpers', 'estimator', 'primary', 'superintendent']).order('name'),
+      fetchActiveUsers<UserRow>('id, name, email, role, notes', {
+        roles: ['assistant', 'controller', 'master_technician', 'subcontractor', 'helpers', 'estimator', 'primary', 'superintendent'],
+      }),
       supabase.from('users').select('role').eq('id', authUser.id).single(),
     ])
-    let usersList = (usersRes.data as UserRow[]) ?? []
+    let usersList = usersRes.data
     const role = (meRes.data as { role?: string } | null)?.role
     setMyRole(role ?? null)
     if (role === 'dev') {
-      const { data: devUsers } = await supabase.from('users').select('id, name, email, role, notes').eq('role', 'dev')
-      if (devUsers?.length) {
+      const { data: devUsers } = await fetchActiveUsers<UserRow>('id, name, email, role, notes', { roles: [], includeDev: true })
+      if (devUsers.length) {
         const existingIds = new Set(usersList.map((u) => u.id))
-        const newDevs = (devUsers as UserRow[]).filter((u) => !existingIds.has(u.id))
+        const newDevs = devUsers.filter((u) => !existingIds.has(u.id))
         usersList = [...usersList, ...newDevs]
       }
     }
