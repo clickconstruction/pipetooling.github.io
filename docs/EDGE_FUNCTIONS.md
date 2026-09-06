@@ -3441,7 +3441,7 @@ Migration **`20270605150000_sync_mercury_transactions_pg_cron.sql`** schedules t
 
 ### mercury-reconcile
 
-**Purpose**: Reconcile the books (`mercury_transactions`) against Mercury **statements** and live balances, per account per month: fetches non-archived accounts + up to `monthsBack` statements each (singular `/account/{id}/statements` with plural fallback), checks which statement transaction ids exist in the books via the service-role RPC **`list_present_mercury_ids`** (ids batched 2000-per-call in the POST body — a giant `in.(...)` GET filter would blow PostgREST's URL limit), and reports per-month present/missing counts, missing value + a sample (cap 50), statement net vs. transaction sum, and a **current open period** check (`expectedCurrent = latest ending balance + book activity since close`, `delta` vs. Mercury's live balance).
+**Purpose**: Reconcile the books (`mercury_transactions`) against Mercury **statements** and live balances, per account per month: fetches non-archived accounts + up to `monthsBack` statements each (singular `/account/{id}/statements` with plural fallback), checks which statement transaction ids exist in the books via the service-role RPC **`list_present_mercury_ids`** (ids batched 2000-per-call in the POST body — a giant `in.(...)` GET filter would blow PostgREST's URL limit), and reports per-month present/missing counts, missing value + a sample (cap 50), statement net vs. transaction sum, and a **current open period** check (`expectedCurrent = latest ending balance + book activity since close`, `delta` vs. Mercury's live balance). **Since v2.2949 (Tier 5 X4)** every run also leaves a **receipt**: `buildReconcileReceipt` (`_shared/reconcileReceipt.ts`) turns the result into N-of-M presence counts, months with something missing, a live-balance verdict and a scope sentence ("presence only, statement → books — books-only rows and amount differences are not checked"), persisted service-role as one `mercury_reconcile_runs` row (`ran_by` = the caller). Persist failures never fail the check (`receiptSaved: false`).
 
 **Endpoint**: `POST /functions/v1/mercury-reconcile`
 
@@ -3470,12 +3470,15 @@ Migration **`20270605150000_sync_mercury_transactions_pg_cron.sql`** schedules t
                     statementNet, statementTxSum }>,
     current: { mercuryCurrentBalance, availableBalance, latestStatementEnd,
                bookActivitySinceClose?, expectedCurrent, delta }
-  }>
+  }>,
+  receipt: ReconcileReceipt,   // v2.2949 — scope sentence + per-account summary (_shared/reconcileReceipt.ts)
+  runId: string | null,        // the mercury_reconcile_runs row, when saved
+  receiptSaved: boolean
 }
 // or { error: string } with 401/403/405/500; 502 on Mercury API failure
 ```
 
-**Used by**: Banking reconciliation view via [`fetchMercuryReconciliation.ts`](../src/lib/fetchMercuryReconciliation.ts) + [`mercuryReconciliation.ts`](../src/lib/mercuryReconciliation.ts).
+**Used by**: Banking reconciliation view via [`fetchMercuryReconciliation.ts`](../src/lib/fetchMercuryReconciliation.ts) + [`mercuryReconciliation.ts`](../src/lib/mercuryReconciliation.ts); the "Last reconciled" list ([`MercuryReconcileRunsList.tsx`](../src/components/banking/MercuryReconcileRunsList.tsx)) reads `mercury_reconcile_runs` directly (SELECT for `is_banking_staff()`).
 
 ---
 

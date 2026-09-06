@@ -1,5 +1,6 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { buildReconcileReceipt } from '../_shared/reconcileReceipt.ts'
 
 const MERCURY_BASE = 'https://api.mercury.com/api/v1'
 
@@ -226,7 +227,38 @@ serve(async (req) => {
       })
     }
 
-    return jsonResponse({ ok: true, generatedAt: new Date().toISOString(), monthsBack, accounts: result })
+    // T5-06 (Tier 5 X4): the run leaves a receipt — who, when, what was compared, what was not.
+    // Persist failures never fail the check; the client reads `receiptSaved`.
+    const generatedAt = new Date().toISOString()
+    const receipt = buildReconcileReceipt({ monthsBack, accounts: result as unknown as Parameters<typeof buildReconcileReceipt>[0]['accounts'] })
+    let runId: string | null = null
+    let receiptSaved = false
+    try {
+      const { data: runRow, error: runErr } = await admin
+        .from('mercury_reconcile_runs')
+        .insert({
+          ran_at: generatedAt,
+          ran_by: user.id,
+          months_back: receipt.monthsBack,
+          accounts_checked: receipt.accountsChecked,
+          statement_lines: receipt.statementLines,
+          statement_lines_present: receipt.statementLinesPresent,
+          months_with_missing: receipt.monthsWithMissing,
+          current_within_epsilon: receipt.currentWithinEpsilon,
+          scope: receipt.scope,
+          summary: receipt.accounts,
+        })
+        .select('id')
+        .maybeSingle()
+      if (!runErr && runRow?.id) {
+        runId = String(runRow.id)
+        receiptSaved = true
+      }
+    } catch {
+      // table not pushed yet / transient — the check still answers
+    }
+
+    return jsonResponse({ ok: true, generatedAt, monthsBack, accounts: result, receipt, runId, receiptSaved })
   } catch (e) {
     return jsonResponse({ error: e instanceof Error ? e.message : 'Unexpected error' }, 500)
   }

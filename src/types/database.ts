@@ -9465,6 +9465,56 @@ export type Database = {
         }
         Relationships: []
       }
+      mercury_reconcile_runs: {
+        Row: {
+          accounts_checked: number
+          current_within_epsilon: boolean | null
+          id: string
+          months_back: number
+          months_with_missing: number
+          ran_at: string
+          ran_by: string | null
+          scope: string
+          statement_lines: number
+          statement_lines_present: number
+          summary: Json
+        }
+        Insert: {
+          accounts_checked: number
+          current_within_epsilon?: boolean | null
+          id?: string
+          months_back: number
+          months_with_missing?: number
+          ran_at?: string
+          ran_by?: string | null
+          scope: string
+          statement_lines: number
+          statement_lines_present: number
+          summary?: Json
+        }
+        Update: {
+          accounts_checked?: number
+          current_within_epsilon?: boolean | null
+          id?: string
+          months_back?: number
+          months_with_missing?: number
+          ran_at?: string
+          ran_by?: string | null
+          scope?: string
+          statement_lines?: number
+          statement_lines_present?: number
+          summary?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mercury_reconcile_runs_ran_by_fkey"
+            columns: ["ran_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       mercury_tally_payroll_flags: {
         Row: {
           created_at: string

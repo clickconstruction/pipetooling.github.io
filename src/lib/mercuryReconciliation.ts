@@ -5,6 +5,8 @@
  * so the thresholds live in one tested place. React/Deno-free.
  */
 
+import type { ReconcileReceipt } from '../../supabase/functions/_shared/reconcileReceipt'
+
 export type ReconMissingTx = {
   id?: string | null
   amount: number
@@ -52,6 +54,10 @@ export type ReconResult = {
   generatedAt: string
   monthsBack: number
   accounts: ReconAccount[]
+  /** T5-06: the run's receipt (scope sentence + per-account summary) and whether it was persisted. */
+  receipt?: ReconcileReceipt
+  runId?: string | null
+  receiptSaved?: boolean
 }
 
 /** Dollar tolerance for "balanced" — covers float noise, not real discrepancies. */
