@@ -688,6 +688,53 @@ function SheetCard({
   const [ui, setUi] = useState<WorkDoneUi>({ kind: 'idle' })
   const [note, setNote] = useState('')
   const [error, setError] = useState<string | null>(null)
+  // v2.2931: their part, their percent. Chips select; one button sends; 100 opens the done confirm.
+  const [progress, setProgress] = useState<number>(sheet.progress?.pct ?? 0)
+  const [progressOn, setProgressOn] = useState<string | null>(sheet.progress?.on ?? null)
+  const [pend, setPend] = useState<number | null>(null)
+  const [progNote, setProgNote] = useState('')
+  const [progUi, setProgUi] = useState<{ kind: 'idle' } | { kind: 'sending' } | { kind: 'sent'; text: string }>({ kind: 'idle' })
+  const [progError, setProgError] = useState<string | null>(null)
+  const shownPct = pend ?? progress
+  const pctChanged = pend != null && pend !== progress
+  const noteTyped = progNote.trim() !== ''
+  const showSend = shownPct === 100 || pctChanged || noteTyped
+
+  async function sendProgress() {
+    const pct = pctChanged ? pend : null
+    const note = progNote.trim()
+    setProgUi({ kind: 'sending' })
+    setProgError(null)
+    const finish = () => {
+      if (pct != null) setProgress(pct)
+      setProgressOn(preparedOn)
+      setPend(null)
+      setProgNote('')
+      setProgUi({ kind: 'sent', text: pct != null ? t('progressSent', { n: String(pct) }) : t('noteSent') })
+    }
+    if (sampleStateFromToken(submitToken)) {
+      finish()
+      return
+    }
+    try {
+      const res = await fetch(`${supabaseUrl}/functions/v1/submit-sub-portal`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token: submitToken, kind: 'progress', laborJobId: sheet.id, ...(pct != null ? { pct } : {}), note }),
+      })
+      const json = (await res.json().catch(() => null)) as { ok?: boolean; error?: string } | null
+      if (res.ok && json?.ok) {
+        finish()
+        return
+      }
+      setProgError(json?.error ?? 'Something went wrong. Please try again, or call the office.')
+      setProgUi({ kind: 'idle' })
+    } catch {
+      setProgError('Something went wrong. Please check your connection.')
+      setProgUi({ kind: 'idle' })
+    }
+  }
+
   // v2.2928: their dates, movable inside the window until the day before.
   const [dates, setDates] = useState(sheet.dates)
   const [dateUi, setDateUi] = useState<{ kind: 'idle' } | { kind: 'picking'; start: string | null } | { kind: 'sending'; start: string } | { kind: 'moved' }>({ kind: 'idle' })
@@ -947,14 +994,61 @@ function SheetCard({
         )}
 
         {stage === 'working' && ui.kind === 'idle' && (
-          <div data-screen-only>
-            <button
-              type="button"
-              onClick={() => setUi({ kind: 'asking' })}
-              style={{ background: PAPER_GREEN, color: '#fff', border: 'none', borderRadius: 6, padding: '0.5rem 1rem', fontSize: 13, fontWeight: 700, cursor: 'pointer', marginTop: 10 }}
-            >
-              {t('workDoneButton')}
-            </button>
+          <div data-screen-only style={{ marginTop: 10 }}>
+            <div style={{ border: `1px solid ${HAIR}`, borderRadius: 8, padding: '10px 12px', background: PAPER, display: 'grid', gap: 8 }} data-testid="sub-progress">
+              <b style={{ fontSize: 13.5 }}>{t('howFar')}</b>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, minmax(0, 1fr))', gap: 8 }} role="group" aria-label={t('howFar')}>
+                {[0, 25, 50, 75, 100].map((p) => {
+                  const on = shownPct === p
+                  const done = p === 100
+                  return (
+                    <button
+                      key={p}
+                      type="button"
+                      aria-pressed={on}
+                      disabled={progUi.kind === 'sending'}
+                      onClick={() => setPend(p)}
+                      style={{ minHeight: 48, borderRadius: 10, fontWeight: 700, fontSize: 14, fontFamily: 'inherit', cursor: 'pointer', whiteSpace: 'nowrap', padding: '0 2px', background: on ? (done ? PAPER_GREEN : '#0f766e') : CARD, color: on ? '#fff' : done ? PAPER_GREEN : INK, border: `1px solid ${on ? (done ? PAPER_GREEN : '#0f766e') : done ? PAPER_GREEN : HAIR}` }}
+                    >
+                      {p}%{done ? ' ✓' : ''}
+                    </button>
+                  )
+                })}
+              </div>
+              <div style={{ height: 8, borderRadius: 4, background: '#e6e0d2', overflow: 'hidden' }} aria-hidden>
+                <i style={{ display: 'block', height: '100%', width: `${shownPct}%`, background: shownPct === 100 ? PAPER_GREEN : '#0f766e' }} />
+              </div>
+              <input
+                value={progNote}
+                onChange={(e) => setProgNote(e.target.value.slice(0, 300))}
+                placeholder={t('progressNotePlaceholder')}
+                disabled={progUi.kind === 'sending'}
+                style={{ width: '100%', boxSizing: 'border-box', border: `1px solid ${HAIR}`, borderRadius: 6, background: CARD, color: INK, padding: '0.5rem 0.6rem', fontSize: 13.5, fontFamily: 'inherit' }}
+              />
+              <div style={{ fontSize: 12, color: MUTED, lineHeight: 1.5 }}>
+                {shownPct === 100 ? <strong style={{ color: PAPER_GREEN }}>{t('hundredMeans')}</strong> : <>{t('underHundred')} <strong>{t('hundredTells')}</strong></>}
+                {progressOn && shownPct !== 100 ? <span style={{ color: FAINT }}> · {t('lastReported', { date: formatSubPortalDate(progressOn, lang) })}</span> : null}
+              </div>
+              {progError ? <div style={{ color: PAPER_RED, fontSize: 12.5 }}>{progError}</div> : null}
+              {progUi.kind === 'sent' ? <div style={{ color: PAPER_GREEN, fontSize: 12.5, fontWeight: 700 }}>{progUi.text}</div> : null}
+            </div>
+            {showSend ? (
+              <button
+                type="button"
+                disabled={progUi.kind === 'sending'}
+                onClick={() => {
+                  if (shownPct === 100) {
+                    setNote(progNote)
+                    setUi({ kind: 'asking' })
+                    return
+                  }
+                  void sendProgress()
+                }}
+                style={{ display: 'block', width: '100%', marginTop: 8, background: shownPct === 100 ? PAPER_GREEN : '#0f766e', color: '#fff', border: 'none', borderRadius: 6, padding: '0.7rem 1rem', fontSize: 14, fontWeight: 700, cursor: progUi.kind === 'sending' ? 'wait' : 'pointer' }}
+              >
+                {progUi.kind === 'sending' ? '…' : shownPct === 100 ? t('sendDone') : pctChanged ? t('sendProgress', { n: String(shownPct) }) : t('sendNote')}
+              </button>
+            ) : null}
           </div>
         )}
         {stage === 'working' && (ui.kind === 'asking' || ui.kind === 'sending') && (
@@ -984,6 +1078,7 @@ function SheetCard({
                 onClick={() => {
                   setUi({ kind: 'idle' })
                   setError(null)
+                  setPend(null)
                 }}
                 style={{ background: CARD, color: INK, border: `1px solid ${HAIR}`, borderRadius: 6, padding: '0.5rem 1rem', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
               >

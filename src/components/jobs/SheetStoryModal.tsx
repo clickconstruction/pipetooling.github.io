@@ -108,7 +108,7 @@ export function SheetStoryModal({ sheetId, onClose, jobs, authUserId, onOpenShee
     try {
       const { data: sheetData, error: sheetErr } = await supabase
         .from('people_labor_jobs')
-        .select('id, job_number, address, assigned_to_name, labor_rate, job_date, created_at, stage, stage_changed_at, stage_changed_by, stage_source, stage_note, payable_after, pay_hold_reason, items:people_labor_job_items(fixture, count, hrs_per_unit, is_fixed, labor_rate, direct_labor_amount), payments:people_labor_job_payments(amount, memo, created_at, payment_date), assignees:people_labor_job_assignees(person_id)')
+        .select('id, job_number, address, assigned_to_name, labor_rate, job_date, created_at, stage, stage_changed_at, stage_changed_by, stage_source, stage_note, payable_after, pay_hold_reason, progress_pct, progress_note, progress_at, items:people_labor_job_items(fixture, count, hrs_per_unit, is_fixed, labor_rate, direct_labor_amount), payments:people_labor_job_payments(amount, memo, created_at, payment_date), assignees:people_labor_job_assignees(person_id)')
         .eq('id', sheetId)
         .maybeSingle()
       if (sheetErr) throw sheetErr

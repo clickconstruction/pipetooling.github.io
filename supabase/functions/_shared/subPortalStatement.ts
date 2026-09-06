@@ -25,6 +25,10 @@ export type SubSheetRow = {
   pay_hold_reason: string | null
   /** v2.2922: filled by the function from jobs_ledger.job_plans_link / bids.count_tooling_plans_link. */
   plans_url?: string | null
+  /** v2.2931: how far along the sub says their part is. */
+  progress_pct?: number | null
+  progress_note?: string | null
+  progress_at?: string | null
 }
 
 export type SubItemRow = {
@@ -143,6 +147,8 @@ export type SubPortalSheet = {
   plansUrl?: string | null
   /** v2.2928: their dates on this sheet, when a signed order carries a pick. */
   dates?: SubPortalDates | null
+  /** v2.2931: their last report — null until they report. */
+  progress?: { pct: number; note: string | null; on: string | null } | null
 }
 
 export type SubPortalPaymentLine = {
@@ -292,6 +298,7 @@ export function buildSubSheets(
       agreement: null,
       plansUrl: (sheet.plans_url ?? '').trim() || null,
       dates: null,
+      progress: sheet.progress_pct == null ? null : { pct: Math.max(0, Math.min(100, Number(sheet.progress_pct) || 0)), note: (sheet.progress_note ?? '').trim() || null, on: (sheet.progress_at ?? '').slice(0, 10) || null },
     }
   })
 }

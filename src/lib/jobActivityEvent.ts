@@ -28,6 +28,7 @@ export type JobActivityEventType =
   | 'completeness_marked'
   | 'progress_updated'
   | 'sub_stage_change'
+  | 'sub_progress'
   | 'lien_release_issued'
   | 'lien_release_signature_requested'
   | 'lien_release_signed'
@@ -102,6 +103,8 @@ export const JOB_ACTIVITY_EVENT_RENDER: Record<JobActivityEventType, EventRender
   progress_updated: { tag: 'Progress', ...WORK_TEAL, bucket: 'status' },
   // Sub sheet stage moves (v2.2767) — written by people_labor_jobs_stage_to_activity.
   sub_stage_change: { tag: 'Sub labor', ...WORK_TEAL, bucket: 'status' },
+  // A sub's own percent from the portal (v2.2931) — written by submit-sub-portal.
+  sub_progress: { tag: 'Sub progress', ...WORK_TEAL, bucket: 'status' },
   // Lien-release lifecycle (v2.2620) — written by the job_lien_releases
   // bridge trigger since 20260902001517; all financial.
   lien_release_issued: { tag: 'Release', ...BILLING_BLUE, bucket: 'billing' },

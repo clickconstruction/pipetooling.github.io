@@ -38,6 +38,8 @@ export type SubPortalSheet = {
   plansUrl: string | null
   /** v2.2928: their dates on this sheet, when a signed order carries a pick. */
   dates: SubPortalDates | null
+  /** v2.2931: their last percent report; null until they report. */
+  progress: { pct: number; note: string | null; on: string | null } | null
 }
 
 /** v2.2928: the dates the sub picked (or the office set) and the room they still have to move them. */
@@ -204,6 +206,7 @@ function parseSheet(raw: unknown): SubPortalSheet | null {
     agreement: parseAgreement(r.agreement),
     plansUrl: /^https?:\/\//i.test(str(r.plansUrl).trim()) ? str(r.plansUrl).trim() : null,
     dates: parseDates(r.dates),
+    progress: parseProgress(r.progress),
   }
 }
 
@@ -319,6 +322,13 @@ export function parseSubPortalPayload(raw: unknown): SubPortalPayload | null {
     slug: strOrNull(r.slug),
     days: parseDays(r.days),
   }
+}
+
+function parseProgress(raw: unknown): { pct: number; note: string | null; on: string | null } | null {
+  if (raw == null || typeof raw !== 'object') return null
+  const r = raw as Record<string, unknown>
+  const pct = Math.max(0, Math.min(100, Math.round(num(r.pct))))
+  return { pct, note: strOrNull(r.note), on: ymdOrNull(r.on) }
 }
 
 function parseDays(raw: unknown): SubPortalDays {

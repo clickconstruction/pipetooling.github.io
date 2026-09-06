@@ -57,7 +57,9 @@ describe('SubPortal render smoke', () => {
     expect(screen.getByText(/Payable after Sep 9, 2026/)).toBeTruthy()
     // Stage rail (v2.2767): the working sheet offers the sub's one button; the
     // walk-through sheet (moved from the portal Sep 1) reads its dated sentence.
-    expect(screen.getByText('✓ My work here is done')).toBeTruthy()
+    // v2.2931: the done button became the percent control; 100 ✓ + Send to office is the done path.
+    expect(screen.getByText('How far along is your part?')).toBeTruthy()
+    expect(screen.getByText('100% ✓')).toBeTruthy()
     expect(screen.getByText(/You told us the work's done Sep 1, 2026/)).toBeTruthy()
 
     // Offer with sign-to-accept
@@ -86,7 +88,7 @@ describe('SubPortal render smoke', () => {
     const target = document.getElementById('sp-focus-sheet-demo-s1')
     expect(target).toBeTruthy()
     // The working sheet's sentence + button live inside the haloed block.
-    expect(target!.textContent).toContain('My work here is done')
+    expect(target!.textContent).toContain('How far along is your part?')
     await waitFor(() => expect(target!.className).toBe('sp-focus'))
     expect(scroll).toHaveBeenCalledTimes(1)
     // The other cards stay plain.

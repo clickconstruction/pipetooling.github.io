@@ -46,7 +46,7 @@ import { stageWindowByLabel, stageWindowLabel, stageWindowPhase, type StageWindo
 import { StageWindowEditor } from './StageWindowEditor'
 
 /** A sheet with its money, its stage and its people — the board derives everything from these. */
-type SheetLite = WorkOrderBoardSheet & { assignees?: Array<{ person_id: string }> | null }
+type SheetLite = WorkOrderBoardSheet & { assignees?: Array<{ person_id: string }> | null; progress_pct?: number | null; progress_at?: string | null }
 type StepLite = { id: string; name: string }
 
 export type JobsSubsWorkViewProps = {
@@ -114,7 +114,7 @@ export function JobsSubsWorkView({ jobs, jobsLoading, authUserId, deepLinkWorkOr
         // Every sheet with its items, payments, stage and assignees — rows are sheets now.
         supabase
           .from('people_labor_jobs')
-          .select('id, job_number, address, assigned_to_name, labor_rate, stage, payable_after, job_date, created_at, items:people_labor_job_items(count, hrs_per_unit, is_fixed, labor_rate, direct_labor_amount), payments:people_labor_job_payments(amount), assignees:people_labor_job_assignees(person_id)')
+          .select('id, job_number, address, assigned_to_name, labor_rate, stage, payable_after, job_date, created_at, progress_pct, progress_at, items:people_labor_job_items(count, hrs_per_unit, is_fixed, labor_rate, direct_labor_amount), payments:people_labor_job_payments(amount), assignees:people_labor_job_assignees(person_id)')
           .order('created_at', { ascending: false })
           .limit(1000),
         // The roster decides which sheets are sub sheets: teammates carry a `kind = 'sub'`
@@ -474,6 +474,17 @@ export function JobsSubsWorkView({ jobs, jobsLoading, authUserId, deepLinkWorkOr
     return out
   }
 
+  /** "50% along" from the sub's own report (v2.2931). */
+  const progressChip = (sheetId: string | null) => {
+    const sh = sheetId ? sheetsById.get(sheetId) : null
+    if (!sh || sh.progress_pct == null || sh.progress_pct >= 100) return null
+    return (
+      <span title={sh.progress_at ? `reported ${sh.progress_at.slice(0, 10)} from their portal` : 'from their portal'} style={{ marginLeft: 6, display: 'inline-block', padding: '0 6px', borderRadius: 999, fontSize: '0.66rem', fontWeight: 700, background: 'var(--bg-subtle)', color: 'var(--text-700)', border: '1px solid var(--border)', verticalAlign: 1 }}>
+        {sh.progress_pct}% along
+      </span>
+    )
+  }
+
   /** First column: the sub (and the stage the order fulfils) on a sheet row; the stage on a stage row. */
   const firstCell = (r: SubsRow) =>
     r.kind === 'stage' ? (
@@ -483,7 +494,10 @@ export function JobsSubsWorkView({ jobs, jobsLoading, authUserId, deepLinkWorkOr
       </>
     ) : (
       <>
-        <div style={{ fontWeight: 600 }}>{r.board.subName || <span style={{ color: 'var(--text-faint)' }}>no sub named</span>}</div>
+        <div style={{ fontWeight: 600 }}>
+          {r.board.subName || <span style={{ color: 'var(--text-faint)' }}>no sub named</span>}
+          {progressChip(r.board.sheetId)}
+        </div>
         <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
           {r.stage ? `${r.stage.name} · ` : ''}
           {r.board.recordId ? (
