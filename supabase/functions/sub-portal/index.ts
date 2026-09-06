@@ -185,7 +185,7 @@ serve(async (req) => {
     if (laborJobIds.length > 0) {
       const { data: sheetsRaw } = await admin
         .from('people_labor_jobs')
-        .select('id, address, job_number, job_date, labor_rate, stage, stage_changed_at, stage_source, payable_after, pay_hold_reason')
+        .select('id, address, job_number, job_date, labor_rate, stage, stage_changed_at, stage_source, payable_after, pay_hold_reason, progress_pct, progress_note, progress_at')
         .in('id', laborJobIds)
         .limit(500)
       sheetRows = (sheetsRaw ?? []) as SubSheetRow[]

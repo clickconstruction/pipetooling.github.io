@@ -198,6 +198,18 @@ const STRINGS = {
   yourDaysFoot: { en: "Days off show on the office board so they won't offer you work on them.", es: 'Los días libres aparecen en el tablero de la oficina para que no le ofrezcan trabajo esos días.' },
   markedOff: { en: 'Marked off', es: 'Marcado libre' },
   dayTakenBack: { en: 'Day taken back', es: 'Día recuperado' },
+  // v2.2931 — their part, their percent
+  howFar: { en: 'How far along is your part?', es: '¿Qué tan avanzada va su parte?' },
+  progressNotePlaceholder: { en: 'Anything we should know? (optional)', es: '¿Algo que debamos saber? (opcional)' },
+  underHundred: { en: 'Anything under 100% just keeps us posted — we keep waiting on you.', es: 'Menos de 100% solo nos mantiene al tanto — seguimos esperándolo.' },
+  hundredTells: { en: '100% is what tells us to call it in.', es: 'El 100% es lo que nos dice que pidamos la inspección.' },
+  hundredMeans: { en: '100% means finished. We call it in for inspection and the card moves to Pre-inspection.', es: '100% significa terminado. Pedimos la inspección y la tarjeta pasa a Pre-inspección.' },
+  sendProgress: { en: 'Send to office · {n}% along, still working', es: 'Enviar a la oficina · {n}% avanzado, sigo trabajando' },
+  sendNote: { en: 'Send note to office', es: 'Enviar nota a la oficina' },
+  sendDone: { en: '✓ Send to office · work is done', es: '✓ Enviar a la oficina · trabajo terminado' },
+  progressSent: { en: "Sent · {n}% — we'll keep waiting on you.", es: 'Enviado · {n}% — seguimos esperándolo.' },
+  noteSent: { en: 'Sent to the office.', es: 'Enviado a la oficina.' },
+  lastReported: { en: 'last reported {date}', es: 'último reporte el {date}' },
 } as const
 
 export type SubPortalStringKey = keyof typeof STRINGS

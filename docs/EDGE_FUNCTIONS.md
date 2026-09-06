@@ -1063,6 +1063,8 @@ Devs: **Settings → Templates & testing → Workflow email (Edge Function)** (c
 
 **Your days** (v2.2930): `days.bookings` — every live signed order's dates (the pick, else the office's span; label = stage line-item name + job number; the job's address) plus office-set sheets with a `job_date` not already covered by an order — and `days.offDays` from `person_availability` (a week back onward).
 
+**Progress** (v2.2931): each sheet carries `progress: { pct, note, on } | null` from `people_labor_jobs.progress_*`.
+
 **Endpoint**: `GET /functions/v1/sub-portal?token=<opaque>` or `GET /functions/v1/sub-portal?slug=<address>`
 
 **Dates** (v2.2703): the sheet window's "today" is the Central civil day (`todayYmdInAppTz()`).
@@ -1074,6 +1076,8 @@ Devs: **Settings → Templates & testing → Workflow email (Edge Function)** (c
 ### submit-sub-portal
 
 **Purpose**: Everything a sub can DO from the portal, token-authenticated like submit-portal-request. Five kinds (the fifth, `mark_work_done`, below): `availability` (rate-limited 5/hour per link → `dispatch_requests` with `pending_payload.source='sub_portal'` + `notify-dispatch-request` fan-out); `accept_offer` — **sign-to-accept**: validates the `offered` + unexpired commitment belongs to the link's person, validates/stores a drawn signature PNG (magic bytes, 512 KB cap, `contract-signer-signatures` bucket under `commitments/<id>/`, compensating delete on failure), transitions `offered → accepted` while stamping the full signature record of truth on the row (`signed_at`, `signer_printed_name`, `signer_signature_mode` type|draw, `signer_signature_storage_path`, `signer_consented_at`, `signer_ip`, `signer_user_agent`), then drops a "signed & accepted" dispatch note; `decline_offer` (`offered → declined` with the required reason + dispatch note); `sign_link` — mints a fresh 14-day `/contract/accept` token for one of the sub's own `unsent`/`sent` `person_contract_documents` (send-contract-for-signature mint pattern, no email; the newest link wins).
+
+**Progress** (v2.2931): `progress` (`laborJobId`, `pct` ∈ {0, 25, 50, 75} and/or `note`) writes `people_labor_jobs.progress_*`, mirrors `pct` onto a step-anchored sheet's `project_workflow_steps.percent_complete`, inserts a `sub_progress` row in `job_activity_events` on the sheet's Pipeline job, and drops dispatch note `sub_note` only when a note came along. `mark_work_done` stamps `progress_pct = 100`.
 
 **Days off** (v2.2930): `day_off` (`day`, `off`) upserts / deletes `person_availability` (kind `off`, source `portal`), refuses past days, and when the day sits under a signed order's pick drops dispatch note `sub_day_off_collision` (with `commitmentId`, `jobId`, `collisions`). Returns `{ ok, collisions }`.
 

@@ -78,3 +78,7 @@ A work order drafted from a stage (see *set a window for a sub's stage*) reaches
 ## Their days off
 
 Subs mark days off on the portal's **Your days**. Those days stripe their lane on **Projects → Forecast → Subs** (a booking over one gets the red outline) and hatch their row on **Schedule → Dispatch → People → Subs**. If a sub marks off a day their pick already covers, a dispatch line says so — move the window or call them.
+
+## How far along they say they are
+
+A sub can report 25, 50 or 75 percent from the job card, with a note. Each report is a **Sub progress** line on the job's Activity feed; a note also lands in the dispatch inbox, a bare percent never does. You see the percent beside their name on **Jobs → Subs → Work** and on the sheet story's Work row. 100% is the same "my work here is done" as before — it moves the sheet to Pre-inspection.

@@ -94,6 +94,10 @@ export type SheetStoryInput = {
     stage_note?: string | null
     payable_after?: string | null
     pay_hold_reason?: string | null
+    /** v2.2931: the sub's own percent from the portal. */
+    progress_pct?: number | null
+    progress_note?: string | null
+    progress_at?: string | null
     items?: Array<{ fixture?: string | null; is_fixed?: boolean; direct_labor_amount?: number | null }>
     payments?: Array<{ amount: number; memo?: string | null; created_at?: string | null; payment_date?: string | null }>
   }
@@ -211,6 +215,10 @@ export function buildSheetStory(input: SheetStoryInput): SheetStoryRow[] {
   const fixed = items.filter((i) => i.is_fixed || i.direct_labor_amount != null).length
   work.facts.push({ k: 'Started', text: started ? `${when(started)} — ${sheet.created_at ? 'sheet created' : 'sheet dated'}${m.unpriced ? '' : ''}` : 'no date on the sheet' })
   work.facts.push({ k: 'Scope on the sheet', text: items.length === 0 ? 'no line items yet' : `${items.length} line item${items.length === 1 ? '' : 's'}${fixed ? ` · ${fixed} fixed-price` : ''} · ${m.unpriced ? 'unpriced' : money(m.agreed)}` })
+  if (sheet.progress_pct != null && sheet.progress_pct < 100) {
+    work.facts.push({ k: sheet.progress_at ? when(ymd(sheet.progress_at)) : 'Progress', text: `${subName} says ${sheet.progress_pct}% along (portal)` })
+    if (sheet.progress_note) work.facts.push({ text: `“${sheet.progress_note}”`, quote: true })
+  }
   if (current === 'work') {
     const days = started ? daysBetweenYmd(started, input.todayYmd) : 0
     work.chip = { label: `current${days > 0 ? ` · ${days} day${days === 1 ? '' : 's'}` : ''}`, tone: 'amber' }

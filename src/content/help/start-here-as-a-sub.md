@@ -33,6 +33,10 @@ If the office offers you a job for a set amount, it arrives as an offer card wit
 
 **Your money** on the Dashboard shows what you're owed, every sheet, and the payments and backcharges on each one — the same numbers the office sees. See [what you're owed as a sub](?g=see-what-youre-owed-as-a-sub) for the details.
 
+## Say how far along you are
+
+Each working job card asks **How far along is your part?** Tap 0, 25, 50 or 75 and, if you like, type a note — nothing is sent until you press {{button:blue|Send to office}}. Anything under 100% just keeps the office posted; they keep waiting on you. Tap **100% ✓** and the button turns green — {{button:green|Send to office · work is done}} — and asks you to confirm, because 100% is what tells the office to call it in for inspection.
+
 ## Pick your days
 
 Some work orders come with a **window** — the span the office wants the stage done in. The card shows it as a calendar: the shaded weekdays are the window, and the sentence under it says how many working days the job takes. Tap the day you can start and the days fill to the end. {{button:green|Sign to accept}} carries your pick, so the office knows when you're coming.

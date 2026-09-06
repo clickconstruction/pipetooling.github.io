@@ -11143,6 +11143,10 @@ export type Database = {
           pay_hold_reason: string | null
           payable_after: string | null
           portal_status: string | null
+          progress_at: string | null
+          progress_note: string | null
+          progress_pct: number | null
+          progress_source: string | null
           project_id: string | null
           stage: string
           stage_changed_at: string | null
@@ -11166,6 +11170,10 @@ export type Database = {
           pay_hold_reason?: string | null
           payable_after?: string | null
           portal_status?: string | null
+          progress_at?: string | null
+          progress_note?: string | null
+          progress_pct?: number | null
+          progress_source?: string | null
           project_id?: string | null
           stage?: string
           stage_changed_at?: string | null
@@ -11189,6 +11197,10 @@ export type Database = {
           pay_hold_reason?: string | null
           payable_after?: string | null
           portal_status?: string | null
+          progress_at?: string | null
+          progress_note?: string | null
+          progress_pct?: number | null
+          progress_source?: string | null
           project_id?: string | null
           stage?: string
           stage_changed_at?: string | null

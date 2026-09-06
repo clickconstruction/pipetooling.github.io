@@ -350,6 +350,10 @@ serve(async (req) => {
           stage_changed_by: null,
           stage_source: 'portal',
           stage_note: note || null,
+          progress_pct: 100,
+          progress_at: nowIso,
+          progress_source: 'portal',
+          ...(note ? { progress_note: note } : {}),
         })
         .eq('id', sheetRow.id)
         .eq('stage', 'working')
@@ -370,6 +374,62 @@ serve(async (req) => {
         markedAt: nowIso,
       })
       return jsonResponse({ ok: true, stage: 'walkthrough', stageChangedOn: todayYmdInAppTz() })
+    }
+
+    // ── progress (v2.2931): how far along their part is; 100 goes through mark_work_done ──
+    if (kind === 'progress') {
+      const laborJobId = typeof body.laborJobId === 'string' && /^[0-9a-f-]{36}$/.test(body.laborJobId) ? body.laborJobId : null
+      const pctRaw = Number(body.pct)
+      const pct = [0, 25, 50, 75].includes(pctRaw) ? pctRaw : null
+      const note = typeof body.note === 'string' ? body.note.trim().slice(0, 300) : ''
+      if (!laborJobId || (pct == null && !note)) return jsonResponse({ error: 'Bad request' }, 400)
+      const { data: junction } = await admin.from('people_labor_job_assignees').select('labor_job_id').eq('labor_job_id', laborJobId).eq('person_id', link.person_id).maybeSingle()
+      if (!junction) return jsonResponse({ error: 'Not found' }, 404)
+      const { data: sheet } = await admin.from('people_labor_jobs').select('id, stage, job_number, address, step_id, progress_pct').eq('id', laborJobId).maybeSingle()
+      const sheetRow = sheet as { id: string; stage: string | null; job_number: string | null; address: string | null; step_id: string | null; progress_pct: number | null } | null
+      if (!sheetRow) return jsonResponse({ error: 'Not found' }, 404)
+      if ((sheetRow.stage ?? 'working') !== 'working') return jsonResponse({ error: 'This job is already past the work stage — call the office if something changed.' }, 409)
+      const nowIso = new Date().toISOString()
+      const effectivePct = pct ?? sheetRow.progress_pct ?? 0
+      const { error: updErr } = await admin
+        .from('people_labor_jobs')
+        .update({ progress_pct: effectivePct, progress_at: nowIso, progress_source: 'portal', ...(note ? { progress_note: note } : {}) })
+        .eq('id', sheetRow.id)
+      if (updErr) {
+        console.error('sub progress update failed', updErr)
+        return jsonResponse({ error: 'Something went wrong. Please try again.' }, 500)
+      }
+      if (sheetRow.step_id && pct != null) await admin.from('project_workflow_steps').update({ percent_complete: pct }).eq('id', sheetRow.step_id)
+      // The job's activity feed hears every report (the watchers' emails read it later).
+      const jobNumber = (sheetRow.job_number ?? '').trim()
+      if (jobNumber) {
+        const { data: job } = await admin.from('jobs_ledger').select('id').eq('hcp_number', jobNumber).maybeSingle()
+        const jobId = (job as { id: string } | null)?.id
+        if (jobId) {
+          await admin.from('job_activity_events').insert({
+            job_id: jobId,
+            event_type: 'sub_progress',
+            summary: pct != null ? `${personName} · ${pct}% along on their part${note ? ` — “${note}”` : ''}` : `${personName} sent a note from their portal — “${note}”`,
+            detail: { laborJobId: sheetRow.id, pct: effectivePct, note: note || null, source: 'portal', address: sheetRow.address },
+            financial: false,
+          })
+        }
+      }
+      // Dispatch hears a note, never a bare percent.
+      if (note) {
+        const where = [sheetRow.job_number, sheetRow.address].map((v) => (v ?? '').trim()).filter(Boolean).join(' ')
+        await insertDispatchNote(admin, link, `${personName} on ${where || 'a sub sheet'}: “${note.slice(0, 120)}”`, {
+          kind: 'sub_note',
+          personId: link.person_id,
+          personName,
+          laborJobId: sheetRow.id,
+          jobNumber: sheetRow.job_number,
+          address: sheetRow.address,
+          pct: effectivePct,
+          note,
+        })
+      }
+      return jsonResponse({ ok: true, pct: effectivePct, progressOn: todayYmdInAppTz() })
     }
 
     // ── accept_offer / decline_offer ──────────────────────────────────────
