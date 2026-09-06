@@ -194,3 +194,24 @@ export function portalGlobeInitialState(
   if (computePortalMainOffCustomerIds(mine.map((r) => ({ ...r, customer_id: r.customer_id ?? customerId }))).includes(customerId)) return 'off'
   return mine.some((r) => r.revoked_at === null) ? 'legacy-active' : 'unminted'
 }
+
+/**
+ * Every customer's globe state at once, from the one list-level fetch of
+ * link rows (journey-map B18 / J21-F3): the same verdict the modal opens
+ * into, so the globe in the list and the modal behind it never disagree.
+ * Customers with no rows are simply absent — read them as 'unminted'.
+ */
+export function computePortalGlobeStates(
+  rows: Array<Pick<PortalLinkRow, 'customer_id' | 'audience' | 'revoked_at'>>,
+): Map<string, PortalGlobeInitialState> {
+  const byCustomer = new Map<string, Array<Pick<PortalLinkRow, 'customer_id' | 'audience' | 'revoked_at'>>>()
+  for (const r of rows) {
+    if (!r.customer_id) continue
+    const list = byCustomer.get(r.customer_id) ?? []
+    list.push(r)
+    byCustomer.set(r.customer_id, list)
+  }
+  const out = new Map<string, PortalGlobeInitialState>()
+  for (const [customerId, list] of byCustomer) out.set(customerId, portalGlobeInitialState(list, customerId))
+  return out
+}

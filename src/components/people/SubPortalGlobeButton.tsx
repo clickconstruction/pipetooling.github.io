@@ -16,11 +16,15 @@ import {
   appendRandomTail,
   isValidSlug,
   normalizeSlugInput,
-  slugGuessability,
+  slugGuessabilityDetail,
+  slugGuessabilityLabel,
   suggestSlugFromName,
+  suggestSlugWithTail,
 } from '../../lib/portal/portalSlug'
 import { PORTAL_SHORT_ORIGIN, portalShortUrl } from '../../lib/portal/portalShortOrigin'
-import { setSubPortalOff, useSubPortalLinkOff } from '../../hooks/useSubPortalOffStates'
+import { setSubPortalGlobeState, useSubPortalGlobeState } from '../../hooks/useSubPortalOffStates'
+import { portalGlobeTint, portalGlobeTitle } from '../../lib/portal/portalGlobeTint'
+import PortalGlobeIcon from '../shared/PortalGlobeIcon'
 import { withPreviewFlag } from '../../lib/publicViewCounting'
 
 /**
@@ -79,7 +83,8 @@ export default function SubPortalGlobeButton({
   const [timeline, setTimeline] = useState<PortalTimelineEntry[]>([])
   const [creatorNames, setCreatorNames] = useState<Record<string, string>>({})
   const diceBase = useRef<{ base: string; out: string } | null>(null)
-  const mainOff = useSubPortalLinkOff(personId)
+  const globeState = useSubPortalGlobeState(personId)
+  const globeTint = portalGlobeTint(globeState)
 
   const mint = useCallback(
     async (rotate: boolean): Promise<string | null> => {
@@ -157,25 +162,33 @@ export default function SubPortalGlobeButton({
       const slugRow = (slugRes.data ?? null) as { slug: string; locked_at: string | null } | null
       setSlugSaved(slugRow?.slug ?? null)
       setSlugLocked(!!slugRow?.locked_at)
-      setSlugInput(slugRow?.slug ?? suggestSlugFromName(personName))
+      if (slugRow?.slug) {
+        setSlugInput(slugRow.slug)
+      } else {
+        // Default = their name + a random tail (journey-map B18 / J21-F6); remember the
+        // base so the hero 🎲 re-rolls the tail instead of stacking one.
+        const suggested = suggestSlugWithTail(personName)
+        setSlugInput(suggested.slug)
+        diceBase.current = suggested.slug ? { base: suggested.base, out: suggested.slug } : null
+      }
       setAddrInput(slugRow?.slug ?? '')
 
       const active = rows.find((r) => r.revoked_at === null)
       const verdict = portalGlobeInitialState(adapted, personId)
       if (verdict === 'active' && active?.token) {
         setMain({ kind: 'active', token: active.token })
-        setSubPortalOff(personId, false)
+        setSubPortalGlobeState(personId, 'active')
         return
       }
       if (verdict === 'off') {
         setMain({ kind: 'off' })
-        setSubPortalOff(personId, true)
+        setSubPortalGlobeState(personId, 'off')
         return
       }
       // Never-minted (the adapter has no legacy audiences, so nothing else is
       // left): open into the unminted state — the mint waits for a click.
       setMain({ kind: 'unminted' })
-      setSubPortalOff(personId, false)
+      setSubPortalGlobeState(personId, 'unminted')
     } catch (e) {
       setMain({ kind: 'error', message: formatErrorMessage(e, 'Could not load the portal link') })
     }
@@ -251,12 +264,12 @@ export default function SubPortalGlobeButton({
     }
   }
 
-  const rollDice = () => {
-    const trimmed = addrInput.replace(/-+$/, '')
-    const base = diceBase.current && diceBase.current.out === addrInput ? diceBase.current.base : trimmed
+  const rollDice = (current: string, apply: (v: string) => void) => {
+    const trimmed = current.replace(/-+$/, '')
+    const base = diceBase.current && diceBase.current.out === current ? diceBase.current.base : trimmed
     const out = appendRandomTail(base)
     diceBase.current = { base, out }
-    setAddrInput(out)
+    apply(out)
   }
 
   const saveAddressChange = async () => {
@@ -321,7 +334,7 @@ export default function SubPortalGlobeButton({
       const res = data as unknown as { revoked?: number; error?: string }
       if (res.error) throw new Error(res.error)
       showToast('Portal turned off.', 'success')
-      setSubPortalOff(personId, true)
+      setSubPortalGlobeState(personId, 'off')
       await loadState()
     } catch (e) {
       showToast(formatErrorMessage(e, 'Could not turn off the portal'), 'error')
@@ -336,7 +349,7 @@ export default function SubPortalGlobeButton({
       const token = await mint(false)
       if (!token) throw new Error('No link returned')
       showToast('Portal turned back on — this is a brand-new link.', 'success')
-      setSubPortalOff(personId, false)
+      setSubPortalGlobeState(personId, 'active')
       await loadState()
     } catch (e) {
       showToast(formatErrorMessage(e, 'Could not turn the portal back on'), 'error')
@@ -352,7 +365,7 @@ export default function SubPortalGlobeButton({
       const token = await mint(false)
       if (!token) throw new Error('No link returned')
       setMain({ kind: 'active', token })
-      setSubPortalOff(personId, false)
+      setSubPortalGlobeState(personId, 'active')
       setTimeline((prev) => [
         { kind: 'link', at: new Date().toISOString(), createdBy: user?.id ?? null, audience: 'all', outcome: 'active', revokedAt: null },
         ...prev,
@@ -370,7 +383,8 @@ export default function SubPortalGlobeButton({
     new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
 
   const firstName = personName.trim().split(/\s+/)[0] || 'the sub'
-  const guess = isValidSlug(slugInput.replace(/-+$/, '')) ? slugGuessability(slugInput.replace(/-+$/, '')) : null
+  // The meter knows the name-derived suggestion, so the bare name grades easy however long it is.
+  const guess = isValidSlug(slugInput.replace(/-+$/, '')) ? slugGuessabilityDetail(slugInput, suggestSlugFromName(personName)) : null
 
   const gearRow = (label: string, body: React.ReactNode) => (
     <div style={{ display: 'flex', gap: '0.8rem', padding: '0.5rem 0', borderBottom: '1px dotted var(--border)', fontSize: '0.82rem' }}>
@@ -404,20 +418,22 @@ export default function SubPortalGlobeButton({
     <>
       <button
         type="button"
-        title={mainOff ? `${personName}'s portal (turned off)` : `${personName}'s portal`}
+        title={portalGlobeTitle(personName, globeState)}
         aria-label={`Manage ${personName}'s sub portal`}
+        data-portal-tone={globeTint.tone}
         onClick={openModal}
         style={{
           background: 'none',
           border: 'none',
           padding: 2,
           cursor: 'pointer',
-          fontSize: size,
-          lineHeight: 1,
-          filter: mainOff ? 'grayscale(1) sepia(1) saturate(6) hue-rotate(-40deg)' : undefined,
+          color: globeTint.color,
+          display: 'inline-flex',
+          alignItems: 'center',
+          verticalAlign: 'middle',
         }}
       >
-        🌐
+        <PortalGlobeIcon size={size} />
       </button>
       {open && (
         <div
@@ -494,10 +510,22 @@ export default function SubPortalGlobeButton({
                       onChange={(e) => setSlugInput(normalizeSlugInput(e.target.value))}
                       style={{ flex: 1, minWidth: 0, border: 'none', outline: 'none', padding: '0.45rem 0.6rem 0.45rem 0', fontSize: '0.85rem', fontWeight: 700, background: 'transparent', color: 'var(--text-900)' }}
                     />
+                    {!slugLocked && (
+                      <button
+                        type="button"
+                        onClick={() => rollDice(slugInput, setSlugInput)}
+                        title="New random tail"
+                        aria-label="New random tail"
+                        style={{ border: 'none', borderLeft: '1px solid var(--border-strong)', background: 'var(--bg-subtle)', padding: '0.45rem 0.6rem', fontSize: '0.85rem', cursor: 'pointer', flex: 'none' }}
+                      >
+                        🎲
+                      </button>
+                    )}
                   </div>
                   {!slugLocked && guess ? (
-                    <p style={{ margin: '4px 0 0', fontSize: '0.72rem', color: guess === 'hard' ? 'var(--text-green-700)' : 'var(--text-muted)' }}>
-                      Guessability: {guess} {guess === 'hard' ? '✓ — safe to print on paper' : '— consider adding a 🎲 tail in the gear'}
+                    <p style={{ margin: '4px 0 0', fontSize: '0.72rem', color: guess.grade === 'hard' ? 'var(--text-green-700)' : 'var(--text-muted)' }}>
+                      {slugGuessabilityLabel(guess)}
+                      {guess.grade === 'hard' ? ' — safe to print on paper' : ' — press 🎲 for a random tail'}
                     </p>
                   ) : null}
                 </div>
@@ -546,7 +574,7 @@ export default function SubPortalGlobeButton({
                           onChange={(e) => setAddrInput(normalizeSlugInput(e.target.value))}
                           style={{ flex: 1, minWidth: 140, padding: '0.3rem 0.5rem', fontSize: '0.78rem', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', color: 'var(--text-900)' }}
                         />
-                        {smallBtn('🎲', rollDice)}
+                        {smallBtn('🎲', () => rollDice(addrInput, setAddrInput))}
                         {smallBtn('Save', () => void saveAddressChange())}
                       </span>,
                     )}

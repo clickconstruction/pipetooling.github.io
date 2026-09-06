@@ -264,9 +264,12 @@ export default function EstimateAcceptBody(props: EstimateAcceptBodyProps) {
     return () => document.removeEventListener('keydown', onKeyDown)
   }, [acceptModalOpen, submitting])
 
+  // ≥44px tall (J17-F7): at 375px this was 97×34 — the one action on the page, under the thumb guideline.
   const primaryBtnStyle = {
     marginTop: 0,
-    padding: '0.5rem 1.25rem',
+    padding: '0.7rem 1.4rem',
+    minHeight: 44,
+    fontSize: '1rem',
     fontWeight: 600,
     background: '#ea580c',
     color: 'white',

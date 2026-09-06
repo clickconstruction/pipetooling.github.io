@@ -4,6 +4,7 @@ import {
   computeSentWait,
   computeLedgerTotals,
   ledgerRowPasses,
+  countMeaningfulEstimateLines,
   estimateDraftMeaningfulLineCount,
   isEmptyEstimateDraft,
   readinessDots,
@@ -55,6 +56,12 @@ describe('isEmptyEstimateDraft', () => {
 })
 
 describe('meaningful line count', () => {
+  it('countMeaningfulEstimateLines is the same rule on already-normalized lines (the editor rail feeds it)', () => {
+    expect(countMeaningfulEstimateLines([STUB])).toBe(0)
+    expect(countMeaningfulEstimateLines([{ ...STUB, amount_cents: 5000 }])).toBe(1)
+    expect(countMeaningfulEstimateLines([{ ...STUB, line_item: 'Water heater' }])).toBe(1)
+    expect(countMeaningfulEstimateLines([STUB, { ...STUB, line_item: '', description: '' }])).toBe(0)
+  })
   it('ignores the stub in both shapes and blank rows; counts priced or labeled lines', () => {
     expect(estimateDraftMeaningfulLineCount([STUB], false)).toBe(0)
     expect(

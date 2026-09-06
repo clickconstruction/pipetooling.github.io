@@ -32,6 +32,7 @@ import { CO_CREDIT_LABEL_PREFIX, isCoCreditLine, type CoCostPromptMode } from '.
 import { computeEstimateDraftSteps, type EstimateDraftStepKey } from '../lib/estimateDraftSteps'
 import { useConfirmDialog } from '../contexts/ConfirmDialogContext'
 import {
+  countMeaningfulEstimateLines,
   computeEstimateListReadiness,
   computeSentWait,
   computeLedgerTotals,
@@ -3316,7 +3317,8 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
         customerSelected: customerId != null,
         customerEmailPresent: Boolean(crmEmailForSelected || sendEmailOverride.trim()),
         changeDescriptionFilled: coFields.description_of_change.trim() !== '',
-        lineCount: lines.length,
+        // Same rule as the list's send-gate (B18 / J17-F5): the seeded $0 stub is not a line.
+        lineCount: countMeaningfulEstimateLines(lines),
         totalCents,
         termsFilled: terms.trim() !== '',
         attachmentFilled: Boolean(customerAttachmentUrl.trim() || customerAttachmentLabel.trim()),
@@ -3328,7 +3330,7 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
       crmEmailForSelected,
       sendEmailOverride,
       coFields.description_of_change,
-      lines.length,
+      lines,
       totalCents,
       terms,
       customerAttachmentUrl,
