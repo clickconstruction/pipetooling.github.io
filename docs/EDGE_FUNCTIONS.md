@@ -1147,7 +1147,7 @@ Devs: **Settings → Templates & testing → Workflow email (Edge Function)** (c
 
 **Gateway**: `verify_jwt = false`; the RFQ token is the credential (Bid Room precedent).
 
-**Behavior**: Loads the `bid_rfqs` row by token; 404 unknown; returns `{ status: 'closed' }` when the RFQ is closed or its bid's outcome is `lost` (token hygiene — dead links go quiet). Otherwise returns the scope snapshot's lines (fixture, count, unit — names and counts only, prices never leave), the bid label (`bid_number · project_name`), the supply house name, and `needed_by`.
+**Behavior**: Loads the `bid_rfqs` row by token; 404 unknown; returns `{ status: 'closed' }` when the RFQ is closed or its bid's outcome is `lost` (token hygiene — dead links go quiet). Otherwise stamps `viewed_at` once (fire-and-forget; the desk's "Viewed" step — **after** the closed check since v2.2911, so a vendor tapping a stale text after Close link never lights "Viewed" on the desk) and returns the scope snapshot's lines (fixture, count, unit — names and counts only, prices never leave), the bid label (`bid_number · project_name`), the supply house name, `needed_by`, and (Rung C) the requesting house's own prior prices when fresher than 90 days.
 
 ---
 

@@ -20,6 +20,9 @@ export type EstimateDraftFormSnapshotInput = {
   lines: unknown
   terms: string
   changeOrderFields: unknown
+  /** v2.2911: typed address / internal notes keep a fresh draft alive too. */
+  forAddress?: string
+  internalNotes?: string
 }
 
 /** The editor's live form state in the shape the emptiness rule reads. */
@@ -33,6 +36,8 @@ export function estimateDraftFormSnapshot(input: EstimateDraftFormSnapshotInput)
     doc_kind: input.docKind ?? null,
     change_order_fields: input.changeOrderFields,
     terms_snapshot: input.terms,
+    for_address: input.forAddress ?? null,
+    internal_notes: input.internalNotes ?? null,
   }
 }
 

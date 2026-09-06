@@ -25,9 +25,13 @@ import {
   EMPTY_ESTIMATE_CHANGE_ORDER_FIELDS,
   formatSignedCentsUsd,
   isChangeOrderDocKind,
+  isLegacyChangeOrderTitledEstimate,
+  LEGACY_CHANGE_ORDER_TITLE_HINT,
+  LEGACY_CHANGE_ORDER_TITLE_LABEL,
   parseEstimateChangeOrderFields,
   type EstimateChangeOrderFields,
 } from '../lib/estimateChangeOrder'
+import { bridgedCostImpactText } from '../lib/bidDocuments/changeOrderBridge'
 import { CO_CREDIT_LABEL_PREFIX, isCoCreditLine, type CoCostPromptMode } from '../lib/coCostLinePrompt'
 import { computeEstimateDraftSteps, type EstimateDraftStepKey } from '../lib/estimateDraftSteps'
 import { useConfirmDialog } from '../contexts/ConfirmDialogContext'
@@ -624,6 +628,34 @@ function EstimateChangeOrderChip({ compact }: { compact?: boolean }) {
   )
 }
 
+/**
+ * v2.2911 (journey-map J16-F4): a plain estimate titled "change order" (the
+ * pre-`doc_kind` specimen, estimate #1) wears the word without the machinery.
+ * A quiet neutral tag says so wherever the amber chip would otherwise be
+ * expected, so nobody hunts for an Apply-to-job button that isn't coming.
+ */
+function EstimateLegacyChangeOrderTitleChip({ compact }: { compact?: boolean }) {
+  return (
+    <span
+      title={LEGACY_CHANGE_ORDER_TITLE_HINT}
+      style={{
+        display: 'inline-block',
+        background: 'var(--bg-muted)',
+        color: 'var(--text-muted)',
+        border: '1px dashed var(--border-strong)',
+        borderRadius: 999,
+        padding: compact ? '0 0.4rem' : '0.05rem 0.5rem',
+        fontSize: compact ? '0.625rem' : '0.6875rem',
+        fontWeight: 500,
+        whiteSpace: 'nowrap',
+        verticalAlign: 'middle',
+      }}
+    >
+      {LEGACY_CHANGE_ORDER_TITLE_LABEL}
+    </span>
+  )
+}
+
 /** Violet "Bid ✍" pill (v2.2470): a signed bid-room proposal riding the estimates rails. */
 function EstimateBidProposalChip({ compact }: { compact?: boolean }) {
   return (
@@ -1213,7 +1245,7 @@ function EstimateListTable({
                 >
                   <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', minWidth: 0, flexWrap: 'wrap' }}>
                     <Link to={`/estimates/${r.estimate_number}`}>{r.title || '—'}</Link>
-                    {isChangeOrderDocKind(r.doc_kind) ? <EstimateChangeOrderChip compact /> : isBidProposalDocKind(r.doc_kind) ? <EstimateBidProposalChip compact /> : null}
+                    {isChangeOrderDocKind(r.doc_kind) ? <EstimateChangeOrderChip compact /> : isBidProposalDocKind(r.doc_kind) ? <EstimateBidProposalChip compact /> : isLegacyChangeOrderTitledEstimate(r.doc_kind, r.title) ? <EstimateLegacyChangeOrderTitleChip compact /> : null}
                   </span>
                   {showCustomerColumn ? null : (
                     <span style={estimateListCustomerCellStyle}>{estimateListCustomerSubline(r)}</span>
@@ -1772,7 +1804,7 @@ function EstimateListCards({
                   >
                     #{r.estimate_number}
                   </Link>
-                  {isChangeOrderDocKind(r.doc_kind) ? <EstimateChangeOrderChip compact /> : isBidProposalDocKind(r.doc_kind) ? <EstimateBidProposalChip compact /> : null}
+                  {isChangeOrderDocKind(r.doc_kind) ? <EstimateChangeOrderChip compact /> : isBidProposalDocKind(r.doc_kind) ? <EstimateBidProposalChip compact /> : isLegacyChangeOrderTitledEstimate(r.doc_kind, r.title) ? <EstimateLegacyChangeOrderTitleChip compact /> : null}
                   <div
                     style={{
                       fontWeight: 600,
@@ -3967,6 +3999,8 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
         lines,
         terms,
         changeOrderFields: coFields,
+        forAddress,
+        internalNotes,
       }),
     })
     if (!discard) return
@@ -4644,6 +4678,11 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
                     {' '}
                     <EstimateChangeOrderChip />
                   </>
+                ) : isLegacyChangeOrderTitledEstimate(row.doc_kind, title) ? (
+                  <>
+                    {' '}
+                    <EstimateLegacyChangeOrderTitleChip />
+                  </>
                 ) : null}
               </span>
           ) : (
@@ -4654,6 +4693,10 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
               {isChangeOrderDocKind(row.doc_kind) ? (
                 <>
                   <EstimateChangeOrderChip />{' '}
+                </>
+              ) : isLegacyChangeOrderTitledEstimate(row.doc_kind, title) ? (
+                <>
+                  <EstimateLegacyChangeOrderTitleChip />{' '}
                 </>
               ) : null}
               {title || 'Estimate'}
@@ -5106,6 +5149,27 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
                 ) : null}
               </div>
             ) : null}
+            {(() => {
+              // v2.2911 (J16-F2 / P2): a draft bridged from Bids shows the typed cost text
+              // where the money is entered, instead of leaving it to the internal note.
+              if (!isCO) return null
+              const bridged = bridgedCostImpactText({ lines, internalNotes })
+              if (!bridged) return null
+              return (
+                <div
+                  role="note"
+                  style={{ margin: '0 0 0.6rem', padding: '0.55rem 0.75rem', background: 'var(--bg-subtle)', border: '1px solid var(--border)', borderLeft: '3px solid #f59e0b', borderRadius: 6, fontSize: '0.8125rem', color: 'var(--text-700)', lineHeight: 1.45 }}
+                >
+                  <span style={{ fontWeight: 600, color: 'var(--text-amber-800)' }}>From the Bids form — Impact on Cost as typed:</span>{' '}
+                  <span style={{ whiteSpace: 'pre-wrap' }}>{bridged}</span>
+                  <span style={{ display: 'block', marginTop: '0.2rem', color: 'var(--text-muted)' }}>
+                    {totalCents === 0
+                      ? 'The draft was created at $0 — add the cost lines below if the price changes.'
+                      : `Carried below as one net-change line (${formatSignedCentsUsd(totalCents)}). Split it into itemized lines if the customer wants the breakdown.`}
+                  </span>
+                </div>
+              )
+            })()}
             <div
               id="est-step-cost"
               className={'est-region-ruled' + (railFlashStep === 'cost' ? ' estimate-customer-search-highlight' : '')}

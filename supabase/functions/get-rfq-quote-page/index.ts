@@ -39,8 +39,15 @@ serve(async (req) => {
       .maybeSingle()
     if (!rfq) return json({ error: 'Not found' }, 404)
 
+    const bid = rfq.bids as unknown as { bid_number: string | null; project_name: string | null; outcome: string | null } | null
+    const house = rfq.supply_houses as unknown as { name: string } | null
+    const closed = rfq.status === 'closed' || bid?.outcome === 'lost'
+    if (closed) return json({ status: 'closed' })
+
     // Lane B's "Viewed" signal (v2.2636): the vendor opening this page is the
-    // real thing — stamp once, fire-and-forget.
+    // real thing — stamp once, fire-and-forget. Only for a live link (v2.2911,
+    // J12-N4): a vendor tapping a stale text after the desk closed the request
+    // sees "closed", and the desk should not light "Viewed" for that.
     if (!rfq.viewed_at) {
       admin
         .from('bid_rfqs')
@@ -48,11 +55,6 @@ serve(async (req) => {
         .eq('id', rfq.id)
         .then(() => {}, (e: unknown) => console.error('viewed_at stamp failed', e))
     }
-
-    const bid = rfq.bids as unknown as { bid_number: string | null; project_name: string | null; outcome: string | null } | null
-    const house = rfq.supply_houses as unknown as { name: string } | null
-    const closed = rfq.status === 'closed' || bid?.outcome === 'lost'
-    if (closed) return json({ status: 'closed' })
     const bidName = [bid?.bid_number, bid?.project_name].filter(Boolean).join(' · ')
 
     const scope = (rfq.scope ?? {}) as { lines?: ScopeLine[]; plansLink?: string | null }

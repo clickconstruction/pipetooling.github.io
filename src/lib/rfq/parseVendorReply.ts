@@ -14,6 +14,16 @@
  * synonym table (cast iron/CI → WASTE, copper/viega/pex → WATER, …).
  * A line may match several fixtures ("GCO/FCO 116 each" → both, same price).
  * Prices ~8× off the provided baseline are flagged, never dropped.
+ *
+ * Tokenizing (v2.2911, journey-map J12-F4): fixture names and vendor lines
+ * split on the SAME class (anything not a letter or digit), so a fixture
+ * named "Shower/tub combos" is the words shower · tub · combo — a vendor who
+ * types "shower tub combo" (nobody types the slash) still lands on it. Both
+ * sides fold plain plurals (sinks → sink, boxes → box, carriers → carrier)
+ * before comparing, and the verbatim-name check tolerates them too. The
+ * file-drop lane (Rung E) feeds its flattened rows through this exact
+ * function, so a spreadsheet cell "Kitchen sinks" matches the same way a
+ * paste does.
  */
 
 export type ReplyBasis = 'each' | 'ft' | 'per_100' | 'box'
@@ -145,10 +155,53 @@ function toEachCents(basisPriceCents: number, basis: ReplyBasis, qty: number): n
   return basisPriceCents
 }
 
-function fixtureTokens(name: string): { sizes: string[]; words: Set<string> } {
-  const lower = name.toLowerCase()
-  const words = new Set(lower.split(/[^a-z0-9/]+/).filter(Boolean))
-  return { sizes: extractSizes(name), words }
+/**
+ * Plain-English plural → singular for token comparison. Deliberately shallow:
+ * `-es` after a sibilant (boxes, flanges, brushes), otherwise a trailing `-s`
+ * on a word of four letters or more (sinks, combos, tees). Short tokens and
+ * abbreviations (fs, wcs, gas, sv) are left alone so "fs" never becomes "f".
+ */
+export function foldPlural(word: string): string {
+  const w = word.toLowerCase()
+  if (w.length < 4 || !w.endsWith('s') || w.endsWith('ss')) return w
+  if (/(?:[sxz]|[cs]h)es$/.test(w) && w.length >= 5) return w.slice(0, -2)
+  return w.slice(0, -1)
+}
+
+/** One split class for both sides — `/`, `-`, `"` and spaces all separate words. */
+const WORD_SPLIT = /[^a-z0-9]+/
+
+/** The words of a name or line, lowercased, plural-folded, empties dropped. */
+export function tokenizeWords(s: string): string[] {
+  return s
+    .toLowerCase()
+    .split(WORD_SPLIT)
+    .filter(Boolean)
+    .map(foldPlural)
+}
+
+function fixtureTokens(name: string): { sizes: string[]; words: Set<string>; nameRe: RegExp | null } {
+  const words = new Set(tokenizeWords(name))
+  return { sizes: extractSizes(name), words, nameRe: fixtureNameRegExp(name) }
+}
+
+/**
+ * "The whole fixture name appears in the line" — built from the name's words
+ * so separators ("/" vs " ") and plurals don't break it: "Shower/tub combos"
+ * matches "shower tub combo" and "shower / tub combos" alike. Null when the
+ * name has no usable words.
+ */
+function fixtureNameRegExp(name: string): RegExp | null {
+  const parts = name
+    .toLowerCase()
+    .split(WORD_SPLIT)
+    .filter(Boolean)
+    .map((w) => {
+      const stem = escapeRe(foldPlural(w))
+      return /^[a-z]{3,}$/.test(w) ? `${stem}(?:e?s)?` : escapeRe(w)
+    })
+  if (parts.length === 0 || parts.join('').length < 2) return null
+  return new RegExp(`(?:^|[^a-z0-9])${parts.join('[^a-z0-9]+')}(?:[^a-z0-9]|$)`)
 }
 
 /**
@@ -158,21 +211,21 @@ function fixtureTokens(name: string): { sizes: string[]; words: Set<string> } {
 function scoreLine(
   lineLower: string,
   lineSizes: string[],
-  fixture: { nameLower: string; sizes: string[]; words: Set<string> },
+  fixture: { nameLower: string; sizes: string[]; words: Set<string>; nameRe: RegExp | null },
 ): number {
   let score = 0
   if (lineSizes.length > 0 && fixture.sizes.length > 0) {
     if (lineSizes.some((s) => fixture.sizes.includes(s))) score += 3
     else return 0 // both sides state a size and they disagree — not this fixture
   }
-  // The whole fixture name appearing verbatim ("GCO/FCO 116 each") is decisive.
-  if (fixture.nameLower.length >= 2 && new RegExp(`(?:^|[^a-z0-9])${escapeRe(fixture.nameLower)}(?:[^a-z0-9]|$)`).test(lineLower)) {
+  // The whole fixture name appearing in the line ("GCO/FCO 116 each") is decisive.
+  if (fixture.nameRe?.test(lineLower)) {
     score += 4
   }
   for (const syn of SYNONYMS) {
     if (syn.re.test(lineLower) && syn.tokens.some((t) => fixture.words.has(t))) score += syn.strong ? 3 : 2
   }
-  for (const w of lineLower.split(/[^a-z0-9]+/)) {
+  for (const w of tokenizeWords(lineLower)) {
     if (w.length >= 2 && fixture.words.has(w)) score += 1
   }
   return score

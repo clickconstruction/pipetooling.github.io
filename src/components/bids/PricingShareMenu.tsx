@@ -3,6 +3,10 @@
  * one-click green self; the ▾ beside it files Print / Download CSV / "Print all prices — review" into
  * a small menu. Roles that can't Share get a single "Export ▾" over the same menu. Handlers are the
  * caller's existing ones (★ chooser and disabled gates unchanged).
+ *
+ * v2.2911 (journey-map J12-F1): the caret carries a visible label — "Supply house prices (RFQ) ▾" —
+ * because the RFQ lane (scope → copy or quote link → desk) lived behind a 25-px glyph whose only
+ * name was a hover title, and phones don't hover. The menu item is "Supply house prices" to match.
  */
 import { useEffect, useRef, useState } from 'react'
 
@@ -91,7 +95,7 @@ export function PricingShareMenu({
     { key: 'print', label: 'Print', hint: 'the price you’re viewing', onPick: onPrint },
     { key: 'csv', label: 'Download CSV', disabled: csvDisabled, title: csvDisabled ? csvTitle : undefined, onPick: onCsv },
     { key: 'review', label: 'Print all prices — review', hint: 'every price option in one document', dividerBefore: true, onPick: onReview },
-    { key: 'fixtures', label: 'Supply house list', hint: 'names + counts by Division 22, no prices — scope it, then copy', disabled: fixturesDisabled, title: fixturesDisabled ? fixturesTitle : undefined, dividerBefore: true, onPick: onCopyFixtures },
+    { key: 'fixtures', label: 'Supply house prices', hint: 'your parts list by Division 22 — names + counts, none of your prices — copy it or send a quote link', disabled: fixturesDisabled, title: fixturesDisabled ? fixturesTitle : undefined, dividerBefore: true, onPick: onCopyFixtures },
     ...(onOpenD22Audit
       ? [{ key: 'd22audit', label: 'Division 22 codes', hint: 'audit every fixture name — pin the missing codes', childOfPrevious: true, onPick: onOpenD22Audit } satisfies Item]
       : []),
@@ -101,7 +105,7 @@ export function PricingShareMenu({
   ]
 
   const caretStyle: React.CSSProperties = canShare
-    ? { padding: '0.5rem 0.55rem', background: '#16a34a', color: 'white', border: 'none', borderLeft: '1px solid rgba(255, 255, 255, 0.35)', borderRadius: '0 4px 4px 0', cursor: 'pointer', font: 'inherit', fontSize: '0.8rem' }
+    ? { padding: '0.5rem 0.65rem', background: '#16a34a', color: 'white', border: 'none', borderLeft: '1px solid rgba(255, 255, 255, 0.35)', borderRadius: '0 4px 4px 0', cursor: 'pointer', font: 'inherit', fontSize: '0.8rem', display: 'inline-flex', alignItems: 'center', gap: '0.15rem' }
     : { padding: '0.5rem 0.9rem', background: 'var(--bg-muted)', color: 'var(--text-strong)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer', font: 'inherit' }
 
   return (
@@ -134,11 +138,17 @@ export function PricingShareMenu({
         }}
         aria-haspopup="menu"
         aria-expanded={open}
-        aria-label={canShare ? 'More ways to get this pricing out — Print, CSV, review, supply house list' : 'Export — Print, CSV, review, supply house list'}
-        title={'Print · Download CSV · Print all prices · Supply house list'}
+        aria-label={canShare ? 'More ways to get this pricing out — Print, CSV, review, supply house prices (RFQ)' : 'Export — Print, CSV, review, supply house prices (RFQ)'}
+        title={'Print · Download CSV · Print all prices · Supply house prices (RFQ)'}
         style={caretStyle}
       >
-        {canShare ? '▾' : 'Export ▾'}
+        {canShare ? (
+          <>
+            <span style={{ fontSize: '0.75rem', fontWeight: 500, whiteSpace: 'nowrap' }}>Supply house prices (RFQ)</span>{' '}▾
+          </>
+        ) : (
+          'Export ▾'
+        )}
       </button>
       {open ? (
         <div

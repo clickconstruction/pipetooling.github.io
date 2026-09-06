@@ -51,6 +51,22 @@ export function isChangeOrderDocKind(docKind: string | null | undefined): boolea
 }
 
 /**
+ * A plain estimate whose title says "change order" (journey-map J16-F4; live
+ * specimen: estimate #1, written before `doc_kind` existed). It wears the word
+ * without the machinery — no Change-order chip, estimate rails, no Apply to
+ * job — so the lists annotate it instead of letting it pass for the real thing.
+ * Real change orders and bid proposals are never "legacy".
+ */
+export function isLegacyChangeOrderTitledEstimate(docKind: string | null | undefined, title: string | null | undefined): boolean {
+  if (docKind === 'change_order' || docKind === 'bid_proposal') return false
+  return /\bchange[\s-]*orders?\b/i.test(title ?? '')
+}
+
+export const LEGACY_CHANGE_ORDER_TITLE_LABEL = 'titled "change order" — an estimate, not a tracked change order'
+export const LEGACY_CHANGE_ORDER_TITLE_HINT =
+  'This is a regular estimate whose title says "change order". It was written before change orders had their own kind, so it follows the estimate rails: no Change-order chip, no Apply to job. To track a change against a job, start a New change order.'
+
+/**
  * Customer-document heading for a change order. Stored titles default to
  * "Estimate for <customer>" (and rows sent before the CO train kept that
  * wording), so rewrite the estimate-flavored defaults; hand-written titles

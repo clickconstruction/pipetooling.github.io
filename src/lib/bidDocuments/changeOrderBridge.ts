@@ -61,6 +61,46 @@ export function parseCostImpact(text: string): number | null {
   return null
 }
 
+/**
+ * The live readout under the Bids form's "Impact on Cost" field (v2.2911,
+ * J16-F2): what the typed text will become when the user sends for signature.
+ * Empty text → null (render nothing); one clear figure → the sentence naming
+ * it; otherwise the sheet will ask.
+ */
+export function describeCostImpactReadout(text: string): { cents: number | null; sentence: string } | null {
+  if (text.trim() === '') return null
+  const cents = parseCostImpact(text)
+  if (cents === null) {
+    return { cents: null, sentence: 'No single dollar figure found — you\'ll type the net change on the confirm sheet when you send for signature.' }
+  }
+  if (cents === 0) return { cents, sentence: 'Reads as $0.00 net change — a schedule-only change order; the draft is created with no cost lines.' }
+  return {
+    cents,
+    sentence: `Reads as a net change of ${formatSignedDollars(cents)} — this becomes the draft's total and its one cost line when you send for signature.`,
+  }
+}
+
+export const BRIDGED_COST_NOTE_PREFIX = 'Cost impact (from the Bids form): '
+
+/**
+ * The typed cost text a bridged draft carries, for the CO editor to show above
+ * "Impact on cost" (v2.2911, J16-F2 / P2) instead of leaving it buried in the
+ * internal note. Read from the bridged net-change line's description first
+ * (non-zero drafts); a $0 draft has no line, so fall back to the note the
+ * bridge wrote. Null for drafts that did not come from Bids or carry no text.
+ */
+export function bridgedCostImpactText(input: {
+  lines: ReadonlyArray<{ line_item: string; description: string }>
+  internalNotes: string
+}): string | null {
+  const line = input.lines.find((l) => l.line_item.trim() === BRIDGED_NET_CHANGE_LINE_LABEL)
+  const fromLine = line?.description.trim() ?? ''
+  if (fromLine) return fromLine
+  const noteLine = input.internalNotes.split(/\r?\n/).find((l) => l.startsWith(BRIDGED_COST_NOTE_PREFIX))
+  const fromNote = noteLine ? noteLine.slice(BRIDGED_COST_NOTE_PREFIX.length).trim() : ''
+  return fromNote || null
+}
+
 /** Keep only digits, one decimal point, and a leading minus while the user types a signed money amount. */
 export function sanitizeSignedMoneyTyping(raw: string): string {
   const noComma = raw.replace(/,/g, '').replace(/−/g, '-').replace(/\$/g, '')
@@ -119,7 +159,7 @@ export function buildBridgedChangeOrderDraft(input: {
   const costText = form.impactOnCost.trim()
   const notes = [
     'Created from Bids → Change Order.',
-    costText ? `Cost impact (from the Bids form): ${costText}` : '',
+    costText ? `${BRIDGED_COST_NOTE_PREFIX}${costText}` : '',
     form.submittedTo.trim() ? `Bid submitted to: ${form.submittedTo.trim()}` : '',
   ]
     .filter(Boolean)
