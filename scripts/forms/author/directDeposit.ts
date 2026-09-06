@@ -4,12 +4,12 @@
  * they live only in the signed PDF; the row keeps the last four.
  */
 import { newAuthoredDoc, writeAuthored } from './lib'
-import { COMPANY, COMPANY_ADDRESS, COMPANY_TAGLINE, OUT_DIR } from './company'
+import { COMPANY, COMPANY_ADDRESS_LINES, COMPANY_TAGLINE, OUT_DIR } from './company'
 
 export async function buildDirectDeposit() {
   const { doc, addPage } = await newAuthoredDoc()
   const p = addPage(1)
-  p.letterhead(COMPANY, COMPANY_TAGLINE, [COMPANY_ADDRESS])
+  p.letterhead(COMPANY, COMPANY_TAGLINE, [...COMPANY_ADDRESS_LINES])
   p.title('Direct Deposit Authorization')
   p.subtitle('Payments · complete one form per account. Attach a voided check or a letter from your bank.')
 
