@@ -523,7 +523,7 @@ export function buildNeedsYouItems(inputs: NeedsYouInputs): NeedsYouItem[] {
       title: 'Team reviews due',
       detail: `No review from you in ${inputs.teamReviewCadenceDays}+ days.`,
       figure: n > 99 ? '99+' : String(n),
-      actionLabel: 'Open Team Review',
+      actionLabel: 'Open Hiring → Review',
     })
   }
 

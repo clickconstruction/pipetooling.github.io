@@ -55,7 +55,7 @@ export default function TeamReviewCadenceSettingsBlock() {
     <form onSubmit={handleSave} style={{ marginTop: '1.5rem', padding: '0.9rem 1rem', border: '1px solid var(--border)', borderRadius: 8, background: 'var(--bg-subtle)' }}>
       <div style={{ fontWeight: 600, marginBottom: '0.25rem' }}>Team review cadence</div>
       <p style={{ margin: '0 0 0.6rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
-        Everyone with Prospects → Team access gets a &ldquo;Team reviews due&rdquo; reminder on their Dashboard and Dispatch Inbox for each
+        Everyone with Prospects → Hiring access gets a &ldquo;Team reviews due&rdquo; reminder on their Dashboard and Dispatch Inbox for each
         teammate they haven&rsquo;t reviewed in this many days.
       </p>
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>

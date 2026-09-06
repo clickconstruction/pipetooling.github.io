@@ -21,6 +21,7 @@ import { supabase } from '../../lib/supabase'
 import { useToastContext } from '../../contexts/ToastContext'
 import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
 import { analyzeCandidates } from '../../lib/prospects/candidateHygiene'
+import { HIRE_ROSTER_KINDS, isHireRosterKind, suggestRosterKind, type HireRosterKind } from '../../lib/prospects/hireRosterKinds'
 import {
   UNSORTED_ROLE_KEY,
   groupTeamProspects,
@@ -679,7 +680,7 @@ export default function TeamProspectsTab({ authUserId, isDev, resolveMasterId }:
   const [reviewTarget, setReviewTarget] = useState<TeamProspect | null>(null)
   const [reviewDraft, setReviewDraft] = useState<ReviewDraft>(EMPTY_REVIEW_DRAFT)
   const [hireTarget, setHireTarget] = useState<TeamProspect | null>(null)
-  const [hireKind, setHireKind] = useState<'sub' | 'helper'>('sub')
+  const [hireKind, setHireKind] = useState<HireRosterKind>('sub')
   const [sourcesOpen, setSourcesOpen] = useState(false)
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }))
@@ -965,11 +966,19 @@ export default function TeamProspectsTab({ authUserId, isDev, resolveMasterId }:
       return
     }
     // Hiring means we're about to give them constant work — offer the roster handoff.
-    if (status === 'hired') {
-      setHireKind('sub')
-      setHireTarget(candidate)
-    }
+    if (status === 'hired') openRosterHandoff(candidate)
     await load()
+  }
+
+  /**
+   * The Hire → People roster hand-off. Opens on the hired transition and again
+   * from every Hire card's "Add to roster" button (v2.2910, J25-F4) — "Not now"
+   * used to be the only chance. Kind pre-selected from the role column (J25-F5).
+   */
+  function openRosterHandoff(candidate: TeamProspect) {
+    setModalError(null)
+    setHireKind(suggestRosterKind(candidate.role_id ? roleNameById.get(candidate.role_id) : null))
+    setHireTarget(candidate)
   }
 
   function openReview(candidate: TeamProspect) {
@@ -1534,9 +1543,11 @@ export default function TeamProspectsTab({ authUserId, isDev, resolveMasterId }:
       {stage === 'hire' && !loading && (
         <>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '0.75rem' }}>
-            <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.875rem' }}>
-              Onboarding: each box goes red → yellow (requested) → green (done). Tap a box to move it along; tap 🔗 to open that item&apos;s document.
-            </p>
+            {(onboardingItems.length > 0 || isDev) && (
+              <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.875rem' }}>
+                Onboarding: each box goes red → yellow (requested) → green (done). Tap a box to move it along; tap 🔗 to open that item&apos;s document.
+              </p>
+            )}
             {isDev && (
               <button
                 type="button"
@@ -1571,6 +1582,15 @@ export default function TeamProspectsTab({ authUserId, isDev, resolveMasterId }:
                         </span>
                       )}
                       <span style={{ flex: 1 }} />
+                      <button
+                        type="button"
+                        disabled={busy}
+                        onClick={() => openRosterHandoff(c)}
+                        title="Put them on the People roster — the same prompt that opened when they were hired"
+                        style={{ ...smallButtonStyle(busy), color: 'var(--text-green-600)' }}
+                      >
+                        Add to roster
+                      </button>
                       <button type="button" disabled={busy} onClick={() => openEdit(c)} style={smallButtonStyle(busy)}>
                         Edit
                       </button>
@@ -1638,9 +1658,11 @@ export default function TeamProspectsTab({ authUserId, isDev, resolveMasterId }:
               })}
             </ul>
           )}
-          {onboardingItems.length === 0 && hired.length > 0 && (
+          {/* Only the dev can define items (the ⚙ button above is dev-only), so only the dev
+              sees the empty state — a bare "none defined yet" with no door is dead weight (v2.2910, J25-F6). */}
+          {onboardingItems.length === 0 && hired.length > 0 && isDev && (
             <p style={{ marginTop: '0.75rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
-              No onboarding items defined yet{isDev ? ' — set them up in ⚙ Onboarding settings.' : '.'}
+              No onboarding items defined yet — set them up in ⚙ Onboarding settings.
             </p>
           )}
         </>
@@ -1834,15 +1856,25 @@ export default function TeamProspectsTab({ authUserId, isDev, resolveMasterId }:
           `Add ${hireTarget.name} to the People roster?`,
           <>
             <p style={{ margin: '0 0 0.75rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
-              They&rsquo;re hired — adding them to the roster makes them available for sub labor sheets and
-              payments under People → Users (External). When they get an app login later, use{' '}
-              <strong>Link account</strong> there to tie it together.
+              They&rsquo;re hired — adding them to the roster lists them under People → Users (subs and helpers
+              under External), ready for labor sheets and payments. When they get an app login later, use{' '}
+              <strong>Link account</strong> there to tie it together. You can reopen this from their Hire card
+              any time.
             </p>
             <label>
               <span style={labelSpanStyle}>Roster kind</span>
-              <select value={hireKind} onChange={(e) => setHireKind(e.target.value as 'sub' | 'helper')} style={inputStyle}>
-                <option value="sub">Subcontractor</option>
-                <option value="helper">Helper</option>
+              <select
+                value={hireKind}
+                onChange={(e) => {
+                  if (isHireRosterKind(e.target.value)) setHireKind(e.target.value)
+                }}
+                style={inputStyle}
+              >
+                {HIRE_ROSTER_KINDS.map((k) => (
+                  <option key={k.kind} value={k.kind}>
+                    {k.label}
+                  </option>
+                ))}
               </select>
             </label>
             <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem' }}>

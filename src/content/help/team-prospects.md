@@ -2,10 +2,12 @@
 title: track and rank prospective hires
 category: Office
 roles: dev, master_technician, assistant, estimator
-keywords: prospects, team, hiring, candidates, rank, crew, recruiting, hire, roles, columns, board
+keywords: prospects, team, hiring, candidates, rank, crew, recruiting, hire, roles, columns, board, roster, office, add to roster, onboarding
 order: 40
 ---
 The Prospects page has two pipelines: **Customers** (leads who might buy work) and **Hiring** (people who might join the crew). The Hiring tab is a board — one column for each role you're hiring for — so when a spot opens up you already know who to call first.
+
+If Hiring is the only pipeline you hold, the **Prospects** link in the menu opens straight onto the board. If you work both, it reopens on whichever tab you used last (the calling deck the first time).
 
 ## Set up your role columns
 
@@ -61,7 +63,7 @@ Across the top of the tab: **Screen → Interview → Hire → Review** — live
 
 - **Screen** — the sourcing board: role columns, drag-ranking, and the rating sliders. When someone's worth a call, hit {{button:blue|Advance}} on their card.
 - **Interview** — the same role columns, now amber: each candidate shows a tap-to-call phone, the sourcing scores, and everyone's reviews. Anyone can {{button:green|Advance}} them to Hire (or send them Back to Screen).
-- **Hire** — onboarding: every hire shows a row of red/yellow/green boxes for the company's checklist (collect the driver's license, signed contract, …). Tap a box to move it along: red (not started) → yellow (requested — you've asked and are waiting) → green (done); tapping again from green resets it. A {{chip:gray|🔗}} next to a box opens that item's document — the thing to share, or where the person finds their copy. A **n/N done** counter sits on each hire, and devs manage the checklist itself (questions, links, order) under **⚙ Onboarding settings** on this tab.
+- **Hire** — onboarding: every hire shows a row of red/yellow/green boxes for the company's checklist (collect the driver's license, signed contract, …). Tap a box to move it along: red (not started) → yellow (requested — you've asked and are waiting) → green (done); tapping again from green resets it. A {{chip:gray|🔗}} next to a box opens that item's document — the thing to share, or where the person finds their copy. A **n/N done** counter sits on each hire, and devs manage the checklist itself (questions, links, order) under **⚙ Onboarding settings** on this tab — until a dev has added items, the hire list shows without boxes (only the dev sees the "No onboarding items defined yet" note, because only the dev can add them). Every Hire card also carries {{button:outline|Add to roster}} — see "Hiring someone onto the roster" below.
 - **Review** — not about candidates at all: monthly reviews of your **current team**. See "Reviewing your current team" below.
 
 ## Interview calls
@@ -74,7 +76,11 @@ When a candidate looks promising, hit {{button:blue|Advance}} on their Screen ca
 
 ## Hiring someone onto the roster
 
-Advancing a candidate to **Hire** offers to add them straight to the **People roster** — pick Subcontractor or Helper and their name, phone, and email carry over. They appear under People → Users (External), ready for sub labor sheets and payments; when they get an app login later, use **Link account** there to tie it together.
+Advancing a candidate to **Hire** offers to add them straight to the **People roster**: their name, phone, and email carry over, and the **Roster kind** is pre-selected from the role column they were in (an "Office Manager" column suggests Office / assistant; "Apprentice" suggests Helper; a trade role stays Subcontractor). Change it if the guess is wrong — the list is Subcontractor, Helper, Office / assistant, Estimator, Superintendent, Primary and Master technician. They appear under People → Users (subs and helpers under External), ready for labor sheets and payments; when they get an app login later, use **Link account** there to tie it together.
+
+:::example Missed the prompt?
+Pressing {{button:outline|Not now}} is not final. Every card on the Hire stage has an {{button:outline|Add to roster}} button that reopens the same prompt, so an interrupted hand-off picks up where it left off — no need to bounce someone back to Interview and re-advance them.
+:::
 
 ## Candidate links
 

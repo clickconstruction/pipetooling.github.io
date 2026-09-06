@@ -138,7 +138,7 @@ export function PersonDeskRecordsSection({ userId, personId, viewer, changeKey }
             </a>
           }
         >
-          <span style={{ color: 'var(--text-muted)' }}>Team → Review holds their rating history</span>
+          <span style={{ color: 'var(--text-muted)' }}>Hiring → Review holds their rating history</span>
         </DeskRow>
       ) : null}
     </DeskSection>
