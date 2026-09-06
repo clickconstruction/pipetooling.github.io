@@ -5,7 +5,7 @@ file: EDGE_FUNCTIONS.md
 type: API Reference
 purpose: Complete API documentation for all 84 Supabase Edge Functions
 audience: Developers, DevOps, AI Agents
-last_updated: 2026-09-05
+last_updated: 2026-09-06
 estimated_read_time: 20-25 minutes
 difficulty: Intermediate
 
@@ -2530,6 +2530,8 @@ const { data, error } = await supabase.functions.invoke('test-email', {
 
 ### create-stripe-invoice
 
+> **v2.2913 — the primary remainder prorates fairly across payments-covered rows** (journey-map Tier-3 B6 / J3-6): `scopeFixturesToInvoice` in the shared [`stripeInvoiceItemsFromFixtures.ts`](../supabase/functions/_shared/stripeInvoiceItemsFromFixtures.ts) applies the same rule as the client's `dropPaymentsCoveredRows` ([`invoiceScopedFixtures.ts`](../src/lib/invoiceScopedFixtures.ts)): for the PRIMARY remainder only, when its amount is smaller than the still-unlinked billable rows, the gap is the payments/carve pool and fills rows in order — whole covered rows drop, a partly covered row and the tail stay, an exact-sum composition still wins, a remainder ≥ the sum drops nothing. Shared code is bundled at deploy time: `preview-stripe-invoice` imports the same module and must be redeployed alongside this function, or the preview composes differently from the bill (`npm run check:edge-drift` only warns on `_shared` edits — it cannot tell which importers are stale).
+
 > **v2.2878 — the receipt points back to the portal** (journey-map J22-F3 / Tier-2 #38): Stripe Invoice objects take no `return_url` (that is a Checkout / Payment Link field — verified against the `2024-06-20` reference) and the hosted page has no post-payment redirect, so the portal link rides the invoice **`footer`**. After the customer row loads — and only when the invoice has **no `bill_to_email`** (an alternate payer is not the portal holder) — `loadPortalReturnUrl(admin, customer_id, APP_ORIGIN)` ([`customerPortalReturnUrl.ts`](../supabase/functions/_shared/customerPortalReturnUrl.ts)) resolves the customer's active `all` link (short `my.clickplumbing.com/<slug>` when saved, else token URL), falling back to a GC-scoped link, else `null`; every URL carries `?paid=1`. `stripeInvoiceFooter(footer, portalUrl)` ([`stripeInvoiceFooterPortalLink.ts`](../supabase/functions/_shared/stripeInvoiceFooterPortalLink.ts)) appends `See your updated statement any time at <url>` after the body's `footer` (custom text keeps priority; appended only while the total stays ≤ 5000 chars, else the custom footer wins untouched; alone when no footer was sent). The result goes to `invoices.create` **and** `jobs_ledger_invoices.stripe_invoice_footer`. No portal link → footer behaviour unchanged. **Redeploy required.**
 
 > **v2.2846 — never bill a paid job twice** (journey-map J3-1): after the job row loads, `shouldBlockBillOnPaidJob({ jobStatus: jobRow.status, allowRebill })` from the shared [`paidJobBillGuard.ts`](../supabase/functions/_shared/paidJobBillGuard.ts) refuses with **409** `{ error: "This job is already paid in full — nothing to bill.", code: "job_already_paid" }` when `jobs_ledger.status = 'paid'` and the body did not send **`allow_rebill: true`** (the Bill Customer modal's "Bill this job again anyway" checkbox). The existing `Invoice must be Ready to Bill` check, the idempotent-retry branch and the v2.2045 conversion branch run first and are unchanged. Each refusal writes a `job_activity_events` row `event_type = 'rtb_paid_job_blocked'` (service role, best-effort). **Redeploy required.**
@@ -3131,6 +3133,8 @@ interface Body {
 ---
 
 ### preview-stripe-invoice
+
+> **v2.2913 — payments-covered proration mirrored**: same shared `scopeFixturesToInvoice` as `create-stripe-invoice` (see that section for the rule). Redeploy both together — a preview bundled before the shared edit shows the old equal-split composition while the bill uses the new one.
 
 > **v2.1133 — segment invoices preview only their own line items**: mirrors `create-stripe-invoice` — the fixtures query selects `invoice_id` and passes rows through `scopeFixturesToInvoice`, so a segment invoice previews exactly its linked lines at their real amounts (dollar invoices keep the whole-job proration). Redeploy with `create-stripe-invoice`.
 >

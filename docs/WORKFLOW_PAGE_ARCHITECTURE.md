@@ -5,7 +5,7 @@ file: docs/WORKFLOW_PAGE_ARCHITECTURE.md
 type: Architecture Map / Decomposition
 purpose: Step-0 map for the Workflow.tsx decomposition (per PAGE_DECOMPOSITION_PLAYBOOK.md) — inventory what every region of the ~4,782-line src/pages/Workflow.tsx touches (state, loaders, handlers, sub-components, supabase tables/RPCs/edge functions, coupling) so extraction can start without re-deriving the strategy. Sections — What this surface is; Key structural differences from Bids/Materials; Master summary table; Per-region dossiers; Shared infrastructure; Stage-A pure-logic inventory; Preserve-quirks list; Recommended extraction order.
 audience: Developers, AI Agents
-last_updated: 2026-09-05
+last_updated: 2026-09-06
 ---
 
 ## What this surface is
@@ -163,6 +163,7 @@ The "API surface" any extracted region must be handed. **This is the page's subs
 - `useAuth()` → `authUser`, `authProfileName`, `authRole`; `useToastContext()` → `showToast`; `useEditProjectModal()`.
 - The `authUser?.id` effect loads `users.role/name/email` → `userRole` + `currentUserName`, then builds `roster` (superintendents: `people` scoped to adopted masters via `master_superintendents` — every master since the v2.921 company-wide sync; roster scope only, the project itself is visible only if the superintendent is in `project_superintendents` (v2.2836); others: own `master_user_id`; **one** users read for every viewer since v2.2900 — `.in('role', WORKFLOW_ASSIGNABLE_USER_ROLES)` from `src/lib/workflow/stepAssignment.ts`, where the superintendent branch used to fetch only sub/helper/primary so every office assignee read "(not a user)" — split by `buildWorkflowUserRoster` into the picker `roster` (active accounts only, dev included) and `userNames` (every readable account, lowercased)), and `personContacts` (people take precedence over users). `assignPerson` and `saveStep` apply `notifyAssignedDefaultsOnAssign` (same kernel): the first assignee on a step turns the three `notify_assigned_when_*` toggles on; new steps insert with them on (v2.2900).
 - Gates derived per render: `canManageStages`, `isDevOrMaster`, `canSeePrivateNotesAndApprove`, `canAssignSuperintendents`.
+- **Who can read steps at all** is decided by the `project_workflow_steps` SELECT policy, not by anything on this page: the `/workflows` route left `PRIMARY_PATHS` in v2.2836 because that policy had no primary branch (J31-N4 — a primary assigned to a step read zero steps; the client roster widening in v2.2900 did not change that). The role sweep (v2.2920, migration `20260906010000_role_sweep_predicates`) added the primary branch — adopted/shared project via `can_access_project_via_step`, or the step's assignee — so a primary's Dashboard **Assigned Stages** fills, while the route itself stays off. [ACCESS_CONTROL.md](./ACCESS_CONTROL.md) → Page Access Matrix (Workflow row) is authoritative for the policy's current branches; this file only documents the client.
 
 ### Steps engine (parent, becomes `useWorkflowStepsEngine`)
 

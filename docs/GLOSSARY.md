@@ -7,7 +7,7 @@ file: GLOSSARY.md
 type: Reference
 purpose: Comprehensive definitions of all domain-specific terms and technical concepts
 audience: All users (especially new developers and AI agents)
-last_updated: 2026-09-05
+last_updated: 2026-09-06
 estimated_read_time: 15-20 minutes (reference only)
 difficulty: Beginner
 
@@ -498,6 +498,9 @@ Dev-only safety net for hard deletes: a `BEFORE DELETE` trigger (`archive_delete
 
 **See**: `ACCESS_CONTROL.md` → Deleted-records archive; `RECENT_FEATURES.md` → v2.696–v2.699
 
+### Draft bills on paid jobs (Settings → Data & recovery)
+Dev-only sweep section (v2.2846, journey-map Tier-1 #2a): lists never-sent `ready_to_bill` / draft `jobs_ledger_invoices` rows sitting on **Paid-in-Full** jobs — stale bills the Dashboard and Pipeline counts already exclude (see **Bill truth**) — with **Check now** and a per-row **Retire** that deletes through the audited path, so the rows land under **Recently deleted** and restore like any other bundle. The same rule refuses a *first* send on a paid job in `create-stripe-invoice` / `send-physical-invoice-email` (409 `job_already_paid`) unless the sender ticks "Bill this job again anyway".
+
 ---
 
 ## Workflow Concepts
@@ -721,6 +724,9 @@ Customer in the bids context. The entity requesting the bid (can be actual GC, h
 
 **Alias**: "GC/Builder", "GC", "Builder", "Customer" all refer to same concept in Bids
 
+### Scheduled sends / What went out (GC Review)
+Two views in the GC Review modal (Jobs → Pipeline → GC statements, [`JobsGcReviewModal`](../src/components/jobs/JobsGcReviewModal.tsx)). **Scheduled sends** are `gc_statement_email_requests` rows the pg_cron `gc-statement-email-dispatch` rebuilds fresh at send time — a GC with nothing outstanding is skipped, never emailed an empty statement; since v2.2888 (journey-map Tier-2 #45) the whole GC Review cohort reads and cancels them, not only the requester. **What went out** ([`GcStatementSendHistoryModal`](../src/components/jobs/GcStatementSendHistoryModal.tsx)) is the per-GC list of every statement on record across all three lanes (Draft Message, scheduled, round marks) that the sender checks before a repeat; independently, both edge functions skip a duplicate to the same address inside a window (10 min attended, 12 h unattended — `_shared/gcStatementSendDedupe.ts`). Streams: `REPORT_SUBSCRIPTIONS.md` → `gc_statement`.
+
 ### GC on jobs (v2.1175–v2.1178)
 Optional **second** customer link on a job — `jobs_ledger.gc_customer_id` (FK `customers`, ON DELETE SET NULL) — so office can manage work by General Contractor alongside the primary (billed) customer. Set in **Edit Job → Customer → GC/Builder (customer)** (one-click "Use bid's GC" when the job links a bid); shown with a hard-hat icon on **Jobs → Pipeline** (Job column, under the customer) and **Job Detail**; matched by the **Stages search**. Billing is unaffected — paying-as-GC is the per-invoice **bill-to override** (v2.1084). Same-master invariant enforced by trigger `jobs_ledger_gc_customer_master_match` + client kernel `resolveGcCustomerIdForJobPayload`. **Gotcha**: `jobs_ledger` now has TWO FKs to `customers` — PostgREST embeds must name the FK (`customers!jobs_ledger_customer_id_fkey` or the `gc_customer:gc_customer_id(...)` alias); a bare `customers(...)` embed 400s (PGRST201).
 
@@ -915,6 +921,8 @@ Supplier or vendor where materials are purchased (Ferguson, HD Supply, local plu
 **Database**: `supply_houses` table
 
 **Fields**: name, contact info, address, notes, monthly_payment_day (day 1–31 when payment is typically due; used for Due column in supply house list)
+
+**Price coverage** (Materials, v2.2903 — the button and modal were titled "Supply Houses" until then): how many parts carry a price at each supply house, so the estimator can see which houses the Price Book actually quotes from. Houses flagged `is_insurer` ("Not a supplier we quote from", v2.2893) stay out of the quoting pickers.
 
 ### Job Accounts (Materials tab)
 Per-job money-flow rollup (v2.2652): **Materials → Job Accounts** joins **`supply_house_invoice_job_allocations`** × **`supply_house_invoices`** against **`jobs_ledger.revenue`** / **`payments_made`** to show, per job, what the customer has paid vs what is paid/owed to supply houses. Headline "holding for suppliers" = unpaid supplier balances on jobs the customer has paid (per job: min(owed, payments_made)). Statuses: **Owe suppliers**, **Floating** (houses paid, customer not), **Awaiting customer**, **Settled**; unpaid invoices allocated to neither a job nor a bid surface as an **unallocated** bucket. Office roles only (dev/master/assistant-like). Kernel: **[`src/lib/materials/jobAccountsFlow.ts`](../src/lib/materials/jobAccountsFlow.ts)**.
