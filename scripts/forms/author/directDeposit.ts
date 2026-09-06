@@ -59,9 +59,10 @@ export async function buildDirectDeposit() {
     { key: 'deposit_percent', label: 'A percentage of the amount due to me', labelEs: 'Un porcentaje de la cantidad que se me debe' },
   ], 'deposit_kind', 'How much to deposit', true)
   p.fieldRow([
-    { box: { key: 'deposit_amount', type: 'text', label: 'Fixed dollar amount', labelEs: 'Cantidad fija en dólares', advanced: true, help: 'Only if you chose a fixed amount above. The rest of each payment is made by check.', helpEs: 'Solo si eligió una cantidad fija. El resto de cada pago se hace con cheque.' }, label: 'Fixed amount ($)', frac: 0.26 },
-    { box: { key: 'deposit_percent_value', type: 'digits', label: 'Percentage of the amount due', labelEs: 'Porcentaje de la cantidad debida', mask: '###', maxLength: 3, advanced: true, help: 'Only if you chose a percentage above — 1 to 100. The rest of each payment is made by check.', helpEs: 'Solo si eligió un porcentaje — de 1 a 100. El resto de cada pago se hace con cheque.' }, label: 'Percentage (%)', frac: 0.22 },
-    { box: { key: 'notes', type: 'text', label: 'Anything the office should know', labelEs: 'Algo que la oficina deba saber', advanced: true }, label: 'Notes (optional)', frac: 0.52 },
+    { box: { key: 'deposit_amount', type: 'text', label: 'Fixed dollar amount', labelEs: 'Cantidad fija en dólares', advanced: true, help: 'Only if you chose a fixed amount above. The rest of each payment is made by check.', helpEs: 'Solo si eligió una cantidad fija. El resto de cada pago se hace con cheque.' }, label: 'Fixed amount ($)', frac: 0.22 },
+    { box: { key: 'deposit_percent_value', type: 'digits', label: 'Percentage of the amount due', labelEs: 'Porcentaje de la cantidad debida', mask: '###', maxLength: 3, advanced: true, help: 'Only if you chose a percentage above — 1 to 100. The rest of each payment is made by check.', helpEs: 'Solo si eligió un porcentaje — de 1 a 100. El resto de cada pago se hace con cheque.' }, label: 'Percentage (%)', frac: 0.18 },
+    { box: { key: 'deposit_term', type: 'text', label: 'How long the split applies — until a date, for a number of payments, or up to a total (optional)', labelEs: 'Por cuánto tiempo aplica la división — hasta una fecha, por un número de pagos o hasta un total (opcional)', advanced: true, help: 'Leave blank and the split stays until you change it.', helpEs: 'Déjelo en blanco y la división se mantiene hasta que la cambie.' }, label: 'Term (optional)', frac: 0.30 },
+    { box: { key: 'notes', type: 'text', label: 'Anything the office should know', labelEs: 'Algo que la oficina deba saber', advanced: true }, label: 'Notes (optional)', frac: 0.30 },
   ])
 
   p.paragraph(
