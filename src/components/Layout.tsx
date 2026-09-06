@@ -1935,7 +1935,24 @@ export default function Layout() {
           </RouteChunkBoundary>
         </div>
         <EasterEggHost userId={authUser?.id ?? null} />
-        {authUser?.id && pinModeEnabled && location.pathname !== '/dashboard' && PINNABLE_PATHS.includes(location.pathname as typeof PINNABLE_PATHS[number]) && (
+        {/* J28-N2 (v2.2902): the Dashboard is where pins land, so it is not a pin target — with Pin
+            Mode on it says so instead of showing nothing (it is no longer in PINNABLE_PATHS). */}
+        {authUser?.id && pinModeEnabled && location.pathname === '/dashboard' && (
+          <div
+            role="note"
+            style={{
+              padding: '0.5rem 1rem',
+              borderTop: '1px solid var(--chrome-border)',
+              background: 'var(--bg-subtle)',
+              textAlign: 'center',
+              fontSize: '0.8125rem',
+              color: 'var(--text-muted)',
+            }}
+          >
+            Pin Mode is on. Pins land here on the Dashboard, so the Dashboard itself can't be pinned — open the page you want as a shortcut and its pin footer appears.
+          </div>
+        )}
+        {authUser?.id && pinModeEnabled && PINNABLE_PATHS.includes(location.pathname as typeof PINNABLE_PATHS[number]) && (
           <div
             style={{
               padding: '0.5rem 1rem',

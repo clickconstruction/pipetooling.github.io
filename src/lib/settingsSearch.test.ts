@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { SETTINGS_SEARCH_INDEX, searchSettings, type SettingsSearchEntry } from './settingsSearch'
+import { SETTINGS_SEARCH_INDEX, searchSettings, type SettingsSearchEntry, settingsSearchGuideQuery } from './settingsSearch'
 
 const ALL_TABS = [...new Set(SETTINGS_SEARCH_INDEX.map((e) => e.tabId))]
 
@@ -46,5 +46,31 @@ describe('searchSettings', () => {
       expect(e.tabId.startsWith('settings-')).toBe(true)
       for (const k of e.keywords ?? []) expect(k).toBe(k.toLowerCase())
     }
+  })
+})
+
+describe('the finder finds itself (v2.2902, J28-F4)', () => {
+  it('"search" ranks the global-search guide entry first for a viewer who can see Guides', () => {
+    const hits = searchSettings('search', ['settings-guides', 'settings-account'])
+    expect(hits[0]?.entry.label).toBe('Search for jobs, bids, customers, and estimates')
+    expect(hits[0]?.entry.guideSlug).toBe('global-search')
+    expect(hits[0]?.matchStart).toBe(0)
+  })
+
+  it('every guideSlug entry lives on the Guides tab', () => {
+    for (const e of SETTINGS_SEARCH_INDEX) {
+      if (e.guideSlug) expect(e.tabId).toBe('settings-guides')
+    }
+  })
+
+  it('settingsSearchGuideQuery sets ?tab= and the guide param, keeps other params, and is null for plain entries', () => {
+    const entry = SETTINGS_SEARCH_INDEX.find((e) => e.guideSlug === 'global-search')!
+    const q = settingsSearchGuideQuery('?tab=settings-account&x=1', entry)
+    expect(q).not.toBeNull()
+    const params = new URLSearchParams(q!)
+    expect(params.get('tab')).toBe('settings-guides')
+    expect(params.get('g')).toBe('global-search')
+    expect(params.get('x')).toBe('1')
+    expect(settingsSearchGuideQuery('', { label: 'Plain', tabId: 'settings-account' })).toBeNull()
   })
 })

@@ -7,6 +7,8 @@ order: 46
 ---
 Pinning puts your favorite pages (or a specific bid's tab) on the Dashboard as one-tap shortcuts. The pin controls live in a small footer at the bottom of each pinnable page — and that footer only shows while **Pin Mode** is on, so the app stays clean for everyone who never pins.
 
+The Dashboard itself can't be pinned — it's where pins land. With Pin Mode on, the Dashboard shows a one-line note in place of the footer; open the page you want as a shortcut and pin it from there.
+
 ## Turn it on
 
 1. Open the {{icon:gear}} gear menu in the header.
