@@ -1,9 +1,13 @@
 /**
  * The Bid Room staff panel (Signable Bids Phase 1, v2.2468). Lives beside "Mark sent" on the
  * Cover Letter's per-GC studio: publish the current letter into the GC's durable room link,
- * send/copy that link, attach the Google Docs letter, and read the room's state at a glance.
+ * copy/open/send that link, attach the Google Docs letter, and read the room's state at a glance.
  * The room link is permanent (owner decision 8) — revisions are explicit publishes (decision
  * 6), never re-sends.
+ *
+ * Journey-map Tier-2 #31: the link comes first. "Get the link" mints the room without emailing
+ * anyone; Copy link / Open work from that moment; "Send to GC" is the optional second action.
+ * Which buttons render is `bidRoomPanelActions` (pure, tested).
  */
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { supabase } from '../../lib/supabase'
@@ -21,6 +25,9 @@ import { fetchBidRoomStates } from '../../lib/bids/fetchBidRoomStates'
 import { BidRoomStateChip } from './BidRoomStateChip'
 import { Link } from 'react-router-dom'
 import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
+import { bidRoomPanelActions, looksLikeEmail } from '../../lib/bids/bidRoomPanelActions'
+import { withPreviewFlag } from '../../lib/publicViewCounting'
+import { recordNavClick } from '../../lib/navClickTelemetry'
 import type { Tables } from '../../types/database'
 
 type RoomRow = Tables<'bid_proposal_rooms'>
@@ -39,7 +46,7 @@ export type BidRoomPanelProps = {
   terms: string
   /** The customers.id whose CRM email prefills the send box (owner decision 4); editable per send. */
   crmCustomerId: string | null
-  /** Called after the FIRST link send so the tab stamps bid_version_sends (same as Mark sent). */
+  /** Called after the FIRST link send from the app so the tab stamps bid_version_sends (same as Mark sent). Getting the link alone never fires it. */
   onFirstLinkSent: () => void
   /**
    * vv2.2716: controlled mode. When the parent passes `onRoomPresence`, the panel hides itself while
@@ -82,7 +89,7 @@ const btn = (kind: 'blue' | 'ghost'): React.CSSProperties => ({
 })
 
 export function BidRoomPanel(props: BidRoomPanelProps) {
-  const { user } = useAuth()
+  const { user, role } = useAuth()
   const { showToast } = useToastContext()
   const confirmDialog = useConfirmDialog()
   const [room, setRoom] = useState<RoomRow | null>(null)
@@ -155,8 +162,12 @@ export function BidRoomPanel(props: BidRoomPanelProps) {
     return (link as { master_id?: string } | null)?.master_id ?? user.id
   }
 
-  /** Publish the current letter into the room (creating the room on first publish). */
-  async function publish(): Promise<RoomRow | null> {
+  /**
+   * Publish the current letter into the room (creating the room on first publish). Never emails.
+   * `viaSend` only labels the mint telemetry: `bid_room_published` `#sent_by_app:1|0` — did the
+   * room start life through "Send to GC" or through "Get the link"?
+   */
+  async function publish(opts: { viaSend?: boolean } = {}): Promise<RoomRow | null> {
     const payload = buildBidRoomRevisionPayload({
       projectName: props.projectName,
       projectAddress: props.projectAddress,
@@ -198,6 +209,7 @@ export function BidRoomPanel(props: BidRoomPanelProps) {
         }
         r = data as RoomRow
         setRoom(r)
+        recordNavClick(user?.id, role, 'bid_room_published', `#sent_by_app:${opts.viaSend ? 1 : 0}`)
       } else if ((r.attachment_url ?? '') !== (attachUrl.trim() || null ? attachUrl.trim() : null)) {
         await supabase.from('bid_proposal_rooms').update({ attachment_url: attachUrl.trim() || null }).eq('id', r.id)
       }
@@ -223,14 +235,34 @@ export function BidRoomPanel(props: BidRoomPanelProps) {
     }
   }
 
-  /** Email the current link again without minting a revision. */
-  async function sendOnly() {
+  /** The primary first action: mint the room + rev 1, hand back the link — no email goes out. */
+  async function getLink() {
+    const r = await publish()
+    if (!r) return
+    try {
+      await navigator.clipboard.writeText(roomLink(r.public_token))
+      showToast('Room link copied — paste it into your own email to the GC, or press Send to GC.', 'success')
+    } catch {
+      /* the link row below shows it; Copy link is one press away */
+    }
+  }
+
+  /**
+   * Email the room link from the app. Publishes rev 1 first when no revision exists yet; otherwise
+   * sends the current link as-is (publishing is its own button). The FIRST send stamps the packet
+   * sent (`onFirstLinkSent`) — whichever path minted the room.
+   */
+  async function send() {
     const to = email.trim()
-    if (!to || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(to)) {
+    if (!looksLikeEmail(to)) {
       showToast('Enter the GC contact email to send the link to.', 'error')
       return
     }
-    if (!room) return
+    let r = room
+    if (!r || !latestRev) {
+      r = await publish({ viaSend: true })
+      if (!r) return
+    }
     setBusy(true)
     try {
       const { data: sess } = await supabase.auth.getSession()
@@ -241,40 +273,6 @@ export function BidRoomPanel(props: BidRoomPanelProps) {
           Authorization: `Bearer ${sess.session?.access_token}`,
           apikey: import.meta.env.VITE_SUPABASE_ANON_KEY as string,
         },
-        body: JSON.stringify({ room_id: room.id, email: to, public_origin: window.location.origin }),
-      })
-      const json = (await res.json()) as { ok?: boolean; error?: string }
-      if (!res.ok || !json.ok) {
-        showToast(json.error || 'Could not send the room link.', 'error')
-        return
-      }
-      window.dispatchEvent(new Event('bid-room-changed'))
-      await load()
-      showToast(`Room link emailed to ${to}.`, 'success')
-    } finally {
-      setBusy(false)
-    }
-  }
-
-  async function publishAndSend() {
-    const to = email.trim()
-    if (!to || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(to)) {
-      showToast('Enter the GC contact email to send the link to.', 'error')
-      return
-    }
-    const r = await publish()
-    if (!r) return
-    setBusy(true)
-    try {
-      const { data: sess } = await supabase.auth.getSession()
-      const jwt = sess.session?.access_token
-      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-bid-room-link`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${jwt}`,
-          apikey: import.meta.env.VITE_SUPABASE_ANON_KEY as string,
-        },
         body: JSON.stringify({ room_id: r.id, email: to, public_origin: window.location.origin }),
       })
       const json = (await res.json()) as { ok?: boolean; error?: string; emailed?: boolean }
@@ -283,8 +281,9 @@ export function BidRoomPanel(props: BidRoomPanelProps) {
         return
       }
       const firstSend = !everSent
+      window.dispatchEvent(new Event('bid-room-changed'))
       await load()
-      showToast(json.emailed === false ? 'Link ready (email not configured) — copied path below.' : `Room link emailed to ${to}.`, 'success')
+      showToast(json.emailed === false ? 'Link ready (email not configured) — copy it from the panel.' : `Room link emailed to ${to}.`, 'success')
       if (firstSend) props.onFirstLinkSent()
     } finally {
       setBusy(false)
@@ -320,6 +319,14 @@ export function BidRoomPanel(props: BidRoomPanelProps) {
 
   const answered = state?.outcome != null
   const chipLabel = roomStateChipLabel(state)
+  const actions = bidRoomPanelActions({
+    hasRoom: room != null,
+    published: room != null && latestRev != null,
+    everSent,
+    hasEmail: looksLikeEmail(email),
+    answered,
+  })
+  const link = room ? roomLink(room.public_token) : ''
 
   // Controlled mode: no room and nothing open → the parent's Setup button is the whole UI.
   if (props.onRoomPresence && !room && !open) return null
@@ -361,40 +368,62 @@ export function BidRoomPanel(props: BidRoomPanelProps) {
             </div>
           ) : null}
           <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', alignItems: 'center' }}>
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="GC contact email"
-              aria-label="GC contact email"
-              style={{ font: 'inherit', fontSize: '0.78rem', padding: '0.3rem 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 5, background: 'var(--surface)', color: 'var(--text-strong)', width: '15rem' }}
-            />
-            {!answered ? (
-              <button type="button" disabled={busy} onClick={() => void publishAndSend()} style={btn('blue')}>
-                {busy ? 'Working…' : room && latestRev ? 'Publish update & notify' : '✍ Publish & send room link'}
+            {actions.primary ? (
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => void (actions.primary?.id === 'get_link' ? getLink() : publish())}
+                style={btn('blue')}
+                title={actions.primary.title}
+              >
+                {busy ? 'Working…' : actions.primary.id === 'get_link' ? `✍ ${actions.primary.label}` : actions.primary.label}
               </button>
             ) : null}
-            {!answered && room && latestRev ? (
-              <button type="button" disabled={busy} onClick={() => void publish()} style={btn('ghost')} title="Publish the current letter as a new revision without emailing">
-                Publish update only
-              </button>
+            {actions.showLink ? (
+              <>
+                <button type="button" onClick={() => void copyLink()} style={btn('ghost')} title="Copy the GC's link — the same one Send to GC emails">
+                  Copy link
+                </button>
+                <a
+                  href={withPreviewFlag(link)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{ ...btn('ghost'), textDecoration: 'none', display: 'inline-block' }}
+                  title="Open the GC's page in a new tab — your own opens don't count as the GC looking"
+                >
+                  Open ↗
+                </a>
+              </>
             ) : null}
-            {!answered && room && latestRev && everSent ? (
-              <button type="button" disabled={busy} onClick={() => void sendOnly()} style={btn('ghost')} title="Email the room link again without publishing a new revision">
-                Email link again
-              </button>
-            ) : null}
-            {room ? (
-              <button type="button" onClick={() => void copyLink()} style={btn('ghost')}>
-                Copy link
-              </button>
-            ) : null}
-            {room && !answered ? (
+            {actions.closeRoom ? (
               <button type="button" disabled={busy} onClick={() => void closeRoom()} style={{ ...btn('ghost'), color: 'var(--text-red-700)' }} title="Withdraw — the link shows a polite closed page until a new room is published">
                 Close room
               </button>
             ) : null}
           </div>
+          {actions.showLink ? (
+            <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'baseline', fontSize: '0.72rem', color: 'var(--text-muted)', minWidth: 0 }}>
+              <span style={{ flex: 'none' }}>Link</span>
+              <code data-testid="bid-room-link" style={{ font: 'inherit', color: 'var(--text-700)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', userSelect: 'all' }}>
+                {link}
+              </code>
+            </div>
+          ) : null}
+          {actions.send ? (
+            <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', alignItems: 'center' }}>
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="GC contact email"
+                aria-label="GC contact email"
+                style={{ font: 'inherit', fontSize: '0.78rem', padding: '0.3rem 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 5, background: 'var(--surface)', color: 'var(--text-strong)', width: '15rem' }}
+              />
+              <button type="button" disabled={busy || !actions.send.enabled} onClick={() => void send()} style={{ ...btn('ghost'), opacity: actions.send.enabled ? 1 : 0.6, cursor: actions.send.enabled ? 'pointer' : 'not-allowed' }} title={actions.send.title}>
+                {actions.send.label}
+              </button>
+            </div>
+          ) : null}
           <input
             type="text"
             value={note}
@@ -412,8 +441,10 @@ export function BidRoomPanel(props: BidRoomPanelProps) {
             style={{ font: 'inherit', fontSize: '0.78rem', padding: '0.3rem 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 5, background: 'var(--surface)', color: 'var(--text-strong)' }}
           />
           <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
-            Publishing pins the letter as the room&rsquo;s next revision — the GC&rsquo;s link never changes. First send also stamps this
-            packet sent, like Mark sent today.
+            {actions.showLink
+              ? 'Publishing pins the letter as the room’s next revision — the GC’s link never changes. Nothing is emailed unless you press Send.'
+              : 'Get the link mints the room and pins the letter as rev 1 — paste it into your own email, or Send to GC from here.'}{' '}
+            The first send from here also stamps this packet sent, like Mark sent today.
           </div>
         </div>
       ) : null}
