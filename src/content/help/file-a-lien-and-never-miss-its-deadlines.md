@@ -8,7 +8,9 @@ When a demand letter doesn't shake the money loose, Texas gives you a lien — b
 
 ## The clock, always visible
 
-The window header shows the job's two dates, computed from its last work month: **⏱ Notice by …** (subcontractor jobs only) and **File by …**. Weekends roll forward automatically. The same clock powers the Dashboard cards below.
+The window header shows the job's two dates: **⏱ Notice by …** (subcontractor jobs only) and **File by …**. Weekends roll forward automatically. The same clock powers the Dashboard cards below.
+
+**What the clock keys on.** Both dates count from the job's **last work month** — the month of the job's last work date, which is the latest **approved clock session** on the job. The app doesn't track which month each dollar was billed in, so it uses that one month as the basis and the notice's *months covered* is what you attest. Two consequences: a job with no approved clock sessions shows no dates (approve the hours first), and if the crew goes back for a day, the clock moves to that later month.
 
 ## Step 1 — the § 53.056 notice (sub jobs only)
 

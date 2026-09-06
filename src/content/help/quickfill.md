@@ -1,7 +1,7 @@
 ---
 title: run the office day with Quickfill
 category: Office
-roles: assistant
+roles: dev, master_technician, assistant
 keywords: quickfill, daily, mark up to date, office routine, sections
 order: 10
 ---
@@ -35,7 +35,7 @@ A mark means *someone checked this today* — it is not the week's close. The fo
 {{chip:green|Supply Houses — Marked 8:41 AM by Dana · Reloads in 12h}} &nbsp; {{chip:yellow|Close week: $239 open}}
 :::
 
-Controllers and devs can tap the chip to open Moneyfill on that week; the numbers are Moneyfill's own, so the two never disagree. Everyone else sees a plain **Feeds the weekly close** label — hover it for what the daily mark is and is not. {{chip:green|Close week: clear}} means every queue this station feeds is at zero for that week.
+Controllers and devs can tap the chip to open Moneyfill on that week; the numbers are Moneyfill's own, so the two never disagree (the close itself is its own guide: *close the money week*). Everyone else sees a plain **Feeds the weekly close** label — hover it for what the daily mark is and is not. {{chip:green|Close week: clear}} means every queue this station feeds is at zero for that week.
 
 Marking a section also removes its chip from the **floating section bar** at the bottom of the screen for the rest of your visit — the bar shrinks toward empty as your pass progresses. The chips all come back the next time you open Quickfill (the sections themselves stay collapsed until their 12 hours are up), and {{button:outline|Open now}} puts a section's chip back immediately.
 
