@@ -1,4 +1,5 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
+import { buildGcStageEntries, type GcStageEntry, type GcStageFixtureRow, type GcStageOrderRow, type GcStageSheetRow, type GcStageWindowRow } from '../_shared/gcStages.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { PORTAL_COMPANY } from '../_shared/portalCompany.ts'
 import { sampleStateFromToken } from '../_shared/customerSample.ts'
@@ -170,7 +171,7 @@ serve(async (req) => {
     }
 
     const jobSelect =
-      'id, hcp_number, click_number, job_name, job_address, status, revenue, payments_made, customer_id, gc_customer_id, service_types:service_type_id(name)'
+      'id, hcp_number, click_number, job_name, job_address, status, revenue, payments_made, customer_id, gc_customer_id, gc_shares_stage_dates, service_types:service_type_id(name)'
     let jobs: PortalJobRow[]
     if (link.audience === 'all') {
       const { data: jobsRaw } = await admin
@@ -311,6 +312,39 @@ serve(async (req) => {
 
     const totalDue = Math.round(bills.reduce((s, b) => s + b.amount, 0) * 100) / 100
 
+    // Stages the office offered (v2.2933): only for GC viewers, only on jobs that share
+    // stage dates, only windows marked offered — bundles as one entry. Who / when / percent; no money.
+    const stages: Array<{ jobId: string; jobLabel: string; jobAddress: string | null; entries: GcStageEntry[] }> = []
+    if (link.audience === 'gc' || link.audience === 'all') {
+      const sharing = jobs.filter((j) => j.gc_shares_stage_dates === true && j.gc_customer_id === link.customer_id)
+      if (sharing.length > 0) {
+        const { data: winRaw } = await admin
+          .from('job_stage_windows')
+          .select('id, job_id, fixture_id, window_start, window_end, offered_to_gc, bundle_id')
+          .in('job_id', sharing.map((j) => j.id))
+          .eq('offered_to_gc', true)
+          .limit(500)
+        const windows = (winRaw ?? []) as GcStageWindowRow[]
+        if (windows.length > 0) {
+          const fixtureIds = [...new Set(windows.map((w) => w.fixture_id))]
+          const windowIds = windows.map((w) => w.id)
+          const [{ data: fxRaw }, { data: ordRaw }] = await Promise.all([
+            admin.from('jobs_ledger_fixtures').select('id, name, sequence_order').in('id', fixtureIds),
+            admin.from('step_commitments').select('id, stage_window_id, status, display_name, picked_start, picked_end, labor_job_id').in('stage_window_id', windowIds).in('status', ['offered', 'accepted', 'approved', 'settled']),
+          ])
+          const orders = (ordRaw ?? []) as GcStageOrderRow[]
+          const sheetIds = [...new Set(orders.map((o) => o.labor_job_id).filter((id): id is string => !!id))]
+          const { data: shRaw } = sheetIds.length > 0 ? await admin.from('people_labor_jobs').select('id, stage, progress_pct').in('id', sheetIds) : { data: [] }
+          const fixtures = (fxRaw ?? []) as GcStageFixtureRow[]
+          const sheets = (shRaw ?? []) as GcStageSheetRow[]
+          for (const j of sharing) {
+            const entries = buildGcStageEntries({ windows: windows.filter((w) => w.job_id === j.id), fixtures, orders, sheets })
+            if (entries.length > 0) stages.push({ jobId: j.id, jobLabel: jobLabel(j), jobAddress: (j.job_address ?? '').trim() || null, entries })
+          }
+        }
+      }
+    }
+
     // Receipt landing (v2.2878, J22-F3): the Stripe footer link carries
     // `?paid=1` and the page calls back with `return=stripe`; a refetch after
     // a pay tab sends `return=refresh`. Rides the same function-log path as
@@ -376,6 +410,7 @@ serve(async (req) => {
       ...(officeViewStats ? { officeViewStats } : {}),
       slug,
       agreements,
+      stages,
     })
   } catch (e) {
     console.error('customer-portal error', e)

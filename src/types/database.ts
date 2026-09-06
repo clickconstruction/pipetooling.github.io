@@ -7600,7 +7600,10 @@ export type Database = {
           fixture_id: string
           id: string
           job_id: string
+          bundle_id: string | null
           note: string | null
+          offered_to_gc: boolean
+          offered_to_gc_at: string | null
           updated_at: string
           window_by: string | null
           window_end: string | null
@@ -7612,7 +7615,10 @@ export type Database = {
           fixture_id: string
           id?: string
           job_id: string
+          bundle_id?: string | null
           note?: string | null
+          offered_to_gc?: boolean
+          offered_to_gc_at?: string | null
           updated_at?: string
           window_by?: string | null
           window_end?: string | null
@@ -7624,7 +7630,10 @@ export type Database = {
           fixture_id?: string
           id?: string
           job_id?: string
+          bundle_id?: string | null
           note?: string | null
+          offered_to_gc?: boolean
+          offered_to_gc_at?: string | null
           updated_at?: string
           window_by?: string | null
           window_end?: string | null
@@ -7750,7 +7759,9 @@ export type Database = {
           customer_name: string | null
           customer_phone: string | null
           development_id: string | null
+          gc_auto_offer_next: boolean
           gc_customer_id: string | null
+          gc_shares_stage_dates: boolean
           google_drive_link: string | null
           hcp_number: string
           id: string
@@ -7792,7 +7803,9 @@ export type Database = {
           customer_name?: string | null
           customer_phone?: string | null
           development_id?: string | null
+          gc_auto_offer_next?: boolean
           gc_customer_id?: string | null
+          gc_shares_stage_dates?: boolean
           google_drive_link?: string | null
           hcp_number?: string
           id?: string
@@ -7834,7 +7847,9 @@ export type Database = {
           customer_name?: string | null
           customer_phone?: string | null
           development_id?: string | null
+          gc_auto_offer_next?: boolean
           gc_customer_id?: string | null
+          gc_shares_stage_dates?: boolean
           google_drive_link?: string | null
           hcp_number?: string
           id?: string
