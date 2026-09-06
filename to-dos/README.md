@@ -16,26 +16,29 @@ When you pick one up: put your branch name on the `Status:` line, drop a session
 
 When a plan doc or a release-notes fragment defers something, add it here (one file, or a line in an existing file) and leave a one-line pointer in the source — each fact has one home.
 
-Index (validated against code and the live app on 2026-09-05 — see [`2026-09-05-docs-sweep.md`](./2026-09-05-docs-sweep.md) for what was dropped and why):
+Index (validated against code on 2026-09-06 at v2.2935 — the 2026-09-05 sweep record is deleted; what it dropped is carried by the release notes and `docs/recent-features/`):
 
 | To-do | Status | Summary |
 |---|---|---|
+| [`bill-truth-shadow-beacon.md`](./bill-truth-shadow-beacon.md) | **dated: remove by 2026-09-19** | Read the mismatch beacon, then delete the legacy sums and `billTruthShadow.ts`. |
+| [`deploy-backlog.md`](./deploy-backlog.md) | ops chore | Five edge functions behind main; confirm the nine 2026-09-06 migrations are pushed. |
 | [`takeoffs-retire-old.md`](./takeoffs-retire-old.md) | blocked until ~2026-09-11 | Re-measure coverage after a week of New 1 / New 2, then retire the Old takeoffs view. |
-| [`rfq-apply-picks-to-bid-costs.md`](./rfq-apply-picks-to-bid-costs.md) | not started (owner approved) | Quote picks and vendor lots write a fixture-level cost override with provenance and revert. |
-| [`job-summary-follow-ups.md`](./job-summary-follow-ups.md) | not started | PTO / overtime on Capacity, the under-60% Needs-you card, travel on Days, bid vs actual, the % provenance badge. |
-| [`error-message-follow-ups.md`](./error-message-follow-ups.md) | not started | Retry + online listener on the real offline path; the week-grid bid branch; the last text check. |
+| [`job-summary-follow-ups.md`](./job-summary-follow-ups.md) | not started | Days delta strip, the under-60% Needs-you card, Bid vs actual (now unblocked), PTO / overtime on Capacity, the J963 loader reconcile, the earned-revenue kernel. |
+| [`subs-residuals.md`](./subs-residuals.md) | not started | Derived sheet stage (now unblocked), Spanish signature form, compliance chips, offer templates, benched subs in the sheet form, roster hygiene. |
+| [`dispatch-residuals.md`](./dispatch-residuals.md) | low | Phone-request self-heal, dispatch blocks / nudge history on the sheet rows, the tag-slice refresh. |
 | [`contract-forms-publish-authored.md`](./contract-forms-publish-authored.md) | blocked on owner review | Publish Direct Deposit and the four lien waivers once the wording is approved. |
-| [`division-22-rules-manager.md`](./division-22-rules-manager.md) | owner-gated | Rules manager, unmatched-names audit, menu badge, four unseeded sections. |
+| [`division-22-rules-manager.md`](./division-22-rules-manager.md) | owner-gated | Rules manager UI; RH / EDF / med-gas seed call. Gas and the Needs You card shipped. |
 | [`crew-pnl-and-wheels.md`](./crew-pnl-and-wheels.md) | not started, optional | Vehicle rates on Crew P&L and Bids; the $50 sub-equivalent default; the backlog lines still true. |
-| [`subs-residuals.md`](./subs-residuals.md) | not started | Derived sheet stage, Spanish signature form, role-literal RPC, run-subs polish, roster hygiene. |
 | [`person-identity-phase-e.md`](./person-identity-phase-e.md) | gated | NOT NULL, re-PK off `person_name`, retire the name cascade — after a quiet quarter. |
 | [`per-gc-bid-retirement.md`](./per-gc-bid-retirement.md) | low | Retire `bids.submitted_to` / `itb_links` behind `bid_gcs`; the auto-derive question. |
-| [`partnerships-off-toggles.md`](./partnerships-off-toggles.md) | owner + attorney gated | Notice delivery, estimating cap, runway floor, W2 watch. |
+| [`partnerships-off-toggles.md`](./partnerships-off-toggles.md) | owner + attorney gated | Notice delivery, estimating cap, W2 watch (modeled); runway floor (not modeled); the notes preview. |
 | [`weekly-money-later.md`](./weekly-money-later.md) | optional | Phase 6: drilldowns, GC lens, month roll-up, timeline feed, wider access. |
 | [`robots-residuals.md`](./robots-residuals.md) | low | Client-side leftovers only; the twins program runs from `docs/twins/HANDOFF.md`. |
 | [`supply-house-job-account-aging.md`](./supply-house-job-account-aging.md) | waiting on Taunya | Job-account invoices in the aging heat map; bulk flag; the May follow-ups. |
-| [`engineering-hygiene.md`](./engineering-hygiene.md) | low | Decomposition inventory regrown; two silent-no-op update sweeps. |
-| [`journey-map-tier-1.md`](./journey-map-tier-1.md) | pointer | Which Tier-1 drift rows are closed here; the list lives in the private repo. |
+| [`engineering-hygiene.md`](./engineering-hygiene.md) | low | Decomposition inventory regrown again; two silent-no-op update sweeps. |
+| [`journey-map-tier-1.md`](./journey-map-tier-1.md) | pointer | Which drift rows are closed here; the list lives in the private repo. |
 | [`owner-decisions-pending.md`](./owner-decisions-pending.md) | standing list | Every yes/no the docs are waiting on, one line each. |
+
+Closed since the 2026-09-05 sweep (files deleted): `error-message-follow-ups` (v2.2861 shipped Retry + the online listener and fixed the week-grid bid branch); `rfq-apply-picks-to-bid-costs` (Rung G had already shipped as v2.2655 — the sweep missed it; its residuals live in `docs/SUPPLY_HOUSE_RFQ_PLAN.md` → Deferred).
 
 Not duplicated here, by design: `docs/twins/HANDOFF.md` → "Open threads, prioritized" (the robots program, updated daily) and the private journey-map repo's `_DRIFT-2` (security findings).
