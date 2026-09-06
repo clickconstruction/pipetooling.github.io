@@ -19,7 +19,9 @@ key_sections:
 Read `DIGITAL_TWINS_PLAN.md` first for the locked owner decisions (estimator-only,
 one-directional fence, assignment-is-the-grant) and `ESTIMATOR_TWIN_PIPELINE_PLAN.md`
 for the plans-to-proposal build (every wave-table engineering item is BUILT as of
-2026-08-30); this doc is the *current state* on top of both.
+2026-08-30); this doc is the *current state* on top of both. `LEARNING_PLAN.md`
+(2026-09-06) is the forward build list: the program's scarce resources are the
+estimator's hours and her corpus, and every planned item optimizes one of the two.
 
 ## What is live today (all in prod)
 
