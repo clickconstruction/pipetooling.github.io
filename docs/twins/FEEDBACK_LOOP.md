@@ -109,6 +109,20 @@ Also write your own confession at STG-3: pass `self_assessment` to `ct_finish_ta
 sub scopes, unread sheets). It renders atop the audit card so the auditor checks your
 suspicions first.
 
+**The doctrine-promotion regression gate (v2.2940 — LEARNING_PLAN.md lever 3).**
+A digested lesson that GENERALIZES (a multiplier, a tier rule, a footage factor —
+anything that changes how other bids price) is *proposed*, not banked: write it
+into the doctrine doc marked `PROPOSED (regression pending)`, run it against 2–3
+OTHER references on the same axis (cheap now — one dispatcher call each), and
+promote it to a plain rule only when the regression holds. The ×2.2
+institutional multiplier is the cautionary tale: banked from one bid
+(2026-08-31), it cost two +100% runs before its own source bid refuted it
+(R2-BT-25: pre-multiplier base −2.3%). Narrow lessons (a device price, a
+scope-call, a bid_only fix) skip the gate — it exists for rules that multiply.
+A standing rule stated once by the auditor ("we always carry $20k travel past
+200 miles") is her ruling, not a hypothesis: it banks immediately, and the
+regression measures it afterwards rather than gating it.
+
 A standing rule stated once ("we always carry $20k travel past 200 miles") outranks a
 per-bid answer: promote it to doctrine or books immediately. Then post the receipt —
 `kind='receipt'`, `parent_id` = the note, body "Learned: <what changed> → <where>" —
