@@ -16,6 +16,8 @@ export type CrewDayEmailPayload = {
   pct_notes: Array<{ job_id: string; body: string; created_at: string }>
   users: Array<{ id: string; name: string | null }>
   jobs: Array<{ id: string; hcp_number: string | null; click_number: string | null; job_name: string | null; job_address: string | null; status: string | null; pct_complete: number | null }>
+  /** v2.2929: subs on site this day — signed work orders whose picked dates cover it (the function adds these; the RPC does not). */
+  subs?: Array<{ person_name: string; job_id: string | null; job_label: string | null; stage_name: string | null; picked_start: string; picked_end: string }>
 }
 
 function esc(s: unknown): string {
@@ -90,6 +92,19 @@ export type CrewDayEmailView = {
   day: string
   groups: JobGroup[]
   summary: { people: number; jobs: number; hoursMs: number; reports: number; flags: number }
+  /** v2.2929: subs on site this day, from their signed work orders' picked dates. */
+  subsToday: Array<{ personName: string; label: string; span: string }>
+}
+
+/** "Sep 9 – Sep 10" from two YMDs (same day → one). */
+function spanLabel(a: string, b: string): string {
+  const fmt = (ymd: string) => {
+    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(ymd)
+    if (!m) return ymd
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+    return `${months[Number(m[2]) - 1]} ${Number(m[3])}`
+  }
+  return a === b ? fmt(a) : `${fmt(a)} – ${fmt(b)}`
 }
 
 export function buildCrewDayEmailView(payload: CrewDayEmailPayload, nowMs: number): CrewDayEmailView {
@@ -196,6 +211,9 @@ export function buildCrewDayEmailView(payload: CrewDayEmailPayload, nowMs: numbe
   return {
     day: payload.day,
     groups: sorted,
+    subsToday: (payload.subs ?? [])
+      .map((x) => ({ personName: (x.person_name ?? '').trim() || 'Sub', label: [x.stage_name, x.job_label].filter(Boolean).join(' · ') || 'a work order', span: spanLabel(x.picked_start, x.picked_end) }))
+      .sort((a, b) => a.personName.localeCompare(b.personName)),
     summary: {
       people: peopleIds.size,
       jobs: jobIds.size,
@@ -226,6 +244,11 @@ export function crewDayEmailText(view: CrewDayEmailView): string {
     }
     for (const r of g.reports) lines.push(`  ${r.byName} ${r.at}: ${r.excerpt || reportLabel(r.templateName)}`)
     for (const f of g.flags) lines.push(`  ! ${f.text}`)
+    lines.push('')
+  }
+  if (view.subsToday.length > 0) {
+    lines.push('Subs on site today')
+    for (const x of view.subsToday) lines.push(`  ${x.personName} — ${x.label} (${x.span})`)
     lines.push('')
   }
   return lines.join('\n')
@@ -293,6 +316,14 @@ export function renderCrewDayEmail(view: CrewDayEmailView, senderName?: string):
       <p style="margin:0 0 10px;font-size:12.5px;color:#64748b;">Rebuilt fresh at send time · hours only${senderName ? ` · from ${esc(senderName)}` : ''}</p>
       <div style="margin-bottom:8px;">${chips}</div>
       ${groupsHtml}
+      ${
+        view.subsToday.length > 0
+          ? `<div style="border-top:1px solid #e2e8f0;padding:10px 0 0;margin-top:4px;">
+        <div style="font-size:12px;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;color:#64748b;">Subs on site today</div>
+        ${view.subsToday.map((x) => `<div style="font-size:13px;color:#0f172a;padding:3px 0;">${esc(x.personName)} <span style="color:#64748b;">— ${esc(x.label)} (${esc(x.span)})</span></div>`).join('')}
+      </div>`
+          : ''
+      }
     </div>
     <p style="font-size:11px;color:#94a3b8;margin:10px 4px;">Manage this email in Settings &#8594; My email schedule.</p>
   </div>

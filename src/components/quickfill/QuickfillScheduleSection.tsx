@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { SubsOnSiteForDay } from '../schedule/SubsOnSiteForDay'
 import { Link, useNavigate } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../hooks/useAuth'
@@ -1443,6 +1444,7 @@ export function QuickfillScheduleSection({
   return (
     <div>
       {showDaySettings ? (agendaMode ? compactDayNavRow : dayNavRow) : null}
+      {showDaySettings ? <SubsOnSiteForDay dayKey={workDate} /> : null}
       {!hideConflictPrompt ? (
         <div role="note" style={QUICKFILL_SECTION_BANNER_BOX_STYLE}>
           {SCHEDULE_CONFLICTS_DEFAULT_PROMPT}

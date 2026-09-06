@@ -113,6 +113,10 @@ Update the relevant dossier whenever a region is extracted or its state/handlers
 - **External coupling:** lane-heading rows double as linked-copy stage-2 "whole crew" apply buttons; person-name cells double as stage-2 per-person apply buttons — both purely via props.
 - **Extraction status + risk + approach:** Inline. **Medium risk** — the JSX is big but the state is clean; the cost is the ~55-prop interface (already declared as `HubPeoplePanelProps`, so the move is mechanical). Extract to `HubPeoplePanel.tsx` AFTER the card/cell pair and (ideally) after the Expected Manpower section is split out. All mode state stays page-owned; the panel keeps receiving it as props. Remember both render branches in the shell.
 
+#### Subs on the board (v2.2929)
+
+The panel takes `subLanes` (`SubLane[]`) and `subBadgeByCell` (`hubPersonDayKey` → `{count, titles}`), both built in the page from `fetchSubOrdersForRange(weekStart, weekEnd)` (Phase A, degrades to a warning) and `fetchTeamMembersByJobId` — kernel [`lib/subs/subDispatch.ts`](../src/lib/subs/subDispatch.ts). `HubSubsLanes` renders under the crew table (read-only, chips open the job); `HubPeopleDayCell` shows a green "sub" badge for crew assigned to a job on the days a sub is **picked** there (windows never badge). No schedule block is ever written for a sub — the work order's dates are the schedule. The Day tab mounts `SubsOnSiteForDay` above the crew; its "Add a site visit ›" is the `?placeJob=` deep link.
+
 ### Expected Manpower section (inside `HubPeoplePanel`)
 
 - **Render location:** `visibleDayKeys.length > 0 && showExpectedManpower` section (~2105–2571): day-tab strip (per-day buttons + "All week"), stats line, lane breakdown line, collapsible per-job table with expandable assignee detail rows, week person-hours footer. Its memos/state sit at the top of `HubPeoplePanel` (~1346–1449).

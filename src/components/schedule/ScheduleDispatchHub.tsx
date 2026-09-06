@@ -1,4 +1,6 @@
 import type { CSSProperties, KeyboardEvent, MouseEvent, ReactNode } from 'react'
+import { HubSubsLanes } from './HubSubsLanes'
+import type { SubBadge, SubLane } from '../../lib/subs/subDispatch'
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { groupRosterUsersByAuthRoleSection } from '../../lib/usersTabRosterRoleSections'
@@ -1294,6 +1296,7 @@ function HubPeopleDayCell({
   onRequestUndoNotComingIn,
   onMarkNotComingInForCell,
   hiddenInfo = null,
+  subBadge = null,
   linkedCopyMode = null,
   onLinkedCopyToggleBlock,
   isBottomRow = false,
@@ -1339,6 +1342,8 @@ function HubPeopleDayCell({
   onMarkNotComingInForCell?: (personUserId: string, workDate: string) => void
   /** Blocks on this person-day the viewer's RLS hides (superintendent board) — drawn as grey "busy" placeholders. */
   hiddenInfo?: ScheduleHiddenCell | null
+  /** v2.2929: subs definitely on one of this person's jobs that day. */
+  subBadge?: SubBadge | null
   linkedCopyMode?: LinkedCopyMode | null
   onLinkedCopyToggleBlock?: (blockId: string) => void
   /** Last grid row closes the orange today-column outline with a bottom edge. */
@@ -1441,6 +1446,16 @@ function HubPeopleDayCell({
           multiSelectCellActive || cellClickable || emptyCellClickable ? 'pointer' : undefined,
       }}
     >
+      {subBadge ? (
+        <div
+          data-testid="hub-sub-badge"
+          title={subBadge.titles.join('\n')}
+          onClick={(e) => e.stopPropagation()}
+          style={{ display: 'inline-block', marginBottom: 3, padding: '1px 6px', borderRadius: 4, fontSize: '0.62rem', fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', background: 'var(--bg-green-tint)', color: 'var(--text-green-700)', border: '1px solid var(--border-green)', cursor: 'help' }}
+        >
+          {subBadge.count === 1 ? 'sub' : `${subBadge.count} subs`}
+        </div>
+      ) : null}
       {timeOffInfo && cellBlocks.length === 0 ? (
         <div
           style={{
@@ -1734,6 +1749,9 @@ type HubPeoplePanelProps = {
   onMarkNotComingInForCell?: (personUserId: string, workDate: string) => void
   /** Per person-day RLS-hidden block counts keyed by `hubPersonDayKey` (superintendent board). */
   hiddenByCell?: ReadonlyMap<string, ScheduleHiddenCell>
+  /** v2.2929: "sub" badges on crew cells (job team members, picked days only) and the read-only Subs lanes. */
+  subBadgeByCell?: ReadonlyMap<string, SubBadge>
+  subLanes?: SubLane[]
   /** Raw hidden-count rows for the Expected Manpower math (true totals, not just visible). */
   hiddenBlockCounts?: readonly ScheduleHiddenBlockCount[]
 }
@@ -1805,6 +1823,8 @@ function HubPeoplePanel({
   onRequestUndoNotComingIn,
   onMarkNotComingInForCell,
   hiddenByCell,
+  subBadgeByCell,
+  subLanes,
   hiddenBlockCounts,
 }: HubPeoplePanelProps) {
   /** "View" dropdown consolidating Hide Inactive / Hide weekend / Highlight linked. */
@@ -2626,6 +2646,7 @@ function HubPeoplePanel({
                     const lateInfo =
                       timeOffInfo ? null : latenessByCell?.get(latenessCellKey(person.userId, dk)) ?? null
                     const hiddenInfo = hiddenByCell?.get(hubPersonDayKey(person.userId, dk)) ?? null
+                    const subBadge = subBadgeByCell?.get(hubPersonDayKey(person.userId, dk)) ?? null
                     return (
                       <HubPeopleDayCell
                         key={dk}
@@ -2668,6 +2689,7 @@ function HubPeoplePanel({
                         onRequestUndoNotComingIn={onRequestUndoNotComingIn}
                         onMarkNotComingInForCell={onMarkNotComingInForCell}
                         hiddenInfo={hiddenInfo}
+                        subBadge={subBadge}
                         isBottomRow={itemIndex === peopleDisplayRows.length - 1}
                       />
                     )
@@ -2678,6 +2700,7 @@ function HubPeoplePanel({
             )}
           </tbody>
         </table>
+        <HubSubsLanes lanes={subLanes ?? []} visibleDayKeys={visibleDayKeys} scheduleTodayYmd={scheduleTodayYmd} onOpenJob={onOpenJob} />
       </div>
 
       {isMobile && canEdit ? (
@@ -3278,6 +3301,9 @@ type Props = {
   onMarkNotComingInForCell?: (personUserId: string, workDate: string) => void
   /** RLS-hidden block counts per person-day (superintendent board) — grey "busy" placeholders. */
   hiddenByCell?: ReadonlyMap<string, ScheduleHiddenCell>
+  /** v2.2929: "sub" badges on crew cells (job team members, picked days only) and the read-only Subs lanes. */
+  subBadgeByCell?: ReadonlyMap<string, SubBadge>
+  subLanes?: SubLane[]
   /** Raw hidden-count rows so Expected Manpower shows the true total ("83 · 38 on your projects"). */
   hiddenBlockCounts?: readonly ScheduleHiddenBlockCount[]
   /** Right-aligned content for the week-nav row (e.g. the Share button). */
@@ -3390,6 +3416,8 @@ export function ScheduleDispatchHub({
   onRequestUndoNotComingIn,
   onMarkNotComingInForCell,
   hiddenByCell,
+  subBadgeByCell,
+  subLanes,
   hiddenBlockCounts,
   weekNavRightSlot,
 }: Props) {
@@ -3821,6 +3849,8 @@ export function ScheduleDispatchHub({
           onRequestUndoNotComingIn={onRequestUndoNotComingIn}
           onMarkNotComingInForCell={onMarkNotComingInForCell}
           hiddenByCell={hiddenByCell}
+          subBadgeByCell={subBadgeByCell}
+          subLanes={subLanes}
           hiddenBlockCounts={hiddenBlockCounts}
         />
       ) : hubTab === 'day' ? (
@@ -3924,6 +3954,8 @@ export function ScheduleDispatchHub({
           onRequestUndoNotComingIn={onRequestUndoNotComingIn}
           onMarkNotComingInForCell={onMarkNotComingInForCell}
           hiddenByCell={hiddenByCell}
+          subBadgeByCell={subBadgeByCell}
+          subLanes={subLanes}
           hiddenBlockCounts={hiddenBlockCounts}
         />
       )}

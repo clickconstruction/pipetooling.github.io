@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { buildSubBadgesByCell, buildSubLanes, dayKeysBetween, type SubDispatchOrder } from '../../lib/subs/subDispatch'
+import { fetchSubOrdersForRange, fetchTeamMembersByJobId } from '../../lib/subs/subDispatchFetch'
 import { Navigate, useNavigate, useSearchParams } from 'react-router-dom'
 import { resolveScheduleDispatchLinkedDay, scheduleDispatchDayTabWorkDate } from '../../lib/scheduleDispatchDayLink'
 import { useNarrowViewport640 } from '../../hooks/useNarrowViewport640'
@@ -376,6 +378,9 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
   /** Blocks the viewer's RLS hides, per person/day (superintendent board only; `[]` for office roles). */
   const [hubHiddenBlockCounts, setHubHiddenBlockCounts] = useState<ScheduleHiddenBlockCount[]>([])
   const [hubTeamMemberUserIds, setHubTeamMemberUserIds] = useState<string[]>([])
+  /** v2.2929: live sub work orders touching the week, and who is assigned to their jobs. */
+  const [hubSubOrders, setHubSubOrders] = useState<SubDispatchOrder[]>([])
+  const [hubTeamByJobId, setHubTeamByJobId] = useState<Map<string, string[]>>(() => new Map())
   const [hubRoleByUserId, setHubRoleByUserId] = useState<Map<string, string>>(() => new Map())
   const [hubArchivedUserIds, setHubArchivedUserIds] = useState<ReadonlySet<string>>(() => new Set())
   const [hubPeopleNameById, setHubPeopleNameById] = useState<Map<string, string>>(() => new Map())
@@ -536,6 +541,9 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
     [hubWeekBlocks, hubHiddenBlockCounts],
   )
   const hubHiddenByCell = useMemo(() => buildScheduleHiddenByCell(hubHiddenBlockCounts), [hubHiddenBlockCounts])
+  const hubWeekDayKeys = useMemo(() => dayKeysBetween(weekStart, weekEnd), [weekStart, weekEnd])
+  const hubSubLanes = useMemo(() => buildSubLanes(hubSubOrders, hubWeekDayKeys), [hubSubOrders, hubWeekDayKeys])
+  const hubSubBadgeByCell = useMemo(() => buildSubBadgesByCell(hubSubOrders, hubTeamByJobId, hubWeekDayKeys), [hubSubOrders, hubTeamByJobId, hubWeekDayKeys])
 
   const hubBlockById = useMemo(() => {
     const m = new Map<string, JobScheduleBlockRow>()
@@ -620,7 +628,7 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
 
       // Phase A: jobs ledger + week blocks + users-tab roster + bids (+ RLS-hidden counts for a
       // superintendent) — fully independent, parallel.
-      const [jr, br, usersTabRes, bidsRes, hiddenRes] = await Promise.all([
+      const [jr, br, usersTabRes, bidsRes, hiddenRes, subRes] = await Promise.all([
         fetchJobsLedgerForScheduleDispatchHub(),
         fetchJobScheduleBlocksForHubDateRange(weekStart, weekEnd),
         fetchUsersTabRosterForScheduleDispatchHub(role === 'dev'),
@@ -628,7 +636,20 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
         wantsHiddenBlockCounts
           ? fetchScheduleHiddenBlockCounts(weekStart, weekEnd)
           : Promise.resolve({ data: [] as ScheduleHiddenBlockCount[], error: null as string | null }),
+        // v2.2929: sub work orders touching the week — their dates are the Subs lanes; no blocks are written.
+        fetchSubOrdersForRange(weekStart, weekEnd),
       ])
+
+      // Subs degrade to a warning — the crew board is untouched without them.
+      if (subRes.error) {
+        setHubSubOrders([])
+        setHubTeamByJobId(new Map())
+        showToast(`Subs on the board: ${subRes.error}`, 'warning')
+      } else {
+        setHubSubOrders(subRes.data)
+        const teamRes = await fetchTeamMembersByJobId(subRes.data.map((o) => o.jobId).filter((id): id is string => !!id))
+        setHubTeamByJobId(teamRes.data)
+      }
 
       // Busy-elsewhere placeholders degrade to a warning — the board is still usable without them.
       if (hiddenRes.error) {
@@ -2694,6 +2715,8 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
             onRequestUndoNotComingIn={canTimeOff ? handleRequestUndoNotComingIn : undefined}
             onMarkNotComingInForCell={canTimeOff ? onMarkNotComingInForCell : undefined}
             hiddenByCell={hubHiddenByCell}
+            subBadgeByCell={hubSubBadgeByCell}
+            subLanes={hubSubLanes}
             hiddenBlockCounts={hubHiddenBlockCounts}
           />
         </DndContext>
