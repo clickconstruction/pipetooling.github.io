@@ -330,12 +330,12 @@ export function SheetStoryModal({ sheetId, onClose, jobs, authUserId, onOpenShee
         <div style={{ padding: '0.9rem 1.1rem 0.75rem', borderBottom: '1px solid var(--border)', display: 'grid', gap: 8 }}>
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' }}>
             <b style={{ fontSize: '1.05rem' }}>{sheet?.assigned_to_name ?? 'Sheet'}</b>
-            <span style={{ color: 'var(--text-muted)', fontSize: '0.8125rem' }}>{label}</span>
             {story?.job == null && sheet ? <span style={{ padding: '1px 7px', borderRadius: 999, fontSize: '0.68rem', fontWeight: 600, background: 'var(--bg-amber-tint)', color: 'var(--text-amber-800)', border: '1px solid var(--border-amber)' }}>Not in Pipeline</span> : null}
             {story?.crewPay ? <span style={{ padding: '1px 7px', borderRadius: 999, fontSize: '0.68rem', fontWeight: 700, background: 'var(--bg-violet-100)', color: 'var(--text-violet-700)' }}>Crew pay</span> : null}
             {story?.coverage.kind === 'signed' && story.coverage.recordId ? <span style={{ padding: '1px 7px', borderRadius: 999, fontSize: '0.68rem', fontWeight: 700, background: 'var(--bg-green-tint)', color: 'var(--text-green-700)' }}>{story.coverage.recordId}</span> : null}
             <button type="button" onClick={onClose} aria-label="Close" style={{ marginLeft: 'auto', background: 'none', border: 'none', fontSize: '1.1rem', color: 'var(--text-muted)', cursor: 'pointer' }}>✕</button>
           </div>
+          {label ? <div style={{ color: 'var(--text-muted)', fontSize: '0.8125rem', marginTop: -4 }}>{label}</div> : null}
           {story ? (
             <>
               <div style={{ display: 'flex', gap: 18, flexWrap: 'wrap', fontVariantNumeric: 'tabular-nums', fontSize: '0.8125rem' }}>
