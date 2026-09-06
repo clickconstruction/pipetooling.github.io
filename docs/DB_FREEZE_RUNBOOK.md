@@ -436,6 +436,9 @@ within 15000ms`. Nobody in the office reported it.
   21:25:20) and a fresh psql got `ECHECKOUTTIMEOUT`; first 200 at
   **21:25:35**. `pg_postmaster_start_time()` = **21:25:25 UTC** — a second
   self-restart. Two crashes in one hour, both while the office was quiet.
+- **Third restart at 22:00:07 UTC** (`pg_postmaster_start_time()` read at
+  22:01), not probed while it happened. Three self-restarts in 85 minutes:
+  20:35:04, 21:25:25, 22:00:07.
 - **Not done here**: Postgres logs (Dashboard → Logs) for the OOM /
   `terminated` lines — the MCP server was not authorized in this session.
   That is the next step: confirm the kill reason and compare memory headroom
