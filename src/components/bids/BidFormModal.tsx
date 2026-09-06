@@ -1,5 +1,5 @@
 import type { ChangeEvent, CSSProperties, Dispatch, FocusEvent, FormEvent, SetStateAction } from 'react'
-import { suggestLossCategoryFromNote } from '../../lib/bidLossCategories'
+import { LOSS_UNCATEGORIZED_NUDGE, suggestLossCategoryFromNote } from '../../lib/bidLossCategories'
 import { BidLossCategoryChips } from './BidLossCategoryChips'
 import { useEffect, useState } from 'react'
 import { SearchableSelect } from '../SearchableSelect'
@@ -811,11 +811,16 @@ export function BidFormModal(props: BidFormModalProps) {
                         aria-label="What they said"
                         style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, marginTop: '0.5rem' }}
                       />
-                      <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.3rem' }}>
+                      <div style={{ fontSize: '0.75rem', color: lossCategory != null ? 'var(--text-muted)' : 'var(--text-amber-700)', marginTop: '0.3rem' }}>
                         {lossCategory != null
                           ? 'Recorded — this bid won’t wait in Followup → Why we lost.'
-                          : 'Don’t know yet? Leave it — the bid waits in Followup → Why we lost for the GC calls.'}
+                          : LOSS_UNCATEGORIZED_NUDGE}
                       </div>
+                      {lossCategory == null ? (
+                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.15rem' }}>
+                          Don’t know yet? Leave it — the bid waits in Followup → Why we lost for the GC calls.
+                        </div>
+                      ) : null}
                     </div>
                   )}
                   {outcome === 'won' && (

@@ -19,6 +19,16 @@ Items 35 · Counts 1,122 ea · 29 items · Line feet 444.74 ft · 6 line types �
 :::
 - Flip to **By plan page** and the sheet regroups under each page — "Plan page 26 — 13 items, 12 ea · 148.5 ft" — with a red **No plan page** bucket at the bottom to clean up before submitting.
 
+## The Reference grade chip — what this record can teach
+
+Once a bid is **sent or decided**, its header grows a small **Reference grade** chip — the same {{chip:green|A}} / {{chip:yellow|B–D}} / {{chip:gray|X}} letter the Bid Board's robot icon wears on decided rows. It answers one question: how much can the robot estimators (and anyone studying our history) learn from this record?
+
+- **A** — plans, a final value, takeoff rows, *and* priced rows: a full training reference.
+- Below A, a quiet line names the one gap — *no priced rows — robots can't learn pricing from this bid*, *no takeoff rows…*, *no final value recorded…* — so the fix is obvious while the bid is still fresh.
+- **X** means no plans link at all: nothing to rebuild the bid from.
+
+Today's bids are tomorrow's training corpus — closing the named gap while you still remember the bid is the cheapest reference we'll ever add.
+
 ## Edit any line in place
 
 Every value on the sheet is editable — tap a count, fixture name, or plan page, type, and **Enter** saves (**Esc** reverts). Renaming a row to a fixture that's already on the bid offers to **merge** instead — the counts combine onto the existing row — so one fixture name stays one row and the takeoff assignment never forks.

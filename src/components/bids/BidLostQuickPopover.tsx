@@ -3,7 +3,7 @@ import { supabase } from '../../lib/supabase'
 import { formatErrorMessage, withSupabaseRetry } from '../../utils/errorHandling'
 import { BID_UPDATE_NOT_APPLIED_MESSAGE, updateApplied } from '../../lib/bids/updateGuard'
 import { useToastContext } from '../../contexts/ToastContext'
-import { isBidLossCategoryKey, suggestLossCategoryFromNote, type BidLossCategoryKey } from '../../lib/bidLossCategories'
+import { LOSS_UNCATEGORIZED_NUDGE, isBidLossCategoryKey, suggestLossCategoryFromNote, type BidLossCategoryKey } from '../../lib/bidLossCategories'
 import { BidLossCategoryChips } from './BidLossCategoryChips'
 
 /**
@@ -98,6 +98,9 @@ export function BidLostQuickPopover({
         size="sm"
         disabled={saving}
       />
+      {currentCategory == null ? (
+        <div style={{ fontSize: '0.72rem', color: 'var(--text-amber-700)', marginTop: '0.35rem' }}>{LOSS_UNCATEGORIZED_NUDGE}</div>
+      ) : null}
       <div style={{ display: 'flex', gap: '0.7rem', alignItems: 'center', marginTop: '0.45rem' }}>
         {!alreadyLost ? (
           <button

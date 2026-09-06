@@ -33,6 +33,15 @@ export const BID_LOSS_CATEGORIES: readonly BidLossCategory[] = [
   { key: 'no_answer', label: 'No answer', chipBg: 'var(--bg-slate-tint)', chipFg: 'var(--text-700)' },
 ]
 
+/**
+ * The one-line corpus nudge (v2.2943, LEARNING_PLAN item 10): shown wherever a
+ * bid is marked lost without a category, and afterwards beside the picker on
+ * lost-uncategorized bids. An uncategorized loss is flagged out of the robot
+ * gate denominators (`referenceQualityFlags.lossUncategorized`), so the tap
+ * that names the reason is also what keeps the reference usable.
+ */
+export const LOSS_UNCATEGORIZED_NUDGE = 'Add why: an uncategorized loss can’t teach the robots.'
+
 export function isBidLossCategoryKey(v: string | null | undefined): v is BidLossCategoryKey {
   return BID_LOSS_CATEGORIES.some((c) => c.key === v)
 }

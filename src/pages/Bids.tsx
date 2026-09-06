@@ -3389,7 +3389,7 @@ export default function Bids() {
 
       {/* Confidence scoreboard (v2.2560, dev only) — per-axis Gate-B cards + run ledger. */}
       {activeTab === 'robot-scoreboard' && myRole === 'dev' && (
-        <BidsRobotScoreboardTab auditPending={auditGate.pending} />
+        <BidsRobotScoreboardTab auditPending={auditGate.pending} bids={peopleBids} />
       )}
 
       {/* Shadows lens (v2.2544) — the sealed-envelope story per shadow run. */}
