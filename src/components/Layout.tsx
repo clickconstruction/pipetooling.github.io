@@ -66,6 +66,7 @@ import { useJobModeEnabled } from '../hooks/useJobModeEnabled'
 import { useFarmModeEnabled } from '../hooks/useFarmModeEnabled'
 import { usePinModeEnabled } from '../hooks/usePinModeEnabled'
 import {
+  HEADER_ASK_ESTIMATING_LABEL,
   showEstimatorInboxButton,
   showHeaderTaskChecklistButton,
   showTaskDispatchButton,
@@ -1023,8 +1024,8 @@ export default function Layout() {
             <button
               type="button"
               onClick={() => estimatorTaskModal?.openEstimatorModal()}
-              title="Estimator Inbox"
-              aria-label="Estimator Inbox"
+              title={HEADER_ASK_ESTIMATING_LABEL}
+              aria-label={HEADER_ASK_ESTIMATING_LABEL}
               style={{
                 ...headerActionButtonBase,
                 padding: '0.5rem 0.75rem',
@@ -1077,8 +1078,8 @@ export default function Layout() {
             <button
               type="button"
               onClick={() => estimatorTaskModal?.openEstimatorModal()}
-              title="Estimator Inbox"
-              aria-label="Estimator Inbox"
+              title={HEADER_ASK_ESTIMATING_LABEL}
+              aria-label={HEADER_ASK_ESTIMATING_LABEL}
               style={{
                 ...headerActionButtonBase,
                 padding: '0.5rem 0.5rem',

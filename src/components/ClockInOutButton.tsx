@@ -52,6 +52,14 @@ import {
   filterTallyRowsToUnlinkedWithOptionalMinPosted,
 } from '../lib/mercuryTxRowFromTally'
 import { fetchRecentClockJobPicksForUser, type RecentClockJobPick } from '../lib/fetchRecentClockJobPicksForUser'
+import { useFirstAssistantDispatchPhone } from '../hooks/useFirstAssistantDispatchPhone'
+import {
+  CLOCK_IN_NO_PICKS_HEADLINE,
+  clockInNoPicksGuidanceParts,
+  clockInQuickPicksEmpty,
+  showClockInNoPicksGuidance,
+} from '../lib/clockInQuickPicksEmptyState'
+import { YOU_ARE_HERE_LABEL, orderScheduledPicksCurrentFirst } from '../lib/scheduledPicksYouAreHere'
 
 function formatElapsed(seconds: number): string {
   const h = Math.floor(seconds / 3600)
@@ -112,6 +120,16 @@ const clockInSelectionOutlineSelected: CSSProperties = {
   border: `2px solid ${CLOCK_IN_ACCENT_ORANGE}`,
   background: 'var(--bg-orange-tint)',
   boxSizing: 'border-box',
+}
+
+/**
+ * Selected quick pick in the Update Focus / Clock Out review sheets. Blue tint like
+ * the sheets' own search-result selection — the previous grey (var(--bg-muted)) made
+ * the preselected current job read as disabled (J2-F9).
+ */
+const focusOrReviewSelectedPickStyle: CSSProperties = {
+  border: '1px solid var(--border-blue)',
+  background: 'var(--bg-blue-tint)',
 }
 
 const clockInSelectedAssociationChipStyle: CSSProperties = {
@@ -211,7 +229,10 @@ export default function ClockInOutButton({
   const assignedJobsFetchGenRef = useRef(0)
   const showToastRef = useRef(showToast)
   showToastRef.current = showToast
-  const noAssignedJobsInfoToastShownRef = useRef(false)
+  /** J2-F8: every quick-pick source came back empty for this open — drives the standing in-modal guidance (was a one-shot toast). */
+  const [quickPicksEmpty, setQuickPicksEmpty] = useState(false)
+  /** Dispatch's number for the no-picks guidance; fetched only while the Clock In sheet is open. */
+  const clockInDispatchPhone = useFirstAssistantDispatchPhone(clockInModalOpen)
   const unifiedSearchTextRef = useRef(unifiedSearchText)
   unifiedSearchTextRef.current = unifiedSearchText
   const [assignedJobsListLoading, setAssignedJobsListLoading] = useState(false)
@@ -458,7 +479,7 @@ export default function ClockInOutButton({
       setAssignedJobsListLoading(false)
       setScheduledDispatchJobs([])
       setWorkingBoardBidPicks([])
-      noAssignedJobsInfoToastShownRef.current = false
+      setQuickPicksEmpty(false)
       return
     }
     const requestId = ++assignedJobsFetchGenRef.current
@@ -466,6 +487,7 @@ export default function ClockInOutButton({
     setAssignedJobsListLoading(true)
     setScheduledDispatchJobs([])
     setWorkingBoardBidPicks([])
+    setQuickPicksEmpty(false)
     const scheduleYmd =
       (clockOutReviewOpen || tallyPreClockOutOpen) && openSession
         ? openSession.work_date.trim() || denverCalendarDayKey(new Date(openSession.clocked_in_at).getTime())
@@ -508,15 +530,14 @@ export default function ClockInOutButton({
         setUnifiedSearchResults(mappedFiltered)
         assignedJobsShownRef.current =
           mappedFiltered.length > 0 || dispatchRows.length > 0 || workingPicks.length > 0
-        if (
-          mappedFiltered.length === 0 &&
-          dispatchRows.length === 0 &&
-          workingPicks.length === 0 &&
-          !noAssignedJobsInfoToastShownRef.current
-        ) {
-          noAssignedJobsInfoToastShownRef.current = true
-          showToastRef.current('No quick picks from your job assignments or Dispatch schedule for this day.', 'info')
-        }
+        // J2-F8: no toast — the Clock In sheet renders standing guidance from this flag instead.
+        setQuickPicksEmpty(
+          clockInQuickPicksEmpty({
+            assignedJobs: mappedFiltered.length,
+            dispatchJobs: dispatchRows.length,
+            workingBoardBids: workingPicks.length,
+          }),
+        )
       } catch {
         if (requestId !== assignedJobsFetchGenRef.current) return
         assignedJobsShownRef.current = false
@@ -1294,10 +1315,16 @@ export default function ClockInOutButton({
             borderRadius: 4,
             background: 'var(--surface)',
           }
+    // J2-F9: the selected row used to be grey (var(--bg-muted)), which read as
+    // disabled when it was the job the tech is clocked into. Blue tint matches the
+    // modal's own search-result selection.
     const selected =
       useLastLike === 'clockIn'
         ? clockInSelectionOutlineSelected
-        : { border: '1px solid var(--border-400)', background: 'var(--bg-muted)' }
+        : focusOrReviewSelectedPickStyle
+    // Clock In has no open session, so nothing is "here"; Update Focus / Clock Out
+    // review put the current job first with an explicit label.
+    const currentJobId = useLastLike === 'clockIn' ? null : openSession?.job_ledger_id ?? null
     return (
       <div
         style={{
@@ -1307,18 +1334,20 @@ export default function ClockInOutButton({
           marginBottom: '0.5rem',
         }}
       >
-        {scheduledDispatchJobs.map((d) => {
+        {orderScheduledPicksCurrentFirst(scheduledDispatchJobs, currentJobId).map(({ pick: d, isCurrent }) => {
           const u = dispatchScheduledJobToUnified(d)
           const win = d.windowsLabel?.trim()
           const { title, address } = formatUnifiedJobSchedulePrimaryLine(u, prefixMap)
           const isSelected = selectedAssociation?.source === 'job' && selectedAssociation.id === d.jobId
           const line1 = win ? `${win} | ${title}` : title
-          const titleAttr = address ? `${line1}\n${address}` : line1
+          const line1WithHere = isCurrent ? `${YOU_ARE_HERE_LABEL} — ${line1}` : line1
+          const titleAttr = address ? `${line1WithHere}\n${address}` : line1WithHere
           return (
             <button
               key={d.jobId}
               type="button"
               disabled={disabled}
+              aria-current={isCurrent ? 'true' : undefined}
               title={titleAttr || undefined}
               onClick={() => {
                 onAssociatePickBefore?.()
@@ -1338,7 +1367,25 @@ export default function ClockInOutButton({
                 ...(isSelected ? { ...base, ...selected } : base),
               }}
             >
-              <div>{line1}</div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
+                {isCurrent ? (
+                  <span
+                    style={{
+                      padding: '0.05rem 0.4rem',
+                      fontSize: '0.6875rem',
+                      fontWeight: 600,
+                      borderRadius: 999,
+                      border: '1px solid var(--border-green)',
+                      background: 'var(--bg-green-tint)',
+                      color: 'var(--text-green-700)',
+                      flexShrink: 0,
+                    }}
+                  >
+                    {YOU_ARE_HERE_LABEL}
+                  </span>
+                ) : null}
+                <span>{line1}</span>
+              </div>
               {address ? (
                 <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.15rem' }}>{address}</div>
               ) : null}
@@ -1370,7 +1417,7 @@ export default function ClockInOutButton({
     const selected =
       useLastLike === 'clockIn'
         ? clockInSelectionOutlineSelected
-        : { border: '1px solid var(--border-400)', background: 'var(--bg-muted)' }
+        : focusOrReviewSelectedPickStyle
     return (
       <div
         style={{
@@ -1492,6 +1539,48 @@ export default function ClockInOutButton({
         >
           Use last: {formatUnifiedResult(lastSelectedJobBid, prefixMap)}
         </button>
+      </div>
+    )
+  }
+
+  /** J2-F8: standing guidance in the Clock In sheet when nothing is scheduled, assigned, or on the working board. */
+  function renderClockInNoPicksGuidance() {
+    const show = showClockInNoPicksGuidance({
+      loading: assignedJobsListLoading,
+      quickPicksEmpty,
+      searchText: unifiedSearchText,
+      hasSelection: selectedAssociation != null,
+    })
+    if (!show) return null
+    const parts = clockInNoPicksGuidanceParts(clockInDispatchPhone?.display ?? null)
+    return (
+      <div
+        role="status"
+        style={{
+          marginBottom: '0.5rem',
+          padding: '0.5rem 0.65rem',
+          border: '1px solid var(--border-amber-soft)',
+          borderRadius: 6,
+          background: 'var(--bg-amber-tint)',
+          fontSize: '0.8125rem',
+          lineHeight: 1.4,
+          color: 'var(--text-700)',
+        }}
+      >
+        <div style={{ fontWeight: 600 }}>{CLOCK_IN_NO_PICKS_HEADLINE}</div>
+        <div style={{ marginTop: '0.15rem' }}>
+          {parts.before}
+          {parts.phone && clockInDispatchPhone ? (
+            <a
+              href={`tel:${clockInDispatchPhone.telHref}`}
+              aria-label={`Call dispatch at ${parts.phone}`}
+              style={{ fontWeight: 600, color: 'var(--text-blue-700)', whiteSpace: 'nowrap' }}
+            >
+              {parts.phone}
+            </a>
+          ) : null}
+          {parts.after}
+        </div>
       </div>
     )
   }
@@ -1760,6 +1849,7 @@ export default function ClockInOutButton({
               )}
               {renderScheduledDispatchPicks(actionLoading, 'clockIn', () => setAssociationChipFromSearch(false))}
               {renderWorkingBoardBidPicks(actionLoading, 'clockIn', () => setAssociationChipFromSearch(false))}
+              {renderClockInNoPicksGuidance()}
               {renderUnifiedJobBidSearchRow(actionLoading)}
               {unifiedSearchText.trim() !== '' &&
                 (unifiedSearchResults.length > 0 || assignedJobsListLoading) && (
