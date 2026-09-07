@@ -194,6 +194,7 @@ import { JobFormCreateCustomerModal } from './JobFormCreateCustomerModal'
 import { extractContactFromCustomer, getCustomerDisplay } from '../../lib/jobs/jobFormCustomerDisplay'
 import { formatJobFormBidLinkTitle } from '../../lib/jobs/jobFormBidLinkTitle'
 import { isAssistantLike } from '../../lib/subcontractorLikeRole'
+import { BID_OUTCOME_DERIVED_TOAST_MS, bidOutcomeDerivedMessage, shouldAnnounceDerivedOutcome } from '../../lib/bids/bidOutcomeFromJob'
 
 type EstimatesRow = Database['public']['Tables']['estimates']['Row']
 type CustomerRow = Database['public']['Tables']['customers']['Row']
@@ -781,6 +782,8 @@ export default function JobFormModal({
   const persistedPicturesLinkRef = useRef('')
   /** Last saved customer phone — a blank→set transition auto-closes the job's red-phone request. */
   const persistedCustomerPhoneRef = useRef('')
+  /** v2.3069: the bid the row last carried — a changed link is when the trigger moves the bid, and when we tell the person. */
+  const persistedBidIdRef = useRef('')
 
   // Property-record candidates (v2.2638): the job customer's + GC's saved
   // addresses. Fail-soft; a stale link (customer changed away from the row's
@@ -858,6 +861,21 @@ export default function JobFormModal({
     }
   }
 
+  /**
+   * v2.3069: the DB trigger `jobs_ledger_bid_outcome_from_job` marks a bid Started or
+   * complete the moment a job carries its id. The owner asked that the person be told:
+   * read the bid before and after our own write, toast only when the outcome moved.
+   */
+  type BidOutcomeRead = { outcome: unknown; bid_number: string | null; project_name: string | null }
+  async function readBidOutcomeForToast(id: string): Promise<BidOutcomeRead | null> {
+    const { data } = await supabase.from('bids').select('outcome, bid_number, project_name').eq('id', id).maybeSingle()
+    return (data as BidOutcomeRead | null) ?? null
+  }
+  function announceDerivedBidOutcome(before: BidOutcomeRead | null, after: BidOutcomeRead | null): void {
+    if (!shouldAnnounceDerivedOutcome(before?.outcome, after?.outcome)) return
+    showToast(bidOutcomeDerivedMessage({ bidNumber: after?.bid_number, projectName: after?.project_name, before: before?.outcome }), 'success', BID_OUTCOME_DERIVED_TOAST_MS)
+  }
+
   async function persistIdentitySlice(): Promise<boolean> {
     const jobId = autosaveJobIdRef.current
     const existingMaster = editingMasterUserIdRef.current
@@ -872,8 +890,15 @@ export default function JobFormModal({
         customers: customersRef.current,
         developments: developmentsRef.current,
       })
+      const nextBidId = fields.bidId.trim()
+      const bidLinkChanged = nextBidId !== persistedBidIdRef.current
+      const bidBefore = bidLinkChanged && nextBidId ? await readBidOutcomeForToast(nextBidId) : null
       const { error: updErr } = await supabase.from('jobs_ledger').update(payload).eq('id', jobId)
       if (updErr) throw updErr
+      if (bidLinkChanged) {
+        persistedBidIdRef.current = nextBidId
+        if (nextBidId) announceDerivedBidOutcome(bidBefore, await readBidOutcomeForToast(nextBidId))
+      }
       const newPicturesLink = fields.jobPicturesLink.trim()
       const newPhone = fields.customerPhone.trim()
       const autoCloses = pickJobDispatchAutoCloses({
@@ -1610,6 +1635,7 @@ export default function JobFormModal({
     setJobPicturesLink(job.job_pictures_link ?? '')
     persistedPicturesLinkRef.current = (job.job_pictures_link ?? '').trim()
     persistedCustomerPhoneRef.current = (job.customer_phone ?? '').trim()
+    persistedBidIdRef.current = job.bid_id ?? ''
     setJobPlansLink(job.job_plans_link ?? '')
     setProjectFilesPlansExpanded(false)
     setPayments(paymentRowsFromJob(job))
@@ -3247,6 +3273,7 @@ export default function JobFormModal({
     // below (B3); the insert leaves it at its DB default.
     try {
       const effectiveMasterId = await resolveEffectiveJobMasterUserId(supabase, authUser.id, projectId || null)
+      const bidBefore = bidId ? await readBidOutcomeForToast(bidId) : null
 
       const resolvedCustomerIdNew = resolveCustomerIdForJobPayload(
         customerId,
@@ -3302,6 +3329,7 @@ export default function JobFormModal({
         // tell the bid surfaces so the "J#### opened from this bid" chip appears without a reload.
         recordNavClick(authUser?.id, authRole, 'job_created', jobCreatedTelemetryTarget({ bidId, projectId }))
         if (bidId) window.dispatchEvent(new CustomEvent<JobCreatedFromBidDetail>(JOB_CREATED_FROM_BID_EVENT, { detail: { bidId, jobId } }))
+        if (bidId) announceDerivedBidOutcome(bidBefore, await readBidOutcomeForToast(bidId))
       }
       if (customerId && dateMet.trim()) {
         const c = customers.find((x) => x.id === customerId)

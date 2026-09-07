@@ -30,6 +30,8 @@ What does **not** come over: the bid's own line items, schedule blocks, crew, da
 
 Once a job exists from a bid, the Job block in Edit Bid reads {{chip:green|J1007 opened from this bid}} with {{button:blue|Open the job}} beside it — that opens the job window. The Bid Board's **Links** column shows the same green **J1007** chip. So "did we already open this one?" has an answer on the bid itself.
 
+And the job shows on the bid: the moment a job carries the bid, the bid's outcome moves to {{chip:blue|Started or complete}} by itself, and a toast names the bid for about five seconds as the job saves. That happens whichever door you came through — this button, **New Job → Import**, or a signed estimate — and bids that already had a job were caught up. Clearing the link later never clears the outcome; that stays a human call.
+
 Need a second job from the same bid (a phase two, a split scope)? Press **Create another job**. New Job asks first — *A job already exists from this bid* — and **Create another job** goes ahead while **Cancel** leaves everything as it was.
 
 ## Visits scheduled on the bid

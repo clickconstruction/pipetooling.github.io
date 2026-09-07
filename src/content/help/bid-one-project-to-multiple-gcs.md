@@ -57,6 +57,8 @@ Mark Southern Post Won? This marks the other GC (Burd & Assoc.) Lost — GC lost
 
 The fastest door is the win itself: set the winner's pill to {{chip:green|won}} — on the Bid Board line, in Followup's **Sent to — by GC**, or in Edit Bid — and a small **open the job →** link appears beside it (Edit Bid's **Job** block shows {{button:green|Open the job}}). One tap opens **New Job** filled from that GC's packet. The old way — **New Job → Import → the bid** — runs the same fill. See *turn a won bid into a job*.
 
+Once the job exists, the bid marks itself {{chip:blue|Started or complete}} — you will see a toast naming the bid for a few seconds as the job saves. Nobody has to go back and set it.
+
 Either way the job needs to know **which GC gave you the job** — that GC becomes the job's GC/Builder, not automatically the bid's own.
 
 - If one GC is already marked {{chip:green|won}}, the import uses them without asking.
