@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { Database } from '../types/database'
+import { APP_CALENDAR_TZ } from '../utils/dateUtils'
 import {
   PAID_TIME_OFF_LABEL,
   UNPAID_TIME_OFF_LABEL,
@@ -19,7 +20,7 @@ const template = (p: Partial<TemplateRow> = {}): TemplateRow =>
     segment_a_duration_minutes: 480,
     segment_b_start_local: null,
     segment_b_duration_minutes: null,
-    timezone: 'America/Chicago',
+    timezone: APP_CALENDAR_TZ,
     exclude_weekends: true,
     ...p,
   }) as unknown as TemplateRow
@@ -106,7 +107,7 @@ describe('resolveCalendarWorkday', () => {
     const r = resolveCalendarWorkday({
       workDateYmd: THU,
       timeOffRows: [],
-      template: template({ timezone: 'America/Chicago' }),
+      template: template({ timezone: APP_CALENDAR_TZ }),
       overrideForDate: override({ mode: 'continuous', segment_a_start_local: '10:00:00', timezone: 'America/New_York' }),
     })
     // start from the override, duration (480) from the template, zone from the override
