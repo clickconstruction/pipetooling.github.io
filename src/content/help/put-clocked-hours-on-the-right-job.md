@@ -6,7 +6,7 @@ keywords: crew jobs, crew bids, team labor, assignments, link session, split day
 order: 36
 ---
 
-The **Crew Jobs / Bids** table (Jobs → **Team Labor**, and the same block on Quickfill) shows, for one day, each person's hours and which job or bid carries them. That split is not typed in — it comes from the person's **approved clock sessions**. The {{button:outline|+}} on a row puts a job on the sessions, and the split follows.
+The **Crew Jobs / Bids** table (Quickfill → Crew Jobs / Bids) shows, for one day, each person's hours and which job or bid carries them. (Jobs → **Team** is the week board — see [read the Team board](?g=read-the-team-board).) That split is not typed in — it comes from the person's **approved clock sessions**. The {{button:outline|+}} on a row puts a job on the sessions, and the split follows.
 
 ## Read the row
 

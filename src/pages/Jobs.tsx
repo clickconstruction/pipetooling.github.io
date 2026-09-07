@@ -48,7 +48,7 @@ import {
 } from '../components/jobs/JobSummaryCostCellDrilldownModal'
 import { useJobThreadNotes } from '../hooks/useJobThreadNotes'
 import { useSubLaborLedger } from '../hooks/useSubLaborLedger'
-import { CrewJobsBlock } from '../components/CrewJobsBlock'
+import { JobsTeamTab } from '../components/jobs/JobsTeamTab'
 import { loadTeamLaborData as fetchTeamLaborRows, type TeamLaborRow } from '../utils/teamLabor'
 import type { Database } from '../types/database'
 import type { JobSummaryInvoiceAllocationLine, JobSummaryMercuryAllocationRow } from '../types/jobSummary'
@@ -1646,7 +1646,7 @@ export default function Jobs() {
             }}
             style={pageTabStyle(activeTab === 'combined-labor')}
           >
-            Team Labor
+            Team
           </button>
           )}
           <button
@@ -1883,19 +1883,9 @@ export default function Jobs() {
       {activeTab === 'combined-labor' && (
         <div>
           {error && <p style={{ color: 'var(--text-red-700)', marginBottom: '1rem' }}>{error}</p>}
-          <CrewJobsBlock
-            showCrewJobsSection
-            showTeamLabor
-            jobIdsFilter={jobs.map((j) => j.id)}
-            showTitle={false}
-            collapsibleCrewJobs
-            /* v2.1636: on this tab only devs + controllers edit Crew Jobs / Bids
-               (Quickfill keeps the wider pay-access editing for the
-               unassigned-hours → payroll workflow). */
-            canEdit={authRole === 'dev' || authRole === 'controller' || myRole === 'dev' || myRole === 'controller'}
-            focusTeamLaborJobId={activeTab === 'combined-labor' ? teamLaborJobParam : null}
-            onFocusTeamLaborConsumed={onFocusTeamLaborConsumed}
-          />
+          {/* v2.2974: Team — the crew board (jobs × days against the dispatch plan) replaces the
+              Crew Jobs / Bids matrix + Team Job Labor table here; Quickfill keeps CrewJobsBlock. */}
+          <JobsTeamTab focusJobId={teamLaborJobParam} onFocusConsumed={onFocusTeamLaborConsumed} />
         </div>
       )}
 

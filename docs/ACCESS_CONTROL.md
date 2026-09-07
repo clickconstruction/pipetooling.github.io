@@ -390,8 +390,8 @@ A Contract Book entry can be a **form** (an uploaded PDF the signer fills on the
 - Shared access is assistant-level (view-only, no private notes/financials)
 
 **Jobs**:
-- Team Labor tab: Hidden from assistants (dev and master only)
-- Team Labor → **Crew Jobs / Bids editing** (v2.1636): UI-level, **dev + controller only** on this tab — pay-approved masters see the section read-only. Quickfill's copy keeps the wider pay-access editing (RLS unchanged). Person/days with approved job/bid-anchored clock sessions are locked everywhere with a "⏱ from clock" badge (the sync RPCs recompute those days on approval, so manual edits would be overwritten).
+- Team tab (was Team Labor, v2.2974): Hidden from assistants and superintendents; read-only crew board for everyone who sees it
+- **Crew Jobs / Bids editing** (v2.1636; the block left the Jobs tab in v2.2974 and now lives on Quickfill only): pay-access editing there (RLS unchanged). Person/days with approved job/bid-anchored clock sessions are locked everywhere with a "⏱ from clock" badge (the sync RPCs recompute those days on approval, so manual edits would be overwritten).
 - **Reports tab** — **Recurring Email Reports**: schedules and recipients with optional **include costs** (same product as dev/master; **`user_can_manage_recurring_job_report_scope`**)
 
 **Prospects**:
@@ -632,7 +632,7 @@ A Contract Book entry can be a **form** (an uploaded PDF the signer fills on the
 
 **Jobs**:
 - Reports, Sub Sheet Ledger tabs only (no Stages or Billing)
-- Team Labor and Crew P&L tabs hidden
+- Team and Crew P&L tabs hidden
 
 **Bids**:
 - Draft flow: Bid Board, Builder Review, Counts, Takeoff, Cost Estimate, RFI, Change Order, Lien Release
