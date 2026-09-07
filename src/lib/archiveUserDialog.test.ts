@@ -18,20 +18,16 @@ describe('eligibleReassignTargets', () => {
   })
 })
 
-describe('archiveChoiceBlocker', () => {
+describe('archiveChoiceBlocker (one company, v2.3063: no target to pick)', () => {
   it('blocks until an account is picked', () => {
-    expect(archiveChoiceBlocker({ userSelected: false, customerCount: null, mode: 'keep', reassignTargetId: '' })).toMatch(/Pick the account/)
+    expect(archiveChoiceBlocker({ userSelected: false, customerCount: null })).toMatch(/Pick the account/)
   })
   it('blocks while the customer count is loading', () => {
-    expect(archiveChoiceBlocker({ userSelected: true, customerCount: null, mode: 'keep', reassignTargetId: '' })).toMatch(/Counting/)
+    expect(archiveChoiceBlocker({ userSelected: true, customerCount: null })).toMatch(/Counting/)
   })
-  it('blocks reassign mode without a target only when customers exist', () => {
-    expect(archiveChoiceBlocker({ userSelected: true, customerCount: 3, mode: 'reassign', reassignTargetId: '' })).toMatch(/inherits/)
-    expect(archiveChoiceBlocker({ userSelected: true, customerCount: 0, mode: 'reassign', reassignTargetId: '' })).toBeNull()
-  })
-  it('passes for keep mode and for reassign with a target', () => {
-    expect(archiveChoiceBlocker({ userSelected: true, customerCount: 3, mode: 'keep', reassignTargetId: '' })).toBeNull()
-    expect(archiveChoiceBlocker({ userSelected: true, customerCount: 3, mode: 'reassign', reassignTargetId: 'm1' })).toBeNull()
+  it('passes once the count is in — reassign needs no leader, the company owner account inherits', () => {
+    expect(archiveChoiceBlocker({ userSelected: true, customerCount: 3 })).toBeNull()
+    expect(archiveChoiceBlocker({ userSelected: true, customerCount: 0 })).toBeNull()
   })
 })
 

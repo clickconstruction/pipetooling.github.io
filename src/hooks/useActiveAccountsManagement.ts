@@ -16,6 +16,7 @@ import type { ServiceType, UserRow } from '../types/settingsRows'
 import { cascadePersonNameInPayTables, getPersonNamesForUser } from '../lib/cascadePersonName'
 import { EXTERNAL_MERGE_OPTION_PREFIX } from '../lib/mergeUserAccounts'
 import { archiveChoiceBlocker, archiveRequestBody, type ArchiveReassignMode } from '../lib/archiveUserDialog'
+import { resolveCompanyOwnerUserId } from '../lib/companyOwner'
 import { executeCombinePeople, previewCombinePeople } from '../lib/combinePeople'
 import { formatErrorMessage, withSupabaseRetry } from '../utils/errorHandling'
 import { inviteFormValid, roleChangeConfirmMessage, roleChosen, roleTakesServiceTypes, userCreatedTelemetryTarget, type RoleChoice } from '../lib/inviteUserForm'
@@ -69,7 +70,6 @@ export function useActiveAccountsManagement({ enabled, onDataChanged }: UseActiv
   /** True when the dialog was opened from the top button (shows the account picker). */
   const [archiveConfirmPicker, setArchiveConfirmPicker] = useState(false)
   const [archiveReassignMode, setArchiveReassignMode] = useState<ArchiveReassignMode>('keep')
-  const [archiveReassignTargetId, setArchiveReassignTargetId] = useState('')
   const [archiveConfirmUser, setArchiveConfirmUser] = useState<UserRow | null>(null)
   const [archiveConfirmSubmitting, setArchiveConfirmSubmitting] = useState(false)
   const [archiveConfirmError, setArchiveConfirmError] = useState<string | null>(null)
@@ -103,14 +103,6 @@ export function useActiveAccountsManagement({ enabled, onDataChanged }: UseActiv
   const [editSuperintendentServiceTypeIds, setEditSuperintendentServiceTypeIds] = useState<string[]>([])
   const [editSubcontractorServiceTypeIds, setEditSubcontractorServiceTypeIds] = useState<string[]>([])
   const [editError, setEditError] = useState<string | null>(null)
-  const [convertMasterId, setConvertMasterId] = useState<string>('')
-  const [convertNewMasterId, setConvertNewMasterId] = useState<string>('')
-  const [convertNewRole, setConvertNewRole] = useState<'assistant' | 'subcontractor'>('assistant')
-  const [convertAutoAdopt, setConvertAutoAdopt] = useState<boolean>(true)
-  const [convertSubmitting, setConvertSubmitting] = useState(false)
-  const [convertError, setConvertError] = useState<string | null>(null)
-  const [convertMasterSectionOpen, setConvertMasterSectionOpen] = useState(false)
-  const [convertSummary, setConvertSummary] = useState<string | null>(null)
   const [archivedSectionOpen, setArchivedSectionOpen] = useState(false)
   const [activeAccountsSectionOpen, setActiveAccountsSectionOpen] = useState(false)
 
@@ -702,71 +694,6 @@ export function useActiveAccountsManagement({ enabled, onDataChanged }: UseActiv
     return hasDuplicateInPeople || hasDuplicateInUsers
   }
 
-  async function handleConvertMaster(e: FormEvent) {
-    e.preventDefault()
-    setConvertError(null)
-    setConvertSummary(null)
-
-    if (!convertMasterId || !convertNewMasterId) {
-      setConvertError('Please select both the leader to convert and the new leader owner.')
-      return
-    }
-    if (convertMasterId === convertNewMasterId) {
-      setConvertError('The new leader owner must be different from the leader being converted.')
-      return
-    }
-
-    const masterUser = users.find((u) => u.id === convertMasterId)
-    const newMasterUser = users.find((u) => u.id === convertNewMasterId)
-
-    const masterLabel = masterUser?.name || masterUser?.email || 'Selected leader'
-    const newMasterLabel = newMasterUser?.name || newMasterUser?.email || 'New leader'
-    const roleLabel = convertNewRole === 'assistant' ? 'assistant' : 'subcontractor'
-
-    const confirmed = await confirmDialog({
-      message: `Convert "${masterLabel}" from leader to ${roleLabel} and reassign all of their customers, projects, and people to "${newMasterLabel}"? This cannot easily be undone.`,
-      confirmLabel: 'Convert',
-      danger: true,
-    })
-    if (!confirmed) return
-
-    setConvertSubmitting(true)
-    try {
-      const { data, error } = await (supabase as any).rpc('convert_master_user', {
-        old_master_id: convertMasterId,
-        new_master_id: convertNewMasterId,
-        new_role: convertNewRole,
-        auto_adopt: convertAutoAdopt,
-      })
-      if (error) {
-        setConvertError(error.message)
-        return
-      }
-      const result = (data as {
-        customers_moved?: number
-        projects_moved?: number
-        people_moved?: number
-        new_role?: string
-      }) || {}
-      const c = result.customers_moved ?? 0
-      const p = result.projects_moved ?? 0
-      const pe = result.people_moved ?? 0
-      const nr = result.new_role ?? convertNewRole
-      setConvertSummary(
-        `Converted "${masterLabel}" to ${nr}. Reassigned ${c} customers, ${p} projects, and ${pe} people to "${newMasterLabel}".`
-      )
-      setConvertMasterId('')
-      setConvertNewMasterId('')
-      setConvertNewRole('assistant')
-      setConvertAutoAdopt(true)
-      await reloadAfterMutation()
-    } catch (err) {
-      setConvertError(err instanceof Error ? err.message : 'Unknown error converting leader')
-    } finally {
-      setConvertSubmitting(false)
-    }
-  }
-
   async function loadArchivedUsers() {
     if (!authUser?.id) return
     const { data } = await supabase
@@ -785,7 +712,6 @@ export function useActiveAccountsManagement({ enabled, onDataChanged }: UseActiv
     setArchiveConfirmPicker(!u)
     setArchiveConfirmError(null)
     setArchiveReassignMode('keep')
-    setArchiveReassignTargetId('')
     setArchiveConfirmUser(u ?? null)
     setArchiveConfirmCustomerCount(null)
     if (u) void loadArchiveCustomerCount(u.id)
@@ -805,7 +731,6 @@ export function useActiveAccountsManagement({ enabled, onDataChanged }: UseActiv
     setArchiveConfirmUser(u)
     setArchiveConfirmError(null)
     setArchiveReassignMode('keep')
-    setArchiveReassignTargetId('')
     setArchiveConfirmCustomerCount(null)
     if (u) void loadArchiveCustomerCount(u.id)
   }
@@ -821,8 +746,6 @@ export function useActiveAccountsManagement({ enabled, onDataChanged }: UseActiv
     const blocker = archiveChoiceBlocker({
       userSelected: true,
       customerCount: archiveConfirmCustomerCount,
-      mode: archiveReassignMode,
-      reassignTargetId: archiveReassignTargetId,
     })
     if (blocker) {
       setArchiveConfirmError(blocker)
@@ -830,7 +753,9 @@ export function useActiveAccountsManagement({ enabled, onDataChanged }: UseActiv
     }
     setArchiveConfirmError(null)
     setArchiveConfirmSubmitting(true)
-    const body = archiveRequestBody(u, archiveConfirmCustomerCount, archiveReassignMode, archiveReassignTargetId)
+    // One company (v2.3063): customers that move go to the company owner account — nobody picks a leader.
+    const reassignTo = archiveReassignMode === 'reassign' && authUser?.id ? await resolveCompanyOwnerUserId(supabase, authUser.id) : ''
+    const body = archiveRequestBody(u, archiveConfirmCustomerCount, archiveReassignMode, reassignTo)
     const { data, error: eFn } = await supabase.functions.invoke('archive-user', { body })
     setArchiveConfirmSubmitting(false)
     if (eFn) {
@@ -1107,22 +1032,6 @@ export function useActiveAccountsManagement({ enabled, onDataChanged }: UseActiv
     setEditSubcontractorServiceTypeIds,
     editError,
     setEditError,
-    convertMasterId,
-    setConvertMasterId,
-    convertNewMasterId,
-    setConvertNewMasterId,
-    convertNewRole,
-    setConvertNewRole,
-    convertAutoAdopt,
-    setConvertAutoAdopt,
-    convertSubmitting,
-    setConvertSubmitting,
-    convertError,
-    setConvertError,
-    convertMasterSectionOpen,
-    setConvertMasterSectionOpen,
-    convertSummary,
-    setConvertSummary,
     archivedSectionOpen,
     setArchivedSectionOpen,
     activeAccountsSectionOpen,
@@ -1148,8 +1057,6 @@ export function useActiveAccountsManagement({ enabled, onDataChanged }: UseActiv
     archiveConfirmCustomerCount,
     archiveReassignMode,
     setArchiveReassignMode,
-    archiveReassignTargetId,
-    setArchiveReassignTargetId,
     selectArchiveConfirmUser,
     openArchiveConfirm,
     closeArchiveConfirm,
@@ -1172,7 +1079,6 @@ export function useActiveAccountsManagement({ enabled, onDataChanged }: UseActiv
     closeSetPassword,
     handleSetPassword,
     checkDuplicateName,
-    handleConvertMaster,
     loadArchivedUsers,
     loadServiceTypes,
   }
