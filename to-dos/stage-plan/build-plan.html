@@ -1,0 +1,166 @@
+<meta charset="utf-8">
+<title>Stage Plan Build Plan</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,600;8..60,700&family=Inter:wght@400;500;600;700&display=swap">
+<style>
+  :root { --bg: #f2f1ee; --fg: #1b2430; --muted: #5d6874; --rule: #d9d6cf; --panel: #ffffff; --accent: #b0662f; --ok: #1f7a3a; --warn: #92400e; --warn-bg: #fef3c7; --code-bg: #f6f4ef; }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg: #171a1f; --fg: #e8e6e1; --muted: #a2a9b3; --rule: #333941; --panel: #1f242b; --accent: #d08a55; --ok: #5cc27b; --warn: #fcd34d; --warn-bg: #3a2f10; --code-bg: #262b33; } }
+  :root[data-theme="dark"] { --bg: #171a1f; --fg: #e8e6e1; --muted: #a2a9b3; --rule: #333941; --panel: #1f242b; --accent: #d08a55; --ok: #5cc27b; --warn: #fcd34d; --warn-bg: #3a2f10; --code-bg: #262b33; }
+
+  body { background: var(--bg); color: var(--fg); font-family: Inter, -apple-system, 'Segoe UI', Roboto, sans-serif; font-size: 14.5px; line-height: 1.5; }
+  .wrap { max-width: 960px; margin: 0 auto; padding: 36px 22px 64px; }
+  h1 { font-family: 'Source Serif 4', Georgia, serif; font-weight: 700; font-size: 32px; letter-spacing: -0.01em; margin: 0 0 6px; text-wrap: balance; }
+  h2 { font-family: 'Source Serif 4', Georgia, serif; font-weight: 700; font-size: 22px; margin: 40px 0 10px; }
+  h3 { font-size: 15px; font-weight: 700; margin: 22px 0 6px; }
+  p { margin: 0 0 12px; max-width: 72ch; }
+  .lede { color: var(--muted); font-size: 15.5px; }
+  b { font-weight: 600; }
+  code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12.5px; background: var(--code-bg); border: 1px solid var(--rule); border-radius: 4px; padding: 0 4px; }
+  ul, ol { margin: 0 0 12px; padding-left: 22px; max-width: 76ch; }
+  li { margin: 3px 0; }
+  .rules { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(210px, 100%), 1fr)); gap: 12px; margin: 14px 0 6px; }
+  .rule { background: var(--panel); border: 1px solid var(--rule); border-radius: 10px; padding: 12px 14px; font-size: 13.5px; }
+  .rule b { display: block; margin-bottom: 3px; }
+  .rule span { color: var(--muted); }
+  .tbl { overflow-x: auto; margin: 10px 0 14px; }
+  table { border-collapse: collapse; width: 100%; font-size: 13.5px; }
+  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--rule); vertical-align: top; }
+  th { font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); font-weight: 700; white-space: nowrap; }
+  td.k { white-space: nowrap; font-weight: 600; }
+  .pr { background: var(--panel); border: 1px solid var(--rule); border-radius: 12px; padding: 16px 18px; margin: 14px 0; }
+  .pr h3 { margin: 0 0 4px; font-size: 16px; display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+  .pr h3 .size { font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--accent); font-weight: 700; }
+  .pr h3 .dep { font-size: 12px; color: var(--muted); font-weight: 400; margin-left: auto; }
+  .pr .why { color: var(--muted); margin-bottom: 8px; }
+  .pr .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr)); gap: 6px 22px; }
+  .pr .grid > div > em { display: block; font-style: normal; font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); font-weight: 700; margin: 6px 0 2px; }
+  .pr ul { margin: 0; font-size: 13.5px; }
+  .decide { background: var(--warn-bg); color: var(--fg); border: 1px solid var(--rule); border-radius: 10px; padding: 12px 16px; }
+  .decide li b { color: var(--warn); }
+  .decide li b.done { color: var(--ok); }
+  .seq { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin: 8px 0 14px; font-size: 13px; }
+  .seq span { background: var(--panel); border: 1px solid var(--rule); border-radius: 999px; padding: 4px 10px; font-weight: 600; }
+  .seq i { color: var(--muted); font-style: normal; }
+  .small { font-size: 12.5px; color: var(--muted); }
+</style>
+
+<div class="wrap">
+  <h1>Stage Plan: build plan</h1>
+  <p class="lede">Repo copy: <code>to-dos/stage-plan/</code>. Six stacked PRs that turn the mockups into the product: the line item becomes the stage record, the Bill tab and the generator set it, the Edit tab reads it back with a customer preview, and the GC portal shows a simple sequence in the company's voice. Each PR ships and deploys on its own. Mockups: <b>Stage Plan in the Job Modal</b> and <b>GC Stages Sample Fixture</b> in the artifact gallery.</p>
+
+  <h2>The four rules everything follows</h2>
+  <div class="rules">
+    <div class="rule"><b>The line item is the record</b><span>Order and kind live on <code>jobs_ledger_fixtures</code>. Bill sets them, Edit reads them, the portal shows them, draws follow them.</span></div>
+    <div class="rule"><b>Order rows wait; Any rows don't</b><span>Numbered stages start when the one above passes. Diamond stages have their own dates. A plain line item is neither.</span></div>
+    <div class="rule"><b>The GC sees our crew, never a sub</b><span>No names, no "offered", one live stage at a time, one ask link on the next stage.</span></div>
+    <div class="rule"><b>Draws follow stages</b><span>An Order stage bills when it passes; an Any stage bills when it's done; a plain line rides on the final draw. Nothing bills out of order.</span></div>
+  </div>
+
+  <h2>Data model</h2>
+  <p>One additive migration, <code>SET lock_timeout = '3s'</code>, idempotent, no new table.</p>
+  <div class="tbl"><table>
+    <tr><th>Column</th><th>Table</th><th>Type</th><th>Meaning</th></tr>
+    <tr><td class="k">stage_kind</td><td><code>jobs_ledger_fixtures</code></td><td><code>text</code> check in <code>('order','any')</code>, null</td><td>null = plain line item. Order among <code>order</code> rows is the existing <code>sequence_order</code>.</td></tr>
+    <tr><td class="k">shared_with_gc</td><td><code>jobs_ledger_fixtures</code></td><td><code>boolean</code> default false</td><td>The eye. Replaces <code>job_stage_windows.offered_to_gc</code> as the per-stage share flag; the job-level <code>jobs_ledger.gc_shares_stage_dates</code> stays as the master.</td></tr>
+    <tr><td class="k">backfill</td><td>both</td><td>two <code>UPDATE</code>s</td><td>Every existing fixture becomes <code>stage_kind = 'any'</code>; <code>offered_to_gc = true</code> on its window becomes <code>shared_with_gc = true</code>. <code>offered_to_gc</code> stays for one release, read nowhere new.</td></tr>
+  </table></div>
+  <p>Nothing else moves: windows stay on <code>job_stage_windows</code> (one per fixture), picks and change requests on <code>step_commitments</code>, progress on the sheet, asks on the window. "Done" for an Any stage is the sheet's <code>mark_work_done</code>; "passed" for an Order stage is the sheet reaching inspection-passed, as the GC card already reads it.</p>
+
+  <h2>One kernel, three views</h2>
+  <p><code>src/lib/jobs/stagePlan.ts</code>, pure and unit-tested, built in PR 1 and consumed by every later PR:</p>
+  <ul>
+    <li><code>buildStagePlan({ fixtures, windows, orders, sheets, invoices, todayYmd })</code> → rows in display order, each with <code>kind</code>, <code>number</code> (Order rows only), <code>badge</code> (done / live / later / any / any-done / none), <code>stateLine</code> (the words on the second line), <code>window</code>, <code>pick</code>, <code>pct</code>, <code>draw</code> (paid / billed / ready / waits / later / none), <code>sharedWithGc</code>.</li>
+    <li><code>headline(plan)</code> → "Stage 2 of 4 · Top-out · on site now" (Order rows only count toward N of M).</li>
+    <li><code>billable(plan)</code> → which rows are ready to bill and why; the Bill tab and the Ready to Bill pipeline both read this, so "ready" is one fact.</li>
+    <li><code>gcView(plan)</code> → the customer's rows: no names, Order rows as the sequence, shared Any rows under "Also on this job", the ask allowed on the next Order row only.</li>
+  </ul>
+
+  <h2>The PR train</h2>
+  <div class="seq"><span>1 Data + kernel</span><i>→</i><span>2 Bill tab</span><i>→</i><span>3 Generator</span><i>→</i><span>4 Edit read-out + drawer</span><i>→</i><span>5 GC card</span><i>→</i><span>6 Guides + screenshots</span></div>
+  <p class="small">Stacked the way the scheduling train was: each branch off its parent, <code>rebase --onto</code> after the parent squashes, base to main, arm auto-merge. Versions via <code>npm run claim</code> at write time, never derived. Deploy per PR: client, then <code>db push</code> (PR 1 only), then functions (PR 5 only).</p>
+
+  <div class="pr">
+    <h3>PR 1 · Data and the kernel <span class="size">M</span><span class="dep">no dependency</span></h3>
+    <div class="why">Everything downstream reads one plan. Ship the columns and the pure logic first so PRs 2–5 are UI only.</div>
+    <div class="grid">
+      <div><em>Builds</em><ul><li>Migration: two columns + backfill + <code>docs/migrations/</code> fragment.</li><li><code>stagePlan.ts</code> with the four functions above and a fixture-based test file (order numbering, any-time separation, plain rows, headline, billable, gcView never emits a name).</li><li><code>src/types/database.ts</code> regenerated.</li></ul></div>
+      <div><em>Ships with</em><ul><li>Release note (infra), docs fragment, session card.</li></ul><em>Live check</em><ul><li>After <code>db push</code>: every fixture reads <code>stage_kind = 'any'</code>; nothing visible changes yet.</li></ul></div>
+    </div>
+  </div>
+
+  <div class="pr">
+    <h3>PR 2 · Bill tab: the line item sets the stage <span class="size">L</span><span class="dep">after PR 1</span></h3>
+    <div class="why">The owner surface. Order / Any / — on the second line of every row, the badge on the left, the draw bar cut by stage, the invoice list naming its stage.</div>
+    <div class="grid">
+      <div><em>Builds</em><ul><li><code>JobFormFixturesSection</code>: badge column, second line with the selector and <code>stateLine</code>; selector writes <code>stage_kind</code> on the row; ▲▼ unchanged.</li><li><code>JobFormSegmentsBar</code>: blocks in plan order with the row's <code>draw</code> state; "Bill it" on an Any row that is done and unbilled (reuses the create-invoice-from-segments path with that one segment ticked).</li><li>Invoice list: "Draw N · name" labels from the plan; a "Later" row for the next unbilled Order stage.</li><li>Change-order apply (<code>estimateChangeOrder.ts</code> / <code>CreateJobFromEstimateModal</code>): the new fixture lands with <code>stage_kind = 'any'</code>, <code>shared_with_gc = false</code>.</li><li>Ready to Bill pipeline reads <code>billable()</code> for the "capable" list so the two agree.</li></ul></div>
+      <div><em>Ships with</em><ul><li>Guide <i>split a job into stages and bill stage by stage</i> rewritten around the selector.</li><li>Render smoke for the fixtures section; kernel tests already cover the words.</li></ul><em>Live check</em><ul><li>On a test job: flip a row to Any, see the diamond, apply a change order, see it arrive as Any and hidden; the draw bar reorders; "Bill it" breaks off one invoice.</li></ul></div>
+    </div>
+  </div>
+
+  <div class="pr">
+    <h3>PR 3 · Multiple Segment Generator <span class="size">S</span><span class="dep">after PR 2</span></h3>
+    <div class="why">The fast path has to produce the same record the slow path does.</div>
+    <div class="grid">
+      <div><em>Builds</em><ul><li>Stage column with Order / Any / — per segment; presets carry kinds (Commercial → 4 Order, Residential → 3 Order).</li><li>"+ Change order" preset: an Any segment with its own dollar amount, outside the percentage split; the allocation line splits "in order" from "outside the split".</li><li>Add to Job writes <code>stage_kind</code> with each appended fixture.</li><li>Kernel: the split math moves to a pure helper with the kinds, tested.</li></ul></div>
+      <div><em>Ships with</em><ul><li>Generator section of the same guide; release note.</li></ul><em>Live check</em><ul><li>Generate Commercial on a blank test job, add a change order segment, Add to Job, read the Bill tab.</li></ul></div>
+    </div>
+  </div>
+
+  <div class="pr">
+    <h3>PR 4 · Edit tab read-out and the customer drawer <span class="size">M</span><span class="dep">after PR 2; PR 5's card component can land here as a stub</span></h3>
+    <div class="why">The team sees the plan where they edit the job, decides what the customer sees, and checks it without leaving the dialog.</div>
+    <div class="grid">
+      <div><em>Builds</em><ul><li><code>JobFormStagesGroup</code> under the address, above Account man: In order / Any time lists from the plan, window or pick chip, the eye writing <code>shared_with_gc</code>, "See it as the customer", "Set stages on Bill →".</li><li>Drawer beside the dialog rendering the portal's Stages card component with <code>gcView(plan)</code>; "Open the portal" uses the existing sample / preview route.</li><li><code>JobGcStageSharingSwitches</code> stays as the master; the Subs → Work GC column loses Offer / Withdraw / bundle buttons and shows the eye state read-only with "set on Edit".</li><li><code>offerNextStage.ts</code>: "offer the next stage when one passes" flips the next Order row's <code>shared_with_gc</code>.</li></ul></div>
+      <div><em>Ships with</em><ul><li>Guide <i>show a GC the stages you plan</i> rewritten (eye, drawer, no Offer button).</li><li>Render smoke for the group and the drawer.</li></ul><em>Live check</em><ul><li>Toggle the eye on a row, open the drawer, see it appear; open the real portal link, same card.</li></ul></div>
+    </div>
+  </div>
+
+  <div class="pr">
+    <h3>PR 5 · The GC card in the company's voice <span class="size">M</span><span class="dep">after PR 4</span></h3>
+    <div class="why">Fixes the leak that shipped in v2.2933 and replaces six states with a sequence.</div>
+    <div class="grid">
+      <div><em>Builds</em><ul><li><code>_shared/gcStages.ts</code>: reads fixtures with <code>shared_with_gc</code> instead of <code>offered_to_gc</code>; emits <code>gcView</code> rows: <code>done / now / next / later</code> and an <code>also</code> list; no <code>who</code>, no <code>offered</code>; percent for the live row only; <code>askable</code> true on the next Order row only.</li><li><code>customer-portal</code> function: new payload shape; <code>submit-portal-request</code> rejects asks on rows that are not the next one.</li><li><code>CustomerPortal.tsx</code> Stages card → the sequence: headline, numbered rows with check / filled / hollow dots, progress bar in words, "Also on this job"; <code>PortalStageAsk</code> mounts on the next row, copy "we're picking new days".</li><li>Sample GC fixture gains the four entries so <i>What customers see → GC</i> shows the card.</li></ul></div>
+      <div><em>Ships with</em><ul><li>Kernel tests: never a name, one live row, ask only on next.</li><li>Deploy <code>customer-portal</code> and <code>submit-portal-request</code> after the client.</li><li>Release note (fix + feature).</li></ul><em>Live check</em><ul><li>Sample GC portal shows the card; a real GC link on a shared job shows the sequence with no sub name; the ask lands in dispatch as before.</li></ul></div>
+    </div>
+  </div>
+
+  <div class="pr">
+    <h3>PR 6 · Guides and screenshots <span class="size">S</span><span class="dep">after PR 5</span></h3>
+    <div class="why">Real captures now exist without prod test data: the sample GC portal, the Edit drawer, and a test job's Bill tab.</div>
+    <div class="grid">
+      <div><em>Builds</em><ul><li>Hub guide <i>schedule a sub across every surface</i>: the GC section and the Bill section re-shot; the three missing GIFs (GC card, drawer, Bill rows).</li><li><code>PROJECT_DOCUMENTATION.md</code> / <code>GLOSSARY.md</code>: stage kind, the eye, draws follow stages.</li></ul></div>
+      <div><em>Live check</em><ul><li>Settings → Guides renders every GIF; the drift tests pass.</li></ul></div>
+    </div>
+  </div>
+
+  <h2>Decisions</h2>
+  <div class="decide"><ul>
+    <li><b class="done">Default kind for a hand-added line item: Any time.</b> Settled 2026-09-07.</li>
+    <li><b class="done">A stage is done when the customer pays its bill.</b> Settled 2026-09-07. Passing inspection lets the next Order stage start and makes the draw billable; the green check and "Stage N of M" advancing mark paid.</li>
+    <li><b class="done">Backfill: every existing line item becomes Any time.</b> Settled 2026-09-07. Users stage a job by flipping rows to Order when they want to.</li>
+    <li><b class="done">Order and kind are set on Bill; the selector sits on each row's second line; Stages sits above the job details on Edit.</b> Settled.</li>
+    <li><b>Where a plain line item bills.</b> Proposed: with the final Order draw; alone when the job has no Order rows.</li>
+    <li><b>Offer to GC on Subs → Work.</b> Proposed: removed with the bundles; the eye on Edit is the only per-stage share control.</li>
+    <li><b>What makes an Any stage billable.</b> Proposed: the sheet's <i>my work here is done</i> or 100%.</li>
+  </ul></div>
+
+  <h2>Risks and how each PR contains them</h2>
+  <ul>
+    <li><b>Ready to Bill drift.</b> Two definitions of "billable" would fight. PR 2 makes the pipeline read the kernel; the kernel's tests are the contract.</li>
+    <li><b>Invoiced rows.</b> A fixture already broken off into an invoice locks today; the selector stays disabled on locked rows so a paid draw can't change kind.</li>
+    <li><b>The covered-hatching logic</b> in the segment bar is subtle (dollar bills not tied to a line). PR 2 keeps that code path and only changes block order and labels.</li>
+    <li><b>Old clients during PR 5's function deploy.</b> The new payload keeps the old field names for one release with <code>who</code> always null, so a stale service worker never shows a name.</li>
+    <li><b>Version races.</b> Claim at write time; expect main to move mid-train; renumber by rebase.</li>
+  </ul>
+
+  <h2>Sizing</h2>
+  <div class="tbl"><table>
+    <tr><th>PR</th><th>Size</th><th>Files touched</th><th>Deploy</th></tr>
+    <tr><td class="k">1 Data + kernel</td><td>M</td><td>migration, <code>stagePlan.ts</code> + tests, types</td><td>client, <code>db push</code></td></tr>
+    <tr><td class="k">2 Bill tab</td><td>L</td><td>fixtures section, segments bar, invoice list, CO apply, Ready to Bill list, guide</td><td>client</td></tr>
+    <tr><td class="k">3 Generator</td><td>S</td><td>generator modal + helper + tests, guide</td><td>client</td></tr>
+    <tr><td class="k">4 Edit + drawer</td><td>M</td><td>new group, drawer, sharing switches, Subs → Work GC column, offerNextStage, guide</td><td>client</td></tr>
+    <tr><td class="k">5 GC card</td><td>M</td><td>gcStages, customer-portal, submit-portal-request, CustomerPortal, PortalStageAsk, sample fixture, guide</td><td>client, then two functions</td></tr>
+    <tr><td class="k">6 Guides</td><td>S</td><td>hub guide, GIFs, docs</td><td>client</td></tr>
+  </table></div>
+  <p class="small">Roughly two working days end to end with the live checks, in the same shepherding routine as the scheduling train.</p>
+</div>
