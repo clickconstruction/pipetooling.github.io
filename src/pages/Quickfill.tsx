@@ -30,7 +30,6 @@ import { QuickfillNeedsYouSection } from '../components/quickfill/QuickfillNeeds
 import { BilledAwaitingPaymentSection } from '../components/quickfill/BilledAwaitingPaymentSection'
 import { CantReachSection } from '../components/quickfill/CantReachSection'
 import { QuickfillMyInboxSection } from '../components/quickfill/QuickfillMyInboxSection'
-import { CrewJobsSection } from '../components/quickfill/CrewJobsSection'
 import { JobsBillingReminderSection } from '../components/quickfill/JobsBillingReminderSection'
 import { QuickfillCompleteNoBillSection } from '../components/quickfill/QuickfillCompleteNoBillSection'
 import { QuickfillStagesNoCustomerSection } from '../components/quickfill/QuickfillStagesNoCustomerSection'
@@ -96,7 +95,6 @@ const SECTIONS: { id: string; sectionId: string; label: string }[] = [
   { id: 'quickfill-vehicle-odometers', sectionId: 'vehicle-odometers', label: 'Vehicle check-ins' },
   { id: 'quickfill-difficult-people', sectionId: 'difficult-people', label: 'Difficult people' },
   { id: 'quickfill-banking-sorting', sectionId: 'banking-sorting', label: 'Banking sorting' },
-  { id: 'quickfill-crew-jobs', sectionId: 'crew-jobs', label: 'Crew Jobs / Bids' },
   { id: 'quickfill-lost-bid-reasons', sectionId: 'lost-bid-reasons', label: 'Lost bid reasons' },
   { id: 'quickfill-billed-awaiting', sectionId: 'billed-awaiting', label: 'Billed Awaiting Payment' },
   { id: 'quickfill-gc-weekly-review', sectionId: 'gc-weekly-review', label: 'GC weekly review' },
@@ -1190,24 +1188,6 @@ function QuickfillPage() {
             onOpenHistory={() => setMarkHistoryModal({ sectionId: 'banking-sorting', label: 'Banking sorting' })}
           >
             <BankingSortingSnapshotSection />
-          </QuickfillSectionWrapper>
-        )
-      case 'crew-jobs':
-        return (
-          <QuickfillSectionWrapper
-            id={id}
-            sectionId={sectionId}
-            label={label}
-            bannerText={bannerText}
-            withTopDivider={withTopDivider}
-            color={getButtonColor(sectionMarks['crew-jobs']?.marked_at ?? null)}
-            collapsed={isCollapsed('crew-jobs') && !forceExpandedSections.has('crew-jobs')}
-            mark={sectionMarks['crew-jobs']}
-            onMarkUpToDate={() => markSectionUpToDate('crew-jobs')}
-            onOpenNow={() => openSectionNow('crew-jobs')}
-            onOpenHistory={() => setMarkHistoryModal({ sectionId: 'crew-jobs', label: 'Crew Jobs / Bids' })}
-          >
-            <CrewJobsSection />
           </QuickfillSectionWrapper>
         )
       case 'billed-awaiting':

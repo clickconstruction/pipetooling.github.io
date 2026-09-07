@@ -20,7 +20,6 @@ export const QUICKFILL_DEFAULT_SECTION_BANNERS: Readonly<Record<string, string>>
   'vehicle-odometers': 'Do we have a reading and a check-in on every truck?',
   'difficult-people': 'Who needs a conversation this week?',
   'banking-sorting': 'Is every bank transaction sorted to a job?',
-  'crew-jobs': 'Does every crew day have its job split?',
   'billed-awaiting': 'Who owes us, and who do we lean on first?',
   'unpriced-fixtures': 'Does every fixture in the book have a price?',
   'cant-reach': 'Can we reach every prospect we promised to?',

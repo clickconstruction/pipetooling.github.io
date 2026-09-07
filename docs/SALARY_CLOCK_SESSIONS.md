@@ -41,11 +41,11 @@ There is **no** stored salary amount or per-person daily-hours override; the 8 h
 
 **Two rule tiers since 2026-07-13 (Employment tab series, PRs #266–#272):**
 
-1. **Cost/display surfaces** (Hours grid, Due summaries, CrewJobsBlock,
+1. **Cost/display surfaces** (Hours grid, Due summaries, the Team board,
    `teamLabor.ts`, `get_man_hours_by_job()` RPC, unassigned-field-time) — the plain flat 8/0.
    The shared kernel [`src/lib/salariedEffectiveHours.ts`](../src/lib/salariedEffectiveHours.ts)
    is on `main` (PR #182, merged 2026-07-13) and is imported by `People.tsx`,
-   `CrewJobsBlock.tsx`, `quickfill/HoursSection.tsx`, and `HoursUnassignedModal.tsx`.
+   `quickfill/HoursSection.tsx` and `HoursUnassignedModal.tsx` (`CrewJobsBlock.tsx` until v2.2986).
    Note: `src/utils/teamLabor.ts` and `src/lib/people/derivePersonTeamSummary.ts` still
    derive the 8/0 rule **inline** rather than via the kernel.
 2. **Payroll surfaces** (pay-stub generation, Draft Payroll preview + person-hours drilldown) —

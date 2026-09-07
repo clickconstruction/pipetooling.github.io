@@ -391,7 +391,7 @@ A Contract Book entry can be a **form** (an uploaded PDF the signer fills on the
 
 **Jobs**:
 - Team tab (was Team Labor, v2.2974): Hidden from assistants and superintendents. Actions (v2.2978: link / pick job / split day / add session / not coming in / move to plan; v2.2981: Looks right) render for dev, master and controller; each writes to `clock_sessions`, `job_schedule_blocks`, time off, or `team_board_acks` (read any signed-in user; write `is_master_or_dev() OR is_controller()`), never to the crew split
-- **Crew Jobs / Bids editing** (v2.1636; the block left the Jobs tab in v2.2974 and now lives on Quickfill only): pay-access editing there (RLS unchanged). Person/days with approved job/bid-anchored clock sessions are locked everywhere with a "⏱ from clock" badge (the sync RPCs recompute those days on approval, so manual edits would be overwritten).
+- **Crew Jobs / Bids block — retired** (v2.2986; it left the Jobs tab in v2.2974 and Quickfill in v2.2986). Its job: putting a job on a person's hours, is the Team board's actions, People → Hours' assign window and the day audit (all session-first). Person/days with approved job/bid-anchored clock sessions are locked everywhere with a "⏱ from clock" badge (the sync RPCs recompute those days on approval, so manual edits would be overwritten).
 - **Reports tab** — **Recurring Email Reports**: schedules and recipients with optional **include costs** (same product as dev/master; **`user_can_manage_recurring_job_report_scope`**)
 
 **Prospects**:

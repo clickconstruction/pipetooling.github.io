@@ -55,4 +55,4 @@ Top row · Isiah · 0.72 h · *dispatch: JP650 · ATI Schertz 8a–4p* → {{but
 
 ## What it is not
 
-Man hours and cost per job stay on **Pipeline** and **Job Summary**; wages are not on this tab. Putting a job on a person's hours still happens on the clock session (People → Hours, or Quickfill's Crew Jobs / Bids) — see [put a person's clocked hours on the right job](?g=put-clocked-hours-on-the-right-job).
+Man hours and cost per job stay on **Pipeline** and **Job Summary**; wages are not on this tab. Putting a job on a person's hours always happens on the clock session — from this board's actions, or from People → Hours — see [put a person's clocked hours on the right job](?g=put-clocked-hours-on-the-right-job).
