@@ -1,6 +1,6 @@
 # One company — retiring job owners and assistant adoption
 
-**Status:** approved 2026-09-06 (decisions below); Phases 1–5 shipped (v2.2967 / v2.2970 / v2.2972 / v2.2976 / v2.2984 / v2.2987); Phase 5c drop chore pending · **Owner:** Will · **Ask (Will, 2026-09-06):** "Instead of jobs being owned by people and assistants being adopted by specific masters, tear down these walls. There are no job owners; assistants are just assistants and masters are just masters. It is one company, not multiple people operating independently under one company."
+**Status:** approved 2026-09-06 (decisions below); COMPLETE — Phases 1–5c shipped (v2.2967 / v2.2970 / v2.2972 / v2.2976 / v2.2984 / v2.2987 / v2.2995 / v2.2999) · **Owner:** Will · **Ask (Will, 2026-09-06):** "Instead of jobs being owned by people and assistants being adopted by specific masters, tear down these walls. There are no job owners; assistants are just assistants and masters are just masters. It is one company, not multiple people operating independently under one company."
 
 ---
 file: ONE_COMPANY_PLAN.md
@@ -94,6 +94,7 @@ Drop the two retired tables, drop the no-op triggers and dead helpers, and consi
 - **Phase 3b — v2.2976**: "master" → "leader" in every role label, toast, placeholder and help guide (`scripts/leader-rename.py`, 239 replacements; "Master Subcontract Agreement", "master plumber" and every identifier untouched). Developer docs keep the enum name and note the label. Also revokes `company_owner_user_id()` from `anon` (`20260906210000`).
 - **Phase 4 — v2.2984** (`20260907010000_one_company_backfill_owner.sql`): 176 rows on 9 tables repointed to the company owner account with user triggers paused; the two developments guards no-op'd; grant tables + columns commented. **Rename deferred**: ~52 SECURITY DEFINER functions still read `master_assistants` / `master_shares` inline and `sync_company_access_grants()` keeps them complete for the office — renaming would break those gates. Phase 5 sweeps the functions first, then renames/drops and retires the sync.
 - **Phase 5 — v2.2987** (`20260907050000_one_company_retire_grant_tables.sql`): instead of hand-sweeping 45 functions, `master_assistants` / `master_shares` become **views** computed from `users` (owners × assistant/controller/estimator; owners × owners); the tables are renamed `retired_*`; `sync_company_access_grants()` fills only the primary / superintendent tables; the 84 policies naming the pair are re-created byte-identical (`--rebind`) so they bind to the views. **Phase 5c (chore, after a quiet week)**: drop the two retired tables; then the 45 functions can lose their dead adoption branches at leisure.
+- **Phase 5c — v2.2999** (`20260907070000_one_company_drop_retired_grant_tables.sql`): the two retired tables dropped (no CASCADE; 18 rows listed by name in the migration doc). **Plan complete.** Ordinary maintenance: the 45 functions that still name `master_assistants` / `master_shares` read the views; drop those branches when next editing them.
 
 ## Verify (each phase)
 
