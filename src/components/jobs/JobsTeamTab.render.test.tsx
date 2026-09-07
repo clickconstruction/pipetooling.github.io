@@ -89,3 +89,20 @@ describe('JobsTeamTab', () => {
     expect(thu.textContent).toMatch(/Take 5- Seguin/)
   })
 })
+
+describe('JobsTeamTab actions (v2.2978)', () => {
+  it('shows the fix for each chip kind to a dev', async () => {
+    renderWithProviders(<JobsTeamTab />)
+    await screen.findByText(/Sun 8\/30 – Sat 9\/5/)
+    const unlinked = document.querySelector('[data-team-cell="none|2026-09-05|Isiah"]') as HTMLElement
+    const names = (el: HTMLElement) => [...el.querySelectorAll('button')].map((b) => b.textContent?.trim())
+    expect(names(unlinked)).toEqual(['Link to J650', 'Pick job…', 'Split day…'])
+    const miss = document.querySelector('[data-team-cell="job:j650|2026-09-05|Isiah"]') as HTMLElement
+    expect(names(miss)).toEqual(['Add session', 'Not coming in', 'Adjust plan'])
+    const ranLong = document.querySelector('[data-team-cell="job:j878|2026-09-03|Isiah"]') as HTMLElement
+    expect(names(ranLong)).toEqual(['Split day…'])
+    // the picker opens with the session ids of the unlinked chip
+    fireEvent.click(screen.getAllByRole('button', { name: 'Pick job…' })[0]!)
+    expect(await screen.findByText(/Isiah · Sat 9\/5 · 0\.72 h/)).toBeTruthy()
+  })
+})

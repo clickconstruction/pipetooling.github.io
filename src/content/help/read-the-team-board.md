@@ -34,6 +34,19 @@ Four tiles summarise the week: field time clocked against planned, the on-plan p
 
 **Rows: people** flips the board so each row is a person and the chips are jobs, with the week's planned (or salaried target) and clocked bars beside the name. **Hide Office** drops the office rows; **Only exceptions** keeps just the rows with something to look at.
 
+## Acting on a chip
+
+Devs, masters and controllers see the fix on every chip, on every Ledger row, and in the exceptions list. Nothing here edits the split by hand — each button changes the clock session or the dispatch plan and the board reloads.
+
+- **Not on a job** — {{button:blue|Link to J650}} puts the day's dispatch block on the sessions in one tap; {{button:outline|Pick job…}} searches instead; {{button:outline|Split day…}} opens the day editor when the hours belong to two jobs.
+- **Planned, no clock** — {{button:outline|Add session}} records the punch that was missed; {{button:outline|Not coming in}} records an unpaid day off (the plan stays); {{button:outline|Adjust plan}} opens that day in Schedule Dispatch.
+- **Clocked, not planned** — {{button:blue|Move to plan}} adds a dispatch block that matches the clocked span, so the plan learns from what actually happened.
+- **Ran long** — {{button:outline|Split day…}}, in case part of the day belonged elsewhere.
+
+:::example Isiah's Saturday
+Top row · Isiah · 0.72 h · *dispatch: JP650 · ATI Schertz 8a–4p* → {{button:blue|Link to JP650}}. Toast: *Linked 1 session (0.72 h) to JP650 · ATI Schertz — split recomputed from the clock.* The chip moves down onto the ATI Schertz row in green.
+:::
+
 ## What it is not
 
 Man hours and cost per job stay on **Pipeline** and **Job Summary**; wages are not on this tab. Putting a job on a person's hours still happens on the clock session (People → Hours, or Quickfill's Crew Jobs / Bids) — see [put a person's clocked hours on the right job](?g=put-clocked-hours-on-the-right-job).
