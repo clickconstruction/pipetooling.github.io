@@ -1,27 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildJobProfitSummary, laborJobMatchesHcp } from './jobProfitSummary'
-
-describe('laborJobMatchesHcp', () => {
-  it('matches ignoring case and surrounding whitespace', () => {
-    expect(laborJobMatchesHcp(' 880 ', '880')).toBe(true)
-    expect(laborJobMatchesHcp('HCP-42', ' hcp-42 ')).toBe(true)
-  })
-
-  it('rejects different numbers', () => {
-    expect(laborJobMatchesHcp('880', '881')).toBe(false)
-  })
-
-  it('never matches a blank HCP', () => {
-    expect(laborJobMatchesHcp('', '')).toBe(false)
-    expect(laborJobMatchesHcp(null, null)).toBe(false)
-    expect(laborJobMatchesHcp('880', '   ')).toBe(false)
-  })
-
-  it('rejects a blank book number against a real HCP', () => {
-    expect(laborJobMatchesHcp(null, '880')).toBe(false)
-    expect(laborJobMatchesHcp('  ', '880')).toBe(false)
-  })
-})
+import { buildJobProfitSummary } from './jobProfitSummary'
 
 describe('buildJobProfitSummary', () => {
   it('computes profit as revenue minus parts minus labor', () => {

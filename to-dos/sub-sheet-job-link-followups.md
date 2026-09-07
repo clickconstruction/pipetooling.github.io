@@ -17,16 +17,7 @@ Conversion rule for every row: read `job_ledger_id` first; keep the number match
 | `supabase/functions/submit-sub-portal/index.ts:366-372` | `mark_work_done`: finds the job to notify watchers with `.eq('hcp_number', job_number.trim())` — case-sensitive | `sheetRow.job_ledger_id` |
 | `supabase/functions/submit-sub-portal/index.ts:410-425` | `progress`: same lookup to write `job_activity_events` + notify | same |
 
-## C · Per-job client reads (small, one file each)
-
-| Site | What it does | Change |
-|---|---|---|
-| `src/hooks/useJobWorkOrderCoverage.ts:34-39` | `people_labor_jobs.select('id').ilike('job_number', jobNumber)` → sheet ids for the `step_commitments` filter | `.eq('job_ledger_id', jobId)` |
-| `src/components/jobs/JobChargesTimelineStandalone.tsx:50,66-69` | `people_labor_jobs … .eq('job_number', hcp)` for the charges timeline | `.eq('job_ledger_id', jobId)` |
-| `src/components/jobs/JobFormModal.tsx:2283-2291` | Edit Job sub-labor cost box: loads **all** sheets, filters by `hcp_number` only | `.eq('job_ledger_id', jobId)` (also drops the full-table read) |
-| `src/hooks/useJobDetailSubLaborCost.ts:57-81` + `src/lib/jobs/jobProfitSummary.ts:7` (`laborJobMatchesHcp`) | Job Detail profit band: all sheets, `laborJobMatchesHcp` (HCP only) | filter by id; retire `laborJobMatchesHcp` |
-| `src/components/jobs/SheetStoryModal.tsx:121,128` | Sheet story: `jobs.find(hcp === number)` else `jobs_ledger … .ilike('hcp_number', number)` | `sheet.job_ledger_id` → `jobs.find(id)` / `.eq('id')` |
-| `src/lib/subs/offerNextStage.ts:26-30` | Next-stage offer to the GC: sheet number → `jobs_ledger … .eq('hcp_number')` | select `job_ledger_id` on the sheet |
+## C · Per-job client reads — DONE v2.3060
 
 ## D · Sheet → job maps over many sheets
 

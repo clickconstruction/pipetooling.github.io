@@ -1,20 +1,7 @@
 import { laborJobSubCost, type LaborJobCostInput } from './subLaborCost'
 
-/**
- * Case-insensitive, trimmed match of a sub-labor book's `job_number` to a job's
- * HCP # — same normalization Jobs uses for HCP keys. Blank HCP matches nothing.
- */
-export function laborJobMatchesHcp(
-  jobNumber: string | null | undefined,
-  hcpNumber: string | null | undefined,
-): boolean {
-  const hcp = (hcpNumber ?? '').trim().toLowerCase()
-  if (!hcp) return false
-  return (jobNumber ?? '').trim().toLowerCase() === hcp
-}
-
 export type JobProfitSummary = {
-  /** Sub-labor books total (line items + drive cost) for the job's HCP #. */
+  /** Sub-labor sheets total (line items + drive cost) for the sheets linked to the job. */
   laborCost: number
   /**
    * All four Parts Cost buckets — supply house invoices + card charges +

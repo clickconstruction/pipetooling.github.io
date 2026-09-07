@@ -47,7 +47,6 @@ export default function JobChargesTimelineStandalone({
       try {
         const toYmd = (raw: string | null | undefined) =>
           ymdFromDateOnlyOrIso(raw, calendarYmdInAppTzFromIso)
-        const hcp = (job.hcp_number ?? '').trim()
 
         const [snapshot, teamBreakdown, reportsRes, settingsRes, laborJobsRes] = await Promise.all([
           fetchJobMaterialsCostSnapshot(job.id),
@@ -63,12 +62,11 @@ export default function JobChargesTimelineStandalone({
             .from('app_settings')
             .select('key, value_num')
             .in('key', ['drive_mileage_cost', 'drive_time_per_mile']),
-          hcp
-            ? supabase
-                .from('people_labor_jobs')
-                .select('id, assigned_to_name, job_date, created_at, labor_rate, distance_miles')
-                .eq('job_number', hcp)
-            : Promise.resolve({ data: [] as never[] }),
+          // v2.3060: the sheet's job link, not its number text.
+          supabase
+            .from('people_labor_jobs')
+            .select('id, assigned_to_name, job_date, created_at, labor_rate, distance_miles')
+            .eq('job_ledger_id', job.id),
         ])
 
         let mileageCost = 0.7

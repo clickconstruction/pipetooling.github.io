@@ -2243,7 +2243,6 @@ export default function JobFormModal({
       return
     }
 
-    const effectiveHcp = (hcpNumber ?? '').trim() || (editing?.hcp_number ?? '').trim()
     let cancelled = false
 
     setEditJobTeamLaborLoading(true)
@@ -2269,7 +2268,7 @@ export default function JobFormModal({
       }
     })()
 
-    if (!effectiveHcp) {
+    if (!jobId) {
       setEditJobSubLaborLoading(false)
       setEditJobSubLaborData(null)
       setEditJobSubLaborError(false)
@@ -2281,16 +2280,16 @@ export default function JobFormModal({
       void (async () => {
         try {
           const [laborRes, settingsRes] = await Promise.all([
-            supabase.from('people_labor_jobs').select('id, job_number, labor_rate, distance_miles').order('created_at', { ascending: false }),
+            // v2.3060: the sheets on this job by their link — no full-table read, no number compare.
+            supabase.from('people_labor_jobs').select('id, job_number, labor_rate, distance_miles').eq('job_ledger_id', jobId).order('created_at', { ascending: false }),
             supabase.from('app_settings').select('key, value_num').in('key', ['drive_mileage_cost', 'drive_time_per_mile']),
           ])
           if (cancelled) return
           if (laborRes.error) throw new Error(laborRes.error.message)
 
-          const hcpLower = effectiveHcp.toLowerCase()
           type LaborJobLite = { id: string; job_number: string | null; labor_rate: number | null; distance_miles?: number | null }
           const laborJobsData = (laborRes.data ?? []) as LaborJobLite[]
-          const matching = laborJobsData.filter((j) => (j.job_number ?? '').trim().toLowerCase() === hcpLower)
+          const matching = laborJobsData
           const settingsRows = settingsRes.data ?? []
           const byKey = new Map(settingsRows.map((r: { key: string; value_num: number | null }) => [r.key, r.value_num]))
           const mileageCost = byKey.get('drive_mileage_cost') ?? 0.7

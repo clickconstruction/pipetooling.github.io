@@ -50,6 +50,7 @@ export type SheetStoryModalProps = {
 }
 
 type SheetRow = SheetStoryInput['sheet'] & {
+  job_ledger_id?: string | null
   id: string
   labor_rate: number | null
   stage_changed_by: string | null
@@ -109,23 +110,28 @@ export function SheetStoryModal({ sheetId, onClose, jobs, authUserId, onOpenShee
     try {
       const { data: sheetData, error: sheetErr } = await supabase
         .from('people_labor_jobs')
-        .select('id, job_number, address, assigned_to_name, labor_rate, job_date, created_at, stage, stage_changed_at, stage_changed_by, stage_source, stage_note, payable_after, pay_hold_reason, progress_pct, progress_note, progress_at, items:people_labor_job_items(fixture, count, hrs_per_unit, is_fixed, labor_rate, direct_labor_amount), payments:people_labor_job_payments(amount, memo, created_at, payment_date), assignees:people_labor_job_assignees(person_id)')
+        .select('id, job_number, job_ledger_id, address, assigned_to_name, labor_rate, job_date, created_at, stage, stage_changed_at, stage_changed_by, stage_source, stage_note, payable_after, pay_hold_reason, progress_pct, progress_note, progress_at, items:people_labor_job_items(fixture, count, hrs_per_unit, is_fixed, labor_rate, direct_labor_amount), payments:people_labor_job_payments(amount, memo, created_at, payment_date), assignees:people_labor_job_assignees(person_id)')
         .eq('id', sheetId)
         .maybeSingle()
       if (sheetErr) throw sheetErr
       if (!sheetData) throw new Error('That sheet is gone')
       const sheet = sheetData as unknown as SheetRow
       const number = (sheet.job_number ?? '').trim()
-      // The Pipeline job behind the number: from the caller's list, else one lookup.
+      // The Pipeline job behind the sheet: its link first (v2.3060), the number only for a sheet
+      // that never got one — from the caller's list, else one lookup.
       let job: Loaded['job'] = null
-      const fromList = number ? jobs?.find((j) => j.hcp_number.trim().toLowerCase() === number.toLowerCase()) : undefined
+      const linkId = sheet.job_ledger_id ?? null
+      const fromList = linkId
+        ? jobs?.find((j) => j.id === linkId)
+        : number ? jobs?.find((j) => j.hcp_number.trim().toLowerCase() === number.toLowerCase()) : undefined
       let jobId: string | null = fromList?.id ?? null
       type JobBase = { id: string; hcp_number: string; customer_name: string | null; status: string | null; revenue: number | null }
       let jobBase: JobBase | null = fromList
         ? { id: fromList.id, hcp_number: fromList.hcp_number, customer_name: fromList.customer_name ?? null, status: fromList.status ?? null, revenue: fromList.revenue ?? null }
         : null
-      if (!jobBase && number) {
-        const { data: j } = await supabase.from('jobs_ledger').select('id, hcp_number, customer_name, status, revenue').ilike('hcp_number', number).limit(1).maybeSingle()
+      if (!jobBase && (linkId || number)) {
+        const q = supabase.from('jobs_ledger').select('id, hcp_number, customer_name, status, revenue')
+        const { data: j } = await (linkId ? q.eq('id', linkId) : q.ilike('hcp_number', number)).limit(1).maybeSingle()
         const looked = (j as JobBase | null) ?? null
         jobBase = looked
         jobId = looked?.id ?? null
