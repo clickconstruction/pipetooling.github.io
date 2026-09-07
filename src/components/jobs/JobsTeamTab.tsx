@@ -4,6 +4,8 @@ import { useAuth } from '../../hooks/useAuth'
 import { useOrgDefault } from '../../hooks/useOrgDefault'
 import { ranLongRuleFromOrgValue } from '../../lib/orgDefaults'
 import { useTeamBoardWeek } from '../../hooks/useTeamBoardWeek'
+import { useToastContext } from '../../contexts/ToastContext'
+import { fetchLatestWorkDateForJob } from '../../lib/fetchTeamBoardWeek'
 import { formatBoardDay, type TeamBoardBlock } from '../../lib/teamBoard'
 import { companyWeekStartSundayContaining, getDefaultWeekRange, todayYmdInAppTz, ymdAddDays } from '../../utils/dateUtils'
 import { TeamBoardTable } from './team/TeamBoardTable'
@@ -56,12 +58,31 @@ export function JobsTeamTab({ focusJobId = null, onFocusConsumed }: { focusJobId
     return m
   }, [data])
 
-  // `?teamLaborJob=` deep link: land on the job's row, flash it, hand the param back.
+  // `?teamLaborJob=` deep link: land on the job's row, flash it, hand the param back. v2.2996:
+  // when the job has no row this week, jump to its most recent week with hours first.
+  const { showToast } = useToastContext()
   const focusKey = focusJobId ? `job:${focusJobId}` : null
   const focusHandledRef = useRef<string | null>(null)
+  const focusJumpedRef = useRef<string | null>(null)
   useEffect(() => {
-    if (!focusKey || !board || loading) return
+    if (!focusKey || !focusJobId || !board || loading) return
     if (focusHandledRef.current === focusKey) return
+    const hasRow = board.jobRows.some((r) => r.key === focusKey)
+    if (!hasRow && focusJumpedRef.current !== focusKey) {
+      focusJumpedRef.current = focusKey
+      let cancelled = false
+      void fetchLatestWorkDateForJob(focusJobId).then((d) => {
+        if (cancelled || !d) return
+        const wk = companyWeekStartSundayContaining(d)
+        if (wk && wk !== weekStart) {
+          setWeekStart(wk)
+          showToast(`Showing the week of ${formatBoardDay(wk)} — the last week with clocked hours on this job.`, 'info')
+        }
+      })
+      return () => {
+        cancelled = true
+      }
+    }
     focusHandledRef.current = focusKey
     const el = document.querySelector<HTMLElement>(`[data-team-row="${CSS.escape(focusKey)}"]`)
     if (el) {
@@ -71,7 +92,7 @@ export function JobsTeamTab({ focusJobId = null, onFocusConsumed }: { focusJobId
     }
     const t = setTimeout(() => onFocusConsumed?.(), 2500)
     return () => clearTimeout(t)
-  }, [focusKey, board, loading, onFocusConsumed])
+  }, [focusKey, focusJobId, board, loading, onFocusConsumed, weekStart, showToast])
 
   const weekLabel = `${formatBoardDay(days[0]!)} – ${formatBoardDay(days[6]!)}`
   const isThisWeek = weekStart === (companyWeekStartSundayContaining(todayYmdInAppTz()) ?? '')

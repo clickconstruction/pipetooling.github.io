@@ -140,3 +140,26 @@ export async function fetchTeamBoardWeek(startYmd: string, endYmd: string, prefi
 
   return { sessions, blocks, subSheets, labels, officeJobId, payFlags, ackIdByKey }
 }
+
+/**
+ * v2.2996: the `?teamLaborJob=` deep link (Edit Job → labor cost panel) should land on a week
+ * where the job actually has hours. Returns the job's most recent work date with a live closed
+ * session, or null.
+ */
+export async function fetchLatestWorkDateForJob(jobId: string): Promise<string | null> {
+  try {
+    const { data } = await supabase
+      .from('clock_sessions')
+      .select('work_date')
+      .eq('job_ledger_id', jobId)
+      .is('rejected_at', null)
+      .is('revoked_at', null)
+      .not('clocked_out_at', 'is', null)
+      .order('work_date', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+    return (data as { work_date: string } | null)?.work_date ?? null
+  } catch {
+    return null
+  }
+}
