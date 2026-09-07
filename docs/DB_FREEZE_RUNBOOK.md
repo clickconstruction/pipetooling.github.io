@@ -5,7 +5,7 @@ file: DB_FREEZE_RUNBOOK.md
 type: Runbook
 purpose: What to do (and what Claude does via /db-freeze) when the app looks "database down"
 audience: Devs + AI agents
-last_updated: 2026-09-06
+last_updated: 2026-09-07
 ---
 
 The app going "database down" office-wide has (so far) **never been a crash** —
@@ -447,6 +447,37 @@ within 15000ms`. Nobody in the office reported it.
   `signed.pdf` 9,351 bytes in `contract-form-pdfs`). Restart query for next
   time:
   `with h as (select sampled_at, ckpt_write_time_ms, lag(ckpt_write_time_ms) over (order by sampled_at) prev from monitoring.health_checks where sampled_at > now() - interval '7 days') select sampled_at from h where ckpt_write_time_ms < prev;`
+
+### 2026-09-07 — Mode B (≈9-minute stall 04:41–04:50 UTC, self-recovered; found by a `db push`)
+
+Found because a `supabase db push` (one-line revoke, `20260906210000`) timed
+out at **SASL auth** on the direct host, then again on the session pooler
+(`aws-1-us-east-1.pooler.supabase.com:5432`, "failed to receive message").
+Nobody was in the office (04:41 UTC = 23:41 CDT).
+
+- **Step 0**: `http-only` **401 in 0.12–0.18s**, `db-touching` **000 at 20s**
+  on every probe 04:41:16 → 04:50:56; first 200 (0.19s) at **04:51:14**.
+- **Mgmt API health** (`/v1/projects/<ref>/health?services=db,rest,pooler`):
+  `db` UNHEALTHY "Failed to connect to database", `rest` UNHEALTHY, `pooler`
+  ACTIVE_HEALTHY — a usable no-password triage line; project status stayed
+  ACTIVE_HEALTHY throughout. status.supabase.com: nothing relevant.
+- **CLI**: `inspect db blocking` never connected → Mode B by definition.
+- **Mgmt logs endpoint** (`/v1/projects/<ref>/analytics/endpoints/logs.all`)
+  was flaky during the stall: regex `~*` queries returned
+  `Backend error! Retry your query`; a `LIKE` query for terminated / shutdown /
+  starting up / out of memory over the previous 2 hours returned **no rows**,
+  and the last visible lines were the 04:05 cron batch. Kill reason still
+  unread — same open item as 09-06.
+- **No restart issued.** A 3-minute retry loop on the push connected on its
+  first attempt after recovery and applied the migration cleanly (drift 481/481).
+- **Not in flight**: the Phase 1/2 one-company migrations had been applied
+  ~1.5 h earlier and every probe since had been 200 in <0.3s; the office was
+  idle. Consistent with the 09-06 self-restart family, not with load.
+- **Lessons**: (1) a `db push` SASL/handshake timeout on *both* the direct host
+  and the pooler means the DB, not the network — run Step 0 before retrying;
+  (2) for an unattended push, loop the push (3-min cadence, exit on
+  "Finished supabase db push") rather than restarting — the last six stalls
+  all self-recovered inside 10 minutes.
 
 ### 2026-08-24 — Mode B variant (7-minute stall 19:24–19:31 UTC, self-recovered, REST stayed up)
 
