@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { formatErrorMessage, withSupabaseRetry } from '../../utils/errorHandling'
-import { BID_UPDATE_NOT_APPLIED_MESSAGE, updateApplied } from '../../lib/bids/updateGuard'
+import { BID_UPDATE_NOT_APPLIED_MESSAGE, bidUpdateRefused } from '../../lib/bids/updateGuard'
 import { useToastContext } from '../../contexts/ToastContext'
 import { LOSS_UNCATEGORIZED_NUDGE, isBidLossCategoryKey, suggestLossCategoryFromNote, type BidLossCategoryKey } from '../../lib/bidLossCategories'
 import { BidLossCategoryChips } from './BidLossCategoryChips'
@@ -56,7 +56,7 @@ export function BidLostQuickPopover({
               .select('id'),
           'quick lost capture',
         )
-        if (!updateApplied(rows)) throw new Error(BID_UPDATE_NOT_APPLIED_MESSAGE)
+        if (bidUpdateRefused(rows)) throw new Error(BID_UPDATE_NOT_APPLIED_MESSAGE)
       }
       showToast(packet ? `Lost with ${packet.gcName} — ${category ? 'reason recorded.' : 'no reason yet.'}` : category ? 'Lost — reason recorded.' : 'Marked lost — it will wait in Followup → Why we lost.', 'success')
       onSaved()

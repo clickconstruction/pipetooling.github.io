@@ -4,7 +4,7 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
 import type { Tables } from '../types/database'
 import { formatErrorMessage, withSupabaseRetry } from '../utils/errorHandling'
-import { BID_UPDATE_NOT_APPLIED_MESSAGE, updateApplied } from '../lib/bids/updateGuard'
+import { BID_UPDATE_NOT_APPLIED_MESSAGE, bidUpdateRefused } from '../lib/bids/updateGuard'
 import { useToastContext } from '../contexts/ToastContext'
 import { pageTabStyle } from '../lib/pageTabStyle'
 import { getBidServiceTypeTag } from '../utils/unifiedJobBidSearch'
@@ -1234,7 +1234,7 @@ function DocumentsBidProposalsLedger({ embedSearch }: DocumentsLedgerEmbedProps 
             async () => await supabase.from('bids').update(patch).eq('id', addDriveLinkBid.id).select('id'),
             'documents save bid link',
           )
-          if (!updateApplied(rows)) {
+          if (bidUpdateRefused(rows)) {
             showToast(BID_UPDATE_NOT_APPLIED_MESSAGE, 'error')
             return
           }

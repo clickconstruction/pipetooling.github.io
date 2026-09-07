@@ -9,6 +9,9 @@ import { normalizeMaterialsModel } from '../lib/bids/bidTakeoffHelpers'
 import { formatErrorMessage, withSupabaseRetry } from '../utils/errorHandling'
 import type { useToastContext } from '../contexts/ToastContext'
 import type { TakeoffRoughPartLineRow } from '../lib/bids/bidPricingEngineTypes'
+import { refusedUpdateMessage, updateRefused } from '../lib/refusedWrite'
+
+const TAKEOFF_LINE_NOT_APPLIED_MESSAGE = refusedUpdateMessage('takeoff line')
 
 /**
  * The Combined ("rough") takeoff persistence engine — the T9 seam of
@@ -62,7 +65,7 @@ export function useTakeoffRoughLines<P extends { id: string; name: string }>(arg
     const up = Math.max(0, Number(line.unitPrice) || 0)
     const src = line.sourceMaterialPartPriceId
     if (line.isSaved) {
-      const { error } = await supabase
+      const { data: rows, error } = await supabase
         .from('bids_takeoff_rough_part_lines')
         .update({
           part_id: line.partId,
@@ -73,9 +76,12 @@ export function useTakeoffRoughLines<P extends { id: string; name: string }>(arg
           source_template_id: line.sourceTemplateId ?? null,
         })
         .eq('id', line.id)
+        .select('id')
       if (error) {
         console.error('Failed to update rough part line:', error)
         setError(`Failed to save rough part line: ${error.message}`)
+      } else if (updateRefused(rows, 'bids_takeoff_rough_part_lines')) {
+        setError(TAKEOFF_LINE_NOT_APPLIED_MESSAGE)
       }
     } else {
       const { data, error } = await supabase
@@ -241,9 +247,11 @@ export function useTakeoffRoughLines<P extends { id: string; name: string }>(arg
         saved.map((l) =>
           withSupabaseRetry(
             async () =>
-              await supabase.from('bids_takeoff_rough_part_lines').update({ sequence_order: l.sequenceOrder }).eq('id', l.id),
+              await supabase.from('bids_takeoff_rough_part_lines').update({ sequence_order: l.sequenceOrder }).eq('id', l.id).select('id'),
             'reorder rough part line'
-          )
+          ).then((rows) => {
+            if (updateRefused(rows, 'bids_takeoff_rough_part_lines')) throw new Error(TAKEOFF_LINE_NOT_APPLIED_MESSAGE)
+          })
         )
       )
       for (const l of unsavedWithPart) {

@@ -1,6 +1,6 @@
 import { useEffect, useState, type Dispatch, type SetStateAction } from 'react'
 import { supabase } from '../../lib/supabase'
-import { BID_UPDATE_NOT_APPLIED_MESSAGE, updateApplied } from '../../lib/bids/updateGuard'
+import { BID_UPDATE_NOT_APPLIED_MESSAGE, bidUpdateRefused } from '../../lib/bids/updateGuard'
 import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
 import { useToastContext } from '../../contexts/ToastContext'
 import { breakdownJumpDomId, breakdownJumpMissMessage, laborRowDomId, type BreakdownJumpTarget } from '../../lib/bids/bidTabRowJump'
@@ -669,7 +669,7 @@ export function BidsLaborTab({
       .select('id')
     if (err) {
       setError(err.message)
-    } else if (!updateApplied(rows)) {
+    } else if (bidUpdateRefused(rows)) {
       setError(BID_UPDATE_NOT_APPLIED_MESSAGE)
     } else {
       const fresh = (await loadBids()).find((b) => b.id === selectedBidForCostEstimate.id)

@@ -5,7 +5,7 @@ import { BidWonJobActions } from './BidWonJobActions'
 
 import { supabase } from '../../lib/supabase'
 import { withSupabaseRetry } from '../../utils/errorHandling'
-import { BID_UPDATE_NOT_APPLIED_MESSAGE, updateApplied } from '../../lib/bids/updateGuard'
+import { BID_UPDATE_NOT_APPLIED_MESSAGE, bidUpdateRefused } from '../../lib/bids/updateGuard'
 import { formatCurrency } from '../../lib/format'
 import { bidsAndPacketsLabel, scopeLabel, type BidSentScope } from '../../lib/bids/bidSentCounts'
 import { entryGcIdFromPacketKey } from '../../lib/bids/bidContacts'
@@ -432,7 +432,7 @@ export function BidsWaitingToHearLens({
             async () => supabase.from('bids').update(bidPatch).eq('id', b.id).select('id'),
             'save chase outcome',
           )
-          if (!updateApplied(rows)) throw new Error(BID_UPDATE_NOT_APPLIED_MESSAGE)
+          if (bidUpdateRefused(rows)) throw new Error(BID_UPDATE_NOT_APPLIED_MESSAGE)
         }
         onError(null)
         // Paste capture (v2.2296): the full per-bidder tab rides along. Fail-soft
@@ -478,7 +478,7 @@ export function BidsWaitingToHearLens({
     void (async () => {
       try {
         const rows = await withSupabaseRetry(async () => supabase.from('bids').update(patch).eq('id', b.id).select('id'), 'remove bid tab')
-        if (!updateApplied(rows)) throw new Error(BID_UPDATE_NOT_APPLIED_MESSAGE)
+        if (bidUpdateRefused(rows)) throw new Error(BID_UPDATE_NOT_APPLIED_MESSAGE)
         await clearBidTabEntries(b.id)
         setTabEntriesByBid((prev) => ({ ...prev, [b.id]: [] }))
         onError(null)

@@ -1838,6 +1838,7 @@ export default function JobFormModal({
             ])
             setFixtureScopeExpandedById({})
             if (agreedValue == null) {
+              // Conditional carry (`.is('agreed_value', null)`): zero rows is the expected already-set case, not a refused write — no guard on purpose.
               void supabase.from('bids').update({ agreed_value: carryValue }).eq('id', b.id).is('agreed_value', null).then(() => undefined)
             }
           }

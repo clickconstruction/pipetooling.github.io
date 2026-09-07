@@ -32,5 +32,5 @@ Tier-2 #16–#19, #21–#23, #26–#29, #31–#35, #37–#46 shipped as v2.2856�
 
 - #5(c) shared earned-revenue kernel → [`job-summary-follow-ups.md`](./job-summary-follow-ups.md).
 - J31-N4 primary steps branch — v2.2900 row 6 verified it **still open** (last `project_workflow_steps` SELECT policy is `20260817012110`).
-- `rls_refused{table, role}` telemetry (v2.2920 "not built").
+- ~~`rls_refused{table, role}` telemetry~~ — built v2.3058 as a `ui_nav_clicks` beacon (control `rls_refused`, target `/<table>?op=<op>`) fired by every refused-update guard.
 - Every other row: read `_DRIFT-2` in the private repo.

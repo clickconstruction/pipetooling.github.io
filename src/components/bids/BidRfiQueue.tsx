@@ -14,7 +14,9 @@ import {
   type RfiSentVia,
   type RfiStatus,
 } from '../../lib/bids/rfiFlow'
-import { BID_UPDATE_NOT_APPLIED_MESSAGE, updateApplied } from '../../lib/bids/updateGuard'
+import { refusedUpdateMessage, updateRefused } from '../../lib/refusedWrite'
+
+const RFI_NOT_APPLIED_MESSAGE = refusedUpdateMessage('RFI')
 
 /**
  * The per-bid RFI queue (RFI loop Phase R1, docs/RFI_LOOP_PLAN.md): drafts accumulate on
@@ -150,8 +152,8 @@ export function BidRfiQueue({ bid, authUser }: { bid: BidWithBuilder; authUser: 
         .eq('status', rfi.status) // stale-row guard: transition only from the status we displayed
         .select('id')
       if (error) throw new Error(error.message)
-      if (!updateApplied(rows)) {
-        showToast(BID_UPDATE_NOT_APPLIED_MESSAGE, 'error')
+      if (updateRefused(rows, 'bids_rfis')) {
+        showToast(RFI_NOT_APPLIED_MESSAGE, 'error')
         return
       }
       const merged = { ...rfi, ...patch }

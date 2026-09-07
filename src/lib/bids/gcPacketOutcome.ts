@@ -14,7 +14,7 @@
  */
 import { supabase } from '../supabase'
 import { rollUpOutcome } from './gcPackets'
-import { BID_UPDATE_NOT_APPLIED_MESSAGE, updateApplied } from './updateGuard'
+import { BID_UPDATE_NOT_APPLIED_MESSAGE, bidUpdateRefused, updateApplied } from './updateGuard'
 import { denverCalendarDayKey } from '../../utils/dateUtils'
 import { recordNavClick } from '../navClickTelemetry'
 import {
@@ -240,13 +240,13 @@ export async function setGcPacketOutcome(args: {
   if (roll === 'won' && args.bidOutcome !== 'won' && args.bidOutcome !== 'started_or_complete') {
     const { data: rows, error: rollErr } = await supabase.from('bids').update({ outcome: 'won' }).eq('id', args.bidId).select('id')
     if (rollErr) return { error: rollErr.message, bidOutcomeSet: null, autoLost }
-    if (!updateApplied(rows)) return { error: BID_UPDATE_NOT_APPLIED_MESSAGE, bidOutcomeSet: null, autoLost }
+    if (bidUpdateRefused(rows)) return { error: BID_UPDATE_NOT_APPLIED_MESSAGE, bidOutcomeSet: null, autoLost }
     return finish('won')
   }
   if (roll === 'lost' && !decided) {
     const { data: rows, error: rollErr } = await supabase.from('bids').update({ outcome: 'lost' }).eq('id', args.bidId).select('id')
     if (rollErr) return { error: rollErr.message, bidOutcomeSet: null, autoLost }
-    if (!updateApplied(rows)) return { error: BID_UPDATE_NOT_APPLIED_MESSAGE, bidOutcomeSet: null, autoLost }
+    if (bidUpdateRefused(rows)) return { error: BID_UPDATE_NOT_APPLIED_MESSAGE, bidOutcomeSet: null, autoLost }
     return finish('lost')
   }
   return finish(null)

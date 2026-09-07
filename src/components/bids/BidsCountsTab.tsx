@@ -4,7 +4,7 @@ import { SortableContext, verticalListSortingStrategy, arrayMove, useSortable } 
 import { CSS } from '@dnd-kit/utilities'
 import { supabase } from '../../lib/supabase'
 import { formatErrorMessage, withSupabaseRetry } from '../../utils/errorHandling'
-import { BID_UPDATE_NOT_APPLIED_MESSAGE, updateApplied } from '../../lib/bids/updateGuard'
+import { BID_UPDATE_NOT_APPLIED_MESSAGE, bidUpdateRefused } from '../../lib/bids/updateGuard'
 import { useToastContext } from '../../contexts/ToastContext'
 import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
 import { useAuth } from '../../hooks/useAuth'
@@ -463,8 +463,9 @@ export function BidsCountsTab({
         }
       }
       if (plan.restoreSourceLink) {
-        const { error } = await supabase.from('bids').update({ count_tooling_plans_link: plan.restoreSourceLink.to }).eq('id', bidId)
+        const { data: rows, error } = await supabase.from('bids').update({ count_tooling_plans_link: plan.restoreSourceLink.to }).eq('id', bidId).select('id')
         if (error) throw error
+        if (bidUpdateRefused(rows)) throw new Error(BID_UPDATE_NOT_APPLIED_MESSAGE)
         await onCountSourceLinkSaved?.(bidId)
       }
       refreshAfterCountsChange()
@@ -502,7 +503,7 @@ export function BidsCountsTab({
         async () => supabase.from('bids').update({ count_tooling_plans_link: sourceLink }).eq('id', bidId).select('id'),
         'save count source link'
       )
-      if (!updateApplied(rows)) throw new Error(BID_UPDATE_NOT_APPLIED_MESSAGE)
+      if (bidUpdateRefused(rows)) throw new Error(BID_UPDATE_NOT_APPLIED_MESSAGE)
       await onCountSourceLinkSaved?.(bidId)
       return sourceLink
     } catch (e) {

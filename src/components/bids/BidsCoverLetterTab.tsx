@@ -6,7 +6,7 @@ import { useAuth } from '../../hooks/useAuth'
 import { restampConfirmMessage, sentDateAfterLaneStamp, type BidSentLane } from '../../lib/bids/bidSentDate'
 import { recordBidSentLane } from '../../lib/bids/bidSentTelemetry'
 import { formatErrorMessage, withSupabaseRetry } from '../../utils/errorHandling'
-import { BID_UPDATE_NOT_APPLIED_MESSAGE, updateApplied } from '../../lib/bids/updateGuard'
+import { BID_UPDATE_NOT_APPLIED_MESSAGE, bidUpdateRefused } from '../../lib/bids/updateGuard'
 import { formatCurrency } from '../../lib/format'
 import { bidDisplayName, formatDesignDrawingPlanDate, formatDesignDrawingPlanDateLabel } from '../../lib/bids/bidFormatting'
 import { bidDetailCloseXStyle, bidDetailCloseFloatMobileStyle } from '../../lib/bids/bidStyles'
@@ -223,7 +223,7 @@ export function BidsCoverLetterTab({
     setAltTextEditor(null)
     const { data: rows, error } = await supabase.from('bids').update({ cover_letter_alt_texts: next }).eq('id', bidId).select('id')
     if (error) showToast('Could not save the letter wording: ' + error.message, 'error')
-    else if (!updateApplied(rows)) showToast(BID_UPDATE_NOT_APPLIED_MESSAGE, 'error')
+    else if (bidUpdateRefused(rows)) showToast(BID_UPDATE_NOT_APPLIED_MESSAGE, 'error')
   }
 
   // Reset quick-add when the selected bid changes
@@ -322,7 +322,7 @@ export function BidsCoverLetterTab({
       showToast('Error updating bid: ' + error.message, 'error')
       return
     }
-    if (!updateApplied(rows)) {
+    if (bidUpdateRefused(rows)) {
       setPaymentScheduleEnabled(!next)
       showToast(BID_UPDATE_NOT_APPLIED_MESSAGE, 'error')
       return
@@ -617,7 +617,7 @@ export function BidsCoverLetterTab({
         showToast('Could not mark the bid sent: ' + error.message, 'error')
         return
       }
-      if (!updateApplied(rows)) {
+      if (bidUpdateRefused(rows)) {
         showToast(BID_UPDATE_NOT_APPLIED_MESSAGE, 'error')
         return
       }
@@ -655,7 +655,7 @@ export function BidsCoverLetterTab({
       if (opts.isOwnGc && boardValue != null && boardValue > 0) patch.bid_value = boardValue
       const { data: bidRows, error: bidErr } = await supabase.from('bids').update(patch).eq('id', bidId).select('id')
       if (bidErr) showToast('Sends recorded, but the bid did not update: ' + bidErr.message, 'error')
-      else if (!updateApplied(bidRows)) showToast(BID_UPDATE_NOT_APPLIED_MESSAGE, 'error')
+      else if (bidUpdateRefused(bidRows)) showToast(BID_UPDATE_NOT_APPLIED_MESSAGE, 'error')
       recordBidSentLane(authUser?.id, authRole, opts.lane ?? 'ledger')
       window.dispatchEvent(new Event('bid-version-sends-changed'))
       await loadBids()
