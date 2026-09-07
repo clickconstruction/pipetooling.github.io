@@ -5,7 +5,7 @@ file: EDGE_FUNCTIONS.md
 type: API Reference
 purpose: Complete API documentation for all 84 Supabase Edge Functions
 audience: Developers, DevOps, AI Agents
-last_updated: 2026-09-06
+last_updated: 2026-09-07
 estimated_read_time: 20-25 minutes
 difficulty: Intermediate
 
@@ -129,6 +129,7 @@ when_to_read:
    - [job-share](#job-share)
    - [geocode-address-batch](#geocode-address-batch)
    - [geocode-one](#geocode-one)
+   - [property-lookup](#property-lookup)
    - [driving-distance](#driving-distance)
    - [travel-time-batch](#travel-time-batch)
    - [send-bid-pricing-package](#send-bid-pricing-package)
@@ -1672,6 +1673,34 @@ curl -sS "${SUPABASE_URL}/functions/v1/get-estimate-public-terms" \
 **Deploy**: `supabase functions deploy geocode-one`
 
 **Implementation**: [`supabase/functions/geocode-one/index.ts`](../supabase/functions/geocode-one/index.ts) + shared [`supabase/functions/_shared/googleGeocode.ts`](../supabase/functions/_shared/googleGeocode.ts); client: **`Map`** **`refresh_google_only`** [`MapGeocodeReviewModal.tsx`](../src/components/map/MapGeocodeReviewModal.tsx), [`invokeGeocodeOneRefreshGoogleOnly.ts`](../src/lib/map/invokeGeocodeOneRefreshGoogleOnly.ts); **Settings** default map label lookup [`mapDefaultViewSettings.ts`](../src/lib/mapDefaultViewSettings.ts) (bulk **Map** load uses **`geocode-address-batch`** via [`useMapPageData.ts`](../src/hooks/useMapPageData.ts)).
+
+---
+
+### property-lookup
+
+**Purpose**: One address in, the property's legal identity out (customer properties train, **v2.3004**). Geocodes the address (the **`address_geocodes`** cache → **Google** → **US Census**), then asks the **Texas statewide parcel roll** (TxGIO StratMap land parcels, fed by the county appraisal districts; public, no key) which parcel sits under the pin via an ArcGIS **`identify`**. Feeds the **Edit customer → Additional addresses → Property legal info** panel ([`CustomerPropertyRecordPanel.tsx`](../src/components/customers/CustomerPropertyRecordPanel.tsx)), which folds in the city→county table and builds the proposal client-side ([`txParcelRecord.ts`](../supabase/functions/_shared/txParcelRecord.ts) shared kernel).
+
+**Endpoint**: `POST /functions/v1/property-lookup`
+
+**Body** (JSON): `{ "address": string }` — display string (min length **5**).
+
+**Response** (**200** JSON):
+
+- Success: `{ "ok": true, "address_normalized": string, "lat": number, "lng": number, "geocode_source": "cache" | "google" | "census", "county_geocoder": string, "parcel": ParcelRecord | null, "parcel_error"?: string }` — **`parcel`** is `{ propId, ownerName, nameCare, legalDescription, situsAddress, mailingAddress, county, source, taxYear }` (county title-cased without "County"; source title-cased, e.g. `"Comal Appraisal District"`), or **`null`** when nothing sits under the pin. **`county_geocoder`** is Google's `administrative_area_level_2` ('' when the point came from the cache or Census and no parcel was found without a Google key). **`parcel_error`** names a parcel-service failure (timeout / HTTP) — the county rung still answers.
+- Failure: `{ "ok": false, "address_normalized": string, "error": "not_found", "detail"?: string }` when no geocoder could place the address.
+- Auth / validation errors: `{ "error": string }` with **401** / **403** / **400**; **500** if the role lookup fails.
+
+**Headers**: `Authorization: Bearer <user_jwt>`, `apikey: <anon_key>`, `Content-Type: application/json`.
+
+**Secrets**: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, optional **`GOOGLE_MAPS_API_KEY`** (without it the Census geocoder is the only miss path and **`county_geocoder`** stays empty).
+
+**Gateway**: `verify_jwt = false`; **`auth.getUser()`** + **`users.role` in `('dev','master_technician','assistant','controller','estimator')`** in the function (**403** otherwise) — the roles that may edit `customer_addresses`.
+
+**Upstream**: `https://feature.geographic.texas.gov/arcgis/rest/services/Parcels/stratmap_land_parcels_48_most_recent/MapServer/identify` (12s timeout). The layer's `/query` operation is **not** enabled — use `identify`. The roll has **no exemptions field**, so homestead is inferred client-side (a person who gets mail at the property) and always confirmed by a person. Tax year lags sales; the panel prints it beside every value.
+
+**Deploy**: `supabase functions deploy property-lookup` (and redeploy **`geocode-one`** / **`geocode-address-batch`** whenever `_shared/googleGeocode.ts` changes — v2.3004 added `county` to its result).
+
+**Implementation**: [`supabase/functions/property-lookup/index.ts`](../supabase/functions/property-lookup/index.ts); kernel [`supabase/functions/_shared/txParcelRecord.ts`](../supabase/functions/_shared/txParcelRecord.ts) (client re-export [`src/lib/customers/propertyRecord.ts`](../src/lib/customers/propertyRecord.ts)); client invoke [`src/lib/customers/propertyLookupClient.ts`](../src/lib/customers/propertyLookupClient.ts).
 
 ---
 

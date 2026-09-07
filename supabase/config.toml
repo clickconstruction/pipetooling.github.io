@@ -725,6 +725,10 @@ verify_jwt = false
 [functions.address-autocomplete]
 verify_jwt = false
 
+# property-lookup (v2.3004): same in-function auth pattern as geocode-one (getUser + role check).
+[functions.property-lookup]
+verify_jwt = false
+
 # plan-fetch: X-Twin-Token calls carry no JWT; auth is validated in-function
 # (per-twin credential or staff getUser) — same model as drive-intake.
 [functions.plan-fetch]

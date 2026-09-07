@@ -14,22 +14,13 @@ import { formatErrorMessage, withSupabaseRetry } from '../utils/errorHandling'
 import { openInExternalBrowser } from '../lib/openInExternalBrowser'
 import { isAssistantLike } from '../lib/subcontractorLikeRole'
 import { isCustomerArchived } from '../lib/customerArchive'
-import { customerAddressLienGaps, customerAddressLienReady, type CustomerAddressRow } from '../lib/jobs/lienProperty'
-import { suggestTxCountyForCity, txCountyCadSearchUrl } from '../lib/txCountyLookup'
-import { splitJobAddressForPrefill } from '../lib/txLocalityAddressSplit'
+import { customerAddressLienReady, type CustomerAddressRow } from '../lib/jobs/lienProperty'
+import CustomerPropertyRecordPanel, { type PropertyRecordDraft } from './customers/CustomerPropertyRecordPanel'
 
-/** Per-row edit draft for an additional address, legal panel included (v2.2614). */
-type AddressDraft = {
+/** Per-row edit draft for an additional address, legal panel included (v2.2614; provenance v2.3004). */
+type AddressDraft = PropertyRecordDraft & {
   address: string
   note: string
-  county: string
-  legal_description: string
-  property_kind: string
-  homestead: boolean
-  owner_mode: string
-  owner_name: string
-  owner_company: string
-  owner_mailing_address: string
 }
 
 function addressDraftFromRow(a: CustomerAddressRow): AddressDraft {
@@ -37,6 +28,7 @@ function addressDraftFromRow(a: CustomerAddressRow): AddressDraft {
     address: a.address,
     note: a.note ?? '',
     county: a.county ?? '',
+    county_source: a.county_source ?? '',
     legal_description: a.legal_description ?? '',
     property_kind: a.property_kind ?? '',
     homestead: a.homestead ?? false,
@@ -44,6 +36,10 @@ function addressDraftFromRow(a: CustomerAddressRow): AddressDraft {
     owner_name: a.owner_name ?? '',
     owner_company: a.owner_company ?? '',
     owner_mailing_address: a.owner_mailing_address ?? '',
+    parcel_id: a.parcel_id ?? '',
+    parcel_source: a.parcel_source ?? '',
+    parcel_tax_year: a.parcel_tax_year ?? '',
+    parcel_looked_up_at: a.parcel_looked_up_at ?? '',
   }
 }
 
@@ -311,6 +307,7 @@ export default function EditCustomerForm({ customerId, onSaved, onCancel, onDele
         address: d.address.trim(),
         note: d.note.trim() || null,
         county: d.county.trim(),
+        county_source: d.county.trim() ? d.county_source : '',
         legal_description: d.legal_description.trim(),
         property_kind: d.property_kind,
         homestead: d.homestead,
@@ -318,6 +315,10 @@ export default function EditCustomerForm({ customerId, onSaved, onCancel, onDele
         owner_name: d.owner_name.trim(),
         owner_company: d.owner_company.trim(),
         owner_mailing_address: d.owner_mailing_address.trim(),
+        parcel_id: d.parcel_id.trim(),
+        parcel_source: d.parcel_source.trim(),
+        parcel_tax_year: d.parcel_tax_year.trim(),
+        parcel_looked_up_at: d.parcel_looked_up_at.trim() || null,
         updated_at: new Date().toISOString(),
       })
       .eq('id', id)
@@ -827,15 +828,7 @@ export default function EditCustomerForm({ customerId, onSaved, onCancel, onDele
                     return next
                   })
                 const lienReady = customerAddressLienReady(d)
-                const gaps = customerAddressLienGaps(d)
-                const suggestedCounty = suggestTxCountyForCity(splitJobAddressForPrefill(d.address).city)
-                const cadUrl = txCountyCadSearchUrl(d.county)
                 const legalToggleStyle = { background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontSize: '0.8125rem', color: 'var(--text-link)', fontWeight: 600 } as const
-                const kindBtn = (value: string, label: string, on: boolean, onClick: () => void) => (
-                  <button type="button" key={value} onClick={onClick} aria-pressed={on} style={{ padding: '0.25rem 0.6rem', fontSize: '0.75rem', borderRadius: 6, border: on ? '2px solid #2563eb' : '1px solid var(--border-strong)', background: on ? 'var(--bg-blue-tint)' : 'var(--surface)', cursor: 'pointer', fontWeight: on ? 600 : 400 }}>
-                    {label}
-                  </button>
-                )
                 return (
                   <div key={a.id} style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '0.5rem 0.6rem', display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
                     <input type="text" value={d.address} onChange={(e) => setD({ address: e.target.value })} placeholder="Address" aria-label="Additional address" style={{ padding: '0.4rem 0.5rem' }} />
@@ -848,45 +841,15 @@ export default function EditCustomerForm({ customerId, onSaved, onCancel, onDele
                         <span style={{ fontSize: '0.6875rem', fontWeight: 700, color: 'var(--text-green-700)', border: '1px solid var(--border-green)', background: 'var(--bg-green-tint)', borderRadius: 6, padding: '0.05rem 0.4rem' }}>
                           ✓ lien-ready
                         </span>
-                      ) : (
-                        <span title={`Missing: ${gaps.join(', ')}`} style={{ fontSize: '0.6875rem', fontWeight: 600, color: 'var(--text-muted)' }}>
-                          {gaps.length} lien field{gaps.length === 1 ? '' : 's'} missing
+                      ) : !legalOpen ? (
+                        <span style={{ fontSize: '0.6875rem', fontWeight: 600, color: 'var(--text-muted)' }}>
+                          {d.parcel_looked_up_at ? 'lien fields incomplete' : 'not looked up yet'}
                         </span>
-                      )}
+                      ) : null}
                     </div>
                     {legalOpen ? (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', borderTop: '1px dashed var(--border)', paddingTop: '0.4rem' }}>
-                        <div style={{ display: 'flex', gap: '0.35rem', alignItems: 'center', flexWrap: 'wrap' }}>
-                          <input type="text" value={d.county} onChange={(e) => setD({ county: e.target.value })} placeholder="County (filing)" aria-label="Property county" style={{ padding: '0.4rem 0.5rem', flex: '1 1 9rem' }} />
-                          {suggestedCounty && suggestedCounty !== d.county.trim() ? (
-                            <button type="button" onClick={() => setD({ county: suggestedCounty })} style={{ ...legalToggleStyle, fontSize: '0.75rem' }}>
-                              use {suggestedCounty}?
-                            </button>
-                          ) : null}
-                          {cadUrl ? (
-                            <button type="button" onClick={() => openInExternalBrowser(cadUrl)} title={`Look up the legal description on the ${d.county.trim()} County Appraisal District`} style={{ ...legalToggleStyle, fontSize: '0.75rem' }}>
-                              {d.county.trim()} CAD ↗
-                            </button>
-                          ) : null}
-                        </div>
-                        <textarea value={d.legal_description} onChange={(e) => setD({ legal_description: e.target.value })} rows={2} placeholder="Legal description from the County Appraisal District (e.g. Lot 7, Block B, … Plat Records of … County, Texas)" aria-label="Property legal description" style={{ padding: '0.4rem 0.5rem', fontFamily: 'inherit', fontSize: '0.8125rem' }} />
-                        <div style={{ display: 'flex', gap: '0.35rem', alignItems: 'center', flexWrap: 'wrap' }}>
-                          {kindBtn('residential', 'Residential', d.property_kind === 'residential', () => setD({ property_kind: d.property_kind === 'residential' ? '' : 'residential' }))}
-                          {kindBtn('non_residential', 'Non-residential', d.property_kind === 'non_residential', () => setD({ property_kind: d.property_kind === 'non_residential' ? '' : 'non_residential', homestead: false }))}
-                          {d.property_kind === 'residential' ? (
-                            <label style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.75rem', cursor: 'pointer' }} title="Owner-occupied homestead: lien rights need a recorded pre-work contract signed by both spouses (Tex. Prop. Code § 53.254)">
-                              <input type="checkbox" checked={d.homestead} onChange={(e) => setD({ homestead: e.target.checked })} />
-                              homestead
-                            </label>
-                          ) : null}
-                        </div>
-                        <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap' }}>
-                          {kindBtn('homeowner', 'Homeowner', d.owner_mode === 'homeowner', () => setD({ owner_mode: d.owner_mode === 'homeowner' ? '' : 'homeowner' }))}
-                          {kindBtn('building_owner', 'Building owner', d.owner_mode === 'building_owner', () => setD({ owner_mode: d.owner_mode === 'building_owner' ? '' : 'building_owner' }))}
-                        </div>
-                        <input type="text" value={d.owner_name} onChange={(e) => setD({ owner_name: e.target.value })} placeholder="Owner of record (person)" aria-label="Owner of record name" style={{ padding: '0.4rem 0.5rem' }} />
-                        <input type="text" value={d.owner_company} onChange={(e) => setD({ owner_company: e.target.value })} placeholder="Owner company (if an entity holds title)" aria-label="Owner of record company" style={{ padding: '0.4rem 0.5rem' }} />
-                        <input type="text" value={d.owner_mailing_address} onChange={(e) => setD({ owner_mailing_address: e.target.value })} placeholder="Owner MAILING address (lien notices go here)" aria-label="Owner mailing address" style={{ padding: '0.4rem 0.5rem' }} />
+                      <div style={{ borderTop: '1px dashed var(--border)', paddingTop: '0.4rem' }}>
+                        <CustomerPropertyRecordPanel address={d.address} fields={d} onChange={(patch) => setD(patch)} autoLookup />
                       </div>
                     ) : null}
                     <div style={{ display: 'flex', gap: '0.35rem', justifyContent: 'flex-end' }}>
