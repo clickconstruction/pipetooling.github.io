@@ -1,0 +1,326 @@
+<title>Subs Next Column</title>
+<style>
+  :root {
+    --bg: #f3f4f7; --surface: #ffffff; --bg-subtle: #f9fafb; --bg-inset: #f1f3f7;
+    --border: #cfd4db; --border-strong: #b8bec8;
+    --text: #111827; --text-700: #374151; --text-muted: #6b7280; --text-faint: #9ca3af;
+    --accent: #2563eb; --accent-tint: #dbeafe;
+    --red: #b91c1c; --red-tint: #fee2e2; --amber: #92400e; --amber-tint: #fef3c7; --amber-border: #f5d48a; --amber-solid: #d97706;
+    --green: #15803d; --green-tint: #dcfce7; --green-border: #86efac; --green-solid: #16a34a;
+    --teal: #0f766e; --teal-tint: #ccfbf1; --teal-border: #5eead4;
+    --rail-gap: #d43b3b; --rail-now: #b5651d; --rail-halo: rgba(181, 101, 29, 0.24); --rail-done: #9ca3af;
+    --shadow: 0 10px 30px rgba(17, 24, 39, 0.12);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #111827; --surface: #1f2937; --bg-subtle: #18212f; --bg-inset: #111a27;
+      --border: #374151; --border-strong: #4b5563;
+      --text: #f3f4f6; --text-700: #d1d5db; --text-muted: #9ca3af; --text-faint: #6b7280;
+      --accent-tint: rgba(37, 99, 235, 0.22);
+      --red: #fca5a5; --red-tint: rgba(185, 28, 28, 0.22); --amber: #fcd34d; --amber-tint: rgba(217, 119, 6, 0.18); --amber-border: rgba(245, 212, 138, 0.35); --amber-solid: #f59e0b;
+      --green: #86efac; --green-tint: rgba(22, 163, 74, 0.2); --green-border: rgba(134, 239, 172, 0.4); --green-solid: #22c55e;
+      --teal: #5eead4; --teal-tint: rgba(15, 118, 110, 0.25); --teal-border: rgba(94, 234, 212, 0.4);
+      --rail-done: #6b7280; --shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #111827; --surface: #1f2937; --bg-subtle: #18212f; --bg-inset: #111a27;
+    --border: #374151; --border-strong: #4b5563;
+    --text: #f3f4f6; --text-700: #d1d5db; --text-muted: #9ca3af; --text-faint: #6b7280;
+    --accent-tint: rgba(37, 99, 235, 0.22);
+    --red: #fca5a5; --red-tint: rgba(185, 28, 28, 0.22); --amber: #fcd34d; --amber-tint: rgba(217, 119, 6, 0.18); --amber-border: rgba(245, 212, 138, 0.35); --amber-solid: #f59e0b;
+    --green: #86efac; --green-tint: rgba(22, 163, 74, 0.2); --green-border: rgba(134, 239, 172, 0.4); --green-solid: #22c55e;
+    --teal: #5eead4; --teal-tint: rgba(15, 118, 110, 0.25); --teal-border: rgba(94, 234, 212, 0.4);
+    --rail-done: #6b7280; --shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
+  }
+  * { box-sizing: border-box; }
+  body { background: var(--bg); color: var(--text); font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; font-size: 14px; line-height: 1.45; margin: 0; padding: 28px 20px 80px; }
+  .page { max-width: 1160px; margin: 0 auto; display: flex; flex-direction: column; gap: 44px; }
+  h1 { font-size: 1.35rem; margin: 0 0 4px; letter-spacing: -0.01em; text-wrap: balance; }
+  h2 { font-size: 1.05rem; margin: 0; }
+  .lede { color: var(--text-muted); margin: 0; max-width: 74ch; }
+  .lede b { color: var(--text); font-weight: 600; }
+  .sec { display: flex; flex-direction: column; gap: 12px; }
+  .sec-head { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+  .sec-head .opens { font-size: 0.78rem; color: var(--text-muted); }
+  .frame { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; box-shadow: var(--shadow); }
+  .scroll { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; }
+  th { padding: 8px 12px; text-align: left; font-size: 0.68rem; letter-spacing: 0.05em; text-transform: uppercase; color: var(--text-muted); font-weight: 600; border-bottom: 1px solid var(--border); background: var(--bg-subtle); white-space: nowrap; vertical-align: bottom; }
+  td { padding: 10px 12px; border-bottom: 1px solid var(--border); vertical-align: middle; font-size: 0.8125rem; }
+  tr:last-child td { border-bottom: none; }
+  tr.job td { background: var(--bg-subtle); font-weight: 700; font-size: 0.85rem; padding: 6px 12px; }
+  tr.job .addr { font-weight: 400; color: var(--text-muted); font-size: 0.75rem; }
+  tr.job .need { font-weight: 400; color: var(--rail-gap); font-size: 0.72rem; margin-left: 8px; }
+  tr.exp > td { background: var(--accent-tint); border-bottom: none; }
+  tr.form > td { background: var(--accent-tint); padding: 0 12px 12px; }
+  .who { font-weight: 600; } .where { color: var(--text-muted); font-size: 0.74rem; }
+  th.hi, td.hi { background: var(--accent-tint); }
+  .num { text-align: right; font-variant-numeric: tabular-nums; line-height: 1.25; white-space: nowrap; }
+  .num .f { color: var(--text-faint); } .num .r { color: var(--red); font-weight: 700; } .num .g { color: var(--green); font-weight: 600; }
+
+  /* time track */
+  .track { position: relative; width: 220px; height: 24px; }
+  .track .grid { position: absolute; inset: 0; background: repeating-linear-gradient(90deg, var(--border) 0 1px, transparent 1px calc(100% / 8.714)); opacity: 0.6; }
+  .track .today { position: absolute; top: -2px; bottom: -2px; width: 2px; background: var(--rail-now); border-radius: 1px; }
+  .bar { position: absolute; top: 6px; height: 11px; border-radius: 4px; background: var(--green-tint); border: 1px solid var(--green-border); }
+  .bar.passed { background: var(--bg-inset); border-color: var(--border-strong); }
+  .bar.gcask { top: 18px; height: 5px; background: transparent; border: 1.5px dashed var(--amber-solid); border-radius: 3px; }
+  .pick { position: absolute; top: 8px; height: 7px; border-radius: 3px; background: var(--green-solid); }
+  .tag { position: absolute; top: 5px; font-size: 0.54rem; font-weight: 800; letter-spacing: 0.06em; padding: 1px 5px; border-radius: 999px; line-height: 1.3; white-space: nowrap; }
+  .tag.shown { background: var(--teal-tint); color: var(--teal); border: 1px solid var(--teal-border); }
+  .tag.offer { background: var(--surface); color: var(--text-muted); border: 1px dashed var(--border-strong); }
+  .tag.ask { background: var(--amber-tint); color: var(--amber); border: 1px solid var(--amber-border); }
+  .axis { position: relative; width: 220px; height: 13px; font-size: 0.56rem; color: var(--text-faint); font-weight: 600; }
+  .axis span { position: absolute; top: 0; transform: translateX(-50%); }
+  .win { display: flex; flex-direction: column; gap: 3px; align-items: flex-start; }
+  .cap { font-size: 0.7rem; color: var(--text-muted); display: flex; gap: 6px; align-items: center; flex-wrap: wrap; white-space: nowrap; }
+  .cap b { color: var(--text-700); font-weight: 600; }
+  .cap.amber { color: var(--amber); font-weight: 600; }
+
+  /* rail dots */
+  .rail { display: inline-flex; flex-direction: column; align-items: center; gap: 4px; }
+  .dots { display: inline-flex; align-items: center; }
+  .dots i { width: 8px; height: 8px; border-radius: 50%; border: 2px solid var(--border-strong); background: var(--surface); display: inline-block; flex: none; box-sizing: border-box; }
+  .dots i.s { width: 6px; height: 6px; }
+  .dots i.done { background: var(--rail-done); border-color: var(--rail-done); }
+  .dots i.gap { border-color: var(--rail-gap); border-style: dashed; background: transparent; }
+  .dots i.now { width: 12px; height: 12px; background: var(--rail-now); border-color: var(--rail-now); box-shadow: 0 0 0 3px var(--rail-halo); }
+  .dots i.paid { width: 12px; height: 12px; background: var(--green-solid); border-color: var(--green-solid); box-shadow: 0 0 0 3px var(--green-tint); }
+  .dots b { width: 12px; height: 2px; background: var(--border-strong); display: inline-block; flex: none; }
+  .dots b.done { background: var(--rail-done); } .dots b.gap { background: repeating-linear-gradient(90deg, var(--rail-gap) 0 3px, transparent 3px 6px); } .dots b.br { width: 7px; }
+  .rail .lab { font-size: 0.7rem; font-weight: 700; text-align: center; line-height: 1.2; white-space: nowrap; }
+  .rail .lab.gap { color: var(--rail-gap); } .rail .lab.now { color: var(--rail-now); } .rail .lab.paid { color: var(--green); }
+  .rail .sub { display: block; font-weight: 500; color: var(--text-muted); font-size: 0.64rem; }
+
+  /* ── Standing → Next, one cell ─────────────────────────── */
+  .stand { display: flex; align-items: center; gap: 12px; }
+  .stand .arrow { color: var(--text-faint); font-size: 0.95rem; line-height: 1; flex: none; }
+  .move { display: flex; flex-direction: column; gap: 3px; align-items: flex-start; min-width: 170px; }
+  .move .row1 { display: flex; align-items: center; gap: 6px; }
+  .act { font: inherit; font-size: 0.76rem; font-weight: 700; padding: 5px 11px; border-radius: 6px; cursor: pointer; white-space: nowrap; border: 1px solid var(--border-strong); background: var(--surface); color: var(--text-700); text-align: left; }
+  .act.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .act.warn { background: var(--amber-tint); border-color: var(--amber-border); color: var(--amber); }
+  .act.ok { background: var(--green-tint); border-color: var(--green-border); color: var(--green); }
+  .act.quiet { background: transparent; border-color: transparent; color: var(--text-muted); font-weight: 600; cursor: default; padding-left: 0; }
+  .more { font: inherit; width: 24px; height: 24px; border-radius: 6px; border: 1px solid var(--border-strong); background: var(--surface); color: var(--text-700); cursor: pointer; font-weight: 700; line-height: 1; }
+  .move .hint { font-size: 0.68rem; color: var(--text-muted); white-space: nowrap; }
+  .move .hint.amber { color: var(--amber); font-weight: 600; }
+  .menuwrap { position: relative; display: inline-block; }
+  .menu { position: absolute; top: 28px; right: 0; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; box-shadow: var(--shadow); padding: 4px; min-width: 190px; z-index: 2; display: flex; flex-direction: column; }
+  .menu button { font: inherit; font-size: 0.78rem; text-align: left; padding: 6px 10px; border: none; background: none; color: var(--text-700); border-radius: 5px; cursor: pointer; }
+  .menu .sep { height: 1px; background: var(--border); margin: 3px 4px; }
+  .menu .danger { color: var(--red); }
+  .door { font: inherit; background: none; border: none; padding: 0; color: var(--accent); font-weight: 600; font-size: 0.7rem; cursor: pointer; white-space: nowrap; }
+  .btn { font: inherit; font-size: 0.72rem; font-weight: 600; padding: 3px 9px; border-radius: 5px; cursor: pointer; white-space: nowrap; border: 1px solid var(--border-strong); background: var(--surface); color: var(--text-700); }
+  .btn.ok { background: var(--green-tint); border-color: var(--green-border); color: var(--green); }
+  .btn.warn { background: var(--amber-tint); border-color: var(--amber-border); color: var(--amber); }
+  .btn.sm { font-size: 0.66rem; padding: 1px 7px; }
+
+  /* inline form */
+  .inline { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px 12px; align-items: end; padding: 10px 12px; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; }
+  .f { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+  .inline label { font-size: 0.64rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-muted); font-weight: 600; }
+  .ctl { font: inherit; font-size: 0.8rem; padding: 5px 8px; border: 1px solid var(--border-strong); border-radius: 5px; background: var(--surface); color: var(--text); width: 100%; }
+  .ctl.m { text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; }
+  .send { grid-column: 1 / -1; display: flex; gap: 8px; align-items: center; justify-content: flex-end; padding-top: 6px; border-top: 1px dashed var(--border); flex-wrap: wrap; }
+  .send .note { margin-right: auto; font-size: 0.74rem; color: var(--text-muted); }
+
+  .notes { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 8px 22px; margin: 0; padding: 0; list-style: none; }
+  .notes li { font-size: 0.8rem; color: var(--text-700); padding-left: 14px; position: relative; }
+  .notes li::before { content: ""; position: absolute; left: 0; top: 0.55em; width: 6px; height: 6px; border-radius: 50%; background: var(--accent); }
+  .notes b { font-weight: 600; color: var(--text); }
+  .compare { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  @media (max-width: 760px) { .compare { grid-template-columns: 1fr; } }
+  .mini { border: 1px solid var(--border); border-radius: 8px; overflow: hidden; background: var(--surface); }
+  .mini .capt { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-muted); font-weight: 600; padding: 6px 12px; background: var(--bg-subtle); border-bottom: 1px solid var(--border); }
+  .mini p { margin: 0; padding: 10px 12px; font-size: 0.8rem; color: var(--text-700); }
+  .mini p b { color: var(--text); font-weight: 600; }
+  .before { font-size: 0.72rem; color: var(--text-muted); display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+  .before .col { border: 1px solid var(--border); border-radius: 5px; padding: 2px 8px; background: var(--bg-subtle); }
+  .before .col.x { text-decoration: line-through; color: var(--text-faint); }
+  .before .col.m { background: var(--accent-tint); color: var(--accent); border-color: transparent; font-weight: 600; }
+  .card { border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; background: var(--surface); max-width: 400px; display: flex; flex-direction: column; gap: 8px; }
+  .card .lab2 { font-size: 0.62rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-muted); font-weight: 600; }
+</style>
+
+<div class="page">
+  <header>
+    <h1>Standing → Next, one column</h1>
+    <p class="lede">Version 2 of the Next mock-up, with the Window merge folded in. <b>Where it stands</b> is the state; <b>Next</b> is the move out of that state — so they sit in one cell, state on the left, an arrow, the move on the right. The dots and their label stay exactly as built today; the move is the board's next-action words as a button with its hint beneath and a ⋯ for everything else. With the Window track and the money stack, the board that had nine columns this morning has five.</p>
+    <div class="before">
+      <span class="col">Sub · stage</span><span class="col m">Window ⟵ GC portal</span><span class="col m">Agreed · Paid · Open</span><span class="col m">Where it stands ⟶ Next</span><span class="col x">GC portal</span><span class="col x">actions</span>
+    </div>
+  </header>
+
+  <!-- The board -->
+  <section class="sec">
+    <div class="sec-head"><h2>The board</h2><span class="opens">One row per state. The #880 handshake row is expanded; the ⋯ menu is drawn open on the Sent row. Today is Sep 7.</span></div>
+    <div class="frame"><div class="scroll">
+      <table style="min-width: 1040px">
+        <thead><tr>
+          <th>Sub · stage</th>
+          <th><div class="axis"><span style="left:0%">Sep 1</span><span style="left:23%">Sep 15</span><span style="left:49%">Oct 1</span><span style="left:72%">Oct 15</span><span style="left:97%">Nov</span></div></th>
+          <th class="num">Agreed<span style="display:block;color:var(--green)">Paid</span><span style="display:block;color:var(--red)">Open</span></th>
+          <th class="hi">Where it stands → next</th>
+        </tr></thead>
+        <tbody>
+          <tr class="job"><td colspan="4">#880 · Knight Contracting <span class="addr">· 150 E Sonterra Blvd 200B, San Antonio · shares stage dates with Summit General</span><span class="need">3 rows · 2 need you</span></td></tr>
+
+          <!-- handshake, expanded -->
+          <tr class="exp">
+            <td><div class="who">Airfordable Heating &amp; Air Conditioning</div><div class="where">sheet · 📞 (830) 340-3333</div></td>
+            <td><div class="win"><button class="btn">Set a window…</button></div></td>
+            <td class="num"><div>$4,200.00</div><div class="f">$0.00</div><div class="r">$4,200.00</div></td>
+            <td class="hi"><div class="stand">
+              <span class="rail"><span class="dots"><i class="s gap"></i><b class="gap"></b><i class="s gap"></i><b class="gap"></b><i class="s gap"></i><b class="br"></b><i class="now"></i><b></b><i></i><b></b><i></i><b></b><i></i></span><span class="lab gap">Work · no agreement</span></span>
+              <span class="arrow">→</span>
+              <div class="move"><div class="row1"><button class="act primary">Get it in writing</button><button class="more">⋯</button></div><div class="hint">$4,200 on a handshake · 31 days</div></div>
+            </div></td>
+          </tr>
+          <tr class="form"><td colspan="4">
+            <div class="inline">
+              <div class="f"><label>Price</label><input class="ctl m" value="$4,200.00"></div>
+              <div class="f"><label>Window from</label><input class="ctl" value="Aug 6, 2026"></div>
+              <div class="f"><label>to</label><input class="ctl" value="Sep 18, 2026"></div>
+              <div class="f"><label>Takes about (working days)</label><input class="ctl" value="10"></div>
+              <div class="f"><label>Offer good for</label><select class="ctl"><option>7 days · through Sep 13</option></select></div>
+              <div class="send"><span class="note">Scope: the trade library's default lines · goes to their portal · the sheet stays as it is</span><button class="door">Open the full assembler ›</button><button class="act primary">Send</button></div>
+            </div>
+          </td></tr>
+
+          <!-- signed, working, picked -->
+          <tr>
+            <td><div class="who">Behar Kraja</div><div class="where">WO-880-01 · Rough-in · signed Sep 3</div></td>
+            <td><div class="win"><div class="track"><div class="grid"></div><div class="today" style="left:9.8%"></div><div class="bar" style="left:11.5%;width:19.5%"></div><div class="pick" style="left:13.1%;width:3.3%"></div><span class="tag shown" style="left:32.5%">GC</span></div><div class="cap">Sep 8 – 19 · <b>picked Sep 9 – 10</b></div></div></td>
+            <td class="num"><div>$3,600.00</div><div class="f">$0.00</div><div class="r">$3,600.00</div></td>
+            <td class="hi"><div class="stand">
+              <span class="rail"><span class="dots"><i class="s done"></i><b class="done"></b><i class="s done"></i><b class="done"></b><i class="s done"></i><b class="br done"></b><i class="now"></i><b></b><i></i><b></b><i></i><b></b><i></i></span><span class="lab now">Work<span class="sub">signed Sep 3 · 50% along</span></span></span>
+              <span class="arrow">→</span>
+              <div class="move"><div class="row1"><button class="act quiet">Waiting on Behar</button><button class="more">⋯</button></div><div class="hint">he taps Done on his portal · 50% Sep 5</div></div>
+            </div></td>
+          </tr>
+
+          <!-- sent, GC asked, menu open -->
+          <tr>
+            <td><div class="who">Behar Kraja</div><div class="where">WO-880-02 · Top-out · 📞 (210) 555-0117</div></td>
+            <td><div class="win"><div class="track"><div class="grid"></div><div class="today" style="left:9.8%"></div><div class="bar" style="left:34.4%;width:18%"></div><div class="bar gcask" style="left:45.9%;width:19.7%"></div><span class="tag ask" style="left:53.5%">GC ASKED</span></div><div class="cap amber">Sep 29 – Oct 10 · “framing slipped” <button class="btn ok sm">Accept</button><button class="btn warn sm">Answer…</button></div></div></td>
+            <td class="num"><div>$3,800.00</div><div class="f">$0.00</div><div class="r">$3,800.00</div></td>
+            <td class="hi"><div class="stand">
+              <span class="rail"><span class="dots"><i class="s done"></i><b class="done"></b><i class="s now"></i><b></b><i class="s"></i><b class="br"></b><i></i><b></b><i></i><b></b><i></i><b></b><i></i></span><span class="lab now">Sent<span class="sub">Sep 4 · good through Sep 11</span></span></span>
+              <span class="arrow">→</span>
+              <div class="move"><div class="row1"><button class="act">Waiting on Behar · 2 days</button><span class="menuwrap"><button class="more">⋯</button>
+                <div class="menu"><button>Nudge</button><button>Extend +7 days</button><button>Signed on paper…</button><div class="sep"></div><button>View the record</button><button>Print</button><button>Sheet ›</button><div class="sep"></div><button class="danger">Withdraw</button></div></span></div><div class="hint">opened his portal today · 3×</div></div>
+            </div></td>
+          </tr>
+
+          <!-- stage row -->
+          <tr>
+            <td><div class="who">Trim &amp; final</div><div class="where">stage · line item · no order yet</div></td>
+            <td><div class="win"><div class="track"><div class="grid"></div><div class="today" style="left:9.8%"></div><div class="bar" style="left:68.9%;width:19.6%"></div><span class="tag offer" style="left:89.5%">GC</span></div><div class="cap">Oct 13 – 24 · set by the office · <button class="door">Change</button></div></div></td>
+            <td class="num"><div>$1,200.00</div><div class="f">—</div><div class="f">—</div></td>
+            <td class="hi"><div class="stand">
+              <span class="rail"><span class="lab" style="color:var(--text-muted);font-weight:600">Window set · no order yet</span></span>
+              <span class="arrow">→</span>
+              <div class="move"><div class="row1"><button class="act primary">Offer to…</button><button class="more">⋯</button></div><div class="hint">the window comes along as its dates</div></div>
+            </div></td>
+          </tr>
+
+          <tr class="job"><td colspan="4">#273 · Dudley (Lennox) <span class="addr">· 9703 Lenox Hl, San Antonio</span><span class="need">1 row · 1 needs you</span></td></tr>
+          <!-- expired -->
+          <tr>
+            <td><div class="who">Michael A</div><div class="where">WO-273-01 · Trim &amp; final</div></td>
+            <td><div class="win"><div class="track"><div class="grid"></div><div class="today" style="left:9.8%"></div><div class="bar" style="left:11.5%;width:8%"></div></div><div class="cap">Sep 8 – 12 · set by the office</div></div></td>
+            <td class="num"><div>$1,500.00</div><div class="f">$0.00</div><div class="r">$1,500.00</div></td>
+            <td class="hi"><div class="stand">
+              <span class="rail"><span class="dots"><i class="s done"></i><b class="gap"></b><i class="s gap"></i><b class="gap"></b><i class="s gap"></i><b class="br"></b><i class="now"></i><b></b><i></i><b></b><i></i><b></b><i></i></span><span class="lab gap">Offer expired · still working<span class="sub">sent Aug 28</span></span></span>
+              <span class="arrow">→</span>
+              <div class="move"><div class="row1"><button class="act warn">Re-send…</button><button class="more">⋯</button></div><div class="hint amber">expired Sep 4 · never opened</div></div>
+            </div></td>
+          </tr>
+
+          <tr class="job"><td colspan="4">#1004 · Kane <span class="addr">· 162 Forest Drive, Seguin</span><span class="need">1 row · 1 needs you</span></td></tr>
+          <!-- pre-inspection -->
+          <tr>
+            <td><div class="who">Misses Taunya</div><div class="where">WO-1004-01 · Trim &amp; final · signed Sep 4</div></td>
+            <td><div class="win"><div class="track"><div class="grid"></div><div class="today" style="left:9.8%"></div><div class="bar passed" style="left:0%;width:6.6%"></div><div class="pick" style="left:4.9%;width:1.7%;background:var(--text-faint)"></div><span class="tag shown" style="left:8%">GC</span></div><div class="cap">Sep 1 – 5 · passed · <b>worked Sep 4 – 5</b></div></div></td>
+            <td class="num"><div>$1,000.00</div><div class="f">$0.00</div><div class="r">$1,000.00</div></td>
+            <td class="hi"><div class="stand">
+              <span class="rail"><span class="dots"><i class="s done"></i><b class="done"></b><i class="s done"></i><b class="done"></b><i class="s done"></i><b class="br done"></b><i class="done"></i><b class="done"></b><i class="now"></i><b></b><i></i><b></b><i></i></span><span class="lab now">Pre-inspection<span class="sub">Taunya said done Sep 5</span></span></span>
+              <span class="arrow">→</span>
+              <div class="move"><div class="row1"><button class="act primary">Schedule inspection…</button><button class="act ok">Passed → bill</button><button class="more">⋯</button></div><div class="hint">the city usually gives Monday</div></div>
+            </div></td>
+          </tr>
+
+          <tr class="job"><td colspan="4">#931 · Heron Construction <span class="addr">· 105 Dover Rd, San Antonio</span></td></tr>
+          <!-- customer pays -->
+          <tr>
+            <td><div class="who">Behar Kraja</div><div class="where">WO-931-01 · Top-out · signed Aug 20</div></td>
+            <td><div class="win"><div class="track"><div class="grid"></div><div class="today" style="left:9.8%"></div><div class="bar passed" style="left:0%;width:8%"></div><span class="tag shown" style="left:9.5%">GC</span></div><div class="cap">Aug 31 – Sep 5 · passed</div></div></td>
+            <td class="num"><div>$3,600.00</div><div class="f">$0.00</div><div class="r">$3,600.00</div></td>
+            <td class="hi"><div class="stand">
+              <span class="rail"><span class="dots"><i class="s done"></i><b class="done"></b><i class="s done"></i><b class="done"></b><i class="s done"></i><b class="br done"></b><i class="done"></i><b class="done"></b><i class="done"></i><b class="done"></b><i class="now"></i><b></b><i></i></span><span class="lab now">Post-inspection: Trigger draw<span class="sub">passed Sep 6</span></span></span>
+              <span class="arrow">→</span>
+              <div class="move"><div class="row1"><button class="act primary">Bill Heron · $9,400</button><button class="more">⋯</button></div><div class="hint">Behar is owed $3,600 once Heron pays</div></div>
+            </div></td>
+          </tr>
+          <!-- paid queued -->
+          <tr>
+            <td><div class="who">Behar Kraja</div><div class="where">WO-931-02 · Rough-in · signed Aug 12</div></td>
+            <td><div class="win"><div class="cap" style="color:var(--text-faint)">Aug 24 – 28 · passed</div></div></td>
+            <td class="num"><div>$2,400.00</div><div class="g">$1,200.00</div><div class="r">$1,200.00</div></td>
+            <td class="hi"><div class="stand">
+              <span class="rail"><span class="dots"><i class="s done"></i><b class="done"></b><i class="s done"></i><b class="done"></b><i class="s done"></i><b class="br done"></b><i class="done"></i><b class="done"></b><i class="done"></i><b class="done"></b><i class="done"></i><b class="done"></b><i class="paid"></i></span><span class="lab paid">Paid<span class="sub">queued for the pay run</span></span></span>
+              <span class="arrow">→</span>
+              <div class="move"><div class="row1"><button class="act ok">Pay Behar · $1,200.00</button><button class="more">⋯</button></div><div class="hint">Friday's run · $1,200 already paid</div></div>
+            </div></td>
+          </tr>
+        </tbody>
+      </table>
+    </div></div>
+    <ul class="notes">
+      <li><b>State → move is a sentence.</b> "Work · no agreement → Get it in writing." "Pre-inspection → Schedule inspection." "Paid, queued → Pay Behar." The arrow is not decoration; it is the grammar of the column, and every row parses the same way.</li>
+      <li><b>The left half is untouched.</b> The dots, the centered label and the sublabel are exactly what shipped today. Only their neighbor changed, so the eye that learned the rail this week keeps it.</li>
+      <li><b>The right half is the Next mock-up from before,</b> one primary in the tone of its urgency (blue normal, amber lapsed, green money), quiet text when the sub owns the step, a ⋯ for the rest. Two buttons only at Pre-inspection.</li>
+      <li><b>Stage rows have no dots</b> — there is no agreement yet — so the left half is their one-line standing ("Window set · no order yet") and the move is Offer to…, which opens the sub picker inline.</li>
+      <li><b>Row height stays at two lines.</b> The dots-plus-label stack and the button-plus-hint stack are the same height, so the merged cell is no taller than either was alone. The four remaining columns fit at 1040px without a horizontal scroll.</li>
+    </ul>
+  </section>
+
+  <!-- Width -->
+  <section class="sec">
+    <div class="sec-head"><h2>What the width buys</h2></div>
+    <div class="compare">
+      <div class="mini"><div class="capt">This morning · 9 columns</div><p>Sub · Window · Agreed · Paid · Open · Where it stands · Next · GC portal · actions. At 1280px the rail label wrapped, the buttons column was the widest thing on the row, and the GC column was a chip most of the time.</p></div>
+      <div class="mini"><div class="capt">Proposed · 4 columns</div><p>Sub · Window (with the GC) · money stack · Standing → Next. The <b>Window track gets 220px</b>, which is what makes the schedule readable; the merged cell gets ~330px and reads as one sentence. Nothing is hidden — the ⋯ carries what the actions column carried.</p></div>
+    </div>
+  </section>
+
+  <!-- Narrow -->
+  <section class="sec">
+    <div class="sec-head"><h2>On the narrow card</h2><span class="opens">The two halves stack: dots and label centered, then the move full-width so thumbs find it.</span></div>
+    <div class="card">
+      <div class="who">Behar Kraja</div>
+      <div class="where">WO-880-02 · Top-out · 📞 (210) 555-0117</div>
+      <div class="lab2">Window</div>
+      <div class="win"><span style="display:inline-flex;border-radius:999px;overflow:hidden;font-size:0.72rem;font-weight:700;background:var(--green-tint);color:var(--green)"><span style="padding:2px 9px">Sep 22 – Oct 2</span><span style="padding:2px 8px;background:var(--amber-tint);color:var(--amber);font-size:0.66rem;display:inline-flex;align-items:center;gap:4px"><i style="width:6px;height:6px;border-radius:50%;background:currentColor;display:inline-block"></i>GC asked</span></span><div class="cap amber">Sep 29 – Oct 10 · “framing slipped” <button class="btn ok sm">Accept</button><button class="btn warn sm">Answer…</button></div></div>
+      <div class="lab2">Where it stands → next</div>
+      <div style="display:flex;flex-direction:column;gap:8px;align-items:center">
+        <span class="rail"><span class="dots"><i class="s done"></i><b class="done"></b><i class="s now"></i><b></b><i class="s"></i><b class="br"></b><i></i><b></b><i></i><b></b><i></i><b></b><i></i></span><span class="lab now">Sent<span class="sub">Sep 4 · good through Sep 11</span></span></span>
+        <div style="display:flex;gap:6px;width:100%"><button class="act" style="flex:1;text-align:center">Waiting on Behar · 2 days</button><button class="more" style="height:auto">⋯</button></div>
+        <div class="hint" style="font-size:0.7rem;color:var(--text-muted)">opened his portal today · 3×</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="sec">
+    <div class="sec-head"><h2>Build order</h2></div>
+    <ul class="notes">
+      <li><b>1 · ⋯ menu + fold the actions column into Next</b> (no behaviour change, the buttons just move). Half a day.</li>
+      <li><b>2 · Merge Where it stands and Next into one cell</b> with the arrow; keep the rail component as is. An hour.</li>
+      <li><b>3 · Window track</b> with the board-wide scale, the GC tag and the popover; drop the GC column; chip fallback under 900px. A day.</li>
+      <li><b>4 · Lift the queues' inline forms</b> into a shared row form and wire each primary to expand or open its modal. Half a day.</li>
+      <li><b>Nothing new is written</b> at any step — same writes, same modals, rearranged.</li>
+    </ul>
+  </section>
+</div>

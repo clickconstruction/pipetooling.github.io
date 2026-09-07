@@ -10,6 +10,7 @@ import { buildSubLaborPayRun, payRunFilterMatches, sheetPayWhen, PAY_RUN_FILTERS
 import { SHEET_RAIL_GAP } from '../../lib/subWorkOrders/sheetRailTone'
 import { normalizePersonNameKey } from '../../lib/personNameKey'
 import { useRosterSubKinds } from '../../hooks/useRosterSubKinds'
+import { useIsNarrowScreen } from '../../hooks/useIsNarrowScreen'
 import { emitWorkOrderChanged, WORK_ORDER_CHANGED_EVENT } from '../../hooks/useJobWorkOrderCoverage'
 import { SheetRail } from './SheetRail'
 import { SheetStoryModal } from './SheetStoryModal'
@@ -75,6 +76,26 @@ export type JobsSubLaborTabProps = {
   onOpenBackcharge: (target: SubLaborBackchargeTarget) => void
   /** The sheet story changed a stage or a payable-after date — reload the ledger. */
   onReloadLaborJobs?: () => void
+  /** The parent draws `SubLaborToolbar` beside the Work / Pay control — skip it here. */
+  hideToolbar?: boolean
+}
+
+/** New Sub Labor + the search box — the Pay view's toolbar, drawn by the parent on the Work / Pay row. */
+export function SubLaborToolbar({ search, onSearchChange, onNewLaborJob }: { search: string; onSearchChange: (value: string) => void; onNewLaborJob: () => void }) {
+  return (
+    <>
+      <button type="button" onClick={onNewLaborJob} style={{ padding: '0.35rem 0.75rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: '0.875rem', whiteSpace: 'nowrap' }}>
+        New Sub Labor
+      </button>
+      <input
+        type="search"
+        placeholder="Search contractor, HCP, address…"
+        value={search}
+        onChange={(e) => onSearchChange(e.target.value)}
+        style={{ flex: '1 1 240px', minWidth: 160, padding: '0.4rem 0.75rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.875rem', boxSizing: 'border-box' }}
+      />
+    </>
+  )
 }
 
 export default function JobsSubLaborTab({
@@ -96,7 +117,9 @@ export default function JobsSubLaborTab({
   onOpenMakePayment,
   onOpenBackcharge,
   onReloadLaborJobs,
+  hideToolbar = false,
 }: JobsSubLaborTabProps) {
+  const narrow = useIsNarrowScreen()
   const [expandedSubLaborJobIds, setExpandedSubLaborJobIds] = useState<Set<string>>(new Set())
   const [stageMenuJobId, setStageMenuJobId] = useState<string | null>(null)
   /** Every live work order (one-row spine, PR 4): sheet-anchored ones cover their sheet, job-anchored ones every sheet on the job. */
@@ -335,19 +358,12 @@ export default function JobsSubLaborTab({
   return (
     <div>
       {error && <p style={{ color: 'var(--text-red-700)', marginBottom: '1rem' }}>{error}</p>}
-      <div style={{ marginBottom: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
-        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
-          <button type="button" onClick={onNewLaborJob} style={{ padding: '0.35rem 0.75rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: '0.875rem' }}>
-            New Sub Labor
-          </button>
-          <input
-            type="search"
-            placeholder="Search contractor, HCP, address…"
-            value={subLaborSearch}
-            onChange={(e) => onSubLaborSearchChange(e.target.value)}
-            style={{ flex: '1 1 240px', minWidth: 200, padding: '0.4rem 0.75rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.875rem', boxSizing: 'border-box' }}
-          />
-        </div>
+      <div style={{ marginBottom: '1rem', display: 'flex', justifyContent: hideToolbar ? 'flex-end' : 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
+        {hideToolbar ? null : (
+          <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
+            <SubLaborToolbar search={subLaborSearch} onSearchChange={onSubLaborSearchChange} onNewLaborJob={onNewLaborJob} />
+          </div>
+        )}
         <div style={{ fontSize: '1rem', fontWeight: 600 }}>
           Sub Labor Due: <AmountSmallCents value={subLaborDueTotal} />
         </div>
@@ -355,7 +371,7 @@ export default function JobsSubLaborTab({
 
       {/* The Friday question — four tiles from what the sheets already store. */}
       {!laborJobsLoading && laborJobs.length > 0 && (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: 10, marginBottom: '1.1rem' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: narrow ? 'repeat(2, minmax(0, 1fr))' : 'repeat(auto-fit, minmax(190px, 1fr))', gap: narrow ? 8 : 10, marginBottom: '1.1rem' }}>
           <div style={tileStyle()}>
             <div style={{ fontSize: '0.68rem', textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-muted)', fontWeight: 600 }}>Owed to subs</div>
             <div style={{ fontSize: '1.35rem', fontWeight: 700 }}><AmountSmallCents value={payRun.tiles.owed} /></div>

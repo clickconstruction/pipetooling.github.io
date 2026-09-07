@@ -26,7 +26,7 @@ import { buildJobSummaryCostBreakdownHtml } from '../lib/jobsDocuments/jobSummar
 import { buildSubLaborOutstandingByPerson, subLaborJobMatchesSearch } from '../lib/subLaborOutstanding'
 import { laborJobSubCost } from '../lib/jobs/subLaborCost'
 import JobsCrewPnlTab from '../components/jobs/JobsCrewPnlTab'
-import JobsSubLaborTab from '../components/jobs/JobsSubLaborTab'
+import JobsSubLaborTab, { SubLaborToolbar } from '../components/jobs/JobsSubLaborTab'
 import { JobsSubsWorkView } from '../components/jobs/JobsSubsWorkView'
 import { JobsSubsTab, subsViewFromParam, type SubsView } from '../components/jobs/JobsSubsTab'
 import JobsSubLaborFormModal, { type JobsSubLaborFormModalHandle } from '../components/jobs/JobsSubLaborFormModal'
@@ -319,6 +319,8 @@ export default function Jobs() {
   const [tallyPartsSearch, setTallyPartsSearch] = useState('')
   const [showMyJobsOnly, setShowMyJobsOnly] = useState(false)
   const [subLaborSearch, setSubLaborSearch] = useState('')
+  /** Where Subs → Work draws its toolbar: a slot on the Work / Pay row (`JobsSubsTab`), filled by portal. */
+  const [subsWorkToolbarHost, setSubsWorkToolbarHost] = useState<HTMLDivElement | null>(null)
   const [jobSummarySearch, setJobSummarySearch] = useState('')
   const [printCostBreakdownJobId, setPrintCostBreakdownJobId] = useState<string | null>(null)
   const [myJobIds, setMyJobIds] = useState<Set<string> | null>(null)
@@ -1856,11 +1858,18 @@ export default function Jobs() {
                     return next
                   }, { replace: true })
                 }
+                toolbarHost={subsWorkToolbarHost}
+                onSetSheetStage={setLaborJobStage}
+                onOpenMakePayment={(target, defaultAmount) => subLaborPaymentModalsRef.current?.openMakePayment(target, defaultAmount)}
+                canPrototype={authRole === 'dev'}
               />
             ) : null
           }
+          workToolbar={<div ref={setSubsWorkToolbarHost} style={{ display: 'contents' }} />}
+          payToolbar={<SubLaborToolbar search={subLaborSearch} onSearchChange={setSubLaborSearch} onNewLaborJob={() => subLaborFormRef.current?.openNew()} />}
           pay={
               <JobsSubLaborTab
+                hideToolbar
                 error={error}
                 subLaborSearch={subLaborSearch}
                 onSubLaborSearchChange={setSubLaborSearch}

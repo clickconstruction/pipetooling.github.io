@@ -119,12 +119,14 @@ export function JobWatchersPopover({ jobId, authUserId, compact = false }: { job
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        title="Who hears when the sub reports on this job"
+        title={loaded ? `Watch this job · ${hearing === 0 ? 'nobody yet' : `${hearing} watching`} — who hears when the sub reports` : 'Watch this job — who hears when the sub reports'}
+        aria-label={loaded ? `Watch this job · ${hearing} watching` : 'Watch this job'}
         aria-expanded={open}
         data-testid="job-watchers-bell"
-        style={{ background: 'none', border: '1px solid var(--border-strong)', borderRadius: 999, padding: compact ? '1px 8px' : '2px 10px', fontSize: '0.72rem', fontWeight: 700, color: hearing > 0 ? 'var(--text-700)' : 'var(--text-muted)', cursor: 'pointer', whiteSpace: 'nowrap' }}
+        style={{ background: hearing > 0 ? 'var(--bg-blue-tint)' : 'none', border: `1px solid ${hearing > 0 ? 'var(--text-blue-700)' : 'var(--border-strong)'}`, borderRadius: 999, padding: compact ? '1px 8px' : '2px 9px', fontSize: '0.72rem', fontWeight: 700, color: hearing > 0 ? 'var(--text-blue-700)' : 'var(--text-muted)', cursor: 'pointer', whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center', gap: 5 }}
       >
-        🔔 {loaded ? `Watching · ${hearing}` : 'Watching'}
+        <span aria-hidden="true">🔔</span>
+        {loaded && hearing > 0 ? <span>{hearing}</span> : null}
       </button>
       {open ? (
         <div role="dialog" aria-label="Watch this job" style={{ position: 'absolute', zIndex: 30, top: 'calc(100% + 6px)', right: 0, minWidth: 340, maxWidth: 'min(92vw, 460px)', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, boxShadow: '0 8px 26px rgba(0,0,0,0.18)', padding: '0.6rem 0.75rem', fontSize: '0.8rem' }}>

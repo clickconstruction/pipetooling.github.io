@@ -19,7 +19,9 @@ describe('JobWatchersPopover', () => {
   it('opens to the empty list with a subscribe picker', async () => {
     renderWithProviders(<JobWatchersPopover jobId="j-1" authUserId="u-1" />)
     const bell = screen.getByTestId('job-watchers-bell')
-    await waitFor(() => expect(bell.textContent).toContain('Watching · 0'))
+    // v2.2963: the bell dropped the word — the count shows only when someone watches; the sentence lives on the accessible label.
+    await waitFor(() => expect(bell.getAttribute('aria-label')).toBe('Watch this job · 0 watching'))
+    expect(bell.textContent?.trim()).toBe('🔔')
     fireEvent.click(bell)
     expect(screen.getByRole('dialog', { name: 'Watch this job' })).toBeTruthy()
     expect(screen.getByText(/Nobody yet/)).toBeTruthy()
