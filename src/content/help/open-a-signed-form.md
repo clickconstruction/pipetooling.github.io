@@ -23,7 +23,7 @@ The same document on the **Person Desk** paperwork list ends in *· form*, so a 
 {{button:outline|Open signed PDF}} fetches the filled, flattened form — exactly what the signer saw, with their signature and date on the line — and opens it in a new tab. The link works for five minutes.
 
 :::example Who can open it
-Devs, controllers, and pay-approved masters. Assistants can see the record and the last-four hints but get a clear "not allowed" message on the button. Every open is logged with who and when.
+Devs, controllers, and pay-approved leaders. Assistants can see the record and the last-four hints but get a clear "not allowed" message on the button. Every open is logged with who and when.
 :::
 
 Print from the browser when the IRS or a builder needs a hard copy. Never forward the PDF by email; if someone needs the number, they open the PDF themselves.

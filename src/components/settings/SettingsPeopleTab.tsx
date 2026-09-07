@@ -12,7 +12,7 @@ import { isAssistantLike } from '../../lib/subcontractorLikeRole'
 type PageAccessRow = {
   page: string
   dev: string
-  master: string
+  leader: string
   assistant: string
   sub: string
   helpers: string
@@ -22,17 +22,17 @@ type PageAccessRow = {
 }
 
 const PAGE_ACCESS: PageAccessRow[] = [
-  { page: 'Dashboard', dev: 'yes', master: 'yes', assistant: 'yes', sub: 'yes', helpers: 'yes', estimator: 'yes', primary: 'yes', superintendent: 'yes' },
-  { page: 'Customers', dev: 'yes', master: 'yes', assistant: 'yes', sub: 'no', helpers: 'no', estimator: 'yes limited', primary: 'no', superintendent: 'no' },
-  { page: 'Projects', dev: 'yes', master: 'yes', assistant: 'yes', sub: 'no', helpers: 'no', estimator: 'no', primary: 'no', superintendent: 'yes' },
-  { page: 'Workflow', dev: 'yes', master: 'yes', assistant: 'yes limited', sub: 'no', helpers: 'no', estimator: 'no', primary: 'no', superintendent: 'yes limited' },
-  { page: 'People', dev: 'yes', master: 'yes', assistant: 'yes limited', sub: 'no', helpers: 'no', estimator: 'no', primary: 'no', superintendent: 'no' },
-  { page: 'Jobs', dev: 'yes', master: 'yes', assistant: 'yes limited', sub: 'no', helpers: 'no', estimator: 'no', primary: 'yes Reports only', superintendent: 'yes Pipeline Reports Billing Sub Ledger' },
-  { page: 'Calendar', dev: 'yes', master: 'yes', assistant: 'yes', sub: 'yes', helpers: 'yes', estimator: 'no', primary: 'yes', superintendent: 'yes' },
-  { page: 'Bids', dev: 'yes', master: 'yes', assistant: 'yes', sub: 'no', helpers: 'no', estimator: 'yes', primary: 'yes Bid Board, RFI, Change Order, Lien Release', superintendent: 'yes draft only' },
-  { page: 'Materials', dev: 'yes', master: 'yes', assistant: 'yes', sub: 'no', helpers: 'no', estimator: 'yes', primary: 'yes', superintendent: 'yes' },
-  { page: 'Templates', dev: 'yes', master: 'no', assistant: 'no', sub: 'no', helpers: 'no', estimator: 'no', primary: 'no', superintendent: 'no' },
-  { page: 'Settings', dev: 'yes', master: 'yes limited', assistant: 'no', sub: 'no', helpers: 'no', estimator: 'yes limited', primary: 'yes limited', superintendent: 'yes limited' },
+  { page: 'Dashboard', dev: 'yes', leader: 'yes', assistant: 'yes', sub: 'yes', helpers: 'yes', estimator: 'yes', primary: 'yes', superintendent: 'yes' },
+  { page: 'Customers', dev: 'yes', leader: 'yes', assistant: 'yes', sub: 'no', helpers: 'no', estimator: 'yes limited', primary: 'no', superintendent: 'no' },
+  { page: 'Projects', dev: 'yes', leader: 'yes', assistant: 'yes', sub: 'no', helpers: 'no', estimator: 'no', primary: 'no', superintendent: 'yes' },
+  { page: 'Workflow', dev: 'yes', leader: 'yes', assistant: 'yes limited', sub: 'no', helpers: 'no', estimator: 'no', primary: 'no', superintendent: 'yes limited' },
+  { page: 'People', dev: 'yes', leader: 'yes', assistant: 'yes limited', sub: 'no', helpers: 'no', estimator: 'no', primary: 'no', superintendent: 'no' },
+  { page: 'Jobs', dev: 'yes', leader: 'yes', assistant: 'yes limited', sub: 'no', helpers: 'no', estimator: 'no', primary: 'yes Reports only', superintendent: 'yes Pipeline Reports Billing Sub Ledger' },
+  { page: 'Calendar', dev: 'yes', leader: 'yes', assistant: 'yes', sub: 'yes', helpers: 'yes', estimator: 'no', primary: 'yes', superintendent: 'yes' },
+  { page: 'Bids', dev: 'yes', leader: 'yes', assistant: 'yes', sub: 'no', helpers: 'no', estimator: 'yes', primary: 'yes Bid Board, RFI, Change Order, Lien Release', superintendent: 'yes draft only' },
+  { page: 'Materials', dev: 'yes', leader: 'yes', assistant: 'yes', sub: 'no', helpers: 'no', estimator: 'yes', primary: 'yes', superintendent: 'yes' },
+  { page: 'Templates', dev: 'yes', leader: 'no', assistant: 'no', sub: 'no', helpers: 'no', estimator: 'no', primary: 'no', superintendent: 'no' },
+  { page: 'Settings', dev: 'yes', leader: 'yes limited', assistant: 'no', sub: 'no', helpers: 'no', estimator: 'yes limited', primary: 'yes limited', superintendent: 'yes limited' },
 ]
 
 type SettingsPeopleTabProps = {
@@ -186,7 +186,7 @@ export default function SettingsPeopleTab({
                       <tr>
                         <th style={{ border: '1px solid var(--border)', padding: '0.5rem 0.75rem', textAlign: 'left', background: 'var(--bg-subtle)' }}>Page</th>
                         <th style={{ border: '1px solid var(--border)', padding: '0.5rem 0.75rem', textAlign: 'center', background: 'var(--bg-subtle)' }}>Dev</th>
-                        <th style={{ border: '1px solid var(--border)', padding: '0.5rem 0.75rem', textAlign: 'center', background: 'var(--bg-subtle)' }}>Master</th>
+                        <th style={{ border: '1px solid var(--border)', padding: '0.5rem 0.75rem', textAlign: 'center', background: 'var(--bg-subtle)' }}>Leader</th>
                         <th style={{ border: '1px solid var(--border)', padding: '0.5rem 0.75rem', textAlign: 'center', background: 'var(--bg-subtle)' }}>Assistant</th>
                         <th style={{ border: '1px solid var(--border)', padding: '0.5rem 0.75rem', textAlign: 'center', background: 'var(--bg-subtle)' }}>Sub</th>
                         <th style={{ border: '1px solid var(--border)', padding: '0.5rem 0.75rem', textAlign: 'center', background: 'var(--bg-subtle)' }}>Helper</th>
@@ -199,7 +199,7 @@ export default function SettingsPeopleTab({
                       {PAGE_ACCESS.map((row) => (
                         <tr key={row.page}>
                           <td style={{ border: '1px solid var(--border)', padding: '0.5rem 0.75rem', fontWeight: 500 }}>{row.page}</td>
-                          {(['dev', 'master', 'assistant', 'sub', 'helpers', 'estimator', 'primary', 'superintendent'] as const).map((role) => {
+                          {(['dev', 'leader', 'assistant', 'sub', 'helpers', 'estimator', 'primary', 'superintendent'] as const).map((role) => {
                             const val = row[role]
                             return (
                               <td key={role} style={{ border: '1px solid var(--border)', padding: '0.5rem 0.75rem', textAlign: 'center' }}>
@@ -382,16 +382,16 @@ export default function SettingsPeopleTab({
               }}
             >
               <span style={{ fontSize: '0.75rem' }}>{payApprovedMastersSectionOpen ? '▼' : '▶'}</span>
-              Pay Approved Masters
+              Pay Approved Leaders
               </button>
             {payApprovedMastersSectionOpen && (
               <div style={{ padding: '0 1rem 1rem 1rem', borderTop: '1px solid var(--border)' }}>
                 <p style={{ marginBottom: '1rem', color: 'var(--text-muted)' }}>
-                  Masters selected here can access the Pay and Hours tabs on the People page. Their assistants can enter hours in the Hours tab.
+                  Leaders selected here can access the Pay and Hours tabs on the People page. Their assistants can enter hours in the Hours tab.
                 </p>
                 {payApprovedError && <p style={{ color: 'var(--text-red-700)', marginBottom: '1rem' }}>{payApprovedError}</p>}
                 {payApprovedMasters.length === 0 ? (
-                  <p style={{ color: 'var(--text-muted)' }}>No masters or devs found.</p>
+                  <p style={{ color: 'var(--text-muted)' }}>No leaders or devs found.</p>
                 ) : (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', maxWidth: 640 }}>
                     {payApprovedMasters.map((m) => {
@@ -512,7 +512,7 @@ export default function SettingsPeopleTab({
                         {p.kind === 'assistant'
                           ? 'Assistant'
                           : p.kind === 'master_technician'
-                            ? 'Master Technician'
+                            ? 'Leader'
                             : p.kind === 'estimator'
                               ? 'Estimator'
                               : p.kind === 'primary'
@@ -586,7 +586,7 @@ export default function SettingsPeopleTab({
                         {p.kind === 'assistant'
                           ? 'Assistant'
                           : p.kind === 'master_technician'
-                            ? 'Master Technician'
+                            ? 'Leader'
                             : p.kind === 'estimator'
                               ? 'Estimator'
                               : p.kind === 'primary'

@@ -339,7 +339,7 @@ export function BankingMercuryAccountingTab({
   const [accountingSearchText, setAccountingSearchText] = useState('')
 
   // Org-level auto-approve switch (Tier-2 #27): `app_settings.accounting_label_auto_approve_rule_matches`.
-  // null = not loaded yet. Read by everyone on the tab; flipped by dev/master.
+  // null = not loaded yet. Read by everyone on the tab; flipped by dev/leader.
   // The approving itself happens server-side (bulk_insert RPC + mercury-webhook
   // → auto_approve_pending_accounting_label_suggestions) — nothing here runs it.
   const canFlipAutoApprove = myRole === 'dev' || myRole === 'master_technician'
@@ -2133,7 +2133,7 @@ export function BankingMercuryAccountingTab({
             title={
               canFlipAutoApprove
                 ? 'Org-wide, server-side: when on, every new rule match approves itself the moment it is created — from the Mercury webhook or Apply rules — whether or not anyone has this tab open. Internal Transfers on a transaction with job splits still waits here for a person. Does not touch what is already pending; use Approve all for that.'
-                : 'Org-wide switch (dev or master technician flips it): when on, new rule matches approve themselves server-side; only conflicts wait here.'
+                : 'Org-wide switch (dev or leader flips it): when on, new rule matches approve themselves server-side; only conflicts wait here.'
             }
           >
             <input

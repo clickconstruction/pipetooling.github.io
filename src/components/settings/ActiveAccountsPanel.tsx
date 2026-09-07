@@ -1,7 +1,7 @@
 /** Active Accounts management panel: users table (copy cells, service-type pills,
  * role select, last login), invite / manual add / unified archive (with optional
  * customer reassignment) / set-password satellite modals, archived-users restore,
- * and convert-master.
+ * and convert-leader.
  * State + handlers live in useActiveAccountsManagement; this renders in two
  * surfaces: inline card on Settings → People & accounts, and inside the
  * app-level Active Accounts modal (ActiveAccountsModalContext). */
@@ -728,7 +728,7 @@ export default function ActiveAccountsPanel({ variant, onDataChanged, onOpenFind
             )}
           </div>
 
-          {/* Convert Master to Assistant/Subcontractor */}
+          {/* Convert Leader to Assistant/Subcontractor */}
           {users.length > 0 && (
             <div style={{ marginTop: '2rem', border: '1px solid var(--border)', borderRadius: '0.5rem', maxWidth: 640 }}>
               <button
@@ -750,25 +750,25 @@ export default function ActiveAccountsPanel({ variant, onDataChanged, onOpenFind
                 }}
               >
                 <span style={{ fontSize: '0.75rem' }}>{convertMasterSectionOpen ? '▼' : '▶'}</span>
-                Convert Master to Assistant/Subcontractor
+                Convert Leader to Assistant/Subcontractor
               </button>
               {convertMasterSectionOpen && (
               <div style={{ padding: '0 1rem 1rem 1rem', borderTop: '1px solid var(--border)' }}>
               <p style={{ marginBottom: '0.75rem', color: 'var(--text-muted)', fontSize: '0.875rem' }}>
-                Convert an existing master into an assistant or subcontractor. All of their customers, projects, and people
-                will be reassigned to another master.
+                Convert an existing leader into an assistant or subcontractor. All of their customers, projects, and people
+                will be reassigned to another leader.
               </p>
               <form onSubmit={handleConvertMaster}>
                 <div style={{ marginBottom: '0.75rem' }}>
-                  <label htmlFor="convert-master" style={{ display: 'block', marginBottom: 4 }}>Master to convert *</label>
+                  <label htmlFor="convert-leader" style={{ display: 'block', marginBottom: 4 }}>Leader to convert *</label>
                   <select
-                    id="convert-master"
+                    id="convert-leader"
                     value={convertMasterId}
                     onChange={(e) => { setConvertMasterId(e.target.value); setConvertError(null); setConvertSummary(null) }}
                     disabled={convertSubmitting}
                     style={{ width: '100%', maxWidth: 400, padding: '0.5rem' }}
                   >
-                    <option value="">Select master…</option>
+                    <option value="">Select leader…</option>
                     {users
                       .filter((u) => u.role === 'master_technician')
                       .map((u) => (
@@ -779,15 +779,15 @@ export default function ActiveAccountsPanel({ variant, onDataChanged, onOpenFind
                   </select>
                 </div>
                 <div style={{ marginBottom: '0.75rem' }}>
-                  <label htmlFor="convert-new-master" style={{ display: 'block', marginBottom: 4 }}>New master owner *</label>
+                  <label htmlFor="convert-new-leader" style={{ display: 'block', marginBottom: 4 }}>New leader owner *</label>
                   <select
-                    id="convert-new-master"
+                    id="convert-new-leader"
                     value={convertNewMasterId}
                     onChange={(e) => { setConvertNewMasterId(e.target.value); setConvertError(null); setConvertSummary(null) }}
                     disabled={convertSubmitting}
                     style={{ width: '100%', maxWidth: 400, padding: '0.5rem' }}
                   >
-                    <option value="">Select new master…</option>
+                    <option value="">Select new leader…</option>
                     {users
                       .filter((u) => u.role === 'master_technician' && u.id !== convertMasterId)
                       .map((u) => (
@@ -832,12 +832,12 @@ export default function ActiveAccountsPanel({ variant, onDataChanged, onOpenFind
                         disabled={convertSubmitting}
                         style={{ marginRight: 4 }}
                       />
-                      Auto-adopt this assistant to the new master
+                      Auto-adopt this assistant to the new leader
                     </label>
                   </div>
                 )}
                 <p style={{ marginBottom: '0.75rem', color: 'var(--text-amber-700)', fontSize: '0.8125rem' }}>
-                  This operation reassigns all customers, projects, and people owned by the selected master to the new master and
+                  This operation reassigns all customers, projects, and people owned by the selected leader to the new leader and
                   changes their role. It is not easily reversible.
                 </p>
                 {convertError && <p style={{ color: 'var(--text-red-700)', marginBottom: '0.75rem' }}>{convertError}</p>}
@@ -851,7 +851,7 @@ export default function ActiveAccountsPanel({ variant, onDataChanged, onOpenFind
                     convertMasterId === convertNewMasterId
                   }
                 >
-                  {convertSubmitting ? 'Converting…' : 'Convert master'}
+                  {convertSubmitting ? 'Converting…' : 'Convert leader'}
                 </button>
               </form>
               </div>
@@ -861,7 +861,7 @@ export default function ActiveAccountsPanel({ variant, onDataChanged, onOpenFind
             {onOpenFindDuplicates && (
             <div style={{ marginTop: '1.5rem', paddingTop: '1rem', borderTop: '1px solid var(--border)' }}>
               <p style={{ color: 'var(--text-muted)', margin: '0 0 0.5rem 0', fontSize: '0.875rem' }}>
-                Roster of Assistants, Masters, and Subcontractors. You can add people who have not signed up. Use these when assigning workflow steps.
+                Roster of Assistants, Leaders, and Subcontractors. You can add people who have not signed up. Use these when assigning workflow steps.
               </p>
               <button
                 type="button"
@@ -1176,17 +1176,17 @@ export default function ActiveAccountsPanel({ variant, onDataChanged, onOpenFind
                         disabled={archiveConfirmSubmitting}
                         style={{ marginTop: 2 }}
                       />
-                      <span>Reassign them to another master</span>
+                      <span>Reassign them to another leader</span>
                     </label>
                     {archiveReassignMode === 'reassign' && (
                       <select
-                        aria-label="New master for customers"
+                        aria-label="New leader for customers"
                         value={archiveReassignTargetId}
                         onChange={(e) => setArchiveReassignTargetId(e.target.value)}
                         disabled={archiveConfirmSubmitting}
                         style={{ width: '100%', padding: '0.5rem', marginTop: '0.5rem' }}
                       >
-                        <option value="">Select new master…</option>
+                        <option value="">Select new leader…</option>
                         {eligibleReassignTargets(users, archiveConfirmUser.id).map((u) => (
                           <option key={u.id} value={u.id}>
                             {u.name || u.email} ({u.email})

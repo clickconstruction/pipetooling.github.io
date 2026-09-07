@@ -44,7 +44,7 @@ Under the document, the GC types their full name, checks the agreement, and pres
 
 ## From signature to job
 
-When the job is ready, open the signed record in the Estimates **Ledger** and press {{button:blue|Create job}} (or **Link existing job** if the job already exists). The job is tied to the bid automatically: **Jobs → Stages** shows {{chip:green|Signed · Bid room proposal}} on its contract chip and opens the GC's signature, Edit job shows the bid, and the **Bid Board**'s Links column gets a {{chip:green|J1234}} chip that opens the job (assistants, masters, controllers and devs — estimators don't see jobs).
+When the job is ready, open the signed record in the Estimates **Ledger** and press {{button:blue|Create job}} (or **Link existing job** if the job already exists). The job is tied to the bid automatically: **Jobs → Stages** shows {{chip:green|Signed · Bid room proposal}} on its contract chip and opens the GC's signature, Edit job shows the bid, and the **Bid Board**'s Links column gets a {{chip:green|J1234}} chip that opens the job (assistants, leaders, controllers and devs — estimators don't see jobs).
 
 ## Change orders, same link
 

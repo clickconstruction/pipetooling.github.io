@@ -16,7 +16,7 @@ Three doors, all landing on the same table:
 - **money story →** on a job's activity header on **Jobs → Pipeline** (the panel that opens on a row, and its full-screen view), right after *N% complete*. It opens Job Summary with that job expanded and scrolled into view.
 - **money story →** in the header of the **job window**, next to the trade pill.
 
-The link shows for dev, master and controller. Assistants keep the tab but not the shortcut. If the job isn't on the list — below the job-number floor or outside the **Worked in** window — a note says so instead of scrolling to nothing.
+The link shows for dev, leader and controller. Assistants keep the tab but not the shortcut. If the job isn't on the list — below the job-number floor or outside the **Worked in** window — a note says so instead of scrolling to nothing.
 
 ## The controls
 
@@ -93,4 +93,4 @@ Looking for a 2024 job that isn't in the table? Read the footer first: if it say
 
 - Only **approved, closed** sessions count, for hours and for overhead. Approve hours in People → Hours and the numbers move.
 - Labor $ still comes from payroll crew-days × wage, as before; hours · days come from clock sessions. They agree when time is approved and assigned.
-- Overhead and true profit show for devs, masters, and controllers, the same rule as labor $.
+- Overhead and true profit show for devs, leaders, and controllers, the same rule as labor $.

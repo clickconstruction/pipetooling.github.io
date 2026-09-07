@@ -43,7 +43,7 @@ The header's **⋯** menu (pay roles) opens **End employment…**: a checklist o
 
 - Each row has its one-tap fix: {{button:blue|Force clock out}}, {{button:outline|Open approvals}} (the queue pinned to them), {{button:blue|Turn off portal}}, {{button:blue|To motor pool}}, {{button:blue|End occupancy}}, {{button:blue|Remove}} for a leader, or a link to the tab that does it.
 - Rows you mean to leave (a sub balance still being settled, a pay report that runs Friday) take {{button:outline|Leave open…}} with a reason. A live portal, a running clock, pending sessions and a leader link can't be left open — they'd keep paying or exposing.
-- The footer takes the **end date**, **Archive account after** (dev, controller, or pay-approved Master), and **Note to HR file** (dev). The button reads {{button:red|End employment · 3 open}} until every row is green, grey, or left open on purpose. Finishing writes the end date, appends one factual line to the HR file, and archives the account if you asked.
+- The footer takes the **end date**, **Archive account after** (dev, controller, or pay-approved Leader), and **Note to HR file** (dev). The button reads {{button:red|End employment · 3 open}} until every row is green, grey, or left open on purpose. Finishing writes the end date, appends one factual line to the HR file, and archives the account if you asked.
 
 :::example What the HR line says
 "Employment ended 2026-09-05 for Isiah. Closed out: pending sessions, team lead. Left open on purpose: final pay report (runs Friday)."
@@ -54,7 +54,7 @@ The header's **⋯** menu (pay roles) opens **End employment…**: a checklist o
 The mirror: **Start employment…** lists the start date, wage, team lead, packet, truck and housing. Type the date, the wage, or pick the leader right on the row and tap {{button:blue|Save}}; the packet and the optional truck and housing link to their tabs. Rows a dev must do (the role, sign-in) stay on the Access section with their {{chip:gray|dev only}} tag, so a controller finishes everything else and sends the dev one message.
 
 :::example Locked rows still show
-A controller sees the role with a {{chip:gray|dev only}} tag beside it — the value is shown so you know where it stands and who to ask. Training mode and Archive are theirs (and a pay-approved Master's) since the Desk shipped; changing a role is still the dev's.
+A controller sees the role with a {{chip:gray|dev only}} tag beside it — the value is shown so you know where it stands and who to ask. Training mode and Archive are theirs (and a pay-approved Leader's) since the Desk shipped; changing a role is still the dev's.
 :::
 
 ## A note on the clock strip

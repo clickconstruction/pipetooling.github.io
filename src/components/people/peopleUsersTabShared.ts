@@ -15,7 +15,7 @@ export const KINDS: PersonKind[] = [
 export const KIND_LABELS: Record<PersonKind, string> = {
   assistant: 'Assistants',
   controller: 'Controllers',
-  master_technician: 'Master Technicians',
+  master_technician: 'Leaders',
   sub: 'Subcontractors',
   helper: 'Helper',
   estimator: 'Estimators',
@@ -34,7 +34,7 @@ export const KIND_TO_USER_ROLE: Record<PersonKind, string> = {
   superintendent: 'superintendent',
 }
 
-/** Display order for People → Users tab sections (master roster + user-only roles + devs last). */
+/** Display order for People → Users tab sections (leader roster + user-only roles + devs last). */
 export type UsersTabSection = { type: 'personKind'; kind: PersonKind } | { type: 'dev' }
 
 export const USERS_TAB_SECTIONS: UsersTabSection[] = [

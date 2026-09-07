@@ -10,7 +10,7 @@ import { DESK_Z, initials } from './personDeskShared'
 
 type Hit = { userId: string | null; personId: string | null; name: string; kind: string; email: string | null }
 
-const KIND_LABEL: Record<string, string> = { helper: 'Helper', sub: 'Subcontractor', assistant: 'Assistant', controller: 'Controller', estimator: 'Estimator', master_technician: 'Master', superintendent: 'Superintendent', primary: 'Primary', dev: 'Dev' }
+const KIND_LABEL: Record<string, string> = { helper: 'Helper', sub: 'Subcontractor', assistant: 'Assistant', controller: 'Controller', estimator: 'Estimator', master_technician: 'Leader', superintendent: 'Superintendent', primary: 'Primary', dev: 'Dev' }
 
 function isTypingSurface(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) return false

@@ -122,7 +122,7 @@ export function PeopleUsersTab({
   // Combine-people modal (fold a duplicate roster identity into the keeper, v2.982).
   const [combineSource, setCombineSource] = useState<Person | null>(null)
   // Team leads manager modal (moved here from Settings → Dashboard & alerts).
-  // Same gate the Settings manager had (dev|master|assistant-like), which also
+  // Same gate the Settings manager had (dev|leader|assistant-like), which also
   // matches the People Teams tab gate (dev/master_technician/assistant/controller).
   const { role: authRole } = useAuth()
   // Person Desk door (v2.2701): the name opens the per-person drawer for office roles.
@@ -600,7 +600,7 @@ export function PeopleUsersTab({
                     <thead>
                       <tr style={{ backgroundColor: 'var(--bg-subtle)', borderBottom: '1px solid var(--border)', textAlign: 'left' }}>
                         <th style={{ padding: '0.5rem 0.75rem' }}>Tag</th>
-                        <th style={{ padding: '0.5rem 0.75rem' }}>Master</th>
+                        <th style={{ padding: '0.5rem 0.75rem' }}>Leader</th>
                         <th style={{ padding: '0.5rem 0.75rem' }}>People</th>
                         <th style={{ padding: '0.5rem 0.75rem' }}>Users</th>
                         <th style={{ padding: '0.5rem 0.75rem' }}>Total</th>

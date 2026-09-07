@@ -10,7 +10,7 @@ Some switches used to live only on the phone that set them: **Mobile cards** on 
 
 ## Defaults for everyone
 
-**Settings → Company → Defaults for everyone** (dev and master) is one small table:
+**Settings → Company → Defaults for everyone** (dev and leader) is one small table:
 
 :::example The table
 | Setting | Everyone | Field roles | Office roles |

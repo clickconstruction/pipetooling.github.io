@@ -39,7 +39,7 @@ import {
  * time — leave a note (Enter posts to the job's real activity thread and
  * advances), stamp "Looks fine", or snooze. The queue is computed by the
  * pure kernel in jobFollowupQueue.ts; review periods are org-wide settings
- * edited from the ⚙ in the header (RLS lets Master/dev write them).
+ * edited from the ⚙ in the header (RLS lets Leader/dev write them).
  */
 
 /**
@@ -475,7 +475,7 @@ export function JobsFollowupModal({ open, onClose, renderStageRow, onOpenBoardRo
         if (!prev) return prev
         const next = { ...prev, ...patch }
         void saveJobFollowupSettings(next, user?.id ?? null).catch(() =>
-          showToast('Could not save — only Master and dev can change review periods.', 'error'),
+          showToast('Could not save — only Leader and dev can change review periods.', 'error'),
         )
         return next
       })
@@ -650,7 +650,7 @@ export function JobsFollowupModal({ open, onClose, renderStageRow, onOpenBoardRo
             <SettingsStepper label="Collections" desc="no activity for…" value={settings.collectionsDays} onChange={(v) => updateSetting({ collectionsDays: v })} />
             <SettingsStepper label={'"Looks fine" rests a job for'} desc="" value={settings.restDays} onChange={(v) => updateSetting({ restDays: v })} />
             <div style={{ fontSize: '0.72rem', color: 'var(--text-slate-400)', paddingTop: '0.5rem' }}>
-              Org-wide · editable by Master & dev · takes effect immediately
+              Org-wide · editable by Leader & dev · takes effect immediately
             </div>
           </div>
         ) : null}

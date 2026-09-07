@@ -17,7 +17,7 @@ Everything happens in one dialog in the **Active Accounts** panel (Settings → 
 The confirmation explains exactly what will happen before you commit. If the account owns customers, the same dialog asks what should happen to them:
 
 - **Keep them assigned to the archived account** (the default), or
-- **Reassign them to another master** — pick who inherits them, and the button becomes {{button:red|Reassign & archive}} so both happen in one step.
+- **Reassign them to another leader** — pick who inherits them, and the button becomes {{button:red|Reassign & archive}} so both happen in one step.
 
 :::example What archiving does
 Sign-in banned · hidden from active lists and assignment pickers · taken off open roadmap tasks · nothing deleted · restorable anytime

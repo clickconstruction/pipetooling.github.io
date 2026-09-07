@@ -1,8 +1,8 @@
 ---
-title: get started as a master
+title: get started as a leader
 category: Getting Started
 roles: dev, master_technician
-keywords: start here, new, master, owner, orientation, what everyone sees, roles
+keywords: start here, new, leader, owner, orientation, what everyone sees, roles
 order: 4
 ---
 You see everything: customers, projects, jobs, money, people, and payroll. This page is the map, plus what each role below you sees — useful when you're setting someone up or answering "where do I click?"

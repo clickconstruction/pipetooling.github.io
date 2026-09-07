@@ -15,7 +15,7 @@ order: 41
 
 ## Who sees it
 
-The header shows **Roadmap** to the owner, masters, assistants, the controller, and primaries — the same people who can already edit roadmap tasks. Helpers and subs never see it; the roadmap reaches them as ordinary tasks on **Today** (look for the purple {{chip:purple|⛰ goal}} chip). A link into the roadmap from a role that isn't on the list lands on Today and says so.
+The header shows **Roadmap** to the owner, leaders, assistants, the controller, and primaries — the same people who can already edit roadmap tasks. Helpers and subs never see it; the roadmap reaches them as ordinary tasks on **Today** (look for the purple {{chip:purple|⛰ goal}} chip). A link into the roadmap from a role that isn't on the list lands on Today and says so.
 
 Old links still work: a bookmark to the Roadmap tab on the Checklist page opens this page with the same roadmap selected.
 

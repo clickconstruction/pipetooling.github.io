@@ -19,14 +19,14 @@ A **work order** is the short numbered document a sub signs before they start: w
 5. {{button:blue|Send for signature}} gives the order its number (WO-977-01, WO-977-02, …), freezes the document, and notifies the sub. Their portal link opens the offer; when they sign, a **Sub Labor sheet is created for them from the agreed amount** — nothing to set up on the Sub Labor tab.
 
 :::example An assistant taking a job in
-The master says "Rudy's doing the rough-in". The assistant opens Work Orders, picks the job and Rudy, ticks the plumbing defaults, leaves the price blank, saves the draft. The master opens it from the Drafts filter, types the price, sends.
+The leader says "Rudy's doing the rough-in". The assistant opens Work Orders, picks the job and Rudy, ticks the plumbing defaults, leaves the price blank, saves the draft. The leader opens it from the Drafts filter, types the price, sends.
 :::
 
 ## From the job window
 
-Taking a job in and the master already knows who's doing it? Open the job, **Edit** tab: the **Sub work order** row sits right under Contract. {{button:blue|Draft a work order…}} opens the assembler with the job already picked — choose the sub, tick the scope, leave the price blank if that's the master's call, {{button:outline|Save draft}}. The row then shows {{chip:gray|Drafted · no price yet}} with {{button:blue|Price…}}; once it's signed it shows {{chip:green|✍ Signed}} and {{button:outline|View record}}. The **Bill** tab shows the same line read-only above the invoice.
+Taking a job in and the leader already knows who's doing it? Open the job, **Edit** tab: the **Sub work order** row sits right under Contract. {{button:blue|Draft a work order…}} opens the assembler with the job already picked — choose the sub, tick the scope, leave the price blank if that's the leader's call, {{button:outline|Save draft}}. The row then shows {{chip:gray|Drafted · no price yet}} with {{button:blue|Price…}}; once it's signed it shows {{chip:green|✍ Signed}} and {{button:outline|View record}}. The **Bill** tab shows the same line read-only above the invoice.
 
-## The master's queue
+## The leader's queue
 
 Unpriced drafts show on the dashboard's **Needs You** card — *"2 sub work orders are waiting for a price"* — and {{button:blue|Price them}} opens **Jobs → Subs → Work** on the Drafts filter. Open each draft, type the price, {{button:blue|Send for signature}}.
 

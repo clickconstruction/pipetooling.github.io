@@ -13,7 +13,7 @@ When a customer accepts an estimate, ClickTooling emails the office. There are t
 ## Set the always-notify list
 
 1. Go to **Estimates**.
-2. Click the {{button:outline|⚙}} gear next to {{button:blue|New estimate}} — hover it and it says who gets emailed. (Dev and master technician roles see it.)
+2. Click the {{button:outline|⚙}} gear next to {{button:blue|New estimate}} — hover it and it says who gets emailed. (Dev and leader roles see it.)
 3. Check everyone who should hear about every acceptance.
 4. Click {{button:outline|Save recipients}}.
 
@@ -21,7 +21,7 @@ When a customer accepts an estimate, ClickTooling emails the office. There are t
 {{chip:gray|Estimates}} … {{button:outline|⚙}} {{button:blue|New estimate}}
 :::
 
-Only a **dev** can change this list. Master technicians can open the window and see who is on it, but the checkboxes and Save button are disabled for them.
+Only a **dev** can change this list. Leader technicians can open the window and see who is on it, but the checkboxes and Save button are disabled for them.
 
 ## Add extra people to one estimate
 

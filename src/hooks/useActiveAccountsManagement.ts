@@ -1,7 +1,7 @@
 /** Self-contained state + handlers for the Active Accounts management UI
  * (users table, invite / manual add / unified archive (optional customer
  * reassignment) / restore / set-password / send-sign-in-email /
- * convert-master). Lifted verbatim from
+ * convert-leader). Lifted verbatim from
  * Settings.tsx so the same panel can render inline in Settings and inside the
  * app-level Active Accounts modal. `enabled` gates data loading (the modal only
  * loads while open); `onDataChanged` lets the host page refresh its own lists
@@ -708,23 +708,23 @@ export function useActiveAccountsManagement({ enabled, onDataChanged }: UseActiv
     setConvertSummary(null)
 
     if (!convertMasterId || !convertNewMasterId) {
-      setConvertError('Please select both the master to convert and the new master owner.')
+      setConvertError('Please select both the leader to convert and the new leader owner.')
       return
     }
     if (convertMasterId === convertNewMasterId) {
-      setConvertError('The new master owner must be different from the master being converted.')
+      setConvertError('The new leader owner must be different from the leader being converted.')
       return
     }
 
     const masterUser = users.find((u) => u.id === convertMasterId)
     const newMasterUser = users.find((u) => u.id === convertNewMasterId)
 
-    const masterLabel = masterUser?.name || masterUser?.email || 'Selected master'
-    const newMasterLabel = newMasterUser?.name || newMasterUser?.email || 'New master'
+    const masterLabel = masterUser?.name || masterUser?.email || 'Selected leader'
+    const newMasterLabel = newMasterUser?.name || newMasterUser?.email || 'New leader'
     const roleLabel = convertNewRole === 'assistant' ? 'assistant' : 'subcontractor'
 
     const confirmed = await confirmDialog({
-      message: `Convert "${masterLabel}" from master to ${roleLabel} and reassign all of their customers, projects, and people to "${newMasterLabel}"? This cannot easily be undone.`,
+      message: `Convert "${masterLabel}" from leader to ${roleLabel} and reassign all of their customers, projects, and people to "${newMasterLabel}"? This cannot easily be undone.`,
       confirmLabel: 'Convert',
       danger: true,
     })
@@ -761,7 +761,7 @@ export function useActiveAccountsManagement({ enabled, onDataChanged }: UseActiv
       setConvertAutoAdopt(true)
       await reloadAfterMutation()
     } catch (err) {
-      setConvertError(err instanceof Error ? err.message : 'Unknown error converting master')
+      setConvertError(err instanceof Error ? err.message : 'Unknown error converting leader')
     } finally {
       setConvertSubmitting(false)
     }

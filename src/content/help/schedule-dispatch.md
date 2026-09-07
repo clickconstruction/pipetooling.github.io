@@ -5,7 +5,7 @@ roles: assistant, superintendent, master_technician
 keywords: schedule, dispatch, assign, blocks, not coming in, share schedule
 order: 10
 ---
-The Schedule page (`/schedule-dispatch`) is where the office puts people on jobs. Only devs, masters, assistants, and superintendents can open it — and if you can see it, you can edit it.
+The Schedule page (`/schedule-dispatch`) is where the office puts people on jobs. Only devs, leaders, assistants, and superintendents can open it — and if you can see it, you can edit it.
 
 ## The views
 

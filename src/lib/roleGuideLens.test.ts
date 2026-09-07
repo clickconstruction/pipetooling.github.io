@@ -15,7 +15,7 @@ describe('guideLensRolesFor', () => {
     ])
   })
 
-  it('a master sees controller and below; a superintendent sees only field/client roles', () => {
+  it('a leader sees controller and below; a superintendent sees only field/client roles', () => {
     expect(guideLensRolesFor('master_technician')).toEqual([
       'controller',
       'assistant',
@@ -39,7 +39,7 @@ describe('guideLensRolesFor', () => {
 
 describe('guideLensRoleLabel', () => {
   it('uses the spoken role names, not the DB slugs', () => {
-    expect(guideLensRoleLabel('master_technician')).toBe('Master')
+    expect(guideLensRoleLabel('master_technician')).toBe('Leader')
     expect(guideLensRoleLabel('subcontractor')).toBe('Sub')
     expect(guideLensRoleLabel('helpers')).toBe('Helper')
     expect(guideLensRoleLabel('superintendent')).toBe('Superintendent')

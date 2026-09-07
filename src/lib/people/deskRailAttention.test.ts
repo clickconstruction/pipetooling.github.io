@@ -74,7 +74,7 @@ describe('buildRailSections', () => {
     ]
     const r = buildRailSections(people, facts, '')
     expect(r.attention.map((x) => x.name)).toEqual(['Texas R & A Electrical', 'Isiah'])
-    expect(r.sections.map((s) => s.label)).toEqual(['Master Technicians', 'Helpers', 'Subcontractors'])
+    expect(r.sections.map((s) => s.label)).toEqual(['Leaders', 'Helpers', 'Subcontractors'])
     expect(r.archived.map((x) => x.name)).toEqual(['Edgar'])
     expect(buildRailSections(people, facts, 'dar').sections.flatMap((s) => s.rows.map((x) => x.name))).toEqual(['Darren'])
   })

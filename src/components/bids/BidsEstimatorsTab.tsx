@@ -460,7 +460,7 @@ export function BidsEstimatorsTab({
         <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>
           No estimator columns yet. {showManageBtn
             ? 'Use Manage columns to add users from the team.'
-            : 'Ask a dev, master, or assistant to add users.'}
+            : 'Ask a dev, leader, or assistant to add users.'}
         </p>
       ) : searchActive && visibleDays.length === 0 ? (
         <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>

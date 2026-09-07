@@ -34,4 +34,4 @@ A colored dot means you're subscribed; a hollow gray dot means you're not.
 
 ## Changing what you receive
 
-This page is a read-only view — recipient lists are managed by devs and masters on each email's own surface (for example, the {{icon:gear}} gears on the Jobs Pipeline board manage the payment notifications). If you're getting something you don't want — or missing something you do — ask a dev or master to adjust the list.
+This page is a read-only view — recipient lists are managed by devs and leaders on each email's own surface (for example, the {{icon:gear}} gears on the Jobs Pipeline board manage the payment notifications). If you're getting something you don't want — or missing something you do — ask a dev or leader to adjust the list.

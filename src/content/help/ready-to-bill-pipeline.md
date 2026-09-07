@@ -172,9 +172,9 @@ Jobs that are billed but proving hard to collect can be flagged for **Collection
 
 ## The "paid in full" email
 
-The moment a job lands in {{chip:green|Paid}}, the app can email the good news automatically. Devs and masters on the list get the **detailed review** — a {{chip:green|PAID IN FULL}} banner, job start and last-work dates, then the full scoreboard: revenue, every payment with its date, team labor person by person (hours × wage), sub labor, parts, and the profit line, plus a month-by-month timeline. Everyone else on the list gets the **summary** — same banner and dates, the payment amount and time but no cost or profit figures anywhere.
+The moment a job lands in {{chip:green|Paid}}, the app can email the good news automatically. Devs and leaders on the list get the **detailed review** — a {{chip:green|PAID IN FULL}} banner, job start and last-work dates, then the full scoreboard: revenue, every payment with its date, team labor person by person (hours × wage), sub labor, parts, and the profit line, plus a month-by-month timeline. Everyone else on the list gets the **summary** — same banner and dates, the payment amount and time but no cost or profit figures anywhere.
 
-Who gets it lives behind the {{icon:gear}} **Paid in Full notifications** button across from the **Paid in Full** section header on Jobs → Pipeline (devs and masters can open it; only devs can change the list — each person shows a Detailed or Summary badge so there are no surprises). The same window has a **Preview & test** block: search for any job, then
+Who gets it lives behind the {{icon:gear}} **Paid in Full notifications** button across from the **Paid in Full** section header on Jobs → Pipeline (devs and leaders can open it; only devs can change the list — each person shows a Detailed or Summary badge so there are no surprises). The same window has a **Preview & test** block: search for any job, then
 
 :::example Preview & test
 Selected: **J512** · Smith House Repipe
@@ -188,16 +188,16 @@ The previews open the exact email in a new tab; **Email me a test** sends the de
 
 There's a second stream for jobs that aren't finished yet: whenever **any** payment lands on a job — the office marks a payment, a bank deposit is allocated in Accounts Receivable, or a Stripe payment comes in — the app can email a progress version of the same report. Instead of the green banner it leads with an amber **$X (Y%) OF $Z PAID** banner and the payment that just arrived, then the job's **Invoices** table exactly as the office sees it in Edit Job — each bill with its {{chip:yellow|Draft}} / {{chip:blue|Billed}} / {{chip:green|Paid}} status, sent date, amount, and how much of it is paid vs still open — followed by the line items. Detailed and Summary versions work like the paid-in-full email.
 
-Its recipient list is separate, behind the {{icon:gear}} **Paid notifications** button next to the **Billed Awaiting Payment** section header (same rules: devs and masters open it, devs edit it). When a payment finishes the job, only the paid-in-full email goes out — you never get both for the same payment.
+Its recipient list is separate, behind the {{icon:gear}} **Paid notifications** button next to the **Billed Awaiting Payment** section header (same rules: devs and leaders open it, devs edit it). When a payment finishes the job, only the paid-in-full email goes out — you never get both for the same payment.
 
 ## Ready to Bill notifications
 
 The third stream watches the **front** of the billing pipeline: the moment any job moves to {{chip:yellow|Ready to Bill}} — a crew finishing up, the office moving it by hand, or a job coming **back** from Billed after an invoice is deleted or reverted — the people on its list are notified so billing can start right away.
 
-This stream is the first that can reach people **two ways — set per person**. Behind the {{icon:gear}} **Ready to Bill notifications** button on the Ready to Bill section header (same rules: devs and masters open it, devs edit it), every person in the list has their own **📧 email** and **🔔 push** checkboxes, at the right end of their row:
+This stream is the first that can reach people **two ways — set per person**. Behind the {{icon:gear}} **Ready to Bill notifications** button on the Ready to Bill section header (same rules: devs and leaders open it, devs edit it), every person in the list has their own **📧 email** and **🔔 push** checkboxes, at the right end of their row:
 
-- **📧 Email** — sent within ~15 minutes, batched with the other notification emails. Devs and masters get the detailed version (the billable amount, draft bills, payments so far); everyone else gets a summary with no dollar figures.
-- **🔔 Push notification** — a short alert straight to that person's phone or computer, once they've enabled push notifications on a device (Settings → Your account). Checking 🔔 for someone who hasn't enabled push yet shows a red **no push device** warning — the checkbox is still fine to leave on, and pushes start the moment they enable it. Push follows the same detailed/summary rule: dollar amounts only for devs and masters.
+- **📧 Email** — sent within ~15 minutes, batched with the other notification emails. Devs and leaders get the detailed version (the billable amount, draft bills, payments so far); everyone else gets a summary with no dollar figures.
+- **🔔 Push notification** — a short alert straight to that person's phone or computer, once they've enabled push notifications on a device (Settings → Your account). Checking 🔔 for someone who hasn't enabled push yet shows a red **no push device** warning — the checkbox is still fine to leave on, and pushes start the moment they enable it. Push follows the same detailed/summary rule: dollar amounts only for devs and leaders.
 
 Check either box, or both; someone with nothing checked isn't notified at all. Changes save the moment you click — there's no Save button on this list.
 
@@ -224,7 +224,7 @@ The Paid in Full header has its own **📊 Chart** (same devs-and-controllers ru
 
 ## Sharing the Billed report
 
-The **Share / Print** button in the same header (devs, masters, controllers, and assistants) emails the Billed Awaiting Payment report to an office teammate — the same customer-grouped report the old Print button made, upgraded for email: phone numbers and emails are tap-to-call / tap-to-write, and **clicking any job opens its Job Detail right in the app**.
+The **Share / Print** button in the same header (devs, leaders, controllers, and assistants) emails the Billed Awaiting Payment report to an office teammate — the same customer-grouped report the old Print button made, upgraded for email: phone numbers and emails are tap-to-call / tap-to-write, and **clicking any job opens its Job Detail right in the app**.
 
 :::example Share Billed Awaiting Payment
 Send to: **Taunya** · When: {{button:blue|Send now}} or **Schedule…** a date and time (Central)
@@ -234,7 +234,7 @@ Send to: **Taunya** · When: {{button:blue|Send now}} or **Schedule…** a date 
 
 Scheduled sends build the report **fresh at send time** — a Monday 7 AM email shows Monday's numbers, not Friday's — and arrive within about five minutes of the chosen time. Your pending sends are listed in the window with a **Cancel** next to each. **Preview** opens the exact email in a new tab; **Email me a test** sends it to your own address with a `[TEST]` subject; **Print instead** is the old print path, unchanged. Recipients can only be office roles — the report carries amounts due.
 
-There's also a per-job version: on **Job Detail**, the envelope icon in the header (devs and masters only) opens the same email with the preview showing right in the window — a **Detailed | Summary** toggle to flip between the two versions, and the send actions at the top:
+There's also a per-job version: on **Job Detail**, the envelope icon in the header (devs and leaders only) opens the same email with the preview showing right in the window — a **Detailed | Summary** toggle to flip between the two versions, and the send actions at the top:
 
 :::example Paid-in-full email window
 {{button:blue|Send to me}} &nbsp; {{button:outline|Send to someone…}}

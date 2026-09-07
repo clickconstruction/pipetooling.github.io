@@ -1051,7 +1051,7 @@ export function ProjectsForecastSpecificStageModal({ stage, projectId, myRole, o
                   defaultValue={step.private_notes ?? ''}
                   onBlurSave={savePrivateNotes}
                   saving={savingPrivateNotes}
-                  placeholder="Add private notes visible to masters, assistants, and superintendents…"
+                  placeholder="Add private notes visible to leaders, assistants, and superintendents…"
                   toneColor="var(--text-sky-700)"
                   borderColor="var(--border-sky)"
                 />

@@ -19,13 +19,13 @@ No address on the bid? The package still sends without one — use **Edit bid** 
 
 ## Send it
 
-Pick a recipient (master techs appear as one-tap chips), then:
+Pick a recipient (leaders appear as one-tap chips), then:
 
 - {{button:blue|Send for me}} — ClickTooling emails the package now and logs the send.
 - {{button:gray|Send via my mail}} — opens your own mail app with the text version; the table is copied to your clipboard to paste in.
 - {{button:gray|Copy for text}} — copies an SMS-friendly summary (address and map link included) for Messages or WhatsApp.
 
-:::example Getting a master tech to a new job
+:::example Getting a leader to a new job
 Wendi opens BP376's pricing, taps {{button:green|Share with a teammate}}, taps the {{chip:blue|Malachi}} chip, and {{button:blue|Send for me}}. Malachi's email has the address at the top — one tap and Google Maps is routing him to the site.
 :::
 

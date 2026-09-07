@@ -50,7 +50,7 @@ export type RailRow = RailPersonInput & {
 export type RailSection = { label: string; rows: RailRow[] }
 
 const KIND_ORDER: Array<[string, string]> = [
-  ['master_technician', 'Master Technicians'],
+  ['master_technician', 'Leaders'],
   ['assistant', 'Assistants'],
   ['controller', 'Controllers'],
   ['superintendent', 'Superintendents'],

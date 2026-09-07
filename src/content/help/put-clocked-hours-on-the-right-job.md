@@ -37,4 +37,4 @@ Two more places used to let you type a split by hand. Both now put the job on th
 
 ## If nothing changes when you link
 
-The link edits the person's clock session, which needs pay access on the session — a dev, a controller, or a pay-approved master. If the toast says no sessions were updated, your account can see the table but not edit that person's clock; ask a pay-approved master to link it.
+The link edits the person's clock session, which needs pay access on the session — a dev, a controller, or a pay-approved leader. If the toast says no sessions were updated, your account can see the table but not edit that person's clock; ask a pay-approved leader to link it.

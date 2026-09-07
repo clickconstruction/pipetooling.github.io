@@ -20,7 +20,7 @@ Each person's file has three layers:
 3. Tap {{button:blue|Add entry}}.
 
 :::example Good entry
-"Sit-down about a fall raise and the path to Master hours — agreed to revisit both at the November review." Dated the day of the conversation, source **Review**.
+"Sit-down about a fall raise and the path to Leader hours — agreed to revisit both at the November review." Dated the day of the conversation, source **Review**.
 :::
 
 Stick to facts with dates. If it's an impression, say whose: "my read after the call was…".

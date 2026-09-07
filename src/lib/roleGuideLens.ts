@@ -5,7 +5,7 @@ import type { UserRole } from '../hooks/useAuth'
  * roles can view the guide list exactly as any role BELOW them sees it —
  * "what does my sub's Help page look like?"
  *
- * Rank is the supervision ladder, not permissions: dev > master > controller
+ * Rank is the supervision ladder, not permissions: dev > leader > controller
  * > assistant > superintendent > estimator/primary > sub/helpers. Only ranks
  * at superintendent and above get a lens (estimators, primaries, subs, and
  * helpers don't supervise anyone).
@@ -51,7 +51,7 @@ export function guideLensRolesFor(role: UserRole | null): UserRole[] {
  */
 const LENS_LABEL: Record<UserRole, string> = {
   dev: 'Dev',
-  master_technician: 'Master',
+  master_technician: 'Leader',
   controller: 'Controller',
   assistant: 'Assistant',
   superintendent: 'Superintendent',

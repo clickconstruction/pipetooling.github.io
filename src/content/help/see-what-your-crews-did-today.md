@@ -37,7 +37,7 @@ The {{button:outline|◀}} {{button:outline|▶}} arrows sit together in the car
 
 ## Who sees what
 
-- **Office roles** (dev, master, assistant, controller) see the whole company.
+- **Office roles** (dev, leader, assistant, controller) see the whole company.
 - **Superintendents** see the crews on jobs tied to their assigned projects — the card says "Scoped to your assigned projects."
 - **Superintendents see field crews first**: office staff fold behind a *Show office staff* link at the bottom of the card, with a {{chip:gray|+N office hidden}} chip keeping the totals honest. Your choice is remembered on that device; *Hide office staff* puts the fold back.
 - The card shows **hours only** — no wages or billing amounts.

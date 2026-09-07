@@ -16,7 +16,7 @@ Each of the three PO-named tabs carries a one-line signpost at the top saying wh
 
 ## A PO number for the supply house (PO Generator)
 
-**Materials → PO Generator** (dev, masters, assistants and controllers). Four fields and a button:
+**Materials → PO Generator** (dev, leaders, assistants and controllers). Four fields and a button:
 
 1. **Job** — search by HCP #, job name or address. The job's trade has to match the trade pill you're on.
 2. **Who the material is for** — the person picking it up.

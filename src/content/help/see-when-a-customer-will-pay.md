@@ -34,7 +34,7 @@ Statistics stop mattering the moment someone gives you an actual answer. When a 
 - If the promised date passes unpaid, the chip flips to {{chip:red|5d past promise · Malachi}} — now you're following up on their word, not a statistic.
 - The same link becomes **edit promised date…** to change or clear it.
 
-Anyone who can see the board sees promises; marking them is for dev, masters, and assistant-type roles.
+Anyone who can see the board sees promises; marking them is for dev, leaders, and assistant-type roles.
 
 ## The payment forecast
 
@@ -54,10 +54,10 @@ The {{button:outline|✉ Email…}} button in the forecast's header sends this e
 - **Send now** emails a teammate immediately; **Schedule…** picks a date and time (Central), and **Repeat weekly** turns it into a standing subscription — the classic setup is Monday 7:00 AM, so the week's cash-in picture is in the inbox before the day starts.
 - **Preview** opens the email in a new tab; **Email me a test** sends it to your own address first.
 - Pending sends list at the bottom of the dialog with a **Cancel** each — cancelling a weekly send ends the chain.
-- Recipients are office-capable teammates (dev, masters, assistant-type roles, and primary). Scheduled sends also appear on the recipient's {{icon:gear}} **Settings → Your account → My email schedule**.
+- Recipients are office-capable teammates (dev, leaders, assistant-type roles, and primary). Scheduled sends also appear on the recipient's {{icon:gear}} **Settings → Your account → My email schedule**.
 - Every job in the email links back to the app, and the **Open the forecast** button lands right on this modal.
 
-Sending is for dev, masters, and assistant-type roles — the same people who can share the Billed report.
+Sending is for dev, leaders, and assistant-type roles — the same people who can share the Billed report.
 
 ## The pay-speeds breakdown
 

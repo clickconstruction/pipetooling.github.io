@@ -36,7 +36,7 @@ In a hurry? {{button:gray|Skip the boxes, just file the scan}} files the photo o
 ## What you get
 
 - The row shows {{chip:green|signed}} with the date on the paper, and on **People → Subs** the pill reads **W-9**.
-- **View signed** opens the record: the typed answers, "signed on paper … by …, keyed in from paper", any required boxes left blank, {{button:outline|Open the filled PDF}} and {{button:outline|Open the paper scan}}. Opening either is limited to devs, controllers, and pay-approved masters, and each open is logged.
+- **View signed** opens the record: the typed answers, "signed on paper … by …, keyed in from paper", any required boxes left blank, {{button:outline|Open the filled PDF}} and {{button:outline|Open the paper scan}}. Opening either is limited to devs, controllers, and pay-approved leaders, and each open is logged.
 - The sub's portal lists the form under **Paperwork on file**.
 
 The sub's signature is never typed for them: it stays on the scan, and the filled PDF's Sign Here line is left blank on purpose.

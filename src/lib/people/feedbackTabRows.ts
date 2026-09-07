@@ -192,7 +192,7 @@ export function unreadWordsCount(submissions: WordsSubmission[], readAtIso: stri
 export function roleLabel(role: string): string {
   switch (role) {
     case 'master_technician':
-      return 'Master Technician'
+      return 'Leader'
     case 'dev':
       return 'Dev'
     case 'assistant':

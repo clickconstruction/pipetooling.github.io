@@ -236,7 +236,7 @@ export function sheetNextAction(rail: SheetRail, coverage: JobWorkOrderCoverage,
   }
   if (coverage.kind === 'draft') {
     return coverage.unpriced
-      ? { label: 'Price it and send', hint: 'the master’s call', button: 'price', buttonLabel: 'Price…' }
+      ? { label: 'Price it and send', hint: 'the leader’s call', button: 'price', buttonLabel: 'Price…' }
       : { label: 'Send it', hint: 'priced — it just needs to go out', button: 'send', buttonLabel: 'Send…' }
   }
   if (coverage.kind === 'sent') {

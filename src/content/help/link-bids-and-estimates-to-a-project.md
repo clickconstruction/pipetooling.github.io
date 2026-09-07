@@ -34,4 +34,4 @@ Unlinking is the same motion: set the dropdown back to **Not linked**.
 
 ## Who sees the pills
 
-The Bids and Estimates pills show for office roles (dev, master, assistant, controller). Superintendents and field roles see only the Jobs pill.
+The Bids and Estimates pills show for office roles (dev, leader, assistant, controller). Superintendents and field roles see only the Jobs pill.

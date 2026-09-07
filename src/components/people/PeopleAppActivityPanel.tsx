@@ -189,7 +189,7 @@ export default function PeopleAppActivityPanel({ enabled, isDev, users, authUser
         >
           <h3 style={{ margin: '0 0 0.75rem 0', fontSize: '1rem', fontWeight: 600 }}>Who can see this tab</h3>
           <p style={{ margin: '0 0 0.75rem 0', color: 'var(--text-muted)', fontSize: '0.875rem' }}>
-            Grant Assistants, Master Technicians, or Primaries org-wide activity (same table as below). Others keep only their own usage.
+            Grant Assistants, Leaders, or Primaries org-wide activity (same table as below). Others keep only their own usage.
           </p>
           {activityGrantListLoading ? (
             <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>Loading grants…</p>

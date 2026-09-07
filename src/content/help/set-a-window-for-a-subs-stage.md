@@ -52,4 +52,4 @@ The sub's portal shows the window as a calendar. They tap the day they can start
 
 ## Who sees what
 
-Devs, masters, assistants, controllers and estimators set and change windows. Superintendents open **Jobs → Subs** and see the Pay view only, as they saw Sub Labor before.
+Devs, leaders, assistants, controllers and estimators set and change windows. Superintendents open **Jobs → Subs** and see the Pay view only, as they saw Sub Labor before.

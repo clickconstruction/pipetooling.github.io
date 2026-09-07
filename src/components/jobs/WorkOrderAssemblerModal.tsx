@@ -30,7 +30,7 @@ import { WorkOrderDocumentView } from './WorkOrderDocumentView'
  * sources (the trade's library, the job's bid takeoff, lines typed for this
  * job), set the terms, then send for signature or save a draft. Opened from
  * the Jobs → Work Orders board, the job window (PR 3), a sheet, or a step.
- * Drafts may be unpriced; Send requires a price (the master's review gate).
+ * Drafts may be unpriced; Send requires a price (the leader's review gate).
  */
 
 export type WorkOrderAssemblerInitial = {
@@ -822,7 +822,7 @@ export function WorkOrderAssemblerModal({
                     </button>
                     <button type="button" style={btn('ghost', saving)} disabled={saving} onClick={() => void saveDraft()}>Save draft</button>
                     <button type="button" style={btn('ghost')} onClick={() => setStep(2)}>Back</button>
-                    <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{draft.amount.trim() ? `Push + email to ${person?.name ?? 'the sub'}; the link opens the offer on their portal.` : 'No price yet — save as a draft and it waits for the master on the dashboard.'}</span>
+                    <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{draft.amount.trim() ? `Push + email to ${person?.name ?? 'the sub'}; the link opens the offer on their portal.` : 'No price yet — save as a draft and it waits for the leader on the dashboard.'}</span>
                   </>
                 ) : (
                   <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
@@ -841,7 +841,7 @@ export function WorkOrderAssemblerModal({
 }
 
 function roleTitle(role: string): string {
-  const map: Record<string, string> = { dev: 'Developer', master_technician: 'Master', assistant: 'Assistant', controller: 'Controller', estimator: 'Estimator', superintendent: 'Superintendent', primary: 'Primary' }
+  const map: Record<string, string> = { dev: 'Developer', master_technician: 'Leader', assistant: 'Assistant', controller: 'Controller', estimator: 'Estimator', superintendent: 'Superintendent', primary: 'Primary' }
   return map[role] ?? role
 }
 

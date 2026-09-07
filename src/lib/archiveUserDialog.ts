@@ -12,7 +12,7 @@ export type ArchiveDialogUser = {
   role: string
 }
 
-/** Masters/devs who can inherit the archived account's customers — never the account itself. */
+/** Leaders/devs who can inherit the archived account's customers — never the account itself. */
 export function eligibleReassignTargets<T extends ArchiveDialogUser>(
   users: T[],
   archivingUserId: string | null,
@@ -35,7 +35,7 @@ export function archiveChoiceBlocker(args: {
   if (!args.userSelected) return 'Pick the account to archive.'
   if (args.customerCount === null) return 'Counting customers…'
   if (args.customerCount > 0 && args.mode === 'reassign' && !args.reassignTargetId) {
-    return 'Pick the master who inherits the customers.'
+    return 'Pick the leader who inherits the customers.'
   }
   return null
 }

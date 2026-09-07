@@ -84,7 +84,7 @@ export default function JobSummaryCapacityView({ ledger, ledgerLoading, ledgerEr
         <div style={tile}>
           <div style={tileK}>Crew now</div>
           <div style={tileV}>{series.crewNow}</div>
-          <div style={tileS}>{series.source === 'roster' ? 'masters + helpers on the roster' : 'people who clocked in last week'}</div>
+          <div style={tileS}>{series.source === 'roster' ? 'leaders + helpers on the roster' : 'people who clocked in last week'}</div>
         </div>
       </div>
 
@@ -154,7 +154,7 @@ export default function JobSummaryCapacityView({ ledger, ledgerLoading, ledgerEr
       </div>
       <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--text-muted)' }}>
         {series.source === 'roster'
-          ? `Available hours count every master technician and helper active on the roster that weekday, at ${CAPACITY_HOURS_PER_DAY} hours each. PTO and holidays aren’t subtracted yet, so a holiday week reads low.${noHourWeeks > 0 ? ` ${noHourWeeks} ${noHourWeeks === 1 ? 'week has' : 'weeks have'} no approved field hours at all — before the clock history starts, or sessions still awaiting approval — and they pull the window’s utilization down.` : ''}`
+          ? `Available hours count every leader and helper active on the roster that weekday, at ${CAPACITY_HOURS_PER_DAY} hours each. PTO and holidays aren’t subtracted yet, so a holiday week reads low.${noHourWeeks > 0 ? ` ${noHourWeeks} ${noHourWeeks === 1 ? 'week has' : 'weeks have'} no approved field hours at all — before the clock history starts, or sessions still awaiting approval — and they pull the window’s utilization down.` : ''}`
           : `The roster couldn’t be read${rosterError ? ` (${rosterError})` : ''}, so available hours are estimated from the people who clocked field hours that week — a week nobody worked reads as no capacity.`}{' '}
         Office hours by field people count against capacity, not toward it.
       </p>

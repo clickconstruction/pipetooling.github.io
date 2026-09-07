@@ -41,7 +41,7 @@ The card at the bottom lists library documents whose audience is **Subs** (Gener
 Expand the person in the list and click {{button:blue|Assign packets}}:
 
 - Tick one or more packets — each shows its documents underneath.
-- Packets they already have show a {{chip:green|assigned}} chip; **Unassign** is behind that row's ⋯ menu (Dev/Master only).
+- Packets they already have show a {{chip:green|assigned}} chip; **Unassign** is behind that row's ⋯ menu (Dev/Leader only).
 - The note tells you exactly what lands: *"Will add for Darren: … — 2 documents, created as unsent."* They count under **Needs attention** until sent.
 
 Just need one document signed by one person? Skip packets entirely — see *send one contract to one person*.

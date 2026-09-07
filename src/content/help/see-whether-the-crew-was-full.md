@@ -16,7 +16,7 @@ Go to **Jobs → Job Summary** and switch **View** to {{chip:blue|Capacity}}. **
 
 Each bar is one week:
 
-- the **outline** is available field hours — every master technician and helper active on the roster that weekday, at 8 hours each
+- the **outline** is available field hours — every leader and helper active on the roster that weekday, at 8 hours each
 - the **filled bar** is approved field hours from the day ledger
 - the number on top is **utilization**, filled ÷ outline; {{chip:yellow|under 60%}} reads amber, {{chip:red|over 100%}} reads red
 
@@ -33,6 +33,6 @@ The crew is there and the work isn't. That's a sales signal, not a crew one — 
 ## Watch-outs
 
 - PTO and holidays aren't subtracted yet, so a holiday week reads low.
-- Office hours by field people count against capacity, not toward it — a master's day in the office is a day not on a job.
+- Office hours by field people count against capacity, not toward it — a leader's day in the office is a day not on a job.
 - If your role can't read the roster, the view estimates available hours from the people who clocked in that week and says so under the chart. A week nobody worked then reads as no capacity, not as idle capacity.
 - Field sessions still awaiting approval aren't counted. Approve them on People → Hours and the bar fills in.

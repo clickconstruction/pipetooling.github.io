@@ -6,7 +6,7 @@ keywords: assistant, hours, history, weeks, window, limit, week range, visibilit
 order: 87
 ---
 
-Assistants working in **People → Hours** see a rolling window of recent weeks instead of the full hours history. Out of the box that window is **three weeks** — the current week plus the two before it. Devs, controllers, and pay-approved masters are never limited.
+Assistants working in **People → Hours** see a rolling window of recent weeks instead of the full hours history. Out of the box that window is **three weeks** — the current week plus the two before it. Devs, controllers, and pay-approved leaders are never limited.
 
 ## What assistants see
 

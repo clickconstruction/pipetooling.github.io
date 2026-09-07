@@ -38,7 +38,7 @@ A session longer than **12 hours** wears an amber **⚠ long day** tag — like 
 
 ## Everywhere else you can approve
 
-Office roles (assistant, controller, master) approve from more than the My Team card — every one of these adds the hours to payroll the same way, through the same rule:
+Office roles (assistant, controller, leader) approve from more than the My Team card — every one of these adds the hours to payroll the same way, through the same rule:
 
 - **People → Hours** — the amber banner's {{button:amber|Review & approve}} (the week on screen), the {{button:outline-amber|All weeks}} queue, the {{chip:yellow|+9.5 h pending}} chip on a grid cell (its tooltip says *click to review* — it opens a small popover, and the Approve button is in there), and the per-session {{button:green|Approve}} in the Clock sessions list. While people are still clocked in, the day's column header adds a green **+3 on the clock** line: the grid totals count finished sessions only, so those hours land in the cell when they clock out — the clock strip above the grid is where the live ones show.
 - **The clock strip** on the Dashboard, People → Hours, and Quickfill → People Hours — the small square pill beside a finished session. A short click asks first — *"Approve Paige's session (7:12 AM – 3:40 PM)? This adds the hours to payroll."* — so a slip on the tiny pill never writes silently. Long-press (or Shift+click) still opens **Session actions** for Approve, Reject, Edit.

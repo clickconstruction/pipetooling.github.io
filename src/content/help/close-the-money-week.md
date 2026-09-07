@@ -53,4 +53,4 @@ Tap the chip (devs and controllers) and Moneyfill opens on that week. {{chip:gre
 
 ## Fewer approvals to clear
 
-Card charges and transfers pick up an accounting label from **rules** (Banking → Accounting). When the org-wide switch {{chip:gray|Rule matches approve themselves (org-wide · on)}} is on, every rule match is approved the moment it is created — as the bank feed arrives, whether or not anyone has Banking open — so the close-week label backlog stops growing. A dev or master technician flips it; when it is off, matches wait in **Approvals** for a person, and the **Needs you** card counts any that have waited three days or more.
+Card charges and transfers pick up an accounting label from **rules** (Banking → Accounting). When the org-wide switch {{chip:gray|Rule matches approve themselves (org-wide · on)}} is on, every rule match is approved the moment it is created — as the bank feed arrives, whether or not anyone has Banking open — so the close-week label backlog stops growing. A dev or leader flips it; when it is off, matches wait in **Approvals** for a person, and the **Needs you** card counts any that have waited three days or more.
