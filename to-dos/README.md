@@ -21,7 +21,7 @@ Index (validated against code on 2026-09-06 at v2.2935 — the 2026-09-05 sweep 
 | To-do | Status | Summary |
 |---|---|---|
 | [`bill-truth-shadow-beacon.md`](./bill-truth-shadow-beacon.md) | **dated: remove by 2026-09-19** | Read the mismatch beacon, then delete the legacy sums and `billTruthShadow.ts`. |
-| [`takeoffs-retire-old.md`](./takeoffs-retire-old.md) | blocked until ~2026-09-11 | Re-measure coverage after a week of New 1 / New 2, then retire the Old takeoffs view. |
+| [`takeoffs-retire-old.md`](./takeoffs-retire-old.md) | blocked until ~2026-09-11 | Re-measure coverage after a week of One at a time / Sheet, then retire the Old takeoffs view. |
 | [`job-summary-follow-ups.md`](./job-summary-follow-ups.md) | not started | Days delta strip, the under-60% Needs-you card, Bid vs actual (now unblocked), PTO / overtime on Capacity, the J963 loader reconcile, the earned-revenue kernel. |
 | [`subs-residuals.md`](./subs-residuals.md) | not started | Derived sheet stage (now unblocked), Spanish signature form, compliance chips, offer templates, benched subs in the sheet form, roster hygiene. |
 | [`dispatch-residuals.md`](./dispatch-residuals.md) | low | Phone-request self-heal, dispatch blocks / nudge history on the sheet rows, the tag-slice refresh. |

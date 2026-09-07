@@ -2,9 +2,12 @@
  * Takeoffs tab view switch (v2.2768, docs/TAKEOFFS_REFRESH_PLAN.md PR 0/1).
  *
  * Three views live on the selected-bid card during the parallel run:
- * `old` (today's tab), `new1` ("One fixture at a time"), `new2` ("Cost rail").
- * The choice is per device, like the Counts / Pricing / Cover Letter pills
- * were (v2.1906 / v2.1909), and defaults to `old` until retirement.
+ * `old` (today's tab), `new1` ("One at a time" — the guided pass), `new2`
+ * ("Sheet" — the sheet with the cost rail). The ids are what devices have
+ * stored, so they stay; only the labels were renamed for what each view is
+ * for (v2.2990 — they were "New 1" / "New 2" during the build). The choice is
+ * per device, like the Counts / Pricing / Cover Letter pills were
+ * (v2.1906 / v2.1909), and defaults to `old` until retirement.
  */
 
 export type TakeoffView = 'old' | 'new1' | 'new2'
@@ -12,9 +15,9 @@ export type TakeoffView = 'old' | 'new1' | 'new2'
 export const TAKEOFF_VIEW_STORAGE_KEY = 'bids_takeoff_view_v1'
 
 export const TAKEOFF_VIEWS: ReadonlyArray<{ id: TakeoffView; label: string; title: string }> = [
-  { id: 'old', label: 'Old', title: 'The Takeoffs tab as it is today' },
-  { id: 'new1', label: 'New 1', title: 'One fixture at a time — a guided pass with the book and your last bids' },
-  { id: 'new2', label: 'New 2', title: 'Cost rail — the sheet plus what Pricing sees' },
+  { id: 'old', label: 'Old', title: 'The classic Takeoffs tab — the only view with By Stage' },
+  { id: 'new1', label: 'One at a time', title: 'A guided pass, one fixture at a time, with the book and your last bids' },
+  { id: 'new2', label: 'Sheet', title: 'The whole sheet, plus the cost rail: what Pricing sees, what needs a price, copy from a previous bid' },
 ]
 
 /** Pure: a stored value → a view; anything unknown (or nothing) is `old`. */

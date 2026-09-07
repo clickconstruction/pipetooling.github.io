@@ -2,14 +2,14 @@
 title: cost a takeoff one fixture at a time
 category: Bids & Estimating
 roles: dev, master_technician, assistant, estimator
-keywords: takeoff, new 1, one fixture at a time, guided, book, remember, previous bid, same as, use these lines, done next, uncosted, coverage
+keywords: takeoff, one at a time, new 1, one fixture at a time, sheet, guided, book, remember, previous bid, same as, use these lines, done next, uncosted, coverage
 order: 85
 ---
-**New 1** on **Bids → Takeoffs** walks a Combined takeoff one fixture at a time. Pick it with the {{chip:blue|New 1}} pill beside the bid name (the app remembers your pick on this device; {{chip:gray|Old}} is still the classic sheet).
+**One at a time** on **Bids → Takeoffs** walks a Combined takeoff one fixture at a time. Pick it with the {{chip:blue|One at a time}} pill beside the bid name (the app remembers your pick on this device; {{chip:gray|Old}} is still the classic tab, and {{chip:gray|Sheet}} is the whole sheet with the cost rail).
 
 ## The strip
 
-The top strip shows **Costed** (how many fixtures have part lines, with a bar), **Materials** (the same number Pricing uses as this bid's cost), and **$0 lines** (parts with no catalog price). {{button:blue|Fill from book · N matches}} fills every fixture the book recognizes in one go; {{button:outline|Sheet view}} hops to the New 2 sheet with the same fixture.
+The top strip shows **Costed** (how many fixtures have part lines, with a bar), **Materials** (the same number Pricing uses as this bid's cost), and **$0 lines** (parts with no catalog price). {{button:blue|Fill from book · N matches}} fills every fixture the book recognizes in one go; {{button:outline|Sheet view}} hops to the Sheet view.
 
 ## The rail
 
@@ -36,4 +36,4 @@ Tick **Remember these lines for "wc"** to teach the book: the fixture's parts ar
 
 {{button:blue|Done · next uncosted}} (or **Enter** when you are not typing and no button or dialog has the focus — Enter on a focused button presses that button) saves the Remember choice and moves to the next fixture with no lines. {{button:outline|Skip}} moves down one without remembering.
 
-By Stage bids stay in Old; New 1 tells you so and offers the way back.
+By Stage bids stay in Old; One at a time tells you so and offers the way back.

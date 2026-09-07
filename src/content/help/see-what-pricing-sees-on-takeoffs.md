@@ -2,10 +2,10 @@
 title: see what pricing sees on takeoffs
 category: Bids & Estimating
 roles: dev, master_technician, assistant, estimator
-keywords: takeoff, new 2, cost rail, what pricing sees, materials total, no takeoffs cost, needs a price, request quotes, copy from previous bid, book suggests
+keywords: takeoff, sheet, new 2, cost rail, what pricing sees, materials total, no takeoffs cost, needs a price, request quotes, copy from previous bid, book suggests
 order: 86
 ---
-**New 2** on **Bids → Takeoffs** keeps the sheet you know and adds a rail that explains what Pricing is about to work from. Pick it with the {{chip:blue|New 2}} pill beside the bid name.
+**Sheet** on **Bids → Takeoffs** keeps the sheet you know and adds a rail that explains what Pricing is about to work from. Pick it with the {{chip:blue|Sheet}} pill beside the bid name ({{chip:gray|Old}} is the classic tab; {{chip:gray|One at a time}} is the guided pass).
 
 ## The sheet
 
@@ -32,4 +32,4 @@ For the fixtures that still have no lines, the rail lists up to three earlier bi
 
 ## One at a time
 
-{{button:outline|One at a time}} in the strip switches to New 1 for a guided pass, and New 1's **Sheet view** brings you back here.
+{{button:outline|One at a time}} in the strip switches to the guided pass, and its **Sheet view** button brings you back here.
