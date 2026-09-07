@@ -3,11 +3,10 @@ import type { ReleaseNote } from '../../lib/releaseNotes'
 const note: ReleaseNote = {
   version: 'v2.3027',
   date: '2026-09-07',
-  title: 'Robots: the plumbing estimator only picks up plumbing bids',
+  title: 'Safety net under sending an invoice back',
   kind: 'fix',
   highlights: [
-    'A robot shadow was opened on an Electrical-division bid and priced it as plumbing; every door the robot claims work through now checks the bid is plumbing first.',
-    'A shadow that should never score — wrong division, wrong reference, a spoiled run — can be voided with a reason instead of sitting in the queue waiting to grade itself.',
+    'Sending a billed invoice back — from a job revert, a write-down or a subcontractor’s Collect Payment — now has 9 tests pinning which lines are voided in Stripe, how the ledger line is removed, and how each failure reads; no behaviour change.',
   ],
 }
 
