@@ -830,7 +830,7 @@ export default function DetailJobModal({
     loading: profitLaborLoading,
     data: profitLaborData,
     failed: profitLaborFailed,
-  } = useJobDetailSubLaborCost(showProfitSection, fullJob?.hcp_number ?? null)
+  } = useJobDetailSubLaborCost(showProfitSection, fullJob?.id ?? null)
   const profitSummary = useMemo(() => {
     if (!showProfitSection || fullJob == null || profitLaborData == null || materialsSnapshot == null) return null
     if (materialsSnapshot.tallyFetchFailed || materialsSnapshot.supplyInvoiceRpcFailed || materialsSnapshot.mercuryFetchFailed)

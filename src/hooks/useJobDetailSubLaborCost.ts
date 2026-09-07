@@ -1,10 +1,9 @@
 import { useEffect, useState } from 'react'
-import { laborJobMatchesHcp } from '../lib/jobs/jobProfitSummary'
 import type { LaborJobCostInput } from '../lib/jobs/subLaborCost'
 import { supabase } from '../lib/supabase'
 
 export type JobDetailSubLaborData = {
-  /** Sub-labor books matching the job's HCP #, items attached (empty = no books). */
+  /** Sub-labor sheets linked to the job (job_ledger_id), items attached (empty = no sheets). */
   laborJobs: LaborJobCostInput[]
   mileageCost: number
   timePerMile: number
@@ -27,20 +26,20 @@ type LaborItemRow = {
 }
 
 /**
- * Sub-labor cost inputs for the Job Detail profit band. Books are matched to the
- * HCP # client-side (trimmed, case-insensitive) like the Jobs page aggregations —
- * stored `job_number` values can carry whitespace, so a server filter would miss.
+ * Sub-labor cost inputs for the Job Detail profit band. Sheets are read by their
+ * job link (`people_labor_jobs.job_ledger_id`, v2.3060) — the old client-side HCP
+ * text match is gone.
  */
 export function useJobDetailSubLaborCost(
   enabled: boolean,
-  hcpNumber: string | null,
+  jobId: string | null,
 ): { loading: boolean; data: JobDetailSubLaborData | null; failed: boolean } {
   const [loading, setLoading] = useState(false)
   const [data, setData] = useState<JobDetailSubLaborData | null>(null)
   const [failed, setFailed] = useState(false)
 
   useEffect(() => {
-    if (!enabled) {
+    if (!enabled || !jobId) {
       setLoading(false)
       setData(null)
       setFailed(false)
@@ -56,6 +55,7 @@ export function useJobDetailSubLaborCost(
           supabase
             .from('people_labor_jobs')
             .select('id, job_number, labor_rate, distance_miles')
+            .eq('job_ledger_id', jobId)
             .order('created_at', { ascending: false }),
           supabase
             .from('app_settings')
@@ -77,9 +77,7 @@ export function useJobDetailSubLaborCost(
         const mileageCost = settingByKey.get('drive_mileage_cost') ?? 0.7
         const timePerMile = settingByKey.get('drive_time_per_mile') ?? 0.02
 
-        const matched = ((jobsRes.data ?? []) as LaborJobRow[]).filter((j) =>
-          laborJobMatchesHcp(j.job_number, hcpNumber),
-        )
+        const matched = (jobsRes.data ?? []) as LaborJobRow[]
         if (matched.length === 0) {
           setData({ laborJobs: [], mileageCost, timePerMile })
           return
@@ -131,7 +129,7 @@ export function useJobDetailSubLaborCost(
     return () => {
       cancelled = true
     }
-  }, [enabled, hcpNumber])
+  }, [enabled, jobId])
 
   return { loading, data, failed }
 }

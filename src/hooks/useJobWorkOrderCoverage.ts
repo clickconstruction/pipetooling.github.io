@@ -2,8 +2,8 @@
  * Single-job work-order coverage (Work Orders tab, PR 1 — v2.2814): the job
  * window's fact row and the View bill strip read one job through the same
  * kernel the board batches. A job's orders are the rows anchored to it
- * directly (job_id) plus the rows on its Sub Labor sheets (matched by job
- * number). Fail-soft; refreshes on the `work-order-changed` event.
+ * directly (job_id) plus the rows on its Sub Labor sheets (by the sheet's
+ * job_ledger_id, v2.3060). Fail-soft; refreshes on the `work-order-changed` event.
  */
 import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
@@ -22,7 +22,6 @@ export function useJobWorkOrderCoverage(job: { id: string; hcp_number: string } 
   const [coverage, setCoverage] = useState<JobWorkOrderCoverage | null>(null)
   const [rows, setRows] = useState<WorkOrderRowLike[]>([])
   const jobId = job?.id ?? null
-  const jobNumber = (job?.hcp_number ?? '').trim()
 
   const reload = useCallback(async () => {
     if (!jobId) {
@@ -31,9 +30,7 @@ export function useJobWorkOrderCoverage(job: { id: string; hcp_number: string } 
       return
     }
     try {
-      const { data: sheets } = jobNumber
-        ? await supabase.from('people_labor_jobs').select('id').ilike('job_number', jobNumber)
-        : { data: [] as Array<{ id: string }> }
+      const { data: sheets } = await supabase.from('people_labor_jobs').select('id').eq('job_ledger_id', jobId)
       const sheetIds = ((sheets ?? []) as Array<{ id: string }>).map((s) => s.id)
       const filter = sheetIds.length > 0 ? `job_id.eq.${jobId},labor_job_id.in.(${sheetIds.join(',')})` : `job_id.eq.${jobId}`
       const { data, error } = await supabase.from('step_commitments').select(SELECT).or(filter).neq('status', 'cancelled')
@@ -45,7 +42,7 @@ export function useJobWorkOrderCoverage(job: { id: string; hcp_number: string } 
       setCoverage({ kind: 'none' })
       setRows([])
     }
-  }, [jobId, jobNumber])
+  }, [jobId])
 
   useEffect(() => {
     void reload()
