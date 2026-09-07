@@ -1,6 +1,6 @@
 ---
 title: set the company owner account
-category: Settings
+category: Office
 roles: dev
 keywords: company owner, master_user_id, one company, job owner, customer owner, settings, jobs and billing, adoption
 ---

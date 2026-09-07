@@ -88,10 +88,10 @@ describe('Create-customer-from-job modal — possible matches', () => {
     expect(onLinkSimilar.mock.calls[0]?.[0]?.id).toBe('cust-mine')
   })
 
-  it("never offers another master's customer — the DB would reject the link", async () => {
+  it("offers a customer filed under another account — one company (v2.2972), the link is allowed", async () => {
     renderModal()
     await screen.findByText('Alpha Builders')
-    expect(screen.queryByText('Alpha Builders LLC')).toBeNull()
+    await waitFor(() => expect(screen.getByText('Alpha Builders LLC')).toBeTruthy())
   })
 
   it('offers every visible match when the job master cannot be resolved', async () => {
