@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useLedgerPrefixMap } from '../../contexts/LedgerDisplayPrefixContext'
+import { useAuth } from '../../hooks/useAuth'
 import { useTeamBoardWeek } from '../../hooks/useTeamBoardWeek'
 import { formatBoardDay, type TeamBoardBlock } from '../../lib/teamBoard'
 import { companyWeekStartSundayContaining, getDefaultWeekRange, todayYmdInAppTz, ymdAddDays } from '../../utils/dateUtils'
@@ -8,12 +9,13 @@ import { TeamExceptionsDrawer } from './team/TeamExceptionsDrawer'
 import { TeamLedgerTable } from './team/TeamLedgerTable'
 import { TeamSummaryStrip } from './team/TeamSummaryStrip'
 import { TONE } from './team/teamBoardStyles'
+import { useTeamBoardActions } from './team/useTeamBoardActions'
 
 type View = 'board' | 'ledger'
 type Lens = 'job' | 'person'
 
-const btn: React.CSSProperties = { padding: '0.4rem 0.7rem', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', color: 'var(--text-base)', cursor: 'pointer', font: 'inherit' }
-const segBtn = (on: boolean): React.CSSProperties => ({ padding: '0.4rem 0.75rem', border: 0, background: on ? 'var(--text-link)' : 'var(--surface)', color: on ? '#ffffff' : 'var(--text-700)', cursor: 'pointer', fontWeight: on ? 600 : 400, font: 'inherit' })
+const btn: React.CSSProperties = { padding: '0.4rem 0.7rem', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', color: 'var(--text-base)', cursor: 'pointer', fontFamily: 'inherit', fontSize: 'inherit' }
+const segBtn = (on: boolean): React.CSSProperties => ({ padding: '0.4rem 0.75rem', border: 0, background: on ? 'var(--text-link)' : 'var(--surface)', color: on ? '#ffffff' : 'var(--text-700)', cursor: 'pointer', fontWeight: on ? 600 : 400, fontFamily: 'inherit', fontSize: 'inherit' })
 
 function Swatch({ tone, dashed }: { tone: keyof typeof TONE; dashed?: boolean }) {
   const t = TONE[tone]
@@ -33,7 +35,10 @@ export function JobsTeamTab({ focusJobId = null, onFocusConsumed }: { focusJobId
   const [lens, setLens] = useState<Lens>('job')
   const [hideOffice, setHideOffice] = useState(false)
   const [onlyExceptions, setOnlyExceptions] = useState(false)
-  const { days, board, data, loading, error } = useTeamBoardWeek(weekStart, prefixMap)
+  const { days, board, data, loading, error, reload } = useTeamBoardWeek(weekStart, prefixMap)
+  const { user: authUser, role } = useAuth()
+  // v2.2978: every action writes to the clock session or the dispatch plan, never the split.
+  const actions = useTeamBoardActions({ board, reload, role, authUserId: authUser?.id ?? null })
 
   const blocksByDayPerson = useMemo(() => {
     const m = new Map<string, TeamBoardBlock[]>()
@@ -79,7 +84,7 @@ export function JobsTeamTab({ focusJobId = null, onFocusConsumed }: { focusJobId
           <button type="button" style={segBtn(view === 'board')} aria-pressed={view === 'board'} onClick={() => setView('board')}>Board</button>
           <button type="button" style={{ ...segBtn(view === 'ledger'), borderLeft: '1px solid var(--border-strong)' }} aria-pressed={view === 'ledger'} onClick={() => setView('ledger')}>Ledger</button>
         </span>
-        <select aria-label="Rows" value={lens} disabled={view !== 'board'} onChange={(e) => setLens(e.target.value as Lens)} style={{ padding: '0.4rem 0.6rem', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', color: 'var(--text-base)', font: 'inherit' }}>
+        <select aria-label="Rows" value={lens} disabled={view !== 'board'} onChange={(e) => setLens(e.target.value as Lens)} style={{ padding: '0.4rem 0.6rem', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', color: 'var(--text-base)', fontFamily: 'inherit', fontSize: 'inherit' }}>
           <option value="job">Rows: jobs</option>
           <option value="person">Rows: people</option>
         </select>
@@ -105,16 +110,17 @@ export function JobsTeamTab({ focusJobId = null, onFocusConsumed }: { focusJobId
         <>
           <TeamSummaryStrip board={board} />
           {view === 'board' ? (
-            <TeamBoardTable board={board} lens={lens} hideOffice={hideOffice} onlyExceptions={onlyExceptions} blocksByDayPerson={blocksByDayPerson} focusKey={focusKey} />
+            <TeamBoardTable board={board} lens={lens} hideOffice={hideOffice} onlyExceptions={onlyExceptions} blocksByDayPerson={blocksByDayPerson} focusKey={focusKey} renderActions={actions.canEdit ? actions.renderCellActions : undefined} />
           ) : (
-            <TeamLedgerTable board={board} hideOffice={hideOffice} onlyExceptions={onlyExceptions} />
+            <TeamLedgerTable board={board} hideOffice={hideOffice} onlyExceptions={onlyExceptions} renderActions={actions.canEdit ? actions.renderCellActions : undefined} />
           )}
-          <TeamExceptionsDrawer board={board} />
+          <TeamExceptionsDrawer board={board} renderActions={actions.canEdit ? actions.renderExceptionActions : undefined} />
           <p style={{ marginTop: '1rem', color: 'var(--text-muted)', fontSize: '0.8125rem', maxWidth: '72ch' }}>
             Each chip runs 6 am to midnight: the outlined band is the Schedule Dispatch block, the filled bar is the clock session. Man hours and cost per job stay on Pipeline and Job Summary.
           </p>
         </>
       ) : null}
+      {actions.modals}
     </div>
   )
 }

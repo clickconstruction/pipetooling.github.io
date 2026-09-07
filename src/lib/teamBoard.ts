@@ -414,3 +414,36 @@ export function teamLedgerRows(board: TeamBoard): TeamCell[] {
   const rank = (c: TeamCell) => (c.kind === 'unlinked' ? 0 : c.kind === 'miss' ? 1 : c.over ? 2 : c.kind === 'unplanned' ? 3 : c.kind === 'ok' ? 4 : 5)
   return board.cells.slice().sort((a, b) => dayIdx(b.workDate) - dayIdx(a.workDate) || rank(a) - rank(b) || a.personName.localeCompare(b.personName))
 }
+
+// ---------------------------------------------------------------------------
+// v2.2978: helpers behind the board's actions.
+// ---------------------------------------------------------------------------
+
+/** `job:<id>` / `bid:<id>` → the pick shape the session-link helper takes; `none` → null. */
+export function pickFromTargetKey(key: string): { type: 'job' | 'bid'; id: string } | null {
+  if (key.startsWith('job:')) return { type: 'job', id: key.slice(4) }
+  if (key.startsWith('bid:')) return { type: 'bid', id: key.slice(4) }
+  return null
+}
+
+export function hoursToHhmmss(h: number): string {
+  const clamped = Math.max(0, Math.min(24, h))
+  const whole = Math.floor(clamped)
+  const mins = Math.round((clamped - whole) * 60)
+  const hh = mins === 60 ? whole + 1 : whole
+  const mm = mins === 60 ? 0 : mins
+  return `${String(Math.min(hh, 24)).padStart(2, '0')}:${String(mm).padStart(2, '0')}:00`
+}
+
+/**
+ * "Move to plan": the dispatch block a clocked-not-planned cell implies — the
+ * span from the first clock-in to the last clock-out on that job that day.
+ * Null when there is nothing clocked.
+ */
+export function plannedWindowFromClock(cell: Pick<TeamCell, 'clock'>): { time_start: string; time_end: string } | null {
+  if (cell.clock.length === 0) return null
+  const start = Math.min(...cell.clock.map((w) => w.start))
+  const end = Math.max(...cell.clock.map((w) => w.end))
+  if (end <= start) return null
+  return { time_start: hoursToHhmmss(start), time_end: hoursToHhmmss(end) }
+}

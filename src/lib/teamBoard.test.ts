@@ -171,3 +171,21 @@ describe('buildTeamBoard', () => {
     expect(own).toMatchObject({ label: 'J1004', sub: 'Somewhere' })
   })
 })
+
+// v2.2978 — action helpers
+import { hoursToHhmmss, pickFromTargetKey, plannedWindowFromClock } from './teamBoard'
+
+describe('action helpers', () => {
+  it('turns a target key back into a pick', () => {
+    expect(pickFromTargetKey('job:j1')).toEqual({ type: 'job', id: 'j1' })
+    expect(pickFromTargetKey('bid:b1')).toEqual({ type: 'bid', id: 'b1' })
+    expect(pickFromTargetKey('none')).toBeNull()
+  })
+
+  it('derives the dispatch block a clocked-not-planned day implies', () => {
+    expect(hoursToHhmmss(8.5)).toBe('08:30:00')
+    expect(hoursToHhmmss(23.9958)).toBe('24:00:00')
+    expect(plannedWindowFromClock({ clock: [{ start: 9.7, end: 12 }, { start: 13, end: 18.55 }] })).toEqual({ time_start: '09:42:00', time_end: '18:33:00' })
+    expect(plannedWindowFromClock({ clock: [] })).toBeNull()
+  })
+})
