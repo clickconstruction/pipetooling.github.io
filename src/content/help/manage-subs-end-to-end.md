@@ -24,6 +24,7 @@ The Subs tab is HQ: one row per sub with **compliance pills** (agreement / W-9 /
 
 - The **globe** 🌐 manages their private portal — see the *share a sub their portal* guide.
 - The **unlinked-sheets warning** at the top means money isn't attributed to anyone on the roster — link those sheets so every balance lands on a sub's row.
+- A sheet also links to its **job**: pick the job on the sheet, or use {{button:outline|Link this sheet}} on Jobs → Subs → Work. The link is the job itself, not its number, so a job that only has a Click number links like any other, and the sheet follows the job on the Team board, the Job Summary and the work-order board.
 - The **Gen. Cond.** pill tracks whether they've signed the current General Conditions from the Contract library — see *review your subs in one place*.
 
 ### Active or on the bench

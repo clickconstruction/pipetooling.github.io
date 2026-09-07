@@ -35,7 +35,7 @@ type BlockRow = {
   jobs_ledger: JobEmbed
   bids: BidEmbed
 }
-type SheetRow = { id: string; job_number: string | null; job_date: string | null; assigned_to_name: string; address: string; stage: string }
+type SheetRow = { id: string; job_number: string | null; job_ledger_id: string | null; job_date: string | null; assigned_to_name: string; address: string; stage: string; jobs_ledger: JobEmbed }
 type PayFlagRow = { person_name: string; is_salary: boolean }
 
 export type TeamBoardWeekData = {
@@ -61,7 +61,8 @@ async function fetchAcksSoft(startYmd: string, endYmd: string): Promise<AckRow[]
   }
 }
 
-const JOB_EMBED = 'jobs_ledger(hcp_number,job_name,job_address,service_type_id,click_number)'
+const JOB_EMBED_COLS = 'hcp_number,job_name,job_address,service_type_id,click_number'
+const JOB_EMBED = `jobs_ledger(${JOB_EMBED_COLS})`
 const BID_EMBED = 'bids(bid_number,project_name,address,service_type_id)'
 
 /**
@@ -99,7 +100,7 @@ export async function fetchTeamBoardWeek(startYmd: string, endYmd: string, prefi
     ),
     withSupabaseRetry(
       async () =>
-        supabase.from('people_labor_jobs').select('id, job_number, job_date, assigned_to_name, address, stage').gte('job_date', startYmd).lte('job_date', endYmd).limit(500),
+        supabase.from('people_labor_jobs').select(`id, job_number, job_ledger_id, job_date, assigned_to_name, address, stage, jobs_ledger!people_labor_jobs_job_ledger_id_fkey(${JOB_EMBED_COLS})`).gte('job_date', startYmd).lte('job_date', endYmd).limit(500),
       'team board people_labor_jobs',
     ),
     withSupabaseRetry(async () => supabase.rpc('list_people_pay_flags'), 'team board pay flags'),
@@ -129,9 +130,14 @@ export async function fetchTeamBoardWeek(startYmd: string, endYmd: string, prefi
     noteBid(r.bid_id, r.bids)
     return { id: r.id, userId: r.assignee_user_id, personName: r.users?.name?.trim() ?? '', workDate: r.work_date, timeStart: r.time_start, timeEnd: r.time_end, jobId: r.job_id, bidId: r.bid_id, note: r.note }
   })
-  const subSheets: TeamBoardSubSheet[] = ((sheetRows ?? []) as SheetRow[])
+  // v2.3055: the sheet's own job link first (labelled from its embed), the HCP-number match only for rows without one.
+  const subSheets: TeamBoardSubSheet[] = ((sheetRows ?? []) as unknown as SheetRow[])
     .filter((s) => !!s.job_date)
-    .map((s) => ({ id: s.id, workDate: s.job_date as string, jobId: s.job_number ? (hcpToJobId[s.job_number.trim()] ?? null) : null, jobNumber: s.job_number, contractor: s.assigned_to_name, stage: s.stage, address: s.address }))
+    .map((s) => {
+      noteJob(s.job_ledger_id, s.jobs_ledger)
+      const jobId = s.job_ledger_id ?? (s.job_number ? (hcpToJobId[s.job_number.trim()] ?? null) : null)
+      return { id: s.id, workDate: s.job_date as string, jobId, jobNumber: s.job_number, contractor: s.assigned_to_name, stage: s.stage, address: s.address }
+    })
   const payFlags: Record<string, { is_salary: boolean }> = {}
   for (const f of (flagRows ?? []) as PayFlagRow[]) payFlags[f.person_name.trim()] = { is_salary: !!f.is_salary }
 

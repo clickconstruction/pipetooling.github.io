@@ -16,7 +16,7 @@ import { useJobFormModal } from '../../contexts/JobFormModalContext'
 import { formatErrorMessage } from '../../utils/errorHandling'
 import { todayYmdInAppTz } from '../../utils/dateUtils'
 import { formatCurrency } from '../../lib/jobs/jobFormatting'
-import { subLaborAssignPickerRows } from '../../lib/jobs/subLaborJobPicker'
+import { subLaborAssignPickerRows, subLaborJobNumberForStorage } from '../../lib/jobs/subLaborJobPicker'
 import type { JobWithDetails } from '../../types/jobWithDetails'
 import type { StepCommitmentRow } from '../../lib/workflow/stepCommitments'
 import { parseSubWorkOrderSnapshot, sheetWorkOrderLabel } from '../../lib/subWorkOrders/subWorkOrder'
@@ -339,20 +339,22 @@ export function JobsSubsWorkView({ jobs, jobsLoading, authUserId, deepLinkWorkOr
     const job = jobs.find((j) => j.id === jobId)
     if (!job || !row.sheetId) return
     setLinkRow(null)
+    const num = subLaborJobNumberForStorage(job)
     const ok = await confirm({
-      title: `Link this sheet to #${job.hcp_number}?`,
-      message: `The ${row.subName} sheet's job number becomes ${job.hcp_number} (${job.customer_name ?? 'no customer'}). Its work order, bill and Job Summary all land on that job.`,
+      title: `Link this sheet to #${num}?`,
+      message: `The ${row.subName} sheet goes on job ${num} (${job.customer_name ?? 'no customer'}). Its work order, bill and Job Summary all land on that job.`,
       confirmLabel: 'Link',
     })
     if (!ok) return
     setBusyId(row.key)
-    const { error: err } = await supabase.from('people_labor_jobs').update({ job_number: job.hcp_number }).eq('id', row.sheetId)
+    // v2.3055: the link is the job id; the number is display text (effective number, so a click-only job links too).
+    const { error: err } = await supabase.from('people_labor_jobs').update({ job_ledger_id: job.id, job_number: num || null }).eq('id', row.sheetId)
     setBusyId(null)
     if (err) {
       showToast(`Could not link: ${formatErrorMessage(err)}`, 'error')
       return
     }
-    showToast(`Linked to #${job.hcp_number}`, 'success')
+    showToast(`Linked to #${num}`, 'success')
     emitWorkOrderChanged()
   }
 

@@ -23,6 +23,7 @@ Index (validated against code on 2026-09-06 at v2.2935 — the 2026-09-05 sweep 
 | [`bill-truth-shadow-beacon.md`](./bill-truth-shadow-beacon.md) | **dated: remove by 2026-09-19** | Read the mismatch beacon, then delete the legacy sums and `billTruthShadow.ts`. |
 | [`takeoffs-retire-old.md`](./takeoffs-retire-old.md) | blocked until ~2026-09-11 | Re-measure coverage after a week of One at a time / Sheet, then retire the Old takeoffs view. |
 | [`job-summary-follow-ups.md`](./job-summary-follow-ups.md) | not started | Days delta strip, the under-60% Needs-you card, Bid vs actual (now unblocked), PTO / overtime on Capacity, the J963 loader reconcile, the earned-revenue kernel. |
+| [`sub-sheet-job-link-followups.md`](./sub-sheet-job-link-followups.md) | not started (census 2026-09-07, v2.3055) | Every reader still matching a sub sheet to its job by number — five money RPCs, four sub-portal sites, six per-job reads, the People → Review maps — with the conversion order. |
 | [`subs-residuals.md`](./subs-residuals.md) | not started | Derived sheet stage (now unblocked), Spanish signature form, compliance chips, offer templates, benched subs in the sheet form, roster hygiene. |
 | [`dispatch-residuals.md`](./dispatch-residuals.md) | low | Phone-request self-heal, dispatch blocks / nudge history on the sheet rows, the tag-slice refresh. |
 | [`contract-forms-publish-authored.md`](./contract-forms-publish-authored.md) | blocked on owner review | Publish the four lien waivers once the wording is approved (Direct Deposit published 2026-09-06). |
