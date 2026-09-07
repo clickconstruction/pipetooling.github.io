@@ -71,7 +71,7 @@ Every job group has a bell. Assigned superintendents watch by default; **+ Subsc
 
 {{gif:schedule-a-sub-watchers.gif|The bell on a job: who's watching, and Subscribe someone…}}
 
-Everyone manages their own watches under **Settings → My email schedule → Job watches**. See [watch a job for sub updates](?g=watch-a-job-for-sub-updates).
+Everyone manages their own watches under **Settings → My email schedule → Jobs you watch**. See [watch a job for sub updates](?g=watch-a-job-for-sub-updates).
 
 ## 6 · Where dispatch sees the subs
 
