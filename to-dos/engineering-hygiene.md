@@ -23,8 +23,8 @@ The playbook's method still applies; the numbers, the "largest files" headline i
 
 ## Two mechanical sweeps noted and never run
 
-- **Silent no-op `from('bids').update(...)` siblings** (v2.2461): 23 update sites outside tests share the shape the RLS-refused-update fix covered once; a sweep would give them the same loud message.
-- **Same exposure on the takeoff tables** (v2.2466): `bids_takeoff_rough_part_lines` and siblings — UPDATEs do not error; wants a table-appropriate message.
+- ~~**Silent no-op `from('bids').update(...)` siblings**~~ — done v2.3058: measured 38 sites, 32 already guarded; the six that were not now are, and every guard reports through `src/lib/refusedWrite.ts` (`rls_refused` beacon).
+- ~~**Same exposure on the takeoff tables**~~ — done v2.3058: both `bids_takeoff_rough_part_lines` updates guarded with a "takeoff line" message; `bids_takeoff_template_mappings` has no UPDATE site.
 
 - **`toLocaleDateString('en-CA')` as a YYYY-MM-DD source** (v2.2980): 119 call sites across components, pages and hooks assume `en-CA` renders `YYYY-MM-DD`; Node 20 / ICU 72 renders `MM/DD/YYYY`, and `dateUtils.ts`, `checklistDueDates.ts` and `payStubPayments.ts` already carry the warning. Browsers get it right, so prod has been fine — but any of those strings that reaches a date column or a string comparison is one ICU update away from breaking. Sweep: replace with `denverCalendarDayKey(ms)` (company calendar) or a parts-based local-day helper where the device's day is meant.
 

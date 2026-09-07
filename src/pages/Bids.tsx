@@ -101,7 +101,7 @@ import { ScrollableTabStrip } from '../components/ScrollableTabStrip'
 import { useMatchMedia } from '../hooks/useMatchMedia'
 import { extractContactInfo } from '../lib/bids/bidContactInfo'
 import { buildBidEntryRecencyMaps } from '../lib/bids/bidContacts'
-import { BID_UPDATE_NOT_APPLIED_MESSAGE, updateApplied } from '../lib/bids/updateGuard'
+import { BID_UPDATE_NOT_APPLIED_MESSAGE, bidUpdateRefused } from '../lib/bids/updateGuard'
 import { filterActiveCustomersForPicker } from '../lib/customerArchive'
 import { useBidEditForm } from '../lib/bids/useBidEditForm'
 import { pruneUnchangedBidUpdateFields } from '../lib/bids/bidUpdatePrune'
@@ -513,8 +513,8 @@ export default function Bids() {
       ? { robot_requested_at: new Date().toISOString(), robot_requested_by: authUser?.id ?? null }
       : { robot_requested_at: null, robot_requested_by: null }
     setBids((prev) => prev.map((b) => (b.id === bid.id ? { ...b, ...patch } : b)))
-    const { error: updErr } = await supabase.from('bids').update(patch).eq('id', bid.id)
-    if (updErr) {
+    const { data: updRows, error: updErr } = await supabase.from('bids').update(patch).eq('id', bid.id).select('id')
+    if (updErr || bidUpdateRefused(updRows)) {
       setBids((prev) =>
         prev.map((b) =>
           b.id === bid.id
@@ -522,7 +522,7 @@ export default function Bids() {
             : b,
         ),
       )
-      showToast(`Couldn't ${requesting ? 'request' : 'withdraw'} the robot bid: ${updErr.message}`, 'error')
+      showToast(updErr ? `Couldn't ${requesting ? 'request' : 'withdraw'} the robot bid: ${updErr.message}` : BID_UPDATE_NOT_APPLIED_MESSAGE, 'error')
       return
     }
     showToast(
@@ -1228,7 +1228,7 @@ export default function Bids() {
               .select('id'),
           'archive working board bid',
         )
-        if (!updateApplied(archivedRows)) throw new Error(BID_UPDATE_NOT_APPLIED_MESSAGE)
+        if (bidUpdateRefused(archivedRows)) throw new Error(BID_UPDATE_NOT_APPLIED_MESSAGE)
         const rows = await loadBids()
         showToast('Archived. Restore from Bid Board → Archived.', 'success')
         setEditingBid((prev) => {
@@ -2029,7 +2029,7 @@ export default function Bids() {
       'bid board lost summary loss_reason',
     )
     // RLS-filtered updates (twin write fence, deleted bid) succeed with zero rows (v2.2454).
-    if (!updateApplied(updatedRows)) showToast(BID_UPDATE_NOT_APPLIED_MESSAGE, 'error')
+    if (bidUpdateRefused(updatedRows)) showToast(BID_UPDATE_NOT_APPLIED_MESSAGE, 'error')
     await loadBids()
   }
 
@@ -2397,7 +2397,7 @@ export default function Bids() {
           return
         }
         // RLS-filtered updates (twin write fence, deleted bid) succeed with zero rows.
-        if (!updateApplied(updatedRows)) {
+        if (bidUpdateRefused(updatedRows)) {
           setError(BID_UPDATE_NOT_APPLIED_MESSAGE)
           setSavingBid(false)
           return
@@ -2525,7 +2525,7 @@ export default function Bids() {
           return
         }
         // RLS-filtered updates (twin write fence, deleted bid) succeed with zero rows.
-        if (!updateApplied(updatedRows)) {
+        if (bidUpdateRefused(updatedRows)) {
           setError(BID_UPDATE_NOT_APPLIED_MESSAGE)
           setSavingBid(false)
           return
@@ -2606,7 +2606,7 @@ export default function Bids() {
       setError(err.message)
       return
     }
-    if (!updateApplied(updatedRows)) {
+    if (bidUpdateRefused(updatedRows)) {
       setError(BID_UPDATE_NOT_APPLIED_MESSAGE)
       return
     }
@@ -2650,7 +2650,7 @@ export default function Bids() {
       setError(err.message)
       return
     }
-    if (!updateApplied(updatedRows)) {
+    if (bidUpdateRefused(updatedRows)) {
       setError(BID_UPDATE_NOT_APPLIED_MESSAGE)
       return
     }

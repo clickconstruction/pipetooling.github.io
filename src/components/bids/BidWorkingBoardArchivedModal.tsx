@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { formatErrorMessage, withSupabaseRetry } from '../../utils/errorHandling'
-import { BID_UPDATE_NOT_APPLIED_MESSAGE, updateApplied } from '../../lib/bids/updateGuard'
+import { BID_UPDATE_NOT_APPLIED_MESSAGE, bidUpdateRefused } from '../../lib/bids/updateGuard'
 import type { BidWithBuilder } from '../../types/bidWithBuilder'
 import { useLedgerPrefixMap } from '../../contexts/LedgerDisplayPrefixContext'
 import { useToastContext } from '../../contexts/ToastContext'
@@ -144,7 +144,7 @@ export function BidWorkingBoardArchivedModal({
             .select('id'),
         'unarchive working board bid',
       )
-      if (!updateApplied(rows)) throw new Error(BID_UPDATE_NOT_APPLIED_MESSAGE)
+      if (bidUpdateRefused(rows)) throw new Error(BID_UPDATE_NOT_APPLIED_MESSAGE)
       onUnarchived()
     } catch (e: unknown) {
       showToast(formatErrorMessage(e, 'Failed to un-archive bid'), 'error')

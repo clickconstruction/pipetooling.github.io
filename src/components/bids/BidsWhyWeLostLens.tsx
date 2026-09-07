@@ -20,7 +20,7 @@ import { BuilderMergePrompt, builderMergePairs } from './BuilderMergePrompt'
 
 import { supabase } from '../../lib/supabase'
 import { withSupabaseRetry } from '../../utils/errorHandling'
-import { BID_UPDATE_NOT_APPLIED_MESSAGE, updateApplied } from '../../lib/bids/updateGuard'
+import { BID_UPDATE_NOT_APPLIED_MESSAGE, bidUpdateRefused } from '../../lib/bids/updateGuard'
 import { formatCurrency } from '../../lib/format'
 import { bidSentCounts, bidsAndPacketsLabel, scopeLabel, type BidSentScope } from '../../lib/bids/bidSentCounts'
 import { bidAddressMapsUrl } from '../../lib/buildBidPricingPackageHtml'
@@ -304,7 +304,7 @@ export function BidsWhyWeLostLens({
           async () => supabase.from('bids').update(patch).eq('id', b.id).select('id'),
           'save bid tab',
         )
-        if (!updateApplied(rows)) throw new Error(BID_UPDATE_NOT_APPLIED_MESSAGE)
+        if (bidUpdateRefused(rows)) throw new Error(BID_UPDATE_NOT_APPLIED_MESSAGE)
         onError(null)
         // Paste capture (v2.2296): the full per-bidder tab rides along; a
         // summary clear ("Remove bid tab") clears the rungs too. Fail-soft.
@@ -369,7 +369,7 @@ export function BidsWhyWeLostLens({
             async () => supabase.from('bids').update(patch).eq('id', b.id).select('id'),
             'save bid loss category',
           )
-          if (!updateApplied(rows)) throw new Error(BID_UPDATE_NOT_APPLIED_MESSAGE)
+          if (bidUpdateRefused(rows)) throw new Error(BID_UPDATE_NOT_APPLIED_MESSAGE)
         }
         onError(null)
         onReloadBids()

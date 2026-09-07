@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { withSupabaseRetry, formatErrorMessage } from '../utils/errorHandling'
 import { pickLegacyDataTemplateId } from '../lib/bids/legacyTemplatePricing'
-import { BID_UPDATE_NOT_APPLIED_MESSAGE, updateApplied } from '../lib/bids/updateGuard'
+import { BID_UPDATE_NOT_APPLIED_MESSAGE, bidUpdateRefused } from '../lib/bids/updateGuard'
 import { expandTemplate } from '../lib/materialPOUtils'
 import { normalizeMaterialsModel, sumRoughLinesPreTaxWithCount, roughCountMultiplier, type MaterialsModel, type TakeoffStage } from '../lib/bids/bidTakeoffHelpers'
 import { loadTeamLaborDataForBids, type TeamLaborBidRow } from '../utils/teamLabor'
@@ -446,7 +446,7 @@ export function useBidPricingEngine(deps: UseBidPricingEngineDeps) {
       setError(`Failed to save takeoff book version: ${err.message}`)
       return
     }
-    if (!updateApplied(rows)) {
+    if (bidUpdateRefused(rows)) {
       setError(BID_UPDATE_NOT_APPLIED_MESSAGE)
       return
     }
@@ -794,7 +794,7 @@ export function useBidPricingEngine(deps: UseBidPricingEngineDeps) {
       setError(`Failed to save labor book version: ${err.message}`)
       return
     }
-    if (!updateApplied(rows)) {
+    if (bidUpdateRefused(rows)) {
       setError(BID_UPDATE_NOT_APPLIED_MESSAGE)
       return
     }
@@ -1207,7 +1207,7 @@ export function useBidPricingEngine(deps: UseBidPricingEngineDeps) {
       setError(`Failed to save version: ${err.message}`)
       return
     }
-    if (!updateApplied(rows)) {
+    if (bidUpdateRefused(rows)) {
       setError(BID_UPDATE_NOT_APPLIED_MESSAGE)
       return
     }
@@ -1232,7 +1232,7 @@ export function useBidPricingEngine(deps: UseBidPricingEngineDeps) {
       setError(`Failed to save version: ${err.message}`)
       return
     }
-    if (!updateApplied(rows)) {
+    if (bidUpdateRefused(rows)) {
       setError(BID_UPDATE_NOT_APPLIED_MESSAGE)
       return
     }
@@ -1352,7 +1352,7 @@ export function useBidPricingEngine(deps: UseBidPricingEngineDeps) {
             .select('id'),
         'update bid materials_model'
       )
-      if (!updateApplied(updatedRows)) throw new Error(BID_UPDATE_NOT_APPLIED_MESSAGE)
+      if (bidUpdateRefused(updatedRows)) throw new Error(BID_UPDATE_NOT_APPLIED_MESSAGE)
       const rows = await loadBids()
       const fresh = rows.find((b) => b.id === bid.id)
       if (fresh) setSharedBid(fresh)

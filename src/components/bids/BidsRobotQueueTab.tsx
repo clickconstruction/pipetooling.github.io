@@ -16,6 +16,7 @@ import {
 import { buildAxisCards, type RunScoreRow } from '../../lib/bids/confidenceBoard'
 import type { ShadowRunRow } from '../../lib/bids/shadowStory'
 import { todayYmdInAppTz } from '../../utils/dateUtils'
+import { BID_UPDATE_NOT_APPLIED_MESSAGE, bidUpdateRefused } from '../../lib/bids/updateGuard'
 
 // twin_run_scores / bids.backtest_axis predate the generated types
 // (BidsAuditsTab pattern) — untyped until the post-push gen-types run.
@@ -115,8 +116,9 @@ export function BidsRobotQueueTab({ bids, twinBidBySourceId, referencePresence, 
   async function assignAxis(bid: BidWithBuilder, axis: string) {
     setSavingAxisBidId(bid.id)
     try {
-      const { error } = await queueDb.from('bids').update({ backtest_axis: axis }).eq('id', bid.id)
+      const { data: rows, error } = await queueDb.from('bids').update({ backtest_axis: axis }).eq('id', bid.id).select('id')
       if (error) throw new Error(error.message)
+      if (bidUpdateRefused(rows)) throw new Error(BID_UPDATE_NOT_APPLIED_MESSAGE)
       setAxisOverrides((prev) => ({ ...prev, [bid.id]: axis }))
     } catch (e) {
       showToast(`Couldn't assign the axis: ${e instanceof Error ? e.message : 'unknown error'}`, 'error')
@@ -128,8 +130,9 @@ export function BidsRobotQueueTab({ bids, twinBidBySourceId, referencePresence, 
   async function setHoldout(bid: BidWithBuilder, holdout: boolean) {
     setSavingHoldoutBidId(bid.id)
     try {
-      const { error } = await queueDb.from('bids').update({ holdout }).eq('id', bid.id)
+      const { data: rows, error } = await queueDb.from('bids').update({ holdout }).eq('id', bid.id).select('id')
       if (error) throw new Error(error.message)
+      if (bidUpdateRefused(rows)) throw new Error(BID_UPDATE_NOT_APPLIED_MESSAGE)
       setHoldoutOverrides((prev) => ({ ...prev, [bid.id]: holdout }))
     } catch (e) {
       showToast(`Couldn't ${holdout ? 'hold out' : 'release'} the reference: ${e instanceof Error ? e.message : 'unknown error'}`, 'error')

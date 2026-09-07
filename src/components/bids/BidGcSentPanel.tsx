@@ -3,7 +3,7 @@ import { supabase } from '../../lib/supabase'
 import { useToastContext } from '../../contexts/ToastContext'
 import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
 import { withSupabaseRetry } from '../../utils/errorHandling'
-import { BID_UPDATE_NOT_APPLIED_MESSAGE, updateApplied } from '../../lib/bids/updateGuard'
+import { BID_UPDATE_NOT_APPLIED_MESSAGE, bidUpdateRefused } from '../../lib/bids/updateGuard'
 import { APP_CALENDAR_TZ } from '../../utils/dateUtils'
 import { formatCurrency } from '../../lib/format'
 import { firstSentOn, latestSendByVersion, type VersionSendRow } from '../../lib/bids/versionSends'
@@ -148,7 +148,7 @@ export function BidGcSentPanel({ bidId, ownGcName, ownGcCustomerId, bidOutcome, 
     setSends(rows)
     const first = sentDateAfterLedgerWrite(rows)
     const rollupRows = await withSupabaseRetry(async () => supabase.from('bids').update({ bid_date_sent: first }).eq('id', bidId).select('id'), 'per-GC sent roll-up')
-    if (!updateApplied(rollupRows)) {
+    if (bidUpdateRefused(rollupRows)) {
       showToast(BID_UPDATE_NOT_APPLIED_MESSAGE, 'error')
       return
     }
