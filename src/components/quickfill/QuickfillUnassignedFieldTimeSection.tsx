@@ -11,19 +11,14 @@ import {
 import {
   buildWorkDateListInclusive,
   computeUnallocatedFieldRows,
-  groupUnallocatedFieldRowsByDate,
   summarizeUnallocatedFieldRows,
   type PeopleHoursUnallocatedCrewInput,
   type PeopleHoursUnallocatedPayConfigInput,
   type PeopleHoursUnallocatedRow,
 } from '../../lib/peopleHoursUnallocatedRows'
-import {
-  mergeToUnified,
-  type MergedCrewMapRow,
-} from '../../utils/crewAssignments'
-import { PeopleHoursDayAuditModal } from '../PeopleHoursDayAuditModal'
+import { Link } from 'react-router-dom'
 import { MatchClockSessionsInline } from '../people/MatchClockSessionsModal'
-import { useToastContext } from '../../contexts/ToastContext'
+import { teamBoardHref, unassignedWeekCards } from '../../lib/unassignedFieldTimeCard'
 import { isAssistantLike } from '../../lib/subcontractorLikeRole'
 
 /** Narrow view of the canonical pay-config row (single source of truth for field types). */
@@ -100,17 +95,16 @@ function ymdMinusDays(days: number): string {
   return `${y}-${m}-${day}`
 }
 
-function formatWorkDateHeader(ymd: string): string {
+function formatShortDay(ymd: string): string {
   try {
-    return new Date(ymd + 'T12:00:00').toLocaleDateString('en-US', {
-      weekday: 'short',
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-    })
+    return new Date(ymd + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
   } catch {
     return ymd
   }
+}
+
+function formatWeekRange(startYmd: string, endYmd: string): string {
+  return `${formatShortDay(startYmd)} – ${formatShortDay(endYmd)}`
 }
 
 function fmtH(n: number): string {
@@ -144,71 +138,55 @@ const summaryStyle: CSSProperties = {
   fontSize: '0.875rem',
   color: 'var(--text-slate-600)',
 }
-const dayGroupStyle: CSSProperties = {
+const cardStyle: CSSProperties = {
   border: '1px solid var(--border)',
-  borderRadius: 6,
-  marginBottom: '0.75rem',
+  borderRadius: 8,
   background: 'var(--surface)',
-  overflow: 'hidden',
+  padding: '0.85rem 1rem',
+  marginBottom: '1rem',
+  display: 'grid',
+  gap: '0.6rem',
 }
-const dayHeaderStyle: CSSProperties = {
+const cardHeadStyle: CSSProperties = {
+  display: 'flex',
+  alignItems: 'baseline',
+  gap: '0.6rem 1rem',
+  flexWrap: 'wrap',
+}
+const bigCountStyle: CSSProperties = {
+  fontSize: '1.5rem',
+  fontWeight: 700,
+  color: 'var(--text-amber-700)',
+  fontVariantNumeric: 'tabular-nums',
+  lineHeight: 1.1,
+}
+const bigCountClearStyle: CSSProperties = { ...bigCountStyle, color: 'var(--text-green-700)' }
+const weekRowStyle: CSSProperties = {
   display: 'flex',
   alignItems: 'center',
-  justifyContent: 'space-between',
-  padding: '0.5rem 0.75rem',
-  background: 'var(--bg-subtle)',
-  fontWeight: 600,
-  fontSize: '0.875rem',
-  color: 'var(--text-slate-900)',
-  borderBottom: '1px solid var(--border)',
-}
-const rowGridStyle: CSSProperties = {
-  display: 'grid',
-  gridTemplateColumns: '12rem 5.5rem 5.5rem 5.5rem 5.5rem 1fr auto',
-  gap: '0.5rem 0.75rem',
-  alignItems: 'center',
-  padding: '0.5rem 0.75rem',
-  borderBottom: '1px solid var(--border)',
+  gap: '0.5rem 1rem',
+  flexWrap: 'wrap',
+  padding: '0.45rem 0',
+  borderTop: '1px solid var(--border)',
   fontSize: '0.875rem',
 }
-const headerRowStyle: CSSProperties = {
-  ...rowGridStyle,
-  background: 'var(--bg-subtle)',
-  color: 'var(--text-slate-600)',
-  fontSize: '0.75rem',
-  textTransform: 'uppercase',
-  letterSpacing: '0.04em',
-  fontWeight: 600,
-  borderBottom: '1px solid var(--border)',
-}
-const numCellStyle: CSSProperties = { textAlign: 'right', fontVariantNumeric: 'tabular-nums' }
-const personCellStyle: CSSProperties = { fontWeight: 500, color: 'var(--text-slate-900)' }
-const unallocCellStyle: CSSProperties = {
-  ...numCellStyle,
-  color: 'var(--text-amber-700)',
-  fontWeight: 700,
-}
-const ctxCellStyle: CSSProperties = {
-  color: 'var(--text-slate-500)',
-  fontSize: '0.8125rem',
-  whiteSpace: 'nowrap',
-  overflow: 'hidden',
-  textOverflow: 'ellipsis',
-}
-const auditBtnStyle: CSSProperties = {
+const weekLabelStyle: CSSProperties = { fontWeight: 600, color: 'var(--text-slate-900)', minWidth: '9.5rem' }
+const weekMetaStyle: CSSProperties = { color: 'var(--text-slate-600)', fontVariantNumeric: 'tabular-nums' }
+const boardLinkStyle: CSSProperties = {
+  marginLeft: 'auto',
   padding: '0.3rem 0.6rem',
   border: '1px solid #2563eb',
   borderRadius: 4,
   background: 'var(--bg-blue-tint)',
   color: 'var(--text-blue-700)',
-  cursor: 'pointer',
+  textDecoration: 'none',
   fontSize: '0.8125rem',
   fontWeight: 500,
+  whiteSpace: 'nowrap',
 }
 
 export function QuickfillUnassignedFieldTimeSection() {
   const { user: authUser } = useAuth()
-  const { showToast } = useToastContext()
 
   const [canAccess, setCanAccess] = useState(false)
   const [accessChecked, setAccessChecked] = useState(false)
@@ -234,9 +212,6 @@ export function QuickfillUnassignedFieldTimeSection() {
   const [crewRows, setCrewRows] = useState<PeopleHoursUnallocatedCrewInput[]>([])
   const [overheadSessions, setOverheadSessions] = useState<OverheadClockSessionRow[]>([])
   const [officeJobLedgerId, setOfficeJobLedgerId] = useState<string | null>(null)
-  const [crewJobsByDatePerson, setCrewJobsByDatePerson] = useState<Record<string, MergedCrewMapRow>>({})
-
-  const [auditModal, setAuditModal] = useState<{ personName: string; workDate: string } | null>(null)
 
   const windowEndYmd = useMemo(() => todayLocalYmd(), [])
   const windowStartYmd = useMemo(() => ymdMinusDays(windowDays - 1), [windowDays])
@@ -337,7 +312,6 @@ export function QuickfillUnassignedFieldTimeSection() {
       const allKeys = new Set<string>([...jobsByKey.keys(), ...bidsByKey.keys()])
 
       const merged: PeopleHoursUnallocatedCrewInput[] = []
-      const auditMap: Record<string, MergedCrewMapRow> = {}
       for (const k of allKeys) {
         const sep = k.indexOf('|')
         const workDate = k.slice(0, sep)
@@ -354,12 +328,8 @@ export function QuickfillUnassignedFieldTimeSection() {
           job_assignments: jobAssignments,
           bid_assignments: bidAssignments,
         })
-        auditMap[`${workDate}:${personName}`] = {
-          unifiedAssignments: mergeToUnified(jobAssignments, bidAssignments),
-        }
       }
       setCrewRows(merged)
-      setCrewJobsByDatePerson(auditMap)
 
       type RawSession = {
         id: string
@@ -460,7 +430,7 @@ export function QuickfillUnassignedFieldTimeSection() {
   ])
 
   const summary = useMemo(() => summarizeUnallocatedFieldRows(rows), [rows])
-  const grouped = useMemo(() => groupUnallocatedFieldRowsByDate(rows), [rows])
+  const weekCards = useMemo(() => unassignedWeekCards(rows), [rows])
 
   useReportQuickfillSectionMetric(
     'unassigned-field-time',
@@ -481,9 +451,9 @@ export function QuickfillUnassignedFieldTimeSection() {
   return (
     <section style={sectionWrapStyle}>
       <p style={{ color: 'var(--text-slate-600)', fontSize: '0.875rem', margin: '0 0 0.75rem' }}>
-        Days where a person was paid (salary or hourly) for field-type time that was never tied to a
-        specific job via a crew assignment. Click <strong>Open day audit</strong> to add a crew
-        assignment.
+        Days where a person was paid (salary or hourly) for field-type time that is not on a job.
+        The fix lives on the Team board: each person-day is a chip in its <strong>No job on the session</strong> row,
+        with the dispatch block beside it and a one-tap link.
       </p>
 
       <div style={controlsRowStyle}>
@@ -503,12 +473,12 @@ export function QuickfillUnassignedFieldTimeSection() {
           </select>
         </label>
         <label style={labeledControlStyle}>
-          <span>Min unallocated</span>
+          <span>Threshold</span>
           <select
             value={thresholdHours}
             onChange={(e) => setThresholdHours(Number.parseFloat(e.target.value))}
             style={selectStyle}
-            aria-label="Minimum unallocated hours threshold"
+            aria-label="Minimum unassigned hours per day"
           >
             {THRESHOLD_OPTIONS.map((o) => (
               <option key={o.value} value={o.value}>
@@ -517,32 +487,6 @@ export function QuickfillUnassignedFieldTimeSection() {
             ))}
           </select>
         </label>
-        <button
-          type="button"
-          onClick={() => void loadAll()}
-          style={{
-            padding: '0.3rem 0.6rem',
-            border: '1px solid var(--border-strong)',
-            borderRadius: 4,
-            background: 'var(--surface)',
-            cursor: 'pointer',
-            fontSize: '0.875rem',
-          }}
-          aria-label="Reload unassigned field time"
-        >
-          Reload
-        </button>
-        <span style={summaryStyle}>
-          {loading
-            ? 'Loading…'
-            : summary.rowCount === 0
-              ? 'No unassigned field time in this window.'
-              : `${fmtH(summary.totalUnallocatedHrs)} h across ${summary.peopleCount} ${
-                  summary.peopleCount === 1 ? 'person' : 'people'
-                } · ${summary.workDates.length} ${
-                  summary.workDates.length === 1 ? 'day' : 'days'
-                }`}
-        </span>
       </div>
 
       {error && (
@@ -551,112 +495,57 @@ export function QuickfillUnassignedFieldTimeSection() {
         </p>
       )}
 
+      <div style={cardStyle} aria-label="Unassigned field time summary">
+        <div style={cardHeadStyle}>
+          {loading ? (
+            <span style={summaryStyle}>Loading…</span>
+          ) : summary.rowCount === 0 ? (
+            <>
+              <span style={bigCountClearStyle}>All on a job</span>
+              <span style={summaryStyle}>
+                {`Every paid field hour in the last ${windowDays} days is on a job (≥ ${thresholdHours} h per day).`}
+              </span>
+              <Link to={teamBoardHref()} style={boardLinkStyle}>
+                Open Team board →
+              </Link>
+            </>
+          ) : (
+            <>
+              <span style={bigCountStyle}>
+                {summary.rowCount} {summary.rowCount === 1 ? 'person-day' : 'person-days'}
+              </span>
+              <span style={summaryStyle}>
+                {`${fmtH(summary.totalUnallocatedHrs)} h not on a job across ${summary.peopleCount} ${
+                  summary.peopleCount === 1 ? 'person' : 'people'
+                } · last ${windowDays} days`}
+              </span>
+            </>
+          )}
+        </div>
+        {!loading &&
+          weekCards.map((w) => (
+            <div key={w.weekStart} style={weekRowStyle}>
+              <span style={weekLabelStyle}>{formatWeekRange(w.weekStart, w.weekEnd)}</span>
+              <span style={weekMetaStyle}>
+                {`${w.rowCount} ${w.rowCount === 1 ? 'person-day' : 'person-days'} · ${fmtH(w.totalUnallocatedHrs)} h · ${
+                  w.peopleCount
+                } ${w.peopleCount === 1 ? 'person' : 'people'}`}
+              </span>
+              <Link
+                to={teamBoardHref({ week: w.latestWorkDate, onlyExceptions: true })}
+                style={boardLinkStyle}
+                aria-label={`Open the Team board for the week of ${formatShortDay(w.weekStart)}`}
+              >
+                Open on Team board →
+              </Link>
+            </div>
+          ))}
+      </div>
+
       {/* v2.1656 added the People → Hours "Match sessions" flow here behind a
           button; now its contents render spread out on the page (owner
           request), hidden entirely when the 7-day window is clear. */}
       <MatchClockSessionsInline />
-
-      {!loading && grouped.length > 0 && (
-        <div>
-          {grouped.map((day) => (
-            <div key={day.workDate} style={dayGroupStyle}>
-              <div style={dayHeaderStyle}>
-                <span>{formatWorkDateHeader(day.workDate)}</span>
-                <span style={{ color: 'var(--text-amber-700)', fontWeight: 700 }}>
-                  {fmtH(day.totalUnallocatedHrs)} h unassigned
-                </span>
-              </div>
-              <div style={headerRowStyle}>
-                <span>Person</span>
-                <span style={numCellStyle}>Day hrs</span>
-                <span style={numCellStyle}>Overhead</span>
-                <span style={numCellStyle}>Field</span>
-                <span style={numCellStyle}>Unalloc.</span>
-                <span>Context</span>
-                <span />
-              </div>
-              {day.rows.map((r) => (
-                <div key={`${r.personName}|${r.workDate}`} style={rowGridStyle}>
-                  <span style={personCellStyle}>
-                    {r.personName}
-                    {r.isSalary ? (
-                      <span
-                        title="Salaried person — day hrs default to 8 on weekdays"
-                        style={{
-                          marginLeft: '0.35rem',
-                          fontSize: '0.6875rem',
-                          color: 'var(--text-slate-500)',
-                          fontWeight: 400,
-                        }}
-                      >
-                        salary
-                      </span>
-                    ) : null}
-                  </span>
-                  <span style={numCellStyle}>{fmtH(r.dayHoursRaw)}</span>
-                  <span style={numCellStyle}>{fmtH(r.overheadOnDay)}</span>
-                  <span style={numCellStyle}>{fmtH(r.fieldHours)}</span>
-                  <span style={unallocCellStyle}>{fmtH(r.unallocatedHrs)}</span>
-                  <span style={ctxCellStyle} title={
-                    [
-                      r.crewAssignmentCount > 0
-                        ? `${r.crewAssignmentCount} existing crew ${
-                            r.crewAssignmentCount === 1 ? 'assignment' : 'assignments'
-                          }`
-                        : r.officeAssignmentCount > 0
-                          ? 'Assigned to the Office job only — Office time doesn’t cover field hours, so this day stays unassigned until a field job is added'
-                          : 'No crew assignments',
-                      r.subLaborHrs > 0
-                        ? `${fmtH(r.subLaborHrs)} h sub-labor`
-                        : null,
-                    ]
-                      .filter(Boolean)
-                      .join(' · ')
-                  }>
-                    {r.crewAssignmentCount > 0
-                      ? `${r.crewAssignmentCount} crew ${
-                          r.crewAssignmentCount === 1 ? 'assignment' : 'assignments'
-                        }`
-                      : r.officeAssignmentCount > 0
-                        ? 'Office only — doesn’t cover field time'
-                        : 'No crew assignments'}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setAuditModal({ personName: r.personName, workDate: r.workDate })
-                    }
-                    style={auditBtnStyle}
-                    aria-label={`Open day audit for ${r.personName} on ${r.workDate}`}
-                  >
-                    Open day audit
-                  </button>
-                </div>
-              ))}
-            </div>
-          ))}
-        </div>
-      )}
-
-      {auditModal && (
-        <PeopleHoursDayAuditModal
-          personName={auditModal.personName}
-          workDate={auditModal.workDate}
-          onClose={() => setAuditModal(null)}
-          initialCrewRow={
-            crewJobsByDatePerson[`${auditModal.workDate}:${auditModal.personName}`] ?? null
-          }
-          canEditCrewJobs={canAccess}
-          crewJobsByDatePerson={crewJobsByDatePerson}
-          hoursDateStart={windowStartYmd}
-          hoursDateEnd={windowEndYmd}
-          onCrewSaved={() => {
-            void loadAll()
-          }}
-          showToast={showToast}
-        />
-      )}
-
     </section>
   )
 }

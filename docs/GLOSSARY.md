@@ -364,6 +364,9 @@ A single-day **`user_time_off`** row with **`kind='unpaid'`** + **`note='Not com
 **See also**: **`SCHEDULE_DISPATCH_ARCHITECTURE.md`**; **`RECENT_FEATURES.md`** **v2.535**.
 
 ### Unassigned field time / Open day audit
+
+**v2.3051 — count card.** The station no longer lists person-days or opens the day audit. It shows the count of person-days over the threshold in the window, one line per company week (`unassignedWeekCards` in [`unassignedFieldTimeCard.ts`](../src/lib/unassignedFieldTimeCard.ts)) with **Open on Team board →** (`teamBoardHref` → `/jobs?tab=combined-labor&teamWeek=<latest day>&teamExceptions=1`; `JobsTeamTab` applies the week + **Only exceptions** and Jobs.tsx consumes the params). The math below is unchanged and still feeds the count badge and the money-week close; the **Match sessions to jobs** block stays under the card. The day audit remains reachable from People → Hours.
+
 Per (person, work_date) cells where the org **paid for field-type time** that the team summary cannot tie to a specific revenue-generating job. Surfaced in **Quickfill** as a section gated to **dev** / **master_technician** / **assistant** (**v2.537**, **`quickfill_section_marks.section_id = 'unassigned-field-time'`**). The math mirrors **`derivePersonTeamSummary`** under **Convention 1** (**v2.539**) and is purely client-side.
 
 **v2.546 — approved-clock-only sourcing.** Every input now comes from approved-closed `clock_sessions` only — no `people_hours` lookup, no salary 8h phantoms on no-clock days. New pure helper **`buildApprovedClosedHoursByPersonByDate`** sums approved-closed clock hours per (person, work_date) across every bucket (office / bid / field / unassigned). The math becomes:

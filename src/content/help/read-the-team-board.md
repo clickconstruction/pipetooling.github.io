@@ -34,6 +34,8 @@ Four tiles summarise the week: field time clocked against planned, the on-plan p
 
 **Rows: people** flips the board so each row is a person and the chips are jobs, with the week's planned (or salaried target) and clocked bars beside the name. **Hide Office** drops the office rows; **Only exceptions** keeps just the rows with something to look at.
 
+Quickfill's **Unassigned field time** card links here: {{button:outline|Open on Team board →}} on a week line opens that week with **Only exceptions** already ticked, so what is left is the person-days with no job and the planned-no-clock chips.
+
 ## Acting on a chip
 
 Devs, masters and controllers see the fix on every chip, on every Ledger row, and in the exceptions list. Nothing here edits the split by hand — each button changes the clock session or the dispatch plan and the board reloads.

@@ -32,7 +32,7 @@ function Swatch({ tone, dashed }: { tone: keyof typeof TONE; dashed?: boolean })
  * and Ledger (one row per person-day-job in the Subs "where it stands"
  * vocabulary), a summary strip, and the week's exceptions.
  */
-export function JobsTeamTab({ focusJobId = null, onFocusConsumed }: { focusJobId?: string | null; onFocusConsumed?: () => void }) {
+export function JobsTeamTab({ focusJobId = null, focusWeek = null, focusExceptions = false, onFocusConsumed }: { focusJobId?: string | null; focusWeek?: string | null; focusExceptions?: boolean; onFocusConsumed?: () => void }) {
   const prefixMap = useLedgerPrefixMap()
   const [weekStart, setWeekStart] = useState(() => companyWeekStartSundayContaining(todayYmdInAppTz()) ?? getDefaultWeekRange().start)
   const [view, setView] = useState<View>('board')
@@ -57,6 +57,20 @@ export function JobsTeamTab({ focusJobId = null, onFocusConsumed }: { focusJobId
     }
     return m
   }, [data])
+
+  // `?teamWeek=&teamExceptions=1` deep link (v2.3051, from Quickfill's Unassigned field time card):
+  // show that week with the exceptions filter on, then hand the params back.
+  const weekHandledRef = useRef<string | null>(null)
+  useEffect(() => {
+    if (!focusWeek) return
+    const key = `${focusWeek}|${focusExceptions ? 1 : 0}`
+    if (weekHandledRef.current === key) return
+    weekHandledRef.current = key
+    const wk = companyWeekStartSundayContaining(focusWeek)
+    if (wk) setWeekStart(wk)
+    if (focusExceptions) setOnlyExceptions(true)
+    if (!focusJobId) onFocusConsumed?.()
+  }, [focusWeek, focusExceptions, focusJobId, onFocusConsumed])
 
   // `?teamLaborJob=` deep link: land on the job's row, flash it, hand the param back. v2.2996:
   // when the job has no row this week, jump to its most recent week with hours first.

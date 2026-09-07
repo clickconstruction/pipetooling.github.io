@@ -104,10 +104,15 @@ export default function Jobs() {
   const customerFilterForFetchRef = useRef<string | null>(null)
   customerFilterForFetchRef.current = customerFilterForFetch
   const teamLaborJobParam = searchParams.get('teamLaborJob')?.trim() || null
+  // v2.3051: Quickfill's Unassigned field time card links to a week with the exceptions filter on.
+  const teamWeekParam = searchParams.get('teamWeek')?.trim() || null
+  const teamExceptionsParam = searchParams.get('teamExceptions') === '1'
   const onFocusTeamLaborConsumed = useCallback(() => {
     setSearchParams((p) => {
       const n = new URLSearchParams(p)
       n.delete('teamLaborJob')
+      n.delete('teamWeek')
+      n.delete('teamExceptions')
       return n
     }, { replace: true })
   }, [setSearchParams])
@@ -1885,7 +1890,7 @@ export default function Jobs() {
           {error && <p style={{ color: 'var(--text-red-700)', marginBottom: '1rem' }}>{error}</p>}
           {/* v2.2974: Team — the crew board (jobs × days against the dispatch plan) replaced the
               Crew Jobs / Bids matrix + Team Job Labor table (CrewJobsBlock, retired everywhere in v2.2986). */}
-          <JobsTeamTab focusJobId={teamLaborJobParam} onFocusConsumed={onFocusTeamLaborConsumed} />
+          <JobsTeamTab focusJobId={teamLaborJobParam} focusWeek={teamWeekParam} focusExceptions={teamExceptionsParam} onFocusConsumed={onFocusTeamLaborConsumed} />
         </div>
       )}
 
