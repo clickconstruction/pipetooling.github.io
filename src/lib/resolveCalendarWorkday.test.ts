@@ -88,7 +88,11 @@ describe('resolveCalendarWorkday', () => {
       ],
     })
     const halfSplit = template({ mode: 'split', segment_a_duration_minutes: 240 })
-    expect(resolveCalendarWorkday({ workDateYmd: THU, timeOffRows: [], template: halfSplit, overrideForDate: null }).blocks).toEqual([{ label: '8:00 AM–12:00 PM CDT' }])
+    expect(resolveCalendarWorkday({ workDateYmd: THU, timeOffRows: [], template: halfSplit, overrideForDate: null })).toEqual({
+      kind: 'scheduled',
+      source: 'template',
+      blocks: [{ label: '8:00 AM–12:00 PM CDT' }],
+    })
   })
 
   it('weekends are off when the template excludes them, unless an override says otherwise', () => {
