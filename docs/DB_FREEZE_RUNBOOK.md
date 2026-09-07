@@ -175,6 +175,8 @@ spiked 40–350× *before* both 2026-07-31 outages. **A sampler consistently ove
 
 ## Step 3 — Postgres logs (narrow window only)
 
+> No MCP? `scripts/pg-logs.sh <iso_start> <iso_end> [regex]` reads `postgres_logs` through the Management API with `SUPABASE_MGMT_TOKEN` from `.env.local` (added 2026-09-07).
+
 Dashboard → Logs → Postgres, or MCP `get_logs` (returns only the last few
 minutes in practice, despite claiming 24h — for anything older use the Dashboard
 with an explicit window):
@@ -439,10 +441,27 @@ within 15000ms`. Nobody in the office reported it.
 - **Third restart at 22:00:07 UTC** (`pg_postmaster_start_time()` read at
   22:01), not probed while it happened. Three self-restarts in 85 minutes:
   20:35:04, 21:25:25, 22:00:07.
-- **Not done here**: Postgres logs (Dashboard → Logs) for the OOM /
-  `terminated` lines — the MCP server was not authorized in this session.
-  That is the next step: confirm the kill reason and compare memory headroom
-  against the 08-20 sizing.
+- **Postgres logs read on 2026-09-07 (Management API, `scripts/pg-logs.sh`) — it is not an
+  OOM, and it is not Postgres dying on its own.** Every restart logs the same three lines:
+  `database system was interrupted; last known up at <T>` → `not properly shut down;
+  automatic recovery in progress` → `starting PostgreSQL 17.6`, with **no** `received … shutdown
+  request`, no `terminated by signal`, no `could not fork`, and not one `out of memory` anywhere
+  in the week. The node exporters' `process_start_time_seconds` equal the postmaster start to the
+  second, and `node_vmstat_oom_kill` is 0 since boot — so the **whole instance is being
+  restarted**, not a process killed. Crash recoveries per day (09-01 → 09-07): **0 · 0 · 2 · 1 ·
+  8 · 14 · 4**, the last at 05:29:51 UTC on 09-07; then 16 hours clean (as of 21:25 UTC).
+  Memory is not the constraint: 8 GB box, 6.8 GB available, swap untouched, 25 connections,
+  410 MB database, `shared_buffers` 2 GB / `work_mem` 12 MB. Before each death the logs show
+  only symptoms — PostgREST statement timeouts (`authenticator`) and a burst of
+  idle-in-transaction terminations 1–3 minutes after the stall begins.
+- **Red herring, so nobody re-chases it**: `checkpoint complete … write=4.8 s` for 49 buffers
+  is not slow I/O — `checkpoint_completion_target` 0.9 spreads a 300 s checkpoint's writes, and
+  every sample computes to ~100 ms per buffer, i.e. the checkpointer's own throttle.
+- **What this needs**: a Supabase support ticket with the restart timestamps above (the
+  `last known up` → `starting PostgreSQL` pairs) asking why the instance was restarted —
+  host health-check, hypervisor, or their auto-restart — and whether the 09-05/09-06 spike
+  matches anything on their side. Nothing inside the database explains it.
+- (Superseded by the 2026-09-07 log read above.)
 - Recovery: the retry of the same signing succeeded at 20:36:57 (200,
   `signed.pdf` 9,351 bytes in `contract-form-pdfs`). Restart query for next
   time:
