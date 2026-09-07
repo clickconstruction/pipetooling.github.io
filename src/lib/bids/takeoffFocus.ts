@@ -48,6 +48,27 @@ export function isTypingTarget(target: EventTarget | null): boolean {
   return (target as HTMLElement).isContentEditable === true
 }
 
+export type FocusShortcutKey = 'Enter' | 'ArrowUp' | 'ArrowDown'
+
+const ACTIVATION_TARGET = 'button, a[href], [role="button"]'
+const DIALOG = '[role="dialog"], [role="alertdialog"]'
+
+/**
+ * True when New 1 may act on a key press (v2.2988). Nothing applies while a
+ * dialog owns the focus (the remove-line confirm says "press Enter to remove")
+ * or when a field is being typed into; Enter also stays with a focused button
+ * or link, which the browser activates on Enter — otherwise the shortcut would
+ * cancel that activation and advance the fixture instead. Arrows still move
+ * the rail from a focused rail item.
+ */
+export function focusShortcutApplies(target: EventTarget | null, key: FocusShortcutKey): boolean {
+  if (isTypingTarget(target)) return false
+  if (!target || !(target instanceof Element)) return true
+  if (target.closest(DIALOG)) return false
+  if (key === 'Enter' && target.closest(ACTIVATION_TARGET)) return false
+  return true
+}
+
 /** The fixture New 1 opens on: the first uncosted row, else the first row. */
 export function initialFocusId(countRows: ReadonlyArray<{ id: string }>, uncostedIds: ReadonlyArray<string>): string | null {
   const first = countRows.find((r) => uncostedIds.includes(r.id))

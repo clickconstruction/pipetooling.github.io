@@ -3,7 +3,7 @@ import { formatCurrency } from '../../lib/format'
 import { effectiveCountUnit } from '../../lib/bids/countRowUnit'
 import { fixtureKey } from '../../lib/bids/takeoffFixtureKey'
 import { nextUncostedFixtureId, type TakeoffCoverageSummary } from '../../lib/bids/takeoffCoverage'
-import { focusRailItems, initialFocusId, isTypingTarget, moveFocus, type FocusRailStatus } from '../../lib/bids/takeoffFocus'
+import { focusRailItems, focusShortcutApplies, initialFocusId, moveFocus, type FocusRailStatus } from '../../lib/bids/takeoffFocus'
 import type { BookFillPlan } from '../../lib/bids/takeoffBookFill'
 import { pickSameAsChips } from '../../lib/bids/takeoffFixtureHistory'
 import type { TakeoffFixtureHistoryLine, TakeoffFixtureHistoryRow } from '../../types/database-functions'
@@ -18,7 +18,7 @@ import { TakeoffCoverageStrip } from './TakeoffCoverageStrip'
  * and the last bids that costed the same fixture), the lines on this bid
  * (the same row editor Old uses, handed in by the tab), Remember for the
  * book, and Done → next uncosted. Enter = Done, ↑/↓ move, when nothing is
- * being typed into.
+ * being typed into and no dialog or button owns the key (`focusShortcutApplies`).
  */
 
 const DOT: Record<FocusRailStatus, { bg: string; border: string; title: string }> = {
@@ -134,7 +134,8 @@ export function TakeoffFocusView({
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (isTypingTarget(e.target)) return
+      if (e.key !== 'Enter' && e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return
+      if (!focusShortcutApplies(e.target, e.key)) return
       if (e.key === 'Enter') {
         e.preventDefault()
         void done()

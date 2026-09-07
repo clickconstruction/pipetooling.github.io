@@ -516,11 +516,16 @@ export function useBidPricingEngine(deps: UseBidPricingEngineDeps) {
         setCostEstimateOtherRows((otherRows as CostEstimateOtherRow[]) ?? [])
       }
       if (mm === 'rough') {
+        // v2.2988: scope the lines to the active version like the count rows below — an
+        // unscoped read summed the other version's lines at ×1 (their count rows are not in the map).
         const [{ data: roughLines }, { data: crsForCount }] = await Promise.all([
-          supabase
-            .from('bids_takeoff_rough_part_lines')
-            .select('count_row_id, quantity, unit_price')
-            .eq('bid_id', bidId),
+          applyVersionFilter(
+            supabase
+              .from('bids_takeoff_rough_part_lines')
+              .select('count_row_id, quantity, unit_price')
+              .eq('bid_id', bidId),
+            activeVersionIdForBid(bidId),
+          ),
           applyVersionFilter(supabase.from('bids_count_rows').select('id, count').eq('bid_id', bidId), activeVersionIdForBid(bidId)),
         ])
         const countByRowId = new Map(

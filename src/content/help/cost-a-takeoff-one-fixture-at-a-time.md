@@ -34,6 +34,6 @@ The same line editor as Old: search parts, pick a catalog price or override it, 
 
 Tick **Remember these lines for "wc"** to teach the book: the fixture's parts are saved as an assembly named `wc · book` (a numbered sibling if that name is taken — nothing is edited in place) and the book gets an entry for the name, or the plan-tag form as an alias of an entry it already has. The next bid's `WC-7` row will show the suggestion.
 
-{{button:blue|Done · next uncosted}} (or **Enter** when you are not typing) saves the Remember choice and moves to the next fixture with no lines. {{button:outline|Skip}} moves down one without remembering.
+{{button:blue|Done · next uncosted}} (or **Enter** when you are not typing and no button or dialog has the focus — Enter on a focused button presses that button) saves the Remember choice and moves to the next fixture with no lines. {{button:outline|Skip}} moves down one without remembering.
 
 By Stage bids stay in Old; New 1 tells you so and offers the way back.
