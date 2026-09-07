@@ -17,7 +17,7 @@ function pillStyle(on: boolean): CSSProperties {
 }
 
 /**
- * Old / New 1 / New 2 pills beside the bid title on Takeoffs (v2.2768).
+ * Old / One at a time / Sheet pills beside the bid title on Takeoffs (v2.2768; labels v2.2990).
  * Presentational: the tab owns the state and the per-device persistence.
  */
 export function TakeoffViewPills({ view, onChange }: { view: TakeoffView; onChange: (next: TakeoffView) => void }) {
@@ -40,12 +40,12 @@ export function TakeoffViewPills({ view, onChange }: { view: TakeoffView; onChan
   )
 }
 
-/** New 1 / New 2 are Combined-only (plan decision 1); a By Stage bid keeps its editor in Old. */
+/** One at a time / Sheet are Combined-only (plan decision 1); a By Stage bid keeps its editor in Old. */
 export function TakeoffByStageNotice({ onBackToOld }: { onBackToOld: () => void }) {
   return (
     <div style={{ border: '1px dashed var(--border-strong)', borderRadius: 8, padding: '1.5rem', background: 'var(--bg-subtle)', display: 'flex', flexDirection: 'column', gap: '0.5rem', alignItems: 'flex-start' }}>
       <span style={{ fontWeight: 700 }}>This bid uses By Stage materials</span>
-      <span style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>The new views work on Combined takeoffs. Open this bid in Old, or switch it to Combined from the Materials toggle there.</span>
+      <span style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>One at a time and Sheet work on Combined takeoffs. Open this bid in Old, or switch it to Combined from the Materials toggle above.</span>
       <button type="button" onClick={onBackToOld} style={{ marginTop: '0.25rem', padding: '0.45rem 0.9rem', background: '#3b82f6', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 600 }}>
         Open in Old
       </button>

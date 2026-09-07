@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { TAKEOFF_VIEW_STORAGE_KEY, parseTakeoffView, readStoredTakeoffView, writeStoredTakeoffView } from './takeoffView'
+import { TAKEOFF_VIEWS, TAKEOFF_VIEW_STORAGE_KEY, parseTakeoffView, readStoredTakeoffView, writeStoredTakeoffView } from './takeoffView'
 
 describe('parseTakeoffView', () => {
   it('accepts the two new views and defaults everything else to old', () => {
@@ -9,6 +9,16 @@ describe('parseTakeoffView', () => {
     expect(parseTakeoffView('new')).toBe('old')
     expect(parseTakeoffView(null)).toBe('old')
     expect(parseTakeoffView(undefined)).toBe('old')
+  })
+})
+
+describe('TAKEOFF_VIEWS', () => {
+  it('labels the views for what they do while the stored ids stay put (v2.2990)', () => {
+    expect(TAKEOFF_VIEWS.map((v) => [v.id, v.label])).toEqual([
+      ['old', 'Old'],
+      ['new1', 'One at a time'],
+      ['new2', 'Sheet'],
+    ])
   })
 })
 

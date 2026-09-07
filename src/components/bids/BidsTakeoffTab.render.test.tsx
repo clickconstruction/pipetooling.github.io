@@ -124,7 +124,7 @@ describe('BidsTakeoffTab render smoke', () => {
   })
 
   // The new views (v2.2778 / v2.2781) — pinned so Old's retirement cannot take them down unnoticed.
-  it('mounts New 1 (one fixture at a time) on a Combined bid', async () => {
+  it('mounts One at a time (new1) on a Combined bid', async () => {
     window.localStorage.setItem('bids_takeoff_view_v1', 'new1')
     try {
       renderWithProviders(
@@ -143,7 +143,7 @@ describe('BidsTakeoffTab render smoke', () => {
     }
   })
 
-  it('mounts New 2 (cost rail) on a Combined bid', async () => {
+  it('mounts Sheet (new2, the cost rail) on a Combined bid', async () => {
     window.localStorage.setItem('bids_takeoff_view_v1', 'new2')
     try {
       renderWithProviders(
@@ -161,7 +161,7 @@ describe('BidsTakeoffTab render smoke', () => {
     }
   })
 
-  it('shows the By Stage notice on New 1 / New 2 for an exact bid', async () => {
+  it('shows the By Stage notice on One at a time / Sheet for an exact bid', async () => {
     window.localStorage.setItem('bids_takeoff_view_v1', 'new2')
     try {
       renderWithProviders(<BidsTakeoffTab {...makeProps({ selectedBidForTakeoff: makeBid({ materials_model: 'exact' }) })} />)
