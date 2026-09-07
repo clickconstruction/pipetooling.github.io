@@ -12,7 +12,7 @@ export type ArchiveDialogUser = {
   role: string
 }
 
-/** Leaders/devs who can inherit the archived account's customers — never the account itself. */
+/** Leaders/devs other than the account itself. Kept for the roster tools; the archive dialog no longer offers a picker (v2.3063). */
 export function eligibleReassignTargets<T extends ArchiveDialogUser>(
   users: T[],
   archivingUserId: string | null,
@@ -23,20 +23,15 @@ export function eligibleReassignTargets<T extends ArchiveDialogUser>(
 }
 
 /**
- * Why the Archive action cannot run yet, or null when it can.
- * The reassign choice only gates submission when there are customers to move.
+ * Why the Archive action cannot run yet, or null when it can. Since v2.3063 (one company)
+ * the reassign choice needs no target — customers that move go to the company owner account.
  */
 export function archiveChoiceBlocker(args: {
   userSelected: boolean
   customerCount: number | null
-  mode: ArchiveReassignMode
-  reassignTargetId: string
 }): string | null {
   if (!args.userSelected) return 'Pick the account to archive.'
   if (args.customerCount === null) return 'Counting customers…'
-  if (args.customerCount > 0 && args.mode === 'reassign' && !args.reassignTargetId) {
-    return 'Pick the leader who inherits the customers.'
-  }
   return null
 }
 

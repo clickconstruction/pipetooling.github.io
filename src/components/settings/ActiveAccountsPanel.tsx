@@ -1,7 +1,7 @@
 /** Active Accounts management panel: users table (copy cells, service-type pills,
  * role select, last login), invite / manual add / unified archive (with optional
  * customer reassignment) / set-password satellite modals, archived-users restore,
- * and convert-leader.
+ * (the convert-leader section was removed in v2.3063 — its RPC never left supabase/archive/).
  * State + handlers live in useActiveAccountsManagement; this renders in two
  * surfaces: inline card on Settings → People & accounts, and inside the
  * app-level Active Accounts modal (ActiveAccountsModalContext). */
@@ -13,7 +13,7 @@ import { humanRoleLabel } from '../../lib/roleLabels'
 import { inviteFormValid, roleTakesServiceTypes, type RoleChoice } from '../../lib/inviteUserForm'
 import { isSubcontractorLikeRole } from '../../lib/subcontractorLikeRole'
 import { eligibleAbsorbCandidates, eligibleExternalAbsorbCandidates, ineligibleAbsorbCandidates, EXTERNAL_MERGE_OPTION_PREFIX } from '../../lib/mergeUserAccounts'
-import { archiveChoiceBlocker, eligibleReassignTargets } from '../../lib/archiveUserDialog'
+import { archiveChoiceBlocker } from '../../lib/archiveUserDialog'
 import { buildServiceTypeTradePill } from '../../lib/serviceTypeTradePill'
 import { filterActiveAccountUsers } from '../../lib/activeAccountsSearch'
 import { useToastContext } from '../../contexts/ToastContext'
@@ -97,8 +97,6 @@ export default function ActiveAccountsPanel({ variant, onDataChanged, onOpenFind
     archiveConfirmPicker,
     archiveReassignMode,
     setArchiveReassignMode,
-    archiveReassignTargetId,
-    setArchiveReassignTargetId,
     selectArchiveConfirmUser,
     archiveConfirmUser,
     archiveConfirmSubmitting,
@@ -152,21 +150,6 @@ export default function ActiveAccountsPanel({ variant, onDataChanged, onOpenFind
     editSubcontractorServiceTypeIds,
     setEditSubcontractorServiceTypeIds,
     editError,
-    convertMasterId,
-    setConvertMasterId,
-    convertNewMasterId,
-    setConvertNewMasterId,
-    convertNewRole,
-    setConvertNewRole,
-    convertAutoAdopt,
-    setConvertAutoAdopt,
-    convertSubmitting,
-    convertError,
-    setConvertError,
-    convertMasterSectionOpen,
-    setConvertMasterSectionOpen,
-    convertSummary,
-    setConvertSummary,
     archivedSectionOpen,
     setArchivedSectionOpen,
     activeAccountsSectionOpen,
@@ -187,7 +170,6 @@ export default function ActiveAccountsPanel({ variant, onDataChanged, onOpenFind
     handleRestore,
     closeSetPassword,
     handleSetPassword,
-    handleConvertMaster,
   } = useActiveAccountsManagement({ enabled: true, onDataChanged })
 
   const [searchQuery, setSearchQuery] = React.useState('')
@@ -728,136 +710,6 @@ export default function ActiveAccountsPanel({ variant, onDataChanged, onOpenFind
             )}
           </div>
 
-          {/* Convert Leader to Assistant/Subcontractor */}
-          {users.length > 0 && (
-            <div style={{ marginTop: '2rem', border: '1px solid var(--border)', borderRadius: '0.5rem', maxWidth: 640 }}>
-              <button
-                type="button"
-                onClick={() => setConvertMasterSectionOpen((prev) => !prev)}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.35rem',
-                  margin: 0,
-                  padding: '1rem',
-                  width: '100%',
-                  background: 'none',
-                  border: 'none',
-                  cursor: 'pointer',
-                  fontSize: '1rem',
-                  fontWeight: 600,
-                  textAlign: 'left',
-                }}
-              >
-                <span style={{ fontSize: '0.75rem' }}>{convertMasterSectionOpen ? '▼' : '▶'}</span>
-                Convert Leader to Assistant/Subcontractor
-              </button>
-              {convertMasterSectionOpen && (
-              <div style={{ padding: '0 1rem 1rem 1rem', borderTop: '1px solid var(--border)' }}>
-              <p style={{ marginBottom: '0.75rem', color: 'var(--text-muted)', fontSize: '0.875rem' }}>
-                Convert an existing leader into an assistant or subcontractor. All of their customers, projects, and people
-                will be reassigned to another leader.
-              </p>
-              <form onSubmit={handleConvertMaster}>
-                <div style={{ marginBottom: '0.75rem' }}>
-                  <label htmlFor="convert-leader" style={{ display: 'block', marginBottom: 4 }}>Leader to convert *</label>
-                  <select
-                    id="convert-leader"
-                    value={convertMasterId}
-                    onChange={(e) => { setConvertMasterId(e.target.value); setConvertError(null); setConvertSummary(null) }}
-                    disabled={convertSubmitting}
-                    style={{ width: '100%', maxWidth: 400, padding: '0.5rem' }}
-                  >
-                    <option value="">Select leader…</option>
-                    {users
-                      .filter((u) => u.role === 'master_technician')
-                      .map((u) => (
-                        <option key={u.id} value={u.id}>
-                          {u.name || u.email} ({u.email})
-                        </option>
-                      ))}
-                  </select>
-                </div>
-                <div style={{ marginBottom: '0.75rem' }}>
-                  <label htmlFor="convert-new-leader" style={{ display: 'block', marginBottom: 4 }}>New leader owner *</label>
-                  <select
-                    id="convert-new-leader"
-                    value={convertNewMasterId}
-                    onChange={(e) => { setConvertNewMasterId(e.target.value); setConvertError(null); setConvertSummary(null) }}
-                    disabled={convertSubmitting}
-                    style={{ width: '100%', maxWidth: 400, padding: '0.5rem' }}
-                  >
-                    <option value="">Select new leader…</option>
-                    {users
-                      .filter((u) => u.role === 'master_technician' && u.id !== convertMasterId)
-                      .map((u) => (
-                        <option key={u.id} value={u.id}>
-                          {u.name || u.email} ({u.email})
-                        </option>
-                      ))}
-                  </select>
-                </div>
-                <div style={{ marginBottom: '0.75rem' }}>
-                  <span style={{ display: 'block', marginBottom: 4 }}>New role *</span>
-                  <label style={{ marginRight: '1rem' }}>
-                    <input
-                      type="radio"
-                      name="convert-new-role"
-                      value="assistant"
-                      checked={convertNewRole === 'assistant'}
-                      onChange={() => { setConvertNewRole('assistant'); setConvertError(null); setConvertSummary(null) }}
-                      disabled={convertSubmitting}
-                    />{' '}
-                    Assistant
-                  </label>
-                  <label>
-                    <input
-                      type="radio"
-                      name="convert-new-role"
-                      value="subcontractor"
-                      checked={convertNewRole === 'subcontractor'}
-                      onChange={() => { setConvertNewRole('subcontractor'); setConvertError(null); setConvertSummary(null) }}
-                      disabled={convertSubmitting}
-                    />{' '}
-                    Subcontractor
-                  </label>
-                </div>
-                {convertNewRole === 'assistant' && (
-                  <div style={{ marginBottom: '0.75rem' }}>
-                    <label>
-                      <input
-                        type="checkbox"
-                        checked={convertAutoAdopt}
-                        onChange={(e) => { setConvertAutoAdopt(e.target.checked); setConvertError(null); setConvertSummary(null) }}
-                        disabled={convertSubmitting}
-                        style={{ marginRight: 4 }}
-                      />
-                      Auto-adopt this assistant to the new leader
-                    </label>
-                  </div>
-                )}
-                <p style={{ marginBottom: '0.75rem', color: 'var(--text-amber-700)', fontSize: '0.8125rem' }}>
-                  This operation reassigns all customers, projects, and people owned by the selected leader to the new leader and
-                  changes their role. It is not easily reversible.
-                </p>
-                {convertError && <p style={{ color: 'var(--text-red-700)', marginBottom: '0.75rem' }}>{convertError}</p>}
-                {convertSummary && <p style={{ color: 'var(--text-green-600)', marginBottom: '0.75rem' }}>{convertSummary}</p>}
-                <button
-                  type="submit"
-                  disabled={
-                    convertSubmitting ||
-                    !convertMasterId ||
-                    !convertNewMasterId ||
-                    convertMasterId === convertNewMasterId
-                  }
-                >
-                  {convertSubmitting ? 'Converting…' : 'Convert leader'}
-                </button>
-              </form>
-              </div>
-              )}
-            </div>
-          )}
             {onOpenFindDuplicates && (
             <div style={{ marginTop: '1.5rem', paddingTop: '1rem', borderTop: '1px solid var(--border)' }}>
               <p style={{ color: 'var(--text-muted)', margin: '0 0 0.5rem 0', fontSize: '0.875rem' }}>
@@ -1090,8 +942,6 @@ export default function ActiveAccountsPanel({ variant, onDataChanged, onOpenFind
         const blocker = archiveChoiceBlocker({
           userSelected: archiveConfirmUser != null,
           customerCount: archiveConfirmCustomerCount,
-          mode: archiveReassignMode,
-          reassignTargetId: archiveReassignTargetId,
         })
         const willReassign =
           archiveConfirmCustomerCount != null && archiveConfirmCustomerCount > 0 && archiveReassignMode === 'reassign'
@@ -1176,24 +1026,8 @@ export default function ActiveAccountsPanel({ variant, onDataChanged, onOpenFind
                         disabled={archiveConfirmSubmitting}
                         style={{ marginTop: 2 }}
                       />
-                      <span>Reassign them to another leader</span>
+                      <span>File them under the company owner account (one company — nobody picks a leader)</span>
                     </label>
-                    {archiveReassignMode === 'reassign' && (
-                      <select
-                        aria-label="New leader for customers"
-                        value={archiveReassignTargetId}
-                        onChange={(e) => setArchiveReassignTargetId(e.target.value)}
-                        disabled={archiveConfirmSubmitting}
-                        style={{ width: '100%', padding: '0.5rem', marginTop: '0.5rem' }}
-                      >
-                        <option value="">Select new leader…</option>
-                        {eligibleReassignTargets(users, archiveConfirmUser.id).map((u) => (
-                          <option key={u.id} value={u.id}>
-                            {u.name || u.email} ({u.email})
-                          </option>
-                        ))}
-                      </select>
-                    )}
                   </div>
                 )}
               </>
