@@ -248,7 +248,7 @@ export function buildJobSummaryCostBreakdownHtml(input: JobSummaryCostBreakdownI
           `<tr><td>${escapeHtml(b.personName)}</td><td style="text-align:right">${formatCurrency(b.hours)}</td></tr>`,
       )
       .join('')
-    teamLaborHtml = `<h2>Team Labor</h2><table><thead><tr><th>Person</th><th style="text-align:right">Hours</th></tr></thead><tbody>${bodyRows}<tr style="font-weight:600"><td>Total</td><td style="text-align:right">${formatCurrency(teamLaborRow.manHours)}</td></tr></tbody></table>`
+    teamLaborHtml = `<h2>Team</h2><table><thead><tr><th>Person</th><th style="text-align:right">Hours</th></tr></thead><tbody>${bodyRows}<tr style="font-weight:600"><td>Total</td><td style="text-align:right">${formatCurrency(teamLaborRow.manHours)}</td></tr></tbody></table>`
     if (clockLoaded && teamLaborRow) {
       for (const b of teamLaborRow.breakdown) {
         const sessionsForPerson = clockSessions.filter(
@@ -310,9 +310,9 @@ export function buildJobSummaryCostBreakdownHtml(input: JobSummaryCostBreakdownI
       }
     }
   } else if (teamLaborCost === 0) {
-    teamLaborHtml = `<h2>Team Labor</h2><p class="muted">No team labor for this job.</p>`
+    teamLaborHtml = `<h2>Team</h2><p class="muted">No team labor for this job.</p>`
   } else {
-    teamLaborHtml = `<h2>Team Labor</h2><p class="muted">Team labor total $${formatCurrency(teamLaborCost)} (no per-person breakdown).</p>`
+    teamLaborHtml = `<h2>Team</h2><p class="muted">Team labor total $${formatCurrency(teamLaborCost)} (no per-person breakdown).</p>`
   }
 
   let subLaborHtml = '<h2>Sub Labor</h2>'

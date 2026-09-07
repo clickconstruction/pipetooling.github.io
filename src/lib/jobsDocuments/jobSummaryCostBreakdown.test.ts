@@ -61,7 +61,7 @@ describe('buildJobSummaryCostBreakdownHtml', () => {
         clockSessions: [],
       }),
     )
-    expect(html).toContain('<h2>Team Labor</h2>')
+    expect(html).toContain('<h2>Team</h2>')
     expect(html).toContain('<td>Ana</td>')
     // person-summary footer total = team 240 + card 0 + supply 0
     expect(html).toContain('$240.00')

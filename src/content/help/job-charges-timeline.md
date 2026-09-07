@@ -33,7 +33,7 @@ Each red step is tagged with an icon for where the cost came from:
 🧱 **Other job charge** — manual materials lines from Edit Job
 :::
 
-The red falls add up to the same number as the row's **Team Labor + Sub Labor + Parts Cost** columns. Items that have no date land in a **No date** bucket at the far left so the total still matches.
+The red falls add up to the same number as the row's **Team Cost + Sub Labor + Parts Cost** columns. Items that have no date land in a **No date** bucket at the far left so the total still matches.
 
 ## Green rises — payments received
 

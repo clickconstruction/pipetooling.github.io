@@ -1048,7 +1048,7 @@ export default function JobsJobSummaryTab({
                                                   style={{ padding: '0.25rem 0.4rem', textAlign: 'right' }}
                                                   title="Click a cell in this column for a breakdown"
                                                 >
-                                                  Team Labor Cost
+                                                  Team Cost
                                                 </th>
                                                 <th
                                                   style={{ padding: '0.25rem 0.4rem', textAlign: 'right' }}
@@ -2119,7 +2119,7 @@ export default function JobsJobSummaryTab({
                                         }}
                                         onClick={(e) => e.stopPropagation()}
                                       >
-                                        Team Labor{' '}
+                                        Team{' '}
                                         <span style={{ fontWeight: 400 }}>
                                           {teamLaborCost === 0 ? '—' : `$${formatCurrency(teamLaborCost)}`}
                                         </span>
