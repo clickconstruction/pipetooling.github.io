@@ -7,6 +7,7 @@ import {
   hoursTabSectionHeaderGap,
 } from './peopleHoursTabShared'
 import { WeekdayCostTable } from './WeekdayCostTable'
+import { localCalendarDayKey, todayYmdInAppTz } from '../../utils/dateUtils'
 
 export type PeopleHoursTeam = { id: string; name: string; members: string[] }
 
@@ -96,21 +97,21 @@ export function PeopleHoursTeams({
                 const teamsReadOnly = !canAccessPay
                 const costForRange = (start: string, end: string) =>
                   team.members.reduce((sum, p) => sum + getDaysInRange(start, end).reduce((s, d) => s + getCostForPersonDateTeams(p, d), 0), 0)
-                const today = new Date().toLocaleDateString('en-CA')
+                const today = todayYmdInAppTz()
                 const yesterday = (() => {
                   const d = new Date()
                   d.setDate(d.getDate() - 1)
-                  return d.toLocaleDateString('en-CA')
+                  return localCalendarDayKey(d)
                 })()
                 const last7Start = (() => {
                   const d = new Date()
                   d.setDate(d.getDate() - 6)
-                  return d.toLocaleDateString('en-CA')
+                  return localCalendarDayKey(d)
                 })()
                 const last3Start = (() => {
                   const d = new Date()
                   d.setDate(d.getDate() - 2)
-                  return d.toLocaleDateString('en-CA')
+                  return localCalendarDayKey(d)
                 })()
                 const periodCost = costForRange(teamPeriodStart, teamPeriodEnd)
                 const last7Cost = costForRange(last7Start, today)

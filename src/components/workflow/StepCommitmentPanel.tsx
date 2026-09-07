@@ -4,7 +4,7 @@ import { commitmentBalance, commitmentRail, nextCommitmentActions } from '../../
 import type { StepCommitmentRow } from '../../lib/workflow/stepCommitments'
 import { formatWorkOrderWindow, notifyWorkOrderOffered } from '../../lib/workflow/workOrderNotifications'
 import { pickerComplianceSummary, type ComplianceDocInput } from '../../lib/people/subCompliance'
-import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
+import { calendarYmdInAppTzFromIso, localCalendarDayKey } from '../../utils/dateUtils'
 
 /**
  * Sub work-order panel on an expanded step card (RUN_SUBS_PLAN Phase 2,
@@ -190,7 +190,7 @@ export function StepCommitmentPanel({
     const scopeLines = (extra.offer_scope_snapshot?.lines ?? [])
       .map((l) => (l?.label ?? '').trim())
       .filter(Boolean)
-    const defaultExpires = new Date(Date.now() + 7 * 86400000).toLocaleDateString('en-CA')
+    const defaultExpires = localCalendarDayKey(new Date(Date.now() + 7 * 86400000))
     setOfferEditor({
       commitmentId: commitment.id,
       start: commitment.proposed_start ?? stepScheduledStart ?? '',

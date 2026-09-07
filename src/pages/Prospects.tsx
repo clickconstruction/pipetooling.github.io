@@ -50,6 +50,7 @@ import {
 } from '../lib/prospects/prospectConversion'
 import { readRememberedProspectsTopTab, rememberProspectsTopTab, resolveProspectsLanding } from '../lib/prospects/prospectsLanding'
 import TeamProspectsTab from '../components/prospects/TeamProspectsTab'
+import { localCalendarDayKey } from '../utils/dateUtils'
 
 const COPY_TEMPLATE_KEYS = ['no_response_email', 'phone_followup_email', 'just_checking_in_email'] as const
 type CopyTemplateKey = (typeof COPY_TEMPLATE_KEYS)[number]
@@ -945,7 +946,7 @@ export default function Prospects() {
         if (cancelled) return
         if (data?.created_at) {
           const d = new Date(data.created_at)
-          setConvertFirstInteractionDate(d.toLocaleDateString('en-CA'))
+          setConvertFirstInteractionDate(localCalendarDayKey(d))
         } else {
           setConvertFirstInteractionDate('')
         }
@@ -1510,7 +1511,7 @@ export default function Prospects() {
   function openCallbackModal() {
     takeCallingLock('callback')
     const now = new Date()
-    setCallbackDate(now.toLocaleDateString('en-CA'))
+    setCallbackDate(localCalendarDayKey(now))
     setCallbackTime(now.toTimeString().slice(0, 5))
     setCallbackNote('')
     setCallbackModalOpen(true)

@@ -1,4 +1,5 @@
 import type { CSSProperties } from 'react'
+import { localCalendarDayKey } from '../../utils/dateUtils'
 
 export const HOURS_TAB_SECTION_ANCHOR_STYLE: CSSProperties = { scrollMarginTop: '3.5rem' }
 
@@ -46,7 +47,7 @@ export function getDaysInRange(start: string, end: string): string[] {
   const d = new Date(start + 'T12:00:00')
   const endD = new Date(end + 'T12:00:00')
   while (d <= endD) {
-    days.push(d.toLocaleDateString('en-CA'))
+    days.push(localCalendarDayKey(d))
     d.setDate(d.getDate() + 1)
   }
   return days

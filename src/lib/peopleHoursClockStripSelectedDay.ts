@@ -1,3 +1,4 @@
+import { localCalendarDayKey } from '../utils/dateUtils'
 /** Pure Gregorian YYYY-MM-DD ± n days (civil dates). */
 export function shiftWorkDateYmd(ymd: string, deltaDays: number): string {
   const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(ymd.trim())
@@ -26,7 +27,7 @@ export function enCaWeekRangeContainingYmd(ymd: string): { start: string; end: s
     start.setDate(d.getDate() - day)
     const end = new Date(d)
     end.setDate(d.getDate() - day + 6)
-    return { start: start.toLocaleDateString('en-CA'), end: end.toLocaleDateString('en-CA') }
+    return { start: localCalendarDayKey(start), end: localCalendarDayKey(end) }
   }
   const y = Number(m[1])
   const mo = Number(m[2]) - 1
@@ -37,5 +38,5 @@ export function enCaWeekRangeContainingYmd(ymd: string): { start: string; end: s
   start.setDate(base.getDate() - day)
   const end = new Date(start)
   end.setDate(start.getDate() + 6)
-  return { start: start.toLocaleDateString('en-CA'), end: end.toLocaleDateString('en-CA') }
+  return { start: localCalendarDayKey(start), end: localCalendarDayKey(end) }
 }

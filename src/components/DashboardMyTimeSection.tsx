@@ -3,7 +3,7 @@ import { supabase } from '../lib/supabase'
 import { displayNameFromAuthUser } from '../lib/displayNameFromAuthUser'
 import { useAuth } from '../hooks/useAuth'
 import { useRealtimeChannel } from '../hooks/useRealtimeChannel'
-import { getDefaultWeekRange, getLastWeekRange } from '../utils/dateUtils'
+import { getDefaultWeekRange, getLastWeekRange, localCalendarDayKey } from '../utils/dateUtils'
 import { DashboardMyTimeDayEditorModal } from './DashboardMyTimeDayEditorModal'
 import { PersonalTimeOffModal } from './PersonalTimeOffModal'
 import { useLedgerPrefixMap } from '../contexts/LedgerDisplayPrefixContext'
@@ -152,7 +152,7 @@ function renderHoursByDay(weekStart: string, secondsByDay: Map<string, number>, 
   const dates: string[] = []
   const d = new Date(weekStart + 'T00:00:00')
   for (let i = 0; i < 7; i++) {
-    dates.push(d.toLocaleDateString('en-CA'))
+    dates.push(localCalendarDayKey(d))
     d.setDate(d.getDate() + 1)
   }
   const { sessionCountByDay, onDayClick, editableRange, hoursDaysCorrect, useOnShiftDayLabel } =

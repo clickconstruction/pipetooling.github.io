@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { PayConfigRow as PayConfigRowFull } from '../types/peoplePayConfig'
 import { supabase } from '../lib/supabase'
+import { localCalendarDayKey } from '../utils/dateUtils'
 
 /** Narrow view of the canonical pay-config row (single source of truth for field types). */
 type PayConfigRow = Pick<PayConfigRowFull, 'person_name' | 'hourly_wage' | 'is_salary' | 'record_hours_but_salary'>
@@ -15,8 +16,8 @@ function getMatrixDateRange(): { start: string; end: string } {
   const end = new Date(d)
   end.setDate(d.getDate() - day + 6)
   return {
-    start: start.toLocaleDateString('en-CA'),
-    end: end.toLocaleDateString('en-CA'),
+    start: localCalendarDayKey(start),
+    end: localCalendarDayKey(end),
   }
 }
 
@@ -25,7 +26,7 @@ function getDaysInRange(start: string, end: string): string[] {
   const d = new Date(start + 'T12:00:00')
   const endD = new Date(end + 'T12:00:00')
   while (d <= endD) {
-    days.push(d.toLocaleDateString('en-CA'))
+    days.push(localCalendarDayKey(d))
     d.setDate(d.getDate() + 1)
   }
   return days

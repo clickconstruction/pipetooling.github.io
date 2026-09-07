@@ -28,6 +28,7 @@ import { phoneSafeMinWidth } from '../lib/stickyModalHeaderStyle'
 import { SupplyHouseJobAccountsSection } from './materials/SupplyHouseJobAccountsSection'
 import { useNarrowViewport640 } from '../hooks/useNarrowViewport640'
 import { useReportQuickfillSectionMetric } from '../contexts/QuickfillSectionMetricsContext'
+import { todayYmdInAppTz } from '../utils/dateUtils'
 
 type SupplyHouse = Database['public']['Tables']['supply_houses']['Row']
 type SupplyHouseInvoice = Database['public']['Tables']['supply_house_invoices']['Row']
@@ -398,7 +399,7 @@ export function SupplyHousesTab({
   }, [invoiceJobAllocations, invoiceJobDetailsMap])
 
   const canAccess = myRole === 'dev' || myRole === 'master_technician' || isAssistantLike(myRole)
-  const agingTodayYmd = new Date().toLocaleDateString('en-CA')
+  const agingTodayYmd = todayYmdInAppTz()
   const agingMatrix = buildSupplyHouseAgingMatrix(
     supplyHouseSummary.map((r) => ({ id: r.supply_house_id, name: r.name })),
     agingUnpaidInvoices,
@@ -572,7 +573,7 @@ export function SupplyHousesTab({
   function openAddInvoice() {
     setEditingInvoice(null)
     setInvoiceNumber('')
-    const todayYmd = new Date().toLocaleDateString('en-CA')
+    const todayYmd = todayYmdInAppTz()
     setInvoiceDate(todayYmd)
     // Prefill from the house's monthly payment day (next occurrence) — editable, just a default.
     const paymentDay = selectedSupplyHouseForDetail?.monthly_payment_day
@@ -1093,7 +1094,7 @@ export function SupplyHousesTab({
                                                   {inv.due_date ? formatYmdLocal(inv.due_date) : '—'}
                                                   {(() => {
                                                     if (inv.is_paid || !inv.due_date) return null
-                                                    const days = daysPastDue(inv.due_date, new Date().toLocaleDateString('en-CA'))
+                                                    const days = daysPastDue(inv.due_date, todayYmdInAppTz())
                                                     if (days <= 0) return null
                                                     return (
                                                       <span

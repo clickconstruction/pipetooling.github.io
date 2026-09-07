@@ -2,6 +2,7 @@ import { Fragment, useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
 import { formatCurrency } from '../../lib/format'
+import { todayYmdInAppTz } from '../../utils/dateUtils'
 
 type HousingUnit = {
   id: string
@@ -36,13 +37,13 @@ export default function PeopleHousingTab({ users }: PeopleHousingTabProps) {
   const [housingInsuranceWeek, setHousingInsuranceWeek] = useState('')
   const [housingPossessionFormOpen, setHousingPossessionFormOpen] = useState(false)
   const [housingPossessionUserId, setHousingPossessionUserId] = useState('')
-  const [housingPossessionStartDate, setHousingPossessionStartDate] = useState(() => new Date().toLocaleDateString('en-CA'))
+  const [housingPossessionStartDate, setHousingPossessionStartDate] = useState(() => todayYmdInAppTz())
   const [housingPossessionEndDate, setHousingPossessionEndDate] = useState('')
 
   async function loadHousingUnits() {
     setHousingLoading(true)
     setHousingError(null)
-    const today = new Date().toLocaleDateString('en-CA')
+    const today = todayYmdInAppTz()
     const { data: unitsData, error: unitsErr } = await supabase.from('housing_units').select('*').order('address', { ascending: true })
     setHousingLoading(false)
     if (unitsErr) {
@@ -179,7 +180,7 @@ export default function PeopleHousingTab({ users }: PeopleHousingTabProps) {
     else {
       setHousingPossessionFormOpen(false)
       setHousingPossessionUserId('')
-      setHousingPossessionStartDate(new Date().toLocaleDateString('en-CA'))
+      setHousingPossessionStartDate(todayYmdInAppTz())
       setHousingPossessionEndDate('')
       loadHousingPossessions(selectedHousingId)
       loadHousingUnits()
@@ -272,7 +273,7 @@ export default function PeopleHousingTab({ users }: PeopleHousingTabProps) {
                               onClick={() => {
                                 setHousingPossessionFormOpen(true)
                                 setHousingPossessionUserId('')
-                                setHousingPossessionStartDate(new Date().toLocaleDateString('en-CA'))
+                                setHousingPossessionStartDate(todayYmdInAppTz())
                                 setHousingPossessionEndDate('')
                               }}
                               style={{ marginBottom: '0.5rem', padding: '0.25rem 0.5rem', fontSize: '0.8125rem' }}

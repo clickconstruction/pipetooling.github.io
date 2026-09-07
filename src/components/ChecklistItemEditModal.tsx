@@ -10,6 +10,7 @@ import { syncChecklistTitleTextareaHeight } from '../lib/syncChecklistTitleTexta
 import { applyEditRegeneration } from '../lib/checklistEditRegenerate'
 import { REMINDER_PRESETS, dailyFromScope, dayBeforeApplicable, reminderSummary, scopeFromDaily } from '../lib/checklistReminderOptions'
 import { isAssistantLike } from '../lib/subcontractorLikeRole'
+import { todayYmdInAppTz } from '../utils/dateUtils'
 
 type UserRole =
   | 'dev'
@@ -74,7 +75,7 @@ const initialForm: FormState = {
   repeat_days_of_week: [],
   repeat_days_after: 1,
   repeat_end_date: '',
-  start_date: new Date().toLocaleDateString('en-CA'),
+  start_date: todayYmdInAppTz(),
   due_date: '',
   show_until_completed: true,
   notify_on_complete_user_id: '',
@@ -197,7 +198,7 @@ export function ChecklistItemEditModal({
           .eq('checklist_item_id', item.id)
           .order('changed_at', { ascending: true })
           .then(({ data }) => setDueChanges((data ?? []) as DueChangeRow[]))
-        const today = new Date().toLocaleDateString('en-CA')
+        const today = todayYmdInAppTz()
         if (item.repeat_type === 'day_of_week') {
           setWhen('repeat')
           setRepeatMode('weekly')
@@ -227,7 +228,7 @@ export function ChecklistItemEditModal({
     }
     const effRepeatType: 'once' | 'day_of_week' | 'days_after_completion' =
       when === 'repeat' ? (repeatMode === 'weekly' ? 'day_of_week' : 'days_after_completion') : 'once'
-    const effStartDate = when === 'today' ? new Date().toLocaleDateString('en-CA') : form.start_date
+    const effStartDate = when === 'today' ? todayYmdInAppTz() : form.start_date
     // A due date implies staying on the list — a deadline is meaningless for a task that vanishes first (v2.2351).
     const effDueDate = when !== 'repeat' && form.due_date ? form.due_date : null
     const effShowUntil = when === 'repeat' ? false : effDueDate ? true : form.show_until_completed
@@ -249,7 +250,7 @@ export function ChecklistItemEditModal({
         remind_day_before:
           Boolean(form.reminder_time) &&
           form.remind_day_before &&
-          dayBeforeApplicable(when === 'repeat' ? 'repeat' : when, effStartDate, new Date().toLocaleDateString('en-CA')),
+          dayBeforeApplicable(when === 'repeat' ? 'repeat' : when, effStartDate, todayYmdInAppTz()),
         escalate_after_days: form.reminder_time && form.escalate_enabled ? Math.max(1, form.escalate_days) : null,
       }
       const { error } = await supabase
@@ -495,7 +496,7 @@ export function ChecklistItemEditModal({
                     <input
                       type="date"
                       value={form.due_date}
-                      min={when === 'today' ? new Date().toLocaleDateString('en-CA') : form.start_date || undefined}
+                      min={when === 'today' ? todayYmdInAppTz() : form.start_date || undefined}
                       onChange={(e) => setForm((f) => ({ ...f, due_date: e.target.value }))}
                       style={{ padding: '0.4rem' }}
                     />
@@ -654,7 +655,7 @@ export function ChecklistItemEditModal({
                   when,
                   repeatMode,
                   startDate: form.start_date,
-                  todayStr: new Date().toLocaleDateString('en-CA'),
+                  todayStr: todayYmdInAppTz(),
                   daysOfWeek: form.repeat_days_of_week,
                   daysAfter: form.repeat_days_after,
                   endDate: form.repeat_end_date || null,
@@ -770,7 +771,7 @@ export function ChecklistItemEditModal({
                     />
                     Keep reminding every day until it&apos;s done
                   </label>
-                  {dayBeforeApplicable(when === 'repeat' ? 'repeat' : when, form.start_date, new Date().toLocaleDateString('en-CA')) && (
+                  {dayBeforeApplicable(when === 'repeat' ? 'repeat' : when, form.start_date, todayYmdInAppTz()) && (
                     <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontSize: '0.95rem' }}>
                       <input
                         type="checkbox"
@@ -835,7 +836,7 @@ export function ChecklistItemEditModal({
                         time: form.reminder_time,
                         dailyUntilDone: form.reminder_daily,
                         dayBefore:
-                          form.remind_day_before && dayBeforeApplicable(when === 'repeat' ? 'repeat' : when, form.start_date, new Date().toLocaleDateString('en-CA')),
+                          form.remind_day_before && dayBeforeApplicable(when === 'repeat' ? 'repeat' : when, form.start_date, todayYmdInAppTz()),
                         escalateAfterDays: form.escalate_enabled ? form.escalate_days : null,
                       },
                       names,

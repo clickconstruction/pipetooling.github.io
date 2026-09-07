@@ -69,6 +69,7 @@ type LaborFixtureRow = {
 }
 
 import { LABOR_ASSIGNED_DELIMITER } from '../../lib/combinePeople'
+import { todayYmdInAppTz } from '../../utils/dateUtils'
 
 /**
  * Imperative handle the parent (Jobs.tsx) uses to drive the always-mounted modal.
@@ -199,7 +200,7 @@ function JobsSubLaborFormModalInner(
   const [laborJobPickerOpen, setLaborJobPickerOpen] = useState(false)
   const [laborJobPickerSearch, setLaborJobPickerSearch] = useState('')
   const [laborJobPickerNumberQuery, setLaborJobPickerNumberQuery] = useState('')
-  const [laborDate, setLaborDate] = useState(() => new Date().toLocaleDateString('en-CA'))
+  const [laborDate, setLaborDate] = useState(() => todayYmdInAppTz())
   const [laborFixtureEntryMode, setLaborFixtureEntryMode] = useState<'simple' | 'itemized'>('simple')
   const [laborFixtureRows, setLaborFixtureRows] = useState<LaborFixtureRow[]>([
     { id: crypto.randomUUID(), fixture: '', count: 1, hrs_per_unit: 0, is_fixed: false, labor_rate: 20, direct_labor_amount: null },
@@ -822,7 +823,7 @@ function JobsSubLaborFormModalInner(
     setLaborJobNumber('')
     setLaborPickedJobId(null)
     setLaborStep(1)
-    setLaborDate(new Date().toLocaleDateString('en-CA'))
+    setLaborDate(todayYmdInAppTz())
     const defaultRate = defaultLaborRateValue.trim() !== '' && !isNaN(parseFloat(defaultLaborRateValue)) ? parseFloat(defaultLaborRateValue) || 20 : 20
     setLaborFixtureEntryMode('simple')
     setLaborFixtureRows([
@@ -867,7 +868,7 @@ function JobsSubLaborFormModalInner(
     setLaborJobNumber('')
     setLaborPickedJobId(null)
     setLaborStep(1)
-    setLaborDate(new Date().toLocaleDateString('en-CA'))
+    setLaborDate(todayYmdInAppTz())
     const defaultRate = defaultLaborRateValue.trim() !== '' && !isNaN(parseFloat(defaultLaborRateValue)) ? parseFloat(defaultLaborRateValue) || 20 : 20
     setLaborFixtureEntryMode('simple')
     setLaborFixtureRows([
@@ -906,7 +907,7 @@ function JobsSubLaborFormModalInner(
     // v2.2142: Edit links by the typed number — the Job field shows the match
     // (address stays the sheet's own until the user picks a different job).
     setLaborPickedJobId(resolveSubLaborJobByNumber(jobs, job.job_number)?.id ?? null)
-    setLaborDate(job.job_date ?? new Date().toLocaleDateString('en-CA'))
+    setLaborDate(job.job_date ?? todayYmdInAppTz())
     const jobRate = job.labor_rate ?? 0
     const items = job.items ?? []
     const allDirect =

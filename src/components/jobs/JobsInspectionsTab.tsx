@@ -6,6 +6,7 @@ import { useToastContext } from '../../contexts/ToastContext'
 import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
 import { cityMatchesQuery, filterPortalsByQuery, formatCitiesInput, matchPortalForInspectionAddress, parseCitiesInput } from '../../lib/inspectionPortalSearch'
 import type { Database } from '../../types/database'
+import { localCalendarDayKey } from '../../utils/dateUtils'
 
 type InspectionRow = Database['public']['Tables']['inspections']['Row']
 
@@ -72,8 +73,8 @@ export default function JobsInspectionsTab({ authUserId, error, onError }: JobsI
     const m = month ?? inspectionsMonth
     const start = new Date(m.getFullYear(), m.getMonth() - 1, 1)
     const end = new Date(m.getFullYear(), m.getMonth() + 2, 0)
-    const startStr = start.toLocaleDateString('en-CA')
-    const endStr = end.toLocaleDateString('en-CA')
+    const startStr = localCalendarDayKey(start)
+    const endStr = localCalendarDayKey(end)
     const { data, error: err } = await supabase
       .from('inspections')
       .select('*')

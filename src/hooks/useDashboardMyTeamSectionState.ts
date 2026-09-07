@@ -12,7 +12,7 @@ import {
 } from '../types/clockSessions'
 import type { Database } from '../types/database'
 import { getSalarySyntheticClockInIso } from '../lib/salaryOnShift'
-import { calendarYmdInAppTzFromIso, denverCalendarDayKey } from '../utils/dateUtils'
+import { calendarYmdInAppTzFromIso, denverCalendarDayKey, localCalendarDayKey, todayYmdInAppTz } from '../utils/dateUtils'
 import type { AssignSessionJobSavedPatch } from '../components/clock-sessions/AssignSessionJobPopover'
 import {
   fetchSalariedUserIdSetFromUserIds,
@@ -70,7 +70,7 @@ function weekStartEndEnCA(): { start: string; end: string } {
   start.setDate(d.getDate() - day)
   const end = new Date(d)
   end.setDate(d.getDate() - day + 6)
-  return { start: start.toLocaleDateString('en-CA'), end: end.toLocaleDateString('en-CA') }
+  return { start: localCalendarDayKey(start), end: localCalendarDayKey(end) }
 }
 
 function displayNameForTeamMember(
@@ -403,7 +403,7 @@ export function useDashboardMyTeamSectionState(
       setTodaySessionsRows([])
       return
     }
-    const workDate = stripWorkDateYmd ?? new Date().toLocaleDateString('en-CA')
+    const workDate = stripWorkDateYmd ?? todayYmdInAppTz()
     try {
       const data = await withSupabaseRetry(
         async () =>
@@ -437,7 +437,7 @@ export function useDashboardMyTeamSectionState(
       setTodaySessionsRowsOrg([])
       return
     }
-    const workDate = stripWorkDateYmd ?? new Date().toLocaleDateString('en-CA')
+    const workDate = stripWorkDateYmd ?? todayYmdInAppTz()
     try {
       const data = await withSupabaseRetry(
         async () =>
@@ -1062,7 +1062,7 @@ export function useDashboardMyTeamSectionState(
       s.setDate(s.getDate() + delta * 7)
       const e = new Date(s)
       e.setDate(s.getDate() + 6)
-      return { start: s.toLocaleDateString('en-CA'), end: e.toLocaleDateString('en-CA') }
+      return { start: localCalendarDayKey(s), end: localCalendarDayKey(e) }
     })
   }, [])
 
@@ -1334,7 +1334,7 @@ export function useDashboardMyTeamSectionState(
   )
 
   const clockStripWorkDateYmd = useMemo(
-    () => stripWorkDateYmd ?? new Date().toLocaleDateString('en-CA'),
+    () => stripWorkDateYmd ?? todayYmdInAppTz(),
     [stripWorkDateYmd],
   )
 

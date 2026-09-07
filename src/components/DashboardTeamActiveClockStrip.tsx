@@ -27,7 +27,7 @@ import { recordHoursApproved, type HoursApprovedSurface } from '../lib/hoursAppr
 import { supabase } from '../lib/supabase'
 import { countDistinctJobsPerAssignee } from '../lib/currentlyInDispatchCounts'
 import { formatErrorMessage, withSupabaseRetry } from '../utils/errorHandling'
-import { denverCalendarDayKey, getDefaultWeekRange } from '../utils/dateUtils'
+import { denverCalendarDayKey, getDefaultWeekRange, todayYmdInAppTz } from '../utils/dateUtils'
 import { useUserReviewModal } from '../contexts/UserReviewModalContext'
 import { useJobDetailModal } from '../contexts/JobDetailModalContext'
 import { useConfirmDialog } from '../contexts/ConfirmDialogContext'
@@ -805,7 +805,7 @@ export function DashboardTeamActiveClockStrip({
   const { role: viewerRole } = useAuth()
   const prefixMap = useLedgerPrefixMap()
   const clockStripWorkDateResolved =
-    clockStripWorkDateYmd ?? new Date().toLocaleDateString('en-CA')
+    clockStripWorkDateYmd ?? todayYmdInAppTz()
 
   /** Currently In dispatch badge: distinct jobs scheduled today per open-session user. */
   const [dispatchJobCounts, setDispatchJobCounts] = useState<ReadonlyMap<string, number>>(

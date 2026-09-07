@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useToastContext } from '../../contexts/ToastContext'
 import { formatErrorMessage } from '../../utils/errorHandling'
-import { todayYmdInAppTz } from '../../utils/dateUtils'
+import { localCalendarDayKey, todayYmdInAppTz } from '../../utils/dateUtils'
 import { resolveSubPortalUrl } from '../../lib/subPortal/resolveSubPortalUrl'
 import { notifySheetWorkOrderOffered } from '../../lib/workflow/workOrderNotifications'
 import type { StepCommitmentRow } from '../../lib/workflow/stepCommitments'
@@ -289,7 +289,7 @@ export function WorkOrderAssemblerModal({
     const customLines = prior ? prior.lines.map((l) => l.label).filter((l) => !libraryLabels.has(l.toLowerCase()) && !bidLabels.has(l.toLowerCase())) : []
     const priorExcl = new Set((prior?.exclusions ?? []).map((x) => x.toLowerCase()))
     const priorAcks = new Set((prior?.acknowledgements ?? []).map((x) => x.toLowerCase()))
-    const defaultExpires = new Date(Date.now() + 7 * 86400000).toLocaleDateString('en-CA')
+    const defaultExpires = localCalendarDayKey(new Date(Date.now() + 7 * 86400000))
     setDraft({
       serviceTypeId: serviceTypeIdOfJob,
       tickedScope: new Set(scope.filter(({ item, ticked }) => (prior ? priorLabels.has(item.label.toLowerCase()) : ticked)).map(({ item }) => item.id)),

@@ -13,13 +13,14 @@
 
 import { supabase } from './supabase'
 import { planEditRegeneration, type MaterializeConfig } from './checklistMaterialize'
+import { todayYmdInAppTz } from '../utils/dateUtils'
 
 export async function applyEditRegeneration(
   itemId: string,
   cfg: MaterializeConfig,
   assigneeIds: string[],
 ): Promise<{ ok: boolean; error?: string }> {
-  const todayStr = new Date().toLocaleDateString('en-CA')
+  const todayStr = todayYmdInAppTz()
   const { data: instData, error: instErr } = await supabase
     .from('checklist_instances')
     .select('id, scheduled_date, completed_at')

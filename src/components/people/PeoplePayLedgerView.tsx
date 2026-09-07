@@ -20,6 +20,7 @@ import type { PayStubAdditionalLineRow, PayStubDeductionRow } from '../../lib/pa
 import { AmountSmallCents } from '../AmountSmallCents'
 import { PersonOffsetFormModal, type PersonOffsetEditingRow, type PersonOffsetInitialDraft } from '../pay/PersonOffsetFormModal'
 import type { PayStubRow } from './PeoplePayStubsTab'
+import { todayYmdInAppTz } from '../../utils/dateUtils'
 
 /**
  * People → Payroll → Ledger (v2.2168, dev-only prototype).
@@ -203,7 +204,7 @@ export default function PeoplePayLedgerView({ payStubs, payStubPaymentsByStubId,
   }
   const openCreate = (type: 'backcharge' | 'employee_credit') => {
     if (!selected) return
-    setOffsetModal({ editing: null, draft: { personName: selected.name, type, amount: '', description: '', occurredDate: new Date().toLocaleDateString('en-CA') } })
+    setOffsetModal({ editing: null, draft: { personName: selected.name, type, amount: '', description: '', occurredDate: todayYmdInAppTz() } })
   }
 
   const rosterPanel = (

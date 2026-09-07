@@ -23,6 +23,7 @@ import { mergeToUnified, type UnifiedAssignment } from '../../utils/crewAssignme
 import { useLedgerPrefixMap } from '../../contexts/LedgerDisplayPrefixContext'
 import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
 import { isAssistantLike } from '../../lib/subcontractorLikeRole'
+import { localCalendarDayKey } from '../../utils/dateUtils'
 
 /** Narrow view of the canonical pay-config row (single source of truth for field types). */
 type PayConfigRow = Pick<PayConfigRowFull, 'person_name' | 'is_salary' | 'record_hours_but_salary'>
@@ -34,7 +35,7 @@ function getDaysInRange(start: string, end: string): string[] {
   const d = new Date(start + 'T12:00:00')
   const endD = new Date(end + 'T12:00:00')
   while (d <= endD) {
-    days.push(d.toLocaleDateString('en-CA'))
+    days.push(localCalendarDayKey(d))
     d.setDate(d.getDate() + 1)
   }
   return days
@@ -84,14 +85,14 @@ export function HoursSection() {
     const day = d.getDay()
     const start = new Date(d)
     start.setDate(d.getDate() - day)
-    return start.toLocaleDateString('en-CA')
+    return localCalendarDayKey(start)
   })
   const [hoursDateEnd, setHoursDateEnd] = useState(() => {
     const d = new Date()
     const day = d.getDay()
     const start = new Date(d)
     start.setDate(d.getDate() - day + 6)
-    return start.toLocaleDateString('en-CA')
+    return localCalendarDayKey(start)
   })
   const [editingHoursCell, setEditingHoursCell] = useState<{ personName: string; workDate: string } | null>(null)
   const [editingHoursValue, setEditingHoursValue] = useState('')
@@ -354,8 +355,8 @@ export function HoursSection() {
     const dEnd = new Date(hoursDateEnd + 'T12:00:00')
     dStart.setDate(dStart.getDate() + delta * 7)
     dEnd.setDate(dEnd.getDate() + delta * 7)
-    setHoursDateStart(dStart.toLocaleDateString('en-CA'))
-    setHoursDateEnd(dEnd.toLocaleDateString('en-CA'))
+    setHoursDateStart(localCalendarDayKey(dStart))
+    setHoursDateEnd(localCalendarDayKey(dEnd))
   }
 
   useEffect(() => {

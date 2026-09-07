@@ -17,7 +17,7 @@ import {
 } from '../../lib/payStubDeductions'
 import { draftPayrollRowCashDue } from '../../lib/draftPayrollPreviewCost'
 import { PayStubDeleteIcon } from './PayStubDeleteIcon'
-import { isoWeekNumberFromGregorianYmd, ymdAddDays } from '../../utils/dateUtils'
+import { isoWeekNumberFromGregorianYmd, localCalendarDayKey, ymdAddDays } from '../../utils/dateUtils'
 
 /** Matches People Pay History `PayStubRow` so callbacks can pass stubs through to `viewPayStub` / `openPayStubMarkPaidModal`. */
 export type DraftPayrollPayStub = {
@@ -40,7 +40,7 @@ function getDaysInRange(start: string, end: string): string[] {
   const d = new Date(start + 'T12:00:00')
   const endD = new Date(end + 'T12:00:00')
   while (d <= endD) {
-    days.push(d.toLocaleDateString('en-CA'))
+    days.push(localCalendarDayKey(d))
     d.setDate(d.getDate() + 1)
   }
   return days

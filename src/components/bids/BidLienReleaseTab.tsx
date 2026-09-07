@@ -23,6 +23,7 @@ import { BidWorkflowTabTitleWithPreview } from './BidWorkflowTabTitleWithPreview
 import { BidPickerStandardList } from './BidPickerStandardList'
 import { BidPickerSortToggle } from './BidPickerSortToggle'
 import { MyBidsToggle } from './MyBidsToggle'
+import { todayYmdInAppTz } from '../../utils/dateUtils'
 
 type BidLienReleaseTabProps = {
   bids: BidWithBuilder[]
@@ -95,7 +96,7 @@ export function BidLienReleaseTab({ bids, onlyMyBids, setOnlyMyBids, isMyBid, se
         const projectNameVal = bid.project_name ?? '—'
         const projectAddressVal = bid.address ?? '—'
         const defaultBidAmount = bid.agreed_value != null ? String(bid.agreed_value) : bid.bid_value != null ? String(bid.bid_value) : ''
-        const todayStr = new Date().toLocaleDateString('en-CA')
+        const todayStr = todayYmdInAppTz()
         const getLienReleaseForm = (): LienReleaseFormData => {
           const existing = lienReleaseFormByBid[bid.id]
           if (existing) {

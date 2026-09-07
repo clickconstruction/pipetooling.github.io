@@ -165,7 +165,7 @@ import {
   type PeopleHoursPendingCellEntry,
 } from '../lib/peopleHoursPendingByCell'
 import { countClosedPendingSessions, describePendingOutsideVisibleWeek, pendingOutsideVisibleWeek } from '../lib/payWeekAnchor'
-import { denverCalendarDayKey } from '../utils/dateUtils'
+import { denverCalendarDayKey, localCalendarDayKey, todayYmdInAppTz } from '../utils/dateUtils'
 import { PeopleHoursPendingCellPopover } from '../components/people/PeopleHoursPendingCellPopover'
 import { PeopleHoursBulkApprovePendingModal } from '../components/people/PeopleHoursBulkApprovePendingModal'
 import { PeopleHoursApprovalsQueueModal } from '../components/people/PeopleHoursApprovalsQueueModal'
@@ -177,7 +177,7 @@ import type { DayEditorSession } from '../lib/myTimeDayTimeline'
 import type { ClockSessionRow } from '../types/clockSessions'
 
 function todayYyyyMmDdLocal(): string {
-  return new Date().toLocaleDateString('en-CA')
+  return todayYmdInAppTz()
 }
 
 function paidAtIsoFromYyyyMmDd(ymd: string): string {
@@ -464,9 +464,9 @@ export default function People() {
     const d = new Date()
     const start = new Date(d)
     start.setDate(d.getDate() - 6)
-    return start.toLocaleDateString('en-CA')
+    return localCalendarDayKey(start)
   })
-  const [teamPeriodEnd, setTeamPeriodEnd] = useState(() => new Date().toLocaleDateString('en-CA'))
+  const [teamPeriodEnd, setTeamPeriodEnd] = useState(() => todayYmdInAppTz())
   const [showMaxHoursTeams, setShowMaxHoursTeams] = useState(false)
   const [teamToDelete, setTeamToDelete] = useState<{ id: string; name: string } | null>(null)
   const [teamDeletingId, setTeamDeletingId] = useState<string | null>(null)
@@ -475,7 +475,7 @@ export default function People() {
     const day = d.getDay()
     const start = new Date(d)
     start.setDate(d.getDate() - day)
-    return start.toLocaleDateString('en-CA')
+    return localCalendarDayKey(start)
   })
   // Pay History tab state
   type PayStubsLoadSnapshot = {
@@ -495,14 +495,14 @@ export default function People() {
     const day = d.getDay()
     const start = new Date(d)
     start.setDate(d.getDate() - day)
-    return start.toLocaleDateString('en-CA')
+    return localCalendarDayKey(start)
   })
   const [payStubPeriodEnd, setPayStubPeriodEnd] = useState(() => {
     const d = new Date()
     const day = d.getDay()
     const start = new Date(d)
     start.setDate(d.getDate() - day + 6)
-    return start.toLocaleDateString('en-CA')
+    return localCalendarDayKey(start)
   })
   const [deletingPayStubId, setDeletingPayStubId] = useState<string | null>(null)
   const [markingPayStubId, setMarkingPayStubId] = useState<string | null>(null)
@@ -556,7 +556,7 @@ export default function People() {
     const day = d.getDay()
     const start = new Date(d)
     start.setDate(d.getDate() - day + 6)
-    return start.toLocaleDateString('en-CA')
+    return localCalendarDayKey(start)
   })
   // Assistant hours visibility window (org setting; missing = 3 weeks, 0 = unlimited).
   const [assistantHoursWindowWeeks, setAssistantHoursWindowWeeks] = useState(
@@ -581,7 +581,7 @@ export default function People() {
   const hoursFloorYmd = useMemo(
     () =>
       isAssistant
-        ? assistantHoursWindowFloorYmd(new Date().toLocaleDateString('en-CA'), assistantHoursWindowWeeks)
+        ? assistantHoursWindowFloorYmd(todayYmdInAppTz(), assistantHoursWindowWeeks)
         : null,
     [isAssistant, assistantHoursWindowWeeks]
   )
@@ -2991,8 +2991,8 @@ export default function People() {
     dStart.setDate(dStart.getDate() + delta * 7)
     dEnd.setDate(dEnd.getDate() + delta * 7)
     const clamped = clampHoursRangeToFloor(
-      dStart.toLocaleDateString('en-CA'),
-      dEnd.toLocaleDateString('en-CA'),
+      localCalendarDayKey(dStart),
+      localCalendarDayKey(dEnd),
       hoursFloorYmd
     )
     setHoursDateStart(clamped.start)
@@ -3010,8 +3010,8 @@ export default function People() {
     const priorSaturday = new Date(priorSunday)
     priorSaturday.setDate(priorSunday.getDate() + 6)
     return {
-      periodStart: priorSunday.toLocaleDateString('en-CA'),
-      periodEnd: priorSaturday.toLocaleDateString('en-CA'),
+      periodStart: localCalendarDayKey(priorSunday),
+      periodEnd: localCalendarDayKey(priorSaturday),
     }
   }
 
@@ -3020,8 +3020,8 @@ export default function People() {
     const dEnd = new Date(payStubPeriodEnd + 'T12:00:00')
     dStart.setDate(dStart.getDate() + delta * 7)
     dEnd.setDate(dEnd.getDate() + delta * 7)
-    setPayStubPeriodStart(dStart.toLocaleDateString('en-CA'))
-    setPayStubPeriodEnd(dEnd.toLocaleDateString('en-CA'))
+    setPayStubPeriodStart(localCalendarDayKey(dStart))
+    setPayStubPeriodEnd(localCalendarDayKey(dEnd))
   }
 
   /** Align Hours tab range with Draft Payroll period so pending sessions match the banner count. */

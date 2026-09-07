@@ -18,6 +18,7 @@ import { abbreviatePaymentReferenceLabel } from '../../lib/abbreviatePaymentRefe
 import { autoApplyInvoiceId, paymentDateBeforeBilled, paymentRowNeedsInvoiceLink } from '../../lib/jobs/paymentInvoiceLinking'
 import { billChoicesForPayment } from '../../lib/jobs/paymentBillMatching'
 import type { InvoiceWithJobForBillView } from './BilledBillViewModal'
+import { todayYmdInAppTz } from '../../utils/dateUtils'
 
 const DATE_MINI_LABEL_STYLE: CSSProperties = {
   fontSize: '0.58rem',
@@ -244,7 +245,7 @@ export function JobFormPaymentsTable({
       cancelled = true
     }
   }, [mercuryIdsKey])
-  const todayYmdLocal = new Date().toLocaleDateString('en-CA')
+  const todayYmdLocal = todayYmdInAppTz()
 
   // Consolidated start: blank manual draft rows (the seeded empty row) stay
   // hidden behind a "Record non-Stripe payment received" button until the user

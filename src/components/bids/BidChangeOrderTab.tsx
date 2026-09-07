@@ -23,6 +23,7 @@ import { BidWorkflowTabTitleWithPreview } from './BidWorkflowTabTitleWithPreview
 import { BidPickerStandardList } from './BidPickerStandardList'
 import { BidPickerSortToggle } from './BidPickerSortToggle'
 import { MyBidsToggle } from './MyBidsToggle'
+import { localCalendarDayKey } from '../../utils/dateUtils'
 
 type BidChangeOrderTabProps = {
   bids: BidWithBuilder[]
@@ -161,7 +162,7 @@ export function BidChangeOrderTab({ bids, onlyMyBids, setOnlyMyBids, isMyBid, au
         const defaultResponseDate = (() => {
           const d = new Date()
           d.setDate(d.getDate() + 7)
-          return d.toLocaleDateString('en-CA')
+          return localCalendarDayKey(d)
         })()
         const getChangeOrderForm = (): ChangeOrderFormData => {
           const existing = changeOrderFormByBid[bid.id]
