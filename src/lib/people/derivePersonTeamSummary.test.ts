@@ -15,7 +15,7 @@ function makeUnion(partial: Partial<TeamReviewUnion>): TeamReviewUnion {
     bidsById: new Map(),
     jobIdByHcp: new Map(),
     laborItemsByJobId: new Map(),
-    laborCostByHcp: new Map(),
+    laborCostByJobId: new Map(),
     teamLaborCostByJobId: new Map(),
     partsCostByJobId: new Map(),
     invoiceAmountByJob: {},
@@ -71,7 +71,7 @@ describe('derivePersonTeamSummary', () => {
       jobsById: new Map([
         ['job-M', makeLedgerRow({ id: 'job-M', hcp_number: 'JM', revenue: 1000, pct_complete: 100 })],
       ]),
-      laborCostByHcp: new Map([['jm', 60]]),
+      laborCostByJobId: new Map([['job-M', 60]]),
     })
 
     const alice = derivePersonTeamSummary(union, 'Alice', hourlyPayConfig('Alice', 50), false, ['2026-04-01'])
@@ -150,8 +150,8 @@ describe('derivePersonTeamSummary', () => {
       jobsById: new Map([
         ['job-X', makeLedgerRow({ id: 'job-X', hcp_number: 'JX', revenue: 1000, pct_complete: 50 })],
       ]),
-      // totalLaborOnJob = laborCostByHcp ($80) + teamLaborCostByJobId ($20) = $100
-      laborCostByHcp: new Map([['jx', 80]]),
+      // totalLaborOnJob = laborCostByJobId ($80) + teamLaborCostByJobId ($20) = $100
+      laborCostByJobId: new Map([['job-X', 80]]),
       teamLaborCostByJobId: new Map([['job-X', 20]]),
     })
 
@@ -257,7 +257,7 @@ describe('derivePersonTeamSummary — v2.2683 cost inputs', () => {
       jobIdByHcp: new Map([['j1', 'job-1']]),
       jobsById: new Map([['job-1', makeLedgerRow({ id: 'job-1', hcp_number: 'J1', revenue: 10000, pct_complete: 100 })]]),
       // Lifetime labor on the job = this sheet alone, costed the same way.
-      laborCostByHcp: new Map([['j1', 1440]]),
+      laborCostByJobId: new Map([['job-1', 1440]]),
     })
     const row = derivePersonTeamSummary(union, 'Eve', hourlyPayConfig('Eve', 50), false, ['2026-03-01'])
     // Cost 1440 ÷ lifetime 1440 → the whole job's value created is Eve's.
@@ -312,5 +312,27 @@ describe('derivePersonTeamSummary — v2.2687 hour basis under "only paid in ful
     expect(paidOnly.hoursBreakdown.totals.onPaidJobs).toBe(3)
     expect(all.hoursBreakdown.totals.onPaidJobs).toBeUndefined()
     expect(paidOnly.hoursBreakdown.totals.totalHours).toBe(12)
+  })
+
+  it('v2.3068: a sheet linked by job_ledger_id lands on that job with no number map at all; a link-less sheet still uses the number map', () => {
+    const union = makeUnion({
+      periodLaborRows: [
+        { id: 'lr-link', job_date: '2026-04-03', address: 'l', job_number: 'STALE', job_ledger_id: 'job-L', labor_rate: 10, distance_miles: 0, assigned_to_name: 'Alice' },
+        { id: 'lr-num', job_date: '2026-04-03', address: 'n', job_number: 'JN', job_ledger_id: null, labor_rate: 10, distance_miles: 0, assigned_to_name: 'Alice' },
+      ],
+      laborItemsByJobId: new Map([
+        ['lr-link', [{ count: 1, hrs_per_unit: 2, is_fixed: true }]],
+        ['lr-num', [{ count: 1, hrs_per_unit: 3, is_fixed: true }]],
+      ]),
+      jobIdByHcp: new Map([['jn', 'job-N']]),
+      jobsById: new Map([
+        ['job-L', makeLedgerRow({ id: 'job-L', hcp_number: 'JL', revenue: 200, pct_complete: 100 })],
+        ['job-N', makeLedgerRow({ id: 'job-N', hcp_number: 'JN', revenue: 300, pct_complete: 100 })],
+      ]),
+      laborCostByJobId: new Map([['job-L', 20], ['job-N', 30]]),
+    })
+    const row = derivePersonTeamSummary(union, 'Alice', hourlyPayConfig('Alice', 50), false, ['2026-04-03'])
+    expect(row.grossBreakdown.jobs.map((j) => j.jobId).sort()).toEqual(['job-L', 'job-N'])
+    expect(row.gross).toBeCloseTo(500, 6)
   })
 })

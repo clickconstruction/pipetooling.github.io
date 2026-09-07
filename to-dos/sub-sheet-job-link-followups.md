@@ -36,18 +36,7 @@ Conversion rule for every row: read `job_ledger_id` first; keep the number match
 | `src/components/jobs/SheetStoryModal.tsx:121,128` | Sheet story: `jobs.find(hcp === number)` else `jobs_ledger … .ilike('hcp_number', number)` | `sheet.job_ledger_id` → `jobs.find(id)` / `.eq('id')` |
 | `src/lib/subs/offerNextStage.ts:26-30` | Next-stage offer to the GC: sheet number → `jobs_ledger … .eq('hcp_number')` | select `job_ledger_id` on the sheet |
 
-## D · Sheet → job maps over many sheets
-
-| Site | What it does | Change |
-|---|---|---|
-| `src/lib/subWorkOrders/workOrderBoardRows.ts:104,121,133-141` | Work Orders board rows: `jobsByNumber` from `hcp_number` | `jobsById.get(sheet.job_ledger_id)` first; `subsTabRows.ts` follows automatically |
-| `src/lib/subWorkOrders/sheetsNeedingWorkOrder.ts:86-109` | Which sheets still need a work order | same |
-| `src/components/jobs/JobsSubLaborTab.tsx:166-179` | `spineFor()` merges job-anchored + sheet-anchored orders/bills/pay rules via `jobsByNumber` | id first |
-| `src/components/jobs/JobsSubLaborFormModal.tsx:188,1990` | Editing sheet's job for the assembler + `service_type_id`: `jobs.find(j => j.hcp_number === editingLaborJob.job_number)` (raw, no click) | `editingLaborJob.job_ledger_id` first, `resolveSubLaborJobByNumber` fallback |
-| `src/lib/jobs/subLaborUnlinked.ts:46-47` (+ `QuickfillJobsCleanupSection.tsx:60-128`) | Quickfill → Jobs Cleanup "sub labor with no job": unlinked = number resolves to nothing | unlinked = `job_ledger_id IS NULL` (the trigger already healed everything resolvable) |
-| `src/components/jobs/JobsCrewPnlTab.tsx:234-247` | Crew P&L: `jobIdByNumber` (hcp + click) | id first |
-| `src/lib/people/derivePersonTeamSummary.ts:69-148,348` + `src/components/people/PeopleReviewTab.tsx:1032-2179` + `teamReviewTypes.ts` | **Largest**: `jobIdByHcp` / `laborCostByHcp` keyed by sheet number, resolved through RPC `get_jobs_ledger_by_hcp_numbers[_paid_only]` | key both maps by job id; select `job_ledger_id` on sheets; the RPC pair can retire once nothing else calls it |
-| `src/hooks/useSubLaborLedger.ts:80-102` + `src/lib/subLaborOutstanding.ts:61-63` | Sub Labor ledger names: `laborJobNamesByHcp` via the same RPC | embed `jobs_ledger!people_labor_jobs_job_ledger_id_fkey(hcp_number, click_number, job_name)` on the sheet select |
+## D · Sheet → job maps — DONE v2.3065 + v2.3068 (People → Review)
 
 ## E · Writers that still only set the number (the trigger links them; convert for exactness)
 

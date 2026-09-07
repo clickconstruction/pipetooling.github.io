@@ -31,7 +31,7 @@ export type TeamLaborItem = {
   labor_rate?: number | null
   direct_labor_amount?: number | null
 }
-export type TeamPeriodLaborRow = { id: string; job_date: string | null; address: string; job_number: string | null; labor_rate: number | null; distance_miles: number | null; assigned_to_name: string | null }
+export type TeamPeriodLaborRow = { id: string; job_date: string | null; address: string; job_number: string | null; /** The sheet's job link (v2.3055); the number is display text. */ job_ledger_id?: string | null; labor_rate: number | null; distance_miles: number | null; assigned_to_name: string | null }
 export type TeamReviewUnion = {
   periodLaborRows: TeamPeriodLaborRow[]
   periodCrewRows: Array<{ work_date: string; person_name: string; job_assignments: CrewJobAssignment[] }>
@@ -50,7 +50,8 @@ export type TeamReviewUnion = {
   bidsById: Map<string, { bid_number: string; project_name: string; address: string }>
   jobIdByHcp: Map<string, string>
   laborItemsByJobId: Map<string, TeamLaborItem[]>
-  laborCostByHcp: Map<string, number>
+  /** Lifetime sub-labor cost per jobs_ledger id (keyed by the sheet's link, v2.3068). */
+  laborCostByJobId: Map<string, number>
   teamLaborCostByJobId: Map<string, number>
   partsCostByJobId: Map<string, number>
   invoiceAmountByJob: Record<string, number>
