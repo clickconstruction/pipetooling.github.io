@@ -69,7 +69,12 @@ marginal cost to her.
   math should weight teachers accordingly. (b) A live bid whose plans link the
   Drive service account cannot read is invisible to the shadow program (b480
   blocked on exactly this) — a "plans readable by robots" indicator on live
-  bids belongs on the board.
+  bids belongs on the board. (c) **Discipline**: b480 shadowed b378, an
+  Electrical-division bid, and locked a $907k plumbing number against it —
+  the dispatcher had no service-type filter. Fixed v2.3022 (plumbing-only
+  claims at every door + `void_shadow`); the run was voided and the entries
+  it mirrored into the electrical book removed. Coverage now counts plumbing
+  bids only.
 - **Record repair as office work** (process, tickets exist): 98 historical
   bids lack plans links; b216 and b323 are X/void on bad links alone. Every
   repaired record is +1 reference with zero estimating cost. The

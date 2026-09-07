@@ -415,6 +415,19 @@ const TOOLS = [
     },
   },
   {
+    name: 'void_shadow',
+    description:
+      "Take a shadow OUT of the scoring loop (v2.3022): a category error (wrong division), a wrong reference, a contaminated run. Own shells only; a run that already scored stays scored (the owner judges gate eligibility instead). Stamps '[shadow VOID] <reason>' on the ledger. Use it instead of leaving a bad lock to auto-score.",
+    inputSchema: {
+      type: 'object',
+      properties: {
+        bid: { type: 'string', description: "Your shadow shell (e.g. 'b480' or uuid)" },
+        reason: { type: 'string', description: 'Why this run must never score (plain words, one paragraph max)' },
+      },
+      required: ['bid', 'reason'],
+    },
+  },
+  {
     name: 'lock_shadow',
     description:
       'Lock your shadow total (fleet Phase 1): records the blind total on the twin_shadow_runs row and stamps the ledger. Must happen BEFORE the reference bid is sent; refused after. Scoring is automatic later via score_shadows.',
@@ -475,6 +488,27 @@ async function resolveTwin(req: Request): Promise<{ twinUserId: string; email: s
   const { data: user } = await admin.from('users').select('email, is_digital_twin, role').eq('id', cred.twin_user_id).maybeSingle()
   if (!user || user.is_digital_twin !== true || user.role !== 'estimator') return { error: 'Twin account not eligible', status: 403 }
   return { twinUserId: cred.twin_user_id, email: user.email as string, credId: cred.id as string }
+}
+
+// ---------------------------------------------------------------------------
+// Discipline fence (v2.3022): twin-estimator-1 is a PLUMBING estimator. On
+// 2026-09-07 next_shadow claimed b378 — an Electrical-division bid — and the
+// robot locked a $907k plumbing number against an electrical reference, mirroring
+// 34 plumbing entries into the empty electrical robot book on the way. Every
+// claim door now checks the reference's service type against Plumbing.
+// ---------------------------------------------------------------------------
+let plumbingServiceTypeCache: string | null = null
+async function plumbingServiceTypeId(admin: ReturnType<typeof createClient>): Promise<string | null> {
+  if (plumbingServiceTypeCache) return plumbingServiceTypeCache
+  const { data } = await admin.from('service_types').select('id').ilike('name', 'plumbing').limit(1).maybeSingle()
+  plumbingServiceTypeCache = (data as { id: string } | null)?.id ?? null
+  return plumbingServiceTypeCache
+}
+async function disciplineRefusal(admin: ReturnType<typeof createClient>, refBid: { bid_number: string; service_type_id: string | null }): Promise<string | null> {
+  const plumbing = await plumbingServiceTypeId(admin)
+  if (!plumbing || refBid.service_type_id === plumbing) return null
+  const { data: st } = await admin.from('service_types').select('name').eq('id', refBid.service_type_id ?? '').maybeSingle()
+  return `b${refBid.bid_number} is a${/^[aeiou]/i.test(String(st?.name ?? '')) ? 'n' : ''} ${st?.name ?? 'non-plumbing'} bid — twin-estimator-1 estimates PLUMBING only. A plumbing number against another division's reference is a category error, not a data point; pick a plumbing reference.`
 }
 
 // ---------------------------------------------------------------------------
@@ -567,6 +601,8 @@ async function openBacktestShell(
   if ((refBid as { holdout?: boolean }).holdout && !opts.gateRun) {
     return { ok: false, error: `b${refBid.bid_number} is a HOLDOUT reference — reserved for gate measurement, never practice. Only an operator-ordered gate run opens it (open_backtest with gate_run: true); pick a different reference.` }
   }
+  const disciplineErr = await disciplineRefusal(admin, refBid as { bid_number: string; service_type_id: string | null })
+  if (disciplineErr) return { ok: false, error: disciplineErr }
   // Reference data-grade (v2.2545) — PRESENCE booleans only, blind-safe.
   const [{ count: countRows }, { count: pricingRows }, { data: presence }] = await Promise.all([
     admin.from('bids_count_rows').select('id', { count: 'exact', head: true }).eq('bid_id', refBid.id),
@@ -1696,12 +1732,16 @@ async function callTool(req: Request, name: string, args: Record<string, unknown
       const QUEUE_COLS = 'id, bid_number, project_name, address, distance_from_office, bid_due_date, plans_link, created_at, robot_requested_at, robot_requested_by'
       // v2.2543: human-requested bids (the green robot icon) come first and bypass
       // the lookback window — a person's ask shouldn't age out of the queue.
+      // v2.3022: plumbing-only — the twin's discipline (see disciplineRefusal).
+      const plumbingId = await plumbingServiceTypeId(admin)
+      if (!plumbingId) return textContent('No Plumbing service type found — cannot scope the queue to the twin\'s discipline', true)
       const [recentRes, requestedRes] = await Promise.all([
         admin
           .from('bids')
           .select(QUEUE_COLS)
           .is('bid_date_sent', null)
           .not('plans_link', 'is', null)
+          .eq('service_type_id', plumbingId)
           .gte('created_at', since)
           .not('project_name', 'ilike', 'ZZ %')
           .order('created_at', { ascending: false })
@@ -1711,6 +1751,7 @@ async function callTool(req: Request, name: string, args: Record<string, unknown
           .select(QUEUE_COLS)
           .is('bid_date_sent', null)
           .not('plans_link', 'is', null)
+          .eq('service_type_id', plumbingId)
           .not('robot_requested_at', 'is', null)
           .not('project_name', 'ilike', 'ZZ %')
           .order('robot_requested_at', { ascending: true })
@@ -1745,7 +1786,7 @@ async function callTool(req: Request, name: string, args: Record<string, unknown
       // Coverage (v2.2936, LEARNING_PLAN.md lever 2): how much of the live board is
       // shadowed, windowless — the number the auto-shadow program drives to 100%.
       const { data: allLive } = await admin.from('bids').select('id')
-        .is('bid_date_sent', null).not('plans_link', 'is', null).not('project_name', 'ilike', 'ZZ %').limit(1000)
+        .is('bid_date_sent', null).not('plans_link', 'is', null).eq('service_type_id', plumbingId).not('project_name', 'ilike', 'ZZ %').limit(1000)
       const liveIds = (allLive ?? []).map((b: { id: string }) => b.id)
       const shadowedLive = liveIds.filter((id) => taken.has(id)).length
       return textContent(JSON.stringify({
@@ -1771,6 +1812,8 @@ async function callTool(req: Request, name: string, args: Record<string, unknown
       if (refBid.bid_date_sent) {
         return textContent(`b${refBid.bid_number} has already been SENT — a shadow would not be blind. Use open_backtest instead.`, true)
       }
+      const shadowDisciplineErr = await disciplineRefusal(admin, refBid as { bid_number: string; service_type_id: string | null })
+      if (shadowDisciplineErr) return textContent(shadowDisciplineErr, true)
       const { data: existingRun } = await admin.from('twin_shadow_runs').select('id, shadow_bid_id, status').eq('reference_bid_id', refBid.id).maybeSingle()
       if (existingRun) {
         const { data: sb } = await admin.from('bids').select('bid_number').eq('id', existingRun.shadow_bid_id).maybeSingle()
@@ -1796,12 +1839,15 @@ async function callTool(req: Request, name: string, args: Record<string, unknown
       const days = Number(args.days ?? 30)
       const since = new Date(Date.now() - (Number.isFinite(days) && days > 0 ? days : 30) * 86400_000).toISOString()
       const CLAIM_COLS = 'id, bid_number, project_name, address, customer_id, service_type_id, distance_from_office, plans_link, gc_builder_id, bid_due_date, bid_date_sent, created_at, robot_requested_at, backtest_axis'
+      // v2.3022: plumbing-only candidates — the 2026-09-07 b378 category error.
+      const claimPlumbingId = await plumbingServiceTypeId(admin)
+      if (!claimPlumbingId) return textContent('No Plumbing service type found — cannot scope claims to the twin\'s discipline', true)
       const [requestedRes, recentRes] = await Promise.all([
         admin.from('bids').select(CLAIM_COLS)
-          .is('bid_date_sent', null).not('plans_link', 'is', null).not('robot_requested_at', 'is', null)
+          .is('bid_date_sent', null).not('plans_link', 'is', null).eq('service_type_id', claimPlumbingId).not('robot_requested_at', 'is', null)
           .not('project_name', 'ilike', 'ZZ %').order('robot_requested_at', { ascending: true }).limit(25),
         admin.from('bids').select(CLAIM_COLS)
-          .is('bid_date_sent', null).not('plans_link', 'is', null).gte('created_at', since)
+          .is('bid_date_sent', null).not('plans_link', 'is', null).eq('service_type_id', claimPlumbingId).gte('created_at', since)
           .not('project_name', 'ilike', 'ZZ %').order('created_at', { ascending: true }).limit(50),
       ])
       if (requestedRes.error) return textContent(`Queue lookup failed: ${requestedRes.error.message}`, true)
@@ -1838,6 +1884,29 @@ async function callTool(req: Request, name: string, args: Record<string, unknown
         }, null, 2))
       }
       return textContent(JSON.stringify({ done: true, note: 'All current candidates were claimed by parallel agents — nothing left to shadow right now.' }, null, 2))
+    }
+    case 'void_shadow': {
+      // v2.3022: the door for a shadow that should never score — a category error, a
+      // wrong reference, a contaminated run. Own shells only; a scored run stays scored.
+      const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, {
+        auth: { autoRefreshToken: false, persistSession: false },
+      })
+      const ref = String(args.bid ?? '').trim()
+      const reason = String(args.reason ?? '').trim().slice(0, 1000)
+      if (!ref || !reason) return textContent('void_shadow needs bid (your shadow shell) + reason', true)
+      const uuidRe = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+      let bq = admin.from('bids').select('id, bid_number, created_by, estimator_id')
+      bq = uuidRe.test(ref) ? bq.eq('id', ref) : bq.eq('bid_number', ref.replace(/^(bp|b)/i, ''))
+      const { data: bid } = await bq.maybeSingle()
+      if (!bid) return textContent(`No bid found for "${ref}"`, true)
+      if (bid.created_by !== twin.twinUserId && bid.estimator_id !== twin.twinUserId) return textContent('Not your shell (created_by / estimator fence)', true)
+      const { data: run } = await admin.from('twin_shadow_runs').select('id, status').eq('shadow_bid_id', bid.id).maybeSingle()
+      if (!run) return textContent(`b${bid.bid_number} has no shadow run to void`, true)
+      if (run.status === 'scored') return textContent(`b${bid.bid_number} is already SCORED — a scored run stays on the record; the owner judges its gate eligibility instead.`, true)
+      const { error: updErr } = await admin.from('twin_shadow_runs').update({ status: 'void' }).eq('id', run.id)
+      if (updErr) return textContent(`Void failed: ${updErr.message}`, true)
+      await admin.from('bids_submission_entries').insert({ bid_id: bid.id, notes: `[shadow VOID] via twin-mcp void_shadow (was ${run.status}): ${reason}` }).then(() => {}, () => {})
+      return textContent(JSON.stringify({ ok: true, bid: `b${bid.bid_number}`, was: run.status, now: 'void', note: 'score_shadows only scores locked runs; this one is out of the loop for good.' }, null, 2))
     }
     case 'lock_shadow': {
       const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, {
@@ -1922,7 +1991,7 @@ async function handleRpc(req: Request, msg: { jsonrpc?: string; id?: unknown; me
       return rpcResult(id, {
         protocolVersion: version,
         capabilities: { tools: {} },
-        serverInfo: { name: 'pipetooling-twin-mcp', version: '1.3.9' },
+        serverInfo: { name: 'pipetooling-twin-mcp', version: '1.3.10' },
         instructions:
           "PipeTooling digital-twin seat (estimator-only). Call get_brief first, then get_directory; mint_session gives you a signed-in browser link to the real apps — PipeTooling by default, CountTooling (the PDF-takeoff tool) with app: 'counttooling'. The work happens there. Every call needs your per-twin token (X-Twin-Token or Bearer).",
       })
