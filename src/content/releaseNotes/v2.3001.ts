@@ -7,6 +7,7 @@ const note: ReleaseNote = {
   kind: 'fix',
   highlights: [
     'The Labor Cost panel in Edit Job headed its in-house line "Team Labor" while the tab it links to is now Team. The heading (and the role-gate message for the tab) now say Team; the hours, cost and "Open on Jobs →" link are unchanged.',
+    'After that link jumps to the job\'s last week with hours, the address bar now tidies itself the way it did before the jump.',
   ],
 }
 
