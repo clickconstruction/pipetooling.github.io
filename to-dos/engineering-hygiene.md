@@ -28,6 +28,8 @@ The playbook's method still applies; the numbers, the "largest files" headline i
 
 - **`toLocaleDateString('en-CA')` as a YYYY-MM-DD source** (v2.2980): 119 call sites across components, pages and hooks assume `en-CA` renders `YYYY-MM-DD`; Node 20 / ICU 72 renders `MM/DD/YYYY`, and `dateUtils.ts`, `checklistDueDates.ts` and `payStubPayments.ts` already carry the warning. Browsers get it right, so prod has been fine — but any of those strings that reaches a date column or a string comparison is one ICU update away from breaking. Sweep: replace with `denverCalendarDayKey(ms)` (company calendar) or a parts-based local-day helper where the device's day is meant.
 
+- **Edge `_shared/ipGeoValidation.ts` is not strict-clean** (v2.3026): it fails the app's tsconfig (`noUncheckedIndexedAccess`: a possibly-undefined octet at lines 8 and 30–35), so the client test for `ipGeolocationMaps.ts` cannot import it for a client↔edge parity guard the way the accounting-label parity tests do. Fix is type-narrowing only (no behaviour change), but it lives under `_shared`, so redeploy `resolve-ip-geolocation` afterwards (edge drift misses `_shared` importers).
+
 Mechanical sweeps merge alone (CLAUDE.md): cut from fresh main, merge before the next feature PR on those surfaces.
 
 ## The plan
