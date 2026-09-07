@@ -3,7 +3,7 @@ import { withSupabaseRetry } from '../utils/errorHandling'
 import type { LedgerPrefixMap } from './ledgerDisplayPrefixes'
 import { formatBidLedgerShortLine, formatJobLedgerShortLine } from './ledgerDisplayPrefixes'
 import { fetchOverheadOfficeJobLedgerIdFromAppSettings } from './overheadOfficeJobSettings'
-import type { TeamBoardBlock, TeamBoardSession, TeamBoardSubSheet, TeamTargetLabel } from './teamBoard'
+import { teamAckKey, type TeamBoardBlock, type TeamBoardSession, type TeamBoardSubSheet, type TeamTargetLabel } from './teamBoard'
 
 type JobEmbed = { hcp_number: string | null; job_name: string | null; job_address: string | null; service_type_id: string | null; click_number?: string | null } | null
 type BidEmbed = { bid_number: string | null; project_name: string | null; address: string | null; service_type_id: string | null } | null
@@ -45,6 +45,20 @@ export type TeamBoardWeekData = {
   labels: Record<string, TeamTargetLabel>
   officeJobId: string | null
   payFlags: Record<string, { is_salary: boolean }>
+  /** v2.2981: accepted chips this week — `teamAckKey` → row id (for undo). Empty when the table is not there yet. */
+  ackIdByKey: Record<string, string>
+}
+type AckRow = { id: string; kind: 'over' | 'unplanned'; work_date: string; person_user_id: string; target_key: string }
+
+/** Soft read: a missing table (before the migration push) means no acknowledgements, not an error. */
+async function fetchAcksSoft(startYmd: string, endYmd: string): Promise<AckRow[]> {
+  try {
+    const { data, error } = await supabase.from('team_board_acks').select('id, kind, work_date, person_user_id, target_key').gte('work_date', startYmd).lte('work_date', endYmd).limit(2000)
+    if (error) return []
+    return (data ?? []) as AckRow[]
+  } catch {
+    return []
+  }
 }
 
 const JOB_EMBED = 'jobs_ledger(hcp_number,job_name,job_address,service_type_id,click_number)'
@@ -57,7 +71,7 @@ const BID_EMBED = 'bids(bid_number,project_name,address,service_type_id)'
  * kernel stays pure.
  */
 export async function fetchTeamBoardWeek(startYmd: string, endYmd: string, prefixMap: LedgerPrefixMap): Promise<TeamBoardWeekData> {
-  const [sessionRows, blockRows, sheetRows, flagRows, officeJobId] = await Promise.all([
+  const [sessionRows, blockRows, sheetRows, flagRows, officeJobId, ackRows] = await Promise.all([
     withSupabaseRetry(
       async () =>
         supabase
@@ -90,6 +104,7 @@ export async function fetchTeamBoardWeek(startYmd: string, endYmd: string, prefi
     ),
     withSupabaseRetry(async () => supabase.rpc('list_people_pay_flags'), 'team board pay flags'),
     fetchOverheadOfficeJobLedgerIdFromAppSettings().catch(() => null),
+    fetchAcksSoft(startYmd, endYmd),
   ])
 
   const labels: Record<string, TeamTargetLabel> = {}
@@ -120,5 +135,8 @@ export async function fetchTeamBoardWeek(startYmd: string, endYmd: string, prefi
   const payFlags: Record<string, { is_salary: boolean }> = {}
   for (const f of (flagRows ?? []) as PayFlagRow[]) payFlags[f.person_name.trim()] = { is_salary: !!f.is_salary }
 
-  return { sessions, blocks, subSheets, labels, officeJobId, payFlags }
+  const ackIdByKey: Record<string, string> = {}
+  for (const a of ackRows) ackIdByKey[teamAckKey(a.kind, a.work_date, a.person_user_id, a.target_key)] = a.id
+
+  return { sessions, blocks, subSheets, labels, officeJobId, payFlags, ackIdByKey }
 }

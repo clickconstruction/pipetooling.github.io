@@ -41,7 +41,13 @@ Devs, masters and controllers see the fix on every chip, on every Ledger row, an
 - **Not on a job** — {{button:blue|Link to J650}} puts the day's dispatch block on the sessions in one tap; {{button:outline|Pick job…}} searches instead; {{button:outline|Split day…}} opens the day editor when the hours belong to two jobs.
 - **Planned, no clock** — {{button:outline|Add session}} records the punch that was missed; {{button:outline|Not coming in}} records an unpaid day off (the plan stays); {{button:outline|Adjust plan}} opens that day in Schedule Dispatch.
 - **Clocked, not planned** — {{button:blue|Move to plan}} adds a dispatch block that matches the clocked span, so the plan learns from what actually happened.
-- **Ran long** — {{button:outline|Split day…}}, in case part of the day belonged elsewhere.
+- **Ran long** — {{button:outline|Split day…}}, in case part of the day belonged elsewhere; or {{button:outline|Looks right}} when the overrun was real.
+
+## Looks right
+
+Some overruns are just the job. {{button:outline|Looks right}} on a ran-long or clocked-not-planned chip accepts it: the chip turns green with *✓ accepted* under the hours, it leaves the exceptions list and the counts, and {{button:outline|Undo accept}} on the same chip brings it back. Accepting is shared — everyone in the office sees the same board.
+
+How far past its block a day has to run before it counts as ran long is a company default: Settings → Company → **Defaults for everyone** → **Ran long on the Team board** — gentle (1.25× and 1 h over), standard (1.5× and 1.5 h over), loose (2× and 2 h over), or off. The board's footer says which rule is in force.
 
 :::example Isiah's Saturday
 Top row · Isiah · 0.72 h · *dispatch: JP650 · ATI Schertz 8a–4p* → {{button:blue|Link to JP650}}. Toast: *Linked 1 session (0.72 h) to JP650 · ATI Schertz — split recomputed from the clock.* The chip moves down onto the ATI Schertz row in green.

@@ -173,7 +173,7 @@ describe('buildTeamBoard', () => {
 })
 
 // v2.2978 — action helpers
-import { hoursToHhmmss, pickFromTargetKey, plannedWindowFromClock } from './teamBoard'
+import { hoursToHhmmss, pickFromTargetKey, plannedWindowFromClock, teamAckKey, teamAckKindFor } from './teamBoard'
 
 describe('action helpers', () => {
   it('turns a target key back into a pick', () => {
@@ -187,5 +187,37 @@ describe('action helpers', () => {
     expect(hoursToHhmmss(23.9958)).toBe('24:00:00')
     expect(plannedWindowFromClock({ clock: [{ start: 9.7, end: 12 }, { start: 13, end: 18.55 }] })).toEqual({ time_start: '09:42:00', time_end: '18:33:00' })
     expect(plannedWindowFromClock({ clock: [] })).toBeNull()
+  })
+})
+
+describe('acknowledgements and the ran-long setting (v2.2981)', () => {
+  const sessions = [
+    sess({ id: 'a', personName: 'Paige', workDate: '2026-09-01', in: '08:23', out: '20:46', jobId: 'j650' }),
+    sess({ id: 'b', personName: 'Tristen', workDate: '2026-09-02', in: '06:42', out: '16:34', jobId: 'j878' }),
+  ]
+  const blocks = [block({ id: 'p', personName: 'Paige', workDate: '2026-09-01', timeStart: '12:00:00', timeEnd: '14:00:00', jobId: 'j650' })]
+
+  it('an accepted chip leaves the exceptions, the counts and the row flag, and reads Accepted', () => {
+    const acks = new Set([teamAckKey('over', '2026-09-01', 'u-paige', 'job:j650'), teamAckKey('unplanned', '2026-09-02', 'u-tristen', 'job:j878')])
+    const b = buildTeamBoard({ days: DAYS, sessions, blocks, labels: LABELS, acks })
+    const paige = b.cells.find((c) => c.personName === 'Paige')!
+    expect(paige).toMatchObject({ over: true, acked: true })
+    expect(teamAckKindFor(paige)).toBe('over')
+    expect(teamCellStanding(paige)).toEqual({ tone: 'ok', text: 'Accepted' })
+    expect(b.exceptions).toEqual([])
+    expect(b.summary).toMatchObject({ overCount: 0, unplannedCount: 0, ackedCount: 2 })
+    expect(b.jobRows.every((r) => !r.hasException)).toBe(true)
+  })
+
+  it('without the ack the same cells are exceptions', () => {
+    const b = buildTeamBoard({ days: DAYS, sessions, blocks, labels: LABELS })
+    expect(b.exceptions.map((e) => e.kind).sort()).toEqual(['over', 'unplanned'])
+    expect(b.summary).toMatchObject({ overCount: 1, unplannedCount: 1, ackedCount: 0 })
+  })
+
+  it('turns the ran-long rule off with null', () => {
+    const b = buildTeamBoard({ days: DAYS, sessions, blocks, labels: LABELS, ranLong: null })
+    expect(b.cells.find((c) => c.personName === 'Paige')!.over).toBe(false)
+    expect(b.exceptions.map((e) => e.kind)).toEqual(['unplanned'])
   })
 })

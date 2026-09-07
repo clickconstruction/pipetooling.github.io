@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useLedgerPrefixMap } from '../../contexts/LedgerDisplayPrefixContext'
 import { useAuth } from '../../hooks/useAuth'
+import { useOrgDefault } from '../../hooks/useOrgDefault'
+import { ranLongRuleFromOrgValue } from '../../lib/orgDefaults'
 import { useTeamBoardWeek } from '../../hooks/useTeamBoardWeek'
 import { formatBoardDay, type TeamBoardBlock } from '../../lib/teamBoard'
 import { companyWeekStartSundayContaining, getDefaultWeekRange, todayYmdInAppTz, ymdAddDays } from '../../utils/dateUtils'
@@ -35,10 +37,13 @@ export function JobsTeamTab({ focusJobId = null, onFocusConsumed }: { focusJobId
   const [lens, setLens] = useState<Lens>('job')
   const [hideOffice, setHideOffice] = useState(false)
   const [onlyExceptions, setOnlyExceptions] = useState(false)
-  const { days, board, data, loading, error, reload } = useTeamBoardWeek(weekStart, prefixMap)
   const { user: authUser, role } = useAuth()
+  // v2.2981: the ran-long threshold is an org / role default (Settings → Company → Defaults for everyone).
+  const ranLongPref = useOrgDefault('team.board.ran_long', role, null)
+  const ranLong = useMemo(() => ranLongRuleFromOrgValue(ranLongPref.value), [ranLongPref.value])
+  const { days, board, data, loading, error, reload } = useTeamBoardWeek(weekStart, prefixMap, ranLong)
   // v2.2978: every action writes to the clock session or the dispatch plan, never the split.
-  const actions = useTeamBoardActions({ board, reload, role, authUserId: authUser?.id ?? null })
+  const actions = useTeamBoardActions({ board, reload, role, authUserId: authUser?.id ?? null, ackIdByKey: data?.ackIdByKey })
 
   const blocksByDayPerson = useMemo(() => {
     const m = new Map<string, TeamBoardBlock[]>()
@@ -117,6 +122,9 @@ export function JobsTeamTab({ focusJobId = null, onFocusConsumed }: { focusJobId
           <TeamExceptionsDrawer board={board} renderActions={actions.canEdit ? actions.renderExceptionActions : undefined} />
           <p style={{ marginTop: '1rem', color: 'var(--text-muted)', fontSize: '0.8125rem', maxWidth: '72ch' }}>
             Each chip runs 6 am to midnight: the outlined band is the Schedule Dispatch block, the filled bar is the clock session. Man hours and cost per job stay on Pipeline and Job Summary.
+            {ranLong ? ` Ran long = more than ${ranLong.ratio}× the block and ${ranLong.minHours} h over` : ' The ran-long flag is off'}
+            {board.summary.ackedCount > 0 ? ` · ${board.summary.ackedCount} accepted this week.` : '.'}
+            {' '}Change the threshold on Settings → Company → Defaults for everyone.
           </p>
         </>
       ) : null}

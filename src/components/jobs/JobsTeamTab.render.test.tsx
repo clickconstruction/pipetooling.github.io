@@ -100,7 +100,7 @@ describe('JobsTeamTab actions (v2.2978)', () => {
     const miss = document.querySelector('[data-team-cell="job:j650|2026-09-05|Isiah"]') as HTMLElement
     expect(names(miss)).toEqual(['Add session', 'Not coming in', 'Adjust plan'])
     const ranLong = document.querySelector('[data-team-cell="job:j878|2026-09-03|Isiah"]') as HTMLElement
-    expect(names(ranLong)).toEqual(['Split day…'])
+    expect(names(ranLong)).toEqual(['Looks right', 'Split day…'])
     // the picker opens with the session ids of the unlinked chip
     fireEvent.click(screen.getAllByRole('button', { name: 'Pick job…' })[0]!)
     expect(await screen.findByText(/Isiah · Sat 9\/5 · 0\.72 h/)).toBeTruthy()

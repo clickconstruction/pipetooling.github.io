@@ -7,7 +7,8 @@ import { crewLinkSuccessMessage } from '../../../lib/crewAssignSessionLinkPlan'
 import { insertJobScheduleBlock } from '../../../lib/jobScheduleBlocks'
 import { recordNotComingInForUserAsStaff } from '../../../lib/notComingInTimeOff'
 import { CAN_USE_SCHEDULE_DISPATCH_EDIT_ROLES } from '../../../lib/scheduleDispatchEditRoles'
-import { formatBoardDay, formatHours2, pickFromTargetKey, plannedWindowFromClock, type TeamBoard, type TeamCell, type TeamException } from '../../../lib/teamBoard'
+import { formatBoardDay, formatHours2, pickFromTargetKey, plannedWindowFromClock, teamAckKey, teamAckKindFor, type TeamBoard, type TeamCell, type TeamException } from '../../../lib/teamBoard'
+import { supabase } from '../../../lib/supabase'
 import { companyWeekStartSundayContaining } from '../../../utils/dateUtils'
 import { AssignFocusModal } from '../../AssignFocusModal'
 import { ClockSessionEditSplitModal } from '../../ClockSessionEditSplitModal'
@@ -32,7 +33,7 @@ type DayTarget = { userId: string; personName: string; workDate: string }
  *   clocked, not planned → Move to plan · Split day…
  *   ran long / on plan → Split day… / Open day
  */
-export function useTeamBoardActions({ board, reload, role, authUserId }: { board: TeamBoard | null; reload: () => void; role: string | null | undefined; authUserId: string | null | undefined }) {
+export function useTeamBoardActions({ board, reload, role, authUserId, ackIdByKey = {} }: { board: TeamBoard | null; reload: () => void; role: string | null | undefined; authUserId: string | null | undefined; ackIdByKey?: Record<string, string> }) {
   const { showToast } = useToastContext()
   const confirm = useConfirmDialog()
   const navigate = useNavigate()
@@ -115,6 +116,49 @@ export function useTeamBoardActions({ board, reload, role, authUserId }: { board
     [authUserId, labelOf, reload, showToast],
   )
 
+  /** v2.2981: "Looks right" — accept a ran-long / not-planned chip; "Undo" deletes the row. */
+  const looksRight = useCallback(
+    async (key: string, cell: TeamCell) => {
+      const kind = teamAckKindFor(cell)
+      if (!kind || !cell.userId || !authUserId) return
+      const pickTarget = pickFromTargetKey(cell.targetKey)
+      setBusyKey(key)
+      const { error } = await supabase.from('team_board_acks').insert({
+        kind,
+        work_date: cell.workDate,
+        person_user_id: cell.userId,
+        target_key: cell.targetKey,
+        job_ledger_id: pickTarget?.type === 'job' ? pickTarget.id : null,
+        bid_id: pickTarget?.type === 'bid' ? pickTarget.id : null,
+        acked_by: authUserId,
+      })
+      setBusyKey(null)
+      if (error) {
+        showToast(`Could not record it: ${error.message}`, 'error')
+        return
+      }
+      showToast(`Accepted — ${cell.personName} on ${labelOf(cell.targetKey)}, ${formatBoardDay(cell.workDate)}. Undo from the chip.`, 'success')
+      reload()
+    },
+    [authUserId, labelOf, reload, showToast],
+  )
+  const undoAck = useCallback(
+    async (key: string, cell: TeamCell) => {
+      const kind = teamAckKindFor(cell)
+      const id = kind && cell.userId ? ackIdByKey[teamAckKey(kind, cell.workDate, cell.userId, cell.targetKey)] : undefined
+      if (!id) return
+      setBusyKey(key)
+      const { error } = await supabase.from('team_board_acks').delete().eq('id', id)
+      setBusyKey(null)
+      if (error) {
+        showToast(`Could not undo: ${error.message}`, 'error')
+        return
+      }
+      reload()
+    },
+    [ackIdByKey, reload, showToast],
+  )
+
   const adjustPlan = useCallback(
     (workDate: string) => {
       const weekStart = companyWeekStartSundayContaining(workDate) ?? workDate
@@ -145,14 +189,20 @@ export function useTeamBoardActions({ board, reload, role, authUserId }: { board
         if (day) out.push(btn(key, 'Not coming in', () => void notComingIn(key, day)))
         if (canEditDispatch) out.push(btn(key, 'Adjust plan', () => adjustPlan(cell.workDate), false, 'Open this day in Schedule Dispatch'))
       } else if (cell.kind === 'unplanned') {
-        if (canEditDispatch && cell.userId) out.push(btn(key, 'Move to plan', () => void moveToPlan(key, cell), true, 'Add a dispatch block matching the clocked span'))
+        if (cell.acked) out.push(btn(key, 'Undo accept', () => void undoAck(key, cell), false, 'Show this chip as an exception again'))
+        else out.push(btn(key, 'Looks right', () => void looksRight(key, cell), false, 'Accept the clocked time as it is — the chip stops showing as an exception'))
+        if (canEditDispatch && cell.userId && !cell.acked) out.push(btn(key, 'Move to plan', () => void moveToPlan(key, cell), true, 'Add a dispatch block matching the clocked span'))
         if (day) out.push(btn(key, 'Split day…', () => setDayEditor(day)))
       } else if (cell.kind === 'ok') {
+        if (cell.over) {
+          if (cell.acked) out.push(btn(key, 'Undo accept', () => void undoAck(key, cell), false, 'Show this chip as ran long again'))
+          else out.push(btn(key, 'Looks right', () => void looksRight(key, cell), false, 'Accept the overrun — the chip stops showing as an exception'))
+        }
         if (day) out.push(btn(key, cell.over ? 'Split day…' : 'Open day', () => setDayEditor(day)))
       }
       return out.length ? <>{out}</> : null
     },
-    [adjustPlan, board, canEdit, canEditDispatch, labelOf, linkTo, moveToPlan, notComingIn],
+    [adjustPlan, board, canEdit, canEditDispatch, labelOf, linkTo, looksRight, moveToPlan, notComingIn, undoAck],
   )
 
   const renderExceptionActions = useCallback(
@@ -169,14 +219,15 @@ export function useTeamBoardActions({ board, reload, role, authUserId }: { board
         if (day) out.push(btn(key, 'Add session', () => setAddSession(day)))
         if (day) out.push(btn(key, 'Not coming in', () => void notComingIn(key, day)))
         if (canEditDispatch) out.push(btn(key, 'Adjust plan', () => adjustPlan(e.workDate)))
-      } else if (e.kind === 'unplanned') {
+      } else {
         const cell = board?.cells.find((c) => c.targetKey === e.targetKey && c.workDate === e.workDate && c.personName === e.personName)
-        if (canEditDispatch && cell?.userId) out.push(btn(key, 'Move to plan', () => void moveToPlan(key, cell), true))
+        if (cell) out.push(btn(key, 'Looks right', () => void looksRight(key, cell)))
+        if (e.kind === 'unplanned' && canEditDispatch && cell?.userId) out.push(btn(key, 'Move to plan', () => void moveToPlan(key, cell), true))
         if (day) out.push(btn(key, 'Split day…', () => setDayEditor(day)))
-      } else if (day) out.push(btn(key, 'Split day…', () => setDayEditor(day)))
+      }
       return out.length ? <>{out}</> : null
     },
-    [adjustPlan, board, canEdit, canEditDispatch, labelOf, linkTo, moveToPlan, notComingIn],
+    [adjustPlan, board, canEdit, canEditDispatch, labelOf, linkTo, looksRight, moveToPlan, notComingIn],
   )
 
   const modals = (

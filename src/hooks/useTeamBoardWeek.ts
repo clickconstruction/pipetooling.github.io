@@ -11,7 +11,7 @@ export function weekDaysFrom(weekStartYmd: string): string[] {
 }
 
 /** Loads one week for Jobs → Team and builds the board. `reload` re-reads after an action. */
-export function useTeamBoardWeek(weekStartYmd: string, prefixMap: LedgerPrefixMap, ranLong: RanLongRule = DEFAULT_RAN_LONG_RULE) {
+export function useTeamBoardWeek(weekStartYmd: string, prefixMap: LedgerPrefixMap, ranLong: RanLongRule | null = DEFAULT_RAN_LONG_RULE) {
   const days = useMemo(() => weekDaysFrom(weekStartYmd), [weekStartYmd])
   const [data, setData] = useState<TeamBoardWeekData | null>(null)
   const [loading, setLoading] = useState(true)
@@ -40,7 +40,7 @@ export function useTeamBoardWeek(weekStartYmd: string, prefixMap: LedgerPrefixMa
   }, [days, prefixMap, tick])
 
   const board: TeamBoard | null = useMemo(
-    () => (data ? buildTeamBoard({ days, sessions: data.sessions, blocks: data.blocks, subSheets: data.subSheets, labels: data.labels, officeJobId: data.officeJobId, payFlags: data.payFlags, ranLong }) : null),
+    () => (data ? buildTeamBoard({ days, sessions: data.sessions, blocks: data.blocks, subSheets: data.subSheets, labels: data.labels, officeJobId: data.officeJobId, payFlags: data.payFlags, ranLong, acks: new Set(Object.keys(data.ackIdByKey)) }) : null),
     [data, days, ranLong],
   )
 
