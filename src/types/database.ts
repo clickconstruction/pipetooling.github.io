@@ -10276,6 +10276,45 @@ export type Database = {
         }
         Relationships: []
       }
+      team_board_acks: {
+        Row: {
+          acked_at: string
+          acked_by: string | null
+          bid_id: string | null
+          id: string
+          job_ledger_id: string | null
+          kind: string
+          note: string | null
+          person_user_id: string
+          target_key: string
+          work_date: string
+        }
+        Insert: {
+          acked_at?: string
+          acked_by?: string | null
+          bid_id?: string | null
+          id?: string
+          job_ledger_id?: string | null
+          kind: string
+          note?: string | null
+          person_user_id: string
+          target_key: string
+          work_date: string
+        }
+        Update: {
+          acked_at?: string
+          acked_by?: string | null
+          bid_id?: string | null
+          id?: string
+          job_ledger_id?: string | null
+          kind?: string
+          note?: string | null
+          person_user_id?: string
+          target_key?: string
+          work_date?: string
+        }
+        Relationships: []
+      }
       org_defaults: {
         Row: {
           key: string

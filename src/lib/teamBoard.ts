@@ -70,6 +70,8 @@ export type TeamCell = {
   over: boolean
   /** Closed sessions with no job or bid — what a Link action would update. */
   unlinkedSessionIds: string[]
+  /** v2.2981: a ran-long / not-planned chip the office accepted ("Looks right") — no longer an exception. */
+  acked: boolean
 }
 
 export type TeamExceptionKind = 'unlinked' | 'miss' | 'over' | 'unplanned'
@@ -114,6 +116,8 @@ export type TeamBoardSummary = {
   missCount: number
   overCount: number
   unplannedCount: number
+  /** v2.2981: accepted ran-long / not-planned chips this week. */
+  ackedCount: number
 }
 
 export type TeamBoard = {
@@ -217,11 +221,26 @@ export type BuildTeamBoardInput = {
   officeJobId?: string | null
   /** person name → pay flags, for person-row targets. */
   payFlags?: Record<string, { is_salary?: boolean | null }>
-  ranLong?: RanLongRule
+  /** null = the ran-long rule is off (nothing is flagged). */
+  ranLong?: RanLongRule | null
+  /** v2.2981: `teamAckKey(...)` of every accepted chip in the week. */
+  acks?: ReadonlySet<string>
+}
+
+/** The acknowledgement key for a cell: kind|day|person user id|target. */
+export function teamAckKey(kind: 'over' | 'unplanned', workDate: string, userId: string, targetKey: string): string {
+  return `${kind}|${workDate}|${userId}|${targetKey}`
+}
+
+/** Which acknowledgement a cell could carry, if any. */
+export function teamAckKindFor(cell: Pick<TeamCell, 'kind' | 'over'>): 'over' | 'unplanned' | null {
+  if (cell.kind === 'unplanned') return 'unplanned'
+  if (cell.kind === 'ok' && cell.over) return 'over'
+  return null
 }
 
 export function buildTeamBoard(input: BuildTeamBoardInput): TeamBoard {
-  const { days, sessions, blocks, subSheets = [], labels, officeJobId = null, payFlags = {}, ranLong = DEFAULT_RAN_LONG_RULE } = input
+  const { days, sessions, blocks, subSheets = [], labels, officeJobId = null, payFlags = {}, ranLong = DEFAULT_RAN_LONG_RULE, acks } = input
   const officeKey = officeJobId ? `job:${officeJobId}` : null
   const daySet = new Set(days)
   const cellKey = (t: string, d: string, p: string) => `${t}|${d}|${p}`
@@ -230,7 +249,7 @@ export function buildTeamBoard(input: BuildTeamBoardInput): TeamBoard {
     const k = cellKey(targetKey, workDate, personName)
     let c = byKey.get(k)
     if (!c) {
-      c = { targetKey, workDate, personName, userId, plan: [], clock: [], planHours: 0, clockHours: 0, pending: false, kind: 'ok', over: false, unlinkedSessionIds: [] }
+      c = { targetKey, workDate, personName, userId, plan: [], clock: [], planHours: 0, clockHours: 0, pending: false, kind: 'ok', over: false, unlinkedSessionIds: [], acked: false }
       byKey.set(k, c)
     } else if (!c.userId && userId) c.userId = userId
     return c
@@ -267,7 +286,9 @@ export function buildTeamBoard(input: BuildTeamBoardInput): TeamBoard {
     else if (c.clockHours > 0 && c.planHours > 0) c.kind = 'ok'
     else if (c.clockHours > 0) c.kind = 'unplanned'
     else c.kind = 'miss'
-    c.over = c.kind === 'ok' && c.clockHours > c.planHours * ranLong.ratio && c.clockHours - c.planHours > ranLong.minHours
+    c.over = ranLong != null && c.kind === 'ok' && c.clockHours > c.planHours * ranLong.ratio && c.clockHours - c.planHours > ranLong.minHours
+    const ackKind = teamAckKindFor(c)
+    c.acked = !!(acks && ackKind && c.userId && acks.has(teamAckKey(ackKind, c.workDate, c.userId, c.targetKey)))
   }
 
   // exceptions
@@ -300,6 +321,7 @@ export function buildTeamBoard(input: BuildTeamBoardInput): TeamBoard {
         suggestion: sug ? { targetKey: targetKeyFor(sug.jobId, sug.bidId), window: formatWindow({ start: hhmmToHours(sug.timeStart), end: hhmmToHours(sug.timeEnd) }), blockId: sug.id } : null,
       })
     } else if (c.kind === 'miss') exceptions.push({ ...base, kind: 'miss', hours: c.planHours, suggestion: null })
+    else if (c.acked) continue
     else if (c.kind === 'unplanned') exceptions.push({ ...base, kind: 'unplanned', suggestion: null })
     else if (c.over) exceptions.push({ ...base, kind: 'over', suggestion: null })
   }
@@ -329,8 +351,8 @@ export function buildTeamBoard(input: BuildTeamBoardInput): TeamBoard {
     ;(r.cellsByDay[c.workDate] ??= []).push(c)
     r.clocked += c.clockHours
     r.planned += c.planHours
-    if (c.kind !== 'ok' && c.kind !== 'office') r.hasException = true
-    if (c.over) r.hasException = true
+    if (!c.acked && c.kind !== 'ok' && c.kind !== 'office') r.hasException = true
+    if (!c.acked && c.over) r.hasException = true
   }
   for (const s of subSheets) {
     if (!daySet.has(s.workDate)) continue
@@ -362,8 +384,8 @@ export function buildTeamBoard(input: BuildTeamBoardInput): TeamBoard {
     ;(r.cellsByDay[c.workDate] ??= []).push(c)
     r.clocked += c.clockHours
     r.planned += c.planHours
-    if (c.kind !== 'ok' && c.kind !== 'office') r.hasException = true
-    if (c.over) r.hasException = true
+    if (!c.acked && c.kind !== 'ok' && c.kind !== 'office') r.hasException = true
+    if (!c.acked && c.over) r.hasException = true
   }
   for (const r of personRowsMap.values()) {
     for (const d of Object.keys(r.cellsByDay)) r.cellsByDay[d]!.sort((a, b) => (labels[a.targetKey]?.label ?? a.targetKey).localeCompare(labels[b.targetKey]?.label ?? b.targetKey))
@@ -379,7 +401,7 @@ export function buildTeamBoard(input: BuildTeamBoardInput): TeamBoard {
     for (const c of cells) if (c.workDate === d && isField(c.targetKey)) { clocked += c.clockHours; planned += c.planHours }
     return { workDate: d, clocked, planned }
   })
-  const summary: TeamBoardSummary = { clockedField: 0, plannedField: 0, onPlanHours: 0, unlinkedHours: 0, unlinkedSessions: 0, pendingUnlinked: 0, missCount: 0, overCount: 0, unplannedCount: 0 }
+  const summary: TeamBoardSummary = { clockedField: 0, plannedField: 0, onPlanHours: 0, unlinkedHours: 0, unlinkedSessions: 0, pendingUnlinked: 0, missCount: 0, overCount: 0, unplannedCount: 0, ackedCount: 0 }
   for (const c of cells) {
     if (c.kind === 'unlinked') {
       summary.unlinkedHours += c.clockHours
@@ -392,8 +414,11 @@ export function buildTeamBoard(input: BuildTeamBoardInput): TeamBoard {
     summary.plannedField += c.planHours
     if (c.kind === 'ok') summary.onPlanHours += c.clockHours
     if (c.kind === 'miss') summary.missCount += 1
-    if (c.kind === 'unplanned') summary.unplannedCount += 1
-    if (c.over) summary.overCount += 1
+    if (c.acked) summary.ackedCount += 1
+    else {
+      if (c.kind === 'unplanned') summary.unplannedCount += 1
+      if (c.over) summary.overCount += 1
+    }
   }
 
   return { days, cells, jobRows, personRows, dayTotals, summary, exceptions, labels }
@@ -401,6 +426,7 @@ export function buildTeamBoard(input: BuildTeamBoardInput): TeamBoard {
 
 /** "Where it stands" pill for the ledger — the Subs-tab vocabulary. */
 export function teamCellStanding(c: TeamCell): { tone: 'ok' | 'warn' | 'miss' | 'office'; text: string } {
+  if (c.acked) return { tone: 'ok', text: 'Accepted' }
   if (c.kind === 'ok') return c.over ? { tone: 'warn', text: 'Ran long' } : { tone: 'ok', text: 'On plan' }
   if (c.kind === 'unplanned') return { tone: 'warn', text: 'Not planned' }
   if (c.kind === 'miss') return { tone: 'miss', text: 'No clock' }
@@ -411,7 +437,7 @@ export function teamCellStanding(c: TeamCell): { tone: 'ok' | 'warn' | 'miss' | 
 /** Ledger rows: newest day first, exceptions before on-plan, then by person. */
 export function teamLedgerRows(board: TeamBoard): TeamCell[] {
   const dayIdx = (d: string) => board.days.indexOf(d)
-  const rank = (c: TeamCell) => (c.kind === 'unlinked' ? 0 : c.kind === 'miss' ? 1 : c.over ? 2 : c.kind === 'unplanned' ? 3 : c.kind === 'ok' ? 4 : 5)
+  const rank = (c: TeamCell) => (c.acked ? 4 : c.kind === 'unlinked' ? 0 : c.kind === 'miss' ? 1 : c.over ? 2 : c.kind === 'unplanned' ? 3 : c.kind === 'ok' ? 4 : 5)
   return board.cells.slice().sort((a, b) => dayIdx(b.workDate) - dayIdx(a.workDate) || rank(a) - rank(b) || a.personName.localeCompare(b.personName))
 }
 

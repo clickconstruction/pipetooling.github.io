@@ -18,6 +18,7 @@ Some switches used to live only on the phone that set them: **Mobile cards** on 
 | Mobile cards on Pipeline | No default | On | Off |
 | Payroll auto-apply on Tally | Off | — | — |
 | Stripe mode | Live | No default | No default |
+| Ran long on the Team board | Standard (1.5× the block and 1.5 h over) | No default | No default |
 :::
 
 - **Everyone** is the company-wide answer. A **role column** beats it for those roles (field = subs, helpers, superintendents; office = everyone else).
@@ -34,3 +35,4 @@ When you dismiss the bulk-deletions notice, the claim-dev alert or the rejected-
 
 - Changing a default doesn't reach into devices that already chose; it reaches the ones that haven't.
 - Stripe mode: **Live** is the real account. Only set **Test** as a default while rehearsing, and set it back.
+- Ran long on the Team board: how far past its dispatch block a clocked day runs before Jobs → Team flags it — gentle (1.25× and 1 h over), standard (1.5× and 1.5 h over), loose (2× and 2 h over), or off. Field and office roles can differ.

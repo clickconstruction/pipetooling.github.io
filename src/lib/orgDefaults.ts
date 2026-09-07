@@ -12,7 +12,7 @@ import type { UserRole } from '../hooks/useAuth'
  * per-user server store instead (they follow the person, not the browser).
  */
 
-export type OrgDefaultKind = 'bool' | 'stripe_mode'
+export type OrgDefaultKind = 'bool' | 'stripe_mode' | 'ran_long'
 
 export type OrgDefaultDef = {
   key: OrgDefaultKey
@@ -23,7 +23,10 @@ export type OrgDefaultDef = {
   fallback: string
 }
 
-export const ORG_DEFAULT_KEYS = ['jobs.stages.mobile_cards', 'tally.payroll_auto_apply', 'billing.stripe_mode'] as const
+/** `team.board.ran_long` values: 'off' or '<ratio>:<minHours>'. */
+export const RAN_LONG_STANDARD = '1.5:1.5'
+
+export const ORG_DEFAULT_KEYS = ['jobs.stages.mobile_cards', 'tally.payroll_auto_apply', 'billing.stripe_mode', 'team.board.ran_long'] as const
 export type OrgDefaultKey = (typeof ORG_DEFAULT_KEYS)[number]
 
 export const ORG_DEFAULTS: Record<OrgDefaultKey, OrgDefaultDef> = {
@@ -48,6 +51,23 @@ export const ORG_DEFAULTS: Record<OrgDefaultKey, OrgDefaultDef> = {
     kind: 'stripe_mode',
     fallback: 'live',
   },
+  'team.board.ran_long': {
+    key: 'team.board.ran_long',
+    label: 'Ran long on the Team board',
+    hint: 'When a clocked day counts as running long past its dispatch block: both the multiple and the extra hours must be exceeded. Off never flags.',
+    kind: 'ran_long',
+    fallback: RAN_LONG_STANDARD,
+  },
+}
+
+export const RAN_LONG_VALUES = ['off', '1.25:1', RAN_LONG_STANDARD, '2:2'] as const
+
+/** Parse a `team.board.ran_long` value into the kernel's rule; null = off. */
+export function ranLongRuleFromOrgValue(value: string): { ratio: number; minHours: number } | null {
+  if (value === 'off') return null
+  const [r, h] = value.split(':').map(Number)
+  if (!Number.isFinite(r) || !Number.isFinite(h) || r == null || h == null) return { ratio: 1.5, minHours: 1.5 }
+  return { ratio: r, minHours: h }
 }
 
 /** `role = '*'` is the org-wide row; a role row overrides it. */
@@ -83,6 +103,7 @@ export function resolveOrgDefault(
 
 export function isValidValue(def: OrgDefaultDef, value: string): boolean {
   if (def.kind === 'bool') return value === 'true' || value === 'false' || value === 'auto'
+  if (def.kind === 'ran_long') return (RAN_LONG_VALUES as readonly string[]).includes(value)
   return value === 'live' || value === 'test'
 }
 
@@ -100,6 +121,15 @@ export function orgDefaultOptions(def: OrgDefaultDef): Array<{ value: string; la
       { value: '', label: 'No default (each device decides)' },
       { value: 'true', label: 'On' },
       { value: 'false', label: 'Off' },
+    ]
+  }
+  if (def.kind === 'ran_long') {
+    return [
+      { value: '', label: 'Standard (1.5× the block and 1.5 h over)' },
+      { value: '1.25:1', label: 'Gentle — 1.25× the block and 1 h over' },
+      { value: '1.5:1.5', label: 'Standard — 1.5× the block and 1.5 h over' },
+      { value: '2:2', label: 'Loose — 2× the block and 2 h over' },
+      { value: 'off', label: 'Off — never flag' },
     ]
   }
   return [

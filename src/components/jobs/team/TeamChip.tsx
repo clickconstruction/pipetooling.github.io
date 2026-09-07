@@ -39,11 +39,11 @@ export function TeamChip({
   } else if (cell.kind === 'office') {
     title = `${cell.personName} · office · ${clockText || planText}`
   } else if (cell.kind === 'ok') {
-    title = `${cell.personName} · clocked ${clockText} · planned ${planText}${cell.over ? ' · ran long' : ''}`
-    sub = subLine(`plan ${formatHours1(cell.planHours)} h · ${planText}`, { fontVariantNumeric: 'tabular-nums' })
+    title = `${cell.personName} · clocked ${clockText} · planned ${planText}${cell.over ? (cell.acked ? ' · ran long, accepted' : ' · ran long') : ''}`
+    sub = subLine(`${cell.acked ? '✓ accepted · ' : ''}plan ${formatHours1(cell.planHours)} h · ${planText}`, { fontVariantNumeric: 'tabular-nums' })
   } else if (cell.kind === 'unplanned') {
-    title = `${cell.personName} · clocked ${clockText} · nothing on the dispatch plan for this job`
-    sub = subLine(`not on the plan · ${clockText}`)
+    title = `${cell.personName} · clocked ${clockText} · nothing on the dispatch plan for this job${cell.acked ? ' · accepted' : ''}`
+    sub = subLine(`${cell.acked ? '✓ accepted · ' : ''}not on the plan · ${clockText}`)
   } else {
     title = `${cell.personName} · planned ${planText} · no clock on this job`
     sub = subLine(`${planText} · no clock`)

@@ -13,6 +13,7 @@ export const TONE: Record<TeamTone, { bg: string; edge: string; ink: string; bar
 }
 
 export function toneForCell(c: TeamCell): TeamTone {
+  if (c.acked) return 'ok'
   if (c.kind === 'ok') return c.over ? 'warn' : 'ok'
   if (c.kind === 'unplanned' || c.kind === 'unlinked') return 'warn'
   if (c.kind === 'miss') return 'miss'
