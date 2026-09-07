@@ -105,6 +105,8 @@ export type LienWaiverPaymentLike = { amount: number; payment_date?: string | nu
 export type LienWaiverGuess = {
   /** The payment the waiver is about: the newest positive one, or null when nothing has been paid. */
   payment: LienWaiverPaymentLike | null
+  /** Dollars to write on the form: the newest payment, or — before any payment — the balance, i.e. the check about to be written. */
+  amount: number | null
   /** Money-in-hand guess: the newest payment is at least LIEN_WAIVER_SETTLE_DAYS old. */
   settled: boolean
   /** Nothing left after paid and back-charges. */
@@ -139,7 +141,8 @@ export function guessLienWaiver(input: { payments: readonly LienWaiverPaymentLik
   else if (settled) reasons.push(`The newest payment was ${age} days ago, so it has most likely settled.`)
   else reasons.push(age === 0 ? 'The newest payment was recorded today, so it has not settled yet.' : `The newest payment was ${age} day${age === 1 ? '' : 's'} ago, so it may not have settled yet.`)
   reasons.push(final ? 'Nothing is left on the sheet after this payment, so it is the final one.' : 'The sheet still has a balance, so this is a progress payment.')
-  return { payment: newest, settled, final, kind: lienWaiverKindFor(settled, final), reasons }
+  const amount = newest ? newest.amount : input.balance > 0 ? input.balance : null
+  return { payment: newest, amount, settled, final, kind: lienWaiverKindFor(settled, final), reasons }
 }
 
 /** The standard extent-of-release sentence GCs use; the sub can edit it on the page. */

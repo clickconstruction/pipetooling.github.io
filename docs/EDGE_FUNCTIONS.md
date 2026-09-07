@@ -1401,6 +1401,8 @@ curl -sS "${SUPABASE_URL}/functions/v1/get-estimate-public-terms" \
 
 **Endpoint**: `GET /functions/v1/get-contract-for-signer?token=<opaque>`
 
+**Seeded values (v2.3062)**: for a form row the response's `form` object also carries `values` — the non-sensitive entries of the unsigned row's `form_values`, written by an office surface such as the Subs → Pay lien-waiver picker. `ContractAccept` seeds the boxes from them (roster prefill still fills what is left empty) and the signer may change any of them. Sensitive boxes are stripped; a signed row never reaches this path.
+
 **Secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`
 
 **Gateway**: `verify_jwt = false` in [`supabase/config.toml`](../supabase/config.toml).

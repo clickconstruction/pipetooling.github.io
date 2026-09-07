@@ -27,7 +27,6 @@ Index (validated against code on 2026-09-06 at v2.2935 — the 2026-09-05 sweep 
 | [`sub-sheet-job-link-followups.md`](./sub-sheet-job-link-followups.md) | converting — A + E done v2.3059 | Every reader still matching a sub sheet to its job by number — five money RPCs, four sub-portal sites, six per-job reads, the People → Review maps — with the conversion order. |
 | [`subs-residuals.md`](./subs-residuals.md) | not started | Derived sheet stage (now unblocked), Spanish signature form, compliance chips, offer templates, benched subs in the sheet form, roster hygiene. |
 | [`dispatch-residuals.md`](./dispatch-residuals.md) | low | Phone-request self-heal, dispatch blocks / nudge history on the sheet rows, the tag-slice refresh. |
-| [`contract-forms-publish-authored.md`](./contract-forms-publish-authored.md) | blocked on owner review | Publish the four lien waivers once the wording is approved (Direct Deposit published 2026-09-06). |
 | [`division-22-rules-manager.md`](./division-22-rules-manager.md) | owner-gated | Rules manager UI; RH / EDF / med-gas seed call. Gas and the Needs You card shipped. |
 | [`crew-pnl-and-wheels.md`](./crew-pnl-and-wheels.md) | not started, optional | Vehicle rates on Crew P&L and Bids; the $50 sub-equivalent default; the backlog lines still true. |
 | [`person-identity-phase-e.md`](./person-identity-phase-e.md) | gated | NOT NULL, re-PK off `person_name`, retire the name cascade — after a quiet quarter. |
@@ -40,6 +39,6 @@ Index (validated against code on 2026-09-06 at v2.2935 — the 2026-09-05 sweep 
 | [`journey-map-tier-1.md`](./journey-map-tier-1.md) | pointer | Which drift rows are closed here; the list lives in the private repo. |
 | [`owner-decisions-pending.md`](./owner-decisions-pending.md) | standing list | Every yes/no the docs are waiting on, one line each. |
 
-Closed since the 2026-09-05 sweep (files deleted): `deploy-backlog` (checked 2026-09-06 from a linked checkout — 470/470 migrations applied, 104/104 functions current after one `_shared` importer, `get-bid-proposal-room`, was redeployed); `error-message-follow-ups` (v2.2861 shipped Retry + the online listener and fixed the week-grid bid branch); `rfq-apply-picks-to-bid-costs` (Rung G had already shipped as v2.2655 — the sweep missed it; its residuals live in `docs/SUPPLY_HOUSE_RFQ_PLAN.md` → Deferred).
+Closed since the 2026-09-05 sweep (files deleted): `contract-forms-publish-authored` (Direct Deposit 2026-09-06; the four lien waivers + the pay-row picker v2.3062 on 2026-09-07); `deploy-backlog` (checked 2026-09-06 from a linked checkout — 470/470 migrations applied, 104/104 functions current after one `_shared` importer, `get-bid-proposal-room`, was redeployed); `error-message-follow-ups` (v2.2861 shipped Retry + the online listener and fixed the week-grid bid branch); `rfq-apply-picks-to-bid-costs` (Rung G had already shipped as v2.2655 — the sweep missed it; its residuals live in `docs/SUPPLY_HOUSE_RFQ_PLAN.md` → Deferred).
 
 Not duplicated here, by design: `docs/twins/HANDOFF.md` → "Open threads, prioritized" (the robots program, updated daily) and the private journey-map repo's `_DRIFT-2` (security findings).

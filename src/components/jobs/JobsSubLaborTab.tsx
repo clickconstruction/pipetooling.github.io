@@ -268,7 +268,7 @@ export default function JobsSubLaborTab({
       sheetLabel: r.job.job_number?.trim() || 'Sheet',
       jobNumber: r.job.job_number?.trim() || null,
       clickNumber: pipelineJob?.click_number ? `J${pipelineJob.click_number}` : null,
-      project: (pipelineJob?.job_name ?? r.job.project_name ?? '').trim() || null,
+      project: (pipelineJob?.job_name ?? r.job.project_name ?? laborJobNamesByHcp[(r.job.job_number ?? '').trim()] ?? '').trim() || null,
       owner: (pipelineJob?.customer_name ?? '').trim() || null,
       location: (pipelineJob?.job_address ?? r.job.address ?? '').trim() || null,
       payments: (r.job.payments ?? []).map((p) => ({ amount: Number(p.amount) || 0, payment_date: p.payment_date ?? null, created_at: p.created_at })),

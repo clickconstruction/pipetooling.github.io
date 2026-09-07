@@ -36,7 +36,7 @@ describe('lienWaiverKindFor', () => {
 describe('guessLienWaiver', () => {
   it('nothing paid yet → conditional progress, with the first-check reason', () => {
     const g = guessLienWaiver({ payments: [], balance: 4200, todayYmd: TODAY })
-    expect(g).toMatchObject({ payment: null, settled: false, final: false, kind: 'conditional_progress' })
+    expect(g).toMatchObject({ payment: null, amount: 4200, settled: false, final: false, kind: 'conditional_progress' })
     expect(g.reasons[0]).toMatch(/first check/)
   })
 
@@ -57,6 +57,7 @@ describe('guessLienWaiver', () => {
     const g = guessLienWaiver({ payments: [pay(10000, '2026-08-01'), pay(-500, '2026-08-10'), pay(4500, TODAY)], balance: 0, todayYmd: TODAY })
     expect(g.kind).toBe('conditional_final')
     expect(g.payment?.amount).toBe(4500)
+    expect(g.amount).toBe(4500)
     expect(g.reasons[1]).toMatch(/final one/)
   })
 

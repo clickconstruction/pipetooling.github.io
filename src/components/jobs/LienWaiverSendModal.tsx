@@ -117,7 +117,7 @@ export function LienWaiverSendModal({ target, onClose, onSent }: { target: LienW
     return () => window.removeEventListener('keydown', onKey)
   }, [onClose])
 
-  const amount = guess.payment?.amount ?? null
+  const amount = guess.amount
   const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())
 
   async function send() {
