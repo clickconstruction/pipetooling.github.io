@@ -94,3 +94,69 @@ export function crewLinkButtonLabel(state: Extract<CrewAssignCellState, { kind: 
 export function crewLinkSuccessMessage(count: number, hours: number, pickLabel: string): string {
   return `Linked ${count} ${count === 1 ? 'session' : 'sessions'} (${formatCrewLinkHours(hours)}) to ${pickLabel} — split recomputed from the clock`
 }
+
+// ---------------------------------------------------------------------------
+// v2.2966: the same rule on the per-person modals (Hours Unassigned, day audit).
+// Those surfaces already hold one person's sessions for one day, including
+// pending ones, so the classifier works from the session's own status columns
+// rather than a pre-filtered approved set.
+// ---------------------------------------------------------------------------
+
+export type DayLinkSessionRow = {
+  id: string
+  clocked_in_at: string
+  clocked_out_at: string | null
+  approved_at: string | null
+  rejected_at?: string | null
+  revoked_at?: string | null
+  job_ledger_id: string | null
+  bid_id: string | null
+}
+
+export type DayLinkClassification = {
+  /** Closed, live (not rejected/revoked), no job or bid — approved ones drive the split now. */
+  approvedUnlinkedIds: string[]
+  /** Closed, live, unlinked, awaiting approval — linking them now means approval will sync the split. */
+  pendingUnlinkedIds: string[]
+  unlinkedHours: number
+  /** Closed, live sessions already anchored to a job or bid (any approval state). */
+  linkedCount: number
+  /** Any closed, live session at all — the "has a clock session" test. */
+  closedCount: number
+}
+
+export function classifyDayLinkSessions(rows: readonly DayLinkSessionRow[]): DayLinkClassification {
+  const out: DayLinkClassification = { approvedUnlinkedIds: [], pendingUnlinkedIds: [], unlinkedHours: 0, linkedCount: 0, closedCount: 0 }
+  for (const s of rows) {
+    if (!s.clocked_out_at || s.rejected_at || s.revoked_at) continue
+    out.closedCount += 1
+    if (s.job_ledger_id || s.bid_id) {
+      out.linkedCount += 1
+      continue
+    }
+    ;(s.approved_at ? out.approvedUnlinkedIds : out.pendingUnlinkedIds).push(s.id)
+    out.unlinkedHours += sessionHours(s)
+  }
+  return out
+}
+
+/** Same three states as the Crew Jobs cell, computed for one person-day from raw session rows. */
+export function dayLinkState(c: DayLinkClassification): CrewAssignCellState {
+  if (c.closedCount === 0) return { kind: 'no-clock' }
+  const unlinkedIds = [...c.approvedUnlinkedIds, ...c.pendingUnlinkedIds]
+  if (unlinkedIds.length > 0) return { kind: 'link', unlinkedIds, unlinkedHours: c.unlinkedHours, linkedCount: c.linkedCount }
+  return { kind: 'locked', linkedCount: c.linkedCount }
+}
+
+/**
+ * Toast after linking from a modal: pending sessions do not move the split until
+ * they are approved, so say so — "Linked 2 sessions (3.40 h) to J523 · Mission
+ * Hills — 1 is pending approval; the split updates when it is approved".
+ */
+export function dayLinkSuccessMessage(c: DayLinkClassification, updated: number, pickLabel: string): string {
+  const base = crewLinkSuccessMessage(updated, c.unlinkedHours, pickLabel)
+  const pending = c.pendingUnlinkedIds.length
+  if (pending === 0) return base
+  const head = base.replace(/ — split recomputed from the clock$/, '')
+  return `${head} — ${pending === updated ? (pending === 1 ? 'it is' : 'all are') : `${pending} ${pending === 1 ? 'is' : 'are'}`} pending approval; the split updates on approval`
+}
