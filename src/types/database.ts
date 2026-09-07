@@ -19905,6 +19905,10 @@ export type Database = {
         }
         Returns: string
       }
+      resolve_job_ledger_id_by_number: {
+        Args: { p_number: string }
+        Returns: string
+      }
       resolve_noncard_transaction_attribution: {
         Args: {
           p_mercury_transaction_id: string
