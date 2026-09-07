@@ -326,9 +326,7 @@ serve(async (req) => {
       return jsonResponse({ error: 'Customer not found' }, 400)
     }
 
-    if (custRow.master_user_id !== jobRow.master_user_id) {
-      return jsonResponse({ error: 'Customer does not belong to this job master' }, 400)
-    }
+    // One company (v2.2967): the customer may sit under any office account — no owner check.
 
     // Effective job number (v2.1027): HCP wins, else Click — same rule the app
     // displays everywhere. Click-only jobs were previously unbillable here.

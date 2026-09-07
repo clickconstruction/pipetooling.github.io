@@ -1,0 +1,13 @@
+# 20260906190000_one_company_owners_inert.sql (2026-09-06, v2.2967)
+
+One company, **Phase 1** of [`docs/ONE_COMPANY_PLAN.md`](../ONE_COMPANY_PLAN.md): per-person ownership (`master_user_id`) and assistant adoption (`master_assistants`) stop deciding access, at the shared helpers. No table, policy or grant changes; every object is `CREATE OR REPLACE`.
+
+- **`company_owner_user_id()`** (new, `STABLE SECURITY DEFINER`, `authenticated` + `service_role`): the account new rows are stamped with. Reads `app_settings.company_owner_user_id`, falls back to `job_owner_override_default`, then the single live `master_technician`, else NULL. The migration **seeds** the row from that fallback chain (`ON CONFLICT DO NOTHING`).
+- **Adoption / sharing predicates** → `is_office_staff()`: `master_adopted_current_user(uuid)` (primary and superintendent branches kept — they read the company-wide v2.921 sync tables and feed the `users` SELECT policy), `assistants_share_master(uuid, uuid)`, `can_see_sharing_master(uuid)`, `master_shared_current_user(uuid)`.
+- **Project helpers**: `can_access_project_row(uuid)` and `(uuid, uuid, uuid)`, `can_access_project`, `can_access_project_via_step`, `can_access_step_for_action` — office roles `true`; superintendent (assigned only, v2.2836), primary (`master_primaries`), owner and step-assignee branches verbatim. `user_can_access_estimate(estimates)` — office `true`; `created_by`, primary and project branches kept.
+- **Owner-equality guards → no-ops** (functions kept, triggers untouched): `jobs_ledger_project_master_match_fn`, `jobs_ledger_customer_master_match_fn`, `jobs_ledger_gc_customer_master_match_fn`.
+- **RPCs re-created verbatim minus the guard**: `create_job_from_estimate` (both overloads; also stamps `company_owner_user_id()` first, the per-user `job_owner_override_*` chain only while that row is unset), `apply_estimate_to_job` (the "job belongs to a different owner than the estimate" refusal hit live on 2026-09-06).
+
+Not touched: the customer→projects / →jobs cascades, `customers_master_role_check`, `people_labels` / `user_labels` scoping, the estimator immutable-fields guard, every field / primary / superintendent / customer-side branch, and the ~23 policies that compare `master_user_id = auth.uid()` inline (Phase 2).
+
+Apply order: either. The old client keeps writing `master_user_id` exactly as before; the three Stripe edge functions (`create-stripe-invoice`, `preview-stripe-invoice`, `update-collect-payment-stripe-customer-email`) drop their matching "Customer does not belong to this job master" check and **must be redeployed**. Rollback: the previous bodies live in the baseline, `20260905100000`, `20260810200050`, `20260820030000`, `20260630200000`, `20260731205835`.

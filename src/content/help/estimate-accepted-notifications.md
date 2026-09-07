@@ -38,7 +38,7 @@ Someone on either list is skipped if:
 
 - they have no email address on their account,
 - their account is archived, or
-- they have no access to the estimate's owner (they are not that master, not adopted as an assistant, and not a dev or primary).
+- they cannot see the estimate (office roles — leaders, assistants, controllers — see every estimate since v2.2967; estimators see the ones they wrote; primaries see all).
 
 So it is safe to add someone broadly — they simply will not be emailed about estimates they could not see anyway.
 
