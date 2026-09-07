@@ -18,10 +18,8 @@ export default function SettingsJobsTab({
   setJobOwnerOverridesSectionOpen,
   saveJobOwnerOverrides,
   users,
-  jobOwnerOverrideByUserId,
-  setJobOwnerOverrideByUserId,
-  jobOwnerDefaultMasterId,
-  setJobOwnerDefaultMasterId,
+  companyOwnerUserId,
+  setCompanyOwnerUserId,
   jobOwnerOverridesSaving,
   jobCountByUserId,
   reassignTargetByUserId,
@@ -45,10 +43,8 @@ export default function SettingsJobsTab({
   setJobOwnerOverridesSectionOpen: Dispatch<SetStateAction<boolean>>
   saveJobOwnerOverrides: (e: FormEvent) => void
   users: JobsTabUserRow[]
-  jobOwnerOverrideByUserId: Record<string, string>
-  setJobOwnerOverrideByUserId: Dispatch<SetStateAction<Record<string, string>>>
-  jobOwnerDefaultMasterId: string
-  setJobOwnerDefaultMasterId: Dispatch<SetStateAction<string>>
+  companyOwnerUserId: string
+  setCompanyOwnerUserId: Dispatch<SetStateAction<string>>
   jobOwnerOverridesSaving: boolean
   jobCountByUserId: Record<string, number>
   reassignTargetByUserId: Record<string, string>
@@ -72,7 +68,7 @@ export default function SettingsJobsTab({
     <>
       <HideHcpFieldSettingsBlock />
       <SubPortalPaySettingsBlock />
-      {/* Job creation overrides */}
+      {/* Company owner account (one company, v2.2972) + bulk job re-assign */}
       <div style={{ marginBottom: '2rem', border: '1px solid var(--border)', borderRadius: 8 }}>
         <button
           type="button"
@@ -93,16 +89,15 @@ export default function SettingsJobsTab({
           }}
         >
           <span style={{ fontSize: '0.75rem' }}>{jobOwnerOverridesSectionOpen ? '▼' : '▶'}</span>
-          Job creation overrides
+          Company owner account
         </button>
         {jobOwnerOverridesSectionOpen && (
           <div style={{ padding: '0 1rem 1rem 1rem', borderTop: '1px solid var(--border)' }}>
             <p style={{ marginBottom: '1rem', color: 'var(--text-muted)', fontSize: '0.875rem' }}>
-              When a user creates a job, assign it to another user instead of themselves.
+              One company: every new customer, project, job, estimate and prospect is filed under this one account,
+              whoever creates it. Nobody picks an owner any more, and it decides nothing about who can see a row.
             </p>
             <form onSubmit={saveJobOwnerOverrides}>
-              {/* Org-wide default (v2.1532): the master everyone WITHOUT their own row below
-                  creates jobs as — including users added later. */}
               <div
                 style={{
                   marginBottom: '1rem',
@@ -114,21 +109,21 @@ export default function SettingsJobsTab({
                 }}
               >
                 <label
-                  htmlFor="job-owner-default-master"
+                  htmlFor="company-owner-account"
                   style={{ display: 'block', fontWeight: 600, fontSize: '0.875rem', marginBottom: 4 }}
                 >
-                  Default job owner — everyone
+                  Company owner account
                 </label>
                 <select
-                  id="job-owner-default-master"
-                  value={jobOwnerDefaultMasterId}
-                  onChange={(e) => setJobOwnerDefaultMasterId(e.target.value)}
+                  id="company-owner-account"
+                  value={companyOwnerUserId}
+                  onChange={(e) => setCompanyOwnerUserId(e.target.value)}
                   disabled={jobOwnerOverridesSaving}
                   style={{ padding: '0.25rem 0.5rem', minWidth: 220 }}
                 >
-                  <option value="">No default — users create jobs as themselves</option>
+                  <option value="">Not set — the single leader account, else the creator</option>
                   {users
-                    .filter((o) => o.role === 'master_technician')
+                    .filter((o) => o.role === 'master_technician' || o.role === 'dev')
                     .map((o) => (
                       <option key={o.id} value={o.id}>
                         {o.name || o.email}
@@ -136,115 +131,88 @@ export default function SettingsJobsTab({
                     ))}
                 </select>
                 <p style={{ margin: '0.5rem 0 0', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
-                  Applies to every user without their own row below — including people added later. A
-                  user&rsquo;s own &ldquo;Create jobs as&rdquo; choice always wins; pick{' '}
-                  <em>Self — always</em> there to exempt someone from the default.
+                  A settings row, not a person&rsquo;s choice: change it here when the account that files company
+                  rows changes. Existing rows keep the account they were filed under.
                 </p>
               </div>
-              <div style={{ overflowX: 'auto' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse', maxWidth: 640 }}>
-                  <thead>
-                    <tr style={{ borderBottom: '2px solid var(--border)', textAlign: 'left' }}>
-                      <th style={{ padding: '0.5rem 0.75rem' }}>User</th>
-                      <th style={{ padding: '0.5rem 0.75rem' }}>Create jobs as</th>
-                      <th style={{ padding: '0.5rem 0.75rem' }}>Jobs</th>
-                      <th style={{ padding: '0.5rem 0.75rem' }}>Re-assign all to</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {users
-                      .filter((u) => ['dev', 'master_technician', 'assistant', 'controller'].includes(u.role))
-                      .map((u) => (
-                        <tr key={u.id} style={{ borderBottom: '1px solid var(--border)' }}>
-                          <td style={{ padding: '0.5rem 0.75rem' }}>{u.name || u.email}</td>
-                          <td style={{ padding: '0.5rem 0.75rem' }}>
+              <button
+                type="submit"
+                disabled={jobOwnerOverridesSaving}
+                style={{ marginBottom: '1rem', padding: '0.5rem 1rem' }}
+              >
+                {jobOwnerOverridesSaving ? 'Saving…' : 'Save company owner account'}
+              </button>
+            </form>
+            <p style={{ margin: '0 0 0.5rem', fontWeight: 600, fontSize: '0.875rem' }}>Jobs filed under each account</p>
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', maxWidth: 640 }}>
+                <thead>
+                  <tr style={{ borderBottom: '2px solid var(--border)', textAlign: 'left' }}>
+                    <th style={{ padding: '0.5rem 0.75rem' }}>Account</th>
+                    <th style={{ padding: '0.5rem 0.75rem' }}>Jobs</th>
+                    <th style={{ padding: '0.5rem 0.75rem' }}>Re-assign all to</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {users
+                    .filter((u) => ['dev', 'master_technician', 'assistant', 'controller'].includes(u.role))
+                    .map((u) => (
+                      <tr key={u.id} style={{ borderBottom: '1px solid var(--border)' }}>
+                        <td style={{ padding: '0.5rem 0.75rem' }}>
+                          {u.name || u.email}
+                          {u.id === companyOwnerUserId ? (
+                            <span style={{ marginLeft: '0.5rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>company owner</span>
+                          ) : null}
+                        </td>
+                        <td style={{ padding: '0.5rem 0.75rem' }}>{jobCountByUserId[u.id] ?? 0}</td>
+                        <td style={{ padding: '0.5rem 0.75rem' }}>
+                          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
                             <select
-                              value={jobOwnerOverrideByUserId[u.id] ?? ''}
+                              value={reassignTargetByUserId[u.id] ?? ''}
                               onChange={(e) =>
-                                setJobOwnerOverrideByUserId((prev) => ({
+                                setReassignTargetByUserId((prev) => ({
                                   ...prev,
                                   [u.id]: e.target.value,
                                 }))
                               }
-                              disabled={jobOwnerOverridesSaving}
-                              style={{ padding: '0.25rem 0.5rem', minWidth: 160 }}
+                              disabled={reassignSubmitting || (jobCountByUserId[u.id] ?? 0) === 0}
+                              style={{ padding: '0.25rem 0.5rem', minWidth: 140 }}
                             >
-                              <option value="">
-                                {jobOwnerDefaultMasterId
-                                  ? `Default (${
-                                      users.find((o) => o.id === jobOwnerDefaultMasterId)?.name || 'set above'
-                                    })`
-                                  : 'Self'}
-                              </option>
-                              {jobOwnerDefaultMasterId && u.id !== jobOwnerDefaultMasterId ? (
-                                <option value={u.id}>Self — always</option>
-                              ) : null}
+                              <option value="">—</option>
                               {users
-                                .filter((o) => ['master_technician', 'assistant', 'controller'].includes(o.role) && o.id !== u.id)
+                                .filter((o) => ['dev', 'master_technician', 'assistant', 'controller'].includes(o.role) && o.id !== u.id)
                                 .map((o) => (
                                   <option key={o.id} value={o.id}>
                                     {o.name || o.email}
                                   </option>
                                 ))}
                             </select>
-                          </td>
-                          <td style={{ padding: '0.5rem 0.75rem' }}>{jobCountByUserId[u.id] ?? 0}</td>
-                          <td style={{ padding: '0.5rem 0.75rem' }}>
-                            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                              <select
-                                value={reassignTargetByUserId[u.id] ?? ''}
-                                onChange={(e) =>
-                                  setReassignTargetByUserId((prev) => ({
-                                    ...prev,
-                                    [u.id]: e.target.value,
-                                  }))
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const target = reassignTargetByUserId[u.id]
+                                if (target) {
+                                  setReassignSourceUserId(u.id)
+                                  setReassignTargetUserId(target)
+                                  setReassignConfirmOpen(true)
                                 }
-                                disabled={reassignSubmitting || (jobCountByUserId[u.id] ?? 0) === 0}
-                                style={{ padding: '0.25rem 0.5rem', minWidth: 140 }}
-                              >
-                                <option value="">—</option>
-                                {users
-                                  .filter((o) => ['master_technician', 'assistant', 'controller'].includes(o.role) && o.id !== u.id)
-                                  .map((o) => (
-                                    <option key={o.id} value={o.id}>
-                                      {o.name || o.email}
-                                    </option>
-                                  ))}
-                              </select>
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  const target = reassignTargetByUserId[u.id]
-                                  if (target) {
-                                    setReassignSourceUserId(u.id)
-                                    setReassignTargetUserId(target)
-                                    setReassignConfirmOpen(true)
-                                  }
-                                }}
-                                disabled={
-                                  reassignSubmitting ||
-                                  (jobCountByUserId[u.id] ?? 0) === 0 ||
-                                  !reassignTargetByUserId[u.id]
-                                }
-                                style={{ padding: '0.25rem 0.5rem', whiteSpace: 'nowrap' }}
-                              >
-                                Re-assign
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
-                  </tbody>
-                </table>
-              </div>
-              <button
-                type="submit"
-                disabled={jobOwnerOverridesSaving}
-                style={{ marginTop: '1rem', padding: '0.5rem 1rem' }}
-              >
-                {jobOwnerOverridesSaving ? 'Saving…' : 'Save job creation overrides'}
-              </button>
-            </form>
+                              }}
+                              disabled={
+                                reassignSubmitting ||
+                                (jobCountByUserId[u.id] ?? 0) === 0 ||
+                                !reassignTargetByUserId[u.id]
+                              }
+                              style={{ padding: '0.25rem 0.5rem', whiteSpace: 'nowrap' }}
+                            >
+                              Re-assign
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         )}
       </div>

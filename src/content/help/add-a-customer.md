@@ -12,7 +12,7 @@ order: 44
 - **Started as a prospect?** — if this company is already in Prospects, type a few letters of the company, contact, phone, or address and pick them: the form prefills and a {{chip:gray|From prospect: Acme Plumbing — Dana}} chip shows the link. Not from a prospect? Just skip the field, or click **✕** on the chip.
 - **Name** is the only required field. Address, phone, email, and **Date Met** are optional and easy to fill in later from the customer's profile.
 - **Paste Fill** — paste a tab-separated line (`Name  Address  Email  Phone  Date`) copied from a spreadsheet and click {{button:blue|Fill Fields}} instead of typing.
-- **Customer Master** — which master the customer belongs to. Masters are set automatically; assistants and estimators pick from the masters who adopted them.
+- **No owner to pick.** Every customer belongs to the company — the account it is filed under is the company owner account (Settings → Jobs & billing, dev only) and it decides nothing about who can see the customer.
 
 Press {{button:blue|Save}}. {{button:outline|Cancel}} throws the form away and changes nothing — including the prospect.
 

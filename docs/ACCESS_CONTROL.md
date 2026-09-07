@@ -75,7 +75,7 @@ Pipetooling implements comprehensive role-based access control (RBAC) using nine
 ### Nine User Roles
 1. **dev** - System administrators with full access
 2. **master_technician** - Project managers and business owners
-3. **assistant** - Support staff working under masters. Manages clock cards, hours, crew, contracts, licenses — but **can never read individual pay** (wages, pay stubs; DB-enforced since v2.660). Being adopted by a pay-approved master confers no extra powers (v2.661).
+3. **assistant** - Office support staff. Sees every customer, project, job, bid and estimate (one company, v2.2967 — no adoption needed). Manages clock cards, hours, crew, contracts, licenses — but **can never read individual pay** (wages, pay stubs; DB-enforced since v2.660).
 4. **subcontractor** - External workers assigned to specific tasks
 5. **helpers** - Field workers with **the same app routing, RLS parity, and Clock/Dispatch service-type rules as subcontractors**; scoped via `helpers_service_type_ids` (same semantics as `subcontractor_service_type_ids`)
 6. **estimator** - Bid estimation specialists
@@ -290,7 +290,7 @@ A Contract Book entry can be a **form** (an uploaded PDF the signer fills on the
 - See financial totals
 
 **People**:
-- Create people in roster (including **Primary** and **Superintendent** `people` rows for pay/hours parity; adoption tables still control role access)
+- Create people in roster (including **Primary** and **Superintendent** `people` rows for pay/hours parity; primary / superintendent scoping still comes from `master_primaries` / `project_superintendents`)
 - Adopt assistants (grants them access to customers/projects)
 - Share with other masters (grants assistant-level access)
 - View people they created and people shared with them (via master_shares)
@@ -319,7 +319,7 @@ A Contract Book entry can be a **form** (an uploaded PDF the signer fills on the
 - View price history
 
 **Settings**:
-- **People & accounts** (in-page jump `settings-people`): Adopt/unadopt assistants, primaries, superintendents; share/unshare with other masters; view adopted assistants and shared masters
+- **People & accounts** (in-page jump `settings-people`): roster, invites, role changes. (Adopt / share controls are gone — one company, v2.2967; the grant tables are filled automatically by `sync_company_access_grants()` until Phase 4 retires them.)
 - Change own password
 - No user management
 - (Dev only) Pin Billed Awaiting Payment, Supply Houses AP, Sub Labor Due, Internal Team labor to masters/devs dashboards (**Dashboard & alerts** → Dashboard Page Pins)
@@ -940,6 +940,8 @@ Converted so far: Jobs Crew P&L / Team Labor / off-strip tabs (primary, superint
 ---
 
 ## Data Access Patterns
+
+> **One company (v2.2967 → v2.2972).** The ownership / adoption / sharing patterns described in this section and in "Special Relationships" are **historical** for office roles: every office role passes every helper and policy outright (see "One company (v2.2967)" at the end of this document), `master_user_id` is provenance only, and the client no longer picks an owner (`company_owner_user_id()` / `src/lib/companyOwner.ts`, v2.2972). The field, primary, superintendent and customer-side branches below are still exactly how those roles are scoped.
 
 ### Job schedule blocks (`job_schedule_blocks`)
 

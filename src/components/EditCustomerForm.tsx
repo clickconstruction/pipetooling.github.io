@@ -153,12 +153,6 @@ function contactInfoToJson(phone: string, email: string): { phone: string | null
   }
 }
 
-function masterShortLabel(masterId: string, masters: { id: string; name: string; email: string }[]): string {
-  const m = masters.find((x) => x.id === masterId)
-  if (m) return m.name || m.email || masterId
-  return masterId ? `${masterId.slice(0, 8)}…` : '—'
-}
-
 type Props = {
   customerId: string
   onSaved: () => void | Promise<void>
@@ -182,13 +176,9 @@ export default function EditCustomerForm({ customerId, onSaved, onCancel, onDele
   const [error, setError] = useState<string | null>(null)
   const [fetching, setFetching] = useState(true)
   const [myRole, setMyRole] = useState<UserRole | null>(null)
-  const [masterUserId, setMasterUserId] = useState('')
-  const [availableMasters, setAvailableMasters] = useState<{ id: string; name: string; email: string }[]>([])
-  const [mastersLoading, setMastersLoading] = useState(false)
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [deleteConfirm, setDeleteConfirm] = useState('')
   const [deleting, setDeleting] = useState(false)
-  const [advancedExpanded, setAdvancedExpanded] = useState(false)
   const [archivedAt, setArchivedAt] = useState<string | null>(null)
   const [archiveConfirmOpen, setArchiveConfirmOpen] = useState(false)
   const [archiving, setArchiving] = useState(false)
@@ -395,53 +385,6 @@ export default function EditCustomerForm({ customerId, onSaved, onCancel, onDele
   }, [user?.id])
 
   useEffect(() => {
-    if (!user?.id || (!isAssistantLike(myRole) && myRole !== 'dev' && myRole !== 'master_technician')) return
-    setMastersLoading(true)
-    ;(async () => {
-      if (isAssistantLike(myRole)) {
-        const { data: adoptions, error: adoptionsErr } = await supabase
-          .from('master_assistants')
-          .select('master_id')
-          .eq('assistant_id', user.id)
-        if (adoptionsErr) {
-          setAvailableMasters([])
-          setMastersLoading(false)
-          return
-        }
-        if (!adoptions || adoptions.length === 0) {
-          setAvailableMasters([])
-          setMastersLoading(false)
-          return
-        }
-        const masterIds = adoptions.map((a) => a.master_id)
-        const { data: masters, error: mastersErr } = await supabase
-          .from('users')
-          .select('id, name, email')
-          .in('id', masterIds)
-          .in('role', ['master_technician'])
-          .order('name')
-        if (mastersErr) {
-          setAvailableMasters([])
-        } else {
-          setAvailableMasters((masters ?? []) as { id: string; name: string; email: string }[])
-        }
-      } else if (myRole === 'dev' || myRole === 'master_technician') {
-        const { data: masters, error: mastersErr } = await supabase
-          .from('users')
-          .select('id, name, email')
-          .in('role', ['master_technician'])
-          .order('name')
-        if (mastersErr) {
-          setAvailableMasters([])
-        } else {
-          setAvailableMasters((masters as { id: string; name: string; email: string }[]) ?? [])
-        }
-      }
-      setMastersLoading(false)
-    })()
-  }, [user?.id, myRole])
-
-  useEffect(() => {
     if (
       !mergeExpanded ||
       (myRole !== 'dev' && myRole !== 'master_technician' && !isAssistantLike(myRole))
@@ -542,25 +485,16 @@ export default function EditCustomerForm({ customerId, onSaved, onCancel, onDele
           ? row.customer_type
           : null
       )
-      setMasterUserId(row.master_user_id ?? '')
       // Tolerate the column not existing yet (client can deploy before db push).
       setArchivedAt(isCustomerArchived(row) ? row.archived_at : null)
       setFetching(false)
     })()
   }, [customerId])
 
-  useEffect(() => {
-    if (mastersLoading || availableMasters.length !== 1) return
-    if (masterUserId) return
-    setMasterUserId(availableMasters[0]!.id)
-  }, [mastersLoading, availableMasters, masterUserId])
-
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setError(null)
     setLoading(true)
-    let customerMasterId = masterUserId
-    if (!customerMasterId && myRole === 'master_technician' && user?.id) customerMasterId = user.id
     const payload: Record<string, unknown> = {
       name: name.trim(),
       address: address.trim() || null,
@@ -573,9 +507,7 @@ export default function EditCustomerForm({ customerId, onSaved, onCancel, onDele
       google_drive_link: googleDriveLink.trim() || null,
       job_pictures_link: jobPicturesLink.trim() || null,
     }
-    if (customerMasterId && myRole !== 'estimator') {
-      payload.master_user_id = customerMasterId
-    }
+    // One company (v2.2972): master_user_id is provenance now — never rewritten on edit.
     const { error: err, data } = await supabase
       .from('customers')
       .update(payload)
@@ -1029,78 +961,6 @@ export default function EditCustomerForm({ customerId, onSaved, onCancel, onDele
             </button>
           </div>
         </div>
-        {(isAssistantLike(myRole) || myRole === 'dev' || myRole === 'master_technician') && (
-          <div style={{ marginBottom: '1rem' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: advancedExpanded ? 4 : 0 }}>
-              <button
-                type="button"
-                onClick={() => setAdvancedExpanded((prev) => !prev)}
-                style={{
-                  padding: 0,
-                  background: 'none',
-                  border: 'none',
-                  cursor: 'pointer',
-                  fontSize: '1rem',
-                  lineHeight: 1,
-                  color: 'var(--text-700)',
-                }}
-                aria-expanded={advancedExpanded}
-              >
-                {advancedExpanded ? '\u25BC' : '\u25B6'}
-              </button>
-              <span style={{ cursor: 'pointer' }} onClick={() => setAdvancedExpanded((prev) => !prev)}>
-                Advanced
-              </span>
-              {!advancedExpanded && masterUserId && (
-                <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>
-                  (Customer Master:{' '}
-                  {availableMasters.find((m) => m.id === masterUserId)?.name ??
-                    availableMasters.find((m) => m.id === masterUserId)?.email ??
-                    'Selected'}
-                  )
-                </span>
-              )}
-            </div>
-            {advancedExpanded && (
-              <div style={{ paddingLeft: '1.25rem', borderLeft: '2px solid var(--border)' }}>
-                <label htmlFor="edit-master" style={{ display: 'block', marginBottom: 4 }}>
-                  Customer Master
-                </label>
-                {mastersLoading ? (
-                  <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>Loading masters...</p>
-                ) : (isAssistantLike(myRole) || myRole === 'dev') && availableMasters.length === 0 ? (
-                  <p style={{ fontSize: '0.875rem', color: 'var(--text-red-700)' }}>
-                    {isAssistantLike(myRole)
-                      ? 'No masters have adopted you yet. Ask a master to adopt you in Settings.'
-                      : 'No masters found.'}
-                  </p>
-                ) : (
-                  <>
-                    <select
-                      id="edit-master"
-                      value={masterUserId}
-                      onChange={(e) => setMasterUserId(e.target.value)}
-                      disabled={myRole === 'master_technician'}
-                      style={{ width: '100%', padding: '0.5rem' }}
-                    >
-                      <option value="">Select a master...</option>
-                      {availableMasters.map((m) => (
-                        <option key={m.id} value={m.id}>
-                          {m.name || m.email}
-                        </option>
-                      ))}
-                    </select>
-                    <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginTop: 2 }}>
-                      {myRole === 'master_technician'
-                        ? 'You are automatically assigned as the customer owner.'
-                        : 'Select which master this customer belongs to.'}
-                    </div>
-                  </>
-                )}
-              </div>
-            )}
-          </div>
-        )}
         {error && <p style={{ color: 'var(--text-red-700)', marginBottom: '1rem' }}>{error}</p>}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.5rem' }}>
           <div style={{ display: 'flex', gap: '0.5rem' }}>
@@ -1309,14 +1169,6 @@ export default function EditCustomerForm({ customerId, onSaved, onCancel, onDele
                         }
                         selected={mergeFieldSource.date_met}
                         onChange={(s) => setFieldSource('date_met', s)}
-                      />
-                      <MergeFieldRow
-                        fieldId="merge-master"
-                        label="Customer master"
-                        survivorValue={masterShortLabel(masterUserId, availableMasters)}
-                        victimValue={masterShortLabel(victimRow.master_user_id ?? '', availableMasters)}
-                        selected={mergeFieldSource.master_user_id}
-                        onChange={(s) => setFieldSource('master_user_id', s)}
                       />
                       <MergeFieldRow
                         fieldId="merge-google-drive"

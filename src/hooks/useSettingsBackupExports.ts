@@ -201,16 +201,14 @@ export function useSettingsBackupExports(userId: string | undefined) {
     setExportError(null)
     setExportPeopleLoading(true)
     try {
-      const [r1, r2, r3, r4, r5, r6, r7] = await Promise.all([
+      const [r1, r2, r5, r6, r7] = await Promise.all([
         fetchBackupRows((from, to) => supabase.from('users').select('*').order('id').range(from, to), 'users'),
         fetchBackupRows((from, to) => supabase.from('people').select('*').order('id').range(from, to), 'people'),
-        fetchBackupRows((from, to) => supabase.from('master_assistants').select('*').order('master_id').order('assistant_id').range(from, to), 'master_assistants'),
-        fetchBackupRows((from, to) => supabase.from('master_shares').select('*').order('sharing_master_id').order('viewing_master_id').range(from, to), 'master_shares'),
         fetchBackupRows((from, to) => supabase.from('master_primaries').select('*').order('master_id').order('primary_id').range(from, to), 'master_primaries'),
         fetchBackupRows((from, to) => supabase.from('master_superintendents').select('*').order('master_id').order('superintendent_id').range(from, to), 'master_superintendents'),
         fetchBackupRows((from, to) => supabase.from('pay_approved_masters').select('*').order('master_id').range(from, to), 'pay_approved_masters'),
       ])
-      const err = r1.error || r2.error || r3.error || r4.error || r5.error || r6.error || r7.error
+      const err = r1.error || r2.error || r5.error || r6.error || r7.error
       if (err) {
         setExportError(err.message)
         return
@@ -220,8 +218,6 @@ export function useSettingsBackupExports(userId: string | undefined) {
         tables: {
           users: r1.data ?? [],
           people: r2.data ?? [],
-          master_assistants: r3.data ?? [],
-          master_shares: r4.data ?? [],
           master_primaries: r5.data ?? [],
           master_superintendents: r6.data ?? [],
           pay_approved_masters: r7.data ?? [],
@@ -441,7 +437,7 @@ export function useSettingsBackupExports(userId: string | undefined) {
         r1, r2, r3, r4, r5, r6, r7, r8,
         r9, r10, r11, r12, r13, r14, r15, r16,
         r17, r18, r19, r20, r21, r22, r23, r24, r25, r26,
-        r27, r28, r29, r30, r31, r32, r33, r34,
+        r27, r28, r29, r30, r31, r34,
         r35, r36, r37, r38, r39, r40, r41, r42, r43, r44,
         r45, r46, r47, r48, r49, r50, r51, r52, r53,
         r54, r55, r56, r57, r58, r59, r60, r61, r62, r63,
@@ -478,8 +474,6 @@ export function useSettingsBackupExports(userId: string | undefined) {
         fetchBackupRows((from, to) => supabase.from('purchase_order_items').select('*').order('id').range(from, to), 'purchase_order_items'),
         fetchBackupRows((from, to) => supabase.from('users').select('*').order('id').range(from, to), 'users'),
         fetchBackupRows((from, to) => supabase.from('people').select('*').order('id').range(from, to), 'people'),
-        fetchBackupRows((from, to) => supabase.from('master_assistants').select('*').order('master_id').order('assistant_id').range(from, to), 'master_assistants'),
-        fetchBackupRows((from, to) => supabase.from('master_shares').select('*').order('sharing_master_id').order('viewing_master_id').range(from, to), 'master_shares'),
         fetchBackupRows((from, to) => supabase.from('master_primaries').select('*').order('master_id').order('primary_id').range(from, to), 'master_primaries'),
         fetchBackupRows((from, to) => supabase.from('pay_approved_masters').select('*').order('master_id').range(from, to), 'pay_approved_masters'),
         fetchBackupRows((from, to) => supabase.from('jobs_ledger').select('*').order('id').range(from, to), 'jobs_ledger'),
@@ -520,7 +514,7 @@ export function useSettingsBackupExports(userId: string | undefined) {
         fetchBackupRows((from, to) => supabase.from('notification_templates').select('*').order('id').range(from, to), 'notification_templates'),
         fetchBackupRows((from, to) => supabase.from('email_templates').select('*').order('id').range(from, to), 'email_templates'),
       ])
-      const err = r1.error || r2.error || r3.error || r4.error || r5.error || r6.error || r7.error || r8.error || r9.error || r10.error || r11.error || r12.error || r13.error || r14.error || r15.error || r16.error || r17.error || r18.error || r19.error || r20.error || r21.error || r22.error || r23.error || r24.error || r25.error || r26.error || r27.error || r28.error || r29.error || r30.error || r31.error || r32.error || r33.error || r34.error || r35.error || r36.error || r37.error || r38.error || r39.error || r40.error || r41.error || r42.error || r43.error || r44.error || r45.error || r46.error || r47.error || r48.error || r49.error || r50.error || r51.error || r52.error || r53.error || r54.error || r55.error || r56.error || r57.error || r58.error || r59.error || r60.error || r61.error || r62.error || r63.error || r64.error || r65.error || r66.error || r67.error || r68.error || r69.error || r70.error || r71.error || r72.error
+      const err = r1.error || r2.error || r3.error || r4.error || r5.error || r6.error || r7.error || r8.error || r9.error || r10.error || r11.error || r12.error || r13.error || r14.error || r15.error || r16.error || r17.error || r18.error || r19.error || r20.error || r21.error || r22.error || r23.error || r24.error || r25.error || r26.error || r27.error || r28.error || r29.error || r30.error || r31.error || r34.error || r35.error || r36.error || r37.error || r38.error || r39.error || r40.error || r41.error || r42.error || r43.error || r44.error || r45.error || r46.error || r47.error || r48.error || r49.error || r50.error || r51.error || r52.error || r53.error || r54.error || r55.error || r56.error || r57.error || r58.error || r59.error || r60.error || r61.error || r62.error || r63.error || r64.error || r65.error || r66.error || r67.error || r68.error || r69.error || r70.error || r71.error || r72.error
       if (err) {
         setExportError(err.message)
         return
@@ -559,8 +553,6 @@ export function useSettingsBackupExports(userId: string | undefined) {
           purchase_order_items: r29.data ?? [],
           users: r30.data ?? [],
           people: r31.data ?? [],
-          master_assistants: r32.data ?? [],
-          master_shares: r33.data ?? [],
           master_primaries: r34.data ?? [],
           pay_approved_masters: r35.data ?? [],
           jobs_ledger: r36.data ?? [],

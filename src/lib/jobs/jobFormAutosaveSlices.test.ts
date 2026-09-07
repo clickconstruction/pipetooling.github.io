@@ -129,7 +129,7 @@ describe('buildEditJobIdentityUpdatePayload', () => {
     { id: 'c-other', name: 'Antonio Hernandez', master_user_id: 'master-2' },
   ]
 
-  it('keeps the existing owner and resolves the customer by name under it', () => {
+  it('keeps the existing owner and keeps an explicit customer pick whichever account filed it (v2.2972)', () => {
     const payload = buildEditJobIdentityUpdatePayload({
       fields: identity({ customerId: 'c-other' }),
       existingJobMasterUserId: 'master-1',
@@ -138,8 +138,8 @@ describe('buildEditJobIdentityUpdatePayload', () => {
       developments: [],
     })
     expect(payload.master_user_id).toBe('master-1')
-    // cross-master explicit pick falls back to the name match under the job master
-    expect(payload.customer_id).toBe('c-mine')
+    // one company: the pick stands; ownership is provenance, not a wall
+    expect(payload.customer_id).toBe('c-other')
   })
 
   it('follows a linked project owner', () => {

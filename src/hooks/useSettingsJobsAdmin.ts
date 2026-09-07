@@ -5,21 +5,21 @@ import { useToastContext } from '../contexts/ToastContext'
 import { withSupabaseRetry } from '../utils/errorHandling'
 import type { Database } from '../types/database'
 import type { UserRow } from '../types/settingsRows'
+import { COMPANY_OWNER_USER_ID_KEY, JOB_OWNER_OVERRIDE_DEFAULT_KEY, invalidateCompanyOwnerCache } from '../lib/companyOwner'
 
 type JobCountByMasterRow =
   Database['public']['Functions']['list_job_counts_by_master_for_dev_settings']['Returns'][number]
 
 /**
- * Settings → Jobs & dispatch admin engine (dev only): job-creation owner
- * overrides (`app_settings` dynamic keys `job_owner_override_<userId>`,
- * delete-when-empty), bulk job re-assign (`jobs_ledger.master_user_id` with
- * optimistic count fix-up), and the default labor rate. Extracted verbatim
- * from Settings.tsx (v2.856); loads on mount when `enabled` (dev).
+ * Settings → Jobs & dispatch admin engine (dev only): the company owner account
+ * (`app_settings.company_owner_user_id`, one company v2.2972 — replaces the
+ * per-user `job_owner_override_<userId>` chain), bulk job re-assign
+ * (`jobs_ledger.master_user_id` with optimistic count fix-up), and the default
+ * labor rate. Extracted from Settings.tsx (v2.856); loads on mount when `enabled` (dev).
  * `setError` is the parent's shared error state (map quirk #4).
  */
 export function useSettingsJobsAdmin({
   enabled,
-  users,
   setError,
 }: {
   enabled: boolean
@@ -29,9 +29,8 @@ export function useSettingsJobsAdmin({
   const { showToast } = useToastContext()
 
   const [jobOwnerOverridesSectionOpen, setJobOwnerOverridesSectionOpen] = useState(false)
-  const [jobOwnerOverrideByUserId, setJobOwnerOverrideByUserId] = useState<Record<string, string>>({})
-  /** Org-wide fallback (v2.1532): `job_owner_override_default` — the master every user without their own row creates jobs as. */
-  const [jobOwnerDefaultMasterId, setJobOwnerDefaultMasterId] = useState('')
+  /** One company (v2.2972): the account every new customer / project / job / estimate is filed under. */
+  const [companyOwnerUserId, setCompanyOwnerUserId] = useState('')
   const [jobOwnerOverridesSaving, setJobOwnerOverridesSaving] = useState(false)
   const [jobCountByUserId, setJobCountByUserId] = useState<Record<string, number>>({})
   const [reassignTargetByUserId, setReassignTargetByUserId] = useState<Record<string, string>>({})
@@ -48,24 +47,18 @@ export function useSettingsJobsAdmin({
     if (!enabled) return
     setJobOwnerOverridesSaving(true)
     try {
-      const creators = users.filter((u) => ['dev', 'master_technician', 'assistant', 'controller'].includes(u.role))
-      for (const u of creators) {
-        const key = `job_owner_override_${u.id}`
-        const selected = jobOwnerOverrideByUserId[u.id]
-        if (!selected || selected === '') {
-          await supabase.from('app_settings').delete().eq('key', key)
-        } else {
-          await supabase.from('app_settings').upsert({ key, value_text: selected }, { onConflict: 'key' })
-        }
-      }
-      if (!jobOwnerDefaultMasterId) {
-        await supabase.from('app_settings').delete().eq('key', 'job_owner_override_default')
+      if (!companyOwnerUserId) {
+        await supabase.from('app_settings').delete().eq('key', COMPANY_OWNER_USER_ID_KEY)
       } else {
         await supabase
           .from('app_settings')
-          .upsert({ key: 'job_owner_override_default', value_text: jobOwnerDefaultMasterId }, { onConflict: 'key' })
+          .upsert({ key: COMPANY_OWNER_USER_ID_KEY, value_text: companyOwnerUserId }, { onConflict: 'key' })
       }
-      showToast('Job creation overrides saved.', 'success')
+      // The legacy org-wide fallback is superseded by the row above; clear it so the
+      // SQL and client fallback chains cannot disagree.
+      await supabase.from('app_settings').delete().eq('key', JOB_OWNER_OVERRIDE_DEFAULT_KEY)
+      invalidateCompanyOwnerCache()
+      showToast('Company owner account saved.', 'success')
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to save')
     } finally {
@@ -114,7 +107,7 @@ export function useSettingsJobsAdmin({
     void (async () => {
       const [laborRes, jobOwnerResult, jobCountsResult] = await Promise.all([
         supabase.from('app_settings').select('value_num').eq('key', 'default_labor_rate').maybeSingle(),
-        supabase.from('app_settings').select('key, value_text').like('key', 'job_owner_override_%'),
+        supabase.from('app_settings').select('key, value_text').in('key', [COMPANY_OWNER_USER_ID_KEY, JOB_OWNER_OVERRIDE_DEFAULT_KEY]),
         (async (): Promise<JobCountByMasterRow[]> => {
           try {
             const rows = await withSupabaseRetry(
@@ -131,19 +124,13 @@ export function useSettingsJobsAdmin({
       const laborVal = (laborRes.data as { value_num: number | null } | null)?.value_num
       setDefaultLaborRate(laborVal != null ? String(laborVal) : '')
 
-      const overrides: Record<string, string> = {}
-      let defaultMaster = ''
-      for (const row of jobOwnerResult.data ?? []) {
-        const userId = row.key.replace(/^job_owner_override_/, '')
-        // The org-wide fallback shares the key prefix (job_owner_override_default).
-        if (userId === 'default') {
-          defaultMaster = row.value_text ?? ''
-          continue
-        }
-        if (userId && row.value_text) overrides[userId] = row.value_text
-      }
-      setJobOwnerOverrideByUserId(overrides)
-      setJobOwnerDefaultMasterId(defaultMaster)
+      const settingRows = jobOwnerResult.data ?? []
+      // The row wins; while it is unset the legacy org-wide default shows as the current value.
+      const owner =
+        settingRows.find((r) => r.key === COMPANY_OWNER_USER_ID_KEY)?.value_text?.trim() ||
+        settingRows.find((r) => r.key === JOB_OWNER_OVERRIDE_DEFAULT_KEY)?.value_text?.trim() ||
+        ''
+      setCompanyOwnerUserId(owner)
 
       const counts: Record<string, number> = {}
       for (const row of jobCountsResult) {
@@ -156,10 +143,8 @@ export function useSettingsJobsAdmin({
   return {
     jobOwnerOverridesSectionOpen,
     setJobOwnerOverridesSectionOpen,
-    jobOwnerOverrideByUserId,
-    setJobOwnerOverrideByUserId,
-    jobOwnerDefaultMasterId,
-    setJobOwnerDefaultMasterId,
+    companyOwnerUserId,
+    setCompanyOwnerUserId,
     jobOwnerOverridesSaving,
     jobCountByUserId,
     reassignTargetByUserId,

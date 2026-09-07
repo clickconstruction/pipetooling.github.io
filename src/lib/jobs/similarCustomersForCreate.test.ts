@@ -36,11 +36,11 @@ describe('computeSimilarCustomersForCreate', () => {
     expect(out.map((c) => c.id)).toEqual([exact.id, typo.id, superstring.id])
   })
 
-  it('drops customers owned by a different master — a cross-master pick can never link', () => {
+  it('offers customers filed under any account — one company (v2.2972)', () => {
     const mine = makeCustomer({ name: 'Alpha Builders', master_user_id: 'master-1' })
     const other = makeCustomer({ name: 'Alpha Builders', master_user_id: 'master-2' })
     const out = computeSimilarCustomersForCreate([other, mine], 'Alpha Builders', 'master-1')
-    expect(out.map((c) => c.id)).toEqual([mine.id])
+    expect(out).toHaveLength(2)
   })
 
   it('a null job master skips the ownership filter', () => {

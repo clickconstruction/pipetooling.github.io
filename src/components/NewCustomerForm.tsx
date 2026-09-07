@@ -3,7 +3,7 @@ import { useNavigate, Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
 import type { Database } from '../types/database'
-import { isAssistantLike } from '../lib/subcontractorLikeRole'
+import { resolveCompanyOwnerUserId } from '../lib/companyOwner'
 import {
   CONVERTIBLE_PROSPECT_COLUMNS,
   canAccessProspectPipeline,
@@ -17,7 +17,6 @@ import {
 } from '../lib/prospects/prospectConversion'
 
 type CustomerRow = Database['public']['Tables']['customers']['Row']
-type UserRole = 'dev' | 'master_technician' | 'assistant' | 'subcontractor' | 'helpers' | 'estimator'
 
 function contactInfoToJson(phone: string, email: string): { phone: string | null; email: string | null } | null {
   const phoneTrimmed = phone.trim()
@@ -125,12 +124,7 @@ export default function NewCustomerForm({ showQuickFill = false, onCreated, onCa
   const [quickFill, setQuickFill] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [myRole, setMyRole] = useState<UserRole | null>(null)
-  const [masterUserId, setMasterUserId] = useState('')
-  const [availableMasters, setAvailableMasters] = useState<{ id: string; name: string; email: string }[]>([])
-  const [mastersLoading, setMastersLoading] = useState(false)
   const [quickFillExpanded, setQuickFillExpanded] = useState(false)
-  const [customerMasterExpanded, setCustomerMasterExpanded] = useState(false)
   const [customerType, setCustomerType] = useState<'commercial' | 'residential'>('commercial')
 
   // "Started as a prospect?" (v2.2879, J34-F4): the pipeline's finish line lives
@@ -192,78 +186,6 @@ export default function NewCustomerForm({ showQuickFill = false, onCreated, onCa
   }
 
   useEffect(() => {
-    if (!user?.id) return
-    supabase
-      .from('users')
-      .select('role')
-      .eq('id', user.id)
-      .single()
-      .then(({ data }) => setMyRole((data as { role: UserRole } | null)?.role ?? null))
-  }, [user?.id])
-
-  useEffect(() => {
-    if (!user?.id || (!isAssistantLike(myRole) && myRole !== 'dev' && myRole !== 'master_technician' && myRole !== 'estimator')) return
-    setMastersLoading(true)
-    ;(async () => {
-      if (isAssistantLike(myRole)) {
-        const { data: adoptions, error: adoptionsErr } = await supabase
-          .from('master_assistants')
-          .select('master_id')
-          .eq('assistant_id', user.id)
-        if (adoptionsErr) {
-          setAvailableMasters([])
-          setMastersLoading(false)
-          return
-        }
-        if (!adoptions || adoptions.length === 0) {
-          setAvailableMasters([])
-          setMastersLoading(false)
-          return
-        }
-        const masterIds = adoptions.map((a) => a.master_id)
-        const { data: masters, error: mastersErr } = await supabase
-          .from('users')
-          .select('id, name, email')
-          .in('id', masterIds)
-          .in('role', ['master_technician'])
-          .order('name')
-        if (mastersErr) {
-          setAvailableMasters([])
-        } else {
-          const typedMasters = (masters ?? []) as { id: string; name: string; email: string }[]
-          setAvailableMasters(typedMasters)
-          if (typedMasters.length === 1) {
-            setMasterUserId(typedMasters[0]!.id)
-          } else {
-            const malachi = typedMasters.find((m) => (m.name || '').toLowerCase().includes('malachi'))
-            if (malachi) setMasterUserId(malachi.id)
-          }
-        }
-      } else if (myRole === 'dev' || myRole === 'master_technician' || myRole === 'estimator') {
-        const { data: masters, error: mastersErr } = await supabase
-          .from('users')
-          .select('id, name, email')
-          .in('role', ['master_technician'])
-          .order('name')
-        if (mastersErr) {
-          setAvailableMasters([])
-        } else {
-          const typedMasters = (masters as { id: string; name: string; email: string }[]) ?? []
-          setAvailableMasters(typedMasters)
-          const malachi = typedMasters.find((m) => (m.name || '').toLowerCase().includes('malachi'))
-          if (malachi) setMasterUserId(malachi.id)
-        }
-      }
-      setMastersLoading(false)
-    })()
-  }, [user?.id, myRole])
-
-  useEffect(() => {
-    if (!user?.id) return
-    if (myRole === 'master_technician') setMasterUserId(user.id)
-  }, [user?.id, myRole])
-
-  useEffect(() => {
     if (initialValues) {
       if (initialValues.name !== undefined) setName(initialValues.name)
       if (initialValues.address !== undefined) setAddress(initialValues.address)
@@ -276,18 +198,13 @@ export default function NewCustomerForm({ showQuickFill = false, onCreated, onCa
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setError(null)
-    if ((isAssistantLike(myRole) || myRole === 'dev' || myRole === 'estimator') && !masterUserId) {
-      setError('Please select a customer owner (master).')
-      return
-    }
     if (!user) {
       setError('You must be signed in to create a customer.')
       return
     }
     setLoading(true)
-    let customerMasterId = masterUserId
-    if (!customerMasterId && myRole === 'master_technician') customerMasterId = user.id
-    if (!customerMasterId) customerMasterId = user.id
+    // One company (v2.2972): every customer is filed under the company owner account.
+    const customerMasterId = await resolveCompanyOwnerUserId(supabase, user.id)
     const payload: NewCustomerFormPayload = {
       name: name.trim(),
       address: address.trim() || null,
@@ -341,7 +258,6 @@ export default function NewCustomerForm({ showQuickFill = false, onCreated, onCa
   const title = mode === 'modal' ? 'Add customer' : 'New customer'
 
   const missingFields: string[] = []
-  if ((isAssistantLike(myRole) || myRole === 'dev' || myRole === 'estimator') && !masterUserId) missingFields.push('Master')
   const canSubmit = missingFields.length === 0
 
   return (
@@ -559,72 +475,6 @@ export default function NewCustomerForm({ showQuickFill = false, onCreated, onCa
             style={{ width: '100%', padding: '0.5rem' }}
           />
         </div>
-        {(isAssistantLike(myRole) || myRole === 'dev' || myRole === 'master_technician' || myRole === 'estimator') && (
-          <div style={{ marginBottom: '1rem' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: 4 }}>
-              <button
-                type="button"
-                onClick={() => setCustomerMasterExpanded((e) => !e)}
-                style={{
-                  padding: 0,
-                  background: 'none',
-                  border: 'none',
-                  cursor: 'pointer',
-                  fontSize: '1rem',
-                  lineHeight: 1,
-                  color: 'var(--text-700)',
-                }}
-                aria-expanded={customerMasterExpanded}
-              >
-                {customerMasterExpanded ? '\u25BC' : '\u25B6'}
-              </button>
-              <label htmlFor="ncf-master" style={{ marginBottom: 0, cursor: 'pointer' }} onClick={() => setCustomerMasterExpanded((e) => !e)}>
-                Customer Master {(isAssistantLike(myRole) || myRole === 'dev' || myRole === 'estimator') ? '*' : ''}
-              </label>
-              {masterUserId && !customerMasterExpanded && (
-                <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>
-                  ({availableMasters.find((m) => m.id === masterUserId)?.name || availableMasters.find((m) => m.id === masterUserId)?.email || 'Selected'})
-                </span>
-              )}
-            </div>
-            {customerMasterExpanded && (
-              <>
-                {mastersLoading ? (
-                  <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>Loading masters...</p>
-                ) : (isAssistantLike(myRole) || myRole === 'dev' || myRole === 'estimator') && availableMasters.length === 0 ? (
-                  <p style={{ fontSize: '0.875rem', color: 'var(--text-red-700)' }}>
-                    {isAssistantLike(myRole)
-                      ? 'No masters have adopted you yet. Ask a master to adopt you in Settings.'
-                      : 'No masters found.'}
-                  </p>
-                ) : (
-                  <>
-                    <select
-                      id="ncf-master"
-                      value={masterUserId}
-                      onChange={(e) => setMasterUserId(e.target.value)}
-                      required={isAssistantLike(myRole) || myRole === 'dev' || myRole === 'estimator'}
-                      disabled={myRole === 'master_technician'}
-                      style={{ width: '100%', padding: '0.5rem' }}
-                    >
-                      <option value="">Select a master...</option>
-                      {availableMasters.map((m) => (
-                        <option key={m.id} value={m.id}>
-                          {m.name || m.email}
-                        </option>
-                      ))}
-                    </select>
-                    <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginTop: 2 }}>
-                      {myRole === 'master_technician'
-                        ? 'You are automatically assigned as the customer owner.'
-                        : 'Select which master this customer belongs to.'}
-                    </div>
-                  </>
-                )}
-              </>
-            )}
-          </div>
-        )}
         {error && <p style={{ color: 'var(--text-red-700)', marginBottom: '1rem' }}>{error}</p>}
         {!onSubmitForConvert && (
           <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>

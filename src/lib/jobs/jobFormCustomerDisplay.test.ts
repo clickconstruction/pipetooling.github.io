@@ -66,11 +66,11 @@ describe('customerListImpliesLinkedRow', () => {
     customer({ id: 'c', name: 'Bob Roe', master_user_id: 'm2' }),
   ]
 
-  it('matches exactly one same-named row under the job master', () => {
-    expect(customerListImpliesLinkedRow(rows, 'm1', 'jane doe')).toBe(true)
+  it('two same-named rows are ambiguous whichever account filed them (one company, v2.2972)', () => {
+    expect(customerListImpliesLinkedRow(rows, 'm1', 'jane doe')).toBe(false)
   })
 
-  it('falls back to a single overall name match when the master has none', () => {
+  it('matches a single same-named row regardless of the job master', () => {
     expect(customerListImpliesLinkedRow(rows, 'm3', 'Bob Roe')).toBe(true)
   })
 
