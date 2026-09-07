@@ -130,6 +130,26 @@ export function suggestTxCountyForCity(city: string): string {
   return extraCityToCounty[key] ?? CITY_TO_COUNTY[key] ?? ''
 }
 
+/**
+ * Direct link to ONE parcel's page on the district site, by the appraisal
+ * district's property ID (v2.3016) — verified 2026-09-07 on Comal and Hays
+ * (BIS "esearch" engine: every `esearch.*` host above) and Bexar
+ * (TrueAutomation). '' when the county's site has no known deep link; callers
+ * fall back to `txCountyCadSearchUrl`.
+ */
+export function txCountyCadPropertyUrl(county: string, propId: string): string {
+  const id = (propId ?? '').trim()
+  if (!id || !/^[A-Za-z0-9][A-Za-z0-9-]*$/.test(id)) return ''
+  const base = txCountyCadSearchUrl(county)
+  if (!base) return ''
+  if (/^https:\/\/esearch\./i.test(base)) return `${new URL(base).origin}/Property/View/${encodeURIComponent(id)}`
+  if (/trueautomation\.com\/clientdb\//i.test(base)) {
+    const cid = new URL(base).searchParams.get('cid')
+    if (cid) return `${new URL(base).origin}/clientdb/Property.aspx?cid=${encodeURIComponent(cid)}&prop_id=${encodeURIComponent(id)}`
+  }
+  return ''
+}
+
 /** CAD property-search URL for a county — '' when we don't have one. */
 export function txCountyCadSearchUrl(county: string): string {
   const key = (county ?? '').trim()

@@ -56,16 +56,23 @@ type Ok = {
 }
 type Fail = { ok: false; address_normalized: string; error: string; detail?: string }
 
-async function identifyParcel(lat: number, lng: number): Promise<{ parcel: ParcelRecord | null; error?: string }> {
-  const d = 0.0005
+/**
+ * Identify the parcel under the point. The layer is scale-dependent: a very
+ * tight extent returns nothing, so the extent is ±0.005° at 400px (≈2.7 m per
+ * pixel). Tolerance 1px first (the containing polygon only), then 3px (≈8 m)
+ * for a pin that landed a few metres onto the street — measured 2026-09-07
+ * across Comal, Hays and Bexar (v2.3016).
+ */
+async function identifyOnce(lat: number, lng: number, tolerance: number): Promise<{ parcel: ParcelRecord | null; error?: string }> {
+  const d = 0.005
   const params = new URLSearchParams({
     geometry: `${lng},${lat}`,
     geometryType: 'esriGeometryPoint',
     sr: '4326',
     layers: 'all:0',
-    tolerance: '2',
+    tolerance: String(tolerance),
     mapExtent: `${lng - d},${lat - d},${lng + d},${lat + d}`,
-    imageDisplay: '200,200,96',
+    imageDisplay: '400,400,96',
     returnGeometry: 'false',
     f: 'json',
   })
@@ -84,6 +91,12 @@ async function identifyParcel(lat: number, lng: number): Promise<{ parcel: Parce
   } finally {
     clearTimeout(timer)
   }
+}
+
+async function identifyParcel(lat: number, lng: number): Promise<{ parcel: ParcelRecord | null; error?: string }> {
+  const tight = await identifyOnce(lat, lng, 1)
+  if (tight.parcel || tight.error) return tight
+  return identifyOnce(lat, lng, 3)
 }
 
 serve(async (req) => {

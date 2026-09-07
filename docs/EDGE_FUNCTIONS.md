@@ -1710,7 +1710,7 @@ curl -sS "${SUPABASE_URL}/functions/v1/get-estimate-public-terms" \
 
 **Gateway**: `verify_jwt = false`; **`auth.getUser()`** + **`users.role` in `('dev','master_technician','assistant','controller','estimator')`** in the function (**403** otherwise) — the roles that may edit `customer_addresses`.
 
-**Upstream**: `https://feature.geographic.texas.gov/arcgis/rest/services/Parcels/stratmap_land_parcels_48_most_recent/MapServer/identify` (12s timeout). The layer's `/query` operation is **not** enabled — use `identify`. The roll has **no exemptions field**, so homestead is inferred client-side (a person who gets mail at the property) and always confirmed by a person. Tax year lags sales; the panel prints it beside every value.
+**Upstream**: `https://feature.geographic.texas.gov/arcgis/rest/services/Parcels/stratmap_land_parcels_48_most_recent/MapServer/identify` (12s timeout). The layer is scale-dependent — a very tight `mapExtent` returns nothing — so the call uses ±0.005° at 400px, tolerance 1px first and 3px (≈8 m) as a fallback for pins that land on the street (measured across Comal, Hays and Bexar, v2.3016). The layer's `/query` operation is **not** enabled — use `identify`. The roll has **no exemptions field**, so homestead is inferred client-side (a person who gets mail at the property) and always confirmed by a person. Tax year lags sales; the panel prints it beside every value.
 
 **Deploy**: `supabase functions deploy property-lookup` (and redeploy **`geocode-one`** / **`geocode-address-batch`** whenever `_shared/googleGeocode.ts` changes — v2.3004 added `county` to its result).
 

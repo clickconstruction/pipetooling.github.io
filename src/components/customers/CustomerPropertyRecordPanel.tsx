@@ -1,11 +1,13 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import { openInExternalBrowser } from '../../lib/openInExternalBrowser'
-import { txCountyCadSearchUrl } from '../../lib/txCountyLookup'
+import { txCountyCadPropertyUrl, txCountyCadSearchUrl } from '../../lib/txCountyLookup'
+import { cadPasteHasFacts, parseCadPagePaste, type CadPasteResult } from '../../lib/customers/cadPagePaste'
 import { customerAddressLienGaps } from '../../lib/jobs/lienProperty'
 import {
   applyProposalToFields,
   cityStraddlesCounties,
   countySourceLabel,
+  ownerLooksLikeCompany,
   parcelProvenanceLine,
   type ProposedPropertyRecord,
   type PropertyRecordFields,
@@ -69,6 +71,10 @@ export default function CustomerPropertyRecordPanel({ address, fields, onChange,
   const [status, setStatus] = useState<'idle' | 'loading' | 'done' | 'error'>('idle')
   const [outcome, setOutcome] = useState<PropertyLookupOutcome | null>(null)
   const autoRan = useRef(false)
+  // "Paste the CAD page" (v2.3016): the fallback when the roll has nothing under the pin.
+  const [pasteOpen, setPasteOpen] = useState(false)
+  const [pasteText, setPasteText] = useState('')
+  const [pasteResult, setPasteResult] = useState<CadPasteResult | null>(null)
 
   const proposal: ProposedPropertyRecord | null = outcome?.ok ? outcome.proposal : null
   const parcelError = outcome?.ok ? outcome.parcelError : null
@@ -106,7 +112,8 @@ export default function CustomerPropertyRecordPanel({ address, fields, onChange,
   const lienReady = gaps.length === 0
   const city = splitJobAddressForPrefill(address).city
   const straddle = cityStraddlesCounties(city)
-  const cadUrl = txCountyCadSearchUrl(fields.county)
+  const cadPropertyUrl = txCountyCadPropertyUrl(fields.county, fields.parcel_id)
+  const cadUrl = cadPropertyUrl || txCountyCadSearchUrl(fields.county)
   const provenance = parcelProvenanceLine(fields)
   const lookedUp = fields.parcel_looked_up_at.trim() !== ''
 
@@ -146,11 +153,93 @@ export default function CustomerPropertyRecordPanel({ address, fields, onChange,
           </span>
         )}
         {cadUrl ? (
-          <button type="button" onClick={() => openInExternalBrowser(cadUrl)} style={linkBtn} title={`Open the ${fields.county.trim()} County Appraisal District property search`}>
-            {fields.county.trim()} CAD ↗
+          <button
+            type="button"
+            onClick={() => openInExternalBrowser(cadUrl)}
+            style={linkBtn}
+            title={cadPropertyUrl ? `Open this parcel (Prop ID ${fields.parcel_id.trim()}) on the ${fields.county.trim()} County Appraisal District` : `Open the ${fields.county.trim()} County Appraisal District property search`}
+          >
+            {cadPropertyUrl ? `this parcel on ${fields.county.trim()} CAD ↗` : `${fields.county.trim()} CAD ↗`}
           </button>
         ) : null}
+        <button type="button" onClick={() => setPasteOpen((v) => !v)} aria-expanded={pasteOpen} style={linkBtn}>
+          {pasteOpen ? 'Hide paste' : 'Paste the CAD page…'}
+        </button>
       </div>
+
+      {pasteOpen ? (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', border: '1px dashed var(--border-strong)', borderRadius: 6, padding: '0.5rem 0.6rem', background: 'var(--bg-subtle)' }}>
+          <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+            On the district's page for this property, select all, copy, and paste here. The app picks out the legal description, owner, mailing address and exemptions; you keep what is right.
+          </p>
+          <textarea
+            value={pasteText}
+            onChange={(e) => {
+              setPasteText(e.target.value)
+              setPasteResult(e.target.value.trim() ? parseCadPagePaste(e.target.value) : null)
+            }}
+            rows={4}
+            placeholder="Paste the whole property page here"
+            aria-label="Pasted CAD page"
+            style={{ ...inputStyle, fontFamily: 'ui-monospace, Menlo, monospace', fontSize: '0.75rem', resize: 'vertical' }}
+          />
+          {pasteResult ? (
+            cadPasteHasFacts(pasteResult) ? (
+              <div style={{ fontSize: '0.75rem', display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
+                <span style={{ fontWeight: 600 }}>Found in the paste:</span>
+                {pasteResult.legalDescription ? <span>Legal description · {pasteResult.legalDescription}</span> : null}
+                {pasteResult.ownerName ? <span>Owner · {pasteResult.ownerName}</span> : null}
+                {pasteResult.mailingAddress ? <span>Mailing address · {pasteResult.mailingAddress}</span> : null}
+                {pasteResult.propId ? <span>Prop ID · {pasteResult.propId}</span> : null}
+                {pasteResult.homestead !== 'unknown' ? <span>Exemptions · {pasteResult.homestead === 'yes' ? 'homestead (HS)' : 'no homestead'}</span> : null}
+                <div style={{ display: 'flex', gap: '0.4rem', marginTop: 2 }}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const r = pasteResult
+                      const company = ownerLooksLikeCompany(r.ownerName)
+                      const patch: Partial<PropertyRecordDraft> = {}
+                      if (r.legalDescription) patch.legal_description = r.legalDescription
+                      if (r.ownerName) {
+                        if (company) {
+                          patch.owner_company = r.ownerName
+                          if (!fields.owner_mode) patch.owner_mode = 'building_owner'
+                        } else {
+                          patch.owner_name = r.ownerName
+                          if (!fields.owner_mode) patch.owner_mode = 'homeowner'
+                        }
+                      }
+                      if (r.mailingAddress) patch.owner_mailing_address = r.mailingAddress
+                      if (r.propId) patch.parcel_id = r.propId
+                      if (r.homestead === 'yes') {
+                        patch.property_kind = 'residential'
+                        patch.homestead = true
+                      } else if (r.homestead === 'no' && fields.property_kind === 'residential') {
+                        patch.homestead = false
+                      }
+                      patch.parcel_source = fields.county.trim() ? `${fields.county.trim()} CAD (pasted)` : 'CAD page (pasted)'
+                      patch.parcel_tax_year = ''
+                      patch.parcel_looked_up_at = new Date().toISOString()
+                      onChange(patch)
+                      setPasteOpen(false)
+                      setPasteText('')
+                      setPasteResult(null)
+                    }}
+                    style={{ padding: '0.25rem 0.7rem', fontSize: '0.75rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 600 }}
+                  >
+                    Use these
+                  </button>
+                  <button type="button" onClick={() => { setPasteOpen(false); setPasteText(''); setPasteResult(null) }} style={{ padding: '0.25rem 0.7rem', fontSize: '0.75rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', color: 'var(--text-700)', cursor: 'pointer' }}>
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <span style={{ fontSize: '0.75rem', color: 'var(--text-amber-700)' }}>No property facts recognised yet — paste the whole page, including the "Legal Description" and "Owner" rows.</span>
+            )
+          ) : null}
+        </div>
+      ) : null}
 
       {status === 'error' && outcome && !outcome.ok ? (
         <p style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--text-red-700)' }}>{propertyLookupErrorMessage(outcome.error)}</p>
