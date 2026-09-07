@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
-import { isAssistantLike } from '../lib/subcontractorLikeRole'
 import NewCustomerForm from '../components/NewCustomerForm'
 import type { Database } from '../types/database'
 import type { Json } from '../types/database'
@@ -47,14 +46,11 @@ export default function CustomerForm() {
   const [error, setError] = useState<string | null>(null)
   const [fetching, setFetching] = useState(!isNew)
   const [myRole, setMyRole] = useState<UserRole | null>(null)
-  const [masterUserId, setMasterUserId] = useState('')
-  const [availableMasters, setAvailableMasters] = useState<{ id: string; name: string; email: string }[]>([])
-  const [mastersLoading, setMastersLoading] = useState(false)
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [deleteConfirm, setDeleteConfirm] = useState('')
   const [deleting, setDeleting] = useState(false)
 
-  // Load user role (edit form uses for master dropdown)
+  // Load user role (gates the danger zone below)
   useEffect(() => {
     if (!user?.id) return
     supabase
@@ -64,54 +60,6 @@ export default function CustomerForm() {
       .single()
       .then(({ data }) => setMyRole((data as { role: UserRole } | null)?.role ?? null))
   }, [user?.id])
-
-  // Load masters for edit form dropdown
-  useEffect(() => {
-    if (!user?.id || (!isAssistantLike(myRole) && myRole !== 'dev' && myRole !== 'master_technician')) return
-    setMastersLoading(true)
-    ;(async () => {
-      if (isAssistantLike(myRole)) {
-        const { data: adoptions, error: adoptionsErr } = await supabase
-          .from('master_assistants')
-          .select('master_id')
-          .eq('assistant_id', user.id)
-        if (adoptionsErr) {
-          setAvailableMasters([])
-          setMastersLoading(false)
-          return
-        }
-        if (!adoptions || adoptions.length === 0) {
-          setAvailableMasters([])
-          setMastersLoading(false)
-          return
-        }
-        const masterIds = adoptions.map((a) => a.master_id)
-        const { data: masters, error: mastersErr } = await supabase
-          .from('users')
-          .select('id, name, email')
-          .in('id', masterIds)
-          .in('role', ['master_technician'])
-          .order('name')
-        if (mastersErr) {
-          setAvailableMasters([])
-        } else {
-          setAvailableMasters((masters ?? []) as { id: string; name: string; email: string }[])
-        }
-      } else if (myRole === 'dev' || myRole === 'master_technician') {
-        const { data: masters, error: mastersErr } = await supabase
-          .from('users')
-          .select('id, name, email')
-          .in('role', ['master_technician'])
-          .order('name')
-        if (mastersErr) {
-          setAvailableMasters([])
-        } else {
-          setAvailableMasters((masters as { id: string; name: string; email: string }[]) ?? [])
-        }
-      }
-      setMastersLoading(false)
-    })()
-  }, [user?.id, myRole])
 
   useEffect(() => {
     if (!id) return
@@ -129,7 +77,6 @@ export default function CustomerForm() {
       setPhone(contactInfo.phone || '')
       setEmail(contactInfo.email || '')
       setDateMet(row.date_met ? (row.date_met.split('T')[0] || '') : '')
-      setMasterUserId(row.master_user_id ?? '')
       setFetching(false)
     })()
   }, [id])
@@ -142,17 +89,12 @@ export default function CustomerForm() {
     e.preventDefault()
     setError(null)
     setLoading(true)
-    let customerMasterId = masterUserId
-    if (!customerMasterId && myRole === 'master_technician' && user?.id) customerMasterId = user.id
     const payload: any = {
       name: name.trim(),
       address: address.trim() || null,
       contact_info: contactInfoToJson(phone, email),
       date_met: dateMet.trim() || null,
       date_met_source: dateMet.trim() ? 'manual' : null,
-    }
-    if (customerMasterId) {
-      payload.master_user_id = customerMasterId
     }
     const { error: err } = await supabase.from('customers').update(payload).eq('id', id!)
     setLoading(false)
@@ -220,42 +162,6 @@ export default function CustomerForm() {
             style={{ width: '100%', padding: '0.5rem' }}
           />
         </div>
-        {(isAssistantLike(myRole) || myRole === 'dev' || myRole === 'master_technician') && (
-          <div style={{ marginBottom: '1rem' }}>
-            <label htmlFor="master" style={{ display: 'block', marginBottom: 4 }}>Customer Master</label>
-            {mastersLoading ? (
-              <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>Loading masters...</p>
-            ) : (isAssistantLike(myRole) || myRole === 'dev') && availableMasters.length === 0 ? (
-              <p style={{ fontSize: '0.875rem', color: 'var(--text-red-700)' }}>
-                {isAssistantLike(myRole)
-                  ? 'No masters have adopted you yet. Ask a master to adopt you in Settings.'
-                  : 'No masters found.'}
-              </p>
-            ) : (
-              <>
-                <select
-                  id="master"
-                  value={masterUserId}
-                  onChange={(e) => setMasterUserId(e.target.value)}
-                  disabled={myRole === 'master_technician'}
-                  style={{ width: '100%', padding: '0.5rem' }}
-                >
-                  <option value="">Select a master...</option>
-                  {availableMasters.map((m) => (
-                    <option key={m.id} value={m.id}>
-                      {m.name || m.email}
-                    </option>
-                  ))}
-                </select>
-                <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginTop: 2 }}>
-                  {myRole === 'master_technician'
-                    ? 'You are automatically assigned as the customer owner.'
-                    : 'Select which master this customer belongs to.'}
-                </div>
-              </>
-            )}
-          </div>
-        )}
         {error && <p style={{ color: 'var(--text-red-700)', marginBottom: '1rem' }}>{error}</p>}
         <div style={{ display: 'flex', gap: '0.5rem' }}>
           <button type="submit" disabled={loading} style={{ padding: '0.5rem 1rem' }}>

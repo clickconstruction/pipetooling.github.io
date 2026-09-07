@@ -1,27 +1,16 @@
 import { supabase } from './supabase'
-import { isAssistantLike } from './subcontractorLikeRole'
+import { resolveCompanyOwnerUserId } from './companyOwner'
 import type { UserRole } from '../hooks/useAuth'
 
 /**
- * The master account an estimate (or change order) belongs to: masters/devs
- * own their rows; assistant-likes attribute to their first adopting master.
- * Extracted from Estimates.tsx (CO train v2.1835) so the Bids → Estimates
- * change-order bridge resolves ownership the same way as New estimate.
+ * The account an estimate (or change order) is stamped with: the company owner
+ * account (one company, v2.2972) — no longer the creator or an adopting master.
+ * Signature kept for the three callers (Estimates, the Bids → Estimates change-order
+ * bridge, the Quick Estimate wizard); the role no longer changes the answer.
  */
 export async function resolveEstimateMasterUserId(
   userId: string,
-  role: UserRole | null,
+  _role: UserRole | null,
 ): Promise<string | null> {
-  if (role === 'dev' || role === 'master_technician') return userId
-  if (isAssistantLike(role)) {
-    const { data } = await supabase
-      .from('master_assistants')
-      .select('master_id')
-      .eq('assistant_id', userId)
-      .limit(1)
-      .maybeSingle()
-    const mid = (data as { master_id: string } | null)?.master_id
-    return mid ?? userId
-  }
-  return userId
+  return resolveCompanyOwnerUserId(supabase, userId)
 }

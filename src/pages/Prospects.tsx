@@ -37,6 +37,7 @@ import { callingLockCutoffIso, callingLockDecision, type CallingLockRow, type Ca
 import { recordNavClick } from '../lib/navClickTelemetry'
 import { useAuth } from '../hooks/useAuth'
 import { isAssistantLike } from '../lib/subcontractorLikeRole'
+import { resolveCompanyOwnerUserId } from '../lib/companyOwner'
 import { useToastContext } from '../contexts/ToastContext'
 import { useConfirmDialog, usePromptDialog } from '../contexts/ConfirmDialogContext'
 import NewCustomerForm, { type NewCustomerFormPayload } from '../components/NewCustomerForm'
@@ -1873,16 +1874,8 @@ export default function Prospects() {
 
   async function getEffectiveMasterId(): Promise<string | null> {
     if (!authUser?.id) return null
-    if (authRole === 'dev' || authRole === 'master_technician') return authUser.id
-    if (isAssistantLike(authRole)) {
-      const { data: adoptions } = await supabase
-        .from('master_assistants')
-        .select('master_id')
-        .eq('assistant_id', authUser.id)
-      const masterId = (adoptions as { master_id: string }[] | null)?.[0]?.master_id
-      return masterId ?? authUser.id
-    }
-    return authUser.id
+    // One company (v2.2972): every prospect is stamped with the company owner account.
+    return resolveCompanyOwnerUserId(supabase, authUser.id)
   }
 
   async function saveNewProspect() {

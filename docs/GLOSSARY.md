@@ -90,6 +90,8 @@ Project owner and business manager role. Creates customers and projects, manages
 
 **Alias**: Sometimes called "Master" for brevity
 
+> **One company (v2.2967 / v2.2972):** a master no longer *owns* rows. `master_user_id` on customers / projects / jobs / bids / estimates is provenance — the account a row was filed under — and new rows are filed under the **company owner account** (`app_settings.company_owner_user_id`, `company_owner_user_id()`, `src/lib/companyOwner.ts`; Settings → Jobs & billing, dev). Assistants are no longer adopted per master (`master_assistants` is filled automatically by `sync_company_access_grants()` until retired). The role name becomes **leader** in copy (Phase 3b).
+
 ### assistant (Assistant)
 Support staff who work under masters. Must be "adopted" by a master to access their data. Can view all stages in accessible workflows but only take actions on assigned stages. Cannot see private notes or financial totals.
 

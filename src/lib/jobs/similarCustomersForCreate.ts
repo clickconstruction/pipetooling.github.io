@@ -8,23 +8,19 @@ type CustomerRow = Database['public']['Tables']['customers']['Row']
  * modal: fuzzy/substring name matches against the typed customer name, best
  * first, capped at 10.
  *
- * Only customers owned by the JOB's master are offered (when the master is
- * known): a cross-master pick can never link — jobs_ledger_customer_master_match
- * rejects the update ("Job linked customer must belong to the job master"), so
- * offering one produced a row that flashed an error toast and otherwise looked
- * like a dead click. `jobMasterUserId === null` (master not resolvable, e.g.
- * signed-out edge) skips the ownership filter rather than hiding everything.
+ * Every customer is offered whichever account filed it — one company (v2.2972)
+ * retired the cross-master link refusal, so the ownership filter this used to
+ * apply is gone. `_jobMasterUserId` stays in the signature for the callers.
  */
 export function computeSimilarCustomersForCreate(
   all: CustomerRow[],
   customerName: string,
-  jobMasterUserId: string | null,
+  _jobMasterUserId: string | null,
 ): CustomerRow[] {
   const name = customerName.trim()
   if (!name) return []
   const nameLower = name.toLowerCase()
   return all
-    .filter((c) => jobMasterUserId == null || c.master_user_id === jobMasterUserId)
     .map((c) => ({ c, sim: nameSimilarity(name, c.name ?? '') }))
     .filter(({ c, sim }) => {
       const cName = (c.name ?? '').trim().toLowerCase()

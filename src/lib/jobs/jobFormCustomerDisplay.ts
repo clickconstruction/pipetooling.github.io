@@ -34,19 +34,16 @@ export function customerTypeShortLabel(c: CustomerRow): string | null {
 
 /**
  * The "Not in Customers" chip heuristic: an UNLINKED form customer name is
- * treated as matching an existing row when exactly one same-named row belongs
- * to the job's master, or none does but exactly one exists overall.
+ * treated as matching an existing row when exactly one same-named row exists.
+ * (Until v2.2972 the job's master broke ties; one company retired that.)
  */
 export function customerListImpliesLinkedRow(
   customersList: CustomerRow[],
-  jobMasterUserId: string,
+  _jobMasterUserId: string,
   customerNameTrimmed: string,
 ): boolean {
   const nameKey = customerNameTrimmed.trim().toLowerCase()
   if (!nameKey) return false
   const byName = customersList.filter((c) => (c.name ?? '').trim().toLowerCase() === nameKey)
-  const byMaster = byName.filter((c) => c.master_user_id === jobMasterUserId)
-  if (byMaster.length === 1) return true
-  if (byMaster.length === 0 && byName.length === 1) return true
-  return false
+  return byName.length === 1
 }

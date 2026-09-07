@@ -3078,10 +3078,8 @@ export default function JobFormModal({
     setCreatingCustomerFromJob(true)
     setError(null)
     try {
-      // The customer must belong to the JOB's master (customer↔master invariant) — not the
-      // person clicking. An assistant creating from another master's job with authUser.id here
-      // used to mint a customer mastered to the assistant, which the jobs_ledger backstop
-      // trigger then rejected at link time (and left an orphan duplicate behind).
+      // The new customer carries the job's master_user_id (edit) or the company owner account
+      // (new) — one company since v2.2972; the column is provenance, no longer a wall.
       let customerMasterId: string | null = editing
         ? resolveEditJobMasterUserId({
             projectId,
@@ -3090,14 +3088,8 @@ export default function JobFormModal({
           })
         : null
       if (!customerMasterId) {
-        // New job: assistants act for their master; masters/devs own their own customers.
-        const { data: adoption } = await supabase
-          .from('master_assistants')
-          .select('master_id')
-          .eq('assistant_id', authUser.id)
-          .limit(1)
-          .maybeSingle()
-        customerMasterId = (adoption as { master_id: string } | null)?.master_id ?? authUser.id
+        // One company (v2.2972): a new customer is stamped with the company owner account.
+        customerMasterId = await resolveEffectiveJobMasterUserId(supabase, authUser.id, projectId || null)
       }
       const contactInfo = (customerEmail.trim() || customerPhone.trim())
         ? { phone: customerPhone.trim() || null, email: customerEmail.trim() || null }

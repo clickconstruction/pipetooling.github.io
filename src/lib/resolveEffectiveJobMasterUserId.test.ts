@@ -4,6 +4,7 @@ import {
   chooseJobOwnerFromOverrideRows,
   JOB_OWNER_OVERRIDE_DEFAULT_KEY,
 } from './resolveEffectiveJobMasterUserId'
+import { COMPANY_OWNER_USER_ID_KEY } from './companyOwner'
 
 const ME = 'user-roxi'
 const MALACHI = 'user-malachi'
@@ -40,6 +41,15 @@ describe('chooseJobOwnerFromOverrideRows (v2.1532)', () => {
       { key: `job_owner_override_${ME}`, value_text: null },
     ]
     expect(chooseJobOwnerFromOverrideRows(rows, ME)).toBe(ME)
+  })
+
+  it('the company owner account (v2.2972) beats personal rows and the default', () => {
+    const rows = [
+      { key: COMPANY_OWNER_USER_ID_KEY, value_text: 'user-company' },
+      { key: JOB_OWNER_OVERRIDE_DEFAULT_KEY, value_text: MALACHI },
+      { key: `job_owner_override_${ME}`, value_text: ME },
+    ]
+    expect(chooseJobOwnerFromOverrideRows(rows, ME)).toBe('user-company')
   })
 
   it("another user's personal row is ignored", () => {
