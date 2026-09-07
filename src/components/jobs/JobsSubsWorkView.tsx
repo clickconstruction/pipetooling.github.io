@@ -64,6 +64,7 @@ import { StagesQueue } from './subsTiles/StagesQueue'
 import { OffersQueue } from './subsTiles/OffersQueue'
 import { SignedQueue } from './subsTiles/SignedQueue'
 import { WindowTextCell, type WindowGcState } from './WindowTextCell'
+import { StageCalendarModal, type StageCalendarSibling } from './StageCalendarModal'
 import { StandingMoveCell, type MoveMenuItem } from './StandingMoveCell'
 import { standingMovesForRow, STAGE_ROW_MOVE, type StandingMove } from '../../lib/subs/standingMove'
 
@@ -158,7 +159,8 @@ export function JobsSubsWorkView({ jobs, jobsLoading, authUserId, deepLinkWorkOr
       return 'classic'
     }
   })
-  const [trackOpenKey, setTrackOpenKey] = useState<string | null>(null)
+  /** The row whose stage calendar is open (v2.2963). */
+  const [calendarKey, setCalendarKey] = useState<string | null>(null)
   const billCustomer = useBillCustomerModal()
   const [linkSearch, setLinkSearch] = useState('')
   const [linkNumber, setLinkNumber] = useState('')
@@ -251,7 +253,7 @@ export function JobsSubsWorkView({ jobs, jobsLoading, authUserId, deepLinkWorkOr
 
   // The Stages and Offers queues read the same live orders and days off the dispatch lanes read (v2.2963).
   useEffect(() => {
-    if (tile !== 'stages' && tile !== 'offers') return
+    if (tile !== 'stages' && tile !== 'offers' && !calendarKey) return
     let cancelled = false
     setAvailability((a) => ({ ...a, loading: true }))
     const start = addCalendarDays(today, -30)
@@ -263,7 +265,7 @@ export function JobsSubsWorkView({ jobs, jobsLoading, authUserId, deepLinkWorkOr
     return () => {
       cancelled = true
     }
-  }, [tile, today])
+  }, [tile, calendarKey, today])
 
   /** Labels for orders with no sheet and no Pipeline job — the snapshot or the step. */
   const orderLabels = useMemo(() => {
@@ -1071,7 +1073,6 @@ export function JobsSubsWorkView({ jobs, jobsLoading, authUserId, deepLinkWorkOr
                 const editor = editorFor(g, r.key)
                 const d = windowDataFor(g, r)
                 const mv = moveFor(r)
-                const isOpen = trackOpenKey === r.key
                 const busy = r.kind === 'sheet' && (busyId === r.board.key || (r.board.commitmentId != null && busyId === r.board.commitmentId))
                 const w = r.window
                 return (
@@ -1087,31 +1088,22 @@ export function JobsSubsWorkView({ jobs, jobsLoading, authUserId, deepLinkWorkOr
                           pickBy={d.order?.picked_start ? (d.order.picked_by === 'office' ? 'office' : 'sub') : null}
                           ask={d.ask && w ? { span: d.ask, note: w.asked_note ?? null } : null}
                           gc={{ state: d.gc, gcName: d.gcName }}
-                          onOpenDates={() => setTrackOpenKey(isOpen ? null : r.key)}
+                          onOpenDates={() => setCalendarKey(r.key)}
                           onChange={w && g.jobId ? () => setWindowEdit({ groupKey: g.key, rowKey: r.key, commitmentId: r.board?.commitmentId ?? null, stageId: r.stage?.id ?? null, span: r.span }) : undefined}
                           onOfferToGc={w ? () => void offerToGcFromRow(g, r) : undefined}
-                          onOpenGc={() => setTrackOpenKey(isOpen ? null : r.key)}
+                          onOpenGc={() => setCalendarKey(r.key)}
                           onAccept={w ? () => void answerGcAsk(w, { kind: 'accept' }, r.board?.commitmentId ?? null) : undefined}
                           onAnswer={
                             w && d.ask
                               ? () => {
                                   setAskAnswer({ windowId: w.id, start: w.window_start ?? d.ask!.start, end: w.window_end ?? d.ask!.end, note: '' })
-                                  setTrackOpenKey(r.key)
+                                  setCalendarKey(r.key)
                                 }
                               : undefined
                           }
                           setWindow={windowCell(g, r)}
                           busy={busy}
                         >
-                          {isOpen ? (
-                            <div role="dialog" aria-label="Window details" onClick={(e) => e.stopPropagation()} style={{ position: 'absolute', top: '100%', left: 0, marginTop: 6, zIndex: 20, minWidth: 320, maxWidth: 460, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, boxShadow: '0 12px 32px rgba(0,0,0,0.22)', padding: '0.7rem 0.8rem', display: 'grid', gap: 8 }}>
-                              {windowCell(g, r)}
-                              {gcCell(g, r)}
-                              <button type="button" style={{ ...smallBtn('ghost'), justifySelf: 'end' }} onClick={() => setTrackOpenKey(null)}>
-                                Close
-                              </button>
-                            </div>
-                          ) : null}
                         </WindowTextCell>
                       </td>
                       <td style={{ ...td, textAlign: 'right', whiteSpace: 'nowrap' }}>{r.kind === 'stage' ? moneyStack(r.stage.amount > 0 ? r.stage.amount : null, null, null, r.stage.amount <= 0) : moneyStack(r.board.agreed, r.board.paid, r.board.open, r.board.unpriced)}</td>
@@ -1143,6 +1135,71 @@ export function JobsSubsWorkView({ jobs, jobsLoading, authUserId, deepLinkWorkOr
       </table>
     </div>
   )
+
+  /** The stage calendar's props for the open row (v2.2963) — everything read off data the board already holds. */
+  const calendarRow = (() => {
+    if (!calendarKey) return null
+    for (const g of subs.groups) {
+      const r = g.rows.find((x) => x.key === calendarKey)
+      if (!r) continue
+      const d = windowDataFor(g, r)
+      const w = r.window
+      const stageName = r.stage?.name ?? (r.kind === 'sheet' ? 'Sheet' : 'Stage')
+      const c = r.board?.coverage
+      const subLine = !c ? null : c.kind === 'sent' ? `offer out${c.sentAt ? ` since ${c.sentAt}` : ''}${c.expired ? ' · expired' : ''} · ${d.pick ? 'picked' : 'no pick yet'}` : c.kind === 'signed' ? `signed${c.signedOn ? ` ${c.signedOn}` : ''}` : c.kind === 'draft' ? 'draft, not sent' : c.kind === 'declined' ? `declined${c.reason ? ` · “${c.reason}”` : ''}` : 'working on a handshake'
+      const siblings: StageCalendarSibling[] = g.rows.map((x) => {
+        const xd = windowDataFor(g, x)
+        return { key: x.key, name: x.stage?.name ?? (x.kind === 'sheet' ? x.board.subName || 'Sheet' : 'Stage'), subName: x.kind === 'sheet' ? x.board.subName || null : null, span: xd.window, pick: xd.pick, current: x.key === r.key }
+      })
+      const personId = r.board?.personId ?? null
+      const answering = w && askAnswer && askAnswer.windowId === w.id ? askAnswer : null
+      return {
+        title: `${stageName} · ${g.primary}`,
+        subtitle: [g.secondary, r.board?.subName || null, r.board?.recordId ?? null].filter(Boolean).join(' · ') || null,
+        todayYmd: today,
+        window: d.window,
+        windowBy: w ? (w.window_by === 'gc' ? ('gc' as const) : ('office' as const)) : null,
+        pick: d.pick,
+        pickBy: d.order?.picked_start ? (d.order.picked_by === 'office' ? ('office' as const) : ('sub' as const)) : null,
+        ask: d.ask && w ? { span: d.ask, note: w.asked_note ?? null, askedOn: w.asked_at ? w.asked_at.slice(0, 10) : null } : null,
+        gc: { state: d.gc, gcName: d.gcName, shownSince: null },
+        subName: r.board?.subName || null,
+        subLine,
+        offDays: personId ? (availability.offDays.get(personId) ?? []) : [],
+        siblings,
+        onChange: g.jobId
+          ? () => {
+              setCalendarKey(null)
+              setWindowEdit({ groupKey: g.key, rowKey: r.key, commitmentId: r.board?.commitmentId ?? null, stageId: r.stage?.id ?? null, span: r.span })
+            }
+          : undefined,
+        onAccept: w && d.ask ? () => void answerGcAsk(w, { kind: 'accept' }, r.board?.commitmentId ?? null) : undefined,
+        onAnswer: w && d.ask ? () => setAskAnswer({ windowId: w.id, start: w.window_start ?? d.ask!.start, end: w.window_end ?? d.ask!.end, note: '' }) : undefined,
+        onOffer: w && d.gc === 'offer' ? () => void offerToGcFromRow(g, r) : undefined,
+        onWithdraw: w && (d.gc === 'shown' || d.gc === 'asked') ? () => void withdrawFromGc(w) : undefined,
+        answerForm: answering && w ? (
+          <div style={{ display: 'grid', gap: 6, marginTop: 4 }}>
+            <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+              <input type="date" value={answering.start} onChange={(e) => setAskAnswer({ ...answering, start: e.target.value })} aria-label="Answer start" style={{ padding: '0.25rem 0.4rem', border: '1px solid var(--border-strong)', borderRadius: 6, fontSize: '0.78rem', background: 'var(--surface)', color: 'var(--text-base)' }} />
+              <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>to</span>
+              <input type="date" value={answering.end} onChange={(e) => setAskAnswer({ ...answering, end: e.target.value })} aria-label="Answer end" style={{ padding: '0.25rem 0.4rem', border: '1px solid var(--border-strong)', borderRadius: 6, fontSize: '0.78rem', background: 'var(--surface)', color: 'var(--text-base)' }} />
+            </div>
+            <input value={answering.note} onChange={(e) => setAskAnswer({ ...answering, note: e.target.value.slice(0, 300) })} placeholder="Why (the GC reads this)" style={{ padding: '0.25rem 0.4rem', border: '1px solid var(--border-strong)', borderRadius: 6, fontSize: '0.78rem', background: 'var(--surface)', color: 'var(--text-base)' }} />
+            <div style={{ display: 'flex', gap: 6 }}>
+              <button type="button" style={smallBtn('primary', !answering.start || !answering.end || answering.end < answering.start)} disabled={!answering.start || !answering.end || answering.end < answering.start} onClick={() => void answerGcAsk(w, { kind: 'propose', start: answering.start, end: answering.end, note: answering.note }, r.board?.commitmentId ?? null)}>
+                Propose
+              </button>
+              <button type="button" style={smallBtn('ghost')} onClick={() => setAskAnswer(null)}>
+                Cancel
+              </button>
+            </div>
+          </div>
+        ) : null,
+        busy: r.kind === 'sheet' && (busyId === r.board.key || (r.board.commitmentId != null && busyId === r.board.commitmentId)),
+      }
+    }
+    return null
+  })()
 
   /** Everything a tile queue may do — each entry is a write this board already performs (v2.2963). */
   const tileActions: SubsTileActions = {
@@ -1464,6 +1521,16 @@ export function JobsSubsWorkView({ jobs, jobsLoading, authUserId, deepLinkWorkOr
       {tile === 'stages' ? <StagesQueue groups={subs.groups} jobs={jobs} subs={pickerSubs} contacts={contacts} orders={availability.orders} offDaysByPerson={availability.offDays} availabilityLoading={availability.loading} authUserId={authUserId} todayYmd={today} actions={tileActions} onClose={closeTile} /> : null}
       {tile === 'offers' ? <OffersQueue board={board.rows} ordersById={rowsById} stageByOrderId={stageByOrderId} jobs={jobs} contacts={contacts} visits={visits} authUserId={authUserId} todayYmd={today} actions={tileActions} onClose={closeTile} /> : null}
       {tile === 'signed' ? <SignedQueue key={signedMonth} board={board.rows} ordersById={rowsById} stageByOrderId={stageByOrderId} jobs={jobs} month={signedMonth} currentMonth={monthOf(today)} onMonthChange={setSignedMonth} actions={tileActions} onClose={closeTile} /> : null}
+      {calendarRow ? (
+        <StageCalendarModal
+          open
+          onClose={() => {
+            setCalendarKey(null)
+            setAskAnswer(null)
+          }}
+          {...calendarRow}
+        />
+      ) : null}
       <AddInspectionModal
         open={addInspectionOpen}
         onClose={() => setAddInspectionOpen(false)}
