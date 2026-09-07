@@ -11,9 +11,14 @@ permissions:
   pages: write
   id-token: write
 
+# One deploy at a time, and the newest push waits its turn instead of cancelling the run in
+# flight. With cancel-in-progress the ~15-minute run was cancelled by every merge; on
+# 2026-09-07 twenty merges landed in nine hours and not one deploy completed, so the site sat
+# on a 07:19 UTC build all day. GitHub keeps only the newest pending run per group, so the
+# queue never grows past one waiting run and each completed deploy is at most one behind main.
 concurrency:
   group: "pages"
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   checks:
