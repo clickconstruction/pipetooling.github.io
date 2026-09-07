@@ -83,7 +83,8 @@ export async function fetchCustomerProfile(customerId: string): Promise<Customer
       .order('created_at', { ascending: false }),
     supabase
       .from('customer_addresses')
-      .select('id, address, note')
+      // `*` so the read stays soft until `is_primary` (v2.3008) is pushed.
+      .select('*')
       .eq('customer_id', customerId)
       .order('sequence_order', { ascending: true }),
     supabase.from('jobs_ledger').select('id', { count: 'exact', head: true }).eq('gc_customer_id', customerId),
@@ -119,7 +120,10 @@ export async function fetchCustomerProfile(customerId: string): Promise<Customer
   return {
     customer,
     contactPersons: ((contactsRes.data ?? []) as CustomerProfileData['contactPersons']).filter((c) => (c.name ?? '').trim()),
-    extraAddresses: ((addressesRes.data ?? []) as CustomerProfileData['extraAddresses']).filter((a) => (a.address ?? '').trim()),
+    // The primary row mirrors customers.address (v2.3008), which the hub already shows — list only the extras.
+    extraAddresses: ((addressesRes.data ?? []) as Array<CustomerProfileData['extraAddresses'][number] & { is_primary?: boolean | null }>)
+      .filter((a) => (a.address ?? '').trim() && !a.is_primary)
+      .map((a) => ({ id: a.id, address: a.address, note: a.note })),
     jobs: (jobsRes ?? []) as unknown as CustomerProfileData['jobs'],
     projects,
     bids: ((bidsRes.data ?? []) as CustomerProfileData['bids']),
