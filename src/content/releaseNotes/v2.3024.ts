@@ -3,11 +3,10 @@ import type { ReleaseNote } from '../../lib/releaseNotes'
 const note: ReleaseNote = {
   version: 'v2.3024',
   date: '2026-09-07',
-  title: 'Robots: the plumbing estimator only picks up plumbing bids',
+  title: 'Safety net under Copy Day Job Mix',
   kind: 'fix',
   highlights: [
-    'A robot shadow was opened on an Electrical-division bid and priced it as plumbing; every door the robot claims work through now checks the bid is plumbing first.',
-    'A shadow that should never score — wrong division, wrong reference, a spoiled run — can be voided with a reason instead of sitting in the queue waiting to grade itself.',
+    'Copying one person’s day job mix onto another’s clock blocks now has 7 tests pinning how the blocks are cut, which notes carry over, and when a copy is refused; no behaviour change.',
   ],
 }
 

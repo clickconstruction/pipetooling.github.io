@@ -417,7 +417,7 @@ const TOOLS = [
   {
     name: 'void_shadow',
     description:
-      "Take a shadow OUT of the scoring loop (v2.3024): a category error (wrong division), a wrong reference, a contaminated run. Own shells only; a run that already scored stays scored (the owner judges gate eligibility instead). Stamps '[shadow VOID] <reason>' on the ledger. Use it instead of leaving a bad lock to auto-score.",
+      "Take a shadow OUT of the scoring loop (v2.3025): a category error (wrong division), a wrong reference, a contaminated run. Own shells only; a run that already scored stays scored (the owner judges gate eligibility instead). Stamps '[shadow VOID] <reason>' on the ledger. Use it instead of leaving a bad lock to auto-score.",
     inputSchema: {
       type: 'object',
       properties: {
@@ -491,7 +491,7 @@ async function resolveTwin(req: Request): Promise<{ twinUserId: string; email: s
 }
 
 // ---------------------------------------------------------------------------
-// Discipline fence (v2.3024): twin-estimator-1 is a PLUMBING estimator. On
+// Discipline fence (v2.3025): twin-estimator-1 is a PLUMBING estimator. On
 // 2026-09-07 next_shadow claimed b378 — an Electrical-division bid — and the
 // robot locked a $907k plumbing number against an electrical reference, mirroring
 // 34 plumbing entries into the empty electrical robot book on the way. Every
@@ -1732,7 +1732,7 @@ async function callTool(req: Request, name: string, args: Record<string, unknown
       const QUEUE_COLS = 'id, bid_number, project_name, address, distance_from_office, bid_due_date, plans_link, created_at, robot_requested_at, robot_requested_by'
       // v2.2543: human-requested bids (the green robot icon) come first and bypass
       // the lookback window — a person's ask shouldn't age out of the queue.
-      // v2.3024: plumbing-only — the twin's discipline (see disciplineRefusal).
+      // v2.3025: plumbing-only — the twin's discipline (see disciplineRefusal).
       const plumbingId = await plumbingServiceTypeId(admin)
       if (!plumbingId) return textContent('No Plumbing service type found — cannot scope the queue to the twin\'s discipline', true)
       const [recentRes, requestedRes] = await Promise.all([
@@ -1839,7 +1839,7 @@ async function callTool(req: Request, name: string, args: Record<string, unknown
       const days = Number(args.days ?? 30)
       const since = new Date(Date.now() - (Number.isFinite(days) && days > 0 ? days : 30) * 86400_000).toISOString()
       const CLAIM_COLS = 'id, bid_number, project_name, address, customer_id, service_type_id, distance_from_office, plans_link, gc_builder_id, bid_due_date, bid_date_sent, created_at, robot_requested_at, backtest_axis'
-      // v2.3024: plumbing-only candidates — the 2026-09-07 b378 category error.
+      // v2.3025: plumbing-only candidates — the 2026-09-07 b378 category error.
       const claimPlumbingId = await plumbingServiceTypeId(admin)
       if (!claimPlumbingId) return textContent('No Plumbing service type found — cannot scope claims to the twin\'s discipline', true)
       const [requestedRes, recentRes] = await Promise.all([
@@ -1886,7 +1886,7 @@ async function callTool(req: Request, name: string, args: Record<string, unknown
       return textContent(JSON.stringify({ done: true, note: 'All current candidates were claimed by parallel agents — nothing left to shadow right now.' }, null, 2))
     }
     case 'void_shadow': {
-      // v2.3024: the door for a shadow that should never score — a category error, a
+      // v2.3025: the door for a shadow that should never score — a category error, a
       // wrong reference, a contaminated run. Own shells only; a scored run stays scored.
       const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, {
         auth: { autoRefreshToken: false, persistSession: false },
