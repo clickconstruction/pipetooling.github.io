@@ -1,4 +1,4 @@
-# Engineering hygiene: the decomposition inventory has regrown, plus two mechanical sweeps
+# Engineering hygiene: the decomposition inventory has regrown, plus three mechanical sweeps
 
 Status: not started, low priority · sources: [`docs/PAGE_DECOMPOSITION_PLAYBOOK.md`](../docs/PAGE_DECOMPOSITION_PLAYBOOK.md) inventory (last_updated 2026-08-02), fragments v2.2461 / v2.2466
 
@@ -26,9 +26,11 @@ The playbook's method still applies; the numbers, the "largest files" headline i
 - **Silent no-op `from('bids').update(...)` siblings** (v2.2461): 23 update sites outside tests share the shape the RLS-refused-update fix covered once; a sweep would give them the same loud message.
 - **Same exposure on the takeoff tables** (v2.2466): `bids_takeoff_rough_part_lines` and siblings — UPDATEs do not error; wants a table-appropriate message.
 
+- **`toLocaleDateString('en-CA')` as a YYYY-MM-DD source** (v2.2980): 119 call sites across components, pages and hooks assume `en-CA` renders `YYYY-MM-DD`; Node 20 / ICU 72 renders `MM/DD/YYYY`, and `dateUtils.ts`, `checklistDueDates.ts` and `payStubPayments.ts` already carry the warning. Browsers get it right, so prod has been fine — but any of those strings that reaches a date column or a string comparison is one ICU update away from breaking. Sweep: replace with `denverCalendarDayKey(ms)` (company calendar) or a parts-based local-day helper where the device's day is meant.
+
 Mechanical sweeps merge alone (CLAUDE.md): cut from fresh main, merge before the next feature PR on those surfaces.
 
 ## The plan
 
 1. ~~Refresh the inventory table and the AI_CONTEXT headline~~ (done: AI_CONTEXT v2.2956, playbook table v2.2961) — pick the next Stage-A target from it: `JobsStagesTab.tsx` (6,094) and `BidsPricingTab.tsx` (5,504) roughly doubled since the July sweep.
-2. Run the two sweeps as one script-driven PR each.
+2. Run the three sweeps as one script-driven PR each.
