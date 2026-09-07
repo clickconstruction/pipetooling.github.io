@@ -51,6 +51,8 @@ export function TakeoffFocusView({
   showToast,
   history,
   focusRequest,
+  preferredFocusId,
+  onFocusChange,
 }: {
   bidId: string
   countRows: BidCountRow[]
@@ -73,12 +75,22 @@ export function TakeoffFocusView({
   history: Map<string, TakeoffFixtureHistoryRow[]> | null
   /** A cross-tab row jump: focus this fixture (nonce so the same row can be requested twice). */
   focusRequest?: { countRowId: string; nonce: number } | null
+  /** The fixture to open on when it is still a row on the bid (the tab's last-touched row, v2.2998). */
+  preferredFocusId?: string | null
+  /** Reports the focused fixture up so a hop to another view lands on it (v2.2998). */
+  onFocusChange?: (countRowId: string | null) => void
 }) {
-  const [focusId, setFocusId] = useState<string | null>(() => initialFocusId(countRows, coverage.uncostedIds))
+  const pickAnchor = () =>
+    preferredFocusId && countRows.some((r) => r.id === preferredFocusId) ? preferredFocusId : initialFocusId(countRows, coverage.uncostedIds)
+  const [focusId, setFocusId] = useState<string | null>(pickAnchor)
   const [remember, setRemember] = useState(false)
   const [busy, setBusy] = useState<'book' | 'lines' | 'done' | null>(null)
   const focusIdRef = useRef(focusId)
   focusIdRef.current = focusId
+  useEffect(() => {
+    onFocusChange?.(focusId)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focusId])
 
   // Anchor on the first uncosted fixture once the bid's rows AND lines are in
   // (rows can arrive a beat before lines, which would read as "all uncosted");
@@ -87,7 +99,7 @@ export function TakeoffFocusView({
   useEffect(() => {
     if (anchoredForRef.current !== bidId && countRows.length > 0 && (lines.length > 0 || coverage.costed > 0)) {
       anchoredForRef.current = bidId
-      setFocusId(initialFocusId(countRows, coverage.uncostedIds))
+      setFocusId(pickAnchor())
       return
     }
     if (focusId && countRows.some((r) => r.id === focusId)) return
@@ -171,7 +183,6 @@ export function TakeoffFocusView({
     <div data-testid="takeoff-focus-view">
       <TakeoffCoverageStrip
         coverage={coverage}
-        compact
         onClickUncosted={() => {
           const next = nextUncostedFixtureId(countRows, coverage.uncostedIds, focusId)
           if (next) setFocusId(next)

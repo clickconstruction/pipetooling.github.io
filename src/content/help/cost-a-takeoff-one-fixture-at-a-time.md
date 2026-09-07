@@ -9,7 +9,7 @@ order: 85
 
 ## The strip
 
-The top strip shows **Costed** (how many fixtures have part lines, with a bar), **Materials** (the same number Pricing uses as this bid's cost), and **$0 lines** (parts with no catalog price). {{button:blue|Fill from book · N matches}} fills every fixture the book recognizes in one go; {{button:outline|Sheet view}} hops to the Sheet view.
+The top strip shows **Costed** (how many fixtures have part lines, with a bar), **Materials** (the same number Pricing uses as this bid's cost), and **$0 lines** (parts with no catalog price). {{button:blue|Fill from book · N matches}} fills every fixture the book recognizes in one go; {{button:outline|Sheet view}} hops to the Sheet, scrolled to the fixture you are on — the pills beside the bid name hop the same way, and the fixture follows you back.
 
 ## The rail
 

@@ -11,7 +11,7 @@
  * for the tab's own mount-time loads.
  */
 import { describe, expect, it, vi } from 'vitest'
-import { screen } from '@testing-library/react'
+import { fireEvent, screen } from '@testing-library/react'
 
 vi.mock('../../lib/supabase', async () => {
   const { makeSupabaseStub } = await import('../../test/renderSmokeMocks')
@@ -138,6 +138,27 @@ describe('BidsTakeoffTab render smoke', () => {
       expect(await screen.findByTestId('takeoff-focus-view')).toBeTruthy()
       expect(screen.getByTestId('takeoff-coverage-strip')).toBeTruthy()
       expect(screen.queryByText('Apply Matching Fixture Assemblies')).toBeNull()
+    } finally {
+      window.localStorage.removeItem('bids_takeoff_view_v1')
+    }
+  })
+
+  it('hops One at a time → Sheet view and remembers the pick (v2.2998)', async () => {
+    window.localStorage.setItem('bids_takeoff_view_v1', 'new1')
+    try {
+      renderWithProviders(
+        <BidsTakeoffTab
+          {...makeProps({
+            selectedBidForTakeoff: makeBid({ materials_model: 'rough' }),
+            takeoffCountRows: [{ id: 'row-1', bid_id: 'bid-1', fixture: 'WC-1', count: 2, sequence_order: 1 } as unknown as Props['takeoffCountRows'][number]],
+          })}
+        />,
+      )
+      expect(await screen.findByTestId('takeoff-focus-view')).toBeTruthy()
+      fireEvent.click(screen.getByText('Sheet view'))
+      expect(await screen.findByTestId('takeoff-cost-rail-view')).toBeTruthy()
+      expect(screen.queryByTestId('takeoff-focus-view')).toBeNull()
+      expect(window.localStorage.getItem('bids_takeoff_view_v1')).toBe('new2')
     } finally {
       window.localStorage.removeItem('bids_takeoff_view_v1')
     }
