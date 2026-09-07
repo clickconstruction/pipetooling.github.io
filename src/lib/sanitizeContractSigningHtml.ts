@@ -54,18 +54,24 @@ function sanitizeWithDomParser(html: string): string {
   const root = doc.getElementById('contract-sanitize-root')
   if (!root) return ''
 
+  // Every element in the snapshot is handled in the same pass (v2.2992). The
+  // earlier loop stopped after ONE removal or unwrap per pass and capped the
+  // passes at 200, so a body with more than 200 unknown tags left whatever came
+  // after them untouched — including on* handlers, which are only stripped from
+  // allowlisted tags below. The cap stays as a backstop; one pass now settles
+  // any input and the second pass merely confirms nothing changed.
   let guard = 0
   const maxPasses = 200
   while (guard < maxPasses) {
     guard++
     let changed = false
-    const elements = root.querySelectorAll('*')
-    for (const el of elements) {
+    for (const el of Array.from(root.querySelectorAll('*'))) {
+      if (!root.contains(el)) continue // detached along with a removed ancestor
       const tag = el.tagName.toLowerCase()
       if (FORBIDDEN_TAGS.has(tag)) {
         el.remove()
         changed = true
-        break
+        continue
       }
       if (!ALLOWED_TAGS.has(tag)) {
         const parent = el.parentNode
@@ -75,7 +81,6 @@ function sanitizeWithDomParser(html: string): string {
         }
         el.remove()
         changed = true
-        break
       }
     }
     if (!changed) break
