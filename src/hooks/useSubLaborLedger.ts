@@ -58,7 +58,7 @@ export function useSubLaborLedger({
     {
       const withAnchors = await supabase
         .from('people_labor_jobs')
-        .select('id, assigned_to_name, address, job_number, labor_rate, job_date, created_at, distance_miles, invoice_link, project_id, step_id, stage, stage_changed_at, stage_changed_by, stage_source, stage_note, payable_after, pay_hold_reason')
+        .select('id, assigned_to_name, address, job_number, labor_rate, job_date, created_at, distance_miles, invoice_link, project_id, step_id, stage, stage_changed_at, stage_changed_by, stage_source, stage_note, payable_after, pay_hold_reason, progress_pct, progress_at')
         .order('created_at', { ascending: false })
       if (withAnchors.error) {
         const legacy = await supabase

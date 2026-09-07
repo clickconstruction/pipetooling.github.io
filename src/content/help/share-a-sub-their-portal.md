@@ -69,6 +69,8 @@ Move a sheet from the **Where it stands** rail on **Jobs → Subs → Pay**: the
 While a sheet is *Waiting on work*, the sub sees {{button:green|✓ My work here is done}} on that job. Pressing it (with an optional note — "Cleanout is behind the water heater — gate code 4471") moves the sheet to *Waiting on inspection* by itself. You'll see **Ready to walk — Danny Vasquez · 1004 162 Forest Drive** in the dispatch inbox, and the chip on Sub Labor reads *Waiting on inspection · sub* with their note behind ✎.
 :::
 
+**It moves itself when the facts do.** Once the sub reports **100%** from the portal, or the signed work order's last day has passed, the rail shows {{chip:purple|Waiting on inspection}} on its own with a small **· auto** mark — nobody has to click. If you move it back to *Waiting on work* by hand after that, your call stays. *Waiting on customer* is still yours to set once the inspection passes.
+
 Every move, yours or the sub's, writes a **Sub labor** line on the job's Activity feed — who moved it, from what to what, and the note — so the history is always on the job.
 
 ## What they see when an offer has a window

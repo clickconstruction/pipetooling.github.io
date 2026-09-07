@@ -16,7 +16,7 @@ Status: not started · sources: fragments v2.2667, v2.2844, v2.2860; [`docs/RUN_
 
 ## The plan
 
-- (1) is the next real PR on this surface: derive the stage from the stage window + percent + payments, keep the override as a manual nudge.
+- ~~(1)~~ shipped v2.3064 as a display derivation (`subSheetStageDerived.ts`: 100% or an ended signed window → Waiting on inspection, hand moves after the evidence stand). Left: persist `auto` (trigger/RPC → Activity line) and portal parity — ride (2)'s Spanish pass.
 - (4) rides the next roster-type change; (3) only if daily use asks for it; (2) with the next portal Spanish pass.
 
 ## How to verify

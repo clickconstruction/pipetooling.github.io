@@ -28,6 +28,11 @@ export type LaborJob = {
   pay_hold_reason?: string | null
   /** Resolved display name of stage_changed_by (office moves only). */
   stage_changed_by_name?: string | null
+  /** The sub's own percent from the portal (v2.2931) — evidence for the derived stage (v2.3064). */
+  progress_pct?: number | null
+  progress_at?: string | null
+  /** Display-only: why the effective stage differs from the stored one (v2.3064); never persisted. */
+  stage_auto_reason?: 'percent' | 'window' | null
   /** Project name resolved for anchored sheets (display only). */
   project_name?: string | null
   items?: Array<{

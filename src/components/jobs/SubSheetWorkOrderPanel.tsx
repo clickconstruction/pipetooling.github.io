@@ -25,6 +25,7 @@ import { todayYmdInAppTz } from '../../utils/dateUtils'
 import { SheetRail } from './SheetRail'
 import { SheetStoryModal } from './SheetStoryModal'
 import SubPortalGlobeButton from '../people/SubPortalGlobeButton'
+import { effectiveSubSheetStage, subSheetWorkEndYmd } from '../../lib/subSheetStageDerived'
 
 /**
  * "Work order" box on a Sub Labor sheet (Sub Work Orders train, PR 2 —
@@ -41,7 +42,16 @@ import SubPortalGlobeButton from '../people/SubPortalGlobeButton'
 
 export type SubSheetWorkOrderPanelProps = {
   laborJobId: string
-  sheet: { job_number: string | null; address: string | null; assigned_to_name: string | null }
+  sheet: {
+    job_number: string | null
+    address: string | null
+    assigned_to_name: string | null
+    /** Evidence for the derived stage (v2.3064); optional so older callers still compile. */
+    stage_source?: string | null
+    stage_changed_at?: string | null
+    progress_pct?: number | null
+    progress_at?: string | null
+  }
   /** Live sheet total (items) — frozen into the work order at send. */
   sheetTotal: number
   /** Live open balance — drives the rail's Paid segment. */
@@ -479,9 +489,19 @@ export function SubSheetWorkOrderPanel({
 
   const snapshot = commitment ? parseSubWorkOrderSnapshot(commitment.offer_scope_snapshot) : null
   // The same seven-dot rail as Jobs → Work Orders and Sub Labor (one-row spine, PR 5).
+  // The stage the facts already know (v2.3064): 100% from the portal or an ended signed window → Waiting on inspection.
+  const effectiveStage = effectiveSubSheetStage({
+    stage: sheetStage,
+    stageSource: sheet.stage_source,
+    stageChangedAt: sheet.stage_changed_at ?? null,
+    progressPct: sheet.progress_pct ?? null,
+    progressAt: sheet.progress_at ?? null,
+    workEndYmd: subSheetWorkEndYmd(commitment ? [commitment as unknown as { status: string; picked_end?: string | null; proposed_end?: string | null }] : []),
+    todayYmd: todayYmdInAppTz(),
+  }).stage
   const rail = buildSheetRail({
     coverage: commitment ? buildJobWorkOrderCoverage([commitment as unknown as WorkOrderRowLike], todayYmdInAppTz()) : { kind: 'none' },
-    sheetStage,
+    sheetStage: effectiveStage,
     agreed: sheetTotal,
     open: sheetOpen,
     unpriced: sheetTotal === 0,

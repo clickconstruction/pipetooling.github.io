@@ -16,13 +16,17 @@
 import { subLaborJobBalance } from '../subLaborOutstanding'
 import { splitAssignedToNames } from '../people/laborJobPersonMatch'
 import { normalizePersonNameKey } from '../personNameKey'
-import { normalizeSubSheetStage } from '../subSheetStage'
+import { effectiveSubSheetStage, subSheetWorkEndYmd } from '../subSheetStageDerived'
 import { buildJobWorkOrderCoverage, type JobWorkOrderCoverage, type WorkOrderRowLike } from './workOrderCoverage'
 import { isRosterSubSheet, type NeedsWorkOrderJob, type NeedsWorkOrderRosterPerson, type NeedsWorkOrderSheet } from './sheetsNeedingWorkOrder'
 import { buildSheetRail, sheetNextAction, SHEET_RAIL_GROUP_LABEL, type SheetNextAction, type SheetRail, type SheetRailGroup } from './sheetRail'
 
 export type WorkOrderBoardSheet = NeedsWorkOrderSheet & {
   stage?: string | null
+  stage_source?: string | null
+  stage_changed_at?: string | null
+  progress_pct?: number | null
+  progress_at?: string | null
   payable_after?: string | null
   job_date?: string | null
   created_at?: string | null
@@ -128,7 +132,8 @@ export function buildWorkOrderBoard(input: WorkOrderBoardInput): WorkOrderBoard 
     const subName = subNames.join(', ')
     const ids = input.assigneesBySheetId.get(sheet.id)
     const personId = ids && ids.length > 0 ? (ids.length === 1 ? ids[0]! : null) : subNames.length === 1 ? (personByNameKey.get(normalizePersonNameKey(subNames[0]!))?.id ?? null) : null
-    const rail = buildSheetRail({ coverage, sheetStage: normalizeSubSheetStage(sheet.stage), payableAfter: sheet.payable_after ?? null, agreed: bal.totalCost, open, unpriced })
+    const eff = effectiveSubSheetStage({ stage: sheet.stage, stageSource: sheet.stage_source, stageChangedAt: sheet.stage_changed_at ?? null, progressPct: sheet.progress_pct ?? null, progressAt: sheet.progress_at ?? null, workEndYmd: subSheetWorkEndYmd(covering), todayYmd: input.todayYmd })
+    const rail = buildSheetRail({ coverage, sheetStage: eff.stage, payableAfter: sheet.payable_after ?? null, agreed: bal.totalCost, open, unpriced })
     const next = sheetNextAction(rail, coverage, { subName, agreed: bal.totalCost, open, unpriced, todayYmd: input.todayYmd, nudgeAfterDays: input.nudgeAfterDays })
     const jobNumber = (sheet.job_number ?? '').trim()
     rows.push({
