@@ -1652,6 +1652,7 @@ export type Database = {
           gc_contact_email: string | null
           gc_contact_name: string | null
           gc_contact_phone: string | null
+          holdout: boolean
           id: string
           include_payment_schedule: boolean
           itb_links: Json
@@ -1718,6 +1719,7 @@ export type Database = {
           gc_contact_email?: string | null
           gc_contact_name?: string | null
           gc_contact_phone?: string | null
+          holdout?: boolean
           id?: string
           include_payment_schedule?: boolean
           itb_links?: Json
@@ -1784,6 +1786,7 @@ export type Database = {
           gc_contact_email?: string | null
           gc_contact_name?: string | null
           gc_contact_phone?: string | null
+          holdout?: boolean
           id?: string
           include_payment_schedule?: boolean
           itb_links?: Json
@@ -7544,6 +7547,90 @@ export type Database = {
           },
         ]
       }
+      job_stage_windows: {
+        Row: {
+          answer: string | null
+          answer_note: string | null
+          answered_at: string | null
+          asked_at: string | null
+          asked_end: string | null
+          asked_note: string | null
+          asked_start: string | null
+          bundle_id: string | null
+          created_at: string
+          created_by: string | null
+          fixture_id: string
+          id: string
+          job_id: string
+          note: string | null
+          offered_to_gc: boolean
+          offered_to_gc_at: string | null
+          updated_at: string
+          window_by: string | null
+          window_end: string | null
+          window_start: string | null
+        }
+        Insert: {
+          answer?: string | null
+          answer_note?: string | null
+          answered_at?: string | null
+          asked_at?: string | null
+          asked_end?: string | null
+          asked_note?: string | null
+          asked_start?: string | null
+          bundle_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          fixture_id: string
+          id?: string
+          job_id: string
+          note?: string | null
+          offered_to_gc?: boolean
+          offered_to_gc_at?: string | null
+          updated_at?: string
+          window_by?: string | null
+          window_end?: string | null
+          window_start?: string | null
+        }
+        Update: {
+          answer?: string | null
+          answer_note?: string | null
+          answered_at?: string | null
+          asked_at?: string | null
+          asked_end?: string | null
+          asked_note?: string | null
+          asked_start?: string | null
+          bundle_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          fixture_id?: string
+          id?: string
+          job_id?: string
+          note?: string | null
+          offered_to_gc?: boolean
+          offered_to_gc_at?: string | null
+          updated_at?: string
+          window_by?: string | null
+          window_end?: string | null
+          window_start?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "job_stage_windows_fixture_id_fkey"
+            columns: ["fixture_id"]
+            isOneToOne: false
+            referencedRelation: "jobs_ledger_fixtures"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_stage_windows_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs_ledger"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       job_status_events: {
         Row: {
           changed_at: string
@@ -7625,90 +7712,6 @@ export type Database = {
           {
             foreignKeyName: "job_travel_times_to_job_id_fkey"
             columns: ["to_job_id"]
-            isOneToOne: false
-            referencedRelation: "jobs_ledger"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      job_stage_windows: {
-        Row: {
-          created_at: string
-          created_by: string | null
-          fixture_id: string
-          id: string
-          job_id: string
-          answer: string | null
-          answer_note: string | null
-          answered_at: string | null
-          asked_at: string | null
-          asked_end: string | null
-          asked_note: string | null
-          asked_start: string | null
-          bundle_id: string | null
-          note: string | null
-          offered_to_gc: boolean
-          offered_to_gc_at: string | null
-          updated_at: string
-          window_by: string | null
-          window_end: string | null
-          window_start: string | null
-        }
-        Insert: {
-          created_at?: string
-          created_by?: string | null
-          fixture_id: string
-          id?: string
-          job_id: string
-          answer?: string | null
-          answer_note?: string | null
-          answered_at?: string | null
-          asked_at?: string | null
-          asked_end?: string | null
-          asked_note?: string | null
-          asked_start?: string | null
-          bundle_id?: string | null
-          note?: string | null
-          offered_to_gc?: boolean
-          offered_to_gc_at?: string | null
-          updated_at?: string
-          window_by?: string | null
-          window_end?: string | null
-          window_start?: string | null
-        }
-        Update: {
-          created_at?: string
-          created_by?: string | null
-          fixture_id?: string
-          id?: string
-          job_id?: string
-          answer?: string | null
-          answer_note?: string | null
-          answered_at?: string | null
-          asked_at?: string | null
-          asked_end?: string | null
-          asked_note?: string | null
-          asked_start?: string | null
-          bundle_id?: string | null
-          note?: string | null
-          offered_to_gc?: boolean
-          offered_to_gc_at?: string | null
-          updated_at?: string
-          window_by?: string | null
-          window_end?: string | null
-          window_start?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "job_stage_windows_fixture_id_fkey"
-            columns: ["fixture_id"]
-            isOneToOne: false
-            referencedRelation: "jobs_ledger_fixtures"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "job_stage_windows_job_id_fkey"
-            columns: ["job_id"]
             isOneToOne: false
             referencedRelation: "jobs_ledger"
             referencedColumns: ["id"]
@@ -11578,35 +11581,6 @@ export type Database = {
         }
         Relationships: []
       }
-      person_contract_assignments: {
-        Row: {
-          created_at: string | null
-          id: string
-          person_name: string
-          template_id: string
-        }
-        Insert: {
-          created_at?: string | null
-          id?: string
-          person_name: string
-          template_id: string
-        }
-        Update: {
-          created_at?: string | null
-          id?: string
-          person_name?: string
-          template_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "person_contract_assignments_template_id_fkey"
-            columns: ["template_id"]
-            isOneToOne: false
-            referencedRelation: "contract_templates"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       person_availability: {
         Row: {
           created_at: string
@@ -11641,6 +11615,35 @@ export type Database = {
             columns: ["person_id"]
             isOneToOne: false
             referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      person_contract_assignments: {
+        Row: {
+          created_at: string | null
+          id: string
+          person_name: string
+          template_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          person_name: string
+          template_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          person_name?: string
+          template_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "person_contract_assignments_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "contract_templates"
             referencedColumns: ["id"]
           },
         ]
@@ -12944,6 +12947,8 @@ export type Database = {
           occurred_at: string
           surface: string
           via: string | null
+          viewer: string | null
+          viewer_user_id: string | null
         }
         Insert: {
           entity_id?: string | null
@@ -12951,6 +12956,8 @@ export type Database = {
           occurred_at?: string
           surface: string
           via?: string | null
+          viewer?: string | null
+          viewer_user_id?: string | null
         }
         Update: {
           entity_id?: string | null
@@ -12958,6 +12965,8 @@ export type Database = {
           occurred_at?: string
           surface?: string
           via?: string | null
+          viewer?: string | null
+          viewer_user_id?: string | null
         }
         Relationships: []
       }
@@ -14388,8 +14397,8 @@ export type Database = {
           signer_signature_mode: string | null
           signer_signature_storage_path: string | null
           signer_user_agent: string | null
-          status: string
           stage_window_id: string | null
+          status: string
           step_id: string | null
           updated_at: string
           work_days: number | null
@@ -14430,8 +14439,8 @@ export type Database = {
           signer_signature_mode?: string | null
           signer_signature_storage_path?: string | null
           signer_user_agent?: string | null
-          status?: string
           stage_window_id?: string | null
+          status?: string
           step_id?: string | null
           updated_at?: string
           work_days?: number | null
@@ -14472,20 +14481,13 @@ export type Database = {
           signer_signature_mode?: string | null
           signer_signature_storage_path?: string | null
           signer_user_agent?: string | null
-          status?: string
           stage_window_id?: string | null
+          status?: string
           step_id?: string | null
           updated_at?: string
           work_days?: number | null
         }
         Relationships: [
-          {
-            foreignKeyName: "step_commitments_stage_window_id_fkey"
-            columns: ["stage_window_id"]
-            isOneToOne: false
-            referencedRelation: "job_stage_windows"
-            referencedColumns: ["id"]
-          },
           {
             foreignKeyName: "step_commitments_created_by_fkey"
             columns: ["created_by"]
@@ -14512,6 +14514,13 @@ export type Database = {
             columns: ["person_id"]
             isOneToOne: false
             referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "step_commitments_stage_window_id_fkey"
+            columns: ["stage_window_id"]
+            isOneToOne: false
+            referencedRelation: "job_stage_windows"
             referencedColumns: ["id"]
           },
           {
@@ -15958,6 +15967,7 @@ export type Database = {
           promoted_rfi_id: string | null
           question: string
           status: string
+          topic: string | null
           twin_user_id: string
           updated_at: string
         }
@@ -15972,6 +15982,7 @@ export type Database = {
           promoted_rfi_id?: string | null
           question: string
           status?: string
+          topic?: string | null
           twin_user_id: string
           updated_at?: string
         }
@@ -15986,6 +15997,7 @@ export type Database = {
           promoted_rfi_id?: string | null
           question?: string
           status?: string
+          topic?: string | null
           twin_user_id?: string
           updated_at?: string
         }
@@ -17818,6 +17830,16 @@ export type Database = {
         Args: { p_invoice_ids: string[]; p_mercury_transaction_id: string }
         Returns: undefined
       }
+      _schedule_total_block_counts: {
+        Args: { p_end: string; p_start: string }
+        Returns: {
+          day: string
+          total_count: number
+          total_hours: number
+          user_id: string
+        }[]
+      }
+      _sub_portal_visits_gate: { Args: never; Returns: boolean }
       acknowledge_partner_statement: {
         Args: { p_pay_stub_id: string }
         Returns: Json
@@ -17917,6 +17939,10 @@ export type Database = {
       }
       auth_uid_is_helpers_or_subcontractor: { Args: never; Returns: boolean }
       auth_user_can_merge_customers: { Args: never; Returns: boolean }
+      auto_approve_pending_accounting_label_suggestions: {
+        Args: { p_tx_ids: string[] }
+        Returns: number
+      }
       auto_approve_salary_clock_sessions: {
         Args: never
         Returns: {
@@ -18081,6 +18107,15 @@ export type Database = {
       count_mercury_transactions_for_bank_payments: {
         Args: { p_filter?: Json }
         Returns: number
+      }
+      count_pending_accounting_label_suggestions: {
+        Args: { p_min_age_days?: number }
+        Returns: {
+          oldest_created_at: string
+          pending: number
+          stale: number
+          stale_amount: number
+        }[]
       }
       count_pending_clock_session_approvals: {
         Args: never
@@ -18269,6 +18304,7 @@ export type Database = {
         Args: { p_job_id: string }
         Returns: Json
       }
+      escape_like_pattern: { Args: { p_text: string }; Returns: string }
       estimate_accept_notify_filter_eligible_user_ids: {
         Args: { p_candidate_ids: string[]; p_master_user_id: string }
         Returns: string[]
@@ -18695,6 +18731,7 @@ export type Database = {
           }
       is_assistant: { Args: never; Returns: boolean }
       is_banking_attributor: { Args: never; Returns: boolean }
+      is_banking_staff: { Args: never; Returns: boolean }
       is_bid_pricing_user: { Args: never; Returns: boolean }
       is_checklist_tech_tree_staff_or_primary: { Args: never; Returns: boolean }
       is_controller: { Args: never; Returns: boolean }
@@ -18705,9 +18742,11 @@ export type Database = {
       is_estimator: { Args: never; Returns: boolean }
       is_estimator_group_member: { Args: never; Returns: boolean }
       is_master_or_dev: { Args: never; Returns: boolean }
+      is_office_staff: { Args: never; Returns: boolean }
       is_pay_approved_master: { Args: never; Returns: boolean }
       is_primary: { Args: never; Returns: boolean }
       is_read_only: { Args: never; Returns: boolean }
+      is_superintendent: { Args: never; Returns: boolean }
       is_team_lead_for_member: {
         Args: { p_leader: string; p_member: string }
         Returns: boolean
@@ -19595,6 +19634,10 @@ export type Database = {
         Args: { p_person_id: string; p_rotate?: boolean }
         Returns: Json
       }
+      move_bid_schedule_blocks_to_job: {
+        Args: { p_bid_id: string; p_job_id: string }
+        Returns: number
+      }
       move_job_schedule_block_group: {
         Args: {
           p_job_id: string
@@ -19694,6 +19737,10 @@ export type Database = {
       recompute_people_hours_after_session_edit: {
         Args: { p_old_work_date?: string; p_session_id: string }
         Returns: undefined
+      }
+      record_estimate_decline: {
+        Args: { p_channel?: string; p_estimate_id: string; p_note?: string }
+        Returns: Json
       }
       record_estimate_public_link_view: {
         Args: {
@@ -19880,6 +19927,15 @@ export type Database = {
       salary_sync_one_user_clock_sessions: {
         Args: { p_now: string; p_user_id: string; p_work_date: string }
         Returns: undefined
+      }
+      schedule_hidden_block_counts: {
+        Args: { p_end: string; p_start: string }
+        Returns: {
+          day: string
+          hidden_count: number
+          hidden_hours: number
+          user_id: string
+        }[]
       }
       search_bids_for_clock: {
         Args: {
@@ -20121,6 +20177,29 @@ export type Database = {
         }
         Returns: boolean
       }
+      sub_portal_visit_summary: {
+        Args: { p_person_ids: string[] }
+        Returns: {
+          first_outside_at: string
+          last_outside_at: string
+          last_staff_at: string
+          last_staff_name: string
+          last_staff_user_id: string
+          outside_opens: number
+          person_id: string
+          staff_looks: number
+        }[]
+      }
+      sub_portal_visits: {
+        Args: { p_limit?: number; p_person_id: string }
+        Returns: {
+          occurred_at: string
+          staff_name: string
+          staff_user_id: string
+          via: string
+          viewer: string
+        }[]
+      }
       sub_sheet_stage_label: { Args: { p_stage: string }; Returns: string }
       subcontractor_can_read_jobs_ledger_row: {
         Args: { p_job_id: string }
@@ -20141,6 +20220,10 @@ export type Database = {
       }
       superintendent_can_access_estimate: {
         Args: { e: Database["public"]["Tables"]["estimates"]["Row"] }
+        Returns: boolean
+      }
+      superintendent_can_access_sub_work_order: {
+        Args: { p_job_id: string; p_labor_job_id: string }
         Returns: boolean
       }
       superintendent_can_touch_job_thread: {
