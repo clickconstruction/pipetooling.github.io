@@ -30,5 +30,5 @@ Mechanical sweeps merge alone (CLAUDE.md): cut from fresh main, merge before the
 
 ## The plan
 
-1. Refresh the inventory table and the AI_CONTEXT headline (one docs PR) and pick the next Stage-A target from it.
+1. ~~Refresh the inventory table and the AI_CONTEXT headline~~ (done: AI_CONTEXT v2.2956, playbook table v2.2961) — pick the next Stage-A target from it: `JobsStagesTab.tsx` (6,094) and `BidsPricingTab.tsx` (5,504) roughly doubled since the July sweep.
 2. Run the two sweeps as one script-driven PR each.
