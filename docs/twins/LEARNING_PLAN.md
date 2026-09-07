@@ -71,7 +71,7 @@ marginal cost to her.
   blocked on exactly this) — a "plans readable by robots" indicator on live
   bids belongs on the board. (c) **Discipline**: b480 shadowed b378, an
   Electrical-division bid, and locked a $907k plumbing number against it —
-  the dispatcher had no service-type filter. Fixed v2.3022 (plumbing-only
+  the dispatcher had no service-type filter. Fixed v2.3024 (plumbing-only
   claims at every door + `void_shadow`); the run was voided and the entries
   it mirrored into the electrical book removed. Coverage now counts plumbing
   bids only.
