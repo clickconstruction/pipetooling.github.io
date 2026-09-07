@@ -14,6 +14,7 @@ import { companyWeekStartSundayContaining, denverCalendarDayKey, getDefaultWeekR
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../hooks/useAuth'
 import { isAssistantLike } from '../../lib/subcontractorLikeRole'
+import { useMySubPortalAddress } from '../../hooks/useMySubPortalAddress'
 import { JobCalendarModal } from '../jobs/JobCalendarModal'
 import type { JobCalendarJobIdentity } from '../../lib/jobCalendarModal'
 import {
@@ -260,6 +261,8 @@ export default function DashboardJobModeCard({ userId, onLeaveReport, onTurnaway
   const { prefixMap } = useLedgerDisplayPrefixes()
   const navigate = useNavigate()
   const { role } = useAuth()
+  // SP-2 (v2.3067): a sub or helper with a login reaches their own statement from here.
+  const myStatement = useMySubPortalAddress(role === 'subcontractor' || role === 'helpers')
   // Same planner pool as Stages' canOpenJobScheduleModal — gates the calendar's week-dispatch link.
   const canOpenWeekDispatch =
     role === 'dev' || role === 'master_technician' || isAssistantLike(role) || role === 'superintendent'
@@ -903,6 +906,19 @@ export default function DashboardJobModeCard({ userId, onLeaveReport, onTurnaway
               </button>
             )
           })}
+        </div>
+      ) : null}
+      {myStatement.url ? (
+        <div style={{ margin: '0 0 0.5rem', textAlign: 'center' }}>
+          <a
+            href={myStatement.url}
+            target="_blank"
+            rel="noopener"
+            aria-label="My statement — opens your work and pay portal"
+            style={{ display: 'inline-block', padding: '0.4rem 0.9rem', borderRadius: 999, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-900)', fontWeight: 600, fontSize: '0.9rem', textDecoration: 'none' }}
+          >
+            My statement ↗
+          </a>
         </div>
       ) : null}
       <div style={buttonRow}>

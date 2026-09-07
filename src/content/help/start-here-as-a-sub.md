@@ -31,6 +31,8 @@ The office breaks a project into steps — Rough In, Top Out, Trim Out. When one
 
 ## Work orders and your pay
 
+**Your statement is one tap away.** The Job Mode card has a {{button:outline|My statement ↗}} door that opens your work and pay portal — the same page the office texts you a link to — so you never need to dig for that text. (It appears once the office has created your portal.)
+
 If the office offers you a job for a set amount, it arrives as an offer card with the amount and the proposed dates. {{button:green|Accept}} takes it; {{button:red|Decline…}} asks for a quick reason.
 
 **Your money** on the Dashboard shows what you're owed, every sheet, and the payments and backcharges on each one — the same numbers the office sees. See [what you're owed as a sub](?g=see-what-youre-owed-as-a-sub) for the details.
