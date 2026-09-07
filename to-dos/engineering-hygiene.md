@@ -26,7 +26,7 @@ The playbook's method still applies; the numbers, the "largest files" headline i
 - **Silent no-op `from('bids').update(...)` siblings** (v2.2461): 23 update sites outside tests share the shape the RLS-refused-update fix covered once; a sweep would give them the same loud message.
 - **Same exposure on the takeoff tables** (v2.2466): `bids_takeoff_rough_part_lines` and siblings — UPDATEs do not error; wants a table-appropriate message.
 
-- **`toLocaleDateString('en-CA')` as a YYYY-MM-DD source** (v2.2980): 119 call sites across components, pages and hooks assume `en-CA` renders `YYYY-MM-DD`; Node 20 / ICU 72 renders `MM/DD/YYYY`, and `dateUtils.ts`, `checklistDueDates.ts` and `payStubPayments.ts` already carry the warning. Browsers get it right, so prod has been fine — but any of those strings that reaches a date column or a string comparison is one ICU update away from breaking. Sweep: replace with `denverCalendarDayKey(ms)` (company calendar) or a parts-based local-day helper where the device's day is meant.
+- ~~**`toLocaleDateString('en-CA')` as a YYYY-MM-DD source**~~ — done v2.3061: 119 sites in 41 files swept (`todayYmdInAppTz()` for today, `localCalendarDayKey(d)` for a device-local Date), guard rule 5 in `check-app-calendar-tz.mjs` keeps it out.
 
 - **Edge `_shared/ipGeoValidation.ts` is not strict-clean** (v2.3026): it fails the app's tsconfig (`noUncheckedIndexedAccess`: a possibly-undefined octet at lines 8 and 30–35), so the client test for `ipGeolocationMaps.ts` cannot import it for a client↔edge parity guard the way the accounting-label parity tests do. Fix is type-narrowing only (no behaviour change), but it lives under `_shared`, so redeploy `resolve-ip-geolocation` afterwards (edge drift misses `_shared` importers).
 

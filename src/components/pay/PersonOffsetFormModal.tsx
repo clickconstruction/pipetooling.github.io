@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { withSupabaseRetry } from '../../utils/errorHandling'
+import { todayYmdInAppTz } from '../../utils/dateUtils'
 
 export type PersonOffsetKind = 'backcharge' | 'damage' | 'employee_credit'
 
@@ -36,7 +37,7 @@ export type PersonOffsetFormModalProps = {
 }
 
 function defaultOccurredDateYmd(): string {
-  return new Date().toLocaleDateString('en-CA')
+  return todayYmdInAppTz()
 }
 
 export function PersonOffsetFormModal({

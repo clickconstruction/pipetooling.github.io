@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { SERVICE_TYPE_LABELS, oilStatus, vehicleDisplayName, vinTail, type OilStatus } from '../../lib/vehicleFleet'
 import { historyShortDate } from '../../lib/checklistHistorySplit'
+import { todayYmdInAppTz } from '../../utils/dateUtils'
 
 /**
  * "The vehicle behind the task" (v2.2094): tapping the 🚗 chip on a vehicle
@@ -99,7 +100,7 @@ export default function VehicleTaskContextModal({
     }
   }, [instanceId])
 
-  const todayYmd = new Date().toLocaleDateString('en-CA')
+  const todayYmd = todayYmdInAppTz()
   const factBox = (k: string, v: string, m: string, warn = false) => (
     <div style={{ border: `1px solid ${warn ? '#fde68a' : 'var(--border)'}`, background: warn ? 'var(--bg-amber-tint)' : undefined, borderRadius: 8, padding: '0.4rem 0.6rem' }}>
       <div style={{ fontSize: '0.62rem', fontWeight: 700, letterSpacing: '0.06em', color: 'var(--text-muted)' }}>{k}</div>

@@ -13,6 +13,7 @@ import {
   type JobAccountsStatus,
   type JobAccountsView,
 } from '../../lib/materials/jobAccountsFlow'
+import { todayYmdInAppTz } from '../../utils/dateUtils'
 
 /** Same bar segment palette as the Supply Houses phone aging bars (v2.2191). */
 const OWED_SEGMENT_COLORS: Record<AgingBucketKey, string> = {
@@ -219,7 +220,7 @@ export function MaterialsJobAccountsTab({ active, myRole, onOpenSupplyHouse }: M
         }),
         'load jobs for job accounts',
       )
-      const today = new Date().toLocaleDateString('en-CA')
+      const today = todayYmdInAppTz()
       setTodayYmd(today)
       setView(
         buildJobAccountsView(

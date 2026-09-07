@@ -41,6 +41,7 @@ import {
 import { googleDrivePreviewEmbedUrl } from '../lib/estimateCustomerAttachment'
 import type { FinancialBucket, FinancialItem, UpcomingPayrollApSection } from '../lib/dashboardFinancials'
 import type { DashboardApBill } from '../hooks/useDashboardFinancials'
+import { todayYmdInAppTz } from '../utils/dateUtils'
 
 type CardKey = 'ar' | 'ap' | 'unbilled'
 
@@ -84,7 +85,7 @@ function oldestShortWithAge(ymd: string): string {
   const d = new Date(ymd + 'T12:00:00')
   if (Number.isNaN(d.getTime())) return '—'
   const md = `${d.getMonth() + 1}/${d.getDate()}`
-  const days = daysPastDue(ymd, new Date().toLocaleDateString('en-CA'))
+  const days = daysPastDue(ymd, todayYmdInAppTz())
   return Number.isFinite(days) && days > 0 ? `${md} (${days}d)` : md
 }
 
@@ -101,7 +102,7 @@ function ApBillModal({
 }) {
   const [expanded, setExpanded] = useState(false)
   const embedUrl = bill.link ? googleDrivePreviewEmbedUrl(bill.link) : null
-  const pastDue = bill.dueDateYmd ? daysPastDue(bill.dueDateYmd, new Date().toLocaleDateString('en-CA')) : null
+  const pastDue = bill.dueDateYmd ? daysPastDue(bill.dueDateYmd, todayYmdInAppTz()) : null
 
   const factRow = (label: string, value: React.ReactNode) => (
     <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', padding: '0.3rem 0', borderBottom: '1px solid var(--border)', fontSize: '0.875rem' }}>
@@ -506,7 +507,7 @@ function ItemsModal({
     }
   }, [cardKey])
   const arCustomersActive = cardKey === 'ar' && arView === 'customers'
-  const arTodayYmd = new Date().toLocaleDateString('en-CA')
+  const arTodayYmd = todayYmdInAppTz()
   const arRollup = useMemo(
     () => (cardKey === 'ar' ? buildArCustomerRollup(bucket.items, arPaySpeeds, arTodayYmd) : null),
     [cardKey, bucket.items, arPaySpeeds, arTodayYmd],
@@ -719,7 +720,7 @@ function ItemsModal({
   const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>({})
   const toggleSection = (title: string) =>
     setCollapsedSections((prev) => ({ ...prev, [title]: !(prev[title] ?? false) }))
-  const todayYmd = new Date().toLocaleDateString('en-CA')
+  const todayYmd = todayYmdInAppTz()
   /** AP supply rows age by the bill's DUE date; everything else by the row date. */
   const itemDateYmd = (item: FinancialItem): string | null => apBills?.[item.key]?.dueDateYmd ?? item.dateYmd
   // AP's upcoming-payroll estimate joins as a real section so search / sort /
@@ -1589,7 +1590,7 @@ export default function DashboardFinancialsSection({ overheadCard = null }: { ov
   // 0–14/15–30/30d+ bands and colors as the modal's aging strip; uncolored
   // remainder = fresh/undated money) → at-risk lead line → quiet detail lines.
   // detailLines use short-k glance figures; exact dollars live in the modal.
-  const cardsTodayYmd = new Date().toLocaleDateString('en-CA')
+  const cardsTodayYmd = todayYmdInAppTz()
   const cards: Array<{
     key: CardKey
     bucket: FinancialBucket

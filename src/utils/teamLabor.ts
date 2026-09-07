@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { fetchAllRows } from '../lib/supabasePaging'
+import { localCalendarDayKey } from './dateUtils'
 
 export type CrewJobAssignment = { job_id: string; pct: number }
 export type CrewJobRow = { job_assignments: CrewJobAssignment[] }
@@ -110,7 +111,7 @@ export async function loadTeamLaborData(
 ): Promise<TeamLaborRow[]> {
   const twoYearsAgo = new Date()
   twoYearsAgo.setFullYear(twoYearsAgo.getFullYear() - 2)
-  const startDate = twoYearsAgo.toLocaleDateString('en-CA')
+  const startDate = localCalendarDayKey(twoYearsAgo)
   // Company-wide + 2-year fetches cross PostgREST's silent 1000-row cap
   // (people_crew_jobs alone is past it) — page them or the tab aggregates an
   // arbitrary subset with no error.
@@ -294,7 +295,7 @@ export async function loadTeamLaborDataForBids(
 ): Promise<TeamLaborBidRow[]> {
   const twoYearsAgo = new Date()
   twoYearsAgo.setFullYear(twoYearsAgo.getFullYear() - 2)
-  const startDate = twoYearsAgo.toLocaleDateString('en-CA')
+  const startDate = localCalendarDayKey(twoYearsAgo)
   // Same 1000-row-cap hazard as loadTeamLaborData — the 2-year hours fetch is
   // well past the cap even when the crew-bids table itself is small.
   const [crewData, hoursData, configMap] = await Promise.all([

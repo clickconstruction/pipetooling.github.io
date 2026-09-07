@@ -30,7 +30,7 @@ import {
   type RateSplitSessionRow,
 } from '../../lib/officeJobRateSplit'
 import { fetchOverheadOfficeJobLedgerIdFromAppSettings } from '../../lib/overheadOfficeJobSettings'
-import { isoWeekNumberFromGregorianYmd, ymdAddDays } from '../../utils/dateUtils'
+import { isoWeekNumberFromGregorianYmd, localCalendarDayKey, ymdAddDays } from '../../utils/dateUtils'
 import {
   buildUpcomingPayrollSummary,
   payWeekStartYmd,
@@ -432,7 +432,7 @@ export default function PeoplePayStubsTab({
       const d0 = new Date(start + 'T12:00:00')
       const endD0 = new Date(end + 'T12:00:00')
       while (d0 <= endD0) {
-        dayKeys.push(d0.toLocaleDateString('en-CA'))
+        dayKeys.push(localCalendarDayKey(d0))
         d0.setDate(d0.getDate() + 1)
       }
     }
@@ -1385,7 +1385,7 @@ export default function PeoplePayStubsTab({
                     const cells: Array<{ date: string; earned: number; paid: number } | null> = []
                     const d = new Date(firstSunday)
                     while (d <= lastSunday) {
-                      const key = d.toLocaleDateString('en-CA')
+                      const key = localCalendarDayKey(d)
                       const inYear = d.getFullYear() === payStubCalendarYear
                       if (inYear && payStubCalendarData) {
                         const earned = payStubCalendarData.earnedByDate[key] ?? 0

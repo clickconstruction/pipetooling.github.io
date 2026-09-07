@@ -11,7 +11,10 @@
  *      endOfYmdInAppTzMs() or compare civil dates.
  *   4. (v2.2703) CURRENT_DATE in a migration newer than 20260903190000 — the session zone is UTC;
  *      use public.app_today(). Waive a deliberate read-side use with `-- tz-ok: <why>`.
- * Test files are exempt from 2–3 (they pin the bug class on purpose).
+ *   5. (v2.3061) `toLocaleDateString('en-CA')` with no options as a YYYY-MM-DD source: Node 20 / ICU 72
+ *      render en-CA as MM/DD/YYYY. Use todayYmdInAppTz() for "today" or localCalendarDayKey(d) for a
+ *      device-local Date (both in src/utils/dateUtils.ts); an options form that pins timeZone is fine.
+ * Test files are exempt from 2–3 and 5 (they pin the bug class on purpose).
  */
 import fs from 'node:fs'
 import path from 'node:path'
@@ -48,6 +51,7 @@ for (const base of ['src', path.join('supabase', 'functions')]) {
 
 const UTC_TODAY_RE = /new Date\(\)\.toISOString\(\)\.(?:slice|substring)\(0, ?10\)|new Date\(\)\.toISOString\(\)\.split\(['"]T['"]\)\[0\]/
 const UTC_END_OF_DAY_RE = /(?:\$\{[^}]*\}|\+ ?['"])T23:59:59/
+const EN_CA_SOURCE_RE = /\.toLocaleDateString\(['"]en-CA['"]\)/
 const FILENAME_RE = /download|[Ff]ilename|\.csv|\.json|\.xlsx/
 const WAIVER_RE = /tz-ok:/
 const CURRENT_DATE_CUTOFF = '20260903190000'
@@ -55,6 +59,7 @@ const CURRENT_DATE_CUTOFF = '20260903190000'
 const offenders = []
 const utcToday = []
 const utcEndOfDay = []
+const enCaSource = []
 for (const file of files) {
   if (ALLOWLIST.has(file)) continue
   const txt = fs.readFileSync(file, 'utf8')
@@ -64,6 +69,7 @@ for (const file of files) {
     if (WAIVER_RE.test(line)) return
     if (UTC_TODAY_RE.test(line) && !FILENAME_RE.test(line)) utcToday.push(`${path.relative(ROOT, file)}:${i + 1}`)
     if (UTC_END_OF_DAY_RE.test(line)) utcEndOfDay.push(`${path.relative(ROOT, file)}:${i + 1}`)
+    if (EN_CA_SOURCE_RE.test(line)) enCaSource.push(`${path.relative(ROOT, file)}:${i + 1}`)
   })
 }
 
@@ -93,6 +99,11 @@ if (utcEndOfDay.length > 0) {
   failed = true
   console.error('\nEnd of day built as <ymd> + \'T23:59:59Z\' (that is 7 PM Central):\n  ' + utcEndOfDay.join('\n  '))
   console.error('\nUse endOfYmdInAppTzMs(ymd) from src/utils/dateUtils.ts, or compare civil dates against todayYmdInAppTz().')
+}
+if (enCaSource.length > 0) {
+  failed = true
+  console.error('\n`toLocaleDateString(\'en-CA\')` used as a YYYY-MM-DD source (MM/DD/YYYY on Node 20 / ICU 72):\n  ' + enCaSource.join('\n  '))
+  console.error('\nUse todayYmdInAppTz() for today, or localCalendarDayKey(d) for a device-local Date (src/utils/dateUtils.ts). An options form that pins timeZone is allowed.')
 }
 if (sqlCurrentDate.length > 0) {
   failed = true

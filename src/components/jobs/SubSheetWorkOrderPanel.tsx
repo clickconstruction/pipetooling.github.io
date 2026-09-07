@@ -21,7 +21,7 @@ import {
 import type { SubSheetStage } from '../../lib/subSheetStage'
 import { buildJobWorkOrderCoverage, type WorkOrderRowLike } from '../../lib/subWorkOrders/workOrderCoverage'
 import { buildSheetRail } from '../../lib/subWorkOrders/sheetRail'
-import { todayYmdInAppTz } from '../../utils/dateUtils'
+import { localCalendarDayKey, todayYmdInAppTz } from '../../utils/dateUtils'
 import { SheetRail } from './SheetRail'
 import { SheetStoryModal } from './SheetStoryModal'
 import SubPortalGlobeButton from '../people/SubPortalGlobeButton'
@@ -275,7 +275,7 @@ export function SubSheetWorkOrderPanel({
       const customLines = prior ? prior.lines.map((l) => l.label).filter((l) => !libraryLabels.has(l.toLowerCase())) : []
       const priorExcl = new Set((prior?.exclusions ?? []).map((x) => x.toLowerCase()))
       const priorAcks = new Set((prior?.acknowledgements ?? []).map((x) => x.toLowerCase()))
-      const defaultExpires = new Date(Date.now() + 7 * 86400000).toLocaleDateString('en-CA')
+      const defaultExpires = localCalendarDayKey(new Date(Date.now() + 7 * 86400000))
       setDraft({
         personId: from?.person_id ?? assignees[0]?.id ?? '',
         serviceTypeId,

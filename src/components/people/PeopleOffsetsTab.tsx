@@ -6,6 +6,7 @@ import { type PersonOffsetInitialDraft, PersonOffsetFormModal } from '../pay/Per
 import { buildSettleUpBoard, type StubPaymentLike } from '../../lib/people/personMoneyLedger'
 import { fetchLaborPayConfigMap } from '../../utils/teamLabor'
 import PersonMoneyLedgerModal from './PersonMoneyLedgerModal'
+import { localCalendarDayKey } from '../../utils/dateUtils'
 
 /** Above Record payment / nested pay dialogs when opening PersonOffsetFormModal from Pay History. */
 const Z_PEOPLE_OFFSET_FORM = 1210
@@ -62,7 +63,7 @@ export default function PeopleOffsetsTab({ people, users, payStubs, loadPayStubs
       const hours: Array<{ personName: string; workDate: string; hours: number }> = []
       const twoYearsAgo = new Date()
       twoYearsAgo.setFullYear(twoYearsAgo.getFullYear() - 2)
-      const startDate = twoYearsAgo.toLocaleDateString('en-CA')
+      const startDate = localCalendarDayKey(twoYearsAgo)
       for (let from = 0; ; from += PAGE) {
         const { data, error } = await supabase
           .from('people_hours')

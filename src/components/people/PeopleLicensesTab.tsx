@@ -4,6 +4,7 @@ import { withSupabaseRetry } from '../../utils/errorHandling'
 import { useToastContext } from '../../contexts/ToastContext'
 import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
 import PersonLicenseHoursLogModal from './PersonLicenseHoursLogModal'
+import { localCalendarDayKey, todayYmdInAppTz } from '../../utils/dateUtils'
 
 type PersonLicenseCostLine = { id: string; person_license_id: string; amount: number; note: string | null; date: string; created_at: string | null }
 type PersonLicense = {
@@ -42,13 +43,13 @@ export default function PeopleLicensesTab({ people, users }: PeopleLicensesTabPr
   const [licensePersonName, setLicensePersonName] = useState('')
   const [licenseType, setLicenseType] = useState('')
   const [licenseNote, setLicenseNote] = useState('')
-  const [licenseDateOfExpiry, setLicenseDateOfExpiry] = useState(() => new Date().toLocaleDateString('en-CA'))
+  const [licenseDateOfExpiry, setLicenseDateOfExpiry] = useState(() => todayYmdInAppTz())
   const [costLineFormOpen, setCostLineFormOpen] = useState(false)
   const [editingCostLine, setEditingCostLine] = useState<PersonLicenseCostLine | null>(null)
   const [costLineLicenseId, setCostLineLicenseId] = useState<string | null>(null)
   const [costLineAmount, setCostLineAmount] = useState('')
   const [costLineNote, setCostLineNote] = useState('')
-  const [costLineDate, setCostLineDate] = useState(() => new Date().toLocaleDateString('en-CA'))
+  const [costLineDate, setCostLineDate] = useState(() => todayYmdInAppTz())
   const [expandedCostLinesLicenseId, setExpandedCostLinesLicenseId] = useState<string | null>(null)
   const [hoursLogPersonName, setHoursLogPersonName] = useState<string | null>(null)
 
@@ -61,10 +62,10 @@ export default function PeopleLicensesTab({ people, users }: PeopleLicensesTabPr
     else {
       const list = (data ?? []) as PersonLicense[]
       setLicenses(list)
-      const today = new Date().toLocaleDateString('en-CA')
+      const today = todayYmdInAppTz()
       const in30 = new Date()
       in30.setDate(in30.getDate() + 30)
-      const todayPlus30 = in30.toLocaleDateString('en-CA')
+      const todayPlus30 = localCalendarDayKey(in30)
       setLicensesExpiringSoon(list.filter((l) => l.date_of_expiry >= today && l.date_of_expiry <= todayPlus30))
     }
   }
@@ -74,7 +75,7 @@ export default function PeopleLicensesTab({ people, users }: PeopleLicensesTabPr
     setLicensePersonName(personName ?? license?.person_name ?? '')
     setLicenseType(license?.license_type ?? '')
     setLicenseNote(license?.note ?? '')
-    setLicenseDateOfExpiry(license?.date_of_expiry ?? new Date().toLocaleDateString('en-CA'))
+    setLicenseDateOfExpiry(license?.date_of_expiry ?? todayYmdInAppTz())
     setLicenseFormOpen(true)
   }
 
@@ -84,7 +85,7 @@ export default function PeopleLicensesTab({ people, users }: PeopleLicensesTabPr
     setLicensePersonName('')
     setLicenseType('')
     setLicenseNote('')
-    setLicenseDateOfExpiry(new Date().toLocaleDateString('en-CA'))
+    setLicenseDateOfExpiry(todayYmdInAppTz())
   }
 
   function openCostLineForm(licenseId: string, line?: PersonLicenseCostLine) {
@@ -92,7 +93,7 @@ export default function PeopleLicensesTab({ people, users }: PeopleLicensesTabPr
     setEditingCostLine(line ?? null)
     setCostLineAmount(line ? String(line.amount) : '')
     setCostLineNote(line?.note ?? '')
-    setCostLineDate(line?.date ?? new Date().toLocaleDateString('en-CA'))
+    setCostLineDate(line?.date ?? todayYmdInAppTz())
     setCostLineFormOpen(true)
   }
 
@@ -102,7 +103,7 @@ export default function PeopleLicensesTab({ people, users }: PeopleLicensesTabPr
     setCostLineLicenseId(null)
     setCostLineAmount('')
     setCostLineNote('')
-    setCostLineDate(new Date().toLocaleDateString('en-CA'))
+    setCostLineDate(todayYmdInAppTz())
   }
 
   async function addCostLine(licenseId: string, amount: number, note: string, date: string) {

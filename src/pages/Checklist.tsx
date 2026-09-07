@@ -54,6 +54,7 @@ import { useToastContext } from '../contexts/ToastContext'
 import { ChecklistCostButton } from '../components/checklist/ChecklistCostButton'
 import { useChecklistCostEstimates } from '../hooks/useChecklistCostEstimates'
 import { ACCURACY_MIN_COUNT, canSeeTaskCosts, estimateAccuracy, estimateAccuracyByPerson, formatMultiplier, formatWholeDollars, sumEstimateDollars } from '../lib/checklistCostEstimate'
+import { localCalendarDayKey, todayYmdInAppTz } from '../utils/dateUtils'
 
 type UserRole =
   | 'dev'
@@ -113,7 +114,7 @@ type RoadmapTaskEmbed = {
  */
 /** Due chip under a Today card's title (v2.2351): calm inside the window, amber on the due day, red once late. Null without a due date. */
 function dueCardChip(dueDate: string | null | undefined) {
-  const label = dueChipLabel(dueDate, new Date().toLocaleDateString('en-CA'))
+  const label = dueChipLabel(dueDate, todayYmdInAppTz())
   if (!label) return null
   const palette = label === 'due today'
     ? { background: 'var(--bg-amber-tint)', border: '1px solid #d97706', color: 'var(--text-amber-800)' }
@@ -1788,7 +1789,7 @@ function OutstandingByPersonSortableRow({
                 {'\uD83D\uDCAC'} {notesCount}
               </span>
             ) : null}
-            <span style={{ flexShrink: 0 }}>{outstandingAgeChip(inst.scheduled_date, new Date().toLocaleDateString('en-CA'), inst.checklist_items?.created_at)}</span>
+            <span style={{ flexShrink: 0 }}>{outstandingAgeChip(inst.scheduled_date, todayYmdInAppTz(), inst.checklist_items?.created_at)}</span>
             {missedCount > 1 ? (
               <span
                 title={`Missed on ${missedCount} scheduled days — completing or deleting this row resolves all of them`}
@@ -2385,7 +2386,7 @@ function ChecklistOutstandingTab({ authUserId, isDev, canSeeCosts, canManageChec
     // Summary tile: misses this company week (Sun -> today), independent of the
     // range filter below. Count-only HEAD request — cheap.
     void (async () => {
-      const todayStr = new Date().toLocaleDateString('en-CA')
+      const todayStr = todayYmdInAppTz()
       const { data, count } = await supabase
         .from('checklist_instances')
         .select('scheduled_date', { count: 'exact' })
@@ -2396,8 +2397,8 @@ function ChecklistOutstandingTab({ authUserId, isDev, canSeeCosts, canManageChec
       setMissedWeekCount(count ?? 0)
       setMissedWeekDates(((data as Array<{ scheduled_date: string }> | null) ?? []).map((r) => r.scheduled_date))
     })()
-    const tomorrow = new Date(Date.now() + 864e5).toLocaleDateString('en-CA')
-    const weekEnd = new Date(Date.now() + 7 * 864e5).toLocaleDateString('en-CA')
+    const tomorrow = localCalendarDayKey(new Date(Date.now() + 864e5))
+    const weekEnd = localCalendarDayKey(new Date(Date.now() + 7 * 864e5))
 
     let query = supabase
       .from('checklist_instances')
@@ -2406,7 +2407,7 @@ function ChecklistOutstandingTab({ authUserId, isDev, canSeeCosts, canManageChec
       .order('scheduled_date', { ascending: true })
 
     if (dateRange === 'missed') {
-      const yesterday = new Date(Date.now() - 864e5).toLocaleDateString('en-CA') // more than 1 day old = scheduled before yesterday
+      const yesterday = localCalendarDayKey(new Date(Date.now() - 864e5)) // more than 1 day old = scheduled before yesterday
       query = query.lt('scheduled_date', yesterday)
     } else if (dateRange !== 'non_repeating') {
       const start = dateRange === 'next_day' ? tomorrow : tomorrow
@@ -2632,7 +2633,7 @@ function ChecklistOutstandingTab({ authUserId, isDev, canSeeCosts, canManageChec
                 BOARD_RANGE_LABELS[dateRange as BoardRange],
                 byUser.length,
                 byUser.reduce<number | null>((mx, u) => {
-                  const d = oldestAgeDays(u.instances, new Date().toLocaleDateString('en-CA'))
+                  const d = oldestAgeDays(u.instances, todayYmdInAppTz())
                   return d == null ? mx : mx == null ? d : Math.max(mx, d)
                 }, null),
               ),
@@ -2726,7 +2727,7 @@ function ChecklistOutstandingTab({ authUserId, isDev, canSeeCosts, canManageChec
         ) : (
           <div>
             {byUser.map(({ userId, name, count, instances }) => {
-              const todayLocal = new Date().toLocaleDateString('en-CA')
+              const todayLocal = todayYmdInAppTz()
               const oldest = oldestAgeDays(instances, todayLocal)
               const oldestSeverity = ageSeverity(oldest)
               const notesTotal = instances.reduce((n, i) => n + (notesByInstance.get(i.id) ?? 0), 0)
@@ -3225,7 +3226,7 @@ function ChecklistManageTab({ authUserId, role, setError, setEditItemId, onOpenR
     const completion = new Map<string, { total: number; hasIncomplete: boolean }>()
     const oldestOpen = new Map<string, string>()
     const nextOpen = new Map<string, string>()
-    const todayForNext = new Date().toLocaleDateString('en-CA')
+    const todayForNext = todayYmdInAppTz()
     for (const inst of (instData ?? []) as Array<{ checklist_item_id: string; completed_at: string | null; scheduled_date: string }>) {
       const cur = completion.get(inst.checklist_item_id) ?? { total: 0, hasIncomplete: false }
       cur.total += 1
@@ -3307,7 +3308,7 @@ function ChecklistManageTab({ authUserId, role, setError, setEditItemId, onOpenR
   // Each section is sorted by created date, newest first.
   const byCreatedDesc = (a: ChecklistItem, b: ChecklistItem) =>
     (b.created_at ? Date.parse(b.created_at) : 0) - (a.created_at ? Date.parse(a.created_at) : 0)
-  const todayLocalStr = new Date().toLocaleDateString('en-CA')
+  const todayLocalStr = todayYmdInAppTz()
   const incompleteItems = filteredItems.filter((i) => !isRepeating(i) && !isItemComplete(i)).sort(byCreatedDesc)
   // Scheduled split (v2.2346): "open" means actionable today — future-dated
   // one-offs park in their own section, soonest start first.

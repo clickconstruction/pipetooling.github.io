@@ -281,6 +281,22 @@ export function denverCalendarDayKey(ms: number): string {
   return `${get('year')}-${get('month')}-${get('day')}`
 }
 
+/**
+ * YYYY-MM-DD of `d` in the DEVICE's zone, from its own calendar parts (v2.3061). The
+ * drop-in for `d.toLocaleDateString('en-CA')`, which the app used as a date source at
+ * 118 sites: browsers render en-CA as YYYY-MM-DD, but Node 20 / ICU 72 render it as
+ * MM/DD/YYYY, so any such string that reached a date column was one ICU update from
+ * breaking. Use `todayYmdInAppTz()` for "today" (the one company calendar) and this
+ * only where the device's own day of an already-local Date is meant.
+ */
+export function localCalendarDayKey(d: Date): string {
+  if (Number.isNaN(d.getTime())) return ''
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${y}-${m}-${day}`
+}
+
 function utcMsFromCalendarYmd(ymd: string): number {
   const parts = ymd.split('-')
   if (parts.length !== 3) return NaN

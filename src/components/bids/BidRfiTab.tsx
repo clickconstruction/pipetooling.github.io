@@ -16,6 +16,7 @@ import { BidPickerStandardList } from './BidPickerStandardList'
 import { BidRfiQueue } from './BidRfiQueue'
 import { BidPickerSortToggle } from './BidPickerSortToggle'
 import { MyBidsToggle } from './MyBidsToggle'
+import { localCalendarDayKey } from '../../utils/dateUtils'
 
 type BidRfiTabProps = {
   bids: BidWithBuilder[]
@@ -87,7 +88,7 @@ export function BidRfiTab({ bids, onlyMyBids, setOnlyMyBids, isMyBid, authUser, 
         const defaultResponseDate = (() => {
           const d = new Date()
           d.setDate(d.getDate() + 7)
-          return d.toLocaleDateString('en-CA')
+          return localCalendarDayKey(d)
         })()
         const getRfiForm = (): RfiFormData => {
           const existing = rfiFormByBid[bid.id]

@@ -3,6 +3,7 @@ import { supabase } from '../../lib/supabase'
 import { stripStamp, type ChecklistCardEvent } from '../../lib/checklistCardEvents'
 import { buildManageTimeline, commentTargetInstance, type ManageInstanceLite } from '../../lib/checklistManageActivity'
 import type { DueChangeRow } from '../../lib/checklistDuePushes'
+import { localCalendarDayKey, todayYmdInAppTz } from '../../utils/dateUtils'
 
 /** A long-running repeating task can have years of instances — cap the activity fetch. */
 export const ITEM_ACTIVITY_INSTANCE_CAP = 120
@@ -87,7 +88,7 @@ export function ChecklistItemActivity({
         // Repeating tasks pre-materialize instances years ahead — cap the
         // *past* history and take only the near future (comment target for
         // ahead-scheduled tasks), or the cap fills up with empty future rows.
-        const todayStr = new Date().toLocaleDateString('en-CA')
+        const todayStr = todayYmdInAppTz()
         const [pastRes, futureRes] = await Promise.all([
           supabase
             .from('checklist_instances')
@@ -169,7 +170,7 @@ export function ChecklistItemActivity({
 
   const timeline = useMemo(() => buildManageTimeline(item, instances, events, dueChanges), [item, instances, events, dueChanges])
   const commentTarget = useMemo(
-    () => commentTargetInstance(instances, new Date().toLocaleDateString('en-CA')),
+    () => commentTargetInstance(instances, todayYmdInAppTz()),
     [instances],
   )
   const postTargetId = commentInstanceId ?? commentTarget?.id ?? null
@@ -283,7 +284,7 @@ export function ChecklistItemActivity({
             const dayChip =
               showInstanceDays &&
               entry.scheduledDate &&
-              new Date(entry.at).toLocaleDateString('en-CA') !== entry.scheduledDate
+              localCalendarDayKey(new Date(entry.at)) !== entry.scheduledDate
                 ? ` (for ${dayLabel(entry.scheduledDate)})`
                 : ''
             if (entry.eventType === 'comment') {

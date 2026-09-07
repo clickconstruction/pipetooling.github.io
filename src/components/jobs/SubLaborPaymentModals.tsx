@@ -4,6 +4,7 @@ import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
 import { supabase } from '../../lib/supabase'
 import { withSupabaseRetry } from '../../utils/errorHandling'
 import type { SubLaborBackchargeTarget, SubLaborPaymentTarget } from '../../types/laborJob'
+import { localCalendarDayKey, todayYmdInAppTz } from '../../utils/dateUtils'
 
 /** Memos are sub-visible on the sub portal (sub-portal train) — say so at the point of writing. */
 const MEMO_PORTAL_HINT = '👁 Shown to the sub on their portal — write it like they’ll read it.'
@@ -24,13 +25,13 @@ export type EditingPaymentTarget = {
 
 /** Local YYYY-MM-DD for date inputs (same pattern as the form modal's Date of Labor seed). */
 function todayYmd(): string {
-  return new Date().toLocaleDateString('en-CA')
+  return todayYmdInAppTz()
 }
 
 /** Seed for the Edit modal's date input: the stored date, else the recorded timestamp's local day. */
 function paymentDateSeed(payment: EditingPaymentTarget): string {
   if (payment.paymentDate?.trim()) return payment.paymentDate.slice(0, 10)
-  return payment.createdAt ? new Date(payment.createdAt).toLocaleDateString('en-CA') : todayYmd()
+  return payment.createdAt ? localCalendarDayKey(new Date(payment.createdAt)) : todayYmd()
 }
 
 /**

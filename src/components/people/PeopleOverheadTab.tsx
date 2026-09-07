@@ -4,7 +4,7 @@ import type { User } from '@supabase/supabase-js'
 import { supabase } from '../../lib/supabase'
 import { formatCurrency } from '../../lib/format'
 import { formatErrorMessage, withSupabaseRetry } from '../../utils/errorHandling'
-import { APP_CALENDAR_TZ, referenceDateForWorkDateYmd } from '../../utils/dateUtils'
+import { APP_CALENDAR_TZ, localCalendarDayKey, referenceDateForWorkDateYmd } from '../../utils/dateUtils'
 import { useToastContext } from '../../contexts/ToastContext'
 import { useMercuryLedgerNicknames } from '../../hooks/useMercuryLedgerNicknames'
 import { formatMercuryDebitCardIdCompact } from '../../lib/mercuryRawDebitCard'
@@ -203,14 +203,14 @@ export default function PeopleOverheadTab({
     const day = d.getDay()
     const start = new Date(d)
     start.setDate(d.getDate() - day)
-    return start.toLocaleDateString('en-CA')
+    return localCalendarDayKey(start)
   })
   const [overheadDateEnd, setOverheadDateEnd] = useState(() => {
     const d = new Date()
     const day = d.getDay()
     const start = new Date(d)
     start.setDate(d.getDate() - day + 6)
-    return start.toLocaleDateString('en-CA')
+    return localCalendarDayKey(start)
   })
   const [overheadOfficeJobLedgerId, setOverheadOfficeJobLedgerId] = useState<string | null>(null)
   const [overheadOfficeJobLabel, setOverheadOfficeJobLabel] = useState<{
@@ -1071,8 +1071,8 @@ export default function PeopleOverheadTab({
     const e = new Date(overheadDateEnd + 'T12:00:00')
     s.setDate(s.getDate() + deltaWeeks * 7)
     e.setDate(e.getDate() + deltaWeeks * 7)
-    setOverheadDateStart(s.toLocaleDateString('en-CA'))
-    setOverheadDateEnd(e.toLocaleDateString('en-CA'))
+    setOverheadDateStart(localCalendarDayKey(s))
+    setOverheadDateEnd(localCalendarDayKey(e))
   }
 
   // ——— "Three lenses" strip view model (Methods A/B/C, shared kernel) ———

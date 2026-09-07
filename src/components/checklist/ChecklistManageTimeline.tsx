@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
 import { checklistGanttAxis, checklistGanttRows, type GanttItemInput } from '../../lib/checklistGanttRows'
 import type { DueChangeRow } from '../../lib/checklistDuePushes'
+import { todayYmdInAppTz } from '../../utils/dateUtils'
 
 /**
  * Manage → Timeline (v2.2375, Tier B of pushed-back markers): a
@@ -22,7 +23,7 @@ export function ChecklistManageTimeline({
   pushesByItem: Map<string, DueChangeRow[]>
   onOpenItem: (id: string) => void
 }) {
-  const todayStr = new Date().toLocaleDateString('en-CA')
+  const todayStr = todayYmdInAppTz()
   const axis = useMemo(() => checklistGanttAxis(items, todayStr), [items, todayStr])
   const rows = useMemo(() => checklistGanttRows(items, pushesByItem, axis, todayStr), [items, pushesByItem, axis, todayStr])
   const pct = (f: number) => `${(f * 100).toFixed(2)}%`

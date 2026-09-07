@@ -7,6 +7,7 @@ import { useLedgerPrefixMap } from '../contexts/LedgerDisplayPrefixContext'
 import { formatBidLedgerSummaryLine, formatJobLedgerSummaryLine } from '../lib/ledgerDisplayPrefixes'
 import { STICKY_MODAL_CLOSE_BUTTON_STYLE, stickyModalHeaderStyle, stickyModalPanelStyle } from '../lib/stickyModalHeaderStyle'
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock'
+import { localCalendarDayKey } from '../utils/dateUtils'
 
 /** This panel's padding is '1rem 1.25rem', not the 1.5rem default. */
 const REVIEW_HOURS_INSET = { x: '1.25rem', top: '1rem', bottom: '1rem' }
@@ -16,7 +17,7 @@ function getDaysInRange(start: string, end: string): string[] {
   const d = new Date(start + 'T12:00:00')
   const endD = new Date(end + 'T12:00:00')
   while (d <= endD) {
-    days.push(d.toLocaleDateString('en-CA'))
+    days.push(localCalendarDayKey(d))
     d.setDate(d.getDate() + 1)
   }
   return days
@@ -29,7 +30,7 @@ function shiftWeek(start: string, end: string, delta: number): { start: string; 
   d.setDate(d.getDate() + delta * 7)
   const newEnd = new Date(d)
   newEnd.setDate(newEnd.getDate() + days - 1)
-  return { start: d.toLocaleDateString('en-CA'), end: newEnd.toLocaleDateString('en-CA') }
+  return { start: localCalendarDayKey(d), end: localCalendarDayKey(newEnd) }
 }
 
 function formatElapsed(seconds: number): string {
