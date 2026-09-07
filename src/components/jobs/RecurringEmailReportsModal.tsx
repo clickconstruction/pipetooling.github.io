@@ -164,9 +164,9 @@ export default function RecurringEmailReportsModal({
     () => new Map(),
   )
 
-  /** Scope master selected for Preview / Test (defaults to sole choice). */
+  /** Scope leader selected for Preview / Test (defaults to sole choice). */
   const [scopeMasterId, setScopeMasterId] = useState<string | null>(() => scopeMasterChoices[0]?.id ?? null)
-  /** Preview & test sandbox: activity window under selected org master. */
+  /** Preview & test sandbox: activity window under selected org leader. */
   const [sandboxActivityScope, setSandboxActivityScope] = useState<ActivityScope>('calendar_yesterday')
   const [sandboxCrewFilter, setSandboxCrewFilter] = useState<CrewFilter>('all_users')
   const [sandboxIncludeCosts, setSandboxIncludeCosts] = useState(false)
@@ -325,7 +325,7 @@ export default function RecurringEmailReportsModal({
     }
     const scopeMaster = draft.id ? schedules.find((s) => s.id === draft.id)?.scope_master_user_id : scopeMasterId
     if (!scopeMaster) {
-      showToast('Choose scope master user', 'warning')
+      showToast('Choose scope leader user', 'warning')
       return
     }
     if (!authUserId) return
@@ -579,10 +579,10 @@ export default function RecurringEmailReportsModal({
 
         {!canConfigure ? (
           <p style={{ color: 'var(--text-muted)', marginTop: 12 }}>
-            Only dev, master technician, or assistant can configure recurring report emails.
+            Only dev, leader, or assistant can configure recurring report emails.
           </p>
         ) : scopeMasterChoices.length === 0 ? (
-          <p style={{ color: 'var(--text-muted)', marginTop: 12 }}>Could not resolve a scope master account for schedules.</p>
+          <p style={{ color: 'var(--text-muted)', marginTop: 12 }}>Could not resolve a scope leader account for schedules.</p>
         ) : (
           <>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'flex-end', marginBottom: 16 }}>

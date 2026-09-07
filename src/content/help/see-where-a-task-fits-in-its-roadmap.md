@@ -31,5 +31,5 @@ Every task row in the stage box is a button — tap one and its **task card** op
 - **✎** rename · **☆ / ★** pin it to the top of Next up · **＋ Assign someone** / tap a name chip to unassign · add a **note** that follows the task onto the assignee's Today list.
 - {{chip:green|○ Mark done}} — new on the card: marks the roadmap task complete (or **✓ done · reopen** to undo). It writes the same field the Map's checkbox does, so the segmented bar, the Goals ledger and the Timeline all agree instantly.
 
-Close the card and the window behind it is already refreshed — the stage's "1 of 3 done" count, the bar, the names. Editing is for roadmap editors (dev, master, assistant-like, primary); everyone else opens the card read-only and can still add a note.
+Close the card and the window behind it is already refreshed — the stage's "1 of 3 done" count, the bar, the names. Editing is for roadmap editors (dev, leader, assistant-like, primary); everyone else opens the card read-only and can still add a note.
 

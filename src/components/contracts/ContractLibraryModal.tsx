@@ -23,7 +23,7 @@ import { FormStudio } from './formStudio/FormStudio'
  * - Documents: the Contract Book (embedded), plus per-document sent counts,
  *   quick "Send to…", and a section for ad-hoc documents that only exist as
  *   personal copies.
- * - Packets: master-detail management of `contract_templates` ("packet" is
+ * - Packets: leader-detail management of `contract_templates` ("packet" is
  *   the UI name — a bundle of library documents assigned to people as a
  *   set). Documents attach via a checkbox list of the library; saving shows
  *   its consequences first (who gets an unsent copy).
@@ -204,7 +204,7 @@ export function ContractLibraryModal({
       return
     }
     if (!canDeletePeopleContracts && consequence.removedDocs.length > 0) {
-      setPacketError('Removing documents from a packet requires a Dev or Master Technician.')
+      setPacketError('Removing documents from a packet requires a Dev or Leader.')
       return
     }
     setPacketSaving(true)

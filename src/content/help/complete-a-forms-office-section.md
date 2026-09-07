@@ -40,4 +40,4 @@ Completing flattens the document: the signer's answers and the office's become p
 - Sensitive office boxes, if a form has them, live in the PDF only, like the signer's.
 - One-shot: a completed office section cannot be edited. If something is wrong, ask the signer for a fresh copy (send the form again) and complete it anew.
 - While the office section is pending the record's button reads **Open the PDF so far**; afterwards **Open the finished PDF**.
-- Opening the finished PDF stays limited to devs, controllers, and pay-approved masters, and each open is logged.
+- Opening the finished PDF stays limited to devs, controllers, and pay-approved leaders, and each open is logged.

@@ -41,7 +41,7 @@ The **⚙ Review periods** button on the deck opens the rules — how many quiet
 - **Collections** — no activity for 3 days
 - and how long **✓ Looks fine** rests a job (3 days)
 
-The numbers are org-wide — one queue, one definition of "too quiet" for the whole office. Master and dev can change them; changes take effect immediately.
+The numbers are org-wide — one queue, one definition of "too quiet" for the whole office. Leader and dev can change them; changes take effect immediately.
 
 ## Seeing who reviewed what
 

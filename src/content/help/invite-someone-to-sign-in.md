@@ -18,7 +18,7 @@ A new hire gets into the app one of two ways: you **invite them by email** and t
 The email says who they are joining as in plain words — *"You've been invited to join … as a Helper"* — and its link opens a **Welcome** page where they set a password once.
 
 :::example Which role?
-**Helper** or **Subcontractor** for field crew — they see their own day and their own pay, nothing else. **Estimator**, **Assistant**, **Controller**, **Primary** and **Superintendent** are the office and supervising roles. **Master** sees every office route; **Dev** is administration. If you are unsure, start low — a dev can raise a role later from the same panel or the Person Desk.
+**Helper** or **Subcontractor** for field crew — they see their own day and their own pay, nothing else. **Estimator**, **Assistant**, **Controller**, **Primary** and **Superintendent** are the office and supervising roles. **Leader** sees every office route; **Dev** is administration. If you are unsure, start low — a dev can raise a role later from the same panel or the Person Desk.
 :::
 
 ## Manually add user
@@ -31,7 +31,7 @@ Ticking **Start in training mode (read-only)** flags the account before they eve
 
 ## Changing a role later
 
-The role dropdown on each Active Accounts row asks you to confirm before it saves — *Change Sam's role from Helper to Master?* — and **Cancel** leaves the role exactly as it was. The Person Desk's *Access & account* row does the same.
+The role dropdown on each Active Accounts row asks you to confirm before it saves — *Change Sam's role from Helper to Leader?* — and **Cancel** leaves the role exactly as it was. The Person Desk's *Access & account* row does the same.
 
 ## Good to know
 

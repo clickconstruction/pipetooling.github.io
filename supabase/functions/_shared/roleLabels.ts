@@ -1,12 +1,12 @@
 /**
  * Deno twin of `src/lib/roleLabels.ts` — the one human label for a user role, so the
- * invitation email says "as a Helper" / "as a Master", never the raw enum
+ * invitation email says "as a Helper" / "as a Leader", never the raw enum
  * ("as a Master_technician"). Keep the map identical to the client file;
  * `src/lib/roleLabels.test.ts` imports both and fails when they drift.
  */
 export const HUMAN_ROLE_LABELS: Record<string, string> = {
   dev: 'Dev',
-  master_technician: 'Master',
+  master_technician: 'Leader',
   assistant: 'Assistant',
   controller: 'Controller',
   estimator: 'Estimator',

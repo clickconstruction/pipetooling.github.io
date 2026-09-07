@@ -29,7 +29,7 @@ The fields above the table are printed at the top of the CSV so the export reads
 
 - **Registration / license #** — the person's apprentice or tradesman registration number.
 - **Employer** — your company name. Remembered on this device for the next export.
-- **Supervising licensee** — the responsible master's name and license number. Also remembered.
+- **Supervising licensee** — the responsible leader's name and license number. Also remembered.
 - **From / To** — leave blank for all recorded time, or narrow to the period the board asks about.
 
 ## Downloading the CSV
@@ -44,4 +44,4 @@ A final **Total** row repeats the session count and total hours so the detail pr
 
 ## Who can use this
 
-Devs, assistants, controllers, and Pay-Approved masters — the same people who can see the Licenses tab. If a person shows "no linked app account," their hours were never clocked in the app under their own login; link the roster person to a user account first.
+Devs, assistants, controllers, and Pay-Approved leaders — the same people who can see the Licenses tab. If a person shows "no linked app account," their hours were never clocked in the app under their own login; link the roster person to a user account first.

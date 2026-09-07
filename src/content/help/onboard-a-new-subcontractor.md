@@ -61,7 +61,7 @@ The Subs tab is warn-never-block: an expired COI shows red but won't stop schedu
 
 ## 4. Record their license
 
-**People → Licenses** → expand the person → {{button:blue|+ Add license}} with the trade, level, number, and expiry. When a helper is working toward the next level under one of your masters, the same row's {{button:outline|Hours log}} builds the board's experience export — see [export a license hours log](?g=license-hours-log).
+**People → Licenses** → expand the person → {{button:blue|+ Add license}} with the trade, level, number, and expiry. When a helper is working toward the next level under one of your leaders, the same row's {{button:outline|Hours log}} builds the board's experience export — see [export a license hours log](?g=license-hours-log).
 
 ## 5. Hand them their first job
 

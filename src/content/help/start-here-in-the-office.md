@@ -38,7 +38,7 @@ You run the day from the office: dispatch, billing, people, and paperwork. Contr
 
 ## Bringing on a new hire
 
-Sign-ins are created by a dev on **Active Accounts** (see [invite someone to sign in](?g=invite-someone-to-sign-in)). Two things worth asking for when you hand over the name and email: the right **role** (the dialog makes them choose one — a field hire should be Subcontractor or Helper, never Master), and **Start in training mode** if you'd like the person to look around for a few days without being able to change anything. Training mode still lets them clock in and out, so their hours are real from day one — see [put someone in read-only training mode](?g=read-only-training-mode) for what they'll experience.
+Sign-ins are created by a dev on **Active Accounts** (see [invite someone to sign in](?g=invite-someone-to-sign-in)). Two things worth asking for when you hand over the name and email: the right **role** (the dialog makes them choose one — a field hire should be Subcontractor or Helper, never Leader), and **Start in training mode** if you'd like the person to look around for a few days without being able to change anything. Training mode still lets them clock in and out, so their hours are real from day one — see [put someone in read-only training mode](?g=read-only-training-mode) for what they'll experience.
 
 ## When a link isn't for your role
 

@@ -151,7 +151,7 @@ export default function LienSignatureInboxSection() {
                 <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
                   {lienReleaseFormLabel(r.form_type)} ·{' '}
                   {Number(r.amount ?? 0).toLocaleString('en-US', { style: 'currency', currency: 'USD' })} · signed by{' '}
-                  {r.signer_printed_name ?? 'the master'}
+                  {r.signer_printed_name ?? 'the leader'}
                 </div>
                 <div style={{ fontSize: '0.72rem', marginTop: '0.15rem' }}>
                   {markSentPendingId === r.id ? (

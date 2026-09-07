@@ -2,7 +2,7 @@ import type { UserRole } from '../hooks/useAuth'
 
 /**
  * The one human label for a user role — the words GLOSSARY.md / ACCESS_CONTROL.md
- * already use in their headings ("master_technician (Master)", "helpers (Helper)",
+ * already use in their headings ("master_technician (Leader)", "helpers (Helper)",
  * "subcontractor (Subcontractor)"). Used by the Invite / Manually-add dialogs,
  * the Active Accounts row select, the Person Desk access row, and — via the Deno
  * twin `supabase/functions/_shared/roleLabels.ts` — the invitation email
@@ -12,7 +12,7 @@ import type { UserRole } from '../hooks/useAuth'
  */
 export const HUMAN_ROLE_LABELS: Record<UserRole, string> = {
   dev: 'Dev',
-  master_technician: 'Master',
+  master_technician: 'Leader',
   assistant: 'Assistant',
   controller: 'Controller',
   estimator: 'Estimator',

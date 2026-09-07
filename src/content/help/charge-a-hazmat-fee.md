@@ -68,7 +68,7 @@ Open {{button:outline|Edit Job}} and find the fee under **RIDERS** in ① Line I
 
 - {{button:outline|Edit…}} changes the **amount, description, photo links, or testimonials**. Changing the amount also moves the Job Total and the open bill by the difference — the terms snapshot stays frozen.
 - {{button:outline|Void…}} removes the charge but **keeps the record** (gray, struck-through, with a VOIDED banner on the notice). Assistants can void.
-- {{button:red|Delete…}} removes the incident entirely — devs, masters, and controllers only. Deleted fees are restorable by a dev from **Recently deleted**.
+- {{button:red|Delete…}} removes the incident entirely — devs, leaders, and controllers only. Deleted fees are restorable by a dev from **Recently deleted**.
 
 :::example Locked once billed
 After the fee is on a bill the customer received, all three buttons lock and show why. Send the bill back first if the fee truly must change.

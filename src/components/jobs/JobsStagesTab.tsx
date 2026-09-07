@@ -1791,7 +1791,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
       authRole === 'master_technician' ||
       isAssistantLike(authRole) ||
       authRole === 'primary'
-    if (!can) return 'Only dev, master, assistant, and primary can record payments'
+    if (!can) return 'Only dev, leader, assistant, and primary can record payments'
     const hasUnalloc =
       typeof arBankTxUnallocatedCount === 'number' && arBankTxUnallocatedCount > 0
     if (hasUnalloc) {

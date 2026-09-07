@@ -26,4 +26,4 @@ Adding or removing a person is recorded in the job's activity feed automatically
 
 The same search-and-check picker — including the keyboard shortcuts — appears when you press **+** next to **Team:** in the Edit Job form and when picking people on a schedule entry.
 
-Only dev, master technician, and assistant roles see the people button — everyone else sees the assigned names read-only.
+Only dev, leader, and assistant roles see the people button — everyone else sees the assigned names read-only.

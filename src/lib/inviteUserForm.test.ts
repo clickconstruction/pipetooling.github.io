@@ -54,7 +54,7 @@ describe('userCreatedTelemetryTarget', () => {
 describe('roleChangeConfirmMessage', () => {
   it('names the person and both roles in human words', () => {
     expect(roleChangeConfirmMessage('Sam Lee', 'helpers', 'master_technician')).toBe(
-      "Change Sam Lee's role from Helper to Master? Their navigation and access change on next load.",
+      "Change Sam Lee's role from Helper to Leader? Their navigation and access change on next load.",
     )
   })
   it('omits the from-clause when the current role is unknown', () => {

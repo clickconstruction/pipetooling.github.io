@@ -78,7 +78,7 @@ On **Banking → Accounting**, rules match bank transactions by counterparty, am
 {{button:green|Approve all (12)}} {{chip:gray|Group by label}} {{chip:gray|Rule matches approve themselves (org-wide · on)}}
 :::
 
-- {{chip:gray|Rule matches approve themselves}} is one switch for the whole company (a dev or master technician flips it). When it is **on**, every new rule match is approved the moment it is created — as the bank feed arrives or when someone clicks **Apply rules** — whether or not anyone has this page open. When it is **off**, matches wait in Approvals as before.
+- {{chip:gray|Rule matches approve themselves}} is one switch for the whole company (a dev or leader flips it). When it is **on**, every new rule match is approved the moment it is created — as the bank feed arrives or when someone clicks **Apply rules** — whether or not anyone has this page open. When it is **off**, matches wait in Approvals as before.
 - Two things always wait for a person, even with the switch on: an **Internal Transfers** suggestion on a transaction that already has job splits (the two can't both be true), and anything created **before** the switch was turned on. {{button:green|Approve all}} clears that backlog.
 - A label someone set by hand is never overwritten by a rule.
 

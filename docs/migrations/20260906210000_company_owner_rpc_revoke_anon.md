@@ -1,0 +1,3 @@
+# 20260906210000_company_owner_rpc_revoke_anon.sql (2026-09-07, v2.2976)
+
+`REVOKE EXECUTE ON FUNCTION public.company_owner_user_id() FROM PUBLIC, anon;` — `20260906190000` revoked PUBLIC and granted `authenticated` + `service_role`, but the project's default privileges also grant `anon` explicitly, so the publishable key could read the company owner account id with no session (a bare `POST /rest/v1/rpc/company_owner_user_id` returned the uuid on 2026-09-07). Same rule as `20260906180000`: no anonymous consumer → revoke `anon`. The client calls it only through signed-in reads of `app_settings`; `create_job_from_estimate` calls it inside SECURITY DEFINER. Apply any time.

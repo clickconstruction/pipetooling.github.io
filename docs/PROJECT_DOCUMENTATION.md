@@ -2689,7 +2689,7 @@ The page behind any modal, sheet, or dialog is frozen **app-wide without per-mod
 
 ### User Roles (9 — see [ACCESS_CONTROL.md](./ACCESS_CONTROL.md) for the authoritative matrix)
 - **dev**: Full access, user management, templates
-- **master_technician**: Create/manage projects, customers, workflows
+- **master_technician** (labelled *Leader* since v2.2976): Create/manage projects, customers, workflows
 - **assistant**: Create/edit projects, view/update workflows (assigned stages only), full access to Bids
 - **subcontractor**: Dashboard and Calendar only
 - **estimator**: Bids + Materials focused; no Customers/Projects/People

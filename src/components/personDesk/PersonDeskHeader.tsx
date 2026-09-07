@@ -22,7 +22,7 @@ type OpenSession = { id: string; clocked_in_at: string; label: string | null }
 
 const ROLE_LABEL: Record<string, string> = {
   dev: 'Dev',
-  master_technician: 'Master',
+  master_technician: 'Leader',
   assistant: 'Assistant',
   controller: 'Controller',
   subcontractor: 'Subcontractor',
@@ -31,14 +31,14 @@ const ROLE_LABEL: Record<string, string> = {
   primary: 'Primary',
   superintendent: 'Superintendent',
 }
-const KIND_LABEL: Record<string, string> = { sub: 'Subcontractor', helper: 'Helper', assistant: 'Assistant', master_technician: 'Master', estimator: 'Estimator', primary: 'Primary', superintendent: 'Superintendent', dev: 'Dev', controller: 'Controller' }
+const KIND_LABEL: Record<string, string> = { sub: 'Subcontractor', helper: 'Helper', assistant: 'Assistant', master_technician: 'Leader', estimator: 'Estimator', primary: 'Primary', superintendent: 'Superintendent', dev: 'Dev', controller: 'Controller' }
 
 const KINDS: Array<{ value: string; label: string }> = [
   { value: 'helper', label: 'Helper' },
   { value: 'sub', label: 'Subcontractor' },
   { value: 'assistant', label: 'Assistant' },
   { value: 'estimator', label: 'Estimator' },
-  { value: 'master_technician', label: 'Master' },
+  { value: 'master_technician', label: 'Leader' },
   { value: 'superintendent', label: 'Superintendent' },
   { value: 'primary', label: 'Primary' },
 ]

@@ -617,7 +617,7 @@ export function PackageAndSendBidPricingModal({
                   gap: '0.35rem',
                   justifyContent: 'flex-end',
                 }}
-                aria-label="Master technician quick picks"
+                aria-label="Leader technician quick picks"
               >
                 {masterTechRecipients.map((mt) => {
                   const selected = recipientUserId === mt.id

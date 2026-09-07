@@ -22,6 +22,6 @@ Check the newest notes first — buttons and tabs sometimes move as part of an u
 
 Older updates sit behind a {{button:outline|Show 15 earlier updates}} button — each click adds the next 15, and the button tells you how many are still behind it, so the list stays quick to scan.
 
-Some notes are written for one role (a Dispatch change only masters see, say). The list hides notes meant for other roles and says so in the line above it — devs see everything.
+Some notes are written for one role (a Dispatch change only leaders see, say). The list hides notes meant for other roles and says so in the line above it — devs see everything.
 
 Looking for how to *get* the newest version? See the guide on updating the app when a new version is ready.

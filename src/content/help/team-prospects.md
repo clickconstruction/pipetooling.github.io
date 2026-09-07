@@ -68,7 +68,7 @@ Across the top of the tab: **Screen → Interview → Hire → Review** — live
 
 ## Interview calls
 
-When a candidate looks promising, hit {{button:blue|Advance}} on their Screen card. They move to the **Interview** stage — the queue for a master or dev to actually call them:
+When a candidate looks promising, hit {{button:blue|Advance}} on their Screen card. They move to the **Interview** stage — the queue for a leader or dev to actually call them:
 
 - Their phone number is a **tap-to-call** button, with the last-contact stamp next to it ({{button:outline|Talked today}} updates it).
 - After the call, hit {{button:outline|My review}} and leave **your own** three ratings plus remarks. Under each rating slider there's an optional comment box — say *why* you scored Ability, Drive, or Integrity the way you did, right where you set the number. Each reviewer gets exactly one review per candidate (open it again to revise). Everyone's reviews show on the row — sourcing scores, reviewer verdicts, and any per-rating comments side by side.
@@ -76,7 +76,7 @@ When a candidate looks promising, hit {{button:blue|Advance}} on their Screen ca
 
 ## Hiring someone onto the roster
 
-Advancing a candidate to **Hire** offers to add them straight to the **People roster**: their name, phone, and email carry over, and the **Roster kind** is pre-selected from the role column they were in (an "Office Manager" column suggests Office / assistant; "Apprentice" suggests Helper; a trade role stays Subcontractor). Change it if the guess is wrong — the list is Subcontractor, Helper, Office / assistant, Estimator, Superintendent, Primary and Master technician. They appear under People → Users (subs and helpers under External), ready for labor sheets and payments; when they get an app login later, use **Link account** there to tie it together.
+Advancing a candidate to **Hire** offers to add them straight to the **People roster**: their name, phone, and email carry over, and the **Roster kind** is pre-selected from the role column they were in (an "Office Manager" column suggests Office / assistant; "Apprentice" suggests Helper; a trade role stays Subcontractor). Change it if the guess is wrong — the list is Subcontractor, Helper, Office / assistant, Estimator, Superintendent, Primary and Leader technician. They appear under People → Users (subs and helpers under External), ready for labor sheets and payments; when they get an app login later, use **Link account** there to tie it together.
 
 :::example Missed the prompt?
 Pressing {{button:outline|Not now}} is not final. Every card on the Hire stage has an {{button:outline|Add to roster}} button that reopens the same prompt, so an interrupted hand-off picks up where it left off — no need to bounce someone back to Interview and re-advance them.

@@ -43,4 +43,4 @@ A dip below the dashed $0 line means spending has landed before the money that c
 
 On wide screens, a running ledger appears down the **left side**: every card and marker row shows the balance at that point (projected-to-here minus spent-to-here, green when ahead, red when spending has outrun the plan), and a small card with the **project margin** and current balance stays pinned while you scroll. The rail hides on narrow screens — the marker pills carry the same numbers there.
 
-Anchored money markers follow the same visibility as Projections — devs and Masters only. Deleting a step doesn't delete its projections; they simply return to the top panel as unattached.
+Anchored money markers follow the same visibility as Projections — devs and Leaders only. Deleting a step doesn't delete its projections; they simply return to the top panel as unattached.

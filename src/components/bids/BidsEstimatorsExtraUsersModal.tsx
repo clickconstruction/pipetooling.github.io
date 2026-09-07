@@ -300,9 +300,9 @@ function labelForRole(role: Database['public']['Enums']['user_role']): string {
     case 'dev':
       return 'Dev'
     case 'master_technician':
-      return 'Master'
+      return 'Leader'
     case 'master':
-      return 'Master'
+      return 'Leader'
     case 'owner':
       return 'Owner'
     case 'assistant':

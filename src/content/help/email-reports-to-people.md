@@ -10,7 +10,7 @@ You can have reports emailed to specific people — every report, or only report
 ## Open report email settings
 
 1. On the **Dashboard**, find the **Recent Reports** card.
-2. Click the mail button {{icon:help}} in the top-right of that card's header. (Only dev, master technician, assistant, and controller roles see it.)
+2. Click the mail button {{icon:help}} in the top-right of that card's header. (Only dev, leader, assistant, and controller roles see it.)
 3. The **Report email recipients** window opens.
 
 ## Add a recipient

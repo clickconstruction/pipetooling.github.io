@@ -74,7 +74,7 @@ Pipetooling implements comprehensive role-based access control (RBAC) using nine
 
 ### Nine User Roles
 1. **dev** - System administrators with full access
-2. **master_technician** - Project managers and business owners
+2. **master_technician** - The leaders (master plumbers): project managers and business owners. Labelled **Leader** in the app since v2.2976
 3. **assistant** - Office support staff. Sees every customer, project, job, bid and estimate (one company, v2.2967 — no adoption needed). Manages clock cards, hours, crew, contracts, licenses — but **can never read individual pay** (wages, pay stubs; DB-enforced since v2.660).
 4. **subcontractor** - External workers assigned to specific tasks
 5. **helpers** - Field workers with **the same app routing, RLS parity, and Clock/Dispatch service-type rules as subcontractors**; scoped via `helpers_service_type_ids` (same semantics as `subcontractor_service_type_ids`)
@@ -260,7 +260,7 @@ A Contract Book entry can be a **form** (an uploaded PDF the signer fills on the
 
 ---
 
-### master_technician (Master)
+### master_technician (Leader)
 
 **Purpose**: Project and business management
 
@@ -1104,7 +1104,7 @@ master_user_id = auth.uid()
 ### By Complexity (Least to Most Restrictive)
 
 1. **dev**: Full system access
-2. **master_technician**: Full business access (own data + shared)
+2. **master_technician** (Leader): Full business access (one company, v2.2967)
 3. **controller**: Assistant-level access everywhere plus full payroll/financial visibility (`has_payroll_access()`)
 4. **assistant**: Conditional access (depends on adoption)
 5. **superintendent**: Assigned projects only — `project_superintendents`, enforced by RLS on projects/workflows/steps/line items/step work orders since v2.2836 (run jobs, draft bids, no People/Customers pages)

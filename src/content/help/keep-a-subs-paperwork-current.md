@@ -32,4 +32,4 @@ Anything sent or uploaded from **People → Contracts** is typed as the sub's *A
 
 ## Who can do this
 
-Dev, master, assistant, and controller — the same roles that can edit these rows. Training-mode viewers see no Add button. Badges warn and never block: an expired COI shows red but does not stop a work order — check the column before you hand a sub a job. Column reference: [review your subs in one place](?g=review-your-subs).
+Dev, leader, assistant, and controller — the same roles that can edit these rows. Training-mode viewers see no Add button. Badges warn and never block: an expired COI shows red but does not stop a work order — check the column before you hand a sub a job. Column reference: [review your subs in one place](?g=review-your-subs).

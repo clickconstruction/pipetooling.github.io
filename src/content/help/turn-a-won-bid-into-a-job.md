@@ -40,7 +40,7 @@ If dispatch had already put site visits on the calendar against the **bid**, the
 {{chip:green|J1007 opened from this bid}} &nbsp; 2 scheduled visits still sit on the bid (1 upcoming). {{button:outline|Move them to J1007}}
 :::
 
-Tap it and confirm: the visits keep their crew, date and time and now read as the job's on the Schedule hub and the job's week; the bid's schedule reads empty. Nothing moves unless you tap — a visit that really was a bid visit can stay one. The button shows for the roles that edit the schedule (dev, master, assistant, controller).
+Tap it and confirm: the visits keep their crew, date and time and now read as the job's on the Schedule hub and the job's week; the bid's schedule reads empty. Nothing moves unless you tap — a visit that really was a bid visit can stay one. The button shows for the roles that edit the schedule (dev, leader, assistant, controller).
 
 ## Which GC gave you the job?
 
@@ -48,7 +48,7 @@ On a bid sent to more than one GC where no GC is marked won yet, Open the job as
 
 ## Who sees the button
 
-Dev, masters, assistants, controllers, and **estimators** can open a job from a bid — estimators get the New Job form even though they do not have the Jobs page. Superintendents keep their read-only board and see no button. The **J####** chip that opens an existing job shows for the roles that can open Jobs (not estimators).
+Dev, leaders, assistants, controllers, and **estimators** can open a job from a bid — estimators get the New Job form even though they do not have the Jobs page. Superintendents keep their read-only board and see no button. The **J####** chip that opens an existing job shows for the roles that can open Jobs (not estimators).
 
 ## Tips
 

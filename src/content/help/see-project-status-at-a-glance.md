@@ -9,7 +9,7 @@ The Projects list reads like a job board: every project row shows a progress bar
 
 ## Which projects you see
 
-Office accounts (dev, master, assistant, controller) see every project. A **superintendent sees only the projects they are assigned to** — the same rule covers the project's Workflow page, its step line items, and its sub work orders. To give a superintendent a project, open its Workflow page and add them under **Assigned Superintendents**; the project appears on their list right away.
+Office accounts (dev, leader, assistant, controller) see every project. A **superintendent sees only the projects they are assigned to** — the same rule covers the project's Workflow page, its step line items, and its sub work orders. To give a superintendent a project, open its Workflow page and add them under **Assigned Superintendents**; the project appears on their list right away.
 
 :::example A superintendent's Projects list
 The company has three projects. Sam is assigned to one of them, so Sam's list shows one row — the other two are not Sam's to see.
@@ -50,7 +50,7 @@ Pills appear only when something needs attention:
 
 Projects with warnings sort to the top of the list, so the ones needing a decision are always the first thing you see.
 
-## The money line (dev and master accounts)
+## The money line (dev and leader accounts)
 
 Under the pills, rows with money show **Projected** (the workflow's projections) and **Spent** (step line items) — the same numbers as the Workflow page's money panel, without opening it.
 

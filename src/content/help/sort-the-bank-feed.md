@@ -22,7 +22,7 @@ Card holders sort their own purchases to jobs in **Job Parts Tally → Transacti
 - **Accounting** — the **rules** that suggest labels by counterparty, amount, description or bank category, and the **Approvals** list where suggestions wait for an OK. Approve one, {{button:green|Approve all (12)}}, or leave the approving to the rules:
 
 :::example The org-wide switch
-{{chip:gray|Rule matches approve themselves (org-wide · on)}} — every new rule match is approved the moment it is created, as the bank feed arrives or when someone clicks **Apply rules**. Off, matches wait in Approvals. One switch for the whole company; a dev or master technician flips it. Two things always wait for a person even when it is on: an Internal Transfers suggestion on a transaction that already has job splits, and anything created before the switch was turned on.
+{{chip:gray|Rule matches approve themselves (org-wide · on)}} — every new rule match is approved the moment it is created, as the bank feed arrives or when someone clicks **Apply rules**. Off, matches wait in Approvals. One switch for the whole company; a dev or leader flips it. Two things always wait for a person even when it is on: an Internal Transfers suggestion on a transaction that already has job splits, and anything created before the switch was turned on.
 :::
 
 - **Card Review** and **Category Review** — read-only pivots of the labels above (who spent what, by card and by category). Card Review's **Unassigned** row counts transfers and payouts too until you set its {{chip:gray|Kind}} filter to **Card charges only**.

@@ -32,4 +32,4 @@ The 30-minute **sync** that pulls new bank transactions into the books is a diff
 
 ## Who can run it
 
-Anyone with Banking access: dev, master, assistant and controller.
+Anyone with Banking access: dev, leader, assistant and controller.

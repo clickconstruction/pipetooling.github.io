@@ -25,6 +25,6 @@ export async function linkClockSessionsToPick(ids: readonly string[], pick: Cloc
 
 /** Toast copy when RLS let fewer rows through than asked (a controller outside pay access, a team lead off-roster). */
 export function partialLinkMessage(personName: string, updated: number, asked: number): string {
-  if (updated === 0) return `No sessions were updated — your account can't edit ${personName}'s clock sessions. Ask a pay-approved master to link them.`
+  if (updated === 0) return `No sessions were updated — your account can't edit ${personName}'s clock sessions. Ask a pay-approved leader to link them.`
   return `Linked ${updated} of ${asked} sessions — the rest are outside your clock-edit access.`
 }

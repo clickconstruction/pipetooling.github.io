@@ -38,11 +38,11 @@ import { isAssistantLike } from '../../lib/subcontractorLikeRole'
  * who gets the "Customer paid" email when a job hits Paid in Full, and preview
  * or test the email itself. Self-contained (loads and saves its own rows).
  *
- * - Gear opens for devs + masters; the recipients editor saves for DEV only
- *   (app_settings RLS is dev-write) — masters see it read-only with a note.
- * - Devs/masters get the DETAILED financial review; everyone else the
+ * - Gear opens for devs + leaders; the recipients editor saves for DEV only
+ *   (app_settings RLS is dev-write) — leaders see it read-only with a note.
+ * - Devs/leaders get the DETAILED financial review; everyone else the
  *   sterilized summary (badges via paidEmailVariantForRole).
- * - "Preview & test" (dev AND master): pick a job (search_jobs_ledger, same
+ * - "Preview & test" (dev AND leader): pick a job (search_jobs_ledger, same
  *   idiom as Dispatch Mode PO), then Preview detailed / Preview summary
  *   (opens the rendered HTML in a new tab) or Email me a test (detailed
  *   variant, caller's own address only).
@@ -93,21 +93,21 @@ const VARIANT_COPY: Record<
     ariaLabel: 'Paid in Full email settings',
     heading: 'Paid in Full emails',
     description:
-      'When a job reaches Paid in Full, the people below get an email. Devs and masters receive the detailed financial review; everyone else receives a summary with no dollar amounts.',
+      'When a job reaches Paid in Full, the people below get an email. Devs and leaders receive the detailed financial review; everyone else receives a summary with no dollar amounts.',
   },
   payment: {
     settingKey: APP_SETTINGS_KEY_PAYMENT_MADE_EMAIL_RECIPIENTS,
     ariaLabel: 'Payment email settings',
     heading: 'Payment emails',
     description:
-      'Whenever any payment is recorded on a job — Mark Paid, a bank-deposit allocation, or a Stripe payment — the people below get an email showing the job’s invoices and payment progress. Devs and masters receive the detailed financial review; everyone else receives a summary with no dollar amounts. When the payment completes the job, only the Paid in Full email is sent.',
+      'Whenever any payment is recorded on a job — Mark Paid, a bank-deposit allocation, or a Stripe payment — the people below get an email showing the job’s invoices and payment progress. Devs and leaders receive the detailed financial review; everyone else receives a summary with no dollar amounts. When the payment completes the job, only the Paid in Full email is sent.',
   },
   ready_to_bill: {
     settingKey: APP_SETTINGS_KEY_READY_TO_BILL_NOTIFY_RECIPIENTS,
     ariaLabel: 'Ready to Bill notification settings',
     heading: 'Ready to Bill notifications',
     description:
-      'When a job moves to Ready to Bill, the people below are notified so billing can start right away — jobs sent back from Billed count too. Devs and masters receive the detailed version with dollar amounts; everyone else receives a summary.',
+      'When a job moves to Ready to Bill, the people below are notified so billing can start right away — jobs sent back from Billed count too. Devs and leaders receive the detailed version with dollar amounts; everyone else receives a summary.',
   },
 }
 
@@ -191,7 +191,7 @@ export default function PaidInFullEmailSettingsModal({
         setSelectedIds(new Set(parsePaidJobEmailRecipients(settingRes?.value_text ?? null)))
         if (variant === 'ready_to_bill') {
           // v2 per-person prefs (falling back to the v1 list + org-wide
-          // channels until the first v2 save) + push coverage (dev/master can
+          // channels until the first v2 save) + push coverage (dev/leader can
           // SELECT push_subscriptions).
           const [v2Res, channelsRes, pushRes] = await Promise.all([
             withSupabaseRetry<{ value_text: string | null } | null>(

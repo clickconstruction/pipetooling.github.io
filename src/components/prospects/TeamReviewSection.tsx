@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { activeUsersQuery } from '../../lib/people/fetchActiveUsers'
 import { APP_CALENDAR_TZ } from '../../utils/dateUtils'
-// Short spoken role names ("Master", "Sub") — the long displayLabelForUserRole
+// Short spoken role names ("Leader", "Sub") — the long displayLabelForUserRole
 // slugs ("Master_technician") overflowed the phone-width person picker.
 import { guideLensRoleLabel } from '../../lib/roleGuideLens'
 import type { UserRole } from '../../hooks/useAuth'

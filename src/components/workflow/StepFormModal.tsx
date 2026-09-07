@@ -8,8 +8,8 @@ type Step = Database['public']['Tables']['project_workflow_steps']['Row']
 
 /**
  * Add/Edit step modal for the Workflow page, with the assignee autocomplete
- * (masters + subs from users/people, superintendents scoped via adopted
- * masters) and the nested Add Person sub-modal. Verbatim move out of
+ * (leaders + subs from users/people, superintendents scoped via adopted
+ * leaders) and the nested Add Person sub-modal. Verbatim move out of
  * src/pages/Workflow.tsx per docs/WORKFLOW_PAGE_ARCHITECTURE.md — preserve
  * quirks: the non-interactive first "change order:" chip, checkDuplicateName
  * scanning the whole people+users tables client-side, new people defaulting
@@ -60,7 +60,7 @@ export function StepFormModal({
   const [savingPerson, setSavingPerson] = useState(false)
   const [addPersonError, setAddPersonError] = useState<string | null>(null)
 
-  // Load masters and subs when modal opens
+  // Load leaders and subs when modal opens
   useEffect(() => {
     loadMastersAndSubs()
     // Initialize search with existing assigned_to_name
@@ -74,7 +74,7 @@ export function StepFormModal({
   }, [step, authUser?.id])
 
   // Every assignable role, active accounts only (J31-N3, v2.2900) — the old
-  // literal list (master/sub/helper/primary) could not offer an assistant,
+  // literal list (leader/sub/helper/primary) could not offer an assistant,
   // the controller or an estimator, and the roster read for a superintendent
   // was narrower still. RLS trims what each viewer may read.
   function stepFormUsersQuery() {
@@ -232,7 +232,7 @@ export function StepFormModal({
       return
     }
 
-    // Refresh masters/subs list
+    // Refresh leaders/subs list
     await loadMastersAndSubs()
 
     // Set the assigned name to the new person
@@ -334,7 +334,7 @@ export function StepFormModal({
                 // Delay hiding dropdown to allow clicks
                 setTimeout(() => setShowDropdown(false), 200)
               }}
-              placeholder="Search masters and subs..."
+              placeholder="Search leaders and subs..."
               style={{ width: '100%', padding: '0.5rem' }}
             />
             {showDropdown && (filteredMastersSubs.length > 0 || assignedSearch.trim()) && (

@@ -21,7 +21,7 @@ Name: `Mike Thompson` &nbsp;·&nbsp; Email: `mike@example.com` &nbsp;·&nbsp; Ph
 {{button:blue|Save}}
 :::
 
-If your name is managed by admins, the Name field is locked — the note reads "Name is managed by admins. Contact a master or dev to change it."
+If your name is managed by admins, the Name field is locked — the note reads "Name is managed by admins. Contact a leader or dev to change it."
 
 ## Push notifications
 

@@ -26,7 +26,7 @@ The preview actually performs the restore and then rolls it back, so the counts 
 
 **A warning** {{chip:yellow|⚠️}} means the row comes back, but with a small gap. The usual case is that something it pointed at was itself deleted later — for example the job's customer. The job returns with the customer field cleared, and you re-link it by hand. Everything else is intact.
 
-**A blocker** {{chip:red|Cannot restore}} means it can't come back yet, and **nothing was changed**. The most common reason is that the job's master account was deleted — a job must belong to a master, so there is nothing valid to attach it to. Restore the account first (Settings → People & teams → Archived users), then try again.
+**A blocker** {{chip:red|Cannot restore}} means it can't come back yet, and **nothing was changed**. The most common reason is that the job's leader account was deleted — a job must belong to a leader, so there is nothing valid to attach it to. Restore the account first (Settings → People & teams → Archived users), then try again.
 
 ## Things worth knowing
 

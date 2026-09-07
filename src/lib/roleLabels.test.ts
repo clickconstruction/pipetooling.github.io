@@ -18,7 +18,7 @@ describe('humanRoleLabel', () => {
   })
 
   it('uses the GLOSSARY / ACCESS_CONTROL heading vocabulary', () => {
-    expect(humanRoleLabel('master_technician')).toBe('Master')
+    expect(humanRoleLabel('master_technician')).toBe('Leader')
     expect(humanRoleLabel('helpers')).toBe('Helper')
     expect(humanRoleLabel('subcontractor')).toBe('Subcontractor')
   })

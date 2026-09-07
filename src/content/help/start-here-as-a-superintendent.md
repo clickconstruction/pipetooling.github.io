@@ -39,7 +39,7 @@ The [Schedule](?g=schedule-dispatch) board shows job cards only for work on your
 Marcus has two blocks on Wednesday on projects you're not assigned to. You can still add him to one of your jobs with the corner triangle, but you'd be double-booking him — call the office first.
 :::
 
-Marking someone **off** (not coming in) is an office action — the `off` button and the "not coming in" option don't appear for your role. Ask a master or the controller.
+Marking someone **off** (not coming in) is an office action — the `off` button and the "not coming in" option don't appear for your role. Ask a leader or the controller.
 
 ## Working from the truck
 
@@ -60,4 +60,4 @@ In **Settings → Guides**, the "Viewing guides for" chips let you read the exac
 
 ## What you don't see
 
-Company-wide financial totals, payroll, and the People page are office-only. If you need a number that isn't showing, ask a master or the controller.
+Company-wide financial totals, payroll, and the People page are office-only. If you need a number that isn't showing, ask a leader or the controller.

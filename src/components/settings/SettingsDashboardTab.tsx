@@ -539,7 +539,7 @@ export default function SettingsDashboardTab({
               <div style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '1rem' }}>
                 <h2 style={{ marginTop: 0, marginBottom: '0.5rem' }}>Pin Billed to Dashboard</h2>
           <p style={{ margin: '0 0 0.75rem 0', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
-            Pin Billed count and total to a master or dev&apos;s dashboard so it appears on their Dashboard.
+            Pin Billed count and total to a leader or dev&apos;s dashboard so it appears on their Dashboard.
           </p>
           {pinBilledMasterIds.size > 0 && (
             <p style={{ fontSize: '0.875rem', marginBottom: '0.5rem', fontWeight: 500 }}>
@@ -567,7 +567,7 @@ export default function SettingsDashboardTab({
                   }}
                   disabled={pinBilledSaving}
                 />
-                {u.name || u.email || 'Unknown'} ({u.role === 'dev' ? 'Dev' : 'Master'})
+                {u.name || u.email || 'Unknown'} ({u.role === 'dev' ? 'Dev' : 'Leader'})
               </label>
             ))}
             <button
@@ -648,7 +648,7 @@ export default function SettingsDashboardTab({
         <div style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '1rem' }}>
           <h2 style={{ marginTop: 0, marginBottom: '0.5rem' }}>Pin Internal Team labor to Dashboard</h2>
           <p style={{ margin: '0 0 0.75rem 0', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
-            Pin the current-week Internal Team labor total to a master or dev&apos;s dashboard.
+            Pin the current-week Internal Team labor total to a leader or dev&apos;s dashboard.
           </p>
           {pinCostMatrixMasterIds.size > 0 && (
             <p style={{ fontSize: '0.875rem', marginBottom: '0.5rem', fontWeight: 500 }}>
@@ -676,7 +676,7 @@ export default function SettingsDashboardTab({
                   }}
                   disabled={pinCostMatrixSaving}
                 />
-                {u.name || u.email || 'Unknown'} ({u.role === 'dev' ? 'Dev' : 'Master'})
+                {u.name || u.email || 'Unknown'} ({u.role === 'dev' ? 'Dev' : 'Leader'})
               </label>
             ))}
             <button
@@ -755,7 +755,7 @@ export default function SettingsDashboardTab({
         <div style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '1rem' }}>
           <h2 style={{ marginTop: 0, marginBottom: '0.5rem' }}>Pin Supply Houses AP to Dashboard</h2>
           <p style={{ margin: '0 0 0.75rem 0', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
-            Pin Supply Houses AP total to a master or dev&apos;s dashboard so it appears on their Dashboard.
+            Pin Supply Houses AP total to a leader or dev&apos;s dashboard so it appears on their Dashboard.
           </p>
           {pinAPMasterIds.size > 0 && (
             <p style={{ fontSize: '0.875rem', marginBottom: '0.5rem', fontWeight: 500 }}>
@@ -783,7 +783,7 @@ export default function SettingsDashboardTab({
                   }}
                   disabled={pinAPSaving}
                 />
-                {u.name || u.email || 'Unknown'} ({u.role === 'dev' ? 'Dev' : 'Master'})
+                {u.name || u.email || 'Unknown'} ({u.role === 'dev' ? 'Dev' : 'Leader'})
               </label>
             ))}
             <button
@@ -862,7 +862,7 @@ export default function SettingsDashboardTab({
         <div style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '1rem' }}>
           <h2 style={{ marginTop: 0, marginBottom: '0.5rem' }}>Pin Sub Labor Due to Dashboard</h2>
           <p style={{ margin: '0 0 0.75rem 0', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
-            Pin Sub Labor Due (unpaid sub labor balances) to a master or dev&apos;s dashboard so it appears on their Dashboard.
+            Pin Sub Labor Due (unpaid sub labor balances) to a leader or dev&apos;s dashboard so it appears on their Dashboard.
           </p>
           {pinExternalTeamMasterIds.size > 0 && (
             <p style={{ fontSize: '0.875rem', marginBottom: '0.5rem', fontWeight: 500 }}>
@@ -890,7 +890,7 @@ export default function SettingsDashboardTab({
                   }}
                   disabled={pinExternalTeamSaving}
                 />
-                {u.name || u.email || 'Unknown'} ({u.role === 'dev' ? 'Dev' : 'Master'})
+                {u.name || u.email || 'Unknown'} ({u.role === 'dev' ? 'Dev' : 'Leader'})
               </label>
             ))}
             <button
@@ -1565,7 +1565,7 @@ export default function SettingsDashboardTab({
 
 /**
  * Quick Estimate opt-in (v2.2293): per-user, default OFF, field roles only
- * (masters, primaries, devs, estimators, superintendents, subcontractors).
+ * (leaders, primaries, devs, estimators, superintendents, subcontractors).
  * Stored as user_dashboard_buttons button_key 'quick_estimate' — but rendered
  * as its own section because the "Dashboard buttons" block above is gated to
  * office-ish roles and defaults everything to on; this one must default off.

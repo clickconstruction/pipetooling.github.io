@@ -29,5 +29,5 @@ On the **Customers** page, click **Show archived (n)** at the right end of the f
 
 ## Related
 
-- Deleting a customer (dev/master only) permanently removes them — archive is almost always the better choice.
+- Deleting a customer (dev/leader only) permanently removes them — archive is almost always the better choice.
 - User accounts have their own archive flow: see *archive and restore user accounts*.

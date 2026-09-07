@@ -284,7 +284,7 @@ export default function BilledReportShareModal({
                     {u.email ? <span style={{ color: 'var(--text-muted)' }}> · {u.email}</span> : null}
                   </span>
                   <span style={{ fontSize: 11, fontWeight: 600, padding: '1px 8px', borderRadius: 9999, background: 'var(--bg-muted)', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
-                    {u.role === 'master_technician' ? 'Master' : (u.role ?? '—').charAt(0).toUpperCase() + (u.role ?? '—').slice(1)}
+                    {u.role === 'master_technician' ? 'Leader' : (u.role ?? '—').charAt(0).toUpperCase() + (u.role ?? '—').slice(1)}
                   </span>
                 </button>
               )

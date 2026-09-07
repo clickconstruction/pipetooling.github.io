@@ -2,7 +2,7 @@
 title: add a customer (and close out the prospect they started as)
 category: Office
 roles: dev, master_technician, assistant, controller, estimator
-keywords: add customer, new customer, create customer, prospect, converted, started as a prospect, paste fill, customer master, convert
+keywords: add customer, new customer, create customer, prospect, converted, started as a prospect, paste fill, customer leader, convert
 order: 44
 ---
 {{button:blue|+ Add customer}} on **Customers** opens the Add customer form. The same form appears when you create a customer from a bid or an estimate, and at `/customers/new`.

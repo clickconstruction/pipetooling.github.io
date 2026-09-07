@@ -27,7 +27,7 @@ If the job has more than one bill line, green chips at the top let you pick whic
 - **Check from** — the saved property owner for the job, else the GC, else the customer.
 - **Amount** — what's still open on the selected bill lines (or, for the unconditional progress form, what's been received).
 - **Contractor / releasing party** — your company block from Settings → Physical invoice issuer.
-- **Signed by** — the job master's name and title; add the signer title if it's blank.
+- **Signed by** — the job leader's name and title; add the signer title if it's blank.
 
 ## It saves itself
 
@@ -53,13 +53,13 @@ An address showing {{chip:green|✓ lien-ready}} has everything a lien filing ne
 
 ## The signed release comes back to you
 
-The moment the master signs, the release lands in the **Teams Inbox** (on the Dashboard, and under Checklist → Review) in a **Signed — ready to send** lane for whoever requested the signature:
+The moment the leader signs, the release lands in the **Teams Inbox** (on the Dashboard, and under Checklist → Review) in a **Signed — ready to send** lane for whoever requested the signature:
 
 - {{button:blue|Email to customer — PDF attached}} sends the signed document to the job's customer email — you confirm the address first, and the release is marked {{chip:green|sent ✓}} on the job.
 - {{button:outline-blue|Download PDF}} grabs the signed PDF to attach in your own email.
 - **Mark sent without emailing** covers a printed or hand-delivered copy.
 
-The master sees his own lane the same way — **Awaiting your signature** — and signs right from the row. In **Dispatch Mode → Inbox** both lanes sit at the very top of the page, above My Inbox.
+The leader sees his own lane the same way — **Awaiting your signature** — and signs right from the row. In **Dispatch Mode → Inbox** both lanes sit at the very top of the page, above My Inbox.
 
 ## Track what you issued
 

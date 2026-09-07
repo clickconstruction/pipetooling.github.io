@@ -12,7 +12,7 @@ const PERSON_KIND_SHORT_LABEL: Record<string, string> = {
   primary: 'Primary',
   superintendent: 'Superintendent',
   assistant: 'Assistant',
-  master_technician: 'Master',
+  master_technician: 'Leader',
 }
 
 export function bankingPersonKindTag(kind: string | null): string {

@@ -46,7 +46,7 @@ function build() {
 describe('buildRoleLeaderboards', () => {
   it('groups by role-section order, ranks confident best-first, appends insufficient, computes role average and weakest', () => {
     const boards = build()
-    expect(boards.map((b) => b.label)).toEqual(['Master Technicians', 'Helper', 'Other'])
+    expect(boards.map((b) => b.label)).toEqual(['Leaders', 'Helper', 'Other'])
     const helpers = boards[1]
     expect(helpers?.entries.map((e) => e.user.id)).toEqual(['h2', 'h1', 'h3']) // 75, 40, then insufficient
     expect(helpers?.roleAverage).toBe(58) // (75+40)/2

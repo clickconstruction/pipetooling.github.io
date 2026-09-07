@@ -37,4 +37,4 @@ The Jobs view charges each job its share of every day it was worked, by hours. T
 
 - Only **approved, closed** clock sessions count. A day with time still awaiting approval reads lighter than it was.
 - Bid time is part of the pool, not a "job" on the chart — bids show up as cost, not as a bar.
-- Pool and per job-day dollars show for devs, masters, and controllers; counts and hours show for every office role.
+- Pool and per job-day dollars show for devs, leaders, and controllers; counts and hours show for every office role.
