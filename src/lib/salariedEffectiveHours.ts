@@ -6,7 +6,7 @@
  * display on the Hours surfaces — but costing stays on the flat salary hours.
  *
  * Two deliberate semantics, previously copy-pasted (with drift) across
- * People.tsx, Quickfill HoursSection, HoursUnassignedModal and CrewJobsBlock:
+ * People.tsx, Quickfill HoursSection and HoursUnassignedModal (and, until v2.2986, CrewJobsBlock):
  *  - cost:    salaried (either flavor) → flat 8/0; hourly → recorded hours.
  *  - display: record_hours_but_salary → recorded hours; plain salaried → flat
  *             8/0; hourly → recorded hours.

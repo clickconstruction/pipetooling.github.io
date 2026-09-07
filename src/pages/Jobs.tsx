@@ -1883,8 +1883,8 @@ export default function Jobs() {
       {activeTab === 'combined-labor' && (
         <div>
           {error && <p style={{ color: 'var(--text-red-700)', marginBottom: '1rem' }}>{error}</p>}
-          {/* v2.2974: Team — the crew board (jobs × days against the dispatch plan) replaces the
-              Crew Jobs / Bids matrix + Team Job Labor table here; Quickfill keeps CrewJobsBlock. */}
+          {/* v2.2974: Team — the crew board (jobs × days against the dispatch plan) replaced the
+              Crew Jobs / Bids matrix + Team Job Labor table (CrewJobsBlock, retired everywhere in v2.2986). */}
           <JobsTeamTab focusJobId={teamLaborJobParam} onFocusConsumed={onFocusTeamLaborConsumed} />
         </div>
       )}
