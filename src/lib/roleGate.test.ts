@@ -55,11 +55,11 @@ describe('roleGateRedirect — role × surface → landing + sentence (v2.2882, 
     }
   })
 
-  it('Team Labor lands superintendents on Reports (no Pipeline board) and everyone else on the board', () => {
+  it('Team lands superintendents on Reports (no Pipeline board) and everyone else on the board', () => {
     expect(roleGateLanding('team-labor', 'superintendent').toTab).toBe('reports')
     expect(roleGateLanding('team-labor', 'assistant').toTab).toBe('stages')
     expect(roleGateRedirect({ from: '/jobs?tab=combined-labor', role: 'assistant', surface: 'team-labor' }).toast).toBe(
-      "Team Labor is for the owner — you're on the Pipeline board.",
+      "Team is for the owner — you're on the Pipeline board.",
     )
   })
 
