@@ -34,6 +34,8 @@ export type SubSheetRow = {
   id: string
   address: string | null
   job_number: string | null
+  /** The sheet's job link (v2.3055); job_number is display text. */
+  job_ledger_id?: string | null
   job_date: string | null
   labor_rate: number | null
   stage: string | null

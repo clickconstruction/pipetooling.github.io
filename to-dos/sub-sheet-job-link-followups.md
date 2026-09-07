@@ -8,14 +8,7 @@ Conversion rule for every row: read `job_ledger_id` first; keep the number match
 
 ## A · Money and reporting SQL — DONE v2.3059 (`20260907130000`)
 
-## B · Edge functions (redeploy after each)
-
-| Site | What it does | Change |
-|---|---|---|
-| `supabase/functions/sub-portal/index.ts:206-220` | Plans link on the sub's sheets: `jobs_ledger … .in('hcp_number', jobNumbers)` | select `job_ledger_id` on the sheets, `.in('id', ids)` |
-| `supabase/functions/sub-portal/index.ts:336-366` | "Your days": office-set sheet days show the raw `job_number` text (line 365), no job lookup | embed `jobs_ledger!people_labor_jobs_job_ledger_id_fkey(hcp_number, click_number)` |
-| `supabase/functions/submit-sub-portal/index.ts:366-372` | `mark_work_done`: finds the job to notify watchers with `.eq('hcp_number', job_number.trim())` — case-sensitive | `sheetRow.job_ledger_id` |
-| `supabase/functions/submit-sub-portal/index.ts:410-425` | `progress`: same lookup to write `job_activity_events` + notify | same |
+## B · Edge functions — DONE v2.3071 (deploy `sub-portal` + `submit-sub-portal`)
 
 ## C · Per-job client reads — DONE v2.3060
 
