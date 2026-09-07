@@ -1395,6 +1395,8 @@ export default function Bids() {
     )
   }, [location.search, setSearchParams])
 
+  /** Journey map P-B1: the only Bids tabs a primary (customer-side principal) may hold. */
+  const PRIMARY_BIDS_TABS = ['bid-board', 'rfi', 'change-order', 'lien-release'] as const
   const BIDS_TABS = ['bid-board', 'robot-board', 'audits', 'robot-shadows', 'robot-queue', 'robot-scoreboard', 'builder-review', 'call-queue', 'working', 'bid-costs', 'estimators', 'counts', 'takeoffs', 'labor', 'pricing', 'cover-letter', 'submission-followup', 'why-we-lost', 'waiting-to-hear', 'rfi', 'change-order', 'lien-release'] as const
 
   // Lazy projects fetch for the bid form's linked-project picker (first open only).
@@ -1480,6 +1482,19 @@ export default function Bids() {
       return
     }
     if (tab === 'bid-costs' && myRole != null && myRole !== 'dev') {
+      setSearchParams((p) => {
+        const next = new URLSearchParams(p)
+        next.set('tab', 'bid-board')
+        return next
+      }, { replace: true })
+      setActiveTab('bid-board')
+      return
+    }
+    if (myRole === 'primary' && tab && !PRIMARY_BIDS_TABS.includes(tab as (typeof PRIMARY_BIDS_TABS)[number])) {
+      // Journey map P-B1/P-B2/P-B3: a customer-side principal holds the board and the
+      // three customer-facing lenses (RFI, Change Order, Lien Release) — never pricing,
+      // the cover letter, followup, the estimating workbench or other builders' bids.
+      roleGateBounce('bids-office-tab', `/bids?tab=${tab}`)
       setSearchParams((p) => {
         const next = new URLSearchParams(p)
         next.set('tab', 'bid-board')
@@ -2797,7 +2812,7 @@ export default function Bids() {
       >
         Bid Board
       </button>
-      {robotBids.length > 0 || auditGate.anyAudits ? (
+      {myRole !== 'primary' && (robotBids.length > 0 || auditGate.anyAudits) ? (
         /* Pending-audit count renders as the same red inbox pill as Unsent/Working
            (v2.2531) — same "needs you" semantic, same visual language. */
         <span
@@ -2862,6 +2877,7 @@ export default function Bids() {
           ) : null}
         </span>
       ) : null}
+      {myRole !== 'primary' && (
       <button
         type="button"
         data-tabkey="builder-review"
@@ -2883,9 +2899,10 @@ export default function Bids() {
       >
         Followup
       </button>
-      {bidsWorkingTabButton}
-      {bidsBidCostsTabButton}
-      {bidsEstimatorsTabButton}
+      )}
+      {myRole !== 'primary' && bidsWorkingTabButton}
+      {myRole !== 'primary' && bidsBidCostsTabButton}
+      {myRole !== 'primary' && bidsEstimatorsTabButton}
     </ScrollableTabStrip>
   )
 
@@ -3006,7 +3023,7 @@ export default function Bids() {
     ) : null
 
   const bidsNewBidButton =
-    visibleServiceTypes.length > 0 ? (
+    visibleServiceTypes.length > 0 && myRole !== 'primary' ? (
       <button
         type="button"
         onClick={openNewBid}
@@ -3180,6 +3197,8 @@ export default function Bids() {
           horizontally scrollable with edge fades when they don't. */}
       <div style={{ borderBottom: '2px solid var(--border)', marginBottom: '2rem' }}>
         <ScrollableTabStrip activeKey={activeTab} ariaLabel="Bid detail tabs">
+        {myRole !== 'primary' && (
+        <>
         <button
           type="button"
           data-tabkey="counts"
@@ -3204,7 +3223,9 @@ export default function Bids() {
         >
           Labor
         </button>
-        {myRole !== 'superintendent' && (
+        </>
+        )}
+        {myRole !== 'superintendent' && myRole !== 'primary' && (
         <>
         <button
           type="button"
@@ -3226,7 +3247,9 @@ export default function Bids() {
         )}
         {/* v2.1387: Submission & Followup lives inside the merged Followup tab
             (top strip) as the "By status" lens — its standalone button is gone. */}
+        {myRole !== 'primary' && (
         <span style={{ color: 'var(--text-faint)', padding: '0 0.1rem', position: 'relative', top: '-1px', fontSize: '0.875rem' }}>|</span>
+        )}
         <button
           type="button"
           data-tabkey="rfi"
@@ -3410,6 +3433,7 @@ export default function Bids() {
           loading={!bidsLoaded}
           authUser={authUser}
           isDev={myRole === 'dev'}
+          showEstimatingHealth={myRole !== 'primary' && myRole !== 'superintendent'}
           jobsByBidId={jobsByBidId}
                 ledgerPrefixMap={ledgerPrefixMap}
           bidPreview={bidPreviewOnBidsPage}
