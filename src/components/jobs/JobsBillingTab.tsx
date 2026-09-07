@@ -178,7 +178,7 @@ export default function JobsBillingTab({
           type="button"
           onClick={() => setAttentionOnly((v) => !v)}
           aria-pressed={attentionOnly}
-          title="Only jobs missing a Sub Labor book or Team Job Labor (the red flags)"
+          title="Only jobs missing a Sub Labor book or Team hours (the red flags)"
           style={{
             padding: '0.45rem 0.8rem',
             borderRadius: 999,
