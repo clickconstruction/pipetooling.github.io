@@ -6,7 +6,11 @@
  * @see `fetchJobsLedgerWithDetailsForStages` and `fetchJobWithDetailsById`
  */
 
-/** `jobs_ledger_invoices` — full row (small fixed set) */
+/**
+ * `jobs_ledger_invoices` — full row (small fixed set). `stripe_mode` (v2.1114) rides along
+ * because the Split Bill modal voids the Stripe bill under the row's recorded mode (v2.3056);
+ * without it the modal silently fell back to the role default for every bill.
+ */
 export const JOBS_LEDGER_INVOICES_EMBED = [
   'agreed_write_down_at',
   'agreed_write_down_previous_amount',
@@ -31,6 +35,7 @@ export const JOBS_LEDGER_INVOICES_EMBED = [
   'stripe_invoice_id',
   'stripe_invoice_memo',
   'stripe_invoice_status',
+  'stripe_mode',
 ].join(', ')
 
 /** `jobs_ledger_payments` — full row */
