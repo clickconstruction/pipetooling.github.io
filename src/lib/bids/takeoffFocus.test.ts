@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest'
 import { summarizeTakeoffCoverage } from './takeoffCoverage'
-import { focusRailItems, initialFocusId, isTypingTarget, moveFocus } from './takeoffFocus'
+import { focusRailItems, focusShortcutApplies, initialFocusId, isTypingTarget, moveFocus } from './takeoffFocus'
 
 const rows = [{ id: 'a', count: 1 }, { id: 'b', count: 2 }, { id: 'c', count: 3 }]
 const line = (id: string, countRowId: string, unitPrice: number) => ({ id, countRowId, partId: 'p', quantity: 1, unitPrice, sourceMaterialPartPriceId: 'x', sourceTemplateId: null })
@@ -48,5 +48,34 @@ describe('isTypingTarget', () => {
     expect(isTypingTarget(ce)).toBe(true)
     expect(isTypingTarget(document.createElement('button'))).toBe(false)
     expect(isTypingTarget(null)).toBe(false)
+  })
+})
+
+describe('focusShortcutApplies', () => {
+  function el(html: string): Element {
+    document.body.innerHTML = html
+    return document.querySelector('[data-t]')!
+  }
+  it('acts on the page body and plain elements', () => {
+    expect(focusShortcutApplies(null, 'Enter')).toBe(true)
+    expect(focusShortcutApplies(el('<div data-t>x</div>'), 'Enter')).toBe(true)
+    expect(focusShortcutApplies(el('<div data-t>x</div>'), 'ArrowDown')).toBe(true)
+  })
+  it('never acts while a field is being typed into', () => {
+    expect(focusShortcutApplies(el('<input data-t />'), 'Enter')).toBe(false)
+    expect(focusShortcutApplies(el('<textarea data-t></textarea>'), 'ArrowUp')).toBe(false)
+  })
+  it('leaves Enter to a focused button or link, but still moves the rail with arrows', () => {
+    expect(focusShortcutApplies(el('<button data-t role="option">rail</button>'), 'Enter')).toBe(false)
+    expect(focusShortcutApplies(el('<button data-t role="option">rail</button>'), 'ArrowDown')).toBe(true)
+    expect(focusShortcutApplies(el('<span data-t role="button" tabindex="0">Add part line</span>'), 'Enter')).toBe(false)
+    expect(focusShortcutApplies(el('<a data-t href="#">link</a>'), 'Enter')).toBe(false)
+    expect(focusShortcutApplies(el('<button><span data-t>inner</span></button>'), 'Enter')).toBe(false)
+  })
+  it('never acts inside an open dialog (the remove-line confirm focuses Delete)', () => {
+    const del = el('<div role="dialog"><p>Remove this line?</p><button data-t>Delete</button></div>')
+    expect(focusShortcutApplies(del, 'Enter')).toBe(false)
+    expect(focusShortcutApplies(del, 'ArrowDown')).toBe(false)
+    expect(focusShortcutApplies(el('<div role="alertdialog"><div data-t>text</div></div>'), 'Enter')).toBe(false)
   })
 })
