@@ -107,7 +107,9 @@ export function parseExtraTxCountyMappingsText(text: string): Record<string, str
   for (const raw of (text ?? '').split(/\n+/)) {
     const m = raw.match(/^\s*([^=]+?)\s*=\s*(.+?)\s*$/)
     if (!m) continue
-    const city = m[1]!.toLowerCase().replace(/\s+/g, ' ')
+    // Trim first: the regex lets leading whitespace into the capture, so a line like
+    // "= Orphan" used to become a mapping keyed by a single space (v2.2985).
+    const city = m[1]!.trim().toLowerCase().replace(/\s+/g, ' ')
     const county = m[2]!
     if (city && county) out[city] = county
   }
