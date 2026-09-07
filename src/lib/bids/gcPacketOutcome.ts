@@ -15,7 +15,7 @@
 import { supabase } from '../supabase'
 import { rollUpOutcome } from './gcPackets'
 import { BID_UPDATE_NOT_APPLIED_MESSAGE, updateApplied } from './updateGuard'
-import { APP_CALENDAR_TZ } from '../../utils/dateUtils'
+import { denverCalendarDayKey } from '../../utils/dateUtils'
 import { recordNavClick } from '../navClickTelemetry'
 import {
   BID_OUTCOME_SET_CONTROL,
@@ -46,8 +46,14 @@ export type SetGcPacketOutcomeResult = {
   undone?: { restoredSiblings: string[]; bidOutcomeRestoredTo: string | null | undefined }
 }
 
+/**
+ * Company-calendar date for `outcome_at`. Parts-based (`denverCalendarDayKey`), not
+ * `en-CA` `.format()`: some ICU builds render `en-CA` as `MM/DD/YYYY` (Node 20 /
+ * ICU 72 does), and that string went straight into a date column. Browsers get
+ * it right, which is why nothing broke in prod (found by the v2.2980 test run).
+ */
 function todayYmd(): string {
-  return new Intl.DateTimeFormat('en-CA', { timeZone: APP_CALENDAR_TZ, year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date())
+  return denverCalendarDayKey(Date.now())
 }
 
 /** Last Won cascade written this session, per bid — what "↩ waiting" on the winner puts back. */
