@@ -68,7 +68,7 @@ serve(async (req) => {
     const { data: row, error } = await admin
       .from('person_contract_documents')
       .select(
-        'id, person_name, document_name, signing_body_html, signing_body_format, canonical_document_url, url, status, public_token_expires_at, signer_printed_name, form_template_id, person_id',
+        'id, person_name, document_name, signing_body_html, signing_body_format, canonical_document_url, url, status, public_token_expires_at, signer_printed_name, form_template_id, person_id, form_values',
       )
       .eq('public_token_hash', tokenHash)
       .maybeSingle()
@@ -92,6 +92,7 @@ serve(async (req) => {
       signer_printed_name: string | null
       form_template_id: string | null
       person_id: string | null
+      form_values: Record<string, unknown> | null
     }
 
     if (r.status === 'signed') {
@@ -138,7 +139,7 @@ serve(async (req) => {
 
     // Contract Forms (v2.2797): a form row ships its schema, a short-lived URL to the
     // template PDF, and roster prefill — the signer fills the real page.
-    let form: { schema: FormSchema; templateUrl: string; revisionLabel: string | null; person: { name: string | null; email: string | null; phone: string | null }; todayLabel: string } | null = null
+    let form: { schema: FormSchema; templateUrl: string; revisionLabel: string | null; person: { name: string | null; email: string | null; phone: string | null }; todayLabel: string; values: Record<string, string> } | null = null
     if (r.form_template_id) {
       const { data: tpl } = await admin
         .from('contract_form_templates')
@@ -161,7 +162,15 @@ serve(async (req) => {
           const pp = p as { name: string | null; email: string | null; phone: string | null } | null
           if (pp) person = { name: (pp.name ?? '').trim() || person.name, email: (pp.email ?? '').trim() || null, phone: (pp.phone ?? '').trim() || null }
         }
-        form = { schema: t.schema, templateUrl: signed.signedUrl, revisionLabel: t.revision_label, person, todayLabel: formatYmdForContractEmail(todayYmdInAppTz()) ?? '' }
+        // Office-seeded values (lien waivers, v2.2970): non-sensitive box values the sender wrote on the
+        // unsigned row; the signer sees them filled in and may change any of them. Sensitive boxes are
+        // never seeded (the office has no path to write them), and a signed row never reaches here.
+        const values: Record<string, string> = {}
+        if (r.form_values && typeof r.form_values === 'object') {
+          const sensitive = new Set((t.schema.boxes ?? []).filter((b) => b.sensitive).map((b) => b.key))
+          for (const [k, v] of Object.entries(r.form_values)) if (typeof v === 'string' && v.trim() && !sensitive.has(k)) values[k] = v
+        }
+        form = { schema: t.schema, templateUrl: signed.signedUrl, revisionLabel: t.revision_label, person, todayLabel: formatYmdForContractEmail(todayYmdInAppTz()) ?? '', values }
       }
     }
 
