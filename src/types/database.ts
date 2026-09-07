@@ -4020,6 +4020,7 @@ export type Database = {
           customer_id: string
           homestead: boolean
           id: string
+          is_primary: boolean
           legal_description: string
           note: string | null
           owner_company: string
@@ -4042,6 +4043,7 @@ export type Database = {
           customer_id: string
           homestead?: boolean
           id?: string
+          is_primary?: boolean
           legal_description?: string
           note?: string | null
           owner_company?: string
@@ -4064,6 +4066,7 @@ export type Database = {
           customer_id?: string
           homestead?: boolean
           id?: string
+          is_primary?: boolean
           legal_description?: string
           note?: string | null
           owner_company?: string

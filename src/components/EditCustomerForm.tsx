@@ -273,7 +273,10 @@ export default function EditCustomerForm({ customerId, onSaved, onCancel, onDele
       .eq('customer_id', customerId)
       .order('sequence_order', { ascending: true })
       .order('created_at', { ascending: true })
-    setExtraAddresses((data ?? []) as CustomerAddressRow[])
+    // Primary first (v2.3008); `is_primary` reads soft until the column is pushed.
+    const rows = ((data ?? []) as CustomerAddressRow[]).slice()
+    rows.sort((x, y) => Number(Boolean(y.is_primary)) - Number(Boolean(x.is_primary)))
+    setExtraAddresses(rows)
   }, [customerId])
   useEffect(() => {
     void loadExtraAddresses()
@@ -332,6 +335,26 @@ export default function EditCustomerForm({ customerId, onSaved, onCancel, onDele
       delete next[id]
       return next
     })
+    // The primary row mirrors the form's Address field (v2.3008): keep them in step.
+    if (extraAddresses.find((a) => a.id === id)?.is_primary) setAddress(d.address.trim())
+    await loadExtraAddresses()
+  }
+
+  /** Star a row as the customer's primary property (v2.3008). The trigger demotes the old primary and mirrors customers.address. */
+  async function setPrimaryAddress(a: CustomerAddressRow) {
+    if (addressesBusy || a.is_primary) return
+    setAddressesBusy(true)
+    const { error: err } = await supabase
+      .from('customer_addresses')
+      .update({ is_primary: true, updated_at: new Date().toISOString() })
+      .eq('id', a.id)
+    setAddressesBusy(false)
+    if (err) {
+      showToast(`Could not set the primary address: ${err.message}`, 'error')
+      return
+    }
+    setAddress(a.address)
+    showToast('Primary address updated', 'success')
     await loadExtraAddresses()
   }
 
@@ -660,6 +683,9 @@ export default function EditCustomerForm({ customerId, onSaved, onCancel, onDele
             onChange={(e) => setAddress(e.target.value)}
             style={{ width: '100%', padding: '0.5rem' }}
           />
+          <p style={{ margin: '0.2rem 0 0', fontSize: '0.75rem', color: 'var(--text-faint)' }}>
+            The primary property. It is also the ★ row under Addresses, where its legal record for lien paperwork lives.
+          </p>
         </div>
         <div style={{ marginBottom: '1rem' }}>
           <label htmlFor="edit-customer-folder" style={{ display: 'block', marginBottom: 4, fontWeight: 500, fontSize: '0.875rem' }}>
@@ -806,11 +832,11 @@ export default function EditCustomerForm({ customerId, onSaved, onCancel, onDele
             style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, font: 'inherit', fontWeight: 600, color: 'inherit', display: 'flex', alignItems: 'center', gap: '0.35rem' }}
           >
             <span aria-hidden style={{ fontSize: '0.75rem' }}>{addressesExpanded ? '▼' : '▶'}</span>
-            Additional addresses ({extraAddresses.length})
+            Addresses ({extraAddresses.length})
           </button>
           {!addressesExpanded && extraAddresses.length === 0 ? (
             <p style={{ margin: '0.25rem 0 0', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
-              More than one property? Add each extra address with a note ("rental on Oak St", "shop — deliveries in back"). The Address field above stays the primary.
+              Every property this customer owns, the primary first (★). Add extra addresses with a note ("rental on Oak St", "shop — deliveries in back"); open Property legal info on any of them to find its county, legal description and owner for lien paperwork.
             </p>
           ) : null}
           {addressesExpanded ? (
@@ -830,8 +856,22 @@ export default function EditCustomerForm({ customerId, onSaved, onCancel, onDele
                 const lienReady = customerAddressLienReady(d)
                 const legalToggleStyle = { background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontSize: '0.8125rem', color: 'var(--text-link)', fontWeight: 600 } as const
                 return (
-                  <div key={a.id} style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '0.5rem 0.6rem', display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
-                    <input type="text" value={d.address} onChange={(e) => setD({ address: e.target.value })} placeholder="Address" aria-label="Additional address" style={{ padding: '0.4rem 0.5rem' }} />
+                  <div key={a.id} style={{ border: `1px solid ${a.is_primary ? 'var(--border-strong)' : 'var(--border)'}`, borderRadius: 8, padding: '0.5rem 0.6rem', display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+                    <div style={{ display: 'flex', gap: '0.35rem', alignItems: 'center' }}>
+                      <button
+                        type="button"
+                        onClick={() => void setPrimaryAddress(a)}
+                        disabled={addressesBusy || Boolean(a.is_primary)}
+                        title={a.is_primary ? 'Primary address' : 'Set as the primary address'}
+                        aria-label={a.is_primary ? 'Primary address' : 'Set as the primary address'}
+                        aria-pressed={Boolean(a.is_primary)}
+                        style={{ background: 'none', border: 'none', cursor: a.is_primary ? 'default' : 'pointer', padding: '0 0.1rem', fontSize: '1.05rem', lineHeight: 1, color: a.is_primary ? 'var(--text-amber-700)' : 'var(--border-strong)' }}
+                      >
+                        {a.is_primary ? '★' : '☆'}
+                      </button>
+                      <input type="text" value={d.address} onChange={(e) => setD({ address: e.target.value })} placeholder="Address" aria-label={a.is_primary ? 'Primary address' : 'Additional address'} style={{ padding: '0.4rem 0.5rem', flex: 1 }} />
+                      {a.is_primary ? <span style={{ fontSize: '0.6875rem', fontWeight: 600, color: 'var(--text-muted)', background: 'var(--bg-muted)', borderRadius: 6, padding: '0.1rem 0.45rem' }}>Primary</span> : null}
+                    </div>
                     <input type="text" value={d.note} onChange={(e) => setD({ note: e.target.value })} placeholder="Note (e.g. rental on Oak St)" aria-label="Address note" style={{ padding: '0.4rem 0.5rem' }} />
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
                       <button type="button" onClick={toggleLegal} aria-expanded={legalOpen} style={legalToggleStyle}>

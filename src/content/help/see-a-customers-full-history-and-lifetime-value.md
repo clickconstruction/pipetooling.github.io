@@ -77,7 +77,10 @@ Use {{button:outline|✎ Edit customer}} in the header to change their info, arc
 
 ## Track more than one property
 
-A customer with several properties can have **additional addresses**, each with its own note. In {{button:outline|✎ Edit customer}}, open **Additional addresses**, add each address with a note ("rental on Oak St", "shop — deliveries in back"), and they appear on the customer's page next to the primary address as tap-to-map links with the note beside them. The main Address field stays the primary — jobs and estimates keep using it as before.
+A customer with several properties keeps them all under **Addresses** in {{button:outline|✎ Edit customer}}: the primary first with a ★, then every extra address with its own note ("rental on Oak St", "shop — deliveries in back"). Extras appear on the customer's page next to the primary address as tap-to-map links with the note beside them.
+
+- Click ☆ on any address to make it the **primary** — the customer's header address, map link and pickers follow, and the old primary stays in the list as an extra.
+- Every address, the primary included, can carry the property's legal record (next section) and be linked to a job for lien paperwork.
 
 ## Find the property's legal record for lien paperwork
 
