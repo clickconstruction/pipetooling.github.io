@@ -18788,6 +18788,7 @@ export type Database = {
       is_estimator: { Args: never; Returns: boolean }
       is_estimator_group_member: { Args: never; Returns: boolean }
       is_master_or_dev: { Args: never; Returns: boolean }
+      is_office_or_estimator: { Args: never; Returns: boolean }
       is_office_staff: { Args: never; Returns: boolean }
       is_pay_approved_master: { Args: never; Returns: boolean }
       is_primary: { Args: never; Returns: boolean }
@@ -19693,6 +19694,7 @@ export type Database = {
         Returns: undefined
       }
       my_partner_partnership_id: { Args: never; Returns: string }
+      my_sub_portal_address: { Args: never; Returns: Json }
       next_job_number_suggestion: { Args: never; Returns: string }
       next_numeric_hcp_suggestion_for_master: {
         Args: { p_master_user_id: string }
