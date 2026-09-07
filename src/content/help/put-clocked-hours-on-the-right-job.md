@@ -28,6 +28,13 @@ A person who worked two jobs needs two sessions. Press {{button:outline|Split da
 
 A hand-typed split has no clock session behind it, so it cannot be checked, and the next approval or time adjustment would overwrite it anyway. If you see a row tagged {{chip:gray|manual · no clock}}, it is an old hand-entered split: {{button:outline|Clear}} removes it, and the hours stay unassigned until a session is approved and linked.
 
+## The same rule on People → Hours
+
+Two more places used to let you type a split by hand. Both now put the job on the clock sessions instead:
+
+- **Assign … to jobs or bids** (the unassigned pill on a person's row): **Common Jobs**, **Recent jobs & bids** and {{button:outline|+ Search jobs & bids}} each link the selected day's sessions in one tap — no {{button:blue|Accept}} needed. Days with hours but no clock session are listed as *Skipped — no clock session* instead of being offered.
+- **The day audit** (tap a day cell): {{button:blue|Edit}} shows {{button:outline|+ Link 1 session (0.72 h)}} when a session has no job yet, beside the per-session {{button:blue|Assign}} control and {{button:outline|↺ Re-sync from clock}}. A session that is still pending carries the link into approval — the toast says *the split updates on approval*.
+
 ## If nothing changes when you link
 
 The link edits the person's clock session, which needs pay access on the session — a dev, a pay-approved master, or an assistant adopted under one. If the toast says no sessions were updated, your account can see the table but not edit that person's clock; ask a pay-approved master to link it.

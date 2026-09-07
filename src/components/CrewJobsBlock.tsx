@@ -31,10 +31,10 @@ import {
   type PersonDaySessions,
   crewAssignCellState,
   crewLinkButtonLabel,
-  crewLinkPatch,
   crewLinkSuccessMessage,
   groupCrewDaySessionsByPerson,
 } from '../lib/crewAssignSessionLinkPlan'
+import { linkClockSessionsToPick, partialLinkMessage } from '../lib/linkClockSessionsToPick'
 
 /** What the crew search modal hands back when a row is picked. */
 type CrewPick =
@@ -488,21 +488,17 @@ export function CrewJobsBlock({
     setCrewJobSearchModal(null)
     setCrewJobSearchText('')
     setCrewJobSearchResults([])
-    const { data, error: linkErr } = await supabase.from('clock_sessions').update(crewLinkPatch(item)).in('id', state.unlinkedIds).select('id')
+    const { updated, error: linkErr } = await linkClockSessionsToPick(state.unlinkedIds, item)
     if (linkErr) {
-      setError(linkErr.message)
-      showToast(`Could not link ${personName}'s sessions: ${linkErr.message}`, 'error')
-      return
-    }
-    const updated = (data ?? []).length
-    if (updated === 0) {
-      // RLS: the row policy passes dev, team leads, pay-approved masters and their adopted
-      // assistants — a controller outside that set can see the table but not edit the clock.
-      showToast(`No sessions were updated — your account can't edit ${personName}'s clock sessions. Ask a pay-approved master to link them.`, 'warning', 8000)
+      setError(linkErr)
+      showToast(`Could not link ${personName}'s sessions: ${linkErr}`, 'error')
       return
     }
     if (updated < state.unlinkedIds.length) {
-      showToast(`Linked ${updated} of ${state.unlinkedIds.length} sessions — the rest are outside your clock-edit access.`, 'warning', 8000)
+      // RLS: the row policy passes dev, team leads, pay-approved masters and their adopted
+      // assistants — a controller outside that set can see the table but not edit the clock.
+      showToast(partialLinkMessage(personName, updated, state.unlinkedIds.length), 'warning', 8000)
+      if (updated === 0) return
     } else {
       showToast(crewLinkSuccessMessage(updated, state.unlinkedHours, pickLabel(item)), 'success')
     }

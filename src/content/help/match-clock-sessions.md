@@ -8,6 +8,8 @@ order: 34
 
 When someone clocks time without picking a job, that session floats — payroll knows the hours, but no job carries the labor. The **Match sessions** button rounds up every floating session from the last 7 days and suggests where each one belongs, so you can clear the whole list in a few taps.
 
+Whatever surface you use, the job always goes on the session itself — the day's split is computed from the clock and never typed by hand (see [put a person's clocked hours on the right job](?g=put-clocked-hours-on-the-right-job)).
+
 ## Where it is
 
 Go to **People → Hours**. On the **Currently clocked in** section header, the {{button:outline|Match sessions}} button wears an amber count when sessions need sorting — that count is every session in the last 7 days with no job or bid (whether or not the person is still clocked in). At zero it goes quiet.

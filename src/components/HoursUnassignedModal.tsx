@@ -6,7 +6,6 @@ import { formatErrorMessage, withSupabaseRetry } from '../utils/errorHandling'
 import {
   type UnifiedAssignment,
   mergeToUnified,
-  splitFromUnified,
   formatAssignmentLabel,
   type JobDetails,
   type BidDetails,
@@ -17,8 +16,17 @@ import { useJobBidSearchEvidence } from '../hooks/useJobBidSearchEvidence'
 import { useLedgerPrefixMap } from '../contexts/LedgerDisplayPrefixContext'
 import { formatBidLedgerShortLine, formatJobLedgerShortLine } from '../lib/ledgerDisplayPrefixes'
 import { phoneSafeMinWidth } from '../lib/stickyModalHeaderStyle'
+import { ymdAddDays } from '../utils/dateUtils'
+import { useToastContext } from '../contexts/ToastContext'
+import { DashboardMyTimeDayEditorModal } from './DashboardMyTimeDayEditorModal'
+import { classifyDayLinkSessions, crewLinkButtonLabel, dayLinkState, dayLinkSuccessMessage } from '../lib/crewAssignSessionLinkPlan'
+import { linkClockSessionsToPick, partialLinkMessage } from '../lib/linkClockSessionsToPick'
 
 type CrewRow = { unifiedAssignments: UnifiedAssignment[] }
+/** What a quick pick or search row hands back. */
+type CrewPick =
+  | { type: 'job'; id: string; hcp_number: string; job_name: string; job_address: string; service_type_id?: string | null }
+  | { type: 'bid'; id: string; bid_number: string; project_name: string; address: string; service_type_id?: string | null }
 type HoursRow = { person_name: string; work_date: string; hours: number }
 /** Narrow view of the canonical pay-config row (single source of truth for field types). */
 type PayConfigRow = Pick<PayConfigRowFull, 'person_name' | 'is_salary' | 'record_hours_but_salary'>
@@ -31,6 +39,7 @@ type ClockSessionRow = {
   notes: string | null
   job_ledger_id: string | null
   bid_id: string | null
+  approved_at: string | null
 }
 
 function clockSessionDurationSeconds(s: { clocked_in_at: string; clocked_out_at: string | null }, nowMs: number): number {
@@ -46,14 +55,10 @@ function formatHmsTotal(seconds: number): string {
   return [h, m, sec].map((n) => String(n).padStart(2, '0')).join(':')
 }
 
+/** Inclusive YYYY-MM-DD range — string arithmetic, so a runtime whose 'en-CA' locale renders M/D/YYYY still yields DB-shaped keys. */
 function getDaysInRange(start: string, end: string): string[] {
   const days: string[] = []
-  const d = new Date(start + 'T12:00:00')
-  const endD = new Date(end + 'T12:00:00')
-  while (d <= endD) {
-    days.push(d.toLocaleDateString('en-CA'))
-    d.setDate(d.getDate() + 1)
-  }
+  for (let d = start, guard = 0; d <= end && guard < 400; d = ymdAddDays(d, 1), guard++) days.push(d)
   return days
 }
 
@@ -136,7 +141,13 @@ export function HoursUnassignedModal({
   const prefixMap = useLedgerPrefixMap()
   const [loading, setLoading] = useState(true)
   const [selectedDay, setSelectedDay] = useState('')
-  const [draft, setDraft] = useState<CrewRow | null>(null)
+  /** v2.2966: the range's live (not rejected/revoked) sessions for this person — picks go on them. */
+  const [rangeSessions, setRangeSessions] = useState<ClockSessionRow[]>([])
+  const [resolvedUserId, setResolvedUserId] = useState<string | null>(null)
+  const [linking, setLinking] = useState(false)
+  const [dayEditorOpen, setDayEditorOpen] = useState(false)
+  const [reloadTick, setReloadTick] = useState(0)
+  const { showToast } = useToastContext()
   const [jobSearchOpen, setJobSearchOpen] = useState(false)
   const [jobSearchText, setJobSearchText] = useState('')
   const [jobSearchResults, setJobSearchResults] = useState<UnifiedSearchResult[]>([])
@@ -176,15 +187,12 @@ export function HoursUnassignedModal({
   /** C1-3c (identity): id-keyed flags + this person's crew-row person_id for id-first lookups. */
   const [payConfigById, setPayConfigById] = useState<Record<string, PayConfigRow>>({})
   const [crewPersonIdByName, setCrewPersonIdByName] = useState<Record<string, string>>({})
-  const [daySessions, setDaySessions] = useState<ClockSessionRow[]>([])
-  const [sessionsLoading, setSessionsLoading] = useState(false)
   const [sessionsFetchError, setSessionsFetchError] = useState<string | null>(null)
   const [sessionsUserMissing, setSessionsUserMissing] = useState(false)
   const [recentQuickPicks, setRecentQuickPicks] = useState<RecentQuickPick[]>([])
   const [recentQuickPicksLoading, setRecentQuickPicksLoading] = useState(false)
   const [recentQuickPicksError, setRecentQuickPicksError] = useState<string | null>(null)
 
-  const sessionsFetchGenRef = useRef(0)
   const recentQuickPicksFetchGenRef = useRef(0)
   const crewJobDetailsMapRef = useRef(crewJobDetailsMap)
   const crewBidDetailsMapRef = useRef(crewBidDetailsMap)
@@ -205,11 +213,8 @@ export function HoursUnassignedModal({
     return (crewJobsByDatePerson[`${workDate}:${pName}`]?.unifiedAssignments?.length ?? 0) > 0
   }
 
-  function getAssignmentKey(a: UnifiedAssignment): string {
-    return `${a.type}:${a.id}`
-  }
-
-  const unassignedDays = useMemo(
+  /** Days with hours on a Correct day and no split yet — before the clock-session test. */
+  const candidateDays = useMemo(
     () =>
       hoursDays.filter((d) => {
         if (!hoursDaysCorrect.has(d)) return false
@@ -218,11 +223,31 @@ export function HoursUnassignedModal({
       }),
     [hoursDays, hoursDaysCorrect, personName, crewJobsByDatePerson, peopleHours, payConfig]
   )
+  const closedSessionDays = useMemo(() => {
+    const s = new Set<string>()
+    for (const r of rangeSessions) if (r.clocked_out_at) s.add(r.work_date)
+    return s
+  }, [rangeSessions])
+  /** v2.2966: only days that have a closed clock session can be assigned — there is no split without one. */
+  const unassignedDays = useMemo(() => candidateDays.filter((d) => closedSessionDays.has(d)), [candidateDays, closedSessionDays])
+  const skippedNoClockDays = useMemo(() => candidateDays.filter((d) => !closedSessionDays.has(d)), [candidateDays, closedSessionDays])
 
   const effectiveSelectedDay = (selectedDay && unassignedDays.includes(selectedDay) ? selectedDay : unassignedDays[0]) ?? ''
-  const key = `${effectiveSelectedDay}:${personName}`
-  const row = crewJobsByDatePerson[key] ?? { unifiedAssignments: [] }
-  const draftRow = draft ?? row
+  const daySessions = useMemo(
+    () => rangeSessions.filter((s) => s.work_date === effectiveSelectedDay),
+    [rangeSessions, effectiveSelectedDay],
+  )
+  const dayClassification = useMemo(() => classifyDayLinkSessions(daySessions), [daySessions])
+  const dayState = useMemo(() => dayLinkState(dayClassification), [dayClassification])
+  const canLinkDay = canEditCrewJobs && !linking && dayState.kind === 'link'
+  const dayEditorJobLabels = useMemo(
+    () => Object.fromEntries(Object.entries(crewJobDetailsMap).map(([id, d]) => [id, formatAssignmentLabel('job', d, prefixMap)])),
+    [crewJobDetailsMap, prefixMap],
+  )
+  const dayEditorBidLabels = useMemo(
+    () => Object.fromEntries(Object.entries(crewBidDetailsMap).map(([id, d]) => [id, formatAssignmentLabel('bid', d, prefixMap)])),
+    [crewBidDetailsMap, prefixMap],
+  )
 
   useEffect(() => {
     async function load() {
@@ -285,6 +310,34 @@ export function HoursUnassignedModal({
         }
       }
       setCrewJobsByDatePerson(crewMap)
+      // v2.2966: the range's clock sessions, once — picks go on them, and a day with
+      // hours but no closed session is skipped (there is no split without a clock session).
+      {
+        const userRes = await supabase.from('users').select('id').eq('name', personName).maybeSingle()
+        const userId = (userRes.data as { id: string } | null)?.id ?? null
+        setResolvedUserId(userId)
+        setSessionsUserMissing(!userId)
+        if (userId) {
+          const { data: sess, error: sessErr } = await supabase
+            .from('clock_sessions')
+            .select('id, clocked_in_at, clocked_out_at, work_date, notes, job_ledger_id, bid_id, approved_at')
+            .eq('user_id', userId)
+            .gte('work_date', hoursDateStart)
+            .lte('work_date', hoursDateEnd)
+            .is('rejected_at', null)
+            .is('revoked_at', null)
+            .order('clocked_in_at', { ascending: true })
+          setSessionsFetchError(sessErr?.message ?? null)
+          const rows = (sess ?? []) as ClockSessionRow[]
+          setRangeSessions(rows)
+          for (const r of rows) {
+            if (r.job_ledger_id) jobIds.add(r.job_ledger_id)
+            if (r.bid_id) bidIds.add(r.bid_id)
+          }
+        } else {
+          setRangeSessions([])
+        }
+      }
       if (jobIds.size > 0) {
         const { data: jobsData } = await supabase.rpc('get_jobs_ledger_by_ids', { p_job_ids: [...jobIds] })
         const jobMap: Record<string, JobDetails> = {}
@@ -385,169 +438,12 @@ export function HoursUnassignedModal({
       setLoading(false)
     }
     load()
-  }, [personName, hoursDateStart, hoursDateEnd])
-
-  useEffect(() => {
-    if (effectiveSelectedDay) {
-      const r = crewJobsByDatePerson[key] ?? { unifiedAssignments: [] }
-      setDraft({ unifiedAssignments: [...(r.unifiedAssignments || [])] })
-    } else {
-      setDraft(null)
-    }
-  }, [effectiveSelectedDay, personName, crewJobsByDatePerson])
+  }, [personName, hoursDateStart, hoursDateEnd, reloadTick])
 
   useEffect(() => {
     if (!effectiveSelectedDay) return
     setSelectedDay(effectiveSelectedDay)
   }, [effectiveSelectedDay])
-
-  useEffect(() => {
-    if (loading || !effectiveSelectedDay) {
-      if (!loading && !effectiveSelectedDay) {
-        setDaySessions([])
-        setSessionsUserMissing(false)
-        setSessionsFetchError(null)
-        setSessionsLoading(false)
-      }
-      return
-    }
-
-    const gen = ++sessionsFetchGenRef.current
-    setSessionsLoading(true)
-    setSessionsFetchError(null)
-    setSessionsUserMissing(false)
-
-    void (async () => {
-      try {
-        const userRes = await supabase.from('users').select('id').eq('name', personName).maybeSingle()
-        if (gen !== sessionsFetchGenRef.current) return
-        const userId = (userRes.data as { id: string } | null)?.id ?? null
-        if (!userId) {
-          setDaySessions([])
-          setSessionsUserMissing(true)
-          setSessionsLoading(false)
-          return
-        }
-
-        let rows: ClockSessionRow[] = []
-        try {
-          const data = await withSupabaseRetry(
-            async () =>
-              supabase
-                .from('clock_sessions')
-                .select('id, clocked_in_at, clocked_out_at, work_date, notes, job_ledger_id, bid_id')
-                .eq('user_id', userId)
-                .eq('work_date', effectiveSelectedDay)
-                .is('rejected_at', null)
-                .is('revoked_at', null)
-                .order('clocked_in_at', { ascending: true }),
-            'HoursUnassignedModal clock_sessions'
-          )
-          if (gen !== sessionsFetchGenRef.current) return
-          rows = (data ?? []) as ClockSessionRow[]
-        } catch (e: unknown) {
-          if (gen !== sessionsFetchGenRef.current) return
-          setSessionsFetchError(formatErrorMessage(e))
-          setDaySessions([])
-          setSessionsLoading(false)
-          return
-        }
-        const jobIdsUnique = [...new Set(rows.map((r) => r.job_ledger_id).filter(Boolean))] as string[]
-        const bidIdsUnique = [...new Set(rows.map((r) => r.bid_id).filter(Boolean))] as string[]
-        const jobIdsToFetch = jobIdsUnique.filter((id) => !crewJobDetailsMapRef.current[id])
-        const bidIdsToFetch = bidIdsUnique.filter((id) => !crewBidDetailsMapRef.current[id])
-
-        if (jobIdsToFetch.length > 0) {
-          try {
-            const jobsData = await withSupabaseRetry(
-              async () => {
-                const r = await supabase.rpc('get_jobs_ledger_by_ids', { p_job_ids: jobIdsToFetch })
-                return r as {
-                  data: Array<{
-                    id: string
-                    hcp_number: string
-                    job_name: string
-                    job_address: string
-                    service_type_id: string | null
-                    click_number: string
-                  }> | null
-                  error: { message: string } | null
-                }
-              },
-              'HoursUnassignedModal session job labels'
-            )
-            if (gen !== sessionsFetchGenRef.current) return
-            const list = jobsData ?? []
-            if (list.length > 0) {
-              setCrewJobDetailsMap((prev) => {
-                const next = { ...prev }
-                for (const j of list) {
-                  next[j.id] = {
-                    hcp_number: j.hcp_number ?? '',
-                    job_name: j.job_name ?? '',
-                    job_address: j.job_address ?? '',
-                    service_type_id: j.service_type_id,
-                    click_number: j.click_number,
-                  }
-                }
-                return next
-              })
-            }
-          } catch {
-            if (gen !== sessionsFetchGenRef.current) return
-          }
-        }
-
-        if (bidIdsToFetch.length > 0) {
-          try {
-            const bidsData = await withSupabaseRetry(
-              async () => {
-                const r = await supabase.rpc('get_bids_by_ids', { p_bid_ids: bidIdsToFetch })
-                return r as {
-                  data: Array<{
-                    id: string
-                    bid_number: string
-                    project_name: string
-                    address: string
-                    service_type_id: string | null
-                  }> | null
-                  error: { message: string } | null
-                }
-              },
-              'HoursUnassignedModal session bid labels'
-            )
-            if (gen !== sessionsFetchGenRef.current) return
-            const list = bidsData ?? []
-            if (list.length > 0) {
-              setCrewBidDetailsMap((prev) => {
-                const next = { ...prev }
-                for (const b of list) {
-                  next[b.id] = {
-                    bid_number: b.bid_number ?? '',
-                    project_name: b.project_name ?? '',
-                    address: b.address ?? '',
-                    service_type_id: b.service_type_id,
-                  }
-                }
-                return next
-              })
-            }
-          } catch {
-            if (gen !== sessionsFetchGenRef.current) return
-          }
-        }
-
-        if (gen !== sessionsFetchGenRef.current) return
-        setDaySessions(rows)
-        setSessionsLoading(false)
-      } catch (e: unknown) {
-        if (gen !== sessionsFetchGenRef.current) return
-        setSessionsFetchError(formatErrorMessage(e))
-        setDaySessions([])
-        setSessionsLoading(false)
-      }
-    })()
-  }, [loading, effectiveSelectedDay, personName])
 
   useEffect(() => {
     // Wait for load() so crewJobsByDatePerson is populated; avoid toggling loading while skipping.
@@ -797,103 +693,61 @@ export function HoursUnassignedModal({
     return () => clearTimeout(t)
   }, [commonJobsSearchOpen, commonJobsSearchText])
 
-  async function handleSave() {
-    const toSave = draft ?? row
-    const { jobAssignments, bidAssignments } = splitFromUnified(toSave.unifiedAssignments)
-    try {
-      await withSupabaseRetry(
-        async () => {
-          const r = await supabase.from('people_crew_jobs').upsert(
-            {
-              work_date: effectiveSelectedDay,
-              person_name: personName,
-              job_assignments: jobAssignments,
-            },
-            { onConflict: 'work_date,person_name' }
-          )
-          return r as { data: unknown; error: { message: string } | null }
-        },
-        'save people_crew_jobs'
-      )
-      await withSupabaseRetry(
-        async () => {
-          const r = await supabase.from('people_crew_bids').upsert(
-            {
-              work_date: effectiveSelectedDay,
-              person_name: personName,
-              bid_assignments: bidAssignments,
-            },
-            { onConflict: 'work_date,person_name' }
-          )
-          return r as { data: unknown; error: { message: string } | null }
-        },
-        'save people_crew_bids'
-      )
-    } catch {
-      return
-    }
-    setCrewJobsByDatePerson((prev) => ({ ...prev, [key]: toSave }))
-    setDraft(null)
-    onSaved()
-    const remaining = unassignedDays.filter((d) => d !== effectiveSelectedDay)
-    if (remaining.length === 0) {
-      onClose()
-    } else {
-      setSelectedDay(remaining[0] ?? '')
-    }
+  function pickLabel(item: CrewPick): string {
+    return item.type === 'job'
+      ? formatAssignmentLabel('job', { hcp_number: item.hcp_number, job_name: item.job_name, job_address: item.job_address, service_type_id: item.service_type_id ?? null }, prefixMap)
+      : formatAssignmentLabel('bid', { bid_number: item.bid_number, project_name: item.project_name, address: item.address, service_type_id: item.service_type_id ?? null }, prefixMap)
   }
 
-  function addAssignmentToDraft(
-    item:
-      | {
-          type: 'job'
-          id: string
-          hcp_number: string
-          job_name: string
-          job_address: string
-          service_type_id?: string | null
-        }
-      | {
-          type: 'bid'
-          id: string
-          bid_number: string
-          project_name: string
-          address: string
-          service_type_id?: string | null
-        },
-  ) {
-    const current = draft ?? row
-    if (current.unifiedAssignments.some((a) => a.type === item.type && a.id === item.id)) return
-    const n = current.unifiedAssignments.length + 1
-    const pct = Math.round((100 / n) * 10) / 10
-    const newAssignments = current.unifiedAssignments.map((a) => ({ ...a, pct }))
-    newAssignments.push({
-      type: item.type,
-      id: item.id,
-      pct: Math.round((100 - newAssignments.reduce((s, a) => s + a.pct, 0)) * 10) / 10,
-    })
+  /**
+   * v2.2966: a quick pick or search row puts the job on the day's clock sessions —
+   * every closed session with no job or bid yet. Approved ones fire the sync
+   * trigger and the day's split appears (so the day leaves this list on reload);
+   * pending ones carry the link into approval. The crew tables are never written
+   * by hand here: no session, no split.
+   */
+  async function linkDay(item: CrewPick) {
+    if (!canEditCrewJobs || linking || !effectiveSelectedDay) return
+    const cls = dayClassification
+    const state = dayState
+    if (state.kind !== 'link') {
+      showToast(
+        state.kind === 'no-clock'
+          ? 'No clock session on this day — there is no split without a clock session.'
+          : 'Every session this day already has a job or bid — use Split day… to move hours.',
+        'warning',
+      )
+      return
+    }
     if (item.type === 'job') {
       setCrewJobDetailsMap((prev) => ({
         ...prev,
-        [item.id]: {
-          hcp_number: item.hcp_number,
-          job_name: item.job_name,
-          job_address: item.job_address,
-          service_type_id: item.service_type_id ?? null,
-        },
+        [item.id]: { hcp_number: item.hcp_number, job_name: item.job_name, job_address: item.job_address, service_type_id: item.service_type_id ?? null },
       }))
     } else {
       setCrewBidDetailsMap((prev) => ({
         ...prev,
-        [item.id]: {
-          bid_number: item.bid_number,
-          project_name: item.project_name,
-          address: item.address,
-          service_type_id: item.service_type_id ?? null,
-        },
+        [item.id]: { bid_number: item.bid_number, project_name: item.project_name, address: item.address, service_type_id: item.service_type_id ?? null },
       }))
     }
-    setDraft({ unifiedAssignments: newAssignments })
+    setJobSearchOpen(false)
+    setJobSearchText('')
+    setJobSearchResults([])
+    setLinking(true)
+    const { updated, error } = await linkClockSessionsToPick(state.unlinkedIds, item)
+    setLinking(false)
+    if (error) {
+      showToast(`Could not link ${personName}'s sessions: ${error}`, 'error')
+      return
+    }
+    if (updated < state.unlinkedIds.length) {
+      showToast(partialLinkMessage(personName, updated, state.unlinkedIds.length), 'warning', 8000)
+      if (updated === 0) return
+    } else {
+      showToast(dayLinkSuccessMessage(cls, updated, pickLabel(item)), 'success')
+    }
+    onSaved()
+    setReloadTick((n) => n + 1)
   }
 
   if (loading) {
@@ -910,9 +764,17 @@ export function HoursUnassignedModal({
     <div style={{ position: 'fixed', padding: 'calc(1rem + env(safe-area-inset-top, 0px)) 1rem calc(1rem + env(safe-area-inset-bottom, 0px))', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1001 }}>
       <div role="dialog" aria-modal="true" style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: phoneSafeMinWidth(400), boxSizing: 'border-box', maxWidth: '90%', maxHeight: 'min(90vh, 100%)', overflow: 'auto' }}>
         <h3 style={{ margin: '0 0 1rem 0', fontSize: '1.125rem' }}>Assign {personName} to jobs or bids</h3>
-        <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginBottom: '1rem' }}>
-          {personName} has hours on Correct days but no assignments. Add jobs or bids for each day.
+        <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginBottom: skippedNoClockDays.length > 0 ? '0.5rem' : '1rem' }}>
+          {personName} has hours on Correct days but no assignments. Pick the job or bid for each day — it goes on that day's clock sessions and the split follows.
         </p>
+        {skippedNoClockDays.length > 0 ? (
+          <p
+            title="These days have payroll hours but no closed clock session, so there is nothing to put a job on. Approve or add a session for the day first (the day audit's Add session), then come back."
+            style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginBottom: '1rem', cursor: 'help' }}
+          >
+            Skipped — no clock session: {skippedNoClockDays.map((d) => new Date(d + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })).join(', ')}. There is no split without a clock session.
+          </p>
+        ) : null}
         {unassignedDays.length === 0 ? (
           <p style={{ color: '#22c55e' }}>All days are now assigned.</p>
         ) : (
@@ -952,16 +814,12 @@ export function HoursUnassignedModal({
                 {sessionsFetchError && (
                   <p style={{ fontSize: '0.8125rem', color: 'var(--text-red-700)', margin: 0 }}>{sessionsFetchError}</p>
                 )}
-                {sessionsLoading && (
-                  <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', margin: 0 }}>Loading sessions…</p>
-                )}
-                {!sessionsLoading &&
-                  !sessionsUserMissing &&
+                {!sessionsUserMissing &&
                   !sessionsFetchError &&
                   daySessions.length === 0 && (
                     <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', margin: 0 }}>No clock sessions for this day.</p>
                   )}
-                {!sessionsLoading && daySessions.length > 0 && (
+                {daySessions.length > 0 && (
                   <div
                     style={{
                       maxHeight: 220,
@@ -1047,14 +905,14 @@ export function HoursUnassignedModal({
                             <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>No common jobs</span>
                           ) : (
                             commonJobs.map((j) => {
-                              const disabled = draftRow.unifiedAssignments.some((a) => a.type === 'job' && a.id === j.job_id)
+                              const disabled = !canLinkDay
                               return (
                                 <button
                                   key={j.id}
                                   type="button"
                                   disabled={disabled}
                                   onClick={() =>
-                                    addAssignmentToDraft({
+                                    void linkDay({
                                       type: 'job',
                                       id: j.job_id,
                                       hcp_number: j.hcp_number,
@@ -1196,7 +1054,7 @@ export function HoursUnassignedModal({
                       ) : (
                         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem' }}>
                           {recentQuickPicks.map((item) => {
-                            const disabled = draftRow.unifiedAssignments.some((a) => a.type === item.type && a.id === item.id)
+                            const disabled = !canLinkDay
                             const serviceTag = item.type === 'bid' ? getBidServiceTypeTag(item.service_type_name) : null
                             return (
                               <button
@@ -1204,7 +1062,7 @@ export function HoursUnassignedModal({
                                 type="button"
                                 disabled={disabled}
                                 onClick={() =>
-                                  addAssignmentToDraft(
+                                  void linkDay(
                                     item.type === 'job'
                                       ? {
                                           type: 'job',
@@ -1254,74 +1112,50 @@ export function HoursUnassignedModal({
                       )}
                     </div>
                     <div style={{ marginBottom: '1rem' }}>
-                      <div style={{ marginBottom: '0.35rem' }}>
+                      <div style={{ marginBottom: '0.35rem', display: 'flex', alignItems: 'baseline', gap: '0.5rem' }}>
                         <label style={{ fontSize: '0.875rem' }}>Assignments</label>
+                        <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>from clock sessions — there is no split without one</span>
                       </div>
                       <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.35rem', marginBottom: '0.5rem' }}>
-                        {draftRow.unifiedAssignments.map((a, idx) => {
-                          const details = a.type === 'job' ? crewJobDetailsMap[a.id] : crewBidDetailsMap[a.id]
-                          const label = formatAssignmentLabel(a.type, details, prefixMap) || a.id.slice(0, 8)
-                          return (
-                            <span key={getAssignmentKey(a)} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem', padding: '0.2rem 0.4rem', background: 'var(--bg-muted)', borderRadius: 4, fontSize: '0.8125rem' }}>
-                              <span>{label}</span>
-                              <input
-                                type="number"
-                                min={0}
-                                max={100}
-                                value={a.pct}
-                                onChange={(e) => {
-                                  const v = parseFloat(e.target.value) || 0
-                                  const rest = draftRow.unifiedAssignments.filter((_, i) => i !== idx)
-                                  const restSum = rest.reduce((s, x) => s + x.pct, 0)
-                                  const scale = restSum > 0 ? (100 - v) / restSum : 1
-                                  let newAssignments = draftRow.unifiedAssignments.map((x, i) =>
-                                    i === idx ? { ...x, pct: v } : { ...x, pct: Math.round(x.pct * scale * 10) / 10 }
-                                  )
-                                  const sum = newAssignments.reduce((s, x) => s + x.pct, 0)
-                                  if (Math.abs(sum - 100) > 0.01 && newAssignments.length > 0) {
-                                    const lastIdx = newAssignments.length - 1
-                                    newAssignments = newAssignments.map((x, i) =>
-                                      i === lastIdx ? { ...x, pct: Math.round((x.pct + (100 - sum)) * 10) / 10 } : x
-                                    )
-                                  }
-                                  setDraft({ ...draftRow, unifiedAssignments: newAssignments })
-                                }}
-                                style={{ width: 44, padding: '0.15rem', fontSize: '0.875rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
-                              />
-                              %
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  const rest = draftRow.unifiedAssignments.filter((_, i) => i !== idx)
-                                  if (rest.length === 0) {
-                                    setDraft({ ...draftRow, unifiedAssignments: [] })
-                                    return
-                                  }
-                                  const n = rest.length
-                                  const pctEach = Math.round((100 / n) * 10) / 10
-                                  const newAssignments = rest.map((x, i) => ({
-                                    ...x,
-                                    pct: i === n - 1 ? Math.round((100 - (n - 1) * pctEach) * 10) / 10 : pctEach,
-                                  }))
-                                  setDraft({ ...draftRow, unifiedAssignments: newAssignments })
-                                }}
-                                style={{ padding: '0.1rem 0.25rem', border: 'none', background: 'none', cursor: 'pointer', color: 'var(--text-muted)', fontSize: '0.875rem', lineHeight: 1 }}
-                                title="Remove"
-                              >
-                                ×
-                              </button>
-                            </span>
-                          )
-                        })}
-                        {!jobSearchOpen ? (
+                        {dayState.kind === 'link' ? (
+                          <span style={{ fontSize: '0.8125rem', color: 'var(--text-700)' }}>
+                            {crewLinkButtonLabel(dayState).replace(/^Link /, '')} with no job or bid — tap a pick above, or
+                          </span>
+                        ) : dayState.kind === 'locked' ? (
+                          <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
+                            Every session this day already has a job or bid — the split is theirs. Use Split day… to move hours between jobs.
+                          </span>
+                        ) : (
+                          <span
+                            title="No closed clock session on this day, so there is nothing to put a job on. Add or approve a session first."
+                            style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', cursor: 'help' }}
+                          >
+                            No clock session — there is no split without one.
+                          </span>
+                        )}
+                        {dayState.kind === 'link' && !jobSearchOpen ? (
                           <button
                             type="button"
+                            disabled={!canLinkDay}
                             onClick={() => { setJobSearchOpen(true); setJobSearchText(''); setJobSearchResults([]) }}
-                            style={{ padding: '0.2rem 0.5rem', border: '1px dashed var(--border-strong)', borderRadius: 4, background: 'var(--surface)', cursor: 'pointer', fontSize: '0.875rem' }}
+                            title="Search jobs and bids — the pick goes on every unlinked session this day."
+                            style={{ padding: '0.2rem 0.5rem', border: '1px dashed var(--border-strong)', borderRadius: 4, background: 'var(--surface)', cursor: canLinkDay ? 'pointer' : 'not-allowed', fontSize: '0.875rem' }}
                           >
-                            +
+                            + Search jobs & bids
                           </button>
-                        ) : (
+                        ) : null}
+                        {dayState.kind !== 'no-clock' && resolvedUserId && canEditCrewJobs ? (
+                          <button
+                            type="button"
+                            disabled={linking}
+                            onClick={() => setDayEditorOpen(true)}
+                            title="Open the day editor to split a session between two jobs, or change which job a session carries"
+                            style={{ padding: '0.2rem 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', color: 'var(--text-muted)', cursor: linking ? 'not-allowed' : 'pointer', fontSize: '0.8125rem' }}
+                          >
+                            Split day…
+                          </button>
+                        ) : null}
+                        {dayState.kind === 'link' && jobSearchOpen ? (
                           <div style={{ width: '100%', marginTop: '0.5rem' }}>
                             <input
                               type="search"
@@ -1338,7 +1172,7 @@ export function HoursUnassignedModal({
                                   type="button"
                                   onClick={() => {
                                     if (item.source !== 'job' && item.source !== 'bid') return
-                                    addAssignmentToDraft(
+                                    void linkDay(
                                       item.source === 'job'
                                         ? {
                                             type: 'job',
@@ -1377,7 +1211,7 @@ export function HoursUnassignedModal({
                               Cancel search
                             </button>
                           </div>
-                        )}
+                        ) : null}
                       </div>
                     </div>
               </>
@@ -1385,15 +1219,6 @@ export function HoursUnassignedModal({
           </>
         )}
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid var(--border)' }}>
-          {unassignedDays.length > 0 && effectiveSelectedDay && (
-            <button
-              type="button"
-              onClick={handleSave}
-              style={{ padding: '0.5rem 1rem', background: '#2563eb', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: '0.875rem' }}
-            >
-              Accept
-            </button>
-          )}
           <button
             type="button"
             onClick={() => {
@@ -1412,6 +1237,26 @@ export function HoursUnassignedModal({
           </button>
         </div>
       </div>
+      {dayEditorOpen && resolvedUserId && effectiveSelectedDay ? (
+        <DashboardMyTimeDayEditorModal
+          dateStr={effectiveSelectedDay}
+          sessions={[]}
+          subjectUserId={resolvedUserId}
+          subjectDisplayName={personName}
+          jobLabels={dayEditorJobLabels}
+          bidLabels={dayEditorBidLabels}
+          onClose={() => setDayEditorOpen(false)}
+          onSaved={() => {
+            setDayEditorOpen(false)
+            onSaved()
+            setReloadTick((n) => n + 1)
+          }}
+          onLinkedSessionsUpdated={() => {
+            onSaved()
+            setReloadTick((n) => n + 1)
+          }}
+        />
+      ) : null}
     </div>
   )
 }
