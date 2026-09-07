@@ -168,7 +168,8 @@ export default function JobsReportsTab({
           setScopeMastersForRecurringReports([])
           return
         }
-        const mids = [...new Set(maps.map((r) => r.master_id))]
+        // master_assistants is a view since v2.2987; its ids are typed nullable.
+        const mids = [...new Set(maps.map((r) => r.master_id).filter((id): id is string => !!id))]
         const { data: masters } = await supabase.from('users').select('id,name').in('id', mids)
         if (cancelled) return
         setScopeMastersForRecurringReports(

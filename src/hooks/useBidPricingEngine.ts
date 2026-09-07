@@ -466,11 +466,11 @@ export function useBidPricingEngine(deps: UseBidPricingEngineDeps) {
   }
 
   async function loadPOTotal(poId: string, signal?: AbortSignal): Promise<number> {
-    let q: ReturnType<typeof supabase.from> = supabase
+    const qBase = supabase
       .from('purchase_order_items')
       .select('price_at_time, quantity')
       .eq('purchase_order_id', poId)
-    if (signal && 'abortSignal' in q) q = (q as { abortSignal: (s: AbortSignal) => typeof q }).abortSignal(signal)
+    const q = signal ? qBase.abortSignal(signal) : qBase
     const { data, error } = await q
     if (error) return 0
     const items = (data as { price_at_time: number; quantity: number }[]) ?? []
@@ -997,31 +997,31 @@ export function useBidPricingEngine(deps: UseBidPricingEngineDeps) {
     try {
     const [countRes, estRes, bidMetaRes, mappingsRes, roughLinesRes] = await Promise.all([
       (() => {
-        let q: ReturnType<typeof supabase.from> = applyVersionFilter(supabase.from('bids_count_rows').select('*').eq('bid_id', bidId), activeVersionIdForBid(bidId)).order('sequence_order', { ascending: true })
-        if (signal && 'abortSignal' in q) q = (q as { abortSignal: (s: AbortSignal) => typeof q }).abortSignal(signal)
+        const qBase = applyVersionFilter(supabase.from('bids_count_rows').select('*').eq('bid_id', bidId), activeVersionIdForBid(bidId)).order('sequence_order', { ascending: true })
+        const q = signal ? qBase.abortSignal(signal) : qBase
         return q
       })(),
       (() => {
-        let q: ReturnType<typeof supabase.from> = supabase.from('cost_estimates').select('*').eq('bid_id', bidId)
-        if (signal && 'abortSignal' in q) q = (q as { abortSignal: (s: AbortSignal) => typeof q }).abortSignal(signal)
+        const qBase = supabase.from('cost_estimates').select('*').eq('bid_id', bidId)
+        const q = signal ? qBase.abortSignal(signal) : qBase
         return q.maybeSingle()
       })(),
       (() => {
-        let q: ReturnType<typeof supabase.from> = supabase.from('bids').select('materials_model').eq('id', bidId)
-        if (signal && 'abortSignal' in q) q = (q as { abortSignal: (s: AbortSignal) => typeof q }).abortSignal(signal)
+        const qBase = supabase.from('bids').select('materials_model').eq('id', bidId)
+        const q = signal ? qBase.abortSignal(signal) : qBase
         return q.maybeSingle()
       })(),
       (() => {
-        let q: ReturnType<typeof supabase.from> = applyVersionFilter(supabase.from('bids_takeoff_template_mappings').select('id, count_row_id, template_id, stage, quantity').eq('bid_id', bidId), activeVersionIdForBid(bidId))
-        if (signal && 'abortSignal' in q) q = (q as { abortSignal: (s: AbortSignal) => typeof q }).abortSignal(signal)
+        const qBase = applyVersionFilter(supabase.from('bids_takeoff_template_mappings').select('id, count_row_id, template_id, stage, quantity').eq('bid_id', bidId), activeVersionIdForBid(bidId))
+        const q = signal ? qBase.abortSignal(signal) : qBase
         return q
       })(),
       (() => {
-        let q: ReturnType<typeof supabase.from> = applyVersionFilter(supabase
+        const qBase = applyVersionFilter(supabase
           .from('bids_takeoff_rough_part_lines')
           .select('count_row_id, quantity, unit_price')
           .eq('bid_id', bidId), activeVersionIdForBid(bidId))
-        if (signal && 'abortSignal' in q) q = (q as { abortSignal: (s: AbortSignal) => typeof q }).abortSignal(signal)
+        const q = signal ? qBase.abortSignal(signal) : qBase
         return q
       })(),
     ])
@@ -1074,13 +1074,12 @@ export function useBidPricingEngine(deps: UseBidPricingEngineDeps) {
       setPricingMaterialTotalTopOut(null)
       setPricingMaterialTotalTrimSet(null)
 
-      let qLabor: ReturnType<typeof supabase.from> = supabase
+      const qLaborBase = supabase
         .from('cost_estimate_labor_rows')
         .select('*')
         .eq('cost_estimate_id', est.id)
         .order('sequence_order', { ascending: true })
-      if (signal && 'abortSignal' in qLabor)
-        qLabor = (qLabor as { abortSignal: (s: AbortSignal) => typeof qLabor }).abortSignal(signal)
+      const qLabor = signal ? qLaborBase.abortSignal(signal) : qLaborBase
       const laborRes = await qLabor
       if (signal?.aborted) return
       if (laborRes.error) {
@@ -1109,12 +1108,11 @@ export function useBidPricingEngine(deps: UseBidPricingEngineDeps) {
     // Phase 2: parallel fetches (all need est) — Exact materials model
     const loadPOItems = async (poId: string | null) => {
       if (!poId) return []
-      let q: ReturnType<typeof supabase.from> = supabase
+      const base = supabase
         .from('purchase_order_items')
         .select('part_id, quantity, price_at_time')
         .eq('purchase_order_id', poId)
-      if (signal && 'abortSignal' in q) q = (q as { abortSignal: (s: AbortSignal) => typeof q }).abortSignal(signal)
-      const { data, error } = await q
+      const { data, error } = await (signal ? base.abortSignal(signal) : base)
       if (error) return []
       return (data as Array<{ part_id: string; quantity: number; price_at_time: number }>) ?? []
     }
@@ -1123,9 +1121,8 @@ export function useBidPricingEngine(deps: UseBidPricingEngineDeps) {
       est.purchase_order_id_top_out ? loadPOTotal(est.purchase_order_id_top_out, signal) : Promise.resolve(0),
       est.purchase_order_id_trim_set ? loadPOTotal(est.purchase_order_id_trim_set, signal) : Promise.resolve(0),
       (() => {
-        let q: ReturnType<typeof supabase.from> = supabase.from('cost_estimate_labor_rows').select('*').eq('cost_estimate_id', est.id).order('sequence_order', { ascending: true })
-        if (signal && 'abortSignal' in q) q = (q as { abortSignal: (s: AbortSignal) => typeof q }).abortSignal(signal)
-        return q
+        const base = supabase.from('cost_estimate_labor_rows').select('*').eq('cost_estimate_id', est.id).order('sequence_order', { ascending: true })
+        return signal ? base.abortSignal(signal) : base
       })(),
       loadPOItems(est.purchase_order_id_rough_in),
       loadPOItems(est.purchase_order_id_top_out),

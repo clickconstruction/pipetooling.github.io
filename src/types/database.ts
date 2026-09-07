@@ -8646,39 +8646,6 @@ export type Database = {
           },
         ]
       }
-      master_assistants: {
-        Row: {
-          assistant_id: string
-          created_at: string | null
-          master_id: string
-        }
-        Insert: {
-          assistant_id: string
-          created_at?: string | null
-          master_id: string
-        }
-        Update: {
-          assistant_id?: string
-          created_at?: string | null
-          master_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "master_assistants_assistant_id_fkey"
-            columns: ["assistant_id"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "master_assistants_master_id_fkey"
-            columns: ["master_id"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       master_primaries: {
         Row: {
           created_at: string | null
@@ -8706,39 +8673,6 @@ export type Database = {
           {
             foreignKeyName: "master_primaries_primary_id_fkey"
             columns: ["primary_id"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      master_shares: {
-        Row: {
-          created_at: string | null
-          sharing_master_id: string
-          viewing_master_id: string
-        }
-        Insert: {
-          created_at?: string | null
-          sharing_master_id: string
-          viewing_master_id: string
-        }
-        Update: {
-          created_at?: string | null
-          sharing_master_id?: string
-          viewing_master_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "master_shares_sharing_master_id_fkey"
-            columns: ["sharing_master_id"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "master_shares_viewing_master_id_fkey"
-            columns: ["viewing_master_id"]
             isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]
@@ -10273,45 +10207,6 @@ export type Database = {
           push_title?: string
           template_type?: string
           updated_at?: string | null
-        }
-        Relationships: []
-      }
-      team_board_acks: {
-        Row: {
-          acked_at: string
-          acked_by: string | null
-          bid_id: string | null
-          id: string
-          job_ledger_id: string | null
-          kind: string
-          note: string | null
-          person_user_id: string
-          target_key: string
-          work_date: string
-        }
-        Insert: {
-          acked_at?: string
-          acked_by?: string | null
-          bid_id?: string | null
-          id?: string
-          job_ledger_id?: string | null
-          kind: string
-          note?: string | null
-          person_user_id: string
-          target_key: string
-          work_date: string
-        }
-        Update: {
-          acked_at?: string
-          acked_by?: string | null
-          bid_id?: string | null
-          id?: string
-          job_ledger_id?: string | null
-          kind?: string
-          note?: string | null
-          person_user_id?: string
-          target_key?: string
-          work_date?: string
         }
         Relationships: []
       }
@@ -13875,6 +13770,72 @@ export type Database = {
           },
         ]
       }
+      retired_master_assistants: {
+        Row: {
+          assistant_id: string
+          created_at: string | null
+          master_id: string
+        }
+        Insert: {
+          assistant_id: string
+          created_at?: string | null
+          master_id: string
+        }
+        Update: {
+          assistant_id?: string
+          created_at?: string | null
+          master_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "master_assistants_assistant_id_fkey"
+            columns: ["assistant_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "master_assistants_master_id_fkey"
+            columns: ["master_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      retired_master_shares: {
+        Row: {
+          created_at: string | null
+          sharing_master_id: string
+          viewing_master_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          sharing_master_id: string
+          viewing_master_id: string
+        }
+        Update: {
+          created_at?: string | null
+          sharing_master_id?: string
+          viewing_master_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "master_shares_sharing_master_id_fkey"
+            columns: ["sharing_master_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "master_shares_viewing_master_id_fkey"
+            columns: ["viewing_master_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       salary_work_schedule_day_overrides: {
         Row: {
           bid_id: string | null
@@ -15280,6 +15241,74 @@ export type Database = {
             columns: ["service_type_id"]
             isOneToOne: false
             referencedRelation: "service_types"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      team_board_acks: {
+        Row: {
+          acked_at: string
+          acked_by: string | null
+          bid_id: string | null
+          id: string
+          job_ledger_id: string | null
+          kind: string
+          note: string | null
+          person_user_id: string
+          target_key: string
+          work_date: string
+        }
+        Insert: {
+          acked_at?: string
+          acked_by?: string | null
+          bid_id?: string | null
+          id?: string
+          job_ledger_id?: string | null
+          kind: string
+          note?: string | null
+          person_user_id: string
+          target_key: string
+          work_date: string
+        }
+        Update: {
+          acked_at?: string
+          acked_by?: string | null
+          bid_id?: string | null
+          id?: string
+          job_ledger_id?: string | null
+          kind?: string
+          note?: string | null
+          person_user_id?: string
+          target_key?: string
+          work_date?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "team_board_acks_acked_by_fkey"
+            columns: ["acked_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "team_board_acks_bid_id_fkey"
+            columns: ["bid_id"]
+            isOneToOne: false
+            referencedRelation: "bids"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "team_board_acks_job_ledger_id_fkey"
+            columns: ["job_ledger_id"]
+            isOneToOne: false
+            referencedRelation: "jobs_ledger"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "team_board_acks_person_user_id_fkey"
+            columns: ["person_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
         ]
@@ -17847,7 +17876,22 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      master_assistants: {
+        Row: {
+          assistant_id: string | null
+          created_at: string | null
+          master_id: string | null
+        }
+        Relationships: []
+      }
+      master_shares: {
+        Row: {
+          created_at: string | null
+          sharing_master_id: string | null
+          viewing_master_id: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       _mercury_raw_debit_card_id_lower: {
@@ -18131,6 +18175,7 @@ export type Database = {
         Args: { p_bid_id: string; p_name: string; p_source_version_id: string }
         Returns: string
       }
+      company_owner_user_id: { Args: never; Returns: string }
       complete_job_collect_payment_flow_for_invoice: {
         Args: { p_stripe_invoice_id: string }
         Returns: Json
