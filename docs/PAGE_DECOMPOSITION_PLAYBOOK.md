@@ -5,56 +5,56 @@ file: docs/PAGE_DECOMPOSITION_PLAYBOOK.md
 type: Engineering / Refactor Process
 purpose: A repeatable, generic process for breaking a multi-thousand-line "God component" page into per-tab components + shared hooks + tested pure logic, without re-deriving the strategy each time. Generalizes the method proven on Bids.tsx (~18,800 → ~3,787 lines) and People.tsx (~21,435 → ~4,269).
 audience: Developers, AI Agents
-last_updated: 2026-08-02
+last_updated: 2026-09-06
 ---
 
 ## What this is
 
-> The large-file inventory below is stale (measured 2026-09-05); refresh tracked in [`to-dos/engineering-hygiene.md`](../to-dos/engineering-hygiene.md).
+> Line counts below were re-measured 2026-09-06 (v2.2961 docs audit); the file list itself dates from the 2026-07-29 sweep.
 
-The repo still has several God components (line counts at 2026-07-29, the date of the 20-map Step-0 sweep — v2.1089):
+The repo still has several God components (line counts re-measured 2026-09-06; the surfaces were mapped in the 2026-07-29 Step-0 sweep — v2.1089):
 
 **Pages and page-scale surfaces:**
 
 | File | Lines | Map | Notes |
 |---|---|---|---|
-| `src/pages/Materials.tsx` | ~2,120 | [`MATERIALS_TABS_ARCHITECTURE.md`](./MATERIALS_TABS_ARCHITECTURE.md) | **decomposition complete** (v2.1275–v2.1293, 12-PR train from 7,033 lines): all 6 tabs extracted, 3 seam hooks (`useMaterialsCatalog`/`useMaterialsAssemblies`/`useMaterialsPurchaseOrders`), Stage-A kernels in `lib/materials/*` + `lib/materialsDocuments/*` |
-| `src/pages/Estimates.tsx` | 5,365 | [`ESTIMATES_TABS_ARCHITECTURE.md`](./ESTIMATES_TABS_ARCHITECTURE.md) | two page components behind a URL router; Stage-A-mature already |
-| `src/pages/Workflow.tsx` | 4,782 | [`WORKFLOW_PAGE_ARCHITECTURE.md`](./WORKFLOW_PAGE_ARCHITECTURE.md) | region-based (not tabbed); StepFormModal is the first peel-off |
-| `src/pages/People.tsx` | 4,313 | [`PEOPLE_TABS_ARCHITECTURE.md`](./PEOPLE_TABS_ARCHITECTURE.md) | decomposition essentially done |
-| `src/pages/Bids.tsx` | 3,791 | [`BIDS_TABS_ARCHITECTURE.md`](./BIDS_TABS_ARCHITECTURE.md) | decomposition done |
-| `src/pages/Prospects.tsx` (+ `TeamProspectsTab` 1,820) | 3,373 | [`PROSPECTS_TABS_ARCHITECTURE.md`](./PROSPECTS_TABS_ARCHITECTURE.md) | pointer + dual-cache substrate; Activity tab is a near-free first move |
-| `src/pages/Banking.tsx` (+ 2 oversized extracted tabs) | 3,104 | [`BANKING_TABS_ARCHITECTURE.md`](./BANKING_TABS_ARCHITECTURE.md) | 5 of 7 Mercury tabs already out; in-file table components are the first move |
-| `ScheduleDispatchHub` + `ScheduleDispatchHubPage` | 3,302 + 2,384 | [`SCHEDULE_DISPATCH_ARCHITECTURE.md`](./SCHEDULE_DISPATCH_ARCHITECTURE.md) | hot (churn 22/20); container/presentational split already in place |
-| `src/pages/Checklist.tsx` (+ `ChecklistTechTreeTab` ~1,840 after v2.2156) | ~3,500 | [`CHECKLIST_TABS_ARCHITECTURE.md`](./CHECKLIST_TABS_ARCHITECTURE.md) | tabs are already in-file components — Stage B is mostly file moves; tech-tree sub-decomposition done v2.2156 |
-| `src/pages/JobTally.tsx` | 2,330 | [`JOB_TALLY_ARCHITECTURE.md`](./JOB_TALLY_ARCHITECTURE.md) | two nearly independent tabs |
-| `src/pages/Quickfill.tsx` (+ `QuickfillScheduleSection` 1,737) | 2,039 | [`QUICKFILL_ARCHITECTURE.md`](./QUICKFILL_ARCHITECTURE.md) | section bodies extracted; framework + schedule section remain |
-| `src/pages/Jobs.tsx` | 2,020 | [`JOBS_TABS_ARCHITECTURE.md`](./JOBS_TABS_ARCHITECTURE.md) | decomposition essentially done (shrank from ~15k) |
-| `src/pages/Settings.tsx` | 1,714 | [`SETTINGS_TABS_ARCHITECTURE.md`](./SETTINGS_TABS_ARCHITECTURE.md) | done (v2.853–859); follow-on: `SettingsDashboardTab` (1,985) |
-| `src/pages/Dashboard.tsx` | 1,673 | [`DASHBOARD_SECTIONS_ARCHITECTURE.md`](./DASHBOARD_SECTIONS_ARCHITECTURE.md) | shrank from ~8.9k; remaining sections tracked there |
+| `src/pages/Materials.tsx` | 2,187 | [`MATERIALS_TABS_ARCHITECTURE.md`](./MATERIALS_TABS_ARCHITECTURE.md) | **decomposition complete** (v2.1275–v2.1293, 12-PR train from 7,033 lines): all 6 tabs extracted, 3 seam hooks (`useMaterialsCatalog`/`useMaterialsAssemblies`/`useMaterialsPurchaseOrders`), Stage-A kernels in `lib/materials/*` + `lib/materialsDocuments/*` |
+| `src/pages/Estimates.tsx` | 6,907 | [`ESTIMATES_TABS_ARCHITECTURE.md`](./ESTIMATES_TABS_ARCHITECTURE.md) | two page components behind a URL router; Stage-A-mature already |
+| `src/pages/Workflow.tsx` | 4,346 | [`WORKFLOW_PAGE_ARCHITECTURE.md`](./WORKFLOW_PAGE_ARCHITECTURE.md) | region-based (not tabbed); StepFormModal is the first peel-off |
+| `src/pages/People.tsx` | 4,733 | [`PEOPLE_TABS_ARCHITECTURE.md`](./PEOPLE_TABS_ARCHITECTURE.md) | decomposition essentially done |
+| `src/pages/Bids.tsx` | 4,630 | [`BIDS_TABS_ARCHITECTURE.md`](./BIDS_TABS_ARCHITECTURE.md) | decomposition done |
+| `src/pages/Prospects.tsx` (+ `TeamProspectsTab` 1,997) | 3,963 | [`PROSPECTS_TABS_ARCHITECTURE.md`](./PROSPECTS_TABS_ARCHITECTURE.md) | pointer + dual-cache substrate; Activity tab is a near-free first move |
+| `src/pages/Banking.tsx` (+ 2 oversized extracted tabs) | 2,269 | [`BANKING_TABS_ARCHITECTURE.md`](./BANKING_TABS_ARCHITECTURE.md) | 5 of 7 Mercury tabs already out; in-file table components are the first move |
+| `ScheduleDispatchHub` + `ScheduleDispatchHubPage` | 3,980 + 2,948 | [`SCHEDULE_DISPATCH_ARCHITECTURE.md`](./SCHEDULE_DISPATCH_ARCHITECTURE.md) | hot (churn 22/20); container/presentational split already in place |
+| `src/pages/Checklist.tsx` (+ `ChecklistTechTreeTab` 2,429 after v2.2156) | 3,809 | [`CHECKLIST_TABS_ARCHITECTURE.md`](./CHECKLIST_TABS_ARCHITECTURE.md) | tabs are already in-file components — Stage B is mostly file moves; tech-tree sub-decomposition done v2.2156 |
+| `src/pages/JobTally.tsx` | 2,403 | [`JOB_TALLY_ARCHITECTURE.md`](./JOB_TALLY_ARCHITECTURE.md) | two nearly independent tabs |
+| `src/pages/Quickfill.tsx` (+ `QuickfillScheduleSection` 1,885) | 2,388 | [`QUICKFILL_ARCHITECTURE.md`](./QUICKFILL_ARCHITECTURE.md) | section bodies extracted; framework + schedule section remain |
+| `src/pages/Jobs.tsx` | 2,106 | [`JOBS_TABS_ARCHITECTURE.md`](./JOBS_TABS_ARCHITECTURE.md) | decomposition essentially done (shrank from ~15k) |
+| `src/pages/Settings.tsx` | 1,775 | [`SETTINGS_TABS_ARCHITECTURE.md`](./SETTINGS_TABS_ARCHITECTURE.md) | done (v2.853–859); follow-on: `SettingsDashboardTab` (1,985) |
+| `src/pages/Dashboard.tsx` | 1,799 | [`DASHBOARD_SECTIONS_ARCHITECTURE.md`](./DASHBOARD_SECTIONS_ARCHITECTURE.md) | shrank from ~8.9k; remaining sections tracked there |
 
 **Extracted tabs that regrew into God components:**
 
 | File | Lines | Map | Notes |
 |---|---|---|---|
-| `src/components/bids/BidsTakeoffTab.tsx` | ~2,958 | [`BIDS_TAKEOFF_TAB_ARCHITECTURE.md`](./BIDS_TAKEOFF_TAB_ARCHITECTURE.md) | **decomposition underway** (T0–T7 done, v2.1294–v2.1306: kernels, row file move, book admin, materials summary, both small modals, authoring cluster); T8 catalog seam + exact / T9 rough remain — see the map's Decomposition log |
-| `src/components/people/PeopleReviewTab.tsx` | 5,009 | [`PEOPLE_REVIEW_TAB_ARCHITECTURE.md`](./PEOPLE_REVIEW_TAB_ARCHITECTURE.md) | ~1,660-line popup HTML builder is a third of the file — Stage A first |
-| `src/components/jobs/JobsStagesTab.tsx` (+ 3,100 lines of table/row sub-files) | 3,664 | [`JOBS_STAGES_TAB_ARCHITECTURE.md`](./JOBS_STAGES_TAB_ARCHITECTURE.md) | hot (churn 18); always-mounted contract is the hazard |
-| `src/components/people/PeopleContractsTab.tsx` + `PeopleOverheadTab.tsx` | 2,981 + 2,038 | [`PEOPLE_CONTRACTS_OVERHEAD_TABS_ARCHITECTURE.md`](./PEOPLE_CONTRACTS_OVERHEAD_TABS_ARCHITECTURE.md) | Overhead's calc already in tested libs |
-| `src/components/jobs/JobsJobSummaryTab.tsx` | 2,862 | [`JOBS_JOB_SUMMARY_TAB_ARCHITECTURE.md`](./JOBS_JOB_SUMMARY_TAB_ARCHITECTURE.md) | 100% presentational — pure JSX partition |
-| `src/components/bids/BidsPricingTab.tsx` + `BidsLaborTab.tsx` | 2,610 + 2,365 | [`BIDS_PRICING_LABOR_TABS_ARCHITECTURE.md`](./BIDS_PRICING_LABOR_TABS_ARCHITECTURE.md) | data lives in `useBidPricingEngine`; Labor's single autosave effect is the hazard |
-| `src/components/bids/BidSubmissionFollowupTab.tsx` | 2,081 | [`BID_SUBMISSION_FOLLOWUP_TAB_ARCHITECTURE.md`](./BID_SUBMISSION_FOLLOWUP_TAB_ARCHITECTURE.md) | two inline jsPDF builders are the bulk — Stage A first |
+| `src/components/bids/BidsTakeoffTab.tsx` | 2,866 | [`BIDS_TAKEOFF_TAB_ARCHITECTURE.md`](./BIDS_TAKEOFF_TAB_ARCHITECTURE.md) | **decomposition underway** (T0–T7 done, v2.1294–v2.1306: kernels, row file move, book admin, materials summary, both small modals, authoring cluster); T8 catalog seam + exact / T9 rough remain — see the map's Decomposition log |
+| `src/components/people/PeopleReviewTab.tsx` | 4,184 | [`PEOPLE_REVIEW_TAB_ARCHITECTURE.md`](./PEOPLE_REVIEW_TAB_ARCHITECTURE.md) | ~1,660-line popup HTML builder is a third of the file — Stage A first |
+| `src/components/jobs/JobsStagesTab.tsx` (+ 3,100 lines of table/row sub-files) | 6,094 | [`JOBS_STAGES_TAB_ARCHITECTURE.md`](./JOBS_STAGES_TAB_ARCHITECTURE.md) | hot (churn 18); always-mounted contract is the hazard |
+| `src/components/people/PeopleContractsTab.tsx` + `PeopleOverheadTab.tsx` | 3,670 + 2,504 | [`PEOPLE_CONTRACTS_OVERHEAD_TABS_ARCHITECTURE.md`](./PEOPLE_CONTRACTS_OVERHEAD_TABS_ARCHITECTURE.md) | Overhead's calc already in tested libs |
+| `src/components/jobs/JobsJobSummaryTab.tsx` | 3,151 | [`JOBS_JOB_SUMMARY_TAB_ARCHITECTURE.md`](./JOBS_JOB_SUMMARY_TAB_ARCHITECTURE.md) | 100% presentational — pure JSX partition |
+| `src/components/bids/BidsPricingTab.tsx` + `BidsLaborTab.tsx` | 5,504 + 2,453 | [`BIDS_PRICING_LABOR_TABS_ARCHITECTURE.md`](./BIDS_PRICING_LABOR_TABS_ARCHITECTURE.md) | data lives in `useBidPricingEngine`; Labor's single autosave effect is the hazard |
+| `src/components/bids/BidSubmissionFollowupTab.tsx` | 2,214 | [`BID_SUBMISSION_FOLLOWUP_TAB_ARCHITECTURE.md`](./BID_SUBMISSION_FOLLOWUP_TAB_ARCHITECTURE.md) | two inline jsPDF builders are the bulk — Stage A first |
 | `src/components/projects/ProjectsForecastSpecificTab.tsx` (+ stage modal 1,465) | 2,326 | [`PROJECTS_FORECAST_TABS_ARCHITECTURE.md`](./PROJECTS_FORECAST_TABS_ARCHITECTURE.md) | low-churn; no extraction scheduled |
 
 **Modals and standalone components:**
 
 | File | Lines | Map | Notes |
 |---|---|---|---|
-| `src/components/jobs/JobFormModal.tsx` | 4,096 | [`JOB_FORM_MODAL_ARCHITECTURE.md`](./JOB_FORM_MODAL_ARCHITECTURE.md) | extraction underway — peaked at ~4,985 before shrinking back to ~4,096; highest churn in the repo (62 commits in 6 weeks) |
-| `src/components/DashboardMyTimeDayEditorModal.tsx` | 3,948 | [`MY_TIME_DAY_EDITOR_MODAL_ARCHITECTURE.md`](./MY_TIME_DAY_EDITOR_MODAL_ARCHITECTURE.md) | 13 call sites; payroll-path save ladder moves verbatim behind Stage-A tests |
-| `src/components/jobs/SendRecordInvoiceModal.tsx` | 3,286 | [`SEND_RECORD_INVOICE_MODAL_ARCHITECTURE.md`](./SEND_RECORD_INVOICE_MODAL_ARCHITECTURE.md) | hot (churn 22); Stage B waits for the bill-to train (v2.1084–1087) to settle |
-| `src/components/DashboardTeamActiveClockStrip.tsx` + `ClockInOutButton.tsx` | 2,965 + 2,248 | [`CLOCK_SURFACES_ARCHITECTURE.md`](./CLOCK_SURFACES_ARCHITECTURE.md) | ~640 lines of closure-free pure helpers are the Stage-A opener |
-| `src/components/jobs/JobsSubLaborFormModal.tsx` + `DetailJobModal.tsx` | 2,154 + 2,035 | [`JOBS_MODALS_ARCHITECTURE.md`](./JOBS_MODALS_ARCHITECTURE.md) | SubLabor's always-mounted state-persistence contract is pinned by a render test |
+| `src/components/jobs/JobFormModal.tsx` | 4,824 | [`JOB_FORM_MODAL_ARCHITECTURE.md`](./JOB_FORM_MODAL_ARCHITECTURE.md) | extraction underway — peaked at ~4,985 before shrinking back to ~4,096; highest churn in the repo (62 commits in 6 weeks) |
+| `src/components/DashboardMyTimeDayEditorModal.tsx` | 3,981 | [`MY_TIME_DAY_EDITOR_MODAL_ARCHITECTURE.md`](./MY_TIME_DAY_EDITOR_MODAL_ARCHITECTURE.md) | 13 call sites; payroll-path save ladder moves verbatim behind Stage-A tests |
+| `src/components/jobs/SendRecordInvoiceModal.tsx` | 3,513 | [`SEND_RECORD_INVOICE_MODAL_ARCHITECTURE.md`](./SEND_RECORD_INVOICE_MODAL_ARCHITECTURE.md) | hot (churn 22); Stage B waits for the bill-to train (v2.1084–1087) to settle |
+| `src/components/DashboardTeamActiveClockStrip.tsx` + `ClockInOutButton.tsx` | 3,052 + 2,360 | [`CLOCK_SURFACES_ARCHITECTURE.md`](./CLOCK_SURFACES_ARCHITECTURE.md) | ~640 lines of closure-free pure helpers are the Stage-A opener |
+| `src/components/jobs/JobsSubLaborFormModal.tsx` + `DetailJobModal.tsx` | 2,614 + 2,491 | [`JOBS_MODALS_ARCHITECTURE.md`](./JOBS_MODALS_ARCHITECTURE.md) | SubLabor's always-mounted state-persistence contract is pinned by a render test |
 
 Each unfinished surface owns dozens-to-hundreds of `useState`s, loaders/handlers, and inline JSX. **As of the 2026-07-29 sweep, every surface ≥2,000 lines has its Step-0 architecture map** — start any extraction from the map, not from the source file.
 

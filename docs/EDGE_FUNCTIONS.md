@@ -90,6 +90,7 @@ when_to_read:
    - [twin-login](#twin-login)
    - [twin-mcp](#twin-mcp)
    - [drive-intake](#drive-intake)
+   - [plan-fetch](#plan-fetch)
    - [ct-bridge](#ct-bridge)
    - [audit-finish](#audit-finish)
    - [ct-roster-audit](#ct-roster-audit)
