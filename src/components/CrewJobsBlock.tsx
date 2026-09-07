@@ -14,7 +14,6 @@ import { APP_CALENDAR_TZ } from '../utils/dateUtils'
 import {
   type UnifiedAssignment,
   mergeToUnified,
-  splitFromUnified,
   formatAssignmentLabel,
   type JobDetails,
   type BidDetails,
@@ -25,6 +24,22 @@ import { useJobBidSearchEvidence } from '../hooks/useJobBidSearchEvidence'
 import { useLedgerPrefixMap } from '../contexts/LedgerDisplayPrefixContext'
 import { isAssistantLike } from '../lib/subcontractorLikeRole'
 import { phoneSafeMinWidth } from '../lib/stickyModalHeaderStyle'
+import { useToastContext } from '../contexts/ToastContext'
+import { DashboardMyTimeDayEditorModal } from './DashboardMyTimeDayEditorModal'
+import {
+  type CrewDaySession,
+  type PersonDaySessions,
+  crewAssignCellState,
+  crewLinkButtonLabel,
+  crewLinkPatch,
+  crewLinkSuccessMessage,
+  groupCrewDaySessionsByPerson,
+} from '../lib/crewAssignSessionLinkPlan'
+
+/** What the crew search modal hands back when a row is picked. */
+type CrewPick =
+  | { type: 'job'; id: string; hcp_number: string; job_name: string; job_address: string; service_type_id?: string | null }
+  | { type: 'bid'; id: string; bid_number: string; project_name: string; address: string; service_type_id?: string | null }
 
 const NOTES_PREVIEW_MAX = 80
 
@@ -146,13 +161,17 @@ export function CrewJobsBlock({
   const [crewDateHours, setCrewDateHours] = useState<Record<string, number>>({})
   const [crewJobsSectionOpen, setCrewJobsSectionOpen] = useState(true)
   /**
-   * v2.1636: trimmed person names whose selected-date assignments are owned by the
-   * clock sync (≥1 approved closed job/bid-anchored session that day). Their rows
-   * render locked — `sync_crew_jobs_from_clock` / `sync_crew_bids_from_clock`
-   * recompute the whole day on every approval/adjust, so manual edits would be
-   * silently overwritten. Fail-soft: a fetch error leaves the set empty (no lock).
+   * v2.2962: the selected date's approved closed sessions grouped by trimmed
+   * user name (the crew-row key). Drives the Assignments cell: unlinked sessions
+   * → the `+` links them; all linked → locked (⏱ from clock, v2.1636's rule —
+   * `sync_crew_jobs_from_clock` recomputes the day on every approval/adjust);
+   * none → no split may be created here. Fail-soft: a fetch error leaves it
+   * empty, so every row reads "No clock session" until the next load.
    */
-  const [clockDerivedPeople, setClockDerivedPeople] = useState<Set<string>>(new Set())
+  const [daySessionsByPerson, setDaySessionsByPerson] = useState<Record<string, PersonDaySessions>>({})
+  /** Split day…: the shared day editor for one person's sessions on `crewJobsDate`. */
+  const [dayEditor, setDayEditor] = useState<{ personName: string; userId: string } | null>(null)
+  const { showToast } = useToastContext()
 
   const canEdit = canEditProp ?? canAccess
 
@@ -178,6 +197,15 @@ export function CrewJobsBlock({
       return (id ? payConfigById[id] : undefined) ?? payConfig[personName]
     },
     [crewPersonIdByName, payConfigById, payConfig],
+  )
+
+  const dayEditorJobLabels = useMemo(
+    () => Object.fromEntries(Object.entries(crewJobDetailsMap).map(([id, d]) => [id, formatAssignmentLabel('job', d, prefixMap)])),
+    [crewJobDetailsMap, prefixMap],
+  )
+  const dayEditorBidLabels = useMemo(
+    () => Object.fromEntries(Object.entries(crewBidDetailsMap).map(([id, d]) => [id, formatAssignmentLabel('bid', d, prefixMap)])),
+    [crewBidDetailsMap, prefixMap],
   )
 
   const visiblePeopleForCrew = useMemo(() => {
@@ -319,7 +347,7 @@ export function CrewJobsBlock({
       supabase.from('people_hours').select('person_name, hours').eq('work_date', date),
       supabase
         .from('clock_sessions')
-        .select('job_ledger_id, bid_id, users!clock_sessions_user_id_fkey(name)')
+        .select('id, user_id, job_ledger_id, bid_id, clocked_in_at, clocked_out_at, users!clock_sessions_user_id_fkey(name)')
         .eq('work_date', date)
         .not('approved_at', 'is', null)
         .not('clocked_out_at', 'is', null)
@@ -327,14 +355,7 @@ export function CrewJobsBlock({
         .is('revoked_at', null),
     ])
     setCrewJobsLoading(false)
-    {
-      const derived = new Set<string>()
-      for (const s of (sessionsRes.data ?? []) as Array<{ job_ledger_id: string | null; bid_id: string | null; users: { name: string | null } | null }>) {
-        const name = s.users?.name?.trim()
-        if (name && (s.job_ledger_id || s.bid_id)) derived.add(name)
-      }
-      setClockDerivedPeople(derived)
-    }
+    setDaySessionsByPerson(groupCrewDaySessionsByPerson((sessionsRes.data ?? []) as unknown as CrewDaySession[]))
     const { data: jobsData, error: jobsErr } = jobsRes
     const { data: bidsData, error: bidsErr } = bidsRes
     if (jobsErr || bidsErr) {
@@ -399,97 +420,93 @@ export function CrewJobsBlock({
     void doLoadTeamLaborData()
   }
 
-  async function saveCrewRow(personName: string, row: CrewRow) {
+  async function reloadAfterCrewChange() {
+    await Promise.all([loadCrewJobs(crewJobsDate), doLoadTeamLaborData()])
+    onCrewJobsChange?.()
+  }
+
+  /**
+   * v2.2962: the only direct crew-table write left. Empties a legacy hand-entered
+   * split for a person-day that has NO approved session (a row the sync trigger
+   * would never rewrite). Removes a split; never creates one.
+   */
+  async function clearManualCrewRow(personName: string) {
     if (!canEdit) return
-    if (clockDerivedPeople.has(personName.trim())) return
-    setCrewJobsData((prev) => ({ ...prev, [personName]: row }))
-    const { jobAssignments, bidAssignments } = splitFromUnified(row.unifiedAssignments)
+    if (crewAssignCellState(daySessionsByPerson[personName.trim()]).kind !== 'no-clock') return
     const [jobsErr, bidsErr] = await Promise.all([
       supabase
         .from('people_crew_jobs')
-        .upsert(
-          {
-            work_date: crewJobsDate,
-            person_name: personName,
-            job_assignments: jobAssignments,
-          },
-          { onConflict: 'work_date,person_name' }
-        )
+        .upsert({ work_date: crewJobsDate, person_name: personName, job_assignments: [] }, { onConflict: 'work_date,person_name' })
         .then((r) => r.error),
       supabase
         .from('people_crew_bids')
-        .upsert(
-          {
-            work_date: crewJobsDate,
-            person_name: personName,
-            bid_assignments: bidAssignments,
-          },
-          { onConflict: 'work_date,person_name' }
-        )
+        .upsert({ work_date: crewJobsDate, person_name: personName, bid_assignments: [] }, { onConflict: 'work_date,person_name' })
         .then((r) => r.error),
     ])
-    if (jobsErr || bidsErr) setError(jobsErr?.message ?? bidsErr?.message ?? 'Failed to save')
-    else {
-      await doLoadTeamLaborData()
-      onCrewJobsChange?.()
+    if (jobsErr || bidsErr) {
+      setError(jobsErr?.message ?? bidsErr?.message ?? 'Failed to clear')
+      return
     }
+    await reloadAfterCrewChange()
   }
 
-  function addAssignmentToPerson(
-    personName: string,
-    item:
-      | {
-          type: 'job'
-          id: string
-          hcp_number: string
-          job_name: string
-          job_address: string
-          service_type_id?: string | null
-        }
-      | {
-          type: 'bid'
-          id: string
-          bid_number: string
-          project_name: string
-          address: string
-          service_type_id?: string | null
-        },
-  ) {
-    const row = crewJobsData[personName] ?? { unifiedAssignments: [] }
-    if (row.unifiedAssignments.some((a) => a.type === item.type && a.id === item.id)) return
-    const n = row.unifiedAssignments.length + 1
-    const pct = Math.round((100 / n) * 10) / 10
-    const newAssignments = row.unifiedAssignments.map((a) => ({ ...a, pct }))
-    newAssignments.push({
-      type: item.type,
-      id: item.id,
-      pct: Math.round((100 - newAssignments.reduce((s, a) => s + a.pct, 0)) * 10) / 10,
-    })
+  function pickLabel(item: CrewPick): string {
+    return item.type === 'job'
+      ? formatAssignmentLabel('job', { hcp_number: item.hcp_number, job_name: item.job_name, job_address: item.job_address, service_type_id: item.service_type_id ?? null }, prefixMap)
+      : formatAssignmentLabel('bid', { bid_number: item.bid_number, project_name: item.project_name, address: item.address, service_type_id: item.service_type_id ?? null }, prefixMap)
+  }
+
+  /**
+   * v2.2962: `+` → link every approved, still-unlinked session the person has
+   * that day to the pick. `clock_sessions_sync_crew_assignments_tr` then rewrites
+   * the person-day split from session durations; this only reloads. The split is
+   * never written by hand here — no session, no split.
+   */
+  async function linkSessionsToPick(personName: string, item: CrewPick) {
+    if (!canEdit) return
+    const state = crewAssignCellState(daySessionsByPerson[personName.trim()])
+    if (state.kind !== 'link') {
+      showToast(
+        state.kind === 'no-clock'
+          ? `${personName} has no approved clock session on this day — nothing to assign.`
+          : `${personName}'s sessions are all linked — use Split day… to change the split.`,
+        'warning',
+      )
+      return
+    }
     if (item.type === 'job') {
       setCrewJobDetailsMap((prev) => ({
         ...prev,
-        [item.id]: {
-          hcp_number: item.hcp_number,
-          job_name: item.job_name,
-          job_address: item.job_address,
-          service_type_id: item.service_type_id ?? null,
-        },
+        [item.id]: { hcp_number: item.hcp_number, job_name: item.job_name, job_address: item.job_address, service_type_id: item.service_type_id ?? null },
       }))
     } else {
       setCrewBidDetailsMap((prev) => ({
         ...prev,
-        [item.id]: {
-          bid_number: item.bid_number,
-          project_name: item.project_name,
-          address: item.address,
-          service_type_id: item.service_type_id ?? null,
-        },
+        [item.id]: { bid_number: item.bid_number, project_name: item.project_name, address: item.address, service_type_id: item.service_type_id ?? null },
       }))
     }
-    saveCrewRow(personName, { ...row, unifiedAssignments: newAssignments })
     setCrewJobSearchModal(null)
     setCrewJobSearchText('')
     setCrewJobSearchResults([])
+    const { data, error: linkErr } = await supabase.from('clock_sessions').update(crewLinkPatch(item)).in('id', state.unlinkedIds).select('id')
+    if (linkErr) {
+      setError(linkErr.message)
+      showToast(`Could not link ${personName}'s sessions: ${linkErr.message}`, 'error')
+      return
+    }
+    const updated = (data ?? []).length
+    if (updated === 0) {
+      // RLS: the row policy passes dev, team leads, pay-approved masters and their adopted
+      // assistants — a controller outside that set can see the table but not edit the clock.
+      showToast(`No sessions were updated — your account can't edit ${personName}'s clock sessions. Ask a pay-approved master to link them.`, 'warning', 8000)
+      return
+    }
+    if (updated < state.unlinkedIds.length) {
+      showToast(`Linked ${updated} of ${state.unlinkedIds.length} sessions — the rest are outside your clock-edit access.`, 'warning', 8000)
+    } else {
+      showToast(crewLinkSuccessMessage(updated, state.unlinkedHours, pickLabel(item)), 'success')
+    }
+    await reloadAfterCrewChange()
   }
 
   useEffect(() => {
@@ -735,7 +752,38 @@ export function CrewJobsBlock({
               {visiblePeopleForCrew.map((personName) => {
                 const row = crewJobsData[personName] ?? { unifiedAssignments: [] }
                 const effectiveHours = effectiveHoursForCost(cfgForPerson(personName), crewJobsDate, effectiveCrewHours[personName] ?? 0)
-                const isClockDerived = clockDerivedPeople.has(personName.trim())
+                const sessionState = crewAssignCellState(daySessionsByPerson[personName.trim()])
+                const chips = row.unifiedAssignments.map((a) => {
+                  const details = a.type === 'job' ? crewJobDetailsMap[a.id] : crewBidDetailsMap[a.id]
+                  const label = formatAssignmentLabel(a.type, details, prefixMap) || a.id.slice(0, 8)
+                  const titleAttr = a.type === 'job' ? (details as JobDetails | undefined)?.job_address : (details as BidDetails | undefined)?.address
+                  return (
+                    <span
+                      key={getAssignmentKey(a)}
+                      title={titleAttr}
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '0.3rem',
+                        padding: '0.2rem 0.4rem',
+                        background: 'var(--bg-muted)',
+                        borderRadius: 4,
+                        fontSize: '0.8125rem',
+                      }}
+                    >
+                      {label}
+                      <span style={{ color: 'var(--text-muted)' }}>{a.pct}%</span>
+                    </span>
+                  )
+                })
+                const hasManualRow = sessionState.kind === 'no-clock' && row.unifiedAssignments.length > 0
+                const smallButton = {
+                  padding: '0.2rem 0.5rem',
+                  borderRadius: 4,
+                  background: 'var(--surface)',
+                  cursor: 'pointer',
+                  fontSize: '0.8125rem',
+                } as const
                 return (
                   <tr key={personName} style={{ borderBottom: '1px solid var(--border)' }}>
                     <td style={{ padding: '0.75rem' }}>{personName}</td>
@@ -743,83 +791,57 @@ export function CrewJobsBlock({
                       {effectiveHours > 0 ? effectiveHours.toFixed(2) : '—'}
                     </td>
                     <td style={{ padding: '0.75rem', background: !canEdit ? 'var(--bg-muted)' : undefined }}>
-                      {canEdit && !isClockDerived ? (
-                        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.35rem' }}>
-                          {row.unifiedAssignments.map((a, idx) => {
-                            const details = a.type === 'job' ? crewJobDetailsMap[a.id] : crewBidDetailsMap[a.id]
-                            const label = formatAssignmentLabel(a.type, details, prefixMap) || a.id.slice(0, 8)
-                            const titleAttr = a.type === 'job' ? (details as JobDetails)?.job_address : (details as BidDetails)?.address
-                            return (
-                              <span
-                                key={getAssignmentKey(a)}
-                                style={{
-                                  display: 'inline-flex',
-                                  alignItems: 'center',
-                                  gap: '0.25rem',
-                                  padding: '0.2rem 0.4rem',
-                                  background: 'var(--bg-muted)',
-                                  borderRadius: 4,
-                                  fontSize: '0.8125rem',
-                                }}
-                              >
-                                <span title={titleAttr}>{label}</span>
-                                <input
-                                  type="number"
-                                  min={0}
-                                  max={100}
-                                  value={a.pct}
-                                  onChange={(e) => {
-                                    const v = parseFloat(e.target.value) || 0
-                                    const rest = row.unifiedAssignments.filter((_, i) => i !== idx)
-                                    const restSum = rest.reduce((s, x) => s + x.pct, 0)
-                                    const scale = restSum > 0 ? (100 - v) / restSum : 1
-                                    let newAssignments = row.unifiedAssignments.map((x, i) =>
-                                      i === idx ? { ...x, pct: v } : { ...x, pct: Math.round(x.pct * scale * 10) / 10 }
-                                    )
-                                    const sum = newAssignments.reduce((s, x) => s + x.pct, 0)
-                                    if (Math.abs(sum - 100) > 0.01 && newAssignments.length > 0) {
-                                      const lastIdx = newAssignments.length - 1
-                                      newAssignments = newAssignments.map((x, i) =>
-                                        i === lastIdx ? { ...x, pct: Math.round((x.pct + (100 - sum)) * 10) / 10 } : x
-                                      )
-                                    }
-                                    saveCrewRow(personName, { ...row, unifiedAssignments: newAssignments })
-                                  }}
-                                  style={{ width: 44, padding: '0.15rem', fontSize: '0.875rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
-                                />
-                                %
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    const rest = row.unifiedAssignments.filter((_, i) => i !== idx)
-                                    if (rest.length === 0) {
-                                      saveCrewRow(personName, { ...row, unifiedAssignments: [] })
-                                      return
-                                    }
-                                    const n = rest.length
-                                    const pctEach = Math.round((100 / n) * 10) / 10
-                                    const newAssignments = rest.map((x, i) => ({
-                                      ...x,
-                                      pct: i === n - 1 ? Math.round((100 - (n - 1) * pctEach) * 10) / 10 : pctEach,
-                                    }))
-                                    saveCrewRow(personName, { ...row, unifiedAssignments: newAssignments })
-                                  }}
-                                  style={{
-                                    padding: '0.1rem 0.25rem',
-                                    border: 'none',
-                                    background: 'none',
-                                    cursor: 'pointer',
-                                    color: 'var(--text-muted)',
-                                    fontSize: '0.875rem',
-                                    lineHeight: 1,
-                                  }}
-                                  title="Remove"
-                                >
-                                  ×
-                                </button>
-                              </span>
-                            )
-                          })}
+                      <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.35rem' }}>
+                        {sessionState.kind !== 'no-clock' && sessionState.linkedCount > 0 && (
+                          <span
+                            title="This day's split comes from approved clock sessions and recomputes on every approval or time adjustment. To move hours between jobs, split a session (Split day…) or link the unlinked ones."
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '0.2rem',
+                              padding: '0.1rem 0.45rem',
+                              borderRadius: 999,
+                              background: 'var(--bg-blue-tint)',
+                              color: 'var(--text-link)',
+                              fontSize: '0.6875rem',
+                              fontWeight: 600,
+                              whiteSpace: 'nowrap',
+                              cursor: 'help',
+                            }}
+                          >
+                            ⏱ from clock
+                          </span>
+                        )}
+                        {hasManualRow && (
+                          <span
+                            title="A hand-entered split with no approved clock session behind it. Clear it — the hours stay unassigned until a session is approved and linked."
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              padding: '0.1rem 0.45rem',
+                              borderRadius: 999,
+                              background: 'var(--bg-muted)',
+                              color: 'var(--text-muted)',
+                              fontSize: '0.6875rem',
+                              fontWeight: 600,
+                              whiteSpace: 'nowrap',
+                              cursor: 'help',
+                            }}
+                          >
+                            manual · no clock
+                          </span>
+                        )}
+                        {chips}
+                        {chips.length === 0 && sessionState.kind === 'locked' && <span style={{ color: 'var(--text-muted)' }}>—</span>}
+                        {sessionState.kind === 'no-clock' && !hasManualRow && (
+                          <span
+                            title="No approved clock session for this person on this day — there is no split without a clock session. Approve their session first (People → Hours or the clock strip), then link it here."
+                            style={{ color: 'var(--text-muted)', fontSize: '0.8125rem', cursor: 'help' }}
+                          >
+                            No clock session
+                          </span>
+                        )}
+                        {canEdit && sessionState.kind === 'link' && (
                           <button
                             type="button"
                             onClick={() => {
@@ -827,50 +849,36 @@ export function CrewJobsBlock({
                               setCrewJobSearchText('')
                               setCrewJobSearchResults([])
                             }}
-                            style={{
-                              padding: '0.2rem 0.5rem',
-                              border: '1px dashed var(--border-strong)',
-                              borderRadius: 4,
-                              background: 'var(--surface)',
-                              cursor: 'pointer',
-                              fontSize: '0.875rem',
-                            }}
+                            title="Pick a job or bid — every unlinked approved session that day is linked to it and the split is recomputed from the clock."
+                            style={{ ...smallButton, border: '1px dashed var(--border-strong)' }}
                           >
-                            +
+                            + {crewLinkButtonLabel(sessionState)}
                           </button>
-                        </div>
-                      ) : (
-                        <span style={{ display: 'inline-flex', alignItems: 'center', flexWrap: 'wrap', gap: '0.35rem', color: 'var(--text-muted)', fontSize: '0.8125rem' }}>
-                          {isClockDerived && (
-                            <span
-                              title="This day's split comes from approved clock sessions and recomputes on every approval or time adjustment — manual edits here would be overwritten. Fix the underlying clock sessions instead."
-                              style={{
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                gap: '0.2rem',
-                                padding: '0.1rem 0.45rem',
-                                borderRadius: 999,
-                                background: 'var(--bg-blue-tint)',
-                                color: 'var(--text-link)',
-                                fontSize: '0.6875rem',
-                                fontWeight: 600,
-                                whiteSpace: 'nowrap',
-                                cursor: 'help',
-                              }}
-                            >
-                              ⏱ from clock
-                            </span>
-                          )}
-                          {row.unifiedAssignments.length > 0
-                            ? row.unifiedAssignments
-                                .map((a) => {
-                                  const details = a.type === 'job' ? crewJobDetailsMap[a.id] : crewBidDetailsMap[a.id]
-                                  return formatAssignmentLabel(a.type, details, prefixMap)
-                                })
-                                .join(', ')
-                            : '—'}
-                        </span>
-                      )}
+                        )}
+                        {canEdit && hasManualRow && (
+                          <button
+                            type="button"
+                            onClick={() => void clearManualCrewRow(personName)}
+                            title="Remove this hand-entered split"
+                            style={{ ...smallButton, border: '1px solid var(--border-strong)' }}
+                          >
+                            Clear
+                          </button>
+                        )}
+                        {canEdit && sessionState.kind !== 'no-clock' && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const p = daySessionsByPerson[personName.trim()]
+                              if (p) setDayEditor({ personName, userId: p.userId })
+                            }}
+                            title="Open the day editor to split a session between two jobs, or change which job a session carries"
+                            style={{ ...smallButton, border: '1px solid var(--border-strong)', color: 'var(--text-muted)' }}
+                          >
+                            Split day…
+                          </button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 )
@@ -1102,7 +1110,16 @@ export function CrewJobsBlock({
           }}
         >
           <div role="dialog" aria-modal="true" style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: phoneSafeMinWidth(400), boxSizing: 'border-box', maxWidth: '90%' }}>
-            <h3 style={{ margin: '0 0 1rem 0', fontSize: '1.125rem' }}>Add job or bid for {crewJobSearchModal.personName}</h3>
+            <h3 style={{ margin: '0 0 1rem 0', fontSize: '1.125rem' }}>
+              {(() => {
+                const st = crewAssignCellState(daySessionsByPerson[crewJobSearchModal.personName.trim()])
+                const n = st.kind === 'link' ? st.unlinkedIds.length : 0
+                return `Link ${crewJobSearchModal.personName}'s ${n === 1 ? 'session' : `${n} sessions`} to a job or bid`
+              })()}
+            </h3>
+            <p style={{ margin: '-0.5rem 0 1rem 0', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
+              The pick goes on the clock sessions; the day's split is recomputed from their hours.
+            </p>
             <input
               type="search"
               placeholder="Search HCP, bid #, job name, project, address…"
@@ -1118,7 +1135,7 @@ export function CrewJobsBlock({
                   type="button"
                   onClick={() => {
                     if (item.source !== 'job' && item.source !== 'bid') return
-                    addAssignmentToPerson(
+                    void linkSessionsToPick(
                       crewJobSearchModal!.personName,
                       item.source === 'job'
                         ? {
@@ -1298,6 +1315,23 @@ export function CrewJobsBlock({
             </button>
           </div>
         </div>
+      )}
+
+      {dayEditor && (
+        <DashboardMyTimeDayEditorModal
+          dateStr={crewJobsDate}
+          sessions={[]}
+          subjectUserId={dayEditor.userId}
+          subjectDisplayName={dayEditor.personName}
+          jobLabels={dayEditorJobLabels}
+          bidLabels={dayEditorBidLabels}
+          onClose={() => setDayEditor(null)}
+          onSaved={() => {
+            setDayEditor(null)
+            void reloadAfterCrewChange()
+          }}
+          onLinkedSessionsUpdated={() => void reloadAfterCrewChange()}
+        />
       )}
     </section>
   )
