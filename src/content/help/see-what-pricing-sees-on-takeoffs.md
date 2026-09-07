@@ -32,4 +32,4 @@ For the fixtures that still have no lines, the rail lists up to three earlier bi
 
 ## One at a time
 
-{{button:outline|One at a time}} in the strip switches to the guided pass, and its **Sheet view** button brings you back here.
+{{button:outline|One at a time}} in the strip switches to the guided pass, opened on the fixture you were on — the last row you clicked or edited, or, if you touched nothing, the row at the top of your screen. Its **Sheet view** button brings you back here, scrolled to that fixture with the row flashed. The pills beside the bid name hop the same way.

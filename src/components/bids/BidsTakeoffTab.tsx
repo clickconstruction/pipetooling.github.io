@@ -47,6 +47,7 @@ import { planRememberForBook } from '../../lib/bids/takeoffBookLearn'
 import { rememberFixtureForBook } from '../../lib/bids/takeoffBookLearnWrite'
 import type { TakeoffFixtureHistoryLine } from '../../types/database-functions'
 import { readStoredTakeoffView, writeStoredTakeoffView, type TakeoffView } from '../../lib/bids/takeoffView'
+import { pickHopRow, rowIdFromTakeoffTableTarget } from '../../lib/bids/takeoffHop'
 import { bookFillMessage, fillFromBookLabel, planBookFill } from '../../lib/bids/takeoffBookFill'
 import { MyBidsToggle } from './MyBidsToggle'
 import { BidPickerSortToggle } from './BidPickerSortToggle'
@@ -219,8 +220,26 @@ export function BidsTakeoffTab({
     if (!found && rowJump) showToast(breakdownJumpMissMessage(rowJump.tab, rowJump.fixture), 'info')
     onRowJumpHandled?.()
   })
+  // Seamless hop between views (v2.2998): the fixture you are on follows you across Old / One at a
+  // time / Sheet. `takeoffTouchedRowId` is the last row clicked or focused in any view (or One at a
+  // time's focused fixture), remembered per bid for the session; a hop reuses the v2.2784 focus
+  // request (One at a time focuses it, Sheet drops its filter) plus its own scroll-and-flash.
+  const [takeoffTouchedRowId, setTakeoffTouchedRowId] = useState<string | null>(null)
+  const takeoffTouchedByBidRef = useRef<Map<string, string>>(new Map())
+  const noteTakeoffRow = (rowId: string | null) => {
+    setTakeoffTouchedRowId(rowId)
+    const bidId = selectedBidForTakeoff?.id
+    if (bidId && rowId) takeoffTouchedByBidRef.current.set(bidId, rowId)
+  }
+  useEffect(() => {
+    const bidId = selectedBidForTakeoff?.id
+    setTakeoffTouchedRowId(bidId ? takeoffTouchedByBidRef.current.get(bidId) ?? null : null)
+  }, [selectedBidForTakeoff?.id])
+  const [hopFlash, setHopFlash] = useState<{ countRowId: string; nonce: number } | null>(null)
+  const hopFlashDomId = usePendingRowFlash(hopFlash ? takeoffRowDomId(hopFlash.countRowId) : null, () => {}, { nonce: hopFlash?.nonce })
   /** While the flash is on, every row of the jumped-to fixture tints (a fixture can own several assembly rows). */
-  const rowJumpFlashCountRowId = rowJumpFlashDomId != null ? (lastRowJumpRef.current?.countRowId ?? null) : null
+  const rowJumpFlashCountRowId =
+    rowJumpFlashDomId != null ? (lastRowJumpRef.current?.countRowId ?? null) : hopFlashDomId != null ? (hopFlash?.countRowId ?? null) : null
 
   const roughPartLinesSensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }))
 
@@ -285,8 +304,22 @@ export function BidsTakeoffTab({
     readStoredTakeoffView(typeof window !== 'undefined' ? window.localStorage : null),
   )
   const switchTakeoffView = (next: TakeoffView) => {
+    if (next === takeoffView) return
+    // The fixture to land on: the last one touched, else the row at the top of the viewport right now.
+    const rowId = pickHopRow(
+      takeoffCountRows.map((r) => ({
+        id: r.id,
+        top: typeof document === 'undefined' ? null : document.getElementById(takeoffRowDomId(r.id))?.getBoundingClientRect().top ?? null,
+      })),
+      takeoffTouchedRowId,
+    )
     setTakeoffView(next)
     writeStoredTakeoffView(typeof window !== 'undefined' ? window.localStorage : null, next)
+    if (!rowId) return
+    noteTakeoffRow(rowId)
+    setViewFocusRequest((prev) => ({ countRowId: rowId, nonce: (prev?.nonce ?? 0) + 1 }))
+    // Into One at a time the rail highlight is the cue; the sheets scroll to the row and flash it.
+    if (next !== 'new1') setHopFlash((prev) => ({ countRowId: rowId, nonce: (prev?.nonce ?? 0) + 1 }))
   }
 
   const [takeoffNewItemPartId, setTakeoffNewItemPartId] = useState('')
@@ -1527,7 +1560,16 @@ export function BidsTakeoffTab({
                           <th style={{ padding: '0.75rem', textAlign: 'center', borderBottom: '1px solid var(--border)' }}>Actions</th>
                         </tr>
                       </thead>
-                      <tbody>
+                      <tbody
+                        onPointerDownCapture={(e) => {
+                          const id = rowIdFromTakeoffTableTarget(e.target)
+                          if (id) noteTakeoffRow(id)
+                        }}
+                        onFocusCapture={(e) => {
+                          const id = rowIdFromTakeoffTableTarget(e.target)
+                          if (id) noteTakeoffRow(id)
+                        }}
+                      >
                         {rowsToRender.map((row) => {
                           const linesForRow = takeoffRoughPartLines
                             .filter((l) => l.countRowId === row.id)
@@ -1933,6 +1975,8 @@ export function BidsTakeoffTab({
                     fillButton={bookFillButton}
                     onFillAll={() => void applyTakeoffBookTemplates()}
                     onSheetView={() => switchTakeoffView('new2')}
+                    preferredFocusId={takeoffTouchedRowId}
+                    onFocusChange={noteTakeoffRow}
                     showToast={showToast}
                     history={takeoffHistory}
                     focusRequest={viewFocusRequest}

@@ -11,11 +11,12 @@ import { useEffect, useRef, useState } from 'react'
  * target: true after the scroll+flash starts, false when the element never
  * appeared (the caller toasts and clears its pending state either way).
  * Returns the DOM id currently flashing so rows can tint themselves.
+ * `opts.nonce` re-arms the poll for the same `domId` (a hop away and back, v2.2998).
  */
 export function usePendingRowFlash(
   domId: string | null,
   onHandled: (found: boolean) => void,
-  opts?: { timeoutMs?: number; flashMs?: number; pollMs?: number },
+  opts?: { timeoutMs?: number; flashMs?: number; pollMs?: number; nonce?: number },
 ): string | null {
   const [flashDomId, setFlashDomId] = useState<string | null>(null)
   const onHandledRef = useRef(onHandled)
@@ -51,7 +52,7 @@ export function usePendingRowFlash(
       window.clearTimeout(t)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [domId])
+  }, [domId, opts?.nonce])
 
   return flashDomId
 }
