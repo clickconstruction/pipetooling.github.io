@@ -43,7 +43,7 @@ Every Approve button says what it's about to do — the count and the hours:
 - {{button:green|Approve}} on a session row approves that one session, no confirmation.
 - {{button:green|Approve week · 9}} approves every session in that person's week after a confirm.
 - {{button:green|Approve all 23 · 137h}} on a person's header approves everything they have waiting, all weeks, after a confirm.
-- {{button:green|Approve all 120 · 622h}} at the top clears the entire queue after a confirm.
+- {{button:green|Approve everything · 120 · 622h}} at the top clears the entire queue after a confirm.
 
 Approved sessions leave the list right away and the hours land in payroll behind them. {{button:red|Reject}} sends a session back for good (rejected time never reaches payroll); {{button:outline|Edit}} opens the full session editor when the times or the split need fixing, and the queue refreshes when you save.
 
