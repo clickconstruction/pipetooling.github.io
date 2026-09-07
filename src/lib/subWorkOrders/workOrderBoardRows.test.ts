@@ -126,3 +126,20 @@ describe('buildWorkOrderBoard — order and search', () => {
     expect(workOrderBoardFilterFromParam('nope')).toBeNull()
   })
 })
+
+describe('buildWorkOrderBoard — the effective stage (v2.3064)', () => {
+  const signed = (over: Partial<WorkOrderRowLike> = {}) => order({ id: 'o1', status: 'accepted', labor_job_id: 's1', signed_at: '2026-08-25T10:00:00Z', record_id: 'WO-892-01', ...over })
+  it('a signed sheet still Waiting on work whose sub reported 100% sits on the Inspection dot', () => {
+    const b = board([sheet({ id: 's1', progress_pct: 100, progress_at: '2026-09-04T15:00:00Z' })], [signed()])
+    expect(b.rows[0]!.rail.current).toBe('inspection')
+  })
+  it('a signed sheet whose picked window ended before today sits on Inspection; one still inside its window stays on Work', () => {
+    expect(board([sheet({ id: 's1' })], [signed({ picked_end: '2026-09-04' })]).rows[0]!.rail.current).toBe('inspection')
+    expect(board([sheet({ id: 's1' })], [signed({ picked_end: '2026-09-05' })]).rows[0]!.rail.current).toBe('work')
+    expect(board([sheet({ id: 's1' })], [signed({ proposed_end: '2026-09-01' })]).rows[0]!.rail.current).toBe('inspection')
+  })
+  it('the office moving it back to Waiting on work after the window closed is a nudge that stands', () => {
+    const b = board([sheet({ id: 's1', stage_source: 'office', stage_changed_at: '2026-09-05T08:00:00Z' })], [signed({ picked_end: '2026-09-04' })])
+    expect(b.rows[0]!.rail.current).toBe('work')
+  })
+})

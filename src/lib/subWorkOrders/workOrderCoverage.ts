@@ -21,6 +21,9 @@ export type WorkOrderRowLike = {
   declined_at: string | null
   decline_reason: string | null
   created_at: string
+  /** The sub's picked days / the office's proposed days — the derived stage reads the end (v2.3064). */
+  picked_end?: string | null
+  proposed_end?: string | null
 }
 
 export type JobWorkOrderCoverage =

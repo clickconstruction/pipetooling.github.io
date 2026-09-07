@@ -19,6 +19,7 @@ import { SubPortalVisitLine } from '../people/SubPortalVisitLine'
 import { SubPortalVisitsModal } from '../people/SubPortalVisitsModal'
 import { useSubPortalVisitSummaries } from '../../hooks/useSubPortalVisitSummaries'
 import type { JobWithDetails } from '../../types/jobWithDetails'
+import { effectiveSubSheetStage, SUB_SHEET_STAGE_AUTO_REASON_LABEL, subSheetWorkEndYmd } from '../../lib/subSheetStageDerived'
 import {
   SUB_SHEET_STAGES,
   SUB_SHEET_STAGE_HINT,
@@ -102,7 +103,7 @@ export default function JobsSubLaborTab({
   const loadCommitments = useCallback(async () => {
     const { data, error } = await supabase
       .from('step_commitments')
-      .select('id, status, amount, display_name, job_id, labor_job_id, step_id, record_id, offered_at, offer_expires_at, signed_at, accepted_at, declined_at, decline_reason, created_at, person_id')
+      .select('id, status, amount, display_name, job_id, labor_job_id, step_id, record_id, offered_at, offer_expires_at, signed_at, accepted_at, declined_at, decline_reason, created_at, person_id, picked_end, proposed_end')
       .neq('status', 'cancelled')
       .order('created_at', { ascending: false })
       .limit(1000)
@@ -177,7 +178,7 @@ export default function JobsSubLaborTab({
 
   /** The rail, the office's next move, who the sheet is for, and the rule its money is under — one call per row. */
   const spineFor = useCallback(
-    (job: LaborJob, bal: { totalCost: number; paid: number; backcharges: number; balance: number }): { coverage: JobWorkOrderCoverage; rail: SheetRailShape; next: SheetNextAction; crew: boolean; jobId: string | null; personId: string | null; parties: SheetParties; payWhen: SheetPayWhen } => {
+    (job: LaborJob, bal: { totalCost: number; paid: number; backcharges: number; balance: number }): { coverage: JobWorkOrderCoverage; rail: SheetRailShape; next: SheetNextAction; crew: boolean; jobId: string | null; personId: string | null; parties: SheetParties; payWhen: SheetPayWhen; stageView: LaborJob } => {
       const pipelineJob = spine.jobsByNumber.get((job.job_number ?? '').trim().toLowerCase()) ?? null
       const covering = [...(spine.bySheet.get(job.id) ?? []), ...(pipelineJob ? (spine.byJob.get(pipelineJob.id) ?? []) : [])]
       const coverage = buildJobWorkOrderCoverage(covering, today)
@@ -185,7 +186,10 @@ export default function JobsSubLaborTab({
       const crewRail = roster.length > 0 && !isRosterSubSheet(job, spine.assigneeIds, spine.personById, spine.personByNameKey)
       const unpriced = bal.totalCost === 0 && bal.paid === 0 && bal.backcharges === 0
       const open = Math.max(0, bal.balance)
-      const rail = buildSheetRail({ coverage, sheetStage: normalizeSubSheetStage(job.stage), payableAfter: job.payable_after ?? null, agreed: bal.totalCost, open, unpriced, crewPay: crewRail })
+      // The stage the facts already know (v2.3064): 100% from the portal or an ended signed window → Waiting on inspection, unless hand-nudged back after.
+      const eff = effectiveSubSheetStage({ stage: job.stage, stageSource: job.stage_source, stageChangedAt: job.stage_changed_at ?? null, progressPct: job.progress_pct ?? null, progressAt: job.progress_at ?? null, workEndYmd: subSheetWorkEndYmd(covering), todayYmd: today })
+      const stageView: LaborJob = eff.derived ? { ...job, stage: eff.stage, stage_source: 'auto', stage_changed_at: eff.changedAt, stage_changed_by: null, stage_changed_by_name: null, stage_note: null, stage_auto_reason: eff.reason } : job
+      const rail = buildSheetRail({ coverage, sheetStage: eff.stage, payableAfter: job.payable_after ?? null, agreed: bal.totalCost, open, unpriced, crewPay: crewRail })
       // Subs-only naming: the sheet is the roster sub's; teammates ride along as "with …". No sub at all = a crew sheet.
       const parties = sheetParties(job, laborJobAssigneesByJobId.get(job.id), spine)
       const crew = roster.length > 0 && parties.crew
@@ -194,8 +198,8 @@ export default function JobsSubLaborTab({
       const personId = ids.length === 1 ? ids[0]! : null
       const inv = pipelineJob?.invoices ?? null
       const bills = pipelineJob ? { out: (inv ?? []).filter((i) => i.status && i.status !== 'draft').length, paid: (inv ?? []).filter((i) => i.status === 'paid').length } : null
-      const payWhen = sheetPayWhen({ stage: normalizeSubSheetStage(job.stage), payableAfter: job.payable_after ?? null, payHoldReason: job.pay_hold_reason ?? null, bills, gap: rail.gap, crew, balance: bal.balance, unpriced, todayYmd: today })
-      return { coverage, rail, next, crew, jobId: pipelineJob?.id ?? null, personId, parties, payWhen }
+      const payWhen = sheetPayWhen({ stage: eff.stage, payableAfter: job.payable_after ?? null, payHoldReason: job.pay_hold_reason ?? null, bills, gap: rail.gap, crew, balance: bal.balance, unpriced, todayYmd: today })
+      return { coverage, rail, next, crew, jobId: pipelineJob?.id ?? null, personId, parties, payWhen, stageView }
     },
     [spine, roster.length, today, laborJobAssigneesByJobId],
   )
@@ -485,7 +489,7 @@ export default function JobsSubLaborTab({
                   </tr>
                 )
                 const body = g.rows.flatMap((r) => {
-                  const { job, totalCost, paid, backcharges, balance, rail, next, coverage, jobId, personId, parties, payWhen } = r
+                  const { job, totalCost, paid, backcharges, balance, rail, next, coverage, jobId, personId, parties, payWhen, stageView } = r
                   const jobRate = job.labor_rate ?? 0
                   const dateInputValue = job.job_date ?? (job.created_at ? job.created_at.slice(0, 10) : '')
                   const expanded = expandedSubLaborJobIds.has(job.id)
@@ -546,7 +550,7 @@ export default function JobsSubLaborTab({
                       </td>
                       <td style={{ padding: '0.75rem', verticalAlign: 'middle', whiteSpace: 'nowrap' }} onClick={(e) => e.stopPropagation()}>
                         <SubSheetStageCell
-                          job={job}
+                          job={stageView}
                           rail={rail}
                           paid={totalCost > 0 && balance <= 0}
                           menuOpen={stageMenuJobId === job.id}
@@ -770,6 +774,7 @@ function SubSheetStageCell({
       <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, whiteSpace: 'nowrap' }}>
         <SheetRail rail={rail} title={`${title} · click the current dot to move the stage`} onCurrentClick={onToggleMenu} onClick={onOpenStory} />
         {job.stage_source === 'portal' ? <span style={{ fontSize: '0.68rem', fontWeight: 600, color: tone.fg }} title="The sub moved it from their portal">· sub</span> : null}
+        {job.stage_source === 'auto' ? <span style={{ fontSize: '0.68rem', fontWeight: 600, color: tone.fg }} title={`Moved by the facts — ${job.stage_auto_reason ? SUB_SHEET_STAGE_AUTO_REASON_LABEL[job.stage_auto_reason] : 'the evidence'}. Move it by hand to keep your own call.`}>· auto</span> : null}
         {next ? (
           <button
             type="button"

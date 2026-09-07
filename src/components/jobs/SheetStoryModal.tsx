@@ -14,7 +14,7 @@ import { formatErrorMessage } from '../../utils/errorHandling'
 import { todayYmdInAppTz } from '../../utils/dateUtils'
 import { formatCurrency } from '../../lib/jobs/jobFormatting'
 import { subLaborJobBalance } from '../../lib/subLaborOutstanding'
-import { normalizeSubSheetStage, type SubSheetStage } from '../../lib/subSheetStage'
+import { type SubSheetStage } from '../../lib/subSheetStage'
 import { normalizePersonNameKey } from '../../lib/personNameKey'
 import { buildJobWorkOrderCoverage, type WorkOrderRowLike } from '../../lib/subWorkOrders/workOrderCoverage'
 import { buildSheetRail } from '../../lib/subWorkOrders/sheetRail'
@@ -35,6 +35,7 @@ import type { StepCommitmentRow } from '../../lib/workflow/stepCommitments'
 import type { JobWithDetails } from '../../types/jobWithDetails'
 import { SheetRail } from './SheetRail'
 import { WorkOrderAssemblerModal, type WorkOrderAssemblerInitial } from './WorkOrderAssemblerModal'
+import { effectiveSubSheetStage, subSheetWorkEndYmd } from '../../lib/subSheetStageDerived'
 
 export type SheetStoryModalProps = {
   /** The sheet to tell; null keeps the modal closed. */
@@ -233,7 +234,8 @@ export function SheetStoryModal({ sheetId, onClose, jobs, authUserId, onOpenShee
     const ids = (sheet.assignees ?? []).map((a) => a.person_id)
     if (ids.length > 0) assigneeIds.set(sheet.id, ids)
     const crewPay = roster.length > 0 && !isRosterSubSheet(sheet, assigneeIds, personById, personByNameKey)
-    const rail = buildSheetRail({ coverage, sheetStage: normalizeSubSheetStage(sheet.stage), payableAfter: sheet.payable_after ?? null, agreed: bal.totalCost, open, unpriced, crewPay })
+    const eff = effectiveSubSheetStage({ stage: sheet.stage, stageSource: sheet.stage_source, stageChangedAt: sheet.stage_changed_at ?? null, progressPct: sheet.progress_pct ?? null, progressAt: sheet.progress_at ?? null, workEndYmd: subSheetWorkEndYmd(orders as unknown as Array<{ status: string; picked_end?: string | null; proposed_end?: string | null }>), todayYmd: today })
+    const rail = buildSheetRail({ coverage, sheetStage: eff.stage, payableAfter: sheet.payable_after ?? null, agreed: bal.totalCost, open, unpriced, crewPay })
     const orderRow = coverage.kind === 'none' ? null : (orders.find((o) => o.id === coverage.id) ?? null)
     const order: SheetStoryInput['order'] = orderRow
       ? {
