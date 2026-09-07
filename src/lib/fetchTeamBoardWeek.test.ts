@@ -69,9 +69,11 @@ const data: Record<string, unknown> = {
     { id: 'k2', assignee_user_id: 'u3', work_date: '2026-09-09', time_start: '08:00:00', time_end: '10:00:00', job_id: 'j2', bid_id: null, note: null, users: { name: 'Cy' }, jobs_ledger: { hcp_number: null, job_name: 'Elm', job_address: null, service_type_id: null, click_number: 'C9' }, bids: null },
   ],
   people_labor_jobs: [
-    { id: 'sh1', job_number: ' 1842 ', job_date: '2026-09-08', assigned_to_name: 'Bob Sub', address: '1 Main', stage: 'rough' },
-    { id: 'sh2', job_number: '9999', job_date: '2026-09-09', assigned_to_name: 'Cy Sub', address: 'x', stage: 'trim' },
-    { id: 'sh3', job_number: null, job_date: null, assigned_to_name: 'Undated', address: 'x', stage: 'trim' },
+    { id: 'sh1', job_number: ' 1842 ', job_ledger_id: null, job_date: '2026-09-08', assigned_to_name: 'Bob Sub', address: '1 Main', stage: 'rough', jobs_ledger: null },
+    { id: 'sh2', job_number: '9999', job_ledger_id: null, job_date: '2026-09-09', assigned_to_name: 'Cy Sub', address: 'x', stage: 'trim', jobs_ledger: null },
+    { id: 'sh3', job_number: null, job_ledger_id: null, job_date: null, assigned_to_name: 'Undated', address: 'x', stage: 'trim', jobs_ledger: null },
+    // v2.3055: linked by id to a job with no sessions or blocks this week — the link wins and the embed labels the row.
+    { id: 'sh4', job_number: 'OLD-7', job_ledger_id: 'j7', job_date: '2026-09-10', assigned_to_name: 'Di Sub', address: '7 Oak', stage: 'rough', jobs_ledger: { hcp_number: '7007', job_name: 'Oak House', job_address: '7 Oak', service_type_id: null, click_number: null } },
   ],
   list_people_pay_flags: [{ person_name: ' Ana ', is_salary: true }, { person_name: 'Bob', is_salary: null }],
   team_board_acks: [{ id: 'a1', kind: 'over', work_date: '2026-09-07', person_user_id: 'u1', target_key: 'job:j1' }],
@@ -126,10 +128,12 @@ describe('fetchTeamBoardWeek', () => {
       'job:j1': { label: 'JP1842 · Riverside', sub: '1 Main', jobNumber: '1842' }, // the session's embed came first; the block's copy did not overwrite it
       'bid:b1': { label: 'B77 · Oak Ridge', sub: '9 Elm' },
       'job:j2': { label: 'JC9 · Elm', sub: '', jobNumber: null },
+      'job:j7': { label: 'J7007 · Oak House', sub: '7 Oak', jobNumber: '7007' }, // v2.3055: from the sheet's own embed
     })
     expect(out.subSheets).toEqual([
       { id: 'sh1', workDate: '2026-09-08', jobId: 'j1', jobNumber: ' 1842 ', contractor: 'Bob Sub', stage: 'rough', address: '1 Main' }, // linked by trimmed HCP
       { id: 'sh2', workDate: '2026-09-09', jobId: null, jobNumber: '9999', contractor: 'Cy Sub', stage: 'trim', address: 'x' }, // no job seen with that number
+      { id: 'sh4', workDate: '2026-09-10', jobId: 'j7', jobNumber: 'OLD-7', contractor: 'Di Sub', stage: 'rough', address: '7 Oak' }, // v2.3055: linked by id, number ignored
       // the undated sheet is dropped
     ])
     expect(out.payFlags).toEqual({ Ana: { is_salary: true }, Bob: { is_salary: false } })

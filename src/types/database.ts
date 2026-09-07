@@ -11331,6 +11331,7 @@ export type Database = {
           id: string
           invoice_link: string | null
           job_date: string | null
+          job_ledger_id: string | null
           job_number: string | null
           labor_rate: number | null
           master_user_id: string
@@ -11358,6 +11359,7 @@ export type Database = {
           id?: string
           invoice_link?: string | null
           job_date?: string | null
+          job_ledger_id?: string | null
           job_number?: string | null
           labor_rate?: number | null
           master_user_id: string
@@ -11385,6 +11387,7 @@ export type Database = {
           id?: string
           invoice_link?: string | null
           job_date?: string | null
+          job_ledger_id?: string | null
           job_number?: string | null
           labor_rate?: number | null
           master_user_id?: string
@@ -11405,6 +11408,13 @@ export type Database = {
           step_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "people_labor_jobs_job_ledger_id_fkey"
+            columns: ["job_ledger_id"]
+            isOneToOne: false
+            referencedRelation: "jobs_ledger"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "people_labor_jobs_master_user_id_fkey"
             columns: ["master_user_id"]
