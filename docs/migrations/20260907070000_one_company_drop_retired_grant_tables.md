@@ -2,7 +2,9 @@
 
 One company, **Phase 5c** of [`docs/ONE_COMPANY_PLAN.md`](../ONE_COMPANY_PLAN.md): `DROP TABLE IF EXISTS public.retired_master_assistants; DROP TABLE IF EXISTS public.retired_master_shares;` — no `CASCADE`, so a surviving dependency would fail the push rather than take anything with it.
 
-Nothing named the pair after `20260907050000` (views under the old names, 84 policies re-bound) and `20260907060000` (opaque view columns): no policy, function, view, foreign key or client code. `database.ts` loses the two `retired_*` entries on the next regeneration.
+**First push failed as designed** (2026-09-07 06:40 UTC): four policies still depended on the retired tables — the three `customer_addresses` policies, created by **dynamic SQL** in `20260817224600` and therefore invisible to the file-based census behind `20260907050000`'s re-bind, plus `retired_master_shares`' own reader policy. The file was rewritten before it was ever applied (no ledger row): step 1 is now a `pg_depend` loop that re-creates, with `retired_` stripped from `pg_get_expr`'s text, every policy on another table that still binds to either retired table (same technique as `20260906010000`'s role sweep); step 2 drops shares first, then assistants, still without `CASCADE`.
+
+Lesson recorded in the plan doc: ten migrations create policies with `EXECUTE format('CREATE POLICY …')` inside DO blocks; a census that parses migration files misses them — ask `pg_policies` / `pg_depend` when the question is "what is live". `database.ts` loses the two `retired_*` entries on the next regeneration.
 
 **The rows, for the record** (the adoption/sharing history the views replaced by rule):
 
