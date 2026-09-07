@@ -13,6 +13,7 @@ import { useRosterSubKinds } from '../../hooks/useRosterSubKinds'
 import { emitWorkOrderChanged, WORK_ORDER_CHANGED_EVENT } from '../../hooks/useJobWorkOrderCoverage'
 import { SheetRail } from './SheetRail'
 import { SheetStoryModal } from './SheetStoryModal'
+import { LienWaiverSendModal, type LienWaiverSendTarget } from './LienWaiverSendModal'
 import { WorkOrderAssemblerModal, type WorkOrderAssemblerInitial } from './WorkOrderAssemblerModal'
 import SubPortalGlobeButton from '../people/SubPortalGlobeButton'
 import { SubPortalVisitLine } from '../people/SubPortalVisitLine'
@@ -119,6 +120,8 @@ export default function JobsSubLaborTab({
   const { roster } = useRosterSubKinds()
   const [assembler, setAssembler] = useState<WorkOrderAssemblerInitial | null>(null)
   const [storySheetId, setStorySheetId] = useState<string | null>(null)
+  /** Send a lien waiver from a pay row (v2.2970): the sheet + job facts the picker seeds into the form. */
+  const [lienWaiverFor, setLienWaiverFor] = useState<LienWaiverSendTarget | null>(null)
   useEffect(() => {
     if (!stageMenuJobId) return
     const close = () => setStageMenuJobId(null)
@@ -254,6 +257,24 @@ export default function JobsSubLaborTab({
 
   const groupDomId = (key: string) => `sublabor-group-${encodeURIComponent(key).replace(/%/g, '_')}`
 
+  /** What the lien-waiver picker needs from a row: the sub, the sheet's payments and balance, and the pipeline job's owner and address. */
+  function lienWaiverTarget(r: LedgerRow): LienWaiverSendTarget {
+    const pipelineJob = r.jobId ? jobs.find((j) => j.id === r.jobId) ?? null : null
+    const subName = (r.parties.contractors[0]?.name ?? r.parties.label ?? r.job.assigned_to_name ?? '').trim() || r.job.assigned_to_name
+    return {
+      sheetId: r.job.id,
+      personId: r.personId,
+      subName,
+      sheetLabel: r.job.job_number?.trim() || 'Sheet',
+      jobNumber: r.job.job_number?.trim() || null,
+      clickNumber: pipelineJob?.click_number ? `J${pipelineJob.click_number}` : null,
+      project: (pipelineJob?.job_name ?? r.job.project_name ?? '').trim() || null,
+      owner: (pipelineJob?.customer_name ?? '').trim() || null,
+      location: (pipelineJob?.job_address ?? r.job.address ?? '').trim() || null,
+      payments: (r.job.payments ?? []).map((p) => ({ amount: Number(p.amount) || 0, payment_date: p.payment_date ?? null, created_at: p.created_at })),
+      balance: r.balance,
+    }
+  }
   function payTarget(r: LedgerRow): SubLaborPaymentTarget {
     return { id: r.job.id, contractor: r.job.assigned_to_name, hcp: r.job.job_number ?? '—', totalCost: r.totalCost, paid: r.paid, outstanding: Math.max(0, r.balance) }
   }
@@ -595,7 +616,7 @@ export default function JobsSubLaborTab({
                         </div>
                       </td>
                       <td style={{ padding: '0.5rem', verticalAlign: 'middle', position: 'relative' }} onClick={(e) => e.stopPropagation()}>
-                        <button type="button" aria-label="More" title="Edit · Print · Payment · Back-charge · Story" onClick={() => setMenuJobId((cur) => (cur === job.id ? null : job.id))} style={{ border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-700)', borderRadius: 4, width: 30, height: 26, cursor: 'pointer', fontSize: '1rem', lineHeight: 1 }}>
+                        <button type="button" aria-label="More" title="Edit · Print · Payment · Back-charge · Story · Lien waiver" onClick={() => setMenuJobId((cur) => (cur === job.id ? null : job.id))} style={{ border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-700)', borderRadius: 4, width: 30, height: 26, cursor: 'pointer', fontSize: '1rem', lineHeight: 1 }}>
                           ⋯
                         </button>
                         {menuJobId === job.id ? (
@@ -605,6 +626,7 @@ export default function JobsSubLaborTab({
                             <button type="button" role="menuitem" style={menuItem} onClick={() => { setMenuJobId(null); onEditLaborJob(job) }}>Edit sheet</button>
                             <button type="button" role="menuitem" style={menuItem} onClick={() => { setMenuJobId(null); onPrintJobSubSheet(job) }}>Print</button>
                             <button type="button" role="menuitem" style={menuItem} onClick={() => { setMenuJobId(null); setStorySheetId(job.id) }}>Story…</button>
+                            <button type="button" role="menuitem" style={menuItem} onClick={() => { setMenuJobId(null); setLienWaiverFor(lienWaiverTarget(r)) }}>Lien waiver…</button>
                           </div>
                         ) : null}
                       </td>
@@ -627,6 +649,7 @@ export default function JobsSubLaborTab({
                                     <button type="button" style={{ ...btnBlue, background: '#dc2626' }} onClick={() => onOpenBackcharge({ id: job.id, contractor: job.assigned_to_name, hcp: job.job_number ?? '—', totalCost, paid })}>Back-charge…</button>
                                     <button type="button" style={{ ...btnBlue, background: 'var(--bg-200)', color: 'var(--text-700)' }} onClick={() => onEditLaborJob(job)}>Edit</button>
                                     <button type="button" style={{ ...btnBlue, background: '#0ea5e9' }} onClick={() => onPrintJobSubSheet(job)}>Print</button>
+                                    <button type="button" style={{ ...btnBlue, background: 'var(--bg-200)', color: 'var(--text-700)' }} onClick={() => setLienWaiverFor(lienWaiverTarget(r))}>Lien waiver…</button>
                                   </span>
                                 </div>
                                 <h4 style={{ margin: '0 0 0.5rem', fontSize: '0.9375rem' }}>Invoice link</h4>
@@ -720,6 +743,7 @@ export default function JobsSubLaborTab({
       </p>
       <WorkOrderAssemblerModal open={assembler != null} onClose={() => setAssembler(null)} jobs={jobs} initial={assembler} authUserId={authUserId} onChanged={() => { void loadCommitments(); emitWorkOrderChanged() }} />
       <SubPortalVisitsModal personId={visitsFor?.personId ?? null} personName={visitsFor?.name ?? ''} onClose={() => { setVisitsFor(null); visits.reload() }} />
+      {lienWaiverFor ? <LienWaiverSendModal target={lienWaiverFor} onClose={() => setLienWaiverFor(null)} /> : null}
       <SheetStoryModal sheetId={storySheetId} onClose={() => setStorySheetId(null)} jobs={jobs} authUserId={authUserId} onOpenSheet={(id) => { const j = laborJobs.find((x) => x.id === id); if (j) onEditLaborJob(j) }} onSheetChanged={() => { void loadCommitments(); onReloadLaborJobs?.() }} />
     </div>
   )

@@ -170,7 +170,15 @@ export default function ContractAccept() {
           form: json.form && json.form.schema ? { ...json.form, schema: schemaForParty(json.form.schema, 'signer'), officeRegions: partyRegions(json.form.schema, 'office') } : null,
         })
         if (json.form && json.form.schema) {
-          setFormValues(applyPrefill(schemaForParty(json.form.schema, 'signer'), {}, json.form.person))
+          // Office-seeded values (lien waivers, v2.2970): the sender can pre-fill non-sensitive
+          // boxes; the signer sees them filled and can change any of them. Roster prefill still
+          // fills whatever is left empty.
+          const seededRaw = (json.form as { values?: unknown }).values
+          const seeded: Record<string, string> = {}
+          if (seededRaw && typeof seededRaw === 'object') {
+            for (const [k, v] of Object.entries(seededRaw as Record<string, unknown>)) if (typeof v === 'string' && v.trim()) seeded[k] = v
+          }
+          setFormValues(applyPrefill(schemaForParty(json.form.schema, 'signer'), seeded, json.form.person))
           setFormErrors({})
         }
       } catch {
