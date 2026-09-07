@@ -66,10 +66,18 @@ marginal cost to her.
   the first shadow batch (2026-09-06)**: (a) a shadow scores against whichever
   estimator sends the reference — record WHOSE number it was (b481 scored
   against Grace's bid, which is practice, not the calibration standard); gate
-  math should weight teachers accordingly. (b) A live bid whose plans link the
+  math should weight teachers accordingly. **Built v2.3080**:
+  `users.calibration_standard` (Wendi only), `twin_shadow_runs.teacher_*`
+  stamped at scoring and backfilled, practice-teacher runs shown but never
+  gated (server scoreboard + `confidenceBoard.ts`), Teacher column on the
+  Scoreboard ledger. (b) A live bid whose plans link the
   Drive service account cannot read is invisible to the shadow program (b480
   blocked on exactly this) — a "plans readable by robots" indicator on live
-  bids belongs on the board. (c) **Discipline**: b480 shadowed b378, an
+  bids belongs on the board. **Built v2.3080**: plan-fetch `?probe=1` /
+  `?probe=all` records `bids.plans_robot_readable` (+ reason); the queue and
+  dispatcher probe first and skip unreadable bids, listing them for repair;
+  the Bid Board robot icon goes red-✕ and the Scoreboard shows an
+  "unreadable by robots" pill. (c) **Discipline**: b480 shadowed b378, an
   Electrical-division bid, and locked a $907k plumbing number against it —
   the dispatcher had no service-type filter. Fixed v2.3032 (plumbing-only
   claims at every door + `void_shadow`); the run was voided and the entries

@@ -166,6 +166,20 @@ export function BidsRobotScoreboardTab({ auditPending, bids }: BidsRobotScoreboa
             shadow coverage
           </div>
         )}
+        {/* "Plans readable by robots" (v2.3080): live bids the Drive intake service
+            account cannot read are invisible to the shadow program until a human
+            repairs the link — say which ones, and why. */}
+        {coverage && coverage.unreadable.length > 0 && (
+          <div
+            title={`The intake service account cannot read the plans on these live bids, so no shadow can open on them. Share the file with the service account, or link the PDF itself.\n${coverage.unreadable.map((u) => `${u.bid}: ${u.why ?? 'unreadable'}`).join('\n')}`}
+            style={{ background: 'var(--bg-amber-tint)', border: '1px solid var(--text-amber-800)', borderRadius: 10, padding: '0.45rem 0.85rem', fontSize: '0.8rem', color: 'var(--text-muted)' }}
+          >
+            <b style={{ display: 'block', fontSize: '1.05rem', color: 'var(--text-amber-800)' }}>
+              {coverage.unreadable.length}
+            </b>
+            plans unreadable by robots · {coverage.unreadable.map((u) => u.bid).join(', ')}
+          </div>
+        )}
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '0.8rem', marginBottom: '1.3rem' }}>
@@ -208,7 +222,7 @@ export function BidsRobotScoreboardTab({ auditPending, bids }: BidsRobotScoreboa
         <table style={{ borderCollapse: 'collapse', width: '100%', fontSize: '0.84rem' }}>
           <thead>
             <tr>
-              {['Run', 'Axis', 'Locked', 'Reference', 'Δ', 'Counts', 'Gate'].map((h) => (
+              {['Run', 'Axis', 'Teacher', 'Locked', 'Reference', 'Δ', 'Counts', 'Gate'].map((h) => (
                 <th key={h} style={{ textAlign: 'left', fontSize: '0.68rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)', padding: '0.45rem 0.6rem', borderBottom: '2px solid var(--border)' }}>
                   {h}
                 </th>
@@ -236,13 +250,29 @@ export function BidsRobotScoreboardTab({ auditPending, bids }: BidsRobotScoreboa
                     {row.label}{row.project ? ` · ${row.project}` : ''}
                   </td>
                   <td style={cell}>{row.axis}</td>
+                  {/* Teacher attribution (v2.3080): whose number the shadow scored
+                      against. A calibration standard gates; anyone else is practice. */}
+                  <td style={{ ...cell, fontSize: '0.78rem' }}>
+                    {row.teacher == null ? (
+                      <span style={{ color: 'var(--text-faint)' }}>—</span>
+                    ) : (
+                      <span title={row.teacherStandard === true ? 'Calibration standard — this run counts toward Gate B' : row.teacherStandard === false ? 'Practice teacher — shown, not gated' : 'Teacher standing unknown'}>
+                        {row.teacher}
+                        {row.teacherStandard === true ? (
+                          <span style={{ marginLeft: 4, color: 'var(--text-green-700)', fontWeight: 700 }}>✓</span>
+                        ) : row.teacherStandard === false ? (
+                          <span style={{ marginLeft: 4, fontSize: '0.64rem', fontWeight: 700, letterSpacing: '0.04em', color: 'var(--text-amber-800)' }}>PRACTICE</span>
+                        ) : null}
+                      </span>
+                    )}
+                  </td>
                   <td style={cell}>{money(row.locked)}</td>
                   <td style={cell}>{money(row.reference)}</td>
                   <td style={{ ...cell, color: voided ? 'var(--text-faint)' : deltaColor, fontWeight: 600 }}>
                     {row.deltaPct == null ? '—' : `${row.deltaPct > 0 ? '+' : ''}${row.deltaPct.toFixed(1)}%`}
                   </td>
                   <td style={{ ...cell, fontSize: '0.76rem', color: 'var(--text-muted)' }}>{row.countsNote}</td>
-                  <td style={{ ...cell, fontSize: '0.76rem', color: voided ? 'var(--text-red-700)' : 'var(--text-muted)' }}>
+                  <td style={{ ...cell, fontSize: '0.76rem', color: voided ? 'var(--text-red-700)' : row.gate === 'practice' ? 'var(--text-amber-800)' : 'var(--text-muted)' }}>
                     {row.gate === 'void' ? 'VOID' : row.gate}
                   </td>
                 </tr>

@@ -152,4 +152,67 @@ describe('buildLedger', () => {
     expect(rows[1]!.label).toBe('BT-16')
     expect(rows[1]!.gate).toBe('eligible')
   })
+
+  it('marks void shadows VOID and practice-teacher shadows practice, carrying the teacher', () => {
+    const rows = buildLedger(
+      [],
+      [
+        shadow({ shadow_bid_number: '480', status: 'void', scored_at: null }),
+        shadow({ shadow_bid_number: '481', status: 'scored', delta_pct: 4, scored_at: '2026-09-06T00:00:00Z', teacher_name: 'Grace', teacher_standard: false }),
+        shadow({ shadow_bid_number: '482', status: 'scored', delta_pct: -3, scored_at: '2026-09-07T00:00:00Z', teacher_name: 'Wendi', teacher_standard: true }),
+      ],
+    )
+    const byLabel = Object.fromEntries(rows.map((r) => [r.label, r]))
+    expect(byLabel['SH b480']!.gate).toBe('void')
+    expect(byLabel['SH b481']).toMatchObject({ gate: 'practice', teacher: 'Grace', teacherStandard: false })
+    expect(byLabel['SH b482']).toMatchObject({ gate: 'eligible', teacher: 'Wendi', teacherStandard: true })
+  })
+})
+
+// Teacher attribution (v2.3080, LEARNING_PLAN lever 2 lesson a): a shadow
+// scored against a non-standard teacher is practice — shown, never gated.
+describe('buildAxisCards · teacher attribution', () => {
+  const scoredShadow = (n: string, delta: number, teacher: { name: string; standard: boolean | null }) =>
+    shadow({
+      shadow_bid_number: n,
+      status: 'scored',
+      delta_pct: delta,
+      scored_at: `2026-09-0${n.slice(-1)}T00:00:00Z`,
+      teacher_name: teacher.name,
+      teacher_standard: teacher.standard,
+    })
+
+  it('sets practice-teacher runs aside from the gate and says so on the card', () => {
+    const cards = buildAxisCards(
+      [],
+      [
+        scoredShadow('481', 4, { name: 'Grace', standard: false }),
+        scoredShadow('482', -3, { name: 'Wendi', standard: true }),
+      ],
+    )
+    const card = cards[0]!
+    expect(card.scoredCount).toBe(1) // Grace's run is not a gate entry
+    expect(card.streak).toBe(1)
+    expect(card.practiceTeacherRuns).toBe(1)
+    expect(card.nextLine).toContain('1 practice-teacher run set aside')
+    expect(card.slots.filter((s) => s.state !== 'pending')).toHaveLength(1)
+  })
+
+  it('treats an unknown teacher standing (null — client ahead of the migration) as gate-eligible, as before', () => {
+    const cards = buildAxisCards([], [scoredShadow('483', 2, { name: 'Someone', standard: null })])
+    expect(cards[0]!.scoredCount).toBe(1)
+    expect(cards[0]!.practiceTeacherRuns).toBe(0)
+  })
+
+  it('a practice-teacher miss cannot break a standard-teacher streak', () => {
+    const cards = buildAxisCards(
+      [],
+      [
+        scoredShadow('484', 1, { name: 'Wendi', standard: true }),
+        scoredShadow('485', 40, { name: 'Grace', standard: false }), // wildly out, but practice
+        scoredShadow('486', 2, { name: 'Wendi', standard: true }),
+      ],
+    )
+    expect(cards[0]!.streak).toBe(2)
+  })
 })

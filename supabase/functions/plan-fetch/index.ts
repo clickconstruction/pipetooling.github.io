@@ -61,6 +61,45 @@ function driveFileIdFromUrl(url: string): string | null {
   return m?.[1] ?? m?.[2] ?? null
 }
 
+// --- "plans readable by robots" probe (v2.3080) ---------------------------
+// A live bid whose plans link the service account cannot read is invisible to
+// the shadow program (b480, 2026-09-06). The probe answers that question with a
+// metadata GET — no bytes — and records it on the bid (plans_robot_readable /
+// _probed_at / _probe_note) so the board can show it and next_shadow can skip it.
+
+type ProbeResult = { readable: boolean; note: string | null; name?: string | null; mime?: string | null; size?: number | null }
+
+async function probePlansLink(plansLink: string | null, token: string | null): Promise<ProbeResult> {
+  const link = String(plansLink ?? '').trim()
+  if (!link) return { readable: false, note: 'no plans link on the bid' }
+  if (/drive\.google\.com\/drive\/(?:u\/\d+\/)?folders\//.test(link)) {
+    return { readable: false, note: 'plans link is a Drive FOLDER — link the plan-set PDF itself so robots can fetch it' }
+  }
+  const fileId = driveFileIdFromUrl(link)
+  if (!fileId) return { readable: false, note: 'plans link is not a Google Drive file link — robots can only fetch Drive files' }
+  if (!token) return { readable: false, note: 'service account token unavailable' }
+  const res = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?fields=id,name,mimeType,size&supportsAllDrives=true`, {
+    headers: { Authorization: `Bearer ${token}` },
+  })
+  if (res.status === 404) return { readable: false, note: 'Drive 404 — the file is not shared with the intake service account (or was moved/deleted)' }
+  if (res.status === 403) return { readable: false, note: 'Drive 403 — the intake service account has no permission on this file' }
+  if (!res.ok) return { readable: false, note: `Drive ${res.status} on metadata read` }
+  const meta = await res.json().catch(() => ({})) as { name?: string; mimeType?: string; size?: string }
+  const mime = meta.mimeType ?? null
+  if (mime && mime !== 'application/pdf' && !mime.startsWith('application/vnd.google-apps.')) {
+    return { readable: false, note: `file is ${mime}, not a PDF — robots take PDF plan sets`, name: meta.name ?? null, mime, size: meta.size ? Number(meta.size) : null }
+  }
+  return { readable: true, note: null, name: meta.name ?? null, mime, size: meta.size ? Number(meta.size) : null }
+}
+
+async function recordProbe(admin: ReturnType<typeof createClient>, bidId: string, r: ProbeResult): Promise<void> {
+  await admin.from('bids').update({
+    plans_robot_readable: r.readable,
+    plans_robot_probed_at: new Date().toISOString(),
+    plans_robot_probe_note: r.note,
+  }).eq('id', bidId).then(() => {}, () => {})
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders })
   try {
@@ -91,17 +130,61 @@ serve(async (req) => {
       callerId = u.user.id
     }
 
-    let bidRef = new URL(req.url).searchParams.get('bid')?.trim() ?? ''
-    if (!bidRef && req.method === 'POST') {
-      const body = await req.json().catch(() => ({})) as { bid?: string }
-      bidRef = String(body.bid ?? '').trim()
+    const params = new URL(req.url).searchParams
+    let bidRef = params.get('bid')?.trim() ?? ''
+    let probe = params.get('probe')?.trim() ?? ''
+    let limitRaw = params.get('limit')
+    let force = params.get('force') === '1'
+    if (req.method === 'POST') {
+      const body = await req.json().catch(() => ({})) as { bid?: string; probe?: string; limit?: number; force?: boolean }
+      if (!bidRef) bidRef = String(body.bid ?? '').trim()
+      if (!probe) probe = String(body.probe ?? '').trim()
+      if (limitRaw == null && body.limit != null) limitRaw = String(body.limit)
+      if (body.force) force = true
     }
+
+    // Sweep: probe every live bid with a plans link that was never probed or
+    // whose probe is older than 24h (force=1 re-probes all). Presence-only
+    // answers, so any authorized caller may run it; capped per call.
+    if (probe === 'all') {
+      const limit = Math.min(Math.max(Number(limitRaw ?? 25) || 25, 1), 100)
+      const staleBefore = new Date(Date.now() - 24 * 3600_000).toISOString()
+      let lq = admin.from('bids')
+        .select('id, bid_number, project_name, plans_link, plans_robot_probed_at')
+        .is('bid_date_sent', null).not('plans_link', 'is', null).not('project_name', 'ilike', 'ZZ %')
+        .order('plans_robot_probed_at', { ascending: true, nullsFirst: true })
+        .limit(limit)
+      if (!force) lq = lq.or(`plans_robot_probed_at.is.null,plans_robot_probed_at.lt.${staleBefore}`)
+      const { data: live, error: liveErr } = await lq
+      if (liveErr) return json({ error: `Sweep lookup failed: ${liveErr.message}` }, 500)
+      const token = (live ?? []).length ? await googleAccessToken(saJson) : null
+      const unreadable: Array<{ bid: string; project: string | null; note: string | null }> = []
+      let readable = 0
+      for (const b of live ?? []) {
+        const r = await probePlansLink(b.plans_link as string | null, token)
+        await recordProbe(admin, b.id as string, r)
+        if (r.readable) readable += 1
+        else unreadable.push({ bid: `b${b.bid_number}`, project: b.project_name as string | null, note: r.note })
+      }
+      console.log(`[plan-fetch] probe sweep by ${isTwin ? 'twin' : 'staff'} ${callerId}: ${readable} readable, ${unreadable.length} unreadable of ${(live ?? []).length}`)
+      return json({ probed: (live ?? []).length, readable, unreadable })
+    }
+
     if (!bidRef) return json({ error: 'bid required (?bid=b403 or POST {"bid":"b403"})' }, 400)
 
     const uuidRe = /^[0-9a-f-]{36}$/i
     const q = admin.from('bids').select('id, bid_number, project_name, plans_link, estimator_id, created_by')
     const { data: bid } = await (uuidRe.test(bidRef) ? q.eq('id', bidRef) : q.eq('bid_number', bidRef.replace(/^(bp|b)/i, ''))).maybeSingle()
     if (!bid) return json({ error: `No bid found for "${bidRef}"` }, 404)
+
+    // Single-bid probe: metadata only, recorded on the bid. No assignment fence —
+    // the answer is presence-level; the file name is returned to staff only.
+    if (probe === '1' || probe === 'true') {
+      const r = await probePlansLink(bid.plans_link as string | null, bid.plans_link ? await googleAccessToken(saJson) : null)
+      await recordProbe(admin, bid.id, r)
+      return json({ bid: `b${bid.bid_number}`, readable: r.readable, note: r.note, ...(isTwin ? {} : { name: r.name ?? null, mime: r.mime ?? null, size: r.size ?? null }) })
+    }
+
     if (isTwin && bid.estimator_id !== callerId && bid.created_by !== callerId) {
       return json({ error: 'Not your bid (assignment is the grant)' }, 403)
     }
@@ -114,8 +197,11 @@ serve(async (req) => {
       headers: { Authorization: `Bearer ${token}` },
     })
     if (!src.ok || !src.body) {
+      // A failed byte fetch is a probe result too — record it so the board sees it.
+      await recordProbe(admin, bid.id, { readable: false, note: `Drive ${src.status} on fetch — is the file shared with the intake service account?` })
       return json({ error: `Drive fetch failed (${src.status}) — is the file shared with the service account?` }, 502)
     }
+    await recordProbe(admin, bid.id, { readable: true, note: null })
     console.log(`[plan-fetch] ${isTwin ? 'twin' : 'staff'} ${callerId} ← bid ${bid.bid_number} file ${fileId}`)
     return new Response(src.body, {
       headers: {

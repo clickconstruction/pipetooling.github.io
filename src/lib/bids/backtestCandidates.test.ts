@@ -37,6 +37,7 @@ function card(axis: string, over: Partial<AxisCard> = {}): AxisCard {
     holdoutRuns: 0,
     practiceRuns: 1,
     streakHoldoutRuns: 0,
+    practiceTeacherRuns: 0,
     ...over,
   }
 }

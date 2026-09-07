@@ -20,6 +20,13 @@ export interface ShadowCoverageBid {
   bid_date_sent: string | null
   plans_link: string | null
   project_name: string | null
+  /**
+   * "Plans readable by robots" (v2.3080): the plan-fetch probe's answer —
+   * can the Drive intake service account read the file behind plans_link?
+   * null/undefined = never probed (treated as readable until proven not).
+   */
+  plans_robot_readable?: boolean | null
+  plans_robot_probe_note?: string | null
 }
 
 export interface ShadowCoverageStat {
@@ -27,6 +34,17 @@ export interface ShadowCoverageStat {
   covered: number
   /** All live shadow-eligible bids. */
   live: number
+  /**
+   * Uncovered live bids whose plans the intake service account cannot read —
+   * invisible to the shadow program until a human repairs the link. Bid
+   * numbers (b-prefixed) with the probe's reason, for the board's tooltip.
+   */
+  unreadable: Array<{ bid: string; why: string | null }>
+}
+
+/** Probed and found unreadable by the intake service account. */
+export function isPlansUnreadableByRobots(b: Pick<ShadowCoverageBid, 'plans_robot_readable'>): boolean {
+  return b.plans_robot_readable === false
 }
 
 /** Live and worth shadowing: unsent, plans on file, not a 'ZZ ' sandbox bid. */
@@ -53,11 +71,13 @@ export function shadowCoverage(
   }
   let live = 0
   let covered = 0
+  const unreadable: ShadowCoverageStat['unreadable'] = []
   for (const b of bids) {
     if (!isShadowEligibleLiveBid(b)) continue
     live += 1
     const num = normalizeBidNumber(b.bid_number)
     if (num && shadowed.has(num)) covered += 1
+    else if (isPlansUnreadableByRobots(b)) unreadable.push({ bid: num ? `b${num}` : '?', why: b.plans_robot_probe_note ?? null })
   }
-  return { covered, live }
+  return { covered, live, unreadable }
 }

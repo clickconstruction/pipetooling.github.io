@@ -519,20 +519,33 @@ export function BidsBidBoardTab({
     const ready = robotBidReadiness(bid).state === 'ready'
     // v2.2542: the prompt modal left the board — yellow requests (green), green withdraws.
     const requested = ready && !!bid.robot_requested_at
-    const title = requested
-      ? `Robot bid requested ${new Date(bid.robot_requested_at!).toLocaleDateString()} — click to withdraw`
-      : ready
-        ? 'Ready for a robot — click to request a robot bid'
-        : 'A robot can’t bid this yet — see why'
+    // v2.3080: "plans readable by robots" — the plan-fetch probe found the
+    // intake service account cannot read the file behind plans_link, so no
+    // shadow can open on this bid until a human repairs the link. Read through
+    // a cast: the column may be ahead of the generated types.
+    const probe = bid as unknown as { plans_robot_readable?: boolean | null; plans_robot_probe_note?: string | null }
+    const plansUnreadable = probe.plans_robot_readable === false
+    const title = plansUnreadable
+      ? `Plans not readable by robots — ${probe.plans_robot_probe_note ?? 'the intake service account cannot read this file'}. Share the file with the service account or link the PDF itself.${requested ? ' (Robot bid requested — click to withdraw)' : ''}`
+      : requested
+        ? `Robot bid requested ${new Date(bid.robot_requested_at!).toLocaleDateString()} — click to withdraw`
+        : ready
+          ? 'Ready for a robot — click to request a robot bid'
+          : 'A robot can’t bid this yet — see why'
     return (
       <button
         type="button"
         onClick={() => (ready ? robotReadiness.onToggleRequest(bid) : robotReadiness.onOpenReadiness(bid))}
         title={title}
-        aria-label={`${requested ? 'Robot bid requested' : ready ? 'Robot-ready' : 'Not robot-ready'} — ${bid.project_name ?? 'bid'}`}
-        style={{ ...actionStyle, color: requested ? '#16a34a' : ready ? '#eab308' : 'var(--border-strong)' }}
+        aria-label={`${plansUnreadable ? 'Plans not readable by robots' : requested ? 'Robot bid requested' : ready ? 'Robot-ready' : 'Not robot-ready'} — ${bid.project_name ?? 'bid'}`}
+        style={{ ...actionStyle, color: plansUnreadable ? '#dc2626' : requested ? '#16a34a' : ready ? '#eab308' : 'var(--border-strong)', position: 'relative' }}
       >
         <BidBoardIcon d={BID_BOARD_ICON_PATHS.robot} size={18} />
+        {plansUnreadable ? (
+          <span aria-hidden style={{ position: 'absolute', right: -2, bottom: -3, fontSize: '0.6rem', fontWeight: 800, lineHeight: 1, color: 'var(--text-red-600)' }}>
+            ✕
+          </span>
+        ) : null}
       </button>
     )
   }

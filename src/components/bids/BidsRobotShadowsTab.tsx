@@ -71,6 +71,17 @@ export function BidsRobotShadowsTab({ onOpenBidNumber }: BidsRobotShadowsTabProp
             </span>
           ) : null}
           <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>robot bid b{run.shadow_bid_number ?? '?'}</span>
+          {/* Teacher attribution (v2.3080): whose number this shadow scores against.
+              A calibration standard counts toward Gate B; anyone else is practice. */}
+          {run.teacher_name ? (
+            <span
+              title={run.teacher_standard === true ? 'Calibration standard — this run counts toward Gate B' : run.teacher_standard === false ? 'Practice teacher — the score is shown but not gated' : 'Teacher standing unknown'}
+              style={{ fontSize: '0.72rem', color: run.teacher_standard === false ? 'var(--text-amber-800)' : 'var(--text-muted)' }}
+            >
+              teacher: {run.teacher_name}
+              {run.teacher_standard === true ? ' ✓ standard' : run.teacher_standard === false ? ' · practice' : ''}
+            </span>
+          ) : null}
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', rowGap: '0.6rem', margin: '0.7rem 0 0.15rem' }}>
