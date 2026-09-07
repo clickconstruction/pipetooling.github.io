@@ -38,6 +38,13 @@ function lookupByPersonName<T>(record: Record<string, T>, personName: string): T
   return undefined
 }
 
+/** A sheet row's job: its link (v2.3068), else — only for a sheet with no link — the number map. */
+function laborRowJobId(r: { job_number: string | null; job_ledger_id?: string | null }, jobIdByHcp: ReadonlyMap<string, string>): string | null {
+  if (r.job_ledger_id) return r.job_ledger_id
+  const hcp = (r.job_number ?? '').trim().toLowerCase()
+  return hcp ? (jobIdByHcp.get(hcp) ?? null) : null
+}
+
 export function derivePersonTeamSummary(
   union: TeamReviewUnion,
   personName: string,
@@ -66,14 +73,14 @@ export function derivePersonTeamSummary(
       // job appears in "Where the field hrs went" and gets a (typically
       // negative) revenue allocation.
       if (!officeJobIdForFilter) return true
-      const hcp = (r.job_number ?? '').trim().toLowerCase()
-      if (!hcp) return true
-      return union.jobIdByHcp.get(hcp) !== officeJobIdForFilter
+      const jobId = laborRowJobId(r, union.jobIdByHcp)
+      if (!jobId) return true
+      return jobId !== officeJobIdForFilter
     })
   const laborRowsFiltered = onlyPaidJobs
     ? personPeriodLaborRows.filter((r) => {
-        const hcp = (r.job_number ?? '').trim().toLowerCase()
-        return hcp && union.jobIdByHcp.has(hcp)
+        const jobId = laborRowJobId(r, union.jobIdByHcp)
+        return !!jobId && union.jobsById.has(jobId)
       })
     : personPeriodLaborRows
 
@@ -87,8 +94,7 @@ export function derivePersonTeamSummary(
       union.mileageCost,
       union.timePerMile,
     )
-    const hcp = (r.job_number ?? '').trim().toLowerCase()
-    const jobId = hcp ? union.jobIdByHcp.get(hcp) ?? null : null
+    const jobId = laborRowJobId(r, union.jobIdByHcp)
     const share = laborShareByRowId.get(r.id) ?? 1
     return { jobId, hours: totalHrs * share, laborCost: laborCost * share }
   })
@@ -126,12 +132,11 @@ export function derivePersonTeamSummary(
   const noTagCosts: ReadonlyMap<string, number> = new Map()
   const laborJobIdsSeen = new Set<string>()
   for (const r of laborRowsFiltered) {
-    const hcp = (r.job_number ?? '').trim().toLowerCase()
-    const jobId = hcp ? union.jobIdByHcp.get(hcp) ?? null : null
+    const jobId = laborRowJobId(r, union.jobIdByHcp)
     if (!jobId || laborJobIdsSeen.has(jobId)) continue
     laborJobIdsSeen.add(jobId)
     const job = union.jobsById.get(jobId)
-    const subLaborCost = hcp ? (union.laborCostByHcp.get(hcp) ?? 0) : 0
+    const subLaborCost = union.laborCostByJobId.get(jobId) ?? 0
     const teamLaborCost = union.teamLaborCostByJobId.get(jobId) ?? 0
     const totalLaborOnJob = subLaborCost + teamLaborCost
     const partsCost = (union.partsCostByJobId.get(jobId) ?? 0) + (union.invoiceAmountByJob[jobId] ?? 0) + (union.billedMaterialsByJobId.get(jobId) ?? 0) + (union.cardChargesByJobId.get(jobId) ?? 0)
@@ -144,8 +149,7 @@ export function derivePersonTeamSummary(
   for (const jobId of crewJobIds) {
     if (allocationJobsMap.has(jobId)) continue
     const j = union.jobsById.get(jobId)
-    const hcp = (j?.hcp_number ?? '').trim().toLowerCase()
-    const subLaborCost = hcp ? (union.laborCostByHcp.get(hcp) ?? 0) : 0
+    const subLaborCost = union.laborCostByJobId.get(jobId) ?? 0
     const totalLaborOnJob = subLaborCost + (union.teamLaborCostByJobId.get(jobId) ?? 0)
     const partsCost = (union.partsCostByJobId.get(jobId) ?? 0) + (union.invoiceAmountByJob[jobId] ?? 0) + (union.billedMaterialsByJobId.get(jobId) ?? 0) + (union.cardChargesByJobId.get(jobId) ?? 0)
     const totalBill = j?.revenue != null ? Number(j.revenue) : 0
