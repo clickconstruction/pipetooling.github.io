@@ -18,6 +18,8 @@ export type StandingMoveCellProps = {
   onSecond?: () => void
   menu: MoveMenuItem[]
   busy?: boolean
+  /** Narrow cards: the two halves stack — standing centered, the move full width so thumbs find it. */
+  stacked?: boolean
 }
 
 function moveStyle(tone: MoveTone, disabled: boolean): CSSProperties {
@@ -102,20 +104,23 @@ export function MoreMenu({ items, ariaLabel = 'More' }: { items: MoveMenuItem[];
   )
 }
 
-export function StandingMoveCell({ standing, primary, second, onPrimary, onSecond, menu, busy = false }: StandingMoveCellProps) {
+export function StandingMoveCell({ standing, primary, second, onPrimary, onSecond, menu, busy = false, stacked = false }: StandingMoveCellProps) {
   const quiet = primary.tone === 'quiet'
+  const primaryStyle: CSSProperties = stacked && !quiet ? { ...moveStyle(primary.tone, busy), flex: '1 1 auto', textAlign: 'center' } : moveStyle(primary.tone, busy)
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+    <div style={stacked ? { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 } : { display: 'flex', alignItems: 'center', gap: 12 }}>
       <div style={{ flex: 'none' }}>{standing}</div>
-      <span aria-hidden="true" style={{ color: 'var(--text-faint)', fontSize: '0.95rem', lineHeight: 1, flex: 'none' }}>
-        →
-      </span>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 3, alignItems: 'flex-start', minWidth: 0 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+      {stacked ? null : (
+        <span aria-hidden="true" style={{ color: 'var(--text-faint)', fontSize: '0.95rem', lineHeight: 1, flex: 'none' }}>
+          →
+        </span>
+      )}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 3, alignItems: stacked ? 'stretch' : 'flex-start', minWidth: 0, width: stacked ? '100%' : undefined }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', justifyContent: stacked ? 'center' : undefined }}>
           {quiet ? (
             <span style={moveStyle('quiet', false)}>{primary.label}</span>
           ) : (
-            <button type="button" style={moveStyle(primary.tone, busy)} disabled={busy} onClick={onPrimary}>
+            <button type="button" style={primaryStyle} disabled={busy} onClick={onPrimary}>
               {primary.label}
             </button>
           )}
@@ -126,7 +131,7 @@ export function StandingMoveCell({ standing, primary, second, onPrimary, onSecon
           ) : null}
           <MoreMenu items={menu} />
         </div>
-        {primary.hint ? <div style={{ fontSize: '0.68rem', color: primary.tone === 'warn' ? 'var(--text-amber-800)' : 'var(--text-muted)', fontWeight: primary.tone === 'warn' ? 600 : 400 }}>{primary.hint}</div> : null}
+        {primary.hint ? <div style={{ fontSize: '0.68rem', color: primary.tone === 'warn' ? 'var(--text-amber-800)' : 'var(--text-muted)', fontWeight: primary.tone === 'warn' ? 600 : 400, textAlign: stacked ? 'center' : undefined }}>{primary.hint}</div> : null}
       </div>
     </div>
   )

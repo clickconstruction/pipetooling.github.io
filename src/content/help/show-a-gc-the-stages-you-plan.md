@@ -17,7 +17,7 @@ The status also reads in the customer portal globe's gear.
 ## Offer a stage
 
 1. On **Jobs → Subs → Work**, give the stage a window (see *set a window for a sub's stage*).
-2. In the **GC portal** column press {{button:blue|Offer to GC}}. The row reads {{chip:green|Shown}}; {{button:outline|Withdraw}} takes it back.
+2. Beside the dates press the {{chip:blue|Offer to GC ›}} chip and confirm. The chip turns to {{chip:blue|On Summit's portal ›}}; click it (or the dates) to open the calendar, where **Take it off their portal** takes it back.
 
 :::example What the GC reads
 **Rough-in** · Between Sep 8 – Sep 19 · *Planned* — then, once the sub signs and picks, **Behar · Sep 9 – Sep 10** · *Scheduled* — then *50% along*, *Inspection next*, *Passed*. First name only; never the price, the paperwork or a phone number.

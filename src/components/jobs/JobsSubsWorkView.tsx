@@ -91,12 +91,7 @@ export type JobsSubsWorkViewProps = {
   /** Signed-queue moves the page owns (v2.2963): the sheet's stage (Passed → bill) and Make Payment. */
   onSetSheetStage?: (sheetId: string, stage: SubSheetStage) => Promise<boolean> | boolean | void
   onOpenMakePayment?: (target: SubLaborPaymentTarget, defaultAmount: string) => void
-  /** Dev only (v2.2963 prototype): the Classic / Compact layout switch on the toolbar. */
-  canPrototype?: boolean
 }
-
-type BoardLayout = 'classic' | 'compact'
-const LAYOUT_KEY = 'subsWorkLayout'
 
 const smallBtn = (tone: 'primary' | 'ghost' | 'danger' = 'ghost', disabled = false) =>
   ({
@@ -119,7 +114,7 @@ const money = (n: number) => `$${formatCurrency(n)}`
 /** Which row (or job header) has the window editor open. */
 type WindowEditTarget = { groupKey: string; rowKey: string | null; commitmentId: string | null; stageId: string | null; span: StageWindowSpan | null }
 
-export function JobsSubsWorkView({ jobs, jobsLoading, authUserId, deepLinkWorkOrderId, onDeepLinkConsumed, initialFilter, onOpenSheet, toolbarHost, onSetSheetStage, onOpenMakePayment, canPrototype = false }: JobsSubsWorkViewProps) {
+export function JobsSubsWorkView({ jobs, jobsLoading, authUserId, deepLinkWorkOrderId, onDeepLinkConsumed, initialFilter, onOpenSheet, toolbarHost, onSetSheetStage, onOpenMakePayment }: JobsSubsWorkViewProps) {
   const { showToast } = useToastContext()
   const confirm = useConfirmDialog()
   const jobForm = useJobFormModal()
@@ -151,14 +146,6 @@ export function JobsSubsWorkView({ jobs, jobsLoading, authUserId, deepLinkWorkOr
   const [rosterBench, setRosterBench] = useState<Set<string>>(() => new Set())
   const [availability, setAvailability] = useState<{ orders: SubDispatchOrder[]; offDays: Map<string, string[]>; loading: boolean }>({ orders: [], offDays: new Map(), loading: false })
   const [addInspectionOpen, setAddInspectionOpen] = useState(false)
-  /** Prototype (v2.2963): Classic = today's nine columns; Compact = Window track + money stack + Standing → next. */
-  const [layout, setLayout] = useState<BoardLayout>(() => {
-    try {
-      return localStorage.getItem(LAYOUT_KEY) === 'compact' ? 'compact' : 'classic'
-    } catch {
-      return 'classic'
-    }
-  })
   /** The row whose stage calendar is open (v2.2963). */
   const [calendarKey, setCalendarKey] = useState<string | null>(null)
   const billCustomer = useBillCustomerModal()
@@ -615,80 +602,6 @@ export function JobsSubsWorkView({ jobs, jobsLoading, authUserId, deepLinkWorkOr
     return w ? { stageWindowId: w.id, proposedStart: w.window_start, proposedEnd: w.window_end } : {}
   }
 
-  /** The button that goes first in the row — the office's next move. */
-  function primaryAction(row: WorkOrderBoardRow) {
-    const busy = busyId === row.key || (row.commitmentId != null && busyId === row.commitmentId)
-    const order = row.commitmentId ? rowsById.get(row.commitmentId) : null
-    const b = row.next.button
-    if (!b || !row.next.buttonLabel) return null
-    const onClick =
-      b === 'draft'
-        ? () => setAssembler({ jobId: row.jobId, laborJobId: row.sheetId, personId: row.personId, amount: row.agreed > 0 ? row.agreed : null, ...stagePrefill(row) })
-        : b === 'nudge'
-          ? () => (order ? void nudge(order) : undefined)
-          : () => (row.commitmentId ? setAssembler({ commitmentId: row.commitmentId }) : undefined)
-    return (
-      <button type="button" style={smallBtn('primary', busy)} disabled={busy} onClick={onClick}>
-        {row.next.buttonLabel}
-      </button>
-    )
-  }
-
-  function secondaryActions(row: WorkOrderBoardRow) {
-    const order = row.commitmentId ? rowsById.get(row.commitmentId) : null
-    const busy = busyId === row.key || (order != null && busyId === order.id)
-    const c = row.coverage
-    const view = (label: string) => (
-      <button type="button" style={smallBtn('ghost', busy)} disabled={busy} onClick={() => (order ? setAssembler({ commitmentId: order.id }) : undefined)}>
-        {label}
-      </button>
-    )
-    const out: JSX.Element[] = []
-    if (order && c.kind === 'draft') {
-      out.push(
-        <button key="discard" type="button" style={smallBtn('danger', busy)} disabled={busy} onClick={() => void discardDraft(order)}>
-          Discard
-        </button>,
-      )
-    } else if (order && c.kind === 'sent') {
-      out.push(<span key="view">{view('View')}</span>)
-      if (!c.expired && row.next.button !== 'nudge')
-        out.push(
-          <button key="nudge" type="button" style={smallBtn('ghost', busy)} disabled={busy} onClick={() => void nudge(order)} title="Resend the offer notification">
-            Nudge
-          </button>,
-        )
-      out.push(
-        <button key="paper" type="button" style={smallBtn('ghost', busy)} disabled={busy} onClick={() => void markSignedOnPaper(order)} title="They signed a printed copy">
-          Signed on paper
-        </button>,
-        <button key="withdraw" type="button" style={smallBtn('ghost', busy)} disabled={busy} onClick={() => void withdraw(order)}>
-          Withdraw
-        </button>,
-      )
-    } else if (order && c.kind === 'signed') {
-      out.push(
-        <button key="print" type="button" style={smallBtn('ghost', busy)} disabled={busy} onClick={() => print(order)}>
-          Print
-        </button>,
-      )
-    } else if (order && c.kind === 'declined') {
-      out.push(
-        <button key="print" type="button" style={smallBtn('ghost', busy)} disabled={busy} onClick={() => print(order)}>
-          Print
-        </button>,
-      )
-    }
-    if (row.sheetId && onOpenSheet) {
-      out.push(
-        <button key="sheet" type="button" style={door} onClick={() => onOpenSheet(row.sheetId!)} title="Open the Sub Labor sheet">
-          Sheet ›
-        </button>,
-      )
-    }
-    return out
-  }
-
   /** "50% along" from the sub's own report (v2.2931). */
   const progressChip = (sheetId: string | null) => {
     const sh = sheetId ? sheetsById.get(sheetId) : null
@@ -812,31 +725,6 @@ export function JobsSubsWorkView({ jobs, jobsLoading, authUserId, deepLinkWorkOr
     )
   }
 
-  /** The GC column (v2.2933): off for the job, Offer to GC, or Shown · Withdraw. */
-  const gcCell = (g: SubsJobGroup, r: SubsRow) => {
-    const share = g.jobId ? gcSharing.get(g.jobId) : undefined
-    if (!g.jobId) return <span style={{ color: 'var(--text-faint)', fontSize: '0.72rem' }}>—</span>
-    if (!share) return <span title="Edit Job → GC/Builder → Share stage dates with this GC" style={{ display: 'inline-block', padding: '1px 8px', borderRadius: 999, fontSize: '0.68rem', fontWeight: 600, background: 'var(--bg-subtle)', color: 'var(--text-muted)', border: '1px solid var(--border)', whiteSpace: 'nowrap' }}>off for this job</span>
-    if (!r.window) return <span style={{ color: 'var(--text-faint)', fontSize: '0.72rem' }}>set a window first</span>
-    if (r.window.offered_to_gc) {
-      return (
-        <>
-          <span style={{ display: 'inline-block', padding: '1px 8px', borderRadius: 999, fontSize: '0.68rem', fontWeight: 700, background: 'var(--bg-green-tint)', color: 'var(--text-green-700)', border: '1px solid var(--border-green)', whiteSpace: 'nowrap' }}>Shown{r.window.bundle_id ? ' · bundle' : ''}</span>
-          <div>
-            <button type="button" style={{ ...door, fontSize: '0.7rem' }} onClick={() => void withdrawFromGc(r.window!)}>
-              Withdraw
-            </button>
-          </div>
-        </>
-      )
-    }
-    return (
-      <button type="button" style={smallBtn('primary')} onClick={() => void offerToGc([r.window!.id], false)} title={`Show this stage and its window on ${share.gcName ?? 'the GC'}'s portal`}>
-        Offer to GC
-      </button>
-    )
-  }
-
   const linkAffordance = (row: WorkOrderBoardRow) =>
     row.notInPipeline ? (
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4, flexWrap: 'wrap' }}>
@@ -861,35 +749,10 @@ export function JobsSubsWorkView({ jobs, jobsLoading, authUserId, deepLinkWorkOr
       <span style={{ color: !unpriced && open != null && open > 0 ? 'var(--text-red-700)' : 'var(--text-faint)', fontWeight: !unpriced && open != null && open > 0 ? 700 : 400 }}>{unpriced || open == null ? '—' : money(open)}</span>
     </div>
   )
-  const openCell = (row: WorkOrderBoardRow) => (row.unpriced ? <span style={{ color: 'var(--text-faint)' }}>—</span> : <span style={{ fontWeight: 700, color: row.open > 0 && row.group === 'no_agreement' ? 'var(--text-red-700)' : 'inherit' }}>{money(row.open)}</span>)
-  const nextCell = (row: WorkOrderBoardRow) => (
-    <>
-      <div style={{ fontSize: '0.8rem', fontWeight: 600, color: row.next.button === 'nudge' || row.next.button === 'reoffer' ? 'var(--text-amber-800)' : 'inherit' }}>{row.next.label}</div>
-      {row.next.hint ? <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{row.next.hint}</div> : null}
-    </>
-  )
-
   /** A stage row's own "Where it stands" and "Next" — no rail yet, the order is the next move. */
   const stageStanding = (r: Extract<SubsRow, { kind: 'stage' }>) => (
     <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>{r.span ? (stageWindowPhase(r.span, today) === 'past' ? 'Window passed · no order' : 'Window set · no order yet') : 'No window yet'}</span>
   )
-  const stageNext = () => (
-    <>
-      <div style={{ fontSize: '0.8rem', fontWeight: 600 }}>Draft a work order</div>
-      <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>the window comes along as its dates</div>
-    </>
-  )
-  const stageActions = (r: Extract<SubsRow, { kind: 'stage' }>) => (
-    <>
-      <button type="button" style={smallBtn('primary')} onClick={() => draftForStage(r)}>
-        Draft a work order…
-      </button>
-      <button type="button" style={smallBtn('ghost')} onClick={() => void removeWindow(r.window, r.stage.name)} title="Clear the window; the line item stays on the job">
-        Remove
-      </button>
-    </>
-  )
-
   const editorFor = (g: SubsJobGroup, rowKey: string | null) => {
     if (!windowEdit || windowEdit.groupKey !== g.key || windowEdit.rowKey !== rowKey || !g.jobId) return null
     const jobId = g.jobId
@@ -952,6 +815,35 @@ export function JobsSubsWorkView({ jobs, jobsLoading, authUserId, deepLinkWorkOr
     const ok = await confirm({ title: `Show ${stage} on ${share?.gcName ?? "the GC"}'s portal?`, message: `${share?.gcName ?? 'The GC'} will see the stage and its window${r.span ? ` (${stageWindowLabel(r.span)})` : ''} and can ask for other dates. Your orders stay as they are.`, confirmLabel: 'Offer' })
     if (!ok) return
     await offerToGc([r.window.id], false)
+  }
+
+  /** The text Window cell's props for a row — the table and the narrow cards draw the same cell. */
+  const windowTextProps = (g: SubsJobGroup, r: SubsRow, busy: boolean) => {
+    const d = windowDataFor(g, r)
+    const w = r.window
+    return {
+      window: d.window,
+      passed: d.window ? stageWindowPhase(d.window, today) === 'past' : false,
+      windowBy: w ? (w.window_by === 'gc' ? ('gc' as const) : ('office' as const)) : null,
+      pick: d.pick,
+      pickBy: d.order?.picked_start ? (d.order.picked_by === 'office' ? ('office' as const) : ('sub' as const)) : null,
+      ask: d.ask && w ? { span: d.ask, note: w.asked_note ?? null } : null,
+      gc: { state: d.gc, gcName: d.gcName },
+      onOpenDates: () => setCalendarKey(r.key),
+      onChange: w && g.jobId ? () => setWindowEdit({ groupKey: g.key, rowKey: r.key, commitmentId: r.board?.commitmentId ?? null, stageId: r.stage?.id ?? null, span: r.span }) : undefined,
+      onOfferToGc: w ? () => void offerToGcFromRow(g, r) : undefined,
+      onOpenGc: () => setCalendarKey(r.key),
+      onAccept: w ? () => void answerGcAsk(w, { kind: 'accept' }, r.board?.commitmentId ?? null) : undefined,
+      onAnswer:
+        w && d.ask
+          ? () => {
+              setAskAnswer({ windowId: w.id, start: w.window_start ?? d.ask!.start, end: w.window_end ?? d.ask!.end, note: '' })
+              setCalendarKey(r.key)
+            }
+          : undefined,
+      setWindow: windowCell(g, r),
+      busy,
+    }
   }
 
   const moveFor = (r: SubsRow): { primary: StandingMove; second: StandingMove | null } =>
@@ -1046,7 +938,7 @@ export function JobsSubsWorkView({ jobs, jobsLoading, authUserId, deepLinkWorkOr
     return items
   }
 
-  const compactTable = (
+  const table = (
     <div style={{ overflowX: 'auto' }}>
       <table style={{ borderCollapse: 'collapse', width: '100%', minWidth: 1040, fontVariantNumeric: 'tabular-nums' }}>
         <thead style={{ background: 'var(--bg-subtle)' }}>
@@ -1071,40 +963,14 @@ export function JobsSubsWorkView({ jobs, jobsLoading, authUserId, deepLinkWorkOr
               </tr>
               {g.rows.map((r) => {
                 const editor = editorFor(g, r.key)
-                const d = windowDataFor(g, r)
                 const mv = moveFor(r)
                 const busy = r.kind === 'sheet' && (busyId === r.board.key || (r.board.commitmentId != null && busyId === r.board.commitmentId))
-                const w = r.window
                 return (
                   <FragmentRows key={r.key}>
                     <tr>
                       <td style={td}>{firstCell(r)}</td>
-                      <td style={{ ...td, whiteSpace: 'nowrap', overflow: 'visible' }}>
-                        <WindowTextCell
-                          window={d.window}
-                          passed={d.window ? stageWindowPhase(d.window, today) === 'past' : false}
-                          windowBy={w ? (w.window_by === 'gc' ? 'gc' : 'office') : null}
-                          pick={d.pick}
-                          pickBy={d.order?.picked_start ? (d.order.picked_by === 'office' ? 'office' : 'sub') : null}
-                          ask={d.ask && w ? { span: d.ask, note: w.asked_note ?? null } : null}
-                          gc={{ state: d.gc, gcName: d.gcName }}
-                          onOpenDates={() => setCalendarKey(r.key)}
-                          onChange={w && g.jobId ? () => setWindowEdit({ groupKey: g.key, rowKey: r.key, commitmentId: r.board?.commitmentId ?? null, stageId: r.stage?.id ?? null, span: r.span }) : undefined}
-                          onOfferToGc={w ? () => void offerToGcFromRow(g, r) : undefined}
-                          onOpenGc={() => setCalendarKey(r.key)}
-                          onAccept={w ? () => void answerGcAsk(w, { kind: 'accept' }, r.board?.commitmentId ?? null) : undefined}
-                          onAnswer={
-                            w && d.ask
-                              ? () => {
-                                  setAskAnswer({ windowId: w.id, start: w.window_start ?? d.ask!.start, end: w.window_end ?? d.ask!.end, note: '' })
-                                  setCalendarKey(r.key)
-                                }
-                              : undefined
-                          }
-                          setWindow={windowCell(g, r)}
-                          busy={busy}
-                        >
-                        </WindowTextCell>
+                      <td style={{ ...td, whiteSpace: 'nowrap' }}>
+                        <WindowTextCell {...windowTextProps(g, r, busy)} />
                       </td>
                       <td style={{ ...td, textAlign: 'right', whiteSpace: 'nowrap' }}>{r.kind === 'stage' ? moneyStack(r.stage.amount > 0 ? r.stage.amount : null, null, null, r.stage.amount <= 0) : moneyStack(r.board.agreed, r.board.paid, r.board.open, r.board.unpriced)}</td>
                       <td style={td}>
@@ -1284,133 +1150,80 @@ export function JobsSubsWorkView({ jobs, jobsLoading, authUserId, deepLinkWorkOr
     )
   }
 
-  const table = (
-    <div style={{ border: '1px solid var(--border)', borderRadius: 6, overflow: 'auto', WebkitOverflowScrolling: 'touch' }}>
-      <table style={{ borderCollapse: 'collapse', width: '100%', minWidth: 1160, fontVariantNumeric: 'tabular-nums' }}>
-        <thead style={{ background: 'var(--bg-subtle)' }}>
-          <tr>
-            <th style={th}>Sub · stage</th>
-            <th style={th}>Window</th>
-            <th style={{ ...th, textAlign: 'right' }} title="Agreed · Paid (green) · Open (red)">
-              Agreed
-              <span style={{ display: 'block', color: 'var(--text-green-700)' }}>Paid</span>
-              <span style={{ display: 'block', color: 'var(--text-red-700)' }}>Open</span>
-            </th>
-            <th style={th}>Where it stands</th>
-            <th style={th}>Next</th>
-            <th style={th}>GC portal</th>
-            <th style={th} />
-          </tr>
-        </thead>
-        <tbody>
-          {visibleGroups.map((g) => (
-            <FragmentRows key={g.key}>
-              <tr>
-                <td colSpan={7} style={{ padding: 0 }}>
-                  {groupHeader(g)}
-                  {bundleFoot(g)}
-                </td>
-              </tr>
-              {g.rows.map((r) => {
-                const editor = rowEditor(g, r)
-                return (
-                  <FragmentRows key={r.key}>
-                    <tr>
-                      <td style={td}>{firstCell(r)}</td>
-                      <td style={td}>{windowCell(g, r)}</td>
-                      {r.kind === 'stage' ? (
-                        <>
-                          <td style={{ ...td, textAlign: 'right', whiteSpace: 'nowrap' }}>{moneyStack(r.stage.amount > 0 ? r.stage.amount : null, null, null, r.stage.amount <= 0)}</td>
-                          <td style={td}>{stageStanding(r)}</td>
-                          <td style={td}>{stageNext()}</td>
-                          <td style={td}>{gcCell(g, r)}</td>
-                          <td style={{ ...td, whiteSpace: 'nowrap' }}>
-                            <div style={{ display: 'flex', gap: 4, justifyContent: 'flex-end', alignItems: 'center', flexWrap: 'wrap' }}>{stageActions(r)}</div>
-                          </td>
-                        </>
-                      ) : (
-                        <>
-                          <td style={{ ...td, textAlign: 'right', whiteSpace: 'nowrap' }}>{moneyStack(r.board.agreed, r.board.paid, r.board.open, r.board.unpriced)}</td>
-                          <td style={{ ...td, whiteSpace: 'nowrap' }}>
-                            <SheetRail rail={r.board.rail} labelBelow onClick={r.board.sheetId ? () => setStorySheetId(r.board.sheetId) : undefined} />
-                          </td>
-                          <td style={td}>{nextCell(r.board)}</td>
-                          <td style={td}>{gcCell(g, r)}</td>
-                          <td style={{ ...td, whiteSpace: 'nowrap' }}>
-                            <div style={{ display: 'flex', gap: 4, justifyContent: 'flex-end', alignItems: 'center', flexWrap: 'wrap' }}>
-                              {primaryAction(r.board)}
-                              {secondaryActions(r.board)}
-                            </div>
-                          </td>
-                        </>
-                      )}
-                    </tr>
-                    {editor ? (
-                      <tr>
-                        <td colSpan={7} style={{ ...td, background: 'var(--bg-subtle)' }}>{editor}</td>
-                      </tr>
-                    ) : null}
-                  </FragmentRows>
-                )
-              })}
-            </FragmentRows>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  )
+  /** Small uppercase label above a card field. */
+  const label = (t: string) => <div style={{ fontSize: '0.62rem', textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-muted)', fontWeight: 600, marginBottom: 2 }}>{t}</div>
 
-  const label = (t: string) => <div style={{ fontSize: '0.62rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)' }}>{t}</div>
   const cards = (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
       {visibleGroups.map((g) => (
         <div key={g.key} style={{ border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden' }}>
           {groupHeader(g)}
           {bundleFoot(g)}
-          {g.rows.map((r) => (
-            <div key={r.key} style={{ padding: '0.6rem 0.7rem', borderTop: '1px solid var(--border)', display: 'grid', gap: 6 }}>
-              <div>{firstCell(r)}</div>
-              <div>
-                {label('Window')}
-                {windowCell(g, r)}
-                {rowEditor(g, r)}
+          {g.rows.map((r) => {
+            const mv = moveFor(r)
+            const busy = r.kind === 'sheet' && (busyId === r.board.key || (r.board.commitmentId != null && busyId === r.board.commitmentId))
+            return (
+              <div key={r.key} style={{ padding: '0.6rem 0.7rem', borderTop: '1px solid var(--border)', display: 'grid', gap: 8 }}>
+                <div>{firstCell(r)}</div>
+                <div>
+                  {label('Window')}
+                  <WindowTextCell {...windowTextProps(g, r, busy)} />
+                  {rowEditor(g, r)}
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6, fontSize: '0.78rem', fontVariantNumeric: 'tabular-nums' }}>
+                  {r.kind === 'stage' ? (
+                    <>
+                      <div>
+                        {label('Agreed')}
+                        {r.stage.amount > 0 ? money(r.stage.amount) : <span style={{ color: 'var(--text-faint)' }}>unpriced</span>}
+                      </div>
+                      <div>
+                        {label('Paid')}
+                        <span style={{ color: 'var(--text-faint)' }}>—</span>
+                      </div>
+                      <div>
+                        {label('Open')}
+                        <span style={{ color: 'var(--text-faint)' }}>—</span>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div>
+                        {label('Agreed')}
+                        {r.board.unpriced ? <span style={{ color: 'var(--text-faint)' }}>unpriced</span> : money(r.board.agreed)}
+                      </div>
+                      <div>
+                        {label('Paid')}
+                        <span style={{ color: r.board.paid > 0 ? 'var(--text-green-700)' : 'var(--text-faint)', fontWeight: r.board.paid > 0 ? 600 : 400 }}>{money(r.board.paid)}</span>
+                      </div>
+                      <div>
+                        {label('Open')}
+                        <span style={{ color: !r.board.unpriced && r.board.open > 0 ? 'var(--text-red-700)' : 'var(--text-faint)', fontWeight: !r.board.unpriced && r.board.open > 0 ? 700 : 400 }}>{r.board.unpriced ? '—' : money(r.board.open)}</span>
+                      </div>
+                    </>
+                  )}
+                </div>
+                <div>
+                  {label('Where it stands → next')}
+                  <StandingMoveCell
+                    stacked
+                    standing={r.kind === 'stage' ? stageStanding(r) : <SheetRail rail={r.board.rail} compact labelBelow onClick={r.board.sheetId ? () => setStorySheetId(r.board.sheetId) : undefined} />}
+                    primary={mv.primary}
+                    second={mv.second}
+                    onPrimary={() => runMove(r, mv.primary)}
+                    onSecond={mv.second ? () => runMove(r, mv.second!) : undefined}
+                    menu={menuFor(g, r)}
+                    busy={busy}
+                  />
+                </div>
               </div>
-              <div>
-                {label('GC portal')}
-                {gcCell(g, r)}
-              </div>
-              {r.kind === 'stage' ? (
-                <>
-                  <div style={{ fontSize: '0.78rem', fontVariantNumeric: 'tabular-nums' }}>{label('Agreed')}{r.stage.amount > 0 ? money(r.stage.amount) : <span style={{ color: 'var(--text-faint)' }}>unpriced</span>}</div>
-                  <div>{stageStanding(r)}</div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                    <div style={{ flex: '1 1 auto' }}>{stageNext()}</div>
-                  </div>
-                  <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>{stageActions(r)}</div>
-                </>
-              ) : (
-                <>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6, fontSize: '0.78rem', fontVariantNumeric: 'tabular-nums' }}>
-                    <div>{label('Agreed')}{r.board.unpriced ? <span style={{ color: 'var(--text-faint)' }}>unpriced</span> : money(r.board.agreed)}</div>
-                    <div>{label('Paid')}{money(r.board.paid)}</div>
-                    <div>{label('Open')}{openCell(r.board)}</div>
-                  </div>
-                  <div style={{ overflowX: 'auto' }}>
-                    <SheetRail rail={r.board.rail} compact labelBelow onClick={r.board.sheetId ? () => setStorySheetId(r.board.sheetId) : undefined} />
-                  </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                    <div style={{ flex: '1 1 auto' }}>{nextCell(r.board)}</div>
-                    {primaryAction(r.board)}
-                  </div>
-                  <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>{secondaryActions(r.board)}</div>
-                </>
-              )}
-            </div>
-          ))}
+            )
+          })}
         </div>
       ))}
     </div>
   )
+
 
   /** + New work order, the search box and the rail-group chips — inline above the board, or on the Work / Pay row when a host is given. */
   const toolbar = (
@@ -1449,30 +1262,6 @@ export function JobsSubsWorkView({ jobs, jobsLoading, authUserId, deepLinkWorkOr
           )
         })}
       </div>
-      {canPrototype ? (
-        <div role="tablist" aria-label="Board layout" style={{ display: 'inline-flex', border: '1px solid var(--border-strong)', borderRadius: 6, overflow: 'hidden', marginLeft: 4 }}>
-          {(['classic', 'compact'] as const).map((k) => (
-            <button
-              key={k}
-              type="button"
-              role="tab"
-              aria-selected={layout === k}
-              title={k === 'compact' ? 'Prototype: the Window track and Standing → next in one cell' : "Today's board"}
-              onClick={() => {
-                setLayout(k)
-                try {
-                  localStorage.setItem(LAYOUT_KEY, k)
-                } catch {
-                  /* per-viewer convenience only */
-                }
-              }}
-              style={{ padding: '0.3rem 0.65rem', fontSize: '0.72rem', fontWeight: 600, border: 'none', cursor: 'pointer', background: layout === k ? 'var(--bg-subtle)' : 'var(--surface)', color: layout === k ? 'var(--text-base)' : 'var(--text-muted)' }}
-            >
-              {k === 'classic' ? 'Classic' : 'Compact · prototype'}
-            </button>
-          ))}
-        </div>
-      ) : null}
     </>
   )
 
@@ -1491,8 +1280,6 @@ export function JobsSubsWorkView({ jobs, jobsLoading, authUserId, deepLinkWorkOr
         <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>Nothing matches this filter.</p>
       ) : narrow ? (
         cards
-      ) : canPrototype && layout === 'compact' ? (
-        compactTable
       ) : (
         table
       )}

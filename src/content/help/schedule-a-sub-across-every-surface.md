@@ -20,7 +20,7 @@ Three people share one plan for a stage: the **office** sets the window, the **s
 
 ## 1 · Set the window — Jobs → Subs → Work
 
-{{gif:schedule-a-sub-subs-tab.gif|Jobs → Subs → Work: jobs grouped, the Window column, the GC portal column, a bell on every job}}
+{{gif:schedule-a-sub-subs-tab.gif|Jobs → Subs → Work: jobs grouped, the Window column with the GC chip, a bell on every job}}
 
 **Subs** replaced Work Orders and Sub Labor. The **Work / Pay** switch at the top is the only choice: Work is by job (stages, windows, work orders), Pay is by sub (who's owed, the pay run — the old Sub Labor tab unchanged).
 
@@ -85,9 +85,9 @@ Nothing here is typed by dispatch — it all comes from the picks.
 
 ## 7 · The GC
 
-Off by default. On the job's GC picker turn on **Share stage dates with this GC**; then each stage row gets an **Offer to GC** button (or **Offer several together…** for one bundle). The GC portal's **Stages** card shows the window, then *Danny · Sep 22 – 23* once picked, then the percent, then inspection and passed. When a stage passes inspection the next stage is offered for you if **Offer the next stage when one passes** is on.
+Off by default. On the job's GC picker turn on **Share stage dates with this GC**; then each stage row's Window shows an {{chip:blue|Offer to GC ›}} chip beside the dates (or **Offer several together…** on the job header for one bundle); once offered it reads {{chip:blue|On Summit's portal ›}}. The GC portal's **Stages** card shows the window, then *Danny · Sep 22 – 23* once picked, then the percent, then inspection and passed. When a stage passes inspection the next stage is offered for you if **Offer the next stage when one passes** is on.
 
-The GC can press **Ask for other dates** on an offered stage: two days and a why. That lands as a dispatch line and on your row as *GC asked Sep 21 – Oct 2 · "Framing slipped a week"* with {{button:blue|Accept Sep 21 – Oct 2}} and **Answer with…** your own dates. If accepting moves the window off the sub's pick, the sub's card says *The office needs new dates* and opens their calendar; the GC sees **Re-scheduling** until they confirm. Details in [show a GC the stages you plan](?g=show-a-gc-the-stages-you-plan).
+The GC can press **Ask for other dates** on an offered stage: two days and a why. That lands as a dispatch line and on your row as your dates lightly struck through, {{chip:yellow|GC asked ›}}, then *Sep 21 – Oct 2 ·* {{button:green|Accept}} {{button:outline|Answer…}} and their reason in their words beneath. Click the dates for the calendar and both windows drawn on the months. If accepting moves the window off the sub's pick, the sub's card says *The office needs new dates* and opens their calendar; the GC sees **Re-scheduling** until they confirm. Details in [show a GC the stages you plan](?g=show-a-gc-the-stages-you-plan).
 
 ## What lands in the dispatch inbox
 

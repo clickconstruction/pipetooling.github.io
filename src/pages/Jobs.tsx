@@ -1861,7 +1861,6 @@ export default function Jobs() {
                 toolbarHost={subsWorkToolbarHost}
                 onSetSheetStage={setLaborJobStage}
                 onOpenMakePayment={(target, defaultAmount) => subLaborPaymentModalsRef.current?.openMakePayment(target, defaultAmount)}
-                canPrototype={authRole === 'dev'}
               />
             ) : null
           }
