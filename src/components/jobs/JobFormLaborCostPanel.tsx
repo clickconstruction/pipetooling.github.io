@@ -21,7 +21,7 @@ type JobFormLaborCostPanelProps = {
 }
 
 /**
- * The "Labor Cost" panel in the Edit-Job modal (edit mode only): a Team Labor
+ * The "Labor Cost" panel in the Edit-Job modal (edit mode only): a Team (v2.3001; was "Team Labor")
  * summary line (hours · cost · people) and a Sub Labor summary line (count ·
  * total), each with an "Open on Jobs →" deep link when the role gate + loaded
  * data allow. Extracted verbatim from JobFormModal; self-sources the router. The
@@ -69,7 +69,7 @@ export function JobFormLaborCostPanel({
                     marginBottom: '0.5rem',
                   }}
                 >
-                  <span style={{ fontWeight: 600, fontSize: '0.875rem', color: 'var(--text-700)' }}>Team Labor</span>
+                  <span style={{ fontWeight: 600, fontSize: '0.875rem', color: 'var(--text-700)' }}>Team</span>
                 <span style={{ flex: '1 1 8rem', fontSize: '0.875rem', color: 'var(--text-600)', textAlign: 'right', minWidth: 0 }}>
                   {editJobTeamLaborLoading
                     ? 'Loading…'

@@ -31,7 +31,7 @@ import { DatabaseError, errorKindOf } from '../utils/errorHandling'
 export type RoleGateSurface =
   /** Jobs → Crew P&L (`?tab=teams-summary`) — owner only. */
   | 'crew-pnl'
-  /** Jobs → Team Labor (`?tab=combined-labor`) — not assistants / superintendents. */
+  /** Jobs → Team (`?tab=combined-labor`; was Team Labor until v2.2974) — not assistants / superintendents. */
   | 'team-labor'
   /** Any other Jobs tab a primary / superintendent deep-links to that isn't on their strip. */
   | 'jobs-tab'
@@ -71,7 +71,7 @@ type SurfaceCopy = {
 
 const SURFACE_COPY: Record<RoleGateSurface, SurfaceCopy> = {
   'crew-pnl': { subject: 'Crew P&L', audience: 'the owner' },
-  'team-labor': { subject: 'Team Labor', audience: 'the owner' },
+  'team-labor': { subject: 'Team', audience: 'the owner' },
   'jobs-tab': { subject: 'This page', audience: 'the office' },
   payroll: { subject: 'Payroll', audience: 'the controller' },
   hours: { subject: 'Hours', audience: 'the office' },

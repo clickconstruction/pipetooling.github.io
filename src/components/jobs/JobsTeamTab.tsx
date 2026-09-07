@@ -90,8 +90,9 @@ export function JobsTeamTab({ focusJobId = null, onFocusConsumed }: { focusJobId
       setView('board')
       el.scrollIntoView({ block: 'center' })
     }
-    const t = setTimeout(() => onFocusConsumed?.(), 2500)
-    return () => clearTimeout(t)
+    // Not cleaned up on re-run: the board rebuilds (org defaults arrive, a reload) within the
+    // flash window, and an effect cleanup would cancel the consume before it fires (v2.3001).
+    window.setTimeout(() => onFocusConsumed?.(), 2500)
   }, [focusKey, focusJobId, board, loading, onFocusConsumed, weekStart, showToast])
 
   const weekLabel = `${formatBoardDay(days[0]!)} – ${formatBoardDay(days[6]!)}`
