@@ -83,6 +83,8 @@ export default function SubPortalGlobeButton({
   const [slugSaved, setSlugSaved] = useState<string | null>(null)
   const [slugLocked, setSlugLocked] = useState(false)
   const [addrInput, setAddrInput] = useState('')
+  // SP-1 (v2.3067): once an address is live, show it as text; the editor hides behind "Change address…".
+  const [changeOpen, setChangeOpen] = useState(false)
   const [timeline, setTimeline] = useState<PortalTimelineEntry[]>([])
   // Did they look? (v2.2922) — one summary row while the card is open; the visits modal holds the trail.
   const visitIds = useMemo(() => [personId], [personId])
@@ -232,7 +234,8 @@ export default function SubPortalGlobeButton({
   }
 
   const copyAddress = async () => {
-    const value = slugInput.replace(/-+$/, '')
+    // The live address wins whenever there is one — the input can never hand out a different tail.
+    const value = slugSaved && !changeOpen ? slugSaved : slugInput.replace(/-+$/, '')
     if (!isValidSlug(value)) {
       showToast('Addresses are 3-60 characters: letters, numbers, and dashes.', 'error')
       return
@@ -505,6 +508,26 @@ export default function SubPortalGlobeButton({
 
             {main.kind === 'active' && (
               <>
+                {slugSaved && !changeOpen ? (
+                  <div style={{ marginTop: '0.7rem' }}>
+                    <div style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: 3 }}>Their address</div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                      <span data-testid="sub-portal-live-address" style={{ fontSize: '0.95rem', fontWeight: 700, fontFamily: 'monospace', wordBreak: 'break-all' }}>
+                        {SHORT_PREFIX}/{slugSaved}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => { setSlugInput(slugSaved); setChangeOpen(true) }}
+                        style={{ padding: '0.2rem 0.55rem', fontSize: '0.75rem', background: 'var(--surface)', color: 'var(--text-900)', border: '1px solid var(--border-strong)', borderRadius: 6, cursor: 'pointer' }}
+                      >
+                        Change address…
+                      </button>
+                    </div>
+                    <p style={{ margin: '4px 0 0', fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                      {slugLocked ? 'Shared — this is what resolves and what Copy link copies.' : 'Saved but not yet shared — Copy link shares it as is.'}
+                    </p>
+                  </div>
+                ) : (
                 <div style={{ marginTop: '0.7rem' }}>
                   <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: 3 }}>
                     Easy address
@@ -537,6 +560,7 @@ export default function SubPortalGlobeButton({
                     </p>
                   ) : null}
                 </div>
+                )}
                 <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.7rem', flexWrap: 'wrap' }}>
                   <button
                     type="button"

@@ -12,6 +12,24 @@ import { pickWindowFor } from './subPick.ts'
  * cost-less sheets with money moved reconstruct cost so they net to zero.
  */
 
+
+/**
+ * Journey map SP-3: an imported address can carry the literal word "Null" where a city/zip
+ * part was missing ("9703 Lenox Hl San Antonio, TX Null"). Strip standalone null/undefined
+ * tokens, tidy the punctuation they leave behind, and return null for an empty result.
+ */
+export function cleanPortalAddress(raw: string | null | undefined): string | null {
+  if (!raw) return null
+  const out = raw
+    .replace(/\b(null|undefined|n\/a)\b/gi, ' ')
+    .replace(/\s*,\s*,+/g, ',')
+    .replace(/,\s*$/g, '')
+    .replace(/^\s*,/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+  return out || null
+}
+
 export type SubSheetRow = {
   id: string
   address: string | null
@@ -286,7 +304,7 @@ export function buildSubSheets(
     return {
       id: sheet.id,
       jobNumber: (sheet.job_number ?? '').trim() || null,
-      address: (sheet.address ?? '').trim() || null,
+      address: cleanPortalAddress(sheet.address),
       stage: normalizeStage(sheet.stage),
       stageChangedOn: (sheet.stage_changed_at ?? '').slice(0, 10) || null,
       stageSource: normalizeStageSource(sheet.stage_source),

@@ -17,8 +17,7 @@ import {
   type SubItemRow,
   type SubOfferRow,
   type SubPaymentRow,
-  type SubSheetRow,
-} from '../_shared/subPortalStatement.ts'
+  type SubSheetRow, cleanPortalAddress } from '../_shared/subPortalStatement.ts'
 import { todayYmdInAppTz } from '../_shared/appTimeZone.ts'
 import { publicViewDecision } from '../_shared/publicViewCounting.ts'
 import { grantPlansLink } from '../_shared/viewGrant.ts'
@@ -356,14 +355,14 @@ serve(async (req) => {
         const job = Array.isArray(o.job) ? o.job[0] ?? null : o.job
         const num = (job?.hcp_number ?? '').trim() || null
         const stage = o.stage_window_id ? stageNames.get(o.stage_window_id) ?? null : null
-        bookings.push({ start, end, label: [stage, num ? `#${num}` : null].filter(Boolean).join(' · ') || 'Work order', address: (job?.job_address ?? '').trim() || null, jobNumber: num, source: o.picked_start ? 'pick' : 'office', commitmentId: o.id, note: null })
+        bookings.push({ start, end, label: [stage, num ? `#${num}` : null].filter(Boolean).join(' · ') || 'Work order', address: cleanPortalAddress(job?.job_address), jobNumber: num, source: o.picked_start ? 'pick' : 'office', commitmentId: o.id, note: null })
         if (o.labor_job_id) coveredSheetIds.add(o.labor_job_id)
       }
       for (const sh of sheetRows) {
         const d = (sh.job_date ?? '').trim()
         if (!d || d < todayYmd || coveredSheetIds.has(sh.id)) continue
         const num = (sh.job_number ?? '').trim() || null
-        bookings.push({ start: d, end: d, label: num ? `#${num}` : 'Sheet', address: (sh.address ?? '').trim() || null, jobNumber: num, source: 'office', commitmentId: null, note: null })
+        bookings.push({ start: d, end: d, label: num ? `#${num}` : 'Sheet', address: cleanPortalAddress(sh.address), jobNumber: num, source: 'office', commitmentId: null, note: null })
       }
     }
     const { data: offRaw } = await admin.from('person_availability').select('day').eq('person_id', link.person_id).eq('kind', 'off').gte('day', addDaysYmd(todayYmd, -7)).limit(200)

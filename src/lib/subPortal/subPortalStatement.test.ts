@@ -15,8 +15,7 @@ import {
   type SubItemRow,
   type SubOfferRow,
   type SubPaymentRow,
-  type SubSheetRow,
-} from '../../../supabase/functions/_shared/subPortalStatement'
+  type SubSheetRow, cleanPortalAddress } from '../../../supabase/functions/_shared/subPortalStatement'
 
 const TODAY = '2026-09-02'
 
@@ -293,5 +292,21 @@ describe('pay-run date math', () => {
     expect(nextPayRunYmd('2026-09-02', 'Friday ')).toBe('2026-09-04')
     expect(nextPayRunYmd('2026-09-02', null)).toBeNull()
     expect(nextPayRunYmd('2026-09-02', 'someday')).toBeNull()
+  })
+})
+
+describe('cleanPortalAddress (SP-3)', () => {
+  it('strips the literal Null an import left in the address', () => {
+    expect(cleanPortalAddress('9703 Lenox Hl San Antonio, TX Null')).toBe('9703 Lenox Hl San Antonio, TX')
+    expect(cleanPortalAddress('123 Main St, Null, TX 78201')).toBe('123 Main St, TX 78201')
+  })
+  it('leaves real addresses alone and trims', () => {
+    expect(cleanPortalAddress('  12 Nullarbor Rd, Austin TX  ')).toBe('12 Nullarbor Rd, Austin TX')
+  })
+  it('returns null for empty or all-null input', () => {
+    expect(cleanPortalAddress(null)).toBeNull()
+    expect(cleanPortalAddress('')).toBeNull()
+    expect(cleanPortalAddress('null')).toBeNull()
+    expect(cleanPortalAddress('Null, undefined')).toBeNull()
   })
 })
