@@ -6,20 +6,20 @@
  * Extend +7 days, Withdraw and Signed on paper. "Seen" reads the portal visit
  * log so the office knows who has never opened it.
  */
-import { useEffect, useMemo, useState, type ReactNode } from 'react'
-import { useToastContext } from '../../../contexts/ToastContext'
+import { useMemo, useState, type ReactNode } from 'react'
 import { useConfirmDialog } from '../../../contexts/ConfirmDialogContext'
 import type { JobWithDetails } from '../../../types/jobWithDetails'
 import type { StepCommitmentRow } from '../../../lib/workflow/stepCommitments'
 import type { SubPortalVisitSummary } from '../../../lib/portal/subPortalVisits'
 import type { StageWindowSpan } from '../../../lib/subs/stageWindow'
 import type { WorkOrderBoardRow } from '../../../lib/subWorkOrders/workOrderBoardRows'
-import { addCalendarDays, buildOffersQueue, quickOfferProblem, type OffersQueueRow } from '../../../lib/subs/subsTileQueues'
-import { quickSendJobOf, quickSendWorkOrder } from '../../../lib/subWorkOrders/quickSendWorkOrder'
+import { addCalendarDays, buildOffersQueue, type OffersQueueRow } from '../../../lib/subs/subsTileQueues'
+import { ResendForm } from './rowForms'
+import { sentLabel } from './rowFormsSend'
 import { SubsTileModal, HandledCell } from './SubsTileModal'
 import { useQueueState } from './useQueueState'
 import type { RosterContact, SubsTileActions } from './subsTileActions'
-import { acts, btn, chip, ctl, ctlMoney, door, expandedRow, field, formBox, handledRow, label, money, muted, problem, sendLine, sendNote, shortDay, spanLabel, td, tdAct, tdNum, telHref, th, where, who } from './subsTileStyles'
+import { acts, btn, chip, expandedRow, handledRow, money, muted, shortDay, spanLabel, td, tdAct, tdNum, telHref, th, where, who } from './subsTileStyles'
 
 export type OffersQueueProps = {
   board: WorkOrderBoardRow[]
@@ -35,67 +35,16 @@ export type OffersQueueProps = {
   onClose: () => void
 }
 
-type Form = { amount: string; start: string; end: string; workDays: string; goodFor: string }
-
 const keyOf = (r: OffersQueueRow) => r.row.key
 
 export function OffersQueue({ board, ordersById, stageByOrderId, jobs, contacts, visits, authUserId, todayYmd, actions, onClose }: OffersQueueProps) {
-  const { showToast } = useToastContext()
   const confirm = useConfirmDialog()
   const queue = useMemo(() => buildOffersQueue(board, todayYmd), [board, todayYmd])
   const q = useQueueState(queue.rows, keyOf, 'Withdrawn or signed')
-  const [form, setForm] = useState<Form | null>(null)
   const [busy, setBusy] = useState<string | null>(null)
-  const open = q.pending.find((r) => keyOf(r) === q.openKey) ?? null
-  const openOrder = open?.row.commitmentId ? ordersById.get(open.row.commitmentId) ?? null : null
-
-  useEffect(() => {
-    if (!open || !openOrder) {
-      setForm(null)
-      return
-    }
-    setForm({ amount: openOrder.amount != null ? String(Number(openOrder.amount)) : '', start: openOrder.proposed_start ?? '', end: openOrder.proposed_end ?? '', workDays: openOrder.work_days != null ? String(openOrder.work_days) : '', goodFor: '7' })
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [q.openKey])
-
-  const expires = form ? addCalendarDays(todayYmd, Math.max(1, Number(form.goodFor) || 7)) : ''
-  const formProblem = form ? quickOfferProblem({ amount: form.amount, start: form.start || todayYmd, end: form.end || form.start || todayYmd, expires, todayYmd, hasJob: !!openOrder?.job_id }) : null
 
   function orderOf(r: OffersQueueRow): StepCommitmentRow | null {
     return r.row.commitmentId ? ordersById.get(r.row.commitmentId) ?? null : null
-  }
-
-  async function resend(r: OffersQueueRow, f: Form) {
-    const order = orderOf(r)
-    const job = order?.job_id ? jobs.find((j) => j.id === order.job_id) : null
-    if (!order || !job) return
-    setBusy(r.row.key)
-    try {
-      const res = await quickSendWorkOrder({
-        job: quickSendJobOf(job),
-        person: { id: order.person_id, name: order.display_name, email: contacts.get(order.person_id)?.email ?? null },
-        laborJobId: order.labor_job_id,
-        stageWindowId: order.stage_window_id,
-        amount: Number(f.amount),
-        proposedStart: f.start || null,
-        proposedEnd: f.end || null,
-        workDays: Number(f.workDays) || null,
-        expires,
-        authUserId: authUserId ?? null,
-        existingId: order.id,
-      })
-      if (!res.ok) {
-        showToast(res.error, 'error')
-        if (res.needsAssembler) actions.openAssembler({ commitmentId: order.id })
-        return
-      }
-      q.mark(r.row.key, { label: `Re-sent · good through ${shortDay(res.row.offer_expires_at)}`, undo: async () => { await actions.withdraw(res.row); q.unmark(r.row.key) } })
-      showToast(res.emailed ? `${res.row.record_id ?? 'Work order'} re-sent to ${order.display_name}` : `${res.row.record_id ?? 'Work order'} extended · ${order.display_name} has no email on the roster — share their portal link`, res.emailed ? 'success' : 'info')
-      actions.changed()
-      q.next()
-    } finally {
-      setBusy(null)
-    }
   }
 
   async function nudge(r: OffersQueueRow) {
@@ -271,61 +220,21 @@ export function OffersQueue({ board, ordersById, stageByOrderId, jobs, contacts,
                     </span>
                   </td>
                 </tr>
-                {isOpen && form && order ? (
+                {isOpen && order ? (
                   <tr style={expandedRow}>
                     <td colSpan={6} style={{ ...td, paddingTop: 0 }}>
-                      {order.job_id ? (
-                        <form
-                          style={formBox}
-                          onSubmit={(e) => {
-                            e.preventDefault()
-                            if (!formProblem && !rowBusy) void resend(r, form)
-                          }}
-                        >
-                          <div style={field}>
-                            <label style={label}>Good for</label>
-                            <select style={ctl} value={form.goodFor} onChange={(e) => setForm({ ...form, goodFor: e.target.value })}>
-                              <option value="3">3 more days · through {shortDay(addCalendarDays(todayYmd, 3))}</option>
-                              <option value="7">7 more days · through {shortDay(addCalendarDays(todayYmd, 7))}</option>
-                              <option value="14">14 more days · through {shortDay(addCalendarDays(todayYmd, 14))}</option>
-                            </select>
-                          </div>
-                          <div style={field}>
-                            <label style={label}>Price</label>
-                            <input style={ctlMoney} inputMode="decimal" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} />
-                          </div>
-                          <div style={field}>
-                            <label style={label}>Window from</label>
-                            <input type="date" style={ctl} value={form.start} onChange={(e) => setForm({ ...form, start: e.target.value })} />
-                          </div>
-                          <div style={field}>
-                            <label style={label}>to</label>
-                            <input type="date" style={ctl} value={form.end} onChange={(e) => setForm({ ...form, end: e.target.value })} />
-                          </div>
-                          <div style={field}>
-                            <label style={label}>Takes about (working days)</label>
-                            <input type="number" min={1} max={120} style={ctl} value={form.workDays} onChange={(e) => setForm({ ...form, workDays: e.target.value })} />
-                          </div>
-                          <div style={sendLine}>
-                            {formProblem ? <span style={problem}>{formProblem}</span> : <span style={sendNote}>Keeps {order.record_id ?? 'the WO number'} · the same offer notice goes out again · they sign on their portal</span>}
-                            <button type="button" style={door} onClick={() => actions.openAssembler({ commitmentId: order.id })}>
-                              Open the record ›
-                            </button>
-                            <button type="submit" style={btn('primary', !!formProblem || rowBusy, false)} disabled={!!formProblem || rowBusy}>
-                              {rowBusy ? 'Sending…' : 'Re-send'}
-                            </button>
-                          </div>
-                        </form>
-                      ) : (
-                        <div style={{ ...formBox, gridTemplateColumns: '1fr' }}>
-                          <span style={sendNote}>This order is not on a Pipeline job — re-send it from its record.</span>
-                          <div style={sendLine}>
-                            <button type="button" style={btn('primary', false, false)} onClick={() => actions.openAssembler({ commitmentId: order.id })}>
-                              Open the record ›
-                            </button>
-                          </div>
-                        </div>
-                      )}
+                      <ResendForm
+                        order={order}
+                        jobs={jobs}
+                        contacts={contacts}
+                        authUserId={authUserId}
+                        todayYmd={todayYmd}
+                        actions={actions}
+                        onSent={(sent) => {
+                          q.mark(r.row.key, { label: sentLabel(sent, 'Re-sent'), undo: async () => { await actions.withdraw(sent.order); q.unmark(r.row.key) } })
+                          q.next()
+                        }}
+                      />
                     </td>
                   </tr>
                 ) : null}

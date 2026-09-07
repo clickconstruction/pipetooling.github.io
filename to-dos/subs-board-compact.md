@@ -1,6 +1,6 @@
 # Subs → Work: the Compact board (four columns, text window, calendar on click, standing → next)
 
-Status: in progress · branch `claude/nice-dirac-a75a63` (v2.2963, uncommitted batch as of 2026-09-07) · owner: Stephen
+Status: **built, awaiting push + PR** · branch `claude/nice-dirac-a75a63` (v2.2963; four local commits, steps 1–4, 2026-09-07; not pushed) · owner: Stephen. Live check still due once a job has a window and shares dates with a GC (see How to verify).
 
 ## The ask, in the owner's words
 
@@ -34,7 +34,7 @@ Already built and uncommitted on the branch (v2.2963):
 
 Data the calendar needs is already on the page: `windows` (`job_stage_windows` incl. `asked_*`, `offered_to_gc`), `rows` (`step_commitments` incl. `picked_*`, `proposed_*`), `gcSharing` (job → GC name), `jobs[].fixtures` (stage names), `availability.offDays` (`person_availability`, loaded when a queue opens — load for the modal too), `subs.groups[].rows` (sibling stages per job).
 
-## The plan (ordered, smallest shippable first)
+## The plan (ordered, smallest shippable first) — steps 1–4 done locally 2026-09-07
 
 1. **Finish and land the batch (v2.2963, this branch).** Replace the track in the Compact prototype with the text cell: new `WindowTextCell` (line 1 dates-as-link + `gcDoor`, line 2 caption, line 3 quote on an ask; `passed` grey; *Offer to GC ›* offers directly after confirm via `offerToGc`), delete `WindowTrack.tsx` / `windowTrackScale.ts` and their tests, drop the axis from the header. Compact stays dev-only. Commit once, PR, auto-merge. Release note + fragment already written — trim the track paragraph, add the text cell.
 2. **`StageCalendarModal` (dev-only still).** Pure kernel `src/lib/subs/stageCalendar.ts`: `calendarMonthsFor(span)`, `dayCellsFor(month)` with per-day flags (window / pick / ask / today / off / sibling / weekend / other-month) — tested. Component: two month grids + side panel; reads the data above; buttons call `saveWindow` (via `StageWindowEditor` inline or the existing editor row), `answerGcAsk`, `offerToGc`, `withdrawFromGc`. Opens from the dates link in the text cell (Compact) and from the classic Window chip too, so it is useful before the switch. Guide: *set a window for a sub's stage* gains a "See it on the calendar" section.

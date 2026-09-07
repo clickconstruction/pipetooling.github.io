@@ -65,6 +65,8 @@ import { OffersQueue } from './subsTiles/OffersQueue'
 import { SignedQueue } from './subsTiles/SignedQueue'
 import { WindowTextCell, type WindowGcState } from './WindowTextCell'
 import { StageCalendarModal, type StageCalendarSibling } from './StageCalendarModal'
+import { OfferSheetForm, OfferStageForm, ResendForm } from './subsTiles/rowForms'
+import { buildStagesQueue } from '../../lib/subs/subsTileQueues'
 import { StandingMoveCell, type MoveMenuItem } from './StandingMoveCell'
 import { standingMovesForRow, STAGE_ROW_MOVE, type StandingMove } from '../../lib/subs/standingMove'
 
@@ -148,6 +150,8 @@ export function JobsSubsWorkView({ jobs, jobsLoading, authUserId, deepLinkWorkOr
   const [addInspectionOpen, setAddInspectionOpen] = useState(false)
   /** The row whose stage calendar is open (v2.2963). */
   const [calendarKey, setCalendarKey] = useState<string | null>(null)
+  /** The row expanded into an inline form (step 4): the mini order, the sub picker, or the re-send. */
+  const [rowForm, setRowForm] = useState<{ key: string; kind: 'offer_sheet' | 'offer_stage' | 'resend' } | null>(null)
   const billCustomer = useBillCustomerModal()
   const [linkSearch, setLinkSearch] = useState('')
   const [linkNumber, setLinkNumber] = useState('')
@@ -240,7 +244,7 @@ export function JobsSubsWorkView({ jobs, jobsLoading, authUserId, deepLinkWorkOr
 
   // The Stages and Offers queues read the same live orders and days off the dispatch lanes read (v2.2963).
   useEffect(() => {
-    if (tile !== 'stages' && tile !== 'offers' && !calendarKey) return
+    if (tile !== 'stages' && tile !== 'offers' && !calendarKey && rowForm?.kind !== 'offer_stage') return
     let cancelled = false
     setAvailability((a) => ({ ...a, loading: true }))
     const start = addCalendarDays(today, -30)
@@ -252,7 +256,7 @@ export function JobsSubsWorkView({ jobs, jobsLoading, authUserId, deepLinkWorkOr
     return () => {
       cancelled = true
     }
-  }, [tile, calendarKey, today])
+  }, [tile, calendarKey, rowForm?.kind, today])
 
   /** Labels for orders with no sheet and no Pipeline job — the snapshot or the step. */
   const orderLabels = useMemo(() => {
@@ -585,11 +589,6 @@ export function JobsSubsWorkView({ jobs, jobsLoading, authUserId, deepLinkWorkOr
     emitWorkOrderChanged()
   }
 
-  /** "Draft a work order…" from a stage row: the assembler opens on the job with the stage's dates and amount. */
-  function draftForStage(row: Extract<SubsRow, { kind: 'stage' }>) {
-    setAssembler({ jobId: row.jobId, stageWindowId: row.window.id, proposedStart: row.span?.start ?? null, proposedEnd: row.span?.end ?? null, amount: row.stage.amount > 0 ? row.stage.amount : null })
-  }
-
   function newJobForSheet(row: WorkOrderBoardRow) {
     if (!jobForm) return
     showToast(`Give the new job number ${row.jobNumber || '…'} and the sheet links itself`, 'info')
@@ -852,19 +851,23 @@ export function JobsSubsWorkView({ jobs, jobsLoading, authUserId, deepLinkWorkOr
   /** Every move is a write or a modal this board already has. */
   const runMove = (r: SubsRow, m: StandingMove) => {
     if (r.kind === 'stage') {
-      draftForStage(r)
+      setRowForm((cur) => (cur?.key === r.key ? null : { key: r.key, kind: 'offer_stage' }))
       return
     }
     const row = r.board
     const order = row.commitmentId ? rowsById.get(row.commitmentId) ?? null : null
     switch (m.kind) {
       case 'draft':
-        setAssembler({ jobId: row.jobId, laborJobId: row.sheetId, personId: row.personId, amount: row.agreed > 0 ? row.agreed : null, ...stagePrefill(row) })
+        if (row.personId && row.sheetId) setRowForm((cur) => (cur?.key === r.key ? null : { key: r.key, kind: 'offer_sheet' }))
+        else setAssembler({ jobId: row.jobId, laborJobId: row.sheetId, personId: row.personId, amount: row.agreed > 0 ? row.agreed : null, ...stagePrefill(row) })
+        return
+      case 'resend':
+        if (order?.job_id) setRowForm((cur) => (cur?.key === r.key ? null : { key: r.key, kind: 'resend' }))
+        else if (row.commitmentId) setAssembler({ commitmentId: row.commitmentId })
         return
       case 'price':
       case 'send':
       case 'view':
-      case 'resend':
       case 'reoffer':
         if (row.commitmentId) setAssembler({ commitmentId: row.commitmentId })
         return
@@ -938,69 +941,6 @@ export function JobsSubsWorkView({ jobs, jobsLoading, authUserId, deepLinkWorkOr
     return items
   }
 
-  const table = (
-    <div style={{ overflowX: 'auto' }}>
-      <table style={{ borderCollapse: 'collapse', width: '100%', minWidth: 1040, fontVariantNumeric: 'tabular-nums' }}>
-        <thead style={{ background: 'var(--bg-subtle)' }}>
-          <tr>
-            <th style={th}>Sub · stage</th>
-            <th style={th}>Window</th>
-            <th style={{ ...th, textAlign: 'right' }}>
-              Agreed
-              <span style={{ display: 'block', color: 'var(--text-green-700)' }}>Paid</span>
-              <span style={{ display: 'block', color: 'var(--text-red-700)' }}>Open</span>
-            </th>
-            <th style={th}>Where it stands → next</th>
-          </tr>
-        </thead>
-        <tbody>
-          {visibleGroups.map((g) => (
-            <FragmentRows key={g.key}>
-              <tr>
-                <td colSpan={4} style={{ padding: 0 }}>
-                  {groupHeader(g)}
-                </td>
-              </tr>
-              {g.rows.map((r) => {
-                const editor = editorFor(g, r.key)
-                const mv = moveFor(r)
-                const busy = r.kind === 'sheet' && (busyId === r.board.key || (r.board.commitmentId != null && busyId === r.board.commitmentId))
-                return (
-                  <FragmentRows key={r.key}>
-                    <tr>
-                      <td style={td}>{firstCell(r)}</td>
-                      <td style={{ ...td, whiteSpace: 'nowrap' }}>
-                        <WindowTextCell {...windowTextProps(g, r, busy)} />
-                      </td>
-                      <td style={{ ...td, textAlign: 'right', whiteSpace: 'nowrap' }}>{r.kind === 'stage' ? moneyStack(r.stage.amount > 0 ? r.stage.amount : null, null, null, r.stage.amount <= 0) : moneyStack(r.board.agreed, r.board.paid, r.board.open, r.board.unpriced)}</td>
-                      <td style={td}>
-                        <StandingMoveCell
-                          standing={r.kind === 'stage' ? stageStanding(r) : <SheetRail rail={r.board.rail} labelBelow onClick={r.board.sheetId ? () => setStorySheetId(r.board.sheetId) : undefined} />}
-                          primary={mv.primary}
-                          second={mv.second}
-                          onPrimary={() => runMove(r, mv.primary)}
-                          onSecond={mv.second ? () => runMove(r, mv.second!) : undefined}
-                          menu={menuFor(g, r)}
-                          busy={busy}
-                        />
-                      </td>
-                    </tr>
-                    {editor ? (
-                      <tr>
-                        <td colSpan={4} style={{ ...td, background: 'var(--bg-subtle)' }}>
-                          {editor}
-                        </td>
-                      </tr>
-                    ) : null}
-                  </FragmentRows>
-                )
-              })}
-            </FragmentRows>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  )
 
   /** The stage calendar's props for the open row (v2.2963) — everything read off data the board already holds. */
   const calendarRow = (() => {
@@ -1067,6 +1007,29 @@ export function JobsSubsWorkView({ jobs, jobsLoading, authUserId, deepLinkWorkOr
     return null
   })()
 
+  /** The inline form a row is expanded into, if any (step 4) — the queues' own forms, mounted on the board. */
+  const rowFormFor = (g: SubsJobGroup, r: SubsRow) => {
+    if (!rowForm || rowForm.key !== r.key) return null
+    const close = () => setRowForm(null)
+    const onSent = () => {
+      setRowForm(null)
+      emitWorkOrderChanged()
+    }
+    if (rowForm.kind === 'offer_stage' && r.kind === 'stage') {
+      const q = buildStagesQueue([g], today).rows.find((x) => x.row.key === r.key)
+      return <OfferStageForm row={r} suggestedSpan={q?.suggestedSpan ?? null} phasePassed={q?.phase === 'passed'} jobs={jobs} subs={pickerSubs} contacts={contacts} orders={availability.orders} offDaysByPerson={availability.offDays} availabilityLoading={availability.loading} authUserId={authUserId} todayYmd={today} actions={tileActions} onSent={onSent} onCancel={close} />
+    }
+    if (r.kind !== 'sheet') return null
+    if (rowForm.kind === 'offer_sheet') {
+      return <OfferSheetForm row={r.board} workingSince={r.board.sheetDate} needsJob={!r.board.jobId} jobs={jobs} contacts={contacts} authUserId={authUserId} todayYmd={today} actions={tileActions} onSent={onSent} onCancel={close} />
+    }
+    const order = r.board.commitmentId ? rowsById.get(r.board.commitmentId) ?? null : null
+    if (rowForm.kind === 'resend' && order) {
+      return <ResendForm order={order} jobs={jobs} contacts={contacts} authUserId={authUserId} todayYmd={today} actions={tileActions} onSent={onSent} onCancel={close} />
+    }
+    return null
+  }
+
   /** Everything a tile queue may do — each entry is a write this board already performs (v2.2963). */
   const tileActions: SubsTileActions = {
     changed: () => emitWorkOrderChanged(),
@@ -1094,6 +1057,77 @@ export function JobsSubsWorkView({ jobs, jobsLoading, authUserId, deepLinkWorkOr
     setTile(null)
     setSignedMonth(monthOf(today))
   }
+
+  const table = (
+    <div style={{ overflowX: 'auto' }}>
+      <table style={{ borderCollapse: 'collapse', width: '100%', minWidth: 1040, fontVariantNumeric: 'tabular-nums' }}>
+        <thead style={{ background: 'var(--bg-subtle)' }}>
+          <tr>
+            <th style={th}>Sub · stage</th>
+            <th style={th}>Window</th>
+            <th style={{ ...th, textAlign: 'right' }}>
+              Agreed
+              <span style={{ display: 'block', color: 'var(--text-green-700)' }}>Paid</span>
+              <span style={{ display: 'block', color: 'var(--text-red-700)' }}>Open</span>
+            </th>
+            <th style={th}>Where it stands → next</th>
+          </tr>
+        </thead>
+        <tbody>
+          {visibleGroups.map((g) => (
+            <FragmentRows key={g.key}>
+              <tr>
+                <td colSpan={4} style={{ padding: 0 }}>
+                  {groupHeader(g)}
+                </td>
+              </tr>
+              {g.rows.map((r) => {
+                const editor = editorFor(g, r.key)
+                const mv = moveFor(r)
+                const busy = r.kind === 'sheet' && (busyId === r.board.key || (r.board.commitmentId != null && busyId === r.board.commitmentId))
+                return (
+                  <FragmentRows key={r.key}>
+                    <tr>
+                      <td style={td}>{firstCell(r)}</td>
+                      <td style={{ ...td, whiteSpace: 'nowrap' }}>
+                        <WindowTextCell {...windowTextProps(g, r, busy)} />
+                      </td>
+                      <td style={{ ...td, textAlign: 'right', whiteSpace: 'nowrap' }}>{r.kind === 'stage' ? moneyStack(r.stage.amount > 0 ? r.stage.amount : null, null, null, r.stage.amount <= 0) : moneyStack(r.board.agreed, r.board.paid, r.board.open, r.board.unpriced)}</td>
+                      <td style={td}>
+                        <StandingMoveCell
+                          standing={r.kind === 'stage' ? stageStanding(r) : <SheetRail rail={r.board.rail} labelBelow onClick={r.board.sheetId ? () => setStorySheetId(r.board.sheetId) : undefined} />}
+                          primary={mv.primary}
+                          second={mv.second}
+                          onPrimary={() => runMove(r, mv.primary)}
+                          onSecond={mv.second ? () => runMove(r, mv.second!) : undefined}
+                          menu={menuFor(g, r)}
+                          busy={busy}
+                        />
+                      </td>
+                    </tr>
+                    {editor ? (
+                      <tr>
+                        <td colSpan={4} style={{ ...td, background: 'var(--bg-subtle)' }}>
+                          {editor}
+                        </td>
+                      </tr>
+                    ) : null}
+                    {rowForm?.key === r.key ? (
+                      <tr>
+                        <td colSpan={4} style={{ ...td, background: 'var(--bg-blue-tint)', paddingTop: 0 }}>
+                          {rowFormFor(g, r)}
+                        </td>
+                      </tr>
+                    ) : null}
+                  </FragmentRows>
+                )
+              })}
+            </FragmentRows>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )
 
   const tiles = (
     <div style={{ display: 'grid', gridTemplateColumns: narrow ? 'repeat(2, minmax(0, 1fr))' : 'repeat(4, minmax(0, 1fr))', gap: narrow ? 8 : 10, marginBottom: '0.9rem' }}>
@@ -1203,6 +1237,7 @@ export function JobsSubsWorkView({ jobs, jobsLoading, authUserId, deepLinkWorkOr
                     </>
                   )}
                 </div>
+                {rowForm?.key === r.key ? <div>{rowFormFor(g, r)}</div> : null}
                 <div>
                   {label('Where it stands → next')}
                   <StandingMoveCell

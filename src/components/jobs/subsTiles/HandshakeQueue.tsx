@@ -5,18 +5,19 @@
  * sends from here. A sheet whose job number has no Pipeline row picks the job
  * in the same form and the button becomes "Link and send".
  */
-import { useEffect, useMemo, useState, type ReactNode } from 'react'
+import { useMemo, useState, type ReactNode } from 'react'
 import { useToastContext } from '../../../contexts/ToastContext'
 import { useConfirmDialog } from '../../../contexts/ConfirmDialogContext'
 import type { JobWithDetails } from '../../../types/jobWithDetails'
-import { buildHandshakeQueue, quickOfferDefaults, quickOfferProblem, addCalendarDays, type HandshakeQueueRow } from '../../../lib/subs/subsTileQueues'
-import { endAfterWeekdays } from '../../../lib/subs/stageWindow'
+import { buildHandshakeQueue, type HandshakeQueueRow } from '../../../lib/subs/subsTileQueues'
 import type { WorkOrderBoardRow } from '../../../lib/subWorkOrders/workOrderBoardRows'
-import { quickSendJobOf, quickSendWorkOrder } from '../../../lib/subWorkOrders/quickSendWorkOrder'
+import { OfferSheetForm } from './rowForms'
+import { sendSheetOfferWithDefaults, sentLabel } from './rowFormsSend'
 import { SubsTileModal, HandledCell } from './SubsTileModal'
 import { useQueueState } from './useQueueState'
 import type { RosterContact, SubsTileActions } from './subsTileActions'
-import { acts, btn, chip, ctl, ctlMoney, door, expandedRow, field, fieldWide, formBox, handledRow, label, money, muted, problem, red, sendLine, sendNote, shortDay, td, tdAct, tdNum, telHref, th, where, who } from './subsTileStyles'
+import type { StepCommitmentRow } from '../../../lib/workflow/stepCommitments'
+import { acts, btn, chip, door, expandedRow, handledRow, money, muted, red, shortDay, td, tdAct, tdNum, telHref, th, where, who } from './subsTileStyles'
 
 export type HandshakeQueueProps = {
   board: WorkOrderBoardRow[]
@@ -28,8 +29,6 @@ export type HandshakeQueueProps = {
   onClose: () => void
 }
 
-type Form = { jobId: string; amount: string; start: string; end: string; workDays: string; goodFor: string }
-
 const keyOf = (r: HandshakeQueueRow) => r.row.key
 
 export function HandshakeQueue({ board, jobs, contacts, authUserId, todayYmd, actions, onClose }: HandshakeQueueProps) {
@@ -37,62 +36,12 @@ export function HandshakeQueue({ board, jobs, contacts, authUserId, todayYmd, ac
   const confirm = useConfirmDialog()
   const queue = useMemo(() => buildHandshakeQueue(board, todayYmd), [board, todayYmd])
   const q = useQueueState(queue.rows, keyOf, 'No longer on a handshake')
-  const [form, setForm] = useState<Form | null>(null)
-  const [busy, setBusy] = useState<string | null>(null)
-  const open = q.pending.find((r) => keyOf(r) === q.openKey) ?? null
+  const [, setBusy] = useState<string | null>(null)
 
-  const jobsByNumberDesc = useMemo(() => [...jobs].sort((a, b) => b.hcp_number.localeCompare(a.hcp_number, undefined, { numeric: true })), [jobs])
-
-  // Seed the form whenever a different row opens.
-  useEffect(() => {
-    if (!open) {
-      setForm(null)
-      return
-    }
-    const d = quickOfferDefaults({ sheetDate: open.workingSince, todayYmd, agreed: open.row.agreed, unpriced: open.row.unpriced })
-    const match = open.needsJob ? jobs.find((j) => j.hcp_number.trim().toLowerCase() === open.row.jobNumber.trim().toLowerCase()) : null
-    setForm({ jobId: open.row.jobId ?? match?.id ?? '', amount: d.amount, start: d.start, end: d.end, workDays: String(d.workDays), goodFor: '7' })
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [q.openKey])
-
-  const expires = form ? addCalendarDays(todayYmd, Math.max(1, Number(form.goodFor) || 7)) : ''
-  const formProblem = form && open ? quickOfferProblem({ amount: form.amount, start: form.start, end: form.end, expires, todayYmd, hasJob: !!form.jobId }) : null
-  const canQuickSend = !!open?.row.personId && !!open?.row.sheetId
-
-  async function send(r: HandshakeQueueRow, f: Form) {
-    const job = jobs.find((j) => j.id === f.jobId)
-    if (!job || !r.row.personId || !r.row.sheetId) return
-    setBusy(r.row.key)
-    try {
-      if (r.needsJob) {
-        const linked = await actions.linkSheetToJobQuiet(r.row.sheetId, job)
-        if (!linked) return
-      }
-      const res = await quickSendWorkOrder({
-        job: quickSendJobOf(job),
-        person: { id: r.row.personId, name: r.row.subName, email: contacts.get(r.row.personId)?.email ?? null },
-        laborJobId: r.row.sheetId,
-        stageWindowId: null,
-        amount: Number(f.amount),
-        proposedStart: f.start,
-        proposedEnd: f.end,
-        workDays: Number(f.workDays) || null,
-        expires: addCalendarDays(todayYmd, Math.max(1, Number(f.goodFor) || 7)),
-        authUserId: authUserId ?? null,
-      })
-      if (!res.ok) {
-        showToast(res.error, 'error')
-        if (res.needsAssembler) actions.openAssembler({ jobId: job.id, laborJobId: r.row.sheetId, personId: r.row.personId, amount: Number(f.amount) || null, proposedStart: f.start, proposedEnd: f.end })
-        return
-      }
-      const row = res.row
-      q.mark(r.row.key, { label: `${row.record_id ?? 'Work order'} out · good through ${shortDay(row.offer_expires_at)}`, undo: async () => { await actions.withdraw(row); q.unmark(r.row.key) } })
-      showToast(res.emailed ? `${row.record_id ?? 'Work order'} sent to ${r.row.subName} — they sign on their portal` : `${row.record_id ?? 'Work order'} saved · ${r.row.subName} has no email on the roster — share their portal link`, res.emailed ? 'success' : 'info')
-      actions.changed()
-      q.next()
-    } finally {
-      setBusy(null)
-    }
+  /** A row's order went out (from its form or the bulk send): mark it, offer Undo, move on. */
+  function markSent(r: HandshakeQueueRow, order: StepCommitmentRow, subName: string) {
+    q.mark(r.row.key, { label: sentLabel({ order, emailed: true, subName }, 'out'), undo: async () => { await actions.withdraw(order); q.unmark(r.row.key) } })
+    q.next()
   }
 
   async function sendRest() {
@@ -104,8 +53,21 @@ export function HandshakeQueue({ board, jobs, contacts, authUserId, todayYmd, ac
     const ok = await confirm({ title: `Send ${ready.length} work order${ready.length === 1 ? '' : 's'} as drafted?`, message: `Each goes out at its sheet total with the trade's default scope, a window from the day they started, and a week to sign. ${money(ready.reduce((s, r) => s + r.row.agreed, 0))} in all.`, confirmLabel: 'Send them' })
     if (!ok) return
     for (const r of ready) {
-      const d = quickOfferDefaults({ sheetDate: r.workingSince, todayYmd, agreed: r.row.agreed, unpriced: r.row.unpriced })
-      await send(r, { jobId: r.row.jobId!, amount: d.amount, start: d.start, end: d.end, workDays: String(d.workDays), goodFor: '7' })
+      const job = jobs.find((j) => j.id === r.row.jobId)
+      if (!job) continue
+      setBusy(r.row.key)
+      try {
+        const res = await sendSheetOfferWithDefaults({ row: r.row, workingSince: r.workingSince, job, contacts, authUserId, todayYmd })
+        if (!res.ok) {
+          showToast(`${r.row.subName}: ${res.error}`, 'error')
+          continue
+        }
+        showToast(res.emailed ? `${res.row.record_id ?? 'Work order'} sent to ${r.row.subName}` : `${res.row.record_id ?? 'Work order'} saved · ${r.row.subName} has no email on the roster`, res.emailed ? 'success' : 'info')
+        actions.changed()
+        markSent(r, res.row, r.row.subName)
+      } finally {
+        setBusy(null)
+      }
     }
   }
 
@@ -152,7 +114,6 @@ export function HandshakeQueue({ board, jobs, contacts, authUserId, todayYmd, ac
             const isOpen = q.openKey === r.row.key
             const phone = contacts.get(r.row.personId ?? '')?.phone ?? null
             const tel = telHref(phone)
-            const rowBusy = busy === r.row.key
             return (
               <FragmentRow key={r.row.key}>
                 <tr style={isOpen ? expandedRow : undefined} onClick={() => q.toggle(r.row.key)}>
@@ -200,80 +161,10 @@ export function HandshakeQueue({ board, jobs, contacts, authUserId, todayYmd, ac
                     </span>
                   </td>
                 </tr>
-                {isOpen && form ? (
+                {isOpen ? (
                   <tr style={expandedRow}>
                     <td colSpan={5} style={{ ...td, paddingTop: 0 }}>
-                      {canQuickSend ? (
-                        <form
-                          style={formBox}
-                          onSubmit={(e) => {
-                            e.preventDefault()
-                            if (!formProblem && !rowBusy) void send(r, form)
-                          }}
-                        >
-                          {r.needsJob ? (
-                            <div style={fieldWide}>
-                              <label style={label}>Job — needed before it can be sent</label>
-                              <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                                <select style={ctl} value={form.jobId} onChange={(e) => setForm({ ...form, jobId: e.target.value })}>
-                                  <option value="">Pick a job…</option>
-                                  {jobsByNumberDesc.map((j) => (
-                                    <option key={j.id} value={j.id}>
-                                      #{j.hcp_number} · {j.customer_name ?? 'No customer'}
-                                      {j.hcp_number.trim().toLowerCase() === r.row.jobNumber.trim().toLowerCase() ? ' — matches the sheet' : ''}
-                                    </option>
-                                  ))}
-                                </select>
-                                <button type="button" style={door} onClick={() => actions.newJobForSheet(r.row)}>
-                                  New job…
-                                </button>
-                              </div>
-                            </div>
-                          ) : null}
-                          <div style={field}>
-                            <label style={label}>Price</label>
-                            <input style={ctlMoney} inputMode="decimal" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} placeholder="0.00" />
-                          </div>
-                          <div style={field}>
-                            <label style={label}>Window from</label>
-                            <input type="date" style={ctl} value={form.start} onChange={(e) => setForm({ ...form, start: e.target.value })} />
-                          </div>
-                          <div style={field}>
-                            <label style={label}>to</label>
-                            <input type="date" style={ctl} value={form.end} onChange={(e) => setForm({ ...form, end: e.target.value })} />
-                          </div>
-                          <div style={field}>
-                            <label style={label}>Takes about (working days)</label>
-                            <input type="number" min={1} max={120} style={ctl} value={form.workDays} onChange={(e) => setForm({ ...form, workDays: e.target.value, end: form.start && Number(e.target.value) >= 1 ? endAfterWeekdays(form.start < todayYmd ? todayYmd : form.start, Number(e.target.value)) : form.end })} />
-                          </div>
-                          <div style={field}>
-                            <label style={label}>Offer good for</label>
-                            <select style={ctl} value={form.goodFor} onChange={(e) => setForm({ ...form, goodFor: e.target.value })}>
-                              <option value="3">3 days · through {shortDay(addCalendarDays(todayYmd, 3))}</option>
-                              <option value="7">7 days · through {shortDay(addCalendarDays(todayYmd, 7))}</option>
-                              <option value="14">14 days · through {shortDay(addCalendarDays(todayYmd, 14))}</option>
-                            </select>
-                          </div>
-                          <div style={sendLine}>
-                            {formProblem ? <span style={problem}>{formProblem}</span> : <span style={sendNote}>Scope: the trade library's default lines · goes to their portal · the sheet stays as it is</span>}
-                            <button type="button" style={door} onClick={() => actions.openAssembler({ jobId: form.jobId || r.row.jobId, laborJobId: r.row.sheetId, personId: r.row.personId, amount: Number(form.amount) || null, proposedStart: form.start || null, proposedEnd: form.end || null })}>
-                              Open the full assembler ›
-                            </button>
-                            <button type="submit" style={btn('primary', !!formProblem || rowBusy, false)} disabled={!!formProblem || rowBusy}>
-                              {rowBusy ? 'Sending…' : r.needsJob ? 'Link and send' : 'Send'}
-                            </button>
-                          </div>
-                        </form>
-                      ) : (
-                        <div style={{ ...formBox, gridTemplateColumns: '1fr' }}>
-                          <span style={sendNote}>{!r.row.sheetId ? 'This row is an order without a sheet — open it to send.' : 'Several names share this sheet, so the assembler has to pick the sub.'}</span>
-                          <div style={sendLine}>
-                            <button type="button" style={btn('primary', false, false)} onClick={() => actions.openAssembler(r.row.commitmentId ? { commitmentId: r.row.commitmentId } : { jobId: r.row.jobId, laborJobId: r.row.sheetId, amount: r.row.agreed > 0 ? r.row.agreed : null })}>
-                              Open the full assembler ›
-                            </button>
-                          </div>
-                        </div>
-                      )}
+                      <OfferSheetForm row={r.row} workingSince={r.workingSince} needsJob={r.needsJob} jobs={jobs} contacts={contacts} authUserId={authUserId} todayYmd={todayYmd} actions={actions} onSent={(sent) => markSent(r, sent.order, sent.subName)} />
                     </td>
                   </tr>
                 ) : null}

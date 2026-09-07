@@ -7,21 +7,23 @@
  * Send. A GC's open ask is answered on the row; "Crew does this one" clears
  * the window so it stops counting.
  */
-import { useEffect, useMemo, useState, type ReactNode } from 'react'
+import { useMemo, useState, type ReactNode } from 'react'
 import { useToastContext } from '../../../contexts/ToastContext'
 import type { JobWithDetails } from '../../../types/jobWithDetails'
+import type { StepCommitmentRow } from '../../../lib/workflow/stepCommitments'
 import type { SubsJobGroup } from '../../../lib/subs/subsTabRows'
-import { addCalendarDays, availabilityLabel, availabilityTone, buildStagesQueue, quickOfferProblem, STAGES_QUEUE_PHASE_LABEL, subAvailabilityForSpan, type StagesQueueRow } from '../../../lib/subs/subsTileQueues'
-import { defaultStageWindow, stageWindowLabel, stageWindowWeekdays } from '../../../lib/subs/stageWindow'
+import { buildStagesQueue, STAGES_QUEUE_PHASE_LABEL, type StagesQueueRow } from '../../../lib/subs/subsTileQueues'
+import { stageWindowLabel, stageWindowWeekdays } from '../../../lib/subs/stageWindow'
 import type { SubDispatchOrder } from '../../../lib/subs/subDispatch'
 import { askProblem } from '../../../../supabase/functions/_shared/stageAsk'
-import { quickSendJobOf, quickSendWorkOrder } from '../../../lib/subWorkOrders/quickSendWorkOrder'
+import { OfferStageForm, type StagePickerSub } from './rowForms'
+import { sentLabel } from './rowFormsSend'
 import { SubsTileModal, HandledCell } from './SubsTileModal'
 import { useQueueState } from './useQueueState'
 import type { RosterContact, SubsTileActions } from './subsTileActions'
-import { acts, btn, chip, ctl, ctlMoney, door, expandedRow, field, fieldWide, formBox, handledRow, label, money, muted, problem, sectionTd, sendLine, sendNote, shortDay, td, tdAct, tdNum, th, where, who } from './subsTileStyles'
+import { acts, btn, chip, ctl, expandedRow, field, fieldWide, formBox, handledRow, label, money, muted, sectionTd, sendLine, sendNote, td, tdAct, tdNum, th, where, who } from './subsTileStyles'
 
-export type StagesQueueSub = { id: string; name: string; benched: boolean }
+export type StagesQueueSub = StagePickerSub
 
 export type StagesQueueProps = {
   groups: SubsJobGroup[]
@@ -38,7 +40,6 @@ export type StagesQueueProps = {
   onClose: () => void
 }
 
-type Form = { personId: string; start: string; end: string; amount: string; workDays: string; goodFor: string; showBench: boolean }
 type AskForm = { start: string; end: string; note: string }
 
 const keyOf = (r: StagesQueueRow) => r.row.key
@@ -47,64 +48,12 @@ export function StagesQueue({ groups, jobs, subs, contacts, orders, offDaysByPer
   const { showToast } = useToastContext()
   const queue = useMemo(() => buildStagesQueue(groups, todayYmd), [groups, todayYmd])
   const q = useQueueState(queue.rows, keyOf, 'Off the list')
-  const [form, setForm] = useState<Form | null>(null)
   const [ask, setAsk] = useState<{ key: string; form: AskForm } | null>(null)
   const [busy, setBusy] = useState<string | null>(null)
-  const open = q.pending.find((r) => keyOf(r) === q.openKey) ?? null
 
-  useEffect(() => {
-    if (!open) {
-      setForm(null)
-      return
-    }
-    const span = open.suggestedSpan ?? open.row.span ?? defaultStageWindow(todayYmd)
-    setForm({ personId: '', start: span.start, end: span.end, amount: open.row.stage.amount > 0 ? String(open.row.stage.amount) : '', workDays: String(Math.max(1, stageWindowWeekdays(span))), goodFor: '7', showBench: false })
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [q.openKey])
-
-  const span = form && /^\d{4}-\d{2}-\d{2}$/.test(form.start) && /^\d{4}-\d{2}-\d{2}$/.test(form.end) && form.end >= form.start ? { start: form.start, end: form.end } : null
-  const expires = form ? addCalendarDays(todayYmd, Math.max(1, Number(form.goodFor) || 7)) : ''
-  const formProblem = form ? (!form.personId ? 'Pick the sub' : quickOfferProblem({ amount: form.amount, start: form.start, end: form.end, expires, todayYmd, hasJob: true })) : null
-  const windowMoved = !!(open && form && span && (span.start !== open.row.span?.start || span.end !== open.row.span?.end))
-
-  const activeSubs = subs.filter((s) => !s.benched)
-  const benched = subs.filter((s) => s.benched)
-
-  async function send(r: StagesQueueRow, f: Form) {
-    const job = jobs.find((j) => j.id === r.row.jobId)
-    const sub = subs.find((s) => s.id === f.personId)
-    if (!job || !sub || !span) return
-    setBusy(r.row.key)
-    try {
-      if (windowMoved) {
-        const ok = await actions.saveWindow(job.id, r.row.stage.id, span, null)
-        if (!ok) return
-      }
-      const res = await quickSendWorkOrder({
-        job: quickSendJobOf(job),
-        person: { id: sub.id, name: sub.name, email: contacts.get(sub.id)?.email ?? null },
-        laborJobId: null,
-        stageWindowId: r.row.window.id,
-        amount: Number(f.amount),
-        proposedStart: span.start,
-        proposedEnd: span.end,
-        workDays: Number(f.workDays) || null,
-        expires,
-        authUserId: authUserId ?? null,
-      })
-      if (!res.ok) {
-        showToast(res.error, 'error')
-        if (res.needsAssembler) actions.openAssembler({ jobId: job.id, personId: sub.id, stageWindowId: r.row.window.id, proposedStart: span.start, proposedEnd: span.end, amount: Number(f.amount) || null })
-        return
-      }
-      const row = res.row
-      q.mark(r.row.key, { label: `${row.record_id ?? 'Offer'} to ${sub.name} · good through ${shortDay(row.offer_expires_at)}`, undo: async () => { await actions.withdraw(row); q.unmark(r.row.key) } })
-      showToast(res.emailed ? `${row.record_id ?? 'Work order'} sent to ${sub.name} — they pick a start inside ${stageWindowLabel(span)}` : `${row.record_id ?? 'Work order'} saved · ${sub.name} has no email on the roster — share their portal link`, res.emailed ? 'success' : 'info')
-      actions.changed()
-      q.next()
-    } finally {
-      setBusy(null)
-    }
+  function markSent(r: StagesQueueRow, order: StepCommitmentRow, subName: string) {
+    q.mark(r.row.key, { label: sentLabel({ order, emailed: true, subName }, 'to'), undo: async () => { await actions.withdraw(order); q.unmark(r.row.key) } })
+    q.next()
   }
 
   async function answer(r: StagesQueueRow, a: { kind: 'accept' } | { kind: 'propose'; start: string; end: string; note: string }) {
@@ -256,74 +205,10 @@ export function StagesQueue({ groups, jobs, subs, contacts, orders, offDaysByPer
                     </td>
                   </tr>
                 ) : null}
-                {isOpen && form ? (
+                {isOpen ? (
                   <tr style={expandedRow}>
                     <td colSpan={5} style={{ ...td, paddingTop: 0 }}>
-                      <form
-                        style={formBox}
-                        onSubmit={(e) => {
-                          e.preventDefault()
-                          if (!formProblem && !rowBusy) void send(r, form)
-                        }}
-                      >
-                        <div style={{ ...fieldWide, gridRow: 'span 2' }}>
-                          <label style={label}>Who · {span ? `free ${stageWindowLabel(span)}?` : 'pick the window first'}</label>
-                          <div role="radiogroup" style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                            {(form.showBench ? [...activeSubs, ...benched] : activeSubs).map((s) => {
-                              const a = span ? subAvailabilityForSpan(s.id, span, orders, offDaysByPerson) : { busy: [], off: [] }
-                              const tone = availabilityTone(a)
-                              const on = form.personId === s.id
-                              return (
-                                <label key={s.id} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.78rem', padding: '4px 8px', border: `1px solid ${on ? '#2563eb' : 'var(--border)'}`, borderRadius: 5, background: on ? 'var(--bg-blue-tint)' : 'var(--surface)', cursor: 'pointer' }}>
-                                  <input type="radio" name={`sub-${r.row.key}`} checked={on} onChange={() => setForm({ ...form, personId: s.id })} />
-                                  <span style={{ fontWeight: 600, flex: 1 }}>{s.name}</span>
-                                  {s.benched ? <span style={chip('gray')}>on the bench</span> : null}
-                                  {span ? availabilityLoading ? <span style={muted}>checking…</span> : <span style={chip(tone === 'free' ? 'green' : tone === 'busy' ? 'amber' : 'gray')} title={a.busy.join(' · ') || undefined}>{availabilityLabel(a, shortDay)}</span> : null}
-                                </label>
-                              )
-                            })}
-                            {benched.length > 0 && !form.showBench ? (
-                              <button type="button" style={{ ...door, alignSelf: 'flex-start' }} onClick={() => setForm({ ...form, showBench: true })}>
-                                + {benched.length} on the bench
-                              </button>
-                            ) : null}
-                            {subs.length === 0 ? <span style={muted}>No subs on the roster yet — add one from the full assembler.</span> : null}
-                          </div>
-                        </div>
-                        <div style={field}>
-                          <label style={label}>{r.phase === 'passed' ? 'Move the window to' : 'Window from'}</label>
-                          <input type="date" style={ctl} value={form.start} onChange={(e) => setForm({ ...form, start: e.target.value })} />
-                        </div>
-                        <div style={field}>
-                          <label style={label}>to</label>
-                          <input type="date" style={ctl} value={form.end} onChange={(e) => setForm({ ...form, end: e.target.value })} />
-                        </div>
-                        <div style={field}>
-                          <label style={label}>Price</label>
-                          <input style={ctlMoney} inputMode="decimal" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} placeholder="0.00" />
-                        </div>
-                        <div style={field}>
-                          <label style={label}>Takes about (working days)</label>
-                          <input type="number" min={1} max={120} style={ctl} value={form.workDays} onChange={(e) => setForm({ ...form, workDays: e.target.value })} />
-                        </div>
-                        <div style={field}>
-                          <label style={label}>Offer good for</label>
-                          <select style={ctl} value={form.goodFor} onChange={(e) => setForm({ ...form, goodFor: e.target.value })}>
-                            <option value="3">3 days</option>
-                            <option value="7">7 days</option>
-                            <option value="14">14 days</option>
-                          </select>
-                        </div>
-                        <div style={sendLine}>
-                          {formProblem ? <span style={problem}>{formProblem}</span> : <span style={sendNote}>Scope: the trade library's default lines · they pick a start inside the window</span>}
-                          <button type="button" style={door} onClick={() => actions.openAssembler({ jobId: r.row.jobId, personId: form.personId || null, stageWindowId: r.row.window.id, proposedStart: form.start || null, proposedEnd: form.end || null, amount: Number(form.amount) || null })}>
-                            Open the full assembler ›
-                          </button>
-                          <button type="submit" style={btn('primary', !!formProblem || rowBusy, false)} disabled={!!formProblem || rowBusy}>
-                            {rowBusy ? 'Sending…' : windowMoved ? 'Move window and send offer' : 'Send offer'}
-                          </button>
-                        </div>
-                      </form>
+                      <OfferStageForm row={r.row} suggestedSpan={r.suggestedSpan} phasePassed={r.phase === 'passed'} jobs={jobs} subs={subs} contacts={contacts} orders={orders} offDaysByPerson={offDaysByPerson} availabilityLoading={availabilityLoading} authUserId={authUserId} todayYmd={todayYmd} actions={actions} onSent={(sent) => markSent(r, sent.order, sent.subName)} />
                     </td>
                   </tr>
                 ) : null}
