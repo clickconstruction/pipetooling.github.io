@@ -18,7 +18,7 @@ You have a client-side view: your jobs, their money, and the estimates and bids 
 The chip is the billing state: {{chip:gray|Waiting}} {{chip:yellow|Working}} {{chip:purple|Ready to Bill}} {{chip:blue|Billed}} {{chip:green|Paid}}
 :::
 - **Estimates** — proposals out for acceptance, and what's been accepted.
-- **Bids** — pricing work in progress.
+- **Bids** — the Bid Board for your trade, plus RFIs, change orders and lien releases. Pricing, cover letters, followup and the estimating workbench are office-only and stay out of view.
 - **Calendar** and **Job Parts Tally** — schedule and parts logging.
 
 ## Billing

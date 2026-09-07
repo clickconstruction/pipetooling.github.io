@@ -690,7 +690,7 @@ Non-dev roles do not see the Banking **Stripe** segment; master/assistant deep l
 
 Mercury **Person** attribution (job splits modal): staff use **`list_users_for_banking_attribution`** (**SECURITY DEFINER**, same dev/master/assistant/controller gate as **`replace_mercury_transaction_splits`**) for the user picker; **`mercury_transaction_attributions`** may store **`user_id`** or legacy **`person_id`** (not both).
 | **Calendar** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| **Bids** | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ | ✅ limited |
+| **Bids** | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ board + RFI / Change Order / Lien Release only, no analytics (v2.3066) | ✅ limited |
 | **Estimates** | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ | ✅ limited (project-linked super visibility) |
 | **Materials** | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ | ✅ limited |
 | **Templates** | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |

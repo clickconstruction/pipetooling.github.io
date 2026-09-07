@@ -51,6 +51,8 @@ type BidsBidBoardTabProps = {
   loading?: boolean
   authUser: { id: string } | null
   isDev: boolean
+  /** Journey map P-B2: the pulse / everyone-stands analytics are office-only — off for primaries and superintendents. */
+  showEstimatingHealth?: boolean
   /** v2.2741: jobs made from this bid's signed proposal (only passed for roles that can open Jobs). */
   jobsByBidId?: Map<string, BidBoardJobLink>
   ledgerPrefixMap: ReturnType<typeof useLedgerPrefixMap>
@@ -169,6 +171,7 @@ export function BidsBidBoardTab({
   loading = false,
   authUser,
   isDev,
+  showEstimatingHealth = true,
   jobsByBidId,
   ledgerPrefixMap,
   bidPreview,
@@ -1688,6 +1691,7 @@ export function BidsBidBoardTab({
               }}
             />
           ) : null}
+          {showEstimatingHealth && (
           <div id="bid-board-health-section" style={{ scrollMarginTop: '3.25rem' }}>
             <BidBoardEstimatingHealthSection
               weeklySentSummaries={bidBoardWeeklySentSummaries}
@@ -1696,6 +1700,7 @@ export function BidsBidBoardTab({
               openBid={bidPreview ? (b) => bidPreview.openBidPreviewFromBid(b) : undefined}
             />
           </div>
+          )}
         </div>
       )}
       {customerReviewOpen ? <BidBoardCustomerReviewModal onClose={() => setCustomerReviewOpen(false)} /> : null}
