@@ -121,7 +121,7 @@ export function JobsSubsWorkView({ jobs, jobsLoading, authUserId, deepLinkWorkOr
         // Every sheet with its items, payments, stage and assignees — rows are sheets now.
         supabase
           .from('people_labor_jobs')
-          .select('id, job_number, address, assigned_to_name, labor_rate, stage, payable_after, job_date, created_at, progress_pct, progress_at, items:people_labor_job_items(count, hrs_per_unit, is_fixed, labor_rate, direct_labor_amount), payments:people_labor_job_payments(amount), assignees:people_labor_job_assignees(person_id)')
+          .select('id, job_number, job_ledger_id, address, assigned_to_name, labor_rate, stage, payable_after, job_date, created_at, progress_pct, progress_at, items:people_labor_job_items(count, hrs_per_unit, is_fixed, labor_rate, direct_labor_amount), payments:people_labor_job_payments(amount), assignees:people_labor_job_assignees(person_id)')
           .order('created_at', { ascending: false })
           .limit(1000),
         // The roster decides which sheets are sub sheets: teammates carry a `kind = 'sub'`

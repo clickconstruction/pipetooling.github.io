@@ -58,7 +58,7 @@ export function QuickfillJobsCleanupSection() {
           (from, to) =>
             supabase
               .from('people_labor_jobs')
-              .select('id, assigned_to_name, address, job_number, job_date, labor_rate')
+              .select('id, assigned_to_name, address, job_number, job_ledger_id, job_date, labor_rate')
               .order('created_at', { ascending: false })
               .order('id', { ascending: true })
               .range(from, to),

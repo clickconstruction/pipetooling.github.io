@@ -125,6 +125,26 @@ describe('buildWorkOrderBoard — order and search', () => {
     expect(workOrderBoardFilterFromParam('expired')).toBe('no_agreement')
     expect(workOrderBoardFilterFromParam('nope')).toBeNull()
   })
+
+  it('v2.3065: a sheet linked by job_ledger_id lands on that job even when its number text says otherwise; a link-less sheet still falls back to the number', () => {
+    const board = buildWorkOrderBoard({
+      sheets: [
+        sheet({ id: 's-linked', job_number: 'OLD-892', job_ledger_id: 'j-880' }),
+        sheet({ id: 's-number', job_number: ' 892 ', job_ledger_id: null }),
+      ],
+      assigneesBySheetId: new Map(),
+      roster: ROSTER,
+      commitments: [],
+      jobs: JOBS,
+      todayYmd: TODAY,
+    })
+    const linked = board.rows.find((r) => r.sheetId === 's-linked')!
+    const byNumber = board.rows.find((r) => r.sheetId === 's-number')!
+    expect(linked.jobId).toBe('j-880')
+    expect(linked.primary).toBe('#880 · Knight Contracting')
+    expect(linked.notInPipeline).toBe(false)
+    expect(byNumber.jobId).toBe('j-892')
+  })
 })
 
 describe('buildWorkOrderBoard — the effective stage (v2.3064)', () => {

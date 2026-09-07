@@ -54,7 +54,7 @@ export type JobsSubLaborTabProps = {
   onSubLaborSearchChange: (value: string) => void
   laborJobs: LaborJob[]
   laborJobsLoading: boolean
-  laborJobNamesByHcp: Record<string, string>
+  laborJobNamesByJobId: Record<string, string>
   /** Pipeline jobs — job-anchored work orders cover every sheet on their job; the assembler needs the list. */
   jobs: JobWithDetails[]
   authUserId: string | undefined
@@ -83,7 +83,7 @@ export default function JobsSubLaborTab({
   onSubLaborSearchChange,
   laborJobs,
   laborJobsLoading,
-  laborJobNamesByHcp,
+  laborJobNamesByJobId,
   jobs,
   authUserId,
   laborJobAssigneesByJobId,
@@ -168,6 +168,7 @@ export default function JobsSubLaborTab({
       if (k && !personByNameKey.has(k)) personByNameKey.set(k, p)
     }
     const jobsByNumber = new Map(jobs.map((j) => [j.hcp_number.trim().toLowerCase(), j]))
+    const jobsById = new Map(jobs.map((j) => [j.id, j]))
     const bySheet = new Map<string, WorkOrderRowLike[]>()
     const byJob = new Map<string, WorkOrderRowLike[]>()
     for (const r of commitments) {
@@ -176,13 +177,14 @@ export default function JobsSubLaborTab({
     }
     const assigneeIds = new Map<string, string[]>()
     for (const [id, list] of laborJobAssigneesByJobId) assigneeIds.set(id, list.map((a) => a.personId))
-    return { personById, personByNameKey, jobsByNumber, bySheet, byJob, assigneeIds }
+    return { personById, personByNameKey, jobsByNumber, jobsById, bySheet, byJob, assigneeIds }
   }, [roster, jobs, commitments, laborJobAssigneesByJobId])
 
   /** The rail, the office's next move, who the sheet is for, and the rule its money is under — one call per row. */
   const spineFor = useCallback(
     (job: LaborJob, bal: { totalCost: number; paid: number; backcharges: number; balance: number }): { coverage: JobWorkOrderCoverage; rail: SheetRailShape; next: SheetNextAction; crew: boolean; jobId: string | null; personId: string | null; parties: SheetParties; payWhen: SheetPayWhen; stageView: LaborJob } => {
-      const pipelineJob = spine.jobsByNumber.get((job.job_number ?? '').trim().toLowerCase()) ?? null
+      // v2.3065: the sheet's link first; the number only for a sheet that never got one.
+      const pipelineJob = (job.job_ledger_id ? spine.jobsById.get(job.job_ledger_id) : undefined) ?? (job.job_ledger_id ? null : spine.jobsByNumber.get((job.job_number ?? '').trim().toLowerCase())) ?? null
       const covering = [...(spine.bySheet.get(job.id) ?? []), ...(pipelineJob ? (spine.byJob.get(pipelineJob.id) ?? []) : [])]
       const coverage = buildJobWorkOrderCoverage(covering, today)
       // Crew pay for the rail (four dots, no agreement needed): any teammate on the sheet — the standing rule.
@@ -211,12 +213,12 @@ export default function JobsSubLaborTab({
   const rows = useMemo(
     () =>
       laborJobs
-        .filter((job) => subLaborJobMatchesSearch(job, subLaborSearch, laborJobNamesByHcp))
+        .filter((job) => subLaborJobMatchesSearch(job, subLaborSearch, laborJobNamesByJobId))
         .map((job) => {
           const bal = subLaborJobBalance(job)
           return { job, ...bal, ...spineFor(job, bal) }
         }),
-    [laborJobs, subLaborSearch, laborJobNamesByHcp, spineFor],
+    [laborJobs, subLaborSearch, laborJobNamesByJobId, spineFor],
   )
   type LedgerRow = (typeof rows)[number]
   const rowById = useMemo(() => new Map(rows.map((r) => [r.job.id, r])), [rows])
@@ -268,7 +270,7 @@ export default function JobsSubLaborTab({
       sheetLabel: r.job.job_number?.trim() || 'Sheet',
       jobNumber: r.job.job_number?.trim() || null,
       clickNumber: pipelineJob?.click_number ? `J${pipelineJob.click_number}` : null,
-      project: (pipelineJob?.job_name ?? r.job.project_name ?? laborJobNamesByHcp[(r.job.job_number ?? '').trim()] ?? '').trim() || null,
+      project: (pipelineJob?.job_name ?? r.job.project_name ?? (r.job.job_ledger_id ? laborJobNamesByJobId[r.job.job_ledger_id] : undefined) ?? '').trim() || null,
       owner: (pipelineJob?.customer_name ?? '').trim() || null,
       location: (pipelineJob?.job_address ?? r.job.address ?? '').trim() || null,
       payments: (r.job.payments ?? []).map((p) => ({ amount: Number(p.amount) || 0, payment_date: p.payment_date ?? null, created_at: p.created_at })),
@@ -531,7 +533,7 @@ export default function JobsSubLaborTab({
                         <div style={{ lineHeight: 1.4 }}>
                           <div style={{ fontWeight: 500 }}>
                             {job.job_number ?? '—'}
-                            {laborJobNamesByHcp[(job.job_number ?? '').trim().toLowerCase()] ? <> | {laborJobNamesByHcp[(job.job_number ?? '').trim().toLowerCase()]}</> : null}
+                            {job.job_ledger_id && laborJobNamesByJobId[job.job_ledger_id] ? <> | {laborJobNamesByJobId[job.job_ledger_id]}</> : null}
                             {job.project_id ? (
                               <a
                                 href={`/workflows/${job.project_id}${job.step_id ? `#step-${job.step_id}` : ''}`}

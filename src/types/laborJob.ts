@@ -7,6 +7,8 @@ export type LaborJob = {
   assigned_to_name: string
   address: string
   job_number: string | null
+  /** The job this sheet is on (v2.3055); job_number is display text. */
+  job_ledger_id?: string | null
   labor_rate: number | null
   job_date: string | null
   created_at: string | null

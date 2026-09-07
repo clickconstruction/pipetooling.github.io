@@ -14,6 +14,8 @@ describe('buildUnlinkedSubLaborRows', () => {
         { id: 'b', assigned_to_name: 'Behar Kraja | Kyle', address: '7722 Citadel Peak', job_number: 'H-2291', job_date: '2026-07-30', labor_rate: 20, items: [{ count: 5, hrs_per_unit: 2.5 }], payments: [{ amount: 250 }] },
         { id: 'c', assigned_to_name: 'Texas R & A', address: '415 Springtown Way', job_number: '977', job_date: '2026-08-20', labor_rate: null, items: [{ direct_labor_amount: 40000 }], payments: [] },
         { id: 'd', assigned_to_name: 'Sub', address: '', job_number: ' c-12 ', job_date: null, labor_rate: null, items: [], payments: [] },
+        // v2.3065: linked by id — the number text is irrelevant
+        { id: 'e', assigned_to_name: 'Sub', address: '', job_number: 'NOPE', job_ledger_id: 'j1', job_date: null, labor_rate: null, items: [{ direct_labor_amount: 5 }], payments: [] },
       ],
       jobs,
     )

@@ -18,7 +18,7 @@ import { splitAssignedToNames } from '../people/laborJobPersonMatch'
 import { normalizePersonNameKey } from '../personNameKey'
 import { effectiveSubSheetStage, subSheetWorkEndYmd } from '../subSheetStageDerived'
 import { buildJobWorkOrderCoverage, type JobWorkOrderCoverage, type WorkOrderRowLike } from './workOrderCoverage'
-import { isRosterSubSheet, type NeedsWorkOrderJob, type NeedsWorkOrderRosterPerson, type NeedsWorkOrderSheet } from './sheetsNeedingWorkOrder'
+import { isRosterSubSheet, type NeedsWorkOrderJob, type NeedsWorkOrderRosterPerson, type NeedsWorkOrderSheet, sheetJob } from './sheetsNeedingWorkOrder'
 import { buildSheetRail, sheetNextAction, SHEET_RAIL_GROUP_LABEL, type SheetNextAction, type SheetRail, type SheetRailGroup } from './sheetRail'
 
 export type WorkOrderBoardSheet = NeedsWorkOrderSheet & {
@@ -122,7 +122,7 @@ export function buildWorkOrderBoard(input: WorkOrderBoardInput): WorkOrderBoard 
     const bal = subLaborJobBalance({ labor_rate: sheet.labor_rate, items: sheet.items, payments: sheet.payments })
     const unpriced = bal.totalCost === 0 && bal.paid === 0 && bal.backcharges === 0
     const open = Math.max(0, bal.balance)
-    const job = jobsByNumber.get(numberKey(sheet.job_number)) ?? null
+    const job = sheetJob(sheet, jobsById, jobsByNumber)
     const covering = [...(bySheet.get(sheet.id) ?? []), ...(job ? (byJob.get(job.id) ?? []) : [])]
     for (const r of covering) represented.add(r.id)
     const coverage = buildJobWorkOrderCoverage(covering, input.todayYmd)

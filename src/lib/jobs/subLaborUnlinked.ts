@@ -1,9 +1,9 @@
 /**
  * Quickfill → Jobs Cleanup (v2.2145): sub labor sheets that aren't attached
- * to a job. "Unlinked" = the sheet's typed `job_number` resolves to no job
- * (blank, or a number matching nothing by HCP / Click # / effective number —
- * the same rule Edit Sub Labor's Job field uses). A sheet whose number
- * resolves is linked, however long ago it was typed; nothing re-links here.
+ * to a job. "Unlinked" = no `job_ledger_id` on the sheet (v2.3065) and a
+ * `job_number` that resolves to no job (blank, or matching nothing by HCP /
+ * Click # / effective number). The number rule is only the fallback for a
+ * sheet that never got a link; nothing re-links here.
  * Paid sheets still count — unattached cost rolls up to no job either way.
  */
 import { laborItemsSubtotal, type PeopleLaborJobItemLike } from '../peopleLaborJobItemLineCost'
@@ -14,6 +14,7 @@ export type UnlinkedSubLaborSheetInput = {
   assigned_to_name: string | null
   address: string | null
   job_number: string | null
+  job_ledger_id?: string | null
   job_date: string | null
   labor_rate: number | null
   items?: PeopleLaborJobItemLike[] | null
@@ -44,6 +45,7 @@ export function buildUnlinkedSubLaborRows(
   const out: UnlinkedSubLaborRow[] = []
   for (const s of sheets) {
     const typed = (s.job_number ?? '').trim()
+    if (s.job_ledger_id) continue
     if (typed && resolveSubLaborJobByNumber(jobs, typed)) continue
     const fallbackRate = s.labor_rate ?? 0
     let total = laborItemsSubtotal(s.items ?? undefined, fallbackRate)
