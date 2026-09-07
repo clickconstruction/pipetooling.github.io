@@ -2,7 +2,7 @@
 title: see a customer's full history and lifetime value
 category: Office
 roles: dev, master_technician, assistant, controller, estimator
-keywords: customer page, customer hub, lifetime value, LCV, customer profile, open balance, customer history, customer detail
+keywords: customer page, customer hub, lifetime value, LCV, customer profile, open balance, customer history, customer detail, property, additional addresses, county, legal description, owner of record, parcel, lien-ready, appraisal district, CAD
 order: 41
 ---
 Every customer now has their own page. Click a customer's name on the **Customers** page and you land on their hub — who they are, what they're worth, and everything in motion for them.
@@ -78,3 +78,25 @@ Use {{button:outline|✎ Edit customer}} in the header to change their info, arc
 ## Track more than one property
 
 A customer with several properties can have **additional addresses**, each with its own note. In {{button:outline|✎ Edit customer}}, open **Additional addresses**, add each address with a note ("rental on Oak St", "shop — deliveries in back"), and they appear on the customer's page next to the primary address as tap-to-map links with the note beside them. The main Address field stays the primary — jobs and estimates keep using it as before.
+
+## Find the property's legal record for lien paperwork
+
+Each additional address also carries the property's **legal identity** — the county the lien files in, the appraisal-district legal description, and the owner of record with their mailing address. You no longer type those from the appraisal district's website: open **▶ Property legal info** under the address and the app looks the property up on the Texas parcel roll (the appraisal districts' own data).
+
+:::example What the lookup fills in
+{{button:outline|Look up the property record}} {{chip:green|✓ lien-ready}} Comal CAD ↗
+
+**County** Comal — from the parcel under the map pin
+**Legal description** GRUENE CROSSING 2, BLOCK 4, LOT 17 · `Comal Appraisal District · 2025 · Prop ID 178402`
+**Owner of record** WHITFIELD DANA & MARCUS · {{chip:blue|Homeowner}}
+**Owner mailing address** 412 GRUENE RD, NEW BRAUNFELS, TX 78130
+:::
+
+- **The lookup runs by itself** the first time you open the panel on an address that has never been looked up. {{button:outline|Look up again}} re-runs it after you fix the address.
+- **It fills blanks only.** Anything you typed stays; a field that differs from the record shows a small *use the record's: …* link so you can take the record's value with one click.
+- **County comes from the map, not a guess.** When the parcel, the map pin and the city table disagree (Schertz sits in Bexar, Guadalupe and Comal), the panel shows each answer as a pill with where it came from — the parcel wins unless you know better.
+- **Homestead is still your call.** The roll has no exemption data. The panel suggests homestead when the owner gets mail at the property and says so; confirm the HS exemption on the CAD page before a homestead job starts.
+- **The roll lags sales.** The source and tax year print beside every value, and the **CAD ↗** link opens the district's own search for the day-of-filing check.
+- If nothing sits under the pin (a new subdivision, or the pin landed on the street), the county still resolves and the checklist shows what is left to find on the CAD.
+
+The checklist under the fields — {{chip:green|✓ county}} {{chip:green|✓ legal description}} {{chip:yellow|○ owner of record}} {{chip:yellow|○ owner mailing address}} — turns fully green when the property is lien-ready; the {{chip:green|✓ lien-ready}} chip then shows on the address row and on any job linked to it.

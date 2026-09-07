@@ -14,12 +14,23 @@ export type GoogleGeocodeErrorCode =
 type GeocodeResponseJson = {
   status: string
   error_message?: string
-  results?: { geometry?: { location?: { lat?: number; lng?: number } } }[]
+  results?: {
+    geometry?: { location?: { lat?: number; lng?: number } }
+    address_components?: { long_name?: string; short_name?: string; types?: string[] }[]
+  }[]
 }
 
 export type GoogleGeocodeResult =
-  | { ok: true; lat: number; lng: number }
+  /** `county` (v2.3004): the `administrative_area_level_2` component without the word "County" — '' when Google omits it. */
+  | { ok: true; lat: number; lng: number; county: string }
   | { ok: false; error: GoogleGeocodeErrorCode; detail?: string }
+
+function countyFromComponents(components: { long_name?: string; types?: string[] }[] | undefined): string {
+  if (!Array.isArray(components)) return ''
+  const c = components.find((x) => Array.isArray(x?.types) && x.types.includes('administrative_area_level_2'))
+  const name = (c?.long_name ?? '').trim().replace(/\s+county$/i, '')
+  return name
+}
 
 const DETAIL_MAX = 400
 
@@ -69,7 +80,7 @@ export async function geocodeWithGoogle(address: string, apiKey: string): Promis
     const lat = loc?.lat
     const lng = loc?.lng
     if (typeof lat === 'number' && typeof lng === 'number' && Number.isFinite(lat) && Number.isFinite(lng)) {
-      return { ok: true, lat, lng }
+      return { ok: true, lat, lng, county: countyFromComponents(j.results[0]?.address_components) }
     }
     return withDetail(j, 'google_no_results')
   }

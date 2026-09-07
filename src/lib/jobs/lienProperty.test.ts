@@ -32,6 +32,11 @@ function addressRow(overrides: Partial<CustomerAddressRow>): CustomerAddressRow 
     owner_name: '',
     owner_company: '',
     owner_mailing_address: '',
+    county_source: '',
+    parcel_id: '',
+    parcel_source: '',
+    parcel_tax_year: '',
+    parcel_looked_up_at: null,
     ...overrides,
   }
 }

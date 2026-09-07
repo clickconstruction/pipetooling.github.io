@@ -4015,6 +4015,7 @@ export type Database = {
         Row: {
           address: string
           county: string
+          county_source: string
           created_at: string | null
           customer_id: string
           homestead: boolean
@@ -4025,6 +4026,10 @@ export type Database = {
           owner_mailing_address: string
           owner_mode: string
           owner_name: string
+          parcel_id: string
+          parcel_looked_up_at: string | null
+          parcel_source: string
+          parcel_tax_year: string
           property_kind: string
           sequence_order: number
           updated_at: string | null
@@ -4032,6 +4037,7 @@ export type Database = {
         Insert: {
           address: string
           county?: string
+          county_source?: string
           created_at?: string | null
           customer_id: string
           homestead?: boolean
@@ -4042,6 +4048,10 @@ export type Database = {
           owner_mailing_address?: string
           owner_mode?: string
           owner_name?: string
+          parcel_id?: string
+          parcel_looked_up_at?: string | null
+          parcel_source?: string
+          parcel_tax_year?: string
           property_kind?: string
           sequence_order?: number
           updated_at?: string | null
@@ -4049,6 +4059,7 @@ export type Database = {
         Update: {
           address?: string
           county?: string
+          county_source?: string
           created_at?: string | null
           customer_id?: string
           homestead?: boolean
@@ -4059,6 +4070,10 @@ export type Database = {
           owner_mailing_address?: string
           owner_mode?: string
           owner_name?: string
+          parcel_id?: string
+          parcel_looked_up_at?: string | null
+          parcel_source?: string
+          parcel_tax_year?: string
           property_kind?: string
           sequence_order?: number
           updated_at?: string | null
