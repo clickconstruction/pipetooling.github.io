@@ -18,7 +18,7 @@
 import type { PDFFont } from 'pdf-lib'
 import type { FormBox } from '../../../supabase/functions/_shared/formSchema'
 import { AuthoredPage, INK, MARGIN, MUTED, PAGE, newAuthoredDoc, writeAuthored } from './lib'
-import { COMPANY, COMPANY_ADDRESS, OUT_DIR } from './company'
+import { COMPANY, COMPANY_ADDRESS_LINES, OUT_DIR } from './company'
 
 type Blank = { key: string; w: number; label: string; labelEs?: string; sub?: string } & Partial<Omit<FormBox, 'key' | 'label' | 'labelEs' | 'page' | 'rect' | 'order' | 'type'>> & { type?: FormBox['type']; text?: string }
 type Seg = string | Blank
@@ -77,9 +77,14 @@ async function buildOne(slug: string, title: string, unconditional: boolean, par
   // On unconditional forms nothing is set above 11 pt; the notice is 11 pt bold.
   const big = unconditional ? 11 : 15
   p.page.drawText(COMPANY, { x: MARGIN, y: p.y - 12, size: unconditional ? 10 : 12, font: p.fonts.bold, color: INK })
-  const addrW = p.fonts.body.widthOfTextAtSize(COMPANY_ADDRESS, 8)
-  p.page.drawText(COMPANY_ADDRESS, { x: PAGE.width - MARGIN - addrW, y: p.y - 12, size: 8, font: p.fonts.body, color: MUTED })
-  p.y -= 22
+  // Letterhead address on three lines (owner ask 2026-09-06, matching the Direct Deposit form).
+  let addrY = p.y - 12
+  for (const line of COMPANY_ADDRESS_LINES) {
+    const addrW = p.fonts.body.widthOfTextAtSize(line, 8)
+    p.page.drawText(line, { x: PAGE.width - MARGIN - addrW, y: addrY, size: 8, font: p.fonts.body, color: MUTED })
+    addrY -= 10
+  }
+  p.y -= 42
   p.page.drawLine({ start: { x: MARGIN, y: p.y }, end: { x: PAGE.width - MARGIN, y: p.y }, thickness: 1.2, color: INK })
   p.y -= 16
   if (unconditional) {
