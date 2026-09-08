@@ -252,7 +252,7 @@ export default function Jobs() {
   const {
     laborJobs,
     setLaborJobs,
-    laborJobNamesByHcp,
+    laborJobNamesByJobId,
     laborJobAssigneesByJobId,
     laborJobsLoading,
     laborJobsLoadedOnce,
@@ -1492,10 +1492,10 @@ export default function Jobs() {
   const subLaborOutstandingByPerson = useMemo(
     () =>
       buildSubLaborOutstandingByPerson(
-        laborJobs.filter((job) => subLaborJobMatchesSearch(job, subLaborSearch, laborJobNamesByHcp)),
+        laborJobs.filter((job) => subLaborJobMatchesSearch(job, subLaborSearch, laborJobNamesByJobId)),
         laborJobAssigneesByJobId,
       ),
-    [laborJobs, subLaborSearch, laborJobNamesByHcp, laborJobAssigneesByJobId],
+    [laborJobs, subLaborSearch, laborJobNamesByJobId, laborJobAssigneesByJobId],
   )
   const subLaborDueTotal = subLaborOutstandingByPerson.totalOutstanding
 
@@ -1866,7 +1866,7 @@ export default function Jobs() {
                 onSubLaborSearchChange={setSubLaborSearch}
                 laborJobs={laborJobs}
                 laborJobsLoading={laborJobsLoading}
-                laborJobNamesByHcp={laborJobNamesByHcp}
+                laborJobNamesByJobId={laborJobNamesByJobId}
                 jobs={jobs}
                 authUserId={authUser?.id}
                 laborJobAssigneesByJobId={laborJobAssigneesByJobId}

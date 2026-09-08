@@ -242,7 +242,8 @@ export default function JobsCrewPnlTab({
     }
     const subInputs: CrewPnlSubLaborInput[] = laborJobs.map((lj) => ({
       id: lj.id,
-      jobId: jobIdByNumber.get((lj.job_number ?? '').trim().toLowerCase()) ?? null,
+      // v2.3065: the sheet's link first; the number only for a sheet that never got one.
+      jobId: lj.job_ledger_id ?? jobIdByNumber.get((lj.job_number ?? '').trim().toLowerCase()) ?? null,
       jobNumberText: lj.job_number ?? null,
       jobLabel: `Sub sheet ${lj.job_number?.trim() || lj.assigned_to_name || lj.id}`,
       jobDate: (lj.job_date ?? lj.created_at ?? '').slice(0, 10) || null,

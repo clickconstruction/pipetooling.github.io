@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { useConfirmDialog } from '../contexts/ConfirmDialogContext'
 import type { LaborJob, LaborJobPayment } from '../types/laborJob'
-import { buildLaborJobNamesByNumber } from '../lib/subLaborLedgerNames'
+import { buildLaborJobNamesById } from '../lib/subLaborLedgerNames'
 import type { SubLaborSheetAssignee } from '../lib/subLaborOutstanding'
 import type { SubSheetStage } from '../lib/subSheetStage'
 import type { SetSubSheetStageResult } from '../types/database-functions'
@@ -34,7 +34,7 @@ export function useSubLaborLedger({
 }) {
   const confirmDialog = useConfirmDialog()
   const [laborJobs, setLaborJobs] = useState<LaborJob[]>([])
-  const [laborJobNamesByHcp, setLaborJobNamesByHcp] = useState<Record<string, string>>({})
+  const [laborJobNamesByJobId, setLaborJobNamesByJobId] = useState<Record<string, string>>({})
   const [laborJobAssigneesByJobId, setLaborJobAssigneesByJobId] = useState<Map<string, SubLaborSheetAssignee[]>>(new Map())
   const [laborJobsLoading, setLaborJobsLoading] = useState(false)
   /**
@@ -58,12 +58,12 @@ export function useSubLaborLedger({
     {
       const withAnchors = await supabase
         .from('people_labor_jobs')
-        .select('id, assigned_to_name, address, job_number, labor_rate, job_date, created_at, distance_miles, invoice_link, project_id, step_id, stage, stage_changed_at, stage_changed_by, stage_source, stage_note, payable_after, pay_hold_reason, progress_pct, progress_at')
+        .select('id, assigned_to_name, address, job_number, job_ledger_id, labor_rate, job_date, created_at, distance_miles, invoice_link, project_id, step_id, stage, stage_changed_at, stage_changed_by, stage_source, stage_note, payable_after, pay_hold_reason, progress_pct, progress_at')
         .order('created_at', { ascending: false })
       if (withAnchors.error) {
         const legacy = await supabase
           .from('people_labor_jobs')
-          .select('id, assigned_to_name, address, job_number, labor_rate, job_date, created_at, distance_miles, invoice_link')
+          .select('id, assigned_to_name, address, job_number, job_ledger_id, labor_rate, job_date, created_at, distance_miles, invoice_link')
           .order('created_at', { ascending: false })
         jobs = legacy.data as LaborJob[] | null
         jobsErr = legacy.error
@@ -74,10 +74,11 @@ export function useSubLaborLedger({
     if (jobsErr) {
       setError(jobsErr.message)
       setLaborJobs([])
-      setLaborJobNamesByHcp({})
+      setLaborJobNamesByJobId({})
     } else if (jobs?.length) {
       const jobIds = jobs.map((j) => j.id)
-      const hcpNumbers = [...new Set((jobs as LaborJob[]).map((j) => (j.job_number ?? '').trim()).filter(Boolean))]
+      // v2.3065: job names by the sheet's link, not by number text.
+      const linkedJobIds = [...new Set((jobs as LaborJob[]).map((j) => j.job_ledger_id ?? '').filter(Boolean))]
       const [itemsRes, paymentsRes, ledgerRes, assigneesRes] = await Promise.all([
         supabase
           .from('people_labor_job_items')
@@ -89,7 +90,7 @@ export function useSubLaborLedger({
           .select('id, job_id, amount, memo, created_at, payment_date')
           .in('job_id', jobIds)
           .order('sequence_order', { ascending: true }),
-        hcpNumbers.length > 0 ? supabase.rpc('get_jobs_ledger_by_hcp_numbers', { p_hcp_numbers: hcpNumbers }) : { data: [] },
+        linkedJobIds.length > 0 ? supabase.from('jobs_ledger').select('id, job_name').in('id', linkedJobIds) : { data: [] },
         // Junction rows + each assignee's CURRENT roster name — keys the
         // Outstanding roll-up by person id (v2.1737). Fail-soft: an error or
         // an RLS-hidden people row degrades to the legacy name grouping.
@@ -142,13 +143,7 @@ export function useSubLaborLedger({
         if (!paymentsByJob.has(p.job_id)) paymentsByJob.set(p.job_id, [])
         paymentsByJob.get(p.job_id)!.push({ id: p.id, amount: Number(p.amount), memo: p.memo, created_at: p.created_at, payment_date: p.payment_date })
       }
-      // Key click-only jobs too — the RPC resolves them (empty hcp, matching
-      // click_number) but keying hcp_number alone dropped their names.
-      setLaborJobNamesByHcp(
-        buildLaborJobNamesByNumber(
-          (ledgerJobs ?? []) as Array<{ hcp_number: string; click_number?: string | null; job_name: string }>,
-        ),
-      )
+      setLaborJobNamesByJobId(buildLaborJobNamesById((ledgerJobs ?? []) as Array<{ id: string; job_name: string | null }>))
       // Resolve project names for anchored sheets (display only, fail-soft).
       const projectIds = [...new Set((jobs as LaborJob[]).map((j) => j.project_id).filter((id): id is string => !!id))]
       const projectNamesById = new Map<string, string>()
@@ -178,7 +173,7 @@ export function useSubLaborLedger({
       onLaborJobsReloaded?.(mappedJobs)
     } else {
       setLaborJobs([])
-      setLaborJobNamesByHcp({})
+      setLaborJobNamesByJobId({})
       setLaborJobAssigneesByJobId(new Map())
     }
     setLaborJobsLoading(false)
@@ -277,7 +272,7 @@ export function useSubLaborLedger({
   return {
     laborJobs,
     setLaborJobs,
-    laborJobNamesByHcp,
+    laborJobNamesByJobId,
     laborJobAssigneesByJobId,
     laborJobsLoading,
     laborJobsLoadedOnce,

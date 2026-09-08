@@ -23,6 +23,8 @@ import { isRosterSub, type NeedsWorkOrderRosterPerson } from './rosterSub'
 export type NeedsWorkOrderSheet = {
   id: string
   job_number: string | null
+  /** The sheet's job link (v2.3055); the number is display text and only a fallback for a sheet with no link. */
+  job_ledger_id?: string | null
   address: string
   assigned_to_name: string
   labor_rate: number | null
@@ -62,6 +64,16 @@ export type SheetsNeedingWorkOrderInput = {
 
 const numberKey = (n: string | null | undefined) => (n ?? '').trim().toLowerCase()
 
+/** The Pipeline job behind a sheet: its link (v2.3065), else — only for a sheet with no link — its number. */
+export function sheetJob<J extends { id: string }>(
+  sheet: Pick<NeedsWorkOrderSheet, 'job_number' | 'job_ledger_id'>,
+  jobsById: ReadonlyMap<string, J>,
+  jobsByNumber: ReadonlyMap<string, J>,
+): J | null {
+  if (sheet.job_ledger_id) return jobsById.get(sheet.job_ledger_id) ?? null
+  return jobsByNumber.get(numberKey(sheet.job_number)) ?? null
+}
+
 /** True when every assignee on the sheet is a roster sub (junction first, then the delimited name column). Unresolved names do not count. */
 export function isRosterSubSheet(
   sheet: Pick<NeedsWorkOrderSheet, 'id' | 'assigned_to_name'>,
@@ -84,6 +96,7 @@ export function sheetsNeedingWorkOrder(input: SheetsNeedingWorkOrderInput): Need
     if (k && !personByNameKey.has(k)) personByNameKey.set(k, p)
   }
   const jobsByNumber = new Map(input.jobs.map((j) => [numberKey(j.hcp_number), j]))
+  const jobsById = new Map(input.jobs.map((j) => [j.id, j]))
   const rowsBySheetId = new Map<string, WorkOrderRowLike[]>()
   const rowsByJobId = new Map<string, WorkOrderRowLike[]>()
   for (const r of input.commitments) {
@@ -97,7 +110,7 @@ export function sheetsNeedingWorkOrder(input: SheetsNeedingWorkOrderInput): Need
     const bal = subLaborJobBalance({ labor_rate: sheet.labor_rate, items: sheet.items, payments: sheet.payments })
     const unpriced = bal.totalCost === 0 && bal.paid === 0 && bal.backcharges === 0
     if (!unpriced && bal.balance <= 0) continue
-    const job = jobsByNumber.get(numberKey(sheet.job_number)) ?? null
+    const job = sheetJob(sheet, jobsById, jobsByNumber)
     const covering = [...(rowsBySheetId.get(sheet.id) ?? []), ...(job ? (rowsByJobId.get(job.id) ?? []) : [])]
     const c = buildJobWorkOrderCoverage(covering, input.todayYmd)
     if (c.kind !== 'none' && c.kind !== 'declined') continue

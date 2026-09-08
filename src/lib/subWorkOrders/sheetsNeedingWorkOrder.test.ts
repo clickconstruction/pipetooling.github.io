@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { isRosterSub, isRosterSubSheet, sheetsNeedingWorkOrder, type NeedsWorkOrderSheet } from './sheetsNeedingWorkOrder'
+import { isRosterSub, isRosterSubSheet, sheetJob, sheetsNeedingWorkOrder, type NeedsWorkOrderSheet } from './sheetsNeedingWorkOrder'
 import type { WorkOrderRowLike } from './workOrderCoverage'
 
 const TODAY = '2026-09-05'
@@ -119,5 +119,23 @@ describe('sheetsNeedingWorkOrder — sheets outside the Pipeline', () => {
       sheet({ id: 'c', job_number: '273', assigned_to_name: 'Edgar' }),
     ])
     expect(rows.map((r) => r.sheetId)).toEqual(['b', 'c', 'a'])
+  })
+
+  it('v2.3065: sheetJob reads the link first and the number only for a link-less sheet', () => {
+    const byId = new Map(JOBS.map((j) => [j.id, j]))
+    const byNumber = new Map(JOBS.map((j) => [j.hcp_number.toLowerCase(), j]))
+    expect(sheetJob({ job_number: 'OLD', job_ledger_id: 'j-273' }, byId, byNumber)?.id).toBe('j-273')
+    expect(sheetJob({ job_number: ' 892 ', job_ledger_id: null }, byId, byNumber)?.id).toBe('j-892')
+    expect(sheetJob({ job_number: '892', job_ledger_id: 'gone' }, byId, byNumber)).toBeNull()
+    const rows = sheetsNeedingWorkOrder({
+      sheets: [sheet({ id: 's1', job_number: 'OLD', job_ledger_id: 'j-273' })],
+      assigneesBySheetId: new Map(),
+      roster: ROSTER,
+      commitments: [],
+      jobs: JOBS,
+      todayYmd: TODAY,
+    })
+    expect(rows[0]?.jobId).toBe('j-273')
+    expect(rows[0]?.primary).toBe('#273 · Dudley')
   })
 })

@@ -70,8 +70,9 @@ describe('subLaborJobBalance', () => {
 })
 
 describe('subLaborJobMatchesSearch', () => {
-  const names = { j100: 'Reliant Health' }
-  const j = job({ assigned_to_name: 'Mike Z', job_number: 'J100', address: '55 Oak Ave' })
+  // v2.3065: job names are keyed by the sheet's job link, not its number text.
+  const names = { 'job-100': 'Reliant Health' }
+  const j = job({ assigned_to_name: 'Mike Z', job_number: 'J100', job_ledger_id: 'job-100', address: '55 Oak Ave' })
 
   it('empty query matches everything', () => {
     expect(subLaborJobMatchesSearch(j, '   ', names)).toBe(true)

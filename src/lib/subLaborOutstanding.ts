@@ -43,24 +43,24 @@ export function subLaborJobBalance(job: SubLaborBalanceInput): SubLaborJobBalanc
 }
 
 /** Fields the Sub Labor search box matches against. */
-export type SubLaborSearchable = Pick<LaborJob, 'assigned_to_name' | 'job_number' | 'address'>
+export type SubLaborSearchable = Pick<LaborJob, 'assigned_to_name' | 'job_number' | 'address' | 'job_ledger_id'>
 
 /**
- * Whether a job matches the tab search: contractor, HCP number, address, or the
- * resolved job name for that HCP. Empty/blank query matches everything. The
+ * Whether a job matches the tab search: contractor, number, address, or the
+ * linked job's name (by the sheet's job_ledger_id, v2.3065). Empty/blank query matches everything. The
  * query is normalized internally — callers pass the raw box value.
  */
 export function subLaborJobMatchesSearch(
   job: SubLaborSearchable,
   query: string,
-  laborJobNamesByHcp: Record<string, string>,
+  laborJobNamesByJobId: Record<string, string>,
 ): boolean {
   const q = query.trim().toLowerCase()
   if (!q) return true
   const contractor = (job.assigned_to_name ?? '').toLowerCase()
   const hcp = (job.job_number ?? '').toLowerCase()
   const addr = (job.address ?? '').toLowerCase()
-  const jobName = laborJobNamesByHcp[(job.job_number ?? '').trim().toLowerCase()]?.toLowerCase() ?? ''
+  const jobName = (job.job_ledger_id ? laborJobNamesByJobId[job.job_ledger_id] : undefined)?.toLowerCase() ?? ''
   return contractor.includes(q) || hcp.includes(q) || addr.includes(q) || jobName.includes(q)
 }
 

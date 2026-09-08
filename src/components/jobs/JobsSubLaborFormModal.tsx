@@ -186,7 +186,8 @@ function JobsSubLaborFormModalInner(
   const [assemblerInitial, setAssemblerInitial] = useState<WorkOrderAssemblerInitial | null>(null)
   const sheetJobForAssembler = editingLaborJob
     ? (laborPickedJobId ? jobs.find((j) => j.id === laborPickedJobId) : undefined) ??
-      jobs.find((j) => (j.hcp_number ?? '').trim().toLowerCase() === (editingLaborJob.job_number ?? '').trim().toLowerCase()) ??
+      // v2.3065: the sheet's link first; the number only for a sheet that never got one.
+      (editingLaborJob.job_ledger_id ? jobs.find((j) => j.id === editingLaborJob.job_ledger_id) : jobs.find((j) => (j.hcp_number ?? '').trim().toLowerCase() === (editingLaborJob.job_number ?? '').trim().toLowerCase())) ??
       null
     : null
   /**
@@ -1155,7 +1156,8 @@ function JobsSubLaborFormModalInner(
   // resolves. Only fills an empty pick; never overrides a job the user chose.
   useEffect(() => {
     if (!editingLaborJob || laborPickedJobId) return
-    const match = resolveSubLaborJobByNumber(jobs, laborJobNumber)
+    // v2.3065: the sheet's link first; the typed number only for a sheet that never got one.
+    const match = (editingLaborJob.job_ledger_id ? jobs.find((j) => j.id === editingLaborJob.job_ledger_id) : undefined) ?? resolveSubLaborJobByNumber(jobs, laborJobNumber)
     if (match) setLaborPickedJobId(match.id)
   }, [editingLaborJob, jobs, laborJobNumber, laborPickedJobId])
 
