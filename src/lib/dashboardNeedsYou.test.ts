@@ -28,6 +28,7 @@ function inputs(overrides: Partial<NeedsYouInputs> = {}): NeedsYouInputs {
     claimDevLookbackDays: 7,
     robotAuditsEnabled: true,
     robotAuditsPending: 0,
+    robotLockedShadows: null,
     d22UncodedEnabled: true,
     d22UncodedCount: 0,
     lienUnconditionalEnabled: true,
@@ -380,6 +381,41 @@ describe('buildNeedsYouItems', () => {
     expect(many[0]?.title).toBe('23 robot bids are waiting on your audit')
     expect(many[0]?.figure).toBe('23')
     expect(buildNeedsYouItems(inputs({ robotAuditsPending: 120 }))[0]?.figure).toBe('99+')
+  })
+
+  it('robot-locked (v2.3126): no sealed shadows (null, [], or disabled) → no item', () => {
+    expect(buildNeedsYouItems(inputs({ robotLockedShadows: null }))).toEqual([])
+    expect(buildNeedsYouItems(inputs({ robotLockedShadows: [] }))).toEqual([])
+    const sealed = [{ shadowBid: '490', referenceBid: '481', project: 'Galloway Park', lockedAt: '2026-09-06T12:00:00Z', teacher: 'Wendi' }]
+    expect(buildNeedsYouItems(inputs({ robotAuditsEnabled: false, robotLockedShadows: sealed }))).toEqual([])
+  })
+
+  it('robot-locked (v2.3126): one names the bid, many count them — blue, figure = count, opens Shadows', () => {
+    const one = buildNeedsYouItems(inputs({
+      robotLockedShadows: [{ shadowBid: '490', referenceBid: '481', project: 'Galloway Park', lockedAt: '2026-09-06T12:00:00Z', teacher: 'Wendi' }],
+    }))
+    expect(one[0]).toMatchObject({
+      key: 'robot-locked',
+      severity: 'blue',
+      kicker: 'Robot bid',
+      title: 'The robot has a sealed number on b481 (Galloway Park)',
+      figure: '1',
+      actionLabel: 'Open Shadows',
+    })
+    expect(one[0]?.detail).toBe('Locked before ours went out — the score lands the moment we send. Nothing to do; this is the head start.')
+    expect(needsYouKind(one[0] as NeedsYouItem)).toBe('company')
+    const many = buildNeedsYouItems(inputs({
+      robotLockedShadows: [
+        { shadowBid: '492', referenceBid: '485', project: null, lockedAt: '2026-09-07T09:00:00Z', teacher: null },
+        { shadowBid: '491', referenceBid: '483', project: 'Elm St', lockedAt: '2026-09-06T18:00:00Z', teacher: 'Wendi' },
+        { shadowBid: '490', referenceBid: '481', project: 'Galloway Park', lockedAt: '2026-09-06T12:00:00Z', teacher: 'Wendi' },
+      ],
+    }))
+    expect(many[0]?.title).toBe('The robot has sealed numbers on 3 live bids')
+    expect(many[0]?.figure).toBe('3')
+    expect(buildNeedsYouItems(inputs({
+      robotLockedShadows: [{ shadowBid: '490', referenceBid: '481', project: null, lockedAt: '2026-09-06T12:00:00Z', teacher: null }],
+    }))[0]?.title).toBe('The robot has a sealed number on b481')
   })
 
   it('d22-uncoded (v2.2627): amber hygiene item for the ledger-teaching roles, gone at zero or when disabled', () => {

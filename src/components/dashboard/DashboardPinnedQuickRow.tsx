@@ -21,6 +21,7 @@ import { gcReviewNudgeState, gcReviewWeekdayIndex } from '../../lib/jobs/gcRevie
 import { useLostBidNudge } from '../../hooks/useLostBidNudge'
 import { useBulkDeleteNudge } from '../../hooks/useBulkDeleteNudge'
 import { useBidAuditsPendingCount } from '../../hooks/useBidAuditsPendingCount'
+import { useRobotLockedShadows } from '../../hooks/useRobotLockedShadows'
 import { canWorkRobotAudits } from '../../lib/bids/bidAudits'
 import { useSpecSectionUncodedCount } from '../../hooks/useSpecSectionUncodedCount'
 import { useLienReleasesOwedNudge } from '../../hooks/useLienReleasesOwedNudge'
@@ -358,6 +359,8 @@ export function DashboardPinnedQuickRow({
   // hook's sealed-shadow hold keeps unworkable audits out.
   const robotAuditsEnabled = !hideBanners && Boolean(authUserId) && canWorkRobotAudits(role)
   const { pending: robotAuditsPending } = useBidAuditsPendingCount(robotAuditsEnabled)
+  // Sealed robot numbers on live bids (v2.3126) — same audience; the head start, not a queue.
+  const { locked: robotLockedShadows } = useRobotLockedShadows(robotAuditsEnabled)
 
   // Division 22 uncoded names (v2.2627) — the ledger-teaching roles only.
   const d22UncodedEnabled = !hideBanners && Boolean(authUserId) && (role === 'dev' || role === 'estimator')
@@ -423,6 +426,7 @@ export function DashboardPinnedQuickRow({
     claimDevLookbackDays: CLAIM_DEV_LOOKBACK_DAYS,
     robotAuditsEnabled,
     robotAuditsPending,
+    robotLockedShadows,
     d22UncodedEnabled,
     d22UncodedCount,
     lienUnconditionalEnabled,
@@ -562,6 +566,8 @@ export function DashboardPinnedQuickRow({
               navigate('/settings?tab=settings-advanced-tools#settings-claim-code')
             } else if (item.key === 'robot-audits') {
               navigate('/bids?tab=audits')
+            } else if (item.key === 'robot-locked') {
+              navigate('/bids?tab=robot-shadows')
             } else if (item.key === 'd22-uncoded') {
               navigate('/bids?tab=pricing&d22audit=1')
             } else if (item.key === 'lien-unconditional') {
