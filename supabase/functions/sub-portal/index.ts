@@ -184,7 +184,7 @@ serve(async (req) => {
     if (laborJobIds.length > 0) {
       const { data: sheetsRaw } = await admin
         .from('people_labor_jobs')
-        .select('id, address, job_number, job_date, labor_rate, stage, stage_changed_at, stage_source, payable_after, pay_hold_reason, progress_pct, progress_note, progress_at')
+        .select('id, address, job_number, job_ledger_id, job_date, labor_rate, stage, stage_changed_at, stage_source, payable_after, pay_hold_reason, progress_pct, progress_note, progress_at')
         .in('id', laborJobIds)
         .limit(500)
       sheetRows = (sheetsRaw ?? []) as SubSheetRow[]
@@ -202,21 +202,25 @@ serve(async (req) => {
 
     // Plans online (v2.2922): the sheet's Pipeline job carries a plans link (Edit Job → Files &
     // Plans); its bid carries the CountTooling set. Job link first, bid as the fallback, else none.
-    const jobNumbers = [...new Set(sheetRows.map((s) => (s.job_number ?? '').trim()).filter(Boolean))]
-    if (jobNumbers.length > 0) {
+    // v2.3071: the sheet's job is its job_ledger_id — no number matching. The same read
+    // gives "Your days" the job's real number for office-set sheet days.
+    const jobNumberById = new Map<string, string>()
+    const linkedJobIds = [...new Set(sheetRows.map((s) => s.job_ledger_id ?? '').filter(Boolean))]
+    if (linkedJobIds.length > 0) {
       const { data: jobsRaw } = await admin
         .from('jobs_ledger')
-        .select('hcp_number, job_plans_link, bid:bid_id(count_tooling_plans_link)')
-        .in('hcp_number', jobNumbers)
+        .select('id, hcp_number, click_number, job_plans_link, bid:bid_id(count_tooling_plans_link)')
+        .in('id', linkedJobIds)
         .limit(500)
-      const plansByNumber = new Map<string, string>()
-      for (const j of (jobsRaw ?? []) as Array<{ hcp_number: string | null; job_plans_link: string | null; bid: { count_tooling_plans_link: string | null } | { count_tooling_plans_link: string | null }[] | null }>) {
-        const key = (j.hcp_number ?? '').trim().toLowerCase()
+      const plansById = new Map<string, string>()
+      for (const j of (jobsRaw ?? []) as Array<{ id: string; hcp_number: string | null; click_number: string | null; job_plans_link: string | null; bid: { count_tooling_plans_link: string | null } | { count_tooling_plans_link: string | null }[] | null }>) {
         const bid = Array.isArray(j.bid) ? j.bid[0] ?? null : j.bid
         const url = (j.job_plans_link ?? '').trim() || (bid?.count_tooling_plans_link ?? '').trim()
-        if (key && url && !plansByNumber.has(key)) plansByNumber.set(key, url)
+        if (url) plansById.set(j.id, url)
+        const num = (j.hcp_number ?? '').trim() || (j.click_number ?? '').trim()
+        if (num) jobNumberById.set(j.id, num)
       }
-      for (const s of sheetRows) s.plans_url = plansByNumber.get((s.job_number ?? '').trim().toLowerCase()) ?? null
+      for (const s of sheetRows) s.plans_url = (s.job_ledger_id ? plansById.get(s.job_ledger_id) : undefined) ?? null
       // Viewer grants (2026-09-06): a CountTooling view link gets a short-lived, signed grant
       // (`&g=`) that vouches for this sub, so CountTooling skips its email gate and logs the
       // visit under their name (_shared/viewGrant.ts; CountTooling verifies with the same
@@ -361,7 +365,7 @@ serve(async (req) => {
       for (const sh of sheetRows) {
         const d = (sh.job_date ?? '').trim()
         if (!d || d < todayYmd || coveredSheetIds.has(sh.id)) continue
-        const num = (sh.job_number ?? '').trim() || null
+        const num = (sh.job_ledger_id ? jobNumberById.get(sh.job_ledger_id) : undefined) ?? ((sh.job_number ?? '').trim() || null)
         bookings.push({ start: d, end: d, label: num ? `#${num}` : 'Sheet', address: cleanPortalAddress(sh.address), jobNumber: num, source: 'office', commitmentId: null, note: null })
       }
     }

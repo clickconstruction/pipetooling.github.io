@@ -334,10 +334,10 @@ serve(async (req) => {
       if (!junction) return jsonResponse({ error: 'Not found' }, 404)
       const { data: sheet } = await admin
         .from('people_labor_jobs')
-        .select('id, stage, job_number, address')
+        .select('id, stage, job_number, job_ledger_id, address')
         .eq('id', laborJobId)
         .maybeSingle()
-      const sheetRow = sheet as { id: string; stage: string | null; job_number: string | null; address: string | null } | null
+      const sheetRow = sheet as { id: string; stage: string | null; job_number: string | null; job_ledger_id: string | null; address: string | null } | null
       if (!sheetRow) return jsonResponse({ error: 'Not found' }, 404)
       if ((sheetRow.stage ?? 'working') !== 'working') {
         return jsonResponse({ error: 'This job is already past the work stage — call the office if something changed.' }, 409)
@@ -364,9 +364,9 @@ serve(async (req) => {
         return jsonResponse({ error: 'Something went wrong. Please try again.' }, moveErr ? 500 : 409)
       }
       const where = [sheetRow.job_number, sheetRow.address].map((v) => (v ?? '').trim()).filter(Boolean).join(' ')
-      if ((sheetRow.job_number ?? '').trim()) {
-        const { data: jobRow } = await admin.from('jobs_ledger').select('id').eq('hcp_number', sheetRow.job_number!.trim()).maybeSingle()
-        const jobId = (jobRow as { id: string } | null)?.id
+      // v2.3071: the sheet's job link, not a number match.
+      {
+        const jobId = sheetRow.job_ledger_id
         if (jobId) await notifyJobWatchers(admin, { jobId, kind: 'done', subName: personName, line: `${personName} says their work is done — call it in for inspection`, detail: note || null })
       }
       await insertDispatchNote(admin, link, `Ready to walk — ${personName} · ${where || 'sub sheet'}`, {
@@ -391,8 +391,8 @@ serve(async (req) => {
       if (!laborJobId || (pct == null && !note)) return jsonResponse({ error: 'Bad request' }, 400)
       const { data: junction } = await admin.from('people_labor_job_assignees').select('labor_job_id').eq('labor_job_id', laborJobId).eq('person_id', link.person_id).maybeSingle()
       if (!junction) return jsonResponse({ error: 'Not found' }, 404)
-      const { data: sheet } = await admin.from('people_labor_jobs').select('id, stage, job_number, address, step_id, progress_pct').eq('id', laborJobId).maybeSingle()
-      const sheetRow = sheet as { id: string; stage: string | null; job_number: string | null; address: string | null; step_id: string | null; progress_pct: number | null } | null
+      const { data: sheet } = await admin.from('people_labor_jobs').select('id, stage, job_number, job_ledger_id, address, step_id, progress_pct').eq('id', laborJobId).maybeSingle()
+      const sheetRow = sheet as { id: string; stage: string | null; job_number: string | null; job_ledger_id: string | null; address: string | null; step_id: string | null; progress_pct: number | null } | null
       if (!sheetRow) return jsonResponse({ error: 'Not found' }, 404)
       if ((sheetRow.stage ?? 'working') !== 'working') return jsonResponse({ error: 'This job is already past the work stage — call the office if something changed.' }, 409)
       const nowIso = new Date().toISOString()
@@ -407,10 +407,9 @@ serve(async (req) => {
       }
       if (sheetRow.step_id && pct != null) await admin.from('project_workflow_steps').update({ percent_complete: pct }).eq('id', sheetRow.step_id)
       // The job's activity feed hears every report (the watchers' emails read it later).
-      const jobNumber = (sheetRow.job_number ?? '').trim()
-      if (jobNumber) {
-        const { data: job } = await admin.from('jobs_ledger').select('id').eq('hcp_number', jobNumber).maybeSingle()
-        const jobId = (job as { id: string } | null)?.id
+      // v2.3071: the sheet's job link, not a number match.
+      {
+        const jobId = sheetRow.job_ledger_id
         if (jobId) {
           await admin.from('job_activity_events').insert({
             job_id: jobId,
