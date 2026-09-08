@@ -48,7 +48,7 @@ import { summarizeTakeoffCoverage } from '../../lib/bids/takeoffCoverage'
 import { planRememberForBook } from '../../lib/bids/takeoffBookLearn'
 import { rememberFixtureForBook } from '../../lib/bids/takeoffBookLearnWrite'
 import type { TakeoffFixtureHistoryLine } from '../../types/database-functions'
-import { readStoredTakeoffView, writeStoredTakeoffView, type TakeoffView } from '../../lib/bids/takeoffView'
+import { hasStoredTakeoffView, readStoredTakeoffView, writeStoredTakeoffView, type TakeoffView } from '../../lib/bids/takeoffView'
 import { pickHopRow, rowIdFromTakeoffTableTarget } from '../../lib/bids/takeoffHop'
 import { bookFillMessage, fillFromBookLabel, planBookFill } from '../../lib/bids/takeoffBookFill'
 import { MyBidsToggle } from './MyBidsToggle'
@@ -471,12 +471,16 @@ export function BidsTakeoffTab({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab, selectedBidForTakeoff?.id, selectedTakeoffBookVersionId])
   const takeoffIsRough = normalizeMaterialsModel(selectedBidForTakeoff?.materials_model) === 'rough'
-  // The view chooser (v2.3082): every time a Combined bid is opened here, ask which view to work in.
+  // The view chooser (v2.3082): a Combined bid opened here asks which view to work in — but only
+  // until this device has picked once (v2.3165, Wendi: "stop asking me every time"). After that the
+  // remembered view opens straight away and the pills beside the bid name are the way to switch.
   // By Stage bids skip it (One at a time / Sheet are Combined-only). A pick goes through
   // switchTakeoffView so the device remembers it and the seamless hop still lands the fixture.
   const [takeoffChooserOpen, setTakeoffChooserOpen] = useState(false)
   useEffect(() => {
-    setTakeoffChooserOpen(!!selectedBidForTakeoff?.id && takeoffIsRough)
+    setTakeoffChooserOpen(
+      !!selectedBidForTakeoff?.id && takeoffIsRough && !hasStoredTakeoffView(typeof window !== 'undefined' ? window.localStorage : null),
+    )
   }, [selectedBidForTakeoff?.id, takeoffIsRough])
   const bookFillPlan = useMemo(() => {
     if (!takeoffIsRough || !selectedTakeoffBookVersionId || takeoffBookEntriesVersionId !== selectedTakeoffBookVersionId) return null
@@ -1918,6 +1922,8 @@ export function BidsTakeoffTab({
                   onPick={(v) => {
                     setTakeoffChooserOpen(false)
                     if (v !== takeoffView) switchTakeoffView(v)
+                    // Picking the view already showing still counts as the device's pick (v2.3165).
+                    else writeStoredTakeoffView(typeof window !== 'undefined' ? window.localStorage : null, v)
                   }}
                 />
               ) : null}

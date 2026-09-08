@@ -12,7 +12,7 @@ Old stays the default and stays untouched until One at a time / Sheet have carri
 
 ## Validation 2026-09-05
 
-- Pills are live; the stored view defaults to `old` (`src/lib/bids/takeoffView.ts`, `readStoredTakeoffView`). Since v2.3082 the chooser asks on every Combined bid open, so "which view do people pick" is now a live choice, not a device default.
+- Pills are live; the stored view defaults to `old` (`src/lib/bids/takeoffView.ts`, `readStoredTakeoffView`). v2.3082 made the chooser ask on every Combined bid open; v2.3165 (2026-09-08, Wendi's ask) made it ask once per device and remember — so "which view do people pick" is each device's first pick plus the pill switches after it, not a per-open choice.
 - Nothing since v2.2784 touches retirement; no fragment mentions PR 8 or PR 9.
 - v2.2784 shipped the "what must not die with Old" hardening (shared model toggle, row jumps, smokes, retirement-readiness notes) — that is the checklist PR 9 must satisfy.
 
