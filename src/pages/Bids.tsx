@@ -12,6 +12,7 @@ import { upsertBidNotesReadWatermark } from '../lib/userBidNotesReadState'
 import { isRobotBid, partitionBidsByScope } from '../lib/bidBoardScope'
 import { bidSentCounts, withScopeLabel, type BidSentScope } from '../lib/bids/bidSentCounts'
 import { formatErrorMessage, OperationTimeoutError, withOperationTimeout, withSupabaseRetry } from '../utils/errorHandling'
+import { computeBidDistanceToOffice } from '../lib/bidDistanceToOffice'
 import { useAuth } from '../hooks/useAuth'
 import { isAssistantLike } from '../lib/subcontractorLikeRole'
 import { useWorkingBoardInboxCount } from '../hooks/useWorkingBoardInboxCount'
@@ -2329,6 +2330,23 @@ export default function Bids() {
     return buildBidSavePayload({ values: bidForm.values, bidDateSent, editing: !!editingBid, canEditBidNumber: canEditBidNumber() })
   }
 
+  /**
+   * v2.3142: a blank Distance to Office fills itself from the address when a
+   * bid is CREATED — the field used to fill only when someone edited the
+   * address in the form, so bids entered other ways never got one. A typed
+   * number is never overwritten; the Edit autosave path leaves it to the
+   * address field's blur (measuring on every debounce would spam geocoding).
+   */
+  async function createPayloadWithDistance(): Promise<BidSavePayload> {
+    const payload = buildBidPayload()
+    const v = bidForm.values
+    if (v.distanceFromOffice.trim() || !v.address.trim()) return payload
+    const measured = await computeBidDistanceToOffice(v.address).catch(() => null)
+    if (!measured?.ok) return payload
+    bidForm.setters.setDistanceFromOffice(measured.milesText)
+    return { ...payload, distance_from_office: measured.milesText }
+  }
+
   /** After a bid row changes, every tab holding that bid gets the fresh copy. */
   function syncFreshBidIntoSelections(bidId: string, rows: BidWithBuilder[]) {
     const fresh = rows.find((b) => b.id === bidId)
@@ -2495,7 +2513,7 @@ export default function Bids() {
     }
     setSavingBid(true)
     setError(null)
-    const payload = buildBidPayload()
+    const payload = await createPayloadWithDistance()
     const payloadWithAttest = { ...payload, ...getBidDateSentAttestationPayloadMerge() }
     const followupNoteToSave = pendingBidSentFollowupSubmissionNote
     let bidIdForFollowup: string | null = null
@@ -2591,7 +2609,7 @@ export default function Bids() {
     // New Bid: Create and open counts.
     setSavingBid(true)
     setError(null)
-    const payloadWithAttestCounts = { ...buildBidPayload(), ...getBidDateSentAttestationPayloadMerge() }
+    const payloadWithAttestCounts = { ...(await createPayloadWithDistance()), ...getBidDateSentAttestationPayloadMerge() }
     const followupNoteToSaveCounts = pendingBidSentFollowupSubmissionNote
     const { data: inserted, error: err } = await supabase
       .from('bids')

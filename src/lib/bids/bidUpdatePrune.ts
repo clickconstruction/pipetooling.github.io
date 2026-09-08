@@ -53,6 +53,7 @@ const FIELD_GROUPS: readonly FieldGroup[] = [
   { keys: ['agreed_value'], dirty: (c, i) => c.agreedValue !== i.agreedValue },
   { keys: ['profit'], dirty: (c, i) => c.profit !== i.profit },
   { keys: ['distance_from_office'], dirty: (c, i) => c.distanceFromOffice !== i.distanceFromOffice },
+  { keys: ['robot_opt_out'], dirty: (c, i) => c.robotOptOut !== i.robotOptOut },
   { keys: ['notes'], dirty: (c, i) => c.notes !== i.notes },
   { keys: ['service_type_id'], dirty: (c, i) => c.formServiceTypeId !== i.formServiceTypeId },
 ]

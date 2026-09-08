@@ -23,6 +23,13 @@ describe('isShadowEligibleLiveBid', () => {
     expect(isShadowEligibleLiveBid(liveBid({ plans_link: '   ' }))).toBe(false)
   })
 
+  it('rejects a bid the estimator opted out of robot shadowing (v2.3142) — out of the queue AND the count', () => {
+    expect(isShadowEligibleLiveBid(liveBid({ robot_opt_out: true }))).toBe(false)
+    expect(isShadowEligibleLiveBid(liveBid({ robot_opt_out: false }))).toBe(true)
+    expect(isShadowEligibleLiveBid(liveBid({ robot_opt_out: null }))).toBe(true)
+    expect(shadowCoverage([liveBid({ bid_number: '400', robot_opt_out: true }), liveBid({ bid_number: '401' })], [])).toEqual({ covered: 0, live: 1, unreadable: [] })
+  })
+
   it("rejects 'ZZ ' sandbox bids, case-insensitively, like the SQL NOT ILIKE 'ZZ %'", () => {
     expect(isShadowEligibleLiveBid(liveBid({ project_name: 'ZZ robot practice' }))).toBe(false)
     expect(isShadowEligibleLiveBid(liveBid({ project_name: 'zz robot practice' }))).toBe(false)

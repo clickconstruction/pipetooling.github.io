@@ -16,6 +16,7 @@ import {
 import { formatProjectNumberLabel } from '../../lib/projectNumberLabel'
 import { itbLinkLabel } from '../../lib/itbLinks'
 import { computeBidDistanceToOffice } from '../../lib/bidDistanceToOffice'
+import { RobotReadinessLine } from './RobotReadinessLine'
 import { getBidServiceTypeTag } from '../../utils/unifiedJobBidSearch'
 import { BidWonJobActions } from './BidWonJobActions'
 import { isAssistantLike } from '../../lib/subcontractorLikeRole'
@@ -302,6 +303,7 @@ export function BidFormModal(props: BidFormModalProps) {
     notes,
     gcCustomerId,
     gcCustomerSearch,
+    robotOptOut,
   } = form.values
   const {
     setDriveLink,
@@ -336,6 +338,7 @@ export function BidFormModal(props: BidFormModalProps) {
     setNotes,
     setGcCustomerId,
     setGcCustomerSearch,
+    setRobotOptOut,
   } = form.setters
   const bidFormCanSubmit = form.canSubmit
   const bidFormMissingFields = form.missingFields
@@ -968,6 +971,19 @@ export function BidFormModal(props: BidFormModalProps) {
                     </div>
                   </div>
                 </div>
+                {/* v2.3142: will the robots shadow this bid? Green with the facts, amber
+                    with the fix, or neutral when opted out. Same probe the dispatcher uses. */}
+                <RobotReadinessLine
+                  plansLink={plansLink}
+                  address={address}
+                  distanceFromOffice={distanceFromOffice}
+                  bidDueDate={bidDueDate}
+                  serviceTypeId={formServiceTypeId}
+                  serviceTypeName={selectedServiceType?.name ?? ''}
+                  robotOptOut={robotOptOut}
+                  onRobotOptOutChange={setRobotOptOut}
+                  distanceBusy={distanceAutoStatus?.kind === 'busy'}
+                />
                 <div className="bid-form-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
                   <div>
                     <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Bid Submission</label>

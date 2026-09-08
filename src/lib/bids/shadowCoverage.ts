@@ -27,6 +27,8 @@ export interface ShadowCoverageBid {
    */
   plans_robot_readable?: boolean | null
   plans_robot_probe_note?: string | null
+  /** "Don't let robots shadow this bid" (v2.3142): out of the queue AND out of the count. */
+  robot_opt_out?: boolean | null
 }
 
 export interface ShadowCoverageStat {
@@ -52,6 +54,7 @@ export function isShadowEligibleLiveBid(b: ShadowCoverageBid): boolean {
   if (b.bid_date_sent != null) return false
   if (!b.plans_link?.trim()) return false
   if (/^zz /i.test((b.project_name ?? '').trimStart())) return false
+  if (b.robot_opt_out === true) return false
   return true
 }
 

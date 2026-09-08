@@ -32,6 +32,7 @@ function formValues(overrides: Partial<BidEditFormValues> = {}): BidEditFormValu
     agreedValue: '',
     profit: '',
     distanceFromOffice: '',
+    robotOptOut: false,
     lastContact: '',
     notes: '',
     gcCustomerId: '',

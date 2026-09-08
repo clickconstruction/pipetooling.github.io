@@ -15,6 +15,7 @@ The bid form's **Distance to Office (miles)** now fills itself from the **Projec
   - **"Driving miles via Google — from …"** — real driven miles.
   - **"≈ straight-line estimate — from …"** — a close approximation, used whenever live routing isn't available.
 - A number you typed yourself is **never overwritten** — auto-fill only fills blanks; ↻ recomputes only when you ask.
+- **Saving fills it too.** If Distance is still blank when you hit {{button:blue|Save bid}} and the bid has an address, it is measured and saved with the bid — so a bid entered without touching the address field still gets its miles.
 
 ## Where it measures from
 
