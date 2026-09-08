@@ -4992,6 +4992,57 @@ export type Database = {
         }
         Relationships: []
       }
+      esign_consents: {
+        Row: {
+          audience: string
+          clause_text: string
+          consent_version: number
+          consented_at: string
+          created_at: string
+          document_noun: string
+          id: string
+          ip: string | null
+          lang: string
+          method: string | null
+          printed_name: string | null
+          record_id: string
+          record_type: string
+          user_agent: string | null
+        }
+        Insert: {
+          audience: string
+          clause_text: string
+          consent_version: number
+          consented_at?: string
+          created_at?: string
+          document_noun: string
+          id?: string
+          ip?: string | null
+          lang: string
+          method?: string | null
+          printed_name?: string | null
+          record_id: string
+          record_type: string
+          user_agent?: string | null
+        }
+        Update: {
+          audience?: string
+          clause_text?: string
+          consent_version?: number
+          consented_at?: string
+          created_at?: string
+          document_noun?: string
+          id?: string
+          ip?: string | null
+          lang?: string
+          method?: string | null
+          printed_name?: string | null
+          record_id?: string
+          record_type?: string
+          user_agent?: string | null
+        }
+        Relationships: []
+      }
       estimate_catalog_item_events: {
         Row: {
           action: string
@@ -20021,6 +20072,10 @@ export type Database = {
           user_id: string
         }[]
       }
+      score_locked_shadows: {
+        Args: { p_reference_bid_id?: string }
+        Returns: number
+      }
       search_bids_for_clock: {
         Args: {
           p_search_text?: string
@@ -20202,6 +20257,8 @@ export type Database = {
         Args: { p_commitment_id: string; p_dry_run?: boolean }
         Returns: Json
       }
+      shadow_fmt_money: { Args: { v: number }; Returns: string }
+      shadow_fmt_pct: { Args: { v: number }; Returns: string }
       signed_agreement_notify_recipients: {
         Args: { p_master_user_id: string }
         Returns: string[]
