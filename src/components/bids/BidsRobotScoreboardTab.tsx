@@ -73,17 +73,21 @@ export function BidsRobotScoreboardTab({ auditPending, bids }: BidsRobotScoreboa
   const [scores, setScores] = useState<RunScoreRow[] | null>(null)
   const [shadows, setShadows] = useState<ShadowRunRow[] | null>(null)
   const [holdoutRefs, setHoldoutRefs] = useState<ReadonlySet<string>>(() => new Set())
+  // Calibration standards (v2.3099): users.calibration_standard ids. undefined
+  // = not loaded / column absent → backtests gate on gate_eligible alone.
+  const [standardIds, setStandardIds] = useState<ReadonlySet<string> | undefined>(undefined)
   const [loadError, setLoadError] = useState<string | null>(null)
 
   useEffect(() => {
     let cancelled = false
     void (async () => {
-      const [scoreRes, shadowRes, holdoutRes] = await Promise.all([
+      const [scoreRes, shadowRes, holdoutRes, standardRes] = await Promise.all([
         boardDb.from('twin_run_scores').select('*').order('scored_at', { ascending: false }),
         boardDb.rpc('list_shadow_runs'),
         // bids.holdout (v2.2942) — a missing column (client ahead of the
         // migration) reads as "no holdout designated yet", never an error.
         boardDb.from('bids').select('bid_number').eq('holdout', true),
+        boardDb.from('users').select('id').eq('calibration_standard', true),
       ])
       if (cancelled) return
       if (scoreRes.error) setLoadError(scoreRes.error.message)
@@ -94,6 +98,7 @@ export function BidsRobotScoreboardTab({ auditPending, bids }: BidsRobotScoreboa
         .map((b) => normalizeBidNumber(b.bid_number))
         .filter((n): n is string => n != null)
       setHoldoutRefs(new Set(holdoutNums))
+      if (!standardRes.error) setStandardIds(new Set(((standardRes.data ?? []) as Array<{ id: string }>).map((u) => u.id)))
     })()
     return () => {
       cancelled = true
@@ -101,10 +106,10 @@ export function BidsRobotScoreboardTab({ auditPending, bids }: BidsRobotScoreboa
   }, [])
 
   const cards = useMemo(
-    () => buildAxisCards(scores ?? [], shadows ?? [], { holdoutReferenceNumbers: holdoutRefs }),
-    [scores, shadows, holdoutRefs],
+    () => buildAxisCards(scores ?? [], shadows ?? [], { holdoutReferenceNumbers: holdoutRefs, standardTeacherIds: standardIds }),
+    [scores, shadows, holdoutRefs, standardIds],
   )
-  const ledger = useMemo(() => buildLedger(scores ?? [], shadows ?? []), [scores, shadows])
+  const ledger = useMemo(() => buildLedger(scores ?? [], shadows ?? [], { standardTeacherIds: standardIds }), [scores, shadows, standardIds])
   const gatedAxes = cards.filter((c) => c.chip.tone === 'met').length
   const lockedShadows = (shadows ?? []).filter((r) => r.status === 'locked' || r.status === 'open').length
   // Coverage pill (v2.2943, item 8): every uncovered live bid is a free future

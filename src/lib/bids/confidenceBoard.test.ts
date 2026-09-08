@@ -204,6 +204,46 @@ describe('buildAxisCards · teacher attribution', () => {
     expect(cards[0]!.practiceTeacherRuns).toBe(0)
   })
 
+  // Backtests (v2.3099): teacher stamped on the score, standing decided at read
+  // time against the calibration-standard id set.
+  it('sets a backtest against a non-standard teacher aside when a standard set is given', () => {
+    const scores = [
+      score({ run_label: 'BT-11', delta_pct: 59.9, teacher_user_id: 'malachi', teacher_name: 'Malachi', scored_at: '2026-08-31T12:00:00Z' }),
+      score({ run_label: 'BT-12', delta_pct: -2.6, teacher_user_id: 'malachi', teacher_name: 'Malachi', scored_at: '2026-08-31T14:00:00Z' }),
+      score({ run_label: 'R2-BT-9', delta_pct: 3, teacher_user_id: 'wendi', teacher_name: 'Wendi', scored_at: '2026-09-02T00:00:00Z' }),
+    ]
+    const withSet = buildAxisCards(scores, [], { standardTeacherIds: new Set(['wendi']) })[0]!
+    expect(withSet.scoredCount).toBe(1)
+    expect(withSet.practiceTeacherRuns).toBe(2)
+    expect(withSet.nextLine).toContain('2 practice-teacher runs set aside')
+    // Without a set (client ahead of the migration) nothing changes.
+    const withoutSet = buildAxisCards(scores, [])[0]!
+    expect(withoutSet.scoredCount).toBe(3)
+    expect(withoutSet.practiceTeacherRuns).toBe(0)
+  })
+
+  it('a backtest with no stamped teacher stays gate-eligible even when a standard set is given', () => {
+    const card = buildAxisCards([score({ run_label: 'BT-6', delta_pct: -39 })], [], { standardTeacherIds: new Set(['wendi']) })[0]!
+    expect(card.scoredCount).toBe(1)
+    expect(card.practiceTeacherRuns).toBe(0)
+  })
+
+  it('the ledger marks practice backtests and carries the teacher', () => {
+    const rows = buildLedger(
+      [
+        score({ run_label: 'BT-13', delta_pct: 4.6, teacher_user_id: 'william', teacher_name: 'William', gate_eligible: true }),
+        score({ run_label: 'BT-16', delta_pct: -57.5, teacher_user_id: 'wendi', teacher_name: 'Wendi', gate_eligible: true }),
+        score({ run_label: 'BT-15', delta_pct: -28, teacher_user_id: 'wendi', teacher_name: 'Wendi', gate_eligible: false }),
+      ],
+      [],
+      { standardTeacherIds: new Set(['wendi']) },
+    )
+    const byLabel = Object.fromEntries(rows.map((r) => [r.label, r]))
+    expect(byLabel['BT-13']).toMatchObject({ gate: 'practice', teacher: 'William', teacherStandard: false })
+    expect(byLabel['BT-16']).toMatchObject({ gate: 'eligible', teacher: 'Wendi', teacherStandard: true })
+    expect(byLabel['BT-15']!.gate).toBe('void') // void wins over teacher standing
+  })
+
   it('a practice-teacher miss cannot break a standard-teacher streak', () => {
     const cards = buildAxisCards(
       [],
