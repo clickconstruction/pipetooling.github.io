@@ -80,7 +80,10 @@ marginal cost to her.
   `?probe=all` records `bids.plans_robot_readable` (+ reason); the queue and
   dispatcher probe first and skip unreadable bids, listing them for repair;
   the Bid Board robot icon goes red-✕ and the Scoreboard shows an
-  "unreadable by robots" pill. (c) **Discipline**: b480 shadowed b378, an
+  "unreadable by robots" pill. Drive *folder* links — what estimators actually
+  file — are accepted too since v2.3117: the folder's PDFs are the plan set
+  (merged on fetch, `?part=` past the 60 MB cap), so a folder is only
+  unreadable when it is unshared or holds no PDF. (c) **Discipline**: b480 shadowed b378, an
   Electrical-division bid, and locked a $907k plumbing number against it —
   the dispatcher had no service-type filter. Fixed v2.3032 (plumbing-only
   claims at every door + `void_shadow`); the run was voided and the entries

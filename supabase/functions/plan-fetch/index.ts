@@ -1,5 +1,6 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { PDFDocument } from 'https://esm.sh/pdf-lib@1.17.1'
 
 // plan-fetch — the pipeline's plan-bytes door (estimator-twin pipeline, CT-1).
 // Streams a bid's plan set (the Drive file behind bids.plans_link) to an authorized
@@ -7,6 +8,12 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 // robot leg) can pull the PDF without holding a Google credential. Auth mirrors
 // drive-intake: X-Twin-Token (assignment-is-the-grant) or staff JWT (estimator+).
 // GET ?bid=b403 or POST {"bid":"b403"}. Responds with the raw PDF bytes.
+//
+// v2.3117: plans_link may also be a Drive FOLDER (what estimators actually file).
+// The folder's PDFs (name order) are one plan set: one PDF streams as-is, several
+// are merged with pdf-lib into one response; past the merge cap (60 MB summed) the
+// largest part streams alone with X-Plan-Parts / X-Plan-Note so the caller can pull
+// the rest one at a time with ?part=<n>.
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -61,6 +68,93 @@ function driveFileIdFromUrl(url: string): string | null {
   return m?.[1] ?? m?.[2] ?? null
 }
 
+// --- Drive folders (v2.3117) -----------------------------------------------
+// https://drive.google.com/drive/folders/<id>  or  /drive/u/N/folders/<id>
+// (optional ?usp=… / #… tails). Folder ids are shorter than file ids can be.
+function driveFolderIdFromUrl(url: string): string | null {
+  const m = /drive\.google\.com\/drive\/(?:u\/\d+\/)?folders\/([\w-]{10,})/.exec(url)
+  return m?.[1] ?? null
+}
+
+type DriveFile = { id: string; name: string; size: number | null; modifiedTime: string | null }
+type FolderListing = { status: number; files: DriveFile[] }
+
+const MERGE_CAP_BYTES = 60 * 1024 * 1024
+
+// Natural name order: "A-1.2" before "A-1.10", case-insensitive — the order an
+// estimator reads a plan set in, and the order ?part=<n> counts in.
+function byPlanName(a: DriveFile, b: DriveFile): number {
+  return a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' }) || a.id.localeCompare(b.id)
+}
+
+// Drive v3 files.list, PDFs only (Google-native docs and other mimes are ignored),
+// shared drives included, paginated. A folder the service account cannot see
+// answers 403/404 here — or an empty list, which the probe tells apart with a
+// metadata GET on the folder itself.
+async function listFolderPdfs(token: string, folderId: string): Promise<FolderListing> {
+  const files: DriveFile[] = []
+  let pageToken: string | undefined
+  for (let page = 0; page < 10; page++) {
+    const url = new URL('https://www.googleapis.com/drive/v3/files')
+    url.searchParams.set('q', `'${folderId}' in parents and trashed=false and mimeType='application/pdf'`)
+    url.searchParams.set('fields', 'nextPageToken,files(id,name,size,modifiedTime)')
+    url.searchParams.set('supportsAllDrives', 'true')
+    url.searchParams.set('includeItemsFromAllDrives', 'true')
+    url.searchParams.set('orderBy', 'name')
+    url.searchParams.set('pageSize', '200')
+    if (pageToken) url.searchParams.set('pageToken', pageToken)
+    const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } })
+    if (!res.ok) return { status: res.status, files: [] }
+    const body = await res.json().catch(() => ({})) as {
+      nextPageToken?: string
+      files?: Array<{ id?: string; name?: string; size?: string; modifiedTime?: string }>
+    }
+    for (const f of body.files ?? []) {
+      if (!f.id) continue
+      files.push({ id: f.id, name: f.name ?? f.id, size: f.size != null ? Number(f.size) : null, modifiedTime: f.modifiedTime ?? null })
+    }
+    pageToken = body.nextPageToken
+    if (!pageToken) break
+  }
+  files.sort(byPlanName)
+  return { status: 200, files }
+}
+
+// Is the folder itself visible to the service account? Used to tell "shared but
+// empty" from "not shared" when the listing comes back empty.
+async function folderVisible(token: string, folderId: string): Promise<number> {
+  const res = await fetch(`https://www.googleapis.com/drive/v3/files/${folderId}?fields=id,mimeType&supportsAllDrives=true`, {
+    headers: { Authorization: `Bearer ${token}` },
+  })
+  return res.status
+}
+
+// "folder · 3 PDFs, merged on fetch: A-1.pdf, A-2.pdf, A-3.pdf" — names capped so
+// the note stays readable in a tooltip; the count is always exact.
+function folderProbeNote(files: DriveFile[]): string {
+  const n = files.length
+  const head = `folder · ${n} PDF${n === 1 ? '' : 's'}, ${n === 1 ? 'streamed' : 'merged'} on fetch: `
+  const budget = 200
+  const shown: string[] = []
+  let used = 0
+  for (const f of files) {
+    const name = f.name.length > 48 ? `${f.name.slice(0, 45)}…` : f.name
+    if (used + name.length + 2 > budget && shown.length) break
+    shown.push(name)
+    used += name.length + 2
+  }
+  const rest = n - shown.length
+  return head + shown.join(', ') + (rest > 0 ? `, … (+${rest} more)` : '')
+}
+
+function safeFilename(project: unknown): string {
+  return String(project ?? 'plans').replace(/[^\w .-]/g, '_')
+}
+
+function sizeMb(bytes: number): string {
+  return (bytes / (1024 * 1024)).toFixed(1)
+}
+
 // --- "plans readable by robots" probe (v2.3080) ---------------------------
 // A live bid whose plans link the service account cannot read is invisible to
 // the shadow program (b480, 2026-09-06). The probe answers that question with a
@@ -69,11 +163,43 @@ function driveFileIdFromUrl(url: string): string | null {
 
 type ProbeResult = { readable: boolean; note: string | null; name?: string | null; mime?: string | null; size?: number | null }
 
+const NOT_SHARED_NOTE = 'Drive 404 — the folder is not shared with the intake service account (or was moved/deleted)'
+const NO_PERMISSION_NOTE = 'Drive 403 — the intake service account has no permission on this folder'
+
+// Folder probe (v2.3117): readable when the service account can list the folder
+// and it holds at least one PDF. Returns the listing too so the fetch path can
+// reuse it (one Drive round-trip, one recorded verdict).
+async function probeFolder(folderId: string, token: string): Promise<ProbeResult & { files: DriveFile[] }> {
+  const listing = await listFolderPdfs(token, folderId)
+  if (listing.status === 404) return { readable: false, note: NOT_SHARED_NOTE, files: [] }
+  if (listing.status === 403) return { readable: false, note: NO_PERMISSION_NOTE, files: [] }
+  if (listing.status !== 200) return { readable: false, note: `Drive ${listing.status} on folder listing`, files: [] }
+  if (!listing.files.length) {
+    // An unshared folder can list as empty rather than 404 — ask about the folder itself.
+    const vis = await folderVisible(token, folderId)
+    if (vis === 404) return { readable: false, note: NOT_SHARED_NOTE, files: [] }
+    if (vis === 403) return { readable: false, note: NO_PERMISSION_NOTE, files: [] }
+    return { readable: false, note: 'folder holds no PDF — upload the plan set', files: [] }
+  }
+  const total = listing.files.reduce((s, f) => s + (f.size ?? 0), 0)
+  return {
+    readable: true,
+    note: folderProbeNote(listing.files),
+    name: listing.files.length === 1 ? listing.files[0].name : `${listing.files.length} PDFs`,
+    mime: 'application/pdf',
+    size: total || null,
+    files: listing.files,
+  }
+}
+
 async function probePlansLink(plansLink: string | null, token: string | null): Promise<ProbeResult> {
   const link = String(plansLink ?? '').trim()
   if (!link) return { readable: false, note: 'no plans link on the bid' }
-  if (/drive\.google\.com\/drive\/(?:u\/\d+\/)?folders\//.test(link)) {
-    return { readable: false, note: 'plans link is a Drive FOLDER — link the plan-set PDF itself so robots can fetch it' }
+  const folderId = driveFolderIdFromUrl(link)
+  if (folderId) {
+    if (!token) return { readable: false, note: 'service account token unavailable' }
+    const { files: _files, ...r } = await probeFolder(folderId, token)
+    return r
   }
   const fileId = driveFileIdFromUrl(link)
   if (!fileId) return { readable: false, note: 'plans link is not a Google Drive file link — robots can only fetch Drive files' }
@@ -135,12 +261,14 @@ serve(async (req) => {
     let probe = params.get('probe')?.trim() ?? ''
     let limitRaw = params.get('limit')
     let force = params.get('force') === '1'
+    let partRaw = params.get('part')?.trim() ?? ''
     if (req.method === 'POST') {
-      const body = await req.json().catch(() => ({})) as { bid?: string; probe?: string; limit?: number; force?: boolean }
+      const body = await req.json().catch(() => ({})) as { bid?: string; probe?: string; limit?: number; force?: boolean; part?: number | string }
       if (!bidRef) bidRef = String(body.bid ?? '').trim()
       if (!probe) probe = String(body.probe ?? '').trim()
       if (limitRaw == null && body.limit != null) limitRaw = String(body.limit)
       if (body.force) force = true
+      if (!partRaw && body.part != null) partRaw = String(body.part).trim()
     }
 
     // Sweep: probe every live bid with a plans link that was never probed or
@@ -189,6 +317,103 @@ serve(async (req) => {
       return json({ error: 'Not your bid (assignment is the grant)' }, 403)
     }
     if (!bid.plans_link) return json({ error: `Bid ${bid.bid_number} has no plans_link — file the plans first (drive-intake / file_plans with a plans_url)` }, 404)
+
+    // --- folder link (v2.3117): the folder's PDFs, in name order, are the plan set ---
+    const folderId = driveFolderIdFromUrl(String(bid.plans_link))
+    if (folderId) {
+      const token = await googleAccessToken(saJson)
+      const fp = await probeFolder(folderId, token)
+      const { files: _files, ...verdict } = fp
+      await recordProbe(admin, bid.id, verdict)
+      if (!fp.readable) {
+        const status = fp.files.length === 0 && /holds no PDF/.test(fp.note ?? '') ? 404 : 502
+        return json({ error: `Drive folder: ${fp.note} — folder ${folderId}` }, status)
+      }
+      const files = fp.files
+      const who = `${isTwin ? 'twin' : 'staff'} ${callerId}`
+      const project = safeFilename(bid.project_name)
+      const folderHeaders = { ...corsHeaders, 'Access-Control-Expose-Headers': 'Content-Disposition, X-Plan-Parts, X-Plan-Note' }
+
+      // Stream one part of the folder as the file path streams a file.
+      const streamPart = async (f: DriveFile, filename: string, extra: Record<string, string> = {}): Promise<Response> => {
+        const src = await fetch(`https://www.googleapis.com/drive/v3/files/${f.id}?alt=media&supportsAllDrives=true`, {
+          headers: { Authorization: `Bearer ${token}` },
+        })
+        if (!src.ok || !src.body) {
+          await recordProbe(admin, bid.id, { readable: false, note: `Drive ${src.status} on fetch of "${f.name}" — is the folder shared with the intake service account?` })
+          return json({ error: `Drive fetch failed (${src.status}) on "${f.name}" — is the folder shared with the service account?` }, 502)
+        }
+        return new Response(src.body, {
+          headers: {
+            ...folderHeaders,
+            'Content-Type': src.headers.get('content-type') ?? 'application/pdf',
+            ...(src.headers.get('content-length') ? { 'Content-Length': src.headers.get('content-length')! } : {}),
+            'Content-Disposition': `attachment; filename="${filename}"`,
+            'X-Plan-Parts': String(files.length),
+            ...extra,
+          },
+        })
+      }
+
+      // ?part=<n> — one specific PDF, 1-based in name order.
+      if (partRaw) {
+        const n = Number(partRaw)
+        if (!Number.isInteger(n) || n < 1 || n > files.length) {
+          return json({ error: `part must be 1..${files.length} (name order): ${files.map((f, i) => `${i + 1}=${f.name}`).join(', ')}` }, 400)
+        }
+        const f = files[n - 1]
+        console.log(`[plan-fetch] ${who} ← bid ${bid.bid_number} folder ${folderId} part ${n}/${files.length} "${f.name}"`)
+        return streamPart(f, `${project} - ${safeFilename(f.name.replace(/\.pdf$/i, ''))} (part ${n} of ${files.length}).pdf`)
+      }
+
+      if (files.length === 1) {
+        console.log(`[plan-fetch] ${who} ← bid ${bid.bid_number} folder ${folderId} single "${files[0].name}"`)
+        return streamPart(files[0], `${project}.pdf`)
+      }
+
+      // Several PDFs: merge in name order — unless the set is too big to hold, in
+      // which case the largest part streams alone and the headers say so.
+      const total = files.reduce((s, f) => s + (f.size ?? 0), 0)
+      const largest = files.reduce((a, b) => ((b.size ?? 0) > (a.size ?? 0) ? b : a), files[0])
+      const capNote = `merged set exceeds 60 MB; streamed largest part only — stage_plan_pdf per part`
+      if (total > MERGE_CAP_BYTES) {
+        console.log(`[plan-fetch] ${who} ← bid ${bid.bid_number} folder ${folderId} ${files.length} PDFs ${sizeMb(total)} MB > cap; streaming largest "${largest.name}"`)
+        return streamPart(largest, `${project} - ${safeFilename(largest.name.replace(/\.pdf$/i, ''))} (largest of ${files.length}).pdf`, { 'X-Plan-Note': capNote })
+      }
+
+      try {
+        const merged = await PDFDocument.create()
+        for (const f of files) {
+          const src = await fetch(`https://www.googleapis.com/drive/v3/files/${f.id}?alt=media&supportsAllDrives=true`, {
+            headers: { Authorization: `Bearer ${token}` },
+          })
+          if (!src.ok) throw new Error(`Drive ${src.status} on "${f.name}"`)
+          const part = await PDFDocument.load(new Uint8Array(await src.arrayBuffer()), { ignoreEncryption: true })
+          const pages = await merged.copyPages(part, part.getPageIndices())
+          for (const p of pages) merged.addPage(p)
+        }
+        const bytes = await merged.save()
+        console.log(`[plan-fetch] ${who} ← bid ${bid.bid_number} folder ${folderId} merged ${files.length} PDFs → ${merged.getPageCount()} pages, ${sizeMb(bytes.byteLength)} MB`)
+        return new Response(bytes, {
+          headers: {
+            ...folderHeaders,
+            'Content-Type': 'application/pdf',
+            'Content-Length': String(bytes.byteLength),
+            'Content-Disposition': `attachment; filename="${project} - plans (merged ${files.length}).pdf"`,
+            'X-Plan-Parts': String(files.length),
+          },
+        })
+      } catch (e) {
+        // A part that pdf-lib cannot open (or a Drive hiccup mid-merge) must not
+        // make the whole set unreachable: stream the largest and say why.
+        const why = String(e instanceof Error ? e.message : e).slice(0, 160)
+        console.log(`[plan-fetch] ${who} ← bid ${bid.bid_number} folder ${folderId} merge failed (${why}); streaming largest "${largest.name}"`)
+        return streamPart(largest, `${project} - ${safeFilename(largest.name.replace(/\.pdf$/i, ''))} (largest of ${files.length}).pdf`, {
+          'X-Plan-Note': `merge failed (${why.replace(/[^\x20-\x7e]/g, '?')}); streamed largest part only — stage_plan_pdf per part`,
+        })
+      }
+    }
+
     const fileId = driveFileIdFromUrl(String(bid.plans_link))
     if (!fileId) return json({ error: `plans_link is not a Drive file link: ${bid.plans_link}` }, 422)
 
