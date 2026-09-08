@@ -116,6 +116,13 @@ export type BidEditForm = {
    * Save must not clobber columns written server-side after the row was fetched.
    */
   initialValues: BidEditFormValues | null
+  /**
+   * Edit Bid autosave: after a write lands, the values it wrote become the new
+   * baseline so the next diff is against the row, not the modal's open-time
+   * snapshot. A function form patches the baseline (a per-GC panel write that
+   * already rolled `bids.outcome` up server-side marks just that field saved).
+   */
+  markSaved: (next: BidEditFormValues | ((prev: BidEditFormValues | null) => BidEditFormValues | null)) => void
   missingFields: string[]
   canSubmit: boolean
 }
@@ -275,6 +282,10 @@ export function useBidEditForm(): BidEditForm {
     setInitialValues(v)
   }, [])
 
+  const markSaved = useCallback((next: BidEditFormValues | ((prev: BidEditFormValues | null) => BidEditFormValues | null)) => {
+    setInitialValues(next)
+  }, [])
+
   const missingFields = useMemo(() => {
     const missing: string[] = []
     if (!projectName.trim()) missing.push('Project Name')
@@ -353,5 +364,5 @@ export function useBidEditForm(): BidEditForm {
     setGcCustomerSearch,
   }
 
-  return { values, setters, reset, loadFromBid, initialValues, missingFields, canSubmit }
+  return { values, setters, reset, loadFromBid, initialValues, markSaved, missingFields, canSubmit }
 }

@@ -19,6 +19,7 @@ import { computeBidDistanceToOffice } from '../../lib/bidDistanceToOffice'
 import { getBidServiceTypeTag } from '../../utils/unifiedJobBidSearch'
 import { BidWonJobActions } from './BidWonJobActions'
 import { isAssistantLike } from '../../lib/subcontractorLikeRole'
+import { bidAutosaveStatusLine, bidFormFooterLabels, type BidAutosaveStatus } from '../../lib/bids/bidFormAutosave'
 
 type Bid = Database['public']['Tables']['bids']['Row']
 import { BidGcRecipientsRow, GcCard } from './BidGcRecipientsRow'
@@ -40,6 +41,19 @@ type BidFormUserRole =
 export type BidFormOutcomeOption = 'won' | 'lost' | 'started_or_complete' | ''
 
 export type BidServiceTypeSwitchSibling = { id: string; bid_number: string | null }
+
+/** Edit Bid autosave (v2.3130) — what the footer shows and the close guard's three ways out. */
+export type BidFormAutosaveProps = {
+  status: BidAutosaveStatus
+  /** The form differs from the row. */
+  dirty: boolean
+  /** Re-run a failed autosave now. */
+  retry: () => void
+  closeFlushState: 'idle' | 'saving' | 'error'
+  retryClose: () => void
+  keepEditing: () => void
+  closeWithoutSaving: () => void
+}
 
 export type BidFormModalProps = {
   open: boolean
@@ -72,6 +86,10 @@ export type BidFormModalProps = {
   getGcBuilderEmail: () => string
   saveBidAndOpenCounts: () => void
   savingBid: boolean
+  /** Edit tab only (v2.3130): the form autosaves — no Save button; the footer prints the status and the close guard strip. */
+  autosave?: BidFormAutosaveProps
+  /** v2.3130: the per-GC Sent panel rolled `bids.outcome` up server-side — the parent marks the field persisted so autosave neither re-writes it nor logs a second Win/Loss note. */
+  onOutcomeRollupPersisted?: (next: BidFormOutcomeOption) => void
   setDeleteBidModalOpen: (value: boolean) => void
   setDeleteConfirmProjectName: (value: string) => void
   setError: Dispatch<SetStateAction<string | null>>
@@ -237,6 +255,8 @@ export function BidFormModal(props: BidFormModalProps) {
     getGcBuilderEmail,
     saveBidAndOpenCounts,
     savingBid,
+    autosave,
+    onOutcomeRollupPersisted,
     setDeleteBidModalOpen,
     setDeleteConfirmProjectName,
     setError,
@@ -319,6 +339,9 @@ export function BidFormModal(props: BidFormModalProps) {
   } = form.setters
   const bidFormCanSubmit = form.canSubmit
   const bidFormMissingFields = form.missingFields
+  const footerLabels = bidFormFooterLabels(!!editingBid)
+  const autosaveLine = autosave ? bidAutosaveStatusLine({ status: autosave.status, dirty: autosave.dirty, missingFields: bidFormMissingFields }) : null
+  const autosaveLineColor = autosaveLine?.tone === 'error' ? 'var(--text-red-700)' : autosaveLine?.tone === 'warn' ? '#FF6600' : 'var(--text-muted)'
 
   const selectedServiceType = formServiceTypeId.trim()
     ? visibleServiceTypes.find((st) => st.id === formServiceTypeId)
@@ -495,7 +518,8 @@ export function BidFormModal(props: BidFormModalProps) {
             <form
               onSubmit={(e) => {
                 // Enter-key implicit submits bypass the disabled Save button — same gate.
-                if (loggingContact) {
+                // The Edit tab autosaves (v2.3130): Enter has nothing to submit there.
+                if (loggingContact || autosave) {
                   e.preventDefault()
                   return
                 }
@@ -704,7 +728,10 @@ export function BidFormModal(props: BidFormModalProps) {
                       ownGcName={gcCustomerSearch || 'To Plans'}
                       ownGcCustomerId={editingBid.customer_id ?? null}
                       bidOutcome={outcome || null}
-                      onOutcomeRollupChanged={(next) => setOutcome(next ?? '')}
+                      onOutcomeRollupChanged={(next) => {
+                        setOutcome(next ?? '')
+                        onOutcomeRollupPersisted?.(next ?? '')
+                      }}
                       currentBidDateSent={editingBid.bid_date_sent ?? null}
                       onRollupDateChanged={onGcRollupDateChanged}
                     />
@@ -1311,22 +1338,72 @@ export function BidFormModal(props: BidFormModalProps) {
                   </>
                 )}
                 <span style={{ flex: 1 }} />
-                {!bidFormCanSubmit && !savingBid && bidFormMissingFields.length > 0 && (
+                {autosave && autosaveLine ? (
+                  // Edit tab (v2.3130): changes save as you make them — the footer says where that stands.
+                  <span role="status" aria-live="polite" style={{ fontSize: '0.8rem', color: autosaveLineColor, display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}>
+                    {autosaveLine.text}
+                    {autosaveLine.tone === 'error' ? (
+                      <button type="button" onClick={autosave.retry} style={{ fontFamily: 'inherit', fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-link)', background: 'none', border: 'none', padding: 0, cursor: 'pointer', textDecoration: 'underline' }}>
+                        Retry
+                      </button>
+                    ) : null}
+                  </span>
+                ) : !bidFormCanSubmit && !savingBid && bidFormMissingFields.length > 0 ? (
                   <span style={{ fontSize: '0.8rem', color: '#FF6600' }}>Required: {bidFormMissingFields.join(', ')}</span>
-                )}
+                ) : null}
                 <button
                   type="button"
                   onClick={saveBidAndOpenCounts}
-                  disabled={!bidFormCanSubmit || savingBid || loggingContact}
-                  title={loggingContact ? 'Finish or cancel the contact you’re logging first' : !bidFormCanSubmit ? `Required: ${bidFormMissingFields.join(', ')}` : undefined}
+                  disabled={!bidFormCanSubmit || savingBid || loggingContact || autosave?.closeFlushState === 'saving'}
+                  title={loggingContact ? 'Finish or cancel the contact you’re logging first' : !bidFormCanSubmit ? `Required: ${bidFormMissingFields.join(', ')}` : autosave ? 'Saves anything still pending, closes the window, and opens Counts on this bid' : undefined}
                   style={{ padding: '0.5rem 1rem', background: 'var(--bg-muted)', color: 'var(--text-strong)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer' }}
                 >
-                  Save and Open Counts
+                  {footerLabels.openCounts}
                 </button>
-                <button type="submit" disabled={!bidFormCanSubmit || savingBid || loggingContact} title={loggingContact ? 'Finish or cancel the contact you’re logging first' : !bidFormCanSubmit ? `Required: ${bidFormMissingFields.join(', ')}` : undefined} style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}>
-                  {savingBid ? 'Saving…' : 'Save'}
-                </button>
+                {footerLabels.primary ? (
+                  <button type="submit" disabled={!bidFormCanSubmit || savingBid || loggingContact} title={loggingContact ? 'Finish or cancel the contact you’re logging first' : !bidFormCanSubmit ? `Required: ${bidFormMissingFields.join(', ')}` : undefined} style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}>
+                    {savingBid ? 'Saving…' : footerLabels.primary}
+                  </button>
+                ) : null}
               </div>
+              {autosave && autosave.closeFlushState !== 'idle' ? (
+                // Close guard (v2.3130): a ✕ inside the debounce window flushes first; a failed flush keeps the window open.
+                <div
+                  role="alert"
+                  style={{
+                    position: 'sticky',
+                    bottom: 0,
+                    zIndex: 6,
+                    margin: '0 -2rem -2rem',
+                    padding: '0.6rem 2rem',
+                    background: autosave.closeFlushState === 'error' ? 'var(--bg-red-tint)' : 'var(--bg-muted)',
+                    borderTop: '1px solid var(--border)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.6rem',
+                    flexWrap: 'wrap',
+                    fontSize: '0.8rem',
+                    color: autosave.closeFlushState === 'error' ? 'var(--text-red-700)' : 'var(--text-muted)',
+                  }}
+                >
+                  {autosave.closeFlushState === 'saving' ? (
+                    <span>Saving your latest changes…</span>
+                  ) : (
+                    <>
+                      <span style={{ flex: 1 }}>Couldn’t save your latest changes — the window stays open so nothing is lost.</span>
+                      <button type="button" onClick={autosave.retryClose} style={{ padding: '0.3rem 0.7rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: '0.8rem', fontFamily: 'inherit' }}>
+                        Retry
+                      </button>
+                      <button type="button" onClick={autosave.keepEditing} style={{ padding: '0.3rem 0.7rem', background: 'var(--surface)', color: 'var(--text-700)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer', fontSize: '0.8rem', fontFamily: 'inherit' }}>
+                        Keep editing
+                      </button>
+                      <button type="button" onClick={autosave.closeWithoutSaving} style={{ padding: '0.3rem 0.7rem', background: 'transparent', color: 'var(--text-red-700)', border: '1px solid var(--border-red)', borderRadius: 4, cursor: 'pointer', fontSize: '0.8rem', fontFamily: 'inherit' }}>
+                        Close without saving
+                      </button>
+                    </>
+                  )}
+                </div>
+              ) : null}
             </form>
           </div>
 

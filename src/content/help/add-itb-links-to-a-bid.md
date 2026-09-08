@@ -13,7 +13,7 @@ Open the bid's **Edit** tab and find **ITB & submission links** (between People 
 
 1. Click {{button:gray|+ Add ITB link}} for a new row.
 2. Paste the portal URL — the row labels itself from the address (*PlanHub*, *BuildingConnected*, or the site's name).
-3. Add as many rows as the bid needs; the **×** removes one. Save as usual.
+3. Add as many rows as the bid needs; the **×** removes one. On a saved bid the rows save as you go; on a New Bid they go in with {{button:blue|Create bid}}.
 
 :::example Bidding one project to two GCs
 One GC invited you through PlanHub, another through BuildingConnected — add both links. The preview shows two chips, one per portal, so whoever picks up the bid can jump straight to either page.
