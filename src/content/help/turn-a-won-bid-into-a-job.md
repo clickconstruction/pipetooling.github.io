@@ -2,7 +2,7 @@
 title: turn a won bid into a job
 category: Office
 roles: dev, master_technician, assistant, controller, estimator
-keywords: won, win, bid, job, scheduled visits, move visits, schedule blocks, open the job, convert, import, new job, J number, opened from this bid, cancel import, which GC gave you this job
+keywords: won, win, bid, job, scheduled visits, move visits, schedule blocks, open the job, convert, import, new job, J number, opened from this bid, cancel import, which GC gave you this job, ask dispatch, dispatch inbox, hand off, to-do
 order: 72
 ---
 The one sentence: **wherever you mark a bid Won, "Open the job" is right there** — one tap opens New Job with the customer, address, plans and folder filled in and the bid linked on the job.
@@ -25,6 +25,18 @@ B398 · Take 5 Seguin goes to Southern Post. Tap Won, then Open the job: New Job
 When the bid carries a figure — its agreed value, or what the winning GC was sent — New Job asks one question before filling anything: **Start the job at $48,200?** {{button:blue|Carry $48,200 over}} puts it on the job as the first line item ("Bid price"), and if the bid had no agreed value yet, records it there too. {{button:outline|Start at $0}} leaves the Job Total empty and writes nothing — on the job or the bid. Either way you can change the number on the job any time.
 
 What does **not** come over: the bid's own line items, schedule blocks, crew, dates.
+
+## Or hand it to Dispatch
+
+Won it but not the one who sets up the crew? Beside {{button:green|Open the job}} there is a quieter {{button:outline|Ask Dispatch to open it}}. One press files a to-do in the **Dispatch inbox** with the bid attached — *Open the job for B398 · ZZ Test — won with Southern Post* — and Dispatch's phones get the usual push. The bid then shows {{chip:yellow|Dispatch asked · by Wendi · 2 min ago}} where the button was, so nobody asks twice.
+
+:::example What Dispatch sees
+On the Dashboard's Dispatch inbox (and Dispatch Mode → Inbox) the to-do carries one button: {{button:outline|Open the job}}. It opens New Job filled in from the bid exactly as it would from the bid itself — customer, address, links, the price question, and *which GC* on a multi-GC bid. Press **Create Job** and the to-do closes on its own: *J1007 opened from B398 · ZZ Test*, and you get the "Handled" push.
+:::
+
+- **Asked twice?** The app says *Dispatch already has this one* instead of stacking a second to-do.
+- **Someone opened the job another way?** The inbox notices a job already carrying the bid and closes the to-do itself, noting *opened elsewhere*.
+- **Primaries** (the GC-side login) can mark a bid Won but have no New Job form: for them the hand-off is the only button, and marking Won in Edit Bid sends it to Dispatch automatically.
 
 ## The bid shows its job
 

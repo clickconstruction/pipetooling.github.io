@@ -8,10 +8,19 @@ import {
 } from './wonMomentActions'
 
 describe('wonMomentActions (Tier-1 #8)', () => {
-  it('office roles and the estimator get "Open the job" when no job exists yet', () => {
+  it('office roles and the estimator get "Open the job" + a quiet hand-off to Dispatch when no job exists yet', () => {
     for (const role of ['dev', 'master_technician', 'assistant', 'controller', 'estimator']) {
-      expect(wonMomentActions({ hasJob: false, role })).toEqual([{ key: 'create', label: 'Open the job', primary: true }])
+      expect(wonMomentActions({ hasJob: false, role })).toEqual([
+        { key: 'create', label: 'Open the job', primary: true },
+        { key: 'ask_dispatch', label: 'Ask Dispatch to open it', primary: false },
+      ])
+      expect(wonMomentActions({ hasJob: false, role, dispatchAsked: true })).toEqual([{ key: 'create', label: 'Open the job', primary: true }])
     }
+  })
+  it('primary can mark Won but has no job door: the hand-off is its one primary button (v2.3143)', () => {
+    expect(wonMomentActions({ hasJob: false, role: 'primary' })).toEqual([{ key: 'ask_dispatch', label: 'Ask Dispatch to open the job', primary: true }])
+    expect(wonMomentActions({ hasJob: false, role: 'primary', dispatchAsked: true })).toEqual([])
+    expect(wonMomentActions({ hasJob: true, role: 'primary' })).toEqual([])
   })
   it('a job already exists: roles that can open Jobs get open + create-another; the estimator only create-another', () => {
     for (const role of ['dev', 'master_technician', 'assistant', 'controller']) {
@@ -22,13 +31,13 @@ describe('wonMomentActions (Tier-1 #8)', () => {
     expect(wonMomentActions({ hasJob: true, role: 'estimator' })).toEqual([{ key: 'create_another', label: 'Create another job', primary: false }])
   })
   it('the read-only board roles get nothing', () => {
-    for (const role of ['superintendent', 'subcontractor', 'helpers', 'primary', null, undefined, '']) {
+    for (const role of ['superintendent', 'subcontractor', 'helpers', null, undefined, '']) {
       expect(wonMomentActions({ hasJob: false, role })).toEqual([])
       expect(wonMomentActions({ hasJob: true, role })).toEqual([])
     }
   })
   it('canCreateJobs overrides the role rule both ways', () => {
-    expect(wonMomentActions({ hasJob: false, role: 'superintendent', canCreateJobs: true }).map((a) => a.key)).toEqual(['create'])
+    expect(wonMomentActions({ hasJob: false, role: 'superintendent', canCreateJobs: true }).map((a) => a.key)).toEqual(['create', 'ask_dispatch'])
     expect(wonMomentActions({ hasJob: false, role: 'dev', canCreateJobs: false })).toEqual([])
   })
   it('canCreateJobFromBid mirrors the create set', () => {

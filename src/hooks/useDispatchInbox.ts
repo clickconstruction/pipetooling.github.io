@@ -22,9 +22,11 @@ import {
   pickOrphanedPicturesRequestIds,
   PICTURES_REQUEST_SELF_HEAL_NOTE,
 } from '../lib/picturesDispatchRequests'
+import { bidIdsForOpenJobSweep, pickOpenJobRequestsToClose } from '../lib/bids/wonDispatchHandoff'
+import { closeOpenJobFromBidRequests } from '../lib/bids/openJobFromBidDispatchRequest'
 
 const DISPATCH_REQUEST_SELECT =
-  'id, title, links, created_at, from_user_id, reference_summary, location_lat, location_lng, status, closed_at, closed_by_user_id, closed_note, pending_action, job_ledger_id, sender:users!dispatch_requests_from_user_id_fkey(name, email), closed_by:users!dispatch_requests_closed_by_user_id_fkey(name)'
+  'id, title, links, created_at, from_user_id, reference_summary, location_lat, location_lng, status, closed_at, closed_by_user_id, closed_note, pending_action, job_ledger_id, bid_id, sender:users!dispatch_requests_from_user_id_fkey(name, email), closed_by:users!dispatch_requests_closed_by_user_id_fkey(name)'
 
 const DISMISSED_DISPATCH_ID_CHUNK = 120
 
@@ -85,6 +87,46 @@ export function useDispatchInbox() {
       cancelled = true
     }
   }, [authUser?.id, role])
+
+  /**
+   * Won → Dispatch (v2.3143): retire open "open the job" to-dos whose bid
+   * already carries a job — someone opened it from the bid's own Job block or
+   * an import, where RLS kept the creator from closing the row. Same shape as
+   * the pictures sweep below: eligible viewers only, silent, never retried.
+   */
+  const openJobSweepRunningRef = useRef(false)
+  const sweptOpenJobBidIdsRef = useRef<Set<string>>(new Set())
+  const selfHealOpenJobRequests = useCallback(
+    async (rows: DispatchInboxRow[]) => {
+      if (!authUser?.id) return
+      if (openJobSweepRunningRef.current) return
+      const bidIds = bidIdsForOpenJobSweep(rows).filter((id) => !sweptOpenJobBidIdsRef.current.has(id))
+      if (bidIds.length === 0) return
+      openJobSweepRunningRef.current = true
+      try {
+        const jobRows = await withSupabaseRetry(
+          async () => supabase.from('jobs_ledger').select('bid_id, hcp_number, created_at').in('bid_id', bidIds).order('created_at', { ascending: false }),
+          'dispatch inbox open-job sweep',
+        )
+        const jobsByBidId = new Map<string, { hcpNumber: string | null }>()
+        for (const r of (jobRows ?? []) as Array<{ bid_id: string | null; hcp_number: string | null }>) {
+          if (r.bid_id && !jobsByBidId.has(r.bid_id)) jobsByBidId.set(r.bid_id, { hcpNumber: r.hcp_number })
+        }
+        const toClose = pickOpenJobRequestsToClose(rows.filter((r) => bidIds.includes(r.bid_id ?? '')), jobsByBidId)
+        if (toClose.length === 0) return
+        for (const c of toClose) sweptOpenJobBidIdsRef.current.add(c.bidId)
+        for (const c of toClose) {
+          await closeOpenJobFromBidRequests({ bidId: c.bidId, hcpNumber: c.hcpNumber, userId: authUser.id, role, elsewhere: true })
+        }
+        loadDispatchRequestsRef.current?.()
+      } catch (e) {
+        console.warn('dispatch inbox open-job sweep failed', e)
+      } finally {
+        openJobSweepRunningRef.current = false
+      }
+    },
+    [authUser?.id, role],
+  )
 
   /**
    * Retire open `link_job_pictures` requests whose job already has a pictures
@@ -209,8 +251,9 @@ export function useDispatchInbox() {
       setDispatchRequestsLoading(false)
       setDispatchRequestsLoaded(true)
       void selfHealOrphanedPicturesRequests(merged)
+      void selfHealOpenJobRequests(merged)
     })
-  }, [authUser?.id, dispatchInboxEligible, selfHealOrphanedPicturesRequests])
+  }, [authUser?.id, dispatchInboxEligible, selfHealOrphanedPicturesRequests, selfHealOpenJobRequests])
 
   loadDispatchRequestsRef.current = loadDispatchRequests
 
