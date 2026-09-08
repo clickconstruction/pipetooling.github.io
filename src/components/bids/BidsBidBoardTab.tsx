@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { bidBoardJobLinkLabel, type BidBoardJobLink } from '../../lib/bids/bidBoardJobLinks'
 import { perGcSentSummary, type GcPacket } from '../../lib/bids/gcPackets'
@@ -33,6 +33,7 @@ import { BidWorkingBoardArchivedModal } from './BidWorkingBoardArchivedModal'
 import { BidLossCategoryChips } from './BidLossCategoryChips'
 import { BidBoardCustomerReviewModal } from './BidBoardCustomerReviewModal'
 import { BidBoardEstimatingHealthSection } from './BidBoardEstimatingHealthSection'
+import { BidBoardMapCard } from './BidBoardMapCard'
 import { BidBoardSelfHighlightWheel, useBidBoardSelfHighlight } from './BidBoardSelfHighlightWheel'
 
 type BidBoardSectionOpenState = {
@@ -221,6 +222,46 @@ export function BidsBidBoardTab({
     lost: false,
   })
   const [dueLegendOpen, setDueLegendOpen] = useState(false)
+  // v2.3162: a pin click on the map card lights its row the way a deep link does and scrolls to it.
+  // A later deep link takes over; the map focus clears itself after a few seconds.
+  const [mapFocusBidId, setMapFocusBidId] = useState<string | null>(null)
+  const [mapFocusGen, setMapFocusGen] = useState(0)
+  const [mapRevealSignal, setMapRevealSignal] = useState(0)
+  const rowHighlightId = mapFocusBidId ?? deepLinkHighlightId
+  useEffect(() => {
+    setMapFocusBidId(null)
+  }, [deepLinkHighlightId, deepLinkHighlightGen])
+  const focusRowFromMap = useCallback(
+    (bidId: string) => {
+      const bid = bids.find((b) => b.id === bidId)
+      const key = bid ? getSubmissionSectionKey(bid) : null
+      if (key) onSectionOpenChange((prev) => (prev[key] ? prev : { ...prev, [key]: true }))
+      setMapFocusBidId(bidId)
+      setMapFocusGen((g) => g + 1)
+    },
+    [bids, onSectionOpenChange],
+  )
+  useEffect(() => {
+    if (!mapFocusBidId) return
+    const id = mapFocusBidId
+    let tries = 0
+    let raf = 0
+    // The row may render a frame later (its section just opened or uncapped) — retry briefly.
+    const tick = () => {
+      const el = document.getElementById(`bid-board-row-${id}`)
+      if (el) {
+        if (typeof el.scrollIntoView === 'function') el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        return
+      }
+      if (++tries < 12) raf = requestAnimationFrame(tick)
+    }
+    raf = requestAnimationFrame(tick)
+    const clear = window.setTimeout(() => setMapFocusBidId((cur) => (cur === id ? null : cur)), 8000)
+    return () => {
+      cancelAnimationFrame(raf)
+      window.clearTimeout(clear)
+    }
+  }, [mapFocusBidId, mapFocusGen])
   // Item 10 (v2.2943): the lost strip carries the reason picker on uncategorized losses.
   const [lossCategorySavingBidId, setLossCategorySavingBidId] = useState<string | null>(null)
   const bidBoardUnreadFetchSeqRef = useRef(0)
@@ -290,11 +331,14 @@ export function BidsBidBoardTab({
     onSectionOpenChange((prev) => ({ ...prev, [key]: !prev[key] }))
   }
 
-  function jumpToBidBoardSection(key: SubmissionSectionKey | 'health') {
-    if (key !== 'health') {
+  function jumpToBidBoardSection(key: SubmissionSectionKey | 'health' | 'map') {
+    if (key === 'map') {
+      // v2.3162: the Map pill also un-hides a collapsed map card.
+      setMapRevealSignal((n) => n + 1)
+    } else if (key !== 'health') {
       onSectionOpenChange((prev) => (prev[key] ? prev : { ...prev, [key]: true }))
     }
-    const targetId = key === 'health' ? 'bid-board-health-section' : `bid-board-section-${key}`
+    const targetId = key === 'health' ? 'bid-board-health-section' : key === 'map' ? 'bid-board-map-card' : `bid-board-section-${key}`
     requestAnimationFrame(() => {
       document.getElementById(targetId)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
     })
@@ -303,20 +347,20 @@ export function BidsBidBoardTab({
   // A deep-linked row past the render cap would have nothing to scroll to —
   // uncap its section before the highlight scroll (Bids.tsx) fires.
   useEffect(() => {
-    if (!deepLinkHighlightId) return
+    if (!rowHighlightId) return
     setSectionShowAll((prev) => {
       let next = prev
       for (const key of BID_BOARD_CAPPED_SECTIONS) {
         if (
           !next[key] &&
-          bidBoardBuckets[key].findIndex((b) => b.id === deepLinkHighlightId) >= BID_BOARD_SECTION_ROW_CAP
+          bidBoardBuckets[key].findIndex((b) => b.id === rowHighlightId) >= BID_BOARD_SECTION_ROW_CAP
         ) {
           next = { ...next, [key]: true }
         }
       }
       return next
     })
-  }, [deepLinkHighlightId, bidBoardBuckets])
+  }, [rowHighlightId, bidBoardBuckets])
 
   useEffect(() => {
     if (!expandedBidBoardBidId) return
@@ -1003,7 +1047,7 @@ export function BidsBidBoardTab({
           style={{
             borderBottom: '1px solid var(--border)',
             cursor: 'pointer',
-            ...(bid.id === deepLinkHighlightId
+            ...(bid.id === rowHighlightId
               ? {
                   backgroundColor: 'var(--bg-amber-tint)',
                   outline: '2px solid #d97706',
@@ -1250,7 +1294,7 @@ export function BidsBidBoardTab({
           padding: '0.5rem 0.6rem',
           background: 'var(--surface)',
           cursor: 'pointer',
-          ...(bid.id === deepLinkHighlightId
+          ...(bid.id === rowHighlightId
             ? {
                 backgroundColor: 'var(--bg-amber-tint)',
                 outline: '2px solid #d97706',
@@ -1427,8 +1471,10 @@ export function BidsBidBoardTab({
               {scopeLabel(sentScope)}
             </span>
             {[
+              // v2.3162: the map card sits above the sections, so its pill comes first.
+              { key: 'map' as const, jumpLabel: 'Map', count: null },
               ...BID_BOARD_SECTION_CONFIG.map(({ key, jumpLabel }) => ({
-                key: key as SubmissionSectionKey | 'health',
+                key: key as SubmissionSectionKey | 'health' | 'map',
                 jumpLabel,
                 count: pillCounts[key] as number | null,
               })),
@@ -1438,7 +1484,7 @@ export function BidsBidBoardTab({
                 key={key}
                 type="button"
                 onClick={() => jumpToBidBoardSection(key)}
-                title={key === 'health' ? 'Jump to Estimating Health' : `Jump to ${jumpLabel}`}
+                title={key === 'health' ? 'Jump to Estimating Health' : key === 'map' ? 'Jump to the map (shows it if hidden)' : `Jump to ${jumpLabel}`}
                 style={{
                   flex: '0 0 auto',
                   display: 'inline-flex',
@@ -1483,6 +1529,18 @@ export function BidsBidBoardTab({
               />
             </span>
           </nav>
+          {/* v2.3162: the map is a second view of the same filtered list — pins follow the search
+              and the trade pill; a pin lights its row below. Collapsible per device. */}
+          <BidBoardMapCard
+            bids={filteredBidsForBidBoard}
+            ledgerPrefixMap={ledgerPrefixMap}
+            isMobile={narrowViewport}
+            loading={loading}
+            onOpenBid={bidPreview ? (b) => bidPreview.openBidPreviewFromBid(b) : null}
+            onEditBid={(b) => onEditBid(b)}
+            onFocusRow={focusRowFromMap}
+            revealSignal={mapRevealSignal}
+          />
           {BID_BOARD_SECTION_CONFIG.map(({ key, label }) => {
             const sectionBids = bidBoardBuckets[key]
             const isOpen = sectionOpen[key]

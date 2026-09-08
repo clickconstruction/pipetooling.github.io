@@ -159,6 +159,10 @@ Central hub for viewing and managing all bids. Provides high-level overview of b
 - **Price book modals close**: When switching service types, any open price book modals (version form, entry form, delete modal) are automatically closed
 - **Persistent New Bid button**: A New Bid button is always visible on the right side of the service type filter row (in line with Plumbing, Electrical, HVAC). Opens the New Bid modal. Grayed out on Builder Review tab.
 
+#### Bids on a map card (v2.3162)
+- **[`BidBoardMapCard`](../src/components/bids/BidBoardMapCard.tsx)** sits between the sticky section pills and the first section, for every board viewer. One pin per bid with an address in the **filtered** list (search, trade pill, My bids), colored by section (`BID_STAGE_MARKER_COLOR`); section chips in the header toggle pins only (Lost starts off); an unsent bid due soon / past due wears an amber / red ring. The office anchor (`useOfficeAnchor` → `resolveOfficeAnchor`) draws with 25 / 50 mile rings.
+- A pin's popup (phone: a bar under the map) carries **Open bid** (preview), **Edit**, **Directions**; clicking a pin lights the bid's row (`rowHighlightId` — the deep-link outline) and scrolls to it. **Hide map** collapses to the title line per device; the **Map** pill in the sticky row jumps to the card and reveals it. Kernel [`bidBoardMap.ts`](../src/lib/bids/bidBoardMap.ts); canvases shared with the Dashboard card (`PinsMapCanvas` / `PinsMapGoogleCanvas`, Google with OSM fallback). Fragment `recent-features/v2.3162.md`.
+
 #### Search Functionality
 - **Full-width search input** filters bids in real-time
 - **Searches across**:

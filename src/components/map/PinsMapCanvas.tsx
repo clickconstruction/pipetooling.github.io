@@ -1,0 +1,113 @@
+/**
+ * Leaflet pins canvas (v2.3162) — the drawing half shared by the Dashboard
+ * "Your jobs on a map" card and the Bid Board "Bids on a map" card.
+ *
+ * Generic on purpose: a pin is an id, a position, a fill color, an optional
+ * ring color (a thicker stroke — the Bid Board's due ring) and a title; the
+ * caller renders the popup body for an id. An optional anchor (the office)
+ * draws as a diamond with a permanent label and dashed distance rings, and is
+ * included in fit-to-all. Lazy-load this file so Leaflet stays out of the
+ * page bundles (the /map route chunk already carries it; Vite shares the
+ * vendor chunk).
+ */
+import { useEffect, type ReactNode } from 'react'
+import L from 'leaflet'
+import 'leaflet/dist/leaflet.css'
+import { Circle, CircleMarker, MapContainer, Marker, Popup, TileLayer, Tooltip, useMap } from 'react-leaflet'
+import { mapPointsBounds, type MapPoint } from '../../lib/map/mapPointsBounds'
+import {
+  MAP_CANVAS_ANCHOR_COLOR,
+  MAP_CANVAS_SELECTED_COLOR,
+  METERS_PER_MILE,
+  mapCanvasFitPoints,
+  type MapCanvasAnchor,
+  type MapCanvasPin,
+} from '../../lib/map/mapCanvasTypes'
+
+export type PinsMapCanvasProps = {
+  pins: MapCanvasPin[]
+  selectedId: string | null
+  onSelect: (id: string | null) => void
+  /** Desktop popup body for a pin id; omitted on phones (the card renders a bar instead). */
+  renderPopup?: (id: string) => ReactNode
+  /** Bumped by the card's Fit all button. */
+  fitSignal: number
+  height: number
+  /** Phone form: no popup; cooperative gestures. */
+  isMobile: boolean
+  anchor?: MapCanvasAnchor | null
+  /** Override what fit-to-all frames (the pins + anchor by default); every pin still draws. */
+  fitPoints?: readonly MapPoint[] | null
+}
+
+function FitToPoints({ points, fitSignal }: { points: MapPoint[]; fitSignal: number }) {
+  const map = useMap()
+  const b = mapPointsBounds(points)
+  const key = b ? `${b.south},${b.west},${b.north},${b.east}` : ''
+  useEffect(() => {
+    if (!b) return
+    map.fitBounds(L.latLngBounds([b.south, b.west], [b.north, b.east]), { padding: [28, 28], maxZoom: 15 })
+    // key captures the bounds; fitSignal re-fits on demand
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [map, key, fitSignal])
+  return null
+}
+
+const ANCHOR_ICON = L.divIcon({
+  className: 'pins-map-anchor',
+  html: `<div style="width:12px;height:12px;transform:rotate(45deg);background:${MAP_CANVAS_ANCHOR_COLOR};border:2px solid var(--surface);box-shadow:0 0 0 1px ${MAP_CANVAS_ANCHOR_COLOR}"></div>`,
+  iconSize: [16, 16],
+  iconAnchor: [8, 8],
+})
+
+export default function PinsMapCanvas({ pins, selectedId, onSelect, renderPopup, fitSignal, height, isMobile, anchor, fitPoints }: PinsMapCanvasProps) {
+  const first = pins[0] ?? anchor ?? null
+  const center: L.LatLngExpression = first ? [first.lat, first.lng] : [39.5, -98.35]
+  return (
+    <MapContainer center={center} zoom={first ? 12 : 4} style={{ width: '100%', height }} scrollWheelZoom={!isMobile} attributionControl>
+      <TileLayer
+        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+      />
+      <FitToPoints points={mapCanvasFitPoints(pins, anchor, fitPoints)} fitSignal={fitSignal} />
+      {anchor ? (
+        <>
+          {(anchor.ringMiles ?? []).map((mi) => (
+            <Circle
+              key={mi}
+              center={[anchor.lat, anchor.lng]}
+              radius={mi * METERS_PER_MILE}
+              interactive={false}
+              pathOptions={{ color: MAP_CANVAS_SELECTED_COLOR, weight: 1, opacity: 0.5, dashArray: '5 5', fillOpacity: 0 }}
+            />
+          ))}
+          <Marker position={[anchor.lat, anchor.lng]} icon={ANCHOR_ICON} title={anchor.label} interactive={false}>
+            <Tooltip permanent direction="right" offset={[8, 0]}>
+              {anchor.label}
+            </Tooltip>
+          </Marker>
+        </>
+      ) : null}
+      {pins.map((p) => {
+        const selected = p.id === selectedId
+        const ring = p.ringColor ?? null
+        return (
+          <CircleMarker
+            key={p.id}
+            center={[p.lat, p.lng]}
+            radius={selected ? 10 : isMobile ? 9 : 8}
+            pathOptions={{
+              color: selected ? MAP_CANVAS_SELECTED_COLOR : (ring ?? p.color),
+              fillColor: p.color,
+              fillOpacity: selected ? 0.9 : 0.8,
+              weight: selected ? 2 : ring ? 3 : 1,
+            }}
+            eventHandlers={{ click: () => onSelect(p.id) }}
+          >
+            {!isMobile && renderPopup ? <Popup>{renderPopup(p.id)}</Popup> : null}
+          </CircleMarker>
+        )
+      })}
+    </MapContainer>
+  )
+}
