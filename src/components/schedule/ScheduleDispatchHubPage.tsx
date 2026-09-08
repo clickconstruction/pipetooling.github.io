@@ -1,3 +1,4 @@
+import { readPhonePeopleView, writePhonePeopleView, type PhonePeopleView } from '../../lib/scheduleDispatch/phonePeopleBoard'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { buildSubBadgesByCell, buildSubLanes, dayKeysBetween, type SubDispatchOrder } from '../../lib/subs/subDispatch'
 import { fetchSubOffDaysForRange, fetchSubOrdersForRange, fetchTeamMembersByJobId } from '../../lib/subs/subDispatchFetch'
@@ -1008,6 +1009,17 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
   const [swimLanes, setSwimLanes] = useState<DispatchSwimLanesData | null>(null)
   const [linkedCopyApplyBusy, setLinkedCopyApplyBusy] = useState(false)
   const [plusMenuBlockId, setPlusMenuBlockId] = useState<string | null>(null)
+  // v2.3156: the People board on a phone vs the desktop grid — per device, page-owned so the mode banners know to stand down.
+  const [phonePeopleView, setPhonePeopleView] = useState<PhonePeopleView>(() => readPhonePeopleView(typeof localStorage === 'undefined' ? null : localStorage))
+  const onPhonePeopleViewChange = useCallback((view: PhonePeopleView) => {
+    setPhonePeopleView(view)
+    writePhonePeopleView(typeof localStorage === 'undefined' ? null : localStorage, view)
+  }, [])
+  const phoneBoardActive = !isTomorrow && narrowViewport && hubTab === 'people' && phonePeopleView === 'board'
+  const onCancelCardPlacement = useCallback(() => {
+    setCardPlacementMode(null)
+    setPlusMenuBlockId(null)
+  }, [])
   const [blockNoteEdit, setBlockNoteEdit] = useState<JobScheduleBlockRow | null>(null)
   const [blockNoteBusy, setBlockNoteBusy] = useState(false)
   const [blockNoteError, setBlockNoteError] = useState<string | null>(null)
@@ -1512,6 +1524,38 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
       loadHub,
       showToast,
     ],
+  )
+
+  /** v2.3156: the phone board's Copy to techs sheet — one block to a chosen list of people, no mode state needed. */
+  const onCopyBlockToPeople = useCallback(
+    async (args: { blockId: string; userIds: string[]; linked: boolean }) => {
+      if (!authUser?.id || linkedCopyApplyBusy) return
+      const source = hubBlockById.get(args.blockId)
+      if (!source || args.userIds.length === 0) return
+      setLinkedCopyApplyBusy(true)
+      try {
+        const results: LinkedCopyLegResult[] = []
+        const allJobBlocks = hubWeekBlocks.filter((b) => scheduleBlockAnchorId(b) === scheduleBlockAnchorId(source))
+        for (const userId of args.userIds) {
+          const { error } = await insertScheduleDispatchCopiedLeg({
+            jobId: scheduleBlockAnchorId(source),
+            createdBy: authUser.id,
+            source,
+            targetAssigneeUserId: userId,
+            targetWorkDate: source.work_date,
+            linkMode: args.linked ? 'linked' : 'unlinked',
+            allJobBlocks,
+          })
+          results.push({ blockId: source.id, error })
+        }
+        const sum = summarizeLinkedCopyLaneApply('Selected techs', args.userIds.length, results)
+        showToast(sum.message, sum.tone)
+        await loadHub({ quiet: true })
+      } finally {
+        setLinkedCopyApplyBusy(false)
+      }
+    },
+    [authUser?.id, linkedCopyApplyBusy, hubBlockById, hubWeekBlocks, loadHub, showToast],
   )
 
   const onRequestHubMultiCellAddChooseJob = useCallback(() => {
@@ -2365,7 +2409,7 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
 
   return (
     <>
-        {cardPlacementMode ? (
+        {cardPlacementMode && !phoneBoardActive ? (
           <div
             style={{
               margin: '0 1.25rem',
@@ -2460,7 +2504,7 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
             </button>
           </div>
         ) : null}
-        {linkedCopyMode ? (
+        {linkedCopyMode && !phoneBoardActive ? (
           <div
             role="status"
             style={{
@@ -2563,7 +2607,7 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
             </button>
           </div>
         ) : null}
-        {hubAssignJobPlacement ? (
+        {hubAssignJobPlacement && !phoneBoardActive ? (
           <div
             style={{
               margin: '0 1.25rem',
@@ -2692,6 +2736,12 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
             onLinkedCopyApplyToPerson={onLinkedCopyApplyToPerson}
             onLinkedCopyApplyToLane={onLinkedCopyApplyToLane}
             linkedCopyApplyBusy={linkedCopyApplyBusy}
+            phonePeopleView={isTomorrow ? undefined : phonePeopleView}
+            onPhonePeopleViewChange={isTomorrow ? undefined : onPhonePeopleViewChange}
+            onCopyBlockToPeople={canEdit ? onCopyBlockToPeople : undefined}
+            onCancelCardPlacement={onCancelCardPlacement}
+            onCancelHubAssignJobPlacement={onCancelHubAssignJobPlacement}
+            onLinkedCopySetStage={onLinkedCopySetStage}
             swimLanes={swimLanes}
             onSwimLanesChanged={() => void refetchSwimLanes()}
             onOfficeRosterChanged={() => void runOfficeEnsure({ force: true })}
