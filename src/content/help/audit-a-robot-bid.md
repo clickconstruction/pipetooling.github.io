@@ -51,3 +51,7 @@ Mention pin numbers in your notes — "pin 3: those are by others" — and the r
 ## What happens to your notes
 
 The robot reads every note, changes how it works (its playbook, its price and labor books, or just that one bid), and replies under your note with a receipt — 🤖 → "Learned: …" — so you can see your feedback landed. Once every note has its receipt the card moves to {{chip:green|Digested}}, kept under **Show digested audits** for reference.
+
+## Who the robots calibrate to
+
+A robot's shadow score is measured against whoever sent the real bid. Only a **calibration standard** estimator's numbers count toward the robot's readiness gate; anyone else's score shows as {{chip:gray|PRACTICE}} on the Scoreboard. The company owner picks the standard under **Settings → Digital twins → ★ Calibration standard**: each estimating user shows {{chip:green|STANDARD}} or {{chip:gray|PRACTICE}} with a {{button:blue|Make standard}} switch beside it. Leave at least one standard set, or no robot score can ever count.
