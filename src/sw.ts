@@ -19,7 +19,9 @@ try {
   // wedged — never let the SPA shell swallow them (v2.1050).
   registerRoute(
     new NavigationRoute(navigationHandler, {
-      denylist: [/^\/task-install\.html$/, /^\/fix(?:\/|$)/, /^\/fix-cache\.html$/],
+      // /g/<slug>/ are the static help share pages (v2.3147) — real HTML on the
+      // server, not app routes; the shell would 404 them for a signed-in phone.
+      denylist: [/^\/task-install\.html$/, /^\/fix(?:\/|$)/, /^\/fix-cache\.html$/, /^\/g\//],
     }),
   )
 } catch {

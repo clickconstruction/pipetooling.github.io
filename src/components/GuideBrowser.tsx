@@ -16,6 +16,9 @@ import { displayLabelForUserRole } from '../lib/userRoleDisplay'
 import { guideLensRoleLabel, guideLensRolesFor } from '../lib/roleGuideLens'
 import type { UserRole } from '../hooks/useAuth'
 import { HelpGuideFeedbackForm } from '../components/HelpGuideFeedbackForm'
+import { useToastContext } from '../contexts/ToastContext'
+import { APP_ORIGIN } from '../lib/appOrigin'
+import { helpShareUrl } from '../lib/helpShareCard'
 
 /**
  * The "How do I…" guide browser — list, search, per-category grouping, and
@@ -84,6 +87,16 @@ export function GuideBrowser({ autoFocusSearch = false }: { autoFocusSearch?: bo
   const guidesBySlug = useMemo(() => new Map(HELP_GUIDES.map((g) => [g.slug, g])), [])
   const grouped = useMemo(() => groupGuidesByCategory(visibleGuides), [visibleGuides])
 
+  const { showToast } = useToastContext()
+  async function copyShareLink(slug: string) {
+    const url = helpShareUrl(APP_ORIGIN, slug)
+    try {
+      await navigator.clipboard.writeText(url)
+      showToast('Share link copied — it previews as this guide when you text it', 'success')
+    } catch {
+      showToast(`Copy this link: ${url}`, 'info')
+    }
+  }
   const articleHtml = useMemo(
     () => (selectedGuide ? helpGuideMarkdownToSafeHtml(selectedGuide.body) : ''),
     [selectedGuide],
@@ -130,7 +143,18 @@ export function GuideBrowser({ autoFocusSearch = false }: { autoFocusSearch?: bo
         <div style={cardStyle}>
           <div style={{ marginBottom: '0.75rem' }}>
             <h1 style={{ margin: '0 0 0.35rem', fontSize: '1.35rem' }}>{helpGuideQuestionTitle(selectedGuide.title)}</h1>
-            <span style={categoryChipStyle}>{selectedGuide.category}</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
+              <span style={categoryChipStyle}>{selectedGuide.category}</span>
+              {/* The share link (v2.3147): /g/<slug>/ unfurls as the guide's own card in a text or a chat. */}
+              <button
+                type="button"
+                onClick={() => void copyShareLink(selectedGuide.slug)}
+                title="Copy a link that previews as this guide's card when you text or paste it"
+                style={{ padding: '0.15rem 0.55rem', fontSize: '0.75rem', fontWeight: 600, background: 'transparent', color: 'var(--text-link)', border: '1px solid var(--border-strong)', borderRadius: 999, cursor: 'pointer', fontFamily: 'inherit' }}
+              >
+                Copy share link
+              </button>
+            </div>
           </div>
           <div
             className="help-guide-body"

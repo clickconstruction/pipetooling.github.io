@@ -2,15 +2,46 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { visualizer } from 'rollup-plugin-visualizer'
 import { VitePWA } from 'vite-plugin-pwa'
-import { copyFileSync } from 'fs'
+import { copyFileSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'fs'
 import { join, resolve } from 'path'
 import { fileURLToPath } from 'url'
 
 const __dirname = fileURLToPath(new URL('.', import.meta.url))
+import { parseHelpGuideFrontmatter } from './src/lib/helpGuides'
+import { HELP_SHARE_PATH_PREFIX, helpShareDescription, helpSharePageHtml } from './src/lib/helpShareCard'
 
 const bundleAnalyze = process.env.ANALYZE === '1'
 
 // Copy index.html to 404.html so GitHub Pages serves the SPA for any path (e.g. /dashboard refresh)
+/**
+ * One static share page per help guide (v2.3147): dist/g/<slug>/index.html
+ * carries the guide's title and first sentence as Open Graph tags plus an
+ * instant bounce into /help?g=<slug> — link previews never run the app, so
+ * the card has to be real HTML on the server. Pure parts in src/lib/helpShareCard.ts.
+ */
+function helpSharePagesPlugin() {
+  return {
+    name: 'help-share-pages',
+    closeBundle() {
+      const guidesDir = join(process.cwd(), 'src', 'content', 'help')
+      const outDir = join(process.cwd(), 'dist')
+      let count = 0
+      for (const file of readdirSync(guidesDir)) {
+        if (!file.endsWith('.md')) continue
+        const slug = file.replace(/\.md$/, '')
+        const { fields, body } = parseHelpGuideFrontmatter(readFileSync(join(guidesDir, file), 'utf8'))
+        const title = (fields.title ?? '').trim()
+        if (!title) continue
+        const dir = join(outDir, HELP_SHARE_PATH_PREFIX.replace(/^\/|\/$/g, ''), slug)
+        mkdirSync(dir, { recursive: true })
+        writeFileSync(join(dir, 'index.html'), helpSharePageHtml({ slug, title, description: helpShareDescription(body), origin: 'https://clicktooling.com' }))
+        count += 1
+      }
+      console.log(`help-share-pages: wrote ${count} share pages under dist${HELP_SHARE_PATH_PREFIX}`)
+    },
+  }
+}
+
 function copy404Plugin() {
   return {
     name: 'copy-404',
@@ -70,6 +101,7 @@ export default defineConfig({
       },
     }),
     copy404Plugin(),
+    helpSharePagesPlugin(),
     ...(bundleAnalyze
       ? [
           // Use emitFile + filename only (no "dist/..." path) so the report is emitted
