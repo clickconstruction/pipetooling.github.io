@@ -20,7 +20,8 @@ import {
   nextMonthlyPaymentDueYmd,
   type AgingBucketKey,
 } from '../lib/supplyHouseAging'
-import { SupplyHouseForm, type SupplyHouseFormData } from './SupplyHouseForm'
+import { SupplyHouseDirectory } from './materials/SupplyHouseDirectory'
+import { useSupplyHouseEditor } from './materials/useSupplyHouseEditor'
 import { SupplyHouseWebsiteLink } from './SupplyHouseWebsiteLink'
 import type { Database } from '../types/database'
 import { isAssistantLike } from '../lib/subcontractorLikeRole'
@@ -105,17 +106,8 @@ export function SupplyHousesTab({
   const supplyHousesList = supplyHousesProp ?? supplyHousesInternal
 
   const [error, setError] = useState<string | null>(null)
-  const [supplyHouseFormOpen, setSupplyHouseFormOpen] = useState(false)
-  const [editingSupplyHouse, setEditingSupplyHouse] = useState<SupplyHouse | null>(null)
-  const [supplyHouseName, setSupplyHouseName] = useState('')
-  const [supplyHouseContactName, setSupplyHouseContactName] = useState('')
-  const [supplyHousePhone, setSupplyHousePhone] = useState('')
-  const [supplyHouseEmail, setSupplyHouseEmail] = useState('')
-  const [supplyHouseAddress, setSupplyHouseAddress] = useState('')
-  const [supplyHouseWebsiteUrl, setSupplyHouseWebsiteUrl] = useState('')
-  const [supplyHouseNotes, setSupplyHouseNotes] = useState('')
-  const [supplyHouseMonthlyPaymentDay, setSupplyHouseMonthlyPaymentDay] = useState('')
-  const [savingSupplyHouse, setSavingSupplyHouse] = useState(false)
+  /** Bumped after every house save so the Directory pane refetches reps and request history. */
+  const [directoryReloadKey, setDirectoryReloadKey] = useState(0)
 
   const [supplyHouseSummary, setSupplyHouseSummary] = useState<SupplyHouseSummaryRow[]>([])
   const [supplyHouseSummaryLoading, setSupplyHouseSummaryLoading] = useState(false)
@@ -410,6 +402,20 @@ export function SupplyHousesTab({
   // provider (this tab also lives on /materials).
   const narrowAging = useNarrowViewport640()
   const housesPastDue60 = countSupplyHousesPastDue60(agingMatrix)
+  const houseEditor = useSupplyHouseEditor({
+    myRole,
+    onSaved: async ({ kind, houseId }) => {
+      await Promise.all([loadSupplyHouses(), loadSupplyHouseSummary()])
+      setDirectoryReloadKey((k) => k + 1)
+      if (kind === 'deleted' && selectedSupplyHouseForDetail?.id === houseId) {
+        setSelectedSupplyHouseForDetail(null)
+        setPoGeneratorCodesForSelectedHouse(null)
+      } else if (kind === 'updated' && selectedSupplyHouseForDetail?.id === houseId) {
+        await loadSupplyHouseDetail(selectedSupplyHouseForDetail)
+      }
+    },
+  })
+
   useReportQuickfillSectionMetric(
     'supply-houses',
     !canAccess || supplyHouseSummaryLoading ? null : housesPastDue60,
@@ -417,123 +423,6 @@ export function SupplyHousesTab({
   )
 
   if (!canAccess) return null
-
-  function closeSupplyHouseForm() {
-    setSupplyHouseFormOpen(false)
-    setEditingSupplyHouse(null)
-  }
-
-  function handleSupplyHouseChange(field: string, value: string) {
-    switch (field) {
-      case 'name': setSupplyHouseName(value); break
-      case 'contact_name': setSupplyHouseContactName(value); break
-      case 'phone': setSupplyHousePhone(value); break
-      case 'email': setSupplyHouseEmail(value); break
-      case 'address': setSupplyHouseAddress(value); break
-      case 'website_url': setSupplyHouseWebsiteUrl(value); break
-      case 'notes': setSupplyHouseNotes(value); break
-      case 'monthly_payment_day': setSupplyHouseMonthlyPaymentDay(value); break
-    }
-  }
-
-  async function handleSupplyHouseSubmit(data: SupplyHouseFormData) {
-    if (!data.name.trim()) {
-      setError('Supply house name is required')
-      return
-    }
-    setSavingSupplyHouse(true)
-    setError(null)
-
-    if (editingSupplyHouse) {
-      const { error: e } = await supabase
-        .from('supply_houses')
-        .update({
-          name: data.name.trim(),
-          contact_name: data.contact_name.trim() || null,
-          phone: data.phone.trim() || null,
-          email: data.email.trim() || null,
-          address: data.address.trim() || null,
-          website_url: data.website_url,
-          notes: data.notes.trim() || null,
-          monthly_payment_day: data.monthly_payment_day,
-          is_insurer: data.is_insurer,
-        })
-        .eq('id', editingSupplyHouse.id)
-      if (e) setError(e.message)
-      else {
-        await Promise.all([loadSupplyHouses(), loadSupplyHouseSummary()])
-        if (selectedSupplyHouseForDetail?.id === editingSupplyHouse.id) await loadSupplyHouseDetail(editingSupplyHouse)
-        closeSupplyHouseForm()
-      }
-    } else {
-      const { error: e } = await supabase
-        .from('supply_houses')
-        .insert({
-          name: data.name.trim(),
-          contact_name: data.contact_name.trim() || null,
-          phone: data.phone.trim() || null,
-          email: data.email.trim() || null,
-          address: data.address.trim() || null,
-          website_url: data.website_url,
-          notes: data.notes.trim() || null,
-          monthly_payment_day: data.monthly_payment_day,
-          is_insurer: data.is_insurer,
-        })
-      if (e) setError(e.message)
-      else {
-        await Promise.all([loadSupplyHouses(), loadSupplyHouseSummary()])
-        closeSupplyHouseForm()
-      }
-    }
-    setSavingSupplyHouse(false)
-  }
-
-  async function handleDeleteSupplyHouse(supplyHouseId: string) {
-    const { data: prices } = await supabase
-      .from('material_part_prices')
-      .select('id')
-      .eq('supply_house_id', supplyHouseId)
-      .limit(1)
-    const hasPrices = prices && prices.length > 0
-    const message = hasPrices
-      ? 'Delete this supply house? All prices associated with it will also be removed.'
-      : 'Delete this supply house?'
-    if (!(await confirmDialog({ message, confirmLabel: 'Delete', danger: true }))) return
-    setError(null)
-    const { error } = await supabase.from('supply_houses').delete().eq('id', supplyHouseId)
-    if (error) setError(error.message)
-    else {
-      await Promise.all([loadSupplyHouses(), loadSupplyHouseSummary()])
-      closeSupplyHouseForm()
-    }
-  }
-
-  function openAddSupplyHouse() {
-    setEditingSupplyHouse(null)
-    setSupplyHouseName('')
-    setSupplyHouseContactName('')
-    setSupplyHousePhone('')
-    setSupplyHouseEmail('')
-    setSupplyHouseAddress('')
-    setSupplyHouseWebsiteUrl('')
-    setSupplyHouseNotes('')
-    setSupplyHouseMonthlyPaymentDay('')
-    setSupplyHouseFormOpen(true)
-    setError(null)
-  }
-
-  function handleOpenEditSupplyHouse(sh: SupplyHouse) {
-    setEditingSupplyHouse(sh)
-    setSupplyHouseName(sh.name)
-    setSupplyHouseContactName(sh.contact_name ?? '')
-    setSupplyHousePhone(sh.phone ?? '')
-    setSupplyHouseEmail(sh.email ?? '')
-    setSupplyHouseAddress(sh.address ?? '')
-    setSupplyHouseWebsiteUrl(sh.website_url ?? '')
-    setSupplyHouseNotes(sh.notes ?? '')
-    setSupplyHouseMonthlyPaymentDay(sh.monthly_payment_day != null ? String(sh.monthly_payment_day) : '')
-    setSupplyHouseFormOpen(true)
-  }
 
   function handleNavigateToPO(poId: string) {
     if (onNavigateToPO) {
@@ -752,7 +641,28 @@ export function SupplyHousesTab({
         </div>
       )}
       {error && <p style={{ color: 'var(--text-red-700)', marginBottom: '1rem' }}>{error}</p>}
+      {houseEditor.error && <p style={{ color: 'var(--text-red-700)', marginBottom: '1rem' }}>{houseEditor.error}</p>}
 
+      {/* Pane 1 — the Directory: the same component the estimator's tab renders alone (to-dos/supply-house-directory). */}
+      <section style={{ marginBottom: '2.25rem' }}>
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.75rem', marginBottom: '0.75rem', flexWrap: 'wrap' }}>
+          <h3 style={{ margin: 0, fontSize: '1.125rem', fontWeight: 600 }}>Directory</h3>
+          <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>houses, reps and websites</span>
+        </div>
+        <SupplyHouseDirectory
+          supplyHouses={supplyHousesList}
+          audience="office"
+          onAddHouse={houseEditor.openAdd}
+          onEditHouse={houseEditor.openEdit}
+          reloadKey={directoryReloadKey}
+        />
+      </section>
+
+      {/* Pane 2 — accounts payable: invoices, aging, balances. Office only; unchanged by the Directory split. */}
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.75rem', marginBottom: '0.5rem', flexWrap: 'wrap' }}>
+        <h3 style={{ margin: 0, fontSize: '1.125rem', fontWeight: 600 }}>Accounts payable</h3>
+        <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>invoices, aging and balances — office only</span>
+      </div>
       <section style={{ marginBottom: '2rem' }}>
         {supplyHouseSummaryLoading ? (
           <p style={{ color: 'var(--text-muted)' }}>Loading…</p>
@@ -979,7 +889,7 @@ export function SupplyHousesTab({
                               type="button"
                               onClick={(e) => {
                                 e.stopPropagation()
-                                handleOpenEditSupplyHouse(selectedSupplyHouseForDetail)
+                                houseEditor.openEdit(selectedSupplyHouseForDetail)
                               }}
                               style={{ padding: '0.25rem 0.5rem', fontSize: '0.875rem', background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer' }}
                               onMouseDown={(e) => e.stopPropagation()}
@@ -1242,36 +1152,7 @@ export function SupplyHousesTab({
 
       <SupplyHouseJobAccountsSection />
 
-      <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '1.5rem' }}>
-        <button
-          type="button"
-          onClick={openAddSupplyHouse}
-          style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}
-        >
-          Add Supply House
-        </button>
-      </div>
-
-      {supplyHouseFormOpen && (
-        <SupplyHouseForm
-          editingSupplyHouse={editingSupplyHouse}
-          name={supplyHouseName}
-          contactName={supplyHouseContactName}
-          phone={supplyHousePhone}
-          email={supplyHouseEmail}
-          address={supplyHouseAddress}
-          websiteUrl={supplyHouseWebsiteUrl}
-          notes={supplyHouseNotes}
-          monthlyPaymentDay={supplyHouseMonthlyPaymentDay}
-          onChange={handleSupplyHouseChange}
-          onSubmit={handleSupplyHouseSubmit}
-          onClose={closeSupplyHouseForm}
-          onDelete={editingSupplyHouse ? () => handleDeleteSupplyHouse(editingSupplyHouse.id) : undefined}
-          saving={savingSupplyHouse}
-          myRole={myRole}
-          variant="modal"
-        />
-      )}
+      {houseEditor.modal}
 
       {invoiceFormOpen && selectedSupplyHouseForDetail && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1003 }}>

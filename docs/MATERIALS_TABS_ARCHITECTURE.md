@@ -5,7 +5,7 @@ file: docs/MATERIALS_TABS_ARCHITECTURE.md
 type: Engineering / Refactor Map
 purpose: Map of the Materials.tsx decomposition (per PAGE_DECOMPOSITION_PLAYBOOK.md) — the decomposition is COMPLETE (12-PR train, v2.1275–v2.1293): every tab is an extracted component and src/pages/Materials.tsx is a ~2,123-line orchestration shell. This doc records what each tab owns (state, loaders, handlers, sub-components, supabase tables/RPCs, cross-tab coupling) and where everything landed.
 audience: Developers, AI Agents
-last_updated: 2026-09-05
+last_updated: 2026-09-08
 ---
 
 ## Overview
@@ -42,7 +42,7 @@ Each section lists: render location (anchored by symbol/JSX comment — line num
 
 | Tab key | Label | Render anchor | Approx inline lines | Status | Owned state (approx) | Cross-tab coupling | Risk | Recommended action |
 |---|---|---|---|---|---|---|---|---|
-| `supply-houses` | Supply Houses | `activeTab === 'supply-houses'` wrapper | ~9 | **extracted** (`SupplyHousesTab`) | 0 in parent | low (`handleNavigateToPOFromSupplyHouses` writes PO state) | — | Done; later fold the legacy Supply House modal (Parts Book) into it |
+| `supply-houses` | Supply Houses | `activeTab === 'supply-houses' && supplyHousesPaneFor(myRole) === 'office'` wrapper | ~9 | **extracted** (`SupplyHousesTab` = Directory pane + AP pane, v2.3166) | 0 in parent | low (`handleNavigateToPOFromSupplyHouses` writes PO state) | — | Done; PR 3 of the supply-house-directory to-do retires the Parts Book modal's CRUD |
 | `po-generator` | PO Generator | always-mounted `<MaterialsPoGeneratorTab active={…}>` | ~9 | **extracted (v2.1279)** ([`MaterialsPoGeneratorTab`](../src/components/materials/MaterialsPoGeneratorTab.tsx)) | 0 in parent | low (props: `supplyHouses`, `selectedServiceTypeId`, `myRole`, `onError`) | — | Done |
 | `job-accounts` | Job Accounts | always-mounted `<MaterialsJobAccountsTab active={…}>` | ~15 | **born extracted (v2.2652)** ([`MaterialsJobAccountsTab`](../src/components/materials/MaterialsJobAccountsTab.tsx); kernel [`lib/materials/jobAccountsFlow.ts`](../src/lib/materials/jobAccountsFlow.ts)) | 0 in parent | low (`onOpenSupplyHouse` writes `supplyHouseToAutoOpen` + switches to supply-houses) | — | Done |
 | `purchase-orders` | Purchase Orders | always-mounted `<MaterialsPurchaseOrdersTab active={…}>` | ~40 | **extracted (v2.1281)** ([`MaterialsPurchaseOrdersTab`](../src/components/materials/MaterialsPurchaseOrdersTab.tsx)); engine in [`useMaterialsPurchaseOrders`](../src/hooks/useMaterialsPurchaseOrders.ts) | 0 in parent | price-edit cluster + draft SH options stay parent-owned (written by shared `updatePOItemSupplyHouse`); deep-link router + `selectedPODetailRef` parent | — | Done |
@@ -106,11 +106,12 @@ Page-level modals (stay in parent or move with a cluster): `PartFormModal` (extr
 
 ### `supply-houses` — Supply Houses (extracted)
 
-- **Render location:** thin wrapper behind `activeTab === 'supply-houses' && (myRole === 'dev' || myRole === 'master_technician' || isAssistantLike(myRole))` — renders [`SupplyHousesTab`](../src/components/SupplyHousesTab.tsx) (~1,367 lines) with `supplyHouses`, `onSupplyHousesChange={loadSupplyHouses}`, `myRole`, `selectedServiceTypeId`, `onNavigateToPO={handleNavigateToPOFromSupplyHouses}`.
+- **Render location:** thin wrapper behind `activeTab === 'supply-houses' && supplyHousesPaneFor(myRole) === 'office'` ([`materialsTabs.ts`](../src/lib/materials/materialsTabs.ts)) — renders [`SupplyHousesTab`](../src/components/SupplyHousesTab.tsx) with `supplyHouses`, `onSupplyHousesChange={loadSupplyHouses}`, `myRole`, `selectedServiceTypeId`, `onNavigateToPO={handleNavigateToPOFromSupplyHouses}`.
+- **Two panes since v2.3166** ([to-do](../to-dos/supply-house-directory/README.md)): **Directory** — [`SupplyHouseDirectory`](../src/components/materials/SupplyHouseDirectory.tsx) (vendors, kind, reps with provenance, phone, prices on file + last price request, coverage line, "Needs a rep" band; kernel [`supplyHouseDirectory.ts`](../src/lib/materials/supplyHouseDirectory.ts)) — above **Accounts payable** (the aging heat map, summary table, invoice drawer, job accounts — the pre-v2.3166 JSX). The house add/edit/delete modal is the shared [`useSupplyHouseEditor`](../src/components/materials/useSupplyHouseEditor.tsx) hook, rendered once by the tab and opened from both panes. PR 2 of the to-do renders the Directory alone for estimators (`supplyHousesPaneFor(role) === 'directory'`).
 - **Owned local state (parent):** none — everything lives in the component (expanded-house detail, supply-house invoices CRUD with job allocations, monthly-payment-day "Due" column, PO list per house).
 - **Cross-tab/shared state:** `supplyHouses` (parent cache, refreshed via callback), `selectedServiceTypeId` (note: the page-level service-type filter row is **hidden** on this tab — it doesn't scope by service type), PO navigation callback writes `editingPO`/`selectedPO`/`draftPOs`/`allPOs` and switches to `purchase-orders`.
 - **Supabase tables (inside the component):** `supply_houses` (all verbs, with a legacy-column fallback SELECT), `supply_house_invoices` (CRUD), `supply_house_invoice_job_allocations`, `purchase_orders`, `purchase_order_items`, `material_part_prices`, `service_types`, and `material_po_generator_entries` — invoice **Purchase Order #** fields are parsed with [`parsePoGeneratorCodeFromPurchaseOrderName`](../src/lib/parsePoGeneratorCodeFromPurchaseOrderName.ts) and matched against the PO Generator ledger; unmatched generator-style codes render a red warning (see GLOSSARY "PO Generator ledger").
-- **Extraction status:** **Done.** Remaining cleanup (separate, optional): the Parts Book toolbar's inline Supply House Management Modal duplicates this component's CRUD + stats; folding it into `SupplyHousesTab` (or deleting it in favor of tab navigation) would remove ~250 parent lines and the 9-field `supplyHouse*` state cluster — but that is a behavior change, so it is NOT part of the behavior-preserving decomposition.
+- **Extraction status:** **Done.** The Parts Book toolbar's Price coverage modal still duplicates the house CRUD (quirk 16); PR 3 of the supply-house-directory to-do reduces it to price coverage only now that the Directory is the honest home for editing a house.
 
 ### `job-accounts` — Job Accounts (born extracted, v2.2652)
 
@@ -140,11 +141,13 @@ The "API surface" any extracted tab must be handed.
 
 ### Role + service-type scope (parent, permanent)
 
-- `myRole` (`loadRole`): page allows `dev`, `master_technician`, assistant-like (`assistant`/`controller` via [`isAssistantLike`](../src/lib/subcontractorLikeRole.ts)), `estimator`, `primary`, `superintendent`; everyone else gets "Access denied".
+- `myRole` (`loadRole`): page allows the roles `canAccessMaterials(role)` admits — `dev`, `master_technician`, assistant-like (`assistant`/`controller` via [`isAssistantLike`](../src/lib/subcontractorLikeRole.ts)), `estimator`, `primary`, `superintendent`; everyone else gets "Access denied".
 - Per-role service-type restriction arrays from the `users` row: `estimator_service_type_ids`, `primary_service_type_ids`, `superintendent_service_type_ids` → `visibleServiceTypes` filter (NULL/empty = all).
 - `serviceTypes` + `selectedServiceTypeId`: the master scope. The service-type button row is hidden on `supply-houses`. Changing it clears part filters, resets pagination, clears both parts caches, and reloads the six common loaders in parallel (`loadSupplyHouses`, `loadPartTypes`, `loadAssemblyTypes`, `loadMaterialTemplates`, `loadPurchaseOrders`, `loadSupplyHouseStatsByServiceType`) + parts (paged or Load-All).
 
 ### Tab gating (verify against the tab-button JSX + the `searchParams` guard effect)
+
+**Since v2.3166 the table below is the kernel [`materialsTabsFor(role)`](../src/lib/materials/materialsTabs.ts)** — the pills, the `?tab=` guard effect (`resolveMaterialsTab`), the page's access checks (`canAccessMaterials`) and the Supply houses body (`supplyHousesPaneFor`) all read it; `materialsTabs.test.ts` pins every row. Change the kernel, not the JSX, when a role gains or loses a tab (and keep the RLS on `supply_houses` / `supply_house_contacts` in step).
 
 | Tab | dev / master_technician / assistant-like | estimator | primary / superintendent |
 |---|---|---|---|
@@ -156,7 +159,7 @@ The "API surface" any extracted tab must be handed.
 | Job Accounts | ✅ | ❌ (hidden + redirect) | ❌ (hidden + redirect) |
 | PO Generator | ✅ | ❌ (hidden + redirect) | ❌ (hidden + redirect) |
 
-The URL guard effect rewrites disallowed `?tab=` values to `parts-book` (`replace: true`) and rewrites the legacy `price-book` slug. `supply-houses`/`po-generator` render gates additionally re-check the role inline.
+The URL guard effect rewrites disallowed `?tab=` values to `parts-book` (`replace: true`) and rewrites the legacy `price-book` / `templates-po` slugs; while the role is still loading it honours a known slug and decides nothing about access. The `supply-houses` and `po-generator` bodies re-check the kernel inline.
 
 ### URL / navigation router (parent, permanent)
 
@@ -204,7 +207,7 @@ The URL guard effect rewrites disallowed `?tab=` values to `parts-book` (`replac
 13. **Double-`requestAnimationFrame` scroll** to `selectedPODetailRef` after PO deep-links (lets the tab switch paint first).
 14. **`addItemToTemplate`/`handleAddItemFromModal` merge quantities** when the part already exists in the assembly instead of inserting a duplicate row, and block adding an assembly to itself (direct self-reference only — deeper cycles are handled at cost-calc time by `calculateAssemblyCost`'s `visited` set).
 15. **"Go to Projects to Add"** uses `window.location.href = '/projects'` (full page reload, not router navigation).
-16. **Parts Book toolbar hosts a legacy Supply House Management Modal** whose CRUD + RPC-stats duplicate `SupplyHousesTab`. The toolbar button is labelled **Price coverage** and the modal heading **Price coverage by supply house** (v2.2903 — the word "Supply Houses" named the tab, the button and the modal; now only the tab). The button is visible to every role with Parts Book access, so estimators, primaries, and superintendents (who cannot see the Supply Houses tab) reach supply-house editing through this modal — removing it would be a permissions behavior change, not a refactor.
+16. **Parts Book toolbar hosts a legacy Supply House Management Modal** whose CRUD + RPC-stats duplicate `SupplyHousesTab` (since v2.3166, its Directory pane + `useSupplyHouseEditor`; PR 3 of the supply-house-directory to-do closes this quirk). The toolbar button is labelled **Price coverage** and the modal heading **Price coverage by supply house** (v2.2903 — the word "Supply Houses" named the tab, the button and the modal; now only the tab). The button is visible to every role with Parts Book access, so estimators, primaries, and superintendents (who cannot see the Supply Houses tab) reach supply-house editing through this modal — removing it would be a permissions behavior change, not a refactor.
 
 ---
 

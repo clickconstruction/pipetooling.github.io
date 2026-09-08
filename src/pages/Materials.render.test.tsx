@@ -114,7 +114,8 @@ const ASSEMBLY_BOOK_ANCHOR = 'Search assemblies by name, description, or type...
 const PO_BUILDER_ANCHOR = 'Search assemblies by name or description…'
 const PURCHASE_ORDERS_ANCHOR = 'Search purchase orders...'
 const PO_GENERATOR_ANCHOR = 'Search by HCP #, job name, or address…'
-const SUPPLY_HOUSES_ANCHOR = 'Add Supply House'
+// The office tab now opens with the Directory pane (to-dos/supply-house-directory, PR 1); its add button is the anchor.
+const SUPPLY_HOUSES_ANCHOR = 'Add vendor'
 
 describe('Materials page render smoke — dev sees every tab', () => {
   it('mounts the default Parts Book tab with all six tab buttons', async () => {
@@ -156,9 +157,11 @@ describe('Materials page render smoke — dev sees every tab', () => {
     expect(screen.getByTestId('po-lane-signpost-po-generator').textContent).toMatch(/Counter PO numbers start here/)
   })
 
-  it('mounts the extracted Supply Houses tab via ?tab=supply-houses', async () => {
+  it('mounts the extracted Supply Houses tab via ?tab=supply-houses — Directory pane above Accounts payable', async () => {
     renderMaterialsAt('/materials?tab=supply-houses', 'dev')
     expect(await screen.findByText(SUPPLY_HOUSES_ANCHOR)).toBeTruthy()
+    expect(screen.getByRole('heading', { name: 'Directory' })).toBeTruthy()
+    expect(screen.getByRole('heading', { name: 'Accounts payable' })).toBeTruthy()
   })
 
   it('rewrites the legacy ?tab=price-book slug to Parts Book', async () => {

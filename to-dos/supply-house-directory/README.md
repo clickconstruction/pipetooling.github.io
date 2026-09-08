@@ -1,6 +1,6 @@
 # Supply house directory — the estimator's door, and one directory behind all three of them
 
-Status: **designed, not started** · asked, weighed and mocked up 2026-09-08; no code written · mock-up: [`mockup.html`](./mockup.html) beside this file (five screens; open it in a browser)
+Status: **in progress — PR 1 shipped (v2.3166: Directory pane + `materialsTabsFor` kernel + shared house editor), PRs 2–6 next** · asked, weighed and mocked up 2026-09-08; refined mock-up approved by the owner the same day (artifact *Supply House Directory*: coverage line, "Needs a rep" band, rep provenance, who-quoted-last, five-value Kind, trades served, hand-classified seed) · mock-up: [`mockup.html`](./mockup.html) beside this file (five screens; open it in a browser)
 
 ## The ask, in the owner's words
 
