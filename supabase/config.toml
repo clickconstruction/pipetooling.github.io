@@ -613,6 +613,10 @@ verify_jwt = false
 [functions.ct-bridge]
 verify_jwt = false
 
+# TT↔PT bridge proxy (v2.3082): devs only, JWT validated in-function; forwards to TakeoffTooling's manage-user.
+[functions.tt-bridge]
+verify_jwt = false
+
 # Audit loop v2 (v2.2518): JWT validated in-function (estimator+, never twins);
 # finishes/reopens a bid audit and flips the twin's CT project review status.
 [functions.audit-finish]
