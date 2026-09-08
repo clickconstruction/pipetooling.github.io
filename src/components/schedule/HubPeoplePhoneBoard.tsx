@@ -15,7 +15,13 @@ import { scheduleBlockAnchorId, type JobScheduleBlockRow } from '../../lib/jobSc
 import { hubPersonDayKey } from '../../lib/scheduleDispatchHub'
 import type { LinkedCopyMode } from '../../lib/scheduleDispatchLinkedCopy'
 import { userTimeOffCellKey, type UserTimeOffCellInfo } from '../../lib/userTimeOffByCell'
+import { latenessCellKey, type PersonDayLateness } from '../../lib/scheduleLateness'
+import { scheduleHiddenPlaceholderTitle, type ScheduleHiddenCell } from '../../lib/scheduleHiddenBlocks'
+import type { SubBadge } from '../../lib/subs/subDispatch'
+import { editNoteIconColorForBlock, effectiveNoteRequirement, type DispatchNoteRequirement } from '../../lib/dispatchNoteRequirements'
 import { DISPATCH_MODE_FOOTER_HEIGHT_PX } from '../dispatchMode/DispatchModeFooter'
+import { ScheduleDispatchLateChip } from './ScheduleDispatchLateChip'
+import { ScheduleDispatchTimeOffChip } from './ScheduleDispatchTimeOffChip'
 import type { ScheduleDispatchCardPlacementMode, ScheduleDispatchCardPlacementVariant } from './ScheduleDispatchGrid'
 import type { PhonePeopleView } from '../../lib/scheduleDispatch/phonePeopleBoard'
 import {
@@ -53,6 +59,16 @@ export type HubPeoplePhoneBoardProps = {
   getJobAddress?: (jobId: string) => string
   salariedUserIds: ReadonlySet<string>
   userTimeOffByCell?: ReadonlyMap<string, UserTimeOffCellInfo>
+  /** Derived per-cell lateness — the informational Late chip (suppressed under a time-off chip, like the grid). */
+  latenessByCell?: ReadonlyMap<string, PersonDayLateness>
+  /** Per person-day RLS-hidden block counts (superintendent) — grey "busy" rows; the day is not free. */
+  hiddenByCell?: ReadonlyMap<string, ScheduleHiddenCell>
+  /** "sub" / "2 subs" beside a tech who has subs on one of their jobs that day. */
+  subBadgeByCell?: ReadonlyMap<string, SubBadge>
+  /** The note-requirement rule for a block (the panel's context) — drives the per-row "no note" marker. */
+  noteRequirementForBlock?: (input: { userId: string; jobId: string | null | undefined }) => DispatchNoteRequirement
+  /** Tapping a "Not coming in" chip clears the marking (undo confirm), as on the grid. */
+  onRequestUndoNotComingIn?: (personUserId: string, workDate: string) => void
   /** Blocks missing a required note on `missingNoteDayYmd` (the panel computes it). */
   missingNoteCount: number
   missingNoteDayYmd: string
@@ -73,8 +89,8 @@ export type HubPeoplePhoneBoardProps = {
   onLinkedCopyToggleBlock?: (blockId: string) => void
   onLinkedCopyApplyToPerson?: (personUserId: string) => void
   onLinkedCopyApplyToLane?: (laneLabel: string, memberUserIds: string[]) => void
-  /** Copy to techs sheet: one block to a chosen list of people, linked or not. */
-  onCopyBlockToPeople?: (args: { blockId: string; userIds: string[]; linked: boolean }) => void | Promise<void>
+  /** Copy to techs sheet: one block to a chosen list of people, linked or not. Resolves `null` when nothing was attempted (the sheet stays open). */
+  onCopyBlockToPeople?: (args: { blockId: string; userIds: string[]; linked: boolean }) => void | Promise<void | { applied: number } | null>
   // ---- placement taps ----
   onCardPlacementCellPick: (assigneeUserId: string, workDate: string) => void
   onCancelCardPlacement?: () => void
@@ -159,6 +175,9 @@ export function HubPeoplePhoneBoard(props: HubPeoplePhoneBoardProps) {
     getJobAddress,
     salariedUserIds,
     userTimeOffByCell,
+    latenessByCell,
+    hiddenByCell,
+    subBadgeByCell,
     missingNoteCount,
     missingNoteDayYmd,
     canEdit,
@@ -204,7 +223,9 @@ export function HubPeoplePhoneBoard(props: HubPeoplePhoneBoardProps) {
         label: blockTitle(sourceBlock),
         startMinutes: timeToMinutes(sourceBlock.time_start),
         endMinutes: timeToMinutes(sourceBlock.time_end),
-        sourceUserIds: isMove ? new Set() : new Set([sourceBlock.assignee_user_id]),
+        // Only a linked copy refuses its own tech (a linked leg must go to someone else); a solo copy
+        // may land on the same tech another day, and a move reads the source cell separately.
+        sourceUserIds: cardPlacementMode.variant === 'linked' ? new Set([sourceBlock.assignee_user_id]) : new Set(),
         linked: cardPlacementMode.variant === 'linked',
       }
     }
@@ -323,14 +344,17 @@ export function HubPeoplePhoneBoard(props: HubPeoplePhoneBoardProps) {
     if (!copyFor || copySelected.size === 0 || !props.onCopyBlockToPeople) return
     setCopyBusy(true)
     try {
-      await props.onCopyBlockToPeople({ blockId: copyFor.id, userIds: [...copySelected], linked: copyLinked })
-      setCopyFor(null)
+      const res = await props.onCopyBlockToPeople({ blockId: copyFor.id, userIds: [...copySelected], linked: copyLinked })
+      if (res !== null) setCopyFor(null)
     } finally {
       setCopyBusy(false)
     }
   }
 
-  const linkedWrongDay = mode?.kind === 'copy' && mode.linked && modeSourceYmd != null && modeSourceYmd !== selectedYmd
+  // Linked copies (single or the Copy to techs stage 2) land on the source block's own day — the cards
+  // must not read another day's availability, so off that day they point back to it instead.
+  const linkedWrongDay =
+    ((mode?.kind === 'copy' && mode.linked) || mode?.kind === 'linked-apply') && modeSourceYmd != null && modeSourceYmd !== selectedYmd
   const bar = mode ? modeBarText(mode) : null
   const showBar = (mode != null && mode.kind !== 'multi-cell') || linkedSelecting
 
@@ -387,8 +411,9 @@ export function HubPeoplePhoneBoard(props: HubPeoplePhoneBoardProps) {
       {/* sections */}
       {sections.map((section, si) => {
         const dayBlockCount = section.people.reduce((n, p) => n + dayBlocksFor(p.userId, selectedYmd).length, 0)
-        const laneMembers = section.heading?.laneMemberUserIds ?? section.people.map((p) => p.userId)
-        const bandApply = mode?.kind === 'linked-apply' && props.onLinkedCopyApplyToLane != null && section.heading != null
+        // Like the grid: a whole-team apply exists only for a real swim lane, never a role heading or "Everyone else".
+        const laneMembers = section.heading?.laneMemberUserIds ?? []
+        const bandApply = mode?.kind === 'linked-apply' && !linkedWrongDay && props.onLinkedCopyApplyToLane != null && laneMembers.length > 0
         return (
           <div key={section.heading?.key ?? `section-${si}`} style={{ display: 'grid', gap: '0.55rem' }}>
             {section.heading ? (
@@ -424,9 +449,14 @@ export function HubPeoplePhoneBoard(props: HubPeoplePhoneBoardProps) {
             ) : null}
             {section.people.map((person) => {
               const blocks = dayBlocksFor(person.userId, selectedYmd)
+              const cellKey = hubPersonDayKey(person.userId, selectedYmd)
               const timeOff = userTimeOffByCell?.get(userTimeOffCellKey(person.userId, selectedYmd)) ?? null
+              const lateInfo = timeOff ? null : latenessByCell?.get(latenessCellKey(person.userId, selectedYmd)) ?? null
+              const hiddenInfo = hiddenByCell?.get(cellKey) ?? null
+              const subBadge = subBadgeByCell?.get(cellKey) ?? null
               const salaried = salariedUserIds.has(person.userId)
               if (mode) {
+                const isSourceCell = mode.kind === 'move' && sourceBlock != null && sourceBlock.assignee_user_id === person.userId && sourceBlock.work_date === selectedYmd
                 const state = linkedWrongDay
                   ? { tone: 'source' as const, what: `Linked copies land on ${weekdayOfYmd(modeSourceYmd!)} ${Number(modeSourceYmd!.slice(8, 10))}`, why: 'Switch back to that day in the strip to place it.', tappable: false }
                   : cardTargetState({
@@ -434,7 +464,9 @@ export function HubPeoplePhoneBoard(props: HubPeoplePhoneBoardProps) {
                       userId: person.userId,
                       dayBlocks: blocks.map(blockSummary),
                       notComingIn: timeOff != null,
-                      multiSelected: hubMultiCellAddSelectedKeys.has(hubPersonDayKey(person.userId, selectedYmd)),
+                      multiSelected: hubMultiCellAddSelectedKeys.has(cellKey),
+                      isSourceCell,
+                      hiddenCount: hiddenInfo?.count ?? 0,
                     })
                 return (
                   <button
@@ -461,13 +493,32 @@ export function HubPeoplePhoneBoard(props: HubPeoplePhoneBoardProps) {
                       {person.displayName}
                       {salaried ? <small style={{ fontWeight: 500, color: 'var(--text-muted)', fontSize: '0.75rem', marginLeft: '0.25rem' }}>(s)</small> : null}
                     </span>
-                    {timeOff ? <span style={chip(timeOff.variant === 'ncns' ? 'red' : 'amber')}>{timeOff.label}</span> : null}
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                      {subBadge ? <span style={chip('gray')} title={subBadge.titles.join(', ')}>{subBadge.count === 1 ? 'sub' : `${subBadge.count} subs`}</span> : null}
+                      {timeOff ? (
+                        <ScheduleDispatchTimeOffChip
+                          info={timeOff}
+                          onClick={
+                            canEdit && props.onRequestUndoNotComingIn && (timeOff.variant === 'not_coming_in' || timeOff.variant === 'ncns')
+                              ? () => props.onRequestUndoNotComingIn?.(person.userId, selectedYmd)
+                              : undefined
+                          }
+                          interactiveTitle={timeOff.variant === 'ncns' ? 'Tap to clear the schedule marking (the attendance incident stays on record)' : 'Tap to mark as coming in'}
+                        />
+                      ) : lateInfo ? (
+                        <ScheduleDispatchLateChip info={lateInfo} />
+                      ) : null}
+                    </span>
                   </div>
                   {blocks.map((b) => {
                     const linkedWith = linkedWithCaption(crewNames(b), person.displayName)
                     const addr = getJobAddress?.(scheduleBlockAnchorId(b)) ?? ''
                     const selecting = linkedSelecting
                     const selected = selecting && (linkedCopyMode?.selectedBlockIds.has(b.id) ?? false)
+                    const caption = [addr || null, linkedWith].filter(Boolean).join(' · ')
+                    // Same rule as the strip's count and the grid's pencil: today/future only, `skip` rules quiet.
+                    const noteReq = effectiveNoteRequirement(props.noteRequirementForBlock?.({ userId: person.userId, jobId: b.job_id }) ?? 'default', b.work_date < scheduleTodayYmd)
+                    const needsNote = !b.note && noteReq !== 'skip' && b.work_date >= scheduleTodayYmd
                     return (
                       <button
                         key={b.id}
@@ -504,14 +555,28 @@ export function HubPeoplePhoneBoard(props: HubPeoplePhoneBoardProps) {
                         <span style={{ minWidth: 0 }}>
                           <b style={{ display: 'block', color: 'var(--text-strong)', fontSize: '0.85rem' }}>{blockTitle(b)}</b>
                           <span style={{ color: 'var(--text-muted)', fontSize: '0.74rem' }}>
-                            {[addr || null, linkedWith].filter(Boolean).join(' · ')}
-                            {b.note ? '' : ''}
+                            {caption}
+                            {needsNote ? (
+                              <span style={{ color: editNoteIconColorForBlock({ requirement: noteReq, hasNote: false }), fontWeight: 600 }}>
+                                {caption ? ' · ' : ''}✎ no note
+                              </span>
+                            ) : null}
                           </span>
                         </span>
                         <span style={{ color: 'var(--text-link)', fontWeight: 600, fontSize: '0.8rem', whiteSpace: 'nowrap' }}>{formatShortRange(timeToMinutes(b.time_start), timeToMinutes(b.time_end))}</span>
                       </button>
                     )
                   })}
+                  {hiddenInfo ? (
+                    <div
+                      role="note"
+                      title={scheduleHiddenPlaceholderTitle(hiddenInfo)}
+                      aria-label={scheduleHiddenPlaceholderTitle(hiddenInfo)}
+                      style={{ margin: '0.4rem 0.6rem', padding: '0.3rem 0.5rem', border: '1px dashed var(--border)', borderRadius: 6, background: 'var(--bg-muted)', color: 'var(--text-muted)', fontSize: '0.74rem', fontWeight: 600, textAlign: 'center' }}
+                    >
+                      {hiddenInfo.count === 1 ? 'busy · 1 block you can’t see' : `busy · ${hiddenInfo.count} blocks you can’t see`}
+                    </div>
+                  ) : null}
                   {canEdit && !linkedSelecting && (props.onAddJobToScheduleForCell || props.onEmptyCellClick) ? (
                     <button
                       type="button"
@@ -701,7 +766,7 @@ export function PhonePeopleViewSwitch({ view, onChange }: { view: PhonePeopleVie
         {toBoard ? '📱 Back to the phone view' : '▦ Show the desktop view'}
       </button>
       <small style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
-        {toBoard ? 'one day at a time, a card per tech' : 'the week grid, as on a computer'} · remembered on this phone
+        {toBoard ? 'one day at a time, a card per tech' : 'the week grid, as on a computer'} · remembered on this device
       </small>
     </div>
   )

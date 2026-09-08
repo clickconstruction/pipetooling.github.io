@@ -12,6 +12,7 @@ import {
   modeBarText,
   PHONE_PEOPLE_VIEW_STORAGE_KEY,
   readPhonePeopleView,
+  resolvePhonePeopleView,
   ribbonSpan,
   teamBandCaption,
   timeToMinutes,
@@ -26,13 +27,15 @@ function fakeStorage(initial: Record<string, string> = {}) {
 }
 
 describe('view preference', () => {
-  it('defaults to the board, remembers the grid, and survives a broken storage', () => {
-    expect(readPhonePeopleView(fakeStorage())).toBe('board')
+  it('is unset until picked, remembers either pick, and survives a broken storage', () => {
+    expect(readPhonePeopleView(fakeStorage())).toBeNull()
     const s = fakeStorage()
     writePhonePeopleView(s, 'grid')
     expect(s.map.get(PHONE_PEOPLE_VIEW_STORAGE_KEY)).toBe('grid')
     expect(readPhonePeopleView(s)).toBe('grid')
-    expect(readPhonePeopleView(null)).toBe('board')
+    writePhonePeopleView(s, 'board')
+    expect(readPhonePeopleView(s)).toBe('board')
+    expect(readPhonePeopleView(null)).toBeNull()
     const throwing = {
       getItem: () => {
         throw new Error('blocked')
@@ -41,8 +44,15 @@ describe('view preference', () => {
         throw new Error('blocked')
       },
     }
-    expect(readPhonePeopleView(throwing)).toBe('board')
+    expect(readPhonePeopleView(throwing)).toBeNull()
     expect(() => writePhonePeopleView(throwing, 'grid')).not.toThrow()
+  })
+  it('an explicit pick wins at any width; unset follows the viewport', () => {
+    // A phone rotated to landscape (844px) keeps the board it asked for; a portrait tablet can ask for it.
+    expect(resolvePhonePeopleView('board', false)).toBe('board')
+    expect(resolvePhonePeopleView('grid', true)).toBe('grid')
+    expect(resolvePhonePeopleView(null, true)).toBe('board')
+    expect(resolvePhonePeopleView(null, false)).toBe('grid')
   })
 })
 
@@ -121,6 +131,31 @@ describe('card target state', () => {
     const multi: PhonePlacementMode = { kind: 'multi-cell', label: '', startMinutes: null, endMinutes: null, sourceUserIds: new Set() }
     expect(cardTargetState({ mode: multi, userId: 'x', dayBlocks: [] }).what).toBe('Tap to add this tech and day')
     expect(cardTargetState({ mode: multi, userId: 'x', dayBlocks: [], multiSelected: true }).tone).toBe('selected')
+  })
+  it('multi-cell refuses a tech marked not coming in (like the grid), but still lets a selected one be taken off', () => {
+    const multi: PhonePlacementMode = { kind: 'multi-cell', label: '', startMinutes: null, endMinutes: null, sourceUserIds: new Set() }
+    const off = cardTargetState({ mode: multi, userId: 'x', dayBlocks: [], notComingIn: true })
+    expect(off).toMatchObject({ tone: 'busy', what: 'Not coming in today', tappable: false })
+    expect(cardTargetState({ mode: multi, userId: 'x', dayBlocks: [], notComingIn: true, multiSelected: true }).tappable).toBe(true)
+  })
+  it('a move reads its own cell as "where it is now", not as a clash with itself', () => {
+    const move: PhonePlacementMode = { ...copy, kind: 'move', sourceUserIds: new Set() }
+    const own = { label: 'J927 · Mike Holub', startMinutes: 720, endMinutes: 960 }
+    const source = cardTargetState({ mode: move, userId: 'abraham', dayBlocks: [own], isSourceCell: true })
+    expect(source).toMatchObject({ tone: 'source', what: 'Where it is now', tappable: false })
+    // Same tech, another day: a plain target.
+    expect(cardTargetState({ mode: move, userId: 'abraham', dayBlocks: [] }).tone).toBe('free')
+  })
+  it('a solo copy does not refuse the source tech (only a linked one does)', () => {
+    const solo: PhonePlacementMode = { ...copy, linked: false, sourceUserIds: new Set() }
+    expect(cardTargetState({ mode: solo, userId: 'abraham', dayBlocks: [] })).toMatchObject({ tone: 'free', tappable: true })
+  })
+  it('blocks the viewer cannot see make the day busy, not free', () => {
+    const s = cardTargetState({ mode: copy, userId: 'paige', dayBlocks: [], hiddenCount: 2 })
+    expect(s.tone).toBe('busy')
+    expect(s.what).toBe("Busy · 2 blocks you can't see")
+    expect(s.tappable).toBe(true)
+    expect(cardTargetState({ mode: copy, userId: 'paige', dayBlocks: [], hiddenCount: 0 }).why).toBe('Nothing scheduled this day')
   })
 })
 

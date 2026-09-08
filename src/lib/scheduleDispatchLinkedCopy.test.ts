@@ -54,6 +54,23 @@ describe('summarizeLinkedCopyApply', () => {
       tone: 'error',
     })
   })
+
+  it('solo copies say so (v2.3156 Copy to techs with the linked box unticked)', () => {
+    expect(summarizeLinkedCopyApply([{ blockId: 'a', error: null }], { linked: false }).message).toBe('Applied 1 solo copy.')
+    expect(
+      summarizeLinkedCopyApply(
+        [
+          { blockId: 'a', error: null },
+          { blockId: 'b', error: null },
+          { blockId: 'c', error: 'overlap' },
+        ],
+        { linked: false },
+      ).message,
+    ).toBe('Applied 2 solo copies · skipped 1 (overlap).')
+    expect(summarizeLinkedCopyLaneApply('Selected techs', 2, [{ blockId: 'a', error: null }, { blockId: 'a', error: null }], { linked: false }).message).toBe(
+      'Selected techs (2 people): Applied 2 solo copies.',
+    )
+  })
 })
 
 describe('summarizeLinkedCopyLaneApply', () => {

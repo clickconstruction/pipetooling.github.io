@@ -1,4 +1,4 @@
-import { readPhonePeopleView, writePhonePeopleView, type PhonePeopleView } from '../../lib/scheduleDispatch/phonePeopleBoard'
+import { readPhonePeopleView, writePhonePeopleView, type PhonePeopleView, resolvePhonePeopleView, type PhonePeopleViewPref } from '../../lib/scheduleDispatch/phonePeopleBoard'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { buildSubBadgesByCell, buildSubLanes, dayKeysBetween, type SubDispatchOrder } from '../../lib/subs/subDispatch'
 import { fetchSubOffDaysForRange, fetchSubOrdersForRange, fetchTeamMembersByJobId } from '../../lib/subs/subDispatchFetch'
@@ -1010,12 +1010,14 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
   const [linkedCopyApplyBusy, setLinkedCopyApplyBusy] = useState(false)
   const [plusMenuBlockId, setPlusMenuBlockId] = useState<string | null>(null)
   // v2.3156: the People board on a phone vs the desktop grid — per device, page-owned so the mode banners know to stand down.
-  const [phonePeopleView, setPhonePeopleView] = useState<PhonePeopleView>(() => readPhonePeopleView(typeof localStorage === 'undefined' ? null : localStorage))
+  // An explicit pick wins at any width (a phone rotated to landscape keeps its board); unset follows the viewport.
+  const [phonePeopleViewPref, setPhonePeopleViewPref] = useState<PhonePeopleViewPref>(() => readPhonePeopleView(typeof localStorage === 'undefined' ? null : localStorage))
+  const phonePeopleView = resolvePhonePeopleView(phonePeopleViewPref, narrowViewport)
   const onPhonePeopleViewChange = useCallback((view: PhonePeopleView) => {
-    setPhonePeopleView(view)
+    setPhonePeopleViewPref(view)
     writePhonePeopleView(typeof localStorage === 'undefined' ? null : localStorage, view)
   }, [])
-  const phoneBoardActive = !isTomorrow && narrowViewport && hubTab === 'people' && phonePeopleView === 'board'
+  const phoneBoardActive = !isTomorrow && hubTab === 'people' && phonePeopleView === 'board'
   const onCancelCardPlacement = useCallback(() => {
     setCardPlacementMode(null)
     setPlusMenuBlockId(null)
@@ -1528,10 +1530,15 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
 
   /** v2.3156: the phone board's Copy to techs sheet — one block to a chosen list of people, no mode state needed. */
   const onCopyBlockToPeople = useCallback(
-    async (args: { blockId: string; userIds: string[]; linked: boolean }) => {
-      if (!authUser?.id || linkedCopyApplyBusy) return
+    async (args: { blockId: string; userIds: string[]; linked: boolean }): Promise<{ applied: number } | null> => {
+      // `null` = nothing was attempted (the sheet stays open); the busy case is silent, the rest say why.
+      if (!authUser?.id || linkedCopyApplyBusy) return null
       const source = hubBlockById.get(args.blockId)
-      if (!source || args.userIds.length === 0) return
+      if (!source) {
+        showToast('That block is no longer on the schedule.', 'error')
+        return null
+      }
+      if (args.userIds.length === 0) return null
       setLinkedCopyApplyBusy(true)
       try {
         const results: LinkedCopyLegResult[] = []
@@ -1548,9 +1555,10 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
           })
           results.push({ blockId: source.id, error })
         }
-        const sum = summarizeLinkedCopyLaneApply('Selected techs', args.userIds.length, results)
+        const sum = summarizeLinkedCopyLaneApply('Selected techs', args.userIds.length, results, { linked: args.linked })
         showToast(sum.message, sum.tone)
         await loadHub({ quiet: true })
+        return { applied: sum.applied }
       } finally {
         setLinkedCopyApplyBusy(false)
       }
@@ -2197,6 +2205,11 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
   const shiftWeek = useCallback(
     (deltaWeeks: number) => {
       setHubAssignJobPlacement(null)
+      // A copy / move / linked-copy mode is anchored to blocks in the loaded week; the phone board
+      // would lose its bar (and Cancel) once they are gone, so the week change ends the mode.
+      setCardPlacementMode(null)
+      setPlusMenuBlockId(null)
+      setLinkedCopyMode(null)
       placeJobArmKeyRef.current = ''
       const next = ymdAddDays(weekStart, deltaWeeks * 7)
       if (isTomorrow) {
@@ -2227,6 +2240,9 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
 
   const goThisWeek = useCallback(() => {
     setHubAssignJobPlacement(null)
+    setCardPlacementMode(null)
+    setPlusMenuBlockId(null)
+    setLinkedCopyMode(null)
     placeJobArmKeyRef.current = ''
     const s = getDefaultWeekRange().start
     if (isTomorrow) {

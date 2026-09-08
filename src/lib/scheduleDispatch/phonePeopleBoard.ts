@@ -15,18 +15,30 @@
 // ---------------------------------------------------------------------------
 
 export type PhonePeopleView = 'board' | 'grid'
+/** The stored choice: an explicit pick, or `null` = follow the device (narrow → board, wide → grid). */
+export type PhonePeopleViewPref = PhonePeopleView | null
 
 /** localStorage key (same pattern as the People sort preference). */
 export const PHONE_PEOPLE_VIEW_STORAGE_KEY = 'pipetooling_dispatch_people_phone_view_v1'
 
 type StorageLike = Pick<Storage, 'getItem' | 'setItem'>
 
-export function readPhonePeopleView(storage: StorageLike | null | undefined): PhonePeopleView {
+export function readPhonePeopleView(storage: StorageLike | null | undefined): PhonePeopleViewPref {
   try {
-    return storage?.getItem(PHONE_PEOPLE_VIEW_STORAGE_KEY) === 'grid' ? 'grid' : 'board'
+    const v = storage?.getItem(PHONE_PEOPLE_VIEW_STORAGE_KEY)
+    return v === 'grid' || v === 'board' ? v : null
   } catch {
-    return 'board'
+    return null
   }
+}
+
+/**
+ * Which rendering the People tab gets: an explicit choice wins at any width (a phone that
+ * rotates to landscape, or a portrait tablet, keeps the board it asked for); otherwise a
+ * narrow viewport gets the board and a wide one the grid.
+ */
+export function resolvePhonePeopleView(pref: PhonePeopleViewPref, narrowViewport: boolean): PhonePeopleView {
+  return pref ?? (narrowViewport ? 'board' : 'grid')
 }
 
 export function writePhonePeopleView(storage: StorageLike | null | undefined, view: PhonePeopleView): void {
@@ -202,14 +214,26 @@ export function cardTargetState(args: {
   notComingIn?: boolean
   /** multi-cell: this tech/day is already in the selection. */
   multiSelected?: boolean
+  /** move: this tech/day is where the block sits right now — never a target. */
+  isSourceCell?: boolean
+  /** Blocks on this tech/day the viewer's RLS hides (superintendent) — the day is not free. */
+  hiddenCount?: number
 }): CardTargetState {
   const { mode } = args
   const range = modeRange(mode)
 
   if (mode.kind === 'multi-cell') {
-    return args.multiSelected
-      ? { tone: 'selected', what: 'Selected · tap to take it off', why: 'Choose the job from the bar below when you have every tech and day.', tappable: true }
-      : { tone: 'free', what: 'Tap to add this tech and day', why: 'Pick more days from the strip; the job comes last.', tappable: true }
+    if (args.multiSelected) {
+      return { tone: 'selected', what: 'Selected · tap to take it off', why: 'Choose the job from the bar below when you have every tech and day.', tappable: true }
+    }
+    if (args.notComingIn) {
+      return { tone: 'busy', what: 'Not coming in today', why: 'Marked off for this day — not a fill target.', tappable: false }
+    }
+    return { tone: 'free', what: 'Tap to add this tech and day', why: 'Pick more days from the strip; the job comes last.', tappable: true }
+  }
+
+  if (mode.kind === 'move' && args.isSourceCell) {
+    return { tone: 'source', what: 'Where it is now', why: 'Tap another tech or day to move it.', tappable: false }
   }
 
   if (mode.sourceUserIds.has(args.userId)) {
@@ -234,6 +258,14 @@ export function cardTargetState(args: {
   }
   if (args.notComingIn) {
     return { tone: 'busy', what: 'Not coming in today', why: 'Tap anyway to schedule them regardless.', tappable: true }
+  }
+  if (args.hiddenCount && args.hiddenCount > 0) {
+    return {
+      tone: 'busy',
+      what: `Busy · ${args.hiddenCount} block${args.hiddenCount === 1 ? '' : 's'} you can't see`,
+      why: "Booked on a project outside your assignments. Tap anyway to overlap — you'll get an Undo.",
+      tappable: true,
+    }
   }
   const others = args.dayBlocks.filter((b) => b.startMinutes != null && b.endMinutes != null)
   const why =

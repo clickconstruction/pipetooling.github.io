@@ -29,15 +29,21 @@ export type LinkedCopyLegResult = {
 /** One-line toast summary for a person: "Applied 2 linked copies" /
  * "Applied 1 linked copy · skipped 2 (overlap or already linked)" /
  * "Nothing applied — 3 skipped (overlap or already linked)". */
-export function summarizeLinkedCopyApply(results: LinkedCopyLegResult[]): {
+export function summarizeLinkedCopyApply(
+  results: LinkedCopyLegResult[],
+  /** `linked: false` when the legs were solo copies (v2.3156 Copy to techs sheet with the box unticked). */
+  opts: { linked?: boolean } = {},
+): {
   applied: number
   skipped: number
   message: string
   tone: 'success' | 'info' | 'error'
 } {
+  const linked = opts.linked ?? true
   const applied = results.filter((r) => r.error == null).length
   const skipped = results.length - applied
-  const copyWord = (n: number) => (n === 1 ? 'linked copy' : 'linked copies')
+  const copyWord = (n: number) => (linked ? (n === 1 ? 'linked copy' : 'linked copies') : n === 1 ? 'solo copy' : 'solo copies')
+  const skipReason = linked ? '(overlap or already linked)' : '(overlap)'
   if (applied > 0 && skipped === 0) {
     return { applied, skipped, message: `Applied ${applied} ${copyWord(applied)}.`, tone: 'success' }
   }
@@ -45,14 +51,14 @@ export function summarizeLinkedCopyApply(results: LinkedCopyLegResult[]): {
     return {
       applied,
       skipped,
-      message: `Applied ${applied} ${copyWord(applied)} · skipped ${skipped} (overlap or already linked).`,
+      message: `Applied ${applied} ${copyWord(applied)} · skipped ${skipped} ${skipReason}.`,
       tone: 'info',
     }
   }
   return {
     applied,
     skipped,
-    message: `Nothing applied — ${skipped} skipped (overlap or already linked).`,
+    message: `Nothing applied — ${skipped} skipped ${skipReason}.`,
     tone: 'error',
   }
 }
@@ -64,8 +70,9 @@ export function summarizeLinkedCopyLaneApply(
   laneLabel: string,
   peopleCount: number,
   results: LinkedCopyLegResult[],
+  opts: { linked?: boolean } = {},
 ): { applied: number; skipped: number; message: string; tone: 'success' | 'info' | 'error' } {
-  const sum = summarizeLinkedCopyApply(results)
+  const sum = summarizeLinkedCopyApply(results, opts)
   const who = `${laneLabel} (${peopleCount} ${peopleCount === 1 ? 'person' : 'people'})`
   return { ...sum, message: `${who}: ${sum.message}` }
 }

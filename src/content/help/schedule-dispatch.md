@@ -21,7 +21,7 @@ Opening a single job (from a job link or the Pipeline board's Week dispatch butt
 
 On a phone the **People** view is a board, not a grid: **one day at a time, full width**, with a **day strip** across the top (Mon–Fri with each day's block count; today is ringed). Tap a day to switch; the week arrows still step a week at a time.
 
-Every tech is a **card**: their name, a {{chip:red|Not coming in}} chip when they've said so, one row per block that day, and a full-width **+ Add here** at the bottom. Tap a block row for its sheet — **Edit**, **Copy to techs**, **Remove**. There are no drag handles on the phone; moving is a button on that sheet.
+Every tech is a **card**: their name, a {{chip:red|Not coming in}} chip when they've said so (tap it to clear the marking), one row per block that day — with a *no note* marker on blocks still waiting for instructions — and a full-width **+ Add here** at the bottom. Tap a block row for its sheet — **Open the job**, **Add a note**, **Copy to techs**, **Move**, **Remove from the schedule**. There are no drag handles on the phone; moving is a button on that sheet.
 
 :::example Adding a job to two techs, one-handed
 Tap {{button:outline|Copy to techs}} on Abraham's J927 row. A checklist of people opens with each person's day as a small ribbon and *free 12–4* / *busy 8–5* beside their name; tap a team band to take the whole crew. Keep **Linked crew** on so their blocks move together, then {{button:blue|Add to 2 techs}}.
@@ -29,7 +29,7 @@ Tap {{button:outline|Copy to techs}} on Abraham's J927 row. A checklist of peopl
 
 While you are placing something — adding a job, copying one, filling several days — the **whole card becomes the button** and says what will land: *Tap to add J927 · 12–4 here*. Cards that are busy at that time say so and still take the tap if overlapping is what you mean. The instruction lives in a dark **bar just above the tab bar**, with **Cancel** beside it.
 
-Want the whole week side by side? Scroll to the **very bottom of the page** — past **Expected manpower** — and {{button:outline|▦ Show the desktop view}} brings back the week grid exactly as on a computer; the same spot then offers {{button:outline|📱 Back to the phone view}}. The phone remembers whichever you picked last. (While you're in the middle of placing something, the switch steps aside so the Cancel bar has the bottom of the screen to itself.)
+Want the whole week side by side? Scroll to the **very bottom of the page** — past **Expected manpower** — and {{button:outline|▦ Show the desktop view}} brings back the week grid exactly as on a computer; the same spot then offers {{button:outline|📱 Back to the phone view}}. The device remembers whichever you picked last, at any width — a phone turned sideways in a truck mount keeps the board, and a tablet or a narrow window can choose it. (While you're in the middle of placing something, the switch steps aside so the Cancel bar has the bottom of the screen to itself.)
 
 ## Jumping here from the Dashboard
 

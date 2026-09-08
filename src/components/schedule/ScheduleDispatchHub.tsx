@@ -1734,7 +1734,7 @@ type HubPeoplePanelProps = {
   phonePeopleView?: PhonePeopleView
   onPhonePeopleViewChange?: (view: PhonePeopleView) => void
   /** Copy to techs sheet: one block to a chosen list of people (linked or not), no mode needed. */
-  onCopyBlockToPeople?: (args: { blockId: string; userIds: string[]; linked: boolean }) => void | Promise<void>
+  onCopyBlockToPeople?: (args: { blockId: string; userIds: string[]; linked: boolean }) => void | Promise<void | { applied: number } | null>
   onCancelCardPlacement?: () => void
   onCancelHubAssignJobPlacement?: () => void
   onLinkedCopySetStage?: (stage: 1 | 2) => void
@@ -1864,8 +1864,8 @@ function HubPeoplePanel({
     }
   }, [viewMenuOpen])
   const isMobile = useIsMobile()
-  // v2.3156: a narrow viewport gets the board unless this phone chose the grid (page-owned preference; absent in embeds).
-  const phoneBoardActive = isMobile && onPhonePeopleViewChange != null && (phonePeopleView ?? 'board') === 'board'
+  // v2.3156: the page resolves board vs grid (an explicit pick wins at any width, else narrow → board); absent in embeds.
+  const phoneBoardActive = onPhonePeopleViewChange != null && phonePeopleView === 'board'
   // While something is being placed, the mode bar owns the bottom of the screen — the switch stands down.
   const phonePlacementActive = cardPlacementMode != null || hubAssignJobPlacement != null || linkedCopyMode != null || hubMultiCellAddActive
   const peopleScrollRef = useRef<HTMLDivElement>(null)
@@ -1878,6 +1878,13 @@ function HubPeoplePanel({
 
   const [search, setSearch] = useState('')
   const [onlyWithBlocksThisWeek, setOnlyWithBlocksThisWeek] = useState(false)
+  // The board has no search box or Hide-inactive toggle, so a filter left on in the grid must not silently thin it.
+  useEffect(() => {
+    if (!phoneBoardActive) return
+    setSearch('')
+    setOnlyWithBlocksThisWeek(false)
+    setMobileSearchOpen(false)
+  }, [phoneBoardActive])
   const [expectedManpowerByJobSectionCollapsed, setExpectedManpowerByJobSectionCollapsed] = useState(false)
   const [collapsedExpectedManpowerJobIds, setCollapsedExpectedManpowerJobIds] = useState<Set<string>>(
     () => new Set(),
@@ -2180,6 +2187,11 @@ function HubPeoplePanel({
           getJobAddress={getJobAddress}
           salariedUserIds={salariedUserIds}
           userTimeOffByCell={userTimeOffByCell}
+          latenessByCell={latenessByCell}
+          hiddenByCell={hiddenByCell}
+          subBadgeByCell={subBadgeByCell}
+          noteRequirementForBlock={noteRequirementForBlockFromContext}
+          onRequestUndoNotComingIn={onRequestUndoNotComingIn}
           missingNoteCount={missingNoteCount}
           missingNoteDayYmd={missingNoteDayYmd}
           canEdit={canEdit}
@@ -3261,7 +3273,8 @@ function HubPeoplePanel({
           </p>
         </section>
       ) : null}
-      {isMobile && onPhonePeopleViewChange && !phonePlacementActive ? (
+      {/* At any width (v2.3169): a phone turned sideways, or a tablet, can still choose the board. */}
+      {onPhonePeopleViewChange && !phonePlacementActive ? (
         <PhonePeopleViewSwitch view={phonePeopleView ?? 'board'} onChange={onPhonePeopleViewChange} />
       ) : null}
     </>
@@ -3338,7 +3351,7 @@ type Props = {
   phonePeopleView?: PhonePeopleView
   onPhonePeopleViewChange?: (view: PhonePeopleView) => void
   /** Copy to techs sheet: one block to a chosen list of people (linked or not), no mode needed. */
-  onCopyBlockToPeople?: (args: { blockId: string; userIds: string[]; linked: boolean }) => void | Promise<void>
+  onCopyBlockToPeople?: (args: { blockId: string; userIds: string[]; linked: boolean }) => void | Promise<void | { applied: number } | null>
   onCancelCardPlacement?: () => void
   onCancelHubAssignJobPlacement?: () => void
   onLinkedCopySetStage?: (stage: 1 | 2) => void
