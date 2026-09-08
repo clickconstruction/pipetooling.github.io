@@ -9,6 +9,7 @@ import {
   roughCountMultiplier,
   sumRoughLinesPreTaxWithCount,
   mergePartLinesToTakeoffTemplateItems,
+  saveAsAssemblyDefaultName,
   STAGE_LABELS,
 } from './bidTakeoffHelpers'
 
@@ -177,5 +178,19 @@ describe('resolveRoughQtyOnClose', () => {
   it('clamps garbage drafts like the plain clamp does', () => {
     expect(resolveRoughQtyOnClose('abc', 12)).toBe(0.0001)
     expect(resolveRoughQtyOnClose('-4', 12)).toBe(0.0001)
+  })
+})
+
+describe('saveAsAssemblyDefaultName', () => {
+  it('joins the count name and the project name with " - "', () => {
+    expect(saveAsAssemblyDefaultName('I-6', 'MPH LIVSTE')).toBe('I-6 - MPH LIVSTE')
+  })
+  it('trims and collapses whitespace on both halves', () => {
+    expect(saveAsAssemblyDefaultName('  SS-8 ', ' Medina  Valley ISD ')).toBe('SS-8 - Medina Valley ISD')
+  })
+  it('drops a blank half instead of leaving a dangling dash', () => {
+    expect(saveAsAssemblyDefaultName('I-6', '')).toBe('I-6')
+    expect(saveAsAssemblyDefaultName(null, 'Palmer Winery')).toBe('Palmer Winery')
+    expect(saveAsAssemblyDefaultName('   ', undefined)).toBe('New assembly')
   })
 })
