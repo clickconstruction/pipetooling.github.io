@@ -29,7 +29,7 @@ Tap {{button:outline|Copy to techs}} on Abraham's J927 row. A checklist of peopl
 
 While you are placing something — adding a job, copying one, filling several days — the **whole card becomes the button** and says what will land: *Tap to add J927 · 12–4 here*. Cards that are busy at that time say so and still take the tap if overlapping is what you mean. The instruction lives in a dark **bar just above the tab bar**, with **Cancel** beside it.
 
-Want the whole week side by side? At the **very bottom** of the board, {{button:outline|▦ Show the desktop view}} brings back the week grid exactly as on a computer, and the grid's bottom offers **Back to the phone view**. The phone remembers whichever you picked last.
+Want the whole week side by side? Scroll to the **very bottom of the page** — past **Expected manpower** — and {{button:outline|▦ Show the desktop view}} brings back the week grid exactly as on a computer; the same spot then offers {{button:outline|📱 Back to the phone view}}. The phone remembers whichever you picked last. (While you're in the middle of placing something, the switch steps aside so the Cancel bar has the bottom of the screen to itself.)
 
 ## Jumping here from the Dashboard
 

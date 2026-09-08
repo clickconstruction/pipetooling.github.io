@@ -67,7 +67,7 @@ import {
 } from '../../lib/scheduleDispatchColumnFocus'
 import { scheduleDispatchMobileNamePill } from '../../lib/scheduleDispatchMobileNamePill'
 import { useIsMobile } from '../../hooks/useIsMobile'
-import { HubPeoplePhoneBoard } from './HubPeoplePhoneBoard'
+import { HubPeoplePhoneBoard, PhonePeopleViewSwitch } from './HubPeoplePhoneBoard'
 import type { PhonePeopleView } from '../../lib/scheduleDispatch/phonePeopleBoard'
 import {
   userTimeOffCellKey,
@@ -1866,6 +1866,8 @@ function HubPeoplePanel({
   const isMobile = useIsMobile()
   // v2.3156: a narrow viewport gets the board unless this phone chose the grid (page-owned preference; absent in embeds).
   const phoneBoardActive = isMobile && onPhonePeopleViewChange != null && (phonePeopleView ?? 'board') === 'board'
+  // While something is being placed, the mode bar owns the bottom of the screen — the switch stands down.
+  const phonePlacementActive = cardPlacementMode != null || hubAssignJobPlacement != null || linkedCopyMode != null || hubMultiCellAddActive
   const peopleScrollRef = useRef<HTMLDivElement>(null)
   useScrollScheduleDispatchColumnIntoView({
     columnFocusDayYmd,
@@ -2208,7 +2210,6 @@ function HubPeoplePanel({
           onOpenJob={onOpenJob}
           onDeleteBlock={onDeleteBlock}
           onRequestEditBlockNote={onRequestEditBlockNote}
-          onShowDesktopView={() => onPhonePeopleViewChange?.('grid')}
         />
       ) : (
       <>
@@ -2765,19 +2766,6 @@ function HubPeoplePanel({
         </table>
         <HubSubsLanes lanes={subLanes ?? []} visibleDayKeys={visibleDayKeys} scheduleTodayYmd={scheduleTodayYmd} onOpenJob={onOpenJob} />
       </div>
-      {isMobile && onPhonePeopleViewChange ? (
-        // v2.3156: the desktop grid on a phone — the way back to the board sits at the very bottom, like the way here.
-        <div style={{ display: 'grid', gap: '0.2rem', textAlign: 'center', padding: '0.8rem 0.5rem 0.3rem', borderTop: '1px solid var(--border)', marginTop: '0.5rem' }}>
-          <button
-            type="button"
-            onClick={() => onPhonePeopleViewChange('board')}
-            style={{ justifySelf: 'center', fontFamily: 'inherit', fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-link)', background: 'var(--surface)', border: '1px solid var(--border-strong)', borderRadius: 7, padding: '0.5rem 1rem', cursor: 'pointer' }}
-          >
-            📱 Back to the phone view
-          </button>
-          <small style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>one day at a time, a card per tech · remembered on this phone</small>
-        </div>
-      ) : null}
       </>
       )}
 
@@ -3272,6 +3260,9 @@ function HubPeoplePanel({
             {expectedManpowerWeekHeadline.detail ? ` · ${expectedManpowerWeekHeadline.detail}` : ''}
           </p>
         </section>
+      ) : null}
+      {isMobile && onPhonePeopleViewChange && !phonePlacementActive ? (
+        <PhonePeopleViewSwitch view={phonePeopleView ?? 'board'} onChange={onPhonePeopleViewChange} />
       ) : null}
     </>
   )
