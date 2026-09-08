@@ -15122,12 +15122,43 @@ export type Database = {
           },
         ]
       }
+      supply_house_service_types: {
+        Row: {
+          created_at: string
+          service_type_id: string
+          supply_house_id: string
+        }
+        Insert: {
+          created_at?: string
+          service_type_id: string
+          supply_house_id: string
+        }
+        Update: {
+          created_at?: string
+          service_type_id?: string
+          supply_house_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "supply_house_service_types_service_type_id_fkey"
+            columns: ["service_type_id"]
+            isOneToOne: false
+            referencedRelation: "service_types"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "supply_house_service_types_supply_house_id_fkey"
+            columns: ["supply_house_id"]
+            isOneToOne: false
+            referencedRelation: "supply_houses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       supply_houses: {
         Row: {
           address: string | null
-          contact_name: string | null
           created_at: string | null
-          email: string | null
           id: string
           is_insurer: boolean
           monthly_payment_day: number | null
@@ -15135,13 +15166,12 @@ export type Database = {
           notes: string | null
           phone: string | null
           updated_at: string | null
+          vendor_kind: string
           website_url: string | null
         }
         Insert: {
           address?: string | null
-          contact_name?: string | null
           created_at?: string | null
-          email?: string | null
           id?: string
           is_insurer?: boolean
           monthly_payment_day?: number | null
@@ -15149,13 +15179,12 @@ export type Database = {
           notes?: string | null
           phone?: string | null
           updated_at?: string | null
+          vendor_kind?: string
           website_url?: string | null
         }
         Update: {
           address?: string | null
-          contact_name?: string | null
           created_at?: string | null
-          email?: string | null
           id?: string
           is_insurer?: boolean
           monthly_payment_day?: number | null
@@ -15163,6 +15192,7 @@ export type Database = {
           notes?: string | null
           phone?: string | null
           updated_at?: string | null
+          vendor_kind?: string
           website_url?: string | null
         }
         Relationships: []
@@ -18174,6 +18204,7 @@ export type Database = {
       can_manage_mercury_category_tags: { Args: never; Returns: boolean }
       can_manage_report_email_subscriptions: { Args: never; Returns: boolean }
       can_manage_schedule_share: { Args: never; Returns: boolean }
+      can_manage_supply_house_directory: { Args: never; Returns: boolean }
       can_manage_team_leader_assignments: { Args: never; Returns: boolean }
       can_modify_people_labor_job: {
         Args: { p_job_id: string }
@@ -18233,6 +18264,15 @@ export type Database = {
       copy_workflow_step: {
         Args: { p_insert_after_sequence: number; p_step_id: string }
         Returns: Json
+      }
+      count_job_account_flag_gaps: {
+        Args: never
+        Returns: {
+          no_packet_invoices: number
+          no_packet_total: number
+          unflagged_jobs: number
+          unflagged_total: number
+        }[]
       }
       count_mercury_transactions_for_bank_payments: {
         Args: { p_filter?: Json }

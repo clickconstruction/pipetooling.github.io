@@ -99,7 +99,7 @@ export function MaterialsPoGeneratorTab({
     return supplyHouses
       .filter(
         (h) =>
-          hay(h.name).includes(q) || hay(h.address).includes(q) || hay(h.contact_name).includes(q),
+          hay(h.name).includes(q) || hay(h.address).includes(q),
       )
       .slice(0, 40)
       .map((h) => ({ id: h.id, name: h.name ?? '' }))
