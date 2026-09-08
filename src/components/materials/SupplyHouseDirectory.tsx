@@ -15,6 +15,7 @@ import {
   type DirectoryRow,
 } from '../../lib/materials/supplyHouseDirectory'
 import { VENDOR_KINDS, vendorKindLabel, type VendorKind } from '../../lib/materials/vendorKind'
+import { defaultTradeSelection, filterHousesByTrades, tradeNamesFor, tradesByHouse, type HouseTradeLink, type TradeType } from '../../lib/materials/supplyHouseTrades'
 import { SupplyHouseContactsSection } from '../SupplyHouseContactsSection'
 import { SupplyHouseWebsiteLink } from '../SupplyHouseWebsiteLink'
 import { useNarrowViewport640 } from '../../hooks/useNarrowViewport640'
@@ -34,6 +35,8 @@ type Props = {
   reloadKey?: number
   /** When set, "Prices on file" counts that service type only. */
   selectedServiceTypeId?: string | null
+  /** A restricted viewer's trades (users.estimator_service_type_ids); the trade chips start on these. Null = all. */
+  defaultTradeIds?: string[] | null
 }
 
 type RequestRow = {
@@ -68,10 +71,13 @@ const panelTitle: CSSProperties = { margin: 0, fontSize: '0.875rem', fontWeight:
  * above its accounts-payable pane and (PR 2) by the estimator's tab alone.
  * No invoice, aging or balance ever renders here.
  */
-export function SupplyHouseDirectory({ supplyHouses, audience, onAddHouse, onEditHouse, reloadKey = 0, selectedServiceTypeId = null }: Props) {
+export function SupplyHouseDirectory({ supplyHouses, audience, onAddHouse, onEditHouse, reloadKey = 0, selectedServiceTypeId = null, defaultTradeIds = null }: Props) {
   const narrow = useNarrowViewport640()
   const [search, setSearch] = useState('')
   const [kindFilter, setKindFilter] = useState<'all' | VendorKind>('all')
+  const [tradeTypes, setTradeTypes] = useState<TradeType[]>([])
+  const [tradeLinks, setTradeLinks] = useState<HouseTradeLink[]>([])
+  const [selectedTrades, setSelectedTrades] = useState<Set<string> | null>(null)
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [reps, setReps] = useState<DirectoryRep[]>([])
   const [requests, setRequests] = useState<DirectoryRequest[]>([])
@@ -122,6 +128,14 @@ export function SupplyHouseDirectory({ supplyHouses, audience, onAddHouse, onEdi
     }
   }, [])
 
+  const loadTrades = useCallback(async () => {
+    const { data: types } = await supabase.from('service_types').select('id, name').order('sequence_order', { ascending: true })
+    setTradeTypes(((types ?? []) as TradeType[]))
+    // The link table arrives with the v2.3173 push; until then there are simply no tags.
+    const { data: links, error } = await supabase.from('supply_house_service_types' as never).select('supply_house_id, service_type_id')
+    setTradeLinks(error ? [] : ((links ?? []) as HouseTradeLink[]))
+  }, [])
+
   const loadStats = useCallback(async () => {
     const { data, error } = await supabase.rpc('get_supply_house_stats_by_service_type' as never)
     if (error) return
@@ -131,13 +145,22 @@ export function SupplyHouseDirectory({ supplyHouses, audience, onAddHouse, onEdi
   useEffect(() => {
     let cancelled = false
     ;(async () => {
-      await Promise.all([loadReps(), loadRequests(), loadStats()])
+      await Promise.all([loadReps(), loadRequests(), loadStats(), loadTrades()])
       if (!cancelled) setLoaded(true)
     })()
     return () => {
       cancelled = true
     }
-  }, [loadReps, loadRequests, loadStats, reloadKey])
+  }, [loadReps, loadRequests, loadStats, loadTrades, reloadKey])
+
+  // Chips start on the viewer's own trades (or all) once the trade list is known; the viewer's clicks win after that.
+  const allTradeIds = useMemo(() => tradeTypes.map((t) => t.id), [tradeTypes])
+  const tradeByHouse = useMemo(() => tradesByHouse(tradeLinks), [tradeLinks])
+  const effectiveTrades = selectedTrades ?? defaultTradeSelection(allTradeIds, defaultTradeIds)
+  const tradeFilteredHouses = useMemo(
+    () => filterHousesByTrades(supplyHouses, effectiveTrades, allTradeIds, tradeByHouse),
+    [supplyHouses, effectiveTrades, allTradeIds, tradeByHouse],
+  )
 
   // Resolve who-added / who-asked through the archived-safe RPC (users SELECT hides archived rows).
   useEffect(() => {
@@ -169,14 +192,14 @@ export function SupplyHouseDirectory({ supplyHouses, audience, onAddHouse, onEdi
   const { rows, coverage } = useMemo(
     () =>
       buildDirectoryRows({
-        houses: supplyHouses,
+        houses: tradeFilteredHouses,
         reps,
         requests,
         priceCountByHouse,
         search,
         kinds: audience === 'estimator' ? 'supply_house' : kindFilter,
       }),
-    [supplyHouses, reps, requests, priceCountByHouse, search, audience, kindFilter],
+    [tradeFilteredHouses, reps, requests, priceCountByHouse, search, audience, kindFilter],
   )
 
   const nowMs = Date.now()
@@ -292,6 +315,24 @@ export function SupplyHouseDirectory({ supplyHouses, audience, onAddHouse, onEdi
         aria-label="Search supply houses"
         style={{ flex: 1, minWidth: '12rem', padding: '0.55rem 0.75rem', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', color: 'var(--text-base)', font: 'inherit' }}
       />
+      {tradeTypes.length > 1 ? (
+        <div role="group" aria-label="Trades" style={{ display: 'inline-flex', gap: '0.35rem', flexWrap: 'wrap' }}>
+          {tradeTypes.map((t) => {
+            const on = effectiveTrades.has(t.id)
+            return (
+              <button
+                key={t.id}
+                type="button"
+                aria-pressed={on}
+                onClick={() => setSelectedTrades((prev) => { const base = new Set(prev ?? effectiveTrades); if (base.has(t.id)) base.delete(t.id); else base.add(t.id); return base })}
+                style={{ padding: '0.3rem 0.7rem', borderRadius: 999, border: `1px solid ${on ? '#3b82f6' : 'var(--border-strong)'}`, background: on ? 'var(--bg-blue-tint)' : 'var(--surface)', color: on ? 'var(--text-blue-700)' : 'var(--text-700)', fontWeight: on ? 600 : 400, fontSize: '0.8125rem', cursor: 'pointer', font: 'inherit' }}
+              >
+                {t.name}
+              </button>
+            )
+          })}
+        </div>
+      ) : null}
       {audience === 'office' ? (
         <select
           value={kindFilter}
@@ -344,7 +385,7 @@ export function SupplyHouseDirectory({ supplyHouses, audience, onAddHouse, onEdi
                   <button type="button" onClick={() => setExpandedId(open ? null : row.house.id)} style={{ background: 'none', border: 'none', padding: 0, textAlign: 'left', cursor: 'pointer', font: 'inherit', color: 'var(--text-base)', flex: 1, minWidth: 0 }}>
                     <div style={{ fontWeight: 600, fontSize: '1rem' }}>{row.house.name}</div>
                     <div style={muted}>
-                      {[row.house.address, priceLine(row)].filter(Boolean).join(' · ')}
+                      {[row.house.address, tradeNamesFor(row.house.id, tradeByHouse, tradeTypes).join(' / ') || null, priceLine(row)].filter(Boolean).join(' · ')}
                     </div>
                     <div style={muted}>{requestLine(row)}</div>
                   </button>
@@ -432,6 +473,9 @@ export function SupplyHouseDirectory({ supplyHouses, audience, onAddHouse, onEdi
                         <span>
                           <span style={{ display: 'block', fontWeight: 500, fontSize: '0.95rem' }}>{row.house.name}</span>
                           {row.house.address ? <span style={{ display: 'block', ...muted }}>{row.house.address}</span> : null}
+                          {tradeNamesFor(row.house.id, tradeByHouse, tradeTypes).length > 0 ? (
+                            <span style={{ display: 'block', ...muted, fontSize: '0.75rem' }}>{tradeNamesFor(row.house.id, tradeByHouse, tradeTypes).join(' · ')}</span>
+                          ) : null}
                         </span>
                       </button>
                     </td>

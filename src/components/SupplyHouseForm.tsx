@@ -1,10 +1,12 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 
+import { supabase } from '../lib/supabase'
 import { SupplyHouseContactsSection } from './SupplyHouseContactsSection'
 import type { Database } from '../types/database'
 import { useNarrowViewport640 } from '../hooks/useNarrowViewport640'
 import { isUrlLikelyMapsOrDirectionsPortal, normalizeSupplyHouseWebsiteUrlForStorage } from '../lib/supplyHouseWebsite'
 import { VENDOR_KINDS, VENDOR_KIND_HINTS, isInsurerFor, vendorKindLabel, vendorKindOf, type VendorKind } from '../lib/materials/vendorKind'
+import type { TradeType } from '../lib/materials/supplyHouseTrades'
 
 type SupplyHouse = Database['public']['Tables']['supply_houses']['Row']
 type UserRole = 'dev' | 'master_technician' | 'assistant' | 'estimator' | 'primary' | 'superintendent'
@@ -21,6 +23,8 @@ export interface SupplyHouseFormData {
   vendor_kind: VendorKind
   /** Derived from `vendor_kind` (the DB trigger does the same) — kept for pre-push clients' pickers. */
   is_insurer: boolean
+  /** v2.3173: trades this house serves (service_type ids). Empty = everyone. */
+  service_type_ids: string[]
 }
 
 interface SupplyHouseFormProps {
@@ -81,6 +85,27 @@ export function SupplyHouseForm({
   const [vendorKind, setVendorKind] = useState<VendorKind>(editingSupplyHouse ? vendorKindOf(editingSupplyHouse as { vendor_kind?: string | null; is_insurer?: boolean | null }) : 'supply_house')
   // Estimators never reclassify a vendor: the row is hidden for them and stays what it was (or supply_house for a new one).
   const canPickKind = myRole !== 'estimator'
+  // Trades served (v2.3173): the chips load the trade list and the house's links; the table may not exist before its push.
+  const [tradeTypes, setTradeTypes] = useState<TradeType[]>([])
+  const [tradeIds, setTradeIds] = useState<Set<string>>(new Set())
+  useEffect(() => {
+    let cancelled = false
+    void (async () => {
+      const { data: types } = await supabase.from('service_types').select('id, name').order('sequence_order', { ascending: true })
+      if (cancelled) return
+      setTradeTypes(((types ?? []) as TradeType[]))
+      if (!editingSupplyHouse) return
+      const { data: links } = await supabase
+        .from('supply_house_service_types' as never)
+        .select('service_type_id')
+        .eq('supply_house_id', editingSupplyHouse.id)
+      if (cancelled) return
+      setTradeIds(new Set(((links ?? []) as Array<{ service_type_id: string }>).map((l) => l.service_type_id)))
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [editingSupplyHouse])
   const narrow = useNarrowViewport640()
 
   async function handleSubmit(e: React.FormEvent) {
@@ -107,6 +132,7 @@ export function SupplyHouseForm({
       monthly_payment_day: day,
       vendor_kind: vendorKind,
       is_insurer: isInsurerFor(vendorKind),
+      service_type_ids: tradeTypes.filter((t) => tradeIds.has(t.id)).map((t) => t.id),
     })
   }
 
@@ -158,6 +184,39 @@ export function SupplyHouseForm({
         <FieldRow label="Notes" narrow={narrow} alignTop>
           <textarea value={notes} onChange={(e) => onChange('notes', e.target.value)} rows={2} style={fieldStyles} />
         </FieldRow>
+        {tradeTypes.length > 0 ? (
+          <FieldRow label="Trades served" narrow={narrow} alignTop>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
+              {tradeTypes.map((t) => {
+                const on = tradeIds.has(t.id)
+                return (
+                  <button
+                    key={t.id}
+                    type="button"
+                    aria-pressed={on}
+                    onClick={() => setTradeIds((prev) => { const next = new Set(prev); if (next.has(t.id)) next.delete(t.id); else next.add(t.id); return next })}
+                    style={{
+                      padding: '0.3rem 0.7rem',
+                      borderRadius: 999,
+                      border: `1px solid ${on ? '#3b82f6' : 'var(--border-strong)'}`,
+                      background: on ? 'var(--bg-blue-tint)' : 'var(--surface)',
+                      color: on ? 'var(--text-blue-700)' : 'var(--text-700)',
+                      fontWeight: on ? 600 : 400,
+                      fontSize: '0.8125rem',
+                      cursor: 'pointer',
+                      font: 'inherit',
+                    }}
+                  >
+                    {t.name}
+                  </button>
+                )
+              })}
+            </div>
+            <p style={{ margin: '0.35rem 0 0', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
+              Estimators restricted to a trade only see houses that serve it. Leave all off to show it to everyone.
+            </p>
+          </FieldRow>
+        ) : null}
         {canPickKind ? (
           <FieldRow label="Kind" narrow={narrow} alignTop>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
