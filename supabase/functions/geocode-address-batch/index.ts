@@ -21,6 +21,15 @@ function appendDetail(base: string | undefined, extra: string): string {
   return base ? `${base}; ${extra}` : extra
 }
 
+/**
+ * A cache write refused by RLS (42501) — a read-only (training-mode) user hits the
+ * restrictive write-block policies. The coordinates are still good; return them
+ * and skip the cache rather than fail the whole batch (v2.3131).
+ */
+function isRlsRefusal(err: { code?: string; message?: string }): boolean {
+  return err.code === '42501' || /row-level security/i.test(err.message ?? '')
+}
+
 function jsonResponse(status: number, body: Record<string, unknown>) {
   return new Response(JSON.stringify(body), {
     status,
@@ -57,24 +66,20 @@ serve(async (req) => {
     return jsonResponse(401, { error: 'Unauthorized' })
   }
 
+  // v2.3131: every signed-in app user may geocode — the Dashboard "Your jobs on
+  // a map" card resolves pins for every role. The gate is "has a users row with
+  // a role and is not archived"; before, only the four Map-page roles passed.
   const { data: profile, error: profileErr } = await supabase
     .from('users')
-    .select('role')
+    .select('role, archived_at')
     .eq('id', user.id)
     .single()
   if (profileErr) {
     return jsonResponse(500, { error: 'Could not load user role' })
   }
-  const mapGeocodeRole = (profile as { role: string } | null)?.role
-  if (
-    mapGeocodeRole !== 'dev' &&
-    mapGeocodeRole !== 'master_technician' &&
-    mapGeocodeRole !== 'assistant' &&
-    mapGeocodeRole !== 'estimator'
-  ) {
-    return jsonResponse(403, {
-      error: 'Map geocoding is restricted to dev, master_technician, assistant, and estimator roles',
-    })
+  const geocodeProfile = profile as { role: string | null; archived_at: string | null } | null
+  if (!geocodeProfile?.role || geocodeProfile.archived_at) {
+    return jsonResponse(403, { error: 'Geocoding requires an active app account' })
   }
 
   let body: { addresses?: unknown }
@@ -170,7 +175,7 @@ serve(async (req) => {
         },
         { onConflict: 'address_normalized' }
       )
-      if (upErr) {
+      if (upErr && !isRlsRefusal(upErr)) {
         return jsonResponse(500, { error: upErr.message })
       }
       results.push({ address_normalized: key, lat, lng })
@@ -195,7 +200,7 @@ serve(async (req) => {
           },
           { onConflict: 'address_normalized' }
         )
-        if (upErr) {
+        if (upErr && !isRlsRefusal(upErr)) {
           return jsonResponse(500, { error: upErr.message })
         }
         results.push({ address_normalized: key, lat: g.lat, lng: g.lng })
@@ -230,7 +235,7 @@ serve(async (req) => {
         },
         { onConflict: 'address_normalized' }
       )
-      if (upErr) {
+      if (upErr && !isRlsRefusal(upErr)) {
         return jsonResponse(500, { error: upErr.message })
       }
       results.push({ address_normalized: key, lat: c.lat, lng: c.lng })

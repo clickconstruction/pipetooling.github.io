@@ -110,6 +110,7 @@ import { QuickEstimateWizard, isQuickEstimateRole } from '../components/estimate
 import { DashboardTeamReadyToBillSection } from '../components/dashboard/DashboardTeamReadyToBillSection'
 import { DashboardBillingPipelineSection } from '../components/dashboard/DashboardBillingPipelineSection'
 import { DashboardAssignedJobsSection } from '../components/dashboard/DashboardAssignedJobsSection'
+import { DashboardJobsMapCard } from '../components/dashboard/DashboardJobsMapCard'
 import { DashboardSuperintendentJobsSection } from '../components/dashboard/DashboardSuperintendentJobsSection'
 import { recordNavClick } from '../lib/navClickTelemetry'
 
@@ -1572,6 +1573,17 @@ export default function Dashboard() {
         setSubcontractorJobActivityModalJob={setSubcontractorJobActivityModalJob}
       />
 
+
+      {/* v2.3131: the viewer's active jobs on a map — team-assigned rows plus a
+          superintendent's project jobs; renders nothing when there is no job. */}
+      <DashboardJobsMapCard
+        role={role}
+        assignedJobs={assignedJobs}
+        superintendentJobs={superintendentJobs}
+        loading={assignedJobsLoading || superintendentJobsLoading}
+        isMobile={isMobile}
+        openJobDetailFromDashboardJobRow={openJobDetailFromDashboardJobRow}
+      />
 
       {(assignedJobsLoading || assignedJobs.length > 0) && (
         <DashboardAssignedJobsSection
