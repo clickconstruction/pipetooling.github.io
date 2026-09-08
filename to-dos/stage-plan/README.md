@@ -1,6 +1,6 @@
 # Stage Plan — the line item is the stage
 
-Status: **in progress** · PR 1 (data + kernel, v2.3083, PR #2838) · PR 2 (Bill tab, v2.3100, PR #2841) · PR 3 (generator, v2.3127) on `claude/stage-plan-3-generator` · designed and approved 2026-09-07. Owner: Stephen. Designed in the session that shipped the three-party scheduling train (v2.2927–v2.2934) and the hub guide (v2.2938). Any session can pick this up cold; everything needed is in this folder.
+Status: **in progress** · PR 1 (data + kernel, v2.3083, PR #2838) · PR 2 (Bill tab, v2.3100, PR #2841) · PR 3 (generator, v2.3127, PR #2846) · PR 4 (Edit read-out + drawer, v2.3128) on `claude/stage-plan-4-edit-readout` · designed and approved 2026-09-07. Owner: Stephen. Designed in the session that shipped the three-party scheduling train (v2.2927–v2.2934) and the hub guide (v2.2938). Any session can pick this up cold; everything needed is in this folder.
 
 ## The ask, in the owner's words
 

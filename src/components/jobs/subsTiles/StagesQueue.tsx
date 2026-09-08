@@ -119,7 +119,7 @@ export function StagesQueue({ groups, jobs, subs, contacts, orders, offDaysByPer
                     <div style={who}>{r.row.stage.name}</div>
                     <div style={where}>
                       {r.row.window.window_by === 'gc' ? 'as the GC asked' : 'set by the office'}
-                      {r.row.window.offered_to_gc ? (
+                      {r.row.stage.shared ? (
                         <>
                           {' · '}
                           <span style={chip('teal')}>Shown to the GC</span>

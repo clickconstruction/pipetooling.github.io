@@ -92,7 +92,7 @@ describe('buildStagesQueue', () => {
     key: `stage:${id}`,
     kind: 'stage',
     jobId: 'job-1',
-    stage: { id, name: id, amount: 1000, sequence: 1 },
+    stage: { id, name: id, amount: 1000, sequence: 1, kind: 'order', shared: false },
     window: { id: `w-${id}`, job_id: 'job-1', fixture_id: id, window_start: start, window_end: end, window_by: 'office', asked_start: asked ? '2026-09-29' : null, asked_end: asked ? '2026-10-10' : null, asked_at: asked ? '2026-09-05T00:00:00Z' : null, answered_at: null },
     span: start && end ? { start, end } : null,
     board: null,

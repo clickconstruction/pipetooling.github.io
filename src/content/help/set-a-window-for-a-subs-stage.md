@@ -56,7 +56,7 @@ Devs, leaders, assistants, controllers and estimators set and change windows. Su
 
 ## See it on the calendar
 
-On **Jobs → Subs → Work** the window shows as text — **Sep 22 – Oct 2** — with a small chip beside it for the GC: {{chip:gray|GC off}} when the job doesn't share stage dates, {{chip:blue|Offer to GC ›}} when it does and you haven't yet, {{chip:blue|On Summit's portal ›}} once they can see it, {{chip:yellow|GC asked ›}} when they've asked for other dates. Under the dates, one line says who set them and what the sub picked.
+On **Jobs → Subs → Work** the window shows as text — **Sep 22 – Oct 2** — with a small chip beside it for the GC: {{chip:gray|GC off}} when the job doesn't share stage dates, *Not shown · set on Edit* when it does but the stage's eye is off (flip it on **Edit Job → Stages**), {{chip:blue|On Summit's portal ›}} once they can see it, {{chip:yellow|GC asked ›}} when they've asked for other dates. Under the dates, one line says who set them and what the sub picked.
 
 Click the dates and a **calendar** opens: the months the window touches, your window shaded, the sub's pick as a solid bar, the GC's ask as a dashed ring, today outlined, the sub's days off hatched, and the job's other stages as thin marks so you see Rough-in, Top-out and Trim in order. The panel beside it holds the facts and the moves — {{button:outline|Change our window…}}, {{button:green|Accept}} or {{button:outline|Answer with…}} on a GC ask, {{button:blue|Offer to Summit}} or {{button:outline|Take it off their portal}}. The calendar is for looking; the buttons do the work.
 

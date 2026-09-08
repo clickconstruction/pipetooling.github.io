@@ -105,7 +105,7 @@ describe('StagesQueue', () => {
     key: `stage:${id}`,
     kind: 'stage' as const,
     jobId: 'job-880',
-    stage: { id, name: id === 'a' ? 'Trim & final' : 'Rough-in', amount: 1200, sequence: 1 },
+    stage: { id, name: id === 'a' ? 'Trim & final' : 'Rough-in', amount: 1200, sequence: 1, kind: 'order' as const, shared: false },
     window: { id: `w-${id}`, job_id: 'job-880', fixture_id: id, window_start: start, window_end: end, window_by: 'office', asked_start: asked ? '2026-09-29' : null, asked_end: asked ? '2026-10-10' : null, asked_at: asked ? '2026-09-05T00:00:00Z' : null, asked_note: asked ? 'framing slipped' : null, answered_at: null },
     span: { start, end },
     board: null,
