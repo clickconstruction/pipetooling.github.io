@@ -13,10 +13,10 @@
  * Statutes: 15 U.S.C. § 7001 et seq. (ESIGN); Tex. Bus. & Com. Code ch. 322 (UETA).
  */
 
-export const ESIGN_CONSENT_VERSION = 1
+export const ESIGN_CONSENT_VERSION = 2
 
 export type EsignLang = 'en' | 'es'
-/** customer = homeowner / GC on an estimate or job contract (ESIGN consumer wording); sub = a subcontractor or staff signer; gc = the Bid Room (typed name, approval wording). */
+/** customer = homeowner / GC on an estimate or job contract (ESIGN consumer wording); sub = a subcontractor or staff signer; gc = the Bid Room (typed or drawn signature, approval wording). */
 export type EsignAudience = 'customer' | 'sub' | 'gc'
 
 export type EsignConsentText = {
@@ -104,7 +104,7 @@ export function esignConsentText(opts: { audience: EsignAudience; documentNoun: 
     how = EN.how
     disclosure = EN.disclosure
     checkbox = EN.checkbox
-    paragraphs = [EN.p1(noun, 'approving', 'a typed signature'), EN.p2('approve', EN.paperReply, EN.tailApprove)]
+    paragraphs = [EN.p1(noun, 'approving', 'a typed or drawn signature'), EN.p2('approve', EN.paperReply, EN.tailApprove)]
   } else {
     line = EN.line
     how = EN.how

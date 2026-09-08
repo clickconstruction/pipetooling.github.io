@@ -1,24 +1,17 @@
-import { useId, useLayoutEffect, useRef, useState, type CSSProperties } from 'react'
-import SignaturePad from 'signature_pad'
-import { EstimateAcceptTypedSignatureLine } from '../estimates/EstimateAcceptTypedSignatureLine'
+import { useId, useRef, useState, type CSSProperties } from 'react'
 import type { EstimateAcceptSubmitPayload } from '../estimates/EstimateAcceptBody'
 import { EsignConsentLine } from '../EsignConsentLine'
 import { esignConsentPayload, type EsignConsentText } from '../../lib/esignConsent'
+import {
+  SIGNATURE_NAME_PLACEHOLDER,
+  SignatureTypeOrDrawInput,
+  type SignatureMode,
+  type SignatureTypeOrDrawHandle,
+} from './SignatureTypeOrDrawInput'
 
-const NAME_PLACEHOLDER = 'Your full legal name'
+const NAME_PLACEHOLDER = SIGNATURE_NAME_PLACEHOLDER
 
 const SIGNATURE_DISCLOSURE = 'By signing, you acknowledge that you have read and agree to this contract.'
-
-const segmentBtnStyle = (active: boolean): CSSProperties => ({
-  padding: '0.4rem 0.85rem',
-  fontSize: '0.85rem',
-  fontWeight: 600,
-  border: '1px solid var(--border-strong)',
-  borderRadius: 6,
-  cursor: 'pointer',
-  background: active ? '#ea580c' : 'var(--bg-subtle)',
-  color: active ? 'white' : 'var(--text-700)',
-})
 
 export type ContractAcceptSignatureFormProps = {
   printedName: string
@@ -60,36 +53,12 @@ export function ContractAcceptSignatureForm({
   agreeLabel = 'I have read and agree to this contract.',
   submitLabel = 'Submit signature',
 }: ContractAcceptSignatureFormProps) {
-  const [acceptMode, setAcceptMode] = useState<'type' | 'draw'>('type')
+  const [acceptMode, setAcceptMode] = useState<SignatureMode>('type')
   const [fieldHint, setFieldHint] = useState<string | null>(null)
   const [consented, setConsented] = useState(false)
-  const canvasRef = useRef<HTMLCanvasElement>(null)
-  const padRef = useRef<SignaturePad | null>(null)
+  // v2.3159: the Type / Draw input is shared with the Bid Room; the pad is read at submit.
+  const padRef = useRef<SignatureTypeOrDrawHandle>(null)
   const headingId = useId()
-  const signatureNameIsPlaceholder = !printedName.trim()
-
-  useLayoutEffect(() => {
-    if (acceptMode !== 'draw') {
-      padRef.current?.off()
-      padRef.current = null
-      return
-    }
-    const canvas = canvasRef.current
-    if (!canvas) return
-    const w = 400
-    const h = 160
-    canvas.width = w
-    canvas.height = h
-    const pad = new SignaturePad(canvas, {
-      backgroundColor: 'var(--surface)',
-      penColor: '#111827',
-    })
-    padRef.current = pad
-    return () => {
-      pad.off()
-      padRef.current = null
-    }
-  }, [acceptMode])
 
   function handleSubmit() {
     setFieldHint(null)
@@ -111,15 +80,15 @@ export function ContractAcceptSignatureForm({
       onSubmit({ mode: 'type', printedName: trimmed, ...consentPayload })
       return
     }
-    const pad = padRef.current
-    if (!pad || pad.isEmpty()) {
+    const png = padRef.current?.toDataURL() ?? null
+    if (!png) {
       setFieldHint('Please sign in the box.')
       return
     }
     onSubmit({
       mode: 'draw',
       printedName: trimmed,
-      signaturePngBase64: pad.toDataURL('image/png'),
+      signaturePngBase64: png,
       ...consentPayload,
     })
   }
@@ -193,94 +162,18 @@ export function ContractAcceptSignatureForm({
         />
       </label>
 
-      <div
-        role="group"
-        aria-label="Sign by typing or drawing"
-        style={{
-          display: 'flex',
-          gap: '0.5rem',
-          flexWrap: 'wrap',
-          marginTop: '0.75rem',
-          justifyContent: 'center',
-          width: '100%',
+      <SignatureTypeOrDrawInput
+        ref={padRef}
+        mode={acceptMode}
+        onModeChange={(m) => {
+          setAcceptMode(m)
+          setFieldHint(null)
         }}
-      >
-        <button
-          type="button"
-          disabled={submitting}
-          onClick={() => {
-            setAcceptMode('type')
-            setFieldHint(null)
-          }}
-          style={segmentBtnStyle(acceptMode === 'type')}
-        >
-          Type
-        </button>
-        <button
-          type="button"
-          disabled={submitting}
-          onClick={() => {
-            setAcceptMode('draw')
-            setFieldHint(null)
-          }}
-          style={segmentBtnStyle(acceptMode === 'draw')}
-        >
-          Draw
-        </button>
-      </div>
-
-      {acceptMode === 'type' ? (
-        <div style={{ marginTop: '0.75rem', width: '100%', maxWidth: 400 }}>
-          <EstimateAcceptTypedSignatureLine
-            printedName={printedName}
-            placeholderName={NAME_PLACEHOLDER}
-            previewDate={new Date()}
-            nameMutedOverride={signatureNameIsPlaceholder}
-            ariaHidden
-          />
-        </div>
-      ) : (
-        <div style={{ marginTop: '0.75rem', width: '100%', maxWidth: 400, textAlign: 'center' }}>
-          <span style={{ display: 'block', fontWeight: 500, marginBottom: '0.35rem' }}>
-            Sign below (use your finger or mouse)
-          </span>
-          <div style={{ width: '100%', maxWidth: 400, marginLeft: 'auto', marginRight: 'auto' }}>
-            <canvas
-              ref={canvasRef}
-              style={{
-                display: 'block',
-                width: '100%',
-                maxWidth: 400,
-                height: 160,
-                touchAction: 'none',
-                border: '1px solid var(--border-strong)',
-                borderRadius: 6,
-                background: 'var(--surface)',
-                boxSizing: 'border-box',
-              }}
-            />
-          </div>
-          <button
-            type="button"
-            onClick={() => {
-              padRef.current?.clear()
-              setFieldHint(null)
-            }}
-            disabled={submitting}
-            style={{
-              marginTop: '0.5rem',
-              padding: '0.35rem 0.65rem',
-              fontSize: '0.85rem',
-              border: '1px solid var(--border-strong)',
-              borderRadius: 6,
-              background: 'var(--bg-subtle)',
-              cursor: 'pointer',
-            }}
-          >
-            Clear signature
-          </button>
-        </div>
-      )}
+        printedName={printedName}
+        placeholderName={NAME_PLACEHOLDER}
+        disabled={submitting}
+        align="center"
+      />
       </div>
 
       {consent ? (
