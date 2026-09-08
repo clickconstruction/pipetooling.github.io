@@ -34,9 +34,14 @@ The rest of the second line tells you where the stage stands — *window Sep 22 
 Click the blue **Multiple Segment Generator** link in the ① Line Items caption:
 
 1. Set the **total amount** at the top (it prefills with the current Job Total).
-2. Name each segment and give it a **%** — the dollar value of each segment calculates as you type and always adds back to your total.
-3. Or press a preset: **Commercial 30/30/30/10** (Rough In / Top Out / Trim Set / Final) or **Residential 40/40/20** (Rough In / Top Out / Trim Set).
-4. Re-arrange with **▲▼**, then press {{button:blue|Add to Job}} — the segments append to your existing line items, then flip each one to **Order** on its second line.
+2. Press a preset: **Commercial 30/30/30/10** (Rough In / Top Out / Trim Set / Final) or **Residential 40/40/20** (Rough In / Top Out / Trim Set). Every preset row is **in order** — numbered top to bottom — and its dollar value is its share of the total.
+3. Or name each segment yourself and give it a **%**. The **Stage** column on every row is the same **Order / Any / —** selector as the line items: a row you flip to **Any** or **—** leaves the split and gets its own price box instead of a percentage.
+4. Press {{button:amber|+ Change order}} to add an **Any** row with its own price — it sits outside the percentage split, so the line under the list reads *100% allocated · $41,550 in order · $1,850 outside the split*, and the summary counts *4 in order · 1 any time · Job total $43,400*.
+5. Re-arrange with **▲▼** (the numbers follow), then press {{button:blue|Add to Job}} — the segments append to your line items with their stage already set. Nothing more to flip.
+
+:::example Commercial preset plus a change order
+① Rough In 30% $12,465 · ② Top Out 30% $12,465 · ③ Trim Set 30% $12,465 · ④ Final 10% $4,155 · ◆ Relocate water heater $1,850 (own price) — Job total $43,400
+:::
 
 ## Watch the draws follow — the strip in ② Invoices
 
