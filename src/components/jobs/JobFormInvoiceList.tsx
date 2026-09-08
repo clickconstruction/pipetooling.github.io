@@ -52,6 +52,8 @@ type JobFormInvoiceListProps = {
   onEditBillTo: (inv: JobsLedgerInvoiceRow) => void
   /** z-index for the delete-draft confirm overlay (above the Edit Job modal). */
   nestedOverlayZIndex: number
+  /** Stage Plan (PR 2): "Draw 2 · Top-out" under the status chip, by the rows the invoice bills. */
+  drawLabelByInvoiceId?: Record<string, string>
 }
 
 /**
@@ -75,6 +77,7 @@ export function JobFormInvoiceList({
   onInvoiceDeleted,
   onEditBillTo,
   nestedOverlayZIndex,
+  drawLabelByInvoiceId,
 }: JobFormInvoiceListProps) {
   const navigate = useNavigate()
   const { showToast } = useToastContext()
@@ -264,6 +267,11 @@ export function JobFormInvoiceList({
                         >
                           {isDraft ? 'Draft' : 'Billed'}
                         </span>
+                        {drawLabelByInvoiceId?.[inv.id] ? (
+                          <div data-testid="invoice-draw-label" style={{ fontSize: '0.75rem', color: 'var(--text-700)', marginTop: 2 }}>
+                            {drawLabelByInvoiceId[inv.id]}
+                          </div>
+                        ) : null}
                         {isHazmatRider ? (
                           <span
                             title="Hazmat rider — biohazard remediation fee (see Riders above)"

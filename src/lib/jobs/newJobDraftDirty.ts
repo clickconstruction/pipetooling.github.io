@@ -51,7 +51,7 @@ export function newJobDraftKey(s: NewJobDraftSnapshot): string {
     jobPlansLink: t(s.jobPlansLink),
     fixtures: s.fixtures
       .filter(fixtureRowHasUserContent)
-      .map((f) => [t(f.name), Number(f.count), f.line_unit_price ?? null, t(f.line_description)]),
+      .map((f) => [t(f.name), Number(f.count), f.line_unit_price ?? null, t(f.line_description), f.stage_kind === undefined ? 'any' : f.stage_kind]),
     materials: s.materials.filter(materialRowHasUserContent).map((m) => [t(m.description), Number(m.amount)]),
     payments: s.payments
       .filter(paymentRowHasUserContent)

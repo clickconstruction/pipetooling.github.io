@@ -32,7 +32,7 @@ import type { FixtureRow, MaterialRow, PaymentRow } from './jobFormTypes'
 /** Money slice snapshot — byte-identical to the pre-extraction inline memo. */
 export function buildBillingSliceJson(fixtures: FixtureRow[], payments: PaymentRow[]): string {
   return JSON.stringify({
-    f: fixtures.map((f) => ({ n: f.name, c: f.count, p: f.line_unit_price, d: f.line_description, i: f.invoice_id })),
+    f: fixtures.map((f) => ({ n: f.name, c: f.count, p: f.line_unit_price, d: f.line_description, i: f.invoice_id, k: f.stage_kind === undefined ? 'any' : f.stage_kind, g: f.shared_with_gc ?? false })),
     p: payments.map((p) => ({
       a: p.amount,
       o: p.paid_on,
@@ -145,6 +145,10 @@ export function fixtureInsertRows(jobId: string, fixtures: FixtureRow[]) {
       line_unit_price: f.line_unit_price != null && f.line_unit_price > 0 ? f.line_unit_price : null,
       line_description: (f.line_description ?? '').trim() ? (f.line_description ?? '').trim() : null,
       invoice_id: f.invoice_id,
+      // Stage Plan (v2.3083+): undefined = never loaded / newly added → the
+      // column default (any time); null is a deliberate plain line item.
+      stage_kind: f.stage_kind === undefined ? 'any' : f.stage_kind,
+      shared_with_gc: f.shared_with_gc ?? false,
     }))
 }
 
