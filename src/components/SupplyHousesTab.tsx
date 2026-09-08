@@ -192,7 +192,7 @@ export function SupplyHousesTab({
   async function loadSupplyHousesInternal() {
     const { data, error: err } = await supabase.from('supply_houses').select('*').order('name')
     if (err) {
-      const fallback = await supabase.from('supply_houses').select('id, name, contact_name, phone, email, address, notes, website_url, created_at, updated_at').order('name')
+      const fallback = await supabase.from('supply_houses').select('id, name, phone, address, notes, website_url, created_at, updated_at').order('name')
       if (fallback.error) setError(`Failed to load supply houses: ${err.message}`)
       else setSupplyHousesState((fallback.data ?? []).map((h) => ({ ...h, monthly_payment_day: null })) as SupplyHouse[])
     } else {
@@ -279,7 +279,7 @@ export function SupplyHousesTab({
     setPoGeneratorCodesForSelectedHouse(null)
     const shRes = await supabase.from('supply_houses').select('*').eq('id', sh.id).single()
     const shData = shRes.error
-      ? (await supabase.from('supply_houses').select('id, name, contact_name, phone, email, address, notes, website_url, created_at, updated_at').eq('id', sh.id).single()).data
+      ? (await supabase.from('supply_houses').select('id, name, phone, address, notes, website_url, created_at, updated_at').eq('id', sh.id).single()).data
       : shRes.data
     setSelectedSupplyHouseForDetail((shData as SupplyHouse) ?? sh)
     const [invRes, poRes, allocRes, genRes] = await Promise.all([
@@ -918,12 +918,6 @@ export function SupplyHousesTab({
                                         )}
                                         <SupplyHouseWebsiteLink websiteUrl={selectedSupplyHouseForDetail.website_url} />
                                       </div>
-                                    )}
-                                    {selectedSupplyHouseForDetail.email && (
-                                      <div><strong>Email:</strong> {selectedSupplyHouseForDetail.email}</div>
-                                    )}
-                                    {selectedSupplyHouseForDetail.contact_name && (
-                                      <div><strong>Contact:</strong> {selectedSupplyHouseForDetail.contact_name}</div>
                                     )}
                                   </div>
                                   <section style={{ marginBottom: '1.5rem' }}>

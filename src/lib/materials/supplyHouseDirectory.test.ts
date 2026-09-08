@@ -12,7 +12,7 @@ import {
 } from './supplyHouseDirectory'
 
 function house(id: string, name: string, extra: Partial<DirectoryHouse> = {}): DirectoryHouse {
-  return { id, name, address: null, phone: null, email: null, contact_name: null, website_url: null, notes: null, is_insurer: false, ...extra }
+  return { id, name, address: null, phone: null, website_url: null, notes: null, is_insurer: false, ...extra }
 }
 
 function rep(id: string, supply_house_id: string, extra: Partial<DirectoryRep> = {}): DirectoryRep {

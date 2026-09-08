@@ -125,7 +125,7 @@ export function useMaterialsCatalog({
       .select('*')
       .order('name')
     if (error) {
-      const fallback = await supabase.from('supply_houses').select('id, name, contact_name, phone, email, address, notes, website_url, created_at, updated_at').order('name')
+      const fallback = await supabase.from('supply_houses').select('id, name, phone, address, notes, website_url, created_at, updated_at').order('name')
       if (fallback.error) {
         setError(`Failed to load supply houses: ${error.message}`)
         return
