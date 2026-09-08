@@ -47,7 +47,8 @@ export default function EstimatePublicTerms() {
   }, [])
 
   return (
-    <div data-theme="light" style={{ fontFamily: 'system-ui, sans-serif', padding: '2rem', maxWidth: 640, margin: '0 auto' }}>
+    <div data-theme="light" style={{ background: 'var(--surface)', color: 'var(--text-strong)', minHeight: '100vh', boxSizing: 'border-box' }}>
+    <div style={{ fontFamily: 'system-ui, sans-serif', padding: '2rem', maxWidth: 640, margin: '0 auto' }}>
       <h1 style={{ marginTop: 0 }}>Terms and Conditions</h1>
       {loading ? <p>Loading…</p> : null}
       {error ? <p style={{ color: 'var(--text-red-700)' }}>{error}</p> : null}
@@ -87,6 +88,7 @@ export default function EstimatePublicTerms() {
           </div>
         ))}
       </section>
+    </div>
     </div>
   )
 }
