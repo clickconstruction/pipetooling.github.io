@@ -414,6 +414,8 @@ export function BidBoardMapCard({
                     isMobile={isMobile}
                     anchor={canvasAnchor}
                     fitPoints={fitPoints}
+                    // Leaflet / Google ignore a height change after mount — remount when the form flips
+                    key={isMobile ? 'phone' : 'desktop'}
                   />
                 ) : (
                   <PinsMapCanvas
@@ -426,6 +428,8 @@ export function BidBoardMapCard({
                     isMobile={isMobile}
                     anchor={canvasAnchor}
                     fitPoints={fitPoints}
+                    // Leaflet / Google ignore a height change after mount — remount when the form flips
+                    key={isMobile ? 'phone' : 'desktop'}
                   />
                 )}
               </Suspense>
