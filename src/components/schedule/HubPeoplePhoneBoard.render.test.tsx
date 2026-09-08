@@ -7,6 +7,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, within } from '@testing-library/react'
 import type { JobScheduleBlockRow } from '../../lib/jobScheduleBlocks'
 import { hubPersonDayKey } from '../../lib/scheduleDispatchHub'
+import { userTimeOffCellKey } from '../../lib/userTimeOffByCell'
 import { HubPeoplePhoneBoard, PhonePeopleViewSwitch, type HubPeoplePhoneBoardProps } from './HubPeoplePhoneBoard'
 
 function block(id: string, assignee: string, workDate: string, start: string, end: string, extra: Partial<JobScheduleBlockRow> = {}): JobScheduleBlockRow {
@@ -116,6 +117,34 @@ describe('HubPeoplePhoneBoard (v2.3156)', () => {
     expect(screen.getByRole('status').textContent).toContain('Copying J927 · Mike Holub · 12–4 to…')
   })
 
+  it('a solo copy lets the source tech take it on another day; a move reads its own cell as where it is now', () => {
+    const { rerender } = render(<HubPeoplePhoneBoard {...baseProps({ cardPlacementMode: { sourceBlockId: 'b2', variant: 'unlinked' } })} />)
+    fireEvent.click(screen.getByRole('tab', { name: /Wed 9/ }))
+    const abrahamWed = screen.getByRole('button', { name: /Abraham: Tap to add J927 · Mike Holub · 12–4 here/ }) as HTMLButtonElement
+    expect(abrahamWed.disabled).toBe(false)
+    rerender(<HubPeoplePhoneBoard {...baseProps({ cardPlacementMode: { sourceBlockId: 'b2', variant: 'move' } })} />)
+    fireEvent.click(screen.getByRole('tab', { name: /Tue 8/ }))
+    const abrahamTue = screen.getByRole('button', { name: /Abraham: Where it is now/ }) as HTMLButtonElement
+    expect(abrahamTue.disabled).toBe(true)
+    expect(screen.queryByRole('button', { name: /Abraham: Busy/ })).toBeNull()
+  })
+
+  it('the Not coming in chip is tappable to undo, and hidden blocks read busy', () => {
+    const undo = vi.fn()
+    render(
+      <HubPeoplePhoneBoard
+        {...baseProps({
+          userTimeOffByCell: new Map([[userTimeOffCellKey('paige', '2026-09-08'), { variant: 'not_coming_in' as const, label: 'Not coming in', note: null, kind: 'not_coming_in' }]]),
+          hiddenByCell: new Map([[hubPersonDayKey('taunya', '2026-09-08'), { count: 2, hours: 8 }]]),
+          onRequestUndoNotComingIn: undo,
+        })}
+      />,
+    )
+    fireEvent.click(screen.getByRole('button', { name: 'Tap to mark as coming in' }))
+    expect(undo).toHaveBeenCalledWith('paige', '2026-09-08')
+    expect(screen.getByText(/busy · 2 blocks you can’t see/)).toBeTruthy()
+  })
+
   it('tapping a block opens its sheet; Copy to techs lists the other techs with availability and sends the pick', async () => {
     const props = baseProps()
     render(<HubPeoplePhoneBoard {...props} />)
@@ -144,6 +173,24 @@ describe('HubPeoplePhoneBoard (v2.3156)', () => {
     expect(apply).toHaveBeenCalledWith('paige')
     fireEvent.click(screen.getAllByRole('button', { name: 'Whole team' })[1]!)
     expect(lane).toHaveBeenCalledWith('Office', ['taunya'])
+    // Off the source day the cards point back to it and there is no Whole team button.
+    fireEvent.click(screen.getByRole('tab', { name: /Wed 9/ }))
+    expect(screen.getByRole('button', { name: /Paige: Linked copies land on Tue 8/ })).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Whole team' })).toBeNull()
+    // A role heading (no lane members) never gets a Whole team button.
+    rerender(
+      <HubPeoplePhoneBoard
+        {...baseProps({
+          linkedCopyMode: { stage: 2, selectedBlockIds: new Set(['b2']) },
+          onLinkedCopyApplyToLane: lane,
+          peopleDisplayRows: [
+            { kind: 'heading', key: 'role-helpers', label: 'Helpers' },
+            { kind: 'person', person: { userId: 'paige', displayName: 'Paige' } },
+          ],
+        })}
+      />,
+    )
+    expect(screen.queryByRole('button', { name: 'Whole team' })).toBeNull()
   })
 })
 
