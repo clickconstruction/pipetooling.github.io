@@ -6,6 +6,8 @@
  * queries; everything that decides what a row says lives here.
  */
 
+import { isQuotableVendorKind, vendorKindLabel, vendorKindOf, type VendorKind } from './vendorKind'
+
 export type DirectoryHouse = {
   id: string
   name: string
@@ -14,6 +16,8 @@ export type DirectoryHouse = {
   website_url: string | null
   notes: string | null
   is_insurer: boolean
+  /** Present once the v2.3172 column is pushed; `vendorKindOf` falls back to `is_insurer` before that. */
+  vendor_kind?: string | null
 }
 
 export type DirectoryRep = {
@@ -38,8 +42,7 @@ export type DirectoryRequest = {
   bid_label: string | null
 }
 
-/** Until vendor_kind lands (PR 5) the only kind signal is the insurer flag. */
-export type DirectoryKind = 'supply_house' | 'insurer'
+export type DirectoryKind = VendorKind
 
 export type DirectoryRow<H extends DirectoryHouse = DirectoryHouse> = {
   house: H
@@ -47,7 +50,7 @@ export type DirectoryRow<H extends DirectoryHouse = DirectoryHouse> = {
   /** Default rep first, then alphabetical by label / name. */
   reps: DirectoryRep[]
   defaultRep: DirectoryRep | null
-  /** A supply house (not an insurer) with no rep on file. */
+  /** A supply house (not a ledger-only vendor) with no rep on file. */
   needsRep: boolean
   /** Priced parts on file, summed across service types; null when stats never loaded. */
   priceCount: number | null
@@ -58,7 +61,7 @@ export type DirectoryRow<H extends DirectoryHouse = DirectoryHouse> = {
 }
 
 export type DirectoryCoverage = {
-  /** Supply houses (insurers excluded). */
+  /** Supply houses (ledger-only kinds excluded). */
   total: number
   withRep: number
   needRep: number
@@ -70,17 +73,17 @@ export type BuildDirectoryInput<H extends DirectoryHouse = DirectoryHouse> = {
   requests: DirectoryRequest[]
   priceCountByHouse: Record<string, number> | null
   search?: string
-  /** `supply_house` hides insurers (the estimator door); `all` is the office view. */
-  kinds?: 'all' | 'supply_house'
+  /** `supply_house` keeps quotable houses only (the estimator door); `all` is the office view; a specific kind narrows the office view. */
+  kinds?: 'all' | DirectoryKind
   recentLimit?: number
 }
 
-export function directoryKindOf(house: Pick<DirectoryHouse, 'is_insurer'>): DirectoryKind {
-  return house.is_insurer ? 'insurer' : 'supply_house'
+export function directoryKindOf(house: Pick<DirectoryHouse, 'is_insurer' | 'vendor_kind'>): DirectoryKind {
+  return vendorKindOf(house)
 }
 
 export function directoryKindLabel(kind: DirectoryKind): string {
-  return kind === 'insurer' ? 'Insurer' : 'Supply house'
+  return vendorKindLabel(kind)
 }
 
 /** What a request row's status means to the next estimator reading the directory. */
@@ -121,9 +124,9 @@ export function directorySearchMatches(row: { house: Pick<DirectoryHouse, 'name'
   return row.reps.some((r) => normalize(r.label).includes(q) || normalize(r.name).includes(q) || normalize(r.email).includes(q))
 }
 
-/** Group order: houses with a rep, then other kinds, then houses that need a rep. */
+/** Group order: houses with a rep, then ledger-only kinds, then houses that need a rep. */
 function rowGroup(row: DirectoryRow<DirectoryHouse>): number {
-  if (row.kind !== 'supply_house') return 1
+  if (!isQuotableVendorKind(row.kind)) return 1
   return row.needsRep ? 2 : 0
 }
 
@@ -153,10 +156,10 @@ export function buildDirectoryRows<H extends DirectoryHouse>(input: BuildDirecto
 
   for (const house of input.houses) {
     const kind = directoryKindOf(house)
-    if (kinds === 'supply_house' && kind !== 'supply_house') continue
+    if (kinds !== 'all' && kind !== kinds) continue
     const reps = sortReps(repsByHouse.get(house.id) ?? [])
     const defaultRep = reps.find((r) => r.is_default) ?? reps[0] ?? null
-    const needsRep = kind === 'supply_house' && reps.length === 0
+    const needsRep = isQuotableVendorKind(kind) && reps.length === 0
     const history = requestsByHouse.get(house.id) ?? []
     const row: DirectoryRow<H> = {
       house,
@@ -168,7 +171,7 @@ export function buildDirectoryRows<H extends DirectoryHouse>(input: BuildDirecto
       lastRequest: history[0] ?? null,
       recentRequests: history.slice(0, recentLimit),
     }
-    if (kind === 'supply_house') {
+    if (isQuotableVendorKind(kind)) {
       coverage.total += 1
       if (needsRep) coverage.needRep += 1
       else coverage.withRep += 1

@@ -4,6 +4,7 @@ import { SupplyHouseContactsSection } from './SupplyHouseContactsSection'
 import type { Database } from '../types/database'
 import { useNarrowViewport640 } from '../hooks/useNarrowViewport640'
 import { isUrlLikelyMapsOrDirectionsPortal, normalizeSupplyHouseWebsiteUrlForStorage } from '../lib/supplyHouseWebsite'
+import { VENDOR_KINDS, VENDOR_KIND_HINTS, isInsurerFor, vendorKindLabel, vendorKindOf, type VendorKind } from '../lib/materials/vendorKind'
 
 type SupplyHouse = Database['public']['Tables']['supply_houses']['Row']
 type UserRole = 'dev' | 'master_technician' | 'assistant' | 'estimator' | 'primary' | 'superintendent'
@@ -16,7 +17,9 @@ export interface SupplyHouseFormData {
   website_url: string | null
   notes: string
   monthly_payment_day: number | null
-  /** Tier-2 #19: insurer / payee-only vendor — stays in the ledger, hidden from the quote pickers. */
+  /** v2.3172: what kind of vendor this is; only `supply_house` is quoted from or shown to estimators. */
+  vendor_kind: VendorKind
+  /** Derived from `vendor_kind` (the DB trigger does the same) — kept for pre-push clients' pickers. */
   is_insurer: boolean
 }
 
@@ -73,9 +76,11 @@ export function SupplyHouseForm({
   variant = 'modal',
 }: SupplyHouseFormProps) {
   const [websiteUrlError, setWebsiteUrlError] = useState<string | null>(null)
-  // Owned here (not by the hosts' string-field onChange): a boolean the hosts only need at submit.
-  // `?? false` — the row may predate the is_insurer column (fallback select).
-  const [isInsurer, setIsInsurer] = useState<boolean>(editingSupplyHouse?.is_insurer ?? false)
+  // Owned here (not by the hosts' string-field onChange): the hosts only need it at submit.
+  // Reads vendor_kind once pushed, the legacy is_insurer flag before that.
+  const [vendorKind, setVendorKind] = useState<VendorKind>(editingSupplyHouse ? vendorKindOf(editingSupplyHouse as { vendor_kind?: string | null; is_insurer?: boolean | null }) : 'supply_house')
+  // Estimators never reclassify a vendor: the row is hidden for them and stays what it was (or supply_house for a new one).
+  const canPickKind = myRole !== 'estimator'
   const narrow = useNarrowViewport640()
 
   async function handleSubmit(e: React.FormEvent) {
@@ -100,7 +105,8 @@ export function SupplyHouseForm({
       website_url: normalizedWebsite,
       notes: notes.trim() || '',
       monthly_payment_day: day,
-      is_insurer: isInsurer,
+      vendor_kind: vendorKind,
+      is_insurer: isInsurerFor(vendorKind),
     })
   }
 
@@ -152,15 +158,37 @@ export function SupplyHouseForm({
         <FieldRow label="Notes" narrow={narrow} alignTop>
           <textarea value={notes} onChange={(e) => onChange('notes', e.target.value)} rows={2} style={fieldStyles} />
         </FieldRow>
-        <FieldRow label="Quotes" narrow={narrow} alignTop>
-          <label style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem', fontSize: '0.875rem', cursor: 'pointer' }}>
-            <input type="checkbox" checked={isInsurer} onChange={(e) => setIsInsurer(e.target.checked)} style={{ marginTop: '0.2rem' }} />
-            <span>
-              Not a supplier we quote from (insurer, rental yard, payee only)
-              <span style={{ display: 'block', color: 'var(--text-muted)', fontSize: '0.8125rem' }}>Stays here for bills and POs; hidden from the RFQ and quote pickers.</span>
-            </span>
-          </label>
-        </FieldRow>
+        {canPickKind ? (
+          <FieldRow label="Kind" narrow={narrow} alignTop>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
+              {VENDOR_KINDS.map((k) => {
+                const on = k === vendorKind
+                return (
+                  <button
+                    key={k}
+                    type="button"
+                    aria-pressed={on}
+                    onClick={() => setVendorKind(k)}
+                    style={{
+                      padding: '0.3rem 0.7rem',
+                      borderRadius: 999,
+                      border: `1px solid ${on ? '#3b82f6' : 'var(--border-strong)'}`,
+                      background: on ? 'var(--bg-blue-tint)' : 'var(--surface)',
+                      color: on ? 'var(--text-blue-700)' : 'var(--text-700)',
+                      fontWeight: on ? 600 : 400,
+                      fontSize: '0.8125rem',
+                      cursor: 'pointer',
+                      font: 'inherit',
+                    }}
+                  >
+                    {vendorKindLabel(k)}
+                  </button>
+                )
+              })}
+            </div>
+            <p style={{ margin: '0.35rem 0 0', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>{VENDOR_KIND_HINTS[vendorKind]}</p>
+          </FieldRow>
+        ) : null}
         {editingSupplyHouse ? (
           <SupplyHouseContactsSection supplyHouseId={editingSupplyHouse.id} showAddedBy />
         ) : (

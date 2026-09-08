@@ -28,6 +28,7 @@ const HOUSES = [
   house('ferguson', 'Ferguson'),
   house('winn', 'Winn Supply'),
   house('texas-mutual', 'Texas Mutual (Workers Comp)', { is_insurer: true }),
+  house('sunbelt', 'Sunbelt Rentals', { vendor_kind: 'rental_yard' }),
   house('apple', 'Apple Lumber'),
 ]
 
@@ -49,7 +50,9 @@ const REQUESTS = [
 describe('buildDirectoryRows', () => {
   it('orders houses with a rep, then other kinds, then houses that need one — alphabetical inside each group', () => {
     const { rows } = buildDirectoryRows({ houses: HOUSES, reps: REPS, requests: REQUESTS, priceCountByHouse: null })
-    expect(rows.map((r) => r.house.name)).toEqual(['Ferguson', 'Moore Supply', 'Texas Mutual (Workers Comp)', 'Apple Lumber', 'Winn Supply'])
+    expect(rows.map((r) => r.house.name)).toEqual(['Ferguson', 'Moore Supply', 'Sunbelt Rentals', 'Texas Mutual (Workers Comp)', 'Apple Lumber', 'Winn Supply'])
+    expect(rows.find((r) => r.house.id === 'sunbelt')!.kind).toBe('rental_yard')
+    expect(rows.find((r) => r.house.id === 'texas-mutual')!.kind).toBe('insurer')
   })
 
   it('counts coverage over supply houses only', () => {
@@ -57,10 +60,16 @@ describe('buildDirectoryRows', () => {
     expect(coverage).toEqual({ total: 4, withRep: 2, needRep: 2 })
   })
 
-  it('hides insurers for the supply_house kind filter and keeps coverage unchanged', () => {
+  it('keeps quotable houses only for the supply_house kind filter and keeps coverage unchanged', () => {
     const { rows, coverage } = buildDirectoryRows({ houses: HOUSES, reps: REPS, requests: REQUESTS, priceCountByHouse: null, kinds: 'supply_house' })
-    expect(rows.some((r) => r.kind === 'insurer')).toBe(false)
+    expect(rows.every((r) => r.kind === 'supply_house')).toBe(true)
+    expect(rows).toHaveLength(4)
     expect(coverage).toEqual({ total: 4, withRep: 2, needRep: 2 })
+  })
+
+  it('narrows the office view to one ledger kind', () => {
+    const { rows } = buildDirectoryRows({ houses: HOUSES, reps: REPS, requests: [], priceCountByHouse: null, kinds: 'rental_yard' })
+    expect(rows.map((r) => r.house.id)).toEqual(['sunbelt'])
   })
 
   it('puts the default rep first and drops reps with no house', () => {

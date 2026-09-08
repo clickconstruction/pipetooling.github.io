@@ -14,6 +14,7 @@ import {
   type DirectoryRequest,
   type DirectoryRow,
 } from '../../lib/materials/supplyHouseDirectory'
+import { VENDOR_KINDS, vendorKindLabel, type VendorKind } from '../../lib/materials/vendorKind'
 import { SupplyHouseContactsSection } from '../SupplyHouseContactsSection'
 import { SupplyHouseWebsiteLink } from '../SupplyHouseWebsiteLink'
 import { useNarrowViewport640 } from '../../hooks/useNarrowViewport640'
@@ -70,6 +71,7 @@ const panelTitle: CSSProperties = { margin: 0, fontSize: '0.875rem', fontWeight:
 export function SupplyHouseDirectory({ supplyHouses, audience, onAddHouse, onEditHouse, reloadKey = 0, selectedServiceTypeId = null }: Props) {
   const narrow = useNarrowViewport640()
   const [search, setSearch] = useState('')
+  const [kindFilter, setKindFilter] = useState<'all' | VendorKind>('all')
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [reps, setReps] = useState<DirectoryRep[]>([])
   const [requests, setRequests] = useState<DirectoryRequest[]>([])
@@ -172,9 +174,9 @@ export function SupplyHouseDirectory({ supplyHouses, audience, onAddHouse, onEdi
         requests,
         priceCountByHouse,
         search,
-        kinds: audience === 'estimator' ? 'supply_house' : 'all',
+        kinds: audience === 'estimator' ? 'supply_house' : kindFilter,
       }),
-    [supplyHouses, reps, requests, priceCountByHouse, search, audience],
+    [supplyHouses, reps, requests, priceCountByHouse, search, audience, kindFilter],
   )
 
   const nowMs = Date.now()
@@ -290,6 +292,19 @@ export function SupplyHouseDirectory({ supplyHouses, audience, onAddHouse, onEdi
         aria-label="Search supply houses"
         style={{ flex: 1, minWidth: '12rem', padding: '0.55rem 0.75rem', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', color: 'var(--text-base)', font: 'inherit' }}
       />
+      {audience === 'office' ? (
+        <select
+          value={kindFilter}
+          onChange={(e) => setKindFilter(e.target.value as 'all' | VendorKind)}
+          aria-label="Vendor kind"
+          style={{ padding: '0.5rem 0.6rem', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', color: 'var(--text-base)', font: 'inherit' }}
+        >
+          <option value="all">All kinds</option>
+          {VENDOR_KINDS.map((k) => (
+            <option key={k} value={k}>{k === 'supply_house' ? 'Supply houses' : `${vendorKindLabel(k)} only`}</option>
+          ))}
+        </select>
+      ) : null}
     </div>
   )
 
