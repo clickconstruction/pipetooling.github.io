@@ -22,6 +22,8 @@ key_sections:
 
 > PRs 8–9 (re-measure, retire Old) are tracked in [`to-dos/takeoffs-retire-old.md`](../to-dos/takeoffs-retire-old.md) (2026-09-05 sweep).
 
+**View chooser 2026-09-07 (v2.3082)** — a Combined bid opened on Takeoffs asks which view to work in (Old / One at a time / Sheet, drawn previews, keys 1 · 2 · 3) every time; the per-device default no longer decides what opens, only what the pills remember. By Stage bids skip it and open as before.
+
 **Labels renamed 2026-09-07 (v2.2990)** — the pills now read **Old · One at a time · Sheet**. This plan keeps its build-time names: New 1 = One at a time, New 2 = Sheet; the stored ids `new1` / `new2` never changed.
 
 **PRs 1–7 built (2026-09-04)** — the parallel run is live; PR 8 (a week of real use, coverage re-measured) and PR 9 (retire Old) remain. Owner picked **B → New 1** and **C → New 2** from the "Takeoffs Refresh" canvas; Old is today's tab, untouched and still the default.

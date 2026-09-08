@@ -164,6 +164,35 @@ describe('BidsTakeoffTab render smoke', () => {
     }
   })
 
+  it('asks which view to use when a Combined bid opens, and a pick opens it (v2.3082)', async () => {
+    window.localStorage.setItem('bids_takeoff_view_v1', 'old')
+    try {
+      renderWithProviders(
+        <BidsTakeoffTab
+          {...makeProps({
+            selectedBidForTakeoff: makeBid({ materials_model: 'rough' }),
+            takeoffCountRows: [{ id: 'row-1', bid_id: 'bid-1', fixture: 'WC-1', count: 2, sequence_order: 1 } as unknown as Props['takeoffCountRows'][number]],
+          })}
+        />,
+      )
+      const chooser = await screen.findByTestId('takeoff-view-chooser')
+      expect(chooser.textContent).toContain('How do you want to cost this takeoff?')
+      expect(chooser.textContent).toContain('BP101 Smoke Project')
+      fireEvent.click(screen.getByRole('button', { name: /^Sheet$/ }))
+      expect(await screen.findByTestId('takeoff-cost-rail-view')).toBeTruthy()
+      expect(screen.queryByTestId('takeoff-view-chooser')).toBeNull()
+      expect(window.localStorage.getItem('bids_takeoff_view_v1')).toBe('new2')
+    } finally {
+      window.localStorage.removeItem('bids_takeoff_view_v1')
+    }
+  })
+
+  it('never asks on a By Stage bid', async () => {
+    renderWithProviders(<BidsTakeoffTab {...makeProps({ selectedBidForTakeoff: makeBid({ materials_model: 'exact' }) })} />)
+    expect((await screen.findAllByText('Takeoff book')).length).toBeGreaterThan(0)
+    expect(screen.queryByTestId('takeoff-view-chooser')).toBeNull()
+  })
+
   it('mounts Sheet (new2, the cost rail) on a Combined bid', async () => {
     window.localStorage.setItem('bids_takeoff_view_v1', 'new2')
     try {

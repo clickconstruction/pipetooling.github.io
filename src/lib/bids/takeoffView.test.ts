@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { TAKEOFF_VIEWS, TAKEOFF_VIEW_STORAGE_KEY, parseTakeoffView, readStoredTakeoffView, writeStoredTakeoffView } from './takeoffView'
+import { TAKEOFF_VIEWS, TAKEOFF_VIEW_STORAGE_KEY, parseTakeoffView, readStoredTakeoffView, viewForChooserKey, writeStoredTakeoffView } from './takeoffView'
 
 describe('parseTakeoffView', () => {
   it('accepts the two new views and defaults everything else to old', () => {
@@ -19,6 +19,18 @@ describe('TAKEOFF_VIEWS', () => {
       ['new1', 'One at a time'],
       ['new2', 'Sheet'],
     ])
+  })
+})
+
+describe('viewForChooserKey', () => {
+  it('maps 1 · 2 · 3 to the cards in order and nothing else', () => {
+    expect(viewForChooserKey('1')).toBe('old')
+    expect(viewForChooserKey('2')).toBe('new1')
+    expect(viewForChooserKey('3')).toBe('new2')
+    expect(viewForChooserKey('4')).toBeNull()
+    expect(viewForChooserKey('0')).toBeNull()
+    expect(viewForChooserKey('12')).toBeNull()
+    expect(viewForChooserKey('Enter')).toBeNull()
   })
 })
 
