@@ -24,24 +24,15 @@ export function useEsignConsent(recordType: EsignConsentRecordType | null, recor
     setRow(null)
     if (!recordType || !recordId) return
     void (async () => {
-      // Read through a cast until the generated types carry esign_consents (migration 20260908030946).
-      const table = supabase.from('esign_consents' as never) as unknown as {
-        select: (cols: string) => {
-          eq: (k: string, v: string) => {
-            eq: (k: string, v: string) => {
-              order: (k: string, o: { ascending: boolean }) => { limit: (n: number) => { maybeSingle: () => Promise<{ data: unknown }> } }
-            }
-          }
-        }
-      }
-      const { data } = await table
+      const { data } = await supabase
+        .from('esign_consents')
         .select('consent_version, lang, clause_text, consented_at')
         .eq('record_type', recordType)
         .eq('record_id', recordId)
         .order('consented_at', { ascending: false })
         .limit(1)
         .maybeSingle()
-      if (!cancelled && data && typeof data === 'object') setRow(data as EsignConsentRow)
+      if (!cancelled && data) setRow(data)
     })()
     return () => {
       cancelled = true
