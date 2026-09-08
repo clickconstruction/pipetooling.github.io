@@ -155,7 +155,7 @@ The "API surface" any extracted tab must be handed.
 | Assembly Book | ✅ | ✅ | ✅ |
 | PO Builder (`assemblies-po`) | ✅ | ✅ | ❌ (button hidden + URL redirect) |
 | Purchase Orders | ✅ | ✅ | ❌ (button hidden + URL redirect) |
-| Supply Houses | ✅ | ❌ (hidden + redirect) | ❌ (hidden + redirect) |
+| Supply houses | ✅ (Directory + Accounts payable) | ✅ **Directory pane only** (v2.3167, `supplyHousesPaneFor` = `directory`) | ❌ (hidden + redirect) |
 | Job Accounts | ✅ | ❌ (hidden + redirect) | ❌ (hidden + redirect) |
 | PO Generator | ✅ | ❌ (hidden + redirect) | ❌ (hidden + redirect) |
 

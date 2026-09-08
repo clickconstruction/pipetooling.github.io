@@ -19,9 +19,9 @@ describe('materialsTabsFor', () => {
     }
   })
 
-  it('gives estimators the books and the PO lanes, never the office ledgers', () => {
-    expect(materialsTabsFor('estimator')).toEqual(['parts-book', 'assembly-book', 'assemblies-po', 'purchase-orders'])
-    expect(canOpenMaterialsTab('estimator', 'supply-houses')).toBe(false)
+  it('gives estimators the books, the PO lanes and the Supply houses directory, never the AP ledgers', () => {
+    expect(materialsTabsFor('estimator')).toEqual(['parts-book', 'assembly-book', 'assemblies-po', 'purchase-orders', 'supply-houses'])
+    expect(canOpenMaterialsTab('estimator', 'supply-houses')).toBe(true)
     expect(canOpenMaterialsTab('estimator', 'job-accounts')).toBe(false)
     expect(canOpenMaterialsTab('estimator', 'po-generator')).toBe(false)
   })
@@ -63,7 +63,8 @@ describe('resolveMaterialsTab', () => {
   })
 
   it('sends a role away from a tab it may not open', () => {
-    expect(resolveMaterialsTab('estimator', 'supply-houses')).toEqual({ tab: 'parts-book', redirect: true })
+    expect(resolveMaterialsTab('estimator', 'supply-houses')).toEqual({ tab: 'supply-houses', redirect: false })
+    expect(resolveMaterialsTab('estimator', 'job-accounts')).toEqual({ tab: 'parts-book', redirect: true })
     expect(resolveMaterialsTab('estimator', 'po-generator')).toEqual({ tab: 'parts-book', redirect: true })
     expect(resolveMaterialsTab('primary', 'purchase-orders')).toEqual({ tab: 'parts-book', redirect: true })
     expect(resolveMaterialsTab('superintendent', 'assemblies-po')).toEqual({ tab: 'parts-book', redirect: true })
@@ -75,10 +76,10 @@ describe('resolveMaterialsTab', () => {
 })
 
 describe('supplyHousesPaneFor', () => {
-  it('gives the office both panes and everyone else nothing (until the estimator door opens)', () => {
+  it('gives the office both panes, the estimator the directory alone, everyone else nothing', () => {
     expect(supplyHousesPaneFor('dev')).toBe('office')
     expect(supplyHousesPaneFor('controller')).toBe('office')
-    expect(supplyHousesPaneFor('estimator')).toBeNull()
+    expect(supplyHousesPaneFor('estimator')).toBe('directory')
     expect(supplyHousesPaneFor('primary')).toBeNull()
     expect(supplyHousesPaneFor(null)).toBeNull()
   })

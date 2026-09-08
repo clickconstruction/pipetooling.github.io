@@ -126,7 +126,7 @@ describe('Materials page render smoke — dev sees every tab', () => {
     }
     // One "Supply Houses" button (the tab); the legacy Parts Book toolbar modal
     // opener (preserve-quirk #16) is labelled "Price coverage" since v2.2903.
-    expect(screen.getAllByRole('button', { name: 'Supply Houses' }).length).toBe(1)
+    expect(screen.getAllByRole('button', { name: 'Supply houses' }).length).toBe(1)
     expect(screen.getByRole('button', { name: 'Price coverage' })).toBeTruthy()
   })
 
@@ -175,8 +175,9 @@ describe('Materials page render smoke — role gating', () => {
     renderMaterialsAt('/materials', 'estimator')
     expect(await screen.findByPlaceholderText(PARTS_BOOK_ANCHOR)).toBeTruthy()
     expect(screen.queryByRole('button', { name: 'PO Generator' })).toBeNull()
-    // The tab button is hidden; only the legacy toolbar modal opener ("Price coverage") remains.
-    expect(screen.queryByRole('button', { name: 'Supply Houses' })).toBeNull()
+    // The estimator door (v2.3167): the Supply houses pill is theirs; the legacy "Price coverage" opener still exists until PR 3.
+    expect(screen.getByRole('button', { name: 'Supply houses' })).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Job Accounts' })).toBeNull()
     expect(screen.getByRole('button', { name: 'Price coverage' })).toBeTruthy()
     expect(screen.getByRole('button', { name: 'PO Builder' })).toBeTruthy()
   })
@@ -189,10 +190,18 @@ describe('Materials page render smoke — role gating', () => {
     expect(within(signpost).queryByRole('button')).toBeNull()
   })
 
-  it('estimator: ?tab=supply-houses redirects to Parts Book', async () => {
+  it('estimator: ?tab=supply-houses renders the Directory alone — no Accounts payable', async () => {
     renderMaterialsAt('/materials?tab=supply-houses', 'estimator')
-    expect(await screen.findByPlaceholderText(PARTS_BOOK_ANCHOR)).toBeTruthy()
+    expect(await screen.findByText('Add supply house')).toBeTruthy()
     expect(screen.queryByText(SUPPLY_HOUSES_ANCHOR)).toBeNull()
+    expect(screen.queryByRole('heading', { name: 'Accounts payable' })).toBeNull()
+    expect(screen.queryByText(/Show paid invoices/)).toBeNull()
+  })
+
+  it('estimator: ?tab=job-accounts and ?tab=po-generator still redirect to Parts Book', async () => {
+    renderMaterialsAt('/materials?tab=job-accounts', 'estimator')
+    expect(await screen.findByPlaceholderText(PARTS_BOOK_ANCHOR)).toBeTruthy()
+    expect(screen.queryByText('Add supply house')).toBeNull()
   })
 
   it('primary: only Parts Book + Assembly Book tabs; ?tab=purchase-orders redirects', async () => {
