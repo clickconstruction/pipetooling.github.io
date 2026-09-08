@@ -1071,6 +1071,11 @@ uuid3           | Supply House C    | 0
   - `created_at`, `updated_at` (timestamptz)
 - **RLS**: every Materials reader (dev, master_technician, assistant, estimator, primary, superintendent) reads; writes require `can_manage_supply_house_directory()` (dev, master_technician, assistant, controller, estimator — v2.3167)
 
+#### `public.supply_house_service_types`
+- **Purpose**: The trades a supply house serves (v2.3173). No rows for a house = serves every trade; the estimator directory's trade chips and the RFQ picker's bid-trade default keep untagged houses visible.
+- **Key Fields**: `supply_house_id` (uuid, FK → `supply_houses.id`, cascade), `service_type_id` (uuid, FK → `service_types.id`, cascade), `created_at`; PK on the pair
+- **RLS**: the six Materials roles read; writes require `can_manage_supply_house_directory()`
+
 #### `public.material_parts`
 - **Purpose**: Parts catalog
 - **Key Fields**:

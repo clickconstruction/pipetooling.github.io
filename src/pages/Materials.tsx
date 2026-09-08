@@ -2004,6 +2004,7 @@ export default function Materials() {
           onSupplyHousesChange={loadSupplyHouses}
           myRole={myRole}
           selectedServiceTypeId={selectedServiceTypeId}
+          defaultTradeIds={estimatorServiceTypeIds}
         />
       )}
     </div>

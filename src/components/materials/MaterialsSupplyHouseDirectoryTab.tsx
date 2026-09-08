@@ -18,11 +18,14 @@ export function MaterialsSupplyHouseDirectoryTab({
   onSupplyHousesChange,
   myRole,
   selectedServiceTypeId,
+  defaultTradeIds,
 }: {
   supplyHouses: SupplyHouse[]
   onSupplyHousesChange: () => Promise<void> | void
   myRole: UserRole | null
   selectedServiceTypeId?: string | null
+  /** The estimator's `estimator_service_type_ids` — the trade chips start on these (v2.3173). */
+  defaultTradeIds?: string[] | null
 }) {
   const [reloadKey, setReloadKey] = useState(0)
   const editor = useSupplyHouseEditor({
@@ -43,6 +46,7 @@ export function MaterialsSupplyHouseDirectoryTab({
         onEditHouse={editor.openEdit}
         reloadKey={reloadKey}
         selectedServiceTypeId={selectedServiceTypeId ?? null}
+        defaultTradeIds={defaultTradeIds ?? null}
       />
       {editor.modal}
     </div>

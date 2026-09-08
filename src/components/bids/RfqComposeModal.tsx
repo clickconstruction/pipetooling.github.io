@@ -12,6 +12,7 @@ import { useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { supabase } from '../../lib/supabase'
 import { withSupabaseRetry } from '../../utils/errorHandling'
 import { fetchSupplyHousePickerRows } from '../../lib/supplyHousePickerRows'
+import { housesForBidTrade, tradesByHouse, type HouseTradeLink } from '../../lib/materials/supplyHouseTrades'
 import { useToastContext } from '../../contexts/ToastContext'
 
 const MODAL_Z = 10060
@@ -77,6 +78,10 @@ export function RfqComposeModal({
   const [note, setNote] = useState('')
   const [includePlans, setIncludePlans] = useState(true)
   const [filter, setFilter] = useState('')
+  // Trades served (v2.3173): the bid's trade narrows the list by default; "show all" lifts it for this open.
+  const [bidTrade, setBidTrade] = useState<{ id: string; name: string } | null>(null)
+  const [tradeLinks, setTradeLinks] = useState<HouseTradeLink[]>([])
+  const [showAllTrades, setShowAllTrades] = useState(false)
   const [sending, setSending] = useState(false)
   // Preview-before-send: the edge function's `preview` mode returns the EXACT
   // email a send would produce (same builder, no writes) — what you see here
@@ -117,6 +122,17 @@ export function RfqComposeModal({
         ])
         if (cancelled) return
         setHouses(houseRows)
+        void (async () => {
+          const [{ data: bidRow }, { data: links, error: linkErr }] = await Promise.all([
+            supabase.from('bids').select('service_type_id, service_types(name)').eq('id', bidId).maybeSingle(),
+            supabase.from('supply_house_service_types' as never).select('supply_house_id, service_type_id'),
+          ])
+          if (cancelled) return
+          const st = (bidRow as { service_type_id: string | null; service_types: { name: string } | null } | null)
+          setBidTrade(st?.service_type_id ? { id: st.service_type_id, name: st.service_types?.name ?? 'this trade' } : null)
+          setTradeLinks(linkErr ? [] : ((links ?? []) as HouseTradeLink[]))
+          setShowAllTrades(false)
+        })()
         const byHouse: Record<string, Array<{ id: string; name: string; email: string; label: string | null; isDefault: boolean }>> = {}
         for (const c of contactRows ?? []) {
           if (!c.supply_house_id) continue
@@ -276,7 +292,8 @@ export function RfqComposeModal({
   const smallMuted: CSSProperties = { fontSize: '0.75rem', color: 'var(--text-muted)' }
   const input: CSSProperties = { padding: '0.35rem 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, font: 'inherit', fontSize: '0.8125rem', background: 'var(--surface)', color: 'var(--text-strong)' }
   const needle = filter.trim().toLowerCase()
-  const visibleHouses = needle ? houses.filter((h) => h.name.toLowerCase().includes(needle)) : houses
+  const byTrade = housesForBidTrade(houses, showAllTrades ? null : bidTrade?.id, tradesByHouse(tradeLinks))
+  const visibleHouses = needle ? byTrade.shown.filter((h) => h.name.toLowerCase().includes(needle)) : byTrade.shown
 
   return createPortal(
     <div style={overlay} role="presentation" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose() }}>
@@ -316,7 +333,19 @@ export function RfqComposeModal({
           <>
         <pre style={{ margin: 0, padding: '0.55rem 0.75rem', border: '1px solid var(--border)', borderRadius: 6, background: 'var(--bg-subtle)', fontFamily: 'ui-monospace, Menlo, monospace', fontSize: '0.72rem', lineHeight: 1.5, color: 'var(--text-muted)', maxHeight: '7.5rem', overflow: 'hidden' }}>{scope.text}</pre>
 
-        <input style={{ ...input, width: '14rem' }} placeholder="find a supply house…" value={filter} onChange={(e) => setFilter(e.target.value)} />
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
+          <input style={{ ...input, width: '14rem' }} placeholder="find a supply house…" value={filter} onChange={(e) => setFilter(e.target.value)} />
+          {bidTrade ? (
+            <span style={smallMuted}>
+              {showAllTrades ? `every supply house · ${bidTrade.name} bid` : `${bidTrade.name} supply houses${byTrade.hidden > 0 ? ` · ${byTrade.hidden} vendor${byTrade.hidden === 1 ? '' : 's'} hidden` : ''}`}
+              {byTrade.hidden > 0 || showAllTrades ? (
+                <button type="button" onClick={() => setShowAllTrades((v) => !v)} style={{ marginLeft: '0.5rem', background: 'none', border: 'none', padding: 0, color: 'var(--text-link)', cursor: 'pointer', font: 'inherit', fontSize: 'inherit' }}>
+                  {showAllTrades ? `only ${bidTrade.name}` : 'show all'}
+                </button>
+              ) : null}
+            </span>
+          ) : null}
+        </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', maxHeight: '38vh', overflowY: 'auto' }}>
           {visibleHouses.map((h) => {

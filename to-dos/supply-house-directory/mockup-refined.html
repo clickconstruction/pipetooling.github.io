@@ -1,0 +1,646 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Supply House Directory</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+  :root {
+    --board: #e9ecf1;
+    --board-raised: #f4f6f9;
+    --ink: #1b2330;
+    --ink-2: #3d4756;
+    --ink-muted: #5b6675;
+    --rule: #cbd2dc;
+    --mark: #c2410c;
+    --mark-ink: #ffffff;
+    --mark-soft: #fbe9df;
+    --good: #15803d;
+    --warn: #b45309;
+    --frame-shadow: 0 1px 2px rgba(20, 28, 40, 0.10), 0 8px 24px rgba(20, 28, 40, 0.08);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --board: #161a21;
+      --board-raised: #1f2530;
+      --ink: #e6e9ee;
+      --ink-2: #c3cad4;
+      --ink-muted: #98a2b1;
+      --rule: #343c48;
+      --mark: #f0824a;
+      --mark-ink: #1b1108;
+      --mark-soft: #3b2418;
+      --good: #4ade80;
+      --warn: #fbbf24;
+      --frame-shadow: 0 1px 2px rgba(0,0,0,0.5), 0 10px 30px rgba(0,0,0,0.45);
+    }
+  }
+  :root[data-theme="dark"] {
+    --board: #161a21;
+    --board-raised: #1f2530;
+    --ink: #e6e9ee;
+    --ink-2: #c3cad4;
+    --ink-muted: #98a2b1;
+    --rule: #343c48;
+    --mark: #f0824a;
+    --mark-ink: #1b1108;
+    --mark-soft: #3b2418;
+    --good: #4ade80;
+    --warn: #fbbf24;
+    --frame-shadow: 0 1px 2px rgba(0,0,0,0.5), 0 10px 30px rgba(0,0,0,0.45);
+  }
+
+  body { margin: 0; background: var(--board); color: var(--ink); font-family: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; line-height: 1.5; font-size: 15px; }
+  .page { max-width: 1400px; margin: 0 auto; padding: 40px 28px 80px; display: flex; flex-direction: column; gap: 56px; }
+  .masthead { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 40px; align-items: end; border-bottom: 1px solid var(--rule); padding-bottom: 28px; }
+  .masthead h1 { margin: 0; font-size: 34px; font-weight: 600; letter-spacing: -0.01em; text-wrap: balance; }
+  .masthead .lede { margin: 12px 0 0; color: var(--ink-2); max-width: 62ch; font-size: 16px; }
+  .eyebrow { font-family: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-muted); }
+  .counts { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1px; background: var(--rule); border: 1px solid var(--rule); border-radius: 6px; overflow: hidden; }
+  .counts div { background: var(--board-raised); padding: 12px 14px; }
+  .counts b { display: block; font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 24px; font-weight: 500; font-variant-numeric: tabular-nums; line-height: 1.1; }
+  .counts span { font-size: 12.5px; color: var(--ink-muted); }
+  .counts .flag b { color: var(--mark); }
+
+  section.screen { display: flex; flex-direction: column; gap: 14px; }
+  section.screen > header { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 24px; align-items: end; }
+  section.screen h2 { margin: 0; font-size: 22px; font-weight: 600; letter-spacing: -0.005em; }
+  section.screen h2 small { font-weight: 400; color: var(--ink-muted); font-size: 15px; margin-left: 10px; }
+  section.screen .note { margin: 4px 0 0; color: var(--ink-2); max-width: 78ch; }
+  .frame { border-radius: 10px; overflow: auto; box-shadow: var(--frame-shadow); background: #f0f2f5; }
+  .keys { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 10px 28px; margin: 4px 0 0; padding: 0; list-style: none; }
+  .keys li { display: grid; grid-template-columns: 24px minmax(0, 1fr); gap: 10px; align-items: start; color: var(--ink-2); font-size: 14.5px; }
+  .keys li b { color: var(--ink); font-weight: 600; }
+  .k { display: inline-flex; width: 22px; height: 22px; border-radius: 50%; background: var(--mark); color: var(--mark-ink); font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 12px; font-weight: 600; align-items: center; justify-content: center; flex-shrink: 0; }
+  .keys .k { margin-top: 1px; }
+
+  /* ---------- app frames: pinned to the app's light palette ---------- */
+  .app { color-scheme: light; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color: #1a1a1a; background: #f0f2f5; position: relative; font-size: 15px; }
+  .app * { box-sizing: border-box; }
+  .app .nav { height: 58px; background: #ffffff; border-bottom: 1px solid #cfd4db; display: flex; align-items: center; justify-content: space-between; padding: 0 22px; }
+  .app .nav .links { display: flex; gap: 16px; color: #2563eb; font-size: 16px; }
+  .app .nav .links .on { text-decoration: underline; text-underline-offset: 4px; }
+  .app .nav .right { display: flex; gap: 8px; align-items: center; }
+  .app .sq { width: 34px; height: 32px; border-radius: 6px; }
+  .app .bidbtn { height: 32px; padding: 0 14px; border-radius: 6px; background: #3b82f6; color: #fff; font-weight: 600; display: flex; align-items: center; }
+  .app .body { width: min(1300px, 100%); margin: 0 auto; padding: 14px 20px 36px; }
+  .app .tabs { display: flex; align-items: center; border-bottom: 2px solid #cfd4db; gap: 0; }
+  .app .tab { padding: 6px 22px; border-radius: 6px; color: #6b7280; }
+  .app .tab.on { background: #3b82f6; color: #fff; font-weight: 700; }
+  .app .sep { color: #767f8d; padding: 0 4px; font-size: 14px; }
+  .app .toolbar { display: flex; gap: 12px; align-items: center; margin-top: 26px; }
+  .app .btn { height: 36px; padding: 0 14px; border-radius: 6px; display: inline-flex; align-items: center; white-space: nowrap; font-size: 14.5px; border: 1px solid #aab2bd; background: #fff; color: #1a1a1a; }
+  .app .btn.primary { background: #3b82f6; border-color: #3b82f6; color: #fff; }
+  .app .btn.small { height: 28px; padding: 0 10px; font-size: 13px; }
+  .app .search { flex: 1; height: 40px; border: 1px solid #aab2bd; border-radius: 6px; background: #f9fafb; display: flex; align-items: center; padding: 0 12px; color: #767f8d; }
+  .app .select { height: 40px; padding: 0 12px; border: 1px solid #aab2bd; border-radius: 6px; background: #fff; display: inline-flex; align-items: center; gap: 10px; white-space: nowrap; }
+  .app .chips { display: inline-flex; gap: 6px; }
+  .app .chip { padding: 3px 10px; border-radius: 999px; border: 1px solid #aab2bd; font-size: 13px; background: #fff; color: #374151; }
+  .app .chip.on { border-color: #3b82f6; color: #1d4ed8; background: #eff6ff; font-weight: 600; }
+  .app .chip.kind { border-color: #cfd4db; background: #f3f4f6; color: #374151; font-size: 12px; padding: 2px 8px; }
+  .app .chip.kind.sh { background: #eff6ff; border-color: #bfdbfe; color: #1e40af; }
+  .app .coverage { margin-top: 14px; display: flex; gap: 18px; align-items: baseline; font-size: 13.5px; color: #4b5563; }
+  .app .coverage b { color: #111827; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .app .coverage .need { color: #b45309; }
+  .app .card { background: #fff; border: 1px solid #cfd4db; border-radius: 8px; overflow: hidden; }
+  .app table { width: 100%; border-collapse: collapse; }
+  .app th { text-align: left; font-weight: 700; padding: 11px 12px; background: #f9fafb; border-bottom: 1px solid #cfd4db; font-size: 14px; }
+  .app td { padding: 11px 12px; vertical-align: top; border-bottom: 1px solid #e5e7eb; font-size: 14px; }
+  .app tr.exp td { background: #f8fafc; border-bottom: none; }
+  .app tr.exp-body td { background: #f8fafc; padding: 0 12px 16px 44px; }
+  .app .hname { font-weight: 500; font-size: 15.5px; display: flex; align-items: center; gap: 8px; }
+  .app .hsub { color: #6b7280; font-size: 12.5px; margin-top: 1px; }
+  .app .tri { display: inline-block; width: 0; height: 0; border-left: 5px solid transparent; border-right: 5px solid transparent; border-top: 7px solid #374151; transform: rotate(-90deg); }
+  .app .tri.open { transform: none; }
+  .app .rep { display: flex; gap: 6px; align-items: center; }
+  .app .rep .star { color: #f59e0b; font-size: 12px; width: 12px; }
+  .app .rep .star.off { color: transparent; }
+  .app .rep .mail { color: #6b7280; }
+  .app .rep .who { color: #767f8d; font-size: 12px; margin-left: 4px; }
+  .app .norep { color: #b45309; font-weight: 500; }
+  .app .norep a { color: #2563eb; font-weight: 400; margin-left: 6px; }
+  .app .num { font-variant-numeric: tabular-nums; }
+  .app .muted { color: #6b7280; font-size: 12.5px; }
+  .app .actions { display: inline-flex; gap: 8px; align-items: center; white-space: nowrap; }
+  .app .lnk { padding: 3px 8px; font-size: 12px; font-weight: 500; color: #2563eb; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 4px; }
+  .app .panel { background: #fff; border: 1px solid #cfd4db; border-radius: 6px; padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; }
+  .app .panel h4 { margin: 0; font-size: 14px; font-weight: 600; display: flex; justify-content: space-between; align-items: center; }
+  .app .panel h4 a { color: #2563eb; font-weight: 400; font-size: 13px; }
+  .app .panel table th { background: transparent; border-bottom: none; padding: 4px 0; color: #6b7280; font-size: 12px; font-weight: 600; }
+  .app .panel table td { padding: 6px 0; border-top: 1px solid #e5e7eb; border-bottom: none; font-size: 13.5px; }
+  .app .foot { color: #6b7280; font-size: 12.5px; margin-top: 12px; }
+  .app .grp { background: #fffbeb; color: #92400e; font-weight: 600; font-size: 12.5px; padding: 6px 12px; border-bottom: 1px solid #fde68a; }
+  .marker { position: absolute; z-index: 3; width: 24px; height: 24px; border-radius: 50%; background: var(--mark); color: var(--mark-ink); font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 12.5px; font-weight: 600; display: flex; align-items: center; justify-content: center; box-shadow: 0 0 0 3px rgba(255,255,255,0.85); }
+
+  /* office split */
+  .app .ap-head { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; margin: 32px 0 6px; }
+  .app .ap-head .ttl { text-align: center; font-weight: 600; }
+  .app .ap-head .opts { justify-self: end; display: flex; flex-direction: column; gap: 2px; font-size: 13px; color: #374151; }
+  .app .heat td { text-align: right; font-variant-numeric: tabular-nums; }
+  .app .heat td:first-child { text-align: left; }
+  .app .h-cur { background: #dcfce7; color: #166534; }
+  .app .h-30 { background: #fef3c7; color: #92400e; }
+  .app .h-60 { background: #fed7aa; color: #9a3412; }
+  .app .h-90 { background: #dc2626; color: #fff; }
+  .app .pane-label { display: flex; align-items: baseline; gap: 12px; margin: 26px 0 10px; }
+  .app .pane-label h3 { margin: 0; font-size: 19px; font-weight: 600; }
+  .app .pane-label span { color: #6b7280; font-size: 13.5px; }
+  .app .pane-label .badge { margin-left: auto; font-size: 12px; color: #92400e; background: #fffbeb; border: 1px solid #fde68a; padding: 2px 8px; border-radius: 999px; }
+
+  /* modal */
+  .app .scrim { background: #6f7680; padding: 36px; display: flex; justify-content: flex-start; }
+  .app .modal { background: #fff; border-radius: 10px; width: 700px; padding: 26px 30px 24px; box-shadow: 0 10px 40px rgba(0,0,0,0.35); display: flex; flex-direction: column; gap: 14px; }
+  .app .modal h3 { margin: 0; font-size: 20px; font-weight: 600; display: flex; justify-content: space-between; }
+  .app .row { display: grid; grid-template-columns: 160px minmax(0, 1fr); gap: 12px; align-items: center; }
+  .app .row.top { align-items: start; }
+  .app .row label { text-align: right; font-size: 14px; font-weight: 500; }
+  .app .row .hint { color: #6b7280; font-size: 12.5px; margin-top: 4px; }
+  .app .field { height: 38px; border: 1px solid #aab2bd; border-radius: 6px; padding: 0 10px; display: flex; align-items: center; background: #fff; color: #1a1a1a; }
+  .app .field.ph { color: #767f8d; }
+  .app .field.area { height: auto; min-height: 60px; align-items: flex-start; padding-top: 8px; }
+  .app .field.short { width: 240px; }
+  .app .sect { border-top: 1px solid #e5e7eb; padding-top: 12px; display: flex; flex-direction: column; gap: 8px; }
+  .app .sect h4 { margin: 0; font-size: 14.5px; font-weight: 600; display: flex; align-items: center; gap: 10px; }
+  .app .sect h4 span { color: #6b7280; font-weight: 400; font-size: 13px; margin-left: auto; }
+  .app .sect h4 .pill { margin-left: 0; font-size: 11.5px; color: #374151; background: #f3f4f6; border: 1px solid #cfd4db; border-radius: 999px; padding: 1px 8px; }
+  .app .modal-foot { display: flex; justify-content: flex-end; gap: 8px; margin-top: 4px; }
+  .app .addrep { display: grid; grid-template-columns: 130px 130px 1fr auto; gap: 8px; }
+  .app .addrep .field { height: 32px; font-size: 13px; }
+
+  /* RFQ */
+  .app .house-row { border: 1px solid #cfd4db; border-radius: 8px; padding: 10px 12px; display: flex; flex-direction: column; gap: 8px; background: #fff; }
+  .app .house-row.on { background: #eff6ff; border-color: #bfdbfe; }
+  .app .house-row.warn { border-color: #f59e0b; }
+  .app .house-row .top { display: flex; gap: 10px; align-items: center; }
+  .app .cb { width: 15px; height: 15px; border: 1px solid #6b7280; border-radius: 3px; background: #fff; }
+  .app .cb.on { background: #3b82f6; border-color: #3b82f6; }
+  .app .rchip { padding: 3px 10px; border-radius: 999px; border: 1px solid #aab2bd; font-size: 13px; background: #fff; color: #4b5563; }
+  .app .rchip.to { background: #3b82f6; border-color: #3b82f6; color: #fff; font-weight: 600; }
+  .app .rchip.cc { background: #fff; border-color: #6b7280; color: #1a1a1a; }
+  .app .rchip.dash { border-style: dashed; color: #6b7280; }
+
+  /* phone */
+  .phone { width: 390px; background: #f0f2f5; border-radius: 26px; border: 8px solid #2a2f37; overflow: hidden; }
+  .app .pcard { background: #fff; border: 1px solid #cfd4db; border-radius: 8px; overflow: hidden; }
+  .app .pcard .ph-head { padding: 10px 12px; display: flex; justify-content: space-between; align-items: flex-start; }
+  .app .pcard .prep { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-top: 1px solid #e5e7eb; }
+  .app .pcard .prep .txt { flex: 1; min-width: 0; }
+  .app .pcard .prep .txt .l { font-size: 14px; font-weight: 500; }
+  .app .pcard .prep .txt .e { color: #6b7280; font-size: 12.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .app .tgt { width: 44px; height: 44px; border: 1px solid #aab2bd; border-radius: 8px; background: #fff; display: flex; align-items: center; justify-content: center; color: #2563eb; font-size: 16px; }
+  .app .bottombar { display: flex; justify-content: space-around; background: #fff; border-top: 1px solid #cfd4db; padding: 8px 0; font-size: 11px; color: #4b5563; }
+
+  /* access model */
+  .model { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+  .model .col { background: var(--board-raised); border: 1px solid var(--rule); border-radius: 8px; padding: 16px 18px; display: flex; flex-direction: column; gap: 10px; }
+  .model .col h3 { margin: 0; font-size: 15px; font-weight: 600; }
+  .model .col .eyebrow { margin-bottom: -4px; }
+  .model .col ul { margin: 0; padding-left: 18px; color: var(--ink-2); font-size: 14px; display: flex; flex-direction: column; gap: 4px; }
+  .model code, .seed code, .decisions code { font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 12.5px; background: var(--mark-soft); color: var(--ink); padding: 1px 5px; border-radius: 3px; }
+  .model .arrow { color: var(--ink-muted); font-size: 13px; }
+
+  .seed { overflow-x: auto; }
+  .seed table { border-collapse: collapse; width: 100%; font-size: 14px; }
+  .seed th { text-align: left; font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 12px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-muted); padding: 8px 10px; border-bottom: 1px solid var(--rule); font-weight: 500; }
+  .seed td { padding: 7px 10px; border-bottom: 1px solid var(--rule); color: var(--ink-2); vertical-align: top; }
+  .seed td:first-child { color: var(--ink); font-weight: 500; }
+  .seed .kind { display: inline-block; font-size: 12.5px; padding: 1px 8px; border-radius: 999px; border: 1px solid var(--rule); }
+  .seed .kind.sh { border-color: #60a5fa; color: #2563eb; }
+  .seed .kind.q { border-color: var(--mark); color: var(--mark); }
+  .seed .num { font-family: "IBM Plex Mono", ui-monospace, monospace; font-variant-numeric: tabular-nums; }
+
+  .decisions { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 14px; }
+  .decisions .q { background: var(--board-raised); border: 1px solid var(--rule); border-radius: 8px; padding: 14px 16px; display: flex; flex-direction: column; gap: 6px; }
+  .decisions .q h3 { margin: 0; font-size: 15px; font-weight: 600; }
+  .decisions .q p { margin: 0; color: var(--ink-2); font-size: 14px; }
+  .decisions .q .rec { font-size: 13px; color: var(--ink-muted); }
+  .decisions .q .rec b { color: var(--good); font-weight: 600; }
+
+  @media (max-width: 900px) {
+    .masthead { grid-template-columns: 1fr; }
+    .model { grid-template-columns: 1fr; }
+  }
+  @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+</style>
+</head><body>
+
+<div class="page">
+
+  <header class="masthead">
+    <div>
+      <div class="eyebrow">Refined from the 2026-09-08 draft · to-dos/supply-house-directory</div>
+      <h1>Supply house directory</h1>
+      <p class="lede">One directory behind three doors. Same decision as the draft, redrawn against the live roster and the goal of many estimators sharing one list: every rep says who added it, every quote says who sent it, and the sixteen houses nobody has a rep for are the first thing the page admits.</p>
+    </div>
+    <div>
+      <div class="eyebrow" style="margin-bottom:8px">Live roster, read 2026-09-08</div>
+      <div class="counts">
+        <div><b>22</b><span>houses on the roster</span></div>
+        <div><b>6</b><span>have a rep on file</span></div>
+        <div class="flag"><b>16</b><span>have no rep at all</span></div>
+        <div class="flag"><b>0</b><span>flagged as not-a-supply-house</span></div>
+      </div>
+    </div>
+  </header>
+
+  <!-- ============ 1. Estimator desktop ============ -->
+  <section class="screen">
+    <header>
+      <div>
+        <h2>Estimator · Materials → Supply houses <small>desktop</small></h2>
+        <p class="note">The new tab, rendered alone. No invoices, aging, balances, Job Accounts or PO Generator. The list is scoped to the estimator's trades by default and tells the truth about coverage before showing a row.</p>
+      </div>
+    </header>
+    <div class="frame"><div class="app" style="width:1400px">
+      <div class="marker" style="left:1082px;top:120px">1</div>
+      <div class="marker" style="left:36px;top:184px">2</div>
+      <div class="marker" style="left:1118px;top:276px">3</div>
+      <div class="marker" style="left:620px;top:456px">4</div>
+      <div class="marker" style="left:1306px;top:516px">5</div>
+      <div class="marker" style="left:36px;top:776px">6</div>
+      <div class="nav">
+        <div class="links"><span>⌂</span><span>Estimates</span><span>Bids</span><span>Customers</span></div>
+        <div class="right"><div class="sq" style="background:#0ea5e9"></div><div class="sq" style="background:#a855f7"></div><div class="sq" style="background:#3b82f6"></div><div class="bidbtn">Bid</div><span style="width:14px"></span><span>⌕</span><span>▤</span><span>☑</span><span>▣</span><span>⚙</span></div>
+      </div>
+      <div class="body">
+        <div class="tabs"><div class="tab">Parts Book</div><div class="tab">Assembly Book</div><div class="tab">PO Builder</div><div class="tab">Purchase Orders</div><span class="sep">|</span><div class="tab on">Supply houses</div></div>
+        <div class="toolbar">
+          <div class="btn primary">Add supply house</div>
+          <div class="search">Search houses, reps or emails…</div>
+          <div class="chips"><div class="chip on">Plumbing</div><div class="chip">Electrical</div><div class="chip">HVAC</div></div>
+        </div>
+        <div class="coverage"><span><b>13</b> plumbing houses</span><span><b>5</b> with a rep</span><span class="need"><b>8</b> need a rep — add one when you next call</span><span style="margin-left:auto">Insurers, rental yards and the sub ledger bucket are not listed here.</span></div>
+
+        <div class="card" style="margin-top:12px">
+          <table>
+            <thead><tr><th style="width:30%">Supply house</th><th style="width:31%">Reps</th><th>Phone</th><th>Prices on file</th><th style="text-align:right">Actions</th></tr></thead>
+            <tbody>
+              <tr>
+                <td><div class="hname"><span class="tri"></span>Ferguson</div><div class="hsub">[branch address]</div></td>
+                <td><div class="rep"><span class="star">★</span><span>Inside sales</span><span class="mail">· [rep]@ferguson.com</span></div></td>
+                <td class="num">[phone]</td>
+                <td><div class="num">1,204 parts priced</div><div class="muted">last quote 4 days ago · Wendi</div></td>
+                <td style="text-align:right"><div class="actions"><span class="lnk">Open website</span><span class="btn small">Edit</span></div></td>
+              </tr>
+              <tr class="exp">
+                <td><div class="hname"><span class="tri open"></span>Moore Supply</div><div class="hsub">[branch address]</div></td>
+                <td>
+                  <div class="rep"><span class="star">★</span><span>Quotes desk</span><span class="mail">· quotes@[moore].com</span></div>
+                  <div class="rep"><span class="star off">★</span><span>Outside sales</span><span class="mail">· [rep]@[moore].com</span></div>
+                </td>
+                <td class="num">[phone]</td>
+                <td><div class="num">312 parts priced</div><div class="muted">last quote 12 days ago · Grace</div></td>
+                <td style="text-align:right"><div class="actions"><span class="lnk">Open website</span><span class="btn small">Edit</span></div></td>
+              </tr>
+              <tr class="exp-body"><td colspan="5">
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
+                  <div class="panel">
+                    <h4>Reps <a>+ Add rep</a></h4>
+                    <table>
+                      <thead><tr><th>Label</th><th>Name</th><th>Email</th><th>Added by</th><th style="text-align:right">Default</th></tr></thead>
+                      <tbody>
+                        <tr><td>Quotes desk</td><td class="muted">—</td><td>quotes@[moore].com</td><td class="muted">office · Aug 2026</td><td style="text-align:right;color:#f59e0b">★</td></tr>
+                        <tr><td>Outside sales</td><td>[rep name]</td><td>[rep]@[moore].com</td><td class="muted">Wendi · 3 days ago</td><td style="text-align:right;color:#d1d5db">☆</td></tr>
+                      </tbody>
+                    </table>
+                    <div class="muted">The starred rep is who a price request goes to unless you pick someone else. Reps are shared — everyone estimating sees the same list.</div>
+                  </div>
+                  <div style="display:flex;flex-direction:column;gap:14px">
+                    <div class="panel"><h4>Notes</h4><div style="font-size:13.5px;color:#374151">[house notes — hours, will-call cutoff, who to call for stock checks]</div></div>
+                    <div class="panel"><h4>Recent price requests</h4>
+                      <div style="display:flex;justify-content:space-between;font-size:13.5px"><span>B398 · ZZ Test</span><span class="muted">12 days ago · Grace · 41 lines · answered</span></div>
+                      <div style="display:flex;justify-content:space-between;font-size:13.5px"><span>B391 · [bid name]</span><span class="muted">3 weeks ago · Wendi · 18 lines · no reply</span></div>
+                    </div>
+                  </div>
+                </div>
+              </td></tr>
+              <tr>
+                <td><div class="hname"><span class="tri"></span>Reece</div><div class="hsub">[branch address]</div></td>
+                <td><div class="rep"><span class="star">★</span><span>Inside sales</span><span class="mail">· [rep]@reece.com</span></div></td>
+                <td class="num">[phone]</td>
+                <td><div class="num">641 parts priced</div><div class="muted">last quote 5 weeks ago · Wendi</div></td>
+                <td style="text-align:right"><div class="actions"><span class="lnk">Open website</span><span class="btn small">Edit</span></div></td>
+              </tr>
+              <tr>
+                <td><div class="hname"><span class="tri"></span>Texas Plumbing Supply</div><div class="hsub">[branch address]</div></td>
+                <td><div class="rep"><span class="star">★</span><span>Counter</span><span class="mail">· [rep]@[tps].com</span></div></td>
+                <td class="num">[phone]</td>
+                <td><div class="num">88 parts priced</div><div class="muted">never asked for a quote</div></td>
+                <td style="text-align:right"><div class="actions"><span class="btn small">Edit</span></div></td>
+              </tr>
+              <tr><td colspan="5" class="grp">Needs a rep · 8 houses — these show in the price-request picker with a blank email until someone adds one</td></tr>
+              <tr>
+                <td><div class="hname"><span class="tri"></span>Hughes Supply</div><div class="hsub">[branch address]</div></td>
+                <td><div class="norep">No rep on file<a>add one</a></div></td>
+                <td class="num">[phone]</td>
+                <td><div class="num">210 parts priced</div><div class="muted">no quotes sent</div></td>
+                <td style="text-align:right"><div class="actions"><span class="lnk">Open website</span><span class="btn small">Edit</span></div></td>
+              </tr>
+              <tr>
+                <td><div class="hname"><span class="tri"></span>Winn Supply</div><div class="hsub">[branch address]</div></td>
+                <td><div class="norep">No rep on file<a>add one</a></div></td>
+                <td class="num">[phone]</td>
+                <td><div class="muted">no prices yet</div></td>
+                <td style="text-align:right"><div class="actions"><span class="btn small">Edit</span></div></td>
+              </tr>
+              <tr>
+                <td><div class="hname"><span class="tri"></span>Home Depot</div><div class="hsub">[store address]</div></td>
+                <td><div class="norep">No rep on file<a>add one</a></div></td>
+                <td class="num muted">—</td>
+                <td><div class="num">57 parts priced</div><div class="muted">no quotes sent</div></td>
+                <td style="text-align:right"><div class="actions"><span class="btn small">Edit</span></div></td>
+              </tr>
+              <tr>
+                <td><div class="hname"><span class="tri"></span>Click Plumbing Supply</div><div class="hsub">[address]</div></td>
+                <td><div class="norep">No rep on file<a>add one</a></div></td>
+                <td class="num muted">—</td>
+                <td><div class="muted">no prices yet</div></td>
+                <td style="text-align:right"><div class="actions"><span class="btn small">Edit</span></div></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="foot">4 more plumbing houses without a rep · Apple Lumber, ga powers, Matheson, Alexander Oil Company</div>
+      </div>
+    </div></div>
+    <ul class="keys">
+      <li><span class="k">1</span><span><b>Trade chips, not a dropdown.</b> They pre-select the estimator's own trades from her user record. An unrestricted estimator sees all three on; the office sees the same chips on its Directory pane.</span></li>
+      <li><span class="k">2</span><span><b>A coverage line before the list.</b> Sixteen of twenty-two houses have no rep today. With many estimators, the shared gap is the thing to fix collectively, so the page says it instead of hiding it in blank cells.</span></li>
+      <li><span class="k">3</span><span><b>Prices on file carries who.</b> "Last quote 12 days ago · Grace" is already derivable from the request rows. It tells a second estimator that a house is live and whom to ask before re-sending.</span></li>
+      <li><span class="k">4</span><span><b>Reps carry provenance.</b> The contacts table already records who created a row. Showing "Wendi · 3 days ago" makes a shared list trustworthy without a review step.</span></li>
+      <li><span class="k">5</span><span><b>Recent requests show answered or not.</b> Status exists on the request row. A house that never answers is a fact every estimator needs and none can see today.</span></li>
+      <li><span class="k">6</span><span><b>"Needs a rep" is a group, not a footnote.</b> Houses with no rep sort under one labelled band so the add-a-rep path is the obvious next tap, not something discovered in the RFQ window at send time.</span></li>
+    </ul>
+  </section>
+
+  <!-- ============ 2. Phone ============ -->
+  <section class="screen">
+    <header>
+      <div>
+        <h2>Estimator · phone <small>390 px</small></h2>
+        <p class="note">Same directory as cards. Call and email are 44 px targets. The coverage line and the trade chips survive the narrowing; the table does not.</p>
+      </div>
+    </header>
+    <div class="frame" style="background:transparent;box-shadow:none;overflow:visible"><div class="app" style="width:100%;background:transparent"><div class="phone" style="box-shadow:var(--frame-shadow)">
+      <div class="nav" style="height:50px;padding:0 12px"><span style="font-size:20px">≡</span><div class="right"><div class="bidbtn" style="height:28px;padding:0 10px;font-size:13px">Bid</div><span>▤</span><span>☼</span></div></div>
+      <div style="padding:10px 12px 14px;display:flex;flex-direction:column;gap:10px">
+        <div class="tabs" style="font-size:13px"><div class="tab" style="padding:4px 10px">Purchase Orders</div><span class="sep">|</span><div class="tab on" style="padding:4px 10px">Supply houses</div></div>
+        <div class="search" style="height:38px;font-size:14px">Search houses or reps…</div>
+        <div class="chips"><div class="chip on">Plumbing</div><div class="chip">Electrical</div><div class="chip">HVAC</div></div>
+        <div style="font-size:12.5px;color:#4b5563"><b style="color:#111827">13</b> houses · <b style="color:#111827">5</b> with a rep · <span style="color:#b45309"><b>8</b> need one</span></div>
+        <div class="pcard">
+          <div class="ph-head"><div><div class="hname">Ferguson</div><div class="hsub">[branch address] · 1,204 parts priced</div></div><span class="lnk">Website</span></div>
+          <div class="prep"><div class="txt"><div class="l"><span style="color:#f59e0b">★</span> Inside sales · [rep name]</div><div class="e">[rep]@ferguson.com · added by office</div></div><div class="tgt">✆</div><div class="tgt">✉</div></div>
+          <div class="prep" style="justify-content:space-between;font-size:13px;color:#4b5563"><span>Counter · [phone]</span><span style="color:#2563eb">+ Add rep</span></div>
+        </div>
+        <div class="pcard">
+          <div class="ph-head"><div><div class="hname">Moore Supply</div><div class="hsub">[branch address] · 312 parts priced</div></div><span class="lnk">Website</span></div>
+          <div class="prep"><div class="txt"><div class="l"><span style="color:#f59e0b">★</span> Quotes desk</div><div class="e">quotes@[moore].com · last quote 12 d · Grace</div></div><div class="tgt">✆</div><div class="tgt">✉</div></div>
+          <div class="prep" style="justify-content:space-between;font-size:13px;color:#4b5563"><span>+ 1 more rep</span><span>Counter · [phone]</span></div>
+        </div>
+        <div class="pcard" style="border-color:#fde68a">
+          <div class="ph-head"><div><div class="hname">Hughes Supply</div><div class="hsub">[branch address] · 210 parts priced</div></div><span class="lnk">Website</span></div>
+          <div class="prep" style="justify-content:space-between"><span class="norep">No rep on file</span><span class="btn primary small">Add rep</span></div>
+        </div>
+      </div>
+      <div class="bottombar"><span>Dashboard</span><span>Schedule</span><span>Inbox</span><span>Customers</span></div>
+    </div></div></div>
+  </section>
+
+  <!-- ============ 3. Office split ============ -->
+  <section class="screen">
+    <header>
+      <div>
+        <h2>Office · Supply Houses tab, split</h2>
+        <p class="note">Pane 1 is the shared Directory component, the same one the estimator tab renders alone, with a Kind column the estimator never sees because her list is already filtered to supply houses. Pane 2 is accounts payable, unchanged and office-only.</p>
+      </div>
+    </header>
+    <div class="frame"><div class="app" style="width:1400px">
+      <div class="marker" style="left:36px;top:136px">7</div>
+      <div class="marker" style="left:470px;top:262px">8</div>
+      <div class="marker" style="left:36px;top:734px">9</div>
+      <div class="nav">
+        <div class="links"><span>⌂</span><span>Customers</span><span>Projects</span><span>People</span><span>Jobs</span><span>Calendar</span><span>Bids</span></div>
+        <div class="right"><div class="sq" style="background:#0ea5e9"></div><div class="sq" style="background:#a855f7"></div><div class="sq" style="background:#3b82f6"></div><span>⚙</span></div>
+      </div>
+      <div class="body">
+        <div class="tabs"><div class="tab">Parts Book</div><div class="tab">Assembly Book</div><div class="tab">PO Builder</div><div class="tab">Purchase Orders</div><span class="sep">|</span><div class="tab on">Supply houses</div><div class="tab">Job Accounts</div><div class="tab">PO Generator</div></div>
+
+        <div class="pane-label"><h3>Directory</h3><span>houses, reps and websites · the same list estimators see</span><span class="badge">16 houses need a rep</span></div>
+        <div class="toolbar" style="margin-top:0">
+          <div class="btn primary">Add vendor</div>
+          <div class="search">Search houses, reps or emails…</div>
+          <div class="chips"><div class="chip on">Plumbing</div><div class="chip on">Electrical</div><div class="chip on">HVAC</div></div>
+          <div class="select">All kinds ▾</div>
+        </div>
+        <div class="card" style="margin-top:12px">
+          <table>
+            <thead><tr><th style="width:26%">Vendor</th><th>Kind</th><th style="width:30%">Reps</th><th>Phone</th><th>Prices on file</th><th style="text-align:right">Actions</th></tr></thead>
+            <tbody>
+              <tr><td><div class="hname">Ferguson</div><div class="hsub">[branch address]</div></td><td><span class="chip kind sh">Supply house</span></td><td><div class="rep"><span class="star">★</span>Inside sales<span class="mail">· [rep]@ferguson.com</span></div></td><td class="num">[phone]</td><td><div class="num">1,204 parts</div><div class="muted">quoted 4 d ago · Wendi</div></td><td style="text-align:right"><div class="actions"><span class="lnk">Open website</span><span class="btn small">Edit</span></div></td></tr>
+              <tr><td><div class="hname">Moore Supply</div><div class="hsub">[branch address]</div></td><td><span class="chip kind sh">Supply house</span></td><td><div class="rep"><span class="star">★</span>Quotes desk<span class="mail">· quotes@[moore].com</span></div><div class="muted">+ 1 more</div></td><td class="num">[phone]</td><td><div class="num">312 parts</div><div class="muted">quoted 12 d ago · Grace</div></td><td style="text-align:right"><div class="actions"><span class="lnk">Open website</span><span class="btn small">Edit</span></div></td></tr>
+              <tr><td><div class="hname">Elliott Electric Supply</div><div class="hsub">[branch address]</div></td><td><span class="chip kind sh">Supply house</span></td><td><div class="norep">No rep on file<a>add one</a></div></td><td class="num">[phone]</td><td><div class="muted">no prices yet</div></td><td style="text-align:right"><div class="actions"><span class="btn small">Edit</span></div></td></tr>
+              <tr><td><div class="hname">Sunbelt Rentals</div><div class="hsub">[address]</div></td><td><span class="chip kind">Rental yard</span></td><td class="muted">—</td><td class="num muted">—</td><td class="muted">—</td><td style="text-align:right"><div class="actions"><span class="btn small">Edit</span></div></td></tr>
+              <tr><td><div class="hname">Texas Mutual (Workers Comp)</div><div class="hsub">[address]</div></td><td><span class="chip kind">Insurer</span></td><td><div class="rep"><span class="star">★</span>Agent<span class="mail">· [agent]@texasmutual.com</span></div></td><td class="num">[phone]</td><td class="muted">—</td><td style="text-align:right"><div class="actions"><span class="btn small">Edit</span></div></td></tr>
+              <tr><td><div class="hname">Outside Subcontractors</div><div class="hsub">ledger bucket for sub invoices</div></td><td><span class="chip kind">Sub ledger</span></td><td class="muted">—</td><td class="num muted">—</td><td class="muted">—</td><td style="text-align:right"><div class="actions"><span class="btn small">Edit</span></div></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="foot">Showing 6 of 22 · sorted: needs-a-rep last</div>
+
+        <div class="pane-label" style="margin-top:34px"><h3>Accounts payable</h3><span>office only · unchanged</span></div>
+        <div class="ap-head"><span></span><div class="ttl">Supply Houses: $48,212.40</div><div class="opts"><span>☐ Show paid invoices</span><span>☐ Show last payment</span></div></div>
+        <div class="muted" style="text-align:center;margin-bottom:8px">Unpaid dollars by days past due (from invoice due dates). 1 house 60+ past due.</div>
+        <div class="card">
+          <table class="heat">
+            <thead><tr><th>Supply House</th><th style="text-align:right">Current</th><th style="text-align:right">1–30</th><th style="text-align:right">31–60</th><th style="text-align:right">61–90</th><th style="text-align:right">90+</th><th style="text-align:right">No due date</th></tr></thead>
+            <tbody>
+              <tr><td>Reece</td><td class="h-cur">$12,480.00</td><td class="h-30">$3,912.50</td><td class="muted">—</td><td class="muted">—</td><td class="muted">—</td><td class="muted">—</td></tr>
+              <tr><td>Moore Supply</td><td class="h-cur">$8,104.90</td><td class="muted">—</td><td class="h-60">$2,215.00</td><td class="muted">—</td><td class="h-90">$1,900.00</td><td class="muted">—</td></tr>
+              <tr><td>Ferguson</td><td class="h-cur">$19,600.00</td><td class="muted">—</td><td class="muted">—</td><td class="muted">—</td><td class="muted">—</td><td class="muted">—</td></tr>
+              <tr style="font-weight:600"><td>Total</td><td>$40,184.90</td><td>$3,912.50</td><td>$2,215.00</td><td class="muted">—</td><td>$1,900.00</td><td class="muted">—</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div></div>
+    <ul class="keys">
+      <li><span class="k">7</span><span><b>Two labelled panes, one file each.</b> "Directory" is the new component; "Accounts payable" is today's JSX untouched. The label is also the seam for the extraction PR, so it can land while the job-account session keeps working in the invoice half.</span></li>
+      <li><span class="k">8</span><span><b>Kind is a column here and a filter there.</b> The office sees the whole vendor ledger with a Kind chip; the estimator's door filters to supply houses server-side, so the estimator never learns the insurer exists.</span></li>
+      <li><span class="k">9</span><span><b>The AP pane keeps its own house list.</b> Only vendors with invoices belong in the aging map, which is why the two panes must not share one "selected house" state.</span></li>
+    </ul>
+  </section>
+
+  <!-- ============ 4. Edit vendor ============ -->
+  <section class="screen">
+    <header>
+      <div>
+        <h2>Edit vendor</h2>
+        <p class="note">Kind replaces the insurer flag. Trades served is new. Reps are the only home for contacts, and the house keeps one main phone for the counter. The office-only section collapses for estimators rather than rendering disabled.</p>
+      </div>
+    </header>
+    <div class="frame"><div class="app" style="width:1400px">
+      <div class="marker" style="left:36px;top:160px">10</div>
+      <div class="marker" style="left:36px;top:202px">11</div>
+      <div class="marker" style="left:36px;top:608px">12</div>
+      <div class="scrim"><div class="modal">
+        <h3>Edit vendor <span style="color:#6b7280;font-weight:400">✕</span></h3>
+        <div class="row"><label>Name *</label><div class="field">Moore Supply</div></div>
+        <div class="row"><label>Kind</label><div class="chips"><div class="chip on">Supply house</div><div class="chip">Insurer</div><div class="chip">Rental yard</div><div class="chip">Sub ledger</div><div class="chip">Other</div></div></div>
+        <div class="row top"><label style="padding-top:6px">Trades served</label><div><div class="chips"><div class="chip on">Plumbing</div><div class="chip">Electrical</div><div class="chip on">HVAC</div></div><div class="hint">Estimators restricted to a trade only see houses that serve it. Leave all off to show it to everyone.</div></div></div>
+        <div class="row"><label>Main phone</label><div class="field ph">[counter phone]</div></div>
+        <div class="row top"><label style="padding-top:8px">Address</label><div class="field area ph">[branch address]</div></div>
+        <div class="row"><label>Website / order portal</label><div class="field ph">https://…</div></div>
+        <div class="row top"><label style="padding-top:8px">Notes</label><div class="field area ph">[hours, will-call cutoff, who to call for stock checks]</div></div>
+        <div class="sect">
+          <h4>Reps <span>The starred rep is who a price request goes to by default.</span></h4>
+          <table>
+            <thead><tr><th style="background:transparent;border:none;padding:4px 0;font-size:12px;color:#6b7280">Label</th><th style="background:transparent;border:none;padding:4px 0;font-size:12px;color:#6b7280">Name</th><th style="background:transparent;border:none;padding:4px 0;font-size:12px;color:#6b7280">Email</th><th style="background:transparent;border:none;padding:4px 0;font-size:12px;color:#6b7280">Added by</th><th style="background:transparent;border:none;padding:4px 0;font-size:12px;color:#6b7280;text-align:right">Default</th><th style="background:transparent;border:none"></th></tr></thead>
+            <tbody>
+              <tr><td style="padding:6px 0">Quotes desk</td><td style="padding:6px 0" class="muted">—</td><td style="padding:6px 0">quotes@[moore].com</td><td style="padding:6px 0" class="muted">office · Aug 2026</td><td style="padding:6px 0;text-align:right;color:#f59e0b">★</td><td style="padding:6px 0;text-align:right;color:#6b7280;font-size:13px">Archive</td></tr>
+              <tr><td style="padding:6px 0">Outside sales</td><td style="padding:6px 0">[rep name]</td><td style="padding:6px 0">[rep]@[moore].com</td><td style="padding:6px 0" class="muted">Wendi · 3 d ago</td><td style="padding:6px 0;text-align:right;color:#d1d5db">☆</td><td style="padding:6px 0;text-align:right;color:#6b7280;font-size:13px">Archive</td></tr>
+            </tbody>
+          </table>
+          <div class="addrep"><div class="field ph">Label</div><div class="field ph">Name</div><div class="field ph">Email</div><div class="btn primary small">Add rep</div></div>
+        </div>
+        <div class="sect">
+          <h4>Office <span class="pill">not shown to estimators</span></h4>
+          <div class="row"><label>Monthly payment date</label><div class="field short ph">Day of month (1–31)</div></div>
+        </div>
+        <div class="modal-foot"><div class="btn">Cancel</div><div class="btn primary">Save</div></div>
+      </div></div>
+    </div></div>
+    <ul class="keys">
+      <li><span class="k">10</span><span><b>Kind has a "Sub ledger" and an "Other".</b> The live roster holds an "Outside Subcontractors" bucket, Amazon, an oil company and the Web Research robot. A four-value enum would force a wrong answer on five rows; the seed table below classifies all twenty-two.</span></li>
+      <li><span class="k">11</span><span><b>Trades served, with all-off meaning everyone.</b> This is the one field that makes many estimators workable: a plumbing-only estimator never sees Elliott Electric, and the RFQ picker defaults to the bid's trade.</span></li>
+      <li><span class="k">12</span><span><b>The house's own contact fields are gone.</b> Every house email in prod already exists as a rep, so the backfill PR shrinks to retiring three columns and their readers.</span></li>
+    </ul>
+  </section>
+
+  <!-- ============ 5. RFQ picker ============ -->
+  <section class="screen">
+    <header>
+      <div>
+        <h2>Bids · Send price requests</h2>
+        <p class="note">Filtered by Kind and the bid's trade. Chips cycle Off → CC → To as today. A house with no rep takes a typed email and remembers it, credited to the estimator who typed it.</p>
+      </div>
+    </header>
+    <div class="frame"><div class="app" style="width:1400px">
+      <div class="marker" style="left:36px;top:128px">13</div>
+      <div class="marker" style="left:36px;top:410px">14</div>
+      <div class="scrim"><div class="modal" style="width:760px">
+        <h3>Send price requests <span style="color:#6b7280;font-weight:400">✕</span></h3>
+        <div class="muted" style="margin-top:-8px">B398 · ZZ Test · 41 items, scoped on the Supply house list. Each house gets its own email and its own link.</div>
+        <div style="display:flex;gap:12px;align-items:center"><div class="field ph" style="width:250px">find a supply house…</div><span class="muted">Plumbing supply houses · 9 vendors hidden</span><span style="color:#2563eb;font-size:13px">show all</span></div>
+        <div class="house-row on"><div class="top"><div class="cb on"></div><b>Ferguson</b><span class="muted">1 rep · quoted 4 days ago by Wendi · answered in 2 days</span></div><div class="chips"><span class="rchip to">To · Inside sales</span><span class="rchip dash">CC someone else…</span></div></div>
+        <div class="house-row on"><div class="top"><div class="cb on"></div><b>Moore Supply</b><span class="muted">2 reps · quoted 12 days ago by Grace · answered</span></div><div class="chips"><span class="rchip to">To · Quotes desk</span><span class="rchip">Outside sales</span><span class="rchip dash">CC someone else…</span></div></div>
+        <div class="house-row"><div class="top"><div class="cb"></div><b>Reece</b><span class="muted">1 rep · quoted 5 weeks ago by Wendi · no reply</span></div></div>
+        <div class="house-row on warn"><div class="top"><div class="cb on"></div><b>Hughes Supply</b><span class="norep" style="font-size:13px">no rep yet</span></div><div style="display:flex;gap:10px;align-items:center"><div class="field ph" style="width:240px;height:32px;font-size:13px">add an email…</div><span style="font-size:13px"><span class="cb on" style="display:inline-block;vertical-align:middle;margin-right:6px"></span>remember as Hughes Supply's rep</span></div></div>
+        <div style="display:flex;gap:10px;align-items:center;margin-top:4px"><span class="muted">needed by</span><div class="field" style="width:150px;height:34px;font-size:13.5px">Sep 12, 2026</div><div class="field ph" style="flex:1;height:34px;font-size:13.5px">note to vendors (optional) — e.g. bid due Friday, even a partial list helps</div></div>
+        <div style="display:flex;justify-content:space-between;align-items:center"><span class="muted">3 houses · 3 emails</span><div style="display:flex;gap:8px"><div class="btn">Preview</div><div class="btn primary">Send 3 requests</div></div></div>
+      </div></div>
+    </div></div>
+    <ul class="keys">
+      <li><span class="k">13</span><span><b>The picker reads the directory, not a second list.</b> Same filter, same reps, same "who quoted last". Reece's "no reply" after five weeks is the reason to pick Ferguson instead, and it is visible here for the first time.</span></li>
+      <li><span class="k">14</span><span><b>A typed email becomes a shared rep.</b> "Remember" already exists; the refinement is that the new rep carries the estimator's name, so the next person knows who to ask whether it worked.</span></li>
+    </ul>
+  </section>
+
+  <!-- ============ 6. Access model ============ -->
+  <section class="screen">
+    <header>
+      <div>
+        <h2>One directory, three doors</h2>
+        <p class="note">What "tens of estimators" changes underneath. Access becomes one list of roles read by both the page shell and the database, so a tenth estimator or a new estimator-like role is one edit, not thirteen.</p>
+      </div>
+    </header>
+    <div class="model">
+      <div class="col">
+        <div class="eyebrow">Who</div>
+        <h3>Roles</h3>
+        <ul>
+          <li>dev, master, assistant, controller → Directory + Accounts payable</li>
+          <li>estimator → Directory only, filtered to supply houses and her trades</li>
+          <li>primary, superintendent → <em>open question</em>; assumed no tab, same as today</li>
+          <li>digital twins → read only, already fenced by the twin write blocks</li>
+        </ul>
+      </div>
+      <div class="col">
+        <div class="eyebrow">One predicate, read twice</div>
+        <h3>materialsTabsFor(role) · can_manage_supply_house_directory()</h3>
+        <ul>
+          <li>The shell asks the kernel which tabs to draw and where to redirect; the twelve literal role checks in Materials.tsx go away.</li>
+          <li>The database asks the SQL predicate on <code>supply_houses</code> and <code>supply_house_contacts</code> writes; the two policies stop listing roles by hand.</li>
+          <li>Both lists are generated from the same source so they cannot drift. Tests pin every role.</li>
+        </ul>
+      </div>
+      <div class="col">
+        <div class="eyebrow">What</div>
+        <h3>Data that makes sharing safe</h3>
+        <ul>
+          <li><code>supply_houses.vendor_kind</code> replaces <code>is_insurer</code>, seeded by hand from the table below.</li>
+          <li><code>supply_house_service_types</code> links a house to the trades it serves.</li>
+          <li><code>supply_house_contacts.created_by</code> already exists; the directory shows it. Request rows already carry <code>created_by</code> and <code>status</code>.</li>
+          <li>The house's own contact_name / phone / email retire; main phone stays.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 7. Seed ============ -->
+  <section class="screen">
+    <header>
+      <div>
+        <h2>The vendor-kind seed <small>22 rows, proposed by hand</small></h2>
+        <p class="note">Nothing in prod is flagged as not-a-supply-house, so the migration cannot derive kinds from the flag. This is the classification the migration would ship; rows marked to confirm are the ones only the office can settle.</p>
+      </div>
+    </header>
+    <div class="seed">
+      <table>
+        <thead><tr><th>Vendor</th><th>Proposed kind</th><th>Trades</th><th>Reps today</th><th>Note</th></tr></thead>
+        <tbody>
+          <tr><td>Ferguson</td><td><span class="kind sh">Supply house</span></td><td>Plumbing · HVAC</td><td class="num">1</td><td></td></tr>
+          <tr><td>Moore Supply</td><td><span class="kind sh">Supply house</span></td><td>Plumbing</td><td class="num">1</td><td></td></tr>
+          <tr><td>Reece</td><td><span class="kind sh">Supply house</span></td><td>Plumbing · HVAC</td><td class="num">1</td><td></td></tr>
+          <tr><td>Texas Plumbing Supply</td><td><span class="kind sh">Supply house</span></td><td>Plumbing</td><td class="num">1</td><td></td></tr>
+          <tr><td>National Wholesale</td><td><span class="kind sh">Supply house</span></td><td>Plumbing</td><td class="num">1</td><td></td></tr>
+          <tr><td>Gajeske</td><td><span class="kind sh">Supply house</span></td><td>Plumbing</td><td class="num">1</td><td>gas and water pipe specialist</td></tr>
+          <tr><td>Hughes Supply</td><td><span class="kind sh">Supply house</span></td><td>Plumbing</td><td class="num">0</td><td>only house with a website on file</td></tr>
+          <tr><td>Winn Supply</td><td><span class="kind sh">Supply house</span></td><td>Plumbing</td><td class="num">0</td><td></td></tr>
+          <tr><td>Home Depot</td><td><span class="kind sh">Supply house</span></td><td>all three</td><td class="num">0</td><td></td></tr>
+          <tr><td>Click Plumbing Supply</td><td><span class="kind sh">Supply house</span></td><td>Plumbing</td><td class="num">0</td><td><span class="kind q">to confirm</span> in-house stock or a real vendor?</td></tr>
+          <tr><td>Apple Lumber</td><td><span class="kind sh">Supply house</span></td><td>Plumbing</td><td class="num">0</td><td><span class="kind q">to confirm</span></td></tr>
+          <tr><td>ga powers</td><td><span class="kind sh">Supply house</span></td><td>Plumbing</td><td class="num">0</td><td><span class="kind q">to confirm</span> name needs casing</td></tr>
+          <tr><td>Matheson</td><td><span class="kind sh">Supply house</span></td><td>Plumbing</td><td class="num">0</td><td>welding gas</td></tr>
+          <tr><td>CED</td><td><span class="kind sh">Supply house</span></td><td>Electrical</td><td class="num">0</td><td></td></tr>
+          <tr><td>Elliott Electric Supply</td><td><span class="kind sh">Supply house</span></td><td>Electrical</td><td class="num">0</td><td></td></tr>
+          <tr><td>Garner Heating &amp; Air Conditioning</td><td><span class="kind sh">Supply house</span></td><td>HVAC</td><td class="num">0</td><td><span class="kind q">to confirm</span> a contractor, or a vendor?</td></tr>
+          <tr><td>Alexander Oil Company</td><td><span class="kind">Other</span></td><td>—</td><td class="num">0</td><td>fuel account</td></tr>
+          <tr><td>Amazon</td><td><span class="kind">Other</span></td><td>—</td><td class="num">0</td><td>purchases land here; not a quoting vendor</td></tr>
+          <tr><td>Sunbelt Rentals</td><td><span class="kind">Rental yard</span></td><td>—</td><td class="num">0</td><td></td></tr>
+          <tr><td>Texas Mutual (Workers Comp)</td><td><span class="kind">Insurer</span></td><td>—</td><td class="num">0</td><td></td></tr>
+          <tr><td>Outside Subcontractors</td><td><span class="kind">Sub ledger</span></td><td>—</td><td class="num">0</td><td>the AP bucket for sub invoices</td></tr>
+          <tr><td>🤖 Web Research</td><td><span class="kind">Other</span></td><td>—</td><td class="num">0</td><td>the robot's price source; hidden from every picker</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ============ 8. Decisions ============ -->
+  <section class="screen">
+    <header>
+      <div>
+        <h2>Decisions still yours</h2>
+        <p class="note">Each one changes a PR. The recommendation is what the mock-up assumes.</p>
+      </div>
+    </header>
+    <div class="decisions">
+      <div class="q"><h3>Do primaries and superintendents get the tab?</h3><p>They sit in the same hidden bucket as estimators today and can already read houses.</p><div class="rec">Assumed: <b>no</b> — one door for the role that asked; add the others as a one-line kernel edit when someone asks.</div></div>
+      <div class="q"><h3>Can an estimator add or edit a house, or only its reps?</h3><p>Today's behaviour is both. With many estimators, a house is a company-level fact; a rep is field knowledge.</p><div class="rec">Assumed: <b>both</b>, but the office-only section is hidden and Kind defaults to supply house so an estimator cannot reclassify a vendor.</div></div>
+      <div class="q"><h3>A house with no trades set</h3><p>Sixteen houses will start with no trades until someone tags them.</p><div class="rec">Assumed: <b>visible to everyone</b> — an untagged house should never vanish from a restricted estimator.</div></div>
+      <div class="q"><h3>One tab name</h3><p>Office says "Supply Houses"; the draft says "Supply houses".</p><div class="rec">Assumed: <b>Supply houses</b>, matching the app's sentence-case tabs elsewhere; the office tab renames too.</div></div>
+      <div class="q"><h3>Branches</h3><p>Ferguson and Moore have several branches; the roster has one row each. With estimators in more than one area this becomes a question.</p><div class="rec">Assumed: <b>out of scope</b> — a branch is an address today; revisit if two rows for one house ever appear.</div></div>
+      <div class="q"><h3>Who confirms the seed?</h3><p>Five rows above are marked to confirm.</p><div class="rec">Assumed: <b>you or Taunya</b> answer in the to-do before the vendor-kind migration is written.</div></div>
+    </div>
+  </section>
+
+</div>
+</body></html>

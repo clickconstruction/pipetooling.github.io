@@ -99,19 +99,50 @@ export function useSupplyHouseEditor({
       if (e && isUnknownKindColumn(e.message)) ({ error: e } = await supabase.from('supply_houses').update(payload).eq('id', editing.id))
       if (e) setError(e.message)
       else {
+        const tradeErr = await syncHouseTrades(editing.id, data.service_type_ids)
+        if (tradeErr) setError(tradeErr)
         await onSaved({ kind: 'updated', houseId: editing.id })
-        close()
+        if (!tradeErr) close()
       }
     } else {
       let { data: inserted, error: e } = await supabase.from('supply_houses').insert(withKind).select('id').single()
       if (e && isUnknownKindColumn(e.message)) ({ data: inserted, error: e } = await supabase.from('supply_houses').insert(payload).select('id').single())
       if (e) setError(e.message)
       else {
-        await onSaved({ kind: 'created', houseId: (inserted as { id: string } | null)?.id ?? null })
-        close()
+        const newId = (inserted as { id: string } | null)?.id ?? null
+        const tradeErr = newId ? await syncHouseTrades(newId, data.service_type_ids) : null
+        if (tradeErr) setError(tradeErr)
+        await onSaved({ kind: 'created', houseId: newId })
+        if (!tradeErr) close()
       }
     }
     setSaving(false)
+  }
+
+  /**
+   * Trades served (v2.3173): replace the house's supply_house_service_types rows with the
+   * chosen set. Before that table is pushed the reads and writes 404 — treat that as
+   * "nothing to sync" rather than a failed save. Returns an error message otherwise.
+   */
+  async function syncHouseTrades(houseId: string, ids: string[]): Promise<string | null> {
+    const table = supabase.from('supply_house_service_types' as never)
+    const missingTable = (msg: string) => /supply_house_service_types/.test(msg) && /schema cache|does not exist|not found/i.test(msg)
+    const { data: existing, error: readErr } = await table.select('service_type_id').eq('supply_house_id', houseId)
+    if (readErr) return missingTable(readErr.message) ? null : readErr.message
+    const have = new Set(((existing ?? []) as Array<{ service_type_id: string }>).map((l) => l.service_type_id))
+    const want = new Set(ids)
+    const toDelete = [...have].filter((id) => !want.has(id))
+    const toInsert = [...want].filter((id) => !have.has(id))
+    if (toDelete.length > 0) {
+      const { error } = await supabase.from('supply_house_service_types' as never).delete().eq('supply_house_id', houseId).in('service_type_id', toDelete)
+      if (error) return error.message
+    }
+    if (toInsert.length > 0) {
+      const rows = toInsert.map((service_type_id) => ({ supply_house_id: houseId, service_type_id })) as never
+      const { error } = await supabase.from('supply_house_service_types' as never).insert(rows)
+      if (error) return error.message
+    }
+    return null
   }
 
   async function handleDelete(houseId: string) {
