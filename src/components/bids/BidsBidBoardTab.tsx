@@ -1304,7 +1304,11 @@ export function BidsBidBoardTab({
             : {}),
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+        {/* Header row wraps (v2.3171): the icon cluster (5–7 buttons + the number) plus the
+            inline due chip + "sent" label need up to ~390px, and a 375px phone card is ~320px
+            wide. `nowrap` here pushed the chip past the card and gave the whole Bid Board a
+            sideways scroll; wrapping drops the chip to its own right-aligned line instead. */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem 0.4rem', flexWrap: 'wrap', minWidth: 0 }}>
           {renderBidBoardBidNumberCluster(bid)}
           <span style={{ marginLeft: 'auto' }}>{renderBidBoardDueChip(bid, true)}</span>
         </div>

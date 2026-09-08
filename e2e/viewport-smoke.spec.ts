@@ -59,6 +59,9 @@ const PAGES: Array<{ path: string; marker: RegExp | string }> = [
   { path: '/people', marker: /People|Users/ },
   { path: '/materials', marker: /Price Book|Supply|Templates|Purchase/i },
   { path: '/settings', marker: /Settings/ },
+  // Bid Board phone cards: the header row (jump-icon cluster + inline due chip)
+  // used to run past the card and scroll the whole page sideways.
+  { path: '/bids?tab=bid-board', marker: /Bid Board/ },
 ]
 
 for (const { path, marker } of PAGES) {
