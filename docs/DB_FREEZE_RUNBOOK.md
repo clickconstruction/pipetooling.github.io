@@ -457,10 +457,11 @@ within 15000ms`. Nobody in the office reported it.
 - **Red herring, so nobody re-chases it**: `checkpoint complete … write=4.8 s` for 49 buffers
   is not slow I/O — `checkpoint_completion_target` 0.9 spreads a 300 s checkpoint's writes, and
   every sample computes to ~100 ms per buffer, i.e. the checkpointer's own throttle.
-- **What this needs**: a Supabase support ticket with the restart timestamps above (the
-  `last known up` → `starting PostgreSQL` pairs) asking why the instance was restarted —
-  host health-check, hypervisor, or their auto-restart — and whether the 09-05/09-06 spike
-  matches anything on their side. Nothing inside the database explains it.
+- **Escalated**: Supabase support ticket filed by the owner on 2026-09-07 with the restart
+  timestamps above (the `last known up` → `starting PostgreSQL` pairs), asking why the
+  instance was restarted — host health-check, hypervisor, or their auto-restart — and whether
+  the 09-05/09-06 spike matches anything on their side. Nothing inside the database explains
+  it. Follow-up is dated 2026-09-14: [`to-dos/supabase-restart-ticket-followup.md`](../to-dos/supabase-restart-ticket-followup.md).
 - (Superseded by the 2026-09-07 log read above.)
 - Recovery: the retry of the same signing succeeded at 20:36:57 (200,
   `signed.pdf` 9,351 bytes in `contract-form-pdfs`). Restart query for next
