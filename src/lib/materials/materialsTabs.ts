@@ -7,9 +7,10 @@ import { isAssistantLike } from '../subcontractorLikeRole'
  * literals in a dozen places; admitting a role to one more tab meant finding
  * every one of them. Now it is one row below, pinned by tests.
  *
- * The RLS side of the same question lives in SQL (`sup_supply_houses_select`
- * and the `supply_house_contacts_*_office` policies); keep the two in step
- * when a row here changes.
+ * The RLS side of the same question lives in SQL: reads in
+ * `sup_supply_houses_select` / `supply_house_contacts_select_office`, writes
+ * behind `can_manage_supply_house_directory()` (office roles + estimator,
+ * PR 2). Keep the two in step when a row here changes.
  */
 
 export const MATERIALS_TABS = [
@@ -46,8 +47,9 @@ export function canAccessMaterials(role: string | null | undefined): boolean {
 
 /**
  * Tabs the role may open, in the page's canonical order. Office roles (dev,
- * master, assistant-like) get everything; estimators get the books plus the PO
- * lanes; primaries and superintendents get the books only.
+ * master, assistant-like) get everything; estimators get the books, the PO
+ * lanes and the Supply houses directory; primaries and superintendents get
+ * the books only.
  */
 export function materialsTabsFor(role: string | null | undefined): readonly MaterialsTab[] {
   if (!role) return []
@@ -55,7 +57,8 @@ export function materialsTabsFor(role: string | null | undefined): readonly Mate
     return MATERIALS_TABS
   }
   if (role === 'estimator') {
-    return [...READER_TABS, ...BUYER_TABS]
+    // The estimator door (PR 2): the Supply houses tab renders the Directory pane alone.
+    return [...READER_TABS, ...BUYER_TABS, 'supply-houses']
   }
   if (role === 'primary' || role === 'superintendent') {
     return READER_TABS

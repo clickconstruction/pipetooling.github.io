@@ -1,11 +1,11 @@
 ---
 title: find a supply house and its rep
 category: Office
-roles: dev, master_technician, assistant, controller
+roles: dev, master_technician, assistant, controller, estimator
 keywords: supply house, supply houses, directory, rep, reps, contact, vendor, phone, email, website, price request, who to call, ferguson, moore supply, reece, counter, quotes desk
 ---
 
-Every supply house the company deals with, who to talk to there, and what we already know about each one — that is the **Directory** at the top of **Materials → Supply Houses**. It is one list for the whole company: a rep one person adds is the rep everyone else sees.
+Every supply house the company deals with, who to talk to there, and what we already know about each one — that is the **Directory** on **Materials → Supply houses**. It is one list for the whole company: a rep one person adds is the rep everyone else sees. Estimators see the directory on its own; the office sees it above **Accounts payable**.
 
 ## Find a house
 
@@ -28,8 +28,8 @@ Expand a house (tap its name) and use the **Contacts** box: name, email, an opti
 
 ## Add or edit a house
 
-{{button:blue|Add vendor}} opens the vendor form; {{button:outline|Edit}} on any row opens the same form for that house. Name, address, phone, website, notes, and the monthly payment date the office uses for invoice due dates all live there.
+{{button:blue|Add supply house}} (the office's button says **Add vendor**) opens the form; {{button:outline|Edit}} on any row opens the same form for that house. Name, address, phone, website and notes live there, along with the monthly payment date the office uses for invoice due dates.
 
 ## What the Directory is not
 
-Invoices, aging and balances owed live in **Accounts payable**, right below the Directory on the same tab. The Directory never shows a dollar figure.
+Invoices, aging and balances owed live in **Accounts payable**, which only the office sees, right below the Directory on its tab. The Directory never shows a dollar figure — an estimator's Supply houses tab has none.

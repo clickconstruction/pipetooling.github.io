@@ -15,6 +15,7 @@ import { useConfirmDialog } from '../contexts/ConfirmDialogContext'
 import { Database } from '../types/database'
 import { PartFormModal } from '../components/PartFormModal'
 import { SupplyHousesTab } from '../components/SupplyHousesTab'
+import { MaterialsSupplyHouseDirectoryTab } from '../components/materials/MaterialsSupplyHouseDirectoryTab'
 import { MaterialsPoGeneratorTab } from '../components/materials/MaterialsPoGeneratorTab'
 import { MaterialsJobAccountsTab } from '../components/materials/MaterialsJobAccountsTab'
 import { MaterialsPurchaseOrdersTab } from '../components/materials/MaterialsPurchaseOrdersTab'
@@ -1524,7 +1525,7 @@ export default function Materials() {
             }}
             style={pageTabStyle(activeTab === 'supply-houses')}
           >
-            Supply Houses
+            Supply houses
           </button>
           )}
           {visibleTabs.includes('job-accounts') && (
@@ -2182,6 +2183,16 @@ export default function Materials() {
           onNavigateToPO={handleNavigateToPOFromSupplyHouses}
           autoOpenHouseId={supplyHouseToAutoOpen}
           onAutoOpenHouseHandled={() => setSupplyHouseToAutoOpen(null)}
+        />
+      )}
+
+      {/* The estimator door (to-dos/supply-house-directory, PR 2): the Directory pane alone — no accounts payable. */}
+      {activeTab === 'supply-houses' && supplyHousesPaneFor(myRole) === 'directory' && (
+        <MaterialsSupplyHouseDirectoryTab
+          supplyHouses={supplyHouses}
+          onSupplyHousesChange={loadSupplyHouses}
+          myRole={myRole}
+          selectedServiceTypeId={selectedServiceTypeId}
         />
       )}
     </div>

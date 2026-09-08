@@ -501,7 +501,7 @@ A Contract Book entry can be a **form** (an uploaded PDF the signer fills on the
 - **Can edit existing customers** from **Customers** page or edit modal: UPDATE RLS + trigger forbid changing `master_user_id` or `stripe_customer_id`
 
 **Materials - Full Access**:
-- Same permissions as master_technician **except** the **Supply Houses**, **Job Accounts**, and **PO Generator** tabs are **hidden** in the UI (restricted URLs redirect—same pattern as primaries for those tabs)
+- Same permissions as master_technician **except** the **Job Accounts** and **PO Generator** tabs are **hidden** in the UI (restricted URLs redirect—same pattern as primaries for those tabs). Since v2.3167 the **Supply houses** tab is theirs too, rendering the **Directory** pane alone (houses, reps, phone, website, prices on file, last price request) — never the office's accounts-payable pane (invoices, aging, balances). Tab access is the [`materialsTabsFor(role)`](../src/lib/materials/materialsTabs.ts) kernel; house / rep writes are the SQL predicate `can_manage_supply_house_directory()` (dev, master_technician, assistant, controller, estimator — `20260908184533`)
 - Price book management (parts, prices, supply houses)
 - Template creation and editing
 - Purchase order management
@@ -645,7 +645,7 @@ A Contract Book entry can be a **form** (an uploaded PDF the signer fills on the
 
 **Materials**:
 - Price book and Assembly book (subject to superintendent_service_type_ids if set)
-- Supply Houses, **Job Accounts**, **PO Generator**, Templates & PO, Purchase Orders tabs hidden (like primary)
+- Supply houses, **Job Accounts**, **PO Generator**, Templates & PO, Purchase Orders tabs hidden (like primary). Since `20260908184533` (v2.3167) primaries and superintendents can no longer insert / update / delete `supply_houses` or `supply_house_contacts` rows (the baseline arrays admitted them; their only door was the Parts Book "Price coverage" modal, retired by PR 3 of the supply-house-directory to-do); reads are unchanged
 
 **What They Cannot Do**:
 - No People page (only enough access to support Workflow assignment)
