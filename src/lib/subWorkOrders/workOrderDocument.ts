@@ -1,4 +1,5 @@
 import { parseSubWorkOrderSnapshot, workOrderWindowLabel, type SubWorkOrderSnapshot } from './subWorkOrder'
+import { ESIGN_STATUTE_LINE } from '../esignConsent'
 
 /**
  * The work order as a document (Work Orders tab, PR 1 — v2.2814). Pure:
@@ -151,7 +152,7 @@ export function buildWorkOrderDocument(input: {
         name: signed ? (c.signer_printed_name ?? c.display_name) : null,
         company: f.subCompany,
         on: signed ? fmtDocDate(signedOn) : null,
-        via: signed ? (c.signed_at ? `signed on the sub portal${c.signer_signature_mode === 'draw' ? ' (drawn signature on file)' : ''}` : 'accepted; recorded by the office') : null,
+        via: signed ? (c.signed_at ? `signed on the sub portal${c.signer_signature_mode === 'draw' ? ' (drawn signature on file)' : ''} · ${ESIGN_STATUTE_LINE}` : 'accepted; recorded by the office') : null,
       },
     },
     footer: `Record ${workOrderRecordLabel(c.record_id ?? f.recordId)} · generated from the job, the scope library, and the Contract Book. Edits change this work order only.`,

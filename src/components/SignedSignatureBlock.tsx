@@ -8,6 +8,7 @@
  */
 import { ESTIMATE_ACCEPT_SIGNATURE_FONT } from './estimates/EstimateAcceptTypedSignatureLine'
 import { describeUserAgent, signatureMethodLabel, type SignatureMethod } from '../lib/signedRecordId'
+import { ESIGN_STATUTE_SHORT, esignConsentVersionLabel } from '../lib/esignConsent'
 import { APP_CALENDAR_TZ } from '../utils/dateUtils'
 
 export type SignedSignatureBlockProps = {
@@ -29,6 +30,8 @@ export type SignedSignatureBlockProps = {
   heading?: string | null
   /** Tighter paddings for cards/strips. */
   compact?: boolean
+  /** v2.3100: the consent ledger row (version + language); its clause text shows on hover. Null = signed before the ledger, or not loaded. */
+  consent?: { version: number; lang: string; clauseText?: string } | null
 }
 
 function stamp(iso: string | null): string | null {
@@ -52,6 +55,7 @@ export function SignedSignatureBlock({
   drawSignatureLoading,
   heading = 'Customer signature',
   compact = false,
+  consent = null,
 }: SignedSignatureBlockProps) {
   const name = printedName.trim() || '—'
   const isPaper = method === 'paper'
@@ -93,6 +97,12 @@ export function SignedSignatureBlock({
         </span>
         <span>{signatureMethodLabel(method, surface)}</span>
         {ip || device ? <span>{[ip, device].filter(Boolean).join(' · ')}</span> : null}
+        {!isPaper && consent ? (
+          <span title={consent.clauseText ?? undefined} style={{ cursor: consent.clauseText ? 'help' : undefined }}>
+            {esignConsentVersionLabel(consent)}
+          </span>
+        ) : null}
+        {!isPaper ? <span>{ESIGN_STATUTE_SHORT}</span> : null}
       </div>
     </section>
   )

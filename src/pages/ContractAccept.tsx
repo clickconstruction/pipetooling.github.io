@@ -12,6 +12,7 @@ import { ContractFormFill } from '../components/contracts/formFill/ContractFormF
 import { applyPrefill, schemaForParty, type FormPerson, type FormSchema, type FormValues, validateFormValues } from '../lib/forms/formSchema'
 import { partyRegions, type PartyRegion } from '../lib/forms/formParties'
 import { errorsByBox, fillString, type FillLang } from '../lib/forms/formFillState'
+import { esignConsentText } from '../lib/esignConsent'
 import { useAuth } from '../hooks/useAuth'
 import { supabase } from '../lib/supabase'
 import { withSupabaseRetry } from '../utils/errorHandling'
@@ -217,15 +218,17 @@ export default function ContractAccept() {
     setError(null)
     try {
       const formPart = payload?.form ? { formValues, formLang } : {}
+      const consentPart = p.consent ? { esignConsent: p.consent } : {}
       const body =
         p.mode === 'type'
-          ? { token, printedName: p.printedName, agreedTerms: true as const, ...formPart }
+          ? { token, printedName: p.printedName, agreedTerms: true as const, ...formPart, ...consentPart }
           : {
               token,
               printedName: p.printedName,
               signaturePngBase64: p.signaturePngBase64,
               agreedTerms: true as const,
               ...formPart,
+              ...consentPart,
             }
       const res = await fetch(`${supabaseUrl}/functions/v1/accept-contract`, {
         method: 'POST',
@@ -416,6 +419,11 @@ export default function ContractAccept() {
             formError={error}
             submitting={submitting}
             onSubmit={(p) => void submitAccept(p)}
+            consent={esignConsentText({
+              audience: 'sub',
+              lang: payload.form ? formLang : 'en',
+              documentNoun: payload.form ? (formLang === 'es' ? 'este formulario' : 'this form') : 'this agreement',
+            })}
             {...(payload.form
               ? {
                   heading: fillString(formLang, 'signHeading'),

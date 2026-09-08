@@ -172,6 +172,7 @@ serve(async (req) => {
       `${message || `Here is your service agreement for ${job.job_address || 'your project'}. It takes about a minute to review and sign on your phone.`}\n\n` +
       `${heading}\nJob #${jobNo}${amountLine ? `\n${amountLine}` : ''}\n\n` +
       `Review and sign here:\n${url}\n\n` +
+      `Rather sign on paper? Reply to this email or call the office and we will bring a copy, no charge.\n\n` +
       `Questions? Just reply to this email.${senderName ? `\n\n— ${senderName}` : ''}\n`
     const html =
       `<p>${escapeHtml(greeting)}</p>` +
@@ -179,6 +180,7 @@ serve(async (req) => {
       `<p><strong>${escapeHtml(heading)}</strong><br>Job #${escapeHtml(jobNo)}${amountLine ? `<br>${escapeHtml(amountLine)}` : ''}</p>` +
       `<p><a href="${escapeHtml(url)}" style="display:inline-block;background:#c2410c;color:#fff;padding:10px 18px;border-radius:8px;text-decoration:none;font-weight:600">Review &amp; sign</a></p>` +
       `<p style="color:#6b7280;font-size:13px">Or open this link: <a href="${escapeHtml(url)}">${escapeHtml(url)}</a></p>` +
+      `<p style="color:#6b7280;font-size:13px">Rather sign on paper? Reply to this email or call the office and we will bring a copy, no charge.</p>` +
       `<p>Questions? Just reply to this email.${senderName ? `<br>— ${escapeHtml(senderName)}` : ''}</p>`
 
     const sent = await sendEmailViaResend(recipientEmail, subject, textPlain, html, resendKey, {

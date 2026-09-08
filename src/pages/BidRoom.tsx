@@ -19,6 +19,8 @@ import EstimateCustomerAttachmentCard from '../components/estimates/EstimateCust
 import { acceptHeaderBrandImageSrc, acceptHeaderBrandLabel, parseAcceptHeaderBrand } from '../lib/estimateAcceptHeaderBrand'
 import { normalizeEstimateLineItemsFromJson } from '../lib/estimateLineItemNormalize'
 import { parseEstimateChangeOrderFields } from '../lib/estimateChangeOrder'
+import { EsignConsentLine } from '../components/EsignConsentLine'
+import { esignConsentPayload, esignConsentText } from '../lib/esignConsent'
 import {
   parseBidRoomRevisionPayload,
   roomBaseOption,
@@ -184,6 +186,9 @@ export default function BidRoom() {
     }
   }
 
+  // v2.3100: the GC's electronic-signature consent (typed name, approval wording).
+  const bidRoomConsent = esignConsentText({ audience: 'gc', documentNoun: 'this proposal' })
+
   async function submitSign(selected: RoomOption) {
     if (!printedName.trim()) {
       setFormError('Please enter your full name.')
@@ -193,7 +198,7 @@ export default function BidRoom() {
       setFormError('Please confirm you agree to the proposal and terms above.')
       return
     }
-    const ok = await post({ action: 'sign', optionKey: selected.key, printedName: printedName.trim(), agreedTerms: true })
+    const ok = await post({ action: 'sign', optionKey: selected.key, printedName: printedName.trim(), agreedTerms: true, esignConsent: esignConsentPayload(bidRoomConsent) })
     if (ok) {
       setLocalOutcome({
         event_type: 'signed',
@@ -362,10 +367,12 @@ export default function BidRoom() {
         {!answered ? (
           <section style={{ marginTop: '1.4rem', borderTop: '1px solid var(--border-rule)', paddingTop: '1rem' }}>
             <h2 style={{ fontSize: '1.05rem', margin: '0 0 0.4rem' }}>Approve this proposal</h2>
-            <p style={{ margin: '0 0 0.6rem', fontSize: '0.85rem', color: 'var(--text-700)' }}>
-              Typing your name below has the same force and effect as your written signature, and applies to the option
-              selected above{options.length > 1 ? ` — ${selected.name.trim() || 'Option'}` : ''}.
-            </p>
+            <EsignConsentLine
+              text={bidRoomConsent}
+              lead={`Typing your name below applies to the option selected above${options.length > 1 ? ` — ${selected.name.trim() || 'Option'}` : ''}.`}
+              disabled={submitting}
+              style={{ margin: '0 0 0.6rem', maxWidth: '60ch' }}
+            />
             <input
               type="text"
               value={printedName}

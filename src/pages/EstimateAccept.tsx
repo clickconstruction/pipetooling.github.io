@@ -187,15 +187,17 @@ export default function EstimateAccept() {
         setError('Please choose an option first.')
         return
       }
+      const consentPart = payload.consent ? { esignConsent: payload.consent } : {}
       const body =
         payload.mode === 'type'
-          ? { token, printedName: payload.printedName, agreedTerms: true as const, ...(optionKey ? { optionKey } : {}) }
+          ? { token, printedName: payload.printedName, agreedTerms: true as const, ...(optionKey ? { optionKey } : {}), ...consentPart }
           : {
               token,
               printedName: payload.printedName,
               signaturePngBase64: payload.signaturePngBase64,
               agreedTerms: true as const,
               ...(optionKey ? { optionKey } : {}),
+              ...consentPart,
             }
       const res = await fetch(`${supabaseUrl}/functions/v1/accept-estimate`, {
         method: 'POST',

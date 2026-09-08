@@ -6,6 +6,7 @@ import fontkit from 'https://esm.sh/@pdf-lib/fontkit@1.1.1'
 import { buildFillPlan, hasOfficeBoxes, schemaForParty, splitFormValuesForStorage, validateFormValues, type FormSchema, type FormValues } from '../_shared/formSchema.ts'
 import { fillFormPdf, type FormPdfLibLike } from '../_shared/fillFormPdf.ts'
 import { formatYmdForContractEmail } from '../_shared/contractSigningEmail.ts'
+import { parseEsignConsent, recordEsignConsent } from '../_shared/esignConsent.ts'
 
 const SIGNATURE_BUCKET = 'contract-signer-signatures'
 // Contract Forms (v2.2797): the uploaded template lives here…
@@ -92,6 +93,8 @@ serve(async (req) => {
       /** Contract Forms: the signer's answers, keyed by box key. */
       formValues?: FormValues
       formLang?: string
+      /** v2.3100: the ESIGN / Texas UETA consent words the signer saw (stored on esign_consents). */
+      esignConsent?: unknown
     }
     const raw = body.token?.trim()
     const printedName = body.printedName?.trim() ?? ''
@@ -314,6 +317,18 @@ serve(async (req) => {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       })
     }
+
+    // v2.3100: the consent words, verbatim, beside the signature (best-effort; the row stamp is the act).
+    await recordEsignConsent(admin, {
+      recordType: 'person_contract_document',
+      recordId: doc.id,
+      consent: parseEsignConsent(body.esignConsent),
+      printedName,
+      method: hasSig ? 'draw' : 'type',
+      consentedAt: nowIso,
+      ip: ipRaw,
+      userAgent: ua,
+    })
 
     // Two-party forms (PR 8): the thank-you page offers the office step to a signed-in staff member on the same device.
     return new Response(JSON.stringify({ ok: true, documentId: doc.id, officeSectionPending: officeSectionPending }), {

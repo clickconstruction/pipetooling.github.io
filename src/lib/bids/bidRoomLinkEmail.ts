@@ -76,6 +76,8 @@ export function buildBidRoomLinkEmail(input: BidRoomLinkEmailInput): BidRoomLink
   const optionLabel = (o: { is_base: boolean }) => (o.is_base ? 'Our recommendation' : 'Alternate')
 
   // ── plain text ───────────────────────────────────────────────────────────────
+  // v2.3100: the paper option, stated before the signature (ESIGN § 7001(c)(1)(B)(i)).
+  const paperLine = 'Rather have it on paper? Reply to this email and we will send a copy your company can sign, no charge.'
   const textLines: string[] = [
     `${trade} proposal for ${project}`,
     metaParts.join(' · '),
@@ -88,6 +90,8 @@ export function buildBidRoomLinkEmail(input: BidRoomLinkEmailInput): BidRoomLink
     `Review, choose and sign here:`,
     link,
     ...(validity ? ['', validity] : []),
+    '',
+    paperLine,
   ]
   if (sender) {
     textLines.push('', `${sender.name}${sender.name ? ' · ' : ''}Estimator, ${company}`, [sender.phone, sender.email].filter(Boolean).join(' · '))
@@ -146,6 +150,7 @@ export function buildBidRoomLinkEmail(input: BidRoomLinkEmailInput): BidRoomLink
     `<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="border-collapse:collapse">${optionRows}</table>` +
     button +
     `<p style="${font}font-size:13px;color:${faint};margin:8px 0 0">${validity ? `${e(validity)} ` : ''}Can&rsquo;t click the button? Open <a href="${e(link)}" style="color:${muted}">${e(link)}</a></p>` +
+    `<p style="${font}font-size:13px;color:${faint};margin:8px 0 0">${e(paperLine)}</p>` +
     `</td></tr>` +
     (signature || `<tr><td style="padding:0 30px 26px"></td></tr>`) +
     `<tr><td style="${font}font-size:12px;color:#8593a1;background:#f7f9fb;border-top:1px solid ${line};padding:14px 30px 18px;border-radius:0 0 6px 6px">Click Plumbing and Electrical${sender?.email ? ` &middot; reply to this email to reach ${e(sender.name || 'your estimator')}` : ''}</td></tr>` +

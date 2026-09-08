@@ -29,6 +29,7 @@ import {
   signingUrl,
   signedRecordId,
 } from '../_shared/jobContract.ts'
+import { parseEsignConsent, recordEsignConsent } from '../_shared/esignConsent.ts'
 
 type Body = {
   token?: string
@@ -38,6 +39,8 @@ type Body = {
   signaturePngBase64?: string
   mode?: 'type' | 'draw' | 'in_person'
   public_origin?: string
+  /** v2.3100: the ESIGN / Texas UETA consent words the signer saw (stored on esign_consents). */
+  esignConsent?: unknown
 }
 
 serve(async (req) => {
@@ -127,6 +130,18 @@ serve(async (req) => {
       if (sigPath) await admin.storage.from(JOB_CONTRACT_BUCKET).remove([sigPath])
       return json({ error: 'This agreement was just signed or revised. Reload the page.', code: 'already_signed' }, 409)
     }
+
+    // v2.3100: the consent words, verbatim, beside the signature (best-effort; the row stamp is the act).
+    await recordEsignConsent(admin, {
+      recordType: 'job_contract',
+      recordId: c.id,
+      consent: parseEsignConsent(body.esignConsent),
+      printedName,
+      method: mode,
+      consentedAt: nowIso,
+      ip,
+      userAgent: ua,
+    })
 
     await admin.from('job_contract_events').insert({
       contract_id: c.id,

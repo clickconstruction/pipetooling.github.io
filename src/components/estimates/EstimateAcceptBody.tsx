@@ -23,6 +23,9 @@ function formatOptionMoney(cents: number): string {
 }
 import { EstimateAcceptTypedSignatureLine } from './EstimateAcceptTypedSignatureLine'
 import { SignedSignatureBlock } from '../SignedSignatureBlock'
+import { EsignConsentLine } from '../EsignConsentLine'
+import { esignConsentPayload, esignConsentText, type EsignConsentPayload } from '../../lib/esignConsent'
+import { useEsignConsent } from '../../hooks/useEsignConsent'
 import { formatSignedCentsUsd, isChangeOrderDocKind, parseEstimateChangeOrderFields } from '@/lib/estimateChangeOrder'
 import { ESTIMATE_DECLINE_REASON_MAX } from '../../../supabase/functions/_shared/estimateDecline'
 
@@ -31,12 +34,13 @@ const ESTIMATE_ACCEPT_NAME_PLACEHOLDER = 'Your name'
 
 const ESTIMATE_ACCEPT_MODAL_SIGNATURE_DISCLOSURE =
   'By signing, you accept this estimate, its associated costs, and the Terms and Conditions. ' +
-  'Typing or drawing your signature here will have the same force and effect as your written signature. ' +
   'Additional requests to approve modifications to this estimate will not void this agreement unless otherwise stated.'
 
+/** v2.3100: the ESIGN / Texas UETA consent text the signer saw, sent up with the signature and stored on `esign_consents`. */
+type WithConsent = { consent?: EsignConsentPayload }
 export type EstimateAcceptSubmitPayload =
-  | { mode: 'type'; printedName: string }
-  | { mode: 'draw'; printedName: string; signaturePngBase64: string }
+  | ({ mode: 'type'; printedName: string } & WithConsent)
+  | ({ mode: 'draw'; printedName: string; signaturePngBase64: string } & WithConsent)
 
 export function AcceptPageFooterBlock({ text }: { text: string }) {
   if (!text.trim()) return null
@@ -82,6 +86,8 @@ export type EstimateAcceptStaffAcceptedRecord = {
   ip?: string | null
   userAgent?: string | null
   recordId?: string
+  /** v2.3100: the estimates.id — loads the consent ledger row for the facts line (office views only). */
+  estimateRowId?: string | null
 }
 
 export type EstimateAcceptBodyProps = {
@@ -162,6 +168,10 @@ export default function EstimateAcceptBody(props: EstimateAcceptBodyProps) {
   const [acceptModalOpen, setAcceptModalOpen] = useState(false)
   const [acceptMode, setAcceptMode] = useState<'type' | 'draw'>('type')
   const [fieldHint, setFieldHint] = useState<string | null>(null)
+  // v2.3100: the ESIGN / Texas UETA consent — the line + dropdown in the modal, the checkbox is its own act.
+  const [consented, setConsented] = useState(false)
+  const consentText = esignConsentText({ audience: 'customer', documentNoun: isChangeOrderDocKind(estimate.doc_kind) ? 'this change order' : 'this estimate' })
+  const consentRow = useEsignConsent(readOnly && staffAcceptedRecord?.estimateRowId ? 'estimate' : null, staffAcceptedRecord?.estimateRowId ?? null)
   // v2.2873: the "No thanks" door — a link, then a confirm panel with an optional reason.
   const [declinePanelOpen, setDeclinePanelOpen] = useState(false)
   const [declineReason, setDeclineReason] = useState('')
@@ -300,8 +310,13 @@ export default function EstimateAcceptBody(props: EstimateAcceptBodyProps) {
       setFieldHint('Please enter your full name.')
       return
     }
+    if (!consented) {
+      setFieldHint('Please tick "I agree to sign electronically" to continue.')
+      return
+    }
+    const consent = esignConsentPayload(consentText)
     if (acceptMode === 'type') {
-      onSubmit({ mode: 'type', printedName: trimmed })
+      onSubmit({ mode: 'type', printedName: trimmed, consent })
       return
     }
     const pad = padRef.current
@@ -313,6 +328,7 @@ export default function EstimateAcceptBody(props: EstimateAcceptBodyProps) {
       mode: 'draw',
       printedName: trimmed,
       signaturePngBase64: pad.toDataURL('image/png'),
+      consent,
     })
   }
 
@@ -420,6 +436,7 @@ export default function EstimateAcceptBody(props: EstimateAcceptBodyProps) {
           recordId={staffAcceptedRecord.recordId ?? '—'}
           drawSignatureUrl={staffAcceptedRecord.drawSignatureUrl}
           drawSignatureLoading={staffAcceptedRecord.drawSignatureLoading}
+          consent={consentRow ? { version: consentRow.consent_version, lang: consentRow.lang, clauseText: consentRow.clause_text } : null}
         />
       ) : null}
 
@@ -781,17 +798,12 @@ export default function EstimateAcceptBody(props: EstimateAcceptBodyProps) {
                 </div>
               )}
 
-              <p
-                style={{
-                  fontSize: '0.8rem',
-                  color: 'var(--text-muted)',
-                  lineHeight: 1.45,
-                  marginTop: '1rem',
-                  marginBottom: '0.5rem',
-                }}
-              >
-                {ESTIMATE_ACCEPT_MODAL_SIGNATURE_DISCLOSURE}
-              </p>
+              <EsignConsentLine
+                text={consentText}
+                lead={ESTIMATE_ACCEPT_MODAL_SIGNATURE_DISCLOSURE}
+                disabled={readOnly}
+                checkbox={{ checked: readOnly ? false : consented, onChange: (v) => { setConsented(v); setFieldHint(null) } }}
+              />
               <label style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-start', marginTop: 0 }}>
                 <input
                   type="checkbox"

@@ -242,6 +242,9 @@ Reusable workflow definition. Masters and devs can create templates with pre-def
 
 **Access**: Only dev can create/edit templates
 
+### Electronic-signature consent (ESIGN / Texas UETA)
+The quiet line under every public signature (v2.3118): *Your typed or drawn signature has the same legal effect as one in ink, and you can ask the office for paper instead at no charge.* with **How electronic signing works ▸** at its end (two paragraphs citing 15 U.S.C. § 7001 and Tex. Bus. & Com. Code ch. 322, and **Full disclosure ›** → `/estimate/terms#electronic-signatures`), plus the checkbox **I agree to sign electronically.** One versioned kernel, [`src/lib/esignConsent.ts`](../src/lib/esignConsent.ts), renders it in English and Spanish; the exact words each signer saw are stored on **`esign_consents`** with the version, and the signed record's facts line reads `Consent v1 · en · ESIGN Act · Tex. UETA ch. 322`. Bump `ESIGN_CONSENT_VERSION` when the words change.
+
 ### Packet (Contracts)
 UI name (since v2.1411) for a **contract template** — a named bundle of Contract library documents assigned to people as a set on People → Contracts. Assigning a packet materializes each of its documents on the person as an unsent copy (existing copies are kept and filled from the book when empty). Managed on the **Packets** tab of the **Contract library** modal (which merged the old Contract Book and Manage templates modals); one-off sends don't need a packet — see quick send (v2.1410).
 

@@ -4,6 +4,7 @@ import { todayYmdInAppTz } from '../_shared/appTimeZone.ts'
 import { parseScopeExtras } from '../_shared/subPortalStatement.ts'
 import { canChangePick, evaluatePick, pickProblemMessage, pickWindowFor } from '../_shared/subPick.ts'
 import { notifyJobWatchers } from '../_shared/jobWatchers.ts'
+import { parseEsignConsent, recordEsignConsent } from '../_shared/esignConsent.ts'
 
 /**
  * Sub portal intake (sub-portal train): everything a sub can DO from the
@@ -564,6 +565,18 @@ serve(async (req) => {
         }
         return jsonResponse({ error: 'Could not record the signature. Please try again.' }, updErr ? 500 : 409)
       }
+
+      // v2.3100: the consent words, verbatim, beside the signature (best-effort; the row stamp is the act).
+      await recordEsignConsent(admin, {
+        recordType: 'step_commitment',
+        recordId: c.id,
+        consent: parseEsignConsent(body.esignConsent),
+        printedName,
+        method: hasSig ? 'draw' : 'type',
+        consentedAt: nowIso,
+        ip: ipRaw,
+        userAgent: ua,
+      })
 
       // v2.2819: signing a job-anchored order creates its Sub Labor sheet (idempotent RPC).
       let createdSheetId: string | null = null

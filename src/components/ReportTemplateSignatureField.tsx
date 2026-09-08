@@ -1,5 +1,6 @@
 import { useEffect, useId, useLayoutEffect, useRef } from 'react'
 import SignaturePad from 'signature_pad'
+import { ESIGN_STATUTE_SHORT } from '../lib/esignConsent'
 
 type Props = {
   /** Stable across remounts when template/report changes */
@@ -135,6 +136,9 @@ export function ReportTemplateSignatureField({
         ) : (
           <span aria-hidden style={{ flex: 1 }} />
         )}
+      </div>
+      <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: 4, width: '100%', alignSelf: 'stretch' }}>
+        Electronic signature · same effect as ink · {ESIGN_STATUTE_SHORT}
       </div>
     </div>
   )

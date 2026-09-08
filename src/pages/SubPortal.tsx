@@ -7,6 +7,7 @@ import type { CSSProperties } from 'react'
 import { useParams, useSearchParams } from 'react-router-dom'
 import { QRCodeSVG } from 'qrcode.react'
 import { ContractAcceptSignatureForm } from '../components/contracts/ContractAcceptSignatureForm'
+import { esignConsentText } from '../lib/esignConsent'
 import type { EstimateAcceptSubmitPayload } from '../components/estimates/EstimateAcceptBody'
 import { formatPortalUsd } from '../lib/portal/portalPayload'
 import { PORTAL_SHORT_ORIGIN, portalShortUrl } from '../lib/portal/portalShortOrigin'
@@ -1198,6 +1199,7 @@ function OfferCard({
       acknowledgements: offer.acknowledgements,
       ...(pickStart && pickEnd ? { pickedStart: pickStart, pickedEnd: pickEnd } : {}),
       ...(p.mode === 'draw' ? { signaturePngBase64: p.signaturePngBase64 } : {}),
+      ...(p.consent ? { esignConsent: p.consent } : {}),
     })
     if (result.ok) {
       setUi({ kind: 'accepted', start: pickStart, end: pickEnd })
@@ -1375,6 +1377,7 @@ function OfferCard({
             onSubmit={(p) => void submitAccept(p)}
             heading={t('signToAccept')}
             disclosure={disclosure}
+            consent={esignConsentText({ audience: 'sub', lang, documentNoun: lang === 'es' ? 'esta orden de trabajo' : 'this work order' })}
             agreeLabel={t('signAgreeLabel')}
             submitLabel={t('signSubmit')}
           />

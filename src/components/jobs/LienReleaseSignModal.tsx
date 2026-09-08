@@ -205,7 +205,7 @@ export default function LienReleaseSignModal({
             submitting={submitting}
             onSubmit={(payload) => void sign(payload)}
             heading="Sign release"
-            disclosure="By signing, you acknowledge that you have read this release of lien and agree to issue it. Typing or drawing your signature here has the same force and effect as your written signature, and it prints on every copy of this document."
+            disclosure="By signing, you acknowledge that you have read this release of lien and agree to issue it. Typing or drawing your signature here has the same force and effect as your written signature under the federal ESIGN Act (15 U.S.C. § 7001) and the Texas UETA (Bus. & Com. Code ch. 322), and it prints on every copy of this document."
             agreeLabel="I have read this release and agree that my electronic signature is as binding as ink."
             submitLabel="Sign release"
           />

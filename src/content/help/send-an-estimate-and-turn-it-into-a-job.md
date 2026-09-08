@@ -38,10 +38,10 @@ Under Approve on their page is a quiet **No thanks**; if they use it, the row mo
 
 ## 4b. They sign
 
-The customer presses {{button:blue|Approve}} (or *Approve "Better" — $6,120* when they picked an option), types or draws their name, and the estimate is **Accepted**. Two things happen at once:
+The customer presses {{button:blue|Approve}} (or *Approve "Better" — $6,120* when they picked an option), types or draws their name, ticks **I agree to sign electronically** (the quiet line above it says a typed or drawn signature counts like ink and that paper is available — **How electronic signing works ▸** opens the ESIGN / Texas UETA detail), ticks the terms box, and the estimate is **Accepted**. Two things happen at once:
 
 - **The office gets an email** — a **Signed** notice naming who signed, the estimate and the total — with {{button:blue|Open the signed record}} and {{button:amber|Create the job}}. Who receives it, and how to add people: [get notified when a bid or estimate is signed](?g=get-notified-when-a-bid-or-estimate-is-signed).
-- **The record locks.** The signature (name, time, IP) is stored on the estimate, and the customer's link now opens on a thank-you page instead of the Approve button.
+- **The record locks.** The signature (name, time, IP) is stored on the estimate, with the exact consent words they saw (the record's facts line reads *Consent v1 · en · ESIGN Act · Tex. UETA ch. 322*), and the customer's link now opens on a thank-you page instead of the Approve button.
 
 ## 5. Make it a job
 

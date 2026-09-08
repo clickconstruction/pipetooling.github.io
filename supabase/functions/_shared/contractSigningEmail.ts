@@ -123,6 +123,8 @@ export function buildContractSigningEmail(input: ContractSigningEmailInput): Con
     ? `Once you have signed, it stays on your page. ${portalDisplay} keeps your jobs, your pay, and your paperwork, so builders never hold up a check over a missing form.`
     : 'Once you have signed, we keep the copy on file, so you never have to send it again.'
   const spanishLine = '¿Prefiere español? La página tiene un botón Español arriba a la derecha.'
+  // v2.3100: the paper option, stated before the signature (ESIGN § 7001(c)(1)(B)(i)).
+  const paperLine = 'Rather sign on paper? Reply to this email or call the office and we will bring a copy, no charge.'
   const reachLine = sender
     ? `Questions? Reply to this email to reach ${senderFirst || 'us'}${phone ? `, or call or text the office at ${phone}` : ', or call or text the office'}.`
     : `Questions? ${phone ? `Call or text the office at ${phone}` : 'Call or text the office'}.`
@@ -134,7 +136,7 @@ export function buildContractSigningEmail(input: ContractSigningEmailInput): Con
   textLines.push(...steps.map((s, i) => `${i + 1}. ${s}`), '')
   textLines.push(`${buttonLabel}:`, input.acceptUrl)
   if (expiresLabel) textLines.push(`This link works until ${expiresLabel}.`)
-  textLines.push('', keepLine, '', spanishLine, '', reachLine)
+  textLines.push('', keepLine, '', paperLine, '', spanishLine, '', reachLine)
   const text = textLines.join('\n')
 
   // ── html (the portal palette: src/lib/portal/portalTheme.ts) ─────────────────
@@ -186,6 +188,7 @@ export function buildContractSigningEmail(input: ContractSigningEmailInput): Con
     `<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" bgcolor="${band}" style="background:${band};border-radius:8px"><tr>` +
     `<td style="${font}padding:11px 13px;font-size:13px;line-height:1.55;color:${ink}"><strong>${portalDisplay ? 'Once you have signed, it stays on your page.' : 'Once you have signed, we keep the copy on file.'}</strong> ${portalDisplay ? `${e(portalDisplay)} keeps your jobs, your pay, and your paperwork, so builders never hold up a check over a missing form.` : 'You never have to send it again.'}</td>` +
     `</tr></table>` +
+    `<p style="${font}font-size:12.5px;color:${muted};margin:14px 0 0;line-height:1.55">${e(paperLine)}</p>` +
     `<p style="${font}font-size:12.5px;color:${muted};margin:16px 0 0;line-height:1.55">${e('¿Prefiere español? La página tiene un botón ')}<strong>Español</strong>${e(' arriba a la derecha.')}</p>` +
     `<div style="height:1px;background:${hair};margin:16px 0 10px;font-size:0;line-height:0">&nbsp;</div>` +
     `<p style="${font}font-size:12px;color:${faint};margin:0;line-height:1.5">${e(reachLine)}</p>` +

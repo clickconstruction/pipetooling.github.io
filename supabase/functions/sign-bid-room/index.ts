@@ -16,6 +16,7 @@ import { parseSharedBidRoomPayload } from '../_shared/bidRoomPayload.ts'
 import { isRoomDeclineCategory, planRoomOutcome, type OutcomeVersionRow } from '../_shared/bidRoomOutcome.ts'
 import { sendEmailViaResend } from '../_shared/resendSendEmail.ts'
 import { APP_CALENDAR_TZ } from '../_shared/appTimeZone.ts'
+import { parseEsignConsent, recordEsignConsent } from '../_shared/esignConsent.ts'
 
 const SIGNATURE_BUCKET = 'estimate-acceptor-signatures'
 const MAX_SIGNATURE_BYTES = 524288
@@ -73,6 +74,8 @@ serve(async (req) => {
       note?: string
       /** Phase 4: answer a change order in the room instead of the proposal. */
       documentId?: string
+      /** v2.3100: the ESIGN / Texas UETA consent words the GC saw (stored on esign_consents). */
+      esignConsent?: unknown
     }
     const token = body.token?.trim()
     if (!token) return json({ error: 'token is required' }, 400)
@@ -159,6 +162,17 @@ serve(async (req) => {
         if (sigPath) await admin.storage.from(SIGNATURE_BUCKET).remove([sigPath])
         return json({ error: 'This change order already has a response on file.', code: 'already_answered' }, 409)
       }
+      // v2.3100: the consent words, verbatim, beside the signature (the change order is an estimates row).
+      await recordEsignConsent(admin, {
+        recordType: 'estimate',
+        recordId: co.id,
+        consent: parseEsignConsent(body.esignConsent),
+        printedName: printedName2,
+        method: sigPath ? 'draw' : 'type',
+        consentedAt: new Date().toISOString(),
+        ip: ip2,
+        userAgent: ua2,
+      })
       await admin.from('bid_proposal_room_events').insert({
         room_id: room.id,
         event_type: 'signed',
@@ -311,6 +325,18 @@ serve(async (req) => {
       if (storagePath) await admin.storage.from(SIGNATURE_BUCKET).remove([storagePath])
       return json({ error: 'Could not record the signature' }, 500)
     }
+
+    // v2.3100: the consent words, verbatim, beside the signature (the frozen proposal is an estimates row).
+    await recordEsignConsent(admin, {
+      recordType: 'estimate',
+      recordId: estimateId,
+      consent: parseEsignConsent(body.esignConsent),
+      printedName,
+      method: storagePath ? 'draw' : 'type',
+      consentedAt: nowIso,
+      ip,
+      userAgent: ua,
+    })
 
     const plan = planRoomOutcome({ outcome: 'won', roomCustomerId: room.customer_id, versions, bidOutcome: bid.outcome })
     if (plan.packetVersionIds.length > 0) {

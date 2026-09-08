@@ -7,6 +7,7 @@
  */
 import type { JobLienReleaseRow } from './lienReleaseTracking'
 import { APP_CALENDAR_TZ } from '../../utils/dateUtils'
+import { esignAuditSuffix } from '../esignConsent'
 
 export type LienReleaseStatus = 'draft' | 'issued' | 'awaiting_signature' | 'signed'
 
@@ -70,7 +71,7 @@ export function lienReleaseSignatureAuditLine(row: {
     hour: 'numeric',
     minute: '2-digit',
   }).format(when)
-  return `Signed electronically in ClickTooling · ${stamp} CT${row.signer_consented_at ? ' · consent recorded' : ''}`
+  return `Signed electronically in ClickTooling · ${stamp} CT${row.signer_consented_at ? ` · consent recorded${esignAuditSuffix()}` : ''}`
 }
 
 /** Theme-token chip colors per lifecycle tone — shared by the modal history and Documents rows. */
