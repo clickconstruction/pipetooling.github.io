@@ -164,8 +164,8 @@ describe('BidsTakeoffTab render smoke', () => {
     }
   })
 
-  it('asks which view to use when a Combined bid opens, and a pick opens it (v2.3082)', async () => {
-    window.localStorage.setItem('bids_takeoff_view_v1', 'old')
+  it('asks which view to use the first time a Combined bid opens on a device, and a pick opens it (v2.3082)', async () => {
+    window.localStorage.removeItem('bids_takeoff_view_v1')
     try {
       renderWithProviders(
         <BidsTakeoffTab
@@ -193,6 +193,26 @@ describe('BidsTakeoffTab render smoke', () => {
     expect(screen.queryByTestId('takeoff-view-chooser')).toBeNull()
   })
 
+  it('does not ask again once the device remembers a view — the remembered view opens straight away (v2.3165)', async () => {
+    window.localStorage.setItem('bids_takeoff_view_v1', 'old')
+    try {
+      renderWithProviders(
+        <BidsTakeoffTab
+          {...makeProps({
+            selectedBidForTakeoff: makeBid({ materials_model: 'rough' }),
+            takeoffCountRows: [{ id: 'row-1', bid_id: 'bid-1', fixture: 'WC-1', count: 2, sequence_order: 1 } as unknown as Props['takeoffCountRows'][number]],
+          })}
+        />,
+      )
+      expect((await screen.findAllByText('Takeoff book')).length).toBeGreaterThan(0)
+      expect(screen.queryByTestId('takeoff-view-chooser')).toBeNull()
+      expect(screen.queryByTestId('takeoff-cost-rail-view')).toBeNull()
+      expect(screen.queryByTestId('takeoff-focus-view')).toBeNull()
+    } finally {
+      window.localStorage.removeItem('bids_takeoff_view_v1')
+    }
+  })
+
   it('mounts Sheet (new2, the cost rail) on a Combined bid', async () => {
     window.localStorage.setItem('bids_takeoff_view_v1', 'new2')
     try {
@@ -206,6 +226,7 @@ describe('BidsTakeoffTab render smoke', () => {
       )
       expect(await screen.findByTestId('takeoff-cost-rail-view')).toBeTruthy()
       expect(screen.getByText('What Pricing sees')).toBeTruthy()
+      expect(screen.queryByTestId('takeoff-view-chooser')).toBeNull()
     } finally {
       window.localStorage.removeItem('bids_takeoff_view_v1')
     }

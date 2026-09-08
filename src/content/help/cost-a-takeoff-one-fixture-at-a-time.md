@@ -5,7 +5,7 @@ roles: dev, master_technician, assistant, estimator
 keywords: takeoff, one at a time, new 1, one fixture at a time, sheet, guided, book, remember, previous bid, same as, use these lines, done next, uncosted, coverage
 order: 85
 ---
-**One at a time** on **Bids → Takeoffs** walks a Combined takeoff one fixture at a time. When you open a bid, a box asks **How do you want to cost this takeoff?** with a picture of each view — click {{button:outline|One at a time}} (or press **2**) and it opens. Later, pick it with the {{chip:blue|One at a time}} pill beside the bid name (the app remembers your pick on this device; {{chip:gray|Old}} is still the classic tab, and {{chip:gray|Sheet}} is the whole sheet with the cost rail).
+**One at a time** on **Bids → Takeoffs** walks a Combined takeoff one fixture at a time. The first time you open a bid on this device, a box asks **How do you want to cost this takeoff?** with a picture of each view — click {{button:outline|One at a time}} (or press **2**) and it opens. Your pick is remembered, so the box does not come back: from then on bids open straight in the view you chose, and the {{chip:blue|One at a time}} pill beside the bid name switches any time ({{chip:gray|Old}} is still the classic tab, and {{chip:gray|Sheet}} is the whole sheet with the cost rail).
 
 ## The strip
 

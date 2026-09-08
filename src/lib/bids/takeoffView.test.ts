@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { TAKEOFF_VIEWS, TAKEOFF_VIEW_STORAGE_KEY, parseTakeoffView, readStoredTakeoffView, viewForChooserKey, writeStoredTakeoffView } from './takeoffView'
+import { TAKEOFF_VIEWS, TAKEOFF_VIEW_STORAGE_KEY, hasStoredTakeoffView, parseTakeoffView, readStoredTakeoffView, viewForChooserKey, writeStoredTakeoffView } from './takeoffView'
 
 describe('parseTakeoffView', () => {
   it('accepts the two new views and defaults everything else to old', () => {
@@ -49,5 +49,21 @@ describe('readStoredTakeoffView / writeStoredTakeoffView', () => {
     const broken = { getItem: () => { throw new Error('denied') }, setItem: () => { throw new Error('denied') } }
     expect(readStoredTakeoffView(broken)).toBe('old')
     expect(() => writeStoredTakeoffView(broken, 'new1')).not.toThrow()
+  })
+})
+
+describe('hasStoredTakeoffView (v2.3165)', () => {
+  const storageOf = (raw: string | null) => ({ getItem: () => raw })
+  it('is true only once the device holds a known view — Old counts as a pick', () => {
+    expect(hasStoredTakeoffView(storageOf(null))).toBe(false)
+    expect(hasStoredTakeoffView(storageOf(''))).toBe(false)
+    expect(hasStoredTakeoffView(storageOf('new'))).toBe(false)
+    expect(hasStoredTakeoffView(storageOf('old'))).toBe(true)
+    expect(hasStoredTakeoffView(storageOf('new1'))).toBe(true)
+    expect(hasStoredTakeoffView(storageOf('new2'))).toBe(true)
+  })
+  it('reads as never-picked when storage is missing or broken, so the box still asks', () => {
+    expect(hasStoredTakeoffView(null)).toBe(false)
+    expect(hasStoredTakeoffView({ getItem: () => { throw new Error('denied') } })).toBe(false)
   })
 })

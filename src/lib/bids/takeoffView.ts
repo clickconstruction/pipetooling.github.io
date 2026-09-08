@@ -31,6 +31,21 @@ export function parseTakeoffView(raw: string | null | undefined): TakeoffView {
   return raw === 'new1' || raw === 'new2' ? raw : 'old'
 }
 
+/**
+ * Has this device ever picked a view (v2.3165)? The chooser asks only while this
+ * is false — one pick (from the box or the pills) is remembered and opens straight
+ * away from then on. Storage failures read as "never picked", so a device that
+ * cannot remember keeps asking rather than silently landing on Old.
+ */
+export function hasStoredTakeoffView(storage: Pick<Storage, 'getItem'> | null | undefined): boolean {
+  try {
+    const raw = storage?.getItem(TAKEOFF_VIEW_STORAGE_KEY)
+    return raw === 'old' || raw === 'new1' || raw === 'new2'
+  } catch {
+    return false
+  }
+}
+
 /** Reads the device's remembered view; storage failures fall back to `old`. */
 export function readStoredTakeoffView(storage: Pick<Storage, 'getItem'> | null | undefined): TakeoffView {
   try {

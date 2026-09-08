@@ -3,12 +3,14 @@ import { TAKEOFF_VIEWS, viewForChooserKey, type TakeoffView } from '../../lib/bi
 import { isTypingTarget } from '../../lib/bids/takeoffFocus'
 
 /**
- * The view chooser (v2.3082): every time a Combined bid is opened on Takeoffs,
- * a centered box asks which way to work — Old, One at a time, Sheet — with a
- * drawn preview of each. A pick opens that view straight away through the
- * tab's normal view switch (so the pills and the seamless hop keep working);
- * there is no way past the box without choosing. Keys 1 · 2 · 3 pick a card.
- * By Stage bids never see it (the tab skips it — those views are Combined-only).
+ * The view chooser (v2.3082): the first time a Combined bid is opened on Takeoffs
+ * on a device, a centered box asks which way to work — Old, One at a time, Sheet —
+ * with a drawn preview of each. A pick opens that view straight away through the
+ * tab's normal view switch (so the pills and the seamless hop keep working) and is
+ * remembered on the device, so the box does not come back (v2.3165); the pills
+ * beside the bid name switch views from then on. There is no way past the box
+ * without choosing. Keys 1 · 2 · 3 pick a card. By Stage bids never see it (the
+ * tab skips it — those views are Combined-only).
  */
 
 const ACCENT = '#3b82f6'
