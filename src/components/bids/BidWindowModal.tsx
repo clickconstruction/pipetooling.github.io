@@ -9,7 +9,8 @@ import type { BidWithBuilder } from '../../types/bidWithBuilder'
  * view, BidPreviewModal in pane mode) · Edit (BidFormModal embedded) — and a
  * single ✕. Mirrors the Job window (JobWindowModal, v2.1675). Both panes stay
  * mounted (display-toggled) so flipping to Bid to check a fact never loses
- * half-typed edits; Save still closes the window.
+ * half-typed edits. The Edit tab autosaves (v2.3130) — the ✕ flushes what is
+ * pending, and `refreshKey` re-reads the Bid tab after every write.
  *
  * The Edit pane arrives as `children` because BidFormModal's entire engine
  * (useBidEditForm, save pipeline, customer/project loads) lives in Bids.tsx —
@@ -46,6 +47,8 @@ type Props = {
   onNavigateToBidsTab: (tab: BidPreviewTabUrl, bidId: string) => void
   /** True while a Bids-page modal stacks above the window — Esc leaves the window alone. */
   escBlocked?: boolean
+  /** Bumped by the parent after a write so the Bid tab re-reads the row (v2.3130). */
+  refreshKey?: number
   /** The embedded BidFormModal, fully wired by Bids.tsx. */
   children: ReactNode
 }
@@ -56,6 +59,7 @@ export function BidWindowModal({
   onRequestClose,
   onNavigateToBidsTab,
   escBlocked = false,
+  refreshKey: externalRefreshKey = 0,
   children,
 }: Props) {
   const [tab, setTab] = useState<BidWindowTab>(initialTab)
@@ -77,7 +81,7 @@ export function BidWindowModal({
     return () => {
       cancelled = true
     }
-  }, [bidId, refreshKey])
+  }, [bidId, refreshKey, externalRefreshKey])
 
   // Tier-2 #42 (J1-N1): a modal stacked above this window (New Job opened from
   // the bid, which the Bids page can't see) owns Escape while it is topmost.

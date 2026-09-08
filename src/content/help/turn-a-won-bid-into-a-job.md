@@ -11,7 +11,7 @@ The one sentence: **wherever you mark a bid Won, "Open the job" is right there**
 
 Every place a win gets recorded offers the same door:
 
-- **Edit Bid → Win / Loss.** Click {{chip:green|Won}} and the **Job** block under it turns green: {{button:green|Open the job}}. It works on any saved bid — even one still marked Open — it is just quieter then.
+- **Edit Bid → Win / Loss.** Click {{chip:green|Won}} — the bid saves it on its own (the Edit tab saves as you go) — and the **Job** block under it turns green: {{button:green|Open the job}}. It works on any saved bid — even one still marked Open — it is just quieter then.
 - **Bid Board → GC lines.** On a bid sent to more than one GC, set the winner's pill to {{chip:green|won}}; a small **open the job →** link appears beside it.
 - **Followup → Full bid details → Sent to — by GC.** Same pill, same link.
 - **Followup → Waiting to hear.** Tap **Won** on the bid you are chasing. The bid leaves the queue and a green **You won it** strip stays at the top with {{button:green|Open the job}} until you use it or dismiss it.
@@ -56,4 +56,4 @@ Dev, leaders, assistants, controllers, and **estimators** can open a job from a 
 
 - The other way in still works: Jobs → **New** → **Import** → pick the bid. It runs the exact same fill. Once you have typed anything on a New Job, **Import** greys out instead of disappearing — hover or tap it and it tells you to clear the form (or open a fresh New Job) first.
 - The **C#** box reads *finding…* for a moment while New Job looks up the next number. If you already know the number, type it — the suggestion never overwrites what you typed.
-- Save the bid before opening the job if you just changed the outcome — the Won you clicked is saved with the bid, not by the job.
+- The Won you click in Edit Bid is on the bid a moment later (watch for *Saved* in the footer) — you no longer have to save the bid before opening the job.

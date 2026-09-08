@@ -5,7 +5,7 @@ file: docs/BIDS_TABS_ARCHITECTURE.md
 type: Engineering / Refactor Map
 purpose: Inventory what every tab in src/pages/Bids.tsx touches (state, memos, handlers, sub-components, supabase tables, cross-tab coupling) to track the decomposition of the former ~18.8k-line God component (now ~3.8k lines, all tabs extracted).
 audience: Developers, AI Agents
-last_updated: 2026-08-03
+last_updated: 2026-09-07
 ---
 
 ## Overview
@@ -220,7 +220,7 @@ Each per-tab section lists: render location, **owned local state** (used only by
   - `selectedAccountManagerForPrint` — string; print/PDF target.
   - `submissionSummaryCardRef` — ref for scroll-to-summary.
 - **Cross-tab/shared state:**
-  - `selectedBidForSubmission` / `setSelectedBidForSubmission` — read + write; URL-driven and synced inside `saveBid`/`saveBidAndOpenCounts`. **Must stay in parent.**
+  - `selectedBidForSubmission` / `setSelectedBidForSubmission` — read + write; URL-driven and synced inside `saveBid`/`saveBidAndOpenCounts`/`autosaveBid` (`syncFreshBidIntoSelections`, v2.3130). **Must stay in parent.**
   - `activeTab` — read; the stale-overlay effect is gated on `activeTab === 'submission-followup'`.
 - **Derived memos:**
   - `filteredBidsForSubmission` — `bids` filtered by `submissionSearchQuery`.

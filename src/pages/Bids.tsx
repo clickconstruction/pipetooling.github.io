@@ -3,7 +3,6 @@ import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { canSeeBidBoardJobLinks, indexJobsByBidId, type BidBoardJobLink } from '../lib/bids/bidBoardJobLinks'
 import { JOB_CREATED_FROM_BID_EVENT } from '../lib/bids/wonMomentActions'
 import { supabase } from '../lib/supabase'
-import { fromDatetimeLocal } from '../utils/datetimeLocal'
 import {
   buildOutcomeChangeBidNoteBody,
   normalizedOutcomePayload,
@@ -12,7 +11,7 @@ import {
 import { upsertBidNotesReadWatermark } from '../lib/userBidNotesReadState'
 import { isRobotBid, partitionBidsByScope } from '../lib/bidBoardScope'
 import { bidSentCounts, withScopeLabel, type BidSentScope } from '../lib/bids/bidSentCounts'
-import { formatErrorMessage, withSupabaseRetry } from '../utils/errorHandling'
+import { formatErrorMessage, OperationTimeoutError, withOperationTimeout, withSupabaseRetry } from '../utils/errorHandling'
 import { useAuth } from '../hooks/useAuth'
 import { isAssistantLike } from '../lib/subcontractorLikeRole'
 import { useWorkingBoardInboxCount } from '../hooks/useWorkingBoardInboxCount'
@@ -38,7 +37,6 @@ import { ModalShell } from '../components/bids/ModalShell'
 import { BidPartyDetailModal } from '../components/bids/BidPartyDetailModal'
 import { BidFormModal, type BidServiceTypeSwitchSibling } from '../components/bids/BidFormModal'
 import { BidWindowModal } from '../components/bids/BidWindowModal'
-import { serializeItbLinks } from '../lib/itbLinks'
 import { BidsEstimatorsTab } from '../components/bids/BidsEstimatorsTab'
 import { Database } from '../types/database'
 import type { BidWithBuilder, EstimatorUser } from '../types/bidWithBuilder'
@@ -103,8 +101,11 @@ import { extractContactInfo } from '../lib/bids/bidContactInfo'
 import { buildBidEntryRecencyMaps } from '../lib/bids/bidContacts'
 import { BID_UPDATE_NOT_APPLIED_MESSAGE, bidUpdateRefused } from '../lib/bids/updateGuard'
 import { filterActiveCustomersForPicker } from '../lib/customerArchive'
-import { useBidEditForm } from '../lib/bids/useBidEditForm'
+import { useBidEditForm, type BidEditOutcomeOption } from '../lib/bids/useBidEditForm'
 import { pruneUnchangedBidUpdateFields } from '../lib/bids/bidUpdatePrune'
+import { buildBidSavePayload, type BidSavePayload } from '../lib/bids/bidFormPayload'
+import { bidAutosaveSliceJson } from '../lib/bids/bidFormAutosave'
+import { useJobFormAutosaveSlice } from '../components/jobs/useJobFormAutosaveSlice'
 import { readSharedBidId, rememberSharedBidId } from '../lib/bids/sharedBidPointer'
 import { MATERIALS_MODEL_CAPTION } from '../lib/bids/bidTakeoffHelpers'
 
@@ -314,6 +315,13 @@ export default function Bids() {
   const [viewingCustomer, setViewingCustomer] = useState<Customer | null>(null)
   const [viewingGcBuilder, setViewingGcBuilder] = useState<GcBuilder | null>(null)
   const [savingBid, setSavingBid] = useState(false)
+  // Edit Bid autosave (v2.3130): the Bid window's Edit tab writes each change on its own; the
+  // close guard flushes a pending write and holds the window open when that fails.
+  const [bidCloseFlushState, setBidCloseFlushState] = useState<'idle' | 'saving' | 'error'>('idle')
+  const bidCloseFlushStateRef = useRef(bidCloseFlushState)
+  bidCloseFlushStateRef.current = bidCloseFlushState
+  /** Bumped after every autosave so the window's Bid tab re-reads the row. */
+  const [bidWindowRefreshKey, setBidWindowRefreshKey] = useState(0)
   const [deleteConfirmProjectName, setDeleteConfirmProjectName] = useState('')
   const [deletingBid, setDeletingBid] = useState(false)
   const [deleteBidModalOpen, setDeleteBidModalOpen] = useState(false)
@@ -354,35 +362,10 @@ export default function Bids() {
 
   const bidForm = useBidEditForm()
   const {
-    driveLink,
-    plansLink,
-    countToolingPlansLink,
-    bidSubmissionLink,
-    itbLinks,
     projectName,
-    projectId: formProjectId,
-    bidNumber,
-    address,
-    gcContactName,
-    gcContactPhone,
-    gcContactEmail,
-    estimatorId,
-    accountManagerId,
     formServiceTypeId,
-    bidDueDate,
-    bidDueTime,
-    estimatedJobStartDate,
-    designDrawingPlanDate,
-    submittedTo,
     outcome,
     lossReason,
-    lossCategory,
-    bidValue,
-    agreedValue,
-    profit,
-    distanceFromOffice,
-    lastContact,
-    notes,
     gcCustomerId,
   } = bidForm.values
   const [notesModalBid, setNotesModalBid] = useState<BidWithBuilder | null>(null)
@@ -2022,6 +2005,7 @@ export default function Bids() {
   }
 
   function closeBidForm() {
+    setBidCloseFlushState('idle')
     setBidFormOpen(false)
     setPendingBidFormFocus(null)
     setEditingBid(null)
@@ -2084,6 +2068,7 @@ export default function Bids() {
   }
 
   async function duplicateBidToServiceTypeHandler(targetServiceTypeId: string) {
+    await bidAutosave.flush()
     if (!editingBid || !authUser?.id) return
     setSavingBid(true)
     setError(null)
@@ -2123,7 +2108,8 @@ export default function Bids() {
     }
   }
 
-  function openExistingBidFromServiceTypeSwitch(bidId: string) {
+  async function openExistingBidFromServiceTypeSwitch(bidId: string) {
+    await bidAutosave.flush()
     const fresh = bids.find((b) => b.id === bidId)
     if (fresh) {
       setSelectedServiceTypeId(fresh.service_type_id)
@@ -2334,6 +2320,163 @@ export default function Bids() {
     setScrollToContactFromBidBoard(true)
   }
 
+  function canEditBidNumber(): boolean {
+    return myRole === 'dev' || myRole === 'master_technician' || isAssistantLike(myRole)
+  }
+
+  /** The `bids` row from the form — one builder for Create bid, Create and open counts, and the Edit tab's autosave. */
+  function buildBidPayload(): BidSavePayload {
+    return buildBidSavePayload({ values: bidForm.values, bidDateSent, editing: !!editingBid, canEditBidNumber: canEditBidNumber() })
+  }
+
+  /** After a bid row changes, every tab holding that bid gets the fresh copy. */
+  function syncFreshBidIntoSelections(bidId: string, rows: BidWithBuilder[]) {
+    const fresh = rows.find((b) => b.id === bidId)
+    if (!fresh) return
+    if (selectedBidForCounts?.id === bidId) setSelectedBidForCounts(fresh)
+    if (selectedBidForSubmission?.id === bidId) setSelectedBidForSubmission(fresh)
+    if (selectedBidForTakeoff?.id === bidId) setSelectedBidForTakeoff(fresh)
+    if (selectedBidForCostEstimate?.id === bidId) setSelectedBidForCostEstimate(fresh)
+    if (selectedBidForPricing?.id === bidId) setSelectedBidForPricing(fresh)
+  }
+
+  /**
+   * Edit Bid autosave (v2.3130). One debounced write per pause in typing: the dirty-only diff
+   * against the last persisted baseline — the same prune every explicit save ran, so an
+   * untouched field never clobbers a column stamped server-side. Bid Date Sent rides along
+   * only once its attestation is confirmed (the field's blur prompt owns that); until then the
+   * other fields save and the date waits. Resolves false on a refused or failed write so the
+   * engine shows the error and the close guard keeps the window open.
+   */
+  async function autosaveBid(): Promise<boolean> {
+    const bid = editingBid
+    if (!bid || !authUser?.id) return true
+    const written = bidForm.values
+    const attestErr = validateBidDateSentAttestationForSave()
+    const payloadWithAttest = { ...buildBidPayload(), ...getBidDateSentAttestationPayloadMerge() }
+    const updatePayload = pruneUnchangedBidUpdateFields(payloadWithAttest, {
+      current: written,
+      initial: bidForm.initialValues,
+      bidDateSent: { current: bidDateSent, initial: savedBidDateSentRef.current },
+    })
+    if (attestErr) delete updatePayload.bid_date_sent
+    const dateWritten = 'bid_date_sent' in updatePayload
+    const outcomeWritten = 'outcome' in updatePayload
+    const followupNote = dateWritten ? pendingBidSentFollowupSubmissionNote : null
+    const wroteSomething = Object.keys(updatePayload).length > 0
+    if (wroteSomething) {
+      const { data: updatedRows, error: err } = await supabase.from('bids').update(updatePayload).eq('id', bid.id).select('id')
+      if (err) {
+        showToast(formatErrorMessage(err, 'Could not save the bid'), 'error')
+        return false
+      }
+      // RLS-filtered updates (twin write fence, deleted bid) succeed with zero rows.
+      if (bidUpdateRefused(updatedRows)) {
+        showToast(BID_UPDATE_NOT_APPLIED_MESSAGE, 'error')
+        return false
+      }
+    }
+    // The values this pass wrote are the new baseline; the sent date's baseline moves only when it went through.
+    bidForm.markSaved(written)
+    if (dateWritten) {
+      savedBidDateSentRef.current = normalizeBidDateInput(bidDateSent)
+      setPendingBidDateSentAttestation(null)
+      setPendingAttestationForDate(null)
+      setPendingBidSentFollowupSubmissionNote(null)
+    }
+    if (outcomeWritten) {
+      await insertOutcomeChangeBidNoteAfterSave({
+        bidId: bid.id,
+        previousOutcome: bid.outcome ?? null,
+        nextOutcome: normalizedOutcomePayload(written.outcome),
+        lossReasonForNote: written.outcome === 'lost' ? written.lossReason.trim() || null : null,
+      })
+    }
+    if (followupNote?.trim()) await insertPendingBidSentFollowupSubmissionNoteAfterSave(bid.id, followupNote)
+    if (wroteSomething) await refreshEditingBidAfterWrite(bid.id)
+    return true
+  }
+
+  /** Re-read the row after a write: the boards, every tab holding the bid, the window's Bid tab, and `editingBid` itself (the next Win/Loss note needs the persisted "previous"). */
+  async function refreshEditingBidAfterWrite(bidId: string) {
+    const rows = await loadBids()
+    syncFreshBidIntoSelections(bidId, rows)
+    const fresh = rows.find((b) => b.id === bidId)
+    if (fresh) setEditingBid((cur) => (cur && cur.id === bidId ? fresh : cur))
+    setBidWindowRefreshKey((k) => k + 1)
+  }
+
+  /**
+   * The per-GC Sent panel rolled `bids.outcome` up server-side and wrote its own Win/Loss note:
+   * mark the field persisted so the autosave neither re-writes it nor logs a second note.
+   */
+  function markBidOutcomePersistedByPanel(next: BidEditOutcomeOption) {
+    bidForm.markSaved((prev) => (prev ? { ...prev, outcome: next } : prev))
+    if (editingBid) void refreshEditingBidAfterWrite(editingBid.id)
+  }
+
+  const bidAutosave = useJobFormAutosaveSlice({
+    jobId: bidFormOpen && editingBid ? editingBid.id : null,
+    sliceJson: bidAutosaveSliceJson(bidForm.values, {
+      bidDateSent,
+      attestedAt: pendingBidDateSentAttestation?.bid_date_sent_attested_at ?? null,
+      followupNote: pendingBidSentFollowupSubmissionNote,
+    }),
+    save: autosaveBid,
+    // Required fields blank → hold (an invalid row must never persist); the attestation modal owns the form while open.
+    enabled: bidForm.canSubmit && !bidSentAttestModalOpen && !savingBid,
+  })
+
+  // A tab switch or phone backgrounding never reaches the close guard — flush the pending debounce then.
+  const bidAutosaveFlushRef = useRef<() => Promise<void>>(async () => {})
+  bidAutosaveFlushRef.current = () => bidAutosave.flush()
+  useEffect(() => {
+    const onVisibilityChange = () => {
+      if (document.visibilityState === 'hidden') void bidAutosaveFlushRef.current()
+    }
+    document.addEventListener('visibilitychange', onVisibilityChange)
+    return () => document.removeEventListener('visibilitychange', onVisibilityChange)
+  }, [])
+
+  /**
+   * Guarded close for the Edit tab: flush a pending autosave first (a ✕ inside the debounce
+   * window must not drop the last edit); on failure keep the window open and let the person
+   * retry or close without saving. New Bid has nothing to flush and closes at once.
+   */
+  async function requestCloseBidForm(): Promise<boolean> {
+    if (!editingBid) {
+      closeBidForm()
+      return true
+    }
+    if (bidCloseFlushStateRef.current === 'saving') return false
+    bidAutosave.cancelPending()
+    if (!bidAutosave.needsFlush() && !bidAutosave.isRunning()) {
+      closeBidForm()
+      return true
+    }
+    setBidCloseFlushState('saving')
+    try {
+      const outcome = await withOperationTimeout(bidAutosave.flushForClose(), 15000, 'Saving your latest changes')
+      if (outcome === 'failed') {
+        setBidCloseFlushState('error')
+        return false
+      }
+      closeBidForm()
+      return true
+    } catch (flushErr) {
+      // Timeout: the request is NOT cancelled — it may still land.
+      setBidCloseFlushState('error')
+      if (!(flushErr instanceof OperationTimeoutError)) console.error('Edit Bid close-flush failed', flushErr)
+      return false
+    }
+  }
+
+  /** The explicit "Close without saving" choice after a failed close-flush. */
+  function closeBidFormWithoutSaving() {
+    bidAutosave.clearBaseline()
+    closeBidForm()
+  }
+
   async function saveBid(e: React.FormEvent) {
     e.preventDefault()
     if (!authUser?.id) return
@@ -2352,43 +2495,7 @@ export default function Bids() {
     }
     setSavingBid(true)
     setError(null)
-    const payload = {
-      drive_link: driveLink.trim() || null,
-      plans_link: plansLink.trim() || null,
-      count_tooling_plans_link: countToolingPlansLink.trim() || null,
-      bid_submission_link: bidSubmissionLink.trim() || null,
-      itb_links: serializeItbLinks(itbLinks),
-      design_drawing_plan_date: designDrawingPlanDate.trim() ? designDrawingPlanDate : null,
-      customer_id: gcCustomerId || null,
-      gc_builder_id: null,
-      ...(editingBid && (myRole === 'dev' || myRole === 'master_technician' || isAssistantLike(myRole)) ? { bid_number: bidNumber.trim() || null } : {}),
-      project_name: projectName.trim() || null,
-      project_id: formProjectId || null,
-      address: address.trim() || null,
-      gc_contact_name: gcContactName.trim() || null,
-      gc_contact_phone: gcContactPhone.trim() || null,
-      gc_contact_email: gcContactEmail.trim() || null,
-      estimator_id: estimatorId || null,
-      account_manager_id: accountManagerId || null,
-      bid_due_date: bidDueDate || null,
-      bid_due_time: bidDueDate && bidDueTime ? bidDueTime : null,
-      estimated_job_start_date: estimatedJobStartDate.trim() ? estimatedJobStartDate : null,
-      bid_date_sent: bidDateSent || null,
-      submitted_to: submittedTo.trim() || null,
-      outcome: outcome === 'won' || outcome === 'lost' || outcome === 'started_or_complete' ? outcome : null,
-      loss_reason: outcome === 'lost' ? (lossReason.trim() || null) : null,
-      // v2.2030: structured category rides along; un-losting clears it like the note.
-      loss_category: outcome === 'lost' ? lossCategory : null,
-      bid_value: bidValue !== '' && !isNaN(Number(bidValue)) ? Number(bidValue) : null,
-      agreed_value: agreedValue !== '' && !isNaN(Number(agreedValue)) ? Number(agreedValue) : null,
-      profit: profit !== '' && !isNaN(Number(profit)) ? Number(profit) : null,
-      distance_from_office: distanceFromOffice.trim() || null,
-      // Per-GC Phase 1 cleanup: last_contact is trigger-derived from method entries on saved
-      // bids (Edit Bid's field is a read-only display + Log contact) — only a NEW bid seeds it.
-      ...(editingBid ? {} : { last_contact: fromDatetimeLocal(lastContact) }),
-      notes: notes.trim() || null,
-      service_type_id: formServiceTypeId,
-    }
+    const payload = buildBidPayload()
     const payloadWithAttest = { ...payload, ...getBidDateSentAttestationPayloadMerge() }
     const followupNoteToSave = pendingBidSentFollowupSubmissionNote
     let bidIdForFollowup: string | null = null
@@ -2450,16 +2557,7 @@ export default function Bids() {
       await insertPendingBidSentFollowupSubmissionNoteAfterSave(bidIdForFollowup, followupNoteToSave)
     }
     const rows = await loadBids()
-    if (editingBid) {
-      const fresh = rows.find((b) => b.id === editingBid.id)
-      if (fresh) {
-        if (selectedBidForCounts?.id === editingBid.id) setSelectedBidForCounts(fresh)
-        if (selectedBidForSubmission?.id === editingBid.id) setSelectedBidForSubmission(fresh)
-        if (selectedBidForTakeoff?.id === editingBid.id) setSelectedBidForTakeoff(fresh)
-        if (selectedBidForCostEstimate?.id === editingBid.id) setSelectedBidForCostEstimate(fresh)
-        if (selectedBidForPricing?.id === editingBid.id) setSelectedBidForPricing(fresh)
-      }
-    }
+    if (editingBid) syncFreshBidIntoSelections(editingBid.id, rows)
     closeBidForm()
     setSavingBid(false)
   }
@@ -2480,117 +2578,56 @@ export default function Bids() {
       setError(attestSaveErrCounts)
       return
     }
+    if (editingBid) {
+      // Edit tab (v2.3130): the form autosaves — flush whatever is pending, then go to Counts.
+      const bidId = editingBid.id
+      setSavingBid(true)
+      const closed = await requestCloseBidForm()
+      setSavingBid(false)
+      if (!closed) return
+      openCountsForBid(bidId, await loadBids())
+      return
+    }
+    // New Bid: Create and open counts.
     setSavingBid(true)
     setError(null)
-    const payload = {
-      drive_link: driveLink.trim() || null,
-      plans_link: plansLink.trim() || null,
-      count_tooling_plans_link: countToolingPlansLink.trim() || null,
-      bid_submission_link: bidSubmissionLink.trim() || null,
-      itb_links: serializeItbLinks(itbLinks),
-      design_drawing_plan_date: designDrawingPlanDate.trim() ? designDrawingPlanDate : null,
-      customer_id: gcCustomerId || null,
-      gc_builder_id: null,
-      ...(editingBid && (myRole === 'dev' || myRole === 'master_technician' || isAssistantLike(myRole)) ? { bid_number: bidNumber.trim() || null } : {}),
-      project_name: projectName.trim() || null,
-      project_id: formProjectId || null,
-      address: address.trim() || null,
-      gc_contact_name: gcContactName.trim() || null,
-      gc_contact_phone: gcContactPhone.trim() || null,
-      gc_contact_email: gcContactEmail.trim() || null,
-      estimator_id: estimatorId || null,
-      bid_due_date: bidDueDate || null,
-      bid_due_time: bidDueDate && bidDueTime ? bidDueTime : null,
-      estimated_job_start_date: estimatedJobStartDate.trim() ? estimatedJobStartDate : null,
-      bid_date_sent: bidDateSent || null,
-      submitted_to: submittedTo.trim() || null,
-      outcome: outcome === 'won' || outcome === 'lost' || outcome === 'started_or_complete' ? outcome : null,
-      loss_reason: outcome === 'lost' ? (lossReason.trim() || null) : null,
-      // v2.2030: structured category rides along; un-losting clears it like the note.
-      loss_category: outcome === 'lost' ? lossCategory : null,
-      bid_value: bidValue !== '' && !isNaN(Number(bidValue)) ? Number(bidValue) : null,
-      agreed_value: agreedValue !== '' && !isNaN(Number(agreedValue)) ? Number(agreedValue) : null,
-      profit: profit !== '' && !isNaN(Number(profit)) ? Number(profit) : null,
-      distance_from_office: distanceFromOffice.trim() || null,
-      // Per-GC Phase 1 cleanup: last_contact is trigger-derived from method entries on saved
-      // bids (Edit Bid's field is a read-only display + Log contact) — only a NEW bid seeds it.
-      ...(editingBid ? {} : { last_contact: fromDatetimeLocal(lastContact) }),
-      notes: notes.trim() || null,
-      service_type_id: formServiceTypeId,
-    }
-    const payloadWithAttestCounts = { ...payload, ...getBidDateSentAttestationPayloadMerge() }
+    const payloadWithAttestCounts = { ...buildBidPayload(), ...getBidDateSentAttestationPayloadMerge() }
     const followupNoteToSaveCounts = pendingBidSentFollowupSubmissionNote
-    let bidId: string
-    if (editingBid) {
-      // Dirty fields only — same stale-form clobber guard as saveBid.
-      const updatePayload = pruneUnchangedBidUpdateFields(payloadWithAttestCounts, {
-        current: bidForm.values,
-        initial: bidForm.initialValues,
-        bidDateSent: { current: bidDateSent, initial: savedBidDateSentRef.current },
-      })
-      if (Object.keys(updatePayload).length > 0) {
-        const { data: updatedRows, error: err } = await supabase
-          .from('bids')
-          .update(updatePayload)
-          .eq('id', editingBid.id)
-          .select('id')
-        if (err) {
-          setError(err.message)
-          setSavingBid(false)
-          return
-        }
-        // RLS-filtered updates (twin write fence, deleted bid) succeed with zero rows.
-        if (bidUpdateRefused(updatedRows)) {
-          setError(BID_UPDATE_NOT_APPLIED_MESSAGE)
-          setSavingBid(false)
-          return
-        }
-      }
-      bidId = editingBid.id
-    } else {
-      const { data: inserted, error: err } = await supabase
-        .from('bids')
-        .insert({ ...payloadWithAttestCounts, created_by: authUser.id, materials_model: 'rough' })
-        .select('id')
-        .single()
-      if (err) {
-        setError(err.message)
-        setSavingBid(false)
-        return
-      }
-      bidId = (inserted as { id: string }).id
+    const { data: inserted, error: err } = await supabase
+      .from('bids')
+      .insert({ ...payloadWithAttestCounts, created_by: authUser.id, materials_model: 'rough' })
+      .select('id')
+      .single()
+    if (err) {
+      setError(err.message)
+      setSavingBid(false)
+      return
     }
+    const bidId = (inserted as { id: string }).id
     savedBidDateSentRef.current = normalizeBidDateInput(bidDateSent)
     setPendingBidDateSentAttestation(null)
     setPendingAttestationForDate(null)
     setPendingBidSentFollowupSubmissionNote(null)
-    const previousOutcomeForNoteCounts = editingBid ? (editingBid.outcome ?? null) : null
-    const nextOutcomeForNoteCounts = normalizedOutcomePayload(outcome)
     await insertOutcomeChangeBidNoteAfterSave({
       bidId,
-      previousOutcome: previousOutcomeForNoteCounts,
-      nextOutcome: nextOutcomeForNoteCounts,
+      previousOutcome: null,
+      nextOutcome: normalizedOutcomePayload(outcome),
       lossReasonForNote: outcome === 'lost' ? (lossReason.trim() || null) : null,
     })
     if (followupNoteToSaveCounts?.trim()) {
       await insertPendingBidSentFollowupSubmissionNoteAfterSave(bidId, followupNoteToSaveCounts)
     }
-    if (!editingBid && formServiceTypeId && formServiceTypeId !== selectedServiceTypeId) {
+    if (formServiceTypeId && formServiceTypeId !== selectedServiceTypeId) {
       setSelectedServiceTypeId(formServiceTypeId)
     }
-    const rows = await loadBids(editingBid ? undefined : formServiceTypeId)
-    if (editingBid) {
-      const fresh = rows.find((b) => b.id === editingBid.id)
-      if (fresh) {
-        if (selectedBidForCounts?.id === editingBid.id) setSelectedBidForCounts(fresh)
-        if (selectedBidForSubmission?.id === editingBid.id) setSelectedBidForSubmission(fresh)
-        if (selectedBidForTakeoff?.id === editingBid.id) setSelectedBidForTakeoff(fresh)
-        if (selectedBidForCostEstimate?.id === editingBid.id) setSelectedBidForCostEstimate(fresh)
-        if (selectedBidForPricing?.id === editingBid.id) setSelectedBidForPricing(fresh)
-      }
-    }
+    const rows = await loadBids(formServiceTypeId)
     closeBidForm()
     setSavingBid(false)
+    openCountsForBid(bidId, rows)
+  }
+
+  /** Land on Counts with the bid selected (the URL carries it so a reload keeps it). */
+  function openCountsForBid(bidId: string, rows: BidWithBuilder[]) {
     const bid = rows.find((b) => b.id === bidId)
     if (bid) {
       setSharedBid(bid)
@@ -4228,6 +4265,20 @@ export default function Bids() {
             getGcBuilderEmail={getGcBuilderEmail}
             saveBidAndOpenCounts={saveBidAndOpenCounts}
             savingBid={savingBid}
+            autosave={
+              editingBid
+                ? {
+                    status: bidAutosave.status,
+                    dirty: bidAutosave.isDirty(),
+                    retry: () => void bidAutosave.flush(),
+                    closeFlushState: bidCloseFlushState,
+                    retryClose: () => void requestCloseBidForm(),
+                    keepEditing: () => setBidCloseFlushState('idle'),
+                    closeWithoutSaving: closeBidFormWithoutSaving,
+                  }
+                : undefined
+            }
+            onOutcomeRollupPersisted={markBidOutcomePersistedByPanel}
             setDeleteBidModalOpen={setDeleteBidModalOpen}
             setDeleteConfirmProjectName={setDeleteConfirmProjectName}
             setError={setError}
@@ -4255,11 +4306,13 @@ export default function Bids() {
               key={`${editingBid.id}:${bidWindowInitialTab}`}
               bidId={editingBid.id}
               initialTab={bidWindowInitialTab}
-              onRequestClose={closeBidForm}
+              onRequestClose={() => void requestCloseBidForm()}
               onNavigateToBidsTab={(tab, bidId) => {
-                closeBidForm()
-                navigate(`/bids?tab=${tab}&bidId=${bidId}`)
+                void requestCloseBidForm().then((closed) => {
+                  if (closed) navigate(`/bids?tab=${tab}&bidId=${bidId}`)
+                })
               }}
+              refreshKey={bidWindowRefreshKey}
               escBlocked={
                 deleteBidModalOpen ||
                 evaluateModalOpen ||
