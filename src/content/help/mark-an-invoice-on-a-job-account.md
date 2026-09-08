@@ -32,3 +32,10 @@ An unpaid $3,240.50 Reece invoice on J804's job account still shows in Reece's b
 :::
 
 Already have invoices sitting on job accounts? Open each one with the **Edit** pencil and check the box — the flag can be set any time.
+
+## The Dashboard keeps an eye on it
+
+Two **Needs You** cards appear only when there's a gap, and clear themselves once you fix it:
+
+- **Jobs with job accounts that have unflagged invoices** — the packet went out, but unpaid invoices on that job aren't flagged. If they're on the account, flag them. {{button:outline|Review them}} opens Job Accounts on the **Packet on file, unflagged** filter.
+- **Invoices flagged with no packet on record** — you flagged invoices on a job that was never shared from the app. If the house opened the account by phone, nothing to do; otherwise send the packet from the job window's storefront icon. {{button:outline|Review them}} opens the **Flagged, no packet** filter.

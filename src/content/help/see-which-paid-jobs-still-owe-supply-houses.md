@@ -12,7 +12,7 @@ keywords: job accounts, supply house, invoices, owed, held, paid, materials, pay
 - {{chip:blue|Floating out of pocket}} — the reverse: you already paid houses on jobs the customer hasn't paid yet.
 - {{chip:green|Settled}} — paid both ways, nothing held.
 - {{chip:gray|Unallocated invoices}} — unpaid invoices not tied to any job or bid. They're missing from every job's numbers, so allocate them: each invoice's **Jobs** field lives on the Supply Houses tab.
-- **On job accounts** (teal, appears once any invoice is flagged) — owed dollars riding on a house's **job account**: if they go unpaid, the house bills the property owner, not you. The Holding tile also splits into *Your account* vs *Job accounts* so you can see how much of what you're holding is really your exposure. Flag invoices when you enter them — see [mark an invoice as on a job account](?g=mark-an-invoice-on-a-job-account).
+- **On job accounts** (teal, appears once any invoice is flagged) — owed dollars riding on a house's **job account**: if they go unpaid, the house bills the property owner, not you. The Holding tile also splits into *Your account* vs *Job accounts* so you can see how much of what you're holding is really your exposure. Flag invoices when you enter them — see [mark an invoice as on a job account](?g=mark-an-invoice-on-a-job-account). Two more chips appear only when there's something to fix: {{chip:gray|Packet on file, unflagged}} (a job-account packet went out for the job, but it still has unpaid invoices that aren't flagged) and {{chip:gray|Flagged, no packet}} (invoices flagged on a job account for a job never shared from the app). Expanded rows show a teal **Job account packet on file** chip and a one-line hint about what to do.
 
 ## Read a job row
 

@@ -667,3 +667,25 @@ describe('lost-bids card ↔ Why we lost lens scope gloss (J14-F6)', () => {
     expect(card?.detail).toContain('it opens on one trade')
   })
 })
+
+describe('job-account gap items', () => {
+  const gaps = { unflaggedJobs: 3, unflaggedTotal: 8921.73, noPacketInvoices: 2, noPacketTotal: 1500 }
+  it('builds both hygiene items from the RPC row, gated on the enable flag', () => {
+    const items = buildNeedsYouItems(inputs({ jobAccountGapsEnabled: true, jobAccountGaps: gaps }))
+    const unflagged = items.find((i) => i.key === 'job-account-unflagged')!
+    const noPacket = items.find((i) => i.key === 'job-account-no-packet')!
+    expect(unflagged.title).toBe('3 jobs with supply house job accounts have unflagged invoices')
+    expect(unflagged.detail).toContain('$8,922')
+    expect(unflagged.figure).toBe('3')
+    expect(unflagged.severity).toBe('gray')
+    expect(noPacket.title).toBe('2 invoices are flagged on job accounts with no packet on record')
+    expect(noPacket.detail).toContain('$1,500')
+    expect(buildNeedsYouItems(inputs({ jobAccountGapsEnabled: false, jobAccountGaps: gaps })).some((i) => i.key.startsWith('job-account'))).toBe(false)
+    expect(buildNeedsYouItems(inputs({ jobAccountGapsEnabled: true, jobAccountGaps: null })).some((i) => i.key.startsWith('job-account'))).toBe(false)
+  })
+  it('each queue shows independently and reads singular at one', () => {
+    const only = buildNeedsYouItems(inputs({ jobAccountGapsEnabled: true, jobAccountGaps: { ...gaps, noPacketInvoices: 0, unflaggedJobs: 1 } }))
+    expect(only.map((i) => i.key).filter((k) => k.startsWith('job-account'))).toEqual(['job-account-unflagged'])
+    expect(only.find((i) => i.key === 'job-account-unflagged')!.title).toBe('A job with a supply house job account has unflagged invoices')
+  })
+})

@@ -79,6 +79,8 @@ export interface JobAccountsRow {
   invoiceCount: number
   /** Owed desc, then paid desc. */
   houses: JobAccountHouseGroup[]
+  /** A supply-house job-account packet is on record for this job (supply_house_job_accounts). */
+  hasJobAccountShare: boolean
 }
 
 export interface JobAccountsView {
@@ -103,6 +105,10 @@ export interface JobAccountsView {
    * less than owed, the secured dollars are counted as held before our own.
    */
   holdingOnJobAccount: number
+  /** Packet on file but unpaid UNflagged invoices remain — "should these be on the account?" review queue. */
+  needsFlagJobs: number
+  /** Unpaid flagged dollars on jobs with no packet on record — send it, or it was opened by phone. */
+  noPacketJobs: number
 }
 
 function emptyBuckets(): Record<AgingBucketKey, number> {
@@ -149,7 +155,10 @@ export function buildJobAccountsView(
   houses: Array<{ id: string; name: string }>,
   bidAllocatedInvoiceIds: Iterable<string>,
   todayYmd: string,
+  /** Jobs with a job-account share packet on record (default none). */
+  sharedJobIds: Iterable<string> = [],
 ): JobAccountsView {
+  const sharedJobs = new Set(sharedJobIds)
   const invoiceById = new Map(invoices.map((inv) => [inv.id, inv]))
   const houseNameById = new Map(houses.map((h) => [h.id, h.name]))
   const jobById = new Map(jobs.map((j) => [j.id, j]))
@@ -256,6 +265,7 @@ export function buildJobAccountsView(
       status,
       invoiceCount: acc.invoiceCount,
       houses: houseGroups,
+      hasJobAccountShare: sharedJobs.has(acc.job.id),
     })
   }
 
@@ -279,11 +289,15 @@ export function buildJobAccountsView(
   let onJobAccountTotal = 0
   let onJobAccountJobs = 0
   let holdingOnJobAccount = 0
+  let needsFlagJobs = 0
+  let noPacketJobs = 0
   for (const row of rows) {
     if (row.owedOnJobAccount > EPSILON) {
       onJobAccountTotal += row.owedOnJobAccount
       onJobAccountJobs++
+      if (!row.hasJobAccountShare) noPacketJobs++
     }
+    if (row.hasJobAccountShare && row.suppliersOwed - row.owedOnJobAccount > EPSILON) needsFlagJobs++
     if (row.status === 'owe_suppliers') {
       holdingTotal += row.held
       holdingJobs++
@@ -311,5 +325,7 @@ export function buildJobAccountsView(
     onJobAccountTotal,
     onJobAccountJobs,
     holdingOnJobAccount,
+    needsFlagJobs,
+    noPacketJobs,
   }
 }

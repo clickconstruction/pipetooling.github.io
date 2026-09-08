@@ -69,6 +69,8 @@ export type NeedsYouItem = {
     | 'jobs-stale-open'
     | 'dispatch-requests-aged'
     | 'hr-reports-pending'
+    | 'job-account-unflagged'
+    | 'job-account-no-packet'
   severity: NeedsYouSeverity
   /** Product the item belongs to — omitted means `company`. See `NeedsYouKind`. */
   kind?: NeedsYouKind
@@ -129,6 +131,8 @@ export const NEEDS_YOU_RANK: Record<NeedsYouItem['key'], number> = {
   'hr-reports-pending': 50,
   'lost-bids': 60,
   'd22-uncoded': 60,
+  'job-account-unflagged': 60,
+  'job-account-no-packet': 60,
 }
 
 /** "99+" reads as 100 so a capped figure still outranks anything two-digit. */
@@ -342,6 +346,15 @@ export type NeedsYouInputs = {
   hrReportsAged?: { count: number; total: number; oldestAgeDays: number } | null
   hrReportsMinAgeDays?: number
   hrReportsRedDays?: number
+  /**
+   * Supply-house job-account gaps (follow-up to v2.2669) from
+   * count_job_account_flag_gaps(): jobs whose packet went out but still carry
+   * unpaid UNflagged invoices, and flagged invoices on jobs never shared from
+   * the app. Both hygiene-tier and self-clearing — the hook returns null when
+   * both are zero. Office set; Quickfill passes nothing (absent = not wired).
+   */
+  jobAccountGapsEnabled?: boolean
+  jobAccountGaps?: { unflaggedJobs: number; unflaggedTotal: number; noPacketInvoices: number; noPacketTotal: number } | null
 }
 
 export function buildNeedsYouItems(inputs: NeedsYouInputs): NeedsYouItem[] {
@@ -820,6 +833,44 @@ export function buildNeedsYouItems(inputs: NeedsYouInputs): NeedsYouItem[] {
         { key: 'snooze', label: 'Snooze 24h' },
         { key: 'dismiss', label: 'Dismiss until it happens again' },
       ],
+    })
+  }
+
+  if (inputs.jobAccountGapsEnabled && (inputs.jobAccountGaps?.unflaggedJobs ?? 0) > 0) {
+    const { unflaggedJobs: n, unflaggedTotal } = inputs.jobAccountGaps!
+    const money = unflaggedTotal.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 })
+    items.push({
+      key: 'job-account-unflagged',
+      severity: 'gray',
+      kicker: 'Job accounts',
+      title:
+        n === 1
+          ? 'A job with a supply house job account has unflagged invoices'
+          : `${n} jobs with supply house job accounts have unflagged invoices`,
+      detail:
+        `${money} of unpaid supplier invoices sit on ${n === 1 ? 'a job' : 'jobs'} whose job-account packet went out. ` +
+        'If those invoices are on the account, flag them so Job Accounts shows whose exposure they are.',
+      figure: String(n),
+      actionLabel: 'Review them',
+    })
+  }
+
+  if (inputs.jobAccountGapsEnabled && (inputs.jobAccountGaps?.noPacketInvoices ?? 0) > 0) {
+    const { noPacketInvoices: n, noPacketTotal } = inputs.jobAccountGaps!
+    const money = noPacketTotal.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 })
+    items.push({
+      key: 'job-account-no-packet',
+      severity: 'gray',
+      kicker: 'Job accounts',
+      title:
+        n === 1
+          ? 'An invoice is flagged on a job account with no packet on record'
+          : `${n} invoices are flagged on job accounts with no packet on record`,
+      detail:
+        `${money} is marked "On job account" on jobs never shared with a supply house from the app. ` +
+        'If the house opened the account by phone, nothing to do; otherwise send the packet from the job window.',
+      figure: String(n),
+      actionLabel: 'Review them',
     })
   }
 
