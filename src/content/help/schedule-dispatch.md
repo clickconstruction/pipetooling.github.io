@@ -2,7 +2,7 @@
 title: schedule people onto jobs
 category: Jobs & Scheduling
 roles: assistant, superintendent, master_technician
-keywords: schedule, dispatch, assign, blocks, not coming in, share schedule
+keywords: schedule, dispatch, assign, blocks, not coming in, share schedule, phone, board, day strip, copy to techs, desktop view, tech card
 order: 10
 ---
 The Schedule page (`/schedule-dispatch`) is where the office puts people on jobs. Only devs, leaders, assistants, and superintendents can open it — and if you can see it, you can edit it.
@@ -16,6 +16,20 @@ At every width, a single **⋯** menu at the top right holds the page's tools: *
 On a phone, the People toolbar adds a green **⚡ Assign work** button — the same quick flow described in the Dispatch Mode guide (job → people with availability ribbons → suggested time → schedule). The hub has three view tabs — **People**, **Jobs**, and **Day** — plus a {{button:outline|Dispatch Settings}} button for edit roles. The People view is the workhorse: a weekly grid with people down the left and days across the top — today's column is tinted yellow and boxed in orange so it's easy to spot. Use the **Search Person or Job** box to jump around, and hide weekend columns when you don't need them. An **Expected manpower** readout totals who's scheduled.
 
 Opening a single job (from a job link or the Pipeline board's Week dispatch button) shows that job's week grid — and below it, a **Work history** section: every past week the job saw approved clock time, newest first, with who worked and their hours. The header totals the whole job (hours · people · first–last work date), and a green **on the job now** chip lists anyone currently clocked in. Click a week row to expand it down to the individual sessions — clock-in → clock-out, duration, and any session note. Hours only; wages never appear here.
+
+## The People board on a phone
+
+On a phone the **People** view is a board, not a grid: **one day at a time, full width**, with a **day strip** across the top (Mon–Fri with each day's block count; today is ringed). Tap a day to switch; the week arrows still step a week at a time.
+
+Every tech is a **card**: their name, a {{chip:red|Not coming in}} chip when they've said so, one row per block that day, and a full-width **+ Add here** at the bottom. Tap a block row for its sheet — **Edit**, **Copy to techs**, **Remove**. There are no drag handles on the phone; moving is a button on that sheet.
+
+:::example Adding a job to two techs, one-handed
+Tap {{button:outline|Copy to techs}} on Abraham's J927 row. A checklist of people opens with each person's day as a small ribbon and *free 12–4* / *busy 8–5* beside their name; tap a team band to take the whole crew. Keep **Linked crew** on so their blocks move together, then {{button:blue|Add to 2 techs}}.
+:::
+
+While you are placing something — adding a job, copying one, filling several days — the **whole card becomes the button** and says what will land: *Tap to add J927 · 12–4 here*. Cards that are busy at that time say so and still take the tap if overlapping is what you mean. The instruction lives in a dark **bar just above the tab bar**, with **Cancel** beside it.
+
+Want the whole week side by side? At the **very bottom** of the board, {{button:outline|▦ Show the desktop view}} brings back the week grid exactly as on a computer, and the grid's bottom offers **Back to the phone view**. The phone remembers whichever you picked last.
 
 ## Jumping here from the Dashboard
 

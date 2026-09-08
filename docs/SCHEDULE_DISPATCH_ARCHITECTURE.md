@@ -5,7 +5,7 @@ file: docs/SCHEDULE_DISPATCH_ARCHITECTURE.md
 type: Architecture Map / Decomposition
 purpose: Step-0 map (per PAGE_DECOMPOSITION_PLAYBOOK.md) for the Schedule Dispatch hub surface — ScheduleDispatchHub.tsx (~3,302 lines, presentational) + ScheduleDispatchHubPage.tsx (~2,384 lines, container), treated as one hot ~5.7k-line surface. Inventories every panel/region's state, memos, handlers, supabase tables/RPCs, and cross-region coupling so extraction can start without re-deriving the strategy.
 audience: Developers, AI Agents
-last_updated: 2026-09-05
+last_updated: 2026-09-08
 ---
 
 ## What this surface is
@@ -110,6 +110,7 @@ Update the relevant dossier whenever a region is extracted or its state/handlers
 - **Hooks/contexts:** `useIsMobile` (mobile name pills, Quick Assign ⚡ button), `useDispatchNoteRequirements` (missing-note count).
 - **Supabase:** none.
 - **Sub-components:** `HubPeopleDayCell`/`HubPeopleBlockCard` (in-file), `QuickAssignSheet` (extracted; mobile only), `ScheduleDispatchWeekNav` (via `weekNav` slot), `ScheduleDispatchLinkedChainsIcon`.
+- **Phone board (v2.3156):** on a narrow viewport the panel renders [`HubPeoplePhoneBoard`](../src/components/schedule/HubPeoplePhoneBoard.tsx) instead of the toolbar + table when the page passes `phonePeopleView === 'board'` (per-device, key `pipetooling_dispatch_people_phone_view_v1`; kernel [`phonePeopleBoard.ts`](../src/lib/scheduleDispatch/phonePeopleBoard.ts)). It consumes the same props (rows, `personDayBlocks`, the mode flags) and the same callbacks, plus six added through the shell — `phonePeopleView` / `onPhonePeopleViewChange`, `onCopyBlockToPeople` (page loop over `insertScheduleDispatchCopiedLeg`), `onCancelCardPlacement`, `onCancelHubAssignJobPlacement`, `onLinkedCopySetStage`. The page's three mode banners stand down while `phoneBoardActive`. The bottom of both renderings carries the switch to the other. The grid's sticky Person cells paint a solid background on phones since the same PR.
 - **External coupling:** lane-heading rows double as linked-copy stage-2 "whole crew" apply buttons; person-name cells double as stage-2 per-person apply buttons — both purely via props.
 - **Extraction status + risk + approach:** Inline. **Medium risk** — the JSX is big but the state is clean; the cost is the ~55-prop interface (already declared as `HubPeoplePanelProps`, so the move is mechanical). Extract to `HubPeoplePanel.tsx` AFTER the card/cell pair and (ideally) after the Expected Manpower section is split out. All mode state stays page-owned; the panel keeps receiving it as props. Remember both render branches in the shell.
 

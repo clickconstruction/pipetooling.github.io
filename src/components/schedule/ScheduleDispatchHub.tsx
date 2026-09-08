@@ -67,6 +67,8 @@ import {
 } from '../../lib/scheduleDispatchColumnFocus'
 import { scheduleDispatchMobileNamePill } from '../../lib/scheduleDispatchMobileNamePill'
 import { useIsMobile } from '../../hooks/useIsMobile'
+import { HubPeoplePhoneBoard } from './HubPeoplePhoneBoard'
+import type { PhonePeopleView } from '../../lib/scheduleDispatch/phonePeopleBoard'
 import {
   userTimeOffCellKey,
   type UserTimeOffCellInfo,
@@ -1728,6 +1730,14 @@ type HubPeoplePanelProps = {
   /** Refetch after Quick Assign writes blocks (mobile phone entry point). */
   onQuickAssignScheduled?: () => void
   linkedCopyApplyBusy?: boolean
+  /** v2.3156 — the People board on a phone: which rendering a narrow viewport gets, and the page-owned switch. Absent → the grid. */
+  phonePeopleView?: PhonePeopleView
+  onPhonePeopleViewChange?: (view: PhonePeopleView) => void
+  /** Copy to techs sheet: one block to a chosen list of people (linked or not), no mode needed. */
+  onCopyBlockToPeople?: (args: { blockId: string; userIds: string[]; linked: boolean }) => void | Promise<void>
+  onCancelCardPlacement?: () => void
+  onCancelHubAssignJobPlacement?: () => void
+  onLinkedCopySetStage?: (stage: 1 | 2) => void
   /** Office-wide swim lanes for the 'lanes' person grouping (null until loaded). */
   swimLanes?: DispatchSwimLanesData | null
   onSwimLanesChanged?: () => void
@@ -1812,6 +1822,12 @@ function HubPeoplePanel({
   onLinkedCopyApplyToLane,
   onQuickAssignScheduled,
   linkedCopyApplyBusy = false,
+  phonePeopleView,
+  onPhonePeopleViewChange,
+  onCopyBlockToPeople,
+  onCancelCardPlacement,
+  onCancelHubAssignJobPlacement,
+  onLinkedCopySetStage,
   swimLanes = null,
   onRequestHubMultiCellAddMode,
   onRequestEditBlockNote,
@@ -1848,6 +1864,8 @@ function HubPeoplePanel({
     }
   }, [viewMenuOpen])
   const isMobile = useIsMobile()
+  // v2.3156: a narrow viewport gets the board unless this phone chose the grid (page-owned preference; absent in embeds).
+  const phoneBoardActive = isMobile && onPhonePeopleViewChange != null && (phonePeopleView ?? 'board') === 'board'
   const peopleScrollRef = useRef<HTMLDivElement>(null)
   useScrollScheduleDispatchColumnIntoView({
     columnFocusDayYmd,
@@ -2147,6 +2165,53 @@ function HubPeoplePanel({
         </p>
       ) : null}
 
+      {phoneBoardActive ? (
+        <HubPeoplePhoneBoard
+          visibleDayKeys={visibleDayKeys}
+          scheduleTodayYmd={scheduleTodayYmd}
+          columnFocusDayYmd={columnFocusDayYmd}
+          peopleDisplayRows={peopleDisplayRows}
+          personDayBlocks={personDayBlocks}
+          hubWeekBlocks={hubWeekBlocks}
+          hubPeopleNameById={hubPeopleNameById}
+          getJobDisplayTitle={getJobDisplayTitle}
+          getJobAddress={getJobAddress}
+          salariedUserIds={salariedUserIds}
+          userTimeOffByCell={userTimeOffByCell}
+          missingNoteCount={missingNoteCount}
+          missingNoteDayYmd={missingNoteDayYmd}
+          canEdit={canEdit}
+          loading={loading}
+          cardPlacementMode={cardPlacementMode}
+          hubAssignJobPlacement={hubAssignJobPlacement}
+          linkedCopyMode={linkedCopyMode}
+          linkedCopyApplyBusy={linkedCopyApplyBusy}
+          hubMultiCellAddActive={hubMultiCellAddActive}
+          hubMultiCellAddSelectedKeys={hubMultiCellAddSelectedKeys}
+          onRequestHubAddJob={onRequestHubAddJob}
+          onOpenQuickAssign={canEdit ? () => setQuickAssignOpen(true) : undefined}
+          onStartLinkedCopyMode={onStartLinkedCopyMode}
+          onLinkedCopySetStage={onLinkedCopySetStage}
+          onLinkedCopyToggleBlock={onLinkedCopyToggleBlock}
+          onLinkedCopyApplyToPerson={onLinkedCopyApplyToPerson}
+          onLinkedCopyApplyToLane={onLinkedCopyApplyToLane}
+          onCopyBlockToPeople={onCopyBlockToPeople}
+          onCardPlacementCellPick={onCardPlacementCellPick}
+          onCancelCardPlacement={onCancelCardPlacement}
+          onHubAssignJobCellPick={onHubAssignJobCellPick}
+          onCancelHubAssignJobPlacement={onCancelHubAssignJobPlacement}
+          onHubMultiCellAddToggle={onHubMultiCellAddToggle}
+          onAddJobToScheduleForCell={onAddJobToScheduleForCell}
+          onEmptyCellClick={onEmptyCellClick}
+          onStartCardPlacement={onStartCardPlacement}
+          onOpenHubJobDetail={onOpenHubJobDetail}
+          onOpenJob={onOpenJob}
+          onDeleteBlock={onDeleteBlock}
+          onRequestEditBlockNote={onRequestEditBlockNote}
+          onShowDesktopView={() => onPhonePeopleViewChange?.('grid')}
+        />
+      ) : (
+      <>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', alignItems: 'center', marginBottom: '0.75rem' }}>
         {weekNav}
         {canEdit && !hubAssignJobPlacement && onRequestHubAddJob ? (
@@ -2377,7 +2442,7 @@ function HubPeoplePanel({
                   borderTop: '1px solid var(--border)',
                   borderRight: '1px solid var(--border)',
                   borderBottom: '1px solid var(--border)',
-                  background: isMobile ? 'transparent' : 'var(--bg-muted)',
+                  background: 'var(--bg-muted)',
                   position: 'sticky',
                   left: 0,
                   zIndex: 1,
@@ -2571,9 +2636,7 @@ function HubPeoplePanel({
                       background:
                         person.userId === focusPersonUserId
                           ? 'var(--bg-blue-tint)'
-                          : isMobile
-                            ? 'transparent'
-                            : 'var(--surface)',
+                          : 'var(--surface)',
                       zIndex: 1,
                       fontWeight: 600,
                       color: 'var(--text-strong)',
@@ -2702,6 +2765,21 @@ function HubPeoplePanel({
         </table>
         <HubSubsLanes lanes={subLanes ?? []} visibleDayKeys={visibleDayKeys} scheduleTodayYmd={scheduleTodayYmd} onOpenJob={onOpenJob} />
       </div>
+      {isMobile && onPhonePeopleViewChange ? (
+        // v2.3156: the desktop grid on a phone — the way back to the board sits at the very bottom, like the way here.
+        <div style={{ display: 'grid', gap: '0.2rem', textAlign: 'center', padding: '0.8rem 0.5rem 0.3rem', borderTop: '1px solid var(--border)', marginTop: '0.5rem' }}>
+          <button
+            type="button"
+            onClick={() => onPhonePeopleViewChange('board')}
+            style={{ justifySelf: 'center', fontFamily: 'inherit', fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-link)', background: 'var(--surface)', border: '1px solid var(--border-strong)', borderRadius: 7, padding: '0.5rem 1rem', cursor: 'pointer' }}
+          >
+            📱 Back to the phone view
+          </button>
+          <small style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>one day at a time, a card per tech · remembered on this phone</small>
+        </div>
+      ) : null}
+      </>
+      )}
 
       {isMobile && canEdit ? (
         <QuickAssignSheet
@@ -3265,6 +3343,14 @@ type Props = {
   /** Refetch after Quick Assign writes blocks (mobile phone entry point). */
   onQuickAssignScheduled?: () => void
   linkedCopyApplyBusy?: boolean
+  /** v2.3156 — the People board on a phone: which rendering a narrow viewport gets, and the page-owned switch. Absent → the grid. */
+  phonePeopleView?: PhonePeopleView
+  onPhonePeopleViewChange?: (view: PhonePeopleView) => void
+  /** Copy to techs sheet: one block to a chosen list of people (linked or not), no mode needed. */
+  onCopyBlockToPeople?: (args: { blockId: string; userIds: string[]; linked: boolean }) => void | Promise<void>
+  onCancelCardPlacement?: () => void
+  onCancelHubAssignJobPlacement?: () => void
+  onLinkedCopySetStage?: (stage: 1 | 2) => void
   /** Office-wide swim lanes for the 'lanes' person grouping (null until loaded). */
   swimLanes?: DispatchSwimLanesData | null
   onSwimLanesChanged?: () => void
@@ -3392,6 +3478,12 @@ export function ScheduleDispatchHub({
   onLinkedCopyApplyToLane,
   onQuickAssignScheduled,
   linkedCopyApplyBusy = false,
+  phonePeopleView,
+  onPhonePeopleViewChange,
+  onCopyBlockToPeople,
+  onCancelCardPlacement,
+  onCancelHubAssignJobPlacement,
+  onLinkedCopySetStage,
   swimLanes = null,
   onSwimLanesChanged,
   onOfficeRosterChanged,
@@ -3838,6 +3930,12 @@ export function ScheduleDispatchHub({
           onLinkedCopyApplyToLane={onLinkedCopyApplyToLane}
           onQuickAssignScheduled={onQuickAssignScheduled}
           linkedCopyApplyBusy={linkedCopyApplyBusy}
+          phonePeopleView={phonePeopleView}
+          onPhonePeopleViewChange={onPhonePeopleViewChange}
+          onCopyBlockToPeople={onCopyBlockToPeople}
+          onCancelCardPlacement={onCancelCardPlacement}
+          onCancelHubAssignJobPlacement={onCancelHubAssignJobPlacement}
+          onLinkedCopySetStage={onLinkedCopySetStage}
           swimLanes={swimLanes}
           onRequestHubMultiCellAddMode={onRequestHubMultiCellAddMode}
           onRequestEditBlockNote={onRequestEditBlockNote}
@@ -3943,6 +4041,12 @@ export function ScheduleDispatchHub({
           onLinkedCopyApplyToLane={onLinkedCopyApplyToLane}
           onQuickAssignScheduled={onQuickAssignScheduled}
           linkedCopyApplyBusy={linkedCopyApplyBusy}
+          phonePeopleView={phonePeopleView}
+          onPhonePeopleViewChange={onPhonePeopleViewChange}
+          onCopyBlockToPeople={onCopyBlockToPeople}
+          onCancelCardPlacement={onCancelCardPlacement}
+          onCancelHubAssignJobPlacement={onCancelHubAssignJobPlacement}
+          onLinkedCopySetStage={onLinkedCopySetStage}
           swimLanes={swimLanes}
           onRequestHubMultiCellAddMode={onRequestHubMultiCellAddMode}
           onRequestEditBlockNote={onRequestEditBlockNote}
