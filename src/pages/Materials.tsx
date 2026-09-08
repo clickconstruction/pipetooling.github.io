@@ -9,9 +9,9 @@ import {
 } from '../lib/materials/poItemDetails'
 import { calculateAssemblyCost as calculateAssemblyCostKernel } from '../lib/materials/assemblyCost'
 import { groupSupplyHouseStats, type SupplyHouseStatsRow } from '../lib/materials/supplyHouseStats'
+import { canAccessMaterials, canOpenMaterialsTab, isMaterialsTab, isOfficeMaterialsTab, materialsTabsFor, resolveMaterialsTab, supplyHousesPaneFor } from '../lib/materials/materialsTabs'
 import { useAuth } from '../hooks/useAuth'
 import { useConfirmDialog } from '../contexts/ConfirmDialogContext'
-import { isAssistantLike } from '../lib/subcontractorLikeRole'
 import { Database } from '../types/database'
 import { PartFormModal } from '../components/PartFormModal'
 import { SupplyHousesTab } from '../components/SupplyHousesTab'
@@ -52,7 +52,6 @@ interface ServiceType {
 
 // fetchPricesForParts now lives in lib/materials/partPrices; formatCurrency in lib/format
 
-const MATERIALS_TABS = ['parts-book', 'assembly-book', 'assemblies-po', 'purchase-orders', 'supply-houses', 'job-accounts', 'po-generator'] as const
 
 export default function Materials() {
   const { user: authUser } = useAuth()
@@ -297,7 +296,7 @@ export default function Materials() {
     } else {
       setSuperintendentServiceTypeIds(null)
     }
-    if (role !== 'dev' && role !== 'master_technician' && !isAssistantLike(role) && role !== 'estimator' && role !== 'primary' && role !== 'superintendent') {
+    if (!canAccessMaterials(role)) {
       setLoading(false)
       return
     }
@@ -399,32 +398,27 @@ export default function Materials() {
       }, { replace: true })
       return
     }
-    const restrictedPrimarySuper =
-      tab === 'supply-houses' ||
-      tab === 'job-accounts' ||
-      tab === 'po-generator' ||
-      tab === 'assemblies-po' ||
-      tab === 'purchase-orders'
-    if ((myRole === 'primary' || myRole === 'superintendent') && restrictedPrimarySuper) {
-      setActiveTab('parts-book')
+    if (!tab) {
       setSearchParams((p) => {
         const next = new URLSearchParams(p)
         next.set('tab', 'parts-book')
         return next
       }, { replace: true })
-    } else if (myRole === 'estimator' && (tab === 'supply-houses' || tab === 'job-accounts' || tab === 'po-generator')) {
-      setActiveTab('parts-book')
+      return
+    }
+    // Role not loaded yet: honour a known slug, decide nothing about access until it is.
+    if (!myRole) {
+      if (isMaterialsTab(tab)) setActiveTab(tab)
+      return
+    }
+    const resolved = resolveMaterialsTab(myRole, tab)
+    if (!resolved.tab) return
+    setActiveTab(resolved.tab)
+    if (resolved.redirect) {
+      const landing = resolved.tab
       setSearchParams((p) => {
         const next = new URLSearchParams(p)
-        next.set('tab', 'parts-book')
-        return next
-      }, { replace: true })
-    } else if (tab && MATERIALS_TABS.includes(tab as typeof MATERIALS_TABS[number])) {
-      setActiveTab(tab as typeof activeTab)
-    } else if (!tab) {
-      setSearchParams((p) => {
-        const next = new URLSearchParams(p)
-        next.set('tab', 'parts-book')
+        next.set('tab', landing)
         return next
       }, { replace: true })
     }
@@ -459,7 +453,7 @@ export default function Materials() {
   }, [searchParams, setSearchParams])
 
   useEffect(() => {
-    if (myRole === 'dev' || myRole === 'master_technician' || isAssistantLike(myRole) || myRole === 'estimator' || myRole === 'primary' || myRole === 'superintendent') {
+    if (canAccessMaterials(myRole)) {
       const loadInitial = async () => {
         try {
           setPartsPage(0)
@@ -477,7 +471,7 @@ export default function Materials() {
   // Restore Load All mode preference from localStorage (per user); default off so filter dropdowns work
   // Reload data when service type or loadAllMode changes
   useEffect(() => {
-    if (selectedServiceTypeId && (myRole === 'dev' || myRole === 'master_technician' || isAssistantLike(myRole) || myRole === 'estimator' || myRole === 'primary' || myRole === 'superintendent')) {
+    if (selectedServiceTypeId && canAccessMaterials(myRole)) {
       setFilterPartTypeId('')
       setFilterManufacturer('')
       const loadForServiceType = async () => {
@@ -593,7 +587,7 @@ export default function Materials() {
     return <div style={{ padding: '2rem', textAlign: 'center' }}>Loading…</div>
   }
 
-  if (myRole !== 'dev' && myRole !== 'master_technician' && !isAssistantLike(myRole) && myRole !== 'estimator' && myRole !== 'primary' && myRole !== 'superintendent') {
+  if (!canAccessMaterials(myRole)) {
     return <div style={{ padding: '2rem', textAlign: 'center' }}>Access denied. Only devs, masters, assistants, estimators, primaries, and superintendents can access materials.</div>
   }
 
@@ -689,7 +683,7 @@ export default function Materials() {
 
 
   // PO-lane signposts (v2.2903): PO Builder / Purchase Orders link to PO Generator for roles that can open it
-  const canOpenPoGenerator = myRole === 'dev' || myRole === 'master_technician' || isAssistantLike(myRole)
+  const canOpenPoGenerator = canOpenMaterialsTab(myRole, 'po-generator')
   const openPoGeneratorTab = canOpenPoGenerator
     ? () => {
         setActiveTab('po-generator')
@@ -1468,6 +1462,8 @@ export default function Materials() {
   }
 
 
+  const visibleTabs = materialsTabsFor(myRole)
+
   // For estimators or primaries with restrictions, only show allowed service types
   const visibleServiceTypes = (myRole === 'estimator' && estimatorServiceTypeIds && estimatorServiceTypeIds.length > 0)
     ? serviceTypes.filter((st) => estimatorServiceTypeIds.includes(st.id))
@@ -1513,8 +1509,9 @@ export default function Materials() {
       <div style={{ display: 'flex', borderBottom: '2px solid var(--border)', marginBottom: '2rem', overflow: 'hidden' }}>
         <div style={{ flex: 1, minWidth: 0, overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
           <div style={{ display: 'flex', gap: '1rem', width: 'max-content', alignItems: 'center' }}>
-        {myRole !== 'estimator' && myRole !== 'primary' && myRole !== 'superintendent' && (
+        {visibleTabs.some(isOfficeMaterialsTab) && (
           <>
+          {visibleTabs.includes('supply-houses') && (
           <button
             type="button"
             onClick={() => {
@@ -1529,6 +1526,8 @@ export default function Materials() {
           >
             Supply Houses
           </button>
+          )}
+          {visibleTabs.includes('job-accounts') && (
           <button
             type="button"
             onClick={() => {
@@ -1543,6 +1542,8 @@ export default function Materials() {
           >
             Job Accounts
           </button>
+          )}
+          {visibleTabs.includes('po-generator') && (
           <button
             type="button"
             onClick={() => {
@@ -1557,6 +1558,7 @@ export default function Materials() {
           >
             PO Generator
           </button>
+          )}
           <span style={{ color: 'var(--text-faint)', padding: '0 0.1rem', position: 'relative', top: '-1px', fontSize: '0.875rem' }}>|</span>
           </>
         )}
@@ -1588,7 +1590,7 @@ export default function Materials() {
         >
           Assembly Book
         </button>
-        {myRole !== 'primary' && myRole !== 'superintendent' && (
+        {(visibleTabs.includes('assemblies-po') || visibleTabs.includes('purchase-orders')) && (
           <>
           <button
             type="button"
@@ -2171,7 +2173,7 @@ export default function Materials() {
       />
 
       {/* Supply Houses Tab */}
-      {activeTab === 'supply-houses' && (myRole === 'dev' || myRole === 'master_technician' || isAssistantLike(myRole)) && (
+      {activeTab === 'supply-houses' && supplyHousesPaneFor(myRole) === 'office' && (
         <SupplyHousesTab
           supplyHouses={supplyHouses}
           onSupplyHousesChange={loadSupplyHouses}

@@ -10,14 +10,26 @@ import { useCallback, useEffect, useState, type CSSProperties } from 'react'
 import { supabase } from '../lib/supabase'
 import { withSupabaseRetry } from '../utils/errorHandling'
 import { useToastContext } from '../contexts/ToastContext'
+import { fetchUserDisplayNames, userDisplayLabel } from '../lib/userDisplayNames'
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
-type ContactRow = { id: string; name: string | null; email: string; label: string | null; is_default: boolean }
+type ContactRow = { id: string; name: string | null; email: string; label: string | null; is_default: boolean; created_by: string | null; created_at: string }
 
-export function SupplyHouseContactsSection({ supplyHouseId }: { supplyHouseId: string }) {
+export function SupplyHouseContactsSection({
+  supplyHouseId,
+  showAddedBy = false,
+  onChanged,
+}: {
+  supplyHouseId: string
+  /** Directory pane (v2.3xxx): label each rep with who added it, so a shared list stays trustworthy. */
+  showAddedBy?: boolean
+  /** Fires after any add / default / archive so a host list can refetch. */
+  onChanged?: () => void
+}) {
   const { showToast } = useToastContext()
   const [rows, setRows] = useState<ContactRow[]>([])
+  const [names, setNames] = useState<Record<string, string>>({})
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [label, setLabel] = useState('')
@@ -29,7 +41,7 @@ export function SupplyHouseContactsSection({ supplyHouseId }: { supplyHouseId: s
         () =>
           supabase
             .from('supply_house_contacts')
-            .select('id, name, email, label, is_default')
+            .select('id, name, email, label, is_default, created_by, created_at')
             .eq('supply_house_id', supplyHouseId)
             .is('archived_at', null)
             .order('is_default', { ascending: false })
@@ -45,6 +57,25 @@ export function SupplyHouseContactsSection({ supplyHouseId }: { supplyHouseId: s
   useEffect(() => {
     void load()
   }, [load])
+
+  useEffect(() => {
+    if (!showAddedBy) return
+    const missing = rows.map((r) => r.created_by).filter((id): id is string => !!id && !(id in names))
+    if (missing.length === 0) return
+    let cancelled = false
+    fetchUserDisplayNames([...new Set(missing)]).then((found) => {
+      if (cancelled) return
+      setNames((prev) => {
+        const next = { ...prev }
+        for (const id of missing) next[id] = ''
+        for (const n of found) next[n.id] = userDisplayLabel(n)
+        return next
+      })
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [rows, names, showAddedBy])
 
   async function add() {
     if (!EMAIL_RE.test(email.trim())) return
@@ -62,6 +93,7 @@ export function SupplyHouseContactsSection({ supplyHouseId }: { supplyHouseId: s
       setEmail('')
       setLabel('')
       await load()
+      onChanged?.()
     } catch (err) {
       showToast(err instanceof Error ? err.message : 'Could not add the contact.', 'error')
     } finally {
@@ -80,6 +112,7 @@ export function SupplyHouseContactsSection({ supplyHouseId }: { supplyHouseId: s
       const { error } = await supabase.from('supply_house_contacts').update({ is_default: true }).eq('id', id)
       if (error) throw error
       await load()
+      onChanged?.()
     } catch (err) {
       showToast(err instanceof Error ? err.message : 'Could not set the default.', 'error')
     } finally {
@@ -96,6 +129,7 @@ export function SupplyHouseContactsSection({ supplyHouseId }: { supplyHouseId: s
         .eq('id', id)
       if (error) throw error
       await load()
+      onChanged?.()
     } catch (err) {
       showToast(err instanceof Error ? err.message : 'Could not archive the contact.', 'error')
     } finally {
@@ -115,6 +149,7 @@ export function SupplyHouseContactsSection({ supplyHouseId }: { supplyHouseId: s
         <div key={r.id} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
           <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-strong)' }}>{r.name ?? r.email}</span>
           <span style={mini}>{r.email}{r.label ? ` · ${r.label}` : ''}</span>
+          {showAddedBy && r.created_by && names[r.created_by] ? <span style={mini}>· added by {names[r.created_by]}</span> : null}
           {r.is_default ? (
             <span style={{ fontSize: '0.68rem', fontWeight: 700, color: '#15803d', border: '1px solid #16a34a', borderRadius: 999, padding: '0.05rem 0.5rem' }}>default</span>
           ) : (
