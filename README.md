@@ -158,6 +158,9 @@ The project automatically deploys to GitHub Pages when changes land on the `main
 - `VITE_SUPABASE_URL`
 - `VITE_SUPABASE_ANON_KEY`
 
+**Optional GitHub Secrets**:
+- `VITE_GOOGLE_MAPS_BROWSER_KEY` — a Google Cloud key with only the **Maps JavaScript API** enabled and HTTP-referrer restrictions (`https://clicktooling.com/*`, `http://localhost:*`). When set, the Dashboard's **Your jobs on a map** card draws with Google Maps; when unset, or if the API fails to load, it draws with Leaflet + OpenStreetMap (v2.3145).
+
 See [PROJECT_DOCUMENTATION.md](./docs/PROJECT_DOCUMENTATION.md) for detailed deployment instructions.
 
 **SPA / 404**: Deep links may show **404** on the document request in DevTools; see [docs/TROUBLESHOOTING.md](./docs/TROUBLESHOOTING.md). In-app **Hard Reload** uses [`/?nocache=…`](src/lib/hardReload.ts) plus `history.replaceState` to reduce noisy 404s on cache-bust reloads.

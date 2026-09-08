@@ -21,7 +21,9 @@ import {
   dashboardJobsMapDirectionsUrl,
   dashboardJobsMapLegend,
   dashboardJobsMapUnmappedLine,
+  googleMapsBrowserKey,
   readDashboardJobsMapHidden,
+  resolveDashboardMapProvider,
   writeDashboardJobsMapHidden,
   type DashboardJobsMapJob,
   type DashboardJobsMapPin,
@@ -31,6 +33,7 @@ import { openInExternalBrowser } from '../../lib/openInExternalBrowser'
 import { DashboardListRowSkeleton } from './DashboardSkeletons'
 
 const DashboardJobsMapCanvas = lazy(() => import('./DashboardJobsMapCanvas'))
+const DashboardJobsMapGoogleCanvas = lazy(() => import('./DashboardJobsMapGoogleCanvas'))
 
 const OUTLINE_BUTTON_STYLE: React.CSSProperties = {
   padding: '0.35rem 0.75rem',
@@ -94,6 +97,14 @@ export function DashboardJobsMapCard({
   const [hidden, setHidden] = useState<boolean>(() => readDashboardJobsMapHidden())
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [fitSignal, setFitSignal] = useState(0)
+  // v2.3145: Google Maps when a browser key is configured and the API loads; OpenStreetMap
+  // otherwise. A failure is sticky for this page so a bad key never flickers.
+  const [googleFailed, setGoogleFailed] = useState(false)
+  const provider = resolveDashboardMapProvider({ key: googleMapsBrowserKey(), googleFailed })
+  const googleUnavailable = useCallback((reason: string) => {
+    console.warn(`[jobs map] Google Maps unavailable, using OpenStreetMap — ${reason}`)
+    setGoogleFailed(true)
+  }, [])
   const { pins, unmapped, noAddress, resolving, total } = useDashboardJobsMapPins(assignedJobs, superintendentJobs, !hidden)
 
   const legend = useMemo(() => dashboardJobsMapLegend(pins), [pins])
@@ -164,16 +175,31 @@ export function DashboardJobsMapCard({
             >
               {pins.length > 0 ? (
                 <Suspense fallback={<div style={{ padding: '1rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>Loading map…</div>}>
-                  <DashboardJobsMapCanvas
-                    pins={pins}
-                    selectedId={selectedId}
-                    onSelect={setSelectedId}
-                    onOpenJob={openJob}
-                    onDirections={directions}
-                    fitSignal={fitSignal}
-                    height={mapHeight}
-                    isMobile={isMobile}
-                  />
+                  {provider === 'google' ? (
+                    <DashboardJobsMapGoogleCanvas
+                      apiKey={googleMapsBrowserKey()}
+                      onUnavailable={googleUnavailable}
+                      pins={pins}
+                      selectedId={selectedId}
+                      onSelect={setSelectedId}
+                      onOpenJob={openJob}
+                      onDirections={directions}
+                      fitSignal={fitSignal}
+                      height={mapHeight}
+                      isMobile={isMobile}
+                    />
+                  ) : (
+                    <DashboardJobsMapCanvas
+                      pins={pins}
+                      selectedId={selectedId}
+                      onSelect={setSelectedId}
+                      onOpenJob={openJob}
+                      onDirections={directions}
+                      fitSignal={fitSignal}
+                      height={mapHeight}
+                      isMobile={isMobile}
+                    />
+                  )}
                 </Suspense>
               ) : (
                 <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', textAlign: 'center', fontSize: '0.875rem', color: 'var(--text-muted)' }}>

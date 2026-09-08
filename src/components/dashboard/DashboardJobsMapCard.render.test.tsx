@@ -29,6 +29,16 @@ vi.mock('../../utils/errorHandling', () => ({
 }))
 const openExternal = vi.fn()
 vi.mock('../../lib/openInExternalBrowser', () => ({ openInExternalBrowser: (u: string) => openExternal(u) }))
+// The Google canvas (v2.3145) stands in the same way, plus a button that reports the API as unavailable.
+vi.mock('./DashboardJobsMapGoogleCanvas', () => ({
+  default: (p: DashboardJobsMapCanvasProps & { apiKey: string; onUnavailable: (r: string) => void }) => (
+    <div data-testid="google-canvas" data-key={p.apiKey}>
+      <button type="button" onClick={() => p.onUnavailable('load: test')}>
+        google failed
+      </button>
+    </div>
+  ),
+}))
 // The Leaflet canvas is lazy + heavy; stand in with a list of pin buttons that drive the same callbacks.
 vi.mock('./DashboardJobsMapCanvas', () => ({
   default: (p: DashboardJobsMapCanvasProps) => (
@@ -59,6 +69,7 @@ function row(p: Partial<DashboardTeamAssignedJobRow> & { id: string }): Dashboar
 const openJob = vi.fn()
 
 beforeEach(() => {
+  vi.unstubAllEnvs()
   localStorage.clear()
   cacheRows.mockReset()
   cacheRows.mockReturnValue([])
@@ -120,5 +131,27 @@ describe('DashboardJobsMapCard', () => {
     expect(openExternal).toHaveBeenCalledWith('https://www.google.com/maps/search/?api=1&query=1400%20Oak%20Hollow%20Rd')
     fireEvent.click(screen.getByText('Open job'))
     expect(openJob).toHaveBeenCalledWith(expect.objectContaining({ id: 'a' }))
+  })
+
+  it('draws with OpenStreetMap when no Google browser key is configured', async () => {
+    cacheRows.mockReturnValue([{ address_normalized: '1400 oak hollow rd', lat: 30.5, lng: -97.7 }])
+    render(<DashboardJobsMapCard role="dev" assignedJobs={[row({ id: 'a' })]} superintendentJobs={[]} loading={false} isMobile={false} openJobDetailFromDashboardJobRow={openJob} />)
+    await waitFor(() => expect(screen.getByTestId('canvas')).toBeTruthy())
+    expect(screen.queryByTestId('google-canvas')).toBeNull()
+  })
+
+  it('draws with Google Maps when a key is set, and falls back to OpenStreetMap once the API reports it cannot load', async () => {
+    vi.stubEnv('VITE_GOOGLE_MAPS_BROWSER_KEY', 'AIza-test')
+    cacheRows.mockReturnValue([{ address_normalized: '1400 oak hollow rd', lat: 30.5, lng: -97.7 }])
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    render(<DashboardJobsMapCard role="dev" assignedJobs={[row({ id: 'a' })]} superintendentJobs={[]} loading={false} isMobile={false} openJobDetailFromDashboardJobRow={openJob} />)
+    await waitFor(() => expect(screen.getByTestId('google-canvas')).toBeTruthy())
+    expect(screen.getByTestId('google-canvas').getAttribute('data-key')).toBe('AIza-test')
+    expect(screen.queryByTestId('canvas')).toBeNull()
+    fireEvent.click(screen.getByText('google failed'))
+    await waitFor(() => expect(screen.getByTestId('canvas')).toBeTruthy())
+    expect(screen.queryByTestId('google-canvas')).toBeNull()
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining('load: test'))
+    warn.mockRestore()
   })
 })

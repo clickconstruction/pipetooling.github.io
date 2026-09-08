@@ -1869,6 +1869,7 @@ pipetooling.github.io/
 #### `src/lib/supabase.ts`
 - Initializes Supabase client
 - Reads `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` from environment
+- Optional `VITE_GOOGLE_MAPS_BROWSER_KEY` (v2.3145): Maps JavaScript API browser key for the Dashboard **Your jobs on a map** card; unset, rejected, or slow → the card draws with Leaflet + OpenStreetMap
 - Throws error if missing (prevents silent failures)
 - Uses `db: { schema: 'public' }` to avoid RPC schema mismatches (e.g. 404 when PostgREST schema differs)
 

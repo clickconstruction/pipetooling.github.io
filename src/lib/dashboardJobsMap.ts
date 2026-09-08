@@ -189,3 +189,31 @@ function safeStorage(): Storage | null {
     return null
   }
 }
+
+// ── Map provider: Google Maps when a browser key is configured and loads, else OpenStreetMap ──
+
+export type DashboardJobsMapProvider = 'google' | 'osm'
+
+/**
+ * The Maps JavaScript API browser key (referrer-restricted; it ships in the
+ * bundle). Empty / unset → the card draws with Leaflet + OpenStreetMap.
+ */
+export function googleMapsBrowserKey(env: Record<string, unknown> = import.meta.env as unknown as Record<string, unknown>): string {
+  const v = env['VITE_GOOGLE_MAPS_BROWSER_KEY']
+  return typeof v === 'string' ? v.trim() : ''
+}
+
+/**
+ * Which canvas the card mounts. Google only when a key exists AND the API has
+ * not failed this page (a bad key, a blocked referrer, a load timeout, or an
+ * exception inside the Google canvas all flip `googleFailed`); the fallback is
+ * one-way for the session so a broken key never flickers.
+ */
+export function resolveDashboardMapProvider(input: { key: string; googleFailed: boolean }): DashboardJobsMapProvider {
+  return input.key.length > 0 && !input.googleFailed ? 'google' : 'osm'
+}
+
+/** Google's colorScheme for the app's stamped theme (`<html data-theme>`); unknown → light. */
+export function googleColorSchemeForTheme(theme: string | null | undefined): 'DARK' | 'LIGHT' {
+  return theme === 'dark' ? 'DARK' : 'LIGHT'
+}

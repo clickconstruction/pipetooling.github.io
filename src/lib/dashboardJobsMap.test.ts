@@ -153,3 +153,26 @@ describe('hide-map preference', () => {
     expect(() => writeDashboardJobsMapHidden(true, throwing)).not.toThrow()
   })
 })
+
+describe('map provider', () => {
+  it('reads the browser key from the env, trimmed, empty when unset or not a string', async () => {
+    const { googleMapsBrowserKey } = await import('./dashboardJobsMap')
+    expect(googleMapsBrowserKey({})).toBe('')
+    expect(googleMapsBrowserKey({ VITE_GOOGLE_MAPS_BROWSER_KEY: '  AIza-x  ' })).toBe('AIza-x')
+    expect(googleMapsBrowserKey({ VITE_GOOGLE_MAPS_BROWSER_KEY: 42 })).toBe('')
+  })
+
+  it('picks Google only with a key and no failure; OSM otherwise', async () => {
+    const { resolveDashboardMapProvider } = await import('./dashboardJobsMap')
+    expect(resolveDashboardMapProvider({ key: 'k', googleFailed: false })).toBe('google')
+    expect(resolveDashboardMapProvider({ key: 'k', googleFailed: true })).toBe('osm')
+    expect(resolveDashboardMapProvider({ key: '', googleFailed: false })).toBe('osm')
+  })
+
+  it('maps the stamped theme to a Google color scheme', async () => {
+    const { googleColorSchemeForTheme } = await import('./dashboardJobsMap')
+    expect(googleColorSchemeForTheme('dark')).toBe('DARK')
+    expect(googleColorSchemeForTheme('light')).toBe('LIGHT')
+    expect(googleColorSchemeForTheme(null)).toBe('LIGHT')
+  })
+})

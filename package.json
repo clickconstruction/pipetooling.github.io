@@ -47,6 +47,7 @@
     "@tiptap/react": "^3.22.4",
     "@tiptap/starter-kit": "^3.22.4",
     "@turf/turf": "^7.3.5",
+    "@vis.gl/react-google-maps": "^1.10.0",
     "@xyflow/react": "^12.10.2",
     "dagre": "^0.8.5",
     "exceljs": "^4.4.0",
