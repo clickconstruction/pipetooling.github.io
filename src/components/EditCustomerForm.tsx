@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth, type UserRole } from '../hooks/useAuth'
 import { useToastContext } from '../contexts/ToastContext'
@@ -14,39 +14,8 @@ import { formatErrorMessage, withSupabaseRetry } from '../utils/errorHandling'
 import { openInExternalBrowser } from '../lib/openInExternalBrowser'
 import { isAssistantLike } from '../lib/subcontractorLikeRole'
 import { isCustomerArchived } from '../lib/customerArchive'
-import { customerAddressLienReady, type CustomerAddressRow } from '../lib/jobs/lienProperty'
-import CustomerPropertyRecordPanel, { type PropertyRecordDraft } from './customers/CustomerPropertyRecordPanel'
-
-/** Per-row edit draft for an additional address, legal panel included (v2.2614; provenance v2.3004). */
-type AddressDraft = PropertyRecordDraft & {
-  address: string
-  note: string
-}
-
-function addressDraftFromRow(a: CustomerAddressRow): AddressDraft {
-  return {
-    address: a.address,
-    note: a.note ?? '',
-    county: a.county ?? '',
-    county_source: a.county_source ?? '',
-    legal_description: a.legal_description ?? '',
-    property_kind: a.property_kind ?? '',
-    homestead: a.homestead ?? false,
-    owner_mode: a.owner_mode ?? '',
-    owner_name: a.owner_name ?? '',
-    owner_company: a.owner_company ?? '',
-    owner_mailing_address: a.owner_mailing_address ?? '',
-    parcel_id: a.parcel_id ?? '',
-    parcel_source: a.parcel_source ?? '',
-    parcel_tax_year: a.parcel_tax_year ?? '',
-    parcel_looked_up_at: a.parcel_looked_up_at ?? '',
-  }
-}
-
-function addressDraftDirty(d: AddressDraft, a: CustomerAddressRow): boolean {
-  const base = addressDraftFromRow(a)
-  return (Object.keys(base) as (keyof AddressDraft)[]).some((k) => d[k] !== base[k])
-}
+import CustomerContactsSection from './customers/CustomerContactsSection'
+import CustomerPropertiesSection from './customers/CustomerPropertiesSection'
 
 type CustomerRow = Database['public']['Tables']['customers']['Row']
 
@@ -178,197 +147,15 @@ export default function EditCustomerForm({ customerId, onSaved, onCancel, onDele
   const [archivedAt, setArchivedAt] = useState<string | null>(null)
   const [archiveConfirmOpen, setArchiveConfirmOpen] = useState(false)
   const [archiving, setArchiving] = useState(false)
-
-  /** Contacts (customer_contact_persons): the named people at this customer —
-      PM, AP clerk, owner — each with their own email/phone. Saved per row,
-      independent of the form's Save. */
-  const [contacts, setContacts] = useState<Array<{ id: string; name: string; phone: string | null; email: string | null; note: string | null }>>([])
-  const [contactsExpanded, setContactsExpanded] = useState(false)
-  const [contactDrafts, setContactDrafts] = useState<Record<string, { name: string; phone: string; email: string; note: string }>>({})
-  const [newContact, setNewContact] = useState({ name: '', phone: '', email: '', note: '' })
-  const [contactsBusy, setContactsBusy] = useState(false)
-
-  const loadContacts = useCallback(async () => {
-    const { data } = await supabase
-      .from('customer_contact_persons')
-      .select('id, name, phone, email, note')
-      .eq('customer_id', customerId)
-      .order('created_at', { ascending: true })
-    setContacts((data ?? []) as typeof contacts)
-  }, [customerId])
+  // Two columns on a desk, one on a phone (the modal itself is 94vw).
+  const [narrow, setNarrow] = useState<boolean>(() => (typeof window !== 'undefined' ? window.matchMedia('(max-width: 720px)').matches : false))
   useEffect(() => {
-    void loadContacts()
-  }, [loadContacts])
-
-  async function addContact() {
-    if (contactsBusy || !newContact.name.trim()) return
-    setContactsBusy(true)
-    const { error: err } = await supabase.from('customer_contact_persons').insert({
-      customer_id: customerId,
-      name: newContact.name.trim(),
-      phone: newContact.phone.trim() || null,
-      email: newContact.email.trim() || null,
-      note: newContact.note.trim() || null,
-    })
-    setContactsBusy(false)
-    if (err) {
-      showToast(`Failed to add contact: ${err.message}`, 'error')
-      return
-    }
-    setNewContact({ name: '', phone: '', email: '', note: '' })
-    await loadContacts()
-  }
-
-  async function saveContact(id: string) {
-    const d = contactDrafts[id]
-    if (contactsBusy || !d || !d.name.trim()) return
-    setContactsBusy(true)
-    const { error: err } = await supabase
-      .from('customer_contact_persons')
-      .update({ name: d.name.trim(), phone: d.phone.trim() || null, email: d.email.trim() || null, note: d.note.trim() || null })
-      .eq('id', id)
-    setContactsBusy(false)
-    if (err) {
-      showToast(`Failed to save contact: ${err.message}`, 'error')
-      return
-    }
-    setContactDrafts((prev) => {
-      const next = { ...prev }
-      delete next[id]
-      return next
-    })
-    await loadContacts()
-  }
-
-  async function deleteContact(id: string) {
-    if (contactsBusy) return
-    setContactsBusy(true)
-    const { error: err } = await supabase.from('customer_contact_persons').delete().eq('id', id)
-    setContactsBusy(false)
-    if (err) {
-      showToast(`Failed to delete contact: ${err.message}`, 'error')
-      return
-    }
-    await loadContacts()
-  }
-
-  /** Additional addresses (customer_addresses, addresses train PR 2): extras
-      beyond the primary Address field above, each with a note ("rental on
-      Oak St"). Saved per row, independent of the form's Save. Each row also
-      carries the property's LEGAL identity (v2.2614 — county, legal
-      description, kind/homestead, owner of record) behind a per-row
-      "Property legal info" disclosure; lien documents read it via
-      jobs_ledger.customer_address_id. */
-  const [extraAddresses, setExtraAddresses] = useState<CustomerAddressRow[]>([])
-  const [addressesExpanded, setAddressesExpanded] = useState(false)
-  const [addressDrafts, setAddressDrafts] = useState<Record<string, AddressDraft>>({})
-  const [legalExpandedIds, setLegalExpandedIds] = useState<ReadonlySet<string>>(() => new Set())
-  const [newAddress, setNewAddress] = useState({ address: '', note: '' })
-  const [addressesBusy, setAddressesBusy] = useState(false)
-
-  const loadExtraAddresses = useCallback(async () => {
-    const { data } = await supabase
-      .from('customer_addresses')
-      .select('*')
-      .eq('customer_id', customerId)
-      .order('sequence_order', { ascending: true })
-      .order('created_at', { ascending: true })
-    // Primary first (v2.3008); `is_primary` reads soft until the column is pushed.
-    const rows = ((data ?? []) as CustomerAddressRow[]).slice()
-    rows.sort((x, y) => Number(Boolean(y.is_primary)) - Number(Boolean(x.is_primary)))
-    setExtraAddresses(rows)
-  }, [customerId])
-  useEffect(() => {
-    void loadExtraAddresses()
-  }, [loadExtraAddresses])
-
-  async function addExtraAddress() {
-    if (addressesBusy || !newAddress.address.trim()) return
-    setAddressesBusy(true)
-    const { error: err } = await supabase.from('customer_addresses').insert({
-      customer_id: customerId,
-      address: newAddress.address.trim(),
-      note: newAddress.note.trim() || null,
-      sequence_order: extraAddresses.length,
-    })
-    setAddressesBusy(false)
-    if (err) {
-      showToast(`Failed to add address: ${err.message}`, 'error')
-      return
-    }
-    setNewAddress({ address: '', note: '' })
-    await loadExtraAddresses()
-  }
-
-  async function saveExtraAddress(id: string) {
-    const d = addressDrafts[id]
-    if (addressesBusy || !d || !d.address.trim()) return
-    setAddressesBusy(true)
-    const { error: err } = await supabase
-      .from('customer_addresses')
-      .update({
-        address: d.address.trim(),
-        note: d.note.trim() || null,
-        county: d.county.trim(),
-        county_source: d.county.trim() ? d.county_source : '',
-        legal_description: d.legal_description.trim(),
-        property_kind: d.property_kind,
-        homestead: d.homestead,
-        owner_mode: d.owner_mode,
-        owner_name: d.owner_name.trim(),
-        owner_company: d.owner_company.trim(),
-        owner_mailing_address: d.owner_mailing_address.trim(),
-        parcel_id: d.parcel_id.trim(),
-        parcel_source: d.parcel_source.trim(),
-        parcel_tax_year: d.parcel_tax_year.trim(),
-        parcel_looked_up_at: d.parcel_looked_up_at.trim() || null,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', id)
-    setAddressesBusy(false)
-    if (err) {
-      showToast(`Failed to save address: ${err.message}`, 'error')
-      return
-    }
-    setAddressDrafts((prev) => {
-      const next = { ...prev }
-      delete next[id]
-      return next
-    })
-    // The primary row mirrors the form's Address field (v2.3008): keep them in step.
-    if (extraAddresses.find((a) => a.id === id)?.is_primary) setAddress(d.address.trim())
-    await loadExtraAddresses()
-  }
-
-  /** Star a row as the customer's primary property (v2.3008). The trigger demotes the old primary and mirrors customers.address. */
-  async function setPrimaryAddress(a: CustomerAddressRow) {
-    if (addressesBusy || a.is_primary) return
-    setAddressesBusy(true)
-    const { error: err } = await supabase
-      .from('customer_addresses')
-      .update({ is_primary: true, updated_at: new Date().toISOString() })
-      .eq('id', a.id)
-    setAddressesBusy(false)
-    if (err) {
-      showToast(`Could not set the primary address: ${err.message}`, 'error')
-      return
-    }
-    setAddress(a.address)
-    showToast('Primary address updated', 'success')
-    await loadExtraAddresses()
-  }
-
-  async function deleteExtraAddress(id: string) {
-    if (addressesBusy) return
-    setAddressesBusy(true)
-    const { error: err } = await supabase.from('customer_addresses').delete().eq('id', id)
-    setAddressesBusy(false)
-    if (err) {
-      showToast(`Failed to delete address: ${err.message}`, 'error')
-      return
-    }
-    await loadExtraAddresses()
-  }
+    if (typeof window === 'undefined') return
+    const mq = window.matchMedia('(max-width: 720px)')
+    const on = () => setNarrow(mq.matches)
+    mq.addEventListener('change', on)
+    return () => mq.removeEventListener('change', on)
+  }, [])
 
   const [mergeExpanded, setMergeExpanded] = useState(false)
   const [mergeCustomers, setMergeCustomers] = useState<CustomerPickRow[]>([])
@@ -521,7 +308,7 @@ export default function EditCustomerForm({ customerId, onSaved, onCancel, onDele
     setLoading(true)
     const payload: Record<string, unknown> = {
       name: name.trim(),
-      address: address.trim() || null,
+      // customers.address mirrors the ★ property row by trigger (v2.3008); the Properties section owns it.
       contact_info: contactInfoToJson(phone, email),
       customer_type: customerType,
       date_met: dateMet.trim() || null,
@@ -650,7 +437,7 @@ export default function EditCustomerForm({ customerId, onSaved, onCancel, onDele
             border: '1px solid var(--border-strong)',
             color: 'var(--text-700)',
             fontSize: '0.875rem',
-            maxWidth: 400,
+            maxWidth: 720,
             boxSizing: 'border-box',
           }}
         >
@@ -658,7 +445,9 @@ export default function EditCustomerForm({ customerId, onSaved, onCancel, onDele
           new-link pickers. Existing jobs, bids, and estimates are unaffected.
         </p>
       )}
-      <form onSubmit={handleSubmit} style={{ maxWidth: 400 }}>
+      <form onSubmit={handleSubmit}>
+        <div style={{ display: 'grid', gridTemplateColumns: narrow ? '1fr' : 'minmax(0, 260px) minmax(0, 1fr)', gap: narrow ? '1.25rem' : '0 1.75rem', alignItems: 'start' }}>
+          <div>
         <div style={{ marginBottom: '1rem' }}>
           <label htmlFor="edit-name" style={{ display: 'block', marginBottom: 4 }}>
             Name *
@@ -673,19 +462,77 @@ export default function EditCustomerForm({ customerId, onSaved, onCancel, onDele
           />
         </div>
         <div style={{ marginBottom: '1rem' }}>
-          <label htmlFor="edit-address" style={{ display: 'block', marginBottom: 4 }}>
-            Address
+          <label style={{ display: 'block', marginBottom: 4 }}>Customer Type</label>
+          <div style={{ display: 'flex', gap: 0 }}>
+            <button
+              type="button"
+              onClick={() => setCustomerType('residential')}
+              style={{
+                flex: 1,
+                padding: '0.5rem 0.75rem',
+                fontSize: '0.875rem',
+                border: '1px solid var(--border-strong)',
+                borderRadius: '4px 0 0 4px',
+                background: customerType === 'residential' ? '#3b82f6' : 'var(--surface)',
+                color: customerType === 'residential' ? 'white' : 'var(--text-700)',
+                cursor: 'pointer',
+              }}
+            >
+              Residential
+            </button>
+            <button
+              type="button"
+              onClick={() => setCustomerType('commercial')}
+              style={{
+                flex: 1,
+                padding: '0.5rem 0.75rem',
+                fontSize: '0.875rem',
+                border: '1px solid var(--border-strong)',
+                borderRadius: '0 4px 4px 0',
+                background: customerType === 'commercial' ? '#3b82f6' : 'var(--surface)',
+                color: customerType === 'commercial' ? 'white' : 'var(--text-700)',
+                cursor: 'pointer',
+              }}
+            >
+              Commercial
+            </button>
+          </div>
+        </div>
+        <div style={{ marginBottom: '1rem' }}>
+          <label htmlFor="edit-phone" style={{ display: 'block', marginBottom: 4 }}>
+            Phone Number
           </label>
           <input
-            id="edit-address"
-            type="text"
-            value={address}
-            onChange={(e) => setAddress(e.target.value)}
+            id="edit-phone"
+            type="tel"
+            value={phone}
+            onChange={(e) => setPhone(e.target.value)}
             style={{ width: '100%', padding: '0.5rem' }}
           />
-          <p style={{ margin: '0.2rem 0 0', fontSize: '0.75rem', color: 'var(--text-faint)' }}>
-            The primary property. It is also the ★ row under Addresses, where its legal record for lien paperwork lives.
-          </p>
+        </div>
+        <div style={{ marginBottom: '1rem' }}>
+          <label htmlFor="edit-email" style={{ display: 'block', marginBottom: 4 }}>
+            Email
+          </label>
+          <input
+            id="edit-email"
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            style={{ width: '100%', padding: '0.5rem' }}
+          />
+        </div>
+        <div style={{ marginBottom: '1rem' }}>
+          <label htmlFor="edit-dateMet" style={{ display: 'block', marginBottom: 4 }}>
+            Date Met
+          </label>
+          <input
+            id="edit-dateMet"
+            type="date"
+            value={dateMet}
+            onChange={(e) => setDateMet(e.target.value)}
+            style={{ width: '100%', padding: '0.5rem' }}
+          />
         </div>
         <div style={{ marginBottom: '1rem' }}>
           <label htmlFor="edit-customer-folder" style={{ display: 'block', marginBottom: 4, fontWeight: 500, fontSize: '0.875rem' }}>
@@ -740,228 +587,10 @@ export default function EditCustomerForm({ customerId, onSaved, onCancel, onDele
             customer and job folders
           </a>
         </div>
-        <div style={{ marginBottom: '1rem' }}>
-          <label htmlFor="edit-phone" style={{ display: 'block', marginBottom: 4 }}>
-            Phone Number
-          </label>
-          <input
-            id="edit-phone"
-            type="tel"
-            value={phone}
-            onChange={(e) => setPhone(e.target.value)}
-            style={{ width: '100%', padding: '0.5rem' }}
-          />
-        </div>
-        <div style={{ marginBottom: '1rem' }}>
-          <label htmlFor="edit-email" style={{ display: 'block', marginBottom: 4 }}>
-            Email
-          </label>
-          <input
-            id="edit-email"
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            style={{ width: '100%', padding: '0.5rem' }}
-          />
-        </div>
-        <div style={{ marginBottom: '1rem' }}>
-          <button
-            type="button"
-            onClick={() => setContactsExpanded((v) => !v)}
-            aria-expanded={contactsExpanded}
-            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, font: 'inherit', fontWeight: 600, color: 'inherit', display: 'flex', alignItems: 'center', gap: '0.35rem' }}
-          >
-            <span aria-hidden style={{ fontSize: '0.75rem' }}>{contactsExpanded ? '▼' : '▶'}</span>
-            Contacts ({contacts.length})
-          </button>
-          {!contactsExpanded && contacts.length === 0 ? (
-            <p style={{ margin: '0.25rem 0 0', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
-              More than one person at this customer? Add each with their own email and phone — invoices can be sent to them too.
-            </p>
-          ) : null}
-          {contactsExpanded ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem', marginTop: '0.5rem' }}>
-              {contacts.map((c) => {
-                const d = contactDrafts[c.id] ?? { name: c.name, phone: c.phone ?? '', email: c.email ?? '', note: c.note ?? '' }
-                const dirty = d.name !== c.name || d.phone !== (c.phone ?? '') || d.email !== (c.email ?? '') || d.note !== (c.note ?? '')
-                const setD = (patch: Partial<typeof d>) => setContactDrafts((prev) => ({ ...prev, [c.id]: { ...d, ...patch } }))
-                return (
-                  <div key={c.id} style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '0.5rem 0.6rem', display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
-                    <div style={{ display: 'flex', gap: '0.35rem' }}>
-                      <input type="text" value={d.name} onChange={(e) => setD({ name: e.target.value })} placeholder="Name" aria-label="Contact name" style={{ flex: 1, padding: '0.4rem 0.5rem' }} />
-                      <input type="tel" value={d.phone} onChange={(e) => setD({ phone: e.target.value })} placeholder="Phone" aria-label="Contact phone" style={{ flex: 1, padding: '0.4rem 0.5rem' }} />
-                    </div>
-                    <div style={{ display: 'flex', gap: '0.35rem' }}>
-                      <input type="email" value={d.email} onChange={(e) => setD({ email: e.target.value })} placeholder="Email" aria-label="Contact email" style={{ flex: 2, padding: '0.4rem 0.5rem' }} />
-                      <input type="text" value={d.note} onChange={(e) => setD({ note: e.target.value })} placeholder="Role / note (e.g. AP clerk)" aria-label="Contact note" style={{ flex: 1, padding: '0.4rem 0.5rem' }} />
-                    </div>
-                    <div style={{ display: 'flex', gap: '0.35rem', justifyContent: 'flex-end' }}>
-                      {dirty ? (
-                        <button type="button" disabled={contactsBusy || !d.name.trim()} onClick={() => void saveContact(c.id)} style={{ padding: '0.25rem 0.7rem', fontSize: '0.8125rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 600 }}>
-                          Save contact
-                        </button>
-                      ) : null}
-                      <button type="button" disabled={contactsBusy} onClick={() => void deleteContact(c.id)} style={{ padding: '0.25rem 0.7rem', fontSize: '0.8125rem', background: 'none', color: 'var(--text-red-600)', border: '1px solid var(--border)', borderRadius: 4, cursor: 'pointer' }}>
-                        Remove
-                      </button>
-                    </div>
-                  </div>
-                )
-              })}
-              <div style={{ border: '1px dashed var(--border-strong)', borderRadius: 8, padding: '0.5rem 0.6rem', display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
-                <div style={{ display: 'flex', gap: '0.35rem' }}>
-                  <input type="text" value={newContact.name} onChange={(e) => setNewContact({ ...newContact, name: e.target.value })} placeholder="Name" aria-label="New contact name" style={{ flex: 1, padding: '0.4rem 0.5rem' }} />
-                  <input type="tel" value={newContact.phone} onChange={(e) => setNewContact({ ...newContact, phone: e.target.value })} placeholder="Phone" aria-label="New contact phone" style={{ flex: 1, padding: '0.4rem 0.5rem' }} />
-                </div>
-                <div style={{ display: 'flex', gap: '0.35rem' }}>
-                  <input type="email" value={newContact.email} onChange={(e) => setNewContact({ ...newContact, email: e.target.value })} placeholder="Email" aria-label="New contact email" style={{ flex: 2, padding: '0.4rem 0.5rem' }} />
-                  <input type="text" value={newContact.note} onChange={(e) => setNewContact({ ...newContact, note: e.target.value })} placeholder="Role / note" aria-label="New contact note" style={{ flex: 1, padding: '0.4rem 0.5rem' }} />
-                </div>
-                <button type="button" disabled={contactsBusy || !newContact.name.trim()} onClick={() => void addContact()} style={{ alignSelf: 'flex-start', padding: '0.25rem 0.7rem', fontSize: '0.8125rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', color: 'var(--text-muted)', cursor: 'pointer' }}>
-                  + Add contact
-                </button>
-              </div>
-            </div>
-          ) : null}
-        </div>
-        <div style={{ marginBottom: '1rem' }}>
-          <button
-            type="button"
-            onClick={() => setAddressesExpanded((v) => !v)}
-            aria-expanded={addressesExpanded}
-            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, font: 'inherit', fontWeight: 600, color: 'inherit', display: 'flex', alignItems: 'center', gap: '0.35rem' }}
-          >
-            <span aria-hidden style={{ fontSize: '0.75rem' }}>{addressesExpanded ? '▼' : '▶'}</span>
-            Addresses ({extraAddresses.length})
-          </button>
-          {!addressesExpanded && extraAddresses.length === 0 ? (
-            <p style={{ margin: '0.25rem 0 0', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
-              Every property this customer owns, the primary first (★). Add extra addresses with a note ("rental on Oak St", "shop — deliveries in back"); open Property legal info on any of them to find its county, legal description and owner for lien paperwork.
-            </p>
-          ) : null}
-          {addressesExpanded ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem', marginTop: '0.5rem' }}>
-              {extraAddresses.map((a) => {
-                const d = addressDrafts[a.id] ?? addressDraftFromRow(a)
-                const dirty = addressDraftDirty(d, a)
-                const setD = (patch: Partial<AddressDraft>) => setAddressDrafts((prev) => ({ ...prev, [a.id]: { ...d, ...patch } }))
-                const legalOpen = legalExpandedIds.has(a.id)
-                const toggleLegal = () =>
-                  setLegalExpandedIds((prev) => {
-                    const next = new Set(prev)
-                    if (next.has(a.id)) next.delete(a.id)
-                    else next.add(a.id)
-                    return next
-                  })
-                const lienReady = customerAddressLienReady(d)
-                const legalToggleStyle = { background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontSize: '0.8125rem', color: 'var(--text-link)', fontWeight: 600 } as const
-                return (
-                  <div key={a.id} style={{ border: `1px solid ${a.is_primary ? 'var(--border-strong)' : 'var(--border)'}`, borderRadius: 8, padding: '0.5rem 0.6rem', display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
-                    <div style={{ display: 'flex', gap: '0.35rem', alignItems: 'center' }}>
-                      <button
-                        type="button"
-                        onClick={() => void setPrimaryAddress(a)}
-                        disabled={addressesBusy || Boolean(a.is_primary)}
-                        title={a.is_primary ? 'Primary address' : 'Set as the primary address'}
-                        aria-label={a.is_primary ? 'Primary address' : 'Set as the primary address'}
-                        aria-pressed={Boolean(a.is_primary)}
-                        style={{ background: 'none', border: 'none', cursor: a.is_primary ? 'default' : 'pointer', padding: '0 0.1rem', fontSize: '1.05rem', lineHeight: 1, color: a.is_primary ? 'var(--text-amber-700)' : 'var(--border-strong)' }}
-                      >
-                        {a.is_primary ? '★' : '☆'}
-                      </button>
-                      <input type="text" value={d.address} onChange={(e) => setD({ address: e.target.value })} placeholder="Address" aria-label={a.is_primary ? 'Primary address' : 'Additional address'} style={{ padding: '0.4rem 0.5rem', flex: 1 }} />
-                      {a.is_primary ? <span style={{ fontSize: '0.6875rem', fontWeight: 600, color: 'var(--text-muted)', background: 'var(--bg-muted)', borderRadius: 6, padding: '0.1rem 0.45rem' }}>Primary</span> : null}
-                    </div>
-                    <input type="text" value={d.note} onChange={(e) => setD({ note: e.target.value })} placeholder="Note (e.g. rental on Oak St)" aria-label="Address note" style={{ padding: '0.4rem 0.5rem' }} />
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
-                      <button type="button" onClick={toggleLegal} aria-expanded={legalOpen} style={legalToggleStyle}>
-                        {legalOpen ? '▼' : '▶'} Property legal info
-                      </button>
-                      {lienReady ? (
-                        <span style={{ fontSize: '0.6875rem', fontWeight: 700, color: 'var(--text-green-700)', border: '1px solid var(--border-green)', background: 'var(--bg-green-tint)', borderRadius: 6, padding: '0.05rem 0.4rem' }}>
-                          ✓ lien-ready
-                        </span>
-                      ) : !legalOpen ? (
-                        <span style={{ fontSize: '0.6875rem', fontWeight: 600, color: 'var(--text-muted)' }}>
-                          {d.parcel_looked_up_at ? 'lien fields incomplete' : 'not looked up yet'}
-                        </span>
-                      ) : null}
-                    </div>
-                    {legalOpen ? (
-                      <div style={{ borderTop: '1px dashed var(--border)', paddingTop: '0.4rem' }}>
-                        <CustomerPropertyRecordPanel address={d.address} fields={d} onChange={(patch) => setD(patch)} autoLookup />
-                      </div>
-                    ) : null}
-                    <div style={{ display: 'flex', gap: '0.35rem', justifyContent: 'flex-end' }}>
-                      {dirty ? (
-                        <button type="button" disabled={addressesBusy || !d.address.trim()} onClick={() => void saveExtraAddress(a.id)} style={{ padding: '0.25rem 0.7rem', fontSize: '0.8125rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 600 }}>
-                          Save address
-                        </button>
-                      ) : null}
-                      <button type="button" disabled={addressesBusy} onClick={() => void deleteExtraAddress(a.id)} style={{ padding: '0.25rem 0.7rem', fontSize: '0.8125rem', background: 'none', color: 'var(--text-red-600)', border: '1px solid var(--border)', borderRadius: 4, cursor: 'pointer' }}>
-                        Remove
-                      </button>
-                    </div>
-                  </div>
-                )
-              })}
-              <div style={{ border: '1px dashed var(--border-strong)', borderRadius: 8, padding: '0.5rem 0.6rem', display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
-                <input type="text" value={newAddress.address} onChange={(e) => setNewAddress({ ...newAddress, address: e.target.value })} placeholder="Address" aria-label="New additional address" style={{ padding: '0.4rem 0.5rem' }} />
-                <input type="text" value={newAddress.note} onChange={(e) => setNewAddress({ ...newAddress, note: e.target.value })} placeholder="Note (e.g. rental on Oak St)" aria-label="New address note" style={{ padding: '0.4rem 0.5rem' }} />
-                <button type="button" disabled={addressesBusy || !newAddress.address.trim()} onClick={() => void addExtraAddress()} style={{ alignSelf: 'flex-start', padding: '0.25rem 0.7rem', fontSize: '0.8125rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', color: 'var(--text-muted)', cursor: 'pointer' }}>
-                  + Add address
-                </button>
-              </div>
-            </div>
-          ) : null}
-        </div>
-        <div style={{ marginBottom: '1rem' }}>
-          <label htmlFor="edit-dateMet" style={{ display: 'block', marginBottom: 4 }}>
-            Date Met
-          </label>
-          <input
-            id="edit-dateMet"
-            type="date"
-            value={dateMet}
-            onChange={(e) => setDateMet(e.target.value)}
-            style={{ width: '100%', padding: '0.5rem' }}
-          />
-        </div>
-        <div style={{ marginBottom: '1rem' }}>
-          <label style={{ display: 'block', marginBottom: 4 }}>Customer Type</label>
-          <div style={{ display: 'flex', gap: 0 }}>
-            <button
-              type="button"
-              onClick={() => setCustomerType('residential')}
-              style={{
-                flex: 1,
-                padding: '0.5rem 0.75rem',
-                fontSize: '0.875rem',
-                border: '1px solid var(--border-strong)',
-                borderRadius: '4px 0 0 4px',
-                background: customerType === 'residential' ? '#3b82f6' : 'var(--surface)',
-                color: customerType === 'residential' ? 'white' : 'var(--text-700)',
-                cursor: 'pointer',
-              }}
-            >
-              Residential
-            </button>
-            <button
-              type="button"
-              onClick={() => setCustomerType('commercial')}
-              style={{
-                flex: 1,
-                padding: '0.5rem 0.75rem',
-                fontSize: '0.875rem',
-                border: '1px solid var(--border-strong)',
-                borderRadius: '0 4px 4px 0',
-                background: customerType === 'commercial' ? '#3b82f6' : 'var(--surface)',
-                color: customerType === 'commercial' ? 'white' : 'var(--text-700)',
-                cursor: 'pointer',
-              }}
-            >
-              Commercial
-            </button>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', minWidth: 0 }}>
+            <CustomerContactsSection customerId={customerId} />
+            <CustomerPropertiesSection customerId={customerId} onPrimaryAddressChange={setAddress} />
           </div>
         </div>
         {error && <p style={{ color: 'var(--text-red-700)', marginBottom: '1rem' }}>{error}</p>}
@@ -998,6 +627,7 @@ export default function EditCustomerForm({ customerId, onSaved, onCancel, onDele
             >
               Cancel
             </button>
+            <span style={{ fontSize: '0.75rem', color: 'var(--text-faint)', alignSelf: 'center' }}>Contacts and properties save as you go.</span>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
           {showArchiveUi && (

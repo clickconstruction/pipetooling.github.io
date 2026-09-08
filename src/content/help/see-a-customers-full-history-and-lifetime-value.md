@@ -77,10 +77,19 @@ Use {{button:outline|✎ Edit customer}} in the header to change their info, arc
 
 ## Track more than one property
 
-A customer with several properties keeps them all under **Addresses** in {{button:outline|✎ Edit customer}}: the primary first with a ★, then every extra address with its own note ("rental on Oak St", "shop — deliveries in back"). Extras appear on the customer's page next to the primary address as tap-to-map links with the note beside them.
+{{button:outline|✎ Edit customer}} keeps the customer's details on the left and two working lists on the right: **Contacts** (the people — spouse, PM, AP clerk — each with their own phone, email and role) and **Properties** (every address the customer owns).
 
-- Click ☆ on any address to make it the **primary** — the customer's header address, map link and pickers follow, and the old primary stays in the list as an extra.
-- Every address, the primary included, can carry the property's legal record (next section) and be linked to a job for lien paperwork.
+:::example The Properties list
+{{chip:gray|Primary}} ★ 412 Gruene Rd, New Braunfels {{chip:green|✓ lien-ready}} Comal · 4 jobs {{button:outline-blue|Edit}}
+☆ 55 Pecan Ct, San Marcos {{chip:gray|Rental}} {{chip:yellow|not looked up yet}} county unknown · no jobs yet {{button:outline-blue|Edit}}
+3311 Loop 337, New Braunfels — *from this customer's jobs · 2 jobs · not saved as a property* {{button:outline|Add as property}}
+:::
+
+- The **★ primary** is the customer's address everywhere (header, map link, pickers). Click ☆ on any other property to make it the primary; the old one stays in the list.
+- Each row shows the **county**, whether the property is **lien-ready**, and **how many jobs** sit there. {{button:outline|Edit}} opens the property in place — address (with suggestions as you type), a note, and its legal record (next section).
+- **From this customer's jobs**: a job address that is not saved as a property yet appears as a dashed row. {{button:outline|Add as property}} opens it pre-filled and looks the legal record up for you.
+- {{button:outline|+ Add property}} adds a new one; the first property a customer gets becomes the primary automatically. A property with jobs at it cannot be removed until they are moved.
+- Contacts and properties **save as you go** — {{button:blue|Save}} at the bottom covers the details on the left.
 
 ## Find the property's legal record for lien paperwork
 
