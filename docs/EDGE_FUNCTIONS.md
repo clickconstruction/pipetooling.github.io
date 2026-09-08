@@ -1639,7 +1639,7 @@ curl -sS "${SUPABASE_URL}/functions/v1/get-estimate-public-terms" \
 
 ### geocode-address-batch
 
-**Purpose**: Batch geocoding for the **Map** page (**`dev`**, **`master_technician`**, **`assistant`**, **`estimator`** only). Normalizes addresses, reads/writes **`public.address_geocodes`** via the user’s JWT (RLS), and for cache misses: **OpenStreetMap Nominatim** first, then **Google Geocoding API** if **`GOOGLE_MAPS_API_KEY`** is set and Nominatim does not return coordinates (rate-limited **~1.1s** between *Nominatim* request rounds server-side). There is **no** extra inter-address delay before the Google attempt in the same row.
+**Purpose**: Batch geocoding for the **Map** page and the Dashboard **Your jobs on a map** card (v2.3131 — every active app account; before that only **`dev`** / **`master_technician`** / **`assistant`** / **`estimator`**). Normalizes addresses, reads/writes **`public.address_geocodes`** via the user’s JWT (RLS), and for cache misses: **OpenStreetMap Nominatim** first, then **Google Geocoding API** if **`GOOGLE_MAPS_API_KEY`** is set and Nominatim does not return coordinates (rate-limited **~1.1s** between *Nominatim* request rounds server-side). There is **no** extra inter-address delay before the Google attempt in the same row.
 
 **Endpoint**: `POST /functions/v1/geocode-address-batch`
 
@@ -1651,13 +1651,13 @@ curl -sS "${SUPABASE_URL}/functions/v1/get-estimate-public-terms" \
 
 **Secrets**: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, optional **`GOOGLE_MAPS_API_KEY`** (same as [`street-view-preview`](#street-view-preview); enable **Geocoding API** in Google Cloud; key stays on the server). If the key is unset, behavior matches **Nominatim-only** (rows Nominatim cannot resolve are omitted from `results`).
 
-**Gateway**: `verify_jwt = false`; **`auth.getUser()`** + **`users.role` in `('dev','master_technician','assistant','estimator')`** in the function (**403** otherwise).
+**Gateway**: `verify_jwt = false`; **`auth.getUser()`** + a **`users`** row with a `role` and no `archived_at` (v2.3131; was `role in ('dev','master_technician','assistant','estimator')`) — **403** otherwise. Cache reads/upserts run as the caller (RLS: any signed-in user since `20260908035852`); an upsert refused by RLS (**42501**, a read-only training user) is tolerated — the coordinates still return, the cache is just not written.
 
-**Errors**: **401** not signed in; **403** role not allowed for map geocoding; **400** bad body or too many addresses; **500** DB or upsert failure.
+**Errors**: **401** not signed in; **403** no active app account; **400** bad body or too many addresses; **500** DB failure or a non-RLS upsert failure.
 
 **Deploy**: `supabase functions deploy geocode-address-batch`
 
-**Implementation**: [`supabase/functions/geocode-address-batch/index.ts`](../supabase/functions/geocode-address-batch/index.ts) + shared [`supabase/functions/_shared/googleGeocode.ts`](../supabase/functions/_shared/googleGeocode.ts). **Map** page primary load: [`useMapPageData.ts`](../src/hooks/useMapPageData.ts) invokes this in **chunks of up to 20** addresses per request for cache misses (see **geocode-one** for single-address / review flows).
+**Implementation**: [`supabase/functions/geocode-address-batch/index.ts`](../supabase/functions/geocode-address-batch/index.ts) + shared [`supabase/functions/_shared/googleGeocode.ts`](../supabase/functions/_shared/googleGeocode.ts). **Map** page primary load: [`useMapPageData.ts`](../src/hooks/useMapPageData.ts) invokes this in **chunks of up to 20** addresses per request for cache misses (see **geocode-one** for single-address / review flows); the Dashboard card's [`useDashboardJobsMapPins.ts`](../src/hooks/useDashboardJobsMapPins.ts) does the same for the viewer's job addresses (v2.3131).
 
 ---
 
