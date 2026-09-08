@@ -1670,6 +1670,7 @@ export type Database = {
           profit: number | null
           project_id: string | null
           project_name: string | null
+          robot_opt_out: boolean
           robot_requested_at: string | null
           robot_requested_by: string | null
           selected_bid_version_id: string | null
@@ -1740,6 +1741,7 @@ export type Database = {
           profit?: number | null
           project_id?: string | null
           project_name?: string | null
+          robot_opt_out?: boolean
           robot_requested_at?: string | null
           robot_requested_by?: string | null
           selected_bid_version_id?: string | null
@@ -1810,6 +1812,7 @@ export type Database = {
           profit?: number | null
           project_id?: string | null
           project_name?: string | null
+          robot_opt_out?: boolean
           robot_requested_at?: string | null
           robot_requested_by?: string | null
           selected_bid_version_id?: string | null
@@ -19476,6 +19479,7 @@ export type Database = {
           my_last_report_at: string
           project_id: string
           revenue: number
+          status: string
         }[]
       }
       list_supply_house_invoices_for_tally_link: {
