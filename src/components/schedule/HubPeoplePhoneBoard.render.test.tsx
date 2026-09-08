@@ -7,7 +7,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, within } from '@testing-library/react'
 import type { JobScheduleBlockRow } from '../../lib/jobScheduleBlocks'
 import { hubPersonDayKey } from '../../lib/scheduleDispatchHub'
-import { HubPeoplePhoneBoard, type HubPeoplePhoneBoardProps } from './HubPeoplePhoneBoard'
+import { HubPeoplePhoneBoard, PhonePeopleViewSwitch, type HubPeoplePhoneBoardProps } from './HubPeoplePhoneBoard'
 
 function block(id: string, assignee: string, workDate: string, start: string, end: string, extra: Partial<JobScheduleBlockRow> = {}): JobScheduleBlockRow {
   return {
@@ -81,7 +81,6 @@ function baseProps(overrides: Partial<HubPeoplePhoneBoardProps> = {}): HubPeople
     onOpenHubJobDetail: vi.fn(),
     onOpenJob: vi.fn(),
     onDeleteBlock: vi.fn(),
-    onShowDesktopView: vi.fn(),
     onAddJobToScheduleForCell: vi.fn(),
     onCopyBlockToPeople: vi.fn(async () => undefined),
     ...overrides,
@@ -89,7 +88,7 @@ function baseProps(overrides: Partial<HubPeoplePhoneBoardProps> = {}): HubPeople
 }
 
 describe('HubPeoplePhoneBoard (v2.3156)', () => {
-  it('shows the day strip with counts, a card per tech for the selected day, and the bottom switch', () => {
+  it('shows the day strip with counts and a card per tech for the selected day', () => {
     const props = baseProps()
     render(<HubPeoplePhoneBoard {...props} />)
     expect(screen.getByRole('tab', { name: /Tue 8 \(today\): 4 · 2 no note/ })).toBeTruthy()
@@ -99,8 +98,6 @@ describe('HubPeoplePhoneBoard (v2.3156)', () => {
     expect(screen.getAllByRole('button', { name: /Add a job for/ })).toHaveLength(3)
     fireEvent.click(screen.getByRole('button', { name: 'Add a job for Paige' }))
     expect(props.onAddJobToScheduleForCell).toHaveBeenCalledWith('paige', '2026-09-08')
-    fireEvent.click(screen.getByText('▦ Show the desktop view'))
-    expect(props.onShowDesktopView).toHaveBeenCalledTimes(1)
     // switch day
     fireEvent.click(screen.getByRole('tab', { name: /Wed 9/ }))
     expect(screen.getByText('J700 · Later')).toBeTruthy()
@@ -147,5 +144,19 @@ describe('HubPeoplePhoneBoard (v2.3156)', () => {
     expect(apply).toHaveBeenCalledWith('paige')
     fireEvent.click(screen.getAllByRole('button', { name: 'Whole team' })[1]!)
     expect(lane).toHaveBeenCalledWith('Office', ['taunya'])
+  })
+})
+
+describe('PhonePeopleViewSwitch (v2.3156)', () => {
+  it('offers the other rendering, both ways', () => {
+    const onChange = vi.fn()
+    const { rerender } = render(<PhonePeopleViewSwitch view="board" onChange={onChange} />)
+    fireEvent.click(screen.getByRole('button', { name: '▦ Show the desktop view' }))
+    expect(onChange).toHaveBeenCalledWith('grid')
+    expect(screen.getByText(/the week grid, as on a computer/)).toBeTruthy()
+    rerender(<PhonePeopleViewSwitch view="grid" onChange={onChange} />)
+    fireEvent.click(screen.getByRole('button', { name: '📱 Back to the phone view' }))
+    expect(onChange).toHaveBeenCalledWith('board')
+    expect(screen.getByText(/one day at a time, a card per tech/)).toBeTruthy()
   })
 })

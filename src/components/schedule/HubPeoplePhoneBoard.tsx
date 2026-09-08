@@ -17,6 +17,7 @@ import type { LinkedCopyMode } from '../../lib/scheduleDispatchLinkedCopy'
 import { userTimeOffCellKey, type UserTimeOffCellInfo } from '../../lib/userTimeOffByCell'
 import { DISPATCH_MODE_FOOTER_HEIGHT_PX } from '../dispatchMode/DispatchModeFooter'
 import type { ScheduleDispatchCardPlacementMode, ScheduleDispatchCardPlacementVariant } from './ScheduleDispatchGrid'
+import type { PhonePeopleView } from '../../lib/scheduleDispatch/phonePeopleBoard'
 import {
   availabilityLabel,
   buildDayStrip,
@@ -88,8 +89,6 @@ export type HubPeoplePhoneBoardProps = {
   onOpenJob: (jobId: string) => void
   onDeleteBlock: (id: string) => void
   onRequestEditBlockNote?: (b: JobScheduleBlockRow) => void
-  // ---- the bottom switch ----
-  onShowDesktopView: () => void
 }
 
 const BOTTOM_INSET = `calc(${DISPATCH_MODE_FOOTER_HEIGHT_PX}px + env(safe-area-inset-bottom, 0px))`
@@ -530,14 +529,6 @@ export function HubPeoplePhoneBoard(props: HubPeoplePhoneBoardProps) {
         )
       })}
 
-      {/* the bottom switch */}
-      <div style={{ display: 'grid', gap: '0.2rem', textAlign: 'center', padding: '0.8rem 0.5rem 0.3rem', borderTop: '1px solid var(--border)', marginTop: '0.3rem' }}>
-        <button type="button" onClick={props.onShowDesktopView} style={{ ...btn, justifySelf: 'center', flexDirection: 'row', minHeight: 0, padding: '0.5rem 1rem', fontSize: '0.85rem' }}>
-          ▦ Show the desktop view
-        </button>
-        <small style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>the week grid, as on a computer · remembered on this phone</small>
-      </div>
-
       {/* mode bar */}
       {showBar ? (
         <div
@@ -689,6 +680,29 @@ export function HubPeoplePhoneBoard(props: HubPeoplePhoneBoardProps) {
           </div>
         </Sheet>
       ) : null}
+    </div>
+  )
+}
+
+/**
+ * The way to the other rendering — the last thing on the People tab in BOTH
+ * views, so "at the very bottom of the page" stays true whatever else the panel
+ * appends below the board (Expected manpower, subs lanes).
+ */
+export function PhonePeopleViewSwitch({ view, onChange }: { view: PhonePeopleView; onChange: (v: PhonePeopleView) => void }) {
+  const toBoard = view === 'grid'
+  return (
+    <div style={{ display: 'grid', gap: '0.2rem', textAlign: 'center', padding: '0.9rem 0.5rem 0.4rem', borderTop: '1px solid var(--border)', marginTop: '0.5rem' }}>
+      <button
+        type="button"
+        onClick={() => onChange(toBoard ? 'board' : 'grid')}
+        style={{ ...btn, justifySelf: 'center', flexDirection: 'row', minHeight: 0, padding: '0.5rem 1rem', fontSize: '0.85rem' }}
+      >
+        {toBoard ? '📱 Back to the phone view' : '▦ Show the desktop view'}
+      </button>
+      <small style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+        {toBoard ? 'one day at a time, a card per tech' : 'the week grid, as on a computer'} · remembered on this phone
+      </small>
     </div>
   )
 }
