@@ -107,3 +107,19 @@ export function mergePartLinesToTakeoffTemplateItems(
   }
   return merged
 }
+
+/**
+ * Default name for an assembly created via "Save as Assembly" on a count row
+ * (v2.3163, Wendi): `<count name> - <project name>`, so the book entry says which
+ * fixture and which job it came from. Either half may be blank; the join drops it.
+ * Nothing at all → "New assembly".
+ */
+export function saveAsAssemblyDefaultName(
+  fixture: string | null | undefined,
+  projectName: string | null | undefined,
+): string {
+  const parts = [fixture, projectName]
+    .map((s) => (s ?? '').replace(/\s+/g, ' ').trim())
+    .filter((s) => s !== '')
+  return parts.length > 0 ? parts.join(' - ') : 'New assembly'
+}

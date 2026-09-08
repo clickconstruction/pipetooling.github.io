@@ -7,7 +7,7 @@ order: 83
 ---
 When a fixture needs an assembly that doesn't exist yet, you can create one without leaving **Bids → Takeoffs**. Two ways in:
 
-- **Save as Assembly** under any fixture that already has part lines — the new assembly starts pre-loaded with those parts.
+- **Save as Assembly** under any fixture that already has part lines — the new assembly starts pre-loaded with those parts, and its name is filled in as the count name, a dash, and the project name (for example **I-6 - MPH LIVSTE**). Edit it before saving if you want something else.
 - **Add assembly** from a fixture's assembly picker when nothing matches your search.
 
 Both open the same **Add Assembly** form. It also maintains the shared catalog, so anything you create here appears in Materials → Assembly Book too.

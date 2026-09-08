@@ -27,6 +27,7 @@ import {
   normalizeMaterialsModel,
   takeoffFixtureCountLabel,
   mergePartLinesToTakeoffTemplateItems,
+  saveAsAssemblyDefaultName,
   STAGE_LABELS,
   type TakeoffStage,
   MATERIALS_MODEL_CAPTION,
@@ -628,8 +629,7 @@ export function BidsTakeoffTab({
     if (lines.length === 0) return
     const merged = mergePartLinesToTakeoffTemplateItems(lines)
     setTakeoffNewTemplateItems(merged)
-    const fx = (row.fixture ?? '').trim()
-    setTakeoffNewTemplateName(fx ? `${fx} assembly` : 'New assembly')
+    setTakeoffNewTemplateName(saveAsAssemblyDefaultName(row.fixture, selectedBidForTakeoff?.project_name))
     setTakeoffAddTemplateForMappingId(null)
     setSaveAsAssemblyCountRowId(countRowId)
     setTakeoffNewTemplateApplyPriceIndex(null)
