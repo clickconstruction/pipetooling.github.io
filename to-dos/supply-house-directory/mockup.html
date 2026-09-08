@@ -1,0 +1,725 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Supply house directory — mock-up</title>
+<style>
+  :root { color-scheme: light; }
+  body { margin: 0; background: #e7eaee; color: #1a1a1a; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; line-height: 1.5; }
+  a { color: #2563eb; } a:hover { color: #1d4ed8; }
+  table { border-collapse: collapse; width: 100%; }
+  th { font-weight: 700; text-align: left; }
+  header.page { max-width: 1440px; margin: 0 auto; padding: 32px 24px 8px; }
+  header.page h1 { margin: 0 0 6px; font-size: 24px; font-weight: 700; }
+  header.page p { margin: 0; color: #4b5563; max-width: 70ch; }
+  .board { max-width: 1440px; margin: 0 auto; padding: 28px 24px; }
+  .board h2 { margin: 0 0 4px; font-size: 17px; font-weight: 700; }
+  .board .note { margin: 0 0 12px; color: #4b5563; font-size: 14px; max-width: 80ch; }
+  .frame { border: 1px solid #aab2bd; border-radius: 10px; overflow: auto; background: #f0f2f5; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+</style>
+</head>
+<body>
+<header class="page">
+  <h1>Supply house directory — mock-up</h1>
+  <p>Five screens for <code>to-dos/supply-house-directory/</code>. Bracketed values are placeholders. Dollar figures, part counts and dates are sample data, not real rows. Drawn against the app's own tokens from <code>src/index.css</code>.</p>
+</header>
+
+<section class="board">
+  <h2>Estimator · Materials → Supply houses</h2>
+  <p class="note">The new tab. Houses, reps with the starred RFQ default, phone, website, price coverage. One row expanded. No invoices, aging, balances, job accounts or PO Generator.</p>
+  <div class="frame"><div style="width: 1440px; min-height: 900px; background: #f0f2f5; display: flex; flex-direction: column;">
+
+  <!-- Top nav (as the estimator sees it) -->
+  <div style="height: 62px; background: #ffffff; border-bottom: 1px solid #cfd4db; display: flex; align-items: center; justify-content: space-between; padding: 0 24px;">
+    <div style="display: flex; align-items: center; gap: 14px; font-size: 17px; color: #2563eb;">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-8 9 8"></path><path d="M5 10v10h14V10"></path></svg>
+      <span>Estimates</span>
+      <span>Bids</span>
+      <span>Customers</span>
+    </div>
+    <div style="display: flex; align-items: center; gap: 10px;">
+      <div style="width: 36px; height: 34px; border-radius: 6px; background: #0ea5e9; display: flex; align-items: center; justify-content: center;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5l7 8H5z"></path><path d="M5 19h14"></path></svg></div>
+      <div style="width: 36px; height: 34px; border-radius: 6px; background: #a855f7; display: flex; align-items: center; justify-content: center;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4l6 6-9 9H5v-6z"></path></svg></div>
+      <div style="width: 36px; height: 34px; border-radius: 6px; background: #3b82f6; display: flex; align-items: center; justify-content: center;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5 9-10"></path></svg></div>
+      <div style="height: 34px; padding: 0 16px; border-radius: 6px; background: #3b82f6; color: #ffffff; font-weight: 600; font-size: 15px; display: flex; align-items: center;">Bid</div>
+      <div style="width: 22px;"></div>
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1a1a1a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="10" r="4"></circle><path d="M12 13l7 7"></path><path d="M16 17l2-2"></path></svg>
+      <div style="display: flex; flex-direction: column; align-items: center; gap: 3px;"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#1a1a1a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12h16"></path><path d="M6 12V8h4v4"></path><path d="M14 12V6h4v6"></path><path d="M4 12v8h16v-8"></path></svg><div style="width: 22px; height: 2px; background: #1a1a1a;"></div></div>
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1a1a1a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="2"></rect><path d="M8 12l3 3 5-6"></path></svg>
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1a1a1a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="3" width="14" height="18" rx="2"></rect><circle cx="12" cy="10" r="3"></circle><path d="M8 18c1-2 2.5-3 4-3s3 1 4 3"></path></svg>
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1a1a1a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"></path></svg>
+    </div>
+  </div>
+
+  <!-- Page body -->
+  <div style="width: 1336px; margin: 0 auto; padding: 16px 0 40px; display: flex; flex-direction: column; gap: 0;">
+
+    <!-- Page tab strip: the new tab sits at the end, same pill vocabulary -->
+    <div style="display: flex; align-items: center; gap: 0; border-bottom: 1px solid #cfd4db; margin-top: 6px;">
+      <div style="padding: 6px 24px; border-top: 6px solid transparent; border-bottom: 6px solid transparent; border-radius: 6px; color: #6b7280; font-weight: 400; font-size: 15px;">Parts Book</div>
+      <div style="padding: 6px 24px; border-top: 6px solid transparent; border-bottom: 6px solid transparent; border-radius: 6px; color: #6b7280; font-weight: 400; font-size: 15px;">Assembly Book</div>
+      <div style="padding: 6px 24px; border-top: 6px solid transparent; border-bottom: 6px solid transparent; border-radius: 6px; color: #6b7280; font-weight: 400; font-size: 15px;">PO Builder</div>
+      <div style="padding: 6px 24px; border-top: 6px solid transparent; border-bottom: 6px solid transparent; border-radius: 6px; color: #6b7280; font-weight: 400; font-size: 15px;">Purchase Orders</div>
+      <span style="color: #767f8d; padding: 0 2px; position: relative; top: -1px; font-size: 14px;">|</span>
+      <div style="padding: 6px 24px; border-top: 6px solid transparent; border-bottom: 6px solid transparent; border-radius: 6px; background-color: #3b82f6; background-clip: padding-box; color: #ffffff; font-weight: 700; font-size: 15px;">Supply houses</div>
+    </div>
+
+    <!-- Toolbar -->
+    <div style="display: flex; align-items: center; gap: 16px; margin-top: 36px;">
+      <div style="height: 36px; padding: 0 16px; border-radius: 6px; background: #3b82f6; color: #ffffff; font-size: 15px; display: flex; align-items: center; white-space: nowrap;">Add supply house</div>
+      <div style="flex-grow: 1; height: 42px; border: 1px solid #aab2bd; border-radius: 6px; background: #f9fafb; display: flex; align-items: center; padding: 0 12px; color: #767f8d; font-size: 16px;">Search houses, reps or emails…</div>
+      <div style="height: 42px; padding: 0 12px; border: 1px solid #aab2bd; border-radius: 6px; background: #ffffff; display: flex; align-items: center; gap: 10px; color: #1a1a1a; font-size: 16px; white-space: nowrap;">
+        <span>Plumbing houses</span>
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#1a1a1a" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"></path></svg>
+      </div>
+    </div>
+
+    <!-- Directory -->
+    <div style="margin-top: 28px; background: #ffffff; border: 1px solid #cfd4db; border-radius: 8px; overflow: hidden;">
+      <table>
+        <thead>
+          <tr style="background: #f9fafb;">
+            <th style="padding: 12px; border-bottom: 1px solid #cfd4db; width: 34%;">Supply house</th>
+            <th style="padding: 12px; border-bottom: 1px solid #cfd4db; width: 30%;">Reps</th>
+            <th style="padding: 12px; border-bottom: 1px solid #cfd4db;">Phone</th>
+            <th style="padding: 12px; border-bottom: 1px solid #cfd4db;">Prices on file</th>
+            <th style="padding: 12px; border-bottom: 1px solid #cfd4db; text-align: right;">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+
+          <!-- Home Depot -->
+          <tr style="border-bottom: 1px solid #cfd4db;">
+            <td style="padding: 12px; vertical-align: top;">
+              <div style="display: flex; align-items: flex-start; gap: 10px;">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="#1a1a1a" style="margin-top: 6px;"><path d="M7 4l12 8-12 8z"></path></svg>
+                <div style="display: flex; flex-direction: column; gap: 2px;">
+                  <div style="font-weight: 500; font-size: 16px;">Home Depot</div>
+                  <div style="color: #6b7280; font-size: 13px;">[store address]</div>
+                </div>
+              </div>
+            </td>
+            <td style="padding: 12px; vertical-align: top;">
+              <div style="display: flex; flex-direction: column; gap: 4px; font-size: 14px;">
+                <div style="display: flex; align-items: center; gap: 6px;"><svg width="12" height="12" viewBox="0 0 24 24" fill="#f59e0b"><path d="M12 2l2.9 6.6 7.1.7-5.4 4.8 1.6 7L12 17.5 5.8 21.1l1.6-7L2 9.3l7.1-.7z"></path></svg><span>Pro desk</span><span style="color: #6b7280;">· prodesk@[homedepot].com</span></div>
+              </div>
+            </td>
+            <td style="padding: 12px; vertical-align: top; white-space: nowrap; color: #374151;">[phone]</td>
+            <td style="padding: 12px; vertical-align: top;">
+              <div style="display: flex; flex-direction: column; gap: 2px;">
+                <div style="font-size: 14px; font-variant-numeric: tabular-nums;">641 parts priced</div>
+                <div style="color: #6b7280; font-size: 13px;">no quotes sent</div>
+              </div>
+            </td>
+            <td style="padding: 12px; vertical-align: top; text-align: right;">
+              <div style="display: inline-flex; align-items: center; gap: 8px;">
+                <div style="padding: 3px 8px; font-size: 12px; font-weight: 500; color: #2563eb; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 4px; white-space: nowrap;">Open website</div>
+                <div style="padding: 4px 12px; font-size: 14px; border: 1px solid #aab2bd; border-radius: 4px; background: #ffffff; color: #1a1a1a;">Edit</div>
+              </div>
+            </td>
+          </tr>
+
+          <!-- Moore Supply — expanded -->
+          <tr style="background: #f8fafc;">
+            <td style="padding: 12px; vertical-align: top;">
+              <div style="display: flex; align-items: flex-start; gap: 10px;">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="#1a1a1a" style="margin-top: 6px;"><path d="M4 7l8 12 8-12z"></path></svg>
+                <div style="display: flex; flex-direction: column; gap: 2px;">
+                  <div style="font-weight: 500; font-size: 16px;">Moore Supply</div>
+                  <div style="color: #6b7280; font-size: 13px;">[branch address]</div>
+                </div>
+              </div>
+            </td>
+            <td style="padding: 12px; vertical-align: top;">
+              <div style="display: flex; flex-direction: column; gap: 4px; font-size: 14px;">
+                <div style="display: flex; align-items: center; gap: 6px;"><svg width="12" height="12" viewBox="0 0 24 24" fill="#f59e0b"><path d="M12 2l2.9 6.6 7.1.7-5.4 4.8 1.6 7L12 17.5 5.8 21.1l1.6-7L2 9.3l7.1-.7z"></path></svg><span>Quotes desk</span><span style="color: #6b7280;">· quotes@[moore].com</span></div>
+                <div style="display: flex; align-items: center; gap: 6px;"><span style="width: 12px;"></span><span>Outside sales</span><span style="color: #6b7280;">· [rep]@[moore].com</span></div>
+                <div style="display: flex; align-items: center; gap: 6px;"><span style="width: 12px;"></span><span>Counter</span><span style="color: #6b7280;">· counter@[moore].com</span></div>
+              </div>
+            </td>
+            <td style="padding: 12px; vertical-align: top; white-space: nowrap; color: #374151;">[phone]</td>
+            <td style="padding: 12px; vertical-align: top;">
+              <div style="display: flex; flex-direction: column; gap: 2px;">
+                <div style="font-size: 14px; font-variant-numeric: tabular-nums;">312 parts priced</div>
+                <div style="color: #6b7280; font-size: 13px;">last quote 12 days ago</div>
+              </div>
+            </td>
+            <td style="padding: 12px; vertical-align: top; text-align: right;">
+              <div style="display: inline-flex; align-items: center; gap: 8px;">
+                <div style="padding: 3px 8px; font-size: 12px; font-weight: 500; color: #2563eb; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 4px; white-space: nowrap;">Open website</div>
+                <div style="padding: 4px 12px; font-size: 14px; border: 1px solid #aab2bd; border-radius: 4px; background: #ffffff; color: #1a1a1a;">Edit</div>
+              </div>
+            </td>
+          </tr>
+          <tr style="border-bottom: 1px solid #cfd4db;">
+            <td colspan="5" style="padding: 0 12px 16px 46px; background: #f8fafc;">
+              <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px;">
+                <div style="background: #ffffff; border: 1px solid #cfd4db; border-radius: 6px; padding: 12px 14px; display: flex; flex-direction: column; gap: 8px;">
+                  <div style="display: flex; align-items: center; justify-content: space-between;">
+                    <div style="font-weight: 600; font-size: 14px;">Reps</div>
+                    <div style="font-size: 13px; color: #2563eb;">+ Add rep</div>
+                  </div>
+                  <table style="font-size: 14px;">
+                    <thead>
+                      <tr style="color: #6b7280; font-size: 12px;">
+                        <th style="padding: 4px 0; font-weight: 600;">Label</th>
+                        <th style="padding: 4px 0; font-weight: 600;">Name</th>
+                        <th style="padding: 4px 0; font-weight: 600;">Email</th>
+                        <th style="padding: 4px 0; font-weight: 600; text-align: right;">Default</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr style="border-top: 1px solid #e5e7eb;"><td style="padding: 6px 0;">Quotes desk</td><td style="padding: 6px 0; color: #6b7280;">—</td><td style="padding: 6px 0;">quotes@[moore].com</td><td style="padding: 6px 0; text-align: right;"><svg width="14" height="14" viewBox="0 0 24 24" fill="#f59e0b"><path d="M12 2l2.9 6.6 7.1.7-5.4 4.8 1.6 7L12 17.5 5.8 21.1l1.6-7L2 9.3l7.1-.7z"></path></svg></td></tr>
+                      <tr style="border-top: 1px solid #e5e7eb;"><td style="padding: 6px 0;">Outside sales</td><td style="padding: 6px 0;">[rep name]</td><td style="padding: 6px 0;">[rep]@[moore].com</td><td style="padding: 6px 0; text-align: right; color: #d1d5db;">☆</td></tr>
+                      <tr style="border-top: 1px solid #e5e7eb;"><td style="padding: 6px 0;">Counter</td><td style="padding: 6px 0; color: #6b7280;">—</td><td style="padding: 6px 0;">counter@[moore].com</td><td style="padding: 6px 0; text-align: right; color: #d1d5db;">☆</td></tr>
+                    </tbody>
+                  </table>
+                  <div style="color: #6b7280; font-size: 12px;">The default rep is who an RFQ goes to unless you pick someone else.</div>
+                </div>
+                <div style="display: flex; flex-direction: column; gap: 16px;">
+                  <div style="background: #ffffff; border: 1px solid #cfd4db; border-radius: 6px; padding: 12px 14px; display: flex; flex-direction: column; gap: 6px;">
+                    <div style="font-weight: 600; font-size: 14px;">Notes</div>
+                    <div style="font-size: 14px; color: #374151;">[house notes — hours, will-call cutoff, who to call for stock checks]</div>
+                  </div>
+                  <div style="background: #ffffff; border: 1px solid #cfd4db; border-radius: 6px; padding: 12px 14px; display: flex; flex-direction: column; gap: 6px;">
+                    <div style="font-weight: 600; font-size: 14px;">Recent quotes</div>
+                    <div style="display: flex; flex-direction: column; gap: 4px; font-size: 14px;">
+                      <div style="display: flex; justify-content: space-between;"><span>B398 · ZZ Test</span><span style="color: #6b7280;">12 days ago · 41 lines</span></div>
+                      <div style="display: flex; justify-content: space-between;"><span>B391 · [bid name]</span><span style="color: #6b7280;">3 weeks ago · 18 lines</span></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </td>
+          </tr>
+
+          <!-- Reece -->
+          <tr style="border-bottom: 1px solid #cfd4db;">
+            <td style="padding: 12px; vertical-align: top;">
+              <div style="display: flex; align-items: flex-start; gap: 10px;">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="#1a1a1a" style="margin-top: 6px;"><path d="M7 4l12 8-12 8z"></path></svg>
+                <div style="display: flex; flex-direction: column; gap: 2px;">
+                  <div style="font-weight: 500; font-size: 16px;">Reece</div>
+                  <div style="color: #6b7280; font-size: 13px;">[branch address]</div>
+                </div>
+              </div>
+            </td>
+            <td style="padding: 12px; vertical-align: top;">
+              <div style="display: flex; flex-direction: column; gap: 4px; font-size: 14px;">
+                <div style="display: flex; align-items: center; gap: 6px;"><svg width="12" height="12" viewBox="0 0 24 24" fill="#f59e0b"><path d="M12 2l2.9 6.6 7.1.7-5.4 4.8 1.6 7L12 17.5 5.8 21.1l1.6-7L2 9.3l7.1-.7z"></path></svg><span>Inside sales</span><span style="color: #6b7280;">· [rep]@[reece].com</span></div>
+                <div style="display: flex; align-items: center; gap: 6px;"><span style="width: 12px;"></span><span>Branch manager</span><span style="color: #6b7280;">· [rep]@[reece].com</span></div>
+              </div>
+            </td>
+            <td style="padding: 12px; vertical-align: top; white-space: nowrap; color: #374151;">[phone]</td>
+            <td style="padding: 12px; vertical-align: top;">
+              <div style="display: flex; flex-direction: column; gap: 2px;">
+                <div style="font-size: 14px; font-variant-numeric: tabular-nums;">1,204 parts priced</div>
+                <div style="color: #6b7280; font-size: 13px;">last quote 4 days ago</div>
+              </div>
+            </td>
+            <td style="padding: 12px; vertical-align: top; text-align: right;">
+              <div style="display: inline-flex; align-items: center; gap: 8px;">
+                <div style="padding: 3px 8px; font-size: 12px; font-weight: 500; color: #2563eb; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 4px; white-space: nowrap;">Open website</div>
+                <div style="padding: 4px 12px; font-size: 14px; border: 1px solid #aab2bd; border-radius: 4px; background: #ffffff; color: #1a1a1a;">Edit</div>
+              </div>
+            </td>
+          </tr>
+
+          <!-- A house with nothing on file: what "needs a rep" looks like -->
+          <tr>
+            <td style="padding: 12px; vertical-align: top;">
+              <div style="display: flex; align-items: flex-start; gap: 10px;">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="#1a1a1a" style="margin-top: 6px;"><path d="M7 4l12 8-12 8z"></path></svg>
+                <div style="display: flex; flex-direction: column; gap: 2px;">
+                  <div style="font-weight: 500; font-size: 16px;">Winsupply</div>
+                  <div style="color: #6b7280; font-size: 13px;">[branch address]</div>
+                </div>
+              </div>
+            </td>
+            <td style="padding: 12px; vertical-align: top;">
+              <div style="font-size: 14px; color: #b45309;">No rep on file · <span style="color: #2563eb;">add one</span></div>
+            </td>
+            <td style="padding: 12px; vertical-align: top; white-space: nowrap; color: #374151;">[phone]</td>
+            <td style="padding: 12px; vertical-align: top;">
+              <div style="display: flex; flex-direction: column; gap: 2px;">
+                <div style="font-size: 14px; font-variant-numeric: tabular-nums; color: #6b7280;">no prices yet</div>
+              </div>
+            </td>
+            <td style="padding: 12px; vertical-align: top; text-align: right;">
+              <div style="display: inline-flex; align-items: center; gap: 8px;">
+                <div style="padding: 4px 12px; font-size: 14px; border: 1px solid #aab2bd; border-radius: 4px; background: #ffffff; color: #1a1a1a;">Edit</div>
+              </div>
+            </td>
+          </tr>
+
+        </tbody>
+      </table>
+    </div>
+
+    <div style="margin-top: 12px; color: #6b7280; font-size: 13px;">Insurers, rental yards and other vendors the office tracks are not listed here.</div>
+  </div>
+</div></div>
+</section>
+
+<section class="board">
+  <h2>Estimator · phone (390px)</h2>
+  <p class="note">The same directory as cards. Call and email are 44px targets. Reps stay the point of the screen.</p>
+  <div class="frame"><div style="width: 390px; min-height: 844px; background: #f0f2f5; display: flex; flex-direction: column;">
+
+  <!-- Phone chrome: hamburger + icon strip (no fake status bar) -->
+  <div style="height: 56px; background: #fafafa; border-bottom: 1px solid #d8dce2; display: flex; align-items: center; justify-content: space-between; padding: 0 8px 0 4px;">
+    <div style="width: 44px; height: 44px; display: flex; align-items: center; justify-content: center;"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#1a1a1a" stroke-width="2.4" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h16"></path></svg></div>
+    <div style="display: flex; align-items: center; gap: 4px;">
+      <div style="height: 34px; padding: 0 12px; border-radius: 6px; background: #3b82f6; color: #ffffff; font-weight: 600; font-size: 14px; display: flex; align-items: center;">Bid</div>
+      <div style="width: 44px; height: 44px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#1a1a1a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12h16"></path><path d="M6 12V8h4v4"></path><path d="M14 12V6h4v6"></path><path d="M4 12v8h16v-8"></path></svg><div style="width: 22px; height: 2px; background: #1a1a1a;"></div></div>
+      <div style="width: 44px; height: 44px; display: flex; align-items: center; justify-content: center;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1a1a1a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1"></path></svg></div>
+    </div>
+  </div>
+
+  <div style="padding: 12px 12px 24px; display: flex; flex-direction: column; gap: 12px;">
+
+    <!-- Tab strip scrolls sideways; the active pill is in view -->
+    <div style="display: flex; align-items: center; gap: 0; border-bottom: 1px solid #cfd4db; overflow: hidden; white-space: nowrap;">
+      <div style="padding: 6px 14px; border-top: 6px solid transparent; border-bottom: 6px solid transparent; color: #6b7280; font-size: 14px;">Purchase Orders</div>
+      <span style="color: #767f8d; font-size: 14px;">|</span>
+      <div style="padding: 6px 14px; border-top: 6px solid transparent; border-bottom: 6px solid transparent; border-radius: 6px; background-color: #3b82f6; background-clip: padding-box; color: #ffffff; font-weight: 700; font-size: 14px;">Supply houses</div>
+    </div>
+
+    <div style="height: 44px; border: 1px solid #aab2bd; border-radius: 6px; background: #f9fafb; display: flex; align-items: center; padding: 0 12px; color: #767f8d; font-size: 16px;">Search houses or reps…</div>
+
+    <!-- House cards -->
+    <div style="background: #ffffff; border: 1px solid #cfd4db; border-radius: 8px; padding: 12px; display: flex; flex-direction: column; gap: 10px;">
+      <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 8px;">
+        <div style="display: flex; flex-direction: column;">
+          <div style="font-weight: 600; font-size: 16px;">Reece</div>
+          <div style="font-size: 13px; color: #6b7280;">[branch address] · 1,204 parts priced</div>
+        </div>
+        <div style="padding: 3px 8px; font-size: 12px; font-weight: 500; color: #2563eb; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 4px; white-space: nowrap; margin-top: 2px;">Website</div>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 6px;">
+        <div style="display: flex; align-items: center; justify-content: space-between; min-height: 44px; border-top: 1px solid #e5e7eb; padding-top: 6px;">
+          <div style="display: flex; flex-direction: column; min-width: 0;">
+            <div style="display: flex; align-items: center; gap: 6px; font-size: 14px;"><svg width="12" height="12" viewBox="0 0 24 24" fill="#f59e0b"><path d="M12 2l2.9 6.6 7.1.7-5.4 4.8 1.6 7L12 17.5 5.8 21.1l1.6-7L2 9.3l7.1-.7z"></path></svg><span>Inside sales</span><span style="color: #6b7280;">· [rep name]</span></div>
+            <div style="font-size: 13px; color: #6b7280;">[rep]@[reece].com</div>
+          </div>
+          <div style="display: flex; gap: 6px;">
+            <div style="width: 44px; height: 44px; border-radius: 6px; border: 1px solid #aab2bd; background: #ffffff; display: flex; align-items: center; justify-content: center;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#1a1a1a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.4 1.9.7 2.8a2 2 0 0 1-.5 2.1L8 9.9a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.5c.9.3 1.9.6 2.8.7a2 2 0 0 1 1.8 2z"></path></svg></div>
+            <div style="width: 44px; height: 44px; border-radius: 6px; border: 1px solid #aab2bd; background: #ffffff; display: flex; align-items: center; justify-content: center;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#1a1a1a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"></rect><path d="M3 7l9 6 9-6"></path></svg></div>
+          </div>
+        </div>
+        <div style="display: flex; align-items: center; justify-content: space-between; min-height: 44px; border-top: 1px solid #e5e7eb; padding-top: 6px;">
+          <div style="display: flex; flex-direction: column; min-width: 0;">
+            <div style="display: flex; align-items: center; gap: 6px; font-size: 14px;"><span style="width: 12px;"></span><span>Branch manager</span><span style="color: #6b7280;">· [rep name]</span></div>
+            <div style="font-size: 13px; color: #6b7280;">[rep]@[reece].com</div>
+          </div>
+          <div style="display: flex; gap: 6px;">
+            <div style="width: 44px; height: 44px; border-radius: 6px; border: 1px solid #aab2bd; background: #ffffff; display: flex; align-items: center; justify-content: center;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#1a1a1a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.4 1.9.7 2.8a2 2 0 0 1-.5 2.1L8 9.9a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.5c.9.3 1.9.6 2.8.7a2 2 0 0 1 1.8 2z"></path></svg></div>
+            <div style="width: 44px; height: 44px; border-radius: 6px; border: 1px solid #aab2bd; background: #ffffff; display: flex; align-items: center; justify-content: center;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#1a1a1a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"></rect><path d="M3 7l9 6 9-6"></path></svg></div>
+          </div>
+        </div>
+      </div>
+      <div style="display: flex; align-items: center; justify-content: space-between; border-top: 1px solid #e5e7eb; padding-top: 8px; font-size: 14px;">
+        <span style="color: #374151;">Counter · [phone]</span>
+        <span style="color: #2563eb;">+ Add rep</span>
+      </div>
+    </div>
+
+    <div style="background: #ffffff; border: 1px solid #cfd4db; border-radius: 8px; padding: 12px; display: flex; flex-direction: column; gap: 10px;">
+      <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 8px;">
+        <div style="display: flex; flex-direction: column;">
+          <div style="font-weight: 600; font-size: 16px;">Moore Supply</div>
+          <div style="font-size: 13px; color: #6b7280;">[branch address] · 312 parts priced</div>
+        </div>
+        <div style="padding: 3px 8px; font-size: 12px; font-weight: 500; color: #2563eb; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 4px; white-space: nowrap; margin-top: 2px;">Website</div>
+      </div>
+      <div style="display: flex; align-items: center; justify-content: space-between; min-height: 44px; border-top: 1px solid #e5e7eb; padding-top: 6px;">
+        <div style="display: flex; flex-direction: column; min-width: 0;">
+          <div style="display: flex; align-items: center; gap: 6px; font-size: 14px;"><svg width="12" height="12" viewBox="0 0 24 24" fill="#f59e0b"><path d="M12 2l2.9 6.6 7.1.7-5.4 4.8 1.6 7L12 17.5 5.8 21.1l1.6-7L2 9.3l7.1-.7z"></path></svg><span>Quotes desk</span></div>
+          <div style="font-size: 13px; color: #6b7280;">quotes@[moore].com</div>
+        </div>
+        <div style="display: flex; gap: 6px;">
+          <div style="width: 44px; height: 44px; border-radius: 6px; border: 1px solid #aab2bd; background: #ffffff; display: flex; align-items: center; justify-content: center;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#1a1a1a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"></rect><path d="M3 7l9 6 9-6"></path></svg></div>
+        </div>
+      </div>
+      <div style="display: flex; align-items: center; justify-content: space-between; border-top: 1px solid #e5e7eb; padding-top: 8px; font-size: 14px;">
+        <span style="color: #6b7280;">+ 2 more reps</span>
+        <span style="color: #374151;">Counter · [phone]</span>
+      </div>
+    </div>
+
+    <div style="background: #ffffff; border: 1px solid #cfd4db; border-radius: 8px; padding: 12px; display: flex; flex-direction: column; gap: 6px;">
+      <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 8px;">
+        <div style="display: flex; flex-direction: column;">
+          <div style="font-weight: 600; font-size: 16px;">Winsupply</div>
+          <div style="font-size: 13px; color: #6b7280;">[branch address] · no prices yet</div>
+        </div>
+      </div>
+      <div style="display: flex; align-items: center; justify-content: space-between; border-top: 1px solid #e5e7eb; padding-top: 8px; font-size: 14px;">
+        <span style="color: #b45309;">No rep on file</span>
+        <span style="color: #2563eb;">+ Add rep</span>
+      </div>
+    </div>
+
+  </div>
+</div></div>
+</section>
+
+<section class="board">
+  <h2>Office · Supply Houses tab, split</h2>
+  <p class="note">Pane 1 is the shared Directory component — the same one the estimator tab renders alone. Pane 2 is accounts payable, unchanged and office-only.</p>
+  <div class="frame"><div style="width: 1440px; min-height: 1260px; background: #f0f2f5; display: flex; flex-direction: column;">
+
+  <!-- Top nav (office: master / assistant) -->
+  <div style="height: 62px; background: #ffffff; border-bottom: 1px solid #cfd4db; display: flex; align-items: center; justify-content: space-between; padding: 0 24px;">
+    <div style="display: flex; align-items: center; gap: 14px; font-size: 17px; color: #2563eb;">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-8 9 8"></path><path d="M5 10v10h14V10"></path></svg>
+      <span>Customers</span><span>Projects</span><span>People</span><span>Jobs</span><span>Calendar</span><span>Bids</span>
+    </div>
+    <div style="display: flex; align-items: center; gap: 10px;">
+      <div style="height: 34px; padding: 0 16px; border-radius: 6px; background: #3b82f6; color: #ffffff; font-weight: 600; font-size: 15px; display: flex; align-items: center;">Bid</div>
+      <div style="width: 22px;"></div>
+      <div style="display: flex; flex-direction: column; align-items: center; gap: 3px;"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#1a1a1a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12h16"></path><path d="M6 12V8h4v4"></path><path d="M14 12V6h4v6"></path><path d="M4 12v8h16v-8"></path></svg><div style="width: 22px; height: 2px; background: #1a1a1a;"></div></div>
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1a1a1a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1"></path></svg>
+    </div>
+  </div>
+
+  <div style="width: 1336px; margin: 0 auto; padding: 16px 0 40px; display: flex; flex-direction: column;">
+
+    <!-- Office tab strip: all seven -->
+    <div style="display: flex; align-items: center; border-bottom: 1px solid #cfd4db; margin-top: 6px;">
+      <div style="padding: 6px 24px; border-top: 6px solid transparent; border-bottom: 6px solid transparent; color: #6b7280; font-size: 15px;">Parts Book</div>
+      <div style="padding: 6px 24px; border-top: 6px solid transparent; border-bottom: 6px solid transparent; color: #6b7280; font-size: 15px;">Assembly Book</div>
+      <div style="padding: 6px 24px; border-top: 6px solid transparent; border-bottom: 6px solid transparent; color: #6b7280; font-size: 15px;">PO Builder</div>
+      <div style="padding: 6px 24px; border-top: 6px solid transparent; border-bottom: 6px solid transparent; color: #6b7280; font-size: 15px;">Purchase Orders</div>
+      <span style="color: #767f8d; padding: 0 2px; position: relative; top: -1px; font-size: 14px;">|</span>
+      <div style="padding: 6px 24px; border-top: 6px solid transparent; border-bottom: 6px solid transparent; border-radius: 6px; background-color: #3b82f6; background-clip: padding-box; color: #ffffff; font-weight: 700; font-size: 15px;">Supply Houses</div>
+      <div style="padding: 6px 24px; border-top: 6px solid transparent; border-bottom: 6px solid transparent; color: #6b7280; font-size: 15px;">Job Accounts</div>
+      <div style="padding: 6px 24px; border-top: 6px solid transparent; border-bottom: 6px solid transparent; color: #6b7280; font-size: 15px;">PO Generator</div>
+    </div>
+
+    <!-- ===== Pane 1: the shared directory (same component the estimator tab renders) ===== -->
+    <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 32px;">
+      <div style="display: flex; align-items: baseline; gap: 12px;">
+        <h2 style="margin: 0; font-size: 20px; font-weight: 600;">Directory</h2>
+        <span style="font-size: 13px; color: #6b7280;">Houses, reps and websites · the same list estimators see</span>
+      </div>
+      <div style="display: flex; align-items: center; gap: 12px;">
+        <div style="height: 36px; width: 300px; border: 1px solid #aab2bd; border-radius: 6px; background: #f9fafb; display: flex; align-items: center; padding: 0 12px; color: #767f8d; font-size: 15px;">Search houses, reps or emails…</div>
+        <div style="height: 36px; padding: 0 12px; border: 1px solid #aab2bd; border-radius: 6px; background: #ffffff; display: flex; align-items: center; gap: 10px; font-size: 15px; white-space: nowrap;"><span>All vendors</span><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#1a1a1a" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"></path></svg></div>
+        <div style="height: 36px; padding: 0 16px; border-radius: 6px; background: #3b82f6; color: #ffffff; font-size: 15px; display: flex; align-items: center; white-space: nowrap;">Add vendor</div>
+      </div>
+    </div>
+
+    <div style="margin-top: 14px; background: #ffffff; border: 1px solid #cfd4db; border-radius: 8px; overflow: hidden;">
+      <table>
+        <thead>
+          <tr style="background: #f9fafb;">
+            <th style="padding: 12px; border-bottom: 1px solid #cfd4db; width: 30%;">Vendor</th>
+            <th style="padding: 12px; border-bottom: 1px solid #cfd4db; width: 12%;">Kind</th>
+            <th style="padding: 12px; border-bottom: 1px solid #cfd4db; width: 28%;">Reps</th>
+            <th style="padding: 12px; border-bottom: 1px solid #cfd4db;">Phone</th>
+            <th style="padding: 12px; border-bottom: 1px solid #cfd4db;">Prices on file</th>
+            <th style="padding: 12px; border-bottom: 1px solid #cfd4db; text-align: right;">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr style="border-bottom: 1px solid #cfd4db;">
+            <td style="padding: 12px; vertical-align: top;"><div style="font-weight: 500; font-size: 16px;">Home Depot</div><div style="color: #6b7280; font-size: 13px;">[store address]</div></td>
+            <td style="padding: 12px; vertical-align: top;"><span style="font-size: 12px; padding: 2px 8px; border-radius: 999px; background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe;">Supply house</span></td>
+            <td style="padding: 12px; vertical-align: top; font-size: 14px;"><div style="display: flex; align-items: center; gap: 6px;"><svg width="12" height="12" viewBox="0 0 24 24" fill="#f59e0b"><path d="M12 2l2.9 6.6 7.1.7-5.4 4.8 1.6 7L12 17.5 5.8 21.1l1.6-7L2 9.3l7.1-.7z"></path></svg><span>Pro desk</span><span style="color: #6b7280;">· prodesk@[homedepot].com</span></div></td>
+            <td style="padding: 12px; vertical-align: top; white-space: nowrap; color: #374151;">[phone]</td>
+            <td style="padding: 12px; vertical-align: top; font-size: 14px;">641 parts</td>
+            <td style="padding: 12px; vertical-align: top; text-align: right;"><div style="display: inline-flex; gap: 8px;"><div style="padding: 3px 8px; font-size: 12px; font-weight: 500; color: #2563eb; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 4px;">Open website</div><div style="padding: 4px 12px; font-size: 14px; border: 1px solid #aab2bd; border-radius: 4px; background: #ffffff;">Edit</div></div></td>
+          </tr>
+          <tr style="border-bottom: 1px solid #cfd4db;">
+            <td style="padding: 12px; vertical-align: top;"><div style="font-weight: 500; font-size: 16px;">Moore Supply</div><div style="color: #6b7280; font-size: 13px;">[branch address]</div></td>
+            <td style="padding: 12px; vertical-align: top;"><span style="font-size: 12px; padding: 2px 8px; border-radius: 999px; background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe;">Supply house</span></td>
+            <td style="padding: 12px; vertical-align: top; font-size: 14px;"><div style="display: flex; flex-direction: column; gap: 4px;"><div style="display: flex; align-items: center; gap: 6px;"><svg width="12" height="12" viewBox="0 0 24 24" fill="#f59e0b"><path d="M12 2l2.9 6.6 7.1.7-5.4 4.8 1.6 7L12 17.5 5.8 21.1l1.6-7L2 9.3l7.1-.7z"></path></svg><span>Quotes desk</span><span style="color: #6b7280;">· quotes@[moore].com</span></div><div style="color: #6b7280; padding-left: 18px;">+ 2 more</div></div></td>
+            <td style="padding: 12px; vertical-align: top; white-space: nowrap; color: #374151;">[phone]</td>
+            <td style="padding: 12px; vertical-align: top; font-size: 14px;">312 parts</td>
+            <td style="padding: 12px; vertical-align: top; text-align: right;"><div style="display: inline-flex; gap: 8px;"><div style="padding: 3px 8px; font-size: 12px; font-weight: 500; color: #2563eb; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 4px;">Open website</div><div style="padding: 4px 12px; font-size: 14px; border: 1px solid #aab2bd; border-radius: 4px; background: #ffffff;">Edit</div></div></td>
+          </tr>
+          <tr style="border-bottom: 1px solid #cfd4db;">
+            <td style="padding: 12px; vertical-align: top;"><div style="font-weight: 500; font-size: 16px;">Reece</div><div style="color: #6b7280; font-size: 13px;">[branch address]</div></td>
+            <td style="padding: 12px; vertical-align: top;"><span style="font-size: 12px; padding: 2px 8px; border-radius: 999px; background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe;">Supply house</span></td>
+            <td style="padding: 12px; vertical-align: top; font-size: 14px;"><div style="display: flex; flex-direction: column; gap: 4px;"><div style="display: flex; align-items: center; gap: 6px;"><svg width="12" height="12" viewBox="0 0 24 24" fill="#f59e0b"><path d="M12 2l2.9 6.6 7.1.7-5.4 4.8 1.6 7L12 17.5 5.8 21.1l1.6-7L2 9.3l7.1-.7z"></path></svg><span>Inside sales</span><span style="color: #6b7280;">· [rep]@[reece].com</span></div><div style="color: #6b7280; padding-left: 18px;">+ 1 more</div></div></td>
+            <td style="padding: 12px; vertical-align: top; white-space: nowrap; color: #374151;">[phone]</td>
+            <td style="padding: 12px; vertical-align: top; font-size: 14px;">1,204 parts</td>
+            <td style="padding: 12px; vertical-align: top; text-align: right;"><div style="display: inline-flex; gap: 8px;"><div style="padding: 3px 8px; font-size: 12px; font-weight: 500; color: #2563eb; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 4px;">Open website</div><div style="padding: 4px 12px; font-size: 14px; border: 1px solid #aab2bd; border-radius: 4px; background: #ffffff;">Edit</div></div></td>
+          </tr>
+          <tr style="border-bottom: 1px solid #cfd4db;">
+            <td style="padding: 12px; vertical-align: top;"><div style="font-weight: 500; font-size: 16px;">[Insurance carrier]</div><div style="color: #6b7280; font-size: 13px;">[address]</div></td>
+            <td style="padding: 12px; vertical-align: top;"><span style="font-size: 12px; padding: 2px 8px; border-radius: 999px; background: #f3f4f6; color: #374151; border: 1px solid #cfd4db;">Insurer</span></td>
+            <td style="padding: 12px; vertical-align: top; font-size: 14px;"><div style="display: flex; align-items: center; gap: 6px;"><svg width="12" height="12" viewBox="0 0 24 24" fill="#f59e0b"><path d="M12 2l2.9 6.6 7.1.7-5.4 4.8 1.6 7L12 17.5 5.8 21.1l1.6-7L2 9.3l7.1-.7z"></path></svg><span>Agent</span><span style="color: #6b7280;">· [agent]@[carrier].com</span></div></td>
+            <td style="padding: 12px; vertical-align: top; white-space: nowrap; color: #374151;">[phone]</td>
+            <td style="padding: 12px; vertical-align: top; font-size: 14px; color: #6b7280;">—</td>
+            <td style="padding: 12px; vertical-align: top; text-align: right;"><div style="padding: 4px 12px; font-size: 14px; border: 1px solid #aab2bd; border-radius: 4px; background: #ffffff; display: inline-block;">Edit</div></td>
+          </tr>
+          <tr>
+            <td style="padding: 12px; vertical-align: top;"><div style="font-weight: 500; font-size: 16px;">Outside Subcontractors</div><div style="color: #6b7280; font-size: 13px;">Ledger bucket for sub invoices</div></td>
+            <td style="padding: 12px; vertical-align: top;"><span style="font-size: 12px; padding: 2px 8px; border-radius: 999px; background: #f3f4f6; color: #374151; border: 1px solid #cfd4db;">Subcontractor</span></td>
+            <td style="padding: 12px; vertical-align: top; font-size: 14px; color: #6b7280;">—</td>
+            <td style="padding: 12px; vertical-align: top; color: #6b7280;">—</td>
+            <td style="padding: 12px; vertical-align: top; font-size: 14px; color: #6b7280;">—</td>
+            <td style="padding: 12px; vertical-align: top; text-align: right;"><div style="padding: 4px 12px; font-size: 14px; border: 1px solid #aab2bd; border-radius: 4px; background: #ffffff; display: inline-block;">Edit</div></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- ===== Pane 2: accounts payable (office only, unchanged) ===== -->
+    <div style="display: grid; grid-template-columns: 1fr auto 1fr; align-items: start; margin-top: 44px;">
+      <span></span>
+      <div style="font-size: 16px; font-weight: 600; text-align: center;">Supply Houses: $48,212.40</div>
+      <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 4px; justify-self: end; font-size: 14px;">
+        <div style="display: flex; align-items: center; gap: 8px;"><div style="width: 13px; height: 13px; border: 1px solid #767f8d; border-radius: 3px; background: #ffffff;"></div><span>Show paid invoices</span></div>
+        <div style="display: flex; align-items: center; gap: 8px;"><div style="width: 13px; height: 13px; border: 1px solid #767f8d; border-radius: 3px; background: #ffffff;"></div><span>Show last payment</span></div>
+      </div>
+    </div>
+    <p style="margin: 8px 0 0; font-size: 13px; color: #6b7280; text-align: center;">Unpaid dollars by days past due (from invoice due dates). 1 house 60+ past due.</p>
+
+    <div style="margin-top: 12px; background: #ffffff; border: 1px solid #cfd4db; border-radius: 8px; overflow: hidden;">
+      <table>
+        <thead>
+          <tr style="border-bottom: 1px solid #cfd4db;">
+            <th style="padding: 10px 12px;">Supply House</th>
+            <th style="padding: 10px 12px; text-align: right;">Current</th>
+            <th style="padding: 10px 12px; text-align: right;">1–30</th>
+            <th style="padding: 10px 12px; text-align: right;">31–60</th>
+            <th style="padding: 10px 12px; text-align: right;">61–90</th>
+            <th style="padding: 10px 12px; text-align: right;">90+</th>
+            <th style="padding: 10px 12px; text-align: right;">No due date</th>
+            <th style="padding: 10px 12px; text-align: right;">Total</th>
+          </tr>
+        </thead>
+        <tbody style="font-variant-numeric: tabular-nums;">
+          <tr style="border-bottom: 1px solid #cfd4db;"><td style="padding: 10px 12px; font-weight: 500;">Reece</td><td style="padding: 10px 12px; text-align: right; background: #dcfce7; color: #166534;">$12,480.00</td><td style="padding: 10px 12px; text-align: right; background: #fef3c7; color: #854d0e;">$3,912.50</td><td style="padding: 10px 12px; text-align: right; color: #d1d5db;">—</td><td style="padding: 10px 12px; text-align: right; color: #d1d5db;">—</td><td style="padding: 10px 12px; text-align: right; color: #d1d5db;">—</td><td style="padding: 10px 12px; text-align: right; color: #d1d5db;">—</td><td style="padding: 10px 12px; text-align: right; font-weight: 600;">$16,392.50</td></tr>
+          <tr style="border-bottom: 1px solid #cfd4db;"><td style="padding: 10px 12px; font-weight: 500;">Moore Supply</td><td style="padding: 10px 12px; text-align: right; background: #dcfce7; color: #166534;">$8,104.90</td><td style="padding: 10px 12px; text-align: right; color: #d1d5db;">—</td><td style="padding: 10px 12px; text-align: right; background: #fed7aa; color: #9a3412;">$2,215.00</td><td style="padding: 10px 12px; text-align: right; color: #d1d5db;">—</td><td style="padding: 10px 12px; text-align: right; background: #ef4444; color: #ffffff;">$1,900.00</td><td style="padding: 10px 12px; text-align: right; color: #d1d5db;">—</td><td style="padding: 10px 12px; text-align: right; font-weight: 600;">$12,219.90</td></tr>
+          <tr><td style="padding: 10px 12px; font-weight: 500;">Home Depot</td><td style="padding: 10px 12px; text-align: right; background: #dcfce7; color: #166534;">$19,600.00</td><td style="padding: 10px 12px; text-align: right; color: #d1d5db;">—</td><td style="padding: 10px 12px; text-align: right; color: #d1d5db;">—</td><td style="padding: 10px 12px; text-align: right; color: #d1d5db;">—</td><td style="padding: 10px 12px; text-align: right; color: #d1d5db;">—</td><td style="padding: 10px 12px; text-align: right; color: #d1d5db;">—</td><td style="padding: 10px 12px; text-align: right; font-weight: 600;">$19,600.00</td></tr>
+        </tbody>
+        <tfoot>
+          <tr style="border-top: 2px solid #cfd4db; font-weight: 600; font-variant-numeric: tabular-nums;"><td style="padding: 10px 12px;">Total</td><td style="padding: 10px 12px; text-align: right;">$40,184.90</td><td style="padding: 10px 12px; text-align: right;">$3,912.50</td><td style="padding: 10px 12px; text-align: right;">$2,215.00</td><td style="padding: 10px 12px; text-align: right; color: #d1d5db;">—</td><td style="padding: 10px 12px; text-align: right;">$1,900.00</td><td style="padding: 10px 12px; text-align: right; color: #d1d5db;">—</td><td style="padding: 10px 12px; text-align: right;">$48,212.40</td></tr>
+        </tfoot>
+      </table>
+    </div>
+
+    <div style="margin-top: 20px; background: #ffffff; border: 1px solid #cfd4db; border-radius: 8px; overflow: hidden;">
+      <table>
+        <thead>
+          <tr style="border-bottom: 1px solid #cfd4db;">
+            <th style="padding: 12px;">Supply House</th>
+            <th style="padding: 12px; text-align: right;">Outstanding</th>
+            <th style="padding: 12px;">Due</th>
+            <th style="padding: 12px;">Updated</th>
+            <th style="padding: 12px; text-align: right; width: 80px;"></th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr style="border-bottom: 1px solid #cfd4db;"><td style="padding: 12px; font-weight: 500;">Reece</td><td style="padding: 12px; text-align: right; font-weight: 600; font-variant-numeric: tabular-nums;">$16,392.50</td><td style="padding: 12px; color: #6b7280;">Sep 20</td><td style="padding: 12px; color: #6b7280; white-space: nowrap;">2 days ago</td><td style="padding: 12px; text-align: right;"><div style="padding: 4px 12px; font-size: 14px; border: 1px solid #aab2bd; border-radius: 4px; background: #ffffff; display: inline-block;">Open</div></td></tr>
+          <tr style="border-bottom: 1px solid #cfd4db;"><td style="padding: 12px; font-weight: 500;">Moore Supply</td><td style="padding: 12px; text-align: right; font-weight: 600; font-variant-numeric: tabular-nums;">$12,219.90</td><td style="padding: 12px; color: #b91c1c;">overdue</td><td style="padding: 12px; color: #6b7280; white-space: nowrap;">yesterday</td><td style="padding: 12px; text-align: right;"><div style="padding: 4px 12px; font-size: 14px; border: 1px solid #aab2bd; border-radius: 4px; background: #ffffff; display: inline-block;">Open</div></td></tr>
+          <tr><td style="padding: 12px; font-weight: 500;">Home Depot</td><td style="padding: 12px; text-align: right; font-weight: 600; font-variant-numeric: tabular-nums;">$19,600.00</td><td style="padding: 12px; color: #6b7280;">Oct 1</td><td style="padding: 12px; color: #6b7280; white-space: nowrap;">4 weeks ago</td><td style="padding: 12px; text-align: right;"><div style="padding: 4px 12px; font-size: 14px; border: 1px solid #aab2bd; border-radius: 4px; background: #ffffff; display: inline-block;">Open</div></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div></div>
+</section>
+
+<section class="board">
+  <h2>Edit vendor</h2>
+  <p class="note">Kind replaces is_insurer. Trades served is new. Reps are the only home for contacts. Monthly payment date is office-only.</p>
+  <div class="frame"><div style="width: 760px; min-height: 940px; background: rgba(17, 24, 39, 0.5); padding: 40px 0; box-sizing: border-box; display: flex; justify-content: center; align-items: flex-start;">
+  <div style="width: 680px; background: #ffffff; border-radius: 8px; padding: 32px; box-sizing: border-box; display: flex; flex-direction: column; gap: 20px;">
+
+    <div style="display: flex; justify-content: space-between; align-items: center;">
+      <h2 style="margin: 0; font-size: 20px; font-weight: 600;">Edit vendor</h2>
+      <span style="font-size: 24px; color: #6b7280; line-height: 1;">×</span>
+    </div>
+
+    <!-- Identity -->
+    <div style="display: flex; flex-direction: column; gap: 12px;">
+      <div style="display: flex; align-items: center; gap: 12px;">
+        <label style="width: 160px; flex-shrink: 0; font-weight: 500; font-size: 14px; text-align: right;">Name *</label>
+        <div style="flex-grow: 1; height: 36px; border: 1px solid #aab2bd; border-radius: 6px; padding: 0 10px; display: flex; align-items: center; font-size: 15px;">Moore Supply</div>
+      </div>
+      <div style="display: flex; align-items: center; gap: 12px;">
+        <label style="width: 160px; flex-shrink: 0; font-weight: 500; font-size: 14px; text-align: right;">Kind</label>
+        <div style="display: flex; gap: 8px;">
+          <div style="padding: 6px 14px; border-radius: 999px; border: 2px solid #3b82f6; background: #eff6ff; color: #1d4ed8; font-weight: 600; font-size: 14px;">Supply house</div>
+          <div style="padding: 6px 14px; border-radius: 999px; border: 1px solid #aab2bd; background: #ffffff; color: #374151; font-size: 14px;">Insurer</div>
+          <div style="padding: 6px 14px; border-radius: 999px; border: 1px solid #aab2bd; background: #ffffff; color: #374151; font-size: 14px;">Rental yard</div>
+          <div style="padding: 6px 14px; border-radius: 999px; border: 1px solid #aab2bd; background: #ffffff; color: #374151; font-size: 14px;">Subcontractor</div>
+        </div>
+      </div>
+      <div style="display: flex; align-items: flex-start; gap: 12px;">
+        <label style="width: 160px; flex-shrink: 0; font-weight: 500; font-size: 14px; text-align: right; padding-top: 7px;">Trades served</label>
+        <div style="display: flex; flex-direction: column; gap: 6px;">
+          <div style="display: flex; gap: 8px;">
+            <div style="padding: 6px 14px; border-radius: 6px; border: 2px solid #3b82f6; background: #eff6ff; color: #3b82f6; font-weight: 600; font-size: 14px;">Plumbing</div>
+            <div style="padding: 6px 14px; border-radius: 6px; border: 1px solid #aab2bd; background: #ffffff; color: #374151; font-size: 14px;">Electrical</div>
+            <div style="padding: 6px 14px; border-radius: 6px; border: 2px solid #3b82f6; background: #eff6ff; color: #3b82f6; font-weight: 600; font-size: 14px;">HVAC</div>
+          </div>
+          <div style="font-size: 12px; color: #6b7280;">Estimators restricted to a trade only see houses that serve it. Leave all off to show it to everyone.</div>
+        </div>
+      </div>
+      <div style="display: flex; align-items: center; gap: 12px;">
+        <label style="width: 160px; flex-shrink: 0; font-weight: 500; font-size: 14px; text-align: right;">Main phone</label>
+        <div style="flex-grow: 1; height: 36px; border: 1px solid #aab2bd; border-radius: 6px; padding: 0 10px; display: flex; align-items: center; font-size: 15px; color: #6b7280;">[phone]</div>
+      </div>
+      <div style="display: flex; align-items: flex-start; gap: 12px;">
+        <label style="width: 160px; flex-shrink: 0; font-weight: 500; font-size: 14px; text-align: right; padding-top: 7px;">Address</label>
+        <div style="flex-grow: 1; height: 58px; border: 1px solid #aab2bd; border-radius: 6px; padding: 6px 10px; font-size: 15px; color: #6b7280;">[branch address]</div>
+      </div>
+      <div style="display: flex; align-items: center; gap: 12px;">
+        <label style="width: 160px; flex-shrink: 0; font-weight: 500; font-size: 14px; text-align: right;">Website / order portal</label>
+        <div style="flex-grow: 1; height: 36px; border: 1px solid #aab2bd; border-radius: 6px; padding: 0 10px; display: flex; align-items: center; font-size: 15px; color: #767f8d;">https://…</div>
+      </div>
+      <div style="display: flex; align-items: flex-start; gap: 12px;">
+        <label style="width: 160px; flex-shrink: 0; font-weight: 500; font-size: 14px; text-align: right; padding-top: 7px;">Notes</label>
+        <div style="flex-grow: 1; height: 58px; border: 1px solid #aab2bd; border-radius: 6px; padding: 6px 10px; font-size: 15px; color: #6b7280;">[hours, will-call cutoff, who to call for stock checks]</div>
+      </div>
+    </div>
+
+    <!-- Reps: the only home for contacts -->
+    <div style="border-top: 1px solid #cfd4db; padding-top: 16px; display: flex; flex-direction: column; gap: 10px;">
+      <div style="display: flex; justify-content: space-between; align-items: baseline;">
+        <div style="font-weight: 600; font-size: 15px;">Reps</div>
+        <div style="font-size: 13px; color: #6b7280;">The starred rep is who a price request goes to by default.</div>
+      </div>
+      <table style="font-size: 14px;">
+        <thead>
+          <tr style="color: #6b7280; font-size: 12px;">
+            <th style="padding: 4px 0; text-align: left; font-weight: 600;">Label</th>
+            <th style="padding: 4px 0; text-align: left; font-weight: 600;">Name</th>
+            <th style="padding: 4px 0; text-align: left; font-weight: 600;">Email</th>
+            <th style="padding: 4px 0; text-align: center; font-weight: 600; width: 60px;">Default</th>
+            <th style="padding: 4px 0; width: 60px;"></th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr style="border-top: 1px solid #e5e7eb;"><td style="padding: 7px 0;">Quotes desk</td><td style="padding: 7px 0; color: #6b7280;">—</td><td style="padding: 7px 0;">quotes@[moore].com</td><td style="padding: 7px 0; text-align: center;"><svg width="14" height="14" viewBox="0 0 24 24" fill="#f59e0b"><path d="M12 2l2.9 6.6 7.1.7-5.4 4.8 1.6 7L12 17.5 5.8 21.1l1.6-7L2 9.3l7.1-.7z"></path></svg></td><td style="padding: 7px 0; text-align: right; color: #6b7280; font-size: 13px;">Archive</td></tr>
+          <tr style="border-top: 1px solid #e5e7eb;"><td style="padding: 7px 0;">Outside sales</td><td style="padding: 7px 0;">[rep name]</td><td style="padding: 7px 0;">[rep]@[moore].com</td><td style="padding: 7px 0; text-align: center; color: #d1d5db;">☆</td><td style="padding: 7px 0; text-align: right; color: #6b7280; font-size: 13px;">Archive</td></tr>
+          <tr style="border-top: 1px solid #e5e7eb;"><td style="padding: 7px 0;">Counter</td><td style="padding: 7px 0; color: #6b7280;">—</td><td style="padding: 7px 0;">counter@[moore].com</td><td style="padding: 7px 0; text-align: center; color: #d1d5db;">☆</td><td style="padding: 7px 0; text-align: right; color: #6b7280; font-size: 13px;">Archive</td></tr>
+          <tr style="border-top: 1px solid #e5e7eb; background: #f9fafb;">
+            <td style="padding: 6px 4px 6px 0;"><div style="height: 32px; border: 1px solid #aab2bd; border-radius: 6px; padding: 0 8px; display: flex; align-items: center; color: #767f8d; font-size: 13px;">Label</div></td>
+            <td style="padding: 6px 4px;"><div style="height: 32px; border: 1px solid #aab2bd; border-radius: 6px; padding: 0 8px; display: flex; align-items: center; color: #767f8d; font-size: 13px;">Name</div></td>
+            <td style="padding: 6px 4px;"><div style="height: 32px; border: 1px solid #aab2bd; border-radius: 6px; padding: 0 8px; display: flex; align-items: center; color: #767f8d; font-size: 13px;">Email</div></td>
+            <td colspan="2" style="padding: 6px 0 6px 4px; text-align: right;"><div style="display: inline-block; height: 32px; padding: 0 12px; border-radius: 6px; background: #3b82f6; color: #ffffff; font-size: 13px; line-height: 32px;">Add rep</div></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Office-only -->
+    <div style="border-top: 1px solid #cfd4db; padding-top: 16px; display: flex; flex-direction: column; gap: 12px;">
+      <div style="display: flex; align-items: baseline; gap: 8px;">
+        <div style="font-weight: 600; font-size: 15px;">Office</div>
+        <span style="font-size: 12px; padding: 1px 8px; border-radius: 999px; background: #f3f4f6; color: #374151; border: 1px solid #cfd4db;">not shown to estimators</span>
+      </div>
+      <div style="display: flex; align-items: center; gap: 12px;">
+        <label style="width: 160px; flex-shrink: 0; font-weight: 500; font-size: 14px; text-align: right;">Monthly payment date</label>
+        <div style="width: 220px; height: 36px; border: 1px solid #aab2bd; border-radius: 6px; padding: 0 10px; display: flex; align-items: center; font-size: 15px; color: #767f8d;">Day of month (1–31)</div>
+      </div>
+    </div>
+
+    <div style="display: flex; justify-content: flex-end; gap: 10px; padding-top: 4px;">
+      <div style="height: 38px; padding: 0 16px; border-radius: 6px; border: 1px solid #aab2bd; background: #ffffff; font-size: 15px; display: flex; align-items: center;">Cancel</div>
+      <div style="height: 38px; padding: 0 16px; border-radius: 6px; background: #3b82f6; color: #ffffff; font-size: 15px; display: flex; align-items: center;">Save</div>
+    </div>
+  </div>
+</div></div>
+</section>
+
+<section class="board">
+  <h2>Bids · Send price requests</h2>
+  <p class="note">Filtered by Kind and the bid trade. Chips cycle Off → CC → To as today. A house with no rep takes a typed email and remembers it.</p>
+  <div class="frame"><div style="width: 840px; min-height: 720px; background: rgba(0, 0, 0, 0.45); padding: 40px 0; box-sizing: border-box; display: flex; justify-content: center; align-items: flex-start;">
+  <div style="width: 760px; background: #ffffff; border-radius: 8px; box-shadow: 0 10px 40px rgba(0,0,0,0.2); padding: 18px 20px 14px; box-sizing: border-box; display: flex; flex-direction: column; gap: 14px;">
+
+    <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 8px;">
+      <div>
+        <h2 style="margin: 0; font-size: 18px; font-weight: 600; color: #111827;">Send price requests</h2>
+        <p style="margin: 2px 0 0; font-size: 13px; color: #6b7280;">B398 · ZZ Test · 41 items, scoped on the Supply house list. Each house gets its own email and its own link.</p>
+      </div>
+      <span style="font-size: 18px; color: #6b7280; line-height: 1;">✕</span>
+    </div>
+
+    <div style="display: flex; align-items: center; gap: 12px;">
+      <div style="width: 224px; height: 34px; border: 1px solid #aab2bd; border-radius: 6px; padding: 0 10px; display: flex; align-items: center; font-size: 14px; color: #767f8d;">find a supply house…</div>
+      <span style="font-size: 13px; color: #6b7280;">Plumbing supply houses · 3 vendors hidden</span>
+      <span style="font-size: 13px; color: #2563eb;">show all</span>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 6px;">
+
+      <!-- Reece: picked, To + CC -->
+      <div style="display: flex; flex-direction: column; gap: 6px; border: 1px solid #cfd4db; border-radius: 8px; padding: 7px 11px; background: #eff6ff;">
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <div style="width: 14px; height: 14px; border-radius: 3px; background: #2563eb; display: flex; align-items: center; justify-content: center;"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5 9-10"></path></svg></div>
+          <span style="font-weight: 600; color: #111827; font-size: 14px;">Reece</span>
+          <span style="font-size: 12px; color: #6b7280;">2 reps · quoted 4 days ago</span>
+        </div>
+        <div style="display: flex; gap: 6px; flex-wrap: wrap; align-items: center; padding-left: 26px;">
+          <div style="padding: 3px 10px; border-radius: 999px; border: 1px solid #2563eb; background: #2563eb; color: #ffffff; font-size: 12px;">To · Inside sales</div>
+          <div style="padding: 3px 10px; border-radius: 999px; border: 1px solid #aab2bd; background: #f3f4f6; color: #111827; font-size: 12px;">CC · Branch manager</div>
+          <div style="width: 160px; height: 26px; border: 1px solid #aab2bd; border-radius: 6px; padding: 0 8px; display: flex; align-items: center; font-size: 12px; color: #767f8d;">CC someone else…</div>
+        </div>
+      </div>
+
+      <!-- Moore: picked, default To -->
+      <div style="display: flex; flex-direction: column; gap: 6px; border: 1px solid #cfd4db; border-radius: 8px; padding: 7px 11px; background: #eff6ff;">
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <div style="width: 14px; height: 14px; border-radius: 3px; background: #2563eb; display: flex; align-items: center; justify-content: center;"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5 9-10"></path></svg></div>
+          <span style="font-weight: 600; color: #111827; font-size: 14px;">Moore Supply</span>
+          <span style="font-size: 12px; color: #6b7280;">3 reps · quoted 12 days ago</span>
+        </div>
+        <div style="display: flex; gap: 6px; flex-wrap: wrap; align-items: center; padding-left: 26px;">
+          <div style="padding: 3px 10px; border-radius: 999px; border: 1px solid #2563eb; background: #2563eb; color: #ffffff; font-size: 12px;">To · Quotes desk</div>
+          <div style="padding: 3px 10px; border-radius: 999px; border: 1px dashed #aab2bd; background: transparent; color: #767f8d; font-size: 12px;">Outside sales</div>
+          <div style="padding: 3px 10px; border-radius: 999px; border: 1px dashed #aab2bd; background: transparent; color: #767f8d; font-size: 12px;">Counter</div>
+          <div style="width: 160px; height: 26px; border: 1px solid #aab2bd; border-radius: 6px; padding: 0 8px; display: flex; align-items: center; font-size: 12px; color: #767f8d;">CC someone else…</div>
+        </div>
+      </div>
+
+      <!-- Home Depot: not picked -->
+      <div style="display: flex; flex-direction: column; gap: 6px; border: 1px solid #cfd4db; border-radius: 8px; padding: 7px 11px; background: #ffffff;">
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <div style="width: 14px; height: 14px; border-radius: 3px; border: 1px solid #767f8d; background: #ffffff;"></div>
+          <span style="font-weight: 600; color: #111827; font-size: 14px;">Home Depot</span>
+          <span style="font-size: 12px; color: #6b7280;">1 rep · never quoted</span>
+        </div>
+      </div>
+
+      <!-- Winsupply: no rep, the ask-here path -->
+      <div style="display: flex; flex-direction: column; gap: 6px; border: 1px solid #f59e0b; border-radius: 8px; padding: 7px 11px; background: #ffffff;">
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <div style="width: 14px; height: 14px; border-radius: 3px; background: #2563eb; display: flex; align-items: center; justify-content: center;"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5 9-10"></path></svg></div>
+          <span style="font-weight: 600; color: #111827; font-size: 14px;">Winsupply</span>
+          <span style="font-size: 12px; color: #b45309;">no reps yet</span>
+        </div>
+        <div style="display: flex; gap: 8px; flex-wrap: wrap; align-items: center; padding-left: 26px;">
+          <div style="width: 220px; height: 26px; border: 1px solid #aab2bd; border-radius: 6px; padding: 0 8px; display: flex; align-items: center; font-size: 12px; color: #767f8d;">add an email…</div>
+          <div style="display: flex; align-items: center; gap: 5px; font-size: 12px; color: #6b7280;"><div style="width: 12px; height: 12px; border-radius: 3px; background: #2563eb; display: flex; align-items: center; justify-content: center;"><svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5 9-10"></path></svg></div><span>remember as Winsupply’s rep</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
+      <div style="display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: #6b7280;"><span>needed by</span><div style="width: 130px; height: 30px; border: 1px solid #aab2bd; border-radius: 6px; padding: 0 8px; display: flex; align-items: center; font-size: 13px; color: #374151;">Sep 12, 2026</div></div>
+      <div style="flex-grow: 1; height: 30px; border: 1px solid #aab2bd; border-radius: 6px; padding: 0 8px; display: flex; align-items: center; font-size: 13px; color: #767f8d;">note to vendors (optional) — e.g. bid due Friday, even a partial list helps</div>
+    </div>
+
+    <div style="display: flex; justify-content: space-between; align-items: center; padding-top: 4px;">
+      <span style="font-size: 13px; color: #6b7280;">3 houses · 3 emails</span>
+      <div style="display: flex; gap: 10px;">
+        <div style="height: 34px; padding: 0 14px; border-radius: 6px; border: 1px solid #aab2bd; background: #ffffff; font-size: 14px; display: flex; align-items: center;">Preview</div>
+        <div style="height: 34px; padding: 0 14px; border-radius: 6px; background: #3b82f6; color: #ffffff; font-size: 14px; display: flex; align-items: center;">Send 3 requests</div>
+      </div>
+    </div>
+  </div>
+</div></div>
+</section>
+
+</body>
+</html>
