@@ -5,8 +5,9 @@
  *
  * Which jobs: the Dashboard's own lists — team-assigned jobs (every role,
  * `list_assigned_jobs_for_dashboard`, already waiting/working) plus a
- * superintendent's project jobs (`list_superintendent_jobs_for_dashboard`, no
- * status column, so a row is kept unless its status says it left the field).
+ * superintendent's assigned-project jobs (`list_superintendent_jobs_for_dashboard`,
+ * waiting/working with a status column since v2.3144; a row without one is kept
+ * as waiting unless its status says it left the field).
  * A job on both lists shows once. Nothing here widens what RLS returned.
  */
 import type { DashboardTeamAssignedJobRow } from './dashboardTeamAssignedJobRow'
