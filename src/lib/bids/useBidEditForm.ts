@@ -46,6 +46,8 @@ export type BidEditFormValues = {
   notes: string
   gcCustomerId: string
   gcCustomerSearch: string
+  /** "Don't let robots shadow this bid" (v2.3142, bids.robot_opt_out). */
+  robotOptOut: boolean
 }
 
 export type BidEditFormSetters = {
@@ -81,6 +83,7 @@ export type BidEditFormSetters = {
   setNotes: Dispatch<SetStateAction<string>>
   setGcCustomerId: Dispatch<SetStateAction<string>>
   setGcCustomerSearch: Dispatch<SetStateAction<string>>
+  setRobotOptOut: Dispatch<SetStateAction<boolean>>
 }
 
 export type BidEditFormResetOptions = {
@@ -164,6 +167,7 @@ export function bidRowToFormValues(bid: BidWithBuilder, opts: BidEditFormLoadOpt
     distanceFromOffice: bid.distance_from_office ?? '',
     lastContact: toDatetimeLocal(bid.last_contact),
     notes: bid.notes ?? '',
+    robotOptOut: (bid as { robot_opt_out?: boolean | null }).robot_opt_out === true,
   }
 }
 
@@ -207,6 +211,7 @@ export function useBidEditForm(): BidEditForm {
   const [notes, setNotes] = useState('')
   const [gcCustomerId, setGcCustomerId] = useState('')
   const [gcCustomerSearch, setGcCustomerSearch] = useState('')
+  const [robotOptOut, setRobotOptOut] = useState(false)
   const [initialValues, setInitialValues] = useState<BidEditFormValues | null>(null)
 
   const reset = useCallback((opts: BidEditFormResetOptions) => {
@@ -241,6 +246,7 @@ export function useBidEditForm(): BidEditForm {
     setDistanceFromOffice('')
     setLastContact('')
     setNotes('')
+    setRobotOptOut(false)
     setFormServiceTypeId(opts.serviceTypeId)
     setProjectContactExpanded(true)
   }, [])
@@ -277,6 +283,7 @@ export function useBidEditForm(): BidEditForm {
     setDistanceFromOffice(v.distanceFromOffice)
     setLastContact(v.lastContact)
     setNotes(v.notes)
+    setRobotOptOut(v.robotOptOut)
     setFormServiceTypeId(v.formServiceTypeId)
     setProjectContactExpanded(v.projectContactExpanded)
     setInitialValues(v)
@@ -327,6 +334,7 @@ export function useBidEditForm(): BidEditForm {
     notes,
     gcCustomerId,
     gcCustomerSearch,
+    robotOptOut,
   }
 
   const setters: BidEditFormSetters = {
@@ -362,6 +370,7 @@ export function useBidEditForm(): BidEditForm {
     setNotes,
     setGcCustomerId,
     setGcCustomerSearch,
+    setRobotOptOut,
   }
 
   return { values, setters, reset, loadFromBid, initialValues, markSaved, missingFields, canSubmit }

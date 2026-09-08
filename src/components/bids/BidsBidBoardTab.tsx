@@ -523,8 +523,23 @@ export function BidsBidBoardTab({
     // intake service account cannot read the file behind plans_link, so no
     // shadow can open on this bid until a human repairs the link. Read through
     // a cast: the column may be ahead of the generated types.
-    const probe = bid as unknown as { plans_robot_readable?: boolean | null; plans_robot_probe_note?: string | null }
+    const probe = bid as unknown as { plans_robot_readable?: boolean | null; plans_robot_probe_note?: string | null; robot_opt_out?: boolean | null }
     const plansUnreadable = probe.plans_robot_readable === false
+    // v2.3142: the estimator opted this bid out on the form — a deliberate exception,
+    // shown muted so it never reads as a coverage gap. Click still opens the readiness view.
+    if (probe.robot_opt_out === true) {
+      return (
+        <button
+          type="button"
+          onClick={() => robotReadiness.onOpenReadiness(bid)}
+          title="Robots won’t shadow this bid — opted out on the bid form (untick “Don’t let robots shadow this bid” to put it back)"
+          aria-label={`Robots opted out — ${bid.project_name ?? 'bid'}`}
+          style={{ ...actionStyle, color: 'var(--text-faint)', opacity: 0.6 }}
+        >
+          <BidBoardIcon d={BID_BOARD_ICON_PATHS.robot} size={18} />
+        </button>
+      )
+    }
     const title = plansUnreadable
       ? `Plans not readable by robots — ${probe.plans_robot_probe_note ?? 'the intake service account cannot read this file'}. Share the file with the service account or link the PDF itself.${requested ? ' (Robot bid requested — click to withdraw)' : ''}`
       : requested

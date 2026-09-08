@@ -1969,6 +1969,7 @@ async function callTool(req: Request, name: string, args: Record<string, unknown
           .is('bid_date_sent', null)
           .not('plans_link', 'is', null)
           .eq('service_type_id', plumbingId)
+          .eq('robot_opt_out', false)
           .gte('created_at', since)
           .not('project_name', 'ilike', 'ZZ %')
           .order('created_at', { ascending: false })
@@ -1979,6 +1980,7 @@ async function callTool(req: Request, name: string, args: Record<string, unknown
           .is('bid_date_sent', null)
           .not('plans_link', 'is', null)
           .eq('service_type_id', plumbingId)
+          .eq('robot_opt_out', false)
           .not('robot_requested_at', 'is', null)
           .not('project_name', 'ilike', 'ZZ %')
           .order('robot_requested_at', { ascending: true })
@@ -2019,7 +2021,7 @@ async function callTool(req: Request, name: string, args: Record<string, unknown
       // Coverage (v2.2936, LEARNING_PLAN.md lever 2): how much of the live board is
       // shadowed, windowless — the number the auto-shadow program drives to 100%.
       const { data: allLive } = await admin.from('bids').select('id, plans_robot_readable')
-        .is('bid_date_sent', null).not('plans_link', 'is', null).eq('service_type_id', plumbingId).not('project_name', 'ilike', 'ZZ %').limit(1000)
+        .is('bid_date_sent', null).not('plans_link', 'is', null).eq('service_type_id', plumbingId).eq('robot_opt_out', false).not('project_name', 'ilike', 'ZZ %').limit(1000)
       const liveRows = (allLive ?? []) as Array<{ id: string; plans_robot_readable: boolean | null }>
       const liveIds = liveRows.map((b) => b.id)
       const shadowedLive = liveIds.filter((id) => taken.has(id)).length
@@ -2043,7 +2045,7 @@ async function callTool(req: Request, name: string, args: Record<string, unknown
       const ref = String(args.reference_bid ?? '').trim()
       if (!ref) return textContent('Missing reference_bid', true)
       const uuidRe = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
-      let rq = admin.from('bids').select('id, bid_number, project_name, address, customer_id, service_type_id, distance_from_office, plans_link, gc_builder_id, bid_due_date, bid_date_sent')
+      let rq = admin.from('bids').select('id, bid_number, project_name, address, customer_id, service_type_id, distance_from_office, plans_link, gc_builder_id, bid_due_date, bid_date_sent, robot_opt_out')
       rq = uuidRe.test(ref) ? rq.eq('id', ref) : rq.eq('bid_number', ref.replace(/^(bp|b)/i, ''))
       const { data: refBid, error: refErr } = await rq.maybeSingle()
       if (refErr) return textContent(`Reference lookup failed: ${refErr.message}`, true)
@@ -2053,6 +2055,10 @@ async function callTool(req: Request, name: string, args: Record<string, unknown
       }
       const shadowDisciplineErr = await disciplineRefusal(admin, refBid as { bid_number: string; service_type_id: string | null })
       if (shadowDisciplineErr) return textContent(shadowDisciplineErr, true)
+      // v2.3142: the estimator's opt-out ("Don't let robots shadow this bid") is final.
+      if ((refBid as { robot_opt_out?: boolean | null }).robot_opt_out === true) {
+        return textContent(`b${refBid.bid_number} is opted out of robot shadowing on its bid form — the estimator asked for no shadow. Pick another reference.`, true)
+      }
       const { data: existingRun } = await admin.from('twin_shadow_runs').select('id, shadow_bid_id, status').eq('reference_bid_id', refBid.id).maybeSingle()
       if (existingRun) {
         const { data: sb } = await admin.from('bids').select('bid_number').eq('id', existingRun.shadow_bid_id).maybeSingle()
@@ -2085,10 +2091,10 @@ async function callTool(req: Request, name: string, args: Record<string, unknown
       await probePlansSweep(req)
       const [requestedRes, recentRes] = await Promise.all([
         admin.from('bids').select(CLAIM_COLS)
-          .is('bid_date_sent', null).not('plans_link', 'is', null).eq('service_type_id', claimPlumbingId).not('robot_requested_at', 'is', null)
+          .is('bid_date_sent', null).not('plans_link', 'is', null).eq('service_type_id', claimPlumbingId).eq('robot_opt_out', false).not('robot_requested_at', 'is', null)
           .not('project_name', 'ilike', 'ZZ %').order('robot_requested_at', { ascending: true }).limit(25),
         admin.from('bids').select(CLAIM_COLS)
-          .is('bid_date_sent', null).not('plans_link', 'is', null).eq('service_type_id', claimPlumbingId).gte('created_at', since)
+          .is('bid_date_sent', null).not('plans_link', 'is', null).eq('service_type_id', claimPlumbingId).eq('robot_opt_out', false).gte('created_at', since)
           .not('project_name', 'ilike', 'ZZ %').order('created_at', { ascending: true }).limit(50),
       ])
       if (requestedRes.error) return textContent(`Queue lookup failed: ${requestedRes.error.message}`, true)
@@ -2257,7 +2263,7 @@ async function handleRpc(req: Request, msg: { jsonrpc?: string; id?: unknown; me
       return rpcResult(id, {
         protocolVersion: version,
         capabilities: { tools: {} },
-        serverInfo: { name: 'pipetooling-twin-mcp', version: '1.3.12' },
+        serverInfo: { name: 'pipetooling-twin-mcp', version: '1.3.13' },
         instructions:
           "PipeTooling digital-twin seat (estimator-only). Call get_brief first, then get_directory; mint_session gives you a signed-in browser link to the real apps — PipeTooling by default, CountTooling (the PDF-takeoff tool) with app: 'counttooling'. The work happens there. Every call needs your per-twin token (X-Twin-Token or Bearer).",
       })

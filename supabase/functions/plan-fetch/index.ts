@@ -259,6 +259,7 @@ serve(async (req) => {
     const params = new URL(req.url).searchParams
     let bidRef = params.get('bid')?.trim() ?? ''
     let probe = params.get('probe')?.trim() ?? ''
+    let probeUrl = params.get('probe_url')?.trim() ?? ''
     let limitRaw = params.get('limit')
     let force = params.get('force') === '1'
     let partRaw = params.get('part')?.trim() ?? ''
@@ -269,6 +270,16 @@ serve(async (req) => {
       if (limitRaw == null && body.limit != null) limitRaw = String(body.limit)
       if (body.force) force = true
       if (!partRaw && body.part != null) partRaw = String(body.part).trim()
+      if (!probeUrl) probeUrl = String((body as { probe_url?: string }).probe_url ?? '').trim()
+    }
+
+    // Link probe (v2.3142): the bid form asks "can robots open THIS link?" while
+    // the bid is still being typed — no bid row yet, nothing recorded. Staff only
+    // (a twin has no business probing arbitrary links).
+    if (probeUrl) {
+      if (isTwin) return json({ error: 'probe_url is for staff sessions' }, 403)
+      const r = await probePlansLink(probeUrl, await googleAccessToken(saJson))
+      return json({ readable: r.readable, note: r.note, name: r.name ?? null })
     }
 
     // Sweep: probe every live bid with a plans link that was never probed or

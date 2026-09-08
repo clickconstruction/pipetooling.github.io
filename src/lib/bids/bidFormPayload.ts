@@ -54,6 +54,8 @@ export type BidSavePayload = {
   agreed_value: number | null
   profit: number | null
   distance_from_office: string | null
+  /** "Don't let robots shadow this bid" (v2.3142). */
+  robot_opt_out: boolean
   /** Present only when creating: saved bids derive it from contact entries. */
   last_contact?: string | null
   notes: string | null
@@ -97,6 +99,8 @@ export function buildBidSavePayload({ values: v, bidDateSent, editing, canEditBi
     agreed_value: numberOrNull(v.agreedValue),
     profit: numberOrNull(v.profit),
     distance_from_office: v.distanceFromOffice.trim() || null,
+    // v2.3142: "Don't let robots shadow this bid" — the one opt-out; default is on.
+    robot_opt_out: v.robotOptOut,
     // Per-GC Phase 1 cleanup: last_contact is trigger-derived from method entries on saved
     // bids (Edit Bid's field is a read-only display + Log contact) — only a NEW bid seeds it.
     ...(editing ? {} : { last_contact: fromDatetimeLocal(v.lastContact) }),

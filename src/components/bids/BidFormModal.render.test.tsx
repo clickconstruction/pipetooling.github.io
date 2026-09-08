@@ -48,6 +48,7 @@ const values: BidEditFormValues = {
   agreedValue: '',
   profit: '',
   distanceFromOffice: '',
+  robotOptOut: false,
   lastContact: '',
   notes: '',
   gcCustomerId: '',
