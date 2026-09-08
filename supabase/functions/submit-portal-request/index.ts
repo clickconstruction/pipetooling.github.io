@@ -1,5 +1,6 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { askProblem } from '../_shared/stageAsk.ts'
+import { gcPortalStages, loadGcStageInputs } from '../_shared/gcStages.ts'
 import { todayYmdInAppTz } from '../_shared/appTimeZone.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { sendEmailViaResend } from '../_shared/resendSendEmail.ts'
@@ -126,8 +127,17 @@ serve(async (req) => {
         .or(`id.eq.${stageId},bundle_id.eq.${stageId}`)
       const wins = (winRaw ?? []) as Array<{ id: string; job_id: string; bundle_id: string | null; offered_to_gc: boolean; fixture: { name: string | null } | { name: string | null }[] | null; job: { hcp_number: string | null; gc_customer_id: string | null; gc_shares_stage_dates: boolean } | { hcp_number: string | null; gc_customer_id: string | null; gc_shares_stage_dates: boolean }[] | null }>
       const jobOf = (w: (typeof wins)[number]) => (Array.isArray(w.job) ? w.job[0] ?? null : w.job)
-      const mine = wins.filter((w) => w.offered_to_gc && jobOf(w)?.gc_customer_id === link.customer_id && jobOf(w)?.gc_shares_stage_dates === true)
+      const mine = wins.filter((w) => jobOf(w)?.gc_customer_id === link.customer_id && jobOf(w)?.gc_shares_stage_dates === true)
       if (mine.length === 0) return jsonResponse({ error: 'Not found' }, 404)
+      // Stage Plan PR 5: only the NEXT stage of the sequence can be asked about — the one the
+      // portal card carries the link on. Same plan, same rule, server-side.
+      {
+        const inputs = await loadGcStageInputs(admin, [mine[0]!.job_id])
+        const out = gcPortalStages({ ...inputs.byJob(mine[0]!.job_id), todayYmd })
+        if (!out.askWindowId || !mine.some((w) => w.id === out.askWindowId)) {
+          return jsonResponse({ error: 'Only the next stage can be moved. Call the office about the others.' }, 400)
+        }
+      }
       const nowIso = new Date().toISOString()
       const { error: askErr } = await admin
         .from('job_stage_windows')

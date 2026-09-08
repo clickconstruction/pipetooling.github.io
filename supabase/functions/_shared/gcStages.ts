@@ -1,108 +1,87 @@
 /**
- * The GC's view of a job's stages (v2.2933). Pure — tested from
- * src/lib/subs/gcStages.test.ts; the customer-portal function feeds it.
- *
- * Only what the office OFFERED shows, and only when the job shares stage
- * dates. A bundle (several windows, one bundle_id) is one entry with one
- * window. Never money, never paperwork, never a phone number — the GC sees
- * who, when, and how far along.
+ * The GC's view of a job's stages (v2.2933; rewritten for the Stage Plan,
+ * PR 5). The customer-portal function loads a job's line items, windows,
+ * orders, sheets, invoices and payments, and `gcPortalStages` hands back the
+ * `GcView` the portal card draws — the shared Order rows as one numbered
+ * sequence in the company's voice, the shared Any rows under "Also on this
+ * job". Never a name: the plan's order input has no field for one. Tested
+ * from src/lib/subs/gcStages.test.ts.
  */
+import { buildStagePlan, gcView, type GcView, type StagePlanFixture, type StagePlanInvoice, type StagePlanOrder, type StagePlanPayment, type StagePlanSheet, type StagePlanWindow } from './stagePlan.ts'
 
-export type GcStageWindowRow = { id: string; job_id: string; fixture_id: string; window_start: string | null; window_end: string | null; offered_to_gc: boolean; bundle_id: string | null; asked_start?: string | null; asked_end?: string | null; asked_note?: string | null; asked_at?: string | null; answered_at?: string | null; answer?: string | null; answer_note?: string | null }
-export type GcStageFixtureRow = { id: string; name: string | null; sequence_order: number | null }
-export type GcStageOrderRow = { id: string; stage_window_id: string | null; status: string; display_name: string; picked_start: string | null; picked_end: string | null; labor_job_id: string | null; change_requested_at?: string | null }
-export type GcStageSheetRow = { id: string; stage: string | null; progress_pct: number | null }
-
-export type GcStageState = 'window' | 'offered' | 'scheduled' | 'working' | 'inspection' | 'passed'
-
-export type GcStageEntry = {
-  /** The window id, or the bundle id for a bundle. */
-  id: string
-  bundle: boolean
-  /** "Rough-in" or "Top-out + Trim & final". */
-  name: string
-  window: { start: string; end: string } | null
-  /** The sub's first name only — never a phone. */
-  who: string | null
-  when: { start: string; end: string } | null
-  pct: number | null
-  state: GcStateForEntry
-  /** v2.2934: the GC's ask and the office's answer; `rescheduling` while the sub re-picks. */
-  asked: { start: string; end: string; note: string | null; answer: 'open' | 'accepted' | 'proposed'; answerNote: string | null } | null
-  rescheduling: boolean
-}
-export type GcStateForEntry = GcStageState
-
-const firstName = (s: string | null | undefined) => ((s ?? '').trim().split(/\s+/)[0] ?? '') || null
-
-function stateOf(order: GcStageOrderRow | null, sheet: GcStageSheetRow | null, hasWindow: boolean): GcStageState {
-  if (!order) return hasWindow ? 'window' : 'window'
-  if (order.status === 'offered') return 'offered'
-  const st = (sheet?.stage ?? 'working').trim()
-  if (st === 'customer_pay') return 'passed'
-  if (st === 'walkthrough') return 'inspection'
-  if (sheet && sheet.progress_pct != null && sheet.progress_pct > 0) return 'working'
-  return order.picked_start ? 'scheduled' : 'offered'
+export type GcStageInputs = {
+  fixtures: StagePlanFixture[]
+  windows: Array<StagePlanWindow & { job_id: string }>
+  orders: StagePlanOrder[]
+  sheets: StagePlanSheet[]
+  invoices: Array<StagePlanInvoice & { job_id: string }>
+  payments: Array<StagePlanPayment & { job_id: string }>
 }
 
-export function buildGcStageEntries(input: { windows: GcStageWindowRow[]; fixtures: GcStageFixtureRow[]; orders: GcStageOrderRow[]; sheets: GcStageSheetRow[] }): GcStageEntry[] {
-  const fx = new Map(input.fixtures.map((f) => [f.id, f]))
-  const orderByWindow = new Map<string, GcStageOrderRow>()
-  for (const o of input.orders) {
-    if (!o.stage_window_id || !['offered', 'accepted', 'approved', 'settled'].includes(o.status)) continue
-    const prev = orderByWindow.get(o.stage_window_id)
-    // a signed order beats an open offer
-    if (!prev || (prev.status === 'offered' && o.status !== 'offered')) orderByWindow.set(o.stage_window_id, o)
-  }
-  const sheetById = new Map(input.sheets.map((s) => [s.id, s]))
-  const offered = input.windows.filter((w) => w.offered_to_gc)
-  const groups = new Map<string, GcStageWindowRow[]>()
-  for (const w of offered) {
-    const key = w.bundle_id ?? `w:${w.id}`
-    groups.set(key, [...(groups.get(key) ?? []), w])
-  }
-  const entries: GcStageEntry[] = []
-  for (const [key, ws] of groups) {
-    ws.sort((a, b) => (fx.get(a.fixture_id)?.sequence_order ?? 0) - (fx.get(b.fixture_id)?.sequence_order ?? 0))
-    const names = ws.map((w) => (fx.get(w.fixture_id)?.name ?? '').trim() || 'Stage')
-    const first = ws[0]!
-    const window = first.window_start && first.window_end ? { start: first.window_start, end: first.window_end } : null
-    // the order on any window of the bundle (they share one)
-    const order = ws.map((w) => orderByWindow.get(w.id) ?? null).find((o) => o) ?? null
-    const sheet = order?.labor_job_id ? sheetById.get(order.labor_job_id) ?? null : null
-    const when = order?.picked_start ? { start: order.picked_start, end: order.picked_end ?? order.picked_start } : null
-    const state = stateOf(order, sheet, !!window)
-    entries.push({
-      id: ws.length > 1 ? key : first.id,
-      bundle: ws.length > 1,
-      name: names.join(' + '),
-      window,
-      who: order && order.status !== 'offered' ? firstName(order.display_name) : null,
-      when: order && order.status !== 'offered' ? when : null,
-      pct: sheet?.progress_pct ?? null,
-      state,
-      asked: first.asked_at && first.asked_start && first.asked_end ? { start: first.asked_start, end: first.asked_end, note: (first.asked_note ?? '').trim() || null, answer: !first.answered_at ? 'open' : first.answer === 'accepted' ? 'accepted' : 'proposed', answerNote: (first.answer_note ?? '').trim() || null } : null,
-      rescheduling: !!order?.change_requested_at,
-    })
-  }
-  return entries.sort((a, b) => (a.window?.start ?? '9999').localeCompare(b.window?.start ?? '9999') || a.name.localeCompare(b.name))
+/** What the portal payload carries per job. `askWindowId` = the window on the `next` step, when it has one. */
+export type GcPortalStages = { view: GcView; askWindowId: string | null; askFixtureId: string | null }
+
+export function gcPortalStages(input: { fixtures: StagePlanFixture[]; windows: StagePlanWindow[]; orders: StagePlanOrder[]; sheets: StagePlanSheet[]; invoices: StagePlanInvoice[]; payments: StagePlanPayment[]; todayYmd: string }): GcPortalStages {
+  const plan = buildStagePlan(input)
+  const view = gcView(plan)
+  const next = view.steps.find((s) => s.askable) ?? null
+  const askWindowId = next ? (input.windows.find((w) => w.fixture_id === next.fixtureId)?.id ?? null) : null
+  return { view, askWindowId, askFixtureId: next?.fixtureId ?? null }
 }
 
-/** The line the GC reads under a stage. */
-export function gcStageLine(e: GcStageEntry): string {
-  const span = (s: { start: string; end: string }) => (s.start === s.end ? s.start : `${s.start} – ${s.end}`)
-  switch (e.state) {
-    case 'passed':
-      return `${e.who ? `${e.who} · ` : ''}passed inspection`
-    case 'inspection':
-      return `${e.who ? `${e.who} · ` : ''}done · inspection next`
-    case 'working':
-      return `${e.who ? `${e.who} · ` : ''}${e.when ? `${span(e.when)} · ` : ''}${e.pct ?? 0}% along`
-    case 'scheduled':
-      return `${e.who ? `${e.who} · ` : ''}${e.when ? span(e.when) : 'scheduled'}`
-    case 'offered':
-      return e.window ? `offered to a sub · between ${span(e.window)}` : 'offered to a sub'
-    default:
-      return e.window ? `planned between ${span(e.window)}` : 'planned'
+/** The narrowest client shape the loader needs — the supabase-js admin client satisfies it. */
+export type GcStageAdmin = {
+  from(table: string): { select(columns: string): { in(column: string, values: string[]): PromiseLike<{ data: unknown }> } }
+}
+
+const FIXTURE_COLS = 'id, job_id, name, count, line_unit_price, sequence_order, invoice_id, stage_kind, shared_with_gc'
+const WINDOW_COLS = 'id, job_id, fixture_id, window_start, window_end, asked_start, asked_end, asked_note, asked_at, answered_at, answer, answer_note'
+const ORDER_COLS = 'id, stage_window_id, status, picked_start, picked_end, labor_job_id, change_requested_at'
+const SHEET_COLS = 'id, stage, progress_pct, progress_at, stage_changed_at'
+const INVOICE_COLS = 'id, job_id, status, billed_at, sent_to_customer_at'
+const PAYMENT_COLS = 'job_id, invoice_id, paid_on'
+
+/** Everything the plan needs for a set of jobs, in six reads. Orders are selected without `display_name`. */
+export async function loadGcStageInputs(admin: GcStageAdmin, jobIds: string[]): Promise<GcStageInputs & { byJob: (jobId: string) => Parameters<typeof gcPortalStages>[0] extends infer P ? Omit<P, 'todayYmd'> : never }> {
+  if (jobIds.length === 0) return { fixtures: [], windows: [], orders: [], sheets: [], invoices: [], payments: [], byJob: () => ({ fixtures: [], windows: [], orders: [], sheets: [], invoices: [], payments: [] }) }
+  const [fx, wn, inv, pay] = await Promise.all([
+    admin.from('jobs_ledger_fixtures').select(FIXTURE_COLS).in('job_id', jobIds),
+    admin.from('job_stage_windows').select(WINDOW_COLS).in('job_id', jobIds),
+    admin.from('jobs_ledger_invoices').select(INVOICE_COLS).in('job_id', jobIds),
+    admin.from('jobs_ledger_payments').select(PAYMENT_COLS).in('job_id', jobIds),
+  ])
+  type FixtureRow = StagePlanFixture & { job_id: string }
+  const fixtures = ((fx.data ?? []) as Array<Record<string, unknown>>).map((f) => ({
+    id: String(f.id),
+    job_id: String(f.job_id),
+    name: typeof f.name === 'string' ? f.name : '',
+    count: Number(f.count) || 0,
+    line_unit_price: f.line_unit_price == null ? null : Number(f.line_unit_price),
+    sequence_order: Number(f.sequence_order) || 0,
+    invoice_id: typeof f.invoice_id === 'string' ? f.invoice_id : null,
+    stage_kind: f.stage_kind === 'order' || f.stage_kind === 'any' ? f.stage_kind : null,
+    shared_with_gc: f.shared_with_gc === true,
+  })) as FixtureRow[]
+  const windows = (wn.data ?? []) as Array<StagePlanWindow & { job_id: string }>
+  const windowIds = windows.map((w) => w.id)
+  const orders = windowIds.length > 0 ? ((await admin.from('step_commitments').select(ORDER_COLS).in('stage_window_id', windowIds)).data ?? []) as StagePlanOrder[] : []
+  const sheetIds = [...new Set(orders.map((o) => o.labor_job_id).filter((id): id is string => !!id))]
+  const sheets = sheetIds.length > 0 ? ((await admin.from('people_labor_jobs').select(SHEET_COLS).in('id', sheetIds)).data ?? []) as StagePlanSheet[] : []
+  const invoices = (inv.data ?? []) as Array<StagePlanInvoice & { job_id: string }>
+  const payments = (pay.data ?? []) as Array<StagePlanPayment & { job_id: string }>
+  const orderByWindow = new Map(orders.map((o) => [o.stage_window_id, o]))
+  const byJob = (jobId: string) => {
+    const jw = windows.filter((w) => w.job_id === jobId)
+    const jo = jw.map((w) => orderByWindow.get(w.id)).filter((o): o is StagePlanOrder => !!o)
+    const sheetSet = new Set(jo.map((o) => o.labor_job_id))
+    return {
+      fixtures: fixtures.filter((f) => f.job_id === jobId),
+      windows: jw,
+      orders: jo,
+      sheets: sheets.filter((s) => sheetSet.has(s.id)),
+      invoices: invoices.filter((i) => i.job_id === jobId),
+      payments: payments.filter((p) => p.job_id === jobId),
+    }
   }
+  return { fixtures, windows, orders, sheets, invoices, payments, byJob }
 }

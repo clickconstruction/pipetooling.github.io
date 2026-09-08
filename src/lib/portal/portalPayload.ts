@@ -50,25 +50,26 @@ export type PortalPayload = {
   slug: string | null
   /** Job contracts (Contract Desk PR 5): signed records and open signing links. */
   agreements: PortalAgreement[]
-  /** v2.2933: stages the office offered on jobs that share dates with this GC — who, when, how far; no money. */
+  /** Stage Plan PR 5: the stage sequence on jobs that share dates with this GC — the company's voice, never a name, no money. */
   stages: PortalJobStages[]
 }
 
-export type PortalStageState = 'window' | 'offered' | 'scheduled' | 'working' | 'inspection' | 'passed'
-export type PortalStageEntry = {
-  id: string
-  bundle: boolean
-  name: string
-  window: { start: string; end: string } | null
-  who: string | null
-  when: { start: string; end: string } | null
-  pct: number | null
-  state: PortalStageState
-  /** v2.2934: the GC's own ask and the office's answer; `rescheduling` while the sub re-picks. */
-  asked: { start: string; end: string; note: string | null; answer: 'open' | 'accepted' | 'proposed'; answerNote: string | null } | null
-  rescheduling: boolean
+/** Stage Plan PR 5: the GC's sequence, in the company's voice — mirrors `GcView` in `_shared/stagePlan.ts`. */
+export type PortalGcStepState = 'done' | 'now' | 'next' | 'later'
+export type PortalGcAsk = { start: string; end: string; note: string | null; answer: 'open' | 'accepted' | 'proposed'; answerNote: string | null }
+export type PortalGcStep = { fixtureId: string; name: string; number: number; state: PortalGcStepState; line: string; pct: number | null; askable: boolean; ask: PortalGcAsk | null }
+export type PortalGcAlso = { name: string; state: 'done' | 'now' | 'later'; line: string }
+export type PortalGcView = { headline: string | null; steps: PortalGcStep[]; also: PortalGcAlso[] }
+export type PortalJobStages = {
+  jobId: string
+  jobLabel: string
+  jobAddress: string | null
+  view: PortalGcView
+  /** The window behind the `next` step — where "Need other dates?" lands; null when it has none. */
+  askWindowId: string | null
+  /** Our window on that step, to prefill the ask. */
+  askWindow: { start: string; end: string } | null
 }
-export type PortalJobStages = { jobId: string; jobLabel: string; jobAddress: string | null; entries: PortalStageEntry[] }
 
 export type PortalAgreement = {
   jobLabel: string
@@ -254,48 +255,61 @@ export function formatPortalUsd(n: number): string {
   return n.toLocaleString('en-US', { style: 'currency', currency: 'USD' })
 }
 
-const STAGE_STATES: PortalStageState[] = ['window', 'offered', 'scheduled', 'working', 'inspection', 'passed']
-const YMD_RE = /^\d{4}-\d{2}-\d{2}$/
 function spanOrNull(raw: unknown): { start: string; end: string } | null {
   if (raw == null || typeof raw !== 'object') return null
   const r = raw as Record<string, unknown>
-  const start = typeof r.start === 'string' && YMD_RE.test(r.start) ? r.start : null
-  const end = typeof r.end === 'string' && YMD_RE.test(r.end) ? r.end : start
-  return start && end && end >= start ? { start, end } : null
-}
-function parseJobStages(raw: unknown): PortalJobStages | null {
-  if (raw == null || typeof raw !== 'object') return null
-  const r = raw as Record<string, unknown>
-  const jobId = typeof r.jobId === 'string' ? r.jobId : ''
-  if (!jobId) return null
-  const entries: PortalStageEntry[] = []
-  for (const e of Array.isArray(r.entries) ? r.entries : []) {
-    if (e == null || typeof e !== 'object') continue
-    const x = e as Record<string, unknown>
-    const id = typeof x.id === 'string' ? x.id : ''
-    if (!id) continue
-    const pct = typeof x.pct === 'number' && Number.isFinite(x.pct) ? Math.max(0, Math.min(100, Math.round(x.pct))) : null
-    entries.push({
-      id,
-      bundle: x.bundle === true,
-      name: typeof x.name === 'string' && x.name.trim() ? x.name.trim() : 'Stage',
-      window: spanOrNull(x.window),
-      who: typeof x.who === 'string' && x.who.trim() ? x.who.trim() : null,
-      when: spanOrNull(x.when),
-      pct,
-      state: STAGE_STATES.includes(x.state as PortalStageState) ? (x.state as PortalStageState) : 'window',
-      asked: parseAsked(x.asked),
-      rescheduling: x.rescheduling === true,
-    })
-  }
-  return { jobId, jobLabel: typeof r.jobLabel === 'string' ? r.jobLabel : 'Job', jobAddress: typeof r.jobAddress === 'string' ? r.jobAddress : null, entries }
+  const ok = (v: unknown): v is string => typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v)
+  return ok(r.start) && ok(r.end) ? { start: r.start, end: r.end } : null
 }
 
-function parseAsked(raw: unknown): PortalStageEntry['asked'] {
+function parseAsk(raw: unknown): PortalGcAsk | null {
   if (raw == null || typeof raw !== 'object') return null
   const r = raw as Record<string, unknown>
   const sp = spanOrNull({ start: r.start, end: r.end })
   if (!sp) return null
   const answer = r.answer === 'accepted' ? 'accepted' : r.answer === 'proposed' ? 'proposed' : 'open'
-  return { start: sp.start, end: sp.end, note: typeof r.note === 'string' && r.note.trim() ? r.note.trim() : null, answer, answerNote: typeof r.answerNote === 'string' && r.answerNote.trim() ? r.answerNote.trim() : null }
+  return { ...sp, note: typeof r.note === 'string' && r.note.trim() ? r.note.trim() : null, answer, answerNote: typeof r.answerNote === 'string' && r.answerNote.trim() ? r.answerNote.trim() : null }
+}
+
+const STEP_STATES: PortalGcStepState[] = ['done', 'now', 'next', 'later']
+
+function parseJobStages(raw: unknown): PortalJobStages | null {
+  if (raw == null || typeof raw !== 'object') return null
+  const r = raw as Record<string, unknown>
+  const jobId = typeof r.jobId === 'string' ? r.jobId : ''
+  const v = r.view
+  if (!jobId || v == null || typeof v !== 'object') return null
+  const view = v as Record<string, unknown>
+  const steps: PortalGcStep[] = []
+  for (const e of Array.isArray(view.steps) ? view.steps : []) {
+    if (e == null || typeof e !== 'object') continue
+    const x = e as Record<string, unknown>
+    const state = STEP_STATES.includes(x.state as PortalGcStepState) ? (x.state as PortalGcStepState) : 'later'
+    const pct = typeof x.pct === 'number' && Number.isFinite(x.pct) ? Math.max(0, Math.min(100, Math.round(x.pct))) : null
+    steps.push({
+      fixtureId: typeof x.fixtureId === 'string' ? x.fixtureId : '',
+      name: typeof x.name === 'string' && x.name.trim() ? x.name.trim() : 'Stage',
+      number: typeof x.number === 'number' && Number.isFinite(x.number) ? x.number : steps.length + 1,
+      state,
+      line: typeof x.line === 'string' ? x.line : '',
+      pct,
+      askable: x.askable === true,
+      ask: parseAsk(x.ask),
+    })
+  }
+  const also: PortalGcAlso[] = []
+  for (const e of Array.isArray(view.also) ? view.also : []) {
+    if (e == null || typeof e !== 'object') continue
+    const x = e as Record<string, unknown>
+    also.push({ name: typeof x.name === 'string' && x.name.trim() ? x.name.trim() : 'Stage', state: x.state === 'done' ? 'done' : x.state === 'now' ? 'now' : 'later', line: typeof x.line === 'string' ? x.line : '' })
+  }
+  if (steps.length === 0 && also.length === 0) return null
+  return {
+    jobId,
+    jobLabel: typeof r.jobLabel === 'string' ? r.jobLabel : 'Job',
+    jobAddress: typeof r.jobAddress === 'string' ? r.jobAddress : null,
+    view: { headline: typeof view.headline === 'string' && view.headline.trim() ? view.headline : null, steps, also },
+    askWindowId: typeof r.askWindowId === 'string' && r.askWindowId ? r.askWindowId : null,
+    askWindow: spanOrNull(r.askWindow),
+  }
 }
