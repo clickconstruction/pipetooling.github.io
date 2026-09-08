@@ -15,8 +15,15 @@ Three people share one plan for a stage: the **office** sets the window, the **s
 | **Sub portal** (their private link) | sub | Pick a start inside the window, see their days, mark a day off, report a percent |
 | **Schedule → Dispatch** (People / Day) | dispatch | See sub bookings as read-only lanes and badges next to the crew |
 | **Projects → Forecast → Subs** | office | Every dated order on one board, off days striped |
-| **GC portal** (their private link) | GC | The stages you offered, who is coming and when, ask for other dates |
+| **Edit Job → Bill / Edit** | office | Which line items are stages (Order / Any / —), which ones the GC sees (the eye), the customer preview |
+| **GC portal** (their private link) | GC | Where the job is: the stage sequence in our voice, ask for other dates on the next stage |
 | **Dispatch inbox** | office | One line per thing a sub or GC did, each with its next step |
+
+## 0 · The plan — the Bill tab
+
+Every line item on the job is a stage or it isn't: under each row in **① Line Items** the **Order / Any / —** selector says so (see *split a job into stages and bill stage by stage*). Order rows are numbered top to bottom and wait for the one above; Any rows (change orders) have their own dates. The rows you set to Order are the stages the rest of this guide schedules — and the draws follow them.
+
+{{gif:split-a-job-into-stages.gif|Bill → ① Line Items: Order / Any / — under each row; the strip and Still to bill follow}}
 
 ## 1 · Set the window — Jobs → Subs → Work
 
@@ -84,6 +91,8 @@ Nothing here is typed by dispatch — it all comes from the picks.
 - The **crew day email** lists the subs on each stop.
 
 ## 7 · The GC
+
+{{gif:show-a-gc-the-stages-you-plan.gif|Edit Job → Stages: the eye on each stage, and See it as the customer beside it}}
 
 Off by default. On the job's GC picker turn on **Share stage dates with this GC**; then choose which stages the GC sees with the **eye** on **Edit Job → Stages** (see *show a GC the stages you plan*). On the Work board each stage row's Window shows the read-out beside the dates: {{chip:blue|On Summit's portal ›}} when the eye is on, *Not shown · set on Edit* when it is off. The GC portal shows one sequence — *Stage 2 of 4 · Top-out · on site now* — in the company's voice: never a sub's name, never "offered". When a stage passes inspection the next Order stage's eye turns on for you if **Offer the next stage when one passes** is on.
 

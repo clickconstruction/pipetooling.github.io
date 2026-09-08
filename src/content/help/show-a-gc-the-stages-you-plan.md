@@ -14,6 +14,8 @@ A GC's portal shows bills and payments. On the jobs you choose, it can also show
 
 ## The eye — which stages the GC sees
 
+{{gif:show-a-gc-the-stages-you-plan.gif|Edit Job → Stages: turn the eyes on, then See it as the customer — the drawer follows every flip}}
+
 Open **Edit Job → Edit**. Above the job details sits **Stages** — a read-out of the plan set on the Bill tab: *4 in order · 2 any time · 5 shown to Summit General*. Open it and each stage reads on one line: its number or ◆, its name, its draw, where it stands (*Sep 9 – 10 · 50%*, *passed Sep 4*, *no window yet*), and the **eye** at the right.
 
 - **Eye on** — the GC sees this stage on their portal.
@@ -24,6 +26,8 @@ Click the eye to flip it; it saves with the job. Order and kind are not set here
 :::example What the GC reads
 **Stage 2 of 4 · Top-out · on site now** — ✓ Rough-in *Passed inspection Sep 4* — ② **Top-out** *On site Sep 9 – 10 · about halfway* — ③ Trim & final *Planned Sep 22 – Oct 2* · **Need other dates?** — ④ Final inspection *After trim & final*. Under it, **Also on this job**: ◆ Relocate water heater *Done Sep 16*. No name, no "offered", no price.
 :::
+
+{{gif:show-a-gc-the-stages-you-plan-portal.gif|The GC's portal: Where the job is — one sequence, the live stage's progress in words, Need other dates? on the next stage only}}
 
 ## See it as the customer
 
