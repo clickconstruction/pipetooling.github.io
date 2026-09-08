@@ -20,6 +20,12 @@ export const TAKEOFF_VIEWS: ReadonlyArray<{ id: TakeoffView; label: string; titl
   { id: 'new2', label: 'Sheet', title: 'The whole sheet, plus the cost rail: what Pricing sees, what needs a price, copy from a previous bid' },
 ]
 
+/** The chooser's hotkeys (v2.3082): 1 · 2 · 3 in card order; anything else is null. */
+export function viewForChooserKey(key: string): TakeoffView | null {
+  const i = Number(key) - 1
+  return Number.isInteger(i) && i >= 0 && i < TAKEOFF_VIEWS.length && key.length === 1 ? TAKEOFF_VIEWS[i]!.id : null
+}
+
 /** Pure: a stored value → a view; anything unknown (or nothing) is `old`. */
 export function parseTakeoffView(raw: string | null | undefined): TakeoffView {
   return raw === 'new1' || raw === 'new2' ? raw : 'old'

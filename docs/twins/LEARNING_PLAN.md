@@ -70,7 +70,10 @@ marginal cost to her.
   `users.calibration_standard` (Wendi only), `twin_shadow_runs.teacher_*`
   stamped at scoring and backfilled, practice-teacher runs shown but never
   gated (server scoreboard + `confidenceBoard.ts`), Teacher column on the
-  Scoreboard ledger. (b) A live bid whose plans link the
+  Scoreboard ledger; v2.3091 moved the standard switch into Settings →
+  Digital twins; v2.3099 extended attribution to backtests
+  (`twin_run_scores.teacher_*`, backfilled — 18 Wendi / 3 Malachi /
+  2 William — with standing decided at read time). (b) A live bid whose plans link the
   Drive service account cannot read is invisible to the shadow program (b480
   blocked on exactly this) — a "plans readable by robots" indicator on live
   bids belongs on the board. **Built v2.3080**: plan-fetch `?probe=1` /

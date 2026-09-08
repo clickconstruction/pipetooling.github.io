@@ -38,6 +38,7 @@ import { BidPickerStandardList } from './BidPickerStandardList'
 import { TakeoffViewPills, TakeoffByStageNotice } from './TakeoffViewPills'
 import { TakeoffFocusView } from './TakeoffFocusView'
 import { TakeoffCostRailView } from './TakeoffCostRailView'
+import { TakeoffViewChooser } from './TakeoffViewChooser'
 import { RfqComposeModal } from './RfqComposeModal'
 import { bidPackageLabel } from '../../lib/bidPackageLabel'
 import { useTakeoffFixtureHistory } from '../../hooks/useTakeoffFixtureHistory'
@@ -469,6 +470,13 @@ export function BidsTakeoffTab({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab, selectedBidForTakeoff?.id, selectedTakeoffBookVersionId])
   const takeoffIsRough = normalizeMaterialsModel(selectedBidForTakeoff?.materials_model) === 'rough'
+  // The view chooser (v2.3082): every time a Combined bid is opened here, ask which view to work in.
+  // By Stage bids skip it (One at a time / Sheet are Combined-only). A pick goes through
+  // switchTakeoffView so the device remembers it and the seamless hop still lands the fixture.
+  const [takeoffChooserOpen, setTakeoffChooserOpen] = useState(false)
+  useEffect(() => {
+    setTakeoffChooserOpen(!!selectedBidForTakeoff?.id && takeoffIsRough)
+  }, [selectedBidForTakeoff?.id, takeoffIsRough])
   const bookFillPlan = useMemo(() => {
     if (!takeoffIsRough || !selectedTakeoffBookVersionId || takeoffBookEntriesVersionId !== selectedTakeoffBookVersionId) return null
     return planBookFill(takeoffCountRows, takeoffRoughPartLines, takeoffBookEntries)
@@ -1902,6 +1910,17 @@ export function BidsTakeoffTab({
                   ) : null}
                 </div>
               </div>
+              {takeoffChooserOpen ? (
+                <TakeoffViewChooser
+                  bidLabel={`BP${selectedBidForTakeoff.bid_number?.trim() || '?'} ${selectedBidForTakeoff.project_name?.trim() || ''}`.trim()}
+                  fixtures={takeoffCoverage.fixtures}
+                  costed={takeoffCoverage.costed}
+                  onPick={(v) => {
+                    setTakeoffChooserOpen(false)
+                    if (v !== takeoffView) switchTakeoffView(v)
+                  }}
+                />
+              ) : null}
               {/* Materials model (By Stage / Combined) — shared by every view (v2.2782): the only door to flip a bid's model. */}
               {(() => {
                 const takeoffMaterialsModel = normalizeMaterialsModel(selectedBidForTakeoff.materials_model)

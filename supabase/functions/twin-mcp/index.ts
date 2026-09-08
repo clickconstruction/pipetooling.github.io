@@ -1332,9 +1332,12 @@ async function callTool(req: Request, name: string, args: Record<string, unknown
       }
       // The seal breaks here — reference value/outcome are read by the server, not the agent.
       const { data: refBid } = await admin.from('bids')
-        .select('id, bid_number, project_name, bid_value, outcome, loss_category, bid_date_sent, created_at, plans_link')
+        .select('id, bid_number, project_name, bid_value, outcome, loss_category, bid_date_sent, created_at, plans_link, estimator_id, bid_date_sent_attested_by, created_by')
         .eq('id', bid.twin_source_bid_id).maybeSingle()
       if (!refBid) return textContent('Reference bid not found', true)
+      // v2.3099: WHOSE number — same resolver as shadows; the Scoreboard treats a
+      // non-calibration-standard teacher as practice.
+      const teacher = await resolveTeacher(admin, refBid as TeacherBid)
       const [{ count: refCounts }, { count: refPricing }] = await Promise.all([
         admin.from('bids_count_rows').select('id', { count: 'exact', head: true }).eq('bid_id', refBid.id),
         admin.from('bid_pricing_assignments').select('id', { count: 'exact', head: true }).eq('bid_id', refBid.id),
@@ -1370,12 +1373,15 @@ async function callTool(req: Request, name: string, args: Record<string, unknown
         gate_eligible: gateEligible,
         note: String(args.note ?? '').trim().slice(0, 400) || null,
         scored_at: now,
+        teacher_user_id: teacher.id,
+        teacher_name: teacher.name,
       }).select('*').single()
       if (scoreErr) return textContent(`Score not recorded: ${scoreErr.message}`, true)
       const flagList = [roundValue && 'roundValue', weakLoss && 'weakLoss', lossUncategorized && 'lossUncategorized', stale && 'stale'].filter(Boolean).join(', ') || 'none'
+      const teacherLabel = teacher.name ? ` by ${teacher.name} (${teacher.standard ? 'calibration standard' : 'practice teacher — not a gate run'})` : ''
       await admin.from('bids_submission_entries').insert({
         bid_id: bid.id,
-        notes: `[STG-6 SCORECARD] ${runLabel} (${axis}) via twin-mcp score_backtest: twin locked $${lockedTotal.toLocaleString()} vs reference b${refBid.bid_number} ${refValue != null ? `$${refValue.toLocaleString()}` : '(no value)'} ${refBid.outcome ?? 'undecided'}${refBid.loss_category ? ` (${refBid.loss_category})` : ''}, sent ${refBid.bid_date_sent ?? '—'} → delta ${deltaPct != null ? `${deltaPct > 0 ? '+' : ''}${deltaPct}%` : 'n/a'}. Grade ${grade}, flags: ${flagList}, scope ${scopeVerdict}, gate-eligible ${gateEligible ? 'yes' : 'no'}.`,
+        notes: `[STG-6 SCORECARD] ${runLabel} (${axis}) via twin-mcp score_backtest: twin locked $${lockedTotal.toLocaleString()} vs reference b${refBid.bid_number} ${refValue != null ? `$${refValue.toLocaleString()}` : '(no value)'}${teacherLabel} ${refBid.outcome ?? 'undecided'}${refBid.loss_category ? ` (${refBid.loss_category})` : ''}, sent ${refBid.bid_date_sent ?? '—'} → delta ${deltaPct != null ? `${deltaPct > 0 ? '+' : ''}${deltaPct}%` : 'n/a'}. Grade ${grade}, flags: ${flagList}, scope ${scopeVerdict}, gate-eligible ${gateEligible ? 'yes' : 'no'}.`,
       }).then(() => {}, () => {})
       return textContent(JSON.stringify({
         ok: true, reused: false, run_label: runLabel, twin_bid: `b${bid.bid_number}`,
@@ -2251,7 +2257,7 @@ async function handleRpc(req: Request, msg: { jsonrpc?: string; id?: unknown; me
       return rpcResult(id, {
         protocolVersion: version,
         capabilities: { tools: {} },
-        serverInfo: { name: 'pipetooling-twin-mcp', version: '1.3.11' },
+        serverInfo: { name: 'pipetooling-twin-mcp', version: '1.3.12' },
         instructions:
           "PipeTooling digital-twin seat (estimator-only). Call get_brief first, then get_directory; mint_session gives you a signed-in browser link to the real apps — PipeTooling by default, CountTooling (the PDF-takeoff tool) with app: 'counttooling'. The work happens there. Every call needs your per-twin token (X-Twin-Token or Bearer).",
       })

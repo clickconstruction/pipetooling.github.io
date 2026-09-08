@@ -3,6 +3,8 @@ import { supabase } from '../../lib/supabase'
 import { useToastContext } from '../../contexts/ToastContext'
 import { FunctionsHttpError } from '@supabase/supabase-js'
 import { describeTwinRun, nextTwinSeat, relativeTimeFrom } from '../../lib/twinConsoleDisplay'
+import { calibrationStandardSummary, calibrationStandardToast, teacherCandidates, type TeacherCandidate } from '../../lib/twinTeachers'
+import { updateRefused, refusedUpdateMessage } from '../../lib/refusedWrite'
 
 /**
  * Settings → Digital twins (dev-only; docs/DIGITAL_TWINS_PLAN.md + docs/twins/TWIN_HARNESS.md):
@@ -92,6 +94,10 @@ export default function DigitalTwinsPanel() {
   const [ctSeatById, setCtSeatById] = useState<Record<string, string | null> | null>(null)
   // TT seat (v2.3082): twin id → TT uuid | null (missing) — null map = bridge unavailable.
   const [ttSeatById, setTtSeatById] = useState<Record<string, string | null> | null>(null)
+  // Calibration standard (v2.3091): the humans whose sent numbers the robots
+  // calibrate to (users.calibration_standard, v2.3080). null = the column isn't
+  // deployed yet — the card hides.
+  const [teachers, setTeachers] = useState<TeacherCandidate[] | null>(null)
 
   const loadAll = useCallback(async () => {
     try {
@@ -135,6 +141,11 @@ export default function DigitalTwinsPanel() {
         for (const row of (seats.data ?? []) as never as { id: string; counttooling_user_id: string | null }[]) map[row.id] = row.counttooling_user_id
         setCtSeatById(map)
       }
+      // Teachers: every user the "Users can select users" policy shows a dev, with
+      // the calibration flag. Cast — the column may be ahead of generated types.
+      const people = await (supabase as never as { from: (t: string) => { select: (c: string) => { order: (k: string) => Promise<{ data: TeacherCandidate[] | null; error: unknown }> } } })
+        .from('users').select('id, name, email, role, is_digital_twin, archived_at, calibration_standard').order('name')
+      setTeachers(people.error ? null : (people.data ?? []))
     } catch {
       setAvailable(false)
     }
@@ -280,6 +291,25 @@ export default function DigitalTwinsPanel() {
       const { error } = await supabase.from('users').update({ read_only: readOnly }).eq('id', t.id)
       if (error) throw new Error(error.message)
       showToast(readOnly ? `${t.email} → read-only (rung 1)` : `${t.email} → fenced writes (rung 2 — the twin write-fence binds it)`, 'success')
+      await loadAll()
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : String(e), 'error')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function setCalibrationStandard(u: TeacherCandidate, standard: boolean) {
+    // Owner-set (the "Owners can update users" policy — dev only). A refused
+    // write says so instead of pretending; the flag is read by score_shadows
+    // and the Scoreboard gate math the next time either runs.
+    setBusy(true)
+    try {
+      const { data, error } = await (supabase as never as { from: (t: string) => { update: (p: Record<string, unknown>) => { eq: (k: string, v: string) => { select: (c: string) => Promise<{ data: unknown[] | null; error: { message: string } | null }> } } } })
+        .from('users').update({ calibration_standard: standard }).eq('id', u.id).select('id')
+      if (error) throw new Error(error.message)
+      if (updateRefused(data, 'users', 'update')) throw new Error(refusedUpdateMessage('the calibration standard'))
+      showToast(calibrationStandardToast(u.name ?? u.email, standard), 'success')
       await loadAll()
     } catch (e) {
       showToast(e instanceof Error ? e.message : String(e), 'error')
@@ -671,6 +701,38 @@ export default function DigitalTwinsPanel() {
           )
         })}
       </div>
+
+      {/* Calibration standard (v2.3091): who the robots calibrate to. A shadow
+          scored against a standard's sent number counts toward Gate B; anyone
+          else is practice (v2.3080). Hidden until the column is deployed. */}
+      {teachers ? (
+        <div style={CARD}>
+          <h4 style={CARD_TITLE}><span style={STEP_REF}>★</span>Calibration standard</h4>
+          <p style={{ ...MUTED, marginTop: 0 }}>{calibrationStandardSummary(teachers)}</p>
+          {teacherCandidates(teachers).map((u) => (
+            <div key={u.id} style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', fontSize: '0.8rem', padding: '0.3rem 0', borderTop: '1px solid var(--border)', flexWrap: 'wrap' }}>
+              <span style={{ fontWeight: 600, minWidth: '8rem' }}>{u.name ?? u.email}</span>
+              <span style={{ ...MUTED, flex: '1 1 auto' }}>{u.role.replace('_', ' ')}{u.is_digital_twin ? ' · twin' : ''}{u.archived_at ? ' · archived' : ''}</span>
+              {u.calibration_standard ? (
+                <span style={{ fontSize: '0.62rem', fontWeight: 800, borderRadius: 5, padding: '0.08rem 0.45rem', background: 'var(--bg-green-tint)', color: 'var(--text-green-800)' }}>STANDARD</span>
+              ) : (
+                <span style={{ fontSize: '0.62rem', fontWeight: 800, borderRadius: 5, padding: '0.08rem 0.45rem', background: 'var(--bg-muted)', color: 'var(--text-muted)' }}>PRACTICE</span>
+              )}
+              <button
+                type="button"
+                style={BTN}
+                disabled={busy}
+                title={u.calibration_standard
+                  ? `Stop treating ${u.name ?? u.email}'s sent numbers as the standard — their shadow scores become practice`
+                  : `Treat ${u.name ?? u.email}'s sent numbers as the standard — shadows scored against them count toward Gate B`}
+                onClick={() => void setCalibrationStandard(u, !u.calibration_standard)}
+              >
+                {u.calibration_standard ? 'Make practice' : 'Make standard'}
+              </button>
+            </div>
+          ))}
+        </div>
+      ) : null}
 
       {/* Step 4: the run ledger, translated to plain English. */}
       <div style={CARD}>

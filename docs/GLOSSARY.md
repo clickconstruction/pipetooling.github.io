@@ -150,6 +150,10 @@ A client or General Contractor (GC) who provides work. Customers have an owner (
 
 **Key Fields**: name, address, contact info (JSONB), date_met, master_user_id, archived_at/archived_by
 
+
+### Properties (customer)
+
+The addresses a customer owns, as `customer_addresses` rows (v2.1788; legal identity v2.2614; **primary row** v2.3008; the Edit customer **Properties** list v2.3009). One row per customer is `is_primary` — the ★ in Edit customer — and `customers.address` mirrors it by trigger, so older consumers keep reading the string. Each row can carry the property's lien-paperwork record (county, legal description, kind / homestead, owner of record + mailing address), proposed by the **property lookup** (v2.3004: `property-lookup` edge function → Texas statewide parcel roll) and confirmed by a person; jobs link to a row through `jobs_ledger.customer_address_id`. Kernels: `src/lib/customers/propertyRecord.ts`, `customerPropertiesFromJobs.ts`, `src/lib/jobs/lienProperty.ts`.
 ### Customer archive
 Soft archive for customers (v2.736), patterned on user archival — never a delete. Setting `customers.archived_at` (with `archived_by`) hides the customer from the Customers list by default (a **Show archived (n)** toggle reveals them with an **Archived** badge) and excludes them from pickers that link **new** jobs/estimates/bids/projects. Existing links keep working and archived customers still render wherever already referenced (by-id lookups, embedded joins, global search). Archive/Unarchive lives in the Edit customer form (dev/master/assistant-like) behind a confirm modal. Kernel: `src/lib/customerArchive.ts`.
 

@@ -24,3 +24,13 @@ Status: not started · sources: fragments v2.2667, v2.2844, v2.2860; [`docs/RUN_
 - A sheet whose stage window has ended and whose percent reads 100 shows Walk-through without anyone clicking.
 - Portal in Español: the signature form's labels are Spanish.
 - Bench a sub on People → Subs: the Sub Labor sheet form's crew list no longer offers them.
+
+## Subs board follow-ups (seen in the 2026-09-08 live test of v2.2963)
+
+Cosmetic, none blocking; the board, the tile queues, the calendar and the row forms all worked live (PR #2832). The GC-asked state (struck-through window · Accept · Answer… · the reason line) was verified only by render tests — nobody has driven a GC ask from the GC portal against it yet.
+
+1. **Calendar sibling list doubles the sub's name** for sheet rows: "Claude Test Sub · Claude Test Sub" (`JobsSubsWorkView.tsx` `calendarRow.siblings` uses `subName` for both the stage name and the sub). Show "Sheet · Claude Test Sub" or the stage name when the order carries one.
+2. **Raw ISO dates** in the rail's sublabel and the move's hint — "Sent · 2026-09-08 · good through 2026-09-14" / "good through 2026-09-14". `sheetRail.ts` passes `coverage.sentAt` / `expiresOn` through unformatted; `standingMove.ts` copies them. Format with `stageWindowLabel`-style short days.
+3. **A queue opens its first row's form on arrival even when that row needs no form** — a live (unexpired) offer opens on Re-send. Open expired rows on the form; leave live rows collapsed until clicked.
+4. **After Undo in the handshake queue** the row reads "No longer on a handshake" because the withdraw leaves a draft behind (the row moves to Drafted). Say so — "Withdrawn · draft kept" — and offer Discard from the mark.
+5. **Agreed reads "unpriced" on a sheet with no items even when its order carries a price** ($1,200 on WO-TEST-2963-01). Pre-existing: Agreed is the sheet total. Consider falling back to the order's amount when the sheet has no items.

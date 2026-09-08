@@ -1,0 +1,3 @@
+# 20260907180000 — teacher attribution on backtest scores
+
+v2.3099. Additive and idempotent. `twin_run_scores.teacher_user_id uuid` + `teacher_name text`, the backtest twin of the v2.3080 shadow columns: whose sent number the run was measured against (reference bid's `estimator_id` → `bid_date_sent_attested_by` → `created_by`). Backfills every existing score by joining `reference_bid_number` (b-prefix tolerant) to `bids.bid_number`; on 2026-09-07 all 23 rows resolve on the first hop (18 Wendi, 3 Malachi, 2 William). `score_backtest` (twin-mcp v1.3.12) stamps new rows. No RLS or function change — staff already read the table directly.
