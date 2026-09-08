@@ -9,11 +9,13 @@
  */
 import type { WorkOrderBoardRow } from '../subWorkOrders/workOrderBoardRows'
 import { stageWindowSpan, type StageWindowLike, type StageWindowSpan } from './stageWindow'
+import type { StageKind } from '../jobs/stagePlan'
 
-export type SubsFixtureLike = { id: string; job_id: string; name: string; count: number; line_unit_price: number | null; sequence_order: number }
+export type SubsFixtureLike = { id: string; job_id: string; name: string; count: number; line_unit_price: number | null; sequence_order: number; stage_kind?: StageKind | null; shared_with_gc?: boolean }
 export type SubsJobLike = { id: string; hcp_number: string; customer_name: string | null; job_address: string | null }
 
-export type SubsStage = { id: string; name: string; amount: number; sequence: number }
+/** Stage Plan PR 4: `kind` and `shared` (the eye) ride along from the line item. */
+export type SubsStage = { id: string; name: string; amount: number; sequence: number; kind: StageKind | null; shared: boolean }
 
 export type SubsStageRow = {
   key: string
@@ -69,7 +71,7 @@ export type SubsTabInput = {
 export const fixtureAmount = (f: Pick<SubsFixtureLike, 'count' | 'line_unit_price'>): number => Math.round((Number(f.count) || 0) * (Number(f.line_unit_price) || 0) * 100) / 100
 
 function stageOf(f: SubsFixtureLike): SubsStage {
-  return { id: f.id, name: (f.name ?? '').trim() || 'Line item', amount: fixtureAmount(f), sequence: Number(f.sequence_order) || 0 }
+  return { id: f.id, name: (f.name ?? '').trim() || 'Line item', amount: fixtureAmount(f), sequence: Number(f.sequence_order) || 0, kind: f.stage_kind === 'order' || f.stage_kind === 'any' ? f.stage_kind : null, shared: f.shared_with_gc === true }
 }
 
 const numericJob = (a: string, b: string) => b.localeCompare(a, undefined, { numeric: true })
@@ -124,7 +126,7 @@ export function buildSubsTabGroups(input: SubsTabInput): { groups: SubsJobGroup[
   for (const w of input.windows) {
     if (claimedWindowIds.has(w.id)) continue
     const fixture = fixturesById.get(w.fixture_id)
-    const stage: SubsStage = fixture ? stageOf(fixture) : { id: w.fixture_id, name: 'Line item', amount: 0, sequence: 0 }
+    const stage: SubsStage = fixture ? stageOf(fixture) : { id: w.fixture_id, name: 'Line item', amount: 0, sequence: 0, kind: null, shared: false }
     const g = groupFor(w.job_id)
     g.rows.push({ key: `stage:${w.id}`, kind: 'stage', jobId: w.job_id, stage, window: w, span: stageWindowSpan(w), board: null })
     g.attention += 1

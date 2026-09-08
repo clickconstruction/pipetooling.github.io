@@ -242,6 +242,7 @@ export function JobWindowModal({
                 onSaved?.()
               }}
               embeddedRegion={tab === 'bill' ? 'bill' : 'edit'}
+              onRequestRegion={(region) => setTab(region)}
               registerRequestClose={(fn) => {
                 formCloseRef.current = fn
               }}

@@ -11,11 +11,10 @@ import { WindowTextCell } from './WindowTextCell'
 const win = { start: '2026-09-22', end: '2026-10-02' }
 
 describe('WindowTextCell', () => {
-  it('shows the dates as a link, the office caption with Change, and the Offer chip that offers', () => {
+  it('shows the dates as a link, the office caption with Change, and a read-only not-shown chip (the eye lives on Edit Job → Stages)', () => {
     const onOpenDates = vi.fn()
     const onChange = vi.fn()
-    const onOffer = vi.fn()
-    render(<WindowTextCell window={win} windowBy="office" gc={{ state: 'offer', gcName: 'Summit General' }} onOpenDates={onOpenDates} onChange={onChange} onOfferToGc={onOffer} />)
+    render(<WindowTextCell window={win} windowBy="office" gc={{ state: 'offer', gcName: 'Summit General' }} onOpenDates={onOpenDates} onChange={onChange} />)
     const dates = screen.getByRole('button', { name: 'Window Sep 22 – Oct 2' })
     expect(dates.textContent).toBe('Sep 22 – Oct 2')
     expect(dates.style.textDecoration).toContain('underline')
@@ -24,8 +23,8 @@ describe('WindowTextCell', () => {
     expect(screen.getByText('set by the office')).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'Change' }))
     expect(onChange).toHaveBeenCalledTimes(1)
-    fireEvent.click(screen.getByRole('button', { name: 'Offer to GC ›' }))
-    expect(onOffer).toHaveBeenCalledTimes(1)
+    expect(screen.getByText('Not shown · set on Edit')).toBeTruthy()
+    expect(screen.queryByRole('button', { name: /Offer to GC/ })).toBeNull()
   })
 
   it('strikes our dates through on an open GC ask and puts their dates, Accept, Answer… and the reason beneath', () => {

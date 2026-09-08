@@ -25,7 +25,6 @@ export type WindowTextCellProps = {
   onOpenDates?: () => void
   onChange?: () => void
   /** The GC chip: `offer` sends the stage to the GC's portal; `shown` / `asked` open the GC's facts. */
-  onOfferToGc?: () => void
   onOpenGc?: () => void
   onAccept?: () => void
   onAnswer?: () => void
@@ -51,7 +50,7 @@ const smallBtn = (tone: 'ok' | 'warn', disabled: boolean): CSSProperties => ({
 })
 
 /** The GC's chip: what the GC sees, as a door. */
-export function WindowGcChip({ state, gcName, onOffer, onOpen, busy = false }: { state: WindowGcState; gcName: string | null; onOffer?: () => void; onOpen?: () => void; busy?: boolean }) {
+export function WindowGcChip({ state, gcName, onOpen, busy = false }: { state: WindowGcState; gcName: string | null; onOpen?: () => void; busy?: boolean }) {
   if (state === 'none') return null
   const name = gcName?.trim() || 'the GC'
   const base: CSSProperties = { font: 'inherit', display: 'inline-flex', alignItems: 'center', gap: 4, padding: '0 7px', borderRadius: 999, fontSize: '0.64rem', fontWeight: 700, letterSpacing: '0.03em', lineHeight: 1.6, whiteSpace: 'nowrap', opacity: busy ? 0.6 : 1 }
@@ -62,23 +61,29 @@ export function WindowGcChip({ state, gcName, onOffer, onOpen, busy = false }: {
       </span>
     )
   }
+  if (state === 'offer') {
+    // Stage Plan PR 4: the GC sees a stage when its eye is on — set on Edit Job → Stages, not here.
+    return (
+      <span title="Not on the GC portal · turn the eye on under Edit Job → Stages" style={{ ...base, background: 'var(--surface)', color: 'var(--text-muted)', border: '1px dashed var(--border-strong)' }}>
+        Not shown · set on Edit
+      </span>
+    )
+  }
   const look: CSSProperties =
-    state === 'offer'
-      ? { background: 'var(--surface)', color: 'var(--text-blue-700)', border: '1px dashed var(--border-strong)' }
-      : state === 'shown'
+    state === 'shown'
         ? { background: 'var(--bg-blue-tint)', color: 'var(--text-blue-700)', border: '1px solid var(--border)' }
         : { background: 'var(--bg-amber-tint)', color: 'var(--text-amber-800)', border: '1px solid var(--border-amber)' }
-  const label = state === 'offer' ? 'Offer to GC' : state === 'shown' ? `On ${name}'s portal` : 'GC asked'
-  const title = state === 'offer' ? `Show this stage and its window on ${name}'s portal` : state === 'shown' ? `${name} sees this window · open to withdraw` : `${name} asked for other dates`
+  const label = state === 'shown' ? `On ${name}'s portal` : 'GC asked'
+  const title = state === 'shown' ? `${name} sees this stage · the eye on Edit Job → Stages hides it` : `${name} asked for other dates`
   return (
-    <button type="button" title={title} disabled={busy} onClick={state === 'offer' ? onOffer : onOpen} style={{ ...base, ...look, cursor: busy ? 'not-allowed' : 'pointer' }}>
+    <button type="button" title={title} disabled={busy} onClick={onOpen} style={{ ...base, ...look, cursor: busy ? 'not-allowed' : 'pointer' }}>
       {label} ›
     </button>
   )
 }
 
-export function WindowTextCell({ window: win, passed = false, windowBy, pick, pickBy, ask, gc, onOpenDates, onChange, onOfferToGc, onOpenGc, onAccept, onAnswer, setWindow, children, busy = false }: WindowTextCellProps) {
-  const chip = <WindowGcChip state={gc.state} gcName={gc.gcName} onOffer={onOfferToGc} onOpen={onOpenGc} busy={busy} />
+export function WindowTextCell({ window: win, passed = false, windowBy, pick, pickBy, ask, gc, onOpenDates, onChange, onOpenGc, onAccept, onAnswer, setWindow, children, busy = false }: WindowTextCellProps) {
+  const chip = <WindowGcChip state={gc.state} gcName={gc.gcName} onOpen={onOpenGc} busy={busy} />
   if (!win) {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'flex-start', position: 'relative' }}>

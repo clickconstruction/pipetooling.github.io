@@ -40,7 +40,7 @@ describe('row forms', () => {
     expect(screen.getByRole('button', { name: 'Link and send' })).toBeTruthy()
   })
   it('OfferStageForm lists the subs with availability and asks for the sub first', () => {
-    const stage: SubsStageRow = { key: 'stage:a', kind: 'stage', jobId: 'job-880', stage: { id: 'a', name: 'Trim & final', amount: 1200, sequence: 1 }, window: { id: 'w-a', job_id: 'job-880', fixture_id: 'a', window_start: '2026-09-22', window_end: '2026-10-02', window_by: 'office' }, span: { start: '2026-09-22', end: '2026-10-02' }, board: null }
+    const stage: SubsStageRow = { key: 'stage:a', kind: 'stage', jobId: 'job-880', stage: { id: 'a', name: 'Trim & final', amount: 1200, sequence: 1, kind: 'order', shared: false }, window: { id: 'w-a', job_id: 'job-880', fixture_id: 'a', window_start: '2026-09-22', window_end: '2026-10-02', window_by: 'office' }, span: { start: '2026-09-22', end: '2026-10-02' }, board: null }
     renderWithProviders(<OfferStageForm row={stage} suggestedSpan={null} phasePassed={false} jobs={jobs} subs={[{ id: 'p-behar', name: 'Behar Kraja', benched: false }]} contacts={new Map()} orders={[]} offDaysByPerson={new Map()} availabilityLoading={false} authUserId="u-1" todayYmd={TODAY} actions={actions} onSent={vi.fn()} />)
     expect(screen.getByText('Pick the sub')).toBeTruthy()
     expect(screen.getByText('free those days')).toBeTruthy()

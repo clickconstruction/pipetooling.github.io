@@ -100,6 +100,9 @@ import { JobFormUpcomingDraws } from './JobFormUpcomingDraws'
 import { useJobStagePlanInputs } from '../../hooks/useJobStagePlanInputs'
 import { drawLabelsByInvoiceId, fixtureStageFields, stagePlanFromForm } from '../../lib/jobs/stagePlanForm'
 import { todayYmdInAppTz } from '../../utils/dateUtils'
+import { JobFormStagesGroup } from './JobFormStagesGroup'
+import { JobFormStagesDrawer } from './JobFormStagesDrawer'
+import { portalTokenUrl } from '../../lib/portal/gcPortalLink'
 import { JobFormHazmatRiderRows } from './JobFormHazmatRidersStrip'
 import { JobFormPaymentsTable } from './JobFormPaymentsTable'
 import { JobFormPartsCostSection } from './JobFormPartsCostSection'
@@ -265,6 +268,8 @@ export type JobFormModalProps = {
    * satellite, never the whole window underneath it.
    */
   externalEscBlocked?: boolean
+  /** Embedding only (Stage Plan PR 4): "Set stages on Bill →" asks the window to switch regions. */
+  onRequestRegion?: (region: 'edit' | 'bill') => void
 }
 
 export default function JobFormModal({
@@ -283,6 +288,7 @@ export default function JobFormModal({
   embeddedRegion = null,
   registerRequestClose = null,
   externalEscBlocked = false,
+  onRequestRegion,
 }: JobFormModalProps) {
   const embedded = embeddedRegion !== null
   const { user: authUser, role: authRole } = useAuth()
@@ -594,6 +600,9 @@ export default function JobFormModal({
   )
   const drawLabelByInvoiceId = useMemo(() => drawLabelsByInvoiceId(stagePlan), [stagePlan])
   const [billingStageFixtureId, setBillingStageFixtureId] = useState<string | null>(null)
+  // Stage Plan PR 4: the Edit tab's read-out and the "as the customer sees it" drawer.
+  const [stagesDrawerOpen, setStagesDrawerOpen] = useState(false)
+  const stagesGcName = useMemo(() => (gcCustomerId ? (customers.find((c) => c.id === gcCustomerId)?.name ?? '').trim() || null : (editing?.gcCustomer?.name ?? null)), [gcCustomerId, customers, editing?.gcCustomer?.name])
 
   // ② Invoices segment bar (v2.1070): which unbilled line items are picked
   // for the next "create invoice from selected segments" action.
@@ -3655,6 +3664,16 @@ export default function JobFormModal({
             /* Edit mode (v2.1681, "option C"): people + customer read as fact
                rows — label · value · pencil — with the classic editors inside
                each opened row. New Job keeps the always-open form below. */
+            <>
+              {/* Stage Plan PR 4: the stages read-out sits above the job details. */}
+              <JobFormStagesGroup
+                plan={stagePlan}
+                gcName={stagesGcName}
+                sharesWithGc={editing.gc_shares_stage_dates === true}
+                onToggleShared={(fixtureId, shared) => updateFixtureRow(fixtureId, { shared_with_gc: shared })}
+                onSeeAsCustomer={() => setStagesDrawerOpen(true)}
+                onGoToBill={onRequestRegion ? () => onRequestRegion('bill') : undefined}
+              />
             <JobFormEditFactRows
               contractJob={initialJob ?? editing}
               workOrderJob={initialJob ?? editing}
@@ -3724,6 +3743,7 @@ export default function JobFormModal({
               onCreateDevelopment={createDevelopmentFromPicker}
               projectLinksGate={projectFilesPlansExpanded}
             />
+            </>
           ) : (
             <>
               <JobFormAccountManSection
@@ -4758,6 +4778,19 @@ export default function JobFormModal({
           onAddToJob={addGeneratedSegmentsToJob}
         />
       )}
+      {editing ? (
+        <JobFormStagesDrawer
+          open={stagesDrawerOpen}
+          onClose={() => setStagesDrawerOpen(false)}
+          plan={stagePlan}
+          gcName={stagesGcName}
+          jobLabel={`#${(editing.hcp_number ?? '').trim() || (editing.click_number ?? '').trim() || '—'}${editing.job_address?.trim() ? ` · ${editing.job_address.trim()}` : ''}`}
+          jobAddress={null}
+          portalUrl={portalTokenUrl(window.location.origin, 'sample-gc')}
+          portalIsSample
+          zIndex={JOB_FORM_NESTED_OVERLAY_Z_INDEX + 1}
+        />
+      ) : null}
       {jobProjectLinkChoiceOpen && (
         <JobProjectLinkChoiceModal
           open={jobProjectLinkChoiceOpen}
