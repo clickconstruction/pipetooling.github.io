@@ -4784,7 +4784,7 @@ export default function JobFormModal({
           onClose={() => setStagesDrawerOpen(false)}
           plan={stagePlan}
           gcName={stagesGcName}
-          jobLabel={`#${(editing.hcp_number ?? '').trim() || '—'}${editing.job_address?.trim() ? ` · ${editing.job_address.trim()}` : ''}`}
+          jobLabel={`#${(editing.hcp_number ?? '').trim() || (editing.click_number ?? '').trim() || '—'}${editing.job_address?.trim() ? ` · ${editing.job_address.trim()}` : ''}`}
           jobAddress={null}
           portalUrl={portalTokenUrl(window.location.origin, 'sample-gc')}
           portalIsSample
