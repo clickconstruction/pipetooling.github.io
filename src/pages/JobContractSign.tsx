@@ -16,6 +16,7 @@ import { signedRecordId } from '../lib/signedRecordId'
 import { acceptHeaderBrandImageSrc, acceptHeaderBrandLabel, parseAcceptHeaderBrand } from '../lib/estimateAcceptHeaderBrand'
 import { formatContractMoney, parseJobContractFields, paymentTermsSentence, type JobContractIssuer } from '../lib/jobs/jobContractDocument'
 import { jobContractSignatureAuditLine } from '../lib/jobs/jobContractLifecycle'
+import { esignConsentText } from '../lib/esignConsent'
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string
 const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string
@@ -142,6 +143,7 @@ export default function JobContractSign() {
           printedName: payload.printedName,
           agreedTerms: true,
           ...(payload.mode === 'draw' ? { signaturePngBase64: payload.signaturePngBase64 } : {}),
+          ...(payload.consent ? { esignConsent: payload.consent } : {}),
           ...(inPerson ? { mode: 'in_person' } : {}),
           public_origin: window.location.origin,
         }),
@@ -319,7 +321,8 @@ export default function JobContractSign() {
               submitting={submitting}
               onSubmit={(p) => void submit(p)}
               heading="Sign agreement"
-              disclosure="Typing or drawing your name below has the same force and effect as your written signature and applies to the scope, price, and terms shown on this page."
+              disclosure="Your signature below applies to the scope, price, and terms shown on this page."
+              consent={esignConsentText({ audience: 'customer', documentNoun: 'this agreement' })}
               agreeLabel="I agree to do business electronically and accept this agreement, its scope, price, and terms."
               submitLabel={`Sign agreement${fields.amount_cents != null ? ` — ${amountLabel}` : ''}`}
             />

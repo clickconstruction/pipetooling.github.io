@@ -46,7 +46,19 @@ serve(async (req) => {
     }
 
     const body = typeof data?.value_text === 'string' ? data.value_text : ''
-    return new Response(JSON.stringify({ body }), {
+    // v2.3100: the office contact for the electronic-signatures disclosure (company settings → issuer).
+    let issuer: { companyName: string; addressText: string; phone: string; email: string } | null = null
+    try {
+      const { data: issuerRow } = await admin.from('app_settings').select('value_text').eq('key', 'physical_invoice_issuer_v1').maybeSingle()
+      if (typeof issuerRow?.value_text === 'string' && issuerRow.value_text.trim()) {
+        const parsed = JSON.parse(issuerRow.value_text) as Record<string, unknown>
+        const str = (k: string) => (typeof parsed[k] === 'string' ? (parsed[k] as string).trim() : '')
+        issuer = { companyName: str('companyName'), addressText: str('addressText'), phone: str('phone'), email: str('email') }
+      }
+    } catch {
+      issuer = null
+    }
+    return new Response(JSON.stringify({ body, issuer }), {
       status: 200,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     })

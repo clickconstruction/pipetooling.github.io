@@ -56,7 +56,7 @@ describe('buildWorkOrderDocument', () => {
     expect(draft.sections.find((s) => s.key === 'terms')!.items[0]).toMatch(/to be set before/)
     expect(draft.sections.some((s) => s.key === 'exclusions')).toBe(false)
     const signed = buildWorkOrderDocument({ snapshot, commitment: { amount: 6400, retainage_pct: 0, proposed_start: null, proposed_end: null, offer_expires_at: null, record_id: 'WO-977-01', offered_at: '2026-09-04', signed_at: '2026-09-05T14:00:00Z', accepted_at: '2026-09-05T14:00:00Z', signer_printed_name: 'Behar Kraja', signer_signature_mode: 'draw', display_name: 'Behar Kraja', status: 'accepted' }, issuer })
-    expect(signed.signatures.sub).toEqual({ name: 'Behar Kraja', company: 'Kraja Mechanical LLC', on: 'Sep 5, 2026', via: 'signed on the sub portal (drawn signature on file)' })
+    expect(signed.signatures.sub).toEqual({ name: 'Behar Kraja', company: 'Kraja Mechanical LLC', on: 'Sep 5, 2026', via: 'signed on the sub portal (drawn signature on file) · 15 U.S.C. § 7001 · Tex. Bus. & Com. Code ch. 322' })
     expect(signed.retainageLabel).toBeNull()
   })
 })

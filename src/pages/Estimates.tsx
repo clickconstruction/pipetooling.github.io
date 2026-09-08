@@ -6737,6 +6737,7 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
                           ip: row.acceptor_ip,
                           userAgent: row.acceptor_user_agent,
                           recordId: signedRecordId('E', row.estimate_number, row.id),
+                          estimateRowId: row.id,
                         }
                       : null
                   }

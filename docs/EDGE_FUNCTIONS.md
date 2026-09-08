@@ -1119,6 +1119,8 @@ Devs: **Settings → Templates & testing → Workflow email (Edge Function)** (c
 
 **Endpoint**: `POST /functions/v1/submit-sub-portal` — `{ token, kind, ... }` (`website` is the honeypot on availability).
 
+**Consent ledger (v2.3118)**: `accept_offer` may carry `esignConsent: { version, lang: 'en'|'es', audience: 'customer'|'sub'|'gc', documentNoun, clauseText }` — the exact ESIGN / Texas UETA consent words the signer saw (rendered by `src/lib/esignConsent.ts`). After the signature row commits, [`_shared/esignConsent.ts`](../supabase/functions/_shared/esignConsent.ts) (`parseEsignConsent` → `recordEsignConsent`) inserts one `esign_consents` row with the words, version, language and the attribution facts (name, method, time, IP, UA) — best-effort, logged on failure, never blocks the signature; an older client that sends nothing still signs. `record_type = 'step_commitment'`.
+
 **`mark_work_done`** (v2.2767): `{ token, kind: 'mark_work_done', laborJobId, note? }` — the sub's "My work here is done" button. The sheet must be one of the link's person's (`people_labor_job_assignees`) and at `working` (404 / 409 otherwise); moves it to `walkthrough` with `stage_source = 'portal'`, `stage_changed_by = NULL` and the trimmed note (≤300 chars) — the `people_labor_jobs_stage_to_activity` trigger posts the job's Activity line — then drops a **"Ready to walk — <sub> · <job> <address>"** dispatch note (`pending_payload.kind = 'sub_work_done'`, same `notify-dispatch-request` fan-out as availability). Returns `{ ok, stage: 'walkthrough', stageChangedOn }`.
 
 **Dates** (v2.2703): offer expiry compares against the Central civil day (`todayYmdInAppTz()`), not the UTC date.
@@ -1245,6 +1247,8 @@ Devs: **Settings → Templates & testing → Workflow email (Edge Function)** (c
 
 **Endpoint**: `POST /functions/v1/sign-bid-room` — `{ token, revision_id, action: 'sign'|'decline', … }` (sign: `optionKey`, `printedName`, `agreedTerms`, optional `signaturePngBase64`; decline: `category`?, `note`?)
 
+**Consent ledger (v2.3118)**: the body may carry `esignConsent: { version, lang: 'en'|'es', audience: 'customer'|'sub'|'gc', documentNoun, clauseText }` — the exact ESIGN / Texas UETA consent words the signer saw (rendered by `src/lib/esignConsent.ts`). After the signature row commits, [`_shared/esignConsent.ts`](../supabase/functions/_shared/esignConsent.ts) (`parseEsignConsent` → `recordEsignConsent`) inserts one `esign_consents` row with the words, version, language and the attribution facts (name, method, time, IP, UA) — best-effort, logged on failure, never blocks the signature; an older client that sends nothing still signs. `record_type = 'estimate'` for both the frozen proposal row and a change order answered in the room.
+
 **Staff notice** (v2.2743): a signed proposal goes through `notifySignedAgreement` (auto-create when `signed_agreements_auto_create_job_bids` is on; "Signed — …" letter to the stream list). Declines and change orders keep the short plain-text notice to the room's master + creator. Since v2.2838 the auto-create runs behind the `_shared/autoCreateJobGuard.ts` decision (already-linked / same-bid / same-customer-name-value twin → skip; see [accept-estimate](#accept-estimate)); a `bid_proposal` is treated like an estimate.
 
 **Secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `RESEND_API_KEY` (optional staff notify), `APP_ORIGIN`
@@ -1260,6 +1264,8 @@ Devs: **Settings → Templates & testing → Workflow email (Edge Function)** (c
 **Purpose**: The office sends a job contract for signature (Contract Desk PR 2, v2.2681) — by email, or by minting the link to copy / text / sign in person.
 
 **Endpoint**: `POST /functions/v1/send-job-contract` — `{ contract_id, mode: 'email'|'link', recipient_email?, recipient_name?, cc_emails?, public_origin?, message? }` with the staff user JWT in `Authorization`.
+
+**Paper option (v2.3118)**: the letter carries one sentence before the button — *Rather sign on paper? Reply to this email or call the office and we will bring a copy, no charge.* (ESIGN § 7001(c)(1)(B)(i), stated before consent). The contract-signing and Bid Room letters carry the same line.
 
 **Secrets**: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `RESEND_API_KEY` (optional — without it the link is returned un-emailed), `APP_ORIGIN`
 
@@ -1288,6 +1294,8 @@ Devs: **Settings → Templates & testing → Workflow email (Edge Function)** (c
 **Purpose**: Record the customer's e-signature on a job contract (Contract Desk PR 2, v2.2681).
 
 **Endpoint**: `POST /functions/v1/sign-job-contract` — `{ token, revision, printedName, agreedTerms: true, signaturePngBase64?, mode?: 'in_person', public_origin? }`
+
+**Consent ledger (v2.3118)**: the body may carry `esignConsent: { version, lang: 'en'|'es', audience: 'customer'|'sub'|'gc', documentNoun, clauseText }` — the exact ESIGN / Texas UETA consent words the signer saw (rendered by `src/lib/esignConsent.ts`). After the signature row commits, [`_shared/esignConsent.ts`](../supabase/functions/_shared/esignConsent.ts) (`parseEsignConsent` → `recordEsignConsent`) inserts one `esign_consents` row with the words, version, language and the attribution facts (name, method, time, IP, UA) — best-effort, logged on failure, never blocks the signature; an older client that sends nothing still signs. `record_type = 'job_contract'`.
 
 **Secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `RESEND_API_KEY` (optional confirmations), `APP_ORIGIN`
 
@@ -1331,6 +1339,8 @@ Devs: **Settings → Templates & testing → Workflow email (Edge Function)** (c
 
 **Endpoint**: `GET /functions/v1/get-estimate-public-terms`
 
+**Issuer (v2.3118)**: the response is `{ body, issuer }` — `issuer` = `{ companyName, addressText, phone, email }` parsed from `app_settings.physical_invoice_issuer_v1` (null when unset), printed at the foot of the page's **Electronic signatures and records** disclosure (`/estimate/terms#electronic-signatures`, `?lang=es`).
+
 **Secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`
 
 **Gateway**: `verify_jwt = false` in [`supabase/config.toml`](../supabase/config.toml).
@@ -1352,6 +1362,8 @@ curl -sS "${SUPABASE_URL}/functions/v1/get-estimate-public-terms" \
 **Purpose**: Record Approach A acceptance (typed name + `agreedTerms: true`); sets `customer_accepted` and audit fields.
 
 **Endpoint**: `POST /functions/v1/accept-estimate`
+
+**Consent ledger (v2.3118)**: the body may carry `esignConsent: { version, lang: 'en'|'es', audience: 'customer'|'sub'|'gc', documentNoun, clauseText }` — the exact ESIGN / Texas UETA consent words the signer saw (rendered by `src/lib/esignConsent.ts`). After the estimate flips to `customer_accepted`, [`_shared/esignConsent.ts`](../supabase/functions/_shared/esignConsent.ts) (`parseEsignConsent` → `recordEsignConsent`) inserts one `esign_consents` row with the words, version, language and the attribution facts (name, method, time, IP, UA) — best-effort, logged on failure, never blocks the signature; an older client that sends nothing still signs. `record_type = 'estimate'`.
 
 **Staff notice** (v2.2743): after the acceptance is saved, `notifySignedAgreement` (`_shared/signedAgreementNotify.ts`) runs — optional auto-create via `auto_create_job_from_signed_estimate` when `signed_agreements_auto_create_job_estimates` is on, then the "Signed — …" letter to `signed_agreement_notify_recipients` ∪ the estimate's own picks. Replaces the old per-estimate + org-wide notify. **Auto-create guard** (v2.2838): before the RPC, the pure kernel `_shared/autoCreateJobGuard.ts` decides against a bounded candidate set (jobs on the bid + the customer's jobs from the last 90 days) — skip when the estimate is already linked, is a `change_order` (never auto-created; the letter's Create the job opens Apply-to-job), a job carries the bid (linked, not duplicated), or a same-customer/name/value twin exists (`duplicate_by_name_value`, no write); otherwise create. One structured log line per decision: `signed_agreement_auto_create_decision {outcome, skipped_reason, matched_job_id, via}`. The SQL function enforces the CO and twin rules too (migration `20260905110000`).
 
@@ -1428,6 +1440,8 @@ curl -sS "${SUPABASE_URL}/functions/v1/get-estimate-public-terms" \
 **Purpose**: Record contract signature (typed or drawn PNG); sets **`status = signed`**, clears token, stores signature in **`contract-signer-signatures`** when drawn. **Two-party forms (v2.2802):** the signer's boxes only are validated and filled (`schemaForParty(schema, 'signer')`); when the template has office boxes the PDF is filed unflattened with the filled fields read-only, and `complete-contract-form-office` finishes it. The success response is `{ ok, documentId, officeSectionPending }` (v2.2803) so the thank-you page can offer the office step to a signed-in staff member on the same device.
 
 **Endpoint**: `POST /functions/v1/accept-contract`
+
+**Consent ledger (v2.3118)**: the body may carry `esignConsent: { version, lang: 'en'|'es', audience: 'customer'|'sub'|'gc', documentNoun, clauseText }` — the exact ESIGN / Texas UETA consent words the signer saw (rendered by `src/lib/esignConsent.ts`). After the signature row commits, [`_shared/esignConsent.ts`](../supabase/functions/_shared/esignConsent.ts) (`parseEsignConsent` → `recordEsignConsent`) inserts one `esign_consents` row with the words, version, language and the attribution facts (name, method, time, IP, UA) — best-effort, logged on failure, never blocks the signature; an older client that sends nothing still signs. `record_type = 'person_contract_document'`.
 
 **Dates** (v2.2703): `signed_at` is the Central civil day via `todayYmdInAppTz()` — evening signatures used to be dated tomorrow.
 

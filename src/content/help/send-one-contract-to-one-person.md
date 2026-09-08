@@ -38,7 +38,7 @@ Need something unusual? **Customize text or applied date** under the document li
 The **Send for signature** dialog shows the real email before you send it, built by the same code that sends it.
 
 :::example The email, top to bottom
-The CLICK. letterhead on the same paper as the sub portal · **One document to sign** · the document name · "Sent to you by <you> · Click Plumbing and Electrical" · your opening message · three steps (open, read, type or draw a signature) · {{button:blue|Read and sign}} · the link and the date it stops working · a note that the signed copy stays on their portal page (or on file with us when they have no page) · one line in Spanish pointing at the portal's **Español** button · how to reach you.
+The CLICK. letterhead on the same paper as the sub portal · **One document to sign** · the document name · "Sent to you by <you> · Click Plumbing and Electrical" · your opening message · three steps (open, read, type or draw a signature) · {{button:blue|Read and sign}} · the link and the date it stops working · one line offering paper instead (reply or call the office) · a note that the signed copy stays on their portal page (or on file with us when they have no page) · one line in Spanish pointing at the portal's **Español** button · how to reach you.
 :::
 
 - It comes from **Click Plumbing and Electrical**, and replies go to **you**.

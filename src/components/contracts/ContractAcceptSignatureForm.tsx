@@ -2,12 +2,12 @@ import { useId, useLayoutEffect, useRef, useState, type CSSProperties } from 're
 import SignaturePad from 'signature_pad'
 import { EstimateAcceptTypedSignatureLine } from '../estimates/EstimateAcceptTypedSignatureLine'
 import type { EstimateAcceptSubmitPayload } from '../estimates/EstimateAcceptBody'
+import { EsignConsentLine } from '../EsignConsentLine'
+import { esignConsentPayload, type EsignConsentText } from '../../lib/esignConsent'
 
 const NAME_PLACEHOLDER = 'Your full legal name'
 
-const SIGNATURE_DISCLOSURE =
-  'By signing, you acknowledge that you have read and agree to this contract. ' +
-  'Typing or drawing your signature here will have the same force and effect as your written signature.'
+const SIGNATURE_DISCLOSURE = 'By signing, you acknowledge that you have read and agree to this contract.'
 
 const segmentBtnStyle = (active: boolean): CSSProperties => ({
   padding: '0.4rem 0.85rem',
@@ -32,6 +32,14 @@ export type ContractAcceptSignatureFormProps = {
   heading?: string
   /** Disclosure paragraph above the agree checkbox (default: the contract wording). */
   disclosure?: string
+  /**
+   * v2.3100: the ESIGN / Texas UETA consent — the one-line sentence with its
+   * "How electronic signing works" dropdown and the "I agree to sign
+   * electronically" checkbox, rendered after the disclosure. Required before
+   * Submit; the words go up with the signature. Omit on the office's own
+   * signatures (lien releases), where the signer is us.
+   */
+  consent?: EsignConsentText | null
   /** Agree-checkbox label (default "I have read and agree to this contract."). */
   agreeLabel?: string
   /** Submit button label (default "Submit signature"). */
@@ -48,11 +56,13 @@ export function ContractAcceptSignatureForm({
   onSubmit,
   heading = 'Accept document',
   disclosure = SIGNATURE_DISCLOSURE,
+  consent = null,
   agreeLabel = 'I have read and agree to this contract.',
   submitLabel = 'Submit signature',
 }: ContractAcceptSignatureFormProps) {
   const [acceptMode, setAcceptMode] = useState<'type' | 'draw'>('type')
   const [fieldHint, setFieldHint] = useState<string | null>(null)
+  const [consented, setConsented] = useState(false)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const padRef = useRef<SignaturePad | null>(null)
   const headingId = useId()
@@ -88,12 +98,17 @@ export function ContractAcceptSignatureForm({
       setFieldHint('Please enter your full name.')
       return
     }
+    if (consent && !consented) {
+      setFieldHint(consent.lang === 'es' ? 'Marque "Acepto firmar electrónicamente" para continuar.' : 'Please tick "I agree to sign electronically" to continue.')
+      return
+    }
     if (!agreed) {
       setFieldHint('Please confirm that you agree.')
       return
     }
+    const consentPayload = consent ? { consent: esignConsentPayload(consent) } : {}
     if (acceptMode === 'type') {
-      onSubmit({ mode: 'type', printedName: trimmed })
+      onSubmit({ mode: 'type', printedName: trimmed, ...consentPayload })
       return
     }
     const pad = padRef.current
@@ -105,6 +120,7 @@ export function ContractAcceptSignatureForm({
       mode: 'draw',
       printedName: trimmed,
       signaturePngBase64: pad.toDataURL('image/png'),
+      ...consentPayload,
     })
   }
 
@@ -267,17 +283,26 @@ export function ContractAcceptSignatureForm({
       )}
       </div>
 
-      <p
-        style={{
-          fontSize: '0.8rem',
-          color: 'var(--text-muted)',
-          lineHeight: 1.45,
-          marginTop: '1rem',
-          marginBottom: '0.5rem',
-        }}
-      >
-        {disclosure}
-      </p>
+      {consent ? (
+        <EsignConsentLine
+          text={consent}
+          lead={disclosure}
+          disabled={submitting}
+          checkbox={{ checked: consented, onChange: (v) => { setConsented(v); setFieldHint(null) } }}
+        />
+      ) : (
+        <p
+          style={{
+            fontSize: '0.8rem',
+            color: 'var(--text-muted)',
+            lineHeight: 1.45,
+            marginTop: '1rem',
+            marginBottom: '0.5rem',
+          }}
+        >
+          {disclosure}
+        </p>
+      )}
       <div
         style={{
           display: 'flex',

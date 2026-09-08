@@ -43,8 +43,8 @@ const STRINGS = {
   },
   signAgreeLabel: { en: 'I agree to this work order.', es: 'Acepto esta orden de trabajo.' },
   signDisclosure: {
-    en: 'By signing, you agree to perform this work for this price under your Master Subcontract Agreement. Typing or drawing your signature has the same force and effect as your written signature.',
-    es: 'Al firmar, usted acepta realizar este trabajo por este precio bajo su Contrato Maestro de Subcontratación. Escribir o dibujar su firma tiene la misma validez que su firma manuscrita.',
+    en: 'By signing, you agree to perform this work for this price under your Master Subcontract Agreement.',
+    es: 'Al firmar, usted acepta realizar este trabajo por este precio bajo su Contrato Maestro de Subcontratación.',
   },
   signSubmit: { en: 'Accept & sign', es: 'Aceptar y firmar' },
   paidToYou: { en: "What you've been paid", es: 'Lo que se le ha pagado' },
@@ -149,8 +149,8 @@ const STRINGS = {
   confirmBeforeSigning: { en: 'Please confirm', es: 'Por favor confirme' },
   acksMissing: { en: 'Tick every box above before signing.', es: 'Marque todas las casillas antes de firmar.' },
   signDisclosureRefs: {
-    en: 'By signing, you agree to perform this scope for this price under your Master Subcontract Agreement and the documents listed above ({refs}). Typing or drawing your signature has the same force and effect as your written signature.',
-    es: 'Al firmar, usted acepta realizar este alcance por este precio bajo su Contrato Maestro de Subcontratación y los documentos listados arriba ({refs}). Escribir o dibujar su firma tiene la misma validez que su firma manuscrita.',
+    en: 'By signing, you agree to perform this scope for this price under your Master Subcontract Agreement and the documents listed above ({refs}).',
+    es: 'Al firmar, usted acepta realizar este alcance por este precio bajo su Contrato Maestro de Subcontratación y los documentos listados arriba ({refs}).',
   },
   whatYouAgreedTo: { en: 'What you agreed to', es: 'Lo que usted aceptó' },
   signedOnBy: { en: 'Signed {date}', es: 'Firmado el {date}' },

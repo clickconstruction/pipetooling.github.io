@@ -26,7 +26,7 @@ A W-9 needs one or the other, not both. Type the digits and the dashes are added
 
 ## Sign and submit
 
-Under the page, type your full legal name or draw your signature, tick the certification, and press {{button:green|Sign and submit}}. Your signature and today's date land on the form's signature line. If a required box is empty or a number is the wrong length, the box is outlined and the panel tells you what to fix.
+Under the page, type your full legal name or draw your signature, tick **I agree to sign electronically** (the line above it says a typed or drawn signature counts like ink and that you can ask the office for paper instead; **How electronic signing works ▸** opens the detail, in your language) and the certification, and press {{button:green|Sign and submit}}. Your signature and today's date land on the form's signature line. If a required box is empty or a number is the wrong length, the box is outlined and the panel tells you what to fix.
 
 ## Afterward
 

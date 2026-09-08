@@ -6,6 +6,7 @@
  */
 import type { Database } from '../../types/database'
 import { APP_CALENDAR_TZ } from '../../utils/dateUtils'
+import { esignAuditSuffix } from '../esignConsent'
 
 export type JobContractRow = Database['public']['Tables']['job_contracts']['Row']
 
@@ -89,6 +90,8 @@ export function jobContractSignatureAuditLine(row: {
   signer_printed_name: string | null
   signer_mode: string | null
   signer_consented_at: string | null
+  /** v2.3100: the consent ledger row, when the caller loaded it — adds "consent v1 (en)" after the statutes. */
+  esign_consent?: { version: number; lang: string } | null
 }): string | null {
   if (!row.signed_at) return null
   const stamp = formatContractStamp(row.signed_at)
@@ -96,6 +99,6 @@ export function jobContractSignatureAuditLine(row: {
   if (row.signer_mode === 'paper') return `Signed on paper${who ? ` by ${who}` : ''}${stamp ? ` · recorded ${stamp} CT` : ''}`
   const how = row.signer_mode === 'draw' ? 'drawn' : row.signer_mode === 'in_person' ? 'in person' : 'typed'
   return `Signed electronically${who ? ` by ${who}` : ''} (${how})${stamp ? ` · ${stamp} CT` : ''}${
-    row.signer_consented_at ? ' · consent recorded' : ''
+    row.signer_consented_at ? ` · consent recorded${esignAuditSuffix(row.esign_consent ?? null)}` : ''
   }`
 }

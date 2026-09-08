@@ -103,7 +103,7 @@ describe('lifecycle', () => {
     expect(jobContractSigningUrl('https://clicktooling.com/', 'ab c')).toBe('https://clicktooling.com/contract/sign?t=ab%20c')
     expect(
       jobContractSignatureAuditLine({ signed_at: '2026-09-03T00:14:00Z', signer_printed_name: 'Michael Palmer', signer_mode: 'draw', signer_consented_at: '2026-09-03T00:14:00Z' }),
-    ).toMatch(/^Signed electronically by Michael Palmer \(drawn\) · Sep 2, 2026, 7:14 PM CT · consent recorded$/)
+    ).toMatch(/^Signed electronically by Michael Palmer \(drawn\) · Sep 2, 2026, 7:14 PM CT · consent recorded · 15 U\.S\.C\. § 7001 · Tex\. Bus\. & Com\. Code ch\. 322$/)
   })
 })
 

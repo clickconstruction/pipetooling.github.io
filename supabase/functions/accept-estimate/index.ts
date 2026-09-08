@@ -10,6 +10,7 @@ const MAX_SIGNATURE_BYTES = 524288 // 512 KiB (matches bucket file_size_limit)
 const PNG_MAGIC = new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10])
 
 import { freezeSharedAcceptedOption, normalizeSharedEstimateOptions } from '../_shared/estimateOptions.ts'
+import { parseEsignConsent, recordEsignConsent } from '../_shared/esignConsent.ts'
 import { todayYmdInAppTz } from '../_shared/appTimeZone.ts'
 
 async function sha256HexFromString(value: string): Promise<string> {
@@ -153,6 +154,8 @@ serve(async (req) => {
       /** v2.2873: `'decline'` is the customer's "No thanks" — no name/signature/terms needed. */
       action?: 'accept' | 'decline'
       declineReason?: string
+      /** v2.3100: the ESIGN / Texas UETA consent words the signer saw (stored on esign_consents). */
+      esignConsent?: unknown
     }
     const raw = body.token?.trim()
     const printedName = body.printedName?.trim() ?? ''
@@ -387,6 +390,18 @@ serve(async (req) => {
     }
 
     // sent -> customer_accepted audit: DB trigger estimates_audit_customer_accepted_trigger (same txn as UPDATE).
+
+    // v2.3100: the consent words, verbatim, beside the signature (best-effort; the row stamp above is the act).
+    await recordEsignConsent(admin, {
+      recordType: 'estimate',
+      recordId: row.id,
+      consent: parseEsignConsent(body.esignConsent),
+      printedName,
+      method: hasSig ? 'draw' : 'type',
+      consentedAt: nowIso,
+      ip: ipRaw,
+      userAgent: ua,
+    })
 
     try {
       await notifySignedAgreement({

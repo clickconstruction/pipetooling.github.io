@@ -47,7 +47,7 @@ The trail is a modal: outside opens and team looks as two tiles, an **All · Out
 
 ## Sign to accept work
 
-When you send a sub a work order offer (from a project step's **Offer to…**, or a Sub Labor sheet's **Work order** box), it appears on their portal with the frozen scope and price. They accept by **signing** — typed or drawn, the same signature form as contracts — under their Master Subcontract Agreement, and the office inbox gets a dispatch note the moment they do. Offers can carry an expiry date; a passed offer asks for a quick reason so you know how to fix it.
+When you send a sub a work order offer (from a project step's **Offer to…**, or a Sub Labor sheet's **Work order** box), it appears on their portal with the frozen scope and price. They accept by **signing** — typed or drawn, the same signature form as contracts, with the same quiet electronic-signature line, **How electronic signing works ▸** dropdown and **I agree to sign electronically** box (in Spanish when the portal is) — under their Master Subcontract Agreement, and the office inbox gets a dispatch note the moment they do. Offers can carry an expiry date; a passed offer asks for a quick reason so you know how to fix it.
 
 A work order sent from a sheet shows more on the card: anything **not included**, and a collapsed **Also part of this work order** list naming General Conditions and the other documents by version date. Before the signature button lights up the sub ticks each **Please confirm** sentence; what they ticked is stored with the signature. Once signed, the sheet card grows a **✍ What you agreed to** line the sub can reopen any time — the scope, the documents, and the boxes they ticked.
 

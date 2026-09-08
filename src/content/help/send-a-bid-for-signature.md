@@ -36,7 +36,7 @@ A clean proposal page: your brand, the project, *Rev 2 · published Aug 28 — "
 
 ## Signing — and saying no
 
-Under the document, the GC types their full name, checks the agreement, and presses {{button:blue|Approve "Base bid" — $249,971.29}} — the button always names the option they selected. The signature applies to the **current revision only**: if you published an update while their page was open, they're shown the new version instead of signing a stale number.
+Under the document, the GC types their full name, checks the agreement (a quiet line above the name says approving here is an electronic signature with the same effect as ink and that a paper copy is theirs for the asking; **How electronic signing works ▸** opens the ESIGN / Texas UETA detail), and presses {{button:blue|Approve "Base bid" — $249,971.29}} — the button always names the option they selected. The signature applies to the **current revision only**: if you published an update while their page was open, they're shown the new version instead of signing a stale number.
 
 **When they sign**: that packet marks itself {{chip:green|Won}} (other sent, unanswered packets go Lost — the same rule as marking a win by hand), you get an email naming the option and amount, and the signed record — name, time, IP, chosen option — files into the Estimates **Ledger** with a {{chip:purple|Bid ✍}} chip linking back to the bid.
 
