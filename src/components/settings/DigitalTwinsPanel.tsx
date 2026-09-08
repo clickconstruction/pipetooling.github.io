@@ -3,6 +3,9 @@ import { supabase } from '../../lib/supabase'
 import { useToastContext } from '../../contexts/ToastContext'
 import { FunctionsHttpError } from '@supabase/supabase-js'
 import { describeTwinRun, nextTwinSeat, relativeTimeFrom } from '../../lib/twinConsoleDisplay'
+// The operator handoff (v2.3155): one markdown file in the repo is the source of
+// truth; the card below copies it whole so a new person can paste it into Claude Code.
+import shadowOperatorPrompt from '../../../docs/twins/kickoffs/shadow-operator.md?raw'
 import { calibrationStandardSummary, calibrationStandardToast, teacherCandidates, type TeacherCandidate } from '../../lib/twinTeachers'
 import { updateRefused, refusedUpdateMessage } from '../../lib/refusedWrite'
 
@@ -662,6 +665,33 @@ export default function DigitalTwinsPanel() {
             {showKillCmd ? <code style={{ fontSize: '0.7rem' }}>supabase secrets set TWIN_LOGIN_SECRET=…</code> : null}
           </span>
         </div>
+      </div>
+
+      {/* Handoff (v2.3155): everything a new person needs to run shadow coverage from
+          their own machine — copied whole from docs/twins/kickoffs/shadow-operator.md. */}
+      <div style={CARD}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.6rem', flexWrap: 'wrap', marginBottom: '0.3rem' }}>
+          <h4 style={{ ...CARD_TITLE, margin: 0 }}><span style={STEP_REF}>↗</span>Hand shadow coverage to someone</h4>
+          <button
+            type="button"
+            style={BTN_PRIMARY}
+            title="Copies the whole handoff prompt — the new operator pastes it into Claude Code in a checkout of the repo"
+            onClick={() => void copy(shadowOperatorPrompt, 'the shadow-coverage handoff prompt')}
+          >
+            Copy handoff prompt
+          </button>
+        </div>
+        <p style={{ ...MUTED, marginTop: 0 }}>
+          One prompt does the whole job: it walks them through issuing their own robot key on this page (label it with their
+          name — revoke it here to cut them off), the one allow rule, and the hourly routine; the routine prompt is inside it,
+          verbatim. They never see a robot's number and never touch a human bid. Source of truth: <code style={{ fontSize: '0.7rem' }}>docs/twins/kickoffs/shadow-operator.md</code>.
+        </p>
+        <details>
+          <summary style={{ ...MUTED, cursor: 'pointer' }}>Preview the prompt</summary>
+          <pre style={{ fontSize: '0.7rem', whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', background: 'var(--bg-subtle)', border: '1px solid var(--border)', borderRadius: 6, padding: '0.6rem 0.75rem', maxHeight: '22rem', overflow: 'auto', marginTop: '0.4rem' }}>
+            {shadowOperatorPrompt}
+          </pre>
+        </details>
       </div>
 
       {/* Twin questions (R3): the internal ask lane's inbox. Open questions demand a human;
