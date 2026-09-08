@@ -1,27 +1,35 @@
 /**
- * "Ask for other dates" on a GC portal stage (v2.2934): two dates and a why,
- * posted as a `stage_window` portal request. Shows the ask's state afterwards
- * — waiting, accepted, or the office's answer — and "re-scheduling" while the
- * sub re-picks under the new window.
+ * "Need other dates?" on the GC portal's next stage (v2.2934; Stage Plan
+ * PR 5): two dates and a why, posted as a `stage_window` portal request on
+ * the window behind the next step. Shows the ask's state afterwards —
+ * waiting, accepted, or the office's answer. Re-scheduling words live on the
+ * card's own line ("we're picking new days inside the window").
  */
 import { useState } from 'react'
-import { formatPortalDate, type PortalStageEntry } from '../../lib/portal/portalPayload'
+import { formatPortalDate } from '../../lib/portal/portalPayload'
 import { sampleStateFromToken } from '../../lib/customerSampleMode'
 import { CARD, COPPER, HAIR, INK, MUTED, PAPER, PAPER_GREEN } from '../../lib/portal/portalTheme'
 import { askProblem } from '../../../supabase/functions/_shared/stageAsk'
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string
 
-export function PortalStageAsk({ entry, token, todayYmd }: { entry: PortalStageEntry; token: string; todayYmd: string }) {
+export type PortalStageAskTarget = {
+  /** The job_stage_windows id the ask lands on. */
+  windowId: string
+  /** Our window on that stage, when set — prefills the form. */
+  window: { start: string; end: string } | null
+  asked: { start: string; end: string; note: string | null; answer: 'open' | 'accepted' | 'proposed'; answerNote: string | null } | null
+}
+
+export function PortalStageAsk({ target, token, todayYmd }: { target: PortalStageAskTarget; token: string; todayYmd: string }) {
   const [open, setOpen] = useState(false)
-  const [start, setStart] = useState(entry.window?.start ?? '')
-  const [end, setEnd] = useState(entry.window?.end ?? '')
+  const [start, setStart] = useState(target.window?.start ?? '')
+  const [end, setEnd] = useState(target.window?.end ?? '')
   const [note, setNote] = useState('')
   const [ui, setUi] = useState<{ kind: 'idle' } | { kind: 'sending' } | { kind: 'sent'; start: string; end: string } | { kind: 'error'; text: string }>({ kind: 'idle' })
   const fmt = (d: string) => formatPortalDate(d) ?? d
   const span = (x: { start: string; end: string }) => (x.start === x.end ? fmt(x.start) : `${fmt(x.start)} – ${fmt(x.end)}`)
-  const askable = entry.state !== 'passed' && entry.state !== 'inspection'
-  const asked = ui.kind === 'sent' ? { start: ui.start, end: ui.end, note: note.trim() || null, answer: 'open' as const, answerNote: null } : entry.asked
+  const asked = ui.kind === 'sent' ? { start: ui.start, end: ui.end, note: note.trim() || null, answer: 'open' as const, answerNote: null } : target.asked
 
   async function send() {
     const problem = askProblem(start, end, todayYmd)
@@ -39,7 +47,7 @@ export function PortalStageAsk({ entry, token, todayYmd }: { entry: PortalStageE
       const res = await fetch(`${supabaseUrl}/functions/v1/submit-portal-request`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token, kind: 'stage_window', stageId: entry.id, start, end, note: note.trim() || undefined }),
+        body: JSON.stringify({ token, kind: 'stage_window', stageId: target.windowId, start, end, note: note.trim() || undefined }),
       })
       const json = (await res.json().catch(() => null)) as { ok?: boolean; error?: string } | null
       if (!res.ok || !json?.ok) {
@@ -55,24 +63,19 @@ export function PortalStageAsk({ entry, token, todayYmd }: { entry: PortalStageE
 
   return (
     <div data-testid="portal-stage-ask" style={{ fontSize: 12.5 }}>
-      {entry.rescheduling ? <div style={{ color: COPPER, fontWeight: 700 }}>Re-scheduling — the sub is picking new days inside the window.</div> : null}
-      {asked ? (
+      {asked && asked.answer !== 'open' ? (
         <div style={{ color: MUTED }}>
-          {asked.answer === 'open'
-            ? `You asked for ${span(asked)} · waiting on the office`
-            : asked.answer === 'accepted'
-              ? `You asked for ${span(asked)} · accepted`
-              : `You asked for ${span(asked)} · the office answered${entry.window ? ` ${span(entry.window)}` : ''}${asked.answerNote ? ` — ${asked.answerNote}` : ''}`}
+          {asked.answer === 'accepted' ? `You asked for ${span(asked)} · accepted` : `You asked for ${span(asked)} · the office answered${target.window ? ` ${span(target.window)}` : ''}${asked.answerNote ? ` — ${asked.answerNote}` : ''}`}
         </div>
       ) : null}
-      {askable && !open && ui.kind !== 'sending' ? (
+      {!open && ui.kind !== 'sending' ? (
         <button type="button" onClick={() => setOpen(true)} style={{ background: 'none', border: 'none', color: '#1d4e89', fontWeight: 700, fontSize: 12.5, cursor: 'pointer', padding: 0, textDecoration: 'underline' }}>
-          {asked ? 'Ask again' : 'Ask for other dates'}
+          {asked ? 'Ask again' : 'Need other dates?'}
         </button>
       ) : null}
       {open ? (
         <div style={{ marginTop: 6, border: `1px solid ${HAIR}`, borderRadius: 8, background: PAPER, padding: '8px 10px', display: 'grid', gap: 6 }}>
-          <div style={{ fontWeight: 700, color: INK }}>{entry.window ? 'We need it between' : 'When do you need it?'}</div>
+          <div style={{ fontWeight: 700, color: INK }}>{target.window ? 'We need it between' : 'When do you need it?'}</div>
           <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
             <input type="date" value={start} onChange={(e) => setStart(e.target.value)} aria-label="From" style={{ padding: '0.35rem 0.5rem', border: `1px solid ${HAIR}`, borderRadius: 6, background: CARD, color: INK, fontSize: 13 }} />
             <span style={{ color: MUTED }}>and</span>
@@ -90,7 +93,7 @@ export function PortalStageAsk({ entry, token, todayYmd }: { entry: PortalStageE
           </div>
         </div>
       ) : null}
-      {ui.kind === 'sent' ? <div style={{ color: PAPER_GREEN, fontWeight: 700, marginTop: 4 }}>Asked — the office will answer here.</div> : null}
+      {ui.kind === 'sent' ? <div style={{ color: PAPER_GREEN, fontWeight: 700, marginTop: 4 }}>Asked for {span({ start: ui.start, end: ui.end })} — we'll confirm here.</div> : null}
     </div>
   )
 }

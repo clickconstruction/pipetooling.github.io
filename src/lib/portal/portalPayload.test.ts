@@ -156,3 +156,42 @@ describe('agreements (Contract Desk PR 5)', () => {
   })
 })
 
+
+describe('stages (Stage Plan PR 5)', () => {
+  it('parses the GC view — steps, also, the ask window — and drops a job with nothing to show', () => {
+    const p = parsePortalPayload({
+      ...good,
+      audience: 'gc',
+      stages: [
+        {
+          jobId: 'j1',
+          jobLabel: '#1004 · Cedar Bend',
+          jobAddress: '407 E 6th St',
+          view: {
+            headline: 'Stage 2 of 3 · Top-out · on site now',
+            steps: [
+              { fixtureId: 'a', name: 'Rough-in', number: 1, state: 'done', line: 'Passed inspection Sep 4', pct: null, askable: false, ask: null },
+              { fixtureId: 'b', name: 'Top-out', number: 2, state: 'now', line: 'On site Sep 9 – 10 · about halfway', pct: 50, askable: false, ask: null },
+              { fixtureId: 'c', name: 'Trim & final', number: 3, state: 'next', line: "You asked for Sep 24 – Oct 2 · we'll confirm", pct: null, askable: true, ask: { start: '2026-09-24', end: '2026-10-02', note: 'framing', answer: 'open', answerNote: null } },
+            ],
+            also: [{ name: 'Relocate water heater', state: 'done', line: 'Done Sep 16' }],
+          },
+          askWindowId: 'w-trim',
+          askWindow: { start: '2026-09-22', end: '2026-10-02' },
+          entries: [],
+        },
+        { jobId: 'j2', jobLabel: 'Empty', jobAddress: null, view: { headline: null, steps: [], also: [] }, askWindowId: null, askWindow: null },
+        { jobId: 'j3', jobLabel: 'Old shape', jobAddress: null, entries: [{ id: 'w', name: 'Rough-in', who: 'Behar' }] },
+      ],
+    })!
+    expect(p.stages).toHaveLength(1)
+    const s = p.stages[0]!
+    expect(s.view.headline).toBe('Stage 2 of 3 · Top-out · on site now')
+    expect(s.view.steps.map((x) => [x.number, x.state, x.askable])).toEqual([[1, 'done', false], [2, 'now', false], [3, 'next', true]])
+    expect(s.view.steps[2]!.ask).toEqual({ start: '2026-09-24', end: '2026-10-02', note: 'framing', answer: 'open', answerNote: null })
+    expect(s.view.also).toEqual([{ name: 'Relocate water heater', state: 'done', line: 'Done Sep 16' }])
+    expect(s.askWindowId).toBe('w-trim')
+    expect(s.askWindow).toEqual({ start: '2026-09-22', end: '2026-10-02' })
+    expect(JSON.stringify(p.stages)).not.toContain('Behar')
+  })
+})

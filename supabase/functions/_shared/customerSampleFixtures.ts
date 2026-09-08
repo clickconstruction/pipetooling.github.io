@@ -4,6 +4,7 @@
  * renders exactly what a real customer would get with today's copy, terms, footer and brand.
  */
 import { SAMPLE_BID, SAMPLE_CHANGE_ORDER, SAMPLE_CONTRACT, SAMPLE_ESTIMATE, SAMPLE_GC, SAMPLE_HOMEOWNER, SAMPLE_SUB, SAMPLE_TOKEN, ymdPlusDays, type SampleState } from './customerSample.ts'
+import { gcPortalStages } from './gcStages.ts'
 import { resolveEstimateCustomerExperience, toClientCustomerExperience } from './estimateCustomerExperience.ts'
 import type { SharedBidRoomPayload } from './bidRoomPayload.ts'
 
@@ -94,6 +95,47 @@ export function sampleBidRoomResponse(rows: AppSettingRow[], state: SampleState,
 /** The letterhead block both portals show; the same constant the live functions use. */
 export type SamplePortalCompany = { name: string; cityLine: string; licenseLine: string; phone: string; email: string }
 
+/** The sample GC's stage sequence (Stage Plan PR 5): four stages in order, two change orders — the mock-up's job, dated around today. */
+function sampleGcStages(todayYmd: string, jobLabel: string, jobAddress: string) {
+  const d = (n: number) => ymdPlusDays(todayYmd, n)
+  const iso = (n: number) => `${d(n)}T15:00:00Z`
+  const fx = (id: string, name: string, seq: number, price: number, kind: 'order' | 'any' | null, shared: boolean, invoice: string | null = null, count = 1) => ({ id, name, count, line_unit_price: price, sequence_order: seq, invoice_id: invoice, stage_kind: kind, shared_with_gc: shared })
+  const out = gcPortalStages({
+    fixtures: [
+      fx('sf-rough', 'Rough-in', 1, 12_465, 'order', true, 'si-1'),
+      fx('sf-top', 'Top-out', 2, 12_465, 'order', true, 'si-2'),
+      fx('sf-trim', 'Trim & final', 3, 8_310, 'order', true, null, 2),
+      fx('sf-final', 'Final inspection', 4, 0, 'order', true),
+      fx('sf-co2', 'Relocate water heater', 5, 1_850, 'any', true),
+      fx('sf-co3', 'Add hose bib, garage', 6, 420, 'any', false),
+      fx('sf-permit', 'Permit & misc', 7, 600, null, false),
+    ],
+    windows: [
+      { id: 'sw-rough', fixture_id: 'sf-rough', window_start: d(-9), window_end: d(-5) },
+      { id: 'sw-top', fixture_id: 'sf-top', window_start: d(-1), window_end: d(3) },
+      { id: 'sw-trim', fixture_id: 'sf-trim', window_start: d(13), window_end: d(23) },
+      { id: 'sw-co2', fixture_id: 'sf-co2', window_start: d(-6), window_end: d(-2) },
+    ],
+    orders: [
+      { id: 'so-rough', stage_window_id: 'sw-rough', status: 'settled', picked_start: d(-8), picked_end: d(-6), labor_job_id: 'ss-rough' },
+      { id: 'so-top', stage_window_id: 'sw-top', status: 'accepted', picked_start: d(0), picked_end: d(1), labor_job_id: 'ss-top' },
+      { id: 'so-co2', stage_window_id: 'sw-co2', status: 'accepted', picked_start: d(-4), picked_end: d(-3), labor_job_id: 'ss-co2' },
+    ],
+    sheets: [
+      { id: 'ss-rough', stage: 'customer_pay', progress_pct: 100, stage_changed_at: iso(-5) },
+      { id: 'ss-top', stage: 'working', progress_pct: 50, progress_at: iso(0) },
+      { id: 'ss-co2', stage: 'walkthrough', progress_pct: 100, stage_changed_at: iso(-3) },
+    ],
+    invoices: [
+      { id: 'si-1', status: 'paid', billed_at: iso(-12) },
+      { id: 'si-2', status: 'billed', billed_at: iso(-4) },
+    ],
+    payments: [{ invoice_id: 'si-1', paid_on: d(-9) }],
+    todayYmd,
+  })
+  return [{ jobId: 'sample-job-open', jobLabel, jobAddress, view: out.view, askWindowId: out.askWindowId, askWindow: { start: d(13), end: d(23) }, entries: [] }]
+}
+
 /** customer-portal, sample token: the homeowner's statement (one fresh bill, one partly paid), or (`gc`) the contractor's view of the properties they GC. */
 export function sampleCustomerPortalResponse(company: SamplePortalCompany, state: SampleState, todayYmd: string, appOrigin: string): Record<string, unknown> {
   const gc = state === 'gc'
@@ -146,6 +188,7 @@ export function sampleCustomerPortalResponse(company: SamplePortalCompany, state
     agreements: gc
       ? [{ jobLabel: openBill.jobLabel, jobAddress: openBill.jobAddress, status: 'signed', templateName: 'Commercial plumbing agreement', amountCents: 5_634_300, signedAt: ymdPlusDays(todayYmd, -20), signerName: SAMPLE_GC.contact, sentAt: ymdPlusDays(todayYmd, -21), signUrl: null }]
       : [{ jobLabel: openBill.jobLabel, jobAddress: openBill.jobAddress, status: 'signed', templateName: 'Residential service agreement', amountCents: 438_000, signedAt: ymdPlusDays(todayYmd, -5), signerName: SAMPLE_HOMEOWNER.name, sentAt: ymdPlusDays(todayYmd, -6), signUrl: null }],
+    stages: gc ? sampleGcStages(todayYmd, openBill.jobLabel, openBill.jobAddress) : [],
   }
 }
 

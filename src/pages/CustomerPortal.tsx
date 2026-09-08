@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { PortalStageAsk } from '../components/portal/PortalStageAsk'
+import { PortalStagesCard } from '../components/portal/PortalStagesCard'
 import { publicFunctionHeaders, sampleStateFromToken } from '../lib/customerSampleMode'
 import { staffAwarePublicHeaders } from '../lib/publicFunctionStaffHeaders'
 import { PUBLIC_PREVIEW_PARAM, isPreviewFlag } from '../lib/publicViewCounting'
@@ -431,36 +432,25 @@ function PortalStatement({ payload, today, requestToken }: { payload: PortalPayl
         </div>
       )}
 
-      {/* Stages the office offered (v2.2933): GC viewers, jobs that share dates, offered windows only — who, when, how far. */}
+      {/* The stage sequence (Stage Plan PR 5): GC viewers, jobs that share dates, the rows whose eye is on — in the company's voice. */}
       {payload.stages.length > 0 ? (
-        <div data-testid="portal-stages" style={{ margin: '1.4rem 0 0', background: CARD, border: `1px solid ${HAIR}`, padding: '1rem 1.3rem' }}>
-          <div style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: '0.2em', textTransform: 'uppercase', color: MUTED, marginBottom: 8 }}>
-            Stages
-          </div>
+        <div data-testid="portal-stages" style={{ margin: '1.4rem 0 0' }}>
           {payload.stages.map((js) => (
-            <div key={js.jobId} style={{ padding: '6px 0 10px' }}>
-              <div style={{ fontWeight: 700, fontSize: 14 }}>{js.jobLabel}{js.jobAddress ? <span style={{ color: MUTED, fontWeight: 400 }}> · {js.jobAddress}</span> : null}</div>
-              {js.entries.map((e) => {
-                const span = (x: { start: string; end: string }) => (x.start === x.end ? (formatPortalDate(x.start) ?? x.start) : `${formatPortalDate(x.start) ?? x.start} – ${formatPortalDate(x.end) ?? x.end}`)
-                const chip = e.state === 'passed' ? { t: 'Passed', bg: '#e3f1e7', fg: PAPER_GREEN } : e.state === 'inspection' ? { t: 'Inspection next', bg: '#f6e6d8', fg: COPPER } : e.state === 'working' ? { t: `${e.pct ?? 0}% along`, bg: '#e7effa', fg: '#1d4e89' } : e.state === 'scheduled' ? { t: 'Scheduled', bg: '#e7effa', fg: '#1d4e89' } : e.state === 'offered' ? { t: 'Offered to a sub', bg: PAPER, fg: MUTED } : { t: 'Planned', bg: PAPER, fg: MUTED }
-                return (
-                  <div key={e.id} style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'baseline', flexWrap: 'wrap', padding: '6px 0', borderTop: `1px dotted ${HAIR}`, fontSize: 13 }}>
-                    <div>
-                      <div style={{ fontWeight: 600 }}>{e.name}{e.bundle ? <span style={{ color: MUTED, fontWeight: 400, fontSize: 11.5 }}> · together</span> : null}</div>
-                      <div style={{ color: MUTED, fontSize: 12.5 }}>
-                        {e.who && e.when ? `${e.who} · ${span(e.when)}` : e.window ? `Between ${span(e.window)}` : 'Dates to come'}
-                      </div>
+            <div key={js.jobId} style={{ marginBottom: '0.8rem' }}>
+              <PortalStagesCard
+                view={js.view}
+                jobLabel={js.jobLabel}
+                jobAddress={js.jobAddress}
+                askSlot={(step) =>
+                  js.askWindowId ? (
+                    <div data-screen-only>
+                      <PortalStageAsk target={{ windowId: js.askWindowId, window: js.askWindow, asked: step.ask }} token={requestToken} todayYmd={todayYmd} />
                     </div>
-                    <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', borderRadius: 999, padding: '3px 9px', background: e.rescheduling ? '#f6e6d8' : chip.bg, color: e.rescheduling ? COPPER : chip.fg, whiteSpace: 'nowrap' }}>{e.rescheduling ? 'Re-scheduling' : chip.t}</span>
-                    <div data-screen-only style={{ flexBasis: '100%' }}>
-                      <PortalStageAsk entry={e} token={requestToken} todayYmd={todayYmd} />
-                    </div>
-                  </div>
-                )
-              })}
+                  ) : null
+                }
+              />
             </div>
           ))}
-          <div style={{ fontSize: 11.5, color: FAINT, marginTop: 4 }}>Dates are the plan as it stands; we'll update this page as the work moves.</div>
         </div>
       ) : null}
 

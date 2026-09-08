@@ -1,5 +1,5 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
-import { buildGcStageEntries, type GcStageEntry, type GcStageFixtureRow, type GcStageOrderRow, type GcStageSheetRow, type GcStageWindowRow } from '../_shared/gcStages.ts'
+import { gcPortalStages, loadGcStageInputs, type GcPortalStages } from '../_shared/gcStages.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { PORTAL_COMPANY } from '../_shared/portalCompany.ts'
 import { sampleStateFromToken } from '../_shared/customerSample.ts'
@@ -312,35 +312,29 @@ serve(async (req) => {
 
     const totalDue = Math.round(bills.reduce((s, b) => s + b.amount, 0) * 100) / 100
 
-    // Stages the office offered (v2.2933): only for GC viewers, only on jobs that share
-    // stage dates, only windows marked offered — bundles as one entry. Who / when / percent; no money.
-    const stages: Array<{ jobId: string; jobLabel: string; jobAddress: string | null; entries: GcStageEntry[] }> = []
+    // The stage sequence (Stage Plan PR 5): GC viewers, jobs that share stage dates with this
+    // viewer, the line items whose eye is on — the company's voice (never a name), no money.
+    const stages: Array<{ jobId: string; jobLabel: string; jobAddress: string | null; view: GcPortalStages['view']; askWindowId: string | null; askWindow: { start: string; end: string } | null; entries: never[] }> = []
     if (link.audience === 'gc' || link.audience === 'all') {
       const sharing = jobs.filter((j) => j.gc_shares_stage_dates === true && j.gc_customer_id === link.customer_id)
       if (sharing.length > 0) {
-        const { data: winRaw } = await admin
-          .from('job_stage_windows')
-          .select('id, job_id, fixture_id, window_start, window_end, offered_to_gc, bundle_id, asked_start, asked_end, asked_note, asked_at, answered_at, answer, answer_note')
-          .in('job_id', sharing.map((j) => j.id))
-          .eq('offered_to_gc', true)
-          .limit(500)
-        const windows = (winRaw ?? []) as GcStageWindowRow[]
-        if (windows.length > 0) {
-          const fixtureIds = [...new Set(windows.map((w) => w.fixture_id))]
-          const windowIds = windows.map((w) => w.id)
-          const [{ data: fxRaw }, { data: ordRaw }] = await Promise.all([
-            admin.from('jobs_ledger_fixtures').select('id, name, sequence_order').in('id', fixtureIds),
-            admin.from('step_commitments').select('id, stage_window_id, status, display_name, picked_start, picked_end, labor_job_id, change_requested_at').in('stage_window_id', windowIds).in('status', ['offered', 'accepted', 'approved', 'settled']),
-          ])
-          const orders = (ordRaw ?? []) as GcStageOrderRow[]
-          const sheetIds = [...new Set(orders.map((o) => o.labor_job_id).filter((id): id is string => !!id))]
-          const { data: shRaw } = sheetIds.length > 0 ? await admin.from('people_labor_jobs').select('id, stage, progress_pct').in('id', sheetIds) : { data: [] }
-          const fixtures = (fxRaw ?? []) as GcStageFixtureRow[]
-          const sheets = (shRaw ?? []) as GcStageSheetRow[]
-          for (const j of sharing) {
-            const entries = buildGcStageEntries({ windows: windows.filter((w) => w.job_id === j.id), fixtures, orders, sheets })
-            if (entries.length > 0) stages.push({ jobId: j.id, jobLabel: jobLabel(j), jobAddress: (j.job_address ?? '').trim() || null, entries })
-          }
+        const inputs = await loadGcStageInputs(admin, sharing.map((j) => j.id))
+        const todayYmd = todayYmdInAppTz()
+        for (const j of sharing) {
+          const forJob = inputs.byJob(j.id)
+          const out = gcPortalStages({ ...forJob, todayYmd })
+          if (out.view.steps.length === 0 && out.view.also.length === 0) continue
+          const askWin = out.askWindowId ? forJob.windows.find((w) => w.id === out.askWindowId) ?? null : null
+          stages.push({
+            jobId: j.id,
+            jobLabel: jobLabel(j),
+            jobAddress: (j.job_address ?? '').trim() || null,
+            view: out.view,
+            askWindowId: out.askWindowId,
+            askWindow: askWin?.window_start && askWin.window_end ? { start: askWin.window_start, end: askWin.window_end } : null,
+            // A client from before this release reads `entries[]`: empty, so it never prints a name.
+            entries: [],
+          })
         }
       }
     }
