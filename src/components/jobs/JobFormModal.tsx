@@ -96,6 +96,10 @@ import { useBreakOffSlider } from './useBreakOffSlider'
 import { useJobCostSnapshot } from './useJobCostSnapshot'
 import { useJobMigrate } from './useJobMigrate'
 import { JobFormInvoiceList } from './JobFormInvoiceList'
+import { JobFormUpcomingDraws } from './JobFormUpcomingDraws'
+import { useJobStagePlanInputs } from '../../hooks/useJobStagePlanInputs'
+import { drawLabelsByInvoiceId, fixtureStageFields, stagePlanFromForm } from '../../lib/jobs/stagePlanForm'
+import { todayYmdInAppTz } from '../../utils/dateUtils'
 import { JobFormHazmatRiderRows } from './JobFormHazmatRidersStrip'
 import { JobFormPaymentsTable } from './JobFormPaymentsTable'
 import { JobFormPartsCostSection } from './JobFormPartsCostSection'
@@ -569,6 +573,27 @@ export default function JobFormModal({
       invoices: editing?.invoices,
     })
   }, [billingSegments, jobTotalWithRidersDollars, payments, editing?.invoices])
+
+  // Stage Plan (PR 2): the line items read as stages — windows, the sub orders
+  // on them and their sheets come from the hook; line items, invoices and
+  // payments are the form's own state, so the plan follows every edit live.
+  const stagePlanInputs = useJobStagePlanInputs(editing?.id ?? null)
+  const stagePlanToday = useMemo(() => todayYmdInAppTz(), [])
+  const stagePlan = useMemo(
+    () =>
+      stagePlanFromForm({
+        fixtures,
+        windows: stagePlanInputs.inputs.windows,
+        orders: stagePlanInputs.inputs.orders,
+        sheets: stagePlanInputs.inputs.sheets,
+        invoices: editing?.invoices ?? [],
+        payments,
+        todayYmd: stagePlanToday,
+      }),
+    [fixtures, stagePlanInputs.inputs, editing?.invoices, payments, stagePlanToday],
+  )
+  const drawLabelByInvoiceId = useMemo(() => drawLabelsByInvoiceId(stagePlan), [stagePlan])
+  const [billingStageFixtureId, setBillingStageFixtureId] = useState<string | null>(null)
 
   // ② Invoices segment bar (v2.1070): which unbilled line items are picked
   // for the next "create invoice from selected segments" action.
@@ -1654,6 +1679,7 @@ export default function JobFormModal({
             line_unit_price: f.line_unit_price != null && Number.isFinite(Number(f.line_unit_price)) ? Number(f.line_unit_price) : null,
             line_description: f.line_description ?? '',
             invoice_id: f.invoice_id ?? null,
+            ...fixtureStageFields(f),
           }))
         : [{ id: crypto.randomUUID(), name: '', count: 1, line_unit_price: null, line_description: '', invoice_id: null }],
     )
@@ -2522,7 +2548,23 @@ export default function JobFormModal({
     }
   }
 
-  async function createInvoiceFromSelectedSegments() {
+  function createInvoiceFromSelectedSegments() {
+    return createInvoiceFromSegmentIds(selectedSegmentIds)
+  }
+
+  /** Stage Plan (PR 2): "Bill it" on one ready row — that row alone, through the segment-invoice path. */
+  async function billStageRow(fixtureId: string) {
+    const only = new Set([fixtureId])
+    setSelectedSegmentIds(only)
+    setBillingStageFixtureId(fixtureId)
+    try {
+      await createInvoiceFromSegmentIds(only)
+    } finally {
+      setBillingStageFixtureId(null)
+    }
+  }
+
+  async function createInvoiceFromSegmentIds(selection: ReadonlySet<string>) {
     if (!editing) return
     const fixturesNow = autosaveFixturesRef.current
     // The invoice bills the selection NET of dollar coverage — money already
@@ -2530,7 +2572,7 @@ export default function JobFormModal({
     // partially covered segment bills only what's left on it.
     const { netDollars, coveredDollars, count } = segmentSelectionNetSummary(
       fixturesNow,
-      selectedSegmentIds,
+      selection,
       segmentCoverage,
     )
     if (count === 0 || !(netDollars > 0)) {
@@ -2551,8 +2593,8 @@ export default function JobFormModal({
       // Flush so the DB rows match this exact fixtures array — the link
       // UPDATE below keys on the sequence_order positions the flush wrote.
       await flushBillingAutosave()
-      const positions = selectedSegmentSequencePositions(fixturesNow, selectedSegmentIds)
-      const linkedRowIds = new Set(linkableSelectedIds(fixturesNow, selectedSegmentIds))
+      const positions = selectedSegmentSequencePositions(fixturesNow, selection)
+      const linkedRowIds = new Set(linkableSelectedIds(fixturesNow, selection))
       const nextOrder = (editing.invoices ?? []).length
       const { data: created, error: insErr } = await supabase
         .from('jobs_ledger_invoices')
@@ -3785,6 +3827,7 @@ export default function JobFormModal({
             onOpenSegmentGenerator={() => setSegmentGeneratorOpen(true)}
             onOpenStripeFixturePreview={() => setStripeFixturePreviewOpen(true)}
             jobTotalDollars={jobTotalBidDollars}
+            plan={stagePlan}
           />
           {/* Job window (v2.1687): no divider and no "Billing" title — the Bill
               tab reads as ONE section from Line Items down. The standalone/New
@@ -3915,6 +3958,7 @@ export default function JobFormModal({
                 selectedIds={selectedSegmentIds}
                 onToggleSegment={toggleSegmentSelected}
                 coverage={segmentCoverage}
+                plan={stagePlan}
               />
               {editing ? (
                 <JobFormBreakOffSection
@@ -3935,9 +3979,16 @@ export default function JobFormModal({
                 creatingFromSelection={creatingSegmentInvoice}
                 coverage={segmentCoverage}
               />
+              <JobFormUpcomingDraws
+                plan={stagePlan}
+                onBillRow={(id) => void billStageRow(id)}
+                billingFixtureId={billingStageFixtureId}
+                disabled={creatingSegmentInvoice}
+              />
               <JobFormInvoiceList
                 editing={editing}
                 payments={payments}
+                drawLabelByInvoiceId={drawLabelByInvoiceId}
                 canApplyAgreedWriteDown={canApplyAgreedWriteDown}
                 hazmatInvoiceIds={hazmatInvoiceIds}
                 onClose={onClose}

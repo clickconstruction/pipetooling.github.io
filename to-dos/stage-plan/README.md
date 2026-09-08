@@ -1,6 +1,6 @@
 # Stage Plan — the line item is the stage
 
-Status: **in progress** · PR 1 (data + kernel, v2.3083) on `claude/stage-plan-1-data-kernel` · designed and approved 2026-09-07. Owner: Stephen. Designed in the session that shipped the three-party scheduling train (v2.2927–v2.2934) and the hub guide (v2.2938). Any session can pick this up cold; everything needed is in this folder.
+Status: **in progress** · PR 1 (data + kernel, v2.3083, PR #2838) · PR 2 (Bill tab, v2.3100) on `claude/stage-plan-2-bill-tab` · designed and approved 2026-09-07. Owner: Stephen. Designed in the session that shipped the three-party scheduling train (v2.2927–v2.2934) and the hub guide (v2.2938). Any session can pick this up cold; everything needed is in this folder.
 
 ## The ask, in the owner's words
 
@@ -126,8 +126,8 @@ Stack them the way the scheduling train was stacked: branch off the parent, `git
 - `JobFormFixturesSection`: a badge column on the left (number / diamond / dashed circle, done and live fills); a second line under each row: the **Order / Any / —** selector then `stateLine`; the selector writes `stage_kind`; ▲▼ unchanged; selector disabled on invoiced rows.
 - `JobFormSegmentsBar`: blocks in plan order carrying the row's `draw`; legend Paid / Billed / Ready to bill / Unbilled, waits on its stage / Later; one hint line "Draws follow the stages…"; **Bill it** on an Any row that is done and unbilled (ticks that one segment and runs the existing create-invoice path). Keep the covered-hatching code path; only order and labels change.
 - Invoice list: "Draw N · name" from the plan; a "Later" row for the next unbilled Order stage.
-- Change-order apply: the new fixture lands with `stage_kind = 'any'`, `shared_with_gc = false` (already the default after PR 1; make it explicit and test it).
-- Ready to Bill pipeline's capable list reads `billable()`.
+- Change-order apply: the new fixture lands with `stage_kind = 'any'`, `shared_with_gc = false` — in PR 2 this is the column default plus `fixtureInsertRows` writing `undefined → 'any'` (tested in `stagePlanForm.test.ts`); the generator's explicit kinds are PR 3.
+- Ready to Bill pipeline's capable list reads `billable()`. **Deferred past PR 2 (v2.3100):** the Stages board's *capable to bill* total sums unbilled line items per working job; reading `billable()` there needs windows / orders / sheets for every working job in one fetch. Do it with PR 4 or as its own small PR.
 - Guide *split a job into stages and bill stage by stage* rewritten around the selector. Render smoke for the fixtures section.
 - Live (test job on prod, then delete it): flip a row to Order and back; apply a change order and see it arrive as Any and hidden; the draw bar reorders; Bill it breaks off one invoice.
 

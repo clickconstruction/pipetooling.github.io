@@ -70,6 +70,8 @@ export const JOBS_LEDGER_FIXTURES_EMBED = [
   'line_unit_price',
   'name',
   'sequence_order',
+  'shared_with_gc',
+  'stage_kind',
 ].join(', ')
 
 /** `jobs_ledger_team_members` + users embed */

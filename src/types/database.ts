@@ -1664,6 +1664,9 @@ export type Database = {
           outcome: string | null
           plan_pages: string | null
           plans_link: string | null
+          plans_robot_probe_note: string | null
+          plans_robot_probed_at: string | null
+          plans_robot_readable: boolean | null
           profit: number | null
           project_id: string | null
           project_name: string | null
@@ -1731,6 +1734,9 @@ export type Database = {
           outcome?: string | null
           plan_pages?: string | null
           plans_link?: string | null
+          plans_robot_probe_note?: string | null
+          plans_robot_probed_at?: string | null
+          plans_robot_readable?: boolean | null
           profit?: number | null
           project_id?: string | null
           project_name?: string | null
@@ -1798,6 +1804,9 @@ export type Database = {
           outcome?: string | null
           plan_pages?: string | null
           plans_link?: string | null
+          plans_robot_probe_note?: string | null
+          plans_robot_probed_at?: string | null
+          plans_robot_readable?: boolean | null
           profit?: number | null
           project_id?: string | null
           project_name?: string | null
@@ -8051,6 +8060,8 @@ export type Database = {
           line_unit_price: number | null
           name: string
           sequence_order: number
+          shared_with_gc: boolean
+          stage_kind: string | null
         }
         Insert: {
           count?: number
@@ -8062,6 +8073,8 @@ export type Database = {
           line_unit_price?: number | null
           name?: string
           sequence_order?: number
+          shared_with_gc?: boolean
+          stage_kind?: string | null
         }
         Update: {
           count?: number
@@ -8073,6 +8086,8 @@ export type Database = {
           line_unit_price?: number | null
           name?: string
           sequence_order?: number
+          shared_with_gc?: boolean
+          stage_kind?: string | null
         }
         Relationships: [
           {
@@ -16079,6 +16094,8 @@ export type Database = {
           run_label: string
           scope_verdict: string | null
           scored_at: string | null
+          teacher_name: string | null
+          teacher_user_id: string | null
           twin_bid_number: string | null
         }
         Insert: {
@@ -16097,6 +16114,8 @@ export type Database = {
           run_label: string
           scope_verdict?: string | null
           scored_at?: string | null
+          teacher_name?: string | null
+          teacher_user_id?: string | null
           twin_bid_number?: string | null
         }
         Update: {
@@ -16115,6 +16134,8 @@ export type Database = {
           run_label?: string
           scope_verdict?: string | null
           scored_at?: string | null
+          teacher_name?: string | null
+          teacher_user_id?: string | null
           twin_bid_number?: string | null
         }
         Relationships: []
@@ -16183,6 +16204,8 @@ export type Database = {
           scored_at: string | null
           shadow_bid_id: string
           status: string
+          teacher_name: string | null
+          teacher_user_id: string | null
           twin_user_id: string
         }
         Insert: {
@@ -16197,6 +16220,8 @@ export type Database = {
           scored_at?: string | null
           shadow_bid_id: string
           status?: string
+          teacher_name?: string | null
+          teacher_user_id?: string | null
           twin_user_id: string
         }
         Update: {
@@ -16211,6 +16236,8 @@ export type Database = {
           scored_at?: string | null
           shadow_bid_id?: string
           status?: string
+          teacher_name?: string | null
+          teacher_user_id?: string | null
           twin_user_id?: string
         }
         Relationships: [
@@ -16807,6 +16834,7 @@ export type Database = {
         Row: {
           archived_at: string | null
           bid_board_self_highlight: Json | null
+          calibration_standard: boolean
           counttooling_user_id: string | null
           created_at: string | null
           dispatch_mode_enabled: boolean | null
@@ -16831,6 +16859,7 @@ export type Database = {
         Insert: {
           archived_at?: string | null
           bid_board_self_highlight?: Json | null
+          calibration_standard?: boolean
           counttooling_user_id?: string | null
           created_at?: string | null
           dispatch_mode_enabled?: boolean | null
@@ -16855,6 +16884,7 @@ export type Database = {
         Update: {
           archived_at?: string | null
           bid_board_self_highlight?: Json | null
+          calibration_standard?: boolean
           counttooling_user_id?: string | null
           created_at?: string | null
           dispatch_mode_enabled?: boolean | null
@@ -19355,6 +19385,8 @@ export type Database = {
           scored_at: string
           shadow_bid_number: string
           status: string
+          teacher_name: string
+          teacher_standard: boolean
         }[]
       }
       list_stale_unlinked_mercury_transactions_for_tally_staff: {

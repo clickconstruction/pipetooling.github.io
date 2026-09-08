@@ -3,6 +3,7 @@ import { BILLED_COLOR, DRAFT_COLOR, PAID_COLOR, UNBILLED_COLOR } from './MoneyLi
 import { formatCurrency } from '../../lib/jobs/jobFormMoney'
 import { formatUsdNoCents } from '../../lib/jobs/jobFormatting'
 import type { FixtureRow } from '../../lib/jobs/jobFormTypes'
+import type { StageDraw, StagePlan } from '../../lib/jobs/stagePlan'
 import {
   buildJobSegmentsBar,
   segmentSelectionNetSummary,
@@ -31,6 +32,13 @@ type JobFormSegmentsBarProps = {
    * slider's Remaining. Omit (new job) to disable all three.
    */
   coverage?: JobDollarCoverage
+  /**
+   * Stage Plan (PR 2): when given, blocks run in plan order (Order stages,
+   * then Any, then plain) and take their color from the row's draw — paid /
+   * billed / drafted / ready to bill / waits on its stage / later — with the
+   * legend and a one-line rule to match.
+   */
+  plan?: StagePlan | null
 }
 
 /**
@@ -134,6 +142,41 @@ const LEGEND: Array<{ label: string; color: string }> = [
   { label: 'Paid', color: PAID_COLOR },
 ]
 
+/** Stage Plan: a block's color follows the row's draw, not just its invoice. */
+const LATER_COLOR = 'var(--border-strong)'
+const WAITS_HATCH = 'repeating-linear-gradient(-45deg, rgba(0,0,0,0.22) 0 4px, transparent 4px 8px)'
+function planFill(draw: StageDraw, hasInvoice: boolean): string {
+  switch (draw) {
+    case 'paid':
+      return PAID_COLOR
+    case 'billed':
+      return BILLED_COLOR
+    case 'ready':
+      return hasInvoice ? DRAFT_COLOR : UNBILLED_COLOR
+    case 'waits':
+      return UNBILLED_COLOR
+    default:
+      return LATER_COLOR
+  }
+}
+const PLAN_LEGEND: Array<{ label: string; color: string; hatch?: boolean }> = [
+  { label: 'Paid', color: PAID_COLOR },
+  { label: 'Billed', color: BILLED_COLOR },
+  { label: 'Drafted', color: DRAFT_COLOR },
+  { label: 'Ready to bill', color: UNBILLED_COLOR },
+  { label: 'Waits on its stage', color: UNBILLED_COLOR, hatch: true },
+  { label: 'Later', color: LATER_COLOR },
+]
+const DRAW_WORDS: Record<StageDraw, string> = {
+  paid: 'paid',
+  billed: 'billed',
+  ready: 'ready to bill',
+  waits: 'waits on the stage above it',
+  later: 'later',
+  open: 'bills on its own',
+  none: 'no draw',
+}
+
 /**
  * The ② Invoices "100% of the job" strip (v2.1070, reworked v2.1072): line
  * items as ordered segments sized by dollar share, each block carrying its
@@ -152,13 +195,28 @@ export function JobFormSegmentsBar({
   trackSlot,
   axisTotalDollars,
   coverage,
+  plan = null,
 }: JobFormSegmentsBarProps) {
   const [focusedKey, setFocusedKey] = useState<string | null>(null)
+  // Stage Plan: blocks run in plan order — Order stages by number, then Any
+  // rows, then plain lines. Rows the plan doesn't know (unnamed) keep the tail.
+  const orderedFixtures = useMemo(() => {
+    if (!plan) return fixtures
+    const byId = new Map(fixtures.map((f) => [f.id, f]))
+    const inPlan = plan.rows.map((r) => byId.get(r.fixtureId)).filter((f): f is FixtureRow => !!f)
+    const seen = new Set(inPlan.map((f) => f.id))
+    return [...inPlan, ...fixtures.filter((f) => !seen.has(f.id))]
+  }, [fixtures, plan])
   const segments = useMemo(
-    () => buildJobSegmentsBar({ fixtures, riderFeesDollars, invoiceStatusById }),
-    [fixtures, riderFeesDollars, invoiceStatusById],
+    () => buildJobSegmentsBar({ fixtures: orderedFixtures, riderFeesDollars, invoiceStatusById }),
+    [orderedFixtures, riderFeesDollars, invoiceStatusById],
   )
   if (segments.length === 0) return null
+  const planRowFor = (seg: JobBarSegment) => (plan && seg.kind === 'line' ? plan.byFixtureId.get(seg.key) ?? null : null)
+  const fillFor = (seg: JobBarSegment) => {
+    const r = planRowFor(seg)
+    return r ? planFill(r.draw, !!r.invoiceId) : segmentFill(seg)
+  }
 
   const segCoverage = (key: string) => coverage?.bySegmentKey[key]
   /** Selectable for invoicing: unbilled AND not fully covered by dollar invoices/payments. */
@@ -217,9 +275,11 @@ export function JobFormSegmentsBar({
           marginBottom: '0.35rem',
         }}
       >
-        {LEGEND.map((l) => (
+        {(plan ? PLAN_LEGEND : LEGEND).map((l) => (
           <span key={l.label} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: '0.6875rem', color: 'var(--text-muted)' }}>
-            <span style={{ width: 8, height: 8, borderRadius: 2, background: l.color, display: 'inline-block' }} />
+            <span style={{ width: 8, height: 8, borderRadius: 2, background: l.color, display: 'inline-block', position: 'relative', overflow: 'hidden' }}>
+              {'hatch' in l && l.hatch ? <span aria-hidden style={{ position: 'absolute', inset: 0, background: WAITS_HATCH }} /> : null}
+            </span>
             {l.label}
           </span>
         ))}
@@ -266,7 +326,11 @@ export function JobFormSegmentsBar({
               key={seg.key}
               type="button"
               onClick={() => handleSegmentClick(seg)}
-              title={`${seg.label} — $${formatCurrency(seg.dollars)} (${seg.pctOfTotal.toFixed(1)}%)${seg.status === 'unbilled' ? '' : ` · ${seg.status.replace(/_/g, ' ')}`}${(() => {
+              title={`${seg.label} — $${formatCurrency(seg.dollars)} (${seg.pctOfTotal.toFixed(1)}%)${(() => {
+                const r = planRowFor(seg)
+                if (r) return ` · ${DRAW_WORDS[r.draw]}`
+                return seg.status === 'unbilled' ? '' : ` · ${seg.status.replace(/_/g, ' ')}`
+              })()}${(() => {
                 const c = segCoverage(seg.key)
                 return c && c.coveredDollars > 0 ? ` · $${formatCurrency(c.coveredDollars)} covered by other bills` : ''
               })()}`}
@@ -277,7 +341,8 @@ export function JobFormSegmentsBar({
                 width: `${seg.pctOfTotal}%`,
                 minWidth: 6,
                 padding: '0 4px',
-                background: segmentFill(seg),
+                background: fillFor(seg),
+                backgroundImage: planRowFor(seg)?.draw === 'waits' ? WAITS_HATCH : undefined,
                 border: 'none',
                 borderRight: idx < segments.length - 1 ? '1px solid var(--surface)' : 'none',
                 // First AND last corners round independently — a single-segment
@@ -344,6 +409,12 @@ export function JobFormSegmentsBar({
           )
         })}
       </div>
+      {plan && plan.orderCount + plan.anyCount > 0 && (
+        <p style={{ margin: '0.35rem 0 0', fontSize: '0.6875rem', lineHeight: 1.5, color: 'var(--text-muted)' }}>
+          <strong style={{ color: 'var(--text-700)' }}>Draws follow the stages.</strong> A numbered stage becomes a draw when it passes inspection; a ◆ stage bills the day it's done.
+          Nothing is billable out of order.
+        </p>
+      )}
       {trackSlot}
       <div style={{ display: 'flex', flexDirection: 'column', marginTop: '0.4rem' }}>
         {segments.map((seg) => {

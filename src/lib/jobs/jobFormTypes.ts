@@ -4,6 +4,7 @@
  * kernels agree on the shapes without a circular import back into the component.
  */
 import type { Database } from '../../types/database'
+import type { StageKind } from './stagePlan'
 
 export type JobFormServiceType = { id: string; name: string; color: string | null }
 
@@ -46,6 +47,14 @@ export type FixtureRow = {
    * survives id churn; null = unbilled segment. Linked rows lock in ①.
    */
   invoice_id: string | null
+  /**
+   * Stage Plan (v2.3083+): `order` = numbered stage, `any` = its own dates,
+   * null = a plain line item. `undefined` = never loaded / newly added — saves
+   * as the column default (`any`).
+   */
+  stage_kind?: StageKind | null
+  /** The eye: this line item shows on the GC portal's stage sequence. */
+  shared_with_gc?: boolean
 }
 
 export type JobsLedgerInvoiceRow = Database['public']['Tables']['jobs_ledger_invoices']['Row']

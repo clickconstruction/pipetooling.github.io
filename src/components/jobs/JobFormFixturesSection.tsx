@@ -6,6 +6,9 @@ import { formatCurrency } from '../../lib/jobs/jobFormMoney'
 import type { FixtureRow } from '../../lib/jobs/jobFormTypes'
 import { normalizeFixtureDisplayName } from '../../lib/jobs/jobFormRows'
 import { fixtureInvoiceLinkChip, fixtureRowIsLocked } from '../../lib/jobs/jobFormFixtureLinks'
+import type { StagePlan } from '../../lib/jobs/stagePlan'
+import { formFixtureKind } from '../../lib/jobs/stagePlanForm'
+import { StageKindBadge, StageKindSelector, StageStateLine } from './StageKindControls'
 import {
   STRIPE_INVOICE_LINE_DESCRIPTION_MAX,
   stripeInvoiceFixtureLineLength,
@@ -50,6 +53,12 @@ type JobFormFixturesSectionProps = {
   riderRows?: ReactNode
   /** Sum of rider fees — folds into the displayed Job Total with a breakdown. */
   riderFeesDollars?: number
+  /**
+   * Stage Plan (PR 2): the plan built from these rows. Draws the badge at the
+   * left of each row and the Order / Any / — selector + state line under it.
+   * Omit to render the plain grid.
+   */
+  plan?: StagePlan | null
 }
 
 /**
@@ -78,6 +87,7 @@ export function JobFormFixturesSection({
   jobTotalDollars,
   riderRows,
   riderFeesDollars = 0,
+  plan = null,
 }: JobFormFixturesSectionProps) {
   // Phone-width focus expansion (v2.1229): while a row's name field (or any
   // field in that row) holds focus on a narrow viewport, the name spans the
@@ -192,6 +202,8 @@ export function JobFormFixturesSection({
                   const stripeLineOverLimit = stripeFixtureLineLen > STRIPE_INVOICE_LINE_DESCRIPTION_MAX
                   const locked = fixtureRowIsLocked(row)
                   const linkChip = fixtureInvoiceLinkChip(row.invoice_id, invoiceStatusById)
+                  // Stage Plan (PR 2): unnamed rows have no plan row yet — no badge, no second line.
+                  const planRow = plan?.byFixtureId.get(row.id) ?? null
                   const nameEditExpanded = narrowViewport && !locked && nameFocusRowId === row.id
                   // fill=true (phone table cells, v2.1233): the group stretches to
                   // its content-sized column. fill=false keeps the fixed widths
@@ -340,6 +352,11 @@ export function JobFormFixturesSection({
                             Specific work or materials
                           </label>
                           <div style={{ display: 'flex', alignItems: 'stretch', gap: 4 }}>
+                            {plan && (
+                              <div data-testid="stage-badge" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 30, flexShrink: 0 }}>
+                                <StageKindBadge row={planRow} />
+                              </div>
+                            )}
                             {fixtures.length > 1 && (
                               <div
                                 style={{
@@ -583,6 +600,30 @@ export function JobFormFixturesSection({
                             position: 'relative',
                           }}
                         >
+                          {plan && planRow && (
+                            /* Stage Plan (PR 2): the second line IS the stage — the
+                               Order / Any / — selector, then where the work and its
+                               draw stand. Indented past the badge and the ▲▼ column so
+                               it reads under the name field. */
+                            <div
+                              data-testid="stage-line"
+                              style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '0.5rem',
+                                flexWrap: 'wrap',
+                                padding: `0 0.75rem 0.4rem calc(0.75rem + 34px${fixtures.length > 1 ? ' + 22px' : ''})`,
+                              }}
+                            >
+                              <StageKindSelector
+                                value={formFixtureKind(row)}
+                                disabled={locked}
+                                rowName={row.name}
+                                onChange={(kind) => updateFixtureRow(row.id, { stage_kind: kind })}
+                              />
+                              <StageStateLine parts={planRow.stateParts} />
+                            </div>
+                          )}
                           {scopeExpanded ? (
                             <>
                               {/* The counter earns its space only near the Stripe line limit
@@ -713,6 +754,12 @@ export function JobFormFixturesSection({
                 </span>
               </span>
             </div>
+            {plan && plan.rows.length > 0 && (
+              <p style={{ margin: '0.5rem 0 0', fontSize: '0.75rem', lineHeight: 1.5, color: 'var(--text-muted)' }}>
+                <strong style={{ color: 'var(--text-700)' }}>The second line is the stage.</strong> Order rows are numbered top to bottom and wait for the one above; Any rows
+                can happen whenever; — is just a line item. ▲▼ still sets the order; the badge and the rest of the line follow.
+              </p>
+            )}
           </div>
   )
 }
