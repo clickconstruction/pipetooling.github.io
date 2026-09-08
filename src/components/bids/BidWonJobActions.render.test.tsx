@@ -17,6 +17,11 @@ vi.mock('../../lib/supabase', async () => {
   const { makeSupabaseStub } = await import('../../test/renderSmokeMocks')
   return { supabase: makeSupabaseStub() }
 })
+// v2.3143: the Dispatch hand-off — the write is mocked, the open to-do is a knob.
+const askDispatchToOpenJob = vi.fn(async (..._args: unknown[]) => 'created' as const)
+vi.mock('../../lib/bids/openJobFromBidDispatchRequest', () => ({ askDispatchToOpenJob: (...args: unknown[]) => askDispatchToOpenJob(...args) }))
+let handoffRequest: { id: string; createdAt: string | null; senderName: string | null } | null = null
+vi.mock('../../hooks/useOpenJobFromBidRequest', () => ({ useOpenJobFromBidRequest: () => ({ request: handoffRequest, refetch: vi.fn() }) }))
 
 import { BidWonJobActions } from './BidWonJobActions'
 
@@ -44,6 +49,31 @@ describe('BidWonJobActions', () => {
     expect(container.textContent).toBe('')
     const compact = render(<BidWonJobActions bidId="bid-1" compact knownJob={null} />)
     expect(compact.container.textContent).toBe('')
+  })
+  it('v2.3143: beside "Open the job", a quiet "Ask Dispatch to open it" that files the to-do', () => {
+    role = 'estimator'
+    handoffRequest = null
+    render(<BidWonJobActions bidId="bid-3" won knownJob={null} />)
+    expect(screen.getByText('Open the job')).toBeTruthy()
+    fireEvent.click(screen.getByText('Ask Dispatch to open it'))
+    expect(askDispatchToOpenJob).toHaveBeenCalledTimes(1)
+    expect(askDispatchToOpenJob.mock.calls[0]?.[2]).toBe('bid-3')
+  })
+  it('v2.3143: primary (can mark Won, no job door) gets the hand-off as its one button', () => {
+    role = 'primary'
+    handoffRequest = null
+    render(<BidWonJobActions bidId="bid-4" won knownJob={null} />)
+    expect(screen.queryByText('Open the job')).toBeNull()
+    expect(screen.getByText('Ask Dispatch to open the job')).toBeTruthy()
+  })
+  it('v2.3143: while the to-do is open the chip says who asked and the ask button is gone', () => {
+    role = 'estimator'
+    handoffRequest = { id: 'r1', createdAt: new Date(Date.now() - 120000).toISOString(), senderName: 'Wendi' }
+    render(<BidWonJobActions bidId="bid-5" won knownJob={null} />)
+    expect(screen.getByText('Dispatch asked · by Wendi · 2 min ago')).toBeTruthy()
+    expect(screen.queryByText('Ask Dispatch to open it')).toBeNull()
+    expect(screen.getByText('Open the job')).toBeTruthy()
+    handoffRequest = null
   })
   it('compact beside a won pill: the create link only, and it stops the row click', () => {
     role = 'dev'

@@ -10,6 +10,8 @@ import {
 } from '../utils/dispatchNoteDisplay'
 import { useNarrowViewport640 } from '../hooks/useNarrowViewport640'
 import { useAuth } from '../hooks/useAuth'
+import { useJobFormModal } from '../contexts/JobFormModalContext'
+import { OPEN_JOB_FROM_BID_ACTION } from '../lib/bids/wonDispatchHandoff'
 import { recordNavClick } from '../lib/navClickTelemetry'
 import {
   AGING_ITEM_OPENED_CONTROL,
@@ -39,6 +41,8 @@ export type DispatchInboxRow = {
   pending_action: string | null
   /** Job this dispatch refers to (used by action affordances). */
   job_ledger_id: string | null
+  /** Bid this dispatch refers to (v2.3143: the "open the job" to-do). */
+  bid_id?: string | null
   /** Thread notes on this request (from dispatch_request_notes). */
   note_count?: number
   last_note_at?: string | null
@@ -123,6 +127,8 @@ export function DispatchInboxSection({
   onOpenSupplyHouseShare,
   onCreateTripCharge,
 }: DispatchInboxSectionProps) {
+  // v2.3143: the "open the job" to-do's one button runs the app-level New Job door itself.
+  const jobFormModal = useJobFormModal()
   const narrow = useNarrowViewport640()
   const { user: authUser, role } = useAuth()
   const body = (
@@ -233,6 +239,31 @@ export function DispatchInboxSection({
                     {dispatchRequestDismissingId === req.id ? '…' : 'Dismiss'}
                   </button>
                 )
+                const openJobBidId = !isClosed && req.pending_action === OPEN_JOB_FROM_BID_ACTION && jobFormModal ? (req.bid_id ?? null) : null
+                const openJobFromBidBtn = openJobBidId ? (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      jobFormModal?.openNewJob({ prefillBidId: openJobBidId })
+                    }}
+                    title="Open New Job filled in from the bid — customer, address, links and the price question. Press Create Job and this to-do closes itself."
+                    aria-label="Open the job from this bid"
+                    style={{
+                      padding: '0.35rem 0.75rem',
+                      background: 'var(--surface)',
+                      border: '1px solid var(--border-green)',
+                      borderRadius: 4,
+                      cursor: 'pointer',
+                      fontSize: '0.875rem',
+                      color: 'var(--text-green-700)',
+                      fontWeight: 600,
+                      flexShrink: 0,
+                    }}
+                  >
+                    Open the job
+                  </button>
+                ) : null
                 const showLinkJobPicturesAction =
                   !isClosed &&
                   req.pending_action === 'link_job_pictures' &&
@@ -530,6 +561,7 @@ export function DispatchInboxSection({
                               }
                         }
                       >
+                        {openJobFromBidBtn}
                         {linkJobPicturesBtn}
                         {openSupplyShareBtn}
                         {createTripChargeBtn}

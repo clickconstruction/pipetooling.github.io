@@ -8,8 +8,12 @@
  * Who sees which button is `wonMomentActions` — nothing here reads `bid_versions.outcome`.
  */
 import { useAuth } from '../../hooks/useAuth'
+import { useToastContext } from '../../contexts/ToastContext'
 import { useJobFormModal } from '../../contexts/JobFormModalContext'
 import { useJobsOpenedFromBid } from '../../hooks/useJobsOpenedFromBid'
+import { useOpenJobFromBidRequest } from '../../hooks/useOpenJobFromBidRequest'
+import { askDispatchToOpenJob } from '../../lib/bids/openJobFromBidDispatchRequest'
+import { dispatchAskedLabel } from '../../lib/bids/wonDispatchHandoff'
 import type { BidBoardJobLink } from '../../lib/bids/bidBoardJobLinks'
 import { bidJobLinkLabel, wonMomentActions, type WonMomentAction } from '../../lib/bids/wonMomentActions'
 import { bidBoardJobLinkLabel } from '../../lib/bids/bidBoardJobLinks'
@@ -73,17 +77,24 @@ function buttonStyle(a: WonMomentAction, won: boolean): React.CSSProperties {
 }
 
 export function BidWonJobActions({ bidId, won = false, knownJob, compact = false, onOpenedForm }: Props) {
-  const { role } = useAuth()
+  const { role, user } = useAuth()
+  const { showToast } = useToastContext()
   const jobFormModal = useJobFormModal()
   const lookup = useJobsOpenedFromBid(knownJob === undefined ? bidId : null)
   const jobs: BidBoardJobLink[] = knownJob === undefined ? lookup.jobs : knownJob ? [knownJob] : []
   const newest = jobs[0] ?? null
-  const actions = wonMomentActions({ hasJob: newest != null, role })
+  // v2.3143: the open "open the job" to-do, if any (full variant only — the board's compact link stays one query per bid).
+  const handoff = useOpenJobFromBidRequest(compact ? null : bidId)
+  const actions = wonMomentActions({ hasJob: newest != null, role, dispatchAsked: !compact && handoff.request != null })
 
   // No provider (partial trees, tests) → no door to offer.
   if (!jobFormModal) return null
 
   const run = (a: WonMomentAction) => {
+    if (a.key === 'ask_dispatch') {
+      void askDispatchToOpenJob(user?.id, showToast, bidId).then(() => handoff.refetch())
+      return
+    }
     if (a.key === 'open_existing' && newest) jobFormModal.openEditJob(newest.jobId)
     else jobFormModal.openNewJob({ prefillBidId: bidId })
     onOpenedForm?.()
@@ -120,10 +131,18 @@ export function BidWonJobActions({ bidId, won = false, knownJob, compact = false
     )
   }
 
-  if (actions.length === 0 && !newest) return null
+  if (actions.length === 0 && !newest && !handoff.request) return null
 
   return (
     <div data-testid="bid-won-job-actions" style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
+      {!newest && handoff.request ? (
+        <span
+          style={{ ...CHIP_STYLE, border: '1px solid var(--border-amber)', background: 'var(--bg-amber-tint)', color: 'var(--text-amber-700)' }}
+          title="Dispatch has this in their inbox — one press there opens New Job filled in from this bid"
+        >
+          {dispatchAskedLabel({ senderName: handoff.request.senderName, createdAtIso: handoff.request.createdAt })}
+        </span>
+      ) : null}
       {newest ? (
         <span style={CHIP_STYLE} title={jobs.length > 1 ? `${jobs.length} jobs were opened from this bid — newest shown` : undefined}>
           {bidJobLinkLabel(newest)}
@@ -131,11 +150,17 @@ export function BidWonJobActions({ bidId, won = false, knownJob, compact = false
         </span>
       ) : null}
       {actions.map((a) => (
-        <button key={a.key} type="button" onClick={() => run(a)} style={buttonStyle(a, won)}>
+        <button
+          key={a.key}
+          type="button"
+          onClick={() => run(a)}
+          title={a.key === 'ask_dispatch' ? 'Files a to-do in the Dispatch inbox with this bid attached — Dispatch opens the job with one press' : undefined}
+          style={buttonStyle(a, won)}
+        >
           {a.label}
         </button>
       ))}
-      {!newest && won && actions.length > 0 ? (
+      {!newest && won && actions.some((a) => a.key === 'create') ? (
         <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', lineHeight: 1.4 }}>
           You won it — the job opens with the customer, address and links filled in, and the bid linked on the job.
         </span>

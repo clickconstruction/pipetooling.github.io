@@ -107,6 +107,8 @@ import { pruneUnchangedBidUpdateFields } from '../lib/bids/bidUpdatePrune'
 import { buildBidSavePayload, type BidSavePayload } from '../lib/bids/bidFormPayload'
 import { bidAutosaveSliceJson } from '../lib/bids/bidFormAutosave'
 import { useJobFormAutosaveSlice } from '../components/jobs/useJobFormAutosaveSlice'
+import { shouldAutoAskDispatchOnWon } from '../lib/bids/wonDispatchHandoff'
+import { askDispatchToOpenJob } from '../lib/bids/openJobFromBidDispatchRequest'
 import { readSharedBidId, rememberSharedBidId } from '../lib/bids/sharedBidPointer'
 import { MATERIALS_MODEL_CAPTION } from '../lib/bids/bidTakeoffHelpers'
 
@@ -2403,12 +2405,18 @@ export default function Bids() {
       setPendingBidSentFollowupSubmissionNote(null)
     }
     if (outcomeWritten) {
+      const nextOutcome = normalizedOutcomePayload(written.outcome)
       await insertOutcomeChangeBidNoteAfterSave({
         bidId: bid.id,
         previousOutcome: bid.outcome ?? null,
-        nextOutcome: normalizedOutcomePayload(written.outcome),
+        nextOutcome,
         lossReasonForNote: written.outcome === 'lost' ? written.lossReason.trim() || null : null,
       })
+      // v2.3143: a role that can mark Won but has no New Job door hands the win to Dispatch on its own.
+      if (shouldAutoAskDispatchOnWon({ role: myRole, previousOutcome: bid.outcome ?? null, nextOutcome })) {
+        const sent = await askDispatchToOpenJob(authUser.id, showToast, bid.id, { silent: true })
+        if (sent === 'created') showToast('Dispatch has been asked to open the job from this bid.', 'success')
+      }
     }
     if (followupNote?.trim()) await insertPendingBidSentFollowupSubmissionNoteAfterSave(bid.id, followupNote)
     if (wroteSomething) await refreshEditingBidAfterWrite(bid.id)

@@ -24,21 +24,48 @@ export function canCreateJobFromBid(role: string | null | undefined): boolean {
   return role != null && CREATE_JOB_ROLES.has(role)
 }
 
-export type WonMomentActionKey = 'open_existing' | 'create' | 'create_another'
+/**
+ * Won → Dispatch opens the job (v2.3143). Roles that may mark a bid Won (the
+ * `bids` update policy) but have no New Job door: the hand-off to Dispatch is
+ * their primary button, and the Edit Bid autosave files it on its own the
+ * moment Won lands. Today that is `primary`; superintendents cannot mark Won.
+ */
+const WON_WITHOUT_JOB_DOOR_ROLES: ReadonlySet<string> = new Set(['primary'])
+
+export type WonHandoffMode = 'button' | 'auto' | 'none'
+
+/** Whether a role hands the win to Dispatch by a quiet button, automatically, or not at all. */
+export function wonHandoffMode(role: string | null | undefined): WonHandoffMode {
+  if (canCreateJobFromBid(role)) return 'button'
+  if (role != null && WON_WITHOUT_JOB_DOOR_ROLES.has(role)) return 'auto'
+  return 'none'
+}
+
+export type WonMomentActionKey = 'open_existing' | 'create' | 'create_another' | 'ask_dispatch'
 export type WonMomentAction = { key: WonMomentActionKey; label: string; primary: boolean }
 
 /**
  * Which buttons a Won moment renders.
  * - a job exists and the role can open Jobs → "Open the job" (primary) + "Create another job" (quiet)
- * - no job yet and the role can create → "Open the job" (primary)
+ * - no job yet and the role can create → "Open the job" (primary) + "Ask Dispatch to open it" (quiet, v2.3143)
+ * - no job yet and the role can mark Won but not create (primary) → "Ask Dispatch to open the job" (primary)
+ * - an open Dispatch to-do already exists (`dispatchAsked`) → no ask button; the caller shows the chip
  * - superintendent (read-only board) / sub / helper → nothing
  */
-export function wonMomentActions(args: { hasJob: boolean; role: string | null | undefined; canCreateJobs?: boolean }): WonMomentAction[] {
+export function wonMomentActions(args: { hasJob: boolean; role: string | null | undefined; canCreateJobs?: boolean; dispatchAsked?: boolean }): WonMomentAction[] {
   const canCreate = args.canCreateJobs ?? canCreateJobFromBid(args.role)
   const out: WonMomentAction[] = []
   if (args.hasJob && canSeeBidBoardJobLinks(args.role)) out.push({ key: 'open_existing', label: 'Open the job', primary: true })
   if (canCreate) {
     out.push(args.hasJob ? { key: 'create_another', label: 'Create another job', primary: false } : { key: 'create', label: 'Open the job', primary: true })
+  }
+  if (!args.hasJob && !args.dispatchAsked) {
+    // An explicit `canCreateJobs` override wins: true → the quiet hand-off rides along; false → no
+    // hand-off either, unless the role is one that hands off automatically anyway.
+    const roleMode = wonHandoffMode(args.role)
+    const mode: WonHandoffMode = args.canCreateJobs === undefined ? roleMode : args.canCreateJobs ? 'button' : roleMode === 'auto' ? 'auto' : 'none'
+    if (mode === 'button') out.push({ key: 'ask_dispatch', label: 'Ask Dispatch to open it', primary: false })
+    else if (mode === 'auto') out.push({ key: 'ask_dispatch', label: 'Ask Dispatch to open the job', primary: true })
   }
   return out
 }

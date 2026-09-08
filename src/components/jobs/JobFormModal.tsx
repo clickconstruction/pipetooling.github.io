@@ -83,6 +83,7 @@ import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
 import { recordNavClick } from '../../lib/navClickTelemetry'
 import { bidBoardJobLinkLabel } from '../../lib/bids/bidBoardJobLinks'
 import { JOB_CREATED_FROM_BID_EVENT, jobCreatedTelemetryTarget, secondConversionMessage, type JobCreatedFromBidDetail } from '../../lib/bids/wonMomentActions'
+import { closeOpenJobFromBidRequests } from '../../lib/bids/openJobFromBidDispatchRequest'
 import {
   resolveDevelopmentIdForJobPayload,
   validateNewDevelopmentName,
@@ -3385,6 +3386,9 @@ export default function JobFormModal({
         // tell the bid surfaces so the "J#### opened from this bid" chip appears without a reload.
         recordNavClick(authUser?.id, authRole, 'job_created', jobCreatedTelemetryTarget({ bidId, projectId }))
         if (bidId) window.dispatchEvent(new CustomEvent<JobCreatedFromBidDetail>(JOB_CREATED_FROM_BID_EVENT, { detail: { bidId, jobId } }))
+        // v2.3143: the Dispatch "open the job" to-do for this bid is done — close it and tell the requester
+        // (a role RLS keeps from updating leaves it for the inbox's own sweep).
+        if (bidId) void closeOpenJobFromBidRequests({ bidId, hcpNumber: hcpNumber.trim(), userId: authUser?.id, role: authRole, elsewhere: false })
         if (bidId) announceDerivedBidOutcome(bidBefore, await readBidOutcomeForToast(bidId))
       }
       if (customerId && dateMet.trim()) {
