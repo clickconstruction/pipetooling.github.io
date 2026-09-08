@@ -39,6 +39,17 @@ export type SignatureTypeOrDrawInputProps = {
 
 export const SIGNATURE_NAME_PLACEHOLDER = 'Your full legal name'
 
+/**
+ * The signature "paper" is always white with dark ink, in both themes: the
+ * canvas IS the PNG the office files, prints and shows on the signed record,
+ * so it must not follow the dark theme. Real colors, not tokens — a canvas
+ * fillStyle cannot read CSS variables, and `'var(--surface)'` silently fell
+ * back to black, hiding the ink (fixed v2.3164). rgb() on purpose: the
+ * theme-tokenize check rewrites neutral hexes, and this literal is deliberate.
+ */
+export const SIGNATURE_PAPER_COLOR = 'rgb(255, 255, 255)'
+export const SIGNATURE_INK_COLOR = 'rgb(17, 24, 39)'
+
 const CANVAS_W = 400
 const CANVAS_H = 160
 
@@ -73,8 +84,8 @@ export const SignatureTypeOrDrawInput = forwardRef<SignatureTypeOrDrawHandle, Si
       canvas.width = CANVAS_W
       canvas.height = CANVAS_H
       const pad = new SignaturePad(canvas, {
-        backgroundColor: 'var(--surface)',
-        penColor: '#111827',
+        backgroundColor: SIGNATURE_PAPER_COLOR,
+        penColor: SIGNATURE_INK_COLOR,
       })
       padRef.current = pad
       return () => {
@@ -145,7 +156,7 @@ export const SignatureTypeOrDrawInput = forwardRef<SignatureTypeOrDrawHandle, Si
                   touchAction: 'none',
                   border: '1px solid var(--border-strong)',
                   borderRadius: 6,
-                  background: 'var(--surface)',
+                  background: SIGNATURE_PAPER_COLOR,
                   boxSizing: 'border-box',
                 }}
               />

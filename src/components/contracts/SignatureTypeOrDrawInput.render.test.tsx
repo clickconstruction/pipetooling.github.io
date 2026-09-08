@@ -2,11 +2,21 @@
 import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { createRef, useState, type RefObject } from 'react'
-import { SignatureTypeOrDrawInput, type SignatureMode, type SignatureTypeOrDrawHandle } from './SignatureTypeOrDrawInput'
+import {
+  SIGNATURE_INK_COLOR,
+  SIGNATURE_PAPER_COLOR,
+  SignatureTypeOrDrawInput,
+  type SignatureMode,
+  type SignatureTypeOrDrawHandle,
+} from './SignatureTypeOrDrawInput'
 
 const padState = { empty: true }
+const padOptions: Array<Record<string, unknown>> = []
 vi.mock('signature_pad', () => ({
   default: class {
+    constructor(_canvas: unknown, options: Record<string, unknown>) {
+      padOptions.push(options)
+    }
     off() {}
     clear() {
       padState.empty = true
@@ -54,6 +64,18 @@ describe('SignatureTypeOrDrawInput (v2.3159)', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Clear signature' }))
     expect(handle.current?.isEmpty()).toBe(true)
+  })
+
+  it('gives the pad real paper-and-ink colors a canvas can paint — never CSS variables (v2.3164)', () => {
+    const handle = createRef<SignatureTypeOrDrawHandle>()
+    render(<Harness handle={handle} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Draw' }))
+    const opts = padOptions[padOptions.length - 1]!
+    expect(opts.backgroundColor).toBe(SIGNATURE_PAPER_COLOR)
+    expect(opts.penColor).toBe(SIGNATURE_INK_COLOR)
+    for (const v of [opts.backgroundColor, opts.penColor]) expect(String(v)).not.toMatch(/var\(/)
+    const canvas = screen.getByLabelText('Signature drawing area') as HTMLCanvasElement
+    expect(canvas.style.background).toBe(SIGNATURE_PAPER_COLOR)
   })
 
   it('switching back to Type never yields a PNG, even with ink on the pad', () => {
