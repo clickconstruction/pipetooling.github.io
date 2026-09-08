@@ -263,5 +263,47 @@ describe('buildJobAccountsView', () => {
       expect(view.onJobAccountTotal).toBeCloseTo(120)
       expect(view.holdingOnJobAccount).toBe(0)
     })
+
+    it('marks shared jobs and counts the two gap queues', () => {
+      const view = buildJobAccountsView(
+        [
+          job({ id: 'shared-unflagged', revenue: 100, payments_made: 100 }),
+          job({ id: 'shared-clean', revenue: 100, payments_made: 100 }),
+          job({ id: 'unshared-flagged', revenue: 100, payments_made: 100 }),
+          job({ id: 'unshared-plain', revenue: 100, payments_made: 100 }),
+        ],
+        [
+          invoice({ id: 'i1', amount: 50 }),
+          invoice({ id: 'i2', amount: 50, on_job_account: true }),
+          invoice({ id: 'i3', amount: 50, on_job_account: true }),
+          invoice({ id: 'i4', amount: 50 }),
+          invoice({ id: 'i5', amount: 50, is_paid: true }), // paid unflagged on a shared job: no gap
+        ],
+        [alloc('i1', 'shared-unflagged'), alloc('i2', 'shared-clean'), alloc('i5', 'shared-clean'), alloc('i3', 'unshared-flagged'), alloc('i4', 'unshared-plain')],
+        HOUSES,
+        [],
+        TODAY,
+        ['shared-unflagged', 'shared-clean', 'shared-with-no-invoices'],
+      )
+      const byId = new Map(view.rows.map((r) => [r.jobId, r]))
+      expect(byId.get('shared-unflagged')!.hasJobAccountShare).toBe(true)
+      expect(byId.get('unshared-flagged')!.hasJobAccountShare).toBe(false)
+      expect(view.needsFlagJobs).toBe(1)
+      expect(view.noPacketJobs).toBe(1)
+    })
+
+    it('defaults to no shares when the argument is omitted', () => {
+      const view = buildJobAccountsView(
+        [job({ id: 'a', revenue: 100, payments_made: 100 })],
+        [invoice({ id: 'i1', amount: 50, on_job_account: true })],
+        [alloc('i1', 'a')],
+        HOUSES,
+        [],
+        TODAY,
+      )
+      expect(view.rows[0]!.hasJobAccountShare).toBe(false)
+      expect(view.needsFlagJobs).toBe(0)
+      expect(view.noPacketJobs).toBe(1)
+    })
   })
 })

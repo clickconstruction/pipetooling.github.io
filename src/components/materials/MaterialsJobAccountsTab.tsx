@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useJobFormModal } from '../../contexts/JobFormModalContext'
 import { supabase } from '../../lib/supabase'
 import { withSupabaseRetry, formatErrorMessage } from '../../utils/errorHandling'
@@ -74,7 +74,13 @@ const STATUS_CHIP: Record<JobAccountsStatus, { label: string; background: string
 
 type UserRole = 'dev' | 'master_technician' | 'assistant' | 'estimator' | 'primary' | 'superintendent'
 
-type FilterKey = 'all' | 'owe_suppliers' | 'awaiting' | 'settled' | 'job_account'
+type FilterKey = 'all' | 'owe_suppliers' | 'awaiting' | 'settled' | 'job_account' | 'needs_flag' | 'no_packet'
+const FILTER_KEYS: readonly FilterKey[] = ['all', 'owe_suppliers', 'awaiting', 'settled', 'job_account', 'needs_flag', 'no_packet']
+
+/** `?filter=` deep link (the Dashboard's job-account cards land here); unknown values read as All. */
+function filterFromParam(value: string | null): FilterKey {
+  return value && (FILTER_KEYS as readonly string[]).includes(value) ? (value as FilterKey) : 'all'
+}
 
 export type MaterialsJobAccountsTabProps = {
   /** Render gate — stays mounted across tab switches so loaded data survives. */
@@ -89,6 +95,8 @@ function matchesFilter(row: JobAccountsRow, filter: FilterKey): boolean {
   if (filter === 'owe_suppliers') return row.status === 'owe_suppliers'
   if (filter === 'awaiting') return row.status === 'floating' || row.status === 'awaiting_customer'
   if (filter === 'job_account') return row.owedOnJobAccount > 0.005
+  if (filter === 'needs_flag') return row.hasJobAccountShare && row.suppliersOwed - row.owedOnJobAccount > 0.005
+  if (filter === 'no_packet') return !row.hasJobAccountShare && row.owedOnJobAccount > 0.005
   return row.status === 'settled'
 }
 
@@ -112,12 +120,17 @@ function dueChipText(group: { oldestUnpaidDueYmd: string | null }, todayYmd: str
  */
 export function MaterialsJobAccountsTab({ active, myRole, onOpenSupplyHouse }: MaterialsJobAccountsTabProps) {
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const jobFormModal = useJobFormModal()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [view, setView] = useState<JobAccountsView | null>(null)
   const [todayYmd, setTodayYmd] = useState('')
-  const [filter, setFilter] = useState<FilterKey>('all')
+  const [filter, setFilter] = useState<FilterKey>(() => filterFromParam(searchParams.get('filter')))
+  useEffect(() => {
+    const param = searchParams.get('filter')
+    if (param) setFilter(filterFromParam(param))
+  }, [searchParams])
   const [expandedJobId, setExpandedJobId] = useState<string | null>(null)
   const loadStartedRef = useRef(false)
 
@@ -202,6 +215,17 @@ export function MaterialsJobAccountsTab({ active, myRole, onOpenSupplyHouse }: M
           'load supply houses',
         ),
       ])
+      // Share packets on record (v2.1605 ledger) — drives the "packet on file" chip and the two gap filters.
+      const shareRows = await fetchAllRows(
+        async (from, to) => ({
+          data: await withSupabaseRetry(
+            () => supabase.from('supply_house_job_accounts').select('job_id').order('job_id').range(from, to),
+            'load job account shares',
+          ),
+          error: null,
+        }),
+        'load job account shares',
+      ).catch(() => [] as { job_id: string }[])
       const jobIds = [...new Set(allocations.map((a) => a.job_id))]
       const jobs = await fetchAllRowsChunkedIn(
         jobIds,
@@ -230,6 +254,7 @@ export function MaterialsJobAccountsTab({ active, myRole, onOpenSupplyHouse }: M
           houses ?? [],
           bidAllocations.map((b) => b.invoice_id),
           today,
+          new Set(shareRows.map((s) => s.job_id)),
         ),
       )
     } catch (e) {
@@ -367,6 +392,12 @@ export function MaterialsJobAccountsTab({ active, myRole, onOpenSupplyHouse }: M
                 { key: 'settled' as FilterKey, label: 'Settled', count: view.settledJobs },
                 ...(view.onJobAccountJobs > 0
                   ? [{ key: 'job_account' as FilterKey, label: 'On job account', count: view.onJobAccountJobs }]
+                  : []),
+                ...(view.needsFlagJobs > 0 || filter === 'needs_flag'
+                  ? [{ key: 'needs_flag' as FilterKey, label: 'Packet on file, unflagged', count: view.needsFlagJobs }]
+                  : []),
+                ...(view.noPacketJobs > 0 || filter === 'no_packet'
+                  ? [{ key: 'no_packet' as FilterKey, label: 'Flagged, no packet', count: view.noPacketJobs }]
                   : []),
               ]
             ).map((chip) => (
@@ -638,6 +669,14 @@ export function MaterialsJobAccountsTab({ active, myRole, onOpenSupplyHouse }: M
                                 </>
                               )}
                             </span>
+                            {row.hasJobAccountShare ? (
+                              <span
+                                title="A job-account setup packet was shared with a supply house for this job (see the job window's storefront icon)."
+                                style={{ padding: '1px 8px', background: JOB_ACCOUNT_TEAL.tint, color: JOB_ACCOUNT_TEAL.text, fontSize: '0.6875rem', fontWeight: 600, borderRadius: 999, whiteSpace: 'nowrap' }}
+                              >
+                                Job account packet on file
+                              </span>
+                            ) : null}
                             <div style={{ flex: 1 }} />
                             <button
                               type="button"
@@ -692,6 +731,18 @@ export function MaterialsJobAccountsTab({ active, myRole, onOpenSupplyHouse }: M
                               </div>
                             ))}
                           </div>
+                          {row.hasJobAccountShare && row.suppliersOwed - row.owedOnJobAccount > 0.005 && (
+                            <div style={{ fontSize: '0.75rem', color: JOB_ACCOUNT_TEAL.text }}>
+                              Packet on file — the unflagged invoices here may belong on the job account. Flag them with the Edit pencil on the
+                              Supply Houses tab.
+                            </div>
+                          )}
+                          {!row.hasJobAccountShare && row.owedOnJobAccount > 0.005 && (
+                            <div style={{ fontSize: '0.75rem', color: 'var(--text-amber-800)' }}>
+                              Flagged on a job account, but no setup packet is on record for this job — fine if the house opened it by phone;
+                              otherwise send the packet from the job window&rsquo;s storefront icon.
+                            </div>
+                          )}
                           {row.suppliersOwed > 0.005 && (
                             <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
                               Owed on this job: <span style={{ fontWeight: 600, color: 'var(--text-amber-800)', fontVariantNumeric: 'tabular-nums' }}>${formatCurrency(row.suppliersOwed)}</span>{' '}
