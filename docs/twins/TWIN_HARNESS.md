@@ -57,6 +57,15 @@ Mid-session (or from any non-MCP harness), the HTTP door is equivalent: POST
 `tools/call` body — every verb works identically. Reference the key by file path
 (`$(cat ~/pt-twin-digest/twin.token)`), never paste its value into a transcript.
 
+**The toolkit and the skill (v2.3109).** `scripts/twin/` ships the shell helpers
+(`twin.py <verb>`, `twinrest.py` signed-in reads, `probe_plans.py`,
+`set_plans.py`; setup in its README, one allow rule for the main checkout's
+`settings.local.json`), and the project skill `.claude/skills/bid/SKILL.md` is
+the pipeline in its fixed order: `/bid b482` shadows a live bid, `/bid next`
+lets the dispatcher pick, `/bid backtest b376` runs a blind backtest, `/bid
+status` reads coverage. A new session needs nothing beyond the key file and that
+command; the skill launches every subagent as Fable.
+
 ## What to load into the agent
 
 1. `docs/twins/estimator.md` — the role brief (identity, map, loops, vocabulary,
