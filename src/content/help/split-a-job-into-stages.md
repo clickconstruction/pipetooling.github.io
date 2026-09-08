@@ -2,18 +2,40 @@
 title: split a job into stages and bill stage by stage
 category: Billing & Money
 roles: assistant, master_technician
-keywords: stages, segments, line items, reorder, partial invoice, break off, bill by stage, rough in, top out, trim set, segment bar, order, any time, draw, stage kind, bill it
+keywords: stages, segments, line items, reorder, partial invoice, break off, bill by stage, rough in, top out, trim set, segment bar, order, any time, not a stage, permit, change order, draw, stage kind, bill it, which kind
 order: 11
 ---
 A job's line items **are** its stages. Each line item says what kind of stage it is — **Order**, **Any**, or **—** — on the second line under its name in **① Line Items**, and the draws in **② Invoices** follow from that. Everything happens on the job's **Bill** tab.
 
 ## The three kinds
 
-- {{button:gray|Order}} — a numbered stage. It waits for the stage above it to pass inspection, and it becomes a draw when it passes its own. Rough-in, top-out, trim, final.
-- {{button:amber|Any}} — a stage with its own dates and no place in the line. Change orders and extras. It bills the day its work is done.
-- {{button:outline|—}} — not a stage: a plain line item (a permit, a misc charge). It rides on the final draw.
+- {{button:gray|Order}} — a numbered stage in the sequence. It waits for the stage above it to pass inspection, and it becomes a **draw** (its own invoice) when it passes its own. Rough-in, top-out, trim, final.
+- {{button:amber|Any}} — a stage with its own dates and no place in the line. A change order, an extra, a repair the customer added mid-job. It bills the day its work is done, without waiting on the sequence.
+- {{button:outline|—}} — **not a stage**: a plain line item. A permit fee, plan review, a deposit, a dumpster or mobilization charge, a materials-only line. Nobody goes on site for it, so it has no window, no inspection and no percent. It rides on the final draw.
 
 Every line item starts as **Any** — the one you add by hand, the ones a change order brings in, and every line item that existed before this feature. Nothing is in order until you say so.
+
+## Which kind do I pick?
+
+Ask two questions about the row:
+
+1. **Does someone show up on site to do it, and would you want to know when it's done?** If no — a fee, a permit, a pass-through — it is **—**. Not a stage.
+2. **If yes, does it have to wait its turn?** Rough-in before top-out before trim: **Order**. Could happen whenever the framing is ready, on its own dates: **Any**.
+
+| The row | Pick | Because |
+|---|---|---|
+| Rough-in, Top-out, Trim & final, Final inspection | Order | Fixed sequence, each passes its own inspection, each is a draw |
+| Relocate water heater (a signed change order) | Any | A sub does it whenever the closet is framed; bills the day it's done |
+| Add hose bib, garage | Any | Same — its own dates, its own price |
+| Permit & plan review, dumpster, mobilization | — | Nobody drives to the site for it; it goes out with the last draw |
+
+:::example One bill with all three kinds — an eight-unit building for a GC, $44,420
+① Rough-in $12,465 · ② Top-out $12,465 · ③ Trim & final $16,620 · ④ Final inspection $0 — all **Order**. ◆ Relocate water heater $1,850 and ◆ Add hose bib $420 — **Any** (two signed change orders). Permit & plan review $600 — **—**.
+
+How it bills over the job: Rough-in passes → *draw 1* is ready → {{button:green|Bill it}}. The water heater gets moved while top-out is still going → its row reads *done* → Bill it breaks off its own $1,850, it never waited. Top-out passes → *draw 2* (had you forgotten draw 1, it would read *waits on stage 1* instead — nothing bills out of order). Trim & final passes → *draw 3* is the last money draw, so you tick the $600 permit line into the same invoice and bill $17,220. Final inspection passes with no draw. When the customer pays draw 3, every stage reads done.
+:::
+
+**Does the customer see a — line?** On the invoice, yes — every invoice lists the line items it covers at their real prices, so *Permit & plan review $600* prints on draw 3's bill (and on the portal's bills). Put the receipt detail in the row's scope note (the pencil in the name field) and it prints on the Stripe line too. What the — kind hides is only the **stage card**: the GC's *Where the job is* shows stages, never your fee lines. If a GC expects permits invoiced the day they're pulled, tick that row on its own and create the invoice then — *with the final draw* is the suggestion, not a lock.
 
 ## Set up the stages in ① Line Items
 
