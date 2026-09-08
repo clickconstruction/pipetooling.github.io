@@ -5,7 +5,7 @@ roles: dev, master_technician, assistant, estimator
 keywords: takeoff, sheet, new 2, cost rail, what pricing sees, materials total, no takeoffs cost, needs a price, request quotes, copy from previous bid, book suggests
 order: 86
 ---
-**Sheet** on **Bids → Takeoffs** keeps the sheet you know and adds a rail that explains what Pricing is about to work from. Pick it with the {{chip:blue|Sheet}} pill beside the bid name ({{chip:gray|Old}} is the classic tab; {{chip:gray|One at a time}} is the guided pass).
+**Sheet** on **Bids → Takeoffs** keeps the sheet you know and adds a rail that explains what Pricing is about to work from. When you open a bid, a box asks **How do you want to cost this takeoff?** — click {{button:outline|Sheet}} (or press **3**) and it opens. Later, pick it with the {{chip:blue|Sheet}} pill beside the bid name ({{chip:gray|Old}} is the classic tab; {{chip:gray|One at a time}} is the guided pass).
 
 ## The sheet
 
