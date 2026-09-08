@@ -1066,7 +1066,8 @@ uuid3           | Supply House C    | 0
   - `website_url` (text, nullable) - Order portal / vendor site; shown as **Open website** next to supply house dropdowns (Materials, Bids) and beside phone in the expanded Supply Houses row
   - `notes` (text, nullable)
   - `monthly_payment_day` (integer, nullable) - Day of month (1-31) when payment is typically due; used for Due column in supply house list
-  - `is_insurer` (boolean) - Payee-only vendor (insurer, rental yard…); hidden from the quote pickers
+  - `vendor_kind` (text, `supply_house` | `insurer` | `rental_yard` | `sub_ledger` | `other`, v2.3172) - Only `supply_house` rows are quoted from, offered by the RFQ / quote pickers, or listed on the estimator's Supply houses tab
+  - `is_insurer` (boolean) - Derived by trigger from `vendor_kind` since v2.3172 (`true` for every ledger-only kind); retires once no client reads it
   - `created_at`, `updated_at` (timestamptz)
 - **RLS**: every Materials reader (dev, master_technician, assistant, estimator, primary, superintendent) reads; writes require `can_manage_supply_house_directory()` (dev, master_technician, assistant, controller, estimator — v2.3167)
 
