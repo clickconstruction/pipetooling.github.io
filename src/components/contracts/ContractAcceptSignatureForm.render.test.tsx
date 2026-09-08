@@ -58,7 +58,7 @@ describe('ContractAcceptSignatureForm with the e-sign consent (v2.3118)', () => 
     const payload = onSubmit.mock.calls[0]?.[0] as { mode: string; printedName: string; consent: { version: number; lang: string; audience: string; clauseText: string } }
     expect(payload.mode).toBe('type')
     expect(payload.printedName).toBe('Behar Krasniqi')
-    expect(payload.consent.version).toBe(1)
+    expect(payload.consent.version).toBe(2)
     expect(payload.consent.lang).toBe('en')
     expect(payload.consent.audience).toBe('sub')
     expect(payload.consent.clauseText).toContain('I agree to sign electronically.')

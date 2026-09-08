@@ -7,8 +7,10 @@
  *
  * Customer-facing surface: pinned light, the accept flow's orange as the action accent.
  */
-import { useEffect, useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { publicFunctionHeaders, sampleStateFromToken } from '../lib/customerSampleMode'
+import { SignatureTypeOrDrawInput, type SignatureMode, type SignatureTypeOrDrawHandle } from '../components/contracts/SignatureTypeOrDrawInput'
+import { bidRoomSignatureError, bidRoomSignatureFields } from '../lib/bids/bidRoomSignature'
 import { staffAwarePublicHeaders } from '../lib/publicFunctionStaffHeaders'
 import { PUBLIC_PREVIEW_PARAM, isPreviewFlag } from '../lib/publicViewCounting'
 import { SampleModeBanner } from '../components/SampleModeBanner'
@@ -91,6 +93,9 @@ export default function BidRoom() {
   // Sign & decline (Phase 2, v2.2470)
   const [printedName, setPrintedName] = useState('')
   const [agreed, setAgreed] = useState(false)
+  // v2.3159: Type / Draw — the pad is read when the GC presses Approve.
+  const [signMode, setSignMode] = useState<SignatureMode>('type')
+  const signPadRef = useRef<SignatureTypeOrDrawHandle>(null)
   const [submitting, setSubmitting] = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
   const [declineOpen, setDeclineOpen] = useState(false)
@@ -186,19 +191,17 @@ export default function BidRoom() {
     }
   }
 
-  // v2.3100: the GC's electronic-signature consent (typed name, approval wording).
+  // v2.3100: the GC's electronic-signature consent (typed or drawn signature since v2.3159, approval wording).
   const bidRoomConsent = esignConsentText({ audience: 'gc', documentNoun: 'this proposal' })
 
   async function submitSign(selected: RoomOption) {
-    if (!printedName.trim()) {
-      setFormError('Please enter your full name.')
+    const signature = { printedName, agreed, mode: signMode, drawnPng: signPadRef.current?.toDataURL() ?? null }
+    const problem = bidRoomSignatureError(signature, 'Please confirm you agree to the proposal and terms above.')
+    if (problem) {
+      setFormError(problem)
       return
     }
-    if (!agreed) {
-      setFormError('Please confirm you agree to the proposal and terms above.')
-      return
-    }
-    const ok = await post({ action: 'sign', optionKey: selected.key, printedName: printedName.trim(), agreedTerms: true, esignConsent: esignConsentPayload(bidRoomConsent) })
+    const ok = await post({ action: 'sign', optionKey: selected.key, ...bidRoomSignatureFields(signature), esignConsent: esignConsentPayload(bidRoomConsent) })
     if (ok) {
       setLocalOutcome({
         event_type: 'signed',
@@ -354,7 +357,9 @@ export default function BidRoom() {
                   const ok = await post({
                     action: kind,
                     documentId: doc.id,
-                    ...(kind === 'sign' ? { printedName: fields?.printedName ?? '', agreedTerms: true } : { note: fields?.note ?? '' }),
+                    ...(kind === 'sign'
+                      ? { printedName: fields?.printedName ?? '', agreedTerms: true, signaturePngBase64: fields?.signaturePngBase64 }
+                      : { note: fields?.note ?? '' }),
                   })
                   if (ok) setDocAnswers((prev) => ({ ...prev, [doc.id]: kind === 'sign' ? 'signed' : 'declined' }))
                   return ok
@@ -369,7 +374,7 @@ export default function BidRoom() {
             <h2 style={{ fontSize: '1.05rem', margin: '0 0 0.4rem' }}>Approve this proposal</h2>
             <EsignConsentLine
               text={bidRoomConsent}
-              lead={`Typing your name below applies to the option selected above${options.length > 1 ? ` — ${selected.name.trim() || 'Option'}` : ''}.`}
+              lead={`Your typed or drawn signature below applies to the option selected above${options.length > 1 ? ` — ${selected.name.trim() || 'Option'}` : ''}.`}
               disabled={submitting}
               style={{ margin: '0 0 0.6rem', maxWidth: '60ch' }}
             />
@@ -382,6 +387,21 @@ export default function BidRoom() {
               autoComplete="name"
               style={{ font: 'inherit', width: '100%', maxWidth: 380, padding: '0.55rem 0.7rem', border: '1px solid var(--border-strong)', borderRadius: 8, background: 'var(--surface)', color: 'var(--text-strong)', fontFamily: 'Georgia, serif', fontStyle: 'italic' }}
             />
+            <div style={{ maxWidth: 380 }}>
+              <SignatureTypeOrDrawInput
+                ref={signPadRef}
+                mode={signMode}
+                onModeChange={(m) => {
+                  setSignMode(m)
+                  setFormError(null)
+                }}
+                printedName={printedName}
+                placeholderName="Your full name"
+                disabled={submitting}
+                align="left"
+                maxWidth={380}
+              />
+            </div>
             <label style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem', margin: '0.7rem 0 0', fontSize: '0.85rem', color: 'var(--text-700)', maxWidth: '56ch', cursor: 'pointer' }}>
               <input type="checkbox" checked={agreed} onChange={(e) => setAgreed(e.target.checked)} style={{ marginTop: 3 }} />
               <span>I agree to conduct business electronically and accept this proposal, its inclusions, exclusions, and terms.</span>
@@ -467,11 +487,13 @@ function RoomChangeOrderCard({
   doc: RoomDocument
   localAnswer?: 'signed' | 'declined'
   submitting: boolean
-  onAnswer: (kind: 'sign' | 'decline', fields?: { printedName?: string; note?: string }) => Promise<boolean>
+  onAnswer: (kind: 'sign' | 'decline', fields?: { printedName?: string; signaturePngBase64?: string; note?: string }) => Promise<boolean>
 }) {
   const [open, setOpen] = useState(false)
   const [name, setName] = useState('')
   const [agree, setAgree] = useState(false)
+  const [mode, setMode] = useState<SignatureMode>('type')
+  const padRef = useRef<SignatureTypeOrDrawHandle>(null)
   const [note, setNote] = useState('')
   const [err, setErr] = useState<string | null>(null)
   const co = parseEstimateChangeOrderFields(doc.change_order_fields)
@@ -540,6 +562,19 @@ function RoomChangeOrderCard({
             aria-label="Full name"
             style={{ font: 'inherit', padding: '0.5rem 0.65rem', border: '1px solid var(--border-strong)', borderRadius: 8, background: 'var(--surface)', color: 'var(--text-strong)', fontFamily: 'Georgia, serif', fontStyle: 'italic' }}
           />
+          <SignatureTypeOrDrawInput
+            ref={padRef}
+            mode={mode}
+            onModeChange={(m) => {
+              setMode(m)
+              setErr(null)
+            }}
+            printedName={name}
+            placeholderName="Your full name"
+            disabled={submitting}
+            align="left"
+            maxWidth={420}
+          />
           <label style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem', fontSize: '0.82rem', color: 'var(--text-700)', cursor: 'pointer' }}>
             <input type="checkbox" checked={agree} onChange={(e) => setAgree(e.target.checked)} style={{ marginTop: 2 }} />
             <span>I agree to this change order and its impact on cost and schedule.</span>
@@ -551,15 +586,13 @@ function RoomChangeOrderCard({
               disabled={submitting}
               onClick={() => {
                 setErr(null)
-                if (!name.trim()) {
-                  setErr('Please enter your full name.')
+                const signature = { printedName: name, agreed: agree, mode, drawnPng: padRef.current?.toDataURL() ?? null }
+                const problem = bidRoomSignatureError(signature, 'Please confirm you agree to this change order.')
+                if (problem) {
+                  setErr(problem)
                   return
                 }
-                if (!agree) {
-                  setErr('Please confirm you agree to this change order.')
-                  return
-                }
-                void onAnswer('sign', { printedName: name.trim() })
+                void onAnswer('sign', bidRoomSignatureFields(signature))
               }}
               style={{ background: '#ea580c', color: '#fff', fontWeight: 800, fontSize: '0.85rem', border: 'none', borderRadius: 8, padding: '0.45rem 1rem', cursor: submitting ? 'wait' : 'pointer', opacity: submitting ? 0.6 : 1 }}
             >

@@ -65,7 +65,7 @@ describe('esignConsentText', () => {
       'Approving here is an electronic signature with the same effect as one in ink; your company can ask for a paper copy at any time.',
     )
     expect(t.paragraphs[0]).toMatch(/^You're approving this proposal electronically\./)
-    expect(t.paragraphs[0]).toContain('a typed signature has the same legal effect')
+    expect(t.paragraphs[0]).toContain('a typed or drawn signature has the same legal effect')
     expect(t.paragraphs[1]).toMatch(/^You don't have to approve this way: reply to the email or call the office/)
     expect(t.paragraphs[1]).toContain("Withdrawing consent later doesn't undo anything already approved.")
   })
