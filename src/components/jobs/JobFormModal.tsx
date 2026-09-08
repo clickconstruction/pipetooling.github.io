@@ -103,6 +103,7 @@ import { todayYmdInAppTz } from '../../utils/dateUtils'
 import { JobFormStagesGroup } from './JobFormStagesGroup'
 import { JobFormStagesDrawer } from './JobFormStagesDrawer'
 import { portalTokenUrl } from '../../lib/portal/gcPortalLink'
+import { useGcPortalLinks } from '../../hooks/useGcPortalLinks'
 import { JobFormHazmatRiderRows } from './JobFormHazmatRidersStrip'
 import { JobFormPaymentsTable } from './JobFormPaymentsTable'
 import { JobFormPartsCostSection } from './JobFormPartsCostSection'
@@ -602,6 +603,10 @@ export default function JobFormModal({
   const [billingStageFixtureId, setBillingStageFixtureId] = useState<string | null>(null)
   // Stage Plan PR 4: the Edit tab's read-out and the "as the customer sees it" drawer.
   const [stagesDrawerOpen, setStagesDrawerOpen] = useState(false)
+  // The drawer's "Open the portal ↗": the GC's real link when one is minted, else the sample page.
+  const stagesGcLinkIds = useMemo(() => (gcCustomerId ? [gcCustomerId] : []), [gcCustomerId])
+  const stagesGcLinks = useGcPortalLinks(stagesGcLinkIds, stagesDrawerOpen)
+  const stagesGcLink = gcCustomerId ? stagesGcLinks.links.get(gcCustomerId) ?? null : null
   const stagesGcName = useMemo(() => (gcCustomerId ? (customers.find((c) => c.id === gcCustomerId)?.name ?? '').trim() || null : (editing?.gcCustomer?.name ?? null)), [gcCustomerId, customers, editing?.gcCustomer?.name])
 
   // ② Invoices segment bar (v2.1070): which unbilled line items are picked
@@ -4786,8 +4791,8 @@ export default function JobFormModal({
           gcName={stagesGcName}
           jobLabel={`#${(editing.hcp_number ?? '').trim() || (editing.click_number ?? '').trim() || '—'}${editing.job_address?.trim() ? ` · ${editing.job_address.trim()}` : ''}`}
           jobAddress={null}
-          portalUrl={portalTokenUrl(window.location.origin, 'sample-gc')}
-          portalIsSample
+          portalUrl={stagesGcLink?.url ?? portalTokenUrl(window.location.origin, 'sample-gc')}
+          portalIsSample={!stagesGcLink}
           zIndex={JOB_FORM_NESTED_OVERLAY_Z_INDEX + 1}
         />
       ) : null}

@@ -17,6 +17,8 @@ Every line item starts as **Any** — the one you add by hand, the ones a change
 
 ## Set up the stages in ① Line Items
 
+{{gif:split-a-job-into-stages.gif|The Bill tab: flip a row between Order and Any under its name — the badge, the strip and Still to bill follow}}
+
 1. Open the job (Jobs → Pipeline → {{button:outline|Edit}} → **Bill**) and find **① Line Items**.
 2. Enter one line per stage of work with its price.
 3. On each stage's second line, press **Order**. The badge at the left of the row turns into its number; Order rows are numbered top to bottom.

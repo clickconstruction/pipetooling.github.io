@@ -1,0 +1,11 @@
+# Stage Plan residuals — what the six-PR train left for later
+
+Status: not started, low priority · source: the Stage Plan train (v2.3083 data + kernel, v2.3100 Bill tab, v2.3127 generator, v2.3128 Edit read-out + drawer, v2.3132 GC card, v2.3134 guides), `docs/recent-features/v2.31*.md` · the design that shipped is recorded in those fragments; the mock-ups lived in `to-dos/stage-plan/` (deleted with v2.3134 — `git show 9d5284b6:to-dos/stage-plan/` brings them back).
+
+## Deferred, in order of value
+
+1. **The Stages board's *capable to bill* total reads `billable()`.** Today `capableToBillTotalFromWorking` (Jobs → Pipeline header, the Capable list) sums unbilled line items per working job. Reading the plan's `billable()` needs windows, orders and sheets for every working job in one fetch (`loadGcStageInputs` in `_shared/gcStages.ts` is the shape; it runs server-side today). One small PR: a hook that loads the three tables for the board's working jobs, builds each plan, and hands the header the sum of `billable()`.
+2. **Retire `job_stage_windows.offered_to_gc` / `offered_to_gc_at` / `bundle_id`.** Nothing reads them since v2.3132 (the portal reads the eye); `offerNextStage.ts` still mirrors `offered_to_gc` on the window when it flips an eye — drop the mirror, then a migration that drops the three columns and the `job_stage_windows_offered_idx` index. Also retire `StageCalendarModal`'s `onOffer` / `onWithdraw` props (no caller passes them).
+3. **Plain (—) rows on the final draw.** The plan reads a plain row as *later · with the final draw* but nothing auto-attaches it when the last Order draw breaks off; the office ticks it into that invoice by hand. Decide whether **Bill it** on the last Order stage should sweep the plain rows in.
+4. **Any-row "done" = the sheet's 100% or inspection called** (open question 2, built as proposed). If the owner wants an office-marked done instead, it is one column on `jobs_ledger_fixtures` and one line in `common()` in the kernel.
+5. **The drawer's real GC link** resolves through `useGcPortalLinks` (v2.3134); a GC with no minted link falls back to the sample page — a *Mint the link* door there would close the loop (the globe icon on the job header does it today).
