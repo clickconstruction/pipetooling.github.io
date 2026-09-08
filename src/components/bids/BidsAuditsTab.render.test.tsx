@@ -76,7 +76,7 @@ const notes: Array<Partial<BidAuditNoteRow> & { audit_id: string }> = [
 const twinQuestions = [
   { id: 'tq1', twin_user_id: 'tw1', about_bid_id: 'bid-405', mission: 'BT-12', question: 'Do we band travel by distance?', status: 'open', answer: null, answered_by: null, answered_at: null, created_at: '2026-09-03T10:00:00Z', topic: 'travel-bands' },
   { id: 'tq2', twin_user_id: 'tw2', about_bid_id: 'bid-422', mission: 'BT-13', question: 'Travel past 200 miles — carry $20k?', status: 'open', answer: null, answered_by: null, answered_at: null, created_at: '2026-09-01T10:00:00Z', topic: 'travel-bands' },
-  { id: 'tq3', twin_user_id: 'tw1', about_bid_id: null, mission: null, question: 'Is a strip mall shell a no-go?', status: 'open', answer: null, answered_by: null, answered_at: null, created_at: '2026-09-02T10:00:00Z', topic: null },
+  { id: 'tq3', twin_user_id: 'tw1', about_bid_id: null, mission: null, question: '[audit b474 / scope] Is a strip mall shell a no-go?', status: 'open', answer: null, answered_by: null, answered_at: null, created_at: '2026-09-02T10:00:00Z', topic: null },
 ]
 
 // Chainable thenable PostgREST stub: every builder method returns itself; awaiting
@@ -88,6 +88,7 @@ function tableResult(table: string): unknown {
     table === 'bids_count_rows' ? countRows :
     table === 'bid_pricing_assignments' ? assignments :
     table === 'twin_questions' ? twinQuestions :
+    table === 'bids' ? [{ id: 'bid-474', bid_number: '474' }, { id: 'bid-405', bid_number: '405' }, { id: 'bid-422', bid_number: '422' }] :
     []
   const chain: Record<string, unknown> = {}
   const self = () => chain
@@ -152,6 +153,12 @@ describe('BidsAuditsTab', () => {
     expect(screen.getByText('asked 2 times across 2 bids')).toBeTruthy()
     expect(screen.getByText('Answer all 2')).toBeTruthy()
     expect(screen.getByText(/Is a strip mall shell a no-go\?/)).toBeTruthy()
+    // v2.3174 — the bid number inside a question is a link to its board row.
+    const bidLink = await screen.findByRole('link', { name: 'b474' })
+    expect(bidLink.getAttribute('href')).toBe('/bids?tab=bid-board&bidId=bid-474')
+    // …and a question that never names its bid gets a trailing link to the bid it is about.
+    const trailing = await screen.findByRole('link', { name: 'b405' })
+    expect(trailing.getAttribute('href')).toBe('/bids?tab=bid-board&bidId=bid-405')
 
     // v2.2941 — doctrine-at-stake triage caption on a multi-pending queue.
     expect(screen.getByText('sorted by what your verdict unblocks')).toBeTruthy()

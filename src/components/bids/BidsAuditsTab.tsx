@@ -34,6 +34,8 @@ import {
   type DiffEntry,
 } from '../../lib/bids/takeoffDiff'
 import { groupStandingRulings, rulingAskedLine, type TwinQuestionRow } from '../../lib/bids/standingRulings'
+import { bidNumbersAcross } from '../../lib/bids/twinQuestionBidRefs'
+import { TwinQuestionText } from './TwinQuestionText'
 import { orderPendingByStake } from '../../lib/bids/auditTriage'
 
 /**
@@ -329,6 +331,40 @@ export function BidsAuditsTab({ authUser, myRole }: { authUser: User | null; myR
 
   const rulingsView = useMemo(() => groupStandingRulings(rulingQuestions), [rulingQuestions])
 
+  // v2.3174 — every "b474" in a question links to its bid. One lookup of the
+  // numbers the open questions mention; a row's about_bid_id covers the rest.
+  const [bidIdByNumber, setBidIdByNumber] = useState<Record<string, string>>({})
+  const [bidNumberById, setBidNumberById] = useState<Record<string, string>>({})
+  useEffect(() => {
+    const numbers = bidNumbersAcross(rulingQuestions.map((q) => q.question))
+    const aboutIds = [...new Set(rulingQuestions.map((q) => q.about_bid_id).filter((id): id is string => !!id))]
+    if (numbers.length === 0 && aboutIds.length === 0) return
+    let cancelled = false
+    ;(async () => {
+      try {
+        const [byNumber, byId] = await Promise.all([
+          numbers.length > 0 ? auditDb.from('bids').select('id, bid_number').in('bid_number', numbers) : Promise.resolve({ data: [] }),
+          aboutIds.length > 0 ? auditDb.from('bids').select('id, bid_number').in('id', aboutIds) : Promise.resolve({ data: [] }),
+        ])
+        if (cancelled) return
+        const nextByNumber: Record<string, string> = {}
+        const nextById: Record<string, string> = {}
+        for (const b of [...((byNumber.data ?? []) as Array<{ id: string; bid_number: string | null }>), ...((byId.data ?? []) as Array<{ id: string; bid_number: string | null }>)]) {
+          if (!b.bid_number) continue
+          nextByNumber[b.bid_number] = b.id
+          nextById[b.id] = b.bid_number
+        }
+        setBidIdByNumber(nextByNumber)
+        setBidNumberById(nextById)
+      } catch {
+        // Unresolved references render as plain text.
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [rulingQuestions])
+
   // One submit answers EVERY open question in the ruling's topic (or the one
   // topicless question) — answer + status flip, stamped with who and when.
   const answerRuling = async (questionIds: string[], draftKey: string) => {
@@ -619,7 +655,7 @@ export function BidsAuditsTab({ authUser, myRole }: { authUser: User | null; myR
                       <span style={{ display: 'inline-block', marginRight: '0.5rem', padding: '0.05rem 0.45rem', borderRadius: 9999, border: '1px solid var(--border)', background: 'var(--bg-subtle)', color: 'var(--text-700)', fontSize: '0.6875rem', fontWeight: 600, verticalAlign: 'middle' }}>
                         {r.label}
                       </span>
-                      🤖 {r.newest.question}
+                      🤖 <TwinQuestionText text={r.newest.question} bidIdByNumber={bidIdByNumber} aboutBidId={r.newest.about_bid_id} aboutBidNumber={r.newest.about_bid_id ? bidNumberById[r.newest.about_bid_id] : null} />
                     </div>
                     <div style={{ marginTop: '0.2rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>{rulingAskedLine(r)}</div>
                     <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.45rem' }}>
@@ -649,7 +685,7 @@ export function BidsAuditsTab({ authUser, myRole }: { authUser: User | null; myR
                 const draftKey = `q:${s.id}`
                 return (
                   <div key={s.id} style={rulingCardStyle}>
-                    <div style={{ fontSize: '0.875rem' }}>🤖 {s.question}</div>
+                    <div style={{ fontSize: '0.875rem' }}>🤖 <TwinQuestionText text={s.question} bidIdByNumber={bidIdByNumber} aboutBidId={s.about_bid_id} aboutBidNumber={s.about_bid_id ? bidNumberById[s.about_bid_id] : null} /></div>
                     {s.mission ? (
                       <div style={{ marginTop: '0.2rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>{s.mission}</div>
                     ) : null}
