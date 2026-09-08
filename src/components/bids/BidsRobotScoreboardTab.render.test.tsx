@@ -22,6 +22,8 @@ const scoreRows = [
     project_name: 'TSAOG campus', twin_bid_number: '421', reference_bid_number: '323',
     locked_total: 290839, reference_value: 404092, delta_pct: -28, counts_note: 'scope FAIL',
     scope_verdict: 'fail', gate_eligible: false, note: 'VOID — wrong package', scored_at: '2026-08-31T18:00:00Z',
+    // teacher attribution (v2.3099): stamped; Wendi is the standard in this smoke
+    teacher_user_id: 'wendi', teacher_name: 'Wendi',
   },
 ]
 
@@ -42,11 +44,16 @@ vi.mock('../../lib/supabase', () => ({
             // the holdout lookup (v2.2942): none designated in this smoke
             select: () => ({ eq: () => Promise.resolve({ data: [], error: null }) }),
           }
-        : {
-            select: () => ({
-              order: () => Promise.resolve({ data: scoreRows, error: null }),
-            }),
-          },
+        : table === 'users'
+          ? {
+              // calibration standards (v2.3099): Wendi only
+              select: () => ({ eq: () => Promise.resolve({ data: [{ id: 'wendi' }], error: null }) }),
+            }
+          : {
+              select: () => ({
+                order: () => Promise.resolve({ data: scoreRows, error: null }),
+              }),
+            },
     rpc: () => Promise.resolve({ data: shadowRows, error: null }),
   },
 }))
@@ -81,6 +88,10 @@ describe('BidsRobotScoreboardTab', () => {
     // ledger: void run visible with VOID verdict, not hidden
     expect(screen.getByText(/TSAOG campus/)).toBeTruthy()
     expect(screen.getByText('VOID')).toBeTruthy()
+
+    // teacher column (v2.3099): the stamped backtest names Wendi, a standard
+    expect(screen.getByText('Teacher')).toBeTruthy()
+    expect(screen.getByText('Wendi')).toBeTruthy()
 
     // holdout awareness (v2.2942): no holdout refs designated, so every scored
     // card carries the muted no-evidence line

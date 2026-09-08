@@ -23,6 +23,33 @@ export interface RunScoreRow {
   gate_eligible: boolean
   note: string | null
   scored_at: string | null
+  /**
+   * Teacher attribution on backtests (v2.3099): whose sent number the run was
+   * measured against. Standing is decided at read time against the set of
+   * calibration-standard user ids (users.calibration_standard) — see
+   * `standardTeacherIds` in the build options. Absent on clients ahead of the
+   * migration.
+   */
+  teacher_user_id?: string | null
+  teacher_name?: string | null
+}
+
+export interface BoardOptions {
+  /** Normalized bid numbers (see normalizeBidNumber) of holdout references. */
+  holdoutReferenceNumbers?: ReadonlySet<string>
+  /**
+   * users.id of every calibration standard. When given, a backtest whose
+   * teacher is known and NOT in the set is practice (shown, never gated) —
+   * the same rule shadows carry via list_shadow_runs.teacher_standard. When
+   * omitted, backtests gate on gate_eligible alone, as before.
+   */
+  standardTeacherIds?: ReadonlySet<string>
+}
+
+/** A backtest score whose teacher is known and is not a calibration standard. */
+export function isPracticeTeacherScore(s: Pick<RunScoreRow, 'teacher_user_id'>, standardTeacherIds: ReadonlySet<string> | undefined): boolean {
+  if (!standardTeacherIds || !s.teacher_user_id) return false
+  return !standardTeacherIds.has(s.teacher_user_id)
 }
 
 export const GATE_B_PCT = 8
@@ -100,13 +127,14 @@ function scoredEntries(
   shadows: readonly ShadowRunRow[],
   axis: string,
   holdoutRefs: ReadonlySet<string>,
+  standardTeacherIds: ReadonlySet<string> | undefined,
 ) {
   const isHoldout = (ref: string | null | undefined) => {
     const n = normalizeBidNumber(ref)
     return n != null && holdoutRefs.has(n)
   }
   const fromScores = scores
-    .filter((s) => s.gate_eligible && (s.axis ?? '') === axis && s.delta_pct != null)
+    .filter((s) => s.gate_eligible && (s.axis ?? '') === axis && s.delta_pct != null && !isPracticeTeacherScore(s, standardTeacherIds))
     .map((s) => ({
       delta: Number(s.delta_pct),
       label: s.run_label,
@@ -138,19 +166,17 @@ function pendingEntries(shadows: readonly ShadowRunRow[], axis: string) {
 export function buildAxisCards(
   scores: readonly RunScoreRow[],
   shadows: readonly ShadowRunRow[],
-  opts?: {
-    /** Normalized bid numbers (see normalizeBidNumber) of holdout references. */
-    holdoutReferenceNumbers?: ReadonlySet<string>
-  },
+  opts?: BoardOptions,
 ): AxisCard[] {
   const holdoutRefs = opts?.holdoutReferenceNumbers ?? new Set<string>()
+  const standardIds = opts?.standardTeacherIds
   const axes = new Set<string>()
   for (const s of scores) if (s.axis) axes.add(s.axis)
   for (const r of shadows) if (r.axis) axes.add(r.axis)
 
   const cards: AxisCard[] = []
   for (const axis of [...axes].sort()) {
-    const scored = scoredEntries(scores, shadows, axis, holdoutRefs)
+    const scored = scoredEntries(scores, shadows, axis, holdoutRefs, standardIds)
     const pending = pendingEntries(shadows, axis)
     const hits = scored.map((e) => Math.abs(e.delta) <= GATE_B_PCT)
     let streak = 0
@@ -181,9 +207,9 @@ export function buildAxisCards(
     else if (lastOut && lastScore?.note) chip = { text: 'BLOCKED', tone: 'blocked' }
     else chip = { text: `GATE B · ${streak}/${GATE_B_STREAK}`, tone: 'progress' }
 
-    const practiceTeacherRuns = shadows.filter(
-      (r) => r.status === 'scored' && (r.axis ?? '') === axis && r.delta_pct != null && isPracticeTeacherRun(r),
-    ).length
+    const practiceTeacherRuns =
+      shadows.filter((r) => r.status === 'scored' && (r.axis ?? '') === axis && r.delta_pct != null && isPracticeTeacherRun(r)).length +
+      scores.filter((s) => s.gate_eligible && (s.axis ?? '') === axis && s.delta_pct != null && isPracticeTeacherScore(s, standardIds)).length
 
     const bits: string[] = []
     if (!gateMet && scored.length > 0) bits.push(`${GATE_B_STREAK - streak} more in-band to gate`)
@@ -214,9 +240,12 @@ export function buildAxisCards(
 export function buildLedger(
   scores: readonly RunScoreRow[],
   shadows: readonly ShadowRunRow[],
+  opts?: Pick<BoardOptions, 'standardTeacherIds'>,
 ): LedgerRow[] {
+  const standardIds = opts?.standardTeacherIds
   const rows: LedgerRow[] = []
   for (const s of scores) {
+    const practice = isPracticeTeacherScore(s, standardIds)
     rows.push({
       key: `score-${s.id}`,
       label: s.run_label,
@@ -227,10 +256,11 @@ export function buildLedger(
       reference: s.reference_value,
       deltaPct: s.delta_pct == null ? null : Number(s.delta_pct),
       countsNote: s.counts_note ?? '—',
-      gate: s.gate_eligible ? 'eligible' : 'void',
+      gate: !s.gate_eligible ? 'void' : practice ? 'practice' : 'eligible',
       scoredAt: s.scored_at,
-      teacher: null,
-      teacherStandard: null,
+      teacher: s.teacher_name ?? null,
+      // Standing is known only when a standard set was given and a teacher is stamped.
+      teacherStandard: standardIds && s.teacher_user_id ? !practice : null,
     })
   }
   for (const r of shadows) {
