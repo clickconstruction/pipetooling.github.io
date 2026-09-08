@@ -59,6 +59,14 @@ export interface AxisCard {
   holdoutRuns: number
   practiceRuns: number
   streakHoldoutRuns: number
+  /**
+   * Teacher attribution (v2.3080, LEARNING_PLAN lever 2 lesson a): scored
+   * shadows whose reference was sent by someone who is NOT a calibration
+   * standard (users.calibration_standard) are set aside from the gate — they
+   * are practice, not the standard the twin is calibrating to. Backtests
+   * carry no teacher and keep their gate_eligible flag.
+   */
+  practiceTeacherRuns: number
 }
 
 export interface LedgerRow {
@@ -71,8 +79,17 @@ export interface LedgerRow {
   reference: number | null
   deltaPct: number | null
   countsNote: string
-  gate: 'eligible' | 'void' | 'pending'
+  /** 'practice' = scored against a non-standard teacher (shown, not gated). */
+  gate: 'eligible' | 'void' | 'pending' | 'practice'
   scoredAt: string | null
+  /** WHOSE number the shadow scored (or will score) against; null for backtests. */
+  teacher: string | null
+  teacherStandard: boolean | null
+}
+
+/** A scored shadow whose teacher is known NOT to be a calibration standard. */
+export function isPracticeTeacherRun(r: Pick<ShadowRunRow, 'teacher_standard'>): boolean {
+  return r.teacher_standard === false
 }
 
 const fmtDelta = (d: number) => `${d > 0 ? '+' : '−'}${Math.abs(d).toFixed(1)}`
@@ -97,7 +114,7 @@ function scoredEntries(
       holdout: isHoldout(s.reference_bid_number),
     }))
   const fromShadows = shadows
-    .filter((r) => r.status === 'scored' && (r.axis ?? '') === axis && r.delta_pct != null)
+    .filter((r) => r.status === 'scored' && (r.axis ?? '') === axis && r.delta_pct != null && !isPracticeTeacherRun(r))
     .map((r) => ({
       delta: Number(r.delta_pct),
       label: r.shadow_bid_number ? `b${r.shadow_bid_number}` : 'shadow',
@@ -164,9 +181,14 @@ export function buildAxisCards(
     else if (lastOut && lastScore?.note) chip = { text: 'BLOCKED', tone: 'blocked' }
     else chip = { text: `GATE B · ${streak}/${GATE_B_STREAK}`, tone: 'progress' }
 
+    const practiceTeacherRuns = shadows.filter(
+      (r) => r.status === 'scored' && (r.axis ?? '') === axis && r.delta_pct != null && isPracticeTeacherRun(r),
+    ).length
+
     const bits: string[] = []
     if (!gateMet && scored.length > 0) bits.push(`${GATE_B_STREAK - streak} more in-band to gate`)
     if (pending.length > 0) bits.push(`${pending.length} in flight`)
+    if (practiceTeacherRuns > 0) bits.push(`${practiceTeacherRuns} practice-teacher run${practiceTeacherRuns === 1 ? '' : 's'} set aside`)
     if (lastScore?.note) bits.push(lastScore.note)
     if (bits.length === 0) bits.push(gateMet ? 'Gate B met — hold the streak' : 'No runs yet')
 
@@ -183,6 +205,7 @@ export function buildAxisCards(
       holdoutRuns,
       practiceRuns: scored.length - holdoutRuns,
       streakHoldoutRuns,
+      practiceTeacherRuns,
     })
   }
   return cards
@@ -206,9 +229,16 @@ export function buildLedger(
       countsNote: s.counts_note ?? '—',
       gate: s.gate_eligible ? 'eligible' : 'void',
       scoredAt: s.scored_at,
+      teacher: null,
+      teacherStandard: null,
     })
   }
   for (const r of shadows) {
+    const gate: LedgerRow['gate'] =
+      r.status === 'void' ? 'void'
+        : r.status !== 'scored' ? 'pending'
+          : isPracticeTeacherRun(r) ? 'practice'
+            : 'eligible'
     rows.push({
       key: `shadow-${r.id}`,
       label: r.shadow_bid_number ? `SH b${r.shadow_bid_number}` : 'shadow',
@@ -219,8 +249,10 @@ export function buildLedger(
       reference: r.reference_value,
       deltaPct: r.delta_pct == null ? null : Number(r.delta_pct),
       countsNote: '—',
-      gate: r.status === 'scored' ? 'eligible' : 'pending',
+      gate,
       scoredAt: r.scored_at,
+      teacher: r.teacher_name ?? null,
+      teacherStandard: r.teacher_standard ?? null,
     })
   }
   return rows.sort((a, b) => (b.scoredAt ?? '9999').localeCompare(a.scoredAt ?? '9999'))

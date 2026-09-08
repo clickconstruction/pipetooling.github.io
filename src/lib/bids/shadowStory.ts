@@ -20,6 +20,13 @@ export interface ShadowRunRow {
   locked_total: number | null
   reference_value: number | null
   delta_pct: number | null
+  /**
+   * Teacher attribution (v2.3080): WHOSE number the run scored (or will score)
+   * against, and whether that estimator is a calibration standard
+   * (users.calibration_standard). Absent/null on clients ahead of the migration.
+   */
+  teacher_name?: string | null
+  teacher_standard?: boolean | null
 }
 
 export interface ShadowStoryStep {

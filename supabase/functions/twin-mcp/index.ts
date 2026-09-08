@@ -384,7 +384,7 @@ const TOOLS = [
   {
     name: 'get_shadow_queue',
     description:
-      'Fleet Phase 1 (shadow bidding): live human bids eligible for a shadow estimate — created recently, plans present, NOT yet sent (so the shadow is blind by nature), not a ZZ bid, not already shadowed. HUMAN-REQUESTED bids (the green robot icon on the Bid Board) come FIRST, oldest ask on top, and bypass the lookback window — work those before the rest. Returns logistics only. Pick one and open_shadow it.',
+      'Fleet Phase 1 (shadow bidding): live human bids eligible for a shadow estimate — created recently, plans present AND readable by the Drive intake service account (probed via plan-fetch; unreadable ones are listed under `unreadable` for a human to repair, never queued), NOT yet sent (so the shadow is blind by nature), not a ZZ bid, not already shadowed. HUMAN-REQUESTED bids (the green robot icon on the Bid Board) come FIRST, oldest ask on top, and bypass the lookback window — work those before the rest. Returns logistics only. Pick one and open_shadow it.',
     inputSchema: {
       type: 'object',
       properties: { days: { type: 'number', description: 'Lookback window in days (default 14)' } },
@@ -393,7 +393,7 @@ const TOOLS = [
   {
     name: 'next_shadow',
     description:
-      "The auto-shadow dispatcher (v2.2936): claim the next live bid that needs a shadow — human-requested bids first (oldest ask, no age limit), then the oldest eligible bid inside the lookback. The claim is the shadow shell itself, so parallel agents never share a bid; done: true means every eligible live bid is covered. The whole point (LEARNING_PLAN.md): a shadow costs the estimator zero minutes, locks blind before her number exists, and auto-scores when she sends — run agents on this verb until it says done and the live board is fully covered. Never call it again while your current shadow is unlocked.",
+      "The auto-shadow dispatcher (v2.2936): claim the next live bid that needs a shadow — human-requested bids first (oldest ask, no age limit), then the oldest eligible bid inside the lookback. The claim is the shadow shell itself, so parallel agents never share a bid; done: true means every eligible live bid is covered. Bids whose plans the Drive intake service account cannot read are skipped (probed first via plan-fetch; see get_shadow_queue's `unreadable` list) — never claim a bid you cannot fetch plans for. The whole point (LEARNING_PLAN.md): a shadow costs the estimator zero minutes, locks blind before her number exists, and auto-scores when she sends — run agents on this verb until it says done and the live board is fully covered. Never call it again while your current shadow is unlocked.",
     inputSchema: {
       type: 'object',
       properties: {
@@ -443,7 +443,7 @@ const TOOLS = [
   {
     name: 'score_shadows',
     description:
-      "Score every locked shadow whose reference has since been SENT (bid_value + date present): computes delta vs the human number, marks the run scored, and stamps scorecard notes on both bids. Call at the start of any run — it is the auto-scorecard. Returns the runs scored plus per-axis rolling stats (the confidence scoreboard data).",
+      "Score every locked shadow whose reference has since been SENT (bid_value + date present): computes delta vs the human number, records WHOSE number it was (teacher — the reference's estimator; a calibration-standard teacher counts toward Gate B, any other is practice), marks the run scored, and stamps scorecard notes on both bids. Call at the start of any run — it is the auto-scorecard. Returns the runs scored plus per-axis rolling stats (the confidence scoreboard data; gate math takes standard-teacher runs only).",
     inputSchema: { type: 'object', properties: {} },
   },
 ]
@@ -509,6 +509,40 @@ async function disciplineRefusal(admin: ReturnType<typeof createClient>, refBid:
   if (!plumbing || refBid.service_type_id === plumbing) return null
   const { data: st } = await admin.from('service_types').select('name').eq('id', refBid.service_type_id ?? '').maybeSingle()
   return `b${refBid.bid_number} is a${/^[aeiou]/i.test(String(st?.name ?? '')) ? 'n' : ''} ${st?.name ?? 'non-plumbing'} bid — twin-estimator-1 estimates PLUMBING only. A plumbing number against another division's reference is a category error, not a data point; pick a plumbing reference.`
+}
+
+// "Plans readable by robots" (v2.3080 / v1.3.11): before listing or claiming,
+// ask plan-fetch to probe any live bid whose plans link was never checked (or
+// not in the last 24h). Best-effort and bounded — a slow Drive never blocks the
+// queue; a bid the service account cannot read is skipped by the dispatcher and
+// listed under `unreadable` so a human can repair the link.
+async function probePlansSweep(req: Request, limit = 15): Promise<void> {
+  const token = presentedToken(req)
+  if (!token) return
+  const supabaseUrl = Deno.env.get('SUPABASE_URL')!
+  const ctl = new AbortController()
+  const timer = setTimeout(() => ctl.abort(), 12_000)
+  try {
+    await fetch(`${supabaseUrl}/functions/v1/plan-fetch?probe=all&limit=${limit}`, {
+      headers: { 'X-Twin-Token': token },
+      signal: ctl.signal,
+    })
+  } catch {
+    // best-effort
+  } finally {
+    clearTimeout(timer)
+  }
+}
+
+// Who taught this reference: the assigned estimator, else the sender who
+// attested the send, else the creator — plus whether they are a calibration
+// standard (users.calibration_standard, v2.3080).
+type TeacherBid = { estimator_id: string | null; bid_date_sent_attested_by: string | null; created_by: string | null }
+async function resolveTeacher(admin: ReturnType<typeof createClient>, bid: TeacherBid): Promise<{ id: string | null; name: string | null; standard: boolean }> {
+  const id = bid.estimator_id ?? bid.bid_date_sent_attested_by ?? bid.created_by ?? null
+  if (!id) return { id: null, name: null, standard: false }
+  const { data: u } = await admin.from('users').select('name, calibration_standard').eq('id', id).maybeSingle()
+  return { id, name: (u as { name?: string | null } | null)?.name ?? null, standard: !!(u as { calibration_standard?: boolean } | null)?.calibration_standard }
 }
 
 // ---------------------------------------------------------------------------
@@ -1729,12 +1763,14 @@ async function callTool(req: Request, name: string, args: Record<string, unknown
       const since = new Date(Date.now() - (Number.isFinite(days) && days > 0 ? days : 14) * 86400_000).toISOString()
       // Logistics only — pricing fields don't exist yet on eligible bids by definition
       // (bid_date_sent IS NULL is the blindness guarantee), and are never selected anyway.
-      const QUEUE_COLS = 'id, bid_number, project_name, address, distance_from_office, bid_due_date, plans_link, created_at, robot_requested_at, robot_requested_by'
+      const QUEUE_COLS = 'id, bid_number, project_name, address, distance_from_office, bid_due_date, plans_link, created_at, robot_requested_at, robot_requested_by, plans_robot_readable, plans_robot_probe_note'
       // v2.2543: human-requested bids (the green robot icon) come first and bypass
       // the lookback window — a person's ask shouldn't age out of the queue.
       // v2.3032: plumbing-only — the twin's discipline (see disciplineRefusal).
+      // v2.3080: plans must be READABLE by the intake service account — probe first.
       const plumbingId = await plumbingServiceTypeId(admin)
       if (!plumbingId) return textContent('No Plumbing service type found — cannot scope the queue to the twin\'s discipline', true)
+      await probePlansSweep(req)
       const [recentRes, requestedRes] = await Promise.all([
         admin
           .from('bids')
@@ -1761,11 +1797,17 @@ async function callTool(req: Request, name: string, args: Record<string, unknown
       if (requestedRes.error) return textContent(`Queue lookup failed: ${requestedRes.error.message}`, true)
       const { data: shadowed } = await admin.from('twin_shadow_runs').select('reference_bid_id')
       const taken = new Set((shadowed ?? []).map((r: { reference_bid_id: string }) => r.reference_bid_id))
-      type QueueRow = { id: string; bid_number: string; project_name: string | null; address: string | null; distance_from_office: number | null; bid_due_date: string | null; plans_link: string | null; created_at: string | null; robot_requested_at: string | null; robot_requested_by: string | null }
-      const eligible = (rows: QueueRow[] | null) => (rows ?? []).filter((b) => !taken.has(b.id) && String(b.plans_link ?? '').trim() !== '')
+      type QueueRow = { id: string; bid_number: string; project_name: string | null; address: string | null; distance_from_office: number | null; bid_due_date: string | null; plans_link: string | null; created_at: string | null; robot_requested_at: string | null; robot_requested_by: string | null; plans_robot_readable: boolean | null; plans_robot_probe_note: string | null }
+      const hasPlans = (b: QueueRow) => !taken.has(b.id) && String(b.plans_link ?? '').trim() !== ''
+      const eligible = (rows: QueueRow[] | null) => (rows ?? []).filter((b) => hasPlans(b) && b.plans_robot_readable !== false)
       const requested = eligible(requestedRes.data as QueueRow[] | null)
       const requestedIds = new Set(requested.map((b) => b.id))
       const rest = eligible(recentRes.data as QueueRow[] | null).filter((b) => !requestedIds.has(b.id))
+      // Unreadable-by-robots (v2.3080): listed, never queued — a human repairs the link.
+      const unreadableSeen = new Set<string>()
+      const unreadable = [...((requestedRes.data ?? []) as QueueRow[]), ...((recentRes.data ?? []) as QueueRow[])]
+        .filter((b) => hasPlans(b) && b.plans_robot_readable === false && !unreadableSeen.has(b.id) && unreadableSeen.add(b.id))
+        .map((b) => ({ bid: `b${b.bid_number}`, project: b.project_name, why: b.plans_robot_probe_note, requested: !!b.robot_requested_at }))
       const requesterIds = [...new Set(requested.map((b) => b.robot_requested_by).filter((x): x is string => !!x))]
       const { data: requesters } = requesterIds.length
         ? await admin.from('users').select('id, name').in('id', requesterIds)
@@ -1785,15 +1827,21 @@ async function callTool(req: Request, name: string, args: Record<string, unknown
       const queue = [...requested.map(toEntry), ...rest.map(toEntry)]
       // Coverage (v2.2936, LEARNING_PLAN.md lever 2): how much of the live board is
       // shadowed, windowless — the number the auto-shadow program drives to 100%.
-      const { data: allLive } = await admin.from('bids').select('id')
+      const { data: allLive } = await admin.from('bids').select('id, plans_robot_readable')
         .is('bid_date_sent', null).not('plans_link', 'is', null).eq('service_type_id', plumbingId).not('project_name', 'ilike', 'ZZ %').limit(1000)
-      const liveIds = (allLive ?? []).map((b: { id: string }) => b.id)
+      const liveRows = (allLive ?? []) as Array<{ id: string; plans_robot_readable: boolean | null }>
+      const liveIds = liveRows.map((b) => b.id)
       const shadowedLive = liveIds.filter((id) => taken.has(id)).length
+      const unreadableLive = liveRows.filter((b) => b.plans_robot_readable === false && !taken.has(b.id)).length
       return textContent(JSON.stringify({
         eligible: queue.length,
         requested: requested.length,
-        coverage: { live_with_plans: liveIds.length, shadowed: shadowedLive, unshadowed: liveIds.length - shadowedLive },
+        coverage: {
+          live_with_plans: liveIds.length, shadowed: shadowedLive, unshadowed: liveIds.length - shadowedLive,
+          unreadable_by_robots: unreadableLive,
+        },
         queue,
+        ...(unreadable.length ? { unreadable, unreadable_note: 'These live bids have a plans link the Drive intake service account cannot read — not queued. A human shares the file with the service account or links the PDF itself; the next probe (24h, or plan-fetch ?probe=1) clears them.' } : {}),
         next: 'next_shadow claims the first one for you (requested entries first) — or open_shadow(reference_bid, axis) to pick. Then estimate exactly like a backtest and lock_shadow before the human number exists.',
       }, null, 2))
     }
@@ -1838,10 +1886,12 @@ async function callTool(req: Request, name: string, args: Record<string, unknown
       })
       const days = Number(args.days ?? 30)
       const since = new Date(Date.now() - (Number.isFinite(days) && days > 0 ? days : 30) * 86400_000).toISOString()
-      const CLAIM_COLS = 'id, bid_number, project_name, address, customer_id, service_type_id, distance_from_office, plans_link, gc_builder_id, bid_due_date, bid_date_sent, created_at, robot_requested_at, backtest_axis'
+      const CLAIM_COLS = 'id, bid_number, project_name, address, customer_id, service_type_id, distance_from_office, plans_link, gc_builder_id, bid_due_date, bid_date_sent, created_at, robot_requested_at, backtest_axis, plans_robot_readable'
       // v2.3032: plumbing-only candidates — the 2026-09-07 b378 category error.
+      // v2.3080: readable-plans-only candidates — the 2026-09-06 b480 blocked shadow.
       const claimPlumbingId = await plumbingServiceTypeId(admin)
       if (!claimPlumbingId) return textContent('No Plumbing service type found — cannot scope claims to the twin\'s discipline', true)
+      await probePlansSweep(req)
       const [requestedRes, recentRes] = await Promise.all([
         admin.from('bids').select(CLAIM_COLS)
           .is('bid_date_sent', null).not('plans_link', 'is', null).eq('service_type_id', claimPlumbingId).not('robot_requested_at', 'is', null)
@@ -1855,13 +1905,22 @@ async function callTool(req: Request, name: string, args: Record<string, unknown
       const { data: shadowed } = await admin.from('twin_shadow_runs').select('reference_bid_id')
       const taken = new Set((shadowed ?? []).map((r: { reference_bid_id: string }) => r.reference_bid_id))
       const seen = new Set<string>()
+      let skippedUnreadable = 0
       const candidates = [...(requestedRes.data ?? []), ...(recentRes.data ?? [])].filter((b) => {
         if (taken.has(b.id) || seen.has(b.id) || !String(b.plans_link ?? '').trim()) return false
         seen.add(b.id)
+        if ((b as { plans_robot_readable?: boolean | null }).plans_robot_readable === false) {
+          skippedUnreadable += 1
+          return false
+        }
         return true
       }) as ShadowRefBid[]
       if (!candidates.length) {
-        return textContent(JSON.stringify({ done: true, note: `Every eligible live bid (requested, or created in the last ${days} days) already has a shadow.` }, null, 2))
+        return textContent(JSON.stringify({
+          done: true,
+          note: `Every eligible live bid (requested, or created in the last ${days} days) already has a shadow.`,
+          ...(skippedUnreadable ? { skipped_unreadable: skippedUnreadable, unreadable_note: 'Live bids whose plans the intake service account cannot read were skipped — get_shadow_queue lists them; a human repairs the link.' } : {}),
+        }, null, 2))
       }
       for (const refBid of candidates) {
         const axis = String((refBid as { backtest_axis?: string | null }).backtest_axis ?? '').trim() || null
@@ -1949,33 +2008,49 @@ async function callTool(req: Request, name: string, args: Record<string, unknown
       const scored: Array<Record<string, unknown>> = []
       for (const run of locked ?? []) {
         const { data: refBid } = await admin.from('bids')
-          .select('bid_number, project_name, bid_value, bid_date_sent, outcome').eq('id', run.reference_bid_id).maybeSingle()
+          .select('bid_number, project_name, bid_value, bid_date_sent, outcome, estimator_id, bid_date_sent_attested_by, created_by').eq('id', run.reference_bid_id).maybeSingle()
         if (!refBid?.bid_date_sent || refBid.bid_value == null) continue
         const refVal = Number(refBid.bid_value)
         const delta = refVal > 0 ? ((Number(run.locked_total) - refVal) / refVal) * 100 : null
+        // v2.3080: WHOSE number was this? A calibration-standard teacher counts
+        // toward Gate B; anyone else is practice (b481 scored against Grace's bid).
+        const teacher = await resolveTeacher(admin, refBid as TeacherBid)
         await admin.from('twin_shadow_runs').update({
           status: 'scored', reference_value: refVal,
           delta_pct: delta == null ? null : Math.round(delta * 10) / 10,
           scored_at: new Date().toISOString(),
+          teacher_user_id: teacher.id, teacher_name: teacher.name,
         }).eq('id', run.id)
         const { data: sb } = await admin.from('bids').select('bid_number').eq('id', run.shadow_bid_id).maybeSingle()
-        const line = `[shadow SCORECARD] Twin locked $${Number(run.locked_total).toLocaleString()} (blind, pre-send) vs human $${refVal.toLocaleString()} = ${delta == null ? 'n/a' : (delta > 0 ? '+' : '') + (Math.round(delta * 10) / 10) + '%'} — axis ${run.axis ?? 'unclassified'}, reference b${refBid.bid_number} (${refBid.project_name}).`
+        const teacherLabel = teacher.name ? ` by ${teacher.name} (${teacher.standard ? 'calibration standard' : 'practice teacher — not a gate run'})` : ''
+        const line = `[shadow SCORECARD] Twin locked $${Number(run.locked_total).toLocaleString()} (blind, pre-send) vs human $${refVal.toLocaleString()}${teacherLabel} = ${delta == null ? 'n/a' : (delta > 0 ? '+' : '') + (Math.round(delta * 10) / 10) + '%'} — axis ${run.axis ?? 'unclassified'}, reference b${refBid.bid_number} (${refBid.project_name}).`
         await admin.from('bids_submission_entries').insert({ bid_id: run.shadow_bid_id, notes: line }).then(() => {}, () => {})
         await admin.from('bids_submission_entries').insert({ bid_id: run.reference_bid_id, notes: line }).then(() => {}, () => {})
-        scored.push({ shadow_bid: `b${sb?.bid_number}`, reference: `b${refBid.bid_number}`, axis: run.axis, locked: run.locked_total, human: refVal, delta_pct: delta == null ? null : Math.round(delta * 10) / 10 })
+        scored.push({ shadow_bid: `b${sb?.bid_number}`, reference: `b${refBid.bid_number}`, axis: run.axis, locked: run.locked_total, human: refVal, delta_pct: delta == null ? null : Math.round(delta * 10) / 10, teacher: teacher.name, teacher_standard: teacher.standard })
       }
-      // Confidence scoreboard: rolling per-axis stats over all scored runs.
+      // Confidence scoreboard: rolling per-axis stats over all scored runs. Gate
+      // math takes STANDARD-teacher runs only (v2.3080); practice runs are counted
+      // beside them so the difference is visible.
       const { data: allScored } = await admin.from('twin_shadow_runs')
-        .select('axis, delta_pct, scored_at').eq('status', 'scored').order('scored_at', { ascending: false })
-      const byAxis: Record<string, number[]> = {}
-      for (const r of allScored ?? []) (byAxis[r.axis ?? 'unclassified'] ??= []).push(Number(r.delta_pct))
-      const scoreboard = Object.entries(byAxis).map(([axis, deltas]) => ({
-        axis, runs: deltas.length,
-        mean_abs_pct: Math.round((deltas.reduce((s, d) => s + Math.abs(d), 0) / deltas.length) * 10) / 10,
-        last5_in_8pct: deltas.slice(0, 5).filter((d) => Math.abs(d) <= 8).length,
-        gate_b_met: deltas.length >= 5 && deltas.slice(0, 5).every((d) => Math.abs(d) <= 8),
-      }))
-      return textContent(JSON.stringify({ newly_scored: scored, scoreboard }, null, 2))
+        .select('axis, delta_pct, scored_at, teacher_user_id').eq('status', 'scored').order('scored_at', { ascending: false })
+      const { data: standards } = await admin.from('users').select('id').eq('calibration_standard', true)
+      const standardIds = new Set(((standards ?? []) as Array<{ id: string }>).map((u) => u.id))
+      const byAxis: Record<string, { standard: number[]; practice: number[] }> = {}
+      for (const r of allScored ?? []) {
+        const bucket = (byAxis[r.axis ?? 'unclassified'] ??= { standard: [], practice: [] })
+        const isStandard = !!r.teacher_user_id && standardIds.has(r.teacher_user_id as string)
+        ;(isStandard ? bucket.standard : bucket.practice).push(Number(r.delta_pct))
+      }
+      const scoreboard = Object.entries(byAxis).map(([axis, { standard, practice }]) => {
+        const all = [...standard, ...practice]
+        return {
+          axis, runs: all.length, standard_runs: standard.length, practice_runs: practice.length,
+          mean_abs_pct: all.length ? Math.round((all.reduce((s, d) => s + Math.abs(d), 0) / all.length) * 10) / 10 : null,
+          last5_in_8pct: standard.slice(0, 5).filter((d) => Math.abs(d) <= 8).length,
+          gate_b_met: standard.length >= 5 && standard.slice(0, 5).every((d) => Math.abs(d) <= 8),
+        }
+      })
+      return textContent(JSON.stringify({ newly_scored: scored, scoreboard, gate_note: 'gate_b_met / last5_in_8pct count calibration-standard teachers only (users.calibration_standard); practice_runs are shown, not gated.' }, null, 2))
     }
     default:
       return textContent(`Unknown tool: ${name}`, true)
@@ -1991,7 +2066,7 @@ async function handleRpc(req: Request, msg: { jsonrpc?: string; id?: unknown; me
       return rpcResult(id, {
         protocolVersion: version,
         capabilities: { tools: {} },
-        serverInfo: { name: 'pipetooling-twin-mcp', version: '1.3.10' },
+        serverInfo: { name: 'pipetooling-twin-mcp', version: '1.3.11' },
         instructions:
           "PipeTooling digital-twin seat (estimator-only). Call get_brief first, then get_directory; mint_session gives you a signed-in browser link to the real apps — PipeTooling by default, CountTooling (the PDF-takeoff tool) with app: 'counttooling'. The work happens there. Every call needs your per-twin token (X-Twin-Token or Bearer).",
       })
