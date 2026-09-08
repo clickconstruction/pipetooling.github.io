@@ -60,7 +60,10 @@ marginal cost to her.
   (live-eligible vs shadowed). A shadow costs her zero minutes, locks blind
   before her number exists, auto-scores when she sends, and produces a fresh
   grade-A reference — the sample-size ceiling becomes her future output, not
-  her past. **Follow-up (build)**: a scheduled shadow-agent batch (operator
+  her past. Auto-scoring now happens on Send by DB trigger
+  (`bids_score_shadow_on_send_trg` → `score_locked_shadows`, v2.3126) instead
+  of waiting for the next agent's `score_shadows` call, and the Dashboard's
+  Needs-you card shows sealed shadows on live bids as the head start. **Follow-up (build)**: a scheduled shadow-agent batch (operator
   cron or owner-machine routine) so coverage doesn't depend on anyone
   remembering to run agents; a Scoreboard coverage pill. **Two lessons from
   the first shadow batch (2026-09-06)**: (a) a shadow scores against whichever

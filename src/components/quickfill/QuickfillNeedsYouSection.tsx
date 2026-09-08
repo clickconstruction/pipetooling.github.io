@@ -125,6 +125,7 @@ export function QuickfillNeedsYouSection({
     // Robot audits stay a Dashboard concern — Quickfill is the billing desk.
     robotAuditsEnabled: false,
     robotAuditsPending: 0,
+    robotLockedShadows: null,
     // Unconditional follow-ups ARE billing-desk work (v2.2582).
     lienUnconditionalEnabled,
     lienUnconditionalOwed,

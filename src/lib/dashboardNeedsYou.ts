@@ -7,6 +7,7 @@ import { gcReviewGcsToDo, type GcReviewNudgeState } from './jobs/gcReviewCertifi
 import type { GcReviewWeekStatus } from './gcReviewCertifications'
 import type { BulkDeleteAlert } from '../hooks/useBulkDeleteAlerts'
 import { formatDispatchNoteDaysAgoShortPhrase } from '../utils/dispatchNoteDisplay'
+import type { RobotLockedShadow } from './bids/robotLockedShadows'
 
 /**
  * Needs You card (v2.2339, CX-audit Phase 3): the pure item builder behind the
@@ -53,6 +54,7 @@ export type NeedsYouItem = {
     | 'bulk-delete'
     | 'claim-dev'
     | 'robot-audits'
+    | 'robot-locked'
     | 'lien-unconditional'
     | 'demand-deadline'
     | 'lien-serve-copy'
@@ -116,6 +118,7 @@ export const NEEDS_YOU_RANK: Record<NeedsYouItem['key'], number> = {
   'statement-round': 30,
   'roadmap-needs-person': 50,
   'robot-audits': 50,
+  'robot-locked': 50,
   'hours-approvals': 50,
   'label-approvals': 40,
   'contract-missing': 40,
@@ -265,6 +268,14 @@ export type NeedsYouInputs = {
   d22UncodedEnabled: boolean
   d22UncodedCount: number
   robotAuditsPending: number
+  /**
+   * Sealed robot numbers on live bids (v2.3126): shadows locked blind in the
+   * last 14 days whose reference has not gone out. Not a work queue — the
+   * scorecard lands by DB trigger the moment we send — just the head start,
+   * shown to the same audience as robot audits. Null while loading (no item);
+   * the hook reports [] on error. Absent = not wired (Quickfill passes null).
+   */
+  robotLockedShadows?: RobotLockedShadow[] | null
   /**
    * Cleared payments behind conditional lien releases (v2.2582) — the GC is
    * owed the unconditional follow-up. Null while loading; the hook reports
@@ -672,6 +683,22 @@ export function buildNeedsYouItems(inputs: NeedsYouInputs): NeedsYouItem[] {
       detail: 'The card shows where the robot and our bid differ — judge each difference with one tap, and it learns from every verdict.',
       figure: n > 99 ? '99+' : String(n),
       actionLabel: 'Open Audits',
+    })
+  }
+
+  if (inputs.robotAuditsEnabled && inputs.robotLockedShadows != null && inputs.robotLockedShadows.length > 0) {
+    const sealed = inputs.robotLockedShadows
+    const n = sealed.length
+    const one = sealed[0] as RobotLockedShadow
+    const where = one.project ? ` (${one.project})` : ''
+    items.push({
+      key: 'robot-locked',
+      severity: 'blue',
+      kicker: 'Robot bid',
+      title: n === 1 ? `The robot has a sealed number on b${one.referenceBid}${where}` : `The robot has sealed numbers on ${n} live bids`,
+      detail: 'Locked before ours went out — the score lands the moment we send. Nothing to do; this is the head start.',
+      figure: n > 99 ? '99+' : String(n),
+      actionLabel: 'Open Shadows',
     })
   }
 
