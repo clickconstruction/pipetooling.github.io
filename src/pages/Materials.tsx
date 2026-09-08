@@ -26,7 +26,6 @@ import { useMaterialsPurchaseOrders } from '../hooks/useMaterialsPurchaseOrders'
 import { useMaterialsCatalog } from '../hooks/useMaterialsCatalog'
 import { useMaterialsAssemblies } from '../hooks/useMaterialsAssemblies'
 import { PartPricesManager } from '../components/materials/PartPricesManager'
-import { SupplyHouseForm, type SupplyHouseFormData } from '../components/SupplyHouseForm'
 
 type SupplyHouse = Database['public']['Tables']['supply_houses']['Row']
 type MaterialPart = Database['public']['Tables']['material_parts']['Row']
@@ -142,19 +141,8 @@ export default function Materials() {
 
   // Load All Mode state - persisted per user in localStorage, default off to reduce disk IO
 
-  // Supply House Management state
+  // Price coverage modal (v2.3168: stats only — house CRUD lives on the Supply houses tab)
   const [viewingSupplyHouses, setViewingSupplyHouses] = useState(false)
-  const [supplyHouseFormOpen, setSupplyHouseFormOpen] = useState(false)
-  const [editingSupplyHouse, setEditingSupplyHouse] = useState<SupplyHouse | null>(null)
-  const [supplyHouseName, setSupplyHouseName] = useState('')
-  const [supplyHouseContactName, setSupplyHouseContactName] = useState('')
-  const [supplyHousePhone, setSupplyHousePhone] = useState('')
-  const [supplyHouseEmail, setSupplyHouseEmail] = useState('')
-  const [supplyHouseAddress, setSupplyHouseAddress] = useState('')
-  const [supplyHouseWebsiteUrl, setSupplyHouseWebsiteUrl] = useState('')
-  const [supplyHouseNotes, setSupplyHouseNotes] = useState('')
-  const [supplyHouseMonthlyPaymentDay, setSupplyHouseMonthlyPaymentDay] = useState('')
-  const [savingSupplyHouse, setSavingSupplyHouse] = useState(false)
 
   // Templates & PO Builder state
   // NAMING: the UI calls these ASSEMBLIES everywhere (Assembly Book,
@@ -700,119 +688,6 @@ export default function Materials() {
   function openSupplyHousesModal() {
     setViewingSupplyHouses(true)
     loadSupplyHouseStatsByServiceType()
-  }
-
-  function openAddSupplyHouse() {
-    setEditingSupplyHouse(null)
-    setSupplyHouseName('')
-    setSupplyHouseContactName('')
-    setSupplyHousePhone('')
-    setSupplyHouseEmail('')
-    setSupplyHouseAddress('')
-    setSupplyHouseWebsiteUrl('')
-    setSupplyHouseNotes('')
-    setSupplyHouseMonthlyPaymentDay('')
-    setSupplyHouseFormOpen(true)
-    setError(null)
-  }
-
-  function openEditSupplyHouse(supplyHouse: SupplyHouse) {
-    setEditingSupplyHouse(supplyHouse)
-    setSupplyHouseName(supplyHouse.name)
-    setSupplyHouseContactName(supplyHouse.contact_name || '')
-    setSupplyHousePhone(supplyHouse.phone || '')
-    setSupplyHouseEmail(supplyHouse.email || '')
-    setSupplyHouseAddress(supplyHouse.address || '')
-    setSupplyHouseWebsiteUrl(supplyHouse.website_url || '')
-    setSupplyHouseNotes(supplyHouse.notes || '')
-    setSupplyHouseMonthlyPaymentDay(supplyHouse.monthly_payment_day != null ? String(supplyHouse.monthly_payment_day) : '')
-    setSupplyHouseFormOpen(true)
-    setError(null)
-  }
-
-  function closeSupplyHouseForm() {
-    setSupplyHouseFormOpen(false)
-    setEditingSupplyHouse(null)
-  }
-
-  async function saveSupplyHouseFromFormData(data: SupplyHouseFormData) {
-    if (!data.name.trim()) {
-      setError('Supply house name is required')
-      return
-    }
-    setSavingSupplyHouse(true)
-    setError(null)
-
-    if (editingSupplyHouse) {
-      const { error: err } = await supabase
-        .from('supply_houses')
-        .update({
-          name: data.name.trim(),
-          contact_name: data.contact_name.trim() || null,
-          phone: data.phone.trim() || null,
-          email: data.email.trim() || null,
-          address: data.address.trim() || null,
-          website_url: data.website_url,
-          notes: data.notes.trim() || null,
-          monthly_payment_day: data.monthly_payment_day,
-          is_insurer: data.is_insurer,
-        })
-        .eq('id', editingSupplyHouse.id)
-      if (err) {
-        setError(err.message)
-      } else {
-        await Promise.all([loadSupplyHouses(), reloadPartsFirstPage(), loadSupplyHouseStatsByServiceType()])
-        closeSupplyHouseForm()
-      }
-    } else {
-      const { error: err } = await supabase
-        .from('supply_houses')
-        .insert({
-          name: data.name.trim(),
-          contact_name: data.contact_name.trim() || null,
-          phone: data.phone.trim() || null,
-          email: data.email.trim() || null,
-          address: data.address.trim() || null,
-          website_url: data.website_url,
-          notes: data.notes.trim() || null,
-          monthly_payment_day: data.monthly_payment_day,
-          is_insurer: data.is_insurer,
-        })
-      if (err) {
-        setError(err.message)
-      } else {
-        await Promise.all([loadSupplyHouses(), reloadPartsFirstPage(), loadSupplyHouseStatsByServiceType()])
-        closeSupplyHouseForm()
-      }
-    }
-    setSavingSupplyHouse(false)
-  }
-
-  async function deleteSupplyHouse(supplyHouseId: string) {
-    // Check if supply house has any prices
-    const { data: prices } = await supabase
-      .from('material_part_prices')
-      .select('id')
-      .eq('supply_house_id', supplyHouseId)
-      .limit(1)
-    
-    const hasPrices = prices && prices.length > 0
-    const message = hasPrices 
-      ? 'Delete this supply house? All prices associated with it will also be removed.'
-      : 'Delete this supply house?'
-    
-    if (!(await confirmDialog({ message, confirmLabel: 'Delete', danger: true }))) return
-    
-    setError(null)
-    const { error } = await supabase.from('supply_houses').delete().eq('id', supplyHouseId)
-    if (error) {
-      setError(error.message)
-    } else {
-      await Promise.all([
-        loadSupplyHouses(),
-        reloadPartsFirstPage(),
-      ])
-    }
   }
 
   // Template Management Functions
@@ -1721,10 +1596,7 @@ export default function Materials() {
               <h2 style={{ margin: 0 }}>Price coverage by supply house</h2>
               <button
                 type="button"
-                onClick={() => {
-                  setViewingSupplyHouses(false)
-                  closeSupplyHouseForm()
-                }}
+                onClick={() => setViewingSupplyHouses(false)}
                 style={{ padding: '0.5rem', background: 'none', border: 'none', fontSize: '1.5rem', cursor: 'pointer', color: 'var(--text-muted)' }}
               >
                 ×
@@ -1783,90 +1655,29 @@ export default function Materials() {
               )}
             </div>
 
-            <div style={{ marginBottom: '1rem' }}>
-              <button
-                type="button"
-                onClick={openAddSupplyHouse}
-                style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}
-              >
-                + Add Supply House
-              </button>
-            </div>
-
-            {/* Supply House Form */}
-            {supplyHouseFormOpen && (
-              <SupplyHouseForm
-                editingSupplyHouse={editingSupplyHouse}
-                name={supplyHouseName}
-                contactName={supplyHouseContactName}
-                phone={supplyHousePhone}
-                email={supplyHouseEmail}
-                address={supplyHouseAddress}
-                websiteUrl={supplyHouseWebsiteUrl}
-                notes={supplyHouseNotes}
-                monthlyPaymentDay={supplyHouseMonthlyPaymentDay}
-                onChange={(field, value) => {
-                  switch (field) {
-                    case 'name': setSupplyHouseName(value); break
-                    case 'contact_name': setSupplyHouseContactName(value); break
-                    case 'phone': setSupplyHousePhone(value); break
-                    case 'email': setSupplyHouseEmail(value); break
-                    case 'address': setSupplyHouseAddress(value); break
-                    case 'website_url': setSupplyHouseWebsiteUrl(value); break
-                    case 'notes': setSupplyHouseNotes(value); break
-                    case 'monthly_payment_day': setSupplyHouseMonthlyPaymentDay(value); break
-                  }
-                }}
-                onSubmit={saveSupplyHouseFromFormData}
-                onClose={closeSupplyHouseForm}
-                onDelete={editingSupplyHouse ? async () => { await deleteSupplyHouse(editingSupplyHouse.id); closeSupplyHouseForm(); } : undefined}
-                saving={savingSupplyHouse}
-                myRole={myRole}
-                variant="inline"
-              />
-            )}
-
-            {/* Supply Houses List */}
-            <div style={{ border: '1px solid var(--border)', borderRadius: 4, overflow: 'hidden' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                <thead style={{ background: 'var(--bg-subtle)' }}>
-                  <tr>
-                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Name</th>
-                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Contact</th>
-                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Phone</th>
-                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Email</th>
-                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {supplyHouses.length === 0 ? (
-                    <tr>
-                      <td colSpan={5} style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>
-                        No supply houses yet. Add your first supply house!
-                      </td>
-                    </tr>
-                  ) : (
-                    supplyHouses.map(sh => (
-                      <tr key={sh.id} style={{ borderBottom: '1px solid var(--border)' }}>
-                        <td style={{ padding: '0.75rem', fontWeight: 500 }}>{sh.name}</td>
-                        <td style={{ padding: '0.75rem' }}>{sh.contact_name || '-'}</td>
-                        <td style={{ padding: '0.75rem' }}>{sh.phone || '-'}</td>
-                        <td style={{ padding: '0.75rem' }}>{sh.email || '-'}</td>
-                        <td style={{ padding: '0.75rem' }}>
-                          <button
-                            type="button"
-                            onClick={() => openEditSupplyHouse(sh)}
-                            style={{ marginRight: '0.5rem', padding: '0.25rem 0.5rem', background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer' }}
-                          >
-                            Edit
-                          </button>
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
+            <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-muted)' }}>
+              Houses, reps and websites live on the{' '}
+              {canOpenMaterialsTab(myRole, 'supply-houses') ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setViewingSupplyHouses(false)
+                    setActiveTab('supply-houses')
+                    setSearchParams((prev) => {
+                      const next = new URLSearchParams(prev)
+                      next.set('tab', 'supply-houses')
+                      return next
+                    })
+                  }}
+                  style={{ background: 'none', border: 'none', padding: 0, color: 'var(--text-link)', cursor: 'pointer', font: 'inherit' }}
+                >
+                  Supply houses tab
+                </button>
+              ) : (
+                <strong>Supply houses tab</strong>
+              )}
+              {canOpenMaterialsTab(myRole, 'supply-houses') ? ' — add or edit a house there.' : ', where the office and estimators keep them.'}
+            </p>
           </div>
         </div>
       )}

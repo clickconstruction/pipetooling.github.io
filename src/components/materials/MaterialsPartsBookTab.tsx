@@ -102,7 +102,7 @@ export function MaterialsPartsBookTab({
             <button
               type="button"
               onClick={openSupplyHousesModal}
-              title="How much of each service type's Parts Book has a price, per supply house — plus the supply-house list"
+              title="How much of each service type's Parts Book has a price, per supply house"
               style={{ padding: '0.5rem 1rem', background: '#059669', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}
             >
               Price coverage
