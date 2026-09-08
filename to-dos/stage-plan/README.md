@@ -1,6 +1,6 @@
 # Stage Plan — the line item is the stage
 
-Status: **designed and approved 2026-09-07, not started.** Owner: Stephen. Designed in the session that shipped the three-party scheduling train (v2.2927–v2.2934) and the hub guide (v2.2938). Any session can pick this up cold; everything needed is in this folder.
+Status: **in progress** · PR 1 (data + kernel, v2.3083) on `claude/stage-plan-1-data-kernel` · designed and approved 2026-09-07. Owner: Stephen. Designed in the session that shipped the three-party scheduling train (v2.2927–v2.2934) and the hub guide (v2.2938). Any session can pick this up cold; everything needed is in this folder.
 
 ## The ask, in the owner's words
 
