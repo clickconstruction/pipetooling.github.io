@@ -71,3 +71,14 @@ export function summarizeJobShares(
     rest > 0 ? ` · +${rest} more` : ''
   }`
 }
+
+/**
+ * Job-window header storefront icon (v2.3160): the icon turns teal once a job
+ * account packet is on record, and its tooltip names the newest send. Null
+ * rows = the plain "set up a job account" affordance.
+ */
+export function jobAccountShareIconTitle(rows: JobAccountShareRow[], formatDate: (iso: string) => string): string {
+  const summary = summarizeJobShares(rows, formatDate)
+  if (!summary) return 'Share with supply house — set up a job account'
+  return `Job account on file — ${summary.replace(/^Already shared with /, 'shared with ')}. Click for history or to resend.`
+}

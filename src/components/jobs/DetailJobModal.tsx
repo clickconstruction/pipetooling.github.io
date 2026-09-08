@@ -38,6 +38,8 @@ import { companyWeekStartSundayContaining, getDefaultWeekRange } from '../../uti
 import { JobCalendarModal } from './JobCalendarModal'
 import { ShareJobButton } from './ShareJobButton'
 import { SupplyHouseShareModal } from './SupplyHouseShareModal'
+import { useJobAccountShares } from '../../hooks/useJobAccountShares'
+import { jobAccountShareIconTitle } from '../../lib/supplyHouseJobAccountsLedger'
 import { useChecklistAddModal } from '../../contexts/ChecklistAddModalContext'
 import { renderAccountManChip } from './jobsStagesRowShared'
 import { buildAccountManDisplay } from '../../lib/jobs/accountMan'
@@ -992,6 +994,11 @@ export default function DetailJobModal({
   const canShareSupplyHouse =
     viewerAuthRole === 'dev' || viewerAuthRole === 'master_technician' || viewerAuthRole === 'assistant' || viewerAuthRole === 'controller'
   const [supplyHouseShareOpen, setSupplyHouseShareOpen] = useState(false)
+  // Job-account share records for the header icon (teal once a packet is on
+  // file); re-read when the share modal closes — a send may have been logged.
+  const [jobAccountSharesKey, setJobAccountSharesKey] = useState(0)
+  const { shares: jobAccountShares } = useJobAccountShares(jobId, canShareSupplyHouse && Boolean(fullJob), jobAccountSharesKey)
+  const jobAccountOnFile = (jobAccountShares?.length ?? 0) > 0
   // One-shot auto-open from the Dispatch inbox's find-owner action (v2.1610):
   // waits for the full job (the share modal needs it), fires once.
   const supplyShareAutoOpenedRef = useRef(false)
@@ -1388,8 +1395,9 @@ export default function DetailJobModal({
                   e.stopPropagation()
                   setSupplyHouseShareOpen(true)
                 }}
-                title="Share with supply house — set up a job account"
+                title={jobAccountShareIconTitle(jobAccountShares ?? [], (iso) => new Date(iso).toLocaleDateString())}
                 aria-label="Share with supply house"
+                data-job-account={jobAccountOnFile ? 'on-file' : undefined}
                 style={{
                   display: 'inline-flex',
                   alignItems: 'center',
@@ -1399,7 +1407,8 @@ export default function DetailJobModal({
                   border: 'none',
                   background: 'none',
                   cursor: 'pointer',
-                  color: 'var(--text-600)',
+                  // Teal = a job account packet is on record (v2.3160); literal, no teal tokens exist.
+                  color: jobAccountOnFile ? '#0f766e' : 'var(--text-600)',
                   borderRadius: 4,
                 }}
               >
@@ -2484,7 +2493,14 @@ export default function DetailJobModal({
         />
       ) : null}
       {supplyHouseShareOpen && fullJob ? (
-        <SupplyHouseShareModal open job={fullJob} onClose={() => setSupplyHouseShareOpen(false)} />
+        <SupplyHouseShareModal
+          open
+          job={fullJob}
+          onClose={() => {
+            setSupplyHouseShareOpen(false)
+            setJobAccountSharesKey((k) => k + 1)
+          }}
+        />
       ) : null}
     </div>
   )

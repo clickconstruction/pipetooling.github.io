@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   groupJobAccountLedger,
+  jobAccountShareIconTitle,
   shareContactDisplay,
   shareSendMethodLabel,
   summarizeJobShares,
@@ -67,5 +68,20 @@ describe('shareSendMethodLabel (v2.1820)', () => {
     expect(shareSendMethodLabel({ send_method: 'user_email' })).toBe('from their inbox')
     expect(shareSendMethodLabel({ send_method: 'app' })).toBeNull()
     expect(shareSendMethodLabel({})).toBeNull()
+  })
+})
+
+describe('jobAccountShareIconTitle', () => {
+  const fmt = (iso: string) => iso.slice(0, 10)
+  it('is the setup affordance when nothing was shared', () => {
+    expect(jobAccountShareIconTitle([], fmt)).toBe('Share with supply house — set up a job account')
+  })
+  it('names the newest send and collapses the rest once a packet is on record', () => {
+    expect(
+      jobAccountShareIconTitle(
+        [row({ sent_at: '2026-08-10T10:00:00Z', contact_label: 'Reece — Georgetown' }), row({ sent_at: '2026-08-12T15:00:00Z' })],
+        fmt,
+      ),
+    ).toBe('Job account on file — shared with Ferguson — Central desk · 2026-08-12 · +1 more. Click for history or to resend.')
   })
 })

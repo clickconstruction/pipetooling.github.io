@@ -46,15 +46,15 @@ vi.mock('../utils/errorHandling', () => ({
 }))
 vi.mock('./mercuryRawDebitCard', () => ({ mercuryDebitCardIdFromRaw: (raw: { cardId?: string } | null) => raw?.cardId ?? null }))
 
-import { fetchJobMaterialsCostSnapshot, mercuryCardTotalFromLines, tallyPartsTotalFromLines } from './fetchJobMaterialsCostSnapshot'
+import { fetchJobMaterialsCostSnapshot, jobAccountSplitFromLines, mercuryCardTotalFromLines, tallyPartsTotalFromLines } from './fetchJobMaterialsCostSnapshot'
 
 const argsOf = (steps: Step[], m: string) => steps.filter((s) => s.method === m).map((s) => s.args)
 const call = (name: string) => calls.find((c) => c.name === name)!
 const full: Record<string, unknown> = {
   get_invoice_amounts_for_jobs: [{ job_id: 'other', invoice_amount: '999' }, { job_id: 'j1', invoice_amount: '1250.5' }],
   supply_house_invoice_job_allocations: [
-    { pct: 50, supply_house_invoices: { invoice_number: 'INV-1', invoice_date: '2026-09-01T00:00:00', amount: '200', supply_houses: { name: 'Ferguson' } } },
-    { pct: '25', supply_house_invoices: [{ invoice_number: 'INV-2', invoice_date: '2026-08-15', amount: 80, supply_houses: [{ name: 'Winsupply' }] }] }, // embeds as 1-element arrays
+    { pct: 50, supply_house_invoices: { invoice_number: 'INV-1', invoice_date: '2026-09-01T00:00:00', amount: '200', is_paid: false, on_job_account: true, supply_houses: { name: 'Ferguson' } } },
+    { pct: '25', supply_house_invoices: [{ invoice_number: 'INV-2', invoice_date: '2026-08-15', amount: 80, is_paid: true, on_job_account: false, supply_houses: [{ name: 'Winsupply' }] }] }, // embeds as 1-element arrays
     { pct: 10, supply_house_invoices: { invoice_number: 'INV-3', invoice_date: null, amount: null, supply_houses: null } },
     { pct: 10, supply_house_invoices: null }, // orphan allocation: skipped
   ],
@@ -81,16 +81,17 @@ describe('fetchJobMaterialsCostSnapshot', () => {
     const snap = await fetchJobMaterialsCostSnapshot('j1')
     expect(call('get_invoice_amounts_for_jobs')).toMatchObject({ kind: 'rpc', args: [{ p_job_ids: ['j1'] }] })
     expect(argsOf(call('supply_house_invoice_job_allocations').steps, 'eq')).toEqual([['job_id', 'j1']])
-    expect(String(argsOf(call('supply_house_invoice_job_allocations').steps, 'select')[0]![0])).toContain('supply_house_invoices(invoice_number, invoice_date, amount, supply_houses(name))')
+    expect(String(argsOf(call('supply_house_invoice_job_allocations').steps, 'select')[0]![0])).toContain('supply_house_invoices(invoice_number, invoice_date, amount, is_paid, on_job_account, supply_houses(name))')
     expect(argsOf(call('mercury_transaction_job_allocations').steps, 'eq')).toEqual([['job_id', 'j1']])
     expect(argsOf(call('mercury_transaction_job_allocations').steps, 'order')).toEqual([['created_at', { ascending: true }]])
     expect(call('list_tally_parts_with_po')).toMatchObject({ kind: 'rpc', args: [] })
 
     expect(snap.supplyInvoiceTotal).toBe(1250.5) // this job's row, not the other job's
     expect(snap.supplyInvoiceLines).toEqual([
-      { pct: 50, invoiceNumber: 'INV-1', invoiceDate: '2026-09-01', invoiceAmount: 200, allocatedAmount: 100, supplyHouseName: 'Ferguson' },
-      { pct: 25, invoiceNumber: 'INV-2', invoiceDate: '2026-08-15', invoiceAmount: 80, allocatedAmount: 20, supplyHouseName: 'Winsupply' },
-      { pct: 10, invoiceNumber: 'INV-3', invoiceDate: '', invoiceAmount: 0, allocatedAmount: 0, supplyHouseName: null },
+      { pct: 50, invoiceNumber: 'INV-1', invoiceDate: '2026-09-01', invoiceAmount: 200, allocatedAmount: 100, supplyHouseName: 'Ferguson', isPaid: false, onJobAccount: true },
+      { pct: 25, invoiceNumber: 'INV-2', invoiceDate: '2026-08-15', invoiceAmount: 80, allocatedAmount: 20, supplyHouseName: 'Winsupply', isPaid: true, onJobAccount: false },
+      // Missing embed fields (pre-column rows) read as false, never undefined.
+      { pct: 10, invoiceNumber: 'INV-3', invoiceDate: '', invoiceAmount: 0, allocatedAmount: 0, supplyHouseName: null, isPaid: false, onJobAccount: false },
     ])
     expect(snap.mercuryAllocLines).toEqual([
       { id: 'a1', allocationAmount: -45.25, note: 'PVC', postedAt: '2026-09-02', counterpartyName: 'Home Depot', debitCardId: 'card-a' },
@@ -153,5 +154,29 @@ describe('fetchJobMaterialsCostSnapshot', () => {
     route = failing('list_tally_parts_with_po')
     snap = await fetchJobMaterialsCostSnapshot('j1')
     expect(snap).toMatchObject({ tallyFetchFailed: true, tallyPartLines: [], mercuryFetchFailed: false })
+  })
+})
+
+describe('jobAccountSplitFromLines', () => {
+  const line = (over: Partial<import('./fetchJobMaterialsCostSnapshot').JobSupplyInvoiceLine>) => ({
+    pct: 100,
+    invoiceNumber: 'x',
+    invoiceDate: '',
+    invoiceAmount: 0,
+    allocatedAmount: 0,
+    supplyHouseName: null,
+    isPaid: false,
+    onJobAccount: false,
+    ...over,
+  })
+  it('sums unpaid allocated dollars, splitting out the job-account slice; paid lines are ignored', () => {
+    expect(
+      jobAccountSplitFromLines([
+        line({ allocatedAmount: 100, onJobAccount: true }),
+        line({ allocatedAmount: 40 }),
+        line({ allocatedAmount: 500, isPaid: true, onJobAccount: true }),
+      ]),
+    ).toEqual({ unpaidTotal: 140, unpaidOnJobAccount: 100 })
+    expect(jobAccountSplitFromLines([])).toEqual({ unpaidTotal: 0, unpaidOnJobAccount: 0 })
   })
 })

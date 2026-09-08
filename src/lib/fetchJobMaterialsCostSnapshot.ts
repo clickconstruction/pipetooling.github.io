@@ -10,6 +10,21 @@ export type JobSupplyInvoiceLine = {
   invoiceAmount: number
   allocatedAmount: number
   supplyHouseName: string | null
+  isPaid: boolean
+  /** Rides on the house's job account (v2.2669) — unpaid balance is the owner's exposure, not ours. */
+  onJobAccount: boolean
+}
+
+/** Unpaid allocated dollars on job accounts vs unpaid overall — the job window's Parts Cost split line. */
+export function jobAccountSplitFromLines(lines: JobSupplyInvoiceLine[]): { unpaidTotal: number; unpaidOnJobAccount: number } {
+  let unpaidTotal = 0
+  let unpaidOnJobAccount = 0
+  for (const l of lines) {
+    if (l.isPaid) continue
+    unpaidTotal += l.allocatedAmount
+    if (l.onJobAccount) unpaidOnJobAccount += l.allocatedAmount
+  }
+  return { unpaidTotal, unpaidOnJobAccount }
 }
 
 export type JobMercuryAllocLine = {
@@ -74,15 +89,20 @@ export async function fetchJobMaterialsCostSnapshot(jobId: string): Promise<JobM
       async () =>
         supabase
           .from('supply_house_invoice_job_allocations')
-          .select('pct, supply_house_invoices(invoice_number, invoice_date, amount, supply_houses(name))')
+          .select('pct, supply_house_invoices(invoice_number, invoice_date, amount, is_paid, on_job_account, supply_houses(name))')
           .eq('job_id', jobId),
       'job materials cost snapshot supply allocations',
     )
     for (const row of raw ?? []) {
-      const invNested = row.supply_house_invoices as
-        | { invoice_number: string; invoice_date: string; amount: string | number; supply_houses?: { name: string } | { name: string }[] | null }
-        | { invoice_number: string; invoice_date: string; amount: string | number; supply_houses?: { name: string } | { name: string }[] | null }[]
-        | null
+      type InvEmbed = {
+        invoice_number: string
+        invoice_date: string
+        amount: string | number
+        is_paid?: boolean | null
+        on_job_account?: boolean | null
+        supply_houses?: { name: string } | { name: string }[] | null
+      }
+      const invNested = row.supply_house_invoices as InvEmbed | InvEmbed[] | null
       const inv = Array.isArray(invNested) ? invNested[0] : invNested
       if (!inv) continue
       const shNested = inv.supply_houses
@@ -97,6 +117,8 @@ export async function fetchJobMaterialsCostSnapshot(jobId: string): Promise<JobM
         invoiceAmount: invAmt,
         allocatedAmount: allocated,
         supplyHouseName: sh?.name ?? null,
+        isPaid: inv.is_paid === true,
+        onJobAccount: inv.on_job_account === true,
       })
     }
   } catch {

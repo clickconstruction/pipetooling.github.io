@@ -2,6 +2,7 @@ import { useCallback, useMemo, useState } from 'react'
 import { useMercuryLedgerNicknames } from '../../hooks/useMercuryLedgerNicknames'
 import { formatMercuryCardChargesPostedDate } from '../../lib/formatMercuryCardChargesPostedDate'
 import {
+  jobAccountSplitFromLines,
   mercuryCardTotalFromLines,
   tallyPartsTotalFromLines,
   type JobMaterialsCostSnapshot,
@@ -43,6 +44,8 @@ export function JobDetailMaterialsCostSection({ loading, snapshot, canExpand, bi
   const supplyInvoiceRpcFailed = snapshot?.supplyInvoiceRpcFailed ?? false
   const supplyInvoiceTotal = snapshot?.supplyInvoiceTotal ?? 0
   const supplyInvoiceLines = snapshot?.supplyInvoiceLines ?? []
+  // Job-account split (v2.3160): teal, literal — no teal theme tokens exist.
+  const jobAccountSplit = useMemo(() => jobAccountSplitFromLines(supplyInvoiceLines), [supplyInvoiceLines])
 
   const mercuryFetchFailed = snapshot?.mercuryFetchFailed ?? false
   const mercuryAllocLines = snapshot?.mercuryAllocLines ?? []
@@ -99,7 +102,17 @@ export function JobDetailMaterialsCostSection({ loading, snapshot, canExpand, bi
                 {supplyInvoiceLines.map((ln, idx) => (
                   <tr key={`${ln.invoiceNumber}-${ln.invoiceDate}-${idx}`} style={{ borderBottom: idx < supplyInvoiceLines.length - 1 ? '1px solid var(--border)' : 'none' }}>
                     <td style={{ padding: '0.5rem 0.625rem' }}>{ln.supplyHouseName ?? '—'}</td>
-                    <td style={{ padding: '0.5rem 0.625rem' }}>{ln.invoiceNumber}</td>
+                    <td style={{ padding: '0.5rem 0.625rem' }}>
+                      {ln.invoiceNumber}
+                      {ln.onJobAccount ? (
+                        <span
+                          title="On the house's job account — if this goes unpaid, the house bills the property owner, not you."
+                          style={{ marginLeft: '0.4rem', padding: '1px 8px', borderRadius: 999, fontSize: '0.6875rem', fontWeight: 600, background: '#ccfbf1', color: '#0f766e', whiteSpace: 'nowrap' }}
+                        >
+                          Job acct
+                        </span>
+                      ) : null}
+                    </td>
                     <td style={{ padding: '0.5rem 0.625rem' }}>{ln.invoiceDate || '—'}</td>
                     <td style={{ padding: '0.5rem 0.625rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{formatCurrency(ln.allocatedAmount)}</td>
                   </tr>
@@ -107,6 +120,13 @@ export function JobDetailMaterialsCostSection({ loading, snapshot, canExpand, bi
               </tbody>
             </table>
           )}
+          {jobAccountSplit.unpaidOnJobAccount > 0.005 ? (
+            <p style={{ margin: '0.5rem 0 0', fontSize: '0.8125rem', color: '#0f766e' }}>
+              <strong style={{ fontVariantNumeric: 'tabular-nums' }}>${formatCurrency(jobAccountSplit.unpaidOnJobAccount)}</strong> of the{' '}
+              <span style={{ fontVariantNumeric: 'tabular-nums' }}>${formatCurrency(jobAccountSplit.unpaidTotal)}</span> unpaid here is on a job account — the house
+              bills the property owner if it goes unpaid, not you.
+            </p>
+          ) : null}
         </MaterialsCostAccordionRow>
         <MaterialsCostAccordionRow
           title="Card charges"
