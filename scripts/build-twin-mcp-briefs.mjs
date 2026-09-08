@@ -17,6 +17,8 @@ const harnessPath = 'docs/twins/TWIN_HARNESS.md'
 const harness = existsSync(join(root, harnessPath)) ? read(harnessPath) : ''
 const ctGuidePath = 'docs/twins/COUNTTOOLING_BID_GUIDE.md'
 const ctGuide = existsSync(join(root, ctGuidePath)) ? read(ctGuidePath) : ''
+const ttGuidePath = 'docs/twins/TAKEOFFTOOLING_BID_GUIDE.md'
+const ttGuide = existsSync(join(root, ttGuidePath)) ? read(ttGuidePath) : ''
 
 // The placement/extraction protocol set rides the bundle too (owner ask 2026-08-30:
 // a cloud twin without repo access must still read the doctrine). One string, three
@@ -48,6 +50,7 @@ export const BRIEF: string = ${JSON.stringify(brief)}
 export const DIRECTORY: string = ${JSON.stringify(directory)}
 export const HARNESS: string = ${JSON.stringify(harness)}
 export const CT_GUIDE: string = ${JSON.stringify(ctGuide)}
+export const TT_GUIDE: string = ${JSON.stringify(ttGuide)}
 export const PLACEMENT_GUIDE: string = ${JSON.stringify(placementGuide)}
 export const MISSIONS: Record<string, { title: string; prerequisites: string; text: string }> = ${JSON.stringify(missions, null, 2)}
 `

@@ -40,6 +40,10 @@ const VIOLET = '#8b5cf6'
 const PT_FLEET_DOMAIN = '@twins.pipetooling.local'
 const CT_FLEET_DOMAIN = '@twins.counttooling.local'
 const ctTwinEmail = (ptEmail: string) => ptEmail.replace(PT_FLEET_DOMAIN, CT_FLEET_DOMAIN)
+// TT bridge (v2.3082): the TakeoffTooling seat (electrical explode-and-cost) at the TT fleet domain.
+// No join-key column on PT — the seat is looked up by email over tt-bridge.
+const TT_FLEET_DOMAIN = '@twins.takeofftooling.local'
+const ttTwinEmail = (ptEmail: string) => ptEmail.replace(PT_FLEET_DOMAIN, TT_FLEET_DOMAIN)
 
 function randomTokenHex(bytes = 32): string {
   const a = new Uint8Array(bytes)
@@ -88,6 +92,8 @@ export default function DigitalTwinsPanel() {
   // CT seat join key (v2.2434): twin id → counttooling_user_id. null = the column isn't
   // deployed yet (migration 20260828090000) — the indicator hides entirely.
   const [ctSeatById, setCtSeatById] = useState<Record<string, string | null> | null>(null)
+  // TT seat (v2.3082): twin id → TT uuid | null (missing) — null map = bridge unavailable.
+  const [ttSeatById, setTtSeatById] = useState<Record<string, string | null> | null>(null)
   // Calibration standard (v2.3091): the humans whose sent numbers the robots
   // calibrate to (users.calibration_standard, v2.3080). null = the column isn't
   // deployed yet — the card hides.
@@ -109,6 +115,18 @@ export default function DigitalTwinsPanel() {
         return
       }
       setTwins(t.data ?? [])
+      // TT seats: one lookup per twin over tt-bridge (dev-only proxy). Fail-soft: the
+      // indicator hides when the bridge isn't configured or the function is missing.
+      void (async () => {
+        const map: Record<string, string | null> = {}
+        for (const tw of t.data ?? []) {
+          const { data: lk, error: lkErr } = await supabase.functions.invoke('tt-bridge', { body: { verb: 'lookup', email: ttTwinEmail(tw.email) } })
+          if (lkErr) { setTtSeatById(null); return }
+          const found = lk as { found?: boolean; tt_user_id?: string; is_digital_twin?: boolean } | null
+          map[tw.id] = found?.found && found.is_digital_twin ? (found.tt_user_id ?? 'linked') : null
+        }
+        setTtSeatById(map)
+      })()
       const c = await sb.from('twin_credentials').select('id, twin_user_id, label, created_at, last_used_at, revoked_at').order('created_at', { ascending: false }).limit(100)
       setCreds((c.data as CredRow[] | null) ?? [])
       const r = await sb.from('twin_runs').select('twin_user_id, mission, notes, started_at').order('started_at', { ascending: false }).limit(15)
@@ -228,6 +246,31 @@ export default function DigitalTwinsPanel() {
     return true
   }
 
+  /** Create (idempotently) the TakeoffTooling seat for a twin over tt-bridge (v2.3082). */
+  async function linkTtSeat(ptEmail: string, name: string | null): Promise<boolean> {
+    const { data, error } = await supabase.functions.invoke('tt-bridge', {
+      body: { verb: 'create', email: ttTwinEmail(ptEmail), name: name ?? undefined, is_digital_twin: true },
+    })
+    const ttId = (data as { tt_user_id?: string } | null)?.tt_user_id
+    if (error || !ttId) {
+      showToast(`TT seat failed — retry with the link button on the twin (${error?.message ?? (data as { error?: string } | null)?.error ?? 'no uuid returned'})`, 'error')
+      return false
+    }
+    return true
+  }
+
+  async function retryTtSeat(t: TwinRow) {
+    setBusy(true)
+    try {
+      if (await linkTtSeat(t.email, t.name)) {
+        showToast(`TakeoffTooling seat linked for ${t.email}`, 'success')
+        await loadAll()
+      }
+    } finally {
+      setBusy(false)
+    }
+  }
+
   async function retryCtSeat(t: TwinRow) {
     setBusy(true)
     try {
@@ -311,6 +354,8 @@ export default function DigitalTwinsPanel() {
       if (newRow?.id && (await linkCtSeat(newRow.id, seat.email, body.name))) {
         showToast('CountTooling seat created and linked', 'success')
       }
+      // TT bridge (v2.3082): the TakeoffTooling seat too — fail-soft, chip's link button is the retry.
+      if (await linkTtSeat(seat.email, body.name)) showToast('TakeoffTooling seat created and linked', 'success')
       await loadAll()
     } catch (e) {
       showToast(e instanceof Error ? e.message : String(e), 'error')
@@ -484,6 +529,26 @@ export default function DigitalTwinsPanel() {
                           CT seat · missing
                         </span>
                         <button type="button" style={COPY_CHIP} disabled={busy} onClick={() => void retryCtSeat(t)}>link</button>
+                      </span>
+                    )
+                  ) : null}
+                  {ttSeatById !== null ? (
+                    ttSeatById[t.id] ? (
+                      <span
+                        style={{ fontSize: '0.62rem', fontWeight: 700, borderRadius: 999, padding: '0.08rem 0.5rem', background: 'var(--bg-green-tint)', color: 'var(--text-green-800)' }}
+                        title={`TakeoffTooling seat linked — TT uuid ${ttSeatById[t.id]}`}
+                      >
+                        TT seat · linked
+                      </span>
+                    ) : (
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
+                        <span
+                          style={{ fontSize: '0.62rem', fontWeight: 700, borderRadius: 999, padding: '0.08rem 0.5rem', background: 'var(--bg-amber-tint)', color: 'var(--text-amber-800)' }}
+                          title="No TakeoffTooling seat for this twin — link creates (or finds) it over the bridge (electrical bids need it)"
+                        >
+                          TT seat · missing
+                        </span>
+                        <button type="button" style={COPY_CHIP} disabled={busy} onClick={() => void retryTtSeat(t)}>link</button>
                       </span>
                     )
                   ) : null}

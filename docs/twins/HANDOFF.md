@@ -59,6 +59,14 @@ estimator's hours and her corpus, and every planned item optimizes one of the tw
   T2 path census + T3 template matcher + T4 auto-scorecard kernel; `takeoffPlacement.ts`
   coordinate kernel; PLACEMENT.md is the vision-model manual and the doctrine ledger
   (BT-17..19 slate banked 2026-09-01).
+- **The TakeoffTooling leg** (v2.3082, electrical bids only): a third seat per twin
+  (`@twins.takeofftooling.local`, minted over `tt-bridge` / `mint_session app:'takeofftooling'`),
+  the `import-manifest` agent door behind `tt_finish_costing`, `get_tt_guide`,
+  `get_work_state.tt_manifest` (priced rows), and `paste_counts` cost fields. TakeoffTooling's
+  side (twin flag, credentials, bridge, door, explode kernel) ships in its repo; its SQL
+  (`supabase/003_takeoff_twins.sql`) and four functions need deploying, and PipeTooling needs
+  the four `TT_*` / `TAKEOFFTOOLING_*` secrets. No electrical reference bid exists yet — the
+  incoming estimator's first three bids are the reference set (see the Electrical Fleet plan).
 - **Drive intake**: `file_plans` → Shared Drive "PipeTooling Jobs" folder + plan PDF
   upload + bid stamps (see `DRIVE_INTAKE_SETUP.md`).
 - **Fleet console**: Settings → System → Digital twins (dev-only) — mint, tokens,

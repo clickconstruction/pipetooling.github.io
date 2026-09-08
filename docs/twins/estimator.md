@@ -142,6 +142,21 @@ the missing scale instead of skipping). Projects are single-editor: **turn in** 
 checkout when you stop working so the project isn't locked for 30 minutes. Write missions
 use ZZ-prefixed project names, same convention as PipeTooling.
 
+### Electrical bids: TakeoffTooling in the middle (v2.3082)
+
+When the bid's trade is **Electrical**, one more app sits between the CountTooling
+takeoff and PipeTooling's counts: **TakeoffTooling** (`https://takeofftooling.com/`),
+where each counted device or run is **exploded into its assembly** (box, ring, plate,
+connectors; couplings and straps per ten feet) and **costed** from a Labor & Price Book
+built on the MC labor units. You have a seat there (`mint_session` with
+`app: 'takeofftooling'`) and a door: `tt_finish_costing(bid, name, items)` takes your
+typed counts (units, types, groups, children — the same payload CountTooling's *Open in
+TakeoffTooling* emits) and lands them as a manifest, exploded and priced, marked ready
+for a human's look. `get_work_state(bid).tt_manifest` then carries the priced rows into
+`paste_counts` with `unit_cost` and `labor_hours`, so the Workbench opens costed. Read
+`get_tt_guide` before the first electrical bid. Plumbing bids skip TakeoffTooling
+entirely — PipeTooling's own takeoff books do that work.
+
 ## 6 · Vocabulary
 
 **CountTooling:**
@@ -154,6 +169,13 @@ use ZZ-prefixed project names, same convention as PipeTooling.
 - **Checkout / turn in**: the one-editor-at-a-time lock on a shared project.
 - **View link**: an email-gated, no-account link to the live takeoff (what GCs get; also
   what rides Copy to /Tooling into the bid).
+
+**TakeoffTooling (electrical only):**
+
+- **Manifest**: the priced, labored list of material a bid needs — rows with children.
+- **Explode**: turn a device or run into its assembly rows (the ⚡ button; the door does it too).
+- **Bid stamp / review lane**: the PipeTooling bid number on a manifest, and its draft → ready →
+  reviewed | changes status — the same fields CountTooling's projects carry.
 
 **PipeTooling:**
 

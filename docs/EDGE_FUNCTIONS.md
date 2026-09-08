@@ -92,6 +92,7 @@ when_to_read:
    - [drive-intake](#drive-intake)
    - [plan-fetch](#plan-fetch)
    - [ct-bridge](#ct-bridge)
+   - [tt-bridge](#tt-bridge)
    - [audit-finish](#audit-finish)
    - [ct-roster-audit](#ct-roster-audit)
    - [address-autocomplete](#address-autocomplete)
@@ -879,6 +880,10 @@ The frontend (`src/pages/DevLogin.tsx`, v2.1526) no longer follows the returned 
 
 ---
 
+**The TakeoffTooling leg (v2.3082 / v1.3.7)** — the electrical estimator's STG-4 (explode and cost) gets its own seat and door, verb-for-verb the CountTooling design. **`mint_session(app: 'takeofftooling')`** mints a TakeoffTooling session (per-twin token mirrored over the TT bridge first, fleet secret fallback, the shared 6/min limit); **`get_tt_guide`** serves `docs/twins/TAKEOFFTOOLING_BID_GUIDE.md`; **`tt_finish_costing(bid, name, items, note?, explode?, labor_rate?, tax_rate?)`** mints the TT session server-side, POSTs the payload-v2 items to TakeoffTooling's `import-manifest` with `external_ref = b<bid>` and the bid's CountTooling plans link (idempotent — re-run replaces), lets the explode kernel add each row's assembly priced from the twin's synced book (else the shipped defaults), marks the manifest `ready` over the bridge, stamps a `[pipeline STG-4]` ledger note, and returns `exploded` / `unpriced` counts plus a `share_url` a human opens in their own TakeoffTooling; **`get_work_state(bid).tt_manifest`** is the twin's manifest for THIS bid (bid-stamp match) with the priced rows (`unit_cost`, `labor_hours` per row) and a `counts_text`; and **`paste_counts` rows accept `unit_cost` and `labor_hours`** — cost lands as the row's custom materials cost (`bid_count_row_custom_costs`, `house_name: 'TakeoffTooling'`, so the workbench opens costed and the provenance tag says where it came from) and hours are summed onto the STG-5 note (the Labor tab stays a human step until it has a per-row column). Plumbing bids never touch any of this — `tt_manifest` says so when asked. Secrets: **`TT_TWIN_LOGIN_URL`**, **`TAKEOFFTOOLING_TWIN_LOGIN_SECRET`**, **`TT_MANAGE_USER_URL`**, **`TT_MANAGE_USER_SECRET`** (the last two shared with tt-bridge).
+
+---
+
 ### ct-bridge
 
 **Purpose**: The PT-side proxy of the **CT↔PT user bridge** (v2.2435; architecture in `docs/recent-features/v2.2434.md`). PipeTooling is the single system of record for people; this function is the app's only door to CountTooling's `manage-user` edge function. Forwards an allowlisted verb set — `create` (idempotent), `deactivate` / `reactivate` (CT auth ban), `set_twin_flag`, `update_email`, `lookup`, `roster` (drift audit) — with the bridge secret, which never reaches the browser. Call sites: twin mint + CT-seat retry (`DigitalTwinsPanel`), “Create CountTooling seat” + backfill (Active Accounts), the weekly drift audit. `archive-user` / `restore-user` forward deactivate/reactivate **server-side** via `_shared/ctBridge.ts` instead of calling this proxy, and report the outcome in a fail-soft `ct_bridge` response field — a CT-leg failure never blocks the PT action.
@@ -886,6 +891,16 @@ The frontend (`src/pages/DevLogin.tsx`, v2.1526) no longer follows the returned 
 **Endpoint**: `POST /functions/v1/ct-bridge` · **Auth**: `verify_jwt = false`; JWT validated in-function via `getUser` — **devs only**. Every act is logged to the function log (no audit table in v1).
 
 **Required secrets**: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, **`CT_MANAGE_USER_URL`**, **`CT_MANAGE_USER_SECRET`** (readable copy: PT main-checkout `.env.twin.local`; rotating it on both projects severs the bridge).
+
+---
+
+### tt-bridge
+
+**Purpose**: The PT-side proxy of the **TT↔PT bridge** (v2.3082) — the TakeoffTooling twin of ct-bridge. TakeoffTooling is the electrical explode-and-cost app; its `manage-user` function mirrors CountTooling's (`create`, `lookup`, `set_twin_flag`, `set_twin_credential`, `revoke_twin_credential`, `twin_projects`, `twin_manifest`, `set_twin_project_review`). This proxy forwards only the account verbs the app needs (`create`, `lookup`, `set_twin_flag`); twin-mcp speaks to TakeoffTooling directly through `_shared/ttBridge.ts`. No join-key column on PT — a twin's TT seat is its fleet email at `@twins.takeofftooling.local`. Call sites: twin mint + the "TT seat · missing / link" chip (DigitalTwinsPanel).
+
+**Endpoint**: `POST /functions/v1/tt-bridge` · **Auth**: `verify_jwt = false`; JWT validated in-function via `getUser` — **devs only**. Every act is logged to the function log.
+
+**Required secrets**: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, **`TT_MANAGE_USER_URL`**, **`TT_MANAGE_USER_SECRET`** (the same value TakeoffTooling holds as its `TT_MANAGE_USER_SECRET`; rotating it on both projects severs the bridge).
 
 ---
 

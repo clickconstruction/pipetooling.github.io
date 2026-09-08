@@ -34,6 +34,10 @@ Notes:
   re-login, not an error. Cap: **6 mints/minute per twin** (429 + retry_after_seconds).
 - `401` = bad/revoked token · `403` = account not a flagged estimator twin · `404` = no
   such twin. Tokens are revocable per-partner; the master secret is the fleet kill switch.
+- TakeoffTooling (the electrical explode-and-cost app, v2.3082) has the same function at
+  `https://awjcdxqhvgnqsrlnoyxr.supabase.co/functions/v1/twin-login` with its own credentials
+  (`twin-estimator-<n>@twins.takeofftooling.local`); MCP clients use `mint_session` with
+  `app: 'takeofftooling'`. Electrical bids only.
 - CountTooling (the takeoff app) has the same function at
   `https://hrqxvfydmvtvwhvefmqc.supabase.co/functions/v1/twin-login` with its own
   credentials (`twin-estimator-<n>@twins.counttooling.local`). **MCP clients don't need

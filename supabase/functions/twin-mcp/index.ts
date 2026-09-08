@@ -1,6 +1,7 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-import { BRIEF, DIRECTORY, HARNESS, CT_GUIDE, PLACEMENT_GUIDE, MISSIONS } from './briefs.ts'
+import { BRIEF, DIRECTORY, HARNESS, CT_GUIDE, TT_GUIDE, PLACEMENT_GUIDE, MISSIONS } from './briefs.ts'
+import { callTtManageUser, ttBridgeConfigured, ttTwinEmail } from '../_shared/ttBridge.ts'
 import { todayYmdInAppTz, ymdAddDays } from '../_shared/appTimeZone.ts'
 
 // Digital twins MCP server (docs/DIGITAL_TWINS_PLAN.md; owner-approved 2026-08-28).
@@ -36,7 +37,7 @@ const TOOLS = [
     inputSchema: {
       type: 'object',
       properties: {
-        app: { type: 'string', enum: ['pipetooling', 'counttooling'], description: "Which app to sign into (default 'pipetooling')" },
+        app: { type: 'string', enum: ['pipetooling', 'counttooling', 'takeofftooling'], description: "Which app to sign into (default 'pipetooling'; 'takeofftooling' is the electrical explode-and-cost app — v2.3082)" },
         redirectTo: { type: 'string', description: 'Where to land, e.g. https://pipetooling.com/bids (or a counttooling.com URL with app: counttooling)' },
         run: { type: 'string', description: 'Mission id or label for the fleet ledger, e.g. M1' },
       },
@@ -60,6 +61,11 @@ const TOOLS = [
   {
     name: 'get_ct_guide',
     description: 'Completing a bid\'s takeoff in CountTooling — your access, the plans→import→review→counts loop, the import contract, and the hard limits. Read before any CountTooling work.',
+    inputSchema: { type: 'object', properties: {} },
+  },
+  {
+    name: 'get_tt_guide',
+    description: "Costing an ELECTRICAL bid in TakeoffTooling (v2.3082) — the explode-and-cost stage between the CountTooling takeoff and PipeTooling's counts: your TT seat, the import-manifest door, the review lane, and the exact item/result contracts. Plumbing bids never touch TakeoffTooling. Read before tt_finish_costing.",
     inputSchema: { type: 'object', properties: {} },
   },
   {
@@ -283,6 +289,8 @@ const TOOLS = [
               page: { type: 'string', description: "Plan sheet, e.g. 'P2.1' (optional)" },
               book_entry: { type: 'string', description: 'EXACT 🤖 Robot Default entry name to assign this row to (the fixture_types name)' },
               unit_price_override: { type: 'number', description: "Price per unit when the book entry's price is not the row's price (lump rows, LOCK-stated all-ins)" },
+              unit_cost: { type: 'number', description: 'v2.3082: materials COST per unit from TakeoffTooling (tt_manifest.rows[].unit_cost) — lands as the row\'s custom cost tagged TakeoffTooling so the Workbench opens costed' },
+              labor_hours: { type: 'number', description: 'v2.3082: labor hours per unit from TakeoffTooling — summed onto the STG-5 ledger note (labor lands on the Labor tab by hand for now)' },
             },
             required: ['fixture', 'count', 'book_entry'],
           },
@@ -291,6 +299,24 @@ const TOOLS = [
         replace: { type: 'boolean', description: "Delete the bid's existing count rows + assignments first (default false — existing rows refuse the call)" },
       },
       required: ['bid', 'rows'],
+    },
+  },
+  {
+    name: 'tt_finish_costing',
+    description:
+      "One-call STG-4 for ELECTRICAL bids (v2.3082): server-side mints YOUR TakeoffTooling session, POSTs your counts to import-manifest (payload v2 items — units, types, groups, children; idempotent by bid stamp, re-run replaces), lets the explode kernel add each row's assembly priced from your synced book (else the shipped defaults), marks the manifest review-ready over the bridge, and stamps a [pipeline STG-4] note. Returns exploded/unpriced counts and a share_url a human can open. Only on bids you created or are assigned to; read get_tt_guide first. Then get_work_state(bid).tt_manifest has the priced rows for paste_counts (unit_cost + labor_hours).",
+    inputSchema: {
+      type: 'object',
+      properties: {
+        bid: { type: 'string', description: "Your bid (e.g. 'b467' or uuid) — becomes external_ref" },
+        name: { type: 'string', description: 'TakeoffTooling project name (ZZ-prefixed on write missions)' },
+        items: { type: 'array', description: "Payload v2 items: [{ description, quantity, unit?: ea|ft|px, type?: lighting|gear|devices|conduit|wire|specialSystems, pages?, group?, children?: [{ description, quantity, unit?, type?, labor?, price? }] }] — nothing omitted is inferred", items: { type: 'object' } },
+        note: { type: 'string', description: 'Optional provenance note stored on the manifest' },
+        explode: { type: 'boolean', description: 'Run the assembly templates on childless rows (default true)' },
+        labor_rate: { type: 'number', description: 'Optional $/hr for the cost summary' },
+        tax_rate: { type: 'number', description: 'Optional sales tax percent for the cost summary (default 8.25)' },
+      },
+      required: ['bid', 'name', 'items'],
     },
   },
   {
@@ -718,6 +744,8 @@ async function callTool(req: Request, name: string, args: Record<string, unknown
       return textContent(HARNESS || 'Harness guide not bundled in this deploy — ask the operator to regenerate briefs.ts.')
     case 'get_ct_guide':
       return textContent(CT_GUIDE || 'CountTooling guide not bundled in this deploy — ask the operator to regenerate briefs.ts.')
+    case 'get_tt_guide':
+      return textContent(TT_GUIDE || 'TakeoffTooling guide not bundled in this deploy — ask the operator to regenerate briefs.ts.')
     case 'get_placement_guide':
       return textContent(PLACEMENT_GUIDE || 'Placement guide not bundled in this deploy — ask the operator to regenerate briefs.ts.')
     case 'get_mission': {
@@ -728,6 +756,37 @@ async function callTool(req: Request, name: string, args: Record<string, unknown
     case 'mint_session': {
       const supabaseUrl = Deno.env.get('SUPABASE_URL')!
       const app = String(args.app ?? 'pipetooling')
+      if (app === 'takeofftooling') {
+        // Three-app companion (v2.3082): TakeoffTooling is the electrical explode-and-cost
+        // app. Same shape as the CountTooling branch below — this server holds TT's fleet
+        // secret, mirrors the per-twin token hash over the TT bridge (best-effort), mints
+        // with the per-twin token first, and rate-limits against the shared ledger.
+        const ttUrl = Deno.env.get('TT_TWIN_LOGIN_URL')
+        const ttSecret = Deno.env.get('TAKEOFFTOOLING_TWIN_LOGIN_SECRET')
+        if (!ttUrl || !ttSecret) return textContent('TakeoffTooling minting is not configured on this server (TT_TWIN_LOGIN_URL / TAKEOFFTOOLING_TWIN_LOGIN_SECRET)', true)
+        const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+        const admin = createClient(supabaseUrl, serviceRoleKey, { auth: { autoRefreshToken: false, persistSession: false } })
+        const oneMinuteAgo = new Date(Date.now() - 60_000).toISOString()
+        const { count } = await admin.from('twin_runs').select('id', { count: 'exact', head: true }).eq('twin_user_id', twin.twinUserId).gte('started_at', oneMinuteAgo)
+        if ((count ?? 0) >= 6) return textContent('Rate limited: max 6 mints per minute per twin (across all apps). Wait a minute and retry.', true)
+        const ttEmail = ttTwinEmail(twin.email)
+        const redirectTo = (args.redirectTo as string) || 'https://takeofftooling.com'
+        const rawToken = presentedToken(req)!
+        if (ttBridgeConfigured()) {
+          try { await callTtManageUser({ verb: 'set_twin_credential', email: ttEmail, token_hash: await sha256Hex(rawToken) }) } catch (_) { /* best-effort; the secret fallback still mints */ }
+        }
+        let res = await fetch(ttUrl, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Twin-Token': rawToken }, body: JSON.stringify({ email: ttEmail, redirectTo, run: (args.run as string) || 'mcp-mint' }) })
+        if (res.status === 401) {
+          console.log('[twin-mcp] TT per-twin mint refused; falling back to fleet secret')
+          res = await fetch(ttUrl, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Twin-Login-Secret': ttSecret }, body: JSON.stringify({ email: ttEmail, redirectTo, run: (args.run as string) || 'mcp-mint' }) })
+        }
+        const body = await res.json().catch(() => ({}))
+        if (!res.ok) return textContent(`TakeoffTooling mint failed (${res.status}): ${body.error ?? 'unknown'}${res.status === 404 ? ' — no TT seat yet: Settings → Digital twins → link the TT seat' : ''}`, true)
+        try {
+          await admin.from('twin_runs').insert({ twin_user_id: twin.twinUserId, mission: (args.run as string) || 'mcp-mint', notes: `mint via=token:${twin.credId} app=takeofftooling redirect=${redirectTo}` })
+        } catch (_) { /* ledger best-effort */ }
+        return textContent(JSON.stringify({ ok: true, app: 'takeofftooling', email: ttEmail, action_link: body.action_link, note: 'single-use — navigate a browser to it, or walk the verify redirect for the session JWT that authorizes import-manifest' }, null, 2))
+      }
       if (app === 'counttooling') {
         // Two-app companion (v2.2439): this server holds CountTooling's twin secret, so
         // one per-twin credential covers both apps (locked decision — CT per-twin
@@ -1043,6 +1102,27 @@ async function callTool(req: Request, name: string, args: Record<string, unknown
         // CT-3 (Wave 3.6 closure): the twin's CountTooling projects with review state —
         // 'changes' + review_note is the reviewer sending the takeoff BACK; fix and
         // re-mark ready. Fetched over the CT bridge; degrades to an error note, never a throw.
+        // v2.3082: the electrical STG-4 — the twin's TakeoffTooling manifest for THIS bid
+        // (bid stamp match only), with the priced rows PipeTooling's paste_counts takes.
+        // Absent on plumbing bids by construction; degrades to an error note, never a throw.
+        tt_manifest: await (async () => {
+          try {
+            if (!ttBridgeConfigured()) return { error: 'TT bridge not configured' }
+            const ttEmail = ttTwinEmail(twin.email)
+            const tag = `b${bid.bid_number}`
+            const { status, json } = await callTtManageUser({ verb: 'twin_projects', email: ttEmail })
+            if (status !== 200) return { error: `TT bridge ${status}: ${json?.error ?? 'unknown'}` }
+            const projects = ((json.projects ?? []) as Array<Record<string, unknown>>).filter((p) => {
+              const ext = String(p.external_ref ?? '').trim().toLowerCase()
+              return ext === tag.toLowerCase() || ext === String(bid.bid_number)
+            })
+            if (!projects.length) return { projects: [], rows: null, note: `No TakeoffTooling manifest is stamped with ${tag} — tt_finish_costing creates one (electrical bids only; plumbing bids never have one).` }
+            const m = await callTtManageUser({ verb: 'twin_manifest', email: ttEmail, project_id: projects[0].id })
+            return m.status === 200 ? { projects, ...m.json } : { projects, error: `twin_manifest ${m.status}: ${m.json?.error ?? 'unknown'}` }
+          } catch (e) {
+            return { error: String(e instanceof Error ? e.message : e) }
+          }
+        })(),
         ct_takeoff: await (async () => {
           try {
             const ctUrl = Deno.env.get('CT_MANAGE_USER_URL')
@@ -1332,6 +1412,91 @@ async function callTool(req: Request, name: string, args: Record<string, unknown
       if (insErr) return textContent(`Note not saved: ${insErr.message}`, true)
       return textContent(`Note recorded on b${bid.bid_number} (${note.length > 120 ? note.slice(0, 120) + '…' : note})`)
     }
+    case 'tt_finish_costing': {
+      const supabaseUrl = Deno.env.get('SUPABASE_URL')!
+      const admin = createClient(supabaseUrl, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, { auth: { autoRefreshToken: false, persistSession: false } })
+      const ref = String(args.bid ?? '').trim()
+      const projName = String(args.name ?? '').trim()
+      const items = args.items
+      if (!ref || !projName || !Array.isArray(items) || !items.length) return textContent('tt_finish_costing needs bid + name + items[] (payload v2 items)', true)
+      const uuidRe = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+      let bq = admin.from('bids').select('id, bid_number, estimator_id, created_by, count_tooling_link')
+      bq = uuidRe.test(ref) ? bq.eq('id', ref) : bq.eq('bid_number', ref.replace(/^(bp|b)/i, ''))
+      const { data: bid, error: bidErr } = await bq.maybeSingle()
+      if (bidErr) return textContent(`Bid lookup failed: ${bidErr.message}`, true)
+      if (!bid) return textContent(`No bid found for "${ref}"`, true)
+      if (bid.estimator_id !== twin.twinUserId && bid.created_by !== twin.twinUserId) {
+        return textContent(`Bid ${ref} is not yours (assigned/created) — manifests land only on your own bids.`, true)
+      }
+      const bidTag = `b${bid.bid_number}`
+      // 1. Mint a TT session server-side (per-twin token, fleet secret fallback) and walk
+      //    the magic link for the access_token — same path as ct_finish_takeoff.
+      const ttLoginUrl = Deno.env.get('TT_TWIN_LOGIN_URL')
+      const ttSecret = Deno.env.get('TAKEOFFTOOLING_TWIN_LOGIN_SECRET')
+      if (!ttLoginUrl) return textContent('TT_TWIN_LOGIN_URL not configured on this server', true)
+      const ttBase = new URL(ttLoginUrl).origin
+      const TT_ANON = 'sb_publishable_vMFyQ4I0LqZD6yhfoF_Zbw_9MsPoC9G' // TakeoffTooling's publishable key (ships in its cloud.js)
+      const ttEmail = ttTwinEmail(twin.email)
+      const rawToken = presentedToken(req)!
+      if (ttBridgeConfigured()) {
+        try { await callTtManageUser({ verb: 'set_twin_credential', email: ttEmail, token_hash: await sha256Hex(rawToken) }) } catch (_) { /* best-effort */ }
+      }
+      let mintRes = await fetch(ttLoginUrl, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Twin-Token': rawToken }, body: JSON.stringify({ email: ttEmail, redirectTo: 'https://takeofftooling.com', run: `tt-finish:${bidTag}` }) })
+      if (mintRes.status === 401 && ttSecret) {
+        mintRes = await fetch(ttLoginUrl, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Twin-Login-Secret': ttSecret }, body: JSON.stringify({ email: ttEmail, redirectTo: 'https://takeofftooling.com', run: `tt-finish:${bidTag}` }) })
+      }
+      const mintBody = await mintRes.json().catch(() => ({}))
+      if (!mintRes.ok || !mintBody.action_link) {
+        return textContent(`TakeoffTooling mint failed (${mintRes.status}): ${mintBody.error ?? 'unknown'}${mintRes.status === 404 ? ' — no TT seat yet: Settings → Digital twins → link the TT seat' : ''}`, true)
+      }
+      const verifyRes = await fetch(mintBody.action_link, { redirect: 'manual' })
+      const loc = verifyRes.headers.get('location') ?? ''
+      const jwtMatch = loc.match(/access_token=([^&]+)/)
+      if (!jwtMatch) return textContent(`TT verify did not yield a session (status ${verifyRes.status}) — link may be expired`, true)
+      const ttJwt = jwtMatch[1]
+      // 2. The door. external_ref is ALWAYS the bid tag; the bid's CountTooling plans link rides along.
+      const importBody: Record<string, unknown> = {
+        name: projName,
+        external_ref: bidTag,
+        note: String(args.note ?? '').slice(0, 400) || `twin-mcp tt_finish_costing for ${bidTag}`,
+        items,
+        explode: args.explode !== false,
+      }
+      if (bid.count_tooling_link) importBody.plans_url = bid.count_tooling_link
+      if (typeof args.labor_rate === 'number') importBody.labor_rate = args.labor_rate
+      if (typeof args.tax_rate === 'number') importBody.tax_rate = args.tax_rate
+      const impRes = await fetch(`${ttBase}/functions/v1/import-manifest`, {
+        method: 'POST', headers: { Authorization: `Bearer ${ttJwt}`, apikey: TT_ANON, 'Content-Type': 'application/json' }, body: JSON.stringify(importBody),
+      })
+      const impBody = await impRes.json().catch(() => ({}))
+      if (!impRes.ok || !impBody.project_id) return textContent(`import-manifest failed (${impRes.status}): ${JSON.stringify(impBody).slice(0, 600)}`, true)
+      // 3. Review-ready over the bridge (best-effort loud).
+      let reviewReady = false
+      let reviewNote = 'TT bridge not configured — mark ready in the app'
+      if (ttBridgeConfigured()) {
+        const r = await callTtManageUser({ verb: 'set_twin_project_review', project_id: impBody.project_id, status: 'ready', note: `twin-mcp tt_finish_costing ${bidTag}` }).catch((e) => ({ status: 0, json: { error: String(e) } }))
+        reviewReady = r.status === 200
+        reviewNote = reviewReady ? 'ready' : `set_twin_project_review ${r.status}: ${r.json?.error ?? 'unknown'}`
+      }
+      // 4. Ledger + fleet ledger.
+      await admin.from('bids_submission_entries').insert({
+        bid_id: bid.id,
+        notes: `[pipeline STG-4] via twin-mcp tt_finish_costing: TakeoffTooling manifest ${impBody.project_id} "${projName}" — ${impBody.rows} rows (${impBody.counts} counts · ${impBody.line_types} line types · ${impBody.unscaled} unscaled), ${impBody.exploded} exploded, ${impBody.unpriced} unpriced, book: ${impBody.book}; review ${reviewNote}`,
+      }).then(() => {}, () => {})
+      await admin.from('twin_runs').insert({
+        twin_user_id: twin.twinUserId, mission: `tt-finish:${bidTag}`,
+        notes: `project=${impBody.project_id} rows=${impBody.rows} exploded=${impBody.exploded} unpriced=${impBody.unpriced} review=${reviewNote}`, ended_at: new Date().toISOString(),
+      }).then(() => {}, () => {})
+      return textContent(JSON.stringify({
+        ok: true, bid: bidTag, project_id: impBody.project_id, replaced: !!impBody.replaced,
+        rows: impBody.rows, counts: impBody.counts, line_types: impBody.line_types, unscaled: impBody.unscaled,
+        exploded: impBody.exploded, unpriced: impBody.unpriced, book: impBody.book,
+        review_ready: reviewReady, share_url: impBody.share_url,
+        next: impBody.unpriced
+          ? `${impBody.unpriced} assembly rows have no book price — extend your TakeoffTooling book or pass labor/price on those children and re-run (same bid replaces). Then get_work_state(${bidTag}).tt_manifest → paste_counts with unit_cost + labor_hours.`
+          : `get_work_state(${bidTag}).tt_manifest has the priced rows — paste_counts them with unit_cost + labor_hours (STG-5).`,
+      }, null, 2))
+    }
     case 'ct_finish_takeoff': {
       const supabaseUrl = Deno.env.get('SUPABASE_URL')!
       const admin = createClient(supabaseUrl, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, {
@@ -1481,10 +1646,14 @@ async function callTool(req: Request, name: string, args: Record<string, unknown
         page: r.page == null ? null : String(r.page).trim().slice(0, 40) || null,
         bookEntry: String(r.book_entry ?? '').trim(),
         override: r.unit_price_override == null ? null : Number(r.unit_price_override),
+        // v2.3082: TakeoffTooling's cost side per unit (materials $ and labor hours)
+        unitCost: r.unit_cost == null ? null : Number(r.unit_cost),
+        laborHours: r.labor_hours == null ? null : Number(r.labor_hours),
       }))
       const bad = parsed.filter((r) =>
         !r.fixture || !r.bookEntry || !Number.isFinite(r.count) || r.count <= 0 ||
-        (r.unit != null && !UNITS.includes(r.unit)) || (r.override != null && !Number.isFinite(r.override)))
+        (r.unit != null && !UNITS.includes(r.unit)) || (r.override != null && !Number.isFinite(r.override)) ||
+        (r.unitCost != null && !(Number.isFinite(r.unitCost) && r.unitCost >= 0)) || (r.laborHours != null && !(Number.isFinite(r.laborHours) && r.laborHours >= 0)))
       if (bad.length) {
         return textContent(`Invalid rows (need fixture + positive count + book_entry; unit one of ${UNITS.join('/')}): ${bad.map((r) => `#${r.i + 1} "${r.fixture || '(no fixture)'}"`).join(', ')}`, true)
       }
@@ -1524,7 +1693,7 @@ async function callTool(req: Request, name: string, args: Record<string, unknown
         return textContent(`b${bid.bid_number} already has ${existing} count rows — pass replace: true to rewrite them (this deletes the existing rows and their book assignments).`, true)
       }
       if ((existing ?? 0) > 0) {
-        for (const table of ['bid_pricing_assignments', 'bid_count_row_custom_prices', 'bid_count_row_submission_hides']) {
+        for (const table of ['bid_pricing_assignments', 'bid_count_row_custom_prices', 'bid_count_row_custom_costs', 'bid_count_row_submission_hides']) {
           const { error: delErr } = await admin.from(table).delete().eq('bid_id', bid.id)
           if (delErr) return textContent(`Replace failed clearing ${table}: ${delErr.message}`, true)
         }
@@ -1545,13 +1714,29 @@ async function callTool(req: Request, name: string, args: Record<string, unknown
       })))
       if (asgErr) return textContent(`Rows saved but assignments failed (${asgErr.message}) — the card will price $0 until every row is assigned. Fix and re-run with replace: true.`, true)
       const overrides = parsed.filter((r) => r.override != null).length
+      // v2.3082: TakeoffTooling's cost side. unit_cost lands as the row's custom
+      // MATERIALS cost (the workbench's lineCostForRow reads bid_count_row_custom_costs;
+      // provenance tag reads "cost from TakeoffTooling"); labor hours are summed onto the
+      // ledger note — the Labor tab is still a human step (no per-row labor column yet).
+      const costed = parsed.map((r, i) => ({ r, i })).filter(({ r }) => r.unitCost != null && r.unitCost > 0)
+      let costNote = ''
+      if (costed.length && inserted) {
+        const { error: costErr } = await admin.from('bid_count_row_custom_costs').insert(costed.map(({ r, i }) => ({
+          bid_id: bid.id, count_row_id: inserted[i].id, unit_materials_cents: Math.round(r.unitCost! * 100),
+          source: 'quoted', house_name: 'TakeoffTooling', applied_by: twin.twinUserId,
+        })))
+        costNote = costErr ? ` — custom costs FAILED (${costErr.message})` : `, ${costed.length} rows costed from TakeoffTooling`
+      }
+      const laborHoursTotal = Math.round(parsed.reduce((s, r) => s + (r.laborHours ?? 0) * r.count, 0) * 10) / 10
+      if (laborHoursTotal > 0) costNote += `, ${laborHoursTotal} labor hrs from TakeoffTooling (enter on the Labor tab)`
       await admin.from('bids_submission_entries').insert({
         bid_id: bid.id,
-        notes: `[pipeline STG-5] via twin-mcp paste_counts: ${parsed.length} rows written and book-assigned (🤖 Robot Default, ${overrides} price overrides) → priced $${total.toLocaleString()}${expected != null ? ` = expected_total $${expected.toLocaleString()}` : ' (no expected_total passed)'}.`,
+        notes: `[pipeline STG-5] via twin-mcp paste_counts: ${parsed.length} rows written and book-assigned (🤖 Robot Default, ${overrides} price overrides${costNote}) → priced $${total.toLocaleString()}${expected != null ? ` = expected_total $${expected.toLocaleString()}` : ' (no expected_total passed)'}.`,
       }).then(() => {}, () => {})
       return textContent(JSON.stringify({
         ok: true, bid: `b${bid.bid_number}`, rows: parsed.length, priced_total: total,
         replaced: (existing ?? 0) > 0 ? existing : 0, overrides,
+        costed_rows: costed.length, labor_hours_total: laborHoursTotal,
         next: expected == null ? 'No expected_total passed — verify the Counts tab total equals your LOCK before scoring.' : 'LOCK note next if not already on the ledger, then score_backtest (STG-6).',
       }, null, 2))
     }

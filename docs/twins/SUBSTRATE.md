@@ -123,7 +123,7 @@ quality report (Wave 1 gate) counts.
 
 ```json
 {
-  "schedule_type": "plumbing_fixture|water_heater|circulation_pump|animal_gas|evac_fan|other",
+  "schedule_type": "plumbing_fixture|water_heater|circulation_pump|animal_gas|evac_fan|lighting_fixture|panel|feeder|mechanical_connections|device_legend|other",
   "title": "PLUMBING FIXTURE SCHEDULE",
   "columns_seen": ["MARK", "DESCRIPTION", "WASTE", "VENT", "CW", "HW", "REMARKS"],
   "row_count_estimate": 14,
@@ -238,3 +238,28 @@ be designed around — recorded here so they don't get re-learned:
 `substrate_version` is semver. v0.x may change shape freely; consumers must tolerate unknown
 fields (additive evolution). The first schema-stable release (1.0.0) waits for the Wave-1
 quality gate on LIVSTE — the fixture and the extractor argue the schema into shape first.
+
+## Electrical sets (v2.3082 — schema additions, doctrine pending)
+
+An electrical set reads through the same envelope with five more schedule shapes, added so
+the extractor has somewhere to put what E-sheets say before the electrical placement
+doctrine exists (it will be written from the incoming estimator's walkthroughs — see
+PLACEMENT.md's electrical chapter):
+
+- `lighting_fixture` — the lighting fixture schedule: `tag` (A, B, EM, X…), description,
+  lamp/driver, mounting, voltage, `qty_scheduled`. **The tag is the counter name**: lighting
+  by tag on E-200 sheets is the same task as fixtures by tag on P-201.
+- `panel` — a panelboard schedule: panel name, voltage/phase, main, pole count, and per-circuit
+  rows (circuit number, description, breaker). The pole count and circuit list are the
+  reconciliation source for homeruns drawn on the plan.
+- `feeder` — the feeder schedule / one-line: feeder tag, from → to, conduit size and type,
+  conductor count and size, ground. Feeders are rarely drawn to scale; lengths come from
+  the plan plus floor-to-floor verticals.
+- `mechanical_connections` — the equipment connection schedule (HVAC units, water heaters,
+  kitchen equipment): tag, voltage/phase, MCA/MOCP, disconnect, connection type.
+- `device_legend` — the power-plan symbol legend: symbol → device (duplex, GFCI, quad,
+  switch, data, J-box, disconnect), the census key for E-100 sheets (symbols, not tags).
+
+Reconciliation gains one pair: `homeruns_on_plan` vs `circuits_scheduled` per panel. Keyed
+notes on electrical sheets routinely carry scope ("by others", "existing to remain",
+"provided under Division 26") and are RFI/exclusion candidates exactly as on P-sheets.

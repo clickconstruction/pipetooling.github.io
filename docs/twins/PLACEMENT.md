@@ -695,3 +695,29 @@ commercial book does not).
   not the book's commercial rates.
 - Confirmation question is seeded on the b422 audit; promote this section to
   hard doctrine (and a book multiplier entry) when Wendi answers.
+
+## Electrical sets — the chapter that is not written yet (v2.3082)
+
+No electrical bid has been taken through all three apps, so there is no electrical doctrine
+here — deliberately. The plumbing chapters above were banked from a human reference
+(Wendi's takeoffs, then her audits); the electrical chapter will be banked the same way,
+from the incoming electrical estimator's first bids (the Electrical Fleet plan: his first
+three bids are the reference set; whoever shadows bid 1 writes this chapter from bids 2
+and 3). Until then, an electrical mission is **counters only** and reads these standing
+facts, none of which is a substitute for doctrine:
+
+- **Doorways are still the ruler.** Calibrate every E-sheet you place on the same way.
+- **Lighting is by tag** (E-200 series): the fixture schedule's tag column is the counter
+  roster, exactly like P-201's fixture tags. Count EM and X units as their own tags.
+- **Power is by symbol** (E-100 series): a census against the device legend, not a tag
+  census — the legend maps symbols to duplex / GFCI / quad / switch / data / J-box.
+- **Circuits are groups.** A homerun arrow names a panel and circuits; when the door
+  accepts groups (CountTooling `takeoff.json` v2), a device's group is its circuit.
+- **Verticals are on every device**, not some — a receptacle at 18" under a 10' ceiling
+  is 8.5 ft of conduit the plan never shows. Do not model them until the doctrine says how
+  the estimator does.
+- **Panel schedules reconcile the count**: homeruns drawn vs circuits scheduled, per panel.
+- **Keyed notes carry scope**: "by others", "existing to remain", Division 26 provisions
+  are exclusion/RFI candidates on every sheet.
+- **The stage after the count is TakeoffTooling**, not PipeTooling's takeoff books:
+  explode and cost there (`get_tt_guide`), then `paste_counts` with cost and hours.
