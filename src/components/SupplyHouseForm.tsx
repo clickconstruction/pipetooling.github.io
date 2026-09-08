@@ -10,9 +10,8 @@ type UserRole = 'dev' | 'master_technician' | 'assistant' | 'estimator' | 'prima
 
 export interface SupplyHouseFormData {
   name: string
-  contact_name: string
+  /** The counter / main number. Who to email lives on the reps (supply_house_contacts), never on the house (v2.3170). */
   phone: string
-  email: string
   address: string
   website_url: string | null
   notes: string
@@ -24,9 +23,7 @@ export interface SupplyHouseFormData {
 interface SupplyHouseFormProps {
   editingSupplyHouse: SupplyHouse | null
   name: string
-  contactName: string
   phone: string
-  email: string
   address: string
   websiteUrl: string
   notes: string
@@ -62,9 +59,7 @@ function FieldRow({ label, narrow, alignTop, children }: { label: string; narrow
 export function SupplyHouseForm({
   editingSupplyHouse,
   name,
-  contactName,
   phone,
-  email,
   address,
   websiteUrl,
   notes,
@@ -100,9 +95,7 @@ export function SupplyHouseForm({
     setWebsiteUrlError(null)
     await onSubmit({
       name: name.trim(),
-      contact_name: contactName.trim() || '',
       phone: phone.trim() || '',
-      email: email.trim() || '',
       address: address.trim() || '',
       website_url: normalizedWebsite,
       notes: notes.trim() || '',
@@ -124,14 +117,8 @@ export function SupplyHouseForm({
             style={fieldStyles}
           />
         </FieldRow>
-        <FieldRow label="Contact Name" narrow={narrow}>
-          <input type="text" value={contactName} onChange={(e) => onChange('contact_name', e.target.value)} style={fieldStyles} />
-        </FieldRow>
-        <FieldRow label="Phone" narrow={narrow}>
-          <input type="tel" value={phone} onChange={(e) => onChange('phone', e.target.value)} style={fieldStyles} />
-        </FieldRow>
-        <FieldRow label="Email" narrow={narrow}>
-          <input type="email" value={email} onChange={(e) => onChange('email', e.target.value)} style={fieldStyles} />
+        <FieldRow label="Main phone" narrow={narrow}>
+          <input type="tel" value={phone} onChange={(e) => onChange('phone', e.target.value)} placeholder="the counter" style={fieldStyles} />
         </FieldRow>
         <FieldRow label="Address" narrow={narrow} alignTop>
           <textarea value={address} onChange={(e) => onChange('address', e.target.value)} rows={2} style={fieldStyles} />
@@ -174,7 +161,13 @@ export function SupplyHouseForm({
             </span>
           </label>
         </FieldRow>
-        {editingSupplyHouse ? <SupplyHouseContactsSection supplyHouseId={editingSupplyHouse.id} /> : null}
+        {editingSupplyHouse ? (
+          <SupplyHouseContactsSection supplyHouseId={editingSupplyHouse.id} showAddedBy />
+        ) : (
+          <p style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--text-muted)', borderTop: '1px solid var(--border)', paddingTop: '0.7rem' }}>
+            Save the house, then add its reps — who price requests go to.
+          </p>
+        )}
       </div>
       <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'space-between', alignItems: 'center' }}>
         {editingSupplyHouse && myRole === 'dev' && onDelete ? (

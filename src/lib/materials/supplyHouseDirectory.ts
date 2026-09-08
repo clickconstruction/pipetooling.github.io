@@ -11,8 +11,6 @@ export type DirectoryHouse = {
   name: string
   address: string | null
   phone: string | null
-  email: string | null
-  contact_name: string | null
   website_url: string | null
   notes: string | null
   is_insurer: boolean

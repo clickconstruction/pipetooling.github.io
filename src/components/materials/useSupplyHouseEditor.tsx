@@ -38,9 +38,7 @@ export function useSupplyHouseEditor({
   const [open, setOpen] = useState(false)
   const [editing, setEditing] = useState<SupplyHouse | null>(null)
   const [name, setName] = useState('')
-  const [contactName, setContactName] = useState('')
   const [phone, setPhone] = useState('')
-  const [email, setEmail] = useState('')
   const [address, setAddress] = useState('')
   const [websiteUrl, setWebsiteUrl] = useState('')
   const [notes, setNotes] = useState('')
@@ -56,9 +54,7 @@ export function useSupplyHouseEditor({
   function fill(house: SupplyHouse | null) {
     setEditing(house)
     setName(house?.name ?? '')
-    setContactName(house?.contact_name ?? '')
     setPhone(house?.phone ?? '')
-    setEmail(house?.email ?? '')
     setAddress(house?.address ?? '')
     setWebsiteUrl(house?.website_url ?? '')
     setNotes(house?.notes ?? '')
@@ -70,9 +66,7 @@ export function useSupplyHouseEditor({
   function handleChange(field: string, value: string) {
     switch (field) {
       case 'name': setName(value); break
-      case 'contact_name': setContactName(value); break
       case 'phone': setPhone(value); break
-      case 'email': setEmail(value); break
       case 'address': setAddress(value); break
       case 'website_url': setWebsiteUrl(value); break
       case 'notes': setNotes(value); break
@@ -89,9 +83,7 @@ export function useSupplyHouseEditor({
     setError(null)
     const payload = {
       name: data.name.trim(),
-      contact_name: data.contact_name.trim() || null,
       phone: data.phone.trim() || null,
-      email: data.email.trim() || null,
       address: data.address.trim() || null,
       website_url: data.website_url,
       notes: data.notes.trim() || null,
@@ -137,9 +129,7 @@ export function useSupplyHouseEditor({
       key={editing?.id ?? 'new'}
       editingSupplyHouse={editing}
       name={name}
-      contactName={contactName}
       phone={phone}
-      email={email}
       address={address}
       websiteUrl={websiteUrl}
       notes={notes}
