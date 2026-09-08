@@ -905,9 +905,10 @@ function JobsSubLaborFormModalInner(
     setLaborAddress(job.address)
     setLaborDistance(job.distance_miles != null ? String(job.distance_miles) : '0')
     setLaborJobNumber(job.job_number ?? '')
-    // v2.2142: Edit links by the typed number — the Job field shows the match
-    // (address stays the sheet's own until the user picks a different job).
-    setLaborPickedJobId(resolveSubLaborJobByNumber(jobs, job.job_number)?.id ?? null)
+    // v2.2142: Edit shows the sheet's job in the Job field (address stays the sheet's own until
+    // the user picks a different job). v2.3081: the link first; the typed number only for a
+    // sheet that never got one.
+    setLaborPickedJobId((job.job_ledger_id ? jobs.find((j) => j.id === job.job_ledger_id) : undefined)?.id ?? (job.job_ledger_id ? null : resolveSubLaborJobByNumber(jobs, job.job_number)?.id ?? null))
     setLaborDate(job.job_date ?? todayYmdInAppTz())
     const jobRate = job.labor_rate ?? 0
     const items = job.items ?? []
@@ -1996,7 +1997,10 @@ function JobsSubLaborFormModalInner(
                   sheetStage={normalizeSubSheetStage(editingLaborJob.stage)}
                   defaultServiceTypeId={
                     (laborPickedJobId ? jobs.find((j) => j.id === laborPickedJobId)?.service_type_id : null) ??
-                    jobs.find((j) => (j.hcp_number ?? '').trim().toLowerCase() === (editingLaborJob.job_number ?? '').trim().toLowerCase())?.service_type_id ??
+                    // v2.3081: the sheet's link first; the number only for a sheet that never got one.
+                    (editingLaborJob.job_ledger_id
+                      ? jobs.find((j) => j.id === editingLaborJob.job_ledger_id)
+                      : jobs.find((j) => (j.hcp_number ?? '').trim().toLowerCase() === (editingLaborJob.job_number ?? '').trim().toLowerCase()))?.service_type_id ??
                     null
                   }
                   serviceTypes={serviceTypes.map((t) => ({ id: t.id, name: t.name }))}
