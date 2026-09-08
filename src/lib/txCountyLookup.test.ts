@@ -5,6 +5,7 @@ import {
   parseExtraTxCountyMappingsText,
   setExtraTxCountyMappings,
   suggestTxCountyForCity,
+  txCountyCadPropertyUrl,
   txCountyCadSearchUrl,
 } from './txCountyLookup'
 
@@ -86,5 +87,19 @@ describe('txCountyCadSearchUrl', () => {
       expect(county, city).not.toBe('')
       expect(txCountyCadSearchUrl(county), county).toMatch(/^https:\/\//)
     }
+  })
+})
+
+describe('txCountyCadPropertyUrl', () => {
+  it('deep-links the parcel page on BIS esearch sites and Bexar TrueAutomation', () => {
+    expect(txCountyCadPropertyUrl('Comal', '178402')).toBe('https://esearch.comalad.org/Property/View/178402')
+    expect(txCountyCadPropertyUrl('hays', '41630')).toBe('https://esearch.hayscad.com/Property/View/41630')
+    expect(txCountyCadPropertyUrl('Bexar', '109765')).toBe('https://bexar.trueautomation.com/clientdb/Property.aspx?cid=110&prop_id=109765')
+  })
+  it("is '' for counties without a known pattern, unknown counties, or a bad id", () => {
+    expect(txCountyCadPropertyUrl('Travis', '123')).toBe('')
+    expect(txCountyCadPropertyUrl('Nowhere', '123')).toBe('')
+    expect(txCountyCadPropertyUrl('Comal', '')).toBe('')
+    expect(txCountyCadPropertyUrl('Comal', '../x')).toBe('')
   })
 })
