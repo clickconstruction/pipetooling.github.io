@@ -15,6 +15,8 @@ export type SheetRailProps = {
   rail: SheetRailShape
   /** Label + sublabel to the right of the dots (default true). */
   showLabel?: boolean
+  /** Label + sublabel under the dots instead of beside them — the Work board's narrow "Where it stands" column (v2.2963). */
+  labelBelow?: boolean
   /** Smaller dots and gaps for cards and chips. */
   compact?: boolean
   /** Sits on the current dot — the stage menu door on Sub Labor (PR 4). */
@@ -26,7 +28,7 @@ export type SheetRailProps = {
 
 const isOffice = (s: SheetRailStep) => s.key === 'drafted' || s.key === 'sent' || s.key === 'signed'
 
-export function SheetRail({ rail, showLabel = true, compact = false, onCurrentClick, onClick, title }: SheetRailProps) {
+export function SheetRail({ rail, showLabel = true, labelBelow = false, compact = false, onCurrentClick, onClick, title }: SheetRailProps) {
   const big = compact ? 8 : 10
   const small = compact ? 6 : 8
   const nowSize = compact ? 11 : 14
@@ -109,11 +111,11 @@ export function SheetRail({ rail, showLabel = true, compact = false, onCurrentCl
     <span
       {...doorProps}
       title={onClick ? `${tooltip} · click for the sheet's story` : tooltip}
-      style={{ display: 'inline-flex', alignItems: 'center', whiteSpace: 'nowrap', verticalAlign: 'middle', cursor: onClick ? 'pointer' : undefined, borderRadius: 6 }}
+      style={{ display: 'inline-flex', flexDirection: labelBelow ? 'column' : 'row', alignItems: 'center', whiteSpace: labelBelow ? 'normal' : 'nowrap', verticalAlign: 'middle', cursor: onClick ? 'pointer' : undefined, borderRadius: 6 }}
     >
-      {rail.steps.flatMap(dot)}
+      {labelBelow ? <span style={{ display: 'inline-flex', alignItems: 'center', whiteSpace: 'nowrap' }}>{rail.steps.flatMap(dot)}</span> : rail.steps.flatMap(dot)}
       {showLabel ? (
-        <span style={{ marginLeft: 8, fontSize: compact ? '0.72rem' : '0.75rem', fontWeight: 700, color: sheetRailLabelColor(rail.tone), lineHeight: 1.2 }}>
+        <span style={{ marginLeft: labelBelow ? 0 : 8, marginTop: labelBelow ? 5 : 0, textAlign: labelBelow ? 'center' : undefined, fontSize: compact ? '0.72rem' : '0.75rem', fontWeight: 700, color: sheetRailLabelColor(rail.tone), lineHeight: 1.2 }}>
           {rail.label}
           {rail.sublabel ? <span style={{ display: 'block', fontWeight: 500, color: 'var(--text-muted)', fontSize: compact ? '0.66rem' : '0.69rem' }}>{rail.sublabel}</span> : null}
         </span>

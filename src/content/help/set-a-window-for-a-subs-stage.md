@@ -53,3 +53,13 @@ The sub's portal shows the window as a calendar. They tap the day they can start
 ## Who sees what
 
 Devs, leaders, assistants, controllers and estimators set and change windows. Superintendents open **Jobs → Subs** and see the Pay view only, as they saw Sub Labor before.
+
+## See it on the calendar
+
+On **Jobs → Subs → Work** the window shows as text — **Sep 22 – Oct 2** — with a small chip beside it for the GC: {{chip:gray|GC off}} when the job doesn't share stage dates, {{chip:blue|Offer to GC ›}} when it does and you haven't yet, {{chip:blue|On Summit's portal ›}} once they can see it, {{chip:yellow|GC asked ›}} when they've asked for other dates. Under the dates, one line says who set them and what the sub picked.
+
+Click the dates and a **calendar** opens: the months the window touches, your window shaded, the sub's pick as a solid bar, the GC's ask as a dashed ring, today outlined, the sub's days off hatched, and the job's other stages as thin marks so you see Rough-in, Top-out and Trim in order. The panel beside it holds the facts and the moves — {{button:outline|Change our window…}}, {{button:green|Accept}} or {{button:outline|Answer with…}} on a GC ask, {{button:blue|Offer to Summit}} or {{button:outline|Take it off their portal}}. The calendar is for looking; the buttons do the work.
+
+:::example When the GC asks for other dates
+Your dates show lightly struck through — they're the ones being replaced — with the GC's dates and {{button:green|Accept}} {{button:outline|Answer…}} beneath, and their reason in their own words under that. Accept takes their dates; Answer lets you propose yours with a why they'll read.
+:::

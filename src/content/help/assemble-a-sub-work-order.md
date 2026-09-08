@@ -32,7 +32,7 @@ Unpriced drafts show on the dashboard's **Needs You** card — *"2 sub work orde
 
 ## Reading the board
 
-Three tiles lead: **On a handshake** (open money on sheets with nothing signed — the number to drive to zero), **Offers out**, and **Signed this month**. The columns are the same on every row: **Job · Sub · Agreed · Paid · Open · Where it stands · Next**, and the same numbers the sub sees on their portal.
+Three tiles lead: **On a handshake** (open money on sheets with nothing signed — the number to drive to zero), **Offers out**, and **Signed this month**. Four columns on every row: **Sub · stage**, **Window** (the dates as text with the GC chip beside them — click the dates for the calendar), **Agreed · Paid · Open** stacked (paid in green, open in red), and **Where it stands → next** — the rail, an arrow, and the move as a button with a **⋯** menu for the rest. The same numbers the sub sees on their portal.
 
 **Where it stands** is the rail — seven dots on one line. Three small dots are the office's steps (Drafted · Sent · Signed); four big ones are the sub's (Work · Pre-inspection · Post-inspection: Trigger draw · Paid — the same four on their portal). The filled terracotta dot is where the sheet is today. A **dashed red run** through the first three dots means work is happening with nothing signed — a declined or expired offer draws the same gap, so it lands back in the first group with {{button:blue|Re-offer…}} or {{button:blue|Re-send…}} ready.
 

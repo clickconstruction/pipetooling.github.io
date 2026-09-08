@@ -5,6 +5,7 @@ import { formatErrorMessage } from '../../utils/errorHandling'
 import { localCalendarDayKey, todayYmdInAppTz } from '../../utils/dateUtils'
 import { resolveSubPortalUrl } from '../../lib/subPortal/resolveSubPortalUrl'
 import { notifySheetWorkOrderOffered } from '../../lib/workflow/workOrderNotifications'
+import { roleTitle } from '../../lib/subWorkOrders/quickSendWorkOrder'
 import type { StepCommitmentRow } from '../../lib/workflow/stepCommitments'
 import type { JobWithDetails } from '../../types/jobWithDetails'
 import { subLaborAssignPickerRows } from '../../lib/jobs/subLaborJobPicker'
@@ -838,11 +839,6 @@ export function WorkOrderAssemblerModal({
       </div>
     </div>
   )
-}
-
-function roleTitle(role: string): string {
-  const map: Record<string, string> = { dev: 'Developer', master_technician: 'Leader', assistant: 'Assistant', controller: 'Controller', estimator: 'Estimator', superintendent: 'Superintendent', primary: 'Primary' }
-  return map[role] ?? role
 }
 
 export default WorkOrderAssemblerModal
