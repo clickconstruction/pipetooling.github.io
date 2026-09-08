@@ -13,6 +13,8 @@
 import type { DashboardTeamAssignedJobRow } from './dashboardTeamAssignedJobRow'
 import { effectiveJobLedgerNumber } from './ledgerDisplayPrefixes'
 import { normalizeAddressForGeocodeKey } from './map/normalizeAddressForGeocode'
+import { mapPointsBounds } from './map/mapPointsBounds'
+import type { MapCanvasPin } from './map/mapCanvasTypes'
 
 export type DashboardJobsMapStatus = 'working' | 'waiting'
 
@@ -106,6 +108,11 @@ export function resolveDashboardJobsMapPins(
   return { pins, unmapped }
 }
 
+/** Job pins → the shared canvases' pins (v2.3162), in the Jobs status colors. */
+export function dashboardJobsMapCanvasPins(pins: readonly DashboardJobsMapPin[]): MapCanvasPin[] {
+  return pins.map((p) => ({ id: p.id, lat: p.lat, lng: p.lng, color: DASHBOARD_JOBS_MAP_STATUS_COLOR[p.status], title: p.label }))
+}
+
 /** Header counts: `3 working · 2 waiting` (zero entries dropped). */
 export function dashboardJobsMapLegend(pins: readonly DashboardJobsMapPin[]): { status: DashboardJobsMapStatus; count: number }[] {
   const counts: Record<DashboardJobsMapStatus, number> = { working: 0, waiting: 0 }
@@ -117,22 +124,7 @@ export function dashboardJobsMapLegend(pins: readonly DashboardJobsMapPin[]): { 
 export function dashboardJobsMapBounds(
   pins: readonly DashboardJobsMapPin[],
 ): { south: number; west: number; north: number; east: number } | null {
-  if (pins.length === 0) return null
-  let south = Infinity
-  let west = Infinity
-  let north = -Infinity
-  let east = -Infinity
-  for (const p of pins) {
-    south = Math.min(south, p.lat)
-    north = Math.max(north, p.lat)
-    west = Math.min(west, p.lng)
-    east = Math.max(east, p.lng)
-  }
-  if (pins.length === 1 || (north - south < 1e-6 && east - west < 1e-6)) {
-    const pad = 0.01
-    return { south: south - pad, west: west - pad, north: north + pad, east: east + pad }
-  }
-  return { south, west, north, east }
+  return mapPointsBounds(pins)
 }
 
 /** The line under the map: `1 job has no map location yet` / `2 jobs have no map location yet`. */

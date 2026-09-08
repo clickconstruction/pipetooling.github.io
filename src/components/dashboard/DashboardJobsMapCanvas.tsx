@@ -1,21 +1,20 @@
 /**
  * The Leaflet half of the Dashboard "Your jobs on a map" card (v2.3131).
  *
- * Lazy-loaded by `DashboardJobsMapCard` so Leaflet / react-leaflet stay out of
- * the Dashboard bundle (they already ride in the lazy /map chunk; Vite shares
- * the vendor chunk between the two). Renders the tiles, one circle marker per
- * pin in the Jobs status colors, fit-to-all, and — on desktop — a Leaflet
- * popup with Open job / Directions. On a phone the popup is skipped: the card
- * shows the selected job as a bar under the map (44px buttons, pin visible).
+ * Since v2.3162 the drawing lives in the shared `PinsMapCanvas` (the Bid Board
+ * map uses the same one); this file turns job pins into canvas pins in the
+ * Jobs status colors and renders the popup body — label, status chip, address,
+ * stage / last report, Open job / Directions. On a phone the popup is skipped:
+ * the card shows the selected job as a bar under the map.
+ *
+ * Lazy-loaded by `DashboardJobsMapCard` so Leaflet stays out of the Dashboard bundle.
  */
-import { useEffect } from 'react'
-import L from 'leaflet'
-import 'leaflet/dist/leaflet.css'
-import { CircleMarker, MapContainer, Popup, TileLayer, useMap } from 'react-leaflet'
+import { useCallback, useMemo } from 'react'
+import PinsMapCanvas from '../map/PinsMapCanvas'
 import {
   DASHBOARD_JOBS_MAP_STATUS_COLOR,
   DASHBOARD_JOBS_MAP_STATUS_LABEL,
-  dashboardJobsMapBounds,
+  dashboardJobsMapCanvasPins,
   dashboardJobsMapDetailLine,
   type DashboardJobsMapPin,
 } from '../../lib/dashboardJobsMap'
@@ -33,22 +32,6 @@ export type DashboardJobsMapCanvasProps = {
   isMobile: boolean
 }
 
-function FitToPins({ pins, fitSignal }: { pins: DashboardJobsMapPin[]; fitSignal: number }) {
-  const map = useMap()
-  const b = dashboardJobsMapBounds(pins)
-  const key = b ? `${b.south},${b.west},${b.north},${b.east}` : ''
-  useEffect(() => {
-    if (!b) return
-    map.fitBounds(
-      L.latLngBounds([b.south, b.west], [b.north, b.east]),
-      { padding: [28, 28], maxZoom: 15 },
-    )
-    // key captures the bounds; fitSignal re-fits on demand
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [map, key, fitSignal])
-  return null
-}
-
 const POPUP_BUTTON_STYLE: React.CSSProperties = {
   flex: 1,
   padding: '0.35rem 0.75rem',
@@ -61,62 +44,70 @@ const POPUP_BUTTON_STYLE: React.CSSProperties = {
   fontFamily: 'inherit',
 }
 
-export default function DashboardJobsMapCanvas({ pins, selectedId, onSelect, onOpenJob, onDirections, fitSignal, height, isMobile }: DashboardJobsMapCanvasProps) {
-  const first = pins[0]
-  const center: L.LatLngExpression = first ? [first.lat, first.lng] : [39.5, -98.35]
+/** The popup / info-window body — shared by the Leaflet and Google adapters. */
+export function DashboardJobsMapPopupBody({
+  pin,
+  onOpenJob,
+  onDirections,
+}: {
+  pin: DashboardJobsMapPin
+  onOpenJob: (pin: DashboardJobsMapPin) => void
+  onDirections: (pin: DashboardJobsMapPin) => void
+}) {
+  const c = DASHBOARD_JOBS_MAP_STATUS_COLOR[pin.status]
+  const detail = dashboardJobsMapDetailLine(pin)
   return (
-    <MapContainer center={center} zoom={first ? 12 : 4} style={{ width: '100%', height }} scrollWheelZoom={!isMobile} attributionControl>
-      <TileLayer
-        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-      />
-      <FitToPins pins={pins} fitSignal={fitSignal} />
-      {pins.map((p) => {
-        const c = DASHBOARD_JOBS_MAP_STATUS_COLOR[p.status]
-        const selected = p.id === selectedId
-        return (
-          <CircleMarker
-            key={p.id}
-            center={[p.lat, p.lng]}
-            radius={selected ? 10 : isMobile ? 9 : 8}
-            pathOptions={{ color: selected ? '#1d4ed8' : c, fillColor: c, fillOpacity: selected ? 0.9 : 0.8, weight: selected ? 2 : 1 }}
-            eventHandlers={{ click: () => onSelect(p.id) }}
-          >
-            {!isMobile ? (
-              <Popup>
-                <div style={{ fontSize: '0.8125rem', lineHeight: 1.4, display: 'flex', flexDirection: 'column', gap: 6, minWidth: 200 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
-                    <div style={{ fontWeight: 600, color: 'var(--text-strong)' }}>{p.label}</div>
-                    <span
-                      style={{
-                        fontSize: '0.75rem',
-                        fontWeight: 600,
-                        color: c,
-                        border: `1px solid ${c}`,
-                        borderRadius: 999,
-                        padding: '1px 8px',
-                        whiteSpace: 'nowrap',
-                      }}
-                    >
-                      {DASHBOARD_JOBS_MAP_STATUS_LABEL[p.status]}
-                    </span>
-                  </div>
-                  <div style={{ color: 'var(--text-muted)' }}>{p.address}</div>
-                  {dashboardJobsMapDetailLine(p) ? <div style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>{dashboardJobsMapDetailLine(p)}</div> : null}
-                  <div style={{ display: 'flex', gap: 8, marginTop: 2 }}>
-                    <button type="button" onClick={() => onOpenJob(p)} style={POPUP_BUTTON_STYLE}>
-                      Open job
-                    </button>
-                    <button type="button" onClick={() => onDirections(p)} style={POPUP_BUTTON_STYLE}>
-                      Directions
-                    </button>
-                  </div>
-                </div>
-              </Popup>
-            ) : null}
-          </CircleMarker>
-        )
-      })}
-    </MapContainer>
+    <div
+      style={{
+        fontSize: '0.8125rem',
+        lineHeight: 1.4,
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 6,
+        minWidth: 200,
+        color: 'var(--text-base)',
+        fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, sans-serif',
+      }}
+    >
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
+        <div style={{ fontWeight: 600, color: 'var(--text-strong)' }}>{pin.label}</div>
+        <span
+          style={{
+            fontSize: '0.75rem',
+            fontWeight: 600,
+            color: c,
+            border: `1px solid ${c}`,
+            borderRadius: 999,
+            padding: '1px 8px',
+            whiteSpace: 'nowrap',
+          }}
+        >
+          {DASHBOARD_JOBS_MAP_STATUS_LABEL[pin.status]}
+        </span>
+      </div>
+      <div style={{ color: 'var(--text-muted)' }}>{pin.address}</div>
+      {detail ? <div style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>{detail}</div> : null}
+      <div style={{ display: 'flex', gap: 8, marginTop: 2 }}>
+        <button type="button" onClick={() => onOpenJob(pin)} style={POPUP_BUTTON_STYLE}>
+          Open job
+        </button>
+        <button type="button" onClick={() => onDirections(pin)} style={POPUP_BUTTON_STYLE}>
+          Directions
+        </button>
+      </div>
+    </div>
   )
+}
+
+export default function DashboardJobsMapCanvas({ pins, selectedId, onSelect, onOpenJob, onDirections, fitSignal, height, isMobile }: DashboardJobsMapCanvasProps) {
+  const canvasPins = useMemo(() => dashboardJobsMapCanvasPins(pins), [pins])
+  const byId = useMemo(() => new Map(pins.map((p) => [p.id, p])), [pins])
+  const renderPopup = useCallback(
+    (id: string) => {
+      const p = byId.get(id)
+      return p ? <DashboardJobsMapPopupBody pin={p} onOpenJob={onOpenJob} onDirections={onDirections} /> : null
+    },
+    [byId, onOpenJob, onDirections],
+  )
+  return <PinsMapCanvas pins={canvasPins} selectedId={selectedId} onSelect={onSelect} renderPopup={renderPopup} fitSignal={fitSignal} height={height} isMobile={isMobile} />
 }
