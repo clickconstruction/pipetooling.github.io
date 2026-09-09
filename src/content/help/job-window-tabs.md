@@ -14,7 +14,7 @@ Under the tab bar, **every tab** shows the same job header: the job name, the ac
 - {{chip:blue|Job}} — the read view: photo and address, customer and contacts, the numbered activity feed, work/bill dates, and a compact **Costs** card (team labor, sub labor, parts, margin — one line each; tap it to open the Costs tab). This is where "open job detail" lands.
 - {{chip:blue|Edit}} — the job itself: numbers, name, address, service type, and the people-and-customer rows (below). The row's ✎ Edit button lands here, and so does the ⚙ on the Job tab.
 - {{chip:blue|Bill}} — money **in**: the **Line Items** (the job's scope and Job Total) right at the top, then the billing summary bar, the segment bar with the break-off slider, **New Invoice**, and the Invoices and Payments received tables.
-- {{chip:blue|Costs}} — money **out**: the **Cost Timeline**, the Team and Sub Labor lines, and the parts accordions (supply house invoices, card charges, parts from tally, other job charges with **+ Add other charge**). Everything that used to sit at the bottom of Bill lives here now.
+- {{chip:blue|Costs}} — money **out**: **Burn** first (spend against the budget and the percent complete, with the projected margin — owners, controllers and master techs; see *read the cost and value timeline on a job*), then the **Cost Timeline**, the Team and Sub Labor lines, and the parts accordions (supply house invoices, card charges, parts from tally, other job charges with **+ Add other charge**). Everything that used to sit at the bottom of Bill lives here now.
 
 - {{chip:blue|History}} — the day grid: one row per day worked, coloured by how many people were on site. The same view Projects → Job History shows, now for every job, project or not.
 

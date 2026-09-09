@@ -4,7 +4,7 @@ import type { JobWithDetails } from '../../types/jobWithDetails'
 import type { TeamLaborRow } from '../../utils/teamLabor'
 import { formatCurrency } from '../../lib/jobs/jobFormMoney'
 import { showJobCostBreakdownTeamLabor } from '../../lib/jobDetailModalRole'
-import JobChargesTimelineStandalone from './JobChargesTimelineStandalone'
+import { JobCostsTabCharts } from './JobCostsTabCharts'
 
 type JobFormLaborCostPanelProps = {
   editing: JobWithDetails | null
@@ -49,7 +49,8 @@ export function JobFormLaborCostPanel({
     <>
               {/* Section banner + divider removed (owner call, v2.1751) — the Cost
                   Timeline title right below already announces the section. */}
-              <JobChargesTimelineStandalone job={editing} includeTeamLabor={showJobCostBreakdownTeamLabor(authRole)} />
+              {/* v2.3189: Burn (wage roles) + the Cost Timeline, sharing one fetch. */}
+              <JobCostsTabCharts job={editing} includeTeamLabor={showJobCostBreakdownTeamLabor(authRole)} />
               <div
                 style={{
                   background: 'var(--bg-subtle)',
