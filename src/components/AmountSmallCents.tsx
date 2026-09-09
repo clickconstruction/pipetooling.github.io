@@ -15,3 +15,19 @@ export function AmountSmallCents({ value, prefix = '$' }: { value: number; prefi
     </>
   )
 }
+
+/**
+ * The same, for a figure that can be a loss or missing (v2.3180, Job Summary):
+ * a true minus sign before the `$` for a negative value, an em dash for null.
+ * Extracted from the Job Summary tiles' `JobSummaryTileMoney` (v2.3177) so the
+ * table's cells, footer and group rows share it.
+ */
+export function SignedAmountSmallCents({ value }: { value: number | null | undefined }) {
+  if (value == null) return <>—</>
+  return (
+    <>
+      {value < 0 ? '−' : ''}
+      <AmountSmallCents value={Math.abs(value)} />
+    </>
+  )
+}

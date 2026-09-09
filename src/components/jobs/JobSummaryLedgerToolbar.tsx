@@ -14,7 +14,7 @@ import {
   type JobSummarySortKey,
 } from '../../lib/jobs/jobSummaryLedgerView'
 import { formatUsdNoCents } from '../../lib/jobs/jobFormatting'
-import { AmountSmallCents } from '../AmountSmallCents'
+import { SignedAmountSmallCents } from '../AmountSmallCents'
 import { JOB_SUMMARY_MONTHS_BOOK_OPTIONS } from '../../lib/jobs/jobSummaryMonths'
 import { formatStagesNextDateLabel } from '../../lib/stagesUpcomingSchedule'
 
@@ -107,13 +107,7 @@ const money = (v: number | null | undefined): string => (v == null ? '—' : `${
  * available". The delta lines and chips keep the rounded `money()` form.
  */
 export function JobSummaryTileMoney({ value }: { value: number | null | undefined }) {
-  if (value == null) return <>—</>
-  return (
-    <>
-      {value < 0 ? '−' : ''}
-      <AmountSmallCents value={Math.abs(value)} />
-    </>
-  )
+  return <SignedAmountSmallCents value={value} />
 }
 const pct = (v: number | null | undefined): string => (v == null ? '—' : `${Math.round(v)}%`)
 const pts = (v: number): string => `${v.toFixed(1)} pts`
