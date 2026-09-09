@@ -5,10 +5,11 @@
  * anchor; a cold address lands in the "no map location yet" line whose sheet
  * focuses the row; legend chips toggle pins only; a pin click focuses its row;
  * Hide map collapses to the header and persists per device, and the Map pill's
- * reveal signal brings it back; the phone bar's buttons.
+ * reveal signal brings it back; the phone bar's buttons; Play tours the
+ * sections two seconds apiece and Pause holds the view (v2.3208).
  */
-import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { BidBoardMapCard } from './BidBoardMapCard'
 import type { BidWithBuilder } from '../../types/bidWithBuilder'
 import type { PinsMapCanvasProps } from '../map/PinsMapCanvas'
@@ -106,6 +107,10 @@ beforeEach(() => {
   onEditBid.mockReset()
   onFocusRow.mockReset()
   openExternal.mockReset()
+})
+
+afterEach(() => {
+  vi.useRealTimers()
 })
 
 describe('BidBoardMapCard', () => {
@@ -215,5 +220,68 @@ describe('BidBoardMapCard', () => {
     fireEvent.click(screen.getByText('google failed'))
     await waitFor(() => expect(screen.getByTestId('canvas')).toBeTruthy())
     expect(screen.queryByTestId('google-canvas')).toBeNull()
+  })
+
+  it('Play tours the sections that have pins, two seconds each, lighting the chip; a chip click or Pause holds the view', async () => {
+    cacheRows.mockReturnValue([
+      { address_normalized: '1400 oak hollow rd', lat: 30.76, lng: -98.23 },
+      { address_normalized: '5100 pine ridge blvd', lat: 30.2, lng: -97.7 },
+      { address_normalized: '77 lost ln', lat: 29.9, lng: -97.9 },
+    ])
+    renderCard([
+      bid({ id: 'u' }),
+      bid({ id: 'p', bid_number: '401', project_name: 'Pine Ridge', address: '5100 Pine Ridge Blvd', bid_date_sent: '2026-09-01' }),
+      bid({ id: 'l', bid_number: '300', project_name: 'Lost One', address: '77 Lost Ln', outcome: 'lost' }),
+    ])
+    await screen.findByText(/^pin .*385 · Galloway Park$/)
+    await screen.findByText(/^pin .*401 · Pine Ridge$/)
+    vi.useFakeTimers()
+    const chip = (name: string) => screen.getByTitle(new RegExp(`(Hide|Show) ${name} pins`))
+    // Play: the first stop is Unsent, alone on the map, its chip lit
+    fireEvent.click(screen.getByText('Play'))
+    expect(screen.getByText('Pause')).toBeTruthy()
+    expect(chip('Unsent').getAttribute('data-tour-lit')).toBe('true')
+    expect(screen.getByText(/^pin .*385 · Galloway Park$/)).toBeTruthy()
+    expect(screen.queryByText(/^pin .*401 · Pine Ridge$/)).toBeNull()
+    // two seconds later: Pending (Won and Started have no pins and are skipped)
+    act(() => {
+      vi.advanceTimersByTime(2000)
+    })
+    expect(chip('Pending').getAttribute('data-tour-lit')).toBe('true')
+    expect(chip('Unsent').getAttribute('data-tour-lit')).toBeNull()
+    expect(screen.getByText(/^pin .*401 · Pine Ridge$/)).toBeTruthy()
+    expect(screen.queryByText(/^pin .*385 · Galloway Park$/)).toBeNull()
+    // then Lost — a section that starts hidden still gets its turn — then back around to Unsent
+    act(() => {
+      vi.advanceTimersByTime(2000)
+    })
+    expect(chip('Lost').getAttribute('data-tour-lit')).toBe('true')
+    expect(screen.getByText(/^pin .*300 · Lost One$/)).toBeTruthy()
+    act(() => {
+      vi.advanceTimersByTime(2000)
+    })
+    expect(chip('Unsent').getAttribute('data-tour-lit')).toBe('true')
+    // Pause holds the view: Unsent stays alone, nothing lit, no more steps
+    fireEvent.click(screen.getByText('Pause'))
+    expect(screen.getByText('Play')).toBeTruthy()
+    expect(chip('Unsent').getAttribute('data-tour-lit')).toBeNull()
+    act(() => {
+      vi.advanceTimersByTime(5000)
+    })
+    expect(screen.getByText(/^pin .*385 · Galloway Park$/)).toBeTruthy()
+    expect(screen.queryByText(/^pin .*401 · Pine Ridge$/)).toBeNull()
+    // Play again, then a chip click pauses the tour and toggles that chip as usual
+    fireEvent.click(screen.getByText('Play'))
+    fireEvent.click(chip('Pending'))
+    expect(screen.getByText('Play')).toBeTruthy()
+    expect(screen.getByText(/^pin .*401 · Pine Ridge$/)).toBeTruthy()
+    expect(screen.getByText(/^pin .*385 · Galloway Park$/)).toBeTruthy()
+  })
+
+  it('offers no Play with fewer than two sections on the map', async () => {
+    cacheRows.mockReturnValue([{ address_normalized: '1400 oak hollow rd', lat: 30.76, lng: -98.23 }])
+    renderCard([bid({ id: 'a' })])
+    await screen.findByText(/^pin .*385 · Galloway Park$/)
+    expect(screen.queryByText('Play')).toBeNull()
   })
 })

@@ -2367,5 +2367,21 @@ body.my-time-boundary-dragging {
 
 /* Bid Board robot icon (v2.3200): the "working" dot breathes; still under reduced motion. */
 @keyframes robot-glyph-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
+
+/* Bid Board map section tour (v2.3208): the lit chip's underline runs left→right over one stop. */
+.bid-board-map-tour-fill {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  height: 3px;
+  width: 0;
+  background: rgba(255, 255, 255, 0.9);
+  animation: bid-board-map-tour-fill linear forwards;
+  pointer-events: none;
+}
+@keyframes bid-board-map-tour-fill { from { width: 0; } to { width: 100%; } }
+@media (prefers-reduced-motion: reduce) {
+  .bid-board-map-tour-fill { animation: none; width: 100%; }
+}
 .robot-glyph-pulse { animation: robot-glyph-pulse 1.6s ease-in-out infinite; }
 @media (prefers-reduced-motion: reduce) { .robot-glyph-pulse { animation: none; } }

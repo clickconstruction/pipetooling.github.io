@@ -2,7 +2,7 @@
 title: see your bids on a map
 category: Office
 roles: dev, master_technician, assistant, controller, estimator, primary, superintendent
-keywords: map, bids, bid board, pins, distance, miles from the office, due, directions, where is the bid, site walk, hide map
+keywords: map, bids, bid board, pins, distance, miles from the office, due, directions, where is the bid, site walk, hide map, play, tour, pause, sections one at a time
 order: 67
 ---
 The Bid Board has a **Bids on a map** card between the section pills and the sections. It plots the bids the board is showing — the same list, so the search box, the trade pill above the tabs and **My bids** all change the pins. Nobody sees a pin here they couldn't already open from the board.
@@ -17,6 +17,16 @@ An unsent bid that is due within the next few days wears an **amber ring**; once
 
 :::example Planning a site-walk day
 Two amber-ringed pins sit north of the 50 mile ring, an hour apart. Turn off Pending and Won, and what's left is the unsent work you could walk on the same trip.
+:::
+
+## Play: the sections one at a time
+
+{{button:outline-blue|Play}} next to the title walks the map through its sections on its own: **one section alone on the map for two seconds**, then the next, around and around — Unsent, then Pending, then Won, Started and Lost. The chip for the section that is up fills with its color and a thin line runs across it so you can see the beat. Sections with no pins are skipped.
+
+{{button:outline-blue|Pause}} holds whatever view is showing, so you can stop on Won and talk about it. Clicking any chip while it plays pauses it too, then works the chip as usual. Play only appears when at least two sections have pins.
+
+:::example A five-minute look at the territory on the office screen
+Press Play and let it run while the room talks. Grey is where the unsent work sits, yellow is what's out for decision, green is where you win. The map re-frames on each view, so a cluster you never noticed shows up on its own turn.
 :::
 
 ## Opening a bid from a pin

@@ -14,6 +14,9 @@ import {
   resolveBidBoardMapPins,
   writeBidBoardMapHidden,
   type BidBoardMapPin,
+  bidBoardMapTourNext,
+  bidBoardMapTourStops,
+  bidBoardMapTourVisibility,
 } from './bidBoardMap'
 
 const TODAY = new Date('2026-09-08T12:00:00')
@@ -214,5 +217,35 @@ describe('hide preference', () => {
     expect(readBidBoardMapHidden(broken)).toBe(false)
     expect(() => writeBidBoardMapHidden(true, broken)).not.toThrow()
     expect(readBidBoardMapHidden(null)).toBe(false)
+  })
+})
+
+describe('section tour', () => {
+  const legend = [
+    { section: 'unsent' as const, count: 9 },
+    { section: 'pending' as const, count: 100 },
+    { section: 'won' as const, count: 0 },
+    { section: 'startedOrComplete' as const, count: 10 },
+    { section: 'lost' as const, count: 71 },
+  ]
+
+  it('stops are the sections with pins, in board order — an empty section is skipped', () => {
+    expect(bidBoardMapTourStops(legend)).toEqual(['unsent', 'pending', 'startedOrComplete', 'lost'])
+    expect(bidBoardMapTourStops(legend.map((l) => ({ ...l, count: 0 })))).toEqual([])
+  })
+
+  it('next walks the stops and wraps; a standing start or a vanished stop begins at the first', () => {
+    const stops = bidBoardMapTourStops(legend)
+    expect(bidBoardMapTourNext(null, stops)).toBe('unsent')
+    expect(bidBoardMapTourNext('unsent', stops)).toBe('pending')
+    expect(bidBoardMapTourNext('pending', stops)).toBe('startedOrComplete')
+    expect(bidBoardMapTourNext('lost', stops)).toBe('unsent')
+    // Won has no pins, so it is not a stop — from there the tour restarts at the first stop
+    expect(bidBoardMapTourNext('won', stops)).toBe('unsent')
+    expect(bidBoardMapTourNext('pending', [])).toBeNull()
+  })
+
+  it('a view shows exactly one section', () => {
+    expect(bidBoardMapTourVisibility('won')).toEqual({ unsent: false, pending: false, won: true, startedOrComplete: false, lost: false })
   })
 })
