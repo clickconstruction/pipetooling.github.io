@@ -7,7 +7,7 @@ order: 97
 ---
 The one sentence: **when no bid is selected on a workflow tab, the bid list is sorted — bid number first by default — and the buttons next to the search bar switch the order.**
 
-Once you pick a bid it stays selected across Counts → Takeoffs → Labor → Pricing → Cover Letter, and a **refresh brings it back** (this browser tab remembers your bid until you close the bid or the tab). Only a shared link needs the `bidId` in the URL, which the picker adds for you.
+Once you pick a bid it stays selected across Counts → Takeoffs → Labor → Pricing → Cover Letter, and a **refresh brings it back** (this browser tab remembers your bid until you close the bid or the tab). Only a shared link needs the `bidId` in the URL, which the picker adds for you. Above the bid's title on each of those tabs sits its **flow strip** — the estimating steps with the next one ringed (see [see where a bid is in the estimating flow](?g=see-where-a-bid-is-in-the-flow)).
 
 ## Pick the order
 

@@ -35,6 +35,10 @@ import {
 import { loadBundlePartLines, type BundlePartLine } from '../../lib/bids/assemblyBundleBreakdown'
 import { buildPartAssemblyIndex, type PartAssemblyEntry, type PartAssemblyIndexItem } from '../../lib/bids/partAssemblyIndex'
 import { BidWorkflowTabTitleWithPreview } from './BidWorkflowTabTitleWithPreview'
+import { BidFlowStrip } from './BidFlowStrip'
+import { deriveBidFlow } from '../../lib/bids/bidFlow'
+import { useBidFlowFacts } from '../../hooks/useBidFlowFacts'
+import { useBidFlowReview } from '../../hooks/useBidFlowReview'
 import { BidPickerStandardList } from './BidPickerStandardList'
 import { TakeoffViewPills, TakeoffByStageNotice } from './TakeoffViewPills'
 import { TakeoffFocusView } from './TakeoffFocusView'
@@ -211,6 +215,9 @@ export function BidsTakeoffTab({
   setOnlyMyBids,
   isMyBid,
 }: BidsTakeoffTabProps) {
+  // Bid flow facts for the selected bid (one chunked read per selection).
+  const { factsByBid: bidFlowFactsByBid } = useBidFlowFacts(selectedBidForTakeoff ? [selectedBidForTakeoff.id] : [])
+  const bidFlowReview = useBidFlowReview(selectedBidForTakeoff ? [selectedBidForTakeoff] : [])
   const { showToast } = useToastContext()
 
   // Breakdown jump landing (v2.2400): scroll + flash the fixture's takeoff rows.
@@ -1883,6 +1890,16 @@ export function BidsTakeoffTab({
                   ×
                 </button>
               ) : null}
+              <BidFlowStrip
+                variant="full"
+                flow={deriveBidFlow(selectedBidForTakeoff, bidFlowFactsByBid[selectedBidForTakeoff.id])}
+                bidLabel={selectedBidForTakeoff.project_name ?? undefined}
+                canOpenDoor={(d) => d === 'review'}
+                onOpenDoor={(d) => {
+                  if (d === 'review') void bidFlowReview.markReviewed(selectedBidForTakeoff)
+                }}
+                reviewStamp={bidFlowReview.stampFor(selectedBidForTakeoff)}
+              />
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.5rem' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap', minWidth: 0 }}>
                   <BidWorkflowTabTitleWithPreview

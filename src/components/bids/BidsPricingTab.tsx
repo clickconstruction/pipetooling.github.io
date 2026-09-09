@@ -38,6 +38,10 @@ import {
   sumEquipmentRows,
 } from '../../lib/bids/bidCostCalc'
 import { BidWorkflowTabTitleWithPreview } from './BidWorkflowTabTitleWithPreview'
+import { BidFlowStrip } from './BidFlowStrip'
+import { deriveBidFlow } from '../../lib/bids/bidFlow'
+import { useBidFlowFacts } from '../../hooks/useBidFlowFacts'
+import { useBidFlowReview } from '../../hooks/useBidFlowReview'
 import { GenerateUnitCostModal } from './GenerateUnitCostModal'
 import { AssignTakeoffPartModal } from './AssignTakeoffPartModal'
 import { BidPickerStandardList } from './BidPickerStandardList'
@@ -262,6 +266,9 @@ export function BidsPricingTab({
   isMyBid,
 }: BidsPricingTabProps) {
   const { showToast } = useToastContext()
+  // Bid flow facts for the selected bid (one chunked read per selection).
+  const { factsByBid: bidFlowFactsByBid } = useBidFlowFacts(selectedBidForPricing ? [selectedBidForPricing.id] : [])
+  const bidFlowReview = useBidFlowReview(selectedBidForPricing ? [selectedBidForPricing] : [])
   const confirmDialog = useConfirmDialog()
 
   const [pricingSearchQuery, setPricingSearchQuery] = useState('')
@@ -2598,6 +2605,19 @@ export function BidsPricingTab({
                 ×
               </button>
             ) : null}
+            {/* v2.3200: the bid flow strip above the bid title. */}
+            <BidFlowStrip
+              variant="full"
+              flow={deriveBidFlow(selectedBidForPricing, bidFlowFactsByBid[selectedBidForPricing.id])}
+              bidLabel={selectedBidForPricing.project_name ?? undefined}
+              canOpenDoor={(d) => d === 'edit' || d === 'review' || d === 'counts' || d === 'takeoffs' || d === 'labor'}
+              onOpenDoor={(d) => {
+                if (d === 'edit') onEditBid(selectedBidForPricing)
+                else if (d === 'review') void bidFlowReview.markReviewed(selectedBidForPricing)
+                else if (d === 'counts' || d === 'takeoffs' || d === 'labor') onNavigateBidToTab(selectedBidForPricing, d)
+              }}
+              reviewStamp={bidFlowReview.stampFor(selectedBidForPricing)}
+            />
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.5rem' }}>
               <div style={{ display: 'flex', alignItems: 'center', flex: '0 0 auto', flexWrap: 'wrap', gap: '0.75rem' }}>
                 <BidWorkflowTabTitleWithPreview

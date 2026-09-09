@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { canSeeBidBoardJobLinks, indexJobsByBidId, type BidBoardJobLink } from '../lib/bids/bidBoardJobLinks'
 import { JOB_CREATED_FROM_BID_EVENT } from '../lib/bids/wonMomentActions'
+import { BID_REVIEWED_EVENT } from '../lib/bids/bidReview'
 import { supabase } from '../lib/supabase'
 import {
   buildOutcomeChangeBidNoteBody,
@@ -438,6 +439,16 @@ export default function Bids() {
     const bump = () => setJobsByBidGen((n) => n + 1)
     window.addEventListener(JOB_CREATED_FROM_BID_EVENT, bump)
     return () => window.removeEventListener(JOB_CREATED_FROM_BID_EVENT, bump)
+  }, [])
+  // v2.3201: a bid was just marked reviewed → reload the rows so every flow strip reads the stamp.
+  useEffect(() => {
+    const reload = () => {
+      void loadBids()
+    }
+    window.addEventListener(BID_REVIEWED_EVENT, reload)
+    return () => window.removeEventListener(BID_REVIEWED_EVENT, reload)
+    // loadBids reads the latest trade filter through refs/state when it runs.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
   useEffect(() => {
     void jobsByBidGen
