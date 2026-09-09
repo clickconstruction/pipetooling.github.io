@@ -26,7 +26,7 @@ import {
   type JobSearchEvidenceMode,
 } from '../../lib/jobSearchEvidence'
 import { jobPickerStatusChip } from '../../lib/scheduleDispatchHub'
-import { formatDaysAgoShort } from '../../lib/duplicateJobAddressGroups'
+import { buildJobSearchRail, daysSinceYmd } from '../../lib/jobSearchRail'
 import { useNarrowViewport640 } from '../../hooks/useNarrowViewport640'
 import type { LedgerPrefixMap } from '../../lib/ledgerDisplayPrefixes'
 
@@ -134,7 +134,21 @@ export function UnifiedSearchResultRow({
   const je = r.source === 'job' ? jobEvidence : null
   const be = r.source === 'bid' ? bidEvidence : null
   const statusChip = je ? jobPickerStatusChip(je.status) : null
-  const showMoney = evidenceMode === 'money' && je !== null && je !== undefined && (je.lineRevenue > 0 || je.lineCount > 0)
+  // Money mode (v2.3183): one fixed shape per row — note · chip · amount — so
+  // the numbers stack in a column and the note only speaks when the chip
+  // hasn't already. The kernel decides the words; this file lays them out.
+  const moneyRail =
+    evidenceMode === 'money' && je
+      ? buildJobSearchRail({
+          status: je.status,
+          lineCount: je.lineCount,
+          lineRevenue: je.lineRevenue,
+          revenue: je.revenue ?? null,
+          lastPaidDaysAgo: je.lastPaidDaysAgo,
+          billedDaysAgo: daysSinceYmd(je.lastBillDate, Date.now()),
+          collectionsFlagged: Boolean(je.collectionsAt),
+        })
+      : null
 
   const combinedText = formatUnifiedResult(r, prefixMap, { plainTradePrefixes: true })
   const split = formatUnifiedResultSplit(r, prefixMap, { plainTradePrefixes: true })
@@ -192,45 +206,77 @@ export function UnifiedSearchResultRow({
     </span>
   )
 
+  const noteColor = (tone: 'green' | 'amber' | 'red') =>
+    tone === 'green' ? 'var(--text-green-800)' : tone === 'red' ? 'var(--text-red-700)' : 'var(--text-amber-700)'
   const rail = je ? (
-    <span
-      style={{
-        flexShrink: 0,
-        display: 'inline-flex',
-        alignItems: 'center',
-        gap: '0.35rem',
-        flexWrap: stacked ? 'wrap' : undefined,
-        textAlign: stacked ? 'left' : 'right',
-        fontVariantNumeric: 'tabular-nums',
-        lineHeight: 1.2,
-      }}
-    >
-      {statusChip ? (
-        <span style={{ ...railChipStyle, background: statusChip.background, color: statusChip.color }}>
-          {statusChip.label}
+    moneyRail ? (
+      // Desktop: a three-column grid with fixed slots so every row's chip and
+      // amount land in the same place down the list. Stacked hosts (phones,
+      // narrow popovers) keep the same order in a wrapping row.
+      <span
+        style={{
+          flexShrink: 0,
+          display: stacked ? 'inline-flex' : 'grid',
+          gridTemplateColumns: stacked ? undefined : 'minmax(0, 7.5rem) 6.25rem 5.25rem',
+          alignItems: 'center',
+          justifyItems: stacked ? undefined : 'end',
+          gap: stacked ? '0.35rem' : '0.5rem',
+          flexWrap: stacked ? 'wrap' : undefined,
+          textAlign: 'right',
+          fontVariantNumeric: 'tabular-nums',
+          lineHeight: 1.2,
+        }}
+      >
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', justifyContent: 'flex-end', minWidth: 0 }}>
+          {je.blocksThisWeek > 0 ? <span style={railMutedStyle}>{je.blocksThisWeek} this wk</span> : null}
+          {moneyRail.note ? (
+            <span style={{ fontSize: '0.65rem', fontWeight: 600, color: noteColor(moneyRail.note.tone), whiteSpace: 'nowrap' }}>{moneyRail.note.label}</span>
+          ) : null}
         </span>
-      ) : null}
-      {showMoney ? (
-        <span style={{ fontSize: '0.8125rem', fontWeight: 700 }}>
-          ${Math.round(je.lineRevenue).toLocaleString('en-US')}
+        <span style={{ display: 'inline-flex', justifyContent: stacked ? 'flex-start' : 'flex-end' }}>
+          {statusChip ? (
+            <span style={{ ...railChipStyle, background: statusChip.background, color: statusChip.color, whiteSpace: 'nowrap' }}>
+              {statusChip.label}
+            </span>
+          ) : null}
         </span>
-      ) : null}
-      {evidenceMode === 'money' && je.lastPaidDaysAgo !== null ? (
-        <span style={{ fontSize: '0.65rem', fontWeight: 600, color: 'var(--text-green-800)' }}>
-          paid {formatDaysAgoShort(je.lastPaidDaysAgo)}
+        <span
+          style={{
+            fontSize: '0.8125rem',
+            fontWeight: moneyRail.amount.muted ? 500 : 700,
+            color: moneyRail.amount.muted ? 'var(--text-faint)' : undefined,
+            whiteSpace: 'nowrap',
+          }}
+        >
+          {moneyRail.amount.label}
         </span>
-      ) : evidenceMode === 'money' && je.lineRevenue > 0 && je.status !== 'paid' ? (
-        // No payment rows + revenue → amber "unpaid" — unless the Pipeline status
-        // is already Paid (payments recorded elsewhere), where the pair would contradict.
-        <span style={{ fontSize: '0.65rem', fontWeight: 600, color: 'var(--text-amber-700)' }}>unpaid</span>
-      ) : null}
-      {evidenceMode === 'lines-only' && je.lineCount > 0 ? (
-        <span style={railMutedStyle}>
-          {je.lineCount} {je.lineCount === 1 ? 'line' : 'lines'}
-        </span>
-      ) : null}
-      {je.blocksThisWeek > 0 ? <span style={railMutedStyle}>{je.blocksThisWeek} this wk</span> : null}
-    </span>
+      </span>
+    ) : (
+      <span
+        style={{
+          flexShrink: 0,
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: '0.35rem',
+          flexWrap: stacked ? 'wrap' : undefined,
+          textAlign: stacked ? 'left' : 'right',
+          fontVariantNumeric: 'tabular-nums',
+          lineHeight: 1.2,
+        }}
+      >
+        {statusChip ? (
+          <span style={{ ...railChipStyle, background: statusChip.background, color: statusChip.color }}>
+            {statusChip.label}
+          </span>
+        ) : null}
+        {evidenceMode === 'lines-only' && je.lineCount > 0 ? (
+          <span style={railMutedStyle}>
+            {je.lineCount} {je.lineCount === 1 ? 'line' : 'lines'}
+          </span>
+        ) : null}
+        {je.blocksThisWeek > 0 ? <span style={railMutedStyle}>{je.blocksThisWeek} this wk</span> : null}
+      </span>
+    )
   ) : be ? (
     (() => {
       const chip = bidSearchStatusChip(be.winLoss, be.dateSent)
