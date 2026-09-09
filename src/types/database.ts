@@ -8125,6 +8125,10 @@ export type Database = {
           line_description: string | null
           line_unit_price: number | null
           name: string
+          progress_at: string | null
+          progress_by: string | null
+          progress_pct: number | null
+          progress_report_id: string | null
           sequence_order: number
           shared_with_gc: boolean
           stage_kind: string | null
@@ -8138,6 +8142,10 @@ export type Database = {
           line_description?: string | null
           line_unit_price?: number | null
           name?: string
+          progress_at?: string | null
+          progress_by?: string | null
+          progress_pct?: number | null
+          progress_report_id?: string | null
           sequence_order?: number
           shared_with_gc?: boolean
           stage_kind?: string | null
@@ -8151,6 +8159,10 @@ export type Database = {
           line_description?: string | null
           line_unit_price?: number | null
           name?: string
+          progress_at?: string | null
+          progress_by?: string | null
+          progress_pct?: number | null
+          progress_report_id?: string | null
           sequence_order?: number
           shared_with_gc?: boolean
           stage_kind?: string | null
@@ -18240,6 +18252,10 @@ export type Database = {
         Args: { p_financial: boolean; p_job_id: string }
         Returns: boolean
       }
+      can_report_stage_progress: {
+        Args: { p_job_id: string }
+        Returns: boolean
+      }
       can_see_sharing_master: {
         Args: { sharing_master_id: string }
         Returns: boolean
@@ -19164,6 +19180,19 @@ export type Database = {
           work_date: string
         }[]
       }
+      list_job_stage_progress: {
+        Args: { p_job_id: string }
+        Returns: {
+          draw_paid: boolean
+          fixture_id: string
+          name: string
+          progress_at: string
+          progress_pct: number
+          sequence_order: number
+          stage_kind: string
+          weight_pct: number
+        }[]
+      }
       list_jobs_for_tally: {
         Args: never
         Returns: {
@@ -19962,6 +19991,15 @@ export type Database = {
           had_approved_sessions: boolean
           rejected_count: number
         }[]
+      }
+      record_stage_progress: {
+        Args: {
+          p_fixture_id: string
+          p_job_id: string
+          p_pct: number
+          p_report_id?: string
+        }
+        Returns: undefined
       }
       refresh_jobs_ledger_last_work_date: {
         Args: { p_job_id: string }
