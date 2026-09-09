@@ -100,6 +100,17 @@ on top of the normal role permissions:
   read-only for twins; humans can always read AND edit twin work (the review workflow).
   Rerun the applier after CREATE TABLE on bid-family tables (drop+recreate, idempotent).
 
+### Database agent roles (Postgres roles, not app roles)
+
+Two `LOGIN NOINHERIT` roles exist for AI agents that write records rather than code. They are not `users.role` values, never appear in the app, and hold no session (`auth.uid()` is NULL for them). Each is scoped to one job and one validated SECURITY DEFINER entrypoint; RLS binds them like any other role, and neither can write a table directly.
+
+| Role | Since | Reads (SELECT + a `<role> reads <table>` policy each) | Writes | Contract |
+|---|---|---|---|---|
+| **`hr_agent`** | v2.2232, `20260824141540` | `people`, `person_files`, `person_file_entries`, `person_file_revisions`, `person_file_attachments`, `person_reports` | `hr_agent_write(jsonb)` — append entries (append-only by policy), rewrite summary/narrative; direct INSERT on entries/attachments, UPDATE on `person_files`/`person_reports` | [`HR_FILES.md`](./HR_FILES.md) |
+| **`cost_agent`** | v2.3196, `20260909161532` | `cost_batches`, `cost_batch_ops`, `mercury_transactions`, `mercury_transaction_job_allocations`, `jobs_ledger`, `jobs_ledger_payments`, `jobs_ledger_invoices`, `jobs_ledger_materials`, `jobs_ledger_thread_notes`, `supply_houses`, `supply_house_invoices`, `supply_house_invoice_job_allocations`, `clock_sessions`, `users`, `people`, `customers` | **None directly.** `cost_batch_apply(jsonb, boolean)` / `cost_batch_revert(uuid, text)` only — five op types, before-image audit, one-shot revert; payments tables unreachable | [`COST_BATCHES.md`](./COST_BATCHES.md) |
+
+Credentials: created without a password by the migration; set out-of-band (`ALTER ROLE <role> WITH LOGIN PASSWORD '…'`) and kept only in `.env.local` (`HR_AGENT_DB_PASSWORD`, `COST_AGENT_DB_PASSWORD`). Connect via the session pooler as `<role>.yewfzhbofbbyvkvtaatw`. Revoking access is `ALTER ROLE <role> NOLOGIN`. Read-only (training) mode does not apply to them (no session), but every RPC they call still runs the statement/row blocks — which are no-ops without a session — so the guardrails for these roles are the RPC validations and the policy absences, not training mode.
+
 ### Access Control Mechanisms
 - **Frontend**: Page-level routing restrictions with redirects
 - **Backend**: Row Level Security (RLS) policies on all tables

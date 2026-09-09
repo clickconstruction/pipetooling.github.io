@@ -175,6 +175,10 @@ The kept-current inventory (with per-surface architecture maps) lives in `PAGE_D
 
 See `../AGENTS.md` → "Logging in as an agent" — `/dev-login?as=<existing-email>` in local dev; email must exist in `auth.users`.
 
+### Writing records as an agent (two database roles)
+
+`hr_agent` (HR files, `hr_agent_write`) and `cost_agent` (job-cost batches, `cost_batch_apply` / `cost_batch_revert`) — least-privilege Postgres roles, one validated RPC each, credentials only in `.env.local`. See `../AGENTS.md` → "Writing to the database as an agent" and `ACCESS_CONTROL.md` → "Database agent roles"; contracts in `HR_FILES.md` and `COST_BATCHES.md`.
+
 ---
 
 ## Key Patterns
@@ -312,4 +316,4 @@ See `../AGENTS.md` → Critical Constraints (authoritative list): append-only mi
 
 **For new developers**: `../README.md` for setup → this file → `PROJECT_DOCUMENTATION.md` for depth → run the app (`npm install && npm run dev`).
 
-last_updated: 2026-09-06
+last_updated: 2026-09-09
