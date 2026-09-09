@@ -1,6 +1,6 @@
-import { describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it } from 'vitest'
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { loadTeamLaborData, loadTeamLaborDataForBids } from './teamLabor'
+import { __resetRecordedHoursTableForTests, fetchTeamLaborBreakdownForJob, loadTeamLaborData, loadTeamLaborDataForBids, resolveRecordedHoursTable } from './teamLabor'
 
 /**
  * Fake client that mimics PostgREST's silent `max_rows` cap: un-ranged
@@ -47,6 +47,8 @@ function isoDate(i: number): string {
 
 const payConfigTable = [{ person_name: 'Al', person_id: 'p1', hourly_wage: 10 }]
 const payFlagsRpc = [{ person_name: 'Al', person_id: 'p1', is_salary: false }]
+
+beforeEach(() => __resetRecordedHoursTableForTests())
 
 describe('loadTeamLaborData', () => {
   it('pages past the 1000-row cap on crew days and hours', async () => {
@@ -110,5 +112,75 @@ describe('loadTeamLaborDataForBids', () => {
     expect(rows).toHaveLength(1)
     expect(rows[0]!.manHours).toBe(5)
     expect(rows[0]!.bidCost).toBe(50)
+  })
+})
+
+/**
+ * Recorded time (v2.3179): the readers probe `people_hours_recorded` once and
+ * fall back to `people_hours` when the view is missing (client ahead of the
+ * push) or the client cannot even build the query (the paging fake above has
+ * no `.limit`, which is why the tests above still read `people_hours`).
+ */
+function makeProbeSupabase(opts: { viewExists: boolean; viewRows?: unknown[]; hoursRows?: unknown[] }): { supabase: SupabaseClient; tablesRead: string[] } {
+  const tablesRead: string[] = []
+  const rows: Record<string, unknown[]> = {
+    people_hours_recorded: opts.viewRows ?? [],
+    people_hours: opts.hoursRows ?? [],
+    people_crew_jobs: [{ work_date: '2026-09-08', person_name: 'Al', person_id: 'p1', job_assignments: [{ job_id: 'job-1', pct: 100 }] }],
+    people_pay_config: payConfigTable,
+  }
+  function builder(table: string) {
+    tablesRead.push(table)
+    const b = {
+      select: () => b,
+      gte: () => b,
+      lte: () => b,
+      in: () => b,
+      order: () => b,
+      contains: () => b,
+      limit: () => b,
+      range: () => b,
+      then: (resolve: (r: { data: unknown[] | null; error: { code: string } | null }) => unknown, reject?: (e: unknown) => unknown) => {
+        const r =
+          table === 'people_hours_recorded' && !opts.viewExists
+            ? { data: null, error: { code: '42P01' } }
+            : { data: rows[table] ?? [], error: null }
+        return Promise.resolve(r).then(resolve, reject)
+      },
+    }
+    return b
+  }
+  return {
+    supabase: { from: (table: string) => builder(table), rpc: () => Promise.resolve({ data: payFlagsRpc, error: null }) } as unknown as SupabaseClient,
+    tablesRead,
+  }
+}
+
+describe('resolveRecordedHoursTable (v2.3179)', () => {
+  it('reads recorded hours from the view when it exists — a pending 4 h day costs out', async () => {
+    const { supabase, tablesRead } = makeProbeSupabase({
+      viewExists: true,
+      viewRows: [{ person_name: 'Al', person_id: 'p1', work_date: '2026-09-08', hours: 4 }],
+      hoursRows: [],
+    })
+    expect(await resolveRecordedHoursTable(supabase)).toBe('people_hours_recorded')
+    const breakdown = await fetchTeamLaborBreakdownForJob(supabase, 'job-1')
+    expect(breakdown).toEqual([{ personName: 'Al', hours: 4, cost: 40, byWorkDate: [{ workDate: '2026-09-08', hours: 4, cost: 40 }] }])
+    expect(tablesRead).toContain('people_hours_recorded')
+    expect(tablesRead.filter((t) => t === 'people_hours')).toHaveLength(0)
+  })
+
+  it('falls back to people_hours when the view is missing, and remembers the answer', async () => {
+    const { supabase, tablesRead } = makeProbeSupabase({
+      viewExists: false,
+      hoursRows: [{ person_name: 'Al', person_id: 'p1', work_date: '2026-09-08', hours: 2 }],
+    })
+    expect(await resolveRecordedHoursTable(supabase)).toBe('people_hours')
+    const breakdown = await fetchTeamLaborBreakdownForJob(supabase, 'job-1')
+    expect(breakdown[0]).toMatchObject({ personName: 'Al', hours: 2, cost: 20 })
+    // one probe, then straight to people_hours
+    expect(tablesRead.filter((t) => t === 'people_hours_recorded')).toHaveLength(1)
+    expect(await resolveRecordedHoursTable(supabase)).toBe('people_hours')
+    expect(tablesRead.filter((t) => t === 'people_hours_recorded')).toHaveLength(1)
   })
 })

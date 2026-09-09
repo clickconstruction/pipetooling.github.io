@@ -6,7 +6,7 @@ keywords: assignments, link session, split day, clock session, no clock session,
 order: 36
 ---
 
-Which job carries a person's hours is never typed in. It comes from their **approved clock sessions**: put the job on the session and the day's split follows. There are three places to do it, and they all write the same thing.
+Which job carries a person's hours is never typed in. It comes from their **clock sessions**: put the job on the session and the day's split follows — as soon as the session exists, not only after it's approved. There are three places to do it, and they all write the same thing. (Approval still decides what payroll pays; it no longer decides which job carries the cost.)
 
 ## Where
 

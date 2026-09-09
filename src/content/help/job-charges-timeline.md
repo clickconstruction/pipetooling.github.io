@@ -20,7 +20,7 @@ The main line is the job's **cash position: payments received minus what it has 
 Each red step is tagged with an icon for where the cost came from:
 
 :::example Cost sources
-👷 **Team labor** — crew hours on the job (from approved clock time)
+👷 **Team labor** — crew hours on the job, from **recorded** clock time: every closed session that wasn't rejected, whether or not it's been approved yet. A salaried day counts as 8 h on the job it was clocked to, from the moment the person clocks in. Approval is the payroll gate, not the costing gate.
 
 🔧 **Sub labor** — sub sheet ledger jobs matched by HCP #
 

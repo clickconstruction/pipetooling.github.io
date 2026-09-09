@@ -2,6 +2,35 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { fetchAllRows } from '../lib/supabasePaging'
 import { localCalendarDayKey } from './dateUtils'
 
+/**
+ * Recorded time (v2.3179): job costing reads `people_hours_recorded` — people_hours
+ * (approved + manual) plus closed clock sessions still awaiting approval — while
+ * payroll keeps reading `people_hours`. The view lands with migration
+ * 20260909022534; until it is pushed (or on a database without it) the readers
+ * fall back to `people_hours`, so a client deployed ahead of the push shows the
+ * old approved-only figures instead of an empty Labor column. The cast keeps
+ * the generated types until the post-push `gen-types` chore adds the view.
+ */
+type RecordedHoursTable = 'people_hours' | 'people_hours_recorded'
+let recordedHoursTable: RecordedHoursTable | null = null
+export async function resolveRecordedHoursTable(supabase: SupabaseClient): Promise<RecordedHoursTable> {
+  if (recordedHoursTable) return recordedHoursTable
+  try {
+    const probe = await supabase.from('people_hours_recorded' as 'people_hours').select('work_date').limit(1)
+    recordedHoursTable = probe.error ? 'people_hours' : 'people_hours_recorded'
+  } catch {
+    recordedHoursTable = 'people_hours'
+  }
+  return recordedHoursTable
+}
+/** Test seam: forget the probe result. */
+export function __resetRecordedHoursTableForTests(): void {
+  recordedHoursTable = null
+}
+function hoursFrom(supabase: SupabaseClient, table: RecordedHoursTable) {
+  return supabase.from(table as 'people_hours')
+}
+
 export type CrewJobAssignment = { job_id: string; pct: number }
 export type CrewJobRow = { job_assignments: CrewJobAssignment[] }
 
@@ -115,13 +144,14 @@ export async function loadTeamLaborData(
   // Company-wide + 2-year fetches cross PostgREST's silent 1000-row cap
   // (people_crew_jobs alone is past it) — page them or the tab aggregates an
   // arbitrary subset with no error.
+  const hoursTable = await resolveRecordedHoursTable(supabase)
   const [crewData, hoursData, configMap] = await Promise.all([
     fetchAllRows(
       (from, to) => supabase.from('people_crew_jobs').select('work_date, person_name, person_id, job_assignments').order('work_date').order('person_name').range(from, to),
       'load team labor crew days',
     ),
     fetchAllRows(
-      (from, to) => supabase.from('people_hours').select('person_name, person_id, work_date, hours').gte('work_date', startDate).order('work_date').order('person_name').range(from, to),
+      (from, to) => hoursFrom(supabase, hoursTable).select('person_name, person_id, work_date, hours').gte('work_date', startDate).order('work_date').order('person_name').range(from, to),
       'load team labor hours',
     ),
     fetchLaborPayConfigMap(supabase),
@@ -246,9 +276,9 @@ export async function fetchTeamLaborBreakdownForJob(
   if (crewRows.length === 0) return []
   const persons = [...new Set(crewRows.map((r) => r.person_name))]
   const dates = [...new Set(crewRows.map((r) => r.work_date))]
+  const hoursTable = await resolveRecordedHoursTable(supabase)
   const [hoursRes, configRes] = await Promise.all([
-    supabase
-      .from('people_hours')
+    hoursFrom(supabase, hoursTable)
       .select('person_name, person_id, work_date, hours')
       .in('person_name', persons)
       .in('work_date', dates),
@@ -298,13 +328,14 @@ export async function loadTeamLaborDataForBids(
   const startDate = localCalendarDayKey(twoYearsAgo)
   // Same 1000-row-cap hazard as loadTeamLaborData — the 2-year hours fetch is
   // well past the cap even when the crew-bids table itself is small.
+  const hoursTable = await resolveRecordedHoursTable(supabase)
   const [crewData, hoursData, configMap] = await Promise.all([
     fetchAllRows(
       (from, to) => supabase.from('people_crew_bids').select('work_date, person_name, person_id, bid_assignments').order('work_date').order('person_name').range(from, to),
       'load bid labor crew days',
     ),
     fetchAllRows(
-      (from, to) => supabase.from('people_hours').select('person_name, person_id, work_date, hours').gte('work_date', startDate).order('work_date').order('person_name').range(from, to),
+      (from, to) => hoursFrom(supabase, hoursTable).select('person_name, person_id, work_date, hours').gte('work_date', startDate).order('work_date').order('person_name').range(from, to),
       'load bid labor hours',
     ),
     fetchLaborPayConfigMap(supabase),

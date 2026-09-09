@@ -232,7 +232,8 @@ export default function JobSummaryLedgerToolbar({
         {totals.noPctJobs > 0 ? <span style={chip}>⚠ {totals.noPctJobs} {totals.noPctJobs === 1 ? 'job has' : 'jobs have'} no % complete</span> : null}
         {hygiene && hygiene.pendingFieldSessions > 0 ? (
           <span style={chip}>
-            ⚠ {hygiene.pendingFieldSessions} {hygiene.pendingFieldSessions === 1 ? 'session awaits' : 'sessions await'} approval · {hygiene.pendingFieldHours.toFixed(1)} h not counted
+            {/* v2.3179: recorded time — the Labor column already counts these hours; Hours · days and overhead still wait for approval. */}
+            ⏳ {hygiene.pendingFieldSessions} {hygiene.pendingFieldSessions === 1 ? 'session awaits' : 'sessions await'} approval · {hygiene.pendingFieldHours.toFixed(1)} h in Labor, not yet in Hours or overhead
           </span>
         ) : null}
         {totals.priorHoursJobs > 0 ? <span style={chipMuted}>{totals.priorHoursJobs} {totals.priorHoursJobs === 1 ? 'job has' : 'jobs have'} hours before the window — not charged; widen the window to charge them</span> : null}
