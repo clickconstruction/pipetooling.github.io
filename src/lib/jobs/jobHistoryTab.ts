@@ -9,13 +9,20 @@ import { ymdAddDays } from '../../utils/dateUtils'
  * tab on the job window, for every job, whether or not it has a project.
  */
 
-export const JOB_WINDOW_TABS = ['job', 'edit', 'bill', 'history'] as const
+/** Job · Edit · Bill · Costs · History (Costs split out of Bill — owner call, v2.3182: Bill is money in, Costs is money out). */
+export const JOB_WINDOW_TABS = ['job', 'edit', 'bill', 'costs', 'history'] as const
 export type JobWindowTabKey = (typeof JOB_WINDOW_TABS)[number]
-export const JOB_WINDOW_TAB_LABELS: Record<JobWindowTabKey, string> = { job: 'Job', edit: 'Edit', bill: 'Bill', history: 'History' }
+export const JOB_WINDOW_TAB_LABELS: Record<JobWindowTabKey, string> = { job: 'Job', edit: 'Edit', bill: 'Bill', costs: 'Costs', history: 'History' }
 
-/** The Edit/Bill form pane shows only on its own two tabs; the Job pane's body only on Job. */
+/** The embedded form pane shows on Edit / Bill / Costs (one region at a time); the Job pane's body only on Job. */
 export function jobWindowFormPaneHidden(tab: JobWindowTabKey): boolean {
   return tab === 'job' || tab === 'history'
+}
+
+/** The form region a window tab shows; the form pane is hidden on the others. */
+export type JobWindowFormRegion = 'edit' | 'bill' | 'costs'
+export function jobWindowFormRegionForTab(tab: JobWindowTabKey): JobWindowFormRegion {
+  return tab === 'bill' ? 'bill' : tab === 'costs' ? 'costs' : 'edit'
 }
 
 /** Single-job history looks back further than the Projects default (90 d): a job's life is longer than a quarter. */

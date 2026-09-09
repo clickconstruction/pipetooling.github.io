@@ -1,5 +1,5 @@
 import { lazy, Suspense, useRef, useState, type CSSProperties } from 'react'
-import { JOB_WINDOW_TAB_LABELS, jobWindowFormPaneHidden, type JobWindowTabKey } from '../../lib/jobs/jobHistoryTab'
+import { JOB_WINDOW_TAB_LABELS, jobWindowFormPaneHidden, jobWindowFormRegionForTab, type JobWindowTabKey } from '../../lib/jobs/jobHistoryTab'
 import DetailJobModal, {
   type DetailJobModalAssignedJobRow,
   type DetailJobScheduleContext,
@@ -9,10 +9,12 @@ import type { JobWithDetails } from '../../types/jobWithDetails'
 
 /**
  * The tabbed Job window (v2.1675, owner-approved mockup): ONE modal for a job
- * with three tabs — Job (the read view, DetailJobModal in pane mode) · Edit
- * (identity/team/customer/links/line items) · Bill (the billing half) — and a
- * single ✕. The Edit and Bill tabs are ONE JobFormModal instance in embedded
- * mode showing one region at a time; everything stays mounted (display-toggled)
+ * with five tabs — Job (the read view, DetailJobModal in pane mode) · Edit
+ * (identity/team/customer/links) · Bill (money in: line items, invoices,
+ * payments) · Costs (money out: Cost Timeline, team + sub labor, parts —
+ * split out of Bill, owner call) · History — and a single ✕. Edit, Bill and
+ * Costs are ONE JobFormModal instance in embedded mode showing one region at
+ * a time; everything stays mounted (display-toggled)
  * so switching tabs never loses state, and the form's autosave slices mean
  * there is no Save button anywhere.
  *
@@ -223,11 +225,12 @@ export function JobWindowModal({
               autoOpenSupplyHouseShare={autoOpenSupplyHouseShare}
               externalRefreshKey={detailRefreshKey}
               onEscBlockedChange={setDetailEscBlocked}
+              onRequestTab={setTab}
             />
           </div>
-          {/* Edit + Bill panes — ONE form instance; the region prop picks which
-              half shows. Hidden entirely on the Job tab. */}
-          <div style={jobWindowFormPaneHidden(tab) ? { display: 'none' } : undefined} role="tabpanel" aria-label={tab === 'bill' ? 'Bill' : 'Edit'}>
+          {/* Edit + Bill + Costs panes — ONE form instance; the region prop picks
+              which third shows. Hidden entirely on the Job and History tabs. */}
+          <div style={jobWindowFormPaneHidden(tab) ? { display: 'none' } : undefined} role="tabpanel" aria-label={TAB_LABELS[jobWindowFormRegionForTab(tab)]}>
             <JobFormModal
               mode="edit"
               editJobId={jobId}
@@ -241,7 +244,7 @@ export function JobWindowModal({
                 setDetailRefreshKey((k) => k + 1)
                 onSaved?.()
               }}
-              embeddedRegion={tab === 'bill' ? 'bill' : 'edit'}
+              embeddedRegion={jobWindowFormRegionForTab(tab)}
               onRequestRegion={(region) => setTab(region)}
               registerRequestClose={(fn) => {
                 formCloseRef.current = fn
