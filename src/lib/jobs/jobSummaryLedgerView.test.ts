@@ -10,6 +10,7 @@ import {
   jobSummaryCompareWindow,
   jobSummaryRowUnderTarget,
   filterAndSortJobSummaryRows,
+  jobSummaryRowsHiddenByStatus,
   jobSummaryHygiene,
   jobSummaryRowInWindow,
   jobSummaryWindowStartYmd,
@@ -215,6 +216,17 @@ describe('filter + sort + totals', () => {
     expect(inProgress.map((r) => r.row.job.id)).toEqual(['j990', 'j000'])
     const searched = filterAndSortJobSummaryRows({ rows: enriched, prefs: { ...JOB_SUMMARY_VIEW_DEFAULTS, status: 'all' }, search: '904', startYmd: '2026-01-01', endYmd: '2026-09-03' })
     expect(searched.map((r) => r.row.job.id)).toEqual(['j904'])
+  })
+
+  it('counts the rows a search finds that the Show chip hides (v2.3178)', () => {
+    const args = { rows: enriched, search: '', startYmd: '2026-01-01', endYmd: '2026-09-03' }
+    // Finished hides the two in-progress jobs; In progress hides the three finished ones; All hides nothing.
+    expect(jobSummaryRowsHiddenByStatus({ ...args, prefs: JOB_SUMMARY_VIEW_DEFAULTS })).toBe(2)
+    expect(jobSummaryRowsHiddenByStatus({ ...args, prefs: { ...JOB_SUMMARY_VIEW_DEFAULTS, status: 'in_progress' } })).toBe(3)
+    expect(jobSummaryRowsHiddenByStatus({ ...args, prefs: { ...JOB_SUMMARY_VIEW_DEFAULTS, status: 'all' } })).toBe(0)
+    // A search for an in-progress job under Finished: nothing visible, one hidden.
+    expect(filterAndSortJobSummaryRows({ ...args, search: '990', prefs: JOB_SUMMARY_VIEW_DEFAULTS })).toHaveLength(0)
+    expect(jobSummaryRowsHiddenByStatus({ ...args, search: '990', prefs: JOB_SUMMARY_VIEW_DEFAULTS })).toBe(1)
   })
 
   it('sorts by any key with nulls last, and by job number numeric-aware with blanks first', () => {

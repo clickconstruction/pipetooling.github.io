@@ -55,6 +55,7 @@ import { useBodyScrollLock } from '../../hooks/useBodyScrollLock'
 import { useNarrowViewport640 } from '../../hooks/useNarrowViewport640'
 import { useJobMaterialsCostSnapshot } from '../../hooks/useJobMaterialsCostSnapshot'
 import { useJobDetailSubLaborCost } from '../../hooks/useJobDetailSubLaborCost'
+import { useJobDetailTeamLabor } from '../../hooks/useJobDetailTeamLabor'
 import { useJobDetailScheduleAndSessions } from '../../hooks/useJobDetailScheduleAndSessions'
 import { useJobClockSessionBounds } from '../../hooks/useJobClockSessionBounds'
 import { useJobThreadNotesForModal } from '../../hooks/useJobThreadNotesForModal'
@@ -833,6 +834,14 @@ export default function DetailJobModal({
     data: profitLaborData,
     failed: profitLaborFailed,
   } = useJobDetailSubLaborCost(showProfitSection, fullJob?.id ?? null)
+  // Team labor row on the cost block (v2.3178): dev / master / controller only —
+  // the same wage gate as the chart's 👷 stream. Reloads with the edit form's
+  // saves via materialsCostRefreshKey, like the parts snapshot.
+  const showTeamLaborRow = useMemo(
+    () => Boolean(showMaterialsCostSection && fullJob != null && showJobCostBreakdownTeamLabor(authRole)),
+    [showMaterialsCostSection, fullJob, authRole],
+  )
+  const teamLaborRowState = useJobDetailTeamLabor(showTeamLaborRow, fullJob?.id ?? null, materialsCostRefreshKey)
   const profitSummary = useMemo(() => {
     if (!showProfitSection || fullJob == null || profitLaborData == null || materialsSnapshot == null) return null
     if (materialsSnapshot.tallyFetchFailed || materialsSnapshot.supplyInvoiceRpcFailed || materialsSnapshot.mercuryFetchFailed)
@@ -2035,6 +2044,7 @@ export default function DetailJobModal({
                   snapshot={materialsSnapshot}
                   canExpand={canExpandJobDetailMaterials(authRole)}
                   billedMaterials={fullJob.materials ?? []}
+                  teamLabor={showTeamLaborRow ? teamLaborRowState : undefined}
                 />
                 <JobChargesTimelineStandalone job={fullJob} includeTeamLabor={showJobCostBreakdownTeamLabor(authRole)} />
               </>

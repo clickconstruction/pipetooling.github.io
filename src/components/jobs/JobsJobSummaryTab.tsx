@@ -614,7 +614,23 @@ export default function JobsJobSummaryTab({
             <p style={{ color: 'var(--text-muted)' }}>No billing jobs yet. Add jobs in Billing to see the summary.</p>
           ) : view.rows.length === 0 ? (
             <p style={{ color: 'var(--text-muted)' }}>
-              No jobs match — try <strong>All</strong> under Show, a wider window under Worked in, or clear the search.
+              {view.hiddenByStatus > 0 ? (
+                <>
+                  {/* v2.3178: name the rows the Show chip is hiding — "the job isn't on Job Summary" was this. */}
+                  {view.hiddenByStatus === 1 ? '1 job matches' : `${view.hiddenByStatus} jobs match`} but {view.prefs.status === 'finished' ? 'isn’t finished yet' : 'is already finished'}
+                  {' — '}
+                  <button
+                    type="button"
+                    onClick={() => view.setPrefs({ status: 'all' })}
+                    style={{ padding: 0, border: 'none', background: 'transparent', color: 'var(--text-link)', cursor: 'pointer', font: 'inherit', textDecoration: 'underline' }}
+                  >
+                    show all statuses
+                  </button>
+                  .
+                </>
+              ) : (
+                <>No jobs match — try <strong>All</strong> under Show, a wider window under Worked in, or clear the search.</>
+              )}
             </p>
           ) : (
             <>

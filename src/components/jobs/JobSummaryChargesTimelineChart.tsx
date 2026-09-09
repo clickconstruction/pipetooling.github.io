@@ -395,7 +395,6 @@ export function JobChargesTimelineChartView({
   // dwarfs cost/profit, so it stays hidden until asked for.
   const [showValueAxis, setShowValueAxis] = useState(false)
   // Legend details (marker + cost-source key) fold behind an ⓘ (owner call, v2.1692).
-  const [legendHelpOpen, setLegendHelpOpen] = useState(false)
   const valueShown = data.valueSeriesAvailable && showValueAxis
 
   return (
@@ -501,27 +500,10 @@ export function JobChargesTimelineChartView({
             <span style={{ color: 'var(--text-link)', fontWeight: 600 }}>Blue</span> = value created
             (report % × job total, right axis)
           </>
-        )}{' '}
-        <button
-          type="button"
-          onClick={() => setLegendHelpOpen((v) => !v)}
-          aria-expanded={legendHelpOpen}
-          title="What the markers and cost icons mean"
-          style={{
-            padding: 0,
-            background: 'transparent',
-            border: 'none',
-            color: 'var(--text-link)',
-            fontSize: '0.6875rem',
-            cursor: 'pointer',
-            fontFamily: 'inherit',
-          }}
-        >
-          ⓘ {legendHelpOpen ? 'hide key' : 'what do the markers mean?'}
-        </button>
+        )}
       </p>
-      {legendHelpOpen && (
-        <p style={{ color: 'var(--text-faint)', fontSize: '0.6875rem', margin: '0.15rem 0 0', textAlign: 'center' }}>
+      {/* The marker key is always on (v2.3178, owner call) — the 👷 team-labor marker was invisible behind a link. */}
+      <p style={{ color: 'var(--text-faint)', fontSize: '0.6875rem', margin: '0.15rem 0 0', textAlign: 'center' }}>
           💵 = payment received · 🚩 = field report · Cost sources:{' '}
           {Object.values(JOB_CHARGE_SOURCE_META)
             .map((m) => `${m.icon} ${m.name}`)
@@ -535,7 +517,6 @@ export function JobChargesTimelineChartView({
             ' · Value point uses the job’s current % (no dated field report)'}
           {cardChargesExcluded && ' · Card charges not included (no Banking access)'}
         </p>
-      )}
     </div>
   )
 }

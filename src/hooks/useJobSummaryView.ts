@@ -24,6 +24,7 @@ import {
   type JobSummarySortKey,
   type JobSummaryTotals,
   type JobSummaryViewPrefs,
+  jobSummaryRowsHiddenByStatus
 } from '../lib/jobs/jobSummaryLedgerView'
 
 /**
@@ -48,6 +49,8 @@ export type JobSummaryViewBundle<R extends JobSummaryLedgerRowInput> = {
   /** Every enriched row before the Show / window / search filters (v2.2830, the Ahead view's open jobs). */
   allRows: JobSummaryEnrichedRow<R>[]
   totals: JobSummaryTotals
+  /** Rows the search finds that the Show chip hides (v2.3178). */
+  hiddenByStatus: number
   hygiene: JobSummaryHygiene | null
   /** Compare to (v2.2817): the second window's totals and the deltas; null when the chip is off or the window is "All". */
   compare: JobSummaryCompareBundle | null
@@ -213,6 +216,11 @@ export function useJobSummaryView<R extends JobSummaryLedgerRowInput & { job: { 
     [enriched, prefs, search, startYmd, endYmd],
   )
   const totals = useMemo(() => summarizeJobSummaryRows(visible), [visible])
+  // v2.3178: rows the search finds but the Show chip hides — the empty state names them.
+  const hiddenByStatus = useMemo(
+    () => jobSummaryRowsHiddenByStatus({ rows: enriched, prefs, search, startYmd, endYmd }),
+    [enriched, prefs, search, startYmd, endYmd],
+  )
   // Telemetry (v2.2852, journey-map Tier-1 #5): one `job-summary-view` row per open, naming the
   // status filter and whether the view opened on earned or contract revenue — so the next pass
   // on "% done" / earned revenue rides on what people actually open. Fire-and-forget.
@@ -241,5 +249,5 @@ export function useJobSummaryView<R extends JobSummaryLedgerRowInput & { job: { 
     return { ...compareWindow, rows: visiblePrior, ledger: cmp.ledger, totals: priorTotals, comparison: compareJobSummaryTotals(totals, priorTotals), trueMarginPctByGroupKey, ledgerLoading: cmp.loading, ledgerError: cmp.error }
   }, [compareWindow, rows, reportPctByJobId, cmp.ledger, cmp.loading, cmp.error, method, prefs, search, totals, cutCtx])
 
-  return { prefs, setPrefs, toggleSort, startYmd, endYmd, ledger: ledgerForWindow, ledgerLoading, ledgerError, reloadLedger, rows: visible, allRows: enriched, totals, hygiene, compare, groups, concentration }
+  return { prefs, setPrefs, toggleSort, startYmd, endYmd, ledger: ledgerForWindow, ledgerLoading, ledgerError, reloadLedger, rows: visible, allRows: enriched, totals, hiddenByStatus, hygiene, compare, groups, concentration }
 }
