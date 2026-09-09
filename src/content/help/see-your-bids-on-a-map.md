@@ -41,6 +41,16 @@ Clicking a pin also lights the bid's row on the board below and scrolls to it, s
 
 On a phone, tapping a pin shows the bid as a bar under the map instead of a pop-up, so the buttons stay big and the pin stays in view.
 
+## The rail beside the map
+
+On a desktop the map takes the left of the card and a rail on the right says what the map knows:
+
+- **By distance from the office** — three boxes: **≤ 25 mi**, **25–50 mi**, **50 mi +**, each with how many bids are pinned there, their total bid value, and how many are due soon. Tap a box to hide or show that band's pins, the same way the section chips work; tap it again to bring them back. Miles are the bid's Distance to Office when it has one, else the straight line from the office — the same yardstick as the rings.
+- **Unsent and due · nearest first** — the unsent bids with a due date: overdue first, then due soon, then closest to the office. Tap a row to jump to its pin and light its row on the board. "+ N more" means the list is capped at five.
+- The last line reads the pinned total — *146 pinned · $34.8M · Lost 71 off* — and carries the **no map location** link described below.
+
+On a phone the rail sits under the map: the three boxes in a row, then the due list.
+
 ## Add the addresses the map is missing
 
 Under the map, **N bids have no map location yet · add their addresses** is a link. It opens a sheet with every bid the map can't place — the ones with **no address** first, then the ones whose address the map **couldn't find** — each with its address ready to type or fix.
@@ -54,8 +64,4 @@ Saving an address on a bid whose **Distance to Office** is blank fills the dista
 
 ## Fit all, Hide map and the Map pill
 
-The map opens on the bids within about 150 miles of the office, so one bid in another state doesn't zoom it out to the whole country; those far pins are still drawn. {{button:outline-blue|Fit all}} frames every pin and the office, near and far. **Hide map** collapses the card to its title line; the choice is remembered on that device, and **Show map** brings it back. Tapping the **Bids on a map** title does the same thing in either direction. The **Map** pill in the sticky section row jumps to the card from anywhere on the board, and shows it if it was hidden.
-
-## A bid with no map location yet
-
-A bid whose address hasn't been placed on the map yet is listed under the map as *1 bid has no map location yet*, with its name as a link that lights its row so you can add or fix the address in Edit Bid. Addresses are looked up in the background the first time anyone's board needs them.
+The map opens on the 50-mile ring — the office, the pins inside the ring, and the ring itself — so one bid in another state doesn't zoom it out to the whole country; the far pins are still drawn, just off the first view. **Fit all** (beside **Hide map**) frames every pin and the office, near and far. There's no instruction line under the map any more; hover the **Bids on a map** title if you want the reminder of what pins, rings and chips do. **Hide map** collapses the card to its title line; the choice is remembered on that device, and **Show map** brings it back. Tapping the **Bids on a map** title does the same thing in either direction. The **Map** pill in the sticky section row jumps to the card from anywhere on the board, and shows it if it was hidden.

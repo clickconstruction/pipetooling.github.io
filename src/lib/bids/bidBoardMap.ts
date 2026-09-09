@@ -197,7 +197,8 @@ export function bidBoardMapVisiblePins(pins: readonly BidBoardMapPin[], show: Bi
  * reaches them. 150 mi keeps Houston in and Dallas / the Valley out — on a wide, short card a 300 mi
  * box already framed the whole Gulf coast.
  */
-export const BID_BOARD_MAP_HOME_FIT_MILES = 150
+/** v2.3206: the home fit frames the outer ring — pins inside 50 miles plus the ring's own extent. Fit all widens to every pin. */
+export const BID_BOARD_MAP_HOME_FIT_MILES = 50
 
 /** Great-circle distance in miles (haversine) — for the home fit only, never for a bid's distance. */
 export function milesBetween(a: { lat: number; lng: number }, b: { lat: number; lng: number }): number {
@@ -221,7 +222,19 @@ export function bidBoardMapHomeFitPoints(
   if (!anchor) return pins.map((p) => ({ lat: p.lat, lng: p.lng }))
   const near = pins.filter((p) => milesBetween(anchor, p) <= maxMiles).map((p) => ({ lat: p.lat, lng: p.lng }))
   if (near.length === 0) return [...pins.map((p) => ({ lat: p.lat, lng: p.lng })), { lat: anchor.lat, lng: anchor.lng }]
-  return [...near, { lat: anchor.lat, lng: anchor.lng }]
+  return [...near, { lat: anchor.lat, lng: anchor.lng }, ...ringExtentPoints(anchor, maxMiles)]
+}
+
+/** The four compass points of a ring, so the home fit always shows the whole ring, not just the pins inside it. */
+export function ringExtentPoints(anchor: { lat: number; lng: number }, miles: number): { lat: number; lng: number }[] {
+  const dLat = miles / 69
+  const dLng = miles / (69 * Math.max(0.2, Math.cos((anchor.lat * Math.PI) / 180)))
+  return [
+    { lat: anchor.lat + dLat, lng: anchor.lng },
+    { lat: anchor.lat - dLat, lng: anchor.lng },
+    { lat: anchor.lat, lng: anchor.lng + dLng },
+    { lat: anchor.lat, lng: anchor.lng - dLng },
+  ]
 }
 
 /** `96 mi from the office`; null when the bid has no distance yet. */
