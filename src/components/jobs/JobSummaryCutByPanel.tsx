@@ -111,7 +111,7 @@ export function JobSummaryGroupRow({
   const dColor = dPts == null ? 'var(--text-muted)' : Math.abs(dPts) < 0.5 ? 'var(--text-muted)' : dPts > 0 ? 'var(--text-green-700)' : 'var(--text-red-700)'
   return (
     <tr style={{ background: 'var(--bg-subtle)', borderTop: '2px solid var(--border-strong)' }}>
-      <td colSpan={3} style={{ ...cell, textAlign: 'left', color: 'var(--text-strong)' }}>
+      <td style={{ ...cell, textAlign: 'left', color: 'var(--text-strong)' }}>
         {group.label} <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}>· {t.jobs} {t.jobs === 1 ? 'job' : 'jobs'}</span>
       </td>
       <td style={cell}>{money(t.revenueUsd)}</td>

@@ -1,6 +1,5 @@
 /** Jobs → Job Summary tab: per-job cost rollup ledger with team-labor / parts / Mercury drilldowns.
  * Presentational — all data/state/loaders/modals live in the parent (Jobs.tsx) and arrive as props. */
-import { JobIdentityCell } from '../search/JobIdentityCell'
 import { jobSummaryRowDomId } from '../../lib/jobs/moneyStoryDoor'
 import type { CategoryTagColor } from '../../lib/banking/categoryTags'
 import { Fragment, type CSSProperties, type Dispatch, type KeyboardEvent, type ReactNode, type SetStateAction } from 'react'
@@ -60,6 +59,7 @@ import {
 import JobSummaryChargesTimelineChart from './JobSummaryChargesTimelineChart'
 import JobSummaryLedgerToolbar, { JobSummarySortHeader } from './JobSummaryLedgerToolbar'
 import JobSummaryCutByPanel, { JobSummaryGroupRow } from './JobSummaryCutByPanel'
+import { JobSummaryJobCell } from './JobSummaryJobCell'
 import JobSummaryDaysView, { type JobSummaryDaysJobLabel } from './JobSummaryDaysView'
 import JobSummaryMonthsView from './JobSummaryMonthsView'
 import JobSummaryCycleView from './JobSummaryCycleView'
@@ -623,9 +623,7 @@ export default function JobsJobSummaryTab({
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
                 <thead style={{ background: 'var(--bg-subtle)' }}>
                   <tr>
-                    <JobSummarySortHeader label="Job #" sortKey="job" view={view} align="left" />
-                    <th style={{ padding: '0.6rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Name</th>
-                    <th style={{ padding: '0.6rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Address</th>
+                    <JobSummarySortHeader label="Job" sortKey="job" view={view} align="left" title="Sort by job number" />
                     <JobSummarySortHeader label={view.totals.earnedRows > 0 ? 'Revenue*' : 'Revenue'} sortKey="revenue" view={view} title="Contract revenue on the job; in-progress jobs show earned revenue (contract × % complete)" />
                     <JobSummarySortHeader label="Labor" sortKey="labor" view={view} title="Team labor from payroll crew-days × wage" />
                     <JobSummarySortHeader label="Subs" sortKey="subs" view={view} title="Sub labor sheets matched to this job" />
@@ -727,26 +725,31 @@ export default function JobsJobSummaryTab({
                               background: expanded ? 'var(--bg-subtle)' : undefined,
                             }}
                           >
-                            <td style={{ padding: '0.75rem' }}>
-                              <span style={{ marginRight: '0.35rem', color: 'var(--text-muted)', userSelect: 'none' }} aria-hidden>
-                                {expanded ? '▼' : '▶'}
-                              </span>
-                              <JobIdentityCell hcpNumber={job.hcp_number} clickNumber={job.click_number} serviceTypeName={job.serviceType?.name} />
+                            {/* One identity cell — Job # · Name · Address folded into two lines (v2.3176). */}
+                            <td style={{ padding: '0.6rem 0.75rem', minWidth: '23rem' }}>
+                              <JobSummaryJobCell
+                                expanded={expanded}
+                                hcpNumber={job.hcp_number}
+                                clickNumber={job.click_number}
+                                serviceTypeName={job.serviceType?.name}
+                                jobName={job.job_name}
+                                address={job.job_address}
+                                chips={
+                                  <>
+                                    {showTeamLaborAndProfit && enriched.writeDownUsd > 0 ? (
+                                      <span title={`$${formatCurrency(enriched.writeDownUsd)} agreed off the bill`} style={{ fontSize: '0.66rem', fontWeight: 700, padding: '0.05rem 0.4rem', borderRadius: 999, background: 'var(--bg-amber-tint)', color: 'var(--text-amber-800)', whiteSpace: 'nowrap' }}>
+                                        ✂ write-down
+                                      </span>
+                                    ) : null}
+                                    {enriched.inCollections ? (
+                                      <span title="Flagged for collections" style={{ fontSize: '0.66rem', fontWeight: 700, padding: '0.05rem 0.4rem', borderRadius: 999, background: 'var(--bg-red-tint)', color: 'var(--text-red-700)', whiteSpace: 'nowrap' }}>
+                                        ⚑ collections
+                                      </span>
+                                    ) : null}
+                                  </>
+                                }
+                              />
                             </td>
-                            <td style={{ padding: '0.75rem' }}>
-                              {job.job_name ?? '—'}
-                              {showTeamLaborAndProfit && enriched.writeDownUsd > 0 ? (
-                                <span title={`$${formatCurrency(enriched.writeDownUsd)} agreed off the bill`} style={{ marginLeft: 6, fontSize: '0.66rem', fontWeight: 700, padding: '0.05rem 0.4rem', borderRadius: 999, background: 'var(--bg-amber-tint)', color: 'var(--text-amber-800)', whiteSpace: 'nowrap' }}>
-                                  ✂ write-down
-                                </span>
-                              ) : null}
-                              {enriched.inCollections ? (
-                                <span title="Flagged for collections" style={{ marginLeft: 6, fontSize: '0.66rem', fontWeight: 700, padding: '0.05rem 0.4rem', borderRadius: 999, background: 'var(--bg-red-tint)', color: 'var(--text-red-700)', whiteSpace: 'nowrap' }}>
-                                  ⚑ collections
-                                </span>
-                              ) : null}
-                            </td>
-                            <td style={{ padding: '0.75rem' }}>{job.job_address ?? '—'}</td>
                             <td style={{ padding: '0.75rem', textAlign: 'right', whiteSpace: 'nowrap' }} title={enriched.flags.includes('earned') ? `Earned: $${formatCurrency(enriched.contractUsd)} contract × ${enriched.flags.includes('assumed-50') ? '50% (no % yet — assumed)' : `${enriched.pct}%`}` : undefined}>
                               {enriched.revenueUsd === 0 ? '—' : `$${formatCurrency(enriched.revenueUsd)}`}
                               {enriched.flags.includes('earned') ? <span style={{ marginLeft: 4, fontSize: '0.68rem', color: 'var(--text-muted)' }}>earned{enriched.flags.includes('assumed-50') ? ' ½?' : ''}</span> : null}
@@ -810,7 +813,7 @@ export default function JobsJobSummaryTab({
                         const overheadMethodLabel = JOB_OVERHEAD_METHODS.find((m) => m.key === view.prefs.method)?.label ?? 'Day-share'
                         const detailRow = (
                           <tr key={`${job.id}-summary-detail`}>
-                            <td colSpan={15} style={{ padding: 0, borderBottom: '1px solid var(--border)', background: 'var(--bg-page)' }}>
+                            <td colSpan={13} style={{ padding: 0, borderBottom: '1px solid var(--border)', background: 'var(--bg-page)' }}>
                               <div style={{ padding: '0.75rem 1rem', fontSize: '0.8125rem' }}>
                                 <JobSummaryExpandedHeader
                                   job={job}
@@ -3041,7 +3044,7 @@ export default function JobsJobSummaryTab({
                 </tbody>
                 <tfoot>
                   <tr style={{ background: 'var(--bg-subtle)', fontWeight: 700, borderTop: '2px solid var(--border-strong)' }}>
-                    <td colSpan={3} style={{ padding: '0.6rem 0.75rem' }}>
+                    <td style={{ padding: '0.6rem 0.75rem' }}>
                       {view.totals.jobs} {view.totals.jobs === 1 ? 'job' : 'jobs'}
                     </td>
                     <td style={{ padding: '0.6rem 0.75rem', textAlign: 'right' }}>${formatCurrency(view.totals.revenueUsd)}</td>
