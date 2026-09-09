@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState, type Dispatch, type SetStateAction } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type Dispatch, type SetStateAction } from 'react'
 import { useAuth } from '../../hooks/useAuth'
 import { isAssistantLike } from '../../lib/subcontractorLikeRole'
 import type { Person, PersonKind, UserRow } from '../../hooks/usePeopleRoster'
@@ -15,6 +15,10 @@ import { ClockSessionEditSplitModal } from '../ClockSessionEditSplitModal'
 import type { ClockSessionRow } from '../../types/clockSessions'
 import { USERS_TAB_FILTERS, describeGroupCount, foldNoLoginRows, orderUsersTabRows, rowMatchesFilter, type UsersTabFilter, applyRowNeeds } from '../../lib/people/usersTabRows'
 import { UsersTabRow, type UsersTabRowMenuAction } from './UsersTabRow'
+import { UsersTabPhoneRow } from './UsersTabPhoneRow'
+import { USERS_TAB_PHONE_FILTERS, countUsersTabFilter } from '../../lib/people/usersTabPhone'
+import { loginAsUser } from '../../lib/loginAsUser'
+import { APP_HOSTNAME, appUrl } from '../../lib/appOrigin'
 import { PeopleUserTagsPanel } from './PeopleUserTagsPanel'
 import {
   buildUsersTabKindRoster,
@@ -138,6 +142,18 @@ export function PeopleUsersTab({
   const [hoursQueueReload, setHoursQueueReload] = useState(0)
   const [editSession, setEditSession] = useState<ClockSessionRow | null>(null)
   const [teamLeadsModalOpen, setTeamLeadsModalOpen] = useState(false)
+  // Phone directory (v2.3185): which row's swipe strip is open (one at a time), and the toolbar's ⋯ menu.
+  const [swipeOpenId, setSwipeOpenId] = useState<string | null>(null)
+  const [phoneToolsOpen, setPhoneToolsOpen] = useState(false)
+  const phoneToolsRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (!phoneToolsOpen) return
+    const onDown = (e: MouseEvent) => {
+      if (phoneToolsRef.current && !phoneToolsRef.current.contains(e.target as Node)) setPhoneToolsOpen(false)
+    }
+    document.addEventListener('mousedown', onDown)
+    return () => document.removeEventListener('mousedown', onDown)
+  }, [phoneToolsOpen])
 
   const byKind = useCallback(
     (k: PersonKind) => buildUsersTabKindRoster(k, users, people),
@@ -288,6 +304,47 @@ export function PeopleUsersTab({
     )
   }
 
+  /** Phone directory (v2.3185): imitate from the swipe strip — one tap, no confirm, same login door as the desktop row's icon. */
+  async function imitateOnPhone(item: UsersTabRosterListRow) {
+    const host = window.location.hostname
+    const redirect = host === APP_HOSTNAME ? appUrl('/dashboard') : host === 'localhost' || host === '127.0.0.1' ? `${window.location.origin}/dashboard` : null
+    if (!redirect || !item.email) return
+    setLoggingInAsId(item.id)
+    setError(null)
+    try {
+      await loginAsUser({ email: item.email }, redirect)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to imitate')
+    } finally {
+      setLoggingInAsId(null)
+    }
+  }
+
+  function renderUsersTabPhoneRow(sectionKind: PersonKind | 'dev', item: UsersTabRosterListRow, rail: RailRow) {
+    const person = item.source === 'people' ? (item as Person) : null
+    const rowId = item.source === 'user' ? `user-${item.id}` : `people-${item.id}`
+    const host = typeof window !== 'undefined' ? window.location.hostname : ''
+    const canImitate = isDev && item.source === 'user' && !!item.email && (host === APP_HOSTNAME || host === 'localhost' || host === '127.0.0.1')
+    return (
+      <UsersTabPhoneRow
+        key={rowId}
+        item={{ source: item.source, id: item.id, name: item.name, email: item.email, phone: ('phone' in item ? item.phone : null) ?? null, notes: ('notes' in item ? item.notes : null) ?? null, master_user_id: person?.master_user_id }}
+        rail={rail}
+        openDesk={personDesk?.canOpen ? () => personDesk.open(item.source === 'user' ? { userId: item.id, displayName: item.name } : { personId: item.id, displayName: item.name }) : undefined}
+        imitate={canImitate ? () => void imitateOnPhone(item) : undefined}
+        imitating={loggingInAsId === item.id}
+        more={menuFor(sectionKind, item).filter((m) => m.key !== 'desk')}
+        swipeOpen={swipeOpenId === rowId}
+        onSwipeChange={(open) => setSwipeOpenId((cur) => (open ? rowId : cur === rowId ? null : cur))}
+        below={
+          isDev && usersTabTags.showUsersTabTags ? (
+            <PeopleUserTagsPanel anchor={resolveUsersTabTagAnchor({ source: item.source, id: item.id, email: item.email }, sectionKind === 'dev' ? null : sectionKind)} people={people} tags={usersTabTags} showToast={showToast} />
+          ) : null
+        }
+      />
+    )
+  }
+
   /** One group (a kind, or the devs): filtered, ordered, folded. Returns null when nothing in it shows. */
   function renderGroup(sectionKind: PersonKind | 'dev') {
     const items: UsersTabRosterListRow[] =
@@ -304,6 +361,43 @@ export function PeopleUsersTab({
     const forceOpen = Boolean(usersTabSearchQ) || filter === 'nologin' || (sectionKind !== 'dev' && noLoginOpenKinds.has(sectionKind))
     const { shown, folded } = foldNoLoginRows(orderedRails, { forceOpen })
     const rowOf = (r: RailRow) => byKey.get(r.userId ?? r.personId ?? r.name)
+    if (narrowViewport) {
+      // Phone directory (v2.3185): one card per kind, the header sticks while its list scrolls, Add is a text link.
+      return (
+        <section key={`users-tab-${sectionKind}`} style={{ marginBottom: '0.6rem', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, overflow: 'clip' }}>
+          <div style={{ position: 'sticky', top: 0, zIndex: 2, background: 'var(--surface)', display: 'flex', alignItems: 'baseline', gap: '0.5rem', padding: '0.55rem 0.75rem 0.25rem' }}>
+            <h2 style={{ margin: 0, fontSize: '0.78rem', letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-muted)' }}>{label}</h2>
+            <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{describeGroupCount(rails.map((v) => v.rail))}</span>
+            {sectionKind !== 'dev' && canCreatePeopleInRoster ? (
+              <button type="button" onClick={() => openAdd(sectionKind)} style={{ marginLeft: 'auto', border: 'none', background: 'none', padding: 0, color: 'var(--text-link)', fontWeight: 600, fontSize: '0.85rem', cursor: 'pointer', fontFamily: 'inherit' }}>
+                + Add
+              </button>
+            ) : null}
+          </div>
+          {!hasAnyRows ? (
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: 0, padding: '0.4rem 0.75rem 0.7rem' }}>None yet.</p>
+          ) : (
+            <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+              {shown.map((r) => {
+                const v = rowOf(r)
+                return v ? renderUsersTabPhoneRow(sectionKind, v.item, v.rail) : null
+              })}
+              {folded.length > 0 && sectionKind !== 'dev' ? (
+                <li style={{ borderTop: '1px solid var(--border)' }}>
+                  <button
+                    type="button"
+                    onClick={() => setNoLoginOpenKinds((prev) => new Set(prev).add(sectionKind))}
+                    style={{ width: '100%', textAlign: 'left', border: 'none', background: 'none', padding: '0.55rem 0.75rem', cursor: 'pointer', color: 'var(--text-link)', fontFamily: 'inherit', fontSize: '0.85rem', fontWeight: 600 }}
+                  >
+                    + {folded.length} more without a login
+                  </button>
+                </li>
+              ) : null}
+            </ul>
+          )}
+        </section>
+      )
+    }
     return (
       <section key={`users-tab-${sectionKind}`} style={{ marginBottom: '1.5rem' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '0.35rem', gap: '0.5rem' }}>
@@ -341,12 +435,110 @@ export function PeopleUsersTab({
     )
   }
 
+  // Phone directory (v2.3185): the two counted chips read every group's rows once per render.
+  const phoneFilterCounts = narrowViewport
+    ? (() => {
+        const rails: RailRow[] = []
+        for (const sec of USERS_TAB_SECTIONS) {
+          if (sec.type === 'dev') {
+            if (isDev) for (const u of users.filter((x) => x.role === 'dev')) rails.push(railFor('dev', { source: 'user', id: u.id, name: u.name, email: u.email, phone: u.phone ?? null, notes: u.notes }))
+          } else {
+            for (const item of byKind(sec.kind)) rails.push(railFor(sec.kind, item))
+          }
+        }
+        return { attention: countUsersTabFilter(rails, 'attention'), hours: countUsersTabFilter(rails, 'hours') }
+      })()
+    : null
+  const phoneTools: Array<{ key: string; label: string; onClick: () => void }> = [
+    ...(canManageTeamLeads ? [{ key: 'leads', label: 'Team leads', onClick: () => setTeamLeadsModalOpen(true) }] : []),
+    ...(onOpenActiveAccounts ? [{ key: 'accounts', label: 'Accounts · dev', onClick: () => onOpenActiveAccounts() }] : []),
+    {
+      key: 'archived',
+      label: `Archived (${archivedPeople.length})`,
+      onClick: () => {
+        setArchivedSectionOpen((prev) => !prev)
+        setTimeout(() => document.getElementById('users-tab-archived')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50)
+      },
+    },
+  ]
+
   return (
     <>
       {error && <p style={{ color: 'var(--text-red-700)', marginBottom: '1rem' }}>{error}</p>}
       {/* Wraps on phones: the search box plus both nowrap buttons need ~440px of
           min-content, which floored the whole page at 375px (E2E phone-overflow
           smoke). Wrapping keeps the one-row desktop layout untouched. */}
+      {narrowViewport ? (
+        /* Phone directory (v2.3185): search + Add + a ⋯ menu for the rarely-used doors; not sticky, so the
+           group headers can pin instead; the filter chips are one row that scrolls sideways. */
+        <div style={{ marginBottom: '0.6rem' }}>
+          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+            <input
+              type="search"
+              value={usersTabSearch}
+              onChange={(e) => setUsersTabSearch(e.target.value)}
+              placeholder="Search name, email, phone…"
+              aria-label="Search people on Users tab"
+              style={{ flex: '1 1 8rem', minWidth: 0, padding: '0.45rem 0.7rem', fontSize: '0.9375rem', lineHeight: 1.35, border: '1px solid var(--border-strong)', borderRadius: 8, boxSizing: 'border-box' }}
+            />
+            {canCreatePeopleInRoster ? (
+              <button type="button" onClick={() => openAdd('helper')} title="Add to roster" style={{ whiteSpace: 'nowrap', padding: '0.45rem 0.8rem', fontSize: '0.9375rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 8, cursor: 'pointer', fontWeight: 600, fontFamily: 'inherit' }}>
+                + Add
+              </button>
+            ) : null}
+            <div ref={phoneToolsRef} style={{ position: 'relative', flexShrink: 0 }}>
+              <button
+                type="button"
+                aria-haspopup="menu"
+                aria-expanded={phoneToolsOpen}
+                aria-label="More tools"
+                onClick={() => setPhoneToolsOpen((v) => !v)}
+                style={{ border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-700)', borderRadius: 8, padding: '0.35rem 0.7rem', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', fontSize: '1rem', lineHeight: 1.35 }}
+              >
+                ⋯
+              </button>
+              {phoneToolsOpen ? (
+                <div role="menu" style={{ position: 'absolute', right: 0, top: 'calc(100% + 4px)', zIndex: 5, minWidth: '11rem', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, boxShadow: '0 8px 24px rgba(0, 0, 0, 0.18)', padding: '0.25rem' }}>
+                  {phoneTools.map((t) => (
+                    <button
+                      key={t.key}
+                      type="button"
+                      role="menuitem"
+                      onClick={() => {
+                        setPhoneToolsOpen(false)
+                        t.onClick()
+                      }}
+                      style={{ display: 'block', width: '100%', textAlign: 'left', border: 'none', background: 'none', padding: '0.5rem 0.6rem', fontSize: '0.9rem', color: 'var(--text-700)', cursor: 'pointer', fontFamily: 'inherit', borderRadius: 6 }}
+                    >
+                      {t.label}
+                    </button>
+                  ))}
+                </div>
+              ) : null}
+            </div>
+          </div>
+          <div role="group" aria-label="Filter people" style={{ display: 'flex', gap: '0.35rem', overflowX: 'auto', marginTop: '0.5rem', paddingBottom: 2, scrollbarWidth: 'none' }}>
+            {USERS_TAB_PHONE_FILTERS.map((f) => {
+              const n = f.key === 'attention' ? phoneFilterCounts?.attention : f.key === 'hours' ? phoneFilterCounts?.hours : null
+              const on = filter === f.key
+              return (
+                <button
+                  key={f.key}
+                  type="button"
+                  aria-pressed={on}
+                  onClick={() => setFilter(f.key)}
+                  style={{ flex: 'none', display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: '0.8rem', fontWeight: 600, borderRadius: 999, padding: '0.2rem 0.7rem', cursor: 'pointer', fontFamily: 'inherit', border: on ? '1px solid #2563eb' : '1px solid var(--border)', background: on ? '#2563eb' : 'var(--surface)', color: on ? '#fff' : 'var(--text-700)' }}
+                >
+                  {f.label}
+                  {f.counted && n != null && n > 0 ? (
+                    <span style={{ fontSize: '0.7rem', borderRadius: 999, padding: '0 0.4rem', background: on ? 'rgba(255, 255, 255, 0.25)' : 'var(--bg-muted)', color: on ? '#fff' : 'var(--text-700)' }}>{n}</span>
+                  ) : null}
+                </button>
+              )
+            })}
+          </div>
+        </div>
+      ) : (
       <div style={{ position: 'sticky', top: 0, zIndex: 3, background: 'var(--bg-page)', padding: '0.25rem 0 0.5rem', marginBottom: '0.75rem' }}>
         <div style={{ width: '100%', display: 'flex', flexWrap: 'wrap', gap: '0.5rem', alignItems: 'center' }}>
           <input
@@ -409,6 +601,7 @@ export function PeopleUsersTab({
           ))}
         </div>
       </div>
+      )}
       {usersTabSearchShowsNoSections ? (
         <p role="status" style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: '0 0 1rem 0' }}>
           No matches.
