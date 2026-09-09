@@ -160,6 +160,33 @@ export function bidBoardMapLegend(pins: readonly BidBoardMapPin[]): { section: S
   return BID_BOARD_MAP_SECTIONS.map((section) => ({ section, count: counts[section] }))
 }
 
+// ── Section tour (v2.3208) ──────────────────────────────────────────────────
+//
+// The header's Play button walks the map through its section views — one
+// section alone on the map, a beat each, that chip lit — so a room can watch
+// where the unsent work, the pending work and the wins sit without anyone
+// clicking chips. Pause holds whatever view is up; any chip click also stops it.
+
+/** How long each view of the tour stays up. */
+export const BID_BOARD_MAP_TOUR_INTERVAL_MS = 2000
+
+/** The tour's stops: the sections that have pins, in board order. An empty section is skipped — two seconds of blank map says nothing. */
+export function bidBoardMapTourStops(legend: readonly { section: SubmissionSectionKey; count: number }[]): SubmissionSectionKey[] {
+  return legend.filter((l) => l.count > 0).map((l) => l.section)
+}
+
+/** The stop after `current` (wrapping); the first stop from a standing start or when `current` has emptied out; null with no stops. */
+export function bidBoardMapTourNext(current: SubmissionSectionKey | null, stops: readonly SubmissionSectionKey[]): SubmissionSectionKey | null {
+  if (stops.length === 0) return null
+  const i = current ? stops.indexOf(current) : -1
+  return stops[(i + 1) % stops.length] ?? null
+}
+
+/** The legend state for one tour view: that section on, every other off. */
+export function bidBoardMapTourVisibility(section: SubmissionSectionKey): BidBoardMapSectionVisibility {
+  return { unsent: false, pending: false, won: false, startedOrComplete: false, lost: false, [section]: true }
+}
+
 /** The pins the canvas draws — sections toggled off in the legend are dropped. */
 export function bidBoardMapVisiblePins(pins: readonly BidBoardMapPin[], show: BidBoardMapSectionVisibility): BidBoardMapPin[] {
   return pins.filter((p) => show[p.section])

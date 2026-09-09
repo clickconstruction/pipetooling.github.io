@@ -10,13 +10,15 @@
  * Interactions: a pin selects the bid — its popup (desktop) / bar (phone)
  * carries Open bid (the preview modal), Edit (Edit Bid) and Directions — and
  * lights the bid's row on the board below (`onFocusRow`). The legend chips
- * toggle sections on the map only, never on the board. The office anchor and
+ * toggle sections on the map only, never on the board. **Play** (v2.3208)
+ * tours the section views — one section alone for two seconds each, that
+ * chip lit — and **Pause** holds the view that is up. The office anchor and
  * its 25 / 50 mile rings come from the same setting the bid form's Distance
  * to Office auto-fill uses (`resolveOfficeAnchor`). Google Maps when a
  * browser key is configured and loads, OpenStreetMap otherwise — the
  * Dashboard card's provider rule.
  */
-import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { BidWithBuilder } from '../../types/bidWithBuilder'
 import type { LedgerPrefixMap } from '../../lib/ledgerDisplayPrefixes'
 import { useAddressGeocodeCoords, type AddressToGeocode } from '../../hooks/useAddressGeocodeCoords'
@@ -37,11 +39,15 @@ import {
   BID_BOARD_MAP_RING_MILES,
   BID_BOARD_MAP_SECTION_COLOR,
   BID_BOARD_MAP_SECTION_LABEL,
+  BID_BOARD_MAP_TOUR_INTERVAL_MS,
   bidBoardMapBids,
   bidBoardMapDirectionsUrl,
   bidBoardMapDistanceLine,
   bidBoardMapHomeFitPoints,
   bidBoardMapLegend,
+  bidBoardMapTourNext,
+  bidBoardMapTourStops,
+  bidBoardMapTourVisibility,
   bidBoardMapUnmappedLine,
   bidBoardMapVisiblePins,
   readBidBoardMapHidden,
@@ -111,6 +117,19 @@ function PinGlyph() {
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
       <path d="M12 21s-6-5.2-6-10a6 6 0 0 1 12 0c0 4.8-6 10-6 10z" />
       <circle cx="12" cy="11" r="2.25" />
+    </svg>
+  )
+}
+
+function PlayGlyph({ playing }: { playing: boolean }) {
+  return playing ? (
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+      <rect x="5" y="4" width="5" height="16" rx="1" />
+      <rect x="14" y="4" width="5" height="16" rx="1" />
+    </svg>
+  ) : (
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+      <path d="M7 4.5v15a1 1 0 0 0 1.5.86l12-7.5a1 1 0 0 0 0-1.72l-12-7.5A1 1 0 0 0 7 4.5z" />
     </svg>
   )
 }
@@ -197,14 +216,23 @@ function BidPinBody({
 function SectionChips({
   legend,
   show,
+  lit,
   onToggle,
   isMobile,
 }: {
   legend: { section: SubmissionSectionKey; count: number }[]
   show: BidBoardMapSectionVisibility
+  /** The tour's current view — that chip fills with its section color and a two-second underline runs across it. */
+  lit: SubmissionSectionKey | null
   onToggle: (section: SubmissionSectionKey) => void
   isMobile: boolean
 }) {
+  // The phone row scrolls sideways — bring the lit chip into view at each stop so the tour is never running off-screen.
+  const litRef = useRef<HTMLButtonElement | null>(null)
+  useEffect(() => {
+    if (!lit || !isMobile) return
+    litRef.current?.scrollIntoView?.({ block: 'nearest', inline: 'nearest', behavior: 'smooth' })
+  }, [lit, isMobile])
   return (
     <div
       role="group"
@@ -214,35 +242,46 @@ function SectionChips({
       {legend.map((l) => {
         const on = show[l.section]
         const c = BID_BOARD_MAP_SECTION_COLOR[l.section]
+        const isLit = lit === l.section
         return (
           <button
             key={l.section}
+            ref={isLit ? litRef : undefined}
             type="button"
             onClick={() => onToggle(l.section)}
             aria-pressed={on}
+            aria-current={isLit ? 'true' : undefined}
+            data-tour-lit={isLit ? 'true' : undefined}
             title={on ? `Hide ${BID_BOARD_MAP_SECTION_LABEL[l.section]} pins` : `Show ${BID_BOARD_MAP_SECTION_LABEL[l.section]} pins`}
             style={{
               flex: '0 0 auto',
+              position: 'relative',
+              overflow: 'hidden',
               display: 'inline-flex',
               alignItems: 'center',
               gap: 6,
               padding: isMobile ? '0.3rem 0.6rem' : '0.15rem 0.6rem',
               minHeight: isMobile ? 36 : undefined,
-              border: '1px solid var(--border-strong)',
+              border: `1px solid ${isLit ? c : 'var(--border-strong)'}`,
               borderRadius: 999,
-              background: 'var(--surface)',
-              color: 'var(--text-700)',
+              background: isLit ? c : 'var(--surface)',
+              color: isLit ? 'white' : 'var(--text-700)',
               fontSize: '0.8rem',
               fontWeight: 600,
               cursor: 'pointer',
               whiteSpace: 'nowrap',
               opacity: on ? 1 : 0.45,
               fontFamily: 'inherit',
+              transition: 'background 150ms, color 150ms, border-color 150ms',
             }}
           >
-            <span aria-hidden style={{ width: 9, height: 9, borderRadius: 999, background: on ? c : 'var(--text-faint-300)', display: 'inline-block' }} />
+            <span aria-hidden style={{ width: 9, height: 9, borderRadius: 999, background: isLit ? 'white' : on ? c : 'var(--text-faint-300)', display: 'inline-block' }} />
             {BID_BOARD_MAP_SECTION_LABEL[l.section]}
-            <span style={{ fontWeight: 500, color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}>{l.count}</span>
+            <span style={{ fontWeight: 500, color: isLit ? 'rgba(255,255,255,0.85)' : 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}>{l.count}</span>
+            {isLit ? (
+              // keyed on the section so the underline restarts from zero at every stop
+              <span key={l.section} aria-hidden className="bid-board-map-tour-fill" style={{ animationDuration: `${BID_BOARD_MAP_TOUR_INTERVAL_MS}ms` }} />
+            ) : null}
           </button>
         )
       })}
@@ -285,6 +324,8 @@ export function BidBoardMapCard({
     }
   }, [revealSignal])
   const [show, setShow] = useState<BidBoardMapSectionVisibility>(() => ({ ...BID_BOARD_MAP_DEFAULT_SECTIONS }))
+  // The section tour (v2.3208): the view that is up while Play runs; null when paused / never started.
+  const [tour, setTour] = useState<SubmissionSectionKey | null>(null)
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [fitSignal, setFitSignal] = useState(0)
   // The map opens on the office's region (pins within BID_BOARD_MAP_HOME_FIT_MILES); Fit all widens to every pin.
@@ -344,6 +385,28 @@ export function BidBoardMapCard({
     [onReloadBids, showToast],
   )
   const legend = useMemo(() => bidBoardMapLegend(pins), [pins])
+  const tourStops = useMemo(() => bidBoardMapTourStops(legend), [legend])
+  const tourStopsKey = tourStops.join(',')
+  // One timeout per view rather than an interval: a stop that gains or loses pins mid-tour (the
+  // geocoder placing the rest) is picked up at the next step, and the unmount cleanup is one clear.
+  useEffect(() => {
+    if (!tour) return
+    const stops = tourStopsKey ? (tourStopsKey.split(',') as SubmissionSectionKey[]) : []
+    if (stops.length < 2) {
+      setTour(null)
+      return
+    }
+    const t = window.setTimeout(() => {
+      const next = bidBoardMapTourNext(tour, stops)
+      if (!next) {
+        setTour(null)
+        return
+      }
+      setTour(next)
+      setShow(bidBoardMapTourVisibility(next))
+    }, BID_BOARD_MAP_TOUR_INTERVAL_MS)
+    return () => window.clearTimeout(t)
+  }, [tour, tourStopsKey])
   const visible = useMemo(() => bidBoardMapVisiblePins(pins, show), [pins, show])
   const byId = useMemo(() => new Map(visible.map((p) => [p.id, p])), [visible])
   const canvasPins = useMemo<MapCanvasPin[]>(
@@ -365,12 +428,28 @@ export function BidBoardMapCard({
   }, [byId, selectedId])
 
   const toggleHidden = useCallback(() => {
+    setTour(null)
     setHidden((h) => {
       writeBidBoardMapHidden(!h)
       return !h
     })
   }, [])
-  const toggleSection = useCallback((section: SubmissionSectionKey) => setShow((prev) => ({ ...prev, [section]: !prev[section] })), [])
+  // A chip click while the tour runs pauses it on the view that is up, then toggles as usual.
+  const toggleSection = useCallback((section: SubmissionSectionKey) => {
+    setTour(null)
+    setShow((prev) => ({ ...prev, [section]: !prev[section] }))
+  }, [])
+  const toggleTour = useCallback(() => {
+    if (tour) {
+      setTour(null) // Pause holds this view
+      return
+    }
+    const first = bidBoardMapTourNext(null, tourStops)
+    if (!first) return
+    setTour(first)
+    setShow(bidBoardMapTourVisibility(first))
+    setSelectedId(null)
+  }, [tour, tourStops])
   const select = useCallback(
     (id: string | null) => {
       setSelectedId(id)
@@ -427,9 +506,30 @@ export function BidBoardMapCard({
               Bids on a map
             </button>
           </h3>
+          {!hidden && tourStops.length >= 2 ? (
+            <button
+              type="button"
+              onClick={toggleTour}
+              aria-pressed={tour != null}
+              aria-label={tour ? 'Pause the section tour' : 'Play through the sections'}
+              title={tour ? 'Pause — keep the view that is showing' : 'Play — show each section on its own, two seconds each'}
+              style={{
+                ...OUTLINE_BUTTON_STYLE,
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+                padding: '0.25rem 0.6rem',
+                minHeight: isMobile ? 36 : undefined,
+                background: tour ? 'var(--bg-blue-tint)' : 'none',
+              }}
+            >
+              <PlayGlyph playing={tour != null} />
+              {tour ? 'Pause' : 'Play'}
+            </button>
+          ) : null}
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? '0.5rem' : '0.875rem', flexWrap: 'wrap' }}>
-          {!isMobile && !hidden ? <SectionChips legend={legend} show={show} onToggle={toggleSection} isMobile={false} /> : null}
+          {!isMobile && !hidden ? <SectionChips legend={legend} show={show} lit={tour} onToggle={toggleSection} isMobile={false} /> : null}
           {!hidden && canvasPins.length > 1 && !isMobile ? (
             <button
               type="button"
@@ -451,7 +551,7 @@ export function BidBoardMapCard({
 
       {hidden ? null : (
         <>
-          {isMobile ? <SectionChips legend={legend} show={show} onToggle={toggleSection} isMobile /> : null}
+          {isMobile ? <SectionChips legend={legend} show={show} lit={tour} onToggle={toggleSection} isMobile /> : null}
 
           <div
             // isolation contains Leaflet's internal z-indexes (panes 200–700, controls 1000) so they can't paint over the sticky pill row
