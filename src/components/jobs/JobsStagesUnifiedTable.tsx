@@ -20,6 +20,7 @@ import {
 import { jobBillingUnallocatedDollars, type InvoiceWithJob, type StageRow } from '../../lib/jobsStagesBoard'
 import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
 import { buildStagesMoneyBarModel } from '../../lib/stagesMoneyBar'
+import { buildPipelineStageBar } from '../../lib/jobs/pipelineStageBar'
 import StagesProgressPaymentCell from './StagesProgressPaymentCell'
 import { ShareJobButton } from './ShareJobButton'
 import { JobsStagesThreadPanel } from './JobsStagesThreadPanel'
@@ -520,6 +521,7 @@ export default function JobsStagesUnifiedTable(props: JobsStagesUnifiedTableProp
                                 pctComplete: j.pct_complete ?? null,
                                 billedUnpaid: jobBilledUnpaidDollars(j),
                               })}
+                              stageBar={buildPipelineStageBar({ fixtures: j.fixtures, invoices: j.invoices, payments: j.payments, pctComplete: j.pct_complete ?? null })}
                               pctComplete={j.pct_complete ?? null}
                               pctSaving={pctCompleteSavingId === j.id}
                               onPctCommit={(n) => updateJobPctComplete(j.id, n, j.pct_complete ?? null)}
@@ -569,6 +571,7 @@ export default function JobsStagesUnifiedTable(props: JobsStagesUnifiedTableProp
                                 pctComplete: j.pct_complete ?? null,
                                 billedUnpaid: jobBilledUnpaidDollars(j),
                               })}
+                              stageBar={buildPipelineStageBar({ fixtures: j.fixtures, invoices: j.invoices, payments: j.payments, pctComplete: j.pct_complete ?? null })}
                               pctComplete={j.pct_complete ?? null}
                               pctSaving={pctCompleteSavingId === j.id}
                               onPctCommit={(n) => updateJobPctComplete(j.id, n, j.pct_complete ?? null)}
@@ -1044,6 +1047,7 @@ export default function JobsStagesUnifiedTable(props: JobsStagesUnifiedTableProp
                             pctComplete: job.pct_complete ?? null,
                             billedUnpaid: jobBilledUnpaidDollars(job),
                           })}
+                          stageBar={buildPipelineStageBar({ fixtures: job.fixtures, invoices: job.invoices, payments: job.payments, pctComplete: job.pct_complete ?? null })}
                           pctComplete={job.pct_complete ?? null}
                           pctSaving={pctCompleteSavingId === job.id}
                           onPctCommit={(n) => updateJobPctComplete(job.id, n, job.pct_complete ?? null)}
