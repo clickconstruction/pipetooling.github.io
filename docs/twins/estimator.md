@@ -285,6 +285,14 @@ note ledger alone.
     code, table name or tool name, and a `topic` slug when it's doctrine rather than
     this bid. A three-part ask is three questions. If you leave `audience` off, the
     text decides — machine vocabulary routes to the operator.
+  - **She answers with one tap** (v2.3210). An estimator question is refused unless
+    it is one decision under 320 characters WITH `choices` — 2–4 short labels she can
+    tap (`['Residual', 'Higher per-fixture', 'Neither']`, `['Yes', 'No']`) — and,
+    whenever you have a view, `recommended` (your pick, one of them; it renders first).
+    Her tap comes back through `get_answers` as the label, verbatim, so write each
+    label as a complete instruction to yourself. The refusal tells you what to fix;
+    the working detail (numbers, sheet refs, the pattern you saw) belongs in
+    `add_bid_note` on your shell, not in the question.
   - A blocker with both halves is two questions. Never park a finding or an answer as
     a question — that's `add_bid_note` / `submit_report`.
 - **Heartbeat freely**: on starting a bid (`working`), on blocking, on finishing (`done`).

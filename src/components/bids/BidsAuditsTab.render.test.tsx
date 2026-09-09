@@ -76,7 +76,8 @@ const notes: Array<Partial<BidAuditNoteRow> & { audit_id: string }> = [
 const twinQuestions = [
   { id: 'tq1', twin_user_id: 'tw1', about_bid_id: 'bid-405', mission: 'BT-12', question: 'Do we band travel by distance?', status: 'open', answer: null, answered_by: null, answered_at: null, created_at: '2026-09-03T10:00:00Z', topic: 'travel-bands' },
   { id: 'tq2', twin_user_id: 'tw2', about_bid_id: 'bid-422', mission: 'BT-13', question: 'Travel past 200 miles — carry $20k?', status: 'open', answer: null, answered_by: null, answered_at: null, created_at: '2026-09-01T10:00:00Z', topic: 'travel-bands' },
-  { id: 'tq3', twin_user_id: 'tw1', about_bid_id: null, mission: null, question: '[audit b474 / scope] Is a strip mall shell a no-go?', status: 'open', answer: null, answered_by: null, answered_at: null, created_at: '2026-09-02T10:00:00Z', topic: null },
+  // v2.3210: a tap-answerable ask — the robot's pick renders first, filled.
+  { id: 'tq3', twin_user_id: 'tw1', about_bid_id: null, mission: null, question: '[audit b474 / scope] Is a strip mall shell a no-go?', status: 'open', answer: null, answered_by: null, answered_at: null, created_at: '2026-09-02T10:00:00Z', topic: null, choices: ['No-go', 'Bid it'], recommended: 'Bid it' },
   // v2.3186 — the robot talking to the operator, not the estimator: classified
   // from the text (no audience column yet), it must NOT appear on the panel.
   { id: 'tq4', twin_user_id: 'tw1', about_bid_id: 'bid-422', mission: 'R2-BT-25', question: 'The sandbox blocked the bids_plan_substrates insert — can someone add a harness verb?', status: 'open', answer: null, answered_by: null, answered_at: null, created_at: '2026-09-04T10:00:00Z', topic: null },
@@ -151,6 +152,16 @@ describe('BidsAuditsTab', () => {
     // one ruling (newest text on top, one answer box for both); the topicless
     // one lists individually. Expanded by default because N > 0.
     expect(await screen.findByText(/Standing rulings · 3/)).toBeTruthy()
+
+    // v2.3210 — the topicless question carries choices: buttons, robot's pick
+    // first with a ★, no free-text box on that card until "Something else…".
+    const pick = await screen.findByRole('button', { name: /★ Bid it/ })
+    expect(pick).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'No-go' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Something else…' })).toBeTruthy()
+    expect(screen.queryByPlaceholderText('Your answer — the robot pulls it next run…')).toBeNull()
+    // The grouped travel-bands ruling has no choices and keeps its box.
+    expect(screen.getByPlaceholderText('Your ruling — answers every copy at once…')).toBeTruthy()
     expect(screen.getByText(/fifteen minutes here unblocks every robot/)).toBeTruthy()
     expect(screen.getByText('Travel bands')).toBeTruthy()
     expect(screen.getByText(/Do we band travel by distance\?/)).toBeTruthy()

@@ -34,6 +34,8 @@ import {
   type DiffEntry,
 } from '../../lib/bids/takeoffDiff'
 import { groupStandingRulings, openCountByAudience, rulingAskedLine, type TwinQuestionRow } from '../../lib/bids/standingRulings'
+import { answerFromChoice, orderedChoices } from '../../lib/bids/twinQuestionChoices'
+import { TwinQuestionChoiceButtons } from './TwinQuestionChoiceButtons'
 import { twinQuestionAudienceColumnPresent } from '../../../supabase/functions/_shared/twinQuestionAudience'
 import { bidNumbersAcross, indexSourceBids, unresolvedSourceIds, type BidPairingRow, type SourceBidRef } from '../../lib/bids/twinQuestionBidRefs'
 import { TwinQuestionText } from './TwinQuestionText'
@@ -383,8 +385,11 @@ export function BidsAuditsTab({ authUser, myRole }: { authUser: User | null; myR
 
   // One submit answers EVERY open question in the ruling's topic (or the one
   // topicless question) — answer + status flip, stamped with who and when.
-  const answerRuling = async (questionIds: string[], draftKey: string) => {
-    const text = (rulingDrafts[draftKey] ?? '').trim()
+  // A tapped choice (v2.3210) passes its label as `override`; the typed box
+  // is the fallback. "Something else…" flips a card to the box.
+  const [rulingFreeText, setRulingFreeText] = useState<Record<string, boolean>>({})
+  const answerRuling = async (questionIds: string[], draftKey: string, override?: string) => {
+    const text = (override ?? rulingDrafts[draftKey] ?? '').trim()
     if (!text) return
     setBusy(`ruling:${draftKey}`)
     try {
@@ -406,6 +411,7 @@ export function BidsAuditsTab({ authUser, myRole }: { authUser: User | null; myR
         showToast('Already handled elsewhere — refreshing.', 'error')
       } else {
         setRulingDrafts((p) => ({ ...p, [draftKey]: '' }))
+        setRulingFreeText((p) => ({ ...p, [draftKey]: false }))
         showToast(
           n > 1
             ? `Ruling saved — ${n} open questions answered at once; every robot pulls it next run.`
@@ -719,25 +725,44 @@ export function BidsAuditsTab({ authUser, myRole }: { authUser: User | null; myR
                       🤖 <TwinQuestionText text={r.newest.question} bidIdByNumber={bidIdByNumber} aboutBidId={r.newest.about_bid_id} aboutBidNumber={r.newest.about_bid_id ? bidNumberById[r.newest.about_bid_id] : null} sourceByBidId={sourceByBidId} />
                     </div>
                     <div style={{ marginTop: '0.2rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>{rulingAskedLine(r)}</div>
-                    <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.45rem' }}>
-                      <input
-                        type="text"
-                        value={rulingDrafts[draftKey] ?? ''}
-                        onChange={(e) => setRulingDrafts((p) => ({ ...p, [draftKey]: e.target.value }))}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') void answerRuling(r.questionIds, draftKey)
-                        }}
-                        placeholder="Your ruling — answers every copy at once…"
-                        style={rulingInputStyle}
-                      />
-                      <button
-                        type="button"
-                        disabled={busy === `ruling:${draftKey}` || !(rulingDrafts[draftKey] ?? '').trim()}
-                        onClick={() => void answerRuling(r.questionIds, draftKey)}
-                        style={{ padding: '0.4rem 0.9rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: '0.875rem' }}
-                      >
-                        {r.askCount > 1 ? `Answer all ${r.askCount}` : 'Answer'}
-                      </button>
+                    <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.45rem', flexWrap: 'wrap' }}>
+                      {(() => {
+                        const choices = orderedChoices(r.newest)
+                        if (choices && !rulingFreeText[draftKey]) {
+                          return (
+                            <TwinQuestionChoiceButtons
+                              choices={choices}
+                              disabled={busy === `ruling:${draftKey}`}
+                              fanOut={r.askCount}
+                              onPick={(c) => void answerRuling(r.questionIds, draftKey, answerFromChoice(c))}
+                              onSomethingElse={() => setRulingFreeText((p) => ({ ...p, [draftKey]: true }))}
+                            />
+                          )
+                        }
+                        return (
+                          <>
+                            <input
+                              type="text"
+                              value={rulingDrafts[draftKey] ?? ''}
+                              onChange={(e) => setRulingDrafts((p) => ({ ...p, [draftKey]: e.target.value }))}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') void answerRuling(r.questionIds, draftKey)
+                              }}
+                              autoFocus={!!choices}
+                              placeholder="Your ruling — answers every copy at once…"
+                              style={rulingInputStyle}
+                            />
+                            <button
+                              type="button"
+                              disabled={busy === `ruling:${draftKey}` || !(rulingDrafts[draftKey] ?? '').trim()}
+                              onClick={() => void answerRuling(r.questionIds, draftKey)}
+                              style={{ padding: '0.4rem 0.9rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: '0.875rem' }}
+                            >
+                              {r.askCount > 1 ? `Answer all ${r.askCount}` : 'Answer'}
+                            </button>
+                          </>
+                        )
+                      })()}
                       {audienceWritable ? (
                         <button
                           type="button"
@@ -770,25 +795,43 @@ export function BidsAuditsTab({ authUser, myRole }: { authUser: User | null; myR
                     {s.mission ? (
                       <div style={{ marginTop: '0.2rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>{s.mission}</div>
                     ) : null}
-                    <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.45rem' }}>
-                      <input
-                        type="text"
-                        value={rulingDrafts[draftKey] ?? ''}
-                        onChange={(e) => setRulingDrafts((p) => ({ ...p, [draftKey]: e.target.value }))}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') void answerRuling([s.id], draftKey)
-                        }}
-                        placeholder="Your answer — the robot pulls it next run…"
-                        style={rulingInputStyle}
-                      />
-                      <button
-                        type="button"
-                        disabled={busy === `ruling:${draftKey}` || !(rulingDrafts[draftKey] ?? '').trim()}
-                        onClick={() => void answerRuling([s.id], draftKey)}
-                        style={{ padding: '0.4rem 0.9rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: '0.875rem' }}
-                      >
-                        Answer
-                      </button>
+                    <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.45rem', flexWrap: 'wrap' }}>
+                      {(() => {
+                        const choices = orderedChoices(s)
+                        if (choices && !rulingFreeText[draftKey]) {
+                          return (
+                            <TwinQuestionChoiceButtons
+                              choices={choices}
+                              disabled={busy === `ruling:${draftKey}`}
+                              onPick={(c) => void answerRuling([s.id], draftKey, answerFromChoice(c))}
+                              onSomethingElse={() => setRulingFreeText((p) => ({ ...p, [draftKey]: true }))}
+                            />
+                          )
+                        }
+                        return (
+                          <>
+                            <input
+                              type="text"
+                              value={rulingDrafts[draftKey] ?? ''}
+                              onChange={(e) => setRulingDrafts((p) => ({ ...p, [draftKey]: e.target.value }))}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') void answerRuling([s.id], draftKey)
+                              }}
+                              autoFocus={!!choices}
+                              placeholder="Your answer — the robot pulls it next run…"
+                              style={rulingInputStyle}
+                            />
+                            <button
+                              type="button"
+                              disabled={busy === `ruling:${draftKey}` || !(rulingDrafts[draftKey] ?? '').trim()}
+                              onClick={() => void answerRuling([s.id], draftKey)}
+                              style={{ padding: '0.4rem 0.9rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: '0.875rem' }}
+                            >
+                              Answer
+                            </button>
+                          </>
+                        )
+                      })()}
                       {audienceWritable ? (
                         <button
                           type="button"
