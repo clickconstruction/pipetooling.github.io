@@ -32,6 +32,7 @@
 | [`CONTRACT_FORMS.md`](./CONTRACT_FORMS.md) | Contract Forms: a Book entry that is an uploaded PDF with dev-placed entry boxes the signer fills as the real page; FormSchema reference, agent draft→preview workflow, out-of-band storage. |
 | [`CONTRACT_FORMS_PLAN.md`](./CONTRACT_FORMS_PLAN.md) | Build plan + status for Contract Forms (schema/kernel → Form Studio → fill-on-page signing → staff record → the W-9). |
 | [`HR_FILES.md`](./HR_FILES.md) | Dev-only People → HR employee files: schema, access model, and the agent writing convention. |
+| [`COST_BATCHES.md`](./COST_BATCHES.md) | Cost batches: the audited, reversible entrypoint for moving job cost (bank allocations, supply invoices, clock sessions, ESTIMATE charges) — the two RPCs, the `cost_agent` role, and the agent convention. |
 | [`DASHBOARD_SECTIONS_ARCHITECTURE.md`](./DASHBOARD_SECTIONS_ARCHITECTURE.md) | Same map for `src/pages/Dashboard.tsx` (section-based, not tabbed). |
 | [`JOBS_TABS_ARCHITECTURE.md`](./JOBS_TABS_ARCHITECTURE.md) | Same map for `src/pages/Jobs.tsx` (Stages board + job-mutation engine mapped in depth). |
 | [`JOB_FORM_MODAL_ARCHITECTURE.md`](./JOB_FORM_MODAL_ARCHITECTURE.md) | Same map for `src/components/jobs/JobFormModal.tsx` (a modal — form sections, not tabs; save-engine deep-dive). |
@@ -92,4 +93,4 @@
 - Docs ship with features: `recent-features/v2.NNNN.md` fragment + release note per PR, `migrations/<version>_<slug>.md` fragment per migration, `EDGE_FUNCTIONS.md` section per function, help guide per user-facing flow (all enforced by convention in `../CLAUDE.md`).
 - Migration files cited in docs may live in `supabase/archive/migrations-pre-baseline/` — history was squash-baselined at `20250101000000_baseline.sql` (2026-06-04); "2027"-dated filenames in the archive are typos from spring 2026.
 
-last_updated: 2026-09-06
+last_updated: 2026-09-09
