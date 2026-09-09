@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import {
+  linkDisplayText,
   groupPriceRequests,
   linkHostLabel,
   neededByState,
@@ -150,5 +151,13 @@ describe('validateOutsideRequest', () => {
     expect(validateOutsideRequest({ supplyHouseId: 'moore', requestedOn: TODAY, requestUrl: '', quoteUrl: '' })).toEqual({ ok: true, requestUrl: null, quoteUrl: null })
     expect(validateOutsideRequest({ supplyHouseId: 'moore', requestedOn: TODAY, requestUrl: 'drive.google.com/a', quoteUrl: 'mailto:x' })).toMatchObject({ ok: false })
     expect(validateOutsideRequest({ supplyHouseId: 'moore', requestedOn: TODAY, requestUrl: 'drive.google.com/a', quoteUrl: '' })).toEqual({ ok: true, requestUrl: 'https://drive.google.com/a', quoteUrl: null })
+  })
+})
+
+describe('linkDisplayText (v2.3195)', () => {
+  it('shows the address without the scheme or www, cut with an ellipsis', () => {
+    expect(linkDisplayText('https://www.drive.google.com/file/d/1EcQ/view')).toBe('drive.google.com/file/d/1EcQ/view')
+    expect(linkDisplayText('http://reece.com/quotes/')).toBe('reece.com/quotes')
+    expect(linkDisplayText('https://drive.google.com/file/d/1EcQabcdefghijklmnopqrstuvwxyz0123456789/view', 30)).toBe('drive.google.com/file/d/1EcQa…')
   })
 })

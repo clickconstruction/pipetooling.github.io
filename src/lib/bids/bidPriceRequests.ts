@@ -170,6 +170,18 @@ export function linkHostLabel(url: string): string {
 }
 
 /** Accepts http(s) only; trims; empty → null. Returns `{ error }` for anything else. */
+/**
+ * The text a pasted link shows as (v2.3195): the address itself, without the
+ * scheme or "www.", cut to `max` characters with an ellipsis — so the cell reads
+ * as the link it is ("drive.google.com/file/d/1EcQ…") and the full address is the
+ * link's own href / hover.
+ */
+export function linkDisplayText(url: string, max = 44): string {
+  const bare = url.trim().replace(/^https?:\/\//i, '').replace(/^www\./i, '').replace(/\/$/, '')
+  if (bare.length <= max) return bare
+  return `${bare.slice(0, Math.max(1, max - 1))}…`
+}
+
 export function normalizePastedLink(raw: string): { url: string | null; error?: string } {
   const t = raw.trim()
   if (!t) return { url: null }

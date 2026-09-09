@@ -10,6 +10,7 @@ import { housesForBidTrade, tradesByHouse, type HouseTradeLink } from '../../lib
 import { calendarYmdInAppTzFromIso, formatWorkDateYmdMonthDayShort, todayYmdInAppTz } from '../../utils/dateUtils'
 import {
   groupPriceRequests,
+  linkDisplayText,
   linkHostLabel,
   priceRequestSummaryLine,
   validateOutsideRequest,
@@ -54,11 +55,12 @@ function neededByLine(r: PriceRequestShaped): { text: string; color: string } | 
 
 /**
  * Price requests on a bid (v2.3175) — Edit Bid → Files & Links, under Plans.
- * One row per request, grouped by supply house: the day it was requested, the
- * request as sent (the vendor's quote page for app-sent rows, a pasted link for
- * outside ones), and the quote that came back (plugged in on Pricing, or a
- * pasted link). "Add a request" records a request sent by email or phone; it
- * never sends — that stays with Send price requests on Pricing.
+ * One row per request, grouped by supply house: the day it was requested and
+ * the request as sent (the vendor's quote page for app-sent rows, the pasted
+ * link for outside ones). The quote column and the quote-link field went in
+ * v2.3195 (owner: "we only need to keep the link, supply house, and when we
+ * requested it") — quotes live on Pricing. "Add a request" records a request
+ * sent by email or phone; it never sends — that stays with Send price requests.
  */
 export function BidPriceRequestsTable({ bidId, serviceTypeId, pricingHref }: Props) {
   const { user } = useAuth()
@@ -315,39 +317,14 @@ export function BidPriceRequestsTable({ bidId, serviceTypeId, pricingHref }: Pro
     const url = r.row.request_url
     return (
       <>
-        {url ? <a href={url} target="_blank" rel="noreferrer" style={link}>Request ({linkHostLabel(url)})</a> : <span style={{ color: 'var(--text-muted)' }}>no request link</span>}
-        <span style={tagOut}>sent outside</span>
-      </>
-    )
-  }
-
-  function quoteCell(r: PriceRequestShaped) {
-    const q = r.quote
-    if (q.kind === 'plugged') {
-      return (
-        <>
-          <a href={pricingHref} target="_blank" rel="noreferrer" style={link}>Quote · {q.lineCount} {q.lineCount === 1 ? 'line' : 'lines'}</a>
-          <div style={meta}>
-            plugged in {formatWorkDateYmdMonthDayShort(calendarYmdInAppTzFromIso(q.receivedAt))}
-            {q.validUntil ? ` · valid to ${formatWorkDateYmdMonthDayShort(q.validUntil.slice(0, 10))}` : ''}
-          </div>
-        </>
-      )
-    }
-    if (q.kind === 'link') {
-      return <a href={q.url} target="_blank" rel="noreferrer" style={link}>Quote ({linkHostLabel(q.url)})</a>
-    }
-    if (r.editable) {
-      return (
-        <button type="button" style={textBtn} onClick={() => startEdit(r)}>
-          paste a quote link…
-        </button>
-      )
-    }
-    return (
-      <>
-        <span style={{ color: 'var(--text-faint)' }}>—</span>
-        <div style={meta}>plug it in on Pricing when it lands</div>
+        {url ? (
+          <a href={url} target="_blank" rel="noreferrer" title={url} style={{ ...link, whiteSpace: 'normal', overflowWrap: 'anywhere' }}>
+            {linkDisplayText(url)}
+          </a>
+        ) : (
+          <span style={{ color: 'var(--text-muted)' }}>no request link</span>
+        )}
+        <div style={meta}>{linkHostLabel(url ?? '')}{url ? ' · ' : ''}<span style={tagOut}>sent outside</span></div>
       </>
     )
   }
@@ -441,12 +418,8 @@ export function BidPriceRequestsTable({ bidId, serviceTypeId, pricingHref }: Pro
         <div style={meta}>when it went out</div>
       </td>
       <td style={td}>
-        <input value={draft.requestUrl} onChange={(e) => setDraft((d) => ({ ...d, requestUrl: e.target.value }))} placeholder="paste the request link…" aria-label="Request link" style={mini} />
-        <div style={meta}>the RFQ you emailed — a Drive copy, a PDF</div>
-      </td>
-      <td style={td}>
-        <input value={draft.quoteUrl} onChange={(e) => setDraft((d) => ({ ...d, quoteUrl: e.target.value }))} placeholder="paste the quote link…" aria-label="Quote link" style={mini} />
-        <div style={meta}>optional until it arrives</div>
+        <input type="url" inputMode="url" value={draft.requestUrl} onChange={(e) => setDraft((d) => ({ ...d, requestUrl: e.target.value }))} placeholder="https://…" aria-label="Request link" style={{ ...mini, width: '100%', boxSizing: 'border-box' }} />
+        <div style={meta}>the link to the request you sent — a Drive copy, a PDF</div>
       </td>
       <td style={{ ...td, whiteSpace: 'nowrap', textAlign: 'right' }}>
         <span style={{ display: 'inline-flex', gap: '0.4rem' }}>
@@ -476,7 +449,6 @@ export function BidPriceRequestsTable({ bidId, serviceTypeId, pricingHref }: Pro
           </td>
           <td style={td}>{requestedCell(r)}</td>
           <td style={td}>{requestCell(r)}</td>
-          <td style={td}>{quoteCell(r)}</td>
           <td style={{ ...td, textAlign: 'right', whiteSpace: 'nowrap' }}>{actionsCell(r)}</td>
         </tr>
       )
@@ -493,13 +465,12 @@ export function BidPriceRequestsTable({ bidId, serviceTypeId, pricingHref }: Pro
         </a>
       </div>
       <div style={{ overflowX: 'auto' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: narrow ? 640 : undefined }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: narrow ? 520 : undefined }}>
           <thead>
             <tr>
-              <th style={{ ...th, width: '24%' }}>Supply house</th>
-              <th style={{ ...th, width: '15%' }}>Requested</th>
-              <th style={{ ...th, width: '24%' }}>Request</th>
-              <th style={{ ...th, width: '24%' }}>Quote</th>
+              <th style={{ ...th, width: '26%' }}>Supply house</th>
+              <th style={{ ...th, width: '18%' }}>Requested</th>
+              <th style={{ ...th, width: '40%' }}>Request link</th>
               <th style={th}></th>
             </tr>
           </thead>
@@ -509,7 +480,7 @@ export function BidPriceRequestsTable({ bidId, serviceTypeId, pricingHref }: Pro
             ))}
             {adding ? editorRow : null}
             {loaded && groups.length === 0 && !adding ? (
-              <tr><td colSpan={5} style={{ ...td, color: 'var(--text-muted)' }}>No price requests on this bid yet.</td></tr>
+              <tr><td colSpan={4} style={{ ...td, color: 'var(--text-muted)' }}>No price requests on this bid yet.</td></tr>
             ) : null}
           </tbody>
         </table>

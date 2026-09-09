@@ -46,12 +46,12 @@ Once any quote is saved, a {{chip:blue|Quotes (1)}} chip sits beside Share — i
 
 Every bid keeps a list of who you asked: **Edit Bid → Files & Links → Price requests**, right under the plans. Requests the app sent fill in on their own — one row per request, grouped by house, with the day it was requested, the vendor's page, whether they have viewed it, and the quote once it is plugged in. Needed-by sits under the requested date: {{chip:green|✓}} once a quote is in, amber while you wait.
 
-Sent one by email or phone instead? {{button:blue|+ Add a request}} records it: pick the house (or add a new one right there), keep or change the date, paste a link to the request you sent and, when it arrives, a link to the quote — a Drive copy, a PDF, a shared sheet. {{button:outline|Edit}} reopens the links later; {{button:outline|Remove}} takes the row off the bid. Nothing goes to the vendor from here — sending still happens in **Send price requests** above.
+Sent one by email or phone instead? {{button:blue|+ Add a request}} records it: pick the house (or add a new one right there), keep or change the date, and paste a link to the request you sent — a Drive copy, a PDF. That is the whole row: the supply house, when you asked, and the link. When the quote lands, plug it in on Pricing; it does not go in this table.
 
 :::example One house, two requests
-Ferguson · Sep 2 · Vendor page · Quote · 41 lines · needed by Sep 5 ✓
-↳ another request · Sep 6 · Vendor page · — · needed by Sep 9
-Moore Supply · Sep 3 · Request (Drive) · Quote (Drive) · needed by Sep 5 ✓
+Ferguson · Sep 2 · Vendor page · needed by Sep 5 ✓
+↳ another request · Sep 6 · Vendor page · needed by Sep 9
+Moore Supply · Sep 3 · drive.google.com/file/d/1EcQ… · needed by Sep 5 ✓
 :::
 
 Requests you record here also show on the Pricing desk, tagged *sent outside the app*, so the desk's list and the bid's list are the same list.
