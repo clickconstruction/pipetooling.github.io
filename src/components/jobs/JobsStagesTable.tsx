@@ -7,6 +7,7 @@ import { formatTimeSince } from '../../lib/jobs/jobFormatting'
 import { stagesAddedStampLabel, type StagesBoardSortMode } from '../../lib/jobsStagesSortMode'
 import { jobBilledUnpaidDollars, stagesJobLevelStripeEmailedHintInvoice } from '../../lib/jobs/invoiceBilling'
 import { buildStagesMoneyBarModel } from '../../lib/stagesMoneyBar'
+import { buildPipelineStageBar } from '../../lib/jobs/pipelineStageBar'
 import StagesProgressPaymentCell from './StagesProgressPaymentCell'
 import { JobsStagesThreadPanel } from './JobsStagesThreadPanel'
 import { openInExternalBrowser } from '../../lib/openInExternalBrowser'
@@ -356,6 +357,7 @@ export default function JobsStagesTable(props: JobsStagesTableProps) {
                       pctComplete: j.pct_complete ?? null,
                       billedUnpaid: jobBilledUnpaidDollars(j),
                     })}
+                    stageBar={buildPipelineStageBar({ fixtures: j.fixtures, invoices: j.invoices, payments: j.payments, pctComplete: j.pct_complete ?? null })}
                     pctComplete={j.pct_complete ?? null}
                     pctSaving={showPctComplete ? pctCompleteSavingId === j.id : undefined}
                     onPctCommit={showPctComplete ? (n) => updateJobPctComplete(j.id, n, j.pct_complete ?? null) : undefined}

@@ -1,5 +1,7 @@
 import { formatUsdNoCents } from '../../lib/jobs/jobFormatting'
 import type { StagesMoneyBarModel } from '../../lib/stagesMoneyBar'
+import type { PipelineStageBar } from '../../lib/jobs/pipelineStageBar'
+import StagesStageBar from './StagesStageBar'
 
 const PAID_COLOR = '#16a34a'
 const BILLED_COLOR = '#2563eb'
@@ -29,6 +31,13 @@ type StagesProgressPaymentCellProps = {
    * state are unchanged; the table keeps the full legend.
    */
   compact?: boolean
+  /**
+   * v2.3198: on a job split into Order stages, the stage strip (chips + one
+   * bar: fill = work, edge = the draw) replaces the money bar and the yellow
+   * dot, and the legend drops Unbilled — the bar now says which stage. Null /
+   * omitted = the classic money bar.
+   */
+  stageBar?: PipelineStageBar | null
 }
 
 function swatch(color?: string) {
@@ -54,7 +63,7 @@ function swatch(color?: string) {
  * total on top, a paid/unbilled bar of the total bill, and a labeled legend.
  * Pure presentation — all math comes in via the model (see stagesMoneyBar.ts).
  */
-export default function StagesProgressPaymentCell({ model, pctComplete, pctSaving, onPctCommit, footnote, onNoBidValueClick, compact = false }: StagesProgressPaymentCellProps) {
+export default function StagesProgressPaymentCell({ model, pctComplete, pctSaving, onPctCommit, footnote, onNoBidValueClick, compact = false, stageBar = null }: StagesProgressPaymentCellProps) {
   const rowStyle: React.CSSProperties = { display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '0.5rem' }
   const labelStyle: React.CSSProperties = { fontSize: '0.75rem', color: 'var(--text-muted)' }
   const amountStyle: React.CSSProperties = { fontSize: '0.75rem', fontVariantNumeric: 'tabular-nums' }
@@ -142,6 +151,9 @@ export default function StagesProgressPaymentCell({ model, pctComplete, pctSavin
         )}
       </div>
 
+      {stageBar ? (
+        <StagesStageBar bar={stageBar} compact={compact} />
+      ) : (
       <div
         title={
           model.hasBar
@@ -205,6 +217,7 @@ export default function StagesProgressPaymentCell({ model, pctComplete, pctSavin
           />
         ) : null}
       </div>
+      )}
 
       {compact ? (
         <div
@@ -218,7 +231,7 @@ export default function StagesProgressPaymentCell({ model, pctComplete, pctSavin
           <span style={{ color: 'var(--text-blue-700)', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
             {swatch(BILLED_COLOR)}Billed {model.billedUnpaid > 0 ? formatUsdNoCents(model.billedUnpaid) : '—'}
           </span>
-          {model.unbilled != null && model.unbilled > 0 ? (
+          {!stageBar && model.unbilled != null && model.unbilled > 0 ? (
             <>
               <span aria-hidden style={{ color: 'var(--text-faint)' }}>·</span>
               <span style={{ color: 'var(--text-amber-700)', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
@@ -250,6 +263,7 @@ export default function StagesProgressPaymentCell({ model, pctComplete, pctSavin
           </span>
           <span style={amountStyle}>{model.billedUnpaid > 0 ? formatUsdNoCents(model.billedUnpaid) : '—'}</span>
         </div>
+        {stageBar ? null : (
         <div style={rowStyle} title="Work completed that hasn't been paid for yet (% done × bid − paid); the % is the amber slice's share of the job total">
           <span style={{ ...labelStyle, fontVariantNumeric: 'tabular-nums' }}>
             {swatch(UNBILLED_COLOR)}
@@ -260,6 +274,7 @@ export default function StagesProgressPaymentCell({ model, pctComplete, pctSavin
           </span>
           <span style={amountStyle}>{model.unbilled != null ? formatUsdNoCents(model.unbilled) : '—'}</span>
         </div>
+        )}
         <div
           style={{ ...rowStyle, borderTop: '1px solid var(--border)', paddingTop: '0.15rem' }}
           title="Bid total minus payments received"
