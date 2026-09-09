@@ -20,6 +20,8 @@ Below the tiles: **daily spend bars** for the last 14 working days with a 7-day 
 
 A job under three field days or under 10% reads *too early to call* instead of guessing.
 
+The same verdict shows up in two more places: Job Summary's **Burn** and **Proj. margin** columns, and the Pipeline's *jobs burning ahead of progress* card under Today's money opportunities.
+
 :::example Reading a hot job
 Spent $19,860 of a $29,200 budget (68%) at 62% done. At completion: $32,032, margin $16,668 (34% against a 40% bid). Plus $4,140 overhead → true margin $12,528 (26%). Budget runs out Sep 17 with 38% of the work left. Time to look at why.
 :::

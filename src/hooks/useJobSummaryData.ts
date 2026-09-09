@@ -41,10 +41,13 @@ import type { JobWithDetails } from '../types/jobWithDetails'
 export function useJobSummaryData({
   authUserId,
   activeTab,
+  extraReportPctJobIds = null,
 }: {
   authUserId: string | undefined
   /** The page's `activeTab` (JobsTab union; only `'job-summary'` is meaningful here) — keys the report-% batch effect. */
   activeTab: string
+  /** v2.3191: job ids to batch the report % for OFF the Job Summary tab (the Pipeline burn card). */
+  extraReportPctJobIds?: string[] | null
 }) {
   /** Full org job list for Job Summary tab (all statuses, ignores `?customer=`). */
   const [jobSummaryLedgerAllJobs, setJobSummaryLedgerAllJobs] = useState<JobWithDetails[] | null>(null)
@@ -259,11 +262,12 @@ export function useJobSummaryData({
     }
   }, [])
 
+  const extraReportPctKey = extraReportPctJobIds ? extraReportPctJobIds.join(',') : ''
   useEffect(() => {
-    if (activeTab !== 'job-summary' || !jobSummaryLedgerJobs) return
-    const missing = jobSummaryLedgerJobs
-      .map((j) => j.id)
-      .filter((id) => !jobSummaryReportPctRequestedRef.current.has(id))
+    const wanted: string[] =
+      activeTab === 'job-summary' && jobSummaryLedgerJobs ? jobSummaryLedgerJobs.map((j) => j.id) : (extraReportPctJobIds ?? [])
+    if (wanted.length === 0) return
+    const missing = wanted.filter((id) => !jobSummaryReportPctRequestedRef.current.has(id))
     if (missing.length === 0) return
     for (const id of missing) jobSummaryReportPctRequestedRef.current.add(id)
     void (async () => {
@@ -284,7 +288,7 @@ export function useJobSummaryData({
         for (const id of missing) jobSummaryReportPctRequestedRef.current.delete(id)
       }
     })()
-  }, [activeTab, jobSummaryLedgerJobs])
+  }, [activeTab, jobSummaryLedgerJobs, extraReportPctKey]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (authUserId) return

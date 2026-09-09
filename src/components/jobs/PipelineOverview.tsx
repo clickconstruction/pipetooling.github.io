@@ -18,6 +18,7 @@ import {
 import type { StagesHeaderStats } from '../../lib/jobs/stagesHeaderStats'
 import type { PaymentChaseSummary } from '../../lib/jobs/paymentChase'
 import { PipelineMoneyOpportunities, type PipelineGcRoundCards } from './PipelineMoneyOpportunities'
+import type { PipelineBurnAlert } from '../../lib/jobs/jobSummaryBurn'
 import type { PipelineContractCoverage } from './PipelineContractCoverageCard'
 import type { ContractStage } from '../../lib/jobs/jobContractNudge'
 
@@ -58,6 +59,10 @@ type PipelineOverviewProps = {
   gcRound?: PipelineGcRoundCards
   onCertifyRound?: () => void
   onStartRound?: () => void
+  /** Burn card (v2.3191): jobs whose spend leads their progress; null hides it (non-wage roles, nothing hot, not loaded). */
+  burnAlert?: PipelineBurnAlert | null
+  onOpenBurnJob?: (jobId: string) => void
+  onShowBurnList?: () => void
 }
 
 const cardBase: CSSProperties = {
@@ -162,6 +167,9 @@ export function PipelineOverview({
   gcRound,
   onCertifyRound,
   onStartRound,
+  burnAlert,
+  onOpenBurnJob,
+  onShowBurnList,
 }: PipelineOverviewProps) {
   if (!stats) {
     return (
@@ -220,6 +228,9 @@ export function PipelineOverview({
         gcRound={gcRound}
         onCertifyRound={onCertifyRound}
         onStartRound={onStartRound}
+        burnAlert={burnAlert}
+        onOpenBurnJob={onOpenBurnJob}
+        onShowBurnList={onShowBurnList}
         contractCoverage={contractCoverage}
         onContractStageGap={onContractStageGap}
         onStartContractSweep={onStartContractSweep}

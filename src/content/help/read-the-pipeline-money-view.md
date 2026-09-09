@@ -2,7 +2,7 @@
 title: read the Pipeline's money view
 category: Office
 roles: dev, master_technician, assistant, controller
-keywords: pipeline, money story, money opportunities, money moves, aging, capable, collected, billed, 90 days
+keywords: pipeline, money story, money opportunities, money moves, aging, capable, collected, billed, 90 days, burn, burning, margin at risk
 order: 96
 ---
 The **Jobs → Pipeline** tab opens with the money story: four answer cards and a to-do queue above the board, so the money questions are answered before you scroll. Start typing in the search box and the whole money story steps aside until you clear it — the jobs you're looking for land right under the query.
@@ -38,6 +38,10 @@ When there's nothing to do, the queue says so — an empty list means the pipeli
 ### The Fix-ups strip
 
 When jobs are missing the data billing needs, a slim **Fix-ups** strip appears at the bottom of the card: {{chip:red|No customer · 1}} (a job with no linked customer can't be billed at all), {{chip:red|No customer pictures · 3}}, and {{chip:yellow|No email · 2}} (Stripe and emailed invoices need one). Each chip opens the same fix-it job list as before — and when everything's clean, the strip disappears entirely.
+
+### Jobs burning ahead of progress
+
+For owners, controllers and master techs, a red-edged card appears a few seconds after the board when any open job has spent a bigger share of its budget than it has finished: {{chip:red|🔥 3 jobs burning ahead of progress — $41,300 of margin at risk}}. It names the worst three ("J927 Mike Holub 133% spent at 70% done"). {{button:outline-blue|Open the worst first →}} lands on that job's **Costs** tab; {{button:outline-blue|Show all N}} opens Job Summary on In progress, sorted worst projected margin first. Nothing hot, no card.
 
 ## The board is still the board
 

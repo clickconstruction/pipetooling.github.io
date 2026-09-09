@@ -1,3 +1,4 @@
+import { burnProjectedMarginForSort, projectJobSummaryBurn, type JobSummaryBurn } from './jobSummaryBurn'
 import {
   jobSummaryPaidInvoiceOpts,
   resolveJobSummaryPercentCompleteWithSource,
@@ -43,6 +44,8 @@ export type JobSummarySortKey =
   | 'trueMargin'
   | 'revPerHour'
   | 'pct'
+  /** Burn (v2.3191): projected true margin (direct margin until the ledger loads). */
+  | 'projMargin'
 export type JobSummarySortDir = 'asc' | 'desc'
 
 /** Cut by (v2.2820): group the Jobs table by one key, subtotal per group, ranked bars beside it. */
@@ -145,7 +148,7 @@ export const JOB_SUMMARY_VIEW_MODE_OPTIONS: ReadonlyArray<{ key: JobSummaryViewM
 const STATUS_KEYS: readonly JobSummaryStatusFilter[] = ['finished', 'in_progress', 'all']
 const WINDOW_KEYS: readonly JobSummaryWindowKey[] = ['90d', '6mo', 'ytd', '12mo', 'all']
 const METHOD_KEYS: readonly JobOverheadMethod[] = ['day', 'A', 'B', 'C']
-const SORT_KEYS: readonly JobSummarySortKey[] = ['job', 'revenue', 'labor', 'subs', 'parts', 'gross', 'margin', 'hours', 'overhead', 'trueProfit', 'trueMargin', 'revPerHour', 'pct']
+const SORT_KEYS: readonly JobSummarySortKey[] = ['job', 'revenue', 'labor', 'subs', 'parts', 'gross', 'margin', 'hours', 'overhead', 'trueProfit', 'trueMargin', 'revPerHour', 'pct', 'projMargin']
 
 export const JOB_SUMMARY_STATUS_OPTIONS: ReadonlyArray<{ key: JobSummaryStatusFilter; label: string; title: string }> = [
   { key: 'finished', label: 'Finished (100%)', title: 'Jobs whose % complete resolves to 100 — the work is done (latest report or the job’s own %) or the whole contract is billed and paid' },
@@ -337,6 +340,8 @@ export type JobSummaryEnrichedRow<R extends JobSummaryLedgerRowInput = JobSummar
   inCollections: boolean
   lastWorkedYmd: string | null
   flags: JobSummaryRowFlag[]
+  /** Burn (v2.3191): spend vs progress and the projected margin, from this row's aggregates. */
+  burn: JobSummaryBurn | null
 }
 
 function jobLastWorkedYmd(job: JobSummaryLedgerRowInput['job'], ledger: JobDayLedger | null): string | null {
@@ -351,8 +356,11 @@ export function enrichJobSummaryRows<R extends JobSummaryLedgerRowInput>(args: {
   reportPctByJobId: ReadonlyMap<string, number>
   ledger: JobDayLedger | null
   method: JobOverheadMethod
+  /** The Target chip (0 = off); the burn budget = contract × (1 − target), default 35 %. */
+  targetMarginPct?: number
 }): JobSummaryEnrichedRow<R>[] {
   const { rows, reportPctByJobId, ledger, method } = args
+  const targetMarginPct = args.targetMarginPct ?? 0
   return rows.map((row) => {
     const job = row.job
     const contractUsd = row.totalBill
@@ -402,6 +410,17 @@ export function enrichJobSummaryRows<R extends JobSummaryLedgerRowInput>(args: {
     }
     const trueProfitUsd = overheadUsd == null ? null : grossUsd - overheadUsd
     const trueMarginPct = trueProfitUsd == null || !(revenueUsd > 0) ? null : (trueProfitUsd / revenueUsd) * 100
+    // Burn (v2.3191): the Costs tab's arithmetic over this row's aggregates. Overhead
+    // enters only the true-margin projection; field days come from the ledger.
+    const burn = projectJobSummaryBurn({
+      contractUsd,
+      spentUsd: laborUsd + subsUsd + partsUsd,
+      pct,
+      finished,
+      fieldDays: ledger ? daysInWindow : null,
+      overheadUsd,
+      targetMarginPct,
+    })
     return {
       row,
       pct,
@@ -426,6 +445,7 @@ export function enrichJobSummaryRows<R extends JobSummaryLedgerRowInput>(args: {
       inCollections,
       lastWorkedYmd: jobLastWorkedYmd(job, ledger),
       flags,
+      burn,
     }
   })
 }
@@ -475,6 +495,8 @@ function sortValue(row: JobSummaryEnrichedRow, key: JobSummarySortKey): number |
       return row.trueProfitUsd
     case 'trueMargin':
       return row.trueMarginPct
+    case 'projMargin':
+      return burnProjectedMarginForSort(row.burn)
     case 'revPerHour':
       return row.revenuePerHourUsd
     case 'pct':
@@ -579,6 +601,10 @@ export type JobSummaryTotals = {
   noHoursJobs: number
   priorHoursJobs: number
   earnedRows: number
+  /** Burn (v2.3191): Σ projected true margin over the in-progress rows that have one; null when none. */
+  projectedTrueMarginUsd: number | null
+  projectedRows: number
+  burningJobs: number
 }
 
 export function summarizeJobSummaryRows(rows: readonly JobSummaryEnrichedRow[]): JobSummaryTotals {
@@ -599,7 +625,15 @@ export function summarizeJobSummaryRows(rows: readonly JobSummaryEnrichedRow[]):
   let writeDownJobs = 0
   let collectionsJobs = 0
   let collectionsUsd = 0
+  let projectedTrueMarginUsd = 0
+  let projectedRows = 0
+  let burningJobs = 0
   for (const r of rows) {
+    if (r.burn && !r.finished && r.burn.projectedTrueMarginUsd != null) {
+      projectedTrueMarginUsd += r.burn.projectedTrueMarginUsd
+      projectedRows += 1
+    }
+    if (r.burn?.status === 'hot') burningJobs += 1
     if (r.writeDownUsd > 0) {
       writeDownUsd += r.writeDownUsd
       writeDownJobs += 1
@@ -646,6 +680,9 @@ export function summarizeJobSummaryRows(rows: readonly JobSummaryEnrichedRow[]):
     noHoursJobs,
     priorHoursJobs,
     earnedRows,
+    projectedTrueMarginUsd: projectedRows > 0 ? projectedTrueMarginUsd : null,
+    projectedRows,
+    burningJobs,
   }
 }
 

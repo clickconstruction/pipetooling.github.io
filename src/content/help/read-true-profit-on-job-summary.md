@@ -2,7 +2,7 @@
 title: read true profit on Job Summary
 category: Office
 roles: dev, master_technician, controller
-keywords: money story, door, from pipeline, from job window, cut by, group by, by GC, by service type, by lead tech, concentration, revenue per hour, compare to, prior period, last year, target margin, job summary, true profit, overhead, day-share, margin, finished jobs, percent complete, earned revenue, sort, window, gross profit
+keywords: burn, projected margin, spent vs done, money story, door, from pipeline, from job window, cut by, group by, by GC, by service type, by lead tech, concentration, revenue per hour, compare to, prior period, last year, target margin, job summary, true profit, overhead, day-share, margin, finished jobs, percent complete, earned revenue, sort, window, gross profit
 order: 36
 ---
 
@@ -68,6 +68,15 @@ Two chips in the row and a line in the totals strip name money that left after t
 - **%** carries a small badge saying who set it: {{chip:gray|crew report Aug 27}} (the latest field report with a %), {{chip:gray|set by office}} (the job's own % complete) or {{chip:gray|fully collected}} (every invoice paid and covering the contract). The report date fills in once the row has been expanded.
 - In the expanded row's chart, the green line is the job's **cash position** — payments received minus charges to date — not a margin. If your role can't see wages, the legend says *before team labor*.
 - The expanded row's cost-by-person table ends with **% of total** — each person's Total as a share of the Total row, so you can see who carried the job. A tiny share reads *<1%*; the Unassigned row (supply-house invoices and card charges nobody is matched to) counts too.
+
+### Burn and Proj. margin
+
+Two columns for owners, controllers and master techs, added after **True %**:
+
+- **Burn** — percent of the budget spent beside percent complete, {{chip:red|68% · 62%}}. The budget is the contract × (100 − your **Target** chip; 35% when it's off). Red and bold when spend leads progress by more than five points; green when progress leads; `early` under three field days or 10% complete; `done` on finished jobs.
+- **Proj. margin** — the true margin the job is heading for: contract − (spent ÷ percent done) − overhead so far − overhead per field day × the field days still to come. Red when negative or under the Target. On a finished job it simply equals True profit. Sort by it and the jobs in trouble rise to the top; the totals row sums it over the in-progress jobs and counts how many are hot.
+
+The same arithmetic runs on each job window's **Costs** tab (see *read the cost and value timeline on a job*), where the daily bars and the forecast explain the number.
 
 ## How day-share works
 

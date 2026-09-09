@@ -266,7 +266,7 @@ describe('compare to + target (v2.2817)', () => {
   })
 
   it('compares totals measure by measure and leaves unknowns null', () => {
-    const base = { jobs: 10, revenueUsd: 1000, laborUsd: 300, subsUsd: 0, partsUsd: 100, grossUsd: 600, marginPct: 60, hours: 40, overheadUsd: 100, trueProfitUsd: 500, trueMarginPct: 50, truePerHourUsd: 12.5, revenuePerHourUsd: 25, writeDownUsd: 0, writeDownJobs: 0, collectionsJobs: 0, collectionsUsd: 0, noRevenueJobs: 0, noPctJobs: 0, noHoursJobs: 0, priorHoursJobs: 0, earnedRows: 0 }
+    const base = { jobs: 10, revenueUsd: 1000, laborUsd: 300, subsUsd: 0, partsUsd: 100, grossUsd: 600, marginPct: 60, hours: 40, overheadUsd: 100, trueProfitUsd: 500, trueMarginPct: 50, truePerHourUsd: 12.5, revenuePerHourUsd: 25, writeDownUsd: 0, writeDownJobs: 0, collectionsJobs: 0, collectionsUsd: 0, noRevenueJobs: 0, noPctJobs: 0, noHoursJobs: 0, priorHoursJobs: 0, earnedRows: 0, projectedTrueMarginUsd: null, projectedRows: 0, burningJobs: 0 }
     const prior = { ...base, jobs: 8, revenueUsd: 800, grossUsd: 400, marginPct: 50, trueProfitUsd: 300, trueMarginPct: 37.5, overheadUsd: null, truePerHourUsd: null }
     const c = compareJobSummaryTotals(base, prior)
     expect(c.jobs).toEqual({ now: 10, prior: 8, delta: 2 })

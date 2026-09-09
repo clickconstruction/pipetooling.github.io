@@ -208,8 +208,8 @@ export function useJobSummaryView<R extends JobSummaryLedgerRowInput & { job: { 
 
   const method: JobOverheadMethod = prefs.method
   const enriched = useMemo(
-    () => enrichJobSummaryRows({ rows, reportPctByJobId, ledger: ledgerForWindow, method }),
-    [rows, reportPctByJobId, ledgerForWindow, method],
+    () => enrichJobSummaryRows({ rows, reportPctByJobId, ledger: ledgerForWindow, method, targetMarginPct: prefs.targetTrueMarginPct }),
+    [rows, reportPctByJobId, ledgerForWindow, method, prefs.targetTrueMarginPct],
   )
   const visible = useMemo(
     () => filterAndSortJobSummaryRows({ rows: enriched, prefs, search, startYmd, endYmd }),
@@ -242,7 +242,7 @@ export function useJobSummaryView<R extends JobSummaryLedgerRowInput & { job: { 
 
   const compare = useMemo<JobSummaryCompareBundle | null>(() => {
     if (!compareWindow) return null
-    const enrichedPrior = enrichJobSummaryRows({ rows, reportPctByJobId, ledger: cmp.ledger, method })
+    const enrichedPrior = enrichJobSummaryRows({ rows, reportPctByJobId, ledger: cmp.ledger, method, targetMarginPct: prefs.targetTrueMarginPct })
     const visiblePrior = filterAndSortJobSummaryRows({ rows: enrichedPrior, prefs, search, startYmd: compareWindow.startYmd, endYmd: compareWindow.endYmd })
     const priorTotals = summarizeJobSummaryRows(visiblePrior)
     const trueMarginPctByGroupKey = new Map(groupJobSummaryRows(visiblePrior, prefs.cutBy, cutCtx).map((g) => [g.key, g.totals.trueMarginPct]))
