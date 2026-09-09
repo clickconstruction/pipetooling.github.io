@@ -141,7 +141,10 @@ The working loops, in the order a day usually runs:
    gone out; the Scoreboard shows what moved.
 3. **Feed the queue** — Queue lens: paste kickoff prompts for requested/ready live bids
    (shadows) and for backtest candidates on hungry axes; classify unclassified
-   references while you're there.
+   references while you're there. The lens's **Copy Desktop kickoff** (v2.3207) is the
+   no-repo path: one prompt for a plain Claude Desktop chat that sets up the connector
+   and works `next_shadow` serially, with the person attaching each plan PDF
+   (`kickoffs/desktop-operator.md`).
 4. **Missions** — "run M<N>": the agent fetches the mission via `get_mission` and files
    `submit_report`; score against `missions/estimator.md` (the MCP bundle deliberately
    excludes verification sections).

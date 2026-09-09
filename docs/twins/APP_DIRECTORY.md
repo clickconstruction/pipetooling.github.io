@@ -89,7 +89,8 @@ only (no Pricing / Cover Letter / Submission); no subs/helpers.
   chip; per-axis Gate-B pips. Roles: all staff (sealed totals are API-nulled pre-score).
 - `?tab=robot-queue` — **🤖 Queue** (v2.2542, dev only): every robot-able live bid,
   requested (green, oldest ask first) above ready (yellow), each with a copyable kickoff
-  prompt; plus **Backtest candidates** (v2.2594) — graded A/B decided references grouped
+  prompt; **Copy Desktop kickoff** (v2.3207) at the top copies the no-repo Claude Desktop
+  operator prompt; plus **Backtest candidates** (v2.2594) — graded A/B decided references grouped
   by confidence axis with demand chips, starvation cards, `assign axis ▾` on unclassified
   rows, and blind backtest prompts.
 - `?tab=robot-scoreboard` — **🤖 Scoreboard** (v2.2560, dev only): per-axis Gate-B cards
