@@ -37,6 +37,9 @@ const jobEvidence: JobSearchEvidence = {
   lastPaidDaysAgo: 12,
   status: 'ready_to_bill',
   blocksThisWeek: 2,
+  revenue: 4850,
+  lastBillDate: null,
+  collectionsAt: null,
 }
 
 describe('UnifiedSearchResultRow', () => {
@@ -69,6 +72,49 @@ describe('UnifiedSearchResultRow', () => {
     expect(screen.getByText('Working')).toBeTruthy()
     expect(screen.getByText('2 lines')).toBeTruthy()
     expect(screen.getByText('4 this wk')).toBeTruthy()
+  })
+
+  it('money rail (v2.3183): note · chip · amount — no note on Waiting, revenue fallback, muted $0, aged unpaid on Billed', () => {
+    const { unmount } = renderWithProviders(
+      <UnifiedSearchResultRow result={jobResult} prefixMap={prefixMap} jobEvidence={{ ...jobEvidence, status: 'waiting', lastPaidDaysAgo: null, blocksThisWeek: 0 }} />,
+    )
+    expect(screen.getByText('Waiting')).toBeTruthy()
+    expect(screen.getByText('$4,850')).toBeTruthy()
+    expect(screen.queryByText(/unpaid/)).toBeNull()
+    unmount()
+
+    const { unmount: unmount2 } = renderWithProviders(
+      <UnifiedSearchResultRow
+        result={jobResult}
+        prefixMap={prefixMap}
+        jobEvidence={{ ...jobEvidence, status: 'paid', lineCount: 0, lineRevenue: 0, lineSummary: '', revenue: 4100, lastPaidDaysAgo: 183, blocksThisWeek: 0 }}
+      />,
+    )
+    expect(screen.getByText('$4,100')).toBeTruthy()
+    expect(screen.getByText('6 mo ago')).toBeTruthy()
+    expect(screen.queryByText(/paid 6 mo/)).toBeNull()
+    unmount2()
+
+    const { unmount: unmount3 } = renderWithProviders(
+      <UnifiedSearchResultRow
+        result={jobResult}
+        prefixMap={prefixMap}
+        jobEvidence={{ ...jobEvidence, status: 'paid', lineCount: 1, lineRevenue: 0, lastPaidDaysAgo: null, blocksThisWeek: 0 }}
+      />,
+    )
+    expect(screen.getByText('$0')).toBeTruthy()
+    unmount3()
+
+    const ymd = new Date(Date.now() - 47 * 86_400_000).toISOString().slice(0, 10)
+    renderWithProviders(
+      <UnifiedSearchResultRow
+        result={jobResult}
+        prefixMap={prefixMap}
+        jobEvidence={{ ...jobEvidence, status: 'billed', lastPaidDaysAgo: null, lastBillDate: ymd, blocksThisWeek: 0 }}
+      />,
+    )
+    expect(screen.getByText('Billed')).toBeTruthy()
+    expect(screen.getByText(/^unpaid 4[678]d$/)).toBeTruthy()
   })
 
   it('renders without evidence as a plain pill + label row', () => {

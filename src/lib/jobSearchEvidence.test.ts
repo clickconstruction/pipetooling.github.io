@@ -32,7 +32,7 @@ describe('mergeJobSearchEvidence', () => {
       [{ id: 'j1', status: 'ready_to_bill' }],
       [{ job_id: 'j1' }, { job_id: 'j1' }],
     )
-    expect(out.get('j1')).toEqual({ ...enrichment, status: 'ready_to_bill', blocksThisWeek: 2 })
+    expect(out.get('j1')).toEqual({ ...enrichment, status: 'ready_to_bill', blocksThisWeek: 2, revenue: null, lastBillDate: null, collectionsAt: null })
   })
 
   it('creates an entry for a lineless job that has status or blocks', () => {
@@ -45,7 +45,20 @@ describe('mergeJobSearchEvidence', () => {
       lastPaidDaysAgo: null,
       status: 'working',
       blocksThisWeek: 0,
+      revenue: null,
+      lastBillDate: null,
+      collectionsAt: null,
     })
+  })
+
+  it('carries the ledger extras the money rail reads (v2.3183): revenue, last bill date, collections flag', () => {
+    const out = mergeJobSearchEvidence(
+      ['j5'],
+      new Map(),
+      [{ id: 'j5', status: 'billed', revenue: 4200, last_bill_date: '2026-07-23', collections_at: '2026-09-01T00:00:00Z' }],
+      [],
+    )
+    expect(out.get('j5')).toMatchObject({ status: 'billed', revenue: 4200, lastBillDate: '2026-07-23', collectionsAt: '2026-09-01T00:00:00Z' })
   })
 
   it('skips ids with no signal at all and normalizes blank status to null', () => {

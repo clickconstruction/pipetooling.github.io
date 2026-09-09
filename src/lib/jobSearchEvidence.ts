@@ -16,6 +16,21 @@ export type JobSearchEvidence = DupJobEnrichment & {
   status: string | null
   /** Schedule blocks in the current company week (Sun–Sat Central) the caller can see. */
   blocksThisWeek: number
+  /** jobs_ledger.revenue — the rail's amount when the job has no line items (v2.3183). */
+  revenue: number | null
+  /** jobs_ledger.last_bill_date — ages the "unpaid" note on Billed rows. */
+  lastBillDate: string | null
+  /** jobs_ledger.collections_at — turns the unpaid note red. */
+  collectionsAt: string | null
+}
+
+/** One jobs_ledger row as the evidence fetch reads it (money-mode extras optional for lines-only callers/tests). */
+export type JobSearchStatusRow = {
+  id: string
+  status: string | null
+  revenue?: number | null
+  last_bill_date?: string | null
+  collections_at?: string | null
 }
 
 const OFFICE_MONEY_ROLES: ReadonlySet<string> = new Set([
@@ -51,10 +66,11 @@ async function chunkedIn<T>(
 export function mergeJobSearchEvidence(
   jobIds: string[],
   enrichments: Map<string, DupJobEnrichment>,
-  statusRows: Array<{ id: string; status: string | null }>,
+  statusRows: JobSearchStatusRow[],
   scheduleBlockRows: Array<{ job_id: string }>,
 ): Map<string, JobSearchEvidence> {
   const statusById = new Map(statusRows.map((r) => [r.id, (r.status ?? '').trim() || null]))
+  const ledgerById = new Map(statusRows.map((r) => [r.id, r]))
   const blocksById = new Map<string, number>()
   for (const b of scheduleBlockRows) blocksById.set(b.job_id, (blocksById.get(b.job_id) ?? 0) + 1)
 
@@ -63,11 +79,15 @@ export function mergeJobSearchEvidence(
     const e = enrichments.get(id)
     const status = statusById.get(id) ?? null
     const blocksThisWeek = blocksById.get(id) ?? 0
-    if (!e && status === null && blocksThisWeek === 0) continue
+    const ledger = ledgerById.get(id)
+    if (!e && status === null && blocksThisWeek === 0 && !ledger) continue
     out.set(id, {
       ...(e ?? { lineCount: 0, lineRevenue: 0, lineSummary: '', paidTotal: 0, lastPaidDaysAgo: null }),
       status,
       blocksThisWeek,
+      revenue: ledger?.revenue != null ? Number(ledger.revenue) : null,
+      lastBillDate: ledger?.last_bill_date ?? null,
+      collectionsAt: ledger?.collections_at ?? null,
     })
   }
   return out
@@ -114,12 +134,18 @@ export async function fetchJobSearchEvidence(
     // Status + schedule blocks are best-effort extras: an RLS gap or failure
     // here must not take down the money rail, so each falls back to [].
     chunkedIn(ids, async (slice) => {
+      // Money mode also reads the rail's fallback total + the two dates that
+      // age / color the unpaid note (v2.3183); lines-only stays status-only.
       const rows = await withSupabaseRetry(
-        () => supabase.from('jobs_ledger').select('id, status').in('id', slice),
+        () =>
+          supabase
+            .from('jobs_ledger')
+            .select(mode === 'money' ? 'id, status, revenue, last_bill_date, collections_at' : 'id, status')
+            .in('id', slice),
         'job search evidence status',
       )
-      return (rows ?? []) as Array<{ id: string; status: string | null }>
-    }).catch(() => [] as Array<{ id: string; status: string | null }>),
+      return (rows ?? []) as unknown as JobSearchStatusRow[]
+    }).catch(() => [] as JobSearchStatusRow[]),
     chunkedIn(ids, async (slice) => {
       const rows = await withSupabaseRetry(
         () =>
