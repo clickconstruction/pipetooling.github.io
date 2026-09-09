@@ -1,6 +1,7 @@
 import type { CSSProperties } from 'react'
 import type { JobSummaryCompareBundle } from '../../hooks/useJobSummaryView'
 import { formatUsdNoCents } from '../../lib/jobs/jobFormatting'
+import { SignedAmountSmallCents } from '../AmountSmallCents'
 import type { JobSummaryConcentration, JobSummaryGroup, JobSummaryLedgerRowInput } from '../../lib/jobs/jobSummaryLedgerView'
 
 /**
@@ -114,15 +115,15 @@ export function JobSummaryGroupRow({
       <td style={{ ...cell, textAlign: 'left', color: 'var(--text-strong)' }}>
         {group.label} <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}>· {t.jobs} {t.jobs === 1 ? 'job' : 'jobs'}</span>
       </td>
-      <td style={cell}>{money(t.revenueUsd)}</td>
-      <td style={cell}>{showMoney ? money(t.laborUsd) : '—'}</td>
-      <td style={cell}>{money(t.subsUsd)}</td>
-      <td style={cell}>{money(t.partsUsd)}</td>
-      <td style={{ ...cell, color: showMoney && t.grossUsd < 0 ? 'var(--text-red-700)' : undefined }}>{showMoney ? money(t.grossUsd) : '—'}</td>
+      <td style={cell}><SignedAmountSmallCents value={t.revenueUsd} /></td>
+      <td style={cell}>{showMoney ? <SignedAmountSmallCents value={t.laborUsd} /> : '—'}</td>
+      <td style={cell}><SignedAmountSmallCents value={t.subsUsd} /></td>
+      <td style={cell}><SignedAmountSmallCents value={t.partsUsd} /></td>
+      <td style={{ ...cell, color: showMoney && t.grossUsd < 0 ? 'var(--text-red-700)' : undefined }}>{showMoney ? <SignedAmountSmallCents value={t.grossUsd} /> : '—'}</td>
       <td style={cell}>{showMoney ? pct(t.marginPct) : '—'}</td>
       <td style={cell}>{ledgerLoaded ? `${t.hours.toFixed(1)} h` : '—'}</td>
-      <td style={cell}>{showMoney ? money(t.overheadUsd) : '—'}</td>
-      <td style={{ ...cell, color: showMoney && t.trueProfitUsd != null && t.trueProfitUsd < 0 ? 'var(--text-red-700)' : undefined }}>{showMoney ? money(t.trueProfitUsd) : '—'}</td>
+      <td style={cell}>{showMoney ? <SignedAmountSmallCents value={t.overheadUsd} /> : '—'}</td>
+      <td style={{ ...cell, color: showMoney && t.trueProfitUsd != null && t.trueProfitUsd < 0 ? 'var(--text-red-700)' : undefined }}>{showMoney ? <SignedAmountSmallCents value={t.trueProfitUsd} /> : '—'}</td>
       <td style={{ ...cell, color: under ? 'var(--text-red-700)' : undefined }} title={under ? `Under the ${targetTrueMarginPct}% target` : undefined}>
         {showMoney ? `${pct(t.trueMarginPct)}${under ? ' ▾' : ''}` : '—'}
         {compare && showMoney ? (

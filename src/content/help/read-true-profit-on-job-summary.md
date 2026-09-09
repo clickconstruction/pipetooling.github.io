@@ -67,6 +67,7 @@ Two chips in the row and a line in the totals strip name money that left after t
 - **Gross** is revenue − team labor − subs − parts, before overhead. **Overhead** is the job's share under the method you picked. **True profit** is gross minus that — the bottom line. Hover either header for the formula. Expand a row and open **Overhead — the math** to see every day line.
 - **%** carries a small badge saying who set it: {{chip:gray|crew report Aug 27}} (the latest field report with a %), {{chip:gray|set by office}} (the job's own % complete) or {{chip:gray|fully collected}} (every invoice paid and covering the contract). The report date fills in once the row has been expanded.
 - In the expanded row's chart, the green line is the job's **cash position** — payments received minus charges to date — not a margin. If your role can't see wages, the legend says *before team labor*.
+- The expanded row's cost-by-person table ends with **% of total** — each person's Total as a share of the Total row, so you can see who carried the job. A tiny share reads *<1%*; the Unassigned row (supply-house invoices and card charges nobody is matched to) counts too.
 
 ## How day-share works
 
