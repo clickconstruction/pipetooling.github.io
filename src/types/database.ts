@@ -16102,6 +16102,7 @@ export type Database = {
           answer: string | null
           answered_at: string | null
           answered_by: string | null
+          audience: string
           created_at: string
           id: string
           mission: string | null
@@ -16117,6 +16118,7 @@ export type Database = {
           answer?: string | null
           answered_at?: string | null
           answered_by?: string | null
+          audience?: string
           created_at?: string
           id?: string
           mission?: string | null
@@ -16132,6 +16134,7 @@ export type Database = {
           answer?: string | null
           answered_at?: string | null
           answered_by?: string | null
+          audience?: string
           created_at?: string
           id?: string
           mission?: string | null
