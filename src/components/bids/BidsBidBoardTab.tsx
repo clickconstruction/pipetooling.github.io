@@ -1539,6 +1539,7 @@ export function BidsBidBoardTab({
             onEditBid={(b) => onEditBid(b)}
             onFocusRow={focusRowFromMap}
             revealSignal={mapRevealSignal}
+            onReloadBids={onReloadBids}
           />
           {BID_BOARD_SECTION_CONFIG.map(({ key, label }) => {
             const sectionBids = bidBoardBuckets[key]

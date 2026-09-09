@@ -4,7 +4,7 @@
  * Plots the bids the board is showing: the same filtered rows (search, trade
  * pill, My bids), one pin per bid with an address, colored by board section.
  * Mounts between the section pills and the first section; renders nothing when
- * there is no bid to show. Collapsible: **Hide map** keeps the header line and
+ * there is no bid to show. Collapsible: **Hide map** (or the title itself) keeps the header line and
  * remembers the choice per device; the board's **Map** pill reveals it again.
  *
  * Interactions: a pin selects the bid — its popup (desktop) / bar (phone)
@@ -23,6 +23,13 @@ import { useAddressGeocodeCoords, type AddressToGeocode } from '../../hooks/useA
 import { googleMapsBrowserKey, resolveDashboardMapProvider } from '../../lib/dashboardJobsMap'
 import { useOfficeAnchor } from '../../hooks/useOfficeAnchor'
 import { openInExternalBrowser } from '../../lib/openInExternalBrowser'
+import { supabase } from '../../lib/supabase'
+import { withSupabaseRetry } from '../../utils/errorHandling'
+import { useToastContext } from '../../contexts/ToastContext'
+import { computeBidDistanceToOffice } from '../../lib/bidDistanceToOffice'
+import { bidUpdateRefused, BID_UPDATE_NOT_APPLIED_MESSAGE } from '../../lib/bids/updateGuard'
+import { composeMissingAddressRows } from '../../lib/bids/bidBoardMissingAddresses'
+import { BidBoardMissingAddressesModal } from './BidBoardMissingAddressesModal'
 import { formatAddressWithoutZip } from '../../lib/bids/bidContactInfo'
 import {
   BID_BOARD_MAP_DEFAULT_SECTIONS,
@@ -43,6 +50,7 @@ import {
   type BidBoardMapDueTone,
   type BidBoardMapPin,
   type BidBoardMapSectionVisibility,
+  type BidBoardMapBid,
 } from '../../lib/bids/bidBoardMap'
 import type { SubmissionSectionKey } from '../../lib/bids/submissionSections'
 import type { MapCanvasAnchor, MapCanvasPin } from '../../lib/map/mapCanvasTypes'
@@ -251,6 +259,7 @@ export function BidBoardMapCard({
   onEditBid,
   onFocusRow,
   revealSignal,
+  onReloadBids,
 }: {
   /** The board's filtered rows — the map follows the search and the trade pill. */
   bids: readonly BidWithBuilder[]
@@ -264,7 +273,10 @@ export function BidBoardMapCard({
   onFocusRow: (bidId: string) => void
   /** Bumped by the board's Map pill: un-hides the card. */
   revealSignal: number
+  /** After an address is saved from the "no map location" sheet — the board re-reads its rows. */
+  onReloadBids: () => void
 }) {
+  const { showToast } = useToastContext()
   const [hidden, setHidden] = useState<boolean>(() => readBidBoardMapHidden())
   useEffect(() => {
     if (revealSignal > 0) {
@@ -296,6 +308,41 @@ export function BidBoardMapCard({
   const addresses = useMemo<AddressToGeocode[]>(() => mapBids.map((b) => ({ key: b.addressKey, display: b.address })), [mapBids])
   const { coords, resolving } = useAddressGeocodeCoords(addresses, !hidden, 'bid board map address_geocodes')
   const { pins, unmapped } = useMemo(() => resolveBidBoardMapPins(mapBids, coords), [mapBids, coords])
+  // v2.3205: the unmapped line is a door — the sheet lists every bid the map
+  // can't place with its address ready to fix; fixed rows stay for the session
+  // so the person sees the pin land.
+  const [fixOpen, setFixOpen] = useState(false)
+  const [fixedIds, setFixedIds] = useState<ReadonlySet<string>>(() => new Set())
+  const fixRows = useMemo(
+    () => composeMissingAddressRows({ noAddress, unmapped, pins, resolving, keepIds: fixedIds }),
+    [noAddress, unmapped, pins, resolving, fixedIds],
+  )
+  const saveAddress = useCallback(
+    async (target: BidBoardMapBid, address: string): Promise<boolean> => {
+      const patch: { address: string; distance_from_office?: string } = { address }
+      // A blank distance fills from the new address, the bid form's own rule (v2.3142); a typed number is never overwritten.
+      if (!(target.row.distance_from_office ?? '').toString().trim()) {
+        const d = await computeBidDistanceToOffice(address).catch(() => null)
+        if (d?.ok) patch.distance_from_office = d.milesText
+      }
+      let rows: ReadonlyArray<{ id: string }> | null
+      try {
+        rows = await withSupabaseRetry(async () => supabase.from('bids').update(patch).eq('id', target.id).select('id'), 'save bid address from the map')
+      } catch (e) {
+        showToast(`Couldn't save the address: ${e instanceof Error ? e.message : String(e)}`, 'error')
+        return false
+      }
+      if (bidUpdateRefused(rows)) {
+        showToast(BID_UPDATE_NOT_APPLIED_MESSAGE, 'error')
+        return false
+      }
+      setFixedIds((prev) => new Set([...prev, target.id]))
+      showToast(patch.distance_from_office ? `Address saved · ${patch.distance_from_office} mi to the office` : 'Address saved — placing it on the map.', 'success')
+      onReloadBids()
+      return true
+    },
+    [onReloadBids, showToast],
+  )
   const legend = useMemo(() => bidBoardMapLegend(pins), [pins])
   const visible = useMemo(() => bidBoardMapVisiblePins(pins, show), [pins, show])
   const byId = useMemo(() => new Map(visible.map((p) => [p.id, p])), [visible])
@@ -367,8 +414,19 @@ export function BidBoardMapCard({
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.625rem', color: 'var(--text-muted)', minWidth: 0 }}>
           <PinGlyph />
-          <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 600, color: 'var(--text-strong)' }}>Bids on a map</h3>
-          {!isMobile && !hidden ? <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>follows the search and the trade pill</span> : null}
+          {/* v2.3205: the title is the same toggle as Hide / Show map — one tap on the
+              words folds the card, so the eye never has to travel to the far corner. */}
+          <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 600, color: 'var(--text-strong)' }}>
+            <button
+              type="button"
+              onClick={toggleHidden}
+              aria-expanded={!hidden}
+              title={hidden ? 'Show the map' : 'Hide the map'}
+              style={{ background: 'none', border: 'none', padding: 0, margin: 0, font: 'inherit', color: 'inherit', cursor: 'pointer', minHeight: isMobile ? 44 : undefined }}
+            >
+              Bids on a map
+            </button>
+          </h3>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? '0.5rem' : '0.875rem', flexWrap: 'wrap' }}>
           {!isMobile && !hidden ? <SectionChips legend={legend} show={show} onToggle={toggleSection} isMobile={false} /> : null}
@@ -485,17 +543,9 @@ export function BidBoardMapCard({
               <span>{unmapped.length === 1 ? 'Placing 1 more bid…' : `Placing ${unmapped.length} more bids…`}</span>
             ) : unmappedLine ? (
               <span>
-                {unmappedLine}
-                {unmappedAll.length <= 3
-                  ? unmappedAll.map((b) => (
-                      <span key={b.id}>
-                        {' · '}
-                        <button type="button" onClick={() => onFocusRow(b.id)} style={LINK_BUTTON_STYLE} title="Show this bid's row">
-                          {b.label}
-                        </button>
-                      </span>
-                    ))
-                  : null}
+                <button type="button" onClick={() => setFixOpen(true)} style={{ ...LINK_BUTTON_STYLE, textDecoration: 'underline', minHeight: isMobile ? 44 : undefined }} title="List these bids and type their addresses">
+                  {unmappedLine} · {unmappedAll.length === 1 ? 'add its address' : 'add their addresses'}
+                </button>
               </span>
             ) : resolving && pins.length > 0 ? (
               <span>Placing the rest…</span>
@@ -503,6 +553,15 @@ export function BidBoardMapCard({
           </div>
         </>
       )}
+      <BidBoardMissingAddressesModal
+        open={fixOpen}
+        rows={fixRows}
+        isMobile={isMobile}
+        onClose={() => setFixOpen(false)}
+        onSave={saveAddress}
+        onEditBid={(b) => onEditBid(b.row)}
+        onFocusRow={(id) => { setFixOpen(false); onFocusRow(id) }}
+      />
     </section>
   )
 }

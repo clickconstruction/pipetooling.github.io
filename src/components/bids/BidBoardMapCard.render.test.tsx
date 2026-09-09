@@ -2,7 +2,7 @@
 /**
  * Render smokes for the Bid Board "Bids on a map" card (v2.3162): nothing with
  * no bids; pins from the geocode cache with the section legend and the office
- * anchor; a cold address lands in the "no map location yet" line whose link
+ * anchor; a cold address lands in the "no map location yet" line whose sheet
  * focuses the row; legend chips toggle pins only; a pin click focuses its row;
  * Hide map collapses to the header and persists per device, and the Map pill's
  * reveal signal brings it back; the phone bar's buttons.
@@ -32,6 +32,7 @@ vi.mock('../../hooks/useOfficeAnchor', () => ({
   useOfficeAnchor: (enabled: boolean) => (enabled ? { lat: 29.653, lng: -97.797, source: 'map_default_view', label: '12921 FM 20, Kingsbury' } : null),
 }))
 const openExternal = vi.fn()
+vi.mock('../../contexts/ToastContext', () => ({ useToastContext: () => ({ showToast: vi.fn() }) }))
 vi.mock('../../lib/openInExternalBrowser', () => ({ openInExternalBrowser: (u: string) => openExternal(u) }))
 vi.mock('../map/PinsMapGoogleCanvas', () => ({
   default: (p: PinsMapCanvasProps & { apiKey: string; onUnavailable: (r: string) => void }) => (
@@ -89,6 +90,7 @@ function renderCard(bids: BidWithBuilder[], opts: { isMobile?: boolean; revealSi
       onEditBid={onEditBid}
       onFocusRow={onFocusRow}
       revealSignal={opts.revealSignal ?? 0}
+      onReloadBids={vi.fn()}
     />,
   )
 }
@@ -126,8 +128,16 @@ describe('BidBoardMapCard', () => {
     await waitFor(() => expect(invokeMock).toHaveBeenCalledTimes(1))
     expect((invokeMock.mock.calls[0]![1] as { body: { addresses: string[] } }).body.addresses).toEqual(['5100 Pine Ridge Blvd'])
     await waitFor(() => expect(screen.getByText(/1 bid has no map location yet/)).toBeTruthy())
-    fireEvent.click(screen.getByText(/401 · Pine Ridge/))
+    // v2.3205: the line is a door — the sheet lists the bid with its address ready to fix,
+    // says why it's there, and the bid number still lights the row.
+    fireEvent.click(screen.getByText(/1 bid has no map location yet/))
+    const sheet = screen.getByRole('dialog', { name: /Bids the map can/ })
+    expect(sheet.textContent).toContain('1 the map couldn’t place')
+    expect((screen.getByLabelText(/Address for b401/i) as HTMLInputElement).value).toBe('5100 Pine Ridge Blvd')
+    expect(sheet.textContent).toMatch(/couldn’t find this address/)
+    fireEvent.click(screen.getByRole('button', { name: /^b401$/i }))
     expect(onFocusRow).toHaveBeenCalledWith('b')
+    expect(screen.queryByRole('dialog', { name: /Bids the map can/ })).toBeNull()
   })
 
   it('legend chips toggle pins on the map only; Lost starts off', async () => {
@@ -170,6 +180,19 @@ describe('BidBoardMapCard', () => {
     expect(localStorage.getItem('pipetooling_bid_board_map_hidden')).toBeNull()
   })
 
+
+  it('the title is the same toggle — tapping Bids on a map hides and shows the card (v2.3205)', async () => {
+    cacheRows.mockReturnValue([{ address_normalized: '1400 oak hollow rd', lat: 30.76, lng: -98.23 }])
+    renderCard([bid({ id: 'a' })])
+    await screen.findByText('Hide map')
+    const title = screen.getByRole('button', { name: 'Bids on a map' })
+    expect(title.getAttribute('aria-expanded')).toBe('true')
+    fireEvent.click(title)
+    expect(screen.getByText('Show map')).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Bids on a map' }).getAttribute('aria-expanded')).toBe('false')
+    fireEvent.click(screen.getByRole('button', { name: 'Bids on a map' }))
+    expect(await screen.findByText('Hide map')).toBeTruthy()
+  })
   it('phone form: the tapped pin becomes a bar with Open bid, Edit and Directions', async () => {
     cacheRows.mockReturnValue([{ address_normalized: '1400 oak hollow rd', lat: 30.76, lng: -98.23 }])
     renderCard([bid({ id: 'a' })], { isMobile: true })
