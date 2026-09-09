@@ -48,6 +48,15 @@ There is **no** stored salary amount or per-person daily-hours override; the 8 h
    `quickfill/HoursSection.tsx` and `HoursUnassignedModal.tsx` (`CrewJobsBlock.tsx` until v2.2986).
    Note: `src/utils/teamLabor.ts` and `src/lib/people/derivePersonTeamSummary.ts` still
    derive the 8/0 rule **inline** rather than via the kernel.
+   **Recorded time (v2.3179, migration `20260909022534`)**: the cost tier reads **recorded**
+   sessions — not rejected/revoked, approved *or* awaiting approval. `sync_crew_jobs_from_clock` /
+   `sync_crew_bids_from_clock` split the day over recorded sessions (an open session counts to
+   `now()`), a row trigger on `clock_sessions` resyncs on insert / close / approve / reject /
+   revoke / job change, and `teamLabor.ts` + `get_man_hours_by_job()` read hours from the view
+   `people_hours_recorded` (`people_hours` + closed-unapproved session hours). So a salaried
+   day is on its job at clock-in, not after `auto-approve-salary-sessions` runs. Payroll
+   (`people_hours`, tier 2 below) still waits for approval. The cron's 2-hour settle buffer is
+   now cosmetic for costing; shrinking it is a pending follow-up.
 2. **Payroll surfaces** (pay-stub generation, Draft Payroll preview + person-hours drilldown) —
    flat 8/0 **adjusted** by the unit-tested kernel
    [`src/lib/salariedPayrollDays.ts`](../src/lib/salariedPayrollDays.ts):
