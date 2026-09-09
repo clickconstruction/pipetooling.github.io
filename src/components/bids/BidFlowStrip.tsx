@@ -1,5 +1,5 @@
 import type { CSSProperties } from 'react'
-import { bidFlowSegments, bidFlowSummary, type BidFlow, type BidFlowDoor, type BidFlowPhase, type BidFlowStep } from '../../lib/bids/bidFlow'
+import { bidFlowSummary, type BidFlow, type BidFlowDoor, type BidFlowPhase, type BidFlowStep } from '../../lib/bids/bidFlow'
 
 /**
  * The estimating poster drawn on a bid (v2.3200). Two sizes:
@@ -79,15 +79,17 @@ export function BidFlowStrip({ flow, variant, onOpenDoor, canOpenDoor, bidLabel,
         title={ariaLabel}
         style={{ display: 'flex', gap: 2, height: 3, marginTop: 1, width: '100%' }}
       >
-        {bidFlowSegments(flow).map((seg) => (
+        {/* v2.3206: ten equal ticks, one per step, a wider gap where the phase changes — every row reads the same. */}
+        {flow.steps.map((step, i) => (
           <span
-            key={`${seg.phase}-${seg.steps[0]?.n ?? 0}`}
+            key={step.key}
             style={{
-              flex: seg.steps.length,
+              flex: 1,
               borderRadius: 2,
-              background: segBg[seg.state],
-              border: seg.state === 'untracked' ? '1px dashed var(--border)' : undefined,
+              background: segBg[step.state],
+              border: step.state === 'untracked' ? '1px dashed var(--border)' : undefined,
               boxSizing: 'border-box',
+              marginRight: phaseBreakAfter(flow.steps, i) ? 4 : 0,
             }}
           />
         ))}
@@ -194,7 +196,14 @@ export function BidFlowStrip({ flow, variant, onOpenDoor, canOpenDoor, bidLabel,
           })()}
         </span>
       </div>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(12, minmax(58px, 1fr))', minWidth: 720 }}>
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: `repeat(${flow.steps.length}, minmax(58px, 1fr))`,
+          minWidth: flow.steps.length * 62,
+          maxWidth: flow.steps.length * 88,
+        }}
+      >
         {phases.map((p) => (
           <div
             key={`${p.phase}-${p.from}`}

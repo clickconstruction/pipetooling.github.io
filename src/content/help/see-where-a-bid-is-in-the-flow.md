@@ -24,7 +24,7 @@ Hover any step to see exactly what the app read to decide it.
 
 ## On the Bid Board
 
-Under the five jump icons on each row sits a thin bar, one segment per phase: green is done, blue is the next move, grey is not yet, and a dashed outline means the app keeps no record of that step. Hover the bar for the summary, for example *7 of 9 done · next: Cover letter*. The icons still work exactly as before.
+Under the five jump icons on each row sits a thin bar of ten equal ticks, one per step, with a wider gap where a phase changes: green is done, blue is the next move, grey is not yet, and a dashed outline means the app keeps no record of that step. Hover the bar for the summary, for example *7 of 9 done · next: Cover letter*. The icons still work exactly as before.
 
 **Click a row** and the full strip appears above the bid's project, GC and address. Each step is a door: **Plans in Drive** opens Edit Bid, **Count & import** opens Counts, **Price** opens Pricing, and so on.
 
