@@ -2,7 +2,7 @@ import type { CSSProperties } from 'react'
 import { bidFlowSegments, bidFlowSummary, type BidFlow, type BidFlowDoor, type BidFlowPhase, type BidFlowStep } from '../../lib/bids/bidFlow'
 
 /**
- * SPIKE: the twelve-step poster drawn on a bid. Two sizes:
+ * The estimating poster drawn on a bid (v2.3200). Two sizes:
  * - `full` — under the selected-bid title on the workflow tabs.
  * - `compact` — twelve dots on the Bid Board row where the jump icons sit.
  * Both read one `BidFlow` from `deriveBidFlow`, so they cannot disagree.

@@ -16,6 +16,7 @@ import type { BidCountRow } from '../../types/bids'
 import { bidDisplayName, countsConfirmLabel } from '../../lib/bids/bidFormatting'
 import { bidDetailCloseXStyle, bidDetailCloseFloatMobileStyle } from '../../lib/bids/bidStyles'
 import { parseCountsImportText } from '../../lib/bids/parseCountsImportText'
+import { loadCountRowTalliesByBid } from '../../lib/bids/countRowTallies'
 import { buildCountsCsv, sanitizeCsvFilenamePart } from '../../lib/bids/bidCsvExport'
 import { BidWorkflowTabTitleWithPreview } from './BidWorkflowTabTitleWithPreview'
 import { BidFlowStrip } from './BidFlowStrip'
@@ -107,7 +108,7 @@ export function BidsCountsTab({
   onCountSourceLinkSaved,
 }: BidsCountsTabProps) {
   const { showToast, showActionToast } = useToastContext()
-  // SPIKE: bid-flow facts for the selected bid (one chunked read per selection).
+  // Bid flow facts for the selected bid (one chunked read per selection).
   const { factsByBid: bidFlowFactsByBid } = useBidFlowFacts(selectedBidForCounts ? [selectedBidForCounts.id] : [])
   const bidFlowReview = useBidFlowReview(selectedBidForCounts ? [selectedBidForCounts] : [])
   const confirmDialog = useConfirmDialog()
@@ -591,9 +592,10 @@ export function BidsCountsTab({
   }
 
   // Count-row tallies for the picker's left column (v2.2381): one id-only
-  // sweep over bids_count_rows, chunked to keep the URL sane, keyed on the
-  // bid set so search keystrokes don't refetch. Null until loaded — the
-  // column simply waits rather than flashing zeros.
+  // sweep over bids_count_rows, keyed on the bid set so search keystrokes
+  // don't refetch. Null until loaded — the column simply waits rather than
+  // flashing zeros. Chunked AND paged (v2.3203): the un-ranged 100-bid
+  // chunks tripped PostgREST's 1,000-row cap and silently under-counted.
   const [pickerCounts, setPickerCounts] = useState<Record<string, number> | null>(null)
   const pickerBidIdsKey = useMemo(() => bids.map((b) => b.id).sort().join(','), [bids])
   useEffect(() => {
@@ -602,22 +604,13 @@ export function BidsCountsTab({
     if (ids.length === 0) return
     let cancelled = false
     void (async () => {
-      const tally: Record<string, number> = {}
+      let tally: Map<string, number>
       try {
-        for (let i = 0; i < ids.length; i += 100) {
-          const rows = await withSupabaseRetry(
-            () => supabase.from('bids_count_rows').select('bid_id').in('bid_id', ids.slice(i, i + 100)),
-            'load count-row tallies for the bid picker',
-          )
-          if (cancelled) return
-          for (const r of rows ?? []) {
-            tally[r.bid_id] = (tally[r.bid_id] ?? 0) + 1
-          }
-        }
+        tally = await loadCountRowTalliesByBid(supabase, ids)
       } catch {
         return // the column just stays absent — the picker itself is unaffected
       }
-      if (!cancelled) setPickerCounts(tally)
+      if (!cancelled) setPickerCounts(Object.fromEntries(tally))
     })()
     return () => {
       cancelled = true

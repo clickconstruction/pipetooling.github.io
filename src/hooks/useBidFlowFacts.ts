@@ -4,7 +4,7 @@ import { fetchAllRowsChunkedIn } from '../lib/supabasePaging'
 import { EMPTY_BID_FLOW_FACTS, type BidFlowFacts } from '../lib/bids/bidFlow'
 
 /**
- * SPIKE: the facts the bid row itself does not carry, loaded once for a set
+ * The facts the bid row itself does not carry, loaded once for a set
  * of bids in chunked `.in()` reads (never per row). Five existence reads:
  * price requests, count rows, takeoff lines, price assignments, bid rooms.
  * A production build would fold these into the board's own load or one

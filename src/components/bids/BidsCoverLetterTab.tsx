@@ -174,7 +174,7 @@ export function BidsCoverLetterTab({
   isMyBid,
 }: BidsCoverLetterTabProps) {
   const { showToast } = useToastContext()
-  // SPIKE: bid-flow facts for the selected bid (one chunked read per selection).
+  // Bid flow facts for the selected bid (one chunked read per selection).
   const { factsByBid: bidFlowFactsByBid } = useBidFlowFacts(selectedBidForPricing ? [selectedBidForPricing.id] : [])
   const bidFlowReview = useBidFlowReview(selectedBidForPricing ? [selectedBidForPricing] : [])
   const confirmDialog = useConfirmDialog()

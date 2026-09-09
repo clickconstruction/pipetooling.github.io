@@ -47,7 +47,10 @@ import { bidAttestationDisplayName, normalizeBidDateInput } from '../lib/bidDate
 import { BidsBidBoardTab } from '../components/bids/BidsBidBoardTab'
 import { BidRfiTab } from '../components/bids/BidRfiTab'
 import { BidsAuditsTab } from '../components/bids/BidsAuditsTab'
-import { RobotBidReadinessModal } from '../components/bids/RobotBidReadinessModal'
+import { RobotStatusSheet } from '../components/bids/RobotStatusSheet'
+import { RobotNeedsSheet, type RobotOpenQuestion } from '../components/bids/RobotNeedsSheet'
+import type { RobotRowInput } from '../lib/bids/robotRowState'
+import type { ShadowRunRow } from '../lib/bids/shadowStory'
 import { RobotBidComparisonModal } from '../components/bids/RobotBidComparisonModal'
 import { RobotReferenceGradeModal } from '../components/bids/RobotReferenceGradeModal'
 import { BidsRobotQueueTab } from '../components/bids/BidsRobotQueueTab'
@@ -55,7 +58,7 @@ import { BidsRobotShadowsTab } from '../components/bids/BidsRobotShadowsTab'
 import { BidsRobotScoreboardTab } from '../components/bids/BidsRobotScoreboardTab'
 import { buildRobotQueue } from '../lib/bids/robotQueue'
 import { useBidAuditsPendingCount } from '../hooks/useBidAuditsPendingCount'
-import { canWorkRobotAudits } from '../lib/bids/bidAudits'
+import { canWorkRobotAudits, ROBOT_AUDIT_ROLES } from '../lib/bids/bidAudits'
 import { BidSubmissionFollowupTab } from '../components/bids/BidSubmissionFollowupTab'
 import { BidsBidCostsTab } from '../components/bids/BidsBidCostsTab'
 import { BidsCountsTab } from '../components/bids/BidsCountsTab'
@@ -499,7 +502,105 @@ export default function Bids() {
     }
   }, [authUser?.id])
 
-  const [robotReadinessBid, setRobotReadinessBid] = useState<BidWithBuilder | null>(null)
+  // v2.3200: the robot icon's two sheets — status (the robot is on it) and needs
+  // (the robot is waiting on a person). One kernel input per row, built here.
+  // Keep the id, not the row: the sheets read the LIVE row so a write (front of
+  // the line, an answered question) shows in the open sheet without reopening it.
+  const [robotStatusBidId, setRobotStatusBidId] = useState<string | null>(null)
+  const [robotNeedsBidId, setRobotNeedsBidId] = useState<string | null>(null)
+  const robotStatusBid = useMemo(() => (robotStatusBidId ? (bids.find((b) => b.id === robotStatusBidId) ?? null) : null), [bids, robotStatusBidId])
+  const robotNeedsBid = useMemo(() => (robotNeedsBidId ? (bids.find((b) => b.id === robotNeedsBidId) ?? null) : null), [bids, robotNeedsBidId])
+  const setRobotStatusBid = useCallback((bid: BidWithBuilder | null) => setRobotStatusBidId(bid?.id ?? null), [])
+  const setRobotNeedsBid = useCallback((bid: BidWithBuilder | null) => setRobotNeedsBidId(bid?.id ?? null), [])
+  // Shadow runs by reference bid number (list_shadow_runs never returns a sealed
+  // total, so nothing here can anchor a number). Latest run per reference wins.
+  const [shadowRunByBidNumber, setShadowRunByBidNumber] = useState<ReadonlyMap<string, ShadowRunRow>>(() => new Map())
+  const [shadowRunsGen, setShadowRunsGen] = useState(0)
+  useEffect(() => {
+    if (!authUser?.id) return
+    let cancelled = false
+    void (async () => {
+      try {
+        const { data, error } = await (supabase as unknown as import('@supabase/supabase-js').SupabaseClient).rpc('list_shadow_runs')
+        if (error || cancelled) return
+        const m = new Map<string, ShadowRunRow>()
+        for (const r of (data ?? []) as ShadowRunRow[]) {
+          const key = (r.reference_bid_number ?? '').trim()
+          if (!key) continue
+          const prev = m.get(key)
+          if (!prev || Date.parse(r.created_at ?? '') > Date.parse(prev.created_at ?? '')) m.set(key, r)
+        }
+        setShadowRunByBidNumber(m)
+      } catch {
+        // RLS-closed or RPC missing: rows fall back to queued / working from the twin pairing.
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [authUser?.id, shadowRunsGen])
+  // Open estimator-audience questions the robots asked about a bid — the row's
+  // "needs something" state. Same table the Audits tab answers from; fail-soft.
+  const canAnswerRobotQuestions = (ROBOT_AUDIT_ROLES as readonly string[]).includes(myRole ?? '')
+  const [openQuestionsByBidId, setOpenQuestionsByBidId] = useState<ReadonlyMap<string, RobotOpenQuestion[]>>(() => new Map())
+  const loadRobotQuestions = useCallback(async () => {
+    if (!canAnswerRobotQuestions) return
+    try {
+      const { data, error } = await (supabase as unknown as import('@supabase/supabase-js').SupabaseClient)
+        .from('twin_questions')
+        .select('id, question, topic, created_at, about_bid_id, audience')
+        .eq('status', 'open')
+        .not('about_bid_id', 'is', null)
+        .order('created_at', { ascending: true })
+        .limit(500)
+      if (error) return
+      const m = new Map<string, RobotOpenQuestion[]>()
+      for (const r of (data ?? []) as Array<RobotOpenQuestion & { about_bid_id: string; audience?: string | null }>) {
+        if (r.audience === 'operator') continue
+        const list = m.get(r.about_bid_id) ?? []
+        list.push({ id: r.id, question: r.question, topic: r.topic ?? null, created_at: r.created_at })
+        m.set(r.about_bid_id, list)
+      }
+      setOpenQuestionsByBidId(m)
+    } catch {
+      // RLS-closed: no questions surface on the board.
+    }
+  }, [canAnswerRobotQuestions])
+  useEffect(() => {
+    void loadRobotQuestions()
+  }, [loadRobotQuestions])
+  const answerRobotQuestion = useCallback(async (questionId: string, text: string): Promise<boolean> => {
+    const { data: rows, error } = await (supabase as unknown as import('@supabase/supabase-js').SupabaseClient)
+      .from('twin_questions')
+      .update({ status: 'answered', answer: text, answered_by: authUser?.id ?? null, answered_at: new Date().toISOString(), updated_at: new Date().toISOString() })
+      .eq('id', questionId)
+      .eq('status', 'open')
+      .select('id')
+    if (error) {
+      showToast(`Couldn't save the answer: ${error.message}`, 'error')
+      return false
+    }
+    if ((rows ?? []).length === 0) {
+      showToast('Already answered elsewhere — refreshing.', 'error')
+      await loadRobotQuestions()
+      return false
+    }
+    showToast('Answer saved — the robot reads it on its next run.', 'success')
+    await loadRobotQuestions()
+    return true
+  }, [authUser?.id, loadRobotQuestions, showToast])
+  const serviceTypeNameById = useMemo(() => new Map(serviceTypes.map((st) => [st.id, st.name])), [serviceTypes])
+  const robotRowInputFor = useCallback(
+    (bid: BidWithBuilder): RobotRowInput => ({
+      bid,
+      serviceTypeName: serviceTypeNameById.get(bid.service_type_id) ?? null,
+      twinBidNumber: twinBidBySourceId.get(bid.id)?.bid_number ?? null,
+      run: shadowRunByBidNumber.get((bid.bid_number ?? '').trim()) ?? null,
+      openQuestions: openQuestionsByBidId.get(bid.id)?.length ?? 0,
+      presence: referencePresence.get(bid.id) ?? null,
+    }),
+    [serviceTypeNameById, twinBidBySourceId, shadowRunByBidNumber, openQuestionsByBidId, referencePresence],
+  )
   const [robotComparePair, setRobotComparePair] = useState<{ source: BidWithBuilder; twin: BidWithBuilder } | null>(null)
 
   // v2.2542: yellow robot click requests a robot bid (green); green withdraws.
@@ -523,7 +624,7 @@ export default function Bids() {
       return
     }
     showToast(
-      requesting ? "Robot bid requested — it's in the dev queue. Click again to withdraw." : 'Robot bid request withdrawn.',
+      requesting ? 'Moved to the front of the next robot batch.' : 'Back in line with the other bids.',
       'success',
     )
   }, [authUser?.id, showToast])
@@ -3539,20 +3640,32 @@ export default function Bids() {
               ? undefined
               : {
                   twinBidBySourceId,
-                  onOpenReadiness: setRobotReadinessBid,
+                  inputFor: robotRowInputFor,
+                  onOpenStatus: setRobotStatusBid,
+                  onOpenNeeds: setRobotNeedsBid,
                   onOpenTwinBid: (twin, source) => setRobotComparePair({ source, twin }),
-                  onToggleRequest: (bid) => void toggleRobotRequest(bid),
-                  referencePresence,
                   onOpenGrade: setRobotGradeBid,
                 }
           }
         />
       )}
 
-      <RobotBidReadinessModal
-        bid={robotReadinessBid}
-        onClose={() => setRobotReadinessBid(null)}
+      <RobotStatusSheet
+        input={robotStatusBid ? { ...robotRowInputFor(robotStatusBid), bid: robotStatusBid } : null}
+        twin={robotStatusBid ? (twinBidBySourceId.get(robotStatusBid.id) ?? null) : null}
+        onClose={() => setRobotStatusBid(null)}
+        onOpenRobotBoard={(twin) => { setRobotStatusBid(null); applyBidBoardDeepLinkToBid(twin as BidWithBuilder) }}
+        onCompare={(twin, source) => { setRobotStatusBid(null); setRobotComparePair({ source: source as BidWithBuilder, twin: twin as BidWithBuilder }) }}
+        onToggleRequest={(bid) => { void toggleRobotRequest(bid as BidWithBuilder); setShadowRunsGen((g) => g + 1) }}
+        onOpenQuestions={() => { setRobotStatusBid(null); selectBidsTab('audits') }}
+      />
+
+      <RobotNeedsSheet
+        bid={robotNeedsBid}
+        questions={robotNeedsBid ? (openQuestionsByBidId.get(robotNeedsBid.id) ?? []) : []}
+        onClose={() => setRobotNeedsBid(null)}
         onEditBid={(bid) => openEditBid(bid as BidWithBuilder)}
+        onAnswer={answerRobotQuestion}
       />
 
       <RobotReferenceGradeModal
