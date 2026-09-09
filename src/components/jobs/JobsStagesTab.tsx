@@ -112,6 +112,7 @@ import { buildBilledAwaitingPaymentReportHtml } from '../../lib/jobsDocuments/bi
 import { ManageJobPeopleModal } from './ManageJobPeopleModal'
 import { JobCalendarModal } from './JobCalendarModal'
 import { JobsStagesActivityExpandModal } from './JobsStagesActivityExpandModal'
+import NewReportModal from '../NewReportModal'
 import { calendarYmdInAppTzFromIso, companyWeekStartSundayContaining, getDefaultWeekRange } from '../../utils/dateUtils'
 import { fetchStagesUpcomingScheduleForJobs, type StagesUpcomingAppointment } from '../../lib/stagesUpcomingSchedule'
 import { scheduleTodayDateKey } from '../../lib/jobScheduleChicago'
@@ -524,6 +525,9 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
     },
     [loadJobThreadNotesForJob],
   )
+  // v2.3197: the activity box's report pill — New Report preselected on the row's job.
+  const [newReportJob, setNewReportJob] = useState<JobWithDetails | null>(null)
+  const openNewReportForJob = useCallback((job: JobWithDetails) => setNewReportJob(job), [])
 
   const canOpenJobScheduleModal = useMemo(
     () =>
@@ -3894,6 +3898,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                     jobThreadActivityByJobId={jobThreadActivityByJobId}
                     openJobThreadFullscreen={openJobThreadFullscreen}
                     openJobActivityExpand={openJobActivityExpand}
+                    openNewReportForJob={openNewReportForJob}
                     jobThreadFullscreen={jobThreadFullscreen}
                     setJobThreadFullscreen={setJobThreadFullscreen}
                     applyStagesInvoiceFocus={applyStagesInvoiceFocus}
@@ -3986,6 +3991,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                     jobThreadActivityByJobId={jobThreadActivityByJobId}
                     openJobThreadFullscreen={openJobThreadFullscreen}
                     openJobActivityExpand={openJobActivityExpand}
+                    openNewReportForJob={openNewReportForJob}
                     jobThreadFullscreen={jobThreadFullscreen}
                     setJobThreadFullscreen={setJobThreadFullscreen}
                     applyStagesInvoiceFocus={applyStagesInvoiceFocus}
@@ -4143,6 +4149,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                     jobThreadActivityByJobId={jobThreadActivityByJobId}
                     openJobThreadFullscreen={openJobThreadFullscreen}
                     openJobActivityExpand={openJobActivityExpand}
+                    openNewReportForJob={openNewReportForJob}
                     jobThreadFullscreen={jobThreadFullscreen}
                     setJobThreadFullscreen={setJobThreadFullscreen}
                     applyStagesInvoiceFocus={applyStagesInvoiceFocus}
@@ -4469,6 +4476,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                     jobThreadActivityByJobId={jobThreadActivityByJobId}
                     openJobThreadFullscreen={openJobThreadFullscreen}
                     openJobActivityExpand={openJobActivityExpand}
+                    openNewReportForJob={openNewReportForJob}
                     jobThreadFullscreen={jobThreadFullscreen}
                     setJobThreadFullscreen={setJobThreadFullscreen}
                     applyStagesInvoiceFocus={applyStagesInvoiceFocus}
@@ -4576,6 +4584,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                     jobThreadActivityByJobId={jobThreadActivityByJobId}
                     openJobThreadFullscreen={openJobThreadFullscreen}
                     openJobActivityExpand={openJobActivityExpand}
+                    openNewReportForJob={openNewReportForJob}
                     jobThreadFullscreen={jobThreadFullscreen}
                     setJobThreadFullscreen={setJobThreadFullscreen}
                     applyStagesInvoiceFocus={applyStagesInvoiceFocus}
@@ -4721,6 +4730,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                       jobThreadActivityByJobId={jobThreadActivityByJobId}
                       openJobThreadFullscreen={openJobThreadFullscreen}
                     openJobActivityExpand={openJobActivityExpand}
+                    openNewReportForJob={openNewReportForJob}
                     jobThreadFullscreen={jobThreadFullscreen}
                     setJobThreadFullscreen={setJobThreadFullscreen}
                       applyStagesInvoiceFocus={applyStagesInvoiceFocus}
@@ -5170,6 +5180,27 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
           })()}
         </div>
       )}
+      {newReportJob ? (
+        <NewReportModal
+          open
+          authUserId={authUser?.id ?? null}
+          userRole={authRole}
+          initialJob={{
+            id: newReportJob.id,
+            source: 'job_ledger',
+            display_name: newReportJob.job_name ?? '',
+            hcp_number: effectiveJobLedgerNumber(newReportJob.hcp_number, newReportJob.click_number) ?? '',
+            address: newReportJob.job_address ?? undefined,
+          }}
+          onClose={() => setNewReportJob(null)}
+          onSaved={() => {
+            const id = newReportJob.id
+            void loadJobs()
+            void refreshJobThreadStatsForJobIds([id])
+            if (loadJobThreadNotesForJob) void loadJobThreadNotesForJob(id)
+          }}
+        />
+      ) : null}
       {activityExpandJob && (
         <JobsStagesActivityExpandModal
           job={activityExpandJob}
