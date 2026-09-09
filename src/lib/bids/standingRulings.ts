@@ -15,6 +15,8 @@
  * absent columns — consumers must treat a missing `topic` as null.
  */
 
+import { effectiveTwinQuestionAudience, type TwinQuestionAudience } from '../../../supabase/functions/_shared/twinQuestionAudience'
+
 export type TwinQuestionStatus = 'open' | 'answered' | 'promoted' | 'dismissed'
 
 export type TwinQuestionRow = {
@@ -30,6 +32,12 @@ export type TwinQuestionRow = {
   created_at: string
   /** Doctrine-issue key ('travel-bands'); undefined until the migration lands. */
   topic?: string | null
+  /**
+   * Who the question is for (v2.3186): 'estimator' (a judgment about the job)
+   * or 'operator' (the machine is in the robot's way). Undefined until
+   * migration 20260909045818 lands — then the text classifies it.
+   */
+  audience?: string | null
 }
 
 export type StandingRuling = {
@@ -67,10 +75,15 @@ const newestFirst = (a: TwinQuestionRow, b: TwinQuestionRow) =>
 /**
  * Group the OPEN questions into rulings. Non-open rows are ignored so callers
  * can pass whatever the query returned; a blank/whitespace topic counts as no
- * topic.
+ * topic. Pass `audience` to keep one lane (v2.3186): the estimator's panel
+ * shows only questions about the job; the machine-side ones live on the
+ * operator's console.
  */
-export function groupStandingRulings(rows: TwinQuestionRow[]): StandingRulingsView {
-  const open = rows.filter((r) => r.status === 'open').sort(newestFirst)
+export function groupStandingRulings(rows: TwinQuestionRow[], opts?: { audience?: TwinQuestionAudience }): StandingRulingsView {
+  const lane = opts?.audience
+  const open = rows
+    .filter((r) => r.status === 'open' && (!lane || effectiveTwinQuestionAudience(r) === lane))
+    .sort(newestFirst)
   const byTopic = new Map<string, TwinQuestionRow[]>()
   const singles: TwinQuestionRow[] = []
   for (const q of open) {
@@ -108,4 +121,11 @@ export function rulingAskedLine(r: Pick<StandingRuling, 'askCount' | 'bidCount'>
   const asks = r.askCount === 1 ? 'asked once' : `asked ${r.askCount} times`
   if (r.bidCount === 0) return asks
   return `${asks} across ${r.bidCount} bid${r.bidCount === 1 ? '' : 's'}`
+}
+
+/** Open questions per lane (v2.3186) — the estimator's panel says how many sit with the operator. */
+export function openCountByAudience(rows: TwinQuestionRow[]): Record<TwinQuestionAudience, number> {
+  const out: Record<TwinQuestionAudience, number> = { estimator: 0, operator: 0 }
+  for (const r of rows) if (r.status === 'open') out[effectiveTwinQuestionAudience(r)] += 1
+  return out
 }

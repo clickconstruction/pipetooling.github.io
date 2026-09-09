@@ -33,7 +33,8 @@ import {
   type DiffBucketKey,
   type DiffEntry,
 } from '../../lib/bids/takeoffDiff'
-import { groupStandingRulings, rulingAskedLine, type TwinQuestionRow } from '../../lib/bids/standingRulings'
+import { groupStandingRulings, openCountByAudience, rulingAskedLine, type TwinQuestionRow } from '../../lib/bids/standingRulings'
+import { twinQuestionAudienceColumnPresent } from '../../../supabase/functions/_shared/twinQuestionAudience'
 import { bidNumbersAcross } from '../../lib/bids/twinQuestionBidRefs'
 import { TwinQuestionText } from './TwinQuestionText'
 import { orderPendingByStake } from '../../lib/bids/auditTriage'
@@ -329,7 +330,13 @@ export function BidsAuditsTab({ authUser, myRole }: { authUser: User | null; myR
     void loadRulings()
   }, [loadRulings])
 
-  const rulingsView = useMemo(() => groupStandingRulings(rulingQuestions), [rulingQuestions])
+  // v2.3186 — the estimator's lane only. Machine-side questions (sandbox, the
+  // write fence, a file the service account can't read) sit with the operator on
+  // Settings → Digital twins; the column decides when it exists, else the text.
+  const rulingsView = useMemo(() => groupStandingRulings(rulingQuestions, { audience: 'estimator' }), [rulingQuestions])
+  const operatorOpen = useMemo(() => openCountByAudience(rulingQuestions).operator, [rulingQuestions])
+  // Bouncing a question across needs the column to write to.
+  const audienceWritable = useMemo(() => twinQuestionAudienceColumnPresent(rulingQuestions), [rulingQuestions])
 
   // v2.3174 — every "b474" in a question links to its bid. One lookup of the
   // numbers the open questions mention; a row's about_bid_id covers the rest.
@@ -403,6 +410,42 @@ export function BidsAuditsTab({ authUser, myRole }: { authUser: User | null; myR
     } finally {
       setBusy(null)
     }
+  }
+
+  // "Not mine" (v2.3186): the robot was talking to the operator — move every
+  // open copy to that lane. Dismiss: close it unanswered (status 'dismissed').
+  const patchRulingQuestions = async (questionIds: string[], key: string, patch: Record<string, unknown>, done: string) => {
+    setBusy(`ruling:${key}`)
+    try {
+      const { data: rows, error } = await auditDb
+        .from('twin_questions')
+        .update({ ...patch, updated_at: new Date().toISOString() })
+        .in('id', questionIds)
+        .eq('status', 'open')
+        .select('id')
+      if (error) throw new Error(error.message)
+      if ((rows ?? []).length === 0) showToast('Already handled elsewhere — refreshing.', 'error')
+      else showToast(done, 'success')
+      await loadRulings()
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : String(e), 'error')
+    } finally {
+      setBusy(null)
+    }
+  }
+  const bounceToOperator = (questionIds: string[], key: string) =>
+    patchRulingQuestions(questionIds, key, { audience: 'operator' }, questionIds.length > 1 ? `Sent ${questionIds.length} questions to the operator's console.` : "Sent to the operator's console.")
+  const dismissRulingQuestions = (questionIds: string[], key: string) =>
+    patchRulingQuestions(questionIds, key, { status: 'dismissed' }, questionIds.length > 1 ? `Dismissed ${questionIds.length} questions.` : 'Dismissed.')
+  const rulingSecondaryStyle: React.CSSProperties = {
+    padding: '0.4rem 0.7rem',
+    background: 'transparent',
+    color: 'var(--text-muted)',
+    border: '1px solid var(--border)',
+    borderRadius: 4,
+    cursor: 'pointer',
+    fontSize: '0.8rem',
+    whiteSpace: 'nowrap',
   }
 
   const deltaPctFor = useCallback(
@@ -641,12 +684,21 @@ export function BidsAuditsTab({ authUser, myRole }: { authUser: User | null; myR
           {rulingsExpanded ? (
             <div style={{ padding: '0 0.9rem 0.75rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
               {rulingsView.openCount === 0 ? (
-                <div style={{ color: 'var(--text-muted)', fontSize: '0.8125rem' }}>No open questions — every robot has its answer.</div>
+                <div style={{ color: 'var(--text-muted)', fontSize: '0.8125rem' }}>No open questions for an estimator — every robot has its answer.</div>
               ) : (
                 <div style={{ color: 'var(--text-muted)', fontSize: '0.78rem' }}>
-                  One answer lands on every open copy of the question; the robots pull it on their next run.
+                  Questions about the job only — one answer lands on every open copy; the robots pull it on their next run. A robot
+                  talking about its own machine doesn't belong here: <b>Not mine</b> sends it to the operator.
                 </div>
               )}
+              {myRole === 'dev' && operatorOpen > 0 ? (
+                <div style={{ color: 'var(--text-muted)', fontSize: '0.78rem' }}>
+                  🛠 {operatorOpen} robot problem{operatorOpen === 1 ? '' : 's'} for the operator —{' '}
+                  <a href="/settings?tab=settings-digital-twins" style={{ color: 'var(--text-link)' }}>
+                    Settings → Digital twins
+                  </a>
+                </div>
+              ) : null}
               {rulingsView.rulings.map((r) => {
                 const draftKey = `topic:${r.topic}`
                 return (
@@ -676,6 +728,26 @@ export function BidsAuditsTab({ authUser, myRole }: { authUser: User | null; myR
                         style={{ padding: '0.4rem 0.9rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: '0.875rem' }}
                       >
                         {r.askCount > 1 ? `Answer all ${r.askCount}` : 'Answer'}
+                      </button>
+                      {audienceWritable ? (
+                        <button
+                          type="button"
+                          disabled={busy === `ruling:${draftKey}`}
+                          title="This is a robot's machine problem, not an estimating question — move it to the operator's console"
+                          onClick={() => void bounceToOperator(r.questionIds, draftKey)}
+                          style={rulingSecondaryStyle}
+                        >
+                          Not mine
+                        </button>
+                      ) : null}
+                      <button
+                        type="button"
+                        disabled={busy === `ruling:${draftKey}`}
+                        title="Close without an answer — the robots stop asking"
+                        onClick={() => void dismissRulingQuestions(r.questionIds, draftKey)}
+                        style={rulingSecondaryStyle}
+                      >
+                        Dismiss
                       </button>
                     </div>
                   </div>
@@ -707,6 +779,26 @@ export function BidsAuditsTab({ authUser, myRole }: { authUser: User | null; myR
                         style={{ padding: '0.4rem 0.9rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: '0.875rem' }}
                       >
                         Answer
+                      </button>
+                      {audienceWritable ? (
+                        <button
+                          type="button"
+                          disabled={busy === `ruling:${draftKey}`}
+                          title="This is a robot's machine problem, not an estimating question — move it to the operator's console"
+                          onClick={() => void bounceToOperator([s.id], draftKey)}
+                          style={rulingSecondaryStyle}
+                        >
+                          Not mine
+                        </button>
+                      ) : null}
+                      <button
+                        type="button"
+                        disabled={busy === `ruling:${draftKey}`}
+                        title="Close without an answer — the robots stop asking"
+                        onClick={() => void dismissRulingQuestions([s.id], draftKey)}
+                        style={rulingSecondaryStyle}
+                      >
+                        Dismiss
                       </button>
                     </div>
                   </div>

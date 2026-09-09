@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { groupStandingRulings, rulingAskedLine, topicLabel, type TwinQuestionRow } from './standingRulings'
+import { groupStandingRulings, openCountByAudience, rulingAskedLine, topicLabel, type TwinQuestionRow } from './standingRulings'
 
 const q = (over: Partial<TwinQuestionRow> & { id: string }): TwinQuestionRow => ({
   twin_user_id: 'twin-1',
@@ -81,5 +81,33 @@ describe('rulingAskedLine / topicLabel', () => {
     expect(topicLabel('travel-bands')).toBe('Travel bands')
     expect(topicLabel('small-ti-absorption')).toBe('Small ti absorption')
     expect(topicLabel('package_boundary')).toBe('Package boundary')
+  })
+})
+
+describe('audience lanes (v2.3186)', () => {
+  const rows = [
+    q({ id: 'e1', question: 'Which sinks get the TMV-2?', topic: 'tmv-scope' }),
+    q({ id: 'e2', question: 'Do we band travel by distance?', topic: 'travel-bands' }),
+    q({ id: 'o1', question: 'The sandbox blocked the bids_plan_substrates insert — can someone add a harness verb?' }),
+    q({ id: 'o2', question: 'Is a strip mall shell a no-go?', audience: 'operator' }), // bounced by a human
+    q({ id: 'e3', question: 'The write fence denied my labor rows.', audience: 'estimator' }), // bounced the other way
+    q({ id: 'x1', question: 'The sandbox blocked sign-in.', status: 'answered' }),
+  ]
+
+  it('keeps one lane when asked, the column winning over the text', () => {
+    const est = groupStandingRulings(rows, { audience: 'estimator' })
+    expect(est.openCount).toBe(3)
+    expect([...est.rulings.map((r) => r.newest.id), ...est.singles.map((s) => s.id)].sort()).toEqual(['e1', 'e2', 'e3'])
+    const op = groupStandingRulings(rows, { audience: 'operator' })
+    expect(op.openCount).toBe(2)
+    expect(op.singles.map((s) => s.id).sort()).toEqual(['o1', 'o2'])
+  })
+
+  it('shows everything when no lane is named (the pre-lane behaviour)', () => {
+    expect(groupStandingRulings(rows).openCount).toBe(5)
+  })
+
+  it('counts open questions per lane, ignoring answered rows', () => {
+    expect(openCountByAudience(rows)).toEqual({ estimator: 3, operator: 2 })
   })
 })

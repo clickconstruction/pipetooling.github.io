@@ -77,6 +77,9 @@ const twinQuestions = [
   { id: 'tq1', twin_user_id: 'tw1', about_bid_id: 'bid-405', mission: 'BT-12', question: 'Do we band travel by distance?', status: 'open', answer: null, answered_by: null, answered_at: null, created_at: '2026-09-03T10:00:00Z', topic: 'travel-bands' },
   { id: 'tq2', twin_user_id: 'tw2', about_bid_id: 'bid-422', mission: 'BT-13', question: 'Travel past 200 miles — carry $20k?', status: 'open', answer: null, answered_by: null, answered_at: null, created_at: '2026-09-01T10:00:00Z', topic: 'travel-bands' },
   { id: 'tq3', twin_user_id: 'tw1', about_bid_id: null, mission: null, question: '[audit b474 / scope] Is a strip mall shell a no-go?', status: 'open', answer: null, answered_by: null, answered_at: null, created_at: '2026-09-02T10:00:00Z', topic: null },
+  // v2.3186 — the robot talking to the operator, not the estimator: classified
+  // from the text (no audience column yet), it must NOT appear on the panel.
+  { id: 'tq4', twin_user_id: 'tw1', about_bid_id: 'bid-422', mission: 'R2-BT-25', question: 'The sandbox blocked the bids_plan_substrates insert — can someone add a harness verb?', status: 'open', answer: null, answered_by: null, answered_at: null, created_at: '2026-09-04T10:00:00Z', topic: null },
 ]
 
 // Chainable thenable PostgREST stub: every builder method returns itself; awaiting
@@ -159,6 +162,14 @@ describe('BidsAuditsTab', () => {
     // …and a question that never names its bid gets a trailing link to the bid it is about.
     const trailing = await screen.findByRole('link', { name: 'b405' })
     expect(trailing.getAttribute('href')).toBe('/bids?tab=bid-board&bidId=bid-405')
+
+    // v2.3186 — the operator-lane question is filtered out (still 3 on the header),
+    // dev sees the count pointing at the console, and every card has Dismiss.
+    // "Not mine" stays hidden: the mock rows carry no `audience` column to write.
+    expect(screen.queryByText(/sandbox blocked the bids_plan_substrates/)).toBeNull()
+    expect(screen.getByText(/1 robot problem for the operator/)).toBeTruthy()
+    expect(screen.getAllByText('Dismiss').length).toBe(2)
+    expect(screen.queryByRole('button', { name: 'Not mine' })).toBeNull()
 
     // v2.2941 — doctrine-at-stake triage caption on a multi-pending queue.
     expect(screen.getByText('sorted by what your verdict unblocks')).toBeTruthy()
