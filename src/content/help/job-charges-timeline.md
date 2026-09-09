@@ -11,7 +11,7 @@ Every expanded job on **Jobs → Job Summary** starts with a timeline chart of t
 
 Go to **Jobs → Job Summary** and click any job row. The row expands with a quick header — {{button:outline-blue|Job Detail}} and {{button:outline|Edit Job}} links plus the same **Assigned / HCP / Last activity** info you see on the Pipeline — followed by the **Cost breakdown** with the chart at the top.
 
-The same chart also lives under the **Labor & Parts Cost** block on the job window's **Job** and **Bill** tabs — where the **Team labor** row above it names the 👷 total in one number (owners, controllers and master techs). The marker key sits right under every chart, always visible. When a job has many transaction days, the chart widens and **scrolls left–right** instead of crushing the icons together.
+The same chart opens the job window's **Costs** tab — the money-out tab beside Bill — with the **Team** and **Sub Labor** lines and the parts accordions under it; the Job tab's Costs card names the 👷 total in one number (owners, controllers and master techs). The marker key sits right under every chart, always visible. When a job has many transaction days, the chart widens and **scrolls left–right** instead of crushing the icons together.
 
 ## The cash position line — money out vs money in
 

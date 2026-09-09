@@ -255,10 +255,11 @@ export type JobFormModalProps = {
    * (the window provides them), hides the header title / Job Detail bridge /
    * footer Close, and shows ONE region at a time — everything stays mounted
    * (display-toggled) so tab switches never lose state. 'edit' = identity,
-   * team, customer, links, line items; 'bill' = the billing half (segment bar,
-   * invoices, payments, labor + parts cost).
+   * team, customer, links; 'bill' = money in (line items, segment bar,
+   * invoices, payments); 'costs' = money out (Cost Timeline, team + sub labor,
+   * parts cost — split out of Bill, owner call).
    */
-  embeddedRegion?: 'edit' | 'bill' | null
+  embeddedRegion?: 'edit' | 'bill' | 'costs' | null
   /**
    * Embedding only: receives the guarded close (autosave flush) so the window's
    * ✕ can route through it. Called with null on unmount.
@@ -271,7 +272,7 @@ export type JobFormModalProps = {
    */
   externalEscBlocked?: boolean
   /** Embedding only (Stage Plan PR 4): "Set stages on Bill →" asks the window to switch regions. */
-  onRequestRegion?: (region: 'edit' | 'bill') => void
+  onRequestRegion?: (region: 'edit' | 'bill' | 'costs') => void
 }
 
 export default function JobFormModal({
@@ -4044,6 +4045,11 @@ export default function JobFormModal({
               setBillViewInvoice={setBillViewInvoice}
             />
           </div>
+          </div>
+          {/* COSTS region — money out: the Cost Timeline, the Team / Sub Labor
+              lines, and the parts accordions. Its own window tab (owner call);
+              the standalone form still shows it after Bill. */}
+          <div style={{ display: !embedded || embeddedRegion === 'costs' ? 'flex' : 'none', flexDirection: 'column', gap: '0.75rem' }}>
           <JobFormLaborCostPanel
             editing={editing}
             editJobTeamLaborLoading={editJobTeamLaborLoading}
@@ -4151,7 +4157,7 @@ export default function JobFormModal({
         {/* Tappable status strip (v2.1773): quick stage moves + the Collections
             flag, right above the footer. Edit region only — the Bill tab has
             its own billing actions. */}
-        {editing && embeddedRegion !== 'bill' ? (
+        {editing && (!embedded || embeddedRegion === 'edit') ? (
           <JobStatusStepper
             job={{
               id: editing.id,

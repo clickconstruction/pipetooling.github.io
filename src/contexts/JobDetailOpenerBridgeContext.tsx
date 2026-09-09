@@ -20,7 +20,7 @@ export type JobWindowEditOpenOptions = {
   fixturesSectionHighlight?: boolean
   jobPicturesLinkHighlight?: boolean
   alsoOpenCreateCustomerModal?: boolean
-  initialTab?: 'edit' | 'bill'
+  initialTab?: 'edit' | 'bill' | 'costs'
 }
 
 type JobDetailOpenerBridgeContextValue = {

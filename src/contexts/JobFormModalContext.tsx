@@ -14,7 +14,7 @@ export type OpenEditJobOptions = {
   /** After opening edit, open "Create customer from job" when customer name is present (billing flow). */
   alsoOpenCreateCustomerModal?: boolean
   /** Which Job-window tab to land on (v2.1675). Default 'edit'. */
-  initialTab?: 'edit' | 'bill'
+  initialTab?: 'edit' | 'bill' | 'costs'
 }
 
 export type OpenNewJobOptions = {

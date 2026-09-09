@@ -8,7 +8,7 @@
  * covered by the form's own section tests.
  */
 import { beforeAll, describe, expect, it, vi } from 'vitest'
-import { fireEvent, screen, waitFor } from '@testing-library/react'
+import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 
 import { JobWindowModal } from './JobWindowModal'
 import { UpdateFocusOpenerBridgeProvider } from '../../contexts/UpdateFocusOpenerBridgeContext'
@@ -38,7 +38,7 @@ beforeAll(() => {
   vi.stubGlobal('scrollTo', vi.fn())
 })
 
-function renderWindow(onClose: () => void, initialTab: 'job' | 'edit' | 'bill' | 'history' = 'job') {
+function renderWindow(onClose: () => void, initialTab: 'job' | 'edit' | 'bill' | 'costs' | 'history' = 'job') {
   return renderWithProviders(
     <UpdateFocusOpenerBridgeProvider>
       <JobWindowModal
@@ -73,11 +73,14 @@ describe('JobWindowModal', () => {
     // Stays mounted (state survives), just hidden.
     expect(screen.getByTestId('history-grid-stub')).toBeTruthy()
   })
-  it('opens on the Job tab with Edit and Bill available, one ✕, no per-pane Close', async () => {
+  it('opens on the Job tab with Edit, Bill and Costs available, one ✕, no per-pane Close', async () => {
     renderWindow(vi.fn())
     expect(tab('Job').getAttribute('aria-selected')).toBe('true')
     expect(tab('Edit')).toBeTruthy()
     expect(tab('Bill')).toBeTruthy()
+    expect(tab('Costs')).toBeTruthy()
+    // Job · Edit · Bill · Costs · History, in that order (v2.3182).
+    expect(within(screen.getByRole('tablist', { name: 'Job window tabs' })).getAllByRole('tab').map((t) => t.textContent)).toEqual(['Job', 'Edit', 'Bill', 'Costs', 'History'])
     expect(screen.getByLabelText('Close job window')).toBeTruthy()
     // The panes' own close affordances are gone — one window, one ✕.
     expect(screen.queryByLabelText('Close job detail')).toBeNull()
@@ -101,6 +104,19 @@ describe('JobWindowModal', () => {
     // Back to Edit: the unsaved keystroke is still there — nothing unmounted.
     fireEvent.click(tab('Edit'))
     expect((screen.getByDisplayValue('Kitchen rough-in B') as HTMLInputElement)).toBeTruthy()
+  })
+
+  it('Costs is its own tab (v2.3182): the parts accordions and Cost Timeline live there, not on Bill', async () => {
+    renderWindow(vi.fn(), 'bill')
+    await screen.findByDisplayValue('Kitchen rough-in')
+    const partsRow = () => screen.getByText('Supply house invoices')
+    // Hidden while Bill shows…
+    expect(partsRow().closest('div[style*="none"]')).toBeTruthy()
+    fireEvent.click(tab('Costs'))
+    expect(tab('Costs').getAttribute('aria-selected')).toBe('true')
+    // …visible on Costs, and the billing half is now the hidden one.
+    expect(partsRow().closest('div[style*="none"]')).toBeNull()
+    expect(screen.getByText('Remaining to bill').closest('div[style*="none"]')).toBeTruthy()
   })
 
   it('the ✕ routes through the form close and closes the window', async () => {

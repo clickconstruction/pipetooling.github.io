@@ -62,6 +62,8 @@ import { useJobThreadNotesForModal } from '../../hooks/useJobThreadNotesForModal
 import { formatClockSessionTimestampPartsChicago } from '../../lib/formatClockSessionTimestamp'
 import { JobDetailMaterialsCostSection } from './JobDetailMaterialsCostSection'
 import { JobDetailProfitSection } from './JobDetailProfitSection'
+import { JobDetailCostsSummaryCard } from './JobDetailCostsSummaryCard'
+import { buildJobCostsSummaryCard } from '../../lib/jobs/jobCostsSummaryCard'
 import { PartnerJobSplitPanel } from '../partnerships/PartnerJobSplitPanel'
 import JobChargesTimelineStandalone from './JobChargesTimelineStandalone'
 import { JobDetailScheduleSessionsSection } from './JobDetailScheduleSessionsSection'
@@ -126,6 +128,8 @@ type Props = {
    * the read-view body yields to the Edit/Bill panes.
    */
   paneBodyHidden?: boolean
+  /** Pane mode (v2.3182): the Job tab's Costs card asks the window to switch tabs. */
+  onRequestTab?: ((tab: 'edit' | 'bill' | 'costs') => void) | null
 }
 
 /** Split on first ` · ` so job names containing ` · ` stay intact. */
@@ -615,6 +619,7 @@ export default function DetailJobModal({
   onEditJobSaved,
   autoOpenSupplyHouseShare = false,
   paneMode = false,
+  onRequestTab = null,
   externalRefreshKey = 0,
   onEscBlockedChange = null,
   paneBodyHidden = false,
@@ -860,6 +865,35 @@ export default function DetailJobModal({
       timePerMile: profitLaborData.timePerMile,
     })
   }, [showProfitSection, fullJob, profitLaborData, materialsSnapshot])
+  // Pane mode (v2.3182): the Job tab shows ONE compact Costs card instead of the
+  // parts accordions + Cost Timeline + Profit band it used to duplicate from
+  // Bill; the detail lives on the window's Costs tab. Same data, same gates.
+  const costsCardModel = useMemo(() => {
+    if (!paneMode || !showMaterialsCostSection) return null
+    const snap = materialsSnapshot
+    const partsFailed = Boolean(snap && (snap.tallyFetchFailed || snap.supplyInvoiceRpcFailed || snap.mercuryFetchFailed))
+    const partsTotal =
+      snap && !partsFailed
+        ? snap.supplyInvoiceTotal +
+          mercuryCardTotalFromLines(snap.mercuryAllocLines) +
+          tallyPartsTotalFromLines(snap.tallyPartLines) +
+          (fullJob?.materials ?? []).reduce((sum, m) => sum + (Number(m.amount) || 0), 0)
+        : null
+    return buildJobCostsSummaryCard({
+      partsTotal: materialsSnapshotLoading ? null : partsTotal,
+      partsFailed,
+      wageGated: showProfitSection
+        ? {
+            teamLabor: teamLaborRowState.row,
+            teamLaborLoading: teamLaborRowState.loading,
+            teamLaborFailed: teamLaborRowState.failed,
+            profit: profitSummary,
+            profitLoading: profitLaborLoading || materialsSnapshotLoading,
+            profitFailed: profitLaborFailed || partsFailed,
+          }
+        : null,
+    })
+  }, [paneMode, showMaterialsCostSection, materialsSnapshot, materialsSnapshotLoading, fullJob?.materials, showProfitSection, teamLaborRowState, profitSummary, profitLaborLoading, profitLaborFailed])
 
   const scheduleSessionsEnabled = Boolean(open && jobId && fullJob && scheduleTimeSectionOpen)
   const {
@@ -2037,7 +2071,9 @@ export default function DetailJobModal({
               ) : null}
             </div>
 
-            {showMaterialsCostSection ? (
+            {costsCardModel ? (
+              <JobDetailCostsSummaryCard model={costsCardModel} onOpenCosts={onRequestTab ? () => onRequestTab('costs') : null} />
+            ) : showMaterialsCostSection ? (
               <>
                 <JobDetailMaterialsCostSection
                   loading={materialsSnapshotLoading}
@@ -2050,7 +2086,7 @@ export default function DetailJobModal({
               </>
             ) : null}
 
-            {showProfitSection ? (
+            {showProfitSection && !costsCardModel ? (
               <JobDetailProfitSection
                 loading={profitLaborLoading || materialsSnapshotLoading}
                 failed={
