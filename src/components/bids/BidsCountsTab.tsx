@@ -18,6 +18,10 @@ import { bidDetailCloseXStyle, bidDetailCloseFloatMobileStyle } from '../../lib/
 import { parseCountsImportText } from '../../lib/bids/parseCountsImportText'
 import { buildCountsCsv, sanitizeCsvFilenamePart } from '../../lib/bids/bidCsvExport'
 import { BidWorkflowTabTitleWithPreview } from './BidWorkflowTabTitleWithPreview'
+import { BidFlowStrip } from './BidFlowStrip'
+import { deriveBidFlow } from '../../lib/bids/bidFlow'
+import { useBidFlowFacts } from '../../hooks/useBidFlowFacts'
+import { useBidFlowReview } from '../../hooks/useBidFlowReview'
 import { ClearAllCountsModal } from './ClearAllCountsModal'
 import { ModalShell } from './ModalShell'
 import { BidPickerStandardList } from './BidPickerStandardList'
@@ -103,6 +107,9 @@ export function BidsCountsTab({
   onCountSourceLinkSaved,
 }: BidsCountsTabProps) {
   const { showToast, showActionToast } = useToastContext()
+  // SPIKE: bid-flow facts for the selected bid (one chunked read per selection).
+  const { factsByBid: bidFlowFactsByBid } = useBidFlowFacts(selectedBidForCounts ? [selectedBidForCounts.id] : [])
+  const bidFlowReview = useBidFlowReview(selectedBidForCounts ? [selectedBidForCounts] : [])
   const confirmDialog = useConfirmDialog()
   const { user: authUser, role: authRole } = useAuth()
 
@@ -688,6 +695,17 @@ export function BidsCountsTab({
               ×
             </button>
           ) : null}
+          {/* SPIKE: the twelve-step flow under the bid title. */}
+          <BidFlowStrip
+            variant="full"
+            flow={deriveBidFlow(selectedBidForCounts, bidFlowFactsByBid[selectedBidForCounts.id])}
+            bidLabel={selectedBidForCounts.project_name ?? undefined}
+            canOpenDoor={(d) => d === 'review'}
+            onOpenDoor={(d) => {
+              if (d === 'review') void bidFlowReview.markReviewed(selectedBidForCounts)
+            }}
+            reviewStamp={bidFlowReview.stampFor(selectedBidForCounts)}
+          />
           {narrowViewport640 ? (
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'stretch', gap: '0.75rem', marginBottom: '1rem' }}>
               {/* v2.2385 (Wendi): Import on the right, Edit Bid retired — the bid title link already opens the bid. Old/New pills retired v2.2707. */}

@@ -1682,6 +1682,9 @@ export type Database = {
           profit: number | null
           project_id: string | null
           project_name: string | null
+          review_note: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
           robot_opt_out: boolean
           robot_requested_at: string | null
           robot_requested_by: string | null
@@ -1753,6 +1756,9 @@ export type Database = {
           profit?: number | null
           project_id?: string | null
           project_name?: string | null
+          review_note?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
           robot_opt_out?: boolean
           robot_requested_at?: string | null
           robot_requested_by?: string | null
@@ -1824,6 +1830,9 @@ export type Database = {
           profit?: number | null
           project_id?: string | null
           project_name?: string | null
+          review_note?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
           robot_opt_out?: boolean
           robot_requested_at?: string | null
           robot_requested_by?: string | null

@@ -35,6 +35,10 @@ import { BidBoardCustomerReviewModal } from './BidBoardCustomerReviewModal'
 import { BidBoardEstimatingHealthSection } from './BidBoardEstimatingHealthSection'
 import { BidBoardMapCard } from './BidBoardMapCard'
 import { BidBoardSelfHighlightWheel, useBidBoardSelfHighlight } from './BidBoardSelfHighlightWheel'
+import { BidFlowStrip } from './BidFlowStrip'
+import { deriveBidFlow, type BidFlowDoor } from '../../lib/bids/bidFlow'
+import { useBidFlowFacts } from '../../hooks/useBidFlowFacts'
+import { useBidFlowReview } from '../../hooks/useBidFlowReview'
 
 type BidBoardSectionOpenState = {
   unsent: boolean
@@ -304,6 +308,18 @@ export function BidsBidBoardTab({
   // buckets above use the same pile rule (`getSubmissionSectionKey` + the archived-working
   // exclusion), so a pill and its section header can never disagree.
   const boardCounts = useMemo(() => bidSentCounts(filteredBidsForBidBoard, { scope: sentScope }), [filteredBidsForBidBoard, sentScope])
+  // SPIKE: bid-flow facts for the rows on the board, loaded once per list (chunked, never per row).
+  const bidFlowIds = useMemo(() => filteredBidsForBidBoard.map((b) => b.id), [filteredBidsForBidBoard])
+  const { factsByBid: bidFlowFactsByBid } = useBidFlowFacts(bidFlowIds)
+  // Doors on the board: the Edit window, one of the five jump tabs, or the Mark reviewed action (v2.3201).
+  const bidFlowReview = useBidFlowReview(filteredBidsForBidBoard)
+  const bidFlowDoorAllowed = (door: BidFlowDoor) =>
+    door != null && (canSeePricingTabs || (door !== 'pricing' && door !== 'cover-letter'))
+  const openBidFlowDoor = (bid: BidWithBuilder, door: BidFlowDoor) => {
+    if (door === 'edit') onEditBid(bid)
+    else if (door === 'review') void bidFlowReview.markReviewed(bid)
+    else if (door) onOpenBidTab(bid, door)
+  }
   const pillCounts: Record<SubmissionSectionKey, number> = {
     unsent: boardCounts.unsent,
     pending: boardCounts.waiting,
@@ -688,20 +704,26 @@ export function BidsBidBoardTab({
             {badgeText}
           </span>
         ) : null}
-        {BID_BOARD_JUMP_TABS.filter((j) => canSeePricingTabs || (j.tab !== 'pricing' && j.tab !== 'cover-letter')).map((j) => (
-          <button
-            key={j.tab}
-            type="button"
-            onClick={() => onOpenBidTab(bid, j.tab)}
-            title={j.label}
-            aria-label={`${j.label} — ${bid.project_name ?? 'bid'}`}
-            style={actionStyle}
-            onMouseEnter={(e) => { e.currentTarget.style.color = '#3b82f6' }}
-            onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--text-muted)' }}
-          >
-            <BidBoardIcon d={BID_BOARD_ICON_PATHS[j.icon]} size={18} />
-          </button>
-        ))}
+        {/* SPIKE (option C): the jump icons keep their doors; a hairline under them carries the flow. */}
+        <span style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'stretch' }}>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.15rem' }}>
+            {BID_BOARD_JUMP_TABS.filter((j) => canSeePricingTabs || (j.tab !== 'pricing' && j.tab !== 'cover-letter')).map((j) => (
+              <button
+                key={j.tab}
+                type="button"
+                onClick={() => onOpenBidTab(bid, j.tab)}
+                title={j.label}
+                aria-label={`${j.label} — ${bid.project_name ?? 'bid'}`}
+                style={actionStyle}
+                onMouseEnter={(e) => { e.currentTarget.style.color = '#3b82f6' }}
+                onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--text-muted)' }}
+              >
+                <BidBoardIcon d={BID_BOARD_ICON_PATHS[j.icon]} size={18} />
+              </button>
+            ))}
+          </span>
+          <BidFlowStrip variant="hairline" flow={deriveBidFlow(bid, bidFlowFactsByBid[bid.id])} bidLabel={label ?? undefined} />
+        </span>
         {robotReadiness ? renderRobotReadinessIcon(bid, actionStyle) : null}
         {numberNode}
         <button
@@ -957,6 +979,15 @@ export function BidsBidBoardTab({
     }
     return (
       <>
+        {/* SPIKE (option E): the whole poster, one click away, above the bid's details. */}
+        <BidFlowStrip
+          variant="full"
+          flow={deriveBidFlow(bid, bidFlowFactsByBid[bid.id])}
+          bidLabel={bid.project_name ?? undefined}
+          canOpenDoor={bidFlowDoorAllowed}
+          onOpenDoor={(door) => openBidFlowDoor(bid, door)}
+          reviewStamp={bidFlowReview.stampFor(bid)}
+        />
         <div
           style={{
             display: 'flex',

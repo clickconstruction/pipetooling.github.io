@@ -60,6 +60,10 @@ import { COVER_LETTER_ALTS_HEADING_DEFAULT, altSectionKey, buildAlternatesBlock,
 import { copyRichHtmlToClipboard } from '../../lib/copyRichHtmlToClipboard'
 import { openInExternalBrowser } from '../../lib/openInExternalBrowser'
 import { BidWorkflowTabTitleWithPreview } from './BidWorkflowTabTitleWithPreview'
+import { BidFlowStrip } from './BidFlowStrip'
+import { deriveBidFlow } from '../../lib/bids/bidFlow'
+import { useBidFlowFacts } from '../../hooks/useBidFlowFacts'
+import { useBidFlowReview } from '../../hooks/useBidFlowReview'
 import type { useBidPreview } from '../../contexts/BidPreviewModalContext'
 import type { BidWithBuilder } from '../../types/bidWithBuilder'
 import type { BidCountRow } from '../../types/bids'
@@ -170,6 +174,9 @@ export function BidsCoverLetterTab({
   isMyBid,
 }: BidsCoverLetterTabProps) {
   const { showToast } = useToastContext()
+  // SPIKE: bid-flow facts for the selected bid (one chunked read per selection).
+  const { factsByBid: bidFlowFactsByBid } = useBidFlowFacts(selectedBidForPricing ? [selectedBidForPricing.id] : [])
+  const bidFlowReview = useBidFlowReview(selectedBidForPricing ? [selectedBidForPricing] : [])
   const confirmDialog = useConfirmDialog()
   const { user: authUser, role: authRole } = useAuth()
   // Cover-letter-only UI state
@@ -947,6 +954,17 @@ export function BidsCoverLetterTab({
                 ×
               </button>
             ) : null}
+            {/* SPIKE: the twelve-step flow under the bid title (no doors on this tab yet). */}
+            <BidFlowStrip
+              variant="full"
+              flow={deriveBidFlow(bid, bidFlowFactsByBid[bid.id])}
+              bidLabel={bid.project_name ?? undefined}
+              canOpenDoor={(d) => d === 'review'}
+              onOpenDoor={(d) => {
+                if (d === 'review') void bidFlowReview.markReviewed(bid)
+              }}
+              reviewStamp={bidFlowReview.stampFor(bid)}
+            />
             <div
               style={{
                 display: 'flex',

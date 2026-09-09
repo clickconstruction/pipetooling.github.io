@@ -22,6 +22,10 @@ import {
 } from '../../lib/bids/laborCellSaveState'
 import type { LaborTabPanel } from '../../lib/bids/laborTabLoadGate'
 import { BidWorkflowTabTitleWithPreview } from './BidWorkflowTabTitleWithPreview'
+import { BidFlowStrip } from './BidFlowStrip'
+import { deriveBidFlow } from '../../lib/bids/bidFlow'
+import { useBidFlowFacts } from '../../hooks/useBidFlowFacts'
+import { useBidFlowReview } from '../../hooks/useBidFlowReview'
 import { BidPickerStandardList } from './BidPickerStandardList'
 import { MyBidsToggle } from './MyBidsToggle'
 import { BidPickerSortToggle } from './BidPickerSortToggle'
@@ -212,6 +216,9 @@ export function BidsLaborTab({
   setOnlyMyBids,
   isMyBid,
 }: BidsLaborTabProps) {
+  // Bid flow facts for the selected bid (one chunked read per selection).
+  const { factsByBid: bidFlowFactsByBid } = useBidFlowFacts(selectedBidForCostEstimate ? [selectedBidForCostEstimate.id] : [])
+  const bidFlowReview = useBidFlowReview(selectedBidForCostEstimate ? [selectedBidForCostEstimate] : [])
   const confirmDialog = useConfirmDialog()
   const { showToast } = useToastContext()
   // Breakdown jump landing (v2.2400): scroll + flash the fixture's HOURS row.
@@ -1056,6 +1063,16 @@ export function BidsLaborTab({
               ×
             </button>
           ) : null}
+          <BidFlowStrip
+            variant="full"
+            flow={deriveBidFlow(selectedBidForCostEstimate, bidFlowFactsByBid[selectedBidForCostEstimate.id])}
+            bidLabel={selectedBidForCostEstimate.project_name ?? undefined}
+            canOpenDoor={(d) => d === 'review'}
+            onOpenDoor={(d) => {
+              if (d === 'review') void bidFlowReview.markReviewed(selectedBidForCostEstimate)
+            }}
+            reviewStamp={bidFlowReview.stampFor(selectedBidForCostEstimate)}
+          />
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.5rem' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap', minWidth: 0 }}>
               <BidWorkflowTabTitleWithPreview

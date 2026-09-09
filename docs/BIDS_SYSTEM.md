@@ -5,7 +5,7 @@ file: BIDS_SYSTEM.md
 type: System Documentation
 purpose: Complete documentation of the 14-tab Bids system including workflows, book systems, and integrations
 audience: Developers, Estimators, AI Agents
-last_updated: 2026-09-07
+last_updated: 2026-09-09
 estimated_read_time: 30-40 minutes
 difficulty: Intermediate to Advanced
 
@@ -162,6 +162,10 @@ Central hub for viewing and managing all bids. Provides high-level overview of b
 #### Bids on a map card (v2.3162)
 - **[`BidBoardMapCard`](../src/components/bids/BidBoardMapCard.tsx)** sits between the sticky section pills and the first section, for every board viewer. One pin per bid with an address in the **filtered** list (search, trade pill, My bids), colored by section (`BID_STAGE_MARKER_COLOR`); section chips in the header toggle pins only (Lost starts off); an unsent bid due soon / past due wears an amber / red ring. The office anchor (`useOfficeAnchor` → `resolveOfficeAnchor`) draws with 25 / 50 mile rings.
 - A pin's popup (phone: a bar under the map) carries **Open bid** (preview), **Edit**, **Directions**; clicking a pin lights the bid's row (`rowHighlightId` — the deep-link outline) and scrolls to it. **Hide map** collapses to the title line per device; the **Map** pill in the sticky row jumps to the card and reveals it. Kernel [`bidBoardMap.ts`](../src/lib/bids/bidBoardMap.ts); canvases shared with the Dashboard card (`PinsMapCanvas` / `PinsMapGoogleCanvas`, Google with OSM fallback). Fragment `recent-features/v2.3162.md`.
+
+#### Bid flow (v2.3200)
+- The office's estimating poster as ten derived steps — Plans in Drive · Send RFQ · Plans in Tooling · Count & import · Takeoffs · Price · Review · Cover letter · PDF filed · Sent — from the one kernel [`bidFlow.ts`](../src/lib/bids/bidFlow.ts) (`deriveBidFlow`, `bidFlowSummary`, `bidFlowSegments`). Every step reads an existing column or ledger (never a minted roll-up); "sent" is `bids.bid_date_sent`; decided bids go quiet; "next" is the first gap after the furthest finished step. Review is `untracked` until the Mark reviewed stamp (v2.3201).
+- Three sizes of [`BidFlowStrip`](../src/components/bids/BidFlowStrip.tsx): a **hairline** under the row's jump icons (phase segments; `role="img"` named by the summary), the **full** strip at the top of the expanded row and above the selected-bid header on the five workflow tabs (each step a door through `onOpenBidTab` / `onEditBid`, superintendent gating preserved), and a dots **compact** form kept for the record. Facts the bid row lacks (`bid_rfqs`, `bids_count_rows`, `bids_takeoff_rough_part_lines`, `bid_pricing_assignments`, `bid_proposal_rooms`) load once per list in [`useBidFlowFacts`](../src/hooks/useBidFlowFacts.ts). Help: *see where a bid is in the estimating flow*. Fragment `recent-features/v2.3200.md`.
 
 #### Search Functionality
 - **Full-width search input** filters bids in real-time

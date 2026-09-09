@@ -29,7 +29,7 @@ While the board is still fetching after you open it, you see **Loading bids…**
 
 ## Read a row
 
-Each row leads with the bid number, flanked by **jump icons** — Counts, Takeoffs, Labor, Pricing, and Cover Letter, in the same order as the tabs across the top. Hover one to see its name; click it to land on that tab for that bid, one click from the board. The **Edit** gear sits on the number's right, and a red badge next to the number means unread notes. Then:
+Each row leads with the bid number, flanked by **jump icons** — Counts, Takeoffs, Labor, Pricing, and Cover Letter, in the same order as the tabs across the top. Hover one to see its name; click it to land on that tab for that bid, one click from the board. A thin **flow bar** runs under the icons — green phases are done, blue is the next move, grey is not yet; hover it for *7 of 9 done · next: Cover letter* (see [see where a bid is in the estimating flow](?g=see-where-a-bid-is-in-the-flow)). The **Edit** gear sits on the number's right, and a red badge next to the number means unread notes. Then:
 
 - **Due Date** — a chip with the weekday + date on top and a signed day count under it: **(+4)** means four days past due, **(-2)** means due in two days. The red/amber colors appear **only on unsent bids** — once a bid is sent, the chip goes quiet (the wait is on the GC), and once it's decided the day count drops too. That quiet is on purpose: the board's colours are about getting the letter out the door. **Chasing a sent bid lives on the Followup tab** — its **Call queue** ranks every builder by who has waited longest and lists the pending bids nobody has talked to in over a week (see [follow up with builders on their bids](?g=follow-up-with-builders)). Not sure what a color means? Tap the little red/yellow/grey key beside the **Due Date** header for the legend. 
 - **Last Contact** — same two-line pattern: the date on top, **(+6)** = six days since you last touched the bid. Tap it to log a contact.
@@ -48,6 +48,7 @@ When a bid has a packet per GC (see *bid one project to multiple GCs*), its GC/B
 
 Click anywhere on a row (not a link or button) and it expands in place:
 
+- the bid's **flow strip** — the ten estimating steps with the next one ringed; each step opens its tab,
 - the project name and GC/builder in full, the **address** (tap to open Google Maps), **due date + time**, **bid value**, **estimator**, and **distance** from the office,
 - and below that, the same **notes panel** as always — All / Bid / Customer / Reports tabs with {{button:outline-blue|+ bid note}} and {{button:outline-blue|+ customer note}}.
 
