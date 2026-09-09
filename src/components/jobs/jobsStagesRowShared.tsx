@@ -70,6 +70,8 @@ export type StagesRowRenderContext = {
   openJobThreadFullscreen: (jobId: string) => void
   /** Opens the full-page Job activity modal (the activity box's expand view). */
   openJobActivityExpand: (job: JobWithDetails) => void
+  /** v2.3197: the activity box's report pill — opens New Report preselected on this job. Absent = no pill. */
+  openNewReportForJob?: (job: JobWithDetails) => void
   /**
    * Opens the Pipeline "Session notes" view pinned to this job (the per-job
    * door beside "N Reports"). Null/absent when the viewer's role can't open it —

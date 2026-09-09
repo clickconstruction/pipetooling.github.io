@@ -3,6 +3,7 @@ import type { JobWithDetails } from '../../types/jobWithDetails'
 import type { StagesRowRenderContext } from './jobsStagesRowShared'
 import { buildJobActivityBoxFeed, stripRedundantStampBody, type JobActivityBoxEntry } from '../../lib/jobs/jobActivityBoxFeed'
 import { formatStagesCompactWindow, formatStagesNextDateLabel } from '../../lib/stagesUpcomingSchedule'
+import { JobsWorkedTodayReportIcon } from '../icons/JobsWorkedTodayReportIcon'
 import {
   formatDispatchNoteDaysAgoShort,
   formatDispatchNoteWeekdayShortTimeChicago,
@@ -278,6 +279,37 @@ export function JobsStagesActivityBox({ job, ctx, loadActivityForJob, submitNote
           </div>
         ) : null}
       </div>
+      {ctx.openNewReportForJob && !composerOpen ? (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation()
+              ctx.openNewReportForJob?.(job)
+            }}
+            aria-label="File a report on this job"
+            title="File a report on this job"
+            style={{
+              position: 'absolute',
+              right: 74,
+              bottom: 8,
+              zIndex: 2,
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              background: 'var(--surface)',
+              color: 'var(--text-blue-700)',
+              border: '1px solid #3b82f6',
+              borderRadius: 999,
+              width: 30,
+              height: 24,
+              padding: 0,
+              cursor: 'pointer',
+              boxShadow: '0 2px 10px rgba(0,0,0,0.25)',
+            }}
+          >
+            <JobsWorkedTodayReportIcon decorative />
+          </button>
+        ) : null}
       {submitNoteWithBody && !composerOpen ? (
         <button
           type="button"
