@@ -7,6 +7,7 @@ import { useDailyGoalsGate } from '../contexts/DailyGoalsGateContext'
 import { useToastContext } from '../contexts/ToastContext'
 import { useUpdateFocusOpenerBridge } from '../contexts/UpdateFocusOpenerBridgeContext'
 import { resolveBridgeFocusTarget } from '../lib/clock/bridgeFocusOpener'
+import { CLOCK_IN_ACCENT_ORANGE } from '../lib/clock/clockColors'
 import {
   formatUnifiedResult,
   formatUnifiedJobSchedulePrimaryLine,
@@ -104,7 +105,6 @@ function dispatchScheduledJobToUnified(d: DispatchScheduledJobForAssign): Extrac
 }
 
 /** Matches Complete Clock In button and Clock In modal chrome. */
-const CLOCK_IN_ACCENT_ORANGE = '#ff6600'
 
 /**
  * Deadline for the clock in/out round-trips. Retries only fire on failures —

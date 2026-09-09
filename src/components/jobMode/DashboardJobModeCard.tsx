@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
+import { CLOCK_IN_ACCENT_ORANGE } from '../../lib/clock/clockColors'
 import { supabase } from '../../lib/supabase'
 import { useRealtimeChannel } from '../../hooks/useRealtimeChannel'
 import { useUpdateFocusOpenerBridge } from '../../contexts/UpdateFocusOpenerBridgeContext'
@@ -152,6 +153,13 @@ const leaveReportBtn: CSSProperties = {
 const nextJobBtn: CSSProperties = {
   ...bigButtonBase,
   background: '#16a34a',
+  color: 'white',
+}
+
+/** The manual Clock In (no schedule, nothing running) wears the app's clock-in orange, like the visible clock button (v2.3193). */
+const manualClockInBtn: CSSProperties = {
+  ...bigButtonBase,
+  background: CLOCK_IN_ACCENT_ORANGE,
   color: 'white',
 }
 
@@ -942,7 +950,9 @@ export default function DashboardJobModeCard({ userId, onLeaveReport, onTurnaway
               ? { ...nextJobBtn, ...disabledBtnOverlay }
               : rightButton.kind === 'wrap-up'
                 ? wrapUpBtn
-                : nextJobBtn
+                : rightButton.kind === 'manual-clock-in'
+                  ? manualClockInBtn
+                  : nextJobBtn
           }
           disabled={rightButton.kind === 'last-job'}
           aria-label={rightButton.label.replace('\n', ' ')}
