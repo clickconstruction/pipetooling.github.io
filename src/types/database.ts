@@ -1267,13 +1267,17 @@ export type Database = {
           id: string
           last_reminded_at: string | null
           needed_by: string | null
+          quote_url: string | null
           reminder_count: number
+          request_url: string | null
+          requested_on: string | null
           resend_email_id: string | null
           scope: Json
           sent_cc: string[] | null
           sent_email: string | null
           sent_name: string | null
           sent_to: string | null
+          sent_via: string
           status: string
           supply_house_id: string | null
           token: string | null
@@ -1289,13 +1293,17 @@ export type Database = {
           id?: string
           last_reminded_at?: string | null
           needed_by?: string | null
+          quote_url?: string | null
           reminder_count?: number
+          request_url?: string | null
+          requested_on?: string | null
           resend_email_id?: string | null
           scope?: Json
           sent_cc?: string[] | null
           sent_email?: string | null
           sent_name?: string | null
           sent_to?: string | null
+          sent_via?: string
           status?: string
           supply_house_id?: string | null
           token?: string | null
@@ -1311,13 +1319,17 @@ export type Database = {
           id?: string
           last_reminded_at?: string | null
           needed_by?: string | null
+          quote_url?: string | null
           reminder_count?: number
+          request_url?: string | null
+          requested_on?: string | null
           resend_email_id?: string | null
           scope?: Json
           sent_cc?: string[] | null
           sent_email?: string | null
           sent_name?: string | null
           sent_to?: string | null
+          sent_via?: string
           status?: string
           supply_house_id?: string | null
           token?: string | null
