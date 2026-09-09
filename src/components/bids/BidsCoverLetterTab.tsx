@@ -954,7 +954,7 @@ export function BidsCoverLetterTab({
                 ×
               </button>
             ) : null}
-            {/* SPIKE: the twelve-step flow under the bid title (no doors on this tab yet). */}
+            {/* v2.3200: the bid flow strip above the bid title (Review is its one door here). */}
             <BidFlowStrip
               variant="full"
               flow={deriveBidFlow(bid, bidFlowFactsByBid[bid.id])}

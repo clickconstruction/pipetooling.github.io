@@ -688,7 +688,7 @@ export function BidsCountsTab({
               ×
             </button>
           ) : null}
-          {/* SPIKE: the twelve-step flow under the bid title. */}
+          {/* v2.3200: the bid flow strip above the bid title (Review is its one door here). */}
           <BidFlowStrip
             variant="full"
             flow={deriveBidFlow(selectedBidForCounts, bidFlowFactsByBid[selectedBidForCounts.id])}

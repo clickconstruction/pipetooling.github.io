@@ -2605,7 +2605,7 @@ export function BidsPricingTab({
                 ×
               </button>
             ) : null}
-            {/* SPIKE: the twelve-step flow under the bid title. */}
+            {/* v2.3200: the bid flow strip above the bid title. */}
             <BidFlowStrip
               variant="full"
               flow={deriveBidFlow(selectedBidForPricing, bidFlowFactsByBid[selectedBidForPricing.id])}
