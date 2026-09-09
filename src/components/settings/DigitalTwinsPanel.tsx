@@ -761,7 +761,7 @@ export default function DigitalTwinsPanel() {
                     type="text"
                     value={answerDrafts[q.id] ?? ''}
                     onChange={(e) => setAnswerDrafts((d) => ({ ...d, [q.id]: e.target.value }))}
-                    placeholder="Answer the twin\u2026"
+                    placeholder="Answer the twin…"
                     style={{ flex: 1, minWidth: 180, padding: '0.3rem 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 5, font: 'inherit', fontSize: '0.78rem' }}
                   />
                   <button type="button" style={BTN_PRIMARY} disabled={busy || !(answerDrafts[q.id] ?? '').trim()} onClick={() => void answerQuestion(q)}>Answer</button>
