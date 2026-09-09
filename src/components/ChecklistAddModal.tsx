@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { activeUsersQuery } from '../lib/people/fetchActiveUsers'
 import { useAuth } from '../hooks/useAuth'
+import { useIsMobile } from '../hooks/useIsMobile'
 import { useChecklistAddModal } from '../contexts/ChecklistAddModalContext'
 import { getNextDisplayOrders } from '../utils/checklistOrder'
 import { SearchableMultiSelect } from './SearchableMultiSelect'
@@ -74,6 +75,7 @@ export default function ChecklistAddModal({
 }: { overlayBackground?: string; goToChecklistKeepsModalOpen?: boolean } = {}) {
   const { user: authUser } = useAuth()
   const navigate = useNavigate()
+  const phone = useIsMobile()
   const modalContext = useChecklistAddModal()
   const [users, setUsers] = useState<Array<{ id: string; name: string; email: string }>>([])
   const [recentAssigneeIds, setRecentAssigneeIds] = useState<string[]>([])
@@ -421,6 +423,13 @@ export default function ChecklistAddModal({
 
   if (!canManage) return null
 
+  // Phone (v2.3188): dock the card to the top instead of centering it, so the title sits
+  // right under the iPhone status bar. The overlay keeps only the safe-area inset above
+  // (viewport-fit=cover makes env() real on iPhones; 0 elsewhere), the card runs edge to
+  // edge with rounded bottom corners and lighter padding, and it may use the whole height
+  // — the form scrolls inside it above the keyboard. Desktop is unchanged.
+  const overlayPadding = phone ? 'env(safe-area-inset-top, 0px) 0 env(safe-area-inset-bottom, 0px)' : 'calc(1rem + env(safe-area-inset-top, 0px)) 1rem calc(1rem + env(safe-area-inset-bottom, 0px))'
+
   return (
     <div
       role="dialog"
@@ -428,12 +437,17 @@ export default function ChecklistAddModal({
       aria-labelledby="checklist-add-modal-title"
       // z 1012: above Job Detail (1004) and Edit Job (1010) so the header
       // send-as-task buttons can stack this modal over either dialog (v2.1529).
-      style={{ position: 'fixed', padding: 'calc(1rem + env(safe-area-inset-top, 0px)) 1rem calc(1rem + env(safe-area-inset-bottom, 0px))', inset: 0, background: overlayBackground, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1012 }}
+      style={{ position: 'fixed', padding: overlayPadding, inset: 0, background: overlayBackground, display: 'flex', alignItems: phone ? 'flex-start' : 'center', justifyContent: 'center', zIndex: 1012 }}
       // No close on backdrop click (v2.2742): a stray tap outside used to throw the
       // draft away. Close is the × in the header, Cancel, or a successful Send.
     >
       <div
-        style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, maxWidth: 480, width: '90%', maxHeight: 'min(90vh, 100%)', overflow: 'auto', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)' }}
+        data-testid="checklist-add-modal-card"
+        style={
+          phone
+            ? { background: 'var(--surface)', padding: '0.75rem 1rem 1rem', borderRadius: '0 0 14px 14px', width: '100%', maxHeight: '100%', overflow: 'auto', boxSizing: 'border-box', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)' }
+            : { background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, maxWidth: 480, width: '90%', maxHeight: 'min(90vh, 100%)', overflow: 'auto', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)' }
+        }
         onClick={(e) => e.stopPropagation()}
       >
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem', marginBottom: '0.5rem' }}>
