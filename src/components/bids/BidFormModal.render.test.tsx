@@ -139,7 +139,7 @@ describe('BidFormModal footer (v2.3130)', () => {
     expect(props.saveBid).toHaveBeenCalledTimes(1)
   })
 
-  it('Edit tab: no Save button, a status line, Open Counts, and Enter submits nothing', () => {
+  it('Edit tab: no Save button, a status line, Open Counts, and Enter submits nothing', async () => {
     const props = baseProps({ editingBid: savedBid, embedded: true, autosave: makeAutosave() })
     const { container } = renderWithProviders(<BidFormModal {...props} />)
     expect(screen.queryByRole('button', { name: 'Create bid' })).toBeNull()
@@ -150,6 +150,9 @@ describe('BidFormModal footer (v2.3130)', () => {
     expect(form).toBeTruthy()
     fireEvent.submit(form!)
     expect(props.saveBid).not.toHaveBeenCalled()
+    // v2.3175 — a saved bid renders the Price requests table under Plans (empty here: the stub returns no rows).
+    expect(await screen.findByText('Price requests')).toBeTruthy()
+    expect(await screen.findByText('No price requests on this bid yet.')).toBeTruthy()
   })
 
   it('a failed autosave says so and offers Retry', () => {

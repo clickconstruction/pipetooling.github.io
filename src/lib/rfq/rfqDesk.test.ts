@@ -55,6 +55,8 @@ describe('canNudge', () => {
   it('never nudges quoted, closed, or link-only requests', () => {
     const late = sentAt + 10 * dayMs
     expect(canNudge({ ...base, status: 'quoted' }, late).ok).toBe(false)
+    // v2.3175: a request recorded by hand has no email lane to nudge.
+    expect(canNudge({ ...base, sentVia: 'outside' }, late)).toEqual({ ok: false, reason: 'sent outside the app — nudge from your own email' })
     expect(canNudge({ ...base, status: 'closed' }, late).ok).toBe(false)
     expect(canNudge({ ...base, sentEmail: null }, late).ok).toBe(false)
   })

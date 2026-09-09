@@ -17,6 +17,7 @@ import { formatProjectNumberLabel } from '../../lib/projectNumberLabel'
 import { itbLinkLabel } from '../../lib/itbLinks'
 import { computeBidDistanceToOffice } from '../../lib/bidDistanceToOffice'
 import { RobotReadinessLine } from './RobotReadinessLine'
+import { BidPriceRequestsTable } from './BidPriceRequestsTable'
 import { getBidServiceTypeTag } from '../../utils/unifiedJobBidSearch'
 import { BidWonJobActions } from './BidWonJobActions'
 import { isAssistantLike } from '../../lib/subcontractorLikeRole'
@@ -971,6 +972,15 @@ export function BidFormModal(props: BidFormModalProps) {
                     </div>
                   </div>
                 </div>
+                {/* v2.3175: price requests on this bid — the app's own and the ones sent by hand,
+                    one row each, grouped by house, two link columns. Saved bids only: rows need a bid id. */}
+                {editingBid?.id ? (
+                  <BidPriceRequestsTable
+                    bidId={editingBid.id}
+                    serviceTypeId={formServiceTypeId || null}
+                    pricingHref={`/bids?tab=pricing&bidId=${editingBid.id}`}
+                  />
+                ) : null}
                 {/* v2.3142: will the robots shadow this bid? Green with the facts, amber
                     with the fix, or neutral when opted out. Same probe the dispatcher uses. */}
                 <RobotReadinessLine

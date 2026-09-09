@@ -2,7 +2,7 @@
 title: get supply house prices on a bid
 category: Bids & Estimating
 roles: dev, estimator, master_technician, assistant
-keywords: supply house, quotes, vendor prices, compare quotes, plug in a quote, paste quote, rfq, price request, ferguson, moore supply, parts pricing, best price, quote comparison
+keywords: supply house, quotes, vendor prices, compare quotes, plug in a quote, paste quote, rfq, price request, ferguson, moore supply, parts pricing, best price, quote comparison, requests I sent myself, edit bid, price requests table, requested date, quote link
 ---
 
 Getting parts priced used to mean texting a list, getting prices back in three different shapes, and retyping them into a spreadsheet. Now the whole loop lives on **Bids → Pricing**: send the list, get the reply in whatever form the vendor likes, and compare houses part by part. Your sale prices never leave the building — vendors only ever see names and counts.
@@ -41,6 +41,20 @@ Once any quote is saved, a {{chip:blue|Quotes (1)}} chip sits beside Share — i
 - Parts run down the left, **grouped by Division 22 section**, one column per supply house. The best live price wears a ★.
 - **Tap a price to pick it** for that part — split the order across houses line by line. The picked total at the bottom recomputes at today's counts, and picks are saved for a future PO handoff.
 - A **Last quoted** column shows what each house said the last time anyone asked about that part name, on any bid — a high number smells wrong before you commit.
+
+## Requests you sent yourself
+
+Every bid keeps a list of who you asked: **Edit Bid → Files & Links → Price requests**, right under the plans. Requests the app sent fill in on their own — one row per request, grouped by house, with the day it was requested, the vendor's page, whether they have viewed it, and the quote once it is plugged in. Needed-by sits under the requested date: {{chip:green|✓}} once a quote is in, amber while you wait.
+
+Sent one by email or phone instead? {{button:blue|+ Add a request}} records it: pick the house (or add a new one right there), keep or change the date, paste a link to the request you sent and, when it arrives, a link to the quote — a Drive copy, a PDF, a shared sheet. {{button:outline|Edit}} reopens the links later; {{button:outline|Remove}} takes the row off the bid. Nothing goes to the vendor from here — sending still happens in **Send price requests** above.
+
+:::example One house, two requests
+Ferguson · Sep 2 · Vendor page · Quote · 41 lines · needed by Sep 5 ✓
+↳ another request · Sep 6 · Vendor page · — · needed by Sep 9
+Moore Supply · Sep 3 · Request (Drive) · Quote (Drive) · needed by Sep 5 ✓
+:::
+
+Requests you record here also show on the Pricing desk, tagged *sent outside the app*, so the desk's list and the bid's list are the same list.
 
 ## Package deals and landing prices on costs
 
