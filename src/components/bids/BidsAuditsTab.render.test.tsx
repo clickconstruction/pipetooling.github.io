@@ -91,7 +91,8 @@ function tableResult(table: string): unknown {
     table === 'bids_count_rows' ? countRows :
     table === 'bid_pricing_assignments' ? assignments :
     table === 'twin_questions' ? twinQuestions :
-    table === 'bids' ? [{ id: 'bid-474', bid_number: '474' }, { id: 'bid-405', bid_number: '405' }, { id: 'bid-422', bid_number: '422' }] :
+    // v2.3187: bid-474 is a ZZ Twin copy paired to the human bid-214 (its "ours" link).
+    table === 'bids' ? [{ id: 'bid-474', bid_number: '474', twin_source_bid_id: 'bid-214' }, { id: 'bid-214', bid_number: '214', twin_source_bid_id: null }, { id: 'bid-405', bid_number: '405', twin_source_bid_id: null }, { id: 'bid-422', bid_number: '422', twin_source_bid_id: null }] :
     []
   const chain: Record<string, unknown> = {}
   const self = () => chain
@@ -162,6 +163,10 @@ describe('BidsAuditsTab', () => {
     // …and a question that never names its bid gets a trailing link to the bid it is about.
     const trailing = await screen.findByRole('link', { name: 'b405' })
     expect(trailing.getAttribute('href')).toBe('/bids?tab=bid-board&bidId=bid-405')
+    // v2.3187 — the robot's copy links ours beside it; an unpaired bid gets no extra link.
+    const ours = await screen.findByRole('link', { name: 'ours b214' })
+    expect(ours.getAttribute('href')).toBe('/bids?tab=bid-board&bidId=bid-214')
+    expect(screen.getAllByRole('link', { name: /^ours b/ })).toHaveLength(1)
 
     // v2.3186 — the operator-lane question is filtered out (still 3 on the header),
     // dev sees the count pointing at the console, and every card has Dismiss.

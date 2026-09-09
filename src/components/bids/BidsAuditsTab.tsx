@@ -35,7 +35,7 @@ import {
 } from '../../lib/bids/takeoffDiff'
 import { groupStandingRulings, openCountByAudience, rulingAskedLine, type TwinQuestionRow } from '../../lib/bids/standingRulings'
 import { twinQuestionAudienceColumnPresent } from '../../../supabase/functions/_shared/twinQuestionAudience'
-import { bidNumbersAcross } from '../../lib/bids/twinQuestionBidRefs'
+import { bidNumbersAcross, indexSourceBids, unresolvedSourceIds, type BidPairingRow, type SourceBidRef } from '../../lib/bids/twinQuestionBidRefs'
 import { TwinQuestionText } from './TwinQuestionText'
 import { orderPendingByStake } from '../../lib/bids/auditTriage'
 
@@ -342,6 +342,8 @@ export function BidsAuditsTab({ authUser, myRole }: { authUser: User | null; myR
   // numbers the open questions mention; a row's about_bid_id covers the rest.
   const [bidIdByNumber, setBidIdByNumber] = useState<Record<string, string>>({})
   const [bidNumberById, setBidNumberById] = useState<Record<string, string>>({})
+  // v2.3187: twin bid id → the human bid it pairs with, for the "ours b214" link.
+  const [sourceByBidId, setSourceByBidId] = useState<Record<string, SourceBidRef>>({})
   useEffect(() => {
     const numbers = bidNumbersAcross(rulingQuestions.map((q) => q.question))
     const aboutIds = [...new Set(rulingQuestions.map((q) => q.about_bid_id).filter((id): id is string => !!id))]
@@ -350,19 +352,26 @@ export function BidsAuditsTab({ authUser, myRole }: { authUser: User | null; myR
     ;(async () => {
       try {
         const [byNumber, byId] = await Promise.all([
-          numbers.length > 0 ? auditDb.from('bids').select('id, bid_number').in('bid_number', numbers) : Promise.resolve({ data: [] }),
-          aboutIds.length > 0 ? auditDb.from('bids').select('id, bid_number').in('id', aboutIds) : Promise.resolve({ data: [] }),
+          numbers.length > 0 ? auditDb.from('bids').select('id, bid_number, twin_source_bid_id').in('bid_number', numbers) : Promise.resolve({ data: [] }),
+          aboutIds.length > 0 ? auditDb.from('bids').select('id, bid_number, twin_source_bid_id').in('id', aboutIds) : Promise.resolve({ data: [] }),
         ])
         if (cancelled) return
+        const rows: BidPairingRow[] = [...((byNumber.data ?? []) as BidPairingRow[]), ...((byId.data ?? []) as BidPairingRow[])]
         const nextByNumber: Record<string, string> = {}
         const nextById: Record<string, string> = {}
-        for (const b of [...((byNumber.data ?? []) as Array<{ id: string; bid_number: string | null }>), ...((byId.data ?? []) as Array<{ id: string; bid_number: string | null }>)]) {
+        for (const b of rows) {
           if (!b.bid_number) continue
           nextByNumber[b.bid_number] = b.id
           nextById[b.id] = b.bid_number
         }
         setBidIdByNumber(nextByNumber)
         setBidNumberById(nextById)
+        // The robot names its own ZZ Twin copy; its source (Wendi's bid) is one
+        // more lookup, only for pairings whose number isn't already in hand.
+        const missing = unresolvedSourceIds(rows)
+        const sources = missing.length > 0 ? await auditDb.from('bids').select('id, bid_number').in('id', missing) : { data: [] }
+        if (cancelled) return
+        setSourceByBidId(indexSourceBids([...rows, ...((sources.data ?? []) as BidPairingRow[])]))
       } catch {
         // Unresolved references render as plain text.
       }
@@ -707,7 +716,7 @@ export function BidsAuditsTab({ authUser, myRole }: { authUser: User | null; myR
                       <span style={{ display: 'inline-block', marginRight: '0.5rem', padding: '0.05rem 0.45rem', borderRadius: 9999, border: '1px solid var(--border)', background: 'var(--bg-subtle)', color: 'var(--text-700)', fontSize: '0.6875rem', fontWeight: 600, verticalAlign: 'middle' }}>
                         {r.label}
                       </span>
-                      🤖 <TwinQuestionText text={r.newest.question} bidIdByNumber={bidIdByNumber} aboutBidId={r.newest.about_bid_id} aboutBidNumber={r.newest.about_bid_id ? bidNumberById[r.newest.about_bid_id] : null} />
+                      🤖 <TwinQuestionText text={r.newest.question} bidIdByNumber={bidIdByNumber} aboutBidId={r.newest.about_bid_id} aboutBidNumber={r.newest.about_bid_id ? bidNumberById[r.newest.about_bid_id] : null} sourceByBidId={sourceByBidId} />
                     </div>
                     <div style={{ marginTop: '0.2rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>{rulingAskedLine(r)}</div>
                     <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.45rem' }}>
@@ -757,7 +766,7 @@ export function BidsAuditsTab({ authUser, myRole }: { authUser: User | null; myR
                 const draftKey = `q:${s.id}`
                 return (
                   <div key={s.id} style={rulingCardStyle}>
-                    <div style={{ fontSize: '0.875rem' }}>🤖 <TwinQuestionText text={s.question} bidIdByNumber={bidIdByNumber} aboutBidId={s.about_bid_id} aboutBidNumber={s.about_bid_id ? bidNumberById[s.about_bid_id] : null} /></div>
+                    <div style={{ fontSize: '0.875rem' }}>🤖 <TwinQuestionText text={s.question} bidIdByNumber={bidIdByNumber} aboutBidId={s.about_bid_id} aboutBidNumber={s.about_bid_id ? bidNumberById[s.about_bid_id] : null} sourceByBidId={sourceByBidId} /></div>
                     {s.mission ? (
                       <div style={{ marginTop: '0.2rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>{s.mission}</div>
                     ) : null}

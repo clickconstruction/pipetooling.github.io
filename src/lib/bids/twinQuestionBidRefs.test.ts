@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { bidNumbersAcross, bidNumbersIn, bidRefHref, resolveBidRefId, splitBidRefs, trailingBidRef } from './twinQuestionBidRefs'
+import { bidNumbersAcross, bidNumbersIn, bidRefHref, indexSourceBids, resolveBidRefId, sourceBidLabel, splitBidRefs, trailingBidRef, unresolvedSourceIds } from './twinQuestionBidRefs'
 
 const Q = '[audit b474 / footage · sheet P2.01] Your 4in sanitary is 50 ft, and the underfloor 4in main scales at well over 100 ft.'
 
@@ -57,5 +57,24 @@ describe('trailingBidRef', () => {
     expect(trailingBidRef(Q, 'id-474', '474')).toBeNull()
     expect(trailingBidRef('this bid', null, '474')).toBeNull()
     expect(trailingBidRef('this bid', 'id-474', null)).toBeNull()
+  })
+})
+
+describe('source bids — "ours" beside the robot\'s copy (v2.3187)', () => {
+  const rows = [
+    { id: 'twin-474', bid_number: '474', twin_source_bid_id: 'ours-214' },
+    { id: 'ours-214', bid_number: '214', twin_source_bid_id: null },
+    { id: 'twin-475', bid_number: '475', twin_source_bid_id: 'ours-166' }, // source not fetched yet
+    { id: 'human-405', bid_number: '405' }, // no pairing column at all
+  ]
+  it('indexes each twin to its human source once the number is in hand', () => {
+    expect(indexSourceBids(rows)).toEqual({ 'twin-474': { id: 'ours-214', number: '214' } })
+  })
+  it('names the source ids still to fetch, deduped', () => {
+    expect(unresolvedSourceIds(rows)).toEqual(['ours-166'])
+    expect(unresolvedSourceIds([...rows, { id: 'ours-166', bid_number: '166' }])).toEqual([])
+  })
+  it('labels the link in the audit voice', () => {
+    expect(sourceBidLabel({ id: 'x', number: '214' })).toBe('ours b214')
   })
 })

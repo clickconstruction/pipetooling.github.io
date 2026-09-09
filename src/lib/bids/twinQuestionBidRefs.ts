@@ -79,3 +79,41 @@ export function trailingBidRef(
   if (bidNumbersIn(text).length > 0) return null
   return { id: aboutBidId, label: `b${aboutBidNumber}` }
 }
+
+/**
+ * "Ours" (v2.3187): the human bid a robot's bid shadows or backtests. The
+ * number the robot names is usually its own ZZ Twin copy — b474 is "ZZ Twin
+ * Tye Preston Memorial Library (backtest R2)" — and that link lands on the
+ * Robot Board row with the robot's draft. Wendi's own bid, with her counts and
+ * her price, is the twin's `twin_source_bid_id`; the panel links it beside the
+ * robot's so she lands on her row for context.
+ */
+export type SourceBidRef = { id: string; number: string }
+
+export type BidPairingRow = { id: string; bid_number: string | null; twin_source_bid_id?: string | null }
+
+/** Twin bid id → its human source, from whatever `bids` rows the panel fetched. */
+export function indexSourceBids(rows: readonly BidPairingRow[]): Record<string, SourceBidRef> {
+  const numberById: Record<string, string> = {}
+  for (const r of rows) if (r.bid_number) numberById[r.id] = r.bid_number
+  const out: Record<string, SourceBidRef> = {}
+  for (const r of rows) {
+    const src = r.twin_source_bid_id
+    if (!src) continue
+    const number = numberById[src]
+    if (number) out[r.id] = { id: src, number }
+  }
+  return out
+}
+
+/** The source ids the panel still has to look up (paired, but the number isn't in hand). */
+export function unresolvedSourceIds(rows: readonly BidPairingRow[]): string[] {
+  const known = new Set(rows.map((r) => r.id))
+  const out = new Set<string>()
+  for (const r of rows) if (r.twin_source_bid_id && !known.has(r.twin_source_bid_id)) out.add(r.twin_source_bid_id)
+  return [...out]
+}
+
+export function sourceBidLabel(ref: SourceBidRef): string {
+  return `ours b${ref.number}`
+}
