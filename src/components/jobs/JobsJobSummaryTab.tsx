@@ -60,6 +60,8 @@ import JobSummaryChargesTimelineChart from './JobSummaryChargesTimelineChart'
 import JobSummaryLedgerToolbar, { JobSummarySortHeader } from './JobSummaryLedgerToolbar'
 import JobSummaryCutByPanel, { JobSummaryGroupRow } from './JobSummaryCutByPanel'
 import { JobSummaryJobCell } from './JobSummaryJobCell'
+import { AmountSmallCents, SignedAmountSmallCents } from '../AmountSmallCents'
+import { shareOfTotalLabel } from '../../lib/jobs/jobSummaryShareOfTotal'
 import JobSummaryDaysView, { type JobSummaryDaysJobLabel } from './JobSummaryDaysView'
 import JobSummaryMonthsView from './JobSummaryMonthsView'
 import JobSummaryCycleView from './JobSummaryCycleView'
@@ -767,29 +769,29 @@ export default function JobsJobSummaryTab({
                               />
                             </td>
                             <td style={{ padding: '0.75rem', textAlign: 'right', whiteSpace: 'nowrap' }} title={enriched.flags.includes('earned') ? `Earned: $${formatCurrency(enriched.contractUsd)} contract × ${enriched.flags.includes('assumed-50') ? '50% (no % yet — assumed)' : `${enriched.pct}%`}` : undefined}>
-                              {enriched.revenueUsd === 0 ? '—' : `$${formatCurrency(enriched.revenueUsd)}`}
+                              {enriched.revenueUsd === 0 ? '—' : <SignedAmountSmallCents value={enriched.revenueUsd} />}
                               {enriched.flags.includes('earned') ? <span style={{ marginLeft: 4, fontSize: '0.68rem', color: 'var(--text-muted)' }}>earned{enriched.flags.includes('assumed-50') ? ' ½?' : ''}</span> : null}
                             </td>
                             <td style={{ padding: '0.75rem', textAlign: 'right' }}>
-                              {!showTeamLaborAndProfit || teamLaborCost === 0 ? '—' : `$${formatCurrency(teamLaborCost)}`}
+                              {!showTeamLaborAndProfit || teamLaborCost === 0 ? '—' : <SignedAmountSmallCents value={teamLaborCost} />}
                             </td>
                             <td style={{ padding: '0.75rem', textAlign: 'right' }}>
-                              {subLaborCost === 0 ? '—' : `$${formatCurrency(subLaborCost)}`}
+                              {subLaborCost === 0 ? '—' : <SignedAmountSmallCents value={subLaborCost} />}
                             </td>
                             <td style={{ padding: '0.75rem', textAlign: 'right' }}>
-                              {partsCost === 0 ? '—' : `$${formatCurrency(partsCost)}`}
+                              {partsCost === 0 ? '—' : <SignedAmountSmallCents value={partsCost} />}
                               {costLines.map((l) => (
                                 <div
                                   key={l.tagId}
                                   style={{ fontSize: '0.75rem', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}
                                   title={`${l.name} inside Parts Cost — card charges in that tag (the purchase's accounting label, else the bank's category). Tags are managed in Banking → Accounting.`}
                                 >
-                                  <span aria-hidden="true">{l.icon}</span> {l.name.toLowerCase()} ${formatCurrency(l.usd)}
+                                  <span aria-hidden="true">{l.icon}</span> {l.name.toLowerCase()} <AmountSmallCents value={l.usd} />
                                 </div>
                               ))}
                             </td>
                             <td style={{ padding: '0.75rem', textAlign: 'right', fontWeight: 500, color: showTeamLaborAndProfit && enriched.grossUsd < 0 ? 'var(--text-red-700)' : undefined }}>
-                              {showTeamLaborAndProfit ? `$${formatCurrency(enriched.grossUsd)}` : '—'}
+                              {showTeamLaborAndProfit ? <SignedAmountSmallCents value={enriched.grossUsd} /> : '—'}
                             </td>
                             <td style={{ padding: '0.75rem', textAlign: 'right', color: 'var(--text-700)' }}>
                               {showTeamLaborAndProfit && enriched.marginPct != null ? `${Math.round(enriched.marginPct)}%` : '—'}
@@ -799,10 +801,10 @@ export default function JobsJobSummaryTab({
                               {enriched.priorHours > 0 ? <span aria-hidden style={{ marginLeft: 3, color: 'var(--text-amber-800)' }}>+</span> : null}
                             </td>
                             <td style={{ padding: '0.75rem', textAlign: 'right', color: 'var(--text-700)' }}>
-                              {!showTeamLaborAndProfit ? '—' : enriched.overheadUsd == null ? (view.ledgerLoading ? '…' : '—') : `$${formatCurrency(enriched.overheadUsd)}`}
+                              {!showTeamLaborAndProfit ? '—' : enriched.overheadUsd == null ? (view.ledgerLoading ? '…' : '—') : <SignedAmountSmallCents value={enriched.overheadUsd} />}
                             </td>
                             <td style={{ padding: '0.75rem', textAlign: 'right', fontWeight: 700, color: showTeamLaborAndProfit && enriched.trueProfitUsd != null && enriched.trueProfitUsd < 0 ? 'var(--text-red-700)' : undefined }}>
-                              {!showTeamLaborAndProfit ? '—' : enriched.trueProfitUsd == null ? (view.ledgerLoading ? '…' : '—') : `$${formatCurrency(enriched.trueProfitUsd)}`}
+                              {!showTeamLaborAndProfit ? '—' : enriched.trueProfitUsd == null ? (view.ledgerLoading ? '…' : '—') : <SignedAmountSmallCents value={enriched.trueProfitUsd} />}
                             </td>
                             <td
                               style={{ padding: '0.75rem', textAlign: 'right', color: showTeamLaborAndProfit && jobSummaryRowUnderTarget(enriched, view.prefs.targetTrueMarginPct) ? 'var(--text-red-700)' : 'var(--text-700)', fontWeight: showTeamLaborAndProfit && jobSummaryRowUnderTarget(enriched, view.prefs.targetTrueMarginPct) ? 700 : undefined }}
@@ -900,11 +902,11 @@ export default function JobsJobSummaryTab({
                                 {showTeamLaborAndProfit && enriched.overheadUsd != null ? (
                                   <details style={{ margin: '0.5rem 0 0.75rem' }} onClick={(e) => e.stopPropagation()}>
                                     <summary style={{ cursor: 'pointer', fontWeight: 600, color: 'var(--text-700)' }}>
-                                      Overhead — the math: ${formatCurrency(enriched.overheadUsd)} by {overheadMethodLabel}
+                                      Overhead — the math: <AmountSmallCents value={enriched.overheadUsd} /> by {overheadMethodLabel}
                                       {view.prefs.method === 'day' ? ` over ${enriched.daysInWindow} ${enriched.daysInWindow === 1 ? 'day' : 'days'}` : ''}
                                       {' → true profit '}
                                       <strong style={{ color: enriched.trueProfitUsd != null && enriched.trueProfitUsd < 0 ? 'var(--text-red-700)' : 'var(--text-green-700)' }}>
-                                        ${formatCurrency(enriched.trueProfitUsd ?? 0)}
+                                        <AmountSmallCents value={enriched.trueProfitUsd ?? 0} />
                                       </strong>
                                     </summary>
                                     <div style={jobSummaryCostSectionBodyStyle}>
@@ -928,8 +930,8 @@ export default function JobsJobSummaryTab({
                                                   <td style={{ padding: '0.15rem 0.6rem 0.15rem 0', whiteSpace: 'nowrap' }}>{formatWorkDateYmdWeekdayLongFriendly(l.ymd)}</td>
                                                   <td style={{ textAlign: 'right', padding: '0.15rem 0.6rem', fontVariantNumeric: 'tabular-nums' }}>{l.jobHours.toFixed(1)}</td>
                                                   <td style={{ textAlign: 'right', padding: '0.15rem 0.6rem', fontVariantNumeric: 'tabular-nums' }}>{l.fieldHours.toFixed(1)}</td>
-                                                  <td style={{ textAlign: 'right', padding: '0.15rem 0.6rem', fontVariantNumeric: 'tabular-nums' }}>${formatCurrency(l.poolUsd)}</td>
-                                                  <td style={{ textAlign: 'right', padding: '0.15rem 0 0.15rem 0.6rem', fontVariantNumeric: 'tabular-nums', fontWeight: 600 }}>${formatCurrency(l.shareUsd)}</td>
+                                                  <td style={{ textAlign: 'right', padding: '0.15rem 0.6rem', fontVariantNumeric: 'tabular-nums' }}><AmountSmallCents value={l.poolUsd} /></td>
+                                                  <td style={{ textAlign: 'right', padding: '0.15rem 0 0.15rem 0.6rem', fontVariantNumeric: 'tabular-nums', fontWeight: 600 }}><AmountSmallCents value={l.shareUsd} /></td>
                                                 </tr>
                                               ))}
                                             </tbody>
@@ -1087,6 +1089,9 @@ export default function JobsJobSummaryTab({
                                                 >
                                                   Total
                                                 </th>
+                                              <th style={{ padding: '0.25rem 0.4rem', textAlign: 'right' }} title="This row's Total as a share of the Total row">
+                                                % of total
+                                              </th>
                                               </tr>
                                             </thead>
                                             <tbody>
@@ -1115,7 +1120,7 @@ export default function JobsJobSummaryTab({
                                                           Team labor:{' '}
                                                           {jobSummaryPartsCostIsZero(r.teamLabor)
                                                             ? '—'
-                                                            : `$${formatCurrency(r.teamLabor)}`}
+                                                            : <SignedAmountSmallCents value={r.teamLabor} />}
                                                         </p>
                                                         <p style={{ margin: 0 }}>
                                                           Card:{' '}
@@ -1123,7 +1128,7 @@ export default function JobsJobSummaryTab({
                                                             ? 'Loading…'
                                                             : jobSummaryPartsCostIsZero(r.card)
                                                               ? '—'
-                                                              : `$${formatCurrency(r.card)}`}
+                                                              : <SignedAmountSmallCents value={r.card} />}
                                                         </p>
                                                         <p style={{ margin: 0, color: 'var(--text-muted)' }}>
                                                           Supply: job-level only (not per person).
@@ -1134,7 +1139,7 @@ export default function JobsJobSummaryTab({
                                                             ? '—'
                                                             : jobSummaryPartsCostIsZero(rowSum)
                                                               ? '—'
-                                                              : `$${formatCurrency(rowSum)}`}
+                                                              : <SignedAmountSmallCents value={rowSum} />}
                                                         </p>
                                                       </div>
                                                     ),
@@ -1175,7 +1180,7 @@ export default function JobsJobSummaryTab({
                                                       />
                                                     ) : (
                                                       <p style={{ margin: 0, color: 'var(--text-muted)' }}>
-                                                        Team labor total ${formatCurrency(r.teamLabor)} (no per-date split in the model).
+                                                        Team labor total <AmountSmallCents value={r.teamLabor} /> (no per-date split in the model).
                                                       </p>
                                                     ),
                                                   })
@@ -1225,7 +1230,7 @@ export default function JobsJobSummaryTab({
                                                           </div>
                                                         ) : (
                                                           <p style={{ margin: 0, color: 'var(--text-muted)' }}>
-                                                            Team: ${formatCurrency(r.teamLabor)}
+                                                            Team: <AmountSmallCents value={r.teamLabor} />
                                                           </p>
                                                         )}
                                                         <div>
@@ -1245,7 +1250,7 @@ export default function JobsJobSummaryTab({
                                                             }
                                                           />
                                                         </div>
-                                                        <p style={{ margin: 0, fontWeight: 600 }}>Sum: ${formatCurrency(rowSum)}</p>
+                                                        <p style={{ margin: 0, fontWeight: 600 }}>Sum: <AmountSmallCents value={rowSum} /></p>
                                                       </div>
                                                     ),
                                                   })
@@ -1332,7 +1337,7 @@ export default function JobsJobSummaryTab({
                                                   >
                                                     {jobSummaryPartsCostIsZero(r.teamLabor)
                                                       ? '—'
-                                                      : `$${formatCurrency(r.teamLabor)}`}
+                                                      : <SignedAmountSmallCents value={r.teamLabor} />}
                                                   </td>
                                                   <td
                                                     className={jobSummaryBreakdownInteractiveClass(cardPersonInteractive)}
@@ -1366,7 +1371,7 @@ export default function JobsJobSummaryTab({
                                                       ? 'Loading…'
                                                       : jobSummaryPartsCostIsZero(r.card)
                                                         ? '—'
-                                                        : `$${formatCurrency(r.card)}`}
+                                                        : <SignedAmountSmallCents value={r.card} />}
                                                   </td>
                                                   <td
                                                     style={{
@@ -1408,7 +1413,10 @@ export default function JobsJobSummaryTab({
                                                       ? '—'
                                                       : jobSummaryPartsCostIsZero(rowSum)
                                                         ? '—'
-                                                        : `$${formatCurrency(rowSum)}`}
+                                                        : <SignedAmountSmallCents value={rowSum} />}
+                                                  </td>
+                                                  <td style={{ padding: '0.25rem 0.4rem', textAlign: 'right', color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}>
+                                                    {cardColLoading ? '—' : shareOfTotalLabel(rowSum, personSummaryFooterRowTotal) ?? '—'}
                                                   </td>
                                                 </tr>
                                                 )
@@ -1532,7 +1540,7 @@ export default function JobsJobSummaryTab({
                                                       ? '—'
                                                       : jobSummaryPartsCostIsZero(unattributedCard)
                                                         ? '—'
-                                                        : `$${formatCurrency(unattributedCard)}`}
+                                                        : <SignedAmountSmallCents value={unattributedCard} />}
                                                   </td>
                                                   <td
                                                     className={jobSummaryBreakdownInteractiveClass(
@@ -1562,7 +1570,7 @@ export default function JobsJobSummaryTab({
                                                   >
                                                     {jobSummaryPartsCostIsZero(invoicesFromSupplyHouses)
                                                       ? '—'
-                                                      : `$${formatCurrency(invoicesFromSupplyHouses)}`}
+                                                      : <SignedAmountSmallCents value={invoicesFromSupplyHouses} />}
                                                   </td>
                                                   <td
                                                     className={jobSummaryBreakdownInteractiveClass(
@@ -1620,9 +1628,10 @@ export default function JobsJobSummaryTab({
                                                             unattributedCard + Number(invoicesFromSupplyHouses ?? 0),
                                                           )
                                                         ? '—'
-                                                        : `$${formatCurrency(
-                                                            unattributedCard + Number(invoicesFromSupplyHouses ?? 0),
-                                                          )}`}
+                                                        : <SignedAmountSmallCents value={unattributedCard + Number(invoicesFromSupplyHouses ?? 0)} />}
+                                                  </td>
+                                                  <td style={{ padding: '0.25rem 0.4rem', textAlign: 'right', color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}>
+                                                    {cardColLoading ? '—' : shareOfTotalLabel(unattributedCard + Number(invoicesFromSupplyHouses ?? 0), personSummaryFooterRowTotal) ?? '—'}
                                                   </td>
                                                 </tr>
                                                   )
@@ -1703,7 +1712,7 @@ export default function JobsJobSummaryTab({
                                                                   {formatDecimalWorkHoursToHhMm(b.hours)}
                                                                 </td>
                                                                 <td style={{ padding: '0.25rem 0.4rem', textAlign: 'right' }}>
-                                                                  ${formatCurrency(b.cost)}
+                                                                  <AmountSmallCents value={b.cost} />
                                                                 </td>
                                                               </tr>
                                                             ))}
@@ -1725,8 +1734,7 @@ export default function JobsJobSummaryTab({
                                                     body: isBreakdownFiltered ? (
                                                       <div style={{ lineHeight: 1.5, color: 'var(--text-700)' }}>
                                                         <p style={{ margin: '0 0 0.75rem', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                                                          Sum of team labor for names matching the current filter. Footer total: $
-                                                          {formatCurrency(teamFooterAmt)}.
+                                                          Sum of team labor for names matching the current filter. Footer total: <AmountSmallCents value={teamFooterAmt} />.
                                                         </p>
                                                         <table
                                                           style={{
@@ -1753,7 +1761,7 @@ export default function JobsJobSummaryTab({
                                                                 <td style={{ padding: '0.25rem 0.4rem', textAlign: 'right' }}>
                                                                   {jobSummaryPartsCostIsZero(x.teamLabor)
                                                                     ? '—'
-                                                                    : `$${formatCurrency(x.teamLabor)}`}
+                                                                    : <SignedAmountSmallCents value={x.teamLabor} />}
                                                                 </td>
                                                               </tr>
                                                             ))}
@@ -1763,7 +1771,7 @@ export default function JobsJobSummaryTab({
                                                     ) : teamLaborRow ? (
                                                       <div style={{ lineHeight: 1.5, color: 'var(--text-700)' }}>
                                                         <p style={{ margin: '0 0 0.75rem', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                                                          Full job team labor. Total: ${formatCurrency(teamLaborCost)}.
+                                                          Full job team labor. Total: <AmountSmallCents value={teamLaborCost} />.
                                                         </p>
                                                         <table
                                                           style={{
@@ -1791,7 +1799,7 @@ export default function JobsJobSummaryTab({
                                                                   {formatDecimalWorkHoursToHhMm(b.hours)}
                                                                 </td>
                                                                 <td style={{ padding: '0.25rem 0.4rem', textAlign: 'right' }}>
-                                                                  ${formatCurrency(b.cost)}
+                                                                  <AmountSmallCents value={b.cost} />
                                                                 </td>
                                                               </tr>
                                                             ))}
@@ -1819,8 +1827,7 @@ export default function JobsJobSummaryTab({
                                                           </p>
                                                         ) : (
                                                           <p style={{ margin: '0 0 0.75rem', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                                                            All job Mercury lines with job allocation. Total card charges: $
-                                                            {formatCurrency(cardCharges)}.
+                                                            All job Mercury lines with job allocation. Total card charges: <AmountSmallCents value={cardCharges} />.
                                                           </p>
                                                         )}
                                                         <JobSummaryDrilldownMercuryTable
@@ -1885,23 +1892,21 @@ export default function JobsJobSummaryTab({
                                                           </p>
                                                         ) : null}
                                                         <p style={{ margin: 0 }}>
-                                                          <strong>Team labor:</strong> ${formatCurrency(personSummaryFooterTeam)} (
+                                                          <strong>Team labor:</strong> <AmountSmallCents value={personSummaryFooterTeam} /> (
                                                           {isBreakdownFiltered ? 'filtered' : 'full job'}
                                                           ).
                                                         </p>
                                                         <p style={{ margin: 0 }}>
-                                                          <strong>Card:</strong> ${formatCurrency(personSummaryFooterCard ?? 0)} (
+                                                          <strong>Card:</strong> <AmountSmallCents value={personSummaryFooterCard ?? 0} /> (
                                                           {isBreakdownFiltered ? 'filtered' : 'full job'}
                                                           ).
                                                         </p>
                                                         <p style={{ margin: 0, color: 'var(--text-muted)' }}>
-                                                          <strong>Supply houses:</strong> ${formatCurrency(
-                                                            Number(invoicesFromSupplyHouses ?? 0),
-                                                          )}{' '}
+                                                          <strong>Supply houses:</strong> <AmountSmallCents value={Number(invoicesFromSupplyHouses ?? 0)} />{' '}
                                                           (full job; not per person)
                                                         </p>
                                                         <p style={{ margin: 0, fontWeight: 600, paddingTop: '0.25rem' }}>
-                                                          Sum: ${formatCurrency(personSummaryFooterRowTotal)}
+                                                          Sum: <AmountSmallCents value={personSummaryFooterRowTotal} />
                                                         </p>
                                                         <div
                                                           style={{ marginTop: '0.5rem', paddingTop: '0.5rem', borderTop: '1px solid var(--border)' }}
@@ -1999,7 +2004,7 @@ export default function JobsJobSummaryTab({
                                                 >
                                                   {jobSummaryPartsCostIsZero(teamFooterAmt)
                                                     ? '—'
-                                                    : `$${formatCurrency(teamFooterAmt)}`}
+                                                    : <SignedAmountSmallCents value={teamFooterAmt} />}
                                                 </td>
                                                 <td
                                                   className={jobSummaryBreakdownInteractiveClass(
@@ -2029,7 +2034,7 @@ export default function JobsJobSummaryTab({
                                                     ? '—'
                                                     : jobSummaryPartsCostIsZero(cardFooterAmt)
                                                       ? '—'
-                                                      : `$${formatCurrency(cardFooterAmt)}`}
+                                                      : <SignedAmountSmallCents value={cardFooterAmt} />}
                                                 </td>
                                                 <td
                                                   className={jobSummaryBreakdownInteractiveClass(
@@ -2058,7 +2063,7 @@ export default function JobsJobSummaryTab({
                                                 >
                                                   {jobSummaryPartsCostIsZero(invoicesFromSupplyHouses)
                                                     ? '—'
-                                                    : `$${formatCurrency(invoicesFromSupplyHouses)}`}
+                                                    : <SignedAmountSmallCents value={invoicesFromSupplyHouses} />}
                                                 </td>
                                                 <td
                                                   className={jobSummaryBreakdownInteractiveClass(
@@ -2104,7 +2109,10 @@ export default function JobsJobSummaryTab({
                                                     ? '—'
                                                     : jobSummaryPartsCostIsZero(personSummaryFooterRowTotal)
                                                       ? '—'
-                                                      : `$${formatCurrency(personSummaryFooterRowTotal)}`}
+                                                      : <SignedAmountSmallCents value={personSummaryFooterRowTotal} />}
+                                                </td>
+                                                <td style={{ padding: '0.25rem 0.4rem', textAlign: 'right', color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}>
+                                                  {personSummaryFooterRowTotal == null || jobSummaryPartsCostIsZero(personSummaryFooterRowTotal) ? '—' : '100%'}
                                                 </td>
                                               </tr>
                                                 )
@@ -2140,7 +2148,7 @@ export default function JobsJobSummaryTab({
                                       >
                                         Team{' '}
                                         <span style={{ fontWeight: 400 }}>
-                                          {teamLaborCost === 0 ? '—' : `$${formatCurrency(teamLaborCost)}`}
+                                          {teamLaborCost === 0 ? '—' : <SignedAmountSmallCents value={teamLaborCost} />}
                                         </span>
                                       </summary>
                                       <div style={{ marginTop: '0.5rem' }}>
@@ -2338,7 +2346,7 @@ export default function JobsJobSummaryTab({
                                                                                 textAlign: 'right',
                                                                               }}
                                                                             >
-                                                                              ${formatCurrency(row.cost)}
+                                                                              <AmountSmallCents value={row.cost} />
                                                                             </td>
                                                                           </tr>
                                                                         )
@@ -2425,7 +2433,7 @@ export default function JobsJobSummaryTab({
                                                                           textAlign: 'right',
                                                                         }}
                                                                       >
-                                                                        ${formatCurrency(allocTableTotals.cost)}
+                                                                        <AmountSmallCents value={allocTableTotals.cost} />
                                                                       </td>
                                                                     </tr>
                                                                   </tfoot>
@@ -2527,7 +2535,7 @@ export default function JobsJobSummaryTab({
                                     ) : teamLaborCost === 0 ? (
                                       <p style={{ margin: 0, color: 'var(--text-muted)' }}>No team labor for this job.</p>
                                     ) : (
-                                      <p style={{ margin: 0, color: 'var(--text-muted)' }}>Team labor total ${formatCurrency(teamLaborCost)} (no per-person breakdown).</p>
+                                      <p style={{ margin: 0, color: 'var(--text-muted)' }}>Team labor total <AmountSmallCents value={teamLaborCost} /> (no per-person breakdown).</p>
                                     )}
                                     </div>
                                       </div>
@@ -2547,7 +2555,7 @@ export default function JobsJobSummaryTab({
                                       >
                                         Sub Labor{' '}
                                         <span style={{ fontWeight: 400 }}>
-                                          {subLaborCost === 0 ? '—' : `$${formatCurrency(subLaborCost)}`}
+                                          {subLaborCost === 0 ? '—' : <SignedAmountSmallCents value={subLaborCost} />}
                                         </span>
                                       </summary>
                                       <div style={{ marginTop: '0.5rem' }}>
@@ -2565,7 +2573,7 @@ export default function JobsJobSummaryTab({
                                               <li key={lj.id} style={{ marginBottom: '0.25rem' }}>
                                                 {lj.assigned_to_name ?? 'Contractor'}
                                                 {lj.job_date ? ` · ${lj.job_date}` : ''}
-                                                : ${formatCurrency(c)}
+                                                : <AmountSmallCents value={c} />
                                               </li>
                                             )
                                           })}
@@ -2592,11 +2600,11 @@ export default function JobsJobSummaryTab({
                                       >
                                         Parts Cost{' '}
                                         <span style={{ fontWeight: 400 }}>
-                                          {partsCost === 0 ? '—' : `$${formatCurrency(partsCost)}`}
+                                          {partsCost === 0 ? '—' : <SignedAmountSmallCents value={partsCost} />}
                                         </span>
                                         {costLines.map((l) => (
                                           <span key={l.tagId} style={{ fontWeight: 400, color: 'var(--text-muted)' }} title={`${l.name} inside Parts Cost — card charges in that tag.`}>
-                                            {' '}· <span aria-hidden="true">{l.icon}</span> {l.name.toLowerCase()} ${formatCurrency(l.usd)}
+                                            {' '}· <span aria-hidden="true">{l.icon}</span> {l.name.toLowerCase()} <AmountSmallCents value={l.usd} />
                                           </span>
                                         ))}
                                       </summary>
@@ -2606,7 +2614,7 @@ export default function JobsJobSummaryTab({
                                       {jobSummaryPartsCostIsZero(partsFromTally) ? (
                                         <div style={jobSummaryPartsCostFlatRowStyle}>
                                           Parts from Tally{' '}
-                                          <span style={{ fontWeight: 400 }}>${formatCurrency(partsFromTally)}</span>
+                                          <span style={{ fontWeight: 400 }}><AmountSmallCents value={partsFromTally} /></span>
                                         </div>
                                       ) : (
                                         <details style={jobSummaryPartsCostDetailsBoxStyle}>
@@ -2621,7 +2629,7 @@ export default function JobsJobSummaryTab({
                                             onClick={(e) => e.stopPropagation()}
                                           >
                                             Parts from Tally{' '}
-                                            <span style={{ fontWeight: 400 }}>${formatCurrency(partsFromTally)}</span>
+                                            <span style={{ fontWeight: 400 }}><AmountSmallCents value={partsFromTally} /></span>
                                           </summary>
                                           <div style={{ marginTop: '0.5rem' }}>
                                             {tallyPartsForJob.length > 0 ? (
@@ -2647,7 +2655,7 @@ export default function JobsJobSummaryTab({
                                                       <tr key={r.id} style={{ borderTop: '1px solid var(--border)' }}>
                                                         <td style={{ padding: '0.25rem 0.4rem' }}>{label}</td>
                                                         <td style={{ padding: '0.25rem 0.4rem', textAlign: 'right' }}>{r.quantity}</td>
-                                                        <td style={{ padding: '0.25rem 0.4rem', textAlign: 'right' }}>${formatCurrency(lineCost)}</td>
+                                                        <td style={{ padding: '0.25rem 0.4rem', textAlign: 'right' }}><AmountSmallCents value={lineCost} /></td>
                                                       </tr>
                                                     )
                                                   })}
@@ -2666,7 +2674,7 @@ export default function JobsJobSummaryTab({
                                       {jobSummaryPartsCostIsZero(billedMaterialsSum) ? (
                                         <div style={jobSummaryPartsCostFlatRowStyle}>
                                           Other job charges{' '}
-                                          <span style={{ fontWeight: 400 }}>${formatCurrency(billedMaterialsSum)}</span>
+                                          <span style={{ fontWeight: 400 }}><AmountSmallCents value={billedMaterialsSum} /></span>
                                         </div>
                                       ) : (
                                       <details style={jobSummaryPartsCostDetailsBoxStyle}>
@@ -2681,7 +2689,7 @@ export default function JobsJobSummaryTab({
                                           onClick={(e) => e.stopPropagation()}
                                         >
                                           Other job charges{' '}
-                                          <span style={{ fontWeight: 400 }}>${formatCurrency(billedMaterialsSum)}</span>
+                                          <span style={{ fontWeight: 400 }}><AmountSmallCents value={billedMaterialsSum} /></span>
                                         </summary>
                                         <div style={{ marginTop: '0.5rem' }}>
                                           {(() => {
@@ -2702,7 +2710,7 @@ export default function JobsJobSummaryTab({
                                                   }}
                                                 >
                                                   <span style={{ color: 'var(--text-700)' }}>{m.description?.trim() || '—'}</span>
-                                                  <span style={{ whiteSpace: 'nowrap' }}>${formatCurrency(Number(m.amount ?? 0))}</span>
+                                                  <span style={{ whiteSpace: 'nowrap' }}><AmountSmallCents value={Number(m.amount ?? 0)} /></span>
                                                 </div>
                                               ))
                                             }
@@ -2723,7 +2731,7 @@ export default function JobsJobSummaryTab({
                                       {jobSummaryPartsCostIsZero(invoicesFromSupplyHouses) ? (
                                         <div style={jobSummaryPartsCostFlatRowStyle}>
                                           Invoices from Supply Houses{' '}
-                                          <span style={{ fontWeight: 400 }}>${formatCurrency(invoicesFromSupplyHouses)}</span>
+                                          <span style={{ fontWeight: 400 }}><AmountSmallCents value={invoicesFromSupplyHouses} /></span>
                                         </div>
                                       ) : (
                                       <details
@@ -2744,7 +2752,7 @@ export default function JobsJobSummaryTab({
                                           onClick={(e) => e.stopPropagation()}
                                         >
                                           Invoices from Supply Houses{' '}
-                                          <span style={{ fontWeight: 400 }}>${formatCurrency(invoicesFromSupplyHouses)}</span>
+                                          <span style={{ fontWeight: 400 }}><AmountSmallCents value={invoicesFromSupplyHouses} /></span>
                                         </summary>
                                         <div style={{ marginTop: '0.5rem' }}>
                                           {renderJobSummarySupplyHouseInvoiceTableContent(
@@ -2758,7 +2766,7 @@ export default function JobsJobSummaryTab({
                                       {jobSummaryPartsCostIsZero(cardCharges) ? (
                                         <div style={jobSummaryPartsCostFlatRowStyle}>
                                           Card charges{' '}
-                                          <span style={{ fontWeight: 400 }}>${formatCurrency(cardCharges)}</span>
+                                          <span style={{ fontWeight: 400 }}><AmountSmallCents value={cardCharges} /></span>
                                         </div>
                                       ) : (
                                       <details
@@ -2778,7 +2786,7 @@ export default function JobsJobSummaryTab({
                                           }}
                                           onClick={(e) => e.stopPropagation()}
                                         >
-                                          Card charges <span style={{ fontWeight: 400 }}>${formatCurrency(cardCharges)}</span>
+                                          Card charges <span style={{ fontWeight: 400 }}><AmountSmallCents value={cardCharges} /></span>
                                         </summary>
                                         <div style={{ marginTop: '0.5rem' }}>
                                           {(() => {
@@ -2832,7 +2840,7 @@ export default function JobsJobSummaryTab({
                                                         </td>
                                                         <td style={{ padding: '0.25rem 0.4rem' }}>{debitCardLabel}</td>
                                                         <td style={{ padding: '0.25rem 0.4rem', textAlign: 'right' }}>
-                                                          ${formatCurrency(allocAbs)}
+                                                          <AmountSmallCents value={allocAbs} />
                                                         </td>
                                                         <td style={{ padding: '0.25rem 0.4rem', color: 'var(--text-600)' }}>
                                                           {[row.note, tx?.note, tx?.external_memo].filter(Boolean).join(' · ') || '—'}
@@ -2970,15 +2978,15 @@ export default function JobsJobSummaryTab({
                                                               <td style={{ padding: '0.25rem 0.4rem', textAlign: 'right' }}>
                                                                 {jobSummaryPartsCostIsZero(row.partsFromTally)
                                                                   ? '—'
-                                                                  : `$${formatCurrency(row.partsFromTally)}`}
+                                                                  : <SignedAmountSmallCents value={row.partsFromTally} />}
                                                               </td>
                                                               <td style={{ padding: '0.25rem 0.4rem', textAlign: 'right' }}>
                                                                 {jobSummaryPartsCostIsZero(row.cardCharges)
                                                                   ? '—'
-                                                                  : `$${formatCurrency(row.cardCharges)}`}
+                                                                  : <SignedAmountSmallCents value={row.cardCharges} />}
                                                               </td>
                                                               <td style={{ padding: '0.25rem 0.4rem', textAlign: 'right' }}>
-                                                                {jobSummaryPartsCostIsZero(rt) ? '—' : `$${formatCurrency(rt)}`}
+                                                                {jobSummaryPartsCostIsZero(rt) ? '—' : <SignedAmountSmallCents value={rt} />}
                                                               </td>
                                                             </tr>
                                                           )
@@ -2987,23 +2995,20 @@ export default function JobsJobSummaryTab({
                                                       <tr style={{ borderTop: '1px solid var(--border-strong)', fontWeight: 600 }}>
                                                         <td style={{ padding: '0.25rem 0.4rem' }}>{ppFooter.displayName}</td>
                                                         <td style={{ padding: '0.25rem 0.4rem', textAlign: 'right' }}>
-                                                          ${formatCurrency(ppFooter.partsFromTally)}
+                                                          <AmountSmallCents value={ppFooter.partsFromTally} />
                                                         </td>
                                                         <td style={{ padding: '0.25rem 0.4rem', textAlign: 'right' }}>
-                                                          ${formatCurrency(ppFooter.cardCharges)}
+                                                          <AmountSmallCents value={ppFooter.cardCharges} />
                                                         </td>
                                                         <td style={{ padding: '0.25rem 0.4rem', textAlign: 'right' }}>
-                                                          $
-                                                          {formatCurrency(ppFooter.partsFromTally + ppFooter.cardCharges)}
+                                                          <AmountSmallCents value={ppFooter.partsFromTally + ppFooter.cardCharges} />
                                                         </td>
                                                       </tr>
                                                     </tbody>
                                                   </table>
                                                   {(billedMaterialsSum > 0 || invoicesFromSupplyHouses > 0) && (
                                                     <p style={{ margin: '0.5rem 0 0', fontSize: '0.72rem', color: 'var(--text-muted)' }}>
-                                                      Job-level (not in table above): other job charges $
-                                                      {formatCurrency(billedMaterialsSum)} · supply invoices $
-                                                      {formatCurrency(invoicesFromSupplyHouses)}
+                                                      Job-level (not in table above): other job charges <AmountSmallCents value={billedMaterialsSum} /> · supply invoices <AmountSmallCents value={invoicesFromSupplyHouses} />
                                                     </p>
                                                   )}
                                                   {!ppSumsOk && (
@@ -3036,14 +3041,14 @@ export default function JobsJobSummaryTab({
                                       >
                                         Total Bill{' '}
                                         <span style={{ fontWeight: 400 }}>
-                                          {totalBill === 0 ? '—' : `$${formatCurrency(totalBill)}`}
+                                          {totalBill === 0 ? '—' : <SignedAmountSmallCents value={totalBill} />}
                                         </span>
                                       </summary>
                                       <div style={{ marginTop: '0.5rem' }}>
                                         <div style={jobSummaryCostSectionBodyStyle}>
                                           <p style={{ margin: 0, color: 'var(--text-700)' }}>
                                             Revenue (billing):{' '}
-                                            {totalBill === 0 ? '—' : `$${formatCurrency(totalBill)}`}
+                                            {totalBill === 0 ? '—' : <SignedAmountSmallCents value={totalBill} />}
                                           </p>
                                         </div>
                                       </div>
@@ -3063,18 +3068,18 @@ export default function JobsJobSummaryTab({
                     <td style={{ padding: '0.6rem 0.75rem' }}>
                       {view.totals.jobs} {view.totals.jobs === 1 ? 'job' : 'jobs'}
                     </td>
-                    <td style={{ padding: '0.6rem 0.75rem', textAlign: 'right' }}>${formatCurrency(view.totals.revenueUsd)}</td>
-                    <td style={{ padding: '0.6rem 0.75rem', textAlign: 'right' }}>{showTeamLaborAndProfit ? `$${formatCurrency(view.totals.laborUsd)}` : '—'}</td>
-                    <td style={{ padding: '0.6rem 0.75rem', textAlign: 'right' }}>${formatCurrency(view.totals.subsUsd)}</td>
-                    <td style={{ padding: '0.6rem 0.75rem', textAlign: 'right' }}>${formatCurrency(view.totals.partsUsd)}</td>
+                    <td style={{ padding: '0.6rem 0.75rem', textAlign: 'right' }}><SignedAmountSmallCents value={view.totals.revenueUsd} /></td>
+                    <td style={{ padding: '0.6rem 0.75rem', textAlign: 'right' }}>{showTeamLaborAndProfit ? <SignedAmountSmallCents value={view.totals.laborUsd} /> : '—'}</td>
+                    <td style={{ padding: '0.6rem 0.75rem', textAlign: 'right' }}><SignedAmountSmallCents value={view.totals.subsUsd} /></td>
+                    <td style={{ padding: '0.6rem 0.75rem', textAlign: 'right' }}><SignedAmountSmallCents value={view.totals.partsUsd} /></td>
                     <td style={{ padding: '0.6rem 0.75rem', textAlign: 'right', color: showTeamLaborAndProfit && view.totals.grossUsd < 0 ? 'var(--text-red-700)' : undefined }}>
-                      {showTeamLaborAndProfit ? `$${formatCurrency(view.totals.grossUsd)}` : '—'}
+                      {showTeamLaborAndProfit ? <SignedAmountSmallCents value={view.totals.grossUsd} /> : '—'}
                     </td>
                     <td style={{ padding: '0.6rem 0.75rem', textAlign: 'right' }}>{showTeamLaborAndProfit && view.totals.marginPct != null ? `${Math.round(view.totals.marginPct)}%` : '—'}</td>
                     <td style={{ padding: '0.6rem 0.75rem', textAlign: 'right', whiteSpace: 'nowrap' }}>{view.ledger ? `${view.totals.hours.toFixed(1)} h` : '—'}</td>
-                    <td style={{ padding: '0.6rem 0.75rem', textAlign: 'right' }}>{showTeamLaborAndProfit && view.totals.overheadUsd != null ? `$${formatCurrency(view.totals.overheadUsd)}` : '—'}</td>
+                    <td style={{ padding: '0.6rem 0.75rem', textAlign: 'right' }}>{showTeamLaborAndProfit && view.totals.overheadUsd != null ? <SignedAmountSmallCents value={view.totals.overheadUsd} /> : '—'}</td>
                     <td style={{ padding: '0.6rem 0.75rem', textAlign: 'right', color: showTeamLaborAndProfit && view.totals.trueProfitUsd != null && view.totals.trueProfitUsd < 0 ? 'var(--text-red-700)' : undefined }}>
-                      {showTeamLaborAndProfit && view.totals.trueProfitUsd != null ? `$${formatCurrency(view.totals.trueProfitUsd)}` : '—'}
+                      {showTeamLaborAndProfit && view.totals.trueProfitUsd != null ? <SignedAmountSmallCents value={view.totals.trueProfitUsd} /> : '—'}
                     </td>
                     <td style={{ padding: '0.6rem 0.75rem', textAlign: 'right' }}>{showTeamLaborAndProfit && view.totals.trueMarginPct != null ? `${Math.round(view.totals.trueMarginPct)}%` : '—'}</td>
                     <td style={{ padding: '0.6rem 0.75rem', textAlign: 'right', whiteSpace: 'nowrap' }}>{view.totals.revenuePerHourUsd == null ? '—' : `$${Math.round(view.totals.revenuePerHourUsd)}`}</td>
