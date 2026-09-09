@@ -279,63 +279,59 @@ export function JobsStagesActivityBox({ job, ctx, loadActivityForJob, submitNote
           </div>
         ) : null}
       </div>
-      {ctx.openNewReportForJob && !composerOpen ? (
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation()
-              ctx.openNewReportForJob?.(job)
-            }}
-            aria-label="File a report on this job"
-            title="File a report on this job"
-            style={{
-              position: 'absolute',
-              right: 74,
-              bottom: 8,
-              zIndex: 2,
-              display: 'inline-flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              background: 'var(--surface)',
-              color: 'var(--text-blue-700)',
-              border: '1px solid #3b82f6',
-              borderRadius: 999,
-              width: 30,
-              height: 24,
-              padding: 0,
-              cursor: 'pointer',
-              boxShadow: '0 2px 10px rgba(0,0,0,0.25)',
-            }}
-          >
-            <JobsWorkedTodayReportIcon decorative />
-          </button>
-        ) : null}
-      {submitNoteWithBody && !composerOpen ? (
-        <button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation()
-            openComposer()
-          }}
-          aria-label="Add a note to this job's activity"
-          style={{
-            position: 'absolute',
-            right: 8,
-            bottom: 8,
-            zIndex: 2,
-            background: '#3b82f6',
-            color: '#fff',
-            border: 'none',
-            borderRadius: 999,
-            padding: '4px 13px',
-            fontSize: '0.71875rem',
-            fontWeight: 700,
-            cursor: 'pointer',
-            boxShadow: '0 2px 10px rgba(0,0,0,0.35)',
-          }}
-        >
-          + Add
-        </button>
+      {/* Floating pills (v2.3197): + Add, then the report pill to its right — one flex
+          row so both share a height and a bottom edge (owner call). */}
+      {!composerOpen && (submitNoteWithBody || ctx.openNewReportForJob) ? (
+        <div style={{ position: 'absolute', right: 8, bottom: 8, zIndex: 2, display: 'flex', alignItems: 'stretch', gap: 6 }}>
+          {submitNoteWithBody ? (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation()
+                openComposer()
+              }}
+              aria-label="Add a note to this job's activity"
+              style={{
+                background: '#3b82f6',
+                color: '#fff',
+                border: 'none',
+                borderRadius: 999,
+                padding: '4px 13px',
+                fontSize: '0.71875rem',
+                fontWeight: 700,
+                cursor: 'pointer',
+                boxShadow: '0 2px 10px rgba(0,0,0,0.35)',
+              }}
+            >
+              + Add
+            </button>
+          ) : null}
+          {ctx.openNewReportForJob ? (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation()
+                ctx.openNewReportForJob?.(job)
+              }}
+              aria-label="File a report on this job"
+              title="File a report on this job"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                background: 'var(--surface)',
+                color: 'var(--text-blue-700)',
+                border: '1px solid #3b82f6',
+                borderRadius: 999,
+                padding: '0 9px',
+                cursor: 'pointer',
+                boxShadow: '0 2px 10px rgba(0,0,0,0.25)',
+              }}
+            >
+              <JobsWorkedTodayReportIcon decorative />
+            </button>
+          ) : null}
+        </div>
       ) : null}
       {composerOpen ? (
         <div
