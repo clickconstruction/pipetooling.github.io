@@ -5,6 +5,8 @@ import { useToastContext } from '../../contexts/ToastContext'
 import type { BidWithBuilder } from '../../types/bidWithBuilder'
 import { buildRobotQueue } from '../../lib/bids/robotQueue'
 import { buildRobotBidPrompt } from '../../lib/bids/robotBidReadiness'
+import { buildDesktopKickoff, twinMcpConnectorUrl } from '../../lib/bids/desktopKickoff'
+import desktopKickoffDoc from '../../../docs/twins/kickoffs/desktop-operator.md?raw'
 import {
   buildBacktestCandidateGroups,
   buildBacktestPrompt,
@@ -59,6 +61,7 @@ export function BidsRobotQueueTab({ bids, twinBidBySourceId, referencePresence, 
     return buildRobotQueue(bids, (bidId) => twinBidBySourceId.has(bidId), { staleDueBefore })
   }, [bids, twinBidBySourceId])
   const [copiedBidId, setCopiedBidId] = useState<string | null>(null)
+  const [copiedKickoff, setCopiedKickoff] = useState(false)
   const [requesterNames, setRequesterNames] = useState<Record<string, string>>({})
 
   // Backtest candidates (v2.2594, mockup Variant B): axis demand comes from the
@@ -168,6 +171,25 @@ export function BidsRobotQueueTab({ bids, twinBidBySourceId, referencePresence, 
     }
   }, [requesterIds])
 
+  // The Claude Desktop kickoff (v2.3207): docs/twins/kickoffs/desktop-operator.md
+  // whole, with this project's twin-mcp door filled in. Read from the app so a
+  // machine with no repo checkout can still run the queue.
+  const desktopKickoff = useMemo(
+    () => buildDesktopKickoff(desktopKickoffDoc, { connectorUrl: twinMcpConnectorUrl(import.meta.env.VITE_SUPABASE_URL) }),
+    [],
+  )
+  async function copyDesktopKickoff() {
+    try {
+      await navigator.clipboard.writeText(desktopKickoff)
+      setCopiedKickoff(true)
+      showToast('Copied the Claude Desktop kickoff', 'success')
+      window.setTimeout(() => setCopiedKickoff(false), 2000)
+    } catch {
+      setCopiedKickoff(false)
+      showToast('Could not copy', 'error')
+    }
+  }
+
   async function copyPrompt(bid: BidWithBuilder) {
     try {
       await navigator.clipboard.writeText(buildRobotBidPrompt(bid))
@@ -260,6 +282,53 @@ export function BidsRobotQueueTab({ bids, twinBidBySourceId, referencePresence, 
         Every bid a robot could do right now — same rules as the board icons. Green requests come first
         (oldest ask on top); paste a prompt into the twin and it runs the pipeline blind.
       </p>
+
+      <div
+        style={{
+          background: 'var(--surface)',
+          border: '1px solid var(--border)',
+          borderRadius: 8,
+          padding: '0.6rem 0.75rem',
+          marginBottom: '1.1rem',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.6rem', flexWrap: 'wrap' }}>
+          <span style={{ fontSize: '0.85rem', fontWeight: 600 }}>Run the queue from Claude Desktop</span>
+          <button
+            type="button"
+            onClick={() => void copyDesktopKickoff()}
+            title="Copies one self-contained prompt: the connector setup for this project, the robot key steps, and the one-bid-at-a-time loop. Paste it into a new Claude Desktop chat."
+            style={{ ...btnStyle, background: '#3b82f6', borderColor: '#3b82f6', color: 'white', fontWeight: 600 }}
+          >
+            {copiedKickoff ? 'Copied ✓' : 'Copy Desktop kickoff'}
+          </button>
+        </div>
+        <p style={{ margin: '0.3rem 0 0', fontSize: '0.78rem', color: 'var(--text-muted)', maxWidth: '68ch' }}>
+          No repo, no terminal: a laptop with Claude Desktop, Node, and a robot key from Settings → Digital twins. The robot
+          claims one uncovered bid at a time, asks the person to drop in the plan PDF, locks, files the audit, then claims the
+          next — up to three per chat, stopping when the dispatcher says the board is covered. Source of truth:{' '}
+          <code style={{ fontSize: '0.7rem' }}>docs/twins/kickoffs/desktop-operator.md</code>.
+        </p>
+        <details style={{ marginTop: '0.35rem' }}>
+          <summary style={{ fontSize: '0.78rem', color: 'var(--text-muted)', cursor: 'pointer' }}>Preview the prompt</summary>
+          <pre
+            style={{
+              fontSize: '0.7rem',
+              whiteSpace: 'pre-wrap',
+              overflowWrap: 'anywhere',
+              background: 'var(--bg-subtle)',
+              border: '1px solid var(--border)',
+              borderRadius: 6,
+              padding: '0.6rem 0.75rem',
+              maxHeight: '22rem',
+              overflow: 'auto',
+              marginTop: '0.4rem',
+            }}
+          >
+            {desktopKickoff}
+          </pre>
+        </details>
+      </div>
 
       <h4 style={sectionHeadStyle}>
         <span style={dotStyle('#16a34a')} />

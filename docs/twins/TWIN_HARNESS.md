@@ -61,6 +61,15 @@ Mid-session (or from any non-MCP harness), the HTTP door is equivalent: POST
 `tools/call` body — every verb works identically. Reference the key by file path
 (`$(cat ~/pt-twin-digest/twin.token)`), never paste its value into a transcript.
 
+**Claude Desktop (no repo, no shell) — v2.3207.** Desktop's *Add custom connector*
+screen cannot send a header, so the door is reached through the `mcp-remote` bridge in
+`claude_desktop_config.json` (`--header X-Twin-Token:${TWIN_TOKEN}`, key as an env
+value). Bids → 🤖 Robots → Queue → **Copy Desktop kickoff** copies
+`kickoffs/desktop-operator.md` with this project's URL filled in: setup, the blind
+rule, and a serial `next_shadow` loop. A Desktop chat cannot call plan-fetch, so the
+person drags each plan PDF into the chat when the robot asks; `ct_finish_takeoff`
+handles the CountTooling leg server-side.
+
 **The toolkit and the skill (v2.3109).** `scripts/twin/` ships the shell helpers
 (`twin.py <verb>`, `twinrest.py` signed-in reads, `probe_plans.py`,
 `set_plans.py`; setup in its README, one allow rule for the main checkout's
