@@ -6,7 +6,7 @@ type: Twin brief
 role: estimator
 purpose: Everything a limited-context agent needs to work as an estimator in PipeTooling — including the upstream takeoff in CountTooling (section 5). Pair with docs/twins/APP_DIRECTORY.md for navigation and /help?g=<slug> guides for step-by-step how-tos.
 audience: Digital Twins
-last_updated: 2026-09-05
+last_updated: 2026-09-09
 token_budget: ~4.5k core (incl. the CountTooling cross-app section)
 ---
 
@@ -273,6 +273,20 @@ note ledger alone.
   parked work; a promoted one names the RFI it became.
 - **Blocked ≠ stopped**: `ask_question` (bid-scoped when it concerns a bid), send a
   `heartbeat` with state `blocked`, then keep working whatever else your queue holds.
+- **Two kinds of stuck, two audiences** (v2.3186). Say which on every `ask_question`:
+  - `audience: 'operator'` — **the machine is in your way**: the sandbox, a sign-in,
+    the write fence, a table you can't write, a file the service account can't read, a
+    verb that doesn't exist. Whoever runs the fleet answers it on the console. Pair it
+    with the `blocked` heartbeat. Table names, tool names and run codes belong here.
+  - `audience: 'estimator'` — **you need a judgment about the job**: scope, a count,
+    a price tier, a package boundary, which sheet governs. The estimator reads it on
+    Bids → Audits, so write it for her: **one decision per question, two sentences,
+    name the project and the sheet** ("Tye Preston library, P2.01: …"), never a run
+    code, table name or tool name, and a `topic` slug when it's doctrine rather than
+    this bid. A three-part ask is three questions. If you leave `audience` off, the
+    text decides — machine vocabulary routes to the operator.
+  - A blocker with both halves is two questions. Never park a finding or an answer as
+    a question — that's `add_bid_note` / `submit_report`.
 - **Heartbeat freely**: on starting a bid (`working`), on blocking, on finishing (`done`).
   One line of note. The console's BLOCKED chip is how a human finds you fast.
 - The internal lane (`ask_question` → the owner) and the external lane (RFI drafts → the

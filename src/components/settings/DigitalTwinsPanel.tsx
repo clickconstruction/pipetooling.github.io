@@ -9,6 +9,7 @@ import shadowOperatorPrompt from '../../../docs/twins/kickoffs/shadow-operator.m
 import { calibrationStandardSummary, calibrationStandardToast, teacherCandidates, type TeacherCandidate } from '../../lib/twinTeachers'
 import { updateRefused, refusedUpdateMessage } from '../../lib/refusedWrite'
 import { TwinQuestionText } from '../bids/TwinQuestionText'
+import { effectiveTwinQuestionAudience, isTwinQuestionAudience, type TwinQuestionAudience } from '../../../supabase/functions/_shared/twinQuestionAudience'
 
 /** The dev console links a question's bid through its own about_bid_id only — no roster lookup here. */
 const EMPTY_BID_IDS: Readonly<Record<string, string>> = {}
@@ -38,6 +39,8 @@ type QuestionRow = {
   status: 'open' | 'answered' | 'promoted' | 'dismissed'
   answer: string | null
   created_at: string
+  /** v2.3186 lane — undefined until migration 20260909045818 lands (then select('*') carries it). */
+  audience?: string | null
 }
 
 const FN_BASE = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1`
@@ -138,7 +141,7 @@ export default function DigitalTwinsPanel() {
       setCreds((c.data as CredRow[] | null) ?? [])
       const r = await sb.from('twin_runs').select('twin_user_id, mission, notes, started_at').order('started_at', { ascending: false }).limit(15)
       setRuns((r.data as RunRow[] | null) ?? [])
-      const q = await sb.from('twin_questions').select('id, twin_user_id, about_bid_id, mission, question, status, answer, created_at').order('created_at', { ascending: false }).limit(30)
+      const q = await sb.from('twin_questions').select('*').order('created_at', { ascending: false }).limit(30)
       setQuestions(((q.data as QuestionRow[] | null) ?? []).filter(Boolean))
       const seats = await sb.from('users').select('id, counttooling_user_id').eq('is_digital_twin', true).order('email')
       if (seats.error) {
@@ -187,6 +190,23 @@ export default function DigitalTwinsPanel() {
       if (!rows || rows.length === 0) { showToast('Question already handled elsewhere — refreshing.', 'error'); await loadAll(); return }
       setAnswerDrafts((d) => ({ ...d, [q.id]: '' }))
       showToast('Answer saved — the twin pulls it with get_answers on its next run.', 'success')
+      await loadAll()
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : String(e), 'error')
+    } finally { setBusy(false) }
+  }
+
+  /** v2.3186: move a question to the other lane — the estimator's panel (Bids → Audits) or this console. */
+  async function setQuestionAudience(q: QuestionRow, audience: TwinQuestionAudience) {
+    setBusy(true)
+    try {
+      const sb = supabase as never as { from: (t: string) => { update: (v: object) => { eq: (k: string, v: string) => { eq: (k2: string, v2: string) => { select: (c: string) => Promise<{ data: unknown[] | null; error: { message: string } | null }> } } } } }
+      const { data: rows, error } = await sb.from('twin_questions')
+        .update({ audience, updated_at: new Date().toISOString() })
+        .eq('id', q.id).eq('status', 'open').select('id')
+      if (error) throw new Error(error.message)
+      if (!rows || rows.length === 0) { await loadAll(); return }
+      showToast(audience === 'estimator' ? "Sent to the estimator's Standing rulings panel." : 'Kept on this console — the estimator no longer sees it.', 'success')
       await loadAll()
     } catch (e) {
       showToast(e instanceof Error ? e.message : String(e), 'error')
@@ -703,14 +723,32 @@ export default function DigitalTwinsPanel() {
           RFI drafts (the external lane). */}
       <div style={CARD}>
         <h4 style={CARD_TITLE}><span style={STEP_REF}>Q</span>Twin questions{questions.filter((x) => x.status === 'open').length > 0 ? ` · ${questions.filter((x) => x.status === 'open').length} open` : ''}</h4>
+        <p style={{ ...MUTED, marginTop: 0 }}>
+          Two lanes (v2.3186): <b>operator</b> questions — the machine was in the robot's way — are yours and live here;{' '}
+          <b>estimator</b> questions — a judgment about the job — show on Bids → Audits → Standing rulings. Open operator questions sort first.
+        </p>
         {questions.length === 0 ? <p style={MUTED}>No questions yet — a blocked twin parks one with ask_question instead of stalling.</p> : null}
-        {questions.slice(0, 12).map((q) => {
+        {[...questions]
+          .sort((a, b) => {
+            const rank = (q: QuestionRow) => (q.status !== 'open' ? 2 : effectiveTwinQuestionAudience(q) === 'operator' ? 0 : 1)
+            return rank(a) - rank(b) || (a.created_at < b.created_at ? 1 : a.created_at > b.created_at ? -1 : 0)
+          })
+          .slice(0, 12)
+          .map((q) => {
           const twin = twins.find((t) => t.id === q.twin_user_id)
           const isOpen = q.status === 'open'
+          const lane = effectiveTwinQuestionAudience(q)
+          const laneWritable = 'audience' in q
           return (
             <div key={q.id} style={{ borderTop: '1px solid var(--border)', padding: '0.45rem 0', fontSize: '0.8rem' }}>
               <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'baseline' }}>
                 <strong>{twin?.name ?? twin?.email ?? 'Twin'}</strong>
+                <span
+                  title={isTwinQuestionAudience(q.audience) ? 'Lane set by the robot or a human' : 'Lane read from the text — the audience column has not landed yet'}
+                  style={{ fontSize: '0.62rem', fontWeight: 800, borderRadius: 5, padding: '0.06rem 0.4rem', background: lane === 'operator' ? 'var(--bg-blue-tint)' : 'var(--bg-muted)', color: lane === 'operator' ? 'var(--text-blue-700, var(--text-700))' : 'var(--text-muted)' }}
+                >
+                  {lane === 'operator' ? '🛠 OPERATOR' : '📐 ESTIMATOR'}
+                </span>
                 {q.mission ? <span style={MUTED}>{q.mission}</span> : null}
                 <span style={{ fontSize: '0.62rem', fontWeight: 800, borderRadius: 5, padding: '0.06rem 0.4rem', background: isOpen ? 'var(--bg-amber-tint)' : 'var(--bg-muted)', color: isOpen ? 'var(--text-amber-800)' : 'var(--text-muted)' }}>{q.status.toUpperCase()}</span>
                 <span style={{ ...MUTED, marginLeft: 'auto' }}>{relativeTimeFrom(q.created_at, Date.now())}</span>
@@ -728,6 +766,17 @@ export default function DigitalTwinsPanel() {
                   />
                   <button type="button" style={BTN_PRIMARY} disabled={busy || !(answerDrafts[q.id] ?? '').trim()} onClick={() => void answerQuestion(q)}>Answer</button>
                   {q.about_bid_id ? <button type="button" style={BTN} disabled={busy} onClick={() => void promoteQuestion(q)}>Promote to RFI</button> : null}
+                  {laneWritable ? (
+                    <button
+                      type="button"
+                      style={BTN}
+                      disabled={busy}
+                      title={lane === 'operator' ? 'This is an estimating question after all — put it on the Standing rulings panel' : "The estimator shouldn't see this — keep it on this console"}
+                      onClick={() => void setQuestionAudience(q, lane === 'operator' ? 'estimator' : 'operator')}
+                    >
+                      {lane === 'operator' ? 'Send to estimator' : 'Take as operator'}
+                    </button>
+                  ) : null}
                   <button type="button" style={{ ...BTN, color: 'var(--text-muted)' }} disabled={busy} onClick={() => void dismissQuestion(q)}>Dismiss</button>
                 </div>
               ) : null}

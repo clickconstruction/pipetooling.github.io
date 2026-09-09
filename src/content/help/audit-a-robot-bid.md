@@ -2,7 +2,7 @@
 title: audit a robot bid and teach it what you know
 category: Bids & Estimating
 roles: dev, master_technician, assistant, controller, estimator
-keywords: audit, robot, twin, review, feedback, counts, footage, pricing, scope, receipts, counttooling, takeoff, standing rulings, questions, bid link, which bid
+keywords: audit, robot, twin, review, feedback, counts, footage, pricing, scope, receipts, counttooling, takeoff, standing rulings, questions, not mine, dismiss, operator, bid link, which bid
 ---
 When a robot estimator finishes a draft bid, it asks for your audit. Everything happens in one place — the **Audits** tab on the Bids page — and every note you leave teaches the robot for next time.
 
@@ -12,7 +12,8 @@ At the top of the tab sits **📜 Standing rulings · N — fifteen minutes here
 
 1. When several robots hit the same issue on different bids — say, whether to carry travel past 200 miles — their questions collapse into **one card**: the issue as a chip (like {{chip:gray|Travel bands}}), the newest phrasing of the question, and a line like *asked 3 times across 2 bids*.
 2. Type your ruling once and hit {{button:blue|Answer all 3}} — it lands on **every** open copy of that question at once, and every robot picks it up on its next run.
-3. Questions without a shared issue list individually below, each with its own {{button:blue|Answer}} box.
+3. Questions without a shared issue list individually below, each with its own {{button:blue|Answer}} box. The bid number inside a question is a link — open it in a new tab for context before you answer.
+4. **Only questions about the job land here.** When a robot's problem is its own machine — a sandbox, a sign-in, a file it can't open, a table it can't write — that question goes to the person who runs the robots instead, on their console. If one slips through and reads like it's talking to someone else, hit {{button:gray|Not mine}} and it moves over; {{button:gray|Dismiss}} closes a question you don't intend to answer, and the robots stop asking.
 4. The bid number inside a question — the **b474** in *[audit b474 / footage…]* — is a link, and a question that only says *this bid* gets a small **· b474** link after it. Either opens that bid on the Bid Board in a new tab, scrolled to and highlighted, so you can look before you answer; your answer box stays where it was.
 
 :::example Why this panel first
