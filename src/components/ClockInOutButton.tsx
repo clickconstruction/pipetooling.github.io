@@ -6,6 +6,7 @@ import { fieldRoleServiceTypeIdsForUser, isSubcontractorLikeRole } from '../lib/
 import { useDailyGoalsGate } from '../contexts/DailyGoalsGateContext'
 import { useToastContext } from '../contexts/ToastContext'
 import { useUpdateFocusOpenerBridge } from '../contexts/UpdateFocusOpenerBridgeContext'
+import { resolveBridgeFocusTarget } from '../lib/clock/bridgeFocusOpener'
 import {
   formatUnifiedResult,
   formatUnifiedJobSchedulePrimaryLine,
@@ -1096,12 +1097,20 @@ export default function ClockInOutButton({
     }
   }
 
+  // The bridge's one door (v2.3190): Job Mode's card asks for "update focus" for both its
+  // Clock In (no session) and Choose Next Job (session running) buttons, so open whichever
+  // modal the session calls for — the old early return without a session left Clock In dead.
   const handleOpenUpdateFocusModal = useCallback(() => {
-    if (!openSession) return
+    const target = resolveBridgeFocusTarget({ hasOpenSession: !!openSession, userId, userName })
+    if (target === 'none') return
+    if (target === 'clock-in') {
+      setClockInModalOpen(true)
+      return
+    }
     setUpdateFocusNotes('')
     setUpdateFocusError(null)
     setUpdateFocusModalOpen(true)
-  }, [openSession])
+  }, [openSession, userId, userName])
 
   useEffect(() => {
     registerUpdateFocusOpener(handleOpenUpdateFocusModal)
