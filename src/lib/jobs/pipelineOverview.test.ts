@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildPipelineFixups, buildPipelineMoneyMoves, buildPipelineMoneyStory } from './pipelineOverview'
+import { buildPipelineFixups, buildPipelineMoneyMoves, buildPipelineMoneyStory, pipelineOverviewHiddenBySearch } from './pipelineOverview'
 import type { StagesHeaderStats } from './stagesHeaderStats'
 import { emptyBillTruth } from '../billing/billTruth'
 
@@ -122,5 +122,15 @@ describe('buildPipelineFixups', () => {
   it('drops zero counts; all-clean yields an empty list (strip hides)', () => {
     expect(buildPipelineFixups({ noCustomer: 0, noPictures: 0, noEmail: 5 }).map((f) => f.key)).toEqual(['no-email'])
     expect(buildPipelineFixups({ noCustomer: 0, noPictures: 0, noEmail: 0 })).toEqual([])
+  })
+})
+
+describe('pipelineOverviewHiddenBySearch (v2.3184)', () => {
+  it('hides the overview only for a real query', () => {
+    expect(pipelineOverviewHiddenBySearch('')).toBe(false)
+    expect(pipelineOverviewHiddenBySearch('   ')).toBe(false)
+    expect(pipelineOverviewHiddenBySearch(null)).toBe(false)
+    expect(pipelineOverviewHiddenBySearch('diamond')).toBe(true)
+    expect(pipelineOverviewHiddenBySearch(' 583 ')).toBe(true)
   })
 })
