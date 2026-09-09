@@ -98,6 +98,7 @@ import {
 } from '../../lib/jobs/jobContractCoverage'
 import { PipelineOverview } from './PipelineOverview'
 import { pipelineOverviewHiddenBySearch } from '../../lib/jobs/pipelineOverview'
+import type { PipelineBurnAlert } from '../../lib/jobs/jobSummaryBurn'
 import { useSendBackCollectPaymentFlowNotice } from '../../hooks/useSendBackCollectPaymentFlowNotice'
 import { useArBankUnallocatedCount } from '../../hooks/useArBankUnallocatedCount'
 import { useIsMobile } from '../../hooks/useIsMobile'
@@ -321,6 +322,10 @@ export type JobsStagesTabProps = {
   openEdit: (job: JobWithDetails, opts?: { billingCustomerHighlight?: boolean; fixturesSectionHighlight?: boolean }) => void
   openEditJobAndCreateCustomerFlow: (job: JobWithDetails) => void
   tryOpenEditJob: (jobId: string, options?: OpenEditJobOptions) => void
+  /** Burn card on the money story (v2.3191): computed page-side from the Job Summary aggregates; null hides. */
+  pipelineBurnAlert?: PipelineBurnAlert | null
+  /** "Show all N" → the Job Summary tab, In progress, sorted worst projected margin first. */
+  onShowBurnList?: () => void
   openStagesDetailJobModal: (j: JobWithDetails) => void
   refreshCustomersAfterJobFormSave: () => void
   billCustomer: ReturnType<typeof useBillCustomerModal>
@@ -472,6 +477,8 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
     openEdit,
     openEditJobAndCreateCustomerFlow,
     tryOpenEditJob,
+    pipelineBurnAlert = null,
+    onShowBurnList,
     openStagesDetailJobModal,
     refreshCustomersAfterJobFormSave,
     billCustomer,
@@ -3331,6 +3338,12 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                 setStagesSearchQuery('')
                 setChaseModalOpen(true)
               }}
+              burnAlert={pipelineBurnAlert}
+              onOpenBurnJob={(jobId) => {
+                setStagesSearchQuery('')
+                tryOpenEditJob(jobId, { initialTab: 'costs', onSaved: () => void loadJobs() })
+              }}
+              onShowBurnList={onShowBurnList}
             />
           )}
           <div

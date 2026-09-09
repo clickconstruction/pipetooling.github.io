@@ -27,6 +27,7 @@ const pt = (id: string, revenueUsd: number, trueMarginPct: number | null, trade:
     inCollections: false,
     lastWorkedYmd: null,
     flags: [],
+    burn: null,
   }) as JobSummaryEnrichedRow
 
 describe('scatter (v2.2826)', () => {

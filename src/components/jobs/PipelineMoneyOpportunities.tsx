@@ -7,6 +7,7 @@
  * opens a modal (Pipeline) or navigates (Quickfill). Copy and tones live
  * here once.
  */
+import type { PipelineBurnAlert } from '../../lib/jobs/jobSummaryBurn'
 import { formatUsdNoCents } from '../../lib/jobs/jobFormatting'
 import type { PipelineFixup, PipelineFixupKey, PipelineMove, PipelineMoveKey } from '../../lib/jobs/pipelineOverview'
 import type { PaymentChaseSummary } from '../../lib/jobs/paymentChase'
@@ -30,6 +31,10 @@ export type PipelineMoneyOpportunitiesProps = {
   gcRound?: PipelineGcRoundCards
   onCertifyRound?: () => void
   onStartRound?: () => void
+  /** Burn card (v2.3191): jobs whose spend leads their progress by > 5 pts; omit / null to hide. */
+  burnAlert?: PipelineBurnAlert | null
+  onOpenBurnJob?: (jobId: string) => void
+  onShowBurnList?: () => void
   /** Contract coverage card (v2.2738) — Pipeline only; omit to hide. */
   contractCoverage?: PipelineContractCoverage | null
   onContractStageGap?: (stage: ContractStage) => void
@@ -50,6 +55,9 @@ export function PipelineMoneyOpportunities({
   gcRound,
   onCertifyRound,
   onStartRound,
+  burnAlert,
+  onOpenBurnJob,
+  onShowBurnList,
   contractCoverage,
   onContractStageGap,
   onStartContractSweep,
@@ -60,6 +68,7 @@ export function PipelineMoneyOpportunities({
   const roundHeld = gcRound?.held && gcRound.held.count > 0 ? gcRound.held : null
   const roundReady = gcRound?.ready && gcRound.ready.count > 0 ? gcRound.ready : null
   const gcRoundVisible = roundHeld != null || roundReady != null
+  const burnVisible = burnAlert != null && burnAlert.count > 0 && onOpenBurnJob != null
   return (
     <div style={{ border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden' }}>
       <div
@@ -70,13 +79,13 @@ export function PipelineMoneyOpportunities({
           gap: '0.5rem',
           padding: '0.45rem 0.85rem',
           background: 'var(--bg-subtle)',
-          borderBottom: moves.length > 0 || fixups.length > 0 || chase || gcRoundVisible || contractCardVisible ? '1px solid var(--border)' : 'none',
+          borderBottom: moves.length > 0 || fixups.length > 0 || chase || gcRoundVisible || contractCardVisible || burnVisible ? '1px solid var(--border)' : 'none',
         }}
       >
         <span style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)' }}>
           Today&#8217;s Money Opportunities:
         </span>
-        {moves.length === 0 && fixups.length === 0 && !chase && !gcRoundVisible && !contractCardVisible ? (
+        {moves.length === 0 && fixups.length === 0 && !chase && !gcRoundVisible && !contractCardVisible && !burnVisible ? (
           <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>{emptyText}</span>
         ) : headerNote ? (
           <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{headerNote}</span>
@@ -92,7 +101,7 @@ export function PipelineMoneyOpportunities({
           <PipelineContractCoverageCard coverage={contractCoverage} onStageGap={onContractStageGap} onStartSweep={onStartContractSweep} />
         </div>
       ) : null}
-      {(moves.length > 0 || fixups.length > 0 || chase != null || gcRoundVisible) && (
+      {(moves.length > 0 || fixups.length > 0 || chase != null || gcRoundVisible || burnVisible) && (
         <div
           style={{
             display: 'grid',
@@ -162,6 +171,52 @@ export function PipelineMoneyOpportunities({
               </button>
             </div>
           ))}
+          {/* Burn (v2.3191): the jobs spending faster than they are finishing —
+              the Costs tab's verdict, summed. Opens the worst job on its Costs tab. */}
+          {burnVisible && burnAlert && onOpenBurnJob ? (
+            <div
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '0.3rem',
+                minWidth: 0,
+                padding: '0.55rem 0.7rem',
+                border: '1px solid var(--border)',
+                borderLeft: '3px solid var(--text-red-600)',
+                borderRadius: 8,
+                background: 'var(--bg-red-tint)',
+              }}
+            >
+              <span style={{ display: 'flex', gap: '0.45rem', alignItems: 'baseline', minWidth: 0 }}>
+                <span aria-hidden style={{ fontSize: '0.95rem' }}>🔥</span>
+                <span style={{ fontSize: '0.83rem', fontWeight: 600, minWidth: 0 }}>
+                  {burnAlert.count === 1 ? '1 job burning' : `${burnAlert.count} jobs burning`} ahead of progress — {formatUsdNoCents(burnAlert.marginAtRiskUsd)} of margin at risk
+                </span>
+              </span>
+              <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', flex: 1 }}>
+                {burnAlert.worst.map((w) => `${w.label} ${Math.round(w.spentPct)}% spent at ${Math.round(w.pct)}% done`).join(' · ')}
+                {burnAlert.count > burnAlert.worst.length ? ` · +${burnAlert.count - burnAlert.worst.length} more` : ''}. Each opens on its Costs tab.
+              </span>
+              <span style={{ display: 'flex', gap: '0.4rem', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+                {onShowBurnList && burnAlert.count > 1 ? (
+                  <button
+                    type="button"
+                    onClick={onShowBurnList}
+                    style={{ height: 26, padding: '0 0.65rem', border: '1px solid var(--border-400)', borderRadius: 9999, background: 'var(--surface)', color: 'var(--text-blue-700)', fontSize: '0.72rem', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap' }}
+                  >
+                    Show all {burnAlert.count}
+                  </button>
+                ) : null}
+                <button
+                  type="button"
+                  onClick={() => onOpenBurnJob(burnAlert.worst[0]!.jobId)}
+                  style={{ height: 26, padding: '0 0.65rem', border: '1px solid var(--border-400)', borderRadius: 9999, background: 'var(--surface)', color: 'var(--text-blue-700)', fontSize: '0.72rem', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap' }}
+                >
+                  Open the worst first →
+                </button>
+              </span>
+            </div>
+          ) : null}
           {/* Personal statement rounds (v2.2072), two stages: the certifier's
               held card, then the sender's ready card once released. */}
           {roundHeld && onCertifyRound ? (

@@ -1,6 +1,7 @@
 /** Jobs → Job Summary tab: per-job cost rollup ledger with team-labor / parts / Mercury drilldowns.
  * Presentational — all data/state/loaders/modals live in the parent (Jobs.tsx) and arrive as props. */
 import { jobSummaryRowDomId } from '../../lib/jobs/moneyStoryDoor'
+import { burnProjectedMarginForSort } from '../../lib/jobs/jobSummaryBurn'
 import type { CategoryTagColor } from '../../lib/banking/categoryTags'
 import { Fragment, type CSSProperties, type Dispatch, type KeyboardEvent, type ReactNode, type SetStateAction } from 'react'
 import {
@@ -652,6 +653,8 @@ export default function JobsJobSummaryTab({
                     <JobSummarySortHeader label="Overhead" sortKey="overhead" view={view} title={JOB_OVERHEAD_METHODS.find((m) => m.key === view.prefs.method)?.title} />
                     <JobSummarySortHeader label={PROFIT_FIGURE_LABELS.trueProfit.label} sortKey="trueProfit" view={view} title={PROFIT_FIGURE_LABELS.trueProfit.tooltip} />
                     <JobSummarySortHeader label="True %" sortKey="trueMargin" view={view} title="True profit ÷ revenue" />
+                    <JobSummarySortHeader label="Burn" sortKey="projMargin" view={view} title="Spend vs progress (v2.3191): % of the budget spent · % complete. Budget = contract × (1 − target margin). Red when spend leads progress by more than 5 points; early = under 3 field days or 10 %" />
+                    <JobSummarySortHeader label="Proj. margin" sortKey="projMargin" view={view} title="Projected true margin at completion: contract − spent ÷ % done − overhead so far − overhead per field day × field days left. Finished jobs show what happened" />
                     <JobSummarySortHeader label="$/hr" sortKey="revPerHour" view={view} title="Revenue ÷ approved field hours in the window — the realized rate" />
                     <JobSummarySortHeader
                       label="%"
@@ -812,6 +815,32 @@ export default function JobsJobSummaryTab({
                             >
                               {showTeamLaborAndProfit && enriched.trueMarginPct != null ? `${Math.round(enriched.trueMarginPct)}%${jobSummaryRowUnderTarget(enriched, view.prefs.targetTrueMarginPct) ? ' ▾' : ''}` : '—'}
                             </td>
+                            {(() => {
+                              const b = enriched.burn
+                              const hot = b?.status === 'hot'
+                              const burnColor = hot ? 'var(--text-red-700)' : b?.status === 'ok' ? 'var(--text-green-700)' : 'var(--text-muted)'
+                              const burnText =
+                                !showTeamLaborAndProfit || !b || b.status === 'no_budget'
+                                  ? '—'
+                                  : b.status === 'done'
+                                    ? 'done'
+                                    : b.status === 'early'
+                                      ? b.spentPct != null ? `${Math.round(b.spentPct)}% · early` : 'early'
+                                      : `${Math.round(b.spentPct ?? 0)}% · ${Math.round(enriched.pct ?? 0)}%`
+                              const pm = showTeamLaborAndProfit ? burnProjectedMarginForSort(b) : null
+                              const pmPct = b ? b.projectedTrueMarginPct ?? b.projectedMarginPct : null
+                              const pmUnder = pm != null && (pm < 0 || (view.prefs.targetTrueMarginPct > 0 && pmPct != null && pmPct < view.prefs.targetTrueMarginPct))
+                              return (
+                                <>
+                                  <td style={{ padding: '0.75rem', textAlign: 'right', whiteSpace: 'nowrap', fontWeight: hot ? 700 : undefined, color: burnColor }} title={b?.leadPts != null && b.status !== 'done' ? (b.leadPts > 0 ? `spend leads progress by ${Math.round(b.leadPts)} pts` : `progress leads spend by ${Math.round(-b.leadPts)} pts`) : undefined}>
+                                    {burnText}
+                                  </td>
+                                  <td style={{ padding: '0.75rem', textAlign: 'right', whiteSpace: 'nowrap', fontWeight: pmUnder ? 700 : undefined, color: pmUnder ? 'var(--text-red-700)' : 'var(--text-700)' }} title={b?.projectedTrueMarginUsd == null && b?.projectedMarginUsd != null ? 'Direct margin — overhead not loaded yet' : undefined}>
+                                    {pm == null ? (b?.status === 'early' ? 'early' : '—') : <><SignedAmountSmallCents value={pm} />{pmPct != null ? <span style={{ marginLeft: 4, fontSize: '0.72rem', color: 'var(--text-muted)' }}>{Math.round(pmPct)}%</span> : null}</>}
+                                  </td>
+                                </>
+                              )
+                            })()}
                             <td style={{ padding: '0.75rem', textAlign: 'right', color: 'var(--text-700)', whiteSpace: 'nowrap' }} title="Revenue ÷ approved field hours in the window">
                               {enriched.revenuePerHourUsd == null ? '—' : `$${Math.round(enriched.revenuePerHourUsd)}`}
                             </td>
@@ -831,7 +860,7 @@ export default function JobsJobSummaryTab({
                         const overheadMethodLabel = JOB_OVERHEAD_METHODS.find((m) => m.key === view.prefs.method)?.label ?? 'Day-share'
                         const detailRow = (
                           <tr key={`${job.id}-summary-detail`}>
-                            <td colSpan={13} style={{ padding: 0, borderBottom: '1px solid var(--border)', background: 'var(--bg-page)' }}>
+                            <td colSpan={15} style={{ padding: 0, borderBottom: '1px solid var(--border)', background: 'var(--bg-page)' }}>
                               <div style={{ padding: '0.75rem 1rem', fontSize: '0.8125rem' }}>
                                 <JobSummaryExpandedHeader
                                   job={job}
@@ -3082,6 +3111,12 @@ export default function JobsJobSummaryTab({
                       {showTeamLaborAndProfit && view.totals.trueProfitUsd != null ? <SignedAmountSmallCents value={view.totals.trueProfitUsd} /> : '—'}
                     </td>
                     <td style={{ padding: '0.6rem 0.75rem', textAlign: 'right' }}>{showTeamLaborAndProfit && view.totals.trueMarginPct != null ? `${Math.round(view.totals.trueMarginPct)}%` : '—'}</td>
+                    <td style={{ padding: '0.6rem 0.75rem', textAlign: 'right', whiteSpace: 'nowrap', color: view.totals.burningJobs > 0 ? 'var(--text-red-700)' : 'var(--text-muted)' }} title="Jobs whose spend leads progress by more than 5 points">
+                      {showTeamLaborAndProfit ? (view.totals.burningJobs > 0 ? `${view.totals.burningJobs} hot` : '—') : '—'}
+                    </td>
+                    <td style={{ padding: '0.6rem 0.75rem', textAlign: 'right', whiteSpace: 'nowrap', color: view.totals.projectedTrueMarginUsd != null && view.totals.projectedTrueMarginUsd < 0 ? 'var(--text-red-700)' : undefined }} title={view.totals.projectedRows > 0 ? `Projected true margin over ${view.totals.projectedRows} in-progress ${view.totals.projectedRows === 1 ? 'job' : 'jobs'}` : undefined}>
+                      {showTeamLaborAndProfit && view.totals.projectedTrueMarginUsd != null ? <SignedAmountSmallCents value={view.totals.projectedTrueMarginUsd} /> : '—'}
+                    </td>
                     <td style={{ padding: '0.6rem 0.75rem', textAlign: 'right', whiteSpace: 'nowrap' }}>{view.totals.revenuePerHourUsd == null ? '—' : `$${Math.round(view.totals.revenuePerHourUsd)}`}</td>
                     <td style={{ padding: '0.6rem 0.75rem' }} />
                   </tr>

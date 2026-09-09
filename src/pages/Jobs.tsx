@@ -60,6 +60,10 @@ import { parseStagesMoneyMoveKey } from '../lib/jobs/stagesMoneyMoveLink'
 import { useJobDetailModal } from '../contexts/JobDetailModalContext'
 import { fetchAttributionsByMercuryTxIds } from '../lib/fetchMercuryRelationsByTxIds'
 import { useJobSummaryData } from '../hooks/useJobSummaryData'
+import { showJobCostBreakdownTeamLabor } from '../lib/jobDetailModalRole'
+import { buildPipelineBurnAlert, projectJobSummaryBurn } from '../lib/jobs/jobSummaryBurn'
+import { resolveJobCurrentPercentFallback } from '../lib/jobSummaryPercentComplete'
+import { effectiveJobLedgerNumber } from '../lib/ledgerDisplayPrefixes'
 import {
   MONEY_STORY_JOB_PARAM,
   MONEY_STORY_MISSING_TOAST,
@@ -141,6 +145,24 @@ export default function Jobs() {
   const jobDetailModal = useJobDetailModal()
   const [activeTab, setActiveTab] = useState<JobsTab>('stages')
   const activeTabRef = useRef<JobsTab>('stages')
+  // Burn card on the Pipeline money story (v2.3191): wage roles only, armed 2.5 s
+  // after the board shows so the Job Summary cost loads (team labor, sub sheets,
+  // parts, the report-% batch) never race the board's own fetches. Once armed it
+  // stays armed — the loads are the same caches Job Summary reads.
+  const pipelineBurnWanted = activeTab === 'stages' && showJobCostBreakdownTeamLabor(authRole)
+  const [pipelineBurnArmed, setPipelineBurnArmed] = useState(false)
+  useEffect(() => {
+    if (!pipelineBurnWanted || pipelineBurnArmed) return
+    const t = setTimeout(() => setPipelineBurnArmed(true), 2500)
+    return () => clearTimeout(t)
+  }, [pipelineBurnWanted, pipelineBurnArmed])
+  const pipelineBurnReportIds = useMemo(
+    () =>
+      pipelineBurnArmed && pipelineBurnWanted
+        ? jobs.filter((j) => j.status === 'waiting' || j.status === 'working' || j.status === 'ready_to_bill').map((j) => j.id)
+        : null,
+    [pipelineBurnArmed, pipelineBurnWanted, jobs],
+  )
   activeTabRef.current = activeTab
   const [users, setUsers] = useState<UserRow[]>([])
   const [people, setPeople] = useState<Person[]>([])
@@ -172,7 +194,7 @@ export default function Jobs() {
     jobSummaryReportsByJobId,
     loadJobSummaryReportsForJob,
     jobSummaryReportPctByJobId,
-  } = useJobSummaryData({ authUserId: authUser?.id, activeTab })
+  } = useJobSummaryData({ authUserId: authUser?.id, activeTab, extraReportPctJobIds: pipelineBurnReportIds })
   /** Debounce timer for post-Stages-mutation refresh (coalesce rapid moves into one fetch). */
   const loadJobsAfterMutationTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   /** Coalesce rapid `useEffect` dependency churn (tab/customer) into one `loadJobs`. */
@@ -313,7 +335,7 @@ export default function Jobs() {
     updateFixtureCost,
   } = usePartsLedgerData({
     authUserId: authUser?.id ?? null,
-    isActive: activeTab === 'parts' || activeTab === 'job-summary',
+    isActive: activeTab === 'parts' || activeTab === 'job-summary' || pipelineBurnArmed,
     onError: setError,
   })
   const [tallyPartsSearch, setTallyPartsSearch] = useState('')
@@ -1248,18 +1270,18 @@ export default function Jobs() {
 
 
   useEffect(() => {
-    if ((activeTab === 'billing' || activeTab === 'subs' || activeTab === 'combined-labor' || activeTab === 'teams-summary' || activeTab === 'job-summary') && authUser?.id) {
+    if ((activeTab === 'billing' || activeTab === 'subs' || activeTab === 'combined-labor' || activeTab === 'teams-summary' || activeTab === 'job-summary' || pipelineBurnArmed) && authUser?.id) {
       const t = setTimeout(() => loadLaborJobs(), 80)
       return () => clearTimeout(t)
     }
-  }, [activeTab, authUser?.id])
+  }, [activeTab, authUser?.id, pipelineBurnArmed])
 
   useEffect(() => {
-    if ((activeTab === 'combined-labor' || activeTab === 'billing' || activeTab === 'teams-summary' || activeTab === 'job-summary') && authUser?.id) {
+    if ((activeTab === 'combined-labor' || activeTab === 'billing' || activeTab === 'teams-summary' || activeTab === 'job-summary' || pipelineBurnArmed) && authUser?.id) {
       const t = setTimeout(() => loadTeamLaborData(), 80)
       return () => clearTimeout(t)
     }
-  }, [activeTab, authUser?.id])
+  }, [activeTab, authUser?.id, pipelineBurnArmed])
 
 
   useEffect(() => {
@@ -1490,6 +1512,37 @@ export default function Jobs() {
     userNameById: jobSummaryUserNameById,
     initialView: searchParams.get('view'),
   })
+
+  // The Pipeline burn card (v2.3191): the Costs tab's arithmetic over the same
+  // per-job aggregates Job Summary shows, for the board's open jobs. Direct
+  // margin only here (no day ledger off the Job Summary tab); the Job Summary
+  // column adds the overhead projection.
+  const pipelineBurnAlert = useMemo(() => {
+    if (!pipelineBurnArmed || !pipelineBurnWanted || activeTab !== 'stages') return null
+    if (teamLaborData.length === 0) return null
+    const target = jobSummaryView.prefs.targetTrueMarginPct
+    const rows = jobSummaryData
+      .filter((r) => r.job.status === 'waiting' || r.job.status === 'working' || r.job.status === 'ready_to_bill')
+      .map((r) => {
+        const pct = jobSummaryReportPctByJobId.get(r.job.id) ?? resolveJobCurrentPercentFallback(r.job)
+        const fieldDays = r.teamLaborRow ? new Set(r.teamLaborRow.breakdown.flatMap((b) => b.byWorkDate.map((d) => d.workDate))).size : null
+        const num = effectiveJobLedgerNumber(r.job.hcp_number, r.job.click_number)
+        return {
+          jobId: r.job.id,
+          label: `${num ? `J${num} ` : ''}${(r.job.job_name ?? '').trim()}`.trim() || 'Job',
+          burn: projectJobSummaryBurn({
+            contractUsd: r.totalBill,
+            spentUsd: r.teamLaborCost + r.subLaborCost + r.partsCost,
+            pct,
+            finished: pct === 100,
+            fieldDays,
+            overheadUsd: null,
+            targetMarginPct: target,
+          }),
+        }
+      })
+    return buildPipelineBurnAlert(rows)
+  }, [pipelineBurnArmed, pipelineBurnWanted, activeTab, teamLaborData.length, jobSummaryData, jobSummaryReportPctByJobId, jobSummaryView.prefs.targetTrueMarginPct])
 
   const subLaborOutstandingByPerson = useMemo(
     () =>
@@ -1794,6 +1847,15 @@ export default function Jobs() {
         openEdit={openEdit}
         openEditJobAndCreateCustomerFlow={openEditJobAndCreateCustomerFlow}
         tryOpenEditJob={tryOpenEditJob}
+        pipelineBurnAlert={pipelineBurnAlert}
+        onShowBurnList={() => {
+          jobSummaryView.setPrefs({ status: 'in_progress', sortKey: 'projMargin', sortDir: 'asc' })
+          setSearchParams((p) => {
+            const next = new URLSearchParams(p)
+            next.set('tab', 'job-summary')
+            return next
+          })
+        }}
         openStagesDetailJobModal={openStagesDetailJobModal}
         refreshCustomersAfterJobFormSave={refreshCustomersAfterJobFormSave}
         billCustomer={billCustomer}
