@@ -63,7 +63,7 @@ For each shell, stamp every stage on its ledger with `add_bid_note` and send `he
 
 **LOCK.** `add_bid_note` `[STG-3..5 + LOCK] $NN,NNN — <building> + <travel> — <set class, census, tiers, exclusions, assumptions>`, then `lock_shadow(bid, total)` with the same total. The lock happens in this conversation; never leave a shell open and unlocked.
 
-**AUDIT.** `seed_audit_questions(bid, questions)` in plain trade words, one ask each, with `sheet_ref` and a one-line `context` on every anchorable question. Doctrine-level questions go through `ask_question` with a kebab `topic` (reuse topics from `get_answers`). Confirm pairing with `get_work_state` (`twin_source_bid_id`), then `heartbeat` done.
+**AUDIT.** `seed_audit_questions(bid, questions)` in plain trade words, one ask each, with `sheet_ref` and a one-line `context` on every anchorable question. Doctrine-level questions go through `ask_question` with a kebab `topic` (reuse topics from `get_answers`). Every estimator question is ONE decision under 320 characters with `choices` (2–4 tap labels) and `recommended` (your pick); the door refuses anything else. A three-part ask is three calls; the detail goes in `add_bid_note`. Confirm pairing with `get_work_state` (`twin_source_bid_id`), then `heartbeat` done.
 
 **REPORT.** `submit_report` with label `SHADOW-<shell>`: reference, axis, locked total split (building + travel), one-line self-assessment, question count. No delta on a shadow. Then one compact line to the person, and back to `next_shadow`.
 

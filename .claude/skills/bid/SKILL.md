@@ -57,7 +57,7 @@ re-issuing at Settings → Digital twins. Do not improvise auth.
 
 **LOCK.** `add_bid_note` `[STG-3..5 + LOCK] $NN,NNN — <building> + <travel> — <set class, census, tiers, exclusions, assumptions>`. Then `lock_shadow(bid, total)` (shadow) with the same total. The lock happens THIS session — never leave a shell open and unlocked.
 
-**AUDIT.** `seed_audit_questions(bid, questions)` — plain trade words, one ask each, `sheet_ref` + one-line `context` on every anchorable question. Doctrine-level questions go through `ask_question` with a kebab `topic` (reuse topics from `get_answers`). Confirm pairing with `get_work_state` (`twin_source_bid_id`), then `heartbeat done`.
+**AUDIT.** `seed_audit_questions(bid, questions)` — plain trade words, one ask each, `sheet_ref` + one-line `context` on every anchorable question. Doctrine-level questions go through `ask_question` with a kebab `topic` (reuse topics from `get_answers`). **Every estimator question is ONE decision under 320 characters with `choices` (2–4 tap labels, ≤40 chars) and `recommended` (your pick) — the door refuses anything else.** A three-part ask is three calls; the numbers and the pattern go in `add_bid_note` on your shell, never in the question. Confirm pairing with `get_work_state` (`twin_source_bid_id`), then `heartbeat done`.
 
 **STG-6 · backtests only.** `score_backtest(bid, run_label, axis, locked_total, scope_verdict, counts_note, note)` — this is the unseal. Then compare via `get_reference_rows` and amend the same run label with a real scope verdict and counts note. Digest lessons into doctrine or books per FEEDBACK_LOOP.md; never into the reference.
 

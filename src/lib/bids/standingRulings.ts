@@ -38,6 +38,10 @@ export type TwinQuestionRow = {
    * migration 20260909045818 lands — then the text classifies it.
    */
   audience?: string | null
+  /** v2.3210: 2–4 tap labels the robot offered (jsonb array); undefined until migration 20260909233000 lands. */
+  choices?: unknown
+  /** v2.3210: the robot's own pick, one of `choices`. */
+  recommended?: string | null
 }
 
 export type StandingRuling = {

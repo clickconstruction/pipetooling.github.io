@@ -6,6 +6,8 @@ import { describeTwinRun, nextTwinSeat, relativeTimeFrom } from '../../lib/twinC
 // The operator handoff (v2.3155): one markdown file in the repo is the source of
 // truth; the card below copies it whole so a new person can paste it into Claude Code.
 import shadowOperatorPrompt from '../../../docs/twins/kickoffs/shadow-operator.md?raw'
+import { answerFromChoice, orderedChoices } from '../../lib/bids/twinQuestionChoices'
+import { TwinQuestionChoiceButtons } from '../bids/TwinQuestionChoiceButtons'
 import { calibrationStandardSummary, calibrationStandardToast, teacherCandidates, type TeacherCandidate } from '../../lib/twinTeachers'
 import { updateRefused, refusedUpdateMessage } from '../../lib/refusedWrite'
 import { TwinQuestionText } from '../bids/TwinQuestionText'
@@ -41,6 +43,9 @@ type QuestionRow = {
   created_at: string
   /** v2.3186 lane — undefined until migration 20260909045818 lands (then select('*') carries it). */
   audience?: string | null
+  /** v2.3210 tap labels + the robot's pick — undefined until migration 20260909233000 lands. */
+  choices?: unknown
+  recommended?: string | null
 }
 
 const FN_BASE = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1`
@@ -176,8 +181,9 @@ export default function DigitalTwinsPanel() {
 
   /** Answer / promote / dismiss a twin question (R3). Promote drafts an RFI on the
    * question's bid (source 'manual' — the human owns the wording from here) and links it. */
-  async function answerQuestion(q: QuestionRow) {
-    const text = (answerDrafts[q.id] ?? '').trim()
+  const [questionFreeText, setQuestionFreeText] = useState<Record<string, boolean>>({})
+  async function answerQuestion(q: QuestionRow, override?: string) {
+    const text = (override ?? answerDrafts[q.id] ?? '').trim()
     if (!text) return
     setBusy(true)
     try {
@@ -189,6 +195,7 @@ export default function DigitalTwinsPanel() {
       if (error) throw new Error(error.message)
       if (!rows || rows.length === 0) { showToast('Question already handled elsewhere — refreshing.', 'error'); await loadAll(); return }
       setAnswerDrafts((d) => ({ ...d, [q.id]: '' }))
+      setQuestionFreeText((d) => ({ ...d, [q.id]: false }))
       showToast('Answer saved — the twin pulls it with get_answers on its next run.', 'success')
       await loadAll()
     } catch (e) {
@@ -757,14 +764,31 @@ export default function DigitalTwinsPanel() {
               {q.status === 'answered' && q.answer ? <div style={{ ...MUTED, fontStyle: 'italic' }}>→ {q.answer}</div> : null}
               {isOpen ? (
                 <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', marginTop: '0.25rem' }}>
-                  <input
-                    type="text"
-                    value={answerDrafts[q.id] ?? ''}
-                    onChange={(e) => setAnswerDrafts((d) => ({ ...d, [q.id]: e.target.value }))}
-                    placeholder="Answer the twin…"
-                    style={{ flex: 1, minWidth: 180, padding: '0.3rem 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 5, font: 'inherit', fontSize: '0.78rem' }}
-                  />
-                  <button type="button" style={BTN_PRIMARY} disabled={busy || !(answerDrafts[q.id] ?? '').trim()} onClick={() => void answerQuestion(q)}>Answer</button>
+                  {(() => {
+                    const choices = orderedChoices(q)
+                    if (choices && !questionFreeText[q.id]) {
+                      return (
+                        <TwinQuestionChoiceButtons
+                          choices={choices}
+                          disabled={busy}
+                          onPick={(c) => void answerQuestion(q, answerFromChoice(c))}
+                          onSomethingElse={() => setQuestionFreeText((d) => ({ ...d, [q.id]: true }))}
+                        />
+                      )
+                    }
+                    return (
+                      <>
+                        <input
+                          type="text"
+                          value={answerDrafts[q.id] ?? ''}
+                          onChange={(e) => setAnswerDrafts((d) => ({ ...d, [q.id]: e.target.value }))}
+                          placeholder="Answer the twin…"
+                          style={{ flex: 1, minWidth: 180, padding: '0.3rem 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 5, font: 'inherit', fontSize: '0.78rem' }}
+                        />
+                        <button type="button" style={BTN_PRIMARY} disabled={busy || !(answerDrafts[q.id] ?? '').trim()} onClick={() => void answerQuestion(q)}>Answer</button>
+                      </>
+                    )
+                  })()}
                   {q.about_bid_id ? <button type="button" style={BTN} disabled={busy} onClick={() => void promoteQuestion(q)}>Promote to RFI</button> : null}
                   {laneWritable ? (
                     <button

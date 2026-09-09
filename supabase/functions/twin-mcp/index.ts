@@ -4,6 +4,7 @@ import { BRIEF, DIRECTORY, HARNESS, CT_GUIDE, TT_GUIDE, PLACEMENT_GUIDE, MISSION
 import { callTtManageUser, ttBridgeConfigured, ttTwinEmail } from '../_shared/ttBridge.ts'
 import { todayYmdInAppTz, ymdAddDays } from '../_shared/appTimeZone.ts'
 import { classifyTwinQuestionAudience, isTwinQuestionAudience } from '../_shared/twinQuestionAudience.ts'
+import { checkEstimatorQuestionShape, matchRecommended, normalizeTwinQuestionChoices } from '../_shared/twinQuestionShape.ts'
 
 // Digital twins MCP server (docs/DIGITAL_TWINS_PLAN.md; owner-approved 2026-08-28).
 // A minimal, dependency-free Model Context Protocol server over streamable HTTP
@@ -115,7 +116,7 @@ const TOOLS = [
   {
     name: 'ask_question',
     description:
-      "Park a question instead of stalling — the INTERNAL lane (RFIs to the GC are the external lane, drafted in the app's RFI tab). Two audiences (v1.3.14): audience 'estimator' = a judgment about the JOB (scope, counts, pricing, packages, which sheet governs) — she reads it on Bids → Audits, so write it for her: ONE decision, two sentences, name the project and the sheet, never a run code, table name or tool name. audience 'operator' = the MACHINE is in your way (sandbox, sign-in, the write fence, a table you can't write, a file the service account can't read, a verb that doesn't exist) — pair it with a heartbeat state 'blocked'. A blocker with both halves is TWO questions. Never park a finding or an answer here (that is add_bid_note / submit_report). Omit audience and the text decides. Answers arrive asynchronously: pull them next run with get_answers. Asking is always better than guessing.",
+      "Park a question instead of stalling — the INTERNAL lane (RFIs to the GC are the external lane, drafted in the app's RFI tab). Two audiences (v1.3.14): audience 'estimator' = a judgment about the JOB (scope, counts, pricing, packages, which sheet governs) — she reads it on Bids → Audits, so write it for her: ONE decision, two sentences, name the project and the sheet, never a run code, table name or tool name. audience 'operator' = the MACHINE is in your way (sandbox, sign-in, the write fence, a table you can't write, a file the service account can't read, a verb that doesn't exist) — pair it with a heartbeat state 'blocked'. A blocker with both halves is TWO questions. Never park a finding or an answer here (that is add_bid_note / submit_report). Omit audience and the text decides. Answers arrive asynchronously: pull them next run with get_answers. Asking is always better than guessing. SHAPE (v1.3.15): an estimator question is REFUSED unless it is ONE decision under 320 characters with `choices` — 2–4 short labels she can tap (≤40 chars each) — and ideally `recommended`, your own pick among them; the refusal names what to fix. A three-part ask is three calls; the working detail (numbers, sheet refs, the pattern) goes in add_bid_note on your shell, not in the question.",
     inputSchema: {
       type: 'object',
       properties: {
@@ -124,6 +125,8 @@ const TOOLS = [
         mission: { type: 'string', description: 'Optional mission/run label' },
         topic: { type: 'string', description: "Standing-rulings key (v2.2939): one kebab slug per doctrine issue — 'travel-bands', 'small-ti-absorption', 'package-boundary' — so duplicate asks collapse into ONE ruling for the estimator. Before parking a doctrine-level question, check get_answers for an existing topic and reuse its slug; leave empty only for genuinely bid-specific asks." },
         audience: { type: 'string', enum: ['estimator', 'operator'], description: "Who answers: 'estimator' (a judgment about the job) or 'operator' (the machine is in your way). Omit and the text is classified — machine vocabulary (sandbox, fence, service account, a table or tool name) routes to the operator." },
+        choices: { type: 'array', items: { type: 'string' }, description: "2–4 short answer labels the estimator can tap (≤40 chars each), e.g. ['Residual', 'Higher per-fixture', 'Neither'] or ['Yes', 'No']. REQUIRED for audience 'estimator'; optional for the operator. Her tap is saved as the label, verbatim, so make each label a complete instruction to yourself." },
+        recommended: { type: 'string', description: 'Your own pick — must be one of choices. Shown first and filled, so one tap agrees with you. Give it whenever you have a view.' },
       },
       required: ['question'],
     },
@@ -882,14 +885,32 @@ async function callTool(req: Request, name: string, args: Record<string, unknown
       // is refused for the column, retry without it (edge deployed ahead of push).
       const classified = classifyTwinQuestionAudience(q)
       const audience = isTwinQuestionAudience(args.audience) ? args.audience : classified.audience
+      // Shape (v1.3.15 / v2.3210): an estimator question must be tap-answerable —
+      // one decision, 2–4 short choices, the robot's pick. The operator lane is
+      // unconstrained (machine problems are messy); choices are kept if given.
+      let choices: string[] | null = null
+      let recommended: string | null = null
+      if (audience === 'estimator') {
+        const shape = checkEstimatorQuestionShape({ question: q, choices: args.choices, recommended: args.recommended })
+        if (!shape.ok) return textContent(`Question NOT filed for the estimator — ${shape.problems.join('; ')}. ${shape.hint}`, true)
+        choices = shape.choices
+        recommended = shape.recommended
+      } else {
+        choices = normalizeTwinQuestionChoices(args.choices)
+        recommended = choices ? matchRecommended(args.recommended, choices) : null
+      }
       const base = { twin_user_id: twin.twinUserId, about_bid_id: aboutBidId, mission: (args.mission as string) ?? null, question: q, topic }
-      let ins = await admin.from('twin_questions').insert({ ...base, audience }).select('id').single()
+      // Column ladder: choices/recommended land with 20260909233000, audience with
+      // 20260909045818 — retry without whichever the insert is refused for (edge
+      // deployed ahead of push).
+      let ins = await admin.from('twin_questions').insert({ ...base, audience, choices, recommended }).select('id').single()
+      if (ins.error && /choices|recommended/i.test(ins.error.message)) ins = await admin.from('twin_questions').insert({ ...base, audience }).select('id').single()
       if (ins.error && /audience/i.test(ins.error.message)) ins = await admin.from('twin_questions').insert(base).select('id').single()
       const { data: row, error } = ins
       if (error) return textContent(`Question not saved: ${error.message}`, true)
       const lane = audience === 'operator'
         ? `Filed for the OPERATOR (${isTwinQuestionAudience(args.audience) ? 'your call' : `classified: ${classified.signals.join(', ')}`}) — it shows on the fleet console, not the estimator's panel.`
-        : 'Filed for the ESTIMATOR — it shows on Bids → Audits → Standing rulings.'
+        : `Filed for the ESTIMATOR — it shows on Bids → Audits → Standing rulings as ${choices?.length ?? 0} tap${choices?.length === 1 ? '' : 's'}${recommended ? ` (your pick "${recommended}" first)` : ''}.`
       return textContent(`Question parked (id ${(row as { id: string }).id.slice(0, 8)}). ${lane} Pull answers with get_answers on your next run. Keep working what you can.`)
     }
     case 'get_answers': {
@@ -898,7 +919,7 @@ async function callTool(req: Request, name: string, args: Record<string, unknown
       })
       let sel = admin
         .from('twin_questions')
-        .select('id, about_bid_id, mission, question, status, answer, answered_at, promoted_rfi_id, created_at, topic')
+        .select('id, about_bid_id, mission, question, status, answer, answered_at, promoted_rfi_id, created_at, topic, choices, recommended')
         .eq('twin_user_id', twin.twinUserId)
         .order('created_at', { ascending: false })
         .limit(50)
@@ -2273,7 +2294,7 @@ async function handleRpc(req: Request, msg: { jsonrpc?: string; id?: unknown; me
       return rpcResult(id, {
         protocolVersion: version,
         capabilities: { tools: {} },
-        serverInfo: { name: 'pipetooling-twin-mcp', version: '1.3.14' },
+        serverInfo: { name: 'pipetooling-twin-mcp', version: '1.3.15' },
         instructions:
           "PipeTooling digital-twin seat (estimator-only). Call get_brief first, then get_directory; mint_session gives you a signed-in browser link to the real apps — PipeTooling by default, CountTooling (the PDF-takeoff tool) with app: 'counttooling'. The work happens there. Every call needs your per-twin token (X-Twin-Token or Bearer).",
       })

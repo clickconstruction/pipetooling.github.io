@@ -16225,11 +16225,13 @@ export type Database = {
           answered_at: string | null
           answered_by: string | null
           audience: string
+          choices: Json | null
           created_at: string
           id: string
           mission: string | null
           promoted_rfi_id: string | null
           question: string
+          recommended: string | null
           status: string
           topic: string | null
           twin_user_id: string
@@ -16241,11 +16243,13 @@ export type Database = {
           answered_at?: string | null
           answered_by?: string | null
           audience?: string
+          choices?: Json | null
           created_at?: string
           id?: string
           mission?: string | null
           promoted_rfi_id?: string | null
           question: string
+          recommended?: string | null
           status?: string
           topic?: string | null
           twin_user_id: string
@@ -16257,11 +16261,13 @@ export type Database = {
           answered_at?: string | null
           answered_by?: string | null
           audience?: string
+          choices?: Json | null
           created_at?: string
           id?: string
           mission?: string | null
           promoted_rfi_id?: string | null
           question?: string
+          recommended?: string | null
           status?: string
           topic?: string | null
           twin_user_id?: string
