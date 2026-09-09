@@ -58,6 +58,8 @@ export type StagePlanFixture = {
   /** `order` numbered · `any` its own dates · null = a plain line item. */
   stage_kind: StageKind | null
   shared_with_gc: boolean
+  /** Crew-reported percent from a stage-weighted field report (v2.3192); a sub sheet's progress wins when an order exists. */
+  progress_pct?: number | null
 }
 export type StagePlanWindow = {
   id: string
@@ -262,7 +264,7 @@ export function buildStagePlan(input: StagePlanInput): StagePlan {
         ? { start: w.asked_start, end: w.asked_end, note: (w.asked_note ?? '').trim() || null, answer: !w.answered_at ? 'open' : w.answer === 'accepted' ? 'accepted' : 'proposed', answerNote: (w.answer_note ?? '').trim() || null }
         : null
     const passedOn = r.work === 'passed' ? ymdOf(r.sheet?.stage_changed_at) : null
-    const anyDone = r.work === 'passed' || r.work === 'inspection' || (r.sheet?.progress_pct ?? 0) >= 100
+    const anyDone = r.work === 'passed' || r.work === 'inspection' || (r.sheet?.progress_pct ?? r.f.progress_pct ?? 0) >= 100
     const doneOn = anyDone ? ymdOf(r.sheet?.stage_changed_at) ?? ymdOf(r.sheet?.progress_at) : null
     let draw: StageDraw
     let drawOn: string | null = null
@@ -283,7 +285,7 @@ export function buildStagePlan(input: StagePlanInput): StagePlan {
       work: r.work,
       window: w?.window_start && w.window_end ? { start: w.window_start, end: w.window_end } : null,
       pick: r.order && r.order.status !== 'offered' ? spanOf(r.order.picked_start, r.order.picked_end) : null,
-      pct: r.sheet?.progress_pct ?? null,
+      pct: r.sheet?.progress_pct ?? r.f.progress_pct ?? null,
       passedOn,
       doneOn,
       anyDone,

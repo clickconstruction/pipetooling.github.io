@@ -41,6 +41,8 @@ export function stagePlanFixturesFromForm(fixtures: FixtureRow[]): StagePlanFixt
       invoice_id: f.invoice_id,
       stage_kind: formFixtureKind(f),
       shared_with_gc: f.shared_with_gc ?? false,
+      // v2.3192: the column lands with migration 20260909141454; read it loosely until types regenerate.
+      progress_pct: typeof (f as { progress_pct?: unknown }).progress_pct === 'number' ? ((f as { progress_pct?: number }).progress_pct ?? null) : null,
     }))
 }
 
