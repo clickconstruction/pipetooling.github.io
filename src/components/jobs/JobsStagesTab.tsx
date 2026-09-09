@@ -97,6 +97,7 @@ import {
   type StagesContractFilter,
 } from '../../lib/jobs/jobContractCoverage'
 import { PipelineOverview } from './PipelineOverview'
+import { pipelineOverviewHiddenBySearch } from '../../lib/jobs/pipelineOverview'
 import { useSendBackCollectPaymentFlowNotice } from '../../hooks/useSendBackCollectPaymentFlowNotice'
 import { useArBankUnallocatedCount } from '../../hooks/useArBankUnallocatedCount'
 import { useIsMobile } from '../../hooks/useIsMobile'
@@ -3263,71 +3264,75 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
             </div>
           </div>
           {/* The Pipeline money story + Today's Money Opportunities (v2.1915,
-              Old/New pills retired v2.2012 — this is the only view now). */}
-          <PipelineOverview
-            contractCoverage={canSeeJobContracts ? pipelineContractCoverage : null}
-            onContractStageGap={(stage: ContractStage) => {
-              setStagesContractFilter('missing')
-              focusStagesSection(stage === 'ready_to_bill' ? 'readyToBill' : stage)
-            }}
-            onStartContractSweep={() => setContractSweepOpen(true)}
-            stats={cacheHeaderStats}
-            canOpenAr={authRole === 'dev' || authRole === 'master_technician' || isAssistantLike(authRole)}
-            canSeeCharts={authRole === 'dev' || authRole === 'controller'}
-            canSeeCollected={authRole === 'dev' || authRole === 'controller'}
-            arUnallocatedCount={typeof arBankTxUnallocatedCount === 'number' ? arBankTxUnallocatedCount : null}
-            // Money-move buttons clear a live search first (v2.1960, owner
-            // request) — a leftover query would narrow the very list each
-            // button promises to show.
-            onOpenCapable={() => {
-              setStagesSearchQuery('')
-              setCapableToBillModalOpen(true)
-            }}
-            onOpenBilledBreakdown={() => {
-              setStagesSearchQuery('')
-              setBilledBreakdownOpen(true)
-            }}
-            onOpenProfitChart={() => setPaidProfitChartOpen(true)}
-            onOpenAr={() => {
-              setStagesSearchQuery('')
-              setBankPaymentsModalOpen(true)
-            }}
-            onFocusSection={focusStagesSection}
-            fixupCounts={{
-              noCustomer: stagesJobsWithoutCustomer.length,
-              noPictures: stagesWorkingJobsWithoutPictures.length,
-              noEmail: stagesReadyToBillNoEmailJobs.length,
-            }}
-            onFixup={(key) => {
-              if (key === 'no-customer') setStagesNoCustomerModalOpen(true)
-              else if (key === 'no-pictures') setStagesNoJobPicturesModalOpen(true)
-              else setStagesNoEmailModalOpen(true)
-            }}
-            gcRound={gcRoundCards}
-            onCertifyRound={() => {
-              setGcReviewStartRound(false)
-              setGcReviewModalOpen(true)
-            }}
-            onStartRound={() => {
-              setGcReviewStartRound(true)
-              setGcReviewModalOpen(true)
-            }}
-            onChase90={() => {
-              setStagesSearchQuery('')
-              setBilledAgingFilter('90')
-              focusStagesSection('billed')
-            }}
-            onFixDates={() => {
-              setStagesSearchQuery('')
-              setBilledAgingFilter('no_line')
-              focusStagesSection('billed')
-            }}
-            chase={chaseSummary}
-            onStartChase={() => {
-              setStagesSearchQuery('')
-              setChaseModalOpen(true)
-            }}
-          />
+              Old/New pills retired v2.2012 — this is the only view now).
+              v2.3184: steps aside while the search box has text, so the
+              matches sit right under the query (owner call). */}
+          {pipelineOverviewHiddenBySearch(stagesSearchQuery) ? null : (
+            <PipelineOverview
+              contractCoverage={canSeeJobContracts ? pipelineContractCoverage : null}
+              onContractStageGap={(stage: ContractStage) => {
+                setStagesContractFilter('missing')
+                focusStagesSection(stage === 'ready_to_bill' ? 'readyToBill' : stage)
+              }}
+              onStartContractSweep={() => setContractSweepOpen(true)}
+              stats={cacheHeaderStats}
+              canOpenAr={authRole === 'dev' || authRole === 'master_technician' || isAssistantLike(authRole)}
+              canSeeCharts={authRole === 'dev' || authRole === 'controller'}
+              canSeeCollected={authRole === 'dev' || authRole === 'controller'}
+              arUnallocatedCount={typeof arBankTxUnallocatedCount === 'number' ? arBankTxUnallocatedCount : null}
+              // Money-move buttons clear a live search first (v2.1960, owner
+              // request) — a leftover query would narrow the very list each
+              // button promises to show.
+              onOpenCapable={() => {
+                setStagesSearchQuery('')
+                setCapableToBillModalOpen(true)
+              }}
+              onOpenBilledBreakdown={() => {
+                setStagesSearchQuery('')
+                setBilledBreakdownOpen(true)
+              }}
+              onOpenProfitChart={() => setPaidProfitChartOpen(true)}
+              onOpenAr={() => {
+                setStagesSearchQuery('')
+                setBankPaymentsModalOpen(true)
+              }}
+              onFocusSection={focusStagesSection}
+              fixupCounts={{
+                noCustomer: stagesJobsWithoutCustomer.length,
+                noPictures: stagesWorkingJobsWithoutPictures.length,
+                noEmail: stagesReadyToBillNoEmailJobs.length,
+              }}
+              onFixup={(key) => {
+                if (key === 'no-customer') setStagesNoCustomerModalOpen(true)
+                else if (key === 'no-pictures') setStagesNoJobPicturesModalOpen(true)
+                else setStagesNoEmailModalOpen(true)
+              }}
+              gcRound={gcRoundCards}
+              onCertifyRound={() => {
+                setGcReviewStartRound(false)
+                setGcReviewModalOpen(true)
+              }}
+              onStartRound={() => {
+                setGcReviewStartRound(true)
+                setGcReviewModalOpen(true)
+              }}
+              onChase90={() => {
+                setStagesSearchQuery('')
+                setBilledAgingFilter('90')
+                focusStagesSection('billed')
+              }}
+              onFixDates={() => {
+                setStagesSearchQuery('')
+                setBilledAgingFilter('no_line')
+                focusStagesSection('billed')
+              }}
+              chase={chaseSummary}
+              onStartChase={() => {
+                setStagesSearchQuery('')
+                setChaseModalOpen(true)
+              }}
+            />
+          )}
           <div
             style={{
               marginBottom: '0.75rem',

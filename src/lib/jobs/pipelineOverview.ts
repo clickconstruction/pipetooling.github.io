@@ -201,3 +201,12 @@ export function buildPipelineFixups(counts: {
   }
   return out
 }
+
+/**
+ * v2.3184 (owner call): while the Pipeline search box has text, the money story
+ * and Today's money opportunities step aside so the board's matches sit right
+ * under the search box. Whitespace alone is not a search.
+ */
+export function pipelineOverviewHiddenBySearch(query: string | null | undefined): boolean {
+  return (query ?? '').trim() !== ''
+}
