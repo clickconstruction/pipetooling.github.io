@@ -3561,6 +3561,100 @@ export type Database = {
         }
         Relationships: []
       }
+      cost_batch_ops: {
+        Row: {
+          after_image: Json | null
+          batch_id: string
+          before_image: Json | null
+          id: number
+          op_type: string
+          reverted_at: string | null
+          seq: number
+          target: Json
+        }
+        Insert: {
+          after_image?: Json | null
+          batch_id: string
+          before_image?: Json | null
+          id?: never
+          op_type: string
+          reverted_at?: string | null
+          seq: number
+          target: Json
+        }
+        Update: {
+          after_image?: Json | null
+          batch_id?: string
+          before_image?: Json | null
+          id?: never
+          op_type?: string
+          reverted_at?: string | null
+          seq?: number
+          target?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cost_batch_ops_batch_id_fkey"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "cost_batches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cost_batches: {
+        Row: {
+          applied_at: string
+          author_label: string
+          author_user_id: string | null
+          created_at: string
+          id: string
+          label: string
+          op_count: number
+          reason: string
+          revert_reason: string | null
+          reverted_at: string | null
+          source_ref: string | null
+          summary: Json
+        }
+        Insert: {
+          applied_at?: string
+          author_label?: string
+          author_user_id?: string | null
+          created_at?: string
+          id?: string
+          label: string
+          op_count: number
+          reason: string
+          revert_reason?: string | null
+          reverted_at?: string | null
+          source_ref?: string | null
+          summary?: Json
+        }
+        Update: {
+          applied_at?: string
+          author_label?: string
+          author_user_id?: string | null
+          created_at?: string
+          id?: string
+          label?: string
+          op_count?: number
+          reason?: string
+          revert_reason?: string | null
+          reverted_at?: string | null
+          source_ref?: string | null
+          summary?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cost_batches_author_user_id_fkey"
+            columns: ["author_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       cost_estimate_equipment_rows: {
         Row: {
           cost_estimate_id: string
@@ -18305,6 +18399,14 @@ export type Database = {
       }
       copy_workflow_step: {
         Args: { p_insert_after_sequence: number; p_step_id: string }
+        Returns: Json
+      }
+      cost_batch_apply: {
+        Args: { p: Json; p_dry_run?: boolean }
+        Returns: Json
+      }
+      cost_batch_revert: {
+        Args: { p_batch_id: string; p_reason?: string }
         Returns: Json
       }
       count_job_account_flag_gaps: {
