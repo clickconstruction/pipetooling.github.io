@@ -527,6 +527,32 @@ export function filterAndSortJobSummaryRows<R extends JobSummaryLedgerRowInput &
   return sortJobSummaryRows(visible, prefs.sortKey, prefs.sortDir)
 }
 
+/**
+ * How many rows the search would show if the Show filter were widened (v2.3178).
+ * Owner tripped on this: the tab opens on Finished (100%), so a job still in the
+ * field "wasn't on Job Summary" — it was, one chip away. Counts rows that match
+ * the search + window but not the status filter; 0 when the filter is already
+ * `all` or nothing is hidden.
+ */
+export function jobSummaryRowsHiddenByStatus<R extends JobSummaryLedgerRowInput & { job: { job_address?: string | null } }>(args: {
+  rows: readonly JobSummaryEnrichedRow<R>[]
+  prefs: JobSummaryViewPrefs
+  search: string
+  startYmd: string
+  endYmd: string
+}): number {
+  const { rows, prefs, search, startYmd, endYmd } = args
+  if (prefs.status === 'all') return 0
+  let n = 0
+  for (const r of rows) {
+    if (!jobSummaryRowMatchesSearch(r.row.job, search)) continue
+    if (!jobSummaryRowInWindow(r, prefs.window, startYmd, endYmd)) continue
+    if (jobSummaryRowInStatus(r, prefs.status)) continue
+    n += 1
+  }
+  return n
+}
+
 export type JobSummaryTotals = {
   jobs: number
   revenueUsd: number

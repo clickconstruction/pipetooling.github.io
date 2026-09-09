@@ -11,11 +11,15 @@ Under the tab bar, **every tab** shows the same job header: the job name, the ac
 
 ## The four tabs
 
-- {{chip:blue|Job}} — the read view: photo and address, customer and contacts, the numbered activity feed, work/bill dates, and the profit summary. This is where "open job detail" lands.
+- {{chip:blue|Job}} — the read view: photo and address, customer and contacts, the numbered activity feed, work/bill dates, the **Labor & Parts Cost** block with the Cost Timeline, and the profit summary. This is where "open job detail" lands.
 - {{chip:blue|Edit}} — the job itself: numbers, name, address, service type, and the people-and-customer rows (below). The row's ✎ Edit button lands here, and so does the ⚙ on the Job tab.
 - {{chip:blue|Bill}} — all the money, starting with the **Line Items** (the job's scope and Job Total) right at the top, then the billing summary bar, the segment bar with the break-off slider, **New Invoice**, the Invoices and Payments received tables, and Labor & Parts Cost with the Cost Timeline.
 
 - {{chip:blue|History}} — the day grid: one row per day worked, coloured by how many people were on site. The same view Projects → Job History shows, now for every job, project or not.
+
+## Where is the team labor number?
+
+Owners, controllers and master techs see a **Team labor** row at the top of the Job tab's cost block — the total, then "8.0 h · Malachi" or "277.5 h · 7 people" under it. Tap it for the per-person split. That row is the same number the Cost Timeline's 👷 markers add up to and the same one Job Summary's **Labor** column shows, so the three always agree. A salaried day counts as 8 h on whichever job the person was clocked to; hourly people count their recorded session hours. Other roles see the block as **Parts Cost**, without the row — the dollars come from wages.
 
 ## The History tab
 

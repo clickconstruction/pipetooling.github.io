@@ -8,9 +8,18 @@ import {
   type JobMaterialsCostSnapshot,
 } from '../../lib/fetchJobMaterialsCostSnapshot'
 import { formatMercuryDebitCardIdCompact } from '../../lib/mercuryRawDebitCard'
+import type { JobTeamLaborRowModel } from '../../lib/jobs/jobTeamLaborRow'
+import { roundHoursLabel } from '../../lib/jobs/jobTeamLaborRow'
 import { MaterialsCostAccordionRow } from './JobFormMaterialsCostAccordion'
 
-type MaterialsAccordionKey = 'supply' | 'mercury' | 'tally' | 'billed'
+type MaterialsAccordionKey = 'team' | 'supply' | 'mercury' | 'tally' | 'billed'
+
+/** Team labor row inputs (v2.3178). `undefined` = the viewer's role does not see wages → no row. */
+export type JobDetailTeamLaborRowProps = {
+  loading: boolean
+  row: JobTeamLaborRowModel | null
+  failed: boolean
+}
 
 function formatCurrency(n: number): string {
   return n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
@@ -27,9 +36,11 @@ type Props = {
   snapshot: JobMaterialsCostSnapshot | null
   canExpand: boolean
   billedMaterials: JobDetailBilledMaterialRow[]
+  /** Dev / master / controller only (`showJobCostBreakdownTeamLabor`): the Team labor row leads the block. */
+  teamLabor?: JobDetailTeamLaborRowProps
 }
 
-export function JobDetailMaterialsCostSection({ loading, snapshot, canExpand, billedMaterials }: Props) {
+export function JobDetailMaterialsCostSection({ loading, snapshot, canExpand, billedMaterials, teamLabor }: Props) {
   const [openKey, setOpenKey] = useState<MaterialsAccordionKey | null>(null)
   const { nicknameByDebitCard } = useMercuryLedgerNicknames()
 
@@ -61,10 +72,17 @@ export function JobDetailMaterialsCostSection({ loading, snapshot, canExpand, bi
   }, [billedMaterials])
 
   const rowBusy = loading || snapshot === null
+  // v2.3178: the row renders whenever the role sees wages — even while the
+  // breakdown loads or comes back empty — so "Team labor 0.00 · no recorded
+  // time" is a statement, not an absence. A failed breakdown hides it.
+  const showTeamLaborRow = teamLabor != null && !teamLabor.failed
+  const teamLaborRow = teamLabor?.row ?? null
 
   return (
     <div style={{ marginTop: '1rem' }}>
-      <div style={{ fontWeight: 600, fontSize: '0.9375rem', color: 'var(--text-700)', marginBottom: '0.75rem' }}>Parts Cost</div>
+      <div style={{ fontWeight: 600, fontSize: '0.9375rem', color: 'var(--text-700)', marginBottom: '0.75rem' }}>
+        {showTeamLaborRow ? 'Labor & Parts Cost' : 'Parts Cost'}
+      </div>
       <div
         style={{
           background: 'var(--surface)',
@@ -74,6 +92,53 @@ export function JobDetailMaterialsCostSection({ loading, snapshot, canExpand, bi
           overflow: 'hidden',
         }}
       >
+        {showTeamLaborRow ? (
+          <MaterialsCostAccordionRow
+            title="Team labor"
+            subtitle={
+              teamLaborRow
+                ? [teamLaborRow.summaryLabel, teamLaborRow.pendingLabel].filter(Boolean).join(' · ')
+                : undefined
+            }
+            totalDisplay={teamLaborRow ? formatCurrency(teamLaborRow.totalCost) : '—'}
+            expanded={canExpand && openKey === 'team'}
+            onToggle={() => toggle('team')}
+            busy={teamLabor.loading || teamLaborRow === null}
+            expandable={canExpand}
+          >
+            {teamLaborRow === null || teamLaborRow.people.length === 0 ? (
+              <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-muted)' }}>
+                No recorded time on this job yet. Hours land here from the crew’s clock sessions — a salaried day counts as 8 h on
+                the job it was clocked to.
+              </p>
+            ) : (
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
+                <thead style={{ background: 'var(--bg-subtle)' }}>
+                  <tr>
+                    <th style={{ padding: '0.5rem 0.625rem', textAlign: 'left', borderBottom: '1px solid var(--border)', fontWeight: 600 }}>Person</th>
+                    <th style={{ padding: '0.5rem 0.625rem', textAlign: 'right', borderBottom: '1px solid var(--border)', fontWeight: 600 }}>Hours</th>
+                    <th style={{ padding: '0.5rem 0.625rem', textAlign: 'right', borderBottom: '1px solid var(--border)', fontWeight: 600 }}>Cost</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {teamLaborRow.people.map((p, idx) => (
+                    <tr key={p.personName} style={{ borderBottom: idx < teamLaborRow.people.length - 1 ? '1px solid var(--border)' : 'none' }}>
+                      <td style={{ padding: '0.5rem 0.625rem' }}>{p.personName}</td>
+                      <td style={{ padding: '0.5rem 0.625rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{roundHoursLabel(p.hours)}</td>
+                      <td style={{ padding: '0.5rem 0.625rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{formatCurrency(p.cost)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+            {teamLaborRow?.pendingLabel ? (
+              <p style={{ margin: '0.5rem 0 0', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
+                {teamLaborRow.pendingLabel.replace(/^includes /, 'Includes ')} — recorded time counts toward cost as soon as a session closes; approval is the
+                payroll gate.
+              </p>
+            ) : null}
+          </MaterialsCostAccordionRow>
+        ) : null}
         <MaterialsCostAccordionRow
           title="Supply house invoices"
           totalDisplay={supplyInvoiceRpcFailed ? '—' : formatCurrency(supplyInvoiceTotal)}

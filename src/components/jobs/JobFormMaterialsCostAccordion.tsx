@@ -2,6 +2,8 @@ import { useId } from 'react'
 
 export type MaterialsCostAccordionRowProps = {
   title: string
+  /** Quiet second line under the title (v2.3178: "8.0 h · Malachi"). */
+  subtitle?: string
   totalDisplay: string
   expanded: boolean
   onToggle: () => void
@@ -13,6 +15,7 @@ export type MaterialsCostAccordionRowProps = {
 
 export function MaterialsCostAccordionRow({
   title,
+  subtitle,
   totalDisplay,
   expanded,
   onToggle,
@@ -55,7 +58,12 @@ export function MaterialsCostAccordionRow({
           </svg>
         </span>
       ) : null}
-      {title}
+      <span style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 1, minWidth: 0 }}>
+        <span>{title}</span>
+        {subtitle ? (
+          <span style={{ fontSize: '0.75rem', fontWeight: 400, color: 'var(--text-muted)', lineHeight: 1.25 }}>{subtitle}</span>
+        ) : null}
+      </span>
     </span>
   )
 
