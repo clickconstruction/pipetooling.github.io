@@ -1172,6 +1172,9 @@ The twin-owned 🤖 Robot Default takeoff/labor/price books — every entry grou
 ### twin-mcp
 The MCP server agent vendors hold a seat through (per-twin revocable tokens; verb reference in [`EDGE_FUNCTIONS.md`](./EDGE_FUNCTIONS.md)). No business-logic tools by design — `mint_session` opens a signed-in browser and work happens in the app; composite reads (`get_work_state`) + the bid-note ledger are a stateless agent's memory.
 
+### Robot icon (Bid Board)
+The glyph before the bid number on the human Bid Board (v2.3202; one kernel, `src/lib/bids/robotRowState.ts`). On a live bid it says one of two things: **the robot is on it** — outline = queued for the next batch, solid = working (a shadow run is open or a twin pairing exists), 🔒 = sealed (`twin_shadow_runs.status = locked`), green ✓ = scored after send (the tooltip carries the delta) — or, in amber with a `?` / question count, **the robot needs something**: no plans link, plans the probe couldn't read (`plans_robot_readable = false`), or an open estimator-audience `twin_questions` row about the bid. Muted = opted out or a non-plumbing division. Sent and decided bids wear the **reference grade** letter instead. The click opens the status sheet (blind-safe timeline; "Front of the line next batch" stamps `robot_requested_at`), the needs sheet (gaps with fixes, answer the questions in place), the comparison modal (scored), or the grade modal. The **?** beside the Bid # header (pill row on phones) is the key. Nobody asks for a robot: the yellow request click of v2.2542 retired with this.
+
 ### ZZ convention
 Twin-created records prefix their names with `ZZ` (`ZZ Twin …`, `ZZ Shadow …`) so they sort last and read as robot residue at a glance; the write fence, not the naming, is what holds.
 

@@ -11,9 +11,9 @@ import type { useBidPreview } from '../../contexts/BidPreviewModalContext'
 import { resolveBidLedgerPrefix, formatBidLedgerNumberLabel, bidNumberMatchesQuery } from '../../lib/ledgerDisplayPrefixes'
 import { compareBidsForBidBoardDueDate, compareBidsForBidBoardPendingRecency } from '../../lib/compareBidsForBidBoardDueDate'
 import { shouldShowEmptyBidValueAlert } from '../../lib/bidBoardEmptyBidValueAlert'
-import { robotBidReadiness } from '../../lib/bids/robotBidReadiness'
-import { referenceGrade } from '../../lib/bids/referenceGrade'
-import { GRADE_COLORS } from './RobotReferenceGradeModal'
+import { robotRowState, type RobotRowInput } from '../../lib/bids/robotRowState'
+import { RobotGlyph } from './RobotGlyph'
+import { RobotIconKeyModal } from './RobotIconKeyModal'
 import { fetchBidBoardNotesUnreadCounts } from '../../lib/bidBoardNotesUnreadCounts'
 import { upsertBidNotesReadWatermark } from '../../lib/userBidNotesReadState'
 import { openInExternalBrowser } from '../../lib/openInExternalBrowser'
@@ -85,16 +85,16 @@ type BidsBidBoardTabProps = {
   roomStatesByBid?: Record<string, Record<string, BidRoomStateSummary>>
   /** Per-GC note counts (v2.2217): `${bidId}:${gcCustomerId}` → n. */
   gcNoteCounts?: Record<string, number>
-  /** Robot readiness icon (v2.2530) — human board only; omit on the Robot Board. */
+  /** The robot icon (v2.3200) — human board only; omit on the Robot Board. One kernel
+      (`robotRowState`) reads the row: the robot is on it / needs something / the grade. */
   robotReadiness?: {
     /** source bid id → its digital-twin copy (bids.twin_source_bid_id pairing). */
     twinBidBySourceId: ReadonlyMap<string, BidWithBuilder>
-    onOpenReadiness: (bid: BidWithBuilder) => void
+    /** Everything the kernel needs for one row: shadow run, open questions, presence, division. */
+    inputFor: (bid: BidWithBuilder) => RobotRowInput
+    onOpenStatus: (bid: BidWithBuilder) => void
+    onOpenNeeds: (bid: BidWithBuilder) => void
     onOpenTwinBid: (twin: BidWithBuilder, source: BidWithBuilder) => void
-    /** v2.2542: yellow click requests a robot bid (green); green click withdraws. */
-    onToggleRequest: (bid: BidWithBuilder) => void
-    /** v2.2547: decided rows show the reference grade instead of readiness. */
-    referencePresence: ReadonlyMap<string, { hasCounts: boolean; hasPricing: boolean }>
     onOpenGrade: (bid: BidWithBuilder) => void
   }
 }
@@ -222,6 +222,38 @@ export function BidsBidBoardTab({
     lost: false,
   })
   const [dueLegendOpen, setDueLegendOpen] = useState(false)
+  // v2.3200: the robot-icon key — beside the Bid # header on the table, in the pinned
+  // pill row on phones (cards have no header row to hang it on).
+  const [robotKeyOpen, setRobotKeyOpen] = useState(false)
+  const robotKeyButton = (
+    <button
+      type="button"
+      onClick={() => setRobotKeyOpen(true)}
+      title="What does the robot icon mean?"
+      aria-label="What does the robot icon mean?"
+      style={{
+        display: 'inline-grid',
+        placeItems: 'center',
+        width: 16,
+        height: 16,
+        marginRight: '0.35rem',
+        borderRadius: '50%',
+        border: '1px solid var(--border-strong)',
+        background: 'var(--surface)',
+        color: 'var(--text-muted)',
+        fontSize: '0.6rem',
+        fontWeight: 700,
+        lineHeight: 1,
+        cursor: 'pointer',
+        padding: 0,
+        verticalAlign: 'middle',
+        textTransform: 'none',
+        letterSpacing: 0,
+      }}
+    >
+      ?
+    </button>
+  )
   // v2.3162: a pin click on the map card lights its row the way a deep link does and scrolls to it.
   // A later deep link takes over; the map focus clears itself after a few seconds.
   const [mapFocusBidId, setMapFocusBidId] = useState<string | null>(null)
@@ -443,7 +475,10 @@ export function BidsBidBoardTab({
     return (
       <thead style={{ background: 'var(--bg-subtle)' }}>
         <tr>
-          <th style={{ ...th, whiteSpace: 'nowrap', textAlign: 'right', paddingRight: '0.4rem' }} title="Bid number — Counts on the left, Edit on the right" aria-label="Bid number with Counts and Edit actions">Bid #</th>
+          <th style={{ ...th, whiteSpace: 'nowrap', textAlign: 'right', paddingRight: '0.4rem' }} title="Bid number — Counts on the left, Edit on the right" aria-label="Bid number with Counts and Edit actions">
+            {robotReadiness ? robotKeyButton : null}
+            Bid #
+          </th>
           <th style={{ ...th, textAlign: 'left', paddingLeft: '0.4rem' }} title="Project name and GC or builder" aria-label="Project name and GC or builder">Project Name<br />GC/Builder</th>
           {!hideBidColumn ? <th style={th}>Bid</th> : null}
           <th style={th}>
@@ -498,113 +533,36 @@ export function BidsBidBoardTab({
     toggleBidBoardRowExpanded(bidId)
   }
 
-  /** Robot readiness icon (v2.2530): 🤖 emoji when a twin bid exists (click jumps to it
-      on the Robot Board), yellow glyph when a robot could bid this (click shows the
-      kickoff prompt), grey glyph when required inputs are missing (click explains).
-      One kernel (`robotBidReadiness`) decides state here AND fills the modal, so the
-      row and the explanation can never disagree. */
-  function renderRobotReadinessIcon(bid: BidWithBuilder, actionStyle: React.CSSProperties) {
+  /** The robot icon (v2.3200): one kernel decides the glyph, the tooltip and which
+      sheet the click opens — a live bid says the robot is on it (queued → working →
+      sealed → scored) or that it needs something; a sent or decided bid wears its
+      reference grade. Nobody asks for a robot any more: auto-shadowing covers every
+      eligible plumbing bid, so "front of the line" lives inside the status sheet. */
+  function renderRobotIcon(bid: BidWithBuilder, actionStyle: React.CSSProperties) {
     if (!robotReadiness) return null
+    const state = robotRowState(robotReadiness.inputFor(bid))
+    if (state.kind === 'none') return null
     const twin = robotReadiness.twinBidBySourceId.get(bid.id)
-    if (twin) {
-      return (
-        <button
-          type="button"
-          onClick={() => robotReadiness.onOpenTwinBid(twin, bid)}
-          title={`Robot bid exists (b${twin.bid_number ?? '?'}) — see how it compares`}
-          aria-label={`Robot bid exists for ${bid.project_name ?? 'bid'} — see how it compares`}
-          style={{ ...actionStyle, fontSize: '0.9375rem', lineHeight: 1 }}
-        >
-          {'\u{1F916}'}
-        </button>
-      )
-    }
-    // v2.2547: a decided bid is a REFERENCE — the icon answers "can a robot learn
-    // from this?" (grade badge) instead of "can a robot bid this?".
-    if (bid.outcome) {
-      const presence = robotReadiness.referencePresence.get(bid.id)
-      const grade = referenceGrade({
-        hasPlans: !!bid.plans_link?.trim(),
-        hasValue: bid.bid_value != null && Number(bid.bid_value) > 0,
-        hasCounts: presence?.hasCounts ?? false,
-        hasPricing: presence?.hasPricing ?? false,
-      })
-      const color = GRADE_COLORS[grade]
-      return (
-        <button
-          type="button"
-          onClick={() => robotReadiness.onOpenGrade(bid)}
-          title={`Reference grade ${grade} — how much can a robot learn from this record? Click for details.`}
-          aria-label={`Reference grade ${grade} — ${bid.project_name ?? 'bid'}`}
-          style={{ ...actionStyle, color, position: 'relative' }}
-        >
-          <BidBoardIcon d={BID_BOARD_ICON_PATHS.robot} size={18} />
-          <span
-            aria-hidden
-            style={{
-              position: 'absolute',
-              right: -1,
-              bottom: -1,
-              fontSize: '0.5625rem',
-              fontWeight: 800,
-              lineHeight: 1,
-              padding: '1px 3px',
-              borderRadius: 3,
-              color: 'white',
-              background: color,
-              fontFamily: 'ui-monospace, monospace',
-            }}
-          >
-            {grade}
-          </span>
-        </button>
-      )
-    }
-    const ready = robotBidReadiness(bid).state === 'ready'
-    // v2.2542: the prompt modal left the board — yellow requests (green), green withdraws.
-    const requested = ready && !!bid.robot_requested_at
-    // v2.3080: "plans readable by robots" — the plan-fetch probe found the
-    // intake service account cannot read the file behind plans_link, so no
-    // shadow can open on this bid until a human repairs the link. Read through
-    // a cast: the column may be ahead of the generated types.
-    const probe = bid as unknown as { plans_robot_readable?: boolean | null; plans_robot_probe_note?: string | null; robot_opt_out?: boolean | null }
-    const plansUnreadable = probe.plans_robot_readable === false
-    // v2.3142: the estimator opted this bid out on the form — a deliberate exception,
-    // shown muted so it never reads as a coverage gap. Click still opens the readiness view.
-    if (probe.robot_opt_out === true) {
-      return (
-        <button
-          type="button"
-          onClick={() => robotReadiness.onOpenReadiness(bid)}
-          title="Robots won’t shadow this bid — opted out on the bid form (untick “Don’t let robots shadow this bid” to put it back)"
-          aria-label={`Robots opted out — ${bid.project_name ?? 'bid'}`}
-          style={{ ...actionStyle, color: 'var(--text-faint)', opacity: 0.6 }}
-        >
-          <BidBoardIcon d={BID_BOARD_ICON_PATHS.robot} size={18} />
-        </button>
-      )
-    }
-    const title = plansUnreadable
-      ? `Plans not readable by robots — ${probe.plans_robot_probe_note ?? 'the intake service account cannot read this file'}. Share the file with the service account or link the PDF itself.${requested ? ' (Robot bid requested — click to withdraw)' : ''}`
-      : requested
-        ? `Robot bid requested ${new Date(bid.robot_requested_at!).toLocaleDateString()} — click to withdraw`
-        : ready
-          ? 'Ready for a robot — click to request a robot bid'
-          : 'A robot can’t bid this yet — see why'
+    const onClick =
+      state.kind === 'grade'
+        ? () => robotReadiness.onOpenGrade(bid)
+        : state.kind === 'needs'
+          ? () => robotReadiness.onOpenNeeds(bid)
+          : (state.kind === 'scored' || (state.kind === 'working' && !!bid.bid_date_sent)) && twin
+            ? () => robotReadiness.onOpenTwinBid(twin, bid)
+            : state.kind === 'off'
+              ? null
+              : () => robotReadiness.onOpenStatus(bid)
     return (
       <button
         type="button"
-        onClick={() => (ready ? robotReadiness.onToggleRequest(bid) : robotReadiness.onOpenReadiness(bid))}
-        title={title}
-        aria-label={`${plansUnreadable ? 'Plans not readable by robots' : requested ? 'Robot bid requested' : ready ? 'Robot-ready' : 'Not robot-ready'} — ${bid.project_name ?? 'bid'}`}
-        style={{ ...actionStyle, color: plansUnreadable ? '#dc2626' : requested ? '#16a34a' : ready ? '#eab308' : 'var(--border-strong)', position: 'relative' }}
+        onClick={onClick ?? undefined}
+        disabled={!onClick}
+        title={state.title}
+        aria-label={state.title}
+        style={{ ...actionStyle, cursor: onClick ? 'pointer' : 'default', position: 'relative' }}
       >
-        <BidBoardIcon d={BID_BOARD_ICON_PATHS.robot} size={18} />
-        {plansUnreadable ? (
-          <span aria-hidden style={{ position: 'absolute', right: -2, bottom: -3, fontSize: '0.6rem', fontWeight: 800, lineHeight: 1, color: 'var(--text-red-600)' }}>
-            ✕
-          </span>
-        ) : null}
+        <RobotGlyph state={state} size={18} />
       </button>
     )
   }
@@ -702,7 +660,7 @@ export function BidsBidBoardTab({
             <BidBoardIcon d={BID_BOARD_ICON_PATHS[j.icon]} size={18} />
           </button>
         ))}
-        {robotReadiness ? renderRobotReadinessIcon(bid, actionStyle) : null}
+        {robotReadiness ? renderRobotIcon(bid, actionStyle) : null}
         {numberNode}
         <button
           type="button"
@@ -1474,6 +1432,12 @@ export function BidsBidBoardTab({
             >
               {scopeLabel(sentScope)}
             </span>
+            {narrowViewport && robotReadiness ? (
+              <span style={{ flex: '0 0 auto', display: 'inline-flex', alignItems: 'center', gap: '0.25rem', fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                <RobotGlyph state={{ kind: 'queued', title: '' }} size={14} />
+                {robotKeyButton}
+              </span>
+            ) : null}
             {[
               // v2.3162: the map card sits above the sections, so its pill comes first.
               { key: 'map' as const, jumpLabel: 'Map', count: null },
@@ -1794,6 +1758,7 @@ export function BidsBidBoardTab({
         </div>
       )}
       {customerReviewOpen ? <BidBoardCustomerReviewModal onClose={() => setCustomerReviewOpen(false)} /> : null}
+      {robotKeyOpen ? <RobotIconKeyModal onClose={() => setRobotKeyOpen(false)} /> : null}
       {dueLegendOpen ? (
         <div
           role="dialog"

@@ -2364,3 +2364,8 @@ body.my-time-boundary-dragging {
     display: none;
   }
 }
+
+/* Bid Board robot icon (v2.3200): the "working" dot breathes; still under reduced motion. */
+@keyframes robot-glyph-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
+.robot-glyph-pulse { animation: robot-glyph-pulse 1.6s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) { .robot-glyph-pulse { animation: none; } }

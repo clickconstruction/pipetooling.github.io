@@ -22,6 +22,17 @@ You don’t have to link the PDF itself. Link the job’s plans folder and the r
 
 Tick **Don’t let robots shadow this bid** under the line. The bid leaves the robot queue and the coverage count, and its robot icon on the Bid Board goes grey. Untick it any time to put it back.
 
+## Watch it on the Bid Board
+
+The robot icon beside the bid number says how the shadow is going — nobody has to ask for one:
+
+- **Outline robot** — queued for the next batch. **Solid robot** — reading the plans and counting. **Lock badge** — it sealed its number; nobody sees that number until you send. Click any of these for the robot's timeline.
+- **Amber robot with a ?** (or a number) — the robot needs something from you: plans it can't open, or a question it asked. Click it: the sheet lists each gap with the fix, offers {{button:gray|Copy intake address}} when the plans aren't shared, and lets you answer the robot's questions right there.
+- **Green ✓ badge** — you sent the bid and the robot's sealed number was scored against yours. Hover for how far off it was; click to compare counts and pricing.
+- **Muted robot** — this bid is opted out, or it's a division robots don't bid yet.
+
+Tap the small **?** beside the **Bid #** header (on a phone, beside the trade chip in the pill row) for the full key, including the A–X grades a sent or decided bid wears.
+
 ## Ask for it sooner
 
-The robot icon on the Bid Board still puts a bid at the front of the line — click it when you want the shadow first. The sealed number shows up on your Dashboard as {{chip:blue|Robot bid}}, and the score lands the moment you mark the bid sent.
+Open the robot's timeline from the icon and tap {{button:outline-blue|Front of the line next batch}} — the next batch takes that bid first. The sealed number shows up on your Dashboard as {{chip:blue|Robot bid}}, and the score lands the moment you mark the bid sent.
