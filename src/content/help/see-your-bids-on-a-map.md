@@ -31,9 +31,20 @@ Clicking a pin also lights the bid's row on the board below and scrolls to it, s
 
 On a phone, tapping a pin shows the bid as a bar under the map instead of a pop-up, so the buttons stay big and the pin stays in view.
 
+## Add the addresses the map is missing
+
+Under the map, **N bids have no map location yet · add their addresses** is a link. It opens a sheet with every bid the map can't place — the ones with **no address** first, then the ones whose address the map **couldn't find** — each with its address ready to type or fix.
+
+1. Type the site address (street, city, state) and tap {{button:blue|Save}} or press Enter. The row reads *Placed ✓ · 38 mi from the office* as soon as the map finds it; if the map still can't, it says so and asks you to check the address.
+2. Not sure of the spelling? {{button:outline-blue|Check on Google Maps ↗}} opens what's in the box, not what's saved.
+3. When the customer has an address on file it's shown under the row with {{button:outline-blue|Use it}} — one tap fills the box (right for a residential bid at the customer's own address; nothing is saved until you tap Save).
+4. Anything else on the bid: {{button:outline-blue|Edit bid}} opens the full form.
+
+Saving an address on a bid whose **Distance to Office** is blank fills the distance too, the same routed-miles path the bid form uses. Fixed bids stay in the sheet until you close it, so you can watch the pins land.
+
 ## Fit all, Hide map and the Map pill
 
-The map opens on the bids within about 150 miles of the office, so one bid in another state doesn't zoom it out to the whole country; those far pins are still drawn. {{button:outline-blue|Fit all}} frames every pin and the office, near and far. **Hide map** collapses the card to its title line; the choice is remembered on that device, and **Show map** brings it back. The **Map** pill in the sticky section row jumps to the card from anywhere on the board, and shows it if it was hidden.
+The map opens on the bids within about 150 miles of the office, so one bid in another state doesn't zoom it out to the whole country; those far pins are still drawn. {{button:outline-blue|Fit all}} frames every pin and the office, near and far. **Hide map** collapses the card to its title line; the choice is remembered on that device, and **Show map** brings it back. Tapping the **Bids on a map** title does the same thing in either direction. The **Map** pill in the sticky section row jumps to the card from anywhere on the board, and shows it if it was hidden.
 
 ## A bid with no map location yet
 
