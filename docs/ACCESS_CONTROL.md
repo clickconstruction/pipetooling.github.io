@@ -5,7 +5,7 @@ file: ACCESS_CONTROL.md
 type: Reference Matrix
 purpose: Complete role-based permissions matrix and access control patterns
 audience: Developers, Security Auditors, AI Agents
-last_updated: 2026-09-06
+last_updated: 2026-09-09
 estimated_read_time: 15-20 minutes
 difficulty: Intermediate
 
@@ -105,6 +105,11 @@ on top of the normal role permissions:
 - **Backend**: Row Level Security (RLS) policies on all tables
 - **Database**: Foreign key relationships enforce data ownership
 - **Edge Functions**: Role validation before privileged operations
+
+### Cost batches — dev-or-agent cost reallocation through two definer RPCs; `cost_agent` role (v2.3196, `20260909161532_cost_batches.sql`)
+
+- **What changed**: job cost can now be moved between jobs as a recorded batch. `cost_batch_apply(jsonb, boolean)` and `cost_batch_revert(uuid, text)` are SECURITY DEFINER with the gate inside: a signed-in caller must be a **dev** (`is_dev()`); a database-role caller (`auth.uid()` NULL — `cost_agent`, `postgres`) passes. EXECUTE to `authenticated` and `cost_agent`; revoked from `anon`/PUBLIC. The audit tables `cost_batches` / `cost_batch_ops` are dev + `cost_agent` SELECT only — **no INSERT/UPDATE/DELETE policies exist**; the functions are the only writers. Read-only (training) mode blocks both (the statement/row blocks fire inside definer functions). Digital-twin write fences do not bind a definer function; the dev gate is what keeps twins out.
+- **New role `cost_agent`**: `LOGIN NOINHERIT`, no password in git (set out-of-band; `COST_AGENT_DB_PASSWORD` in `.env.local`). SELECT plus a `cost_agent reads <table>` policy on the planning/audit tables (`mercury_transactions`, `mercury_transaction_job_allocations`, `jobs_ledger`, `jobs_ledger_payments`, `jobs_ledger_invoices`, `jobs_ledger_materials`, `jobs_ledger_thread_notes`, `supply_houses`, `supply_house_invoices`, `supply_house_invoice_job_allocations`, `clock_sessions`, `users`, `people`, `customers`, the two cost tables). **No direct write on any table** — the role can only plan and call the RPCs, and the RPCs reach five tables and nothing else; no payments table is touchable through them. Contract: `docs/COST_BATCHES.md`.
 
 ### Scheduled GC-statement sends readable by the GC Review cohort; statement rows of the email log too (v2.2888, `20260905190000_gc_statement_requests_office_read.sql`)
 
