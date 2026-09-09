@@ -7,6 +7,9 @@
  */
 import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '../../lib/supabase'
+import { fetchAllRowsChunkedIn } from '../../lib/supabasePaging'
+import { loadCountRowTalliesByBid } from '../../lib/bids/countRowTallies'
+import { formatErrorMessage } from '../../utils/errorHandling'
 import { useToastContext } from '../../contexts/ToastContext'
 import type { BidWithBuilder } from '../../types/bidWithBuilder'
 import { adoptPreviewLine, sortAdoptCandidates, suggestVersionName, type AdoptCandidate } from '../../lib/bids/adoptBid'
@@ -47,19 +50,36 @@ export function AdoptBidModal({ targetBid, onClose, onAdopted }: Props) {
       setTargetIsSplit((targetVersionsRes.data ?? []).length > 0)
       const rows = (bidsRes.data ?? []) as Array<Omit<AdoptCandidate, 'countRows' | 'scenarios'>>
       const ids = rows.map((r) => r.id)
-      const [splitRes, countRes, scenRes] = ids.length
-        ? await Promise.all([
-            supabase.from('bid_versions').select('bid_id').in('bid_id', ids),
-            supabase.from('bids_count_rows').select('bid_id').in('bid_id', ids),
-            supabase.from('price_book_versions').select('bid_id').in('bid_id', ids),
-          ])
-        : [{ data: [] }, { data: [] }, { data: [] }]
+      // Chunked + paged (v2.3203): up to 400 ids in one un-ranged `.in()` both
+      // risks a 414 and, for count rows, trips PostgREST's 1,000-row cap — the
+      // "N count rows" preview then under-reported with no error.
+      let splitRows: Array<{ bid_id: string }>
+      let countBy: Map<string, number>
+      let scenRows: Array<{ bid_id: string | null }>
+      try {
+        ;[splitRows, countBy, scenRows] = await Promise.all([
+          fetchAllRowsChunkedIn<{ bid_id: string }, string>(
+            ids,
+            (chunk, from, to) => supabase.from('bid_versions').select('bid_id').in('bid_id', chunk).order('bid_id').order('id').range(from, to),
+            'load adopt-candidate versions',
+          ),
+          loadCountRowTalliesByBid(supabase, ids),
+          fetchAllRowsChunkedIn<{ bid_id: string | null }, string>(
+            ids,
+            (chunk, from, to) => supabase.from('price_book_versions').select('bid_id').in('bid_id', chunk).order('bid_id').order('id').range(from, to),
+            'load adopt-candidate scenarios',
+          ),
+        ])
+      } catch (e) {
+        if (cancelled) return
+        showToast(formatErrorMessage(e, 'Failed to load bids to adopt'), 'error')
+        setLoading(false)
+        return
+      }
       if (cancelled) return
-      const split = new Set(((splitRes.data ?? []) as Array<{ bid_id: string }>).map((r) => r.bid_id))
-      const countBy = new Map<string, number>()
-      for (const r of (countRes.data ?? []) as Array<{ bid_id: string }>) countBy.set(r.bid_id, (countBy.get(r.bid_id) ?? 0) + 1)
+      const split = new Set(splitRows.map((r) => r.bid_id))
       const scenBy = new Map<string, number>()
-      for (const r of (scenRes.data ?? []) as Array<{ bid_id: string | null }>) if (r.bid_id) scenBy.set(r.bid_id, (scenBy.get(r.bid_id) ?? 0) + 1)
+      for (const r of scenRows) if (r.bid_id) scenBy.set(r.bid_id, (scenBy.get(r.bid_id) ?? 0) + 1)
       // Only unsplit bids can be adopted (a bid with versions would need its pieces adopted one by one).
       const list: AdoptCandidate[] = rows
         .filter((r) => !split.has(r.id))
@@ -68,7 +88,7 @@ export function AdoptBidModal({ targetBid, onClose, onAdopted }: Props) {
       setLoading(false)
     })()
     return () => { cancelled = true }
-  }, [targetBid.id, targetBid.customer_id])
+  }, [targetBid.id, targetBid.customer_id, showToast])
 
   const visible = useMemo(() => {
     const q = search.trim().toLowerCase()
