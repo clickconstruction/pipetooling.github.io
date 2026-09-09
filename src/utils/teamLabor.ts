@@ -8,15 +8,14 @@ import { localCalendarDayKey } from './dateUtils'
  * payroll keeps reading `people_hours`. The view lands with migration
  * 20260909022534; until it is pushed (or on a database without it) the readers
  * fall back to `people_hours`, so a client deployed ahead of the push shows the
- * old approved-only figures instead of an empty Labor column. The cast keeps
- * the generated types until the post-push `gen-types` chore adds the view.
+ * old approved-only figures instead of an empty Labor column.
  */
 type RecordedHoursTable = 'people_hours' | 'people_hours_recorded'
 let recordedHoursTable: RecordedHoursTable | null = null
 export async function resolveRecordedHoursTable(supabase: SupabaseClient): Promise<RecordedHoursTable> {
   if (recordedHoursTable) return recordedHoursTable
   try {
-    const probe = await supabase.from('people_hours_recorded' as 'people_hours').select('work_date').limit(1)
+    const probe = await supabase.from('people_hours_recorded').select('work_date').limit(1)
     recordedHoursTable = probe.error ? 'people_hours' : 'people_hours_recorded'
   } catch {
     recordedHoursTable = 'people_hours'
@@ -28,7 +27,10 @@ export function __resetRecordedHoursTableForTests(): void {
   recordedHoursTable = null
 }
 function hoursFrom(supabase: SupabaseClient, table: RecordedHoursTable) {
-  return supabase.from(table as 'people_hours')
+  // Both relations share the four columns the readers select; the view has
+  // approved_hours / pending_hours on top (types regenerated after the
+  // 20260909022534 push).
+  return table === 'people_hours_recorded' ? supabase.from('people_hours_recorded') : supabase.from('people_hours')
 }
 
 export type CrewJobAssignment = { job_id: string; pct: number }

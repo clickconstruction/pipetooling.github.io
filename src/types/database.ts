@@ -17980,6 +17980,17 @@ export type Database = {
         }
         Relationships: []
       }
+      people_hours_recorded: {
+        Row: {
+          approved_hours: number | null
+          hours: number | null
+          pending_hours: number | null
+          person_id: string | null
+          person_name: string | null
+          work_date: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       _mercury_raw_debit_card_id_lower: {
