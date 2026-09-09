@@ -12,6 +12,10 @@ import { useEffect, useRef } from 'react'
 import { useLocation } from 'react-router-dom'
 import { cleanup, fireEvent, screen } from '@testing-library/react'
 
+// Phone branch (v2.3188): flip to true for the docked-card test.
+let phoneViewport = false
+vi.mock('../hooks/useIsMobile', () => ({ useIsMobile: () => phoneViewport }))
+
 vi.mock('../hooks/useAuth', async () => {
   const { useAuthModuleMock } = await import('../test/renderSmokeMocks')
   return useAuthModuleMock()
@@ -124,5 +128,30 @@ describe('ChecklistAddModal closing', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Close' }))
     expect(screen.queryByPlaceholderText('What needs to be done?')).toBeNull()
     cleanup()
+  })
+})
+
+describe('ChecklistAddModal on a phone (v2.3188)', () => {
+  it('docks the card to the top under the safe-area inset, edge to edge; desktop stays centered', async () => {
+    await renderOpenModal()
+    let dialog = screen.getByRole('dialog')
+    let card = screen.getByTestId('checklist-add-modal-card')
+    expect(dialog.style.alignItems).toBe('center')
+    expect(card.style.width).toBe('90%')
+    cleanup()
+    phoneViewport = true
+    try {
+      await renderOpenModal()
+      dialog = screen.getByRole('dialog')
+      card = screen.getByTestId('checklist-add-modal-card')
+      expect(dialog.style.alignItems).toBe('flex-start')
+      // jsdom drops env() values, so the safe-area padding is checked live, not here.
+      expect(card.style.width).toBe('100%')
+      expect(card.style.borderRadius).toBe('0 0 14px 14px')
+      expect(card.style.maxHeight).toBe('100%')
+    } finally {
+      phoneViewport = false
+      cleanup()
+    }
   })
 })
