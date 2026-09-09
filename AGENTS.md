@@ -24,6 +24,17 @@
 **Safety:** dev-only — gated on `import.meta.env.DEV`; production builds redirect `/dev-login` → sign-in.
 **Full details:** [`docs/EDGE_FUNCTIONS.md`](./docs/EDGE_FUNCTIONS.md) → dev-login · frontend [`src/pages/DevLogin.tsx`](./src/pages/DevLogin.tsx), function [`supabase/functions/dev-login/index.ts`](./supabase/functions/dev-login/index.ts).
 
+## Writing to the database as an agent — two least-privilege roles
+
+Some agent work writes records, not code. For that there are two Postgres roles, each scoped to one job and one validated RPC — **use them instead of `postgres`/service-role**, which bypass every guard:
+
+| Role | What it may do | Entrypoint | Contract |
+|---|---|---|---|
+| `hr_agent` | Append HR-file entries, rewrite a person's summary/narrative, attach exhibit metadata (People → HR, dev-only) | `public.hr_agent_write(jsonb)` | [`docs/HR_FILES.md`](./docs/HR_FILES.md) |
+| `cost_agent` | Move job cost as a recorded, reversible batch — bank-transaction allocations, supply-house invoice allocations, clock sessions, `ESTIMATE` other-charges, job thread notes | `public.cost_batch_apply(jsonb, dry_run)` / `public.cost_batch_revert(uuid, text)` | [`docs/COST_BATCHES.md`](./docs/COST_BATCHES.md) |
+
+Both connect through the session pooler (`user=<role>.yewfzhbofbbyvkvtaatw`); credentials live only in `.env.local` (`HR_AGENT_DB_PASSWORD`, `COST_AGENT_DB_PASSWORD`), set out-of-band with `ALTER ROLE … PASSWORD`, never in git or a migration. Neither role can write a table directly; RLS binds them like any user. Dry-run first (`cost_batch_apply` defaults to it), plan in a human-readable file, and note every touched job — the conventions are in each contract doc.
+
 ---
 
 ## Where to Look For...

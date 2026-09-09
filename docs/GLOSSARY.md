@@ -7,7 +7,7 @@ file: GLOSSARY.md
 type: Reference
 purpose: Comprehensive definitions of all domain-specific terms and technical concepts
 audience: All users (especially new developers and AI agents)
-last_updated: 2026-09-08
+last_updated: 2026-09-09
 estimated_read_time: 15-20 minutes (reference only)
 difficulty: Beginner
 
@@ -133,6 +133,12 @@ Runs jobs, manages subcontractors, and drafts bids — but only on projects they
 
 ### controller (Controller)
 Bookkeeper/financial-controller role: acts like an assistant everywhere plus dev-level financial visibility via `has_payroll_access()`. See the full entry at [Controller (role)](#controller-role) below and `ACCESS_CONTROL.md` → controller section.
+
+### hr_agent / cost_agent (database agent roles — not app roles)
+Two least-privilege **Postgres** roles for AI agents that write records rather than code; they are not `users.role` values and never appear in the app. **`hr_agent`** (v2.2232) writes People → HR files through `hr_agent_write(jsonb)`. **`cost_agent`** (v2.3196) moves job cost — bank-transaction allocations, supply-house invoice allocations, clock sessions, `ESTIMATE` other-charges, job thread notes — only as a recorded, reversible **cost batch** through `cost_batch_apply(jsonb, dry_run)` / `cost_batch_revert(uuid, text)`. Neither can write a table directly; credentials live only in `.env.local`. See `ACCESS_CONTROL.md` → "Database agent roles", `HR_FILES.md`, `COST_BATCHES.md`.
+
+### Cost batch
+One recorded, reversible unit of job-cost reallocation (v2.3196): a label, a reason, a source file, and an ordered list of operations, applied atomically by `cost_batch_apply` with the before-image of every touched row kept in `cost_batch_ops` (the undo). Dry run is the default and runs the real code path. The only vehicle for an estimate entering a job is an Other job charge whose description starts with `ESTIMATE`. Tables `cost_batches` / `cost_batch_ops` (dev read-only). See `COST_BATCHES.md`.
 
 ---
 

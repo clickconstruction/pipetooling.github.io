@@ -5,7 +5,7 @@ file: docs/HR_FILES.md
 type: Feature reference + agent writing convention
 purpose: The dev-only per-person HR files system — schema, access model, the People → HR tab, and (most importantly) the convention any agent or dev follows when writing to it.
 audience: Developers, AI Agents
-last_updated: 2026-08-24
+last_updated: 2026-09-09
 ---
 
 ## What this is
@@ -79,6 +79,8 @@ signed URLs. No UPDATE path — replace and note, like entry corrections.
   ```
 
 ## Agent credentials & the write RPC (v2.2232)
+
+> **Sister interface (v2.3196):** the same pattern — a least-privilege role plus one validated RPC — exists for moving job cost: `cost_agent` and `cost_batch_apply` / `cost_batch_revert`, documented in [`COST_BATCHES.md`](./COST_BATCHES.md). Both roles are listed together in [`ACCESS_CONTROL.md`](./ACCESS_CONTROL.md) → "Database agent roles".
 
 - **Write as `hr_agent`, not `postgres`/service-role.** The role's RLS policies make entries **append-only by policy** for the agent and scope it to the HR tables + `people` reads. Password lives only in `.env.local` as `HR_AGENT_DB_PASSWORD` (set once, out-of-band: `ALTER ROLE hr_agent WITH LOGIN PASSWORD '…'`).
 - **Prefer the RPC over hand-built SQL** — one validated, atomic call:
