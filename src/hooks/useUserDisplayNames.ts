@@ -12,7 +12,8 @@ const cache = new Map<string, string>()
  */
 export function useUserDisplayNames(ids: ReadonlyArray<string | null | undefined>): Record<string, string> {
   const idsKey = useMemo(() => [...new Set(ids.filter((x): x is string => !!x))].sort().join(','), [ids])
-  const [, setTick] = useState(0)
+  // Bumped when a fetch fills the cache so the memo below re-reads it.
+  const [tick, setTick] = useState(0)
 
   useEffect(() => {
     const missing = idsKey ? idsKey.split(',').filter((id) => !cache.has(id)) : []
@@ -43,5 +44,5 @@ export function useUserDisplayNames(ids: ReadonlyArray<string | null | undefined
       if (n) out[id] = n
     }
     return out
-  }, [idsKey])
+  }, [idsKey, tick])
 }
