@@ -19,6 +19,7 @@ import {
   scopeDriftCount,
   sortRfqsByUrgency,
   type DeskRfq,
+  isOutsideRfq,
   type TrailStep,
 } from '../../lib/rfq/rfqDesk'
 import { buildQuoteComparison, type CompareQuote } from '../../lib/rfq/quoteCompare'
@@ -57,6 +58,29 @@ const panel: CSSProperties = {
 }
 
 type DeskRow = DeskRfq & { token: string; fixEmail?: string; sentName: string | null; sentCc: string[] }
+
+/** What the rfq select returns; the v2.3175 fields are optional because of the pre-push fallback. */
+type DeskRfqRow = {
+  id: string
+  token: string | null
+  status: string | null
+  sent_to: string | null
+  sent_name: string | null
+  sent_email: string | null
+  sent_cc: string[] | null
+  resend_email_id: string | null
+  created_at: string
+  viewed_at: string | null
+  last_reminded_at: string | null
+  reminder_count: number | null
+  needed_by: string | null
+  scope: unknown
+  sent_via?: string | null
+  requested_on?: string | null
+  request_url?: string | null
+  quote_url?: string | null
+  supply_house?: { name: string | null } | null
+}
 
 function Trail({ steps }: { steps: TrailStep[] }) {
   const color = (s: TrailStep) =>
@@ -117,17 +141,32 @@ export function RfqDeskModal({
   const load = useCallback(async () => {
     setLoading(true)
     try {
-      const [rfqRows, quoteRows] = await Promise.all([
-        withSupabaseRetry(
+      // v2.3175: outside rows (recorded on Edit Bid) ride along with their house name and
+      // links. Until that migration is pushed the wider select errors on the unknown
+      // columns — fall back to the pre-v2.3175 shape so the desk never goes dark.
+      const BASE_COLS = 'id, token, status, sent_to, sent_name, sent_email, sent_cc, resend_email_id, created_at, viewed_at, last_reminded_at, reminder_count, needed_by, scope'
+      const loadRfqRows = async () => {
+        const wide = await supabase
+          .from('bid_rfqs')
+          .select(`${BASE_COLS}, sent_via, requested_on, request_url, quote_url, supply_house:supply_houses(name)`)
+          .eq('bid_id', bidId)
+          .neq('status', 'draft')
+          .order('created_at', { ascending: false })
+        if (!wide.error) return (wide.data ?? []) as unknown as DeskRfqRow[]
+        const rows = await withSupabaseRetry(
           () =>
             supabase
               .from('bid_rfqs')
-              .select('id, token, status, sent_to, sent_name, sent_email, sent_cc, resend_email_id, created_at, viewed_at, last_reminded_at, reminder_count, needed_by, scope')
+              .select(BASE_COLS)
               .eq('bid_id', bidId)
               .neq('status', 'draft')
               .order('created_at', { ascending: false }),
           'load rfqs',
-        ),
+        )
+        return (rows ?? []) as unknown as DeskRfqRow[]
+      }
+      const [rfqRows, quoteRows] = await Promise.all([
+        loadRfqRows(),
         withSupabaseRetry(
           () =>
             supabase
@@ -155,7 +194,10 @@ export function RfqDeskModal({
           return {
             id: r.id,
             token: r.token ?? '',
-            houseName: r.sent_to,
+            houseName: r.sent_to ?? r.supply_house?.name ?? null,
+            sentVia: r.sent_via === 'outside' ? 'outside' : 'app',
+            requestUrl: r.request_url ?? null,
+            quoteUrl: r.quote_url ?? null,
             sentName: r.sent_name ?? null,
             sentCc: (r.sent_cc as string[] | null) ?? [],
             sentEmail: r.sent_email,
@@ -371,16 +413,28 @@ export function RfqDeskModal({
                       </div>
                     ) : (
                       <div style={mini}>
+                        {isOutsideRfq(r) ? (
+                          <>
+                            <span style={{ fontSize: '0.66rem', fontWeight: 700, padding: '0.05rem 0.45rem', borderRadius: 999, border: `1px solid var(--border-amber)`, background: 'var(--bg-amber-tint)', color: 'var(--text-amber-800)', marginRight: '0.4rem' }}>sent outside the app</span>
+                            {r.requestUrl ? <a href={r.requestUrl} target="_blank" rel="noreferrer" style={{ color: 'var(--text-link)' }}>request</a> : 'no request link'}
+                            {' · '}
+                            {r.quoteUrl ? <a href={r.quoteUrl} target="_blank" rel="noreferrer" style={{ color: 'var(--text-link)' }}>quote</a> : 'no quote link yet'}
+                            {r.neededBy ? ` · needed by ${r.neededBy}` : ''}
+                          </>
+                        ) : (
+                          <>
                         {r.sentName ? `${r.sentName} · ` : ''}{r.sentEmail ?? 'no email — link was copied into a text'}{r.sentCc.length > 0 ? ` (+${r.sentCc.length} cc)` : ''}
                         {r.scopeLines.length > 0 ? ` · ${r.scopeLines.length} items` : ''}
                         {r.neededBy ? ` · needed by ${r.neededBy}` : ''}
                         {r.reminderCount > 0 ? ` · nudged ×${r.reminderCount}` : ''}
                         {drift > 0 ? <span style={{ color: 'var(--text-amber-700)' }}> · counts changed since sent ({drift} line{drift === 1 ? '' : 's'})</span> : null}
+                          </>
+                        )}
                       </div>
                     )}
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', alignItems: 'flex-start' }}>
-                    <Trail steps={trail} />
+                    {isOutsideRfq(r) ? <span style={mini}>{r.quoteUrl || r.status === 'quoted' ? 'Quote in' : 'Waiting on the vendor'}</span> : <Trail steps={trail} />}
                     {urgency.reason && !bounced ? (
                       <span style={{ fontSize: '0.7rem', fontWeight: 600, padding: '0.1rem 0.55rem', borderRadius: 999, color: urgency.tier <= 1 ? 'var(--text-amber-700)' : 'var(--text-muted)', background: urgency.tier <= 1 ? 'var(--bg-yellow-tint)' : 'var(--bg-subtle)', border: `1px solid ${urgency.tier <= 1 ? '#f59e0b' : 'var(--border-strong)'}` }}>
                         {urgency.reason}
@@ -395,8 +449,12 @@ export function RfqDeskModal({
                     ) : r.sentEmail ? (
                       <button type="button" style={nudge.ok ? blueBtn : { ...ghostBtn, color: 'var(--text-faint)', cursor: 'not-allowed' }} disabled={!nudge.ok || busy === r.id} title={nudge.reason ?? 'Preview the reminder before it sends'} onClick={() => void previewNudge(r)}>Nudge</button>
                     ) : null}
-                    <button type="button" style={ghostBtn} onClick={() => void copyLink(r)}>Copy link</button>
-                    <button type="button" style={ghostBtn} disabled={busy === r.id} onClick={() => void closeLink(r)}>Close link</button>
+                    {isOutsideRfq(r) ? null : (
+                      <>
+                        <button type="button" style={ghostBtn} onClick={() => void copyLink(r)}>Copy link</button>
+                        <button type="button" style={ghostBtn} disabled={busy === r.id} onClick={() => void closeLink(r)}>Close link</button>
+                      </>
+                    )}
                   </div>
                   {nudgePreview?.rfqId === r.id ? (
                     <div style={{ width: '100%', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--bg-subtle)', padding: '0.5rem 0.75rem', display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>

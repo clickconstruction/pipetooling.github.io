@@ -192,6 +192,10 @@ ends with all three fence appliers. Names snapshot as text.
 - **material_part_prices writes**: only meaningful with the name→part
   bridge; price memory covers the compounding value until then.
 
+## Outside lane — requests sent by hand (v2.3175)
+
+Not every request goes through Send price requests: estimators still email a list or phone a counter. v2.3175 makes those `bid_rfqs` rows too (`sent_via = 'outside'`, `requested_on`, `request_url`, `quote_url`; no token, no email lane), recorded from **Edit Bid → Files & Links → Price requests** — one table of every request on the bid, grouped by house, with a Requested date and two link columns. The desk lists outside rows tagged *sent outside the app* and refuses to nudge them. Kernel: `src/lib/bids/bidPriceRequests.ts`; component: `BidPriceRequestsTable`.
+
 ## Cross-cutting
 
 - Roles: all RFQ/quote UI gated `canPackageAndSendBidPricing`
@@ -207,4 +211,4 @@ ends with all three fence appliers. Names snapshot as text.
   baseline column relabeled (cost/last-quoted, not "book price");
   unit-basis column on the Plug-in artboard.
 
-last_updated: 2026-09-05 (phases 1–2 shipped; B3 vendor-page batch + price-basis divergence note)
+last_updated: 2026-09-09 (v2.3175 outside lane: hand-sent requests as bid_rfqs rows, the Edit Bid table)

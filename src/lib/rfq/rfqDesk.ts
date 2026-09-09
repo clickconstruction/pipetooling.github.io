@@ -28,6 +28,15 @@ export type DeskRfq = {
   /** email_send_log.last_event for the rfq's resend_email_id (null = none yet). */
   emailLastEvent: string | null
   scopeLines: Array<{ fixture: string; count: number }>
+  /** v2.3175: 'outside' = recorded by hand on Edit Bid (no token, no email lane). Absent = 'app'. */
+  sentVia?: 'app' | 'outside'
+  /** v2.3175: links pasted on the row — the request as sent, the quote as received. */
+  requestUrl?: string | null
+  quoteUrl?: string | null
+}
+
+export function isOutsideRfq(rfq: Pick<DeskRfq, 'sentVia'>): boolean {
+  return rfq.sentVia === 'outside'
 }
 
 export type TrailStepState = 'on' | 'now' | 'off' | 'bad'
@@ -77,6 +86,7 @@ function markCurrent(steps: TrailStep[]): TrailStep[] {
 
 /** One-tap nudge: email lane, still open, and 24h since the last send/nudge. */
 export function canNudge(rfq: DeskRfq, nowMs: number): { ok: boolean; reason?: string } {
+  if (isOutsideRfq(rfq)) return { ok: false, reason: 'sent outside the app — nudge from your own email' }
   if (!rfq.sentEmail) return { ok: false, reason: 'no email on this request — copy the link instead' }
   if (rfq.status === 'quoted') return { ok: false, reason: 'already quoted' }
   if (rfq.status === 'closed') return { ok: false, reason: 'closed' }
