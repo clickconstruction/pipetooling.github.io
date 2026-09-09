@@ -14,6 +14,7 @@ import {
   type JobSummarySortKey,
 } from '../../lib/jobs/jobSummaryLedgerView'
 import { formatUsdNoCents } from '../../lib/jobs/jobFormatting'
+import { AmountSmallCents } from '../AmountSmallCents'
 import { JOB_SUMMARY_MONTHS_BOOK_OPTIONS } from '../../lib/jobs/jobSummaryMonths'
 import { formatStagesNextDateLabel } from '../../lib/stagesUpcomingSchedule'
 
@@ -58,7 +59,8 @@ function Segmented<K extends string | number>({ label, value, options, onChange,
   )
 }
 
-const tile: CSSProperties = { border: '1px solid var(--border)', borderRadius: 8, padding: '0.45rem 0.65rem', background: 'var(--bg-subtle)', minWidth: 0 }
+// Centered since v2.3177 (owner's ask) — label, figure, sub-line and delta all sit on the tile's axis.
+const tile: CSSProperties = { border: '1px solid var(--border)', borderRadius: 8, padding: '0.45rem 0.65rem', background: 'var(--bg-subtle)', minWidth: 0, textAlign: 'center' }
 const tileK: CSSProperties = { fontSize: '0.64rem', letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-muted)', fontWeight: 700 }
 const tileV: CSSProperties = { fontSize: '1.05rem', fontWeight: 700, fontVariantNumeric: 'tabular-nums', letterSpacing: '-0.01em', color: 'var(--text-strong)' }
 const tileS: CSSProperties = { fontSize: '0.7rem', color: 'var(--text-700)' }
@@ -97,6 +99,22 @@ const chipRed: CSSProperties = { ...chip, background: 'var(--bg-red-tint)', colo
 
 /** `formatUsdNoCents` already carries the "$"; this only adds the sign and the null dash. */
 const money = (v: number | null | undefined): string => (v == null ? '—' : `${v < 0 ? '−' : ''}${formatUsdNoCents(Math.abs(v))}`)
+
+/**
+ * A tile's headline dollar figure (v2.3177): the whole amount with the cents
+ * rendered smaller, the way Sub Labor and the pay ledger show money
+ * (`AmountSmallCents`), a true minus sign for a loss, an em dash for "not
+ * available". The delta lines and chips keep the rounded `money()` form.
+ */
+export function JobSummaryTileMoney({ value }: { value: number | null | undefined }) {
+  if (value == null) return <>—</>
+  return (
+    <>
+      {value < 0 ? '−' : ''}
+      <AmountSmallCents value={Math.abs(value)} />
+    </>
+  )
+}
 const pct = (v: number | null | undefined): string => (v == null ? '—' : `${Math.round(v)}%`)
 const pts = (v: number): string => `${v.toFixed(1)} pts`
 
@@ -169,24 +187,24 @@ export default function JobSummaryLedgerToolbar({
       {prefs.view !== 'jobs' ? null : (
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(9.5rem, 1fr))', gap: '0.5rem' }}>
         <Tile k="Jobs" v={totals.jobs} s={`${JOB_SUMMARY_STATUS_OPTIONS.find((s) => s.key === prefs.status)?.label.toLowerCase() ?? ''} · ${JOB_SUMMARY_WINDOW_OPTIONS.find((w) => w.key === prefs.window)?.title.toLowerCase() ?? ''}`} d={dl(c?.jobs, (a) => String(Math.round(a)))} />
-        <Tile k="Revenue" v={money(totals.revenueUsd)} s={totals.earnedRows > 0 ? `${totals.earnedRows} in-progress shown as earned` : 'contract on jobs_ledger'} d={dl(c?.revenueUsd, money)} />
+        <Tile k="Revenue" v={<JobSummaryTileMoney value={totals.revenueUsd} />} s={totals.earnedRows > 0 ? `${totals.earnedRows} in-progress shown as earned` : 'contract on jobs_ledger'} d={dl(c?.revenueUsd, money)} />
         {showMoney ? (
           <>
-            <Tile k="Gross profit" v={money(totals.grossUsd)} s={`${pct(totals.marginPct)} margin${c?.marginPts.delta != null ? ` (${c.marginPts.delta >= 0 ? '+' : '−'}${pts(Math.abs(c.marginPts.delta))})` : ''}`} tone={totals.grossUsd < 0 ? 'red' : undefined} d={dl(c?.grossUsd, money)} />
+            <Tile k="Gross profit" v={<JobSummaryTileMoney value={totals.grossUsd} />} s={`${pct(totals.marginPct)} margin${c?.marginPts.delta != null ? ` (${c.marginPts.delta >= 0 ? '+' : '−'}${pts(Math.abs(c.marginPts.delta))})` : ''}`} tone={totals.grossUsd < 0 ? 'red' : undefined} d={dl(c?.grossUsd, money)} />
             <Tile
               k="Overhead charged"
-              v={money(totals.overheadUsd)}
+              v={<JobSummaryTileMoney value={totals.overheadUsd} />}
               s={totals.overheadUsd == null ? (ledgerLoading ? 'loading…' : 'not available') : `${methodLabel.toLowerCase()} · ${totals.grossUsd > 0 ? pct((totals.overheadUsd / totals.grossUsd) * 100) : '—'} of gross`}
               d={dl(c?.overheadUsd, money, false)}
             />
             <Tile
               k="True profit"
-              v={money(totals.trueProfitUsd)}
+              v={<JobSummaryTileMoney value={totals.trueProfitUsd} />}
               s={`${pct(totals.trueMarginPct)} true margin${c?.trueMarginPts.delta != null ? ` (${c.trueMarginPts.delta >= 0 ? '+' : '−'}${pts(Math.abs(c.trueMarginPts.delta))})` : ''}${prefs.targetTrueMarginPct > 0 ? ` · target ${prefs.targetTrueMarginPct}%` : ''}`}
               tone={totals.trueProfitUsd == null ? undefined : totals.trueProfitUsd < 0 || (prefs.targetTrueMarginPct > 0 && totals.trueMarginPct != null && totals.trueMarginPct < prefs.targetTrueMarginPct) ? 'red' : 'green'}
               d={dl(c?.trueProfitUsd, money)}
             />
-            <Tile k="Per field hour" v={totals.truePerHourUsd == null ? '—' : `$${totals.truePerHourUsd.toFixed(2)}`} s={`${totals.hours.toFixed(1)} h on these jobs`} d={dl(c?.truePerHourUsd, (a) => `$${a.toFixed(2)}`)} />
+            <Tile k="Per field hour" v={<JobSummaryTileMoney value={totals.truePerHourUsd} />} s={`${totals.hours.toFixed(1)} h on these jobs`} d={dl(c?.truePerHourUsd, (a) => `$${a.toFixed(2)}`)} />
           </>
         ) : (
           <Tile k="Field hours" v={totals.hours.toFixed(1)} s="approved, in the window" d={dl(c?.hours, (a) => `${a.toFixed(1)} h`)} />
