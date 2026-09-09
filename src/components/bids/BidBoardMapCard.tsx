@@ -32,6 +32,8 @@ import { computeBidDistanceToOffice } from '../../lib/bidDistanceToOffice'
 import { bidUpdateRefused, BID_UPDATE_NOT_APPLIED_MESSAGE } from '../../lib/bids/updateGuard'
 import { composeMissingAddressRows } from '../../lib/bids/bidBoardMissingAddresses'
 import { BidBoardMissingAddressesModal } from './BidBoardMissingAddressesModal'
+import { BidBoardMapRail } from './BidBoardMapRail'
+import { bidBoardMapRail, DEFAULT_DISTANCE_BUCKETS, pinsInBuckets, type DistanceBucketKey, type DistanceBucketVisibility } from '../../lib/bids/bidBoardMapRail'
 import { formatAddressWithoutZip } from '../../lib/bids/bidContactInfo'
 import {
   BID_BOARD_MAP_DEFAULT_SECTIONS,
@@ -407,7 +409,13 @@ export function BidBoardMapCard({
     }, BID_BOARD_MAP_TOUR_INTERVAL_MS)
     return () => window.clearTimeout(t)
   }, [tour, tourStopsKey])
-  const visible = useMemo(() => bidBoardMapVisiblePins(pins, show), [pins, show])
+  const sectionVisible = useMemo(() => bidBoardMapVisiblePins(pins, show), [pins, show])
+  // v2.3206: the rail's distance buckets are a second filter over the section chips.
+  const [bucketsOn, setBucketsOn] = useState<DistanceBucketVisibility>(() => ({ ...DEFAULT_DISTANCE_BUCKETS }))
+  const toggleBucket = useCallback((key: DistanceBucketKey) => setBucketsOn((prev) => ({ ...prev, [key]: !prev[key] })), [])
+  const visible = useMemo(() => pinsInBuckets(sectionVisible, anchor, bucketsOn), [sectionVisible, anchor, bucketsOn])
+  const rail = useMemo(() => bidBoardMapRail(sectionVisible, anchor), [sectionVisible, anchor])
+  const lostOff = show.lost ? 0 : (legend.find((l) => l.section === 'lost')?.count ?? 0)
   const byId = useMemo(() => new Map(visible.map((p) => [p.id, p])), [visible])
   const canvasPins = useMemo<MapCanvasPin[]>(
     () =>
@@ -471,7 +479,7 @@ export function BidBoardMapCard({
 
   const unmappedAll = [...unmapped, ...noAddress]
   const unmappedLine = bidBoardMapUnmappedLine(unmappedAll.length)
-  const mapHeight = isMobile ? 260 : 380
+  const mapHeight = isMobile ? 220 : 300
   const hiddenSectionsWithPins = pins.length > 0 && visible.length === 0
 
   return (
@@ -482,11 +490,11 @@ export function BidBoardMapCard({
         border: '1px solid var(--border)',
         borderRadius: isMobile ? 12 : 8,
         background: 'var(--surface)',
-        padding: isMobile ? '0.75rem' : '1rem',
-        marginTop: '0.75rem',
+        padding: isMobile ? '0.6rem' : '0.6rem 0.75rem 0.55rem',
+        marginTop: '0.5rem',
         display: 'flex',
         flexDirection: 'column',
-        gap: isMobile ? '0.625rem' : '0.75rem',
+        gap: '0.45rem',
         scrollMarginTop: '3.25rem',
       }}
     >
@@ -500,7 +508,7 @@ export function BidBoardMapCard({
               type="button"
               onClick={toggleHidden}
               aria-expanded={!hidden}
-              title={hidden ? 'Show the map' : 'Hide the map'}
+              title={hidden ? 'Show the map' : 'Hide the map. Click a pin to see the bid; its row lights up below. Rings are 25 and 50 miles from the office. Chips toggle pins only.'}
               style={{ background: 'none', border: 'none', padding: 0, margin: 0, font: 'inherit', color: 'inherit', cursor: 'pointer', minHeight: isMobile ? 44 : undefined }}
             >
               Bids on a map
@@ -537,7 +545,7 @@ export function BidBoardMapCard({
                 setFitAll(true)
                 setFitSignal((n) => n + 1)
               }}
-              style={OUTLINE_BUTTON_STYLE}
+              style={LINK_BUTTON_STYLE}
               title="Frame every pin, including bids far from the office"
             >
               Fit all
@@ -553,9 +561,11 @@ export function BidBoardMapCard({
         <>
           {isMobile ? <SectionChips legend={legend} show={show} lit={tour} onToggle={toggleSection} isMobile /> : null}
 
+          {/* v2.3206: map on the left, the rail on the right — the empty land becomes numbers. Phones stack. */}
+          <div style={isMobile ? { display: 'flex', flexDirection: 'column', gap: '0.5rem' } : { display: 'grid', gridTemplateColumns: 'minmax(0, 3fr) minmax(0, 2fr)', gap: '0.6rem', alignItems: 'stretch' }}>
           <div
             // isolation contains Leaflet's internal z-indexes (panes 200–700, controls 1000) so they can't paint over the sticky pill row
-            style={{ position: 'relative', height: mapHeight, borderRadius: isMobile ? 10 : 6, overflow: 'hidden', border: '1px solid var(--border)', isolation: 'isolate', background: 'var(--bg-muted)' }}
+            style={{ position: 'relative', height: mapHeight, borderRadius: 4, overflow: 'hidden', isolation: 'isolate', background: 'var(--bg-muted)' }}
           >
             {canvasPins.length > 0 ? (
               <Suspense fallback={<div style={{ padding: '1rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>Loading map…</div>}>
@@ -601,6 +611,19 @@ export function BidBoardMapCard({
               </div>
             )}
           </div>
+          <BidBoardMapRail
+            rail={rail}
+            bucketsOn={bucketsOn}
+            onToggleBucket={toggleBucket}
+            onPickPin={(pin) => select(pin.id)}
+            lostOff={lostOff}
+            unmappedLine={unmappedLine}
+            unmappedCount={unmappedAll.length}
+            resolving={resolving}
+            onOpenFix={() => setFixOpen(true)}
+            isMobile={isMobile}
+          />
+          </div>
 
           {isMobile && selected ? (
             <div style={{ border: '1px solid var(--border-blue)', background: 'var(--bg-blue-tint)', borderRadius: 10, padding: '0.625rem 0.75rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
@@ -631,26 +654,6 @@ export function BidBoardMapCard({
             </div>
           ) : null}
 
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '1rem', flexWrap: 'wrap', fontSize: isMobile ? '0.8125rem' : '0.875rem', color: 'var(--text-muted)' }}>
-            {!isMobile ? (
-              <span>
-                Click a pin to see the bid; its row lights up below.
-                {anchor ? ' Rings are 25 and 50 miles from the office.' : ''}
-                {' '}Sections toggle pins only.
-              </span>
-            ) : null}
-            {resolving && unmapped.length > 0 ? (
-              <span>{unmapped.length === 1 ? 'Placing 1 more bid…' : `Placing ${unmapped.length} more bids…`}</span>
-            ) : unmappedLine ? (
-              <span>
-                <button type="button" onClick={() => setFixOpen(true)} style={{ ...LINK_BUTTON_STYLE, textDecoration: 'underline', minHeight: isMobile ? 44 : undefined }} title="List these bids and type their addresses">
-                  {unmappedLine} · {unmappedAll.length === 1 ? 'add its address' : 'add their addresses'}
-                </button>
-              </span>
-            ) : resolving && pins.length > 0 ? (
-              <span>Placing the rest…</span>
-            ) : null}
-          </div>
         </>
       )}
       <BidBoardMissingAddressesModal

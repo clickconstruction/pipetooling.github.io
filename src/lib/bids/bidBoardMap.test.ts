@@ -17,6 +17,7 @@ import {
   bidBoardMapTourNext,
   bidBoardMapTourStops,
   bidBoardMapTourVisibility,
+  ringExtentPoints,
 } from './bidBoardMap'
 
 const TODAY = new Date('2026-09-08T12:00:00')
@@ -161,9 +162,15 @@ describe('bidBoardMapHomeFitPoints', () => {
   const burnet = { lat: 30.758, lng: -98.228 }
   const dallas = { lat: 32.78, lng: -96.8 }
   const neesesSC = { lat: 33.53, lng: -81.12 }
-  it('fits the pins within 150 miles of the office plus the office, leaving Dallas and a far-state bid out of the initial view', () => {
-    expect(bidBoardMapHomeFitPoints([burnet, dallas, neesesSC], office)).toEqual([burnet, office])
-    expect(bidBoardMapHomeFitPoints([burnet, dallas, neesesSC], office, 300)).toEqual([burnet, dallas, office])
+  it('fits the pins within 50 miles of the office plus the office and the ring itself (v2.3206), leaving Burnet, Dallas and a far-state bid out of the initial view', () => {
+    // nothing within 50 miles here (Burnet is 81 out), so the fit falls back to everything + the office
+    expect(bidBoardMapHomeFitPoints([burnet, dallas, neesesSC], office)).toEqual([burnet, dallas, neesesSC, office])
+    expect(bidBoardMapHomeFitPoints([burnet, dallas, neesesSC], office, 100)).toEqual([burnet, office, ...ringExtentPoints(office, 100)])
+    expect(bidBoardMapHomeFitPoints([burnet, dallas, neesesSC], office, 300)).toEqual([burnet, dallas, office, ...ringExtentPoints(office, 300)])
+    // the ring's compass points sit 50 miles out, so the frame shows the whole ring
+    const ring = ringExtentPoints(office, 50)
+    expect(ring).toHaveLength(4)
+    for (const p of ring) expect(Math.round(milesBetween(office, p))).toBeGreaterThanOrEqual(49)
   })
   it('fits everything when nothing is near, and every pin when there is no anchor', () => {
     expect(bidBoardMapHomeFitPoints([neesesSC], office)).toEqual([neesesSC, office])
