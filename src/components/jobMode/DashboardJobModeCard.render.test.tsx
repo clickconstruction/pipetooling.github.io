@@ -157,3 +157,19 @@ describe('DashboardJobModeCard day rail', () => {
     expect(getByText(/Start First\s*Job/)).toBeTruthy()
   })
 })
+
+describe('DashboardJobModeCard manual Clock In (v2.3193)', () => {
+  it('no schedule and nothing running: the right button is Clock In in the clock-in orange', async () => {
+    scenario.blocks = []
+    scenario.openSession = null
+    scenario.visited = []
+    const { getByText, getByRole } = renderCard()
+    await waitFor(() => {
+      expect(getByText('No schedule for today')).toBeTruthy()
+    })
+    const clockIn = getByRole('button', { name: 'Clock In' })
+    expect(clockIn.style.background).toBe('rgb(255, 102, 0)')
+    // The advance / wrap-up styles are not in play here.
+    expect(clockIn.style.background).not.toBe('rgb(22, 163, 74)')
+  })
+})
