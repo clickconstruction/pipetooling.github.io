@@ -2,10 +2,27 @@
 title: read the cost and value timeline on a job
 category: Billing & Money
 roles: dev, master_technician, assistant
-keywords: job summary, chart, timeline, cost, expense, value created, reports, card charges, supply house, tally, sub labor, payments, net
+keywords: job summary, chart, timeline, cost, expense, value created, reports, card charges, supply house, tally, sub labor, payments, net, burn, budget, percent complete, at completion, projected margin, overhead
 order: 30
 ---
 Every expanded job on **Jobs → Job Summary** starts with a timeline chart of the money on that job: what it has cost you so far, what the customer has paid back, and how much value the crew reports having created.
+
+## Burn — are we spending faster than we are finishing?
+
+Owners, controllers and master techs see a **Burn** section at the top of the job window's **Costs** tab, above the chart. Four tiles:
+
+- **Spent to date** — team labor, sub labor and parts, the same direct costs the chart draws.
+- **Budget** — the bid's estimated cost once estimates are snapshotted onto jobs; until then, the job's price × (100 − your Job Summary **Target** margin). The header says which rule it used.
+- **% of budget vs % done** — the tell. The left number is spend, the right is the latest field report's percent complete. {{chip:red|68% vs 62%}} means the crew has burned more of the budget than they have finished; it turns red past five points.
+- **At completion** — spent ÷ percent done, and the margin that leaves against the price. Under it, the job's **overhead share** (Job Summary's day-share so far, plus today's rate × the working days still to come) and the **true margin** after it. Overhead never touches the burn signal; it only sharpens the projection.
+
+Below the tiles: **daily spend bars** for the last 14 working days with a 7-day average, the **cumulative chart** with the budget as a dashed ceiling, earned value stepping up at each report, and a dotted forecast to the day the budget runs out at today's burn; then three plain rows — burn rate per field day, when the budget runs out, and how many working days of work are left at the current pace.
+
+A job under three field days or under 10% reads *too early to call* instead of guessing.
+
+:::example Reading a hot job
+Spent $19,860 of a $29,200 budget (68%) at 62% done. At completion: $32,032, margin $16,668 (34% against a 40% bid). Plus $4,140 overhead → true margin $12,528 (26%). Budget runs out Sep 17 with 38% of the work left. Time to look at why.
+:::
 
 ## Open it
 
