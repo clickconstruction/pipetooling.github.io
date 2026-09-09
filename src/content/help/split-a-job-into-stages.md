@@ -98,3 +98,7 @@ You can still tick several segments under the strip and press {{button:blue|Crea
 
 - To bill and collect the invoice you just created, see *bill a customer and get paid*.
 - To give a sub a stage's window, see *set a window for a sub's stage*.
+
+## Reports follow the stages
+
+Once a job has an Order row, the crew's field report asks **which stage** they worked on and how far along it is, and the job's percent is the weighted sum (each stage counts by its share of the job's value; "—" lines don't count). The stage's own percent shows on its Bill-tab line, so *Stage 2 · 60%* and the job's percent always agree. See *file and review field reports*.
