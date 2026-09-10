@@ -9,7 +9,9 @@ import {
   priceRequestSummaryLine,
   quoteCellFor,
   requestedYmdOf,
+  nudgeStateFor,
   shapePriceRequest,
+  showsNudge,
   validateOutsideRequest,
   vendorQuotePageUrl,
   type PriceRequestQuote,
@@ -35,6 +37,8 @@ function row(id: string, extra: Partial<PriceRequestRow> = {}): PriceRequestRow 
     requested_on: null,
     request_url: null,
     quote_url: null,
+    last_reminded_at: null,
+    reminder_count: 0,
     ...extra,
   }
 }
@@ -159,5 +163,24 @@ describe('linkDisplayText (v2.3195)', () => {
     expect(linkDisplayText('https://www.drive.google.com/file/d/1EcQ/view')).toBe('drive.google.com/file/d/1EcQ/view')
     expect(linkDisplayText('http://reece.com/quotes/')).toBe('reece.com/quotes')
     expect(linkDisplayText('https://drive.google.com/file/d/1EcQabcdefghijklmnopqrstuvwxyz0123456789/view', 30)).toBe('drive.google.com/file/d/1EcQa…')
+  })
+})
+
+describe('nudgeStateFor / showsNudge (v2.3245)', () => {
+  const now = Date.parse('2026-09-08T12:00:00Z')
+  it('follows the desk rule: app rows with an email, not quoted or closed, rested 24h', () => {
+    expect(nudgeStateFor(row('a'), now).ok).toBe(true)
+    expect(nudgeStateFor(row('a', { created_at: '2026-09-08T11:00:00Z' }), now).ok).toBe(false)
+    expect(nudgeStateFor(row('a', { last_reminded_at: '2026-09-08T02:00:00Z' }), now).ok).toBe(false)
+    expect(nudgeStateFor(row('a', { status: 'quoted' }), now)).toEqual({ ok: false, reason: 'already quoted' })
+    expect(nudgeStateFor(row('a', { sent_via: 'outside', token: null }), now).ok).toBe(false)
+    expect(nudgeStateFor(row('a', { sent_email: null }), now).ok).toBe(false)
+  })
+  it('only app rows with an email that are still open show the button', () => {
+    expect(showsNudge(row('a'))).toBe(true)
+    expect(showsNudge(row('a', { status: 'quoted' }))).toBe(false)
+    expect(showsNudge(row('a', { status: 'closed' }))).toBe(false)
+    expect(showsNudge(row('a', { sent_email: null }))).toBe(false)
+    expect(showsNudge(row('a', { sent_via: 'outside' }))).toBe(false)
   })
 })

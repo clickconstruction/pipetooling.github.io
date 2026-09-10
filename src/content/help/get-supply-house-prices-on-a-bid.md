@@ -56,6 +56,8 @@ Moore Supply · Sep 3 · drive.google.com/file/d/1EcQ… · needed by Sep 5 ✓
 
 Requests you record here also show on the Pricing desk, tagged *sent outside the app*, so the desk's list and the bid's list are the same list.
 
+A request the app sent that is still waiting has {{button:blue|Nudge}} right on its row: you see the exact reminder first, and nothing goes out until you tap **Send this nudge**. Same one-tap, rests-24-hours rule as the desk.
+
 ## Package deals and landing prices on costs
 
 - A vendor's best number is often a package — "carriers + bowls, $18,400 all in." Check those lines in Plug in quotes and **Group as a lot** with the one total; the compare shows them as a package, picks them together, and never lets a fake per-line price sneak in.

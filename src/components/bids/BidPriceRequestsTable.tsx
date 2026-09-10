@@ -12,7 +12,9 @@ import {
   groupPriceRequests,
   linkDisplayText,
   linkHostLabel,
+  nudgeStateFor,
   priceRequestSummaryLine,
+  showsNudge,
   validateOutsideRequest,
   type OutsideRequestDraft,
   type PriceRequestGroup,
@@ -21,6 +23,7 @@ import {
   type PriceRequestShaped,
 } from '../../lib/bids/bidPriceRequests'
 import { useNarrowViewport640 } from '../../hooks/useNarrowViewport640'
+import { RfqNudgePreview, useRfqNudge } from './RfqNudge'
 
 type Props = {
   bidId: string
@@ -87,7 +90,7 @@ export function BidPriceRequestsTable({ bidId, serviceTypeId, pricingHref }: Pro
   const [error, setError] = useState<string | null>(null)
 
   const load = useCallback(async () => {
-    const BASE = 'id, supply_house_id, sent_to, sent_email, status, token, created_at, created_by, viewed_at, needed_by'
+    const BASE = 'id, supply_house_id, sent_to, sent_email, status, token, created_at, created_by, viewed_at, needed_by, last_reminded_at, reminder_count'
     const wide = await supabase
       .from('bid_rfqs')
       .select(`${BASE}, sent_via, requested_on, request_url, quote_url`)
@@ -111,6 +114,8 @@ export function BidPriceRequestsTable({ bidId, serviceTypeId, pricingHref }: Pro
         requested_on: r.requested_on ?? null,
         request_url: r.request_url ?? null,
         quote_url: r.quote_url ?? null,
+        last_reminded_at: r.last_reminded_at ?? null,
+        reminder_count: r.reminder_count ?? 0,
       }))
     } else {
       // Pre-push: the four v2.3175 columns are unknown to PostgREST. Read the legacy shape.
@@ -131,6 +136,8 @@ export function BidPriceRequestsTable({ bidId, serviceTypeId, pricingHref }: Pro
         requested_on: null,
         request_url: null,
         quote_url: null,
+        last_reminded_at: r.last_reminded_at ?? null,
+        reminder_count: r.reminder_count ?? 0,
       }))
     }
     setRows(rfqRows)
@@ -160,6 +167,9 @@ export function BidPriceRequestsTable({ bidId, serviceTypeId, pricingHref }: Pro
   useEffect(() => {
     void load()
   }, [load])
+
+  // v2.3245: the desk's nudge flow, reachable from the row (preview, then send).
+  const nudge = useRfqNudge({ onSent: () => load() })
 
   useEffect(() => {
     const ids = [...new Set(rows.map((r) => r.created_by).filter((id): id is string => !!id && !(id in names)))]
@@ -310,7 +320,10 @@ export function BidPriceRequestsTable({ bidId, serviceTypeId, pricingHref }: Pro
         <>
           {r.vendorPageUrl ? <a href={r.vendorPageUrl} target="_blank" rel="noreferrer" style={link}>Vendor page</a> : <span style={{ color: 'var(--text-muted)' }}>Request</span>}
           <span style={tagApp}>sent by app</span>
-          <div style={meta}>{r.row.viewed_at ? `viewed ${formatWorkDateYmdMonthDayShort(calendarYmdInAppTzFromIso(r.row.viewed_at))}` : r.row.status === 'closed' ? 'closed' : 'not viewed yet'}</div>
+          <div style={meta}>
+            {r.row.viewed_at ? `viewed ${formatWorkDateYmdMonthDayShort(calendarYmdInAppTzFromIso(r.row.viewed_at))}` : r.row.status === 'closed' ? 'closed' : 'not viewed yet'}
+            {r.row.reminder_count > 0 ? ` · nudged ×${r.row.reminder_count}` : ''}
+          </div>
         </>
       )
     }
@@ -338,8 +351,20 @@ export function BidPriceRequestsTable({ bidId, serviceTypeId, pricingHref }: Pro
         </span>
       )
     }
+    const nudgeOk = showsNudge(r.row) ? nudgeStateFor(r.row, Date.now()) : null
     return (
       <span style={{ display: 'inline-flex', gap: '0.6rem' }}>
+        {nudgeOk ? (
+          <button
+            type="button"
+            style={nudgeOk.ok ? textBtn : { ...textBtn, color: 'var(--text-faint)', cursor: 'not-allowed' }}
+            disabled={!nudgeOk.ok || nudge.busyId === r.row.id}
+            title={nudgeOk.reason ?? 'Preview the reminder before it sends'}
+            onClick={() => void nudge.previewNudge(r.row.id)}
+          >
+            Nudge
+          </button>
+        ) : null}
         {r.vendorPageUrl ? (
           <button
             type="button"
@@ -436,7 +461,8 @@ export function BidPriceRequestsTable({ bidId, serviceTypeId, pricingHref }: Pro
       if (editingId === r.row.id) return <Fragment key={r.row.id}>{editorRow}</Fragment>
       const first = i === 0
       return (
-        <tr key={r.row.id} style={first ? { borderTop: '1px solid var(--border-strong)' } : undefined}>
+        <Fragment key={r.row.id}>
+        <tr style={first ? { borderTop: '1px solid var(--border-strong)' } : undefined}>
           <td style={td}>
             {first ? (
               <>
@@ -451,6 +477,14 @@ export function BidPriceRequestsTable({ bidId, serviceTypeId, pricingHref }: Pro
           <td style={td}>{requestCell(r)}</td>
           <td style={{ ...td, textAlign: 'right', whiteSpace: 'nowrap' }}>{actionsCell(r)}</td>
         </tr>
+        {nudge.preview?.rfqId === r.row.id ? (
+          <tr>
+            <td colSpan={5} style={{ padding: '0 0.6rem 0.6rem' }}>
+              <RfqNudgePreview preview={nudge.preview} busy={nudge.busyId === r.row.id} onCancel={nudge.cancel} onSend={() => void nudge.sendNudge(r.row.id, g.houseName)} />
+            </td>
+          </tr>
+        ) : null}
+        </Fragment>
       )
     })
   }
