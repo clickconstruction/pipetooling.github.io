@@ -123,9 +123,16 @@ long-run scorecard, since twins are excluded from human metrics but not from the
 - **Revoke**: set `revoked_at = now()` on the credential row (dev). Master secret rotation
   (`supabase secrets set TWIN_LOGIN_SECRET=…`) kills the whole fleet's ops path.
 - **Graduate a rung**: flip `read_only`, or assign a real bid's estimator to the twin.
-- **Hand shadow coverage to another person** (v2.3155): Settings → Digital twins →
-  **Copy handoff prompt** copies `docs/twins/kickoffs/shadow-operator.md` — their own
-  key (issued on the same card, revoked there), the allow rule, the hourly routine with
-  its prompt verbatim. Nothing else to explain.
+- **Hand shadow coverage to another person** (v2.3155): Bids → 🤖 Robots → **Console**
+  (v2.3224; was Settings → Digital twins) → **Copy handoff prompt** copies
+  `docs/twins/kickoffs/shadow-operator.md` — their own key (issued on the Settings card,
+  revoked there), the allow rule, the hourly routine with its prompt verbatim. Nothing
+  else to explain.
+- **Set up Claude Desktop for someone** (v2.3224): the fresh-key card on Settings →
+  Digital twins (and the Console) offers **Copy Desktop setup command** — a Terminal
+  one-liner (Mac) that asks for the key with a silent prompt, finds `npx` (a Dock-launched
+  Desktop can't see a shell's PATH, so the full path is written), and merges the
+  `twin-mcp` entry into `claude_desktop_config.json`, creating the `mcpServers` block a
+  fresh install lacks. Kernel `src/lib/bids/desktopKickoff.ts` → `buildDesktopSetupCommand`.
 - **Audit**: `twin_runs` (every mint + mission, which credential), `created_by` on
   everything it wrote, the board's Estimator column.

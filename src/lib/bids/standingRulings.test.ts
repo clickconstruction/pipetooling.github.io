@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { groupStandingRulings, openCountByAudience, rulingAskedLine, topicLabel, type TwinQuestionRow } from './standingRulings'
+import { groupStandingRulings, legacyMultiDecisionNote, openCountByAudience, rulingAskedLine, topicLabel, type TwinQuestionRow } from './standingRulings'
 
 const q = (over: Partial<TwinQuestionRow> & { id: string }): TwinQuestionRow => ({
   twin_user_id: 'twin-1',
@@ -109,5 +109,17 @@ describe('audience lanes (v2.3186)', () => {
 
   it('counts open questions per lane, ignoring answered rows', () => {
     expect(openCountByAudience(rows)).toEqual({ estimator: 3, operator: 2 })
+  })
+})
+
+
+describe('legacyMultiDecisionNote', () => {
+  it('flags a pre-v2.3210 multi-decision ask with no choices', () => {
+    const q = { question: 'Three decisions: (1) approve a residual? (2) mint a package entry? (3) bank the band flag?', choices: null }
+    expect(legacyMultiDecisionNote(q)).toMatch(/several decisions in one ask/)
+  })
+  it('stays quiet for a tap-answerable question and for a plain single ask', () => {
+    expect(legacyMultiDecisionNote({ question: 'Carry travel past 200 miles?', choices: ['Yes', 'No'], recommended: 'Yes' })).toBeNull()
+    expect(legacyMultiDecisionNote({ question: 'Carry travel past 200 miles?', choices: null })).toBeNull()
   })
 })

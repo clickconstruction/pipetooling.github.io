@@ -33,7 +33,7 @@ import {
   type DiffBucketKey,
   type DiffEntry,
 } from '../../lib/bids/takeoffDiff'
-import { groupStandingRulings, openCountByAudience, rulingAskedLine, type TwinQuestionRow } from '../../lib/bids/standingRulings'
+import { groupStandingRulings, legacyMultiDecisionNote, openCountByAudience, rulingAskedLine, type TwinQuestionRow } from '../../lib/bids/standingRulings'
 import { answerFromChoice, orderedChoices } from '../../lib/bids/twinQuestionChoices'
 import { TwinQuestionChoiceButtons } from './TwinQuestionChoiceButtons'
 import { twinQuestionAudienceColumnPresent } from '../../../supabase/functions/_shared/twinQuestionAudience'
@@ -337,7 +337,7 @@ export function BidsAuditsTab({ authUser, myRole, focusAuditId = null }: { authU
 
   // v2.3186 — the estimator's lane only. Machine-side questions (sandbox, the
   // write fence, a file the service account can't read) sit with the operator on
-  // Settings → Digital twins; the column decides when it exists, else the text.
+  // the Console (Bids → Robots → Console, v2.3224); the column decides when it exists, else the text.
   const rulingsView = useMemo(() => groupStandingRulings(rulingQuestions, { audience: 'estimator' }), [rulingQuestions])
   const operatorOpen = useMemo(() => openCountByAudience(rulingQuestions).operator, [rulingQuestions])
   // Bouncing a question across needs the column to write to.
@@ -345,7 +345,7 @@ export function BidsAuditsTab({ authUser, myRole, focusAuditId = null }: { authU
 
   // v2.3174 / v2.3187 — every "b474" in a question links to its bid, and a ZZ
   // shell's question also links the human bid it pairs with ("ours b214"). One
-  // hook, shared with the twin-questions card on Settings → Digital twins.
+  // hook, shared with the operator-questions card on the Console lens.
   const { bidIdByNumber, bidNumberById, sourceByBidId } = useTwinQuestionBidRefs(rulingQuestions)
 
   // One submit answers EVERY open question in the ruling's topic (or the one
@@ -723,8 +723,8 @@ export function BidsAuditsTab({ authUser, myRole, focusAuditId = null }: { authU
               {myRole === 'dev' && operatorOpen > 0 ? (
                 <div style={{ color: 'var(--text-muted)', fontSize: '0.78rem' }}>
                   🛠 {operatorOpen} robot problem{operatorOpen === 1 ? '' : 's'} for the operator —{' '}
-                  <a href="/settings?tab=settings-digital-twins" style={{ color: 'var(--text-link)' }}>
-                    Settings → Digital twins
+                  <a href="/bids?tab=robot-console" style={{ color: 'var(--text-link)' }}>
+                    Robots → Console
                   </a>
                 </div>
               ) : null}
@@ -739,6 +739,9 @@ export function BidsAuditsTab({ authUser, myRole, focusAuditId = null }: { authU
                       🤖 <TwinQuestionText text={r.newest.question} bidIdByNumber={bidIdByNumber} aboutBidId={r.newest.about_bid_id} aboutBidNumber={r.newest.about_bid_id ? bidNumberById[r.newest.about_bid_id] : null} sourceByBidId={sourceByBidId} />
                     </div>
                     <div style={{ marginTop: '0.2rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>{rulingAskedLine(r)}</div>
+                    {legacyMultiDecisionNote(r.newest) ? (
+                      <div style={{ marginTop: '0.3rem', fontSize: '0.75rem', color: 'var(--text-amber-800)' }}>⚠ {legacyMultiDecisionNote(r.newest)}</div>
+                    ) : null}
                     <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.45rem', flexWrap: 'wrap' }}>
                       {(() => {
                         const choices = orderedChoices(r.newest)
@@ -808,6 +811,9 @@ export function BidsAuditsTab({ authUser, myRole, focusAuditId = null }: { authU
                     <div style={{ fontSize: '0.875rem' }}>🤖 <TwinQuestionText text={s.question} bidIdByNumber={bidIdByNumber} aboutBidId={s.about_bid_id} aboutBidNumber={s.about_bid_id ? bidNumberById[s.about_bid_id] : null} sourceByBidId={sourceByBidId} /></div>
                     {s.mission ? (
                       <div style={{ marginTop: '0.2rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>{s.mission}</div>
+                    ) : null}
+                    {legacyMultiDecisionNote(s) ? (
+                      <div style={{ marginTop: '0.3rem', fontSize: '0.75rem', color: 'var(--text-amber-800)' }}>⚠ {legacyMultiDecisionNote(s)}</div>
                     ) : null}
                     <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.45rem', flexWrap: 'wrap' }}>
                       {(() => {

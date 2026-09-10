@@ -16,6 +16,8 @@
  */
 
 import { effectiveTwinQuestionAudience, type TwinQuestionAudience } from '../../../supabase/functions/_shared/twinQuestionAudience'
+import { checkEstimatorQuestionShape } from '../../../supabase/functions/_shared/twinQuestionShape'
+import { orderedChoices } from './twinQuestionChoices'
 import { effectiveTwinQuestionKind } from '../../../supabase/functions/_shared/twinQuestionKind'
 
 export type TwinQuestionStatus = 'open' | 'answered' | 'promoted' | 'dismissed'
@@ -143,4 +145,20 @@ export function openCountByAudience(rows: TwinQuestionRow[]): Record<TwinQuestio
   const out: Record<TwinQuestionAudience, number> = { estimator: 0, operator: 0 }
   for (const r of rows) if (r.status === 'open') out[effectiveTwinQuestionAudience(r)] += 1
   return out
+}
+
+/**
+ * v2.3224: a question written before the one-decision rule (v2.3210) — several
+ * decisions in one ask and no tap choices, so nobody knows what a one-line answer
+ * would even be. The Standing rulings card says so instead of presenting a bare
+ * box. Only the shape problems that mean "several decisions" count; a long
+ * single question with no choices is merely old, not confusing.
+ */
+export function legacyMultiDecisionNote(q: { question: string; choices?: unknown; recommended?: string | null }): string | null {
+  if (orderedChoices(q)) return null
+  const shape = checkEstimatorQuestionShape(q)
+  if (shape.ok) return null
+  const multi = shape.problems.some((p) => p.includes('one decision per ask'))
+  if (!multi) return null
+  return 'Written before the one-decision rule: several decisions in one ask, meant for the owner. Answer what you can in one line, or Dismiss it and the robots re-ask one decision at a time, with taps.'
 }
