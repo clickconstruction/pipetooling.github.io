@@ -41,6 +41,7 @@ import { useTwinQuestionBidRefs } from '../../hooks/useTwinQuestionBidRefs'
 import { AUDIT_LIST_FILTERS, auditFilterCounts, filterAuditList, type AuditListFilter } from '../../lib/bids/auditListFilter'
 import { TwinQuestionText } from './TwinQuestionText'
 import { orderPendingByStake } from '../../lib/bids/auditTriage'
+import { loadPricedTakeoffRows } from '../../lib/bids/loadPricedTakeoffRows'
 
 /**
  * The Audits tab, cockpit v2 (v2.2553): judge the differences, coach the robot.
@@ -486,20 +487,9 @@ export function BidsAuditsTab({ authUser, myRole, focusAuditId = null }: { authU
     void (async () => {
       try {
         for (const t of todo) {
-          const rows = ((await auditDb.from('bids_count_rows').select('id, fixture, count, bid_version_id').eq('bid_id', t.bidId)).data ?? []) as Array<{ id: string; fixture: string; count: number; bid_version_id: string | null }>
-          const assigns = ((await auditDb.from('bid_pricing_assignments').select('count_row_id, price_book_entry_id, unit_price_override').eq('bid_id', t.bidId)).data ?? []) as Array<{ count_row_id: string; price_book_entry_id: string | null; unit_price_override: number | null }>
-          const entryIds = [...new Set(assigns.map((a) => a.price_book_entry_id).filter((x): x is string => !!x))]
-          const entries = entryIds.length ? (((await auditDb.from('price_book_entries').select('id, total_price').in('id', entryIds)).data ?? []) as Array<{ id: string; total_price: number | null }>) : []
-          const priceById = new Map(entries.map((e) => [e.id, e.total_price ?? 0]))
-          const byRow = new Map(assigns.map((a) => [a.count_row_id, a]))
-          const priced = rows
-            .filter((r) => (t.version ? r.bid_version_id === t.version : r.bid_version_id == null))
-            .map((r) => {
-              const a = byRow.get(r.id)
-              const unit = a ? (a.unit_price_override ?? (a.price_book_entry_id ? (priceById.get(a.price_book_entry_id) ?? 0) : 0)) : 0
-              return { id: r.id, name: r.fixture, count: Number(r.count), ext: Number(r.count) * Number(unit) }
-            })
-            .sort((a, b) => b.ext - a.ext)
+          // v2.3239: one loader for every reader of a priced takeoff — assignment override, then the
+          // Workbench's typed price, then the book entry — so a human reference no longer reads as $0 rows.
+          const priced = await loadPricedTakeoffRows(t.bidId, t.version)
           if (cancelled) return
           setPricedRowsByBid((prev) => ({ ...prev, [t.bidId]: priced }))
         }

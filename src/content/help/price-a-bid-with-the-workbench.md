@@ -2,7 +2,7 @@
 title: price a bid with the Workbench
 category: Office
 roles: dev, master_technician, assistant, controller, estimator
-keywords: pricing, workbench, margin, target, solver, preview, apply, locked, pinned, unpriced, coverage, GC, packet, price option, alternate, versions, price book, book copy, book entry, price didn't change, price not updating
+keywords: pricing, workbench, fixtures, pipe, fittings, line feet, counts, what the bid is made of, margin, target, solver, preview, apply, locked, pinned, unpriced, coverage, GC, packet, price option, alternate, versions, price book, book copy, book entry, price didn't change, price not updating
 order: 94
 ---
 The **Bids → Pricing** tab has two layouts, switched by the {{chip:gray|Old}} / {{chip:gray|New}} pills on the selected bid. Old is the classic grid; **New is the Workbench**, built for pricing to a target. The tab opens on **New**; flip to Old and your device remembers the choice.
@@ -68,6 +68,18 @@ Each price card's ✎ opens the **Price** modal — rename it or delete it (the 
 
 :::example Working to a bid day number
 You want this bid out the door at $42,000. Type 42000 in target total, Enter — every unpriced row fills, pinned rows hold, and the margin tile tells you what that number really earns.
+:::
+
+## See what the bid is made of
+
+Under the strip, one bar splits the bid into **Fixtures**, **Pipe** (line feet), **Fittings** (elbows, wyes, valves, cleanouts) and **Other** (allowances, travel, permits). The header says it in your units — *59 fixtures · 2,448 ft of pipe · 357 fittings* — and each bucket shows its margin in the strip's colors.
+
+1. {{chip:blue|Revenue}} / {{chip:gray|Cost}} flips the bar between share of the price you're viewing and share of our cost. Where the two disagree is where the pricing posture lives: pipe at 22% of revenue but 30% of cost is under-priced against the fixtures.
+2. Hover a segment or a bucket for its revenue, cost, profit and margin and its three biggest rows; a row name scrolls to that row and flashes it.
+3. A bucket that reads *no cost on these rows* has prices but no takeoff cost behind them — the same rows the strip's "have no cost" line counts.
+
+:::example Reading it
+Fixtures 65% of revenue at 57% margin, pipe 22% at 28%: the fixtures are carrying the bid. Either the footage is priced light, or that is the plan — but now it is a decision, not a surprise.
 :::
 
 ## "My version is gone!" — it isn't
