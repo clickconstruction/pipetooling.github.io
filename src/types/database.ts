@@ -16228,6 +16228,7 @@ export type Database = {
           choices: Json | null
           created_at: string
           id: string
+          kind: string | null
           mission: string | null
           promoted_rfi_id: string | null
           question: string
@@ -16246,6 +16247,7 @@ export type Database = {
           choices?: Json | null
           created_at?: string
           id?: string
+          kind?: string | null
           mission?: string | null
           promoted_rfi_id?: string | null
           question: string
@@ -16264,6 +16266,7 @@ export type Database = {
           choices?: Json | null
           created_at?: string
           id?: string
+          kind?: string | null
           mission?: string | null
           promoted_rfi_id?: string | null
           question?: string

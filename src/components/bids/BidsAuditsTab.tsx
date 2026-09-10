@@ -706,6 +706,40 @@ export function BidsAuditsTab({ authUser, myRole }: { authUser: User | null; myR
                   talking about its own machine doesn't belong here: <b>Not mine</b> sends it to the operator.
                 </div>
               )}
+              {rulingsView.plansAsks.length > 0 ? (() => {
+                // v2.3212: plans asks are tasks on one bid each — the robot needs a
+                // different plan set. They live on that bid's robot needs sheet; here
+                // is only the pointer, one link per HUMAN bid (a shell's ask maps to
+                // its source through the same pairing the "ours b214" links use).
+                const targets = new Map<string, { id: string; number: string | null }>()
+                for (const q of rulingsView.plansAsks) {
+                  if (!q.about_bid_id) continue
+                  const src = sourceByBidId[q.about_bid_id]
+                  const id = src?.id ?? q.about_bid_id
+                  if (!targets.has(id)) targets.set(id, { id, number: src?.number ?? bidNumberById[id] ?? null })
+                }
+                const list = [...targets.values()]
+                return (
+                  <div data-testid="rulings-plans-asks" style={{ color: 'var(--text-muted)', fontSize: '0.78rem' }}>
+                    🗂 {list.length === 1 ? 'One bid needs' : `${list.length} bids need`} a different plan set — not a ruling, a fix on the bid:{' '}
+                    {list.map((t, i) => (
+                      <span key={t.id}>
+                        {i > 0 ? ' · ' : ''}
+                        <a
+                          href={`/bids?tab=bid-board&bidId=${encodeURIComponent(t.id)}&robot=needs`}
+                          target="_blank"
+                          rel="noreferrer"
+                          title="Opens the bid's robot needs sheet on the Bid Board — Edit bid, Copy intake address, and the robot's taps"
+                          aria-label={`Fix the plan set on ${t.number ? `b${t.number}` : 'this bid'}`}
+                          style={{ color: 'var(--text-link)', fontWeight: 600 }}
+                        >
+                          {t.number ? `b${t.number}` : 'open bid'}
+                        </a>
+                      </span>
+                    ))}
+                  </div>
+                )
+              })() : null}
               {myRole === 'dev' && operatorOpen > 0 ? (
                 <div style={{ color: 'var(--text-muted)', fontSize: '0.78rem' }}>
                   🛠 {operatorOpen} robot problem{operatorOpen === 1 ? '' : 's'} for the operator —{' '}

@@ -81,6 +81,8 @@ const twinQuestions = [
   // v2.3186 — the robot talking to the operator, not the estimator: classified
   // from the text (no audience column yet), it must NOT appear on the panel.
   { id: 'tq4', twin_user_id: 'tw1', about_bid_id: 'bid-422', mission: 'R2-BT-25', question: 'The sandbox blocked the bids_plan_substrates insert — can someone add a harness verb?', status: 'open', answer: null, answered_by: null, answered_at: null, created_at: '2026-09-04T10:00:00Z', topic: null },
+  // v2.3212: a PLANS ask — a task on the bid, pointed at from the panel, never counted as a ruling.
+  { id: 'tq5', twin_user_id: 'tw1', about_bid_id: 'bid-405', mission: null, question: 'SpaceX Level 1: the file on the bid is the electrical set. Attach the plumbing sheets?', status: 'open', answer: null, answered_by: null, answered_at: null, created_at: '2026-09-05T10:00:00Z', topic: null, kind: 'plans', choices: ['Attached — rerun', 'Use what is on the bid', 'Skip this bid'], recommended: 'Attached — rerun' },
 ]
 
 // Chainable thenable PostgREST stub: every builder method returns itself; awaiting
@@ -162,6 +164,14 @@ describe('BidsAuditsTab', () => {
     expect(screen.queryByPlaceholderText('Your answer — the robot pulls it next run…')).toBeNull()
     // The grouped travel-bands ruling has no choices and keeps its box.
     expect(screen.getByPlaceholderText('Your ruling — answers every copy at once…')).toBeTruthy()
+
+    // v2.3212 — the plans ask is not a card and not in the count (still · 3); the
+    // panel points at the bid's needs sheet instead.
+    expect(screen.queryByText(/Attach the plumbing sheets/)).toBeNull()
+    const plansLine = screen.getByTestId('rulings-plans-asks')
+    expect(plansLine.textContent).toMatch(/One bid needs a different plan set/)
+    const link = plansLine.querySelector('a') as HTMLAnchorElement
+    expect(link.getAttribute('href')).toBe('/bids?tab=bid-board&bidId=bid-405&robot=needs')
     expect(screen.getByText(/fifteen minutes here unblocks every robot/)).toBeTruthy()
     expect(screen.getByText('Travel bands')).toBeTruthy()
     expect(screen.getByText(/Do we band travel by distance\?/)).toBeTruthy()

@@ -66,7 +66,7 @@ describe('groupStandingRulings', () => {
     ])
     expect(view.rulings[0]?.askCount).toBe(3)
     expect(view.rulings[0]?.bidCount).toBe(1) // same bid twice + one bid-less ask
-    expect(groupStandingRulings([])).toEqual({ rulings: [], singles: [], openCount: 0 })
+    expect(groupStandingRulings([])).toEqual({ rulings: [], singles: [], openCount: 0, plansAsks: [] })
   })
 })
 
