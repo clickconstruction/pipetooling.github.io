@@ -44,7 +44,6 @@ import {
   type StagesHeaderStats,
 } from './stagesHeaderStats'
 import { computeBillTruth, type BillTruth } from '../billing/billTruth'
-import { legacyStripBilledTotal, reportBillTruthShadow } from '../billing/billTruthShadow'
 
 export type FetchStagesHeaderStatsResult =
   | { ok: true; stats: StagesHeaderStats; leanBilledRows: StageRow[]; billTruth: BillTruth }
@@ -145,12 +144,6 @@ export async function fetchStagesHeaderStats(
       jobs: (jobRows ?? []) as unknown as LeanStatsJobRow[],
       invoices: (invoiceRows ?? []) as unknown as LeanStatsInvoiceRow[],
       payments,
-    })
-    // Shadow (one release): the strip's old shell arm was unclamped.
-    reportBillTruthShadow({
-      surface: 'pipeline-strip-billed',
-      legacy: legacyStripBilledTotal(billTruth.billed.rows),
-      kernel: billTruth.billed.total,
     })
     return {
       ok: true,

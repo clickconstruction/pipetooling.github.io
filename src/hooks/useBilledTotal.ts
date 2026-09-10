@@ -3,7 +3,6 @@ import { supabase } from '../lib/supabase'
 import { withSupabaseRetry } from '../utils/errorHandling'
 import { computeBillTruth, type BillTruthInvoice, type BillTruthJob, type BillTruthPayment } from '../lib/billing/billTruth'
 import { LEAN_STATS_ACTIVE_JOB_STATUSES } from '../lib/jobs/fetchStagesHeaderStats'
-import { legacyBilledPinTotal, reportBillTruthShadow } from '../lib/billing/billTruthShadow'
 
 // Intentionally ALL billed jobs, including those flagged into Collections — this total means
 // "billed and unpaid" = the bill-truth kernel's Owed (billed + collections), the same figure the
@@ -62,16 +61,6 @@ export function useBilledTotal(
             )) ?? []) as BillTruthPayment[]
         }
         const truth = computeBillTruth({ jobs, invoices, payments: paymentsRows })
-        // Shadow (one release): the old pin summed every billed invoice, orphans and paid-job bills included.
-        reportBillTruthShadow({
-          surface: 'dashboard-billed-pin',
-          legacy: legacyBilledPinTotal(
-            jobs.filter((j) => j.status === 'billed'),
-            invoices,
-            paymentsRows,
-          ),
-          kernel: truth.owed.total,
-        })
         if (!cancelled) {
           setCount(truth.owed.count)
           setTotal(truth.owed.total)

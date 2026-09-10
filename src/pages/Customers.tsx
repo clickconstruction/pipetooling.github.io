@@ -3,8 +3,6 @@ import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-do
 import CustomerPortalGlobeButton from '../components/customers/CustomerPortalGlobeButton'
 import { NO_CUSTOMER_TYPE_LABEL } from '../constants/customerTypeLabels'
 import { supabase } from '../lib/supabase'
-import { appliedByInvoiceId, openBillRowsForJob } from '../lib/billing/billTruth'
-import { legacyListOpenBalance, reportBillTruthShadow } from '../lib/billing/billTruthShadow'
 import { fetchAllRowsChunkedIn } from '../lib/supabasePaging'
 import { formatErrorMessage } from '../utils/errorHandling'
 import { useNewCustomerModal } from '../contexts/NewCustomerModalContext'
@@ -350,34 +348,6 @@ export default function Customers() {
         paymentRows as LcvPaymentRow[],
       )
       setRollupByCustomerId(rollup)
-      // Bill-truth shadow (one release, journey J34-N6): the list used to clamp each CUSTOMER's
-      // open balance at 0 after netting unclamped shells; the kernel clamps per row. Log-only.
-      {
-        const applied = appliedByInvoiceId(paymentRows as LcvPaymentRow[])
-        const invByJob = new Map<string, LcvInvoiceRow[]>()
-        for (const inv of invoiceRows as LcvInvoiceRow[]) {
-          const list = invByJob.get(inv.job_id)
-          if (list) list.push(inv)
-          else invByJob.set(inv.job_id, [inv])
-        }
-        const legacyByCustomer = new Map<string, ReturnType<typeof openBillRowsForJob>>()
-        for (const j of jobRows as LcvJobRow[]) {
-          if (!j.customer_id) continue
-          const rows = openBillRowsForJob(
-            { id: j.id, status: j.status, revenue: j.revenue, payments_made: j.payments_made ?? 0 },
-            (invByJob.get(j.id) ?? []).map((i) => ({ id: i.id ?? '', job_id: i.job_id, status: i.status, amount: i.amount })),
-            applied,
-          )
-          legacyByCustomer.set(j.customer_id, [...(legacyByCustomer.get(j.customer_id) ?? []), ...rows])
-        }
-        let legacy = 0
-        let kernel = 0
-        for (const [cid, rows] of legacyByCustomer) {
-          legacy += legacyListOpenBalance(rows)
-          kernel += rollup[cid]?.openBalance ?? 0
-        }
-        reportBillTruthShadow({ surface: 'customers-list-open-balance', legacy, kernel })
-      }
       // Paid jobs with zero payment rows (HCP imports): the money rail reads
       // rows, so these show $0 collected until backfilled.
       const jobIdsWithPaymentRows = new Set(
