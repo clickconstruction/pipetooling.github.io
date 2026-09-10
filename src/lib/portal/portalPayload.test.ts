@@ -153,6 +153,10 @@ describe('agreements (Contract Desk PR 5)', () => {
 
   it('a payload without agreements parses to an empty list', () => {
     expect(parsePortalPayload({ customerName: 'X', bills: [] })?.agreements).toEqual([])
+    // Customer Waiting (v2.3249): the number on file rides along; blank/missing → null.
+    expect(parsePortalPayload({ customerName: 'X', bills: [], customerPhone: ' 512-555-0142 ' })?.customerPhone).toBe('512-555-0142')
+    expect(parsePortalPayload({ customerName: 'X', bills: [], customerPhone: '  ' })?.customerPhone).toBeNull()
+    expect(parsePortalPayload({ customerName: 'X', bills: [] })?.customerPhone).toBeNull()
   })
 })
 

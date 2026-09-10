@@ -38,6 +38,8 @@ export type PortalBill = {
 export type PortalPayload = {
   company: PortalCompany
   customerName: string
+  /** The number on file for the company (Customer Waiting, v2.3249) — prefills the request forms; null when none. */
+  customerPhone: string | null
   audience: 'customer' | 'gc' | 'all'
   bills: PortalBill[]
   totalDue: number
@@ -173,6 +175,7 @@ export function parsePortalPayload(raw: unknown): PortalPayload | null {
       email: str(companyRaw.email),
     },
     customerName: r.customerName,
+    customerPhone: typeof r.customerPhone === 'string' && r.customerPhone.trim() ? r.customerPhone.trim() : null,
     audience: r.audience === 'gc' ? 'gc' : r.audience === 'all' ? 'all' : 'customer',
     bills,
     totalDue: num(r.totalDue) || Math.round(bills.reduce((s, b) => s + b.amount, 0) * 100) / 100,

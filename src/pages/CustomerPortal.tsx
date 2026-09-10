@@ -761,6 +761,12 @@ function PropertyRow({
   )
 }
 
+/** "Got it, Jane" — the first word of the name on the statement (a company name keeps its first word too). */
+function firstWord(name: string): string | null {
+  const w = name.trim().split(/\s+/)[0] ?? ''
+  return w ? w : null
+}
+
 const fieldStyle: CSSProperties = {
   border: 'none',
   borderBottom: '1px solid #b9c2cc',
@@ -789,9 +795,11 @@ function PortalRequestForms({ token, payload }: { token: string; payload: Portal
           token={token}
           kind="visit"
           title="Request a visit"
-          sub="We'll call to confirm a time."
+          sub="We'll call you back to confirm a time."
           submitLabel="Send request"
           properties={payload.requestableProperties}
+          customerName={payload.customerName}
+          phoneOnFile={payload.customerPhone}
         />
         <RequestCard
           token={token}
@@ -800,6 +808,8 @@ function PortalRequestForms({ token, payload }: { token: string; payload: Portal
           sub="Remodels, additions, new construction."
           submitLabel="Request a bid"
           properties={[]}
+          customerName={payload.customerName}
+          phoneOnFile={payload.customerPhone}
         />
       </div>
     </>
@@ -813,6 +823,8 @@ function RequestCard({
   sub,
   submitLabel,
   properties,
+  customerName,
+  phoneOnFile,
 }: {
   token: string
   kind: 'visit' | 'bid'
@@ -820,12 +832,18 @@ function RequestCard({
   sub: string
   submitLabel: string
   properties: PortalPayload['requestableProperties']
+  customerName: string
+  /** The number on file (Customer Waiting, v2.3249): shown as "We'll call you at …" until they choose another. */
+  phoneOnFile: string | null
 }) {
   const [jobId, setJobId] = useState('')
   const [showAllProperties, setShowAllProperties] = useState(false)
   const [description, setDescription] = useState('')
   const [availability, setAvailability] = useState('')
-  const [phone, setPhone] = useState('')
+  // Customer Waiting (v2.3249): the number is what the office's Call button dials, so it is
+  // required — prefilled from the record when we have one, typed otherwise.
+  const [phone, setPhone] = useState(phoneOnFile ?? '')
+  const [useOtherNumber, setUseOtherNumber] = useState(!phoneOnFile)
   const [plansLink, setPlansLink] = useState('')
   const [honeypot, setHoneypot] = useState('')
   const [status, setStatus] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle')
@@ -836,6 +854,11 @@ function RequestCard({
     if (description.trim().length < 5) {
       setStatus('error')
       setErrorMessage('Please tell us a little more about what you need (a sentence or two).')
+      return
+    }
+    if (phone.replace(/\D/g, '').length < 7) {
+      setStatus('error')
+      setErrorMessage('Please give us a number we can call you back at.')
       return
     }
     setStatus('sending')
@@ -877,10 +900,10 @@ function RequestCard({
       <div style={{ background: CARD, border: `1px solid ${HAIR}`, padding: '18px 20px' }}>
         <div style={{ fontSize: 13.5, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.01em' }}>{title}</div>
         <p style={{ marginTop: 12, fontSize: 13.5, lineHeight: 1.6 }}>
-          <b>Got it — thank you.</b>{' '}
+          <b>Got it{firstWord(customerName) ? `, ${firstWord(customerName)}` : ''} — thank you.</b>{' '}
           <span style={{ color: MUTED }}>
-            Your request went straight to our dispatch desk; we&#8217;ll reach out
-            {phone.trim() ? ` at ${phone.trim()}` : ''} shortly.
+            Your request is on our {kind === 'bid' ? 'estimating' : 'dispatch'} desk right now. We&#8217;ll call you at{' '}
+            <b style={{ color: INK }}>{phone.trim()}</b> as soon as we can during office hours.
           </span>
         </p>
       </div>
@@ -946,10 +969,41 @@ function RequestCard({
           <input value={plansLink} onChange={(e) => setPlansLink(e.target.value)} maxLength={500} placeholder="https://…" style={fieldStyle} />
         </label>
       )}
-      <label style={{ fontSize: 12.5, color: MUTED, display: 'flex', flexDirection: 'column', gap: 2 }}>
-        Best number to reach you
-        <input value={phone} onChange={(e) => setPhone(e.target.value)} maxLength={40} type="tel" style={fieldStyle} />
-      </label>
+      {useOtherNumber ? (
+        <label style={{ fontSize: 12.5, color: MUTED, display: 'flex', flexDirection: 'column', gap: 2 }}>
+          We&#8217;ll call you at
+          <input value={phone} onChange={(e) => setPhone(e.target.value)} maxLength={40} type="tel" required autoComplete="tel" style={fieldStyle} />
+          {phoneOnFile ? (
+            <button
+              type="button"
+              onClick={() => {
+                setPhone(phoneOnFile)
+                setUseOtherNumber(false)
+              }}
+              style={{ alignSelf: 'flex-start', border: 'none', background: 'none', fontFamily: 'inherit', cursor: 'pointer', color: COPPER, fontSize: 12, fontWeight: 700, padding: '4px 0 0' }}
+            >
+              Use {phoneOnFile} instead
+            </button>
+          ) : null}
+        </label>
+      ) : (
+        <div style={{ fontSize: 12.5, color: MUTED, display: 'flex', flexDirection: 'column', gap: 2 }}>
+          We&#8217;ll call you at
+          <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 10, borderBottom: `1px solid ${HAIR}`, padding: '6px 0' }}>
+            <b style={{ color: INK, fontSize: 14 }}>{phone}</b>
+            <button
+              type="button"
+              onClick={() => {
+                setPhone('')
+                setUseOtherNumber(true)
+              }}
+              style={{ border: 'none', background: 'none', fontFamily: 'inherit', cursor: 'pointer', color: COPPER, fontSize: 12, fontWeight: 700, padding: 0 }}
+            >
+              use a different number
+            </button>
+          </div>
+        </div>
+      )}
       {/* Honeypot: hidden from people, tempting to bots. */}
       <input
         value={honeypot}

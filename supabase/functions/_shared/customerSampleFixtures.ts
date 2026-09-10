@@ -173,6 +173,8 @@ export function sampleCustomerPortalResponse(company: SamplePortalCompany, state
   return {
     company,
     customerName: gc ? SAMPLE_GC.company : SAMPLE_HOMEOWNER.name,
+    // Customer Waiting (v2.3249): the number on file, so the sample form shows the prefill.
+    customerPhone: gc ? '(512) 555-0188' : '(512) 555-0142',
     audience: gc ? 'gc' : 'all',
     bills: [openBill, paidBill],
     totalDue: openBill.amount + paidBill.amount,

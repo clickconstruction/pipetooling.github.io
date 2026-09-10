@@ -41,7 +41,9 @@ A clean account statement: our letterhead, each open bill with the job name and 
 
 ## When they send a request
 
-Visit and bid requests appear in the **dispatch inbox** like any dispatch item, with the customer's notes, availability, and phone. Push notifications go to the dispatch group; to also email specific people, add them under **Settings → Email streams → Portal requests**.
+A request from the portal is a **customer waiting**: it lands at the top of the inbox with a red rail, the customer's words, and one big **Call** button, and a banner follows everyone in that inbox around the app until someone lowers or closes it. Visit requests and a GC's *Need other dates?* go to the **Dispatch inbox**; **Ask us to bid** goes to the **Estimator inbox** (or Dispatch when nobody is in the estimating group). Working one is its own guide: *answer a customer who sent a request from their portal*.
+
+The form already knows their number: it shows **We'll call you at (512) 555-0142** from the customer record (or the newest job's phone) with a *use a different number* link, and a number is required — it is what your Call button dials. After sending they read *We'll call you at … as soon as we can during office hours*, so keep that promise. Push notifications go to the group; to also email specific people, add them under **Settings → Email streams → Portal requests**.
 
 ## Safety
 
