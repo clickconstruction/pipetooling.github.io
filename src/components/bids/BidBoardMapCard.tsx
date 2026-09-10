@@ -18,8 +18,9 @@
  * browser key is configured and loads, OpenStreetMap otherwise — the
  * Dashboard card's provider rule.
  */
-import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import type { BidWithBuilder } from '../../types/bidWithBuilder'
+import type { BidBoardHoverStore } from '../../lib/bids/bidBoardHoverStore'
 import type { LedgerPrefixMap } from '../../lib/ledgerDisplayPrefixes'
 import { useAddressGeocodeCoords, type AddressToGeocode } from '../../hooks/useAddressGeocodeCoords'
 import { googleMapsBrowserKey, resolveDashboardMapProvider } from '../../lib/dashboardJobsMap'
@@ -296,6 +297,8 @@ function SectionChips({
   )
 }
 
+const NO_HOVER_SUBSCRIBE = () => () => {}
+
 export function BidBoardMapCard({
   bids,
   ledgerPrefixMap,
@@ -306,6 +309,7 @@ export function BidBoardMapCard({
   onFocusRow,
   revealSignal,
   onReloadBids,
+  hoverStore = null,
 }: {
   /** The board's filtered rows — the map follows the search and the trade pill. */
   bids: readonly BidWithBuilder[]
@@ -321,8 +325,15 @@ export function BidBoardMapCard({
   revealSignal: number
   /** After an address is saved from the "no map location" sheet — the board re-reads its rows. */
   onReloadBids: () => void
+  /** v2.3251: the board's row-hover store — the hovered bid's pin pulses (desktop only). */
+  hoverStore?: BidBoardHoverStore | null
 }) {
   const { showToast } = useToastContext()
+  const hoverId = useSyncExternalStore(
+    hoverStore?.subscribe ?? NO_HOVER_SUBSCRIBE,
+    () => hoverStore?.get() ?? null,
+    () => null,
+  )
   const [hidden, setHidden] = useState<boolean>(() => readBidBoardMapHidden())
   // v2.3213: pin clustering, off by default, remembered per device.
   const [clustered, setClustered] = useState<boolean>(() => readBidBoardMapClustered())
@@ -608,6 +619,7 @@ export function BidBoardMapCard({
                     fitPoints={fitPoints}
                     cluster={clustered}
                     clusterRingPriority={CLUSTER_RING_PRIORITY}
+                    pulseId={isMobile ? null : hoverId}
                     // Leaflet / Google ignore a height change after mount — remount when the form flips
                     key={isMobile ? 'phone' : 'desktop'}
                   />
@@ -624,6 +636,7 @@ export function BidBoardMapCard({
                     fitPoints={fitPoints}
                     cluster={clustered}
                     clusterRingPriority={CLUSTER_RING_PRIORITY}
+                    pulseId={isMobile ? null : hoverId}
                     // Leaflet / Google ignore a height change after mount — remount when the form flips
                     key={isMobile ? 'phone' : 'desktop'}
                   />

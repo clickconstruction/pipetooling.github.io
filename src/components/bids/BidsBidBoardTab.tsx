@@ -34,6 +34,7 @@ import { BidLossCategoryChips } from './BidLossCategoryChips'
 import { BidBoardCustomerReviewModal } from './BidBoardCustomerReviewModal'
 import { BidBoardEstimatingHealthSection } from './BidBoardEstimatingHealthSection'
 import { BidBoardMapCard } from './BidBoardMapCard'
+import { createBidBoardHoverStore } from '../../lib/bids/bidBoardHoverStore'
 import { BidBoardSelfHighlightWheel, useBidBoardSelfHighlight } from './BidBoardSelfHighlightWheel'
 import { BidFlowStrip } from './BidFlowStrip'
 import { deriveBidFlow, type BidFlowDoor, type BidFlowStep } from '../../lib/bids/bidFlow'
@@ -267,6 +268,8 @@ export function BidsBidBoardTab({
   )
   // v2.3162: a pin click on the map card lights its row the way a deep link does and scrolls to it.
   // A later deep link takes over; the map focus clears itself after a few seconds.
+  // v2.3251: row hover → pin pulse. An external store so a hover re-renders the map card only, not every row.
+  const mapHoverStore = useMemo(() => createBidBoardHoverStore(), [])
   const [mapFocusBidId, setMapFocusBidId] = useState<string | null>(null)
   const [mapFocusGen, setMapFocusGen] = useState(0)
   const [mapRevealSignal, setMapRevealSignal] = useState(0)
@@ -1049,6 +1052,8 @@ export function BidsBidBoardTab({
             if (e.key === 'Enter' && e.target === e.currentTarget) toggleBidBoardRowExpanded(bid.id)
           }}
           tabIndex={0}
+          onMouseEnter={() => mapHoverStore.set(bid.id)}
+          onMouseLeave={() => mapHoverStore.set(null)}
           aria-expanded={expanded}
           aria-controls={`bid-board-notes-${bid.id}`}
           style={{
@@ -1545,6 +1550,7 @@ export function BidsBidBoardTab({
             onFocusRow={focusRowFromMap}
             revealSignal={mapRevealSignal}
             onReloadBids={onReloadBids}
+            hoverStore={mapHoverStore}
           />
           ) : null}
           {BID_BOARD_SECTION_CONFIG.map(({ key, label }) => {

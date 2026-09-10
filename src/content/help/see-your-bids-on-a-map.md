@@ -70,6 +70,10 @@ Under the map, **N bids have no map location yet · add their addresses** is a l
 
 Saving an address on a bid whose **Distance to Office** is blank fills the distance too, the same routed-miles path the bid form uses. Fixed bids stay in the sheet until you close it, so you can watch the pins land.
 
+## From a row to its pin
+
+It works the other way too. On a desktop, rest the mouse on any bid row and that bid's pin on the map wears a pulsing halo in its section colour, so you can find where a bid is without clicking anything. If the pin is folded into a cluster disc, the disc pulses instead. A bid whose section chip is off, or that has no address yet, shows nothing — turn the chip on or add the address. Phones have no hover, so there the link runs one way: tap a pin to light its row.
+
 ## Fit all, Hide map and the Map pill
 
 The map opens on the 50-mile ring — the office, the pins inside the ring, and the ring itself — so one bid in another state doesn't zoom it out to the whole country; the far pins are still drawn, just off the first view. **Fit all** (beside **Hide map**) frames every pin and the office, near and far. There's no instruction line under the map any more; hover the **Bids on a map** title if you want the reminder of what pins, rings and chips do. **Hide map** collapses the card to its title line; the choice is remembered on that device, and **Show map** brings it back. Tapping the **Bids on a map** title does the same thing in either direction. The **Map** pill in the sticky section row jumps to the card from anywhere on the board, and shows it if it was hidden.
