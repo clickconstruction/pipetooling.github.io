@@ -116,7 +116,10 @@ only (no Pricing / Cover Letter / Submission); no subs/helpers.
   **On live bids** (every shadow run, in flight first, a row expands into the v2.2544
   sealed-envelope stepper) and **Practice on past bids** (backtests, voided runs kept and marked). Devs get a *Show robot notes* toggle
   for the operator's raw axis notes. Gate math unchanged (`confidenceBoard.ts`).
-- `?tab=robot-console` — **🤖 Console** (v2.3224, dev only): the operator's desk. **Run
+- `?tab=robot-console` — **🤖 Console** (v2.3224, dev only): the operator's desk. **Owner
+  memo** (v2.3232): a question you wrote before the one-decision rule — several decisions
+  in one, no taps — waits here, not on Standing rulings; the owner splits it into one-tap
+  questions posted as yours, or dismisses it (nothing re-asks on its own). **Run
   the robots** — *Copy setup command* (a Terminal one-liner that asks for the robot key and
   configures Claude Desktop's `twin-mcp` connector) and *Copy Desktop kickoff*
   (`kickoffs/desktop-operator.md`, connector filled in) for the no-repo path; *Copy handoff

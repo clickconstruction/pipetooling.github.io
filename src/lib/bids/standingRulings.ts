@@ -76,6 +76,13 @@ export type StandingRulingsView = {
    * points at them (newest first).
    */
   plansAsks: TwinQuestionRow[]
+  /**
+   * v2.3232: open estimator-lane asks written before the one-decision rule —
+   * several decisions in one, no taps. Not rulings: they wait for the owner on
+   * the Console (Bids → Robots → Console), where they are split into one-tap
+   * questions or dismissed. Counted here only so the panel can point at them.
+   */
+  legacyAsks: TwinQuestionRow[]
 }
 
 /** 'travel-bands' → 'Travel bands' (best-effort; unknown shapes pass through). */
@@ -100,7 +107,9 @@ export function groupStandingRulings(rows: TwinQuestionRow[], opts?: { audience?
     .filter((r) => r.status === 'open' && (!lane || effectiveTwinQuestionAudience(r) === lane))
     .sort(newestFirst)
   const plansAsks = inLane.filter((r) => effectiveTwinQuestionKind(r) === 'plans')
-  const open = inLane.filter((r) => effectiveTwinQuestionKind(r) !== 'plans')
+  const decisions = inLane.filter((r) => effectiveTwinQuestionKind(r) !== 'plans')
+  const legacyAsks = decisions.filter((r) => legacyMultiDecisionNote(r) != null)
+  const open = decisions.filter((r) => legacyMultiDecisionNote(r) == null)
   const byTopic = new Map<string, TwinQuestionRow[]>()
   const singles: TwinQuestionRow[] = []
   for (const q of open) {
@@ -130,7 +139,7 @@ export function groupStandingRulings(rows: TwinQuestionRow[], opts?: { audience?
     if (a.askCount !== b.askCount) return b.askCount - a.askCount
     return newestFirst(a.newest, b.newest)
   })
-  return { rulings, singles, openCount: open.length, plansAsks }
+  return { rulings, singles, openCount: open.length, plansAsks, legacyAsks }
 }
 
 /** The muted line under a ruling: 'asked 3 times across 2 bids'. */
@@ -150,9 +159,11 @@ export function openCountByAudience(rows: TwinQuestionRow[]): Record<TwinQuestio
 /**
  * v2.3224: a question written before the one-decision rule (v2.3210) — several
  * decisions in one ask and no tap choices, so nobody knows what a one-line answer
- * would even be. The Standing rulings card says so instead of presenting a bare
- * box. Only the shape problems that mean "several decisions" count; a long
- * single question with no choices is merely old, not confusing.
+ * would even be. Only the shape problems that mean "several decisions" count; a
+ * long single question with no choices is merely old, not confusing. Since
+ * v2.3232 such an ask leaves the Standing rulings panel for the Console's owner
+ * memo; this note is what the memo says about it (nothing re-asks on its own —
+ * the owner splits it into taps, or dismisses it).
  */
 export function legacyMultiDecisionNote(q: { question: string; choices?: unknown; recommended?: string | null }): string | null {
   if (orderedChoices(q)) return null
@@ -160,5 +171,5 @@ export function legacyMultiDecisionNote(q: { question: string; choices?: unknown
   if (shape.ok) return null
   const multi = shape.problems.some((p) => p.includes('one decision per ask'))
   if (!multi) return null
-  return 'Written before the one-decision rule: several decisions in one ask, meant for the owner. Answer what you can in one line, or Dismiss it and the robots re-ask one decision at a time, with taps.'
+  return 'Written before the one-decision rule: several decisions in one ask, no taps. Split it into one-tap questions below, or dismiss it — nothing re-asks on its own.'
 }

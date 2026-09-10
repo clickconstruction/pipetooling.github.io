@@ -66,7 +66,7 @@ describe('groupStandingRulings', () => {
     ])
     expect(view.rulings[0]?.askCount).toBe(3)
     expect(view.rulings[0]?.bidCount).toBe(1) // same bid twice + one bid-less ask
-    expect(groupStandingRulings([])).toEqual({ rulings: [], singles: [], openCount: 0, plansAsks: [] })
+    expect(groupStandingRulings([])).toEqual({ rulings: [], singles: [], openCount: 0, plansAsks: [], legacyAsks: [] })
   })
 })
 
@@ -121,5 +121,24 @@ describe('legacyMultiDecisionNote', () => {
   it('stays quiet for a tap-answerable question and for a plain single ask', () => {
     expect(legacyMultiDecisionNote({ question: 'Carry travel past 200 miles?', choices: ['Yes', 'No'], recommended: 'Yes' })).toBeNull()
     expect(legacyMultiDecisionNote({ question: 'Carry travel past 200 miles?', choices: null })).toBeNull()
+  })
+})
+
+// v2.3232: pre-rule multi-decision asks leave the panel for the owner memo.
+describe('groupStandingRulings · legacy asks', () => {
+  const legacy = 'Three decisions: (1) SMALL-TI — approve a residual? (2) TAKE 5 — mint the package entry? Also confirm: CA piping is ours?'
+  it('sets a legacy multi-decision ask aside — not a ruling, not a single, not in the count', () => {
+    const view = groupStandingRulings([
+      q({ id: 'old', question: legacy, mission: 'backtest-slate-2026-08-31' }),
+      q({ id: 'new', question: 'Carry travel past 200 miles?', choices: ['Yes', 'No'], recommended: 'Yes', topic: 'travel-bands' }),
+    ])
+    expect(view.legacyAsks.map((x) => x.id)).toEqual(['old'])
+    expect(view.rulings.map((r) => r.topic)).toEqual(['travel-bands'])
+    expect(view.singles).toEqual([])
+    expect(view.openCount).toBe(1)
+  })
+  it('the memo note no longer promises a re-ask', () => {
+    expect(legacyMultiDecisionNote({ question: legacy })).toMatch(/nothing re-asks on its own/)
+    expect(legacyMultiDecisionNote({ question: legacy })).not.toMatch(/robots re-ask/)
   })
 })

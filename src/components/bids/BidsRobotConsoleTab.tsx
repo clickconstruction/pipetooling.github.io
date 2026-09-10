@@ -10,6 +10,7 @@ import { relativeTimeFrom } from '../../lib/twinConsoleDisplay'
 import desktopKickoffDoc from '../../../docs/twins/kickoffs/desktop-operator.md?raw'
 import shadowOperatorPrompt from '../../../docs/twins/kickoffs/shadow-operator.md?raw'
 import { TwinOperatorQuestionsCard } from './TwinOperatorQuestionsCard'
+import { TwinOwnerMemoCard } from './TwinOwnerMemoCard'
 import { TwinRunsLedger } from './TwinRunsLedger'
 import { BTN, BTN_PRIMARY, CARD, CARD_TITLE, CHIP, MUTED, PROMPT_PRE, STEP_REF, TWIN_VIOLET } from './twinConsoleStyles'
 
@@ -228,6 +229,8 @@ export function BidsRobotConsoleTab({ bids, twinBidBySourceId, onOpenQueue }: Pr
         </div>
       ) : null}
 
+      {/* v2.3232: pre-rule multi-decision asks wait for the owner here, split into taps or dismissed. */}
+      <TwinOwnerMemoCard />
       <TwinOperatorQuestionsCard />
       <TwinRunsLedger />
     </div>

@@ -8,7 +8,7 @@ When a robot estimator finishes a draft bid, it asks for your audit. Everything 
 
 ## Start with the standing rulings
 
-At the top of the tab sits **📜 Standing rulings · N — fifteen minutes here unblocks every robot**: every question the robots have parked while working, from every bid, in one panel. Tap the header to open or collapse it (it starts open whenever questions are waiting).
+At the top of the tab sits **📜 Standing rulings · N — fifteen minutes here unblocks every robot**: every question the robots have parked while working, from every bid, in one panel. Tap the header to open or collapse it (it starts open whenever questions are waiting). A question a robot wrote before the one-decision rule — several decisions in one, no buttons — is not yours to untangle: the panel says one is waiting for the owner, who splits it into one-tap questions from Robots → Console.
 
 1. When several robots hit the same issue on different bids — say, whether to carry travel past 200 miles — their questions collapse into **one card**: the issue as a chip (like {{chip:gray|Travel bands}}), the newest phrasing of the question, and a line like *asked 3 times across 2 bids*.
 2. Most questions come with the answers already on them: two to four buttons, the robot's own pick first as {{button:blue|★ Residual · all 3}} and the rest outlined like {{button:outline|Higher per-fixture}}. One tap answers, and on a shared issue it lands on **every** open copy at once; every robot picks it up on its next run. {{button:gray|Something else…}} swaps the buttons for a box when none of them fits.

@@ -33,7 +33,7 @@ import {
   type DiffBucketKey,
   type DiffEntry,
 } from '../../lib/bids/takeoffDiff'
-import { groupStandingRulings, legacyMultiDecisionNote, openCountByAudience, rulingAskedLine, type TwinQuestionRow } from '../../lib/bids/standingRulings'
+import { groupStandingRulings, openCountByAudience, rulingAskedLine, type TwinQuestionRow } from '../../lib/bids/standingRulings'
 import { answerFromChoice, orderedChoices } from '../../lib/bids/twinQuestionChoices'
 import { TwinQuestionChoiceButtons } from './TwinQuestionChoiceButtons'
 import { twinQuestionAudienceColumnPresent } from '../../../supabase/functions/_shared/twinQuestionAudience'
@@ -645,7 +645,8 @@ export function BidsAuditsTab({ authUser, myRole, focusAuditId = null }: { authU
     .filter((x): x is { num: string | null; pct: number } => !!x)
     .slice(0, 5)
 
-  const rulingsExpanded = rulingsOpen ?? rulingsView.openCount > 0
+  // Open by default when there is anything to act on or point at (one-tap questions, plans asks, a pre-rule ask waiting for the owner).
+  const rulingsExpanded = rulingsOpen ?? (rulingsView.openCount > 0 || rulingsView.plansAsks.length > 0 || rulingsView.legacyAsks.length > 0)
   const rulingCardStyle: React.CSSProperties = {
     border: '1px solid var(--border)',
     borderRadius: 6,
@@ -673,6 +674,9 @@ export function BidsAuditsTab({ authUser, myRole, focusAuditId = null }: { authU
             style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', width: '100%', padding: '0.6rem 0.9rem', background: 'transparent', border: 'none', cursor: 'pointer', textAlign: 'left', font: 'inherit', color: 'inherit' }}
           >
             <span style={{ fontWeight: 600, fontSize: '0.875rem' }}>📜 Standing rulings · {rulingsView.openCount}</span>
+            {rulingsView.legacyAsks.length > 0 ? (
+              <span style={{ color: 'var(--text-amber-800)', fontSize: '0.78rem' }}>· {rulingsView.legacyAsks.length} for the owner</span>
+            ) : null}
             <span style={{ color: 'var(--text-muted)', fontSize: '0.8125rem' }}>— fifteen minutes here unblocks every robot</span>
             <span style={{ marginLeft: 'auto', color: 'var(--text-muted)', fontSize: '0.75rem' }}>{rulingsExpanded ? '▾' : '▸'}</span>
           </button>
@@ -720,6 +724,21 @@ export function BidsAuditsTab({ authUser, myRole, focusAuditId = null }: { authU
                   </div>
                 )
               })() : null}
+              {rulingsView.legacyAsks.length > 0 ? (
+                // v2.3232: an ask written before the one-decision rule is the owner's to split
+                // into taps (or dismiss) on the Console — the panel only says it is waiting.
+                <div data-testid="rulings-legacy-asks" style={{ color: 'var(--text-muted)', fontSize: '0.78rem' }}>
+                  🧾 {rulingsView.legacyAsks.length === 1 ? 'One ask' : `${rulingsView.legacyAsks.length} asks`} written before the one-decision rule
+                  {rulingsView.legacyAsks.length === 1 ? ' waits' : ' wait'} for the owner to split into taps —{' '}
+                  {myRole === 'dev' ? (
+                    <a href="/bids?tab=robot-console" style={{ color: 'var(--text-link)' }}>
+                      Robots → Console
+                    </a>
+                  ) : (
+                    <span>on the robots' Console</span>
+                  )}
+                </div>
+              ) : null}
               {myRole === 'dev' && operatorOpen > 0 ? (
                 <div style={{ color: 'var(--text-muted)', fontSize: '0.78rem' }}>
                   🛠 {operatorOpen} robot problem{operatorOpen === 1 ? '' : 's'} for the operator —{' '}
@@ -739,9 +758,6 @@ export function BidsAuditsTab({ authUser, myRole, focusAuditId = null }: { authU
                       🤖 <TwinQuestionText text={r.newest.question} bidIdByNumber={bidIdByNumber} aboutBidId={r.newest.about_bid_id} aboutBidNumber={r.newest.about_bid_id ? bidNumberById[r.newest.about_bid_id] : null} sourceByBidId={sourceByBidId} />
                     </div>
                     <div style={{ marginTop: '0.2rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>{rulingAskedLine(r)}</div>
-                    {legacyMultiDecisionNote(r.newest) ? (
-                      <div style={{ marginTop: '0.3rem', fontSize: '0.75rem', color: 'var(--text-amber-800)' }}>⚠ {legacyMultiDecisionNote(r.newest)}</div>
-                    ) : null}
                     <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.45rem', flexWrap: 'wrap' }}>
                       {(() => {
                         const choices = orderedChoices(r.newest)
@@ -811,9 +827,6 @@ export function BidsAuditsTab({ authUser, myRole, focusAuditId = null }: { authU
                     <div style={{ fontSize: '0.875rem' }}>🤖 <TwinQuestionText text={s.question} bidIdByNumber={bidIdByNumber} aboutBidId={s.about_bid_id} aboutBidNumber={s.about_bid_id ? bidNumberById[s.about_bid_id] : null} sourceByBidId={sourceByBidId} /></div>
                     {s.mission ? (
                       <div style={{ marginTop: '0.2rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>{s.mission}</div>
-                    ) : null}
-                    {legacyMultiDecisionNote(s) ? (
-                      <div style={{ marginTop: '0.3rem', fontSize: '0.75rem', color: 'var(--text-amber-800)' }}>⚠ {legacyMultiDecisionNote(s)}</div>
                     ) : null}
                     <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.45rem', flexWrap: 'wrap' }}>
                       {(() => {
