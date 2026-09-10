@@ -2661,6 +2661,8 @@ const { data, error } = await supabase.functions.invoke('test-email', {
 
 ### create-stripe-invoice
 
+> **v2.3255 — discount lines** (discount train PR 3; kernel [`discountLine.ts`](../supabase/functions/_shared/discountLine.ts), re-exported to the app): the fixtures select adds `line_kind, discount_pct, discount_basis_positions`, and `buildStripeInvoiceItemsFromFixtures` takes `allFixtures` (every row on the job — a discount's shares split over its whole basis by largest remainder, so a draw's share needs the rows it does not bill). `scopeFixturesToInvoice` never scopes a discount row as a line and reads every work row NET of its shares, so the primary remainder's "sum equals target" test still composes on a discounted job. When the target is exactly the scoped work minus those rows' shares, the bill lists the work at its real prices plus one **negative item per discount** (`source.kind = 'discount'`, description `Negotiated discount (10%)`) — Stripe accepts a negative `amount` invoice item as a credit; any other target prorates over NET row cents (no discount line, no price the discount already lowered). `extra_line_items` stay positive. **Redeploy with `preview-stripe-invoice`.**
+
 > **v2.2967 — one company**: the `custRow.master_user_id !== jobRow.master_user_id` refusal ("Customer does not belong to this job master") is gone — the DB invariant behind it (`jobs_ledger_customer_master_match`) is a no-op since `20260906190000`, so a job may bill any customer. Redeploy required.
 
 > **v2.2913 — the primary remainder prorates fairly across payments-covered rows** (journey-map Tier-3 B6 / J3-6): `scopeFixturesToInvoice` in the shared [`stripeInvoiceItemsFromFixtures.ts`](../supabase/functions/_shared/stripeInvoiceItemsFromFixtures.ts) applies the same rule as the client's `dropPaymentsCoveredRows` ([`invoiceScopedFixtures.ts`](../src/lib/invoiceScopedFixtures.ts)): for the PRIMARY remainder only, when its amount is smaller than the still-unlinked billable rows, the gap is the payments/carve pool and fills rows in order — whole covered rows drop, a partly covered row and the tail stay, an exact-sum composition still wins, a remainder ≥ the sum drops nothing. Shared code is bundled at deploy time: `preview-stripe-invoice` imports the same module and must be redeployed alongside this function, or the preview composes differently from the bill (`npm run check:edge-drift` only warns on `_shared` edits — it cannot tell which importers are stale).
@@ -3270,6 +3272,8 @@ interface Body {
 ---
 
 ### preview-stripe-invoice
+
+> **v2.3255 — discount lines mirrored**: same select, same `allFixtures`, same shared composer as `create-stripe-invoice` (see that section); `invoice_items` sent to `invoices.createPreview` may include negative amounts. The client's `parseStripeLineSource` accepts `kind: 'discount'` (not clickable in the preview). **Redeploy with `create-stripe-invoice`.**
 
 > **v2.2967 — one company**: the `custRow.master_user_id !== jobRow.master_user_id` refusal ("Customer does not belong to this job master") is gone — the DB invariant behind it (`jobs_ledger_customer_master_match`) is a no-op since `20260906190000`, so a job may bill any customer. Redeploy required.
 

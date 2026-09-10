@@ -30,11 +30,24 @@
  * keeps previews and physical PDFs aligned.
  */
 
+import {
+  discountRowsFromDb,
+  discountSharesByWorkRow,
+  netWorkLineCents,
+  type DiscountShare,
+} from '../../supabase/functions/_shared/discountLine.ts'
+
 export type InvoiceScopeFixtureRow = {
+  id: string
   invoice_id?: string | null
   name?: string | null
   count?: number | null
   line_unit_price?: number | null
+  sequence_order?: number | null
+  /** Discount rows (v2.3252+) never list; work rows count NET of their shares. */
+  line_kind?: string | null
+  discount_pct?: number | string | null
+  discount_basis_positions?: number[] | null
 }
 
 export type InvoiceScopeInvoiceContext = {
@@ -42,15 +55,23 @@ export type InvoiceScopeInvoiceContext = {
   amount?: unknown
 }
 
-/** Cents for one row — EXACT mirror of the edge's lineExtendedCents (max(1, …) included). */
-function billableLineCents(row: InvoiceScopeFixtureRow): number {
+/** Cents for one row — EXACT mirror of the edge's scopeLineCents: a work row NET of its discount shares (max(1, …) included). */
+function billableLineCents(row: InvoiceScopeFixtureRow, shares: ReadonlyMap<string, DiscountShare[]>): number {
+  if (row.line_kind === 'discount') return 0
   if (!(row.name ?? '').trim()) return 0
   const c = Number(row.count)
   const qty = Number.isFinite(c) && c > 0 ? c : 1
   const unit = row.line_unit_price != null && Number.isFinite(Number(row.line_unit_price)) ? Number(row.line_unit_price) : 0
   const dollars = qty * unit
   if (!Number.isFinite(dollars) || dollars <= 0) return 0
-  return Math.max(1, Math.round(dollars * 100))
+  const gross = Math.max(1, Math.round(dollars * 100))
+  const workRow = { id: row.id, name: row.name, count: row.count, line_unit_price: row.line_unit_price, line_kind: 'work' as const }
+  return Math.max(0, Math.min(gross, netWorkLineCents([], workRow, shares)))
+}
+
+/** The discount shares of a whole job's rows (v2.3252+); an empty map when it has no discount rows. */
+export function discountSharesForRows(rows: readonly InvoiceScopeFixtureRow[] | null | undefined): Map<string, DiscountShare[]> {
+  return discountSharesByWorkRow(discountRowsFromDb(rows ?? []))
 }
 
 /**
@@ -60,15 +81,19 @@ function billableLineCents(row: InvoiceScopeFixtureRow): number {
  * after — is kept. Zero-cent rows (unnamed / unpriced) ride through untouched,
  * as before. Returns the input list when nothing is covered.
  */
-export function dropPaymentsCoveredRows<T extends InvoiceScopeFixtureRow>(unlinked: readonly T[], amountCents: number): T[] {
+export function dropPaymentsCoveredRows<T extends InvoiceScopeFixtureRow>(
+  unlinked: readonly T[],
+  amountCents: number,
+  shares: ReadonlyMap<string, DiscountShare[]> = new Map(),
+): T[] {
   if (!Number.isFinite(amountCents) || amountCents <= 0) return [...unlinked]
-  const sumCents = unlinked.reduce((s, f) => s + billableLineCents(f), 0)
+  const sumCents = unlinked.reduce((s, f) => s + billableLineCents(f, shares), 0)
   let pool = sumCents - amountCents
   if (pool <= 0) return [...unlinked]
   const dropped = new Set<T>()
   for (const f of unlinked) {
     if (pool <= 0) break
-    const cents = billableLineCents(f)
+    const cents = billableLineCents(f, shares)
     if (cents <= 0) continue
     if (cents <= pool) {
       dropped.add(f)
@@ -85,7 +110,11 @@ export function fixturesForInvoiceBill<T extends InvoiceScopeFixtureRow>(
   invoiceId: string | null | undefined,
   invoice?: InvoiceScopeInvoiceContext | null,
 ): T[] {
-  const all = fixtures ?? []
+  // Discount rows (v2.3252+) are never scoped as lines — their shares print
+  // on the bills of the work they follow; the composers read them from the
+  // whole job. Every figure below is a work row NET of those shares.
+  const shares = discountSharesForRows(fixtures)
+  const all = (fixtures ?? []).filter((f) => f.line_kind !== 'discount')
   if (!invoiceId) return all
   const linked = all.filter((f) => (f.invoice_id ?? null) === invoiceId)
   if (linked.length > 0) return linked
@@ -93,12 +122,12 @@ export function fixturesForInvoiceBill<T extends InvoiceScopeFixtureRow>(
   if (invoice?.is_primary_rtb_bundle === true) {
     const amountCents = Math.round(Number(invoice.amount) * 100)
     if (Number.isFinite(amountCents) && amountCents > 0) {
-      const unlinkedBillable = unlinked.filter((f) => billableLineCents(f) > 0)
-      const sumCents = unlinkedBillable.reduce((s, f) => s + billableLineCents(f), 0)
+      const unlinkedBillable = unlinked.filter((f) => billableLineCents(f, shares) > 0)
+      const sumCents = unlinkedBillable.reduce((s, f) => s + billableLineCents(f, shares), 0)
       if (unlinkedBillable.length > 0 && sumCents === amountCents) return unlinkedBillable
       // B6 / J3-6: a remainder smaller than the unlinked work means payments
       // (or dollar carves) already cover the first rows — those never re-list.
-      if (unlinkedBillable.length > 0 && sumCents > amountCents) return dropPaymentsCoveredRows(unlinked, amountCents)
+      if (unlinkedBillable.length > 0 && sumCents > amountCents) return dropPaymentsCoveredRows(unlinked, amountCents, shares)
     }
   }
   // v2.2589: a row linked to ANOTHER invoice is already listed on that bill —

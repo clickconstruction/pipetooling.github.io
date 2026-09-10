@@ -1702,8 +1702,9 @@ export default function SendRecordInvoiceModal({
       billScopedFixtures,
       billCustomerJobDetails?.materials,
       amt,
+      billCustomerJobDetails?.fixtures,
     )
-  }, [billScopedFixtures, billCustomerJobDetails?.materials, billAmountStr])
+  }, [billScopedFixtures, billCustomerJobDetails?.materials, billCustomerJobDetails?.fixtures, billAmountStr])
 
   const [lineEditSession, setLineEditSession] = useState<BillCustomerLineEditSession | null>(null)
 

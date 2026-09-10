@@ -2,11 +2,55 @@ import type { Database } from '../types/database'
 import { buildScaledFixtureLineDrafts } from './physicalInvoiceFixtureScaling'
 import { PORTAL_GENERIC_PAYMENT_METHOD, portalPaymentMethodLabel } from './portal/portalJobGroups'
 import { APP_CALENDAR_TZ } from '../utils/dateUtils'
+import {
+  discountBillLinesForWorkRows,
+  discountRowsFromDb,
+  discountSharesByWorkRow,
+  netWorkLineCents,
+} from '../../supabase/functions/_shared/discountLine.ts'
 
 export type PhysicalInvoiceFixtureInput = Pick<
   Database['public']['Tables']['jobs_ledger_fixtures']['Row'],
   'name' | 'count' | 'line_unit_price' | 'line_description' | 'sequence_order'
->
+> & {
+  /** Discount rows (v2.3252+): the id keys the shares; rows built without one are keyed by position. */
+  id?: string
+  line_kind?: string | null
+  discount_pct?: number | string | null
+  discount_basis_positions?: number[] | null
+}
+
+/** Rows keyed for the discount kernel (an id is synthesized from the position when a caller built the row without one). */
+function keyedRows(rows: readonly PhysicalInvoiceFixtureInput[]) {
+  return discountRowsFromDb(rows.map((r) => ({ ...r, id: r.id ?? `row-${r.sequence_order}` })))
+}
+
+/**
+ * The negative Services rows a bill prints for the work rows it covers
+ * (v2.3252+): one per discount that touches them, cents-exact. `all` is the
+ * whole job (shares split over the full basis); `scoped` is what this bill
+ * lists. Empty when the job has no discount rows.
+ */
+export function discountServiceLinesForFixtures(
+  all: readonly PhysicalInvoiceFixtureInput[],
+  scoped: readonly PhysicalInvoiceFixtureInput[],
+): PhysicalInvoiceServiceLine[] {
+  const kernelAll = keyedRows(all)
+  const ids = new Set(keyedRows(scoped).filter((r) => r.line_kind !== 'discount' && isBillableFixtureRow(r)).map((r) => r.id))
+  return discountBillLinesForWorkRows(kernelAll, ids).map((l) => {
+    const amt = -l.cents / 100
+    return { description: l.description, qty: 1, unitPrice: amt, amount: amt }
+  })
+}
+
+/** Scoped work rows with each price replaced by the row's NET dollars (count 1) — what proration allocates over. */
+function netPricedRows(all: readonly PhysicalInvoiceFixtureInput[], scoped: readonly PhysicalInvoiceFixtureInput[]): PhysicalInvoiceFixtureInput[] {
+  const kernelAll = keyedRows(all)
+  const shares = discountSharesByWorkRow(kernelAll)
+  return keyedRows(scoped)
+    .filter((r) => r.line_kind !== 'discount')
+    .map((r) => ({ ...r, count: 1, line_unit_price: netWorkLineCents([], r, shares) / 100 }))
+}
 
 export type PhysicalInvoiceMaterialInput = Pick<
   Database['public']['Tables']['jobs_ledger_materials']['Row'],
@@ -44,8 +88,9 @@ export const PHYSICAL_INVOICE_AMOUNT_MATCH_EPSILON = 0.02
 
 /** Same positivity rule as Stripe billable Specific Work rows in SendRecordInvoiceModal. */
 export function isBillableFixtureRow(
-  row: Pick<PhysicalInvoiceFixtureInput, 'name' | 'count' | 'line_unit_price'>,
+  row: Pick<PhysicalInvoiceFixtureInput, 'name' | 'count' | 'line_unit_price'> & { line_kind?: string | null },
 ): boolean {
+  if (row.line_kind === 'discount') return false
   if (!(row.name ?? '').trim()) return false
   const c = Number(row.count)
   const qty = Number.isFinite(c) && c > 0 ? c : 1
@@ -133,6 +178,8 @@ export function resolvePhysicalInvoiceLinePresentation(
   singleLineNarrative: string,
   fixtures: PhysicalInvoiceFixtureInput[],
   materials: PhysicalInvoiceMaterialInput[],
+  /** Every row on the job (v2.3252+) — discount shares split over the whole basis. Defaults to `fixtures`. */
+  allFixtures?: PhysicalInvoiceFixtureInput[],
 ): {
   breakdownMatches: boolean
   serviceLines: PhysicalInvoiceServiceLine[]
@@ -142,6 +189,12 @@ export function resolvePhysicalInvoiceLinePresentation(
   const materialLines = buildMaterialLinesFromMaterials(materials)
   const matSum = totalMaterialLines(materialLines)
   const EPS = PHYSICAL_INVOICE_AMOUNT_MATCH_EPSILON
+  // Discount lines (v2.3252+): with the work at its real prices and each
+  // discount as its own negative row, the Services block matches the bill
+  // exactly — the same test Stripe's composer makes. Otherwise proration runs
+  // over NET row cents (a price the discount already lowered never prints).
+  const discountLines = discountServiceLinesForFixtures(allFixtures ?? fixtures, fixtures)
+  const hasDiscounts = discountLines.length > 0
 
   if (lineOnBillRaw.trim().length > 0) {
     const desc = lineOnBillRaw.trim()
@@ -192,7 +245,14 @@ export function resolvePhysicalInvoiceLinePresentation(
   }
 
   const targetCents = Math.round(serviceTarget * 100)
-  const scaled = buildScaledFixtureLineDrafts(fixtures, targetCents)
+  if (hasDiscounts) {
+    const grossServices = buildBillableServiceLinesFromFixtures(fixtures)
+    const netNatural = totalServiceLines(grossServices) + totalServiceLines(discountLines)
+    if (grossServices.length > 0 && Math.abs(netNatural - serviceTarget) <= EPS) {
+      return { breakdownMatches: true, serviceLines: [...grossServices, ...discountLines], materialLines }
+    }
+  }
+  const scaled = buildScaledFixtureLineDrafts(hasDiscounts ? netPricedRows(allFixtures ?? fixtures, fixtures) : fixtures, targetCents)
 
   if (!scaled || scaled.drafts.length === 0) {
     const narrative = singleLineNarrative.trim() || 'Services'

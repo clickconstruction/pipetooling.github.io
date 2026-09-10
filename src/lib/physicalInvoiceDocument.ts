@@ -66,6 +66,8 @@ export type PhysicalInvoiceJobContext = {
 
 export type PhysicalInvoiceDetailFromJob = {
   fixtures: PhysicalInvoiceFixtureInput[]
+  /** Every row on the job (v2.3252+) — discount shares split over the whole basis. */
+  allFixtures?: PhysicalInvoiceFixtureInput[]
   materials: PhysicalInvoiceMaterialInput[]
   payments: PhysicalInvoicePaymentInput[]
   billingKind: 'job' | 'invoice'
@@ -105,7 +107,9 @@ export type PhysicalInvoiceDocument = {
 }
 
 function formatUsd(dollars: number): string {
-  return `$${dollars.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+  // A discount line (v2.3252+) is negative: "−$1,509.80", never "$-1,509.80".
+  const abs = Math.abs(dollars).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+  return dollars < 0 ? `−$${abs}` : `$${abs}`
 }
 
 /** Long calendar label for a YYYY-MM-DD string (company TZ). */
@@ -191,6 +195,7 @@ export function buildPhysicalInvoiceDocument(opts: {
       narrativeTrim,
       detailFromJob.fixtures,
       detailFromJob.materials,
+      detailFromJob.allFixtures,
     )
     breakdownMatches = resolved.breakdownMatches
     serviceLines = [
