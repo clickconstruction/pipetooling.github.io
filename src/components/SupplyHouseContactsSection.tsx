@@ -10,6 +10,7 @@ import { useCallback, useEffect, useState, type CSSProperties } from 'react'
 import { supabase } from '../lib/supabase'
 import { withSupabaseRetry } from '../utils/errorHandling'
 import { useToastContext } from '../contexts/ToastContext'
+import { useAuth } from '../hooks/useAuth'
 import { fetchUserDisplayNames, userDisplayLabel } from '../lib/userDisplayNames'
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -28,6 +29,7 @@ export function SupplyHouseContactsSection({
   onChanged?: () => void
 }) {
   const { showToast } = useToastContext()
+  const { user: authUser } = useAuth()
   const [rows, setRows] = useState<ContactRow[]>([])
   const [names, setNames] = useState<Record<string, string>>({})
   const [name, setName] = useState('')
@@ -87,6 +89,8 @@ export function SupplyHouseContactsSection({
         email: email.trim(),
         label: label.trim() || '',
         is_default: rows.length === 0,
+        // v2.3243: the Directory's "added by" — the column has no default before its migration lands.
+        created_by: authUser?.id ?? null,
       })
       if (error) throw error
       setName('')
