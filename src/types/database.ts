@@ -16311,6 +16311,7 @@ export type Database = {
       twin_questions: {
         Row: {
           about_bid_id: string | null
+          acted_at: string | null
           answer: string | null
           answered_at: string | null
           answered_by: string | null
@@ -16330,6 +16331,7 @@ export type Database = {
         }
         Insert: {
           about_bid_id?: string | null
+          acted_at?: string | null
           answer?: string | null
           answered_at?: string | null
           answered_by?: string | null
@@ -16349,6 +16351,7 @@ export type Database = {
         }
         Update: {
           about_bid_id?: string | null
+          acted_at?: string | null
           answer?: string | null
           answered_at?: string | null
           answered_by?: string | null

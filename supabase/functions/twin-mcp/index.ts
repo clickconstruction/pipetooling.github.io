@@ -5,7 +5,7 @@ import { callTtManageUser, ttBridgeConfigured, ttTwinEmail } from '../_shared/tt
 import { todayYmdInAppTz, ymdAddDays } from '../_shared/appTimeZone.ts'
 import { classifyTwinQuestionAudience, isTwinQuestionAudience } from '../_shared/twinQuestionAudience.ts'
 import { checkEstimatorQuestionShape, matchRecommended, normalizeTwinQuestionChoices } from '../_shared/twinQuestionShape.ts'
-import { PLANS_ASK_DEFAULT_CHOICES, PLANS_ASK_DEFAULT_RECOMMENDED, classifyTwinQuestionKind, isTwinQuestionKind } from '../_shared/twinQuestionKind.ts'
+import { PLANS_ASK_DEFAULT_CHOICES, PLANS_ASK_DEFAULT_RECOMMENDED, answerRequestsRerun, classifyTwinQuestionKind, effectiveTwinQuestionKind, isTwinQuestionKind } from '../_shared/twinQuestionKind.ts'
 
 // Digital twins MCP server (docs/DIGITAL_TWINS_PLAN.md; owner-approved 2026-08-28).
 // A minimal, dependency-free Model Context Protocol server over streamable HTTP
@@ -426,7 +426,7 @@ const TOOLS = [
   {
     name: 'next_shadow',
     description:
-      "The auto-shadow dispatcher (v2.2936): claim the next live bid that needs a shadow — human-requested bids first (oldest ask, no age limit), then the oldest eligible bid inside the lookback. The claim is the shadow shell itself, so parallel agents never share a bid; done: true means every eligible live bid is covered. Bids whose plans the Drive intake service account cannot read are skipped (probed first via plan-fetch; see get_shadow_queue's `unreadable` list) — never claim a bid you cannot fetch plans for. The whole point (LEARNING_PLAN.md): a shadow costs the estimator zero minutes, locks blind before her number exists, and auto-scores when she sends — run agents on this verb until it says done and the live board is fully covered. Never call it again while your current shadow is unlocked.",
+      "The auto-shadow dispatcher (v2.2936): FIRST (v1.3.17) hands back one of YOUR own unlocked shells whose plans ask a person answered 'Attached — rerun' (resumed: true — redo STG-2 with the new set and lock; the ask is consumed once); otherwise claim the next live bid that needs a shadow — human-requested bids first (oldest ask, no age limit), then the oldest eligible bid inside the lookback. The claim is the shadow shell itself, so parallel agents never share a bid; done: true means every eligible live bid is covered. Bids whose plans the Drive intake service account cannot read are skipped (probed first via plan-fetch; see get_shadow_queue's `unreadable` list) — never claim a bid you cannot fetch plans for. The whole point (LEARNING_PLAN.md): a shadow costs the estimator zero minutes, locks blind before her number exists, and auto-scores when she sends — run agents on this verb until it says done and the live board is fully covered. Never call it again while your current shadow is unlocked.",
     inputSchema: {
       type: 'object',
       properties: {
@@ -2134,6 +2134,60 @@ async function callTool(req: Request, name: string, args: Record<string, unknown
       // v2.3080: readable-plans-only candidates — the 2026-09-06 b480 blocked shadow.
       const claimPlumbingId = await plumbingServiceTypeId(admin)
       if (!claimPlumbingId) return textContent('No Plumbing service type found — cannot scope claims to the twin\'s discipline', true)
+      // v2.3229 / v1.3.17: an answered plans ask ("Attached — rerun") against a shell
+      // this twin still holds UNLOCKED is handed back before any new claim — the rerun
+      // the estimator's tap promised, without relying on the robot to remember. Each
+      // answered ask is consumed once (acted_at); answers that are not a rerun are
+      // consumed too (nothing to resume). Skipped cleanly until the column lands.
+      try {
+        const nowIso = () => new Date().toISOString()
+        const { data: asks, error: asksErr } = await admin.from('twin_questions')
+          .select('id, about_bid_id, question, answer, answered_at, kind')
+          .eq('twin_user_id', twin.twinUserId).eq('status', 'answered').is('acted_at', null)
+          .not('about_bid_id', 'is', null).order('answered_at', { ascending: true }).limit(20)
+        if (!asksErr) {
+          const consume = (id: string) => admin.from('twin_questions').update({ acted_at: nowIso() }).eq('id', id).then(() => {}, () => {})
+          for (const ask of (asks ?? []) as Array<{ id: string; about_bid_id: string; question: string; answer: string | null; kind: string | null }>) {
+            if (effectiveTwinQuestionKind(ask) !== 'plans' || !answerRequestsRerun(ask.answer)) {
+              await consume(ask.id)
+              continue
+            }
+            const SHELL_COLS = 'id, bid_number, project_name, created_by, twin_source_bid_id'
+            const { data: about } = await admin.from('bids').select(SHELL_COLS).eq('id', ask.about_bid_id).maybeSingle()
+            if (!about) { await consume(ask.id); continue }
+            type ShellRow = { id: string; bid_number: string; project_name: string | null; created_by: string | null; twin_source_bid_id: string | null }
+            let shell: ShellRow | null = (about as ShellRow).created_by === twin.twinUserId && (about as ShellRow).twin_source_bid_id ? (about as ShellRow) : null
+            if (!shell) {
+              // The ask was filed on the HUMAN bid — find this twin's shell for it.
+              const { data: mine } = await admin.from('bids').select(SHELL_COLS)
+                .eq('twin_source_bid_id', (about as ShellRow).id).eq('created_by', twin.twinUserId)
+                .order('created_at', { ascending: false }).limit(1).maybeSingle()
+              shell = (mine as ShellRow | null) ?? null
+            }
+            if (!shell) { await consume(ask.id); continue }
+            const { data: run } = await admin.from('twin_shadow_runs').select('id, status').eq('shadow_bid_id', shell.id).maybeSingle()
+            if (!run || (run as { status: string }).status !== 'open') { await consume(ask.id); continue } // locked / scored / void: nothing to resume
+            await consume(ask.id)
+            const { data: ref } = await admin.from('bids').select('bid_number, project_name, plans_link, robot_requested_at').eq('id', shell.twin_source_bid_id!).maybeSingle()
+            await admin.from('bids_submission_entries').insert({
+              bid_id: shell.id,
+              notes: `[pipeline STG-0 resume] a person answered the plans ask "${String(ask.answer ?? '').slice(0, 80)}" — the reference carries the new set; redo STG-2 onward and lock.`,
+            }).then(() => {}, () => {})
+            return textContent(JSON.stringify({
+              ok: true, resumed: true,
+              shadow_bid: `b${shell.bid_number}`, shadow_bid_id: shell.id,
+              reference: ref ? `b${(ref as { bid_number: string }).bid_number}` : null,
+              project: (ref as { project_name?: string | null } | null)?.project_name ?? shell.project_name,
+              plans_link: (ref as { plans_link?: string | null } | null)?.plans_link ?? null,
+              requested: !!(ref as { robot_requested_at?: string | null } | null)?.robot_requested_at,
+              asked: ask.question, answered: ask.answer,
+              next: 'This is YOUR existing shell, handed back because a person answered your plans ask. Redo STG-2 with the plan set now on the reference (plan-fetch reads the new link), then STG-3 and STG-5, and lock_shadow. Do not call next_shadow again until it is locked.',
+            }, null, 2))
+          }
+        }
+      } catch (_) {
+        // Resume is best-effort; a normal claim follows.
+      }
       await probePlansSweep(req)
       const [requestedRes, recentRes] = await Promise.all([
         admin.from('bids').select(CLAIM_COLS)
@@ -2309,7 +2363,7 @@ async function handleRpc(req: Request, msg: { jsonrpc?: string; id?: unknown; me
       return rpcResult(id, {
         protocolVersion: version,
         capabilities: { tools: {} },
-        serverInfo: { name: 'pipetooling-twin-mcp', version: '1.3.16' },
+        serverInfo: { name: 'pipetooling-twin-mcp', version: '1.3.17' },
         instructions:
           "PipeTooling digital-twin seat (estimator-only). Call get_brief first, then get_directory; mint_session gives you a signed-in browser link to the real apps — PipeTooling by default, CountTooling (the PDF-takeoff tool) with app: 'counttooling'. The work happens there. Every call needs your per-twin token (X-Twin-Token or Bearer).",
       })
