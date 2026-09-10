@@ -1078,7 +1078,7 @@ Devs: **Settings → Templates & testing → Workflow email (Edge Function)** (c
 
 **Endpoint**: `GET /functions/v1/customer-portal?token=<opaque>` or `GET /functions/v1/customer-portal?slug=<address>`
 
-**Customer Waiting** (v2.3246): the payload carries `customerPhone` — the number on file for the company, resolved by [`_shared/portalCustomerPhone.ts`](../supabase/functions/_shared/portalCustomerPhone.ts) (`customers.contact_info->>'phone'`, else the newest `jobs_ledger.customer_phone` on one of its jobs; null when neither) — so the request form can say *We'll call you at …* instead of asking for a number the office already has. **Redeploy required.**
+**Customer Waiting** (v2.3246): the payload carries `customerPhone` — the number on file for the company, resolved by [`_shared/portalCustomerPhone.ts`](../supabase/functions/_shared/portalCustomerPhone.ts) (`customers.contact_info->>'phone'`, else the newest `jobs_ledger.customer_phone` on one of its jobs; null when neither) — so the request form can say *We'll call you at …* instead of asking for a number the office already has. **Redeploy required.** v2.3249: the sample fixtures (`_shared/customerSampleFixtures.ts`) carry a `customerPhone` too, so the Settings *What customers see* preview shows the prefill — redeploy again after that merge.
 
 **v2.2690 (Contract Desk PR 5)**: the payload gains `agreements[]` — the customer's `job_contracts` that are `sent` or `signed` (never drafts or voided): job label/address, template, frozen amount, signed stamp + signer, and `signUrl` (the same durable `/contract/sign?t=` link) so the portal's **Your agreements** card can offer *Review & sign* / *View signed copy*.
 
