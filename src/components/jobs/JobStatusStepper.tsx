@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { withSupabaseRetry } from '../../utils/errorHandling'
 import { useToastContext } from '../../contexts/ToastContext'
@@ -58,6 +58,15 @@ export default function JobStatusStepper({ job, authRole, onChanged }: {
   const [collectionsNote, setCollectionsNote] = useState('')
   /** RTB → Working needs a reason (v2.2065): null = closed, string = the reason being typed. */
   const [sendBackReason, setSendBackReason] = useState<string | null>(null)
+  /** v2.3240: why a dashed stage cannot be reached from here — shown under the rail for a few seconds on tap. */
+  const [lockedNote, setLockedNote] = useState<string | null>(null)
+  const lockedNoteTimer = useRef<number | null>(null)
+  const showLockedNote = (text: string) => {
+    setLockedNote(text)
+    if (lockedNoteTimer.current != null) window.clearTimeout(lockedNoteTimer.current)
+    lockedNoteTimer.current = window.setTimeout(() => setLockedNote(null), 5000)
+  }
+  useEffect(() => () => { if (lockedNoteTimer.current != null) window.clearTimeout(lockedNoteTimer.current) }, [])
   /** Shell guard (v2.1935): open dollars that would land on no bill line if the to-Billed flip proceeds. */
   const [shellGuardOpen, setShellGuardOpen] = useState<number | null>(null)
 
@@ -195,52 +204,95 @@ export default function JobStatusStepper({ job, authRole, onChanged }: {
     }
   }
 
-  const pillBase: React.CSSProperties = {
-    fontSize: '0.8125rem',
-    padding: '0.3rem 0.75rem',
+  // v2.3240 (mockup-approved "rail"): three states with three looks — black =
+  // the job is here, blue outline = one tap away, dashed grey = not reachable
+  // from here (tap it and the reason shows under the rail instead of hiding in
+  // a tooltip). Collections is the on/off switch it really is, on its own row.
+  const currentIdx = JOB_STEPPER_ORDER.indexOf(status)
+  const last = JOB_STEPPER_ORDER.length - 1
+  const stepBase: React.CSSProperties = {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: '0.45rem',
+    padding: '0.35rem 0.8rem 0.35rem 0.5rem',
     borderRadius: 999,
+    fontSize: '0.875rem',
+    font: 'inherit',
     whiteSpace: 'nowrap',
+    lineHeight: 1.2,
+  }
+  const bubbleBase: React.CSSProperties = {
+    width: 20,
+    height: 20,
+    borderRadius: '50%',
+    display: 'grid',
+    placeItems: 'center',
+    fontSize: '0.7rem',
+    fontWeight: 700,
+    lineHeight: 1,
+    fontVariantNumeric: 'tabular-nums',
+    flexShrink: 0,
   }
 
   return (
-    <div style={{ marginTop: '1.25rem', paddingTop: '0.9rem', borderTop: '1px solid var(--border)' }}>
-      <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '0.4rem' }}>Status</div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '0.2rem', flexWrap: 'wrap' }}>
+    <div>
+      <div style={{ display: 'block', marginBottom: 4, fontWeight: 500, fontSize: '0.875rem' }}>Status</div>
+      <div role="group" aria-label="Job status" style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', rowGap: '0.5rem' }}>
         {JOB_STEPPER_ORDER.map((s, i) => {
           const active = s === status
           const reason = jobStepperMoveDisabledReason(status, s)
-          const disabled = busy || (!active && reason != null)
+          const reachable = !active && reason == null
+          const state: 'current' | 'reachable' | 'locked' = active ? 'current' : reachable ? 'reachable' : 'locked'
+          const label = JOB_STEPPER_LABELS[s]
+          const bubble = reachable ? (i < currentIdx ? '←' : '→') : String(i + 1)
+          const stepStyle: React.CSSProperties =
+            state === 'current'
+              ? { ...stepBase, background: 'var(--text-strong)', color: 'var(--surface)', border: '1px solid var(--text-strong)', fontWeight: 700, cursor: 'default' }
+              : state === 'reachable'
+                ? { ...stepBase, background: 'var(--surface)', color: 'var(--text-link)', border: '1px solid #2563eb', fontWeight: 600, cursor: busy ? 'progress' : 'pointer' }
+                : { ...stepBase, background: 'transparent', color: 'var(--text-faint)', border: '1px dashed var(--border)', fontWeight: 500, cursor: 'help' }
+          const bubbleStyle: React.CSSProperties =
+            state === 'current'
+              ? { ...bubbleBase, background: 'var(--surface)', color: 'var(--text-strong)' }
+              : state === 'reachable'
+                ? { ...bubbleBase, background: '#2563eb', color: '#fff' }
+                : { ...bubbleBase, border: '1px dashed var(--border)', color: 'var(--text-faint)' }
           return (
-            <span key={s} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.2rem' }}>
+            <span key={s} style={{ display: 'inline-flex', alignItems: 'center' }}>
               <button
                 type="button"
-                onClick={() => (!active && reason == null ? void moveTo(s) : undefined)}
-                disabled={disabled && !active}
+                data-state={state}
                 aria-pressed={active}
-                title={active ? 'Current stage' : reason ?? `Move to ${JOB_STEPPER_LABELS[s]}`}
-                style={{
-                  ...pillBase,
-                  border: active ? 'none' : '1px solid transparent',
-                  background: active ? 'var(--text-strong)' : 'transparent',
-                  color: active ? 'var(--surface)' : reason == null ? 'var(--text-700)' : 'var(--text-faint)',
-                  fontWeight: active ? 700 : 500,
-                  cursor: active ? 'default' : reason == null && !busy ? 'pointer' : 'not-allowed',
+                aria-disabled={state === 'locked' ? true : undefined}
+                onClick={() => {
+                  if (busy) return
+                  if (reachable) void moveTo(s)
+                  else if (!active && reason) showLockedNote(reason)
                 }}
+                title={active ? 'Current stage' : reason ?? `Move to ${label}`}
+                style={stepStyle}
               >
-                {JOB_STEPPER_LABELS[s]}
+                <span aria-hidden style={bubbleStyle}>{bubble}</span>
+                {label}
               </button>
-              {i < JOB_STEPPER_ORDER.length - 1 ? (
-                <span aria-hidden style={{ color: 'var(--text-faint)', fontSize: '0.8rem' }}>→</span>
-              ) : null}
+              {i < last ? <span aria-hidden style={{ width: 14, height: 2, background: i < currentIdx ? 'var(--text-muted)' : 'var(--border)', flexShrink: 0 }} /> : null}
             </span>
           )
         })}
-        <span aria-hidden style={{ width: 1, height: 18, background: 'var(--border)', margin: '0 0.35rem' }} />
+      </div>
+      {lockedNote ? (
+        <div role="status" style={{ marginTop: '0.4rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
+          {lockedNote}
+        </div>
+      ) : null}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.6rem', fontSize: '0.875rem' }}>
         <button
           type="button"
-          onClick={() => (status === 'billed' ? setCollectionsConfirm(inCollections ? 'from' : 'to') : undefined)}
+          role="switch"
+          aria-checked={inCollections}
+          aria-label={inCollections ? 'In Collections — switch off to return the job to plain Billed' : 'Collections — flag as difficult to collect'}
           disabled={busy || status !== 'billed'}
-          aria-pressed={inCollections}
+          onClick={() => (status === 'billed' ? setCollectionsConfirm(inCollections ? 'from' : 'to') : undefined)}
           title={
             status !== 'billed'
               ? 'Collections applies to Billed jobs'
@@ -249,16 +301,37 @@ export default function JobStatusStepper({ job, authRole, onChanged }: {
                 : 'Flag as difficult to collect — moves to the Collections section'
           }
           style={{
-            ...pillBase,
-            border: inCollections ? '1px solid var(--border-red)' : '1px solid transparent',
-            background: inCollections ? 'var(--bg-red-100)' : 'transparent',
-            color: status === 'billed' ? 'var(--text-red-700)' : 'var(--text-faint)',
-            fontWeight: inCollections ? 700 : 500,
+            position: 'relative',
+            width: 34,
+            height: 20,
+            borderRadius: 999,
+            border: `1px solid ${inCollections ? '#dc2626' : 'var(--border-strong)'}`,
+            background: inCollections ? '#dc2626' : 'var(--bg-muted)',
             cursor: busy || status !== 'billed' ? 'not-allowed' : 'pointer',
+            opacity: status !== 'billed' ? 0.55 : 1,
+            padding: 0,
+            flexShrink: 0,
           }}
         >
-          {inCollections ? 'In Collections' : 'Collections'}
+          <span
+            aria-hidden
+            style={{
+              position: 'absolute',
+              top: 2,
+              left: inCollections ? 16 : 2,
+              width: 14,
+              height: 14,
+              borderRadius: '50%',
+              background: 'var(--surface)',
+              boxShadow: '0 1px 2px rgba(0,0,0,0.25)',
+              transition: 'left 0.15s ease',
+            }}
+          />
         </button>
+        <span style={{ color: inCollections ? 'var(--text-red-700)' : status === 'billed' ? 'var(--text-700)' : 'var(--text-muted)', fontWeight: inCollections ? 700 : 500 }}>
+          {inCollections ? 'In Collections' : 'Collections'}
+        </span>
+        {status !== 'billed' ? <span style={{ color: 'var(--text-faint)', fontSize: '0.8125rem' }}>· applies once the job is Billed</span> : null}
       </div>
 
       {shellGuardOpen != null ? (
