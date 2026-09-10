@@ -30,6 +30,11 @@ describe('envelopeRefusal', () => {
     expect(envelopeRefusal(sent, { userId: 'robert', role: 'dev' }, 'scored', new Set())).toBeNull()
     expect(envelopeRefusal({ ...sent, estimator_id: null }, { userId: 'diane', role: 'assistant' }, 'scored', new Set())).toBeNull()
   })
+  it('a recorded best effort (v2.3234) opens it before send — the human number is already on record', () => {
+    expect(envelopeRefusal({ ...sent, bid_date_sent: null, bid_value: null, best_effort_value: 148200 }, { userId: 'wendi', role: 'estimator' }, 'scored', new Set())).toBeNull()
+    expect(envelopeRefusal({ ...sent, bid_date_sent: null, bid_value: null, best_effort_value: '0' }, { userId: 'wendi', role: 'estimator' }, 'scored', new Set())).toBe('not-sent')
+    expect(envelopeRefusal({ ...sent, bid_date_sent: null, bid_value: null, best_effort_value: 148200 }, { userId: 'wendi', role: 'estimator' }, 'locked', new Set())).toBe('no-scored-run')
+  })
   it('roles outside the audit audience never see it, and it offers once per bid per session', () => {
     expect(envelopeRefusal(sent, { userId: 'wendi', role: 'primary' }, 'scored', new Set())).toBe('not-auditor')
     expect(envelopeRefusal(sent, { userId: 'wendi', role: 'estimator' }, 'scored', new Set(['b431']))).toBe('already-offered')

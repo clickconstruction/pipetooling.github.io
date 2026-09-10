@@ -10,6 +10,7 @@ import {
   MIRROR_SECTION_LABELS,
   MIRROR_SECTION_ORDER,
   type MirrorAudit,
+  type MirrorBestEffort,
   type MirrorDraftTotal,
   type MirrorSection,
   type RobotMirrorRow,
@@ -19,6 +20,7 @@ import { buildAxisCards, normalizeBidNumber, type RunScoreRow } from '../../lib/
 import { computeAuditDraftTotal } from '../../lib/bids/bidAudits'
 import { fetchAllRowsChunkedIn } from '../../lib/supabasePaging'
 import type { ShadowRunRow } from '../../lib/bids/shadowStory'
+import { bestEffortStamp } from '../../lib/bids/bestEffort'
 import type { RobotRowState } from '../../lib/bids/robotRowState'
 import { diffTakeoffs, diffWaterfall, type DiffWaterfall } from '../../lib/bids/takeoffDiff'
 import { loadPricedTakeoffRows } from '../../lib/bids/loadPricedTakeoffRows'
@@ -149,17 +151,22 @@ export function BidsRobotMirrorTab({ bids, robotBids, auditPending, loading, hig
   const [expanded, setExpanded] = useState<ReadonlySet<string>>(() => new Set())
   // Where the delta lives (v2.3225): priced rows on both sides, diffed once per expanded scored row.
   const [details, setDetails] = useState<Record<string, RowDetail>>({})
+  // v2.3234: bid id → recorded best effort.
+  const [bestEfforts, setBestEfforts] = useState<Map<string, MirrorBestEffort>>(() => new Map())
 
   useEffect(() => {
     let cancelled = false
     void (async () => {
-      const [runRes, scoreRes, auditRes, stdRes] = await Promise.all([
+      const [runRes, scoreRes, auditRes, stdRes, beRes] = await Promise.all([
         db.rpc('list_shadow_runs'),
         db.from('twin_run_scores').select('*').order('scored_at', { ascending: false }),
         db.from('bid_audits').select('id, bid_id, status, requested_at, self_assessment').order('requested_at', { ascending: false }).limit(300),
         db.from('users').select('id').eq('calibration_standard', true),
+        // v2.3234: recorded best efforts (staff-readable, never by twins); a missing table reads as none.
+        db.from('bid_best_efforts').select('bid_id, value, recorded_at, recorded_by').limit(1000),
       ])
       if (cancelled) return
+      setBestEfforts(new Map(((beRes.data ?? []) as Array<MirrorBestEffort & { bid_id: string }>).map((r) => [r.bid_id, { value: r.value, recorded_at: r.recorded_at, recorded_by: r.recorded_by }])))
       // Missing tables / RLS-closed reads (a client ahead of a migration) read as "no runs", never a broken lens.
       setShadowRuns((runRes.data ?? []) as ShadowRunRow[])
       setScores((scoreRes.data ?? []) as RunScoreRow[])
@@ -231,8 +238,9 @@ export function BidsRobotMirrorTab({ bids, robotBids, auditPending, loading, hig
         standardTeacherIds: standardIds,
         draftTotals,
         rowStateFor,
+        bestEfforts,
       }),
-    [bids, robotBids, shadowRuns, scores, audits, standardIds, draftTotals, rowStateFor],
+    [bids, robotBids, shadowRuns, scores, audits, standardIds, draftTotals, rowStateFor, bestEfforts],
   )
   useEffect(() => {
     onRowCount?.(mirror.listedCount)
@@ -334,7 +342,40 @@ export function BidsRobotMirrorTab({ bids, robotBids, auditPending, loading, hig
             )}
           </span>
         </td>
-        <td style={{ ...td, ...mono }}>{scored ? money(run.ourValue) : <span style={{ color: 'var(--text-faint)' }}>—</span>}</td>
+        <td style={{ ...td, ...mono }}>
+          {(() => {
+            // v2.3234: two human numbers when they differ — the recorded best effort and what went out.
+            const be = lead ? row.bestEffort : null
+            const beValue = be ? Number(be.value) : null
+            if (be && row.gap) {
+              return (
+                <>
+                  <span>{money(row.gap.best)} → {money(row.gap.sent)}</span>
+                  <span style={{ display: 'block', fontSize: '0.7rem', fontWeight: 600, color: row.gap.diff > 0 ? 'var(--text-green-700)' : 'var(--text-amber-800)' }}>
+                    {row.gap.diff > 0 ? '+' : '−'}{money(Math.abs(row.gap.diff))} after the reveal
+                  </span>
+                </>
+              )
+            }
+            if (scored) {
+              return (
+                <>
+                  <span>{money(run.ourValue)}</span>
+                  {be && !row.bid.bid_date_sent ? <span style={{ display: 'block', fontSize: '0.7rem', color: 'var(--text-muted)' }}>{bestEffortStamp(be)} · not sent yet</span> : run.scoredAgainst === 'best_effort' ? <span style={{ display: 'block', fontSize: '0.7rem', color: 'var(--text-muted)' }}>best effort · sent at the same number</span> : null}
+                </>
+              )
+            }
+            if (be && beValue != null && !row.bid.bid_date_sent) {
+              return (
+                <>
+                  <span>{money(beValue)}</span>
+                  <span style={{ display: 'block', fontSize: '0.7rem', color: 'var(--text-muted)' }}>{bestEffortStamp(be)} · not sent yet</span>
+                </>
+              )
+            }
+            return <span style={{ color: 'var(--text-faint)' }}>—</span>
+          })()}
+        </td>
         <td style={{ ...td, ...mono, fontWeight: 600, color: run.deltaPct == null ? 'var(--text-faint)' : inBand ? 'var(--text-green-700)' : 'var(--text-red-700)' }}>
           {run.deltaPct == null ? '—' : fmtDelta(run.deltaPct)}
         </td>
@@ -410,10 +451,14 @@ export function BidsRobotMirrorTab({ bids, robotBids, auditPending, loading, hig
   const pills: Array<{ n: string; label: string; warn: boolean; title: string; onClick?: () => void }> = [
     { n: String(mirror.rowCount), label: 'of our bids have a robot run', warn: false, title: 'Human bids with at least one shadow or backtest run' },
     { n: `${Math.max(0, mirror.liveEligible - mirror.uncoveredLive)} / ${mirror.liveEligible}`, label: 'live plumbing bids shadowed', warn: mirror.uncoveredLive > 0, title: 'Unsent, undecided bids with plans on file that a robot has (or could) shadow — every uncovered one is a free future reference' },
-    { n: String(mirror.sealedCount), label: 'sealed, waiting on you to send', warn: false, title: 'Robot numbers locked away on live bids — each opens the moment you mark the bid sent with a value' },
+    { n: String(mirror.sealedCount), label: 'sealed, waiting on your number', warn: false, title: 'Robot numbers locked away on live bids — each opens the moment you record your best effort on the Cover Letter, or mark the bid sent with a value' },
     { n: String(mirror.needsCount), label: 'need something from a person', warn: mirror.needsCount > 0, title: 'Live bids the robot can\'t start on — no plans link, plans it can\'t open, or a question it asked. Each row says what, with the door.' },
     { n: String(auditPending), label: oldestAuditDays != null && auditPending > 0 ? `audits waiting · oldest ${oldestAuditDays} d` : 'audits waiting', warn: auditPending > 0, title: 'Robot audits a person still owes a verdict' },
     { n: `${gate.met} / ${gate.total}`, label: 'kinds of job earned first drafts', warn: false, title: 'A kind of job earns first drafts after five robot numbers in a row within 8% of ours', onClick: onOpenScoreboard },
+    // v2.3234: the robot's worth, summed — sent bids that moved off the number recorded before the reveal.
+    ...(mirror.moved.count > 0
+      ? [{ n: `${mirror.moved.count} · ${money(mirror.moved.total)}`, label: `bid${mirror.moved.count === 1 ? '' : 's'} moved after the robot's envelope`, warn: false, title: 'Sent bids whose value differs from the best effort recorded before the envelope opened, and the dollars moved in total' }]
+      : []),
   ]
 
   return (

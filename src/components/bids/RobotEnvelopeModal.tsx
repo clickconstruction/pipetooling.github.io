@@ -231,7 +231,9 @@ export function RobotEnvelopeModal({ bid, run, authUser, onClose, onOpenAudits }
           <div style={{ minWidth: 0 }}>
             <h2 id="robot-envelope-title" style={{ margin: 0, fontSize: '1rem', fontWeight: 600 }}>The robot's envelope · {label}</h2>
             <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
-              Your number is on record and the score is taken — this cannot change it. Three minutes here teaches the robot more than an hour next week.
+              {run.scoredAgainst === 'best_effort' && !bid.bid_date_sent
+                ? 'Your best effort is on record and the score is taken against it — nothing here can change that. The bid itself can still change: that is the point.'
+                : 'Your number is on record and the score is taken — this cannot change it. Three minutes here teaches the robot more than an hour next week.'}
             </div>
           </div>
           <button type="button" onClick={onClose} aria-label="Close" style={{ marginLeft: 'auto', background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.1rem', lineHeight: 1, color: 'var(--text-muted)' }}>×</button>
@@ -244,7 +246,7 @@ export function RobotEnvelopeModal({ bid, run, authUser, onClose, onOpenAudits }
               <b style={mono}>{money(robotTotal)}</b>
             </span>
             <span style={kpi}>
-              <span style={kpiLabel}>Ours · just now</span>
+              <span style={kpiLabel}>{run.scoredAgainst === 'best_effort' ? 'Ours · best effort' : run.scoredAgainst === 'sent' ? 'Ours · sent' : 'Ours'}</span>
               <b style={mono}>{money(ourValue)}</b>
             </span>
             <span style={kpi}>

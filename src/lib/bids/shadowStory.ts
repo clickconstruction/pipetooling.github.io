@@ -27,6 +27,8 @@ export interface ShadowRunRow {
    */
   teacher_name?: string | null
   teacher_standard?: boolean | null
+  /** v2.3234: 'best_effort' | 'sent' — which human number a scored run measured against; absent before the migration. */
+  reference_kind?: string | null
 }
 
 export interface ShadowStoryStep {

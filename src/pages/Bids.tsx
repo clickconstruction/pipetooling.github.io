@@ -68,6 +68,7 @@ const isRobotLens = (tab: string): boolean => ROBOT_LENS_KEYS.has(tab)
 import { RobotEnvelopeModal } from '../components/bids/RobotEnvelopeModal'
 import { envelopeRefusal, envelopeRunFromShadow, isRevisionAfterReveal, robotReviewRevisionNote, type EnvelopeRun } from '../lib/bids/robotEnvelope'
 import { mirrorRunReviewable, type RobotMirrorRun } from '../lib/bids/robotMirror'
+import { bestEffortGap, bestEffortGapNote } from '../lib/bids/bestEffort'
 import { useBidAuditsPendingCount } from '../hooks/useBidAuditsPendingCount'
 import { canWorkRobotAudits, ROBOT_AUDIT_ROLES } from '../lib/bids/bidAudits'
 import { BidSubmissionFollowupTab } from '../components/bids/BidSubmissionFollowupTab'
@@ -714,9 +715,12 @@ export default function Bids() {
           .maybeSingle()
         if (!fresh) return
         const number = (fresh.bid_number ?? '').trim()
-        const { data: runs } = await (supabase as unknown as import('@supabase/supabase-js').SupabaseClient).rpc('list_shadow_runs')
+        const untyped = supabase as unknown as import('@supabase/supabase-js').SupabaseClient
+        // v2.3234: a recorded best effort opens the envelope before send (fail-soft: no table → no record).
+        const bestEffort = await untyped.from('bid_best_efforts').select('value').eq('bid_id', bidId).maybeSingle().then((r) => (r.data as { value: number | string } | null)?.value ?? null, () => null)
+        const { data: runs } = await untyped.rpc('list_shadow_runs')
         const run = ((runs ?? []) as ShadowRunRow[]).find((r) => (r.reference_bid_number ?? '').trim() === number && r.status === 'scored') ?? null
-        const refusal = envelopeRefusal(fresh, { userId: authUser?.id ?? null, role: myRole }, run?.status ?? null, envelopeOfferedRef.current)
+        const refusal = envelopeRefusal({ ...fresh, best_effort_value: bestEffort }, { userId: authUser?.id ?? null, role: myRole }, run?.status ?? null, envelopeOfferedRef.current)
         if (refusal && !(opts?.force && (refusal === 'already-offered' || refusal === 'not-estimator'))) return
         if (!run) return
         envelopeOfferedRef.current.add(bidId)
@@ -731,10 +735,11 @@ export default function Bids() {
   )
   // A Robot Board row's "Review now": the same envelope, on a scored or audited run whose audit still waits (sent bids only).
   const openEnvelopeFromMirror = useCallback((source: BidWithBuilder, run: RobotMirrorRun) => {
-    if (!source.bid_date_sent || !mirrorRunReviewable(run)) return
+    // v2.3234: a run scored against the recorded best effort opens before send too.
+    if (!(source.bid_date_sent || run.scoredAgainst === 'best_effort') || !mirrorRunReviewable(run)) return
     setRobotEnvelope({
       bid: source,
-      run: { kind: run.kind, shellNumber: run.shellNumber, robotTotal: run.robotTotal, ourValue: run.ourValue, deltaPct: run.deltaPct, at: run.at || null, teacherName: run.teacherName, practice: run.practice },
+      run: { kind: run.kind, shellNumber: run.shellNumber, robotTotal: run.robotTotal, ourValue: run.ourValue, deltaPct: run.deltaPct, at: run.at || null, teacherName: run.teacherName, practice: run.practice, scoredAgainst: run.scoredAgainst ?? null },
     })
   }, [])
   // Dev door (v2.3222): /bids?envelope=<bid number> force-opens the envelope on that bid's scored shadow — support and testing, never for estimators.
@@ -751,6 +756,25 @@ export default function Bids() {
     }, { replace: true })
     void offerRobotEnvelope(target.id, { force: true })
   }, [location.search, bids, myRole, setSearchParams, offerRobotEnvelope])
+  // v2.3234: at send, the sent value against the recorded best effort — the robot's measured move on this bid, once, on the ledger.
+  const noteBestEffortGap = useCallback(async (bidId: string) => {
+    try {
+      const untyped = supabase as unknown as import('@supabase/supabase-js').SupabaseClient
+      const [{ data: be }, { data: fresh }] = await Promise.all([
+        untyped.from('bid_best_efforts').select('value').eq('bid_id', bidId).maybeSingle(),
+        supabase.from('bids').select('bid_number, bid_value, bid_date_sent').eq('id', bidId).maybeSingle(),
+      ])
+      if (!be || !fresh?.bid_date_sent) return
+      const gap = bestEffortGap((be as { value: number | string }).value, fresh.bid_value)
+      if (!gap) return
+      const { count } = await supabase.from('bids_submission_entries').select('id', { count: 'exact', head: true }).eq('bid_id', bidId).like('notes', '[best effort gap]%')
+      if ((count ?? 0) > 0) return
+      const run = shadowRunByBidNumber.get((fresh.bid_number ?? '').trim()) ?? null
+      await supabase.from('bids_submission_entries').insert({ bid_id: bidId, notes: bestEffortGapNote(gap, run?.locked_total != null ? Number(run.locked_total) : null), created_by: authUser?.id ?? null })
+    } catch {
+      // The note is the story; the send already succeeded.
+    }
+  }, [shadowRunByBidNumber, authUser?.id])
   // Bid value changed after the robot's number was in view: on the ledger by name (never contamination — the score stays as taken).
   const noteRobotReviewRevision = useCallback(
     async (bid: BidWithBuilder, nextValue: number | string | null | undefined) => {
@@ -4519,7 +4543,9 @@ export default function Bids() {
           bidVersions={bidVersions}
           reloadBidVersions={() => (selectedBidForPricing ? loadBidVersions(selectedBidForPricing.id).then(() => {}) : Promise.resolve())}
           loadBids={loadBids}
-          onBidSentRecorded={(id) => { void offerRobotEnvelope(id) }}
+          onBidSentRecorded={(id) => { void noteBestEffortGap(id).then(() => offerRobotEnvelope(id)) }}
+          onBestEffortRecorded={(id) => { void offerRobotEnvelope(id) }}
+          onOpenRobotEnvelope={(id) => { void offerRobotEnvelope(id, { force: true }) }}
           coverLetterInclusionsByBid={coverLetterInclusionsByBid}
           setCoverLetterInclusionsByBid={setCoverLetterInclusionsByBid}
           coverLetterExclusionsByBid={coverLetterExclusionsByBid}

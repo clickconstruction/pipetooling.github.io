@@ -25,6 +25,7 @@ import { normalizeBidNumber, isPracticeTeacherScore, type RunScoreRow } from './
 import { shadowCoverage, type ShadowCoverageBid } from './shadowCoverage'
 import type { ShadowRunRow } from './shadowStory'
 import type { RobotGap, RobotRowState } from './robotRowState'
+import { bestEffortGap, summarizeBestEffortMoves } from './bestEffort'
 
 export type MirrorSection = SubmissionSectionKey
 
@@ -93,6 +94,15 @@ export interface RobotMirrorRun {
   need?: { gap: RobotGap | null; questions: number; plansAsks: number }
   /** 'off' only. */
   offReason?: 'opt-out' | 'division'
+  /** v2.3234: which human number a scored shadow measured against (list_shadow_runs.reference_kind); null when unknown. */
+  scoredAgainst?: 'best_effort' | 'sent' | null
+}
+
+/** v2.3234: a bid's recorded best effort (bid_best_efforts). */
+export interface MirrorBestEffort {
+  value: number | string
+  recorded_at: string
+  recorded_by: string | null
 }
 
 export interface RobotMirrorRow<B extends MirrorBid = MirrorBid> {
@@ -102,6 +112,10 @@ export interface RobotMirrorRow<B extends MirrorBid = MirrorBid> {
   earlier: RobotMirrorRun[]
   /** A row-level caveat: 'no bid value on record' (sent without a value, so nothing scored). */
   note: string | null
+  /** v2.3234: the recorded best effort, when one exists (absent on rows built without the record map). */
+  bestEffort?: MirrorBestEffort | null
+  /** v2.3234: best effort → sent value, when both exist and differ — the robot's measured influence on this bid. */
+  gap?: { best: number; sent: number; diff: number; pct: number } | null
 }
 
 export interface RobotMirror<B extends MirrorBid = MirrorBid> {
@@ -120,6 +134,8 @@ export interface RobotMirror<B extends MirrorBid = MirrorBid> {
   liveEligible: number
   /** Shells that pair to no human bid — pair or archive. */
   orphanShells: MirrorShell[]
+  /** v2.3234: sent bids that moved off their recorded best effort, and the total dollars moved (the robot's worth, summed). */
+  moved: { count: number; total: number }
 }
 
 export interface RobotMirrorInput<B extends MirrorBid> {
@@ -138,6 +154,8 @@ export interface RobotMirrorInput<B extends MirrorBid> {
    * or off — so the Unsent section mirrors the human board row for row.
    */
   rowStateFor?: (bid: B) => RobotRowState
+  /** v2.3234: human bid id → recorded best effort. Optional; loaded by the lens (staff-readable, never by twins). */
+  bestEfforts?: ReadonlyMap<string, MirrorBestEffort>
 }
 
 export const MIRROR_SECTION_ORDER: MirrorSection[] = ['unsent', 'pending', 'won', 'startedOrComplete', 'lost']
@@ -238,6 +256,7 @@ export function buildRobotMirror<B extends MirrorBid>(input: RobotMirrorInput<B>
       teacherName: r.teacher_name ?? null,
       at: r.scored_at ?? r.locked_at ?? r.created_at ?? '',
       audit: auditFor(shell?.id ?? null),
+      scoredAgainst: scored ? (r.reference_kind === 'best_effort' || r.reference_kind === 'sent' ? r.reference_kind : null) : null,
     })
   }
 
@@ -355,7 +374,9 @@ export function buildRobotMirror<B extends MirrorBid>(input: RobotMirrorInput<B>
     if (!latest) continue
     const sentWithoutValue = !!b.bid_date_sent && !(num(b.bid_value) != null && (num(b.bid_value) as number) > 0)
     const note = latest.status === 'sealed' && sentWithoutValue ? 'no bid value on record' : null
-    sections[section].push({ bid: b, section, latest, earlier, note })
+    const bestEffort = input.bestEfforts?.get(b.id) ?? null
+    const gap = bestEffort && b.bid_date_sent ? bestEffortGap(bestEffort.value, b.bid_value) : null
+    sections[section].push({ bid: b, section, latest, earlier, note, bestEffort, gap })
     listedCount++
     if (latest.status === 'needs') needsCount++
     else if (latest.status !== 'off' && latest.status !== 'queued') rowCount++
@@ -379,6 +400,14 @@ export function buildRobotMirror<B extends MirrorBid>(input: RobotMirrorInput<B>
     uncoveredLive: Math.max(0, coverage.live - coverage.covered),
     liveEligible: coverage.live,
     orphanShells,
+    moved: (() => {
+      const s = summarizeBestEffortMoves(
+        input.humanBids
+          .filter((b) => !!b.bid_date_sent && input.bestEfforts?.has(b.id))
+          .map((b) => ({ best: input.bestEfforts!.get(b.id)!.value, sent: b.bid_value })),
+      )
+      return { count: s.moved, total: s.total }
+    })(),
   }
 }
 
