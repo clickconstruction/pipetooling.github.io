@@ -112,6 +112,7 @@ when_to_read:
    - [send-rfq-email](#send-rfq-email)
    - [customer-portal](#customer-portal)
    - [submit-portal-request](#submit-portal-request)
+   - [bid-basis-grant](#bid-basis-grant)
    - [sub-portal](#sub-portal)
    - [submit-sub-portal](#submit-sub-portal)
    - [get-estimate-public-terms](#get-estimate-public-terms)
@@ -1093,6 +1094,14 @@ Devs: **Settings → Templates & testing → Workflow email (Edge Function)** (c
 **Endpoint**: `POST /functions/v1/submit-portal-request` — `{ token, kind: 'visit'|'bid', jobId?, description, availability?, phone?, plansLink?, website }` (`website` is the honeypot).
 
 **Auth**: none (`verify_jwt = false`) — the portal token is the capability.
+
+### bid-basis-grant
+
+**Purpose** (v2.3226): the Cover Letter's door into CountTooling for the marked-up plans export (Bid basis, v2.3219). `POST { bid_id }` with the caller's session JWT returns the bid's CountTooling view link (`count_tooling_plans_link`, else the twin-stamped `count_tooling_link`) with `export=bid-basis&ref=b<bid_number>` appended and — when `COUNTTOOLING_VIEW_GRANT_SECRET` is set — a viewer grant (`&g=`, `_shared/viewGrant.ts`, claims `{ t, name, email, person: null, via: 'pipetooling-bid-basis', iat, exp }`, 24 h) naming the caller. CountTooling's `get-view-project` accepts the `pipetooling-bid-basis` source (added 2026-09-10), skips its email gate, and logs the visit under the caller's name. Response: `{ ok, url, granted, expires_in?, viewer?, reason? }` — no secret or a mint failure degrades to `granted: false` with the bare link, so the client still opens the plan (the estimator meets CountTooling's email gate instead).
+
+**Auth**: `verify_jwt = false`; the JWT is validated in-handler; roles dev / master_technician / assistant / controller / estimator / primary / superintendent (the Cover Letter roles); the bid is read through the caller's own client, so bids RLS decides visibility (404 when not visible). 400 `no_counttooling_link` when the bid has no CountTooling view link.
+
+**Caller**: `BidBasisCard.tsx` — opens the tab synchronously on the click (user activation), invokes this function, then points the tab at `url` (a DEV-only `localStorage['bidBasis.ctOrigin']` swaps the origin for a local CountTooling). **Required secret**: `COUNTTOOLING_VIEW_GRANT_SECRET` (same value as CountTooling's `PT_VIEW_GRANT_SECRET`; already set for `sub-portal`).
 
 ### sub-portal
 

@@ -180,6 +180,7 @@ describe('rows', () => {
     const ins = bidBasisInsertFromMessage(m)
     expect(ins.filename).toBe(m.filename)
     expect(ins.save_method).toBe('reported')
+    expect(bidBasisInsertFromMessage(parseBidBasisExportMessage(manifest({ saveMethod: 'confirmed' }))!).save_method).toBe('confirmed')
     expect(ins.sheet_labels).toEqual(['P-101', 'P-201'])
     expect(ins.ct_view_token).toBe(TOKEN)
     expect(ins.canvas_snapshot).toEqual({ version: 1, pages: [] })

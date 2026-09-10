@@ -9,6 +9,7 @@
  */
 
 import { loadJsPDF } from '../loadJsPDF'
+import { bidBasisClause, currentBidBasisExport, shortSheetLabels, type BidBasisExportRowLike } from '../bids/bidBasis'
 import { supabase } from '../supabase'
 import {
   computeBidPricingRows,
@@ -555,7 +556,17 @@ export async function downloadApprovalPdf(ctx: ApprovalPdfContext): Promise<void
   const paymentSchedule = schedFlagRes.data?.include_payment_schedule === true && paymentScheduleRowsData.length > 0
     ? { rows: paymentScheduleRowsData.map((r) => ({ timing: r.timing, percent: Number(r.percent) })), amountDollars: effectiveRevenue }
     : null
-  const coverLetterText = buildCoverLetterText(customerName, customerAddress, projectNameVal, projectAddressVal, revenueWords, revenueNumber, fixtureRows, inclusions, exclusions, terms, designDrawingPlanDateFormatted, serviceTypeName, ctx.coverLetter.includeSignature, effectiveIncludeFixtures, paymentSchedule)
+  // Bid basis (v2.3226): the same fresh read — the letter flag + the current marked-up
+  // plans export — so the Approval PDF says what the letter says.
+  const [basisFlagRes, basisRowsRes] = await Promise.all([
+    supabase.from('bids').select('bid_to_marked_plans').eq('id', bidId).maybeSingle(),
+    supabase.from('bid_plan_basis_exports').select('id, exported_at, filename, save_method, sheet_labels, sheet_count, ct_updated_at, ct_project_name, superseded_at').eq('bid_id', bidId).order('exported_at', { ascending: false }),
+  ])
+  const basisCurrent = currentBidBasisExport(((basisRowsRes.data ?? []) as BidBasisExportRowLike[]))
+  const bidBasis = basisFlagRes.data?.bid_to_marked_plans === true && basisCurrent
+    ? { clause: bidBasisClause({ planDateFormatted: designDrawingPlanDateFormatted, sheets: shortSheetLabels(basisCurrent.sheet_labels ?? [], basisCurrent.ct_project_name ?? null) }) }
+    : null
+  const coverLetterText = buildCoverLetterText(customerName, customerAddress, projectNameVal, projectAddressVal, revenueWords, revenueNumber, fixtureRows, inclusions, exclusions, terms, designDrawingPlanDateFormatted, serviceTypeName, ctx.coverLetter.includeSignature, effectiveIncludeFixtures, paymentSchedule, null, null, bidBasis)
   const coverLines = coverLetterText.split('\n')
   for (const line of coverLines) {
     if (y > pageH - margin) { doc.addPage(); y = margin }

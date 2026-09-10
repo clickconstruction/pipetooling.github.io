@@ -55,7 +55,8 @@ function makeBuilder() {
 }
 return { store, makeBuilder }
 })
-vi.mock('../../lib/supabase', () => ({ supabase: { from: () => makeBuilder() } }))
+const invokeMock = vi.hoisted(() => vi.fn())
+vi.mock('../../lib/supabase', () => ({ supabase: { from: () => makeBuilder(), functions: { invoke: (...args: unknown[]) => invokeMock(...args) } } }))
 vi.mock('../../hooks/useAuth', async () => {
   const { useAuthModuleMock } = await import('../../test/renderSmokeMocks')
   return useAuthModuleMock()
@@ -114,10 +115,14 @@ function post(data: unknown, origin = 'https://counttooling.com') {
 
 describe('BidBasisCard', () => {
   let openSpy: MockInstance<typeof window.open>
+  let openedWin: { closed: boolean; focus: () => void; location: { href: string }; document: { write: (s: string) => void } }
   beforeEach(() => {
     store.rows = []
     store.seq = 0
-    openSpy = vi.spyOn(window, 'open').mockImplementation(() => ({ closed: false, focus: () => {} }) as unknown as Window)
+    openedWin = { closed: false, focus: () => {}, location: { href: '' }, document: { write: () => {} } }
+    openSpy = vi.spyOn(window, 'open').mockImplementation(() => openedWin as unknown as Window)
+    invokeMock.mockReset()
+    invokeMock.mockResolvedValue({ data: { ok: true, url: `https://counttooling.com/app/?t=${TOKEN}&export=bid-basis&ref=b409&g=grant.sig`, granted: true, viewer: 'Smoke Dev' }, error: null })
   })
   afterEach(() => {
     openSpy.mockRestore()
@@ -132,15 +137,29 @@ describe('BidBasisCard', () => {
     renderWithProviders(<Harness b={bid({ count_tooling_plans_link: null, count_tooling_link: `https://counttooling.com/app/?t=${TOKEN}` } as Partial<BidWithBuilder>)} />)
     expect(await screen.findByText('Plans as issued')).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: /Get marked-up plans from CountTooling/ }))
-    expect(openSpy).toHaveBeenCalledWith(`https://counttooling.com/app/?t=${TOKEN}&export=bid-basis&ref=b409`, '_blank')
+    expect(openSpy).toHaveBeenCalledWith('', '_blank')
+    await waitFor(() => expect(openedWin.location.href).toContain('&g=grant.sig'))
+  })
+
+  it('falls back to the bare link when the grant cannot be minted, and says CountTooling may ask for an email', async () => {
+    invokeMock.mockResolvedValue({ data: null, error: { message: 'boom' } })
+    renderWithProviders(<Harness b={bid()} />)
+    await screen.findByText('Plans as issued')
+    fireEvent.click(screen.getByRole('button', { name: /Get marked-up plans from CountTooling/ }))
+    await waitFor(() => expect(openedWin.location.href).toBe(`https://counttooling.com/app/?t=${TOKEN}&export=bid-basis&ref=b409`))
+    const dialog = await screen.findByRole('dialog', { name: 'CountTooling opened in a new tab' })
+    await waitFor(() => expect(within(dialog).getByTestId('bid-basis-grant-note').textContent).toContain('may ask for your work email'))
   })
 
   it('Plans as issued: the button opens CountTooling with the export flag and shows the waiting dialog', async () => {
     renderWithProviders(<Harness b={bid()} />)
     expect(await screen.findByText('Plans as issued')).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: /Get marked-up plans from CountTooling/ }))
-    expect(openSpy).toHaveBeenCalledWith(`https://counttooling.com/app/?t=${TOKEN}&export=bid-basis&ref=b409`, '_blank')
+    expect(openSpy).toHaveBeenCalledWith('', '_blank')
     const dialog = await screen.findByRole('dialog', { name: 'CountTooling opened in a new tab' })
+    await waitFor(() => expect(openedWin.location.href).toBe(`https://counttooling.com/app/?t=${TOKEN}&export=bid-basis&ref=b409&g=grant.sig`))
+    expect(invokeMock).toHaveBeenCalledWith('bid-basis-grant', { body: { bid_id: 'bid-1' } })
+    await waitFor(() => expect(within(dialog).getByTestId('bid-basis-grant-note').textContent).toContain('Opened as you'))
     expect(within(dialog).getByText(/bid-basis_b409_livingston-steel-office-ti_\d{4}-\d{2}-\d{2}_\d{4}\.pdf/)).toBeTruthy()
     expect(within(dialog).getByText(/Search your computer for b409/)).toBeTruthy()
     fireEvent.click(within(dialog).getByRole('button', { name: 'Close' }))
