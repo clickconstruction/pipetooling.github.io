@@ -54,3 +54,21 @@ Any open request can become a customer waiting: expand it and tap **Raise priori
 ## Close it
 
 **✓ Close** opens the thread; add a note and **Add & Close** as usual. Closing ends the banner too. Who may call, lower, raise or close is the same set: Dispatch group members and devs on the Dispatch inbox, estimating group members and devs on the Estimator inbox.
+
+## The banner that follows you
+
+While a customer is waiting, everyone in that inbox sees a strip above the top nav on every page — Jobs, Bids, Schedule, wherever they are:
+
+:::example Waiting (red)
+{{chip:red|● Jane Doe is waiting · 14 min}} Water heater leaking, wants someone today {{button:green|📞 Call}} {{button:outline|Open}}
+:::
+
+:::example After someone calls (amber)
+{{chip:yellow|📞 Sam called Jane Doe 2:14 pm}} asks for a visit · still open {{button:outline|Open}}
+:::
+
+The minutes tick. **Call** on the strip does the same thing as Call on the row (dials or copies, and stamps the request). **Open** goes to the inbox — Dispatch Mode's Inbox tab, or the Dashboard's Teams Inbox card for estimators. With two or more waiting, the oldest leads and the button reads *Open · +1 more*. On the inbox page itself the strip collapses to one quiet line, since the request is already the first thing on screen.
+
+The Dashboard's **Needs you** card carries the same item at the very top — *Jane Doe is waiting · 14 min* — red while anyone is uncalled, amber once every open request has been called.
+
+The strip ends for the whole team the moment the request is **lowered** or **closed**. Nothing lowers itself overnight; a person acts.

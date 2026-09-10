@@ -71,6 +71,7 @@ export type NeedsYouItem = {
     | 'hr-reports-pending'
     | 'job-account-unflagged'
     | 'job-account-no-packet'
+    | 'customer-waiting'
   severity: NeedsYouSeverity
   /** Product the item belongs to — omitted means `company`. See `NeedsYouKind`. */
   kind?: NeedsYouKind
@@ -106,6 +107,7 @@ export type NeedsYouItem = {
 export const NEEDS_YOU_RANK: Record<NeedsYouItem['key'], number> = {
   'bulk-delete': 0,
   'claim-dev': 0,
+  'customer-waiting': 0,
   'ar-deposits': 10,
   'lien-unconditional': 20,
   'gc-review-weekly': 20,
@@ -355,6 +357,14 @@ export type NeedsYouInputs = {
    */
   jobAccountGapsEnabled?: boolean
   jobAccountGaps?: { unflaggedJobs: number; unflaggedTotal: number; noPacketInvoices: number; noPacketTotal: number } | null
+  /**
+   * Customer Waiting (v2.3248): open high-priority portal requests in the
+   * inboxes this viewer belongs to, from `CustomerWaitingContext` — null when
+   * none. Tier 0 (a person is standing at the counter), red while anyone is
+   * uncalled, amber once every one has been called but is still open.
+   */
+  customerWaitingEnabled?: boolean
+  customerWaiting?: { count: number; uncalled: number; oldestMinutes: number; leadName: string } | null
 }
 
 export function buildNeedsYouItems(inputs: NeedsYouInputs): NeedsYouItem[] {
@@ -776,6 +786,30 @@ export function buildNeedsYouItems(inputs: NeedsYouInputs): NeedsYouItem[] {
         '. Approve all on Banking → Accounting clears the backlog; with the org switch on, only Internal Transfers on split transactions come back here.',
       figure: a.stale > 99 ? '99+' : String(a.stale),
       actionLabel: 'Open approvals',
+    })
+  }
+
+  if (inputs.customerWaitingEnabled && inputs.customerWaiting != null && inputs.customerWaiting.count > 0) {
+    const { count, uncalled, oldestMinutes, leadName } = inputs.customerWaiting
+    const waitShort = oldestMinutes < 60 ? `${oldestMinutes} min` : oldestMinutes < 48 * 60 ? `${Math.floor(oldestMinutes / 60)} h ${oldestMinutes % 60 ? `${oldestMinutes % 60} min` : ''}`.trim() : `${Math.floor(oldestMinutes / 1440)} days`
+    items.push({
+      key: 'customer-waiting',
+      severity: uncalled > 0 ? 'red' : 'amber',
+      kicker: 'Customer portal',
+      title:
+        uncalled > 0
+          ? count === 1
+            ? `${leadName} is waiting · ${waitShort}`
+            : `${count} customers waiting · oldest ${waitShort}`
+          : count === 1
+            ? `${leadName} was called — request still open`
+            : `${count} customer requests called, still open`,
+      detail:
+        uncalled > 0
+          ? `${uncalled === 1 ? 'A request' : `${uncalled} requests`} sent from a customer portal ${uncalled === 1 ? 'has' : 'have'} nobody on ${uncalled === 1 ? 'it' : 'them'} yet. Open the inbox: the number is on the row, Call stamps it for the whole team.`
+          : 'Someone has called back; lower the priority once it is scheduled, or close it with a note when the visit is done.',
+      figure: count > 99 ? '99+' : String(count),
+      actionLabel: 'Open the inbox',
     })
   }
 

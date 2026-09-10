@@ -14,6 +14,8 @@ import { useForceReload } from '../contexts/ForceReloadContext'
 import { useTheme } from '../contexts/ThemeContext'
 import { useChecklistAddModal } from '../contexts/ChecklistAddModalContext'
 import AddTaskShortcutBanner from './AddTaskShortcutBanner'
+import { CustomerWaitingBanner } from './CustomerWaitingBanner'
+import { CustomerWaitingProvider } from '../contexts/CustomerWaitingContext'
 import AssistantReadyToBillBanner from './AssistantReadyToBillBanner'
 import CustomerContactCardIcon from './icons/CustomerContactCardIcon'
 import { RouteChunkBoundary } from './RouteChunkBoundary'
@@ -794,7 +796,9 @@ export default function Layout() {
   }
 
   const layoutBody = (
-    <>
+    // Customer Waiting (v2.3248): one app-wide subscription behind the banner slot
+    // below and the Needs You item inside the Outlet. Inert for ineligible viewers.
+    <CustomerWaitingProvider>
       {/* v2.2186: freezes the page behind ANY blocking overlay (modal, sheet, dialog); opt-out via data-page-scroll="allow". */}
       <BodyScrollLockSentinel />
       <DailyGoalsGateOverlay />
@@ -833,6 +837,8 @@ export default function Layout() {
           <strong>Training mode — read-only.</strong> Explore anything; clock in/out still works, but no other change will save until a dev turns this off.
         </div>
       )}
+      {/* Customer Waiting (v2.3248): a portal request is open and high — follows inbox members on every page. */}
+      <CustomerWaitingBanner />
       <div className="appNavChrome">
       <nav
         ref={navRef}
@@ -2210,7 +2216,7 @@ export default function Layout() {
       <EditProjectModal />
       <EditCustomerModal />
     </div>
-    </>
+    </CustomerWaitingProvider>
   )
 
   // ALWAYS wrap in the provider: on cold load `role` is null and flips to the real

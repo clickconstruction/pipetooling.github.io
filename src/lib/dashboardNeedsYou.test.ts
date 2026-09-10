@@ -60,6 +60,25 @@ function burst(over: Partial<{ actor_name: string; bundles: number; window_start
   }
 }
 
+describe('customer waiting (v2.3248): tier 0, red while uncalled, amber once called', () => {
+  it('names the lead and the wait; sorts first; quiet when disabled or null', () => {
+    const on = buildNeedsYouItems(inputs({
+      customerWaitingEnabled: true,
+      customerWaiting: { count: 1, uncalled: 1, oldestMinutes: 14, leadName: 'Jane Doe' },
+      dispatchAgedEnabled: true,
+      dispatchAged: { count: 2, total: 5, oldestAgeDays: 4 },
+      dispatchMinAgeDays: 3,
+    }))
+    expect(on[0]).toMatchObject({ key: 'customer-waiting', severity: 'red', kicker: 'Customer portal', figure: '1', actionLabel: 'Open the inbox', title: 'Jane Doe is waiting · 14 min' })
+    const many = buildNeedsYouItems(inputs({ customerWaitingEnabled: true, customerWaiting: { count: 3, uncalled: 2, oldestMinutes: 75, leadName: 'Jane Doe' } }))
+    expect(many.find((i) => i.key === 'customer-waiting')?.title).toBe('3 customers waiting · oldest 1 h 15 min')
+    const called = buildNeedsYouItems(inputs({ customerWaitingEnabled: true, customerWaiting: { count: 1, uncalled: 0, oldestMinutes: 0, leadName: 'Jane Doe' } }))
+    expect(called.find((i) => i.key === 'customer-waiting')).toMatchObject({ severity: 'amber', title: 'Jane Doe was called — request still open' })
+    expect(buildNeedsYouItems(inputs({ customerWaitingEnabled: true, customerWaiting: null })).some((i) => i.key === 'customer-waiting')).toBe(false)
+    expect(buildNeedsYouItems(inputs({ customerWaitingEnabled: false, customerWaiting: { count: 1, uncalled: 1, oldestMinutes: 5, leadName: 'X' } })).some((i) => i.key === 'customer-waiting')).toBe(false)
+  })
+})
+
 describe('aging queues (journey-map #40): dispatch requests + HR reports', () => {
   it('dispatch: amber past the min age, red once the oldest passes the red line, quiet otherwise', () => {
     const on = buildNeedsYouItems(inputs({
