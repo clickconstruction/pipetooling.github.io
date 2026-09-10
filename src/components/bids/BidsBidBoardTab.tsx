@@ -1448,20 +1448,19 @@ export function BidsBidBoardTab({
             }}
           >
             {/* Tier-2 #20: the scope sits where the numbers are — every pill count is this trade's (or all trades'). */}
+            {/* v2.3213 (owner): plain text, not a bubble — the trade name as a label for the row. */}
             <span
               title="Every count on this page — pills, section headers, rows — is for the trade selected in the pill row above the tabs. The Dashboard's bid cards count all trades."
               style={{
                 flex: '0 0 auto',
-                fontSize: '0.72rem',
-                fontWeight: 600,
-                color: 'var(--text-muted)',
-                padding: '0.2rem 0.55rem',
-                border: '1px dashed var(--border-strong)',
-                borderRadius: 999,
+                fontSize: '0.8rem',
+                fontWeight: 700,
+                color: 'var(--text-strong)',
+                padding: '0.2rem 0.15rem 0.2rem 0',
                 whiteSpace: 'nowrap',
               }}
             >
-              {scopeLabel(sentScope)}
+              {scopeLabel(sentScope)}:
             </span>
             {narrowViewport && robotReadiness ? (
               <span style={{ flex: '0 0 auto', display: 'inline-flex', alignItems: 'center', gap: '0.25rem', fontSize: '0.72rem', color: 'var(--text-muted)' }}>

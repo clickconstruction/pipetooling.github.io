@@ -59,6 +59,8 @@ import {
   type BidBoardMapPin,
   type BidBoardMapSectionVisibility,
   type BidBoardMapBid,
+  readBidBoardMapClustered,
+  writeBidBoardMapClustered,
 } from '../../lib/bids/bidBoardMap'
 import type { SubmissionSectionKey } from '../../lib/bids/submissionSections'
 import type { MapCanvasAnchor, MapCanvasPin } from '../../lib/map/mapCanvasTypes'
@@ -76,6 +78,9 @@ const OUTLINE_BUTTON_STYLE: React.CSSProperties = {
   cursor: 'pointer',
   fontFamily: 'inherit',
 }
+
+/** Red beats amber when a cluster holds both an overdue and a due-soon unsent bid. */
+const CLUSTER_RING_PRIORITY: readonly string[] = [BID_BOARD_MAP_DUE_RING_COLOR.overdue, BID_BOARD_MAP_DUE_RING_COLOR.soon]
 
 const LINK_BUTTON_STYLE: React.CSSProperties = {
   background: 'none',
@@ -319,6 +324,14 @@ export function BidBoardMapCard({
 }) {
   const { showToast } = useToastContext()
   const [hidden, setHidden] = useState<boolean>(() => readBidBoardMapHidden())
+  // v2.3213: pin clustering, off by default, remembered per device.
+  const [clustered, setClustered] = useState<boolean>(() => readBidBoardMapClustered())
+  const toggleClustered = useCallback(() => {
+    setClustered((c) => {
+      writeBidBoardMapClustered(!c)
+      return !c
+    })
+  }, [])
   useEffect(() => {
     if (revealSignal > 0) {
       setHidden(false)
@@ -551,6 +564,17 @@ export function BidBoardMapCard({
               Fit all
             </button>
           ) : null}
+          {!hidden && pins.length > 1 ? (
+            <button
+              type="button"
+              onClick={toggleClustered}
+              aria-pressed={clustered}
+              title={clustered ? 'Show every pin on its own' : 'Group pins that overlap into count discs; click a disc to zoom in'}
+              style={{ ...LINK_BUTTON_STYLE, minHeight: isMobile ? 44 : undefined, fontWeight: clustered ? 700 : undefined }}
+            >
+              {clustered ? 'Clustered ✓' : 'Cluster'}
+            </button>
+          ) : null}
           <button type="button" onClick={toggleHidden} aria-expanded={!hidden} style={{ ...LINK_BUTTON_STYLE, minHeight: isMobile ? 44 : undefined }}>
             {hidden ? 'Show map' : isMobile ? 'Hide' : 'Hide map'}
           </button>
@@ -582,6 +606,8 @@ export function BidBoardMapCard({
                     isMobile={isMobile}
                     anchor={canvasAnchor}
                     fitPoints={fitPoints}
+                    cluster={clustered}
+                    clusterRingPriority={CLUSTER_RING_PRIORITY}
                     // Leaflet / Google ignore a height change after mount — remount when the form flips
                     key={isMobile ? 'phone' : 'desktop'}
                   />
@@ -596,6 +622,8 @@ export function BidBoardMapCard({
                     isMobile={isMobile}
                     anchor={canvasAnchor}
                     fitPoints={fitPoints}
+                    cluster={clustered}
+                    clusterRingPriority={CLUSTER_RING_PRIORITY}
                     // Leaflet / Google ignore a height change after mount — remount when the form flips
                     key={isMobile ? 'phone' : 'desktop'}
                   />

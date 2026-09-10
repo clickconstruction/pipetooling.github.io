@@ -41,6 +41,14 @@ Clicking a pin also lights the bid's row on the board below and scrolls to it, s
 
 On a phone, tapping a pin shows the bid as a bar under the map instead of a pop-up, so the buttons stay big and the pin stays in view.
 
+## Cluster the piles
+
+Around Austin and San Antonio the pins sit on top of each other. **Cluster** (beside **Fit all**) groups pins that overlap at the current zoom into one disc with a count on it:
+
+- The disc takes the color of the section most of its bids are in, and wears a **red** or **amber** ring when any bid inside is overdue or due soon, so nothing urgent hides in a pile.
+- **Click a disc** to zoom the map onto its bids. Zoom in on your own and the discs break back into pins as soon as they have room.
+- It's **off unless you turn it on**, and the choice is remembered on that device — the link reads **Clustered ✓** while it's on. The section chips, the distance boxes and **Play** all keep working; the discs recompute from whatever pins are showing.
+
 ## The rail beside the map
 
 On a desktop the map takes the left of the card and a rail on the right says what the map knows:

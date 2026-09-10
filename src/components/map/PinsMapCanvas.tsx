@@ -10,10 +10,11 @@
  * page bundles (the /map route chunk already carries it; Vite shares the
  * vendor chunk).
  */
-import { useEffect, type ReactNode } from 'react'
+import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
-import { Circle, CircleMarker, MapContainer, Marker, Popup, TileLayer, Tooltip, useMap } from 'react-leaflet'
+import { Circle, CircleMarker, MapContainer, Marker, Popup, TileLayer, Tooltip, useMap, useMapEvents } from 'react-leaflet'
+import { clusterBounds, clusterLabel, clusterPins, clusterRadiusPx, type PinCluster } from '../../lib/map/clusterPins'
 import { mapPointsBounds, type MapPoint } from '../../lib/map/mapPointsBounds'
 import {
   MAP_CANVAS_ANCHOR_COLOR,
@@ -38,6 +39,48 @@ export type PinsMapCanvasProps = {
   anchor?: MapCanvasAnchor | null
   /** Override what fit-to-all frames (the pins + anchor by default); every pin still draws. */
   fitPoints?: readonly MapPoint[] | null
+  /** v2.3213: group pins that overlap at the current zoom into count discs; click a disc to zoom to its members. */
+  cluster?: boolean
+  /** Ring colors most-urgent first — a cluster wears the first one any member has. */
+  clusterRingPriority?: readonly string[]
+}
+
+/** Reports the map's zoom so the cluster grid can follow it. */
+function ZoomTracker({ onZoom }: { onZoom: (z: number) => void }) {
+  const map = useMapEvents({ zoomend: () => onZoom(map.getZoom()) })
+  useEffect(() => {
+    onZoom(map.getZoom())
+  }, [map, onZoom])
+  return null
+}
+
+function clusterIcon(c: PinCluster<MapCanvasPin>): L.DivIcon {
+  const r = clusterRadiusPx(c.count)
+  const ring = c.ringColor ? `box-shadow:0 0 0 3px ${c.ringColor};` : ''
+  return L.divIcon({
+    className: 'pins-map-cluster',
+    html: `<div style="width:${r * 2}px;height:${r * 2}px;border-radius:50%;background:${c.color};opacity:.92;border:2px solid var(--surface);${ring}display:grid;place-items:center;color:#fff;font:700 ${r >= 18 ? 13 : 11}px system-ui,sans-serif;">${clusterLabel(c.count)}</div>`,
+    iconSize: [r * 2, r * 2],
+    iconAnchor: [r, r],
+  })
+}
+
+function ClusterMarker({ cluster }: { cluster: PinCluster<MapCanvasPin> }) {
+  const map = useMap()
+  const icon = useMemo(() => clusterIcon(cluster), [cluster])
+  return (
+    <Marker
+      position={[cluster.lat, cluster.lng]}
+      icon={icon}
+      title={`${cluster.count} bids here — click to zoom in`}
+      eventHandlers={{
+        click: () => {
+          const b = clusterBounds(cluster)
+          map.fitBounds(L.latLngBounds([b.south, b.west], [b.north, b.east]), { padding: [40, 40], maxZoom: 17 })
+        },
+      }}
+    />
+  )
 }
 
 function FitToPoints({ points, fitSignal }: { points: MapPoint[]; fitSignal: number }) {
@@ -60,8 +103,12 @@ const ANCHOR_ICON = L.divIcon({
   iconAnchor: [8, 8],
 })
 
-export default function PinsMapCanvas({ pins, selectedId, onSelect, renderPopup, fitSignal, height, isMobile, anchor, fitPoints }: PinsMapCanvasProps) {
+export default function PinsMapCanvas({ pins, selectedId, onSelect, renderPopup, fitSignal, height, isMobile, anchor, fitPoints, cluster = false, clusterRingPriority }: PinsMapCanvasProps) {
   const first = pins[0] ?? anchor ?? null
+  const [zoom, setZoom] = useState(12)
+  const items = useMemo(() => (cluster ? clusterPins(pins, zoom, { ringPriority: clusterRingPriority }) : null), [cluster, pins, zoom, clusterRingPriority])
+  const singlePins = items ? items.flatMap((i) => (i.kind === 'pin' ? [i.pin] : [])) : pins
+  const clusters = items ? items.flatMap((i) => (i.kind === 'cluster' ? [i.cluster] : [])) : []
   const center: L.LatLngExpression = first ? [first.lat, first.lng] : [39.5, -98.35]
   return (
     <MapContainer center={center} zoom={first ? 12 : 4} style={{ width: '100%', height }} scrollWheelZoom={!isMobile} attributionControl>
@@ -70,6 +117,7 @@ export default function PinsMapCanvas({ pins, selectedId, onSelect, renderPopup,
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
       />
       <FitToPoints points={mapCanvasFitPoints(pins, anchor, fitPoints)} fitSignal={fitSignal} />
+      {cluster ? <ZoomTracker onZoom={setZoom} /> : null}
       {anchor ? (
         <>
           {(anchor.ringMiles ?? []).map((mi) => (
@@ -88,7 +136,10 @@ export default function PinsMapCanvas({ pins, selectedId, onSelect, renderPopup,
           </Marker>
         </>
       ) : null}
-      {pins.map((p) => {
+      {clusters.map((c) => (
+        <ClusterMarker key={c.id} cluster={c} />
+      ))}
+      {singlePins.map((p) => {
         const selected = p.id === selectedId
         const ring = p.ringColor ?? null
         return (
