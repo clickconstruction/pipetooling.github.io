@@ -5030,11 +5030,16 @@ export type Database = {
           from_user_id: string
           id: string
           job_ledger_id: string | null
+          last_called_at: string | null
+          last_called_by_user_id: string | null
           links: string[]
           location_lat: number | null
           location_lng: number | null
           pending_action: string | null
           pending_payload: Json | null
+          priority: string
+          priority_changed_at: string | null
+          priority_changed_by_user_id: string | null
           reference_summary: string | null
           status: string
           title: string
@@ -5048,11 +5053,16 @@ export type Database = {
           from_user_id: string
           id?: string
           job_ledger_id?: string | null
+          last_called_at?: string | null
+          last_called_by_user_id?: string | null
           links?: string[]
           location_lat?: number | null
           location_lng?: number | null
           pending_action?: string | null
           pending_payload?: Json | null
+          priority?: string
+          priority_changed_at?: string | null
+          priority_changed_by_user_id?: string | null
           reference_summary?: string | null
           status?: string
           title: string
@@ -5066,11 +5076,16 @@ export type Database = {
           from_user_id?: string
           id?: string
           job_ledger_id?: string | null
+          last_called_at?: string | null
+          last_called_by_user_id?: string | null
           links?: string[]
           location_lat?: number | null
           location_lng?: number | null
           pending_action?: string | null
           pending_payload?: Json | null
+          priority?: string
+          priority_changed_at?: string | null
+          priority_changed_by_user_id?: string | null
           reference_summary?: string | null
           status?: string
           title?: string
@@ -5102,6 +5117,20 @@ export type Database = {
             columns: ["job_ledger_id"]
             isOneToOne: false
             referencedRelation: "jobs_ledger"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dispatch_requests_last_called_by_user_id_fkey"
+            columns: ["last_called_by_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dispatch_requests_priority_changed_by_user_id_fkey"
+            columns: ["priority_changed_by_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
         ]
@@ -5843,9 +5872,15 @@ export type Database = {
           from_user_id: string
           id: string
           job_ledger_id: string | null
+          last_called_at: string | null
+          last_called_by_user_id: string | null
           links: string[]
           location_lat: number | null
           location_lng: number | null
+          pending_payload: Json | null
+          priority: string
+          priority_changed_at: string | null
+          priority_changed_by_user_id: string | null
           reference_summary: string | null
           status: string
           title: string
@@ -5859,9 +5894,15 @@ export type Database = {
           from_user_id: string
           id?: string
           job_ledger_id?: string | null
+          last_called_at?: string | null
+          last_called_by_user_id?: string | null
           links?: string[]
           location_lat?: number | null
           location_lng?: number | null
+          pending_payload?: Json | null
+          priority?: string
+          priority_changed_at?: string | null
+          priority_changed_by_user_id?: string | null
           reference_summary?: string | null
           status?: string
           title: string
@@ -5875,9 +5916,15 @@ export type Database = {
           from_user_id?: string
           id?: string
           job_ledger_id?: string | null
+          last_called_at?: string | null
+          last_called_by_user_id?: string | null
           links?: string[]
           location_lat?: number | null
           location_lng?: number | null
+          pending_payload?: Json | null
+          priority?: string
+          priority_changed_at?: string | null
+          priority_changed_by_user_id?: string | null
           reference_summary?: string | null
           status?: string
           title?: string
@@ -5909,6 +5956,20 @@ export type Database = {
             columns: ["job_ledger_id"]
             isOneToOne: false
             referencedRelation: "jobs_ledger"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "estimator_requests_last_called_by_user_id_fkey"
+            columns: ["last_called_by_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "estimator_requests_priority_changed_by_user_id_fkey"
+            columns: ["priority_changed_by_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
         ]
@@ -15423,7 +15484,6 @@ export type Database = {
           address: string | null
           created_at: string | null
           id: string
-          is_insurer: boolean
           monthly_payment_day: number | null
           name: string
           notes: string | null
@@ -15436,7 +15496,6 @@ export type Database = {
           address?: string | null
           created_at?: string | null
           id?: string
-          is_insurer?: boolean
           monthly_payment_day?: number | null
           name: string
           notes?: string | null
@@ -15449,7 +15508,6 @@ export type Database = {
           address?: string | null
           created_at?: string | null
           id?: string
-          is_insurer?: boolean
           monthly_payment_day?: number | null
           name?: string
           notes?: string | null
@@ -20035,6 +20093,10 @@ export type Database = {
         }
         Returns: string
       }
+      log_request_call: {
+        Args: { p_inbox: string; p_phone: string; p_request_id: string }
+        Returns: boolean
+      }
       mark_customer_portal_slug_shared: {
         Args: { p_customer_id: string }
         Returns: Json
@@ -20598,6 +20660,15 @@ export type Database = {
       set_mercury_transaction_duplicate: {
         Args: { p_duplicate_id: string; p_keeper_id: string }
         Returns: undefined
+      }
+      set_request_priority: {
+        Args: {
+          p_inbox: string
+          p_note?: string
+          p_priority: string
+          p_request_id: string
+        }
+        Returns: boolean
       }
       set_sub_payment_visibility: {
         Args: { p_hidden: boolean; p_payment_id: string }
