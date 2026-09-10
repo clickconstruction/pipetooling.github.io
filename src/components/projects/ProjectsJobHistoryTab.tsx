@@ -50,6 +50,7 @@ import {
 } from '../../lib/projectsJobHistoryBarSearch'
 import { ProjectsJobHistoryTimeline } from './ProjectsJobHistoryTimeline'
 import { JobHistoryDayList } from './JobHistoryDayList'
+import { HistoryRangeBar } from './HistoryRangeBar'
 import { buildJobHistoryDayList } from '../../lib/jobs/jobHistoryDayList'
 import { useNarrowViewport640 } from '../../hooks/useNarrowViewport640'
 import { useUserDisplayNames } from '../../hooks/useUserDisplayNames'
@@ -473,6 +474,18 @@ export function ProjectsJobHistoryTab({ customerId, jobId = null }: Props) {
 
   return (
     <div>
+      {/* v2.3237: on a phone, one range bar replaces the search box, From / To,
+          the preset chips and the summary line above the day list. */}
+      {phoneDayList ? (
+        <HistoryRangeBar
+          start={rangeStart}
+          end={rangeEnd}
+          todayYmd={todayKey}
+          daysWorked={dayList?.daysWorked ?? 0}
+          maxPeople={dayList?.maxPeople ?? 0}
+          onChange={(start, end) => persistRange(start, end)}
+        />
+      ) : (
       <div
         style={{
           display: 'flex',
@@ -589,6 +602,7 @@ export function ProjectsJobHistoryTab({ customerId, jobId = null }: Props) {
           </div>
         </div>
       </div>
+      )}
 
       {!jobId && (() => {
         const linkedCount = bars.filter((b) => b.projectId != null).length

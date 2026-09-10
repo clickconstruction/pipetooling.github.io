@@ -1,5 +1,5 @@
 import { peopleCountColor } from '../../lib/projectsJobHistoryData'
-import { jobHistoryDayListSummary, jobHistoryGapLabel, type JobHistoryDayList as DayList } from '../../lib/jobs/jobHistoryDayList'
+import { jobHistoryGapLabel, type JobHistoryDayList as DayList } from '../../lib/jobs/jobHistoryDayList'
 import { APP_CALENDAR_TZ, formatWorkDateYmdMonthDayShort, referenceDateForWorkDateYmd } from '../../utils/dateUtils'
 
 /**
@@ -20,10 +20,9 @@ const weekday = new Intl.DateTimeFormat('en-US', { weekday: 'short', timeZone: A
 export function JobHistoryDayList({ list, namesById, todayYmd, onOpenDay }: Props) {
   return (
     <div data-testid="job-history-day-list">
-      <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.5rem', fontSize: '0.8rem', color: 'var(--text-muted)', padding: '0.25rem 0 0.4rem' }}>
-        <span>{jobHistoryDayListSummary(list)}</span>
-      </div>
-      {list.rows.length === 0 ? null : (
+      {list.rows.length === 0 ? (
+        <p style={{ margin: '0.5rem 0', color: 'var(--text-muted)', fontSize: '0.85rem' }}>No days worked in this range.</p>
+      ) : (
         <ul style={{ listStyle: 'none', margin: 0, padding: 0, borderTop: '1px solid var(--border)' }}>
           {list.rows.map((r) => {
             const colors = peopleCountColor(r.people)

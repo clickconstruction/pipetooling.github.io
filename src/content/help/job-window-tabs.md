@@ -24,7 +24,7 @@ Owners, controllers and master techs see **Team labor** as the first line of the
 
 ## The History tab
 
-**History** looks back 180 days by default (move the range to see more). Tap a day to see who was there and what it cost. Nothing on this tab edits anything. On a phone the grid becomes a list: one row per day worked, newest first, with the names and the people count, and a one-line gap where days went by with no work. Tap a row for the same day detail.
+**History** looks back 180 days by default (move the range to see more). Tap a day to see who was there and what it cost. Nothing on this tab edits anything. On a phone the grid becomes a list: one row per day worked, newest first, with the names and the people count, and a one-line gap where days went by with no work. Tap a row for the same day detail. Above it, one bar holds the range: the dates, the {{chip:blue|90d}} {{chip:gray|180d}} {{chip:gray|365d}} presets, and a line with the days worked and the most people on site. Tap **Edit** for the date pickers; picking a preset puts them away.
 
 ## The Edit tab reads as rows
 
