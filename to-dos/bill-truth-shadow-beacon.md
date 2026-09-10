@@ -1,6 +1,6 @@
 # Bill truth: remove the shadow beacon
 
-Status: dated chore — remove by **2026-09-19** or with the next bill-truth PR, whichever comes first · source: fragment v2.2862 "Shadow beacon (one release)"
+Status: **shipped, delete me** — retired in v2.3218 (#2930, `fix(billing): retire the bill-truth shadow beacon and its legacy sums`); `billTruthShadow.ts` and every `reportBillTruthShadow` call are gone from `src/`. Source: fragment v2.2862 "Shadow beacon (one release)"
 
 ## What it is
 
