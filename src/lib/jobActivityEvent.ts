@@ -41,6 +41,9 @@ export type JobActivityEventType =
   | 'contract_shared'
   | 'job_auto_created_from_estimate'
   | 'job_created'
+  | 'discount_added'
+  | 'discount_changed'
+  | 'discount_removed'
 
 export type JobActivityEvent = {
   /** Stable React key + dedupe key: `ev:status:<id>` (Phase 1) / `ev:<rowid>` (Phase 2). */
@@ -124,6 +127,11 @@ export const JOB_ACTIVITY_EVENT_RENDER: Record<JobActivityEventType, EventRender
   // A job's birth (v2.2904, B20) — written by jobs_ledger_birth_to_activity (AFTER INSERT) for
   // every human-session create; "Job opened from bid B398" when bid_id is set. Backfilled.
   job_created: { tag: 'Opened', ...MONEY_GREEN, bucket: 'status' },
+  // Discount line items (v2.3256) — the office's client logs these through
+  // log_job_discount_event after a save that changed a discount row; financial.
+  discount_added: { tag: 'Discount', ...MONEY_GREEN, bucket: 'billing' },
+  discount_changed: { tag: 'Discount', ...STATUS_AMBER, bucket: 'billing' },
+  discount_removed: { tag: 'Discount', ...DANGER_RED, bucket: 'billing' },
 }
 
 export function eventRenderMeta(type: JobActivityEventType): EventRenderMeta {

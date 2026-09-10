@@ -278,6 +278,8 @@ export type JobSummaryLedgerRowInput = {
     job_name: string | null
     pct_complete: number | null
     invoices?: Array<{ status: string | null; amount: number | null; billed_at?: string | null; agreed_write_down_at?: string | null; agreed_write_down_previous_amount?: number | null }> | null
+    /** Discount line items (v2.3256): rows with a negative signed amount. */
+    fixtures?: Array<{ name?: string | null; count?: number | null; line_unit_price?: number | string | null; line_kind?: string | null }> | null
     /** Leakage (v2.2832): the job is flagged for collections. */
     collections_at?: string | null
     /** Cycle view (v2.2823). */
@@ -308,7 +310,17 @@ export type JobSummaryLedgerRowInput = {
   totalBill: number
 }
 
-export type JobSummaryRowFlag = 'no-revenue' | 'no-hours' | 'no-pct' | 'assumed-50' | 'prior-hours' | 'earned' | 'write-down' | 'collections'
+/** Dollars a discount row takes off (v2.3256): a `discount` row, or a legacy negative work row, by its signed count × price. */
+function discountRowUsd(f: { name?: string | null; count?: number | null; line_unit_price?: number | string | null; line_kind?: string | null }): number {
+  if (!(f.name ?? '').trim()) return 0
+  const unit = f.line_unit_price != null && Number.isFinite(Number(f.line_unit_price)) ? Number(f.line_unit_price) : 0
+  if (!(unit < 0)) return 0
+  const c = Number(f.count)
+  const qty = f.line_kind === 'discount' ? 1 : Number.isFinite(c) && c > 0 ? c : 1
+  return -unit * qty
+}
+
+export type JobSummaryRowFlag = 'no-revenue' | 'no-hours' | 'no-pct' | 'assumed-50' | 'prior-hours' | 'earned' | 'write-down' | 'discount' | 'collections'
 
 export type JobSummaryEnrichedRow<R extends JobSummaryLedgerRowInput = JobSummaryLedgerRowInput> = {
   row: R
@@ -337,6 +349,8 @@ export type JobSummaryEnrichedRow<R extends JobSummaryLedgerRowInput = JobSummar
   revenuePerHourUsd: number | null
   /** Leakage (v2.2832): dollars agreed off the bills (previous amount − amount, over written-down invoices). */
   writeDownUsd: number
+  /** Discount line items (v2.3256): dollars given away up front on the line items — revenue already reflects them. */
+  discountUsd: number
   inCollections: boolean
   lastWorkedYmd: string | null
   flags: JobSummaryRowFlag[]
@@ -386,6 +400,8 @@ export function enrichJobSummaryRows<R extends JobSummaryLedgerRowInput>(args: {
     if (!(contractUsd > 0)) flags.push('no-revenue')
     const writeDownUsd = (job.invoices ?? []).reduce((a, i) => a + (i.agreed_write_down_at && i.agreed_write_down_previous_amount != null ? Math.max(0, i.agreed_write_down_previous_amount - (i.amount ?? 0)) : 0), 0)
     if (writeDownUsd > 0) flags.push('write-down')
+    const discountUsd = Math.round((job.fixtures ?? []).reduce((a, f) => a + discountRowUsd(f), 0) * 100) / 100
+    if (discountUsd > 0) flags.push('discount')
     const inCollections = job.collections_at != null && job.status !== 'paid'
     if (inCollections) flags.push('collections')
     const laborUsd = row.teamLaborCost
@@ -442,6 +458,7 @@ export function enrichJobSummaryRows<R extends JobSummaryLedgerRowInput>(args: {
       trueMarginPct,
       revenuePerHourUsd: hoursInWindow > 0 ? revenueUsd / hoursInWindow : null,
       writeDownUsd,
+      discountUsd,
       inCollections,
       lastWorkedYmd: jobLastWorkedYmd(job, ledger),
       flags,
@@ -594,6 +611,9 @@ export type JobSummaryTotals = {
   /** Leakage (v2.2832). */
   writeDownUsd: number
   writeDownJobs: number
+  /** Discount line items (v2.3256). */
+  discountUsd: number
+  discountJobs: number
   collectionsJobs: number
   collectionsUsd: number
   noRevenueJobs: number
@@ -623,6 +643,8 @@ export function summarizeJobSummaryRows(rows: readonly JobSummaryEnrichedRow[]):
   let earnedRows = 0
   let writeDownUsd = 0
   let writeDownJobs = 0
+  let discountUsd = 0
+  let discountJobs = 0
   let collectionsJobs = 0
   let collectionsUsd = 0
   let projectedTrueMarginUsd = 0
@@ -637,6 +659,10 @@ export function summarizeJobSummaryRows(rows: readonly JobSummaryEnrichedRow[]):
     if (r.writeDownUsd > 0) {
       writeDownUsd += r.writeDownUsd
       writeDownJobs += 1
+    }
+    if (r.discountUsd > 0) {
+      discountUsd += r.discountUsd
+      discountJobs += 1
     }
     if (r.inCollections) {
       collectionsJobs += 1
@@ -673,6 +699,8 @@ export function summarizeJobSummaryRows(rows: readonly JobSummaryEnrichedRow[]):
     revenuePerHourUsd: hours > 0 ? revenueUsd / hours : null,
     writeDownUsd,
     writeDownJobs,
+    discountUsd,
+    discountJobs,
     collectionsJobs,
     collectionsUsd,
     noRevenueJobs,

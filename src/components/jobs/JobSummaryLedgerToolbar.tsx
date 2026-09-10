@@ -217,6 +217,11 @@ export default function JobSummaryLedgerToolbar({
             ✂ {money(totals.writeDownUsd)} written down on {totals.writeDownJobs} {totals.writeDownJobs === 1 ? 'job' : 'jobs'}
           </span>
         ) : null}
+        {showMoney && totals.discountJobs > 0 ? (
+          <span style={chip} title="Discount line items on these jobs — revenue already reflects them; this names what was given away up front">
+            − {money(totals.discountUsd)} discounted on {totals.discountJobs} {totals.discountJobs === 1 ? 'job' : 'jobs'}
+          </span>
+        ) : null}
         {totals.collectionsJobs > 0 ? (
           <span style={chipRed} title="Flagged for collections and not yet paid">
             ⚑ {totals.collectionsJobs} in collections{showMoney ? ` · ${money(totals.collectionsUsd)}` : ''}
