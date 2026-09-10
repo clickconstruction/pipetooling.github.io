@@ -24,6 +24,7 @@ const pt = (id: string, revenueUsd: number, trueMarginPct: number | null, trade:
     trueMarginPct,
     revenuePerHourUsd: revenueUsd / hours,
     writeDownUsd: 0,
+    discountUsd: 0,
     inCollections: false,
     lastWorkedYmd: null,
     flags: [],

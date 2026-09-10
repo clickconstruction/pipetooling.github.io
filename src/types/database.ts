@@ -20105,6 +20105,10 @@ export type Database = {
         }
         Returns: string
       }
+      log_job_discount_event: {
+        Args: { p_detail?: Json; p_event_type: string; p_job_id: string; p_summary: string }
+        Returns: string
+      }
       log_request_call: {
         Args: { p_inbox: string; p_phone: string; p_request_id: string }
         Returns: boolean

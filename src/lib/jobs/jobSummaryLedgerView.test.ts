@@ -266,7 +266,7 @@ describe('compare to + target (v2.2817)', () => {
   })
 
   it('compares totals measure by measure and leaves unknowns null', () => {
-    const base = { jobs: 10, revenueUsd: 1000, laborUsd: 300, subsUsd: 0, partsUsd: 100, grossUsd: 600, marginPct: 60, hours: 40, overheadUsd: 100, trueProfitUsd: 500, trueMarginPct: 50, truePerHourUsd: 12.5, revenuePerHourUsd: 25, writeDownUsd: 0, writeDownJobs: 0, collectionsJobs: 0, collectionsUsd: 0, noRevenueJobs: 0, noPctJobs: 0, noHoursJobs: 0, priorHoursJobs: 0, earnedRows: 0, projectedTrueMarginUsd: null, projectedRows: 0, burningJobs: 0 }
+    const base = { jobs: 10, revenueUsd: 1000, laborUsd: 300, subsUsd: 0, partsUsd: 100, grossUsd: 600, marginPct: 60, hours: 40, overheadUsd: 100, trueProfitUsd: 500, trueMarginPct: 50, truePerHourUsd: 12.5, revenuePerHourUsd: 25, writeDownUsd: 0, writeDownJobs: 0, discountUsd: 0, discountJobs: 0, collectionsJobs: 0, collectionsUsd: 0, noRevenueJobs: 0, noPctJobs: 0, noHoursJobs: 0, priorHoursJobs: 0, earnedRows: 0, projectedTrueMarginUsd: null, projectedRows: 0, burningJobs: 0 }
     const prior = { ...base, jobs: 8, revenueUsd: 800, grossUsd: 400, marginPct: 50, trueProfitUsd: 300, trueMarginPct: 37.5, overheadUsd: null, truePerHourUsd: null }
     const c = compareJobSummaryTotals(base, prior)
     expect(c.jobs).toEqual({ now: 10, prior: 8, delta: 2 })
@@ -361,5 +361,23 @@ describe('leakage flags (v2.2832)', () => {
     expect(rows[1]).toMatchObject({ writeDownUsd: 0, inCollections: true })
     expect(rows[2]!.inCollections).toBe(false)
     expect(summarizeJobSummaryRows(rows)).toMatchObject({ writeDownUsd: 200, writeDownJobs: 1, collectionsJobs: 1, collectionsUsd: 900 })
+  })
+})
+
+describe('discount line items (v2.3256)', () => {
+  it('sums a job\'s discount rows (and legacy negative rows), flags it, and totals carry both', () => {
+    const rows = enrichJobSummaryRows({
+      rows: [
+        { job: { id: 'd', hcp_number: 'd', job_name: 'd', pct_complete: 100, status: 'billed', fixtures: [{ name: 'Rough In', count: 1, line_unit_price: 15098 }, { name: 'Negotiated discount', count: 1, line_unit_price: '-1509.80', line_kind: 'discount' }, { name: 'Credit', count: 2, line_unit_price: -50 }] }, subLaborCost: 0, teamLaborCost: 0, partsCost: 0, totalBill: 13488.2 },
+        { job: { id: 'n', hcp_number: 'n', job_name: 'n', pct_complete: 100, status: 'billed', fixtures: [{ name: 'Trim', count: 1, line_unit_price: 700 }] }, subLaborCost: 0, teamLaborCost: 0, partsCost: 0, totalBill: 700 },
+      ],
+      reportPctByJobId: new Map(),
+      ledger: null,
+      method: 'day',
+    })
+    expect(rows[0]).toMatchObject({ discountUsd: 1609.8 })
+    expect(rows[0]!.flags).toContain('discount')
+    expect(rows[1]).toMatchObject({ discountUsd: 0 })
+    expect(summarizeJobSummaryRows(rows)).toMatchObject({ discountUsd: 1609.8, discountJobs: 1 })
   })
 })

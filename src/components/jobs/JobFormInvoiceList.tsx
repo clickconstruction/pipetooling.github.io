@@ -54,6 +54,12 @@ type JobFormInvoiceListProps = {
   nestedOverlayZIndex: number
   /** Stage Plan (PR 2): "Draw 2 · Top-out" under the status chip, by the rows the invoice bills. */
   drawLabelByInvoiceId?: Record<string, string>
+  /**
+   * Discount line items (v2.3256): on a DRAFT row, "Add discount" adds a
+   * discount row in ① Line Items (the discount prints on this and every bill
+   * that carries its work). Billed rows keep the agreed write-down.
+   */
+  onAddDiscountLine?: () => void
 }
 
 /**
@@ -78,6 +84,7 @@ export function JobFormInvoiceList({
   onEditBillTo,
   nestedOverlayZIndex,
   drawLabelByInvoiceId,
+  onAddDiscountLine,
 }: JobFormInvoiceListProps) {
   const navigate = useNavigate()
   const { showToast } = useToastContext()
@@ -385,6 +392,16 @@ export function JobFormInvoiceList({
                               style={btnGray}
                             >
                               Bill to…
+                            </button>
+                          ) : null}
+                          {isDraft && onAddDiscountLine ? (
+                            <button
+                              type="button"
+                              onClick={onAddDiscountLine}
+                              title="Add a discount row in ① Line Items — it prints on this and every bill that carries the work it applies to"
+                              style={btnGray}
+                            >
+                              Add discount
                             </button>
                           ) : null}
                           {!isDraft && hasStripeShare ? (

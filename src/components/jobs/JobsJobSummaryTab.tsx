@@ -762,6 +762,11 @@ export default function JobsJobSummaryTab({
                                         ✂ write-down
                                       </span>
                                     ) : null}
+                                    {showTeamLaborAndProfit && enriched.discountUsd > 0 ? (
+                                      <span title={`$${formatCurrency(enriched.discountUsd)} given as a discount on the line items — revenue already reflects it`} style={{ fontSize: '0.66rem', fontWeight: 700, padding: '0.05rem 0.4rem', borderRadius: 999, background: 'var(--bg-green-100)', color: 'var(--text-green-800)', whiteSpace: 'nowrap' }}>
+                                        − discount
+                                      </span>
+                                    ) : null}
                                     {enriched.inCollections ? (
                                       <span title="Flagged for collections" style={{ fontSize: '0.66rem', fontWeight: 700, padding: '0.05rem 0.4rem', borderRadius: 999, background: 'var(--bg-red-tint)', color: 'var(--text-red-700)', whiteSpace: 'nowrap' }}>
                                         ⚑ collections

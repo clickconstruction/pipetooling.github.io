@@ -74,7 +74,7 @@ import {
 } from '../../lib/jobDispatchAutoClose'
 import { notifyDispatchRequestClosure } from '../../lib/dispatchRequestClosure'
 import { JobFormSourceEstimateBanner } from './JobFormSourceEstimateBanner'
-import type { Database } from '../../types/database'
+import type { Database, Json } from '../../types/database'
 import type { JobWithDetails } from '../../types/jobWithDetails'
 import { resolveCustomerIdForJobPayload, resolveGcCustomerIdForJobPayload } from '../../lib/jobLedgerCustomer'
 import { groupVersionsByGc, resolveWinningPacket, type GcPacket } from '../../lib/bids/gcPackets'
@@ -104,6 +104,7 @@ import { useJobStagePlanInputs } from '../../hooks/useJobStagePlanInputs'
 import { drawLabelsByInvoiceId, stagePlanFromForm } from '../../lib/jobs/stagePlanForm'
 import { fixtureRowsFromDb, normalizeFormFixtureRows } from '../../lib/jobs/jobFormFixtureHydrate'
 import { derivedDiscountDollars, discountBillDescription, isDiscountRow, newDiscountFixtureRow, syncDiscountRows } from '../../lib/jobs/discountLine'
+import { diffDiscountSnapshots, discountSnapshot, type DiscountSnapshotEntry } from '../../lib/jobs/discountActivity'
 import { todayYmdInAppTz } from '../../utils/dateUtils'
 import { JobFormStagesGroup } from './JobFormStagesGroup'
 import { JobFormStagesDrawer } from './JobFormStagesDrawer'
@@ -732,6 +733,14 @@ export default function JobFormModal({
   autosaveRiderFeesRef.current = riderFeesDollars
   const autosaveJobIdRef = useRef<string | null>(null)
   autosaveJobIdRef.current = editing?.id ?? null
+  /**
+   * Discount trail (v2.3256): the discount rows as last PERSISTED (hydration,
+   * then each successful billing-slice write). After a write, the diff
+   * against the new rows logs discount_added / _changed / _removed through
+   * `log_job_discount_event` — one event per real change, never per
+   * keystroke. Best-effort: a failed log never fails the save.
+   */
+  const persistedDiscountSnapshotRef = useRef<DiscountSnapshotEntry[]>([])
 
   /**
    * The billing-slice WRITES — the same delete+reinsert sequence as always
@@ -776,6 +785,16 @@ export default function JobFormModal({
       for (const row of fixtureInsertRows(jobId, fx)) {
         const { error: insFixErr } = await supabase.from('jobs_ledger_fixtures').insert(row)
         if (insFixErr) throw insFixErr
+      }
+      const nextDiscounts = discountSnapshot(fx)
+      const discountEvents = diffDiscountSnapshots(persistedDiscountSnapshotRef.current, nextDiscounts)
+      persistedDiscountSnapshotRef.current = nextDiscounts
+      for (const ev of discountEvents) {
+        void supabase
+          .rpc('log_job_discount_event', { p_job_id: jobId, p_event_type: ev.event_type, p_summary: ev.summary, p_detail: ev.detail as Json })
+          .then(({ error }) => {
+            if (error) console.warn('log_job_discount_event failed', error)
+          })
       }
       return true
     } catch (autosaveErr) {
@@ -1700,11 +1719,13 @@ export default function JobFormModal({
         ? job.materials.map((m) => ({ id: m.id, description: m.description, amount: Number(m.amount) }))
         : [{ id: crypto.randomUUID(), description: '', amount: 0 }],
     )
-    setFixtures(
+    const hydratedFixtures =
       job.fixtures.length > 0
         ? fixtureRowsFromDb(job.fixtures)
-        : [{ id: crypto.randomUUID(), name: '', count: 1, line_unit_price: null, line_description: '', invoice_id: null }],
-    )
+        : [{ id: crypto.randomUUID(), name: '', count: 1, line_unit_price: null, line_description: '', invoice_id: null }]
+    setFixtures(hydratedFixtures)
+    // Discount trail (v2.3256): what the DB holds now — the next persist diffs against it.
+    persistedDiscountSnapshotRef.current = discountSnapshot(hydratedFixtures)
     setFixtureScopeExpandedById({})
     setSelectedSegmentIds(new Set())
     setTeamMemberIds(job.team_members.map((t) => t.user_id))
@@ -4068,6 +4089,10 @@ export default function JobFormModal({
                 refreshEditingJobAndHydratePayments={refreshEditingJobAndHydratePayments}
                 onInvoiceDeleted={clearFixtureLinksForDeletedInvoice}
                 onEditBillTo={setBillToEditorInvoice}
+                onAddDiscountLine={() => {
+                  addDiscountRow()
+                  setFixturesSectionHighlight(true)
+                }}
                 nestedOverlayZIndex={JOB_FORM_NESTED_OVERLAY_Z_INDEX}
               />
             </>
