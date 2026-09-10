@@ -195,3 +195,25 @@ describe('shouldDemotePaidJobToBilled', () => {
     expect(shouldDemotePaidJobToBilled('billed', 100, 0)).toBe(false)
   })
 })
+
+describe('discount rows (v2.3252+)', () => {
+  it('fixtureInsertRows writes a discount row signed, capped, count 1, never a stage — and the basis as positions', () => {
+    const rows = fixtureInsertRows('job1', [
+      { id: 'a', name: 'Rough In', count: 1, line_unit_price: 1000, line_description: '', invoice_id: null },
+      { id: 'b', name: 'Top Out', count: 1, line_unit_price: 1000, line_description: '', invoice_id: null, stage_kind: 'order' },
+      { id: 'd', name: 'Negotiated discount', count: 3, line_unit_price: -5, line_description: '', invoice_id: null, line_kind: 'discount', discount_pct: 10, discount_basis_ids: ['b'], discount_reason: 'Negotiated', stage_kind: 'any', shared_with_gc: true },
+      { id: 'e', name: 'Referral', count: 1, line_unit_price: -9999, line_description: '', invoice_id: null, line_kind: 'discount', discount_pct: null, discount_basis_ids: null, discount_reason: null },
+    ])
+    expect(rows[0]).toMatchObject({ line_kind: 'work', discount_pct: null, discount_basis_positions: null, discount_reason: null, stage_kind: 'any' })
+    expect(rows[2]).toMatchObject({ name: 'Negotiated discount', count: 1, line_unit_price: -100, line_kind: 'discount', discount_pct: 10, discount_basis_positions: [1], discount_reason: 'Negotiated', stage_kind: null, shared_with_gc: false })
+    expect(rows[3]).toMatchObject({ line_unit_price: -2000, discount_pct: null, discount_basis_positions: null })
+  })
+  it('the billing slice JSON changes when a discount field changes', () => {
+    const base = { id: 'd', name: 'Disc', count: 1, line_unit_price: -10, line_description: '', invoice_id: null, line_kind: 'discount' as const, discount_pct: 10, discount_basis_ids: null, discount_reason: null }
+    const a = buildBillingSliceJson([base], [])
+    const b = buildBillingSliceJson([{ ...base, discount_pct: 12 }], [])
+    const c = buildBillingSliceJson([{ ...base, discount_basis_ids: ['x'] }], [])
+    expect(a).not.toBe(b)
+    expect(a).not.toBe(c)
+  })
+})

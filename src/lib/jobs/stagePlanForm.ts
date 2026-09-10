@@ -4,6 +4,7 @@
  * position is the order — the save engine persists it as sequence_order).
  */
 import type { FixtureRow } from './jobFormTypes'
+import { discountSharesByWorkRow, isDiscountRow, netWorkLineCents } from './discountLine'
 import {
   buildStagePlan,
   type StageKind,
@@ -28,15 +29,23 @@ export function fixtureStageFields(f: unknown): { stage_kind: StageKind | null; 
 /** A form row's kind: `undefined` (never loaded / newly added) = Any time, the column default. */
 export const formFixtureKind = (f: Pick<FixtureRow, 'stage_kind'>): StageKind | null => (f.stage_kind === undefined ? 'any' : f.stage_kind)
 
-/** Named rows only, in form order. */
+/**
+ * Named rows only, in form order. Discount rows (v2.3252+) are never stages
+ * and never appear in the plan; each work row's amount is NET of the
+ * discount shares that follow it, so a draw reads as what it will bill.
+ * Positions still count every named row (the save engine's numbering).
+ */
 export function stagePlanFixturesFromForm(fixtures: FixtureRow[]): StagePlanFixture[] {
-  return fixtures
-    .filter((f) => (f.name ?? '').trim().length > 0)
-    .map((f, i) => ({
+  const named = fixtures.filter((f) => (f.name ?? '').trim().length > 0)
+  const shares = discountSharesByWorkRow(named)
+  return named
+    .map((f, i) => ({ f, i }))
+    .filter(({ f }) => !isDiscountRow(f))
+    .map(({ f, i }) => ({
       id: f.id,
       name: f.name,
-      count: Number(f.count) || 1,
-      line_unit_price: f.line_unit_price,
+      count: 1,
+      line_unit_price: netWorkLineCents(named, f, shares) / 100,
       sequence_order: i,
       invoice_id: f.invoice_id,
       stage_kind: formFixtureKind(f),

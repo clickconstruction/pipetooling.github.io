@@ -82,3 +82,17 @@ describe('stagePlanFromForm + draw labels + the still-to-bill list', () => {
     expect(upcomingDrawRows(free).map((r) => r.fixtureId)).toEqual(['d'])
   })
 })
+
+describe('discount rows (v2.3252+)', () => {
+  it('never reach the plan; work rows carry their net amount; positions still count the discount row', () => {
+    const fx = stagePlanFixturesFromForm([
+      row({ id: 'a', name: 'Rough-in', stage_kind: 'order', line_unit_price: 1000 }),
+      row({ id: 'd', name: '10 off', line_kind: 'discount', discount_pct: 10, discount_basis_ids: null, line_unit_price: -100 }),
+      row({ id: 'b', name: 'Top-out', stage_kind: 'order', line_unit_price: 1000 }),
+    ])
+    expect(fx.map((f) => [f.id, f.sequence_order, f.line_unit_price])).toEqual([
+      ['a', 0, 900],
+      ['b', 2, 900],
+    ])
+  })
+})

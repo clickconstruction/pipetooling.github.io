@@ -55,6 +55,19 @@ export type FixtureRow = {
   stage_kind?: StageKind | null
   /** The eye: this line item shows on the GC portal's stage sequence. */
   shared_with_gc?: boolean
+  /**
+   * Discount rows (v2.3252+): `discount` reduces the work rows it applies
+   * to; `undefined` / 'work' is a normal line item. A discount row's
+   * `line_unit_price` is the SIGNED amount (negative, count 1), re-derived by
+   * `syncDiscountRows` on every change.
+   */
+  line_kind?: 'work' | 'discount'
+  /** Percent of the basis (live); null = a fixed dollar discount. */
+  discount_pct?: number | null
+  /** Row ids of the work rows the discount applies to; null = every work row. */
+  discount_basis_ids?: string[] | null
+  /** The preset chip that named the row, or null. */
+  discount_reason?: string | null
 }
 
 export type JobsLedgerInvoiceRow = Database['public']['Tables']['jobs_ledger_invoices']['Row']

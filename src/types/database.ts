@@ -8419,10 +8419,14 @@ export type Database = {
         Row: {
           count: number
           created_at: string | null
+          discount_basis_positions: number[] | null
+          discount_pct: number | null
+          discount_reason: string | null
           id: string
           invoice_id: string | null
           job_id: string
           line_description: string | null
+          line_kind: string
           line_unit_price: number | null
           name: string
           progress_at: string | null
@@ -8436,10 +8440,14 @@ export type Database = {
         Insert: {
           count?: number
           created_at?: string | null
+          discount_basis_positions?: number[] | null
+          discount_pct?: number | null
+          discount_reason?: string | null
           id?: string
           invoice_id?: string | null
           job_id: string
           line_description?: string | null
+          line_kind?: string
           line_unit_price?: number | null
           name?: string
           progress_at?: string | null
@@ -8453,10 +8461,14 @@ export type Database = {
         Update: {
           count?: number
           created_at?: string | null
+          discount_basis_positions?: number[] | null
+          discount_pct?: number | null
+          discount_reason?: string | null
           id?: string
           invoice_id?: string | null
           job_id?: string
           line_description?: string | null
+          line_kind?: string
           line_unit_price?: number | null
           name?: string
           progress_at?: string | null

@@ -59,6 +59,24 @@ export function discountNameForReason(reason: DiscountReasonPreset): string {
 
 export const isDiscountRow = (r: Pick<DiscountLineRow, 'line_kind'>): boolean => r.line_kind === 'discount'
 
+/** A fresh, empty discount row for the form (no name, no amount, every work row as its basis). */
+export function newDiscountFixtureRow(id: string) {
+  return {
+    id,
+    name: '',
+    count: 1,
+    line_unit_price: null,
+    line_description: '',
+    invoice_id: null,
+    line_kind: 'discount' as const,
+    discount_pct: null,
+    discount_basis_ids: null,
+    discount_reason: null,
+    stage_kind: null,
+    shared_with_gc: false,
+  }
+}
+
 const round2 = (n: number): number => Math.round(n * 100) / 100
 
 /** Gross dollars of one WORK row — same math as revenueDollarsFromFixtures; 0 for discount / unnamed rows. */

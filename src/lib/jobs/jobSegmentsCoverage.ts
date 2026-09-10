@@ -12,12 +12,18 @@
  * only, qty = count > 0 ? count : 1, null price = 0.
  */
 
+import { discountSharesByWorkRow, isDiscountRow, netWorkLineCents, type DiscountShare } from './discountLine'
+
 export type SegmentFixtureLine = {
   id: string
   name: string
   count: number
   line_unit_price: number | null
   invoice_id: string | null
+  /** Discount rows (v2.3252+) are never segments; work rows size by their NET dollars. */
+  line_kind?: 'work' | 'discount' | null
+  discount_pct?: number | null
+  discount_basis_ids?: string[] | null
 }
 
 export type JobBarSegmentStatus = 'unbilled' | 'ready_to_bill' | 'billed' | 'paid'
@@ -36,13 +42,16 @@ export type JobBarSegment = {
   selectable: boolean
 }
 
-function lineDollars(f: SegmentFixtureLine): number {
-  if (!(f.name ?? '').trim()) return 0
-  const c = Number(f.count)
-  const qty = Number.isFinite(c) && c > 0 ? c : 1
-  const unit = f.line_unit_price ?? 0
-  return Math.round(qty * (Number.isFinite(unit) ? unit : 0) * 100) / 100
+/**
+ * A segment's dollars: the work row NET of every discount share that
+ * follows it (v2.3252+). Discount rows are never segments — their money
+ * lives inside the rows they reduce, so the bar always sums to the Job Total.
+ */
+function lineDollars(f: SegmentFixtureLine, shares: ReadonlyMap<string, DiscountShare[]>): number {
+  if (isDiscountRow(f)) return 0
+  return netWorkLineCents([], f, shares) / 100
 }
+const sharesOf = (fixtures: readonly SegmentFixtureLine[]) => discountSharesByWorkRow(fixtures)
 
 function statusFor(invoiceId: string | null, invoiceStatusById: Record<string, string>): JobBarSegmentStatus {
   if (!invoiceId) return 'unbilled'
@@ -63,8 +72,9 @@ export function buildJobSegmentsBar(args: {
   invoiceStatusById: Record<string, string>
 }): JobBarSegment[] {
   const { fixtures, riderFeesDollars, invoiceStatusById } = args
+  const shares = sharesOf(fixtures)
   const lines = fixtures
-    .map((f) => ({ f, dollars: lineDollars(f) }))
+    .map((f) => ({ f, dollars: lineDollars(f, shares) }))
     .filter((x) => x.dollars > 0)
   const riders = Math.round((riderFeesDollars || 0) * 100) / 100
   const total = lines.reduce((s, x) => s + x.dollars, 0) + (riders > 0 ? riders : 0)
@@ -215,10 +225,11 @@ export function segmentSelectionSummary(
 ): { totalDollars: number; count: number } {
   let cents = 0
   let count = 0
+  const shares = sharesOf(fixtures)
   for (const f of fixtures) {
     if (!selectedIds.has(f.id)) continue
     if (f.invoice_id != null) continue
-    const d = lineDollars(f)
+    const d = lineDollars(f, shares)
     if (!(d > 0)) continue
     cents += Math.round(d * 100)
     count += 1
@@ -242,10 +253,11 @@ export function segmentSelectionNetSummary(
   let grossCents = 0
   let coveredCents = 0
   let count = 0
+  const shares = sharesOf(fixtures)
   for (const f of fixtures) {
     if (!selectedIds.has(f.id)) continue
     if (f.invoice_id != null) continue
-    const d = lineDollars(f)
+    const d = lineDollars(f, shares)
     if (!(d > 0)) continue
     const segCents = Math.round(d * 100)
     const c = Math.min(segCents, Math.round((coverage?.bySegmentKey[f.id]?.coveredDollars ?? 0) * 100))
@@ -278,10 +290,11 @@ export function exactSingleSegmentMatchForAmount(
   amountCents: number,
 ): { fixtureId: string; label: string } | null {
   if (!Number.isFinite(amountCents) || !(amountCents > 0)) return null
+  const shares = sharesOf(fixtures)
   let match: { fixtureId: string; label: string } | null = null
   for (const f of fixtures) {
     if (f.invoice_id != null) continue
-    const d = lineDollars(f)
+    const d = lineDollars(f, shares)
     if (!(d > 0)) continue
     const segCents = Math.round(d * 100)
     const coveredCents = Math.min(
@@ -306,10 +319,11 @@ export function linkableSelectedIds(
   selectedIds: ReadonlySet<string>,
 ): string[] {
   const ids: string[] = []
+  const shares = sharesOf(fixtures)
   for (const f of fixtures) {
     if (!selectedIds.has(f.id)) continue
     if (f.invoice_id != null) continue
-    if (!(lineDollars(f) > 0)) continue
+    if (!(lineDollars(f, shares) > 0)) continue
     ids.push(f.id)
   }
   return ids
@@ -327,6 +341,7 @@ export function selectedSegmentSequencePositions(
   selectedIds: ReadonlySet<string>,
 ): number[] {
   const positions: number[] = []
+  const shares = sharesOf(fixtures)
   let i = 0
   for (const f of fixtures) {
     if (!(f.name ?? '').trim()) continue
@@ -334,7 +349,7 @@ export function selectedSegmentSequencePositions(
     i += 1
     if (!selectedIds.has(f.id)) continue
     if (f.invoice_id != null) continue
-    if (!(lineDollars(f) > 0)) continue
+    if (!(lineDollars(f, shares) > 0)) continue
     positions.push(pos)
   }
   return positions

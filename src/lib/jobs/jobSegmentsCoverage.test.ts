@@ -412,3 +412,47 @@ describe('exactSingleSegmentMatchForAmount', () => {
     expect(exactSingleSegmentMatchForAmount(fixtures, null, -75000)).toBeNull()
   })
 })
+
+describe('discount rows (v2.3252+) — segments are net, discounts are never segments', () => {
+  const disc = (o: Partial<SegmentFixtureLine> & { id: string }): SegmentFixtureLine => ({
+    name: 'Negotiated discount',
+    count: 1,
+    line_unit_price: null,
+    invoice_id: null,
+    line_kind: 'discount',
+    discount_pct: 10,
+    discount_basis_ids: null,
+    ...o,
+  })
+  const fx = [
+    line({ id: 'a', name: 'Rough In', line_unit_price: 15098 }),
+    line({ id: 'b', name: 'Top Out', line_unit_price: 15098 }),
+    line({ id: 'c', name: 'Trim Set', line_unit_price: 7549 }),
+    disc({ id: 'd' }),
+  ]
+  it('sizes each block by its dollars after the discount and never draws the discount', () => {
+    const segs = buildJobSegmentsBar({ fixtures: fx, riderFeesDollars: 0, invoiceStatusById: {} })
+    expect(segs.map((s) => [s.key, s.dollars])).toEqual([
+      ['a', 13588.2],
+      ['b', 13588.2],
+      ['c', 6794.1],
+    ])
+    expect(segs.reduce((s, x) => s + x.dollars, 0)).toBeCloseTo(33970.5, 2)
+  })
+  it('selection totals, positions and links all read the net figure and skip the discount row', () => {
+    const sel = new Set(['a', 'd'])
+    expect(segmentSelectionSummary(fx, sel)).toEqual({ totalDollars: 13588.2, count: 1 })
+    expect(segmentSelectionNetSummary(fx, sel, null).netDollars).toBe(13588.2)
+    expect(linkableSelectedIds(fx, sel)).toEqual(['a'])
+    expect(selectedSegmentSequencePositions(fx, sel)).toEqual([0])
+    expect(exactSingleSegmentMatchForAmount(fx, null, 679410)).toEqual({ fixtureId: 'c', label: 'Trim Set' })
+    // Rough In and Top Out net the same figure — ambiguous — and the gross price matches nothing.
+    expect(exactSingleSegmentMatchForAmount(fx, null, 1358820)).toBeNull()
+    expect(exactSingleSegmentMatchForAmount(fx, null, 754900)).toBeNull()
+  })
+  it('a discount on a chosen basis leaves the other rows whole', () => {
+    const only = [...fx.slice(0, 3), disc({ id: 'd', discount_basis_ids: ['c'], discount_pct: 50 })]
+    const segs = buildJobSegmentsBar({ fixtures: only, riderFeesDollars: 0, invoiceStatusById: {} })
+    expect(segs.map((s) => s.dollars)).toEqual([15098, 15098, 3774.5])
+  })
+})

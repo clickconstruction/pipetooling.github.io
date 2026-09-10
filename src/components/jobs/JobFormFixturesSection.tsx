@@ -13,6 +13,8 @@ import {
   STRIPE_INVOICE_LINE_DESCRIPTION_MAX,
   stripeInvoiceFixtureLineLength,
 } from '../../lib/stripeInvoiceLineDescription'
+import { isDiscountRow, totalDiscountDollars, totalWorkDollars } from '../../lib/jobs/discountLine'
+import { JobFormDiscountRow } from './JobFormDiscountRow'
 
 const FIXTURE_SCOPE_FIELD_LABEL_VISUALLY_HIDDEN: CSSProperties = {
   position: 'absolute',
@@ -34,6 +36,8 @@ type JobFormFixturesSectionProps = {
   fixturesSectionHighlightRef: MutableRefObject<HTMLDivElement | null>
   updateFixtureRow: (id: string, updates: Partial<FixtureRow>) => void
   addFixtureRow: () => void
+  /** Discount rows (v2.3252+): "− Add discount" beside "+ Add line item". Omit to hide the button. */
+  addDiscountRow?: () => void
   removeFixtureRow: (id: string) => void
   /** Swap a row with its neighbor; order persists via sequence_order on save (v2.1067). */
   moveFixtureRow: (id: string, direction: 'up' | 'down') => void
@@ -79,6 +83,7 @@ export function JobFormFixturesSection({
   fixturesSectionHighlightRef,
   updateFixtureRow,
   addFixtureRow,
+  addDiscountRow,
   removeFixtureRow,
   moveFixtureRow,
   invoiceStatusById = {},
@@ -129,6 +134,10 @@ export function JobFormFixturesSection({
     ),
   )
   const hasDeleteColumn = fixtures.length > 1
+  // Discount rows (v2.3252+): the footer reads as an equation when any exist.
+  const hasDiscount = fixtures.some((f) => isDiscountRow(f))
+  const workDollars = hasDiscount ? totalWorkDollars(fixtures) : jobTotalDollars
+  const discountDollars = hasDiscount ? totalDiscountDollars(fixtures) : 0
   return (
           <div
             ref={fixturesSectionHighlightRef}
@@ -189,6 +198,21 @@ export function JobFormFixturesSection({
               </colgroup>
               <tbody>
                 {fixtures.map((row, idx) => {
+                  if (isDiscountRow(row)) {
+                    return (
+                      <JobFormDiscountRow
+                        key={row.id}
+                        row={row}
+                        fixtures={fixtures}
+                        idx={idx}
+                        narrowViewport={narrowViewport}
+                        showBadgeColumn={plan != null}
+                        updateFixtureRow={updateFixtureRow}
+                        removeFixtureRow={removeFixtureRow}
+                        moveFixtureRow={moveFixtureRow}
+                      />
+                    )
+                  }
                   const nameFieldId = `job-fixture-name-${row.id}`
                   const descFieldId = `job-fixture-desc-${row.id}`
                   const stripeLenDescId = `job-fixture-stripe-len-${row.id}`
@@ -690,6 +714,7 @@ export function JobFormFixturesSection({
               </tbody>
             </table>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap', marginTop: '0.5rem' }}>
+              <span style={{ display: 'inline-flex', gap: '0.5rem', flexWrap: 'wrap' }}>
               <button
                 type="button"
                 onClick={addFixtureRow}
@@ -710,6 +735,29 @@ export function JobFormFixturesSection({
               >
                 + Add line item
               </button>
+              {addDiscountRow && (
+                <button
+                  type="button"
+                  onClick={addDiscountRow}
+                  title="Add a discount row — a percent or dollar amount off the work"
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '0.35rem',
+                    padding: '0.4rem 0.9rem',
+                    background: 'transparent',
+                    border: '1px dashed #a7dcc2',
+                    borderRadius: 6,
+                    color: '#0f7a52',
+                    fontSize: '0.8125rem',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                  }}
+                >
+                  − Add discount
+                </button>
+              )}
+              </span>
               {/* Stripe preview rides with the number it previews (v2.1689),
                   sitting ABOVE the Job Total (owner call, v2.1699). */}
               <span style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.2rem' }}>
@@ -740,6 +788,11 @@ export function JobFormFixturesSection({
                   </svg>
                   Stripe preview
                 </button>
+                {hasDiscount && discountDollars > 0 && (
+                  <span data-testid="job-total-equation" style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
+                    ${formatCurrency(workDollars)} work − ${formatCurrency(discountDollars)} discount
+                  </span>
+                )}
                 <span
                   aria-live="polite"
                   title={riderFeesDollars > 0 ? 'Running total of the line items above, riders included.' : 'Running total of the line items above.'}
@@ -758,6 +811,7 @@ export function JobFormFixturesSection({
               <p style={{ margin: '0.5rem 0 0', fontSize: '0.75rem', lineHeight: 1.5, color: 'var(--text-muted)' }}>
                 <strong style={{ color: 'var(--text-700)' }}>The second line is the stage.</strong> Order rows are numbered top to bottom and wait for the one above; Any rows
                 can happen whenever; — is just a line item. ▲▼ still sets the order; the badge and the rest of the line follow.
+                {hasDiscount ? <> <strong style={{ color: 'var(--text-700)' }}>A discount</strong> is never a stage: it follows the work it applies to onto every draw.</> : null}
               </p>
             )}
           </div>
