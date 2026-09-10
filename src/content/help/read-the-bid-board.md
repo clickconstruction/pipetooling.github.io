@@ -87,21 +87,25 @@ out, so nobody's estimate can be influenced. The tab only appears when there are
 audits, and its badge counts the audits waiting on you — opening it lands on Audits when any are
 pending. Guide: *see how close the robots are to our numbers*.
 
-(For the program's operators there's also a dev-only **Queue** view: every robot-able bid with
-its kickoff prompt, and the practice library of graded past bids.)
+(For the program's operators there's also a dev-only **Console** view: the robot queue with
+its kickoff prompts, the practice library of graded past bids, and the operator tools that
+used to live under Settings.)
 
-- A bid moves to the Robot Board when its **Estimator is a twin** (or a twin created it).
-  Un-assign the twin and it comes back to the human board.
-- The Robot Board is the **same board** — same sections, same pills, same row tools, same
-  Edit form. Nothing about a robot bid is read-only for you; reviewing or correcting twin
-  work happens right there.
-- The human Bid Board's section counts and pills **don't count robot bids**, so your
+- The Robot Board lists **our** bids, not the robots' copies: one row per bid a robot has
+  worked, in the Bid Board's own sections. Before we send, the row shows only where the
+  robot stands (queued, working, sealed 🔒) — never its number. Once we send with a bid
+  value, the row shows the robot's number, ours, and how far off it was.
+- A bid gets there on its own. Every plumbing bid with a readable plans link is shadowed
+  by default; nobody assigns a robot. The robot's own copies (the "ZZ" bids) never show
+  as rows — they open from a row's doors.
+- The human Bid Board's section counts and pills **don't count robot work**, so your
   Pending number stays yours.
 
-:::example a bid "disappeared" after you assigned the twin
-Set a bid's Estimator to a twin and the row leaves the Bid Board — that's the scope moving,
-not a deletion. Open {{button:outline|🤖}} and flip to the {{button:outline|Robot Board}}
-view — it's right there.
+:::example the robot has a number on your bid, but you can't see it yet
+The row on the Robot Board reads {{chip:purple|sealed}} with no dollars. That's the envelope:
+the robot locked its price before yours existed, and it opens the moment you send the bid
+with a value — as a review beside your number, right then. Guide: *review the robot's number
+when you send*.
 :::
 
 ## The robot icon on each row — can a robot bid this?
