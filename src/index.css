@@ -2401,3 +2401,12 @@ body.my-time-boundary-dragging {
 @media (prefers-reduced-motion: reduce) {
   .bid-flow-landing { animation: none; }
 }
+
+/* Customer Waiting (v2.3247): the Inbox badge breathes while a portal request is open. */
+@keyframes customerWaitingPulse {
+  0%, 100% { box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px #fca5a5; }
+  50% { box-shadow: 0 0 0 2px var(--surface), 0 0 0 7px rgba(252, 165, 165, 0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  [data-waiting='true'] { animation: none !important; }
+}

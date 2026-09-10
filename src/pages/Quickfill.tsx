@@ -449,6 +449,9 @@ function QuickfillPage() {
     submitDispatchNoteAndClose,
     dismissDispatchRequest,
     fetchDismissedDispatchInboxRows,
+    dispatchPrioritySavingId,
+    setDispatchRequestPriority,
+    logDispatchRequestCall,
   } = useDispatchInbox()
   const jobFormModal = useJobFormModal()
   const { getOutstandingCount } = useQuickfillSectionMetricsContext()
@@ -1562,6 +1565,9 @@ function QuickfillPage() {
                   ? (args) => setTripChargeTarget(args)
                   : undefined
               }
+              prioritySavingId={dispatchPrioritySavingId}
+              onSetPriority={setDispatchRequestPriority}
+              onLogCall={logDispatchRequestCall}
             />
           </QuickfillSectionWrapper>
           </>

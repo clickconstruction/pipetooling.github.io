@@ -696,6 +696,10 @@ A structured **`dispatch_requests`** flavor created by the Dashboard **My Schedu
 
 ---
 
+### Customer waiting (priority on inbox requests)
+
+A **Dispatch** or **Estimator** inbox request at **`priority = 'high'`** (v2.3246–v2.3247, migration `20260910220000`; both tables carry `priority`, `priority_changed_at/by`, `last_called_at/by`). Every request a customer sends from their **portal** (visit, bid, a GC's *Need other dates?*) lands high; **bid** requests route to the Estimator inbox when `estimator_group_members` is non-empty, else Dispatch. Open high rows lead the list (oldest waiting first) and render [`CustomerWaitingRequestCard`](../src/components/CustomerWaitingRequestCard.tsx) — the wait as header (red past 30 min), the customer's words, *Can be there*, *Reach them at*, one big **Call** ([`CallPhoneButton`](../src/components/CallPhoneButton.tsx): `tel:` on a phone, copy on a desktop), **Text**, **Lower priority ▾**, **✓ Close**. **Call** stamps `last_called_*` + a `📞 Called …` note (RPC `log_request_call`) so the row footer reads *Sam called 2:14 pm*. **Lower** / **Raise** go through RPC `set_request_priority` (reason chips Scheduled · Not urgent · Spam or duplicate · Other; the note lands in the thread as *Priority lowered — Scheduled: …*). Kernels: [`requestPriority.ts`](../src/lib/requestPriority.ts), [`portalRequestPayload.ts`](../src/lib/portalRequestPayload.ts), [`phoneContact.ts`](../src/lib/phoneContact.ts). Who may act = who may close (group member or dev). The app-wide banner and the Needs You item arrive in v2.3248.
+
 ## Email schedule (Dashboard)
 
 **One-off** email of **Schedule Dispatch**–style **`job_schedule_blocks`** for a single calendar **`work_date`**, queued from the **Clocked in today** strip ([**`ScheduleDayEmailModal.tsx`**](../src/components/ScheduleDayEmailModal.tsx) → **`schedule_day_email_requests`**). Not recurring: at most one **pending** row per **`recipient_user_id` + `work_date`**. **Schedule** sets a future **`send_at`**; **Queue soon** sets **`send_at`** immediately so pg_cron **`schedule-day-email-dispatch`** (~every 15 minutes) can pick it up.

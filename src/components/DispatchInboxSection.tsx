@@ -1,4 +1,4 @@
-import { Fragment } from 'react'
+import { Fragment, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Archive } from 'lucide-react'
 import { ChecklistTitleWithLinks } from './ChecklistTitleWithLinks'
@@ -12,6 +12,10 @@ import { useNarrowViewport640 } from '../hooks/useNarrowViewport640'
 import { useAuth } from '../hooks/useAuth'
 import { useJobFormModal } from '../contexts/JobFormModalContext'
 import { OPEN_JOB_FROM_BID_ACTION } from '../lib/bids/wonDispatchHandoff'
+import { CustomerWaitingRequestCard } from './CustomerWaitingRequestCard'
+import { RequestPrioritySheet } from './RequestPrioritySheet'
+import { isCustomerWaiting, portalKindLabel, type RequestPriority } from '../lib/requestPriority'
+import { parsePortalRequestPayload } from '../lib/portalRequestPayload'
 import { recordNavClick } from '../lib/navClickTelemetry'
 import {
   AGING_ITEM_OPENED_CONTROL,
@@ -43,6 +47,14 @@ export type DispatchInboxRow = {
   job_ledger_id: string | null
   /** Bid this dispatch refers to (v2.3143: the "open the job" to-do). */
   bid_id?: string | null
+  /** Customer Waiting (v2.3247): 'high' = a customer is waiting; open high rows lead the list. */
+  priority?: 'normal' | 'high' | null
+  priority_changed_at?: string | null
+  /** Who last tapped Call on this request, and when (log_request_call). */
+  last_called_at?: string | null
+  last_called_by?: { name: string | null } | null
+  /** Structured context (portal requests: customer, words, phone). Parsed by portalRequestPayload.ts. */
+  pending_payload?: unknown
   /** Thread notes on this request (from dispatch_request_notes). */
   note_count?: number
   last_note_at?: string | null
@@ -100,6 +112,12 @@ type DispatchInboxSectionProps = {
   onOpenSupplyHouseShare?: (jobId: string) => void
   /** Opens the Create Trip Charge modal for a Turnaway request (pending_action 'trip_charge_turnaway'). */
   onCreateTripCharge?: (args: { requestId: string; jobId: string; referenceSummary: string | null }) => void
+  /** Customer Waiting (v2.3247): raise or lower a request's priority (RPC set_request_priority). */
+  onSetPriority?: (requestId: string, priority: RequestPriority, note: string | null) => Promise<boolean> | void
+  /** Customer Waiting (v2.3247): Call / Text was used on a waiting row — log it (RPC log_request_call). */
+  onLogCall?: (requestId: string, phoneDisplay: string) => void
+  /** Row whose priority change is in flight. */
+  prioritySavingId?: string | null
 }
 
 export function DispatchInboxSection({
@@ -126,11 +144,29 @@ export function DispatchInboxSection({
   onLinkJobPictures,
   onOpenSupplyHouseShare,
   onCreateTripCharge,
+  onSetPriority,
+  onLogCall,
+  prioritySavingId = null,
 }: DispatchInboxSectionProps) {
   // v2.3143: the "open the job" to-do's one button runs the app-level New Job door itself.
   const jobFormModal = useJobFormModal()
   const narrow = useNarrowViewport640()
   const { user: authUser, role } = useAuth()
+  // Customer Waiting (v2.3247): which row the lower/raise sheet is open for.
+  const [prioritySheet, setPrioritySheet] = useState<{ requestId: string; direction: 'lower' | 'raise'; label: string } | null>(null)
+  const prioritySheetEl =
+    prioritySheet && onSetPriority ? (
+      <RequestPrioritySheet
+        direction={prioritySheet.direction}
+        requestLabel={prioritySheet.label}
+        saving={prioritySavingId === prioritySheet.requestId}
+        onConfirm={async (note) => {
+          const ok = await onSetPriority(prioritySheet.requestId, prioritySheet.direction === 'raise' ? 'high' : 'normal', note)
+          if (ok !== false) setPrioritySheet(null)
+        }}
+        onClose={() => setPrioritySheet(null)}
+      />
+    ) : null
   const body = (
         <div
           style={
@@ -164,6 +200,9 @@ export function DispatchInboxSection({
                 const noteCount = req.note_count ?? 0
                 const noteCountLabel =
                   noteCount === 0 ? 'No messages' : noteCount === 1 ? '1 message' : `${noteCount} messages`
+                const waiting = isCustomerWaiting(req)
+                const waitingPortal = waiting ? parsePortalRequestPayload(req.pending_payload) : null
+                const waitingLabel = waitingPortal?.customerName ? `${waitingPortal.customerName} · ${portalKindLabel(waitingPortal.kind)}` : req.title.slice(0, 80)
                 // Age chip on OPEN rows (journey-map #40): fresh / amber / red at
                 // DISPATCH_REQUEST_AGE — 46 days no longer looks like 4. Opening an
                 // aging row records `aging_item_opened` so the backlog stays measurable.
@@ -483,9 +522,21 @@ export function DispatchInboxSection({
                               }
                         }
                       >
-                        <div style={{ fontWeight: 500 }}>
-                          <ChecklistTitleWithLinks title={req.title} links={req.links ?? []} />
-                        </div>
+                        {waiting ? (
+                          <CustomerWaitingRequestCard
+                            row={req}
+                            narrow={narrow}
+                            onCall={(phoneDisplay) => onLogCall?.(req.id, phoneDisplay)}
+                            onLower={() => setPrioritySheet({ requestId: req.id, direction: 'lower', label: waitingLabel })}
+                            onClose={() => {
+                              if (!expanded) toggleThread()
+                            }}
+                          />
+                        ) : (
+                          <div style={{ fontWeight: 500 }}>
+                            <ChecklistTitleWithLinks title={req.title} links={req.links ?? []} />
+                          </div>
+                        )}
                         <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginTop: 4 }}>
                           <span style={{ fontSize: '0.75rem', marginRight: 6 }} aria-hidden>
                             {expanded ? '▼' : '▶'}
@@ -578,8 +629,18 @@ export function DispatchInboxSection({
                           borderRadius: 6,
                         }}
                       >
-                        <div style={{ fontSize: '0.8125rem', fontWeight: 600, marginBottom: '0.5rem', color: 'var(--text-700)' }}>
-                          Activity / notes (Central Time)
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                          <div style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-700)' }}>Activity / notes (Central Time)</div>
+                          {!isClosed && !waiting && onSetPriority ? (
+                            <button
+                              type="button"
+                              onClick={() => setPrioritySheet({ requestId: req.id, direction: 'raise', label: req.title.slice(0, 80) })}
+                              title="Mark it a customer waiting — red rail, top of the list, banner for the whole team"
+                              style={{ padding: '0.2rem 0.6rem', fontSize: '0.75rem', fontWeight: 600, borderRadius: 999, border: '1px solid var(--border-red)', background: 'var(--surface)', color: 'var(--text-red-700)', cursor: 'pointer' }}
+                            >
+                              Raise priority
+                            </button>
+                          ) : null}
                         </div>
                         {notesLoading ? (
                           <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>Loading notes…</p>
@@ -829,6 +890,7 @@ export function DispatchInboxSection({
               })}
             </ul>
           )}
+          {prioritySheetEl}
         </div>
   )
 

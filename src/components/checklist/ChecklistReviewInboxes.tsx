@@ -46,6 +46,9 @@ export function ChecklistReviewInboxes({
     submitDispatchNoteAndClose,
     dismissDispatchRequest,
     fetchDismissedDispatchInboxRows,
+    dispatchPrioritySavingId,
+    setDispatchRequestPriority,
+    logDispatchRequestCall,
   } = useDispatchInbox()
 
   const {
@@ -63,6 +66,9 @@ export function ChecklistReviewInboxes({
     submitEstimatorNote,
     submitEstimatorNoteAndClose,
     dismissEstimatorRequest,
+    estimatorPrioritySavingId,
+    setEstimatorRequestPriority,
+    logEstimatorRequestCall,
   } = useEstimatorInbox()
 
   const jobFormModal = useJobFormModal()
@@ -118,6 +124,9 @@ export function ChecklistReviewInboxes({
               ? (jobId) => jobFormModal.openEditJob(jobId, { jobPicturesLinkHighlight: true })
               : undefined
           }
+          prioritySavingId={dispatchPrioritySavingId}
+          onSetPriority={setDispatchRequestPriority}
+          onLogCall={logDispatchRequestCall}
         />
       ) : null}
 
@@ -140,6 +149,9 @@ export function ChecklistReviewInboxes({
           onSubmitNote={submitEstimatorNote}
           onSubmitNoteAndClose={submitEstimatorNoteAndClose}
           onDismiss={dismissEstimatorRequest}
+          prioritySavingId={estimatorPrioritySavingId}
+          onSetPriority={setEstimatorRequestPriority}
+          onLogCall={logEstimatorRequestCall}
         />
       ) : null}
 

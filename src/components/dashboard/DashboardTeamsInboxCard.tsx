@@ -68,6 +68,9 @@ export function DashboardTeamsInboxCard({
     submitDispatchNote,
     submitDispatchNoteAndClose,
     dismissDispatchRequest,
+    dispatchPrioritySavingId,
+    setDispatchRequestPriority,
+    logDispatchRequestCall,
   } = dispatchInbox
 
   const {
@@ -85,6 +88,9 @@ export function DashboardTeamsInboxCard({
     submitEstimatorNote,
     submitEstimatorNoteAndClose,
     dismissEstimatorRequest,
+    estimatorPrioritySavingId,
+    setEstimatorRequestPriority,
+    logEstimatorRequestCall,
   } = estimatorInbox
 
   return (
@@ -114,6 +120,9 @@ export function DashboardTeamsInboxCard({
           onLinkJobPictures={onLinkJobPictures}
           onOpenSupplyHouseShare={onOpenSupplyHouseShare}
           onCreateTripCharge={onCreateTripCharge}
+          prioritySavingId={dispatchPrioritySavingId}
+          onSetPriority={setDispatchRequestPriority}
+          onLogCall={logDispatchRequestCall}
         />
       )}
       {estimatorInboxEligible && (
@@ -134,6 +143,9 @@ export function DashboardTeamsInboxCard({
           onSubmitNote={submitEstimatorNote}
           onSubmitNoteAndClose={submitEstimatorNoteAndClose}
           onDismiss={dismissEstimatorRequest}
+          prioritySavingId={estimatorPrioritySavingId}
+          onSetPriority={setEstimatorRequestPriority}
+          onLogCall={logEstimatorRequestCall}
         />
       )}
     </DashboardGroupCard>
