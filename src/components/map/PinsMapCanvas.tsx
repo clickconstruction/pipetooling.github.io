@@ -15,6 +15,7 @@ import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import { Circle, CircleMarker, MapContainer, Marker, Popup, TileLayer, Tooltip, useMap, useMapEvents } from 'react-leaflet'
 import { clusterBounds, clusterLabel, clusterPins, clusterRadiusPx, type PinCluster } from '../../lib/map/clusterPins'
+import { mapPulseTarget } from '../../lib/map/pulseTarget'
 import { mapPointsBounds, type MapPoint } from '../../lib/map/mapPointsBounds'
 import {
   MAP_CANVAS_ANCHOR_COLOR,
@@ -43,6 +44,8 @@ export type PinsMapCanvasProps = {
   cluster?: boolean
   /** Ring colors most-urgent first — a cluster wears the first one any member has. */
   clusterRingPriority?: readonly string[]
+  /** v2.3251: the pin (or the cluster holding it) to ring with a pulsing halo — the Bid Board's row hover. */
+  pulseId?: string | null
 }
 
 /** Reports the map's zoom so the cluster grid can follow it. */
@@ -103,12 +106,13 @@ const ANCHOR_ICON = L.divIcon({
   iconAnchor: [8, 8],
 })
 
-export default function PinsMapCanvas({ pins, selectedId, onSelect, renderPopup, fitSignal, height, isMobile, anchor, fitPoints, cluster = false, clusterRingPriority }: PinsMapCanvasProps) {
+export default function PinsMapCanvas({ pins, selectedId, onSelect, renderPopup, fitSignal, height, isMobile, anchor, fitPoints, cluster = false, clusterRingPriority, pulseId }: PinsMapCanvasProps) {
   const first = pins[0] ?? anchor ?? null
   const [zoom, setZoom] = useState(12)
   const items = useMemo(() => (cluster ? clusterPins(pins, zoom, { ringPriority: clusterRingPriority }) : null), [cluster, pins, zoom, clusterRingPriority])
   const singlePins = items ? items.flatMap((i) => (i.kind === 'pin' ? [i.pin] : [])) : pins
   const clusters = items ? items.flatMap((i) => (i.kind === 'cluster' ? [i.cluster] : [])) : []
+  const pulse = mapPulseTarget(pins, items, pulseId)
   const center: L.LatLngExpression = first ? [first.lat, first.lng] : [39.5, -98.35]
   return (
     <MapContainer center={center} zoom={first ? 12 : 4} style={{ width: '100%', height }} scrollWheelZoom={!isMobile} attributionControl>
@@ -135,6 +139,16 @@ export default function PinsMapCanvas({ pins, selectedId, onSelect, renderPopup,
             </Tooltip>
           </Marker>
         </>
+      ) : null}
+      {pulse ? (
+        // Keyed on the mark so a new target mounts a fresh path — Leaflet applies `className` only at creation.
+        <CircleMarker
+          key={`pulse-${pulse.markId}`}
+          center={[pulse.lat, pulse.lng]}
+          radius={pulse.radiusPx}
+          interactive={false}
+          pathOptions={{ className: 'pins-map-pulse-halo', color: pulse.color, weight: 3, opacity: 0.9, fillOpacity: 0 }}
+        />
       ) : null}
       {clusters.map((c) => (
         <ClusterMarker key={c.id} cluster={c} />

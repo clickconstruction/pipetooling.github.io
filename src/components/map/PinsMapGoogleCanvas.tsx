@@ -41,6 +41,7 @@ import {
 } from '../../lib/map/mapCanvasTypes'
 import type { PinsMapCanvasProps } from './PinsMapCanvas'
 import { clusterBounds, clusterLabel, clusterPins, clusterRadiusPx, type PinCluster } from '../../lib/map/clusterPins'
+import { mapPulseTarget } from '../../lib/map/pulseTarget'
 
 export type PinsMapGoogleCanvasProps = PinsMapCanvasProps & {
   apiKey: string
@@ -217,7 +218,7 @@ function useMapZoom(enabled: boolean): number {
   return zoom
 }
 
-function Pins({ pins, selectedId, onSelect, renderPopup, isMobile, cluster = false, clusterRingPriority }: Pick<PinsMapGoogleCanvasProps, 'pins' | 'selectedId' | 'onSelect' | 'renderPopup' | 'isMobile' | 'cluster' | 'clusterRingPriority'>) {
+function Pins({ pins, selectedId, onSelect, renderPopup, isMobile, cluster = false, clusterRingPriority, pulseId }: Pick<PinsMapGoogleCanvasProps, 'pins' | 'selectedId' | 'onSelect' | 'renderPopup' | 'isMobile' | 'cluster' | 'clusterRingPriority' | 'pulseId'>) {
   const [markers, setMarkers] = useState<Record<string, google.maps.Marker | null>>({})
   const onReady = useCallback((id: string, m: google.maps.Marker | null) => {
     setMarkers((prev) => (prev[id] === m ? prev : { ...prev, [id]: m }))
@@ -227,8 +228,19 @@ function Pins({ pins, selectedId, onSelect, renderPopup, isMobile, cluster = fal
   const singlePins = items ? items.flatMap((i) => (i.kind === 'pin' ? [i.pin] : [])) : pins
   const clusters = items ? items.flatMap((i) => (i.kind === 'cluster' ? [i.cluster] : [])) : []
   const selected = useMemo(() => singlePins.find((p) => p.id === selectedId) ?? null, [singlePins, selectedId])
+  const pulse = mapPulseTarget(pins, items, pulseId)
   return (
     <>
+      {pulse ? (
+        // Symbol markers cannot animate, so the Google halo is a steady wide ring in the pin's color.
+        <Marker
+          key={`pulse-${pulse.markId}`}
+          position={{ lat: pulse.lat, lng: pulse.lng }}
+          clickable={false}
+          zIndex={0}
+          icon={{ path: google.maps.SymbolPath.CIRCLE, scale: pulse.radiusPx, fillOpacity: 0, strokeColor: pulse.color, strokeWeight: 3, strokeOpacity: 0.85 }}
+        />
+      ) : null}
       {clusters.map((c) => (
         <ClusterMarker key={c.id} cluster={c} />
       ))}
@@ -312,7 +324,7 @@ export default function PinsMapGoogleCanvas(props: PinsMapGoogleCanvasProps) {
           >
             <FitToPoints points={mapCanvasFitPoints(pins, anchor, fitPoints)} fitSignal={fitSignal} />
             {anchor ? <AnchorLayer anchor={anchor} /> : null}
-            <Pins pins={pins} selectedId={props.selectedId} onSelect={props.onSelect} renderPopup={props.renderPopup} isMobile={isMobile} cluster={props.cluster} clusterRingPriority={props.clusterRingPriority} />
+            <Pins pins={pins} selectedId={props.selectedId} onSelect={props.onSelect} renderPopup={props.renderPopup} isMobile={isMobile} cluster={props.cluster} clusterRingPriority={props.clusterRingPriority} pulseId={props.pulseId} />
           </GoogleMap>
         </APIProvider>
       </div>

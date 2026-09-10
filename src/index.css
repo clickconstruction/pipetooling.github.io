@@ -2386,6 +2386,11 @@ body.my-time-boundary-dragging {
 .robot-glyph-pulse { animation: robot-glyph-pulse 1.6s ease-in-out infinite; }
 @media (prefers-reduced-motion: reduce) { .robot-glyph-pulse { animation: none; } }
 
+/* Bids on a map (v2.3251): hovering a bid row rings its pin — a halo that swells and fades on the Leaflet canvas. */
+@keyframes pins-map-pulse-halo { 0% { stroke-width: 3; stroke-opacity: 0.9; } 100% { stroke-width: 16; stroke-opacity: 0; } }
+.pins-map-pulse-halo { animation: pins-map-pulse-halo 1.1s ease-out infinite; }
+@media (prefers-reduced-motion: reduce) { .pins-map-pulse-halo { animation: none; stroke-width: 5; stroke-opacity: 0.75; } }
+
 /* Bid flow landing (v2.3216): a step on the strip opened its door — ring the field it lands on, then fade. */
 @keyframes bid-flow-landing-fade {
   0% { outline-color: #2563eb; box-shadow: 0 0 0 6px rgba(37, 99, 235, 0.22); }

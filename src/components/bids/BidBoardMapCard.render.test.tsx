@@ -13,6 +13,7 @@ import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { BidBoardMapCard } from './BidBoardMapCard'
 import type { BidWithBuilder } from '../../types/bidWithBuilder'
 import type { PinsMapCanvasProps } from '../map/PinsMapCanvas'
+import { createBidBoardHoverStore, type BidBoardHoverStore } from '../../lib/bids/bidBoardHoverStore'
 
 const cacheRows = vi.fn<() => { address_normalized: string; lat: number; lng: number }[]>(() => [])
 const invokeMock = vi.fn()
@@ -47,7 +48,7 @@ vi.mock('../map/PinsMapGoogleCanvas', () => ({
 // The Leaflet canvas is lazy + heavy; stand in with a list of pin buttons that drive the same callbacks.
 vi.mock('../map/PinsMapCanvas', () => ({
   default: (p: PinsMapCanvasProps) => (
-    <div data-testid="canvas" data-anchor={p.anchor ? `${p.anchor.label}:${(p.anchor.ringMiles ?? []).join('/')}` : ''}>
+    <div data-testid="canvas" data-anchor={p.anchor ? `${p.anchor.label}:${(p.anchor.ringMiles ?? []).join('/')}` : ''} data-pulse={p.pulseId ?? ''}>
       {p.pins.map((pin) => (
         <button key={pin.id} type="button" onClick={() => p.onSelect(pin.id)} data-color={pin.color} data-ring={pin.ringColor ?? ''}>
           pin {pin.title}
@@ -80,7 +81,7 @@ const onOpenBid = vi.fn()
 const onEditBid = vi.fn()
 const onFocusRow = vi.fn()
 
-function renderCard(bids: BidWithBuilder[], opts: { isMobile?: boolean; revealSignal?: number } = {}) {
+function renderCard(bids: BidWithBuilder[], opts: { isMobile?: boolean; revealSignal?: number; hoverStore?: BidBoardHoverStore } = {}) {
   return render(
     <BidBoardMapCard
       bids={bids}
@@ -92,6 +93,7 @@ function renderCard(bids: BidWithBuilder[], opts: { isMobile?: boolean; revealSi
       onFocusRow={onFocusRow}
       revealSignal={opts.revealSignal ?? 0}
       onReloadBids={vi.fn()}
+      hoverStore={opts.hoverStore ?? null}
     />,
   )
 }
@@ -165,6 +167,18 @@ describe('BidBoardMapCard', () => {
     renderCard([bid({ id: 'a' })])
     fireEvent.click(await screen.findByText(/^pin .*385 · Galloway Park$/))
     expect(onFocusRow).toHaveBeenCalledWith('a')
+  })
+
+  it('a row hover in the store pulses that pin; leaving clears it (v2.3251)', async () => {
+    cacheRows.mockReturnValue([{ address_normalized: '1400 oak hollow rd', lat: 30.76, lng: -98.23 }])
+    const store = createBidBoardHoverStore()
+    renderCard([bid({ id: 'a' })], { hoverStore: store })
+    const canvas = await screen.findByTestId('canvas')
+    expect(canvas.getAttribute('data-pulse')).toBe('')
+    act(() => store.set('a'))
+    expect(canvas.getAttribute('data-pulse')).toBe('a')
+    act(() => store.set(null))
+    expect(canvas.getAttribute('data-pulse')).toBe('')
   })
 
   it('Hide map collapses to the header, persists per device, and the Map pill reveals it again', async () => {
