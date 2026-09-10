@@ -1735,9 +1735,9 @@ export type Database = {
           bid_tab_high: number | null
           bid_tab_low: number | null
           bid_tab_rank_from_low: number | null
+          bid_to_marked_plans: boolean
           bid_value: number | null
           count_tooling_link: string | null
-          bid_to_marked_plans: boolean
           count_tooling_plans_link: string | null
           cover_letter_alt_texts: Json | null
           created_at: string | null
@@ -1810,9 +1810,9 @@ export type Database = {
           bid_tab_high?: number | null
           bid_tab_low?: number | null
           bid_tab_rank_from_low?: number | null
+          bid_to_marked_plans?: boolean
           bid_value?: number | null
           count_tooling_link?: string | null
-          bid_to_marked_plans?: boolean
           count_tooling_plans_link?: string | null
           cover_letter_alt_texts?: Json | null
           created_at?: string | null
@@ -1885,9 +1885,9 @@ export type Database = {
           bid_tab_high?: number | null
           bid_tab_low?: number | null
           bid_tab_rank_from_low?: number | null
+          bid_to_marked_plans?: boolean
           bid_value?: number | null
           count_tooling_link?: string | null
-          bid_to_marked_plans?: boolean
           count_tooling_plans_link?: string | null
           cover_letter_alt_texts?: Json | null
           created_at?: string | null
