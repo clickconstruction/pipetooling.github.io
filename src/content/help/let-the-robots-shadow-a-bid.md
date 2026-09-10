@@ -27,7 +27,7 @@ Tick **Don’t let robots shadow this bid** under the line. The bid leaves the r
 The robot icon beside the bid number says how the shadow is going — nobody has to ask for one:
 
 - **Outline robot** — queued for the next batch. **Solid robot** — reading the plans and counting. **Lock badge** — it sealed its number; nobody sees that number until you send. Click any of these for the robot's timeline.
-- **Amber robot with a ?** (or a number) — the robot needs something from you: plans it can't open, or a question it asked. Click it: the sheet lists each gap with the fix, offers {{button:gray|Copy intake address}} when the plans aren't shared, and lets you answer the robot's questions right there.
+- **Amber robot with a ?** (or a number) — the robot needs something from you: plans it can't open, a different plan set, or a question it asked. Click it: the sheet lists each gap with the fix, offers {{button:gray|Copy intake address}} when the plans aren't shared, and lets you answer the robot's questions right there. When the robot says the wrong set is on the bid, that ask sits up with the gaps, with {{button:gray|Edit bid}} beside it; fix the plans link, then tap {{button:blue|★ Attached — rerun}} and the robot goes again on its next run.
 - **Green ✓ badge** — you sent the bid and the robot's sealed number was scored against yours. Hover for how far off it was; click to compare counts and pricing.
 - **Muted robot** — this bid is opted out, or it's a division robots don't bid yet.
 

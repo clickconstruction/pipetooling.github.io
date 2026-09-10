@@ -43,6 +43,8 @@ export interface RobotRowInput {
   run: RobotRowRun | null
   /** Open estimator-audience twin_questions about this bid. */
   openQuestions: number
+  /** v2.3212: how many of those are plans asks — the robot needs a different plan set on this bid. */
+  plansAsks?: number
   /** Counts/pricing presence from list_reference_presence(); null when not loaded for this bid. */
   presence: Pick<ReferencePresence, 'hasCounts' | 'hasPricing'> | null
 }
@@ -149,7 +151,9 @@ export function robotRowState(input: RobotRowInput): RobotRowState {
     const q = input.openQuestions
     const title =
       q > 0 && blocking.length === 0
-        ? `Robot asked ${q === 1 ? 'a question' : `${q} questions`} about ${project} — click to answer`
+        ? (input.plansAsks ?? 0) > 0
+          ? `Robot needs a different plan set on ${project} — click to fix${q > 1 ? ` (${q} open)` : ''}`
+          : `Robot asked ${q === 1 ? 'a question' : `${q} questions`} about ${project} — click to answer`
         : `Robot needs something on ${project}: ${blocking[0]?.label.toLowerCase() ?? ''}${q > 0 ? ` · ${q} open question${q === 1 ? '' : 's'}` : ''}`
     return { kind: 'needs', badge: q > 0 ? String(q > 9 ? '9+' : q) : '?', title, gaps, questions: q }
   }

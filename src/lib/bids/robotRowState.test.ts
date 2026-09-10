@@ -89,6 +89,15 @@ describe('robotRowState', () => {
     expect(s.gaps[0]?.fix).toMatch(/folder/)
   })
 
+  it('a plans ask names the fix in the title, not "asked a question" (v2.3212)', () => {
+    const s = robotRowState(input({ run: run(), openQuestions: 1, plansAsks: 1 }))
+    expect(s.kind).toBe('needs')
+    if (s.kind !== 'needs') throw new Error()
+    expect(s.badge).toBe('1')
+    expect(s.title).toMatch(/different plan set/i)
+    expect(s.title).toMatch(/click to fix/i)
+  })
+
   it('needs something when the robot asked, even while it is working; badge is the count', () => {
     const s = robotRowState(input({ run: run(), openQuestions: 2 }))
     expect(s.kind).toBe('needs')

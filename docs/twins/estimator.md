@@ -293,6 +293,13 @@ note ledger alone.
     label as a complete instruction to yourself. The refusal tells you what to fix;
     the working detail (numbers, sheet refs, the pattern you saw) belongs in
     `add_bid_note` on your shell, not in the question.
+  - **A plans ask is not a ruling** (v2.3212). When what you need is a different or
+    additional plan set on THIS bid — the wrong division filed, no plumbing sheets, a
+    file the intake account can't open — send `kind: 'plans'` with `bid` set. It lands
+    on that bid's robot needs sheet (the amber icon on the Bid Board) next to Edit bid
+    and Copy intake address, and gets the standard taps ('Attached — rerun' / 'Use what
+    is on the bid' / 'Skip this bid') if you give none. Leave `kind` off and the text
+    decides.
   - A blocker with both halves is two questions. Never park a finding or an answer as
     a question — that's `add_bid_note` / `submit_report`.
 - **Heartbeat freely**: on starting a bid (`working`), on blocking, on finishing (`done`).

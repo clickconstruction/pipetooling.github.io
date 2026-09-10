@@ -49,6 +49,7 @@ import { BidRfiTab } from '../components/bids/BidRfiTab'
 import { BidsAuditsTab } from '../components/bids/BidsAuditsTab'
 import { RobotStatusSheet } from '../components/bids/RobotStatusSheet'
 import { RobotNeedsSheet, type RobotOpenQuestion } from '../components/bids/RobotNeedsSheet'
+import { effectiveTwinQuestionKind } from '../../supabase/functions/_shared/twinQuestionKind'
 import type { RobotRowInput } from '../lib/bids/robotRowState'
 import type { ShadowRunRow } from '../lib/bids/shadowStory'
 import { RobotBidComparisonModal } from '../components/bids/RobotBidComparisonModal'
@@ -542,30 +543,63 @@ export default function Bids() {
   // Open estimator-audience questions the robots asked about a bid — the row's
   // "needs something" state. Same table the Audits tab answers from; fail-soft.
   const canAnswerRobotQuestions = (ROBOT_AUDIT_ROLES as readonly string[]).includes(myRole ?? '')
-  const [openQuestionsByBidId, setOpenQuestionsByBidId] = useState<ReadonlyMap<string, RobotOpenQuestion[]>>(() => new Map())
+  type OpenRobotQuestionRow = RobotOpenQuestion & { about_bid_id: string; audience?: string | null }
+  const [openRobotQuestionRows, setOpenRobotQuestionRows] = useState<readonly OpenRobotQuestionRow[]>([])
   const loadRobotQuestions = useCallback(async () => {
     if (!canAnswerRobotQuestions) return
     try {
+      // select('*') so choices / recommended (v2.3210) and kind (v2.3212) ride
+      // along once their migrations land; before that they are simply absent.
       const { data, error } = await (supabase as unknown as import('@supabase/supabase-js').SupabaseClient)
         .from('twin_questions')
-        .select('id, question, topic, created_at, about_bid_id, audience')
+        .select('*')
         .eq('status', 'open')
         .not('about_bid_id', 'is', null)
         .order('created_at', { ascending: true })
         .limit(500)
       if (error) return
-      const m = new Map<string, RobotOpenQuestion[]>()
-      for (const r of (data ?? []) as Array<RobotOpenQuestion & { about_bid_id: string; audience?: string | null }>) {
-        if (r.audience === 'operator') continue
-        const list = m.get(r.about_bid_id) ?? []
-        list.push({ id: r.id, question: r.question, topic: r.topic ?? null, created_at: r.created_at })
-        m.set(r.about_bid_id, list)
-      }
-      setOpenQuestionsByBidId(m)
+      setOpenRobotQuestionRows(((data ?? []) as OpenRobotQuestionRow[]).filter((r) => r.audience !== 'operator'))
     } catch {
       // RLS-closed: no questions surface on the board.
     }
   }, [canAnswerRobotQuestions])
+  // v2.3212: a PLANS ask the robot filed on its ZZ shell is a task on the HUMAN
+  // bid (the shell copies the human's plans link), so it is keyed to the source
+  // row — the amber icon the estimator actually sees. Other questions stay on
+  // the bid they were asked about.
+  const sourceIdByTwinId = useMemo(() => {
+    const m = new Map<string, string>()
+    for (const twin of robotBids) if (twin.twin_source_bid_id) m.set(twin.id, twin.twin_source_bid_id)
+    return m
+  }, [robotBids])
+  const openQuestionsByBidId = useMemo<ReadonlyMap<string, RobotOpenQuestion[]>>(() => {
+    const m = new Map<string, RobotOpenQuestion[]>()
+    for (const r of openRobotQuestionRows) {
+      const kind = effectiveTwinQuestionKind(r)
+      const key = kind === 'plans' ? (sourceIdByTwinId.get(r.about_bid_id) ?? r.about_bid_id) : r.about_bid_id
+      const list = m.get(key) ?? []
+      list.push({ id: r.id, question: r.question, topic: r.topic ?? null, created_at: r.created_at, choices: r.choices, recommended: r.recommended ?? null, kind })
+      m.set(key, list)
+    }
+    return m
+  }, [openRobotQuestionRows, sourceIdByTwinId])
+  // Deep link from Standing rulings (v2.3212): /bids?tab=bid-board&bidId=…&robot=needs
+  // opens that bid's robot needs sheet once the bid is in hand, then drops the flag.
+  useEffect(() => {
+    const params = new URLSearchParams(location.search)
+    if (params.get('robot') !== 'needs') return
+    const id = params.get('bidId')
+    if (id && !bids.some((b) => b.id === id)) return // bids not in hand yet — try again on the next render
+    if (id) setRobotNeedsBidId(id)
+    // Drop the flag whether or not it found its bid: the board's own deep-link
+    // handler consumes bidId separately, and a stale `robot=needs` must not
+    // reopen the sheet on the next visit.
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev)
+      next.delete('robot')
+      return next
+    }, { replace: true })
+  }, [location.search, bids, setSearchParams])
   useEffect(() => {
     void loadRobotQuestions()
   }, [loadRobotQuestions])
@@ -597,6 +631,7 @@ export default function Bids() {
       twinBidNumber: twinBidBySourceId.get(bid.id)?.bid_number ?? null,
       run: shadowRunByBidNumber.get((bid.bid_number ?? '').trim()) ?? null,
       openQuestions: openQuestionsByBidId.get(bid.id)?.length ?? 0,
+      plansAsks: openQuestionsByBidId.get(bid.id)?.filter((q) => q.kind === 'plans').length ?? 0,
       presence: referencePresence.get(bid.id) ?? null,
     }),
     [serviceTypeNameById, twinBidBySourceId, shadowRunByBidNumber, openQuestionsByBidId, referencePresence],

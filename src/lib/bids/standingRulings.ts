@@ -16,6 +16,7 @@
  */
 
 import { effectiveTwinQuestionAudience, type TwinQuestionAudience } from '../../../supabase/functions/_shared/twinQuestionAudience'
+import { effectiveTwinQuestionKind } from '../../../supabase/functions/_shared/twinQuestionKind'
 
 export type TwinQuestionStatus = 'open' | 'answered' | 'promoted' | 'dismissed'
 
@@ -42,6 +43,8 @@ export type TwinQuestionRow = {
   choices?: unknown
   /** v2.3210: the robot's own pick, one of `choices`. */
   recommended?: string | null
+  /** v2.3212: 'decision' (a ruling) or 'plans' (a plan-set task on one bid); undefined until migration 20260910003115 lands — then the text classifies it. */
+  kind?: string | null
 }
 
 export type StandingRuling = {
@@ -63,8 +66,14 @@ export type StandingRulingsView = {
   rulings: StandingRuling[]
   /** Topicless open questions — no dedupe key, so they list individually (newest first). */
   singles: TwinQuestionRow[]
-  /** Total open questions behind the header count. */
+  /** Total open questions behind the header count (plans asks excluded — they are not rulings). */
   openCount: number
+  /**
+   * v2.3212: open plans asks in this lane — the robot needs a different plan
+   * set on ONE bid. They live on that bid's robot needs sheet; the panel only
+   * points at them (newest first).
+   */
+  plansAsks: TwinQuestionRow[]
 }
 
 /** 'travel-bands' → 'Travel bands' (best-effort; unknown shapes pass through). */
@@ -85,9 +94,11 @@ const newestFirst = (a: TwinQuestionRow, b: TwinQuestionRow) =>
  */
 export function groupStandingRulings(rows: TwinQuestionRow[], opts?: { audience?: TwinQuestionAudience }): StandingRulingsView {
   const lane = opts?.audience
-  const open = rows
+  const inLane = rows
     .filter((r) => r.status === 'open' && (!lane || effectiveTwinQuestionAudience(r) === lane))
     .sort(newestFirst)
+  const plansAsks = inLane.filter((r) => effectiveTwinQuestionKind(r) === 'plans')
+  const open = inLane.filter((r) => effectiveTwinQuestionKind(r) !== 'plans')
   const byTopic = new Map<string, TwinQuestionRow[]>()
   const singles: TwinQuestionRow[] = []
   for (const q of open) {
@@ -117,7 +128,7 @@ export function groupStandingRulings(rows: TwinQuestionRow[], opts?: { audience?
     if (a.askCount !== b.askCount) return b.askCount - a.askCount
     return newestFirst(a.newest, b.newest)
   })
-  return { rulings, singles, openCount: open.length }
+  return { rulings, singles, openCount: open.length, plansAsks }
 }
 
 /** The muted line under a ruling: 'asked 3 times across 2 bids'. */
