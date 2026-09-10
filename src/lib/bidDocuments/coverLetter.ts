@@ -100,6 +100,13 @@ function editWrap(innerHtml: string, editKey: string | undefined): string {
   return editKey ? `<span data-cl-edit="${escapeHtml(editKey)}">${innerHtml}</span>` : innerHtml
 }
 
+/**
+ * Bid basis (v2.3219): when the letter bids to the marked-up plans, the clause
+ * lands after the plan-date line and the fixture header reads "per our
+ * marked-up plans". Built by src/lib/bids/bidBasis.ts bidBasisClause.
+ */
+export type CoverLetterBidBasis = { clause: string }
+
 /** Service-type word for cover letter (plumbing/electrical/HVAC). "Click Plumbing and Electrical" is never changed. */
 export function serviceTypeWordForCoverLetter(serviceTypeName: string): string {
   const name = (serviceTypeName ?? 'Plumbing').toLowerCase()
@@ -125,7 +132,8 @@ export function buildCoverLetterHtml(
   includeFixturesPerPlan = true,
   paymentSchedule: CoverLetterPaymentSchedule | null = null,
   closingParagraph: string | null = null,
-  alternatesBlock: CoverLetterAlternatesBlock | null = null
+  alternatesBlock: CoverLetterAlternatesBlock | null = null,
+  bidBasis: CoverLetterBidBasis | null = null
 ): string {
   const inclusionIndent = '     ' // 5 preceding spaces for Additional Inclusions (same as fixture header)
   const inclusionLines = inclusions.trim().split(/\n/).filter(Boolean).map((l) => inclusionIndent + '• ' + l.trim())
@@ -135,7 +143,7 @@ export function buildCoverLetterHtml(
   const termsLines = terms.trim().split(/\n/).filter(Boolean).map((l) => '• ' + l.trim())
   const fixtureBlock =
     fixtureRows.length > 0 && includeFixturesPerPlan
-      ? '     • Fixtures provided and installed by us per plan:\n            ' + fixtureRows.map((r) => '• [' + r.count + '] ' + r.fixture).join('\n            ')
+      ? '     • Fixtures provided and installed by us per ' + (bidBasis ? 'our marked-up plans' : 'plan') + ':\n            ' + fixtureRows.map((r) => '• [' + r.count + '] ' + r.fixture).join('\n            ')
       : ''
   const inclusionsBlock = [fixtureBlock, ...inclusionLinesToUse].filter(Boolean).join('\n')
   const stWord = serviceTypeWordForCoverLetter(serviceTypeName)
@@ -168,6 +176,9 @@ export function buildCoverLetterHtml(
   }
   if (designDrawingPlanDateFormatted) {
     html += br2 + '<strong>Design Drawings Plan Date: ' + escapeHtml(designDrawingPlanDateFormatted) + '</strong>'
+  }
+  if (bidBasis) {
+    html += br2 + '<strong>Bid basis:</strong> ' + escapeHtml(bidBasis.clause)
   }
   html += br2 + '<strong>Inclusions:</strong>' + br + escapeHtml(inclusionsBlock || '(none)').replace(/\n/g, br)
   html += br2 + '<strong>Exclusions and Scope:</strong>' + br + escapeHtml(exclusionsContent).replace(/\n/g, br)
@@ -216,7 +227,8 @@ export function buildCoverLetterText(
   includeFixturesPerPlan = true,
   paymentSchedule: CoverLetterPaymentSchedule | null = null,
   closingParagraph: string | null = null,
-  alternatesBlock: CoverLetterAlternatesBlock | null = null
+  alternatesBlock: CoverLetterAlternatesBlock | null = null,
+  bidBasis: CoverLetterBidBasis | null = null
 ): string {
   const inclusionIndent = '     ' // 5 preceding spaces for Additional Inclusions (same as fixture header)
   const inclusionLines = inclusions.trim().split(/\n/).filter(Boolean).map((l) => inclusionIndent + '• ' + l.trim())
@@ -226,7 +238,7 @@ export function buildCoverLetterText(
   const termsLines = terms.trim().split(/\n/).filter(Boolean).map((l) => '• ' + l.trim())
   const fixtureBlock =
     fixtureRows.length > 0 && includeFixturesPerPlan
-      ? '     • Fixtures provided and installed by us per plan:\n            ' + fixtureRows.map((r) => '• [' + r.count + '] ' + r.fixture).join('\n            ')
+      ? '     • Fixtures provided and installed by us per ' + (bidBasis ? 'our marked-up plans' : 'plan') + ':\n            ' + fixtureRows.map((r) => '• [' + r.count + '] ' + r.fixture).join('\n            ')
       : ''
   const inclusionsBlock = [fixtureBlock, ...inclusionLinesToUse].filter(Boolean).join('\n')
   const stWord = serviceTypeWordForCoverLetter(serviceTypeName)
@@ -256,6 +268,7 @@ export function buildCoverLetterText(
     '',
     ...alternatesLines,
     ...(designDrawingPlanDateFormatted ? ['Design Drawings Plan Date: ' + designDrawingPlanDateFormatted, ''] : []),
+    ...(bidBasis ? ['Bid basis: ' + bidBasis.clause, ''] : []),
     'Inclusions:',
     inclusionsBlock || '(none)',
     '',

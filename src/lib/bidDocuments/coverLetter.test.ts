@@ -359,3 +359,47 @@ describe('alternates block (same-page alternates, v2.2370; delta-first + grouped
     expect(shipped).not.toContain('data-cl-edit')
   })
 })
+
+describe('bid basis (v2.3219)', () => {
+  const bidBasis = { clause: 'This proposal is based on our marked-up copy of the plans dated 8/14/26, which accompanies this letter (2 sheets: P-101, P-201). Where our marks and the issued drawings differ, our marks govern.' }
+  const args = (basis: { clause: string } | null) => [
+    'John Doe', '123 Main St, Austin, TX 78701', 'Acme Tower', '456 Job Rd, Austin, TX 78702',
+    'One Hundred 00/100 Dollars', '$100.00', FIXTURES, '', '', '', '8/14/26', 'Plumbing', false, true, null, null, null, basis,
+  ] as const
+
+  it('HTML: the clause lands after the plan-date line and the fixture header says marked-up plans', () => {
+    const out = buildCoverLetterHtml(...args(bidBasis))
+    const planDateAt = out.indexOf('Design Drawings Plan Date: 8/14/26')
+    const clauseAt = out.indexOf('<strong>Bid basis:</strong> This proposal is based on our marked-up copy')
+    const inclusionsAt = out.indexOf('<strong>Inclusions:</strong>')
+    expect(planDateAt).toBeGreaterThan(-1)
+    expect(clauseAt).toBeGreaterThan(planDateAt)
+    expect(inclusionsAt).toBeGreaterThan(clauseAt)
+    expect(out).toContain('Fixtures provided and installed by us per our marked-up plans:')
+    expect(out).not.toContain('per plan:')
+    expect(out).toContain('(2 sheets: P-101, P-201)')
+  })
+
+  it('HTML: without a bid basis nothing changes', () => {
+    const out = buildCoverLetterHtml(...args(null))
+    expect(out).not.toContain('Bid basis:')
+    expect(out).toContain('Fixtures provided and installed by us per plan:')
+  })
+
+  it('text: the clause is its own line after the plan date', () => {
+    const text = buildCoverLetterText(...args(bidBasis))
+    const lines = text.split('\n')
+    const planDateIdx = lines.indexOf('Design Drawings Plan Date: 8/14/26')
+    const clauseIdx = lines.findIndex((l) => l.startsWith('Bid basis: This proposal is based on our marked-up copy'))
+    expect(planDateIdx).toBeGreaterThan(-1)
+    expect(clauseIdx).toBe(planDateIdx + 2)
+    expect(lines[clauseIdx + 1]).toBe('')
+    expect(text).toContain('Fixtures provided and installed by us per our marked-up plans:')
+    expect(buildCoverLetterText(...args(null))).not.toContain('Bid basis:')
+  })
+
+  it('escapes the clause in HTML', () => {
+    const out = buildCoverLetterHtml(...args({ clause: 'a <b> & c' }))
+    expect(out).toContain('<strong>Bid basis:</strong> a &lt;b&gt; &amp; c')
+  })
+})

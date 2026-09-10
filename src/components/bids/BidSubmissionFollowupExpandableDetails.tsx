@@ -1,6 +1,7 @@
 import type { CSSProperties, ReactNode } from 'react'
 import type { BidWithBuilder, EstimatorUser } from '../../types/bidWithBuilder'
 import { BidPackageSendsDetails } from './BidPackageSendsDetails'
+import { BidBasisExportsList } from './BidBasisCard'
 import {
   bidAttestationDisplayName,
   normalizeBidDateInput,
@@ -170,6 +171,10 @@ export function BidSubmissionFollowupExpandableDetails({
         />
         <DetailPair label="Plan pages" value={dash(bid.plan_pages)} />
         <DetailPair label="Design drawing plan date" value={formatDateYYMMDD(bid.design_drawing_plan_date)} />
+        <div style={{ gridColumn: '1 / -1', minWidth: 0 }}>
+          <DetailPair label={bid.bid_to_marked_plans ? 'Bid basis · marked-up plans (in the letter)' : 'Bid basis exports'} value="" />
+          <BidBasisExportsList bidId={bid.id} />
+        </div>
 
         <SectionTitle>Submission</SectionTitle>
         <DetailPair label="Submitted to" value={dash(bid.submitted_to)} />

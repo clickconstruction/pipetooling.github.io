@@ -1400,6 +1400,16 @@ Every GC packet can have one durable, signable link (`bid_proposal_rooms` · `bi
 - Telemetry: minting a room records `ui_nav_clicks` control `bid_room_published`, target `#sent_by_app:1|0` (`bid_proposal_room_events.event_type` is CHECK-constrained to the five GC-side kinds, so the mint lives in the nav-click ledger).
 - Public side: [`BidRoom.tsx`](../src/pages/BidRoom.tsx) + edge functions `get-bid-proposal-room` / `send-bid-room-link` / `sign-bid-room` (`docs/EDGE_FUNCTIONS.md`). Help: *send a bid for signature*.
 
+### Bid basis — marked-up plans from CountTooling (v2.3219)
+
+When the issued drawings are too rough to bid to, the office bids to its own marked-up copy and sends those sheets with the proposal. Step 2 carries a **Bid basis** card ([`BidBasisCard.tsx`](../src/components/bids/BidBasisCard.tsx), id `bid-basis-card`) whenever the bid has a CountTooling view link (`count_tooling_plans_link`, else the twin-stamped `count_tooling_link`) or an export on record:
+
+- **Get marked-up plans from CountTooling** (`bid-basis-get`) opens the bid's CountTooling view link in a new tab with `export=bid-basis&ref=b<bid_number>` ([`bidBasis.ts`](../src/lib/bids/bidBasis.ts) `bidBasisExportUrl`; no grant — the view link's email gate admits the office domain) and shows the waiting dialog (the three steps, the expected file name, *Tab didn't open? Open it again*, **Mark as attached by hand**, Close). CountTooling opens its Export PDFs dialog preset to the sheets that carry marks, saves `bid-basis_<ref>_<project>_<date>_<HHMM>.pdf`, and `postMessage`s a manifest to the opener.
+- [`useBidBasisExports`](../src/hooks/useBidBasisExports.ts) listens on `window` (CountTooling origins only; localhost under `DEV`; the ref must match the bid), inserts one **`bid_plan_basis_exports`** row per manifest (file name, sheets, page indexes, mark totals, notes, report flag, size, the CountTooling handles, `ct_updated_at`, and the Canvas JSON `canvas_snapshot`), supersedes earlier rows, and reloads. The card flips to *Marked-up plans · stamped*: file name + Copy, sheet list, who/when, takeoff last saved, **Export again · History (N) · Remove**.
+- **Takeoff changed since**: CountTooling also posts a "loaded" notice with the takeoff's last-saved time each time the card opens it; a newer time than the current export's turns the card amber with **Export again** / *Keep the … file*.
+- **Bid to our marked-up plans** pill (`cover-letter-bid-basis-pill`, persisted `bids.bid_to_marked_plans`; dashed + disabled until an export exists): on, `buildCoverLetterHtml` / `buildCoverLetterText` receive a trailing `bidBasis` argument and render **Bid basis:** + `bidBasisClause(...)` after the plan-date line ("This proposal is based on our marked-up copy of the plans dated X, which accompanies this letter (N sheets: …). Where our marks and the issued drawings differ, our marks govern."), and the fixture header reads "per our marked-up plans". Every letter path passes it; the Approval PDF does not.
+- Followup → Full bid details lists the export history (`BidBasisExportsList`). Migration `20260910120000_bid_plan_basis_exports.sql`. Help: *bid to your marked-up plans when the drawings are too rough to read*.
+
 ### Edit Bid Button
 
 **Location**: Cover Letter tab header, next to Close
