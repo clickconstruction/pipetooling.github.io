@@ -424,6 +424,45 @@ export type Database = {
           },
         ]
       }
+      bid_best_efforts: {
+        Row: {
+          bid_id: string
+          note: string | null
+          recorded_at: string
+          recorded_by: string | null
+          value: number
+        }
+        Insert: {
+          bid_id: string
+          note?: string | null
+          recorded_at?: string
+          recorded_by?: string | null
+          value: number
+        }
+        Update: {
+          bid_id?: string
+          note?: string | null
+          recorded_at?: string
+          recorded_by?: string | null
+          value?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bid_best_efforts_bid_id_fkey"
+            columns: ["bid_id"]
+            isOneToOne: true
+            referencedRelation: "bids"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bid_best_efforts_recorded_by_fkey"
+            columns: ["recorded_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       bid_count_row_custom_costs: {
         Row: {
           applied_at: string
@@ -16523,6 +16562,7 @@ export type Database = {
           locked_at: string | null
           locked_total: number | null
           reference_bid_id: string
+          reference_kind: string | null
           reference_value: number | null
           scored_at: string | null
           shadow_bid_id: string
@@ -16539,6 +16579,7 @@ export type Database = {
           locked_at?: string | null
           locked_total?: number | null
           reference_bid_id: string
+          reference_kind?: string | null
           reference_value?: number | null
           scored_at?: string | null
           shadow_bid_id: string
@@ -16555,6 +16596,7 @@ export type Database = {
           locked_at?: string | null
           locked_total?: number | null
           reference_bid_id?: string
+          reference_kind?: string | null
           reference_value?: number | null
           scored_at?: string | null
           shadow_bid_id?: string
@@ -19748,6 +19790,7 @@ export type Database = {
           locked_total: number
           project_name: string
           reference_bid_number: string
+          reference_kind: string
           reference_sent_at: string
           reference_value: number
           requested_by_name: string
