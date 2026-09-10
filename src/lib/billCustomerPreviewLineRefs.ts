@@ -1,5 +1,10 @@
 import type { Database } from '../types/database'
-import { buildBillableServiceLinesFromFixtures, buildMaterialLinesFromMaterials, isBillableFixtureRow } from './physicalInvoiceLineItems'
+import {
+  buildBillableServiceLinesFromFixtures,
+  buildMaterialLinesFromMaterials,
+  discountServiceLinesForFixtures,
+  isBillableFixtureRow,
+} from './physicalInvoiceLineItems'
 
 type FixtureRow = Database['public']['Tables']['jobs_ledger_fixtures']['Row']
 type MaterialRow = Database['public']['Tables']['jobs_ledger_materials']['Row']
@@ -52,10 +57,16 @@ export function physicalPreviewRowsAreDbBacked(
   fixtures: FixtureRow[] | null | undefined,
   materials: MaterialRow[] | null | undefined,
   billAmountDollars: number,
+  /** Every row on the job (v2.3252+) — the discount lines net the work down to the bill. */
+  allFixtures?: FixtureRow[] | null,
 ): boolean {
   if (!Number.isFinite(billAmountDollars) || billAmountDollars <= 0) return false
   const services = buildBillableServiceLinesFromFixtures(fixtures ?? [])
+  const discounts = discountServiceLinesForFixtures(allFixtures ?? fixtures ?? [], fixtures ?? [])
   const materialLines = buildMaterialLinesFromMaterials(materials ?? [])
-  const t = services.reduce((s, x) => s + x.amount, 0) + materialLines.reduce((s, x) => s + x.amount, 0)
+  const t =
+    services.reduce((s, x) => s + x.amount, 0) +
+    discounts.reduce((s, x) => s + x.amount, 0) +
+    materialLines.reduce((s, x) => s + x.amount, 0)
   return Math.abs(t - billAmountDollars) <= 0.02
 }

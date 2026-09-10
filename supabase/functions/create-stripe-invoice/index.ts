@@ -460,7 +460,7 @@ serve(async (req) => {
 
     const { data: fixturesRows, error: fixturesErr } = await admin
       .from('jobs_ledger_fixtures')
-      .select('id, name, count, line_unit_price, line_description, sequence_order, invoice_id')
+      .select('id, name, count, line_unit_price, line_description, sequence_order, invoice_id, line_kind, discount_pct, discount_basis_positions')
       .eq('job_id', invRow.job_id)
       .order('sequence_order', { ascending: true })
 
@@ -483,6 +483,9 @@ serve(async (req) => {
         line_description: string | null
         sequence_order: number
         invoice_id: string | null
+        line_kind: string | null
+        discount_pct: number | string | null
+        discount_basis_positions: number[] | null
       }[],
       jobs_ledger_invoice_id,
       {
@@ -493,6 +496,8 @@ serve(async (req) => {
 
     const lineItemsBuilt = buildStripeInvoiceItemsFromFixtures({
       fixtures: scopedFixtures,
+      // v2.3252+: discount shares split over the whole job's rows.
+      allFixtures: (fixturesRows ?? []) as typeof scopedFixtures,
       targetAmountCents: fixtureTargetCents,
       lineDescriptionOverride: lineDescriptionRaw,
       customerName: recipientName,

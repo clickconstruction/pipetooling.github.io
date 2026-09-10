@@ -16,6 +16,9 @@ export function buildPhysicalInvoiceDetailFromJob(
     // unlinked primary remainder composes from still-unlinked segments when
     // they sum exactly to its amount.
     fixtures: fixturesForInvoiceBill(details.fixtures, invoiceId, inv ?? null),
+    // v2.3252+: discount shares split over the whole job, so the document
+    // builder needs every row, not just the ones this bill lists.
+    allFixtures: details.fixtures,
     materials: details.materials,
     payments: details.payments,
     billingKind,

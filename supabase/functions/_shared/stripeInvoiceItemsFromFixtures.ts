@@ -2,6 +2,14 @@ import {
   resolveInvoiceLineDescription,
   STRIPE_INVOICE_LINE_DESCRIPTION_MAX,
 } from './stripeLineDescription.ts'
+import {
+  discountBillLinesForWorkRows,
+  discountRowsFromDb,
+  discountSharesByWorkRow,
+  isDiscountRow,
+  netWorkLineCents,
+  type DiscountShare,
+} from './discountLine.ts'
 
 export type JobFixtureForStripe = {
   id: string
@@ -10,6 +18,10 @@ export type JobFixtureForStripe = {
   line_unit_price: number | null
   line_description: string | null
   sequence_order: number
+  /** Discount rows (v2.3252+): never a line of their own — their shares print as negative lines on the bills of the work they follow. */
+  line_kind?: string | null
+  discount_pct?: number | string | null
+  discount_basis_positions?: number[] | null
 }
 
 /**
@@ -26,18 +38,34 @@ export type JobFixtureForStripe = {
  * Mirrored client-side in src/lib/invoiceScopedFixtures.ts.
  */
 export function scopeFixturesToInvoice<
-  T extends { invoice_id?: string | null; name?: string | null; count?: number | null; line_unit_price?: number | null },
+  T extends {
+    id: string
+    invoice_id?: string | null
+    name?: string | null
+    count?: number | null
+    line_unit_price?: number | null
+    sequence_order?: number | null
+    line_kind?: string | null
+    discount_pct?: number | string | null
+    discount_basis_positions?: number[] | null
+  },
 >(
   rows: T[],
   invoiceId: string,
   invoice?: { isPrimaryRtbBundle: boolean; targetAmountCents: number } | null,
 ): T[] {
-  const linked = rows.filter((r) => (r.invoice_id ?? null) === invoiceId)
+  // Discount rows (v2.3252+) are never scoped as lines of their own: every
+  // figure below is a WORK row's cents NET of the discount shares that follow
+  // it, so the "sum equals target" reading stays true on a discounted job.
+  const shares = discountSharesByWorkRow(discountRowsFromDb(rows))
+  const cents = (r: T) => scopeLineCents(r, shares)
+  const work = rows.filter((r) => !isDiscountRow(discountRowsFromDb([r])[0]!))
+  const linked = work.filter((r) => (r.invoice_id ?? null) === invoiceId)
   if (linked.length > 0) return linked
-  const unlinked = rows.filter((r) => (r.invoice_id ?? null) === null)
+  const unlinked = work.filter((r) => (r.invoice_id ?? null) === null)
   if (invoice?.isPrimaryRtbBundle === true && Number.isFinite(invoice.targetAmountCents) && invoice.targetAmountCents > 0) {
-    const unlinkedBillable = unlinked.filter((r) => scopeLineCents(r) > 0)
-    const sumCents = unlinkedBillable.reduce((s, r) => s + scopeLineCents(r), 0)
+    const unlinkedBillable = unlinked.filter((r) => cents(r) > 0)
+    const sumCents = unlinkedBillable.reduce((s, r) => s + cents(r), 0)
     if (unlinkedBillable.length > 0 && sumCents === invoice.targetAmountCents) return unlinkedBillable
     // B6 / J3-6 (mirrors client dropPaymentsCoveredRows): a remainder smaller
     // than the unlinked work means payments or dollar carves already cover the
@@ -48,11 +76,11 @@ export function scopeFixturesToInvoice<
       const dropped = new Set<T>()
       for (const r of unlinked) {
         if (pool <= 0) break
-        const cents = scopeLineCents(r)
-        if (cents <= 0) continue
-        if (cents <= pool) {
+        const c = cents(r)
+        if (c <= 0) continue
+        if (c <= pool) {
           dropped.add(r)
-          pool -= cents
+          pool -= c
         } else {
           break
         }
@@ -66,20 +94,29 @@ export function scopeFixturesToInvoice<
   return unlinked
 }
 
-/** Cents for one row in the scoping equality — same math as lineExtendedCents below. */
-function scopeLineCents(row: { name?: string | null; count?: number | null; line_unit_price?: number | null }): number {
+/** Cents for one row in the scoping equality — a work row NET of its discount shares (max(1, …) like lineExtendedCents). */
+function scopeLineCents(
+  row: { id: string; name?: string | null; count?: number | null; line_unit_price?: number | null; line_kind?: string | null },
+  shares: ReadonlyMap<string, DiscountShare[]>,
+): number {
+  if (row.line_kind === 'discount') return 0
   if (!(row.name ?? '').trim()) return 0
   const c = Number(row.count)
   const qty = Number.isFinite(c) && c > 0 ? c : 1
   const unit = row.line_unit_price != null && Number.isFinite(Number(row.line_unit_price)) ? Number(row.line_unit_price) : 0
   const dollars = qty * unit
   if (!Number.isFinite(dollars) || dollars <= 0) return 0
-  return Math.max(1, Math.round(dollars * 100))
+  const gross = Math.max(1, Math.round(dollars * 100))
+  const workRow = { id: row.id, name: row.name, count: row.count, line_unit_price: row.line_unit_price, line_kind: 'work' as const }
+  const net = netWorkLineCents([], workRow, shares)
+  return Math.max(0, Math.min(gross, net))
 }
 
 /** Client/Edge JSON: maps preview line to DB row or single-line modes (override / fallback). */
 export type StripeInvoiceLineSource =
   | { kind: 'fixture'; jobs_ledger_fixture_id: string }
+  /** A discount row's share of the work on this bill (v2.3252+): a negative line. */
+  | { kind: 'discount'; jobs_ledger_fixture_id: string }
   | { kind: 'single_line' }
   | { kind: 'extra_line' }
 
@@ -136,7 +173,14 @@ function allocateProportionalCents(rawCents: number[], target: number): number[]
 }
 
 export function buildStripeInvoiceItemsFromFixtures(params: {
+  /** The rows this bill covers (scoped). */
   fixtures: JobFixtureForStripe[]
+  /**
+   * Every row on the job (v2.3252+) — discount shares are split over the
+   * whole basis, so a draw's share needs the rows it does NOT bill too.
+   * Defaults to `fixtures` (no discounts: identical output to before).
+   */
+  allFixtures?: JobFixtureForStripe[]
   targetAmountCents: number
   lineDescriptionOverride?: string | null
   customerName: string
@@ -145,12 +189,15 @@ export function buildStripeInvoiceItemsFromFixtures(params: {
 }): { ok: true; items: StripeInvoiceLineItem[] } | { ok: false; error: string } {
   const {
     fixtures,
+    allFixtures,
     targetAmountCents,
     lineDescriptionOverride,
     customerName,
     jobName,
     hcpNumber,
   } = params
+  const kernelAll = discountRowsFromDb(allFixtures ?? fixtures)
+  const shares = discountSharesByWorkRow(kernelAll)
 
   if (!Number.isFinite(targetAmountCents) || targetAmountCents < 1) {
     return { ok: false, error: 'Amount too small' }
@@ -188,6 +235,7 @@ export function buildStripeInvoiceItemsFromFixtures(params: {
   })
 
   const billable = sorted.filter((row) => {
+    if (row.line_kind === 'discount') return false
     if (!(row.name ?? '').trim()) return false
     return lineExtendedCents(row) > 0
   })
@@ -205,7 +253,37 @@ export function buildStripeInvoiceItemsFromFixtures(params: {
     }
   }
 
-  const rawCents = billable.map((row) => lineExtendedCents(row))
+  // Discount lines (v2.3252+): when the bill is exactly the work it covers
+  // minus those rows' discount shares, print the work at its real prices and
+  // each discount as its own negative line — Stripe accepts a negative
+  // invoice item as a credit. Any other target (a payment took a bite, a
+  // dollar carve) keeps the historical proration, run over NET row cents so
+  // the customer never sees a price the discount already lowered.
+  const discountLines = discountBillLinesForWorkRows(kernelAll, new Set(billable.map((r) => r.id)))
+  const grossSum = billable.reduce((a, row) => a + lineExtendedCents(row), 0)
+  const discountSum = discountLines.reduce((a, l) => a + l.cents, 0)
+  if (discountLines.length > 0 && grossSum - discountSum === targetAmountCents) {
+    const items: StripeInvoiceLineItem[] = billable.map((row) => ({
+      amount: lineExtendedCents(row),
+      description: fixtureStripeDescription(row),
+      source: { kind: 'fixture' as const, jobs_ledger_fixture_id: row.id },
+    }))
+    for (const l of discountLines) {
+      items.push({
+        amount: -l.cents,
+        description: clampLineDescription(l.description),
+        source: { kind: 'discount', jobs_ledger_fixture_id: l.discountId },
+      })
+    }
+    return { ok: true, items }
+  }
+
+  const rawCents = billable.map((row) =>
+    Math.min(
+      lineExtendedCents(row),
+      netWorkLineCents([], { id: row.id, name: row.name, count: row.count, line_unit_price: row.line_unit_price, line_kind: 'work' }, shares),
+    ),
+  )
   const sumRaw = rawCents.reduce((a, b) => a + b, 0)
   if (sumRaw <= 0) {
     return {

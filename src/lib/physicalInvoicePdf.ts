@@ -106,7 +106,9 @@ function metaBlockMaxRightMm(
 }
 
 function formatUsdPlain(n: number): string {
-  return `$${n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+  // A discount line (v2.3252+) is negative: "-$1,509.80" (ASCII hyphen — the PDF font has no U+2212).
+  const abs = Math.abs(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+  return n < 0 ? `-$${abs}` : `$${abs}`
 }
 
 function lineItemRowHeightMm(descLineCount: number, lineStepMm: number): number {

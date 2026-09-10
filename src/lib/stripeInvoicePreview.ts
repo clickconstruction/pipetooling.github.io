@@ -1,6 +1,8 @@
 /** Maps preview line to DB fixture or single-line modes (override / fallback). Edge `preview-stripe-invoice` / `invoice_preview`. */
 export type StripeInvoiceLineSource =
   | { kind: 'fixture'; jobs_ledger_fixture_id: string }
+  /** A discount row's share on this bill (v2.3252+) — a negative line, not editable here. */
+  | { kind: 'discount'; jobs_ledger_fixture_id: string }
   | { kind: 'single_line' }
   | { kind: 'extra_line' }
 
@@ -14,9 +16,9 @@ export type StripeInvoicePreviewLine = {
 function parseStripeLineSource(raw: unknown): StripeInvoiceLineSource | undefined {
   if (raw == null || typeof raw !== 'object') return undefined
   const s = raw as Record<string, unknown>
-  if (s.kind === 'fixture' && typeof s.jobs_ledger_fixture_id === 'string') {
+  if ((s.kind === 'fixture' || s.kind === 'discount') && typeof s.jobs_ledger_fixture_id === 'string') {
     const id = s.jobs_ledger_fixture_id.trim()
-    if (id.length > 0) return { kind: 'fixture', jobs_ledger_fixture_id: id }
+    if (id.length > 0) return { kind: s.kind, jobs_ledger_fixture_id: id }
   }
   if (s.kind === 'single_line') {
     return { kind: 'single_line' }
