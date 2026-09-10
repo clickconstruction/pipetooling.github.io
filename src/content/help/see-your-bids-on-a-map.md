@@ -61,7 +61,7 @@ On a phone the rail sits under the map: the three boxes in a row, then the due l
 
 ## Add the addresses the map is missing
 
-Under the map, **N bids have no map location yet · add their addresses** is a link. It opens a sheet with every bid the map can't place — the ones with **no address** first, then the ones whose address the map **couldn't find** — each with its address ready to type or fix.
+Under the map, **N bids have no map location yet · add their addresses** is a link. It opens a sheet with every bid the map can't place — the ones with **no address** first, then the ones whose address the map **couldn't find** — each with its address ready to type or fix. Every row starts with the bid's stage in the section's colour, **Unsent**, **Pending**, **Won**, **Started** or **Lost**, so you can skip the lost ones and type the addresses that still matter.
 
 1. Type the site address (street, city, state) and tap {{button:blue|Save}} or press Enter. The row reads *Placed ✓ · 38 mi from the office* as soon as the map finds it; if the map still can't, it says so and asks you to check the address.
 2. Not sure of the spelling? {{button:outline-blue|Check on Google Maps ↗}} opens what's in the box, not what's saved.

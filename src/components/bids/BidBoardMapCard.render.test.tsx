@@ -138,6 +138,8 @@ describe('BidBoardMapCard', () => {
     fireEvent.click(screen.getByText(/1 bid has no map location yet/))
     const sheet = screen.getByRole('dialog', { name: /Bids the map can/ })
     expect(sheet.textContent).toContain('1 the map couldn’t place')
+    // v2.3214: the row names its Bid Board stage in words — this one is lost.
+    expect(sheet.querySelector('[data-testid="bid-map-stage"]')?.textContent).toBe('Lost')
     expect((screen.getByLabelText(/Address for b401/i) as HTMLInputElement).value).toBe('5100 Pine Ridge Blvd')
     expect(sheet.textContent).toMatch(/couldn’t find this address/)
     fireEvent.click(screen.getByRole('button', { name: /^b401$/i }))
