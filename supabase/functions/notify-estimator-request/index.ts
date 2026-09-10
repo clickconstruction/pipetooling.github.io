@@ -55,19 +55,33 @@ serve(async (req) => {
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!
     const supabaseAnon = Deno.env.get('SUPABASE_ANON_KEY')!
+    const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
+    if (!serviceRoleKey) {
+      return new Response(JSON.stringify({ error: 'SUPABASE_SERVICE_ROLE_KEY not configured' }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
+    }
+    // Trusted internal caller (v2.3246): submit-portal-request routes portal bid
+    // requests here and has no customer session, so it presents the service key.
+    const serviceCaller = token === serviceRoleKey
     const userClient = createClient(supabaseUrl, supabaseAnon, {
       global: { headers: { Authorization: authHeader } },
     })
 
-    const {
-      data: { user },
-      error: authError,
-    } = await userClient.auth.getUser(token)
-    if (authError || !user) {
-      return new Response(JSON.stringify({ error: 'Unauthorized - Invalid token' }), {
-        status: 401,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      })
+    let userId: string | null = null
+    if (!serviceCaller) {
+      const {
+        data: { user },
+        error: authError,
+      } = await userClient.auth.getUser(token)
+      if (authError || !user) {
+        return new Response(JSON.stringify({ error: 'Unauthorized - Invalid token' }), {
+          status: 401,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        })
+      }
+      userId = user.id
     }
 
     const { estimator_request_id }: Body = await req.json()
@@ -78,7 +92,8 @@ serve(async (req) => {
       })
     }
 
-    const { data: row, error: rowErr } = await userClient
+    const rowClient = serviceCaller ? createClient(supabaseUrl, serviceRoleKey) : userClient
+    const { data: row, error: rowErr } = await rowClient
       .from('estimator_requests')
       .select('id, from_user_id, title, reference_summary, job_ledger_id, bid_id, location_lat, location_lng')
       .eq('id', estimator_request_id)
@@ -91,17 +106,9 @@ serve(async (req) => {
       })
     }
     const estimatorRow = row as EstimatorRow | null
-    if (!estimatorRow || estimatorRow.from_user_id !== user.id) {
+    if (!estimatorRow || (!serviceCaller && estimatorRow.from_user_id !== userId)) {
       return new Response(JSON.stringify({ error: 'Forbidden or request not found' }), {
         status: 403,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      })
-    }
-
-    const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
-    if (!serviceRoleKey) {
-      return new Response(JSON.stringify({ error: 'SUPABASE_SERVICE_ROLE_KEY not configured' }), {
-        status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       })
     }
