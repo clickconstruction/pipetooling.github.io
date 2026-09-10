@@ -1,4 +1,5 @@
 import { CallPhoneButton } from './CallPhoneButton'
+import { phoneContact } from '../lib/phoneContact'
 import { useIntervalNowMs } from '../hooks/useIntervalNowMs'
 import { APP_CALENDAR_TZ } from '../utils/dateUtils'
 import { parsePortalRequestPayload } from '../lib/portalRequestPayload'
@@ -94,7 +95,7 @@ export function CustomerWaitingRequestCard({
         ) : null}
         <span>Reach them at</span>
         <span style={{ color: 'var(--text-strong)' }}>
-          {phone ?? 'No number on file'}
+          {phone ? (phoneContact(phone)?.display ?? phone) : 'No number on file'}
           {phone && portal?.phoneSource === 'on_file' ? <span style={{ color: 'var(--text-muted)' }}> · from the customer record</span> : null}
         </span>
         {portal?.plansLink ? (
