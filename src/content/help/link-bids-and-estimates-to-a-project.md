@@ -27,7 +27,7 @@ Click the {{button:outline-blue|+ Bid}} or {{button:outline-blue|+ Estimate}} se
 
 ## Link an existing bid or estimate
 
-- **Bids** — open the bid's edit form (from the Bid Board or any bids tab) and pick the project in the **Project** dropdown under Project Name. If the bid's free-text project name exactly matches a project, a one-tap **Suggested** button appears — click it to link without searching.
+- **Bids** — open the bid's edit form (from the Bid Board or any bids tab) and pick the project in the small **Project** control at the top right of the form, beside the title. It reads *Not linked* until you pick one; most bids never need it. If the bid's free-text project name exactly matches a project, a one-tap **Suggested** button appears — click it to link without searching.
 - **Estimates** — open a draft estimate and pick the project in the **Project** dropdown above Internal notes, then save the draft.
 
 Unlinking is the same motion: set the dropdown back to **Not linked**.
