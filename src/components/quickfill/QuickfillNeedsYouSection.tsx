@@ -25,6 +25,8 @@ import {
   HR_REPORTS_MIN_AGE_DAYS,
 } from '../../lib/ageState'
 import type { DispatchAgingSummary } from '../../lib/dispatchInboxAging'
+import { useCustomerWaitingOptional } from '../../contexts/CustomerWaitingContext'
+import { summarizeCustomerWaiting } from '../../lib/customerWaiting'
 import { isAssistantLike } from '../../lib/subcontractorLikeRole'
 import { buildNeedsYouItems } from '../../lib/dashboardNeedsYou'
 import { roadmapPath } from '../../lib/roadmapVisibility'
@@ -54,6 +56,9 @@ export function QuickfillNeedsYouSection({
 }) {
   const navigate = useNavigate()
   const { user: authUser, role } = useAuth()
+  // Customer Waiting (v2.3248): the Layout-level subscription; the Dispatch station is on this page.
+  const customerWaitingCtx = useCustomerWaitingOptional()
+  const customerWaiting = customerWaitingCtx && customerWaitingCtx.eligible ? summarizeCustomerWaiting(customerWaitingCtx.rows) : null
   const [staffModalOpen, setStaffModalOpen] = useState(false)
   /** "Match deposits" opens Accounts Receivable in place (Tier-2 #17) — the office keeps its Quickfill spot. */
   const [arDepositsModalOpen, setArDepositsModalOpen] = useState(false)
@@ -141,6 +146,8 @@ export function QuickfillNeedsYouSection({
     labelApprovals,
     labelApprovalsMinAgeDays: LABEL_APPROVALS_MIN_AGE_DAYS,
     // Aging queues (journey-map #40): the dispatch station is on this page; HR files from People.
+    customerWaitingEnabled: Boolean(authUser?.id) && customerWaitingCtx != null,
+    customerWaiting,
     dispatchAgedEnabled: Boolean(authUser?.id) && onOpenDispatchInbox != null,
     dispatchAged,
     dispatchMinAgeDays: DISPATCH_REQUESTS_MIN_AGE_DAYS,
@@ -192,6 +199,10 @@ export function QuickfillNeedsYouSection({
             navigate('/banking?tab=accounting')
           } else if (item.key === 'dispatch-requests-aged') {
             onOpenDispatchInbox?.()
+          } else if (item.key === 'customer-waiting') {
+            // The Dispatch station is on this page; estimator-only viewers get their inbox.
+            if (onOpenDispatchInbox && customerWaitingCtx?.inboxHref === '/dispatch-mode/inbox') onOpenDispatchInbox()
+            else navigate(customerWaitingCtx?.inboxHref ?? '/dispatch-mode/inbox')
           } else if (item.key === 'hr-reports-pending') {
             navigate('/people?tab=hr')
           }

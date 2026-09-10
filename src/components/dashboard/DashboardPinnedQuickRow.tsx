@@ -13,6 +13,8 @@ import { useTeamReviewsDue } from '../../hooks/useTeamReviewsDue'
 import { useRoadmapNeedsNameNudges } from '../../hooks/useRoadmapNeedsNameNudges'
 import { recordNavClickFromEvent } from '../../lib/navClickTelemetry'
 import { buildNeedsYouItems } from '../../lib/dashboardNeedsYou'
+import { useCustomerWaitingOptional } from '../../contexts/CustomerWaitingContext'
+import { summarizeCustomerWaiting } from '../../lib/customerWaiting'
 import { roadmapPath } from '../../lib/roadmapVisibility'
 import { DashboardNeedsYouCard } from './DashboardNeedsYouCard'
 import { GcReviewWeekDoneNotice } from '../DashboardGcReviewWeeklyBanner'
@@ -310,6 +312,9 @@ export function DashboardPinnedQuickRow({
   hideBanners = false,
 }: DashboardPinnedQuickRowProps) {
   const navigate = useNavigate()
+  // Customer Waiting (v2.3248): the Layout-level subscription; null outside the provider.
+  const customerWaitingCtx = useCustomerWaitingOptional()
+  const customerWaiting = customerWaitingCtx && customerWaitingCtx.eligible ? summarizeCustomerWaiting(customerWaitingCtx.rows) : null
 
   const [newReportModalOpen, setNewReportModalOpen] = useState(false)
   // One hook feeds the tally badge, the Needs You card and the /tally header
@@ -453,6 +458,8 @@ export function DashboardPinnedQuickRow({
     labelApprovalsEnabled,
     labelApprovals,
     labelApprovalsMinAgeDays: LABEL_APPROVALS_MIN_AGE_DAYS,
+    customerWaitingEnabled: !hideBanners && Boolean(authUserId) && customerWaitingCtx != null,
+    customerWaiting,
     dispatchAgedEnabled: !hideBanners && Boolean(authUserId),
     dispatchAged,
     dispatchMinAgeDays: DISPATCH_REQUESTS_MIN_AGE_DAYS,
@@ -591,11 +598,11 @@ export function DashboardPinnedQuickRow({
               navigate('/people?tab=hours&approvals=1')
             } else if (item.key === 'label-approvals') {
               navigate('/banking?tab=accounting')
-            } else if (item.key === 'dispatch-requests-aged') {
+            } else if (item.key === 'dispatch-requests-aged' || item.key === 'customer-waiting') {
               // The inbox lives further down this page (Teams Inbox card); Dispatch Mode users get its Inbox tab.
               const card = document.getElementById('dash-teams-inbox')
               if (card) card.scrollIntoView({ behavior: 'smooth', block: 'start' })
-              else navigate('/dispatch-mode/inbox')
+              else navigate(item.key === 'customer-waiting' && customerWaitingCtx ? customerWaitingCtx.inboxHref : '/dispatch-mode/inbox')
             } else if (item.key === 'hr-reports-pending') {
               navigate('/people?tab=hr')
             }
