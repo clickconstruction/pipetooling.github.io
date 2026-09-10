@@ -33,6 +33,19 @@ export function isTwinQuestionKind(v: unknown): v is TwinQuestionKind {
 export const PLANS_ASK_DEFAULT_CHOICES: readonly string[] = ['Attached — rerun', 'Use what is on the bid', 'Skip this bid']
 export const PLANS_ASK_DEFAULT_RECOMMENDED = 'Attached — rerun'
 
+/**
+ * Does this answer to a plans ask mean "go again"? (v2.3223) The default tap,
+ * or anything a person typed that says rerun / re-run / run again / try again.
+ * The needs sheet stamps the human bid robot-requested on a yes, so the ask
+ * shows green on the Queue lens and the robot picks it up front of the line.
+ */
+export function answerRequestsRerun(answer: string | null | undefined): boolean {
+  const a = (answer ?? '').trim().toLowerCase().replace(/\s+/g, ' ')
+  if (!a) return false
+  if (a === PLANS_ASK_DEFAULT_RECOMMENDED.toLowerCase()) return true
+  return /\bre-?run\b|\brun (?:it )?again\b|\btry again\b|\bgo again\b/.test(a)
+}
+
 const PLAN_NOUN = String.raw`(?:plans?|plan (?:set|file|link)|drawing set|drawings?|sheets?|pdf|fit-?out (?:set|drawings?|package)|construction set)`
 
 /** Each entry is [label, pattern]; the label is what a human sees in a tooltip. */

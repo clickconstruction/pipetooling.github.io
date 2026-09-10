@@ -620,7 +620,7 @@ export default function Bids() {
   useEffect(() => {
     void loadRobotQuestions()
   }, [loadRobotQuestions])
-  const answerRobotQuestion = useCallback(async (questionId: string, text: string): Promise<boolean> => {
+  const answerRobotQuestion = useCallback(async (questionId: string, text: string, opts?: { rerunBidId?: string }): Promise<boolean> => {
     const { data: rows, error } = await (supabase as unknown as import('@supabase/supabase-js').SupabaseClient)
       .from('twin_questions')
       .update({ status: 'answered', answer: text, answered_by: authUser?.id ?? null, answered_at: new Date().toISOString(), updated_at: new Date().toISOString() })
@@ -636,7 +636,28 @@ export default function Bids() {
       await loadRobotQuestions()
       return false
     }
-    showToast('Answer saved — the robot reads it on its next run.', 'success')
+    // v2.3223: "Attached — rerun" on a plans ask also puts the HUMAN bid at the
+    // front of the next robot batch — the same stamp as the green robot icon —
+    // so the fix is acted on, not just recorded. Best-effort: the answer is
+    // already saved; a refused stamp is reported and the person can use the icon.
+    let rerun: 'stamped' | 'refused' | null = null
+    if (opts?.rerunBidId) {
+      const patch = { robot_requested_at: new Date().toISOString(), robot_requested_by: authUser?.id ?? null }
+      const { data: updRows, error: updErr } = await supabase.from('bids').update(patch).eq('id', opts.rerunBidId).select('id')
+      if (updErr || bidUpdateRefused(updRows)) rerun = 'refused'
+      else {
+        rerun = 'stamped'
+        setBids((prev) => prev.map((b) => (b.id === opts.rerunBidId ? { ...b, ...patch } : b)))
+      }
+    }
+    showToast(
+      rerun === 'stamped'
+        ? 'Answer saved — the robot goes again, front of the line next batch.'
+        : rerun === 'refused'
+          ? 'Answer saved, but the rerun request did not stick — use the robot icon to move it up.'
+          : 'Answer saved — the robot reads it on its next run.',
+      rerun === 'refused' ? 'error' : 'success',
+    )
     await loadRobotQuestions()
     return true
   }, [authUser?.id, loadRobotQuestions, showToast])
