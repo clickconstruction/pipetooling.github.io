@@ -95,7 +95,8 @@ describe('BidsRobotMirrorTab', () => {
     await waitFor(() => expect(screen.getByText('PALMER WINERY')).toBeTruthy())
 
     // The strip: three of ours mirrored; two live eligible (431 covered, 999 not); the audit gate; no axis past Gate B.
-    expect(onRowCount).toHaveBeenLastCalledWith(3)
+    // The count lands after every section has rendered — wait for it (it was 2 on a slow CI runner).
+    await waitFor(() => expect(onRowCount).toHaveBeenLastCalledWith(3))
     expect(screen.getByText('our bids with a robot run')).toBeTruthy()
     expect(screen.getByText('1 / 2')).toBeTruthy()
     expect(screen.getByText('1 more live bid has no robot yet')).toBeTruthy()
