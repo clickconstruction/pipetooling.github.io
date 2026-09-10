@@ -142,7 +142,7 @@ export function BidsRobotShadowsTab({ onOpenBidNumber }: BidsRobotShadowsTabProp
         <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Loading shadows…</p>
       ) : runs.length === 0 ? (
         <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-          No shadow bids yet — request one with the yellow robot icon on the Bid Board.
+          No shadow bids yet — the robots pick up live plumbing bids with readable plans on the weekday batch; a bid's robot icon on the Bid Board says where it stands.
         </p>
       ) : (
         runs.map(renderRun)

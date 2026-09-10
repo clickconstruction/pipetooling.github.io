@@ -279,8 +279,8 @@ export function BidsRobotQueueTab({ bids, twinBidBySourceId, referencePresence, 
   return (
     <div>
       <p style={{ margin: '0 0 0.9rem', fontSize: '0.8rem', color: 'var(--text-muted)', maxWidth: '68ch' }}>
-        Every bid a robot could do right now — same rules as the board icons. Green requests come first
-        (oldest ask on top); paste a prompt into the twin and it runs the pipeline blind.
+        Every bid a robot could do right now — same rules as the board icons. Front-of-the-line requests come
+        first (oldest ask on top); paste a prompt into the twin and it runs the pipeline blind.
       </p>
 
       <div
@@ -336,7 +336,7 @@ export function BidsRobotQueueTab({ bids, twinBidBySourceId, referencePresence, 
       </h4>
       {queue.requested.length === 0 ? (
         <p style={{ margin: '0 0 1rem', fontSize: '0.8rem', color: 'var(--text-faint, var(--text-muted))' }}>
-          No requests yet — estimators click a yellow robot on the Bid Board to add one.
+          No requests yet — a bid goes to the front of the line from its robot icon on the Bid Board (Front of the line next batch).
         </p>
       ) : (
         <div style={{ marginBottom: '1rem' }}>{queue.requested.map((b) => renderRow(b, true))}</div>

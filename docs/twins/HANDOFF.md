@@ -5,11 +5,11 @@ file: HANDOFF.md
 type: Handoff / State of the program
 purpose: Everything a new operator needs to take over the digital-twins program — what is live, the fleet roadmap and its gates, how to run it day-to-day, where the secrets live, and the prioritized open threads
 audience: The incoming twins operator (a dev), AI agents
-last_updated: 2026-09-05
+last_updated: 2026-09-10
 key_sections:
   - name: "What is live today"
   - name: "The fleet roadmap & gates"
-  - name: "Where the program stands (2026-09-01)"
+  - name: "Where the program stands (2026-09-04)"
   - name: "Day-to-day operation"
   - name: "Secrets & access"
   - name: "Open threads, prioritized"
@@ -30,13 +30,18 @@ estimator's hours and her corpus, and every planned item optimizes one of the tw
   or is assigned — assignment IS the grant), the no-send trigger ("digital twins draft
   only: sending and outcomes are human acts"), per-twin revocable credentials
   (`twin_credentials`), `?as=twin:<role>[:n]` dev-login alias.
-- **twin-mcp** (`…/functions/v1/twin-mcp`) — ~22 tools now, in four families:
-  *session/docs* (`mint_session` — PT or CT, `get_brief`, `get_directory`,
-  `get_harness_guide`, `get_ct_guide`, `get_placement_guide`, `get_mission`,
-  `submit_report`); *work-state reads* (`get_assignments`, `get_work_state`,
-  `get_plan_brief`, `get_answers`); *pipeline writes inside the fence* (`file_plans`,
-  `add_bid_note`, `ask_question`, `heartbeat`, `ct_finish_takeoff`); *confidence runs*
-  (`open_backtest`, `get_shadow_queue`, `open_shadow`, `lock_shadow`, `score_shadows`).
+- **twin-mcp** (`…/functions/v1/twin-mcp`) — ~35 tools (the live `tools/list` is the
+  count; `EDGE_FUNCTIONS.md` → twin-mcp is the verb reference), in four families:
+  *session/docs* (`mint_session` — PT, CT or TT, `get_brief`, `get_directory`,
+  `get_harness_guide`, `get_ct_guide`, `get_tt_guide`, `get_placement_guide`,
+  `get_mission`, `submit_report`); *work-state reads* (`get_assignments`,
+  `get_work_state`, `get_plan_brief`, `get_answers`, `get_robot_book`,
+  `get_reference_rows`); *pipeline writes inside the fence* (`file_plans`,
+  `stage_plan_pdf`, `put_substrate`, `add_bid_note`, `ask_question`, `heartbeat`,
+  `ct_finish_takeoff`, `tt_finish_costing`, `paste_counts`, `extend_robot_book`,
+  `seed_audit_questions`); *confidence runs* (`open_backtest`, `next_backtest`,
+  `score_backtest`, `get_shadow_queue`, `open_shadow`, `next_shadow`, `lock_shadow`,
+  `score_shadows`, `void_shadow`).
   Blindness is structural: `open_backtest`/`open_shadow` copy logistics only — counts,
   pricing, `bid_value`, `outcome` are never selected. `docs/EDGE_FUNCTIONS.md` → twin-mcp
   is the authoritative verb reference.
