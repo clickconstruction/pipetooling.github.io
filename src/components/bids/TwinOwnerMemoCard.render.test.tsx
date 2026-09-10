@@ -21,6 +21,8 @@ const questions = [
 
 const inserted: unknown[] = []
 const updates: Array<{ patch: Record<string, unknown>; id: string }> = []
+// Rows an earlier Post already wrote (the retry scenario) — empty by default.
+let priorSplits: Array<{ id: string; mission: string }> = []
 
 vi.mock('../../lib/supabase', () => ({
   supabase: {
@@ -29,7 +31,10 @@ vi.mock('../../lib/supabase', () => ({
       if (table === 'users') return { select: () => ({ eq: () => ({ order: () => Promise.resolve({ data: [{ id: 'twin-1', name: 'Twin Estimator 1', email: 't@x' }], error: null }) }) }) }
       if (table === 'twin_questions')
         return {
-          select: () => ({ eq: () => ({ order: () => ({ limit: () => Promise.resolve({ data: questions, error: null }) }) }) }),
+          select: () => ({
+            eq: () => ({ order: () => ({ limit: () => Promise.resolve({ data: questions, error: null }) }) }),
+            ilike: () => Promise.resolve({ data: priorSplits, error: null }),
+          }),
           insert: (rows: unknown[]) => {
             inserted.push(...rows)
             return { select: () => Promise.resolve({ data: rows.map((_, i) => ({ id: `new-${i}` })), error: null }) }
@@ -76,5 +81,23 @@ describe('TwinOwnerMemoCard', () => {
     expect(await screen.findByText(/only 1 distinct choice/)).toBeTruthy()
     expect(inserted).toHaveLength(0)
     expect(updates).toHaveLength(0)
+  })
+
+  it('a retry after a half-failed Post finds the rows already written, skips the insert, and only retires the original (v2.3236)', async () => {
+    inserted.length = 0
+    updates.length = 0
+    priorSplits = [
+      { id: 'p1', mission: 'backtest-slate-2026-08-31 · split from 836b6c22' },
+      { id: 'p2', mission: 'backtest-slate-2026-08-31 · split from 836b6c22' },
+      { id: 'p3', mission: 'backtest-slate-2026-08-31 · split from 836b6c22' },
+      { id: 'p4', mission: 'backtest-slate-2026-08-31 · split from 836b6c22' },
+    ]
+    renderWithProviders(<TwinOwnerMemoCard />)
+    await waitFor(() => expect(screen.getByText('Owner memo · 1')).toBeTruthy())
+    fireEvent.click(screen.getByRole('button', { name: 'Post 4 as one-tap questions' }))
+    await waitFor(() => expect(updates.length).toBe(1))
+    expect(inserted).toHaveLength(0)
+    expect(updates[0]).toMatchObject({ id: '836b6c22-b8e0-4fb5-856d-b4e9d071099c', patch: { status: 'dismissed', answer: 'Re-asked as 4 one-decision questions from the Console.' } })
+    priorSplits = []
   })
 })

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildSplitInserts, defaultChoices, draftProblems, splitLegacyAsk, splitRetirementAnswer, topicSlug } from './legacyAskMemo'
+import { alreadySplitRows, buildSplitInserts, defaultChoices, draftProblems, splitLegacyAsk, splitMissionTag, splitRetirementAnswer, topicSlug } from './legacyAskMemo'
 
 const SLATE =
   'Slate doctrine asks from the 2026-08-31/09-01 backtest slate (b424 ours b237/b425 ours b166 — full detail in each bid\'s STG-6 stamp). Three decisions for Wendi/Stephen: (1) SMALL-TI RESIDUAL — all four fresh small/small-mid runs came in LIGHT by a consistent margin (Take 5 pair −21%/−29%, Church cafe −17%). Approve either a footage residual (~$6-8k on sub-$50k jobs) or ~30% higher per-fixture all-ins? (2) TAKE 5 PROTO PACKAGE — b237/b166 pair-implies building base ≈ $37.4k + ~$51/mi travel; approve minting a \'Take 5 proto package\' book entry so the next proto scores inside ±5%? Also confirm: CA piping IS plumber scope on Take 5s (you counted ~70 ft galv both protos despite the by-others note)? (3) HUNTER RD BAND — all three campus buildings lost to a winner under HALF your number. Confirm we bank this as a market-band flag (spec-campus builds ≈ 0.35-0.5× book) rather than recalibrating the book down.'
@@ -63,5 +63,18 @@ describe('draftProblems · buildSplitInserts', () => {
     ])
     expect(splitRetirementAnswer(4)).toBe('Re-asked as 4 one-decision questions from the Console.')
     expect(topicSlug('Small-TI residual!')).toBe('small-ti-residual')
+  })
+})
+
+describe('alreadySplitRows', () => {
+  it('finds the rows an earlier Post stamped for this source, and nothing else', () => {
+    const rows = [
+      { id: 'a', mission: 'backtest-slate-2026-08-31 · split from 836b6c22' },
+      { id: 'b', mission: 'backtest-slate-2026-08-31 · split from 836b6c22' },
+      { id: 'c', mission: 'legacy ask · split from deadbeef' },
+      { id: 'd', mission: null },
+    ]
+    expect(alreadySplitRows(rows, '836b6c22-b8e0-4fb5-856d-b4e9d071099c').map((r) => r.id)).toEqual(['a', 'b'])
+    expect(splitMissionTag('836b6c22-b8e0-4fb5-856d-b4e9d071099c')).toBe('split from 836b6c22')
   })
 })
