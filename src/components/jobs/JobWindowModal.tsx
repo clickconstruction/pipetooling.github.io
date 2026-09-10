@@ -106,6 +106,7 @@ export function JobWindowModal({
 
   return (
     <div
+      className="job-window-overlay"
       style={{
         position: 'fixed',
         inset: 0,
@@ -121,7 +122,45 @@ export function JobWindowModal({
       }}
       role="presentation"
     >
+      {/* Phones (v2.3231): the five tabs + "esc to close" + ✕ ran 437px wide inside a
+          343px dialog, so the ✕ sat off-screen behind overflow: hidden and the window
+          could not be closed by touch (Taunya, 2026-09-10). Same treatment as the bid
+          window: full-bleed sheet, tabs wrap and shrink, the esc hint goes (there is
+          no Escape key), the ✕ pins to the right of the first row. */}
+      <style>{`
+        @media (max-width: 640px) {
+          .job-window-overlay {
+            align-items: stretch !important;
+            justify-content: stretch !important;
+            padding: 0 !important;
+          }
+          .job-window-dialog {
+            max-width: 100% !important;
+            max-height: 100% !important;
+            border-radius: 0 !important;
+          }
+          .job-window-tabs {
+            flex-wrap: wrap !important;
+            gap: 0.25rem !important;
+            padding: calc(0.5rem + env(safe-area-inset-top, 0px)) 0.6rem 0.5rem !important;
+          }
+          .job-window-tab {
+            padding: 0.3rem 0.6rem !important;
+            font-size: 0.8rem !important;
+          }
+          .job-window-esc { display: none !important; }
+          .job-window-close {
+            margin-left: auto !important;
+            padding: 0.45rem 0.7rem !important;
+            font-size: 1.3rem !important;
+          }
+          .job-window-body {
+            padding: 0.5rem 0.9rem calc(1rem + env(safe-area-inset-bottom, 0px)) !important;
+          }
+        }
+      `}</style>
       <div
+        className="job-window-dialog"
         role="dialog"
         aria-label="Job window"
         style={{
@@ -141,6 +180,7 @@ export function JobWindowModal({
         onClick={(e) => e.stopPropagation()}
       >
         <div
+          className="job-window-tabs"
           role="tablist"
           aria-label="Job window tabs"
           style={{
@@ -155,6 +195,7 @@ export function JobWindowModal({
           {(Object.keys(TAB_LABELS) as JobWindowTab[]).map((t) => (
             <button
               key={t}
+              className="job-window-tab"
               type="button"
               role="tab"
               aria-selected={tab === t}
@@ -168,6 +209,7 @@ export function JobWindowModal({
             </button>
           ))}
           <span
+            className="job-window-esc"
             style={{
               marginLeft: 'auto',
               color: 'var(--text-faint)',
@@ -179,6 +221,7 @@ export function JobWindowModal({
             esc to close
           </span>
           <button
+            className="job-window-close"
             type="button"
             onClick={requestClose}
             title="Close"
@@ -204,7 +247,7 @@ export function JobWindowModal({
 
         {/* Top padding stays slimmer than the sides: the tab bar's own bottom
             padding already separates it from the title (v2.1679). */}
-        <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '0.5rem 1.25rem 1.25rem' }}>
+        <div className="job-window-body" style={{ flex: 1, minHeight: 0, overflowY: 'auto', overscrollBehavior: 'contain', WebkitOverflowScrolling: 'touch', padding: '0.5rem 1.25rem 1.25rem' }}>
           {/* Job pane — ALWAYS visible (v2.1676): its title, action icons, and
               Street View / map band are the window's shared header on every
               tab. Only its read-view body hides on Edit/Bill (paneBodyHidden),
