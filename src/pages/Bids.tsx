@@ -3674,7 +3674,10 @@ export default function Bids() {
           loading={!bidsLoaded}
           authUser={authUser}
           isDev={myRole === 'dev'}
-          showEstimatingHealth={myRole !== 'primary' && myRole !== 'superintendent'}
+          // The Robot Board is the same board for ZZ shells only — no map of
+          // practice bids, no pulse / health / labor-cost analytics over them.
+          showMap={activeTab !== 'robot-board'}
+          showEstimatingHealth={activeTab !== 'robot-board' && myRole !== 'primary' && myRole !== 'superintendent'}
           jobsByBidId={jobsByBidId}
                 ledgerPrefixMap={ledgerPrefixMap}
           bidPreview={bidPreviewOnBidsPage}

@@ -59,6 +59,8 @@ type BidsBidBoardTabProps = {
   isDev: boolean
   /** Journey map P-B2: the pulse / everyone-stands analytics are office-only — off for primaries and superintendents. */
   showEstimatingHealth?: boolean
+  /** The map card and its Map pill — off on the Robot Board, where ZZ shells have no office geography worth a map. */
+  showMap?: boolean
   /** v2.2741: jobs made from this bid's signed proposal (only passed for roles that can open Jobs). */
   jobsByBidId?: Map<string, BidBoardJobLink>
   ledgerPrefixMap: ReturnType<typeof useLedgerPrefixMap>
@@ -178,6 +180,7 @@ export function BidsBidBoardTab({
   authUser,
   isDev,
   showEstimatingHealth = true,
+  showMap = true,
   jobsByBidId,
   ledgerPrefixMap,
   bidPreview,
@@ -1473,13 +1476,15 @@ export function BidsBidBoardTab({
             ) : null}
             {[
               // v2.3162: the map card sits above the sections, so its pill comes first.
-              { key: 'map' as const, jumpLabel: 'Map', count: null },
+              // A pill only jumps to something that renders: no Map pill without the
+              // card, no Health pill without the section (the Robot Board has neither).
+              ...(showMap ? [{ key: 'map' as const, jumpLabel: 'Map', count: null }] : []),
               ...BID_BOARD_SECTION_CONFIG.map(({ key, jumpLabel }) => ({
                 key: key as SubmissionSectionKey | 'health' | 'map',
                 jumpLabel,
                 count: pillCounts[key] as number | null,
               })),
-              { key: 'health' as const, jumpLabel: 'Health', count: null },
+              ...(showEstimatingHealth ? [{ key: 'health' as const, jumpLabel: 'Health', count: null }] : []),
             ].map(({ key, jumpLabel, count }) => (
               <button
                 key={key}
@@ -1532,6 +1537,7 @@ export function BidsBidBoardTab({
           </nav>
           {/* v2.3162: the map is a second view of the same filtered list — pins follow the search
               and the trade pill; a pin lights its row below. Collapsible per device. */}
+          {showMap ? (
           <BidBoardMapCard
             bids={filteredBidsForBidBoard}
             ledgerPrefixMap={ledgerPrefixMap}
@@ -1543,6 +1549,7 @@ export function BidsBidBoardTab({
             revealSignal={mapRevealSignal}
             onReloadBids={onReloadBids}
           />
+          ) : null}
           {BID_BOARD_SECTION_CONFIG.map(({ key, label }) => {
             const sectionBids = bidBoardBuckets[key]
             const isOpen = sectionOpen[key]

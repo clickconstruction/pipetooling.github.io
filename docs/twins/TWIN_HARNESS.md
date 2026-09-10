@@ -5,7 +5,7 @@ file: docs/twins/TWIN_HARNESS.md
 type: Twin onboarding / Integration guide
 purpose: Everything an agent harness (any provider — Claude, Grok/xAI, GPT, open-source) needs to run a digital twin against the deployed apps — auth, session flow, rules of engagement, and how results are scored. The owner hands a partner this file + a twin token; nothing else is required.
 audience: Twin harness operators, External agent providers, Developers
-last_updated: 2026-08-28
+last_updated: 2026-09-10
 ---
 
 ## What you get

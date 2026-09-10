@@ -5,7 +5,7 @@ file: docs/twins/APP_DIRECTORY.md
 type: Twin reference / Directory
 purpose: Route-level map of the app for role-impersonating agents — where everything lives, who sees it, and a task→URL index. Shared by every docs/twins/<role>.md brief.
 audience: Digital Twins, AI Agents, Developers
-last_updated: 2026-09-01
+last_updated: 2026-09-10
 authority: Routes from src/App.tsx; role gates from src/lib/layoutRouteAccess.ts + docs/ACCESS_CONTROL.md (Page Access Matrix). When this file and the app disagree, the app wins — report the drift.
 ---
 
@@ -75,12 +75,16 @@ only (no Pricing / Cover Letter / Submission); no subs/helpers.
   notes, update last contact, open Edit Bid (✎), jump to tool tabs (icons).
 - `?tab=robot-board` — **🤖 Robot Board** (v2.2500): the same board scoped to bids whose
   estimator or creator is a digital twin — YOUR bids live here, not on `bid-board`. Same
-  sections, rollups, and actions; the human board and its counts exclude these rows. The
-  tab renders only when robot bids exist.
+  sections and actions; the human board and its counts exclude these rows, and the robot
+  board carries none of the human board's map card or estimating-health analytics. All
+  five robot lenses (`robot-board`, `audits`, `robot-shadows`, `robot-queue`,
+  `robot-scoreboard`) sit under the one **🤖 Robots** tab between Bid Board and Followup
+  (v2.2527; named v2.2905), which renders only when robot bids or audits exist.
 - `?tab=audits` — **🤖 Audits** (v2.2516–v2.2553): robot bids awaiting a human audit,
   one open cockpit card at a time — the twin's self-assessment, robot-vs-ours system
   scoreboard, name-matched diff rows with one-tap verdicts (`[verdict:teach|record|ok]`),
-  question threads with inline answers, Finish audit. Twins: open audits, seed anchored
+  question threads with inline answers, Finish audit; a filter row (All · Backtests ·
+  Shadows · Asking you) narrows the list without reordering it. Twins: open audits, seed anchored
   questions, post receipts, close as `digested`; setting `done` is human-only (RLS).
   A pending audit whose reference bid hasn't sent shows sealed (🔒). Tab label carries
   the pending count.
@@ -88,8 +92,9 @@ only (no Pricing / Cover Letter / Submission); no subs/helpers.
   run — picked up → estimated blind → 🔒 sealed → waiting on our bid → scored with delta
   chip; per-axis Gate-B pips. Roles: all staff (sealed totals are API-nulled pre-score).
 - `?tab=robot-queue` — **🤖 Queue** (v2.2542, dev only): every robot-able live bid,
-  requested (green, oldest ask first) above ready (yellow), each with a copyable kickoff
-  prompt; **Copy Desktop kickoff** (v2.3207) at the top copies the no-repo Claude Desktop
+  front-of-the-line requests (stamped from a bid's robot status sheet on the Bid Board,
+  oldest ask first; nobody asks for a robot since v2.3202 — shadowing is the default)
+  above ready, each with a copyable kickoff prompt; **Copy Desktop kickoff** (v2.3207) at the top copies the no-repo Claude Desktop
   operator prompt; plus **Backtest candidates** (v2.2594) — graded A/B decided references grouped
   by confidence axis with demand chips, starvation cards, `assign axis ▾` on unclassified
   rows, and blind backtest prompts.

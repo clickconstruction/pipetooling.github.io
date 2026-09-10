@@ -37,7 +37,8 @@ import { groupStandingRulings, openCountByAudience, rulingAskedLine, type TwinQu
 import { answerFromChoice, orderedChoices } from '../../lib/bids/twinQuestionChoices'
 import { TwinQuestionChoiceButtons } from './TwinQuestionChoiceButtons'
 import { twinQuestionAudienceColumnPresent } from '../../../supabase/functions/_shared/twinQuestionAudience'
-import { bidNumbersAcross, indexSourceBids, unresolvedSourceIds, type BidPairingRow, type SourceBidRef } from '../../lib/bids/twinQuestionBidRefs'
+import { useTwinQuestionBidRefs } from '../../hooks/useTwinQuestionBidRefs'
+import { AUDIT_LIST_FILTERS, auditFilterCounts, filterAuditList, type AuditListFilter } from '../../lib/bids/auditListFilter'
 import { TwinQuestionText } from './TwinQuestionText'
 import { orderPendingByStake } from '../../lib/bids/auditTriage'
 
@@ -152,6 +153,8 @@ export function BidsAuditsTab({ authUser, myRole }: { authUser: User | null; myR
   const [composer, setComposer] = useState<Record<string, string>>({}) // key: `${auditId}:card` or `answer:${questionId}`
   const [busy, setBusy] = useState<string | null>(null)
   const [showDigested, setShowDigested] = useState(false)
+  // The filter row over the list — narrows, never reorders (kernel: auditListFilter).
+  const [listFilter, setListFilter] = useState<AuditListFilter>('all')
   // Cockpit: one card open at a time; the rest collapse to triage rows.
   const [expandedId, setExpandedId] = useState<string | null>(null)
   // twin bid_id -> its reference (comparison + diff; sealed while the ref is unsent).
@@ -340,48 +343,10 @@ export function BidsAuditsTab({ authUser, myRole }: { authUser: User | null; myR
   // Bouncing a question across needs the column to write to.
   const audienceWritable = useMemo(() => twinQuestionAudienceColumnPresent(rulingQuestions), [rulingQuestions])
 
-  // v2.3174 — every "b474" in a question links to its bid. One lookup of the
-  // numbers the open questions mention; a row's about_bid_id covers the rest.
-  const [bidIdByNumber, setBidIdByNumber] = useState<Record<string, string>>({})
-  const [bidNumberById, setBidNumberById] = useState<Record<string, string>>({})
-  // v2.3187: twin bid id → the human bid it pairs with, for the "ours b214" link.
-  const [sourceByBidId, setSourceByBidId] = useState<Record<string, SourceBidRef>>({})
-  useEffect(() => {
-    const numbers = bidNumbersAcross(rulingQuestions.map((q) => q.question))
-    const aboutIds = [...new Set(rulingQuestions.map((q) => q.about_bid_id).filter((id): id is string => !!id))]
-    if (numbers.length === 0 && aboutIds.length === 0) return
-    let cancelled = false
-    ;(async () => {
-      try {
-        const [byNumber, byId] = await Promise.all([
-          numbers.length > 0 ? auditDb.from('bids').select('id, bid_number, twin_source_bid_id').in('bid_number', numbers) : Promise.resolve({ data: [] }),
-          aboutIds.length > 0 ? auditDb.from('bids').select('id, bid_number, twin_source_bid_id').in('id', aboutIds) : Promise.resolve({ data: [] }),
-        ])
-        if (cancelled) return
-        const rows: BidPairingRow[] = [...((byNumber.data ?? []) as BidPairingRow[]), ...((byId.data ?? []) as BidPairingRow[])]
-        const nextByNumber: Record<string, string> = {}
-        const nextById: Record<string, string> = {}
-        for (const b of rows) {
-          if (!b.bid_number) continue
-          nextByNumber[b.bid_number] = b.id
-          nextById[b.id] = b.bid_number
-        }
-        setBidIdByNumber(nextByNumber)
-        setBidNumberById(nextById)
-        // The robot names its own ZZ Twin copy; its source (Wendi's bid) is one
-        // more lookup, only for pairings whose number isn't already in hand.
-        const missing = unresolvedSourceIds(rows)
-        const sources = missing.length > 0 ? await auditDb.from('bids').select('id, bid_number').in('id', missing) : { data: [] }
-        if (cancelled) return
-        setSourceByBidId(indexSourceBids([...rows, ...((sources.data ?? []) as BidPairingRow[])]))
-      } catch {
-        // Unresolved references render as plain text.
-      }
-    })()
-    return () => {
-      cancelled = true
-    }
-  }, [rulingQuestions])
+  // v2.3174 / v2.3187 — every "b474" in a question links to its bid, and a ZZ
+  // shell's question also links the human bid it pairs with ("ours b214"). One
+  // hook, shared with the twin-questions card on Settings → Digital twins.
+  const { bidIdByNumber, bidNumberById, sourceByBidId } = useTwinQuestionBidRefs(rulingQuestions)
 
   // One submit answers EVERY open question in the ruling's topic (or the one
   // topicless question) — answer + status flip, stamped with who and when.
@@ -644,7 +609,13 @@ export function BidsAuditsTab({ authUser, myRole }: { authUser: User | null; myR
   }
   const reopenAudit = (audit: AuditWithBid) => setAuditStatus(audit, 'reopen')
 
-  const visible = triaged.filter((a) => a.status !== 'digested' || showDigested)
+  const listed = triaged.filter((a) => a.status !== 'digested' || showDigested)
+  const filterItems = useMemo(
+    () => listed.map((a) => ({ audit: a, projectName: a.bids?.project_name, openQuestions: openQuestionCount(threadAuditNotes(notesByAudit[a.id] ?? [])), sealed: a.status === 'pending' && isSealed(a) })),
+    [listed, notesByAudit, isSealed],
+  )
+  const filterCounts = useMemo(() => auditFilterCounts(filterItems), [filterItems])
+  const visible = useMemo(() => filterAuditList(filterItems, listFilter).map((it) => it.audit), [filterItems, listFilter])
   const digestedCount = audits.filter((a) => a.status === 'digested').length
   const pendingCount = audits.filter((a) => a.status === 'pending').length
 
@@ -935,8 +906,44 @@ export function BidsAuditsTab({ authUser, myRole }: { authUser: User | null; myR
         <div style={{ color: 'var(--text-muted)' }}>No audits yet — the robot opens one here whenever it finishes a draft bid.</div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-          {pendingCount > 1 ? (
-            <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>sorted by what your verdict unblocks</div>
+          {listed.length > 1 ? (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }} role="group" aria-label="Filter audits">
+              {AUDIT_LIST_FILTERS.map((f) => {
+                const active = listFilter === f.key
+                return (
+                  <button
+                    key={f.key}
+                    type="button"
+                    onClick={() => setListFilter(f.key)}
+                    aria-pressed={active}
+                    title={f.title}
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '0.3rem',
+                      padding: '0.25rem 0.65rem',
+                      border: `1px solid ${active ? '#3b82f6' : 'var(--border-strong)'}`,
+                      borderRadius: 999,
+                      background: active ? '#3b82f6' : 'var(--surface)',
+                      color: active ? 'white' : 'var(--text-700)',
+                      fontSize: '0.78rem',
+                      fontWeight: active ? 700 : 500,
+                      cursor: 'pointer',
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    {f.label}
+                    <span style={{ fontSize: '0.68rem', fontVariantNumeric: 'tabular-nums', opacity: active ? 0.9 : 0.7 }}>{filterCounts[f.key]}</span>
+                  </button>
+                )
+              })}
+              {pendingCount > 1 ? (
+                <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginLeft: 'auto' }}>sorted by what your verdict unblocks</span>
+              ) : null}
+            </div>
+          ) : null}
+          {visible.length === 0 ? (
+            <div style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>Nothing under this filter.</div>
           ) : null}
           {visible.map((audit) => {
             const threaded = threadAuditNotes(notesByAudit[audit.id] ?? [])

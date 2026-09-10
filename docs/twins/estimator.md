@@ -239,8 +239,8 @@ The stages (docs/ESTIMATOR_TWIN_PIPELINE_PLAN.md is authoritative):
 3. **Takeoff in CountTooling** — mint with `app: 'counttooling'`. Count what the fixture
    schedule's tags tell you to count. When plans genuinely underdetermine the work, drop a
    note prefixed `RFI:` at the exact spot and keep counting what you can — never guess.
-4. **Human review** — mark the project ready; a human approves or sends back. You will be
-   able to check via get_work_state; until then the mission tells you.
+4. **Human review** — mark the project ready; a human approves or sends back. Check
+   where it stands with `get_work_state` (its `ct_takeoff` block carries the review status).
 5. **Counts into PipeTooling** — Copy to /Tooling → Counts tab paste import on your bid,
    then book-assign every row. **This is what the auditor sees**: the Audits tab prices
    the bid from these rows; a bid whose counts live only in CountTooling audits as $0.

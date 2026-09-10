@@ -11,10 +11,9 @@ import { TwinQuestionChoiceButtons } from '../bids/TwinQuestionChoiceButtons'
 import { calibrationStandardSummary, calibrationStandardToast, teacherCandidates, type TeacherCandidate } from '../../lib/twinTeachers'
 import { updateRefused, refusedUpdateMessage } from '../../lib/refusedWrite'
 import { TwinQuestionText } from '../bids/TwinQuestionText'
+import { useTwinQuestionBidRefs } from '../../hooks/useTwinQuestionBidRefs'
 import { effectiveTwinQuestionAudience, isTwinQuestionAudience, type TwinQuestionAudience } from '../../../supabase/functions/_shared/twinQuestionAudience'
 
-/** The dev console links a question's bid through its own about_bid_id only — no roster lookup here. */
-const EMPTY_BID_IDS: Readonly<Record<string, string>> = {}
 
 /**
  * Settings → Digital twins (dev-only; docs/DIGITAL_TWINS_PLAN.md + docs/twins/TWIN_HARNESS.md):
@@ -97,6 +96,8 @@ export default function DigitalTwinsPanel() {
   const [creds, setCreds] = useState<CredRow[]>([])
   const [runs, setRuns] = useState<RunRow[]>([])
   const [questions, setQuestions] = useState<QuestionRow[]>([])
+  // Same bid-ref lookup as Standing rulings (Bids → Audits): numbers in the text link, and a ZZ shell's question links "ours b214" too.
+  const questionBidRefs = useTwinQuestionBidRefs(questions)
   const [answerDrafts, setAnswerDrafts] = useState<Record<string, string>>({})
   const [available, setAvailable] = useState(true)
   const [busy, setBusy] = useState(false)
@@ -760,7 +761,7 @@ export default function DigitalTwinsPanel() {
                 <span style={{ fontSize: '0.62rem', fontWeight: 800, borderRadius: 5, padding: '0.06rem 0.4rem', background: isOpen ? 'var(--bg-amber-tint)' : 'var(--bg-muted)', color: isOpen ? 'var(--text-amber-800)' : 'var(--text-muted)' }}>{q.status.toUpperCase()}</span>
                 <span style={{ ...MUTED, marginLeft: 'auto' }}>{relativeTimeFrom(q.created_at, Date.now())}</span>
               </div>
-              <div style={{ margin: '0.2rem 0', whiteSpace: 'pre-wrap' }}><TwinQuestionText text={q.question} bidIdByNumber={EMPTY_BID_IDS} aboutBidId={q.about_bid_id} /></div>
+              <div style={{ margin: '0.2rem 0', whiteSpace: 'pre-wrap' }}><TwinQuestionText text={q.question} bidIdByNumber={questionBidRefs.bidIdByNumber} aboutBidId={q.about_bid_id} aboutBidNumber={q.about_bid_id ? questionBidRefs.bidNumberById[q.about_bid_id] : null} sourceByBidId={questionBidRefs.sourceByBidId} /></div>
               {q.status === 'answered' && q.answer ? <div style={{ ...MUTED, fontStyle: 'italic' }}>→ {q.answer}</div> : null}
               {isOpen ? (
                 <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', marginTop: '0.25rem' }}>
