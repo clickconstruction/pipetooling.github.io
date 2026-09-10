@@ -20,7 +20,7 @@ import { loadCountRowTalliesByBid } from '../../lib/bids/countRowTallies'
 import { buildCountsCsv, sanitizeCsvFilenamePart } from '../../lib/bids/bidCsvExport'
 import { BidWorkflowTabTitleWithPreview } from './BidWorkflowTabTitleWithPreview'
 import { BidFlowStrip } from './BidFlowStrip'
-import { deriveBidFlow } from '../../lib/bids/bidFlow'
+import { deriveBidFlow, type BidFlowDoor, type BidFlowStep } from '../../lib/bids/bidFlow'
 import { useBidFlowFacts } from '../../hooks/useBidFlowFacts'
 import { useBidFlowReview } from '../../hooks/useBidFlowReview'
 import { ClearAllCountsModal } from './ClearAllCountsModal'
@@ -37,6 +37,10 @@ import { GRADE_COLORS } from './RobotReferenceGradeModal'
 import { usePendingRowFlash } from '../../hooks/usePendingRowFlash'
 
 type BidsCountsTabProps = {
+  /** v2.3216: open a step's door from the strip — Edit window or another tab — and land on its field. The page owns it. */
+  onOpenBidFlowDoor?: (bid: BidWithBuilder, door: BidFlowDoor, step: BidFlowStep) => void
+  /** Role gating for those doors (superintendents never reach Pricing / Cover Letter). */
+  bidFlowDoorAllowed?: (door: BidFlowDoor) => boolean
   bids: BidWithBuilder[]
   selectedBidForCounts: BidWithBuilder | null
   /** Breakdown jump (v2.2400): a row to land on — scroll + flash, then report handled. */
@@ -88,6 +92,8 @@ function SheetSortableRow({ id, flash, children }: { id: string; flash?: boolean
 }
 
 export function BidsCountsTab({
+  onOpenBidFlowDoor,
+  bidFlowDoorAllowed,
   bids,
   selectedBidForCounts,
   rowJump,
@@ -693,9 +699,10 @@ export function BidsCountsTab({
             variant="full"
             flow={deriveBidFlow(selectedBidForCounts, bidFlowFactsByBid[selectedBidForCounts.id])}
             bidLabel={selectedBidForCounts.project_name ?? undefined}
-            canOpenDoor={(d) => d === 'review'}
-            onOpenDoor={(d) => {
+            canOpenDoor={(d) => d === 'review' || (onOpenBidFlowDoor != null && (bidFlowDoorAllowed ? bidFlowDoorAllowed(d) : d != null))}
+            onOpenDoor={(d, step) => {
               if (d === 'review') void bidFlowReview.markReviewed(selectedBidForCounts)
+              else onOpenBidFlowDoor?.(selectedBidForCounts, d, step)
             }}
             reviewStamp={bidFlowReview.stampFor(selectedBidForCounts)}
           />
@@ -714,6 +721,7 @@ export function BidsCountsTab({
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', alignItems: 'center', justifyContent: 'flex-end' }}>
                 <button
                   type="button"
+                  id="counts-import-tooling"
                   onClick={handleCountsImportClick}
                   style={{ padding: '0.5rem 1rem', background: '#FF6600', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', textAlign: 'center' }}
                   title="Import from clipboard or paste in dialog. Tab-delimited: Fixture, Count, Plan Page"
@@ -737,6 +745,7 @@ export function BidsCountsTab({
               <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', justifyContent: 'flex-end', flex: '0 0 auto' }}>
                 <button
                   type="button"
+                  id="counts-import-tooling"
                   onClick={handleCountsImportClick}
                   style={{ padding: '0.5rem 1rem', background: '#FF6600', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', textAlign: 'center' }}
                   title="Import from clipboard or paste in dialog. Tab-delimited: Fixture, Count, Plan Page"

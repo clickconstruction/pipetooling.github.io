@@ -61,7 +61,7 @@ import { copyRichHtmlToClipboard } from '../../lib/copyRichHtmlToClipboard'
 import { openInExternalBrowser } from '../../lib/openInExternalBrowser'
 import { BidWorkflowTabTitleWithPreview } from './BidWorkflowTabTitleWithPreview'
 import { BidFlowStrip } from './BidFlowStrip'
-import { deriveBidFlow } from '../../lib/bids/bidFlow'
+import { deriveBidFlow, type BidFlowDoor, type BidFlowStep } from '../../lib/bids/bidFlow'
 import { useBidFlowFacts } from '../../hooks/useBidFlowFacts'
 import { useBidFlowReview } from '../../hooks/useBidFlowReview'
 import type { useBidPreview } from '../../contexts/BidPreviewModalContext'
@@ -79,6 +79,10 @@ type BundleSection = { name: string; bidVersionId: string | null; revenueSum: nu
 const COVER_LETTER_ALTS_LAYOUT_KEY = 'bids_cover_letter_alts_layout_v1'
 
 type BidsCoverLetterTabProps = {
+  /** v2.3216: open a step's door from the strip — Edit window or another tab — and land on its field. The page owns it. */
+  onOpenBidFlowDoor?: (bid: BidWithBuilder, door: BidFlowDoor, step: BidFlowStep) => void
+  /** Role gating for those doors (superintendents never reach Pricing / Cover Letter). */
+  bidFlowDoorAllowed?: (door: BidFlowDoor) => boolean
   bids: BidWithBuilder[]
   selectedBidForPricing: BidWithBuilder | null
   narrowViewport640: boolean
@@ -133,6 +137,8 @@ type BidsCoverLetterTabProps = {
 }
 
 export function BidsCoverLetterTab({
+  onOpenBidFlowDoor,
+  bidFlowDoorAllowed,
   bids,
   selectedBidForPricing,
   narrowViewport640,
@@ -959,9 +965,10 @@ export function BidsCoverLetterTab({
               variant="full"
               flow={deriveBidFlow(bid, bidFlowFactsByBid[bid.id])}
               bidLabel={bid.project_name ?? undefined}
-              canOpenDoor={(d) => d === 'review'}
-              onOpenDoor={(d) => {
+              canOpenDoor={(d) => d === 'review' || (onOpenBidFlowDoor != null && (bidFlowDoorAllowed ? bidFlowDoorAllowed(d) : d != null))}
+              onOpenDoor={(d, step) => {
                 if (d === 'review') void bidFlowReview.markReviewed(bid)
+                else onOpenBidFlowDoor?.(bid, d, step)
               }}
               reviewStamp={bidFlowReview.stampFor(bid)}
             />
@@ -1102,7 +1109,7 @@ export function BidsCoverLetterTab({
                               {/* v2.2389 (Wendi): the caption promises Mark sent, but the button only lived in the
                                   packets branch — a plain bid had no send button at all. Same stamp, no send rows. */}
                               <div style={{ marginTop: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
-                                <button
+                                <button id="cover-letter-mark-sent"
                                   type="button"
                                   disabled={markingSent || headlineAmount <= 0}
                                   title={headlineAmount <= 0 ? 'Nothing to send until this bid has a priced letter amount' : undefined}
@@ -1242,7 +1249,7 @@ export function BidsCoverLetterTab({
                                 </div>
                               ) : null}
                               <div style={{ marginTop: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
-                                <button
+                                <button id="cover-letter-mark-sent"
                                   type="button"
                                   disabled={markingSent || gcSections.filter((s) => s.bidVersionId && !s.offeredPricingId && s.revenueSum > 0).length === 0}
                                   title={gcSections.filter((s) => s.bidVersionId && !s.offeredPricingId && s.revenueSum > 0).length === 0 ? 'Nothing to send until this GC has a ★ base price' : undefined}
@@ -1583,8 +1590,8 @@ export function BidsCoverLetterTab({
                         Dashed text is the customer wording — click it to edit right here.
                       </div>
                     ) : null}
-                    <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: '0.7rem 0.9rem' }}>
-                      <button
+                    <div id="cover-letter-submission-link" style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: '0.7rem 0.9rem' }}>
+                      <button id="cover-letter-generate"
                         type="button"
                         disabled={!totalsResolved}
                         aria-busy={!totalsResolved || undefined}

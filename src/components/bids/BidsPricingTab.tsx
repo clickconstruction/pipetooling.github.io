@@ -39,7 +39,7 @@ import {
 } from '../../lib/bids/bidCostCalc'
 import { BidWorkflowTabTitleWithPreview } from './BidWorkflowTabTitleWithPreview'
 import { BidFlowStrip } from './BidFlowStrip'
-import { deriveBidFlow } from '../../lib/bids/bidFlow'
+import { deriveBidFlow, type BidFlowDoor, type BidFlowStep } from '../../lib/bids/bidFlow'
 import { useBidFlowFacts } from '../../hooks/useBidFlowFacts'
 import { useBidFlowReview } from '../../hooks/useBidFlowReview'
 import { GenerateUnitCostModal } from './GenerateUnitCostModal'
@@ -99,6 +99,10 @@ function formatRestoredStamp(at: number): string {
 }
 
 type BidsPricingTabProps = {
+  /** v2.3216: open a step's door from the strip — Edit window or another tab — and land on its field. The page owns it. */
+  onOpenBidFlowDoor?: (bid: BidWithBuilder, door: BidFlowDoor, step: BidFlowStep) => void
+  /** Role gating for those doors (superintendents never reach Pricing / Cover Letter). */
+  bidFlowDoorAllowed?: (door: BidFlowDoor) => boolean
   bids: BidWithBuilder[]
   selectedBidForPricing: BidWithBuilder | null
   narrowViewport640: boolean
@@ -200,6 +204,8 @@ type PricingBreakdownRow = {
 }
 
 export function BidsPricingTab({
+  onOpenBidFlowDoor,
+  bidFlowDoorAllowed,
   bids,
   selectedBidForPricing,
   narrowViewport640,
@@ -2610,15 +2616,14 @@ export function BidsPricingTab({
               variant="full"
               flow={deriveBidFlow(selectedBidForPricing, bidFlowFactsByBid[selectedBidForPricing.id])}
               bidLabel={selectedBidForPricing.project_name ?? undefined}
-              canOpenDoor={(d) => d === 'edit' || d === 'review' || d === 'counts' || d === 'takeoffs' || d === 'labor'}
-              onOpenDoor={(d) => {
-                if (d === 'edit') onEditBid(selectedBidForPricing)
-                else if (d === 'review') void bidFlowReview.markReviewed(selectedBidForPricing)
-                else if (d === 'counts' || d === 'takeoffs' || d === 'labor') onNavigateBidToTab(selectedBidForPricing, d)
+              canOpenDoor={(d) => d === 'review' || (onOpenBidFlowDoor != null && (bidFlowDoorAllowed ? bidFlowDoorAllowed(d) : d != null))}
+              onOpenDoor={(d, step) => {
+                if (d === 'review') void bidFlowReview.markReviewed(selectedBidForPricing)
+                else onOpenBidFlowDoor?.(selectedBidForPricing, d, step)
               }}
               reviewStamp={bidFlowReview.stampFor(selectedBidForPricing)}
             />
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.5rem' }}>
+            <div id="pricing-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.5rem' }}>
               <div style={{ display: 'flex', alignItems: 'center', flex: '0 0 auto', flexWrap: 'wrap', gap: '0.75rem' }}>
                 <BidWorkflowTabTitleWithPreview
                   bid={selectedBidForPricing}
@@ -2646,6 +2651,7 @@ export function BidsPricingTab({
                 {canPackageAndSendBidPricing && rfqChip.kind !== 'none' ? (
                   <button
                     type="button"
+                    id="pricing-price-requests"
                     onClick={() => (rfqChip.kind === 'desk' ? setRfqDeskOpen(true) : setQuotesCompareOpen(true))}
                     title={rfqChip.kind === 'desk' ? 'Open the price-request desk' : 'Compare supply house quotes on this bid'}
                     style={{

@@ -2385,3 +2385,19 @@ body.my-time-boundary-dragging {
 }
 .robot-glyph-pulse { animation: robot-glyph-pulse 1.6s ease-in-out infinite; }
 @media (prefers-reduced-motion: reduce) { .robot-glyph-pulse { animation: none; } }
+
+/* Bid flow landing (v2.3216): a step on the strip opened its door — ring the field it lands on, then fade. */
+@keyframes bid-flow-landing-fade {
+  0% { outline-color: #2563eb; box-shadow: 0 0 0 6px rgba(37, 99, 235, 0.22); }
+  60% { outline-color: #2563eb; box-shadow: 0 0 0 6px rgba(37, 99, 235, 0.14); }
+  100% { outline-color: transparent; box-shadow: 0 0 0 6px rgba(37, 99, 235, 0); }
+}
+.bid-flow-landing {
+  outline: 3px solid #2563eb;
+  outline-offset: 3px;
+  border-radius: 6px;
+  animation: bid-flow-landing-fade 3.2s ease-out forwards;
+}
+@media (prefers-reduced-motion: reduce) {
+  .bid-flow-landing { animation: none; }
+}

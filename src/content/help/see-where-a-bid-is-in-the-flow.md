@@ -26,7 +26,13 @@ Hover any step to see exactly what the app read to decide it.
 
 Under the five jump icons on each row sits a thin bar of ten equal ticks, one per step, evenly spaced: green is done, blue is the next move, grey is not yet, and a dashed outline means the app keeps no record of that step. Hover the bar for the summary, for example *7 of 10 done · next: Cover letter*. The icons still work exactly as before.
 
-**Click a row** and the full strip appears above the bid's project, GC and address. Each step is a door: **Plans in Drive** opens Edit Bid, **Count & import** opens Counts, **Price** opens Pricing, and so on.
+**Click a row** and the full strip appears above the bid's project, GC and address. Each step is a door, and the door lands you on the exact spot: the page or form opens as before, scrolls to the field the step is about, puts the cursor in it, and rings it in blue for a few seconds so you know where it is.
+
+- **Plans in Drive** opens Edit Bid on the **Job Plans** link. **Plans in Tooling** opens it on the **CountTooling Plans** link.
+- **Send RFQ** opens Pricing on the price-request chip, or the bid's title and tools row before any request exists. **Price** opens Pricing on that same row.
+- **Count & import** opens Counts on {{button:gray|Import from /Tooling}}. **Takeoffs** opens Takeoffs on the part-lines table.
+- **Cover letter** opens Cover Letter on {{button:blue|Copy & open in Google Docs}}. **PDF filed** lands on the submission link box beside it. **Sent** lands on {{button:blue|Mark sent today}}.
+- **Review** opens the Mark reviewed prompt right there; nothing to scroll to.
 
 :::example a bid that just came in
 Its bar is one green tick and one blue. Hover: *1 of 10 done · next: Send RFQ*. Open the row and the strip rings **Send RFQ**, so the estimator knows the price request is the next move before anyone counts.
@@ -34,7 +40,7 @@ Its bar is one green tick and one blue. Hover: *1 of 10 done · next: Send RFQ*.
 
 ## On the workflow tabs
 
-Pick a bid on **Counts, Takeoffs, Labor, Pricing** or **Cover Letter** and the same strip sits above the bid's title, so you can see what's left without leaving the tab.
+Pick a bid on **Counts, Takeoffs, Labor, Pricing** or **Cover Letter** and the same strip sits above the bid's title, so you can see what's left without leaving the tab. Its steps are the same doors: click **Plans in Drive** from Counts and Edit Bid opens on the Job Plans link; click **Sent** from Takeoffs and Cover Letter opens on Mark sent today.
 
 ## What "next" means
 
