@@ -9,7 +9,6 @@ import { fetchStagesHeaderStats } from '../../lib/jobs/fetchStagesHeaderStats'
 import { fetchAllRowsChunkedIn } from '../../lib/supabasePaging'
 import type { StageRow } from '../../lib/jobsStagesBoard'
 import { buildBilledByCustomerBreakdown, billedBreakdownTotal, type BilledBreakdownCustomerGroup } from '../../lib/jobs/billedByCustomerBreakdown'
-import { reportBillTruthShadow } from '../../lib/billing/billTruthShadow'
 
 /**
  * Quickfill → Billed Awaiting Payment (v2.2190): "Who owes what" — the same
@@ -83,14 +82,6 @@ export function BilledAwaitingPaymentSection() {
         })
         const built = buildBilledByCustomerBreakdown(decorated)
         const count = built.reduce((s, g) => s + g.count, 0)
-        // Shadow (one release): this pile used to drop settled ($0) bills the strip counted.
-        reportBillTruthShadow({
-          surface: 'quickfill-ar-count',
-          legacy: built.reduce((s, g) => s + g.bills.filter((b) => !b.settled).length, 0),
-          kernel: count,
-          userId: authUser?.id ?? null,
-          role: role ?? null,
-        })
         if (!cancelled) {
           setGroups(built)
           setBillCount(count)

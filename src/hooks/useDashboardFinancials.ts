@@ -29,7 +29,6 @@ import {
 } from '../lib/dashboardFinancials'
 import type { ArExcluded } from '../lib/dashboardFinancials'
 import { LEAN_STATS_ACTIVE_JOB_STATUSES } from '../lib/jobs/fetchStagesHeaderStats'
-import { legacyDashboardArOwed, reportBillTruthShadow } from '../lib/billing/billTruthShadow'
 
 /** Detail for one unpaid supply-house bill — powers the AP row click-through modal. */
 export type DashboardApBill = {
@@ -347,14 +346,6 @@ export function useDashboardFinancials(
         })
 
         const arBuckets = buildArBuckets(jobs, invoices, invoicePayments)
-        // Shadow (one release): the old card summed orphan bills and dropped settled rows.
-        reportBillTruthShadow({
-          surface: 'dashboard-ar-card',
-          legacy: legacyDashboardArOwed(jobs, invoices, invoicePayments),
-          kernel: arBuckets.ar.total + arBuckets.collections.total,
-          userId: viewerUserId,
-          role: viewerRole ?? null,
-        })
         const apBase = assistantAggregates
           ? buildApBucketFromAggregates(
               supplyInvoices,

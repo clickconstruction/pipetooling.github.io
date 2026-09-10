@@ -44,8 +44,6 @@ vi.mock('../../utils/errorHandling', () => ({
   withSupabaseRetry: async (op: () => Promise<{ data: unknown; error: null }>) => (await op()).data,
   formatErrorMessage: (e: unknown, fallback: string) => (e instanceof Error ? e.message : fallback),
 }))
-const shadow = vi.fn((_r: { surface: string; legacy: number; kernel: number }) => true)
-vi.mock('../billing/billTruthShadow', () => ({ reportBillTruthShadow: (r: never) => shadow(r), legacyStripBilledTotal: () => 0 }))
 
 import { collectedWindowStartYmd, fetchStagesHeaderStats, LEAN_STATS_ACTIVE_INVOICE_STATUSES, LEAN_STATS_ACTIVE_JOB_STATUSES } from './fetchStagesHeaderStats'
 
@@ -72,7 +70,6 @@ const routeScenario = (table: string, steps: Step[]) => {
 beforeEach(() => {
   queries.length = 0
   route = routeScenario
-  shadow.mockClear()
 })
 
 describe('collectedWindowStartYmd', () => {
@@ -125,7 +122,6 @@ describe('fetchStagesHeaderStats', () => {
     expect(typeof r.billTruth.billed.total).toBe('number')
     expect(Object.keys(r.stats.collectedByDay ?? {}).length + (r.stats.collectedByDay instanceof Map ? r.stats.collectedByDay.size : 0)).toBeGreaterThan(0)
     expect(r.leanBilledRows.map((row) => [row.kind, row.job.id])).toEqual([['job_with_merged_billed', 'A']]) // the billed job with its invoice merged, not the working one
-    expect(shadow).toHaveBeenCalledWith({ surface: 'pipeline-strip-billed', legacy: 0, kernel: r.billTruth.billed.total })
   })
 
   it('a head-count of null reads as zero', async () => {
