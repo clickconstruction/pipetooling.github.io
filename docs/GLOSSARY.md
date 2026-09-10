@@ -965,7 +965,7 @@ Supplier or vendor where materials are purchased (Ferguson, HD Supply, local plu
 
 **Fields**: name, contact info, address, notes, monthly_payment_day (day 1–31 when payment is typically due; used for Due column in supply house list)
 
-**Price coverage** (Materials, v2.2903 — the button and modal were titled "Supply Houses" until then): how many parts carry a price at each supply house, so the estimator can see which houses the Price Book actually quotes from. Houses flagged `is_insurer` ("Not a supplier we quote from", v2.2893) stay out of the quoting pickers.
+**Price coverage** (Materials, v2.2903 — the button and modal were titled "Supply Houses" until then): how many parts carry a price at each supply house, so the estimator can see which houses the Price Book actually quotes from. Only houses whose **vendor kind** is *Supply house* (v2.3172; the older `is_insurer` flag was dropped in v2.3244) appear in the quoting pickers.
 
 ### Job Accounts (Materials tab)
 Per-job money-flow rollup (v2.2652): **Materials → Job Accounts** joins **`supply_house_invoice_job_allocations`** × **`supply_house_invoices`** against **`jobs_ledger.revenue`** / **`payments_made`** to show, per job, what the customer has paid vs what is paid/owed to supply houses. Headline "holding for suppliers" = unpaid supplier balances on jobs the customer has paid (per job: min(owed, payments_made)). Statuses: **Owe suppliers**, **Floating** (houses paid, customer not), **Awaiting customer**, **Settled**; unpaid invoices allocated to neither a job nor a bid surface as an **unallocated** bucket. Office roles only (dev/master/assistant-like). Kernel: **[`src/lib/materials/jobAccountsFlow.ts`](../src/lib/materials/jobAccountsFlow.ts)**.

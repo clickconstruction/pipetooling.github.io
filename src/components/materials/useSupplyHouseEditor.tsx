@@ -88,15 +88,10 @@ export function useSupplyHouseEditor({
       website_url: data.website_url,
       notes: data.notes.trim() || null,
       monthly_payment_day: data.monthly_payment_day,
-      is_insurer: data.is_insurer,
+      vendor_kind: data.vendor_kind,
     }
-    // vendor_kind (v2.3172) rides along; until its migration is pushed the column is unknown,
-    // so on that one error retry with the legacy payload (is_insurer already carries the meaning).
-    const withKind = { ...payload, vendor_kind: data.vendor_kind } as typeof payload
-    const isUnknownKindColumn = (msg: string) => /vendor_kind/.test(msg) && /column|schema cache/i.test(msg)
     if (editing) {
-      let { error: e } = await supabase.from('supply_houses').update(withKind).eq('id', editing.id)
-      if (e && isUnknownKindColumn(e.message)) ({ error: e } = await supabase.from('supply_houses').update(payload).eq('id', editing.id))
+      const { error: e } = await supabase.from('supply_houses').update(payload).eq('id', editing.id)
       if (e) setError(e.message)
       else {
         const tradeErr = await syncHouseTrades(editing.id, data.service_type_ids)
@@ -105,8 +100,7 @@ export function useSupplyHouseEditor({
         if (!tradeErr) close()
       }
     } else {
-      let { data: inserted, error: e } = await supabase.from('supply_houses').insert(withKind).select('id').single()
-      if (e && isUnknownKindColumn(e.message)) ({ data: inserted, error: e } = await supabase.from('supply_houses').insert(payload).select('id').single())
+      const { data: inserted, error: e } = await supabase.from('supply_houses').insert(payload).select('id').single()
       if (e) setError(e.message)
       else {
         const newId = (inserted as { id: string } | null)?.id ?? null
