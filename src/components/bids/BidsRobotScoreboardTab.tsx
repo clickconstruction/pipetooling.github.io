@@ -10,6 +10,9 @@ import {
   type GateSlot,
   type RunScoreRow,
 } from '../../lib/bids/confidenceBoard'
+// v2.3222: the per-run ledger and the coverage pill moved to the Robot Board mirror
+// (one row per human bid, earlier runs folded behind the newest); this lens keeps the
+// axis cards — the program's Gate-B health — and the pills the mirror doesn't carry.
 import { shadowCoverage, type ShadowCoverageBid } from '../../lib/bids/shadowCoverage'
 
 // twin_run_scores predates the generated types (BidsAuditsTab pattern).
@@ -60,14 +63,11 @@ function Slot({ slot }: { slot: GateSlot }) {
   )
 }
 
-const money = (v: number | null) =>
-  v == null ? '—' : `$${Math.round(v).toLocaleString()}`
-
 /**
  * The twin confidence scoreboard (v2.2560, dev only): per-axis Gate-B cards
  * (5-slot bar — scored runs as green/red deltas, in-flight shadows as dashed
- * pending slots), the pipeline pills, and the unified run ledger with void
- * runs shown struck-through rather than hidden.
+ * pending slots) and the pipeline pills. The per-run ledger lives on the Robot
+ * Board mirror since v2.3222.
  */
 export function BidsRobotScoreboardTab({ auditPending, bids }: BidsRobotScoreboardTabProps) {
   const [scores, setScores] = useState<RunScoreRow[] | null>(null)
@@ -160,17 +160,6 @@ export function BidsRobotScoreboardTab({ auditPending, bids }: BidsRobotScoreboa
           <b style={{ display: 'block', fontSize: '1.05rem', color: 'var(--text-strong)' }}>{ledger.filter((r) => r.gate === 'eligible').length}</b>
           scored runs on record
         </div>
-        {coverage && (
-          <div
-            title="Live bids a shadow could still lock blind against (unsent, plans on file, not a ZZ sandbox bid) vs how many already have a shadow run — every uncovered bid is a free future grade-A reference."
-            style={{ background: 'var(--bg-subtle)', border: '1px solid var(--border)', borderRadius: 10, padding: '0.45rem 0.85rem', fontSize: '0.8rem', color: 'var(--text-muted)' }}
-          >
-            <b style={{ display: 'block', fontSize: '1.05rem', color: 'var(--text-strong)' }}>
-              {coverage.covered}/{coverage.live}
-            </b>
-            shadow coverage
-          </div>
-        )}
         {/* "Plans readable by robots" (v2.3080): live bids the Drive intake service
             account cannot read are invisible to the shadow program until a human
             repairs the link — say which ones, and why. */}
@@ -223,69 +212,6 @@ export function BidsRobotScoreboardTab({ auditPending, bids }: BidsRobotScoreboa
         )}
       </div>
 
-      <div style={{ overflowX: 'auto' }}>
-        <table style={{ borderCollapse: 'collapse', width: '100%', fontSize: '0.84rem' }}>
-          <thead>
-            <tr>
-              {['Run', 'Axis', 'Teacher', 'Locked', 'Reference', 'Δ', 'Counts', 'Gate'].map((h) => (
-                <th key={h} style={{ textAlign: 'left', fontSize: '0.68rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)', padding: '0.45rem 0.6rem', borderBottom: '2px solid var(--border)' }}>
-                  {h}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {ledger.map((row) => {
-              const voided = row.gate === 'void'
-              const cell: React.CSSProperties = {
-                padding: '0.45rem 0.6rem',
-                borderBottom: '1px solid var(--border)',
-                fontVariantNumeric: 'tabular-nums',
-                textDecoration: voided ? 'line-through' : undefined,
-                color: voided ? 'var(--text-faint)' : undefined,
-              }
-              const deltaColor =
-                row.deltaPct == null ? 'var(--text-faint)' : Math.abs(row.deltaPct) <= 8 ? 'var(--text-green-700)' : 'var(--text-red-700)'
-              return (
-                <tr key={row.key}>
-                  <td style={cell}>
-                    <span style={{ fontSize: '0.64rem', fontWeight: 700, borderRadius: 4, padding: '1px 5px', marginRight: 6, color: row.kind === 'backtest' ? 'var(--text-link)' : '#7c3aed', background: row.kind === 'backtest' ? 'var(--bg-blue-tint)' : 'var(--bg-muted)' }}>
-                      {row.kind === 'backtest' ? 'BT' : 'SH'}
-                    </span>
-                    {row.label}{row.project ? ` · ${row.project}` : ''}
-                  </td>
-                  <td style={cell}>{row.axis}</td>
-                  {/* Teacher attribution (v2.3080): whose number the shadow scored
-                      against. A calibration standard gates; anyone else is practice. */}
-                  <td style={{ ...cell, fontSize: '0.78rem' }}>
-                    {row.teacher == null ? (
-                      <span style={{ color: 'var(--text-faint)' }}>—</span>
-                    ) : (
-                      <span title={row.teacherStandard === true ? 'Calibration standard — this run counts toward Gate B' : row.teacherStandard === false ? 'Practice teacher — shown, not gated' : 'Teacher standing unknown'}>
-                        {row.teacher}
-                        {row.teacherStandard === true ? (
-                          <span style={{ marginLeft: 4, color: 'var(--text-green-700)', fontWeight: 700 }}>✓</span>
-                        ) : row.teacherStandard === false ? (
-                          <span style={{ marginLeft: 4, fontSize: '0.64rem', fontWeight: 700, letterSpacing: '0.04em', color: 'var(--text-amber-800)' }}>PRACTICE</span>
-                        ) : null}
-                      </span>
-                    )}
-                  </td>
-                  <td style={cell}>{money(row.locked)}</td>
-                  <td style={cell}>{money(row.reference)}</td>
-                  <td style={{ ...cell, color: voided ? 'var(--text-faint)' : deltaColor, fontWeight: 600 }}>
-                    {row.deltaPct == null ? '—' : `${row.deltaPct > 0 ? '+' : ''}${row.deltaPct.toFixed(1)}%`}
-                  </td>
-                  <td style={{ ...cell, fontSize: '0.76rem', color: 'var(--text-muted)' }}>{row.countsNote}</td>
-                  <td style={{ ...cell, fontSize: '0.76rem', color: voided ? 'var(--text-red-700)' : row.gate === 'practice' ? 'var(--text-amber-800)' : 'var(--text-muted)' }}>
-                    {row.gate === 'void' ? 'VOID' : row.gate}
-                  </td>
-                </tr>
-              )
-            })}
-          </tbody>
-        </table>
-      </div>
     </div>
   )
 }

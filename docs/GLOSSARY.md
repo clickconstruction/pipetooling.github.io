@@ -1149,13 +1149,19 @@ A role-scoped AI agent account flagged `users.is_digital_twin` (🤖 banner ever
 RESTRICTIVE RLS policies binding twins only: a twin writes only bids it **created or is assigned as estimator** (plus bid-child tables and help feedback) — setting a bid's Estimator to a twin is simultaneously the permission and the job. A DB trigger makes sending structurally impossible ("digital twins draft only: sending and outcomes are human acts"). Safety rungs per twin: read-only tester → fenced writer → working estimator.
 
 ### Robot bid
-A bid drafted by a twin end to end (substrate → CountTooling takeoff → counts → materials/labor → Workbench draft prices → unsent letter). Lives on the **🤖 Robot Board** (`?tab=robot-board`), excluded from the human board and its rollups. Naming convention `ZZ Twin …` / `ZZ Shadow …`.
+A bid drafted by a twin end to end (substrate → CountTooling takeoff → counts → materials/labor → Workbench draft prices → unsent letter). Excluded from the human board and its rollups; since v2.3222 it lists on no board at all — it opens from its human bid's row on the **🤖 Robot Board** mirror (`Robot bid b###` → its Counts tab). Naming convention `ZZ Twin …` / `ZZ Shadow …`.
+
+### Robot Board (mirror)
+`?tab=robot-board` since v2.3222 (`src/lib/bids/robotMirror.ts`, `BidsRobotMirrorTab`): OUR bids with at least one robot run, in the human board's five sections, with a robot column — `queued` / `working` / `sealed` (status only, before send) or the robot's number, ours and the delta (after send), the newest run leading and earlier rounds folded. The unsent header counts live bids no robot has touched. Replaces the v2.2500 list of ZZ shells and absorbs the Shadows lens (v2.2544) and the Scoreboard's run ledger.
+
+### The envelope (robot review at send)
+v2.3222 (`src/lib/bids/robotEnvelope.ts`, `RobotEnvelopeModal`): the moment a bid saves with value + sent date — the instant the trigger scores its shadow — the robot's sealed number opens beside ours for the bid's estimator (or a dev): delta, waterfall, the six biggest differences with one-tap verdicts, the robot's questions, **Finish audit** / **Later**. Not a loosening of the seal: "scored" is when a reveal becomes allowed, and the score is already on the ledger. A later bid-value change posts a `[robot review]` revision note. A Robot Board row whose audit still waits opens the same envelope with **Review now**.
 
 ### Backtest
 A blind re-estimate of a **decided historical bid**: `open_backtest` copies logistics only (never counts/pricing/value/outcome), the twin produces its number from the plans alone, and the scorecard unseals the reference at the end. Labeled BT-N; structured scores in `twin_run_scores` (v2.2560).
 
 ### Shadow bid
-The live-stream variant (v2.2539): opens on an **unsent** human bid, the twin locks a sealed blind total before our number exists, and `score_shadows` computes the delta automatically once the reference carries `bid_value` + `bid_date_sent`. The seal is API-enforced — staff can't read a sealed total (anchoring risk). Ledger: `twin_shadow_runs`; story view: `?tab=robot-shadows`.
+The live-stream variant (v2.2539): opens on an **unsent** human bid, the twin locks a sealed blind total before our number exists, and `score_shadows` computes the delta automatically once the reference carries `bid_value` + `bid_date_sent`. The seal is API-enforced — staff can't read a sealed total (anchoring risk). Ledger: `twin_shadow_runs`; the run shows on its human bid's **Robot Board** row (v2.3222; `?tab=robot-shadows` redirects there) and opens as **the envelope** the moment the bid is sent with a value.
 
 ### Gate A / Gate B / axis
 The fleet roadmap's trust gates. **Gate A** (met 2026-08-31): three consecutive backtests within ±5%. **Gate B**: per **axis** (project-type lane — `small TI`, `kitchen/occupied`, `institutional`, …), 5 consecutive scored runs within ±8% (`confidenceBoard.ts`; dev **Scoreboard** lens, `?tab=robot-scoreboard`). Denominators take only clean grade-A/B references. `bids.backtest_axis` (v2.2594) assigns an axis to a reference before any run.

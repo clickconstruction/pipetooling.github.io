@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { User } from '@supabase/supabase-js'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { supabase } from '../../lib/supabase'
@@ -140,7 +140,7 @@ const WATERFALL_SEGMENTS: Array<{ key: 'missed' | 'added' | 'gaps' | 'rates' | '
   { key: 'other', label: 'everything else' },
 ]
 
-export function BidsAuditsTab({ authUser, myRole }: { authUser: User | null; myRole: string | null }) {
+export function BidsAuditsTab({ authUser, myRole, focusAuditId = null }: { authUser: User | null; myRole: string | null; /** v2.3222: open on this card (a Robot Board row's door, the envelope's "Full audit"). */ focusAuditId?: string | null }) {
   const { showToast } = useToastContext()
   const isTwin = useIsDigitalTwin()
   // Mirrors the write RLS: primary/superintendent (and twin sessions) get a clean
@@ -453,13 +453,22 @@ export function BidsAuditsTab({ authUser, myRole }: { authUser: User | null; myR
 
   // Auto-expand the top-stake workable pending card — never a sealed shadow.
   // Re-runs when the refs land so a briefly-expanded sealed card snaps shut.
+  const focusAppliedRef = useRef<string | null>(null)
   useEffect(() => {
     setExpandedId((cur) => {
+      // v2.3222: a door from the Robot Board / the envelope names the card to open — once.
+      if (focusAuditId && focusAppliedRef.current !== focusAuditId) {
+        const wanted = triaged.find((a) => a.id === focusAuditId)
+        if (wanted && !isSealed(wanted)) {
+          focusAppliedRef.current = focusAuditId
+          return wanted.id
+        }
+      }
       const current = triaged.find((a) => a.id === cur)
       if (current && !isSealed(current)) return cur
       return triaged.find((a) => a.status === 'pending' && !isSealed(a) && !isUnpricedAudit(draftByAudit[a.id]))?.id ?? null
     })
-  }, [triaged, isSealed, draftByAudit])
+  }, [triaged, isSealed, draftByAudit, focusAuditId])
 
   // Priced active-version rows for the expanded card — the twin's draft AND (once
   // the reference has gone out) the reference bid's rows, so the diff has both sides.
