@@ -25,6 +25,9 @@ import { boardValueForRule, bundleSectionsForBoard, formatSendBadge, latestSendB
 import { APP_CALENDAR_TZ } from '../../utils/dateUtils'
 import { printHtmlInNewWindow } from '../../lib/bidDocuments/htmlDoc'
 import { BidRoomPanel, BidRoomSetupButton } from './BidRoomPanel'
+import { BidBasisCard } from './BidBasisCard'
+import { useBidBasisExports } from '../../hooks/useBidBasisExports'
+import { bidBasisClause, bidBasisRefForBid, shortSheetLabels } from '../../lib/bids/bidBasis'
 import {
   breakAmountOntoOwnLineForPreview,
   buildCoverLetterHtml,
@@ -194,6 +197,9 @@ export function BidsCoverLetterTab({
   const [versionSends, setVersionSends] = useState<VersionSendRow[]>([])
   const [boardValueRule, setBoardValueRule] = useState<BoardValueRule>('base_sum')
   const [markingSent, setMarkingSent] = useState(false)
+  // Bid basis (v2.3219): the bid's marked-up plans exports + the persisted letter pill.
+  const bidBasisExports = useBidBasisExports(selectedBidForPricing?.id ?? null, selectedBidForPricing ? bidBasisRefForBid(selectedBidForPricing) : null)
+  const [bidToMarkedPlansOverride, setBidToMarkedPlansOverride] = useState<Record<string, boolean>>({})
   // vv2.2716: the Bid Room panel is controlled per GC so "Setup bid room" can sit beside Mark sent.
   const [roomOpenByKey, setRoomOpenByKey] = useState<Record<string, boolean>>({})
   const [roomPresenceByKey, setRoomPresenceByKey] = useState<Record<string, boolean>>({})
@@ -324,6 +330,23 @@ export function BidsCoverLetterTab({
       .order('sort_order')
       .order('created_at')
     setPaymentScheduleRows((data as BidPaymentScheduleRow[]) ?? [])
+  }
+
+  async function toggleBidToMarkedPlans(bid: BidWithBuilder) {
+    const next = !((bidToMarkedPlansOverride[bid.id] ?? bid.bid_to_marked_plans) === true)
+    setBidToMarkedPlansOverride((prev) => ({ ...prev, [bid.id]: next }))
+    const { data: rows, error } = await supabase.from('bids').update({ bid_to_marked_plans: next }).eq('id', bid.id).select('id')
+    if (error) {
+      setBidToMarkedPlansOverride((prev) => ({ ...prev, [bid.id]: !next }))
+      showToast('Error updating bid: ' + error.message, 'error')
+      return
+    }
+    if (bidUpdateRefused(rows)) {
+      setBidToMarkedPlansOverride((prev) => ({ ...prev, [bid.id]: !next }))
+      showToast(BID_UPDATE_NOT_APPLIED_MESSAGE, 'error')
+      return
+    }
+    await loadBids()
   }
 
   async function togglePaymentScheduleEnabled(bid: BidWithBuilder) {
@@ -831,6 +854,12 @@ export function BidsCoverLetterTab({
         // The Design Drawings Plan Date and Fixtures-per-plan toggles are independent:
         // each is included strictly per its own checkbox (one, the other, both, or none).
         const effectiveIncludeFixtures = coverLetterIncludeFixturesPerPlanByBid[bid.id] !== false
+        // Bid basis (v2.3219): the clause rides only when the pill is on AND an export exists.
+        const bidBasisCurrent = bidBasisExports.current
+        const bidToMarkedPlansOn = (bidToMarkedPlansOverride[bid.id] ?? bid.bid_to_marked_plans === true) && !!bidBasisCurrent
+        const bidBasisForLetter = bidToMarkedPlansOn && bidBasisCurrent
+          ? { clause: bidBasisClause({ planDateFormatted: designDrawingPlanDateFormatted, sheets: shortSheetLabels(bidBasisCurrent.sheet_labels ?? [], bidBasisCurrent.ct_project_name) }) }
+          : null
         const bidServiceType = serviceTypes.find((st) => st.id === bid.service_type_id)
         const serviceTypeName = bidServiceType?.name ?? 'Plumbing'
         const includeSignature = coverLetterIncludeSignatureByBid[bid.id] === true
@@ -874,15 +903,15 @@ export function BidsCoverLetterTab({
         const letterGcIsNotBidGc = letterGcDiffersFromBid(letterCustomer, bidGcPacketCustomer)
         const letterCustomerName = letterCustomer.name
         const letterCustomerAddress = letterCustomer.address
-        const combinedText = buildCoverLetterText(letterCustomerName, letterCustomerAddress, projectNameVal, projectAddressVal, revenueWords, revenueNumber, fixtureRows, inclusions, exclusions, terms, designDrawingPlanDateFormatted, serviceTypeName, includeSignature, effectiveIncludeFixtures, paymentScheduleActive ? { rows: paymentScheduleInputs, amountDollars: effectiveRevenue } : null, orgCoverLetterDefaults.closing)
-        const combinedHtml = buildCoverLetterHtml(letterCustomerName, letterCustomerAddress, projectNameVal, projectAddressVal, revenueWords, revenueNumber, fixtureRows, inclusions, exclusions, terms, designDrawingPlanDateFormatted, serviceTypeName, includeSignature, effectiveIncludeFixtures, paymentScheduleActive ? { rows: paymentScheduleInputs, amountDollars: effectiveRevenue } : null, orgCoverLetterDefaults.closing)
+        const combinedText = buildCoverLetterText(letterCustomerName, letterCustomerAddress, projectNameVal, projectAddressVal, revenueWords, revenueNumber, fixtureRows, inclusions, exclusions, terms, designDrawingPlanDateFormatted, serviceTypeName, includeSignature, effectiveIncludeFixtures, paymentScheduleActive ? { rows: paymentScheduleInputs, amountDollars: effectiveRevenue } : null, orgCoverLetterDefaults.closing, null, bidBasisForLetter)
+        const combinedHtml = buildCoverLetterHtml(letterCustomerName, letterCustomerAddress, projectNameVal, projectAddressVal, revenueWords, revenueNumber, fixtureRows, inclusions, exclusions, terms, designDrawingPlanDateFormatted, serviceTypeName, includeSignature, effectiveIncludeFixtures, paymentScheduleActive ? { rows: paymentScheduleInputs, amountDollars: effectiveRevenue } : null, orgCoverLetterDefaults.closing, null, bidBasisForLetter)
         // When 2+ Pricings are included in submission, the deliverable is one cover letter per
         // Pricing (each with its own amount + fixtures, shared prose), concatenated. With 0–1
         // included Pricings this stays the single letter above (no behavior change).
         const packetSectionHtml = (s: { name: string; revenueSum: number; fixtureRows: { fixture: string; count: number }[] }) =>
-          buildCoverLetterHtml(letterCustomerName, letterCustomerAddress, projectNameVal, projectAddressVal, numberToWords(s.revenueSum).toUpperCase(), `$${formatCurrency(s.revenueSum)}`, s.fixtureRows, inclusions, exclusions, terms, designDrawingPlanDateFormatted, serviceTypeName, includeSignature, effectiveIncludeFixtures, paymentScheduleActive ? { rows: paymentScheduleInputs, amountDollars: s.revenueSum } : null, orgCoverLetterDefaults.closing)
+          buildCoverLetterHtml(letterCustomerName, letterCustomerAddress, projectNameVal, projectAddressVal, numberToWords(s.revenueSum).toUpperCase(), `$${formatCurrency(s.revenueSum)}`, s.fixtureRows, inclusions, exclusions, terms, designDrawingPlanDateFormatted, serviceTypeName, includeSignature, effectiveIncludeFixtures, paymentScheduleActive ? { rows: paymentScheduleInputs, amountDollars: s.revenueSum } : null, orgCoverLetterDefaults.closing, null, bidBasisForLetter)
         const packetSectionText = (s: { name: string; revenueSum: number; fixtureRows: { fixture: string; count: number }[] }) =>
-          buildCoverLetterText(letterCustomerName, letterCustomerAddress, projectNameVal, projectAddressVal, numberToWords(s.revenueSum).toUpperCase(), `$${formatCurrency(s.revenueSum)}`, s.fixtureRows, inclusions, exclusions, terms, designDrawingPlanDateFormatted, serviceTypeName, includeSignature, effectiveIncludeFixtures, paymentScheduleActive ? { rows: paymentScheduleInputs, amountDollars: s.revenueSum } : null, orgCoverLetterDefaults.closing)
+          buildCoverLetterText(letterCustomerName, letterCustomerAddress, projectNameVal, projectAddressVal, numberToWords(s.revenueSum).toUpperCase(), `$${formatCurrency(s.revenueSum)}`, s.fixtureRows, inclusions, exclusions, terms, designDrawingPlanDateFormatted, serviceTypeName, includeSignature, effectiveIncludeFixtures, paymentScheduleActive ? { rows: paymentScheduleInputs, amountDollars: s.revenueSum } : null, orgCoverLetterDefaults.closing, null, bidBasisForLetter)
         // Same-page alternates (v2.2370): in the New view, a packet with alternates is ONE letter —
         // the bases sum to the proposed amount (fixture lists merged), each alternate is one line
         // under it, and with no base at all the first alternate leads. "Separate pages" keeps the
@@ -895,7 +924,7 @@ export function BidsCoverLetterTab({
         const showAltsLayoutToggle = selectedGcPacket != null && selectedGcPacket.sections.length > 1 && selectedGcPacket.sections.some((s) => s.isAlternate)
         const samePageHtml = (editable: boolean) =>
           samePagePlan
-            ? buildCoverLetterHtml(letterCustomerName, letterCustomerAddress, projectNameVal, projectAddressVal, numberToWords(samePagePlan.headlineRevenue).toUpperCase(), `$${formatCurrency(samePagePlan.headlineRevenue)}`, samePagePlan.fixtureRows, inclusions, exclusions, terms, designDrawingPlanDateFormatted, serviceTypeName, includeSignature, effectiveIncludeFixtures, paymentScheduleActive ? { rows: paymentScheduleInputs, amountDollars: samePagePlan.headlineRevenue } : null, orgCoverLetterDefaults.closing, buildAlternatesBlock(samePagePlan, altTexts, formatCurrency, editable, { gcName: letterCustomerName, projectName: projectNameVal }))
+            ? buildCoverLetterHtml(letterCustomerName, letterCustomerAddress, projectNameVal, projectAddressVal, numberToWords(samePagePlan.headlineRevenue).toUpperCase(), `$${formatCurrency(samePagePlan.headlineRevenue)}`, samePagePlan.fixtureRows, inclusions, exclusions, terms, designDrawingPlanDateFormatted, serviceTypeName, includeSignature, effectiveIncludeFixtures, paymentScheduleActive ? { rows: paymentScheduleInputs, amountDollars: samePagePlan.headlineRevenue } : null, orgCoverLetterDefaults.closing, buildAlternatesBlock(samePagePlan, altTexts, formatCurrency, editable, { gcName: letterCustomerName, projectName: projectNameVal }), bidBasisForLetter)
             : null
         const finalCoverLetterHtml = selectedGcPacket
           ? samePagePlan
@@ -908,7 +937,7 @@ export function BidsCoverLetterTab({
         const previewCoverLetterHtml = samePagePlan ? samePageHtml(true)! : finalCoverLetterHtml
         const finalCoverLetterText = selectedGcPacket
           ? samePagePlan
-            ? buildCoverLetterText(letterCustomerName, letterCustomerAddress, projectNameVal, projectAddressVal, numberToWords(samePagePlan.headlineRevenue).toUpperCase(), `$${formatCurrency(samePagePlan.headlineRevenue)}`, samePagePlan.fixtureRows, inclusions, exclusions, terms, designDrawingPlanDateFormatted, serviceTypeName, includeSignature, effectiveIncludeFixtures, paymentScheduleActive ? { rows: paymentScheduleInputs, amountDollars: samePagePlan.headlineRevenue } : null, orgCoverLetterDefaults.closing, buildAlternatesBlock(samePagePlan, altTexts, formatCurrency, false, { gcName: letterCustomerName, projectName: projectNameVal }))
+            ? buildCoverLetterText(letterCustomerName, letterCustomerAddress, projectNameVal, projectAddressVal, numberToWords(samePagePlan.headlineRevenue).toUpperCase(), `$${formatCurrency(samePagePlan.headlineRevenue)}`, samePagePlan.fixtureRows, inclusions, exclusions, terms, designDrawingPlanDateFormatted, serviceTypeName, includeSignature, effectiveIncludeFixtures, paymentScheduleActive ? { rows: paymentScheduleInputs, amountDollars: samePagePlan.headlineRevenue } : null, orgCoverLetterDefaults.closing, buildAlternatesBlock(samePagePlan, altTexts, formatCurrency, false, { gcName: letterCustomerName, projectName: projectNameVal }), bidBasisForLetter)
             : selectedGcPacket.sections.length > 1
               ? buildCombinedCoverLetterText(selectedGcPacket.sections.map((s) => ({ label: bundleLabel(s), text: packetSectionText(s) })))
               : packetSectionText(selectedGcPacket.sections[0]!)
@@ -1359,8 +1388,19 @@ export function BidsCoverLetterTab({
                           >
                             Payment schedule
                           </button>
+                          <button
+                            type="button"
+                            id="cover-letter-bid-basis-pill"
+                            onClick={() => void toggleBidToMarkedPlans(bid)}
+                            disabled={!bidBasisCurrent}
+                            title={bidBasisCurrent ? 'Say in the letter that we bid to our marked-up plans, not the plans as issued' : 'Available once marked-up plans are exported from CountTooling'}
+                            style={bidBasisCurrent ? studioTogStyle(bidToMarkedPlansOn) : { ...studioTogStyle(false), border: '1px dashed var(--border-strong)', color: 'var(--text-faint)', cursor: 'not-allowed' }}
+                          >
+                            Bid to our marked-up plans
+                          </button>
                         </div>
                       </div>
+                      <BidBasisCard bid={bid} exports={bidBasisExports} />
                       {paymentScheduleEnabled && (
                         <div style={{ border: '1px solid var(--border)', borderRadius: 6, padding: '0.6rem 0.7rem', marginBottom: '0.7rem' }}>
                           <span style={studioFieldLabelStyle}>Schedule of Values</span>

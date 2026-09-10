@@ -767,6 +767,93 @@ export type Database = {
           },
         ]
       }
+      bid_plan_basis_exports: {
+        Row: {
+          bid_id: string
+          canvas_snapshot: Json | null
+          created_at: string
+          ct_pdf_hash: string | null
+          ct_project_id: string | null
+          ct_project_name: string | null
+          ct_updated_at: string | null
+          ct_view_token: string | null
+          exported_at: string
+          exported_by: string | null
+          file_size_bytes: number | null
+          filename: string
+          id: string
+          include_report: boolean
+          mark_totals: Json
+          notes_count: number
+          page_indices: number[]
+          save_method: string
+          sheet_count: number
+          sheet_labels: string[]
+          superseded_at: string | null
+        }
+        Insert: {
+          bid_id: string
+          canvas_snapshot?: Json | null
+          created_at?: string
+          ct_pdf_hash?: string | null
+          ct_project_id?: string | null
+          ct_project_name?: string | null
+          ct_updated_at?: string | null
+          ct_view_token?: string | null
+          exported_at?: string
+          exported_by?: string | null
+          file_size_bytes?: number | null
+          filename: string
+          id?: string
+          include_report?: boolean
+          mark_totals?: Json
+          notes_count?: number
+          page_indices?: number[]
+          save_method?: string
+          sheet_count?: number
+          sheet_labels?: string[]
+          superseded_at?: string | null
+        }
+        Update: {
+          bid_id?: string
+          canvas_snapshot?: Json | null
+          created_at?: string
+          ct_pdf_hash?: string | null
+          ct_project_id?: string | null
+          ct_project_name?: string | null
+          ct_updated_at?: string | null
+          ct_view_token?: string | null
+          exported_at?: string
+          exported_by?: string | null
+          file_size_bytes?: number | null
+          filename?: string
+          id?: string
+          include_report?: boolean
+          mark_totals?: Json
+          notes_count?: number
+          page_indices?: number[]
+          save_method?: string
+          sheet_count?: number
+          sheet_labels?: string[]
+          superseded_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bid_plan_basis_exports_bid_id_fkey"
+            columns: ["bid_id"]
+            isOneToOne: false
+            referencedRelation: "bids"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bid_plan_basis_exports_exported_by_fkey"
+            columns: ["exported_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       bid_pricing_assignments: {
         Row: {
           bid_id: string
@@ -1650,6 +1737,7 @@ export type Database = {
           bid_tab_rank_from_low: number | null
           bid_value: number | null
           count_tooling_link: string | null
+          bid_to_marked_plans: boolean
           count_tooling_plans_link: string | null
           cover_letter_alt_texts: Json | null
           created_at: string | null
@@ -1724,6 +1812,7 @@ export type Database = {
           bid_tab_rank_from_low?: number | null
           bid_value?: number | null
           count_tooling_link?: string | null
+          bid_to_marked_plans?: boolean
           count_tooling_plans_link?: string | null
           cover_letter_alt_texts?: Json | null
           created_at?: string | null
@@ -1798,6 +1887,7 @@ export type Database = {
           bid_tab_rank_from_low?: number | null
           bid_value?: number | null
           count_tooling_link?: string | null
+          bid_to_marked_plans?: boolean
           count_tooling_plans_link?: string | null
           cover_letter_alt_texts?: Json | null
           created_at?: string | null
