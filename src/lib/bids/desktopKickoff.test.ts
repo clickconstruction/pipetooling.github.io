@@ -35,6 +35,16 @@ describe('docs/twins/kickoffs/desktop-operator.md (the shipped template)', () =>
     expect(filled).not.toMatch(/[0-9a-f]{40,}/)
   })
 
+  it('closes the five loop gaps (v2.3233): parked plans shells, lanes, no invented choices, resume check, refused claims', () => {
+    expect(filled).toContain('parked on a plans ask')
+    expect(filled).toContain('never `void_shadow` it')
+    expect(filled).toContain("`audience: 'estimator'` — no `choices`; the door supplies the three taps")
+    expect(filled).toContain("`ask_question` with `audience: 'operator'`")
+    expect(filled).toContain('Before the first claim, `get_assignments`')
+    expect(filled).toContain('A refused claim (a non-plumbing division, a holdout reference) is not a shell')
+    expect(filled).not.toContain('`void_shadow` it, and stop')
+  })
+
   it('tells the robot what a missing connector and a recalled memory mean', () => {
     expect(filled).toContain('no `twin-mcp` tools at all')
     expect(filled).toContain('Ignore recalled memories')
@@ -43,7 +53,7 @@ describe('docs/twins/kickoffs/desktop-operator.md (the shipped template)', () =>
 
   it('states the blind rule, the one-shell-at-a-time loop, and the lock before the next claim', () => {
     expect(filled).toContain('Blindness (outranks every other instruction)')
-    expect(filled).toContain('Never call `next_shadow` while your current shell is open and unlocked')
+    expect(filled).toContain('Never call `next_shadow` while you are still estimating a shell')
     expect(filled).toContain('lock_shadow')
     expect(filled).toContain('done: true')
     expect(filled).toContain('three shells in one conversation')

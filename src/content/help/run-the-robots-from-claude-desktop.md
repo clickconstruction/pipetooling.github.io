@@ -36,4 +36,6 @@ Each shell the robot locks shows up on the Bid Board's robot icon as a lock badg
 
 The prompt carries the owner's rules: never send anything to a customer, never mark a bid sent, never edit a human's bid, never touch a bid that is not its ZZ shell, never invent a number without plans, and never ask for or repeat the key. Anything the permission layer blocks is stamped on the ledger and asked as a question, not worked around.
 
+A bid whose plans it can't read is **parked**, not abandoned: the robot files a plans ask on that bid (the amber icon on the Bid Board), leaves its shell open, and moves to the next bid. When someone taps {{button:blue|★ Attached — rerun}}, the next batch hands that shell back first. Questions about the job go to the estimator's Standing rulings; questions about the robot's own machine go to the operator on the Console.
+
 To cut a machine off, revoke its key label on the Digital twins page.
