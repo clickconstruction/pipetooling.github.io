@@ -95,9 +95,11 @@ describe('BidsRobotMirrorTab', () => {
     await waitFor(() => expect(screen.getByText('PALMER WINERY')).toBeTruthy())
 
     // The strip: three of ours mirrored; two live eligible (431 covered, 999 not); the audit gate; no axis past Gate B.
-    expect(onRowCount).toHaveBeenLastCalledWith(3)
+    // The shell-paired rows render first and the run-paired ones land as the shadow/score
+    // reads settle, so the count is reached, not read — waitFor, never a bare expect (flaked in CI).
+    await waitFor(() => expect(onRowCount).toHaveBeenLastCalledWith(3))
     expect(screen.getByText('our bids with a robot run')).toBeTruthy()
-    expect(screen.getByText('1 / 2')).toBeTruthy()
+    await waitFor(() => expect(screen.getByText('1 / 2')).toBeTruthy())
     expect(screen.getByText('1 more live bid has no robot yet')).toBeTruthy()
 
     // Sealed live shadow: status word, the shell named, and NO number anywhere on the row.
