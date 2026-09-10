@@ -82,6 +82,12 @@ export type BidFlowStep = {
   /** What the app reads to decide this step — shown in the tooltip so the proxy is never hidden. */
   proxy: string
   door: BidFlowDoor
+  /**
+   * Where the door lands (v2.3216): element ids tried in order once the
+   * destination renders — the field or button where the missing piece goes.
+   * Empty for a step whose door is an action, not a place (Review).
+   */
+  target: ReadonlyArray<string>
 }
 
 export type BidFlow = {
@@ -101,16 +107,16 @@ export type BidFlow = {
 type StepDef = Omit<BidFlowStep, 'state'>
 
 export const BID_FLOW_STEP_DEFS: ReadonlyArray<StepDef> = [
-  { key: 'drive', n: 1, label: 'Plans in Drive', poster: 'Load in Drive', phase: 'Intake', proxy: 'a project folder or plans link on the bid', door: 'edit' },
-  { key: 'rfq', n: 2, label: 'Send RFQ', poster: 'Send RFQ', phase: 'Ask', proxy: 'a price request on the bid, app-sent or logged by hand', door: 'pricing' },
-  { key: 'tooling', n: 3, label: 'Plans in Tooling', poster: 'Load in clicktooling', phase: 'Intake', proxy: 'a CountTooling link on the bid', door: 'edit' },
-  { key: 'count', n: 4, label: 'Count & import', poster: 'Count, then import', phase: 'Count', proxy: 'count rows on the bid; the app cannot see CountTooling itself', door: 'counts' },
-  { key: 'takeoffs', n: 5, label: 'Takeoffs', poster: 'Takeoffs from RFQ and loaded data', phase: 'Build', proxy: 'takeoff part lines on the bid', door: 'takeoffs' },
-  { key: 'price', n: 6, label: 'Price', poster: 'Price', phase: 'Build', proxy: 'a bid value, or price-book assignments on the rows', door: 'pricing' },
-  { key: 'review', n: 7, label: 'Review', poster: 'Review', phase: 'Review', proxy: 'the Mark reviewed stamp: who, when, and their notes', door: 'review' },
-  { key: 'letter', n: 8, label: 'Cover letter', poster: 'Generate cover letter, save as PDF', phase: 'Letter', proxy: 'a published bid room, or the bid already sent', door: 'cover-letter' },
-  { key: 'filed', n: 9, label: 'PDF filed', poster: 'Copy of PDF in Drive, link in app', phase: 'Letter', proxy: 'a bid submission link on the bid', door: 'cover-letter' },
-  { key: 'sent', n: 10, label: 'Sent', poster: 'Send, follow up, mark sent', phase: 'Send', proxy: 'the sent date — the one sent rule', door: 'cover-letter' },
+  { key: 'drive', n: 1, label: 'Plans in Drive', poster: 'Load in Drive', phase: 'Intake', proxy: 'a project folder or plans link on the bid', door: 'edit', target: ['bid-form-plans-link'] },
+  { key: 'rfq', n: 2, label: 'Send RFQ', poster: 'Send RFQ', phase: 'Ask', proxy: 'a price request on the bid, app-sent or logged by hand', door: 'pricing', target: ['pricing-price-requests', 'pricing-header'] },
+  { key: 'tooling', n: 3, label: 'Plans in Tooling', poster: 'Load in clicktooling', phase: 'Intake', proxy: 'a CountTooling link on the bid', door: 'edit', target: ['bid-form-count-tooling-link'] },
+  { key: 'count', n: 4, label: 'Count & import', poster: 'Count, then import', phase: 'Count', proxy: 'count rows on the bid; the app cannot see CountTooling itself', door: 'counts', target: ['counts-import-tooling'] },
+  { key: 'takeoffs', n: 5, label: 'Takeoffs', poster: 'Takeoffs from RFQ and loaded data', phase: 'Build', proxy: 'takeoff part lines on the bid', door: 'takeoffs', target: ['takeoff-lines', 'takeoff-header'] },
+  { key: 'price', n: 6, label: 'Price', poster: 'Price', phase: 'Build', proxy: 'a bid value, or price-book assignments on the rows', door: 'pricing', target: ['pricing-header'] },
+  { key: 'review', n: 7, label: 'Review', poster: 'Review', phase: 'Review', proxy: 'the Mark reviewed stamp: who, when, and their notes', door: 'review', target: [] },
+  { key: 'letter', n: 8, label: 'Cover letter', poster: 'Generate cover letter, save as PDF', phase: 'Letter', proxy: 'a published bid room, or the bid already sent', door: 'cover-letter', target: ['cover-letter-generate'] },
+  { key: 'filed', n: 9, label: 'PDF filed', poster: 'Copy of PDF in Drive, link in app', phase: 'Letter', proxy: 'a bid submission link on the bid', door: 'cover-letter', target: ['cover-letter-submission-link', 'cover-letter-generate'] },
+  { key: 'sent', n: 10, label: 'Sent', poster: 'Send, follow up, mark sent', phase: 'Send', proxy: 'the sent date — the one sent rule', door: 'cover-letter', target: ['cover-letter-mark-sent', 'cover-letter-generate'] },
 ]
 
 const DECIDED_OUTCOMES = new Set(['won', 'lost', 'started_or_complete'])

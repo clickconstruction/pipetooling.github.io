@@ -23,7 +23,7 @@ import {
 import type { LaborTabPanel } from '../../lib/bids/laborTabLoadGate'
 import { BidWorkflowTabTitleWithPreview } from './BidWorkflowTabTitleWithPreview'
 import { BidFlowStrip } from './BidFlowStrip'
-import { deriveBidFlow } from '../../lib/bids/bidFlow'
+import { deriveBidFlow, type BidFlowDoor, type BidFlowStep } from '../../lib/bids/bidFlow'
 import { useBidFlowFacts } from '../../hooks/useBidFlowFacts'
 import { useBidFlowReview } from '../../hooks/useBidFlowReview'
 import { BidPickerStandardList } from './BidPickerStandardList'
@@ -56,6 +56,10 @@ import type {
 } from '../../lib/bids/bidPricingEngineTypes'
 
 type BidsLaborTabProps = {
+  /** v2.3216: open a step's door from the strip — Edit window or another tab — and land on its field. The page owns it. */
+  onOpenBidFlowDoor?: (bid: BidWithBuilder, door: BidFlowDoor, step: BidFlowStep) => void
+  /** Role gating for those doors (superintendents never reach Pricing / Cover Letter). */
+  bidFlowDoorAllowed?: (door: BidFlowDoor) => boolean
   bids: BidWithBuilder[]
   /** Breakdown jump (v2.2400): an HOURS row to land on — scroll + flash, then report handled. */
   rowJump?: BreakdownJumpTarget | null
@@ -140,6 +144,8 @@ type BidsLaborTabProps = {
 }
 
 export function BidsLaborTab({
+  onOpenBidFlowDoor,
+  bidFlowDoorAllowed,
   selectedBidVersionId,
   bids,
   rowJump,
@@ -1067,9 +1073,10 @@ export function BidsLaborTab({
             variant="full"
             flow={deriveBidFlow(selectedBidForCostEstimate, bidFlowFactsByBid[selectedBidForCostEstimate.id])}
             bidLabel={selectedBidForCostEstimate.project_name ?? undefined}
-            canOpenDoor={(d) => d === 'review'}
-            onOpenDoor={(d) => {
+            canOpenDoor={(d) => d === 'review' || (onOpenBidFlowDoor != null && (bidFlowDoorAllowed ? bidFlowDoorAllowed(d) : d != null))}
+            onOpenDoor={(d, step) => {
               if (d === 'review') void bidFlowReview.markReviewed(selectedBidForCostEstimate)
+              else onOpenBidFlowDoor?.(selectedBidForCostEstimate, d, step)
             }}
             reviewStamp={bidFlowReview.stampFor(selectedBidForCostEstimate)}
           />

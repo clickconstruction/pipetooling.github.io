@@ -978,16 +978,16 @@ export function BidFormModal(props: BidFormModalProps) {
                 </div>
                 <div className="bid-form-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
                   <div>
-                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Job Plans</label>
+                    <label htmlFor="bid-form-plans-link" style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Job Plans</label>
                     <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                      <input type="url" value={plansLink} onChange={(e) => setPlansLink(e.target.value)} placeholder="https://drive.google.com/drive/... " style={{ flex: 1, padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }} />
+                      <input id="bid-form-plans-link" type="url" value={plansLink} onChange={(e) => setPlansLink(e.target.value)} placeholder="https://drive.google.com/drive/... " style={{ flex: 1, padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }} />
                       <PasteButton onPaste={setPlansLink} label="Paste job plans link" />
                     </div>
                   </div>
                   <div>
-                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>CountTooling Plans</label>
+                    <label htmlFor="bid-form-count-tooling-link" style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>CountTooling Plans</label>
                     <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                      <input type="url" value={countToolingPlansLink} onChange={(e) => setCountToolingPlansLink(e.target.value)} placeholder="https://counttooling.com/?t=... " style={{ flex: 1, padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }} />
+                      <input id="bid-form-count-tooling-link" type="url" value={countToolingPlansLink} onChange={(e) => setCountToolingPlansLink(e.target.value)} placeholder="https://counttooling.com/?t=... " style={{ flex: 1, padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }} />
                       <PasteButton onPaste={setCountToolingPlansLink} label="Paste CountTooling link" />
                     </div>
                   </div>

@@ -50,6 +50,8 @@ import { BidsAuditsTab } from '../components/bids/BidsAuditsTab'
 import { RobotStatusSheet } from '../components/bids/RobotStatusSheet'
 import { RobotNeedsSheet, type RobotOpenQuestion } from '../components/bids/RobotNeedsSheet'
 import { effectiveTwinQuestionKind } from '../../supabase/functions/_shared/twinQuestionKind'
+import type { BidFlowDoor, BidFlowStep } from '../lib/bids/bidFlow'
+import { landOnBidFlowTarget, parseLandingParam } from '../lib/bids/bidFlowLanding'
 import type { RobotRowInput } from '../lib/bids/robotRowState'
 import type { ShadowRunRow } from '../lib/bids/shadowStory'
 import { RobotBidComparisonModal } from '../components/bids/RobotBidComparisonModal'
@@ -600,6 +602,21 @@ export default function Bids() {
       return next
     }, { replace: true })
   }, [location.search, bids, setSearchParams])
+  // Landing from a URL (v2.3216): /bids?tab=…&bidId=…&focus=<element-id[,fallback]> —
+  // the same landing the strip's doors do, so a link can point at a field.
+  useEffect(() => {
+    const params = new URLSearchParams(location.search)
+    if (!params.has('focus')) return
+    const id = params.get('bidId')
+    if (id && !bids.some((b) => b.id === id)) return
+    const targets = parseLandingParam(params.get('focus'))
+    if (targets.length) landOnBidFlowTarget(targets)
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev)
+      next.delete('focus')
+      return next
+    }, { replace: true })
+  }, [location.search, bids, setSearchParams])
   useEffect(() => {
     void loadRobotQuestions()
   }, [loadRobotQuestions])
@@ -1072,6 +1089,20 @@ export default function Bids() {
       next.set('bidId', bid.id)
       return next
     }, { replace: true })
+  }
+
+  // Bid flow doors (v2.3216): a step on any strip opens its destination — the Edit
+  // window or one of the workflow tabs — and then LANDS on the field the step is
+  // about (scroll, focus, a fading ring). One handler for the five workflow-tab
+  // strips; the board's opened row does the same through its own props.
+  function bidFlowDoorAllowed(door: BidFlowDoor): boolean {
+    return door != null && (myRole !== 'superintendent' || (door !== 'pricing' && door !== 'cover-letter'))
+  }
+  function openBidFlowDoor(bid: BidWithBuilder, door: BidFlowDoor, step: BidFlowStep) {
+    if (!bidFlowDoorAllowed(door)) return
+    if (door === 'edit') openEditBid(bid)
+    else if (door && door !== 'review') selectBidAndSyncUrl(bid, door)
+    landOnBidFlowTarget(step.target)
   }
 
 
@@ -3984,6 +4015,8 @@ export default function Bids() {
           />
         )}
         <BidsCountsTab
+          onOpenBidFlowDoor={openBidFlowDoor}
+          bidFlowDoorAllowed={bidFlowDoorAllowed}
           bids={bids}
           selectedBidForCounts={selectedBidForCounts}
           rowJump={bidTabRowJump?.tab === 'counts' ? bidTabRowJump : null}
@@ -4031,6 +4064,8 @@ export default function Bids() {
           />
         )}
         <BidsTakeoffTab
+          onOpenBidFlowDoor={openBidFlowDoor}
+          bidFlowDoorAllowed={bidFlowDoorAllowed}
           bids={bidsTyped}
           rowJump={bidTabRowJump?.tab === 'takeoffs' ? bidTabRowJump : null}
           onRowJumpHandled={() => setBidTabRowJump(null)}
@@ -4094,6 +4129,8 @@ export default function Bids() {
       {/* Labor Tab */}
       {activeTab === 'labor' && (
         <BidsLaborTab
+          onOpenBidFlowDoor={openBidFlowDoor}
+          bidFlowDoorAllowed={bidFlowDoorAllowed}
           bids={bidsTyped}
           rowJump={bidTabRowJump?.tab === 'labor' ? bidTabRowJump : null}
           onRowJumpHandled={() => setBidTabRowJump(null)}
@@ -4199,6 +4236,8 @@ export default function Bids() {
           </div>
         )}
         <BidsPricingTab
+          onOpenBidFlowDoor={openBidFlowDoor}
+          bidFlowDoorAllowed={bidFlowDoorAllowed}
           bids={bidsTyped}
           bidVersions={bidVersions}
           onSwitchBidVersion={(versionId) => { if (selectedBidForPricing) void switchActiveVersion(selectedBidForPricing.id, versionId) }}
@@ -4295,6 +4334,8 @@ export default function Bids() {
           />
         )}
         <BidsCoverLetterTab
+          onOpenBidFlowDoor={openBidFlowDoor}
+          bidFlowDoorAllowed={bidFlowDoorAllowed}
           bids={bidsTyped}
           selectedBidForPricing={selectedBidForPricing}
           narrowViewport640={narrowViewport640}

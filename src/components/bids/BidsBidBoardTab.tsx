@@ -36,7 +36,8 @@ import { BidBoardEstimatingHealthSection } from './BidBoardEstimatingHealthSecti
 import { BidBoardMapCard } from './BidBoardMapCard'
 import { BidBoardSelfHighlightWheel, useBidBoardSelfHighlight } from './BidBoardSelfHighlightWheel'
 import { BidFlowStrip } from './BidFlowStrip'
-import { deriveBidFlow, type BidFlowDoor } from '../../lib/bids/bidFlow'
+import { deriveBidFlow, type BidFlowDoor, type BidFlowStep } from '../../lib/bids/bidFlow'
+import { landOnBidFlowTarget } from '../../lib/bids/bidFlowLanding'
 import { useBidFlowFacts } from '../../hooks/useBidFlowFacts'
 import { useBidFlowReview } from '../../hooks/useBidFlowReview'
 
@@ -347,10 +348,12 @@ export function BidsBidBoardTab({
   const bidFlowReview = useBidFlowReview(filteredBidsForBidBoard)
   const bidFlowDoorAllowed = (door: BidFlowDoor) =>
     door != null && (canSeePricingTabs || (door !== 'pricing' && door !== 'cover-letter'))
-  const openBidFlowDoor = (bid: BidWithBuilder, door: BidFlowDoor) => {
+  const openBidFlowDoor = (bid: BidWithBuilder, door: BidFlowDoor, step?: BidFlowStep) => {
     if (door === 'edit') onEditBid(bid)
     else if (door === 'review') void bidFlowReview.markReviewed(bid)
     else if (door) onOpenBidTab(bid, door)
+    // v2.3216: land on the field the step is about once the destination renders.
+    if (step && door !== 'review') landOnBidFlowTarget(step.target)
   }
   const pillCounts: Record<SubmissionSectionKey, number> = {
     unsent: boardCounts.unsent,
@@ -943,7 +946,7 @@ export function BidsBidBoardTab({
           flow={deriveBidFlow(bid, bidFlowFactsByBid[bid.id])}
           bidLabel={bid.project_name ?? undefined}
           canOpenDoor={bidFlowDoorAllowed}
-          onOpenDoor={(door) => openBidFlowDoor(bid, door)}
+          onOpenDoor={(door, step) => openBidFlowDoor(bid, door, step)}
           reviewStamp={bidFlowReview.stampFor(bid)}
         />
         <div

@@ -36,7 +36,7 @@ import { loadBundlePartLines, type BundlePartLine } from '../../lib/bids/assembl
 import { buildPartAssemblyIndex, type PartAssemblyEntry, type PartAssemblyIndexItem } from '../../lib/bids/partAssemblyIndex'
 import { BidWorkflowTabTitleWithPreview } from './BidWorkflowTabTitleWithPreview'
 import { BidFlowStrip } from './BidFlowStrip'
-import { deriveBidFlow } from '../../lib/bids/bidFlow'
+import { deriveBidFlow, type BidFlowDoor, type BidFlowStep } from '../../lib/bids/bidFlow'
 import { useBidFlowFacts } from '../../hooks/useBidFlowFacts'
 import { useBidFlowReview } from '../../hooks/useBidFlowReview'
 import { BidPickerStandardList } from './BidPickerStandardList'
@@ -152,6 +152,10 @@ interface BidsTakeoffTabProps {
   onSelectBid: (bid: BidWithBuilder) => void
   onClose: () => void
   onEditBid: (bid: BidWithBuilder) => void
+  /** v2.3216: open a step's door from the strip — Edit window or another tab — and land on its field. The page owns it. */
+  onOpenBidFlowDoor?: (bid: BidWithBuilder, door: BidFlowDoor, step: BidFlowStep) => void
+  /** Role gating for those doors (superintendents never reach Pricing / Cover Letter). */
+  bidFlowDoorAllowed?: (door: BidFlowDoor) => boolean
   ledgerPrefixMap: LedgerPrefixMap
   onlyMyBids: boolean
   setOnlyMyBids: (next: boolean) => void
@@ -159,6 +163,8 @@ interface BidsTakeoffTabProps {
 }
 
 export function BidsTakeoffTab({
+  onOpenBidFlowDoor,
+  bidFlowDoorAllowed,
   bids,
   rowJump,
   onRowJumpHandled,
@@ -1894,13 +1900,14 @@ export function BidsTakeoffTab({
                 variant="full"
                 flow={deriveBidFlow(selectedBidForTakeoff, bidFlowFactsByBid[selectedBidForTakeoff.id])}
                 bidLabel={selectedBidForTakeoff.project_name ?? undefined}
-                canOpenDoor={(d) => d === 'review'}
-                onOpenDoor={(d) => {
+                canOpenDoor={(d) => d === 'review' || (onOpenBidFlowDoor != null && (bidFlowDoorAllowed ? bidFlowDoorAllowed(d) : d != null))}
+                onOpenDoor={(d, step) => {
                   if (d === 'review') void bidFlowReview.markReviewed(selectedBidForTakeoff)
+                  else onOpenBidFlowDoor?.(selectedBidForTakeoff, d, step)
                 }}
                 reviewStamp={bidFlowReview.stampFor(selectedBidForTakeoff)}
               />
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.5rem' }}>
+              <div id="takeoff-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.5rem' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap', minWidth: 0 }}>
                   <BidWorkflowTabTitleWithPreview
                     bid={selectedBidForTakeoff}
@@ -2116,7 +2123,7 @@ export function BidsTakeoffTab({
                     Select an Assembly for each Fixture or Tie-in you want to include in a PO (Purchase Order). Materials broken down by stage allows for staged billing.
                   </p>
                   <div style={{ border: '1px solid var(--border)', borderRadius: 4, overflow: 'hidden' }}>
-                    <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                    <table id="takeoff-lines" style={{ width: '100%', borderCollapse: 'collapse' }}>
                       <thead style={{ background: 'var(--bg-subtle)' }}>
                         <tr>
                           <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Fixture or Tie-in</th>
