@@ -2,7 +2,7 @@
 title: match clock sessions to jobs and bids
 category: Office
 roles: assistant
-keywords: match sessions, unassigned, clock sessions, no job, assign job, hours, dispatch
+keywords: match sessions, unassigned, clock sessions, no job, assign job, hours, dispatch, reject session, test punch
 order: 34
 ---
 
@@ -31,7 +31,16 @@ Tap {{button:blue|Assign}} on the right suggestion and the session is matched im
 
 ## When there's no suggestion
 
-Use **Search jobs & bids…** on the session — it opens the same search box you know from assigning sessions elsewhere, with the person's Dispatch schedule quick-picks on top. **Skip** hides a session for this visit only (nothing is written) — right for personal-errand sessions the office will reject instead.
+Use **Search jobs & bids…** on the session — it opens the same search box you know from assigning sessions elsewhere, with the person's Dispatch schedule quick-picks on top.
+
+## When it was never a job
+
+A test punch, a personal errand, a clock-in that should not have happened — those don't belong on any job, so don't match them: tap {{button:red|Reject}} on the card. It asks once — *"Reject Bryan · Sat 9/5 · 9h 30m? Rejected time never reaches payroll."* — and then the session is rejected the same way it would be from the approvals queue: the card drops out, the hours never reach payroll, and the session leaves the match list for good (not just this visit). Sessions still clocked in have no Reject — wait for the clock-out. Rejected by mistake? People → Hours → **Rejected sessions** has Restore.
+
+:::example Bryan's test punch
+Sat 9/5 · 2:30 PM – 11:59 PM · 9h 30m · *"Test"*
+{{button:outline|Search jobs & bids…}} {{button:red|Reject}}
+:::
 
 ## The bulk shortcut
 
