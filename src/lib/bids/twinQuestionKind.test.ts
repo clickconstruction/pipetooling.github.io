@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   PLANS_ASK_DEFAULT_CHOICES,
+  answerRequestsRerun,
   classifyTwinQuestionKind,
   effectiveTwinQuestionKind,
 } from '../../../supabase/functions/_shared/twinQuestionKind'
@@ -56,5 +57,19 @@ describe('groupStandingRulings keeps plans asks out of the rulings', () => {
     expect(v.rulings.map((r) => r.topic)).toEqual(['travel-bands'])
     expect(v.singles).toEqual([])
     expect(v.plansAsks.map((q) => q.id)).toEqual(['p2', 'p1'])
+  })
+})
+
+describe('answerRequestsRerun (v2.3223)', () => {
+  it('the default tap and plain rerun words say yes; the other taps and free text say no', () => {
+    expect(answerRequestsRerun('Attached — rerun')).toBe(true)
+    expect(answerRequestsRerun('  attached — RERUN ')).toBe(true)
+    expect(answerRequestsRerun('Plans fixed, please re-run it')).toBe(true)
+    expect(answerRequestsRerun('run again')).toBe(true)
+    expect(answerRequestsRerun('Use what is on the bid')).toBe(false)
+    expect(answerRequestsRerun('Skip this bid')).toBe(false)
+    expect(answerRequestsRerun('The runoff drawings are on sheet C-3')).toBe(false)
+    expect(answerRequestsRerun('')).toBe(false)
+    expect(answerRequestsRerun(null)).toBe(false)
   })
 })

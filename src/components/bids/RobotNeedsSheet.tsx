@@ -3,7 +3,7 @@ import type { Bid } from '../../types/bids'
 import { robotGaps } from '../../lib/bids/robotRowState'
 import { ROBOT_INTAKE_ACCOUNT } from '../../lib/bids/robotReadinessLine'
 import { answerFromChoice, orderedChoices } from '../../lib/bids/twinQuestionChoices'
-import { PLANS_ASK_DEFAULT_CHOICES, PLANS_ASK_DEFAULT_RECOMMENDED, effectiveTwinQuestionKind } from '../../../supabase/functions/_shared/twinQuestionKind'
+import { PLANS_ASK_DEFAULT_CHOICES, PLANS_ASK_DEFAULT_RECOMMENDED, answerRequestsRerun, effectiveTwinQuestionKind } from '../../../supabase/functions/_shared/twinQuestionKind'
 import { RobotGlyph } from './RobotGlyph'
 import { TwinQuestionChoiceButtons } from './TwinQuestionChoiceButtons'
 
@@ -25,8 +25,12 @@ type RobotNeedsSheetProps = {
   questions: RobotOpenQuestion[]
   onClose: () => void
   onEditBid: (bid: Bid) => void
-  /** Answer one question; resolves true when the row was written. */
-  onAnswer: (questionId: string, text: string) => Promise<boolean>
+  /**
+   * Answer one question; resolves true when the row was written. `rerunBidId`
+   * (v2.3223) rides along when a plans ask was answered "go again": the page
+   * stamps that bid robot-requested so the robot picks it up front of the line.
+   */
+  onAnswer: (questionId: string, text: string, opts?: { rerunBidId?: string }) => Promise<boolean>
 }
 
 /**
@@ -69,7 +73,8 @@ export function RobotNeedsSheet({ bid, questions, onClose, onEditBid, onAnswer }
     if (!text || !bid) return
     setBusy(q.id)
     try {
-      const ok = await onAnswer(q.id, text)
+      const rerun = effectiveTwinQuestionKind(q) === 'plans' && answerRequestsRerun(text)
+      const ok = await onAnswer(q.id, text, rerun ? { rerunBidId: bid.id } : undefined)
       if (ok) {
         setDrafts((p) => ({ ...p, [q.id]: '' }))
         setFreeText((p) => ({ ...p, [q.id]: false }))
@@ -149,7 +154,7 @@ export function RobotNeedsSheet({ bid, questions, onClose, onEditBid, onAnswer }
                       <span style={{ fontWeight: 600 }}>Robot needs a different plan set</span>
                       <span style={{ display: 'block', fontSize: '0.8rem', marginTop: '0.1rem' }}>🤖 {q.question}</span>
                       <span style={{ display: 'block', fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '0.15rem' }}>
-                        Fix the plans link under Job Plans on the Edit form, or share the right file with the robots’ intake address — then tell the robot with one tap.
+                        Fix the plans link under Job Plans on the Edit form, or share the right file with the robots’ intake address — then tap Attached — rerun and the robot goes again, front of the line next batch.
                       </span>
                     </span>
                     <span style={{ display: 'inline-flex', gap: '0.35rem', flexWrap: 'wrap' }}>
