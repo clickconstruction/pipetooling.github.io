@@ -1078,6 +1078,8 @@ Devs: **Settings → Templates & testing → Workflow email (Edge Function)** (c
 
 **Endpoint**: `GET /functions/v1/customer-portal?token=<opaque>` or `GET /functions/v1/customer-portal?slug=<address>`
 
+**Customer Waiting** (v2.3246): the payload carries `customerPhone` — the number on file for the company, resolved by [`_shared/portalCustomerPhone.ts`](../supabase/functions/_shared/portalCustomerPhone.ts) (`customers.contact_info->>'phone'`, else the newest `jobs_ledger.customer_phone` on one of its jobs; null when neither) — so the request form can say *We'll call you at …* instead of asking for a number the office already has. **Redeploy required.**
+
 **v2.2690 (Contract Desk PR 5)**: the payload gains `agreements[]` — the customer's `job_contracts` that are `sent` or `signed` (never drafts or voided): job label/address, template, frozen amount, signed stamp + signer, and `signUrl` (the same durable `/contract/sign?t=` link) so the portal's **Your agreements** card can offer *Review & sign* / *View signed copy*.
 
 **Auth**: none (`verify_jwt = false` in `config.toml` — the link IS the capability, minted/rotated by `mint_customer_portal_link`). Service-role reads; never returns costs, notes, or other customers' data.
@@ -1093,6 +1095,8 @@ Devs: **Settings → Templates & testing → Workflow email (Edge Function)** (c
 **Purpose**: Portal form intake (portal train PR 2, v2.1986): validates a visit/bid request from `/portal` (honeypot, length caps, https-only plans link, job-in-scope check), rate-limits 5/hour per portal link, inserts a `dispatch_requests` row (details in `pending_payload.source = 'portal'`; `from_user_id` = `app_settings.portal_requests_from_user_id` → link minter → first dev), then triggers `notify-dispatch-request` and (v2.1988) emails the `portal_request_email_recipients_v1` app_settings list via Resend, best-effort.
 
 **Stage asks** (v2.2934; v2.3132): `kind: 'stage_window'` (`stageId` = the `job_stage_windows` id the portal card carries as `askWindowId`, `start`, `end`, `note`) — GC / merged links only; the window must sit on a job whose `gc_customer_id` is the viewer and whose `gc_shares_stage_dates` is on, **and it must be the plan's `next` step** (`loadGcStageInputs` + `gcPortalStages` from `_shared/gcStages.ts`; anything else → 400 "Only the next stage can be moved"); validated with `_shared/stageAsk.askProblem`; writes `asked_*` on the window (clearing any earlier answer); inserts `dispatch_requests` (`pending_action: 'gc_stage_ask'`, `pending_payload` carries the window ids, dates, note and GC name) and calls `notify-dispatch-request`.
+
+**Customer Waiting** (v2.3246, migration `20260910220000`): every portal request is a customer standing at the counter, so every row this function writes lands **`priority = 'high'`** (visit, bid, and the GC's stage ask alike). Rows are **routed by kind**: `visit` and `stage_window` → `dispatch_requests`; `bid` → `estimator_requests` when `estimator_group_members` has anyone in it, else `dispatch_requests` (a request never vanishes into an empty group). `pending_payload` gains `customerId` and the number the office will call — `phone` is the typed number when there is one, else the number on file (`_shared/portalCustomerPhone.ts`), with `phoneSource: 'typed' | 'on_file' | null` — so the inbox's Call button never hangs on the form's optional field. The title now reads *Customer waiting — {name} asks for a visit: …* (the push and any stale client show it verbatim). The push fan-out (`notifyInbox`) calls `notify-dispatch-request` / `notify-estimator-request` **with the service key as bearer** — before v2.3246 this call carried no bearer at all and was refused with 401 on every portal request, so no push ever fired for one. Deploy order: push the migration, then deploy this function, `customer-portal`, `notify-dispatch-request` and `notify-estimator-request`.
 
 **Endpoint**: `POST /functions/v1/submit-portal-request` — `{ token, kind: 'visit'|'bid', jobId?, description, availability?, phone?, plansLink?, website }` (`website` is the honeypot).
 
@@ -2004,6 +2008,8 @@ const response = await supabase.functions.invoke('send-checklist-notification', 
 
 **Endpoint**: `POST /functions/v1/notify-dispatch-request`
 
+**Internal caller** (v2.3246): a request whose bearer **is the service-role key** is trusted as an internal caller — `submit-portal-request` uses it, since the customer has no session. Internal callers may only run the `created` fan-out (the row is read with the service role and the author check is skipped); `closed` / `reopened` stay user-only. **Redeploy required.**
+
 **Required Role**: `mode` omitted / `'created'`: authenticated user who is the request author (`from_user_id` on the row). `mode: 'closed' | 'reopened'`: a dispatch group member, a dev, or the row's `closed_by_user_id` (checked with the service role after the RLS-scoped row read).
 
 **Required Secrets**:
@@ -2057,6 +2063,8 @@ Close / reopen: `{ success, mode, message, push_sent, recipients: 1, notified: p
 **Purpose**: After a user creates an `estimator_requests` row (Estimator Inbox), notify every member of `estimator_group_members` via Web Push without exposing the member list to the client (service role reads the group).
 
 **Endpoint**: `POST /functions/v1/notify-estimator-request`
+
+**Internal caller** (v2.3246): same rule as `notify-dispatch-request` — a service-role bearer is trusted, reads the row with the service role and skips the author check; `submit-portal-request` uses it for portal bid requests routed to the Estimator inbox. **Redeploy required.**
 
 **Required Role**: Authenticated user who is the request author (`from_user_id` on the row)
 

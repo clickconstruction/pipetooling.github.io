@@ -1,0 +1,10 @@
+# 20260910220000_request_priority.sql (2026-09-10, v2.3246)
+
+Customer Waiting, PR 1 of 4 — priority on inbox requests (fragment `docs/recent-features/v2.3246.md`; mockup https://claude.ai/code/artifact/a4b6cba5-7d7d-42aa-93c2-26c54a391877):
+
+- **`dispatch_requests` + `estimator_requests`** each gain `priority` (`normal | high`, default normal, CHECK), `priority_changed_at`, `priority_changed_by_user_id` (FK users, SET NULL), `last_called_at`, `last_called_by_user_id` (FK users, SET NULL). `estimator_requests` also gains `pending_payload jsonb` (the shape `dispatch_requests` has carried since `20260814000431`). Partial indexes `*_open_high_idx` on `(created_at) WHERE status = 'open' AND priority = 'high'` — the banner's predicate.
+- **Realtime**: `estimator_requests` and `estimator_request_notes` join the `supabase_realtime` publication (guarded). They were never published, so `useEstimatorInbox`'s subscription has been silent since it was written; the Customer Waiting banner needs both inboxes live.
+- **`set_request_priority(p_inbox, p_request_id, p_priority, p_note)`** → boolean. SECURITY INVOKER; the existing UPDATE policies (dispatch group member or dev / estimator group member or dev) decide who may act. One transaction: the row's priority + stamp, and a thread note `Priority lowered — <note>` / `Priority raised — <note>` in `dispatch_request_notes` / `estimator_request_notes`. Returns false when the row is not found, not updatable, or already at that priority. Note capped at 500 chars.
+- **`log_request_call(p_inbox, p_request_id, p_phone)`** → boolean. Same shape: stamps `last_called_at/by`, drops a `📞 Called <phone>` note. Both functions: `REVOKE … FROM PUBLIC, anon; GRANT EXECUTE … TO authenticated` (the v2.2954 convention).
+
+Apply order: **push this first**, then deploy `submit-portal-request` and `customer-portal` (the intake writes `priority = 'high'` and `estimator_requests.pending_payload`, which do not exist until this runs). The client that reads the columns (PR 2, v2.3247) merges after the push + types regen. No CREATE TABLE, so no read-only block re-apply is needed.

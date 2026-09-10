@@ -16,6 +16,7 @@ import {
 import { buildPortalProperties } from '../_shared/portalProperties.ts'
 import { openBillJobIds, PORTAL_OPEN_INVOICE_STATUS } from '../_shared/portalBillMembership.ts'
 import { publicViewDecision } from '../_shared/publicViewCounting.ts'
+import { resolvePortalCustomerPhone } from '../_shared/portalCustomerPhone.ts'
 
 /**
  * Customer portal payload (portal train PR 1; merged view + slugs in the
@@ -389,9 +390,14 @@ serve(async (req) => {
       })),
     ).slice(0, 50)
 
+    // Customer Waiting (v2.3246): the number on file, so the request form can
+    // say "We'll call you at …" instead of asking for a number it already has.
+    const customerPhone = await resolvePortalCustomerPhone(admin, link.customer_id)
+
     return jsonResponse({
       company: PORTAL_COMPANY,
       customerName: (customer as { name: string | null }).name ?? 'Customer',
+      customerPhone,
       audience: link.audience,
       bills,
       totalDue,

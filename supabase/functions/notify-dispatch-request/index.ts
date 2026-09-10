@@ -180,19 +180,34 @@ serve(async (req) => {
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!
     const supabaseAnon = Deno.env.get('SUPABASE_ANON_KEY')!
+    const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
+    if (!serviceRoleKey) {
+      return json(500, { error: 'SUPABASE_SERVICE_ROLE_KEY not configured' })
+    }
+    const adminClient = createClient(supabaseUrl, serviceRoleKey)
+
+    // Trusted internal caller (v2.3246): submit-portal-request has no user
+    // session — the customer is not signed in — so it presents the service key.
+    // Only the 'created' fan-out is open to it; closes/reopens stay user-only.
+    const serviceCaller = token === serviceRoleKey
+
     const userClient = createClient(supabaseUrl, supabaseAnon, {
       global: { headers: { Authorization: authHeader } },
     })
 
-    const {
-      data: { user },
-      error: authError,
-    } = await userClient.auth.getUser(token)
-    if (authError || !user) {
-      return new Response(JSON.stringify({ error: 'Unauthorized - Invalid token' }), {
-        status: 401,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      })
+    let user: { id: string } | null = null
+    if (!serviceCaller) {
+      const {
+        data: { user: authed },
+        error: authError,
+      } = await userClient.auth.getUser(token)
+      if (authError || !authed) {
+        return new Response(JSON.stringify({ error: 'Unauthorized - Invalid token' }), {
+          status: 401,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        })
+      }
+      user = authed
     }
 
     const { dispatch_request_id, mode: rawMode, note: rawNote }: Body = await req.json()
@@ -200,9 +215,12 @@ serve(async (req) => {
       return json(400, { error: 'Missing dispatch_request_id' })
     }
     const mode: NotifyMode = rawMode === 'closed' || rawMode === 'reopened' ? rawMode : 'created'
+    if (serviceCaller && mode !== 'created') {
+      return json(403, { error: 'Internal callers may only announce a new request' })
+    }
 
     // RLS scopes this read: the author, devs, and dispatch group members can see the row.
-    const { data: row, error: rowErr } = await userClient
+    const { data: row, error: rowErr } = await (serviceCaller ? adminClient : userClient)
       .from('dispatch_requests')
       .select(DISPATCH_ROW_SELECT)
       .eq('id', dispatch_request_id)
@@ -215,17 +233,11 @@ serve(async (req) => {
     if (!dispatchRow) {
       return json(403, { error: 'Forbidden or request not found' })
     }
-    if (mode === 'created' && dispatchRow.from_user_id !== user.id) {
+    if (mode === 'created' && !serviceCaller && dispatchRow.from_user_id !== user!.id) {
       return json(403, { error: 'Forbidden or request not found' })
     }
 
-    const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
-    if (!serviceRoleKey) {
-      return json(500, { error: 'SUPABASE_SERVICE_ROLE_KEY not configured' })
-    }
-    const adminClient = createClient(supabaseUrl, serviceRoleKey)
-
-    if (mode !== 'created') {
+    if (mode !== 'created' && user) {
       // Closer authorization: group member, dev, or the user the row says closed it.
       let allowed = dispatchRow.closed_by_user_id === user.id
       if (!allowed) {

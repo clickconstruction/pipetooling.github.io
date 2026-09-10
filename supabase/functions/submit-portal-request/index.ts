@@ -4,6 +4,7 @@ import { gcPortalStages, loadGcStageInputs } from '../_shared/gcStages.ts'
 import { todayYmdInAppTz } from '../_shared/appTimeZone.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { sendEmailViaResend } from '../_shared/resendSendEmail.ts'
+import { resolvePortalCustomerPhone } from '../_shared/portalCustomerPhone.ts'
 
 /**
  * Portal request intake (portal train PR 2): a customer/GC submits a
@@ -34,6 +35,28 @@ async function sha256Hex(value: string): Promise<string> {
 }
 
 const MAX_PER_HOUR = 5
+
+/**
+ * Push fan-out for a freshly inserted request. Best-effort: the row is already
+ * in the inbox. Carries the service key so the notify function treats this as
+ * an internal caller (there is no customer session to speak of).
+ */
+async function notifyInbox(inbox: 'dispatch' | 'estimator', requestId: string): Promise<void> {
+  const fn = inbox === 'estimator' ? 'notify-estimator-request' : 'notify-dispatch-request'
+  const body = inbox === 'estimator' ? { estimator_request_id: requestId } : { dispatch_request_id: requestId }
+  try {
+    await fetch(`${Deno.env.get('SUPABASE_URL')!}/functions/v1/${fn}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!}`,
+      },
+      body: JSON.stringify(body),
+    })
+  } catch (e) {
+    console.error(`${fn} call failed`, e)
+  }
+}
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
@@ -88,12 +111,15 @@ serve(async (req) => {
 
     // Rate limit per link.
     const hourAgo = new Date(Date.now() - 3600_000).toISOString()
-    const { count: recent } = await admin
-      .from('dispatch_requests')
-      .select('id', { count: 'exact', head: true })
-      .eq('pending_payload->>portalLinkId', String(link.id))
-      .gte('created_at', hourAgo)
-    if ((recent ?? 0) >= MAX_PER_HOUR) {
+    // Both inboxes count (v2.3246): bid requests may land in estimator_requests.
+    const recentIn = async (table: 'dispatch_requests' | 'estimator_requests') =>
+      (await admin
+        .from(table)
+        .select('id', { count: 'exact', head: true })
+        .eq('pending_payload->>portalLinkId', String(link.id))
+        .gte('created_at', hourAgo)).count ?? 0
+    const recent = (await recentIn('dispatch_requests')) + (await recentIn('estimator_requests'))
+    if (recent >= MAX_PER_HOUR) {
       return jsonResponse({ error: 'That is a lot of requests at once — please give us an hour, or call the office.' }, 429)
     }
 
@@ -168,18 +194,14 @@ serve(async (req) => {
             bid_id: null,
             reference_summary: hcp ? `#${hcp} · ${names}` : names,
             pending_action: 'gc_stage_ask',
-            pending_payload: { source: 'customer_portal', kind: 'gc_stage_ask', portalLinkId: link.id, audience: link.audience, stageWindowIds: mine.map((w) => w.id), start, end, note: note || null, gcName },
+            // A GC asking for other dates is a customer waiting on an answer (v2.3246).
+            priority: 'high',
+            pending_payload: { source: 'customer_portal', kind: 'gc_stage_ask', portalLinkId: link.id, audience: link.audience, customerId: link.customer_id, stageWindowIds: mine.map((w) => w.id), start, end, note: note || null, gcName, phone: await resolvePortalCustomerPhone(admin, link.customer_id), phoneSource: 'on_file' },
           })
           .select('id')
           .single()
         const id = (inserted as { id?: string } | null)?.id
-        if (id) {
-          try {
-            await fetch(`${Deno.env.get('SUPABASE_URL')!}/functions/v1/notify-dispatch-request`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ dispatch_request_id: id }) })
-          } catch (e) {
-            console.error('notify-dispatch-request call failed', e)
-          }
-        }
+        if (id) await notifyInbox('dispatch', id)
       }
       return jsonResponse({ ok: true })
     }
@@ -196,26 +218,48 @@ serve(async (req) => {
     }
     if (!fromUserId) return jsonResponse({ error: 'Something went wrong. Please call our office.' }, 500)
 
-    const kindLabel = kind === 'visit' ? 'visit request' : 'bid request'
-    const title = `Portal ${kindLabel} — ${customerName}: ${description.slice(0, 120)}`
+    // Customer Waiting (v2.3246): the number the office will call. The typed
+    // number wins; otherwise the one on file (contact_info / newest job), so
+    // the inbox's Call button never hangs on an optional field.
+    const phoneOnFile = await resolvePortalCustomerPhone(admin, link.customer_id)
+    const reachPhone = phone || phoneOnFile || null
+    const phoneSource: 'typed' | 'on_file' | null = phone ? 'typed' : phoneOnFile ? 'on_file' : null
+
+    const kindLabel = kind === 'visit' ? 'asks for a visit' : 'asks for a bid'
+    const title = `Customer waiting — ${customerName} ${kindLabel}: ${description.slice(0, 120)}`
+    const pendingPayload = {
+      source: 'portal',
+      portalLinkId: link.id,
+      audience: link.audience,
+      kind,
+      customerId: link.customer_id,
+      customerName,
+      description,
+      availability: availability || null,
+      phone: reachPhone,
+      phoneSource,
+      plansLink: plansLink || null,
+    }
+
+    // Route by kind (v2.3246): a visit is Dispatch's job; a bid is the
+    // estimator's — it goes to the Estimator inbox when that group has anyone
+    // in it, and falls back to Dispatch (never vanishes) when it is empty.
+    let inbox: 'dispatch' | 'estimator' = 'dispatch'
+    if (kind === 'bid') {
+      const { count: estimators } = await admin
+        .from('estimator_group_members')
+        .select('user_id', { count: 'exact', head: true })
+      if ((estimators ?? 0) > 0) inbox = 'estimator'
+    }
 
     const { data: inserted, error: insErr } = await admin
-      .from('dispatch_requests')
+      .from(inbox === 'estimator' ? 'estimator_requests' : 'dispatch_requests')
       .insert({
         from_user_id: fromUserId,
         title,
         job_ledger_id: jobLedgerId,
-        pending_payload: {
-          source: 'portal',
-          portalLinkId: link.id,
-          audience: link.audience,
-          kind,
-          customerName,
-          description,
-          availability: availability || null,
-          phone: phone || null,
-          plansLink: plansLink || null,
-        },
+        priority: 'high',
+        pending_payload: pendingPayload,
       })
       .select('id')
       .single()
@@ -224,16 +268,10 @@ serve(async (req) => {
       return jsonResponse({ error: 'Something went wrong. Please call our office.' }, 500)
     }
 
-    // Fire-and-forget the existing dispatch fan-out (push to watchers).
-    try {
-      await fetch(`${Deno.env.get('SUPABASE_URL')!}/functions/v1/notify-dispatch-request`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ dispatch_request_id: (inserted as { id: string }).id }),
-      })
-    } catch (e) {
-      console.error('notify-dispatch-request call failed', e)
-    }
+    // Fire-and-forget the inbox's push fan-out. The notify functions accept
+    // the service key as a trusted internal caller (v2.3246) — before that
+    // this call carried no bearer and was refused with 401 every time.
+    await notifyInbox(inbox, (inserted as { id: string }).id)
 
     // Email the configured "Portal requests" stream (portal train PR 3):
     // app_settings.portal_request_email_recipients_v1 = JSON array of user
