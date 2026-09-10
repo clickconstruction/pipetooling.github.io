@@ -788,7 +788,7 @@ export function JobFormFixturesSection({
                   </svg>
                   Stripe preview
                 </button>
-                {hasDiscount && (
+                {hasDiscount && discountDollars > 0 && (
                   <span data-testid="job-total-equation" style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
                     ${formatCurrency(workDollars)} work − ${formatCurrency(discountDollars)} discount
                   </span>

@@ -159,8 +159,7 @@ export function JobFormDiscountRow({
     .map((r) => ({ name: (r.name ?? '').trim(), cents: (shares.get(r.id) ?? []).find((s) => s.discountId === row.id)?.cents ?? 0 }))
     .filter((s) => s.cents > 0)
 
-  const entryGroup = (
-    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+  const entryField = (
       <span style={{ ...GROUP_STYLE, ...(locked ? { opacity: 0.75 } : {}) }}>
         <button
           type="button"
@@ -227,6 +226,8 @@ export function JobFormDiscountRow({
           }}
         />
       </span>
+  )
+  const twinButton = (
       <button
         type="button"
         onClick={swapMode}
@@ -249,6 +250,11 @@ export function JobFormDiscountRow({
       >
         {twin}
       </button>
+  )
+  const entryGroup = (
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+      {entryField}
+      {twinButton}
     </span>
   )
 
@@ -270,7 +276,6 @@ export function JobFormDiscountRow({
           alignItems: 'center',
           justifyContent: 'center',
           flexShrink: 0,
-          marginLeft: 'auto',
         }}
       >
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={16} height={16} fill="currentColor" aria-hidden>
@@ -361,7 +366,7 @@ export function JobFormDiscountRow({
 
   const moveButtons =
     fixtures.length > 1 ? (
-      <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', flexShrink: 0 }}>
+      <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', flexShrink: 0, height: 34, alignSelf: 'flex-start' }}>
         <button
           type="button"
           onClick={() => moveFixtureRow(row.id, 'up')}
@@ -393,7 +398,7 @@ export function JobFormDiscountRow({
         <td colSpan={narrowViewport ? 3 : undefined} style={{ padding: '0.45rem 0.75rem', paddingBottom: '0.25rem', minWidth: 0, verticalAlign: 'top' }}>
           <div style={{ display: 'flex', alignItems: 'stretch', gap: 4 }}>
             {showBadgeColumn && (
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 30, flexShrink: 0 }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 30, height: 34, flexShrink: 0, alignSelf: 'flex-start' }}>
                 <DiscountBadge />
               </div>
             )}
@@ -409,10 +414,11 @@ export function JobFormDiscountRow({
         </td>
         {!narrowViewport && (
           <td colSpan={2} style={{ padding: '0.45rem 0.75rem 0.25rem 0', verticalAlign: 'top' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
-              {entryGroup}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, justifyContent: 'flex-end' }}>
+              {entryField}
               {deleteButton}
             </div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 4 }}>{twinButton}</div>
           </td>
         )}
       </tr>
