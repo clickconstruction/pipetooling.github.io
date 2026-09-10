@@ -40,6 +40,7 @@ import {
   type MapCanvasPin,
 } from '../../lib/map/mapCanvasTypes'
 import type { PinsMapCanvasProps } from './PinsMapCanvas'
+import { clusterBounds, clusterLabel, clusterPins, clusterRadiusPx, type PinCluster } from '../../lib/map/clusterPins'
 
 export type PinsMapGoogleCanvasProps = PinsMapCanvasProps & {
   apiKey: string
@@ -168,15 +169,70 @@ function PinMarker({
   return <Marker ref={markerRef} position={{ lat: pin.lat, lng: pin.lng }} icon={pinIcon(pin, selected, isMobile)} title={pin.title} onClick={() => onSelect(pin.id)} />
 }
 
-function Pins({ pins, selectedId, onSelect, renderPopup, isMobile }: Pick<PinsMapGoogleCanvasProps, 'pins' | 'selectedId' | 'onSelect' | 'renderPopup' | 'isMobile'>) {
+/** One cluster disc (v2.3213): the count over the majority color, an urgent ring when a member has one; click zooms to its members. */
+function ClusterMarker({ cluster }: { cluster: PinCluster<MapCanvasPin> }) {
+  const map = useMap()
+  const r = clusterRadiusPx(cluster.count)
+  return (
+    <Marker
+      position={{ lat: cluster.lat, lng: cluster.lng }}
+      title={`${cluster.count} bids here — click to zoom in`}
+      icon={{
+        path: google.maps.SymbolPath.CIRCLE,
+        scale: r,
+        fillColor: cluster.color,
+        fillOpacity: 0.92,
+        strokeColor: cluster.ringColor ?? '#ffffff',
+        strokeWeight: cluster.ringColor ? 4 : 2,
+      }}
+      label={{ text: clusterLabel(cluster.count), color: '#ffffff', fontWeight: '700', fontSize: r >= 18 ? '13px' : '11px' }}
+      onClick={() => {
+        if (!map) return
+        const b = clusterBounds(cluster)
+        map.fitBounds(new google.maps.LatLngBounds({ lat: b.south, lng: b.west }, { lat: b.north, lng: b.east }), 40)
+        const once = google.maps.event.addListenerOnce(map, 'idle', () => {
+          const z = map.getZoom()
+          if (z != null && z > 17) map.setZoom(17)
+        })
+        void once
+      }}
+    />
+  )
+}
+
+/** Follows the map's zoom so the cluster grid re-buckets as the person zooms. */
+function useMapZoom(enabled: boolean): number {
+  const map = useMap()
+  const [zoom, setZoom] = useState<number>(12)
+  useEffect(() => {
+    if (!map || !enabled) return
+    const read = () => {
+      const z = map.getZoom()
+      if (z != null) setZoom(z)
+    }
+    read()
+    const l = map.addListener('zoom_changed', read)
+    return () => google.maps.event.removeListener(l)
+  }, [map, enabled])
+  return zoom
+}
+
+function Pins({ pins, selectedId, onSelect, renderPopup, isMobile, cluster = false, clusterRingPriority }: Pick<PinsMapGoogleCanvasProps, 'pins' | 'selectedId' | 'onSelect' | 'renderPopup' | 'isMobile' | 'cluster' | 'clusterRingPriority'>) {
   const [markers, setMarkers] = useState<Record<string, google.maps.Marker | null>>({})
   const onReady = useCallback((id: string, m: google.maps.Marker | null) => {
     setMarkers((prev) => (prev[id] === m ? prev : { ...prev, [id]: m }))
   }, [])
-  const selected = useMemo(() => pins.find((p) => p.id === selectedId) ?? null, [pins, selectedId])
+  const zoom = useMapZoom(cluster)
+  const items = useMemo(() => (cluster ? clusterPins(pins, zoom, { ringPriority: clusterRingPriority }) : null), [cluster, pins, zoom, clusterRingPriority])
+  const singlePins = items ? items.flatMap((i) => (i.kind === 'pin' ? [i.pin] : [])) : pins
+  const clusters = items ? items.flatMap((i) => (i.kind === 'cluster' ? [i.cluster] : [])) : []
+  const selected = useMemo(() => singlePins.find((p) => p.id === selectedId) ?? null, [singlePins, selectedId])
   return (
     <>
-      {pins.map((p) => (
+      {clusters.map((c) => (
+        <ClusterMarker key={c.id} cluster={c} />
+      ))}
+      {singlePins.map((p) => (
         <PinMarker key={p.id} pin={p} selected={p.id === selectedId} isMobile={isMobile} onSelect={onSelect} onReady={onReady} />
       ))}
       {!isMobile && renderPopup && selected && markers[selected.id] ? (
@@ -256,7 +312,7 @@ export default function PinsMapGoogleCanvas(props: PinsMapGoogleCanvasProps) {
           >
             <FitToPoints points={mapCanvasFitPoints(pins, anchor, fitPoints)} fitSignal={fitSignal} />
             {anchor ? <AnchorLayer anchor={anchor} /> : null}
-            <Pins pins={pins} selectedId={props.selectedId} onSelect={props.onSelect} renderPopup={props.renderPopup} isMobile={isMobile} />
+            <Pins pins={pins} selectedId={props.selectedId} onSelect={props.onSelect} renderPopup={props.renderPopup} isMobile={isMobile} cluster={props.cluster} clusterRingPriority={props.clusterRingPriority} />
           </GoogleMap>
         </APIProvider>
       </div>

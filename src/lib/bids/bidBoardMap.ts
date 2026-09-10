@@ -277,6 +277,27 @@ export function writeBidBoardMapHidden(hidden: boolean, storage: Pick<Storage, '
   }
 }
 
+const CLUSTER_KEY = 'pipetooling_bid_board_map_cluster'
+
+/** v2.3213: clustering is off unless this device turned it on. */
+export function readBidBoardMapClustered(storage: Pick<Storage, 'getItem'> | null = safeStorage()): boolean {
+  try {
+    return storage?.getItem(CLUSTER_KEY) === '1'
+  } catch {
+    return false
+  }
+}
+
+export function writeBidBoardMapClustered(on: boolean, storage: Pick<Storage, 'setItem' | 'removeItem'> | null = safeStorage()): void {
+  try {
+    if (!storage) return
+    if (on) storage.setItem(CLUSTER_KEY, '1')
+    else storage.removeItem(CLUSTER_KEY)
+  } catch {
+    /* private mode / quota — the toggle just doesn't persist */
+  }
+}
+
 function safeStorage(): Storage | null {
   try {
     return typeof localStorage === 'undefined' ? null : localStorage
