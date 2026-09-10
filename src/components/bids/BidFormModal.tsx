@@ -425,6 +425,10 @@ export function BidFormModal(props: BidFormModalProps) {
               .bid-form-modal-header h2 {
                 font-size: 1.1rem !important;
               }
+              .bid-form-project-link {
+                max-width: 9rem !important;
+              }
+              .bid-form-project-link label { display: none !important; }
             }
           `}</style>
           <div
@@ -496,28 +500,86 @@ export function BidFormModal(props: BidFormModalProps) {
                   </button>
                 ) : null}
               </div>
-              {embedded ? (
-                <span />
-              ) : (
-                <button
-                  type="button"
-                  onClick={closeBidForm}
-                  aria-label="Cancel"
-                  title="Cancel"
-                  style={{
-                    padding: '0.5rem 0.7rem',
-                    lineHeight: 1,
-                    background: 'var(--bg-muted)',
-                    border: '1px solid var(--border-strong)',
-                    borderRadius: 5,
-                    cursor: 'pointer',
-                    justifySelf: 'end',
-                    color: 'var(--text-strong)',
-                  }}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '0.6rem', minWidth: 0 }}>
+                {/* Project link (v2.3215): the job several bids and estimates roll up into — an
+                    overarching thing, rarely touched, so it sits small at the top right instead of
+                    as a full-width field under the name. */}
+                <div
+                  className="bid-form-project-link"
+                  style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.15rem', minWidth: 0, maxWidth: '15rem', flex: '1 1 auto' }}
+                  title="Project — the job this bid belongs to when several bids or estimates roll up into one. Rarely needed."
                 >
-                  ✕
-                </button>
-              )}
+                  <label htmlFor="bid-form-linked-project" style={{ fontSize: '0.62rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-faint)' }}>
+                    Project
+                  </label>
+                  <div style={{ width: '100%', minWidth: 0 }}>
+                    <SearchableSelect
+                      id="bid-form-linked-project"
+                      value={projectId}
+                      onChange={setProjectId}
+                      options={projects.map((p) => ({
+                        value: p.id,
+                        label: `${p.name ?? 'Unnamed project'}${formatProjectNumberLabel(p.project_number) ? ` — ${formatProjectNumberLabel(p.project_number)}` : ''}`,
+                      }))}
+                      emptyOption={{ value: '', label: 'Not linked' }}
+                      placeholder="Not linked"
+                      listAriaLabel="Linked project"
+                      listMinWidthPx={260}
+                      triggerStyle={{ padding: '0.2rem 0.45rem', minHeight: 0, fontSize: '0.75rem', color: projectId ? 'var(--text-strong)' : 'var(--text-muted)', borderColor: projectId ? 'var(--border-strong)' : 'var(--border)' }}
+                    />
+                  </div>
+                  {(() => {
+                    // One-tap suggestion: free-text name exactly matches a project (trim/case-insensitive).
+                    if (projectId) return null
+                    const needle = projectName.trim().toLowerCase()
+                    if (!needle) return null
+                    const match = projects.find((p) => (p.name ?? '').trim().toLowerCase() === needle)
+                    if (!match) return null
+                    return (
+                      <button
+                        type="button"
+                        onClick={() => setProjectId(match.id)}
+                        style={{
+                          padding: '0.1rem 0.45rem',
+                          fontSize: '0.7rem',
+                          border: '1px dashed var(--border-sky)',
+                          borderRadius: 6,
+                          background: 'var(--surface)',
+                          color: 'var(--text-sky-700)',
+                          fontFamily: 'inherit',
+                          cursor: 'pointer',
+                          maxWidth: '100%',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap',
+                        }}
+                      >
+                        Suggested: link to “{match.name}”
+                      </button>
+                    )
+                  })()}
+                </div>
+                {embedded ? null : (
+                  <button
+                    type="button"
+                    onClick={closeBidForm}
+                    aria-label="Cancel"
+                    title="Cancel"
+                    style={{
+                      padding: '0.5rem 0.7rem',
+                      lineHeight: 1,
+                      background: 'var(--bg-muted)',
+                      border: '1px solid var(--border-strong)',
+                      borderRadius: 5,
+                      cursor: 'pointer',
+                      color: 'var(--text-strong)',
+                      flexShrink: 0,
+                    }}
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
             </div>
             <form
               onSubmit={(e) => {
@@ -553,48 +615,6 @@ export function BidFormModal(props: BidFormModalProps) {
                     required
                     style={{ width: '100%', padding: '0.5rem 0.6rem', fontSize: '1.15rem', fontWeight: 700, border: '1px solid var(--border-strong)', borderRadius: 5 }}
                   />
-                  <div style={{ marginTop: '0.5rem' }}>
-                    <label htmlFor="bid-form-linked-project" style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Project</label>
-                    <SearchableSelect
-                      id="bid-form-linked-project"
-                      value={projectId}
-                      onChange={setProjectId}
-                      options={projects.map((p) => ({
-                        value: p.id,
-                        label: `${p.name ?? 'Unnamed project'}${formatProjectNumberLabel(p.project_number) ? ` — ${formatProjectNumberLabel(p.project_number)}` : ''}`,
-                      }))}
-                      emptyOption={{ value: '', label: 'Not linked' }}
-                      placeholder="Not linked"
-                      listAriaLabel="Linked project"
-                    />
-                    {(() => {
-                      // One-tap suggestion: free-text name exactly matches a project (trim/case-insensitive).
-                      if (projectId) return null
-                      const needle = projectName.trim().toLowerCase()
-                      if (!needle) return null
-                      const match = projects.find((p) => (p.name ?? '').trim().toLowerCase() === needle)
-                      if (!match) return null
-                      return (
-                        <button
-                          type="button"
-                          onClick={() => setProjectId(match.id)}
-                          style={{
-                            marginTop: '0.35rem',
-                            padding: '0.2rem 0.6rem',
-                            fontSize: '0.8125rem',
-                            border: '1px dashed var(--border-sky)',
-                            borderRadius: 6,
-                            background: 'var(--surface)',
-                            color: 'var(--text-sky-700)',
-                            fontFamily: 'inherit',
-                            cursor: 'pointer',
-                          }}
-                        >
-                          Suggested: link to “{match.name}”
-                        </button>
-                      )
-                    })()}
-                  </div>
                 </div>
                 <div>
                   <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Bid #</label>

@@ -126,6 +126,8 @@ export type SearchableSelectProps = {
   listOptionFontSize?: string
   /** Minimum dropdown width (px); list width is max(trigger, this, 120), capped to viewport. */
   listMinWidthPx?: number
+  /** Overrides merged onto the closed trigger button (v2.3215) — e.g. a compact header control. */
+  triggerStyle?: React.CSSProperties
   /**
    * When > 0 (and `searchable`), the option list stays empty until the search query reaches this
    * many characters — the open panel shows just the search field and a "type N characters" hint.
@@ -272,6 +274,7 @@ export function SearchableSelect({
   listOptionPadding = DEFAULT_LIST_OPTION_PADDING,
   listOptionFontSize = DEFAULT_LIST_OPTION_FONT_SIZE,
   listMinWidthPx,
+  triggerStyle,
   minSearchChars = 0,
   triggerMinHeightPx = 44,
   noMatchesAction,
@@ -841,6 +844,7 @@ export function SearchableSelect({
             alignItems: 'center',
             justifyContent: 'space-between',
             gap: '0.5rem',
+            ...triggerStyle,
           }}
         >
           <span
