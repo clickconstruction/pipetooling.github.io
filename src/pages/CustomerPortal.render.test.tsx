@@ -201,13 +201,41 @@ describe('CustomerPortal render smoke', () => {
     expect(screen.getByText('Ask us to bid your work')).toBeTruthy()
     const { fireEvent } = await import('@testing-library/react')
     fireEvent.change(screen.getByLabelText(/What's going on/), { target: { value: 'Water heater is leaking again' } })
+    // Customer Waiting (v2.3249): a number is required — no number on file here, so the field shows;
+    // a too-short number (passes `required`, fails the seven-digit check) is refused with a reason.
+    fireEvent.change(screen.getAllByLabelText(/call you at/)[0]!, { target: { value: '12' } })
     fireEvent.click(screen.getByText('Send request'))
-    await waitFor(() => expect(screen.getByText(/Got it — thank you/)).toBeTruthy())
+    await waitFor(() => expect(screen.getByText(/give us a number we can call you back at/)).toBeTruthy())
+    fireEvent.change(screen.getAllByLabelText(/call you at/)[0]!, { target: { value: '512-555-0142' } })
+    fireEvent.click(screen.getByText('Send request'))
+    await waitFor(() => expect(screen.getByText(/Got it, Michael — thank you/)).toBeTruthy())
+    expect(screen.getByText(/dispatch desk right now/)).toBeTruthy()
     const submitCall = fetchMock.mock.calls.find((c) => String(c[0]).includes('submit-portal-request'))!
     const sent = JSON.parse((submitCall[1] as RequestInit).body as string)
     expect(sent.kind).toBe('visit')
     expect(sent.description).toBe('Water heater is leaking again')
+    expect(sent.phone).toBe('512-555-0142')
     expect(sent.website).toBe('')
+  })
+
+  it('a number on file is stated, not asked for (v2.3249): "We\'ll call you at (617) 939-6295", use a different number reveals the field, the prefilled number is what gets sent', async () => {
+    const fetchMock = vi.fn(async (url: RequestInfo | URL, _init?: RequestInit) => {
+      if (String(url).includes('submit-portal-request')) return new Response(JSON.stringify({ ok: true }), { status: 200 })
+      return new Response(JSON.stringify({ ...payload, customerPhone: '6179396295' }), { status: 200 })
+    })
+    vi.stubGlobal('fetch', fetchMock)
+    mountAt('/portal?t=abcdef1234567890abcdef')
+    await waitFor(() => expect(screen.getByText('Request a visit')).toBeTruthy())
+    expect(screen.getAllByText('(617) 939-6295').length).toBeGreaterThan(0)
+    const { fireEvent } = await import('@testing-library/react')
+    fireEvent.click(screen.getAllByRole('button', { name: 'use a different number' })[0]!)
+    expect(screen.getAllByRole('button', { name: 'Use (617) 939-6295 instead' }).length).toBe(1)
+    fireEvent.click(screen.getByRole('button', { name: 'Use (617) 939-6295 instead' }))
+    fireEvent.change(screen.getByLabelText(/What's going on/), { target: { value: 'Slow drain in the hall bath' } })
+    fireEvent.click(screen.getByText('Send request'))
+    await waitFor(() => expect(screen.getByText(/Got it, Michael — thank you/)).toBeTruthy())
+    const submitCall = fetchMock.mock.calls.find((c) => String(c[0]).includes('submit-portal-request'))!
+    expect(JSON.parse((submitCall[1] as RequestInit).body as string).phone).toBe('6179396295')
   })
 
   it('receipt landing (?paid=1, v2.2878): the fetch says return=stripe and a bill that vanished since the last look shows the Payment received banner', async () => {

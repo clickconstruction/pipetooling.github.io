@@ -33,6 +33,7 @@ Index (validated against code on 2026-09-06 at v2.2935 — the 2026-09-05 sweep 
 | [`per-gc-bid-retirement.md`](./per-gc-bid-retirement.md) | low | Retire `bids.submitted_to` / `itb_links` behind `bid_gcs`; the auto-derive question. |
 | [`partnerships-off-toggles.md`](./partnerships-off-toggles.md) | owner + attorney gated | Notice delivery, estimating cap, W2 watch (modeled); runway floor (not modeled); the notes preview. |
 | [`weekly-money-later.md`](./weekly-money-later.md) | optional | Phase 6: drilldowns, GC lens, month roll-up, timeline feed, wider access. |
+| [`customer-waiting-residuals.md`](./customer-waiting-residuals.md) | not started | Callback-promise wording, sub-portal priority, auto-lower overnight (owner decisions); per-caller mute, one eligibility hook, the shared `tel:` sweep. |
 | [`robots-residuals.md`](./robots-residuals.md) | low | Client-side leftovers only; the twins program runs from `docs/twins/HANDOFF.md`. |
 | [`supply-house-directory/`](./supply-house-directory/README.md) | **shipped, delete me** | All six PRs landed 2026-09-08 (v2.3166–v2.3173) and the close-out on 2026-09-10 (v2.3243 rep provenance, v2.3244 `is_insurer` dropped); every migration pushed. The folder keeps both mock-ups for the record until the next sweep deletes it. |
 | [`supply-house-job-account-aging.md`](./supply-house-job-account-aging.md) | waiting on Taunya | Job-account invoices in the aging heat map; bulk flag; the May follow-ups. |
