@@ -4,6 +4,7 @@ import { supabase } from '../../lib/supabase'
 import { formatCurrency } from '../../lib/format'
 import { formatRevenueMultiple, marginFlag } from '../../lib/bids/bidFormatting'
 import { profitConcentration, solveWorkbenchPrices } from '../../lib/bids/pricingWorkbenchSolver'
+import { PricingCompositionBar } from './PricingCompositionBar'
 import { buildProfitLegend, clampTooltipLeft, formatProfitShare } from '../../lib/bids/profitBarLegend'
 import { matchCountRowsToBookEntries, type BookEntryMatch } from '../../lib/bids/bookEntryMatching'
 import { mapCountRowsByFixture } from '../../lib/bids/mapCountRowsByFixture'
@@ -3808,6 +3809,22 @@ export function BidsPricingTab({
                       ) : null}
                     </div>
                     </div>
+
+                    {/* v2.3239: what the bid is made of — fixtures · pipe · fittings · other, the strip's
+                        own colors, one level above "Where the profit lives". */}
+                    <PricingCompositionBar
+                      rows={eff.map((r) => ({ id: r.countRow.id, name: r.countRow.fixture ?? '', count: r.count, cost: r.cost, revenue: r.effRevenue }))}
+                      marginColor={mColor}
+                      onJumpToRow={(rowId) => {
+                        setWbShowNoCostOnly(false)
+                        setWbShowUnpricedOnly(false)
+                        setWbFlashRowId(rowId)
+                        window.setTimeout(() => {
+                          document.getElementById(`wb-row-${rowId}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+                        }, 50)
+                        window.setTimeout(() => setWbFlashRowId((cur) => (cur === rowId ? null : cur)), 2000)
+                      }}
+                    />
 
                     {(() => {
                       if (!wbHistory || wbHistory.length === 0) return null

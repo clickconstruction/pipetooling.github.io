@@ -68,6 +68,9 @@ vi.mock('../../lib/supabase', () => ({
       if (table === 'bid_audits') return { select: () => ({ order: () => ({ limit: () => Promise.resolve({ data: auditRows, error: null }) }) }) }
       if (table === 'twin_run_scores') return { select: () => ({ order: () => Promise.resolve({ data: scoreRows, error: null }) }) }
       if (table === 'bids_count_rows') return { select: () => ({ eq: (_col: string, bidId: string) => Promise.resolve({ data: countRowsByBid[bidId] ?? [], error: null }), in: () => ({ order: () => ({ range: () => Promise.resolve({ data: [], error: null }) }) }) }) }
+      // v2.3239: the shared loader also reads typed prices and the bid's active pricing.
+      if (table === 'bid_count_row_custom_prices') return { select: () => ({ eq: () => Promise.resolve({ data: [], error: null }) }) }
+      if (table === 'bids') return { select: () => ({ eq: () => ({ maybeSingle: () => Promise.resolve({ data: { selected_price_book_version_id: null }, error: null }) }) }) }
       if (table === 'bid_pricing_assignments') return { select: () => ({ eq: (_col: string, bidId: string) => Promise.resolve({ data: assignsByBid[bidId] ?? [], error: null }), in: () => ({ order: () => ({ range: () => Promise.resolve({ data: [], error: null }) }) }) }) }
       return { select: () => ({ order: () => Promise.resolve({ data: [], error: null }), in: () => Promise.resolve({ data: [], error: null }) }) }
     },
