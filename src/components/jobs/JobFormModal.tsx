@@ -3684,6 +3684,26 @@ export default function JobFormModal({
                 onSeeAsCustomer={() => setStagesDrawerOpen(true)}
                 onGoToBill={onRequestRegion ? () => onRequestRegion('bill') : undefined}
               />
+              {/* Tappable status strip (v2.1773): quick stage moves + the Collections
+                  flag. v2.3238: it sits right under the Stages read-out, where the
+                  job's state is read, instead of above the footer at the very bottom
+                  of the Edit tab (Grace). This fragment renders in the Edit region only. */}
+              <div style={{ margin: '0 0 0.25rem' }}>
+                <JobStatusStepper
+                  job={{
+                    id: editing.id,
+                    status: editing.status,
+                    collections_at: editing.collections_at ?? null,
+                    hcp_number: editing.hcp_number,
+                    click_number: editing.click_number,
+                    job_name: editing.job_name,
+                    revenue: editing.revenue,
+                    payments_made: editing.payments_made,
+                  }}
+                  authRole={authRole}
+                  onChanged={() => onSavedRef.current?.()}
+                />
+              </div>
             <JobFormEditFactRows
               contractJob={initialJob ?? editing}
               workOrderJob={initialJob ?? editing}
@@ -4154,25 +4174,6 @@ export default function JobFormModal({
             </span>
           </div>
         )}
-        {/* Tappable status strip (v2.1773): quick stage moves + the Collections
-            flag, right above the footer. Edit region only — the Bill tab has
-            its own billing actions. */}
-        {editing && (!embedded || embeddedRegion === 'edit') ? (
-          <JobStatusStepper
-            job={{
-              id: editing.id,
-              status: editing.status,
-              collections_at: editing.collections_at ?? null,
-              hcp_number: editing.hcp_number,
-              click_number: editing.click_number,
-              job_name: editing.job_name,
-              revenue: editing.revenue,
-              payments_made: editing.payments_made,
-            }}
-            authRole={authRole}
-            onChanged={() => onSavedRef.current?.()}
-          />
-        ) : null}
         {(() => {
           // Footer pieces shared by both layouts (v2.1239): desktop keeps the
           // two-cluster space-between row; phone edit mode stacks a full-width
