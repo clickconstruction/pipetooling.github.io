@@ -35,6 +35,7 @@ import {
   enumerateDaysInRange,
   type ProjectsJobHistoryBar,
   type ProjectsJobHistoryJob,
+  type ProjectsJobHistoryClockRow,
 } from '../../lib/projectsJobHistoryData'
 import { jobHistoryChannelName, singleJobHistoryRange } from '../../lib/jobs/jobHistoryTab'
 import { fetchProjectsJobHistoryClockSessions } from '../../lib/fetchProjectsJobHistoryClockSessions'
@@ -48,6 +49,10 @@ import {
   normalizeBarSearchQuery,
 } from '../../lib/projectsJobHistoryBarSearch'
 import { ProjectsJobHistoryTimeline } from './ProjectsJobHistoryTimeline'
+import { JobHistoryDayList } from './JobHistoryDayList'
+import { buildJobHistoryDayList } from '../../lib/jobs/jobHistoryDayList'
+import { useNarrowViewport640 } from '../../hooks/useNarrowViewport640'
+import { useUserDisplayNames } from '../../hooks/useUserDisplayNames'
 import { ProjectsJobHistoryDayModal } from './ProjectsJobHistoryDayModal'
 
 type Props = {
@@ -151,6 +156,8 @@ export function ProjectsJobHistoryTab({ customerId, jobId = null }: Props) {
   const [jobs, setJobs] = useState<ProjectsJobHistoryJob[]>([])
   const [prefixMap, setPrefixMap] = useState<LedgerPrefixMap>({})
   const [bars, setBars] = useState<ProjectsJobHistoryBar[]>([])
+  // v2.3235: the raw approved sessions, kept for the phone day list (single-job mode).
+  const [sessionRows, setSessionRows] = useState<ProjectsJobHistoryClockRow[]>([])
   const [loadingJobs, setLoadingJobs] = useState(true)
   const [loadingSessions, setLoadingSessions] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -252,6 +259,7 @@ export function ProjectsJobHistoryTab({ customerId, jobId = null }: Props) {
       const today = todayChicagoYmd()
       const built = aggregateClockSessionsToBars(jobs, res.rows, today)
       setBars(built)
+      setSessionRows(res.rows)
       setLoadingSessions(false)
     },
     [jobs],
@@ -325,6 +333,14 @@ export function ProjectsJobHistoryTab({ customerId, jobId = null }: Props) {
   // Today's Chicago calendar key is effectively stable across a session for this UI; we don't
   // need to re-derive it on every render.
   const todayKey = useMemo(() => todayChicagoYmd(), [])
+  // v2.3235: on a phone, a single job's history is a day list, not the 36 px-a-day grid.
+  const narrowViewport = useNarrowViewport640()
+  const phoneDayList = !!jobId && narrowViewport
+  const dayList = useMemo(
+    () => (phoneDayList && jobId ? buildJobHistoryDayList(sessionRows, { jobId, todayYmd: todayKey, startYmd: rangeStart, endYmd: rangeEnd }) : null),
+    [phoneDayList, jobId, sessionRows, todayKey, rangeStart, rangeEnd],
+  )
+  const dayListNames = useUserDisplayNames(dayList?.userIds ?? [])
 
   // Apply the "only show jobs with projects" toggle BEFORE the search filter so the
   // search match counter reflects the same population the user sees on screen. When the
@@ -544,6 +560,7 @@ export function ProjectsJobHistoryTab({ customerId, jobId = null }: Props) {
             <button type="button" onClick={() => onPreset(365)} style={chipStyle}>
               Last 365d
             </button>
+            {!phoneDayList && (
             <div
               role="group"
               aria-label="Job History layout mode"
@@ -568,6 +585,7 @@ export function ProjectsJobHistoryTab({ customerId, jobId = null }: Props) {
                 Compact
               </button>
             </div>
+            )}
           </div>
         </div>
       </div>
@@ -619,7 +637,19 @@ export function ProjectsJobHistoryTab({ customerId, jobId = null }: Props) {
         </p>
       )}
 
-      {!rangeInvalid && projectFilteredBars.length > 0 && dayKeys.length > 0 && filteredBars.length > 0 && (
+      {phoneDayList && dayList && !rangeInvalid && (
+        <JobHistoryDayList
+          list={dayList}
+          namesById={dayListNames}
+          todayYmd={todayKey}
+          onOpenDay={(ymd) => {
+            const bar = filteredBars[0] ?? projectFilteredBars[0] ?? bars[0]
+            if (bar) onDayCellClick(bar, ymd)
+          }}
+        />
+      )}
+
+      {!phoneDayList && !rangeInvalid && projectFilteredBars.length > 0 && dayKeys.length > 0 && filteredBars.length > 0 && (
         <ProjectsJobHistoryTimeline
           bars={filteredBars}
           dayKeys={dayKeys}
