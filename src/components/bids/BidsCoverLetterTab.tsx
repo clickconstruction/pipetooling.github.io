@@ -108,6 +108,8 @@ type BidsCoverLetterTabProps = {
   bidVersions: BidVersion[]
   reloadBidVersions: () => Promise<void>
   loadBids: (serviceTypeId?: string | null) => Promise<BidWithBuilder[]>
+  /** v2.3222: after a Mark sent that reached the bids row — the page opens the robot's envelope when a shadow scored. */
+  onBidSentRecorded?: (bidId: string) => void
   // Parent-owned *ByBid maps (also read by downloadApprovalPdf)
   coverLetterInclusionsByBid: Record<string, string>
   setCoverLetterInclusionsByBid: Dispatch<SetStateAction<Record<string, string>>>
@@ -154,6 +156,7 @@ export function BidsCoverLetterTab({
   bidVersions,
   reloadBidVersions,
   loadBids,
+  onBidSentRecorded,
   coverLetterInclusionsByBid,
   setCoverLetterInclusionsByBid,
   coverLetterExclusionsByBid,
@@ -637,6 +640,7 @@ export function BidsCoverLetterTab({
       recordBidSentLane(authUser?.id, authRole, lane)
       await loadBids()
       showToast(cur ? 'Sent date moved to today.' : 'Marked sent today.', 'success')
+      onBidSentRecorded?.(bidId)
     } finally {
       setMarkingSent(false)
     }
@@ -673,6 +677,7 @@ export function BidsCoverLetterTab({
       window.dispatchEvent(new Event('bid-version-sends-changed'))
       await loadBids()
       showToast(`Marked sent today — ${inLetter.length} bid${inLetter.length === 1 ? '' : 's'} in the letter.`, 'success')
+      if (!bidErr) onBidSentRecorded?.(bidId)
     } finally {
       setMarkingSent(false)
     }

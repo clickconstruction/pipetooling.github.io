@@ -577,7 +577,7 @@ export function DashboardPinnedQuickRow({
             } else if (item.key === 'robot-audits') {
               navigate('/bids?tab=audits')
             } else if (item.key === 'robot-locked') {
-              navigate('/bids?tab=robot-shadows')
+              navigate('/bids?tab=robot-board')
             } else if (item.key === 'd22-uncoded') {
               navigate('/bids?tab=pricing&d22audit=1')
             } else if (item.key === 'lien-unconditional') {

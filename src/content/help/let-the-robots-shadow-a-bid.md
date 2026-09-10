@@ -35,4 +35,14 @@ Tap the small **?** beside the **Bid #** header (on a phone, beside the trade ch
 
 ## Ask for it sooner
 
-Open the robot's timeline from the icon and tap {{button:outline-blue|Front of the line next batch}} — the next batch takes that bid first. The sealed number shows up on your Dashboard as {{chip:blue|Robot bid}}, and the score lands the moment you mark the bid sent.
+Open the robot's timeline from the icon and tap {{button:outline-blue|Front of the line next batch}} — the next batch takes that bid first. The sealed number shows up on your Dashboard as {{chip:blue|Robot bid}}, and the score lands the moment you mark the bid sent — and the envelope opens for you right then (see *review the robot's number when you send*).
+
+## The Robot Board: our bids, through the robots
+
+**Bids → 🤖 Robots → Robot Board** is not a second board. It lists **our** bids that a robot has run on, in the same sections as the Bid Board — Unsent / Working, Not yet won or lost, Won, Started, Lost — with a robot column:
+
+- Before we send: {{chip:gray|sealed}}, {{chip:gray|queued}} or {{chip:gray|working}}. No number, ever.
+- After we send: the robot's number, ours, and the delta (green within 8%), with the run named — *shadow b482*, *backtest R2*, *vs Wendi*. A bid the robots ran twice leads with the newest run; **1 earlier run** unfolds the rest.
+- Doors on the row: {{button:outline-blue|Review now}} (the envelope, while the audit waits), {{button:gray|Open audit}}, {{button:gray|Compare}} counts and pricing, and {{button:gray|Robot bid b418}} to open the robot's own copy.
+
+The strip above the sections is the program in four numbers: bids with a robot run, live plumbing bids shadowed, audits waiting, and project types past their trust gate. The unsent header says how many live bids still have no robot.

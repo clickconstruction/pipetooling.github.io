@@ -81,17 +81,11 @@ describe('BidsRobotScoreboardTab', () => {
     expect(screen.getByText('18')).toBeTruthy()
     expect(screen.getByText('audits pending')).toBeTruthy()
 
-    // shadow-coverage pill: b381 shadowed, b382 live-uncovered; sent / no-plans / ZZ excluded
-    expect(screen.getByText('1/2')).toBeTruthy()
-    expect(screen.getByText('shadow coverage')).toBeTruthy()
-
-    // ledger: void run visible with VOID verdict, not hidden
-    expect(screen.getByText(/TSAOG campus/)).toBeTruthy()
-    expect(screen.getByText('VOID')).toBeTruthy()
-
-    // teacher column (v2.3099): the stamped backtest names Wendi, a standard
-    expect(screen.getByText('Teacher')).toBeTruthy()
-    expect(screen.getByText('Wendi')).toBeTruthy()
+    // v2.3222: the coverage pill and the per-run ledger moved to the Robot Board mirror —
+    // this lens is the axis cards and the pills the mirror doesn't carry.
+    expect(screen.queryByText('shadow coverage')).toBeNull()
+    expect(screen.queryByText(/TSAOG campus/)).toBeNull()
+    expect(screen.queryByText('Teacher')).toBeNull()
 
     // holdout awareness (v2.2942): no holdout refs designated, so every scored
     // card carries the muted no-evidence line

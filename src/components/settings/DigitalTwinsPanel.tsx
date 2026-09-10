@@ -699,6 +699,22 @@ export default function DigitalTwinsPanel() {
         </div>
       </div>
 
+      {/* Robot queue (v2.3222): the dev Queue lens left the Bids 🤖 bar — the estimator-facing
+          lenses there are the Robot Board mirror, Audits and the Scoreboard. Its URL still
+          works; this is its door, beside the other operator tools. */}
+      <div style={CARD}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.6rem', flexWrap: 'wrap', marginBottom: '0.3rem' }}>
+          <h4 style={{ ...CARD_TITLE, margin: 0 }}><span style={STEP_REF}>⇢</span>Robot queue</h4>
+          <a href="/bids?tab=robot-queue" style={{ ...BTN_PRIMARY, textDecoration: 'none', display: 'inline-block' }} title="Every robot-able bid, requested ones first; the Claude Desktop kickoff and the backtest candidates by axis">
+            Open the queue
+          </a>
+        </div>
+        <p style={{ ...MUTED, marginTop: 0 }}>
+          Kickoff prompts, the Desktop kickoff, and the backtest candidates grouped by the axis whose gate they would feed. Dev only —
+          estimators see the robots on the Bids page as a mirror of the Bid Board.
+        </p>
+      </div>
+
       {/* Handoff (v2.3155): everything a new person needs to run shadow coverage from
           their own machine — copied whole from docs/twins/kickoffs/shadow-operator.md. */}
       <div style={CARD}>
