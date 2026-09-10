@@ -1159,6 +1159,9 @@ A bid drafted by a twin end to end (substrate → CountTooling takeoff → count
 ### The envelope (robot review at send)
 v2.3222 (`src/lib/bids/robotEnvelope.ts`, `RobotEnvelopeModal`): the moment a bid saves with value + sent date — the instant the trigger scores its shadow — the robot's sealed number opens beside ours for the bid's estimator (or a dev): delta, waterfall, the six biggest differences with one-tap verdicts, the robot's questions, **Finish audit** / **Later**. Not a loosening of the seal: "scored" is when a reveal becomes allowed, and the score is already on the ledger. A later bid-value change posts a `[robot review]` revision note. A Robot Board row whose audit still waits opens the same envelope with **Review now**.
 
+### Best effort (before the envelope)
+v2.3234 (`bid_best_efforts`, `src/lib/bids/bestEffort.ts`, `BidBestEffortCard`): the number an estimator would send right now, recorded from the Cover Letter after pricing with one tap. It is the blind human reference the shadow scores against (`twin_shadow_runs.reference_kind = 'best_effort'`; the sent value otherwise), it opens the envelope before send, and the sent value that follows is a second number whose gap is the robot's measured move (`[best effort gap]` note; the Robot Board's *N bids moved after the robot's envelope*). Robots never read it (its own table, twin-fenced); first record wins (insert-only). Recording also stamps the bid reviewed.
+
 ### Backtest
 A blind re-estimate of a **decided historical bid**: `open_backtest` copies logistics only (never counts/pricing/value/outcome), the twin produces its number from the plans alone, and the scorecard unseals the reference at the end. Labeled BT-N; structured scores in `twin_run_scores` (v2.2560).
 

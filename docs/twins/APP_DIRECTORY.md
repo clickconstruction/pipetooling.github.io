@@ -86,8 +86,10 @@ only (no Pricing / Cover Letter / Submission); no subs/helpers.
   tab between Bid Board and Followup (v2.2527; named v2.2905) are `robot-board`, `audits`,
   `robot-scoreboard` (dev) and `robot-console` (dev, v2.3224); `robot-queue` (dev) keeps its
   URL and opens from the Console; `robot-shadows` redirects to the mirror.
-- **The envelope at send** (v2.3222): the moment the human's bid saves with value + sent
-  date, its scored shadow opens for the estimator as a modal — your number, theirs, the
+- **The envelope** (v2.3222; before send since v2.3234): the moment the human records a
+  **best effort** on the Cover Letter (a table you cannot read — `bid_best_efforts`; your
+  lock stays blind either way) or, failing that, saves the bid with value + sent date, its
+  scored shadow opens for the estimator as a modal — your number, theirs, the
   delta, the six biggest row differences with one-tap verdicts, your open questions with
   their taps. Verdicts land as `bid_audit_notes` and answers as `twin_questions.answer`,
   exactly as from the Audits lens; read them the same way.

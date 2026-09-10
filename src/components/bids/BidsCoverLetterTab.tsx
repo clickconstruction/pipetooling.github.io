@@ -64,6 +64,7 @@ import { copyRichHtmlToClipboard } from '../../lib/copyRichHtmlToClipboard'
 import { openInExternalBrowser } from '../../lib/openInExternalBrowser'
 import { BidWorkflowTabTitleWithPreview } from './BidWorkflowTabTitleWithPreview'
 import { BidFlowStrip } from './BidFlowStrip'
+import { BidBestEffortCard } from './BidBestEffortCard'
 import { deriveBidFlow, type BidFlowDoor, type BidFlowStep } from '../../lib/bids/bidFlow'
 import { useBidFlowFacts } from '../../hooks/useBidFlowFacts'
 import { useBidFlowReview } from '../../hooks/useBidFlowReview'
@@ -113,6 +114,10 @@ type BidsCoverLetterTabProps = {
   loadBids: (serviceTypeId?: string | null) => Promise<BidWithBuilder[]>
   /** v2.3222: after a Mark sent that reached the bids row — the page opens the robot's envelope when a shadow scored. */
   onBidSentRecorded?: (bidId: string) => void
+  /** v2.3234: the best effort just went on record — the page opens the envelope if the robot has scored against it. */
+  onBestEffortRecorded?: (bidId: string) => void
+  /** v2.3234: the recorded card's door — open the envelope for this bid. */
+  onOpenRobotEnvelope?: (bidId: string) => void
   // Parent-owned *ByBid maps (also read by downloadApprovalPdf)
   coverLetterInclusionsByBid: Record<string, string>
   setCoverLetterInclusionsByBid: Dispatch<SetStateAction<Record<string, string>>>
@@ -160,6 +165,8 @@ export function BidsCoverLetterTab({
   reloadBidVersions,
   loadBids,
   onBidSentRecorded,
+  onBestEffortRecorded,
+  onOpenRobotEnvelope,
   coverLetterInclusionsByBid,
   setCoverLetterInclusionsByBid,
   coverLetterExclusionsByBid,
@@ -1114,6 +1121,16 @@ export function BidsCoverLetterTab({
                                 </button>
                               ) })}
                             </div>
+                          ) : null}
+                          {/* v2.3234: the step between the letter's amount and Mark sent — record the number
+                              you would send right now; the robot's envelope opens against it. */}
+                          {!multi && onBestEffortRecorded ? (
+                            <BidBestEffortCard
+                              bid={bid}
+                              amount={headlineAmount}
+                              onRecorded={onBestEffortRecorded}
+                              onOpenEnvelope={(id) => onOpenRobotEnvelope?.(id)}
+                            />
                           ) : null}
                           <span style={studioFieldLabelStyle}>{multi ? `In ${gcShort}'s letter` : 'In this cover letter'}</span>
                           {bidVersions.length === 0 ? (

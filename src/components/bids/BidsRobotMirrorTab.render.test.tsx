@@ -62,6 +62,8 @@ const assignsByBid: Record<string, Array<{ count_row_id: string; price_book_entr
 vi.mock('../../lib/supabase', () => ({
   supabase: {
     from: (table: string) => {
+      // v2.3234: recorded best efforts — none in these smokes.
+      if (table === 'bid_best_efforts') return { select: () => ({ limit: () => Promise.resolve({ data: [], error: null }) }) }
       if (table === 'users') return { select: () => ({ eq: () => Promise.resolve({ data: [{ id: 'wendi' }], error: null }) }) }
       if (table === 'bid_audits') return { select: () => ({ order: () => ({ limit: () => Promise.resolve({ data: auditRows, error: null }) }) }) }
       if (table === 'twin_run_scores') return { select: () => ({ order: () => Promise.resolve({ data: scoreRows, error: null }) }) }
@@ -139,7 +141,7 @@ describe('BidsRobotMirrorTab', () => {
     expect(screen.getByText('of our bids have a robot run')).toBeTruthy()
     expect(screen.getByText('2 / 3')).toBeTruthy()
     expect(screen.getByText('live plumbing bids shadowed')).toBeTruthy()
-    expect(screen.getByText('sealed, waiting on you to send')).toBeTruthy()
+    expect(screen.getByText('sealed, waiting on your number')).toBeTruthy()
     expect(screen.getByText('need something from a person')).toBeTruthy()
     expect(screen.getByText(/kinds of job earned first drafts/)).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: /kinds of job earned first drafts/ }))

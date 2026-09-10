@@ -316,3 +316,50 @@ describe('buildRobotMirror · live bids without a run (rowStateFor)', () => {
 })
 
 const blankRun = { kind: 'shadow' as const, shellBidId: null, shellNumber: null, label: '', robotTotal: null, ourValue: null, deltaPct: null, practice: false, teacherName: null, audit: null }
+
+describe('best effort (v2.3234)', () => {
+  it('a scored shadow on a LIVE bid with a recorded best effort shows the robot number, ours = the best effort, and what it scored against', () => {
+    const b431 = human({ id: 'h431', bid_number: '431' })
+    const s482 = shell({ id: 's482', bid_number: '482', twin_source_bid_id: 'h431' })
+    const m = buildRobotMirror({
+      humanBids: [b431],
+      shells: [s482],
+      shadowRuns: [run({ shadow_bid_number: '482', reference_bid_number: '431', status: 'scored', scored_at: '2026-09-10T15:00:00Z', locked_total: 171940, reference_value: 148200, delta_pct: 16.0, reference_kind: 'best_effort' })],
+      scores: [],
+      audits: [{ id: 'a1', bid_id: 's482', status: 'pending', requested_at: '2026-09-07T13:00:00Z' }],
+      bestEfforts: new Map([['h431', { value: 148200, recorded_at: '2026-09-10T15:00:00Z', recorded_by: 'wendi' }]]),
+    })
+    const row = m.sections.unsent[0]!
+    expect(row.latest).toMatchObject({ status: 'scored', robotTotal: 171940, ourValue: 148200, deltaPct: 16, scoredAgainst: 'best_effort' })
+    expect(row.bestEffort?.value).toBe(148200)
+    expect(row.gap).toBeNull() // not sent yet — no second number
+    expect(mirrorRunReviewable(row.latest)).toBe(true)
+    expect(m.moved).toEqual({ count: 0, total: 0 })
+  })
+  it('once sent, the gap between best effort and the sent value is the robot\'s measured move, summed on the strip', () => {
+    const a = human({ id: 'h1', bid_number: '1', bid_date_sent: '2026-09-11', bid_value: 151400 })
+    const b = human({ id: 'h2', bid_number: '2', bid_date_sent: '2026-09-11', bid_value: 90000 })
+    const c = human({ id: 'h3', bid_number: '3', bid_date_sent: '2026-09-11', bid_value: 50000 })
+    const m = buildRobotMirror({
+      humanBids: [a, b, c],
+      shells: [],
+      shadowRuns: [
+        run({ shadow_bid_number: '901', reference_bid_number: '1', status: 'scored', scored_at: '2026-09-10T15:00:00Z', locked_total: 171940, reference_value: 148200, delta_pct: 16.0, reference_kind: 'best_effort' }),
+        run({ shadow_bid_number: '902', reference_bid_number: '2', status: 'scored', scored_at: '2026-09-10T15:00:00Z', locked_total: 95000, reference_value: 100000, delta_pct: -5.0, reference_kind: 'best_effort' }),
+        run({ shadow_bid_number: '903', reference_bid_number: '3', status: 'scored', scored_at: '2026-09-11T15:00:00Z', locked_total: 52000, reference_value: 50000, delta_pct: 4.0, reference_kind: 'sent' }),
+      ],
+      scores: [],
+      audits: [],
+      bestEfforts: new Map([
+        ['h1', { value: 148200, recorded_at: '2026-09-10T15:00:00Z', recorded_by: 'wendi' }],
+        ['h2', { value: 100000, recorded_at: '2026-09-10T15:00:00Z', recorded_by: 'wendi' }],
+      ]),
+    })
+    const rows = Object.fromEntries(m.sections.pending.map((r) => [r.bid.id, r]))
+    expect(rows.h1?.gap).toEqual({ best: 148200, sent: 151400, diff: 3200, pct: 2.2 })
+    expect(rows.h2?.gap).toEqual({ best: 100000, sent: 90000, diff: -10000, pct: -10 })
+    expect(rows.h3?.gap).toBeNull()
+    expect(rows.h3?.latest.scoredAgainst).toBe('sent')
+    expect(m.moved).toEqual({ count: 2, total: 13200 })
+  })
+})

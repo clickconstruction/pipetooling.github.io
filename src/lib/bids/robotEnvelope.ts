@@ -23,6 +23,8 @@ export interface EnvelopeBid {
   estimator_id: string | null
   bid_date_sent: string | null
   bid_value: number | string | null
+  /** v2.3234: the recorded best effort (bid_best_efforts.value) — the blind human number that opens the envelope before send. */
+  best_effort_value?: number | string | null
 }
 
 export interface EnvelopeViewer {
@@ -33,6 +35,7 @@ export interface EnvelopeViewer {
 export type EnvelopeRefusal =
   | 'not-sent'
   | 'no-value'
+  | 'no-record'
   | 'no-scored-run'
   | 'not-auditor'
   | 'not-estimator'
@@ -41,7 +44,8 @@ export type EnvelopeRefusal =
 /**
  * May the envelope open for this viewer on this bid right now?
  *
- *  - the bid must be sent WITH a value (that is what the trigger scored against)
+ *  - the human number must be on record: a best effort (v2.3234, the earlier door)
+ *    or a send WITH a value (what the trigger scores against otherwise)
  *  - a shadow run on the bid must be scored (never open on a sealed run)
  *  - the viewer must be in the robot-audit audience
  *  - the viewer is the bid's estimator (the teacher the trigger named) — or a dev,
@@ -55,9 +59,13 @@ export function envelopeRefusal(
   runStatus: string | null,
   offered: ReadonlySet<string>,
 ): EnvelopeRefusal | null {
-  if (!bid.bid_date_sent) return 'not-sent'
-  const value = Number(bid.bid_value)
-  if (!(Number.isFinite(value) && value > 0)) return 'no-value'
+  const best = Number(bid.best_effort_value)
+  const recorded = Number.isFinite(best) && best > 0
+  if (!recorded) {
+    if (!bid.bid_date_sent) return 'not-sent'
+    const value = Number(bid.bid_value)
+    if (!(Number.isFinite(value) && value > 0)) return 'no-value'
+  }
   if (runStatus !== 'scored') return 'no-scored-run'
   if (!canWorkRobotAudits(viewer.role)) return 'not-auditor'
   if (viewer.role !== 'dev' && bid.estimator_id && bid.estimator_id !== viewer.userId) return 'not-estimator'
@@ -80,6 +88,8 @@ export interface EnvelopeRun {
   at: string | null
   teacherName: string | null
   practice: boolean
+  /** v2.3234: which human number the run scored against; null when unknown (pre-migration rows). */
+  scoredAgainst?: 'best_effort' | 'sent' | null
 }
 
 export function envelopeRunFromShadow(r: {
@@ -90,6 +100,7 @@ export function envelopeRunFromShadow(r: {
   locked_at: string | null
   teacher_name?: string | null
   teacher_standard?: boolean | null
+  reference_kind?: string | null
 }): EnvelopeRun {
   return {
     kind: 'shadow',
@@ -100,6 +111,7 @@ export function envelopeRunFromShadow(r: {
     at: r.locked_at,
     teacherName: r.teacher_name ?? null,
     practice: r.teacher_standard === false,
+    scoredAgainst: r.reference_kind === 'best_effort' || r.reference_kind === 'sent' ? r.reference_kind : null,
   }
 }
 
