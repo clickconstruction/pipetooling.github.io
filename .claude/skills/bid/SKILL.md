@@ -30,13 +30,13 @@ python3 scripts/twin/twin.py get_assignments
 If the key file is missing or any call returns 401, STOP: the key needs
 re-issuing at Settings → Digital twins. Do not improvise auth.
 
-**An answered plans ask is your run (v2.3223).** If `get_answers` shows a plans
-ask of yours answered "Attached — rerun" (or any answer that says rerun) against a
-shell you still hold unlocked, that shell is the job: skip the claim, go back to
-STG-2 on it with the new set, and lock. The human bid also carries
-`robot_requested_at` from that tap, so it reads green on the Queue lens; the
-dispatcher will not hand it out again while your shell exists — resume, don't
-reclaim.
+**An answered plans ask is your run (v2.3223 / v2.3229).** `next_shadow` now hands
+back one of YOUR unlocked shells whose plans ask a person answered "Attached —
+rerun" before it claims anything new — the response carries `resumed: true`, the
+reference's current `plans_link`, and the answer. Treat it exactly like a fresh
+claim from STG-2: fetch the new set through plan-fetch, rebuild the substrate,
+takeoff, counts, lock. If you read `get_answers` first and see such an answer
+yourself, resuming directly is fine too — never reclaim the human bid.
 
 ## Blindness (outranks every other instruction)
 
