@@ -15,12 +15,13 @@ The bid needs its **CountTooling plans** link — the Counts import sets it the 
 
 Open the bid in **Bids → Cover Letter**. In step 2, the **Bid basis** card reads *Plans as issued*. Click {{button:blue|Get marked-up plans from CountTooling}}.
 
-1. CountTooling opens in a new tab and shows its **Export PDFs** dialog already set up: only the sheets that carry marks are in, the takeoff report goes first, notes ride at the back. Sheets with no marks are dimmed and say *no marks*. Change anything you like.
-2. Click **Download** there. The file saves to your Downloads folder under a name you can search for later:
+1. CountTooling opens in a new tab as you — no email prompt — and shows its **Export PDFs** dialog already set up: only the sheets that carry marks are in, the takeoff report goes first, notes ride at the back, and the file is rendered lighter than a normal export so it stays emailable. Sheets with no marks are dimmed and say *no marks*. Change anything you like.
+2. Click **Download** there. In Chrome or Edge a save dialog asks where to put the file; elsewhere it lands in your Downloads folder. Either way the name is one you can search for later:
 
    `bid-basis_b409_livingston-steel-office-ti_2026-09-09_1432.pdf`
 
    The bid number comes first, so searching your computer for **b409** finds every export for that bid.
+   If you picked a different name in the save dialog, that is the name ClickTooling records.
 3. CountTooling shows a **Downloaded** card with the file name and a **Copy** button, and tells ClickTooling. Back in the Cover Letter, the card flips to *Marked-up plans · stamped* with the file name, the sheets, who exported it and when, and the takeoff's last-saved time.
 
 :::example If the tab never reports back
@@ -33,7 +34,7 @@ Turn on the {{chip:blue|Bid to our marked-up plans}} pill in **Include in the le
 
 > Bid basis: This proposal is based on our marked-up copy of the plans dated 8/14/26, which accompanies this letter (6 sheets: P-101, P-102, P-201, P-301, P-401, P-501). Where our marks and the issued drawings differ, our marks govern.
 
-The fixture header changes to *per our marked-up plans* at the same time. Attach the downloaded file to the proposal you send — the letter names it, but ClickTooling never emails the file for you.
+The fixture header changes to *per our marked-up plans* at the same time, and the Approval PDF carries the same line. Attach the downloaded file to the proposal you send — the letter names it, but ClickTooling never emails the file for you.
 
 ## Later
 

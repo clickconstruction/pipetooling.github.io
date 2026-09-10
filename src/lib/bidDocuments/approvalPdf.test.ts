@@ -154,7 +154,8 @@ const fullData: Record<string, unknown> = {
     { fixture: 'Water Closet', count: 2, rough_in_hrs_per_unit: 2, top_out_hrs_per_unit: 1, trim_set_hrs_per_unit: 1, is_fixed: true }, // fixed: 4 h
   ],
   purchase_order_items: [{ price_at_time: 100, quantity: 3 }, { price_at_time: 50.5, quantity: 2 }], // 401
-  bids: [{ include_payment_schedule: true }],
+  bids: [{ include_payment_schedule: true, bid_to_marked_plans: true }],
+  bid_plan_basis_exports: [{ id: 'bb1', exported_at: '2026-09-09T19:32:00Z', filename: 'bid-basis_b409_x.pdf', save_method: 'reported', sheet_labels: ['Acme Tower — p3', 'P-201'], sheet_count: 2, ct_updated_at: null, ct_project_name: 'Acme Tower', superseded_at: null }],
   bid_payment_schedule_rows: [{ timing: 'Rough-in complete', percent: 50 }, { timing: 'Final', percent: 50 }],
 }
 
@@ -313,5 +314,22 @@ describe('downloadApprovalPdf — an unpriced, uncosted, unsplit bid with a GC f
     for (const q of countQueries) {
       expect(q.steps.some((s) => s.method === 'is' && s.args[0] === 'bid_version_id' && s.args[1] === null)).toBe(true)
     }
+  })
+})
+
+describe('downloadApprovalPdf — bid basis (v2.3226)', () => {
+  it('carries the Bid basis clause on the Cover Letter page when the flag is on and an export exists', async () => {
+    route = (table) => (fullData[table] as unknown[]) ?? []
+    await downloadApprovalPdf(ctxBase(bidBase))
+    // jsPDF wraps long lines — check the joined text of the page.
+    const all = FakeJsPDF.last!.calls.map((c) => (typeof c.text === 'string' ? c.text : '')).join(' ')
+    expect(all).toContain('Bid basis: This proposal is based on our marked-up copy')
+    expect(all).toContain('(2 sheets: p3, P-201)')
+    expect(FakeJsPDF.last!.calls.some((c) => typeof c.text === 'string' && c.text.includes('per our marked-up plans'))).toBe(true)
+  })
+  it('says nothing about a bid basis when the flag is off', async () => {
+    route = (table) => (table === 'bids' ? [{ include_payment_schedule: false, bid_to_marked_plans: false }] : (fullData[table] as unknown[]) ?? [])
+    await downloadApprovalPdf(ctxBase(bidBase))
+    expect(FakeJsPDF.last!.calls.some((c) => typeof c.text === 'string' && c.text.startsWith('Bid basis:'))).toBe(false)
   })
 })

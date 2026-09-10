@@ -59,3 +59,14 @@ describe('viewGrant (mint side)', () => {
     expect(await grantPlansLink(null, { name: 'Behar Kraja' }, SECRET, NOW)).toBeNull()
   })
 })
+
+describe('viewGrant — the bid-basis source (v2.3226)', () => {
+  it('mints with via pipetooling-bid-basis and no person', async () => {
+    const g = await mintViewGrant({ t: TOKEN, name: 'Grace', email: 'grace@example.com', person: null, via: 'pipetooling-bid-basis' }, SECRET, NOW)
+    const claims = parseViewGrantClaims(g)!
+    expect(claims.via).toBe('pipetooling-bid-basis')
+    expect(claims.person).toBeNull()
+    expect(claims.t).toBe(TOKEN)
+    expect(claims.exp).toBe(NOW + 24 * 60 * 60)
+  })
+})

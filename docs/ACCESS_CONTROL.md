@@ -117,6 +117,11 @@ Credentials: created without a password by the migration; set out-of-band (`ALTE
 - **Database**: Foreign key relationships enforce data ownership
 - **Edge Functions**: Role validation before privileged operations
 
+### Bid basis exports — the Cover Letter's marked-up plans record (v2.3219, `20260910120000_bid_plan_basis_exports.sql`)
+
+- **`bid_plan_basis_exports`** (one row per CountTooling export the Cover Letter stamped on a bid: file name, sheets, mark totals, the marks snapshot) and **`bids.bid_to_marked_plans`** (the letter toggle). RLS mirrors `bid_payment_schedule_rows`: SELECT / INSERT / UPDATE / DELETE for dev, master_technician, assistant, controller, estimator, primary, superintendent **and** `can_access_bid_for_pricing(bid_id)`; subs and helpers have no access. Both read-only appliers and the digital-twin write fence run (a twin may write rows on its own bids, like every bid-child table).
+- The `bid-basis-grant` edge function (v2.3226) reads the bid through the caller's client — bids RLS decides — and mints a CountTooling viewer grant naming the caller; see `EDGE_FUNCTIONS.md`.
+
 ### Cost batches — dev-or-agent cost reallocation through two definer RPCs; `cost_agent` role (v2.3196, `20260909161532_cost_batches.sql`)
 
 - **What changed**: job cost can now be moved between jobs as a recorded batch. `cost_batch_apply(jsonb, boolean)` and `cost_batch_revert(uuid, text)` are SECURITY DEFINER with the gate inside: a signed-in caller must be a **dev** (`is_dev()`); a database-role caller (`auth.uid()` NULL — `cost_agent`, `postgres`) passes. EXECUTE to `authenticated` and `cost_agent`; revoked from `anon`/PUBLIC. The audit tables `cost_batches` / `cost_batch_ops` are dev + `cost_agent` SELECT only — **no INSERT/UPDATE/DELETE policies exist**; the functions are the only writers. Read-only (training) mode blocks both (the statement/row blocks fire inside definer functions). Digital-twin write fences do not bind a definer function; the dev gate is what keeps twins out.

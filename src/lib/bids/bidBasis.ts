@@ -272,7 +272,7 @@ export function bidBasisTakeoffMovedSince(row: { ct_updated_at: string | null } 
 /** Row fields for a `bid_plan_basis_exports` insert from a manifest (caller adds bid_id / exported_by). */
 export function bidBasisInsertFromMessage(m: BidBasisExportMessage): {
   filename: string
-  save_method: 'reported'
+  save_method: 'reported' | 'confirmed'
   sheet_labels: string[]
   sheet_count: number
   page_indices: number[]
@@ -290,7 +290,8 @@ export function bidBasisInsertFromMessage(m: BidBasisExportMessage): {
 } {
   return {
     filename: m.filename,
-    save_method: 'reported',
+    // 'confirmed' = the browser's save picker confirmed the exact name (v2.3226); 'reported' = the intended download name.
+    save_method: m.saveMethod === 'confirmed' ? 'confirmed' : 'reported',
     sheet_labels: m.sheets,
     sheet_count: m.sheetCount,
     page_indices: m.pageIndices,

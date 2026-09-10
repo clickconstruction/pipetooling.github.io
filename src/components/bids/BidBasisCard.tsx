@@ -5,6 +5,7 @@
  * pure logic from src/lib/bids/bidBasis.ts.
  */
 import { useEffect, useState, type CSSProperties } from 'react'
+import { supabase } from '../../lib/supabase'
 import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
 import { useToastContext } from '../../contexts/ToastContext'
 import { useAuth } from '../../hooks/useAuth'
@@ -130,6 +131,7 @@ export function BidBasisCard({ bid, exports }: BidBasisCardProps) {
   const [manualOpen, setManualOpen] = useState(false)
   const [historyOpen, setHistoryOpen] = useState(false)
   const [staleDismissedFor, setStaleDismissedFor] = useState<string | null>(null)
+  const [grantState, setGrantState] = useState<'idle' | 'minting' | 'granted' | 'plain'>('idle')
 
   // A manifest arriving while the waiting dialog is up closes it — the toast says what was stamped.
   useEffect(() => {
@@ -145,13 +147,43 @@ export function BidBasisCard({ bid, exports }: BidBasisCardProps) {
       showToast('This bid has no CountTooling plans link — paste the takeoff’s view link into Edit Bid first.', 'error')
       return
     }
-    // No `noopener`: CountTooling posts the manifest back to window.opener.
-    const win = window.open(url, '_blank')
+    // Open the tab NOW (the click's user activation), then point it: the grant is minted
+    // server-side (`bid-basis-grant`, v2.3226) so CountTooling skips its email gate and logs
+    // the visit under this person's name. No `noopener`: CountTooling posts the manifest back
+    // to window.opener. Any failure minting falls back to the bare link.
+    const win = window.open('', '_blank')
     if (!win) {
       showToast('The browser blocked the CountTooling tab. Allow popups for this site and try again.', 'error', 8000)
       return
     }
     setWaiting(true)
+    setGrantState('minting')
+    // A word in the blank tab while the grant is minted (a second or so).
+    try {
+      win.document.write('<title>Opening CountTooling…</title><p style="font-family:system-ui;padding:2rem;color:#555">Opening CountTooling…</p>')
+    } catch {
+      // cross-origin or closed — nothing to show
+    }
+    void (async () => {
+      let target = url
+      let granted = false
+      try {
+        const { data, error } = await supabase.functions.invoke<BidBasisGrantResponse>('bid-basis-grant', { body: { bid_id: bid.id } })
+        if (!error && data?.ok && data.url) {
+          // The dev-origin override applies to the granted link too (same token, same grant).
+          target = bidBasisExportUrl(data.url, ref, devCountToolingOrigin()) ?? data.url
+          granted = data.granted === true
+        }
+      } catch {
+        // fall through to the bare link
+      }
+      setGrantState(granted ? 'granted' : 'plain')
+      try {
+        win.location.href = target
+      } catch {
+        showToast('Could not open CountTooling. Try again.', 'error')
+      }
+    })()
   }
 
   async function removeCurrent() {
@@ -224,6 +256,7 @@ export function BidBasisCard({ bid, exports }: BidBasisCardProps) {
             </div>
             <div style={{ color: 'var(--text-muted)' }}>
               Exported {formatBidBasisWhen(current.exported_at)}{exportedByMe ? ' by you' : ''}
+              {current.save_method === 'confirmed' ? ' · name confirmed by your browser' : ''}
               {current.ct_updated_at ? ` · takeoff last saved ${formatBidBasisWhen(current.ct_updated_at)}` : ''}
             </div>
           </div>
@@ -267,6 +300,7 @@ export function BidBasisCard({ bid, exports }: BidBasisCardProps) {
           bidRef={ref}
           projectName={bid.project_name ?? ''}
           expectedFilename={expectedBidBasisFilename(ref, projectNameForFilename)}
+          grantState={grantState}
           onOpenAgain={openCountTooling}
           onMarkByHand={() => { setWaiting(false); setManualOpen(true) }}
           onClose={() => setWaiting(false)}
@@ -286,17 +320,20 @@ export function BidBasisCard({ bid, exports }: BidBasisCardProps) {
   )
 }
 
+type BidBasisGrantResponse = { ok: boolean; url?: string; granted?: boolean; reason?: string; viewer?: string }
+
 type BidBasisExportModalProps = {
   bidRef: string
   projectName: string
   expectedFilename: string
+  grantState?: 'idle' | 'minting' | 'granted' | 'plain'
   onOpenAgain: () => void
   onMarkByHand: () => void
   onClose: () => void
 }
 
 /** The waiting dialog shown after the CountTooling tab opens. */
-export function BidBasisExportModal({ bidRef, projectName, expectedFilename, onOpenAgain, onMarkByHand, onClose }: BidBasisExportModalProps) {
+export function BidBasisExportModal({ bidRef, projectName, expectedFilename, grantState = 'idle', onOpenAgain, onMarkByHand, onClose }: BidBasisExportModalProps) {
   const step = (n: number) => (
     <span style={{ width: '1.35rem', height: '1.35rem', borderRadius: 999, background: '#3b82f6', color: '#fff', fontSize: '0.75rem', fontWeight: 700, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>{n}</span>
   )
@@ -307,6 +344,9 @@ export function BidBasisExportModal({ bidRef, projectName, expectedFilename, onO
           <div>
             <h3 style={{ margin: 0, fontSize: '1.02rem' }}>CountTooling opened in a new tab</h3>
             <p style={{ margin: '0.2rem 0 0', fontSize: '0.82rem', color: 'var(--text-muted)' }}>{bidRef}{projectName ? ` · ${projectName}` : ''} · marked sheets only</p>
+            <p data-testid="bid-basis-grant-note" style={{ margin: '0.15rem 0 0', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+              {grantState === 'granted' ? 'Opened as you — no email prompt in CountTooling.' : grantState === 'plain' ? 'CountTooling may ask for your work email once.' : grantState === 'minting' ? 'Opening…' : ''}
+            </p>
           </div>
           <button type="button" onClick={onClose} aria-label="Dismiss" title="Dismiss" style={{ background: 'transparent', border: 'none', fontSize: '1.2rem', lineHeight: 1, color: 'var(--text-muted)', padding: '2px 6px', cursor: 'pointer' }}>×</button>
         </div>

@@ -757,6 +757,11 @@ verify_jwt = false
 [functions.sub-portal]
 verify_jwt = false
 
+# Bid basis (v2.3226): mints the CountTooling viewer grant for the Cover Letter's
+# marked-up plans export — JWT validated in-handler.
+[functions.bid-basis-grant]
+verify_jwt = false
+
 # Sub portal intake (availability, sign-to-accept, sign links) —
 # token-authenticated like submit-portal-request.
 [functions.submit-sub-portal]
