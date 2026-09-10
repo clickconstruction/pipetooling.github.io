@@ -5,7 +5,7 @@ import { SupplyHouseContactsSection } from './SupplyHouseContactsSection'
 import type { Database } from '../types/database'
 import { useNarrowViewport640 } from '../hooks/useNarrowViewport640'
 import { isUrlLikelyMapsOrDirectionsPortal, normalizeSupplyHouseWebsiteUrlForStorage } from '../lib/supplyHouseWebsite'
-import { VENDOR_KINDS, VENDOR_KIND_HINTS, isInsurerFor, vendorKindLabel, vendorKindOf, type VendorKind } from '../lib/materials/vendorKind'
+import { VENDOR_KINDS, VENDOR_KIND_HINTS, vendorKindLabel, vendorKindOf, type VendorKind } from '../lib/materials/vendorKind'
 import type { TradeType } from '../lib/materials/supplyHouseTrades'
 
 type SupplyHouse = Database['public']['Tables']['supply_houses']['Row']
@@ -21,8 +21,6 @@ export interface SupplyHouseFormData {
   monthly_payment_day: number | null
   /** v2.3172: what kind of vendor this is; only `supply_house` is quoted from or shown to estimators. */
   vendor_kind: VendorKind
-  /** Derived from `vendor_kind` (the DB trigger does the same) — kept for pre-push clients' pickers. */
-  is_insurer: boolean
   /** v2.3173: trades this house serves (service_type ids). Empty = everyone. */
   service_type_ids: string[]
 }
@@ -81,8 +79,7 @@ export function SupplyHouseForm({
 }: SupplyHouseFormProps) {
   const [websiteUrlError, setWebsiteUrlError] = useState<string | null>(null)
   // Owned here (not by the hosts' string-field onChange): the hosts only need it at submit.
-  // Reads vendor_kind once pushed, the legacy is_insurer flag before that.
-  const [vendorKind, setVendorKind] = useState<VendorKind>(editingSupplyHouse ? vendorKindOf(editingSupplyHouse as { vendor_kind?: string | null; is_insurer?: boolean | null }) : 'supply_house')
+  const [vendorKind, setVendorKind] = useState<VendorKind>(editingSupplyHouse ? vendorKindOf(editingSupplyHouse) : 'supply_house')
   // Estimators never reclassify a vendor: the row is hidden for them and stays what it was (or supply_house for a new one).
   const canPickKind = myRole !== 'estimator'
   // Trades served (v2.3173): the chips load the trade list and the house's links; the table may not exist before its push.
@@ -131,7 +128,6 @@ export function SupplyHouseForm({
       notes: notes.trim() || '',
       monthly_payment_day: day,
       vendor_kind: vendorKind,
-      is_insurer: isInsurerFor(vendorKind),
       service_type_ids: tradeTypes.filter((t) => tradeIds.has(t.id)).map((t) => t.id),
     })
   }

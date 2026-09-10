@@ -12,7 +12,7 @@ import {
 } from './supplyHouseDirectory'
 
 function house(id: string, name: string, extra: Partial<DirectoryHouse> = {}): DirectoryHouse {
-  return { id, name, address: null, phone: null, website_url: null, notes: null, is_insurer: false, ...extra }
+  return { id, name, address: null, phone: null, website_url: null, notes: null, ...extra }
 }
 
 function rep(id: string, supply_house_id: string, extra: Partial<DirectoryRep> = {}): DirectoryRep {
@@ -27,7 +27,7 @@ const HOUSES = [
   house('moore', 'Moore Supply', { address: '1 Main St' }),
   house('ferguson', 'Ferguson'),
   house('winn', 'Winn Supply'),
-  house('texas-mutual', 'Texas Mutual (Workers Comp)', { is_insurer: true }),
+  house('texas-mutual', 'Texas Mutual (Workers Comp)', { vendor_kind: 'insurer' }),
   house('sunbelt', 'Sunbelt Rentals', { vendor_kind: 'rental_yard' }),
   house('apple', 'Apple Lumber'),
 ]

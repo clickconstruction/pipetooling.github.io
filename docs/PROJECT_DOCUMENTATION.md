@@ -1067,7 +1067,6 @@ uuid3           | Supply House C    | 0
   - `notes` (text, nullable)
   - `monthly_payment_day` (integer, nullable) - Day of month (1-31) when payment is typically due; used for Due column in supply house list
   - `vendor_kind` (text, `supply_house` | `insurer` | `rental_yard` | `sub_ledger` | `other`, v2.3172) - Only `supply_house` rows are quoted from, offered by the RFQ / quote pickers, or listed on the estimator's Supply houses tab
-  - `is_insurer` (boolean) - Derived by trigger from `vendor_kind` since v2.3172 (`true` for every ledger-only kind); retires once no client reads it
   - `created_at`, `updated_at` (timestamptz)
 - **RLS**: every Materials reader (dev, master_technician, assistant, estimator, primary, superintendent) reads; writes require `can_manage_supply_house_directory()` (dev, master_technician, assistant, controller, estimator — v2.3167)
 

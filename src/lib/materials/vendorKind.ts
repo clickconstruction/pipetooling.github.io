@@ -5,8 +5,8 @@
  * accounts beside the real counters. Only `supply_house` rows are quoted
  * from, listed for estimators, or offered by the RFQ pickers.
  *
- * Until the `vendor_kind` column is pushed the row carries only the legacy
- * `is_insurer` flag; `vendorKindOf` reads whichever is present.
+ * `vendor_kind` is the only signal since v2.3244 (the legacy `is_insurer`
+ * flag is dropped); a row with an unknown or missing kind reads as a supply house.
  */
 
 export const VENDOR_KINDS = ['supply_house', 'insurer', 'rental_yard', 'sub_ledger', 'other'] as const
@@ -34,10 +34,9 @@ export function isVendorKind(value: unknown): value is VendorKind {
   return typeof value === 'string' && (VENDOR_KINDS as readonly string[]).includes(value)
 }
 
-/** The kind of a row, reading `vendor_kind` when present and the legacy flag otherwise. */
-export function vendorKindOf(row: { vendor_kind?: string | null; is_insurer?: boolean | null }): VendorKind {
-  if (isVendorKind(row.vendor_kind)) return row.vendor_kind
-  return row.is_insurer ? 'insurer' : 'supply_house'
+/** The kind of a row; an unknown or missing `vendor_kind` reads as a supply house. */
+export function vendorKindOf(row: { vendor_kind?: string | null }): VendorKind {
+  return isVendorKind(row.vendor_kind) ? row.vendor_kind : 'supply_house'
 }
 
 export function vendorKindLabel(kind: VendorKind): string {
@@ -49,7 +48,3 @@ export function isQuotableVendorKind(kind: VendorKind): boolean {
   return kind === 'supply_house'
 }
 
-/** The legacy flag, derived — the DB trigger keeps the column in step; the client writes the same value. */
-export function isInsurerFor(kind: VendorKind): boolean {
-  return kind !== 'supply_house'
-}

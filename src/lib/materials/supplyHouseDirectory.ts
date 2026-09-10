@@ -15,8 +15,7 @@ export type DirectoryHouse = {
   phone: string | null
   website_url: string | null
   notes: string | null
-  is_insurer: boolean
-  /** Present once the v2.3172 column is pushed; `vendorKindOf` falls back to `is_insurer` before that. */
+  /** v2.3172; an unknown or missing kind reads as a supply house (the legacy flag is gone since v2.3244). */
   vendor_kind?: string | null
 }
 
@@ -78,7 +77,7 @@ export type BuildDirectoryInput<H extends DirectoryHouse = DirectoryHouse> = {
   recentLimit?: number
 }
 
-export function directoryKindOf(house: Pick<DirectoryHouse, 'is_insurer' | 'vendor_kind'>): DirectoryKind {
+export function directoryKindOf(house: Pick<DirectoryHouse, 'vendor_kind'>): DirectoryKind {
   return vendorKindOf(house)
 }
 
