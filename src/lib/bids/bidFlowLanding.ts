@@ -21,6 +21,13 @@ export type LandingOptions = {
   /** Give up after this long (the destination never rendered the target). */
   timeoutMs?: number
   pollMs?: number
+  /**
+   * How long to hold out for the FIRST target before accepting a fallback
+   * (v2.3227). A door that opens a dialog paints its fallback button a beat
+   * before the dialog's field exists; without the grace the ring lands on the
+   * button every time.
+   */
+  preferFirstMs?: number
   /** Called once: true when landed, false when nothing appeared in time. */
   onDone?: (landed: boolean) => void
   /** Test seam. */
@@ -80,12 +87,15 @@ export function landOnBidFlowTarget(targets: ReadonlyArray<string> | null | unde
   const doc = opts?.doc ?? document
   const timeoutMs = opts?.timeoutMs ?? 6000
   const pollMs = opts?.pollMs ?? 120
+  const preferFirstMs = opts?.preferFirstMs ?? 1500
   const startedAt = Date.now()
   let cancelled = false
   let timer: number | null = null
   const tick = () => {
     if (cancelled) return
-    const el = findLandingElement(targets, doc)
+    const elapsed = Date.now() - startedAt
+    const candidates = elapsed < preferFirstMs ? targets.slice(0, 1) : targets
+    const el = findLandingElement(candidates, doc)
     if (el) {
       landOnElement(el, { reducedMotion: opts?.reducedMotion })
       opts?.onDone?.(true)

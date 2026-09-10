@@ -1200,6 +1200,7 @@ export default function Bids() {
     }, { replace: true })
   }
 
+  const [countsImportRequest, setCountsImportRequest] = useState(0)
   // Bid flow doors (v2.3216): a step on any strip opens its destination — the Edit
   // window or one of the workflow tabs — and then LANDS on the field the step is
   // about (scroll, focus, a fading ring). One handler for the five workflow-tab
@@ -1211,6 +1212,9 @@ export default function Bids() {
     if (!bidFlowDoorAllowed(door)) return
     if (door === 'edit') openEditBid(bid)
     else if (door && door !== 'review') selectBidAndSyncUrl(bid, door)
+    // v2.3227: Count & import opens the Import Counts dialog itself; the landing
+    // then rings the paste box (the button is the fallback if the dialog is slow).
+    if (door === 'counts' && step.key === 'count') setCountsImportRequest((n) => n + 1)
     landOnBidFlowTarget(step.target)
   }
 
@@ -3858,6 +3862,7 @@ export default function Bids() {
           onOpenGcBuilderOrCustomer={openGcBuilderOrCustomerModal}
           onLastContactClick={handleLastContactClick}
           onOpenBidTab={(bid, tab) => selectBidAndSyncUrl(bid, tab)}
+          onOpenBidFlowDoor={openBidFlowDoor}
           canSeePricingTabs={myRole !== 'superintendent'}
           onError={setError}
           onReloadBids={() => { void loadBids() }}
@@ -4195,6 +4200,7 @@ export default function Bids() {
         )}
         <BidsCountsTab
           onOpenBidFlowDoor={openBidFlowDoor}
+          openImportRequest={countsImportRequest}
           bidFlowDoorAllowed={bidFlowDoorAllowed}
           bids={bids}
           selectedBidForCounts={selectedBidForCounts}

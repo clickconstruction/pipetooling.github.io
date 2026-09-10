@@ -30,7 +30,7 @@ Under the five jump icons on each row sits a thin bar of ten equal ticks, one pe
 
 - **Plans in Drive** opens Edit Bid on the **Job Plans** link. **Plans in Tooling** opens it on the **CountTooling Plans** link.
 - **Send RFQ** opens Pricing on the price-request chip, or the bid's title and tools row before any request exists. **Price** opens Pricing on that same row.
-- **Count & import** opens Counts on {{button:gray|Import from /Tooling}}. **Takeoffs** opens Takeoffs on the part-lines table.
+- **Count & import** opens Counts with the **Import Counts** box already open and the cursor in it, ready to paste; Cancel closes it if you only wanted to look. **Takeoffs** opens Takeoffs on the part-lines table.
 - **Cover letter** opens Cover Letter on {{button:blue|Copy & open in Google Docs}}. **PDF filed** lands on the submission link box beside it. **Sent** lands on {{button:blue|Mark sent today}}.
 - **Review** opens the Mark reviewed prompt right there; nothing to scroll to.
 

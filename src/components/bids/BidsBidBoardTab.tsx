@@ -73,6 +73,8 @@ type BidsBidBoardTabProps = {
   onOpenGcBuilderOrCustomer: (bid: BidWithBuilder) => void
   onLastContactClick: (bid: BidWithBuilder) => void
   onOpenBidTab: (bid: BidWithBuilder, tab: BidBoardJumpTabKey) => void
+  /** v2.3227: the page's door handler (lands, and opens the import dialog for Count & import). Preferred when present. */
+  onOpenBidFlowDoor?: (bid: BidWithBuilder, door: BidFlowDoor, step: BidFlowStep) => void
   /** Superintendents have no Pricing / Cover Letter tabs — hide those jumps too. */
   canSeePricingTabs: boolean
   onError: (msg: string | null) => void
@@ -192,6 +194,7 @@ export function BidsBidBoardTab({
   onOpenGcBuilderOrCustomer,
   onLastContactClick,
   onOpenBidTab,
+  onOpenBidFlowDoor,
   canSeePricingTabs,
   onError,
   onReloadBids,
@@ -352,11 +355,19 @@ export function BidsBidBoardTab({
   const bidFlowDoorAllowed = (door: BidFlowDoor) =>
     door != null && (canSeePricingTabs || (door !== 'pricing' && door !== 'cover-letter'))
   const openBidFlowDoor = (bid: BidWithBuilder, door: BidFlowDoor, step?: BidFlowStep) => {
+    if (door === 'review') {
+      void bidFlowReview.markReviewed(bid)
+      return
+    }
+    // v2.3227: the page owns the door when it can — one handler lands and opens dialogs.
+    if (onOpenBidFlowDoor && step) {
+      onOpenBidFlowDoor(bid, door, step)
+      return
+    }
     if (door === 'edit') onEditBid(bid)
-    else if (door === 'review') void bidFlowReview.markReviewed(bid)
     else if (door) onOpenBidTab(bid, door)
     // v2.3216: land on the field the step is about once the destination renders.
-    if (step && door !== 'review') landOnBidFlowTarget(step.target)
+    if (step) landOnBidFlowTarget(step.target)
   }
   const pillCounts: Record<SubmissionSectionKey, number> = {
     unsent: boardCounts.unsent,

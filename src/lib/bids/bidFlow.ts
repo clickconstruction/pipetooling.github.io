@@ -110,7 +110,7 @@ export const BID_FLOW_STEP_DEFS: ReadonlyArray<StepDef> = [
   { key: 'drive', n: 1, label: 'Plans in Drive', poster: 'Load in Drive', phase: 'Intake', proxy: 'a project folder or plans link on the bid', door: 'edit', target: ['bid-form-plans-link'] },
   { key: 'rfq', n: 2, label: 'Send RFQ', poster: 'Send RFQ', phase: 'Ask', proxy: 'a price request on the bid, app-sent or logged by hand', door: 'pricing', target: ['pricing-price-requests', 'pricing-header'] },
   { key: 'tooling', n: 3, label: 'Plans in Tooling', poster: 'Load in clicktooling', phase: 'Intake', proxy: 'a CountTooling link on the bid', door: 'edit', target: ['bid-form-count-tooling-link'] },
-  { key: 'count', n: 4, label: 'Count & import', poster: 'Count, then import', phase: 'Count', proxy: 'count rows on the bid; the app cannot see CountTooling itself', door: 'counts', target: ['counts-import-tooling'] },
+  { key: 'count', n: 4, label: 'Count & import', poster: 'Count, then import', phase: 'Count', proxy: 'count rows on the bid; the app cannot see CountTooling itself', door: 'counts', target: ['counts-import-text', 'counts-import-tooling'] },
   { key: 'takeoffs', n: 5, label: 'Takeoffs', poster: 'Takeoffs from RFQ and loaded data', phase: 'Build', proxy: 'takeoff part lines on the bid', door: 'takeoffs', target: ['takeoff-lines', 'takeoff-header'] },
   { key: 'price', n: 6, label: 'Price', poster: 'Price', phase: 'Build', proxy: 'a bid value, or price-book assignments on the rows', door: 'pricing', target: ['pricing-header'] },
   { key: 'review', n: 7, label: 'Review', poster: 'Review', phase: 'Review', proxy: 'the Mark reviewed stamp: who, when, and their notes', door: 'review', target: [] },
