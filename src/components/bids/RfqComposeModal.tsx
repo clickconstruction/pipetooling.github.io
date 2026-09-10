@@ -14,6 +14,7 @@ import { withSupabaseRetry } from '../../utils/errorHandling'
 import { fetchSupplyHousePickerRows } from '../../lib/supplyHousePickerRows'
 import { housesForBidTrade, tradesByHouse, type HouseTradeLink } from '../../lib/materials/supplyHouseTrades'
 import { useToastContext } from '../../contexts/ToastContext'
+import { useAuth } from '../../hooks/useAuth'
 
 const MODAL_Z = 10060
 
@@ -67,6 +68,7 @@ export function RfqComposeModal({
   plansLink?: string | null
 }) {
   const { showToast } = useToastContext()
+  const { user: authUser } = useAuth()
   const [houses, setHouses] = useState<Array<{ id: string; name: string }>>([])
   const [picked, setPicked] = useState<Set<string>>(new Set())
   // Rung D (v2.2648): per-house contacts. sel[houseId] = who's To (contact id
@@ -273,6 +275,8 @@ export function RfqComposeModal({
           email: s3.custom.trim(),
           label: 'from a request',
           is_default: (contacts[id] ?? []).length === 0,
+          // v2.3243: stamp who remembered the rep so the Directory can say "added by".
+          created_by: authUser?.id ?? null,
         }))
       if (toRemember.length > 0) {
         const { error: cErr } = await supabase.from('supply_house_contacts').insert(toRemember)
