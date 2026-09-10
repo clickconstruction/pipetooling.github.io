@@ -2131,15 +2131,28 @@ export default function DetailJobModal({
                       </span>
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <span>
-                          {f.name || '—'} × {f.count}
-                          {f.line_unit_price != null &&
-                          Number.isFinite(Number(f.line_unit_price)) &&
-                          Number(f.line_unit_price) > 0 ? (
-                            <span style={{ color: 'var(--text-muted)' }}>
-                              {' '}
-                              @ {formatCurrency(Number(f.line_unit_price))} ea.
-                            </span>
-                          ) : null}
+                          {f.line_unit_price != null && Number.isFinite(Number(f.line_unit_price)) && Number(f.line_unit_price) < 0 ? (
+                            /* A discount row (v2.3252+): its signed amount, never "× count @". */
+                            <>
+                              {f.name || 'Discount'}
+                              <span style={{ color: 'var(--text-green-800)', fontWeight: 600 }}>
+                                {' '}
+                                −{formatCurrency(-Number(f.line_unit_price))}
+                              </span>
+                            </>
+                          ) : (
+                            <>
+                              {f.name || '—'} × {f.count}
+                              {f.line_unit_price != null &&
+                              Number.isFinite(Number(f.line_unit_price)) &&
+                              Number(f.line_unit_price) > 0 ? (
+                                <span style={{ color: 'var(--text-muted)' }}>
+                                  {' '}
+                                  @ {formatCurrency(Number(f.line_unit_price))} ea.
+                                </span>
+                              ) : null}
+                            </>
+                          )}
                         </span>
                         {(f.line_description ?? '').trim() ? (
                           <div style={{ color: 'var(--text-muted)', fontSize: '0.8125rem', marginTop: 2, whiteSpace: 'pre-wrap' }}>

@@ -535,6 +535,9 @@ The app has exactly two week families, each with one anchor helper (v2.2858 / v2
 
 A Quickfill **daily mark** ("Marked 8:41 AM") is neither: it is an org-wide "checked today" stamp. The money stations carry a **"Close week: $N open"** chip (`closeWeekChip.ts`) that reads Moneyfill's counts for the close week, so a green mark is never mistaken for a closed week.
 
+### Discount Line Item
+A typed row in a job's **① Line Items** (Bill tab, v2.3252+) that reduces the work rows it applies to: `jobs_ledger_fixtures.line_kind = 'discount'`, a live `discount_pct` or a fixed dollar amount, a basis (`discount_basis_positions`; NULL = every work row), and a reason preset. The signed amount is stored negative in `line_unit_price` (count 1) so every `count × price` reader stays right. **A discount follows the work**: its dollars split across the basis rows by largest remainder (`discountSharesByWorkRow`), so each draw that bills a basis row prints that row's share as a negative line ("Negotiated discount (10%) −$1,509.80"). Never a stage, never on riders, capped at its basis, locked once any basis row is on a bill. Post-send reductions stay with the **Agreed write-down** on the invoice. Kernel: [`discountLine.ts`](../src/lib/jobs/discountLine.ts); row: [`JobFormDiscountRow.tsx`](../src/components/jobs/JobFormDiscountRow.tsx). Help: *give a customer a discount*.
+
 ### Line Item
 Financial entry on a workflow stage representing materials, labor, or expenses. Has memo, amount, and optional link to external resources. Also called **Line Items For Office** in the UI.
 

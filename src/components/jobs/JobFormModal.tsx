@@ -6,6 +6,8 @@ import {
   useMemo,
   useRef,
   useState,
+  type Dispatch,
+  type SetStateAction,
 } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useNarrowViewport640 } from '../../hooks/useNarrowViewport640'
@@ -99,7 +101,9 @@ import { useJobMigrate } from './useJobMigrate'
 import { JobFormInvoiceList } from './JobFormInvoiceList'
 import { JobFormUpcomingDraws } from './JobFormUpcomingDraws'
 import { useJobStagePlanInputs } from '../../hooks/useJobStagePlanInputs'
-import { drawLabelsByInvoiceId, fixtureStageFields, stagePlanFromForm } from '../../lib/jobs/stagePlanForm'
+import { drawLabelsByInvoiceId, stagePlanFromForm } from '../../lib/jobs/stagePlanForm'
+import { fixtureRowsFromDb, normalizeFormFixtureRows } from '../../lib/jobs/jobFormFixtureHydrate'
+import { derivedDiscountDollars, discountBillDescription, isDiscountRow, newDiscountFixtureRow, syncDiscountRows } from '../../lib/jobs/discountLine'
 import { todayYmdInAppTz } from '../../utils/dateUtils'
 import { JobFormStagesGroup } from './JobFormStagesGroup'
 import { JobFormStagesDrawer } from './JobFormStagesDrawer'
@@ -510,9 +514,19 @@ export default function JobFormModal({
       .reduce((s, p) => s + (Number(p.amount) || 0), 0)
   }, [agreedWriteDownInvoice, payments])
   const [materials, setMaterials] = useState<MaterialRow[]>([{ id: crypto.randomUUID(), description: '', amount: 0 }])
-  const [fixtures, setFixtures] = useState<FixtureRow[]>([
+  const [fixturesRaw, setFixturesRaw] = useState<FixtureRow[]>([
     { id: crypto.randomUUID(), name: '', count: 1, line_unit_price: null, line_description: '', invoice_id: null },
   ])
+  // Discount rows (v2.3252+): every write to the line items runs the
+  // invariant keeper — a percent's dollars re-derive from its basis, a dollar
+  // amount caps at the basis, count 1, never a stage — so every reader below
+  // (Job Total, segments, the plan, the save engine) sees rows that are
+  // already true. `syncDiscountRows` returns the same array when nothing
+  // moved, so this adds no renders.
+  const fixtures = fixturesRaw
+  const setFixtures = useCallback<Dispatch<SetStateAction<FixtureRow[]>>>((action) => {
+    setFixturesRaw((prev) => syncDiscountRows(typeof action === 'function' ? action(prev) : action))
+  }, [])
   /** User opened "Add scope or notes" for this fixture row id (persists while row exists). */
   const [fixtureScopeExpandedById, setFixtureScopeExpandedById] = useState<Record<string, boolean>>({})
   // v2.1223: one preview for the whole job — the dialog lists every line item's
@@ -1688,15 +1702,7 @@ export default function JobFormModal({
     )
     setFixtures(
       job.fixtures.length > 0
-        ? job.fixtures.map((f) => ({
-            id: f.id,
-            name: f.name,
-            count: Number(f.count) || 1,
-            line_unit_price: f.line_unit_price != null && Number.isFinite(Number(f.line_unit_price)) ? Number(f.line_unit_price) : null,
-            line_description: f.line_description ?? '',
-            invoice_id: f.invoice_id ?? null,
-            ...fixtureStageFields(f),
-          }))
+        ? fixtureRowsFromDb(job.fixtures)
         : [{ id: crypto.randomUUID(), name: '', count: 1, line_unit_price: null, line_description: '', invoice_id: null }],
     )
     setFixtureScopeExpandedById({})
@@ -2077,7 +2083,9 @@ export default function JobFormModal({
                 invoice_id: null,
               }))
             : [{ id: crypto.randomUUID(), name: '', count: 1, line_unit_price: null, line_description: '', invoice_id: null }]
-        setFixtures(nextFixtures)
+        // A change order's credit lines arrive negative (v2.1829) — they are
+        // discount rows here, not work rows the autosave would null.
+        setFixtures(normalizeFormFixtureRows(nextFixtures))
         setFixtureScopeExpandedById({})
         setSelectedSegmentIds(new Set())
         const estimateCustomerId = e.customer_id
@@ -3139,6 +3147,16 @@ export default function JobFormModal({
     setFixtures((prev) => prev.map((r) => (r.id === id ? { ...r, ...updates } : r)))
   }
 
+  /** Discount rows (v2.3252+): a typed row that reduces the work above it; the placeholder row is reused when it is the only, empty one. */
+  function addDiscountRow() {
+    setFixtures((prev) => {
+      const row = newDiscountFixtureRow(crypto.randomUUID())
+      const only = prev.length === 1 ? prev[0] : undefined
+      if (only && !(only.name ?? '').trim() && only.line_unit_price == null && !isDiscountRow(only)) return [row]
+      return [...prev, row]
+    })
+  }
+
   function moveFixtureRowInList(id: string, direction: 'up' | 'down') {
     setFixtures((prev) => moveRowById(prev, id, direction))
   }
@@ -3871,6 +3889,7 @@ export default function JobFormModal({
             fixturesSectionHighlightRef={fixturesSectionHighlightRef}
             updateFixtureRow={updateFixtureRow}
             addFixtureRow={addFixtureRow}
+            addDiscountRow={addDiscountRow}
             removeFixtureRow={removeFixtureRow}
             moveFixtureRow={moveFixtureRowInList}
             invoiceStatusById={fixtureInvoiceStatusById}
@@ -4566,7 +4585,9 @@ export default function JobFormModal({
                     marginBottom: '0.5rem',
                   }}
                 >
-                  {buildFixtureStripeLineDescriptionForStripe(f.name, f.line_description)}
+                  {isDiscountRow(f)
+                    ? `${discountBillDescription(f.name, f.discount_pct)}    −$${formatCurrency(derivedDiscountDollars(stripeFixturePreviewRows, f))}`
+                    : buildFixtureStripeLineDescriptionForStripe(f.name, f.line_description)}
                 </div>
               ))
             )}
@@ -4579,7 +4600,7 @@ export default function JobFormModal({
                 textAlign: 'center',
               }}
             >
-              One Stripe invoice line per line item: &quot;line item&quot; - &quot;scope notes&quot;
+              One Stripe invoice line per line item: &quot;line item&quot; - &quot;scope notes&quot;. A discount prints as a negative line on every bill that carries the work it applies to.
             </p>
             <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
               <button

@@ -23,6 +23,7 @@ import { resolveDevelopmentIdForJobPayload, type JobFormDevelopmentRow } from '.
 import { titleCaseAddress } from '../addressTitleCase'
 import { resolveEditJobMasterUserId } from '../resolveEditJobMasterUserId'
 import { normalizeFixtureDisplayName } from './jobFormRows'
+import { derivedDiscountDollars, discountBasisPositions, isDiscountRow } from './discountLine'
 import type { FixtureRow, MaterialRow, PaymentRow } from './jobFormTypes'
 
 // ---------------------------------------------------------------------------
@@ -32,7 +33,20 @@ import type { FixtureRow, MaterialRow, PaymentRow } from './jobFormTypes'
 /** Money slice snapshot — byte-identical to the pre-extraction inline memo. */
 export function buildBillingSliceJson(fixtures: FixtureRow[], payments: PaymentRow[]): string {
   return JSON.stringify({
-    f: fixtures.map((f) => ({ n: f.name, c: f.count, p: f.line_unit_price, d: f.line_description, i: f.invoice_id, k: f.stage_kind === undefined ? 'any' : f.stage_kind, g: f.shared_with_gc ?? false })),
+    f: fixtures.map((f) => ({
+      n: f.name,
+      c: f.count,
+      p: f.line_unit_price,
+      d: f.line_description,
+      i: f.invoice_id,
+      k: f.stage_kind === undefined ? 'any' : f.stage_kind,
+      g: f.shared_with_gc ?? false,
+      // Discount rows (v2.3252+): kind, live percent, basis, reason.
+      lk: f.line_kind === 'discount' ? 'discount' : 'work',
+      dp: f.line_kind === 'discount' ? (f.discount_pct ?? null) : null,
+      db: f.line_kind === 'discount' ? (f.discount_basis_ids ? [...f.discount_basis_ids].sort() : null) : null,
+      dr: f.line_kind === 'discount' ? (f.discount_reason ?? null) : null,
+    })),
     p: payments.map((p) => ({
       a: p.amount,
       o: p.paid_on,
@@ -133,23 +147,52 @@ export function paymentInsertRows(jobId: string, payments: PaymentRow[]) {
     }))
 }
 
-/** Fixture rows worth persisting (named), with their insert payloads, in form order. */
+/**
+ * Fixture rows worth persisting (named), with their insert payloads, in form
+ * order. A discount row (v2.3252+) writes its SIGNED amount — the derived,
+ * capped dollars as a negative price with count 1 — plus its kind, live
+ * percent, basis positions and reason; it is never a stage and never shared.
+ * Work rows keep the positive-only price (a typed 0 is "unpriced").
+ */
 export function fixtureInsertRows(jobId: string, fixtures: FixtureRow[]) {
   return fixtures
     .filter((f) => normalizeFixtureDisplayName(f.name ?? '').length > 0)
-    .map((f, i) => ({
-      job_id: jobId,
-      name: normalizeFixtureDisplayName(f.name ?? ''),
-      count: f.count,
-      sequence_order: i,
-      line_unit_price: f.line_unit_price != null && f.line_unit_price > 0 ? f.line_unit_price : null,
-      line_description: (f.line_description ?? '').trim() ? (f.line_description ?? '').trim() : null,
-      invoice_id: f.invoice_id,
-      // Stage Plan (v2.3083+): undefined = never loaded / newly added → the
-      // column default (any time); null is a deliberate plain line item.
-      stage_kind: f.stage_kind === undefined ? 'any' : f.stage_kind,
-      shared_with_gc: f.shared_with_gc ?? false,
-    }))
+    .map((f, i) => {
+      const base = {
+        job_id: jobId,
+        name: normalizeFixtureDisplayName(f.name ?? ''),
+        sequence_order: i,
+        line_description: (f.line_description ?? '').trim() ? (f.line_description ?? '').trim() : null,
+        invoice_id: f.invoice_id,
+      }
+      if (isDiscountRow(f)) {
+        const dollars = derivedDiscountDollars(fixtures, f)
+        return {
+          ...base,
+          count: 1,
+          line_unit_price: dollars > 0 ? -dollars : null,
+          line_kind: 'discount' as const,
+          discount_pct: f.discount_pct ?? null,
+          discount_basis_positions: discountBasisPositions(fixtures, f),
+          discount_reason: (f.discount_reason ?? '').trim() ? (f.discount_reason ?? '').trim() : null,
+          stage_kind: null,
+          shared_with_gc: false,
+        }
+      }
+      return {
+        ...base,
+        count: f.count,
+        line_unit_price: f.line_unit_price != null && f.line_unit_price > 0 ? f.line_unit_price : null,
+        line_kind: 'work' as const,
+        discount_pct: null,
+        discount_basis_positions: null,
+        discount_reason: null,
+        // Stage Plan (v2.3083+): undefined = never loaded / newly added → the
+        // column default (any time); null is a deliberate plain line item.
+        stage_kind: f.stage_kind === undefined ? 'any' : f.stage_kind,
+        shared_with_gc: f.shared_with_gc ?? false,
+      }
+    })
 }
 
 /** Material rows worth persisting, with their insert payloads, in form order. */

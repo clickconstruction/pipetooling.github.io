@@ -77,6 +77,9 @@ export function billingFixturesCellText(fixtures: BillingFixtureLine[]): string 
         Number(f.line_unit_price) > 0
       ) {
         line += ` @ $${formatCurrency(Number(f.line_unit_price))}`
+      } else if (f.line_unit_price != null && Number.isFinite(Number(f.line_unit_price)) && Number(f.line_unit_price) < 0) {
+        // A discount row (v2.3252+): its signed amount, never a "× count @".
+        line = `${f.name} − $${formatCurrency(-Number(f.line_unit_price))}`
       }
       const desc = (f.line_description ?? '').trim()
       if (desc) line += `\n${desc}`
