@@ -1,5 +1,8 @@
 import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { supabase } from '../../lib/supabase'
+import { useAuth } from '../../hooks/useAuth'
+import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
+import { useToastContext } from '../../contexts/ToastContext'
 import { withSupabaseRetry, formatErrorMessage } from '../../utils/errorHandling'
 import { fetchDispatchScheduledJobsForAssigneeDay, type DispatchScheduledJobForAssign } from '../../lib/jobScheduleBlocks'
 import {
@@ -21,8 +24,12 @@ import { APP_CALENDAR_TZ, denverCalendarDayKey, ymdAddDays } from '../../utils/d
  * job or bid, grouped by person, each led by one-tap suggestions from the
  * matchClockSessions kernel (dispatch / crew / note). Assign writes the same
  * `clock_sessions.job_ledger_id` / `bid_id` update the assign popover does;
- * the popover itself is the search fallback. Salary-materialized segments are
- * excluded (they legitimately carry no job).
+ * the popover itself is the search fallback. Reject (v2.3242) stamps
+ * `rejected_at` / `rejected_by` exactly as People → Hours approvals do — for
+ * the test punches and personal errands that were never a job — after the
+ * same confirm; the card drops out because rejected sessions are never loaded
+ * here. Salary-materialized segments are excluded (they legitimately carry no
+ * job).
  *
  * Two hosts share the state hook + card list below:
  * - `MatchClockSessionsModal` — People → Hours (opened from the Currently
@@ -141,8 +148,11 @@ function useMatchClockSessions(active: boolean, onSessionsChanged?: () => void) 
   const [bidsById, setBidsById] = useState<Map<string, MatchBidIdentity>>(new Map())
   const [jobsByNumber, setJobsByNumber] = useState<Map<string, MatchJobIdentity>>(new Map())
   const [matched, setMatched] = useState<Map<string, MatchedInfo>>(new Map())
-  const [skipped, setSkipped] = useState<Set<string>>(new Set())
+  const [rejected, setRejected] = useState<Set<string>>(new Set())
   const [savingId, setSavingId] = useState<string | null>(null)
+  const { user: authUser } = useAuth()
+  const confirmDialog = useConfirmDialog()
+  const { showToast } = useToastContext()
 
   const nowMs = Date.now()
   const todayYmd = denverCalendarDayKey(nowMs)
@@ -265,7 +275,7 @@ function useMatchClockSessions(active: boolean, onSessionsChanged?: () => void) 
   useEffect(() => {
     if (!active) return
     setMatched(new Map())
-    setSkipped(new Set())
+    setRejected(new Set())
     void load()
   }, [active, load])
 
@@ -290,7 +300,7 @@ function useMatchClockSessions(active: boolean, onSessionsChanged?: () => void) 
     return out
   }, [unassigned, sessions, dispatchBySessionId, jobsById, bidsById, jobsByNumber])
 
-  const visible = useMemo(() => unassigned.filter((s) => !skipped.has(s.id)), [unassigned, skipped])
+  const visible = useMemo(() => unassigned.filter((s) => !rejected.has(s.id)), [unassigned, rejected])
 
   const groups = useMemo(() => {
     const byPerson = new Map<string, SessionWithName[]>()
@@ -363,9 +373,43 @@ function useMatchClockSessions(active: boolean, onSessionsChanged?: () => void) 
     [onSessionsChanged],
   )
 
-  const skip = useCallback((sessionId: string) => {
-    setSkipped((prev) => new Set(prev).add(sessionId))
-  }, [])
+  /**
+   * Reject a session that was never a job (a test punch, a personal errand):
+   * the same `rejected_at` / `rejected_by` stamp the approvals queue writes,
+   * behind the same confirm. Rejected time never reaches payroll; it can be
+   * restored from People → Hours → Rejected sessions.
+   */
+  const reject = useCallback(
+    async (s: SessionWithName) => {
+      const who = s.users?.name?.trim() || 'this session'
+      const ok = await confirmDialog({
+        message: `Reject ${who} · ${formatDayLabel(s.work_date, todayYmd)} · ${durationLabel(s, nowMs)}? Rejected time never reaches payroll.`,
+        confirmLabel: 'Reject',
+        danger: true,
+      })
+      if (!ok) return
+      setSavingId(s.id)
+      setError(null)
+      try {
+        await withSupabaseRetry(
+          async () =>
+            supabase
+              .from('clock_sessions')
+              .update({ rejected_at: new Date().toISOString(), rejected_by: authUser?.id ?? null })
+              .eq('id', s.id),
+          'match sessions: reject',
+        )
+        setRejected((prev) => new Set(prev).add(s.id))
+        showToast('Session rejected', 'success')
+        onSessionsChanged?.()
+      } catch (e) {
+        setError(formatErrorMessage(e))
+      } finally {
+        setSavingId(null)
+      }
+    },
+    [authUser?.id, confirmDialog, showToast, onSessionsChanged, todayYmd, nowMs],
+  )
 
   const bulkTargets = useMemo(
     () =>
@@ -398,7 +442,7 @@ function useMatchClockSessions(active: boolean, onSessionsChanged?: () => void) 
     applySuggestion,
     undoMatch,
     markMatchedViaSearch,
-    skip,
+    reject,
     bulkTargets,
     applyBulk,
   }
@@ -504,13 +548,16 @@ function MatchSessionGroups({ st, layout, popoverZIndex }: { st: MatchState; lay
                           dispatchScheduleAssigneeUserId={s.user_id}
                           dispatchScheduleWorkDateYmd={s.work_date}
                         />
-                        <button
-                          type="button"
-                          onClick={() => st.skip(s.id)}
-                          style={{ fontSize: '0.75rem', color: 'var(--text-faint)', background: 'none', border: 'none', cursor: 'pointer' }}
-                        >
-                          Skip
-                        </button>
+                        {!isOpenSession ? (
+                          <button
+                            type="button"
+                            onClick={() => void st.reject(s)}
+                            disabled={st.savingId != null}
+                            style={{ fontSize: '0.75rem', fontWeight: 650, color: 'var(--text-red-600)', background: 'var(--bg-red-tint)', border: '1px solid #dc2626', borderRadius: 6, padding: '0.2rem 0.6rem', cursor: st.savingId != null ? 'not-allowed' : 'pointer' }}
+                          >
+                            Reject
+                          </button>
+                        ) : null}
                       </div>
                     </>
                   )}
@@ -610,7 +657,7 @@ export function MatchClockSessionsModal({ open, onClose, onSessionsChanged }: Pr
 /**
  * Inline host (Quickfill → Unassigned field time): the modal's contents spread
  * out on the page. Renders nothing when the window has no sessions to match;
- * matched/skipped cards behave exactly as in the modal.
+ * matched/rejected cards behave exactly as in the modal.
  */
 export function MatchClockSessionsInline({ onSessionsChanged }: { onSessionsChanged?: () => void }) {
   const st = useMatchClockSessions(true, onSessionsChanged)
@@ -627,7 +674,7 @@ export function MatchClockSessionsInline({ onSessionsChanged }: { onSessionsChan
       </div>
       {!st.loading && st.visible.length === 0 && st.unassignedCount > 0 ? (
         <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: '0.5rem 0 0' }}>
-          Every session here is matched or skipped.
+          Every session here is matched or rejected.
         </p>
       ) : null}
       <MatchSessionGroups st={st} layout="grid" />
