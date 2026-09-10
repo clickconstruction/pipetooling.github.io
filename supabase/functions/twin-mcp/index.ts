@@ -1,5 +1,6 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { PDFDocument } from 'https://esm.sh/pdf-lib@1.17.1'
 import { BRIEF, DIRECTORY, HARNESS, CT_GUIDE, TT_GUIDE, PLACEMENT_GUIDE, MISSIONS } from './briefs.ts'
 import { callTtManageUser, ttBridgeConfigured, ttTwinEmail } from '../_shared/ttBridge.ts'
 import { todayYmdInAppTz, ymdAddDays } from '../_shared/appTimeZone.ts'
@@ -211,6 +212,20 @@ const TOOLS = [
         note: { type: 'string', description: 'Optional one-line lesson for the axis card' },
       },
       required: ['bid', 'run_label', 'axis', 'locked_total'],
+    },
+  },
+  {
+    name: 'get_plan_pages',
+    description:
+      "Hand yourself the plan set, page by page (v1.3.18) — for a harness with no shell (Claude Desktop) that cannot call plan-fetch itself. Pulls the bid's own set through plan-fetch (folders merged, parts joined), splits the pages you name into single-page PDFs in the twin-plans-tmp bucket, and returns their URLs with the page count; `embed: true` also attaches up to 3 of them as PDF resources in this reply. Start with no `pages` to get the count and the first pages, then ask for the sheets you need by number (P-series, schedules, risers). Sheets are drawings: read them as images. Own/assigned bids only; sets over 60 MB are refused (trim and stage_plan_pdf instead).",
+    inputSchema: {
+      type: 'object',
+      properties: {
+        bid: { type: 'string', description: "Your bid (e.g. 'b482' or uuid) — own or assigned" },
+        pages: { type: 'string', description: "Page list, 1-based, e.g. '1-4,9' (default '1-6'; at most 8 per call)" },
+        embed: { type: 'boolean', description: 'Also return up to 3 of the pages as application/pdf resources in this reply (≤ 3 MB total)' },
+      },
+      required: ['bid'],
     },
   },
   {
@@ -1259,6 +1274,116 @@ async function callTool(req: Request, name: string, args: Record<string, unknown
         ...r,
         next: r.reused ? undefined : 'STG-2 substrate is yours (get_plan_brief tells you when it is missing); then takeoff (STG-3), counts+books (STG-5) BEFORE the lock, then score_backtest (STG-6) and the audit questions.',
       }, null, 2))
+    }
+    case 'get_plan_pages': {
+      // v2.3230 / v1.3.18: the plan set for a shell-less harness. plan-fetch already
+      // merges folders and streams parts for a caller with the twin token; this verb
+      // does that fetch server-side, splits pages with pdf-lib, and parks single-page
+      // PDFs in the staging bucket so a Claude Desktop chat can open them by URL (or
+      // receive them inline as resources). Own/assigned bids only, same fence as
+      // stage_plan_pdf.
+      const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, {
+        auth: { autoRefreshToken: false, persistSession: false },
+      })
+      const ref = String(args.bid ?? '').trim()
+      if (!ref) return textContent('get_plan_pages needs bid', true)
+      const uuidRe = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+      let bq = admin.from('bids').select('id, bid_number, project_name, plans_link, created_by, estimator_id')
+      bq = uuidRe.test(ref) ? bq.eq('id', ref) : bq.eq('bid_number', ref.replace(/^(bp|b)/i, ''))
+      const { data: bid } = await bq.maybeSingle()
+      if (!bid) return textContent(`No bid found for "${ref}"`, true)
+      if (bid.created_by !== twin.twinUserId && bid.estimator_id !== twin.twinUserId) return textContent('Not your bid (created_by / estimator fence)', true)
+      if (!String(bid.plans_link ?? '').trim()) return textContent(`b${bid.bid_number} has no plans link — file_plans first, or ask a person to paste the set on the bid.`, true)
+      const token = presentedToken(req)
+      if (!token) return textContent('No twin token on this call', true)
+      const supabaseUrl = Deno.env.get('SUPABASE_URL')!
+      const bidTag = `b${bid.bid_number}`
+      const CAP_BYTES = 60 * 1024 * 1024
+      const fetchPart = async (part: number | null): Promise<{ bytes: Uint8Array; parts: number } | { error: string; status: number }> => {
+        const u = `${supabaseUrl}/functions/v1/plan-fetch?bid=${encodeURIComponent(bidTag)}${part ? `&part=${part}` : ''}`
+        const res = await fetch(u, { headers: { 'X-Twin-Token': token } })
+        if (!res.ok) {
+          const body = await res.text().catch(() => '')
+          return { error: body.slice(0, 300) || res.statusText, status: res.status }
+        }
+        const buf = new Uint8Array(await res.arrayBuffer())
+        return { bytes: buf, parts: Math.max(1, Number(res.headers.get('X-Plan-Parts') ?? '1') || 1) }
+      }
+      const first = await fetchPart(null)
+      if ('error' in first) {
+        const hint = first.status === 404 || first.status === 403
+          ? ' The intake account cannot read this file — a person must share it with drive-intake@pipetooling-drive.iam.gserviceaccount.com as Viewer (the bid form has Copy intake address), or paste the PDF itself.'
+          : ''
+        return textContent(`plan-fetch refused (${first.status}): ${first.error}.${hint}`, true)
+      }
+      let doc: PDFDocument
+      let totalBytes = first.bytes.byteLength
+      try {
+        doc = await PDFDocument.load(first.bytes, { ignoreEncryption: true, updateMetadata: false })
+        // A folder that exceeded plan-fetch's merge cap streams its largest file with
+        // X-Plan-Parts; join the rest (in name order) so page numbers cover the set.
+        for (let part = 2; part <= Math.min(first.parts, 8); part++) {
+          const more = await fetchPart(part)
+          if ('error' in more) break
+          totalBytes += more.bytes.byteLength
+          if (totalBytes > CAP_BYTES) return textContent(`The set is over ${Math.round(CAP_BYTES / 1048576)} MB across ${first.parts} files — trim to the plumbing sheets and stage it with stage_plan_pdf, or ask a person for the plumbing set alone.`, true)
+          const extra = await PDFDocument.load(more.bytes, { ignoreEncryption: true, updateMetadata: false })
+          const copied = await doc.copyPages(extra, extra.getPageIndices())
+          for (const pg of copied) doc.addPage(pg)
+        }
+      } catch (e) {
+        return textContent(`Could not open the plan set as a PDF: ${e instanceof Error ? e.message : String(e)}`, true)
+      }
+      const pageCount = doc.getPageCount()
+      // Parse the page list: "1-4,9" → [1,2,3,4,9], 1-based, clipped, at most 8.
+      const MAX_PAGES = 8
+      const spec = String(args.pages ?? '').trim() || '1-6'
+      const wanted: number[] = []
+      for (const tok of spec.split(',')) {
+        const t = tok.trim()
+        if (!t) continue
+        const mm = /^(\d+)\s*-\s*(\d+)$/.exec(t)
+        if (mm) {
+          const a = Number(mm[1]); const b = Number(mm[2])
+          for (let n = Math.min(a, b); n <= Math.max(a, b); n++) wanted.push(n)
+        } else if (/^\d+$/.test(t)) wanted.push(Number(t))
+      }
+      const pages = [...new Set(wanted)].filter((n) => n >= 1 && n <= pageCount).slice(0, MAX_PAGES)
+      if (pages.length === 0) return textContent(JSON.stringify({ ok: true, bid: bidTag, page_count: pageCount, pages: [], note: `No pages matched "${spec}" — the set has ${pageCount} page${pageCount === 1 ? '' : 's'}.` }, null, 2))
+      const setKey = (await sha256Hex(`${bid.id}:${bid.plans_link}:${pageCount}:${totalBytes}`)).slice(0, 10)
+      const embed = args.embed === true
+      const EMBED_MAX = 3
+      const EMBED_BYTES = 3 * 1024 * 1024
+      const out: Array<{ page: number; url: string; bytes: number }> = []
+      const resources: Array<{ type: 'resource'; resource: { uri: string; mimeType: string; blob: string } }> = []
+      let embedded = 0
+      for (const n of pages) {
+        const one = await PDFDocument.create()
+        const [pg] = await one.copyPages(doc, [n - 1])
+        one.addPage(pg)
+        const bytes = await one.save({ useObjectStreams: true })
+        const objectPath = `plan-pages/${bidTag}/${setKey}/p${String(n).padStart(3, '0')}.pdf`
+        const { error: upErr } = await admin.storage.from('twin-plans-tmp').upload(objectPath, bytes, { contentType: 'application/pdf', upsert: true })
+        if (upErr) return textContent(`Could not stage page ${n}: ${upErr.message}`, true)
+        const url = admin.storage.from('twin-plans-tmp').getPublicUrl(objectPath).data.publicUrl
+        out.push({ page: n, url, bytes: bytes.byteLength })
+        if (embed && resources.length < EMBED_MAX && embedded + bytes.byteLength <= EMBED_BYTES) {
+          let bin = ''
+          for (let i = 0; i < bytes.byteLength; i += 0x8000) bin += String.fromCharCode(...bytes.subarray(i, i + 0x8000))
+          resources.push({ type: 'resource', resource: { uri: url, mimeType: 'application/pdf', blob: btoa(bin) } })
+          embedded += bytes.byteLength
+        }
+      }
+      await admin.from('bids_submission_entries').insert({
+        bid_id: bid.id,
+        notes: `[pipeline STG-2] get_plan_pages — ${pages.length} of ${pageCount} page${pageCount === 1 ? '' : 's'} staged (${pages.join(', ')})${embed ? `, ${resources.length} embedded` : ''}.`,
+      }).then(() => {}, () => {})
+      const text = JSON.stringify({
+        ok: true, bid: bidTag, project: bid.project_name, page_count: pageCount, staged: out.length, pages: out,
+        ...(embed ? { embedded: resources.length } : {}),
+        how: 'Each url is a single-page PDF (public, staged in twin-plans-tmp). Open or fetch it to read the sheet; sheets are drawings, so read them as images where you can. Ask for more pages by number — sheet index first, then the P-series, schedules and risers. Build the substrate per EXTRACTOR.md from what you read, then put_substrate.',
+      }, null, 2)
+      return { content: [{ type: 'text', text }, ...resources], isError: false }
     }
     case 'stage_plan_pdf': {
       const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, {
@@ -2363,7 +2488,7 @@ async function handleRpc(req: Request, msg: { jsonrpc?: string; id?: unknown; me
       return rpcResult(id, {
         protocolVersion: version,
         capabilities: { tools: {} },
-        serverInfo: { name: 'pipetooling-twin-mcp', version: '1.3.17' },
+        serverInfo: { name: 'pipetooling-twin-mcp', version: '1.3.18' },
         instructions:
           "PipeTooling digital-twin seat (estimator-only). Call get_brief first, then get_directory; mint_session gives you a signed-in browser link to the real apps — PipeTooling by default, CountTooling (the PDF-takeoff tool) with app: 'counttooling'. The work happens there. Every call needs your per-twin token (X-Twin-Token or Bearer).",
       })
