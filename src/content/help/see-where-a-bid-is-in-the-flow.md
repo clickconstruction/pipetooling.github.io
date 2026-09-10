@@ -2,7 +2,7 @@
 title: see where a bid is in the estimating flow
 category: Bids & Estimating
 roles: dev, master_technician, assistant, controller, estimator, primary, superintendent
-keywords: bid flow, poster, steps, progress, next step, hairline, bid board, counts, takeoffs, pricing, cover letter, RFQ, plans, drive, clicktooling, review, sent
+keywords: bid flow, fold, unfold, compact, poster, steps, progress, next step, hairline, bid board, counts, takeoffs, pricing, cover letter, RFQ, plans, drive, clicktooling, review, sent
 order: 69
 ---
 The one sentence: **every bid carries the office's estimating list — plans filed, RFQ sent, counted, taken off, priced, reviewed, letter, PDF filed, sent — and the app checks the steps off from what the bid already has.**
@@ -39,6 +39,9 @@ Its bar is one green tick and one blue. Hover: *1 of 10 done · next: Send RFQ*.
 :::
 
 ## On the workflow tabs
+
+Since v2.3241 the strip is folded by default: one line beside the bid's name — the ten ticks, *7 of 10 done · decided*, and the review stamp. Tap it to unfold the full strip with its phase labels and doors; tap again to fold. Your device remembers which you prefer. While a bid is unreviewed, {{button:blue|Mark reviewed}} sits right beside the line.
+
 
 Pick a bid on **Counts, Takeoffs, Labor, Pricing** or **Cover Letter** and the same strip sits above the bid's title, so you can see what's left without leaving the tab. Its steps are the same doors: click **Plans in Drive** from Counts and Edit Bid opens on the Job Plans link; click **Sent** from Takeoffs and Cover Letter opens on Mark sent today.
 

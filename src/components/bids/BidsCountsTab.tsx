@@ -23,6 +23,7 @@ import { BidFlowStrip } from './BidFlowStrip'
 import { deriveBidFlow, type BidFlowDoor, type BidFlowStep } from '../../lib/bids/bidFlow'
 import { useBidFlowFacts } from '../../hooks/useBidFlowFacts'
 import { useBidFlowReview } from '../../hooks/useBidFlowReview'
+import { useBidFlowFold } from '../../hooks/useBidFlowFold'
 import { ClearAllCountsModal } from './ClearAllCountsModal'
 import { ModalShell } from './ModalShell'
 import { BidPickerStandardList } from './BidPickerStandardList'
@@ -124,6 +125,8 @@ export function BidsCountsTab({
   // Bid flow facts for the selected bid (one chunked read per selection).
   const { factsByBid: bidFlowFactsByBid } = useBidFlowFacts(selectedBidForCounts ? [selectedBidForCounts.id] : [])
   const bidFlowReview = useBidFlowReview(selectedBidForCounts ? [selectedBidForCounts] : [])
+  // v2.3241: the strip folds to one line beside the title; per device.
+  const flowFold = useBidFlowFold()
   const confirmDialog = useConfirmDialog()
   const { user: authUser, role: authRole } = useAuth()
 
@@ -713,8 +716,10 @@ export function BidsCountsTab({
             </button>
           ) : null}
           {/* v2.3200: the bid flow strip above the bid title (Review is its one door here). */}
+          {flowFold.expanded ? (
           <BidFlowStrip
             variant="full"
+            hideHeader
             flow={deriveBidFlow(selectedBidForCounts, bidFlowFactsByBid[selectedBidForCounts.id])}
             bidLabel={selectedBidForCounts.project_name ?? undefined}
             canOpenDoor={(d) => d === 'review' || (onOpenBidFlowDoor != null && (bidFlowDoorAllowed ? bidFlowDoorAllowed(d) : d != null))}
@@ -724,6 +729,7 @@ export function BidsCountsTab({
             }}
             reviewStamp={bidFlowReview.stampFor(selectedBidForCounts)}
           />
+          ) : null}
           {narrowViewport640 ? (
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'stretch', gap: '0.75rem', marginBottom: '1rem' }}>
               {/* v2.2385 (Wendi): Import on the right, Edit Bid retired — the bid title link already opens the bid. Old/New pills retired v2.2707. */}
@@ -733,6 +739,19 @@ export function BidsCountsTab({
                   previewEnabled={bidPreview != null}
                   onOpenPreview={() => bidPreview?.openBidPreviewFromBid(selectedBidForCounts)}
                   h2Style={{ margin: 0 }}
+                />
+                <BidFlowStrip
+                  variant="inline"
+                  expanded={flowFold.expanded}
+                  onToggleExpanded={flowFold.toggle}
+                  flow={deriveBidFlow(selectedBidForCounts, bidFlowFactsByBid[selectedBidForCounts.id])}
+                  bidLabel={selectedBidForCounts.project_name ?? undefined}
+                  canOpenDoor={(d) => d === 'review' || (onOpenBidFlowDoor != null && (bidFlowDoorAllowed ? bidFlowDoorAllowed(d) : d != null))}
+                  onOpenDoor={(d, step) => {
+                  if (d === 'review') void bidFlowReview.markReviewed(selectedBidForCounts)
+                  else onOpenBidFlowDoor?.(selectedBidForCounts, d, step)
+                  }}
+                  reviewStamp={bidFlowReview.stampFor(selectedBidForCounts)}
                 />
               </div>
               {gradeChipEl}
@@ -757,6 +776,19 @@ export function BidsCountsTab({
                   previewEnabled={bidPreview != null}
                   onOpenPreview={() => bidPreview?.openBidPreviewFromBid(selectedBidForCounts)}
                   h2Style={{ margin: 0 }}
+                />
+                <BidFlowStrip
+                  variant="inline"
+                  expanded={flowFold.expanded}
+                  onToggleExpanded={flowFold.toggle}
+                  flow={deriveBidFlow(selectedBidForCounts, bidFlowFactsByBid[selectedBidForCounts.id])}
+                  bidLabel={selectedBidForCounts.project_name ?? undefined}
+                  canOpenDoor={(d) => d === 'review' || (onOpenBidFlowDoor != null && (bidFlowDoorAllowed ? bidFlowDoorAllowed(d) : d != null))}
+                  onOpenDoor={(d, step) => {
+                  if (d === 'review') void bidFlowReview.markReviewed(selectedBidForCounts)
+                  else onOpenBidFlowDoor?.(selectedBidForCounts, d, step)
+                  }}
+                  reviewStamp={bidFlowReview.stampFor(selectedBidForCounts)}
                 />
                 {gradeChipEl}
               </div>

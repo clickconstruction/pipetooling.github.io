@@ -42,6 +42,7 @@ import { BidFlowStrip } from './BidFlowStrip'
 import { deriveBidFlow, type BidFlowDoor, type BidFlowStep } from '../../lib/bids/bidFlow'
 import { useBidFlowFacts } from '../../hooks/useBidFlowFacts'
 import { useBidFlowReview } from '../../hooks/useBidFlowReview'
+import { useBidFlowFold } from '../../hooks/useBidFlowFold'
 import { GenerateUnitCostModal } from './GenerateUnitCostModal'
 import { AssignTakeoffPartModal } from './AssignTakeoffPartModal'
 import { BidPickerStandardList } from './BidPickerStandardList'
@@ -275,6 +276,8 @@ export function BidsPricingTab({
   // Bid flow facts for the selected bid (one chunked read per selection).
   const { factsByBid: bidFlowFactsByBid } = useBidFlowFacts(selectedBidForPricing ? [selectedBidForPricing.id] : [])
   const bidFlowReview = useBidFlowReview(selectedBidForPricing ? [selectedBidForPricing] : [])
+  // v2.3241: the strip folds to one line beside the title; per device.
+  const flowFold = useBidFlowFold()
   const confirmDialog = useConfirmDialog()
 
   const [pricingSearchQuery, setPricingSearchQuery] = useState('')
@@ -2612,8 +2615,10 @@ export function BidsPricingTab({
               </button>
             ) : null}
             {/* v2.3200: the bid flow strip above the bid title. */}
+            {flowFold.expanded ? (
             <BidFlowStrip
               variant="full"
+              hideHeader
               flow={deriveBidFlow(selectedBidForPricing, bidFlowFactsByBid[selectedBidForPricing.id])}
               bidLabel={selectedBidForPricing.project_name ?? undefined}
               canOpenDoor={(d) => d === 'review' || (onOpenBidFlowDoor != null && (bidFlowDoorAllowed ? bidFlowDoorAllowed(d) : d != null))}
@@ -2623,6 +2628,7 @@ export function BidsPricingTab({
               }}
               reviewStamp={bidFlowReview.stampFor(selectedBidForPricing)}
             />
+            ) : null}
             <div id="pricing-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.5rem' }}>
               <div style={{ display: 'flex', alignItems: 'center', flex: '0 0 auto', flexWrap: 'wrap', gap: '0.75rem' }}>
                 <BidWorkflowTabTitleWithPreview
@@ -2630,6 +2636,19 @@ export function BidsPricingTab({
                   previewEnabled={bidPreview != null}
                   onOpenPreview={() => bidPreview?.openBidPreviewFromBid(selectedBidForPricing)}
                   h2Style={{ margin: 0, flex: '0 0 auto' }}
+                />
+                <BidFlowStrip
+                  variant="inline"
+                  expanded={flowFold.expanded}
+                  onToggleExpanded={flowFold.toggle}
+                  flow={deriveBidFlow(selectedBidForPricing, bidFlowFactsByBid[selectedBidForPricing.id])}
+                  bidLabel={selectedBidForPricing.project_name ?? undefined}
+                  canOpenDoor={(d) => d === 'review' || (onOpenBidFlowDoor != null && (bidFlowDoorAllowed ? bidFlowDoorAllowed(d) : d != null))}
+                  onOpenDoor={(d, step) => {
+                  if (d === 'review') void bidFlowReview.markReviewed(selectedBidForPricing)
+                  else onOpenBidFlowDoor?.(selectedBidForPricing, d, step)
+                  }}
+                  reviewStamp={bidFlowReview.stampFor(selectedBidForPricing)}
                 />
                 {/* v2.2376 (Wendi): one "?" beside the title as the single help door (the old (i) modal,
                     tour, and guide all live behind it). The Old/New pills retired in v2.2707. */}
