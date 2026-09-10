@@ -390,7 +390,7 @@ describe('buildNeedsYouItems', () => {
     expect(buildNeedsYouItems(inputs({ robotAuditsEnabled: false, robotLockedShadows: sealed }))).toEqual([])
   })
 
-  it('robot-locked (v2.3126): one names the bid, many count them — blue, figure = count, opens Shadows', () => {
+  it('robot-locked (v2.3126): one names the bid, many count them — blue, figure = count, opens the Robot Board (v2.3222)', () => {
     const one = buildNeedsYouItems(inputs({
       robotLockedShadows: [{ shadowBid: '490', referenceBid: '481', project: 'Galloway Park', lockedAt: '2026-09-06T12:00:00Z', teacher: 'Wendi' }],
     }))
@@ -400,9 +400,9 @@ describe('buildNeedsYouItems', () => {
       kicker: 'Robot bid',
       title: 'The robot has a sealed number on b481 (Galloway Park)',
       figure: '1',
-      actionLabel: 'Open Scoreboard',
+      actionLabel: 'Open Robot Board',
     })
-    expect(one[0]?.detail).toBe('Locked before ours went out — the score lands the moment we send. Nothing to do; this is the head start.')
+    expect(one[0]?.detail).toBe('Locked before ours went out — the score lands the moment we send, and the envelope opens for you right then. Nothing to do; this is the head start.')
     expect(needsYouKind(one[0] as NeedsYouItem)).toBe('company')
     const many = buildNeedsYouItems(inputs({
       robotLockedShadows: [

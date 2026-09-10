@@ -78,7 +78,7 @@ Open **Customer review**, click the top customer, and the contributors panel sho
 
 Bids owned or worked by a **digital twin** (an AI estimator account — the 🤖 ones) don't sit
 among the human rows. Everything robot lives under one **🤖 Robots** tab next to Bid Board (the red count on it is audits waiting on you), with views
-inside: the **Robot Board** (twin bids, with its live count), **Audits** (robot bids waiting on
+inside: the **Robot Board** (our bids seen through the robots — the same sections as the Bid Board, with the robot's number and how far off it was once we sent), **Audits** (robot bids waiting on
 a human review), and the **Scoreboard** — how close the robots are to our numbers by job type,
 what is yours to do, and every run they have made: each sealed run on a live bid told as a
 five-step story (picked up, estimated blind, price sealed 🔒, waiting on our bid, opened & scored),

@@ -73,13 +73,20 @@ only (no Pricing / Cover Letter / Submission); no subs/helpers.
   Won / Lost / Started). Row shows value, due, estimator, last contact; multi-GC bids show a
   line per GC (sent date · waiting/won/lost pill). Key actions: set per-GC outcome, open
   notes, update last contact, open Edit Bid (✎), jump to tool tabs (icons).
-- `?tab=robot-board` — **🤖 Robot Board** (v2.2500): the same board scoped to bids whose
-  estimator or creator is a digital twin — YOUR bids live here, not on `bid-board`. Same
-  sections and actions; the human board and its counts exclude these rows, and the robot
-  board carries none of the human board's map card or estimating-health analytics. All
-  five robot lenses (`robot-board`, `audits`, `robot-shadows`, `robot-queue`,
-  `robot-scoreboard`) sit under the one **🤖 Robots** tab between Bid Board and Followup
-  (v2.2527; named v2.2905), which renders only when robot bids or audits exist.
+- `?tab=robot-board` — **🤖 Robot Board** (v2.2500; a mirror since v2.3222): the HUMAN
+  bids that have a robot run, in the human board's sections, with a robot column — status
+  before the human sends (`queued` / `working` / `sealed`, never a number), the robot's
+  number, ours and the delta after. YOUR ZZ bids list on no board: a row's **Robot bid b###**
+  opens your shell on its Counts tab; `?tab=counts&bidId=<your shell>` works directly. The
+  human board and its counts still exclude your rows. The lenses under the one **🤖 Robots**
+  tab between Bid Board and Followup (v2.2527; named v2.2905) are `robot-board`, `audits`
+  and `robot-scoreboard` (dev); `robot-queue` (dev) keeps its URL and opens from Settings →
+  Digital twins; `robot-shadows` redirects to the mirror.
+- **The envelope at send** (v2.3222): the moment the human's bid saves with value + sent
+  date, its scored shadow opens for the estimator as a modal — your number, theirs, the
+  delta, the six biggest row differences with one-tap verdicts, your open questions with
+  their taps. Verdicts land as `bid_audit_notes` and answers as `twin_questions.answer`,
+  exactly as from the Audits lens; read them the same way.
 - `?tab=audits` — **🤖 Audits** (v2.2516–v2.2553): robot bids awaiting a human audit,
   one open cockpit card at a time — the twin's self-assessment, robot-vs-ours system
   scoreboard, name-matched diff rows with one-tap verdicts (`[verdict:teach|record|ok]`),
@@ -88,7 +95,10 @@ only (no Pricing / Cover Letter / Submission); no subs/helpers.
   questions, post receipts, close as `digested`; setting `done` is human-only (RLS).
   A pending audit whose reference bid hasn't sent shows sealed (🔒). Tab label carries
   the pending count.
-- `?tab=robot-queue` — **🤖 Queue** (v2.2542, dev only): every robot-able live bid,
+- `?tab=robot-shadows` — retired v2.3222 (redirects to `robot-board`); the Shadows story
+  (v2.2544) is the mirror row now.
+- `?tab=robot-queue` — **🤖 Queue** (v2.2542, dev only; off the lens bar since v2.3222 —
+  door on Settings → Digital twins): every robot-able live bid,
   front-of-the-line requests (stamped from a bid's robot status sheet on the Bid Board,
   oldest ask first; nobody asks for a robot since v2.3202 — shadowing is the default)
   above ready, each with a copyable kickoff prompt; **Copy Desktop kickoff** (v2.3207) at the top copies the no-repo Claude Desktop
@@ -100,9 +110,8 @@ only (no Pricing / Cover Letter / Submission); no subs/helpers.
   (the viewer's sealed / queued bids, live bids the robots can't see, audits + questions
   waiting) with doors; job types ranked closest to ready (`robotScoreboard.ts` — axis slugs
   → plain names, deltas as *44% high*, the newest digest receipt as the lesson line); then
-  **On live bids** (every shadow run, in flight first, a row expands into the sealed-envelope
-  stepper — the old `?tab=robot-shadows` lens, whose key still lands here) and **Practice on
-  past bids** (backtests, voided runs kept and marked). Devs get a *Show robot notes* toggle
+  **On live bids** (every shadow run, in flight first, a row expands into the v2.2544
+  sealed-envelope stepper) and **Practice on past bids** (backtests, voided runs kept and marked). Devs get a *Show robot notes* toggle
   for the operator's raw axis notes. Gate math unchanged (`confidenceBoard.ts`).
 - `?tab=builder-review` — per-customer review: section counts, estimating/job hours.
 - `?tab=call-queue` — **Followup, By builder**: call-mode queue grouped by builder; log

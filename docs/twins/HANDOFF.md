@@ -46,12 +46,16 @@ estimator's hours and her corpus, and every planned item optimizes one of the tw
   pricing, `bid_value`, `outcome` are never selected. `docs/EDGE_FUNCTIONS.md` → twin-mcp
   is the authoritative verb reference.
 - **The Bids robot lens group** (🤖, between Bid Board and Followup):
-  **Robot Board** (v2.2500, staff — twin bids live here, off the human board),
-  **Audits** (v2.2516–19, staff — the audit cockpit: name-matched diff, one-tap
-  verdicts, sealed-shadow hold), **Shadows** (v2.2544, staff — sealed-envelope
-  stepper per run), **Queue** (v2.2542, dev — requested/ready robot-able bids +
-  backtest candidates by axis, v2.2594), **Scoreboard** (v2.2560, dev — per-axis
-  Gate-B cards, pipeline pills, unified run ledger). Dashboard: the Needs-you card
+  **Robot Board** (v2.2500; a mirror of the human board since v2.3222 — one row per
+  human bid with a robot run, status before send, robot number / ours / delta after;
+  ZZ shells list nowhere and open from the row), **Audits** (v2.2516–19, staff — the
+  audit cockpit: name-matched diff, one-tap verdicts, sealed-shadow hold), **Scoreboard**
+  (v2.2560, dev — per-axis Gate-B cards and pills; the run ledger moved into the mirror).
+  **Queue** (v2.2542, dev — requested/ready robot-able bids + backtest candidates by axis,
+  v2.2594) keeps `?tab=robot-queue` and opens from Settings → Digital twins; the Shadows
+  lens (v2.2544) folded into the mirror. **The envelope** (v2.3222): the scored shadow
+  opens for the estimator the moment the bid saves with value + sent date — verdicts and
+  answers land in the same tables as from Audits. Dashboard: the Needs-you card
   carries a "robot bids waiting on your audit" item for dev+estimator (v2.2573).
 - **The audit loop** (`FEEDBACK_LOOP.md`): twin opens an audit at pipeline end →
   human judges each difference with verdict tags (`[verdict:teach|record|ok]`) →

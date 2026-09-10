@@ -57,9 +57,12 @@ import type { ShadowRunRow } from '../lib/bids/shadowStory'
 import { RobotBidComparisonModal } from '../components/bids/RobotBidComparisonModal'
 import { RobotReferenceGradeModal } from '../components/bids/RobotReferenceGradeModal'
 import { BidsRobotQueueTab } from '../components/bids/BidsRobotQueueTab'
+import { BidsRobotMirrorTab } from '../components/bids/BidsRobotMirrorTab'
 import { BidsRobotScoreboardTab } from '../components/bids/BidsRobotScoreboardTab'
-import { buildRobotQueue } from '../lib/bids/robotQueue'
 import { normalizeBidNumber } from '../lib/bids/confidenceBoard'
+import { RobotEnvelopeModal } from '../components/bids/RobotEnvelopeModal'
+import { envelopeRefusal, envelopeRunFromShadow, isRevisionAfterReveal, robotReviewRevisionNote, type EnvelopeRun } from '../lib/bids/robotEnvelope'
+import { mirrorRunReviewable, type RobotMirrorRun } from '../lib/bids/robotMirror'
 import { useBidAuditsPendingCount } from '../hooks/useBidAuditsPendingCount'
 import { canWorkRobotAudits, ROBOT_AUDIT_ROLES } from '../lib/bids/bidAudits'
 import { BidSubmissionFollowupTab } from '../components/bids/BidSubmissionFollowupTab'
@@ -406,7 +409,6 @@ export default function Bids() {
   const [scrollToLaborDirectCosts, setScrollToLaborDirectCosts] = useState(false)
   const [submissionSectionOpen, setSubmissionSectionOpen] = useState({ unsent: true, pending: true, won: true, startedOrComplete: true, lost: false })
   const [bidBoardSectionOpen, setBidBoardSectionOpen] = useState({ unsent: true, pending: true, won: true, startedOrComplete: true, lost: false })
-  const [robotBoardSectionOpen, setRobotBoardSectionOpen] = useState({ unsent: true, pending: true, won: true, startedOrComplete: true, lost: false })
   // People|Robots board scope (v2.2500): ids of users flagged is_digital_twin. Loaded
   // without an archived filter — a bid assigned to a retired twin still belongs on the
   // Robot Board, not back among the humans.
@@ -481,13 +483,9 @@ export default function Bids() {
     for (const twin of robotBids) if (twin.twin_source_bid_id) m.set(twin.twin_source_bid_id, twin)
     return m
   }, [robotBids])
-  // v2.2542: Queue lens badge — same kernel as the lens body and the board icons.
-  const robotQueueCount = useMemo(() => {
-    if (myRole !== 'dev') return 0
-    const staleDueBefore = new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10)
-    const q = buildRobotQueue(peopleBids, (bidId) => twinBidBySourceId.has(bidId), { staleDueBefore })
-    return q.requested.length + q.ready.length
-  }, [myRole, peopleBids, twinBidBySourceId])
+  // v2.3222: the Robot Board mirrors OUR bids (one row per bid with a robot run); the lens
+  // label carries that count, reported by the mirror once its runs load.
+  const [robotMirrorCount, setRobotMirrorCount] = useState<number | null>(null)
 
   // v2.2547: counts/pricing presence for decided bids (grade badge inputs).
   const [referencePresence, setReferencePresence] = useState<ReadonlyMap<string, { hasCounts: boolean; hasPricing: boolean }>>(() => new Map())
@@ -669,6 +667,74 @@ export default function Bids() {
   )
   const [robotComparePair, setRobotComparePair] = useState<{ source: BidWithBuilder; twin: BidWithBuilder } | null>(null)
 
+  // v2.3222: the robot's envelope, opened at send. The trigger scored the shadow the instant
+  // the row saved with value + date, so a reveal after that save cannot move the score. Once
+  // per bid per session; the bid's estimator (or a dev); never on a sealed run.
+  const [robotEnvelope, setRobotEnvelope] = useState<{ bid: BidWithBuilder; run: EnvelopeRun } | null>(null)
+  const envelopeOfferedRef = useRef<Set<string>>(new Set())
+  // The Audits lens opens on this card (a mirror row's "Open audit", the envelope's "Full audit").
+  const [focusAuditId, setFocusAuditId] = useState<string | null>(null)
+  const bidsRef = useRef(bids)
+  bidsRef.current = bids
+  const offerRobotEnvelope = useCallback(
+    async (bidId: string, opts?: { force?: boolean }) => {
+      try {
+        const { data: fresh } = await supabase
+          .from('bids')
+          .select('id, bid_number, estimator_id, bid_date_sent, bid_value, selected_bid_version_id, project_name')
+          .eq('id', bidId)
+          .maybeSingle()
+        if (!fresh) return
+        const number = (fresh.bid_number ?? '').trim()
+        const { data: runs } = await (supabase as unknown as import('@supabase/supabase-js').SupabaseClient).rpc('list_shadow_runs')
+        const run = ((runs ?? []) as ShadowRunRow[]).find((r) => (r.reference_bid_number ?? '').trim() === number && r.status === 'scored') ?? null
+        const refusal = envelopeRefusal(fresh, { userId: authUser?.id ?? null, role: myRole }, run?.status ?? null, envelopeOfferedRef.current)
+        if (refusal && !(opts?.force && (refusal === 'already-offered' || refusal === 'not-estimator'))) return
+        if (!run) return
+        envelopeOfferedRef.current.add(bidId)
+        const row = bidsRef.current.find((b) => b.id === bidId)
+        setRobotEnvelope({ bid: { ...(row ?? ({} as BidWithBuilder)), ...fresh } as BidWithBuilder, run: envelopeRunFromShadow(run) })
+        setShadowRunsGen((g) => g + 1)
+      } catch {
+        // The envelope is a courtesy on top of a save that already succeeded — never an error.
+      }
+    },
+    [authUser?.id, myRole],
+  )
+  // A Robot Board row's "Review now": the same envelope, on a scored or audited run whose audit still waits (sent bids only).
+  const openEnvelopeFromMirror = useCallback((source: BidWithBuilder, run: RobotMirrorRun) => {
+    if (!source.bid_date_sent || !mirrorRunReviewable(run)) return
+    setRobotEnvelope({
+      bid: source,
+      run: { kind: run.kind, shellNumber: run.shellNumber, robotTotal: run.robotTotal, ourValue: run.ourValue, deltaPct: run.deltaPct, at: run.at || null, teacherName: run.teacherName, practice: run.practice },
+    })
+  }, [])
+  // Dev door (v2.3222): /bids?envelope=<bid number> force-opens the envelope on that bid's scored shadow — support and testing, never for estimators.
+  useEffect(() => {
+    const params = new URLSearchParams(location.search)
+    const wanted = params.get('envelope')
+    if (!wanted || myRole !== 'dev') return
+    const target = bids.find((b) => (b.bid_number ?? '').trim() === wanted.replace(/^[bB]/, '').trim())
+    if (!target) return
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev)
+      next.delete('envelope')
+      return next
+    }, { replace: true })
+    void offerRobotEnvelope(target.id, { force: true })
+  }, [location.search, bids, myRole, setSearchParams, offerRobotEnvelope])
+  // Bid value changed after the robot's number was in view: on the ledger by name (never contamination — the score stays as taken).
+  const noteRobotReviewRevision = useCallback(
+    async (bid: BidWithBuilder, nextValue: number | string | null | undefined) => {
+      const run = shadowRunByBidNumber.get((bid.bid_number ?? '').trim()) ?? null
+      if (!isRevisionAfterReveal({ wasSentBefore: !!bid.bid_date_sent, prevValue: bid.bid_value, nextValue, runStatus: run?.status ?? null })) return
+      const text = robotReviewRevisionNote(bid.bid_value, nextValue ?? null, run?.locked_total != null ? Number(run.locked_total) : null)
+      if (!text) return
+      await supabase.from('bids_submission_entries').insert({ bid_id: bid.id, notes: text, created_by: authUser?.id ?? null })
+    },
+    [shadowRunByBidNumber, authUser?.id],
+  )
+
   // v2.2542: yellow robot click requests a robot bid (green); green withdraws.
   // Optimistic local patch + DB write; the dev Queue lens reads the same columns.
   const toggleRobotRequest = useCallback(async (bid: BidWithBuilder) => {
@@ -768,7 +834,8 @@ export default function Bids() {
             : !bid.bid_date_sent
               ? ('unsent' as const)
               : ('pending' as const)
-    ;(robot ? setRobotBoardSectionOpen : setBidBoardSectionOpen)((prev) => ({ ...prev, [sectionKey]: true }))
+    // v2.3222: the Robot Board mirror opens its own sections around the ringed row.
+    if (!robot) setBidBoardSectionOpen((prev) => ({ ...prev, [sectionKey]: true }))
     setBidBoardDeepLinkHighlightGen((g) => g + 1)
     if (bidBoardDeepLinkTimeoutRef.current) {
       clearTimeout(bidBoardDeepLinkTimeoutRef.current)
@@ -1632,6 +1699,16 @@ export default function Bids() {
       setSearchParams((p) => {
         const next = new URLSearchParams(p)
         next.set('tab', 'labor')
+        return next
+      }, { replace: true })
+    }
+    // v2.3222: the Shadows lens folded into the Robot Board mirror — old links (the Dashboard's
+    // "Open Shadows", bookmarks) land on the mirror.
+    if (tab === 'robot-shadows') {
+      tab = 'robot-board'
+      setSearchParams((p) => {
+        const next = new URLSearchParams(p)
+        next.set('tab', 'robot-board')
         return next
       }, { replace: true })
     }
@@ -2611,7 +2688,11 @@ export default function Bids() {
       }
     }
     if (followupNote?.trim()) await insertPendingBidSentFollowupSubmissionNoteAfterSave(bid.id, followupNote)
+    // v2.3222: a value change on an already-sent bid with a scored shadow is a revision after the reveal.
+    if (wroteSomething && 'bid_value' in updatePayload && !dateWritten) await noteRobotReviewRevision(bid, updatePayload.bid_value)
     if (wroteSomething) await refreshEditingBidAfterWrite(bid.id)
+    // v2.3222: the row now carries value + date → the trigger scored the shadow → open the envelope.
+    if (wroteSomething && (dateWritten || 'bid_value' in updatePayload)) void offerRobotEnvelope(bid.id)
     return true
   }
 
@@ -2778,6 +2859,8 @@ export default function Bids() {
     if (editingBid) syncFreshBidIntoSelections(editingBid.id, rows)
     closeBidForm()
     setSavingBid(false)
+    // v2.3222: an explicit save that recorded the send opens the robot's envelope.
+    if (editingBid) void offerRobotEnvelope(editingBid.id)
   }
 
   async function saveBidAndOpenCounts(e?: React.FormEvent) {
@@ -2977,20 +3060,6 @@ export default function Bids() {
       return next
     })
   }
-  // The Shadows lens folded into the Scoreboard (v2.3221): an old
-  // `?tab=robot-shadows` link (the Dashboard's "robot locked" item, a saved
-  // URL) lands on the Scoreboard with the URL rewritten, so the lens bar and
-  // the address agree.
-  useEffect(() => {
-    if (activeTab !== 'robot-shadows') return
-    setActiveTab('robot-scoreboard')
-    setSearchParams((p) => {
-      const next = new URLSearchParams(p)
-      next.set('tab', 'robot-scoreboard')
-      return next
-    }, { replace: true })
-  }, [activeTab, setSearchParams])
-
   const BIDS_WORKING_TAB_LABEL = 'Unsent/Working'
 
   const { inboxCount: workingInboxCount } = useWorkingBoardInboxCount(authUser?.id, workingBoardVisibleBids)
@@ -3564,7 +3633,7 @@ export default function Bids() {
             <button
               type="button"
               onClick={() => selectBidsTab('robot-board')}
-              title="Bids owned or worked by digital twins — same board, robot scope. The Bid Board hides these."
+              title="Our bids seen through the robots — the same sections as the Bid Board, with the robot's number and how far off it was once we sent."
               style={{
                 padding: '0.45rem 1rem',
                 border: 'none',
@@ -3574,7 +3643,7 @@ export default function Bids() {
                 fontWeight: activeTab === 'robot-board' ? 700 : 400,
               }}
             >
-              {`Robot Board · ${robotBids.length}`}
+              {robotMirrorCount == null ? 'Robot Board' : `Robot Board · ${robotMirrorCount}`}
             </button>
             <button
               type="button"
@@ -3600,29 +3669,31 @@ export default function Bids() {
                   padding: '0.45rem 1rem',
                   border: 'none',
                   cursor: 'pointer',
-                  background: activeTab === 'robot-scoreboard' || activeTab === 'robot-shadows' ? '#3b82f6' : 'transparent',
-                  color: activeTab === 'robot-scoreboard' || activeTab === 'robot-shadows' ? 'white' : 'var(--text-700)',
-                  fontWeight: activeTab === 'robot-scoreboard' || activeTab === 'robot-shadows' ? 700 : 400,
+                  background: activeTab === 'robot-scoreboard' ? '#3b82f6' : 'transparent',
+                  color: activeTab === 'robot-scoreboard' ? 'white' : 'var(--text-700)',
+                  fontWeight: activeTab === 'robot-scoreboard' ? 700 : 400,
                 }}
               >
                 Scoreboard
               </button>
             )}
-            {myRole === 'dev' && (
+            {/* v2.3222: the Shadows lens folded into the Robot Board mirror; the dev Queue keeps its
+                URL (?tab=robot-queue) and opens from Settings → Digital twins with the other operator tools. */}
+            {myRole === 'dev' && activeTab === 'robot-queue' && (
               <button
                 type="button"
                 onClick={() => selectBidsTab('robot-queue')}
-                title="Dev only — every robot-able bid, requested ones first; kickoff prompts live here."
+                title="Dev only — kickoff prompts and backtest candidates. Opens from Settings → Digital twins."
                 style={{
                   padding: '0.45rem 1rem',
                   border: 'none',
                   cursor: 'pointer',
-                  background: activeTab === 'robot-queue' ? '#3b82f6' : 'transparent',
-                  color: activeTab === 'robot-queue' ? 'white' : 'var(--text-700)',
-                  fontWeight: activeTab === 'robot-queue' ? 700 : 400,
+                  background: '#3b82f6',
+                  color: 'white',
+                  fontWeight: 700,
                 }}
               >
-                {`Queue · ${robotQueueCount}`}{' '}
+                Queue{' '}
                 <span
                   style={{
                     fontSize: '0.58rem',
@@ -3630,8 +3701,8 @@ export default function Bids() {
                     letterSpacing: '0.05em',
                     padding: '0 4px',
                     borderRadius: 3,
-                    border: activeTab === 'robot-queue' ? '1px solid rgba(255,255,255,0.6)' : '1px solid #ca8a04',
-                    color: activeTab === 'robot-queue' ? 'white' : 'var(--text-yellow-800)',
+                    border: '1px solid rgba(255,255,255,0.6)',
+                    color: 'white',
                     verticalAlign: '1px',
                   }}
                 >
@@ -3644,7 +3715,7 @@ export default function Bids() {
       )}
 
       {/* Audits Tab — the robot feedback loop's human side (v2.2517). */}
-      {activeTab === 'audits' && <BidsAuditsTab authUser={authUser} myRole={myRole} />}
+      {activeTab === 'audits' && <BidsAuditsTab authUser={authUser} myRole={myRole} focusAuditId={focusAuditId} />}
 
       {/* Robot Queue lens (v2.2542, dev only) — requested above ready; prompts live here. */}
       {activeTab === 'robot-queue' && myRole === 'dev' && (
@@ -3652,9 +3723,8 @@ export default function Bids() {
       )}
 
       {/* Scoreboard (v2.2560; every audit role since v2.3221) — the rule, your part,
-          job types closest to ready, and every run: live bids (the old Shadows lens
-          lives here now) then practice on past bids. */}
-      {(activeTab === 'robot-scoreboard' || activeTab === 'robot-shadows') && canWorkRobotAudits(myRole) && (
+          job types closest to ready, and every run: live bids then practice on past bids. */}
+      {activeTab === 'robot-scoreboard' && canWorkRobotAudits(myRole) && (
         <BidsRobotScoreboardTab
           auditPending={auditGate.pending}
           questionsWaiting={robotQuestionsWaiting}
@@ -3676,23 +3746,39 @@ export default function Bids() {
         />
       )}
 
+      {/* Robot Board (v2.3222) — a mirror of the Bid Board: our bids, the same sections, a
+          robot column. The ZZ shells never list; they open from a row's doors. */}
+      {activeTab === 'robot-board' && (
+        <BidsRobotMirrorTab
+          bids={peopleBids}
+          robotBids={robotBids}
+          auditPending={auditGate.pending}
+          loading={!bidsLoaded}
+          highlightBidId={bidBoardDeepLinkHighlightId}
+          onEditBid={openEditBid}
+          onCompare={(source, twin) => setRobotComparePair({ source, twin })}
+          onOpenShell={(twin) => selectBidAndSyncUrl(twin, 'counts')}
+          onOpenAudit={(auditId) => { setFocusAuditId(auditId); selectBidsTab('audits') }}
+          onReviewNow={openEnvelopeFromMirror}
+          onRowCount={setRobotMirrorCount}
+        />
+      )}
+
       {/* Bid Board Tab */}
-      {(activeTab === 'bid-board' || activeTab === 'robot-board') && (
+      {activeTab === 'bid-board' && (
         <BidsBidBoardTab
-          bids={activeTab === 'robot-board' ? robotBids : peopleBids}
+          bids={peopleBids}
           sentScope={sentScope}
           loading={!bidsLoaded}
           authUser={authUser}
           isDev={myRole === 'dev'}
-          // The Robot Board is the same board for ZZ shells only — no map of
-          // practice bids, no pulse / health / labor-cost analytics over them.
-          showMap={activeTab !== 'robot-board'}
-          showEstimatingHealth={activeTab !== 'robot-board' && myRole !== 'primary' && myRole !== 'superintendent'}
+          showMap
+          showEstimatingHealth={myRole !== 'primary' && myRole !== 'superintendent'}
           jobsByBidId={jobsByBidId}
                 ledgerPrefixMap={ledgerPrefixMap}
           bidPreview={bidPreviewOnBidsPage}
-          sectionOpen={activeTab === 'robot-board' ? robotBoardSectionOpen : bidBoardSectionOpen}
-          onSectionOpenChange={activeTab === 'robot-board' ? setRobotBoardSectionOpen : setBidBoardSectionOpen}
+          sectionOpen={bidBoardSectionOpen}
+          onSectionOpenChange={setBidBoardSectionOpen}
           deepLinkHighlightId={bidBoardDeepLinkHighlightId}
           deepLinkHighlightGen={bidBoardDeepLinkHighlightGen}
           onEditBid={openEditBid}
@@ -3714,26 +3800,32 @@ export default function Bids() {
           gcPacketsByBid={gcPacketsByBid}
           roomStatesByBid={roomStatesByBid}
           recipientsByBidId={bidGcRecipientsByBidId}
-          robotReadiness={
-            activeTab === 'robot-board'
-              ? undefined
-              : {
-                  twinBidBySourceId,
-                  inputFor: robotRowInputFor,
-                  onOpenStatus: setRobotStatusBid,
-                  onOpenNeeds: setRobotNeedsBid,
-                  onOpenTwinBid: (twin, source) => setRobotComparePair({ source, twin }),
-                  onOpenGrade: setRobotGradeBid,
-                }
-          }
+          robotReadiness={{
+            twinBidBySourceId,
+            inputFor: robotRowInputFor,
+            onOpenStatus: setRobotStatusBid,
+            onOpenNeeds: setRobotNeedsBid,
+            onOpenTwinBid: (twin, source) => setRobotComparePair({ source, twin }),
+            onOpenGrade: setRobotGradeBid,
+          }}
         />
       )}
+
+      {/* v2.3222: the robot's envelope, opened at send — after the row saved with value + date. */}
+      <RobotEnvelopeModal
+        bid={robotEnvelope?.bid ?? null}
+        run={robotEnvelope?.run ?? null}
+        authUser={authUser}
+        onClose={() => setRobotEnvelope(null)}
+        onOpenAudits={(auditId) => { setRobotEnvelope(null); setFocusAuditId(auditId); selectBidsTab('audits') }}
+      />
 
       <RobotStatusSheet
         input={robotStatusBid ? { ...robotRowInputFor(robotStatusBid), bid: robotStatusBid } : null}
         twin={robotStatusBid ? (twinBidBySourceId.get(robotStatusBid.id) ?? null) : null}
         onClose={() => setRobotStatusBid(null)}
-        onOpenRobotBoard={(twin) => { setRobotStatusBid(null); applyBidBoardDeepLinkToBid(twin as BidWithBuilder) }}
+        // v2.3222: shells no longer list on any board — the robot's bid opens on its Counts tab.
+        onOpenRobotBoard={(twin) => { setRobotStatusBid(null); selectBidAndSyncUrl(twin as BidWithBuilder, 'counts') }}
         onCompare={(twin, source) => { setRobotStatusBid(null); setRobotComparePair({ source: source as BidWithBuilder, twin: twin as BidWithBuilder }) }}
         onToggleRequest={(bid) => { void toggleRobotRequest(bid as BidWithBuilder); setShadowRunsGen((g) => g + 1) }}
         onOpenQuestions={() => { setRobotStatusBid(null); selectBidsTab('audits') }}
@@ -3758,7 +3850,8 @@ export default function Bids() {
         pair={robotComparePair}
         onClose={() => setRobotComparePair(null)}
         onOpenBidTab={(bid, tab) => selectBidAndSyncUrl(bid as BidWithBuilder, tab)}
-        onOpenRobotBoard={(twin) => applyBidBoardDeepLinkToBid(twin as BidWithBuilder)}
+        // v2.3222: the robot's bid opens on its Counts tab — shells no longer list on a board.
+        onOpenRobotBoard={(twin) => selectBidAndSyncUrl(twin as BidWithBuilder, 'counts')}
       />
 
       {/* Builder Review Tab */}
@@ -4364,6 +4457,7 @@ export default function Bids() {
           bidVersions={bidVersions}
           reloadBidVersions={() => (selectedBidForPricing ? loadBidVersions(selectedBidForPricing.id).then(() => {}) : Promise.resolve())}
           loadBids={loadBids}
+          onBidSentRecorded={(id) => { void offerRobotEnvelope(id) }}
           coverLetterInclusionsByBid={coverLetterInclusionsByBid}
           setCoverLetterInclusionsByBid={setCoverLetterInclusionsByBid}
           coverLetterExclusionsByBid={coverLetterExclusionsByBid}
@@ -4490,7 +4584,8 @@ export default function Bids() {
               setBidDateSent(norm)
               savedBidDateSentRef.current = normalizeBidDateInput(norm)
               clearBidDateSentAttestationFlow()
-              void loadBids()
+              const sentBidId = editingBid?.id ?? null
+              void loadBids().then(() => { if (sentBidId && norm) void offerRobotEnvelope(sentBidId) })
             }}
             pendingAttestationForDate={pendingAttestationForDate}
             pendingBidDateSentAttestation={pendingBidDateSentAttestation}
