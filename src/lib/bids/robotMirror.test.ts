@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { backtestLabel, buildRobotMirror, mirrorAuditChip, mirrorRunReviewable, mirrorStatusLabel, type MirrorBid, type MirrorShell } from './robotMirror'
+import { backtestLabel, buildRobotMirror, compareMirrorRows, mirrorAuditChip, mirrorRunReviewable, mirrorStatusLabel, type MirrorBid, type MirrorShell } from './robotMirror'
+import type { RobotRowState } from './robotRowState'
 import type { ShadowRunRow } from './shadowStory'
 import type { RunScoreRow } from './confidenceBoard'
 
@@ -226,3 +227,92 @@ describe('backtestLabel', () => {
     expect(backtestLabel(null, null)).toBe('backtest')
   })
 })
+
+// v2.3225 — the live bids with no run list too, from the icon's own kernel.
+describe('buildRobotMirror · live bids without a run (rowStateFor)', () => {
+  const needsPlans: RobotRowState = { kind: 'needs', badge: '?', title: '', questions: 0, gaps: [{ key: 'plans', label: 'No plans link', fix: 'Paste the plan set on the Edit form under Job Plans.', required: true }] }
+  const needsAnswer: RobotRowState = { kind: 'needs', badge: '2', title: '', questions: 2, gaps: [] }
+  const queued: RobotRowState = { kind: 'queued', title: '' }
+  const off: RobotRowState = { kind: 'off', reason: 'opt-out', title: '' }
+  const stateFor = (b: MirrorBid): RobotRowState => {
+    switch (b.bid_number) {
+      case '108': return needsPlans
+      case '250': return needsAnswer
+      case '483': return queued
+      case '500': return off
+      default: return { kind: 'none', title: '' }
+    }
+  }
+
+  it('lists needs / queued / off rows after the sealed ones, needs by due date, and counts them', () => {
+    const b431 = human({ id: 'h431', bid_number: '431', bid_due_date: null })
+    const b108 = human({ id: 'h108', bid_number: '108', plans_link: null, bid_due_date: '2026-03-23' })
+    const b250 = human({ id: 'h250', bid_number: '250', plans_link: null, bid_due_date: '2026-02-01' })
+    const b483 = human({ id: 'h483', bid_number: '483', bid_due_date: '2026-09-18' })
+    const b500 = human({ id: 'h500', bid_number: '500', robot_opt_out: true })
+    const m = buildRobotMirror({
+      humanBids: [b431, b108, b250, b483, b500],
+      shells: [shell({ id: 's482', bid_number: '482', twin_source_bid_id: 'h431' })],
+      shadowRuns: [run({ shadow_bid_number: '482', reference_bid_number: '431', status: 'locked', locked_at: '2026-09-07T12:00:00Z' })],
+      scores: [],
+      audits: [],
+      rowStateFor: stateFor,
+    })
+    expect(m.sections.unsent.map((r) => [r.bid.bid_number, r.latest.status])).toEqual([
+      ['431', 'sealed'],
+      ['250', 'needs'],
+      ['108', 'needs'],
+      ['483', 'queued'],
+      ['500', 'off'],
+    ])
+    expect(m.rowCount).toBe(1) // only the sealed row has a robot run; needs / queued / off are listed, not counted
+    expect(m.listedCount).toBe(5)
+    expect(m.needsCount).toBe(2)
+    expect(m.sealedCount).toBe(1)
+    // live coverage: 431 (covered) + 483 — the no-plans and opted-out bids are not live-eligible
+    expect(m.liveEligible).toBe(2)
+    expect(m.uncoveredLive).toBe(1)
+    const needs = m.sections.unsent[2]!.latest
+    expect(needs.need?.gap?.key).toBe('plans')
+    expect(mirrorStatusLabel(needs)).toEqual({ text: 'No plans link', sub: 'Paste the plan set on the Edit form under Job Plans.' })
+    expect(mirrorStatusLabel(m.sections.unsent[1]!.latest)).toEqual({ text: '2 questions', sub: 'answer them and the robot goes on its next run' })
+    expect(mirrorStatusLabel(m.sections.unsent[4]!.latest)).toEqual({ text: 'opted out', sub: 'on the bid form' })
+    expect(mirrorAuditChip(needs)).toBeNull()
+  })
+
+  it('skips archived, sent, decided and ZZ bids, and without rowStateFor lists only front-of-the-line requests (v2.3222)', () => {
+    const archived = human({ id: 'h1', bid_number: '1', working_board_archived_at: '2026-06-01T00:00:00Z' })
+    const sent = human({ id: 'h2', bid_number: '2', bid_date_sent: '2026-09-01' })
+    const lost = human({ id: 'h3', bid_number: '3', outcome: 'lost' })
+    const zz = human({ id: 'h4', bid_number: '4', project_name: 'ZZ Takeoffs Test' })
+    const asked = human({ id: 'h5', bid_number: '5', robot_requested_at: '2026-09-09T10:00:00Z' })
+    const plain = human({ id: 'h6', bid_number: '6' })
+    const withState = buildRobotMirror({ humanBids: [archived, sent, lost, zz, asked, plain], shells: [], shadowRuns: [], scores: [], audits: [], rowStateFor: () => ({ kind: 'queued', title: '' }) })
+    expect(withState.sections.unsent.map((r) => [r.bid.bid_number, r.latest.label])).toEqual([['5', 'front of the line'], ['6', 'next batch']])
+    const without = buildRobotMirror({ humanBids: [archived, sent, lost, zz, asked, plain], shells: [], shadowRuns: [], scores: [], audits: [] })
+    expect(without.sections.unsent.map((r) => r.bid.bid_number)).toEqual(['5'])
+    expect(without.listedCount).toBe(1)
+  })
+
+  it('a sealed practice-teacher shadow carries the tag before send', () => {
+    const b385 = human({ id: 'h385', bid_number: '385' })
+    const m = buildRobotMirror({
+      humanBids: [b385],
+      shells: [shell({ id: 's481', bid_number: '481', twin_source_bid_id: 'h385' })],
+      shadowRuns: [run({ shadow_bid_number: '481', reference_bid_number: '385', status: 'locked', locked_at: '2026-09-06T12:00:00Z', teacher_name: 'Grace', teacher_standard: false })],
+      scores: [],
+      audits: [],
+    })
+    expect(m.sections.unsent[0]!.latest).toMatchObject({ status: 'sealed', practice: true, teacherName: 'Grace' })
+    expect(mirrorStatusLabel({ ...m.sections.unsent[0]!.latest, status: 'working' }).text).toBe('estimating')
+  })
+
+  it('compareMirrorRows: robot activity newest first, then needs, queued, off; undated last', () => {
+    const row = (status: 'sealed' | 'needs' | 'queued' | 'off', at: string, due: string | null, n: string) =>
+      ({ bid: { ...human({ id: n, bid_number: n }), bid_due_date: due }, section: 'unsent' as const, latest: { ...blankRun, status, at }, earlier: [], note: null })
+    const rows = [row('off', '', null, '9'), row('queued', '', '2026-09-01', '8'), row('needs', '', null, '7'), row('needs', '', '2026-08-01', '6'), row('sealed', '2026-09-01', null, '5'), row('sealed', '2026-09-07', null, '4')]
+    expect([...rows].sort(compareMirrorRows).map((r) => r.bid.bid_number)).toEqual(['4', '5', '6', '7', '8', '9'])
+  })
+})
+
+const blankRun = { kind: 'shadow' as const, shellBidId: null, shellNumber: null, label: '', robotTotal: null, ourValue: null, deltaPct: null, practice: false, teacherName: null, audit: null }

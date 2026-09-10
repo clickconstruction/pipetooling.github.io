@@ -77,7 +77,10 @@ only (no Pricing / Cover Letter / Submission); no subs/helpers.
 - `?tab=robot-board` — **🤖 Robot Board** (v2.2500; a mirror since v2.3222): the HUMAN
   bids that have a robot run, in the human board's sections, with a robot column — status
   before the human sends (`queued` / `working` / `sealed`, never a number), the robot's
-  number, ours and the delta after. YOUR ZZ bids list on no board: a row's **Robot bid b###**
+  number, ours and the delta after. Since v2.3225 every live human bid lists — `needs`
+  (no plans link / plans you can't open / your open question, with the person's door),
+  `queued`, `off` — plus **Add bid value** on a sent bid with no value, and **where the
+  delta lives** under a scored row. YOUR ZZ bids list on no board: a row's **Robot bid b###**
   opens your shell on its Counts tab; `?tab=counts&bidId=<your shell>` works directly. The
   human board and its counts still exclude your rows. The lenses under the one **🤖 Robots**
   tab between Bid Board and Followup (v2.2527; named v2.2905) are `robot-board`, `audits`,

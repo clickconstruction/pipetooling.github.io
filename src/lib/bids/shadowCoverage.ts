@@ -29,6 +29,15 @@ export interface ShadowCoverageBid {
   plans_robot_probe_note?: string | null
   /** "Don't let robots shadow this bid" (v2.3142): out of the queue AND out of the count. */
   robot_opt_out?: boolean | null
+  /**
+   * A decided bid (won / lost / started) is a reference, not a live bid — even
+   * when it never carried a sent date (no-bids, dead leads). v2.3225: before
+   * this the mirror counted every never-sent lost bid with plans as "live with
+   * no robot yet" (19 of the 21 it showed were decided).
+   */
+  outcome?: string | null
+  /** Archived from the working board (v2.518): hidden from the human board's Unsent section, so not live here either. */
+  working_board_archived_at?: string | null
 }
 
 export interface ShadowCoverageStat {
@@ -49,9 +58,11 @@ export function isPlansUnreadableByRobots(b: Pick<ShadowCoverageBid, 'plans_robo
   return b.plans_robot_readable === false
 }
 
-/** Live and worth shadowing: unsent, plans on file, not a 'ZZ ' sandbox bid. */
+/** Live and worth shadowing: unsent, undecided, plans on file, not a 'ZZ ' sandbox bid. */
 export function isShadowEligibleLiveBid(b: ShadowCoverageBid): boolean {
   if (b.bid_date_sent != null) return false
+  if (b.outcome != null && b.outcome !== '') return false
+  if (b.working_board_archived_at) return false
   if (!b.plans_link?.trim()) return false
   if (/^zz /i.test((b.project_name ?? '').trimStart())) return false
   if (b.robot_opt_out === true) return false

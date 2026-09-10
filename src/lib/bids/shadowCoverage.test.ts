@@ -18,6 +18,15 @@ describe('isShadowEligibleLiveBid', () => {
     expect(isShadowEligibleLiveBid(liveBid({ bid_date_sent: '2026-09-01' }))).toBe(false)
   })
 
+  it('rejects decided bids even when they were never marked sent (v2.3225) — a no-bid lost lead is a reference, not live', () => {
+    expect(isShadowEligibleLiveBid(liveBid({ outcome: 'lost' }))).toBe(false)
+    expect(isShadowEligibleLiveBid(liveBid({ outcome: 'won' }))).toBe(false)
+    expect(isShadowEligibleLiveBid(liveBid({ outcome: 'started_or_complete' }))).toBe(false)
+    expect(isShadowEligibleLiveBid(liveBid({ outcome: null }))).toBe(true)
+    expect(isShadowEligibleLiveBid(liveBid({ outcome: '' }))).toBe(true)
+    expect(shadowCoverage([liveBid({ bid_number: '400', outcome: 'lost' }), liveBid({ bid_number: '401' })], [])).toEqual({ covered: 0, live: 1, unreadable: [] })
+  })
+
   it('rejects bids with no plans link (blank or whitespace)', () => {
     expect(isShadowEligibleLiveBid(liveBid({ plans_link: null }))).toBe(false)
     expect(isShadowEligibleLiveBid(liveBid({ plans_link: '   ' }))).toBe(false)
@@ -28,6 +37,11 @@ describe('isShadowEligibleLiveBid', () => {
     expect(isShadowEligibleLiveBid(liveBid({ robot_opt_out: false }))).toBe(true)
     expect(isShadowEligibleLiveBid(liveBid({ robot_opt_out: null }))).toBe(true)
     expect(shadowCoverage([liveBid({ bid_number: '400', robot_opt_out: true }), liveBid({ bid_number: '401' })], [])).toEqual({ covered: 0, live: 1, unreadable: [] })
+  })
+
+  it('rejects a bid archived from the working board (v2.3225) — the human board hides it from Unsent, so it is not live', () => {
+    expect(isShadowEligibleLiveBid(liveBid({ working_board_archived_at: '2026-06-01T00:00:00Z' }))).toBe(false)
+    expect(isShadowEligibleLiveBid(liveBid({ working_board_archived_at: null }))).toBe(true)
   })
 
   it("rejects 'ZZ ' sandbox bids, case-insensitively, like the SQL NOT ILIKE 'ZZ %'", () => {
