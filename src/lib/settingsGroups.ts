@@ -73,7 +73,7 @@ export function getZonedSettingsGroups(myRole: UserRole | null): SettingsGroupDe
     groups.push({ id: 'settings-usage', label: 'Usage', zone: 'system', pagesHint: 'How the company actually uses the app — pages, clicks, and customer opens.' })
     groups.push({ id: 'settings-data', label: 'Data & recovery', zone: 'system', pagesHint: 'Backups, exports, and Recently deleted.' })
     groups.push({ id: 'settings-templates', label: 'Email templates & testing', zone: 'system', pagesHint: 'The emails the app sends, test tools, and easter eggs.' })
-    groups.push({ id: 'settings-digital-twins', label: 'Digital twins', zone: 'system', pagesHint: 'The agent fleet: mint twins, issue tokens, safety rungs, endpoints, and the run ledger.' })
+    groups.push({ id: 'settings-digital-twins', label: 'Digital twins', zone: 'system', pagesHint: 'Fleet admin: mint twins, issue keys, safety rungs, endpoints, and who the robots calibrate to. Running and watching them is on Bids → Robots → Console.' })
   }
   if (!isSubcontractorLikeRole(r)) {
     groups.push({ id: 'settings-advanced-tools', label: 'Advanced', zone: 'system' })

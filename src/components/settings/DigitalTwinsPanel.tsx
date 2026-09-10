@@ -2,53 +2,32 @@ import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useToastContext } from '../../contexts/ToastContext'
 import { FunctionsHttpError } from '@supabase/supabase-js'
-import { describeTwinRun, nextTwinSeat, relativeTimeFrom } from '../../lib/twinConsoleDisplay'
-// The operator handoff (v2.3155): one markdown file in the repo is the source of
-// truth; the card below copies it whole so a new person can paste it into Claude Code.
-import shadowOperatorPrompt from '../../../docs/twins/kickoffs/shadow-operator.md?raw'
-import { answerFromChoice, orderedChoices } from '../../lib/bids/twinQuestionChoices'
-import { TwinQuestionChoiceButtons } from '../bids/TwinQuestionChoiceButtons'
+import { nextTwinSeat, relativeTimeFrom } from '../../lib/twinConsoleDisplay'
+import { buildDesktopSetupCommand, twinMcpConnectorUrl } from '../../lib/bids/desktopKickoff'
 import { calibrationStandardSummary, calibrationStandardToast, teacherCandidates, type TeacherCandidate } from '../../lib/twinTeachers'
 import { updateRefused, refusedUpdateMessage } from '../../lib/refusedWrite'
-import { TwinQuestionText } from '../bids/TwinQuestionText'
-import { useTwinQuestionBidRefs } from '../../hooks/useTwinQuestionBidRefs'
-import { effectiveTwinQuestionAudience, isTwinQuestionAudience, type TwinQuestionAudience } from '../../../supabase/functions/_shared/twinQuestionAudience'
-
+import { BTN, BTN_PRIMARY, CARD, CARD_TITLE, COPY_CHIP, MUTED, STEP_REF, TWIN_VIOLET } from '../bids/twinConsoleStyles'
 
 /**
  * Settings → Digital twins (dev-only; docs/DIGITAL_TWINS_PLAN.md + docs/twins/TWIN_HARNESS.md):
- * the fleet console. v2.2433 redesign — the page tells the operator's story in order:
- * ① mint a twin → ② issue its key → ③ connect a harness → ④ watch the runs. A pipeline
+ * fleet admin. v2.2433 redesign — the page tells the operator's story in order:
+ * ① mint a twin → ② issue its key → ③ connect a harness → ④ run & watch. A pipeline
  * strip numbers every card, each twin shows the full three-rung safety ladder (not just
- * its current rung), tokens are key pills with last-used liveness, and the run ledger is
- * translated to plain English by the twinConsoleDisplay kernel. The one thing that
- * deliberately does NOT live here is the master TWIN_LOGIN_SECRET's value — an in-app
- * copy of a session-minting master key would defeat it; rotation stays a CLI act.
+ * its current rung), and tokens are key pills with last-used liveness. Since v2.3224 the
+ * RUNNING half — the Desktop setup command and kickoff, the Claude Code handoff, the
+ * queue door, the robots' operator questions, the run ledger — lives on Bids → 🤖
+ * Robots → Console; step ④ is its door, and the fresh-key card carries the setup
+ * command so the key and the command meet at the one moment both are in hand. The one
+ * thing that deliberately does NOT live here is the master TWIN_LOGIN_SECRET's value —
+ * an in-app copy of a session-minting master key would defeat it; rotation stays a CLI act.
  * Twin tables aren't in generated types yet — cast queries, fail-soft.
  */
 
 type TwinRow = { id: string; name: string | null; email: string; role: string; read_only: boolean }
 type CredRow = { id: string; twin_user_id: string; label: string; created_at: string; last_used_at: string | null; revoked_at: string | null }
-type RunRow = { twin_user_id: string; mission: string; notes: string | null; started_at: string }
-
-type QuestionRow = {
-  id: string
-  twin_user_id: string
-  about_bid_id: string | null
-  mission: string | null
-  question: string
-  status: 'open' | 'answered' | 'promoted' | 'dismissed'
-  answer: string | null
-  created_at: string
-  /** v2.3186 lane — undefined until migration 20260909045818 lands (then select('*') carries it). */
-  audience?: string | null
-  /** v2.3210 tap labels + the robot's pick — undefined until migration 20260909233000 lands. */
-  choices?: unknown
-  recommended?: string | null
-}
-
 const FN_BASE = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1`
-const VIOLET = '#8b5cf6'
+const VIOLET = TWIN_VIOLET
+const CONSOLE_HREF = '/bids?tab=robot-console'
 
 // CT bridge (v2.2435): a PT twin's CountTooling seat lives at the CT fleet domain.
 const PT_FLEET_DOMAIN = '@twins.pipetooling.local'
@@ -69,19 +48,11 @@ async function sha256Hex(s: string): Promise<string> {
   return Array.from(new Uint8Array(buf)).map((b) => b.toString(16).padStart(2, '0')).join('')
 }
 
-const CARD: React.CSSProperties = { border: '1px solid var(--border)', borderRadius: 10, padding: '0.85rem 1rem', marginBottom: '0.9rem', background: 'var(--surface)' }
-const MUTED: React.CSSProperties = { fontSize: '0.8rem', color: 'var(--text-muted)' }
-const BTN: React.CSSProperties = { font: 'inherit', fontSize: '0.78rem', fontWeight: 600, padding: '0.3rem 0.7rem', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', color: 'var(--text-700)', cursor: 'pointer' }
-const BTN_PRIMARY: React.CSSProperties = { ...BTN, background: VIOLET, color: '#fff', border: 'none' }
-const STEP_REF: React.CSSProperties = { fontSize: '0.62rem', fontWeight: 800, color: VIOLET, letterSpacing: '0.06em', verticalAlign: '2px', marginRight: '0.4rem' }
-const CARD_TITLE: React.CSSProperties = { margin: '0 0 0.55rem', fontSize: '0.92rem', fontWeight: 700 }
-const COPY_CHIP: React.CSSProperties = { font: 'inherit', fontSize: '0.66rem', fontWeight: 700, color: VIOLET, background: 'var(--bg-violet-100)', border: 'none', borderRadius: 5, padding: '0.1rem 0.45rem', cursor: 'pointer' }
-
-const PIPELINE: { step: string; title: string; sub: string }[] = [
+const PIPELINE: { step: string; title: string; sub: string; href?: string }[] = [
   { step: 'STEP 1', title: 'Mint a twin', sub: 'a seat in the app' },
   { step: 'STEP 2', title: 'Issue its key', sub: 'shown once, revocable' },
   { step: 'STEP 3', title: 'Connect a harness', sub: 'any agent, via MCP' },
-  { step: 'STEP 4', title: 'Watch the runs', sub: 'every sign-in & report' },
+  { step: 'STEP 4', title: 'Run & watch ↗', sub: 'Bids → Robots → Console', href: CONSOLE_HREF },
 ]
 
 const RUNGS: { rung: 1 | 2 | 3; title: string; sub: string }[] = [
@@ -94,11 +65,6 @@ export default function DigitalTwinsPanel() {
   const { showToast } = useToastContext()
   const [twins, setTwins] = useState<TwinRow[]>([])
   const [creds, setCreds] = useState<CredRow[]>([])
-  const [runs, setRuns] = useState<RunRow[]>([])
-  const [questions, setQuestions] = useState<QuestionRow[]>([])
-  // Same bid-ref lookup as Standing rulings (Bids → Audits): numbers in the text link, and a ZZ shell's question links "ours b214" too.
-  const questionBidRefs = useTwinQuestionBidRefs(questions)
-  const [answerDrafts, setAnswerDrafts] = useState<Record<string, string>>({})
   const [available, setAvailable] = useState(true)
   const [busy, setBusy] = useState(false)
   const [issueForTwin, setIssueForTwin] = useState<string | null>(null)
@@ -145,10 +111,6 @@ export default function DigitalTwinsPanel() {
       })()
       const c = await sb.from('twin_credentials').select('id, twin_user_id, label, created_at, last_used_at, revoked_at').order('created_at', { ascending: false }).limit(100)
       setCreds((c.data as CredRow[] | null) ?? [])
-      const r = await sb.from('twin_runs').select('twin_user_id, mission, notes, started_at').order('started_at', { ascending: false }).limit(15)
-      setRuns((r.data as RunRow[] | null) ?? [])
-      const q = await sb.from('twin_questions').select('*').order('created_at', { ascending: false }).limit(30)
-      setQuestions(((q.data as QuestionRow[] | null) ?? []).filter(Boolean))
       const seats = await sb.from('users').select('id, counttooling_user_id').eq('is_digital_twin', true).order('email')
       if (seats.error) {
         setCtSeatById(null)
@@ -179,84 +141,6 @@ export default function DigitalTwinsPanel() {
     }
   }
 
-
-  /** Answer / promote / dismiss a twin question (R3). Promote drafts an RFI on the
-   * question's bid (source 'manual' — the human owns the wording from here) and links it. */
-  const [questionFreeText, setQuestionFreeText] = useState<Record<string, boolean>>({})
-  async function answerQuestion(q: QuestionRow, override?: string) {
-    const text = (override ?? answerDrafts[q.id] ?? '').trim()
-    if (!text) return
-    setBusy(true)
-    try {
-      const sb = supabase as never as { from: (t: string) => { update: (v: object) => { eq: (k: string, v: string) => { eq: (k2: string, v2: string) => { select: (c: string) => Promise<{ data: unknown[] | null; error: { message: string } | null }> } } } } }
-      const { data: me } = await supabase.auth.getUser()
-      const { data: rows, error } = await sb.from('twin_questions')
-        .update({ status: 'answered', answer: text, answered_by: me.user?.id ?? null, answered_at: new Date().toISOString(), updated_at: new Date().toISOString() })
-        .eq('id', q.id).eq('status', 'open').select('id')
-      if (error) throw new Error(error.message)
-      if (!rows || rows.length === 0) { showToast('Question already handled elsewhere — refreshing.', 'error'); await loadAll(); return }
-      setAnswerDrafts((d) => ({ ...d, [q.id]: '' }))
-      setQuestionFreeText((d) => ({ ...d, [q.id]: false }))
-      showToast('Answer saved — the twin pulls it with get_answers on its next run.', 'success')
-      await loadAll()
-    } catch (e) {
-      showToast(e instanceof Error ? e.message : String(e), 'error')
-    } finally { setBusy(false) }
-  }
-
-  /** v2.3186: move a question to the other lane — the estimator's panel (Bids → Audits) or this console. */
-  async function setQuestionAudience(q: QuestionRow, audience: TwinQuestionAudience) {
-    setBusy(true)
-    try {
-      const sb = supabase as never as { from: (t: string) => { update: (v: object) => { eq: (k: string, v: string) => { eq: (k2: string, v2: string) => { select: (c: string) => Promise<{ data: unknown[] | null; error: { message: string } | null }> } } } } }
-      const { data: rows, error } = await sb.from('twin_questions')
-        .update({ audience, updated_at: new Date().toISOString() })
-        .eq('id', q.id).eq('status', 'open').select('id')
-      if (error) throw new Error(error.message)
-      if (!rows || rows.length === 0) { await loadAll(); return }
-      showToast(audience === 'estimator' ? "Sent to the estimator's Standing rulings panel." : 'Kept on this console — the estimator no longer sees it.', 'success')
-      await loadAll()
-    } catch (e) {
-      showToast(e instanceof Error ? e.message : String(e), 'error')
-    } finally { setBusy(false) }
-  }
-
-  async function dismissQuestion(q: QuestionRow) {
-    setBusy(true)
-    try {
-      const sb = supabase as never as { from: (t: string) => { update: (v: object) => { eq: (k: string, v: string) => { eq: (k2: string, v2: string) => { select: (c: string) => Promise<{ data: unknown[] | null; error: { message: string } | null }> } } } } }
-      const { data: rows, error } = await sb.from('twin_questions')
-        .update({ status: 'dismissed', updated_at: new Date().toISOString() })
-        .eq('id', q.id).eq('status', 'open').select('id')
-      if (error) throw new Error(error.message)
-      if (!rows || rows.length === 0) { await loadAll(); return }
-      await loadAll()
-    } catch (e) {
-      showToast(e instanceof Error ? e.message : String(e), 'error')
-    } finally { setBusy(false) }
-  }
-
-  async function promoteQuestion(q: QuestionRow) {
-    if (!q.about_bid_id) { showToast('This question has no bid — answer it here instead (RFIs live on a bid).', 'error'); return }
-    setBusy(true)
-    try {
-      const sbi = supabase as never as { from: (t: string) => { insert: (v: object) => { select: (c: string) => { single: () => Promise<{ data: { id: string; rfi_number: number } | null; error: { message: string } | null }> } } } }
-      const { data: me } = await supabase.auth.getUser()
-      const { data: rfi, error: e1 } = await sbi.from('bids_rfis')
-        .insert({ bid_id: q.about_bid_id, question: q.question, source: 'manual', created_by: me.user?.id ?? null })
-        .select('id, rfi_number').single()
-      if (e1 || !rfi) throw new Error(e1?.message ?? 'RFI insert failed')
-      const sbu = supabase as never as { from: (t: string) => { update: (v: object) => { eq: (k: string, v: string) => { eq: (k2: string, v2: string) => { select: (c: string) => Promise<{ data: unknown[] | null; error: { message: string } | null }> } } } } }
-      const { error: e2 } = await sbu.from('twin_questions')
-        .update({ status: 'promoted', promoted_rfi_id: rfi.id, updated_at: new Date().toISOString() })
-        .eq('id', q.id).eq('status', 'open').select('id')
-      if (e2) throw new Error(e2.message)
-      showToast(`Promoted to RFI-${rfi.rfi_number} (draft) on the bid's RFI tab.`, 'success')
-      await loadAll()
-    } catch (e) {
-      showToast(e instanceof Error ? e.message : String(e), 'error')
-    } finally { setBusy(false) }
-  }
 
   /** Create (idempotently) the CT seat for a twin and store the uuid join key on PT. */
   async function linkCtSeat(ptUserId: string, ptEmail: string, name: string | null): Promise<boolean> {
@@ -485,36 +369,54 @@ export default function DigitalTwinsPanel() {
   }
 
   const nowMs = Date.now()
-  const credById = new Map(creds.map((c) => [c.id, c]))
-  const twinById = new Map(twins.map((t) => [t.id, t]))
-  const twinDisplayName = (id: string) => {
-    const t = twinById.get(id)
-    return t ? (t.name ?? t.email.split('@')[0]) : id.slice(0, 8)
-  }
   const seat = nextTwinSeat(twins.map((t) => t.email))
 
   return (
     <div>
       {/* The four-step pipeline strip — every card below carries its step number. */}
       <div style={{ display: 'flex', gap: '0.45rem', flexWrap: 'wrap', marginBottom: '0.9rem' }}>
-        {PIPELINE.map((p) => (
-          <div key={p.step} style={{ flex: '1 1 9.5rem', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, padding: '0.4rem 0.65rem' }}>
-            <div style={{ fontSize: '0.6rem', fontWeight: 800, color: VIOLET, letterSpacing: '0.08em' }}>{p.step}</div>
-            <div style={{ fontSize: '0.8rem', fontWeight: 700 }}>{p.title}</div>
-            <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>{p.sub}</div>
-          </div>
-        ))}
+        {PIPELINE.map((p) => {
+          const box: React.CSSProperties = { flex: '1 1 9.5rem', background: 'var(--surface)', border: `1px ${p.href ? 'dashed' : 'solid'} ${p.href ? '#3b82f6' : 'var(--border)'}`, borderRadius: 8, padding: '0.4rem 0.65rem', textDecoration: 'none', color: 'inherit' }
+          const inner = (
+            <>
+              <div style={{ fontSize: '0.6rem', fontWeight: 800, color: VIOLET, letterSpacing: '0.08em' }}>{p.step}</div>
+              <div style={{ fontSize: '0.8rem', fontWeight: 700, color: p.href ? 'var(--text-link)' : undefined }}>{p.title}</div>
+              <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>{p.sub}</div>
+            </>
+          )
+          // Step 4 is a door (v2.3224): running and watching the robots happens on the Console lens.
+          return p.href ? (
+            <a key={p.step} href={p.href} style={box} title="Run the robots and watch the runs — Bids → 🤖 Robots → Console">
+              {inner}
+            </a>
+          ) : (
+            <div key={p.step} style={box}>
+              {inner}
+            </div>
+          )
+        })}
       </div>
 
       {freshToken ? (
         <div style={{ ...CARD, border: `1.5px solid ${VIOLET}`, background: 'var(--bg-violet-100)' }}>
           <h4 style={CARD_TITLE}>New key for {freshToken.twinEmail} — shown ONCE</h4>
           <code style={{ display: 'block', fontSize: '0.75rem', overflowWrap: 'anywhere', padding: '0.4rem 0.5rem', background: 'var(--surface)', borderRadius: 5, border: '1px solid var(--border)' }}>{freshToken.token}</code>
-          <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
+          <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem', flexWrap: 'wrap' }}>
             <button type="button" style={BTN_PRIMARY} onClick={() => void copy(freshToken.token, 'the key')}>Copy key</button>
+            <button
+              type="button"
+              style={BTN_PRIMARY}
+              title="Copies a Terminal command (Mac) that asks for this key and configures Claude Desktop's twin-mcp connector — the key never goes into a chat"
+              onClick={() => void copy(buildDesktopSetupCommand({ connectorUrl: twinMcpConnectorUrl(import.meta.env.VITE_SUPABASE_URL) }), 'the Claude Desktop setup command')}
+            >
+              Copy Desktop setup command
+            </button>
             <button type="button" style={BTN} onClick={() => setFreshToken(null)}>Done — I saved it</button>
           </div>
-          <p style={{ ...MUTED, marginBottom: 0, marginTop: '0.4rem' }}>Only its hash is stored — this value cannot be shown again. Hand it to the partner with docs/twins/TWIN_HARNESS.md.</p>
+          <p style={{ ...MUTED, marginBottom: 0, marginTop: '0.4rem' }}>
+            Only its hash is stored — this value cannot be shown again. For Claude Desktop: copy the setup command, paste it into Terminal, and paste the key when it asks.
+            For a Claude Code operator or any other harness, hand the key over with docs/twins/TWIN_HARNESS.md; the handoff prompt is on <a href={CONSOLE_HREF} style={{ color: 'var(--text-link)' }}>Robots → Console</a>.
+          </p>
         </div>
       ) : null}
 
@@ -699,133 +601,6 @@ export default function DigitalTwinsPanel() {
         </div>
       </div>
 
-      {/* Robot queue (v2.3222): the dev Queue lens left the Bids 🤖 bar — the estimator-facing
-          lenses there are the Robot Board mirror, Audits and the Scoreboard. Its URL still
-          works; this is its door, beside the other operator tools. */}
-      <div style={CARD}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.6rem', flexWrap: 'wrap', marginBottom: '0.3rem' }}>
-          <h4 style={{ ...CARD_TITLE, margin: 0 }}><span style={STEP_REF}>⇢</span>Robot queue</h4>
-          <a href="/bids?tab=robot-queue" style={{ ...BTN_PRIMARY, textDecoration: 'none', display: 'inline-block' }} title="Every robot-able bid, requested ones first; the Claude Desktop kickoff and the backtest candidates by axis">
-            Open the queue
-          </a>
-        </div>
-        <p style={{ ...MUTED, marginTop: 0 }}>
-          Kickoff prompts, the Desktop kickoff, and the backtest candidates grouped by the axis whose gate they would feed. Dev only —
-          estimators see the robots on the Bids page as a mirror of the Bid Board.
-        </p>
-      </div>
-
-      {/* Handoff (v2.3155): everything a new person needs to run shadow coverage from
-          their own machine — copied whole from docs/twins/kickoffs/shadow-operator.md. */}
-      <div style={CARD}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.6rem', flexWrap: 'wrap', marginBottom: '0.3rem' }}>
-          <h4 style={{ ...CARD_TITLE, margin: 0 }}><span style={STEP_REF}>↗</span>Hand shadow coverage to someone</h4>
-          <button
-            type="button"
-            style={BTN_PRIMARY}
-            title="Copies the whole handoff prompt — the new operator pastes it into Claude Code in a checkout of the repo"
-            onClick={() => void copy(shadowOperatorPrompt, 'the shadow-coverage handoff prompt')}
-          >
-            Copy handoff prompt
-          </button>
-        </div>
-        <p style={{ ...MUTED, marginTop: 0 }}>
-          One prompt does the whole job: it walks them through issuing their own robot key on this page (label it with their
-          name — revoke it here to cut them off), the one allow rule, and the hourly routine; the routine prompt is inside it,
-          verbatim. They never see a robot's number and never touch a human bid. Source of truth: <code style={{ fontSize: '0.7rem' }}>docs/twins/kickoffs/shadow-operator.md</code>.
-        </p>
-        <details>
-          <summary style={{ ...MUTED, cursor: 'pointer' }}>Preview the prompt</summary>
-          <pre style={{ fontSize: '0.7rem', whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', background: 'var(--bg-subtle)', border: '1px solid var(--border)', borderRadius: 6, padding: '0.6rem 0.75rem', maxHeight: '22rem', overflow: 'auto', marginTop: '0.4rem' }}>
-            {shadowOperatorPrompt}
-          </pre>
-        </details>
-      </div>
-
-      {/* Twin questions (R3): the internal ask lane's inbox. Open questions demand a human;
-          answers flow back to the agent via get_answers; bid-scoped ones can graduate into
-          RFI drafts (the external lane). */}
-      <div style={CARD}>
-        <h4 style={CARD_TITLE}><span style={STEP_REF}>Q</span>Twin questions{questions.filter((x) => x.status === 'open').length > 0 ? ` · ${questions.filter((x) => x.status === 'open').length} open` : ''}</h4>
-        <p style={{ ...MUTED, marginTop: 0 }}>
-          Two lanes (v2.3186): <b>operator</b> questions — the machine was in the robot's way — are yours and live here;{' '}
-          <b>estimator</b> questions — a judgment about the job — show on Bids → Audits → Standing rulings. Open operator questions sort first.
-        </p>
-        {questions.length === 0 ? <p style={MUTED}>No questions yet — a blocked twin parks one with ask_question instead of stalling.</p> : null}
-        {[...questions]
-          .sort((a, b) => {
-            const rank = (q: QuestionRow) => (q.status !== 'open' ? 2 : effectiveTwinQuestionAudience(q) === 'operator' ? 0 : 1)
-            return rank(a) - rank(b) || (a.created_at < b.created_at ? 1 : a.created_at > b.created_at ? -1 : 0)
-          })
-          .slice(0, 12)
-          .map((q) => {
-          const twin = twins.find((t) => t.id === q.twin_user_id)
-          const isOpen = q.status === 'open'
-          const lane = effectiveTwinQuestionAudience(q)
-          const laneWritable = 'audience' in q
-          return (
-            <div key={q.id} style={{ borderTop: '1px solid var(--border)', padding: '0.45rem 0', fontSize: '0.8rem' }}>
-              <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'baseline' }}>
-                <strong>{twin?.name ?? twin?.email ?? 'Twin'}</strong>
-                <span
-                  title={isTwinQuestionAudience(q.audience) ? 'Lane set by the robot or a human' : 'Lane read from the text — the audience column has not landed yet'}
-                  style={{ fontSize: '0.62rem', fontWeight: 800, borderRadius: 5, padding: '0.06rem 0.4rem', background: lane === 'operator' ? 'var(--bg-blue-tint)' : 'var(--bg-muted)', color: lane === 'operator' ? 'var(--text-blue-700, var(--text-700))' : 'var(--text-muted)' }}
-                >
-                  {lane === 'operator' ? '🛠 OPERATOR' : '📐 ESTIMATOR'}
-                </span>
-                {q.mission ? <span style={MUTED}>{q.mission}</span> : null}
-                <span style={{ fontSize: '0.62rem', fontWeight: 800, borderRadius: 5, padding: '0.06rem 0.4rem', background: isOpen ? 'var(--bg-amber-tint)' : 'var(--bg-muted)', color: isOpen ? 'var(--text-amber-800)' : 'var(--text-muted)' }}>{q.status.toUpperCase()}</span>
-                <span style={{ ...MUTED, marginLeft: 'auto' }}>{relativeTimeFrom(q.created_at, Date.now())}</span>
-              </div>
-              <div style={{ margin: '0.2rem 0', whiteSpace: 'pre-wrap' }}><TwinQuestionText text={q.question} bidIdByNumber={questionBidRefs.bidIdByNumber} aboutBidId={q.about_bid_id} aboutBidNumber={q.about_bid_id ? questionBidRefs.bidNumberById[q.about_bid_id] : null} sourceByBidId={questionBidRefs.sourceByBidId} /></div>
-              {q.status === 'answered' && q.answer ? <div style={{ ...MUTED, fontStyle: 'italic' }}>→ {q.answer}</div> : null}
-              {isOpen ? (
-                <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', marginTop: '0.25rem' }}>
-                  {(() => {
-                    const choices = orderedChoices(q)
-                    if (choices && !questionFreeText[q.id]) {
-                      return (
-                        <TwinQuestionChoiceButtons
-                          choices={choices}
-                          disabled={busy}
-                          onPick={(c) => void answerQuestion(q, answerFromChoice(c))}
-                          onSomethingElse={() => setQuestionFreeText((d) => ({ ...d, [q.id]: true }))}
-                        />
-                      )
-                    }
-                    return (
-                      <>
-                        <input
-                          type="text"
-                          value={answerDrafts[q.id] ?? ''}
-                          onChange={(e) => setAnswerDrafts((d) => ({ ...d, [q.id]: e.target.value }))}
-                          placeholder="Answer the twin…"
-                          style={{ flex: 1, minWidth: 180, padding: '0.3rem 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 5, font: 'inherit', fontSize: '0.78rem' }}
-                        />
-                        <button type="button" style={BTN_PRIMARY} disabled={busy || !(answerDrafts[q.id] ?? '').trim()} onClick={() => void answerQuestion(q)}>Answer</button>
-                      </>
-                    )
-                  })()}
-                  {q.about_bid_id ? <button type="button" style={BTN} disabled={busy} onClick={() => void promoteQuestion(q)}>Promote to RFI</button> : null}
-                  {laneWritable ? (
-                    <button
-                      type="button"
-                      style={BTN}
-                      disabled={busy}
-                      title={lane === 'operator' ? 'This is an estimating question after all — put it on the Standing rulings panel' : "The estimator shouldn't see this — keep it on this console"}
-                      onClick={() => void setQuestionAudience(q, lane === 'operator' ? 'estimator' : 'operator')}
-                    >
-                      {lane === 'operator' ? 'Send to estimator' : 'Take as operator'}
-                    </button>
-                  ) : null}
-                  <button type="button" style={{ ...BTN, color: 'var(--text-muted)' }} disabled={busy} onClick={() => void dismissQuestion(q)}>Dismiss</button>
-                </div>
-              ) : null}
-            </div>
-          )
-        })}
-      </div>
-
       {/* Calibration standard (v2.3091): who the robots calibrate to. A shadow
           scored against a standard's sent number counts toward Gate B; anyone
           else is practice (v2.3080). Hidden until the column is deployed. */}
@@ -858,34 +633,6 @@ export default function DigitalTwinsPanel() {
         </div>
       ) : null}
 
-      {/* Step 4: the run ledger, translated to plain English. */}
-      <div style={CARD}>
-        <h4 style={CARD_TITLE}><span style={STEP_REF}>4</span>Recent runs</h4>
-        {runs.length === 0 ? <p style={MUTED}>No runs logged yet — the first sign-in or mission report lands here.</p> : null}
-        {runs.map((r, i) => {
-          const d = describeTwinRun(r.mission, r.notes, (id) => credById.get(id)?.label)
-          const chip =
-            d.verb === 'sign-in' ? { text: 'SIGN-IN', bg: 'var(--bg-blue-tint)', fg: 'var(--text-blue-800)' } :
-            d.verb === 'report' ? { text: 'REPORT', bg: 'var(--bg-green-tint)', fg: 'var(--text-green-800)' } :
-            d.verb === 'heartbeat' ? (d.mission === 'blocked'
-              ? { text: 'BLOCKED', bg: 'var(--bg-amber-tint)', fg: 'var(--text-amber-800)' }
-              : { text: 'PULSE', bg: 'var(--bg-muted)', fg: 'var(--text-muted)' }) :
-            { text: 'RUN', bg: 'var(--bg-violet-100)', fg: 'var(--text-violet-800)' }
-          return (
-            <div key={i} style={{ display: 'flex', gap: '0.6rem', alignItems: 'baseline', fontSize: '0.76rem', padding: '0.26rem 0', borderBottom: i < runs.length - 1 ? '1px solid var(--border)' : 'none', flexWrap: 'wrap' }}>
-              <span style={{ color: 'var(--text-muted)', fontSize: '0.7rem', width: '4.5rem', flex: 'none' }} title={r.started_at.slice(0, 16).replace('T', ' ')}>
-                {relativeTimeFrom(r.started_at, nowMs)}
-              </span>
-              <span style={{ fontSize: '0.62rem', fontWeight: 800, borderRadius: 5, padding: '0.08rem 0.45rem', background: chip.bg, color: chip.fg, flex: 'none', width: '3.6rem', textAlign: 'center' }}>{chip.text}</span>
-              <span style={{ minWidth: 0, overflowWrap: 'anywhere' }}>
-                <span style={{ fontWeight: 600 }}>{twinDisplayName(r.twin_user_id)}</span>
-                {d.verb !== 'sign-in' ? <span style={{ color: 'var(--text-muted)' }}> · {d.mission}</span> : null}
-                {d.detail ? <span style={{ color: 'var(--text-muted)' }}> · {d.detail.slice(0, 140)}</span> : null}
-              </span>
-            </div>
-          )
-        })}
-      </div>
     </div>
   )
 }
