@@ -133,10 +133,13 @@ const tabBtnBase: CSSProperties = {
  */
 export function DispatchModeFooter({
   inboxBadgeCount = 0,
+  inboxWaitingCount = 0,
   variant = 'dispatch',
   showPoTab = false,
 }: {
   inboxBadgeCount?: number
+  /** Customers waiting (open high-priority requests, v2.3247): the badge pulses and says so. */
+  inboxWaitingCount?: number
   variant?: ModeFooterVariant
   /** Gear-menu opt-in: adds the PO tab (dispatch variant only). */
   showPoTab?: boolean
@@ -198,8 +201,9 @@ export function DispatchModeFooter({
               {tab.icon}
               {tab.key === 'inbox' && inboxBadgeCount > 0 ? (
                 <span
-                  aria-label={dispatchBadgeAriaLabel(inboxBadgeCount)}
-                  title={dispatchBadgeAriaLabel(inboxBadgeCount)}
+                  aria-label={dispatchBadgeAriaLabel(inboxBadgeCount, inboxWaitingCount)}
+                  title={dispatchBadgeAriaLabel(inboxBadgeCount, inboxWaitingCount)}
+                  data-waiting={inboxWaitingCount > 0 ? 'true' : undefined}
                   style={{
                     position: 'absolute',
                     top: -5,
@@ -216,6 +220,8 @@ export function DispatchModeFooter({
                     alignItems: 'center',
                     justifyContent: 'center',
                     boxSizing: 'border-box',
+                    // A customer waiting: the same red, but it breathes (v2.3247).
+                    ...(inboxWaitingCount > 0 ? { boxShadow: '0 0 0 2px var(--surface), 0 0 0 4px #fca5a5', animation: 'customerWaitingPulse 1.8s ease-in-out infinite' } : null),
                   }}
                 >
                   {inboxBadgeCount > 99 ? '99+' : inboxBadgeCount}
@@ -263,5 +269,5 @@ export function DispatchModeFooterLive({ showPoTab = false }: { showPoTab?: bool
     recordNavClick(authUser.id, role, DISPATCH_BADGE_SHOWN_CONTROL, target)
   }, [ready, target, authUser?.id, role])
 
-  return <DispatchModeFooter inboxBadgeCount={counts.open} showPoTab={showPoTab} />
+  return <DispatchModeFooter inboxBadgeCount={counts.open} inboxWaitingCount={counts.high} showPoTab={showPoTab} />
 }

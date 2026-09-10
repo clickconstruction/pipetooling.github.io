@@ -17,6 +17,8 @@
 export type DispatchBadgeRow = {
   id: string
   status: string | null
+  /** v2.3247: open + 'high' rows are customers waiting — the badge turns urgent. */
+  priority?: string | null
 }
 
 export type DispatchBadgeCounts = {
@@ -28,6 +30,8 @@ export type DispatchBadgeCounts = {
    * five times" ritual stays measurable; never shown.
    */
   closed: number
+  /** Open rows at priority 'high' (Customer Waiting, v2.3247) — a subset of `open`. */
+  high: number
 }
 
 /** The badge number: open rows only. */
@@ -47,21 +51,25 @@ export function dispatchBadgeCounts(
 ): DispatchBadgeCounts {
   let open = 0
   let closed = 0
+  let high = 0
   for (const r of rows) {
-    if (r.status === 'open') open++
-    else if (r.status === 'closed' && !dismissedIds.has(r.id)) closed++
+    if (r.status === 'open') {
+      open++
+      if (r.priority === 'high') high++
+    } else if (r.status === 'closed' && !dismissedIds.has(r.id)) closed++
   }
-  return { open, closed }
+  return { open, closed, high }
 }
 
-export const EMPTY_DISPATCH_BADGE_COUNTS: DispatchBadgeCounts = { open: 0, closed: 0 }
+export const EMPTY_DISPATCH_BADGE_COUNTS: DispatchBadgeCounts = { open: 0, closed: 0, high: 0 }
 
 export function addDispatchBadgeCounts(a: DispatchBadgeCounts, b: DispatchBadgeCounts): DispatchBadgeCounts {
-  return { open: a.open + b.open, closed: a.closed + b.closed }
+  return { open: a.open + b.open, closed: a.closed + b.closed, high: a.high + b.high }
 }
 
-/** Screen-reader label for the badge — "N open", never "unread". */
-export function dispatchBadgeAriaLabel(open: number): string {
+/** Screen-reader label for the badge — "N open", never "unread"; names the customers waiting when there are any. */
+export function dispatchBadgeAriaLabel(open: number, high: number = 0): string {
+  if (high > 0) return `${open} open · ${high} customer${high === 1 ? '' : 's'} waiting`
   return `${open} open`
 }
 

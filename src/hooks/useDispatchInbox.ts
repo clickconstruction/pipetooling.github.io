@@ -24,9 +24,10 @@ import {
 } from '../lib/picturesDispatchRequests'
 import { bidIdsForOpenJobSweep, pickOpenJobRequestsToClose } from '../lib/bids/wonDispatchHandoff'
 import { closeOpenJobFromBidRequests } from '../lib/bids/openJobFromBidDispatchRequest'
+import type { RequestPriority } from '../lib/requestPriority'
 
 const DISPATCH_REQUEST_SELECT =
-  'id, title, links, created_at, from_user_id, reference_summary, location_lat, location_lng, status, closed_at, closed_by_user_id, closed_note, pending_action, job_ledger_id, bid_id, sender:users!dispatch_requests_from_user_id_fkey(name, email), closed_by:users!dispatch_requests_closed_by_user_id_fkey(name)'
+  'id, title, links, created_at, from_user_id, reference_summary, location_lat, location_lng, status, closed_at, closed_by_user_id, closed_note, pending_action, job_ledger_id, bid_id, priority, priority_changed_at, last_called_at, pending_payload, sender:users!dispatch_requests_from_user_id_fkey(name, email), closed_by:users!dispatch_requests_closed_by_user_id_fkey(name), last_called_by:users!dispatch_requests_last_called_by_user_id_fkey(name)'
 
 const DISMISSED_DISPATCH_ID_CHUNK = 120
 
@@ -47,6 +48,8 @@ export function useDispatchInbox() {
    */
   const [dispatchBadgeCounts, setDispatchBadgeCounts] = useState<DispatchBadgeCounts>(EMPTY_DISPATCH_BADGE_COUNTS)
   const [dispatchRequestDismissingId, setDispatchRequestDismissingId] = useState<string | null>(null)
+  /** Row whose priority change is in flight (Customer Waiting, v2.3247). */
+  const [dispatchPrioritySavingId, setDispatchPrioritySavingId] = useState<string | null>(null)
   const [expandedDispatchRequestId, setExpandedDispatchRequestId] = useState<string | null>(null)
   const [dispatchThreadNotesByRequestId, setDispatchThreadNotesByRequestId] = useState<
     Record<string, DispatchThreadNoteRow[]>
@@ -597,6 +600,50 @@ export function useDispatchInbox() {
     setExpandedDispatchRequestId((ex) => (ex === requestId ? null : ex))
   }
 
+  /**
+   * Customer Waiting (v2.3247): raise or lower a request's priority. One RPC
+   * (`set_request_priority`) writes the row stamp and the thread note in one
+   * transaction; RLS decides who may (group member or dev — the closers).
+   */
+  async function setDispatchRequestPriority(requestId: string, priority: RequestPriority, note: string | null): Promise<boolean> {
+    if (!authUser?.id) return false
+    setDispatchPrioritySavingId(requestId)
+    try {
+      const changed = await withSupabaseRetry(
+        async () => supabase.rpc('set_request_priority', { p_inbox: 'dispatch', p_request_id: requestId, p_priority: priority, p_note: note ?? undefined }),
+        'set dispatch request priority',
+      )
+      if (!changed) {
+        showToast('Nothing changed — the request may already be there.', 'info')
+      } else {
+        showToast(priority === 'high' ? 'Marked as a customer waiting.' : 'Priority lowered.', 'success')
+      }
+      if (expandedDispatchRequestIdRef.current === requestId) await loadDispatchNotesForRequest(requestId)
+      loadDispatchRequests()
+      return !!changed
+    } catch (e) {
+      showToast(formatErrorMessage(e, 'Could not change the priority'), 'error')
+      return false
+    } finally {
+      setDispatchPrioritySavingId(null)
+    }
+  }
+
+  /** Customer Waiting (v2.3247): Call / Text was used — stamp last_called and drop the 📞 note. Silent on failure. */
+  async function logDispatchRequestCall(requestId: string, phoneDisplay: string): Promise<void> {
+    if (!authUser?.id) return
+    try {
+      await withSupabaseRetry(
+        async () => supabase.rpc('log_request_call', { p_inbox: 'dispatch', p_request_id: requestId, p_phone: phoneDisplay }),
+        'log dispatch request call',
+      )
+      if (expandedDispatchRequestIdRef.current === requestId) await loadDispatchNotesForRequest(requestId)
+      loadDispatchRequests()
+    } catch (e) {
+      console.warn('log_request_call failed', e)
+    }
+  }
+
   return {
     dispatchInboxEligible,
     dispatchRequests,
@@ -604,6 +651,9 @@ export function useDispatchInbox() {
     dispatchRequestsLoaded,
     dispatchBadgeCounts,
     dispatchRequestDismissingId,
+    dispatchPrioritySavingId,
+    setDispatchRequestPriority,
+    logDispatchRequestCall,
     expandedDispatchRequestId,
     dispatchThreadNotesByRequestId,
     dispatchNotesLoadingRequestId,

@@ -7,15 +7,23 @@
  * min-age count in the `HOURS_APPROVALS_MIN_AGE_DAYS` shape.
  */
 import { ageDays, compareOldestFirst } from './ageState'
+import { compareCustomerWaitingFirst } from './requestPriority'
 
 export type DispatchAgingRow = {
   status: 'open' | 'closed' | string | null
   created_at: string | null
   closed_at?: string | null
+  /** v2.3247: 'high' open rows (a customer waiting) lead the open tier. */
+  priority?: 'normal' | 'high' | string | null
 }
 
-/** Open before closed; open oldest-first; closed newest-closed-first. */
+/**
+ * Customer waiting (open + high) first, then open, then closed; open tiers
+ * oldest-first; closed newest-closed-first.
+ */
 export function compareDispatchInboxRows(a: DispatchAgingRow, b: DispatchAgingRow): number {
+  const byWaiting = compareCustomerWaitingFirst(a, b)
+  if (byWaiting !== 0) return byWaiting
   const aOpen = a.status === 'open'
   const bOpen = b.status === 'open'
   if (aOpen !== bOpen) return aOpen ? -1 : 1

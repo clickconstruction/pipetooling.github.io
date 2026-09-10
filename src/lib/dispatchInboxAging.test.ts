@@ -26,6 +26,17 @@ describe('sortDispatchInboxRows', () => {
     expect(sortDispatchInboxRows(rows).map((r) => r.id)).toEqual(['o-old', 'o-none', 'c-b', 'c-a'])
   })
 
+  it('a customer waiting (open + high) leads the open tier, oldest waiting first; high closed rows stay in the closed tier (v2.3247)', () => {
+    const rows = [
+      { id: 'o-old', status: 'open', created_at: daysAgo(46), closed_at: null },
+      { id: 'w-new', status: 'open', created_at: daysAgo(0), closed_at: null, priority: 'high' },
+      { id: 'c-high', status: 'closed', created_at: daysAgo(3), closed_at: daysAgo(1), priority: 'high' },
+      { id: 'w-old', status: 'open', created_at: daysAgo(1), closed_at: null, priority: 'high' },
+      { id: 'o-mid', status: 'open', created_at: daysAgo(4), closed_at: null, priority: 'normal' },
+    ]
+    expect(sortDispatchInboxRows(rows).map((r) => r.id)).toEqual(['w-old', 'w-new', 'o-old', 'o-mid', 'c-high'])
+  })
+
   it('does not mutate the input', () => {
     const rows = [{ id: 'a', status: 'open', created_at: daysAgo(1) }, { id: 'b', status: 'open', created_at: daysAgo(5) }]
     sortDispatchInboxRows(rows)

@@ -10,9 +10,10 @@ import { useAuth } from './useAuth'
 import { useRealtimeChannel } from './useRealtimeChannel'
 import type { EstimatorInboxRow, EstimatorThreadNoteRow } from '../components/EstimatorInboxSection'
 import { formatErrorMessage, withSupabaseRetry } from '../utils/errorHandling'
+import { compareCustomerWaitingFirst, type RequestPriority } from '../lib/requestPriority'
 
 const ESTIMATOR_REQUEST_SELECT =
-  'id, title, links, created_at, from_user_id, reference_summary, location_lat, location_lng, status, closed_at, closed_by_user_id, closed_note, sender:users!estimator_requests_from_user_id_fkey(name, email), closed_by:users!estimator_requests_closed_by_user_id_fkey(name)'
+  'id, title, links, created_at, from_user_id, reference_summary, location_lat, location_lng, status, closed_at, closed_by_user_id, closed_note, priority, priority_changed_at, last_called_at, pending_payload, sender:users!estimator_requests_from_user_id_fkey(name, email), closed_by:users!estimator_requests_closed_by_user_id_fkey(name), last_called_by:users!estimator_requests_last_called_by_user_id_fkey(name)'
 
 export function useEstimatorInbox() {
   const { user: authUser, role } = useAuth()
@@ -24,6 +25,8 @@ export function useEstimatorInbox() {
   /** Footer-badge counts over every row (open ignores per-viewer dismissal) — see dispatchInboxBadge.ts. */
   const [estimatorBadgeCounts, setEstimatorBadgeCounts] = useState<DispatchBadgeCounts>(EMPTY_DISPATCH_BADGE_COUNTS)
   const [estimatorRequestDismissingId, setEstimatorRequestDismissingId] = useState<string | null>(null)
+  /** Row whose priority change is in flight (Customer Waiting, v2.3247). */
+  const [estimatorPrioritySavingId, setEstimatorPrioritySavingId] = useState<string | null>(null)
   const [expandedEstimatorRequestId, setExpandedEstimatorRequestId] = useState<string | null>(null)
   const [estimatorThreadNotesByRequestId, setEstimatorThreadNotesByRequestId] = useState<
     Record<string, EstimatorThreadNoteRow[]>
@@ -82,6 +85,9 @@ export function useEstimatorInbox() {
       setEstimatorBadgeCounts(computeBadgeCounts(allRows, dismissedIds))
       const rows = allRows.filter((r) => !dismissedIds.has(r.id))
       rows.sort((a, b) => {
+        // Customer waiting (open + high) first (v2.3247); the rest keeps its habit.
+        const byWaiting = compareCustomerWaitingFirst(a, b)
+        if (byWaiting !== 0) return byWaiting
         const aOpen = a.status === 'open' ? 1 : 0
         const bOpen = b.status === 'open' ? 1 : 0
         if (aOpen !== bOpen) return bOpen - aOpen
@@ -367,12 +373,55 @@ export function useEstimatorInbox() {
     setExpandedEstimatorRequestId((ex) => (ex === requestId ? null : ex))
   }
 
+  /** Customer Waiting (v2.3247): raise or lower — see useDispatchInbox.setDispatchRequestPriority. */
+  async function setEstimatorRequestPriority(requestId: string, priority: RequestPriority, note: string | null): Promise<boolean> {
+    if (!authUser?.id) return false
+    setEstimatorPrioritySavingId(requestId)
+    try {
+      const changed = await withSupabaseRetry(
+        async () => supabase.rpc('set_request_priority', { p_inbox: 'estimator', p_request_id: requestId, p_priority: priority, p_note: note ?? undefined }),
+        'set estimator request priority',
+      )
+      if (!changed) {
+        showToast('Nothing changed — the request may already be there.', 'info')
+      } else {
+        showToast(priority === 'high' ? 'Marked as a customer waiting.' : 'Priority lowered.', 'success')
+      }
+      if (expandedEstimatorRequestIdRef.current === requestId) await loadEstimatorNotesForRequest(requestId)
+      loadEstimatorRequests()
+      return !!changed
+    } catch (e) {
+      showToast(formatErrorMessage(e, 'Could not change the priority'), 'error')
+      return false
+    } finally {
+      setEstimatorPrioritySavingId(null)
+    }
+  }
+
+  /** Customer Waiting (v2.3247): Call / Text was used — stamp last_called and drop the 📞 note. */
+  async function logEstimatorRequestCall(requestId: string, phoneDisplay: string): Promise<void> {
+    if (!authUser?.id) return
+    try {
+      await withSupabaseRetry(
+        async () => supabase.rpc('log_request_call', { p_inbox: 'estimator', p_request_id: requestId, p_phone: phoneDisplay }),
+        'log estimator request call',
+      )
+      if (expandedEstimatorRequestIdRef.current === requestId) await loadEstimatorNotesForRequest(requestId)
+      loadEstimatorRequests()
+    } catch (e) {
+      console.warn('log_request_call failed', e)
+    }
+  }
+
   return {
     estimatorInboxEligible,
     estimatorRequests,
     estimatorBadgeCounts,
     estimatorRequestsLoading,
     estimatorRequestDismissingId,
+    estimatorPrioritySavingId,
+    setEstimatorRequestPriority,
+    logEstimatorRequestCall,
     expandedEstimatorRequestId,
     estimatorThreadNotesByRequestId,
     estimatorNotesLoadingRequestId,
