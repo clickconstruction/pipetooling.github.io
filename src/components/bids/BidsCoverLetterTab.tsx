@@ -68,6 +68,7 @@ import { BidBestEffortCard } from './BidBestEffortCard'
 import { deriveBidFlow, type BidFlowDoor, type BidFlowStep } from '../../lib/bids/bidFlow'
 import { useBidFlowFacts } from '../../hooks/useBidFlowFacts'
 import { useBidFlowReview } from '../../hooks/useBidFlowReview'
+import { useBidFlowFold } from '../../hooks/useBidFlowFold'
 import type { useBidPreview } from '../../contexts/BidPreviewModalContext'
 import type { BidWithBuilder } from '../../types/bidWithBuilder'
 import type { BidCountRow } from '../../types/bids'
@@ -196,6 +197,8 @@ export function BidsCoverLetterTab({
   // Bid flow facts for the selected bid (one chunked read per selection).
   const { factsByBid: bidFlowFactsByBid } = useBidFlowFacts(selectedBidForPricing ? [selectedBidForPricing.id] : [])
   const bidFlowReview = useBidFlowReview(selectedBidForPricing ? [selectedBidForPricing] : [])
+  // v2.3241: the strip folds to one line beside the title; per device.
+  const flowFold = useBidFlowFold()
   const confirmDialog = useConfirmDialog()
   const { user: authUser, role: authRole } = useAuth()
   // Cover-letter-only UI state
@@ -1002,8 +1005,10 @@ export function BidsCoverLetterTab({
               </button>
             ) : null}
             {/* v2.3200: the bid flow strip above the bid title (Review is its one door here). */}
+            {flowFold.expanded ? (
             <BidFlowStrip
               variant="full"
+              hideHeader
               flow={deriveBidFlow(bid, bidFlowFactsByBid[bid.id])}
               bidLabel={bid.project_name ?? undefined}
               canOpenDoor={(d) => d === 'review' || (onOpenBidFlowDoor != null && (bidFlowDoorAllowed ? bidFlowDoorAllowed(d) : d != null))}
@@ -1013,6 +1018,7 @@ export function BidsCoverLetterTab({
               }}
               reviewStamp={bidFlowReview.stampFor(bid)}
             />
+            ) : null}
             <div
               style={{
                 display: 'flex',
@@ -1029,6 +1035,19 @@ export function BidsCoverLetterTab({
                   previewEnabled={bidPreview != null}
                   onOpenPreview={() => bidPreview?.openBidPreviewFromBid(bid)}
                   {...(narrowViewport640 ? { h2Style: { margin: 0 } } : {})}
+                />
+                <BidFlowStrip
+                  variant="inline"
+                  expanded={flowFold.expanded}
+                  onToggleExpanded={flowFold.toggle}
+                  flow={deriveBidFlow(bid, bidFlowFactsByBid[bid.id])}
+                  bidLabel={bid.project_name ?? undefined}
+                  canOpenDoor={(d) => d === 'review' || (onOpenBidFlowDoor != null && (bidFlowDoorAllowed ? bidFlowDoorAllowed(d) : d != null))}
+                  onOpenDoor={(d, step) => {
+                  if (d === 'review') void bidFlowReview.markReviewed(bid)
+                  else onOpenBidFlowDoor?.(bid, d, step)
+                  }}
+                  reviewStamp={bidFlowReview.stampFor(bid)}
                 />
               </div>
               <div

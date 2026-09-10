@@ -39,6 +39,7 @@ import { BidFlowStrip } from './BidFlowStrip'
 import { deriveBidFlow, type BidFlowDoor, type BidFlowStep } from '../../lib/bids/bidFlow'
 import { useBidFlowFacts } from '../../hooks/useBidFlowFacts'
 import { useBidFlowReview } from '../../hooks/useBidFlowReview'
+import { useBidFlowFold } from '../../hooks/useBidFlowFold'
 import { BidPickerStandardList } from './BidPickerStandardList'
 import { TakeoffViewPills, TakeoffByStageNotice } from './TakeoffViewPills'
 import { TakeoffFocusView } from './TakeoffFocusView'
@@ -224,6 +225,8 @@ export function BidsTakeoffTab({
   // Bid flow facts for the selected bid (one chunked read per selection).
   const { factsByBid: bidFlowFactsByBid } = useBidFlowFacts(selectedBidForTakeoff ? [selectedBidForTakeoff.id] : [])
   const bidFlowReview = useBidFlowReview(selectedBidForTakeoff ? [selectedBidForTakeoff] : [])
+  // v2.3241: the strip folds to one line beside the title; per device.
+  const flowFold = useBidFlowFold()
   const { showToast } = useToastContext()
 
   // Breakdown jump landing (v2.2400): scroll + flash the fixture's takeoff rows.
@@ -1896,8 +1899,10 @@ export function BidsTakeoffTab({
                   ×
                 </button>
               ) : null}
+              {flowFold.expanded ? (
               <BidFlowStrip
                 variant="full"
+                hideHeader
                 flow={deriveBidFlow(selectedBidForTakeoff, bidFlowFactsByBid[selectedBidForTakeoff.id])}
                 bidLabel={selectedBidForTakeoff.project_name ?? undefined}
                 canOpenDoor={(d) => d === 'review' || (onOpenBidFlowDoor != null && (bidFlowDoorAllowed ? bidFlowDoorAllowed(d) : d != null))}
@@ -1907,12 +1912,26 @@ export function BidsTakeoffTab({
                 }}
                 reviewStamp={bidFlowReview.stampFor(selectedBidForTakeoff)}
               />
+              ) : null}
               <div id="takeoff-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.5rem' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap', minWidth: 0 }}>
                   <BidWorkflowTabTitleWithPreview
                     bid={selectedBidForTakeoff}
                     previewEnabled={bidPreview != null}
                     onOpenPreview={() => bidPreview?.openBidPreviewFromBid(selectedBidForTakeoff)}
+                  />
+                  <BidFlowStrip
+                    variant="inline"
+                    expanded={flowFold.expanded}
+                    onToggleExpanded={flowFold.toggle}
+                    flow={deriveBidFlow(selectedBidForTakeoff, bidFlowFactsByBid[selectedBidForTakeoff.id])}
+                    bidLabel={selectedBidForTakeoff.project_name ?? undefined}
+                    canOpenDoor={(d) => d === 'review' || (onOpenBidFlowDoor != null && (bidFlowDoorAllowed ? bidFlowDoorAllowed(d) : d != null))}
+                    onOpenDoor={(d, step) => {
+                    if (d === 'review') void bidFlowReview.markReviewed(selectedBidForTakeoff)
+                    else onOpenBidFlowDoor?.(selectedBidForTakeoff, d, step)
+                    }}
+                    reviewStamp={bidFlowReview.stampFor(selectedBidForTakeoff)}
                   />
                   <TakeoffViewPills view={takeoffView} onChange={switchTakeoffView} />
                 </div>

@@ -2,9 +2,13 @@ import type { CSSProperties } from 'react'
 import { bidFlowSummary, type BidFlow, type BidFlowDoor, type BidFlowPhase, type BidFlowStep } from '../../lib/bids/bidFlow'
 
 /**
- * The estimating poster drawn on a bid (v2.3200). Two sizes:
- * - `full` — under the selected-bid title on the workflow tabs.
+ * The estimating poster drawn on a bid (v2.3200). Four sizes:
+ * - `inline` (v2.3241) — one line beside the bid's title on the workflow tabs: the
+ *   hairline ticks, the summary, the review stamp, a chevron; unfolds to `full`.
+ * - `full` — the labeled strip with its doors (the Bid Board's expanded row; the
+ *   inline variant unfolded).
  * - `compact` — twelve dots on the Bid Board row where the jump icons sit.
+ * - `hairline` — the ticks alone under a row's jump icons.
  * Both read one `BidFlow` from `deriveBidFlow`, so they cannot disagree.
  * Colour is never the only channel: every node carries its number or a ✓,
  * a dashed ring means untracked, and the tooltip names the proxy.
@@ -12,7 +16,12 @@ import { bidFlowSummary, type BidFlow, type BidFlowDoor, type BidFlowPhase, type
 
 type Props = {
   flow: BidFlow
-  variant: 'full' | 'compact' | 'hairline'
+  variant: 'full' | 'compact' | 'hairline' | 'inline'
+  /** `inline` only: is the full strip unfolded (the caller renders it with `hideHeader`)? */
+  expanded?: boolean
+  onToggleExpanded?: () => void
+  /** `full` only: skip the "Where this bid is" header row — the inline pill already said it. */
+  hideHeader?: boolean
   /** Open a step's door. Return false (or omit) to render the step without a button. */
   onOpenDoor?: (door: BidFlowDoor, step: BidFlowStep) => void
   canOpenDoor?: (door: BidFlowDoor) => boolean
@@ -66,7 +75,7 @@ function phaseBreakAfter(steps: BidFlowStep[], i: number): boolean {
   return !!cur && !!nxt && cur.phase !== nxt.phase
 }
 
-export function BidFlowStrip({ flow, variant, onOpenDoor, canOpenDoor, bidLabel, reviewStamp }: Props) {
+export function BidFlowStrip({ flow, variant, onOpenDoor, canOpenDoor, bidLabel, reviewStamp, expanded = false, onToggleExpanded, hideHeader = false }: Props) {
   const ariaLabel = `Bid flow${bidLabel ? ` for ${bidLabel}` : ''}: ${bidFlowSummary(flow)}`
   const openable = (door: BidFlowDoor) => door != null && !!onOpenDoor && (canOpenDoor ? canOpenDoor(door) : true)
 
@@ -143,7 +152,7 @@ export function BidFlowStrip({ flow, variant, onOpenDoor, canOpenDoor, bidLabel,
     )
   }
 
-  // ---- full ----
+  // ---- full (and inline, unfolded) ----
   const phases: Array<{ phase: BidFlowPhase; from: number; to: number }> = []
   flow.steps.forEach((s, i) => {
     const last = phases[phases.length - 1]
@@ -152,19 +161,22 @@ export function BidFlowStrip({ flow, variant, onOpenDoor, canOpenDoor, bidLabel,
   })
   const currentPhase = flow.next?.phase ?? null
 
-  return (
+  const inline = variant === 'inline'
+  const bare = inline || hideHeader
+  const full = (
     <div
       role="group"
       aria-label={ariaLabel}
       style={{
-        border: '1px solid var(--border)',
+        border: bare ? '1px dashed var(--border)' : '1px solid var(--border)',
         borderRadius: 8,
-        background: 'var(--surface)',
+        background: bare ? 'var(--bg-subtle)' : 'var(--surface)',
         padding: '0.6rem 0.9rem 0.75rem',
-        marginBottom: '1rem',
+        marginBottom: bare ? '0.75rem' : '1rem',
         overflowX: 'auto',
       }}
     >
+      {bare ? null : (
       <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap', marginBottom: '0.4rem' }}>
         <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-strong)' }}>
           Where this bid is <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}>· {bidFlowSummary(flow)}</span>
@@ -198,6 +210,7 @@ export function BidFlowStrip({ flow, variant, onOpenDoor, canOpenDoor, bidLabel,
           })()}
         </span>
       </div>
+      )}
       <div
         style={{
           display: 'grid',
@@ -307,5 +320,63 @@ export function BidFlowStrip({ flow, variant, onOpenDoor, canOpenDoor, bidLabel,
         })}
       </div>
     </div>
+  )
+  if (!inline) return full
+
+  // ---- inline: the pill beside the title; the caller renders the full strip (hideHeader) when unfolded ----
+  const review = flow.steps.find((st) => st.key === 'review')
+  const reviewOpenable = !!review && review.state !== 'untracked' && openable('review')
+  const reviewStamped = review?.state === 'done'
+  const segBg: Record<string, string> = { done: DONE, next: NEXT, todo: TODO, loading: 'var(--bg-muted)', untracked: 'transparent' }
+  const summary = bidFlowSummary(flow)
+  return (
+    <>
+      <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.55rem', flexWrap: 'wrap', minWidth: 0 }}>
+        <button
+          type="button"
+          aria-expanded={expanded}
+          aria-label={`${ariaLabel}. ${expanded ? 'Fold the flow strip' : 'Unfold the flow strip'}`}
+          title={`${summary}${flow.next && !flow.decided ? '' : ''} — click for the full flow`}
+          onClick={onToggleExpanded}
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '0.5rem',
+            font: 'inherit',
+            fontSize: '0.78rem',
+            color: 'var(--text-muted)',
+            padding: '0.2rem 0.6rem 0.2rem 0.5rem',
+            borderRadius: 999,
+            border: `1px solid ${expanded ? NEXT : 'var(--border)'}`,
+            background: 'var(--surface)',
+            cursor: onToggleExpanded ? 'pointer' : 'default',
+            whiteSpace: 'nowrap',
+          }}
+        >
+          <span aria-hidden style={{ display: 'inline-flex', gap: 2, alignItems: 'center' }}>
+            {flow.steps.map((step) => (
+              <span
+                key={step.key}
+                title={tooltip(step)}
+                style={{ display: 'block', width: 12, height: 5, borderRadius: 2, background: segBg[step.state], border: step.state === 'untracked' ? '1px dashed var(--border)' : undefined, boxSizing: 'border-box' }}
+              />
+            ))}
+          </span>
+          <span>{summary}</span>
+          {reviewStamped && reviewStamp?.label ? <span style={{ color: 'var(--text-faint)' }}>· {reviewStamp.label}</span> : null}
+          <span aria-hidden style={{ fontSize: '0.65rem', color: 'var(--text-faint)' }}>{expanded ? '▴' : '▾'}</span>
+        </button>
+        {review && reviewOpenable && !reviewStamped && !flow.decided ? (
+          <button
+            type="button"
+            onClick={() => onOpenDoor?.('review', review)}
+            title="Mark this bid reviewed — who, when, and your notes"
+            style={{ font: 'inherit', fontSize: '0.74rem', fontWeight: 600, padding: '0.2rem 0.6rem', borderRadius: 999, cursor: 'pointer', border: `1px solid ${NEXT}`, background: NEXT, color: '#fff', whiteSpace: 'nowrap' }}
+          >
+            Mark reviewed
+          </button>
+        ) : null}
+      </span>
+    </>
   )
 }

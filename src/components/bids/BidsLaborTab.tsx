@@ -26,6 +26,7 @@ import { BidFlowStrip } from './BidFlowStrip'
 import { deriveBidFlow, type BidFlowDoor, type BidFlowStep } from '../../lib/bids/bidFlow'
 import { useBidFlowFacts } from '../../hooks/useBidFlowFacts'
 import { useBidFlowReview } from '../../hooks/useBidFlowReview'
+import { useBidFlowFold } from '../../hooks/useBidFlowFold'
 import { BidPickerStandardList } from './BidPickerStandardList'
 import { MyBidsToggle } from './MyBidsToggle'
 import { BidPickerSortToggle } from './BidPickerSortToggle'
@@ -225,6 +226,8 @@ export function BidsLaborTab({
   // Bid flow facts for the selected bid (one chunked read per selection).
   const { factsByBid: bidFlowFactsByBid } = useBidFlowFacts(selectedBidForCostEstimate ? [selectedBidForCostEstimate.id] : [])
   const bidFlowReview = useBidFlowReview(selectedBidForCostEstimate ? [selectedBidForCostEstimate] : [])
+  // v2.3241: the strip folds to one line beside the title; per device.
+  const flowFold = useBidFlowFold()
   const confirmDialog = useConfirmDialog()
   const { showToast } = useToastContext()
   // Breakdown jump landing (v2.2400): scroll + flash the fixture's HOURS row.
@@ -1069,8 +1072,10 @@ export function BidsLaborTab({
               ×
             </button>
           ) : null}
+          {flowFold.expanded ? (
           <BidFlowStrip
             variant="full"
+            hideHeader
             flow={deriveBidFlow(selectedBidForCostEstimate, bidFlowFactsByBid[selectedBidForCostEstimate.id])}
             bidLabel={selectedBidForCostEstimate.project_name ?? undefined}
             canOpenDoor={(d) => d === 'review' || (onOpenBidFlowDoor != null && (bidFlowDoorAllowed ? bidFlowDoorAllowed(d) : d != null))}
@@ -1080,12 +1085,26 @@ export function BidsLaborTab({
             }}
             reviewStamp={bidFlowReview.stampFor(selectedBidForCostEstimate)}
           />
+          ) : null}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.5rem' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap', minWidth: 0 }}>
               <BidWorkflowTabTitleWithPreview
                 bid={selectedBidForCostEstimate}
                 previewEnabled={bidPreview != null}
                 onOpenPreview={() => bidPreview?.openBidPreviewFromBid(selectedBidForCostEstimate)}
+              />
+              <BidFlowStrip
+                variant="inline"
+                expanded={flowFold.expanded}
+                onToggleExpanded={flowFold.toggle}
+                flow={deriveBidFlow(selectedBidForCostEstimate, bidFlowFactsByBid[selectedBidForCostEstimate.id])}
+                bidLabel={selectedBidForCostEstimate.project_name ?? undefined}
+                canOpenDoor={(d) => d === 'review' || (onOpenBidFlowDoor != null && (bidFlowDoorAllowed ? bidFlowDoorAllowed(d) : d != null))}
+                onOpenDoor={(d, step) => {
+                if (d === 'review') void bidFlowReview.markReviewed(selectedBidForCostEstimate)
+                else onOpenBidFlowDoor?.(selectedBidForCostEstimate, d, step)
+                }}
+                reviewStamp={bidFlowReview.stampFor(selectedBidForCostEstimate)}
               />
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
