@@ -37,7 +37,7 @@ import { BidBoardMapCard } from './BidBoardMapCard'
 import { BidBoardSelfHighlightWheel, useBidBoardSelfHighlight } from './BidBoardSelfHighlightWheel'
 import { BidFlowStrip } from './BidFlowStrip'
 import { deriveBidFlow, type BidFlowDoor, type BidFlowStep } from '../../lib/bids/bidFlow'
-import { landOnBidFlowTarget } from '../../lib/bids/bidFlowLanding'
+import { BID_FLOW_LANDING_CLASS, landOnBidFlowTarget } from '../../lib/bids/bidFlowLanding'
 import { useBidFlowFacts } from '../../hooks/useBidFlowFacts'
 import { useBidFlowReview } from '../../hooks/useBidFlowReview'
 
@@ -1042,6 +1042,7 @@ export function BidsBidBoardTab({
       <Fragment key={bid.id}>
         <tr
           id={`bid-board-row-${bid.id}`}
+          className={bid.id === rowHighlightId ? BID_FLOW_LANDING_CLASS : undefined}
           data-deeplink-gen={bid.id === deepLinkHighlightId ? deepLinkHighlightGen : undefined}
           onClick={(e) => handleBidBoardRowClick(e, bid.id)}
           onKeyDown={(e) => {
@@ -1053,14 +1054,6 @@ export function BidsBidBoardTab({
           style={{
             borderBottom: '1px solid var(--border)',
             cursor: 'pointer',
-            ...(bid.id === rowHighlightId
-              ? {
-                  backgroundColor: 'var(--bg-amber-tint)',
-                  outline: '2px solid #d97706',
-                  outlineOffset: -2,
-                  transition: 'background-color 0.25s ease, outline-color 0.25s ease',
-                }
-              : {}),
           }}
         >
           <td style={{ padding: '0.0625rem 0.4rem 0.0625rem 0.15rem', textAlign: 'right', whiteSpace: 'nowrap', verticalAlign: 'middle' }}>
@@ -1285,6 +1278,7 @@ export function BidsBidBoardTab({
       <div
         key={bid.id}
         id={`bid-board-row-${bid.id}`}
+        className={bid.id === rowHighlightId ? BID_FLOW_LANDING_CLASS : undefined}
         data-deeplink-gen={bid.id === deepLinkHighlightId ? deepLinkHighlightGen : undefined}
         onClick={(e) => handleBidBoardRowClick(e, bid.id)}
         onKeyDown={(e) => {
@@ -1300,14 +1294,6 @@ export function BidsBidBoardTab({
           padding: '0.5rem 0.6rem',
           background: 'var(--surface)',
           cursor: 'pointer',
-          ...(bid.id === rowHighlightId
-            ? {
-                backgroundColor: 'var(--bg-amber-tint)',
-                outline: '2px solid #d97706',
-                outlineOffset: -2,
-                transition: 'background-color 0.25s ease, outline-color 0.25s ease',
-              }
-            : {}),
         }}
       >
         {/* Header row wraps (v2.3171): the icon cluster (5–7 buttons + the number) plus the

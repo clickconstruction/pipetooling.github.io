@@ -1,4 +1,5 @@
 import { Fragment, useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
+import { BID_FLOW_LANDING_CLASS } from '../../lib/bids/bidFlowLanding'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
@@ -878,20 +879,13 @@ export function BidsBuilderReviewTab({
               <div
                 key={customer.id}
                 id={`builder-review-customer-${customer.id}`}
+                className={customer.id === deepLinkHighlightCustomerId ? BID_FLOW_LANDING_CLASS : undefined}
                 data-deeplink-gen={customer.id === deepLinkHighlightCustomerId ? deepLinkHighlightGen : undefined}
                 style={{
                   border: '1px solid var(--border)',
                   borderRadius: 8,
                   overflow: 'hidden',
                   background: 'var(--surface)',
-                  ...(customer.id === deepLinkHighlightCustomerId
-                    ? {
-                        backgroundColor: 'var(--bg-amber-tint)',
-                        outline: '2px solid #d97706',
-                        outlineOffset: -2,
-                        transition: 'background-color 0.25s ease, outline-color 0.25s ease',
-                      }
-                    : {}),
                 }}
               >
                 <div

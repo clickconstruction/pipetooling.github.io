@@ -51,7 +51,7 @@ import { RobotStatusSheet } from '../components/bids/RobotStatusSheet'
 import { RobotNeedsSheet, type RobotOpenQuestion } from '../components/bids/RobotNeedsSheet'
 import { effectiveTwinQuestionKind } from '../../supabase/functions/_shared/twinQuestionKind'
 import type { BidFlowDoor, BidFlowStep } from '../lib/bids/bidFlow'
-import { landOnBidFlowTarget, parseLandingParam } from '../lib/bids/bidFlowLanding'
+import { landOnBidFlowTarget, landOnElement, parseLandingParam } from '../lib/bids/bidFlowLanding'
 import { robotRowState, type RobotRowInput } from '../lib/bids/robotRowState'
 import type { ShadowRunRow } from '../lib/bids/shadowStory'
 import { RobotBidComparisonModal } from '../components/bids/RobotBidComparisonModal'
@@ -1251,27 +1251,10 @@ export default function Bids() {
             : 'bid-form-gc-builder'
       const el = document.getElementById(elId)
       if (el instanceof HTMLElement) {
-        el.focus()
-        if (el instanceof HTMLInputElement) {
-          el.select()
-        }
-        el.scrollIntoView({ behavior: 'smooth', block: 'center' })
-        // Brief amber highlight so the user's eye lands on the field after the
-        // modal opens. Restore prior inline styles after ~1.6s.
-        const prevOutline = el.style.outline
-        const prevOutlineOffset = el.style.outlineOffset
-        const prevBackground = el.style.background
-        const prevTransition = el.style.transition
-        el.style.transition = 'background-color 0.3s ease, outline-color 0.3s ease'
-        el.style.outline = '2px solid #d97706'
-        el.style.outlineOffset = '2px'
-        el.style.background = '#fffbeb'
-        window.setTimeout(() => {
-          el.style.outline = prevOutline
-          el.style.outlineOffset = prevOutlineOffset
-          el.style.background = prevBackground
-          el.style.transition = prevTransition
-        }, 1600)
+        // One landing style (v2.3228): the same blue ring + fade the bid flow doors
+        // use, instead of the amber outline this effect used to paint inline.
+        landOnElement(el)
+        if (el instanceof HTMLInputElement) el.select()
       }
       setPendingBidFormFocus(null)
     }, 50)
