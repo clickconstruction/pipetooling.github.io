@@ -21,7 +21,7 @@ Index (validated against code on 2026-09-06 at v2.2935 — the 2026-09-05 sweep 
 | To-do | Status | Summary |
 |---|---|---|
 | [`stage-plan-residuals.md`](./stage-plan-residuals.md) | low | What the Stage Plan train (v2.3083–v2.3134) left: capable-to-bill reading `billable()`, retiring `offered_to_gc` / bundles, plain rows on the final draw, the Any-done rule, the drawer's mint door. |
-| [`bill-truth-shadow-beacon.md`](./bill-truth-shadow-beacon.md) | **dated: remove by 2026-09-19** | Read the mismatch beacon, then delete the legacy sums and `billTruthShadow.ts`. |
+| [`bill-truth-shadow-beacon.md`](./bill-truth-shadow-beacon.md) | **shipped, delete me** | Done in v2.3218 (#2930): the beacon, the legacy sums and `billTruthShadow.ts` are gone. This row was left stale; delete the file on the next sweep. |
 | [`takeoffs-retire-old.md`](./takeoffs-retire-old.md) | blocked until ~2026-09-11 | Re-measure coverage after a week of One at a time / Sheet, then retire the Old takeoffs view. |
 | [`job-summary-follow-ups.md`](./job-summary-follow-ups.md) | not started | Days delta strip, the under-60% Needs-you card, Bid vs actual (now unblocked), PTO / overtime on Capacity, the J963 loader reconcile, the earned-revenue kernel. |
 | [`sub-sheet-job-link-followups.md`](./sub-sheet-job-link-followups.md) | converting — A + E done v2.3059 | Every reader still matching a sub sheet to its job by number — five money RPCs, four sub-portal sites, six per-job reads, the People → Review maps — with the conversion order. |
@@ -34,7 +34,7 @@ Index (validated against code on 2026-09-06 at v2.2935 — the 2026-09-05 sweep 
 | [`partnerships-off-toggles.md`](./partnerships-off-toggles.md) | owner + attorney gated | Notice delivery, estimating cap, W2 watch (modeled); runway floor (not modeled); the notes preview. |
 | [`weekly-money-later.md`](./weekly-money-later.md) | optional | Phase 6: drilldowns, GC lens, month roll-up, timeline feed, wider access. |
 | [`robots-residuals.md`](./robots-residuals.md) | low | Client-side leftovers only; the twins program runs from `docs/twins/HANDOFF.md`. |
-| [`supply-house-directory/`](./supply-house-directory/README.md) | **designed, not started** | Estimators can read the supply-house roster but have no honest door to it. Split the office tab into a Directory pane (three doors, one component) and an AP pane; then reps as the only home for contacts, `vendor_kind` for `is_insurer`, trades served. Six-PR train, five mock-up screens inside. |
+| [`supply-house-directory/`](./supply-house-directory/README.md) | **shipped, delete me** | All six PRs landed 2026-09-08 (v2.3166–v2.3173) and the close-out on 2026-09-10 (v2.3243 rep provenance, v2.3244 `is_insurer` dropped); every migration pushed. The folder keeps both mock-ups for the record until the next sweep deletes it. |
 | [`supply-house-job-account-aging.md`](./supply-house-job-account-aging.md) | waiting on Taunya | Job-account invoices in the aging heat map; bulk flag; the May follow-ups. |
 | [`engineering-hygiene.md`](./engineering-hygiene.md) | low | Decomposition inventory regrown again; two silent-no-op update sweeps. |
 | [`journey-map-tier-1.md`](./journey-map-tier-1.md) | pointer | Which drift rows are closed here; the list lives in the private repo. |
