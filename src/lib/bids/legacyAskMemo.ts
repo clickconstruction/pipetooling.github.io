@@ -148,9 +148,25 @@ export interface SplitQuestionInsert {
   recommended: string | null
 }
 
+/**
+ * The stamp every posted split carries in its mission, so a retry can find what
+ * an earlier Post already wrote (v2.3236: the first live Post inserted its four
+ * rows, then the session died before the original was retired — a second press
+ * would have posted them twice).
+ */
+export function splitMissionTag(sourceId: string): string {
+  return `split from ${sourceId.slice(0, 8)}`
+}
+
+/** Rows an earlier Post already wrote for this source — match on the mission stamp. */
+export function alreadySplitRows<R extends { mission: string | null }>(rows: readonly R[], sourceId: string): R[] {
+  const tag = splitMissionTag(sourceId)
+  return rows.filter((r) => (r.mission ?? '').includes(tag))
+}
+
 /** The rows the Console posts as the robot — one open one-tap question per draft. */
 export function buildSplitInserts(source: LegacyAskSource, drafts: readonly LegacyDecisionDraft[]): SplitQuestionInsert[] {
-  const mission = `${source.mission?.trim() || 'legacy ask'} · split from ${source.id.slice(0, 8)}`
+  const mission = `${source.mission?.trim() || 'legacy ask'} · ${splitMissionTag(source.id)}`
   return drafts.map((d) => ({
     twin_user_id: source.twin_user_id,
     about_bid_id: source.about_bid_id,

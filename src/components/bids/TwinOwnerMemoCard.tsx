@@ -4,7 +4,7 @@ import { supabase } from '../../lib/supabase'
 import { useToastContext } from '../../contexts/ToastContext'
 import { relativeTimeFrom } from '../../lib/twinConsoleDisplay'
 import { groupStandingRulings, legacyMultiDecisionNote, type TwinQuestionRow } from '../../lib/bids/standingRulings'
-import { buildSplitInserts, draftProblems, splitLegacyAsk, splitRetirementAnswer, type LegacyDecisionDraft } from '../../lib/bids/legacyAskMemo'
+import { alreadySplitRows, buildSplitInserts, draftProblems, splitLegacyAsk, splitMissionTag, splitRetirementAnswer, type LegacyDecisionDraft } from '../../lib/bids/legacyAskMemo'
 import { TwinQuestionText } from './TwinQuestionText'
 import { useTwinQuestionBidRefs } from '../../hooks/useTwinQuestionBidRefs'
 import { BTN, BTN_PRIMARY, CARD, CARD_TITLE, CHIP, MUTED, STEP_REF, TWIN_VIOLET } from './twinConsoleStyles'
@@ -85,18 +85,33 @@ export function TwinOwnerMemoCard() {
     }
     setBusy(q.id)
     try {
-      const rows = buildSplitInserts({ id: q.id, twin_user_id: q.twin_user_id, about_bid_id: q.about_bid_id, mission: q.mission }, list)
-      const ins = await db.from('twin_questions').insert(rows).select('id')
-      if (ins.error) throw new Error(ins.error.message)
+      // Safe to retry (v2.3236): an earlier Post may have written its rows and then lost
+      // the session before retiring the original. Find them by the mission stamp and
+      // finish the retirement instead of posting twice.
+      const prior = await db.from('twin_questions').select('id, mission').ilike('mission', `%${splitMissionTag(q.id)}%`)
+      if (prior.error) throw new Error(prior.error.message)
+      const existing = alreadySplitRows((prior.data ?? []) as Array<{ id: string; mission: string | null }>, q.id)
+      let count = existing.length
+      if (count === 0) {
+        const rows = buildSplitInserts({ id: q.id, twin_user_id: q.twin_user_id, about_bid_id: q.about_bid_id, mission: q.mission }, list)
+        const ins = await db.from('twin_questions').insert(rows).select('id')
+        if (ins.error) throw new Error(ins.error.message)
+        count = rows.length
+      }
       const { data: me } = await supabase.auth.getUser()
       const ret = await db
         .from('twin_questions')
-        .update({ status: 'dismissed', answer: splitRetirementAnswer(rows.length), answered_by: me.user?.id ?? null, answered_at: new Date().toISOString(), updated_at: new Date().toISOString() })
+        .update({ status: 'dismissed', answer: splitRetirementAnswer(count), answered_by: me.user?.id ?? null, answered_at: new Date().toISOString(), updated_at: new Date().toISOString() })
         .eq('id', q.id)
         .eq('status', 'open')
         .select('id')
-      if (ret.error) throw new Error(ret.error.message)
-      showToast(`Posted ${rows.length} one-tap question${rows.length === 1 ? '' : 's'} on Standing rulings and retired the original.`, 'success')
+      if (ret.error) throw new Error(`Posted, but couldn't retire the original: ${ret.error.message}. Press Post again — it only retires now.`)
+      showToast(
+        existing.length > 0
+          ? `Found ${count} question${count === 1 ? '' : 's'} already posted from this ask — retired the original.`
+          : `Posted ${count} one-tap question${count === 1 ? '' : 's'} on Standing rulings and retired the original.`,
+        'success',
+      )
       await load()
     } catch (e) {
       showToast(e instanceof Error ? e.message : String(e), 'error')
