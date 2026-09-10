@@ -28,6 +28,7 @@ import {
   type PortalBillsSnapshot,
 } from '../lib/portal/portalPaidFlip'
 import { CARD, COPPER, FAINT, HAIR, INK, MUTED, NOTE_BAND, PAPER, PAPER_GREEN } from '../lib/portal/portalTheme'
+import { phoneContact } from '../lib/phoneContact'
 
 /**
  * Customer / GC portal (portal train PR 1): the no-login "account statement"
@@ -761,6 +762,11 @@ function PropertyRow({
   )
 }
 
+/** "(617) 939-6295" for a US number on file; anything else as stored. */
+function displayPhone(raw: string): string {
+  return phoneContact(raw)?.display ?? raw
+}
+
 /** "Got it, Jane" — the first word of the name on the statement (a company name keeps its first word too). */
 function firstWord(name: string): string | null {
   const w = name.trim().split(/\s+/)[0] ?? ''
@@ -903,7 +909,7 @@ function RequestCard({
           <b>Got it{firstWord(customerName) ? `, ${firstWord(customerName)}` : ''} — thank you.</b>{' '}
           <span style={{ color: MUTED }}>
             Your request is on our {kind === 'bid' ? 'estimating' : 'dispatch'} desk right now. We&#8217;ll call you at{' '}
-            <b style={{ color: INK }}>{phone.trim()}</b> as soon as we can during office hours.
+            <b style={{ color: INK }}>{displayPhone(phone.trim())}</b> as soon as we can during office hours.
           </span>
         </p>
       </div>
@@ -982,7 +988,7 @@ function RequestCard({
               }}
               style={{ alignSelf: 'flex-start', border: 'none', background: 'none', fontFamily: 'inherit', cursor: 'pointer', color: COPPER, fontSize: 12, fontWeight: 700, padding: '4px 0 0' }}
             >
-              Use {phoneOnFile} instead
+              Use {displayPhone(phoneOnFile)} instead
             </button>
           ) : null}
         </label>
@@ -990,7 +996,7 @@ function RequestCard({
         <div style={{ fontSize: 12.5, color: MUTED, display: 'flex', flexDirection: 'column', gap: 2 }}>
           We&#8217;ll call you at
           <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 10, borderBottom: `1px solid ${HAIR}`, padding: '6px 0' }}>
-            <b style={{ color: INK, fontSize: 14 }}>{phone}</b>
+            <b style={{ color: INK, fontSize: 14 }}>{displayPhone(phone)}</b>
             <button
               type="button"
               onClick={() => {
