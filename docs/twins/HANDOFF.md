@@ -52,8 +52,10 @@ estimator's hours and her corpus, and every planned item optimizes one of the tw
   audit cockpit: name-matched diff, one-tap verdicts, sealed-shadow hold), **Scoreboard**
   (v2.2560, dev — per-axis Gate-B cards and pills; the run ledger moved into the mirror).
   **Queue** (v2.2542, dev — requested/ready robot-able bids + backtest candidates by axis,
-  v2.2594) keeps `?tab=robot-queue` and opens from Settings → Digital twins; the Shadows
-  lens (v2.2544) folded into the mirror. **The envelope** (v2.3222): the scored shadow
+  v2.2594) keeps `?tab=robot-queue` and opens from the **Console** (v2.3224, dev — the
+  operator's desk: the Claude Desktop setup command + kickoff, the Claude Code handoff, the
+  queue door, the robots' operator-lane questions, the run ledger); the Shadows lens
+  (v2.2544) folded into the mirror. **The envelope** (v2.3222): the scored shadow
   opens for the estimator the moment the bid saves with value + sent date — verdicts and
   answers land in the same tables as from Audits. Dashboard: the Needs-you card
   carries a "robot bids waiting on your audit" item for dev+estimator (v2.2573).
@@ -78,8 +80,9 @@ estimator's hours and her corpus, and every planned item optimizes one of the tw
   incoming estimator's first three bids are the reference set (see the Electrical Fleet plan).
 - **Drive intake**: `file_plans` → Shared Drive "PipeTooling Jobs" folder + plan PDF
   upload + bid stamps (see `DRIVE_INTAKE_SETUP.md`).
-- **Fleet console**: Settings → System → Digital twins (dev-only) — mint, tokens,
-  rungs, CT-seat status, runs ledger.
+- **Fleet admin**: Settings → System → Digital twins (dev-only) — mint, tokens, rungs,
+  CT/TT-seat status, the calibration standard; the fresh-key card carries **Copy Desktop
+  setup command**. Running and watching moved to Bids → 🤖 Robots → **Console** (v2.3224).
 
 ## The fleet roadmap & gates
 
@@ -138,22 +141,29 @@ session artifacts; this is its doc home):
 
 ## Day-to-day operation
 
-Everything routine happens in **Settings → System → Digital twins** (dev role): mint a
-twin, issue a token (shown once), hand token + endpoints + `TWIN_HARNESS.md` to whoever
-runs the agent. Revoke a token to cut one partner off; the runs ledger shows sign-ins,
-reports, and heartbeats.
+Two dev-only pages (v2.3224). **Settings → System → Digital twins** is fleet admin: mint a
+twin, issue a token (shown once — the same card offers **Copy Desktop setup command**),
+revoke a token to cut one partner off, flip rungs, set the calibration standard. **Bids →
+🤖 Robots → Console** is the operator's desk: the Desktop setup command and kickoff, the
+Claude Code handoff, the queue door, the robots' operator-lane questions, and the runs
+ledger (sign-ins, reports, heartbeats).
 
 The working loops, in the order a day usually runs:
 1. **Audits first** — the Dashboard card / Audits tab; verdicts + answers unblock
    everything downstream. Finished audits get digested by the twin next session.
 2. **Score shadows** — `score_shadows` (any twin session) whenever reference bids have
    gone out; the Scoreboard shows what moved.
-3. **Feed the queue** — Queue lens: paste kickoff prompts for requested/ready live bids
-   (shadows) and for backtest candidates on hungry axes; classify unclassified
-   references while you're there. The lens's **Copy Desktop kickoff** (v2.3207) is the
-   no-repo path: one prompt for a plain Claude Desktop chat that sets up the connector
-   and works `next_shadow` serially, with the person attaching each plan PDF
-   (`kickoffs/desktop-operator.md`).
+3. **Feed the queue** — Console → Open the queue: paste kickoff prompts for
+   requested/ready live bids (shadows) and for backtest candidates on hungry axes;
+   classify unclassified references while you're there. The Console's **Copy Desktop
+   kickoff** (v2.3207) is the no-repo path: one prompt for a plain Claude Desktop chat
+   that works `next_shadow` serially, with the person attaching each plan PDF
+   (`kickoffs/desktop-operator.md`); **Copy setup command** (v2.3224) beside it is the
+   one-time connector setup — a Terminal one-liner that asks for the key, so the person
+   never edits Desktop's JSON by hand (the 2026-09-09 first run died on a config with no
+   `mcpServers` block).
+   Answer **Operator questions** on the Console while you're there — a blocked robot
+   parks the machine problems (sandbox, fence, unreadable file) in that lane.
 4. **Missions** — "run M<N>": the agent fetches the mission via `get_mission` and files
    `submit_report`; score against `missions/estimator.md` (the MCP bundle deliberately
    excludes verification sections).

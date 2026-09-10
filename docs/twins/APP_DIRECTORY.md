@@ -82,9 +82,9 @@ only (no Pricing / Cover Letter / Submission); no subs/helpers.
   delta lives** under a scored row. YOUR ZZ bids list on no board: a row's **Robot bid b###**
   opens your shell on its Counts tab; `?tab=counts&bidId=<your shell>` works directly. The
   human board and its counts still exclude your rows. The lenses under the one **🤖 Robots**
-  tab between Bid Board and Followup (v2.2527; named v2.2905) are `robot-board`, `audits`
-  and `robot-scoreboard` (dev); `robot-queue` (dev) keeps its URL and opens from Settings →
-  Digital twins; `robot-shadows` redirects to the mirror.
+  tab between Bid Board and Followup (v2.2527; named v2.2905) are `robot-board`, `audits`,
+  `robot-scoreboard` (dev) and `robot-console` (dev, v2.3224); `robot-queue` (dev) keeps its
+  URL and opens from the Console; `robot-shadows` redirects to the mirror.
 - **The envelope at send** (v2.3222): the moment the human's bid saves with value + sent
   date, its scored shadow opens for the estimator as a modal — your number, theirs, the
   delta, the six biggest row differences with one-tap verdicts, your open questions with
@@ -101,11 +101,10 @@ only (no Pricing / Cover Letter / Submission); no subs/helpers.
 - `?tab=robot-shadows` — retired v2.3222 (redirects to `robot-board`); the Shadows story
   (v2.2544) is the mirror row now.
 - `?tab=robot-queue` — **🤖 Queue** (v2.2542, dev only; off the lens bar since v2.3222 —
-  door on Settings → Digital twins): every robot-able live bid,
+  door on the Console lens): every robot-able live bid,
   front-of-the-line requests (stamped from a bid's robot status sheet on the Bid Board,
   oldest ask first; nobody asks for a robot since v2.3202 — shadowing is the default)
-  above ready, each with a copyable kickoff prompt; **Copy Desktop kickoff** (v2.3207) at the top copies the no-repo Claude Desktop
-  operator prompt; plus **Backtest candidates** (v2.2594) — graded A/B decided references grouped
+  above ready, each with a copyable kickoff prompt; plus **Backtest candidates** (v2.2594) — graded A/B decided references grouped
   by confidence axis with demand chips, starvation cards, `assign axis ▾` on unclassified
   rows, and blind backtest prompts.
 - `?tab=robot-scoreboard` — **🤖 Scoreboard** (v2.2560; every audit role since v2.3221,
@@ -116,6 +115,16 @@ only (no Pricing / Cover Letter / Submission); no subs/helpers.
   **On live bids** (every shadow run, in flight first, a row expands into the v2.2544
   sealed-envelope stepper) and **Practice on past bids** (backtests, voided runs kept and marked). Devs get a *Show robot notes* toggle
   for the operator's raw axis notes. Gate math unchanged (`confidenceBoard.ts`).
+- `?tab=robot-console` — **🤖 Console** (v2.3224, dev only): the operator's desk. **Run
+  the robots** — *Copy setup command* (a Terminal one-liner that asks for the robot key and
+  configures Claude Desktop's `twin-mcp` connector) and *Copy Desktop kickoff*
+  (`kickoffs/desktop-operator.md`, connector filled in) for the no-repo path; *Copy handoff
+  prompt* (`kickoffs/shadow-operator.md`) for the hourly Claude Code routine — then **Bids
+  to run** (requested / ready counts, door to the Queue), the fleet at a glance (door to
+  Settings → Digital twins for keys, seats, rungs, the calibration standard), **Operator
+  questions** (the `operator` lane of `twin_questions` — answer, promote to RFI, send to
+  estimator, dismiss; the estimator lane stays on Audits → Standing rulings), and **Recent
+  runs** (`twin_runs`, newest first). Twins never see it.
 - `?tab=builder-review` — per-customer review: section counts, estimating/job hours.
 - `?tab=call-queue` — **Followup, By builder**: call-mode queue grouped by builder; log
   calls, outcomes, next-followup promises.
