@@ -122,7 +122,9 @@ export function BidBasisCard({ bid, exports }: BidBasisCardProps) {
   const { user } = useAuth()
   const copyFilename = useCopyFilename()
   const ref = bidBasisRefForBid(bid)
-  const url = bidBasisExportUrl(bid.count_tooling_plans_link, ref, devCountToolingOrigin())
+  // The Counts import stores the view link on count_tooling_plans_link; the twin pipeline stamps count_tooling_link. Either works.
+  const planLink = bid.count_tooling_plans_link || bid.count_tooling_link || null
+  const url = bidBasisExportUrl(planLink, ref, devCountToolingOrigin())
   const current = exports.current
   const [waiting, setWaiting] = useState(false)
   const [manualOpen, setManualOpen] = useState(false)
@@ -196,7 +198,7 @@ export function BidBasisCard({ bid, exports }: BidBasisCardProps) {
             <ExternalIcon />
           </button>
           <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
-            Linked takeoff: {bid.count_tooling_plans_link ? bid.count_tooling_plans_link.replace(/^https?:\/\//, '').slice(0, 48) + (bid.count_tooling_plans_link.length > 56 ? '…' : '') : '—'}
+            Linked takeoff: {planLink ? planLink.replace(/^https?:\/\//, '').slice(0, 48) + (planLink.length > 56 ? '…' : '') : '—'}
           </div>
         </>
       ) : (

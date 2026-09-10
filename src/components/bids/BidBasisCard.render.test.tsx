@@ -128,6 +128,13 @@ describe('BidBasisCard', () => {
     await waitFor(() => expect(container.querySelector('#bid-basis-card')).toBeNull())
   })
 
+  it('falls back to the twin-stamped count_tooling_link when the Counts import link is empty', async () => {
+    renderWithProviders(<Harness b={bid({ count_tooling_plans_link: null, count_tooling_link: `https://counttooling.com/app/?t=${TOKEN}` } as Partial<BidWithBuilder>)} />)
+    expect(await screen.findByText('Plans as issued')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: /Get marked-up plans from CountTooling/ }))
+    expect(openSpy).toHaveBeenCalledWith(`https://counttooling.com/app/?t=${TOKEN}&export=bid-basis&ref=b409`, '_blank')
+  })
+
   it('Plans as issued: the button opens CountTooling with the export flag and shows the waiting dialog', async () => {
     renderWithProviders(<Harness b={bid()} />)
     expect(await screen.findByText('Plans as issued')).toBeTruthy()
