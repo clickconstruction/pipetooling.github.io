@@ -32,7 +32,8 @@ export type CustomerWaitingContextValue = {
 
 const CustomerWaitingContext = createContext<CustomerWaitingContextValue | null>(null)
 
-const OPEN_HIGH_SELECT = 'id, title, created_at, reference_summary, pending_action, pending_payload, last_called_at'
+// estimator_requests has no pending_action column — only dispatch rows carry the token.
+const OPEN_HIGH_SELECT = 'id, title, created_at, reference_summary, pending_payload, last_called_at'
 
 export function CustomerWaitingProvider({ children }: { children: ReactNode }) {
   const { user: authUser, role } = useAuth()
@@ -82,7 +83,7 @@ export function CustomerWaitingProvider({ children }: { children: ReactNode }) {
         const fk = inbox === 'dispatch' ? 'dispatch_requests_last_called_by_user_id_fkey' : 'estimator_requests_last_called_by_user_id_fkey'
         const { data, error } = await supabase
           .from(table)
-          .select(`${OPEN_HIGH_SELECT}, last_called_by:users!${fk}(name)`)
+          .select(`${OPEN_HIGH_SELECT}${inbox === 'dispatch' ? ', pending_action' : ''}, last_called_by:users!${fk}(name)`)
           .eq('status', 'open')
           .eq('priority', 'high')
           .order('created_at', { ascending: true })
@@ -91,7 +92,9 @@ export function CustomerWaitingProvider({ children }: { children: ReactNode }) {
           console.warn(`customer waiting: ${table} load failed`, error.message)
           return
         }
-        for (const r of (data ?? []) as unknown as Array<Omit<CustomerWaitingRow, 'inbox'>>) out.push({ ...r, inbox })
+        for (const r of (data ?? []) as unknown as Array<Omit<CustomerWaitingRow, 'inbox' | 'pending_action'> & { pending_action?: string | null }>) {
+          out.push({ ...r, pending_action: r.pending_action ?? null, inbox })
+        }
       }
       await Promise.all([dispatchEligible ? load('dispatch') : Promise.resolve(), estimatorEligible ? load('estimator') : Promise.resolve()])
       setRows(out)
