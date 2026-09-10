@@ -28,6 +28,7 @@ import { withSupabaseRetry } from '../../utils/errorHandling'
 import { useToastContext } from '../../contexts/ToastContext'
 import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
 import { useAuth } from '../../hooks/useAuth'
+import { RfqNudgePreview, useRfqNudge } from './RfqNudge'
 import { recordNavClick } from '../../lib/navClickTelemetry'
 import { todayYmdInAppTz } from '../../utils/dateUtils'
 
@@ -136,7 +137,6 @@ export function RfqDeskModal({
   const [showBare, setShowBare] = useState(false)
   // Nudge preview-before-send: the edge function returns the exact reminder
   // email; the row shows it and asks before anything goes out.
-  const [nudgePreview, setNudgePreview] = useState<{ rfqId: string; subject: string; text: string } | null>(null)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -269,19 +269,13 @@ export function RfqDeskModal({
     return coverageFromCompareRows(comparison.rows)
   }, [quotes, currentQtyByName])
 
-  async function previewNudge(rfq: DeskRow) {
-    setBusy(rfq.id)
-    try {
-      const { data, error } = await supabase.functions.invoke('send-rfq-email', { body: { mode: 'preview', rfqId: rfq.id } })
-      const res = (data ?? {}) as { ok?: boolean; previews?: Array<{ subject: string; text: string }>; error?: string }
-      if (error || !res.ok || !res.previews?.[0]) throw new Error(res.error ?? error?.message ?? 'Could not build the preview')
-      setNudgePreview({ rfqId: rfq.id, subject: res.previews[0].subject, text: res.previews[0].text })
-    } catch (err) {
-      showToast(err instanceof Error ? err.message : 'Could not build the preview.', 'error')
-    } finally {
-      setBusy(null)
-    }
-  }
+  // v2.3245: the nudge flow is shared with the Edit Bid price-requests table.
+  const nudge = useRfqNudge({
+    onSent: async () => {
+      await load()
+      onChanged()
+    },
+  })
 
   // Tier-2 #42 (J12-F2): Close link asks first and is no longer forever — a
   // closed request keeps a Reopen door (status back to sent, or quoted when a
@@ -298,7 +292,7 @@ export function RfqDeskModal({
     await act(rfq, 'close')
   }
 
-  async function act(rfq: DeskRow, mode: 'remind' | 'resend' | 'close' | 'reopen') {
+  async function act(rfq: DeskRow, mode: 'resend' | 'close' | 'reopen') {
     setBusy(rfq.id)
     try {
       if (mode === 'close') {
@@ -312,11 +306,11 @@ export function RfqDeskModal({
         showToast(`Reopened the link for ${rfq.houseName ?? 'that vendor'} — the page works again.`, 'success')
       } else {
         const { data, error } = await supabase.functions.invoke('send-rfq-email', {
-          body: mode === 'remind' ? { mode, rfqId: rfq.id } : { mode, rfqId: rfq.id, email: (rfq.fixEmail ?? rfq.sentEmail ?? '').trim() },
+          body: { mode, rfqId: rfq.id, email: (rfq.fixEmail ?? rfq.sentEmail ?? '').trim() },
         })
         const res = (data ?? {}) as { ok?: boolean; error?: string }
         if (error || !res.ok) throw new Error(res.error ?? error?.message ?? 'Send failed')
-        showToast(mode === 'remind' ? `Nudged ${rfq.houseName ?? 'the vendor'}.` : `Resent to ${rfq.fixEmail ?? rfq.sentEmail}.`, 'success')
+        showToast(`Resent to ${rfq.fixEmail ?? rfq.sentEmail}.`, 'success')
       }
       await load()
       onChanged()
@@ -394,7 +388,7 @@ export function RfqDeskModal({
             {openRows.map((r) => {
               const trail = deriveRfqTrail(r)
               const bounced = trail.some((s) => s.state === 'bad')
-              const nudge = canNudge(r, now)
+              const nudgeOk = canNudge(r, now)
               const drift = scopeDriftCount(r.scopeLines, currentQtyByName)
               const urgency = rfqUrgency(r, now)
               return (
@@ -447,7 +441,7 @@ export function RfqDeskModal({
                     ) : r.status === 'quoted' ? (
                       <button type="button" style={{ ...ghostBtn, color: '#15803d', borderColor: '#16a34a' }} onClick={onCompare}>Compare</button>
                     ) : r.sentEmail ? (
-                      <button type="button" style={nudge.ok ? blueBtn : { ...ghostBtn, color: 'var(--text-faint)', cursor: 'not-allowed' }} disabled={!nudge.ok || busy === r.id} title={nudge.reason ?? 'Preview the reminder before it sends'} onClick={() => void previewNudge(r)}>Nudge</button>
+                      <button type="button" style={nudgeOk.ok ? blueBtn : { ...ghostBtn, color: 'var(--text-faint)', cursor: 'not-allowed' }} disabled={!nudgeOk.ok || busy === r.id || nudge.busyId === r.id} title={nudgeOk.reason ?? 'Preview the reminder before it sends'} onClick={() => void nudge.previewNudge(r.id)}>Nudge</button>
                     ) : null}
                     {isOutsideRfq(r) ? null : (
                       <>
@@ -456,16 +450,8 @@ export function RfqDeskModal({
                       </>
                     )}
                   </div>
-                  {nudgePreview?.rfqId === r.id ? (
-                    <div style={{ width: '100%', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--bg-subtle)', padding: '0.5rem 0.75rem', display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-                      <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>This is the exact reminder — nothing sends until you say so:</span>
-                      <span style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--text-strong)' }}>{nudgePreview.subject}</span>
-                      <pre style={{ margin: 0, fontFamily: 'ui-monospace, Menlo, monospace', fontSize: '0.7rem', lineHeight: 1.5, color: 'var(--text-muted)', whiteSpace: 'pre-wrap', maxHeight: '9rem', overflowY: 'auto' }}>{nudgePreview.text}</pre>
-                      <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
-                        <button type="button" style={ghostBtn} onClick={() => setNudgePreview(null)}>Cancel</button>
-                        <button type="button" style={blueBtn} disabled={busy === r.id} onClick={() => { setNudgePreview(null); void act(r, 'remind') }}>Send this nudge</button>
-                      </div>
-                    </div>
+                  {nudge.preview?.rfqId === r.id ? (
+                    <RfqNudgePreview preview={nudge.preview} busy={nudge.busyId === r.id} onCancel={nudge.cancel} onSend={() => void nudge.sendNudge(r.id, r.houseName)} />
                   ) : null}
                 </div>
               )

@@ -10,6 +10,8 @@
  * Pure: shaping, labels and states only. The component keeps the queries.
  */
 
+import { canNudge, type DeskRfq } from '../rfq/rfqDesk'
+
 export type PriceRequestRow = {
   id: string
   sent_via: 'app' | 'outside'
@@ -26,6 +28,9 @@ export type PriceRequestRow = {
   requested_on: string | null
   request_url: string | null
   quote_url: string | null
+  /** v2.3245: the desk's nudge throttle reads these. */
+  last_reminded_at: string | null
+  reminder_count: number
 }
 
 export type PriceRequestQuote = {
@@ -207,4 +212,32 @@ export function validateOutsideRequest(d: OutsideRequestDraft): { ok: true; requ
   const q = normalizePastedLink(d.quoteUrl)
   if (q.error) return { ok: false, error: `Quote link: ${q.error}` }
   return { ok: true, requestUrl: r.url, quoteUrl: q.url }
+}
+
+/**
+ * Whether this row can be nudged right now (v2.3245) — the desk's own rule,
+ * so the Edit Bid table and the desk never disagree: app-sent rows with an
+ * email, not yet quoted or closed, and not nudged in the last 24h.
+ */
+export function nudgeStateFor(row: PriceRequestRow, nowMs: number): { ok: boolean; reason?: string } {
+  const asDesk: DeskRfq = {
+    id: row.id,
+    houseName: row.sent_to,
+    sentEmail: row.sent_email,
+    status: (row.status === 'draft' || row.status === 'quoted' || row.status === 'closed' ? row.status : 'sent') as DeskRfq['status'],
+    createdAt: row.created_at,
+    viewedAt: row.viewed_at,
+    lastRemindedAt: row.last_reminded_at,
+    reminderCount: row.reminder_count,
+    neededBy: row.needed_by,
+    emailLastEvent: null,
+    scopeLines: [],
+    sentVia: row.sent_via,
+  }
+  return canNudge(asDesk, nowMs)
+}
+
+/** True when the row should show a Nudge button at all (the button may still be disabled with a reason). */
+export function showsNudge(row: Pick<PriceRequestRow, 'sent_via' | 'sent_email' | 'status'>): boolean {
+  return row.sent_via === 'app' && !!row.sent_email && row.status !== 'quoted' && row.status !== 'closed' && row.status !== 'draft'
 }
