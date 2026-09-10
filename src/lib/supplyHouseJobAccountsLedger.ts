@@ -82,3 +82,45 @@ export function jobAccountShareIconTitle(rows: JobAccountShareRow[], formatDate:
   if (!summary) return 'Share with supply house — set up a job account'
   return `Job account on file — ${summary.replace(/^Already shared with /, 'shared with ')}. Click for history or to resend.`
 }
+
+/** "Reece — Georgetown desk" → "Reece": the house half of a contact label (desk suffix dropped). */
+export function jobAccountHouseShortName(row: Pick<JobAccountShareRow, 'contact_label' | 'contact_email'>): string {
+  const display = shareContactDisplay(row)
+  const head = display.split(/\s+[—–-]\s+/)[0]?.trim() ?? ''
+  return head || display
+}
+
+export interface BillTabJobAccountNote {
+  /** "Job account on file with Reece" */
+  headline: string
+  /** "packet sent 8/19/2026 by Taunya" */
+  sentLine: string
+  /** What it means for the money below. */
+  whatItMeans: string
+  /** Present only when unpaid flagged dollars sit on this job. */
+  flaggedLine: string | null
+}
+
+/**
+ * Bill-tab note (v2.3257): the billing-side companion to the teal storefront
+ * icon. Null when no packet is on record — the Bill tab then looks exactly as
+ * it does today. `flaggedDollars` = unpaid allocated dollars on flagged
+ * invoices for this job (jobAccountSplitFromLines).
+ */
+export function billTabJobAccountNote(
+  rows: JobAccountShareRow[],
+  flaggedDollars: number,
+  formatDate: (iso: string) => string,
+): BillTabJobAccountNote | null {
+  if (rows.length === 0) return null
+  const newest = [...rows].sort((a, b) => (a.sent_at < b.sent_at ? 1 : -1))[0]!
+  const house = jobAccountHouseShortName(newest)
+  const by = newest.sent_by_name.trim()
+  const dollars = flaggedDollars.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+  return {
+    headline: `Job account on file with ${house}`,
+    sentLine: `packet sent ${formatDate(newest.sent_at)}${by ? ` by ${by}` : ''}`,
+    whatItMeans: `If material invoices on this job go unpaid, ${house} bills the property owner — not you.`,
+    flaggedLine: flaggedDollars > 0.005 ? `$${dollars} of this job's unpaid supplier invoices are on the account.` : null,
+  }
+}

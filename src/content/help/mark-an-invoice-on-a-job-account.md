@@ -24,7 +24,7 @@ When you check the box, it looks up whether that job's account packet was ever [
 ## Where the flag shows up
 
 - The house's invoice list and the **Make Payment** picker show a teal **Job acct** chip on flagged invoices.
-- The **job window** shows it too: the storefront icon in the header turns teal once the job's account packet is on file, and **Parts Cost → Supply house invoices** chips each flagged invoice and sums how much of the unpaid balance is on the account.
+- The **job window** shows it too: the storefront icon in the header turns teal once the job's account packet is on file, and **Parts Cost → Supply house invoices** chips each flagged invoice and sums how much of the unpaid balance is on the account. On the **Bill** tab, a teal note above the Invoices list names the house, dates the packet, and adds the flagged dollars — right where you're about to bill the customer.
 - **Materials → Job Accounts** splits every owed number: a teal **On job accounts** tile and filter chip, a *Your account* vs *Job accounts* split on the Holding tile, and teal-striped bar slices that stay out of the past-due reds — collecting that money is the house's problem. See [see which paid jobs still owe my supply houses](?g=see-which-paid-jobs-still-owe-supply-houses).
 
 :::example What it changes — and what it doesn't
