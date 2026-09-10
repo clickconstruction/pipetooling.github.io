@@ -78,17 +78,17 @@ Open **Customer review**, click the top customer, and the contributors panel sho
 
 Bids owned or worked by a **digital twin** (an AI estimator account — the 🤖 ones) don't sit
 among the human rows. Everything robot lives under one **🤖 Robots** tab next to Bid Board (the red count on it is audits waiting on you), with views
-inside: the **Robot Board** (twin bids, with its live count), **Audits** (robot bids waiting on
-a human review), and **Shadows** — every robot practice bid told as a five-step story:
-requested, estimated blind, price sealed 🔒, waiting on our bid, opened & scored. The robot's
-sealed price stays hidden until our bid goes out, so nobody's estimate can be influenced. The
-tab only appears when there are robot bids or audits, and its badge counts the audits waiting
-on you — opening it lands on Audits when any are pending.
+inside: the **Robot Board** (our bids seen through the robots — the same sections as the Bid Board, with the robot's number and how far off it was once we sent), **Audits** (robot bids waiting on
+a human review), and the **Scoreboard** — how close the robots are to our numbers by job type,
+what is yours to do, and every run they have made: each sealed run on a live bid told as a
+five-step story (picked up, estimated blind, price sealed 🔒, waiting on our bid, opened & scored),
+then the practice runs on past bids. The robot's sealed price stays hidden until our bid goes
+out, so nobody's estimate can be influenced. The tab only appears when there are robot bids or
+audits, and its badge counts the audits waiting on you — opening it lands on Audits when any are
+pending. Guide: *see how close the robots are to our numbers*.
 
-(For the program's operators there's also a **Scoreboard** view: per-axis gate progress plus
-summary pills — audits pending, shadows awaiting score, scored runs, and **shadow coverage**,
-which counts the live bids a shadow run could still practice against vs how many already have
-one. Every uncovered live bid is a free future training reference.)
+(For the program's operators there's also a dev-only **Queue** view: every robot-able bid with
+its kickoff prompt, and the practice library of graded past bids.)
 
 - A bid moves to the Robot Board when its **Estimator is a twin** (or a twin created it).
   Un-assign the twin and it comes back to the human board.
