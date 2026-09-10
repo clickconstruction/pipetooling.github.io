@@ -104,9 +104,14 @@ only (no Pricing / Cover Letter / Submission); no subs/helpers.
   above ready, each with a copyable kickoff prompt; plus **Backtest candidates** (v2.2594) — graded A/B decided references grouped
   by confidence axis with demand chips, starvation cards, `assign axis ▾` on unclassified
   rows, and blind backtest prompts.
-- `?tab=robot-scoreboard` — **🤖 Scoreboard** (v2.2560, dev only): per-axis Gate-B cards
-  (5-slot bar, scored deltas + in-flight shadows), pipeline pills (audits pending /
-  awaiting score / scored), unified backtest+shadow run ledger (VOID runs struck-through).
+- `?tab=robot-scoreboard` — **🤖 Scoreboard** (v2.2560; every audit role since v2.3221,
+  plain words): the rule stated once with the last five scored runs; a **Your part** strip
+  (the viewer's sealed / queued bids, live bids the robots can't see, audits + questions
+  waiting) with doors; job types ranked closest to ready (`robotScoreboard.ts` — axis slugs
+  → plain names, deltas as *44% high*, the newest digest receipt as the lesson line); then
+  **On live bids** (every shadow run, in flight first, a row expands into the v2.2544
+  sealed-envelope stepper) and **Practice on past bids** (backtests, voided runs kept and marked). Devs get a *Show robot notes* toggle
+  for the operator's raw axis notes. Gate math unchanged (`confidenceBoard.ts`).
 - `?tab=robot-console` — **🤖 Console** (v2.3224, dev only): the operator's desk. **Run
   the robots** — *Copy setup command* (a Terminal one-liner that asks for the robot key and
   configures Claude Desktop's `twin-mcp` connector) and *Copy Desktop kickoff*
