@@ -90,7 +90,15 @@ export function BidBoardMissingAddressesModal({ open, rows, isMobile, onClose, o
             return (
               <li key={r.bid.id} style={{ padding: '0.75rem 0', borderBottom: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', fontSize: '0.875rem' }}>
-                  <span aria-hidden style={{ width: 9, height: 9, borderRadius: 999, background: BID_BOARD_MAP_SECTION_COLOR[r.bid.section], flex: '0 0 auto' }} title={BID_BOARD_MAP_SECTION_LABEL[r.bid.section]} />
+                  {/* v2.3214: the stage in words, not just a dot — "Lost" or "Unsent" decides whether an address is worth typing. */}
+                  <span
+                    data-testid="bid-map-stage"
+                    title={`${BID_BOARD_MAP_SECTION_LABEL[r.bid.section]} — the Bid Board section this bid sits in`}
+                    style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', flex: '0 0 auto', fontSize: '0.68rem', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', color: BID_BOARD_MAP_SECTION_COLOR[r.bid.section] }}
+                  >
+                    <span aria-hidden style={{ width: 9, height: 9, borderRadius: 999, background: BID_BOARD_MAP_SECTION_COLOR[r.bid.section] }} />
+                    {BID_BOARD_MAP_SECTION_LABEL[r.bid.section]}
+                  </span>
                   <button type="button" onClick={() => onFocusRow(r.bid.id)} title="Show this bid's row" style={{ background: 'none', border: 'none', padding: 0, font: 'inherit', fontWeight: 700, color: 'var(--text-strong)', cursor: 'pointer', fontVariantNumeric: 'tabular-nums' }}>
                     {r.bid.numberLabel}
                   </button>
