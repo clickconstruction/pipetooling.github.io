@@ -1,5 +1,6 @@
 import type { OtherJobsLaborDetailLine } from '../overheadDailyLabor'
 import { computeOverheadRateMethods, type OverheadRateMethods } from '../overheadRateMethods'
+import { buildOverheadAllocation, isLegacyOverheadAllocation, jobOverheadAllocation, type OverheadAllocationSettings } from './overheadAllocation'
 
 /**
  * The job day ledger (v2.2692): one calendar-day table that feeds Job Summary's
@@ -61,6 +62,13 @@ export type JobDayLedger = {
   /** Every day in [start, end], zero-filled, in order. */
   days: JobDayLedgerDay[]
   dayByYmd: Map<string, JobDayLedgerDay>
+  /**
+   * The days just before the window (v2.3258), zero-filled, in order — the lead-in the
+   * overhead spread needs so a pool that began before the window lands correctly. Read
+   * only by `overheadAllocation.ts`; every other consumer keeps reading `days`.
+   * Absent on ledgers cached by older builds.
+   */
+  leadDays?: JobDayLedgerDay[]
   /** Jobs with at least one approved field session in the window. */
   jobs: Map<string, JobDayLedgerJob>
   /** Display labels for the touched jobs (the Days view's chips) — filled by the loader; empty in pure tests. */
@@ -89,8 +97,13 @@ export type JobOverheadDayLine = {
   ymd: string
   jobHours: number
   fieldHours: number
+  /** What landed on the day (the raw pool under the original 1-day method). */
   poolUsd: number
   shareUsd: number
+  /** The split behind `shareUsd` under the v2.3258 allocation; absent on the original day-share. */
+  activityUsd?: number
+  carryUsd?: number
+  openJobs?: number
 }
 
 export type JobOverheadShare = {
@@ -115,6 +128,8 @@ function eachYmd(startYmd: string, endYmd: string, addDays: (ymd: string, delta:
 export function buildJobDayLedger(args: {
   startYmd: string
   endYmd: string
+  /** When given (v2.3258), days in [leadStartYmd, startYmd) are built too and returned as `leadDays`. */
+  leadStartYmd?: string
   officeJobLedgerId: string | null
   /** From `buildOtherJobsLaborByDay(...).detailByDay` — one line per approved, closed field session. */
   fieldDetailByDay: ReadonlyMap<string, readonly OtherJobsLaborDetailLine[]>
@@ -130,14 +145,23 @@ export function buildJobDayLedger(args: {
 }): JobDayLedger {
   const dayByYmd = new Map<string, JobDayLedgerDay>()
   const days: JobDayLedgerDay[] = []
-  for (const ymd of eachYmd(args.startYmd, args.endYmd, args.addDays)) {
+  const leadDays: JobDayLedgerDay[] = []
+  const leadByYmd = new Map<string, JobDayLedgerDay>()
+  const leadStart = args.leadStartYmd && args.leadStartYmd < args.startYmd ? args.leadStartYmd : args.startYmd
+  for (const ymd of eachYmd(leadStart, args.endYmd, args.addDays)) {
     const d: JobDayLedgerDay = { ymd, poolUsd: args.poolUsdByDay.get(ymd) ?? 0, fieldHours: 0, fieldLaborUsd: 0, byJob: new Map() }
-    days.push(d)
-    dayByYmd.set(ymd, d)
+    if (ymd < args.startYmd) {
+      leadDays.push(d)
+      leadByYmd.set(ymd, d)
+    } else {
+      days.push(d)
+      dayByYmd.set(ymd, d)
+    }
   }
   const jobs = new Map<string, JobDayLedgerJob>()
   for (const [ymd, lines] of args.fieldDetailByDay) {
-    const d = dayByYmd.get(ymd)
+    const inWindow = dayByYmd.has(ymd)
+    const d = dayByYmd.get(ymd) ?? leadByYmd.get(ymd)
     if (!d) continue
     for (const l of lines) {
       if (!(l.hours > 0)) continue
@@ -148,6 +172,8 @@ export function buildJobDayLedger(args: {
       jd.laborUsd += l.laborUsd
       if (!jd.people.includes(l.userName)) jd.people.push(l.userName)
       d.byJob.set(l.jobLedgerId, jd)
+      // Lead days fill the day rows only; the window's job roll-up, totals and rates stay window-only.
+      if (!inWindow) continue
       const j = jobs.get(l.jobLedgerId)
       if (j) {
         j.hours += l.hours
@@ -178,6 +204,7 @@ export function buildJobDayLedger(args: {
     officeJobLedgerId: args.officeJobLedgerId,
     days,
     dayByYmd,
+    leadDays,
     jobs,
     jobLabels: new Map(args.jobLabels ?? []),
     statusSpansByJob: new Map(args.statusSpansByJob ?? []),
@@ -189,8 +216,14 @@ export function buildJobDayLedger(args: {
   }
 }
 
-/** Day-share: Σ over the job's days of pool(d) × jobHours(d) ÷ fieldHours(d). */
-export function allocateJobOverheadDayShare(ledger: JobDayLedger, jobId: string): JobOverheadShare {
+/**
+ * Day-share: Σ over the job's days of pool(d) × jobHours(d) ÷ fieldHours(d).
+ * With `settings` (v2.3258) the share comes from `overheadAllocation.ts` — the
+ * hours-weighted spread plus carry for open jobs; the legacy settings take this
+ * original path, which the allocation reproduces to the cent (pinned by test).
+ */
+export function allocateJobOverheadDayShare(ledger: JobDayLedger, jobId: string, settings?: OverheadAllocationSettings): JobOverheadShare {
+  if (settings && !isLegacyOverheadAllocation(settings)) return jobOverheadAllocation(ledger, jobId, settings)
   const lines: JobOverheadDayLine[] = []
   let overheadUsd = 0
   let hoursInWindow = 0
@@ -210,9 +243,9 @@ export function jobOverheadByMethod(
   ledger: JobDayLedger,
   jobId: string,
   method: JobOverheadMethod,
-  opts: { revenueUsd: number },
+  opts: { revenueUsd: number; settings?: OverheadAllocationSettings },
 ): number | null {
-  if (method === 'day') return allocateJobOverheadDayShare(ledger, jobId).overheadUsd
+  if (method === 'day') return allocateJobOverheadDayShare(ledger, jobId, opts.settings).overheadUsd
   const j = ledger.jobs.get(jobId)
   if (method === 'A') return ledger.rates.methodA == null ? null : (j?.hours ?? 0) * ledger.rates.methodA
   if (method === 'B') return ledger.rates.methodB == null ? null : Math.max(0, opts.revenueUsd) * ledger.rates.methodB
@@ -222,7 +255,11 @@ export function jobOverheadByMethod(
 export type JobDayLedgerUnallocated = { usd: number; days: number }
 
 /** Pool $ on days with no approved field hours — nobody is charged for it, and the strip says so. */
-export function unallocatedJobDayOverhead(ledger: JobDayLedger): JobDayLedgerUnallocated {
+export function unallocatedJobDayOverhead(ledger: JobDayLedger, settings?: OverheadAllocationSettings): JobDayLedgerUnallocated {
+  if (settings && !isLegacyOverheadAllocation(settings)) {
+    const t = buildOverheadAllocation(ledger, settings).totals
+    return { usd: t.unallocatedUsd, days: t.unallocatedDays }
+  }
   let usd = 0
   let days = 0
   for (const d of ledger.days) {
@@ -240,6 +277,7 @@ export type JobDayLedgerSerialized = {
   endYmd: string
   officeJobLedgerId: string | null
   days: Array<{ ymd: string; poolUsd: number; fieldHours: number; fieldLaborUsd: number; byJob: Array<[string, JobDayLedgerJobDay]> }>
+  leadDays?: Array<{ ymd: string; poolUsd: number; fieldHours: number; fieldLaborUsd: number; byJob: Array<[string, JobDayLedgerJobDay]> }>
   priorHoursByJob: Array<[string, number]>
   jobLabels?: Array<[string, JobDayLedgerJobLabel]>
   statusSpansByJob?: Array<[string, JobDayLedgerStatusSpan]>
@@ -254,6 +292,7 @@ export function serializeJobDayLedger(l: JobDayLedger): JobDayLedgerSerialized {
     endYmd: l.endYmd,
     officeJobLedgerId: l.officeJobLedgerId,
     days: l.days.map((d) => ({ ymd: d.ymd, poolUsd: d.poolUsd, fieldHours: d.fieldHours, fieldLaborUsd: d.fieldLaborUsd, byJob: [...d.byJob.entries()] })),
+    leadDays: (l.leadDays ?? []).map((d) => ({ ymd: d.ymd, poolUsd: d.poolUsd, fieldHours: d.fieldHours, fieldLaborUsd: d.fieldLaborUsd, byJob: [...d.byJob.entries()] })),
     priorHoursByJob: [...l.priorHoursByJob.entries()],
     jobLabels: [...l.jobLabels.entries()],
     statusSpansByJob: [...l.statusSpansByJob.entries()],
@@ -291,6 +330,7 @@ export function deserializeJobDayLedger(s: JobDayLedgerSerialized): JobDayLedger
     officeJobLedgerId: s.officeJobLedgerId,
     days,
     dayByYmd,
+    leadDays: (s.leadDays ?? []).map((d) => ({ ...d, byJob: new Map(d.byJob) })),
     jobs,
     jobLabels: new Map(s.jobLabels ?? []),
     statusSpansByJob: new Map(s.statusSpansByJob ?? []),

@@ -12,6 +12,7 @@ import { loadOfficePartsUsdByDayExcludingInternalTransfer } from '../overheadPar
 import { bucketInvoiceRevenueByAppTzDay } from '../overheadAvgDailyCost'
 import { loadOverheadPoolSnapshotInputs, type OverheadPoolSnapshotInputs } from '../overheadPoolSnapshot'
 import { buildJobDayLedger, type JobDayLedger, type JobDayLedgerJobLabel, type JobDayLedgerStatusSpan } from './jobDayLedger'
+import { JOB_DAY_LEDGER_LEAD_DAYS } from './overheadAllocation'
 import { effectiveJobLedgerNumber } from '../ledgerDisplayPrefixes'
 
 /**
@@ -22,6 +23,11 @@ import { effectiveJobLedgerNumber } from '../ledgerDisplayPrefixes'
  * pending field sessions (hygiene), and each touched job's approved hours
  * BEFORE the window (so a job that started last quarter says so instead of
  * silently reading as cheap). Everything paged; runs under the caller's RLS.
+ *
+ * v2.3258: sessions and office parts are fetched from `leadDays` before the
+ * window too (default 60, the overhead spread's ceiling) and returned as the
+ * ledger's `leadDays`, so a pool that began before the window lands on it.
+ * Invoices, pending counts and prior hours stay window-scoped.
  */
 const SESSION_SELECT =
   'id, user_id, work_date, clocked_in_at, clocked_out_at, job_ledger_id, bid_id, approved_at, rejected_at, revoked_at, notes, users!clock_sessions_user_id_fkey(name)'
@@ -37,21 +43,25 @@ const hoursOf = (inIso: string, outIso: string | null): number => {
 export async function loadJobDayLedger(args: {
   startYmd: string
   endYmd: string
+  /** Days fetched before `startYmd` for the overhead spread's lead-in; 0 for a window-only ledger. */
+  leadDays?: number
   inputs?: OverheadPoolSnapshotInputs
   isCancelled?: () => boolean
 }): Promise<JobDayLedger | null> {
   const { startYmd, endYmd } = args
+  const leadDays = Math.max(0, Math.round(args.leadDays ?? JOB_DAY_LEDGER_LEAD_DAYS))
+  const fetchStartYmd = leadDays > 0 ? ymdAddDays(startYmd, -leadDays) : startYmd
   const cancelled = () => args.isCancelled?.() === true
   const inputs = args.inputs ?? (await loadOverheadPoolSnapshotInputs())
   const { officeJobLedgerId, wageLookup, personIdByUserId } = inputs
 
   const makeOverheadQ = () => {
-    let q = supabase.from('clock_sessions').select(SESSION_SELECT).gte('work_date', startYmd).lte('work_date', endYmd)
+    let q = supabase.from('clock_sessions').select(SESSION_SELECT).gte('work_date', fetchStartYmd).lte('work_date', endYmd)
     q = officeJobLedgerId ? q.or(`job_ledger_id.eq.${officeJobLedgerId},bid_id.not.is.null`) : q.not('bid_id', 'is', null)
     return q.order('id')
   }
   const makeFieldQ = () => {
-    let q = supabase.from('clock_sessions').select(SESSION_SELECT).gte('work_date', startYmd).lte('work_date', endYmd).not('job_ledger_id', 'is', null)
+    let q = supabase.from('clock_sessions').select(SESSION_SELECT).gte('work_date', fetchStartYmd).lte('work_date', endYmd).not('job_ledger_id', 'is', null)
     if (officeJobLedgerId) q = q.neq('job_ledger_id', officeJobLedgerId)
     return q.order('id')
   }
@@ -72,7 +82,7 @@ export async function loadJobDayLedger(args: {
 
   let partsByDay: Map<string, number> = new Map()
   if (officeJobLedgerId) {
-    const r = await loadOfficePartsUsdByDayExcludingInternalTransfer({ officeJobLedgerId, startYmd, endYmd })
+    const r = await loadOfficePartsUsdByDayExcludingInternalTransfer({ officeJobLedgerId, startYmd: fetchStartYmd, endYmd })
     partsByDay = r.partsUsdByDay
   }
   if (cancelled()) return null
@@ -85,6 +95,7 @@ export async function loadJobDayLedger(args: {
   let pendingFieldSessions = 0
   let pendingFieldHours = 0
   for (const s of fieldSessions) {
+    if (s.work_date < startYmd) continue
     if (s.approved_at || s.rejected_at || s.revoked_at || !s.clocked_out_at) continue
     pendingFieldSessions += 1
     pendingFieldHours += hoursOf(s.clocked_in_at, s.clocked_out_at)
@@ -178,6 +189,7 @@ export async function loadJobDayLedger(args: {
   return buildJobDayLedger({
     startYmd,
     endYmd,
+    leadStartYmd: leadDays > 0 ? fetchStartYmd : undefined,
     officeJobLedgerId,
     fieldDetailByDay: field.detailByDay,
     poolUsdByDay,

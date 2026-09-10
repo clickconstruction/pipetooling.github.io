@@ -134,7 +134,7 @@ beforeEach(() => {
 
 describe('loadJobDayLedger', () => {
   it('sends the overhead, field, invoice, label, status-event and prior-hours queries for the window', async () => {
-    const ledger = (await loadJobDayLedger({ ...window, inputs: inputs() }))!
+    const ledger = (await loadJobDayLedger({ ...window, leadDays: 0, inputs: inputs() }))!
     expect(loadInputs).not.toHaveBeenCalled()
     const sessions = queries.filter((q) => q.table === 'clock_sessions')
     expect(sessions.map((q) => kind(q.steps))).toEqual(['overhead', 'field', 'prior'])
@@ -168,10 +168,29 @@ describe('loadJobDayLedger', () => {
       ['revoked_at', null],
     ])
     expect(ledger.startYmd).toBe('2026-09-01')
+    expect(ledger.leadDays).toEqual([])
+  })
+
+  it('fetches the lead-in before the window for sessions and parts only (v2.3258), and keeps invoices, pending and prior hours window-scoped', async () => {
+    const ledger = (await loadJobDayLedger({ ...window, leadDays: 14, inputs: inputs() }))!
+    const sessions = queries.filter((q) => q.table === 'clock_sessions')
+    const [overhead, field, prior] = sessions
+    for (const q of [overhead!, field!]) {
+      expect(argsOf(q.steps, 'gte')).toEqual([['work_date', '2026-08-18']])
+      expect(argsOf(q.steps, 'lte')).toEqual([['work_date', '2026-09-03']])
+    }
+    expect(partsLoader).toHaveBeenCalledWith({ officeJobLedgerId: 'office', startYmd: '2026-08-18', endYmd: '2026-09-03' })
+    const inv = queries.find((q) => q.table === 'jobs_ledger_invoices')!
+    expect(argsOf(inv.steps, 'gte')).toEqual([['sent_to_customer_at', '2026-08-31T00:00:00-00:00']])
+    expect(argsOf(prior!.steps, 'lt')).toEqual([['work_date', '2026-09-01']])
+    // The window's day rows are unchanged; the lead sits beside them.
+    expect(ledger.days.map((d) => d.ymd)).toEqual(['2026-09-01', '2026-09-02', '2026-09-03'])
+    expect(ledger.leadDays!.map((d) => d.ymd)).toEqual(Array.from({ length: 14 }, (_, i) => `2026-08-${String(18 + i).padStart(2, '0')}`))
+    expect(ledger.leadDays!.every((d) => d.poolUsd === 0 && d.fieldHours === 0)).toBe(true)
   })
 
   it('assembles the ledger: zero-filled days, pool and field per day, pending hours, revenue, labels, spans, prior hours and rates', async () => {
-    const ledger = (await loadJobDayLedger({ ...window, inputs: inputs() }))!
+    const ledger = (await loadJobDayLedger({ ...window, leadDays: 0, inputs: inputs() }))!
     expect(ledger.days.map((d) => [d.ymd, d.poolUsd, d.fieldHours, d.fieldLaborUsd])).toEqual([
       ['2026-09-01', 160, 0, 0],
       ['2026-09-02', 0, 8, 240],
@@ -212,7 +231,7 @@ describe('loadJobDayLedger', () => {
 
   it('no touched jobs means no label, event or prior-hours reads', async () => {
     route = (table, steps) => (table === 'clock_sessions' && kind(steps) === 'field' ? [] : routeScenario(table, steps))
-    const ledger = (await loadJobDayLedger({ ...window, inputs: inputs() }))!
+    const ledger = (await loadJobDayLedger({ ...window, leadDays: 0, inputs: inputs() }))!
     expect(queries.map((q) => q.table)).toEqual(['clock_sessions', 'clock_sessions', 'jobs_ledger_invoices'])
     expect(ledger.jobs.size).toBe(0)
     expect(ledger.priorHoursByJob.size).toBe(0)
@@ -223,7 +242,7 @@ describe('loadJobDayLedger', () => {
       if (table === 'jobs_ledger' || table === 'job_status_events') throw new Error('rls')
       return routeScenario(table, steps)
     }
-    const ledger = (await loadJobDayLedger({ ...window, inputs: inputs() }))!
+    const ledger = (await loadJobDayLedger({ ...window, leadDays: 0, inputs: inputs() }))!
     expect(ledger.jobLabels.size).toBe(0)
     expect(ledger.statusSpansByJob.size).toBe(0)
     expect([...ledger.priorHoursByJob]).toEqual([['j1', 3.5]])
@@ -232,7 +251,7 @@ describe('loadJobDayLedger', () => {
       if (table === 'clock_sessions' && kind(steps) === 'prior') throw new Error('prior rls')
       return routeScenario(table, steps)
     }
-    await expect(loadJobDayLedger({ ...window, inputs: inputs() })).rejects.toThrow('prior rls')
+    await expect(loadJobDayLedger({ ...window, leadDays: 0, inputs: inputs() })).rejects.toThrow('prior rls')
   })
 
   it('cancellation returns null at the first checkpoint reached', async () => {

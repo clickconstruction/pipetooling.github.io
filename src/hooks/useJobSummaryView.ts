@@ -77,7 +77,7 @@ type CacheEntry = { cachedAtMs: number; ledger: JobDayLedgerSerialized }
 const CACHE_TTL_MS = 60 * 60 * 1000
 
 function cacheKey(userId: string, startYmd: string, endYmd: string): string {
-  return `jobDayLedger:v4:${userId}:${startYmd}:${endYmd}`
+  return `jobDayLedger:v5:${userId}:${startYmd}:${endYmd}`
 }
 
 /** One window's day ledger behind the sessionStorage cache; `enabled` false keeps it idle and null. */
