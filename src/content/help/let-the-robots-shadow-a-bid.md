@@ -39,10 +39,12 @@ Open the robot's timeline from the icon and tap {{button:outline-blue|Front of t
 
 ## The Robot Board: our bids, through the robots
 
-**Bids → 🤖 Robots → Robot Board** is not a second board. It lists **our** bids that a robot has run on, in the same sections as the Bid Board — Unsent / Working, Not yet won or lost, Won, Started, Lost — with a robot column:
+**Bids → 🤖 Robots → Robot Board** is not a second board. It lists **our** bids, in the same sections as the Bid Board — Unsent / Working, Not yet won or lost, Won, Started, Lost — with a robot column:
 
-- Before we send: {{chip:gray|sealed}}, {{chip:gray|queued}} or {{chip:gray|working}}. No number, ever.
-- After we send: the robot's number, ours, and the delta (green within 8%), with the run named — *shadow b482*, *backtest R2*, *vs Wendi*. A bid the robots ran twice leads with the newest run; **1 earlier run** unfolds the rest.
-- Doors on the row: {{button:outline-blue|Review now}} (the envelope, while the audit waits), {{button:gray|Open audit}}, {{button:gray|Compare}} counts and pricing, and {{button:gray|Robot bid b418}} to open the robot's own copy.
+- Before we send: {{chip:gray|sealed}}, {{chip:gray|queued}} or {{chip:gray|estimating}}. No number, ever. A sealed row names whose number it will score against; *practice teacher* means the run is shown but never counts toward first drafts.
+- A live bid the robot **can't start on** shows amber, like its icon on the Bid Board: *No plans link*, *Plans aren't shared with the robots*, or *2 questions*, with the fix under it and one door — {{button:outline-blue|Paste the plans →}}, {{button:outline-blue|Share the plans →}} or {{button:outline-blue|Answer →}} — that opens the robot's needs sheet. The section header counts them: *7 need a person before a robot can start · five minutes each*. Every one you clear is a free practice run.
+- After we send: the robot's number, ours, and the delta (green within 8%), with the run named — *shadow b482*, *backtest R2*, *vs Wendi*. A bid the robots ran twice leads with the newest run. Tap **where the delta lives** under the project name for the split — missed, added, counts, priced differently — and the robot's own note on what it was least sure of.
+- A bid you marked sent **without a value** shows {{chip:gray|sealed}} with *no bid value on record* and an {{button:outline-blue|Add bid value →}} door: the robot's number scores the moment the value is on the record.
+- Doors on the row: {{button:outline-blue|Review now}} (the envelope, while the audit waits), {{button:gray|Open audit}}, {{button:gray|Compare}} counts and pricing, {{button:gray|Robot status}} on a live row, and {{button:gray|Robot bid b418}} to open the robot's own copy.
 
-The strip above the sections is the program in four numbers: bids with a robot run, live plumbing bids shadowed, audits waiting, and project types past their trust gate. The unsent header says how many live bids still have no robot.
+The strip above the sections is the program in six plain numbers: bids with a robot run, live plumbing bids shadowed, sealed numbers waiting on you to send, bids that need something from a person, audits waiting, and kinds of job that have earned first drafts.

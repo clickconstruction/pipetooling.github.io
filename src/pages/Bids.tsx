@@ -686,6 +686,8 @@ export default function Bids() {
     () => openRobotQuestionRows.filter((r) => effectiveTwinQuestionKind(r) !== 'plans').length,
     [openRobotQuestionRows],
   )
+  /** v2.3225: the icon's state for a human bid — the Robot Board mirror lists live bids with no run from it. */
+  const robotRowStateFor = useCallback((bid: BidWithBuilder) => robotRowState(robotRowInputFor(bid)), [robotRowInputFor])
   const [robotComparePair, setRobotComparePair] = useState<{ source: BidWithBuilder; twin: BidWithBuilder } | null>(null)
 
   // v2.3222: the robot's envelope, opened at send. The trigger scored the shadow the instant
@@ -3781,6 +3783,12 @@ export default function Bids() {
           onOpenShell={(twin) => selectBidAndSyncUrl(twin, 'counts')}
           onOpenAudit={(auditId) => { setFocusAuditId(auditId); selectBidsTab('audits') }}
           onReviewNow={openEnvelopeFromMirror}
+          // v2.3225: the live bids with no run list too, from the icon's own kernel, with their doors.
+          rowStateFor={robotRowStateFor}
+          onOpenNeeds={setRobotNeedsBid}
+          onOpenStatus={setRobotStatusBid}
+          onAddBidValue={(bid) => openEditBid(bid, { focus: 'bidValue' })}
+          onOpenScoreboard={canWorkRobotAudits(myRole) ? () => selectBidsTab('robot-scoreboard') : undefined}
           onRowCount={setRobotMirrorCount}
         />
       )}

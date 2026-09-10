@@ -24,6 +24,7 @@ import { getSubmissionSectionKey, type SubmissionSectionKey } from './submission
 import { normalizeBidNumber, isPracticeTeacherScore, type RunScoreRow } from './confidenceBoard'
 import { shadowCoverage, type ShadowCoverageBid } from './shadowCoverage'
 import type { ShadowRunRow } from './shadowStory'
+import type { RobotGap, RobotRowState } from './robotRowState'
 
 export type MirrorSection = SubmissionSectionKey
 
@@ -33,6 +34,8 @@ export interface MirrorBid extends ShadowCoverageBid {
   bid_value: number | string | null
   working_board_archived_at?: string | null
   robot_requested_at?: string | null
+  /** Live rows without a robot sort by due date, as the human board does. */
+  bid_due_date?: string | null
 }
 
 export interface MirrorShell {
@@ -55,7 +58,14 @@ export interface MirrorAudit {
  * The number shown is the draft total, exactly as the Audits lens prices it — and only
  * once the human bid is sent.
  */
-export type MirrorRunStatus = 'queued' | 'working' | 'audited' | 'sealed' | 'scored' | 'void'
+/**
+ * v2.3225 — two more states for a live bid with NO run, so the mirror lists the
+ * same rows the human board does: 'needs' (the robot can't start until a person
+ * fixes the bid — no plans link, plans it can't open, a question it asked) and
+ * 'off' (opted out, or a division robots don't bid). Both come from the Bid
+ * Board icon's own kernel (`rowStateFor`), so the mirror and the icon agree.
+ */
+export type MirrorRunStatus = 'queued' | 'working' | 'audited' | 'sealed' | 'scored' | 'void' | 'needs' | 'off'
 
 /** A shell's priced draft (computeAuditDraftTotal), for audited-but-unscored runs. */
 export type MirrorDraftTotal = { total: number; rowCount: number }
@@ -79,6 +89,10 @@ export interface RobotMirrorRun {
   /** Sort key: scored → locked → created. */
   at: string
   audit: { id: string; status: string } | null
+  /** 'needs' only: the first blocking gap (null when it's questions alone) and the open question count. */
+  need?: { gap: RobotGap | null; questions: number; plansAsks: number }
+  /** 'off' only. */
+  offReason?: 'opt-out' | 'division'
 }
 
 export interface RobotMirrorRow<B extends MirrorBid = MirrorBid> {
@@ -92,8 +106,14 @@ export interface RobotMirrorRow<B extends MirrorBid = MirrorBid> {
 
 export interface RobotMirror<B extends MirrorBid = MirrorBid> {
   sections: Record<MirrorSection, RobotMirrorRow<B>[]>
-  /** Our bids with at least one robot run (the tab label's count). */
+  /** Our bids with at least one robot run. */
   rowCount: number
+  /** Every row the mirror lists — bids with a run plus the live bids waiting on a robot or a person (the tab label's count). */
+  listedCount: number
+  /** Live bids the robot can't start on until a person fixes something. */
+  needsCount: number
+  /** Live bids with a sealed number, waiting on our send. */
+  sealedCount: number
   /** Live shadow-eligible bids with no robot run yet (the unsent header's coverage line). */
   uncoveredLive: number
   /** Live shadow-eligible bids in total (coverage denominator). */
@@ -112,6 +132,12 @@ export interface RobotMirrorInput<B extends MirrorBid> {
   standardTeacherIds?: ReadonlySet<string>
   /** Shell bid id → priced draft, for shells with an audit but no score row. Optional; loaded lazily by the lens. */
   draftTotals?: ReadonlyMap<string, MirrorDraftTotal>
+  /**
+   * The Bid Board icon's state for a human bid (robotRowState over the page's
+   * inputs). When given, every live bid with no run lists too — queued, needs,
+   * or off — so the Unsent section mirrors the human board row for row.
+   */
+  rowStateFor?: (bid: B) => RobotRowState
 }
 
 export const MIRROR_SECTION_ORDER: MirrorSection[] = ['unsent', 'pending', 'won', 'startedOrComplete', 'lost']
@@ -277,28 +303,49 @@ export function buildRobotMirror<B extends MirrorBid>(input: RobotMirrorInput<B>
     })
   }
 
-  // 4. Queued: a live bid someone put at the front of the line, no robot on it yet.
+  // 4. Live bids with no run yet. With the icon kernel in hand every one lists —
+  //    queued (next batch), needs (a person's fix first), off (opted out / other
+  //    division) — the human board's Unsent section, row for row. Without it,
+  //    only front-of-the-line requests list (the v2.3222 behaviour).
+  const blank = (): Omit<RobotMirrorRun, 'label' | 'status' | 'at'> => ({
+    kind: 'shadow',
+    shellBidId: null,
+    shellNumber: null,
+    robotTotal: null,
+    ourValue: null,
+    deltaPct: null,
+    practice: false,
+    teacherName: null,
+    audit: null,
+  })
   for (const b of input.humanBids) {
     if (runsByHumanId.has(b.id)) continue
-    if (!b.robot_requested_at || b.bid_date_sent) continue
-    push(b.id, {
-      kind: 'shadow',
-      shellBidId: null,
-      shellNumber: null,
-      label: 'next batch',
-      status: 'queued',
-      robotTotal: null,
-      ourValue: null,
-      deltaPct: null,
-      practice: false,
-      teacherName: null,
-      at: b.robot_requested_at,
-      audit: null,
-    })
+    if (b.bid_date_sent || b.outcome) continue
+    // The human board hides working-board-archived bids from Unsent (v2.518); so does the mirror.
+    if (b.working_board_archived_at) continue
+    if (/^zz /i.test((b.project_name ?? '').trimStart())) continue
+    const state = input.rowStateFor?.(b)
+    if (!state) {
+      if (!b.robot_requested_at) continue
+      push(b.id, { ...blank(), label: 'next batch', status: 'queued', at: b.robot_requested_at })
+      continue
+    }
+    if (state.kind === 'needs') {
+      const gap = state.gaps.find((g) => g.required) ?? null
+      push(b.id, { ...blank(), label: gap ? 'no robot yet' : 'robot asked', status: 'needs', at: '', need: { gap, questions: state.questions, plansAsks: gap ? 0 : state.questions } })
+    } else if (state.kind === 'off') {
+      push(b.id, { ...blank(), label: 'not this bid', status: 'off', at: '', offReason: state.reason })
+    } else if (state.kind === 'queued' || state.kind === 'none') {
+      push(b.id, { ...blank(), label: b.robot_requested_at ? 'front of the line' : 'next batch', status: 'queued', at: b.robot_requested_at ?? '' })
+    }
+    // 'working' / 'sealed' / 'scored' without a run row cannot happen (those states come from runs).
   }
 
   const sections: Record<MirrorSection, RobotMirrorRow<B>[]> = { unsent: [], pending: [], won: [], startedOrComplete: [], lost: [] }
   let rowCount = 0
+  let listedCount = 0
+  let needsCount = 0
+  let sealedCount = 0
   for (const b of input.humanBids) {
     const runs = runsByHumanId.get(b.id)
     if (!runs?.length) continue
@@ -309,10 +356,15 @@ export function buildRobotMirror<B extends MirrorBid>(input: RobotMirrorInput<B>
     const sentWithoutValue = !!b.bid_date_sent && !(num(b.bid_value) != null && (num(b.bid_value) as number) > 0)
     const note = latest.status === 'sealed' && sentWithoutValue ? 'no bid value on record' : null
     sections[section].push({ bid: b, section, latest, earlier, note })
-    rowCount++
+    listedCount++
+    if (latest.status === 'needs') needsCount++
+    else if (latest.status !== 'off' && latest.status !== 'queued') rowCount++
+    if (latest.status === 'sealed' && !b.bid_date_sent) sealedCount++
   }
-  // Within a section: live rows by due date is the board's rule; here the newest robot activity leads.
-  for (const key of MIRROR_SECTION_ORDER) sections[key].sort((a, b) => b.latest.at.localeCompare(a.latest.at))
+  // Within a section the robot's perspective leads: rows with a robot on them by newest
+  // activity, then what a person must fix (nearest due first), then the queue, then the
+  // bids robots leave alone.
+  for (const key of MIRROR_SECTION_ORDER) sections[key].sort(compareMirrorRows)
 
   const coverage = shadowCoverage(
     input.humanBids,
@@ -321,10 +373,31 @@ export function buildRobotMirror<B extends MirrorBid>(input: RobotMirrorInput<B>
   return {
     sections,
     rowCount,
+    listedCount,
+    needsCount,
+    sealedCount,
     uncoveredLive: Math.max(0, coverage.live - coverage.covered),
     liveEligible: coverage.live,
     orphanShells,
   }
+}
+
+const ROW_RANK: Record<MirrorRunStatus, number> = { sealed: 0, working: 0, scored: 0, audited: 0, void: 0, needs: 1, queued: 2, off: 3 }
+
+/** Robot activity first (newest leads), then needs → queued → off by due date (undated last). */
+export function compareMirrorRows(a: RobotMirrorRow, b: RobotMirrorRow): number {
+  const ra = ROW_RANK[a.latest.status]
+  const rb = ROW_RANK[b.latest.status]
+  if (ra !== rb) return ra - rb
+  if (ra === 0) return b.latest.at.localeCompare(a.latest.at)
+  const da = a.bid.bid_due_date ?? ''
+  const db = b.bid.bid_due_date ?? ''
+  if (da !== db) {
+    if (!da) return 1
+    if (!db) return -1
+    return da.localeCompare(db)
+  }
+  return normalizeBidNumber(a.bid.bid_number)?.localeCompare(normalizeBidNumber(b.bid.bid_number) ?? '') ?? 0
 }
 
 /** 'sealed' | 'queued' | … → the row's short status word and its tone. */
@@ -333,7 +406,15 @@ export function mirrorStatusLabel(run: RobotMirrorRun): { text: string; sub: str
     case 'queued':
       return { text: 'queued', sub: 'next weekday batch' }
     case 'working':
-      return { text: 'working', sub: run.audit ? 'no counts in PipeTooling yet' : 'counting in CountTooling' }
+      return { text: 'estimating', sub: run.audit ? 'no counts in PipeTooling yet' : 'counting in CountTooling' }
+    case 'needs': {
+      const q = run.need?.questions ?? 0
+      const gap = run.need?.gap ?? null
+      if (gap) return { text: gap.label, sub: q > 0 ? `${q} open question${q === 1 ? '' : 's'} · ${gap.fix}` : gap.fix }
+      return { text: q === 1 ? '1 question' : `${q} questions`, sub: 'answer them and the robot goes on its next run' }
+    }
+    case 'off':
+      return { text: run.offReason === 'division' ? 'not plumbing' : 'opted out', sub: run.offReason === 'division' ? 'robots bid plumbing only' : 'on the bid form' }
     case 'audited':
       return { text: 'audited', sub: 'draft total · not scored on the ledger' }
     case 'sealed':
@@ -343,6 +424,11 @@ export function mirrorStatusLabel(run: RobotMirrorRun): { text: string; sub: str
     case 'scored':
       return { text: 'scored', sub: null }
   }
+}
+
+/** A live row a person must act on before the robot can start. */
+export function mirrorRowNeedsPerson(run: RobotMirrorRun): boolean {
+  return run.status === 'needs'
 }
 
 /** A run the estimator can open the envelope on: it has a robot number and an audit still waiting. */
