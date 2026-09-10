@@ -5,7 +5,7 @@ file: docs/twins/COUNTTOOLING_BID_GUIDE.md
 type: Twin brief (CountTooling)
 purpose: Everything an estimator twin needs to take a bid through CountTooling — what you have access to, the full loop from plans to approved counts, and the exact contracts. Served by twin-mcp as get_ct_guide.
 audience: Digital Twins
-last_updated: 2026-09-05
+last_updated: 2026-09-10
 ---
 
 CountTooling (counttooling.com) is where the takeoff happens: a PDF plan set with
@@ -27,6 +27,12 @@ sends you here at pipeline stage 3; your counts come back to PipeTooling at stag
   bid's plan set (your `X-Twin-Token` authorizes it; assignment is the grant).
 - **The review flow**: your project carries `review_status` — you mark it `ready`, a
   human reviews; `changes` + a note sends it back to you, `reviewed` clears you forward.
+- **The rulebook**: `https://counttooling.com/rules/rules.json` — every public trade rule
+  CountTooling applies (hanger spacing by material, NEC fill and the voltage-drop limit,
+  mount heights, make-up, duct gauge), each as `{ id, trade, kind, values: [{ when, value,
+  unit }], source: { code, section, editions }, used_by }`. The pages for people are at
+  `https://counttooling.com/rules/`. It carries public knowledge only — never a shop's
+  practice; that lives in PipeTooling's price book and assemblies.
 
 ## The loop
 
@@ -43,6 +49,15 @@ sends you here at pipeline stage 3; your counts come back to PipeTooling at stag
    plans under your marks (55-page sets are fine; 50 MB cap). Re-import with the same
    name REPLACES the project — that is your fix-and-retry loop, never a duplicate.
    Rejections are 400s that name the exact field; fix what they name.
+2½. **Derive from the rulebook, not from memory.** Anything you add that the drawing
+   does not show — hangers per run, a fill or drop check — comes from a rule in
+   `rules.json`, used only under the `when` it is stated for, and is stamped with its id:
+   `{ "name": "Hanger", "qty": 1, "per": "ft", "intervalIn": 32, "ruleId": "plumb.hanger.pex" }`
+   on the line type's `childCounts`. The app shows the citation as a § chip, the reviewer
+   checks it, and the hand-off carries it. No rule covers the case → count what is drawn
+   and flag the gap as an `RFI:` note; never invent a spacing. If the bid's jurisdiction
+   adopts an edition not in the rule's `source.editions`, say so in the import `note` and
+   keep the value — a person decides.
 3½. **Read the placement protocols before placing anything**: `get_placement_guide`
    serves the full doctrine set (doorway calibration, counters-first placement, line
    tracing + registration gates, branch sweeps, keyed-note census, printed-total

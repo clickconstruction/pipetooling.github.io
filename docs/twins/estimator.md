@@ -107,6 +107,13 @@ It is a browser PDF-takeoff tool: load the plan set, calibrate each sheet's scal
 **counters** (one click per fixture) and draw **lines/polylines** (pipe runs, with drops
 for risers), and it tallies counts and real-feet lengths live. Its how-tos live at
 `https://counttooling.com/guides/<slug>/` — the equivalents of PipeTooling's `/help?g=`.
+Its **rulebook** lives at `https://counttooling.com/rules/` (people) and
+`https://counttooling.com/rules/rules.json` (you): the public trade rules the app applies —
+hanger spacing by material, NEC fill and voltage-drop limits, mount heights, duct gauge —
+each with its value, the condition it holds under, and the code section it comes from.
+Derive from it, never from memory; stamp `ruleId` on what you derived; and when a rule
+does not cover the case, count what is drawn and flag the gap. Company practice is not
+in it — that is your price book and assemblies here.
 
 **The takeoff loop** (guides in parentheses):
 1. **Trim the set** — upload the PDF; keep only your sheets, name them the trade way
@@ -163,6 +170,9 @@ entirely — PipeTooling's own takeoff books do that work.
 
 - **Takeoff**: the counted/measured markup of a plan set — the quantities a bid prices.
 - **Counter / line type**: a palette item you place (fixture symbol) or draw (run).
+- **Rulebook / rule id**: CountTooling's list of the public trade rules it applies
+  (`counttooling.com/rules/rules.json`); a child count or check derived from one carries
+  its `ruleId` (e.g. `plumb.hanger.pex`) so the reviewer sees the citation.
 - **Scale zone / multiply zone**: a region at a different scale / a region whose contents
   count ×N (typical floors).
 - **Artboard**: your cloud palette — counters, line types, Quick Keys — reused every bid.
