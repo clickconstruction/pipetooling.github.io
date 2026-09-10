@@ -39,6 +39,12 @@ import { usePendingRowFlash } from '../../hooks/usePendingRowFlash'
 type BidsCountsTabProps = {
   /** v2.3216: open a step's door from the strip — Edit window or another tab — and land on its field. The page owns it. */
   onOpenBidFlowDoor?: (bid: BidWithBuilder, door: BidFlowDoor, step: BidFlowStep) => void
+  /**
+   * v2.3227: bumps when the Count & import door was used — open the Import
+   * Counts dialog (the paste box, never the clipboard shortcut) as soon as a
+   * bid is selected, so the landing rings the box instead of the button.
+   */
+  openImportRequest?: number
   /** Role gating for those doors (superintendents never reach Pricing / Cover Letter). */
   bidFlowDoorAllowed?: (door: BidFlowDoor) => boolean
   bids: BidWithBuilder[]
@@ -93,6 +99,7 @@ function SheetSortableRow({ id, flash, children }: { id: string; flash?: boolean
 
 export function BidsCountsTab({
   onOpenBidFlowDoor,
+  openImportRequest,
   bidFlowDoorAllowed,
   bids,
   selectedBidForCounts,
@@ -131,6 +138,17 @@ export function BidsCountsTab({
   const [countsImportOpen, setCountsImportOpen] = useState(false)
   const [countsImportText, setCountsImportText] = useState('')
   const [countsImportError, setCountsImportError] = useState<string | null>(null)
+  // v2.3227: the Count & import door asked for the dialog. Deliberately the
+  // paste box, not handleCountsImportClick — that one imports straight from the
+  // clipboard when it can, which a person who only clicked a step did not ask for.
+  const handledImportRequestRef = useRef(0)
+  useEffect(() => {
+    if (!openImportRequest || openImportRequest === handledImportRequestRef.current) return
+    if (!selectedBidForCounts) return
+    handledImportRequestRef.current = openImportRequest
+    setCountsImportError(null)
+    setCountsImportOpen(true)
+  }, [openImportRequest, selectedBidForCounts])
   const [clearAllCountsOpen, setClearAllCountsOpen] = useState(false)
   const [clearAllCountsConfirm, setClearAllCountsConfirm] = useState('')
   const [clearAllCountsBusy, setClearAllCountsBusy] = useState(false)
@@ -1149,6 +1167,7 @@ export function BidsCountsTab({
               Paste from Excel or enter one row per line. Use tab or comma to separate columns.
             </p>
             <textarea
+              id="counts-import-text"
               value={countsImportText}
               onChange={(e) => { setCountsImportText(e.target.value); setCountsImportError(null) }}
               placeholder={'Fixture or Tie-in\tCount\tPlan Page (optional)\nToilet\t5\tA-101\nLavatory Sink\t3\n4 columns: Fixture\tCount\tGroup/Tag\tPlan Page'}

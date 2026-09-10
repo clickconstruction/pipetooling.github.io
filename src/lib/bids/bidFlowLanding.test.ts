@@ -55,6 +55,36 @@ describe('bid flow landing', () => {
     expect(findLandingElement(['pricing-price-requests', 'pricing-breakdown-title'])).toBe(chip)
   })
 
+  it('holds out for the first target for a grace period before accepting a fallback', () => {
+    Element.prototype.scrollIntoView = vi.fn()
+    const button = document.createElement('button')
+    button.id = 'counts-import-tooling'
+    document.body.appendChild(button)
+    const done = vi.fn()
+    landOnBidFlowTarget(['counts-import-text', 'counts-import-tooling'], { onDone: done, preferFirstMs: 1000, pollMs: 100, reducedMotion: true })
+    vi.advanceTimersByTime(500) // the button exists, but the grace period is still holding out for the textarea
+    expect(done).not.toHaveBeenCalled()
+    const ta = document.createElement('textarea')
+    ta.id = 'counts-import-text'
+    document.body.appendChild(ta)
+    vi.advanceTimersByTime(200)
+    expect(done).toHaveBeenCalledWith(true)
+    expect(document.activeElement).toBe(ta)
+    expect(button.classList.contains(BID_FLOW_LANDING_CLASS)).toBe(false)
+  })
+
+  it('falls back to a later target once the grace period passes', () => {
+    Element.prototype.scrollIntoView = vi.fn()
+    const button = document.createElement('button')
+    button.id = 'counts-import-tooling'
+    document.body.appendChild(button)
+    const done = vi.fn()
+    landOnBidFlowTarget(['counts-import-text', 'counts-import-tooling'], { onDone: done, preferFirstMs: 300, pollMs: 100, reducedMotion: true })
+    vi.advanceTimersByTime(600)
+    expect(done).toHaveBeenCalledWith(true)
+    expect(button.classList.contains(BID_FLOW_LANDING_CLASS)).toBe(true)
+  })
+
   it('gives up quietly when nothing appears, and does nothing for an empty target list', () => {
     Element.prototype.scrollIntoView = vi.fn()
     const done = vi.fn()
