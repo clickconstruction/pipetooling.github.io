@@ -88,9 +88,6 @@ only (no Pricing / Cover Letter / Submission); no subs/helpers.
   questions, post receipts, close as `digested`; setting `done` is human-only (RLS).
   A pending audit whose reference bid hasn't sent shows sealed (🔒). Tab label carries
   the pending count.
-- `?tab=robot-shadows` — **🤖 Shadows** (v2.2544): the sealed-envelope story per shadow
-  run — picked up → estimated blind → 🔒 sealed → waiting on our bid → scored with delta
-  chip; per-axis Gate-B pips. Roles: all staff (sealed totals are API-nulled pre-score).
 - `?tab=robot-queue` — **🤖 Queue** (v2.2542, dev only): every robot-able live bid,
   front-of-the-line requests (stamped from a bid's robot status sheet on the Bid Board,
   oldest ask first; nobody asks for a robot since v2.3202 — shadowing is the default)
@@ -98,9 +95,15 @@ only (no Pricing / Cover Letter / Submission); no subs/helpers.
   operator prompt; plus **Backtest candidates** (v2.2594) — graded A/B decided references grouped
   by confidence axis with demand chips, starvation cards, `assign axis ▾` on unclassified
   rows, and blind backtest prompts.
-- `?tab=robot-scoreboard` — **🤖 Scoreboard** (v2.2560, dev only): per-axis Gate-B cards
-  (5-slot bar, scored deltas + in-flight shadows), pipeline pills (audits pending /
-  awaiting score / scored), unified backtest+shadow run ledger (VOID runs struck-through).
+- `?tab=robot-scoreboard` — **🤖 Scoreboard** (v2.2560; every audit role since v2.3221,
+  plain words): the rule stated once with the last five scored runs; a **Your part** strip
+  (the viewer's sealed / queued bids, live bids the robots can't see, audits + questions
+  waiting) with doors; job types ranked closest to ready (`robotScoreboard.ts` — axis slugs
+  → plain names, deltas as *44% high*, the newest digest receipt as the lesson line); then
+  **On live bids** (every shadow run, in flight first, a row expands into the sealed-envelope
+  stepper — the old `?tab=robot-shadows` lens, whose key still lands here) and **Practice on
+  past bids** (backtests, voided runs kept and marked). Devs get a *Show robot notes* toggle
+  for the operator's raw axis notes. Gate math unchanged (`confidenceBoard.ts`).
 - `?tab=builder-review` — per-customer review: section counts, estimating/job hours.
 - `?tab=call-queue` — **Followup, By builder**: call-mode queue grouped by builder; log
   calls, outcomes, next-followup promises.

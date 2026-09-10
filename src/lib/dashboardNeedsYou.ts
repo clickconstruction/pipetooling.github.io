@@ -711,7 +711,7 @@ export function buildNeedsYouItems(inputs: NeedsYouInputs): NeedsYouItem[] {
       title: n === 1 ? `The robot has a sealed number on b${one.referenceBid}${where}` : `The robot has sealed numbers on ${n} live bids`,
       detail: 'Locked before ours went out — the score lands the moment we send. Nothing to do; this is the head start.',
       figure: n > 99 ? '99+' : String(n),
-      actionLabel: 'Open Shadows',
+      actionLabel: 'Open Scoreboard',
     })
   }
 

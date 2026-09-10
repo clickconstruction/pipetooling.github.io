@@ -400,7 +400,7 @@ describe('buildNeedsYouItems', () => {
       kicker: 'Robot bid',
       title: 'The robot has a sealed number on b481 (Galloway Park)',
       figure: '1',
-      actionLabel: 'Open Shadows',
+      actionLabel: 'Open Scoreboard',
     })
     expect(one[0]?.detail).toBe('Locked before ours went out — the score lands the moment we send. Nothing to do; this is the head start.')
     expect(needsYouKind(one[0] as NeedsYouItem)).toBe('company')

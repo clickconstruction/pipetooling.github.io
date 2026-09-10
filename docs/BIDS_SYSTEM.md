@@ -186,6 +186,7 @@ Central hub for viewing and managing all bids. Provides high-level overview of b
 - **No due date chip (v2.2905, J10-F4)**: an UNSENT, undecided bid with no `bid_due_date` renders a dashed `No due date (+N)` chip (N = days since `created_at`) instead of a dash; red (`overdue` colors) once older than `UNSENT_NO_DUE_DATE_RED_AFTER_DAYS` (14). `bidBoardNoDueDateParts` — null for dated, sent or decided rows.
 - **Loading skeleton (v2.2905, J10-F8)**: `Bids.tsx` keeps `bidsLoaded` (false until the first `loadBids` settles, success or error) and passes `loading` to `BidsBidBoardTab`; with no rows yet the board renders a `role="status"` "Loading bids…" skeleton rather than "No bids yet". Same gate serves the Robot Board.
 - **Robots tab label (v2.2905, J10-F10)**: the tab reads `🤖 Robots` (was the emoji alone); the red pill is titled `N robot audits pending`.
+- **Robots tab lenses (v2.3221)**: **Robot Board** (the same `BidsBidBoardTab` over the robot partition) · **Audits** (`BidsAuditsTab`) · **Scoreboard** (`BidsRobotScoreboardTab`, every audit role — `canWorkRobotAudits`; kernel [`robotScoreboard.ts`](../src/lib/bids/robotScoreboard.ts) phrases `confidenceBoard.ts`'s gate math as job types, *N of 5 in a row*, a *Your part* strip from `robotRowState`, live-bid runs with the sealed-envelope stepper and practice runs) · **Queue** (dev only). The v2.2544 Shadows lens folded into the Scoreboard; `?tab=robot-shadows` rewrites to `robot-scoreboard`.
 
 #### Lost Bids
 - **Lost bids are always hidden** on the Bid Board (no toggle)

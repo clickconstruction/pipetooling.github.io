@@ -52,14 +52,14 @@ import { RobotNeedsSheet, type RobotOpenQuestion } from '../components/bids/Robo
 import { effectiveTwinQuestionKind } from '../../supabase/functions/_shared/twinQuestionKind'
 import type { BidFlowDoor, BidFlowStep } from '../lib/bids/bidFlow'
 import { landOnBidFlowTarget, parseLandingParam } from '../lib/bids/bidFlowLanding'
-import type { RobotRowInput } from '../lib/bids/robotRowState'
+import { robotRowState, type RobotRowInput } from '../lib/bids/robotRowState'
 import type { ShadowRunRow } from '../lib/bids/shadowStory'
 import { RobotBidComparisonModal } from '../components/bids/RobotBidComparisonModal'
 import { RobotReferenceGradeModal } from '../components/bids/RobotReferenceGradeModal'
 import { BidsRobotQueueTab } from '../components/bids/BidsRobotQueueTab'
-import { BidsRobotShadowsTab } from '../components/bids/BidsRobotShadowsTab'
 import { BidsRobotScoreboardTab } from '../components/bids/BidsRobotScoreboardTab'
 import { buildRobotQueue } from '../lib/bids/robotQueue'
+import { normalizeBidNumber } from '../lib/bids/confidenceBoard'
 import { useBidAuditsPendingCount } from '../hooks/useBidAuditsPendingCount'
 import { canWorkRobotAudits, ROBOT_AUDIT_ROLES } from '../lib/bids/bidAudits'
 import { BidSubmissionFollowupTab } from '../components/bids/BidSubmissionFollowupTab'
@@ -652,6 +652,20 @@ export default function Bids() {
       presence: referencePresence.get(bid.id) ?? null,
     }),
     [serviceTypeNameById, twinBidBySourceId, shadowRunByBidNumber, openQuestionsByBidId, referencePresence],
+  )
+  // Scoreboard (v2.3221): the "Your part" strip reads the icon's own kernel, so
+  // the strip and the row can never disagree; questions waiting on anyone are
+  // the estimator lane minus plans asks (those sit on the bid as a need).
+  const robotRowStateForScoreboard = useCallback(
+    (bid: { id: string }) => {
+      const row = bids.find((b) => b.id === bid.id)
+      return row ? robotRowState(robotRowInputFor(row)) : { kind: 'none' as const, title: '' }
+    },
+    [bids, robotRowInputFor],
+  )
+  const robotQuestionsWaiting = useMemo(
+    () => openRobotQuestionRows.filter((r) => effectiveTwinQuestionKind(r) !== 'plans').length,
+    [openRobotQuestionRows],
   )
   const [robotComparePair, setRobotComparePair] = useState<{ source: BidWithBuilder; twin: BidWithBuilder } | null>(null)
 
@@ -2963,6 +2977,19 @@ export default function Bids() {
       return next
     })
   }
+  // The Shadows lens folded into the Scoreboard (v2.3221): an old
+  // `?tab=robot-shadows` link (the Dashboard's "robot locked" item, a saved
+  // URL) lands on the Scoreboard with the URL rewritten, so the lens bar and
+  // the address agree.
+  useEffect(() => {
+    if (activeTab !== 'robot-shadows') return
+    setActiveTab('robot-scoreboard')
+    setSearchParams((p) => {
+      const next = new URLSearchParams(p)
+      next.set('tab', 'robot-scoreboard')
+      return next
+    }, { replace: true })
+  }, [activeTab, setSearchParams])
 
   const BIDS_WORKING_TAB_LABEL = 'Unsent/Working'
 
@@ -3525,11 +3552,13 @@ export default function Bids() {
         onConfirm={(id) => { closeWorkingBoardArchiveConfirm(); void archiveWorkingBoardBid(id) }}
       />
 
-      {/* Robots group lens bar — Robot Board and Audits as lenses under the 🤖 tab
-          (same segmented-control chrome as the Followup lenses). Each lens keeps its
-          own visibility gate; the bar only shows when there's more than one lens. */}
+      {/* Robots group lens bar — Robot Board, Audits, Scoreboard (and the dev Queue)
+          as lenses under the 🤖 tab (same segmented-control chrome as the Followup
+          lenses). Each lens keeps its own visibility gate; the bar only shows when
+          there's more than one lens. The Shadows lens folded into the Scoreboard
+          (v2.3221); its URL key still lands there. */}
       {(activeTab === 'robot-board' || activeTab === 'audits' || activeTab === 'robot-shadows' || activeTab === 'robot-queue' || activeTab === 'robot-scoreboard') &&
-        [robotBids.length > 0, auditGate.anyAudits, myRole === 'dev'].filter(Boolean).length > 1 && (
+        [robotBids.length > 0, auditGate.anyAudits, canWorkRobotAudits(myRole)].filter(Boolean).length > 1 && (
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', margin: '0 0 0.75rem', flexWrap: 'wrap' }}>
           <div style={{ display: 'inline-flex', border: '1px solid var(--border-strong)', borderRadius: 8, overflow: 'hidden', fontSize: '0.875rem', background: 'var(--surface)', alignItems: 'center' }}>
             <button
@@ -3562,21 +3591,23 @@ export default function Bids() {
             >
               {auditGate.pending > 0 ? `Audits · ${auditGate.pending}` : 'Audits'}
             </button>
-            <button
-              type="button"
-              onClick={() => selectBidsTab('robot-shadows')}
-              title="Every robot practice bid as a story — requested, estimated blind, sealed, scored. The sealed number stays hidden until we send ours."
-              style={{
-                padding: '0.45rem 1rem',
-                border: 'none',
-                cursor: 'pointer',
-                background: activeTab === 'robot-shadows' ? '#3b82f6' : 'transparent',
-                color: activeTab === 'robot-shadows' ? 'white' : 'var(--text-700)',
-                fontWeight: activeTab === 'robot-shadows' ? 700 : 400,
-              }}
-            >
-              Shadows
-            </button>
+            {canWorkRobotAudits(myRole) && (
+              <button
+                type="button"
+                onClick={() => selectBidsTab('robot-scoreboard')}
+                title="How close the robots are to our numbers, by job type — your part, every sealed run on a live bid, and the practice runs on past bids."
+                style={{
+                  padding: '0.45rem 1rem',
+                  border: 'none',
+                  cursor: 'pointer',
+                  background: activeTab === 'robot-scoreboard' || activeTab === 'robot-shadows' ? '#3b82f6' : 'transparent',
+                  color: activeTab === 'robot-scoreboard' || activeTab === 'robot-shadows' ? 'white' : 'var(--text-700)',
+                  fontWeight: activeTab === 'robot-scoreboard' || activeTab === 'robot-shadows' ? 700 : 400,
+                }}
+              >
+                Scoreboard
+              </button>
+            )}
             {myRole === 'dev' && (
               <button
                 type="button"
@@ -3608,37 +3639,6 @@ export default function Bids() {
                 </span>
               </button>
             )}
-            {myRole === 'dev' && (
-              <button
-                type="button"
-                onClick={() => selectBidsTab('robot-scoreboard')}
-                title="Dev only — per-axis Gate-B confidence: the last five runs against the ±8% band, in-flight shadows, and the unified run ledger."
-                style={{
-                  padding: '0.45rem 1rem',
-                  border: 'none',
-                  cursor: 'pointer',
-                  background: activeTab === 'robot-scoreboard' ? '#3b82f6' : 'transparent',
-                  color: activeTab === 'robot-scoreboard' ? 'white' : 'var(--text-700)',
-                  fontWeight: activeTab === 'robot-scoreboard' ? 700 : 400,
-                }}
-              >
-                Scoreboard{' '}
-                <span
-                  style={{
-                    fontSize: '0.58rem',
-                    fontWeight: 800,
-                    letterSpacing: '0.05em',
-                    padding: '0 4px',
-                    borderRadius: 3,
-                    border: activeTab === 'robot-scoreboard' ? '1px solid rgba(255,255,255,0.6)' : '1px solid #ca8a04',
-                    color: activeTab === 'robot-scoreboard' ? 'white' : 'var(--text-yellow-800)',
-                    verticalAlign: '1px',
-                  }}
-                >
-                  DEV
-                </span>
-              </button>
-            )}
           </div>
         </div>
       )}
@@ -3651,18 +3651,28 @@ export default function Bids() {
         <BidsRobotQueueTab bids={peopleBids} twinBidBySourceId={twinBidBySourceId} referencePresence={referencePresence} onOpenBid={openEditBid} />
       )}
 
-      {/* Confidence scoreboard (v2.2560, dev only) — per-axis Gate-B cards + run ledger. */}
-      {activeTab === 'robot-scoreboard' && myRole === 'dev' && (
-        <BidsRobotScoreboardTab auditPending={auditGate.pending} bids={peopleBids} />
-      )}
-
-      {/* Shadows lens (v2.2544) — the sealed-envelope story per shadow run. */}
-      {activeTab === 'robot-shadows' && (
-        <BidsRobotShadowsTab
-          onOpenBidNumber={(bidNumber) => {
-            const target = bids.find((b) => b.bid_number === bidNumber)
+      {/* Scoreboard (v2.2560; every audit role since v2.3221) — the rule, your part,
+          job types closest to ready, and every run: live bids (the old Shadows lens
+          lives here now) then practice on past bids. */}
+      {(activeTab === 'robot-scoreboard' || activeTab === 'robot-shadows') && canWorkRobotAudits(myRole) && (
+        <BidsRobotScoreboardTab
+          auditPending={auditGate.pending}
+          questionsWaiting={robotQuestionsWaiting}
+          bids={peopleBids}
+          robotBids={robotBids}
+          viewerId={authUser?.id ?? null}
+          isDev={myRole === 'dev'}
+          stateFor={robotRowStateForScoreboard}
+          onOpenBid={(bidId) => {
+            const target = bids.find((b) => b.id === bidId)
             if (target) applyBidBoardDeepLinkToBid(target)
           }}
+          onOpenBidNumber={(bidNumber) => {
+            const target = bids.find((b) => normalizeBidNumber(b.bid_number) === normalizeBidNumber(bidNumber))
+            if (target) applyBidBoardDeepLinkToBid(target)
+          }}
+          onOpenAudits={() => selectBidsTab('audits')}
+          onOpenBidBoard={() => selectBidsTab('bid-board')}
         />
       )}
 

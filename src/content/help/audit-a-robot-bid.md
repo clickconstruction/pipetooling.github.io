@@ -58,4 +58,4 @@ The robot reads every note, changes how it works (its playbook, its price and la
 
 ## Who the robots calibrate to
 
-A robot's shadow score is measured against whoever sent the real bid. Only a **calibration standard** estimator's numbers count toward the robot's readiness gate; anyone else's score shows as {{chip:gray|PRACTICE}} on the Scoreboard. The company owner picks the standard under **Settings → Digital twins → ★ Calibration standard**: each estimating user shows {{chip:green|STANDARD}} or {{chip:gray|PRACTICE}} with a {{button:blue|Make standard}} switch beside it. Leave at least one standard set, or no robot score can ever count.
+A robot's shadow score is measured against whoever sent the real bid. Only a **calibration standard** estimator's numbers count toward the robot's readiness; the Scoreboard shows everyone's runs and marks the ones that count with a ✓. The company owner picks the standard under **Settings → Digital twins → ★ Calibration standard**: each estimating user shows {{chip:green|STANDARD}} or {{chip:gray|PRACTICE}} with a {{button:blue|Make standard}} switch beside it. Leave at least one standard set, or no robot score can ever count.
