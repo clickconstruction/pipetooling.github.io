@@ -79,8 +79,11 @@ export function BidFlowStrip({ flow, variant, onOpenDoor, canOpenDoor, bidLabel,
         title={ariaLabel}
         style={{ display: 'flex', gap: 2, height: 3, marginTop: 1, width: '100%' }}
       >
-        {/* v2.3206: ten equal ticks, one per step, a wider gap where the phase changes — every row reads the same. */}
-        {flow.steps.map((step, i) => (
+        {/* Ten equal ticks, one per step, one gap width throughout — the wider
+            phase-break gaps (v2.3206) made seven of the nine gaps different from
+            the other two, and the bar read as unevenly spaced (v2.3211). The
+            phases live on the full strip's labels, not here. */}
+        {flow.steps.map((step) => (
           <span
             key={step.key}
             style={{
@@ -89,7 +92,6 @@ export function BidFlowStrip({ flow, variant, onOpenDoor, canOpenDoor, bidLabel,
               background: segBg[step.state],
               border: step.state === 'untracked' ? '1px dashed var(--border)' : undefined,
               boxSizing: 'border-box',
-              marginRight: phaseBreakAfter(flow.steps, i) ? 4 : 0,
             }}
           />
         ))}
