@@ -44,6 +44,10 @@ Two facts sit beside the rate and are never added to the bid's cost: **Overhead 
 
 Under the grid: **Direct cost of this bid** — labor at the effective rate, materials from the takeoff, driving, travel, other direct (equipment, permits, subs, waste, other), the total, and the margin at the bid value (amber under 20 %). *Open Pricing →* takes you to the Workbench, which reads the same number.
 
+## Direct costs: one list
+
+Under the labor, **DIRECT COSTS** is one list. Every row wears its kind — {{chip:gray|equipment}} {{chip:gray|permit}} {{chip:blue|sub}} {{chip:gray|waste}} {{chip:gray|other}} — with what it is for and the dollars by stage. Pick a kind and press {{button:blue|+ Add}} for a new row; the × removes one. The **driving** line sits on top, computed from the hours, the hours-per-trip and $/mile boxes and the bid's distance to the office, so it reads beside the rest: *88 crew-days · 176 trips (8 h each) · 41 mi · $0.70/mi*. One total closes the list.
+
 ## Telling the book how an entry reads
 
 In the **Labor book** panel, an entry's form has two new fields: **Reads as** (*Fixture · hours × count* or *Task · fixed hours for the line*) and **Hours are per** (*each* or *per 100 ft*). Mark your pipe entries per 100 ft once and every bid's footage rows fill in right. The entries table tags them {{chip:gray|per 100 ft}} and {{chip:gray|task · fixed hours}}.
@@ -54,4 +58,4 @@ Add the entry *2" waste* · Reads as Fixture · Hours are per **per 100 ft** · 
 
 ## What is still Old-only for now
 
-The rate box, the sub-sheet prints, Vehicle Travel, Lodging and Meals, Estimators Time, Direct Costs and the Labor book panel sit under both views unchanged (Old's grid reads per-100-ft and task rows correctly too; it just cannot set them). A company crew rate from People and the book checking itself against finished jobs come in later steps of this refresh.
+The rate box, the sub-sheet prints, Vehicle Travel, Lodging and Meals, Direct Costs and the Labor book panel sit under both views unchanged (Old's grid reads per-100-ft and task rows correctly too; it just cannot set them). A company crew rate from People and the book checking itself against finished jobs come in later steps of this refresh.
