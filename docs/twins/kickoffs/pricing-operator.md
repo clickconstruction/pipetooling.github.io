@@ -6,10 +6,17 @@ Paste this whole document into a **new Claude Desktop conversation** as the firs
 
 ## One-time setup (a person does this once per machine)
 
+**The short way — one command (Mac).** In PipeTooling press **Set up on this Mac** — on **Bids → 🤖 Robots → Scoreboard → Pricing robot** (estimators), on **Bids → 🤖 Robots → Console → Pricing robot** or on **Settings → Digital twins → Twin Pricer 1** (devs). Type whose Mac it is, press **Make my setup command**, copy the command, open Terminal (⌘ Space, *Terminal*, Return), paste, Return. The command carries a one-time code (ten minutes, one use): it redeems the code at `twin-setup`, which mints the pricer's key on the server and writes it straight into Claude Desktop's config — the key is never shown to anyone — then quits and reopens Claude Desktop so the connector loads, and puts this kickoff on your clipboard. Start a **new incognito chat** in Claude Desktop and paste. Needs Node 18+ from nodejs.org; the command says so if it is missing. The connector it points at is `{{CONNECTOR_URL}}`.
+
+**The long way — a key you can see** (a Claude Code operator, another harness, or a Mac where the short way failed):
+
 1. **The pricer's key.** In PipeTooling: **Settings → System → Digital twins → Fleet → Twin Pricer 1 → Issue key**. Label it with your name (keys are revoked per label). It is shown ONCE and it never goes into a chat — the next step asks for it in Terminal. The pricer is its own seat: revoking its key never touches the bid robots.
-2. **The connector, in one command.** On the same card that shows the key, press **Copy Desktop setup command** (it is also on Bids → 🤖 Robots → Console). Open Terminal, paste, press Return, and paste the key when it asks — the prompt is silent. The command finds Node, writes Claude Desktop's config (the connector it points at is `{{CONNECTOR_URL}}`), and prints the next step. Mac only.
+2. **The connector, in one command.** On the same card that shows the key, press **Copy Desktop setup command** (it is also on Bids → 🤖 Robots → Console as **Key-based command**). Open Terminal, paste, press Return, and paste the key when it asks — the prompt is silent. The command finds Node, writes Claude Desktop's config, and prints the next step. Mac only.
 3. **Quit and reopen.** Quit Claude Desktop fully (Cmd+Q) and open it again — connectors load at start.
-4. **Check the door.** Start a new chat and type: *call get_pricing_guide on twin-mcp*. You should see the pricer's brief. No `twin-mcp` tools at all means the connector didn't load: look under **Settings → Developer** for `twin-mcp` and its error. A `401` means the key is wrong or revoked; re-issue it and run step 2 again. When Desktop asks to allow a twin-mcp tool, choose **Allow for this chat**.
+
+**Either way, then:**
+
+4. **Check the door.** Start a new chat and type: *call get_pricing_guide on twin-mcp*. You should see the pricer's brief. No `twin-mcp` tools at all means the connector didn't load: look under **Settings → Developer** for `twin-mcp` and its error. A `401` means the key is wrong or revoked; run the setup again. When Desktop asks to allow a twin-mcp tool, choose **Allow for this chat**.
 5. **Quotes.** The robot reads the quote PDFs itself through the connector (`get_quote_documents`) from the links on the bid's Price-requests table. If it reports a folder it cannot read, share that folder with `drive-intake@pipetooling-drive.iam.gserviceaccount.com` as Viewer and tell it to try again — or drag the PDF into the chat.
 6. **Memory off.** Start each batch as an **incognito chat** (or turn off memory for this chat) so nothing from an earlier batch is recalled into this one.
 
@@ -19,7 +26,7 @@ You are **twin-pricer-1**, PipeTooling's digital-twin PRICING robot, working thr
 
 ### Before anything: orient, check the door
 
-1. `get_pricing_guide` — your brief; it explains how a fixture quote is written and how you write it back. Read it whole.
+1. `get_pricing_guide` — your brief; it explains how a fixture quote is written and how you write it back. Read it whole. Then tell the person, in one line, that the connector answered and which seat you are (the brief names it) — the person who just ran the setup is waiting to hear that it worked.
 2. `get_component_rules` — the rulebook of what belongs to what and where to look. `get_answers` — the estimator's earlier answers; honour them.
 3. Any call returning 401 means the key needs re-issuing at Settings → Digital twins. Say so and stop. If this chat has **no `twin-mcp` tools at all**, the connector never loaded: point the person at setup steps 3–4 and stop.
 4. A refusal that says a verb is not for the pricer is correct behaviour, not an error. You have no bids and want none.

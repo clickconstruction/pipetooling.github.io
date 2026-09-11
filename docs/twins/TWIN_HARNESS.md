@@ -134,5 +134,13 @@ long-run scorecard, since twins are excluded from human metrics but not from the
   Desktop can't see a shell's PATH, so the full path is written), and merges the
   `twin-mcp` entry into `claude_desktop_config.json`, creating the `mcpServers` block a
   fresh install lacks. Kernel `src/lib/bids/desktopKickoff.ts` → `buildDesktopSetupCommand`.
+- **Set up on this Mac** (v2.3277) — the short way, and the only way an estimator needs: the
+  button (Robots → Scoreboard → Pricing robot for estimating staff; Console step 1 and each
+  fleet row on Settings → Digital twins for devs) mints a one-time setup code through the
+  `twin-setup` edge function and shows one Terminal command. Pasted, it redeems the code — the
+  key is minted server-side and returned once to that machine — merges the connector into
+  Desktop's config, quits/reopens Claude Desktop, and copies the kickoff. Devs can set up any
+  twin; other roles only the pricer. Kernel `buildDesktopSetupCommandFromCode`; table
+  `twin_setup_codes`; revoke the resulting key by its label ("Wendi's MacBook") as usual.
 - **Audit**: `twin_runs` (every mint + mission, which credential), `created_by` on
   everything it wrote, the board's Estimator column.

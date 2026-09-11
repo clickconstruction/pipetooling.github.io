@@ -7,6 +7,7 @@ import { buildDesktopSetupCommand, twinMcpConnectorUrl } from '../../lib/bids/de
 import { calibrationStandardSummary, calibrationStandardToast, teacherCandidates, type TeacherCandidate } from '../../lib/twinTeachers'
 import { updateRefused, refusedUpdateMessage } from '../../lib/refusedWrite'
 import { BTN, BTN_PRIMARY, CARD, CARD_TITLE, COPY_CHIP, MUTED, STEP_REF, TWIN_VIOLET } from '../bids/twinConsoleStyles'
+import { TwinSetupDialog } from '../bids/TwinSetupDialog'
 
 /**
  * Settings → Digital twins (dev-only; docs/DIGITAL_TWINS_PLAN.md + docs/twins/TWIN_HARNESS.md):
@@ -70,6 +71,8 @@ export default function DigitalTwinsPanel() {
   const [issueForTwin, setIssueForTwin] = useState<string | null>(null)
   const [tokenLabel, setTokenLabel] = useState('')
   const [freshToken, setFreshToken] = useState<{ twinEmail: string; token: string } | null>(null)
+  // PR 6: "Set up on this Mac" — the twin the one-command Desktop setup is for (null = closed).
+  const [setupFor, setSetupFor] = useState<TwinRow | null>(null)
   const [showKillCmd, setShowKillCmd] = useState(false)
   // CT seat join key (v2.2434): twin id → counttooling_user_id. null = the column isn't
   // deployed yet (migration 20260828090000) — the indicator hides entirely.
@@ -421,10 +424,15 @@ export default function DigitalTwinsPanel() {
             <button type="button" style={BTN} onClick={() => setFreshToken(null)}>Done — I saved it</button>
           </div>
           <p style={{ ...MUTED, marginBottom: 0, marginTop: '0.4rem' }}>
-            Only its hash is stored — this value cannot be shown again. For Claude Desktop: copy the setup command, paste it into Terminal, and paste the key when it asks.
+            Only its hash is stored — this value cannot be shown again. For Claude Desktop: copy the setup command, paste it into Terminal, and paste the key when it asks — or skip the key
+            entirely next time with <b>Set up on this Mac</b> on the twin's row.
             For a Claude Code operator or any other harness, hand the key over with docs/twins/TWIN_HARNESS.md; the handoff prompt is on <a href={CONSOLE_HREF} style={{ color: 'var(--text-link)' }}>Robots → Console</a>.
           </p>
         </div>
+      ) : null}
+
+      {setupFor ? (
+        <TwinSetupDialog open onClose={() => { setSetupFor(null); void loadAll() }} target={{ twinUserId: setupFor.id, twinEmail: setupFor.email, kind: twinSeatKindFromEmail(setupFor.email) === 'pricer' ? 'pricer' : 'estimator' }} />
       ) : null}
 
       {/* Steps 1–2: the fleet — mint twins, issue keys, walk the safety ladder. */}
@@ -551,13 +559,24 @@ export default function DigitalTwinsPanel() {
                       <button type="button" style={{ ...BTN, fontSize: '0.72rem', padding: '0.2rem 0.5rem' }} onClick={() => { setIssueForTwin(null); setTokenLabel('') }}>Cancel</button>
                     </span>
                   ) : (
-                    <button
-                      type="button"
-                      style={{ font: 'inherit', fontSize: '0.72rem', fontWeight: 600, color: VIOLET, border: `1px dashed ${VIOLET}`, borderRadius: 999, padding: '0.14rem 0.6rem', background: 'transparent', cursor: 'pointer' }}
-                      onClick={() => { setIssueForTwin(t.id); setTokenLabel('') }}
-                    >
-                      ＋ Issue key
-                    </button>
+                    <>
+                      <button
+                        type="button"
+                        style={{ font: 'inherit', fontSize: '0.72rem', fontWeight: 600, color: VIOLET, border: `1px dashed ${VIOLET}`, borderRadius: 999, padding: '0.14rem 0.6rem', background: 'transparent', cursor: 'pointer' }}
+                        onClick={() => { setIssueForTwin(t.id); setTokenLabel('') }}
+                        title="Mint a key by hand — shown once, for a Claude Code operator or another harness"
+                      >
+                        ＋ Issue key
+                      </button>
+                      <button
+                        type="button"
+                        style={{ font: 'inherit', fontSize: '0.72rem', fontWeight: 700, color: '#fff', border: 'none', borderRadius: 999, padding: '0.16rem 0.65rem', background: VIOLET, cursor: 'pointer' }}
+                        onClick={() => setSetupFor(t)}
+                        title="Claude Desktop on this Mac: one Terminal command mints the key on the server and writes it straight into Desktop's config — never shown — then restarts Desktop with the kickoff on the clipboard"
+                      >
+                        Set up on this Mac
+                      </button>
+                    </>
                   )}
                 </div>
               </div>

@@ -3,15 +3,15 @@
 ---
 file: EDGE_FUNCTIONS.md
 type: API Reference
-purpose: Complete API documentation for all 84 Supabase Edge Functions
+purpose: Complete API documentation for all 85 Supabase Edge Functions
 audience: Developers, DevOps, AI Agents
-last_updated: 2026-09-07
+last_updated: 2026-09-11
 estimated_read_time: 20-25 minutes
 difficulty: Intermediate
 
 runtime: "Deno (TypeScript)"
 authentication: "In-function JWT / signature / cron-secret validation for most functions (see Overview for the two gateway-verified exceptions)"
-total_functions: 84
+total_functions: 85
 
 key_sections:
   - name: "Functions"
@@ -89,6 +89,7 @@ when_to_read:
    - [dev-login](#dev-login)
    - [twin-login](#twin-login)
    - [twin-mcp](#twin-mcp)
+   - [twin-setup](#twin-setup)
    - [drive-intake](#drive-intake)
    - [plan-fetch](#plan-fetch)
    - [ct-bridge](#ct-bridge)
@@ -865,6 +866,21 @@ The frontend (`src/pages/DevLogin.tsx`, v2.1526) no longer follows the returned 
 **The pricer learns (v2.3275 / v1.4.1 — Price Matrix PR 5)**: **`get_component_corrections(limit?)`** — the estimator's undigested teaching from `fixture_component_corrections` (action, bid, row, the line, her words) for the pricer to read at the start of a session; **`extend_component_rules`** gains `digest_correction_ids` — the rules it minted stamp those corrections `digested_at` (+ `rule_id`), and an empty `rules` list with ids marks one-offs as read. **`finish_price_matrix`** now clears `reviewed_at` on a (re-)finish so the Pricing chip and the Dashboard's *Robot pricing* Needs You card surface the news again. The Console's *Pricing robot · what it learned* card lists active rules with provenance and a Retire door; the Scoreboard's *Pricing robot* card reads the agreement (robot picks the estimator kept) from the same rows.
 
 **Required secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, and for CT minting **`CT_TWIN_LOGIN_URL`** + **`COUNTTOOLING_TWIN_LOGIN_SECRET`** (twin-login's own `TWIN_LOGIN_SECRET` is not needed here — the per-twin token is the credential).
+
+---
+
+### twin-setup
+
+**Purpose**: "Set up on this Mac" (v2.3277, Price Matrix PR 6 — `docs/PRICE_MATRIX_PLAN.md`). Collapses the three-step Claude Desktop connector setup (issue a key, paste it into Terminal, quit/reopen Desktop) into one click and one paste, with the robot key never shown to a person. Two actions in one JSON body:
+
+- `{ action: 'mint', twin_user_id? | kind?: 'estimator' | 'pricer', label? }` — **staff session** (`Authorization: Bearer <jwt>`; roles dev · master_technician · assistant · controller · estimator). Devs may mint for any twin; the other roles only for a **pricer** (`users.twin_kind = 'pricer'`) — key issuance for the bid robots stays dev-only. Mints a one-time **setup code** (`K7Q2-M9XD-4T`: ten symbols from a 30-letter Crockford-ish alphabet ≈ 49 bits, rejection-sampled) into `twin_setup_codes` (sha256 of the normalized code; `expires_at` = now + 10 min). Rate limit: 10 codes per minter per 10 minutes (429). Returns `{ code, expires_at, twin_email, twin_kind, label, setup_url, connector_url }`; the client wraps it in the Terminal command (`buildDesktopSetupCommandFromCode` in `src/lib/bids/desktopKickoff.ts`).
+- `{ action: 'redeem', code, machine? }` — **no session; the code is the auth** (a Terminal command on a fresh Mac calls it). Normalizes the code (dashes dropped, upper-cased, O→0, I/L→1), claims the row with a conditional `UPDATE … WHERE code_hash = ? AND redeemed_at IS NULL AND expires_at > now()` (two Macs racing get exactly one winner), re-checks the twin is still eligible, mints a `twin_credentials` token server-side (label = the code's label, `created_by` = the minter), stamps `credential_id` on the code, logs a `twin_runs` row (`mission = 'setup'`), and returns `{ token, twin_email, twin_kind, label, connector_url, kickoff, check_call }` — the kickoff is the matching Desktop kickoff doc with the connector URL filled in (from the generated `_shared/twinKickoffs.ts`), so the command can put it on the clipboard. A miss (unknown, used, expired, malformed) waits 400 ms and returns 404 with one generic sentence.
+
+**Endpoint**: `POST /functions/v1/twin-setup` · **Auth**: in-function (mint: staff JWT via `auth.getUser`; redeem: the code). `verify_jwt = false` in `config.toml` — preserve on redeploys. **Env**: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`; optional `TWIN_MCP_PUBLIC_URL` if the connector must be reached at another origin.
+
+**Generated input**: `supabase/functions/_shared/twinKickoffs.ts` is written by `node scripts/build-twin-mcp-briefs.mjs` from `docs/twins/kickoffs/{desktop,pricing}-operator.md` — regenerate + redeploy `twin-setup` after editing those docs (the same run regenerates twin-mcp's `briefs.ts`).
+
+**Tables**: `twin_setup_codes` (migration `20260911043553`), `twin_credentials`, `twin_runs`, `users`.
 
 ---
 

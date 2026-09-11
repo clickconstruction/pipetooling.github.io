@@ -2,7 +2,7 @@
 title: run the robot estimator from Claude Desktop
 category: Bids & Estimating
 roles: dev
-keywords: robot, twin, shadow, claude desktop, kickoff, connector, mcp, key, setup command, console, queue, batch, coverage, incognito, memory
+keywords: robot, twin, shadow, claude desktop, kickoff, connector, mcp, key, setup command, set up on this mac, setup code, console, queue, batch, coverage, incognito, memory
 ---
 The one sentence: **Bids → 🤖 Robots → Console has a {{button:blue|Copy Desktop kickoff}} button; paste what it copies into a new Claude Desktop chat and the robot works the shadow queue one bid at a time, with you attaching the plans when it asks.**
 
@@ -12,14 +12,18 @@ The hourly shadow batch runs from Claude Code on the operator's machine (the han
 
 ## Set it up once
 
-1. Issue a robot key: **Settings → System → Digital twins → Fleet → Twin Estimator 1 → {{button:blue|Issue key}}**, labelled with the person's name. It shows once, and it never goes into a chat.
-2. On the card that shows the key, press {{button:blue|Copy Desktop setup command}} (the same button is on Bids → 🤖 Robots → Console, step 1). Open Terminal on that Mac, paste, press Return, and paste the key when it asks — the prompt is silent, so the key never lands in your clipboard history or shell history. The command finds Node, writes Claude Desktop's connector config, and prints what to do next. If it says Node is missing, install Node 18 or newer from nodejs.org and run it again.
-3. Quit Claude Desktop fully (Cmd+Q) and reopen it. Connectors load at start.
-4. In a new chat type *call get_brief on twin-mcp*. A brief means the door is open. No twin-mcp tools at all means the connector didn't load — look under Settings → Developer for `twin-mcp` and its error. A 401 means the key is wrong or revoked; re-issue it and run step 2 again.
+The short way is one command, and you never see the key.
 
-:::example Why a command instead of instructions
-The old step said "add the entry inside mcpServers" in a JSON file. A fresh install has no such block and no obvious place to type, and a mistyped brace silently disables every connector. The command merges the entry into whatever is there and tells you the next step.
+1. On **Bids → 🤖 Robots → Console**, step 1 of the *From Claude Desktop* column, press {{button:purple|Set up on this Mac}} (the same button is on the robot's row at Settings → Digital twins). Type whose Mac it is — that becomes the key's label, so it can be revoked on its own later — and press {{button:purple|Make my setup command}}.
+2. {{button:purple|Copy the command}}. It carries a one-time code that is good for ten minutes and one use.
+3. Open Terminal (⌘ Space, type *Terminal*, Return), paste, press Return. The command trades the code for a fresh key on the server and writes the key straight into Claude Desktop's connector config, then quits Claude Desktop and reopens it so the connector loads, and puts the robot's kickoff on your clipboard. If it says Node is missing, install Node 18 or newer from nodejs.org and run it again.
+4. In Claude Desktop, start a **new incognito chat** and paste. The robot reads its brief and says the connector answered.
+
+:::example Why a code instead of a key
+The key is what lets a machine act as the robot. Handing it to a person to paste means it sits in a clipboard, a chat, or a shell history somewhere. The code is worth one key for ten minutes; the command redeems it and the key goes from the server straight into the config file. Nobody ever reads it.
 :::
+
+The long way — for a Claude Code operator, another harness, or a Mac where the short way failed — is a key you can see: **Settings → System → Digital twins → Fleet → Twin Estimator 1 → {{button:blue|Issue key}}**, then {{button:blue|Copy Desktop setup command}} on the card that shows it (on the Console it is {{button:gray|Key-based command}}); paste into Terminal and paste the key when the silent prompt asks; quit and reopen Claude Desktop yourself. Either way, *call get_brief on twin-mcp* in a new chat should return the brief. No twin-mcp tools at all means the connector didn't load — look under Settings → Developer for `twin-mcp` and its error. A 401 means the key is wrong or revoked; run the setup again.
 
 ## Run a batch
 

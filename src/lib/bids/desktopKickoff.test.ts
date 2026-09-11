@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import kickoffDoc from '../../../docs/twins/kickoffs/desktop-operator.md?raw'
 import pricingKickoffDoc from '../../../docs/twins/kickoffs/pricing-operator.md?raw'
-import { DESKTOP_KICKOFF_CONNECTOR_PLACEHOLDER, buildDesktopKickoff, buildDesktopSetupCommand, twinMcpConnectorUrl } from './desktopKickoff'
+import { DESKTOP_KICKOFF_CONNECTOR_PLACEHOLDER, buildDesktopKickoff, buildDesktopSetupCommand, buildDesktopSetupCommandFromCode, twinMcpConnectorUrl, twinSetupUrl } from './desktopKickoff'
 
 describe('twinMcpConnectorUrl', () => {
   it('points at the twin-mcp edge function and tolerates a trailing slash', () => {
@@ -109,5 +109,52 @@ describe('docs/twins/kickoffs/pricing-operator.md (the pricing robot’s templat
     expect(pricingKickoffDoc).toMatch(/Never sum an option group/)
     expect(pricingKickoffDoc).toMatch(/Never guess a plan-decided choice/)
     expect(pricingKickoffDoc).toMatch(/three requests in one conversation/)
+  })
+})
+
+describe('buildDesktopSetupCommandFromCode (Set up on this Mac, Price Matrix PR 6)', () => {
+  const cmd = buildDesktopSetupCommandFromCode({
+    connectorUrl: 'https://abc.supabase.co/functions/v1/twin-mcp',
+    setupUrl: 'https://abc.supabase.co/functions/v1/twin-setup',
+    code: 'k7q2-m9xd-4t',
+  })
+
+  it('carries the one-time code and both doors, and never a key', () => {
+    expect(cmd).toContain('SETUP_CODE="K7Q2-M9XD-4T"')
+    expect(cmd).toContain('TWIN_SETUP_URL="https://abc.supabase.co/functions/v1/twin-setup"')
+    expect(cmd).toContain('TWIN_MCP_URL="https://abc.supabase.co/functions/v1/twin-mcp"')
+    expect(cmd).not.toMatch(/[0-9a-f]{32,}/)
+    expect(cmd).not.toContain('read -s')
+  })
+
+  it('redeems the code, writes the token only into the config, restarts Desktop, and copies the kickoff', () => {
+    expect(cmd).toContain("action: 'redeem', code: process.env.SETUP_CODE")
+    expect(cmd).toContain("env: { TWIN_TOKEN: body.token }")
+    expect(cmd).toContain("'X-Twin-Token:${TWIN_TOKEN}'")
+    expect(cmd).not.toMatch(/say\([^)]*body\.token/)
+    expect(cmd).toContain('quit app "Claude"')
+    expect(cmd).toContain("spawnSync('open', ['-a', 'Claude'])")
+    expect(cmd).toContain("spawnSync('pbcopy', { input: body.kickoff })")
+    expect(cmd).toContain('NEW INCOGNITO chat')
+  })
+
+  it('runs on Node (already required for mcp-remote), merges into an existing config, and handles a broken one', () => {
+    expect(cmd).toContain('NPX="$(command -v npx)"')
+    expect(cmd).toContain("node - <<'NODEEOF'")
+    expect(cmd).not.toContain('python3')
+    expect(cmd).toContain('cfg.mcpServers = cfg.mcpServers || {}')
+    expect(cmd).toContain("if (e.code !== 'ENOENT')")
+  })
+
+  it('refuses a malformed code or the wrong doors', () => {
+    const ok = { connectorUrl: 'https://abc.supabase.co/functions/v1/twin-mcp', setupUrl: 'https://abc.supabase.co/functions/v1/twin-setup' }
+    expect(() => buildDesktopSetupCommandFromCode({ ...ok, code: 'K7Q2M9XD4T' })).toThrow(/code like/)
+    expect(() => buildDesktopSetupCommandFromCode({ ...ok, code: 'K7Q2-M9XD-4T"; rm -rf ~' })).toThrow(/code like/)
+    expect(() => buildDesktopSetupCommandFromCode({ ...ok, setupUrl: 'https://abc.supabase.co/functions/v1/twin-mcp', code: 'K7Q2-M9XD-4T' })).toThrow(/twin-setup/)
+    expect(() => buildDesktopSetupCommandFromCode({ ...ok, connectorUrl: 'http://evil/functions/v1/twin-mcp', code: 'K7Q2-M9XD-4T' })).toThrow(/twin-mcp/)
+  })
+
+  it('twinSetupUrl points at the twin-setup door', () => {
+    expect(twinSetupUrl('https://abc.supabase.co/')).toBe('https://abc.supabase.co/functions/v1/twin-setup')
   })
 })
