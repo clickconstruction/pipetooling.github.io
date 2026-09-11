@@ -1,0 +1,207 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Test Reports in the Portal</title>
+<style>
+  /* The portal's own paper palette (src/lib/portal/portalTheme.ts), so this reads as the real page. */
+  :root { --ink:#16283c; --paper:#f6f3ec; --card:#fdfcf9; --muted:#5a6b7e; --faint:#8a97a6; --hair:#ddd6c8; --copper:#b0662f; --band:#f1ece2; --green:#1f7a3a; --red:#b42318; --plum:#6b3fa0; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:#e9e5dc; color:var(--ink); font: 14px/1.45 -apple-system, 'Segoe UI', Roboto, sans-serif; }
+  .wrap { max-width: 1240px; margin: 0 auto; padding: 32px 24px 80px; }
+  h1 { font-size: 24px; margin: 0 0 6px; }
+  .sub { color: var(--muted); margin: 0 0 26px; max-width: 820px; }
+  h2 { font-size: 12.5px; letter-spacing:.08em; text-transform: uppercase; color: var(--muted); margin: 40px 0 12px; }
+  h2 span { color: var(--copper); margin-right: 8px; }
+  .note { font-size: 13px; color: var(--muted); margin: 10px 0 0; max-width: 860px; }
+  .callout { position:absolute; background: var(--copper); color:#fff; font-size: 11px; font-weight: 700; letter-spacing:.04em; padding: 3px 8px; border-radius: 4px; box-shadow: 0 2px 8px rgba(0,0,0,.18); }
+  .callout:after { content:''; position:absolute; left: 14px; bottom:-6px; border: 6px solid transparent; border-top-color: var(--copper); border-bottom:0; }
+  .rep .callout:after { display:none; }
+
+  /* the portal page */
+  .page { background: var(--paper); padding: 2rem 1rem 3rem; border: 1px solid #d8d2c4; }
+  .sheet { max-width: 760px; margin: 0 auto; position: relative; }
+  .sample { border:1px solid #d9c58c; background:#f7efd2; color:#5a4a15; font-size: 12px; padding: 6px 12px; text-align:center; margin-bottom: 22px; }
+  .lh { display:flex; justify-content:space-between; align-items:flex-end; gap: 12px; }
+  .wm { font-size: 30px; font-weight: 900; letter-spacing:-.03em; line-height: 1; }
+  .wm i { font-style: normal; color: var(--copper); }
+  .tag { font-size: 9.5px; letter-spacing:.22em; text-transform: uppercase; color: var(--muted); margin-top: 6px; }
+  .lh .r { text-align: right; font-size: 11.5px; color: var(--muted); }
+  .rule { height: 2px; background: var(--ink); margin: 14px 0 18px; }
+  .head { display:flex; justify-content: space-between; align-items:flex-end; gap: 12px; }
+  .eyebrow { font-size: 10.5px; font-weight: 700; letter-spacing:.2em; text-transform: uppercase; color: var(--copper); }
+  .head h3 { margin: 4px 0 2px; font-size: 20px; }
+  .head .d { font-size: 12px; color: var(--muted); }
+  .due { text-align:right; }
+  .due .eyebrow { color: var(--muted); }
+  .due b { display:block; font-size: 30px; font-weight: 800; letter-spacing:-.02em; }
+  .hair { height:1px; background: var(--hair); margin: 14px 0; }
+  .cols { display:grid; grid-template-columns: 1fr auto; font-size: 10.5px; font-weight: 700; letter-spacing:.2em; text-transform: uppercase; color: var(--muted); padding: 6px 0; border-bottom: 1px solid var(--hair); }
+  .band { background: var(--band); display:flex; justify-content:space-between; align-items: baseline; gap: 14px; padding: 8px 10px; margin-top: 16px; font-size: 13.5px; }
+  .band .trade { font-weight: 800; letter-spacing:.04em; color: var(--plum); }
+  .band .no { font-weight: 700; }
+  .band .dot { color: var(--faint); padding: 0 2px; }
+  .band .asgc { margin-left: 7px; font-size: 8.5px; font-weight: 800; letter-spacing:.12em; text-transform: uppercase; color: var(--copper); border: 1px solid var(--copper); border-radius: 3px; padding: 1.5px 5px; vertical-align: 1px; }
+  .band .q { font-size: 11.5px; color: var(--faint); }
+  .bill { display:grid; grid-template-columns: 110px 1fr auto auto; gap: 14px; align-items:center; padding: 10px 10px; font-size: 13.5px; }
+  .bill .dt { color: var(--muted); font-variant-numeric: tabular-nums; }
+  .bill .dt small { display:block; font-size: 10.5px; color: var(--faint); }
+  .bill .amt { font-weight: 600; font-variant-numeric: tabular-nums; }
+  .pay { background: var(--ink); color: var(--paper); font-size: 12.5px; font-weight: 600; letter-spacing:.02em; padding: 7px 14px; white-space: nowrap; }
+  /* the new inline report line */
+  .rep { display:grid; grid-template-columns: 110px 1fr auto; gap: 14px; align-items:center; padding: 6px 10px 10px; font-size: 12.5px; border-bottom: 1px solid var(--hair); }
+  .rep .k { font-size: 10.5px; font-weight: 700; letter-spacing:.14em; text-transform: uppercase; color: var(--copper); }
+  .rep .t b { color: var(--ink); }
+  .rep .t { color: var(--muted); }
+  .rep .pass { color: var(--green); font-weight: 700; }
+  .rep .fail { color: var(--red); font-weight: 700; }
+  .view { border: 1px solid var(--ink); color: var(--ink); background: var(--card); font-size: 12px; font-weight: 600; padding: 5px 12px; white-space: nowrap; }
+  /* cards */
+  .card { margin: 1.4rem 0 0; background: var(--card); border: 1px solid var(--hair); padding: 1rem 1.3rem; position: relative; }
+  .card .eyebrow { color: var(--muted); margin-bottom: 8px; display:block; }
+  .crow { display:flex; align-items:center; gap: 12px; flex-wrap: wrap; padding: 8px 0; border-top: 1px solid var(--hair); font-size: 13.5px; }
+  .crow:first-of-type, .card .eyebrow + .crow { border-top: 0; }
+  .crow .l { flex: 1 1 220px; min-width: 0; }
+  .crow .l b { display:block; font-weight: 700; }
+  .crow .l .m { color: var(--muted); font-size: 12.5px; }
+  .crow .l .s { font-size: 12.5px; font-weight: 600; margin-top: 2px; }
+  .crow .s .pass { color: var(--green); }
+  .crow .s .fail { color: var(--red); }
+  .visit { margin-top: 1.4rem; background: var(--card); border: 1px solid var(--hair); padding: 1rem 1.3rem; font-size: 13px; color: var(--muted); }
+  .visit b { display:block; color: var(--ink); font-size: 13.5px; text-transform: uppercase; letter-spacing:.01em; }
+  .dim { opacity: .5; }
+
+  /* phone + pdf side by side */
+  .two { display:grid; grid-template-columns: 380px 1fr; gap: 24px; align-items: start; }
+  .phone { width: 380px; background: var(--paper); border: 10px solid #1d1d1f; border-radius: 34px; padding: 18px 14px 26px; }
+  .phone .sheet { max-width: 100%; }
+  .phone .bill { grid-template-columns: 1fr auto; }
+  .phone .bill .note { display:none; }
+  .phone .rep { grid-template-columns: 1fr; gap: 6px; }
+  .phone .crow .view { margin-left: auto; }
+  .tab { background:#fff; border: 1px solid #cfcac0; border-radius: 10px; overflow:hidden; box-shadow: 0 12px 40px rgba(0,0,0,.12); }
+  .tabbar { background:#e8e6e1; padding: 8px 12px; font-size: 11.5px; color:#555; display:flex; gap: 8px; align-items:center; }
+  .tabbar .url { background:#fff; border-radius: 6px; padding: 3px 10px; flex:1; color:#333; font-family: ui-monospace, monospace; font-size: 11px; }
+  .paper { padding: 28px 34px; font-size: 11.5px; line-height: 1.45; color:#222; }
+  .paper .plh { display:flex; justify-content:space-between; align-items:flex-start; border-bottom: 3px solid var(--copper); padding-bottom: 10px; margin-bottom: 12px; }
+  .paper .wm { font-size: 20px; }
+  .paper .ttl { text-align:right; }
+  .paper .ttl b { display:block; font-size: 13px; }
+  .paper .pc { display:grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 10px; }
+  .paper h4 { margin: 0 0 4px; font-size: 10px; text-transform: uppercase; letter-spacing:.06em; color: var(--copper); border-bottom: 1px solid #e3ddd0; padding-bottom: 2px; }
+  .paper .kv { display:grid; grid-template-columns: 70px 1fr; gap: 2px 6px; }
+  .paper .kv span:nth-child(odd) { color:#666; }
+  .paper .cert { white-space: pre-line; color:#333; margin-top: 4px; }
+  @media (max-width: 900px) { .two { grid-template-columns: 1fr; } .phone { width: 100%; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Test reports in the customer portal</h1>
+  <p class="sub">Drawn in the portal's own paper palette (the same tokens the statement uses), on the GC statement the sample token renders. Two placements, meant to ship together: the report line <b>on the job it belongs to</b>, where the GC is looking when they pay, and a <b>Test reports</b> card lower down that keeps every sent report after the bill is paid and leaves the statement.</p>
+
+  <h2><span>A</span>The GC statement — Done Right Foundation Repair opens their link</h2>
+  <div class="page">
+    <div class="sheet">
+      <div class="sample">Sample — this is what a customer sees. Nothing you do here is saved.</div>
+      <div class="lh"><div><div class="wm">CLICK<i>.</i></div><div class="tag">Plumbing, Electrical, and HVAC</div></div><div class="r">Your reliable team is just a click away<br>(512) 360-0599</div></div>
+      <div class="rule"></div>
+      <div class="head"><div><div class="eyebrow">Account statement</div><h3>Done Right Foundation Repair</h3><div class="d">September 11, 2026</div></div><div class="due"><div class="eyebrow">Balance due</div><b>$500.00</b></div></div>
+      <div class="hair"></div>
+      <div class="cols"><span>Billed</span><span>Amount due</span></div>
+
+      <div class="band"><span><span class="trade">PLUM</span> <span class="no">1014</span><span class="dot">&nbsp;•&nbsp;</span><span style="font-weight:600">112 Seidel St</span><span class="asgc">As GC</span></span><span class="q">Marion, TX 78124 — owner: Anna &amp; Jeffrey Johnson</span></div>
+      <div class="rep" style="position:relative">
+        <span class="callout" style="top:10px; right:-215px">◀ NEW · the report on its job</span>
+        <span class="k">Test report</span>
+        <span class="t"><b>Sewer Pre-Test Hydrostatic</b> · <span class="pass">PASS</span> · Sep 10, 2026 · certified by Malachi Whites, RMP #41130</span>
+        <span class="view">View report</span>
+      </div>
+      <div class="bill"><span class="dt">Sep 11, 2026<small>today</small></span><span></span><span class="amt">$250.00</span><span class="pay">PAY ONLINE</span></div>
+
+      <div class="band"><span><span class="trade">PLUM</span> <span class="no">1013</span><span class="dot">&nbsp;•&nbsp;</span><span style="font-weight:600">204 Cypress Bend</span><span class="asgc">As GC</span></span><span class="q">Seguin, TX 78155 — owner: R. Peterson</span></div>
+      <div class="rep">
+        <span class="k">Test report</span>
+        <span class="t"><b>Sewer Pre-Test Hydrostatic</b> · <span class="fail">FAIL</span> · Sep 10, 2026 · certified by Malachi Whites, RMP #41130</span>
+        <span class="view">View report</span>
+      </div>
+      <div class="bill"><span class="dt">Sep 11, 2026<small>today</small></span><span></span><span class="amt">$250.00</span><span class="pay">PAY ONLINE</span></div>
+
+      <div class="card dim"><span class="eyebrow">Your agreements</span>
+        <div class="crow"><div class="l"><b>Hydrostatic testing — master agreement</b><div class="m">Done Right Foundation Repair · 2026</div><div class="s">✍ Signed by Kyle Brandt · Aug 12, 2026</div></div><span class="view">View signed copy</span></div>
+      </div>
+
+      <div class="card" style="border-color: var(--copper)">
+        <span class="callout" style="top:-14px; left:14px">NEW · the standing record, paid jobs included</span>
+        <span class="eyebrow">Test reports</span>
+        <div class="crow"><div class="l"><b>112 Seidel St, Marion</b><div class="m">Sewer Pre-Test Hydrostatic · certified by Malachi Whites, RMP #41130</div><div class="s"><span class="pass">PASS</span> · Sep 10, 2026</div></div><span class="view">View report</span></div>
+        <div class="crow"><div class="l"><b>204 Cypress Bend, Seguin</b><div class="m">Sewer Pre-Test Hydrostatic · certified by Malachi Whites, RMP #41130</div><div class="s"><span class="fail">FAIL</span> · Sep 10, 2026 · see the findings on the report</div></div><span class="view">View report</span></div>
+        <div class="crow"><div class="l"><b>3310 Mission Hills, San Antonio</b><div class="m">Sewer Post-Test Hydrostatic · certified by Malachi Whites, RMP #41130</div><div class="s"><span class="pass">PASS</span> · Aug 28, 2026 · <span style="color:var(--faint); font-weight:400">bill paid Sep 2</span></div></div><span class="view">View report</span></div>
+        <div class="crow"><div class="l"><b>3310 Mission Hills, San Antonio</b><div class="m">Sewer Pre-Test Hydrostatic · certified by Malachi Whites, RMP #41130</div><div class="s"><span class="pass">PASS</span> · Aug 14, 2026 · <span style="color:var(--faint); font-weight:400">bill paid Aug 20</span></div></div><span class="view">View report</span></div>
+        <div style="font-size:11.5px; color:var(--faint); margin-top:8px">Showing 4 of 27 · <u>All reports</u></div>
+      </div>
+
+      <div class="visit dim"><b>Request a visit</b>We'll call you at (830) 351-4600 — pick a window and tell us what you need.</div>
+    </div>
+  </div>
+  <p class="note">The inline line sits between the job band and its bill, in the ledger's own grid, so the statement still reads top to bottom as "job → what we found → what it costs → pay". The card lower down is the history: reports stay there after the bill is paid and the job leaves the statement, which is when a foundation contractor most often needs the old pre-test to compare against the post-test. Both use the same outlined <b>View report</b> button the agreements card already uses.</p>
+
+  <h2><span>B</span>On a phone, and what View report opens</h2>
+  <div class="two">
+    <div class="phone">
+      <div class="sheet">
+        <div class="lh"><div><div class="wm" style="font-size:24px">CLICK<i>.</i></div><div class="tag">Plumbing, Electrical, and HVAC</div></div></div>
+        <div class="rule"></div>
+        <div class="head"><div><div class="eyebrow">Account statement</div><h3 style="font-size:17px">Done Right Foundation Repair</h3></div><div class="due"><div class="eyebrow">Balance due</div><b style="font-size:24px">$500.00</b></div></div>
+        <div class="hair"></div>
+        <div class="band" style="flex-direction:column; gap:2px"><span><span class="trade">PLUM</span> <span class="no">1014</span><span class="dot">&nbsp;•&nbsp;</span><span style="font-weight:600">112 Seidel St</span><span class="asgc">As GC</span></span><span class="q">Marion, TX — owner: Johnson</span></div>
+        <div class="rep">
+          <span class="k">Test report</span>
+          <span class="t"><b>Sewer Pre-Test Hydrostatic</b> · <span class="pass">PASS</span> · Sep 10<br>certified by Malachi Whites, RMP #41130</span>
+          <span class="view" style="justify-self:start">View report</span>
+        </div>
+        <div class="bill"><span class="dt">Sep 11, 2026<small>today</small></span><span class="amt" style="text-align:right">$250.00</span></div>
+        <div style="padding: 0 10px 12px"><span class="pay" style="display:block; text-align:center">PAY ONLINE</span></div>
+        <div class="card"><span class="eyebrow">Test reports</span>
+          <div class="crow"><div class="l"><b>112 Seidel St, Marion</b><div class="m">Sewer Pre-Test Hydrostatic</div><div class="s"><span class="pass">PASS</span> · Sep 10, 2026</div></div><span class="view">View report</span></div>
+          <div class="crow"><div class="l"><b>3310 Mission Hills</b><div class="m">Sewer Post-Test Hydrostatic</div><div class="s"><span class="pass">PASS</span> · Aug 28 · <span style="color:var(--faint);font-weight:400">paid</span></div></div><span class="view">View report</span></div>
+        </div>
+      </div>
+    </div>
+    <div>
+      <div class="tab">
+        <div class="tabbar"><span>◀ ▶</span><span class="url">yewfzhbofbbyvkvtaatw.supabase.co/storage/v1/object/sign/job-test-reports/…/1014-v1.pdf?token=… · expires in 5 min</span></div>
+        <div class="paper">
+          <div class="plh"><div><div class="wm">CLICK<i>.</i></div><div class="tag">Plumbing, Electrical, and HVAC</div></div><div class="ttl"><b>Sewer Pre-Test Hydrostatic Test Report</b>September 10, 2026 · J1014</div></div>
+          <div class="pc">
+            <div><h4>Customer</h4><div class="kv"><span>Name</span><span>Anna &amp; Jeffrey Johnson</span><span>Phone</span><span>(830) 351-4600</span><span>Company</span><span>Done Right Foundation Repair</span></div></div>
+            <div><h4>Test location</h4><div>112 Seidel St<br>Marion TX 78124</div></div>
+          </div>
+          <h4>Test details</h4>
+          <div class="kv"><span>Type</span><span>Sewer Pre-Test</span><span>System</span><span>Underground sewer lines and associated components.</span><span>Method</span><span>Water column test with no applied pressure.</span><span>Pressure</span><span>10 feet of head pressure</span><span>Duration</span><span>60 minutes</span></div>
+          <h4 style="margin-top:8px">Test results</h4>
+          <div><span style="color:var(--green);font-weight:700">PASS</span> — No leaks or pressure loss detected.</div>
+          <div>The system is functioning properly at this time. The consistency in water levels throughout the duration of the test indicates the absence of leaks in the sewer lines.</div>
+          <div><b>Notes:</b> PVC. No prior plumbing work by others. Toilets re-installed.</div>
+          <h4 style="margin-top:8px">Certification</h4>
+          <div class="cert">I hereby certify that the Hydrostatic Test was performed according to industry standards and local code requirements. All reports only represent measurements taken at this time.
+Malachi Whites (#RMP41130) · Click Plumbing · Office (512) 360-0599
+TSBPE: 929 East 41st St Austin TX 78751</div>
+        </div>
+      </div>
+      <p class="note" style="margin-top:10px"><b>View report</b> asks a small door (portal token + report id) for a five-minute signed link to the stored PDF, the same way signed contract copies open. The file is the exact one that was emailed. Nothing on the portal page itself is a PDF, so the statement stays fast on a phone.</p>
+    </div>
+  </div>
+
+  <h2><span>C</span>Rules the card follows</h2>
+  <div class="card" style="margin-top:0; max-width: 860px">
+    <div class="crow"><div class="l"><b>Sent reports only</b><div class="m">Drafts, unsent reports, and anything the office is still editing never render. A report appears the moment Send succeeds.</div></div></div>
+    <div class="crow"><div class="l"><b>Audience follows the bills</b><div class="m">A GC link sees reports on the jobs it pays for (as GC). A homeowner link sees the jobs it owns. The merged view dedupes by job, the same rule the statement's bills use.</div></div></div>
+    <div class="crow"><div class="l"><b>FAIL is not softened</b><div class="m">A failed test shows FAIL in the ledger red and the paper carries the findings. The office already read it before Send — dial A puts a person on every one.</div></div></div>
+    <div class="crow"><div class="l"><b>No money, no notes, no tech name</b><div class="m">The paper has what the customer should see: the certified result, the licensed master, the method. Field notes for the office stay on the job.</div></div></div>
+    <div class="crow"><div class="l"><b>Print keeps it</b><div class="m">Print all · one job per page already exists; the inline report line prints on the job's page as a line of text (the button drops, the way PAY ONLINE does).</div></div></div>
+  </div>
+</div>
+</body>
+</html>

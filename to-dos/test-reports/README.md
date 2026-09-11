@@ -1,6 +1,6 @@
 # Test reports — the hydrostatic / gas report and its email, inside PipeTooling
 
-Status: **not started** · proposal awaiting owner pick · designed 2026-09-11 · mock-up [`mockup.html`](./mockup.html) (four panels: the flow today vs proposed, the Test report modal, the Send sheet, the automation dial + PDF)
+Status: **not started** · owner picked 2026-09-11: **dial A (office sends) · Malachi certifies · pay link in the same email** · mock-up [`mockup.html`](./mockup.html) (six panels: the flow today vs proposed, the Test report modal, the Send sheet, the automation dial, the paper, the portal card)
 
 Replaces the external report app at plumbingtooling.com (repo `clickconstruction/plumbingtooling.github.io`, renamed from `clicktooling.github.io` on 2026-09-11; ~2,900 lines of vanilla JS + Bootstrap, no backend). The Stages door to it is `buildClickToolingUrl` in `src/lib/jobs/jobAddressUrls.ts`.
 
@@ -19,7 +19,11 @@ Then, with the sent email open: "Right now the final result of that app is an as
 
 Four surfaces, the customer details typed or pasted three times, and the only trace in PipeTooling is the invoice row. The report itself exists nowhere we can find it later. The external app also has an invoice generator (fixed $250, the GC's name hard-coded in the template) that duplicates Bill Customer — it dies with the app.
 
-## The decision (proposed — owner picks the automation level)
+## The decision
+
+Owner, 2026-09-11: "Go with A, Malachi certifies, same email." So: the clock-out report drafts, a person sends; the default certifier is a settings pick (Malachi Whites, RMP #41130 from his person record) with a per-report override; the Stripe pay link rides in the report email exactly as Taunya writes it today. Dial B stays on the plan as PR 5. Still open: questions 2 and 5 below (one-step filing for the tech; portal on by default or per customer).
+
+### The proposal as pitched (kept for the record)
 
 A **Test report** is a job-level document PipeTooling writes, stores and sends. One action from the job replaces steps 2–4: the report is prefilled from the job, rendered as a real-text PDF on the company letterhead, and **Send** emails it to the GC contact with the job's Stripe pay link in the body, cc'd per the customer's rule, and logged on the job. Billing stays exactly where it is (Bill Customer → Stripe); the report flow *reads* the hosted link, it never creates invoices.
 
@@ -59,6 +63,40 @@ office: Bill Customer → Stripe (unchanged) ◄──────────�
 ```
 
 Dial B removes the two human clicks in the middle for pass results; dial C moves the whole middle onto the clock-out screen.
+
+## In the portal
+
+Mock-up in the portal's own paper palette: [`mockup-portal.html`](./mockup-portal.html) (the GC statement with both placements, the phone, what View report opens, the rules). Owner 2026-09-11: "showing them in the portal is a good idea."
+
+The portal (`/portal?t=<token>` and `/p/<slug>`, `customer-portal` fn, `src/pages/CustomerPortal.tsx`) is one page of cards in a fixed order: letterhead → **Balance due** (+ the Tell-us-when strip) → the open bills with PAY ONLINE → the GC's **Stages** card → **Your agreements** → Request a visit. Two placements, shipped together:
+
+- **On the job, in the ledger** — a `TEST REPORT` line between the job band and its bill row, in the ledger's grid: "Sewer Pre-Test Hydrostatic · PASS · Sep 10, 2026 · certified by Malachi Whites, RMP #41130 · View report". The statement reads "job → what we found → what it costs → pay", which is what a foundation contractor wants when the pre-test bill arrives. Prints as a text line on the job's page (the button drops the way PAY ONLINE does).
+- **The Test reports card** after Your agreements — the standing record. Reports stay there after the bill is paid and the job leaves the statement (a paid job's pre-test is what they compare the post-test against). Newest first, "Showing N of M · All reports" past a handful.
+
+The card follows the agreements card's rules exactly:
+
+- It renders only when there is something to show; drafts and unsent reports never appear. One row per *sent* report: job label + address, "Sewer Pre-Test · PASS · Sep 10, 2026", certified-by line, and **View report**.
+- Audience follows the bills: on a GC link the GC sees reports for jobs where it is `gc_customer_id`; a homeowner link sees the jobs it owns; the merged `all` view dedupes by job, the same `portalBillMembership` shape.
+- **View report** opens the exact PDF that was emailed — the stored file, not a re-render. The link is minted on click by a small `open-test-report-pdf` door (portal token + report id → 5-minute signed URL from the private bucket, the same `LINK_SECONDS = 300` pattern `open-contract-form-pdf` uses), so the page can sit open for an hour without dead links.
+- Never money, never notes, never the tech's name — the paper already carries everything the customer should see.
+- The sample-token portal (`token=sample` / `sample-gc`, Settings → What customers see) gets two fixture rows so the office can preview the card without a real job.
+
+Owner question 5 (on for every payer, or per customer) decides whether the card needs a `customers.portal_shows_test_reports` switch; the proposal defaults to **on for the payer**, since the GC already got the PDF by email.
+
+## The PDF: built in the browser, stored on Send, attached from storage
+
+Two patterns exist in the app and this feature uses both halves deliberately:
+
+| | Physical invoice today | Contract forms today | Test reports (proposed) |
+|---|---|---|---|
+| Built where | Browser, jsPDF (`physicalInvoicePdf.ts` → `doc.output('blob')`) | Server, pdf-lib (fills and flattens the template) | Browser, jsPDF from the block model (dial A: a person is at the keyboard) |
+| Into the email how | base64 in the `send-physical-invoice-email` body → Resend attachment (5.5 M-char cap) | not emailed; signed link | base64 in the `send-test-report` body → Resend attachment, **and** the same bytes uploaded first |
+| Stored? | **No** — transient; "Email again" rebuilds from the data | **Yes** — private `contract-form-pdfs` bucket | **Yes** — private `job-test-reports` bucket, `<job_id>/<report_id>-v<n>.pdf`, `pdf_path` on the row |
+| Resend | re-renders (can drift if settings changed) | serves the stored file | attaches the stored bytes — identical to what the GC first received |
+
+Why store it, when the invoice doesn't: the report is a certified document with a license number on it. "What did we send Done Right on Sep 1" has to be answerable with the same bytes a year later, after the certification wording or the letterhead changed; the portal has to serve that same file; and a FAIL report can end up in a dispute. Drafts and the modal's live preview stay transient (a blob in the tab, nothing uploaded) — storage happens once, inside Send. Editing a report after it was sent writes a new version file and keeps the old one; the row points at the latest, the activity line says "re-sent v2".
+
+Send, step by step: the modal renders the block model to a jsPDF blob → base64 → `send-test-report` `{ report_id, to, cc, subject, body, pdf_base64 }` → the function verifies the caller's role and the report's job, uploads the bytes to the bucket, stamps `pdf_path` / `sent_at` / `sent_to` / `sent_by` / `stripe_invoice_id`, sends through Resend with the attachment, writes the email-log row, and posts the job activity line. A one-page real-text report is 30–80 KB, far under the attachment caps. When dial B arrives (no browser in the loop) the same block model renders server-side with pdf-lib, which five edge functions already import; the kernel lives in `supabase/functions/_shared/` from PR 1 so both renderers read one source, the way the estimate letterhead email does.
 
 ## Where it plugs in
 
@@ -101,8 +139,8 @@ Dial B removes the two human clicks in the middle for pass results; dial C moves
 
 ## Open questions for the owner
 
-1. Who certifies — always the default master (Malachi today), or the licensed tech who ran the test when they hold an RMP/journeyman number?
+1. ~~Who certifies~~ — **answered 2026-09-11: Malachi**, as the settings default with a per-report override.
 2. Should filing the Test report also satisfy the clock-out field report, so the tech files once (dial C), or stay two steps (A/B)?
 3. FAIL results: always a human Send, even on dial B? (Proposed: yes.)
-4. Does the GC get the pay link in the same email (today's practice), or does the report go alone and billing keeps its own send? (Proposed: same email, matching what Taunya does.)
-5. Portal visibility of test reports: yes for the payer only, or off until asked?
+4. ~~Pay link in the same email~~ — **answered 2026-09-11: yes**, same email, matching what Taunya does.
+5. ~~Portal visibility~~ — **answered 2026-09-11: yes, show them** (both placements in `mockup-portal.html`; on for the payer, no per-customer switch in v1).
