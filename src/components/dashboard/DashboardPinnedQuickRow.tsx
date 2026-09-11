@@ -36,6 +36,7 @@ import { useStaleOpenJobsNudge } from '../../hooks/useStaleOpenJobsNudge'
 import { useJobAccountFlagGapsNudge } from '../../hooks/useJobAccountFlagGapsNudge'
 import { usePriceMatrixReadyNudge } from '../../hooks/usePriceMatrixReadyNudge'
 import { useRobotBacklogNudge } from '../../hooks/useRobotBacklogNudge'
+import { useLegalReviewNudge } from '../../hooks/useLegalReviewNudge'
 import { useTestReportsReadyNudge } from '../../hooks/useTestReportsReadyNudge'
 import { useTestReportModalOptional } from '../../contexts/TestReportModalContext'
 import { fetchJobWithDetailsById } from '../../lib/fetchJobWithDetailsById'
@@ -418,6 +419,9 @@ export function DashboardPinnedQuickRow({
   // The robots' backlog (v2.3287): bids wanting a shadow + matrices waiting on the pricer — devs only; the Console is its door.
   const robotBacklogEnabled = !hideBanners && Boolean(authUserId) && role === 'dev'
   const robotBacklogNudge = useRobotBacklogNudge(robotBacklogEnabled, robotBacklogEnabled ? authUserId : undefined)
+  // Collections accounts awaiting a dev's attorney-ready review (Legal portal PR 2, v2.3313) — devs only; the desk is its door.
+  const legalReviewEnabled = !hideBanners && Boolean(authUserId) && role === 'dev'
+  const { review: legalReview } = useLegalReviewNudge(legalReviewEnabled)
   // Test reports drafted and not yet sent (v2.3301, dial A) — the office set; the card opens the first one in the modal.
   const testReportsEnabled = !hideBanners && Boolean(authUserId) && officeEligible
   const testReportsNudge = useTestReportsReadyNudge(testReportsEnabled)
@@ -469,6 +473,8 @@ export function DashboardPinnedQuickRow({
     priceMatrixReady,
     robotBacklogEnabled,
     robotBacklog: robotBacklogNudge.backlog,
+    legalReviewEnabled,
+    legalReview,
     testReportsEnabled,
     testReportsReady: testReportsNudge.drafts,
     demandDeadlineEnabled: lienUnconditionalEnabled,
@@ -625,6 +631,8 @@ export function DashboardPinnedQuickRow({
               navigate('/bids?tab=robot-board')
             } else if (item.key === 'robot-backlog') {
               navigate('/bids?tab=robot-console')
+            } else if (item.key === 'legal-review') {
+              navigate(`/jobs?tab=stages&legal=${encodeURIComponent(legalReview?.firstKey ?? '1')}`)
             } else if (item.key === 'd22-uncoded') {
               navigate('/bids?tab=pricing&d22audit=1')
             } else if (item.key === 'lien-unconditional') {

@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { JobContractChip } from './JobContractChip'
+import { legalRowChip } from '../../lib/legal/legalMatters'
 import { useNavigate } from 'react-router-dom'
 import type { CSSProperties, ReactNode } from 'react'
 import { useChecklistAddModal } from '../../contexts/ChecklistAddModalContext'
@@ -483,6 +484,14 @@ function cardFooterRow(
           compact
         />
       ) : null}
+      {(() => {
+        const legal = legalRowChip(ctx.legalMatterByJobId?.get(job.id))
+        return legal ? (
+          <span style={{ display: 'inline-block', fontSize: '0.66rem', fontWeight: 600, padding: '1px 6px', borderRadius: 999, whiteSpace: 'nowrap', background: legal.tone === 'legal' ? 'var(--bg-amber-tint)' : legal.tone === 'blue' ? 'var(--bg-blue-tint)' : 'var(--bg-subtle)', color: legal.tone === 'legal' ? 'var(--text-amber-700)' : legal.tone === 'blue' ? 'var(--text-blue-700)' : 'var(--text-muted)', border: '1px solid var(--border)' }}>
+            {legal.label}
+          </span>
+        ) : null
+      })()}
       {cardMetaChips(ctx, job, openLabel)}
       <span style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}>
         {cardCallIcon(job)}

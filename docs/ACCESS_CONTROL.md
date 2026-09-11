@@ -1294,3 +1294,17 @@ Unchanged: superintendents (assigned projects only, v2.2836), primaries (`master
 ## Job Summary overhead dials (v2.3259)
 
 The overhead allocation Job Summary charges from (`app_settings.overhead_allocation_v1`: smoothing window · carry share · idle cap · open definition) is **one org-wide setting**. Reads: every authenticated role, through the existing "Authenticated users can read app settings" policy — but the chip that names the constants sits behind the pay lockdown (`showMoney`: dev, master/leader, controller), like every overhead figure. Writes: **dev only** — the ⚙ dials and *Use for everyone* render only for `authRole === 'dev'` on the client, and the "Devs can manage app settings" policy (`is_dev()`) enforces it at the database. A dev's exploration of other settings is per device (localStorage) and never changes what anyone else sees.
+
+## Legal desk and legal matters (v2.3293, v2.3313)
+
+The ⚖ Legal desk on the Pipeline's Collections tier is visible to the Collections managers — **dev, master_technician, assistant, controller** (`canManageCollections`; the same pool `set_job_collections_flag` gates). The `legal_*` tables are office-read through `legal_office_can_read()` (the same four roles) and never readable by anon; the firm's portal (PR 3) reads them through the service role.
+
+| Act | Who | Entry point |
+|---|---|---|
+| Curate: hold or share timeline entries, ask a dev to review, write down | dev · master_technician · assistant · controller | `legal_matter_save_review`, `legal_close_matter`, the agreed write-down |
+| **Mark attorney-ready (= release to the firm)**, pull back | **dev only** | `legal_mark_attorney_ready`, `legal_pull_back` |
+| Add or edit the collections law firm (name, handling person, email, fee model) | dev only | Settings → Jobs & dispatch → Collections law firm (`legal_firms` insert/update policies) |
+| See the "N Collections accounts await your review" Needs You card | dev only | Dashboard |
+
+Owner decision 2026-09-11: only a dev releases; the office asks with a note. A wider pool is one `CREATE OR REPLACE` on `legal_mark_attorney_ready`.
+

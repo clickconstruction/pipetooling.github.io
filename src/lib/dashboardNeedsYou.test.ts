@@ -769,3 +769,22 @@ describe('robot-backlog (v2.3287, dev only)', () => {
     expect(buildNeedsYouItems(inputs({ robotBacklogEnabled: true, robotBacklog: { ...backlog, bidsWaiting: 0, matricesOpen: 0 } })).some((i) => i.key === 'robot-backlog')).toBe(false)
   })
 })
+
+describe('legal-review (Legal portal PR 2)', () => {
+  const review = { underReview: 3, withFirm: 1, requested: [{ key: 'c:sam', name: 'Sam Coyle', by: 'Taunya', note: 'Ready for your eyes.', days: 2 }], oldestDays: 69, firstKey: 'c:sam', balanceUnderReview: 22375 }
+  it('devs get one card that names who asked and how long the oldest has sat', () => {
+    const it1 = buildNeedsYouItems(inputs({ legalReviewEnabled: true, legalReview: review })).find((i) => i.key === 'legal-review')!
+    expect(it1.title).toBe('3 Collections accounts await your review before an attorney sees them')
+    expect(it1.detail).toContain('1 asked for your eyes: Sam Coyle — Taunya “Ready for your eyes.”')
+    expect(it1.detail).toContain('Oldest has sat 69 days')
+    expect(it1.detail).toContain('1 already with the firm')
+    expect(it1.severity).toBe('amber')
+    expect(it1.figure).toBe('3')
+  })
+  it('stays blue with nothing asked and nothing old; absent when disabled or empty', () => {
+    const quiet = buildNeedsYouItems(inputs({ legalReviewEnabled: true, legalReview: { ...review, requested: [], oldestDays: 3, withFirm: 0 } })).find((i) => i.key === 'legal-review')!
+    expect(quiet.severity).toBe('blue')
+    expect(buildNeedsYouItems(inputs({ legalReviewEnabled: false, legalReview: review })).some((i) => i.key === 'legal-review')).toBe(false)
+    expect(buildNeedsYouItems(inputs({ legalReviewEnabled: true, legalReview: { ...review, underReview: 0 } })).some((i) => i.key === 'legal-review')).toBe(false)
+  })
+})

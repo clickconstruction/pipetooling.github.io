@@ -138,6 +138,7 @@ import BilledReportShareModal from './BilledReportShareModal'
 import PaymentForecastShareModal from './PaymentForecastShareModal'
 import JobBookModal from './JobBookModal'
 import LegalDeskModal from './legal/LegalDeskModal'
+import { useLegalMatters } from '../../hooks/useLegalMatters'
 import { PORTAL_COMPANY } from '../../../supabase/functions/_shared/portalCompany'
 import JobsCombineSeparateModal from './JobsCombineSeparateModal'
 import StagesNoCustomerJobsModal from './StagesNoCustomerJobsModal'
@@ -714,6 +715,8 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
   const [bankPaymentsModalOpen, setBankPaymentsModalOpen] = useState(false)
   /** ⚖ Legal desk (v2.3293): the office's pre-release review of every Collections account. `payerKey` = the account to open on. */
   const [legalDesk, setLegalDesk] = useState<{ payerKey: string | null } | null>(null)
+  // The stored side of the desk (PR 2): matters, the firm, the row chip's source. Office roles only.
+  const legalMatters = useLegalMatters(authRole === 'dev' || authRole === 'master_technician' || isAssistantLike(authRole))
   /** ⚙ across from the Paid in Full header: "Customer paid" email recipients + preview/test (v2.965). */
   const [paidEmailSettingsOpen, setPaidEmailSettingsOpen] = useState(false)
   const [paymentEmailSettingsOpen, setPaymentEmailSettingsOpen] = useState(false)
@@ -2372,6 +2375,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
       onDevelopmentFilter: setStagesDevelopmentFilter,
       jobContractCoverageByJobId: canSeeJobContracts ? jobContractCoverageByJobId : undefined,
       onOpenJobContract: openJobContract,
+      legalMatterByJobId: legalMatters.byJobId,
     }
     const unifiedShared = {
       ...shared,
@@ -5582,6 +5586,9 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
         onAfterWriteDown={async () => {
           await loadJobs()
         }}
+        legal={legalMatters}
+        canMarkReady={authRole === 'dev'}
+        canEditReview={authRole === 'dev' || authRole === 'master_technician' || isAssistantLike(authRole)}
       />
       <BankPaymentsModal
         open={bankPaymentsModalOpen}

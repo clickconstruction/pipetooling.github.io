@@ -38,6 +38,7 @@ import GcHardHatIcon from '../icons/GcHardHatIcon'
 import CustomerPortalGlobeButton from '../customers/CustomerPortalGlobeButton'
 import DevelopmentHouseIcon from '../icons/DevelopmentHouseIcon'
 import { JobContractChip } from './JobContractChip'
+import { legalRowChip, type LegalMatterRow } from '../../lib/legal/legalMatters'
 import type { JobContractCoverage } from '../../lib/jobs/jobContractCoverage'
 
 type CustomerRow = Database['public']['Tables']['customers']['Row']
@@ -94,6 +95,8 @@ export type StagesRowRenderContext = {
   onDevelopmentFilter?: (developmentId: string) => void
   /** Contract Desk: per-job contract coverage — the chip under the job (office roles only; undefined hides it). */
   jobContractCoverageByJobId?: ReadonlyMap<string, JobContractCoverage>
+  /** Legal portal PR 2 (v2.3313): the legal matter a Collections job belongs to — the ⚖ chip beside the contract chip. */
+  legalMatterByJobId?: ReadonlyMap<string, LegalMatterRow>
   /** Opens the job's Contract modal (PR 2); absent = the chip is a plain label. */
   onOpenJobContract?: (job: JobWithDetails) => void
 }
@@ -1274,9 +1277,28 @@ export function renderStagesJobCellActivityFooter(
     if (!coverage) return null
     const cov = coverage.get(job.id)
     const open = ctx.onOpenJobContract
+    const legal = legalRowChip(ctx.legalMatterByJobId?.get(job.id))
     return (
       <div style={{ marginTop: '0.35rem', display: 'flex', alignItems: 'center', gap: '0.35rem', flexWrap: 'wrap' }}>
         <JobContractChip coverage={cov} onClick={open ? () => open(job) : undefined} />
+        {legal ? (
+          <span
+            title="Legal desk — the account's standing with counsel"
+            style={{
+              display: 'inline-block',
+              fontSize: '0.68rem',
+              fontWeight: 600,
+              padding: '1px 7px',
+              borderRadius: 999,
+              whiteSpace: 'nowrap',
+              background: legal.tone === 'legal' ? 'var(--bg-amber-tint)' : legal.tone === 'blue' ? 'var(--bg-blue-tint)' : 'var(--bg-subtle)',
+              color: legal.tone === 'legal' ? 'var(--text-amber-700)' : legal.tone === 'blue' ? 'var(--text-blue-700)' : 'var(--text-muted)',
+              border: '1px solid var(--border)',
+            }}
+          >
+            {legal.label}
+          </span>
+        ) : null}
       </div>
     )
   }
