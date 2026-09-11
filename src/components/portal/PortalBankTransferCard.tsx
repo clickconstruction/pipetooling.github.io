@@ -92,11 +92,12 @@ function Body({ details, memo, phone }: PortalBankTransferCardProps) {
         <>
           <div style={{ fontSize: 12, color: MUTED }}>ACH (direct deposit) and domestic wire use the same details. Online card payments stay above.</div>
           <div data-portal-bank-grid style={{ marginTop: 8, borderTop: `1px solid ${HAIR}` }}>
+            {/* Payee then their address — the way a wire form asks for them — then the numbers, then the bank. */}
             <Row k="Pay to" v={details.payeeName} copy={details.payeeName} />
+            {details.beneficiaryAddress ? <Row k="Address" v={details.beneficiaryAddress} plain /> : null}
             <Row k="Routing" v={groupDigits(details.routingNumber)} copy={details.routingNumber} />
             <Row k="Account" v={groupDigits(details.accountNumber)} tail={details.accountKind} copy={details.accountNumber} />
             {details.bankName ? <Row k="Bank" v={details.bankName} /> : null}
-            {details.beneficiaryAddress ? <Row k="Address" v={details.beneficiaryAddress} plain /> : null}
           </div>
           {/* The bank note is a sentence, not a value: it sits under the grid in the
               same muted voice as the line above it, instead of stacking inside a row. */}
