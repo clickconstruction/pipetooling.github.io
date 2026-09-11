@@ -782,9 +782,10 @@ export default function Jobs() {
       }
       return
     }
-    // When openBankPayments is present, force Stages tab so AR deep link can open the modal
+    // When openBankPayments (or `legal`, v2.3293) is present, force Stages tab so the deep link can open its modal
     const openBankPaymentsWant = searchParams.get('openBankPayments') === 'true' || searchParams.get('openBankPayments') === '1'
-    if (openBankPaymentsWant && canRoleSeeArBankUnallocatedOrgNudge(authRole)) {
+    const legalDeskWant = Boolean(searchParams.get('legal'))
+    if ((openBankPaymentsWant || legalDeskWant) && canRoleSeeArBankUnallocatedOrgNudge(authRole)) {
       setActiveTab('stages')
       if (tab !== 'stages') {
         setSearchParams((p) => {
@@ -1103,6 +1104,37 @@ export default function Jobs() {
     stagesTabRef.current?.openBankPayments()
     stripOpenBankPaymentsParam()
   }, [openBankPaymentsParam, authRole, activeTab, jobsListLoading, setSearchParams])
+
+  // `?legal=1` / `?legal=<payer key>` (Legal desk PR 1, v2.3293): open the ⚖ Legal
+  // desk on the Collections accounts, on one account when a key is given. Same
+  // gating class and wait-for-the-handle shape as openBankPayments above; the
+  // roles match Collections management (dev / master / assistant-like).
+  const legalParam = searchParams.get('legal')
+  useEffect(() => {
+    if (!legalParam) return
+    const strip = () => {
+      setSearchParams(
+        (p) => {
+          const next = new URLSearchParams(p)
+          next.delete('legal')
+          return next
+        },
+        { replace: true },
+      )
+    }
+    if (authRole == null) return
+    if (!canRoleSeeArBankUnallocatedOrgNudge(authRole)) {
+      strip()
+      return
+    }
+    if (activeTab !== 'stages') {
+      strip()
+      return
+    }
+    if (jobsListLoading) return
+    stagesTabRef.current?.openLegalDesk(legalParam === '1' || legalParam === 'true' ? null : legalParam)
+    strip()
+  }, [legalParam, authRole, activeTab, jobsListLoading, setSearchParams])
 
   // When editLabor=hcp is in URL and labor jobs are loaded, open edit or new labor modal
   const editLaborHcp = searchParams.get('editLabor')

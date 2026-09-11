@@ -10,8 +10,8 @@
   },
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build",
-    "analyze": "tsc -b && ANALYZE=1 vite build",
+    "build": "node --max-old-space-size=6144 node_modules/typescript/bin/tsc -b && vite build",
+    "analyze": "node --max-old-space-size=6144 node_modules/typescript/bin/tsc -b && ANALYZE=1 vite build",
     "preview": "vite preview",
     "gen-types:local": "supabase gen types typescript --local > src/types/database.ts",
     "gen-types:linked": "supabase gen types typescript --linked > src/types/database.ts",
@@ -30,7 +30,7 @@
     "e2e": "playwright test",
     "lint": "eslint src",
     "lint:fix": "eslint src --fix",
-    "typecheck": "tsc -b",
+    "typecheck": "node --max-old-space-size=6144 node_modules/typescript/bin/tsc -b",
     "format": "prettier --write src",
     "format:check": "prettier --check src"
   },
