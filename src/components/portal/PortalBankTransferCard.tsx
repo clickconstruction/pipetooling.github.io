@@ -13,8 +13,8 @@ import { CARD, COPPER, FAINT, HAIR, INK, MUTED, NOTE_BAND, PAPER } from '../../l
 import {
   bankTransferDetailsComplete,
   bankTransferGuardLine,
-  checkMailingSentence,
   groupDigits,
+  mailingAddressLines,
   type BankTransferDetails,
 } from '../../lib/bankTransferDetails'
 
@@ -83,41 +83,65 @@ function Row({ k, v, tail, copy, plain }: { k: string; v: string; tail?: string;
   )
 }
 
+const eyebrowStyle = { fontSize: 10.5, fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase' as const, color: COPPER }
+const smallKeyStyle = { fontSize: 10.5, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase' as const, color: FAINT }
+
+/**
+ * Two halves, each with its own eyebrow, so an impatient reader never
+ * mails a check to the bank's beneficiary address: the transfer details
+ * on the left (the address row says it is for the wire form), and a boxed
+ * envelope on the right with the one address checks go to. Stacks on
+ * phones ([data-portal-bank-split] in the statement's style block).
+ */
 function Body({ details, memo, phone }: PortalBankTransferCardProps) {
   const c = bankTransferDetailsComplete(details)
-  const checks = checkMailingSentence(details.checkMailingAddress)
+  const mailLines = mailingAddressLines(details.checkMailingAddress)
   return (
-    <div style={{ padding: '10px 16px 12px', fontSize: 13, borderTop: `1px solid ${HAIR}` }}>
-      {c.transfer ? (
-        <>
-          <div style={{ fontSize: 12, color: MUTED }}>ACH (direct deposit) and domestic wire use the same details. Online card payments stay above.</div>
-          <div data-portal-bank-grid style={{ marginTop: 8, borderTop: `1px solid ${HAIR}` }}>
-            {/* Payee then their address — the way a wire form asks for them — then the numbers, then the bank. */}
-            <Row k="Pay to" v={details.payeeName} copy={details.payeeName} />
-            {details.beneficiaryAddress ? <Row k="Address" v={details.beneficiaryAddress} plain /> : null}
-            <Row k="Routing" v={groupDigits(details.routingNumber)} copy={details.routingNumber} />
-            <Row k="Account" v={groupDigits(details.accountNumber)} tail={details.accountKind} copy={details.accountNumber} />
-            {details.bankName ? <Row k="Bank" v={details.bankName} /> : null}
+    <div style={{ padding: '12px 16px 12px', fontSize: 13, borderTop: `1px solid ${HAIR}` }}>
+      <div data-portal-bank-split data-both={c.transfer && c.checks ? '' : undefined}>
+        {c.transfer ? (
+          <div style={{ minWidth: 0 }}>
+            <div style={eyebrowStyle}>By bank transfer — ACH (direct deposit) or wire</div>
+            <div data-portal-bank-grid style={{ marginTop: 8, borderTop: `1px solid ${HAIR}` }}>
+              {/* Payee then their address — the way a wire form asks for them — then the numbers, then the bank. */}
+              <Row k="Pay to" v={details.payeeName} copy={details.payeeName} />
+              {details.beneficiaryAddress ? <Row k="Address" v={details.beneficiaryAddress} tail="for the wire form — not for mail" plain /> : null}
+              <Row k="Routing" v={groupDigits(details.routingNumber)} copy={details.routingNumber} />
+              <Row k="Account" v={groupDigits(details.accountNumber)} tail={details.accountKind} copy={details.accountNumber} />
+              {details.bankName ? <Row k="Bank" v={details.bankName} /> : null}
+            </div>
+            {/* The bank note is a sentence, not a value: it sits under the grid in the
+                same muted voice as the line above it, instead of stacking inside a row. */}
+            {details.bankName && details.bankNote ? <div style={{ marginTop: 8, fontSize: 12, color: MUTED }}>{details.bankNote}</div> : null}
+            <div style={{ marginTop: 10, display: 'flex', gap: 10, alignItems: 'baseline', flexWrap: 'wrap' }}>
+              <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: COPPER }}>Memo</span>
+              <code style={{ fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace', fontSize: 12.5, background: NOTE_BAND, padding: '2px 7px', border: `1px solid ${HAIR}` }}>{memo}</code>
+              <span style={{ color: MUTED, fontSize: 12 }}>so we can match your payment the day it lands.</span>
+            </div>
           </div>
-          {/* The bank note is a sentence, not a value: it sits under the grid in the
-              same muted voice as the line above it, instead of stacking inside a row. */}
-          {details.bankName && details.bankNote ? (
-            <div style={{ marginTop: 8, fontSize: 12, color: MUTED }}>{details.bankNote}</div>
-          ) : null}
-          <div style={{ marginTop: 10, display: 'flex', gap: 10, alignItems: 'baseline', flexWrap: 'wrap' }}>
-            <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: COPPER }}>Memo</span>
-            <code style={{ fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace', fontSize: 12.5, background: NOTE_BAND, padding: '2px 7px', border: `1px solid ${HAIR}` }}>{memo}</code>
-            <span style={{ color: MUTED, fontSize: 12 }}>so we can match your payment the day it lands.</span>
+        ) : null}
+        {c.checks ? (
+          <div data-portal-bank-check style={{ background: NOTE_BAND, border: `1px solid ${HAIR}`, padding: '12px 14px 13px', alignSelf: 'start', minWidth: 0 }}>
+            <div style={eyebrowStyle}>By check — mail it here</div>
+            {details.payeeName ? (
+              <>
+                <div style={{ ...smallKeyStyle, marginTop: 10 }}>Payable to</div>
+                <div style={{ fontWeight: 700 }}>{details.payeeName}</div>
+              </>
+            ) : null}
+            <div style={{ ...smallKeyStyle, marginTop: 10 }}>Mail to</div>
+            <div style={{ fontWeight: 700, fontSize: 14.5, lineHeight: 1.35 }}>
+              {mailLines.map((l, i) => (
+                <div key={i}>{l}</div>
+              ))}
+            </div>
+            <div style={{ marginTop: 10, fontSize: 12, color: MUTED, lineHeight: 1.45 }}>
+              Only this address. Checks mailed anywhere else — the bank address is not a mailbox — may need to be re-issued.
+            </div>
           </div>
-        </>
-      ) : null}
-      {checks ? (
-        <div style={{ marginTop: c.transfer ? 10 : 0, paddingTop: c.transfer ? 9 : 0, borderTop: c.transfer ? `1px dashed ${HAIR}` : 'none', fontSize: 12.5, color: INK }}>
-          <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: COPPER, marginRight: 8 }}>Checks</span>
-          {checks}
-        </div>
-      ) : null}
-      <div style={{ marginTop: 10, paddingTop: 9, borderTop: `1px dashed ${HAIR}`, fontSize: 12, color: MUTED, display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+        ) : null}
+      </div>
+      <div style={{ marginTop: 12, paddingTop: 9, borderTop: `1px dashed ${HAIR}`, fontSize: 12, color: MUTED, display: 'flex', gap: 8, alignItems: 'flex-start' }}>
         <span aria-hidden style={{ width: 8, height: 8, borderRadius: '50%', background: COPPER, flex: 'none', marginTop: 5 }} />
         <span>
           <b style={{ color: INK }}>These details never change by email.</b> {bankTransferGuardLine(phone).replace('These details never change by email. ', '')}
