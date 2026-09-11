@@ -11,6 +11,15 @@ export type CostEstimateDirectCostRow = Database['public']['Views']['cost_estima
 export const DIRECT_COST_KINDS = ['equipment', 'permit', 'sub', 'waste', 'other'] as const
 export type DirectCostKind = (typeof DIRECT_COST_KINDS)[number]
 
+/** The section names the five amber tables carried (kept for aria labels and the kind chip's title). */
+export const DIRECT_COST_KIND_LABELS: Record<DirectCostKind, string> = {
+  equipment: 'Equipment & Tool Rental',
+  permit: 'Permits, Inspections & Regulatory Fees',
+  sub: 'Subcontractor Fees',
+  waste: 'Waste Disposal & Site Cleanup',
+  other: 'Other',
+}
+
 export const DIRECT_COST_KIND_WORDS: Record<DirectCostKind, string> = {
   equipment: 'equipment',
   permit: 'permits',
@@ -70,4 +79,17 @@ export function directCostKindWords(t: DirectCostTotals, fmt: (n: number) => str
     .sort((a, b) => b[1] - a[1])
     .map(([k, n]) => `${DIRECT_COST_KIND_WORDS[k]} ${fmt(n)}`)
     .join(' · ')
+}
+
+/** One row of the one list (v2.3295): a table row with its kind. */
+export type DirectCostListRow<R extends { id: string; sequence_order: number }> = { kind: DirectCostKind; row: R }
+
+/** The five tables as one list — kind order (equipment · permit · sub · waste · other), then each table's sequence. */
+export function flattenDirectCostTables<R extends { id: string; sequence_order: number }>(tables: Partial<Record<DirectCostKind, ReadonlyArray<R> | null | undefined>>): DirectCostListRow<R>[] {
+  const out: DirectCostListRow<R>[] = []
+  for (const kind of DIRECT_COST_KINDS) {
+    const rows = [...(tables[kind] ?? [])].sort((a, b) => a.sequence_order - b.sequence_order)
+    for (const row of rows) out.push({ kind, row })
+  }
+  return out
 }

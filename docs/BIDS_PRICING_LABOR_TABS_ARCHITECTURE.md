@@ -179,7 +179,9 @@ Mirror of P1: `costEstimateSearchQuery`, `bidsScopedForCostEstimate` → `filter
 - **Supabase:** `bids` (UPDATE), edge function **`gsa-per-diem`**.
 - **Extraction:** each box is a clean candidate component; Stage A the three cost formulas into string-input pure helpers (or adapt `bidCostCalc`) + tests first.
 
-### Region L5 — Direct Costs (five cloned row sections)
+### Region L5 — Direct Costs (one list with a kind chip; v2.3295)
+
+> v2.3295: the five cloned sections are gone. [`BidsDirectCostsSection`](../src/components/bids/BidsDirectCostsSection.tsx) renders the five tables as one list (`flattenDirectCostTables`, kind order then sequence) with a kind chip, a kind picker on **+ Add**, the computed driving line on top (`computeBidCostBreakdown` with the tab's string-box overrides) and one total. The tab keeps the five tables' add/update/remove handlers behind `directCostHandlers[kind]`; the L2 autosave loops are unchanged. Cell keys: `${kind}:${row.id}:${stage}`. The notes below describe the pre-v2.3295 layout.
 
 - **Render location:** `<h3 id="labor-direct-costs">DIRECT COSTS</h3>` ~1603 (the **scroll-target contract** with `Bids.tsx`'s `scrollToLaborDirectCosts` effect), then five structurally identical sections ~1604–1963: Equipment and Tool Rental, Permits/Inspections/Regulatory Fees, Subcontractor Fees, Waste Disposal and Site Cleanup, Other.
 - **Owned local state:** none (rows are engine-owned props).

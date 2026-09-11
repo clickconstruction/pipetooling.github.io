@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { DIRECT_COST_KIND_TABLE, directCostKindWords, directCostRowTotal, isDirectCostKind, sumDirectCosts, type CostEstimateDirectCostRow } from './costEstimateDirectCosts'
+import { DIRECT_COST_KIND_TABLE, directCostKindWords, directCostRowTotal, flattenDirectCostTables, isDirectCostKind, sumDirectCosts, type CostEstimateDirectCostRow } from './costEstimateDirectCosts'
 
 const row = (kind: string, rough: number | null, top: number | null = null, trim: number | null = null): CostEstimateDirectCostRow =>
   ({ id: `${kind}-${rough}`, cost_estimate_id: 'ce', kind, note: null, rough_in: rough, top_out: top, trim_set: trim, sequence_order: 0, created_at: null, updated_at: null }) as CostEstimateDirectCostRow
@@ -39,4 +39,16 @@ describe('directCostKindWords', () => {
     expect(directCostKindWords(sumDirectCosts([row('permit', 1240), row('sub', 6500), row('waste', 0)]), fmt)).toBe('subs $6,500 · permits $1,240')
   })
   it('is empty when nothing is entered', () => expect(directCostKindWords(sumDirectCosts([]), fmt)).toBe(''))
+})
+
+describe('flattenDirectCostTables', () => {
+  it('lists the five tables as one list in kind order, each table by its sequence', () => {
+    const list = flattenDirectCostTables({
+      other: [{ id: 'o1', sequence_order: 1 }],
+      sub: [{ id: 's2', sequence_order: 2 }, { id: 's1', sequence_order: 1 }],
+      equipment: [{ id: 'e1', sequence_order: 5 }],
+      waste: null,
+    })
+    expect(list.map((l) => `${l.kind}:${l.row.id}`)).toEqual(['equipment:e1', 'sub:s1', 'sub:s2', 'other:o1'])
+  })
 })

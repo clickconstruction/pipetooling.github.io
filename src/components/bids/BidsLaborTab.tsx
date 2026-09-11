@@ -6,13 +6,11 @@ import { useToastContext } from '../../contexts/ToastContext'
 import { breakdownJumpDomId, breakdownJumpMissMessage, laborRowDomId, type BreakdownJumpTarget } from '../../lib/bids/bidTabRowJump'
 import { usePendingRowFlash } from '../../hooks/usePendingRowFlash'
 import { formatCurrency } from '../../lib/format'
-import { sumEquipmentRows } from '../../lib/bids/bidCostCalc'
 import { bidDetailCloseXStyle, bidDetailCloseFloatMobileStyle } from '../../lib/bids/bidStyles'
 import { MATERIALS_MODEL_CAPTION, normalizeMaterialsModel, type MaterialsModel } from '../../lib/bids/bidTakeoffHelpers'
 import { laborRowHours, laborRowRough, laborRowTop, laborRowTrim } from '../../lib/bids/laborRowHours'
 import {
   EMPTY_LABOR_CELL_SAVE_MAP,
-  LABOR_STAGE_LABELS,
   beginLaborCellSaves,
   finishLaborCellSaves,
   laborCellAriaLabel,
@@ -28,7 +26,9 @@ import { buildCostEstimateAutosavePayload, laborRowAutosaveUpdate, stageAmountRo
 import { useBidCrewRate } from '../../hooks/useBidCrewRate'
 import { useLaborBookCalibration } from '../../hooks/useLaborBookCalibration'
 import type { TeamLaborBidRow } from '../../utils/teamLabor'
-import { directCostRowsFromTables } from '../../lib/bids/bidTotalCostBreakdown'
+import { computeBidCostBreakdown, directCostRowsFromTables } from '../../lib/bids/bidTotalCostBreakdown'
+import { BidsDirectCostsSection } from './BidsDirectCostsSection'
+import type { DirectCostKind } from '../../lib/bids/costEstimateDirectCosts'
 import { asLaborEntryKind, asLaborUnit, LABOR_UNIT_WORDS, type LaborEntryKind, type LaborUnit } from '../../lib/bids/laborBookMatch'
 import { BidWorkflowTabTitleWithPreview } from './BidWorkflowTabTitleWithPreview'
 import { BidFlowStrip } from './BidFlowStrip'
@@ -939,6 +939,32 @@ export function BidsLaborTab({
     setOtherRows((prev) => [...prev, data as CostEstimateOtherRow])
   }
 
+  /** One direct-cost list, five tables (v2.3295): the section hands every edit back with its kind. */
+  const directCostHandlers: Record<DirectCostKind, { add: () => Promise<void>; update: (rowId: string, updates: Partial<Pick<CostEstimateEquipmentRow, 'note' | 'rough_in' | 'top_out' | 'trim_set'>>) => void; remove: (rowId: string) => Promise<void> }> = {
+    equipment: { add: addEquipmentRow, update: updateEquipmentRow, remove: removeEquipmentRow },
+    permit: { add: addPermitRow, update: updatePermitRow, remove: removePermitRow },
+    sub: { add: addSubcontractorRow, update: updateSubcontractorRow, remove: removeSubcontractorRow },
+    waste: { add: addWasteRow, update: updateWasteRow, remove: removeWasteRow },
+    other: { add: addOtherRow, update: updateOtherRow, remove: removeOtherRow },
+  }
+  // The computed driving line the list shows at its top — the same arithmetic as every total.
+  const laborDrivingLine = (() => {
+    if (!selectedBidForCostEstimate || costEstimateLaborRows.length === 0) return null
+    const b = computeBidCostBreakdown({
+      materialTotalRoughIn: 0,
+      materialTotalTopOut: 0,
+      materialTotalTrimSet: 0,
+      laborRate: null,
+      laborRows: costEstimateLaborRows,
+      distanceFromOffice: selectedBidForCostEstimate.distance_from_office ?? null,
+      costEstimate,
+      countRowsLength: costEstimateCountRows.length,
+      ratePerMileOverride: parseFloat(drivingCostRate) || 0.7,
+      hoursPerTripOverride: parseFloat(hoursPerTrip) || 2.0,
+    })
+    return { drivingCost: b.drivingCost, numTrips: b.numTrips, ratePerMile: b.ratePerMile, distance: b.distance, totalHours: b.totalLaborHours, hrsPerTrip: b.hrsPerTrip }
+  })()
+
   async function removeOtherRow(rowId: string) {
     setOtherRows((prev) => prev.filter((r) => r.id !== rowId))
     const { error: delErr } = await supabase.from('cost_estimate_other_rows').delete().eq('id', rowId)
@@ -1713,372 +1739,18 @@ export function BidsLaborTab({
                   )}
                 </span>
               </div>
-                <h3 id="labor-direct-costs" style={{ margin: '1.5rem 0 0.75rem', fontSize: '1rem', textAlign: 'center', scrollMarginTop: '1rem' }}>DIRECT COSTS</h3>
-                {/* Equipment and Tool Rental Section */}
-                <div style={{ marginTop: '1rem', padding: '0.75rem', background: 'var(--bg-amber-100)', borderRadius: 4, border: '1px solid var(--border-amber-soft)' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: equipmentRows.length > 0 ? '0.5rem' : 0, flexWrap: 'wrap', gap: '0.5rem' }}>
-                    <h4 style={{ margin: 0, fontSize: '0.875rem', fontWeight: 600 }}>Equipment and Tool Rental</h4>
-                    <button
-                      type="button"
-                      onClick={() => void addEquipmentRow()}
-                      disabled={!costEstimate?.id}
-                      style={{ padding: '0.25rem 0.6rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: costEstimate?.id ? 'pointer' : 'not-allowed', fontSize: '0.75rem', fontWeight: 500 }}
-                    >
-                      + Add row
-                    </button>
-                  </div>
-                  {equipmentRows.length === 0 ? null : (
-                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
-                      <thead>
-                        <tr style={{ textAlign: 'left', color: 'var(--text-muted)' }}>
-                          <th style={{ padding: '0.25rem 0.5rem', fontWeight: 500 }}>Note</th>
-                          <th style={{ padding: '0.25rem 0.5rem', fontWeight: 500, width: '6.5rem' }}>Rough In ($)</th>
-                          <th style={{ padding: '0.25rem 0.5rem', fontWeight: 500, width: '6.5rem' }}>Top Out ($)</th>
-                          <th style={{ padding: '0.25rem 0.5rem', fontWeight: 500, width: '6.5rem' }}>Trim Set ($)</th>
-                          <th style={{ width: '2rem' }} />
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {equipmentRows.map((row) => (
-                          <tr key={row.id}>
-                            <td style={{ padding: '0.2rem 0.5rem' }}>
-                              <input
-                                type="text"
-                                value={row.note ?? ''}
-                                onChange={(e) => updateEquipmentRow(row.id, { note: e.target.value })}
-                                placeholder="Description"
-                                style={{ width: '100%', padding: '0.375rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.875rem' }}
-                              />
-                            </td>
-                            {(['rough_in', 'top_out', 'trim_set'] as const).map((stage) => (
-                              <td key={stage} style={{ padding: '0.2rem 0.5rem' }}>
-                                <input
-                                  type="number"
-                                  min={0}
-                                  step={0.01}
-                                  value={row[stage] === 0 ? '' : String(row[stage])}
-                                  onChange={(e) => { markCell(`equipment:${row.id}:${stage}`); updateEquipmentRow(row.id, { [stage]: e.target.value === '' ? 0 : parseFloat(e.target.value) } as Partial<Pick<CostEstimateEquipmentRow, 'rough_in' | 'top_out' | 'trim_set'>>) }}
-                                  onWheel={(e) => e.currentTarget.blur()}
-                                  {...cellA11y(`equipment:${row.id}:${stage}`, laborCellAriaLabel(`${LABOR_STAGE_LABELS[stage]} dollars`, row.note, 'Equipment & Tool Rental'))}
-                                  placeholder="0.00"
-                                  style={{ width: '100%', padding: '0.375rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.875rem', textAlign: 'right', ...cellSaveStyle(`equipment:${row.id}:${stage}`) }}
-                                />
-                              </td>
-                            ))}
-                            <td style={{ padding: '0.2rem 0.25rem', textAlign: 'center' }}>
-                              <button
-                                type="button"
-                                onClick={() => void removeEquipmentRow(row.id)}
-                                title="Remove row"
-                                aria-label="Remove equipment row"
-                                style={{ background: 'none', border: 'none', color: 'var(--text-red-700)', cursor: 'pointer', fontSize: '1.1rem', lineHeight: 1 }}
-                              >
-                                ×
-                              </button>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  )}
-                  {equipmentRows.length > 0 && (
-                  <p style={{ margin: '0.5rem 0 0', textAlign: 'right', fontWeight: 600, fontSize: '0.875rem' }}>
-                    Equipment &amp; tool rental total: ${formatCurrency(sumEquipmentRows(equipmentRows))}
-                  </p>
-                  )}
-                </div>
-                {/* Permits, Inspections & Regulatory Fees Section */}
-                <div style={{ marginTop: '1rem', padding: '0.75rem', background: 'var(--bg-amber-100)', borderRadius: 4, border: '1px solid var(--border-amber-soft)' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: permitRows.length > 0 ? '0.5rem' : 0, flexWrap: 'wrap', gap: '0.5rem' }}>
-                    <h4 style={{ margin: 0, fontSize: '0.875rem', fontWeight: 600 }}>Permits, Inspections, and Regulatory Fees</h4>
-                    <button
-                      type="button"
-                      onClick={() => void addPermitRow()}
-                      disabled={!costEstimate?.id}
-                      style={{ padding: '0.25rem 0.6rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: costEstimate?.id ? 'pointer' : 'not-allowed', fontSize: '0.75rem', fontWeight: 500 }}
-                    >
-                      + Add row
-                    </button>
-                  </div>
-                  {permitRows.length === 0 ? null : (
-                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
-                      <thead>
-                        <tr style={{ textAlign: 'left', color: 'var(--text-muted)' }}>
-                          <th style={{ padding: '0.25rem 0.5rem', fontWeight: 500 }}>Description</th>
-                          <th style={{ padding: '0.25rem 0.5rem', fontWeight: 500, width: '6.5rem' }}>Rough In ($)</th>
-                          <th style={{ padding: '0.25rem 0.5rem', fontWeight: 500, width: '6.5rem' }}>Top Out ($)</th>
-                          <th style={{ padding: '0.25rem 0.5rem', fontWeight: 500, width: '6.5rem' }}>Trim Set ($)</th>
-                          <th style={{ width: '2rem' }} />
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {permitRows.map((row) => (
-                          <tr key={row.id}>
-                            <td style={{ padding: '0.2rem 0.5rem' }}>
-                              <input
-                                type="text"
-                                value={row.note ?? ''}
-                                onChange={(e) => updatePermitRow(row.id, { note: e.target.value })}
-                                placeholder="Description"
-                                style={{ width: '100%', padding: '0.375rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.875rem' }}
-                              />
-                            </td>
-                            {(['rough_in', 'top_out', 'trim_set'] as const).map((stage) => (
-                              <td key={stage} style={{ padding: '0.2rem 0.5rem' }}>
-                                <input
-                                  type="number"
-                                  min={0}
-                                  step={0.01}
-                                  value={row[stage] === 0 ? '' : String(row[stage])}
-                                  onChange={(e) => { markCell(`permit:${row.id}:${stage}`); updatePermitRow(row.id, { [stage]: e.target.value === '' ? 0 : parseFloat(e.target.value) } as Partial<Pick<CostEstimatePermitRow, 'rough_in' | 'top_out' | 'trim_set'>>) }}
-                                  onWheel={(e) => e.currentTarget.blur()}
-                                  {...cellA11y(`permit:${row.id}:${stage}`, laborCellAriaLabel(`${LABOR_STAGE_LABELS[stage]} dollars`, row.note, 'Permits, Inspections, and Regulatory Fees'))}
-                                  placeholder="0.00"
-                                  style={{ width: '100%', padding: '0.375rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.875rem', textAlign: 'right', ...cellSaveStyle(`permit:${row.id}:${stage}`) }}
-                                />
-                              </td>
-                            ))}
-                            <td style={{ padding: '0.2rem 0.25rem', textAlign: 'center' }}>
-                              <button
-                                type="button"
-                                onClick={() => void removePermitRow(row.id)}
-                                title="Remove row"
-                                aria-label="Remove permit row"
-                                style={{ background: 'none', border: 'none', color: 'var(--text-red-700)', cursor: 'pointer', fontSize: '1.1rem', lineHeight: 1 }}
-                              >
-                                ×
-                              </button>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  )}
-                  {permitRows.length > 0 && (
-                  <p style={{ margin: '0.5rem 0 0', textAlign: 'right', fontWeight: 600, fontSize: '0.875rem' }}>
-                    Permits, inspections &amp; fees total: ${formatCurrency(sumEquipmentRows(permitRows))}
-                  </p>
-                  )}
-                </div>
-                {/* Subcontractor Fees Section */}
-                <div style={{ marginTop: '1rem', padding: '0.75rem', background: 'var(--bg-amber-100)', borderRadius: 4, border: '1px solid var(--border-amber-soft)' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: subcontractorRows.length > 0 ? '0.5rem' : 0, flexWrap: 'wrap', gap: '0.5rem' }}>
-                    <h4 style={{ margin: 0, fontSize: '0.875rem', fontWeight: 600 }}>Subcontractor Fees</h4>
-                    <button
-                      type="button"
-                      onClick={() => void addSubcontractorRow()}
-                      disabled={!costEstimate?.id}
-                      style={{ padding: '0.25rem 0.6rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: costEstimate?.id ? 'pointer' : 'not-allowed', fontSize: '0.75rem', fontWeight: 500 }}
-                    >
-                      + Add row
-                    </button>
-                  </div>
-                  {subcontractorRows.length === 0 ? null : (
-                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
-                      <thead>
-                        <tr style={{ textAlign: 'left', color: 'var(--text-muted)' }}>
-                          <th style={{ padding: '0.25rem 0.5rem', fontWeight: 500 }}>Description</th>
-                          <th style={{ padding: '0.25rem 0.5rem', fontWeight: 500, width: '6.5rem' }}>Rough In ($)</th>
-                          <th style={{ padding: '0.25rem 0.5rem', fontWeight: 500, width: '6.5rem' }}>Top Out ($)</th>
-                          <th style={{ padding: '0.25rem 0.5rem', fontWeight: 500, width: '6.5rem' }}>Trim Set ($)</th>
-                          <th style={{ width: '2rem' }} />
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {subcontractorRows.map((row) => (
-                          <tr key={row.id}>
-                            <td style={{ padding: '0.2rem 0.5rem' }}>
-                              <input
-                                type="text"
-                                value={row.note ?? ''}
-                                onChange={(e) => updateSubcontractorRow(row.id, { note: e.target.value })}
-                                placeholder="Description"
-                                style={{ width: '100%', padding: '0.375rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.875rem' }}
-                              />
-                            </td>
-                            {(['rough_in', 'top_out', 'trim_set'] as const).map((stage) => (
-                              <td key={stage} style={{ padding: '0.2rem 0.5rem' }}>
-                                <input
-                                  type="number"
-                                  min={0}
-                                  step={0.01}
-                                  value={row[stage] === 0 ? '' : String(row[stage])}
-                                  onChange={(e) => { markCell(`sub:${row.id}:${stage}`); updateSubcontractorRow(row.id, { [stage]: e.target.value === '' ? 0 : parseFloat(e.target.value) } as Partial<Pick<CostEstimateSubcontractorRow, 'rough_in' | 'top_out' | 'trim_set'>>) }}
-                                  onWheel={(e) => e.currentTarget.blur()}
-                                  {...cellA11y(`sub:${row.id}:${stage}`, laborCellAriaLabel(`${LABOR_STAGE_LABELS[stage]} dollars`, row.note, 'Subcontractor Fees'))}
-                                  placeholder="0.00"
-                                  style={{ width: '100%', padding: '0.375rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.875rem', textAlign: 'right', ...cellSaveStyle(`sub:${row.id}:${stage}`) }}
-                                />
-                              </td>
-                            ))}
-                            <td style={{ padding: '0.2rem 0.25rem', textAlign: 'center' }}>
-                              <button
-                                type="button"
-                                onClick={() => void removeSubcontractorRow(row.id)}
-                                title="Remove row"
-                                aria-label="Remove subcontractor row"
-                                style={{ background: 'none', border: 'none', color: 'var(--text-red-700)', cursor: 'pointer', fontSize: '1.1rem', lineHeight: 1 }}
-                              >
-                                ×
-                              </button>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  )}
-                  {subcontractorRows.length > 0 && (
-                  <p style={{ margin: '0.5rem 0 0', textAlign: 'right', fontWeight: 600, fontSize: '0.875rem' }}>
-                    Subcontractor fees total: ${formatCurrency(sumEquipmentRows(subcontractorRows))}
-                  </p>
-                  )}
-                </div>
-                {/* Waste Disposal & Site Cleanup Section */}
-                <div style={{ marginTop: '1rem', padding: '0.75rem', background: 'var(--bg-amber-100)', borderRadius: 4, border: '1px solid var(--border-amber-soft)' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: wasteRows.length > 0 ? '0.5rem' : 0, flexWrap: 'wrap', gap: '0.5rem' }}>
-                    <h4 style={{ margin: 0, fontSize: '0.875rem', fontWeight: 600 }}>Waste Disposal and Site Cleanup</h4>
-                    <button
-                      type="button"
-                      onClick={() => void addWasteRow()}
-                      disabled={!costEstimate?.id}
-                      style={{ padding: '0.25rem 0.6rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: costEstimate?.id ? 'pointer' : 'not-allowed', fontSize: '0.75rem', fontWeight: 500 }}
-                    >
-                      + Add row
-                    </button>
-                  </div>
-                  {wasteRows.length === 0 ? null : (
-                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
-                      <thead>
-                        <tr style={{ textAlign: 'left', color: 'var(--text-muted)' }}>
-                          <th style={{ padding: '0.25rem 0.5rem', fontWeight: 500 }}>Description</th>
-                          <th style={{ padding: '0.25rem 0.5rem', fontWeight: 500, width: '6.5rem' }}>Rough In ($)</th>
-                          <th style={{ padding: '0.25rem 0.5rem', fontWeight: 500, width: '6.5rem' }}>Top Out ($)</th>
-                          <th style={{ padding: '0.25rem 0.5rem', fontWeight: 500, width: '6.5rem' }}>Trim Set ($)</th>
-                          <th style={{ width: '2rem' }} />
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {wasteRows.map((row) => (
-                          <tr key={row.id}>
-                            <td style={{ padding: '0.2rem 0.5rem' }}>
-                              <input
-                                type="text"
-                                value={row.note ?? ''}
-                                onChange={(e) => updateWasteRow(row.id, { note: e.target.value })}
-                                placeholder="Description"
-                                style={{ width: '100%', padding: '0.375rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.875rem' }}
-                              />
-                            </td>
-                            {(['rough_in', 'top_out', 'trim_set'] as const).map((stage) => (
-                              <td key={stage} style={{ padding: '0.2rem 0.5rem' }}>
-                                <input
-                                  type="number"
-                                  min={0}
-                                  step={0.01}
-                                  value={row[stage] === 0 ? '' : String(row[stage])}
-                                  onChange={(e) => { markCell(`waste:${row.id}:${stage}`); updateWasteRow(row.id, { [stage]: e.target.value === '' ? 0 : parseFloat(e.target.value) } as Partial<Pick<CostEstimateWasteRow, 'rough_in' | 'top_out' | 'trim_set'>>) }}
-                                  onWheel={(e) => e.currentTarget.blur()}
-                                  {...cellA11y(`waste:${row.id}:${stage}`, laborCellAriaLabel(`${LABOR_STAGE_LABELS[stage]} dollars`, row.note, 'Waste Disposal and Site Cleanup'))}
-                                  placeholder="0.00"
-                                  style={{ width: '100%', padding: '0.375rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.875rem', textAlign: 'right', ...cellSaveStyle(`waste:${row.id}:${stage}`) }}
-                                />
-                              </td>
-                            ))}
-                            <td style={{ padding: '0.2rem 0.25rem', textAlign: 'center' }}>
-                              <button
-                                type="button"
-                                onClick={() => void removeWasteRow(row.id)}
-                                title="Remove row"
-                                aria-label="Remove waste row"
-                                style={{ background: 'none', border: 'none', color: 'var(--text-red-700)', cursor: 'pointer', fontSize: '1.1rem', lineHeight: 1 }}
-                              >
-                                ×
-                              </button>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  )}
-                  {wasteRows.length > 0 && (
-                  <p style={{ margin: '0.5rem 0 0', textAlign: 'right', fontWeight: 600, fontSize: '0.875rem' }}>
-                    Waste disposal &amp; site cleanup total: ${formatCurrency(sumEquipmentRows(wasteRows))}
-                  </p>
-                  )}
-                </div>
-                {/* Other Section */}
-                <div style={{ marginTop: '1rem', padding: '0.75rem', background: 'var(--bg-amber-100)', borderRadius: 4, border: '1px solid var(--border-amber-soft)' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: otherRows.length > 0 ? '0.5rem' : 0, flexWrap: 'wrap', gap: '0.5rem' }}>
-                    <h4 style={{ margin: 0, fontSize: '0.875rem', fontWeight: 600 }}>Other</h4>
-                    <button
-                      type="button"
-                      onClick={() => void addOtherRow()}
-                      disabled={!costEstimate?.id}
-                      style={{ padding: '0.25rem 0.6rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: costEstimate?.id ? 'pointer' : 'not-allowed', fontSize: '0.75rem', fontWeight: 500 }}
-                    >
-                      + Add row
-                    </button>
-                  </div>
-                  {otherRows.length === 0 ? null : (
-                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
-                      <thead>
-                        <tr style={{ textAlign: 'left', color: 'var(--text-muted)' }}>
-                          <th style={{ padding: '0.25rem 0.5rem', fontWeight: 500 }}>Description</th>
-                          <th style={{ padding: '0.25rem 0.5rem', fontWeight: 500, width: '6.5rem' }}>Rough In ($)</th>
-                          <th style={{ padding: '0.25rem 0.5rem', fontWeight: 500, width: '6.5rem' }}>Top Out ($)</th>
-                          <th style={{ padding: '0.25rem 0.5rem', fontWeight: 500, width: '6.5rem' }}>Trim Set ($)</th>
-                          <th style={{ width: '2rem' }} />
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {otherRows.map((row) => (
-                          <tr key={row.id}>
-                            <td style={{ padding: '0.2rem 0.5rem' }}>
-                              <input
-                                type="text"
-                                value={row.note ?? ''}
-                                onChange={(e) => updateOtherRow(row.id, { note: e.target.value })}
-                                placeholder="Description"
-                                style={{ width: '100%', padding: '0.375rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.875rem' }}
-                              />
-                            </td>
-                            {(['rough_in', 'top_out', 'trim_set'] as const).map((stage) => (
-                              <td key={stage} style={{ padding: '0.2rem 0.5rem' }}>
-                                <input
-                                  type="number"
-                                  min={0}
-                                  step={0.01}
-                                  value={row[stage] === 0 ? '' : String(row[stage])}
-                                  onChange={(e) => { markCell(`other:${row.id}:${stage}`); updateOtherRow(row.id, { [stage]: e.target.value === '' ? 0 : parseFloat(e.target.value) } as Partial<Pick<CostEstimateOtherRow, 'rough_in' | 'top_out' | 'trim_set'>>) }}
-                                  onWheel={(e) => e.currentTarget.blur()}
-                                  {...cellA11y(`other:${row.id}:${stage}`, laborCellAriaLabel(`${LABOR_STAGE_LABELS[stage]} dollars`, row.note, 'Other'))}
-                                  placeholder="0.00"
-                                  style={{ width: '100%', padding: '0.375rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.875rem', textAlign: 'right', ...cellSaveStyle(`other:${row.id}:${stage}`) }}
-                                />
-                              </td>
-                            ))}
-                            <td style={{ padding: '0.2rem 0.25rem', textAlign: 'center' }}>
-                              <button
-                                type="button"
-                                onClick={() => void removeOtherRow(row.id)}
-                                title="Remove row"
-                                aria-label="Remove row"
-                                style={{ background: 'none', border: 'none', color: 'var(--text-red-700)', cursor: 'pointer', fontSize: '1.1rem', lineHeight: 1 }}
-                              >
-                                ×
-                              </button>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  )}
-                  {otherRows.length > 0 && (
-                  <p style={{ margin: '0.5rem 0 0', textAlign: 'right', fontWeight: 600, fontSize: '0.875rem' }}>
-                    Other total: ${formatCurrency(sumEquipmentRows(otherRows))}
-                  </p>
-                  )}
-                </div>
+                {/* DIRECT COSTS as one list (v2.3295): the five tables behind one section with a kind chip */}
+                <BidsDirectCostsSection
+                  tables={{ equipment: equipmentRows, permit: permitRows, sub: subcontractorRows, waste: wasteRows, other: otherRows }}
+                  canAdd={!!costEstimate?.id}
+                  onAdd={(kind) => directCostHandlers[kind].add()}
+                  onUpdate={(kind, rowId, updates) => directCostHandlers[kind].update(rowId, updates)}
+                  onRemove={(kind, rowId) => directCostHandlers[kind].remove(rowId)}
+                  markCell={markCell}
+                  cellA11y={cellA11y}
+                  cellSaveStyle={cellSaveStyle}
+                  driving={laborDrivingLine}
+                />
               <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center', alignItems: 'center', flexWrap: 'wrap' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                   {costEstimateAutosaveStatus === 'saving' && (

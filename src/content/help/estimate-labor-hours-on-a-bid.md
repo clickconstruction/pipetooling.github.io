@@ -44,6 +44,10 @@ Two facts sit beside the rate and are never added to the bid's cost: **Overhead 
 
 Under the grid: **Direct cost of this bid** — labor at the effective rate, materials from the takeoff, driving, travel, other direct (equipment, permits, subs, waste, other), the total, and the margin at the bid value (amber under 20 %). *Open Pricing →* takes you to the Workbench, which reads the same number.
 
+## Direct costs: one list
+
+Under the labor, **DIRECT COSTS** is one list. Every row wears its kind — {{chip:gray|equipment}} {{chip:gray|permit}} {{chip:blue|sub}} {{chip:gray|waste}} {{chip:gray|other}} — with what it is for and the dollars by stage. Pick a kind and press {{button:blue|+ Add}} for a new row; the × removes one. The **driving** line sits on top, computed from the hours, the hours-per-trip and $/mile boxes and the bid's distance to the office, so it reads beside the rest: *88 crew-days · 176 trips (8 h each) · 41 mi · $0.70/mi*. One total closes the list.
+
 ## The book checks itself against finished jobs
 
 The **Book vs jobs** tile reads the crews' recorded hours against what the book predicted, over every job linked to a bid that priced with this book: *book runs ×1.18 light · 3 jobs* means the crews ran 18 % over the book. A job counts once it is at least 25 % done with 8 or more field days; younger jobs say nothing yet, and the tile says so.
@@ -60,4 +64,4 @@ Add the entry *2" waste* · Reads as Fixture · Hours are per **per 100 ft** · 
 
 ## What is still Old-only for now
 
-The rate box, the sub-sheet prints, Vehicle Travel, Lodging and Meals, Estimators Time, Direct Costs and the Labor book panel sit under both views unchanged (Old's grid reads per-100-ft and task rows correctly too; it just cannot set them). Folding the human books into the robot's, and retiring Old, come last.
+The rate box, the sub-sheet prints, Vehicle Travel, Lodging and Meals, Direct Costs and the Labor book panel sit under both views unchanged (Old's grid reads per-100-ft and task rows correctly too; it just cannot set them). Folding the human books into the robot's, and retiring Old, come last.
