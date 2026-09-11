@@ -210,6 +210,23 @@ export function parsePortalPayload(raw: unknown): PortalPayload | null {
   }
 }
 
+/** The Test reports card shows this many before "Show all" (v2.3312). */
+export const PORTAL_TEST_REPORTS_CARD_LIMIT = 5
+
+/** The card's fold: the first `limit` unless expanded; `hidden` is what "Show all" would add. */
+export function foldPortalTestReports<T>(list: T[], expanded: boolean, limit = PORTAL_TEST_REPORTS_CARD_LIMIT): { visible: T[]; hidden: number } {
+  if (expanded || list.length <= limit) return { visible: list, hidden: 0 }
+  return { visible: list.slice(0, limit), hidden: list.length - limit }
+}
+
+/** "certified by Malachi Whites (#RMP41130)" — one spelling on the line and the card; null without a name. */
+export function portalCertifierLine(name: string | null, license: string | null): string | null {
+  const n = (name ?? '').trim()
+  if (!n) return null
+  const l = (license ?? '').trim()
+  return `certified by ${n}${l ? ` (${l})` : ''}`
+}
+
 /** Test reports (v2.3304): a row needs an id, a label and a civil date; everything else degrades to null. */
 export function parsePortalTestReports(raw: unknown): PortalTestReport[] {
   if (!Array.isArray(raw)) return []

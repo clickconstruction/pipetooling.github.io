@@ -299,3 +299,22 @@ describe('CustomerPortal render smoke', () => {
     expect(f).not.toHaveBeenCalled()
   })
 })
+
+describe('test reports card (v2.3304, fold v2.3312)', () => {
+  it('shows five sent reports, then all seven after Show all; the inline line lands on its job', async () => {
+    const { fireEvent } = await import('@testing-library/react')
+    const report = (i: number, jobNumber: string) => ({ id: `r${i}`, jobId: `j${i}`, jobNumber, jobLabel: `Job ${jobNumber}`, jobAddress: `${100 + i} Test St, Kyle, TX`, reportLabel: 'Sewer Pre-Test Hydrostatic', title: 'Sewer Pre-Test Hydrostatic Test Report', result: 'pass', testDateYmd: '2026-09-10', certifierName: 'Malachi Whites', certifierLicense: '#RMP41130', sentAt: '2026-09-11T00:00:00Z' })
+    const withReports = { ...payload, testReports: [report(1, '612'), ...[2, 3, 4, 5, 6, 7].map((i) => report(i, `9${i}`))] }
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify(withReports), { status: 200 })))
+    mountAt('/portal?t=abcdef1234567890abcdef')
+    await waitFor(() => expect(screen.getByText('Michael Hageman')).toBeTruthy())
+    // One inline line (job 612 matches by number) + five card rows.
+    expect(screen.getAllByText('View report').length).toBe(6)
+    // One spelling on the inline line and the card (the text shares its element with the report label).
+    expect(screen.getAllByText(/certified by Malachi Whites \(#RMP41130\)/).length).toBe(6)
+    expect(screen.queryByText(/RMP #41130/)).toBeNull()
+    fireEvent.click(screen.getByText('Show all 7 reports'))
+    expect(screen.getAllByText('View report').length).toBe(8)
+    expect(screen.getByText('Show fewer')).toBeTruthy()
+  })
+})

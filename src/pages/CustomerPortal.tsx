@@ -30,7 +30,7 @@ import {
   type PortalBillsSnapshot,
 } from '../lib/portal/portalPaidFlip'
 import { CARD, COPPER, FAINT, HAIR, INK, MUTED, NOTE_BAND, PAPER, PAPER_GREEN, PAPER_RED } from '../lib/portal/portalTheme'
-import type { PortalTestReport } from '../lib/portal/portalPayload'
+import { foldPortalTestReports, portalCertifierLine, type PortalTestReport } from '../lib/portal/portalPayload'
 import { phoneContact } from '../lib/phoneContact'
 
 /**
@@ -290,6 +290,9 @@ export default function CustomerPortal() {
 }
 
 function PortalStatement({ payload, today, requestToken }: { payload: PortalPayload; today: string; requestToken: string }) {
+  // Test reports card (v2.3312): five, then "Show all N reports".
+  const [showAllReports, setShowAllReports] = useState(false)
+  const reportsFold = foldPortalTestReports(payload.testReports, showAllReports)
   // Same local-date basis as the header's date line, for the Billed age sub-lines.
   const d = new Date()
   const todayYmd = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
@@ -501,18 +504,18 @@ function PortalStatement({ payload, today, requestToken }: { payload: PortalPayl
         </div>
       ) : null}
 
-      {/* Test reports (v2.3304): the standing record — every sent report, paid jobs included. */}
+      {/* Test reports (v2.3304): the standing record — every sent report, paid jobs included; folded past five (v2.3312). */}
       {payload.testReports.length > 0 ? (
         <div data-screen-only style={{ margin: '1.4rem 0 0', background: CARD, border: `1px solid ${HAIR}`, padding: '1rem 1.3rem' }}>
           <div style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: '0.2em', textTransform: 'uppercase', color: MUTED, marginBottom: 8 }}>
             Test reports
           </div>
-          {payload.testReports.map((r, i) => (
+          {reportsFold.visible.map((r, i) => (
             <div key={r.id} style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', padding: '8px 0', borderTop: i === 0 ? 'none' : `1px solid ${HAIR}`, fontSize: 13.5 }}>
               <div style={{ flex: '1 1 220px', minWidth: 0 }}>
                 <div style={{ fontWeight: 700 }}>{splitPortalAddress(r.jobAddress)?.street ?? r.jobLabel}</div>
                 <div style={{ color: MUTED, fontSize: 12.5 }}>
-                  {[r.reportLabel, r.certifierName ? `certified by ${r.certifierName}${r.certifierLicense ? `, ${r.certifierLicense.replace(/^#/, 'RMP #').replace(/^RMP #RMP/, 'RMP #')}` : ''}` : null].filter(Boolean).join(' · ')}
+                  {[r.reportLabel, portalCertifierLine(r.certifierName, r.certifierLicense)].filter(Boolean).join(' · ')}
                 </div>
                 <div style={{ fontSize: 12.5, fontWeight: 600, marginTop: 2 }}>
                   {r.result ? <span style={{ color: r.result === 'pass' ? PAPER_GREEN : PAPER_RED }}>{r.result.toUpperCase()}</span> : null}
@@ -523,6 +526,15 @@ function PortalStatement({ payload, today, requestToken }: { payload: PortalPayl
               <PortalViewReportLink href={portalTestReportUrl(requestToken, r)} />
             </div>
           ))}
+          {reportsFold.hidden > 0 || showAllReports ? (
+            <button
+              type="button"
+              onClick={() => setShowAllReports((v) => !v)}
+              style={{ marginTop: 8, background: 'none', border: 'none', padding: 0, color: MUTED, fontSize: 12.5, cursor: 'pointer', textDecoration: 'underline' }}
+            >
+              {showAllReports ? 'Show fewer' : `Show all ${payload.testReports.length} reports`}
+            </button>
+          ) : null}
         </div>
       ) : null}
 
@@ -664,7 +676,7 @@ function PortalJobGroupSection({
             ) : null}
             {' · '}
             {formatPortalDate(r.testDateYmd) ?? r.testDateYmd}
-            {r.certifierName ? ` · certified by ${r.certifierName}${r.certifierLicense ? ` (${r.certifierLicense})` : ''}` : ''}
+            {portalCertifierLine(r.certifierName, r.certifierLicense) ? ` · ${portalCertifierLine(r.certifierName, r.certifierLicense)}` : ''}
           </span>
           <PortalViewReportLink href={reportUrl ? reportUrl(r) : null} />
         </div>
