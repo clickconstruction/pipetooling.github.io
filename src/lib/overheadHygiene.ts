@@ -70,7 +70,8 @@ export type OverheadHygieneSummary = {
 
 /**
  * Pending approvals across the given session arrays: no `approved_at`, no
- * `rejected_at`, no `revoked_at`. Sessions are deduped by id — the tab's
+ * `rejected_at`, no `revoked_at`. Informational since v2.3261 — closed pending
+ * sessions already count as recorded time; the card asks for a review, not a fix. Sessions are deduped by id — the tab's
  * office-or-bid query and field query can both return a session that has a
  * field `job_ledger_id` AND a `bid_id`.
  */

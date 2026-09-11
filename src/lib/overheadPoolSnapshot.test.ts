@@ -153,21 +153,22 @@ describe('loadOverheadPoolSnapshot', () => {
       ['2026-09-06', 160],
       ['2026-09-07', 130], // $80 bid labor + $50 office parts
     ])
+    // v2.3261 recorded time: Ana's pending 3 h on 9/7 count (and price at her $30); Bob's approved 2 h have no wage.
     expect([...snap.fieldLaborUsdByDay]).toEqual([
       ['2026-09-06', 240],
-      ['2026-09-07', 0], // Bob has no wage: hours count, dollars do not
+      ['2026-09-07', 90],
     ])
     expect([...snap.fieldHoursByDay]).toEqual([
       ['2026-09-06', 8],
-      ['2026-09-07', 2],
+      ['2026-09-07', 5],
     ])
     expect(snap.avg.avg90).toBeCloseTo(290 / 90, 6)
     expect(snap.avg.avg30).toBeCloseTo(290 / 30, 6)
     expect(snap.avg.avg7).toBeCloseTo(290 / 7, 6)
     expect(snap.avg.per100_90).toBeCloseTo((290 / 1500) * 100, 6) // both invoices land on 9/6 Chicago time
-    expect(snap.rates).toEqual({ methodA: 29, methodB: 290 / 1500, methodC: 290 / 240 })
-    expect(snap.lensDetail.denominators).toEqual({ fieldHours: 10, invoicedRevenueUsd: 1500, fieldLaborUsd: 240 })
-    expect(snap.lensDetail.pendingFieldHours).toBe(3)
+    expect(snap.rates).toEqual({ methodA: 290 / 13, methodB: 290 / 1500, methodC: 290 / 330 })
+    expect(snap.lensDetail.denominators).toEqual({ fieldHours: 13, invoicedRevenueUsd: 1500, fieldLaborUsd: 330 })
+    expect(snap.lensDetail.pendingFieldHours).toBe(3) // still reported — as a review queue, not missing hours
     expect(snap.lensDetail.overlapSessions).toBe(0)
     expect(snap.unassignedSalaryError).toBeNull()
     expect(snap.hygiene.unassignedSalary).not.toBeNull()

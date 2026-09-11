@@ -1008,7 +1008,7 @@ export default function JobsJobSummaryTab({
                                         {view.prefs.method === 'day' && view.overhead.settings.smoothDays > 1
                                           ? ` Each day's pool is shared by the field hours of the following ${view.overhead.settings.smoothDays} days${view.overhead.settings.carryShare > 0 ? `; ${Math.round(view.overhead.settings.carryShare * 100)}% of it is carried equally by the jobs open on those days${view.overhead.settings.idleCapDays != null ? ` (a job stops carrying after ${view.overhead.settings.idleCapDays} days without field time)` : ''}` : ''}.`
                                           : ''}
-                                        {' '}Only approved, closed field sessions inside the window count
+                                        {' '}Recorded field sessions (closed, not rejected) inside the window count
                                         {enriched.priorHours > 0 ? `; ${enriched.priorHours.toFixed(1)} h before the window are not charged.` : '.'}
                                       </p>
                                     </div>

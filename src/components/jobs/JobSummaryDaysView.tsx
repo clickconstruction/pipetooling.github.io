@@ -201,7 +201,7 @@ export default function JobSummaryDaysView({ ledger, ledgerLoading, ledgerError,
           Show days with nothing on them
         </label>
         <span style={{ color: 'var(--text-muted)' }}>
-          Newest first · people are distinct names with approved time that day{canOpenSessionNotes ? ' · click a day for its session notes' : ''}
+          Newest first · people are distinct names with recorded time that day{canOpenSessionNotes ? ' · click a day for its session notes' : ''}
         </span>
       </div>
       {sessionNotesDay ? (

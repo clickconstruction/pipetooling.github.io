@@ -239,7 +239,7 @@ export default function JobSummaryLedgerToolbar({
             <Tile k="Per field hour" v={<JobSummaryTileMoney value={totals.truePerHourUsd} />} s={`${totals.hours.toFixed(1)} h on these jobs`} d={dl(c?.truePerHourUsd, (a) => `$${a.toFixed(2)}`)} />
           </>
         ) : (
-          <Tile k="Field hours" v={totals.hours.toFixed(1)} s="approved, in the window" d={dl(c?.hours, (a) => `${a.toFixed(1)} h`)} />
+          <Tile k="Field hours" v={totals.hours.toFixed(1)} s="recorded, in the window" d={dl(c?.hours, (a) => `${a.toFixed(1)} h`)} />
         )}
       </div>
       )}
@@ -269,8 +269,8 @@ export default function JobSummaryLedgerToolbar({
         {totals.noPctJobs > 0 ? <span style={chip}>⚠ {totals.noPctJobs} {totals.noPctJobs === 1 ? 'job has' : 'jobs have'} no % complete</span> : null}
         {hygiene && hygiene.pendingFieldSessions > 0 ? (
           <span style={chip}>
-            {/* v2.3179: recorded time — the Labor column already counts these hours; Hours · days and overhead still wait for approval. */}
-            ⏳ {hygiene.pendingFieldSessions} {hygiene.pendingFieldSessions === 1 ? 'session awaits' : 'sessions await'} approval · {hygiene.pendingFieldHours.toFixed(1)} h in Labor, not yet in Hours or overhead
+            {/* v2.3261: recorded time everywhere — these hours already count in Labor, Hours · days and overhead; approval only matters if it becomes a rejection. */}
+            ⏳ {hygiene.pendingFieldSessions} {hygiene.pendingFieldSessions === 1 ? 'session awaits' : 'sessions await'} approval · {hygiene.pendingFieldHours.toFixed(1)} h counted as recorded time — reject in People → Hours to remove
           </span>
         ) : null}
         {totals.priorHoursJobs > 0 ? <span style={chipMuted}>{totals.priorHoursJobs} {totals.priorHoursJobs === 1 ? 'job has' : 'jobs have'} hours before the window — not charged; widen the window to charge them</span> : null}

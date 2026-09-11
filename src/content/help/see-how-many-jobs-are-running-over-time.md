@@ -58,7 +58,7 @@ Jobs deleted since then are gone. A status move corrected later shows its correc
 
 Two definitions, one click apart:
 
-- **first → last work** — a job runs from its first approved field day to its last, and to today while it's still open. The **Gap** setting decides what a pause does: with {{chip:blue|7d}}, a stretch of more than 7 idle days splits the run, so a paused job isn't counted while nobody is on it. {{chip:gray|none}} counts only days with approved hours; {{chip:gray|14d}} bridges longer pauses.
+- **first → last work** — a job runs from its first recorded field day to its last, and to today while it's still open. The **Gap** setting decides what a pause does: with {{chip:blue|7d}}, a stretch of more than 7 idle days splits the run, so a paused job isn't counted while nobody is on it. {{chip:gray|none}} counts only days with recorded hours; {{chip:gray|14d}} bridges longer pauses.
 - **Working → Billed** (default) — a job runs from the moment it was moved to Working until it was moved to Billed (or Paid), touched or not. This is "open on the board", the way the office counts, and it runs higher and longer than the worked span.
 
 :::example One paused job
@@ -67,6 +67,6 @@ Mission Hills had hours every week in May, nothing for ten days in June, then ho
 
 ## Watch-outs
 
-- Only **approved, closed** sessions count toward first → last work. Approve hours in People → Hours and the bars grow.
+- **Recorded** sessions count toward first → last work: clocked out and not rejected, approved or not. A rejection in People → Hours shortens a bar; time still on the clock doesn't count until it's clocked out.
 - A job can't run before the window starts; a bar that begins on the window's first day probably started earlier. Widen the window to see its real start.
 - Bids aren't on this chart — it's jobs on the ledger only.

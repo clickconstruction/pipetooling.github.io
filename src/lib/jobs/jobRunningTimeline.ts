@@ -6,7 +6,7 @@ import type { JobDayLedger, JobDayLedgerJobLabel } from './jobDayLedger'
  * crossing a day is the running count, split into bands.
  *
  * Two definitions of "running":
- *  - worked (default): from the job's first approved field day to its last,
+ *  - worked (default): from the job's first recorded field day to its last,
  *    with a GAP RULE — a stretch of more than `gapDays` idle days splits the
  *    run, so a paused job isn't counted while nobody is on it. A job that is
  *    still open (not billed/paid) and was touched within the gap extends to
@@ -48,11 +48,11 @@ export type JobRunRow = {
 /** Working → Billed first: the default since v2.2749 (owner's call — the office's "open on the board" count). */
 export const JOB_RUN_DEFINITIONS: ReadonlyArray<{ key: JobRunDefinition; label: string; title: string }> = [
   { key: 'status', label: 'Working → Billed', title: 'A job runs from its Working status move to its Billed or Paid move — open on the board, touched or not' },
-  { key: 'worked', label: 'first → last work', title: 'A job runs from its first approved field day to its last (to today while still open); long idle stretches split the run' },
+  { key: 'worked', label: 'first → last work', title: 'A job runs from its first recorded field day to its last (to today while still open); long idle stretches split the run' },
 ]
 
 export const JOB_RUN_GAP_OPTIONS: ReadonlyArray<{ key: number; label: string; title: string }> = [
-  { key: 0, label: 'none', title: 'Only days with approved hours count as running' },
+  { key: 0, label: 'none', title: 'Only days with recorded hours count as running' },
   { key: 7, label: '7d', title: 'Up to 7 idle days inside a job still count as running; a longer pause splits the run' },
   { key: 14, label: '14d', title: 'Up to 14 idle days inside a job still count as running' },
 ]
@@ -187,7 +187,7 @@ function finishRow(
   }
 }
 
-/** Worked spans: approved field days per job, merged with the gap rule; open jobs touched within the gap run to today. */
+/** Worked spans: recorded field days per job, merged with the gap rule; open jobs touched within the gap run to today. */
 export function buildWorkedSpans(args: {
   ledger: JobDayLedger
   statusByJob: ReadonlyMap<string, string | null | undefined>

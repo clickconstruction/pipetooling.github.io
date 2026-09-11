@@ -159,10 +159,8 @@ describe('loadJobDayLedger', () => {
     expect(argsOf(queries.find((q) => q.table === 'job_status_events')!.steps, 'in')).toEqual([['job_id', ['j1', 'j2', 'j3']]])
     expect(argsOf(prior!.steps, 'in')).toEqual([['job_ledger_id', ['j1', 'j2', 'j3']]])
     expect(argsOf(prior!.steps, 'lt')).toEqual([['work_date', '2026-09-01']])
-    expect(argsOf(prior!.steps, 'not')).toEqual([
-      ['approved_at', 'is', null],
-      ['clocked_out_at', 'is', null],
-    ])
+    // v2.3261: recorded time — prior hours no longer require approval, only a clock-out and no rejection/revocation.
+    expect(argsOf(prior!.steps, 'not')).toEqual([['clocked_out_at', 'is', null]])
     expect(argsOf(prior!.steps, 'is')).toEqual([
       ['rejected_at', null],
       ['revoked_at', null],
@@ -194,11 +192,11 @@ describe('loadJobDayLedger', () => {
     expect(ledger.days.map((d) => [d.ymd, d.poolUsd, d.fieldHours, d.fieldLaborUsd])).toEqual([
       ['2026-09-01', 160, 0, 0],
       ['2026-09-02', 0, 8, 240],
-      ['2026-09-03', 50, 3, 0], // parts only; Bob and Cy have no wage
+      ['2026-09-03', 50, 6, 90], // parts only in the pool; Bob and Cy have no wage; Ana's pending 3 h count as recorded time (v2.3261)
     ])
     expect([...ledger.jobs.keys()].sort()).toEqual(['j1', 'j2', 'j3'])
-    expect(ledger.totals).toEqual({ poolUsd: 210, fieldHours: 11, fieldLaborUsd: 240, invoicedRevenueUsd: 1500 })
-    expect(ledger.rates).toEqual({ methodA: 210 / 11, methodB: 210 / 1500, methodC: 210 / 240 })
+    expect(ledger.totals).toEqual({ poolUsd: 210, fieldHours: 14, fieldLaborUsd: 330, invoicedRevenueUsd: 1500 })
+    expect(ledger.rates).toEqual({ methodA: 210 / 14, methodB: 210 / 1500, methodC: 210 / 330 })
     expect(ledger.pendingFieldSessions).toBe(1)
     expect(ledger.pendingFieldHours).toBe(3)
     expect([...ledger.jobLabels]).toEqual([

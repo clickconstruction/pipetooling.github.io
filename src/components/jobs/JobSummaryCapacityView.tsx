@@ -6,7 +6,7 @@ import { formatStagesNextDateLabel } from '../../lib/stagesUpcomingSchedule'
 
 /**
  * Job Summary → Capacity (v2.2828): were we full? One bar per week — available
- * field hours as an outline, approved field hours filled, utilization on top —
+ * field hours as an outline, recorded field hours filled, utilization on top —
  * with tiles for the window, the peak week, weeks under 60% and over 100%, and
  * the crew today. Reads the same day ledger as Days and Timeline plus the field
  * roster; when the roster can't be read it estimates from who clocked in and
@@ -89,7 +89,7 @@ export default function JobSummaryCapacityView({ ledger, ledgerLoading, ledgerEr
       </div>
 
       <div style={{ border: '1px solid var(--border)', borderRadius: 8, background: 'var(--surface)', padding: '0.5rem 0.5rem 0.25rem' }}>
-        <svg viewBox={`0 0 ${W} ${H}`} width="100%" role="img" aria-label="Available field hours against approved field hours, by week" style={{ display: 'block' }} onMouseLeave={() => setHoverIdx(null)}>
+        <svg viewBox={`0 0 ${W} ${H}`} width="100%" role="img" aria-label="Available field hours against recorded field hours, by week" style={{ display: 'block' }} onMouseLeave={() => setHoverIdx(null)}>
           {gridVals.map((v) => (
             <g key={v}>
               <line x1={L} x2={W - R} y1={yOf(v)} y2={yOf(v)} stroke="var(--border)" strokeWidth={1} />
@@ -145,7 +145,7 @@ export default function JobSummaryCapacityView({ ledger, ledgerLoading, ledgerEr
           </span>
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
             <i style={{ display: 'inline-block', width: 12, height: 8, borderRadius: 2, background: USED }} />
-            approved field hours
+            recorded field hours
           </span>
           <span style={{ color: 'var(--text-amber-800)' }}>amber = under 60%</span>
           <span style={{ color: 'var(--text-red-700)' }}>red = over 100%</span>
@@ -154,7 +154,7 @@ export default function JobSummaryCapacityView({ ledger, ledgerLoading, ledgerEr
       </div>
       <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--text-muted)' }}>
         {series.source === 'roster'
-          ? `Available hours count every leader and helper active on the roster that weekday, at ${CAPACITY_HOURS_PER_DAY} hours each. PTO and holidays aren’t subtracted yet, so a holiday week reads low.${noHourWeeks > 0 ? ` ${noHourWeeks} ${noHourWeeks === 1 ? 'week has' : 'weeks have'} no approved field hours at all — before the clock history starts, or sessions still awaiting approval — and they pull the window’s utilization down.` : ''}`
+          ? `Available hours count every leader and helper active on the roster that weekday, at ${CAPACITY_HOURS_PER_DAY} hours each. PTO and holidays aren’t subtracted yet, so a holiday week reads low.${noHourWeeks > 0 ? ` ${noHourWeeks} ${noHourWeeks === 1 ? 'week has' : 'weeks have'} no recorded field hours at all — before the clock history starts, or sessions still awaiting approval — and they pull the window’s utilization down.` : ''}`
           : `The roster couldn’t be read${rosterError ? ` (${rosterError})` : ''}, so available hours are estimated from the people who clocked field hours that week — a week nobody worked reads as no capacity.`}{' '}
         Office hours by field people count against capacity, not toward it.
       </p>
