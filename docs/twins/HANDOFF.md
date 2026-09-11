@@ -153,7 +153,9 @@ The working loops, in the order a day usually runs:
    everything downstream. Finished audits get digested by the twin next session.
 2. **Score shadows** — `score_shadows` (any twin session) whenever reference bids have
    gone out; the Scoreboard shows what moved.
-3. **Feed the queue** — Console → Open the queue: paste kickoff prompts for
+3. **Feed the queue** — the Dashboard's Needs You card says when there is one (v2.3287, devs:
+   *Robots have work waiting* — bids wanting a shadow + matrices queued, oldest ages, first of each;
+   amber when a matrix went quiet or a request is a week old). Console → Open the queue: paste kickoff prompts for
    requested/ready live bids (shadows) and for backtest candidates on hungry axes;
    classify unclassified references while you're there. The Console's **Copy Desktop
    kickoff** (v2.3207) is the no-repo path: one prompt for a plain Claude Desktop chat

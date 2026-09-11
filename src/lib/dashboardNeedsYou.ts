@@ -1,4 +1,5 @@
 import type { UserRole } from '../hooks/useAuth'
+import { describeBacklogAge } from './bids/robotBacklog'
 import { formatLostBidNudgeValue, type LostBidNudge } from './dashboardLostBidNudge'
 import { withScopeLabel } from './bids/bidSentCounts'
 import { jobFollowupBreakdownPhrase, type JobFollowupStage } from './jobs/jobFollowupQueue'
@@ -73,6 +74,7 @@ export type NeedsYouItem = {
     | 'job-account-no-packet'
     | 'customer-waiting'
     | 'price-matrix-ready'
+    | 'robot-backlog'
   severity: NeedsYouSeverity
   /** Product the item belongs to — omitted means `company`. See `NeedsYouKind`. */
   kind?: NeedsYouKind
@@ -137,6 +139,7 @@ export const NEEDS_YOU_RANK: Record<NeedsYouItem['key'], number> = {
   'job-account-unflagged': 60,
   'job-account-no-packet': 60,
   'price-matrix-ready': 40,
+  'robot-backlog': 60,
 }
 
 /** "99+" reads as 100 so a capped figure still outranks anything two-digit. */
@@ -380,6 +383,15 @@ export type NeedsYouInputs = {
     /** The newest one, for the title and the deep link. */
     first: { bidId: string; bidLabel: string; project: string | null; picks: number; toSettle: number; expiredHouses: number }
   } | null
+  /**
+   * The robots' backlog (v2.3287, dev only): bids that want a shadow and
+   * price matrices waiting on the pricer, from `buildRobotBacklog` — the same
+   * queue kernel the Console counts with. Hygiene tier; blue unless something
+   * is stuck (a matrix working with no heartbeat, a request over a week old).
+   * The hook returns null when nothing waits, snoozed, or dismissed.
+   */
+  robotBacklogEnabled?: boolean
+  robotBacklog?: import('./bids/robotBacklog').RobotBacklog | null
 }
 
 export function buildNeedsYouItems(inputs: NeedsYouInputs): NeedsYouItem[] {
@@ -939,6 +951,34 @@ export function buildNeedsYouItems(inputs: NeedsYouInputs): NeedsYouItem[] {
         (first.expiredHouses > 0 ? `${first.expiredHouses === 1 ? 'One quote was' : `${first.expiredHouses} quotes were`} already expired when read — ask for a re-issue before ordering.` : 'Review the picks, then Apply picks to costs.'),
       figure: String(count),
       actionLabel: 'Review matrix',
+    })
+  }
+
+  if (inputs.robotBacklogEnabled && inputs.robotBacklog && inputs.robotBacklog.bidsWaiting + inputs.robotBacklog.matricesOpen > 0) {
+    const b = inputs.robotBacklog
+    const parts: string[] = []
+    if (b.bidsWaiting > 0) {
+      const age = b.oldestRequestMs != null ? ` (oldest asked ${describeBacklogAge(b.oldestRequestMs)} ago)` : ' (nobody asked yet)'
+      parts.push(`${b.bidsWaiting} bid${b.bidsWaiting === 1 ? '' : 's'} want${b.bidsWaiting === 1 ? 's' : ''} a shadow${age}`)
+    }
+    if (b.matricesOpen > 0) {
+      const age = b.oldestMatrixMs != null ? ` (oldest ${describeBacklogAge(b.oldestMatrixMs)})` : ''
+      parts.push(`${b.matricesOpen} price matri${b.matricesOpen === 1 ? 'x' : 'ces'} queued${age}`)
+    }
+    const names = [b.firstBid, b.firstMatrix ? `${b.firstMatrix} matrix` : null].filter(Boolean).join(' · ')
+    const stuck = b.matricesStuck > 0 ? `${b.matricesStuck === 1 ? 'A matrix has' : `${b.matricesStuck} matrices have`} been working with no heartbeat for over an hour, or sit blocked. ` : b.requestOverdue ? 'A bid request has waited over a week. ' : ''
+    items.push({
+      key: 'robot-backlog',
+      severity: stuck ? 'amber' : 'blue',
+      kicker: 'Robots',
+      title: 'Robots have work waiting',
+      detail: `${stuck}${parts.join(' · ')}${names ? ` — ${names}.` : '.'}`,
+      figure: String(b.bidsWaiting + b.matricesOpen),
+      actionLabel: 'Open the Console',
+      secondary: [
+        { key: 'snooze', label: 'Snooze 24h' },
+        { key: 'dismiss', label: 'Dismiss until count increases' },
+      ],
     })
   }
 

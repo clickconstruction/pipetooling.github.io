@@ -34,6 +34,7 @@ import { useUnpricedWorkOrders } from '../../hooks/useUnpricedWorkOrders'
 import { useStaleOpenJobsNudge } from '../../hooks/useStaleOpenJobsNudge'
 import { useJobAccountFlagGapsNudge } from '../../hooks/useJobAccountFlagGapsNudge'
 import { usePriceMatrixReadyNudge } from '../../hooks/usePriceMatrixReadyNudge'
+import { useRobotBacklogNudge } from '../../hooks/useRobotBacklogNudge'
 import { useLienWatchNudge } from '../../hooks/useLienWatchNudge'
 import { CLAIM_DEV_LOOKBACK_DAYS, useClaimDevAttemptsNudge } from '../../hooks/useClaimDevAttemptsNudge'
 import { HOURS_APPROVALS_MIN_AGE_DAYS, usePendingHoursApprovalsNudge } from '../../hooks/usePendingHoursApprovalsNudge'
@@ -409,6 +410,9 @@ export function DashboardPinnedQuickRow({
   // Robot price matrices ready to review (Price Matrix PR 5) — the pricing-sharer set; RLS scopes the rows.
   const priceMatrixEnabled = !hideBanners && Boolean(authUserId) && (officeEligible || role === 'estimator')
   const { ready: priceMatrixReady } = usePriceMatrixReadyNudge(priceMatrixEnabled)
+  // The robots' backlog (v2.3287): bids wanting a shadow + matrices waiting on the pricer — devs only; the Console is its door.
+  const robotBacklogEnabled = !hideBanners && Boolean(authUserId) && role === 'dev'
+  const robotBacklogNudge = useRobotBacklogNudge(robotBacklogEnabled, robotBacklogEnabled ? authUserId : undefined)
 
   const needsYouItems = buildNeedsYouItems({
     role,
@@ -454,6 +458,8 @@ export function DashboardPinnedQuickRow({
     jobAccountGaps,
     priceMatrixEnabled,
     priceMatrixReady,
+    robotBacklogEnabled,
+    robotBacklog: robotBacklogNudge.backlog,
     demandDeadlineEnabled: lienUnconditionalEnabled,
     demandDeadlineOverdue,
     lienWatchEnabled: lienUnconditionalEnabled,
@@ -594,6 +600,8 @@ export function DashboardPinnedQuickRow({
               navigate('/bids?tab=audits')
             } else if (item.key === 'robot-locked') {
               navigate('/bids?tab=robot-board')
+            } else if (item.key === 'robot-backlog') {
+              navigate('/bids?tab=robot-console')
             } else if (item.key === 'd22-uncoded') {
               navigate('/bids?tab=pricing&d22audit=1')
             } else if (item.key === 'lien-unconditional') {
@@ -623,6 +631,9 @@ export function DashboardPinnedQuickRow({
             } else if (item.key === 'claim-dev') {
               if (key === 'snooze') claimDev.snooze24h()
               else if (key === 'dismiss') claimDev.dismissUntilItHappensAgain()
+            } else if (item.key === 'robot-backlog') {
+              if (key === 'snooze') robotBacklogNudge.snooze24h()
+              else if (key === 'dismiss') robotBacklogNudge.dismissUntilCountIncreases()
             }
           }}
         />
