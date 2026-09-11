@@ -82,6 +82,10 @@ export type TestReportSettings = {
   certificationHydrostatic: string
   certificationPinpoint: string
   certificationGas: string
+  /** The Send email's body; placeholders {report} {address} {payLink} {company} {phone} (v2.3301). */
+  emailBodyTemplate: string
+  /** Comma-separated addresses copied on every report email — the "cc Malachi" of the hand-written send (v2.3301). */
+  emailCc: string
 }
 
 export const DEFAULT_TEST_REPORT_SETTINGS: TestReportSettings = {
@@ -111,6 +115,20 @@ export const DEFAULT_TEST_REPORT_SETTINGS: TestReportSettings = {
     "I hereby certify that the Pinpoint Test was performed according to industry standards and local code requirements. Click Plumbing's scope is limited to the plumbing system. Any opinions regarding the effect of leaks on foundation performance or structural settlement are deferred to the contracting group. All reports only represent measurements taken at this time.",
   certificationGas:
     'I hereby certify that the Gas Test was performed according to industry standards and local code requirements. All reports only represent measurements taken at this time.',
+  emailBodyTemplate:
+    'Attached is the {report} report for {address} and below is the invoice link. Please let us know if you have any questions.\n\n{payLink}\n\n— {company} · {phone}',
+  emailCc: '',
+}
+
+/** "a@x.com, b@y.com" → ['a@x.com', 'b@y.com'] — valid, trimmed, deduped, lower-cased. */
+export function parseEmailList(raw: string): string[] {
+  const out: string[] = []
+  for (const part of (raw ?? '').split(/[,;\s]+/)) {
+    const e = part.trim().toLowerCase()
+    if (!e || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e) || out.includes(e)) continue
+    out.push(e)
+  }
+  return out
 }
 
 /** Settings from storage may be partial or older; every field falls back to the default. */

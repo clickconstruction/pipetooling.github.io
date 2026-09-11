@@ -36,6 +36,11 @@ const TEXTS: FieldDef[] = [
   { key: 'certificationGas', label: 'Certification · gas', multiline: true },
 ]
 
+const EMAIL: FieldDef[] = [
+  { key: 'emailBodyTemplate', label: 'Report email body', hint: 'Placeholders: {report} {address} {payLink} {company} {phone}. The link line drops out when the job has no Stripe bill.', multiline: true },
+  { key: 'emailCc', label: 'Always copy', hint: 'Addresses copied on every report email, comma-separated — e.g. the master who certifies.' },
+]
+
 export default function TestReportSettingsBlock() {
   const { showToast } = useToastContext()
   const [open, setOpen] = useState(false)
@@ -111,6 +116,8 @@ export default function TestReportSettingsBlock() {
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '0 1rem' }}>{IDENTITY.map(renderField)}</div>
           <div style={{ fontSize: '0.8rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-muted)', margin: '0.5rem 0 0.6rem' }}>The paper's text</div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '0 1rem' }}>{TEXTS.map(renderField)}</div>
+          <div style={{ fontSize: '0.8rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-muted)', margin: '0.5rem 0 0.6rem' }}>The email</div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '0 1rem' }}>{EMAIL.map(renderField)}</div>
           <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
             <button type="button" disabled={saving} onClick={() => void save()} style={{ padding: '0.5rem 1rem', borderRadius: 6, border: 'none', background: '#2563eb', color: '#fff', fontWeight: 600, cursor: saving ? 'wait' : 'pointer' }}>
               {saving ? 'Saving…' : 'Save'}
