@@ -281,3 +281,20 @@ export const APP_SETTINGS_KEY_SIGNED_AGREEMENTS_NOTIFY_RECIPIENTS = 'signed_agre
 export const APP_SETTINGS_KEY_SIGNED_AGREEMENTS_AUTO_CREATE_JOB_ESTIMATES = 'signed_agreements_auto_create_job_estimates' as const
 /** v2.2743 — '1' creates the job automatically when a GC signs a bid-room proposal. */
 export const APP_SETTINGS_KEY_SIGNED_AGREEMENTS_AUTO_CREATE_JOB_BIDS = 'signed_agreements_auto_create_job_bids' as const
+
+/**
+ * `value_num` — the labor burden factor (v2.3289, the Labor refresh PR 2): the multiplier on a
+ * recorded field wage that gives the crew rate a bid is costed at (taxes, insurance, the truck).
+ * Seeded at 1.20 by the migration; the crew-rate card (PR 4) reads it. Dev writes; all authenticated read.
+ */
+export const APP_SETTINGS_KEY_LABOR_BURDEN_FACTOR_V1 = 'labor_burden_factor_v1' as const
+
+export const DEFAULT_LABOR_BURDEN_FACTOR = 1.2
+
+/** Parse the burden factor: missing, garbage, or outside 1–3 falls back to the default (a wage never shrinks under burden). */
+export function parseLaborBurdenFactor(value: number | string | null | undefined): number {
+  if (value === null || value === undefined || value === '') return DEFAULT_LABOR_BURDEN_FACTOR
+  const n = typeof value === 'number' ? value : Number(String(value).trim())
+  if (!Number.isFinite(n) || n < 1 || n > 3) return DEFAULT_LABOR_BURDEN_FACTOR
+  return n
+}

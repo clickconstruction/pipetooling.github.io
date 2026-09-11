@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest'
-import { isFootageRow, laborEstimateCompleteness, revenuePerFieldHourWords, summarizeBidLabor } from './bidLaborSummary'
+import { isFootageLaborRow, isFootageRow, laborEstimateCompleteness, revenuePerFieldHourWords, summarizeBidLabor } from './bidLaborSummary'
 import type { CostEstimateLaborRow } from './bidPricingEngineTypes'
 
-const row = (id: string, fixture: string, count: number, hrs: [number, number, number], is_fixed = false): CostEstimateLaborRow =>
-  ({ id, cost_estimate_id: 'ce', fixture, count, rough_in_hrs_per_unit: hrs[0], top_out_hrs_per_unit: hrs[1], trim_set_hrs_per_unit: hrs[2], is_fixed, sequence_order: 0, created_at: null }) as CostEstimateLaborRow
+const row = (id: string, fixture: string, count: number, hrs: [number, number, number], is_fixed = false, extra: Partial<CostEstimateLaborRow> = {}): CostEstimateLaborRow =>
+  ({ id, cost_estimate_id: 'ce', fixture, count, rough_in_hrs_per_unit: hrs[0], top_out_hrs_per_unit: hrs[1], trim_set_hrs_per_unit: hrs[2], is_fixed, kind: is_fixed ? 'task' : 'fixture', unit: 'each', source: null, source_note: null, sequence_order: 0, created_at: null, ...extra }) as CostEstimateLaborRow
 
 // B375 SPACEX, a slice: 10 toilets, 6 lavs, 719.46 ft of ½" water at 4 h per 100 ft (entered as 0.04/ft), one fixed sawcut.
 const rows = [
@@ -21,6 +21,11 @@ describe('isFootageRow', () => {
     expect(isFootageRow('LF 2" waste')).toBe(true)
     expect(isFootageRow('WC 1&2')).toBe(false)
     expect(isFootageRow('Left-hand tub')).toBe(false)
+  })
+  it('a row priced per 100 ft is footage whatever its words say', () => {
+    expect(isFootageLaborRow({ fixture: '½" water', unit: 'per_100ft' })).toBe(true)
+    expect(isFootageLaborRow({ fixture: 'ft of 2IN WASTE', unit: 'each' })).toBe(true)
+    expect(isFootageLaborRow({ fixture: 'Toilet' })).toBe(false)
   })
 })
 
@@ -68,5 +73,22 @@ describe('laborEstimateCompleteness', () => {
     const c = laborEstimateCompleteness({ rows: [], rateSet: false, materialsSource: 'none' })
     expect(c.usable).toBe(false)
     expect(c.pills[0]).toEqual({ tone: 'muted', text: 'no rows yet' })
+  })
+})
+
+describe('sub lines and per-100-ft rows (v2.3289)', () => {
+  const withSub = [...rows, row('sub', 'Ramirez excavation', 1, [0, 0, 0], false, { kind: 'sub' })]
+  it('a sub line is answered without hours: it leaves the count and adds a muted pill', () => {
+    const c = laborEstimateCompleteness({ rows: withSub, rateSet: true, materialsSource: 'takeoff' })
+    expect(c.totalRows).toBe(5)
+    expect(c.subRows).toBe(1)
+    expect(c.pills.map((p) => p.text)).toEqual(['hours on 4 of 5 rows', '1 row needs hours ↓', '1 sub line', 'rate set', 'materials from takeoff'])
+    expect(summarizeBidLabor({ rows: withSub, ratePerHour: 35.76, bidValue: null }).total).toBeCloseTo(73.78, 1)
+  })
+  it('a per-100-ft row counts its hours ÷ 100 and lands in the footage share', () => {
+    const per100 = [row('wc', 'WC 1&2', 10, [1, 1, 1]), row('w2', '2" waste', 729.5, [4, 0, 0], false, { unit: 'per_100ft' })]
+    const s = summarizeBidLabor({ rows: per100, ratePerHour: null, bidValue: null })
+    expect(s.total).toBeCloseTo(30 + 29.18, 2)
+    expect(s.footageHoursShare).toBeCloseTo(29.18 / 59.18, 3)
   })
 })

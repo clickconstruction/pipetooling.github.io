@@ -3958,6 +3958,10 @@ export type Database = {
       }
       cost_estimate_labor_rows: {
         Row: {
+          kind: string
+          source: string | null
+          source_note: string | null
+          unit: string
           cost_estimate_id: string
           count: number
           created_at: string | null
@@ -3970,6 +3974,10 @@ export type Database = {
           trim_set_hrs_per_unit: number
         }
         Insert: {
+          kind?: string
+          source?: string | null
+          source_note?: string | null
+          unit?: string
           cost_estimate_id: string
           count?: number
           created_at?: string | null
@@ -3982,6 +3990,10 @@ export type Database = {
           trim_set_hrs_per_unit?: number
         }
         Update: {
+          kind?: string
+          source?: string | null
+          source_note?: string | null
+          unit?: string
           cost_estimate_id?: string
           count?: number
           created_at?: string | null
@@ -9358,6 +9370,8 @@ export type Database = {
       }
       labor_book_entries: {
         Row: {
+          kind: string
+          unit: string
           alias_names: string[] | null
           created_at: string | null
           fixture_type_id: string
@@ -9369,6 +9383,8 @@ export type Database = {
           version_id: string
         }
         Insert: {
+          kind?: string
+          unit?: string
           alias_names?: string[] | null
           created_at?: string | null
           fixture_type_id: string
@@ -9380,6 +9396,8 @@ export type Database = {
           version_id: string
         }
         Update: {
+          kind?: string
+          unit?: string
           alias_names?: string[] | null
           created_at?: string | null
           fixture_type_id?: string
@@ -18737,6 +18755,21 @@ export type Database = {
       }
     }
     Views: {
+      cost_estimate_direct_costs: {
+        Row: {
+          cost_estimate_id: string | null
+          created_at: string | null
+          id: string | null
+          kind: string | null
+          note: string | null
+          rough_in: number | null
+          sequence_order: number | null
+          top_out: number | null
+          trim_set: number | null
+          updated_at: string | null
+        }
+        Relationships: []
+      }
       master_assistants: {
         Row: {
           assistant_id: string | null

@@ -20,6 +20,22 @@ import type { CostEstimateLaborRow, LaborBookEntryWithFixture } from './bidPrici
 
 export type LaborBookMatchVia = 'exact' | 'alias' | 'prefix'
 
+/** How a book entry's hours read against a count: per piece, or per 100 ft of a footage row (PR 2). */
+export type LaborUnit = 'each' | 'per_100ft'
+/** A book entry is a fixture (hours per unit) or a task (fixed hours for the line). */
+export type LaborEntryKind = 'fixture' | 'task'
+/** A labor row is a fixture, a task, or a sub's line (none of our field hours). */
+export type LaborRowKind = 'fixture' | 'task' | 'sub'
+/** What the row's `source` column may say. */
+export type LaborRowStoredSource = 'book' | 'alias' | 'typed' | 'robot'
+
+export const asLaborUnit = (s: unknown): LaborUnit => (s === 'per_100ft' ? 'per_100ft' : 'each')
+export const asLaborEntryKind = (s: unknown): LaborEntryKind => (s === 'task' ? 'task' : 'fixture')
+export const asLaborRowKind = (s: unknown): LaborRowKind => (s === 'task' || s === 'sub' ? s : 'fixture')
+
+export const LABOR_UNIT_WORDS: Record<LaborUnit, string> = { each: 'each', per_100ft: 'per 100 ft' }
+export const LABOR_ROW_KIND_WORDS: Record<LaborRowKind, string> = { fixture: 'Fixture', task: 'Task · fixed hours', sub: 'Sub' }
+
 export type LaborBookMatchEntry = {
   id: string
   name: string
@@ -27,6 +43,8 @@ export type LaborBookMatchEntry = {
   rough: number
   top: number
   trim: number
+  unit: LaborUnit
+  kind: LaborEntryKind
 }
 
 export type LaborBookMatch = { entry: LaborBookMatchEntry; via: LaborBookMatchVia }
@@ -52,6 +70,8 @@ export function laborBookEntriesForMatch(entries: ReadonlyArray<LaborBookEntryWi
       rough: Number(e.rough_in_hrs) || 0,
       top: Number(e.top_out_hrs) || 0,
       trim: Number(e.trim_set_hrs) || 0,
+      unit: asLaborUnit(e.unit),
+      kind: asLaborEntryKind(e.kind),
     }))
     .filter((e) => e.name.length > 0)
 }
@@ -77,23 +97,58 @@ export function matchLaborRows(rows: ReadonlyArray<CostEstimateLaborRow>, entrie
 export const laborRowHasHours = (r: Pick<CostEstimateLaborRow, 'rough_in_hrs_per_unit' | 'top_out_hrs_per_unit' | 'trim_set_hrs_per_unit'>): boolean =>
   Number(r.rough_in_hrs_per_unit) > 0 || Number(r.top_out_hrs_per_unit) > 0 || Number(r.trim_set_hrs_per_unit) > 0
 
+/** A sub's line is answered without hours — the money sits under direct costs. */
+export const laborRowIsSub = (r: Pick<CostEstimateLaborRow, 'kind'>): boolean => r.kind === 'sub'
+
+/** A row the estimator no longer has to look at: it carries hours, or it is a sub's line. */
+export const laborRowAnswered = (r: Pick<CostEstimateLaborRow, 'kind' | 'rough_in_hrs_per_unit' | 'top_out_hrs_per_unit' | 'trim_set_hrs_per_unit'>): boolean => laborRowIsSub(r) || laborRowHasHours(r)
+
 /**
- * Where a row's hours came from, as far as the data can tell: `book` when they
- * equal the matched entry's, `edited` when a matched row differs, `typed` when
- * an unmatched row carries hours, `none` when it is still zero.
+ * Where a row's hours came from, as far as the data can tell: `robot` when the
+ * row says so, `book` when they equal the matched entry's, `edited` when a
+ * matched row differs, `typed` when an unmatched row carries hours, `none`
+ * when it is still zero. (A sub row has no hours and reads `none`; callers
+ * check `laborRowIsSub` first.)
  */
-export type LaborRowSource = 'book' | 'edited' | 'typed' | 'none'
+export type LaborRowSource = 'book' | 'edited' | 'typed' | 'robot' | 'none'
 
 export function laborRowSource(row: CostEstimateLaborRow, match: LaborBookMatch | null | undefined): LaborRowSource {
   if (!laborRowHasHours(row)) return 'none'
+  if (row.source === 'robot') return 'robot'
   if (!match) return 'typed'
   const same = (a: number, b: number) => Math.abs(Number(a) - Number(b)) < 0.0005
   return same(row.rough_in_hrs_per_unit, match.entry.rough) && same(row.top_out_hrs_per_unit, match.entry.top) && same(row.trim_set_hrs_per_unit, match.entry.trim) ? 'book' : 'edited'
 }
 
-/** The queue: rows still at zero hours, in sheet order. A matched zero row can be filled from the book in one tap; an unmatched one needs a person. */
+/** The queue: rows still at zero hours (sub lines excepted), in sheet order. A matched zero row can be filled from the book in one tap; an unmatched one needs a person. */
 export function laborRowsNeedingHours(rows: ReadonlyArray<CostEstimateLaborRow>): CostEstimateLaborRow[] {
-  return rows.filter((r) => !laborRowHasHours(r))
+  return rows.filter((r) => !laborRowAnswered(r))
+}
+
+/** The row columns a book match writes — hours, how to read them, and where they came from. */
+export type LaborRowPatchFromBook = Pick<CostEstimateLaborRow, 'rough_in_hrs_per_unit' | 'top_out_hrs_per_unit' | 'trim_set_hrs_per_unit' | 'unit' | 'kind' | 'is_fixed' | 'source' | 'source_note'>
+
+const VIA_NOTE: Record<LaborBookMatchVia, string> = { exact: 'by name', alias: 'by alias', prefix: 'by code' }
+
+/**
+ * What filling a row from a match writes: the entry's three stage hours, its
+ * unit and kind (a task entry makes a task row — `is_fixed` mirrors it for
+ * the Old view and the prints), `source` = `book` for a name match and
+ * `alias` for an alias or code match, and a note naming the entry and book.
+ */
+export function laborRowPatchFromMatch(match: LaborBookMatch, bookName?: string | null): LaborRowPatchFromBook {
+  const { entry, via } = match
+  const isTask = entry.kind === 'task'
+  return {
+    rough_in_hrs_per_unit: entry.rough,
+    top_out_hrs_per_unit: entry.top,
+    trim_set_hrs_per_unit: entry.trim,
+    unit: isTask ? 'each' : entry.unit,
+    kind: isTask ? 'task' : 'fixture',
+    is_fixed: isTask,
+    source: via === 'exact' ? 'book' : 'alias',
+    source_note: `${entry.name}${bookName ? ` · ${bookName}` : ''}${via === 'exact' ? '' : ` (${VIA_NOTE[via]})`}`,
+  }
 }
 
 /** Does this text already reach the entry (as its name or an alias)? Then there is nothing to learn. */

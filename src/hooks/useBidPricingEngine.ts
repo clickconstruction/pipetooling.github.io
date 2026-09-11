@@ -43,6 +43,7 @@ import type {
   TakeoffMapping,
   TakeoffRoughPartLineRow,
 } from '../lib/bids/bidPricingEngineTypes'
+import { asLaborEntryKind, asLaborUnit, type LaborEntryKind, type LaborUnit } from '../lib/bids/laborBookMatch'
 
 export type UseBidPricingEngineDeps = {
   selectedBidForCounts: BidWithBuilder | null
@@ -587,7 +588,10 @@ export function useBidPricingEngine(deps: UseBidPricingEngineDeps) {
     return (data as FixtureLaborDefault[]) ?? []
   }
 
-  async function loadCostEstimateLaborRowsAndSync(estimateId: string, countRows: BidCountRow[], defaults: FixtureLaborDefault[]) {
+  /** What a minted labor row takes from the applied book (v2.3289): hours, how to read them, and where they came from. */
+  type LaborMintDefault = FixtureLaborDefault & { unit?: LaborUnit; kind?: LaborEntryKind; source?: 'book' | 'alias'; source_note?: string | null }
+
+  async function loadCostEstimateLaborRowsAndSync(estimateId: string, countRows: BidCountRow[], defaults: LaborMintDefault[]) {
     const { data: laborData, error: laborErr } = await supabase
       .from('cost_estimate_labor_rows')
       .select('*')
@@ -611,8 +615,11 @@ export function useBidPricingEngine(deps: UseBidPricingEngineDeps) {
         const def = defaults.find((d) => d.fixture.toLowerCase() === (cr.fixture ?? '').toLowerCase())
         // If not found in primary defaults (labor book), fall back to fixture_labor_defaults
         let hours = { rough_in_hrs: 0, top_out_hrs: 0, trim_set_hrs: 0 }
+        // How the row reads and where its hours came from (v2.3289); a zero row says nothing.
+        let reading: { unit: LaborUnit; kind: 'fixture' | 'task'; source: 'book' | 'alias' | null; source_note: string | null } = { unit: 'each', kind: 'fixture', source: null, source_note: null }
         if (def) {
           hours = { rough_in_hrs: def.rough_in_hrs, top_out_hrs: def.top_out_hrs, trim_set_hrs: def.trim_set_hrs }
+          reading = { unit: def.unit ?? 'each', kind: def.kind ?? 'fixture', source: def.source ?? 'book', source_note: def.source_note ?? null }
         } else {
           // Load from fixture_labor_defaults as fallback
           const { data: fallbackData } = await supabase
@@ -627,9 +634,11 @@ export function useBidPricingEngine(deps: UseBidPricingEngineDeps) {
               top_out_hrs: Number(fallbackData.top_out_hrs), 
               trim_set_hrs: Number(fallbackData.trim_set_hrs) 
             }
+            reading = { unit: 'each', kind: 'fixture', source: 'book', source_note: 'fixture defaults' }
           }
         }
-        
+        const hasHours = hours.rough_in_hrs > 0 || hours.top_out_hrs > 0 || hours.trim_set_hrs > 0
+
         const { data: inserted, error: insErr } = await supabase
           .from('cost_estimate_labor_rows')
           .insert({
@@ -640,7 +649,11 @@ export function useBidPricingEngine(deps: UseBidPricingEngineDeps) {
             top_out_hrs_per_unit: hours.top_out_hrs,
             trim_set_hrs_per_unit: hours.trim_set_hrs,
             sequence_order: ++seq,
-            is_fixed: false,
+            is_fixed: reading.kind === 'task',
+            kind: reading.kind,
+            unit: reading.unit,
+            source: hasHours ? reading.source : null,
+            source_note: hasHours ? reading.source_note : null,
           })
           .select('*')
           .single()
@@ -721,7 +734,7 @@ export function useBidPricingEngine(deps: UseBidPricingEngineDeps) {
       settleCostEstimateLoad(bidId, false)
       return
     }
-    let defaults: FixtureLaborDefault[]
+    let defaults: LaborMintDefault[]
     if (laborBookVersionId) {
       const { data: entries, error } = await supabase
         .from('labor_book_entries')
@@ -731,17 +744,25 @@ export function useBidPricingEngine(deps: UseBidPricingEngineDeps) {
       if (error || !entries?.length) {
         defaults = await loadFixtureLaborDefaults()
       } else {
-        const map = new Map<string, { rough_in_hrs: number; top_out_hrs: number; trim_set_hrs: number }>()
+        const bookName = laborBookVersions.find((v) => v.id === laborBookVersionId)?.name ?? null
+        const map = new Map<string, Omit<LaborMintDefault, 'fixture'>>()
         for (const e of entries as (LaborBookEntry & { fixture_types?: { name: string } | null })[]) {
-          const hours = { rough_in_hrs: Number(e.rough_in_hrs), top_out_hrs: Number(e.top_out_hrs), trim_set_hrs: Number(e.trim_set_hrs) }
-          const primary = (e.fixture_types?.name ?? '').trim().toLowerCase()
-          if (primary && !map.has(primary)) map.set(primary, hours)
+          const primaryName = (e.fixture_types?.name ?? '').trim()
+          const base = {
+            rough_in_hrs: Number(e.rough_in_hrs),
+            top_out_hrs: Number(e.top_out_hrs),
+            trim_set_hrs: Number(e.trim_set_hrs),
+            unit: asLaborUnit(e.unit),
+            kind: asLaborEntryKind(e.kind),
+          }
+          const primary = primaryName.toLowerCase()
+          if (primary && !map.has(primary)) map.set(primary, { ...base, source: 'book', source_note: bookName ? `${primaryName} · ${bookName}` : primaryName })
           for (const name of e.alias_names ?? []) {
             const key = name.trim().toLowerCase()
-            if (key && !map.has(key)) map.set(key, hours)
+            if (key && !map.has(key)) map.set(key, { ...base, source: 'alias', source_note: `${primaryName}${bookName ? ` · ${bookName}` : ''} (by alias)` })
           }
         }
-        defaults = Array.from(map.entries()).map(([fixture, hrs]) => ({ fixture, ...hrs }))
+        defaults = Array.from(map.entries()).map(([fixture, d]) => ({ fixture, ...d }))
       }
     } else {
       defaults = await loadFixtureLaborDefaults()
