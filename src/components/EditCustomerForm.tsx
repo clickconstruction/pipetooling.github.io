@@ -14,6 +14,7 @@ import { formatErrorMessage, withSupabaseRetry } from '../utils/errorHandling'
 import { openInExternalBrowser } from '../lib/openInExternalBrowser'
 import { isAssistantLike } from '../lib/subcontractorLikeRole'
 import { isCustomerArchived } from '../lib/customerArchive'
+import { DISCOUNT_REASON_PRESETS, standingDiscountFromCustomer } from '../lib/jobs/discountLine'
 import CustomerContactsSection from './customers/CustomerContactsSection'
 import CustomerPropertiesSection from './customers/CustomerPropertiesSection'
 
@@ -136,6 +137,10 @@ export default function EditCustomerForm({ customerId, onSaved, onCancel, onDele
   const [dateMet, setDateMet] = useState('')
   const [googleDriveLink, setGoogleDriveLink] = useState('')
   const [jobPicturesLink, setJobPicturesLink] = useState('')
+  // Standing discount (v2.3272; on the real Edit customer form since v2.3281 — it first
+  // shipped into an unrouted page): offered on every new job and bill, never inserted by itself.
+  const [standingPct, setStandingPct] = useState('')
+  const [standingReason, setStandingReason] = useState<string | null>(null)
   const [customerType, setCustomerType] = useState<'commercial' | 'residential' | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -291,6 +296,9 @@ export default function EditCustomerForm({ customerId, onSaved, onCancel, onDele
       setDateMet(row.date_met ? (row.date_met.split('T')[0] || '') : '')
       setGoogleDriveLink(row.google_drive_link ?? '')
       setJobPicturesLink(row.job_pictures_link ?? '')
+      const standing = standingDiscountFromCustomer(row as { standing_discount_pct?: number | string | null; standing_discount_reason?: string | null })
+      setStandingPct(standing ? String(standing.pct) : '')
+      setStandingReason(standing?.reason ?? null)
       setCustomerType(
         row.customer_type === 'commercial' || row.customer_type === 'residential'
           ? row.customer_type
@@ -318,6 +326,9 @@ export default function EditCustomerForm({ customerId, onSaved, onCancel, onDele
       google_drive_link: googleDriveLink.trim() || null,
       job_pictures_link: jobPicturesLink.trim() || null,
     }
+    const standingNum = parseFloat(standingPct.replace(/[%\s]/g, ''))
+    payload.standing_discount_pct = Number.isFinite(standingNum) && standingNum > 0 ? Math.min(100, Math.round(standingNum * 100) / 100) : null
+    payload.standing_discount_reason = payload.standing_discount_pct != null ? standingReason : null
     // One company (v2.2972): master_user_id is provenance now — never rewritten on edit.
     const { error: err, data } = await supabase
       .from('customers')
@@ -521,6 +532,40 @@ export default function EditCustomerForm({ customerId, onSaved, onCancel, onDele
             onChange={(e) => setEmail(e.target.value)}
             style={{ width: '100%', padding: '0.5rem' }}
           />
+        </div>
+        <div style={{ marginBottom: '1rem' }}>
+          <label htmlFor="edit-standingPct" style={{ display: 'block', marginBottom: 4 }}>Standing discount</label>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+            <span style={{ display: 'inline-flex', alignItems: 'stretch', border: '1px solid var(--border-strong)', borderRadius: 6, overflow: 'hidden' }}>
+              <span aria-hidden style={{ display: 'inline-flex', alignItems: 'center', padding: '0 0.45rem', fontSize: '0.8rem', fontWeight: 700, color: '#0f7a52', background: 'var(--bg-green-100)', borderRight: '1px solid var(--border)' }}>%</span>
+              <input
+                id="edit-standingPct"
+                type="text"
+                inputMode="decimal"
+                value={standingPct}
+                placeholder="none"
+                aria-label="Standing discount percent"
+                onChange={(e) => setStandingPct(e.target.value.replace(/[^0-9.]/g, ''))}
+                style={{ width: '5rem', padding: '0.5rem', border: 'none', textAlign: 'right' }}
+              />
+            </span>
+            <span style={{ display: 'inline-flex', gap: 5, flexWrap: 'wrap' }}>
+              {DISCOUNT_REASON_PRESETS.map((r) => (
+                <button
+                  key={r}
+                  type="button"
+                  onClick={() => setStandingReason((cur) => (cur === r ? null : r))}
+                  aria-pressed={standingReason === r}
+                  style={{ border: `1px solid ${standingReason === r ? '#0f7a52' : '#a7dcc2'}`, background: standingReason === r ? '#0f7a52' : 'var(--surface)', color: standingReason === r ? '#ffffff' : '#0f7a52', borderRadius: 999, padding: '2px 10px', fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}
+                >
+                  {r}
+                </button>
+              ))}
+            </span>
+          </div>
+          <p style={{ margin: '0.35rem 0 0', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
+            Offered on every new job and every bill for this customer until it is applied or waved off there — never added by itself. Existing jobs are untouched.
+          </p>
         </div>
         <div style={{ marginBottom: '1rem' }}>
           <label htmlFor="edit-dateMet" style={{ display: 'block', marginBottom: 4 }}>
