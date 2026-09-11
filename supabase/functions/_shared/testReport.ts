@@ -458,8 +458,7 @@ export function buildTestReportBlocks(data: TestReportData, job: TestReportJobIn
   if ((job.customerCompany ?? '').trim()) customerRows.push({ label: 'Company', value: job.customerCompany!.trim() })
   const locationLines = [addr.street, addr.rest].filter(Boolean)
   const locationRows: Array<{ label: string; value: string }> = []
-  // Gas keeps its date under the location; hydrostatic dates it in Test details; pinpoint dates the results (owner, 2026-09-11).
-  if (data.testType === 'gas') locationRows.push({ label: 'Date', value: formatTestReportDate(data.testDateYmd) })
+  // Hydrostatic dates Test details; pinpoint dates Test results; gas dates House pressure (owner, 2026-09-11). Nothing under the location.
   blocks.push({
     kind: 'columns',
     left: { heading: 'Customer', rows: customerRows },
@@ -498,19 +497,24 @@ export function buildTestReportBlocks(data: TestReportData, job: TestReportJobIn
   } else {
     const pressure = data.gasPressurePsi != null && data.gasPressurePsi > 0 ? gasPressureFromPsi(data.gasPressurePsi) : null
     const fixtures = gasFixturesForPaper(data.gasFixtures)
-    if (pressure) {
-      blocks.push({ kind: 'section', text: 'House pressure' })
-      blocks.push({
-        kind: 'kv',
-        rows: [
-          { label: 'PSI', value: String(pressure.psi) },
-          { label: 'in WC', value: String(pressure.inWc) },
-          { label: 'oz/in²', value: String(pressure.ozIn2) },
-          { label: 'mm WC', value: String(pressure.mmWc) },
-        ],
-      })
-    }
-    if (fixtures.length) {
+    // The date leads House pressure (v2.3332); the four readings follow when a pressure was taken.
+    blocks.push({ kind: 'section', text: 'House pressure' })
+    blocks.push({
+      kind: 'kv',
+      rows: [
+        { label: 'Date', value: formatTestReportDate(data.testDateYmd) },
+        ...(pressure
+          ? [
+              { label: 'PSI', value: String(pressure.psi) },
+              { label: 'in WC', value: String(pressure.inWc) },
+              { label: 'oz/in²', value: String(pressure.ozIn2) },
+              { label: 'mm WC', value: String(pressure.mmWc) },
+            ]
+          : []),
+      ],
+    })
+    // House utilities only when something was reported — a fixture with a BTU figure (v2.3332).
+    if (fixtures.length && gasFixturesTotalBtu(fixtures) > 0) {
       blocks.push({ kind: 'section', text: 'House utilities' })
       blocks.push({
         kind: 'kv',
