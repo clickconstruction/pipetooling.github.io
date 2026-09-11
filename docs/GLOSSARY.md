@@ -1601,3 +1601,7 @@ Command to auto-generate TypeScript types from Supabase schema: `supabase gen ty
 
 **Vendor kind** — What a `supply_houses` row is: *Supply house* (a counter we quote from and list for estimators), *Insurer*, *Rental yard*, *Sub ledger* (the bucket sub invoices post to) or *Other* (fuel, online orders, price sources). Only supply houses reach the RFQ / quote pickers and the estimator's Supply houses tab; the office sees every kind on its Directory pane with a kind filter (v2.3172, `vendor_kind`).
 
+
+## Payment promise (Their Word)
+
+A date a customer named for paying a bill, kept as an append-only event in `job_payment_promises` (v2.3280): who at the customer said it (`said_by`), who on our side heard it (`heard_by`; NULL when the customer named it themselves), channel, source (office · customer). The one-per-job `job_promised_pay_dates` row (v2.1926) is only the *latest open* promise the board chips read; every mark through it logs an event by trigger, and a changed date is a second promise, not an edit. Outcomes are never stored — `src/lib/jobs/paymentPromises.ts` derives them from payments under one rule: **kept** = the job's billed-at-promise balance reached zero by the promised date + 3 business days; **late by N** = paid off after that; **broken** = unpaid 7 days past the date or replaced by a newer promise on the same job (re-promised); **open** otherwise. Per customer this rolls into a record — "keeps 3 of 7 · slips ~9d" — the *usual slip* being the median days past their word across paid-off promises.

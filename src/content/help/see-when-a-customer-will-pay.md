@@ -32,7 +32,7 @@ Statistics stop mattering the moment someone gives you an actual answer. When a 
 
 - A promise **overrides** the estimate everywhere, including the forecast.
 - If the promised date passes unpaid, the chip flips to {{chip:red|5d past promise · Malachi}} — now you're following up on their word, not a statistic.
-- The same link becomes **edit promised date…** to change or clear it.
+- The same link becomes **edit promised date…** to change or clear it. Changing the date does not erase the first promise: every date a customer names stays on record, and the app works out whether each one was kept — see *know whether a customer keeps their word*.
 
 Anyone who can see the board sees promises; marking them is for dev, leaders, and assistant-type roles.
 
