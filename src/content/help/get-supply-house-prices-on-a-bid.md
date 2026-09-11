@@ -2,7 +2,7 @@
 title: get supply house prices on a bid
 category: Bids & Estimating
 roles: dev, estimator, master_technician, assistant
-keywords: supply house, quotes, vendor prices, compare quotes, plug in a quote, paste quote, rfq, price request, ferguson, moore supply, parts pricing, best price, quote comparison, requests I sent myself, edit bid, price requests table, requested date, quote link, robot, price it with the robot, price matrix, robot pricing, kits, carriers
+keywords: supply house, quotes, vendor prices, compare quotes, plug in a quote, paste quote, rfq, price request, ferguson, moore supply, parts pricing, best price, quote comparison, requests I sent myself, edit bid, price requests table, requested date, quote link, robot, price it with the robot, price matrix, robot pricing, kits, carriers, needs a choice, incomplete kit, option, settle
 ---
 
 Getting parts priced used to mean texting a list, getting prices back in three different shapes, and retyping them into a spreadsheet. Now the whole loop lives on **Bids → Pricing**: send the list, get the reply in whatever form the vendor likes, and compare houses part by part. Your sale prices never leave the building — vendors only ever see names and counts.
@@ -41,6 +41,18 @@ Once any quote is saved, a {{chip:blue|Quotes (1)}} chip sits beside Share — i
 - Parts run down the left, **grouped by Division 22 section**, one column per supply house. The best live price wears a ★.
 - **Tap a price to pick it** for that part — split the order across houses line by line. The picked total at the bottom recomputes at today's counts, and picks are saved for a future PO handoff.
 - A **Last quoted** column shows what each house said the last time anyone asked about that part name, on any bid — a high number smells wrong before you commit.
+
+### Kits, options, and the robot's picks
+
+When the robot read the quotes (or a quote was plugged in with parts), the grid shows them the way the vendor wrote them:
+
+- A fixture priced as a **kit** — bowl, flush valve and seat under one "EACH" subtotal, the carrier from the second sheet attached — shows **one price per each**. Tap ▸ on the row to see the parts, which are *in kit*, and where each came from. A house that skipped a part the others priced reads {{chip:yellow|incomplete}} with the missing part named; an incomplete kit is never the cheapest.
+- A quote that lists **options** — six sizes of backflow preventer, eight carrier variants — reads {{chip:yellow|needs a choice}} with the price range. Tap it and pick the one the plans call for; the row then prices normally. The amber strip under the grid lists every row still waiting on you.
+- The **Robot** column says why the robot picked what it picked ("cheapest complete kit", "only house with the carrier"). Change a pick and it says *you changed this* — and the robot learns from it next time.
+
+:::example Settling the RPZ
+NWS quoted the RPZ in six sizes. The row reads *needs a choice · $2,864.85 – $14,528.00*. Wendi taps it, picks **4in**, and the row prices at $3,680.09 — the quote's own $42,135 "subtotal" never entered the total.
+:::
 
 ## Requests you sent yourself
 

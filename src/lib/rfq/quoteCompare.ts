@@ -31,6 +31,7 @@ export type CompareQuoteLine = {
   optionChosen?: boolean
   pageRef?: string | null
   pickReason?: string | null
+  pickSource?: 'human' | 'robot' | null
 }
 
 export type CompareQuote = {
@@ -51,6 +52,9 @@ export type CompareRowCell = {
   alternateNote?: string | null
   expired: boolean
   picked: boolean
+  /** Price Matrix PR 4: who made the pick, when the store says. */
+  pickSource?: 'human' | 'robot' | null
+  pickReason?: string | null
   lotId?: string | null
   lotTotalCents?: number | null
   /**
@@ -123,6 +127,7 @@ function toKitLine(l: CompareQuoteLine): KitLineInput {
     pageRef: l.pageRef ?? null,
     picked: l.picked,
     pickReason: l.pickReason ?? null,
+    pickSource: l.pickSource ?? null,
     lotId: l.lotId ?? null,
     lotTotalCents: l.lotTotalCents ?? null,
   }
@@ -178,6 +183,8 @@ export function buildQuoteComparison(args: {
             alternateNote: lines.find((l) => l.alternateNote)?.alternateNote ?? null,
             expired,
             picked: kit.picked,
+            pickSource: kit.pickSource,
+            pickReason: kit.pickReason,
             lotId: kit.lotId,
             lotTotalCents: kit.lotTotalCents,
             kit,
@@ -189,6 +196,8 @@ export function buildQuoteComparison(args: {
             alternateNote: line.alternateNote ?? null,
             expired,
             picked: Boolean(line.picked),
+            pickSource: line.pickSource ?? null,
+            pickReason: line.pickReason ?? null,
             lotId: line.lotId ?? null,
             lotTotalCents: line.lotTotalCents ?? null,
             kit: null,
