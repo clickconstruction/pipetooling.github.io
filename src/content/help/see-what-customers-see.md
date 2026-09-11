@@ -2,7 +2,7 @@
 title: see what customers see
 category: Office
 roles: dev
-keywords: what customers see, customer view, sample customer, estimate email preview, bid room preview, contract email preview, journeys, settings, customer experience, sample data
+keywords: what customers see, test report sample, email me a sample, send a test report to myself, customer view, sample customer, estimate email preview, bid room preview, contract email preview, journeys, settings, customer experience, sample data
 order: 65
 ---
 **Settings → What customers see** shows every email and page a customer, a general contractor or a subcontractor gets, rendered live with sample data, in the order they meet them. Use it after you change a Setting — the estimate copy, the public terms, the footer, the bid cover-letter defaults — to see every surface follow.
@@ -31,6 +31,10 @@ The **Contract email** is the one People → Contracts → **Send for signature*
 3. {{button:outline|Open in new tab}} opens a page on its own; emails show their plain-text part underneath.
 
 Pages open with a **sample token** and carry an orange *Sample* strip. You can click through them — pick an option, sign, decline, send a request, accept an offer — and nothing is saved. The sample customer is **Sam Sample**, the sample bid is **Cedar Bend Apartments** for **Sample Contracting**, the sample sub is **Sam's Plumbing LLC**; none of them exist in the database.
+
+## Email yourself a test report
+
+The **Test report (sample)** card sits above the strips. Its first row opens each sample paper — {{button:outline|Sewer pre-test · PASS}} {{button:outline|Supply post-test · FAIL}} {{button:outline|Pinpoint test}} {{button:outline|Gas test}} — as the PDF. Its second row, {{button:outline|✉ Sewer pre-test · PASS}} and the rest, sends that sample through the real send function to **your own login email**: the same subject, body, pay-link paragraph and attachment a GC gets, with the subject prefixed *[Sample]*. Nothing is stored and no job is touched, so send one whenever you change the letterhead, the certifier, the wording or the email template. Only devs see this tab, and the function refuses any other recipient.
 
 ## After a Settings change
 

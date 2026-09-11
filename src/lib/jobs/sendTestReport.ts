@@ -3,6 +3,8 @@ import { readEdgeFunctionErrorBody } from '../readEdgeFunctionErrorBody'
 import { formatErrorMessage } from '../../utils/errorHandling'
 import { buildTestReportPdfBlob, testReportPdfToBase64 } from '../jobsDocuments/testReportPdf'
 import { buildTestReportEmail } from './testReportEmail'
+import { testReportSampleEmail, type TestReportSampleId } from './testReportSample'
+import { todayYmdInAppTz } from '../../utils/dateUtils'
 import { testReportPdfFilename, testReportShortLabel, type TestReportData, type TestReportJobInfo, type TestReportSettings } from './testReport'
 
 const MAX_PDF_BASE64_CHARS = 6_000_000
@@ -68,5 +70,44 @@ export async function sendTestReport(args: SendTestReportArgs): Promise<SendTest
     return { ok: true, sentTo: args.to, pdfVersion: res.pdf_version ?? 1 }
   } catch (e) {
     return { ok: false, message: formatErrorMessage(e, 'Could not send the report') }
+  }
+}
+
+export type SendTestReportSampleResult = { ok: true; sentTo: string } | { ok: false; message: string }
+
+/**
+ * "Email me this sample" (v2.3338, dev only): the sample paper and the send
+ * sheet's email, built from the current Settings, to the signed-in dev's own
+ * address. The function refuses anyone but a dev and any other recipient;
+ * nothing is stored, stamped or posted.
+ */
+export async function sendTestReportSample(id: TestReportSampleId, settings: TestReportSettings): Promise<SendTestReportSampleResult> {
+  try {
+    const { data: auth } = await supabase.auth.getSession()
+    if (!auth.session?.access_token) return { ok: false, message: 'Not signed in' }
+    const sample = testReportSampleEmail(id, settings, todayYmdInAppTz())
+    const blob = await buildTestReportPdfBlob(sample.data, sample.job, settings)
+    const pdfBase64 = await testReportPdfToBase64(blob)
+    if (pdfBase64.length > MAX_PDF_BASE64_CHARS) return { ok: false, message: 'The PDF is too large to email' }
+    const { data: raw, error } = await supabase.functions.invoke('send-test-report', {
+      body: {
+        sample: true,
+        subject: sample.email.subject,
+        email_text: sample.email.text,
+        email_html: sample.email.html,
+        pdf_base64: pdfBase64,
+        pdf_filename: sample.pdfFilename,
+        report_label: sample.reportLabel,
+      },
+    })
+    if (error) {
+      const detail = await readEdgeFunctionErrorBody(error)
+      return { ok: false, message: detail || formatErrorMessage(error, 'Could not send the sample') }
+    }
+    const res = raw as { ok?: boolean; error?: string; sent_to?: string } | null
+    if (!res?.ok) return { ok: false, message: res?.error || 'Could not send the sample' }
+    return { ok: true, sentTo: res.sent_to ?? auth.session.user.email ?? '' }
+  } catch (e) {
+    return { ok: false, message: formatErrorMessage(e, 'Could not send the sample') }
   }
 }

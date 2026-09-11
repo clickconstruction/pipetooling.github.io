@@ -73,4 +73,5 @@ Every sentence on the paper — system tested, method, pressure, the PASS and FA
 
 - A hydrostatic report needs a date, Supply or Sewer, and PASS or FAIL before it can be sent; pinpoint needs findings; gas needs a pressure or one fixture. The modal names what is missing.
 - If the job has no Stripe bill yet, the modal says so: **Bill Customer** first when the report email should carry a pay link.
+- Devs can email themselves any sample report at any time from **Settings → What customers see → Test report (sample) → ✉ Email me** — the real email and attachment, nothing stored.
 - The old site stays reachable from the modal's footer (**Open in Plumbing Tooling ↗**) for one release.
