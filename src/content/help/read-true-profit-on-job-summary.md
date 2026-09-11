@@ -55,6 +55,8 @@ Sorted by true profit, the table says job 812 lost money. Cut by GC says one bui
 
 Two chips in the row and a line in the totals strip name money that left after the sale. {{chip:yellow|✂ write-down}} marks a job whose bill was agreed down; the strip totals the dollars across the window. {{chip:red|⚑ collections}} marks a job flagged for collections and not yet paid. Revenue already reflects a write-down, so true profit is honest either way — the flag says why.
 
+
+**Discounts have their own fold.** When jobs in view carry discount line items, the toolbar shows {{chip:green|− $6,394.50 discounted on 4 jobs ▾}}. Open it for the one number an owner asks — how much was given away as a share of the revenue in view — then the same share by reason (the chips on the discount rows) and by who gave it (from the activity trail). See *give a customer a discount*.
 ## The columns
 
 **Job** · Revenue · Labor · Subs · Parts · **Gross** · Margin · Hours · days · **Overhead** · **True profit** · True % · **$/hr** (revenue ÷ approved field hours — the realized rate) · %.
