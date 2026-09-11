@@ -2,6 +2,20 @@
  * Shared Pricing tab row math and submission visibility (omit-from-list flag).
  * Matches Bids Pricing table cost allocation (labor hours + materials with optional takeoff tax).
  */
+import { laborRowHours } from './bids/laborRowHours'
+
+/** The loose (string-tolerant) row → the numeric shape `laborRowHours` reads. */
+export function normalizeLaborRowCalc(r: CostEstimateLaborRowCalc): { count: number; is_fixed: boolean; kind?: string; unit?: string; rough_in_hrs_per_unit: number; top_out_hrs_per_unit: number; trim_set_hrs_per_unit: number } {
+  return {
+    count: Number(r.count) || 0,
+    is_fixed: !!r.is_fixed,
+    kind: r.kind ?? undefined,
+    unit: r.unit ?? undefined,
+    rough_in_hrs_per_unit: Number(r.rough_in_hrs_per_unit) || 0,
+    top_out_hrs_per_unit: Number(r.top_out_hrs_per_unit) || 0,
+    trim_set_hrs_per_unit: Number(r.trim_set_hrs_per_unit) || 0,
+  }
+}
 
 export type BidCountRowCalc = {
   id: string
@@ -29,14 +43,14 @@ export type CostEstimateLaborRowCalc = {
   top_out_hrs_per_unit: number | string | null
   trim_set_hrs_per_unit: number | string | null
   is_fixed: boolean | null
+  /** v2.3291 columns; optional so older callers and fixtures still fit. */
+  kind?: string | null
+  unit?: string | null
 }
 
+/** A labor row's hours — the one rule in `laborRowHours` (task, sub and per-100-ft rows included), on the loose row shape. */
 export function costEstimateLaborRowHours(r: CostEstimateLaborRowCalc): number {
-  const hrs =
-    Number(r.rough_in_hrs_per_unit) +
-    Number(r.top_out_hrs_per_unit) +
-    Number(r.trim_set_hrs_per_unit)
-  return r.is_fixed ? hrs : Number(r.count) * hrs
+  return laborRowHours(normalizeLaborRowCalc(r))
 }
 
 export type ComputeBidPricingRowsInput = {

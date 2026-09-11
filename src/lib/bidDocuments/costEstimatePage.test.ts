@@ -85,7 +85,7 @@ function ctx(over: Partial<CostEstimatePrintContext> = {}): CostEstimatePrintCon
 }
 // Shared cost expectations for the fixtures above: 10 h × $85; 40 mi at the $0.70 default,
 // 2 h/trip default → 5 trips → $140 driving; estimator 2 count rows × $15; travel 2 × 1 × ($50 + $100).
-const EXPECTED_COSTS = { totalHours: 10, rate: 85, laborCost: 850, distance: 40, ratePerMile: 0.7, numTrips: 5, drivingCost: 140, estimatorCost: 30, travelCost: 300, laborCostWithDriving: 1320, taxPercent: 8.25 }
+const EXPECTED_COSTS = { totalHours: 10, rate: 85, laborCost: 850, distance: 40, ratePerMile: 0.7, numTrips: 5, drivingCost: 140, estimatorCost: 30, travelCost: 300, laborCostWithDriving: 1320, otherDirectCost: 0, taxPercent: 8.25 }
 const ROUGH_LINES = [
   { count_row_id: 'cr2', quantity: 1, unit_price: 20, part_id: 'p2', source_template_id: null, sequence_order: 1 },
   { count_row_id: 'cr1', quantity: 2, unit_price: 10, part_id: 'p1', source_template_id: null, sequence_order: 2 },

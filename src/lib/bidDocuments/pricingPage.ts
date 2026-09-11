@@ -13,21 +13,14 @@
 
 import {
   computeBidPricingRows,
-  costEstimateLaborRowHours,
   type BidCountRowCalc,
   type CostEstimateLaborRowCalc,
   type PriceBookEntryCalc,
 } from '../bidPricingRowCalculations'
-import {
-  computeTravelCost,
-  costEstimateDrivingRate,
-  costEstimateHoursPerTrip,
-  costEstimateEstimatorCost,
-} from '../bids/bidCostCalc'
 import { escapeHtml, printHtmlInNewWindow } from './htmlDoc'
 import { buildBidPricingPrintTableHtml, type BidPricingPrintRow } from '../buildBidPricingPrintTableHtml'
 import { buildPricingCsv, sanitizeCsvFilenamePart } from '../bids/bidCsvExport'
-import { laborRowHours } from '../bids/laborRowHours'
+import { computeBidCostBreakdown, type DirectCostRowLike } from '../bids/bidTotalCostBreakdown'
 import { bidDisplayName } from '../bids/bidFormatting'
 import { supabase } from '../supabase'
 import type { BidWithBuilder } from '../../types/bidWithBuilder'
@@ -69,6 +62,10 @@ export interface PricingPrintRowsInput {
   materialsFromTakeoffByCountRowId: Record<string, number>
   hiddenSubmissionCountRowIds: ReadonlySet<string>
   taxPercent: number
+  /** The five direct-cost tables as one list (v2.3292); omit = none. */
+  directCostRows?: ReadonlyArray<DirectCostRowLike> | null
+  /** Team labor clocked on the bid (v2.3292); omit = 0. */
+  teamLaborCost?: number | null
 }
 
 export interface PricingPrintRowsResult {
@@ -78,18 +75,18 @@ export interface PricingPrintRowsResult {
 }
 
 export function buildPricingPrintRows(input: PricingPrintRowsInput): PricingPrintRowsResult {
-  const totalMaterials =
-    (input.materialTotalRoughIn ?? 0) + (input.materialTotalTopOut ?? 0) + (input.materialTotalTrimSet ?? 0)
-  const rate = input.laborRate ?? 0
-  const totalLaborHours = input.laborRows.reduce((s, r) => s + costEstimateLaborRowHours(r), 0)
-  const laborCost = totalLaborHours * rate
-  const distance = parseFloat(input.distanceFromOffice ?? '0') || 0
-  const ratePerMile = costEstimateDrivingRate(input.costEstimate)
-  const hrsPerTrip = costEstimateHoursPerTrip(input.costEstimate)
-  const drivingCost = (totalLaborHours / hrsPerTrip) * ratePerMile * distance
-  const estimatorCost = costEstimateEstimatorCost(input.costEstimate, input.countRowsLength)
-  const travelCost = computeTravelCost(input.costEstimate)
-  const totalCost = totalMaterials + laborCost + drivingCost + estimatorCost + travelCost
+  const { totalMaterials, rate, totalCost } = computeBidCostBreakdown({
+    materialTotalRoughIn: input.materialTotalRoughIn,
+    materialTotalTopOut: input.materialTotalTopOut,
+    materialTotalTrimSet: input.materialTotalTrimSet,
+    laborRate: input.laborRate,
+    laborRows: input.laborRows,
+    distanceFromOffice: input.distanceFromOffice,
+    costEstimate: input.costEstimate,
+    countRowsLength: input.countRowsLength,
+    directCostRows: input.directCostRows,
+    teamLaborCost: input.teamLaborCost,
+  })
 
   const pricing = computeBidPricingRows({
     countRows: input.countRows,
@@ -171,6 +168,10 @@ export type PricingPrintContext = {
   customPrices: BidCountRowCustomPrice[]
   submissionHides: BidCountRowSubmissionHide[]
   taxPercent: number
+  /** The five direct-cost tables as one list (v2.3292) — so the print and CSV totals match the Workbench. */
+  directCostRows?: ReadonlyArray<DirectCostRowLike> | null
+  /** Team labor clocked on the bid (v2.3292). */
+  teamLaborCost?: number | null
 }
 
 /** Local copy of the page-level helper (kept in Bids.tsx for the submission-followup print code). */
@@ -218,6 +219,8 @@ export function printPricingPage(ctx: PricingPrintContext) {
       customUnitPriceByCountRowId: customMapPrint,
       materialsFromTakeoffByCountRowId: ctx.fixtureMaterialsFromTakeoff,
       hiddenSubmissionCountRowIds: hiddenPrint,
+      directCostRows: ctx.directCostRows,
+      teamLaborCost: ctx.teamLaborCost,
       taxPercent: ctx.taxPercent,
     })
     const tableInnerHtml = buildBidPricingPrintTableHtml({
@@ -302,6 +305,8 @@ export async function printAllPricingPages(ctx: PricingPrintContext): Promise<st
         customUnitPriceByCountRowId: customMapV,
         materialsFromTakeoffByCountRowId: ctx.fixtureMaterialsFromTakeoff,
         hiddenSubmissionCountRowIds: hiddenV,
+        directCostRows: ctx.directCostRows,
+        teamLaborCost: ctx.teamLaborCost,
         taxPercent: taxPctAll,
       })
       const tableInnerHtml = buildBidPricingPrintTableHtml({
@@ -341,19 +346,20 @@ export function buildPricingCsvForBid(
   const bidLabel = bidDisplayName(bid) || 'bid'
   const versionName = priceBookVersions.find((v) => v.id === selectedPricingVersionId)?.name ?? 'version'
 
-  const totalMaterials = (ctx.materialTotalRoughIn ?? 0) + (ctx.materialTotalTopOut ?? 0) + (ctx.materialTotalTrimSet ?? 0)
-  const rate = ctx.laborRate ?? 0
-  const totalLaborHours = ctx.laborRows.reduce((s, r) => s + laborRowHours(r), 0)
   const taxPercent = ctx.taxPercent
-  const laborCostAll = totalLaborHours * rate
-  const distance = parseFloat(bid.distance_from_office ?? '0') || 0
-  const ratePerMile = costEstimateDrivingRate(costEstimate)
-  const hrsPerTrip = costEstimateHoursPerTrip(costEstimate)
-  const numTrips = totalLaborHours / hrsPerTrip
-  const drivingCost = numTrips * ratePerMile * distance
-  const estimatorCost = costEstimateEstimatorCost(costEstimate, countRows.length)
-  const travelCost = computeTravelCost(costEstimate)
-  const totalBidCost = totalMaterials + laborCostAll + drivingCost + estimatorCost + teamLaborCost + travelCost
+  const breakdown = computeBidCostBreakdown({
+    materialTotalRoughIn: ctx.materialTotalRoughIn,
+    materialTotalTopOut: ctx.materialTotalTopOut,
+    materialTotalTrimSet: ctx.materialTotalTrimSet,
+    laborRate: ctx.laborRate,
+    laborRows: ctx.laborRows,
+    distanceFromOffice: bid.distance_from_office ?? null,
+    costEstimate,
+    countRowsLength: countRows.length,
+    directCostRows: ctx.directCostRows,
+    teamLaborCost,
+  })
+  const { totalMaterials, rate, totalCost: totalBidCost } = breakdown
 
   const assignmentsForVersionCsv = ctx.assignments.filter((a) => a.price_book_version_id === selectedPricingVersionId)
   const customMapCsv = new Map<string, number>()
