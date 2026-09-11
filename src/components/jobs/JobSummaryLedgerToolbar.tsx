@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { JobSummaryDiscountFold } from './JobSummaryDiscountFold'
 import type { CSSProperties, ReactNode } from 'react'
 import type { JobSummaryViewBundle } from '../../hooks/useJobSummaryView'
 import { JOB_OVERHEAD_METHODS } from '../../lib/jobs/jobDayLedger'
@@ -131,6 +132,7 @@ export default function JobSummaryLedgerToolbar({
   canEditOverheadDials?: boolean
 }) {
   const { prefs, setPrefs, totals, hygiene, ledgerLoading, ledgerError, reloadLedger, compare, rows, overhead } = view
+  const [discountFoldOpen, setDiscountFoldOpen] = useState(false)
   const [dialsOpen, setDialsOpen] = useState(false)
   const methodLabel = JOB_OVERHEAD_METHODS.find((m) => m.key === prefs.method)?.label ?? 'Day-share'
   const c = compare?.comparison ?? null
@@ -216,6 +218,9 @@ export default function JobSummaryLedgerToolbar({
           </span>
         ) : null}
       </div>
+      {showMoney && discountFoldOpen && totals.discountJobs > 0 ? (
+        <JobSummaryDiscountFold rows={view.rows.map((r) => ({ job: r.row.job, revenueUsd: r.revenueUsd, discountUsd: r.discountUsd }))} />
+      ) : null}
       {prefs.view !== 'jobs' ? null : (
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(9.5rem, 1fr))', gap: '0.5rem' }}>
         <Tile k="Jobs" v={totals.jobs} s={`${JOB_SUMMARY_STATUS_OPTIONS.find((s) => s.key === prefs.status)?.label.toLowerCase() ?? ''} · ${JOB_SUMMARY_WINDOW_OPTIONS.find((w) => w.key === prefs.window)?.title.toLowerCase() ?? ''}`} d={dl(c?.jobs, (a) => String(Math.round(a)))} />
@@ -256,9 +261,15 @@ export default function JobSummaryLedgerToolbar({
           </span>
         ) : null}
         {showMoney && totals.discountJobs > 0 ? (
-          <span style={chip} title="Discount line items on these jobs — revenue already reflects them; this names what was given away up front">
-            − {money(totals.discountUsd)} discounted on {totals.discountJobs} {totals.discountJobs === 1 ? 'job' : 'jobs'}
-          </span>
+          <button
+            type="button"
+            onClick={() => setDiscountFoldOpen((v) => !v)}
+            aria-expanded={discountFoldOpen}
+            style={{ ...chip, background: 'var(--bg-green-100)', color: 'var(--text-green-800)', border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
+            title="Discount line items on these jobs — revenue already reflects them. Open: share of revenue, by reason, by who gave them"
+          >
+            − {money(totals.discountUsd)} discounted on {totals.discountJobs} {totals.discountJobs === 1 ? 'job' : 'jobs'} {discountFoldOpen ? '▴' : '▾'}
+          </button>
         ) : null}
         {totals.collectionsJobs > 0 ? (
           <span style={chipRed} title="Flagged for collections and not yet paid">
