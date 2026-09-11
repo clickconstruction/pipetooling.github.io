@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
+import { cashAppPaymentMemo } from '../lib/cashapp/cashAppDecisions'
 import { pageSubTabStyle, pageTabStyle } from '../lib/pageTabStyle'
 import {
   PEOPLE_TAB_GROUP_MEMORY_KEY,
@@ -549,6 +550,8 @@ export default function People() {
   const [payStubMarkPaidDate, setPayStubMarkPaidDate] = useState('')
   const [payStubMarkPaidAmount, setPayStubMarkPaidAmount] = useState('')
   const [payStubMarkPaidNote, setPayStubMarkPaidNote] = useState('')
+  /** Cash App reconcile (v2.3330): the Cash App Transaction ID, when the payment was a Cash App send — written into the memo so the next import matches it exactly. */
+  const [payStubMarkPaidCashAppId, setPayStubMarkPaidCashAppId] = useState('')
   /** After Add offset save from Record payment employee-credit path: reload stub row and reset amount to remaining. */
   const recordPaymentRefreshAfterEmployeeCreditRef = useRef(false)
   const [hoursDateEnd, setHoursDateEnd] = useState(() => {
@@ -2182,6 +2185,7 @@ export default function People() {
     setPayStubMarkPaidDate('')
     setPayStubMarkPaidAmount('')
     setPayStubMarkPaidNote('')
+    setPayStubMarkPaidCashAppId('')
   }
 
   function openEmployeeCreditFromRecordPayment() {
@@ -2214,7 +2218,8 @@ export default function People() {
   async function confirmPayStubMarkPaid() {
     if (!authUser?.id || !payStubMarkPaidTarget) return
     const stub = payStubMarkPaidTarget
-    const noteTrim = payStubMarkPaidNote.trim()
+    const cashAppId = payStubMarkPaidCashAppId.trim().toUpperCase()
+    const noteTrim = cashAppId ? cashAppPaymentMemo(cashAppId, payStubMarkPaidNote) : payStubMarkPaidNote.trim()
     const paidAt = paidAtIsoFromYyyyMmDd(payStubMarkPaidDate.trim() || todayYyyyMmDdLocal())
     const amtRaw = payStubMarkPaidAmount.trim().replace(/,/g, '')
     const amount = parseFloat(amtRaw)
@@ -2239,17 +2244,31 @@ export default function People() {
     setMarkingPayStubId(stub.id)
     setError(null)
     try {
-      await withSupabaseRetry(
+      const inserted = await withSupabaseRetry(
         async () =>
-          await supabase.from('pay_stub_payments').insert({
-            pay_stub_id: stub.id,
-            amount: applied,
-            paid_at: paidAt,
-            memo: noteTrim || null,
-            created_by: authUser.id,
-          }),
+          await supabase
+            .from('pay_stub_payments')
+            .insert({
+              pay_stub_id: stub.id,
+              amount: applied,
+              paid_at: paidAt,
+              memo: noteTrim || null,
+              created_by: authUser.id,
+            })
+            .select('id')
+            .single(),
         'record pay report payment'
       )
+      // A Cash App send waiting in the reconcile queue is filed as recorded by this payment. Best-effort:
+      // the payment is already saved; a miss here only leaves the row for the next import's rule (a).
+      if (cashAppId) {
+        const paymentId = (inserted as { id: string } | null)?.id ?? null
+        await supabase
+          .from('cashapp_transactions')
+          .update({ lane: 'recorded', match_rule: 'manual', pay_stub_payment_id: paymentId, person_name: stub.person_name.trim(), decided_at: new Date().toISOString(), decided_by: authUser.id })
+          .eq('id', cashAppId)
+          .eq('lane', 'review')
+      }
       closePayStubMarkPaidModal()
       await loadPayStubs()
     } catch (e) {
@@ -3545,6 +3564,18 @@ export default function People() {
                 value={payStubMarkPaidDate}
                 onChange={(e) => setPayStubMarkPaidDate(e.target.value)}
                 style={{ padding: '0.35rem', border: '1px solid var(--border-strong)', borderRadius: 4, width: '100%', maxWidth: 200 }}
+              />
+            </label>
+            <label style={{ display: 'block', marginBottom: '0.75rem', fontSize: '0.875rem' }}>
+              <span style={{ display: 'block', marginBottom: '0.35rem', fontWeight: 500 }}>Cash App ID (optional)</span>
+              <input
+                type="text"
+                value={payStubMarkPaidCashAppId}
+                onChange={(e) => setPayStubMarkPaidCashAppId(e.target.value)}
+                placeholder="#D-3V3MVPKVP"
+                title="Paid through Cash App? Paste the Transaction ID from the activity export or the app — it goes into the memo so the Cash App reconcile matches this payment exactly."
+                spellCheck={false}
+                style={{ padding: '0.35rem', border: '1px solid var(--border-strong)', borderRadius: 4, width: '100%', maxWidth: 200, fontFamily: 'ui-monospace, Menlo, monospace', fontSize: '0.8125rem' }}
               />
             </label>
             <label style={{ display: 'block', marginBottom: '1rem', fontSize: '0.875rem' }}>

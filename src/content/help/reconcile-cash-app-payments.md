@@ -51,6 +51,10 @@ Every send in **To review** has four buttons:
 
 A row whose Cash App name is not tied to a person yet can only be skipped or marked not pay — tie the name first.
 
+## Recording a Cash App payment by hand
+
+{{button:green|Record payment}} on any report now has a **Cash App ID** field. Paste the Transaction ID (from the activity export or the app; it looks like `#D-3V3MVPKVP`) and the memo is written the way the reconcile reads it — that send is matched exactly and drops off the review list on its own. Do this every time you record a Cash App payment and the next import has nothing to ask.
+
 ## Working with an agent
 
 {{button:outline|Copy summary}} puts the whole state on the clipboard as plain text: lane counts, unknown names, and the to-review list with IDs. Paste it to an agent and it can work the list without a screenshot; the same text is under **Summary as text** on the page.
