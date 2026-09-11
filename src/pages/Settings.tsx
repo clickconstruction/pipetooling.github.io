@@ -56,6 +56,7 @@ import SettingsReleaseNotesSection from '../components/settings/SettingsReleaseN
 import TeamReviewCadenceSettingsBlock from '../components/settings/TeamReviewCadenceSettingsBlock'
 import EasterEggsSettingsBlock from '../components/settings/EasterEggsSettingsBlock'
 import OfficeAddressSettingsBlock from '../components/settings/OfficeAddressSettingsBlock'
+import BankTransferDetailsSettingsBlock from '../components/settings/BankTransferDetailsSettingsBlock'
 import MapDefaultViewSettingsBlock from '../components/settings/MapDefaultViewSettingsBlock'
 import StripeInvoiceFooterDevSettingsBlock from '../components/settings/StripeInvoiceFooterDevSettingsBlock'
 import PhysicalInvoiceIssuerDevSettingsBlock from '../components/settings/PhysicalInvoiceIssuerDevSettingsBlock'
@@ -1219,6 +1220,7 @@ export default function Settings() {
         >
           <SettingsCompanyDocumentsSection isDev={myRole === 'dev'} />
           {myRole === 'dev' || myRole === 'master_technician' ? <SettingsOrgDefaultsSection /> : null}
+          {myRole === 'dev' || myRole === 'master_technician' ? <BankTransferDetailsSettingsBlock /> : null}
           {myRole === 'dev' && <OfficeAddressSettingsBlock />}
           {myRole === 'dev' && <MapDefaultViewSettingsBlock />}
         </SettingsGroup>

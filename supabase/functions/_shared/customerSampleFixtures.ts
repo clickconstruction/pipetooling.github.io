@@ -198,6 +198,19 @@ export function sampleCustomerPortalResponse(company: SamplePortalCompany, state
         ]
       : [{ id: 'sample-report-1', jobId: 'sample-job-open', jobNumber: openBill.jobNumber, jobLabel: openBill.jobLabel, jobAddress: openBill.jobAddress, reportLabel: 'Gas Test', title: 'Gas Test Report', result: null, testDateYmd: ymdPlusDays(todayYmd, -4), certifierName: 'Malachi Whites', certifierLicense: '#RMP41130', sentAt: ymdPlusDays(todayYmd, -3) }],
     stages: gc ? sampleGcStages(todayYmd, openBill.jobLabel, openBill.jobAddress) : [],
+    // Bank transfer details (v2.3308): invented numbers so the walkthrough shows the collapsed
+    // card; the live row lives in company_bank_transfer_details, never in this file.
+    bankTransfer: {
+      payee_name: 'Sample Plumbing LLC',
+      bank_name: 'Sample Bank',
+      bank_note: 'Your bank may show this name instead of ours — that is correct.',
+      routing_number: '000000000',
+      account_number: '000012345678',
+      account_kind: 'Checking',
+      beneficiary_address: '100 Sample St, Kyle, TX 78640',
+      check_mailing_address: '100 Sample St, Kyle, TX 78640',
+      show_on_portal: true,
+    },
   }
 }
 

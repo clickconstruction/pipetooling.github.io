@@ -3605,6 +3605,59 @@ export type Database = {
           },
         ]
       }
+      company_bank_transfer_details: {
+        Row: {
+          account_kind: string
+          account_number: string
+          bank_name: string
+          bank_note: string
+          beneficiary_address: string
+          check_mailing_address: string
+          id: string
+          payee_name: string
+          routing_number: string
+          show_on_portal: boolean
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          account_kind?: string
+          account_number?: string
+          bank_name?: string
+          bank_note?: string
+          beneficiary_address?: string
+          check_mailing_address?: string
+          id?: string
+          payee_name?: string
+          routing_number?: string
+          show_on_portal?: boolean
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          account_kind?: string
+          account_number?: string
+          bank_name?: string
+          bank_note?: string
+          beneficiary_address?: string
+          check_mailing_address?: string
+          id?: string
+          payee_name?: string
+          routing_number?: string
+          show_on_portal?: boolean
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "company_bank_transfer_details_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       company_documents: {
         Row: {
           created_at: string | null

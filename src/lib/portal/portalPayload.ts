@@ -1,3 +1,4 @@
+import { bankTransferDetailsForPortal, parseBankTransferDetails, type BankTransferDetails } from '../bankTransferDetails'
 /**
  * Customer portal payload parsing (portal train PR 1). The /portal page
  * receives this from the customer-portal edge function; the parser is
@@ -70,6 +71,8 @@ export type PortalPayload = {
   agreements: PortalAgreement[]
   /** Test reports (v2.3304): SENT hydrostatic / pinpoint / gas reports on the company's jobs — the PDF opens through open-test-report-pdf. */
   testReports: PortalTestReport[]
+  /** Bank transfer details (v2.3308): the company's ACH / wire remittance details + check mailing address, from Supabase; null when the office has not entered them or turned the card off. */
+  bankTransfer: BankTransferDetails | null
   /** Stage Plan PR 5: the stage sequence on jobs that share dates with this GC — the company's voice, never a name, no money. */
   stages: PortalJobStages[]
   /** Their Word PR 2: the latest pay-by date on record across the open bills (office-marked or the customer's own), null when none. */
@@ -205,6 +208,7 @@ export function parsePortalPayload(raw: unknown): PortalPayload | null {
     slug: typeof r.slug === 'string' && r.slug.trim() ? r.slug.trim() : null,
     agreements,
     testReports: parsePortalTestReports(r.testReports),
+    bankTransfer: bankTransferDetailsForPortal(parseBankTransferDetails(r.bankTransfer)),
     stages: Array.isArray(r.stages) ? r.stages.map(parseJobStages).filter((x): x is PortalJobStages => x != null) : [],
     promise: parsePortalPromise(r.promise),
   }
