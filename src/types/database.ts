@@ -4731,8 +4731,6 @@ export type Database = {
       }
       customers: {
         Row: {
-          standing_discount_pct: number | null
-          standing_discount_reason: string | null
           address: string | null
           archived_at: string | null
           archived_by: string | null
@@ -4746,14 +4744,14 @@ export type Database = {
           job_pictures_link: string | null
           master_user_id: string
           name: string
+          standing_discount_pct: number | null
+          standing_discount_reason: string | null
           statement_sender_user_id: string | null
           stripe_customer_id: string | null
           stripe_customer_id_test: string | null
           updated_at: string | null
         }
         Insert: {
-          standing_discount_pct?: number | null
-          standing_discount_reason?: string | null
           address?: string | null
           archived_at?: string | null
           archived_by?: string | null
@@ -4767,14 +4765,14 @@ export type Database = {
           job_pictures_link?: string | null
           master_user_id: string
           name: string
+          standing_discount_pct?: number | null
+          standing_discount_reason?: string | null
           statement_sender_user_id?: string | null
           stripe_customer_id?: string | null
           stripe_customer_id_test?: string | null
           updated_at?: string | null
         }
         Update: {
-          standing_discount_pct?: number | null
-          standing_discount_reason?: string | null
           address?: string | null
           archived_at?: string | null
           archived_by?: string | null
@@ -4788,6 +4786,8 @@ export type Database = {
           job_pictures_link?: string | null
           master_user_id?: string
           name?: string
+          standing_discount_pct?: number | null
+          standing_discount_reason?: string | null
           statement_sender_user_id?: string | null
           stripe_customer_id?: string | null
           stripe_customer_id_test?: string | null
@@ -8471,7 +8471,6 @@ export type Database = {
       }
       jobs_ledger: {
         Row: {
-          standing_discount_waived_at: string | null
           account_manager_relationship: string | null
           account_manager_user_id: string | null
           bid_id: string | null
@@ -8512,11 +8511,11 @@ export type Database = {
           project_id: string | null
           revenue: number | null
           service_type_id: string
+          standing_discount_waived_at: string | null
           status: string
           updated_at: string | null
         }
         Insert: {
-          standing_discount_waived_at?: string | null
           account_manager_relationship?: string | null
           account_manager_user_id?: string | null
           bid_id?: string | null
@@ -8557,11 +8556,11 @@ export type Database = {
           project_id?: string | null
           revenue?: number | null
           service_type_id: string
+          standing_discount_waived_at?: string | null
           status?: string
           updated_at?: string | null
         }
         Update: {
-          standing_discount_waived_at?: string | null
           account_manager_relationship?: string | null
           account_manager_user_id?: string | null
           bid_id?: string | null
@@ -8602,6 +8601,7 @@ export type Database = {
           project_id?: string | null
           revenue?: number | null
           service_type_id?: string
+          standing_discount_waived_at?: string | null
           status?: string
           updated_at?: string | null
         }
@@ -18689,13 +18689,13 @@ export type Database = {
       }
       apply_job_discount: {
         Args: {
-          p_basis_positions?: number[]
+          p_basis_positions: number[]
           p_dollars: number
           p_draft_amounts?: Json
           p_job_id: string
           p_name: string
-          p_pct?: number
-          p_reason?: string
+          p_pct: number
+          p_reason: string
           p_summary?: string
         }
         Returns: Json
