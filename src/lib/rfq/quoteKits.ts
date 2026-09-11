@@ -96,6 +96,7 @@ export type KitLineInput = {
   pageRef?: string | null
   picked?: boolean
   pickReason?: string | null
+  pickSource?: 'human' | 'robot' | null
   lotId?: string | null
   lotTotalCents?: number | null
 }
@@ -131,6 +132,8 @@ export type KitCell = {
   needsChoice: { group: string; options: KitOption[]; minCents: number | null; maxCents: number | null } | null
   picked: boolean
   pickReason: string | null
+  /** Who made the current pick on these lines (the picked line's source; else the first stated). */
+  pickSource: 'human' | 'robot' | null
   /** The first lot found on the lines (lots still count once in totals — see quoteCompare). */
   lotId: string | null
   lotTotalCents: number | null
@@ -183,6 +186,7 @@ export function aggregateKit(lines: ReadonlyArray<KitLineInput>, expected: Reado
     needsChoice: null,
     picked: false,
     pickReason: null,
+    pickSource: null,
     lotId: null,
     lotTotalCents: null,
   }
@@ -190,6 +194,7 @@ export function aggregateKit(lines: ReadonlyArray<KitLineInput>, expected: Reado
 
   const picked = lines.some((l) => Boolean(l.picked))
   const pickReason = lines.find((l) => l.pickReason)?.pickReason ?? null
+  const pickSource = (lines.find((l) => l.picked && l.pickSource)?.pickSource ?? lines.find((l) => l.pickSource)?.pickSource) ?? null
   const lotLine = lines.find((l) => l.lotId != null)
   const lotId = lotLine?.lotId ?? null
   const lotTotalCents = lotLine?.lotTotalCents ?? null
@@ -220,6 +225,7 @@ export function aggregateKit(lines: ReadonlyArray<KitLineInput>, expected: Reado
         ],
         picked,
         pickReason,
+        pickSource,
         lotId,
         lotTotalCents,
       }
@@ -237,6 +243,7 @@ export function aggregateKit(lines: ReadonlyArray<KitLineInput>, expected: Reado
       },
       picked,
       pickReason,
+      pickSource,
       lotId,
       lotTotalCents,
     }
@@ -253,6 +260,7 @@ export function aggregateKit(lines: ReadonlyArray<KitLineInput>, expected: Reado
       cantSupply: Boolean(l.cantSupply),
       picked,
       pickReason,
+      pickSource,
       lotId,
       lotTotalCents,
     }
@@ -264,7 +272,7 @@ export function aggregateKit(lines: ReadonlyArray<KitLineInput>, expected: Reado
   const components = lines.map(toComponent(hasKit))
   const allCantSupply = lines.every((l) => l.cantSupply)
   if (allCantSupply) {
-    return { ...empty, components, cantSupply: true, picked, pickReason, lotId, lotTotalCents }
+    return { ...empty, components, cantSupply: true, picked, pickReason, pickSource, lotId, lotTotalCents }
   }
 
   const presentRoles = new Set<ComponentRole>()
@@ -289,6 +297,7 @@ export function aggregateKit(lines: ReadonlyArray<KitLineInput>, expected: Reado
     incomplete,
     picked,
     pickReason,
+    pickSource,
     lotId,
     lotTotalCents,
   }
