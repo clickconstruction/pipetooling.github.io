@@ -217,6 +217,9 @@ export function BidFlowStrip({ flow, variant, onOpenDoor, canOpenDoor, bidLabel,
           gridTemplateColumns: `repeat(${flow.steps.length}, minmax(58px, 1fr))`,
           minWidth: flow.steps.length * 62,
           maxWidth: flow.steps.length * 88,
+          // v2.3278: the unfolded drawer under the title row centers its steps in the card (the
+          // header-bearing full strip stays left-aligned under its "Where this bid is" line).
+          ...(hideHeader ? { marginLeft: 'auto', marginRight: 'auto' } : {}),
         }}
       >
         {phases.map((p) => (
@@ -338,40 +341,46 @@ export function BidFlowStrip({ flow, variant, onOpenDoor, canOpenDoor, bidLabel,
           aria-label={`${ariaLabel}. ${expanded ? 'Fold the flow strip' : 'Unfold the flow strip'}`}
           title={`${summary}${flow.next && !flow.decided ? '' : ''} — click for the full flow`}
           onClick={onToggleExpanded}
+          // v2.3278 (owner): the ticks sit on their own line ABOVE the words, spanning the pill, not beside them.
+          // fontFamily, not the `font` shorthand: the shorthand plus a longhand resets on re-render (the v2.770 pill bug).
           style={{
             display: 'inline-flex',
-            alignItems: 'center',
-            gap: '0.5rem',
-            font: 'inherit',
+            flexDirection: 'column',
+            alignItems: 'stretch',
+            gap: '0.22rem',
+            fontFamily: 'inherit',
             fontSize: '0.78rem',
+            lineHeight: 1.2,
             color: 'var(--text-muted)',
-            padding: '0.2rem 0.6rem 0.2rem 0.5rem',
-            borderRadius: 999,
+            padding: '0.3rem 0.65rem 0.28rem',
+            borderRadius: 10,
             border: `1px solid ${expanded ? NEXT : 'var(--border)'}`,
             background: 'var(--surface)',
             cursor: onToggleExpanded ? 'pointer' : 'default',
             whiteSpace: 'nowrap',
           }}
         >
-          <span aria-hidden style={{ display: 'inline-flex', gap: 2, alignItems: 'center' }}>
+          <span aria-hidden style={{ display: 'flex', gap: 3, alignItems: 'center' }}>
             {flow.steps.map((step) => (
               <span
                 key={step.key}
                 title={tooltip(step)}
-                style={{ display: 'block', width: 12, height: 5, borderRadius: 2, background: segBg[step.state], border: step.state === 'untracked' ? '1px dashed var(--border)' : undefined, boxSizing: 'border-box' }}
+                style={{ display: 'block', flex: 1, minWidth: 10, height: 5, borderRadius: 2, background: segBg[step.state], border: step.state === 'untracked' ? '1px dashed var(--border)' : undefined, boxSizing: 'border-box' }}
               />
             ))}
           </span>
-          <span>{summary}</span>
-          {reviewStamped && reviewStamp?.label ? <span style={{ color: 'var(--text-faint)' }}>· {reviewStamp.label}</span> : null}
-          <span aria-hidden style={{ fontSize: '0.65rem', color: 'var(--text-faint)' }}>{expanded ? '▴' : '▾'}</span>
+          <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem' }}>
+            <span>{summary}</span>
+            {reviewStamped && reviewStamp?.label ? <span style={{ color: 'var(--text-faint)' }}>· {reviewStamp.label}</span> : null}
+            <span aria-hidden style={{ fontSize: '0.65rem', color: 'var(--text-faint)' }}>{expanded ? '▴' : '▾'}</span>
+          </span>
         </button>
         {review && reviewOpenable && !reviewStamped && !flow.decided ? (
           <button
             type="button"
             onClick={() => onOpenDoor?.('review', review)}
             title="Mark this bid reviewed — who, when, and your notes"
-            style={{ font: 'inherit', fontSize: '0.74rem', fontWeight: 600, padding: '0.2rem 0.6rem', borderRadius: 999, cursor: 'pointer', border: `1px solid ${NEXT}`, background: NEXT, color: '#fff', whiteSpace: 'nowrap' }}
+            style={{ fontFamily: 'inherit', fontSize: '0.74rem', fontWeight: 600, padding: '0.2rem 0.6rem', borderRadius: 999, cursor: 'pointer', border: `1px solid ${NEXT}`, background: NEXT, color: '#fff', whiteSpace: 'nowrap' }}
           >
             Mark reviewed
           </button>
