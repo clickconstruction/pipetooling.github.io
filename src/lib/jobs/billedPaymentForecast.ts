@@ -1,6 +1,7 @@
 import type { StageRow } from '../jobsStagesBoard'
 import { effectiveInvoiceEstBillDate, stageRowBilledRemainingAmount } from './invoiceBilling'
 import { effectiveJobLedgerNumber } from '../ledgerDisplayPrefixes'
+import { slipAdjustedYmd } from './paymentReliability'
 import {
   billedExpectedPayModel,
   daysBetweenYmd,
@@ -35,6 +36,14 @@ export type ForecastRow = {
   open: number
   /** Null only in the 'unknown' bucket (no reference date or no pay-speed data). */
   model: ExpectedPayModel | null
+  /**
+   * Their Word PR 3: a promised row bucketed by the promise moved by the
+   * customer's usual slip — the day the money usually lands after the date
+   * they give. Null when the row isn't promised or the customer has no slip.
+   */
+  slipDays: number | null
+  /** The date the row was bucketed by (the promise + slip, else the model's expected date). */
+  forecastYmd: string | null
 }
 
 export type ForecastBucketKey = 'past' | 'thisWeek' | 'nextWeek' | 'following' | 'later' | 'unknown'
@@ -98,6 +107,8 @@ export function buildBilledPaymentForecast(
   paySpeeds: PaySpeedData | null,
   todayYmd: string,
   promises?: Record<string, PromisedPayDate> | null,
+  /** Their Word PR 3: customer id → usual slip in days; a promised row buckets by promise + slip. */
+  slipByCustomer?: Record<string, number> | null,
 ): PaymentForecast {
   const byKey: Record<ForecastBucketKey, ForecastRow[]> = {
     past: [],
@@ -128,6 +139,13 @@ export function buildBilledPaymentForecast(
       todayYmd,
       promises?.[job.id] ?? null,
     )
+    // A promise is bucketed by when the money usually lands after the date
+    // this customer gives, not by the date itself (Their Word PR 3). The
+    // payer is the GC when there is one — that's whose word it is.
+    const payerId = (job as { gc_customer_id?: string | null }).gc_customer_id ?? job.customer_id
+    const rawSlip = model?.source === 'promised' && payerId ? slipByCustomer?.[payerId] : undefined
+    const slipDays = rawSlip != null && Number.isFinite(rawSlip) && rawSlip >= 1 ? Math.round(rawSlip) : null
+    const forecastYmd = model ? (slipDays ? slipAdjustedYmd(model.expectedYmd, slipDays) : model.expectedYmd) : null
     const row: ForecastRow = {
       invoiceId: r.inv.id,
       jobId: job.id,
@@ -136,13 +154,17 @@ export function buildBilledPaymentForecast(
       segment: (job.customer_id && paySpeeds?.customerTypes[job.customer_id]) || null,
       open,
       model,
+      slipDays,
+      forecastYmd,
     }
-    byKey[model ? bucketKeyForExpected(model.expectedYmd, todayYmd) : 'unknown'].push(row)
+    byKey[forecastYmd ? bucketKeyForExpected(forecastYmd, todayYmd) : 'unknown'].push(row)
   }
 
   const byExpectedThenOpen = (a: ForecastRow, b: ForecastRow) => {
-    if (a.model && b.model && a.model.expectedYmd !== b.model.expectedYmd) {
-      return a.model.expectedYmd < b.model.expectedYmd ? -1 : 1
+    const ay = a.forecastYmd ?? a.model?.expectedYmd
+    const by = b.forecastYmd ?? b.model?.expectedYmd
+    if (ay && by && ay !== by) {
+      return ay < by ? -1 : 1
     }
     return b.open - a.open
   }

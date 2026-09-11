@@ -86,6 +86,7 @@ export default function BilledPaymentForecastModal({
   loading,
   paySpeeds,
   promises,
+  slipByCustomer,
   todayYmd,
   onClose,
   onOpenInvoice,
@@ -102,6 +103,8 @@ export default function BilledPaymentForecastModal({
   loading?: boolean
   paySpeeds: PaySpeedData | null
   promises?: Record<string, PromisedPayDate> | null
+  /** Their Word PR 3: customer id → usual slip in days; promised rows bucket by promise + slip. */
+  slipByCustomer?: Record<string, number> | null
   todayYmd: string
   onClose: () => void
   onOpenInvoice: (invoiceId: string) => void
@@ -121,8 +124,8 @@ export default function BilledPaymentForecastModal({
   onEmail?: () => void
 }) {
   const forecast = useMemo(
-    () => buildBilledPaymentForecast(rows, paySpeeds, todayYmd, promises),
-    [rows, paySpeeds, todayYmd, promises],
+    () => buildBilledPaymentForecast(rows, paySpeeds, todayYmd, promises, slipByCustomer),
+    [rows, paySpeeds, todayYmd, promises, slipByCustomer],
   )
   const visibleBuckets = forecast.buckets.filter((b) => b.key !== 'unknown' || b.rows.length > 0)
   // Tile click-to-filter (v2.1943): a tile narrows the lists to just its
@@ -370,7 +373,7 @@ export default function BilledPaymentForecastModal({
                       {r.model?.source === 'customer' ? (
                         <span style={{ color: 'var(--text-muted)' }}> · pays in ~{r.model.medianDays}d</span>
                       ) : r.model?.source === 'promised' ? (
-                        <span style={{ color: 'var(--text-muted)' }}> · promised</span>
+                        <span style={{ color: 'var(--text-muted)' }}> · promised{r.slipDays ? ` · usually slips ~${r.slipDays}d` : ''}</span>
                       ) : r.model ? (
                         <span style={{ color: 'var(--text-muted)' }}> · company avg</span>
                       ) : null}
