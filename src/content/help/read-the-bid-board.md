@@ -2,7 +2,7 @@
 title: read the bid board
 category: Office
 roles: dev, master_technician, assistant, estimator
-keywords: GC, packet, won, lost, outcome, bid board, jump strip, sections, pending, lost, show all, bid dropdown, notes, due date, last contact, days late, google maps, phone cards, trade pill, counts, sent 1/2, call queue, chase, quiet, robots tab, undo won
+keywords: GC, packet, won, lost, outcome, bid board, jump strip, sections, pending, lost, show all, bid dropdown, notes, due date, last contact, days late, google maps, phone cards, trade pill, counts, sent 1/2, call queue, chase, quiet, robots tab, undo won, matches by value, link, cost it, costed, budget
 order: 68
 ---
 The Bid Board (Bids → Bid Board) shows every bid in five sections — **Unsent / Working**, **Not yet won or lost**, **Won**, **Started or Complete**, and **Lost** — plus **Estimating Health** at the bottom.
@@ -40,6 +40,10 @@ Each row leads with the bid number, flanked by **jump icons** — Counts, Takeof
 Distance to the office lives in the row dropdown, along with the address — tap the address there to open Google Maps.
 
 In the **Lost** section, every bid carries a **Why did we lose?** strip. When the loss has a reason recorded it reads the reason (category first, then what they said); when it doesn't, the strip says so — *Add why: an uncategorized loss can't teach the robots* — and puts the **six reason chips right on the row**, so recording the reason is one tap without opening anything (a note on the bid may even pre-suggest a chip with an amber ring). An uncategorized loss gets left out of the robot estimators' training math, which is why the strip asks.
+
+## Won rows: is the job linked, and was the bid costed?
+
+On a won row the Links column carries two more chips. {{chip:yellow|J1007 matches by value · Link}} means a job carries this bid's value to the dollar but is not linked to it yet — press **Link** and confirm: the job is stamped with the bid, the bid reads Started, and the bid's estimate becomes the job's budget (Burn on the job's Costs tab reads against it). The other chip reads the Cost Estimate tab: {{chip:green|costed · 47 h}} (hours and a labor rate), {{chip:yellow|hours only · 36 h}} (set the rate), or {{chip:red|no cost estimate · Cost it →}} (opens the bid's Labor tab). A job made from the bid shows the usual {{chip:green|J1007}} chip instead of the match.
 
 ## Bids sent to more than one GC
 

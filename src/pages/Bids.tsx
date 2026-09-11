@@ -2,6 +2,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { canSeeBidBoardJobLinks, indexJobsByBidId, type BidBoardJobLink } from '../lib/bids/bidBoardJobLinks'
 import { JOB_CREATED_FROM_BID_EVENT } from '../lib/bids/wonMomentActions'
+import { useBidBoardBudgetChips } from '../hooks/useBidBoardBudgetChips'
+import { useConfirmDialog } from '../contexts/ConfirmDialogContext'
 import { BID_REVIEWED_EVENT } from '../lib/bids/bidReview'
 import { supabase } from '../lib/supabase'
 import {
@@ -446,6 +448,27 @@ export default function Bids() {
   const boardBidIdsKey = useMemo(() => [...peopleBids, ...robotBids].map((b) => b.id).sort().join(','), [peopleBids, robotBids])
   // Tier-1 #8: a job just opened from a bid → refetch the index so the J#### chip appears without a reload.
   const [jobsByBidGen, setJobsByBidGen] = useState(0)
+  // Won-row chips (v2.3302): the value-matched job and the estimate's state, for the board's job-link roles.
+  const bidBoardBudgetChips = useBidBoardBudgetChips([...peopleBids, ...robotBids], canSeeBidBoardJobLinks(myRole), jobsByBidGen)
+  const confirmDialog = useConfirmDialog()
+  const linkJobToBidFromBoard = useCallback(
+    async (args: { jobId: string; bidId: string; jobLabel: string; bidLabel: string }): Promise<boolean> => {
+      const ok = await confirmDialog({
+        message: `Link ${args.jobLabel} to ${args.bidLabel}? The job is stamped with the bid and the bid's estimate becomes the job's budget (the bid reads Started). Nothing else changes.`,
+        confirmLabel: 'Link',
+      })
+      if (!ok) return false
+      const { error } = await supabase.rpc('snapshot_job_budget_from_bid', { p_job_id: args.jobId, p_bid_id: args.bidId })
+      if (error) {
+        showToast(`Could not link: ${error.message}`, 'error')
+        return false
+      }
+      showToast(`${args.jobLabel} linked to ${args.bidLabel} — its budget is the bid's estimate.`, 'success')
+      window.dispatchEvent(new CustomEvent(JOB_CREATED_FROM_BID_EVENT, { detail: { bidId: args.bidId, jobId: args.jobId } }))
+      return true
+    },
+    [confirmDialog, showToast],
+  )
   useEffect(() => {
     const bump = () => setJobsByBidGen((n) => n + 1)
     window.addEventListener(JOB_CREATED_FROM_BID_EVENT, bump)
@@ -3859,6 +3882,8 @@ export default function Bids() {
           showMap
           showEstimatingHealth={myRole !== 'primary' && myRole !== 'superintendent'}
           jobsByBidId={jobsByBidId}
+          budgetChips={bidBoardBudgetChips}
+          onLinkJobToBid={canSeeBidBoardJobLinks(myRole) ? linkJobToBidFromBoard : undefined}
                 ledgerPrefixMap={ledgerPrefixMap}
           bidPreview={bidPreviewOnBidsPage}
           sectionOpen={bidBoardSectionOpen}

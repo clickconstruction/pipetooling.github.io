@@ -75,6 +75,7 @@ export type NeedsYouItem = {
     | 'customer-waiting'
     | 'price-matrix-ready'
     | 'robot-backlog'
+    | 'test-reports-ready'
   severity: NeedsYouSeverity
   /** Product the item belongs to — omitted means `company`. See `NeedsYouKind`. */
   kind?: NeedsYouKind
@@ -140,6 +141,8 @@ export const NEEDS_YOU_RANK: Record<NeedsYouItem['key'], number> = {
   'job-account-no-packet': 60,
   'price-matrix-ready': 40,
   'robot-backlog': 60,
+  // Revenue chasing tier: a test report is what the GC pays against.
+  'test-reports-ready': 40,
 }
 
 /** "99+" reads as 100 so a capped figure still outranks anything two-digit. */
@@ -392,6 +395,9 @@ export type NeedsYouInputs = {
    */
   robotBacklogEnabled?: boolean
   robotBacklog?: import('./bids/robotBacklog').RobotBacklog | null
+  /** Test reports drafted on jobs and not yet sent (v2.3301) — office roles; null while loading. */
+  testReportsEnabled?: boolean
+  testReportsReady?: import('../hooks/useTestReportsReadyNudge').TestReportsReady | null
 }
 
 export function buildNeedsYouItems(inputs: NeedsYouInputs): NeedsYouItem[] {
@@ -979,6 +985,25 @@ export function buildNeedsYouItems(inputs: NeedsYouInputs): NeedsYouItem[] {
         { key: 'snooze', label: 'Snooze 24h' },
         { key: 'dismiss', label: 'Dismiss until count increases' },
       ],
+    })
+  }
+
+  if (inputs.testReportsEnabled && inputs.testReportsReady && inputs.testReportsReady.ready + inputs.testReportsReady.incomplete > 0) {
+    const t = inputs.testReportsReady
+    const total = t.ready + t.incomplete
+    const names = t.jobLabels.join(' · ')
+    const detail =
+      t.ready > 0
+        ? `${t.ready === 1 ? 'One is' : `${t.ready} are`} filled in — open, glance at the paper, Send to the GC with the pay link.${t.incomplete > 0 ? ` ${t.incomplete} more still need${t.incomplete === 1 ? 's' : ''} a verdict or findings.` : ''}${names ? ` — ${names}.` : ''}`
+        : `${total === 1 ? 'It needs' : 'They need'} a verdict or findings before ${total === 1 ? 'it' : 'they'} can go out.${names ? ` — ${names}.` : ''}`
+    items.push({
+      key: 'test-reports-ready',
+      severity: t.ready > 0 ? 'blue' : 'gray',
+      kicker: 'Test reports',
+      title: t.ready > 0 ? `${t.ready} test report${t.ready === 1 ? ' is' : 's are'} ready to send` : `${total} test report${total === 1 ? '' : 's'} waiting on a verdict`,
+      detail,
+      figure: String(total),
+      actionLabel: t.first ? `Open ${t.first.jobLabel}` : 'Open',
     })
   }
 

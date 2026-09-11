@@ -26,7 +26,20 @@ Pick **Pre-Test**, **Sewer**, today's date, 60 minutes, **PASS**, type "PVC. Toi
 
 ## Save, download, send
 
-{{button:blue|Save draft}} keeps the report on the job. {{button:outline|Download PDF}} opens the paper in a new tab (or downloads it where pop-ups are blocked). **Send to the GC** — the report attached and the job's Stripe pay link in the body — is the next release; until then, download and email as before. A draft can be deleted from the modal's footer; a sent report cannot.
+{{button:blue|Save draft}} keeps the report on the job. {{button:outline|Download PDF}} opens the paper in a new tab (or downloads it where pop-ups are blocked). A draft can be deleted from the modal's footer; a sent report cannot.
+
+{{button:amber|Send to GC…}} opens the send sheet — the email the office used to write by hand, already filled in:
+
+- **To** — the GC on the job (their email from the customer card), else the customer. Add more addresses with commas.
+- **cc** — the standing copy from Settings (the master who certifies, say).
+- **Message** — "Attached is the … report for 112 Seidel St and below is the invoice link…" with the job's **Stripe pay link** and amount. Edit it freely; *Reset to the template* brings the wording back.
+- **The attachment** — the PDF, built from the report exactly as it is when you click Send.
+
+If the job has no Stripe bill yet the sheet says **Bill first**: open **Bill Customer** on the row, create the Stripe invoice, come back and Send — or use **Send without the link** on purpose. After a send the report reads {{chip:green|Sent Sep 11}} with who got it and whether the link rode along, and the job's activity gets a line. Change the report later and **Send again…** emails a new PDF; the first one stays on file, so what the GC received is always the exact file they were sent.
+
+:::example the Dashboard card
+Drafts pile up under **Needs you** as "3 test reports are ready to send" (office roles). The card opens the first one; the ones still missing a verdict or findings are counted separately.
+:::
 
 ## The wording
 

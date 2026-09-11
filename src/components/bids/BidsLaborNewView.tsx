@@ -23,6 +23,7 @@ import { isFootageRow, laborEstimateCompleteness, revenuePerFieldHourWords, summ
 import { directCostKindWords, sumDirectCosts, type CostEstimateDirectCostRow, type DirectCostKind } from '../../lib/bids/costEstimateDirectCosts'
 import { computeBidCostBreakdown, directCostRowsFromTables, type StageAmountRow } from '../../lib/bids/bidTotalCostBreakdown'
 import { crewRateWords, effectiveLaborRate, type CrewRate } from '../../lib/bids/crewRate'
+import { bookMultiplier, bookMultiplierWords, calibratedEntryHours, entryEvidence, type CalibrationJob } from '../../lib/bids/laborBookCalibration'
 import type { CostEstimate, CostEstimateLaborRow, LaborBookEntryWithFixture, LaborBookVersion } from '../../lib/bids/bidPricingEngineTypes'
 
 /**
@@ -84,6 +85,9 @@ export type BidsLaborNewViewProps = {
   distanceFromOffice?: string | null
   countRowsLength?: number
   directCostTables?: Partial<Record<DirectCostKind, ReadonlyArray<StageAmountRow>>>
+  /** Calibration (v2.3307): the jobs linked to bids that priced with the applied book; undefined = not loaded (roles without job hours). */
+  calibrationJobs?: CalibrationJob[]
+  calibrationLoaded?: boolean
   laborBookVersions: LaborBookVersion[]
   onChangeBook: (versionId: string | null) => void
   /** Optimistic row patch; the tab's autosave persists it (same as Old's cells). */
@@ -158,6 +162,8 @@ export function BidsLaborNewView(p: BidsLaborNewViewProps) {
   const [notice, setNotice] = useState<string | null>(null)
   const [showFilled, setShowFilled] = useState(true)
   const [directCostRows, setDirectCostRows] = useState<CostEstimateDirectCostRow[]>([])
+  const [evidenceOpenFor, setEvidenceOpenFor] = useState<string | null>(null)
+  const [settingEntry, setSettingEntry] = useState(false)
 
   const loadBook = useCallback(async () => {
     if (!p.appliedBookVersionId) {
@@ -210,6 +216,9 @@ export function BidsLaborNewView(p: BidsLaborNewViewProps) {
   const eff = useMemo(() => effectiveLaborRate({ override: p.ratePerHour, companyRate: p.crewRate?.companyRate }), [p.ratePerHour, p.crewRate?.companyRate])
 
   const matchEntries = useMemo(() => laborBookEntriesForMatch(bookEntries), [bookEntries])
+  // Calibration (v2.3307): the book against the linked jobs — the multiplier for the strip, the evidence per entry for the grid.
+  const calibration = useMemo(() => bookMultiplier(p.calibrationJobs ?? []), [p.calibrationJobs])
+  const evidence = useMemo(() => entryEvidence(matchEntries, calibration.used), [matchEntries, calibration.used])
   const matches = useMemo(() => matchLaborRows(p.rows, matchEntries), [p.rows, matchEntries])
   const queue = useMemo(() => laborRowsNeedingHours(p.rows), [p.rows])
   const filled = useMemo(() => p.rows.filter((r) => !queue.includes(r)), [p.rows, queue])
@@ -462,6 +471,11 @@ export function BidsLaborNewView(p: BidsLaborNewViewProps) {
             <div style={tileV}>{p.crewRate?.overheadPerFieldHour != null ? `$${formatCurrency(p.crewRate.overheadPerFieldHour)}` : '—'}</div>
             <div style={tileS}>lens A · 90 d · shown, not added to the direct cost</div>
           </div>
+          <div style={tile} data-testid="labor-book-vs-jobs">
+            <div style={tileK}>Book vs jobs</div>
+            <div style={tileV}>{calibration.multiplier != null ? `×${calibration.multiplier.toFixed(2)}` : '—'}</div>
+            <div style={tileS}>{p.appliedBookVersionId ? (p.calibrationLoaded || (p.calibrationJobs && p.calibrationJobs.length > 0) ? bookMultiplierWords(calibration) : p.calibrationJobs === undefined ? 'jobs’ hours are not yours to read' : 'reading linked jobs…') : 'pick a book to compare'}</div>
+          </div>
           <div style={tile} data-testid="labor-other-direct">
             <div style={tileK}>Other direct</div>
             <div style={tileV}>{directCosts.total > 0 ? `$${formatCurrency(directCosts.total)}` : '—'}</div>
@@ -676,10 +690,94 @@ export function BidsLaborNewView(p: BidsLaborNewViewProps) {
                           </td>
                         ))}
                         <td style={{ padding: '0.5rem 0.75rem', textAlign: 'center', fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>{sub ? '—' : fmtHours(laborRowHours(row))}</td>
-                        <td style={{ padding: '0.5rem 0.75rem' }}>{sourceChip(row, m)}</td>
+                        <td style={{ padding: '0.5rem 0.75rem' }}>
+                          {sourceChip(row, m)}
+                          {m && !sub ? (() => {
+                            const ev = evidence.get(m.entry.id)
+                            if (!ev) return null
+                            const tone = ev.spread === 'agree' ? 'ok' : ev.spread === 'wide' ? 'warn' : 'muted'
+                            return (
+                              <button type="button" onClick={() => setEvidenceOpenFor((cur) => (cur === m.entry.id ? null : m.entry.id))} disabled={ev.rows.length === 0} title={ev.rows.length === 0 ? 'No linked finished job used this entry yet — link jobs to their bids on the job’s Costs tab' : 'What finished jobs say about this entry — open the evidence'} style={{ ...pill(tone), marginLeft: 6, cursor: ev.rows.length === 0 ? 'default' : 'pointer', background: 'transparent' }} aria-expanded={evidenceOpenFor === m.entry.id} data-testid="labor-evidence-chip">
+                                {ev.words}
+                              </button>
+                            )
+                          })() : null}
+                        </td>
                       </tr>
                     )
                   })}
+                  {evidenceOpenFor ? (() => {
+                    const entry = matchEntries.find((e) => e.id === evidenceOpenFor)
+                    const ev = entry ? evidence.get(entry.id) : undefined
+                    if (!entry || !ev) return null
+                    const proposed = ev.medianRatio != null ? calibratedEntryHours(entry, ev.medianRatio) : null
+                    return (
+                      <tr data-testid="labor-evidence-drawer">
+                        <td colSpan={7} style={{ padding: '0.6rem 0.75rem', background: 'var(--bg-subtle)', borderTop: '1px solid var(--border)' }}>
+                          <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.6rem', flexWrap: 'wrap', marginBottom: '0.4rem' }}>
+                            <b>{entry.name}</b>
+                            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>book {entry.rough} / {entry.top} / {entry.trim} h · what {ev.rows.length} linked job{ev.rows.length === 1 ? '' : 's'} ran, the job’s hours shared out by the book’s own weights</span>
+                          </div>
+                          <table style={{ borderCollapse: 'collapse', fontSize: '0.8rem' }}>
+                            <thead>
+                              <tr style={{ color: 'var(--text-muted)' }}>
+                                <th style={{ textAlign: 'left', padding: '0.2rem 0.6rem 0.2rem 0' }}>Job</th>
+                                <th style={{ textAlign: 'right', padding: '0.2rem 0.6rem' }}>Done</th>
+                                <th style={{ textAlign: 'right', padding: '0.2rem 0.6rem' }}>Book said</th>
+                                <th style={{ textAlign: 'right', padding: '0.2rem 0.6rem' }}>Crew ran</th>
+                                <th style={{ textAlign: 'right', padding: '0.2rem 0.6rem' }}>Ratio</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {ev.rows.map((r) => (
+                                <tr key={r.jobId}>
+                                  <td style={{ padding: '0.15rem 0.6rem 0.15rem 0' }}>{r.jobLabel}</td>
+                                  <td style={{ textAlign: 'right', padding: '0.15rem 0.6rem', fontVariantNumeric: 'tabular-nums' }}>{r.pctDone != null ? `${Math.round(r.pctDone)}%` : '—'}</td>
+                                  <td style={{ textAlign: 'right', padding: '0.15rem 0.6rem', fontVariantNumeric: 'tabular-nums' }}>{fmtHours(r.predictedHours)} h</td>
+                                  <td style={{ textAlign: 'right', padding: '0.15rem 0.6rem', fontVariantNumeric: 'tabular-nums' }}>{fmtHours(r.actualShareHours)} h</td>
+                                  <td style={{ textAlign: 'right', padding: '0.15rem 0.6rem', fontVariantNumeric: 'tabular-nums', color: r.ratio > 1.1 ? 'var(--text-amber-700)' : r.ratio < 0.9 ? 'var(--text-green-700)' : undefined }}>×{r.ratio.toFixed(2)}</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap', marginTop: '0.5rem', fontSize: '0.8rem' }}>
+                            {proposed && ev.medianRatio != null ? (
+                              <>
+                                <span>
+                                  Median ×{ev.medianRatio.toFixed(2)} → set the entry to <b>{proposed.rough} / {proposed.top} / {proposed.trim} h</b>
+                                  {ev.spread === 'wide' ? <span style={{ color: 'var(--text-amber-700)' }}> · the jobs disagree — read them before you set</span> : null}
+                                </span>
+                                <button
+                                  type="button"
+                                  disabled={settingEntry}
+                                  onClick={() => {
+                                    void (async () => {
+                                      setSettingEntry(true)
+                                      p.setError(null)
+                                      const { error } = await supabase.from('labor_book_entries').update({ rough_in_hrs: proposed.rough, top_out_hrs: proposed.top, trim_set_hrs: proposed.trim }).eq('id', entry.id)
+                                      if (error) p.setError(`Failed to set ${entry.name}: ${error.message}`)
+                                      else {
+                                        await loadBook()
+                                        flash(`${entry.name} set to ${proposed.rough} / ${proposed.top} / ${proposed.trim} h from ${ev.rows.length} job${ev.rows.length === 1 ? '' : 's'}.`)
+                                        setEvidenceOpenFor(null)
+                                      }
+                                      setSettingEntry(false)
+                                    })()
+                                  }}
+                                  style={btn(true)}
+                                >
+                                  {settingEntry ? 'Setting…' : 'Set'}
+                                </button>
+                              </>
+                            ) : null}
+                            <button type="button" onClick={() => setEvidenceOpenFor(null)} style={btn()}>
+                              Keep
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    )
+                  })() : null}
                   <tr style={{ background: 'var(--bg-subtle)', fontWeight: 600 }}>
                     <td style={{ padding: '0.5rem 0.75rem' }}>Totals</td>
                     <td />

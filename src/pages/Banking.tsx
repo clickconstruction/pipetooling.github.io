@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
-import { isAssistantLike } from '../lib/subcontractorLikeRole'
+import { canAccessBanking as canAccessBankingRole, isStaffBankingRole } from '../lib/bankingAccess'
 import { useMercuryOrgNotesByTxId } from '../hooks/useMercuryOrgNotesByTxId'
 import { useToastContext } from '../contexts/ToastContext'
 import { withSupabaseRetry } from '../utils/errorHandling'
@@ -136,7 +136,7 @@ type BankingPageRole =
   | null
 
 function parseBankingView(params: URLSearchParams, role: BankingPageRole): BankingView {
-  if (isAssistantLike(role) || role === 'master_technician') {
+  if (isStaffBankingRole(role)) {
     const parsed = mercuryTabFromParam(params.get('tab'))
     // Ledger is dev-only; everything else the strip shows is fair game for staff.
     const mercuryTab: MercuryBankingTab = parsed && parsed !== 'ledger' ? parsed : 'accounting'
@@ -287,7 +287,7 @@ export default function Banking() {
   // per-row review is the bigger trust step).
 
   const isDevBanking = myRole === 'dev'
-  const canAccessBanking = myRole === 'dev' || isAssistantLike(myRole) || myRole === 'master_technician'
+  const canAccessBanking = canAccessBankingRole(myRole)
 
   const bankingView = useMemo(() => parseBankingView(searchParams, myRole), [searchParams, myRole])
 
@@ -360,7 +360,7 @@ export default function Banking() {
       setSortingConfig(loadBankingSortingConfig(user.id))
       return
     }
-    if (isAssistantLike(myRole) || myRole === 'master_technician') {
+    if (isStaffBankingRole(myRole)) {
       setSortingConfig(defaultBankingSortingConfig())
     }
   }, [user?.id, myRole])
@@ -446,7 +446,7 @@ export default function Banking() {
   }, [user?.id])
 
   useEffect(() => {
-    if (myRole && myRole !== 'dev' && !isAssistantLike(myRole) && myRole !== 'master_technician') {
+    if (myRole && !canAccessBankingRole(myRole)) {
       navigate('/dashboard', { replace: true })
     }
   }, [myRole, navigate])
@@ -467,7 +467,7 @@ export default function Banking() {
   }, [searchParams, setSearchParams])
 
   useEffect(() => {
-    if (myRole !== 'master_technician' && !isAssistantLike(myRole)) return
+    if (!isStaffBankingRole(myRole)) return
     const product = searchParams.get('product')
     const tab = mercuryTabFromParam(searchParams.get('tab'))
     if (tab !== null && tab !== 'ledger' && product !== 'stripe' && (product === null || product === 'mercury')) {
@@ -496,7 +496,7 @@ export default function Banking() {
   }, [myRole, searchParams, setSearchParams])
 
   const loadAllRows = useCallback(async (options?: { silent?: boolean }) => {
-    if (myRole !== 'dev' && !isAssistantLike(myRole) && myRole !== 'master_technician') return
+    if (!canAccessBankingRole(myRole)) return
     const silent = options?.silent === true
     const seq = ++listLoadSeqRef.current
     if (!silent) {
@@ -550,7 +550,7 @@ export default function Banking() {
   // paged with `.range()` exactly like the master list — PostgREST's 1,000-row
   // `max_rows` applies to un-ranged RPC responses too.
   const loadUnlabeledRows = useCallback(async (options?: { silent?: boolean }) => {
-    if (myRole !== 'dev' && !isAssistantLike(myRole) && myRole !== 'master_technician') return
+    if (!canAccessBankingRole(myRole)) return
     const silent = options?.silent === true
     const seq = ++listLoadSeqRef.current
     if (!silent) {
@@ -597,7 +597,7 @@ export default function Banking() {
   // list with the newest ACCOUNTING_LABELED_PAGE_SIZE rows and arms the cursor
   // so `loadLabeledNextPage` can keyset-scroll older rows.
   const loadLabeledFirstPage = useCallback(async (options?: { silent?: boolean }) => {
-    if (myRole !== 'dev' && !isAssistantLike(myRole) && myRole !== 'master_technician') return
+    if (!canAccessBankingRole(myRole)) return
     const silent = options?.silent === true
     const seq = ++listLoadSeqRef.current
     labeledLoadingMoreRef.current = false
@@ -645,7 +645,7 @@ export default function Banking() {
   // Next keyset page for the "show labeled" view: appends older rows (id-deduped)
   // and advances the cursor. No-op unless a cursor is armed and more remain.
   const loadLabeledNextPage = useCallback(async () => {
-    if (myRole !== 'dev' && !isAssistantLike(myRole) && myRole !== 'master_technician') return
+    if (!canAccessBankingRole(myRole)) return
     if (labeledLoadingMoreRef.current || !labeledHasMore || !labeledCursor) return
     // Snapshot the active-load token. If a first-page / realtime refresh fires
     // while this page is in flight, it bumps the token and we drop this
@@ -718,7 +718,7 @@ export default function Banking() {
   )
 
   const loadNicknames = useCallback(async () => {
-    if (myRole !== 'dev' && !isAssistantLike(myRole) && myRole !== 'master_technician') return
+    if (!canAccessBankingRole(myRole)) return
     try {
       const data = await withSupabaseRetry(async () => {
         return supabase.from('mercury_account_nicknames').select('mercury_account_id, nickname')
@@ -733,7 +733,7 @@ export default function Banking() {
   }, [myRole, showToast])
 
   const loadDebitCardNicknames = useCallback(async () => {
-    if (myRole !== 'dev' && !isAssistantLike(myRole) && myRole !== 'master_technician') return
+    if (!canAccessBankingRole(myRole)) return
     try {
       const dir = await loadDebitCardDirectory()
       setNicknameByDebitCard(dir.nicknameByCard)
@@ -769,7 +769,7 @@ export default function Banking() {
   // RPC. First mount fires once because the dispatcher identity is stable
   // across that initial paint.
   useEffect(() => {
-    if (myRole !== 'dev' && !isAssistantLike(myRole) && myRole !== 'master_technician') return
+    if (!canAccessBankingRole(myRole)) return
     // Wait until the per-user Accounting prefs are hydrated so the dispatcher
     // picks the right loader on the first fetch (no default-vs-stored flash).
     if (!accountingPrefsHydrated) return
