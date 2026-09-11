@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
-import { indexMatters, type LegalEntryRow, type LegalFirmRow, type LegalMatterJobRow, type LegalMatterRow } from '../lib/legal/legalMatters'
+import { indexMatters, type LegalEntryRow, type LegalFirmRow, type LegalMatterJobRow, type LegalMatterRow, type LegalRecipientRow } from '../lib/legal/legalMatters'
 
 // The legal_* tables land with the v2.3313 migration; until the generated types
 // catch up (and on a checkout ahead of the push) the reads go through an untyped client.
@@ -22,6 +22,9 @@ export type LegalMattersData = {
   byJobId: Map<string, LegalMatterRow>
   jobIdsByMatter: Map<string, string[]>
   entriesByMatter: Map<string, LegalEntryRow[]>
+  /** The firm's people and their email rules (PR 5); office read-only. */
+  recipients: LegalRecipientRow[]
+  firmPaused: boolean
   reload: () => Promise<void>
 }
 
@@ -32,16 +35,19 @@ export function useLegalMatters(enabled: boolean): LegalMattersData {
   const [matters, setMatters] = useState<LegalMatterRow[]>([])
   const [links, setLinks] = useState<LegalMatterJobRow[]>([])
   const [entries, setEntries] = useState<LegalEntryRow[]>([])
+  const [recipients, setRecipients] = useState<LegalRecipientRow[]>([])
+  const [firmPaused, setFirmPaused] = useState(false)
 
   const reload = useCallback(async () => {
     if (!enabled) return
     setLoading(true)
     try {
-      const [f, m, l, e] = await Promise.all([
-        db.from('legal_firms').select('id, name, handling_name, email, phone, contingency_pct, filing_cost, active').order('active', { ascending: false }).order('created_at'),
+      const [f, m, l, e, r] = await Promise.all([
+        db.from('legal_firms').select('id, name, handling_name, email, phone, contingency_pct, filing_cost, active, paused_at').order('active', { ascending: false }).order('created_at'),
         db.from('legal_matters').select('*'),
         db.from('legal_matter_jobs').select('matter_id, job_id'),
         db.from('legal_matter_entries').select('*').order('created_at'),
+        db.from('legal_firm_recipients').select('*').is('removed_at', null).order('created_at'),
       ])
       if (f.error || m.error || l.error || e.error) {
         // 42P01 / PGRST205: the tables aren't there yet — the desk stays read-only.
@@ -53,6 +59,10 @@ export function useLegalMatters(enabled: boolean): LegalMattersData {
       setMatters((m.data ?? []) as LegalMatterRow[])
       setLinks((l.data ?? []) as LegalMatterJobRow[])
       setEntries((e.data ?? []) as LegalEntryRow[])
+      // Recipients land with the PR 5 migration; a missing table leaves the list empty, not the desk broken.
+      setRecipients(r.error ? [] : ((r.data ?? []) as LegalRecipientRow[]))
+      const activeFirm = ((f.data ?? []) as Array<LegalFirmRow & { paused_at?: string | null }>).find((x) => x.active)
+      setFirmPaused(Boolean(activeFirm?.paused_at))
     } catch {
       setAvailable(false)
     } finally {
@@ -81,6 +91,8 @@ export function useLegalMatters(enabled: boolean): LegalMattersData {
     byJobId: idx.byJobId,
     jobIdsByMatter: idx.jobIdsByMatter,
     entriesByMatter,
+    recipients,
+    firmPaused,
     reload,
   }
 }

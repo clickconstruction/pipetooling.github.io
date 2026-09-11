@@ -18,6 +18,8 @@ import { buildLegalPacket, groupCollectionsByPayer, type LegalContactEntryLike, 
 import { buildJobContractCoverage } from '../jobs/jobContractCoverage'
 import { feeModelOf, type LegalEntryRow, type LegalFirmRow } from './legalMatters'
 
+export type LegalPortalRecipient = { id: string; name: string; email: string; role: string; mode: 'now' | 'digest'; scope: 'all' | 'mine'; digestWeekday: number; digestTime: string; confirmed: boolean; paused: boolean; addedViaPortal: boolean }
+
 export type LegalPortalContract = JobContractRowLike & { signedPdfUrl: string | null }
 
 export type LegalPortalMatter = {
@@ -54,6 +56,8 @@ export type LegalPortalPayload = {
   preparedOn: string
   firm: LegalFirmRow
   particulars: LegalPortalParticulars
+  recipients: LegalPortalRecipient[]
+  firmPaused: boolean
   matters: LegalPortalMatter[]
 }
 
@@ -101,6 +105,10 @@ export function parseLegalPortalPayload(raw: unknown): LegalPortalPayload | null
     preparedOn: typeof raw.preparedOn === 'string' ? raw.preparedOn : '',
     firm: firm as unknown as LegalFirmRow,
     particulars: isRecord(raw.particulars) ? (raw.particulars as LegalPortalParticulars) : {},
+    recipients: Array.isArray(raw.recipients)
+      ? (raw.recipients as unknown[]).filter(isRecord).map((r): LegalPortalRecipient => ({ id: String(r.id ?? ''), name: String(r.name ?? ''), email: String(r.email ?? ''), role: String(r.role ?? ''), mode: r.mode === 'digest' ? 'digest' : 'now', scope: r.scope === 'mine' ? 'mine' : 'all', digestWeekday: Number(r.digestWeekday) || 1, digestTime: typeof r.digestTime === 'string' ? r.digestTime : '07:00', confirmed: Boolean(r.confirmed), paused: Boolean(r.paused), addedViaPortal: Boolean(r.addedViaPortal) }))
+      : [],
+    firmPaused: Boolean(raw.firmPaused),
     matters,
   }
 }

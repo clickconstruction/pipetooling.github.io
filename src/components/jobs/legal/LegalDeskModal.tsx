@@ -17,6 +17,7 @@ import {
   heldOverridesOf,
   legalStageLabel,
   releaseRecipients,
+  WEEKDAY_LABELS,
   stageIsClosed,
   stageIsWithFirm,
   withHoldOverride,
@@ -191,6 +192,7 @@ export default function LegalDeskModal(props: LegalDeskModalProps) {
   const [sheet, setSheet] = useState<Sheet>(null)
   const [busy, setBusy] = useState(false)
   const [answerFor, setAnswerFor] = useState<{ entryId: string; text: string } | null>(null)
+  const [emailsOpen, setEmailsOpen] = useState(false)
 
   useEffect(() => {
     if (!open) return
@@ -372,7 +374,10 @@ export default function LegalDeskModal(props: LegalDeskModalProps) {
   const paidOnInvoice = writeDown ? writeDown.job.payments.filter((p) => p.invoice_id === writeDown.invoice.id).reduce((s, p) => s + Number(p.amount ?? 0), 0) : 0
   const requestedDays = daysAgo(matter?.review_requested_at, todayYmd)
   const requesterName = matter?.review_requested_by ? (users.find((u) => u.id === matter.review_requested_by)?.name ?? 'the office') : null
-  const recipients = releaseRecipients(firm, sheet?.kind === 'ready' ? sheet.handling : '')
+  const recipients = releaseRecipients(firm, sheet?.kind === 'ready' ? sheet.handling : '', legal?.recipients ?? [])
+  const firmPaused = Boolean(legal?.firmPaused)
+  const setFirmPaused = async (paused: boolean) => { await run(paused ? 'Pause' : 'Resume', () => legalRpc('legal_firm_set_paused', { p_firm_id: firm?.id, p_paused: paused })) }
+  const removeRecipient = async (id: string, name: string) => { await run('Remove', () => legalRpc('legal_firm_recipient_remove', { p_recipient_id: id })); showToast(`${name} removed from the firm's list.`, 'info') }
 
   const headerActs: ReactNode = !stored ? (
     <span style={{ ...MUTED, fontSize: '0.76rem' }}>Read-only until the legal tables are applied.</span>
@@ -409,6 +414,7 @@ export default function LegalDeskModal(props: LegalDeskModalProps) {
             <div style={{ fontWeight: 600 }}>Legal · Collections accounts</div>
             <div style={{ ...MUTED, fontSize: '0.78rem' }}>Two exits: attorney-ready (a dev — that is what puts it with the firm) or write it down. {firm ? `Firm: ${firm.name}.` : stored ? 'No firm yet — add one on Settings → Jobs & dispatch.' : ''}</div>
           </div>
+          {stored && firm && canEditReview ? <button type="button" onClick={() => setEmailsOpen(true)} style={btn} title="Who at the firm hears from us, by their own rules">✉ Firm’s emails{firmPaused ? ' · paused' : ''}</button> : null}
           {stored && firm && canEditReview ? <LegalPortalLinkButton firmId={firm.id} firmName={firm.name} /> : null}
           <button type="button" onClick={onClose} aria-label="Close" style={{ ...btn, height: 30, width: 30, justifyContent: 'center', padding: 0 }}>✕</button>
         </div>
@@ -549,9 +555,9 @@ export default function LegalDeskModal(props: LegalDeskModalProps) {
                 {packet.worth.verdict === 'not worth it' ? <p style={{ fontSize: '0.84rem', color: '#b42318', margin: '0 0 8px' }}><b>Click keeps {formatLegalMoney(packet.worth.net)}.</b> The firm’s cut and costs eat what is left. Write down / stop pursuing is the other exit.</p> : null}
                 {packet.readiness.stops ? <p style={{ fontSize: '0.84rem', color: '#b42318', margin: '0 0 8px' }}><b>{packet.readiness.stops} red gap{packet.readiness.stops === 1 ? '' : 's'} still open</b> — {packet.gaps.filter((g) => g.severity === 'stop').map((g) => g.label).join('; ')}. You can mark anyway; the packet says so on its cover sheet.</p> : null}
                 <label style={{ fontSize: '0.84rem', display: 'block' }}>Handling person at the firm<input value={sheet.handling} onChange={(e) => setSheet({ ...sheet, handling: e.target.value })} placeholder={firm.handling_name || 'Who at the firm takes it'} style={sheetInput} /></label>
-                <div style={{ fontSize: '0.72rem', letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-muted)' }}>Who hears about it</div>
-                {recipients.length ? recipients.map((r) => <div key={r.email} style={{ fontSize: '0.84rem', padding: '5px 0', borderTop: '1px solid var(--border-subtle)' }}>{pill('Email now', 'legal')} <b>{r.name}</b> <span style={MUTED}>{r.email} · {r.why}</span></div>) : <p style={{ ...MUTED, fontSize: '0.82rem' }}>No email on the firm — nobody is emailed; the matter still appears on their portal.</p>}
-                <p style={{ ...MUTED, fontSize: '0.76rem', margin: '6px 0 0' }}>The firm’s own people and their email rules arrive with the portal; the email itself sends once the portal exists.</p>
+                <div style={{ fontSize: '0.72rem', letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-muted)', display: 'flex', justifyContent: 'space-between' }}><span>Who hears about it, by their own rules</span><button type="button" onClick={() => setEmailsOpen(true)} style={{ ...btn, height: 22, fontSize: '0.7rem', textTransform: 'none', letterSpacing: 0 }}>Firm’s emails ↗</button></div>
+                {recipients.length ? recipients.map((r) => <div key={r.email} style={{ fontSize: '0.84rem', padding: '5px 0', borderTop: '1px solid var(--border-subtle)' }}>{pill(r.bucket === 'now' ? 'Email now' : r.bucket === 'digest' ? 'In their digest' : r.bucket === 'unconfirmed' ? 'Not confirmed' : 'Not emailed', r.bucket === 'now' ? 'legal' : r.bucket === 'unconfirmed' ? 'warn' : 'neutral')} <b>{r.name}</b> <span style={MUTED}>{r.email} · {r.why}</span></div>) : <p style={{ ...MUTED, fontSize: '0.82rem' }}>Nobody at the firm is on the list — nobody is emailed; the matter still appears on their portal.</p>}
+                {firmPaused ? <p style={{ fontSize: '0.82rem', color: '#b42318', margin: '6px 0 0' }}>All emails to the firm are paused — the matter still appears on their portal; nobody is emailed.</p> : null}
                 <label style={{ fontSize: '0.84rem', display: 'block', marginTop: 8 }}>Note for the firm (optional)<textarea value={sheet.note} onChange={(e) => setSheet({ ...sheet, note: e.target.value })} rows={2} placeholder="e.g. Pursue the GC first; the owner disputes nothing." style={sheetInput} /></label>
               </>
             )}
@@ -591,6 +597,36 @@ export default function LegalDeskModal(props: LegalDeskModalProps) {
         </div>
       ) : null}
 
+      {emailsOpen && firm ? (
+        <div role="presentation" onClick={() => setEmailsOpen(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.35)', zIndex: overlayZIndex + 12, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 14 }}>
+          <div role="dialog" aria-modal="true" aria-label="Who at the firm hears from us" onClick={(e) => e.stopPropagation()} style={{ background: 'var(--surface)', color: 'var(--text)', borderRadius: 10, padding: 18, maxWidth: 640, width: '100%', boxShadow: '0 12px 40px rgba(0,0,0,0.28)' }}>
+            <h3 style={{ margin: '0 0 4px', fontSize: '1rem' }}>✉ Who at {firm.name} hears from us</h3>
+            <p style={{ ...MUTED, fontSize: '0.8rem', margin: '0 0 10px' }}>Managed by the firm on their portal’s Notifications page. The office keeps two overrides: pause everything, and remove a person. A new address is inert until they click their confirmation; every email carries a one-click stop.</p>
+            {(legal?.recipients ?? []).length === 0 ? <p style={{ fontSize: '0.84rem' }}>Nobody on the list yet{firm.email ? ` — the firm row’s ${firm.email} hears about releases until someone is added.` : '.'}</p> : (
+              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <thead><tr><th style={TH}>Person</th><th style={TH}>Hears</th><th style={TH}>Scope</th><th style={TH}>Status</th><th style={TH}></th></tr></thead>
+                <tbody>
+                  {(legal?.recipients ?? []).map((r) => (
+                    <tr key={r.id}>
+                      <td style={TD}><b>{r.name}</b><div style={{ ...MUTED, fontSize: '0.76rem' }}>{r.email}{r.role ? ` · ${r.role}` : ''}</div></td>
+                      <td style={TD}>{r.mode === 'digest' ? `${WEEKDAY_LABELS[r.digest_weekday] ?? 'Mon'} ${r.digest_time} digest` : 'right away'}</td>
+                      <td style={TD}>{r.scope === 'mine' ? 'only their matters' : 'every matter'}</td>
+                      <td style={TD}>{r.paused_at ? pill('stopped', 'neutral') : r.confirmed_at ? pill('confirmed', 'ok') : pill('not confirmed', 'warn')}</td>
+                      <td style={TD}><button type="button" onClick={() => void removeRecipient(r.id, r.name)} disabled={busy} style={btn}>Remove</button></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 12, flexWrap: 'wrap' }}>
+              {firmPaused ? <button type="button" onClick={() => void setFirmPaused(false)} disabled={busy} style={btnPrimary}>Resume emails to the firm</button> : <button type="button" onClick={() => void setFirmPaused(true)} disabled={busy} style={{ ...btn, color: '#b42318', borderColor: '#b42318' }}>Pause all emails to the firm</button>}
+              <span style={{ ...MUTED, fontSize: '0.76rem' }}>{firmPaused ? 'Paused — events queue and send when you resume.' : 'A new account referred, an office answer, a pull-back: each person hears right away or in their digest.'}</span>
+              <span style={{ flex: 1 }} />
+              <button type="button" onClick={() => setEmailsOpen(false)} style={btn}>Close</button>
+            </div>
+          </div>
+        </div>
+      ) : null}
       {writeDown ? (
         <AgreedWriteDownModal
           open

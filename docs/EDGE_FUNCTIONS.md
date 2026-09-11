@@ -118,6 +118,7 @@ when_to_read:
    - [submit-sub-portal](#submit-sub-portal)
    - [legal-portal](#legal-portal)
    - [submit-legal-portal](#submit-legal-portal)
+   - [legal-notify-dispatch](#legal-notify-dispatch)
    - [get-estimate-public-terms](#get-estimate-public-terms)
    - [accept-estimate](#accept-estimate)
    - [send-estimate-to-customer](#send-estimate-to-customer)
@@ -1423,9 +1424,19 @@ Devs: **Settings → Templates & testing → Workflow email (Edge Function)** (c
 
 **Purpose**: The firm's acts on its portal (Legal portal train PR 4, v2.3322): one POST, token-authenticated like `submit-sub-portal`. `{ token, matterId, kind, … }` with `kind` one of **`fee` · `cost`** (`amount`, `note` — rolls into the matter's total demand), **`step`** (`stage` = `demand` · `suit` · `judgment` · `settled`, optional `note` — moves `legal_matters.stage`; `settled` also stamps `closed_at`), **`question`** (`note`), **`payment_received`** (`amount`, `note` — money the firm holds; the office applies it to the job and records the firm's cut from the desk). Every act is one `legal_matter_entries` row with `via_portal = true` and `acknowledged_at NULL` — exactly what the office's "The law firm has N things for you" Needs You card reads; the desk's Fees & steps tab answers, applies or acknowledges each (`legal_add_entry`, `legal_acknowledge_entry`).
 
+**Recipients** (v2.3325): `recipient_add` (`name`, `email`, `role`, optional `mode` / `scope`; 12 people per firm; one live row per address; sends the confirmation email with a hashed token), `recipient_rules` (`recipientId`, `mode`, `scope`, `digestWeekday` 1–7, `digestTime` HH:MM), `recipient_stop` / `recipient_resume` (`paused_at`), `recipient_resend`. No `matterId` needed for these.
+
 **Guards**: honeypot `website` (pretends success, writes nothing); the matter must belong to the token's firm and be in the with-firm set (403 otherwise); 30 portal acts per firm per hour (429); amounts 0 < n ≤ 1,000,000; bodies capped at 2,000 chars. The firm never marks anything paid, edits a job, or emails a customer through us.
 
 **Auth**: `verify_jwt = false` — the link is the capability. **Endpoint**: `POST /functions/v1/submit-legal-portal`. **Deploy**: after the v2.3313 migration (entries table) — alongside `legal-portal`.
+
+### legal-notify-dispatch
+
+**Purpose**: The firm's emails (Legal portal train PR 5, v2.3325). Two doors. **`POST`** from pg_cron (`legal-notify-dispatch`, `1-56/5 * * * *`, `X-Cron-Secret`): (1) drains `legal_notification_queue` rows without `sent_now_at` — every confirmed, unpaused recipient at the firm with `mode = 'now'` (and, for `scope = 'mine'`, only when named as the matter's `handling_name`) gets one email per event (`referred` · `answer` · `pulled`), then the row is stamped; (2) digests — each confirmed, unpaused `mode = 'digest'` recipient whose `digest_weekday` matches the Central weekday and whose `digest_time` has passed, and who has not had today's digest (`last_digest_at`), gets one email listing every open matter for the firm plus the events since their last digest; events are stamped `digested_at` once the firm's last eligible digest of the day went. A firm with `legal_firms.paused_at` sends nothing; the queue waits. **`GET ?confirm=<token>`** activates a recipient (`confirmed_at`; nothing is sent to an address before this) and **`GET ?unsubscribe=<token>`** pauses one — plain HTML pages, the token is the capability (hashes at rest; the unsubscribe token rotates per email).
+
+**Sends**: `sendEmailViaResend` (`RESEND_API_KEY`); the portal link from `APP_ORIGIN`; every email ends with the one-click stop link. Wording is fixed (catalog ids `legal_referral`, `legal_digest`; the confirmation is `legal_recipient_confirm`, sent by `submit-legal-portal`).
+
+**Auth**: `verify_jwt = false`; cron `POST` is gated by `CRON_SECRET`, `GET` by the tokens. **Deploy**: after the v2.3325 migration (tables, triggers, cron). **Required secrets**: `CRON_SECRET`, `RESEND_API_KEY`; optional `APP_ORIGIN`.
 
 ### get-estimate-public-terms
 
