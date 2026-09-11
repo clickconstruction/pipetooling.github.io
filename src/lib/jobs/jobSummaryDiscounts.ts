@@ -20,7 +20,9 @@ export type DiscountLeakageRowInput = {
 export type DiscountEventInput = {
   job_id: string
   actor_user_id: string | null
-  detail: Record<string, unknown> | null
+  /** ISO — the latest discount_added on a job names its giver. */
+  occurred_at?: string | null
+  detail?: Record<string, unknown> | null
 }
 
 export type DiscountLeakageLine = { key: string; label: string; jobs: number; givenUsd: number; sharePct: number | null }
@@ -76,19 +78,27 @@ export function jobSummaryDiscountLeakage(args: {
     .map(([key, v]) => ({ key, label: key, jobs: v.jobs.size, givenUsd: round2(v.usd), sharePct: share(v.usd, revenueUsd) }))
     .sort((a, b) => b.givenUsd - a.givenUsd || a.label.localeCompare(b.label))
 
-  // By giver: the trail — one discount_added per real add, dollars in detail.
+  // By giver: the trail names WHO; the rows say HOW MUCH. A job's current
+  // discount dollars go to the actor of its latest discount_added — summing
+  // the events themselves would count every discount ever added and since
+  // removed or changed (the live check on job 892 showed $26,892 of history
+  // against a $3,774.50 discount).
   const inView = new Map(rows.map((r) => [r.job.id, r]))
-  const giver = new Map<string, { jobs: Set<string>; usd: number }>()
+  const latestByJob = new Map<string, { at: string; actor: string | null }>()
   for (const e of events) {
-    const row = inView.get(e.job_id)
-    if (!row) continue
-    const d = e.detail?.dollars
-    const usd = typeof d === 'number' && Number.isFinite(d) ? d : typeof d === 'string' && Number.isFinite(Number(d)) ? Number(d) : 0
-    if (!(usd > 0)) continue
-    const key = e.actor_user_id ?? 'system'
+    if (!inView.has(e.job_id)) continue
+    const at = e.occurred_at ?? ''
+    const cur = latestByJob.get(e.job_id)
+    if (!cur || at > cur.at) latestByJob.set(e.job_id, { at, actor: e.actor_user_id })
+  }
+  const giver = new Map<string, { jobs: Set<string>; usd: number }>()
+  for (const r of discounted) {
+    const latest = latestByJob.get(r.job.id)
+    if (!latest) continue
+    const key = latest.actor ?? 'system'
     const cur = giver.get(key) ?? { jobs: new Set<string>(), usd: 0 }
-    cur.jobs.add(e.job_id)
-    cur.usd += usd
+    cur.jobs.add(r.job.id)
+    cur.usd += r.discountUsd
     giver.set(key, cur)
   }
   const byGiver: DiscountLeakageLine[] = [...giver.entries()]

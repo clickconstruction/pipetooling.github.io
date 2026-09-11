@@ -271,14 +271,21 @@ describe('enrichJobsLedgerPrimaryRows', () => {
     expect(tables()).toEqual(['jobs_ledger_materials', 'jobs_ledger_fixtures', 'job_schedule_blocks', 'estimates'])
   })
 
-  it('the Job Summary slim path batches materials only', async () => {
-    route = (table) => (table === 'jobs_ledger' ? [fullRow] : table === 'jobs_ledger_materials' ? [{ id: 'm1', job_id: 'j1', sequence_order: 1 }] : [])
+  it('the Job Summary slim path batches materials and the discount rows only (v2.3273)', async () => {
+    route = (table) =>
+      table === 'jobs_ledger'
+        ? [fullRow]
+        : table === 'jobs_ledger_materials'
+          ? [{ id: 'm1', job_id: 'j1', sequence_order: 1 }]
+          : table === 'jobs_ledger_fixtures'
+            ? [{ id: 'd1', job_id: 'j1', sequence_order: 3, name: 'Negotiated discount', line_unit_price: -100, line_kind: 'discount' }]
+            : []
     const r = await fetchJobsLedgerWithDetailsForStages({ jobSummaryEnrich: true })
-    expect(tables()).toEqual(['jobs_ledger', 'jobs_ledger_materials'])
+    expect(tables()).toEqual(['jobs_ledger', 'jobs_ledger_materials', 'jobs_ledger_fixtures'])
     expect(r.ok && r.jobs[0]).toMatchObject({
       id: 'j1',
       materials: [{ id: 'm1' }],
-      fixtures: [],
+      fixtures: [{ id: 'd1', line_kind: 'discount' }],
       gcCustomer: { id: 'gc1', name: 'GC' },
       last_schedule_work_date: null,
       linkedEstimateForStages: null,

@@ -288,6 +288,10 @@ const MATERIALS_ONLY_CHUNK = 150
  * Job Summary tab: same primary row shape as Stages, but only loads `jobs_ledger_materials` (billed line items)
  * and skips Stages-only passes (fixtures, schedule blocks, estimates) to reduce queries and time.
  * Job Summary cost math only needs `materials` for billed sum, not `fixtures` or schedule/estimate banner fields.
+ *
+ * Discount rows are the one exception (v2.3273): `fixtures` carries ONLY the job's discount line items
+ * (`line_kind = 'discount'`, plus legacy negative rows) — the leakage figure, the − discount chip and the
+ * discount fold read them; nothing else on this path reads `fixtures`.
  */
 export async function enrichJobsLedgerPrimaryRowsJobSummarySlim(
   rows: JobsLedgerStagesPrimaryRow[],
@@ -339,25 +343,44 @@ export async function enrichJobsLedgerPrimaryRowsJobSummarySlim(
   })
 
   const materialsByJobId = new Map<string, JobsLedgerMaterial[]>()
+  const discountsByJobId = new Map<string, JobsLedgerFixture[]>()
   try {
     const ids = jobsWithDetails.map((j) => j.id)
     for (let i = 0; i < ids.length; i += MATERIALS_ONLY_CHUNK) {
       const chunk = ids.slice(i, i + MATERIALS_ONLY_CHUNK)
-      const matRes = await withSupabaseRetry(
-        async () =>
-          supabase.from('jobs_ledger_materials').select(JOBS_LEDGER_MATERIALS_EMBED).in('job_id', chunk),
-        'jobs_ledger_materials batch for job summary',
-      )
+      const [matRes, discRes] = await Promise.all([
+        withSupabaseRetry(
+          async () =>
+            supabase.from('jobs_ledger_materials').select(JOBS_LEDGER_MATERIALS_EMBED).in('job_id', chunk),
+          'jobs_ledger_materials batch for job summary',
+        ),
+        withSupabaseRetry(
+          async () =>
+            supabase
+              .from('jobs_ledger_fixtures')
+              .select(JOBS_LEDGER_FIXTURES_EMBED)
+              .in('job_id', chunk)
+              .or('line_kind.eq.discount,line_unit_price.lt.0'),
+          'jobs_ledger_fixtures discount rows for job summary',
+        ),
+      ])
       for (const m of (matRes ?? []) as unknown as JobsLedgerMaterial[]) {
         const jid = m.job_id
         const arr = materialsByJobId.get(jid) ?? []
         arr.push(m)
         materialsByJobId.set(jid, arr)
       }
+      for (const f of (discRes ?? []) as unknown as JobsLedgerFixture[]) {
+        const jid = f.job_id
+        const arr = discountsByJobId.get(jid) ?? []
+        arr.push(f)
+        discountsByJobId.set(jid, arr)
+      }
     }
     jobsWithDetails = jobsWithDetails.map((j) => ({
       ...j,
       materials: (materialsByJobId.get(j.id) ?? []).sort((a, b) => a.sequence_order - b.sequence_order),
+      fixtures: (discountsByJobId.get(j.id) ?? []).sort((a, b) => a.sequence_order - b.sequence_order),
     }))
   } catch (e) {
     console.warn('enrichJobsLedgerPrimaryRowsJobSummarySlim: materials batch failed', e)

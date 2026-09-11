@@ -11,10 +11,12 @@ describe('jobSummaryDiscountLeakage', () => {
     { job: { id: 'j4', fixtures: [{ name: 'Trim', count: 1, line_unit_price: 700 }] }, revenueUsd: 700, discountUsd: 0 },
   ]
   const events = [
-    { job_id: 'j1', actor_user_id: 'u-t', detail: { dollars: 3774.5 } },
-    { job_id: 'j2', actor_user_id: 'u-t', detail: { dollars: '120' } },
-    { job_id: 'j3', actor_user_id: null, detail: { dollars: 100 } },
-    { job_id: 'zz', actor_user_id: 'u-r', detail: { dollars: 999 } },
+    // j1: Robert added a first discount, later removed; Taunya added the one that stands.
+    { job_id: 'j1', actor_user_id: 'u-r', occurred_at: '2026-09-01T10:00:00Z', detail: { dollars: 9999 } },
+    { job_id: 'j1', actor_user_id: 'u-t', occurred_at: '2026-09-05T10:00:00Z', detail: { dollars: 3774.5 } },
+    { job_id: 'j2', actor_user_id: 'u-t', occurred_at: '2026-09-06T10:00:00Z', detail: { dollars: '120' } },
+    { job_id: 'j3', actor_user_id: null, occurred_at: '2026-09-07T10:00:00Z', detail: { dollars: 100 } },
+    { job_id: 'zz', actor_user_id: 'u-r', occurred_at: '2026-09-08T10:00:00Z', detail: { dollars: 999 } },
   ]
   const names = new Map([['u-t', 'Taunya']])
 
@@ -30,7 +32,7 @@ describe('jobSummaryDiscountLeakage', () => {
       { key: 'No reason given', label: 'No reason given', jobs: 1, givenUsd: 100, sharePct: 0.26 },
     ])
   })
-  it('by giver from the trail: dollars from the event, share of the giver\'s own jobs, events off-view ignored', () => {
+  it('by giver: the latest giver on each job gets the job\'s CURRENT discount, share of their own jobs; history and off-view events ignored', () => {
     const out = jobSummaryDiscountLeakage({ rows, events, actorNames: names })
     expect(out.byGiver).toEqual([
       { key: 'u-t', label: 'Taunya', jobs: 2, givenUsd: 3894.5, sharePct: 10.74 },

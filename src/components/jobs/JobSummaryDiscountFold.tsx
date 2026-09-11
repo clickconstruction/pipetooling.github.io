@@ -40,11 +40,11 @@ export function JobSummaryDiscountFold({ rows }: { rows: readonly DiscountLeakag
         for (let i = 0; i < jobIds.length; i += 200) {
           const chunk = jobIds.slice(i, i + 200)
           const data = await withSupabaseRetry(
-            async () => await supabase.from('job_activity_events').select('job_id, actor_user_id, detail').eq('event_type', 'discount_added').in('job_id', chunk),
+            async () => await supabase.from('job_activity_events').select('job_id, actor_user_id, occurred_at, detail').eq('event_type', 'discount_added').in('job_id', chunk),
             'Job Summary discount events',
           )
-          for (const e of (data ?? []) as Array<{ job_id: string; actor_user_id: string | null; detail: unknown }>) {
-            all.push({ job_id: e.job_id, actor_user_id: e.actor_user_id, detail: e.detail && typeof e.detail === 'object' && !Array.isArray(e.detail) ? (e.detail as Record<string, unknown>) : null })
+          for (const e of (data ?? []) as Array<{ job_id: string; actor_user_id: string | null; occurred_at: string | null; detail: unknown }>) {
+            all.push({ job_id: e.job_id, actor_user_id: e.actor_user_id, occurred_at: e.occurred_at, detail: e.detail && typeof e.detail === 'object' && !Array.isArray(e.detail) ? (e.detail as Record<string, unknown>) : null })
           }
         }
         const actorIds = [...new Set(all.map((e) => e.actor_user_id).filter((v): v is string => !!v))]
