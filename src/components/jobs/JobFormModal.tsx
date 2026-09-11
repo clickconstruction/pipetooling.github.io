@@ -30,6 +30,7 @@ import { fetchUserDisplayNames, userDisplayLabel } from '../../lib/userDisplayNa
 import { billsAheadRemedyHint } from '../../lib/jobs/editJobInvoiceSendBack'
 import { useAuth } from '../../hooks/useAuth'
 import { useJobHazmatIncidents } from '../../hooks/useJobHazmatIncidents'
+import { JobFormBillJobAccountNote } from './JobFormBillJobAccountNote'
 import { sumHazmatRiderFees, type JobHazmatIncidentRow } from '../../lib/hazmatIncidents'
 import { linkHazmatFeeIncidentToInvoice } from '../../lib/hazmatFeeEdit'
 import { useToastContext } from '../../contexts/ToastContext'
@@ -4027,6 +4028,18 @@ export default function JobFormModal({
               }}
             />
           </div>
+          {/* Job-account note (v2.3257): job window only — the standalone New
+              Job form has no job yet. Renders nothing without a packet on record. */}
+          {embedded && editing?.id ? (
+            <div style={{ marginBottom: '1rem' }}>
+              <JobFormBillJobAccountNote
+                jobId={editing.id}
+                enabled={authRole === 'dev' || authRole === 'master_technician' || isAssistantLike(authRole)}
+                supplyInvoiceLines={supplyInvoiceLines}
+                onOpenCosts={onRequestRegion ? () => onRequestRegion('costs') : null}
+              />
+            </div>
+          ) : null}
           <div style={{ marginBottom: '1rem' }}>
           {editing && (
             <>

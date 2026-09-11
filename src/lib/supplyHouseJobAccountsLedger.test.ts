@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  billTabJobAccountNote,
   groupJobAccountLedger,
   jobAccountShareIconTitle,
   shareContactDisplay,
@@ -83,5 +84,30 @@ describe('jobAccountShareIconTitle', () => {
         fmt,
       ),
     ).toBe('Job account on file — shared with Ferguson — Central desk · 2026-08-12 · +1 more. Click for history or to resend.')
+  })
+})
+
+describe('billTabJobAccountNote', () => {
+  const fmt = (iso: string) => iso.slice(0, 10)
+  it('is null with no packet on record', () => {
+    expect(billTabJobAccountNote([], 3240.5, fmt)).toBeNull()
+  })
+  it('names the house from the newest send, drops the desk suffix, and adds the flagged line only when dollars exist', () => {
+    const rows = [
+      row({ sent_at: '2026-08-10T10:00:00Z', contact_label: 'Ferguson — Central desk' }),
+      row({ sent_at: '2026-08-19T15:00:00Z', contact_label: 'Reece — Georgetown desk', sent_by_name: 'Taunya' }),
+    ]
+    expect(billTabJobAccountNote(rows, 3240.5, fmt)).toEqual({
+      headline: 'Job account on file with Reece',
+      sentLine: 'packet sent 2026-08-19 by Taunya',
+      whatItMeans: 'If material invoices on this job go unpaid, Reece bills the property owner — not you.',
+      flaggedLine: "$3,240.50 of this job's unpaid supplier invoices are on the account.",
+    })
+    expect(billTabJobAccountNote(rows, 0, fmt)!.flaggedLine).toBeNull()
+  })
+  it('falls back to the email and omits "by" when the sender is blank', () => {
+    const note = billTabJobAccountNote([row({ contact_label: '', contact_email: 'orders@winn.com', sent_by_name: ' ' })], 0, fmt)!
+    expect(note.headline).toBe('Job account on file with orders@winn.com')
+    expect(note.sentLine).toBe('packet sent 2026-08-12')
   })
 })
