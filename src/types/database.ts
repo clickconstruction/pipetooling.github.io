@@ -1913,6 +1913,7 @@ export type Database = {
           materials_model: string
           notes: string | null
           outcome: string | null
+          outcome_at: string | null
           plan_pages: string | null
           plans_link: string | null
           plans_robot_probe_note: string | null
@@ -1988,6 +1989,7 @@ export type Database = {
           materials_model?: string
           notes?: string | null
           outcome?: string | null
+          outcome_at?: string | null
           plan_pages?: string | null
           plans_link?: string | null
           plans_robot_probe_note?: string | null
@@ -2063,6 +2065,7 @@ export type Database = {
           materials_model?: string
           notes?: string | null
           outcome?: string | null
+          outcome_at?: string | null
           plan_pages?: string | null
           plans_link?: string | null
           plans_robot_probe_note?: string | null
@@ -9226,8 +9229,8 @@ export type Database = {
       }
       jobs_ledger_fixtures: {
         Row: {
-          count: number
           bill_to_party: string | null
+          count: number
           created_at: string | null
           discount_basis_positions: number[] | null
           discount_pct: number | null
@@ -9248,8 +9251,8 @@ export type Database = {
           stage_kind: string | null
         }
         Insert: {
-          count?: number
           bill_to_party?: string | null
+          count?: number
           created_at?: string | null
           discount_basis_positions?: number[] | null
           discount_pct?: number | null
@@ -9270,8 +9273,8 @@ export type Database = {
           stage_kind?: string | null
         }
         Update: {
-          count?: number
           bill_to_party?: string | null
+          count?: number
           created_at?: string | null
           discount_basis_positions?: number[] | null
           discount_pct?: number | null
