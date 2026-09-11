@@ -13,6 +13,8 @@ import {
   JOB_SUMMARY_VIEW_MODE_OPTIONS,
   JOB_SUMMARY_WINDOW_OPTIONS,
   countJobSummaryUnderTarget,
+  countJobSummaryAssumed,
+  JOB_SUMMARY_BUDGET_OPTIONS,
   type JobSummaryDelta,
   type JobSummaryLedgerRowInput,
   type JobSummarySortKey,
@@ -141,6 +143,8 @@ export default function JobSummaryLedgerToolbar({
   const priorEmpty = compare != null && compare.totals.jobs === 0
   const dl = (d: JobSummaryDelta | undefined, fmt: (abs: number) => string, higherIsGood = true) => (d ? <DeltaLine d={d} fmt={fmt} higherIsGood={higherIsGood} vs={vs} loading={cmpLoading} priorEmpty={priorEmpty} /> : undefined)
   const underTarget = prefs.targetTrueMarginPct > 0 ? countJobSummaryUnderTarget(rows, prefs.targetTrueMarginPct) : 0
+  // The linking backlog (v2.3300): unfinished rows whose Burn budget is an assumption.
+  const assumedOpen = countJobSummaryAssumed(rows)
   /** Views that run on the visible rows (Show / Compare to / Target apply); Days and Timeline read the ledger directly. */
   const showView = prefs.view === 'jobs' || prefs.view === 'months' || prefs.view === 'cycle' || prefs.view === 'scatter'
   const rowsView = prefs.view === 'jobs' || prefs.view === 'months' || prefs.view === 'cycle'
@@ -202,6 +206,7 @@ export default function JobSummaryLedgerToolbar({
         ) : null}
         {prefs.view === 'jobs' ? <Segmented label="Cut by" value={prefs.cutBy} options={JOB_SUMMARY_CUT_OPTIONS} onChange={(cutBy) => setPrefs({ cutBy })} title="Group the table by one key — every group gets a subtotal and a ranked bar" /> : null}
         {showMoney && marginView ? <Segmented label="Target" value={prefs.targetTrueMarginPct} options={JOB_SUMMARY_TARGET_OPTIONS} onChange={(targetTrueMarginPct) => setPrefs({ targetTrueMarginPct })} title="Target true margin — jobs under it are flagged in the table and counted here" /> : null}
+        {showMoney && prefs.view === 'jobs' ? <Segmented label="Budget" value={prefs.budgetFilter} options={JOB_SUMMARY_BUDGET_OPTIONS} onChange={(budgetFilter) => setPrefs({ budgetFilter })} title="What each row's Burn budget stands on (v2.3300): ◆ the linked bid's estimate · ✎ a typed budget · ≈ price × (1 − target). Assumed is the linking backlog — open the job's Costs tab to link its bid." /> : null}
         {compare && rowsView ? (
           <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
             vs {formatStagesNextDateLabel(compare.startYmd)} {compare.startYmd.slice(0, 4)} → {formatStagesNextDateLabel(compare.endYmd)} {compare.endYmd.slice(0, 4)}
@@ -250,6 +255,11 @@ export default function JobSummaryLedgerToolbar({
       )}
       {prefs.view !== 'jobs' ? null : (
       <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
+        {showMoney && assumedOpen > 0 ? (
+          <span style={chipMuted} title="Unfinished jobs burning against price × (1 − target) — no bid linked and nothing typed. Open a job's Costs tab to link its bid; the Budget chip's ≈ assumed lists them">
+            ≈ {assumedOpen} open {assumedOpen === 1 ? 'job burns' : 'jobs burn'} against an assumption
+          </span>
+        ) : null}
         {showMoney && prefs.targetTrueMarginPct > 0 ? (
           <span style={underTarget > 0 ? chipRed : chipMuted} title="True margin below the target — sort by True % to see them first">
             {underTarget > 0 ? `▾ ${underTarget} ${underTarget === 1 ? 'job' : 'jobs'} under the ${prefs.targetTrueMarginPct}% target` : `every job clears the ${prefs.targetTrueMarginPct}% target`}

@@ -657,7 +657,7 @@ export default function JobsJobSummaryTab({
                     <JobSummarySortHeader label="Overhead" sortKey="overhead" view={view} title={JOB_OVERHEAD_METHODS.find((m) => m.key === view.prefs.method)?.title} />
                     <JobSummarySortHeader label={PROFIT_FIGURE_LABELS.trueProfit.label} sortKey="trueProfit" view={view} title={PROFIT_FIGURE_LABELS.trueProfit.tooltip} />
                     <JobSummarySortHeader label="True %" sortKey="trueMargin" view={view} title="True profit ÷ revenue" />
-                    <JobSummarySortHeader label="Burn" sortKey="projMargin" view={view} title="Spend vs progress (v2.3191): % of the budget spent · % complete. Budget = contract × (1 − target margin). Red when spend leads progress by more than 5 points; early = under 3 field days or 10 %" />
+                    <JobSummarySortHeader label="Burn" sortKey="projMargin" view={view} title="Spend vs progress (v2.3191): % of the budget spent · % complete. Budget = the linked bid's estimate (◆) or a typed budget (✎), else contract × (1 − target margin). Red when spend leads progress by more than 5 points; early = under 3 field days or 10 %" />
                     <JobSummarySortHeader label="Proj. margin" sortKey="projMargin" view={view} title="Projected true margin at completion: contract − spent ÷ % done − overhead so far − overhead per field day × field days left. Finished jobs show what happened" />
                     <JobSummarySortHeader label="$/hr" sortKey="revPerHour" view={view} title="Revenue ÷ approved field hours in the window — the realized rate" />
                     <JobSummarySortHeader
@@ -836,13 +836,15 @@ export default function JobsJobSummaryTab({
                                     : b.status === 'early'
                                       ? b.spentPct != null ? `${Math.round(b.spentPct)}% · early` : 'early'
                                       : `${Math.round(b.spentPct ?? 0)}% · ${Math.round(enriched.pct ?? 0)}%`
+                              // The footing glyph (v2.3300): ◆ bid · ✎ typed; the assumption stays unmarked so the table reads as before.
+                              const footingMark = showTeamLaborAndProfit && b && b.status !== 'no_budget' && b.footing !== 'assumed' ? `${enriched.budgetGlyph} ` : ''
                               const pm = showTeamLaborAndProfit ? burnProjectedMarginForSort(b) : null
                               const pmPct = b ? b.projectedTrueMarginPct ?? b.projectedMarginPct : null
                               const pmUnder = pm != null && (pm < 0 || (view.prefs.targetTrueMarginPct > 0 && pmPct != null && pmPct < view.prefs.targetTrueMarginPct))
                               return (
                                 <>
-                                  <td style={{ padding: '0.75rem', textAlign: 'right', whiteSpace: 'nowrap', fontWeight: hot ? 700 : undefined, color: burnColor }} title={b?.leadPts != null && b.status !== 'done' ? (b.leadPts > 0 ? `spend leads progress by ${Math.round(b.leadPts)} pts` : `progress leads spend by ${Math.round(-b.leadPts)} pts`) : undefined}>
-                                    {burnText}
+                                  <td style={{ padding: '0.75rem', textAlign: 'right', whiteSpace: 'nowrap', fontWeight: hot ? 700 : undefined, color: burnColor }} title={[b && b.status !== 'no_budget' ? (b.footing === 'bid' ? 'budget ◆ from the linked bid' : b.footing === 'typed' ? 'budget ✎ typed on the Costs tab' : 'budget ≈ assumed (price × (1 − target)) — link the bid on the Costs tab') : null, b?.leadPts != null && b.status !== 'done' ? (b.leadPts > 0 ? `spend leads progress by ${Math.round(b.leadPts)} pts` : `progress leads spend by ${Math.round(-b.leadPts)} pts`) : null].filter(Boolean).join(' · ') || undefined}>
+                                    {footingMark}{burnText}
                                   </td>
                                   <td style={{ padding: '0.75rem', textAlign: 'right', whiteSpace: 'nowrap', fontWeight: pmUnder ? 700 : undefined, color: pmUnder ? 'var(--text-red-700)' : 'var(--text-700)' }} title={b?.projectedTrueMarginUsd == null && b?.projectedMarginUsd != null ? 'Direct margin — overhead not loaded yet' : undefined}>
                                     {pm == null ? (b?.status === 'early' ? 'early' : '—') : <><SignedAmountSmallCents value={pm} />{pmPct != null ? <span style={{ marginLeft: 4, fontSize: '0.72rem', color: 'var(--text-muted)' }}>{Math.round(pmPct)}%</span> : null}</>}

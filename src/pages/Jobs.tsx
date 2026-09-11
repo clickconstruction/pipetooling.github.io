@@ -62,6 +62,7 @@ import { fetchAttributionsByMercuryTxIds } from '../lib/fetchMercuryRelationsByT
 import { useJobSummaryData } from '../hooks/useJobSummaryData'
 import { showJobCostBreakdownTeamLabor } from '../lib/jobDetailModalRole'
 import { buildPipelineBurnAlert, projectJobSummaryBurn } from '../lib/jobs/jobSummaryBurn'
+import { useJobBudgetFootings } from '../hooks/useJobBudgetFootings'
 import { resolveJobCurrentPercentFallback } from '../lib/jobSummaryPercentComplete'
 import { effectiveJobLedgerNumber } from '../lib/ledgerDisplayPrefixes'
 import {
@@ -1502,6 +1503,9 @@ export default function Jobs() {
   // Job Summary ledger view (v2.2692): prefs + the job day ledger + enriched rows;
   // page-side so the tab stays presentational.
   const jobSummaryUserNameById = useMemo(() => new Map(users.map((u) => [u.id, u.name])), [users])
+  // Budget footings (v2.3300): one job_budgets read for the rows Job Summary and the Pipeline burn card show.
+  const jobSummaryJobIds = useMemo(() => jobSummaryData.map((r) => r.job.id), [jobSummaryData])
+  const jobBudgetFootings = useJobBudgetFootings(jobSummaryJobIds, activeTab === 'job-summary' || (activeTab === 'stages' && pipelineBurnArmed && pipelineBurnWanted))
   const jobSummaryView = useJobSummaryView({
     enabled: activeTab === 'job-summary',
     userId: authUser?.id,
@@ -1511,6 +1515,7 @@ export default function Jobs() {
     search: jobSummarySearch,
     userNameById: jobSummaryUserNameById,
     initialView: searchParams.get('view'),
+    budgetByJobId: jobBudgetFootings,
   })
 
   // The Pipeline burn card (v2.3191): the Costs tab's arithmetic over the same
@@ -1538,11 +1543,12 @@ export default function Jobs() {
             fieldDays,
             overheadUsd: null,
             targetMarginPct: target,
+            budgetFooting: jobBudgetFootings.get(r.job.id) ?? null,
           }),
         }
       })
     return buildPipelineBurnAlert(rows)
-  }, [pipelineBurnArmed, pipelineBurnWanted, activeTab, teamLaborData.length, jobSummaryData, jobSummaryReportPctByJobId, jobSummaryView.prefs.targetTrueMarginPct])
+  }, [pipelineBurnArmed, pipelineBurnWanted, activeTab, teamLaborData.length, jobSummaryData, jobSummaryReportPctByJobId, jobSummaryView.prefs.targetTrueMarginPct, jobBudgetFootings])
 
   const subLaborOutstandingByPerson = useMemo(
     () =>

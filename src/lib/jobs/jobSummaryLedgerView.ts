@@ -1,4 +1,5 @@
-import { burnProjectedMarginForSort, projectJobSummaryBurn, type JobSummaryBurn } from './jobSummaryBurn'
+import { burnProjectedMarginForSort, projectJobSummaryBurn, type JobBudgetFooting, type JobSummaryBurn } from './jobSummaryBurn'
+import { JOB_BUDGET_GLYPH, type JobBudgetSource } from './jobBudget'
 import {
   jobSummaryPaidInvoiceOpts,
   resolveJobSummaryPercentCompleteWithSource,
@@ -79,6 +80,16 @@ export const JOB_SUMMARY_COMPARE_OPTIONS: ReadonlyArray<{ key: JobSummaryCompare
 ]
 
 /** Target true margin (v2.2817), whole percent; 0 = off. */
+/** Budget filter (v2.3300): what the rows' Burn budgets stand on; "assumed" is the linking backlog. */
+export type JobSummaryBudgetFilter = 'all' | 'bid' | 'typed' | 'assumed'
+export const JOB_SUMMARY_BUDGET_OPTIONS: ReadonlyArray<{ key: JobSummaryBudgetFilter; label: string; title: string }> = [
+  { key: 'all', label: 'all', title: 'Every job, whatever its budget stands on' },
+  { key: 'bid', label: '◆ from bid', title: 'Jobs whose budget is a snapshot of the linked bid’s estimate' },
+  { key: 'typed', label: '✎ typed', title: 'Jobs whose budget was typed on the Costs tab' },
+  { key: 'assumed', label: '≈ assumed', title: 'Jobs burning against price × (1 − target) — no bid linked, nothing typed. The linking backlog.' },
+]
+const BUDGET_FILTER_KEYS: readonly JobSummaryBudgetFilter[] = JOB_SUMMARY_BUDGET_OPTIONS.map((o) => o.key)
+
 export const JOB_SUMMARY_TARGET_OPTIONS: ReadonlyArray<{ key: number; label: string; title: string }> = [
   { key: 0, label: 'off', title: 'No target line' },
   { key: 30, label: '30%', title: 'Flag jobs whose true margin is under 30%' },
@@ -113,6 +124,8 @@ export type JobSummaryViewPrefs = {
   scatterSizeBy: JobSummaryScatterSizeBy
   /** Overhead dials (v2.3259, dev): a per-device exploration of the allocation settings; null = follow the app default. */
   overheadDials: OverheadAllocationSettings | null
+  /** Budget filter (v2.3300): all · from bid · typed · assumed. */
+  budgetFilter: JobSummaryBudgetFilter
 }
 
 export const JOB_SUMMARY_VIEW_STORAGE_KEY = 'jobs_jobSummary_view_v1'
@@ -133,6 +146,7 @@ export const JOB_SUMMARY_VIEW_DEFAULTS: JobSummaryViewPrefs = {
   monthsBookBy: 'work',
   scatterColorBy: 'trade',
   scatterSizeBy: 'hours',
+  budgetFilter: 'all',
   overheadDials: null,
 }
 
@@ -191,6 +205,7 @@ export function readJobSummaryViewPrefs(raw: string | null): JobSummaryViewPrefs
       scatterColorBy: p.scatterColorBy === 'gc' || p.scatterColorBy === 'tech' ? p.scatterColorBy : 'trade',
       scatterSizeBy: p.scatterSizeBy === 'days' || p.scatterSizeBy === 'none' ? p.scatterSizeBy : 'hours',
       overheadDials: p.overheadDials && typeof p.overheadDials === 'object' ? normalizeOverheadAllocationSettings(p.overheadDials) : null,
+      budgetFilter: BUDGET_FILTER_KEYS.includes(p.budgetFilter as JobSummaryBudgetFilter) ? (p.budgetFilter as JobSummaryBudgetFilter) : 'all',
     }
   } catch {
     return { ...JOB_SUMMARY_VIEW_DEFAULTS }
@@ -364,6 +379,11 @@ export type JobSummaryEnrichedRow<R extends JobSummaryLedgerRowInput = JobSummar
   flags: JobSummaryRowFlag[]
   /** Burn (v2.3191): spend vs progress and the projected margin, from this row's aggregates. */
   burn: JobSummaryBurn | null
+  /** What the Burn budget stands on (v2.3300): ◆ bid · ✎ typed · ≈ assumed. */
+  budgetFooting: JobBudgetSource
+  budgetGlyph: string
+  /** The Burn budget in dollars (the footing's, or price × (1 − target)); null without a price. */
+  budgetUsd: number | null
 }
 
 function jobLastWorkedYmd(job: JobSummaryLedgerRowInput['job'], ledger: JobDayLedger | null): string | null {
@@ -382,6 +402,8 @@ export function enrichJobSummaryRows<R extends JobSummaryLedgerRowInput>(args: {
   targetMarginPct?: number
   /** The overhead allocation in force (v2.3259); omitted = the original day-share. */
   settings?: OverheadAllocationSettings
+  /** Each job's budget footing (v2.3300) — the `job_budgets` rows; a job with none burns against the assumption. */
+  budgetByJobId?: ReadonlyMap<string, JobBudgetFooting>
 }): JobSummaryEnrichedRow<R>[] {
   const { rows, reportPctByJobId, ledger, method, settings } = args
   const targetMarginPct = args.targetMarginPct ?? 0
@@ -454,6 +476,7 @@ export function enrichJobSummaryRows<R extends JobSummaryLedgerRowInput>(args: {
       fieldDays: ledger ? daysInWindow : null,
       overheadUsd,
       targetMarginPct,
+      budgetFooting: args.budgetByJobId?.get(job.id) ?? null,
     })
     return {
       row,
@@ -484,6 +507,9 @@ export function enrichJobSummaryRows<R extends JobSummaryLedgerRowInput>(args: {
       lastWorkedYmd: jobLastWorkedYmd(job, ledger),
       flags,
       burn,
+      budgetFooting: burn.footing,
+      budgetGlyph: JOB_BUDGET_GLYPH[burn.footing],
+      budgetUsd: burn.budget?.usd ?? null,
     }
   })
 }
@@ -492,6 +518,16 @@ export function jobSummaryRowMatchesSearch(job: JobSummaryLedgerRowInput['job'] 
   const q = query.trim().toLowerCase()
   if (!q) return true
   return [job.hcp_number, job.click_number, job.job_name, job.job_address].some((v) => (v ?? '').toLowerCase().includes(q))
+}
+
+/** The Budget chip (v2.3300): all, or only the rows whose Burn budget stands on that footing. */
+export function jobSummaryRowInBudgetFilter(row: Pick<JobSummaryEnrichedRow, 'budgetFooting'>, filter: JobSummaryBudgetFilter): boolean {
+  return filter === 'all' || row.budgetFooting === filter
+}
+
+/** Unfinished rows burning against an assumption — the linking backlog the ≈ chip counts. */
+export function countJobSummaryAssumed(rows: readonly Pick<JobSummaryEnrichedRow, 'budgetFooting' | 'finished'>[]): number {
+  return rows.reduce((n, r) => n + (!r.finished && r.budgetFooting === 'assumed' ? 1 : 0), 0)
 }
 
 export function jobSummaryRowInStatus(row: JobSummaryEnrichedRow, status: JobSummaryStatusFilter): boolean {
@@ -582,7 +618,7 @@ export function filterAndSortJobSummaryRows<R extends JobSummaryLedgerRowInput &
 }): JobSummaryEnrichedRow<R>[] {
   const { rows, prefs, search, startYmd, endYmd } = args
   const visible = rows.filter(
-    (r) => jobSummaryRowMatchesSearch(r.row.job, search) && jobSummaryRowInStatus(r, prefs.status) && jobSummaryRowInWindow(r, prefs.window, startYmd, endYmd),
+    (r) => jobSummaryRowMatchesSearch(r.row.job, search) && jobSummaryRowInStatus(r, prefs.status) && jobSummaryRowInWindow(r, prefs.window, startYmd, endYmd) && jobSummaryRowInBudgetFilter(r, prefs.budgetFilter),
   )
   return sortJobSummaryRows(visible, prefs.sortKey, prefs.sortDir)
 }

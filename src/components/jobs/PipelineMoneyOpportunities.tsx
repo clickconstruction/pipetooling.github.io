@@ -191,10 +191,11 @@ export function PipelineMoneyOpportunities({
                 <span aria-hidden style={{ fontSize: '0.95rem' }}>🔥</span>
                 <span style={{ fontSize: '0.83rem', fontWeight: 600, minWidth: 0 }}>
                   {burnAlert.count === 1 ? '1 job burning' : `${burnAlert.count} jobs burning`} ahead of progress — {formatUsdNoCents(burnAlert.marginAtRiskUsd)} of margin at risk
+                  {burnAlert.assumedCount > 0 ? <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}> · {burnAlert.assumedCount === burnAlert.count ? 'all' : burnAlert.assumedCount} against an assumed budget</span> : null}
                 </span>
               </span>
               <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', flex: 1 }}>
-                {burnAlert.worst.map((w) => `${w.label} ${Math.round(w.spentPct)}% spent at ${Math.round(w.pct)}% done`).join(' · ')}
+                {burnAlert.worst.map((w) => `${w.glyph} ${w.label} ${Math.round(w.spentPct)}% spent at ${Math.round(w.pct)}% done`).join(' · ')}
                 {burnAlert.count > burnAlert.worst.length ? ` · +${burnAlert.count - burnAlert.worst.length} more` : ''}. Each opens on its Costs tab.
               </span>
               <span style={{ display: 'flex', gap: '0.4rem', justifyContent: 'flex-end', flexWrap: 'wrap' }}>

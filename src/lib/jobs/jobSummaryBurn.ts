@@ -1,4 +1,8 @@
 import { resolveJobBurnBudget, type JobBurnBudget } from './jobBurn'
+import { JOB_BUDGET_GLYPH, type JobBudgetSource } from './jobBudget'
+
+/** What a row's budget stands on (v2.3300): the linked bid's snapshot or a typed budget; absent = the assumption. */
+export type JobBudgetFooting = { usd: number; source: 'bid' | 'typed' }
 
 /**
  * Burn for a Job Summary row and the Pipeline card (v2.3191, mock-up part B).
@@ -22,6 +26,8 @@ export type JobSummaryBurnStatus = 'no_budget' | 'early' | 'ok' | 'hot' | 'done'
 export type JobSummaryBurn = {
   status: JobSummaryBurnStatus
   budget: JobBurnBudget | null
+  /** ◆ bid · ✎ typed · ≈ assumed (v2.3300) — what the budget stands on. */
+  footing: JobBudgetSource
   /** contract − budget: the margin the budget rule expects. */
   targetMarginUsd: number | null
   spentUsd: number
@@ -49,12 +55,16 @@ export function projectJobSummaryBurn(args: {
   overheadUsd: number | null
   /** Job Summary's Target chip (0 = off → the kernel default). */
   targetMarginPct: number
+  /** The job's budget footing (v2.3300); null / omitted = the assumption (price × (1 − target)). */
+  budgetFooting?: JobBudgetFooting | null
 }): JobSummaryBurn {
-  const budget = resolveJobBurnBudget({ priceUsd: args.contractUsd, bidEstimateUsd: null, targetMarginPct: args.targetMarginPct > 0 ? args.targetMarginPct : null })
+  const footing: JobBudgetSource = args.budgetFooting && args.budgetFooting.usd > 0 ? args.budgetFooting.source : 'assumed'
+  const budget = resolveJobBurnBudget({ priceUsd: args.contractUsd, bidEstimateUsd: footing === 'assumed' ? null : args.budgetFooting!.usd, targetMarginPct: args.targetMarginPct > 0 ? args.targetMarginPct : null })
   const spent = args.spentUsd
   const base: JobSummaryBurn = {
     status: 'no_budget',
     budget,
+    footing,
     targetMarginUsd: budget ? args.contractUsd - budget.usd : null,
     spentUsd: spent,
     spentPct: null,
@@ -125,6 +135,9 @@ export function burnProjectedMarginForSort(b: JobSummaryBurn | null | undefined)
 export type PipelineBurnAlertJob = {
   jobId: string
   label: string
+  /** ◆ ✎ ≈ — the footing the shortfall is measured against (v2.3300). */
+  footing: JobBudgetSource
+  glyph: string
   spentPct: number
   pct: number
   projectedMarginUsd: number
@@ -137,6 +150,8 @@ export type PipelineBurnAlert = {
   marginAtRiskUsd: number
   /** Worst three by shortfall. */
   worst: PipelineBurnAlertJob[]
+  /** How many of the hot jobs are measured against an assumption (v2.3300) — the linking backlog on the card. */
+  assumedCount: number
 }
 
 /**
@@ -152,6 +167,8 @@ export function buildPipelineBurnAlert(rows: ReadonlyArray<{ jobId: string; labe
     hot.push({
       jobId: r.jobId,
       label: r.label,
+      footing: b.footing,
+      glyph: JOB_BUDGET_GLYPH[b.footing],
       spentPct: b.spentPct,
       pct: Math.max(0, b.spentPct - (b.leadPts ?? 0)),
       projectedMarginUsd: b.projectedMarginUsd,
@@ -160,5 +177,5 @@ export function buildPipelineBurnAlert(rows: ReadonlyArray<{ jobId: string; labe
   }
   if (hot.length === 0) return null
   hot.sort((a, b) => b.atRiskUsd - a.atRiskUsd)
-  return { count: hot.length, marginAtRiskUsd: hot.reduce((s, h) => s + h.atRiskUsd, 0), worst: hot.slice(0, 3) }
+  return { count: hot.length, marginAtRiskUsd: hot.reduce((s, h) => s + h.atRiskUsd, 0), worst: hot.slice(0, 3), assumedCount: hot.filter((h) => h.footing === 'assumed').length }
 }
