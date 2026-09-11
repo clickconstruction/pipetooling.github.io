@@ -64,12 +64,17 @@ function daysBetween(a: string, b: string): number {
 }
 const near = (a: number, b: number, tol = 0.011) => Math.abs(a - b) <= tol
 
-/** Dollar-looking numbers in a memo: "1,809.20", "500", "300 and 100" → [1809.2, 500, 300, 100]. Cash App ids (#D-…) carry no digits-only runs of interest but are skipped anyway. */
+/**
+ * Dollar-looking numbers in a memo: "1,809.20", "500", "300 and 100" → [1809.2, 500, 300, 100].
+ * A number with a minus in front ("-500 for motorcycle") is money withheld, not sent, and is
+ * skipped. Cash App ids (#D-…) are removed first.
+ */
 export function memoAmounts(memo: string | null | undefined): number[] {
   if (!memo) return []
   const out: number[] = []
-  for (const m of memo.replace(/#D-[A-Z0-9]+/gi, ' ').matchAll(/(?<![A-Za-z0-9])\$?(\d{1,3}(?:,\d{3})+(?:\.\d{1,2})?|\d+(?:\.\d{1,2})?)(?![A-Za-z0-9])/g)) {
-    const n = Number((m[1] ?? '').replace(/,/g, ''))
+  for (const m of memo.replace(/#D-[A-Z0-9]+/gi, ' ').matchAll(/(-\s*)?(?<![A-Za-z0-9])\$?(\d{1,3}(?:,\d{3})+(?:\.\d{1,2})?|\d+(?:\.\d{1,2})?)(?![A-Za-z0-9])/g)) {
+    if (m[1]) continue
+    const n = Number((m[2] ?? '').replace(/,/g, ''))
     if (Number.isFinite(n) && n > 0) out.push(n)
   }
   return out
