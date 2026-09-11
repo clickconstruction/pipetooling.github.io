@@ -132,7 +132,18 @@ serve(async (req) => {
       }
       const { data: recRows } = await admin.from('legal_firm_recipients').select('*').eq('firm_id', firm.id).is('removed_at', null).not('confirmed_at', 'is', null).is('paused_at', null)
       const recipients = (recRows ?? []) as Recipient[]
-      if (recipients.length === 0) continue
+      const digestRecipients = recipients.filter((x) => x.mode === 'digest')
+      // An event is heard by whoever is subscribed when it happens — never replayed to whoever
+      // joins later. With nobody confirmed at the firm (the state every firm starts in) the queue
+      // is consumed as it arrives; with no digest people, the digest lane is consumed the same way.
+      // Otherwise the first person to confirm would get every release since the firm was created.
+      const stamp = new Date().toISOString()
+      if (recipients.length === 0) {
+        await admin.from('legal_notification_queue').update({ sent_now_at: stamp }).eq('firm_id', firm.id).is('sent_now_at', null)
+        await admin.from('legal_notification_queue').update({ digested_at: stamp }).eq('firm_id', firm.id).is('digested_at', null)
+        continue
+      }
+      if (digestRecipients.length === 0) await admin.from('legal_notification_queue').update({ digested_at: stamp }).eq('firm_id', firm.id).is('digested_at', null)
       const { data: linkRow } = await admin.from('legal_portal_links').select('token').eq('firm_id', firm.id).is('revoked_at', null).maybeSingle()
       const portal = portalLink(((linkRow as Row | null)?.token as string | null) ?? null)
       const { data: matterRows } = await admin.from('legal_matters').select('id, payer_name, stage, handling_name, released_at').eq('firm_id', firm.id).in('stage', WITH_FIRM)
@@ -179,7 +190,6 @@ serve(async (req) => {
         result.digests++
         await admin.from('legal_firm_recipients').update({ last_digest_at: new Date().toISOString(), updated_at: new Date().toISOString() }).eq('id', r.id)
         // An event is "digested" once every digest recipient who could see it has had it — approximate with the last digest recipient of the firm.
-        const digestRecipients = recipients.filter((x) => x.mode === 'digest')
         if (digestRecipients.every((x) => x.id === r.id || ymdInAppTz(x.last_digest_at) === today || x.digest_weekday !== weekday)) {
           const ids = events.map((e) => e.id)
           if (ids.length) await admin.from('legal_notification_queue').update({ digested_at: new Date().toISOString() }).in('id', ids)
