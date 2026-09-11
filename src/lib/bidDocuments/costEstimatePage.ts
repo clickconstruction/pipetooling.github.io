@@ -5,7 +5,7 @@ import { buildRoughLaborPageHtml, buildExactLaborPageHtml } from './laborPage'
 import { buildLaborSubSheetHtml, buildAllLaborSubSheetsHtml } from './laborSubSheet'
 import { laborRowHours, laborRowRough, laborRowTop, laborRowTrim } from '../bids/laborRowHours'
 import { normalizeMaterialsModel, sumRoughLinesPreTaxWithCount } from '../bids/bidTakeoffHelpers'
-import { computeTravelCost, costEstimateEstimatorCost } from '../bids/bidCostCalc'
+import { computeBidCostBreakdown, type DirectCostRowLike } from '../bids/bidTotalCostBreakdown'
 import { bidDisplayName } from '../bids/bidFormatting'
 import type { BidWithBuilder } from '../../types/bidWithBuilder'
 import type { BidCountRow } from '../../types/bids'
@@ -26,6 +26,8 @@ export type CostEstimatePrintContext = {
   drivingCostRate: string
   hoursPerTrip: string
   taxPercent: number
+  /** The five direct-cost tables as one list (v2.3292) — the Labor page prints "Other direct" and its total matches the Workbench. */
+  directCostRows?: ReadonlyArray<DirectCostRowLike> | null
 }
 
 export function printCostEstimatePOForReview(poName: string, items: CostEstimatePOModalItem[], taxPercent: number) {
@@ -99,24 +101,25 @@ export async function printCostEstimatePage(ctx: CostEstimatePrintContext) {
           quantity: Number(l.quantity),
         })),
     }))
-    const rate = ctx.laborRateInput.trim() === '' ? 0 : parseFloat(ctx.laborRateInput) || 0
-    const totalHours = estimateLaborRows.reduce((s, r) => s + laborRowHours(r), 0)
-    const laborCost = totalHours * rate
-    const distance = parseFloat(bid.distance_from_office ?? '0') || 0
-    const ratePerMile = parseFloat(ctx.drivingCostRate) || 0.7
-    const hrsPerTrip = parseFloat(ctx.hoursPerTrip) || 2.0
-    const numTrips = totalHours / hrsPerTrip
-    const drivingCost = numTrips * ratePerMile * distance
-    const estimatorCost = costEstimateEstimatorCost(costEstimate, countRows.length)
-    const travelCost = computeTravelCost(costEstimate)
-    const laborCostWithDriving = laborCost + drivingCost + estimatorCost + travelCost
-    const grandTotal = totalMaterials + laborCostWithDriving
+    const b = computeBidCostBreakdown({
+      materialTotalRoughIn: totalMaterials,
+      materialTotalTopOut: 0,
+      materialTotalTrimSet: 0,
+      laborRate: ctx.laborRateInput.trim() === '' ? 0 : parseFloat(ctx.laborRateInput) || 0,
+      laborRows: estimateLaborRows,
+      distanceFromOffice: bid.distance_from_office ?? null,
+      costEstimate,
+      countRowsLength: countRows.length,
+      directCostRows: ctx.directCostRows,
+      ratePerMileOverride: parseFloat(ctx.drivingCostRate) || 0.7,
+      hoursPerTripOverride: parseFloat(ctx.hoursPerTrip) || 2.0,
+    })
     printHtmlInNewWindow(
       buildRoughLaborPageHtml({
         title,
         rows: laborRows,
         totals: laborTotals,
-        costs: { totalMaterials, taxPercent, rate, totalHours, laborCost, distance, ratePerMile, numTrips, drivingCost, estimatorCost, travelCost, laborCostWithDriving, grandTotal },
+        costs: { totalMaterials, taxPercent, rate: b.rate, totalHours: b.totalLaborHours, laborCost: b.laborCost, distance: b.distance, ratePerMile: b.ratePerMile, numTrips: b.numTrips, drivingCost: b.drivingCost, estimatorCost: b.estimatorCost, travelCost: b.travelCost, laborCostWithDriving: b.laborCostWithDriving, otherDirectCost: b.otherDirectCost, grandTotal: b.totalCost },
         materials,
       }),
     )
@@ -155,26 +158,25 @@ export async function printCostEstimatePage(ctx: CostEstimatePrintContext) {
   ])
 
   const taxPercent = ctx.taxPercent
-  const rate = ctx.laborRateInput.trim() === '' ? 0 : parseFloat(ctx.laborRateInput) || 0
-  const totalHours = estimateLaborRows.reduce((s, r) => s + laborRowHours(r),
-    0
-  )
-  const laborCost = totalHours * rate
-  const distance = parseFloat(bid.distance_from_office ?? '0') || 0
-  const ratePerMile = parseFloat(ctx.drivingCostRate) || 0.70
-  const hrsPerTrip = parseFloat(ctx.hoursPerTrip) || 2.0
-  const numTrips = totalHours / hrsPerTrip
-  const drivingCost = numTrips * ratePerMile * distance
-  const estimatorCost = costEstimateEstimatorCost(costEstimate, countRows.length)
-  const travelCost = computeTravelCost(costEstimate)
-  const laborCostWithDriving = laborCost + drivingCost + estimatorCost + travelCost
-  const grandTotal = totalMaterials + laborCostWithDriving
+  const b = computeBidCostBreakdown({
+    materialTotalRoughIn: matRough,
+    materialTotalTopOut: matTop,
+    materialTotalTrimSet: matTrim,
+    laborRate: ctx.laborRateInput.trim() === '' ? 0 : parseFloat(ctx.laborRateInput) || 0,
+    laborRows: estimateLaborRows,
+    distanceFromOffice: bid.distance_from_office ?? null,
+    costEstimate,
+    countRowsLength: countRows.length,
+    directCostRows: ctx.directCostRows,
+    ratePerMileOverride: parseFloat(ctx.drivingCostRate) || 0.7,
+    hoursPerTripOverride: parseFloat(ctx.hoursPerTrip) || 2.0,
+  })
   printHtmlInNewWindow(
     buildExactLaborPageHtml({
       title,
       rows: laborRows,
       totals: laborTotals,
-      costs: { totalMaterials, taxPercent, rate, totalHours, laborCost, distance, ratePerMile, numTrips, drivingCost, estimatorCost, travelCost, laborCostWithDriving, grandTotal },
+      costs: { totalMaterials, taxPercent, rate: b.rate, totalHours: b.totalLaborHours, laborCost: b.laborCost, distance: b.distance, ratePerMile: b.ratePerMile, numTrips: b.numTrips, drivingCost: b.drivingCost, estimatorCost: b.estimatorCost, travelCost: b.travelCost, laborCostWithDriving: b.laborCostWithDriving, otherDirectCost: b.otherDirectCost, grandTotal: b.totalCost },
       pos: [
         { stageLabel: 'Rough In', poName: poRoughName, stageMaterialTotal: matRough, items: roughItems },
         { stageLabel: 'Top Out', poName: poTopName, stageMaterialTotal: matTop, items: topItems },

@@ -24,6 +24,8 @@ import type { LaborTabPanel } from '../../lib/bids/laborTabLoadGate'
 import { readStoredLaborView, writeStoredLaborView, type LaborView } from '../../lib/bids/laborView'
 import { LaborViewPills } from './LaborViewPills'
 import { BidsLaborNewView } from './BidsLaborNewView'
+import { buildCostEstimateAutosavePayload, laborRowAutosaveUpdate, stageAmountRowAutosaveUpdate } from '../../lib/bids/costEstimateAutosavePayload'
+import { directCostRowsFromTables } from '../../lib/bids/bidTotalCostBreakdown'
 import { asLaborEntryKind, asLaborUnit, LABOR_UNIT_WORDS, type LaborEntryKind, type LaborUnit } from '../../lib/bids/laborBookMatch'
 import { BidWorkflowTabTitleWithPreview } from './BidWorkflowTabTitleWithPreview'
 import { BidFlowStrip } from './BidFlowStrip'
@@ -253,7 +255,8 @@ export function BidsLaborTab({
     el.scrollIntoView({ block: 'center', behavior: 'smooth' })
     el.focus()
   }
-  const [costEstimateAutosaveStatus, setCostEstimateAutosaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle')
+  const [costEstimateAutosaveStatus, setCostEstimateAutosaveStatus] = useState<'idle' | 'saving' | 'saved' | 'invalid'>('idle')
+  const [costEstimateAutosaveReason, setCostEstimateAutosaveReason] = useState<string | null>(null)
   // J11-F8: per-cell save state for the autosaved inputs — each edit marks its key pending; the
   // autosave effect moves pending → saving → gone. The cell shows it (underline + title + aria-busy).
   const [cellSaves, setCellSaves] = useState<LaborCellSaveMap>(EMPTY_LABOR_CELL_SAVE_MAP)
@@ -314,29 +317,16 @@ export function BidsLaborTab({
     if (!costEstimate) return
 
     const timer = setTimeout(async () => {
+      // The boxes → the UPDATE, or the reason nothing can be saved (v2.3292: the status no longer sticks on "Saving…").
+      const payload = buildCostEstimateAutosavePayload({ laborRateInput, drivingCostRate, hoursPerTrip, estimatorCostUseFlat, estimatorCostPerCount, estimatorCostFlatAmount, travelPeople, travelNights, travelMealsRate, travelHotelRate })
+      if (!payload.ok) {
+        setCostEstimateAutosaveStatus('invalid')
+        setCostEstimateAutosaveReason(payload.reason)
+        return
+      }
+      setCostEstimateAutosaveReason(null)
       setCostEstimateAutosaveStatus('saving')
       setCellSaves(beginLaborCellSaves)
-
-      const laborRateNum = laborRateInput.trim() === '' ? null : parseFloat(laborRateInput)
-      const drivingCostRateNum = drivingCostRate.trim() === '' ? 0.70 : parseFloat(drivingCostRate)
-      const hoursPerTripNum = hoursPerTrip.trim() === '' ? 2.0 : parseFloat(hoursPerTrip)
-
-      // Skip autosave if validation fails
-      if (laborRateInput.trim() !== '' && (isNaN(laborRateNum!) || laborRateNum! < 0)) return
-      if (isNaN(drivingCostRateNum) || drivingCostRateNum < 0) return
-      if (isNaN(hoursPerTripNum) || hoursPerTripNum <= 0) return
-      const estimatorCostPerCountNum = estimatorCostUseFlat ? null : (parseFloat(estimatorCostPerCount) || 10)
-      const estimatorCostFlatAmountNum = estimatorCostUseFlat && estimatorCostFlatAmount.trim() !== '' ? parseFloat(estimatorCostFlatAmount) : null
-      if (estimatorCostUseFlat && estimatorCostFlatAmount.trim() !== '' && (isNaN(estimatorCostFlatAmountNum!) || estimatorCostFlatAmountNum! < 0)) return
-      if (!estimatorCostUseFlat && (isNaN(estimatorCostPerCountNum!) || estimatorCostPerCountNum! < 0)) return
-      const travelPeopleNum = travelPeople.trim() === '' ? 1 : Math.round(parseFloat(travelPeople))
-      const travelNightsNum = travelNights.trim() === '' ? 1 : Math.round(parseFloat(travelNights))
-      const travelMealsRateNum = travelMealsRate.trim() === '' ? null : parseFloat(travelMealsRate)
-      const travelHotelRateNum = travelHotelRate.trim() === '' ? null : parseFloat(travelHotelRate)
-      if (isNaN(travelPeopleNum) || travelPeopleNum < 1) return
-      if (isNaN(travelNightsNum) || travelNightsNum < 0) return
-      if (travelMealsRateNum != null && (isNaN(travelMealsRateNum) || travelMealsRateNum < 0)) return
-      if (travelHotelRateNum != null && (isNaN(travelHotelRateNum) || travelHotelRateNum < 0)) return
 
       // Save cost estimate fields
       await supabase
@@ -345,44 +335,20 @@ export function BidsLaborTab({
           purchase_order_id_rough_in: costEstimate.purchase_order_id_rough_in || null,
           purchase_order_id_top_out: costEstimate.purchase_order_id_top_out || null,
           purchase_order_id_trim_set: costEstimate.purchase_order_id_trim_set || null,
-          labor_rate: laborRateNum,
-          driving_cost_rate: drivingCostRateNum,
-          hours_per_trip: hoursPerTripNum,
-          estimator_cost_per_count: estimatorCostPerCountNum,
-          estimator_cost_flat_amount: estimatorCostFlatAmountNum,
-          travel_people: travelPeopleNum,
-          travel_nights: travelNightsNum,
-          travel_meals_rate: travelMealsRateNum,
-          travel_hotel_rate: travelHotelRateNum,
+          ...payload.values,
         })
         .eq('id', costEstimate.id)
 
       // Save labor rows
       for (const row of costEstimateLaborRows) {
-        await supabase
-          .from('cost_estimate_labor_rows')
-          .update({
-            rough_in_hrs_per_unit: row.rough_in_hrs_per_unit,
-            top_out_hrs_per_unit: row.top_out_hrs_per_unit,
-            trim_set_hrs_per_unit: row.trim_set_hrs_per_unit,
-            count: row.count,
-            is_fixed: row.is_fixed ?? false,
-            kind: row.kind ?? 'fixture',
-          })
-          .eq('id', row.id)
+        await supabase.from('cost_estimate_labor_rows').update(laborRowAutosaveUpdate(row)).eq('id', row.id)
       }
 
       // Save equipment & tool rental rows (note + per-stage amounts)
       for (const row of equipmentRows) {
         await supabase
           .from('cost_estimate_equipment_rows')
-          .update({
-            note: row.note,
-            rough_in: Number(row.rough_in) || 0,
-            top_out: Number(row.top_out) || 0,
-            trim_set: Number(row.trim_set) || 0,
-            sequence_order: row.sequence_order,
-          })
+          .update(stageAmountRowAutosaveUpdate(row))
           .eq('id', row.id)
       }
 
@@ -390,13 +356,7 @@ export function BidsLaborTab({
       for (const row of permitRows) {
         await supabase
           .from('cost_estimate_permit_rows')
-          .update({
-            note: row.note,
-            rough_in: Number(row.rough_in) || 0,
-            top_out: Number(row.top_out) || 0,
-            trim_set: Number(row.trim_set) || 0,
-            sequence_order: row.sequence_order,
-          })
+          .update(stageAmountRowAutosaveUpdate(row))
           .eq('id', row.id)
       }
 
@@ -404,13 +364,7 @@ export function BidsLaborTab({
       for (const row of subcontractorRows) {
         await supabase
           .from('cost_estimate_subcontractor_rows')
-          .update({
-            note: row.note,
-            rough_in: Number(row.rough_in) || 0,
-            top_out: Number(row.top_out) || 0,
-            trim_set: Number(row.trim_set) || 0,
-            sequence_order: row.sequence_order,
-          })
+          .update(stageAmountRowAutosaveUpdate(row))
           .eq('id', row.id)
       }
 
@@ -418,13 +372,7 @@ export function BidsLaborTab({
       for (const row of wasteRows) {
         await supabase
           .from('cost_estimate_waste_rows')
-          .update({
-            note: row.note,
-            rough_in: Number(row.rough_in) || 0,
-            top_out: Number(row.top_out) || 0,
-            trim_set: Number(row.trim_set) || 0,
-            sequence_order: row.sequence_order,
-          })
+          .update(stageAmountRowAutosaveUpdate(row))
           .eq('id', row.id)
       }
 
@@ -432,13 +380,7 @@ export function BidsLaborTab({
       for (const row of otherRows) {
         await supabase
           .from('cost_estimate_other_rows')
-          .update({
-            note: row.note,
-            rough_in: Number(row.rough_in) || 0,
-            top_out: Number(row.top_out) || 0,
-            trim_set: Number(row.trim_set) || 0,
-            sequence_order: row.sequence_order,
-          })
+          .update(stageAmountRowAutosaveUpdate(row))
           .eq('id', row.id)
       }
 
@@ -649,17 +591,7 @@ export function BidsLaborTab({
 
   async function saveLaborRows() {
     for (const row of costEstimateLaborRows) {
-      await supabase
-        .from('cost_estimate_labor_rows')
-        .update({
-          rough_in_hrs_per_unit: row.rough_in_hrs_per_unit,
-          top_out_hrs_per_unit: row.top_out_hrs_per_unit,
-          trim_set_hrs_per_unit: row.trim_set_hrs_per_unit,
-          count: row.count,
-          is_fixed: row.is_fixed ?? false,
-          kind: row.kind ?? 'fixture',
-        })
-        .eq('id', row.id)
+      await supabase.from('cost_estimate_labor_rows').update(laborRowAutosaveUpdate(row)).eq('id', row.id)
     }
   }
 
@@ -1022,6 +954,7 @@ export function BidsLaborTab({
       drivingCostRate,
       hoursPerTrip,
       taxPercent: parseFloat(costEstimatePOModalTaxPercent || '8.25') || 0,
+      directCostRows: directCostRowsFromTables({ equipment: equipmentRows, permit: permitRows, sub: subcontractorRows, waste: wasteRows, other: otherRows }),
     }
   }
 
@@ -2194,6 +2127,9 @@ export function BidsLaborTab({
                   )}
                   {costEstimateAutosaveStatus === 'saved' && (
                     <span style={{ fontSize: '0.875rem', color: 'var(--text-green-600)' }}>✓ Saved</span>
+                  )}
+                  {costEstimateAutosaveStatus === 'invalid' && (
+                    <span role="status" style={{ fontSize: '0.875rem', color: 'var(--text-amber-700)', fontWeight: 600 }}>Not saved — {costEstimateAutosaveReason ?? 'check the boxes above'}</span>
                   )}
                 </div>
               </div>

@@ -45,6 +45,8 @@ export interface LaborPageCosts {
   estimatorCost: number
   travelCost: number
   laborCostWithDriving: number
+  /** equipment + permits + subs + waste + other (v2.3292); omitted or 0 = no line. */
+  otherDirectCost?: number
   grandTotal: number
 }
 
@@ -111,6 +113,7 @@ function laborTableAndSummary(
     estimatorCost,
     travelCost,
     laborCostWithDriving,
+    otherDirectCost = 0,
     totalMaterials,
     grandTotal,
   } = costs
@@ -137,7 +140,8 @@ function laborTableAndSummary(
   <p style="font-weight:600; text-align:right; margin-top:0.5rem;">Driving: $${formatCurrency(drivingCost)}<br/><span style="font-weight:400; font-size:0.875rem;">(${numTrips.toFixed(1)} trips × $${ratePerMile.toFixed(2)}/mi × ${distance.toFixed(0)} mi)</span></p>` : ''}${estimatorCost > 0 ? `
   <p style="font-weight:600; text-align:right; margin-top:0.5rem;">Estimator: $${formatCurrency(estimatorCost)}</p>` : ''}${travelCost > 0 ? `
   <p style="font-weight:600; text-align:right; margin-top:0.5rem;">Travel: $${formatCurrency(travelCost)}</p>` : ''}
-  <p style="font-weight:600; text-align:right; margin-top:0.5rem;">Labor total: $${formatCurrency(laborCostWithDriving)}</p>
+  <p style="font-weight:600; text-align:right; margin-top:0.5rem;">Labor total: $${formatCurrency(laborCostWithDriving)}</p>${otherDirectCost > 0 ? `
+  <p style="font-weight:600; text-align:right; margin-top:0.5rem;">Other direct (equipment, permits, subs, waste, other): $${formatCurrency(otherDirectCost)}</p>` : ''}
   <h2>Summary</h2>
   <div class="summary">
     <p>${materialsSummaryLabel} $${formatCurrency(totalMaterials)}</p>
@@ -145,7 +149,8 @@ function laborTableAndSummary(
     <p>Driving: $${formatCurrency(drivingCost)}</p>` : ''}${estimatorCost > 0 ? `
     <p>Estimator: $${formatCurrency(estimatorCost)}</p>` : ''}${travelCost > 0 ? `
     <p>Travel: $${formatCurrency(travelCost)}</p>` : ''}
-    <p>Labor total: $${formatCurrency(laborCostWithDriving)}</p>
+    <p>Labor total: $${formatCurrency(laborCostWithDriving)}</p>${otherDirectCost > 0 ? `
+    <p>Other direct: $${formatCurrency(otherDirectCost)}</p>` : ''}
     <p style="font-weight:700; font-size:1.125rem;">Our total cost is: $${formatCurrency(grandTotal)}</p>
   </div>`
 }

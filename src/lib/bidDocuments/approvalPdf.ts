@@ -18,12 +18,7 @@ import {
 } from '../bidPricingRowCalculations'
 import { submissionHiddenIdsForVersion } from '../bids/submissionHides'
 import { laborRowHours } from '../bids/laborRowHours'
-import {
-  computeTravelCost,
-  costEstimateDrivingRate,
-  costEstimateHoursPerTrip,
-  costEstimateEstimatorCost,
-} from '../bids/bidCostCalc'
+import { computeBidCostBreakdown, type DirectCostRowLike } from '../bids/bidTotalCostBreakdown'
 import { bidDisplayName, formatCompactCurrency, formatDesignDrawingPlanDate } from '../bids/bidFormatting'
 import { formatCurrency } from '../format'
 import { extractContactInfo } from '../bids/bidContactInfo'
@@ -186,11 +181,12 @@ export async function downloadApprovalPdf(ctx: ApprovalPdfContext): Promise<void
   const estForReviewData = estForReview as CostEstimate | null
   if (estForReviewData) {
     reviewGroupHasCostEstimate = true
-    const [laborResR, roughR, topR, trimR] = await Promise.all([
+    const [laborResR, roughR, topR, trimR, directR] = await Promise.all([
       supabase.from('cost_estimate_labor_rows').select('*').eq('cost_estimate_id', estForReviewData.id).order('sequence_order', { ascending: true }),
       estForReviewData.purchase_order_id_rough_in ? loadPOTotal(estForReviewData.purchase_order_id_rough_in) : Promise.resolve(0),
       estForReviewData.purchase_order_id_top_out ? loadPOTotal(estForReviewData.purchase_order_id_top_out) : Promise.resolve(0),
       estForReviewData.purchase_order_id_trim_set ? loadPOTotal(estForReviewData.purchase_order_id_trim_set) : Promise.resolve(0),
+      supabase.from('cost_estimate_direct_costs').select('kind, rough_in, top_out, trim_set').eq('cost_estimate_id', estForReviewData.id),
     ])
     const laborRowsR = (laborResR.data as CostEstimateLaborRow[]) ?? []
     const totalMaterialsR = (roughR ?? 0) + (topR ?? 0) + (trimR ?? 0)
@@ -198,17 +194,18 @@ export async function downloadApprovalPdf(ctx: ApprovalPdfContext): Promise<void
     reviewPdfLaborRows = laborRowsR
     reviewPdfTotalMaterials = totalMaterialsR
     reviewPdfLaborRate = rateR
-    const totalHoursR = laborRowsR.reduce(
-      (s, r) => s + laborRowHours(r),
-      0
-    )
-    const distanceR = parseFloat(b.distance_from_office ?? '0') || 0
-    const drivingRateR = costEstimateDrivingRate(estForReviewData)
-    const hrsPerTripR = costEstimateHoursPerTrip(estForReviewData)
-    const numTripsR = totalHoursR / hrsPerTripR
-    const drivingCostR = numTripsR * drivingRateR * distanceR
-    const estimatorCostR = costEstimateEstimatorCost(estForReviewData, countRowsReview.length)
-    reviewGroupCostEstimateAmount = totalMaterialsR + (totalHoursR * rateR) + drivingCostR + estimatorCostR
+    // One total (v2.3292): the same breakdown the Workbench, the Pricing CSV and the Labor page read — travel and the direct-cost tables included.
+    reviewGroupCostEstimateAmount = computeBidCostBreakdown({
+      materialTotalRoughIn: roughR ?? 0,
+      materialTotalTopOut: topR ?? 0,
+      materialTotalTrimSet: trimR ?? 0,
+      laborRate: rateR,
+      laborRows: laborRowsR,
+      distanceFromOffice: b.distance_from_office ?? null,
+      costEstimate: estForReviewData,
+      countRowsLength: countRowsReview.length,
+      directCostRows: (directR.data as DirectCostRowLike[] | null) ?? [],
+    }).totalCost
   }
   const [customPdfRes, hidesPdfRes] = await Promise.all([
     supabase.from('bid_count_row_custom_prices').select('*').eq('bid_id', bidId),
@@ -403,31 +400,30 @@ export async function downloadApprovalPdf(ctx: ApprovalPdfContext): Promise<void
   if (!est) {
     push('No labor costs created.')
   } else {
-    const [laborRes, roughTotal, topTotal, trimTotal, countRes] = await Promise.all([
+    const [laborRes, roughTotal, topTotal, trimTotal, countRes, directRes] = await Promise.all([
       supabase.from('cost_estimate_labor_rows').select('*').eq('cost_estimate_id', est.id).order('sequence_order', { ascending: true }),
       est.purchase_order_id_rough_in ? loadPOTotal(est.purchase_order_id_rough_in) : Promise.resolve(0),
       est.purchase_order_id_top_out ? loadPOTotal(est.purchase_order_id_top_out) : Promise.resolve(0),
       est.purchase_order_id_trim_set ? loadPOTotal(est.purchase_order_id_trim_set) : Promise.resolve(0),
       countRowsQuery(),
+      supabase.from('cost_estimate_direct_costs').select('kind, rough_in, top_out, trim_set').eq('cost_estimate_id', est.id),
     ])
     const laborRows = (laborRes.data as CostEstimateLaborRow[]) ?? []
     const countRowsForEst = (countRes.data as { id: string }[]) ?? []
     const totalMaterials = (roughTotal ?? 0) + (topTotal ?? 0) + (trimTotal ?? 0)
     const rate = est.labor_rate != null ? Number(est.labor_rate) : 0
-    const totalHours = laborRows.reduce(
-      (s, r) => s + laborRowHours(r),
-      0
-    )
-    const laborCost = totalHours * rate
-    const distance = parseFloat(b.distance_from_office ?? '0') || 0
-    const drivingRatePerMile = costEstimateDrivingRate(est)
-    const hrsPerTrip = costEstimateHoursPerTrip(est)
-    const numTrips = totalHours / hrsPerTrip
-    const drivingCost = numTrips * drivingRatePerMile * distance
-    const estimatorCost = costEstimateEstimatorCost(est, countRowsForEst.length)
-    const travelCost = computeTravelCost(est)
-    const laborCostWithDriving = laborCost + drivingCost + estimatorCost + travelCost
-    const grandTotal = totalMaterials + laborCostWithDriving
+    const breakdown = computeBidCostBreakdown({
+      materialTotalRoughIn: roughTotal ?? 0,
+      materialTotalTopOut: topTotal ?? 0,
+      materialTotalTrimSet: trimTotal ?? 0,
+      laborRate: rate,
+      laborRows,
+      distanceFromOffice: b.distance_from_office ?? null,
+      costEstimate: est,
+      countRowsLength: countRowsForEst.length,
+      directCostRows: (directRes.data as DirectCostRowLike[] | null) ?? [],
+    })
+    const { totalLaborHours: totalHours, laborCost, distance, ratePerMile: drivingRatePerMile, numTrips, drivingCost, estimatorCost, travelCost, otherDirectCost, laborCostWithDriving, totalCost: grandTotal } = breakdown
 
     push('Materials')
     y += lineHeight
@@ -487,6 +483,9 @@ export async function downloadApprovalPdf(ctx: ApprovalPdfContext): Promise<void
     }
     if (travelCost > 0) {
       summaryRows.push(['Travel', `$${formatCurrency(travelCost)}`])
+    }
+    if (otherDirectCost > 0) {
+      summaryRows.push(['Other direct (equipment, permits, subs, waste, other)', `$${formatCurrency(otherDirectCost)}`])
     }
     summaryRows.push(
       ['Labor total', `$${formatCurrency(laborCostWithDriving)}`],

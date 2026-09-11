@@ -1,9 +1,10 @@
 import { Link } from 'react-router-dom'
-import { useEffect, useRef, useState, type CSSProperties, type Dispatch, type SetStateAction } from 'react'
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type Dispatch, type SetStateAction } from 'react'
 import { supabase } from '../../lib/supabase'
 import { formatCurrency } from '../../lib/format'
 import { formatRevenueMultiple, marginFlag } from '../../lib/bids/bidFormatting'
 import { profitConcentration, solveWorkbenchPrices } from '../../lib/bids/pricingWorkbenchSolver'
+import { computeBidCostBreakdown, directCostRowsFromTables } from '../../lib/bids/bidTotalCostBreakdown'
 import { PricingCompositionBar } from './PricingCompositionBar'
 import { buildProfitLegend, clampTooltipLeft, formatProfitShare } from '../../lib/bids/profitBarLegend'
 import { matchCountRowsToBookEntries, type BookEntryMatch } from '../../lib/bids/bookEntryMatching'
@@ -19,7 +20,6 @@ import { countTabsMatchedOrBeaten, marginPctToMatchTabLow } from '../../lib/bidT
 import { bidDetailCloseXStyle, bidDetailCloseFloatMobileStyle } from '../../lib/bids/bidStyles'
 import { normalizeMaterialsModel, sumRoughLinesPreTaxWithCount, type MaterialsModel } from '../../lib/bids/bidTakeoffHelpers'
 import { alternateCardNumbers, sameGcAlternateVersions } from '../../lib/bids/ownTakeoffAlternates'
-import { laborRowHours } from '../../lib/bids/laborRowHours'
 import { nextSortOrder, pickActivePricing } from '../../lib/bids/pickActivePricing'
 import { versionStarringScenario } from '../../lib/bids/starredScenarioGuard'
 import {
@@ -31,13 +31,6 @@ import {
 } from '../../lib/bids/applyMarginPricing'
 import { resolveCurrentPriceBookTemplateId, resolvePriceBookTemplateRoot } from '../../lib/bids/resolveCurrentPriceBookTemplateId'
 import { planBookEditBidOffer, planSiblingCarry, type BookEditBidOffer, type BookEntryPrices } from '../../lib/bids/bookEditBidOffer'
-import {
-  computeTravelCost,
-  costEstimateDrivingRate,
-  costEstimateHoursPerTrip,
-  costEstimateEstimatorCost,
-  sumEquipmentRows,
-} from '../../lib/bids/bidCostCalc'
 import { BidWorkflowTabTitleWithPreview } from './BidWorkflowTabTitleWithPreview'
 import { BidFlowStrip } from './BidFlowStrip'
 import { deriveBidFlow, type BidFlowDoor, type BidFlowStep } from '../../lib/bids/bidFlow'
@@ -1689,6 +1682,8 @@ export function BidsPricingTab({
       customPrices: bidCountRowCustomPrices,
       submissionHides: bidCountRowSubmissionHides,
       taxPercent: parseFloat(costEstimatePOModalTaxPercent || '8.25') || 0,
+      directCostRows: pricingDirectCostRows,
+      teamLaborCost: selectedBidForPricing.id ? (new Map(teamLaborDataForBids.map((r) => [r.bidId, r.bidCost])).get(selectedBidForPricing.id) ?? 0) : 0,
     }
   }
 
@@ -2509,31 +2504,29 @@ export function BidsPricingTab({
     await reloadBidCustomCosts()
   }
 
+  /** The five direct-cost tables as one list — what the Workbench, the print and the CSV hand the cost kernel. */
+  const pricingDirectCostRows = useMemo(
+    () => directCostRowsFromTables({ equipment: pricingEquipmentRows, permit: pricingPermitRows, sub: pricingSubcontractorRows, waste: pricingWasteRows, other: pricingOtherRows }),
+    [pricingEquipmentRows, pricingPermitRows, pricingSubcontractorRows, pricingWasteRows, pricingOtherRows],
+  )
+
   function derivePricingWorkbench() {
     if (!selectedPricingVersionId || pricingCountRows.length === 0 || !pricingCostEstimate) return null
-                const totalMaterials = (pricingMaterialTotalRoughIn ?? 0) + (pricingMaterialTotalTopOut ?? 0) + (pricingMaterialTotalTrimSet ?? 0)
-                const rate = pricingLaborRate ?? 0
-                const totalLaborHours = pricingLaborRows.reduce(
-                  (s, r) => s + laborRowHours(r),
-                  0
-                )
                 const taxPercent = parseFloat(costEstimatePOModalTaxPercent || '8.25') || 0
-                const laborCost = totalLaborHours * rate
-                const distance = parseFloat(selectedBidForPricing?.distance_from_office ?? '0') || 0
-                const ratePerMile = costEstimateDrivingRate(pricingCostEstimate)
-                const hrsPerTrip = costEstimateHoursPerTrip(pricingCostEstimate)
-                const numTrips = totalLaborHours / hrsPerTrip
-                const drivingCost = numTrips * ratePerMile * distance
-                const estimatorCost = costEstimateEstimatorCost(pricingCostEstimate, pricingCountRows.length)
-                const travelCost = computeTravelCost(pricingCostEstimate)
-                const equipmentRentalCost = sumEquipmentRows(pricingEquipmentRows)
-                const permitCost = sumEquipmentRows(pricingPermitRows)
-                const subcontractorCost = sumEquipmentRows(pricingSubcontractorRows)
-                const wasteCost = sumEquipmentRows(pricingWasteRows)
-                const otherCost = sumEquipmentRows(pricingOtherRows)
                 const teamLaborCostByBidId = new Map(teamLaborDataForBids.map((r) => [r.bidId, r.bidCost]))
-                const teamLaborCost = selectedBidForPricing?.id ? (teamLaborCostByBidId.get(selectedBidForPricing.id) ?? 0) : 0
-                const totalCost = totalMaterials + laborCost + drivingCost + estimatorCost + teamLaborCost + travelCost + equipmentRentalCost + permitCost + subcontractorCost + wasteCost + otherCost
+                // One total (v2.3292): the same kernel the Pricing print/CSV, the Labor page and the approval PDF read.
+                const { totalMaterials, rate, totalLaborHours, laborCost, distance, ratePerMile, hrsPerTrip, numTrips, drivingCost, estimatorCost, travelCost, equipmentRentalCost, permitCost, subcontractorCost, wasteCost, otherCost, teamLaborCost, totalCost } = computeBidCostBreakdown({
+                  materialTotalRoughIn: pricingMaterialTotalRoughIn,
+                  materialTotalTopOut: pricingMaterialTotalTopOut,
+                  materialTotalTrimSet: pricingMaterialTotalTrimSet,
+                  laborRate: pricingLaborRate,
+                  laborRows: pricingLaborRows,
+                  distanceFromOffice: selectedBidForPricing?.distance_from_office ?? null,
+                  costEstimate: pricingCostEstimate,
+                  countRowsLength: pricingCountRows.length,
+                  directCostRows: pricingDirectCostRows,
+                  teamLaborCost: selectedBidForPricing?.id ? (teamLaborCostByBidId.get(selectedBidForPricing.id) ?? 0) : 0,
+                })
                 const assignmentsForVersion = bidPricingAssignments.filter(
                   (a) => a.price_book_version_id === selectedPricingVersionId,
                 )
