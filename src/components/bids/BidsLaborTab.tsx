@@ -6,13 +6,11 @@ import { useToastContext } from '../../contexts/ToastContext'
 import { breakdownJumpDomId, breakdownJumpMissMessage, laborRowDomId, type BreakdownJumpTarget } from '../../lib/bids/bidTabRowJump'
 import { usePendingRowFlash } from '../../hooks/usePendingRowFlash'
 import { formatCurrency } from '../../lib/format'
-import { sumEquipmentRows } from '../../lib/bids/bidCostCalc'
 import { bidDetailCloseXStyle, bidDetailCloseFloatMobileStyle } from '../../lib/bids/bidStyles'
 import { MATERIALS_MODEL_CAPTION, normalizeMaterialsModel, type MaterialsModel } from '../../lib/bids/bidTakeoffHelpers'
 import { laborRowHours, laborRowRough, laborRowTop, laborRowTrim } from '../../lib/bids/laborRowHours'
 import {
   EMPTY_LABOR_CELL_SAVE_MAP,
-  LABOR_STAGE_LABELS,
   beginLaborCellSaves,
   finishLaborCellSaves,
   laborCellAriaLabel,
