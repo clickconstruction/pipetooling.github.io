@@ -155,6 +155,14 @@ Mirror of P1: `costEstimateSearchQuery`, `bidsScopedForCostEstimate` → `filter
 - **Supabase:** `labor_book_entries` (SELECT), `cost_estimate_labor_rows` (UPDATE + refetch SELECT), plus the builders' reads.
 - **Extraction status + risk + approach:** inline; **medium**. Stage A: `lib/bids/laborBookMatch.ts` — pure `(entries, laborRows) → { hoursByRowId, missingFixtures }` preserving the primary-name-only matching + tests. The section itself can then move as `BidsLaborHoursSection` with the row state + loaders injected.
 
+### Region L3b — The New view (v2.3276, the Labor refresh PR 1)
+
+- **What:** `laborView === 'new'` swaps Region L3 (the labor-book select, Apply, the HOURS grid) for [`BidsLaborNewView`](../src/components/bids/BidsLaborNewView.tsx): head (completeness + strip), the queue of zero rows, the grid with source chips. Everything after L3 (rate row, sub sheets, Labor total, L4, L5, L6) renders for both views. `LaborViewPills` sit beside Print; the choice is per device (`lib/bids/laborView.ts`, key `bids_labor_view_v1`, default `old`).
+- **Owned local state (tab):** `laborView`, `laborRateInputRef` (the New view's "set a labor rate ↓" scrolls to the Old rate box). **Owned local state (view):** the applied book's entries (its own SELECT on `labor_book_entries` for `selectedLaborBookVersionId` — the *applied* book, not the panel's browsed one), queue drafts, the fill/notice flags.
+- **Kernels:** `lib/bids/laborBookMatch.ts` (exact → alias → code prefix; `laborRowSource`), `lib/bids/bidLaborSummary.ts` (strip + completeness). Tested.
+- **Writes:** queue Save → `cost_estimate_labor_rows` UPDATE (immediate, then refetch → `setCostEstimateLaborRows`), optional `labor_book_entries` UPDATE (`alias_names` append) or INSERT (new entry via `getOrCreateFixtureTypeId`); Fill from the book → the same row UPDATE per matched zero row. Grid cell edits go through `setCostEstimateLaborRow` + `markCell` — the L2 autosave persists them exactly as Old's cells.
+- **Quirk #6, deliberately not carried:** the New view matches aliases (and code prefixes). Old's Apply keeps primary-name-only until retirement; the two can disagree on which rows "match" — that is the parallel run, not a bug.
+
 ### Region L4 — Cost-parameter boxes (Vehicle Travel / Lodging & Meals / Estimators Time)
 
 - **Render location:** three amber boxes ~1300–1602, each collapsible with a collapsed-state summary line.

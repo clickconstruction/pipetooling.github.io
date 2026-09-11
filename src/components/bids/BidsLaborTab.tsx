@@ -1,4 +1,4 @@
-import { useEffect, useState, type Dispatch, type SetStateAction } from 'react'
+import { useEffect, useRef, useState, type Dispatch, type SetStateAction } from 'react'
 import { supabase } from '../../lib/supabase'
 import { BID_UPDATE_NOT_APPLIED_MESSAGE, bidUpdateRefused } from '../../lib/bids/updateGuard'
 import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
@@ -21,6 +21,9 @@ import {
   type LaborCellSaveMap,
 } from '../../lib/bids/laborCellSaveState'
 import type { LaborTabPanel } from '../../lib/bids/laborTabLoadGate'
+import { readStoredLaborView, writeStoredLaborView, type LaborView } from '../../lib/bids/laborView'
+import { LaborViewPills } from './LaborViewPills'
+import { BidsLaborNewView } from './BidsLaborNewView'
 import { BidWorkflowTabTitleWithPreview } from './BidWorkflowTabTitleWithPreview'
 import { BidFlowStrip } from './BidFlowStrip'
 import { deriveBidFlow, type BidFlowDoor, type BidFlowStep } from '../../lib/bids/bidFlow'
@@ -236,6 +239,19 @@ export function BidsLaborTab({
     onRowJumpHandled?.()
   })
   const [costEstimateSearchQuery, setCostEstimateSearchQuery] = useState('')
+  // The Labor refresh PR 1: Old (this grid) · New ("Hours that learn"), remembered per device like Takeoffs' views.
+  const [laborView, setLaborView] = useState<LaborView>(() => readStoredLaborView(typeof window !== 'undefined' ? window.localStorage : null))
+  const switchLaborView = (next: LaborView) => {
+    setLaborView(next)
+    writeStoredLaborView(typeof window !== 'undefined' ? window.localStorage : null, next)
+  }
+  const laborRateInputRef = useRef<HTMLInputElement>(null)
+  const focusLaborRate = () => {
+    const el = laborRateInputRef.current
+    if (!el) return
+    el.scrollIntoView({ block: 'center', behavior: 'smooth' })
+    el.focus()
+  }
   const [costEstimateAutosaveStatus, setCostEstimateAutosaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle')
   // J11-F8: per-cell save state for the autosaved inputs — each edit marks its key pending; the
   // autosave effect moves pending → saving → gone. The cell shows it (underline + title + aria-busy).
@@ -1108,6 +1124,7 @@ export function BidsLaborTab({
               />
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <LaborViewPills view={laborView} onChange={switchLaborView} />
               <button
                 type="button"
                 onClick={() => void printCostEstimatePage()}
@@ -1213,6 +1230,36 @@ export function BidsLaborTab({
             <>
               {/* Manhours section */}
               <div style={{ marginBottom: '1.5rem' }}>
+                {laborView === 'new' ? (
+                  <BidsLaborNewView
+                    bidId={selectedBidForCostEstimate.id}
+                    bidValue={selectedBidForCostEstimate.bid_value != null ? Number(selectedBidForCostEstimate.bid_value) : null}
+                    rows={costEstimateLaborRows}
+                    ratePerHour={laborRateInput.trim() === '' ? null : parseFloat(laborRateInput) || null}
+                    materialsSource={purchaseOrdersForCostEstimate.length > 0 || (costEstimateMaterialTotalRoughIn ?? 0) + (costEstimateMaterialTotalTopOut ?? 0) + (costEstimateMaterialTotalTrimSet ?? 0) > 0 ? 'takeoff' : 'none'}
+                    appliedBookVersionId={selectedLaborBookVersionId}
+                    laborBookVersions={laborBookVersions}
+                    onChangeBook={(v) => {
+                      if (v) handleLaborBookVersionChange(selectedBidForCostEstimate.id, v)
+                      else {
+                        saveBidSelectedLaborBookVersion(selectedBidForCostEstimate.id, null)
+                        setSelectedLaborBookVersionId(null)
+                        loadCostEstimateData(selectedBidForCostEstimate.id, null)
+                      }
+                    }}
+                    setRowHours={setCostEstimateLaborRow}
+                    markCell={markCell}
+                    cellA11y={cellA11y}
+                    cellSaveStyle={cellSaveStyle}
+                    replaceRows={setCostEstimateLaborRows}
+                    getOrCreateFixtureTypeId={(name) => getOrCreateFixtureTypeId(name)}
+                    onFocusRate={focusLaborRate}
+                    setError={setError}
+                    rowDomId={laborRowDomId}
+                    rowJumpFlashDomId={rowJumpFlashDomId}
+                  />
+                ) : (
+                <>
                 <h3 style={{ margin: '0 0 0.75rem', fontSize: '1rem', textAlign: 'center' }}>HOURS</h3>
                 <div style={{ marginBottom: '0.75rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
                   <div>
@@ -1378,10 +1425,13 @@ export function BidsLaborTab({
                     </tbody>
                   </table>
                 </div>
+                </>
+                )}
                 <div style={{ marginTop: '0.75rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <div>
                     <label style={{ marginRight: '0.5rem', fontWeight: 500 }}>Labor rate ($/hr)</label>
                     <input
+                      ref={laborRateInputRef}
                       type="number"
                       min={0}
                       step={0.01}

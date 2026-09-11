@@ -1,0 +1,346 @@
+<title>Hours That Learn</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+  :root {
+    --page: #eef1f5; --ink: #18202c; --muted: #5a6577; --faint: #97a1b1; --rule: #d6dbe3; --paper: #ffffff;
+    --app-bg: #121a27; --app-panel: #1a2333; --app-border: #2b3648; --app-ink: #e6ebf2; --app-muted: #9aa6b8; --app-faint: #667389; --app-subtle: #232e40; --app-input: #2a3446;
+    --blue: #2563eb; --blue-ink: #93b4ff; --green: #16a34a; --green-ink: #4ade80; --amber: #f59e0b; --amber-ink: #fbbf24; --red: #dc2626; --red-ink: #f87171; --purple: #7c5cff; --purple-ink: #c4b5fd;
+  }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --page: #0d1219; --ink: #e6ebf2; --muted: #9aa6b8; --faint: #667389; --rule: #263042; --paper: #141b26; } }
+  :root[data-theme="dark"] { --page: #0d1219; --ink: #e6ebf2; --muted: #9aa6b8; --faint: #667389; --rule: #263042; --paper: #141b26; }
+  body { background: var(--page); color: var(--ink); font-family: "IBM Plex Sans", -apple-system, "Segoe UI", system-ui, sans-serif; font-size: 14px; line-height: 1.5; }
+  .wrap { max-width: 1160px; margin: 0 auto; padding: 32px 24px 80px; }
+  .eyebrow { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+  h1 { font-size: 30px; line-height: 1.15; margin: 6px 0 10px; text-wrap: balance; font-weight: 700; letter-spacing: -.01em; }
+  h2 { font-size: 19px; margin: 0 0 6px; text-wrap: balance; font-weight: 600; }
+  h3 { font-size: 14px; margin: 0 0 4px; font-weight: 600; }
+  p { margin: 0 0 10px; max-width: 68ch; }
+  .lede { font-size: 15px; color: var(--muted); max-width: 80ch; }
+  .mono { font-family: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace; font-variant-numeric: tabular-nums; }
+  section { margin-top: 40px; padding-top: 24px; border-top: 1px solid var(--rule); display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 28px; align-items: start; }
+  section.full { display: block; }
+  .aside { font-size: 13px; color: var(--muted); }
+  .aside p { max-width: none; }
+  .aside b { color: var(--ink); }
+  .no { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--blue); font-weight: 700; margin-bottom: 6px; }
+  .decision { border-left: 3px solid var(--blue); padding: 8px 12px; margin-top: 12px; background: var(--paper); border-radius: 0 6px 6px 0; }
+  .decision b { display: block; margin-bottom: 2px; }
+  .facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 10px; margin: 18px 0 6px; }
+  .fact { background: var(--paper); border: 1px solid var(--rule); border-radius: 8px; padding: 12px 14px; }
+  .fact .n { font-size: 24px; font-weight: 600; line-height: 1.1; letter-spacing: -.01em; }
+  .fact .l { font-size: 12px; color: var(--muted); margin-top: 6px; }
+  .fact.bad .n { color: var(--red); }
+  .src { font-size: 12px; color: var(--faint); margin-top: 4px; }
+  .app { background: var(--app-bg); color: var(--app-ink); border: 1px solid var(--app-border); border-radius: 12px; padding: 16px 18px; font-size: 13px; }
+  .app .cap { font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--app-faint); font-weight: 600; margin-bottom: 10px; display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+  .card { background: var(--app-panel); border: 1px solid var(--app-border); border-radius: 10px; padding: 12px 14px; }
+  .pill { display: inline-flex; align-items: center; gap: 5px; padding: 2px 9px; border-radius: 999px; border: 1px solid var(--app-border); font-size: 11.5px; font-weight: 600; color: var(--app-muted); white-space: nowrap; }
+  .pill.ok { border-color: var(--green); color: var(--green-ink); }
+  .pill.warn { border-color: var(--amber); color: var(--amber-ink); }
+  .pill.bad { border-color: var(--red); color: var(--red-ink); }
+  .pill.blue { border-color: var(--blue); color: var(--blue-ink); background: color-mix(in srgb, var(--blue) 14%, transparent); }
+  .pill.typed { border-color: var(--purple); color: var(--purple-ink); }
+  .pill.sm { padding: 0 6px; font-size: 10.5px; }
+  .link { color: var(--blue-ink); font-weight: 600; cursor: pointer; }
+  .btn { display: inline-block; padding: 5px 11px; border-radius: 7px; font-weight: 600; font-size: 12px; border: 1px solid var(--app-border); color: var(--app-ink); background: var(--app-panel); white-space: nowrap; }
+  .btn.primary { background: var(--blue); border-color: var(--blue); color: #fff; }
+  .btn.ghost { background: transparent; }
+  .strip { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; }
+  .tile { background: var(--app-bg); border: 1px solid var(--app-border); border-radius: 8px; padding: 9px 11px; min-width: 0; }
+  .tile .k { font-size: 10.5px; letter-spacing: .06em; text-transform: uppercase; color: var(--app-faint); font-weight: 600; }
+  .tile .v { font-size: 19px; font-weight: 600; margin-top: 2px; letter-spacing: -.01em; }
+  .tile .s { font-size: 11.5px; color: var(--app-muted); margin-top: 1px; }
+  .meter { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .meter .track { flex: 1 1 200px; height: 8px; border-radius: 4px; background: var(--app-subtle); overflow: hidden; display: flex; }
+  .meter .track i { display: block; height: 100%; }
+  .grid { width: 100%; border-collapse: collapse; margin-top: 8px; }
+  .grid th { text-align: left; font-size: 10.5px; letter-spacing: .06em; text-transform: uppercase; color: var(--app-faint); font-weight: 600; padding: 6px 8px; border-bottom: 1px solid var(--app-border); }
+  .grid td { padding: 7px 8px; border-bottom: 1px solid var(--app-border); vertical-align: middle; }
+  .grid tr:last-child td { border-bottom: 0; }
+  .grid .num { text-align: right; white-space: nowrap; }
+  .cell { display: inline-block; min-width: 44px; padding: 3px 6px; border-radius: 6px; background: var(--app-input); text-align: center; border: 1px solid transparent; }
+  .cell.ghost { background: transparent; border-color: var(--app-border); color: var(--app-muted); }
+  .cell.edit { border-color: var(--purple); }
+  .cell.zero { color: var(--app-faint); }
+  .sub { font-size: 11px; color: var(--app-muted); }
+  .queue { border: 1px solid var(--amber); background: color-mix(in srgb, var(--amber) 9%, transparent); border-radius: 10px; padding: 10px 12px; }
+  .queue h4 { margin: 0 0 6px; font-size: 13px; }
+  .qrow { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1.6fr) auto; gap: 8px 12px; align-items: center; padding: 7px 0; border-top: 1px solid color-mix(in srgb, var(--amber) 30%, transparent); }
+  .qrow:first-of-type { border-top: 0; }
+  .seg { display: inline-flex; border: 1px solid var(--app-border); border-radius: 7px; overflow: hidden; font-size: 11.5px; }
+  .seg span { padding: 3px 8px; color: var(--app-muted); }
+  .seg span.on { background: var(--blue); color: #fff; font-weight: 600; }
+  .drawer { border: 1px solid var(--app-border); border-radius: 10px; background: var(--app-panel); padding: 12px 14px; }
+  .ev { width: 100%; border-collapse: collapse; margin-top: 6px; }
+  .ev th { text-align: left; font-size: 10.5px; letter-spacing: .06em; text-transform: uppercase; color: var(--app-faint); font-weight: 600; padding: 5px 6px; border-bottom: 1px solid var(--app-border); }
+  .ev td { padding: 6px; border-bottom: 1px solid var(--app-border); }
+  .ev .num { text-align: right; white-space: nowrap; }
+  .range { position: relative; height: 10px; border-radius: 5px; background: var(--app-subtle); margin: 6px 0 2px; }
+  .range i { position: absolute; top: 0; bottom: 0; background: color-mix(in srgb, var(--green) 45%, transparent); border-radius: 5px; }
+  .range .mk { position: absolute; top: -4px; bottom: -4px; width: 2px; }
+  .range .mk::after { content: attr(data-l); position: absolute; top: 14px; left: -8px; font-size: 10px; white-space: nowrap; color: var(--app-muted); }
+  .range .mk.book { background: var(--amber); } .range .mk.book::after { color: var(--amber-ink); }
+  .range .mk.bid { background: var(--blue); } .range .mk.bid::after { color: var(--blue-ink); }
+  .kv { display: grid; grid-template-columns: auto 1fr; gap: 4px 14px; font-size: 12.5px; }
+  .kv b { color: var(--app-ink); font-weight: 600; }
+  .steps { counter-reset: s; list-style: none; padding: 0; margin: 12px 0 0; display: grid; gap: 10px; }
+  .steps li { background: var(--paper); border: 1px solid var(--rule); border-radius: 8px; padding: 12px 14px 12px 48px; position: relative; }
+  .steps li::before { counter-increment: s; content: "PR " counter(s); position: absolute; left: 12px; top: 13px; font-size: 10.5px; font-weight: 700; letter-spacing: .06em; color: var(--blue); }
+  .steps b { display: block; margin-bottom: 2px; }
+  .steps .t { font-size: 12.5px; color: var(--muted); }
+  code { font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 12px; background: color-mix(in srgb, var(--ink) 7%, transparent); padding: 1px 5px; border-radius: 4px; }
+  .rev { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .rev > div { background: var(--paper); border: 1px solid var(--rule); border-radius: 8px; padding: 12px 14px; font-size: 13px; }
+  .rev h3 { font-size: 12px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+  .rev ul { margin: 6px 0 0; padding-left: 18px; }
+  .rev li { margin-bottom: 5px; }
+  .note { font-size: 12px; color: var(--faint); font-style: italic; }
+  .ill { font-size: 11px; color: var(--app-faint); font-style: italic; margin-top: 8px; }
+  .grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 14px; }
+  @media (max-width: 900px) { section { grid-template-columns: 1fr; } .strip { grid-template-columns: repeat(2, 1fr); } .rev { grid-template-columns: 1fr; } .qrow { grid-template-columns: 1fr; } }
+</style>
+
+<div class="wrap">
+  <div class="eyebrow">ClickTooling · Bids → Labor · design study · 2026-09-11</div>
+  <h1>Hours that learn</h1>
+  <p class="lede">The Labor tab's job, restated: turn a count sheet into hours a plumber believes, then into a budget the job can burn against. Today it is a grid of zeros with an empty rate box. The refresh below keeps the grid and changes what surrounds it: a rate that is never blank, matching that survives real count sheets, a queue instead of a scan, calibration from finished jobs, and a sanity strip that says whether the whole bid makes sense. Frames use B375 SPACEX BA-02N's real rows.</p>
+
+  <section class="full">
+    <div class="no">01 · Why the tab is empty</div>
+    <h2>Three breaks, all fixable without a new tab</h2>
+    <div class="facts">
+      <div class="fact bad"><div class="n">$0.00</div><div class="l">labor total on every won bid — the Labor rate box is blank on all 33</div></div>
+      <div class="fact bad"><div class="n">0 of 26</div><div class="l">SPACEX rows with hours — counts arrive as plan codes and footage (<span class="mono">WC 1&amp;2</span>, <span class="mono">LAV2</span>, <span class="mono">ft of 3/4IN WATER 140.23</span>); the book keys on "Toilet"</div></div>
+      <div class="fact"><div class="n">15 · 17</div><div class="l">entries in the Default and Robot Default books; Toilet 1 / 1 / 1 was never checked against a real job</div></div>
+      <div class="fact"><div class="n">549 h</div><div class="l">real field hours on J523 (B66 Mission Hill Park) at 90 % done — sitting in the clock, unused by estimating</div></div>
+    </div>
+    <div class="src">Read-only prod queries 2026-09-11: cost_estimates, cost_estimate_labor_rows, labor_book_versions/entries, bids_count_rows, clock_sessions.</div>
+    <div class="grid2" style="margin-top:14px">
+      <div class="decision"><b>The reframe</b>The estimate is <b>hours</b>. Dollars are derived. Hours are what a plumber can judge on a count sheet, what the crew controls on site, and what the company can measure afterwards. So the tab optimizes for one thing: getting believable hours onto every row fast, and getting more believable each time a job finishes.</div>
+      <div class="decision"><b>Assumptions this mock-up makes (tell me where I'm wrong)</b>A person costs the bid before pricing, in about five minutes. The labor rate is one company number from People with a per-bid override. Footage rows carry labor per 100 ft. The Robot Default book becomes <em>the</em> book; the human books fold into it as overrides.</div>
+    </div>
+  </section>
+
+  <section>
+    <div>
+      <div class="no">02 · Frame A · The head of the tab</div>
+      <h2>Completeness, then the sanity strip</h2>
+      <div class="app">
+        <div class="cap"><span>Bids · Labor · BP375 SPACEX BA-02N Architectural</span><span>$249,716 bid value · counts from plans v2</span></div>
+        <div class="card">
+          <div class="meter">
+            <b style="font-size:13px">Usable as a job budget</b>
+            <span class="track" title="Hours on 22 of 26 rows · rate set · materials from takeoff"><i style="width:62%;background:var(--green)"></i><i style="width:23%;background:var(--amber)"></i><i style="width:15%;background:var(--app-border)"></i></span>
+            <span class="pill ok">hours on 22 of 26 rows</span>
+            <span class="pill ok">rate set</span>
+            <span class="pill warn">4 rows need hours ↓</span>
+            <span class="pill ok">materials from takeoff</span>
+          </div>
+          <div class="strip" style="margin-top:12px">
+            <div class="tile"><div class="k">Field hours</div><div class="v mono">1,412</div><div class="s">RI 612 · TO 486 · TS 314 · <span style="color:var(--amber-ink)">book runs ×1.18 light → 1,666</span></div></div>
+            <div class="tile"><div class="k">Crew-days</div><div class="v mono">88</div><div class="s">2 techs × 8 h</div></div>
+            <div class="tile"><div class="k">Labor $</div><div class="v mono">$50,490</div><div class="s">at the crew rate $35.76 <span class="link">edit</span></div></div>
+            <div class="tile"><div class="k">Overhead carried</div><div class="v mono">$16,240</div><div class="s">$11.50 per field hour · lens A</div></div>
+            <div class="tile"><div class="k">Revenue per field hour</div><div class="v mono" style="color:var(--amber-ink)">$177</div><div class="s">finished jobs run $67–$140</div></div>
+          </div>
+          <div style="font-size:12px;color:var(--app-muted);margin-top:8px"><b style="color:var(--amber-ink)">High side.</b> At 1,412 h this bid earns $177 of revenue per field hour; your last 12 months of finished jobs ran $67–$140 (median $96). Either the hours are light or the bid is fat — worth a look before it goes out. Footage rows carry 41 % of the hours. <b style="color:var(--app-ink)">The book itself runs light:</b> on the last 6 linked, finished jobs actual field hours came in at 1.18× what the book predicted, so read 1,412 as 1,666 until the entries are recalibrated.</div>
+        </div>
+        <div class="ill">Hours, crew rate and history band are illustrative; the counts, the bid value and the $11.50 lens are real.</div>
+      </div>
+    </div>
+    <div class="aside">
+      <p><strong>The meter is the same object Burn reads.</strong> "Usable as a job budget" is the completeness the job's Budget card will show after the win — rows with hours, rate present, materials source. The estimator sees it before the bid goes out; the office sees the same words after.</p>
+      <p><strong>Rate never blank.</strong> The crew rate is People's 90-day average recorded field wage with burden, one company number with a per-bid override. Overhead per field hour comes from the lens you just built and stays a separate tile — the direct budget must not carry overhead twice.</p>
+      <p><strong>The first calibration is one number, not forty.</strong> Before any fixture is recalibrated, the book's total prediction can be checked against every linked finished job: predicted hours versus actual. That multiplier needs no per-fixture attribution, lands the moment six jobs are linked, and is printed on the strip so the estimator reads the honest total today.</p>
+      <p><strong>The sanity strip judges the whole bid, not a row.</strong> Revenue per field hour is the one figure that ties estimating to what actually happened on finished jobs; the history band comes from Job Summary's finished rows. It catches light hours and fat bids alike.</p>
+      <div class="decision"><b>What replaces the amber boxes</b>Driving stays (it is a real direct cost) and reads distance from the bid. Lodging stays, collapsed. <b>Estimator time goes</b>: bid time is recorded on the bid and lives in the overhead pool; the tab shows "12.5 h of bid labor recorded on this bid" as a fact, not a $10 × rows guess.</div>
+    </div>
+  </section>
+
+  <section>
+    <div>
+      <div class="no">03 · Frame B · The grid, with the queue on top</div>
+      <h2>Rows that need a human come first; the rest are already filled and say why</h2>
+      <div class="app">
+        <div class="queue">
+          <h4>4 rows need hours — answer once, the book learns <span class="sub" style="font-weight:400">· an alias you save applies to every future bid; the entry records "learned from B375 by you"</span></h4>
+          <div class="qrow">
+            <div><b>WHA-500</b> <span class="sub">×1</span><div class="sub">no match in the book</div></div>
+            <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap"><span class="seg"><span class="on">Water hammer arrestor</span><span>Other…</span></span> <span class="cell">0.5</span><span class="cell">0.5</span><span class="cell zero">0</span></div>
+            <div><span class="btn primary">Save &amp; learn alias</span></div>
+          </div>
+          <div class="qrow">
+            <div><b>DWH1 &amp; ET</b> <span class="sub">×1</span><div class="sub">two fixtures in one code?</div></div>
+            <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap"><span class="seg"><span class="on">Water heater (electric) + exp. tank</span><span>Split row</span></span> <span class="cell">1</span><span class="cell">2</span><span class="cell">2.5</span></div>
+            <div><span class="btn primary">Save &amp; learn alias</span></div>
+          </div>
+          <div class="qrow">
+            <div><b>SAWCUTTING</b> <span class="sub">×1</span><div class="sub">not a fixture</div></div>
+            <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap"><span class="seg"><span>Fixture</span><span class="on">Task · fixed hours</span><span>Sub</span></span> <span class="cell">6</span><span class="cell zero">0</span><span class="cell zero">0</span></div>
+            <div><span class="btn primary">Save</span></div>
+          </div>
+          <div class="qrow">
+            <div><b>incidentals</b> <span class="sub">×1</span><div class="sub">not a fixture</div></div>
+            <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap"><span class="seg"><span>Fixture</span><span class="on">Task · fixed hours</span><span>Sub</span></span> <span class="cell">4</span><span class="cell">4</span><span class="cell">4</span></div>
+            <div><span class="btn primary">Save</span></div>
+          </div>
+        </div>
+        <table class="grid">
+          <thead><tr><th>Row on the count sheet</th><th class="num">Count</th><th>Read as</th><th class="num">RI</th><th class="num">TO</th><th class="num">TS</th><th class="num">Hours</th><th>Where the hours came from</th></tr></thead>
+          <tbody>
+            <tr><td><b>WC 1&amp;2</b></td><td class="num mono">10</td><td>Toilet</td><td class="num"><span class="cell">1</span></td><td class="num"><span class="cell">1</span></td><td class="num"><span class="cell">1</span></td><td class="num mono">30.0</td><td><span class="pill sm blue">book · alias</span> <span class="pill sm ok">4 jobs agree</span></td></tr>
+            <tr><td><b>LAV2</b></td><td class="num mono">6</td><td>Lavatory</td><td class="num"><span class="cell edit">0.75</span></td><td class="num"><span class="cell">0.5</span></td><td class="num"><span class="cell">0.5</span></td><td class="num mono">10.5</td><td><span class="pill sm typed">✎ you · RI was 0.5</span></td></tr>
+            <tr><td><b>UR 1&amp;2</b></td><td class="num mono">2</td><td>Urinal</td><td class="num"><span class="cell">1.5</span></td><td class="num"><span class="cell">1</span></td><td class="num"><span class="cell">1</span></td><td class="num mono">7.0</td><td><span class="pill sm blue">book · alias</span> <span class="pill sm warn">1 job</span></td></tr>
+            <tr><td><b>FD</b></td><td class="num mono">3</td><td>Floor drain</td><td class="num"><span class="cell">1.5</span></td><td class="num"><span class="cell zero">0</span></td><td class="num"><span class="cell">0.5</span></td><td class="num mono">6.0</td><td><span class="pill sm blue">book</span> <span class="pill sm">no jobs yet</span></td></tr>
+            <tr><td><b>ft of 1/2IN WATER</b></td><td class="num mono">719.5</td><td>½" water · per 100 ft</td><td class="num"><span class="cell">2.5</span></td><td class="num"><span class="cell">1.5</span></td><td class="num"><span class="cell zero">0</span></td><td class="num mono">28.8</td><td><span class="pill sm blue">book · per 100 ft</span> <span class="pill sm ok">3 jobs agree</span></td></tr>
+            <tr><td><b>ft of 2IN WASTE</b></td><td class="num mono">729.5</td><td>2" waste · per 100 ft</td><td class="num"><span class="cell">4</span></td><td class="num"><span class="cell zero">0</span></td><td class="num"><span class="cell zero">0</span></td><td class="num mono">29.2</td><td><span class="pill sm blue">book · per 100 ft</span> <span class="pill sm warn">2 jobs · wide</span></td></tr>
+            <tr><td><b>ft of 4IN WASTE</b></td><td class="num mono">148.6</td><td>4" waste · per 100 ft</td><td class="num"><span class="cell">6</span></td><td class="num"><span class="cell zero">0</span></td><td class="num"><span class="cell zero">0</span></td><td class="num mono">8.9</td><td><span class="pill sm blue">book · per 100 ft</span></td></tr>
+            <tr><td><b>12" DEEP MOP SINK</b></td><td class="num mono">1</td><td>Mop sink</td><td class="num"><span class="cell">1</span></td><td class="num"><span class="cell">1</span></td><td class="num"><span class="cell">1</span></td><td class="num mono">3.0</td><td><span class="pill sm blue">book · alias</span></td></tr>
+            <tr><td colspan="8" class="sub" style="text-align:center">… 14 more rows, all filled · <span class="link">show</span></td></tr>
+            <tr><td><b>Totals</b></td><td></td><td></td><td class="num mono">612</td><td class="num mono">486</td><td class="num mono">314</td><td class="num mono"><b>1,412</b></td><td class="sub">22 from the book · 3 edited · 4 pending above · <span class="link">Print sub sheets</span> (RI · TO · TS, as today)</td></tr>
+          </tbody>
+        </table>
+        <div class="ill">Count rows and codes are B375's real ones; the "read as" mapping and hours are illustrative.</div>
+      </div>
+    </div>
+    <div class="aside">
+      <p><strong>Nobody scans 26 rows for zeros.</strong> The queue holds only what the book could not answer, and each answer is one line: what the code means, the three stage hours, save. Saving writes the alias and the hours into the book, so the next bid with <code>WHA-500</code> never asks again.</p>
+      <p><strong>Not everything is a fixture.</strong> <code>SAWCUTTING</code> and <code>incidentals</code> are tasks with fixed hours, and a sub's line is a sub. The queue's segmented control names the kind; today the grid forces everything into count × hours per unit and a "fixed" checkbox.</p>
+      <p><strong>Every filled cell says where it came from.</strong> Book by alias, book per 100 ft, your edit with the previous value, and how many finished jobs stand behind the entry. The grid stops being a wall of inputs and becomes a list of claims with evidence.</p>
+      <div class="decision"><b>Matching rule, stated once</b>Exact name → alias → the code's letters before its digits (<code>LAV2</code> → LAV) → nothing. Aliases count everywhere, including Apply; the old primary-name-only path retires with a note in the architecture doc.</div>
+    </div>
+  </section>
+
+  <section>
+    <div>
+      <div class="no">04 · Frame C · The book entry, opened</div>
+      <h2>What real jobs say about a toilet</h2>
+      <div class="app">
+        <div class="cap"><span>Labor book · Robot Default · Toilet</span><span>aliases: WC · WC 1&amp;2 · Water closet · Toilets · ADA WC</span></div>
+        <div class="drawer">
+          <div class="kv">
+            <b>Book</b><span class="mono">1.0 / 1.0 / 1.0 · 3.0 h per toilet</span>
+            <b>Finished jobs say</b><span class="mono">3.4 h per toilet · 4 jobs · 41 toilets · range 2.6–4.8</span>
+            <b>Confidence</b><span><span class="pill ok sm">4 jobs agree within 30 %</span></span>
+          </div>
+          <div class="range">
+            <i style="left:22%;width:46%"></i>
+            <span class="mk book" data-l="book 3.0" style="left:30%"></span>
+            <span class="mk bid" data-l="jobs 3.4" style="left:41%"></span>
+          </div>
+          <table class="ev">
+            <thead><tr><th>Job</th><th class="num">Toilets</th><th class="num">Field hours</th><th class="num">Share to toilets</th><th class="num">Implied h / toilet</th><th></th></tr></thead>
+            <tbody>
+              <tr><td>J650 ATI Schertz · B34</td><td class="num mono">12</td><td class="num mono">339</td><td class="num mono">14 %</td><td class="num mono">3.9</td><td class="sub">finished · billed</td></tr>
+              <tr><td>J523 TF Harper · B66</td><td class="num mono">10</td><td class="num mono">549 → 610</td><td class="num mono">6 %</td><td class="num mono">3.7</td><td class="sub">90 % done · projected</td></tr>
+              <tr><td>J804 Summit · B67</td><td class="num mono">8</td><td class="num mono">131 → 164</td><td class="num mono">16 %</td><td class="num mono">3.3</td><td class="sub">80 % done · projected</td></tr>
+              <tr><td>J843 Michael Palmer · B75</td><td class="num mono">11</td><td class="num mono">26</td><td class="num mono">—</td><td class="num mono">—</td><td class="sub">too early · excluded</td></tr>
+            </tbody>
+          </table>
+          <div style="display:flex;gap:8px;align-items:center;margin-top:10px;flex-wrap:wrap">
+            <span class="btn primary">Set book to 1.2 / 1.1 / 1.1</span>
+            <span class="btn ghost">Keep 1 / 1 / 1</span>
+            <span class="sub">Share to toilets = the job's hours split across its fixtures by the book's own weights — the same weights the estimate used, so the loop closes on itself.</span>
+          </div>
+        </div>
+        <div class="ill">Job hours and fixture counts are real; the share split and implied figures are illustrative until the link and the kernel exist.</div>
+      </div>
+    </div>
+    <div class="aside">
+      <p><strong>This is the reason the two projects go together.</strong> A job linked to its bid gives every fixture in the book a real number: the job's field hours, split across its count rows by the book's own stage weights. Four jobs and the toilet stops being a guess.</p>
+      <p><strong>Confidence is a count, not a color.</strong> "4 jobs agree within 30 %" is something a plumber can argue with; a green dot is not. One job reads amber; none reads "no jobs yet" and leaves the book value alone.</p>
+      <p><strong>Recalibrate is a proposal, never automatic.</strong> The button sets the book with the evidence on screen; the old value stays in the entry's history. Bids already priced keep their hours — the estimate is a snapshot, like the job's budget.</p>
+      <div class="decision"><b>Order of calibration</b>First the bid-level multiplier (predicted vs actual per linked job — robust, no attribution). Then per-fixture, only where the linked jobs differ enough in mix for the split to mean something; the drawer says when they don't.</div>
+      <div class="decision"><b>Where the split rule lives</b>One kernel, <code>laborActualsByFixture.ts</code>: job field hours × (row's book hours ÷ Σ book hours on that bid) → implied hours per unit per row; excluded below 25 % done or under 8 field hours. Tested against the linked pairs before any UI.</div>
+    </div>
+  </section>
+
+  <section>
+    <div>
+      <div class="no">05 · Frame D · Rate, overhead, and the rest of the cost</div>
+      <h2>One rate from People, one list of other direct costs</h2>
+      <div class="app">
+        <div class="grid2">
+          <div class="card">
+            <div class="cap" style="margin-bottom:6px"><span>Crew rate</span></div>
+            <div class="kv">
+              <b>Company rate</b><span class="mono">$35.76 / h <span class="sub">= $29.80 avg recorded field wage (90 d, People) × 1.20 burden</span></span>
+              <b>This bid</b><span><span class="seg"><span class="on">company rate</span><span>override…</span></span></span>
+              <b>Overhead</b><span class="mono">$11.50 / field hour <span class="sub">lens A · shown, not added to the direct budget</span></span>
+              <b>Bid labor recorded</b><span class="mono">12.5 h · $446 <span class="sub">Wendi · on this bid · already in the overhead pool</span></span>
+            </div>
+          </div>
+          <div class="card">
+            <div class="cap" style="margin-bottom:6px"><span>Other direct costs</span><span class="link">+ Add</span></div>
+            <table class="ev">
+              <thead><tr><th>Kind</th><th>What</th><th class="num">RI</th><th class="num">TO</th><th class="num">TS</th></tr></thead>
+              <tbody>
+                <tr><td><span class="pill sm">driving</span></td><td>88 crew-days · 2 trips/day · 41 mi · $0.70</td><td class="num mono">$2,180</td><td class="num mono">$1,730</td><td class="num mono">$1,120</td></tr>
+                <tr><td><span class="pill sm">sub</span></td><td>Sawcut &amp; excavation — Ramirez</td><td class="num mono">$6,500</td><td class="num mono">—</td><td class="num mono">—</td></tr>
+                <tr><td><span class="pill sm">permit</span></td><td>City of Austin plumbing permit</td><td class="num mono">$1,240</td><td class="num mono">—</td><td class="num mono">—</td></tr>
+                <tr><td><span class="pill sm">equipment</span></td><td>Trench shoring rental · 2 wk</td><td class="num mono">$1,900</td><td class="num mono">—</td><td class="num mono">—</td></tr>
+              </tbody>
+            </table>
+            <div class="sub" style="margin-top:6px">Lodging &amp; meals: none on this bid · <span class="link">add per-diem</span></div>
+          </div>
+        </div>
+        <div class="card" style="margin-top:12px;display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:center">
+          <div><b>Direct cost of this bid</b> <span class="sub">labor $50,490 · materials $61,300 (takeoff) · other direct $14,670</span></div>
+          <div class="mono" style="font-size:18px;font-weight:600">$126,460 <span class="sub" style="font-size:12px;font-weight:400">· 49 % margin at $249,716 · <span class="link">open Pricing →</span></span></div>
+        </div>
+        <div class="ill">Rates and direct-cost lines are illustrative.</div>
+      </div>
+    </div>
+    <div class="aside">
+      <p><strong>Five identical amber sections become one list with a kind.</strong> Equipment, permits, subs, waste, other, and driving are all "a dollar amount by stage with a reason"; the kind is a chip, not a section. Adding one is one row, and the empty state is one line instead of five headers.</p>
+      <p><strong>Estimator time stops being invented.</strong> Bid labor is clocked on the bid and already sits in your overhead pool; the tab reports it as a fact and leaves it out of the direct cost, which is exactly how Burn treats overhead on the job side.</p>
+      <p><strong>The bottom line is the handoff.</strong> "Direct cost of this bid" is the figure the job's Budget card will snapshot on the win, with the breakdown intact — labor hours by stage, materials, subs, other — so the loop from this mock-up to the Burn mock-up is one number with a provenance.</p>
+    </div>
+  </section>
+
+  <section class="full">
+    <div class="no">06 · The "is this the best we can do?" pass</div>
+    <h2>What changed between the first cut and this one</h2>
+    <div class="rev">
+      <div><h3>v1 — the cleaned-up grid</h3>
+        <ul>
+          <li>Same grid, alias-aware Apply, the rate box pre-filled from People, direct-cost sections deduplicated into one component.</li>
+          <li>A "Recalibrate" button that averaged finished jobs into the book.</li>
+          <li>Footage rows still zero — "labor rides on the fixtures".</li>
+          <li>Completeness as a percent badge.</li>
+        </ul>
+        <p class="note">Better plumbing, same experience: the estimator still opens a wall of inputs and still has no way to know if 1,412 hours is a good answer.</p>
+      </div>
+      <div><h3>v2 — what the review added</h3>
+        <ul>
+          <li><b>The queue replaces the scan.</b> Only unanswered rows ask; each answer teaches the book (alias + hours) so the same code never asks twice.</li>
+          <li><b>Kinds for rows that aren't fixtures</b> (task with fixed hours, sub) instead of the "fixed" checkbox.</li>
+          <li><b>Footage gets labor per 100 ft.</b> 41 % of SPACEX's hours are pipe; zero there is not "riding on fixtures", it is missing.</li>
+          <li><b>Calibration shows its evidence and its count</b> — jobs, fixtures, range — and proposes, never overwrites; the split rule is one tested kernel.</li>
+          <li><b>The sanity strip judges the whole bid</b> against finished-job history (revenue per field hour), the one check that catches both light hours and fat bids.</li>
+          <li><b>Completeness is the Burn budget's completeness</b>, same words before and after the win; estimator time leaves the direct cost.</li>
+        </ul>
+        <h3 style="margin-top:12px">second pass on v2 (asked again)</h3>
+        <ul>
+          <li><b>Per-fixture calibration was circular</b> — it split job hours by the book's own weights. The honest first step is the <b>bid-level multiplier</b> (book predicted vs actual, per linked job), printed on the strip; per-fixture only where the job mix supports it.</li>
+          <li><b>The sub sheets had vanished</b> from the frame — the crew prints Rough In / Top Out / Trim Set sheets from this tab; they stay, on the totals row.</li>
+          <li><b>"Learn alias" needed a guard</b>: an alias learned on one bid applies everywhere, so the queue shows the book name it will attach to and the entry keeps a history line ("learned from B375 by Wendi").</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section class="full">
+    <div class="no">07 · Build plan</div>
+    <h2>Six PRs, each live before the next; the Burn to-do resumes after PR 3</h2>
+    <ol class="steps">
+      <li><b>Kernels first, no UI</b><span class="t"><code>laborBookMatch.ts</code> (exact → alias → code prefix; unit-aware per-100-ft), <code>crewRate.ts</code> (90-day recorded field wage × burden from People; the override), <code>bidLaborSummary.ts</code> (hours by stage, crew-days, labor $, revenue per field hour vs a history band from finished Job Summary rows), <code>bidEstimateCompleteness.ts</code> (shared with the Burn budget). Tests on B375's real rows. Architecture doc: the alias rule replaces quirk #6 on purpose.</span></li>
+      <li><b>Data</b><span class="t">Migration: <code>labor_book_entries.unit</code> (<code>each</code> | <code>per_100ft</code>) + <code>kind</code> (<code>fixture</code> | <code>task</code>); <code>cost_estimate_labor_rows.kind</code> + <code>source</code> (<code>book</code> | <code>alias</code> | <code>typed</code> | <code>robot</code>) + <code>source_note</code>; <code>app_settings</code> key for the burden factor; fold the five direct-cost tables behind one view <code>cost_estimate_direct_costs</code> (kind column) — the tables stay, the UI reads the view. Docs fragment; pushed after the client deploy.</span></li>
+      <li><b>The head + the queue + the grid</b><span class="t">Frame A and B on <code>BidsLaborTab</code>: meter, sanity strip, crew rate tile, the queue with save-and-learn (writes alias + hours to the book, then re-applies), source chips on every cell. The L2 autosave payload extracted to <code>costEstimateAutosavePayload.ts</code> first (the "stuck Saving…" quirk dies here). Live on B375 with you watching: answer the four queue rows, see the book learn, reopen B375 and see it filled.</span></li>
+      <li><b>Rate and other direct costs</b><span class="t">Frame D: the crew-rate card, estimator time retired in favor of recorded bid labor, one <code>DirectCostRowsSection</code> over the view with the kind chip, driving reads the bid's distance and the crew-days. Pricing tab's <code>derivePricingWorkbench</code> and the CSV/PDF builders read one <code>bidTotalCostBreakdown.ts</code> (the triple-duplicated total dies here).</span></li>
+      <li><b>Calibration</b><span class="t">Needs the bid ↔ job link from the Burn to-do (its PR 1–2). First <code>laborBookMultiplier.ts</code> (predicted vs actual per linked finished job; the strip's ×1.18), then <code>laborActualsByFixture.ts</code> (the split rule, exclusions) + the entry drawer (Frame C) with evidence table, confidence count, Set / Keep; entry history table. Verified on the linked pairs J650 / J523 / J804.</span></li>
+      <li><b>Robot book as the book</b><span class="t">Human books become overrides on Robot Default entries (one book, per-estimator overrides); a migration folds "Default" / "Bill" / "Bryan" in with a report of conflicts for you to settle. Help guide "estimate labor hours on a bid" (new), Glossary "Labor book", ACCESS_CONTROL (who may recalibrate: dev · master technician · estimators for their own overrides).</span></li>
+    </ol>
+    <p class="note" style="margin-top:12px">Out of scope here: the Pricing tab's margin workbench (it consumes the cost; it does not change), the takeoff's materials math, and the robot's own costing pipeline — the robot writes into the same book and the same rows, so it benefits without changes.</p>
+  </section>
+</div>
