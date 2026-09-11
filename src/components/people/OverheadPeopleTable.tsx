@@ -3,16 +3,19 @@ import {
   OVERHEAD_PEOPLE_WINDOWS,
   buildOverheadPeopleTable,
   overheadPeopleShare,
-  type OverheadPeopleLaborInput,
   type OverheadPeoplePartsInput,
   type OverheadPeopleWindowKey,
 } from '../../lib/overheadPeopleTable'
+import type { OverheadSessionDetailLine } from '../../lib/overheadDailyLabor'
+import type { OverheadPeopleCellColumn } from '../../lib/overheadPeopleCellModel'
+import { OverheadPeopleCellModal } from './OverheadPeopleCellModal'
 
 /**
  * People → Overhead "who makes up overhead" table (v2.2675). Presentational:
  * the tab passes the 90-day labor detail lines and person-resolved parts
  * lines its KPI effect already holds; the window chips slice them client-side
- * (no refetch). Every cell shows the amount and its share of the column.
+ * (no refetch). Every cell shows the amount and its share of the column, and
+ * every dollar cell opens the lines behind it (v2.3264, `OverheadPeopleCellModal`).
  */
 
 const money = (v: number): string => `$${Math.round(v).toLocaleString('en-US')}`
@@ -34,18 +37,21 @@ const cellStyle = {
   borderBottom: '1px solid var(--border)',
 }
 
+type OpenCell = { person: string | null; unattributed: boolean; column: OverheadPeopleCellColumn }
+
 export function OverheadPeopleTable({
   labor,
   parts,
   endYmd,
   loading,
 }: {
-  labor: ReadonlyArray<OverheadPeopleLaborInput>
+  labor: ReadonlyArray<OverheadSessionDetailLine>
   parts: ReadonlyArray<OverheadPeoplePartsInput>
   endYmd: string | null
   loading: boolean
 }) {
   const [windowKey, setWindowKey] = useState<OverheadPeopleWindowKey>('week')
+  const [openCell, setOpenCell] = useState<OpenCell | null>(null)
   const win = OVERHEAD_PEOPLE_WINDOWS.find((w) => w.key === windowKey) ?? OVERHEAD_PEOPLE_WINDOWS[1]
   const days = win?.days ?? 7
   const table = useMemo(
@@ -53,14 +59,27 @@ export function OverheadPeopleTable({
     [labor, parts, endYmd, days],
   )
 
-  const cell = (value: number, columnTotal: number, strong = false) => {
+  const cell = (value: number, columnTotal: number, strong: boolean, who: OpenCell, label: string) => {
     const share = overheadPeopleShare(value, columnTotal)
+    if (!(value > 0)) {
+      return (
+        <td style={cellStyle}>
+          <span style={{ fontWeight: strong ? 700 : 500, color: 'var(--text-faint)' }}>—</span>
+        </td>
+      )
+    }
     return (
       <td style={cellStyle}>
-        <span style={{ fontWeight: strong ? 700 : 500, color: value > 0 ? 'var(--text-strong)' : 'var(--text-faint)' }}>
-          {value > 0 ? money(value) : '—'}
-        </span>
-        {value > 0 && <span style={{ marginLeft: '0.4rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>{pct(share)}</span>}
+        <button
+          type="button"
+          onClick={() => setOpenCell(who)}
+          title="Open the sessions and purchases that add up to this"
+          aria-label={`${who.person ?? 'Everyone'}, ${label}, ${money(value)}${share != null ? `, ${pct(share)} of the column` : ''} — open the lines behind it`}
+          style={{ border: 'none', background: 'transparent', padding: '0.1rem 0.25rem', margin: '-0.1rem -0.25rem', borderRadius: 4, cursor: 'pointer', fontFamily: 'inherit', fontSize: 'inherit', color: 'var(--text-strong)', fontWeight: strong ? 700 : 500, fontVariantNumeric: 'tabular-nums', textDecoration: 'underline', textDecorationColor: 'var(--border-strong)', textUnderlineOffset: 3 }}
+        >
+          {money(value)}
+          <span style={{ marginLeft: '0.4rem', fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 500 }}>{pct(share)}</span>
+        </button>
       </td>
     )
   }
@@ -130,10 +149,10 @@ export function OverheadPeopleTable({
                     {r.name}
                     {r.hours > 0 && <span style={{ marginLeft: '0.4rem', fontSize: '0.75rem', color: 'var(--text-muted)', fontStyle: 'normal' }}>{hrs(r.hours)}</span>}
                   </td>
-                  {cell(r.officeLaborUsd, table.totals.officeLaborUsd)}
-                  {cell(r.bidLaborUsd, table.totals.bidLaborUsd)}
-                  {cell(r.officePartsUsd, table.totals.officePartsUsd)}
-                  {cell(r.totalUsd, table.totals.totalUsd, true)}
+                  {cell(r.officeLaborUsd, table.totals.officeLaborUsd, false, { person: r.name, unattributed: r.unattributed, column: 'officeLaborUsd' }, 'office labor')}
+                  {cell(r.bidLaborUsd, table.totals.bidLaborUsd, false, { person: r.name, unattributed: r.unattributed, column: 'bidLaborUsd' }, 'bid labor')}
+                  {cell(r.officePartsUsd, table.totals.officePartsUsd, false, { person: r.name, unattributed: r.unattributed, column: 'officePartsUsd' }, 'office parts')}
+                  {cell(r.totalUsd, table.totals.totalUsd, true, { person: r.name, unattributed: r.unattributed, column: 'totalUsd' }, 'total')}
                 </tr>
               ))}
             </tbody>
@@ -145,11 +164,21 @@ export function OverheadPeopleTable({
                 </td>
                 {COLS.map((c) => (
                   <td key={c.key} style={{ ...cellStyle, borderBottom: 0, fontWeight: 700, color: 'var(--text-strong)' }}>
-                    {table.totals[c.key] > 0 ? money(table.totals[c.key]) : '—'}
-                    {table.totals[c.key] > 0 && (
-                      <span style={{ marginLeft: '0.4rem', fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 500 }}>
-                        {c.key === 'totalUsd' ? '100%' : pct(overheadPeopleShare(table.totals[c.key], table.totals.totalUsd))}
-                      </span>
+                    {table.totals[c.key] > 0 ? (
+                      <button
+                        type="button"
+                        onClick={() => setOpenCell({ person: null, unattributed: false, column: c.key })}
+                        title="Open every line in this column, grouped by person"
+                        aria-label={`Everyone, ${c.label.toLowerCase()}, ${money(table.totals[c.key])} — open the lines behind it`}
+                        style={{ border: 'none', background: 'transparent', padding: '0.1rem 0.25rem', margin: '-0.1rem -0.25rem', borderRadius: 4, cursor: 'pointer', fontFamily: 'inherit', fontSize: 'inherit', color: 'var(--text-strong)', fontWeight: 700, fontVariantNumeric: 'tabular-nums', textDecoration: 'underline', textDecorationColor: 'var(--border-strong)', textUnderlineOffset: 3 }}
+                      >
+                        {money(table.totals[c.key])}
+                        <span style={{ marginLeft: '0.4rem', fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 500 }}>
+                          {c.key === 'totalUsd' ? '100%' : pct(overheadPeopleShare(table.totals[c.key], table.totals.totalUsd))}
+                        </span>
+                      </button>
+                    ) : (
+                      '—'
                     )}
                   </td>
                 ))}
@@ -160,8 +189,21 @@ export function OverheadPeopleTable({
       )}
       <p style={{ margin: '0.4rem 0 0 0', fontSize: '0.75rem', color: 'var(--text-faint)' }}>
         Percentages are each person's share of that column; the Pool row shows each column's share of the whole. Card purchases attribute by card
-        nickname; supply invoices, ACH/wire, and tally lines have no person and sit on the last row so the columns still sum to the pool.
+        nickname; supply invoices, ACH/wire, and tally lines have no person and sit on the last row so the columns still sum to the pool. Click any
+        dollar to see the sessions and purchases behind it.
       </p>
+      {openCell && table ? (
+        <OverheadPeopleCellModal
+          table={table}
+          person={openCell.person}
+          unattributed={openCell.unattributed}
+          column={openCell.column}
+          labor={labor}
+          parts={parts}
+          onColumnChange={(column) => setOpenCell({ ...openCell, column })}
+          onClose={() => setOpenCell(null)}
+        />
+      ) : null}
     </div>
   )
 }

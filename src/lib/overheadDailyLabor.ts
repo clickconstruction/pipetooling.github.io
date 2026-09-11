@@ -57,6 +57,11 @@ export type OverheadSessionDetailLine = {
   bidId: string | null
   /** Session notes (trimmed; null/empty when nothing was captured). */
   notes: string | null
+  /** The punch itself (v2.3264, the "who makes up overhead" cell modal): in/out instants, approval state, the wage the dollars used. */
+  clockedInAt?: string
+  clockedOutAt?: string | null
+  approved?: boolean
+  wageUsdPerHour?: number | null
 }
 
 /** Scope for overhead breakdown modal (labor buckets + office materials + combined total + other jobs). */
@@ -481,6 +486,10 @@ export function buildOverheadDailyLabor(args: {
       jobLedgerId: s.job_ledger_id,
       bidId: s.bid_id,
       notes: trimmedNotes.length > 0 ? trimmedNotes : null,
+      clockedInAt: s.clocked_in_at,
+      clockedOutAt: s.clocked_out_at,
+      approved: s.approved_at != null,
+      wageUsdPerHour: missingWage ? null : wage,
     }
     const list = detailByDay.get(wd) ?? []
     list.push(line)

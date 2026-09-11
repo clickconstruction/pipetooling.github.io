@@ -252,8 +252,8 @@ export function OverheadPoolTrendCard({
             </svg>
           )}
           <p style={{ margin: '0.4rem 0 0 0', fontSize: '0.75rem', color: 'var(--text-faint)' }}>
-            Approved, wage-priced office + bid sessions and office-job parts only — the same pool behind the KPIs and lenses
-            above. Anything the maintenance strip flags is missing here too.
+            Recorded (closed, not rejected), wage-priced office + bid sessions and office-job parts only — the same pool behind the
+            KPIs and lenses above. Unpriced hours and unassigned salary time are missing here too.
           </p>
         </>
       )}

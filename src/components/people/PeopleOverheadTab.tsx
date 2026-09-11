@@ -40,6 +40,7 @@ import {
   type OverheadClockSessionRow,
   type OverheadDetailScope,
   type OverheadPayConfigInput,
+  type OverheadSessionDetailLine,
 } from '../../lib/overheadDailyLabor'
 import {
   formatOverheadHygienePersonNames,
@@ -51,7 +52,7 @@ import { type OverheadLensKey } from '../../lib/overheadLensSeries'
 import { OverheadLensModal, type OverheadLensDetail } from './OverheadLensModal'
 import { OverheadPeopleTable } from './OverheadPeopleTable'
 import { loadOverheadPoolSnapshot } from '../../lib/overheadPoolSnapshot'
-import type { OverheadPeopleLaborInput, OverheadPeoplePartsInput } from '../../lib/overheadPeopleTable'
+import type { OverheadPeoplePartsInput } from '../../lib/overheadPeopleTable'
 import {
   fetchOtherJobsPartsByDay,
   fetchOverheadOfficePartsByDay,
@@ -310,7 +311,7 @@ export default function PeopleOverheadTab({
   const [overheadLensDetail, setOverheadLensDetail] = useState<OverheadLensDetail | null>(null)
   /** "Who makes up overhead" table (v2.2675): the 90-day detail lines the same effect builds; window sliced client-side. */
   const [overheadPeopleLines, setOverheadPeopleLines] = useState<{
-    labor: OverheadPeopleLaborInput[]
+    labor: OverheadSessionDetailLine[]
     parts: Array<{ workDate: string; line: OverheadPartsDetailLine }>
     bucketByTxId: ReadonlyMap<string, OverheadPartsAccountingBucketKey>
     endYmd: string
@@ -1038,12 +1039,10 @@ export default function PeopleOverheadTab({
     if (!overheadPeopleLines) return []
     const out: OverheadPeoplePartsInput[] = []
     for (const { workDate, line } of overheadPeopleLines.parts) {
-      if (bucketForOverheadPartsLine(line, overheadPeopleLines.bucketByTxId) === 'internal_transfer') continue
-      const person =
-        line.source === 'mercury' && line.mercuryDebitCardId
-          ? overheadMercuryNicknameByDebitCard[line.mercuryDebitCardId.toLowerCase()]?.trim() || null
-          : null
-      out.push({ workDate, amountUsd: line.amountUsd, person })
+      const bucket = bucketForOverheadPartsLine(line, overheadPeopleLines.bucketByTxId)
+      if (bucket === 'internal_transfer') continue
+      const cardLabel = line.source === 'mercury' && line.mercuryDebitCardId ? overheadMercuryNicknameByDebitCard[line.mercuryDebitCardId.toLowerCase()]?.trim() || null : null
+      out.push({ workDate, amountUsd: line.amountUsd, person: cardLabel, line: { source: line.source, label: line.label, mercuryTransactionId: line.mercuryTransactionId ?? null }, bucket, cardLabel })
     }
     return out
   }, [overheadPeopleLines, overheadMercuryNicknameByDebitCard])

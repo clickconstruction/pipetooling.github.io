@@ -11,6 +11,7 @@ import {
   type OverheadClockSessionRow,
   type OverheadPayConfigInput,
   type OverheadWageRates,
+  type OverheadSessionDetailLine,
 } from './overheadDailyLabor'
 import { loadOfficePartsUsdByDayExcludingInternalTransfer } from './overheadPartsBucketLoader'
 import type { OverheadPartsAccountingBucketKey } from './overheadPartsAccountingBuckets'
@@ -20,7 +21,6 @@ import { bucketInvoiceRevenueByAppTzDay, computeOverheadTrailingAverages } from 
 import { computeOverheadRateMethods, type OverheadRateMethods } from './overheadRateMethods'
 import { buildOverheadPoolTrend, type OverheadPoolTrend } from './overheadPoolTrend'
 import { buildOverheadLensSeries, type OverheadLensKey, type OverheadLensSeries } from './overheadLensSeries'
-import type { OverheadPeopleLaborInput } from './overheadPeopleTable'
 import { fetchOverheadOfficeJobLedgerIdFromAppSettings } from './overheadOfficeJobSettings'
 
 /**
@@ -76,7 +76,8 @@ export type OverheadPoolSnapshot = {
     overlapSessions: number
   }
   peopleLines: {
-    labor: OverheadPeopleLaborInput[]
+    /** Full session detail lines (v2.3264) — a structural superset of `OverheadPeopleLaborInput`; the cell modal reads the extra fields. */
+    labor: OverheadSessionDetailLine[]
     parts: Array<{ workDate: string; line: OverheadPartsDetailLine }>
     bucketByTxId: ReadonlyMap<string, OverheadPartsAccountingBucketKey>
     endYmd: string
@@ -313,9 +314,7 @@ export async function loadOverheadPoolSnapshot(
       overlapSessions,
     },
     peopleLines: {
-      labor: [...labor.detailByDay.values()]
-        .flat()
-        .map((l) => ({ workDate: l.workDate, userName: l.userName, bucket: l.bucket, hours: l.hours, laborUsd: l.laborUsd })),
+      labor: [...labor.detailByDay.values()].flat(),
       parts: partsDetailLines,
       bucketByTxId: partsBucketByTxId,
       endYmd: today,
