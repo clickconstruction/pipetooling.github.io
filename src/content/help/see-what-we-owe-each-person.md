@@ -2,9 +2,9 @@
 title: see what we owe each person on payroll
 category: Office
 roles: dev
-keywords: payroll, ledger, balance, owe, back-charge, credit, offset, pay stub, paid out, unpaid, settle up
+keywords: payroll, pay run, balances, ledger, balance, owe, back-charge, credit, offset, pay stub, paid out, unpaid, settle up
 ---
-People → **Payroll** has two views (dev only for now): **Pay reports** — the table of generated pay reports — and **Ledger** — one money story per person, with a running balance.
+People → **Payroll** has two views (dev only for now): **Pay run** — this week's work: draft the reports, record the payments, catch the weeks still waiting — and **Balances** — where each person stands with us over all time, one money story per person with a running balance.
 
 ## The roster
 

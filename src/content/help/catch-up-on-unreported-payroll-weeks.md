@@ -5,7 +5,7 @@ roles: dev, controller
 keywords: payroll, draft payroll, unreported, pay report, catch up, missed week, earlier weeks
 order: 59
 ---
-Draft Payroll shows one week at a time, and the Ledger only lists reports that exist — so a week where someone worked but nobody generated a report used to be invisible. The catch-up scan finds those weeks for you.
+Draft Payroll shows one week at a time, and the Pay run table only lists reports that exist — so a week where someone worked but nobody generated a report used to be invisible. The catch-up scan finds those weeks for you.
 
 ## Finding unreported weeks
 
@@ -31,7 +31,7 @@ Estimates use each person's current pay config; the generated report is the auth
 
 ## Sizing up what is still upcoming
 
-The Ledger header on **Payroll → Pay reports** carries an amber {{chip:yellow|29 upcoming: $19,743.79}} link: every week with clocked time and no pay report yet, estimated at hours × wage. Tap it to open the list.
+The header on **Payroll → Pay run** carries an amber {{chip:yellow|29 upcoming: $19,743.79}} link: every week with clocked time and no pay report yet, estimated at hours × wage. Tap it to open the list.
 
 :::example The upcoming list, one chip per person
 Malachi $6,699.89 3w · Abraham $2,521.67 2w · Michael A $2,298.83 3w · … · William $7.46 2w
