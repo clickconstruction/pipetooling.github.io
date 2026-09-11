@@ -7,7 +7,8 @@ import { formatLegalMoney, type LegalPacket } from '../lib/legal/legalPacket'
 import { buildLegalPacketPrintHtml } from '../lib/legal/legalPacketPrint'
 import { openHtmlPrintWindow } from '../lib/jobsDocuments/printWindow'
 import { legalStageLabel } from '../lib/legal/legalMatters'
-import { buildMatterPacket, parseLegalPortalPayload, portalFeeModel, type LegalPortalMatter, type LegalPortalPayload } from '../lib/legal/legalPortalPayload'
+import { buildMatterPacket, parseLegalPortalPayload, portalFeeModel, type LegalPortalMatter, type LegalPortalPayload, type LegalPortalRecipient } from '../lib/legal/legalPortalPayload'
+import { WEEKDAY_LABELS } from '../lib/legal/legalMatters'
 
 /**
  * The collections law firm's portal (Legal portal PR 3): the no-login page
@@ -55,6 +56,7 @@ export default function LegalPortal() {
   const [state, setState] = useState<PageState>({ kind: 'loading' })
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [tab, setTab] = useState<Tab>('account')
+  const [panel, setPanel] = useState<'matters' | 'notifications'>('matters')
   const [reloadTick, setReloadTick] = useState(0)
   const [busy, setBusy] = useState(false)
   const [notice, setNotice] = useState<string | null>(null)
@@ -140,14 +142,24 @@ export default function LegalPortal() {
           ) : null}
         </div>
 
+        {payload ? (
+          <div style={{ display: 'flex', gap: 2, borderBottom: `1px solid ${HAIR}`, marginBottom: 14, fontSize: 13 }}>
+            {(['matters', 'notifications'] as const).map((p) => (
+              <button key={p} type="button" onClick={() => setPanel(p)} style={{ background: 'none', border: 'none', padding: '6px 12px', color: panel === p ? INK : MUTED, borderBottom: panel === p ? `2px solid ${COPPER}` : '2px solid transparent', fontWeight: panel === p ? 700 : 500, cursor: 'pointer', font: 'inherit', fontSize: 13 }}>
+                {p === 'matters' ? 'Matters' : `Notifications · ${payload.recipients.length} ${payload.recipients.length === 1 ? 'person' : 'people'}`}
+              </button>
+            ))}
+          </div>
+        ) : null}
+        {payload && panel === 'notifications' ? <NotificationsPanel payload={payload} act={act} busy={busy} notice={notice} /> : null}
         {state.kind === 'loading' ? <p style={{ color: MUTED }}>Opening the portal…</p> : null}
         {state.kind === 'error' ? <div style={{ ...card, textAlign: 'center', padding: 40 }}><b>We couldn’t open this page.</b><br /><span style={{ color: MUTED }}>{state.message}</span></div> : null}
 
-        {payload && payload.matters.length === 0 ? (
+        {payload && panel === 'matters' && payload.matters.length === 0 ? (
           <div style={{ ...card, textAlign: 'center', padding: 40 }}><b>No matters yet.</b><br /><span style={{ color: MUTED }}>Accounts appear here the moment the office marks them attorney-ready.</span></div>
         ) : null}
 
-        {payload && selected ? (
+        {payload && panel === 'matters' && selected ? (
           <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.25fr) minmax(260px, 0.85fr)', gap: 16 }}>
             <div>
               <div style={card}>
@@ -354,3 +366,78 @@ function FirmActs({ matter, act, busy, notice }: { matter: LegalPortalMatter; ac
     </div>
   )
 }
+
+/** The firm runs its own inbox (PR 5): people, one rule each — right away or a weekly digest — and only-my-matters. */
+function NotificationsPanel({ payload, act, busy, notice }: { payload: LegalPortalPayload; act: (payload: Record<string, unknown>) => Promise<boolean>; busy: boolean; notice: string | null }) {
+  const [name, setName] = useState('')
+  const [email, setEmail] = useState('')
+  const [role, setRole] = useState('paralegal')
+  const input: CSSProperties = { font: 'inherit', fontSize: 13, padding: '5px 8px', border: `1px solid ${HAIR}`, borderRadius: 4, background: CARD, color: INK, width: '100%' }
+  const lab: CSSProperties = { display: 'grid', gap: 3, fontSize: 11.5, color: MUTED }
+  const small: CSSProperties = { ...btn, padding: '3px 9px', fontSize: 12 }
+  const ghost: CSSProperties = { ...small, borderColor: HAIR, color: MUTED }
+  const rule = (r: LegalPortalRecipient, patch: Record<string, unknown>) => void act({ kind: 'recipient_rules', recipientId: r.id, mode: r.mode, scope: r.scope, digestWeekday: r.digestWeekday, digestTime: r.digestTime, ...patch })
+  const onAdd = async (e: FormEvent) => {
+    e.preventDefault()
+    if (await act({ kind: 'recipient_add', name, email, role })) {
+      setName('')
+      setEmail('')
+    }
+  }
+  return (
+    <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.25fr) minmax(260px, 0.85fr)', gap: 16 }}>
+      <div>
+        {payload.firmPaused ? <div style={{ ...card, borderColor: PAPER_RED, color: PAPER_RED, marginBottom: 12, fontSize: 13 }}>{payload.company.name} has paused all emails to the firm. The portal still works; ask the office to resume.</div> : null}
+        {notice ? <div style={{ fontSize: 12.5, padding: '6px 10px', background: NOTE_BAND, borderRadius: 4, marginBottom: 10 }}>{notice}</div> : null}
+        {payload.recipients.length === 0 ? <div style={card}><b>Nobody at the firm is on the list yet.</b><br /><span style={{ color: MUTED, fontSize: 13 }}>Add the people who should hear from {payload.company.name}. Each gets one confirmation email and nothing else until they click it.</span></div> : null}
+        {payload.recipients.map((r) => (
+          <div key={r.id} style={{ ...card, marginBottom: 10 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' }}>
+              <div><b>{r.name}</b> <span style={{ color: MUTED, fontSize: 12.5 }}>{r.email}{r.role ? ` · ${r.role}` : ''}</span></div>
+              <span style={{ fontSize: 11.5, fontWeight: 700, color: r.paused ? PAPER_RED : r.confirmed ? PAPER_GREEN : COPPER }}>{r.paused ? 'stopped' : r.confirmed ? 'confirmed' : 'waiting for their click'}</span>
+            </div>
+            <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', marginTop: 8, fontSize: 13 }}>
+              <span style={{ color: MUTED }}>Tell me</span>
+              <span style={{ display: 'inline-flex', border: `1px solid ${HAIR}`, borderRadius: 999, overflow: 'hidden', fontSize: 11.5, fontWeight: 700 }}>
+                {(['now', 'digest'] as const).map((m) => <button key={m} type="button" disabled={busy} onClick={() => rule(r, { mode: m })} style={{ padding: '3px 10px', border: 'none', background: r.mode === m ? COPPER : 'transparent', color: r.mode === m ? '#fff' : FAINT, cursor: 'pointer', font: 'inherit', fontSize: 11.5, fontWeight: 700 }}>{m === 'now' ? 'Right away' : 'Weekly digest'}</button>)}
+              </span>
+              {r.mode === 'digest' ? (
+                <>
+                  {[1, 2, 3, 4, 5].map((d) => <button key={d} type="button" disabled={busy} onClick={() => rule(r, { digestWeekday: d })} style={r.digestWeekday === d ? small : ghost}>{WEEKDAY_LABELS[d]}</button>)}
+                  <select value={r.digestTime} disabled={busy} onChange={(e) => rule(r, { digestTime: e.target.value })} style={{ ...input, width: 'auto' }}>
+                    {['06:00', '07:00', '08:00', '09:00', '12:00', '16:00'].map((t) => <option key={t} value={t}>{t} Central</option>)}
+                  </select>
+                </>
+              ) : null}
+              <span style={{ marginLeft: 'auto', display: 'inline-flex', gap: 6 }}>
+                <button type="button" disabled={busy} onClick={() => rule(r, { scope: 'mine' })} style={r.scope === 'mine' ? small : ghost}>Only my matters</button>
+                <button type="button" disabled={busy} onClick={() => rule(r, { scope: 'all' })} style={r.scope === 'all' ? small : ghost}>Every matter</button>
+              </span>
+            </div>
+            <div style={{ display: 'flex', gap: 8, marginTop: 8, flexWrap: 'wrap' }}>
+              {!r.confirmed ? <button type="button" disabled={busy} onClick={() => void act({ kind: 'recipient_resend', recipientId: r.id })} style={ghost}>Resend the confirmation</button> : null}
+              {r.paused ? <button type="button" disabled={busy} onClick={() => void act({ kind: 'recipient_resume', recipientId: r.id })} style={small}>Turn emails back on</button> : <button type="button" disabled={busy} onClick={() => void act({ kind: 'recipient_stop', recipientId: r.id })} style={{ ...ghost, color: PAPER_RED, borderColor: PAPER_RED }}>Stop emails to this person</button>}
+            </div>
+          </div>
+        ))}
+      </div>
+      <div>
+        <div style={card}>
+          <div style={cap}>Add a person at the firm</div>
+          <form onSubmit={onAdd} style={{ display: 'grid', gap: 8, marginTop: 8 }}>
+            <input type="text" name="website" tabIndex={-1} autoComplete="off" style={{ display: 'none' }} aria-hidden />
+            <label style={lab}>Name<input value={name} onChange={(e) => setName(e.target.value)} required style={input} /></label>
+            <label style={lab}>Email<input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required style={input} /></label>
+            <label style={lab}>Role<select value={role} onChange={(e) => setRole(e.target.value)} style={input}><option value="paralegal">paralegal</option><option value="attorney">attorney</option><option value="billing">billing</option></select></label>
+            <button type="submit" disabled={busy} style={{ ...btn, justifyContent: 'center' }}>Send them a confirmation</button>
+          </form>
+        </div>
+        <div style={{ ...card, marginTop: 12, fontSize: 12.5, color: MUTED }}>
+          <b style={{ color: INK }}>How this behaves</b><br />Each person chooses right away or a weekly digest, and every matter or only the ones they handle. A new address gets one confirmation email and nothing else until they click it. Every email carries a one-click link to stop. {payload.company.name} can pause all emails to the firm or remove a person; you see that here when it happens.<br /><br />
+          <b style={{ color: INK }}>What you hear about</b><br />A new account referred to you, the office answering a question, an account pulled back — right away or in the digest. The digest also lists every open matter.
+        </div>
+      </div>
+    </div>
+  )
+}
+

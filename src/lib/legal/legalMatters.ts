@@ -187,11 +187,48 @@ function daysBetween(fromYmd: string, toYmd: string): number {
   return Math.round((b - a) / 86_400_000)
 }
 
-/** Who at the firm hears about a release today: the handling person, by email. PR 5 replaces this with the recipients' own rules. */
-export function releaseRecipients(firm: LegalFirmRow | null | undefined, handlingName: string): Array<{ name: string; email: string; why: string }> {
+export type LegalRecipientRow = {
+  id: string
+  firm_id?: string
+  name: string
+  email: string
+  role: string
+  mode: string
+  scope: string
+  digest_weekday: number
+  digest_time: string
+  confirmed_at: string | null
+  paused_at: string | null
+  added_via_portal?: boolean
+  removed_at?: string | null
+}
+
+export type ReleaseRecipientLine = { name: string; email: string; bucket: 'now' | 'digest' | 'unconfirmed' | 'stopped'; why: string }
+
+export const WEEKDAY_LABELS = ['', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'] as const
+
+/**
+ * Who at the firm hears about a release, by their own rules (PR 5): the handling
+ * person always hears now; others by mode; scope 'mine' only when they handle it.
+ * With no recipients yet, the firm row's handling email is the fallback.
+ */
+export function releaseRecipients(firm: LegalFirmRow | null | undefined, handlingName: string, recipients: ReadonlyArray<LegalRecipientRow> = []): ReleaseRecipientLine[] {
   if (!firm) return []
-  const name = handlingName.trim() || firm.handling_name.trim() || firm.name
-  return firm.email.trim() ? [{ name, email: firm.email.trim(), why: 'handling — always hears' }] : []
+  const handling = handlingName.trim() || firm.handling_name.trim()
+  const live = recipients.filter((r) => !r.removed_at)
+  if (live.length === 0) {
+    const name = handling || firm.name
+    return firm.email.trim() ? [{ name, email: firm.email.trim(), bucket: 'now', why: 'handling — always hears' }] : []
+  }
+  return live.map((r) => {
+    const isHandling = handling !== '' && r.name.trim().toLowerCase() === handling.toLowerCase()
+    if (!r.confirmed_at) return { name: r.name, email: r.email, bucket: 'unconfirmed', why: 'has not clicked their confirmation — nothing goes there' }
+    if (r.paused_at) return { name: r.name, email: r.email, bucket: 'stopped', why: 'stopped their emails' }
+    if (isHandling) return { name: r.name, email: r.email, bucket: 'now', why: 'handling — always hears' }
+    if (r.scope === 'mine') return { name: r.name, email: r.email, bucket: 'stopped', why: 'only their own matters' }
+    if (r.mode === 'digest') return { name: r.name, email: r.email, bucket: 'digest', why: `${WEEKDAY_LABELS[r.digest_weekday] ?? 'Mon'} ${r.digest_time} digest` }
+    return { name: r.name, email: r.email, bucket: 'now', why: 'right away' }
+  })
 }
 
 // ---------------------------------------------------------------------------

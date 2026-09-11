@@ -1312,3 +1312,5 @@ Owner decision 2026-09-11: only a dev releases; the office asks with a note. A w
 
 **The firm's acts** (v2.3322): `submit-legal-portal` writes `legal_matter_entries` rows (`via_portal = true`) under the service role — fees, costs, steps, questions, payments received — only on matters with the token's firm and in the with-firm set. The office (the same four roles) answers, applies and acknowledges them from the desk; the firm cannot mark anything paid or touch a job.
 
+**The firm's emails** (v2.3325): `legal_firm_recipients` and `legal_notification_queue` are office-read; the firm manages its people through `submit-legal-portal` (service role); confirm and unsubscribe are public token links on `legal-notify-dispatch`. The office's two overrides — `legal_firm_set_paused`, `legal_firm_recipient_remove` — are the Collections managers'.
+

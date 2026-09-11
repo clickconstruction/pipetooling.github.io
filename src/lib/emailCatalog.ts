@@ -131,6 +131,37 @@ export const EMAIL_CATALOG: EmailCatalogEntry[] = [
 
   // ---- Lien paperwork ----
   {
+    id: 'legal_referral',
+    name: 'Legal portal — account referred / office answered / pulled back',
+    group: 'lien',
+    audience: 'customer',
+    builtWhere: 'server',
+    sender: 'legal-notify-dispatch',
+    editable: { kind: 'hardcoded' },
+    subjectExample: 'New account referred: The Learning Experience',
+    variants: ['office answered your question', 'pulled back'],
+  },
+  {
+    id: 'legal_digest',
+    name: 'Legal portal — weekly digest for the firm',
+    group: 'digests',
+    audience: 'customer',
+    builtWhere: 'server',
+    sender: 'legal-notify-dispatch',
+    editable: { kind: 'hardcoded' },
+    subjectExample: 'Weekly digest — 3 open matters at Click Plumbing and Electrical',
+  },
+  {
+    id: 'legal_recipient_confirm',
+    name: 'Legal portal — confirm your email',
+    group: 'lien',
+    audience: 'customer',
+    builtWhere: 'server',
+    sender: 'submit-legal-portal',
+    editable: { kind: 'hardcoded' },
+    subjectExample: "Confirm your email for Click Plumbing and Electrical's legal portal",
+  },
+  {
     id: 'lien_filing_notice',
     name: '§ 53.056 notice of claim (email channel)',
     group: 'lien',

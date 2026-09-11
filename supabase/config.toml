@@ -800,3 +800,7 @@ verify_jwt = false
 # The firm's acts on its portal (Legal portal train, PR 4) — token-authenticated like submit-sub-portal.
 [functions.submit-legal-portal]
 verify_jwt = false
+
+# The firm's emails (Legal portal train, PR 5): cron POST with X-Cron-Secret + public GET confirm/unsubscribe links.
+[functions.legal-notify-dispatch]
+verify_jwt = false

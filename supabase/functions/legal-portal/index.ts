@@ -66,7 +66,7 @@ serve(async (req) => {
     }
     if (!link || link.revoked_at) return jsonResponse({ error: LINK_INACTIVE_MSG }, 404)
 
-    const { data: firm } = await admin.from('legal_firms').select('id, name, handling_name, email, phone, contingency_pct, filing_cost, active').eq('id', link.firm_id).maybeSingle()
+    const { data: firm } = await admin.from('legal_firms').select('id, name, handling_name, email, phone, contingency_pct, filing_cost, active, paused_at').eq('id', link.firm_id).maybeSingle()
     if (!firm || !(firm as Row).active) return jsonResponse({ error: LINK_INACTIVE_MSG }, 404)
 
     // View counting — fire-and-forget; office previews and staff sessions do not count.
@@ -91,10 +91,15 @@ serve(async (req) => {
       particulars = {}
     }
 
+    // The firm's people and their email rules (PR 5) — the portal's Notifications page.
+    const { data: recRows } = await admin.from('legal_firm_recipients').select('id, name, email, role, mode, scope, digest_weekday, digest_time, confirmed_at, paused_at, added_via_portal, created_at').eq('firm_id', link.firm_id).is('removed_at', null).order('created_at')
+    const recipients = ((recRows ?? []) as Row[]).map((r) => ({ id: r.id, name: r.name, email: r.email, role: r.role, mode: r.mode, scope: r.scope, digestWeekday: r.digest_weekday, digestTime: r.digest_time, confirmed: r.confirmed_at != null, paused: r.paused_at != null, addedViaPortal: Boolean(r.added_via_portal) }))
+    const firmPaused = (firm as Row).paused_at != null
+
     const { data: matterRows } = await admin.from('legal_matters').select('*').eq('firm_id', link.firm_id).in('stage', WITH_FIRM_STAGES).order('released_at')
     const matters = (matterRows ?? []) as Row[]
     if (matters.length === 0) {
-      return jsonResponse({ company: PORTAL_COMPANY, preparedOn: todayYmd, firm, particulars, matters: [] })
+      return jsonResponse({ company: PORTAL_COMPANY, preparedOn: todayYmd, firm, particulars, recipients, firmPaused, matters: [] })
     }
     const matterIds = matters.map((m) => m.id as string)
     const { data: linkRows } = await admin.from('legal_matter_jobs').select('matter_id, job_id').in('matter_id', matterIds)
@@ -251,7 +256,7 @@ serve(async (req) => {
       }
     })
 
-    return jsonResponse({ company: PORTAL_COMPANY, preparedOn: todayYmd, firm, particulars, matters: out })
+    return jsonResponse({ company: PORTAL_COMPANY, preparedOn: todayYmd, firm, particulars, recipients, firmPaused, matters: out })
   } catch (e) {
     const message = e instanceof Error ? e.message : 'Unknown error'
     return jsonResponse({ error: message }, 500)
