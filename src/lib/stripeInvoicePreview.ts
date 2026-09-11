@@ -142,7 +142,9 @@ export function parseStripeInvoicePreviewResponse(raw: unknown): StripeInvoicePr
 export function formatStripeCents(cents: number, currency: string): string {
   const n = cents / 100
   if (currency.toLowerCase() === 'usd') {
-    return `$${n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+    // A discount line (v2.3268) is negative: "−$1,509.80", never "$-1,509.80".
+    const abs = Math.abs(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+    return n < 0 ? `−$${abs}` : `$${abs}`
   }
   return `${n.toFixed(2)} ${currency.toUpperCase()}`
 }
