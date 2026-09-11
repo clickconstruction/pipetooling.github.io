@@ -217,7 +217,8 @@ export default function PeoplePayLedgerView({ payStubs, payStubPaymentsByStubId,
         We owe <b style={{ color: '#16a34a', fontVariantNumeric: 'tabular-nums' }}><MoneySC n={roster.totals.oweAmount} /></b> across {roster.totals.oweCount} · owed to us{' '}
         <b style={{ color: 'var(--text-red-600)', fontVariantNumeric: 'tabular-nums' }}><MoneySC n={roster.totals.owedAmount} /></b> across {roster.totals.owedCount} · {roster.totals.evenCount} even
       </p>
-      <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap', marginBottom: '0.55rem' }}>
+      {/* One line on purpose: the roster column is 300px, and four chips at the old padding/gap wrapped the last one. */}
+      <div style={{ display: 'flex', gap: '0.25rem', flexWrap: 'nowrap', marginBottom: '0.55rem' }}>
         {(
           [
             ['all', `All ${roster.rows.length}`],
@@ -231,7 +232,7 @@ export default function PeoplePayLedgerView({ payStubs, payStubPaymentsByStubId,
             type="button"
             onClick={() => setRosterFilter(v)}
             aria-pressed={rosterFilter === v}
-            style={{ font: 'inherit', fontSize: '0.68rem', fontWeight: 700, padding: '0.15rem 0.55rem', borderRadius: 999, border: '1px solid var(--border)', background: rosterFilter === v ? 'var(--bg-muted)' : 'transparent', color: rosterFilter === v ? 'var(--text-strong)' : 'var(--text-muted)', cursor: 'pointer' }}
+            style={{ font: 'inherit', fontSize: '0.68rem', fontWeight: 700, padding: '0.15rem 0.4rem', whiteSpace: 'nowrap', borderRadius: 999, border: '1px solid var(--border)', background: rosterFilter === v ? 'var(--bg-muted)' : 'transparent', color: rosterFilter === v ? 'var(--text-strong)' : 'var(--text-muted)', cursor: 'pointer' }}
           >
             {label}
           </button>
