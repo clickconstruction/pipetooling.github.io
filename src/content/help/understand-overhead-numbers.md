@@ -2,7 +2,7 @@
 title: keep the overhead numbers accurate
 category: Billing & Money
 roles: dev, master_technician
-keywords: overhead, overhead rate, pool, method a, method b, method c, pending approvals, recorded time, rejected, unpriced hours, wage, pay config, salary, unassigned, maintenance, hygiene, 90 day
+keywords: overhead, overhead rate, pool, method a, method b, method c, pending approvals, recorded time, rejected, unpriced hours, wage, pay config, salary, unassigned, maintenance, hygiene, 90 day, click a bar, spike, biggest purchases, what is that, day panel, internal transfer
 order: 61
 ---
 **People → Overhead** turns the last 90 days of office time, bid time, and office spending into the overhead rates you price with — the daily-cost averages and the three lens rates (per field hour, per revenue dollar, per labor dollar).
@@ -27,6 +27,22 @@ Under the pill is the ledger of what the pool is made of — **office labor**, *
 
 :::example Reading a flat pill with a rising chart
 If the pill says flat but the bars climb across the last two weeks, the rise is recent and hasn't moved the 30-day average yet — check back in a week, or read the 7-day line, which reacts sooner.
+:::
+
+## Click a bar to see what's in it
+
+Every bar on the **Overhead pool — 90 days** chart opens. Hover one for the day's split, how it compares to a typical day, and the single biggest line in it. Click a **colored segment** to see that category's lines — the office or bid sessions behind the purple and blue, the purchases behind the amber — or click the **empty space above a bar** for the whole day.
+
+The panel is built to answer "is this normal?", not just "what is it":
+
+- Each **purchase** carries a source badge ({{chip:gray|card}}, {{chip:gray|supply invoice}}, {{chip:gray|tally}}), the card it was paid with, and a note like *6× in 90 days · $2,940 total · the largest*. An **internal transfer** is listed struck through with {{chip:gray|internal transfer · not counted}} — it was never in the pool.
+- Each **session** shows clock in → out, hours and labor $, the person's typical day and whether this is the longest, and {{chip:yellow|awaiting approval}} when nobody has reviewed it yet (it still counts — recorded time).
+- The header reads the day's size: *$1,485 of that day's $1,917 · 5.9× a typical day for office parts · 4.0% of the 90-day pool*.
+
+Use ‹ › (or the arrow keys) to walk to the neighboring days, the tabs to flip between **Whole day**, **Office labor**, **Bid labor** and **Office parts**, and {{button:outline|Show this week in the table below ↓}} to jump the week table to that week. The footer links to **Banking → Accounting** (re-label or move a card purchase) and **People → Hours** (approve or reject a session).
+
+:::example Finding the spike
+The amber bar sticking above the rest is a supply invoice. Under the chart, **Biggest single lines in these 90 days** already names it — hover the row to see its bar light up, click it to open the day. Or click the legend's *Office parts* swatch to hide that series and read office labor on its own scale.
 :::
 
 ## Who makes up the pool

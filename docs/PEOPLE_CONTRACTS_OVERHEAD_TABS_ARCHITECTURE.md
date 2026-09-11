@@ -5,7 +5,7 @@ file: docs/PEOPLE_CONTRACTS_OVERHEAD_TABS_ARCHITECTURE.md
 type: Architecture Map / Decomposition
 purpose: Step-0 map (per PAGE_DECOMPOSITION_PLAYBOOK.md) for the two largest already-extracted People tabs — src/components/people/PeopleContractsTab.tsx (~2,981 lines) and src/components/people/PeopleOverheadTab.tsx (~2,510 lines). Inventories every region's state, handlers, supabase tables/RPCs, and coupling so their sub-decomposition (Stage-A lib extraction + modal/section component moves) can start without re-deriving the strategy.
 audience: Developers, AI Agents
-last_updated: 2026-09-11 (v2.3261 recorded time)
+last_updated: 2026-09-11 (v2.3269 pool chart day panel)
 ---
 
 ## What this surface is
@@ -121,6 +121,8 @@ All plain functions inside the component body that close over the caches only:
 `PersonContractSignedRecordModal` (open by `contractSignedRecordModalDocId`) and `ContractBookModal` (open by `contractBookModalOpen`; `canDeleteLibraryEntries={canDeletePeopleContracts}`) — thin wiring only; stays in the tab.
 
 ---
+
+**Pool chart day panel (v2.3269):** `OverheadPoolTrendCard` gained `dayIndex` / `highlightYmd` / `onOpenDay` / `cardLabelForLine`; the tab builds the index with the pure [`lib/overheadPoolDayLines.ts`](../src/lib/overheadPoolDayLines.ts) from `overheadPeopleLines` (the snapshot's per-line labor + parts, now carrying session stamps and review state) and the trend's day list, and renders [`OverheadPoolDayModal`](../src/components/people/OverheadPoolDayModal.tsx) — a sibling of the lens modal, not the week table's breakdown modal, which stays week-scoped. "Show this week" moves `overheadDateStart/End` with the table's own local-Date week math.
 
 ## PeopleOverheadTab — dossiers
 

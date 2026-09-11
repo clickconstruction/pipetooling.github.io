@@ -48,6 +48,8 @@ import {
 } from '../../lib/overheadHygiene'
 import { type OverheadPoolTrend } from '../../lib/overheadPoolTrend'
 import { OverheadPoolTrendCard } from './OverheadPoolTrendCard'
+import { OverheadPoolDayModal, type OverheadPoolDayModalCategory } from './OverheadPoolDayModal'
+import { buildOverheadPoolDayIndex, type OverheadPoolPartsLine } from '../../lib/overheadPoolDayLines'
 import { type OverheadLensKey } from '../../lib/overheadLensSeries'
 import { OverheadLensModal, type OverheadLensDetail } from './OverheadLensModal'
 import { OverheadPeopleTable } from './OverheadPeopleTable'
@@ -308,6 +310,9 @@ export default function PeopleOverheadTab({
   })
   /** Lens modals (v2.2674): which lens is open + the per-lens history/denominators the same effect computes. */
   const [overheadLensModal, setOverheadLensModal] = useState<OverheadLensKey | null>(null)
+  /** The pool chart's day panel (v2.3269): which day and category it is open on; the last-opened day stays outlined on the chart. */
+  const [overheadPoolDay, setOverheadPoolDay] = useState<{ ymd: string; category: OverheadPoolDayModalCategory } | null>(null)
+  const [overheadPoolHighlightYmd, setOverheadPoolHighlightYmd] = useState<string | null>(null)
   const [overheadLensDetail, setOverheadLensDetail] = useState<OverheadLensDetail | null>(null)
   /** "Who makes up overhead" table (v2.2675): the 90-day detail lines the same effect builds; window sliced client-side. */
   const [overheadPeopleLines, setOverheadPeopleLines] = useState<{
@@ -1031,6 +1036,33 @@ export default function PeopleOverheadTab({
         `card ${formatMercuryDebitCardIdCompact(ln.mercuryDebitCardId)}`
       : ''
 
+  // The pool chart's day index (v2.3269): what is behind every bar, from the same lines the people table gets.
+  const overheadPoolDayIndex = useMemo(() => {
+    if (!overheadPeopleLines || !overheadPoolTrend.trend) return null
+    return buildOverheadPoolDayIndex({
+      labor: overheadPeopleLines.labor,
+      parts: overheadPeopleLines.parts,
+      bucketByTxId: overheadPeopleLines.bucketByTxId,
+      ymds: overheadPoolTrend.trend.days.map((d) => d.ymd),
+    })
+  }, [overheadPeopleLines, overheadPoolTrend.trend])
+  const overheadPoolCardLabel = (l: OverheadPoolPartsLine): string => overheadCardLabelForLine({ source: l.source, label: l.label, amountUsd: l.amountUsd, sortKey: '', mercuryDebitCardId: l.mercuryDebitCardId ?? null })
+  const openOverheadPoolDay = (ymd: string, category: OverheadPoolDayModalCategory) => {
+    setOverheadPoolDay({ ymd, category })
+    setOverheadPoolHighlightYmd(ymd)
+  }
+  /** Move the week table to the Sun–Sat week holding this day (the table's own local-Date week math). */
+  const showOverheadWeekOf = (ymd: string) => {
+    const d = new Date(`${ymd}T12:00:00`)
+    const start = new Date(d)
+    start.setDate(d.getDate() - d.getDay())
+    const end = new Date(start)
+    end.setDate(start.getDate() + 6)
+    setOverheadDateStart(localCalendarDayKey(start))
+    setOverheadDateEnd(localCalendarDayKey(end))
+    setOverheadPoolDay(null)
+  }
+
   // People table (v2.2675): attribute each office-parts line to a person the
   // same way the breakdown modal labels it — Mercury card → nickname; supply /
   // tally / no-card Mercury lines have no person. Internal transfers drop with
@@ -1321,7 +1353,26 @@ export default function PeopleOverheadTab({
           not these.
         </p>
       </div>
-      <OverheadPoolTrendCard trend={overheadPoolTrend.trend} loading={overheadPoolTrend.loading} windowLabel={lensWindowLabel} />
+      <OverheadPoolTrendCard
+        trend={overheadPoolTrend.trend}
+        loading={overheadPoolTrend.loading}
+        windowLabel={lensWindowLabel}
+        dayIndex={overheadPoolDayIndex}
+        highlightYmd={overheadPoolHighlightYmd}
+        onOpenDay={openOverheadPoolDay}
+        cardLabelForLine={overheadPoolCardLabel}
+      />
+      {overheadPoolDay && overheadPoolDayIndex ? (
+        <OverheadPoolDayModal
+          index={overheadPoolDayIndex}
+          ymd={overheadPoolDay.ymd}
+          category={overheadPoolDay.category}
+          cardLabelForLine={overheadPoolCardLabel}
+          onChange={openOverheadPoolDay}
+          onShowWeek={showOverheadWeekOf}
+          onClose={() => setOverheadPoolDay(null)}
+        />
+      ) : null}
       {overheadLensModal ? (
         <OverheadLensModal
           lens={overheadLensModal}
