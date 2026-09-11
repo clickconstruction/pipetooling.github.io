@@ -41,6 +41,10 @@ If the job has no Stripe bill yet the sheet says **Bill first**: open **Bill Cus
 Drafts pile up under **Needs you** as "3 test reports are ready to send" (office roles). The card opens the first one; the ones still missing a verdict or findings are counted separately.
 :::
 
+## What the customer sees
+
+Once a report is sent it shows on the customer's (or the GC's) portal statement, on the job it belongs to — {{chip:green|PASS}} or {{chip:red|FAIL}}, the date, who certified — with a **View report** button that opens the exact PDF they were emailed. A **Test reports** card lower on the page keeps every sent report, paid jobs included. Drafts never appear there. Preview both on **Settings → What customers see**.
+
 ## The wording
 
 Every sentence on the paper — system tested, method, pressure, the PASS and FAIL conclusions, the three certifications — and the certifier's name and license live on **Settings → Jobs & billing → Test reports**. Change them once and every future report follows; a report already sent keeps the certifier it was sent with. For one report only, open *System, method, pressure, conclusion* under the notes and change the wording there.

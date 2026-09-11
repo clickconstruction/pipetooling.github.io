@@ -199,3 +199,26 @@ describe('stages (Stage Plan PR 5)', () => {
     expect(JSON.stringify(p.stages)).not.toContain('Behar')
   })
 })
+
+describe('test reports (v2.3304)', () => {
+  it('parses sent reports, drops rows without an id, label or civil date, and degrades the rest to null', () => {
+    const p = parsePortalPayload({
+      customerName: 'Done Right Foundation Repair',
+      bills: [],
+      testReports: [
+        { id: 'r1', jobId: 'j1', jobNumber: '1014', jobLabel: 'Johnson Pretest · Job 1014', jobAddress: '112 Seidel St, Marion, TX 78124', reportLabel: 'Sewer Pre-Test Hydrostatic', title: 'Sewer Pre-Test Hydrostatic Test Report', result: 'pass', testDateYmd: '2026-09-10', certifierName: 'Malachi Whites', certifierLicense: '#RMP41130', sentAt: '2026-09-11T14:00:00Z' },
+        { id: 'r2', jobLabel: 'Gas', reportLabel: 'Gas Test', result: 'maybe', testDateYmd: '2026-09-10', certifierName: '', jobAddress: '' },
+        { id: '', reportLabel: 'Gas Test', testDateYmd: '2026-09-10' },
+        { id: 'r4', reportLabel: 'Gas Test', testDateYmd: 'yesterday' },
+        'junk',
+      ],
+    })
+    expect(p?.testReports).toHaveLength(2)
+    expect(p?.testReports[0]).toMatchObject({ id: 'r1', jobNumber: '1014', result: 'pass', certifierLicense: '#RMP41130' })
+    expect(p?.testReports[1]).toMatchObject({ id: 'r2', jobNumber: '', jobAddress: null, result: null, certifierName: null, title: 'Gas Test Test Report', sentAt: null })
+  })
+
+  it('a payload without test reports parses to an empty list', () => {
+    expect(parsePortalPayload({ customerName: 'X', bills: [] })?.testReports).toEqual([])
+  })
+})

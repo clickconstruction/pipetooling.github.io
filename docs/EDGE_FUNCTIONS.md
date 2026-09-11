@@ -167,6 +167,7 @@ when_to_read:
    - [send-hazmat-notice-email](#send-hazmat-notice-email)
    - [send-lien-release-email](#send-lien-release-email)
    - [send-test-report](#send-test-report)
+   - [open-test-report-pdf](#open-test-report-pdf)
    - [send-lien-filing-email](#send-lien-filing-email)
    - [send-stripe-invoice](#send-stripe-invoice)
    - [update-collect-payment-stripe-customer-email](#update-collect-payment-stripe-customer-email)
@@ -1104,6 +1105,8 @@ Devs: **Settings → Templates & testing → Workflow email (Edge Function)** (c
 **Customer Waiting** (v2.3246): the payload carries `customerPhone` — the number on file for the company, resolved by [`_shared/portalCustomerPhone.ts`](../supabase/functions/_shared/portalCustomerPhone.ts) (`customers.contact_info->>'phone'`, else the newest `jobs_ledger.customer_phone` on one of its jobs; null when neither) — so the request form can say *We'll call you at …* instead of asking for a number the office already has. **Redeploy required.** v2.3249: the sample fixtures (`_shared/customerSampleFixtures.ts`) carry a `customerPhone` too, so the Settings *What customers see* preview shows the prefill — redeploy again after that merge.
 
 **Their Word** (v2.3283): the payload carries `promise: { promisedYmd, source: 'office' | 'customer' } | null` — the latest `job_promised_pay_dates` row across the open-bill jobs (`source='customer'` when the row is unmarked and its matching `job_payment_promises` event is customer-sourced), so the statement's *Tell us when* strip can read *You told us to expect payment by …* The strip itself is client-side (`PortalPromiseAsk`, gated by `_shared/portalPromise.ts` `promiseAskVisible`: money due and an open bill ≥ 7 days old) and posts to `submit-portal-request`. **Redeploy required.**
+
+**Test reports (v2.3304)**: the payload gains `testReports[]` — the company's SENT `job_test_reports` across the link's jobs (`id, jobId, jobNumber, jobLabel, jobAddress, reportLabel, title, result, testDateYmd, certifierName, certifierLicense, sentAt`; newest test first, 100 cap; never drafts, money, notes or the tech). The statement renders each on its job and in a *Test reports* card; the PDF opens through `open-test-report-pdf`. Sample fixtures carry rows. **Redeploy required.**
 
 **v2.2690 (Contract Desk PR 5)**: the payload gains `agreements[]` — the customer's `job_contracts` that are `sent` or `signed` (never drafts or voided): job label/address, template, frozen amount, signed stamp + signer, and `signUrl` (the same durable `/contract/sign?t=` link) so the portal's **Your agreements** card can offer *Review & sign* / *View signed copy*.
 
@@ -2822,6 +2825,16 @@ If **`stripe_invoice_id`** and **`hosted_invoice_url`** are already set, returns
 Body: `{ report_id, to: string[], cc?: string[], subject, email_text, email_html?, pdf_base64, pdf_filename?, pay_url?, certifier_name?, certifier_license?, report_label?, recipient_label? }`. Guards: the row must be readable by the caller; 1–6 valid To, ≤ 6 cc (cc that repeat To are dropped); PDF ≤ 6 M base64 chars; `pay_url` must be https. Success: `{ ok: true, resend_email_id, pdf_path, pdf_version }`. A Resend failure returns 502 with the row unsent; a stamp failure after a successful send returns 500 "open it and check".
 
 **Deploy**: `supabase functions deploy send-test-report`. Bucket (once, out of band): `insert into storage.buckets (id, name, public) values ('job-test-reports', 'job-test-reports', false) on conflict (id) do nothing;` — no client policies.
+
+---
+
+### open-test-report-pdf
+
+**Purpose** (v2.3304, Test reports PR 5): the portal's **View report** door — `GET /functions/v1/open-test-report-pdf?t=<portal token>&r=<report id>` answers **302** to a five-minute signed link (`LINK_SECONDS = 300`, the `open-contract-form-pdf` pattern) on the private `job-test-reports` bucket, with a download name like *Sewer Pre-Test Hydrostatic Report - 112 Seidel St - 2026-09-10.pdf*. The bucket has no client policies; this is the only customer-facing way to the file.
+
+**Authentication**: none (`verify_jwt = false`) — the portal link is the capability, resolved exactly as `customer-portal` does (raw token, then the v1 sha256 hash; revoked → 404 text). Guards: the report must be `status = 'sent'` with a `pdf_path`, on a job the link's company pays for (`customer_id` for a customer link, `gc_customer_id` for a GC link, either for `all`); sample tokens get a plain 404 line. Errors are short `text/plain` sentences (the tab the customer opened shows them). **Secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`.
+
+**Used by**: the statement's inline *Test report* line and the *Test reports* card in [`CustomerPortal.tsx`](../src/pages/CustomerPortal.tsx) (`portalTestReportUrl`). `customer-portal`'s payload carries `testReports[]` (v2.3304) — the sent reports across the link's jobs, never drafts. **Deploy**: `supabase functions deploy open-test-report-pdf` (and redeploy `customer-portal`).
 
 ---
 

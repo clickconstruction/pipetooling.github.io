@@ -785,3 +785,7 @@ verify_jwt = false
 # Test reports (v2.3301): email the report PDF + the Stripe pay link to the GC; JWT + RLS in function, PDF stored to job-test-reports.
 [functions.send-test-report]
 verify_jwt = false
+
+# Test reports in the portal (v2.3304): the portal token + report id → a 5-minute signed link to the stored PDF, as a redirect. No auth; the link is the capability.
+[functions.open-test-report-pdf]
+verify_jwt = false

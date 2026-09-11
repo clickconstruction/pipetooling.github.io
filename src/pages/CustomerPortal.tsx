@@ -29,7 +29,8 @@ import {
   snapshotPortalBills,
   type PortalBillsSnapshot,
 } from '../lib/portal/portalPaidFlip'
-import { CARD, COPPER, FAINT, HAIR, INK, MUTED, NOTE_BAND, PAPER, PAPER_GREEN } from '../lib/portal/portalTheme'
+import { CARD, COPPER, FAINT, HAIR, INK, MUTED, NOTE_BAND, PAPER, PAPER_GREEN, PAPER_RED } from '../lib/portal/portalTheme'
+import type { PortalTestReport } from '../lib/portal/portalPayload'
 import { phoneContact } from '../lib/phoneContact'
 
 /**
@@ -424,6 +425,8 @@ function PortalStatement({ payload, today, requestToken }: { payload: PortalPayl
                 todayYmd={todayYmd}
                 isLast={i === groups.length - 1}
                 printHeading={`${payload.customerName} · ${today} · Job ${i + 1} of ${groups.length}`}
+                reports={payload.testReports.filter((r) => portalReportBelongsToGroup(r, g))}
+                reportUrl={(r) => portalTestReportUrl(requestToken, r)}
               />
             ))}
             <div data-print-page>
@@ -498,7 +501,62 @@ function PortalStatement({ payload, today, requestToken }: { payload: PortalPayl
         </div>
       ) : null}
 
+      {/* Test reports (v2.3304): the standing record — every sent report, paid jobs included. */}
+      {payload.testReports.length > 0 ? (
+        <div data-screen-only style={{ margin: '1.4rem 0 0', background: CARD, border: `1px solid ${HAIR}`, padding: '1rem 1.3rem' }}>
+          <div style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: '0.2em', textTransform: 'uppercase', color: MUTED, marginBottom: 8 }}>
+            Test reports
+          </div>
+          {payload.testReports.map((r, i) => (
+            <div key={r.id} style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', padding: '8px 0', borderTop: i === 0 ? 'none' : `1px solid ${HAIR}`, fontSize: 13.5 }}>
+              <div style={{ flex: '1 1 220px', minWidth: 0 }}>
+                <div style={{ fontWeight: 700 }}>{splitPortalAddress(r.jobAddress)?.street ?? r.jobLabel}</div>
+                <div style={{ color: MUTED, fontSize: 12.5 }}>
+                  {[r.reportLabel, r.certifierName ? `certified by ${r.certifierName}${r.certifierLicense ? `, ${r.certifierLicense.replace(/^#/, 'RMP #').replace(/^RMP #RMP/, 'RMP #')}` : ''}` : null].filter(Boolean).join(' · ')}
+                </div>
+                <div style={{ fontSize: 12.5, fontWeight: 600, marginTop: 2 }}>
+                  {r.result ? <span style={{ color: r.result === 'pass' ? PAPER_GREEN : PAPER_RED }}>{r.result.toUpperCase()}</span> : null}
+                  {r.result ? ' · ' : ''}
+                  {formatPortalDate(r.testDateYmd) ?? r.testDateYmd}
+                </div>
+              </div>
+              <PortalViewReportLink href={portalTestReportUrl(requestToken, r)} />
+            </div>
+          ))}
+        </div>
+      ) : null}
+
     </>
+  )
+}
+
+/** The inline line's owner test: a report belongs to the job group with the same number, else the same address. */
+function portalReportBelongsToGroup(r: PortalTestReport, g: PortalJobGroup): boolean {
+  if (r.jobNumber && g.jobNumber) return r.jobNumber === g.jobNumber
+  const a = (r.jobAddress ?? '').trim().toLowerCase()
+  const b = (g.jobAddress ?? '').trim().toLowerCase()
+  return Boolean(a) && a === b
+}
+
+/** open-test-report-pdf redirects to a five-minute signed link; sample rows have no file. */
+function portalTestReportUrl(requestToken: string, r: PortalTestReport): string | null {
+  if (!requestToken || r.id.startsWith('sample-')) return null
+  return `${supabaseUrl}/functions/v1/open-test-report-pdf?t=${encodeURIComponent(requestToken)}&r=${encodeURIComponent(r.id)}`
+}
+
+function PortalViewReportLink({ href }: { href: string | null }) {
+  const style = { display: 'inline-block', border: `1px solid ${INK}`, background: CARD, color: INK, fontSize: 12.5, fontWeight: 600, padding: '6px 14px', textDecoration: 'none', whiteSpace: 'nowrap' as const }
+  if (!href) {
+    return (
+      <span data-screen-only title="Sample statement — no file behind this row" style={{ ...style, opacity: 0.55 }}>
+        View report
+      </span>
+    )
+  }
+  return (
+    <a data-screen-only href={href} target="_blank" rel="noopener noreferrer" style={style}>
+      View report
+    </a>
   )
 }
 
@@ -534,11 +592,16 @@ function PortalJobGroupSection({
   todayYmd,
   isLast,
   printHeading,
+  reports = [],
+  reportUrl,
 }: {
   group: PortalJobGroup
   todayYmd: string
   isLast: boolean
   printHeading: string
+  /** Test reports (v2.3304) sent on this job — the line between the band and the bill. */
+  reports?: PortalTestReport[]
+  reportUrl?: (r: PortalTestReport) => string | null
 }) {
   const addr = splitPortalAddress(group.jobAddress)
   const headline = addr?.street ?? group.jobName ?? group.jobLabel
@@ -587,6 +650,25 @@ function PortalJobGroupSection({
         </span>
         {quiet && <span style={{ fontSize: 11.5, color: FAINT }}>{quiet}</span>}
       </div>
+      {/* Test reports (v2.3304): "job → what we found → what it costs → pay". Prints as a text line; the button is screen-only. */}
+      {reports.map((r) => (
+        <div key={r.id} style={{ display: 'grid', gridTemplateColumns: '84px 1fr auto', gap: '0 18px', alignItems: 'center', padding: '7px 10px 9px', borderBottom: `1px solid ${HAIR}`, fontSize: 12.5 }}>
+          <span style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: COPPER }}>Test report</span>
+          <span style={{ color: MUTED, minWidth: 0 }}>
+            <strong style={{ color: INK }}>{r.reportLabel}</strong>
+            {r.result ? (
+              <>
+                {' · '}
+                <strong style={{ color: r.result === 'pass' ? PAPER_GREEN : PAPER_RED }}>{r.result.toUpperCase()}</strong>
+              </>
+            ) : null}
+            {' · '}
+            {formatPortalDate(r.testDateYmd) ?? r.testDateYmd}
+            {r.certifierName ? ` · certified by ${r.certifierName}${r.certifierLicense ? ` (${r.certifierLicense})` : ''}` : ''}
+          </span>
+          <PortalViewReportLink href={reportUrl ? reportUrl(r) : null} />
+        </div>
+      ))}
       {group.bills.map((b, i) => (
         <PortalBillRow key={i} bill={b} todayYmd={todayYmd} isLast={i === group.bills.length - 1} />
       ))}

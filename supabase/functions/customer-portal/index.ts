@@ -9,6 +9,7 @@ import {
   buildPortalBills,
   dedupeJobsById,
   jobLabel,
+  jobNumber,
   type PortalInvoiceRow,
   type PortalJobRow,
   type PortalPaymentRow,
@@ -17,6 +18,7 @@ import { buildPortalProperties } from '../_shared/portalProperties.ts'
 import { openBillJobIds, PORTAL_OPEN_INVOICE_STATUS } from '../_shared/portalBillMembership.ts'
 import { publicViewDecision } from '../_shared/publicViewCounting.ts'
 import { resolvePortalCustomerPhone } from '../_shared/portalCustomerPhone.ts'
+import { testReportShortLabel, testReportTitle, type TestReportSystem, type TestReportType } from '../_shared/testReport.ts'
 
 /**
  * Customer portal payload (portal train PR 1; merged view + slugs in the
@@ -260,6 +262,55 @@ serve(async (req) => {
       ownerNames,
     })
 
+    // Test reports (v2.3304): SENT hydrostatic / pinpoint / gas reports on the
+    // company's jobs — the inline line on the job and the standing card. Never
+    // drafts, never money, never the tech; the PDF opens through
+    // open-test-report-pdf with this same token.
+    const testReports: Array<{
+      id: string
+      jobId: string
+      jobNumber: string
+      jobLabel: string
+      jobAddress: string | null
+      reportLabel: string
+      title: string
+      result: 'pass' | 'fail' | null
+      testDateYmd: string
+      certifierName: string | null
+      certifierLicense: string | null
+      sentAt: string | null
+    }> = []
+    if (jobs.length > 0) {
+      const jobById = new Map(jobs.map((j) => [j.id, j]))
+      const { data: repRaw } = await admin
+        .from('job_test_reports')
+        .select('id, job_id, test_type, system, result, test_date, certifier_name, certifier_license, sent_at')
+        .in('job_id', jobs.map((j) => j.id))
+        .eq('status', 'sent')
+        .order('test_date', { ascending: false })
+        .limit(100)
+      for (const t of (repRaw ?? []) as Array<{ id: string; job_id: string; test_type: string; system: string | null; result: string | null; test_date: string; certifier_name: string | null; certifier_license: string | null; sent_at: string | null }>) {
+        const j = jobById.get(t.job_id)
+        if (!j) continue
+        const type = t.test_type as TestReportType
+        const system = (t.system === 'supply' || t.system === 'sewer' ? t.system : null) as TestReportSystem | null
+        testReports.push({
+          id: t.id,
+          jobId: j.id,
+          jobNumber: jobNumber(j),
+          jobLabel: jobLabel(j),
+          jobAddress: j.job_address ?? null,
+          reportLabel: testReportShortLabel(type, system),
+          title: testReportTitle(type, system),
+          result: t.result === 'pass' || t.result === 'fail' ? t.result : null,
+          testDateYmd: t.test_date,
+          certifierName: t.certifier_name,
+          certifierLicense: t.certifier_license,
+          sentAt: t.sent_at,
+        })
+      }
+    }
+
     // Your agreements (Contract Desk PR 5): the customer's job contracts —
     // signed ones as a record, sent ones with the same durable signing link.
     // Never drafts, never voided; amount from the frozen fields.
@@ -439,6 +490,7 @@ serve(async (req) => {
       ...(officeViewStats ? { officeViewStats } : {}),
       slug,
       agreements,
+      testReports,
       stages,
       promise,
     })
