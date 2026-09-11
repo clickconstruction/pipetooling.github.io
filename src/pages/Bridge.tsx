@@ -11,6 +11,11 @@ import { DOUBTFUL_AFTER_DAYS, LATE_RECEIPT_GRACE_DAYS, buildCashForecast, schedu
 import { billedExpectedPayModel } from '../lib/jobs/billedExpectedPay'
 import { buildTruthCheck, truthCheckVerdictText, type TruthCheck } from '../lib/bridge/truthCheck'
 import { BridgeCashChart, BridgeNetPositionChart } from '../components/bridge/BridgeCashCharts'
+import { BridgeVectorsPanel } from '../components/bridge/BridgeVectorsPanel'
+import { loadBridgeVectorInputs, type BridgeVectorInputs } from '../lib/bridge/loadBridgeVectors'
+import { buildVectors } from '../lib/bridge/vectors'
+import { formatPayWeekLabel, payWeekContaining } from '../lib/payWeekAnchor'
+import { ymdAddDays } from '../utils/dateUtils'
 
 /**
  * The Bridge (v2.2726 — the plain version). Dev only. Where we stand (net
@@ -43,6 +48,9 @@ export default function Bridge() {
   const [refreshKey, setRefreshKey] = useState(0)
   const [cashDraft, setCashDraft] = useState('')
   const [floorDraft, setFloorDraft] = useState('')
+  const [vectorInputs, setVectorInputs] = useState<BridgeVectorInputs | null>(null)
+  const [vectorError, setVectorError] = useState<string | null>(null)
+  const [vectorWeekStart, setVectorWeekStart] = useState<string | null>(null)
   const fin = useDashboardFinancials(role === 'dev', refreshKey, role)
 
   useEffect(() => {
@@ -190,6 +198,34 @@ export default function Bridge() {
     }
   }, [floorDraft, showToast])
 
+  // Vectors (v2.3344): per-person inputs for the window, loaded once the Bridge data is in; the pay week is picked on the page.
+  useEffect(() => {
+    if (!data) return
+    let cancelled = false
+    setVectorInputs(null)
+    setVectorError(null)
+    void (async () => {
+      try {
+        const v = await loadBridgeVectorInputs(data)
+        if (!cancelled) setVectorInputs(v)
+      } catch (e) {
+        if (!cancelled) setVectorError(formatErrorMessage(e))
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [data])
+  const vectorWeek = useMemo(() => {
+    if (!data) return null
+    return payWeekContaining(vectorWeekStart ?? data.todayYmd)
+  }, [data, vectorWeekStart])
+  const vectors = useMemo(() => {
+    if (!vectorWeek) return null
+    const inputs: BridgeVectorInputs = vectorInputs ?? { people: [], wages: [], sessions: [], ratePerHourByJob: new Map(), invoiceSends: [], payments: [], pctUpdates: [], fieldReports: [], bidsSent: [], bidsWon: [] }
+    return buildVectors({ weekStart: vectorWeek.start, weekEnd: vectorWeek.end, ...inputs, assumedHalfJobs: new Set(data?.earned.assumedHalfJobs ?? []) })
+  }, [vectorWeek, vectorInputs, data])
+
   // Truth check: paper profit vs the net position change over the chart's days — flows only, so it reads before cash is typed.
   const truth = useMemo<TruthCheck | null>(() => {
     if (!data) return null
@@ -307,6 +343,21 @@ export default function Bridge() {
 
           {/* Truth check (v2.3335) */}
           {truth && <TruthCheckPanel truth={truth} windowStartLabel={windowStartLabel} />}
+
+          {/* Vectors (v2.3344) */}
+          {vectors && vectorWeek && (
+            <BridgeVectorsPanel
+              vectors={vectors}
+              weekLabel={formatPayWeekLabel(vectorWeek)}
+              isCurrentWeek={vectorWeek.end >= data.todayYmd}
+              canPrev={ymdAddDays(vectorWeek.start, -7) >= data.windowStart}
+              canNext={vectorWeek.end < data.todayYmd}
+              onPrev={() => setVectorWeekStart(ymdAddDays(vectorWeek.start, -7))}
+              onNext={() => setVectorWeekStart(ymdAddDays(vectorWeek.start, 7))}
+              loading={vectorInputs == null && vectorError == null}
+              error={vectorError}
+            />
+          )}
 
           {/* Cash forecast */}
           <div style={{ ...panel, marginTop: '0.6rem' }}>

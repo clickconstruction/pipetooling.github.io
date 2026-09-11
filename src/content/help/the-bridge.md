@@ -2,7 +2,7 @@
 title: read the Bridge
 category: Billing & Money
 roles: dev
-keywords: bridge, truth check, paper vs bank, net position, cash forecast, cash on hand, cash floor, bills due, receipts expected, profit rate, overhead, earned revenue
+keywords: bridge, vectors, who moved the number, truth check, paper vs bank, net position, cash forecast, cash on hand, cash floor, bills due, receipts expected, profit rate, overhead, earned revenue
 order: 62
 ---
 **The Bridge** (devs only for now — the compass icon in the header, or **Bridge** in the ☰ menu; `/bridge`) answers three questions on one page: where we stand, where cash is going, and what would change it. One clock — days.
@@ -37,6 +37,22 @@ Profit on paper +$194k · net position moved −$3.4k · the $197k between them:
 :::
 
 A loan or an owner deposit is money in that isn't a customer payment, so it shows here as a negative cost; payroll and sub labor count when the bank pays them, not when the hours are worked.
+
+## Vectors — who moved the number
+
+Under the Truth check, **Vectors** lists one row per person for one pay week (Sunday–Saturday; ‹ › steps back through the eight weeks on the page, and the current week reads *so far*). The headline is the week's **field contribution**: what approved field hours earned minus what those hours cost in wages.
+
+- **Field people** carry Field h (with hours still {{chip:yellow|waiting}} on approval), Earned, Labor, **Contribution** and $/h. Earned uses the Bridge's own rate — the job's contract ÷ its expected hours — so a person's earned dollars add up to the company's.
+- **Office people** carry Billed (invoices they sent) and Collected (payments they recorded); everyone carries **% reports** (job % updates + field reports filed).
+- **The estimator** carries Bids sent and Bids won, by value.
+
+An amber **≈** on Earned or Contribution means some of it rests on a job with no % complete — the kernel assumed it half done, so the rate is a guess. Set the % on the job and the mark goes away. Hover the Contribution cell for the split (earned, labor, guessed, hours on jobs with no contract price, no wage on file).
+
+:::example Reading a week
++$125k field contribution on 50 approved hours — but ≈ $124k of it is one person's day on a job with no % complete, and 166h are still waiting on approval, so most rows read "—". The number becomes real when the % is set and the hours are approved.
+:::
+
+Materials and sub sheets are job costs, not anyone's vector, so contribution here is labor-only. Invoice sends that the system wrote with no signed-in sender, and bids with no estimator, are listed under the table as *not on anyone's row*.
 
 ## Cash — next 8 weeks
 
