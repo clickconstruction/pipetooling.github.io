@@ -6,6 +6,7 @@ import { APP_CALENDAR_TZ, todayYmdInAppTz } from '../../utils/dateUtils'
 import { customerJourneys, findStep, firstRenderableStep, type Journey, type JourneyId, type JourneyStep } from '../../lib/customerJourneys'
 import { CUSTOMER_SAMPLE_SETTING_KEYS, buildSampleEmail, type AppSettingRow, type SampleEmailContext } from '../../lib/customerSampleEmails'
 import { SAMPLE_GC, SAMPLE_HOMEOWNER, SAMPLE_SUB } from '../../lib/customerSample'
+import { TestReportSampleCard } from './TestReportSampleCard'
 
 /**
  * Settings → What customers see (dev-only, v2.2758; owner pick B "Journeys" from the
@@ -91,6 +92,9 @@ export function SettingsWhatCustomersSeeTab() {
           Refresh all
         </button>
       </div>
+
+      {/* Test reports PR 1 (v2.3296): the paper, before any job carries one. */}
+      <TestReportSampleCard />
 
       {journeys.map((j) => (
         <JourneyStrip
