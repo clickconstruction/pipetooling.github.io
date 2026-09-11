@@ -1,6 +1,6 @@
 import type { Database } from '../../types/database'
 import type { JobWithDetails } from '../../types/jobWithDetails'
-import { emptyTestReportData, type GasFixture, type TestReportData, type TestReportJobInfo, type TestReportResult, type TestReportSystem, type TestReportType } from './testReport'
+import { testReportDataFromRowLike, type GasFixture, type TestReportData, type TestReportJobInfo } from './testReport'
 
 /**
  * The `job_test_reports` row ↔ the kernel's `TestReportData` (v2.3298), plus
@@ -10,58 +10,13 @@ import { emptyTestReportData, type GasFixture, type TestReportData, type TestRep
 export type TestReportRow = Database['public']['Tables']['job_test_reports']['Row']
 export type TestReportInsert = Database['public']['Tables']['job_test_reports']['Insert']
 
-const TYPES: readonly TestReportType[] = ['pre_test', 'post_test', 'pinpoint', 'gas']
-
-function asType(v: unknown): TestReportType {
-  return TYPES.includes(v as TestReportType) ? (v as TestReportType) : 'pre_test'
-}
-function asSystem(v: unknown): TestReportSystem | null {
-  return v === 'supply' || v === 'sewer' ? v : null
-}
-function asResult(v: unknown): TestReportResult | null {
-  return v === 'pass' || v === 'fail' ? v : null
-}
-function asNumber(v: unknown): number | null {
-  if (typeof v === 'number' && Number.isFinite(v)) return v
-  if (typeof v === 'string' && v.trim() !== '') {
-    const n = Number(v)
-    return Number.isFinite(n) ? n : null
-  }
-  return null
-}
-
 export function parseGasFixtures(raw: unknown): GasFixture[] {
-  if (!Array.isArray(raw)) return []
-  const out: GasFixture[] = []
-  for (const item of raw) {
-    if (!item || typeof item !== 'object') continue
-    const r = item as Record<string, unknown>
-    const name = typeof r.name === 'string' ? r.name : ''
-    const btu = asNumber(r.btuPerHour)
-    out.push({ name, btuPerHour: btu != null && btu > 0 ? btu : null })
-  }
-  return out
+  return testReportDataFromRowLike({ gas_fixtures: raw }).gasFixtures
 }
 
+/** The kernel's loose mapper, typed at this door. */
 export function testReportDataFromRow(row: TestReportRow): TestReportData {
-  const testType = asType(row.test_type)
-  return {
-    ...emptyTestReportData(testType, row.test_date ?? ''),
-    system: asSystem(row.system),
-    result: asResult(row.result),
-    testDateYmd: row.test_date ?? '',
-    durationMinutes: row.duration_minutes ?? null,
-    notes: row.notes ?? '',
-    pinpointLocation: row.pinpoint_location ?? '',
-    pinpointMethod: row.pinpoint_method ?? '',
-    pinpointFindings: row.pinpoint_findings ?? '',
-    gasPressurePsi: asNumber(row.gas_pressure_psi),
-    gasFixtures: parseGasFixtures(row.gas_fixtures),
-    systemTested: row.system_tested,
-    testMethod: row.test_method,
-    testPressure: row.test_pressure,
-    conclusion: row.conclusion,
-  }
+  return testReportDataFromRowLike(row as unknown as Record<string, unknown>)
 }
 
 /** The writable columns for an insert or update; ids, status and the send record are set elsewhere. */

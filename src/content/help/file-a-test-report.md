@@ -42,6 +42,10 @@ If the job has no Stripe bill yet the sheet says **Bill first**: open **Bill Cus
 Drafts pile up under **Needs you** as "3 test reports are ready to send" (office roles). The card opens the first one; the ones still missing a verdict or findings are counted separately.
 :::
 
+## Letting PASS reports send themselves
+
+**Settings → Jobs & billing → Test reports → Sending** has two choices. *A person sends every report* (the default) is everything above. *Send PASS reports automatically* means a hydrostatic PASS the tech filed goes to the GC on its own fifteen minutes later — the PDF, the pay link, the standing cc — and the job's activity reads "Sent automatically". It only fires when the job has a Stripe bill and a GC with an email on file; FAIL results, pinpoint and gas tests, and anything missing those keep waiting on the Dashboard for you. Open and send a draft yourself inside the fifteen minutes and it is never sent twice.
+
 ## What the customer sees
 
 Once a report is sent it shows on the customer's (or the GC's) portal statement, on the job it belongs to — {{chip:green|PASS}} or {{chip:red|FAIL}}, the date, who certified — with a **View report** button that opens the exact PDF they were emailed. A **Test reports** card lower on the page keeps every sent report, paid jobs included. Drafts never appear there. Preview both on **Settings → What customers see**.

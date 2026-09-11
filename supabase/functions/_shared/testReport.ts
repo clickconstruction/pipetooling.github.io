@@ -86,7 +86,17 @@ export type TestReportSettings = {
   emailBodyTemplate: string
   /** Comma-separated addresses copied on every report email — the "cc Malachi" of the hand-written send (v2.3301). */
   emailCc: string
+  /**
+   * Dial B (v2.3316): 'off' — a person sends every report; 'pass' — a hydrostatic
+   * PASS draft whose job has a Stripe bill and a GC with an email is sent by the
+   * server after a grace period. FAIL, pinpoint and gas always wait for a person.
+   */
+  autoSend: string
 }
+
+export const TEST_REPORT_AUTO_SEND_CHOICES: readonly string[] = ['off', 'pass']
+/** How long a draft sits (for the office to catch it) before dial B may send it. */
+export const TEST_REPORT_AUTO_SEND_GRACE_MINUTES = 15
 
 export const DEFAULT_TEST_REPORT_SETTINGS: TestReportSettings = {
   companyName: 'Click Plumbing',
@@ -118,6 +128,53 @@ export const DEFAULT_TEST_REPORT_SETTINGS: TestReportSettings = {
   emailBodyTemplate:
     'Attached is the {report} report for {address} and below is the invoice link. Please let us know if you have any questions.\n\n{payLink}\n\n— {company} · {phone}',
   emailCc: '',
+  autoSend: 'off',
+}
+
+/**
+ * A `job_test_reports` row (any client's shape) → the kernel's data. Loose on
+ * purpose: the browser hands it a typed Row, the edge functions a select(*)
+ * record; unknown or malformed fields degrade to the empty report's values.
+ */
+export function testReportDataFromRowLike(row: Record<string, unknown>): TestReportData {
+  const types: readonly TestReportType[] = ['pre_test', 'post_test', 'pinpoint', 'gas']
+  const testType = types.includes(row.test_type as TestReportType) ? (row.test_type as TestReportType) : 'pre_test'
+  const str = (v: unknown): string => (typeof v === 'string' ? v : '')
+  const strOrNull = (v: unknown): string | null => (typeof v === 'string' ? v : null)
+  const num = (v: unknown): number | null => {
+    if (typeof v === 'number' && Number.isFinite(v)) return v
+    if (typeof v === 'string' && v.trim() !== '') {
+      const n = Number(v)
+      return Number.isFinite(n) ? n : null
+    }
+    return null
+  }
+  const fixtures: GasFixture[] = []
+  if (Array.isArray(row.gas_fixtures)) {
+    for (const item of row.gas_fixtures) {
+      if (!item || typeof item !== 'object') continue
+      const r = item as Record<string, unknown>
+      const btu = num(r.btuPerHour)
+      fixtures.push({ name: str(r.name), btuPerHour: btu != null && btu > 0 ? btu : null })
+    }
+  }
+  return {
+    ...emptyTestReportData(testType, str(row.test_date)),
+    system: row.system === 'supply' || row.system === 'sewer' ? row.system : null,
+    result: row.result === 'pass' || row.result === 'fail' ? row.result : null,
+    testDateYmd: str(row.test_date),
+    durationMinutes: num(row.duration_minutes),
+    notes: str(row.notes),
+    pinpointLocation: str(row.pinpoint_location),
+    pinpointMethod: str(row.pinpoint_method),
+    pinpointFindings: str(row.pinpoint_findings),
+    gasPressurePsi: num(row.gas_pressure_psi),
+    gasFixtures: fixtures,
+    systemTested: strOrNull(row.system_tested),
+    testMethod: strOrNull(row.test_method),
+    testPressure: strOrNull(row.test_pressure),
+    conclusion: strOrNull(row.conclusion),
+  }
 }
 
 /** "a@x.com, b@y.com" → ['a@x.com', 'b@y.com'] — valid, trimmed, deduped, lower-cased. */
