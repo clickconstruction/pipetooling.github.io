@@ -17,8 +17,7 @@ import {
   readJobSummaryViewPrefs,
   sortJobSummaryRows,
   summarizeJobSummaryRows,
-  type JobSummaryLedgerRowInput,
-} from './jobSummaryLedgerView'
+  type JobSummaryLedgerRowInput, countJobSummaryAssumed, jobSummaryRowInBudgetFilter } from './jobSummaryLedgerView'
 import { buildJobDayLedger } from './jobDayLedger'
 import { buildOverheadAllocation } from './overheadAllocation'
 import type { OtherJobsLaborDetailLine } from '../overheadDailyLabor'
@@ -94,6 +93,7 @@ describe('prefs + window', () => {
       scatterColorBy: 'trade',
       scatterSizeBy: 'hours',
       overheadDials: null,
+      budgetFilter: 'all',
     })
     // v2.3259: a dev's exploration of the overhead dials is normalized field by field; junk → null (follow the app default).
     expect(readJobSummaryViewPrefs(JSON.stringify({ overheadDials: { smoothDays: 30, carryShare: 0.2, idleCapDays: 14, openDef: 'status' } })).overheadDials).toEqual({ smoothDays: 30, carryShare: 0.2, idleCapDays: 14, openDef: 'status' })
@@ -411,5 +411,25 @@ describe('discount line items (v2.3256)', () => {
     expect(rows[0]!.flags).toContain('discount')
     expect(rows[1]).toMatchObject({ discountUsd: 0 })
     expect(summarizeJobSummaryRows(rows)).toMatchObject({ discountUsd: 1609.8, discountJobs: 1 })
+  })
+})
+
+describe('the budget footing on the rows (v2.3300)', () => {
+  it('a job with a job_budgets row burns against it and wears its glyph; the rest are ≈ assumed', () => {
+    const budgets = new Map([['j990', { usd: 4_000, source: 'bid' as const }]])
+    const enriched = enrichJobSummaryRows({ rows, reportPctByJobId: reportPct, ledger, method: 'day', budgetByJobId: budgets })
+    const j990 = enriched.find((r) => r.row.job.id === 'j990')!
+    expect(j990.budgetFooting).toBe('bid')
+    expect(j990.budgetGlyph).toBe('◆')
+    expect(j990.budgetUsd).toBe(4_000)
+    expect(j990.burn?.spentPct).toBeCloseTo(50, 5)
+    const j931 = enriched.find((r) => r.row.job.id === 'j931')!
+    expect(j931.budgetFooting).toBe('assumed')
+    expect(j931.budgetGlyph).toBe('≈')
+    expect(jobSummaryRowInBudgetFilter(j990, 'bid')).toBe(true)
+    expect(jobSummaryRowInBudgetFilter(j990, 'assumed')).toBe(false)
+    expect(jobSummaryRowInBudgetFilter(j931, 'all')).toBe(true)
+    // The linking backlog counts only the unfinished rows on an assumption (j931 is paid, j904 and j827 are 100 %).
+    expect(countJobSummaryAssumed(enriched)).toBe(1)
   })
 })

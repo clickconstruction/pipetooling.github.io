@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import type { JobBudgetFooting } from '../lib/jobs/jobSummaryBurn'
 import { recordNavClick } from '../lib/navClickTelemetry'
 import { denverCalendarDayKey, ymdAddDays } from '../utils/dateUtils'
 import { loadJobDayLedger } from '../lib/jobs/loadJobDayLedger'
@@ -150,6 +151,8 @@ export function useJobSummaryView<R extends JobSummaryLedgerRowInput & { job: { 
   userNameById?: ReadonlyMap<string, string | null | undefined>
   /** `?view=` from the URL (v2.2825): a deep link into one view; applied once, then the pref owns it. */
   initialView?: string | null
+  /** Each job's budget footing (v2.3300) — `useJobBudgetFootings`; omitted = every row on the assumption. */
+  budgetByJobId?: ReadonlyMap<string, JobBudgetFooting>
 }): JobSummaryViewBundle<R> {
   const { enabled, userId, role, rows, reportPctByJobId, search, userNameById, initialView } = args
   const [prefs, setPrefsState] = useState<JobSummaryViewPrefs>(() => {
@@ -225,8 +228,8 @@ export function useJobSummaryView<R extends JobSummaryLedgerRowInput & { job: { 
     [overheadSettings, overheadApp.appDefault, overheadApp.loaded, overheadApp.saving, overheadIsOverride, explore, saveAppDefault, allocation],
   )
   const enriched = useMemo(
-    () => enrichJobSummaryRows({ rows, reportPctByJobId, ledger: ledgerForWindow, method, targetMarginPct: prefs.targetTrueMarginPct, settings: overheadSettings }),
-    [rows, reportPctByJobId, ledgerForWindow, method, prefs.targetTrueMarginPct, overheadSettings],
+    () => enrichJobSummaryRows({ rows, reportPctByJobId, ledger: ledgerForWindow, method, targetMarginPct: prefs.targetTrueMarginPct, settings: overheadSettings, budgetByJobId: args.budgetByJobId }),
+    [rows, reportPctByJobId, ledgerForWindow, method, prefs.targetTrueMarginPct, overheadSettings, args.budgetByJobId],
   )
   const visible = useMemo(
     () => filterAndSortJobSummaryRows({ rows: enriched, prefs, search, startYmd, endYmd }),
@@ -261,7 +264,7 @@ export function useJobSummaryView<R extends JobSummaryLedgerRowInput & { job: { 
 
   const compare = useMemo<JobSummaryCompareBundle | null>(() => {
     if (!compareWindow) return null
-    const enrichedPrior = enrichJobSummaryRows({ rows, reportPctByJobId, ledger: cmp.ledger, method, targetMarginPct: prefs.targetTrueMarginPct, settings: overheadSettings })
+    const enrichedPrior = enrichJobSummaryRows({ rows, reportPctByJobId, ledger: cmp.ledger, method, targetMarginPct: prefs.targetTrueMarginPct, settings: overheadSettings, budgetByJobId: args.budgetByJobId })
     const visiblePrior = filterAndSortJobSummaryRows({ rows: enrichedPrior, prefs, search, startYmd: compareWindow.startYmd, endYmd: compareWindow.endYmd })
     const priorTotals = summarizeJobSummaryRows(visiblePrior)
     const trueMarginPctByGroupKey = new Map(groupJobSummaryRows(visiblePrior, prefs.cutBy, cutCtx).map((g) => [g.key, g.totals.trueMarginPct]))

@@ -65,7 +65,7 @@ New:
 
 1. **Data — SHIPPED v2.3297.** Migration `20260911175025_job_budgets.sql` (`job_budgets`, `bid_estimate_breakdown`, `snapshot_job_budget_from_bid`, `set_typed_job_budget`, `clear_job_budget`, `suggest_bids_for_job`) + `src/lib/jobs/jobBudget.ts` (resolve · completeness rule · component burn · the why sentence). Rank 4 (name similarity) was left out — no `pg_trgm` in the schema; ranks 1–3 cover the 15 known matches.
 2. **Kernel + Costs tab** — `jobBudget.ts` (+tests), `resolveJobBurnBudget` takes it, per-component burn, Budget card (Frame A), link banner + candidates + typed form (Frame B), `JobWithDetails` embeds the budget row (embed-select guard). Live: link J1007 → B375 in the UI with the owner watching, type a budget, screenshot both states.
-3. **Job Summary + Pipeline** — glyph, Budget column + filter, `projectJobSummaryBurn` on the resolved budget, the card's footing wording. Kernel tests; live screenshots.
+3. **Job Summary + Pipeline — SHIPPED v2.3300.** `useJobBudgetFootings`, the footing on `projectJobSummaryBurn` / the enriched rows, the Budget chip (filter) + the ≈ count chip, the glyph on the Burn cell, the Pipeline card's *M against an assumed budget*. No Budget column (the glyph + chip cover it).
 4. **Bid side** — Bid Board chips; New Job carry checkbox → snapshot RPC after insert. Help guides: `job-charges-timeline.md`, `read-true-profit-on-job-summary.md`, the Bid Board guide.
 5. **Backfill offer** — dev-only Settings → Data list of exact matches; then the deferred pair: persist the Pricing workbench margin on the bid when priced (so an uncosted bid can still hand the job price × (1 − priced margin)); earned value by stage (stage % × that stage's budget) once estimates carry stage hours.
 

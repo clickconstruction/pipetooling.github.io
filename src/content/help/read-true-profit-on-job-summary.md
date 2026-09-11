@@ -2,7 +2,7 @@
 title: read true profit on Job Summary
 category: Office
 roles: dev, master_technician, controller
-keywords: burn, projected margin, spent vs done, money story, door, from pipeline, from job window, cut by, group by, by GC, by service type, by lead tech, concentration, revenue per hour, compare to, prior period, last year, target margin, job summary, true profit, overhead, day-share, smoothing, carry share, idle cap, overhead dials, in flight, open jobs, margin, finished jobs, percent complete, earned revenue, sort, window, gross profit
+keywords: burn, projected margin, spent vs done, money story, door, from pipeline, from job window, cut by, group by, by GC, by service type, by lead tech, concentration, revenue per hour, compare to, prior period, last year, target margin, job summary, true profit, overhead, day-share, smoothing, carry share, idle cap, overhead dials, in flight, open jobs, margin, finished jobs, percent complete, earned revenue, sort, window, gross profit, budget, from bid, typed, assumed, footing, linking backlog
 order: 36
 ---
 
@@ -40,6 +40,10 @@ Two chips at the end of the control row change everything above the table at onc
 :::example Why "All" can't compare
 "All" starts at the beginning of the clock history, so there is no earlier window to compare with. Pick a shorter Worked in and the chip wakes up.
 :::
+
+## Budget — what Burn stands on
+
+The **Budget** chip beside Target filters the table by what each job's Burn budget stands on: {{chip:blue|◆ from bid}} (a snapshot of the linked bid's estimate), {{chip:gray|✎ typed}} (a budget typed on the job's Costs tab), or {{chip:yellow|≈ assumed}} (price × (1 − target) — no bid linked, nothing typed). The Burn cell wears the glyph when a job has a real footing; an unmarked cell is still the assumption. Under the tiles, *≈ 12 open jobs burn against an assumption* is your linking backlog — open a job's Costs tab and link its bid. The Pipeline's burning-jobs card uses the same footing for its margin-at-risk figure and says how many of the hot jobs are on an assumed budget.
 
 ## Cut by
 

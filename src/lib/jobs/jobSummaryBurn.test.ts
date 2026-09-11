@@ -74,3 +74,27 @@ describe('buildPipelineBurnAlert', () => {
     expect(buildPipelineBurnAlert([])).toBeNull()
   })
 })
+
+describe('the budget footing (v2.3300)', () => {
+  it('a bid or typed footing replaces the assumed budget and is named on the burn; none = assumed', () => {
+    const onBid = projectJobSummaryBurn({ ...heron, budgetFooting: { usd: 31_000, source: 'bid' } })
+    expect(onBid.footing).toBe('bid')
+    expect(onBid.budget).toMatchObject({ usd: 31_000, source: 'bid_estimate' })
+    expect(onBid.spentPct).toBeCloseTo((19_860 / 31_000) * 100, 3)
+    const typed = projectJobSummaryBurn({ ...heron, budgetFooting: { usd: 25_000, source: 'typed' } })
+    expect(typed.footing).toBe('typed')
+    expect(projectJobSummaryBurn(heron).footing).toBe('assumed')
+    expect(projectJobSummaryBurn({ ...heron, budgetFooting: { usd: 0, source: 'bid' } }).footing).toBe('assumed')
+  })
+  it('the Pipeline alert carries each hot job\'s glyph and counts the ones on an assumption', () => {
+    const hotAssumed = projectJobSummaryBurn(heron)
+    const hotBid = projectJobSummaryBurn({ ...heron, budgetFooting: { usd: 25_000, source: 'bid' } })
+    const alert = buildPipelineBurnAlert([
+      { jobId: 'a', label: 'J1', burn: hotAssumed },
+      { jobId: 'b', label: 'J2', burn: hotBid },
+    ])!
+    expect(alert.count).toBe(2)
+    expect(alert.assumedCount).toBe(1)
+    expect(alert.worst.map((w) => `${w.glyph}${w.footing}`).sort()).toEqual(['◆bid', '≈assumed'].sort())
+  })
+})
