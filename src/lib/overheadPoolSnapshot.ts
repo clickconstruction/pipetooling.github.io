@@ -32,8 +32,9 @@ import { fetchOverheadOfficeJobLedgerIdFromAppSettings } from './overheadOfficeJ
  * Dashboard hook calls it behind a per-session cache.
  *
  * Window: 90 company-calendar days ending today (America/Chicago). Pool =
- * approved, wage-priced office + bid sessions + office-job parts (internal
- * transfers excluded); denominators = approved field hours / field labor $ /
+ * recorded (closed, not rejected/revoked — v2.3261), wage-priced office + bid
+ * sessions + office-job parts (internal transfers excluded); denominators =
+ * recorded field hours / field labor $ /
  * invoices sent (Stripe test-mode excluded, Chicago-bucketed).
  *
  * Error semantics match the original effect: the core fetches throw (the
@@ -281,7 +282,7 @@ export async function loadOverheadPoolSnapshot(
   }, 0)
   const overlapSessions = sessions.filter(
     (sess) =>
-      sess.approved_at &&
+      sess.clocked_out_at &&
       !sess.rejected_at &&
       !sess.revoked_at &&
       sess.bid_id &&

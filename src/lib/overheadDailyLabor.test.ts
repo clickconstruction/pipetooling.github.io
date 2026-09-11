@@ -83,7 +83,7 @@ describe('buildOverheadDailyLabor', () => {
   const officeId = '11111111-1111-4111-8111-111111111111'
   const wages = buildOverheadWageLookup([{ person_name: 'Alice', hourly_wage: 40 }])
 
-  it('skips rejected and non-approved', () => {
+  it('skips rejected and revoked; a closed session awaiting approval counts as recorded time (v2.3261)', () => {
     const r = buildOverheadDailyLabor({
       sessions: [
         sess({
@@ -99,13 +99,26 @@ describe('buildOverheadDailyLabor', () => {
           work_date: '2026-06-02',
           job_ledger_id: officeId,
           rejected_at: null,
-          approved_at: null,
+          revoked_at: '2026-06-02T12:00:00.000Z',
         }),
       ],
       officeJobLedgerId: officeId,
       wageByNormalizedName: wages,
     })
     expect(r.byDay).toEqual([])
+    const pending = buildOverheadDailyLabor({
+      sessions: [sess({ id: 'c', user_id: 'u1', work_date: '2026-06-02', job_ledger_id: officeId, rejected_at: null, approved_at: null })],
+      officeJobLedgerId: officeId,
+      wageByNormalizedName: wages,
+    })
+    expect(pending.byDay.length).toBe(1)
+    expect(pending.byDay[0]!.officeLaborUsd).toBeGreaterThan(0)
+    const open = buildOverheadDailyLabor({
+      sessions: [sess({ id: 'd', user_id: 'u1', work_date: '2026-06-02', job_ledger_id: officeId, rejected_at: null, approved_at: null, clocked_out_at: null })],
+      officeJobLedgerId: officeId,
+      wageByNormalizedName: wages,
+    })
+    expect(open.byDay).toEqual([])
   })
 
   it('splits office vs bid per day', () => {

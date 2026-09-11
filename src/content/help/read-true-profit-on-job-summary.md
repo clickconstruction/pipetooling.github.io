@@ -113,7 +113,7 @@ Looking for a 2024 job that isn't in the table? Read the footer first: if it say
 
 ## Watch-outs
 
-- Only **approved, closed** sessions count, for hours and for overhead. Approve hours in People → Hours and the numbers move. The office's own sessions count the same way, so the last week or two always reads light until they are approved.
+- **Recorded** sessions count, for hours and for overhead: clocked out and not rejected, approved or still awaiting approval — the same rule as the Labor column. Approval doesn't move the numbers; a rejection in People → Hours removes the session. The chip under the totals counts the sessions still awaiting review.
 - Jobs that were open but never clocked inside the window are not on the ledger and receive no carry.
 - Labor $ still comes from payroll crew-days × wage, as before; hours · days come from clock sessions. They agree when time is approved and assigned.
 - Overhead and true profit show for devs, leaders, and controllers, the same rule as labor $.

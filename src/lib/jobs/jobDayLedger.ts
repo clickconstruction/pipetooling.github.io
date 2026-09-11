@@ -6,7 +6,7 @@ import { buildOverheadAllocation, isLegacyOverheadAllocation, jobOverheadAllocat
  * The job day ledger (v2.2692): one calendar-day table that feeds Job Summary's
  * true profit AND the Days view. Per day: the overhead pool $ (office labor +
  * bid labor + office parts, internal transfers excluded — the SAME pool People →
- * Overhead builds) and every approved, closed field session grouped by job.
+ * Overhead builds) and every recorded field session (closed, not rejected/revoked — v2.3261) grouped by job.
  *
  * Day-share overhead (the owner-picked default, 2026-09-03): each day's pool is
  * handed to the jobs worked that day, split by that day's field hours. It
@@ -28,7 +28,7 @@ export type JobDayLedgerDay = {
   ymd: string
   /** Office labor + bid labor + office parts, internal transfers excluded. */
   poolUsd: number
-  /** Approved, closed, wage-priced field hours across every job (office excluded). */
+  /** Recorded, wage-priced field hours across every job (office excluded). */
   fieldHours: number
   fieldLaborUsd: number
   byJob: Map<string, JobDayLedgerJobDay>
@@ -69,15 +69,15 @@ export type JobDayLedger = {
    * Absent on ledgers cached by older builds.
    */
   leadDays?: JobDayLedgerDay[]
-  /** Jobs with at least one approved field session in the window. */
+  /** Jobs with at least one recorded field session in the window. */
   jobs: Map<string, JobDayLedgerJob>
   /** Display labels for the touched jobs (the Days view's chips) — filled by the loader; empty in pure tests. */
   jobLabels: Map<string, JobDayLedgerJobLabel>
   /** Status spans for the touched jobs — filled by the loader; empty in pure tests. */
   statusSpansByJob: Map<string, JobDayLedgerStatusSpan>
-  /** Approved field hours on each touched job BEFORE the window (not charged — surfaced as a flag). */
+  /** Recorded field hours on each touched job BEFORE the window (not charged — surfaced as a flag). */
   priorHoursByJob: Map<string, number>
-  /** Closed field sessions in the window still awaiting approval (count nowhere yet). */
+  /** Closed field sessions in the window still awaiting approval (counted as recorded time since v2.3261; shown so someone reviews them). */
   pendingFieldSessions: number
   pendingFieldHours: number
   /** The three reference lenses over THIS window (pool ÷ field hours / invoiced revenue / field labor $). */
@@ -131,7 +131,7 @@ export function buildJobDayLedger(args: {
   /** When given (v2.3258), days in [leadStartYmd, startYmd) are built too and returned as `leadDays`. */
   leadStartYmd?: string
   officeJobLedgerId: string | null
-  /** From `buildOtherJobsLaborByDay(...).detailByDay` — one line per approved, closed field session. */
+  /** From `buildOtherJobsLaborByDay(...).detailByDay` — one line per recorded field session. */
   fieldDetailByDay: ReadonlyMap<string, readonly OtherJobsLaborDetailLine[]>
   /** From the overhead day merge: office labor + bid labor + office parts per day. */
   poolUsdByDay: ReadonlyMap<string, number>
@@ -254,7 +254,7 @@ export function jobOverheadByMethod(
 
 export type JobDayLedgerUnallocated = { usd: number; days: number }
 
-/** Pool $ on days with no approved field hours — nobody is charged for it, and the strip says so. */
+/** Pool $ on days with no recorded field hours — nobody is charged for it, and the strip says so. */
 export function unallocatedJobDayOverhead(ledger: JobDayLedger, settings?: OverheadAllocationSettings): JobDayLedgerUnallocated {
   if (settings && !isLegacyOverheadAllocation(settings)) {
     const t = buildOverheadAllocation(ledger, settings).totals

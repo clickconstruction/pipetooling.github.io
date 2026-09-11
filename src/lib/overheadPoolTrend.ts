@@ -17,7 +17,7 @@ import { ymdAddDays } from '../utils/dateUtils'
  *   would otherwise flip the arrow every load.
  *
  * Pure: no React, no Supabase. Same approval/pricing semantics as the inputs —
- * unapproved time is absent here too (the hygiene strip says so).
+ * time awaiting approval counts here too since v2.3261 (recorded time); rejected time never does.
  */
 
 export type OverheadPoolTrendDay = {

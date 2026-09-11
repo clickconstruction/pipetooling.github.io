@@ -2,12 +2,12 @@
 title: keep the overhead numbers accurate
 category: Billing & Money
 roles: dev, master_technician
-keywords: overhead, overhead rate, pool, method a, method b, method c, pending approvals, unpriced hours, wage, pay config, salary, unassigned, maintenance, hygiene, 90 day
+keywords: overhead, overhead rate, pool, method a, method b, method c, pending approvals, recorded time, rejected, unpriced hours, wage, pay config, salary, unassigned, maintenance, hygiene, 90 day
 order: 61
 ---
 **People → Overhead** turns the last 90 days of office time, bid time, and office spending into the overhead rates you price with — the daily-cost averages and the three lens rates (per field hour, per revenue dollar, per labor dollar).
 
-Every labor hour and dollar in those numbers comes from clock sessions that are **approved**, **clocked out**, and **priced with a wage**. When any of that upkeep falls behind, the numbers quietly drift low — so the tab watches for it and shows an amber maintenance strip under the three lenses whenever something needs attention. When everything is clean, the strip disappears entirely.
+Every labor hour and dollar in those numbers comes from **recorded** clock sessions — **clocked out** and **not rejected** (approved or still awaiting approval) — **priced with a wage**. That is the same rule job labor uses, so true profit reads one clock. When wages or assignments fall behind, the numbers quietly drift low — so the tab watches for it and shows an amber maintenance strip under the three lenses whenever something needs attention. When everything is clean, the strip disappears entirely.
 
 ## Click a lens to see its math
 
@@ -42,8 +42,8 @@ A Mercury card purchase on the office job goes to the cardholder (by card nickna
 ## The three indicators
 
 :::example What the strip looks like
-⚠ Maintenance — these are skewing the 90-day numbers above
-**Pending approvals (90d)** · 14 closed sessions · 52.5h + 2 still open — Approve in {{button:blue|People → Hours}}
+⚠ Maintenance — worth a review before you trust the 90-day numbers above
+**Pending approvals (90d)** · 14 closed sessions · 52.5h + 2 still open — Already counted as recorded time; approve, or reject to remove, in {{button:blue|People → Hours}}
 **Unpriced hours (90d)** · Sam R, Tony V · 31.0h at $0 — Set wages in {{button:blue|People → Pay config}}
 **Unassigned salary time (90d)** · 12 sessions · 96.0h · 1 person — Assign in My Time
 :::
@@ -52,9 +52,9 @@ Hover any indicator for the exact rule it checks and the exact 90-day window it 
 
 ### Pending approvals
 
-Sessions nobody has approved (or rejected) yet don't count **anywhere** — not in the overhead pool, and not in the field-hour or field-labor denominators. Field time usually gets approved because payroll depends on it, but office and bid time has no such pressure, so it's the most likely to sit unapproved and undercount overhead.
+Closed sessions nobody has approved yet **already count** — in the overhead pool and in the field-hour and field-labor denominators — the moment they are clocked out. Approval no longer changes the overhead numbers; a **rejection** does, by removing the session. So this indicator is a review queue, not a fix list: a forgotten clock-out or a test punch prices into overhead until someone rejects it. Office and bid time is the most likely to sit unreviewed, because payroll doesn't chase it.
 
-Fix it on the **Hours** tab: review and approve the pending sessions. Sessions that are still open (no clock-out yet) are listed by count only — they get hours once they're clocked out.
+Review it on the **Hours** tab: approve what's real, reject what isn't. Sessions that are still open (no clock-out yet) are listed by count only — they count once they're clocked out.
 
 Salary-schedule sessions (the ones the system creates for salaried people) **approve themselves** about every half hour once they close, so they no longer add to this indicator — what you see pending is real punches waiting on a human.
 

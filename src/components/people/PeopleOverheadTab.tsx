@@ -1142,8 +1142,8 @@ export default function PeopleOverheadTab({
         key: 'pending',
         label: 'Pending approvals (90d)',
         value: parts.join(' + '),
-        hint: 'Approve in People → Hours.',
-        title: `Sessions in the 90-day window (${lensWindowLabel}) with no approval, rejection, or revocation — covers office/bid sessions and field sessions assigned to a job (unassigned salary time is its own indicator). Unapproved sessions are excluded from the overhead pool and the Method A/C denominators until approved; still-open sessions have no hours yet.`,
+        hint: 'Already counted as recorded time — approve, or reject to remove, in People → Hours.',
+        title: `Sessions in the 90-day window (${lensWindowLabel}) with no approval, rejection, or revocation — covers office/bid sessions and field sessions assigned to a job (unassigned salary time is its own indicator). Since v2.3261 closed sessions count in the pool and the Method A/C denominators as recorded time whether or not they are approved; a rejection removes them. Still-open sessions have no hours yet.`,
       })
     }
     if (unpriced.sessionCount > 0) {
@@ -1152,7 +1152,7 @@ export default function PeopleOverheadTab({
         label: 'Unpriced hours (90d)',
         value: `${formatOverheadHygienePersonNames(unpriced.personNames)} · ${fmtHygieneHours(unpriced.hours)} at $0`,
         hint: 'Set wages in People → Pay config.',
-        title: `Approved, closed sessions in the 90-day window (${lensWindowLabel}) whose person has no wage match in pay config — the hours still count (Method A's denominator stays full) but the dollars price at $0, deflating the overhead pool and Method C.`,
+        title: `Recorded (closed, not rejected) sessions in the 90-day window (${lensWindowLabel}) whose person has no wage match in pay config — the hours still count (Method A's denominator stays full) but the dollars price at $0, deflating the overhead pool and Method C.`,
       })
     }
     if (unassignedSalary && unassignedSalary.sessionCount > 0) {
@@ -1352,7 +1352,7 @@ export default function PeopleOverheadTab({
           }}
         >
           <div style={{ fontWeight: 700, fontSize: '0.875rem', color: 'var(--text-amber-900)' }}>
-            ⚠ Maintenance — these are skewing the 90-day numbers above
+            ⚠ Maintenance — worth a review before you trust the 90-day numbers above
           </div>
           <div
             style={{
@@ -1949,7 +1949,7 @@ export default function PeopleOverheadTab({
               ) : (
                 <>
                   <p style={{ margin: '0.5rem 0 0 0', fontSize: '0.875rem', color: 'var(--text-600)' }}>
-                    Approved, closed sessions in this category. Labor $ = hours × hourly wage from pay config.
+                    Recorded sessions (closed, not rejected) in this category. Labor $ = hours × hourly wage from pay config.
                   </p>
                   <p style={{ margin: '0.35rem 0 0 0', fontSize: '0.875rem', fontWeight: 600 }}>
                     Totals: {overheadBreakdownModalModel.totalHours.toFixed(2)}h — $
@@ -2051,7 +2051,7 @@ export default function PeopleOverheadTab({
                     }}
                   >
                     <p style={{ margin: 0 }}>
-                      <strong>Labor:</strong> approved, closed sessions — hours × pay config wage.
+                      <strong>Labor:</strong> recorded sessions (closed, not rejected) — hours × pay config wage.
                     </p>
                     <p style={{ margin: '0.25rem 0 0 0' }}>
                       <strong>Materials:</strong> office job parts (same rules as <strong>Office parts ($)</strong> column).
@@ -2136,7 +2136,7 @@ export default function PeopleOverheadTab({
                       Not included in overhead <strong>Office Total ($)</strong>.
                     </p>
                     <p style={{ margin: '0.25rem 0 0 0' }}>
-                      <strong>Labor:</strong> approved, closed clock time on{' '}
+                      <strong>Labor:</strong> recorded clock time (closed, not rejected) on{' '}
                       <strong>jobs ledger</strong> work other than the office overhead job when one is configured (bid-only
                       time remains in <strong>Bid labor ($)</strong> only).
                     </p>
@@ -2260,7 +2260,7 @@ export default function PeopleOverheadTab({
             </div>
             <div style={{ padding: '1rem', overflowY: 'auto', flex: 1 }}>
               <p style={{ margin: '0 0 0.75rem 0', fontSize: '0.875rem', color: 'var(--text-600)', lineHeight: 1.45 }}>
-                Daily labor overhead from <strong>approved, closed</strong> clock sessions: time on the office job below,
+                Daily labor overhead from <strong>recorded</strong> clock sessions (closed, not rejected or revoked — approved or still awaiting approval): time on the office job below,
                 and time on <strong>bids</strong>. If both job and bid are set on a session, the <strong>office job</strong>{' '}
                 wins. Amounts use session hours × <strong>hourly wage</strong> from People pay config (same name as clock
                 user); for dual-rate people (an <strong>office hourly wage</strong> set in pay config), office and bid

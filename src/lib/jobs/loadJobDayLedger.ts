@@ -124,7 +124,7 @@ export async function loadJobDayLedger(args: {
   for (const v of bucketInvoiceRevenueByAppTzDay(invoiceRows, startYmd, endYmd).values()) invoicedRevenueUsd += v
   if (cancelled()) return null
 
-  // Approved hours before the window on the jobs touched inside it, and their
+  // Recorded hours before the window on the jobs touched inside it, and their
   // display labels (the Days view's chips — the page's ledger list may not hold
   // every touched job because of the HCP filter).
   const touchedJobIds = [...new Set([...field.detailByDay.values()].flat().map((l) => l.jobLedgerId))]
@@ -174,7 +174,6 @@ export async function loadJobDayLedger(args: {
           .select('job_ledger_id, clocked_in_at, clocked_out_at')
           .in('job_ledger_id', chunk)
           .lt('work_date', startYmd)
-          .not('approved_at', 'is', null)
           .is('rejected_at', null)
           .is('revoked_at', null)
           .not('clocked_out_at', 'is', null)

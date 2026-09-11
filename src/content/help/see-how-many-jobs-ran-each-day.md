@@ -35,6 +35,6 @@ The Jobs view charges each job its share of the pool by field hours over the app
 
 ## Watch-outs
 
-- Only **approved, closed** clock sessions count. A day with time still awaiting approval reads lighter than it was.
+- **Recorded** clock sessions count: clocked out and not rejected, whether or not they've been approved yet. A rejection in People → Hours removes the session; time still on the clock doesn't count until it's clocked out.
 - Bid time is part of the pool, not a "job" on the chart — bids show up as cost, not as a bar.
 - Pool and per job-day dollars show for devs, leaders, and controllers; counts and hours show for every office role.

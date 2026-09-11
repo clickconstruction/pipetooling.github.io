@@ -103,7 +103,7 @@ export function OverheadPeopleTable({
         <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginTop: '0.4rem' }}>{loading ? 'Loading…' : '—'}</div>
       ) : table.rows.length === 0 ? (
         <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginTop: '0.4rem' }}>
-          Nothing in the pool for {(win?.label ?? 'this window').toLowerCase()} — no approved office or bid sessions and no office-job purchases.
+          Nothing in the pool for {(win?.label ?? 'this window').toLowerCase()} — no recorded office or bid sessions and no office-job purchases.
         </div>
       ) : (
         <div style={{ overflowX: 'auto', marginTop: '0.5rem' }}>

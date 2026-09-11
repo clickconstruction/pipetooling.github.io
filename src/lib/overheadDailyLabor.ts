@@ -204,9 +204,7 @@ export function buildOtherJobsLaborByDay(args: {
   const detailByDay = new Map<string, OtherJobsLaborDetailLine[]>()
 
   for (const s of sessions) {
-    if (s.rejected_at || s.revoked_at) continue
-    if (s.approved_at == null) continue
-    if (s.clocked_out_at == null) continue
+    if (!isRecordedClockSession(s)) continue
     const jid = s.job_ledger_id
     if (jid == null || jid === '') continue
     if (officeJobLedgerId && jid === officeJobLedgerId) continue
@@ -334,10 +332,20 @@ export function approvedClosedSessionHours(
   return (t1 - t0) / 3600000
 }
 
-function sessionIncludedForOverheadUsd(session: OverheadClockSessionRow): boolean {
+/**
+ * Recorded time (v2.3261, owner decision 2026-09-11): a clock session counts for
+ * overhead — the pool, the field-hour denominators, the job day ledger — once it
+ * is CLOSED and not rejected or revoked, approved or still awaiting approval. The
+ * same rule job labor adopted in v2.3179. Payroll (`people_hours`, pay stubs)
+ * stays approved-only and does not read this.
+ */
+export function isRecordedClockSession(session: Pick<OverheadClockSessionRow, 'clocked_out_at' | 'rejected_at' | 'revoked_at'>): boolean {
   if (session.rejected_at || session.revoked_at) return false
-  if (session.approved_at == null) return false
   return session.clocked_out_at != null
+}
+
+function sessionIncludedForOverheadUsd(session: OverheadClockSessionRow): boolean {
+  return isRecordedClockSession(session)
 }
 
 function overheadWageRatesFromConfig(c: OverheadPayConfigInput): OverheadWageRates {

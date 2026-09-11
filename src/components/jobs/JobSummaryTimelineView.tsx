@@ -249,7 +249,7 @@ export default function JobSummaryTimelineView({ ledger, ledgerLoading, ledgerEr
         </span>
         <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
           {definition === 'worked'
-            ? 'A job runs from its first approved field day to its last; still-open jobs run to today. A pause longer than the gap splits the run.'
+            ? 'A job runs from its first recorded field day to its last; still-open jobs run to today. A pause longer than the gap splits the run.'
             : 'A job runs from its Working move to its Billed or Paid move, touched or not.'}
         </span>
       </div>

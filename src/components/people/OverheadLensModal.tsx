@@ -17,9 +17,9 @@ import {
 export type OverheadLensDetail = {
   series: Record<OverheadLensKey, OverheadLensSeries>
   denominators: { fieldHours: number; invoicedRevenueUsd: number; fieldLaborUsd: number }
-  /** Closed, unapproved field-session hours in the window — Method A/C's missing denominator. */
+  /** Closed field-session hours in the window still awaiting approval — counted as recorded time since v2.3261; shown so someone reviews them. */
   pendingFieldHours: number
-  /** Approved sessions on a non-office job that ALSO carry a bid — counted in the pool and the field denominators. */
+  /** Recorded sessions on a non-office job that ALSO carry a bid — counted in the pool and the field denominators. */
   overlapSessions: number
 }
 
@@ -38,7 +38,7 @@ const LENS: Record<
     color: 'var(--text-blue-500)',
     denLabel: 'billable field hours',
     denRule:
-      'Approved, clocked-out sessions on any jobs-ledger job except the office job, in the same 90 days. Hours count even when the person has no wage on file.',
+      'Recorded sessions (clocked out, not rejected or revoked — approved or still awaiting approval) on any jobs-ledger job except the office job, in the same 90 days. Hours count even when the person has no wage on file.',
     blurb: 'Every field hour must carry this much overhead. Steady even when billing is lumpy; maps straight onto hourly rates.',
   },
   B: {
@@ -127,7 +127,7 @@ export function OverheadLensModal({
   const levers: Array<{ dir: 'down' | 'up'; text: string; effect: string }> =
     lens === 'A'
       ? [
-          { dir: 'down', text: 'Approve pending field time — it only counts once approved', effect: `+100 hr → ${fmtDelta(sens?.perDenominatorUnit == null ? null : sens.perDenominatorUnit * 100)}` },
+          { dir: 'down', text: 'Clock every field hour — time that never gets punched is the one thing this denominator never sees', effect: `+100 hr → ${fmtDelta(sens?.perDenominatorUnit == null ? null : sens.perDenominatorUnit * 100)}` },
           { dir: 'down', text: 'Cut office-job parts spend or office hours', effect: `−$1,000 pool → ${fmtDelta(perPool1k == null ? null : -perPool1k)}` },
           { dir: 'down', text: 'Move office time onto billable jobs — it leaves the pool AND grows the hours', effect: 'double effect' },
           { dir: 'up', text: 'More estimating (bid) hours that don’t turn into jobs', effect: `+$1,000 pool → ${fmtDelta(perPool1k)}` },
@@ -142,7 +142,7 @@ export function OverheadLensModal({
           ]
         : [
             { dir: 'down', text: 'Give unpriced people a wage — their hours then add real dollars here', effect: 'see the maintenance strip' },
-            { dir: 'down', text: 'Approve pending field time (priced at each person’s wage)', effect: `+$10,000 labor → ${fmtDelta(sens?.perDenominatorUnit == null ? null : sens.perDenominatorUnit * 10000)}` },
+            { dir: 'down', text: 'Clock every field hour (priced at each person’s wage)', effect: `+$10,000 labor → ${fmtDelta(sens?.perDenominatorUnit == null ? null : sens.perDenominatorUnit * 10000)}` },
             { dir: 'down', text: 'Cut office labor or parts', effect: `−$1,000 pool → ${fmtDelta(perPool1k == null ? null : -perPool1k)}` },
             { dir: 'up', text: 'Raises with the same pool actually LOWER this ratio — a drop is not savings', effect: 'multiplier, not cost' },
           ]
@@ -150,14 +150,15 @@ export function OverheadLensModal({
   const whatIf = (() => {
     if (!detail || den == null) return null
     if (lens === 'A' && detail.pendingFieldHours > 0) {
-      const r = overheadLensRateWithExtraDenominator(poolUsd, den, detail.pendingFieldHours)
+      // Recorded time (v2.3261): pending hours are already in the denominator; a rejection would take them out.
+      const r = overheadLensRateWithExtraDenominator(poolUsd, den, -detail.pendingFieldHours)
       return r == null
         ? null
-        : `If the ${hours(detail.pendingFieldHours)} of pending field time were approved today (pool unchanged), A would read ${fmtRate('A', r)} instead of ${fmtRate('A', rate)}.`
+        : `${hours(detail.pendingFieldHours)} of the field time in this denominator is still awaiting approval. If all of it were rejected (pool unchanged), A would read ${fmtRate('A', r)} instead of ${fmtRate('A', rate)}.`
     }
     if (lens === 'B') return 'Sent is not paid: an invoice counts the day it goes out, and a big one falls out of the window 90 days later.'
     if (lens === 'C' && detail.pendingFieldHours > 0)
-      return `${hours(detail.pendingFieldHours)} of field time is pending approval — none of its wages are in this denominator yet.`
+      return `${hours(detail.pendingFieldHours)} of field time is still awaiting approval — its wages already count here as recorded time; a rejection removes them.`
     return null
   })()
 
@@ -296,7 +297,7 @@ export function OverheadLensModal({
               <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>—</div>
             )}
             <p style={{ margin: '0.4rem 0 0 0', fontSize: '0.75rem', color: 'var(--text-faint)' }}>
-              The same pool feeds all three lenses. Approved, wage-priced sessions only; internal transfers stay out of parts.
+              The same pool feeds all three lenses. Recorded (closed, not rejected), wage-priced sessions; internal transfers stay out of parts.
             </p>
           </section>
           <section style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '0.6rem 0.75rem' }}>

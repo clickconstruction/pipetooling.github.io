@@ -5,7 +5,7 @@ file: docs/PEOPLE_CONTRACTS_OVERHEAD_TABS_ARCHITECTURE.md
 type: Architecture Map / Decomposition
 purpose: Step-0 map (per PAGE_DECOMPOSITION_PLAYBOOK.md) for the two largest already-extracted People tabs — src/components/people/PeopleContractsTab.tsx (~2,981 lines) and src/components/people/PeopleOverheadTab.tsx (~2,510 lines). Inventories every region's state, handlers, supabase tables/RPCs, and coupling so their sub-decomposition (Stage-A lib extraction + modal/section component moves) can start without re-deriving the strategy.
 audience: Developers, AI Agents
-last_updated: 2026-09-05 (v2.2851 quick-send writes at Send)
+last_updated: 2026-09-11 (v2.3261 recorded time)
 ---
 
 ## What this surface is
@@ -237,7 +237,7 @@ Already extracted with tests (do not re-do): `contractBodyFormat`, `contractSign
 11. **Overhead `setError` prop is passed by `People.tsx` but never destructured/used** inside `PeopleOverheadTab` — errors are swallowed into empty-state resets or toasts. Do not "fix" silently; note it if removing the prop.
 12. **Week defaults + `shiftOverheadWeek` use device-local `Date` + `toLocaleDateString('en-CA')`** (noon-anchored to dodge DST) while table labels use `APP_CALENDAR_TZ` — a deliberate mismatch to preserve.
 13. **Office scope query shape:** `.or(`job_ledger_id.eq.${id},bid_id.not.is.null`)` (string-interpolated); with no office job configured, office scope = bid-only sessions and other-jobs = ALL jobs-ledger sessions (the modal heading switches to "Materials (all jobs)").
-14. **Office-job-wins rule** (session with both `job_ledger_id` = office job and `bid_id` counts as office) lives in `overheadDailyLabor` — the component must not re-implement it.
+14. **Office-job-wins rule** (session with both `job_ledger_id` = office job and `bid_id` counts as office) lives in `overheadDailyLabor` — the component must not re-implement it. So does the **recorded-time rule** (v2.3261, `isRecordedClockSession`: closed, not rejected/revoked, approved or pending) — every pool and field-hour reader goes through the builders; the Pending approvals hygiene card is a review queue, not a fix list.
 15. **Internal Transfers (symmetric exclusion):** every Materials figure on the tab — the Office parts ($) column, Office Total ($), both sides of Overhead % (office numerator AND field-materials denominator), the KPI averages' office-parts input, and all three Materials-bearing breakdown modals (officeParts / total / otherJobs) — is computed from bucketed accounting sections with the `internal_transfer` bucket excluded (`sumPartsUsdByDayExcludingInternalTransfer` per day, `sumMaterialsTotalUsdExcludingInternalTransfer` in the modals). Columns and modals therefore always agree; the old modal-vs-column asymmetry (modal excluded, column didn't) is resolved. Excluded transfers still render inside the modals' sections list with the slate accent + "not counted in Materials".
 16. **Bucket map is precomputed per detail-map change**, not per modal open; unassigned tx ids default to the `'other'` bucket at render via `bucketForOverheadPartsLine`.
 17. **90-day averages divide by the fixed window length** (calendar-day average including zero-activity days); per-$100 is null when window revenue is ≤ 0; the KPI tooltip warns recent days underreport until sessions are approved.
