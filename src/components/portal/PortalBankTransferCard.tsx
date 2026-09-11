@@ -85,7 +85,7 @@ function Body({ details, memo, phone }: PortalBankTransferCardProps) {
     <div style={{ padding: '10px 16px 12px', fontSize: 13, borderTop: `1px solid ${HAIR}` }}>
       {c.transfer ? (
         <>
-          <div style={{ fontSize: 12, color: MUTED }}>ACH and domestic wire use the same details. Online card payments stay above.</div>
+          <div style={{ fontSize: 12, color: MUTED }}>ACH (direct deposit) and domestic wire use the same details. Online card payments stay above.</div>
           <div data-portal-bank-grid style={{ display: 'grid', gridTemplateColumns: 'auto 1fr auto', gap: '0 14px', alignItems: 'center', marginTop: 8 }}>
             <Row k="Pay to" v={details.payeeName} copy={details.payeeName} />
             <Row k="Routing" v={groupDigits(details.routingNumber)} copy={details.routingNumber} />
@@ -144,7 +144,7 @@ export function PortalBankTransferCard(props: PortalBankTransferCardProps) {
       >
         <span style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: '0.2em', textTransform: 'uppercase', color: COPPER }}>{title}</span>
         <span style={{ fontSize: 12, color: MUTED, whiteSpace: 'nowrap' }}>
-          {open ? 'Hide' : c.transfer ? 'ACH · wire · check' : 'Where to mail it'} <span aria-hidden style={{ display: 'inline-block', transform: open ? 'rotate(90deg)' : 'none', transition: 'transform .15s' }}>›</span>
+          {open ? 'Hide' : c.transfer ? 'ACH (direct deposit) • wire • check' : 'Where to mail it'} <span aria-hidden style={{ display: 'inline-block', transform: open ? 'rotate(90deg)' : 'none', transition: 'transform .15s' }}>›</span>
         </span>
       </button>
       {open ? (
