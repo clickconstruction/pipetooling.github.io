@@ -423,7 +423,7 @@ export async function downloadApprovalPdf(ctx: ApprovalPdfContext): Promise<void
       countRowsLength: countRowsForEst.length,
       directCostRows: (directRes.data as DirectCostRowLike[] | null) ?? [],
     })
-    const { totalLaborHours: totalHours, laborCost, distance, ratePerMile: drivingRatePerMile, numTrips, drivingCost, estimatorCost, travelCost, otherDirectCost, laborCostWithDriving, totalCost: grandTotal } = breakdown
+    const { totalLaborHours: totalHours, laborCost, distance, ratePerMile: drivingRatePerMile, numTrips, drivingCost, travelCost, otherDirectCost, laborCostWithDriving, totalCost: grandTotal } = breakdown
 
     push('Materials')
     y += lineHeight
@@ -461,10 +461,6 @@ export async function downloadApprovalPdf(ctx: ApprovalPdfContext): Promise<void
       push(`Driving cost: ${numTrips.toFixed(1)} trips × $${drivingRatePerMile.toFixed(2)}/mi × ${distance.toFixed(0)}mi = $${formatCurrency(drivingCost)}`)
       y += lineHeight
     }
-    if (estimatorCost > 0) {
-      push(`Estimator cost: $${formatCurrency(estimatorCost)}`)
-      y += lineHeight
-    }
     if (travelCost > 0) {
       push(`Travel cost (meals + hotels): $${formatCurrency(travelCost)}`)
       y += lineHeight
@@ -477,9 +473,6 @@ export async function downloadApprovalPdf(ctx: ApprovalPdfContext): Promise<void
     ]
     if (distance > 0 && totalHours > 0) {
       summaryRows.push(['Driving', `$${formatCurrency(drivingCost)}`])
-    }
-    if (estimatorCost > 0) {
-      summaryRows.push(['Estimator', `$${formatCurrency(estimatorCost)}`])
     }
     if (travelCost > 0) {
       summaryRows.push(['Travel', `$${formatCurrency(travelCost)}`])

@@ -42,10 +42,10 @@ const base: PricingPrintRowsInput = {
 }
 
 describe('buildPricingPrintRows', () => {
-  it('computes totalCost from materials + labor + driving + estimator + travel', () => {
+  it('computes totalCost from materials + labor + driving + travel — estimator time is a fact, not cost (v2.3293)', () => {
     const { totalCost } = buildPricingPrintRows(base)
-    // materials 100 + labor (4hrs * 50) 200 + driving ((4/2)*0.7*10) 14 + estimator 500 + travel 150
-    expect(totalCost).toBeCloseTo(964, 6)
+    // materials 100 + labor (4hrs * 50) 200 + driving ((4/2)*0.7*10) 14 + travel 150; the $500 estimator flat amount is not added
+    expect(totalCost).toBeCloseTo(464, 6)
   })
 
   it('falls back to per-count estimator and default driving rates when fields are absent', () => {
@@ -53,8 +53,8 @@ describe('buildPricingPrintRows', () => {
       ...base,
       costEstimate: {},
     })
-    // materials 100 + labor 200 + driving ((4/2)*0.7*10) 14 + estimator (1 * 10) 10 + travel 0
-    expect(totalCost).toBeCloseTo(324, 6)
+    // materials 100 + labor 200 + driving ((4/2)*0.7*10) 14 + travel 0; the per-count estimator default is not added
+    expect(totalCost).toBeCloseTo(314, 6)
   })
 
   it('maps computed rows into BidPricingPrintRow shape', () => {

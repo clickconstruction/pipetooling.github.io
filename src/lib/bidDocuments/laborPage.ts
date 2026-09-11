@@ -42,7 +42,8 @@ export interface LaborPageCosts {
   ratePerMile: number
   numTrips: number
   drivingCost: number
-  estimatorCost: number
+  /** Reported by the kernel; not printed and not in any total since v2.3293. */
+  estimatorCost?: number
   travelCost: number
   laborCostWithDriving: number
   /** equipment + permits + subs + waste + other (v2.3292); omitted or 0 = no line. */
@@ -110,7 +111,6 @@ function laborTableAndSummary(
     ratePerMile,
     numTrips,
     drivingCost,
-    estimatorCost,
     travelCost,
     laborCostWithDriving,
     otherDirectCost = 0,
@@ -137,8 +137,7 @@ function laborTableAndSummary(
     <tbody>${laborRowsHtml}${totalsRowHtml}</tbody>
   </table>
   <p style="font-weight:600; text-align:right; margin-top:0.5rem;">Manhours: $${formatCurrency(laborCost)}<br/><span style="font-weight:400; font-size:0.875rem;">(${totalHours.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} hrs × $${formatCurrency(rate)}/hr)</span></p>${distance > 0 && totalHours > 0 ? `
-  <p style="font-weight:600; text-align:right; margin-top:0.5rem;">Driving: $${formatCurrency(drivingCost)}<br/><span style="font-weight:400; font-size:0.875rem;">(${numTrips.toFixed(1)} trips × $${ratePerMile.toFixed(2)}/mi × ${distance.toFixed(0)} mi)</span></p>` : ''}${estimatorCost > 0 ? `
-  <p style="font-weight:600; text-align:right; margin-top:0.5rem;">Estimator: $${formatCurrency(estimatorCost)}</p>` : ''}${travelCost > 0 ? `
+  <p style="font-weight:600; text-align:right; margin-top:0.5rem;">Driving: $${formatCurrency(drivingCost)}<br/><span style="font-weight:400; font-size:0.875rem;">(${numTrips.toFixed(1)} trips × $${ratePerMile.toFixed(2)}/mi × ${distance.toFixed(0)} mi)</span></p>` : ''}${travelCost > 0 ? `
   <p style="font-weight:600; text-align:right; margin-top:0.5rem;">Travel: $${formatCurrency(travelCost)}</p>` : ''}
   <p style="font-weight:600; text-align:right; margin-top:0.5rem;">Labor total: $${formatCurrency(laborCostWithDriving)}</p>${otherDirectCost > 0 ? `
   <p style="font-weight:600; text-align:right; margin-top:0.5rem;">Other direct (equipment, permits, subs, waste, other): $${formatCurrency(otherDirectCost)}</p>` : ''}
@@ -146,8 +145,7 @@ function laborTableAndSummary(
   <div class="summary">
     <p>${materialsSummaryLabel} $${formatCurrency(totalMaterials)}</p>
     <p>Manhours: $${formatCurrency(laborCost)}</p>${distance > 0 && totalHours > 0 ? `
-    <p>Driving: $${formatCurrency(drivingCost)}</p>` : ''}${estimatorCost > 0 ? `
-    <p>Estimator: $${formatCurrency(estimatorCost)}</p>` : ''}${travelCost > 0 ? `
+    <p>Driving: $${formatCurrency(drivingCost)}</p>` : ''}${travelCost > 0 ? `
     <p>Travel: $${formatCurrency(travelCost)}</p>` : ''}
     <p>Labor total: $${formatCurrency(laborCostWithDriving)}</p>${otherDirectCost > 0 ? `
     <p>Other direct: $${formatCurrency(otherDirectCost)}</p>` : ''}

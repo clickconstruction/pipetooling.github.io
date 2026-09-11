@@ -190,11 +190,11 @@ describe('laborTableAndSummary (shared, via both builders)', () => {
     expect(html).not.toContain('>Totals</td>')
   })
 
-  it('includes Driving / Estimator / Travel lines when their costs are positive', () => {
+  it('includes Driving / Travel lines when their costs are positive — estimator time is not printed (v2.3293)', () => {
     const html = buildRoughLaborPageHtml(base)
     expect(html).toContain('Driving: $334.42')
     expect(html).toContain('12.3 trips × $0.70/mi × 39 mi')
-    expect(html).toContain('Estimator: $9,000.00')
+    expect(html).not.toContain('Estimator:')
     expect(html).toContain('Travel: $250.00')
   })
 

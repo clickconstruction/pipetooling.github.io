@@ -85,7 +85,7 @@ function ctx(over: Partial<CostEstimatePrintContext> = {}): CostEstimatePrintCon
 }
 // Shared cost expectations for the fixtures above: 10 h × $85; 40 mi at the $0.70 default,
 // 2 h/trip default → 5 trips → $140 driving; estimator 2 count rows × $15; travel 2 × 1 × ($50 + $100).
-const EXPECTED_COSTS = { totalHours: 10, rate: 85, laborCost: 850, distance: 40, ratePerMile: 0.7, numTrips: 5, drivingCost: 140, estimatorCost: 30, travelCost: 300, laborCostWithDriving: 1320, otherDirectCost: 0, taxPercent: 8.25 }
+const EXPECTED_COSTS = { totalHours: 10, rate: 85, laborCost: 850, distance: 40, ratePerMile: 0.7, numTrips: 5, drivingCost: 140, estimatorCost: 30, travelCost: 300, laborCostWithDriving: 1290, otherDirectCost: 0, taxPercent: 8.25 }
 const ROUGH_LINES = [
   { count_row_id: 'cr2', quantity: 1, unit_price: 20, part_id: 'p2', source_template_id: null, sequence_order: 1 },
   { count_row_id: 'cr1', quantity: 2, unit_price: 10, part_id: 'p1', source_template_id: null, sequence_order: 2 },
@@ -135,7 +135,7 @@ describe('printCostEstimatePage — rough materials model', () => {
       { fixture: 'Sink', count: 2, lines: [{ partName: 'P-trap', unitPrice: 20, quantity: 1 }] },
     ])
     const totalMaterials = sumRoughLinesPreTaxWithCount(ROUGH_LINES, new Map([['cr1', 4], ['cr2', 2]]))
-    expect(input.costs).toEqual({ ...EXPECTED_COSTS, totalMaterials, grandTotal: totalMaterials + 1320 })
+    expect(input.costs).toEqual({ ...EXPECTED_COSTS, totalMaterials, grandTotal: totalMaterials + 1290 })
   })
 
   it('filters by the active version when one is set, and prefers a supplied rough-in total over the line sum', async () => {
@@ -145,7 +145,7 @@ describe('printCostEstimatePage — rough materials model', () => {
     expect(linesCall!.steps.some((s) => s.method === 'is')).toBe(false)
     const input = buildRough.mock.calls[0]![0] as { costs: { totalMaterials: number; grandTotal: number } }
     expect(input.costs.totalMaterials).toBe(999)
-    expect(input.costs.grandTotal).toBe(999 + 1320)
+    expect(input.costs.grandTotal).toBe(999 + 1290)
   })
 
   it('an unknown part shows its id prefix, a bundle with no template shows "Assembly (bundle)", and no parts means no parts query', async () => {
@@ -202,7 +202,7 @@ describe('printCostEstimatePage — exact materials model', () => {
       { stageLabel: 'Top Out', poName: 'Top PO #13', stageMaterialTotal: 250.5, items: [] },
       { stageLabel: 'Trim Set', poName: '—', stageMaterialTotal: 0, items: [] },
     ])
-    expect(input.costs).toEqual({ ...EXPECTED_COSTS, totalMaterials: 1250.5, grandTotal: 1250.5 + 1320 })
+    expect(input.costs).toEqual({ ...EXPECTED_COSTS, totalMaterials: 1250.5, grandTotal: 1250.5 + 1290 })
   })
 
   it('a PO read that errors contributes no items and nothing else breaks', async () => {

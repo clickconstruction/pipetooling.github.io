@@ -20,8 +20,10 @@ import {
   type LaborUnit,
 } from '../../lib/bids/laborBookMatch'
 import { isFootageRow, laborEstimateCompleteness, revenuePerFieldHourWords, summarizeBidLabor, type LaborMaterialsSource } from '../../lib/bids/bidLaborSummary'
-import { directCostKindWords, sumDirectCosts, type CostEstimateDirectCostRow } from '../../lib/bids/costEstimateDirectCosts'
-import type { CostEstimateLaborRow, LaborBookEntryWithFixture, LaborBookVersion } from '../../lib/bids/bidPricingEngineTypes'
+import { directCostKindWords, sumDirectCosts, type CostEstimateDirectCostRow, type DirectCostKind } from '../../lib/bids/costEstimateDirectCosts'
+import { computeBidCostBreakdown, directCostRowsFromTables, type StageAmountRow } from '../../lib/bids/bidTotalCostBreakdown'
+import { crewRateWords, effectiveLaborRate, type CrewRate } from '../../lib/bids/crewRate'
+import type { CostEstimate, CostEstimateLaborRow, LaborBookEntryWithFixture, LaborBookVersion } from '../../lib/bids/bidPricingEngineTypes'
 
 /**
  * The New Labor view (the Labor refresh PR 1 — "Hours that learn"; PR 2 made
@@ -67,6 +69,21 @@ export type BidsLaborNewViewProps = {
   costEstimateId?: string | null
   /** The bid's number or name, for "learned on B375". */
   bidLabel?: string | null
+  /** The company crew rate (v2.3294): 90-day recorded field wage × burden, with lens-A overhead per field hour. Null while loading or when nothing is recorded. */
+  crewRate?: CrewRate | null
+  crewRateLoading?: boolean
+  /** Writes the company rate onto the bid's rate box (the tab's autosave persists it). */
+  onUseCompanyRate?: (rate: number) => void
+  /** Clears the bid's own rate so the company rate applies. */
+  onClearRate?: () => void
+  /** Hours clocked on this bid (People → Bids) — a fact, already in the overhead pool. */
+  teamLabor?: { hours: number; cost: number; people: string[] } | null
+  /** For the bottom line: the takeoff / PO material totals, the cost_estimates row (driving, travel), the distance, the count rows, the five direct-cost tables. */
+  materials?: { rough: number | null; top: number | null; trim: number | null }
+  costEstimate?: CostEstimate | null
+  distanceFromOffice?: string | null
+  countRowsLength?: number
+  directCostTables?: Partial<Record<DirectCostKind, ReadonlyArray<StageAmountRow>>>
   laborBookVersions: LaborBookVersion[]
   onChangeBook: (versionId: string | null) => void
   /** Optimistic row patch; the tab's autosave persists it (same as Old's cells). */
@@ -117,6 +134,7 @@ const btn = (primary = false): CSSProperties => ({
   cursor: 'pointer',
   whiteSpace: 'nowrap',
 })
+const linkBtn = (color: string): CSSProperties => ({ background: 'none', border: 'none', padding: 0, color, cursor: 'pointer', font: 'inherit', fontWeight: 600 })
 const segBtn = (on: boolean): CSSProperties => ({
   padding: '0.2rem 0.55rem',
   fontSize: '0.75rem',
@@ -185,14 +203,35 @@ export function BidsLaborNewView(p: BidsLaborNewViewProps) {
       cancelled = true
     }
   }, [costEstimateId])
-  const directCosts = useMemo(() => sumDirectCosts(directCostRows), [directCostRows])
+  // The tab's live tables when it hands them over (they change as the amber sections are edited); the view rows otherwise.
+  const directRows = useMemo(() => (p.directCostTables ? directCostRowsFromTables(p.directCostTables) : directCostRows), [p.directCostTables, directCostRows])
+  const directCosts = useMemo(() => sumDirectCosts(directRows), [directRows])
+  // The rate this bid is costed at: its own box when set, else the company rate (v2.3294).
+  const eff = useMemo(() => effectiveLaborRate({ override: p.ratePerHour, companyRate: p.crewRate?.companyRate }), [p.ratePerHour, p.crewRate?.companyRate])
 
   const matchEntries = useMemo(() => laborBookEntriesForMatch(bookEntries), [bookEntries])
   const matches = useMemo(() => matchLaborRows(p.rows, matchEntries), [p.rows, matchEntries])
   const queue = useMemo(() => laborRowsNeedingHours(p.rows), [p.rows])
   const filled = useMemo(() => p.rows.filter((r) => !queue.includes(r)), [p.rows, queue])
-  const summary = useMemo(() => summarizeBidLabor({ rows: p.rows, ratePerHour: p.ratePerHour, bidValue: p.bidValue }), [p.rows, p.ratePerHour, p.bidValue])
-  const completeness = useMemo(() => laborEstimateCompleteness({ rows: p.rows, rateSet: p.ratePerHour != null && p.ratePerHour > 0, materialsSource: p.materialsSource }), [p.rows, p.ratePerHour, p.materialsSource])
+  const summary = useMemo(() => summarizeBidLabor({ rows: p.rows, ratePerHour: eff.rate, bidValue: p.bidValue }), [p.rows, eff.rate, p.bidValue])
+  const completeness = useMemo(() => laborEstimateCompleteness({ rows: p.rows, rateSet: eff.rate != null, materialsSource: p.materialsSource }), [p.rows, eff.rate, p.materialsSource])
+  // The bottom line: the same kernel Pricing, the prints and the PDF read, at the effective rate.
+  const bottom = useMemo(
+    () =>
+      computeBidCostBreakdown({
+        materialTotalRoughIn: p.materials?.rough ?? null,
+        materialTotalTopOut: p.materials?.top ?? null,
+        materialTotalTrimSet: p.materials?.trim ?? null,
+        laborRate: eff.rate,
+        laborRows: p.rows,
+        distanceFromOffice: p.distanceFromOffice ?? null,
+        costEstimate: p.costEstimate ?? null,
+        countRowsLength: p.countRowsLength ?? p.rows.length,
+        directCostRows: directRows,
+      }),
+    [p.materials?.rough, p.materials?.top, p.materials?.trim, eff.rate, p.rows, p.distanceFromOffice, p.costEstimate, p.countRowsLength, directRows],
+  )
+  const marginPct = p.bidValue != null && p.bidValue > 0 ? (p.bidValue - bottom.totalCost) / p.bidValue : null
   const matchedZero = useMemo(() => queue.filter((r) => matches.get(r.id)), [queue, matches])
 
   const draftFor = (row: CostEstimateLaborRow): QueueDraft => {
@@ -397,10 +436,14 @@ export function BidsLaborNewView(p: BidsLaborNewViewProps) {
             <div style={tileK}>Labor $</div>
             <div style={tileV}>{summary.laborUsd != null ? `$${formatCurrency(summary.laborUsd)}` : '—'}</div>
             <div style={tileS}>
-              {p.ratePerHour != null && p.ratePerHour > 0 ? (
-                <>at ${formatCurrency(p.ratePerHour)}/h · <button type="button" onClick={p.onFocusRate} style={{ background: 'none', border: 'none', padding: 0, color: 'var(--text-blue-700)', cursor: 'pointer', font: 'inherit', fontWeight: 600 }}>edit</button></>
+              {eff.source === 'override' && eff.rate != null ? (
+                <>at ${formatCurrency(eff.rate)}/h · this bid · <button type="button" onClick={p.onFocusRate} style={linkBtn('var(--text-blue-700)')}>edit</button></>
+              ) : eff.source === 'company' && eff.rate != null ? (
+                <>at ${formatCurrency(eff.rate)}/h · company rate</>
+              ) : p.crewRateLoading ? (
+                <>reading the company rate…</>
               ) : (
-                <button type="button" onClick={p.onFocusRate} style={{ background: 'none', border: 'none', padding: 0, color: 'var(--text-amber-700)', cursor: 'pointer', font: 'inherit', fontWeight: 600 }}>set a labor rate ↓</button>
+                <button type="button" onClick={p.onFocusRate} style={linkBtn('var(--text-amber-700)')}>set a labor rate ↓</button>
               )}
             </div>
           </div>
@@ -414,11 +457,62 @@ export function BidsLaborNewView(p: BidsLaborNewViewProps) {
             <div style={tileV}>{summary.revenuePerFieldHour != null ? `$${Math.round(summary.revenuePerFieldHour).toLocaleString('en-US')}` : '—'}</div>
             <div style={tileS}>{revenuePerFieldHourWords(summary)}</div>
           </div>
+          <div style={tile} data-testid="labor-overhead-per-hour">
+            <div style={tileK}>Overhead / field hour</div>
+            <div style={tileV}>{p.crewRate?.overheadPerFieldHour != null ? `$${formatCurrency(p.crewRate.overheadPerFieldHour)}` : '—'}</div>
+            <div style={tileS}>lens A · 90 d · shown, not added to the direct cost</div>
+          </div>
           <div style={tile} data-testid="labor-other-direct">
             <div style={tileK}>Other direct</div>
             <div style={tileV}>{directCosts.total > 0 ? `$${formatCurrency(directCosts.total)}` : '—'}</div>
             <div style={tileS}>{directCosts.total > 0 ? directCostKindWords(directCosts, (n) => `$${formatCurrency(n)}`) : 'equipment · permits · subs · waste · other, below'}</div>
           </div>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem 0.75rem', flexWrap: 'wrap', fontSize: '0.8125rem', padding: '0.5rem 0.7rem', border: '1px solid var(--border)', borderRadius: 8, background: 'var(--surface)' }} data-testid="labor-crew-rate">
+          <b>Crew rate</b>
+          {p.crewRate?.companyRate != null ? (
+            <span>
+              company <b>${formatCurrency(p.crewRate.companyRate)}/h</b> <span style={{ color: 'var(--text-muted)' }}>= {crewRateWords(p.crewRate, formatCurrency)}</span>
+            </span>
+          ) : (
+            <span style={{ color: 'var(--text-muted)' }}>{p.crewRateLoading ? 'reading People…' : p.crewRate ? crewRateWords(p.crewRate, formatCurrency) : 'company rate unavailable'}</span>
+          )}
+          <span style={{ color: 'var(--text-muted)' }}>·</span>
+          {eff.source === 'override' && eff.rate != null ? (
+            <span>
+              this bid <span style={pill('blue')}>${formatCurrency(eff.rate)}/h override</span>
+              {p.crewRate?.companyRate != null && p.onClearRate ? (
+                <>
+                  {' '}
+                  <button type="button" onClick={p.onClearRate} style={linkBtn('var(--text-blue-700)')}>use company rate</button>
+                </>
+              ) : null}
+            </span>
+          ) : eff.source === 'company' && eff.rate != null ? (
+            <span>
+              this bid <span style={pill('ok')}>company rate</span>{' '}
+              {p.onUseCompanyRate ? (
+                <button type="button" onClick={() => p.onUseCompanyRate!(eff.rate!)} title="Write the company rate onto this bid so Pricing and the printed documents read the same number" style={linkBtn('var(--text-blue-700)')}>
+                  save it on the bid
+                </button>
+              ) : null}{' '}
+              <button type="button" onClick={p.onFocusRate} style={linkBtn('var(--text-muted)')}>override…</button>
+            </span>
+          ) : (
+            <span>
+              this bid <span style={pill('warn')}>no rate</span> <button type="button" onClick={p.onFocusRate} style={linkBtn('var(--text-amber-700)')}>set one ↓</button>
+            </span>
+          )}
+          <span style={{ marginLeft: 'auto', color: 'var(--text-muted)' }} data-testid="labor-bid-labor-recorded">
+            bid labor recorded{' '}
+            {p.teamLabor && p.teamLabor.hours > 0 ? (
+              <>
+                <b>{p.teamLabor.hours.toLocaleString('en-US', { maximumFractionDigits: 1 })} h · ${formatCurrency(p.teamLabor.cost)}</b> · in the overhead pool, not in this bid's cost
+              </>
+            ) : (
+              <>none yet · sits in the overhead pool, not in this bid's cost</>
+            )}
+          </span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', fontSize: '0.8125rem' }}>
           <label style={{ color: 'var(--text-muted)' }}>Labor book</label>
@@ -607,6 +701,25 @@ export function BidsLaborNewView(p: BidsLaborNewViewProps) {
               </table>
             </div>
           ) : null}
+        </div>
+      ) : null}
+
+      {/* The bottom line: the handoff number — what the job's Budget card will snapshot on the win */}
+      {p.rows.length > 0 ? (
+        <div style={{ border: '1px solid var(--border)', borderRadius: 10, padding: '0.7rem 0.9rem', background: 'var(--bg-subtle)', display: 'flex', alignItems: 'baseline', gap: '0.4rem 0.9rem', flexWrap: 'wrap', fontSize: '0.8125rem' }} data-testid="labor-bottom-line">
+          <b style={{ fontSize: '0.875rem' }}>Direct cost of this bid</b>
+          <span>labor <b>{bottom.laborCost > 0 ? `$${formatCurrency(bottom.laborCost)}` : '—'}</b></span>
+          <span>materials <b>{bottom.totalMaterials > 0 ? `$${formatCurrency(bottom.totalMaterials)}` : '—'}</b>{p.materialsSource === 'takeoff' ? <span style={{ color: 'var(--text-muted)' }}> (takeoff)</span> : null}</span>
+          {bottom.drivingCost > 0 ? <span>driving <b>${formatCurrency(bottom.drivingCost)}</b></span> : null}
+          {bottom.travelCost > 0 ? <span>travel <b>${formatCurrency(bottom.travelCost)}</b></span> : null}
+          <span>other direct <b>{bottom.otherDirectCost > 0 ? `$${formatCurrency(bottom.otherDirectCost)}` : '—'}</b></span>
+          <span style={{ marginLeft: 'auto', fontSize: '1rem', fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>${formatCurrency(bottom.totalCost)}</span>
+          {marginPct != null ? (
+            <span style={{ color: marginPct < 0.2 ? 'var(--text-amber-700)' : 'var(--text-green-700)', fontWeight: 600 }}>{Math.round(marginPct * 100)}% margin at ${formatCurrency(p.bidValue ?? 0)}</span>
+          ) : (
+            <span style={{ color: 'var(--text-muted)' }}>set a bid value for the margin</span>
+          )}
+          <a href={`/bids?tab=pricing&bidId=${p.bidId}`} style={{ color: 'var(--text-blue-700)', fontWeight: 600, textDecoration: 'none' }}>open Pricing →</a>
         </div>
       ) : null}
     </div>

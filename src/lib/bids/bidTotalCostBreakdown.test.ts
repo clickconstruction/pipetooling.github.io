@@ -39,8 +39,9 @@ describe('computeBidCostBreakdown', () => {
     expect(b.permitCost).toBe(1_240)
     expect(b.equipmentRentalCost).toBe(1_900)
     expect(b.otherDirectCost).toBe(9_640)
-    expect(b.laborCostWithDriving).toBeCloseTo(b.laborCost + b.drivingCost + 500 + 1_200, 6)
-    expect(b.directCost).toBeCloseTo(b.laborCostWithDriving + 446 + 9_640, 6)
+    // Estimator time ($500) and team labor ($446) are reported, not in the total (v2.3293).
+    expect(b.laborCostWithDriving).toBeCloseTo(b.laborCost + b.drivingCost + 1_200, 6)
+    expect(b.directCost).toBeCloseTo(b.laborCostWithDriving + 9_640, 6)
     expect(b.totalCost).toBeCloseTo(61_300 + b.directCost, 6)
   })
   it('reads the lib defaults off a bare cost estimate: $0.70/mi, 2 h per trip, $10 per count, no travel', () => {
@@ -53,7 +54,7 @@ describe('computeBidCostBreakdown', () => {
     expect(b.estimatorCost).toBe(30)
     expect(b.travelCost).toBe(0)
     expect(b.otherDirectCost).toBe(0)
-    expect(b.totalCost).toBeCloseTo(105 + 30, 6)
+    expect(b.totalCost).toBeCloseTo(105, 6) // driving only; the $30 estimator time is not cost
   })
   it('honors the string-box overrides the Labor print passes, and ignores a zero hours-per-trip', () => {
     const b = computeBidCostBreakdown({ materialTotalRoughIn: 0, materialTotalTopOut: 0, materialTotalTrimSet: 0, laborRate: 10, laborRows: [laborRows[0]!], distanceFromOffice: '5', costEstimate: {}, countRowsLength: 0, ratePerMileOverride: 1, hoursPerTripOverride: 0 })

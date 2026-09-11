@@ -211,8 +211,8 @@ describe('downloadApprovalPdf — a priced, costed, split bid', () => {
       'Project Folder: ',
       'Job Plans: ',
       'Margins',
-      'Cost estimate: $1,236.00', // 401 materials + 14 h × $50 + 3.5 trips × $1 × 10 mi + $100 estimator
-      'Price Book: Standard 2026 | Revenue: $3,800.00 | Margin: 67.5%',
+      'Cost estimate: $1,136.00', // 401 materials + 14 h × $50 + 3.5 trips × $1 × 10 mi; the $100 estimator time is not cost (v2.3293)
+      'Price Book: Standard 2026 | Revenue: $3,800.00 | Margin: 70.1%' // (3,800 − 1,136) ÷ 3,800 — estimator time left the cost (v2.3293),
     ]))
     expect(FakeJsPDF.last!.links).toEqual([
       { page: 1, text: 'https://drive.test/oak', url: 'https://drive.test/oak' },
@@ -241,9 +241,10 @@ describe('downloadApprovalPdf — a priced, costed, split bid', () => {
       'Labor total: $700.00',
       '(14.00 hrs × $50.00/hr)',
       'Driving cost: 3.5 trips × $1.00/mi × 10mi = $35.00',
-      'Estimator cost: $100.00',
-      'Summary', 'Labor', '$700.00', 'Driving', '$35.00', 'Estimator', '$100.00', 'Labor total', '$835.00', 'Grand total', '$1,236.00',
+      'Summary', 'Labor', '$700.00', 'Driving', '$35.00', 'Labor total', '$735.00', 'Grand total', '$1,136.00',
     ]))
+    // Estimator time is a fact, not cost (v2.3293): the $100 flat amount is not printed and not in the totals.
+    expect(p3.some((t) => t.startsWith('Estimator'))).toBe(false)
     expect(p3.some((t) => t.startsWith('Travel cost'))).toBe(false)
     expect(p3).not.toContain('Travel')
   })
