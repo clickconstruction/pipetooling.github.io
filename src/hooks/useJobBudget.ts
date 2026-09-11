@@ -107,7 +107,7 @@ export function useJobBudget(jobId: string | null, linkedBidId: string | null, e
   }, [reload])
 
   const run = useCallback(
-    async (fn: () => Promise<{ error: { message: string } | null }>, fallback: string): Promise<boolean> => {
+    async (fn: () => PromiseLike<{ error: { message: string } | null }>, fallback: string): Promise<boolean> => {
       if (!jobId) return false
       setBusy(true)
       setError(null)
