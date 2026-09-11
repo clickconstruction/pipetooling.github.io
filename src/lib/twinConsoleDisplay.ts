@@ -75,9 +75,21 @@ export function relativeTimeFrom(iso: string, nowMs: number): string {
   return iso.slice(0, 10)
 }
 
-/** Next free fleet seat from the emails already minted (gaps are not reused). */
-export function nextTwinSeat(emails: string[]): { n: number; email: string } {
-  const ns = emails.map((e) => Number(/^twin-estimator-(\d+)@/.exec(e)?.[1] ?? 0))
+export type TwinSeatKind = 'estimator' | 'pricer'
+
+/**
+ * Next free fleet seat from the emails already minted (gaps are not reused).
+ * Each kind numbers its own seats: `twin-estimator-<n>` for the bid robots,
+ * `twin-pricer-<n>` (Price Matrix PR 3) for the pricing robot that never bids.
+ */
+export function nextTwinSeat(emails: string[], kind: TwinSeatKind = 'estimator'): { n: number; email: string } {
+  const re = new RegExp(`^twin-${kind}-(\\d+)@`)
+  const ns = emails.map((e) => Number(re.exec(e)?.[1] ?? 0))
   const n = Math.max(0, ...ns) + 1
-  return { n, email: `twin-estimator-${n}@twins.pipetooling.local` }
+  return { n, email: `twin-${kind}-${n}@twins.pipetooling.local` }
+}
+
+/** The seat kind an email encodes — `twin-pricer-1@…` → pricer; anything else → estimator. */
+export function twinSeatKindFromEmail(email: string): TwinSeatKind {
+  return /^twin-pricer-\d+@/.test(email) ? 'pricer' : 'estimator'
 }

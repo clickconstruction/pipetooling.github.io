@@ -1,7 +1,7 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { PDFDocument } from 'https://esm.sh/pdf-lib@1.17.1'
-import { BRIEF, DIRECTORY, HARNESS, CT_GUIDE, TT_GUIDE, PLACEMENT_GUIDE, MISSIONS } from './briefs.ts'
+import { BRIEF, DIRECTORY, HARNESS, CT_GUIDE, TT_GUIDE, PLACEMENT_GUIDE, PRICING_GUIDE, MISSIONS } from './briefs.ts'
 import { callTtManageUser, ttBridgeConfigured, ttTwinEmail } from '../_shared/ttBridge.ts'
 import { todayYmdInAppTz, ymdAddDays } from '../_shared/appTimeZone.ts'
 import { classifyTwinQuestionAudience, isTwinQuestionAudience } from '../_shared/twinQuestionAudience.ts'
@@ -76,6 +76,135 @@ const TOOLS = [
     name: 'get_placement_guide',
     description: 'The takeoff placement protocol set (docs/twins/PLACEMENT.md + CALIBRATION.md + EXTRACTOR.md) — doorway calibration, counters-first placement, line tracing, registration/snap/density gates, branch sweeps, keyed-note census, printed-total reconciliation. Read before placing or tracing anything.',
     inputSchema: { type: 'object', properties: {} },
+  },
+  {
+    name: 'get_pricing_guide',
+    description: "The pricing robot's brief (Price Matrix PR 3): how a supply-house fixture quote is written — kits by subtotal, carriers on a second sheet, size lists as option groups, printed totals that are not job totals — and how you write it back onto the bid. Read whole before the first next_price_matrix. Pricer keys only.",
+    inputSchema: { type: 'object', properties: {} },
+  },
+  {
+    name: 'get_component_rules',
+    description: 'The rulebook of what belongs to what (a carrier with the wall-hung fixture on the same schedule line), where to look ("see the carrier and drain quote" = the second sheet, same tag), defaults for plan-decided options, and roles a fixture kind must price. Read before structuring a quote; honour every active rule.',
+    inputSchema: { type: 'object', properties: {} },
+  },
+  {
+    name: 'next_price_matrix',
+    description: "The pricing dispatcher: claims the OLDEST queued price-matrix request (status queued → working, claimed by you) and returns the bid, the fixture rows as a snapshot (names + counts — the only rows you price) and the quote links to read (1-based sources). One request at a time; never call again until you finish_price_matrix the one you hold. `done: true` = nothing queued. Pricer keys only.",
+    inputSchema: { type: 'object', properties: {} },
+  },
+  {
+    name: 'get_quote_documents',
+    description: "The files behind a request's quote links, page by page. With no `source`: lists every source's files (name, size, readable?). With `source` (1-based, from next_price_matrix): fetches that link through the Drive intake account (a folder's PDFs merged in name order), splits the pages you name into single-page PDFs in the twin-plans-tmp bucket, and returns their URLs with the page count; `embed: true` also attaches up to 3 inline. Start with no `pages` for the count and the first pages, then ask by number until every page is read — including any sheet a quote points at. A 403/404 means the intake account cannot read it: name the house and continue.",
+    inputSchema: {
+      type: 'object',
+      properties: {
+        request: { type: 'string', description: 'The request uuid from next_price_matrix' },
+        source: { type: 'number', description: 'Which quote link, 1-based (omit to list all sources)' },
+        pages: { type: 'string', description: "Pages to stage, e.g. '1-6' or '2,5,7' (default '1-8', at most 8 per call)" },
+        embed: { type: 'boolean', description: 'Attach up to 3 pages inline as PDF resources' },
+      },
+      required: ['request'],
+    },
+  },
+  {
+    name: 'put_quote',
+    description: "One house's quote, structured, onto the bid (bid_quotes source=robot + bid_quote_lines). Lines use the request's fixture row names VERBATIM as `fixture`. A group under one EACH subtotal = one line with component_role 'kit' carrying the subtotal as unit_price_each_cents plus unpriced role lines (bowl, seat, flush_valve, …). A carrier priced on another sheet = a 'carrier' line on the fixture it belongs to. A size list = lines sharing option_group ('size') with option_label each and at most one option_chosen. A part belonging to no row = component_role 'loose'. Every line carries page_ref. `replace: true` rewrites a house you already wrote for this request. Pricer keys only.",
+    inputSchema: {
+      type: 'object',
+      properties: {
+        request: { type: 'string', description: 'The request uuid' },
+        house: { description: 'Source index (1-based), supply house id, or name' },
+        lines: {
+          type: 'array',
+          description: 'The structured lines',
+          items: {
+            type: 'object',
+            properties: {
+              fixture: { type: 'string', description: "The request's row name, verbatim (e.g. 'WC1&2')" },
+              component_role: { type: 'string', description: 'kit | bowl | seat | flush_valve | carrier | faucet | drain | trap | supply | stops | trim | mixing_valve | accessory | freight | loose | (omit for a plain priced line)' },
+              label: { type: 'string', description: "The vendor's description of the part, model numbers included" },
+              unit_price_each_cents: { type: 'number', description: 'Cents per each; omit/null for an unpriced kit component' },
+              cant_supply: { type: 'boolean' },
+              option_group: { type: 'string', description: "Alternatives share a group, e.g. 'size'" },
+              option_label: { type: 'string', description: "e.g. '4in'" },
+              option_chosen: { type: 'boolean', description: 'True on the option the request row names (at most one per group)' },
+              page_ref: { type: 'string', description: "Where it came from — 'p. 3', 'carrier sheet'" },
+              alternate_note: { type: 'string' },
+            },
+            required: ['fixture'],
+          },
+        },
+        valid_until: { type: 'string', description: 'YYYY-MM-DD the quote is good until (48 hours from the quote date if it says so)' },
+        freight_cents: { type: 'number', description: 'Order-level freight in cents; omit when not stated (not stated is not free)' },
+        quoted_by: { type: 'string', description: 'The salesperson / writer named on the quote' },
+        source_doc_url: { type: 'string', description: 'The link you read (defaults to the source url)' },
+        note: { type: 'string', description: 'Quote-level notes — terms, lead times, what the vendor excluded' },
+        replace: { type: 'boolean' },
+      },
+      required: ['request', 'house', 'lines'],
+    },
+  },
+  {
+    name: 'finish_price_matrix',
+    description: "STG-3: the picks, the asks, the summary. `picks`: one per fixture row you can price — the cheapest COMPLETE kit across houses (a house missing a part is incomplete, never cheapest; expired quotes never win), with `reason` in plain words. `asks`: rows where the plans decide (which carrier variant, which size) — 2–4 short choices + your recommendation; the estimator taps one on Bids → Audits. The request flips to ready and the estimator sees 'Matrix ready · n picks, m to settle'. `blocked: true` instead when you could read no source. Pricer keys only.",
+    inputSchema: {
+      type: 'object',
+      properties: {
+        request: { type: 'string' },
+        picks: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              fixture: { type: 'string', description: "The request's row name, verbatim" },
+              house: { description: 'Source index, supply house id, or name of the winning quote' },
+              reason: { type: 'string', description: "Why — 'cheapest complete kit', 'only house with the carrier', 'NWS expired Sep 4, Ferguson live'" },
+            },
+            required: ['fixture', 'house', 'reason'],
+          },
+        },
+        asks: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              fixture: { type: 'string' },
+              question: { type: 'string', description: 'One decision, under 320 characters, naming the project and the sheet' },
+              choices: { type: 'array', items: { type: 'string' }, description: '2–4 tap labels, each a complete instruction' },
+              recommended: { type: 'string', description: 'Your pick, one of the choices' },
+            },
+            required: ['fixture', 'question', 'choices'],
+          },
+        },
+        summary: { type: 'string', description: 'Two or three sentences for the estimator: houses read, what was priced, what waits on her' },
+        blocked: { type: 'boolean', description: 'True when nothing could be read — the request flips to blocked with the summary as the reason' },
+      },
+      required: ['request', 'summary'],
+    },
+  },
+  {
+    name: 'extend_component_rules',
+    description: 'Add rules you are confident of to the rulebook, each with where it came from (mirror_note) — the way the bid robot extends its price book. Pricer keys only; the estimator sees them as receipts and can retire one.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        rules: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              rule: { type: 'string', description: 'The rule in plain words' },
+              kind: { type: 'string', description: 'placement | sheet | option_default | required_role' },
+              fixture_pattern: { type: 'string', description: 'Optional: which row names it applies to (case-insensitive substring)' },
+              role: { type: 'string', description: 'Optional: the component role it concerns' },
+            },
+            required: ['rule'],
+          },
+        },
+        mirror_note: { type: 'string', description: 'Where these came from — the quote, page, and what you saw' },
+      },
+      required: ['rules', 'mirror_note'],
+    },
   },
   {
     name: 'get_mission',
@@ -522,7 +651,10 @@ function presentedToken(req: Request): string | null {
   return null
 }
 
-async function resolveTwin(req: Request): Promise<{ twinUserId: string; email: string; credId: string } | { error: string; status: number }> {
+type TwinKind = 'estimator' | 'pricer'
+type ResolvedTwin = { twinUserId: string; email: string; credId: string; kind: TwinKind }
+
+async function resolveTwin(req: Request): Promise<ResolvedTwin | { error: string; status: number }> {
   const token = presentedToken(req)
   if (!token) return { error: 'Missing X-Twin-Token (or Authorization: Bearer) — this MCP server requires your per-twin token.', status: 401 }
   const supabaseUrl = Deno.env.get('SUPABASE_URL')!
@@ -533,9 +665,124 @@ async function resolveTwin(req: Request): Promise<{ twinUserId: string; email: s
   const { data: cred, error } = await admin.from('twin_credentials').select('id, twin_user_id, revoked_at').eq('token_hash', hash).maybeSingle()
   if (error) return { error: `Credential lookup failed: ${error.message}`, status: 500 }
   if (!cred || cred.revoked_at) return { error: 'Unknown or revoked twin token', status: 401 }
-  const { data: user } = await admin.from('users').select('email, is_digital_twin, role').eq('id', cred.twin_user_id).maybeSingle()
+  // twin_kind lands with 20260911023538 (Price Matrix PR 1); before the push the column is
+  // unknown to PostgREST — read the legacy shape and treat every twin as an estimator.
+  let user: { email: string; is_digital_twin: boolean; role: string; twin_kind?: string | null } | null = null
+  const wide = await admin.from('users').select('email, is_digital_twin, role, twin_kind').eq('id', cred.twin_user_id).maybeSingle()
+  if (!wide.error) user = wide.data as typeof user
+  else {
+    const legacy = await admin.from('users').select('email, is_digital_twin, role').eq('id', cred.twin_user_id).maybeSingle()
+    user = legacy.data as typeof user
+  }
   if (!user || user.is_digital_twin !== true || user.role !== 'estimator') return { error: 'Twin account not eligible', status: 403 }
-  return { twinUserId: cred.twin_user_id, email: user.email as string, credId: cred.id as string }
+  const kind: TwinKind = user.twin_kind === 'pricer' ? 'pricer' : 'estimator'
+  return { twinUserId: cred.twin_user_id, email: user.email as string, credId: cred.id as string, kind }
+}
+
+// ---------------------------------------------------------------------------
+// Pricing twin (Price Matrix PR 3 — docs/PRICE_MATRIX_PLAN.md). A pricer key
+// holds no bids and is refused every bid verb; a bid robot is refused the
+// pricer's. The shared verbs (heartbeat, notes, questions, reports, docs) work
+// for both. Everything the pricer writes is provenance-stamped robot.
+// ---------------------------------------------------------------------------
+const PRICER_VERBS: ReadonlySet<string> = new Set([
+  'get_pricing_guide', 'next_price_matrix', 'get_quote_documents', 'put_quote', 'finish_price_matrix', 'get_component_rules', 'extend_component_rules',
+])
+const SHARED_VERBS: ReadonlySet<string> = new Set(['get_directory', 'get_harness_guide', 'get_answers', 'ask_question', 'heartbeat', 'add_bid_note', 'submit_report'])
+const PRICER_COMPONENT_ROLES: ReadonlySet<string> = new Set([
+  'kit', 'bowl', 'seat', 'flush_valve', 'carrier', 'faucet', 'drain', 'trap', 'supply', 'stops', 'trim', 'mixing_valve', 'accessory', 'freight', 'loose',
+])
+type PricerScopeLine = { count_row_id?: string; fixture: string; count: number; unit?: string | null }
+type PricerSource = { rfq_id?: string; supply_house_id?: string | null; house_name?: string; url?: string; requested_on?: string | null }
+type PricerRequestRow = {
+  id: string
+  bid_id: string
+  bid_version_id: string | null
+  status: string
+  claimed_by: string | null
+  requested_by: string | null
+  requested_at: string
+  scope: PricerScopeLine[]
+  sources: PricerSource[]
+}
+const PRICER_REQUEST_COLS = 'id, bid_id, bid_version_id, status, claimed_by, requested_by, requested_at, scope, sources'
+function shapePricerRequest(r: Record<string, unknown>): PricerRequestRow {
+  return {
+    id: String(r.id),
+    bid_id: String(r.bid_id),
+    bid_version_id: (r.bid_version_id as string | null) ?? null,
+    status: String(r.status),
+    claimed_by: (r.claimed_by as string | null) ?? null,
+    requested_by: (r.requested_by as string | null) ?? null,
+    requested_at: String(r.requested_at),
+    scope: Array.isArray(r.scope) ? (r.scope as PricerScopeLine[]) : [],
+    sources: Array.isArray(r.sources) ? (r.sources as PricerSource[]) : [],
+  }
+}
+/** The request the pricer is working: claimed by this twin and still open (working), or ready for a re-finish. */
+async function loadPricerRequest(
+  admin: ReturnType<typeof createClient>,
+  twin: ResolvedTwin,
+  ref: string,
+  allow: ReadonlyArray<string> = ['working'],
+): Promise<{ request: PricerRequestRow; bid: { id: string; bid_number: string; project_name: string | null } } | { error: string }> {
+  const id = String(ref ?? '').trim()
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)) return { error: 'request must be the request uuid next_price_matrix returned' }
+  const { data, error } = await admin.from('bid_price_matrix_requests').select(PRICER_REQUEST_COLS).eq('id', id).maybeSingle()
+  if (error) return { error: `Request lookup failed: ${error.message}` }
+  if (!data) return { error: `No price-matrix request ${id}` }
+  const request = shapePricerRequest(data as Record<string, unknown>)
+  if (request.claimed_by !== twin.twinUserId) return { error: `Request ${id.slice(0, 8)} is not yours — next_price_matrix claims requests; work only the one it hands you.` }
+  if (!allow.includes(request.status)) return { error: `Request ${id.slice(0, 8)} is ${request.status}, not ${allow.join('/')} — nothing more to do on it.` }
+  const { data: bid } = await admin.from('bids').select('id, bid_number, project_name').eq('id', request.bid_id).maybeSingle()
+  if (!bid) return { error: `The request's bid is gone` }
+  return { request, bid: bid as { id: string; bid_number: string; project_name: string | null } }
+}
+/** A pricer may stamp the ledger of a bid whose request it holds (working or ready). */
+async function pricerMayTouchBid(admin: ReturnType<typeof createClient>, twin: ResolvedTwin, bidId: string): Promise<boolean> {
+  if (twin.kind !== 'pricer') return false
+  const { data } = await admin.from('bid_price_matrix_requests').select('id').eq('bid_id', bidId).eq('claimed_by', twin.twinUserId).in('status', ['working', 'ready']).limit(1)
+  return Array.isArray(data) && data.length > 0
+}
+const pricerKey = (name: string) => name.trim().toLowerCase()
+function pricerSlug(s: string): string {
+  return s.toLowerCase().replace(/[^a-z0-9-]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40)
+}
+/** Resolve `house` (a 1-based source index, a supply_house uuid, or a name) to a supply_houses row via the request's sources first. */
+async function resolvePricerHouse(
+  admin: ReturnType<typeof createClient>,
+  request: PricerRequestRow,
+  house: unknown,
+): Promise<{ id: string; name: string; sourceIndex: number | null; url: string | null } | { error: string }> {
+  const uuidRe = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+  const raw = typeof house === 'number' ? String(house) : String(house ?? '').trim()
+  if (!raw) return { error: 'house is required — a source index from next_price_matrix (1, 2, …), the supply house id, or its name' }
+  const n = Number(raw)
+  if (Number.isInteger(n) && n >= 1 && n <= request.sources.length) {
+    const src = request.sources[n - 1]!
+    if (src.supply_house_id) {
+      const { data: h } = await admin.from('supply_houses').select('id, name').eq('id', src.supply_house_id).maybeSingle()
+      if (h) return { id: (h as { id: string }).id, name: (h as { name: string }).name, sourceIndex: n, url: src.url ?? null }
+    }
+    if (src.house_name) {
+      const { data: h } = await admin.from('supply_houses').select('id, name').ilike('name', src.house_name).limit(1).maybeSingle()
+      if (h) return { id: (h as { id: string }).id, name: (h as { name: string }).name, sourceIndex: n, url: src.url ?? null }
+    }
+    return { error: `Source ${n} (${src.house_name ?? '?'}) has no supply house on file — the estimator adds the house on Edit Bid → Price requests.` }
+  }
+  if (uuidRe.test(raw)) {
+    const { data: h } = await admin.from('supply_houses').select('id, name').eq('id', raw).maybeSingle()
+    if (!h) return { error: `No supply house ${raw}` }
+    const idx = request.sources.findIndex((x) => x.supply_house_id === raw)
+    return { id: (h as { id: string }).id, name: (h as { name: string }).name, sourceIndex: idx >= 0 ? idx + 1 : null, url: idx >= 0 ? (request.sources[idx]!.url ?? null) : null }
+  }
+  const bySource = request.sources.findIndex((x) => (x.house_name ?? '').trim().toLowerCase() === raw.toLowerCase())
+  if (bySource >= 0) return resolvePricerHouse(admin, request, bySource + 1)
+  const { data: h } = await admin.from('supply_houses').select('id, name').ilike('name', `%${raw}%`).eq('vendor_kind', 'supply_house').limit(2)
+  const rows = (h ?? []) as Array<{ id: string; name: string }>
+  if (rows.length === 1) return { id: rows[0]!.id, name: rows[0]!.name, sourceIndex: null, url: null }
+  if (rows.length > 1) return { error: `"${raw}" matches several supply houses (${rows.map((r) => r.name).join(', ')}) — pass the source index or the id` }
+  return { error: `No supply house named "${raw}" — pass a source index from next_price_matrix (1, 2, …)` }
 }
 
 // ---------------------------------------------------------------------------
@@ -756,6 +1003,13 @@ async function callTool(req: Request, name: string, args: Record<string, unknown
   // Docs tools work with a valid token too, but auth is required for every call.
   const twin = await resolveTwin(req)
   if ('error' in twin) return textContent(`Auth failed: ${twin.error}`, true)
+  // Price Matrix PR 3: a pricer key is refused every bid verb; a bid robot is refused the pricer's.
+  if (twin.kind === 'pricer' && !PRICER_VERBS.has(name) && !SHARED_VERBS.has(name)) {
+    return textContent(`${name} is a bid verb — a twin-pricer key prices supply-house quotes and holds no bids; that door is refused by design (docs/PRICE_MATRIX_PLAN.md). Your verbs: ${[...PRICER_VERBS].join(', ')}, plus heartbeat, add_bid_note, ask_question, get_answers, submit_report.`, true)
+  }
+  if (twin.kind !== 'pricer' && PRICER_VERBS.has(name)) {
+    return textContent(`${name} is the pricing robot's verb — a bid robot never prices quotes. Use a twin-pricer key (Settings → Digital twins → Twin Pricer 1).`, true)
+  }
 
   switch (name) {
     case 'get_brief':
@@ -770,6 +1024,385 @@ async function callTool(req: Request, name: string, args: Record<string, unknown
       return textContent(TT_GUIDE || 'TakeoffTooling guide not bundled in this deploy — ask the operator to regenerate briefs.ts.')
     case 'get_placement_guide':
       return textContent(PLACEMENT_GUIDE || 'Placement guide not bundled in this deploy — ask the operator to regenerate briefs.ts.')
+    case 'get_pricing_guide':
+      return textContent(PRICING_GUIDE || 'Pricing guide not bundled in this deploy — ask the operator to regenerate briefs.ts.')
+    case 'get_component_rules': {
+      const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, { auth: { autoRefreshToken: false, persistSession: false } })
+      const { data, error } = await admin.from('fixture_component_rules').select('id, kind, rule, fixture_pattern, role, source, times_used, last_used_at, created_at').eq('active', true).order('kind').order('created_at')
+      if (error) return textContent(`Rulebook not readable: ${error.message}`, true)
+      const rules = (data ?? []) as Array<Record<string, unknown>>
+      return textContent(JSON.stringify({
+        ok: true,
+        count: rules.length,
+        rules: rules.map((r) => ({ id: r.id, kind: r.kind, rule: r.rule, fixture_pattern: r.fixture_pattern ?? null, role: r.role ?? null, source: r.source, times_used: r.times_used ?? 0 })),
+        how: rules.length === 0
+          ? 'The rulebook is empty — structure from the brief alone, and ask (never guess) where the plans decide. Rules you are sure of go in with extend_component_rules and a mirror_note.'
+          : 'Honour every rule while structuring; an option_default rule may choose a variant for you (say so in the pick reason). Anything a rule does not settle, ask.',
+      }, null, 2))
+    }
+    case 'next_price_matrix': {
+      const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, { auth: { autoRefreshToken: false, persistSession: false } })
+      // One at a time: a request this twin already holds comes back first.
+      const { data: held } = await admin.from('bid_price_matrix_requests').select(PRICER_REQUEST_COLS).eq('claimed_by', twin.twinUserId).eq('status', 'working').order('claimed_at', { ascending: true }).limit(1)
+      const heldRow = Array.isArray(held) && held.length ? shapePricerRequest(held[0] as Record<string, unknown>) : null
+      let claimed: PricerRequestRow | null = heldRow
+      let resumed = false
+      if (claimed) resumed = true
+      else {
+        const { data: cands, error } = await admin.from('bid_price_matrix_requests').select('id').eq('status', 'queued').order('requested_at', { ascending: true }).limit(10)
+        if (error) return textContent(`Queue lookup failed: ${error.message}`, true)
+        for (const c of (cands ?? []) as Array<{ id: string }>) {
+          // The conditional update IS the claim — two pricers can never take the same request.
+          const nowIso = new Date().toISOString()
+          const { data: won } = await admin.from('bid_price_matrix_requests')
+            .update({ status: 'working', claimed_by: twin.twinUserId, claimed_at: nowIso, heartbeat_at: nowIso, updated_at: nowIso })
+            .eq('id', c.id).eq('status', 'queued')
+            .select(PRICER_REQUEST_COLS).maybeSingle()
+          if (won) { claimed = shapePricerRequest(won as Record<string, unknown>); break }
+        }
+      }
+      if (!claimed) return textContent(JSON.stringify({ done: true, note: 'Nothing is queued for the pricing robot. An estimator asks from Bids → Pricing → Supply house prices ▾ → Price it with the robot.' }, null, 2))
+      const { data: bid } = await admin.from('bids').select('id, bid_number, project_name').eq('id', claimed.bid_id).maybeSingle()
+      const b = bid as { id: string; bid_number: string; project_name: string | null } | null
+      if (!resumed && b) {
+        await admin.from('bids_submission_entries').insert({
+          bid_id: b.id,
+          notes: `[pricer STG-0] ${twin.email} claimed price-matrix request ${claimed.id.slice(0, 8)} — ${claimed.scope.length} fixture rows, ${claimed.sources.length} quote link${claimed.sources.length === 1 ? '' : 's'} (${claimed.sources.map((x) => x.house_name ?? '?').join(', ') || 'none'}).`,
+        }).then(() => {}, () => {})
+      }
+      return textContent(JSON.stringify({
+        ok: true,
+        resumed,
+        request: claimed.id,
+        bid: b ? `b${b.bid_number}` : null,
+        project: b?.project_name ?? null,
+        requested_at: claimed.requested_at,
+        rows: claimed.scope.map((r) => ({ fixture: r.fixture, count: r.count, unit: r.unit ?? null })),
+        sources: claimed.sources.map((x, i) => ({ source: i + 1, house: x.house_name ?? null, supply_house_id: x.supply_house_id ?? null, url: x.url ?? null, requested_on: x.requested_on ?? null })),
+        next: resumed
+          ? 'This is the request you already hold — finish it (put_quote per house, then finish_price_matrix) before claiming another.'
+          : 'This request is yours alone. get_quote_documents(request) to list the files, then by source and page until every page is read; put_quote per house using these row names verbatim; finish_price_matrix with picks, asks and a summary. heartbeat working now.',
+      }, null, 2))
+    }
+    case 'get_quote_documents': {
+      const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, { auth: { autoRefreshToken: false, persistSession: false } })
+      const loaded = await loadPricerRequest(admin, twin, String(args.request ?? ''), ['working', 'ready'])
+      if ('error' in loaded) return textContent(loaded.error, true)
+      const { request, bid } = loaded
+      const token = presentedToken(req)
+      if (!token) return textContent('No twin token on this call', true)
+      const supabaseUrl = Deno.env.get('SUPABASE_URL')!
+      const sourceN = args.source == null ? null : Number(args.source)
+      if (sourceN == null) {
+        // Listing: every source's files, readable or not.
+        const out: Array<Record<string, unknown>> = []
+        for (let i = 1; i <= request.sources.length; i++) {
+          const src = request.sources[i - 1]!
+          const res = await fetch(`${supabaseUrl}/functions/v1/plan-fetch?request=${encodeURIComponent(request.id)}&source=${i}&list=1`, { headers: { 'X-Twin-Token': token } })
+          const body = await res.json().catch(() => ({})) as { files?: Array<{ name: string; size: number | null }>; error?: string }
+          out.push({ source: i, house: src.house_name ?? null, url: src.url ?? null, readable: res.ok, files: res.ok ? body.files ?? [] : [], note: res.ok ? null : `${res.status}: ${body.error ?? res.statusText}` })
+        }
+        return textContent(JSON.stringify({
+          ok: true, request: request.id, bid: `b${bid.bid_number}`, sources: out,
+          how: 'Call again with `source` (and `pages`) to read a file. A source that is not readable: say which house and the fix (share the folder with drive-intake@pipetooling-drive.iam.gserviceaccount.com as Viewer), and continue with the others.',
+        }, null, 2))
+      }
+      if (!Number.isInteger(sourceN) || sourceN < 1 || sourceN > request.sources.length) return textContent(`source must be 1..${request.sources.length}`, true)
+      const src = request.sources[sourceN - 1]!
+      const CAP_BYTES = 60 * 1024 * 1024
+      const fetchPart = async (part: number | null): Promise<{ bytes: Uint8Array; parts: number } | { error: string; status: number }> => {
+        const u = `${supabaseUrl}/functions/v1/plan-fetch?request=${encodeURIComponent(request.id)}&source=${sourceN}${part ? `&part=${part}` : ''}`
+        const res = await fetch(u, { headers: { 'X-Twin-Token': token } })
+        if (!res.ok) {
+          const body = await res.text().catch(() => '')
+          return { error: body.slice(0, 300) || res.statusText, status: res.status }
+        }
+        return { bytes: new Uint8Array(await res.arrayBuffer()), parts: Math.max(1, Number(res.headers.get('X-Plan-Parts') ?? '1') || 1) }
+      }
+      const first = await fetchPart(null)
+      if ('error' in first) {
+        const hint = first.status === 404 || first.status === 403 ? ' The intake account cannot read this link — a person must share it with drive-intake@pipetooling-drive.iam.gserviceaccount.com as Viewer, or attach the PDF.' : ''
+        return textContent(`Source ${sourceN} (${src.house_name ?? '?'}) refused (${first.status}): ${first.error}.${hint}`, true)
+      }
+      let doc: PDFDocument
+      let totalBytes = first.bytes.byteLength
+      try {
+        doc = await PDFDocument.load(first.bytes, { ignoreEncryption: true, updateMetadata: false })
+        for (let part = 2; part <= Math.min(first.parts, 8); part++) {
+          const more = await fetchPart(part)
+          if ('error' in more) break
+          totalBytes += more.bytes.byteLength
+          if (totalBytes > CAP_BYTES) return textContent(`Source ${sourceN} is over ${Math.round(CAP_BYTES / 1048576)} MB across ${first.parts} files — read it part by part (the plan-fetch ?part lane) or ask a person for the quote alone.`, true)
+          const extra = await PDFDocument.load(more.bytes, { ignoreEncryption: true, updateMetadata: false })
+          const copied = await doc.copyPages(extra, extra.getPageIndices())
+          for (const pg of copied) doc.addPage(pg)
+        }
+      } catch (e) {
+        return textContent(`Could not open source ${sourceN} as a PDF: ${e instanceof Error ? e.message : String(e)}`, true)
+      }
+      const pageCount = doc.getPageCount()
+      const MAX_PAGES = 8
+      const spec = String(args.pages ?? '').trim() || '1-8'
+      const wanted: number[] = []
+      for (const tok of spec.split(',')) {
+        const t = tok.trim()
+        if (!t) continue
+        const mm = /^(\d+)\s*-\s*(\d+)$/.exec(t)
+        if (mm) { const a = Number(mm[1]); const bb = Number(mm[2]); for (let n = Math.min(a, bb); n <= Math.max(a, bb); n++) wanted.push(n) }
+        else if (/^\d+$/.test(t)) wanted.push(Number(t))
+      }
+      const pages = [...new Set(wanted)].filter((n) => n >= 1 && n <= pageCount).slice(0, MAX_PAGES)
+      if (pages.length === 0) return textContent(JSON.stringify({ ok: true, request: request.id, source: sourceN, house: src.house_name ?? null, page_count: pageCount, pages: [], note: `No pages matched "${spec}" — the quote has ${pageCount} page${pageCount === 1 ? '' : 's'}.` }, null, 2))
+      const setKey = (await sha256Hex(`${request.id}:${sourceN}:${src.url ?? ''}:${pageCount}:${totalBytes}`)).slice(0, 10)
+      const embed = args.embed === true
+      const EMBED_MAX = 3
+      const EMBED_BYTES = 3 * 1024 * 1024
+      const out: Array<{ page: number; url: string; bytes: number }> = []
+      const resources: Array<{ type: 'resource'; resource: { uri: string; mimeType: string; blob: string } }> = []
+      let embedded = 0
+      for (const n of pages) {
+        const one = await PDFDocument.create()
+        const [pg] = await one.copyPages(doc, [n - 1])
+        one.addPage(pg)
+        const bytes = await one.save({ useObjectStreams: true })
+        const objectPath = `quote-pages/${request.id}/s${sourceN}/${setKey}/p${String(n).padStart(3, '0')}.pdf`
+        const { error: upErr } = await admin.storage.from('twin-plans-tmp').upload(objectPath, bytes, { contentType: 'application/pdf', upsert: true })
+        if (upErr) return textContent(`Could not stage page ${n}: ${upErr.message}`, true)
+        const url = admin.storage.from('twin-plans-tmp').getPublicUrl(objectPath).data.publicUrl
+        out.push({ page: n, url, bytes: bytes.byteLength })
+        if (embed && resources.length < EMBED_MAX && embedded + bytes.byteLength <= EMBED_BYTES) {
+          let bin = ''
+          for (let i = 0; i < bytes.byteLength; i += 0x8000) bin += String.fromCharCode(...bytes.subarray(i, i + 0x8000))
+          resources.push({ type: 'resource', resource: { uri: url, mimeType: 'application/pdf', blob: btoa(bin) } })
+          embedded += bytes.byteLength
+        }
+      }
+      await admin.from('bids_submission_entries').insert({
+        bid_id: bid.id,
+        notes: `[pricer STG-1] get_quote_documents — ${src.house_name ?? `source ${sourceN}`}: ${pages.length} of ${pageCount} page${pageCount === 1 ? '' : 's'} staged (${pages.join(', ')}).`,
+      }).then(() => {}, () => {})
+      const text = JSON.stringify({
+        ok: true, request: request.id, source: sourceN, house: src.house_name ?? null, page_count: pageCount, staged: out.length, pages: out,
+        ...(embed ? { embedded: resources.length } : {}),
+        how: 'Each url is a single-page PDF (public, staged in twin-plans-tmp). Read every page — fixture schedules, carrier and drain sheets, terms. Ask for more pages by number until the page count is covered. Then put_quote for this house with the request row names verbatim.',
+      }, null, 2)
+      return { content: [{ type: 'text', text }, ...resources], isError: false }
+    }
+    case 'put_quote': {
+      const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, { auth: { autoRefreshToken: false, persistSession: false } })
+      const loaded = await loadPricerRequest(admin, twin, String(args.request ?? ''))
+      if ('error' in loaded) return textContent(loaded.error, true)
+      const { request, bid } = loaded
+      const house = await resolvePricerHouse(admin, request, args.house)
+      if ('error' in house) return textContent(house.error, true)
+      const rawLines = Array.isArray(args.lines) ? (args.lines as Array<Record<string, unknown>>) : []
+      if (rawLines.length === 0 || rawLines.length > 600) return textContent('put_quote needs 1..600 lines', true)
+      const scopeKeys = new Set(request.scope.map((r) => pricerKey(r.fixture)))
+      const scopeNames = new Map(request.scope.map((r) => [pricerKey(r.fixture), r.fixture]))
+      const problems: string[] = []
+      const lines = rawLines.map((l, i) => {
+        const fixtureRaw = String(l.fixture ?? '').trim()
+        const role = l.component_role == null || String(l.component_role).trim() === '' ? null : String(l.component_role).trim()
+        if (!fixtureRaw) problems.push(`line ${i + 1}: fixture is required`)
+        if (role && !PRICER_COMPONENT_ROLES.has(role)) problems.push(`line ${i + 1}: component_role "${role}" is not one of ${[...PRICER_COMPONENT_ROLES].join(', ')}`)
+        const fixture = scopeNames.get(pricerKey(fixtureRaw)) ?? fixtureRaw
+        if (role !== 'loose' && fixtureRaw && !scopeKeys.has(pricerKey(fixtureRaw))) problems.push(`line ${i + 1}: "${fixtureRaw}" is not a row in the request snapshot — use the row names next_price_matrix returned verbatim, or component_role 'loose' for a part that belongs to no row`)
+        const priceRaw = l.unit_price_each_cents
+        const price = priceRaw == null || priceRaw === '' ? null : Math.round(Number(priceRaw))
+        if (price != null && (!Number.isFinite(price) || price < 0)) problems.push(`line ${i + 1}: unit_price_each_cents must be a non-negative integer (cents)`)
+        return {
+          fixture,
+          component_role: role,
+          label: l.label == null ? null : String(l.label).slice(0, 300),
+          unit_price_each_cents: price,
+          cant_supply: l.cant_supply === true,
+          option_group: l.option_group == null || String(l.option_group).trim() === '' ? null : String(l.option_group).trim().slice(0, 40),
+          option_label: l.option_label == null ? null : String(l.option_label).slice(0, 80),
+          option_chosen: l.option_chosen === true,
+          page_ref: l.page_ref == null ? null : String(l.page_ref).slice(0, 80),
+          alternate_note: l.alternate_note == null ? null : String(l.alternate_note).slice(0, 300),
+        }
+      })
+      // At most one chosen option per (fixture, group).
+      const chosenSeen = new Set<string>()
+      for (const l of lines) {
+        if (l.option_group && l.option_chosen) {
+          const k = `${pricerKey(l.fixture)}|${l.option_group}`
+          if (chosenSeen.has(k)) problems.push(`"${l.fixture}" ${l.option_group}: more than one option_chosen`)
+          chosenSeen.add(k)
+        }
+      }
+      if (problems.length) return textContent(`put_quote NOT written — ${problems.slice(0, 8).join('; ')}${problems.length > 8 ? `; +${problems.length - 8} more` : ''}`, true)
+      // Idempotence per (request, house): rewrite only on replace.
+      const { data: existing } = await admin.from('bid_quotes').select('id').eq('robot_request_id', request.id).eq('supply_house_id', house.id)
+      const existingIds = ((existing ?? []) as Array<{ id: string }>).map((q) => q.id)
+      if (existingIds.length && args.replace !== true) return textContent(`${house.name} already has a robot quote on this request — pass replace: true to rewrite it.`, true)
+      if (existingIds.length) {
+        await admin.from('bid_quote_lines').delete().in('quote_id', existingIds)
+        await admin.from('bid_quotes').delete().in('id', existingIds)
+      }
+      const validUntil = String(args.valid_until ?? '').trim()
+      const freight = args.freight_cents == null ? null : Math.round(Number(args.freight_cents))
+      const { data: quote, error: qErr } = await admin.from('bid_quotes').insert({
+        bid_id: bid.id,
+        bid_version_id: request.bid_version_id,
+        supply_house_id: house.id,
+        quoted_by: args.quoted_by == null ? null : String(args.quoted_by).slice(0, 120),
+        source: 'robot',
+        valid_until: /^\d{4}-\d{2}-\d{2}$/.test(validUntil) ? validUntil : null,
+        freight_cents: freight != null && Number.isFinite(freight) ? freight : null,
+        note: args.note == null ? null : String(args.note).slice(0, 2000),
+        source_doc_url: args.source_doc_url == null ? house.url : String(args.source_doc_url).slice(0, 600),
+        robot_request_id: request.id,
+        created_by: twin.twinUserId,
+      }).select('id').single()
+      if (qErr || !quote) return textContent(`Quote not saved: ${qErr?.message ?? 'no row'}`, true)
+      const quoteId = (quote as { id: string }).id
+      const { error: lErr } = await admin.from('bid_quote_lines').insert(lines.map((l) => ({
+        quote_id: quoteId,
+        fixture: l.fixture,
+        unit_price_each_cents: l.cant_supply ? null : l.unit_price_each_cents,
+        price_basis: 'each',
+        basis_qty: 1,
+        basis_price_cents: l.cant_supply ? null : l.unit_price_each_cents,
+        cant_supply: l.cant_supply,
+        alternate_note: l.alternate_note,
+        match_confidence: 'manual',
+        matched_from: l.label,
+        picked: false,
+        component_role: l.component_role,
+        label: l.label,
+        option_group: l.option_group,
+        option_label: l.option_label,
+        option_chosen: l.option_chosen,
+        page_ref: l.page_ref,
+      })))
+      if (lErr) {
+        await admin.from('bid_quotes').delete().eq('id', quoteId)
+        return textContent(`Lines not saved (quote rolled back): ${lErr.message}`, true)
+      }
+      // Price memory: the fixture's $/each per house — kit subtotals, plain lines, chosen options. Deduped per fixture key.
+      const memory = new Map<string, Record<string, unknown>>()
+      for (const l of lines) {
+        if (l.cant_supply || l.unit_price_each_cents == null) continue
+        if (l.component_role && l.component_role !== 'kit') continue
+        if (l.option_group && !l.option_chosen) continue
+        memory.set(pricerKey(l.fixture), { supply_house_id: house.id, fixture: l.fixture, unit_price_each_cents: l.unit_price_each_cents, quoted_at: new Date().toISOString(), source_bid_id: bid.id })
+      }
+      if (memory.size) await admin.from('supply_house_fixture_prices').upsert([...memory.values()], { onConflict: 'supply_house_id,fixture_key' }).then(() => {}, () => {})
+      const kits = lines.filter((l) => l.component_role === 'kit').length
+      const carriers = lines.filter((l) => l.component_role === 'carrier').length
+      const options = lines.filter((l) => l.option_group).length
+      await admin.from('bids_submission_entries').insert({
+        bid_id: bid.id,
+        notes: `[pricer STG-2] put_quote ${house.name} — ${lines.length} lines (${kits} kit subtotal${kits === 1 ? '' : 's'}, ${carriers} carrier${carriers === 1 ? '' : 's'}, ${options} option line${options === 1 ? '' : 's'})${validUntil ? ` · valid until ${validUntil}` : ''}${existingIds.length ? ' · replaced the earlier robot quote' : ''}.`,
+      }).then(() => {}, () => {})
+      return textContent(JSON.stringify({ ok: true, quote_id: quoteId, house: house.name, lines: lines.length, kits, carriers, option_lines: options, replaced: existingIds.length > 0, next: 'Next house, or finish_price_matrix when every readable source is written.' }, null, 2))
+    }
+    case 'finish_price_matrix': {
+      const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, { auth: { autoRefreshToken: false, persistSession: false } })
+      const loaded = await loadPricerRequest(admin, twin, String(args.request ?? ''), ['working', 'ready'])
+      if ('error' in loaded) return textContent(loaded.error, true)
+      const { request, bid } = loaded
+      const summary = String(args.summary ?? '').trim().slice(0, 2000)
+      if (!summary) return textContent('finish_price_matrix needs a summary for the estimator', true)
+      const nowIso = new Date().toISOString()
+      if (args.blocked === true) {
+        await admin.from('bid_price_matrix_requests').update({ status: 'blocked', summary, finished_at: nowIso, heartbeat_at: nowIso, updated_at: nowIso }).eq('id', request.id)
+        await admin.from('bids_submission_entries').insert({ bid_id: bid.id, notes: `[pricer BLOCKED] request ${request.id.slice(0, 8)} — ${summary.slice(0, 400)}` }).then(() => {}, () => {})
+        return textContent(JSON.stringify({ ok: true, status: 'blocked', next: 'ask_question with audience operator for the machine problem (a folder not shared, a link that is not a PDF), heartbeat blocked, then next_price_matrix.' }, null, 2))
+      }
+      // The robot quotes on this request, with their lines.
+      const { data: quotes } = await admin.from('bid_quotes').select('id, supply_house_id, valid_until, freight_cents, supply_houses(name)').eq('robot_request_id', request.id)
+      const qRows = (quotes ?? []) as Array<{ id: string; supply_house_id: string | null; valid_until: string | null; freight_cents: number | null; supply_houses: { name: string } | Array<{ name: string }> | null }>
+      if (qRows.length === 0) return textContent('No robot quotes on this request yet — put_quote at least one house first, or finish with blocked: true.', true)
+      const houseName = (q: typeof qRows[number]) => (Array.isArray(q.supply_houses) ? q.supply_houses[0]?.name : q.supply_houses?.name) ?? 'house'
+      const quoteIds = qRows.map((q) => q.id)
+      const { data: lineRows } = await admin.from('bid_quote_lines').select('id, quote_id, fixture, unit_price_each_cents, cant_supply, component_role, option_group, option_chosen, picked, pick_source').in('quote_id', quoteIds)
+      const lines = (lineRows ?? []) as Array<{ id: string; quote_id: string; fixture: string; unit_price_each_cents: number | null; cant_supply: boolean; component_role: string | null; option_group: string | null; option_chosen: boolean; picked: boolean; pick_source: string | null }>
+      const countByKey = new Map(request.scope.map((r) => [pricerKey(r.fixture), Number(r.count) || 0]))
+      const today = todayYmdInAppTz()
+      // Picks.
+      const picks = Array.isArray(args.picks) ? (args.picks as Array<Record<string, unknown>>) : []
+      const problems: string[] = []
+      const pickedKeys = new Set<string>()
+      let totalCents = 0
+      // Clear earlier robot picks on these quotes so a re-finish is idempotent.
+      const robotPicked = lines.filter((l) => l.picked && l.pick_source === 'robot').map((l) => l.id)
+      if (robotPicked.length) await admin.from('bid_quote_lines').update({ picked: false, pick_reason: null, pick_source: null }).in('id', robotPicked)
+      for (const p of picks) {
+        const fixture = String(p.fixture ?? '').trim()
+        const key = pricerKey(fixture)
+        if (!countByKey.has(key)) { problems.push(`pick "${fixture}" is not a row in the request`); continue }
+        const house = await resolvePricerHouse(admin, request, p.house)
+        if ('error' in house) { problems.push(`pick "${fixture}": ${house.error}`); continue }
+        const quote = qRows.find((q) => q.supply_house_id === house.id)
+        if (!quote) { problems.push(`pick "${fixture}": ${house.name} has no robot quote on this request`); continue }
+        const cellLines = lines.filter((l) => l.quote_id === quote.id && pricerKey(l.fixture) === key)
+        if (cellLines.length === 0) { problems.push(`pick "${fixture}": ${house.name} did not quote it`); continue }
+        const priced = cellLines.filter((l) => !l.cant_supply && l.unit_price_each_cents != null && (!l.option_group || l.option_chosen))
+        if (priced.length === 0) { problems.push(`pick "${fixture}": ${house.name}'s lines carry no price (an option group with no option_chosen?)`); continue }
+        const reason = String(p.reason ?? '').trim().slice(0, 300) || 'robot pick'
+        await admin.from('bid_quote_lines').update({ picked: true, pick_reason: reason, pick_source: 'robot' }).in('id', cellLines.map((l) => l.id))
+        const each = priced.reduce((acc, l) => acc + (l.unit_price_each_cents ?? 0), 0)
+        totalCents += each * (countByKey.get(key) ?? 0)
+        pickedKeys.add(key)
+      }
+      // Asks — the estimator lane, one decision each, tap-answerable.
+      const asks = Array.isArray(args.asks) ? (args.asks as Array<Record<string, unknown>>) : []
+      let filed = 0
+      for (const a of asks) {
+        const fixture = String(a.fixture ?? '').trim()
+        const q = String(a.question ?? '').trim()
+        if (!q) { problems.push(`ask "${fixture}": empty question`); continue }
+        const shape = checkEstimatorQuestionShape({ question: q, choices: a.choices, recommended: a.recommended })
+        if (!shape.ok) { problems.push(`ask "${fixture}" not filed — ${shape.problems.join('; ')}`); continue }
+        const base = { twin_user_id: twin.twinUserId, about_bid_id: bid.id, mission: `price-matrix:${request.id.slice(0, 8)}`, question: q, topic: `price-matrix-${pricerSlug(fixture) || 'row'}` }
+        let ins = await admin.from('twin_questions').insert({ ...base, audience: 'estimator', choices: shape.choices, recommended: shape.recommended, kind: 'decision' }).select('id').single()
+        if (ins.error && /\bkind\b/i.test(ins.error.message)) ins = await admin.from('twin_questions').insert({ ...base, audience: 'estimator', choices: shape.choices, recommended: shape.recommended }).select('id').single()
+        if (ins.error) { problems.push(`ask "${fixture}" not saved: ${ins.error.message}`); continue }
+        filed += 1
+      }
+      const expired = qRows.filter((q) => q.valid_until && q.valid_until < today).map(houseName)
+      const result = {
+        houses_read: qRows.length,
+        rows_priced: pickedKeys.size,
+        rows_asked: filed,
+        total_cents_at_counts: Math.round(totalCents),
+        expired_houses: expired,
+        rows_total: request.scope.length,
+      }
+      await admin.from('bid_price_matrix_requests').update({ status: 'ready', summary, result, finished_at: nowIso, heartbeat_at: nowIso, updated_at: nowIso }).eq('id', request.id)
+      await admin.from('bids_submission_entries').insert({
+        bid_id: bid.id,
+        notes: `[pricer STG-3] matrix ready — ${qRows.length} house${qRows.length === 1 ? '' : 's'} read (${qRows.map(houseName).join(', ')}), ${pickedKeys.size} of ${request.scope.length} rows picked, ${filed} ask${filed === 1 ? '' : 's'} for the estimator, $${(Math.round(totalCents) / 100).toLocaleString('en-US', { minimumFractionDigits: 2 })} at counts before freight${expired.length ? ` · expired: ${expired.join(', ')}` : ''}. ${summary.slice(0, 300)}`,
+      }).then(() => {}, () => {})
+      return textContent(JSON.stringify({
+        ok: true, status: 'ready', ...result,
+        problems: problems.length ? problems : undefined,
+        next: 'heartbeat done, submit_report (label PRICE-<bid>), then next_price_matrix. The estimator sees "Matrix ready" on the bid; her taps on your asks come back through get_answers.',
+      }, null, 2))
+    }
+    case 'extend_component_rules': {
+      const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, { auth: { autoRefreshToken: false, persistSession: false } })
+      const mirror = String(args.mirror_note ?? '').trim()
+      const rules = Array.isArray(args.rules) ? (args.rules as Array<Record<string, unknown>>) : []
+      if (!mirror || rules.length === 0 || rules.length > 20) return textContent('extend_component_rules needs 1..20 rules + a mirror_note naming where they came from', true)
+      const KINDS = new Set(['placement', 'sheet', 'option_default', 'required_role'])
+      const rows = rules.map((r) => ({
+        rule: String(r.rule ?? '').trim().slice(0, 600),
+        kind: KINDS.has(String(r.kind ?? '')) ? String(r.kind) : 'placement',
+        fixture_pattern: r.fixture_pattern == null ? null : String(r.fixture_pattern).slice(0, 120),
+        role: r.role == null || !PRICER_COMPONENT_ROLES.has(String(r.role)) ? null : String(r.role),
+        source: 'robot',
+        created_by: twin.twinUserId,
+        mirror_note: mirror.slice(0, 600),
+      })).filter((r) => r.rule)
+      if (rows.length === 0) return textContent('Every rule needs text', true)
+      const { data, error } = await admin.from('fixture_component_rules').insert(rows).select('id')
+      if (error) return textContent(`Rules not saved: ${error.message}`, true)
+      return textContent(JSON.stringify({ ok: true, added: (data ?? []).length, note: 'The estimator sees these as receipts and can retire any of them; a retired rule stays out of get_component_rules.' }, null, 2))
+    }
     case 'get_mission': {
       const m = MISSIONS[String(args.id ?? '').toUpperCase()]
       if (!m) return textContent(`Unknown mission id. Available: ${Object.keys(MISSIONS).join(', ')}`, true)
@@ -1576,7 +2209,7 @@ async function callTool(req: Request, name: string, args: Record<string, unknown
       const { data: bid, error } = await q.maybeSingle()
       if (error) return textContent(`Bid lookup failed: ${error.message}`, true)
       if (!bid) return textContent(`No bid found for "${ref}"`, true)
-      if (bid.estimator_id !== twin.twinUserId && bid.created_by !== twin.twinUserId) {
+      if (bid.estimator_id !== twin.twinUserId && bid.created_by !== twin.twinUserId && !(await pricerMayTouchBid(admin, twin, bid.id))) {
         return textContent(`Bid ${ref} is not yours (assigned/created) — notes land only on your own bids.`, true)
       }
       const { error: insErr } = await admin.from('bids_submission_entries').insert({ bid_id: bid.id, notes: note.slice(0, 8000) })
@@ -2488,7 +3121,7 @@ async function handleRpc(req: Request, msg: { jsonrpc?: string; id?: unknown; me
       return rpcResult(id, {
         protocolVersion: version,
         capabilities: { tools: {} },
-        serverInfo: { name: 'pipetooling-twin-mcp', version: '1.3.18' },
+        serverInfo: { name: 'pipetooling-twin-mcp', version: '1.4.0' },
         instructions:
           "PipeTooling digital-twin seat (estimator-only). Call get_brief first, then get_directory; mint_session gives you a signed-in browser link to the real apps — PipeTooling by default, CountTooling (the PDF-takeoff tool) with app: 'counttooling'. The work happens there. Every call needs your per-twin token (X-Twin-Token or Bearer).",
       })

@@ -19,6 +19,9 @@ const ctGuidePath = 'docs/twins/COUNTTOOLING_BID_GUIDE.md'
 const ctGuide = existsSync(join(root, ctGuidePath)) ? read(ctGuidePath) : ''
 const ttGuidePath = 'docs/twins/TAKEOFFTOOLING_BID_GUIDE.md'
 const ttGuide = existsSync(join(root, ttGuidePath)) ? read(ttGuidePath) : ''
+// The pricing twin's brief (Price Matrix PR 3) — served by get_pricing_guide.
+const pricingGuidePath = 'docs/twins/pricer.md'
+const pricingGuide = existsSync(join(root, pricingGuidePath)) ? read(pricingGuidePath) : ''
 
 // The placement/extraction protocol set rides the bundle too (owner ask 2026-08-30:
 // a cloud twin without repo access must still read the doctrine). One string, three
@@ -51,8 +54,9 @@ export const DIRECTORY: string = ${JSON.stringify(directory)}
 export const HARNESS: string = ${JSON.stringify(harness)}
 export const CT_GUIDE: string = ${JSON.stringify(ctGuide)}
 export const TT_GUIDE: string = ${JSON.stringify(ttGuide)}
+export const PRICING_GUIDE: string = ${JSON.stringify(pricingGuide)}
 export const PLACEMENT_GUIDE: string = ${JSON.stringify(placementGuide)}
 export const MISSIONS: Record<string, { title: string; prerequisites: string; text: string }> = ${JSON.stringify(missions, null, 2)}
 `
 writeFileSync(join(root, 'supabase/functions/twin-mcp/briefs.ts'), out)
-console.log(`briefs.ts written: brief ${brief.length}ch, directory ${directory.length}ch, harness ${harness.length}ch, placement ${placementGuide.length}ch, missions ${Object.keys(missions).join(',') || '(none)'}`)
+console.log(`briefs.ts written: brief ${brief.length}ch, directory ${directory.length}ch, harness ${harness.length}ch, pricing ${pricingGuide.length}ch, placement ${placementGuide.length}ch, missions ${Object.keys(missions).join(',') || '(none)'}`)

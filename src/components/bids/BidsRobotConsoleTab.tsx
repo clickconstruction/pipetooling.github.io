@@ -9,6 +9,7 @@ import { relativeTimeFrom } from '../../lib/twinConsoleDisplay'
 // The two operator prompts are markdown files in the repo — the source of truth — copied whole.
 import desktopKickoffDoc from '../../../docs/twins/kickoffs/desktop-operator.md?raw'
 import shadowOperatorPrompt from '../../../docs/twins/kickoffs/shadow-operator.md?raw'
+import pricingKickoffDoc from '../../../docs/twins/kickoffs/pricing-operator.md?raw'
 import { usePriceMatrixRequests } from '../../hooks/usePriceMatrixRequests'
 import { TwinOperatorQuestionsCard } from './TwinOperatorQuestionsCard'
 import { TwinOwnerMemoCard } from './TwinOwnerMemoCard'
@@ -40,7 +41,7 @@ const SETTINGS_TWINS_HREF = '/settings?tab=settings-digital-twins'
 
 export function BidsRobotConsoleTab({ bids, twinBidBySourceId, onOpenQueue }: Props) {
   const { showToast } = useToastContext()
-  const [openPreview, setOpenPreview] = useState<'setup' | 'kickoff' | 'handoff' | null>(null)
+  const [openPreview, setOpenPreview] = useState<'setup' | 'kickoff' | 'handoff' | 'pricing' | null>(null)
   const [fleet, setFleet] = useState<{ twins: TwinRow[]; creds: CredRow[] } | null>(null)
   // Price Matrix PR 2: the pricing robot's queue, counted beside the bid robots'.
   const { requests: matrixQueued } = usePriceMatrixRequests({ enabled: true, statuses: ['queued', 'working', 'blocked'] })
@@ -48,6 +49,8 @@ export function BidsRobotConsoleTab({ bids, twinBidBySourceId, onOpenQueue }: Pr
   const connectorUrl = useMemo(() => twinMcpConnectorUrl(import.meta.env.VITE_SUPABASE_URL), [])
   const setupCommand = useMemo(() => buildDesktopSetupCommand({ connectorUrl }), [connectorUrl])
   const desktopKickoff = useMemo(() => buildDesktopKickoff(desktopKickoffDoc, { connectorUrl }), [connectorUrl])
+  // Price Matrix PR 3: the pricing robot's kickoff — same connector, its own seat and key.
+  const pricingKickoff = useMemo(() => buildDesktopKickoff(pricingKickoffDoc, { connectorUrl }), [connectorUrl])
 
   // Same rule as the Queue lens, so the counts here and the rows there can never disagree.
   const queue = useMemo(() => {
@@ -101,7 +104,7 @@ export function BidsRobotConsoleTab({ bids, twinBidBySourceId, onOpenQueue }: Pr
   const stepSub: React.CSSProperties = { display: 'block', color: 'var(--text-muted)', fontSize: '0.76rem' }
   const pathCol: React.CSSProperties = { border: '1px solid var(--border)', borderRadius: 8, padding: '0.6rem 0.75rem', display: 'grid', gap: '0.55rem', alignContent: 'start', background: 'var(--surface)' }
   const pathHead: React.CSSProperties = { fontSize: '0.66rem', fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', color: TWIN_VIOLET }
-  const previewLink = (key: 'setup' | 'kickoff' | 'handoff', label: string) => (
+  const previewLink = (key: 'setup' | 'kickoff' | 'handoff' | 'pricing', label: string) => (
     <button
       type="button"
       onClick={() => setOpenPreview((cur) => (cur === key ? null : key))}
@@ -175,10 +178,35 @@ export function BidsRobotConsoleTab({ bids, twinBidBySourceId, onOpenQueue }: Pr
             <div>{previewLink('handoff', 'the handoff prompt')}</div>
             {openPreview === 'handoff' ? <pre style={PROMPT_PRE}>{shadowOperatorPrompt}</pre> : null}
           </div>
+          <div style={{ ...pathCol, border: `1.5px solid ${TWIN_VIOLET}`, background: 'var(--bg-violet-100)' }}>
+            <div style={pathHead}>Pricing robot · never bids</div>
+            <div style={stepRow}>
+              <span style={stepNo('1')}>1</span>
+              <span style={stepText}>
+                Issue the pricer its own key
+                <span style={stepSub}>Settings → Digital twins → Twin Pricer 1 → Issue key. Same setup command, a separate seat — revoking it never touches the bid robots.</span>
+              </span>
+              <button type="button" style={BTN_PRIMARY} onClick={() => void copy(setupCommand, 'the Desktop setup command')} title="The same Terminal command — it asks for whichever key you paste">
+                Copy setup command
+              </button>
+            </div>
+            <div style={stepRow}>
+              <span style={stepNo('2')}>2</span>
+              <span style={stepText}>
+                Start a pricing batch
+                <span style={stepSub}>Paste into a new incognito chat. Works every queued price-matrix request, oldest ask first, up to three per chat; asks the estimator where the plans decide.</span>
+              </span>
+              <button type="button" style={{ ...BTN_PRIMARY, background: '#3b82f6' }} onClick={() => void copy(pricingKickoff, 'the pricing kickoff')} title="Copies the whole pricing kickoff: the setup steps for the person and the robot's instructions, with this project's connector filled in">
+                Copy pricing kickoff
+              </button>
+            </div>
+            <div>{previewLink('pricing', 'the pricing kickoff')}</div>
+            {openPreview === 'pricing' ? <pre style={PROMPT_PRE}>{pricingKickoff}</pre> : null}
+          </div>
         </div>
         <p style={{ ...MUTED, margin: '0.6rem 0 0' }}>
-          Sources of truth: <code style={{ fontSize: '0.7rem' }}>docs/twins/kickoffs/desktop-operator.md</code> and{' '}
-          <code style={{ fontSize: '0.7rem' }}>docs/twins/kickoffs/shadow-operator.md</code>.
+          Sources of truth: <code style={{ fontSize: '0.7rem' }}>docs/twins/kickoffs/desktop-operator.md</code>,{' '}
+          <code style={{ fontSize: '0.7rem' }}>docs/twins/kickoffs/shadow-operator.md</code> and <code style={{ fontSize: '0.7rem' }}>docs/twins/kickoffs/pricing-operator.md</code>.
         </p>
       </div>
 
