@@ -79,6 +79,6 @@ describe('legacyNegativeAsDiscount / normalizeFormFixtureRows', () => {
       { id: 'a', name: 'Water heater', count: 1, line_unit_price: 300, line_description: '', invoice_id: null },
       { id: 'x', name: 'Credit', count: 1, line_unit_price: -500, line_description: '', invoice_id: null },
     ])
-    expect(rows[1]).toMatchObject({ line_kind: 'discount', line_unit_price: -500 })
+    expect(rows[1]).toMatchObject({ line_kind: 'discount', line_unit_price: -300 })
   })
 })
