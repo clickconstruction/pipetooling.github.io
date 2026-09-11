@@ -477,7 +477,7 @@ export default function PeoplePayLedgerView({ payStubs, payStubPaymentsByStubId,
   return (
     <section>
       <div style={{ marginBottom: '0.6rem' }}>
-        <h2 style={{ margin: 0, fontSize: '1.125rem' }}>Ledger</h2>
+        <h2 style={{ margin: 0, fontSize: '1.125rem' }}>Balances</h2>
         <p style={{ margin: '0.2rem 0 0', fontSize: '0.8rem', color: 'var(--text-muted)', maxWidth: '62ch' }}>
           What we owe each person on payroll, and why — one dated journal per person with a running balance. <b>+</b> means we owe them, <b>−</b> means they owe us.
         </p>

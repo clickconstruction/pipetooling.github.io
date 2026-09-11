@@ -244,7 +244,7 @@ const PEOPLE_HOURS_CLOCK_REALTIME_MAX_USER_IDS = 150
 
 export default function People() {
   const [searchParams, setSearchParams] = useSearchParams()
-  /** Payroll tab view (v2.2168, dev-only): the per-stub table ("reports") or the per-person ledger. Deep-link: ?view=ledger&person=<name>. */
+  /** Payroll tab view (v2.2168, dev-only): **Pay run** (the per-report table, key "reports") or **Balances** (the per-person ledger, key "ledger" — v2.3317 renamed the labels only; the key and the ?view=ledger&person=<name> deep-link are unchanged). */
   const [payrollView, setPayrollView] = useState<'reports' | 'ledger'>(() => (searchParams.get('view') === 'ledger' ? 'ledger' : 'reports'))
   const { user: authUser, role: authRole } = useAuth()
   const isDocVisible = useDocumentVisibility()
@@ -3333,8 +3333,8 @@ export default function People() {
           <div role="tablist" aria-label="Payroll view" style={{ display: 'inline-flex', border: '1px solid var(--border-strong)', borderRadius: 8, overflow: 'hidden' }}>
             {(
               [
-                ['reports', 'Pay reports'],
-                ['ledger', 'Ledger'],
+                ['reports', 'Pay run'],
+                ['ledger', 'Balances'],
               ] as const
             ).map(([v, label]) => (
               <button

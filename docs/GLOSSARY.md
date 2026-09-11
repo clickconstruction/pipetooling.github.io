@@ -531,6 +531,12 @@ Dev-only sweep section (v2.2846, journey-map Tier-1 #2a): lists never-sent `read
 
 ## Workflow Concepts
 
+### Pay run (People → Pay → Payroll)
+The weekly payroll work view (was **Pay reports** until v2.3317): Draft Payroll generates the week's pay reports, the table lists each report with its balance and **Record payment**, and the amber "N upcoming" link names weeks with clocked time and no report. Unit = the pay report, clock = the week. Sibling view: **Balances**.
+
+### Balances (People → Pay → Payroll)
+The per-person standing view (was **Ledger** until v2.3317): one running balance per person from `earned − paid out − charges + credits`, with the We owe / Owes us / Even roster and a dated journal. Includes back-charges and credits that never appear on a pay report. Deep-link `?view=ledger&person=<name>` (the key kept its old name). Sibling view: **Pay run**.
+
 ### Pay week / Close week
 The app has exactly two week families, each with one anchor helper (v2.2858 / v2.2898):
 
