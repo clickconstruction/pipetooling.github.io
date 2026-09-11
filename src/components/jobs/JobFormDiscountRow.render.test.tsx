@@ -151,4 +151,37 @@ describe('JobFormDiscountRow', () => {
     const btn = screen.getByText('Job Total: $33,970.50') as HTMLButtonElement
     expect(btn.disabled).toBe(true)
   })
+
+  it('the standing-discount offer (v2.3272) shows the customer, the rate and the dollars; Apply and not-on-this-job call back', () => {
+    const onApply = vi.fn()
+    const onWaive = vi.fn()
+    renderWithProviders(
+      <JobFormFixturesSection
+        fixtures={syncDiscountRows(work)}
+        fixtureScopeExpandedById={{}}
+        setFixtureScopeExpandedById={() => {}}
+        fixturesSectionHighlight={false}
+        fixturesSectionHighlightRef={{ current: null }}
+        updateFixtureRow={() => {}}
+        addFixtureRow={() => {}}
+        removeFixtureRow={() => {}}
+        moveFixtureRow={() => {}}
+        onOpenSegmentGenerator={() => {}}
+        onOpenStripeFixturePreview={() => {}}
+        jobTotalDollars={37745}
+        standingOffer={{ pct: 5, reason: 'Repeat customer', name: 'Repeat customer discount', dollars: 1887.25 }}
+        standingOfferCustomerName="Done Right Foundation"
+        onApplyStandingOffer={onApply}
+        onWaiveStandingOffer={onWaive}
+      />,
+    )
+    const chip = screen.getByTestId('standing-discount-offer')
+    expect(chip.textContent).toContain('Done Right Foundation gets 5%')
+    expect(chip.textContent).toContain('repeat customer, set on their card')
+    expect(chip.textContent).toContain('−$1,887.25 here')
+    fireEvent.click(screen.getByText('Apply'))
+    expect(onApply).toHaveBeenCalledTimes(1)
+    fireEvent.click(screen.getByText('not on this job'))
+    expect(onWaive).toHaveBeenCalledTimes(1)
+  })
 })

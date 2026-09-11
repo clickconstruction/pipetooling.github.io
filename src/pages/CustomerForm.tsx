@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { DISCOUNT_REASON_PRESETS, standingDiscountFromCustomer } from '../lib/jobs/discountLine'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
@@ -42,6 +43,9 @@ export default function CustomerForm() {
   const [phone, setPhone] = useState('')
   const [email, setEmail] = useState('')
   const [dateMet, setDateMet] = useState('')
+  // Standing discount (v2.3272): offered on every new job and bill for this customer — never inserted by itself.
+  const [standingPct, setStandingPct] = useState('')
+  const [standingReason, setStandingReason] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [fetching, setFetching] = useState(!isNew)
@@ -77,6 +81,9 @@ export default function CustomerForm() {
       setPhone(contactInfo.phone || '')
       setEmail(contactInfo.email || '')
       setDateMet(row.date_met ? (row.date_met.split('T')[0] || '') : '')
+      const standing = standingDiscountFromCustomer(row as { standing_discount_pct?: number | string | null; standing_discount_reason?: string | null })
+      setStandingPct(standing ? String(standing.pct) : '')
+      setStandingReason(standing?.reason ?? null)
       setFetching(false)
     })()
   }, [id])
@@ -96,6 +103,9 @@ export default function CustomerForm() {
       date_met: dateMet.trim() || null,
       date_met_source: dateMet.trim() ? 'manual' : null,
     }
+    const standingNum = parseFloat(standingPct.replace(/[%\s]/g, ''))
+    payload.standing_discount_pct = Number.isFinite(standingNum) && standingNum > 0 ? Math.min(100, Math.round(standingNum * 100) / 100) : null
+    payload.standing_discount_reason = payload.standing_discount_pct != null ? standingReason : null
     const { error: err } = await supabase.from('customers').update(payload).eq('id', id!)
     setLoading(false)
     if (err) {
@@ -151,6 +161,39 @@ export default function CustomerForm() {
             onChange={(e) => setEmail(e.target.value)}
             style={{ width: '100%', padding: '0.5rem' }}
           />
+        </div>
+        <div style={{ marginBottom: '1rem' }}>
+          <label htmlFor="standingPct" style={{ display: 'block', marginBottom: 4 }}>Standing discount</label>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+            <span style={{ display: 'inline-flex', alignItems: 'stretch', border: '1px solid var(--border-strong)', borderRadius: 6, overflow: 'hidden' }}>
+              <span aria-hidden style={{ display: 'inline-flex', alignItems: 'center', padding: '0 0.45rem', fontSize: '0.8rem', fontWeight: 700, color: '#0f7a52', background: 'var(--bg-green-100)', borderRight: '1px solid var(--border)' }}>%</span>
+              <input
+                id="standingPct"
+                type="text"
+                inputMode="decimal"
+                value={standingPct}
+                placeholder="none"
+                onChange={(e) => setStandingPct(e.target.value.replace(/[^0-9.]/g, ''))}
+                style={{ width: '5rem', padding: '0.5rem', border: 'none', textAlign: 'right' }}
+              />
+            </span>
+            <span style={{ display: 'inline-flex', gap: 5, flexWrap: 'wrap' }}>
+              {DISCOUNT_REASON_PRESETS.map((r) => (
+                <button
+                  key={r}
+                  type="button"
+                  onClick={() => setStandingReason((cur) => (cur === r ? null : r))}
+                  aria-pressed={standingReason === r}
+                  style={{ border: `1px solid ${standingReason === r ? '#0f7a52' : '#a7dcc2'}`, background: standingReason === r ? '#0f7a52' : 'var(--surface)', color: standingReason === r ? '#ffffff' : '#0f7a52', borderRadius: 999, padding: '2px 10px', fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}
+                >
+                  {r}
+                </button>
+              ))}
+            </span>
+          </div>
+          <p style={{ margin: '0.35rem 0 0', fontSize: '0.8125rem', color: 'var(--text-muted)', maxWidth: '46rem' }}>
+            Offered on every new job and every bill for this customer until it is applied or waved off there — never added by itself. Existing jobs are untouched.
+          </p>
         </div>
         <div style={{ marginBottom: '1rem' }}>
           <label htmlFor="dateMet" style={{ display: 'block', marginBottom: 4 }}>Date Met</label>

@@ -528,3 +528,50 @@ export function planBillDiscount(args: {
     ridesElsewhereCents,
   }
 }
+
+export type StandingDiscount = { pct: number; reason: DiscountReasonPreset | null }
+
+export type StandingDiscountOffer = {
+  pct: number
+  reason: DiscountReasonPreset | null
+  /** The row Apply would add — a live percent on every work row. */
+  name: string
+  /** What it comes to on the job's work right now. */
+  dollars: number
+}
+
+const isReasonPreset = (v: unknown): v is DiscountReasonPreset => typeof v === 'string' && (DISCOUNT_REASON_PRESETS as readonly string[]).includes(v)
+
+/** A customer row's standing discount, read loosely (rows loaded before the push have neither column). */
+export function standingDiscountFromCustomer(c: { standing_discount_pct?: number | string | null; standing_discount_reason?: string | null } | null | undefined): StandingDiscount | null {
+  const pct = c?.standing_discount_pct != null && Number.isFinite(Number(c.standing_discount_pct)) ? Number(c.standing_discount_pct) : null
+  if (pct == null || !(pct > 0)) return null
+  return { pct: Math.min(100, round2(pct)), reason: isReasonPreset(c?.standing_discount_reason) ? c.standing_discount_reason : null }
+}
+
+/**
+ * The offer to show (v2.3272): the customer has a standing discount, the job
+ * was not waved off, and the job has no discount row yet (any discount —
+ * applied, typed, or from a bid — means the decision was made). Null = no chip.
+ */
+export function standingDiscountOffer(args: {
+  standing: StandingDiscount | null
+  rows: readonly DiscountLineRow[]
+  waived: boolean
+}): StandingDiscountOffer | null {
+  const { standing, rows, waived } = args
+  if (!standing || waived) return null
+  if (rows.some((r) => isDiscountRow(r))) return null
+  const name = standing.reason ? discountNameForReason(standing.reason) : 'Standing discount'
+  const draft = { ...newDiscountFixtureRow('offer'), name, discount_pct: standing.pct, discount_reason: standing.reason }
+  return { pct: standing.pct, reason: standing.reason, name, dollars: derivedDiscountDollars([...rows, draft], draft) }
+}
+
+/** Apply the offer: the ordinary discount row, appended. */
+export function applyStandingDiscount<T extends DiscountLineRow>(rows: readonly T[], offer: StandingDiscountOffer, newRowId: string): T[] {
+  const row = { ...(newDiscountFixtureRow(newRowId) as unknown as T), name: offer.name, discount_pct: offer.pct, discount_reason: offer.reason } as T
+  // The lone empty placeholder row of a new job is reused, like "− Add discount".
+  const only = rows.length === 1 ? rows[0] : undefined
+  if (only && !(only.name ?? '').trim() && only.line_unit_price == null && !isDiscountRow(only)) return [row]
+  return [...rows, row]
+}

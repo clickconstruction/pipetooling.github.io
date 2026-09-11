@@ -4731,6 +4731,8 @@ export type Database = {
       }
       customers: {
         Row: {
+          standing_discount_pct: number | null
+          standing_discount_reason: string | null
           address: string | null
           archived_at: string | null
           archived_by: string | null
@@ -4750,6 +4752,8 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          standing_discount_pct?: number | null
+          standing_discount_reason?: string | null
           address?: string | null
           archived_at?: string | null
           archived_by?: string | null
@@ -4769,6 +4773,8 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          standing_discount_pct?: number | null
+          standing_discount_reason?: string | null
           address?: string | null
           archived_at?: string | null
           archived_by?: string | null
@@ -8465,6 +8471,7 @@ export type Database = {
       }
       jobs_ledger: {
         Row: {
+          standing_discount_waived_at: string | null
           account_manager_relationship: string | null
           account_manager_user_id: string | null
           bid_id: string | null
@@ -8509,6 +8516,7 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          standing_discount_waived_at?: string | null
           account_manager_relationship?: string | null
           account_manager_user_id?: string | null
           bid_id?: string | null
@@ -8553,6 +8561,7 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          standing_discount_waived_at?: string | null
           account_manager_relationship?: string | null
           account_manager_user_id?: string | null
           bid_id?: string | null

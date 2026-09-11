@@ -13,7 +13,7 @@ import {
   STRIPE_INVOICE_LINE_DESCRIPTION_MAX,
   stripeInvoiceFixtureLineLength,
 } from '../../lib/stripeInvoiceLineDescription'
-import { isDiscountRow, totalDiscountDollars, totalWorkDollars } from '../../lib/jobs/discountLine'
+import { isDiscountRow, totalDiscountDollars, totalWorkDollars, type StandingDiscountOffer } from '../../lib/jobs/discountLine'
 import { JobFormDiscountRow } from './JobFormDiscountRow'
 
 const FIXTURE_SCOPE_FIELD_LABEL_VISUALLY_HIDDEN: CSSProperties = {
@@ -44,6 +44,14 @@ type JobFormFixturesSectionProps = {
    * Returns what happened so the footer can say it. Omit to keep it read-only.
    */
   onSetJobTotal?: (dollars: number) => 'ok' | 'cleared' | 'unreachable' | 'locked' | 'invalid'
+  /**
+   * Standing discount (v2.3272): the customer's rate, offered under the rows
+   * until applied or waved off on this job. Never inserted by itself.
+   */
+  standingOffer?: StandingDiscountOffer | null
+  standingOfferCustomerName?: string | null
+  onApplyStandingOffer?: () => void
+  onWaiveStandingOffer?: () => void
   removeFixtureRow: (id: string) => void
   /** Swap a row with its neighbor; order persists via sequence_order on save (v2.1067). */
   moveFixtureRow: (id: string, direction: 'up' | 'down') => void
@@ -91,6 +99,10 @@ export function JobFormFixturesSection({
   addFixtureRow,
   addDiscountRow,
   onSetJobTotal,
+  standingOffer = null,
+  standingOfferCustomerName = null,
+  onApplyStandingOffer,
+  onWaiveStandingOffer,
   removeFixtureRow,
   moveFixtureRow,
   invoiceStatusById = {},
@@ -747,6 +759,35 @@ export function JobFormFixturesSection({
                 {riderRows}
               </tbody>
             </table>
+            {standingOffer && onApplyStandingOffer ? (
+              <div
+                data-testid="standing-discount-offer"
+                style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', marginTop: '0.5rem', padding: '0.45rem 0.7rem', border: '1px dashed #a7dcc2', borderRadius: 8, background: 'var(--bg-green-100)', fontSize: '0.8125rem', color: 'var(--text-700)' }}
+              >
+                <span style={{ flex: 1, minWidth: 0 }}>
+                  <strong>{(standingOfferCustomerName ?? '').trim() || 'This customer'} gets {standingOffer.pct}%</strong>
+                  <span style={{ color: 'var(--text-muted)' }}>{standingOffer.reason ? ` (${standingOffer.reason.toLowerCase()}, set on their card)` : ' (set on their card)'}</span>
+                  {standingOffer.dollars > 0 ? (
+                    <>
+                      {' — '}
+                      <strong style={{ color: '#0f7a52' }}>−${formatCurrency(standingOffer.dollars)}</strong> here
+                    </>
+                  ) : null}
+                </span>
+                <button
+                  type="button"
+                  onClick={onApplyStandingOffer}
+                  style={{ padding: '0.25rem 0.75rem', background: '#0f7a52', color: '#ffffff', border: 'none', borderRadius: 5, fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}
+                >
+                  Apply
+                </button>
+                {onWaiveStandingOffer ? (
+                  <button type="button" onClick={onWaiveStandingOffer} style={{ padding: 0, background: 'transparent', border: 'none', color: 'var(--text-muted)', textDecoration: 'underline', fontSize: '0.75rem', cursor: 'pointer', fontFamily: 'inherit' }}>
+                    not on this job
+                  </button>
+                ) : null}
+              </div>
+            ) : null}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap', marginTop: '0.5rem' }}>
               <span style={{ display: 'inline-flex', gap: '0.5rem', flexWrap: 'wrap' }}>
               <button

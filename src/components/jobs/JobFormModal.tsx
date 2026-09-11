@@ -104,7 +104,7 @@ import { JobFormUpcomingDraws } from './JobFormUpcomingDraws'
 import { useJobStagePlanInputs } from '../../hooks/useJobStagePlanInputs'
 import { drawLabelsByInvoiceId, stagePlanFromForm } from '../../lib/jobs/stagePlanForm'
 import { fixtureRowsFromDb, normalizeFormFixtureRows } from '../../lib/jobs/jobFormFixtureHydrate'
-import { applyTargetJobTotal, derivedDiscountDollars, discountBillDescription, discountRowIsLocked, isDiscountRow, newDiscountFixtureRow, syncDiscountRows } from '../../lib/jobs/discountLine'
+import { applyStandingDiscount, applyTargetJobTotal, derivedDiscountDollars, discountBillDescription, discountRowIsLocked, isDiscountRow, newDiscountFixtureRow, standingDiscountFromCustomer, standingDiscountOffer, syncDiscountRows, type StandingDiscount } from '../../lib/jobs/discountLine'
 import { diffDiscountSnapshots, discountSnapshot, type DiscountSnapshotEntry } from '../../lib/jobs/discountActivity'
 import { todayYmdInAppTz } from '../../utils/dateUtils'
 import { JobFormStagesGroup } from './JobFormStagesGroup'
@@ -3204,6 +3204,56 @@ export default function JobFormModal({
     return outcome.kind
   }
 
+  // Standing discount (v2.3272): the customer's rate, read when the customer
+  // changes; the offer shows until it is applied or waved off on this job.
+  // Read loosely — before the push the columns don't exist and the select
+  // errors; that is "no standing discount", never a broken form.
+  const [customerStanding, setCustomerStanding] = useState<StandingDiscount | null>(null)
+  const [standingWaived, setStandingWaived] = useState(false)
+  useEffect(() => {
+    let cancelled = false
+    if (!customerId) {
+      setCustomerStanding(null)
+      return
+    }
+    void (async () => {
+      const { data, error } = await supabase
+        .from('customers')
+        .select('standing_discount_pct, standing_discount_reason')
+        .eq('id', customerId)
+        .maybeSingle()
+      if (cancelled) return
+      setCustomerStanding(error ? null : standingDiscountFromCustomer(data))
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [customerId])
+  useEffect(() => {
+    setStandingWaived((editing as { standing_discount_waived_at?: string | null } | null)?.standing_discount_waived_at != null)
+  }, [editing?.id])
+  const standingOffer = useMemo(
+    () => standingDiscountOffer({ standing: customerStanding, rows: fixtures, waived: standingWaived }),
+    [customerStanding, fixtures, standingWaived],
+  )
+  function applyStandingOffer() {
+    if (!standingOffer) return
+    const offer = standingOffer
+    setFixtures((prev) => applyStandingDiscount(prev, offer, crypto.randomUUID()))
+  }
+  function waiveStandingOffer() {
+    setStandingWaived(true)
+    if (editing?.id) {
+      void supabase
+        .from('jobs_ledger')
+        .update({ standing_discount_waived_at: new Date().toISOString() })
+        .eq('id', editing.id)
+        .then(({ error }) => {
+          if (error) console.warn('standing_discount_waived_at update failed', error)
+        })
+    }
+  }
+
   /** Discount rows (v2.3252+): a typed row that reduces the work above it; the placeholder row is reused when it is the only, empty one. */
   function addDiscountRow() {
     setFixtures((prev) => {
@@ -3948,6 +3998,10 @@ export default function JobFormModal({
             addFixtureRow={addFixtureRow}
             addDiscountRow={addDiscountRow}
             onSetJobTotal={setJobTotalFromTyped}
+            standingOffer={standingOffer}
+            standingOfferCustomerName={customerName}
+            onApplyStandingOffer={applyStandingOffer}
+            onWaiveStandingOffer={waiveStandingOffer}
             removeFixtureRow={removeFixtureRow}
             moveFixtureRow={moveFixtureRowInList}
             invoiceStatusById={fixtureInvoiceStatusById}

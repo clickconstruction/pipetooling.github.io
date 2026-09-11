@@ -54,4 +54,17 @@ describe('BillCustomerDiscountStrip', () => {
     expect((screen.getByText('Apply') as HTMLButtonElement).disabled).toBe(true)
     expect(screen.getByTestId('bill-discount-sentence').textContent).toContain('below what the bill is now')
   })
+
+  it('the standing-discount offer line (v2.3272): Use it fills the rate, the reason, and the whole job', () => {
+    renderWithProviders(
+      <BillCustomerDiscountStrip rows={rows} scopedIds={['a']} billAmount={15098} onApply={async () => {}} offer={{ pct: 5, reason: 'Repeat customer', customerName: 'Done Right Foundation' }} />,
+    )
+    fireEvent.click(screen.getByText('− Add discount'))
+    expect(screen.getByTestId('bill-discount-offer').textContent).toContain('Done Right Foundation gets 5%')
+    fireEvent.click(screen.getByText('Use it'))
+    expect((screen.getByLabelText(/Take off/) as HTMLInputElement).value).toBe('5%')
+    expect(screen.getByRole('button', { name: 'Repeat customer' }).getAttribute('aria-pressed')).toBe('true')
+    expect(screen.getByTestId('bill-discount-sentence').textContent).toContain('5% off all 3 work lines')
+    expect(screen.getByTestId('bill-discount-sentence').textContent).toContain('rides this bill')
+  })
 })

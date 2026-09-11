@@ -28,6 +28,10 @@ Agreed a number instead of a percent? Tap the **Job Total** under the list, type
 
 Already in **Bill Customer** with the customer on the phone? Press {{button:green|− Add discount}} by the amount. Two lines, in your own words: **Take off** `10%` or `500`, **or make this bill** `13,500`. A sentence tells you what it does and the new amount — *10% off Rough In · this draw only → $13,588.20* — and {{button:green|Apply}} writes the same discount row the Bill tab uses, updates the bill and the previews in place, and leaves the trail. A draw discounts its own lines; the whole-job bill discounts every line; *apply to the whole job instead* flips a draw's discount and says how much of it rides this bill.
 
+## A standing discount
+
+Some customers always get a rate — a repeat customer, a GC with a negotiated number. Put it on the customer once: **Customers → {{button:outline|Edit}} → Standing discount**, type `5`, tap the reason chip. From then on every new job and every bill for that customer offers it: *Done Right Foundation gets 5% (repeat customer, set on their card) — −$120.00 here* with {{button:green|Apply}} and *not on this job*. Nothing is added by itself: Apply writes the ordinary discount row (and the trail), *not on this job* waves it off for that job, and a job that already has any discount gets no offer — so a bid that was already cut is never cut twice. In Bill Customer the offer is the first line of {{button:green|− Add discount}}; **Use it** fills in the rate and the reason.
+
 ## What "follows each draw" means
 
 A discount follows the work it applies to. When you bill a stage, that stage's share of the discount rides on the same bill as a labeled line — *Negotiated discount (10%) −$1,509.80* with Rough In — and the draws together always add up to the whole discount to the cent. The customer sees the discount on every bill, never a mystery credit on the last one. The row itself shows the first few shares: *On the customer's bill: Negotiated discount (10%) −$1,509.80 with Rough In, −$1,509.80 with Top Out, −$754.90 with Trim Set*.
