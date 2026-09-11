@@ -60,6 +60,24 @@ describe('RobotNeedsSheet', () => {
     await waitFor(() => expect(onAnswer).toHaveBeenCalledWith('q-tier', 'Premium', undefined))
   })
 
+  it('every Edit bid lands on the field that fixes the gap — a plans ask and a no-plans gap both open on Job Plans (v2.3334)', () => {
+    const onEditBid = vi.fn()
+    const { unmount } = render(<RobotNeedsSheet bid={bid} questions={[plansAsk]} onClose={() => {}} onEditBid={onEditBid} onAnswer={vi.fn()} />)
+    const [beside, footer] = screen.getAllByRole('button', { name: 'Edit bid' })
+    fireEvent.click(beside!)
+    expect(onEditBid).toHaveBeenLastCalledWith(expect.objectContaining({ id: 'bid-378' }), { focus: 'plansLink' })
+    fireEvent.click(footer!)
+    expect(onEditBid).toHaveBeenLastCalledWith(expect.objectContaining({ id: 'bid-378' }), { focus: 'plansLink' })
+    unmount()
+
+    const noPlans = { ...bid, plans_link: null, plans_robot_readable: null } as unknown as Bid
+    render(<RobotNeedsSheet bid={noPlans} questions={[]} onClose={() => {}} onEditBid={onEditBid} onAnswer={vi.fn()} />)
+    expect(screen.getByText('No plans link')).toBeTruthy()
+    const [gapDoor] = screen.getAllByRole('button', { name: 'Edit bid' })
+    fireEvent.click(gapDoor!)
+    expect(onEditBid).toHaveBeenLastCalledWith(expect.objectContaining({ id: 'bid-378' }), { focus: 'plansLink' })
+  })
+
   it('"Skip this bid" answers the plans ask without a rerun request', async () => {
     const onAnswer = vi.fn().mockResolvedValue(true)
     render(<RobotNeedsSheet bid={bid} questions={[plansAsk]} onClose={() => {}} onEditBid={() => {}} onAnswer={onAnswer} />)

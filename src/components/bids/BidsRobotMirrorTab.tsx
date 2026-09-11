@@ -22,6 +22,7 @@ import { fetchAllRowsChunkedIn } from '../../lib/supabasePaging'
 import type { ShadowRunRow } from '../../lib/bids/shadowStory'
 import { bestEffortStamp } from '../../lib/bids/bestEffort'
 import type { RobotRowState } from '../../lib/bids/robotRowState'
+import { needsDoorFor } from '../../lib/bids/bidFormFocus'
 import { diffTakeoffs, diffWaterfall, type DiffWaterfall } from '../../lib/bids/takeoffDiff'
 import { loadPricedTakeoffRows } from '../../lib/bids/loadPricedTakeoffRows'
 import { ROBOT_ICON_PATH, ROBOT_STATE_COLOR } from './RobotGlyph'
@@ -57,6 +58,8 @@ type BidsRobotMirrorTabProps = {
   onReviewNow: (source: BidWithBuilder, run: RobotMirrorRun) => void
   /** A 'needs' row's door: the bid's robot needs sheet (gaps with fixes, Copy intake address, answers). */
   onOpenNeeds?: (bid: BidWithBuilder) => void
+  /** v2.3334: a 'needs' row whose only fix is pasting the plans skips the sheet — Edit bid, landed on Job Plans. Falls back to onOpenNeeds when absent. */
+  onPasteThePlans?: (bid: BidWithBuilder) => void
   /** A queued / working / sealed row's door: the robot status sheet (timeline, Front of the line). */
   onOpenStatus?: (bid: BidWithBuilder) => void
   /** A sealed run on a bid sent without a value: Edit Bid with the value field focused, so it can score. */
@@ -137,7 +140,7 @@ type RowDetail = { loading: boolean; waterfall: DiffWaterfall | null; why: strin
  * gets an "Add bid value" door; a scored row expands into where the delta lives
  * and the robot's own note; the strip speaks in plain words.
  */
-export function BidsRobotMirrorTab({ bids, robotBids, auditPending, loading, highlightBidId, rowStateFor, onEditBid, onCompare, onOpenShell, onOpenAudit, onReviewNow, onOpenNeeds, onOpenStatus, onAddBidValue, onOpenScoreboard, onRowCount }: BidsRobotMirrorTabProps) {
+export function BidsRobotMirrorTab({ bids, robotBids, auditPending, loading, highlightBidId, rowStateFor, onEditBid, onCompare, onOpenShell, onOpenAudit, onReviewNow, onOpenNeeds, onPasteThePlans, onOpenStatus, onAddBidValue, onOpenScoreboard, onRowCount }: BidsRobotMirrorTabProps) {
   const [shadowRuns, setShadowRuns] = useState<ShadowRunRow[] | null>(null)
   const [scores, setScores] = useState<RunScoreRow[] | null>(null)
   const [audits, setAudits] = useState<MirrorAuditRow[]>([])
@@ -385,7 +388,17 @@ export function BidsRobotMirrorTab({ bids, robotBids, auditPending, loading, hig
               <span style={{ borderRadius: 4, padding: '1px 6px', fontSize: '0.66rem', fontWeight: 600, background: CHIP_TONES[chip.tone].bg, color: CHIP_TONES[chip.tone].fg }}>{chip.text}</span>
             ) : null}
             {needs && lead && onOpenNeeds ? (
-              <button type="button" onClick={() => onOpenNeeds(row.bid)} style={{ ...linkBtn, fontWeight: 600, color: 'var(--text-amber-800)' }}>{needsDoorLabel(run)} →</button>
+              <button
+                type="button"
+                onClick={() => {
+                  if (needsDoorFor(run.need).kind === 'edit-bid' && onPasteThePlans) onPasteThePlans(row.bid)
+                  else onOpenNeeds(row.bid)
+                }}
+                title={needsDoorFor(run.need).kind === 'edit-bid' && onPasteThePlans ? 'Opens Edit bid on the Job Plans field' : undefined}
+                style={{ ...linkBtn, fontWeight: 600, color: 'var(--text-amber-800)' }}
+              >
+                {needsDoorLabel(run)} →
+              </button>
             ) : null}
             {sentWithoutValue && onAddBidValue ? (
               <button type="button" onClick={() => onAddBidValue(row.bid)} title="The robot's number scores the moment a bid value is on the record" style={{ ...linkBtn, fontWeight: 600 }}>Add bid value →</button>
