@@ -3,6 +3,8 @@ import { recordNavClick } from '../lib/navClickTelemetry'
 import { denverCalendarDayKey, ymdAddDays } from '../utils/dateUtils'
 import { loadJobDayLedger } from '../lib/jobs/loadJobDayLedger'
 import { deserializeJobDayLedger, serializeJobDayLedger, type JobDayLedger, type JobDayLedgerSerialized, type JobOverheadMethod } from '../lib/jobs/jobDayLedger'
+import { overheadAllocationSettingsEqual, type OverheadAllocationSettings } from '../lib/jobs/overheadAllocation'
+import { useOverheadAllocationSettings } from './useOverheadAllocationSettings'
 import {
   JOB_SUMMARY_VIEW_STORAGE_KEY,
   compareJobSummaryTotals,
@@ -57,6 +59,21 @@ export type JobSummaryViewBundle<R extends JobSummaryLedgerRowInput> = {
   /** Cut by (v2.2820): the visible rows grouped and ranked; empty when the cut is "none". */
   groups: JobSummaryGroup<R>[]
   concentration: JobSummaryConcentration
+  /** The overhead allocation in force (v2.3259): the dev's per-device dials when set, else the app default. */
+  overhead: JobSummaryOverheadBundle
+}
+
+export type JobSummaryOverheadBundle = {
+  settings: OverheadAllocationSettings
+  appDefault: OverheadAllocationSettings
+  /** True while this device explores settings other than the app default. */
+  isOverride: boolean
+  appDefaultLoaded: boolean
+  saving: boolean
+  /** Explore on this device only (null = back to the app default). */
+  explore: (s: OverheadAllocationSettings | null) => void
+  /** Write the app default for everyone (devs; RLS enforces) and stop exploring. */
+  saveAppDefault: (s: OverheadAllocationSettings) => Promise<void>
 }
 
 export type JobSummaryCompareBundle = {
@@ -207,9 +224,25 @@ export function useJobSummaryView<R extends JobSummaryLedgerRowInput & { job: { 
   const cmp = useJobDayLedgerWindow({ enabled: enabled && compareWindow != null, userId, startYmd: compareWindow?.startYmd ?? startYmd, endYmd: compareWindow?.endYmd ?? endYmd, reloadTick })
 
   const method: JobOverheadMethod = prefs.method
+  // Overhead allocation (v2.3259): the app default for everyone; a dev may explore other settings on this device.
+  const overheadApp = useOverheadAllocationSettings(enabled)
+  const overheadSettings = prefs.overheadDials ?? overheadApp.appDefault
+  const overheadIsOverride = prefs.overheadDials != null && !overheadAllocationSettingsEqual(prefs.overheadDials, overheadApp.appDefault)
+  const explore = useCallback((s: OverheadAllocationSettings | null) => setPrefs({ overheadDials: s }), [setPrefs])
+  const saveAppDefault = useCallback(
+    async (s: OverheadAllocationSettings) => {
+      await overheadApp.saveAppDefault(s)
+      setPrefs({ overheadDials: null })
+    },
+    [overheadApp, setPrefs],
+  )
+  const overhead = useMemo<JobSummaryOverheadBundle>(
+    () => ({ settings: overheadSettings, appDefault: overheadApp.appDefault, isOverride: overheadIsOverride, appDefaultLoaded: overheadApp.loaded, saving: overheadApp.saving, explore, saveAppDefault }),
+    [overheadSettings, overheadApp.appDefault, overheadApp.loaded, overheadApp.saving, overheadIsOverride, explore, saveAppDefault],
+  )
   const enriched = useMemo(
-    () => enrichJobSummaryRows({ rows, reportPctByJobId, ledger: ledgerForWindow, method, targetMarginPct: prefs.targetTrueMarginPct }),
-    [rows, reportPctByJobId, ledgerForWindow, method, prefs.targetTrueMarginPct],
+    () => enrichJobSummaryRows({ rows, reportPctByJobId, ledger: ledgerForWindow, method, targetMarginPct: prefs.targetTrueMarginPct, settings: overheadSettings }),
+    [rows, reportPctByJobId, ledgerForWindow, method, prefs.targetTrueMarginPct, overheadSettings],
   )
   const visible = useMemo(
     () => filterAndSortJobSummaryRows({ rows: enriched, prefs, search, startYmd, endYmd }),
@@ -234,7 +267,7 @@ export function useJobSummaryView<R extends JobSummaryLedgerRowInput & { job: { 
     openRecordedRef.current = true
     recordNavClick(userId, role ?? null, 'job-summary-view', `/jobs?tab=job-summary&status=${prefs.status}&revenue=${totals.earnedRows > 0 ? 'earned' : 'contract'}`)
   }, [enabled, userId, role, rows.length, prefs.status, totals.earnedRows])
-  const hygiene = useMemo(() => jobSummaryHygiene(ledgerForWindow), [ledgerForWindow])
+  const hygiene = useMemo(() => jobSummaryHygiene(ledgerForWindow, overheadSettings), [ledgerForWindow, overheadSettings])
 
   const cutCtx = useMemo(() => ({ userNameById }), [userNameById])
   const groups = useMemo(() => groupJobSummaryRows(visible, prefs.cutBy, cutCtx), [visible, prefs.cutBy, cutCtx])
@@ -242,12 +275,12 @@ export function useJobSummaryView<R extends JobSummaryLedgerRowInput & { job: { 
 
   const compare = useMemo<JobSummaryCompareBundle | null>(() => {
     if (!compareWindow) return null
-    const enrichedPrior = enrichJobSummaryRows({ rows, reportPctByJobId, ledger: cmp.ledger, method, targetMarginPct: prefs.targetTrueMarginPct })
+    const enrichedPrior = enrichJobSummaryRows({ rows, reportPctByJobId, ledger: cmp.ledger, method, targetMarginPct: prefs.targetTrueMarginPct, settings: overheadSettings })
     const visiblePrior = filterAndSortJobSummaryRows({ rows: enrichedPrior, prefs, search, startYmd: compareWindow.startYmd, endYmd: compareWindow.endYmd })
     const priorTotals = summarizeJobSummaryRows(visiblePrior)
     const trueMarginPctByGroupKey = new Map(groupJobSummaryRows(visiblePrior, prefs.cutBy, cutCtx).map((g) => [g.key, g.totals.trueMarginPct]))
     return { ...compareWindow, rows: visiblePrior, ledger: cmp.ledger, totals: priorTotals, comparison: compareJobSummaryTotals(totals, priorTotals), trueMarginPctByGroupKey, ledgerLoading: cmp.loading, ledgerError: cmp.error }
-  }, [compareWindow, rows, reportPctByJobId, cmp.ledger, cmp.loading, cmp.error, method, prefs, search, totals, cutCtx])
+  }, [compareWindow, rows, reportPctByJobId, cmp.ledger, cmp.loading, cmp.error, method, prefs, search, totals, cutCtx, overheadSettings])
 
-  return { prefs, setPrefs, toggleSort, startYmd, endYmd, ledger: ledgerForWindow, ledgerLoading, ledgerError, reloadLedger, rows: visible, allRows: enriched, totals, hiddenByStatus, hygiene, compare, groups, concentration }
+  return { prefs, setPrefs, toggleSort, startYmd, endYmd, ledger: ledgerForWindow, ledgerLoading, ledgerError, reloadLedger, rows: visible, allRows: enriched, totals, hiddenByStatus, hygiene, compare, groups, concentration, overhead }
 }

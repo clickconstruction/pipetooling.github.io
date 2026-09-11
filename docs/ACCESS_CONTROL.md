@@ -5,7 +5,7 @@ file: ACCESS_CONTROL.md
 type: Reference Matrix
 purpose: Complete role-based permissions matrix and access control patterns
 audience: Developers, Security Auditors, AI Agents
-last_updated: 2026-09-09
+last_updated: 2026-09-10
 estimated_read_time: 15-20 minutes
 difficulty: Intermediate
 
@@ -1284,3 +1284,7 @@ Rules for every RPC, existing or new:
 Phase 1 of [`ONE_COMPANY_PLAN.md`](ONE_COMPANY_PLAN.md): the office is one company at the database. `master_user_id` no longer decides who sees a customer, project, job, bid or estimate, and assistants are no longer adopted per master — every office role (`is_office_staff()`: dev, master/leader, assistant, controller) passes the shared predicates (`master_adopted_current_user`, `assistants_share_master`, `can_see_sharing_master`, `master_shared_current_user`, the `can_access_project*` family, `user_can_access_estimate`). The owner-equality triggers on `jobs_ledger` are no-ops and `apply_estimate_to_job` / `create_job_from_estimate` no longer refuse across owners. New rows are stamped with `company_owner_user_id()` — a settings row (`app_settings.company_owner_user_id`), never a hand-picked person. Since v2.2984 every existing row is filed under it too (Phase 4 backfill), and since v2.2987 `master_assistants` / `master_shares` are **views** computed from `users` (every live dev/master × every live assistant, controller or estimator; every dev/master × every other) — the synced tables were renamed `retired_*` and dropped the same day (v2.2999). Any function or policy that still names the pair gets the office-wide answer by rule.
 
 Unchanged: superintendents (assigned projects only, v2.2836), primaries (`master_primaries`, customer-side), helpers / subcontractors (`jobs_ledger_team_members`), estimators (own rows + service types), the customer / GC / sub portals, and `pay_approved_masters` (pay access stays a grant). The "Ownership, Adoption, Sharing" sections above describe the pre-v2.2967 shape and are rewritten in Phase 3, when the client stops picking owners and the role copy says "leader".
+
+## Job Summary overhead dials (v2.3259)
+
+The overhead allocation Job Summary charges from (`app_settings.overhead_allocation_v1`: smoothing window · carry share · idle cap · open definition) is **one org-wide setting**. Reads: every authenticated role, through the existing "Authenticated users can read app settings" policy — but the chip that names the constants sits behind the pay lockdown (`showMoney`: dev, master/leader, controller), like every overhead figure. Writes: **dev only** — the ⚙ dials and *Use for everyone* render only for `authRole === 'dev'` on the client, and the "Devs can manage app settings" policy (`is_dev()`) enforces it at the database. A dev's exploration of other settings is per device (localStorage) and never changes what anyone else sees.

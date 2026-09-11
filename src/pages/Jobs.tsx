@@ -2061,6 +2061,7 @@ export default function Jobs() {
           setPrintCostBreakdownJobId={setPrintCostBreakdownJobId}
           canAccessBankingForParts={canAccessBankingForParts}
           showTeamLaborAndProfit={authRole === 'dev' || authRole === 'master_technician' || authRole === 'controller'}
+          canEditOverheadDials={authRole === 'dev'}
           nicknameByDebitCard={nicknameByDebitCard}
           tallyPartsLoading={tallyPartsLoading}
           laborJobsLoading={laborJobsLoading}

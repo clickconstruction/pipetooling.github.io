@@ -427,6 +427,8 @@ export type JobsJobSummaryTabProps = {
   /** Team Labor $ and profit derive from wages — masters/devs only (pay lockdown v2.660);
    * other viewers see '—' so a wage-less $0 never masquerades as a real figure. */
   showTeamLaborAndProfit: boolean
+  /** The overhead dials (v2.3259): devs only. */
+  canEditOverheadDials?: boolean
   nicknameByDebitCard: Record<string, string>
   tallyPartsLoading: boolean
   laborJobsLoading: boolean
@@ -485,6 +487,7 @@ export default function JobsJobSummaryTab({
   setPrintCostBreakdownJobId,
   canAccessBankingForParts,
   showTeamLaborAndProfit,
+  canEditOverheadDials = false,
   nicknameByDebitCard,
   tallyPartsLoading,
   laborJobsLoading,
@@ -501,7 +504,7 @@ export default function JobsJobSummaryTab({
           {jobSummaryLedgerError && (
             <p style={{ color: 'var(--text-red-700)', marginBottom: '1rem' }}>{jobSummaryLedgerError}</p>
           )}
-          <JobSummaryLedgerToolbar view={view} search={jobSummarySearch} setSearch={setJobSummarySearch} showMoney={showTeamLaborAndProfit} />
+          <JobSummaryLedgerToolbar view={view} search={jobSummarySearch} setSearch={setJobSummarySearch} showMoney={showTeamLaborAndProfit} canEditOverheadDials={canEditOverheadDials} />
           {/* Job Summary uses jobSummaryLedgerJobs, not the Stages/Billing/Parts jobs list — do not gate on jobsListLoading or it stays true when users open this tab first. */}
           {view.prefs.view === 'timeline' ? (
             <JobSummaryTimelineView
@@ -937,7 +940,11 @@ export default function JobsJobSummaryTab({
                                   <details style={{ margin: '0.5rem 0 0.75rem' }} onClick={(e) => e.stopPropagation()}>
                                     <summary style={{ cursor: 'pointer', fontWeight: 600, color: 'var(--text-700)' }}>
                                       Overhead — the math: <AmountSmallCents value={enriched.overheadUsd} /> by {overheadMethodLabel}
-                                      {view.prefs.method === 'day' ? ` over ${enriched.daysInWindow} ${enriched.daysInWindow === 1 ? 'day' : 'days'}` : ''}
+                                      {view.prefs.method === 'day'
+                                        ? enriched.overheadCarryUsd > 0
+                                          ? ` over ${enriched.daysInWindow} field ${enriched.daysInWindow === 1 ? 'day' : 'days'} · ${enriched.overheadOpenDays} open ${enriched.overheadOpenDays === 1 ? 'day' : 'days'}`
+                                          : ` over ${enriched.daysInWindow} ${enriched.daysInWindow === 1 ? 'day' : 'days'}`
+                                        : ''}
                                       {' → true profit '}
                                       <strong style={{ color: enriched.trueProfitUsd != null && enriched.trueProfitUsd < 0 ? 'var(--text-red-700)' : 'var(--text-green-700)' }}>
                                         <AmountSmallCents value={enriched.trueProfitUsd ?? 0} />
@@ -946,7 +953,7 @@ export default function JobsJobSummaryTab({
                                     <div style={jobSummaryCostSectionBodyStyle}>
                                       {view.prefs.method === 'day' ? (
                                         enriched.overheadLines.length === 0 ? (
-                                          <p style={{ margin: '0.35rem 0', color: 'var(--text-muted)' }}>No approved field hours on this job inside the window, so no overhead is charged.</p>
+                                          <p style={{ margin: '0.35rem 0', color: 'var(--text-muted)' }}>No approved field hours on this job inside the window{view.overhead.settings.carryShare > 0 ? ', and no days it counted as open' : ''}, so no overhead is charged.</p>
                                         ) : (
                                           <table style={{ borderCollapse: 'collapse', fontSize: '0.78rem', marginTop: '0.35rem' }}>
                                             <thead>
@@ -954,17 +961,32 @@ export default function JobsJobSummaryTab({
                                                 <th style={{ textAlign: 'left', padding: '0.2rem 0.6rem 0.2rem 0' }}>Day</th>
                                                 <th style={{ textAlign: 'right', padding: '0.2rem 0.6rem' }}>Job h</th>
                                                 <th style={{ textAlign: 'right', padding: '0.2rem 0.6rem' }}>Of field h</th>
-                                                <th style={{ textAlign: 'right', padding: '0.2rem 0.6rem' }}>Day’s pool</th>
+                                                <th style={{ textAlign: 'right', padding: '0.2rem 0.6rem' }}>{enriched.overheadLines.some((l) => l.activityUsd != null) ? 'Landed that day' : 'Day’s pool'}</th>
+                                                {enriched.overheadCarryUsd > 0 ? (
+                                                  <>
+                                                    <th style={{ textAlign: 'right', padding: '0.2rem 0.6rem' }}>By hours</th>
+                                                    <th style={{ textAlign: 'right', padding: '0.2rem 0.6rem' }}>Carry</th>
+                                                  </>
+                                                ) : null}
                                                 <th style={{ textAlign: 'right', padding: '0.2rem 0 0.2rem 0.6rem' }}>Share</th>
                                               </tr>
                                             </thead>
                                             <tbody>
                                               {enriched.overheadLines.map((l) => (
-                                                <tr key={l.ymd}>
-                                                  <td style={{ padding: '0.15rem 0.6rem 0.15rem 0', whiteSpace: 'nowrap' }}>{formatWorkDateYmdWeekdayLongFriendly(l.ymd)}</td>
-                                                  <td style={{ textAlign: 'right', padding: '0.15rem 0.6rem', fontVariantNumeric: 'tabular-nums' }}>{l.jobHours.toFixed(1)}</td>
+                                                <tr key={l.ymd} style={l.jobHours > 0 ? undefined : { color: 'var(--text-muted)' }}>
+                                                  <td style={{ padding: '0.15rem 0.6rem 0.15rem 0', whiteSpace: 'nowrap' }}>
+                                                    {formatWorkDateYmdWeekdayLongFriendly(l.ymd)}
+                                                    {l.jobHours > 0 ? '' : ' · open, not worked'}
+                                                  </td>
+                                                  <td style={{ textAlign: 'right', padding: '0.15rem 0.6rem', fontVariantNumeric: 'tabular-nums' }}>{l.jobHours > 0 ? l.jobHours.toFixed(1) : '—'}</td>
                                                   <td style={{ textAlign: 'right', padding: '0.15rem 0.6rem', fontVariantNumeric: 'tabular-nums' }}>{l.fieldHours.toFixed(1)}</td>
                                                   <td style={{ textAlign: 'right', padding: '0.15rem 0.6rem', fontVariantNumeric: 'tabular-nums' }}><AmountSmallCents value={l.poolUsd} /></td>
+                                                  {enriched.overheadCarryUsd > 0 ? (
+                                                    <>
+                                                      <td style={{ textAlign: 'right', padding: '0.15rem 0.6rem', fontVariantNumeric: 'tabular-nums' }}><AmountSmallCents value={l.activityUsd ?? l.shareUsd} /></td>
+                                                      <td style={{ textAlign: 'right', padding: '0.15rem 0.6rem', fontVariantNumeric: 'tabular-nums' }}><AmountSmallCents value={l.carryUsd ?? 0} /></td>
+                                                    </>
+                                                  ) : null}
                                                   <td style={{ textAlign: 'right', padding: '0.15rem 0 0.15rem 0.6rem', fontVariantNumeric: 'tabular-nums', fontWeight: 600 }}><AmountSmallCents value={l.shareUsd} /></td>
                                                 </tr>
                                               ))}
@@ -981,7 +1003,11 @@ export default function JobsJobSummaryTab({
                                         </p>
                                       )}
                                       <p style={{ margin: '0.35rem 0 0', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                                        Pool = office labor + bid labor + office parts (internal transfers excluded), the same pool People → Overhead shows. Only approved, closed field sessions inside the window count
+                                        Pool = office labor + bid labor + office parts (internal transfers excluded), the same pool People → Overhead shows.
+                                        {view.prefs.method === 'day' && view.overhead.settings.smoothDays > 1
+                                          ? ` Each day's pool is shared by the field hours of the following ${view.overhead.settings.smoothDays} days${view.overhead.settings.carryShare > 0 ? `; ${Math.round(view.overhead.settings.carryShare * 100)}% of it is carried equally by the jobs open on those days${view.overhead.settings.idleCapDays != null ? ` (a job stops carrying after ${view.overhead.settings.idleCapDays} days without field time)` : ''}` : ''}.`
+                                          : ''}
+                                        {' '}Only approved, closed field sessions inside the window count
                                         {enriched.priorHours > 0 ? `; ${enriched.priorHours.toFixed(1)} h before the window are not charged.` : '.'}
                                       </p>
                                     </div>

@@ -9,11 +9,11 @@ import type { JobSummaryScatterColorBy, JobSummaryScatterSizeBy } from './jobSum
 import {
   allocateJobOverheadDayShare,
   jobOverheadByMethod,
-  unallocatedJobDayOverhead,
   type JobDayLedger,
   type JobOverheadDayLine,
   type JobOverheadMethod,
 } from './jobDayLedger'
+import { buildOverheadAllocation, normalizeOverheadAllocationSettings, type OverheadAllocationSettings } from './overheadAllocation'
 
 /**
  * Job Summary ledger view (v2.2692): the pure layer between the page's P&L
@@ -111,6 +111,8 @@ export type JobSummaryViewPrefs = {
   /** Scatter view (v2.2826): color and bubble size. */
   scatterColorBy: JobSummaryScatterColorBy
   scatterSizeBy: JobSummaryScatterSizeBy
+  /** Overhead dials (v2.3259, dev): a per-device exploration of the allocation settings; null = follow the app default. */
+  overheadDials: OverheadAllocationSettings | null
 }
 
 export const JOB_SUMMARY_VIEW_STORAGE_KEY = 'jobs_jobSummary_view_v1'
@@ -131,6 +133,7 @@ export const JOB_SUMMARY_VIEW_DEFAULTS: JobSummaryViewPrefs = {
   monthsBookBy: 'work',
   scatterColorBy: 'trade',
   scatterSizeBy: 'hours',
+  overheadDials: null,
 }
 
 export const JOB_SUMMARY_VIEW_MODE_OPTIONS: ReadonlyArray<{ key: JobSummaryViewMode; label: string; title: string }> = [
@@ -187,6 +190,7 @@ export function readJobSummaryViewPrefs(raw: string | null): JobSummaryViewPrefs
       monthsBookBy: p.monthsBookBy === 'bill' ? 'bill' : 'work',
       scatterColorBy: p.scatterColorBy === 'gc' || p.scatterColorBy === 'tech' ? p.scatterColorBy : 'trade',
       scatterSizeBy: p.scatterSizeBy === 'days' || p.scatterSizeBy === 'none' ? p.scatterSizeBy : 'hours',
+      overheadDials: p.overheadDials && typeof p.overheadDials === 'object' ? normalizeOverheadAllocationSettings(p.overheadDials) : null,
     }
   } catch {
     return { ...JOB_SUMMARY_VIEW_DEFAULTS }
@@ -343,6 +347,10 @@ export type JobSummaryEnrichedRow<R extends JobSummaryLedgerRowInput = JobSummar
   /** Null until the day ledger has loaded (or when the chosen lens has no denominator). */
   overheadUsd: number | null
   overheadLines: JobOverheadDayLine[]
+  /** The day-share split (v2.3259): what the job paid for its hours and for being open; days it was charged carry. */
+  overheadActivityUsd: number
+  overheadCarryUsd: number
+  overheadOpenDays: number
   trueProfitUsd: number | null
   trueMarginPct: number | null
   /** Revenue ÷ approved field hours in the window (v2.2820); null without hours. */
@@ -372,8 +380,10 @@ export function enrichJobSummaryRows<R extends JobSummaryLedgerRowInput>(args: {
   method: JobOverheadMethod
   /** The Target chip (0 = off); the burn budget = contract × (1 − target), default 35 %. */
   targetMarginPct?: number
+  /** The overhead allocation in force (v2.3259); omitted = the original day-share. */
+  settings?: OverheadAllocationSettings
 }): JobSummaryEnrichedRow<R>[] {
-  const { rows, reportPctByJobId, ledger, method } = args
+  const { rows, reportPctByJobId, ledger, method, settings } = args
   const targetMarginPct = args.targetMarginPct ?? 0
   return rows.map((row) => {
     const job = row.job
@@ -414,13 +424,21 @@ export function enrichJobSummaryRows<R extends JobSummaryLedgerRowInput>(args: {
     let priorHours = 0
     let overheadUsd: number | null = null
     let overheadLines: JobOverheadDayLine[] = []
+    let overheadActivityUsd = 0
+    let overheadCarryUsd = 0
+    let overheadOpenDays = 0
     if (ledger) {
-      const share = allocateJobOverheadDayShare(ledger, job.id)
+      const share = allocateJobOverheadDayShare(ledger, job.id, settings)
       hoursInWindow = share.hoursInWindow
       daysInWindow = share.daysInWindow
       overheadLines = share.lines
+      for (const l of share.lines) {
+        overheadActivityUsd += l.activityUsd ?? l.shareUsd
+        overheadCarryUsd += l.carryUsd ?? 0
+        if ((l.carryUsd ?? 0) > 0) overheadOpenDays += 1
+      }
       priorHours = ledger.priorHoursByJob.get(job.id) ?? 0
-      overheadUsd = method === 'day' ? share.overheadUsd : jobOverheadByMethod(ledger, job.id, method, { revenueUsd })
+      overheadUsd = method === 'day' ? share.overheadUsd : jobOverheadByMethod(ledger, job.id, method, { revenueUsd, settings })
       if (!(hoursInWindow > 0)) flags.push('no-hours')
       if (priorHours > 0) flags.push('prior-hours')
     }
@@ -454,6 +472,9 @@ export function enrichJobSummaryRows<R extends JobSummaryLedgerRowInput>(args: {
       priorHours,
       overheadUsd,
       overheadLines,
+      overheadActivityUsd,
+      overheadCarryUsd,
+      overheadOpenDays,
       trueProfitUsd,
       trueMarginPct,
       revenuePerHourUsd: hoursInWindow > 0 ? revenueUsd / hoursInWindow : null,
@@ -719,12 +740,31 @@ export type JobSummaryHygiene = {
   unallocatedDays: number
   pendingFieldSessions: number
   pendingFieldHours: number
+  /** The allocation's reconciliation over the window (v2.3259): pool + carried in = by hours + carry + nobody + in flight. */
+  poolUsd: number
+  carriedInUsd: number
+  activityUsd: number
+  carryUsd: number
+  inFlightUsd: number
+  reconciles: boolean
 }
 
-export function jobSummaryHygiene(ledger: JobDayLedger | null): JobSummaryHygiene | null {
+export function jobSummaryHygiene(ledger: JobDayLedger | null, settings?: OverheadAllocationSettings): JobSummaryHygiene | null {
   if (!ledger) return null
-  const un = unallocatedJobDayOverhead(ledger)
-  return { unallocatedUsd: un.usd, unallocatedDays: un.days, pendingFieldSessions: ledger.pendingFieldSessions, pendingFieldHours: ledger.pendingFieldHours }
+  const t = buildOverheadAllocation(ledger, settings).totals
+  const reconciles = Math.abs(t.poolUsd + t.carriedInUsd - (t.chargedUsd + t.unallocatedUsd + t.inFlightUsd)) <= 0.01
+  return {
+    unallocatedUsd: t.unallocatedUsd,
+    unallocatedDays: t.unallocatedDays,
+    pendingFieldSessions: ledger.pendingFieldSessions,
+    pendingFieldHours: ledger.pendingFieldHours,
+    poolUsd: t.poolUsd,
+    carriedInUsd: t.carriedInUsd,
+    activityUsd: t.activityUsd,
+    carryUsd: t.carryUsd,
+    inFlightUsd: t.inFlightUsd,
+    reconciles,
+  }
 }
 
 // ---- Cut by (v2.2820) ----

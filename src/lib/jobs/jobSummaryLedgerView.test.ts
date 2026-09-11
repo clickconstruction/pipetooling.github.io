@@ -92,7 +92,12 @@ describe('prefs + window', () => {
       monthsBookBy: 'work',
       scatterColorBy: 'trade',
       scatterSizeBy: 'hours',
+      overheadDials: null,
     })
+    // v2.3259: a dev's exploration of the overhead dials is normalized field by field; junk → null (follow the app default).
+    expect(readJobSummaryViewPrefs(JSON.stringify({ overheadDials: { smoothDays: 30, carryShare: 0.2, idleCapDays: 14, openDef: 'status' } })).overheadDials).toEqual({ smoothDays: 30, carryShare: 0.2, idleCapDays: 14, openDef: 'status' })
+    expect(readJobSummaryViewPrefs(JSON.stringify({ overheadDials: { smoothDays: 500, carryShare: -1 } })).overheadDials).toEqual({ smoothDays: 60, carryShare: 0, idleCapDays: null, openDef: 'status' })
+    expect(readJobSummaryViewPrefs(JSON.stringify({ overheadDials: 'nope' })).overheadDials).toBeNull()
     expect(readJobSummaryViewPrefs(JSON.stringify({ view: 'scatter', scatterColorBy: 'gc', scatterSizeBy: 'none' }))).toMatchObject({ view: 'scatter', scatterColorBy: 'gc', scatterSizeBy: 'none' })
     expect(readJobSummaryViewPrefs(JSON.stringify({ view: 'months', monthsBookBy: 'bill' }))).toMatchObject({ view: 'months', monthsBookBy: 'bill' })
     expect(readJobSummaryViewPrefs(JSON.stringify({ view: 'cycle' }))).toMatchObject({ view: 'cycle' })
@@ -250,8 +255,14 @@ describe('filter + sort + totals', () => {
     expect(t.earnedRows).toBe(0)
   })
 
-  it('reports unallocated overhead and pending sessions from the ledger', () => {
-    expect(jobSummaryHygiene(ledger)).toEqual({ unallocatedUsd: 90, unallocatedDays: 1, pendingFieldSessions: 2, pendingFieldHours: 9 })
+  it('reports unallocated overhead and pending sessions from the ledger, plus the reconciliation (v2.3259)', () => {
+    const h = jobSummaryHygiene(ledger)!
+    expect(h).toMatchObject({ unallocatedUsd: 90, unallocatedDays: 1, pendingFieldSessions: 2, pendingFieldHours: 9, carryUsd: 0, inFlightUsd: 0, carriedInUsd: 0, reconciles: true })
+    expect(h.poolUsd).toBeCloseTo(h.activityUsd + h.carryUsd + h.unallocatedUsd + h.inFlightUsd, 6)
+    // Under the recommended allocation the quiet day's pool lands on later hours instead.
+    const r = jobSummaryHygiene(ledger, { smoothDays: 30, carryShare: 0.2, idleCapDays: 14, openDef: 'status' })!
+    expect(r.reconciles).toBe(true)
+    expect(r.unallocatedUsd).toBeLessThan(90)
     expect(jobSummaryHygiene(null)).toBeNull()
   })
 })

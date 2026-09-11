@@ -27,6 +27,8 @@ export const APP_SETTINGS_KEY_OFFICE_ADDRESS_V1 = 'office_address_v1' as const
 
 /** UUID of `jobs_ledger.id` for People → Overhead “office job” (non–revenue work bucket). Dev writes; readers use Overhead tab. */
 export const APP_SETTINGS_KEY_OVERHEAD_OFFICE_JOB_LEDGER_ID_V1 = 'overhead_office_job_ledger_id_v1' as const
+/** Job Summary overhead allocation (v2.3259): JSON `{ smoothDays, carryShare, idleCapDays, openDef }` in `value_text`; absent = the original day-share. Dev-managed. */
+export const APP_SETTINGS_KEY_OVERHEAD_ALLOCATION_V1 = 'overhead_allocation_v1' as const
 
 /**
  * JSON in `value_text`: physical invoice footer presets (`v: 2` — builtins/alternate/custom/defaultPresetId).
