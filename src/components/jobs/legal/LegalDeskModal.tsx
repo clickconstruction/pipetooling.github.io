@@ -444,16 +444,16 @@ export default function LegalDeskModal(props: LegalDeskModalProps) {
 
                 {packet && w ? (
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 8, margin: '12px 0 0' }}>
-                    {[
+                    {([
                       { label: 'Theory', value: packet.theory.label, sub: packet.theory.basis },
                       { label: 'If every dollar lands', value: formatLegalMoney(w.balance), sub: `less ${Math.round(w.contingencyPct * 100)}% (${formatLegalMoney(w.fee)}) and ${formatLegalMoney(w.filingCost)} costs` },
                       { label: 'Click keeps', value: formatLegalMoney(w.net), sub: w.verdict, tone: w.verdict === 'worth it' ? 'ok' : w.verdict === 'marginal' ? 'warn' : 'stop' },
                       { label: 'Against pursuing', value: w.flags.length ? w.flags.join(' · ') : 'nothing on record', sub: w.flags.length ? '' : 'no dispute, no broken promise, no “no money” note' },
-                    ].map((c) => (
+                    ] as Array<{ label: string; value: string; sub: string; tone?: Tone }>).map((c) => (
                       <div key={c.label} style={{ border: '1px solid var(--border)', borderRadius: 6, padding: '8px 10px', background: 'var(--surface)' }}>
                         <div style={{ ...MUTED, fontSize: '0.66rem', letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 2 }}>{c.label}</div>
-                        <div style={{ fontSize: '0.92rem', fontWeight: 600, display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>{c.value}{'tone' in c && c.tone ? pill(String(c.sub), c.tone as Tone) : null}</div>
-                        {!('tone' in c) && c.sub ? <div style={{ ...MUTED, fontSize: '0.72rem' }}>{c.sub}</div> : null}
+                        <div style={{ fontSize: '0.92rem', fontWeight: 600, display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>{c.value}{c.tone ? pill(c.sub, c.tone) : null}</div>
+                        {!c.tone && c.sub ? <div style={{ ...MUTED, fontSize: '0.72rem' }}>{c.sub}</div> : null}
                       </div>
                     ))}
                   </div>
