@@ -5,6 +5,8 @@ import { todayYmdInAppTz } from '../_shared/appTimeZone.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { sendEmailViaResend } from '../_shared/resendSendEmail.ts'
 import { resolvePortalCustomerPhone } from '../_shared/portalCustomerPhone.ts'
+import { openBillJobIds } from '../_shared/portalBillMembership.ts'
+import { PROMISE_MAX_PER_HOUR, promiseDateProblem } from '../_shared/portalPromise.ts'
 
 /**
  * Portal request intake (portal train PR 2): a customer/GC submits a
@@ -71,7 +73,12 @@ serve(async (req) => {
     }
 
     const token = typeof body.token === 'string' ? body.token.trim() : ''
-    const kind = body.kind === 'bid' ? 'bid' : body.kind === 'visit' ? 'visit' : body.kind === 'stage_window' ? 'stage_window' : null
+    const kind =
+      body.kind === 'bid' ? 'bid'
+      : body.kind === 'visit' ? 'visit'
+      : body.kind === 'stage_window' ? 'stage_window'
+      : body.kind === 'payment_promise' ? 'payment_promise'
+      : null
     const description = typeof body.description === 'string' ? body.description.trim() : ''
     const availability = typeof body.availability === 'string' ? body.availability.trim().slice(0, 300) : ''
     const phone = typeof body.phone === 'string' ? body.phone.trim().slice(0, 40) : ''
@@ -81,7 +88,7 @@ serve(async (req) => {
     if (!token || token.length < 16 || token.length > 128 || !kind) {
       return jsonResponse({ error: 'Bad request' }, 400)
     }
-    if (kind !== 'stage_window' && (description.length < 5 || description.length > 2000)) {
+    if (kind !== 'stage_window' && kind !== 'payment_promise' && (description.length < 5 || description.length > 2000)) {
       return jsonResponse({ error: 'Please tell us a little more about what you need (a sentence or two).' }, 400)
     }
     if (plansLink && !/^https:\/\//.test(plansLink)) {
@@ -107,6 +114,64 @@ serve(async (req) => {
     }
     if (!link || link.revoked_at) {
       return jsonResponse({ error: 'This link is no longer active. Please contact our office.' }, 404)
+    }
+
+    // ── payment_promise (Their Word PR 2): the customer names their own pay-by date ──
+    // One promise event per open-bill job the link can see, source 'customer';
+    // the office's chips flip to "✓ Promised … · customer". No inbox row — the
+    // Billed row is where the office reads it. Its own rate limit (promises
+    // per customer per hour) since nothing lands in dispatch_requests.
+    if (kind === 'payment_promise') {
+      const date = typeof body.date === 'string' ? body.date.trim() : ''
+      const note = typeof body.note === 'string' ? body.note.trim().slice(0, 300) : ''
+      const todayYmd = todayYmdInAppTz()
+      const problem = promiseDateProblem(date, todayYmd)
+      if (problem) return jsonResponse({ error: problem }, 400)
+
+      const hourAgoIso = new Date(Date.now() - 3600_000).toISOString()
+      const { count: recentPromises } = await admin
+        .from('job_payment_promises')
+        .select('id', { count: 'exact', head: true })
+        .eq('customer_id', link.customer_id)
+        .eq('source', 'customer')
+        .gte('created_at', hourAgoIso)
+      if ((recentPromises ?? 0) >= PROMISE_MAX_PER_HOUR) {
+        return jsonResponse({ error: 'We have your date — thank you. If it changes again, please call our office.' }, 429)
+      }
+
+      // The same job scope the statement shows (customer-portal's rule).
+      const jobSelect = 'id, status'
+      let jobs: Array<{ id: string; status: string | null }> = []
+      if (link.audience === 'all') {
+        const { data } = await admin
+          .from('jobs_ledger')
+          .select(jobSelect)
+          .or(`customer_id.eq.${link.customer_id},gc_customer_id.eq.${link.customer_id}`)
+          .limit(500)
+        jobs = (data ?? []) as Array<{ id: string; status: string | null }>
+      } else {
+        const col = link.audience === 'gc' ? 'gc_customer_id' : 'customer_id'
+        const { data } = await admin.from('jobs_ledger').select(jobSelect).eq(col, link.customer_id).limit(500)
+        jobs = (data ?? []) as Array<{ id: string; status: string | null }>
+      }
+      const promiseJobIds = openBillJobIds(jobs)
+      if (promiseJobIds.length === 0) {
+        return jsonResponse({ error: 'Nothing is open on your account right now — thank you!' }, 400)
+      }
+
+      const { data: result, error: rpcErr } = await admin.rpc('add_customer_payment_promise', {
+        p_customer_id: link.customer_id,
+        p_job_ids: promiseJobIds,
+        p_date: date,
+        p_note: note || null,
+      })
+      if (rpcErr) {
+        console.error('add_customer_payment_promise failed', rpcErr)
+        return jsonResponse({ error: 'We could not save that date. Please try again, or call our office.' }, 500)
+      }
+      const jobsPromised = (result as { jobs?: number } | null)?.jobs ?? promiseJobIds.length
+      console.log(JSON.stringify({ event: 'portal_payment_promise', customer_id: link.customer_id, jobs: jobsPromised, date }))
+      return jsonResponse({ ok: true, promisedYmd: date, jobs: jobsPromised })
     }
 
     // Rate limit per link.

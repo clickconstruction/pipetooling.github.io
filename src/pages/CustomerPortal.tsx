@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { PortalStageAsk } from '../components/portal/PortalStageAsk'
+import { PortalPromiseAsk } from '../components/portal/PortalPromiseAsk'
+import { promiseAskVisible } from '../../supabase/functions/_shared/portalPromise'
 import { PortalStagesCard } from '../components/portal/PortalStagesCard'
 import { publicFunctionHeaders, sampleStateFromToken } from '../lib/customerSampleMode'
 import { staffAwarePublicHeaders } from '../lib/publicFunctionStaffHeaders'
@@ -351,6 +353,12 @@ function PortalStatement({ payload, today, requestToken }: { payload: PortalPayl
           <div style={{ width: 64, height: 3, background: COPPER, margin: '6px 0 0 auto' }} />
         </div>
       </div>
+
+      {/* Their Word PR 2: once a bill is a week old, the customer can name the
+          date themselves. Screen only — paper asks for money, not a date. */}
+      {promiseAskVisible(payload.bills, todayYmd) && (
+        <PortalPromiseAsk token={requestToken} todayYmd={todayYmd} existing={payload.promise} totalDue={payload.totalDue} formatUsd={formatPortalUsd} />
+      )}
 
       {groups.length > 0 && (
         <>

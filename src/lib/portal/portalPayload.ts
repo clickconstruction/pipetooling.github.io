@@ -54,6 +54,8 @@ export type PortalPayload = {
   agreements: PortalAgreement[]
   /** Stage Plan PR 5: the stage sequence on jobs that share dates with this GC — the company's voice, never a name, no money. */
   stages: PortalJobStages[]
+  /** Their Word PR 2: the latest pay-by date on record across the open bills (office-marked or the customer's own), null when none. */
+  promise: { promisedYmd: string; source: 'office' | 'customer' } | null
 }
 
 /** Stage Plan PR 5: the GC's sequence, in the company's voice — mirrors `GcView` in `_shared/stagePlan.ts`. */
@@ -185,7 +187,15 @@ export function parsePortalPayload(raw: unknown): PortalPayload | null {
     slug: typeof r.slug === 'string' && r.slug.trim() ? r.slug.trim() : null,
     agreements,
     stages: Array.isArray(r.stages) ? r.stages.map(parseJobStages).filter((x): x is PortalJobStages => x != null) : [],
+    promise: parsePortalPromise(r.promise),
   }
+}
+
+function parsePortalPromise(raw: unknown): PortalPayload['promise'] {
+  if (raw == null || typeof raw !== 'object') return null
+  const p = raw as Record<string, unknown>
+  if (typeof p.promisedYmd !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(p.promisedYmd)) return null
+  return { promisedYmd: p.promisedYmd, source: p.source === 'customer' ? 'customer' : 'office' }
 }
 
 /** "Aug 4, 2026" from a YYYY-MM-DD string, TZ-safe (no Date parsing of bare dates). */

@@ -394,6 +394,35 @@ serve(async (req) => {
     // say "We'll call you at …" instead of asking for a number it already has.
     const customerPhone = await resolvePortalCustomerPhone(admin, link.customer_id)
 
+    // Their Word PR 2: the latest pay-by date on record across the open-bill
+    // jobs, so the statement can say "You told us to expect payment by …".
+    // marked_by NULL with a customer-sourced event is the customer's own date.
+    let promise: { promisedYmd: string; source: 'office' | 'customer' } | null = null
+    if (billJobIds.length > 0) {
+      const { data: promRows } = await admin
+        .from('job_promised_pay_dates')
+        .select('job_id, promised_date, marked_by, marked_at')
+        .in('job_id', billJobIds)
+        .order('marked_at', { ascending: false })
+        .limit(1)
+      const latest = (promRows ?? [])[0] as { job_id: string; promised_date: string; marked_by: string | null } | undefined
+      if (latest?.promised_date) {
+        let source: 'office' | 'customer' = 'office'
+        if (!latest.marked_by) {
+          const { data: ev } = await admin
+            .from('job_payment_promises')
+            .select('source')
+            .eq('job_id', latest.job_id)
+            .eq('promised_date', latest.promised_date)
+            .is('voided_at', null)
+            .order('created_at', { ascending: false })
+            .limit(1)
+          if (((ev ?? [])[0] as { source?: string } | undefined)?.source === 'customer') source = 'customer'
+        }
+        promise = { promisedYmd: String(latest.promised_date).slice(0, 10), source }
+      }
+    }
+
     return jsonResponse({
       company: PORTAL_COMPANY,
       customerName: (customer as { name: string | null }).name ?? 'Customer',
@@ -411,6 +440,7 @@ serve(async (req) => {
       slug,
       agreements,
       stages,
+      promise,
     })
   } catch (e) {
     console.error('customer-portal error', e)
