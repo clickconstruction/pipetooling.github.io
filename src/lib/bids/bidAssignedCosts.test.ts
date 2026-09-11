@@ -89,14 +89,14 @@ describe('bidAssignedCostsByBidId', () => {
     expect(m.size).toBe(0)
   })
 
-  it('handles negative amounts (a refunded card charge)', () => {
+  it('reads card charges by absolute amount — the bank signs a debit negative, like the job side', () => {
     const m = bidAssignedCostsByBidId({
       mercury: [
-        { bid_id: A, amount: 100 },
-        { bid_id: A, amount: -40 },
+        { bid_id: A, amount: -37.99 },
+        { bid_id: A, amount: -26.48 },
       ],
     })
-    expect(m.get(A)?.partsStyle).toBe(60)
+    expect(m.get(A)?.partsStyle).toBeCloseTo(64.47, 2)
   })
 })
 

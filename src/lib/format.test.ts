@@ -1,5 +1,15 @@
 import { describe, expect, it } from 'vitest'
-import { formatDollarsAsThousandsK } from './format'
+import { decimalHoursToHhMm, formatDollarsAsThousandsK } from './format'
+
+describe('decimalHoursToHhMm', () => {
+  it('carries a rounded 60 minutes into the hour (5:60 → 6:00)', () => {
+    expect(decimalHoursToHhMm(5.9999)).toBe('6:00')
+    expect(decimalHoursToHhMm(1.9967)).toBe('2:00')
+    expect(decimalHoursToHhMm(19.8)).toBe('19:48')
+    expect(decimalHoursToHhMm(0)).toBe('0:00')
+    expect(decimalHoursToHhMm(0.1167)).toBe('0:07')
+  })
+})
 
 describe('formatDollarsAsThousandsK', () => {
   it('rounds large amounts to integer thousands with K', () => {

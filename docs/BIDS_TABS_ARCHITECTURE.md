@@ -44,7 +44,7 @@ Each per-tab section lists: render location, **owned local state** (used only by
 | `builder-review` | Builder Review | thin wrapper | ~377 | extracted (`BidsBuilderReviewTab`) | 2 (deep-link, in parent) | medium | No | Done |
 | `call-queue` | Call queue (Followup "new" lens, v2.2105) | thin wrapper | ~12 | extracted from birth (`BidsCallQueueTab` + pure `src/lib/bids/callQueue.ts`) | 0 | low | No | Done |
 | `working` | Unsent / Working | thin wrapper (`activeTab === 'working'`) | ~22 | mostly extracted (wraps `BidsWorkingBoard`; archive-confirm extracted 2026-05-29 as `WorkingBoardArchiveConfirmDialog`, state deliberately parent-owned — shared with `BidFormModal`) | 4 (deep-link) | low-med | No | Nearly done; only the deep-link glue remains parent-side |
-| `bid-costs` | Bid Costs | thin wrapper | ~76 (dev-only) | extracted (`BidsBidCostsTab`) | 0 | low | No | Done |
+| `bid-costs` | Bid Costs | thin wrapper | ~10 (office roles, v2.3336) | extracted (`BidsBidCostsTab` + pure `src/lib/bids/bidPursuit.ts`) | 0 | low | No | Done |
 | `estimators` | Estimators | thin wrapper | ~11 | extracted (`BidsEstimatorsTab`) | 0 | low | No | Done |
 | `counts` | Counts | thin wrapper | ~289 | extracted (`BidsCountsTab`) | 1 (selection, in parent) | high | Yes (via hook props) | Done |
 | `takeoffs` | Takeoffs | thin wrapper | ~52 | extracted (`BidsTakeoffTab`) | 2 (selection + shared tax, in parent) | high | Yes (via hook props) | Done |
@@ -103,18 +103,18 @@ Each per-tab section lists: render location, **owned local state** (used only by
 - **External coupling:** `useBidPreview`, `useWorkingBoardInboxCount`, `@dnd-kit` (inside the board), `workingBoardArchiveEligibility` lib. No pricing engine.
 - **Extraction status + risk + approach:** **Mostly extracted** — the kanban lives in `BidsWorkingBoard` and the archive-confirm dialog is already the extracted `WorkingBoardArchiveConfirmDialog` (2026-05-29; its state/opener stay parent-owned on purpose — `BidFormModal` also triggers it). **Low-medium risk.** The only remaining parent-side glue is the deep-link plumbing.
 
-### `bid-costs` — Bid Costs (dev-only)
+### `bid-costs` — Bid Costs
 
-- **Render location:** thin wrapper behind `myRole === 'dev' && activeTab === 'bid-costs'`; non-dev redirected away (search the `bid-costs` redirect effect).
-- **Owned local state:** `bidCostsSectionOpen`. Shared labor data loaded for it: `teamLaborDataForBids` (also used by Pricing).
+- **Render location:** thin wrapper behind `canSeeBidCosts(myRole) && activeTab === 'bid-costs'` (dev, master_technician, controller, assistant, estimator — v2.3336); others redirected away (search the `bid-costs` redirect effect). The parent passes `showDollars={canSeeBidCostDollars(myRole)}` (dev / master / controller).
+- **Owned local state:** the `PursuitFilter` (window, outcome chips, show-empty, show-robots, estimator, search). Shared labor data loaded for it: `teamLaborDataForBids` (also used by Pricing).
 - **Cross-tab/shared state:** `activeTab` + `myRole` (gate + redirect); `setSharedBid(bid)` on row click (writes all `selectedBidFor*`); `bids` (read); URL `?tab=bid-costs`.
-- **Derived memos:** `teamLaborByBidId`, `bidCostsUnsent`/`Pending`/`Won`/`StartedOrComplete`/`Lost` (inline filters).
-- **Handlers/functions:** `toggleBidCostsSection`, `setSharedBid`, `formatBidCostsPeople`, imported `formatBidNameWithValue`, `formatCurrency`, `decimalHoursToHhMm`. Fed by an effect calling `loadTeamLaborDataForBids`.
+- **Derived memos:** rows via `buildPursuitRows`, window via `pursuitRowsInWindow`, `pursuitSummary`, `pursuitByEstimator`, `pursuitByOutcome`, `filterPursuitRows` — all pure in [`bidPursuit.ts`](../src/lib/bids/bidPursuit.ts).
+- **Handlers/functions:** filter setters, `setSharedBid` on row click. Fed by an effect calling `loadTeamLaborDataForBids` + `loadBidAssignedCosts`.
 - **Data dependencies:** `bids` (partitioned by outcome), `teamLaborDataForBids` (per-bid cost + breakdown from clock sessions).
 - **Supabase tables:** none directly in the tab (read-only UI). Via `loadTeamLaborDataForBids` ([`utils/teamLabor.ts`](../src/utils/teamLabor.ts)): `people_crew_bids`, `people_hours`, `people_pay_config`.
-- **Sub-components:** `BidsBidCostsTab` (**extracted**, [`src/components/bids/BidsBidCostsTab.tsx`](../src/components/bids/BidsBidCostsTab.tsx)) — owns `bidCostsSectionOpen` + toggle, the five outcome buckets, `formatBidCostsPeople`, and a local `teamLaborByBidId` map built from the `teamLaborData` prop.
+- **Sub-components:** `BidsBidCostsTab` (**extracted**, [`src/components/bids/BidsBidCostsTab.tsx`](../src/components/bids/BidsBidCostsTab.tsx)) — owns the filter state, the tiles, the table with its totals row, and the estimator / outcome rail; every number comes from the kernel.
 - **External coupling:** team-labor utility. No pricing engine, bidPreview, or jsPDF.
-- **Extraction status + risk + approach:** **Extracted** (`BidsBidCostsTab`). Parent renders a thin `<BidsBidCostsTab bids={bids} teamLaborData={teamLaborDataForBids} onSelectBid={setSharedBid} />` behind the `myRole === 'dev'` gate. `teamLaborDataForBids` state + loader effect stay in the parent (shared with Pricing). Note: the parent's old `teamLaborByBidId` memo was removed — bid-costs was its only consumer; the child now builds its own map.
+- **Extraction status + risk + approach:** **Extracted** (`BidsBidCostsTab`). Parent renders a thin `<BidsBidCostsTab bids teamLaborData bidAssignedCosts onSelectBid={setSharedBid} showDollars />` behind the `canSeeBidCosts` gate. `teamLaborDataForBids` state + loader effect stay in the parent (shared with Pricing). Note: the parent's old `teamLaborByBidId` memo was removed — bid-costs was its only consumer; the child now builds its own map.
 
 ### `estimators` — Estimators
 
