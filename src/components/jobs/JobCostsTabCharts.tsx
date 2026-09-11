@@ -2,7 +2,7 @@ import { useJobBurnOverhead } from '../../hooks/useJobBurnOverhead'
 import { useJobChargesTimelineInputs } from '../../hooks/useJobChargesTimelineInputs'
 import type { JobWithDetails } from '../../types/jobWithDetails'
 import JobChargesTimelineStandalone from './JobChargesTimelineStandalone'
-import { firstChargeYmdOf, JobCostsBurnSection } from './JobCostsBurnSection'
+import { firstEventYmdOf, JobCostsBurnSection } from './JobCostsBurnSection'
 
 /**
  * The Costs tab's charts (v2.3189): the Burn section above the Cost Timeline,
@@ -13,7 +13,7 @@ import { firstChargeYmdOf, JobCostsBurnSection } from './JobCostsBurnSection'
 export function JobCostsTabCharts({ job, includeTeamLabor }: { job: JobWithDetails; includeTeamLabor: boolean }) {
   const inputsState = useJobChargesTimelineInputs(job, includeTeamLabor)
   // ONE overhead load (v2.3271): Burn's projection and the Cost Timeline's amber band read the same share.
-  const overheadState = useJobBurnOverhead(includeTeamLabor && inputsState.kind === 'ready', job.id, firstChargeYmdOf(inputsState))
+  const overheadState = useJobBurnOverhead(includeTeamLabor && inputsState.kind === 'ready', job.id, firstEventYmdOf(inputsState))
   return (
     <>
       {includeTeamLabor ? <JobCostsBurnSection inputsState={inputsState} overheadState={overheadState} /> : null}

@@ -43,6 +43,12 @@ export const OVERHEAD_ALLOCATION_LEGACY: OverheadAllocationSettings = { smoothDa
 /** The Overhead Dials recommendation (2026-09-10). */
 export const OVERHEAD_ALLOCATION_RECOMMENDED: OverheadAllocationSettings = { smoothDays: 30, carryShare: 0.2, idleCapDays: 14, openDef: 'status' }
 export const OVERHEAD_SMOOTH_DAYS_MAX = 60
+/**
+ * The first day office cost exists in the ledger (verified against the live pool 2026-09-10:
+ * $31 of office parts on Feb 19, office labor from March). A per-job overhead window has
+ * nothing to find before it. Move it earlier only if office history is backfilled.
+ */
+export const OVERHEAD_POOL_FIRST_YMD = '2026-02-19'
 /** Days loaded before a ledger window so the spread has its lead-in; equals the slider's ceiling. */
 export const JOB_DAY_LEDGER_LEAD_DAYS = OVERHEAD_SMOOTH_DAYS_MAX
 export const OVERHEAD_IDLE_CAP_OPTIONS: ReadonlyArray<{ key: number | null; label: string; title: string }> = [

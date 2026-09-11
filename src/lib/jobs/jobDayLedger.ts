@@ -238,6 +238,23 @@ export function allocateJobOverheadDayShare(ledger: JobDayLedger, jobId: string,
   return { overheadUsd, lines, hoursInWindow, daysInWindow: lines.length }
 }
 
+/**
+ * Overhead per field day over the day lines on or after `sinceYmd` (v2.3289) — Burn's
+ * projection rate stays a RECENT rate while the share to date covers the whole window.
+ * Carry-only lines add dollars but no day, as the whole-window rate always did. Null
+ * without a field day in the span.
+ */
+export function jobOverheadPerFieldDaySince(lines: readonly JobOverheadDayLine[], sinceYmd: string): number | null {
+  let usd = 0
+  let days = 0
+  for (const l of lines) {
+    if (l.ymd < sinceYmd) continue
+    usd += l.shareUsd
+    if (l.jobHours > 0) days += 1
+  }
+  return days > 0 ? usd / days : null
+}
+
 /** Overhead $ for one job under any of the four methods; null when the method's rate is undefined. */
 export function jobOverheadByMethod(
   ledger: JobDayLedger,

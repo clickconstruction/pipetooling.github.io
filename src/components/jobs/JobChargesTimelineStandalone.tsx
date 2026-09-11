@@ -9,7 +9,7 @@ import { useIsNarrowScreen } from '../../hooks/useIsNarrowScreen'
 import { useJobBurnOverhead, type JobBurnOverheadState } from '../../hooks/useJobBurnOverhead'
 import { useJobChargesTimelineInputs, type JobChargesTimelineInputsState } from '../../hooks/useJobChargesTimelineInputs'
 import { buildJobChargesTimelineChartData } from '../../lib/jobChargesTimeline'
-import { firstChargeYmdOf } from './JobCostsBurnSection'
+import { firstEventYmdOf } from './JobCostsBurnSection'
 import { JobChargesTimelineChartView } from './JobSummaryChargesTimelineChart'
 import type { JobWithDetails } from '../../types/jobWithDetails'
 
@@ -30,8 +30,13 @@ export default function JobChargesTimelineStandalone({
 }) {
   const ownState = useJobChargesTimelineInputs(job, includeTeamLabor, !inputsState)
   const state = inputsState ?? ownState
-  const ownOverhead = useJobBurnOverhead(overheadState == null && includeTeamLabor && state.kind === 'ready', job.id, firstChargeYmdOf(state))
+  const ownOverhead = useJobBurnOverhead(overheadState == null && includeTeamLabor && state.kind === 'ready', job.id, firstEventYmdOf(state))
   const overheadDays = includeTeamLabor ? (overheadState ?? ownOverhead).days : null
+  const overheadSinceYmd = includeTeamLabor ? (overheadState ?? ownOverhead).sinceYmd : null
+  const overheadSinceLabel = useMemo(() => {
+    const m = overheadSinceYmd ? /^(\d{4})-(\d{2})-(\d{2})$/.exec(overheadSinceYmd) : null
+    return m ? new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : null
+  }, [overheadSinceYmd])
   const isNarrow = useIsNarrowScreen()
 
   const data = useMemo(() => {
@@ -80,6 +85,7 @@ export default function JobChargesTimelineStandalone({
             data={data}
             revenue={job.revenue != null ? Number(job.revenue) : null}
             cardChargesExcluded={state.inputs.cardChargesExcluded}
+            overheadSinceLabel={overheadSinceLabel}
           />
         </div>
       )}
