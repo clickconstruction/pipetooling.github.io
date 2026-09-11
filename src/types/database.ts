@@ -2814,6 +2814,154 @@ export type Database = {
           },
         ]
       }
+      cashapp_aliases: {
+        Row: {
+          counterparty: string
+          counterparty_key: string
+          created_at: string
+          id: string
+          not_staff: boolean
+          note_contains: string | null
+          note_person_name: string | null
+          person_name: string | null
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          counterparty: string
+          counterparty_key: string
+          created_at?: string
+          id?: string
+          not_staff?: boolean
+          note_contains?: string | null
+          note_person_name?: string | null
+          person_name?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          counterparty?: string
+          counterparty_key?: string
+          created_at?: string
+          id?: string
+          not_staff?: boolean
+          note_contains?: string | null
+          note_person_name?: string | null
+          person_name?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cashapp_aliases_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cashapp_transactions: {
+        Row: {
+          account: string
+          amount: number
+          counterparty: string
+          currency: string
+          decided_at: string | null
+          decided_by: string | null
+          fee: number
+          id: string
+          imported_at: string
+          imported_by: string | null
+          lane: string
+          match_rule: string | null
+          net_amount: number
+          note: string
+          occurred_at_text: string
+          occurred_date: string
+          pay_stub_payment_id: string | null
+          person_name: string | null
+          person_offset_id: string | null
+          status: string
+          tx_type: string
+        }
+        Insert: {
+          account?: string
+          amount: number
+          counterparty?: string
+          currency?: string
+          decided_at?: string | null
+          decided_by?: string | null
+          fee?: number
+          id: string
+          imported_at?: string
+          imported_by?: string | null
+          lane?: string
+          match_rule?: string | null
+          net_amount: number
+          note?: string
+          occurred_at_text: string
+          occurred_date: string
+          pay_stub_payment_id?: string | null
+          person_name?: string | null
+          person_offset_id?: string | null
+          status: string
+          tx_type: string
+        }
+        Update: {
+          account?: string
+          amount?: number
+          counterparty?: string
+          currency?: string
+          decided_at?: string | null
+          decided_by?: string | null
+          fee?: number
+          id?: string
+          imported_at?: string
+          imported_by?: string | null
+          lane?: string
+          match_rule?: string | null
+          net_amount?: number
+          note?: string
+          occurred_at_text?: string
+          occurred_date?: string
+          pay_stub_payment_id?: string | null
+          person_name?: string | null
+          person_offset_id?: string | null
+          status?: string
+          tx_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cashapp_transactions_decided_by_fkey"
+            columns: ["decided_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cashapp_transactions_imported_by_fkey"
+            columns: ["imported_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cashapp_transactions_pay_stub_payment_id_fkey"
+            columns: ["pay_stub_payment_id"]
+            isOneToOne: false
+            referencedRelation: "pay_stub_payments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cashapp_transactions_person_offset_id_fkey"
+            columns: ["person_offset_id"]
+            isOneToOne: false
+            referencedRelation: "person_offsets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       checklist_instance_assignees: {
         Row: {
           checklist_instance_id: string
@@ -19342,6 +19490,10 @@ export type Database = {
       can_manage_supply_house_directory: { Args: never; Returns: boolean }
       can_manage_team_leader_assignments: { Args: never; Returns: boolean }
       can_modify_people_labor_job: {
+        Args: { p_job_id: string }
+        Returns: boolean
+      }
+      can_reach_job_for_test_report: {
         Args: { p_job_id: string }
         Returns: boolean
       }

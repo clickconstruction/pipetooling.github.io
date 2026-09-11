@@ -308,6 +308,8 @@ function PortalStatement({ payload, today, requestToken }: { payload: PortalPayl
       <style>{`
         [data-print-only]{display:none}
         [data-portal-ledger-scroll]{overflow-x:auto}
+        /* Bank transfer card (v2.3320): transfer details beside the check box on wide screens. */
+        [data-portal-bank-split][data-both]{display:grid;grid-template-columns:minmax(0,1fr) 250px;gap:0 22px;align-items:start}
         [data-portal-ledger]{min-width:560px}
         [data-portal-ledger-head],[data-portal-bill]{display:grid;grid-template-columns:84px 1fr auto auto;gap:0 18px}
         [data-portal-bill]{align-items:center;padding:12px 0 12px 10px;border-bottom:1px solid ${HAIR}}
@@ -320,6 +322,7 @@ function PortalStatement({ payload, today, requestToken }: { payload: PortalPayl
            inner sideways scroll disappears; print (paper width) never matches
            this query and keeps the ruled grid. */
         @media screen and (max-width:559px) {
+          [data-portal-bank-split][data-both]{grid-template-columns:1fr;gap:14px 0}
           [data-portal-ledger-scroll]{overflow-x:visible}
           [data-portal-ledger]{min-width:0}
           [data-portal-ledger-head]{display:none}

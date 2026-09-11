@@ -178,3 +178,18 @@ export function groupDigits(value: string): string {
   groups.push(rest)
   return groups.join(' ')
 }
+
+/**
+ * A mailing address as envelope lines: the street on its own line, the rest
+ * (city, state zip) on the next. "12925 FM 20, Kingsbury, TX 78638" →
+ * ["12925 FM 20", "Kingsbury, TX 78638"]. One line when there is no comma.
+ */
+export function mailingAddressLines(address: string): string[] {
+  const a = address.trim()
+  if (!a) return []
+  const i = a.indexOf(',')
+  if (i === -1) return [a]
+  const street = a.slice(0, i).trim()
+  const rest = a.slice(i + 1).trim()
+  return rest ? [street, rest] : [street]
+}

@@ -48,6 +48,7 @@ import { AmountSmallCents } from '../AmountSmallCents'
 import { UpcomingWeekSessionsModal } from './UpcomingWeekSessionsModal'
 import { UpcomingPayrollModal } from './UpcomingPayrollModal'
 import { bandsByStartIndex, buildPayRunWeekBands } from '../../lib/payRunWeekBands'
+import { CashAppReconcileModal } from './CashAppReconcileModal'
 import { PayStubAdditionalModal } from '../pay/PayStubAdditionalModal'
 import { PayStubLessModal } from '../pay/PayStubLessModal'
 import { PayStubDeleteIcon } from '../pay/PayStubDeleteIcon'
@@ -256,6 +257,8 @@ export default function PeoplePayStubsTab({
   // earliest week any person could still owe a pay report for. null = not loaded yet.
   const [upcomingSessions, setUpcomingSessions] = useState<UpcomingClockSessionRow[] | null>(null)
   const [upcomingModalOpen, setUpcomingModalOpen] = useState(false)
+  /** Cash App reconcile (v2.3323): import the activity export and match sends to recorded payments. */
+  const [cashAppOpen, setCashAppOpen] = useState(false)
   /** Person-week whose per-day drilldown modal is open (nested above the Upcoming payroll modal). */
   const [upcomingWeekDetail, setUpcomingWeekDetail] = useState<UpcomingPayrollLine | null>(null)
   /** Bumped after an approve/reject inside the week drilldown so the upcoming data refetches. */
@@ -587,6 +590,24 @@ export default function PeoplePayStubsTab({
                         </button>
                       ))}
                     </div>
+                    <button
+                      type="button"
+                      onClick={() => setCashAppOpen(true)}
+                      title="Upload the Cash App activity export and match sends to staff against recorded payments"
+                      style={{
+                        padding: '0.5rem 1rem',
+                        fontSize: '0.9375rem',
+                        background: 'var(--bg-subtle)',
+                        color: 'var(--text-700)',
+                        border: '1px solid var(--border-strong)',
+                        borderRadius: 6,
+                        cursor: 'pointer',
+                        fontWeight: 600,
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      Cash App…
+                    </button>
                     <button
                       type="button"
                       onClick={onOpenPayConfig}
@@ -1096,6 +1117,18 @@ export default function PeoplePayStubsTab({
           </>
         )}
       </div>
+
+      {cashAppOpen ? (
+        <CashAppReconcileModal
+          stubs={payStubs}
+          paymentsByStubId={payStubPaymentsByStubId}
+          users={users}
+          payConfigNames={Object.keys(payConfig)}
+          authUser={authUser}
+          zIndex={Z_PEOPLE_PAY_MODAL}
+          onClose={() => setCashAppOpen(false)}
+        />
+      ) : null}
 
       {upcomingModalOpen && upcomingSummary ? (
         <UpcomingPayrollModal

@@ -208,7 +208,7 @@ export function sampleCustomerPortalResponse(company: SamplePortalCompany, state
       account_number: '000012345678',
       account_kind: 'Checking',
       beneficiary_address: '100 Sample St, Kyle, TX 78640',
-      check_mailing_address: '100 Sample St, Kyle, TX 78640',
+      check_mailing_address: 'PO Box 118, Kyle, TX 78640',
       show_on_portal: true,
     },
   }
