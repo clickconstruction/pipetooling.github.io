@@ -22,7 +22,7 @@ On **Jobs → Pipeline**, every row's action stack has the orange wrench, **Test
 ## Fill in the test
 
 - **Test type** — {{chip:blue|Pre-Test}} {{chip:blue|Post-Test}} {{chip:blue|Pinpoint}} {{chip:blue|Gas}}. Pre and post tests also take {{chip:yellow|Supply}} or {{chip:yellow|Sewer}}, which picks the "system tested" wording and the conclusion.
-- **Test date** — defaults to today; **Yesterday** and **Today** are one tap. **Duration** offers 20 / 40 / 60 minutes. On the paper the date sits in *Test details* for hydrostatic tests, leads *Test results* on a pinpoint, and rides under the address on a gas test.
+- **Test date** — defaults to today; **Yesterday** and **Today** are one tap. **Duration** offers 20 / 40 / 60 minutes. On the paper the date sits in *Test details* for hydrostatic tests, leads *Test results* on a pinpoint, and leads *House pressure* on a gas test.
 - **Result** — {{button:green|PASS}} or {{button:red|FAIL}} for hydrostatic tests. Pinpoint and gas tests carry no verdict; pinpoint takes the location, method and findings, gas takes the **house pressure** (type PSI, in WC, oz/in² or mm WC and the other three fill themselves) and the **house utilities** list with its BTU/hr total (the **×1,000** button turns 100 into 100,000).
 - **Notes** — pipe material, lead present, measured water loss, prior work by others, toilets re-installed.
 - The customer, the address, the phone and the GC come from the job. The **certifier** comes from Settings.
