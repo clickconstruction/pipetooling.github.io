@@ -61,20 +61,25 @@ function CopyButton({ value }: { value: string }) {
   )
 }
 
-const keyStyle = { fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase' as const, color: FAINT, whiteSpace: 'nowrap' as const, padding: '7px 0', borderBottom: `1px solid ${HAIR}` }
-const valStyle = { fontVariantNumeric: 'tabular-nums' as const, fontWeight: 600, letterSpacing: '0.02em', minWidth: 0, padding: '7px 0', borderBottom: `1px solid ${HAIR}`, overflowWrap: 'anywhere' as const }
-const cellStyle = { padding: '7px 0', borderBottom: `1px solid ${HAIR}` }
+const keyStyle = { fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase' as const, color: FAINT, whiteSpace: 'nowrap' as const }
+const valStyle = { fontVariantNumeric: 'tabular-nums' as const, fontWeight: 600, letterSpacing: '0.02em', minWidth: 0, overflowWrap: 'anywhere' as const }
 
-function Row({ k, v, sub, copy, plain }: { k: string; v: string; sub?: string; copy?: string; plain?: boolean }) {
+/**
+ * One line of the remittance grid. The row owns its rule (one border across
+ * the whole width), so a value that wraps or carries a tail never leaves the
+ * label's underline sitting higher than the value's — the cells inside carry
+ * no borders of their own.
+ */
+function Row({ k, v, tail, copy, plain }: { k: string; v: string; tail?: string; copy?: string; plain?: boolean }) {
   return (
-    <>
+    <div style={{ display: 'grid', gridTemplateColumns: '84px minmax(0, 1fr) auto', gap: '0 14px', alignItems: 'center', padding: '7px 0', borderBottom: `1px solid ${HAIR}` }}>
       <span style={keyStyle}>{k}</span>
       <span style={{ ...valStyle, fontWeight: plain ? 400 : 600 }}>
         {v}
-        {sub ? <small style={{ display: 'block', fontWeight: 400, color: FAINT, fontSize: 11, letterSpacing: 0 }}>{sub}</small> : null}
+        {tail ? <span style={{ fontWeight: 400, color: MUTED, letterSpacing: 0 }}> · {tail}</span> : null}
       </span>
-      <span style={{ ...cellStyle, display: 'flex', justifyContent: 'flex-end' }}>{copy ? <CopyButton value={copy} /> : null}</span>
-    </>
+      <span style={{ display: 'flex', justifyContent: 'flex-end' }}>{copy ? <CopyButton value={copy} /> : null}</span>
+    </div>
   )
 }
 
@@ -85,14 +90,20 @@ function Body({ details, memo, phone }: PortalBankTransferCardProps) {
     <div style={{ padding: '10px 16px 12px', fontSize: 13, borderTop: `1px solid ${HAIR}` }}>
       {c.transfer ? (
         <>
-          <div style={{ fontSize: 12, color: MUTED }}>ACH and domestic wire use the same details. Online card payments stay above.</div>
-          <div data-portal-bank-grid style={{ display: 'grid', gridTemplateColumns: 'auto 1fr auto', gap: '0 14px', alignItems: 'center', marginTop: 8 }}>
+          <div style={{ fontSize: 12, color: MUTED }}>ACH (direct deposit) and domestic wire use the same details. Online card payments stay above.</div>
+          <div data-portal-bank-grid style={{ marginTop: 8, borderTop: `1px solid ${HAIR}` }}>
+            {/* Payee then their address — the way a wire form asks for them — then the numbers, then the bank. */}
             <Row k="Pay to" v={details.payeeName} copy={details.payeeName} />
-            <Row k="Routing" v={groupDigits(details.routingNumber)} copy={details.routingNumber} />
-            <Row k="Account" v={groupDigits(details.accountNumber)} sub={details.accountKind} copy={details.accountNumber} />
-            {details.bankName ? <Row k="Bank" v={details.bankName} sub={details.bankNote || undefined} /> : null}
             {details.beneficiaryAddress ? <Row k="Address" v={details.beneficiaryAddress} plain /> : null}
+            <Row k="Routing" v={groupDigits(details.routingNumber)} copy={details.routingNumber} />
+            <Row k="Account" v={groupDigits(details.accountNumber)} tail={details.accountKind} copy={details.accountNumber} />
+            {details.bankName ? <Row k="Bank" v={details.bankName} /> : null}
           </div>
+          {/* The bank note is a sentence, not a value: it sits under the grid in the
+              same muted voice as the line above it, instead of stacking inside a row. */}
+          {details.bankName && details.bankNote ? (
+            <div style={{ marginTop: 8, fontSize: 12, color: MUTED }}>{details.bankNote}</div>
+          ) : null}
           <div style={{ marginTop: 10, display: 'flex', gap: 10, alignItems: 'baseline', flexWrap: 'wrap' }}>
             <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: COPPER }}>Memo</span>
             <code style={{ fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace', fontSize: 12.5, background: NOTE_BAND, padding: '2px 7px', border: `1px solid ${HAIR}` }}>{memo}</code>
@@ -144,7 +155,7 @@ export function PortalBankTransferCard(props: PortalBankTransferCardProps) {
       >
         <span style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: '0.2em', textTransform: 'uppercase', color: COPPER }}>{title}</span>
         <span style={{ fontSize: 12, color: MUTED, whiteSpace: 'nowrap' }}>
-          {open ? 'Hide' : c.transfer ? 'ACH · wire · check' : 'Where to mail it'} <span aria-hidden style={{ display: 'inline-block', transform: open ? 'rotate(90deg)' : 'none', transition: 'transform .15s' }}>›</span>
+          {open ? 'Hide' : c.transfer ? 'ACH (direct deposit) • wire • check' : 'Where to mail it'} <span aria-hidden style={{ display: 'inline-block', transform: open ? 'rotate(90deg)' : 'none', transition: 'transform .15s' }}>›</span>
         </span>
       </button>
       {open ? (
