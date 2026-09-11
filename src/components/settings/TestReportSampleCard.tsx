@@ -1,6 +1,6 @@
 import { useState } from 'react'
-import { DEFAULT_TEST_REPORT_SETTINGS } from '../../lib/jobs/testReport'
 import { TEST_REPORT_SAMPLE_JOB, TEST_REPORT_SAMPLE_LABELS, testReportSample, type TestReportSampleId } from '../../lib/jobs/testReportSample'
+import { cachedTestReportSettings, fetchTestReportSettings } from '../../lib/jobs/testReportSettings'
 import { buildTestReportPdfBlob } from '../../lib/jobsDocuments/testReportPdf'
 import { todayYmdInAppTz } from '../../utils/dateUtils'
 
@@ -18,7 +18,8 @@ export function TestReportSampleCard() {
     setBusy(id)
     setError(null)
     try {
-      const blob = await buildTestReportPdfBlob(testReportSample(id, todayYmdInAppTz()), TEST_REPORT_SAMPLE_JOB, DEFAULT_TEST_REPORT_SETTINGS)
+      const settings = await fetchTestReportSettings()
+      const blob = await buildTestReportPdfBlob(testReportSample(id, todayYmdInAppTz()), TEST_REPORT_SAMPLE_JOB, settings)
       const url = URL.createObjectURL(blob)
       const win = window.open(url, '_blank', 'noopener')
       if (!win) setError('The browser blocked the new tab — allow pop-ups for this site and try again.')
@@ -48,7 +49,7 @@ export function TestReportSampleCard() {
       <div style={{ minWidth: 220 }}>
         <div style={{ fontWeight: 700, color: 'var(--text-strong)' }}>Test report (sample)</div>
         <div style={{ fontSize: 12.5, color: 'var(--text-muted)' }}>
-          The PDF a GC receives after a hydrostatic, pinpoint or gas test — built from {TEST_REPORT_SAMPLE_JOB.jobName}, certified by {DEFAULT_TEST_REPORT_SETTINGS.certifierName}.
+          The PDF a GC receives after a hydrostatic, pinpoint or gas test — built from {TEST_REPORT_SAMPLE_JOB.jobName}, certified by {cachedTestReportSettings().certifierName}.
         </div>
       </div>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>

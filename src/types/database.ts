@@ -8537,6 +8537,137 @@ export type Database = {
           },
         ]
       }
+      job_test_reports: {
+        Row: {
+          certifier_license: string | null
+          certifier_name: string | null
+          conclusion: string | null
+          created_at: string
+          created_by: string | null
+          duration_minutes: number | null
+          gas_fixtures: Json
+          gas_pressure_psi: number | null
+          id: string
+          job_id: string
+          notes: string
+          pdf_path: string | null
+          pdf_version: number
+          pinpoint_findings: string
+          pinpoint_location: string
+          pinpoint_method: string
+          result: string | null
+          sent_at: string | null
+          sent_by: string | null
+          sent_cc: string[]
+          sent_pay_url: string | null
+          sent_to: string[]
+          source_report_id: string | null
+          status: string
+          system: string | null
+          system_tested: string | null
+          test_date: string
+          test_method: string | null
+          test_pressure: string | null
+          test_type: string
+          updated_at: string
+        }
+        Insert: {
+          certifier_license?: string | null
+          certifier_name?: string | null
+          conclusion?: string | null
+          created_at?: string
+          created_by?: string | null
+          duration_minutes?: number | null
+          gas_fixtures?: Json
+          gas_pressure_psi?: number | null
+          id?: string
+          job_id: string
+          notes?: string
+          pdf_path?: string | null
+          pdf_version?: number
+          pinpoint_findings?: string
+          pinpoint_location?: string
+          pinpoint_method?: string
+          result?: string | null
+          sent_at?: string | null
+          sent_by?: string | null
+          sent_cc?: string[]
+          sent_pay_url?: string | null
+          sent_to?: string[]
+          source_report_id?: string | null
+          status?: string
+          system?: string | null
+          system_tested?: string | null
+          test_date: string
+          test_method?: string | null
+          test_pressure?: string | null
+          test_type: string
+          updated_at?: string
+        }
+        Update: {
+          certifier_license?: string | null
+          certifier_name?: string | null
+          conclusion?: string | null
+          created_at?: string
+          created_by?: string | null
+          duration_minutes?: number | null
+          gas_fixtures?: Json
+          gas_pressure_psi?: number | null
+          id?: string
+          job_id?: string
+          notes?: string
+          pdf_path?: string | null
+          pdf_version?: number
+          pinpoint_findings?: string
+          pinpoint_location?: string
+          pinpoint_method?: string
+          result?: string | null
+          sent_at?: string | null
+          sent_by?: string | null
+          sent_cc?: string[]
+          sent_pay_url?: string | null
+          sent_to?: string[]
+          source_report_id?: string | null
+          status?: string
+          system?: string | null
+          system_tested?: string | null
+          test_date?: string
+          test_method?: string | null
+          test_pressure?: string | null
+          test_type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "job_test_reports_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_test_reports_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs_ledger"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_test_reports_sent_by_fkey"
+            columns: ["sent_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_test_reports_source_report_id_fkey"
+            columns: ["source_report_id"]
+            isOneToOne: false
+            referencedRelation: "reports"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       job_travel_times: {
         Row: {
           computed_at: string

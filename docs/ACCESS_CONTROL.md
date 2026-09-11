@@ -117,6 +117,10 @@ Credentials: created without a password by the migration; set out-of-band (`ALTE
 - **Database**: Foreign key relationships enforce data ownership
 - **Edge Functions**: Role validation before privileged operations
 
+### Test reports — the job's certified test paper (v2.3298, `20260911175738_job_test_reports.sql`)
+
+`job_test_reports` (hydrostatic / pinpoint / gas) follows the job's own children: **read** dev · master · assistant-like · primary; **insert / update** dev · master · assistant-like; **delete** the same set and only while `status = 'draft'` — a sent report is a record. Every policy also requires `can_reach_job_for_test_report(job_id)` (the `jobs_ledger_fixtures` job predicate: master own, dev, primary, adoption either way, `assistants_share_master`). The Stages door (`TestReportModal`) and Settings → Jobs & billing → Test reports (the certifier and the paper's text, `app_settings.test_report_settings_v1`) show to dev / master / assistant-like. Send (PR 3) and the portal card (PR 5) add their own rules.
+
 ### Bid basis exports — the Cover Letter's marked-up plans record (v2.3219, `20260910120000_bid_plan_basis_exports.sql`)
 
 - **`bid_plan_basis_exports`** (one row per CountTooling export the Cover Letter stamped on a bid: file name, sheets, mark totals, the marks snapshot) and **`bids.bid_to_marked_plans`** (the letter toggle). RLS mirrors `bid_payment_schedule_rows`: SELECT / INSERT / UPDATE / DELETE for dev, master_technician, assistant, controller, estimator, primary, superintendent **and** `can_access_bid_for_pricing(bid_id)`; subs and helpers have no access. Both read-only appliers and the digital-twin write fence run (a twin may write rows on its own bids, like every bid-child table).

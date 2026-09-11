@@ -26,6 +26,7 @@ import { ShareJobButton } from './ShareJobButton'
 import { JobsStagesThreadPanel } from './JobsStagesThreadPanel'
 import { openInExternalBrowser } from '../../lib/openInExternalBrowser'
 import { buildClickToolingUrl } from '../../lib/jobs/jobAddressUrls'
+import { useTestReportModalOptional } from '../../contexts/TestReportModalContext'
 import { showAiaG702G703 } from '../../lib/aiaG702G703Eligibility'
 import { useChecklistAddModal } from '../../contexts/ChecklistAddModalContext'
 import { useDispatchTaskModal } from '../../contexts/DispatchTaskModalContext'
@@ -97,7 +98,7 @@ export type JobsStagesUnifiedTableProps = {
   invoiceStandaloneActionLabel?: string
   /** Deep-link flash: row matching this invoice id gets a brief highlight. */
   flashInvoiceId?: string | null
-  /** When false, hide the Plumbing Tooling (wrench) shortcut (e.g. Billed Awaiting Payment). Default true. */
+  /** When false, hide the Test report (wrench) shortcut (e.g. Billed Awaiting Payment). Default true. */
   showClickTooling?: boolean
   /** Billed Awaiting Payment: open Lien Tooling prefill modal. */
   onOpenLienTooling?: (ctx: { job: JobWithDetails; invoice: JobsLedgerInvoice | null }) => void
@@ -179,6 +180,12 @@ export type JobsStagesUnifiedTableProps = {
 }
 
 export default function JobsStagesUnifiedTable(props: JobsStagesUnifiedTableProps) {
+  // Test reports (v2.3298): the wrench opens the modal; without the provider (render smokes) it keeps the old site.
+  const testReportModal = useTestReportModalOptional()
+  const openTestReportFor = (job: JobWithDetails) => {
+    if (testReportModal) testReportModal.openTestReport({ job })
+    else openInExternalBrowser(buildClickToolingUrl(job))
+  }
   const {
     rows,
     hideHeader,
@@ -760,9 +767,9 @@ export default function JobsStagesUnifiedTable(props: JobsStagesUnifiedTableProp
                               {showClickTooling && (
                                 <button
                                   type="button"
-                                  onClick={() => openInExternalBrowser(buildClickToolingUrl(j))}
-                                  title="Open Plumbing Tooling report (pre-fill customer info)"
-                                  aria-label="Open Plumbing Tooling"
+                                  onClick={() => openTestReportFor(j)}
+                                  title="Test report — hydrostatic, pinpoint or gas"
+                                  aria-label="Open Test report"
                                   style={{ padding: '0.25rem', background: 'none', border: 'none', cursor: 'pointer', color: '#FF6600', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
                                 >
                                   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="16" height="16" fill="currentColor" aria-hidden="true">
@@ -1169,9 +1176,9 @@ export default function JobsStagesUnifiedTable(props: JobsStagesUnifiedTableProp
                           {showClickTooling && (
                             <button
                               type="button"
-                              onClick={() => openInExternalBrowser(buildClickToolingUrl(job))}
-                              title="Open Plumbing Tooling report (pre-fill customer info)"
-                              aria-label="Open Plumbing Tooling"
+                              onClick={() => openTestReportFor(job)}
+                              title="Test report — hydrostatic, pinpoint or gas"
+                              aria-label="Open Test report"
                               style={{ padding: '0.25rem', background: 'none', border: 'none', cursor: 'pointer', color: '#FF6600', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
                             >
                               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="16" height="16" fill="currentColor" aria-hidden="true">
