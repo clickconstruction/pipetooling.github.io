@@ -1117,6 +1117,7 @@ export default function Jobs() {
         (p) => {
           const next = new URLSearchParams(p)
           next.delete('legal')
+          next.delete('legalTab')
           return next
         },
         { replace: true },
@@ -1132,8 +1133,9 @@ export default function Jobs() {
       return
     }
     if (jobsListLoading) return
-    stagesTabRef.current?.openLegalDesk(legalParam === '1' || legalParam === 'true' ? null : legalParam)
+    stagesTabRef.current?.openLegalDesk(legalParam === '1' || legalParam === 'true' ? null : legalParam, searchParams.get('legalTab') === 'fees' ? 'fees_steps' : null)
     strip()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [legalParam, authRole, activeTab, jobsListLoading, setSearchParams])
 
   // When editLabor=hcp is in URL and labor jobs are loaded, open edit or new labor modal

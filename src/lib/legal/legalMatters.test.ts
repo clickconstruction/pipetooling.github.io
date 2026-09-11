@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  buildFirmActivity,
   buildLegalReview,
   feeModelOf,
   heldOverridesOf,
@@ -113,3 +114,23 @@ describe('buildLegalReview', () => {
     expect(r.firstKey).toBe('c:tle')
   })
 })
+
+describe('buildFirmActivity', () => {
+  const m1 = matter({ id: 'm1', payer_key: 'c:tle', payer_name: 'The Learning Experience', stage: 'referred' })
+  const m2 = matter({ id: 'm2', payer_key: 'c:sam', payer_name: 'Sam Coyle', stage: 'demand' })
+  const e = (id: string, matter_id: string, kind: string, amount: number | null, created_at: string, ack = false) => ({ id, matter_id, kind, amount, body: '', occurred_on: '2026-09-11', meta: {}, via_portal: true, created_by: null, acknowledged_at: ack ? '2026-09-11T00:00:00Z' : null, created_at })
+  it('counts only unacknowledged portal entries and opens on a payment first', () => {
+    const a = buildFirmActivity([
+      e('1', 'm1', 'fee', 450, '2026-09-11T10:00:00Z'),
+      e('2', 'm2', 'question', null, '2026-09-11T11:00:00Z'),
+      e('3', 'm1', 'payment_received', 2000, '2026-09-11T09:00:00Z'),
+      e('4', 'm1', 'step', null, '2026-09-11T12:00:00Z', true),
+      { ...e('5', 'm2', 'cost', 80, '2026-09-11T08:00:00Z'), via_portal: false },
+    ], [m1, m2])
+    expect(a).toEqual(expect.objectContaining({ count: 3, fees: 1, feeTotal: 450, questions: 1, payments: 1, paymentTotal: 2000, firstKey: 'c:tle', firstName: 'The Learning Experience', latestAt: '2026-09-11T11:00:00Z' }))
+  })
+  it('is empty with nothing open', () => {
+    expect(buildFirmActivity([], [m1]).count).toBe(0)
+  })
+})
+

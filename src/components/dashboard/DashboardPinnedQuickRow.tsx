@@ -37,6 +37,7 @@ import { useJobAccountFlagGapsNudge } from '../../hooks/useJobAccountFlagGapsNud
 import { usePriceMatrixReadyNudge } from '../../hooks/usePriceMatrixReadyNudge'
 import { useRobotBacklogNudge } from '../../hooks/useRobotBacklogNudge'
 import { useLegalReviewNudge } from '../../hooks/useLegalReviewNudge'
+import { useLegalFirmActivityNudge } from '../../hooks/useLegalFirmActivityNudge'
 import { useTestReportsReadyNudge } from '../../hooks/useTestReportsReadyNudge'
 import { useTestReportModalOptional } from '../../contexts/TestReportModalContext'
 import { fetchJobWithDetailsById } from '../../lib/fetchJobWithDetailsById'
@@ -422,6 +423,9 @@ export function DashboardPinnedQuickRow({
   // Collections accounts awaiting a dev's attorney-ready review (Legal portal PR 2, v2.3313) — devs only; the desk is its door.
   const legalReviewEnabled = !hideBanners && Boolean(authUserId) && role === 'dev'
   const { review: legalReview } = useLegalReviewNudge(legalReviewEnabled)
+  // The firm's portal acts awaiting the office (Legal portal PR 4) — office roles; the desk's Fees & steps clears them.
+  const legalFirmActivityEnabled = !hideBanners && Boolean(authUserId) && officeEligible
+  const { activity: legalFirmActivity } = useLegalFirmActivityNudge(legalFirmActivityEnabled)
   // Test reports drafted and not yet sent (v2.3301, dial A) — the office set; the card opens the first one in the modal.
   const testReportsEnabled = !hideBanners && Boolean(authUserId) && officeEligible
   const testReportsNudge = useTestReportsReadyNudge(testReportsEnabled)
@@ -475,6 +479,8 @@ export function DashboardPinnedQuickRow({
     robotBacklog: robotBacklogNudge.backlog,
     legalReviewEnabled,
     legalReview,
+    legalFirmActivityEnabled,
+    legalFirmActivity,
     testReportsEnabled,
     testReportsReady: testReportsNudge.drafts,
     demandDeadlineEnabled: lienUnconditionalEnabled,
@@ -633,6 +639,8 @@ export function DashboardPinnedQuickRow({
               navigate('/bids?tab=robot-console')
             } else if (item.key === 'legal-review') {
               navigate(`/jobs?tab=stages&legal=${encodeURIComponent(legalReview?.firstKey ?? '1')}`)
+            } else if (item.key === 'legal-firm-activity') {
+              navigate(`/jobs?tab=stages&legal=${encodeURIComponent(legalFirmActivity?.firstKey ?? '1')}&legalTab=fees`)
             } else if (item.key === 'd22-uncoded') {
               navigate('/bids?tab=pricing&d22audit=1')
             } else if (item.key === 'lien-unconditional') {

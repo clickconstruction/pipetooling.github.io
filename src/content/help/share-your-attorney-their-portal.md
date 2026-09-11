@@ -24,6 +24,13 @@ The collections law firm gets one private link, no sign-in, that opens every acc
 Pulling an account back on the desk removes it from the portal on the firm's next open. Turning the link off hides everything at once; the matters and their record stay exactly as they were.
 :::
 
-## What the firm cannot do yet
+## What the firm does on the portal
 
-Add fees and costs, record steps and payments received, or ask the office through the portal — that arrives with the next release. Until then the firm replies by email, and the office records what it hears on the desk.
+On a matter's **Fees & steps** tab the firm can:
+
+- **Add a fee or cost** — an amount and a note. It rolls into the matter's total demand and shows on the desk's Fees & steps.
+- **Record a step** — demand sent on firm letterhead · suit filed · judgment entered · settled — with the court, cause number or terms. The step moves the account's stage on your Pipeline row chip; *settled* closes the matter.
+- **Record a payment received** — money the firm holds. You apply it on the job with {{button:outline|Mark Paid}} from the Pipeline row, then press {{button:outline|Mark applied}} on the desk: the recovery and the firm's contingency (as a legal cost on the matter) are recorded.
+- **Ask the office** — a question you answer from the desk; the answer shows on their portal.
+
+Each act lands on the Dashboard as **"The law firm has N things for you"** (office roles) and clears from the desk's Fees & steps tab when you answer, apply or acknowledge it. The firm never marks anything paid, edits a job, or emails the customer through Click.

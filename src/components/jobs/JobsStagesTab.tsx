@@ -295,7 +295,7 @@ export type JobsStagesTabHandle = {
   /** `?stagesMove=` deep link (v2.2145): open what a Today's Money Opportunities card opens (Quickfill → Jobs Cleanup). */
   openMoneyMove: (key: StagesMoneyMoveKey) => void
   /** `?legal=<payer key | 1>` deep link (Legal desk PR 1, v2.3293): open the ⚖ Legal desk, on one account when a key is given. */
-  openLegalDesk: (payerKey?: string | null) => void
+  openLegalDesk: (payerKey?: string | null, tab?: 'fees_steps' | null) => void
 }
 
 export type JobsStagesTabProps = {
@@ -714,7 +714,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
   const [markPaidInvoice, setMarkPaidInvoice] = useState<InvoiceWithJob | null>(null)
   const [bankPaymentsModalOpen, setBankPaymentsModalOpen] = useState(false)
   /** ⚖ Legal desk (v2.3293): the office's pre-release review of every Collections account. `payerKey` = the account to open on. */
-  const [legalDesk, setLegalDesk] = useState<{ payerKey: string | null } | null>(null)
+  const [legalDesk, setLegalDesk] = useState<{ payerKey: string | null; tab?: 'fees_steps' | null } | null>(null)
   // The stored side of the desk (PR 2): matters, the firm, the row chip's source. Office roles only.
   const legalMatters = useLegalMatters(authRole === 'dev' || authRole === 'master_technician' || isAssistantLike(authRole))
   /** ⚙ across from the Paid in Full header: "Customer paid" email recipients + preview/test (v2.965). */
@@ -2256,7 +2256,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
       focusJob: focusJobOnBoard,
       focusInvoice: applyStagesInvoiceFocus,
       openBankPayments: () => setBankPaymentsModalOpen(true),
-      openLegalDesk: (payerKey) => setLegalDesk({ payerKey: payerKey ?? null }),
+      openLegalDesk: (payerKey, tab) => setLegalDesk({ payerKey: payerKey ?? null, tab: tab ?? null }),
       openWeeklyMovement: () => setWeeklyMovementModalOpen(true),
       openWeeklyMoney: (weekMonday) => {
         setWeeklyMoneyInitialMonday(weekMonday ?? null)
@@ -5568,6 +5568,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
         users={users}
         companyName={PORTAL_COMPANY.name}
         initialPayerKey={legalDesk?.payerKey ?? null}
+        initialTab={legalDesk?.tab ?? null}
         onOpenContract={(job) => {
           if (openJobContract) openJobContract(job)
         }}

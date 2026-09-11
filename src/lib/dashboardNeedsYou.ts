@@ -77,6 +77,7 @@ export type NeedsYouItem = {
     | 'robot-backlog'
     | 'test-reports-ready'
     | 'legal-review'
+    | 'legal-firm-activity'
   severity: NeedsYouSeverity
   /** Product the item belongs to — omitted means `company`. See `NeedsYouKind`. */
   kind?: NeedsYouKind
@@ -143,6 +144,7 @@ export const NEEDS_YOU_RANK: Record<NeedsYouItem['key'], number> = {
   'price-matrix-ready': 40,
   'robot-backlog': 60,
   'legal-review': 40,
+  'legal-firm-activity': 20,
   // Revenue chasing tier: a test report is what the GC pays against.
   'test-reports-ready': 40,
 }
@@ -400,6 +402,9 @@ export type NeedsYouInputs = {
   /** Legal portal PR 2 (v2.3313): Collections accounts a dev has not yet marked attorney-ready — devs only. */
   legalReviewEnabled?: boolean
   legalReview?: import('./legal/legalMatters').LegalReviewSummary | null
+  /** Legal portal PR 4: the firm's unacknowledged portal acts — office roles. */
+  legalFirmActivityEnabled?: boolean
+  legalFirmActivity?: import('./legal/legalMatters').LegalFirmActivity | null
   /** Test reports drafted on jobs and not yet sent (v2.3301) — office roles; null while loading. */
   testReportsEnabled?: boolean
   testReportsReady?: import('../hooks/useTestReportsReadyNudge').TestReportsReady | null
@@ -962,6 +967,24 @@ export function buildNeedsYouItems(inputs: NeedsYouInputs): NeedsYouItem[] {
         (first.expiredHouses > 0 ? `${first.expiredHouses === 1 ? 'One quote was' : `${first.expiredHouses} quotes were`} already expired when read — ask for a re-issue before ordering.` : 'Review the picks, then Apply picks to costs.'),
       figure: String(count),
       actionLabel: 'Review matrix',
+    })
+  }
+
+  if (inputs.legalFirmActivityEnabled && inputs.legalFirmActivity && inputs.legalFirmActivity.count > 0) {
+    const f = inputs.legalFirmActivity
+    const parts: string[] = []
+    if (f.payments) parts.push(`${f.payments} payment${f.payments === 1 ? '' : 's'} received by counsel ($${Math.round(f.paymentTotal).toLocaleString('en-US')}) to apply to the job`)
+    if (f.questions) parts.push(`${f.questions} question${f.questions === 1 ? '' : 's'} to answer`)
+    if (f.fees) parts.push(`${f.fees} fee${f.fees === 1 ? '' : 's'} or cost${f.fees === 1 ? '' : 's'} added ($${Math.round(f.feeTotal).toLocaleString('en-US')})`)
+    if (f.steps) parts.push(`${f.steps} step${f.steps === 1 ? '' : 's'} recorded`)
+    items.push({
+      key: 'legal-firm-activity',
+      severity: f.payments || f.questions ? 'amber' : 'blue',
+      kicker: 'Legal',
+      title: `The law firm has ${f.count} thing${f.count === 1 ? '' : 's'} for you`,
+      detail: `${parts.join(' · ')}${f.firstName ? ` — starts with ${f.firstName}` : ''}. Each clears from the desk's Fees & steps tab when you answer, apply or acknowledge it.`,
+      figure: String(f.count),
+      actionLabel: 'Open the desk',
     })
   }
 

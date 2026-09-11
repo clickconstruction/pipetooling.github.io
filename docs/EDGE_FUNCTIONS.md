@@ -117,6 +117,7 @@ when_to_read:
    - [sub-portal](#sub-portal)
    - [submit-sub-portal](#submit-sub-portal)
    - [legal-portal](#legal-portal)
+   - [submit-legal-portal](#submit-legal-portal)
    - [get-estimate-public-terms](#get-estimate-public-terms)
    - [accept-estimate](#accept-estimate)
    - [send-estimate-to-customer](#send-estimate-to-customer)
@@ -1417,6 +1418,14 @@ Devs: **Settings → Templates & testing → Workflow email (Edge Function)** (c
 **View counting**: every validated load inserts a `public_page_views` row (`surface = 'legal_portal'`, `entity_id` = firm id) stamped by `publicViewDecision` — office previews (`?preview=1`) and staff sessions do not count.
 
 **Auth**: `verify_jwt = false` — the link is the capability. **Endpoint**: `GET /functions/v1/legal-portal?token=<opaque>`. **Deploy**: after the v2.3319 migration is pushed. No secrets beyond the standard ones. The firm's writes (fees, steps, questions, payments received) are `submit-legal-portal` (PR 4).
+
+### submit-legal-portal
+
+**Purpose**: The firm's acts on its portal (Legal portal train PR 4, v2.3322): one POST, token-authenticated like `submit-sub-portal`. `{ token, matterId, kind, … }` with `kind` one of **`fee` · `cost`** (`amount`, `note` — rolls into the matter's total demand), **`step`** (`stage` = `demand` · `suit` · `judgment` · `settled`, optional `note` — moves `legal_matters.stage`; `settled` also stamps `closed_at`), **`question`** (`note`), **`payment_received`** (`amount`, `note` — money the firm holds; the office applies it to the job and records the firm's cut from the desk). Every act is one `legal_matter_entries` row with `via_portal = true` and `acknowledged_at NULL` — exactly what the office's "The law firm has N things for you" Needs You card reads; the desk's Fees & steps tab answers, applies or acknowledges each (`legal_add_entry`, `legal_acknowledge_entry`).
+
+**Guards**: honeypot `website` (pretends success, writes nothing); the matter must belong to the token's firm and be in the with-firm set (403 otherwise); 30 portal acts per firm per hour (429); amounts 0 < n ≤ 1,000,000; bodies capped at 2,000 chars. The firm never marks anything paid, edits a job, or emails a customer through us.
+
+**Auth**: `verify_jwt = false` — the link is the capability. **Endpoint**: `POST /functions/v1/submit-legal-portal`. **Deploy**: after the v2.3313 migration (entries table) — alongside `legal-portal`.
 
 ### get-estimate-public-terms
 

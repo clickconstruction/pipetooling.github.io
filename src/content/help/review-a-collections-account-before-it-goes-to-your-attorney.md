@@ -57,3 +57,8 @@ Office staff can move a job to Collections but cannot release it. {{button:outli
 ## The firm
 
 Settings → Jobs & dispatch → **Collections law firm** (dev) holds the firm's name, the handling person and their email — who hears about a release today — and the fee model (contingency %, filing cost) behind "Click keeps". The firm's own people and their email rules arrive with the portal.
+
+## When the firm acts
+
+Once an account is with the firm, their fees, steps, questions and payments received arrive on the desk's **Fees & steps** tab marked {{chip:yellow|waiting on the office}} and on the Dashboard as "The law firm has N things for you". Answer a question inline, acknowledge a fee or step, or for a payment received: apply it on the job with Mark Paid, then press **Mark applied** so the recovery and the firm's cut are on the record.
+

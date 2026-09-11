@@ -66,6 +66,8 @@ export type LegalDeskModalProps = {
   companyName: string
   /** `?legal=<payer key>` — which account to open on. */
   initialPayerKey?: LegalPayerKey | null
+  /** `&legalTab=fees` — which tab to open on (the office's Needs You card lands on the firm's acts). */
+  initialTab?: 'account' | 'paper' | 'their_word' | 'evidence' | 'fees_steps' | null
   /** The stored side (PR 2): matters, the firm, entries. Absent in tests / before the migration. */
   legal?: LegalMattersData | null
   /** Only a dev marks attorney-ready and pulls back. */
@@ -172,7 +174,7 @@ function daysAgo(iso: string | null | undefined, todayYmd: string): number | nul
 }
 
 export default function LegalDeskModal(props: LegalDeskModalProps) {
-  const { open, onClose, collectionsJobs, jobsLoading = false, contractCoverage, users, companyName, initialPayerKey = null, legal = null, canMarkReady = false, canEditReview = false, overlayZIndex = 60 } = props
+  const { open, onClose, collectionsJobs, jobsLoading = false, contractCoverage, users, companyName, initialPayerKey = null, initialTab = null, legal = null, canMarkReady = false, canEditReview = false, overlayZIndex = 60 } = props
   const { showToast } = useToastContext()
   const editCustomer = useEditCustomerModal()
   const todayYmd = todayYmdInAppTz()
@@ -188,12 +190,14 @@ export default function LegalDeskModal(props: LegalDeskModalProps) {
   const [writeDown, setWriteDown] = useState<{ invoice: JobsLedgerInvoice; job: JobWithDetails } | null>(null)
   const [sheet, setSheet] = useState<Sheet>(null)
   const [busy, setBusy] = useState(false)
+  const [answerFor, setAnswerFor] = useState<{ entryId: string; text: string } | null>(null)
 
   useEffect(() => {
     if (!open) return
     const wanted = initialPayerKey && accounts.some((a) => a.key === initialPayerKey) ? initialPayerKey : null
     setSelectedKey((prev) => wanted ?? (prev && accounts.some((a) => a.key === prev) ? prev : (accounts[0]?.key ?? null)))
-  }, [open, initialPayerKey, accounts])
+    if (initialTab) setTab(initialTab)
+  }, [open, initialPayerKey, initialTab, accounts])
 
   const selected: LegalAccountSummary | null = accounts.find((a) => a.key === selectedKey) ?? null
   const matter: LegalMatterRow | null = selected ? (legal?.byPayerKey.get(selected.key) ?? null) : null
@@ -313,6 +317,36 @@ export default function LegalDeskModal(props: LegalDeskModalProps) {
       showToast(`${selected?.name} pulled back — the firm no longer sees it.`, 'info')
     }
   }
+  const acknowledge = async (entryId: string) => {
+    await run('Acknowledge', () => legalRpc('legal_acknowledge_entry', { p_entry_id: entryId }))
+  }
+  const sendAnswer = async () => {
+    if (!answerFor || !matter) return
+    const text = answerFor.text.trim()
+    if (!text) return
+    const ok = await run('Answer', async () => (await legalRpc('legal_add_entry', { p_matter_id: matter.id, p_kind: 'answer', p_body: text })) ?? (await legalRpc('legal_acknowledge_entry', { p_entry_id: answerFor.entryId })))
+    if (ok) {
+      setAnswerFor(null)
+      showToast('Answer sent — the firm sees it on their portal.', 'success')
+    }
+  }
+  /** A payment the firm reported, applied by the office through Mark Paid on the job: record the recovery and the firm's cut on the matter. */
+  const markApplied = async (entry: { id: string; amount: number | null; body: string }) => {
+    if (!matter) return
+    const amt = Number(entry.amount ?? 0)
+    const cut = Math.round(amt * fee.contingencyPct * 100) / 100
+    const ok = await run('Apply', async () => {
+      const e1 = await legalRpc('legal_add_entry', { p_matter_id: matter.id, p_kind: 'recovery_applied', p_amount: amt, p_body: `Applied to the job — ${entry.body || 'payment received by counsel'}` })
+      if (e1) return e1
+      if (cut > 0) {
+        const e2 = await legalRpc('legal_add_entry', { p_matter_id: matter.id, p_kind: 'cost', p_amount: cut, p_body: `Contingency ${Math.round(fee.contingencyPct * 100)}% of ${formatLegalMoney(amt)}` })
+        if (e2) return e2
+      }
+      return legalRpc('legal_acknowledge_entry', { p_entry_id: entry.id })
+    })
+    if (ok) showToast(`Recorded: ${formatLegalMoney(amt)} applied, the firm's ${formatLegalMoney(cut)} as a legal cost on the matter.`, 'success')
+  }
+
   const afterWriteDown = async () => {
     setWriteDown(null)
     await props.onAfterWriteDown()
@@ -491,7 +525,8 @@ export default function LegalDeskModal(props: LegalDeskModalProps) {
 
                 {packet ? (
                   <PacketTab tab={tab} packet={packet} selected={selected} props={props} openEditCustomer={openEditCustomer} openWriteDown={openWriteDown}
-                    curation={stored && canEditReview ? { toggleHold, setAllShared, busy } : null} entries={matter ? (legal?.entriesByMatter.get(matter.id) ?? []) : []} />
+                    curation={stored && canEditReview ? { toggleHold, setAllShared, busy } : null} entries={matter ? (legal?.entriesByMatter.get(matter.id) ?? []) : []}
+                    officeActs={stored && canEditReview ? { acknowledge, answerFor, setAnswerFor, sendAnswer, markApplied, busy, onOpenPipelineRow: () => { if (firstJob) props.onFocusJob(firstJob.id) } } : null} />
                 ) : null}
               </>
             )}
@@ -572,9 +607,10 @@ export default function LegalDeskModal(props: LegalDeskModalProps) {
 }
 
 type Curation = { toggleHold: (key: string, held: boolean, heldByDefault: boolean) => Promise<void>; setAllShared: (share: boolean) => Promise<void>; busy: boolean } | null
-type EntryLike = { id: string; kind: string; amount: number | null; body: string; occurred_on: string; via_portal: boolean }
+type EntryLike = { id: string; kind: string; amount: number | null; body: string; occurred_on: string; via_portal: boolean; acknowledged_at: string | null }
+type OfficeActs = { acknowledge: (entryId: string) => Promise<void>; answerFor: { entryId: string; text: string } | null; setAnswerFor: (v: { entryId: string; text: string } | null) => void; sendAnswer: () => Promise<void>; markApplied: (entry: { id: string; amount: number | null; body: string }) => Promise<void>; busy: boolean; onOpenPipelineRow: () => void } | null
 
-function PacketTab({ tab, packet, selected, props, openEditCustomer, openWriteDown, curation, entries }: { tab: Tab; packet: LegalPacket; selected: LegalAccountSummary; props: LegalDeskModalProps; openEditCustomer: () => void; openWriteDown: (jobId: string | null) => void; curation: Curation; entries: EntryLike[] }) {
+function PacketTab({ tab, packet, selected, props, openEditCustomer, openWriteDown, curation, entries, officeActs }: { tab: Tab; packet: LegalPacket; selected: LegalAccountSummary; props: LegalDeskModalProps; openEditCustomer: () => void; openWriteDown: (jobId: string | null) => void; curation: Curation; entries: EntryLike[]; officeActs: OfficeActs }) {
   const a = packet.account
   const jobOf = (id: string) => selected.jobs.find((j) => j.id === id) ?? null
   const first = selected.jobs[0] ?? null
@@ -710,7 +746,37 @@ function PacketTab({ tab, packet, selected, props, openEditCustomer, openWriteDo
       ) : (
         <p style={{ ...MUTED, fontSize: '0.84rem' }}>None yet{entries.length ? ' — the firm has not added a fee or cost.' : ' — no firm is on this account. When one is, the fees and costs they add list here and roll into the total demand.'}</p>
       )}
-      {firmSteps.length ? (<><SectionTitle>On the matter</SectionTitle><Table head={['Date', 'Kind', 'What happened']} rows={firmSteps.map((e) => [e.occurred_on, pill(e.kind.replace('_', ' '), e.via_portal ? 'legal' : 'neutral'), e.body])} empty="" /></>) : null}
+      {firmSteps.length ? (
+        <>
+          <SectionTitle>On the matter{officeActs && firmSteps.some((e) => e.via_portal && !e.acknowledged_at) ? ` · ${firmSteps.filter((e) => e.via_portal && !e.acknowledged_at).length} from the firm waiting on you` : ''}</SectionTitle>
+          <Table head={['Date', 'Kind', 'What happened', 'Amount', '']} numCols={[3]}
+            rows={firmSteps.map((e) => {
+              const waiting = e.via_portal && !e.acknowledged_at
+              const acts = officeActs && waiting ? (
+                e.kind === 'question' ? (
+                  officeActs.answerFor?.entryId === e.id ? (
+                    <span key="a" style={{ display: 'inline-flex', gap: 6, alignItems: 'center' }}>
+                      <input value={officeActs.answerFor.text} onChange={(ev) => officeActs.setAnswerFor({ entryId: e.id, text: ev.target.value })} placeholder="Your answer" style={{ font: 'inherit', fontSize: '0.8rem', padding: '3px 6px', border: '1px solid var(--border)', borderRadius: 4, background: 'var(--surface)', color: 'var(--text)', width: 220 }} />
+                      <button type="button" onClick={() => void officeActs.sendAnswer()} disabled={officeActs.busy} style={btn}>Send</button>
+                      <button type="button" onClick={() => officeActs.setAnswerFor(null)} style={btn}>Cancel</button>
+                    </span>
+                  ) : (
+                    <button key="a" type="button" onClick={() => officeActs.setAnswerFor({ entryId: e.id, text: '' })} style={btn}>Answer…</button>
+                  )
+                ) : e.kind === 'payment_received' ? (
+                  <span key="p" style={{ display: 'inline-flex', gap: 6 }}>
+                    <button type="button" onClick={officeActs.onOpenPipelineRow} style={btn} title="Apply it on the job with Mark Paid, then come back">Mark Paid on the row ↗</button>
+                    <button type="button" onClick={() => void officeActs.markApplied(e)} disabled={officeActs.busy} style={btn}>Mark applied</button>
+                  </span>
+                ) : (
+                  <button key="k" type="button" onClick={() => void officeActs.acknowledge(e.id)} disabled={officeActs.busy} style={btn}>Acknowledge</button>
+                )
+              ) : waiting ? pill('waiting on the office', 'warn') : e.via_portal ? pill('seen', 'ok') : null
+              return [e.occurred_on, pill(e.kind.replace('_', ' '), e.via_portal ? 'legal' : 'neutral'), e.body, e.amount != null ? formatLegalMoney(Number(e.amount)) : '', acts]
+            })}
+            empty="" />
+        </>
+      ) : null}
       <SectionTitle doors={first ? <Door label="Activity" onClick={() => props.onOpenReports(first)} /> : null}>What we did, in order</SectionTitle>
       <Table head={['Date', 'Job', 'Step', 'What happened']}
         rows={packet.feesAndSteps.steps.map((s, i) => [s.ymd ?? '—', s.jobLabel ?? '', pill(s.kind, s.kind === 'demand' || s.kind === 'filing' ? 'warn' : s.kind === 'payment' || s.kind === 'contract' ? 'ok' : 'neutral'), <span key={i}>{s.text}</span>])}

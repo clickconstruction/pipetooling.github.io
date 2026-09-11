@@ -193,3 +193,44 @@ export function releaseRecipients(firm: LegalFirmRow | null | undefined, handlin
   const name = handlingName.trim() || firm.handling_name.trim() || firm.name
   return firm.email.trim() ? [{ name, email: firm.email.trim(), why: 'handling — always hears' }] : []
 }
+
+// ---------------------------------------------------------------------------
+// The office's Needs You line for the firm's acts (PR 4)
+// ---------------------------------------------------------------------------
+
+export type LegalFirmActivity = {
+  /** Unacknowledged entries the firm wrote through its portal. */
+  count: number
+  fees: number
+  feeTotal: number
+  steps: number
+  questions: number
+  payments: number
+  paymentTotal: number
+  /** The account the card opens on: a payment first, then a question, then the newest. */
+  firstKey: string | null
+  firstName: string | null
+  latestAt: string | null
+}
+
+export function buildFirmActivity(entries: ReadonlyArray<LegalEntryRow>, matters: ReadonlyArray<LegalMatterRow>): LegalFirmActivity {
+  const byId = new Map(matters.map((m) => [m.id, m] as const))
+  const open = entries.filter((e) => e.via_portal && !e.acknowledged_at && byId.has(e.matter_id)).sort((a, b) => b.created_at.localeCompare(a.created_at))
+  const kindRank = (k: string) => (k === 'payment_received' ? 0 : k === 'question' ? 1 : 2)
+  const first = [...open].sort((a, b) => kindRank(a.kind) - kindRank(b.kind) || b.created_at.localeCompare(a.created_at))[0] ?? null
+  const fm = first ? byId.get(first.matter_id) ?? null : null
+  const sum = (k: string) => open.filter((e) => e.kind === k).reduce((s, e) => s + Number(e.amount ?? 0), 0)
+  return {
+    count: open.length,
+    fees: open.filter((e) => e.kind === 'fee' || e.kind === 'cost').length,
+    feeTotal: sum('fee') + sum('cost'),
+    steps: open.filter((e) => e.kind === 'step').length,
+    questions: open.filter((e) => e.kind === 'question').length,
+    payments: open.filter((e) => e.kind === 'payment_received').length,
+    paymentTotal: sum('payment_received'),
+    firstKey: fm?.payer_key ?? null,
+    firstName: fm?.payer_name ?? null,
+    latestAt: open[0]?.created_at ?? null,
+  }
+}
+
