@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { formatPortalDate, formatPortalUsd, parsePortalPayload, portalDaysSinceBilled, splitPortalAddress } from './portalPayload'
+import { foldPortalTestReports, formatPortalDate, formatPortalUsd, parsePortalPayload, portalCertifierLine, portalDaysSinceBilled, splitPortalAddress } from './portalPayload'
 
 const good = {
   company: { name: 'Click Plumbing and Electrical', cityLine: 'San Antonio, Texas', licenseLine: '', phone: '', email: '' },
@@ -220,5 +220,21 @@ describe('test reports (v2.3304)', () => {
 
   it('a payload without test reports parses to an empty list', () => {
     expect(parsePortalPayload({ customerName: 'X', bills: [] })?.testReports).toEqual([])
+  })
+})
+
+describe('test reports card fold (v2.3312)', () => {
+  it('shows five, then everything when expanded; short lists never fold', () => {
+    const seven = ['a', 'b', 'c', 'd', 'e', 'f', 'g']
+    expect(foldPortalTestReports(seven, false)).toEqual({ visible: ['a', 'b', 'c', 'd', 'e'], hidden: 2 })
+    expect(foldPortalTestReports(seven, true)).toEqual({ visible: seven, hidden: 0 })
+    expect(foldPortalTestReports(['a', 'b'], false)).toEqual({ visible: ['a', 'b'], hidden: 0 })
+    expect(foldPortalTestReports(seven, false, 7)).toEqual({ visible: seven, hidden: 0 })
+  })
+
+  it('spells the certifier one way on the line and the card', () => {
+    expect(portalCertifierLine('Malachi Whites', '#RMP41130')).toBe('certified by Malachi Whites (#RMP41130)')
+    expect(portalCertifierLine('Malachi Whites', '')).toBe('certified by Malachi Whites')
+    expect(portalCertifierLine('  ', '#RMP41130')).toBeNull()
   })
 })
