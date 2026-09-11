@@ -38,6 +38,12 @@ type JobFormFixturesSectionProps = {
   addFixtureRow: () => void
   /** Discount rows (v2.3252+): "− Add discount" beside "+ Add line item". Omit to hide the button. */
   addDiscountRow?: () => void
+  /**
+   * "Make the Job Total $X" (v2.3265): the footer's Job Total is an input;
+   * the shell turns the typed total into a discount row of the difference.
+   * Returns what happened so the footer can say it. Omit to keep it read-only.
+   */
+  onSetJobTotal?: (dollars: number) => 'ok' | 'cleared' | 'unreachable' | 'locked' | 'invalid'
   removeFixtureRow: (id: string) => void
   /** Swap a row with its neighbor; order persists via sequence_order on save (v2.1067). */
   moveFixtureRow: (id: string, direction: 'up' | 'down') => void
@@ -84,6 +90,7 @@ export function JobFormFixturesSection({
   updateFixtureRow,
   addFixtureRow,
   addDiscountRow,
+  onSetJobTotal,
   removeFixtureRow,
   moveFixtureRow,
   invoiceStatusById = {},
@@ -134,6 +141,33 @@ export function JobFormFixturesSection({
     ),
   )
   const hasDeleteColumn = fixtures.length > 1
+  // "Make the Job Total $X" (v2.3265): tap the total, type the number you agreed.
+  const [totalEditing, setTotalEditing] = useState(false)
+  const [totalDraft, setTotalDraft] = useState('')
+  const [totalHint, setTotalHint] = useState<string | null>(null)
+  const totalHintTimer = useRef<number | null>(null)
+  useEffect(
+    () => () => {
+      if (totalHintTimer.current != null) window.clearTimeout(totalHintTimer.current)
+    },
+    [],
+  )
+  const showTotalHint = (text: string) => {
+    if (totalHintTimer.current != null) window.clearTimeout(totalHintTimer.current)
+    setTotalHint(text)
+    totalHintTimer.current = window.setTimeout(() => setTotalHint(null), 4000)
+  }
+  const commitTotal = () => {
+    setTotalEditing(false)
+    if (!onSetJobTotal) return
+    const n = parseFloat(totalDraft.replace(/[$,\s]/g, ''))
+    if (!Number.isFinite(n)) return
+    const outcome = onSetJobTotal(Math.round(n * 100) / 100)
+    if (outcome === 'ok') showTotalHint('typed total · the discount row takes the difference')
+    else if (outcome === 'cleared') showTotalHint('already at or above the work — no discount')
+    else if (outcome === 'unreachable') showTotalHint("the discount's lines can't take that much off — widen it to all work lines")
+    else if (outcome === 'locked') showTotalHint('the discount is on a bill — send it back to change the total')
+  }
   // Discount rows (v2.3252+): the footer reads as an equation when any exist.
   const hasDiscount = fixtures.some((f) => isDiscountRow(f))
   const workDollars = hasDiscount ? totalWorkDollars(fixtures) : jobTotalDollars
@@ -793,18 +827,77 @@ export function JobFormFixturesSection({
                     ${formatCurrency(workDollars)} work − ${formatCurrency(discountDollars)} discount
                   </span>
                 )}
-                <span
-                  aria-live="polite"
-                  title={riderFeesDollars > 0 ? 'Running total of the line items above, riders included.' : 'Running total of the line items above.'}
-                  style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-700)', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}
-                >
-                  Job Total: ${formatCurrency(jobTotalDollars + riderFeesDollars)}
-                  {riderFeesDollars > 0 ? (
-                    <span style={{ fontWeight: 400, color: 'var(--text-muted)', fontSize: '0.75rem' }}>
-                      {' '}(${formatCurrency(jobTotalDollars)} work + ${formatCurrency(riderFeesDollars)} riders)
+                {totalEditing && onSetJobTotal ? (
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-700)' }}>
+                    Job Total:
+                    <span style={{ display: 'inline-flex', alignItems: 'stretch', border: '1px solid var(--text-link)', borderRadius: 6, overflow: 'hidden', boxShadow: '0 0 0 2px var(--bg-blue-200)' }}>
+                      <span aria-hidden style={{ display: 'inline-flex', alignItems: 'center', padding: '0 0.35rem', fontSize: '0.75rem', color: 'var(--text-muted)', background: 'var(--bg-subtle)', borderRight: '1px solid var(--border)' }}>$</span>
+                      <input
+                        autoFocus
+                        type="text"
+                        inputMode="decimal"
+                        aria-label="Job Total — type the total you agreed and the discount takes the difference"
+                        value={totalDraft}
+                        onChange={(e) => setTotalDraft(e.target.value.replace(/[^0-9.,]/g, ''))}
+                        onBlur={commitTotal}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault()
+                            commitTotal()
+                          } else if (e.key === 'Escape') {
+                            e.preventDefault()
+                            setTotalEditing(false)
+                          }
+                        }}
+                        style={{ width: '6.5rem', padding: '0.3rem 0.5rem', border: 'none', fontSize: '0.875rem', fontWeight: 600, textAlign: 'right', background: 'transparent', fontVariantNumeric: 'tabular-nums' }}
+                      />
                     </span>
-                  ) : null}
-                </span>
+                  </span>
+                ) : (
+                  <button
+                    type="button"
+                    disabled={!onSetJobTotal}
+                    onClick={() => {
+                      if (!onSetJobTotal) return
+                      setTotalDraft(formatCurrency(jobTotalDollars + riderFeesDollars))
+                      setTotalEditing(true)
+                    }}
+                    aria-live="polite"
+                    title={
+                      onSetJobTotal
+                        ? 'Tap to type the total you agreed — the discount row takes the difference'
+                        : riderFeesDollars > 0
+                          ? 'Running total of the line items above, riders included.'
+                          : 'Running total of the line items above.'
+                    }
+                    style={{
+                      padding: 0,
+                      background: 'transparent',
+                      border: 'none',
+                      fontFamily: 'inherit',
+                      fontSize: '0.875rem',
+                      fontWeight: 600,
+                      color: 'var(--text-700)',
+                      fontVariantNumeric: 'tabular-nums',
+                      whiteSpace: 'nowrap',
+                      cursor: onSetJobTotal ? 'text' : 'default',
+                      textDecoration: onSetJobTotal ? 'underline dotted' : 'none',
+                      textUnderlineOffset: 3,
+                    }}
+                  >
+                    Job Total: ${formatCurrency(jobTotalDollars + riderFeesDollars)}
+                    {riderFeesDollars > 0 ? (
+                      <span style={{ fontWeight: 400, color: 'var(--text-muted)', fontSize: '0.75rem' }}>
+                        {' '}(${formatCurrency(jobTotalDollars)} work + ${formatCurrency(riderFeesDollars)} riders)
+                      </span>
+                    ) : null}
+                  </button>
+                )}
+                {totalHint && (
+                  <span data-testid="job-total-hint" role="status" style={{ fontSize: '0.71875rem', color: '#0f7a52' }}>
+                    {totalHint}
+                  </span>
+                )}
               </span>
             </div>
             {plan && plan.rows.length > 0 && (

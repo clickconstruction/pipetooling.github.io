@@ -49,11 +49,12 @@ const discount = (o: Partial<FixtureRow> = {}): FixtureRow => ({
   ...o,
 })
 
-function renderSection(fixtures: FixtureRow[], update = vi.fn(), addDiscountRow: (() => void) | null = vi.fn()) {
+function renderSection(fixtures: FixtureRow[], update = vi.fn(), addDiscountRow: (() => void) | null = vi.fn(), onSetJobTotal?: (d: number) => 'ok' | 'cleared' | 'unreachable' | 'locked' | 'invalid') {
   const synced = syncDiscountRows(fixtures)
   renderWithProviders(
     <JobFormFixturesSection
       fixtures={synced}
+      onSetJobTotal={onSetJobTotal}
       fixtureScopeExpandedById={{}}
       setFixtureScopeExpandedById={() => {}}
       fixturesSectionHighlight={false}
@@ -132,5 +133,22 @@ describe('JobFormDiscountRow', () => {
   it('hides the add button when the shell offers no handler', () => {
     renderSection(work, vi.fn(), null)
     expect(screen.queryByText('− Add discount')).toBeNull()
+  })
+
+  it('the Job Total is an input (v2.3265): tap, type, Enter → the shell gets the number and the footer says what happened', () => {
+    const onSet = vi.fn(() => 'ok' as const)
+    renderSection(work, vi.fn(), vi.fn(), onSet)
+    fireEvent.click(screen.getByText('Job Total: $33,970.50'))
+    const input = screen.getByLabelText(/Job Total — type the total/) as HTMLInputElement
+    expect(input.value).toBe('33,970.50')
+    fireEvent.change(input, { target: { value: '33,500' } })
+    fireEvent.keyDown(input, { key: 'Enter' })
+    expect(onSet).toHaveBeenCalledWith(33500)
+    expect(screen.getByTestId('job-total-hint').textContent).toContain('typed total')
+  })
+  it('without a handler the Job Total is plain text', () => {
+    renderSection(work, vi.fn(), vi.fn(), undefined)
+    const btn = screen.getByText('Job Total: $33,970.50') as HTMLButtonElement
+    expect(btn.disabled).toBe(true)
   })
 })

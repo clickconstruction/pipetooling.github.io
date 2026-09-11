@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   allocateCentsLargestRemainder,
+  applyTargetJobTotal,
   derivedDiscountDollars,
   discountBasisIdsFromPositions,
   discountBasisPositions,
@@ -229,5 +230,41 @@ describe('locking and persistence', () => {
     expect(discountBasisIdsFromPositions(db, [1, 2])).toEqual(['B', 'C'])
     expect(discountBasisIdsFromPositions(db, null)).toBeNull()
     expect(discountBasisIdsFromPositions(db, [9])).toBeNull()
+  })
+})
+
+describe('applyTargetJobTotal — "make the Job Total $X"', () => {
+  it('adds a dollar discount row when none exists', () => {
+    const out = applyTargetJobTotal(job892(), 33500, 'new')
+    expect(out.kind).toBe('ok')
+    if (out.kind !== 'ok') return
+    expect(out.discountDollars).toBe(4245)
+    const row = out.rows[3] as Row
+    expect(row).toMatchObject({ id: 'new', name: 'Negotiated discount', discount_reason: 'Negotiated', line_kind: 'discount', discount_pct: null, line_unit_price: -4245 })
+  })
+  it('re-uses an existing discount row and switches a percent to dollars', () => {
+    const out = applyTargetJobTotal([...job892(), pct('d', 10)], 33500, 'new')
+    expect(out.kind).toBe('ok')
+    if (out.kind !== 'ok') return
+    expect(out.rows).toHaveLength(4)
+    expect(out.rows[3]).toMatchObject({ id: 'd', discount_pct: null, line_unit_price: -4245 })
+  })
+  it('a target at or above the work clears the discount (or adds nothing)', () => {
+    const cleared = applyTargetJobTotal([...job892(), pct('d', 10)], 40000, 'new')
+    expect(cleared.kind).toBe('cleared')
+    if (cleared.kind === 'cleared') expect(cleared.rows[3]).toMatchObject({ id: 'd', line_unit_price: null, discount_pct: null })
+    const none = applyTargetJobTotal(job892(), 37745, 'new')
+    expect(none.kind).toBe('cleared')
+    if (none.kind === 'cleared') expect(none.rows).toHaveLength(3)
+  })
+  it('accounts for other discount rows, refuses a locked row, and reports an unreachable target', () => {
+    const rows = [...job892(), usd('e', 500), pct('d', 10)]
+    const out = applyTargetJobTotal(rows, 33500, 'new', new Set(['e']))
+    expect(out.kind).toBe('ok')
+    if (out.kind === 'ok') expect(out.rows[4]).toMatchObject({ id: 'd', line_unit_price: -3745 })
+    expect(applyTargetJobTotal([...job892(), pct('d', 10)], 33500, 'new', new Set(['d'])).kind).toBe('locked')
+    const narrow = applyTargetJobTotal([...job892(), pct('d', 10, { discount_basis_ids: ['c'] })], 20000, 'new')
+    expect(narrow).toEqual({ kind: 'unreachable', maxDiscount: 7549 })
+    expect(applyTargetJobTotal(job892(), -1, 'new').kind).toBe('invalid')
   })
 })
