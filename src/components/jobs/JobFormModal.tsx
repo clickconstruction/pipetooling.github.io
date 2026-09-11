@@ -29,6 +29,9 @@ type PropertyCandidateRow = Pick<
 import { fetchUserDisplayNames, userDisplayLabel } from '../../lib/userDisplayNames'
 import { billsAheadRemedyHint } from '../../lib/jobs/editJobInvoiceSendBack'
 import { useAuth } from '../../hooks/useAuth'
+import CustomerTermsBar from '../customers/CustomerTermsBar'
+import CustomerTermsModal from '../customers/CustomerTermsModal'
+import { useCustomerTermsWarning } from '../../hooks/useCustomerTermsWarning'
 import { useJobHazmatIncidents } from '../../hooks/useJobHazmatIncidents'
 import { JobFormBillJobAccountNote } from './JobFormBillJobAccountNote'
 import { sumHazmatRiderFees, type JobHazmatIncidentRow } from '../../lib/hazmatIncidents'
@@ -424,6 +427,10 @@ export default function JobFormModal({
   const [customerId, setCustomerId] = useState<string | null>(null)
   /** Optional GC (General Contractor) — a second customers link, like bids' GC/Builder (v2.1176). */
   const [gcCustomerId, setGcCustomerId] = useState<string | null>(null)
+  // Their Word PR 4: the payer's payment terms + promise record as a bar above the customer rows.
+  const [termsRefresh, setTermsRefresh] = useState(0)
+  const [termsModalOpen, setTermsModalOpen] = useState(false)
+  const customerTerms = useCustomerTermsWarning(gcCustomerId || customerId || null, termsRefresh)
   /** Property record link (v2.2638): customer_addresses row this job sits at — feeds lien documents. */
   const [customerAddressId, setCustomerAddressId] = useState<string | null>(null)
   const [propertyCandidates, setPropertyCandidates] = useState<PropertyCandidateRow[]>([])
@@ -3829,6 +3836,23 @@ export default function JobFormModal({
                   onChanged={() => onSavedRef.current?.()}
                 />
               </div>
+            <CustomerTermsBar
+              warning={customerTerms.warning}
+              onEditTerms={
+                (authRole === 'dev' || authRole === 'master_technician' || authRole === 'assistant' || authRole === 'controller') && (gcCustomerId || customerId)
+                  ? () => setTermsModalOpen(true)
+                  : undefined
+              }
+            />
+            {termsModalOpen && (gcCustomerId || customerId) ? (
+              <CustomerTermsModal
+                customerId={(gcCustomerId || customerId) as string}
+                customerName={customers.find((c) => c.id === (gcCustomerId || customerId))?.name ?? customerName ?? 'Customer'}
+                record={customerTerms.record}
+                onClose={() => setTermsModalOpen(false)}
+                onSaved={() => setTermsRefresh((n) => n + 1)}
+              />
+            ) : null}
             <JobFormEditFactRows
               contractJob={initialJob ?? editing}
               workOrderJob={initialJob ?? editing}

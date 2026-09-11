@@ -15,6 +15,7 @@ import { openInExternalBrowser } from '../lib/openInExternalBrowser'
 import { isAssistantLike } from '../lib/subcontractorLikeRole'
 import { isCustomerArchived } from '../lib/customerArchive'
 import { DISCOUNT_REASON_PRESETS, standingDiscountFromCustomer } from '../lib/jobs/discountLine'
+import { CUSTOMER_PAYMENT_TERMS, isCustomerPaymentTerms, parseCustomerTerms, type CustomerPaymentTerms } from '../lib/customerPaymentTerms'
 import CustomerContactsSection from './customers/CustomerContactsSection'
 import CustomerPropertiesSection from './customers/CustomerPropertiesSection'
 
@@ -141,11 +142,18 @@ export default function EditCustomerForm({ customerId, onSaved, onCancel, onDele
   // shipped into an unrouted page): offered on every new job and bill, never inserted by itself.
   const [standingPct, setStandingPct] = useState('')
   const [standingReason, setStandingReason] = useState<string | null>(null)
+  // Payment terms (Their Word PR 4): the office's standing decision about this customer.
+  const [paymentTerms, setPaymentTerms] = useState<CustomerPaymentTerms>('standard')
+  const [paymentTermsNote, setPaymentTermsNote] = useState('')
+  const [loadedTerms, setLoadedTerms] = useState('standard|')
   const [customerType, setCustomerType] = useState<'commercial' | 'residential' | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [fetching, setFetching] = useState(true)
   const [myRole, setMyRole] = useState<UserRole | null>(null)
+  // Payment terms are an office decision (Their Word PR 4): dev / master / assistant-like.
+  const canSetTerms = myRole === 'dev' || myRole === 'master_technician' || isAssistantLike(myRole)
+  const myUserId = user?.id ?? null
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [deleteConfirm, setDeleteConfirm] = useState('')
   const [deleting, setDeleting] = useState(false)
@@ -299,6 +307,10 @@ export default function EditCustomerForm({ customerId, onSaved, onCancel, onDele
       const standing = standingDiscountFromCustomer(row as { standing_discount_pct?: number | string | null; standing_discount_reason?: string | null })
       setStandingPct(standing ? String(standing.pct) : '')
       setStandingReason(standing?.reason ?? null)
+      const termsRow = parseCustomerTerms(row as unknown as Record<string, unknown>)
+      setPaymentTerms(termsRow.terms)
+      setPaymentTermsNote(termsRow.note ?? '')
+      setLoadedTerms(`${termsRow.terms}|${termsRow.note ?? ''}`)
       setCustomerType(
         row.customer_type === 'commercial' || row.customer_type === 'residential'
           ? row.customer_type
@@ -329,6 +341,13 @@ export default function EditCustomerForm({ customerId, onSaved, onCancel, onDele
     const standingNum = parseFloat(standingPct.replace(/[%\s]/g, ''))
     payload.standing_discount_pct = Number.isFinite(standingNum) && standingNum > 0 ? Math.min(100, Math.round(standingNum * 100) / 100) : null
     payload.standing_discount_reason = payload.standing_discount_pct != null ? standingReason : null
+    // Payment terms (Their Word PR 4): written only when changed, stamped with who and when.
+    if (canSetTerms && `${paymentTerms}|${paymentTermsNote.trim()}` !== loadedTerms) {
+      payload.payment_terms = paymentTerms
+      payload.payment_terms_note = paymentTermsNote.trim() || null
+      payload.payment_terms_set_by = myUserId
+      payload.payment_terms_set_at = new Date().toISOString()
+    }
     // One company (v2.2972): master_user_id is provenance now — never rewritten on edit.
     const { error: err, data } = await supabase
       .from('customers')
@@ -567,6 +586,34 @@ export default function EditCustomerForm({ customerId, onSaved, onCancel, onDele
             Offered on every new job and every bill for this customer until it is applied or waved off there — never added by itself. Existing jobs are untouched.
           </p>
         </div>
+        {canSetTerms && (
+          <div style={{ marginBottom: '1rem' }} data-testid="edit-customer-terms">
+            <label htmlFor="edit-paymentTerms" style={{ display: 'block', marginBottom: 4 }}>Payment terms</label>
+            <select
+              id="edit-paymentTerms"
+              value={paymentTerms}
+              onChange={(e) => setPaymentTerms(isCustomerPaymentTerms(e.target.value) ? e.target.value : 'standard')}
+              style={{ width: '100%', padding: '0.5rem' }}
+            >
+              {CUSTOMER_PAYMENT_TERMS.map((t) => (
+                <option key={t.key} value={t.key}>
+                  {t.label}
+                </option>
+              ))}
+            </select>
+            <input
+              type="text"
+              value={paymentTermsNote}
+              onChange={(e) => setPaymentTermsNote(e.target.value.slice(0, 200))}
+              placeholder="Note shown with the terms (e.g. ask Malachi before bidding Ph. 2)"
+              aria-label="Payment terms note"
+              style={{ width: '100%', padding: '0.5rem', marginTop: 6 }}
+            />
+            <p style={{ margin: '0.35rem 0 0', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
+              {CUSTOMER_PAYMENT_TERMS.find((t) => t.key === paymentTerms)?.hint} Shows on New Bid and New Job for this customer.
+            </p>
+          </div>
+        )}
         <div style={{ marginBottom: '1rem' }}>
           <label htmlFor="edit-dateMet" style={{ display: 'block', marginBottom: 4 }}>
             Date Met

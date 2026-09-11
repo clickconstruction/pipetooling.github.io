@@ -4744,6 +4744,10 @@ export type Database = {
           job_pictures_link: string | null
           master_user_id: string
           name: string
+          payment_terms: string
+          payment_terms_note: string | null
+          payment_terms_set_at: string | null
+          payment_terms_set_by: string | null
           standing_discount_pct: number | null
           standing_discount_reason: string | null
           statement_sender_user_id: string | null
@@ -4765,6 +4769,10 @@ export type Database = {
           job_pictures_link?: string | null
           master_user_id: string
           name: string
+          payment_terms?: string
+          payment_terms_note?: string | null
+          payment_terms_set_at?: string | null
+          payment_terms_set_by?: string | null
           standing_discount_pct?: number | null
           standing_discount_reason?: string | null
           statement_sender_user_id?: string | null
@@ -4786,6 +4794,10 @@ export type Database = {
           job_pictures_link?: string | null
           master_user_id?: string
           name?: string
+          payment_terms?: string
+          payment_terms_note?: string | null
+          payment_terms_set_at?: string | null
+          payment_terms_set_by?: string | null
           standing_discount_pct?: number | null
           standing_discount_reason?: string | null
           statement_sender_user_id?: string | null
@@ -4804,6 +4816,13 @@ export type Database = {
           {
             foreignKeyName: "customers_master_user_id_fkey"
             columns: ["master_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "customers_payment_terms_set_by_fkey"
+            columns: ["payment_terms_set_by"]
             isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]
@@ -7967,6 +7986,80 @@ export type Database = {
           {
             foreignKeyName: "job_payment_chase_touches_resolved_by_fkey"
             columns: ["resolved_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      job_payment_promises: {
+        Row: {
+          channel: string | null
+          created_at: string
+          customer_id: string | null
+          heard_by: string | null
+          id: string
+          job_id: string
+          note: string | null
+          promised_date: string
+          said_by: string | null
+          source: string
+          voided_at: string | null
+          voided_by: string | null
+        }
+        Insert: {
+          channel?: string | null
+          created_at?: string
+          customer_id?: string | null
+          heard_by?: string | null
+          id?: string
+          job_id: string
+          note?: string | null
+          promised_date: string
+          said_by?: string | null
+          source?: string
+          voided_at?: string | null
+          voided_by?: string | null
+        }
+        Update: {
+          channel?: string | null
+          created_at?: string
+          customer_id?: string | null
+          heard_by?: string | null
+          id?: string
+          job_id?: string
+          note?: string | null
+          promised_date?: string
+          said_by?: string | null
+          source?: string
+          voided_at?: string | null
+          voided_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "job_payment_promises_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_payment_promises_heard_by_fkey"
+            columns: ["heard_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_payment_promises_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs_ledger"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_payment_promises_voided_by_fkey"
+            columns: ["voided_by"]
             isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]
@@ -18710,6 +18803,25 @@ export type Database = {
         Args: { p_job_book_entry_id: string; p_job_id: string }
         Returns: Json
       }
+      add_customer_payment_promise: {
+        Args: {
+          p_customer_id: string
+          p_date: string
+          p_job_ids: string[]
+          p_note?: string
+        }
+        Returns: Json
+      }
+      add_job_payment_promise: {
+        Args: {
+          p_channel?: string
+          p_date: string
+          p_job_id: string
+          p_note?: string
+          p_said_by?: string
+        }
+        Returns: Json
+      }
       add_payment_chase_touch: {
         Args: {
           p_customer_id: string
@@ -18930,6 +19042,7 @@ export type Database = {
         Args: { p_financial: boolean; p_job_id: string }
         Returns: boolean
       }
+      can_read_payment_promises: { Args: never; Returns: boolean }
       can_report_stage_progress: {
         Args: { p_job_id: string }
         Returns: boolean
@@ -18943,6 +19056,7 @@ export type Database = {
         Returns: boolean
       }
       can_view_inspection_portal_credentials: { Args: never; Returns: boolean }
+      can_write_payment_promises: { Args: never; Returns: boolean }
       check_out_project: { Args: { p_project_id: string }; Returns: Json }
       checklist_instance_parent_item_created_by_auth_user: {
         Args: { p_instance_id: string }
@@ -19849,6 +19963,7 @@ export type Database = {
           next_scheduled_on: string
         }[]
       }
+      list_job_payment_promises: { Args: never; Returns: Json }
       list_job_promised_pay_dates: { Args: never; Returns: Json }
       list_job_schedule_blocks_for_schedule_email: {
         Args: { p_recipient: string; p_work_date: string }
@@ -20068,6 +20183,7 @@ export type Database = {
         }[]
       }
       list_payment_chase_touches: { Args: never; Returns: Json }
+      list_payment_promise_records: { Args: never; Returns: Json }
       list_people_for_banking_attribution: {
         Args: never
         Returns: {
@@ -21434,6 +21550,7 @@ export type Database = {
         Args: { p_incident_id: string }
         Returns: Json
       }
+      void_job_payment_promise: { Args: { p_id: string }; Returns: Json }
     }
     Enums: {
       estimate_status:

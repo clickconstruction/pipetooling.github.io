@@ -48,10 +48,26 @@ Over time each customer builds a record: promises made, how many were kept, and 
 
 **In the Payment forecast.** A promised bill is filed by the promise *plus* that customer's usual slip, and the row says "usually slips ~9d". A promise from a customer who runs nine days late lands in the week the money actually tends to arrive, while the chip still shows the date they gave.
 
-Next: payment terms on the customer that follow them onto new bids and jobs.
+## Deciding what to do about it
+
+The record only has to be good enough to prompt a decision. The decision lives on the customer as **payment terms**, and it follows them onto every screen where you might otherwise say yes by habit.
+
+- **Set them** on the customer's Edit form (*Payment terms* under the standing discount), or from **Bids → Bid Board → Customer review**, where every customer now has *Pays in*, *Their word* and *Terms* columns and a {{chip:gray|set terms…}} link. Four choices, one note:
+  - **Standard** — bill on completion, chase per the loop.
+  - **Deposit required** — a deposit before work starts on new jobs and bids.
+  - **No new work past an unpaid promise** — a warning while a promise is broken.
+  - **Winding down** — finish open jobs, decline new ones.
+- **See them** on **New Bid** and **New Job** the moment you pick the customer: {{chip:yellow|⚠ Deposit required before work starts · keeps 1 of 5 · slips ~23d}} in amber, or {{chip:red|⛔ No new work — a payment promise is broken}} in red, with your note underneath and a {{button:outline|Terms}} button to change them right there. A customer on standard terms with a promise broken right now gets a quiet amber warning too — that is the whole point of the record.
+
+:::example Working a difficult customer out of the book
+Meadowbrook has kept one promise in five and slips about three weeks. On Customer review, click {{chip:gray|set terms…}}, choose **Winding down**, note "finish Cypress Bend, no Ph. 2 — Robert 9/11". The next time anyone opens New Bid for Meadowbrook, the red bar says so before a number is typed.
+:::
+
+**In the demand letter.** The Final Demand Desk's notice history lists every date the customer promised, in their words — "Payment promised by Sep 12 — by the customer, in writing, from their statement page" — so a broken promise is part of the paper trail.
 
 ## Who can do what
 
 - **Record or clear a promise:** dev, master technician, assistant, controller. Customers record their own from the portal.
 - **See promises and records:** the roles above plus primary.
+- **Set payment terms:** dev, master technician, assistant, controller. Everyone who can open New Bid or New Job sees the bar.
 - **"They never said that":** a promise can be voided by the roles that record them. Voiding hides it from the record; it is not deleted.

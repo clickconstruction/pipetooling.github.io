@@ -14,6 +14,7 @@ import {
   type DemandPriorNotice,
 } from '../../lib/jobsDocuments/demandLetter'
 import { liveDemandLetters, type JobDemandLetterRow } from '../../lib/jobs/demandLetterTracking'
+import { parsePaymentPromisesRpc } from '../../lib/jobs/paymentPromises'
 import { computeJobLienClock, type JobLienFilingRow } from '../../lib/jobs/lienDeadlines'
 import { type CustomerAddressRow, type JobPropertyOwnerLike } from '../../lib/jobs/lienProperty'
 import LienFilingTabs from './LienFilingTabs'
@@ -264,6 +265,23 @@ export default function LienInstrumentsModal({
         }
       } catch {
         // fail-soft
+      }
+      // Their Word PR 4: the customer's own pay-by dates, in their words. A
+      // portal self-promise is a date the customer put in writing.
+      try {
+        const { data: promRaw } = await supabase.rpc('list_job_payment_promises' as never)
+        for (const pr of parsePaymentPromisesRpc(promRaw as unknown) ?? []) {
+          if (pr.jobId !== job.id) continue
+          const d = pr.createdAt.slice(0, 10)
+          if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) continue
+          const by =
+            pr.source === 'customer'
+              ? 'by the customer, in writing, from their statement page'
+              : `${pr.saidBy ? `by ${pr.saidBy}` : 'by the customer'}${pr.channel === 'phone' ? ' by phone' : pr.channel === 'text' ? ' by text' : pr.channel === 'email' ? ' by email' : pr.channel === 'in_person' ? ' in person' : ''}${pr.heardByName ? ` to ${pr.heardByName}` : ''}`
+          notices.push({ date: d, label: `Payment promised by ${demandDate(pr.promisedYmd)} — ${by}` })
+        }
+      } catch {
+        // fail-soft — not an office role, or the RPC isn't pushed yet
       }
       try {
         const { data: touches } = await supabase

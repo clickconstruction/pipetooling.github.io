@@ -24,6 +24,14 @@ import {
 } from '../../lib/bidBoardCustomerReviewDetail'
 import { useNarrowViewport660 } from '../../hooks/useNarrowViewport660'
 import { ModalShell } from './ModalShell'
+import { useAuth } from '../../hooks/useAuth'
+import { isAssistantLike } from '../../lib/subcontractorLikeRole'
+import { APP_CALENDAR_TZ } from '../../utils/dateUtils'
+import { parsePaySpeedsRpc, type PaySpeedData } from '../../lib/jobs/billedExpectedPay'
+import { buildCustomerPromiseRecords, classifyPromises, formatKeptRecord, formatUsualSlip, parsePromiseRecordsRpc, type CustomerPromiseRecord } from '../../lib/jobs/paymentPromises'
+import { formatPaysIn, paySpeedSpread } from '../../lib/jobs/paymentReliability'
+import { parseCustomerTerms, paymentTermsLabel, type CustomerTermsRow } from '../../lib/customerPaymentTerms'
+import CustomerTermsModal from '../customers/CustomerTermsModal'
 
 /**
  * Bid Board → Customer review: per-customer bid counts by section plus total
@@ -104,6 +112,64 @@ export function BidBoardCustomerReviewModal({ onClose }: { onClose: () => void }
   const [detail, setDetail] = useState<CustomerReviewDetail | null>(null)
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set())
   const detailCache = useRef(new Map<string, CustomerReviewDetail>())
+
+  // Their Word PR 4: "Getting paid" — pay-speed spread, the promise record and
+  // the terms per customer. Office roles set terms; everyone who can open the
+  // modal sees the pay range. All three loads fail soft (a not-yet-pushed RPC
+  // or a missing column just leaves the column blank).
+  const { role: myRole } = useAuth()
+  const canSetTerms = myRole === 'dev' || myRole === 'master_technician' || isAssistantLike(myRole)
+  const [paySpeeds, setPaySpeeds] = useState<PaySpeedData | null>(null)
+  const [promiseRecords, setPromiseRecords] = useState<Map<string, CustomerPromiseRecord> | null>(null)
+  const [termsById, setTermsById] = useState<Record<string, CustomerTermsRow>>({})
+  const [termsFor, setTermsFor] = useState<{ id: string; name: string } | null>(null)
+  const customerIds = useMemo(() => rows.map((r) => (r.key.startsWith('c:') ? r.key.slice(2) : null)).filter((x): x is string => x != null), [rows])
+  useEffect(() => {
+    let cancelled = false
+    void (async () => {
+      try {
+        const { data } = await supabase.rpc('get_billed_customer_pay_speeds' as never)
+        if (!cancelled) setPaySpeeds(parsePaySpeedsRpc(data as unknown))
+      } catch {
+        /* fail-soft */
+      }
+      try {
+        const { data } = await supabase.rpc('list_payment_promise_records' as never)
+        const records = parsePromiseRecordsRpc(data as unknown)
+        if (records && !cancelled) {
+          const today = new Date().toLocaleDateString('en-CA', { timeZone: APP_CALENDAR_TZ })
+          setPromiseRecords(buildCustomerPromiseRecords(classifyPromises(records, today)))
+        }
+      } catch {
+        /* fail-soft */
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [])
+  const loadTerms = useMemo(
+    () => async () => {
+      if (customerIds.length === 0) return
+      try {
+        const out: Record<string, CustomerTermsRow> = {}
+        for (let i = 0; i < customerIds.length; i += 200) {
+          const { data } = await supabase
+            .from('customers')
+            .select('id, payment_terms, payment_terms_note, payment_terms_set_at' as never)
+            .in('id', customerIds.slice(i, i + 200))
+          for (const row of (data ?? []) as unknown as Array<Record<string, unknown> & { id: string }>) out[row.id] = parseCustomerTerms(row)
+        }
+        setTermsById(out)
+      } catch {
+        /* fail-soft */
+      }
+    },
+    [customerIds],
+  )
+  useEffect(() => {
+    void loadTerms()
+  }, [loadTerms])
 
   // Esc peels one layer at a time: detail → list, then list → closed.
   const selectedRef = useRef(selected)
@@ -318,6 +384,9 @@ export function BidBoardCustomerReviewModal({ onClose }: { onClose: () => void }
                 <thead>
                   <tr>
                     <th style={{ ...TH, textAlign: 'left' }}>Customer</th>
+                    <th style={{ ...TH, textAlign: 'left' }} title="Days from bill to money over their last year of measurable payments">Pays in</th>
+                    <th style={{ ...TH, textAlign: 'left' }} title="Promised dates kept, and how far past their word the money usually lands">Their word</th>
+                    <th style={{ ...TH, textAlign: 'left' }}>Terms</th>
                     <th style={TH}>Unsent / Working</th>
                     <th style={TH}>Not yet won or lost</th>
                     <th style={TH}>Won</th>
@@ -343,6 +412,44 @@ export function BidBoardCustomerReviewModal({ onClose }: { onClose: () => void }
                         title={`See who logged hours for ${row.customerName}`}
                       >
                         <td style={{ ...TD_NAME, ...rowBg }}>{row.customerName}</td>
+                        {(() => {
+                          const cid = row.key.startsWith('c:') ? row.key.slice(2) : null
+                          const spread = cid ? paySpeedSpread(paySpeeds?.receipts[cid]) : null
+                          const rec = cid && canSetTerms ? promiseRecords?.get(cid) ?? null : null
+                          const word = rec ? [formatKeptRecord(rec), formatUsualSlip(rec)].filter(Boolean).join(' · ') : ''
+                          const terms = cid ? termsById[cid] : undefined
+                          const nonStandard = terms && terms.terms !== 'standard'
+                          const muted = { ...TD_NAME, ...rowBg, color: 'var(--text-muted)', fontSize: '0.8rem', whiteSpace: 'nowrap' as const }
+                          return (
+                            <>
+                              <td style={muted}>{formatPaysIn(spread) ?? '—'}</td>
+                              <td style={muted}>{word || (rec && rec.open > 0 ? `${rec.open} open` : '—')}</td>
+                              <td style={{ ...TD_NAME, ...rowBg, whiteSpace: 'nowrap' }} onClick={(e) => e.stopPropagation()}>
+                                {cid ? (
+                                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                                    <span
+                                      title={terms?.note ?? undefined}
+                                      style={{ padding: '1px 8px', borderRadius: 9999, fontSize: '0.72rem', fontWeight: 600, background: nonStandard ? 'var(--bg-amber-tint)' : 'var(--bg-muted)', color: nonStandard ? 'var(--text-amber-800)' : 'var(--text-muted)', border: `1px solid ${nonStandard ? 'var(--border-amber)' : 'var(--border)'}` }}
+                                    >
+                                      {paymentTermsLabel(terms?.terms ?? 'standard')}
+                                    </span>
+                                    {canSetTerms ? (
+                                      <button
+                                        type="button"
+                                        onClick={() => setTermsFor({ id: cid, name: row.customerName })}
+                                        style={{ padding: 0, border: 'none', background: 'none', cursor: 'pointer', fontSize: '0.72rem', color: 'var(--text-link)', textDecoration: 'underline dotted', textUnderlineOffset: 2 }}
+                                      >
+                                        {nonStandard ? 'edit terms…' : 'set terms…'}
+                                      </button>
+                                    ) : null}
+                                  </span>
+                                ) : (
+                                  '—'
+                                )}
+                              </td>
+                            </>
+                          )
+                        })()}
                         <CountCell value={row.counts.unsent} style={rowBg} />
                         <CountCell value={row.counts.pending} style={rowBg} />
                         <CountCell value={row.counts.won} style={rowBg} />
@@ -377,6 +484,7 @@ export function BidBoardCustomerReviewModal({ onClose }: { onClose: () => void }
                     <td style={{ ...TD_NAME, borderTop: '2px solid var(--border)' }}>
                       Total ({visibleRows.length} customer{visibleRows.length === 1 ? '' : 's'})
                     </td>
+                    <td style={{ ...TD_NAME, borderTop: '2px solid var(--border)' }} colSpan={3} />
                     <CountCell value={totals.counts.unsent} style={{ borderTop: '2px solid var(--border)' }} />
                     <CountCell value={totals.counts.pending} style={{ borderTop: '2px solid var(--border)' }} />
                     <CountCell value={totals.counts.won} style={{ borderTop: '2px solid var(--border)' }} />
@@ -393,6 +501,15 @@ export function BidBoardCustomerReviewModal({ onClose }: { onClose: () => void }
           )}
         </>
       )}
+      {termsFor ? (
+        <CustomerTermsModal
+          customerId={termsFor.id}
+          customerName={termsFor.name}
+          record={promiseRecords?.get(termsFor.id) ?? null}
+          onClose={() => setTermsFor(null)}
+          onSaved={() => void loadTerms()}
+        />
+      ) : null}
     </ModalShell>
   )
 }
