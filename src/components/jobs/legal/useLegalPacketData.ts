@@ -39,7 +39,7 @@ export type LegalPacketData = {
 
 type ClockSessionRow = { job_ledger_id: string | null; work_date: string; clocked_in_at: string; clocked_out_at: string | null; clock_in_lat: number | null; approved_at: string | null; rejected_at: string | null; revoked_at: string | null }
 type ReportRow = { created_at: string; created_by_name: string | null; template_name: string | null; reported_at_lat: number | null }
-type ThreadNoteRow = { job_id: string; body: string; created_at: string; author: { name: string | null } | null }
+type ThreadNoteRow = { job_id: string; body: string; created_at: string; author: { name: string | null } | Array<{ name: string | null }> | null }
 type ContactEntryRow = { id: string; contact_date: string; contact_method: string | null; details: string | null; created_by: string | null }
 
 // Fourteen typed query builders against the full Database type push `tsc -b` past the CI heap;
@@ -171,7 +171,10 @@ export function useLegalPacketData(
               () => db.from('jobs_ledger_thread_notes').select('job_id, body, created_at, author:users!jobs_ledger_thread_notes_author_user_id_fkey(name)').in('job_id', jobIds).order('created_at', { ascending: false }).limit(ROW_CAP),
               'load legal packet job notes',
             )) ?? []
-            return rows.map((r): LegalThreadNoteLike => ({ jobId: r.job_id, body: r.body, createdAt: r.created_at, authorName: r.author?.name ?? null }))
+            return rows.map((r): LegalThreadNoteLike => {
+              const author = Array.isArray(r.author) ? (r.author[0] ?? null) : r.author
+              return { jobId: r.job_id, body: r.body, createdAt: r.created_at, authorName: author?.name ?? null }
+            })
           }, []),
         ])
       if (cancelled) return
