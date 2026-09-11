@@ -7154,6 +7154,95 @@ export type Database = {
           },
         ]
       }
+      job_budgets: {
+        Row: {
+          bid_id: string | null
+          bid_version_id: string | null
+          completeness: Json
+          created_at: string
+          job_id: string
+          kind: string
+          labor_hours: number
+          labor_rate: number | null
+          labor_usd: number
+          materials_usd: number
+          note: string | null
+          other_usd: number
+          subs_usd: number
+          taken_at: string
+          taken_by: string | null
+          total_direct_usd: number
+          updated_at: string
+        }
+        Insert: {
+          bid_id?: string | null
+          bid_version_id?: string | null
+          completeness?: Json
+          created_at?: string
+          job_id: string
+          kind: string
+          labor_hours?: number
+          labor_rate?: number | null
+          labor_usd?: number
+          materials_usd?: number
+          note?: string | null
+          other_usd?: number
+          subs_usd?: number
+          taken_at?: string
+          taken_by?: string | null
+          total_direct_usd?: number
+          updated_at?: string
+        }
+        Update: {
+          bid_id?: string | null
+          bid_version_id?: string | null
+          completeness?: Json
+          created_at?: string
+          job_id?: string
+          kind?: string
+          labor_hours?: number
+          labor_rate?: number | null
+          labor_usd?: number
+          materials_usd?: number
+          note?: string | null
+          other_usd?: number
+          subs_usd?: number
+          taken_at?: string
+          taken_by?: string | null
+          total_direct_usd?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "job_budgets_bid_id_fkey"
+            columns: ["bid_id"]
+            isOneToOne: false
+            referencedRelation: "bids"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_budgets_bid_version_id_fkey"
+            columns: ["bid_version_id"]
+            isOneToOne: false
+            referencedRelation: "bid_versions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_budgets_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: true
+            referencedRelation: "jobs_ledger"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_budgets_taken_by_fkey"
+            columns: ["taken_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       job_collect_payment_flows: {
         Row: {
           certified_at: string | null
@@ -18979,6 +19068,7 @@ export type Database = {
         Args: { p_mercury_debit_card_id: string }
         Returns: number
       }
+      bid_estimate_breakdown: { Args: { p_bid_id: string }; Returns: Json }
       bid_pricing_history: {
         Args: { p_service_type_id: string }
         Returns: {
@@ -19089,6 +19179,7 @@ export type Database = {
         Returns: boolean
       }
       can_view_inspection_portal_credentials: { Args: never; Returns: boolean }
+      can_write_job_budget: { Args: { p_job_id: string }; Returns: boolean }
       can_write_payment_promises: { Args: never; Returns: boolean }
       check_out_project: { Args: { p_project_id: string }; Returns: Json }
       checklist_instance_parent_item_created_by_auth_user: {
@@ -19103,6 +19194,7 @@ export type Database = {
         Args: { p_code_ok: boolean; p_user_id: string }
         Returns: Json
       }
+      clear_job_budget: { Args: { p_job_id: string }; Returns: undefined }
       clear_mercury_transaction_duplicate: {
         Args: { p_id: string }
         Returns: undefined
@@ -21219,6 +21311,18 @@ export type Database = {
         Args: { p_is_payroll: boolean; p_mercury_transaction_id: string }
         Returns: undefined
       }
+      set_typed_job_budget: {
+        Args: {
+          p_job_id: string
+          p_labor_hours: number
+          p_labor_rate: number
+          p_materials_usd: number
+          p_note?: string
+          p_other_usd?: number
+          p_subs_usd: number
+        }
+        Returns: Json
+      }
       settle_step_commitment: {
         Args: { p_commitment_id: string; p_dry_run?: boolean }
         Returns: Json
@@ -21228,6 +21332,10 @@ export type Database = {
       signed_agreement_notify_recipients: {
         Args: { p_master_user_id: string }
         Returns: string[]
+      }
+      snapshot_job_budget_from_bid: {
+        Args: { p_bid_id: string; p_job_id: string }
+        Returns: Json
       }
       spec_section_fixture_name_audit: {
         Args: never
@@ -21320,6 +21428,23 @@ export type Database = {
           p_per_line_notes?: Json
         }
         Returns: Json
+      }
+      suggest_bids_for_job: {
+        Args: { p_job_id: string }
+        Returns: {
+          agreed_value: number
+          bid_id: string
+          bid_number: string
+          bid_value: number
+          customer_name: string
+          estimate_hours: number
+          has_estimate: boolean
+          linked_jobs: number
+          outcome: string
+          project_name: string
+          rank: number
+          reason: string
+        }[]
       }
       superintendent_can_access_bid: {
         Args: { b: Database["public"]["Tables"]["bids"]["Row"] }
