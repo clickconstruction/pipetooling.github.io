@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties }
 import type { User } from '@supabase/supabase-js'
 import { supabase } from '../../lib/supabase'
 import { withSupabaseRetry } from '../../utils/errorHandling'
+import { fetchAllRows } from '../../lib/supabasePaging'
 import { useToastContext } from '../../contexts/ToastContext'
 import type { Database } from '../../types/database'
 import { AmountSmallCents } from '../AmountSmallCents'
@@ -54,6 +55,14 @@ function txForMatch(t: Pick<TxRow, 'id' | 'occurred_date' | 'amount' | 'note' | 
   return { id: t.id, occurredDate: t.occurred_date, amountSent: Math.abs(Number(t.amount)), note: t.note, personName: person, altPersonNames: alt, resolution }
 }
 
+/** Every stored row — paged, because the first export alone is past PostgREST's 1,000-row cap. */
+async function loadAllTransactions(): Promise<TxRow[]> {
+  return fetchAllRows<TxRow>(
+    (from, to) => supabase.from('cashapp_transactions').select('*').order('occurred_date', { ascending: false }).order('id', { ascending: true }).range(from, to),
+    'cashapp_transactions',
+  )
+}
+
 /**
  * Import the Cash App activity export and reconcile it against recorded pay-report payments.
  * Three steps: upload (parse + what's new), names (tie unknown Cash App names to people), and
@@ -76,10 +85,10 @@ export function CashAppReconcileModal({ stubs, paymentsByStubId, users, payConfi
 
   const load = useCallback(async () => {
     const [tx, al] = await Promise.all([
-      withSupabaseRetry(async () => await supabase.from('cashapp_transactions').select('*').order('occurred_date', { ascending: false }), 'load cashapp transactions'),
+      loadAllTransactions(),
       withSupabaseRetry(async () => await supabase.from('cashapp_aliases').select('*'), 'load cashapp aliases'),
     ])
-    setExisting((tx ?? []) as TxRow[])
+    setExisting(tx)
     setAliasRows((al ?? []) as AliasRow[])
   }, [])
 
@@ -170,7 +179,7 @@ export function CashAppReconcileModal({ stubs, paymentsByStubId, users, payConfi
       }
 
       // 3. re-match everything still in review
-      const all = ((await withSupabaseRetry(async () => await supabase.from('cashapp_transactions').select('*'), 'reload cashapp transactions')) ?? []) as TxRow[]
+      const all = await loadAllTransactions()
       const review = all.filter((t) => t.lane === 'review')
       const linkedPaymentIds = new Set(all.filter((t) => t.pay_stub_payment_id).map((t) => t.pay_stub_payment_id as string))
       const payments = recordedPaymentsForMatch(stubs, paymentsByStubId).filter((p) => !linkedPaymentIds.has(p.id))
@@ -192,8 +201,12 @@ export function CashAppReconcileModal({ stubs, paymentsByStubId, users, payConfi
         if (current && current.lane === lane && current.person_name === personName && current.match_rule === matchRule && current.pay_stub_payment_id === paymentId) continue
         updates.push({ id: r.txId, lane, person_name: personName, match_rule: matchRule, pay_stub_payment_id: paymentId, decided_at: lane === 'review' ? null : now, decided_by: lane === 'review' ? null : null })
       }
-      for (const u of updates) {
-        await withSupabaseRetry(async () => await supabase.from('cashapp_transactions').update(u).eq('id', u.id), 'file cashapp transaction')
+      // One upsert per 200 rows instead of one update per row (the first import files ~1,000).
+      const byId = new Map(all.map((t) => [t.id, t]))
+      const fullRows = updates.map((u) => ({ ...(byId.get(u.id) as TxRow), ...u }))
+      for (let i = 0; i < fullRows.length; i += 200) {
+        const chunk = fullRows.slice(i, i + 200)
+        await withSupabaseRetry(async () => await supabase.from('cashapp_transactions').upsert(chunk, { onConflict: 'id' }), 'file cashapp transactions')
       }
       await load()
       setParsed(null)
