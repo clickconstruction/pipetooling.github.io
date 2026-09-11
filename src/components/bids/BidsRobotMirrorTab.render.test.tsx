@@ -205,6 +205,34 @@ describe('BidsRobotMirrorTab', () => {
     expect(screen.queryByText('Never-sent lost lead')).toBeNull()
   })
 
+  it('"Paste the plans" goes straight to Edit bid on Job Plans when the page offers that door (v2.3334)', async () => {
+    const onPasteThePlans = vi.fn()
+    const onOpenNeeds = vi.fn()
+    renderWithProviders(
+      <BidsRobotMirrorTab
+        bids={humanBids}
+        robotBids={robotBids}
+        auditPending={0}
+        loading={false}
+        highlightBidId={null}
+        rowStateFor={rowStateFor}
+        onEditBid={vi.fn()}
+        onCompare={vi.fn()}
+        onOpenShell={vi.fn()}
+        onOpenAudit={vi.fn()}
+        onReviewNow={vi.fn()}
+        onOpenNeeds={onOpenNeeds}
+        onPasteThePlans={onPasteThePlans}
+      />,
+    )
+    await waitFor(() => expect(screen.getByText('MEDINA VALLEY ISD')).toBeTruthy())
+    const door = screen.getByRole('button', { name: 'Paste the plans →' })
+    expect(door.getAttribute('title')).toBe('Opens Edit bid on the Job Plans field')
+    fireEvent.click(door)
+    expect(onPasteThePlans).toHaveBeenCalledWith(expect.objectContaining({ id: 'h380' }))
+    expect(onOpenNeeds).not.toHaveBeenCalled()
+  })
+
   it('a sealed run on a bid sent without a value gets the Add bid value door (v2.3225)', async () => {
     const props = renderTab()
     await waitFor(() => expect(screen.getByText('RBFCU Potranco')).toBeTruthy())
