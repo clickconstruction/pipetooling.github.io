@@ -165,6 +165,8 @@ flowchart LR
     S -->|record-stripe-invoice-out-of-band-payment| W
 ```
 
+**Who pays (v2.3345)**: before any channel runs, the modal resolves the payer with the shared `_shared/billToParty.ts` rule — `jobs_ledger.bill_to_party` (`customer` · `gc` · `split`) + the invoice's own `bill_to_party` pick + the typed `bill_to_email` (which still wins) → `customer | gc | other`. A GC payer is overlaid onto the billing context (name, `customers.billing_email`, phone, **and** `customer_id`), so every channel below bills the GC and the edge functions verify the body's `customer_id` against the same resolution. Set on Edit Job → Bills go to; per draft via Bill to ▾. Glossary: "Bills go to".
+
 ### Stripe bill
 
 - **Preview** (debounced 450 ms while the tab is open): edge `preview-stripe-invoice` — no DB writes; retrieves the saved customer id from the **mode-appropriate column** (`customers.stripe_customer_id` live / `stripe_customer_id_test` test, v2.1117) or creates+deletes an **ephemeral Stripe customer** per preview (delete failure only warns). Rendered by `src/components/jobs/StripeBillPreSubmitPreview.tsx`.

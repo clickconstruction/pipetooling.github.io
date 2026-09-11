@@ -198,6 +198,7 @@ import { useNewProjectModal } from '../../contexts/NewProjectModalContext'
 import BilledBillViewModal, { type InvoiceWithJobForBillView } from './BilledBillViewModal'
 import AgreedWriteDownModal from './AgreedWriteDownModal'
 import { JobFormBillToEditor, type BillToEditorInvoice } from './JobFormBillToEditor'
+import { parseJobBillToParty, type JobBillToParty } from '../../lib/jobs/billToParty'
 import { loadTeamLaborData, type TeamLaborRow } from '../../utils/teamLabor'
 import { laborItemsSubtotal } from '../../lib/peopleLaborJobItemLineCost'
 import {
@@ -427,6 +428,8 @@ export default function JobFormModal({
   const [customerId, setCustomerId] = useState<string | null>(null)
   /** Optional GC (General Contractor) — a second customers link, like bids' GC/Builder (v2.1176). */
   const [gcCustomerId, setGcCustomerId] = useState<string | null>(null)
+  /** Who pays (v2.3345): customer | gc | split — identity slice, see billToParty.ts. */
+  const [billToParty, setBillToParty] = useState<JobBillToParty>('customer')
   // Their Word PR 4: the payer's payment terms + promise record as a bar above the customer rows.
   const [termsRefresh, setTermsRefresh] = useState(0)
   const [termsModalOpen, setTermsModalOpen] = useState(false)
@@ -479,6 +482,10 @@ export default function JobFormModal({
   /** Set right before the post-create close — a saved job is not a discard. */
   const newJobSkipDiscardGuardRef = useRef(false)
   const [customers, setCustomers] = useState<CustomerRow[]>([])
+  /** The fact rows save a GC's billing email straight to customers (v2.3345); mirror it locally. */
+  const patchCustomerRow = useCallback((id: string, patch: Partial<CustomerRow>) => {
+    setCustomers((prev) => prev.map((c) => (c.id === id ? { ...c, ...patch } : c)))
+  }, [])
   const [users, setUsers] = useState<UserRow[]>([])
   const [customerSearch, setCustomerSearch] = useState('')
   const [customersLoading, setCustomersLoading] = useState(false)
@@ -862,6 +869,7 @@ export default function JobFormModal({
     customerEmail,
     customerPhone,
     gcCustomerId,
+    billToParty,
     developmentId,
     googleDriveLink,
     jobPicturesLink,
@@ -1186,6 +1194,7 @@ export default function JobFormModal({
     setCustomerEmail(s.identity.customerEmail)
     setCustomerPhone(s.identity.customerPhone)
     setGcCustomerId(s.identity.gcCustomerId)
+    setBillToParty(s.identity.billToParty)
     setDevelopmentId(s.identity.developmentId)
     setGoogleDriveLink(s.identity.googleDriveLink)
     setJobPicturesLink(s.identity.jobPicturesLink)
@@ -1714,6 +1723,7 @@ export default function JobFormModal({
     setCustomerPhone(job.customer_phone ?? '')
     setCustomerId(job.customer_id ?? null)
     setGcCustomerId(job.gc_customer_id ?? null)
+    setBillToParty(parseJobBillToParty((job as { bill_to_party?: string | null }).bill_to_party))
     setCustomerAddressId(job.customer_address_id ?? null)
     setDevelopmentId(job.development_id ?? null)
     setLinkedBidGc(
@@ -1779,6 +1789,7 @@ export default function JobFormModal({
     setCustomerPhone('')
     setCustomerId(null)
     setGcCustomerId(null)
+    setBillToParty('customer')
     setCustomerAddressId(null)
     setDevelopmentId(null)
     setLinkedBidGc(null)
@@ -2150,7 +2161,7 @@ export default function JobFormModal({
               async () =>
                 await supabase
                   .from('customers')
-                  .select('id, name, address, contact_info, date_met, date_met_source, master_user_id, customer_type, archived_at')
+                  .select('id, name, address, contact_info, billing_email, date_met, date_met_source, master_user_id, customer_type, archived_at')
                   .eq('id', estimateCustomerId)
                   .maybeSingle(),
               'job form import estimate customer',
@@ -2225,7 +2236,7 @@ export default function JobFormModal({
           { data: devData },
           twinIds,
         ] = await Promise.all([
-          supabase.from('customers').select('id, name, address, contact_info, date_met, date_met_source, master_user_id, customer_type, archived_at').order('name'),
+          supabase.from('customers').select('id, name, address, contact_info, billing_email, date_met, date_met_source, master_user_id, customer_type, archived_at').order('name'),
           supabase.from('projects').select('id, name, customer_id, master_user_id, customers(name)').order('name'),
           supabase
             .from('bids')
@@ -3483,6 +3494,8 @@ export default function JobFormModal({
           job_address: titleCaseAddress(jobAddress.trim()),
           customer_id: resolvedCustomerIdNew,
           gc_customer_id: resolveGcCustomerIdForJobPayload(gcCustomerId, effectiveMasterId, customers),
+          bill_to_party:
+            billToParty === 'gc' && !resolveGcCustomerIdForJobPayload(gcCustomerId, effectiveMasterId, customers) ? 'customer' : billToParty,
           customer_address_id: customerAddressId,
           development_id: resolveDevelopmentIdForJobPayload(developmentId, effectiveMasterId, developments),
           customer_name: customerName.trim() || null,
@@ -3860,6 +3873,9 @@ export default function JobFormModal({
               setCustomerId={setCustomerId}
               gcCustomerId={gcCustomerId}
               setGcCustomerId={setGcCustomerId}
+              billToParty={billToParty}
+              setBillToParty={setBillToParty}
+              onCustomerPatched={patchCustomerRow}
               linkedBidGc={linkedBidGc}
               customerSearch={customerSearch}
               setCustomerSearch={setCustomerSearch}
@@ -3954,6 +3970,8 @@ export default function JobFormModal({
                 setExpanded={setCustomerExpanded}
                 customerId={customerId}
                 setCustomerId={setCustomerId}
+                billToParty={billToParty}
+                setBillToParty={setBillToParty}
                 gcCustomerId={gcCustomerId}
                 setGcCustomerId={setGcCustomerId}
                 linkedBidGc={linkedBidGc}

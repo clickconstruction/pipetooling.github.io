@@ -1,4 +1,5 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
+import { effectiveInvoiceParty, payerCustomerId } from '../_shared/billToParty.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import Stripe from 'https://esm.sh/stripe@16.12.0?target=deno'
 import {
@@ -132,7 +133,7 @@ serve(async (req) => {
 
     const { data: invRow, error: invErr } = await userClient
       .from('jobs_ledger_invoices')
-      .select('id, job_id, amount, status, stripe_invoice_id, bill_to_name, bill_to_email, bill_to_stripe_customer_id, is_primary_rtb_bundle')
+      .select('id, job_id, amount, status, stripe_invoice_id, bill_to_name, bill_to_email, bill_to_party, bill_to_stripe_customer_id, is_primary_rtb_bundle')
       .eq('id', jobs_ledger_invoice_id)
       .maybeSingle()
 
@@ -152,7 +153,7 @@ serve(async (req) => {
 
     const { data: jobRow, error: jobErr } = await admin
       .from('jobs_ledger')
-      .select('id, master_user_id, hcp_number, click_number, job_name, customer_id')
+      .select('id, master_user_id, hcp_number, click_number, job_name, customer_id, gc_customer_id, bill_to_party')
       .eq('id', invRow.job_id)
       .single()
 
@@ -164,8 +165,15 @@ serve(async (req) => {
       return jsonResponse({ error: 'Job must be linked to a customer before previewing a Stripe invoice.' }, 400)
     }
 
-    if (jobRow.customer_id !== customer_id) {
-      return jsonResponse({ error: 'Customer must match the job linked customer.' }, 400)
+    // Who pays (v2.3345): mirrors create-stripe-invoice — the body's
+    // customer_id must be the party the job + invoice resolve to.
+    const party = effectiveInvoiceParty(jobRow, invRow)
+    const payerId = party === 'other' ? jobRow.customer_id : payerCustomerId(jobRow, party)
+    if (!payerId || payerId !== customer_id) {
+      return jsonResponse(
+        { error: party === 'gc' ? 'This bill goes to the GC on the job — reopen Bill Customer.' : 'Customer must match the job linked customer.' },
+        400,
+      )
     }
 
     const { data: custRow, error: custErr } = await admin

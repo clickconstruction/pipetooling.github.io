@@ -69,6 +69,9 @@ function Harness({
       setCustomerId={() => {}}
       gcCustomerId={gc?.id ?? null}
       setGcCustomerId={() => {}}
+      billToParty="customer"
+      setBillToParty={() => {}}
+      onCustomerPatched={() => {}}
       linkedBidGc={null}
       customerSearch=""
       setCustomerSearch={() => {}}

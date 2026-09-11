@@ -95,6 +95,14 @@ import {
   invoiceBillToFromRow,
   type InvoiceBillTo,
 } from '../../lib/jobs/invoiceBillTo'
+import {
+  applyPayerToJobBillingContext,
+  customerBillingEmail,
+  effectiveInvoiceParty,
+  payerRecipientFromCustomer,
+  type EffectiveBillParty,
+  type PayerRecipient,
+} from '../../lib/jobs/billToParty'
 import { planPrimaryRtbForBillCustomer } from '../../lib/billing/proposedPrimaryRtbAmount'
 import { recordNavClick } from '../../lib/navClickTelemetry'
 import { sendHazmatNoticeEmailToCustomer } from '../../lib/sendHazmatNoticeEmail'
@@ -559,7 +567,17 @@ export default function SendRecordInvoiceModal({
       functions read the invoice row themselves (v2.1085); this overlay keeps
       the UI honest about who gets billed. */
   const [billToOverride, setBillToOverride] = useState<InvoiceBillTo | null>(null)
-  const jobWithBillTo = jobRaw ? applyBillToToJobBillingContext(jobRaw, billToOverride) : jobRaw
+  /** Who pays (v2.3345): the party the billing target resolves to, and — when it
+      is the GC — the GC's customers row as the recipient. Overlaid onto the job
+      context exactly like the tenant override, plus the customer id the edge
+      functions key their Stripe customer on. */
+  const [payerParty, setPayerParty] = useState<EffectiveBillParty>('customer')
+  const [payerRecipient, setPayerRecipient] = useState<PayerRecipient | null>(null)
+  /** The other party on the job (the customer when the GC pays, the GC when the customer pays) — offered as a copy recipient. */
+  const [otherParty, setOtherParty] = useState<{ name: string; email: string; role: 'customer' | 'gc' } | null>(null)
+  const [copyOtherParty, setCopyOtherParty] = useState(false)
+  const jobWithPayer = jobRaw && payerParty === 'gc' ? applyPayerToJobBillingContext(jobRaw, payerRecipient) : jobRaw
+  const jobWithBillTo = jobWithPayer ? applyBillToToJobBillingContext(jobWithPayer, billToOverride) : jobWithPayer
   const job = jobWithBillTo && emailOverride ? { ...jobWithBillTo, customer_email: emailOverride } : jobWithBillTo
   const jobId = job?.id ?? null
 
@@ -608,10 +626,13 @@ export default function SendRecordInvoiceModal({
   const [customerContacts, setCustomerContacts] = useState<Array<{ id: string; name: string; email: string }>>([])
   const [extraRecipientIds, setExtraRecipientIds] = useState<Set<string>>(() => new Set())
   const [oneOffEmail, setOneOffEmail] = useState('')
+  // The payer's contacts (v2.3345): the GC's people when the GC pays.
+  const contactsCustomerId = payerParty === 'gc' ? payerRecipient?.customerId ?? null : jobRaw?.customer_id ?? null
   useEffect(() => {
     setExtraRecipientIds(new Set())
     setOneOffEmail('')
-    if (!open || !jobRaw?.customer_id) {
+    setCopyOtherParty(false)
+    if (!open || !contactsCustomerId) {
       setCustomerContacts([])
       return
     }
@@ -619,7 +640,7 @@ export default function SendRecordInvoiceModal({
     void supabase
       .from('customer_contact_persons')
       .select('id, name, email')
-      .eq('customer_id', jobRaw.customer_id)
+      .eq('customer_id', contactsCustomerId)
       .order('created_at', { ascending: true })
       .then(({ data }) => {
         if (cancelled) return
@@ -632,7 +653,7 @@ export default function SendRecordInvoiceModal({
     return () => {
       cancelled = true
     }
-  }, [open, jobRaw?.customer_id])
+  }, [open, contactsCustomerId])
 
   function physicalAdditionalEmails(): string[] {
     // Bill-to override: the customer's contact persons must not ride on an
@@ -646,6 +667,10 @@ export default function SendRecordInvoiceModal({
     }
     const oneOff = oneOffEmail.trim().toLowerCase()
     if (oneOff && oneOff.includes('@') && !out.includes(oneOff)) out.push(oneOff)
+    // "Copy the other party" (v2.3345): one tick sends the customer a copy of
+    // the GC's bill, or the GC a copy of the customer's.
+    const copy = copyOtherParty && otherParty ? otherParty.email.trim().toLowerCase() : ''
+    if (copy && copy.includes('@') && !out.includes(copy)) out.push(copy)
     return out.slice(0, 10)
   }
 
@@ -658,6 +683,19 @@ export default function SendRecordInvoiceModal({
     }
     setEmailFixSaving(true)
     setEmailFixError(null)
+    // GC pays (v2.3345): the missing address is the GC's billing email — it
+    // lives on the GC's customer record, never on the job's customer copy.
+    if (payerParty === 'gc' && payerRecipient) {
+      const { error: gcErr } = await supabase.from('customers').update({ billing_email: email }).eq('id', payerRecipient.customerId)
+      setEmailFixSaving(false)
+      if (gcErr) {
+        setEmailFixError(gcErr.message)
+        return
+      }
+      setPayerRecipient({ ...payerRecipient, email })
+      setEmailFixDraft('')
+      return
+    }
     const { error } = await supabase.from('jobs_ledger').update({ customer_email: email }).eq('id', jobRaw.id)
     if (error) {
       setEmailFixSaving(false)
@@ -698,27 +736,74 @@ export default function SendRecordInvoiceModal({
   // the recipient — openers' payloads don't carry it. Refetches whenever the
   // billing target changes (incl. the ensured primary for kind:'job').
   const billToTargetInvoiceId = kind === 'invoice' ? invoice?.id ?? null : ensuredInvoice?.id ?? null
+  // Who pays (v2.3345): the job row (its rule + GC) and the invoice row (its
+  // pick + any typed recipient) decide the party together — the same
+  // `effectiveInvoiceParty` the edge functions run server-side. A GC payer
+  // pulls the GC's customers row for the name / billing email / phone.
+  const payerJobId = jobRaw?.id ?? null
   useEffect(() => {
     setBillToOverride(null)
-    if (!open || !billToTargetInvoiceId) return
+    setPayerParty('customer')
+    setPayerRecipient(null)
+    setOtherParty(null)
+    if (!open || !payerJobId) return
     let cancelled = false
     void (async () => {
       try {
-        const { data } = await supabase
-          .from('jobs_ledger_invoices')
-          .select('bill_to_name, bill_to_email, bill_to_phone')
-          .eq('id', billToTargetInvoiceId)
-          .maybeSingle()
+        const [{ data: jobRow }, { data: invRow }] = await Promise.all([
+          supabase
+            .from('jobs_ledger')
+            .select('id, bill_to_party, gc_customer_id, customer_id, customer_name, customer_email')
+            .eq('id', payerJobId)
+            .maybeSingle(),
+          billToTargetInvoiceId
+            ? supabase
+                .from('jobs_ledger_invoices')
+                .select('bill_to_name, bill_to_email, bill_to_phone, bill_to_party')
+                .eq('id', billToTargetInvoiceId)
+                .maybeSingle()
+            : Promise.resolve({ data: null }),
+        ])
         if (cancelled) return
-        setBillToOverride(invoiceBillToFromRow(data))
+        const jr = jobRow as {
+          bill_to_party?: string | null
+          gc_customer_id?: string | null
+          customer_id: string | null
+          customer_name: string | null
+          customer_email: string | null
+        } | null
+        const party = effectiveInvoiceParty(jr, invRow)
+        setBillToOverride(invoiceBillToFromRow(invRow))
+        setPayerParty(party)
+        const gcId = (jr?.gc_customer_id ?? '').trim()
+        const gcDistinct = Boolean(gcId) && gcId !== (jr?.customer_id ?? '')
+        const gcRow = gcDistinct
+          ? ((
+              await supabase.from('customers').select('id, name, billing_email, contact_info').eq('id', gcId).maybeSingle()
+            ).data as { id: string; name: string | null; billing_email?: string | null; contact_info?: unknown } | null)
+          : null
+        if (cancelled) return
+        if (party === 'gc') {
+          setPayerRecipient(payerRecipientFromCustomer(gcRow))
+          const custEmail = (jr?.customer_email ?? '').trim()
+          setOtherParty(custEmail ? { name: (jr?.customer_name ?? '').trim() || 'the customer', email: custEmail, role: 'customer' } : null)
+        } else if (party === 'customer' && gcRow) {
+          const gcEmail = customerBillingEmail(gcRow)
+          setOtherParty(gcEmail ? { name: (gcRow.name ?? '').trim() || 'the GC', email: gcEmail, role: 'gc' } : null)
+        }
       } catch {
-        if (!cancelled) setBillToOverride(null)
+        if (!cancelled) {
+          setBillToOverride(null)
+          setPayerParty('customer')
+          setPayerRecipient(null)
+          setOtherParty(null)
+        }
       }
     })()
     return () => {
       cancelled = true
     }
-  }, [open, billToTargetInvoiceId])
+  }, [open, payerJobId, billToTargetInvoiceId])
 
   const handleHostedStripeOobUnwindSuccess = useCallback(async () => {
     const invSnap = stripeSuccessInvoiceRef.current
@@ -2160,7 +2245,9 @@ export default function SendRecordInvoiceModal({
             }}
           >
             <p style={{ margin: '0 0 0.4rem', fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-amber-700)' }}>
-              No customer email on this job — Stripe and emailed invoices need one.
+              {payerParty === 'gc'
+                ? `${payerRecipient?.name || 'The GC'} pays this job and has no billing email yet — Stripe and emailed invoices need one.`
+                : 'No customer email on this job — Stripe and emailed invoices need one.'}
             </p>
             <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
               <input
@@ -2173,8 +2260,8 @@ export default function SendRecordInvoiceModal({
                     void saveMissingCustomerEmail()
                   }
                 }}
-                placeholder="customer@email.com"
-                aria-label="Customer email"
+                placeholder={payerParty === 'gc' ? 'ap@builder.com' : 'customer@email.com'}
+                aria-label={payerParty === 'gc' ? 'GC billing email' : 'Customer email'}
                 style={{ flex: '1 1 200px', padding: '0.4rem 0.6rem', border: '1px solid var(--border-strong)', borderRadius: 6 }}
               />
               <button
@@ -2186,7 +2273,11 @@ export default function SendRecordInvoiceModal({
                 {emailFixSaving ? 'Saving…' : 'Save'}
               </button>
             </div>
-            {jobRaw?.customer_id ? (
+            {payerParty === 'gc' ? (
+              <p style={{ margin: '0.4rem 0 0', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
+                Saved on {payerRecipient?.name || 'the GC'}&rsquo;s customer record — every job billed to them uses it.
+              </p>
+            ) : jobRaw?.customer_id ? (
               <label style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', marginTop: '0.4rem', fontSize: '0.8125rem', color: 'var(--text-muted)', cursor: 'pointer' }}>
                 <input
                   type="checkbox"
@@ -2218,6 +2309,25 @@ export default function SendRecordInvoiceModal({
             <strong>Billing to {billToDisplayLabel(billToOverride)}</strong> — not the job customer
             {(jobRaw?.customer_name ?? '').trim() ? ` (${(jobRaw?.customer_name ?? '').trim()})` : ''}. Change or
             remove this on Edit Job → Invoices → Bill to…
+          </div>
+        ) : payerParty === 'gc' ? (
+          <div
+            data-testid="bill-customer-gc-payer-banner"
+            style={{
+              marginBottom: '0.75rem',
+              padding: '0.5rem 0.75rem',
+              borderRadius: 6,
+              background: 'var(--bg-amber-tint)',
+              border: '1px solid var(--border-strong)',
+              fontSize: '0.8125rem',
+              color: 'var(--text-amber-800)',
+              lineHeight: 1.4,
+            }}
+          >
+            <strong>Billing {payerRecipient?.name || 'the GC'}</strong>, the GC on this job
+            {(jobRaw?.customer_name ?? '').trim() ? ` — not ${(jobRaw?.customer_name ?? '').trim()}` : ''}.
+            {payerRecipient?.email ? '' : ' They have no billing email yet.'} Change this on Edit Job → Bills go to, or per
+            invoice with Bill to.
           </div>
         ) : null}
 
@@ -2411,7 +2521,9 @@ export default function SendRecordInvoiceModal({
             )}
             {!(job.customer_email ?? '').trim() ? (
               <p style={{ color: 'var(--text-red-700)', fontSize: '0.875rem', marginBottom: '0.75rem' }}>
-                Customer email is required to send a physical invoice by email. Add it on Edit Job.
+                {payerParty === 'gc'
+                  ? `${payerRecipient?.name || 'The GC'} needs a billing email before this bill can go out — add it above.`
+                  : 'Customer email is required to send a physical invoice by email. Add it on Edit Job.'}
               </p>
             ) : null}
             {(customerContacts.length > 0 || (job.customer_email ?? '').trim()) && (
@@ -2419,7 +2531,9 @@ export default function SendRecordInvoiceModal({
                 <div style={{ fontSize: '0.875rem', fontWeight: 500, marginBottom: '0.25rem' }}>Send to</div>
                 <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginBottom: customerContacts.length > 0 ? '0.25rem' : 0 }}>
                   {(job.customer_email ?? '').trim() || '—'}{' '}
-                  <span style={{ color: 'var(--text-faint)' }}>{billToOverride ? '(bill-to recipient)' : '(primary)'}</span>
+                  <span style={{ color: 'var(--text-faint)' }}>
+                    {billToOverride ? '(bill-to recipient)' : payerParty === 'gc' ? `(${payerRecipient?.name || 'GC'} · billing email)` : '(primary)'}
+                  </span>
                 </div>
                 {/* Bill-to override: the customer's contact persons never ride on an
                     invoice that bills someone else. */}
@@ -2442,6 +2556,14 @@ export default function SendRecordInvoiceModal({
                     </span>
                   </label>
                 ))}
+                {otherParty && !billToOverride ? (
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.8125rem', cursor: 'pointer', padding: '0.1rem 0' }}>
+                    <input type="checkbox" checked={copyOtherParty} onChange={(e) => setCopyOtherParty(e.target.checked)} />
+                    <span>
+                      Copy {otherParty.name} <span style={{ color: 'var(--text-muted)' }}>{otherParty.email} · {otherParty.role === 'gc' ? 'the GC, not billed' : 'the customer, not billed'}</span>
+                    </span>
+                  </label>
+                ) : null}
                 <input
                   type="email"
                   value={oneOffEmail}

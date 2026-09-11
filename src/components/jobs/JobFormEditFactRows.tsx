@@ -19,6 +19,9 @@ import GcHardHatIcon from '../icons/GcHardHatIcon'
 import TeamCrewIcon from '../icons/TeamCrewIcon'
 import { customerAddressLienReady, suggestCustomerAddressForJob } from '../../lib/jobs/lienProperty'
 import { JobFormFactRow } from './JobFormFactRow'
+import { JobFormBillToPartyControl } from './JobFormBillToPartyControl'
+import { supabase } from '../../lib/supabase'
+import { customerBillingEmail, type JobBillToParty } from '../../lib/jobs/billToParty'
 import JobContractStrip from './JobContractStrip'
 import JobWorkOrderStrip from './JobWorkOrderStrip'
 import type { JobWithDetails } from '../../types/jobWithDetails'
@@ -56,6 +59,8 @@ type RowKey =
   | 'plans'
   | 'bid'
   | 'development'
+  | 'bill-to-party'
+  | 'gc-billing-email'
 
 /**
  * Phone/Email hold the job's copy of the linked customer's contact info, so
@@ -90,6 +95,11 @@ type JobFormEditFactRowsProps = {
   setCustomerId: (v: string | null) => void
   gcCustomerId: string | null
   setGcCustomerId: (v: string | null) => void
+  /** Who pays (v2.3345) — the "Bills go to" row; identity autosave slice. */
+  billToParty: JobBillToParty
+  setBillToParty: (v: JobBillToParty) => void
+  /** The GC's billing email is saved straight to customers; the shell mirrors the patch into its list. */
+  onCustomerPatched: (id: string, patch: Partial<CustomerRow>) => void
   linkedBidGc: { id: string; name: string } | null
   customerSearch: string
   setCustomerSearch: (v: string) => void
@@ -175,6 +185,9 @@ export function JobFormEditFactRows(props: JobFormEditFactRowsProps) {
     setCustomerId,
     gcCustomerId,
     setGcCustomerId,
+    billToParty,
+    setBillToParty,
+    onCustomerPatched,
     linkedBidGc,
     customerSearch,
     setCustomerSearch,
@@ -269,6 +282,33 @@ export function JobFormEditFactRows(props: JobFormEditFactRowsProps) {
   const dateMetAgo = dateMetRowAgo(dateMet)
   const gcCustomer = gcCustomerId ? customers.find((c) => c.id === gcCustomerId) : undefined
   const gcContact = gcCustomer ? extractContactFromCustomer(gcCustomer) : null
+  const gcBillingEmail = gcCustomer ? customerBillingEmail(gcCustomer) : ''
+  const gcDistinct = Boolean(gcCustomerId) && gcCustomerId !== customerId
+  const [gcBillingEmailDraft, setGcBillingEmailDraft] = useState('')
+  const [gcBillingEmailSaving, setGcBillingEmailSaving] = useState(false)
+  const [gcBillingEmailError, setGcBillingEmailError] = useState<string | null>(null)
+  useEffect(() => {
+    setGcBillingEmailDraft((gcCustomer?.billing_email ?? '').trim())
+    setGcBillingEmailError(null)
+  }, [gcCustomer?.id, gcCustomer?.billing_email])
+  async function saveGcBillingEmail() {
+    if (!gcCustomer || gcBillingEmailSaving) return
+    const next = gcBillingEmailDraft.trim()
+    if (next && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(next)) {
+      setGcBillingEmailError('Enter a valid email address.')
+      return
+    }
+    setGcBillingEmailSaving(true)
+    setGcBillingEmailError(null)
+    const { error } = await supabase.from('customers').update({ billing_email: next || null }).eq('id', gcCustomer.id)
+    setGcBillingEmailSaving(false)
+    if (error) {
+      setGcBillingEmailError(error.message)
+      return
+    }
+    onCustomerPatched(gcCustomer.id, { billing_email: next || null })
+    toggleRow('gc-billing-email')
+  }
   const gcDateMetYmd = gcCustomer?.date_met ? (gcCustomer.date_met.split('T')[0] ?? '') : ''
   const gcDateMetAgo = dateMetRowAgo(gcDateMetYmd)
   const dateMetCustomer = customerId ? customers.find((c) => c.id === customerId) : undefined
@@ -538,6 +578,28 @@ export function JobFormEditFactRows(props: JobFormEditFactRowsProps) {
         </label>
         <input type="email" aria-label="Customer Email" value={customerEmail} onChange={(e) => setCustomerEmail(e.target.value)} style={fieldInputStyle} />
       </JobFormFactRow>
+      {/* Who pays (v2.3345): the job's one answer. Collapsed it names the party;
+          opened it is the three-way control. Hidden on a job with no GC and no
+          split — "This customer" is the only answer and the default. */}
+      {gcDistinct || billToParty !== 'customer' ? (
+        <JobFormFactRow
+          label="Bills go to"
+          labelIcon={CUSTOMER_SUBROW_INDENT}
+          value={billToPartyRowValue({ billToParty, gcDistinct, gcName: gcCustomer?.name ?? null, gcBillingEmail })}
+          expanded={openRows.has('bill-to-party')}
+          onToggle={() => toggleRow('bill-to-party')}
+        >
+          <JobFormBillToPartyControl
+            value={billToParty}
+            onChange={setBillToParty}
+            customerId={customerId}
+            gcCustomerId={gcCustomerId}
+            gcName={gcCustomer?.name ?? null}
+            gcBillingEmail={gcBillingEmail || null}
+            customerName={customerName.trim() || null}
+          />
+        </JobFormFactRow>
+      ) : null}
       {props.contractJob ? (
         <JobFormFactRow label="Contract" labelIcon={CUSTOMER_SUBROW_INDENT} value={<JobContractStrip job={props.contractJob} variant="inline" />} />
       ) : null}
@@ -684,6 +746,57 @@ export function JobFormEditFactRows(props: JobFormEditFactRowsProps) {
         <>
           <JobFormFactRow label="Phone" labelIcon={CUSTOMER_SUBROW_INDENT} value={gcContact?.phone.trim() ? contactLink('tel', gcContact.phone) : null} />
           <JobFormFactRow label="Email" labelIcon={CUSTOMER_SUBROW_INDENT} value={gcContact?.email.trim() ? contactLink('mailto', gcContact.email) : null} />
+          {/* Where this GC is billed (v2.3345): its own column on customers, distinct
+              from the estimating contact above. Editable here because the office
+              discovers the AP inbox while billing, not while filing the customer. */}
+          <JobFormFactRow
+            label="Billing email"
+            labelIcon={CUSTOMER_SUBROW_INDENT}
+            value={
+              (gcCustomer.billing_email ?? '').trim() ? (
+                contactLink('mailto', gcCustomer.billing_email ?? '')
+              ) : gcContact?.email.trim() ? (
+                <span style={{ color: 'var(--text-muted)' }}>same as email</span>
+              ) : null
+            }
+            expanded={openRows.has('gc-billing-email')}
+            onToggle={() => toggleRow('gc-billing-email')}
+          >
+            <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500, fontSize: '0.875rem' }}>
+              Where {gcCustomer.name ?? 'this GC'} is billed
+            </label>
+            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-start', flexWrap: 'wrap' }}>
+              <input
+                type="email"
+                aria-label="GC billing email"
+                value={gcBillingEmailDraft}
+                placeholder={gcContact?.email.trim() ? `blank = ${gcContact.email.trim()}` : 'ap@builder.com'}
+                onChange={(e) => setGcBillingEmailDraft(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault()
+                    void saveGcBillingEmail()
+                  }
+                }}
+                style={{ ...fieldInputStyle, flex: '1 1 220px', width: 'auto' }}
+              />
+              <button
+                type="button"
+                onClick={() => void saveGcBillingEmail()}
+                disabled={gcBillingEmailSaving}
+                style={{ padding: '0.45rem 0.8rem', fontSize: '0.8125rem', fontWeight: 600, background: '#2563eb', color: '#ffffff', border: 'none', borderRadius: 4, cursor: gcBillingEmailSaving ? 'wait' : 'pointer' }}
+              >
+                {gcBillingEmailSaving ? 'Saving…' : 'Save'}
+              </button>
+            </div>
+            {gcBillingEmailError ? (
+              <p style={{ margin: '0.35rem 0 0', fontSize: '0.75rem', color: 'var(--text-red-700)' }}>{gcBillingEmailError}</p>
+            ) : (
+              <p style={{ margin: '0.35rem 0 0', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                Saved on the GC's customer record — every job billed to {gcCustomer.name ?? 'this GC'} uses it.
+              </p>
+            )}
+          </JobFormFactRow>
           <JobFormFactRow
             label="Date met"
             labelIcon={CUSTOMER_SUBROW_INDENT}
@@ -763,4 +876,21 @@ export function JobFormEditFactRows(props: JobFormEditFactRowsProps) {
       </JobFormFactRow>
     </div>
   )
+}
+
+/** Collapsed "Bills go to" wording (v2.3345). */
+function billToPartyRowValue(p: { billToParty: JobBillToParty; gcDistinct: boolean; gcName: string | null; gcBillingEmail: string }) {
+  if (p.billToParty === 'gc' && p.gcDistinct) {
+    return (
+      <>
+        <GcHardHatIcon size={11} style={{ flexShrink: 0, marginRight: 4 }} />
+        {(p.gcName ?? '').trim() || 'GC'}
+        {p.gcBillingEmail ? <span style={{ color: 'var(--text-muted)' }}>{` · ${p.gcBillingEmail}`}</span> : (
+          <span style={{ color: 'var(--text-amber-800)', fontSize: '0.75rem', marginLeft: 6 }}>no billing email</span>
+        )}
+      </>
+    )
+  }
+  if (p.billToParty === 'split') return 'Split by line — each invoice picks'
+  return 'This customer'
 }

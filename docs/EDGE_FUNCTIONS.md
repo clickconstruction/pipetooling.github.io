@@ -2725,6 +2725,8 @@ const { data, error } = await supabase.functions.invoke('test-email', {
 
 ### create-stripe-invoice
 
+> **v2.3345 — who pays**: the job select adds `gc_customer_id, bill_to_party` and the invoice select `bill_to_party`; the shared [`billToParty.ts`](../supabase/functions/_shared/billToParty.ts) resolves the party (`effectiveInvoiceParty` — a typed `bill_to_email` → other; the invoice's pick; else the job's rule, `gc` only with a GC set). The body's `customer_id` must now be the **payer** (`payerCustomerId`): the job customer, or the GC's customers row when the GC pays — the GC then bills through its own `customers.stripe_customer_id[_test]`, and the homeowner's Stripe customer is never read or written. A mismatch answers 400 *This bill goes to the GC on the job — reopen Bill Customer*. The bill-to branch (`bill_to_email`) is unchanged. **Redeploy with `preview-stripe-invoice` and `send-physical-invoice-email`.**
+
 > **v2.3255 — discount lines** (discount train PR 3; kernel [`discountLine.ts`](../supabase/functions/_shared/discountLine.ts), re-exported to the app): the fixtures select adds `line_kind, discount_pct, discount_basis_positions`, and `buildStripeInvoiceItemsFromFixtures` takes `allFixtures` (every row on the job — a discount's shares split over its whole basis by largest remainder, so a draw's share needs the rows it does not bill). `scopeFixturesToInvoice` never scopes a discount row as a line and reads every work row NET of its shares, so the primary remainder's "sum equals target" test still composes on a discounted job. When the target is exactly the scoped work minus those rows' shares, the bill lists the work at its real prices plus one **negative item per discount** (`source.kind = 'discount'`, description `Negotiated discount (10%)`) — Stripe accepts a negative `amount` invoice item as a credit; any other target prorates over NET row cents (no discount line, no price the discount already lowered). `extra_line_items` stay positive. **Redeploy with `preview-stripe-invoice`.**
 
 > **v2.2967 — one company**: the `custRow.master_user_id !== jobRow.master_user_id` refusal ("Customer does not belong to this job master") is gone — the DB invariant behind it (`jobs_ledger_customer_master_match`) is a no-op since `20260906190000`, so a job may bill any customer. Redeploy required.
@@ -2899,6 +2901,8 @@ Body: `{ release_id, job_id, customer_email, subject?, email_text?, email_html?,
 Body: `{ job_id, to_email, recipient_label?, subject?, email_text?, pdf_base64, pdf_filename? }`. Guards: job must be readable by the caller; valid `to_email`; PDF ≤ 6M base64 chars. Success: `{ success: true, resend_email_id }` — the function writes nothing; the client persists the send record. Sends are logged with `email_type: 'lien_filing_notice'` (v2.2664), the row's id in the Settings email catalog.
 
 ### send-physical-invoice-email
+
+> **v2.3345 — who pays**: the job select adds `gc_customer_id, bill_to_party`, the invoice select `bill_to_party`; when the shared `effectiveInvoiceParty` says the GC pays, the valid target `customer_email` is the GC's **billing email** (`customers.billing_email`, else `contact_info.email` — read with the service role so the check does not depend on the sender's customers RLS) and the job customer email is *not* accepted; a GC with no address at all is refused with 400 *The GC on this job has no billing email; add it on Edit Job → GC/Builder → Billing email*. Customer-pays and bill-to behavior is unchanged. **Redeploy required.**
 
 > **v2.2846 — never bill a paid job twice** (journey-map J3-1): the `jobs_ledger` select adds `status`; a **first send** (not `resend`) on a job whose status is `paid` is refused with **409** `{ error: "This job is already paid in full — nothing to bill.", code: "job_already_paid" }` unless the body carries **`allow_rebill: true`** — same shared predicate as `create-stripe-invoice` ([`paidJobBillGuard.ts`](../supabase/functions/_shared/paidJobBillGuard.ts)). The refusal writes `job_activity_events` `rtb_paid_job_blocked` with a service-role client when `SUPABASE_SERVICE_ROLE_KEY` is set (best-effort; the function otherwise stays user-client only). `resend: true` is unaffected — re-emailing an already-billed invoice is not a new bill. **Redeploy required.**
 
@@ -3368,6 +3372,8 @@ interface Body {
 ---
 
 ### preview-stripe-invoice
+
+> **v2.3345 — who pays**: mirrors `create-stripe-invoice` — the job + invoice selects carry the party columns and the body's `customer_id` must be the resolved payer (the GC's row when the GC pays, so the preview renders against the GC's own Stripe customer or an ephemeral one with the GC identity). **Redeploy with `create-stripe-invoice`.**
 
 > **v2.3255 — discount lines mirrored**: same select, same `allFixtures`, same shared composer as `create-stripe-invoice` (see that section); `invoice_items` sent to `invoices.createPreview` may include negative amounts. The client's `parseStripeLineSource` accepts `kind: 'discount'` (not clickable in the preview). **Redeploy with `create-stripe-invoice`.**
 

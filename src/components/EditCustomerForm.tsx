@@ -135,6 +135,8 @@ export default function EditCustomerForm({ customerId, onSaved, onCancel, onDele
   const [address, setAddress] = useState('')
   const [phone, setPhone] = useState('')
   const [email, setEmail] = useState('')
+  /** Where this customer is billed when it differs from the contact email (v2.3345) — a GC's AP inbox. */
+  const [billingEmail, setBillingEmail] = useState('')
   const [dateMet, setDateMet] = useState('')
   const [googleDriveLink, setGoogleDriveLink] = useState('')
   const [jobPicturesLink, setJobPicturesLink] = useState('')
@@ -301,6 +303,7 @@ export default function EditCustomerForm({ customerId, onSaved, onCancel, onDele
       const contactInfo = extractContactInfo(row.contact_info)
       setPhone(contactInfo.phone || '')
       setEmail(contactInfo.email || '')
+      setBillingEmail(((row as { billing_email?: string | null }).billing_email ?? '').trim())
       setDateMet(row.date_met ? (row.date_met.split('T')[0] || '') : '')
       setGoogleDriveLink(row.google_drive_link ?? '')
       setJobPicturesLink(row.job_pictures_link ?? '')
@@ -330,6 +333,8 @@ export default function EditCustomerForm({ customerId, onSaved, onCancel, onDele
       name: name.trim(),
       // customers.address mirrors the ★ property row by trigger (v2.3008); the Properties section owns it.
       contact_info: contactInfoToJson(phone, email),
+      // Where bills go when this customer pays (v2.3345); blank = the contact email.
+      billing_email: billingEmail.trim() || null,
       customer_type: customerType,
       date_met: dateMet.trim() || null,
       // Typed = manual (never auto-overwritten); cleared = null so the
@@ -549,6 +554,19 @@ export default function EditCustomerForm({ customerId, onSaved, onCancel, onDele
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
+            style={{ width: '100%', padding: '0.5rem' }}
+          />
+        </div>
+        <div style={{ marginBottom: '1rem' }}>
+          <label htmlFor="edit-billing-email" style={{ display: 'block', marginBottom: 4 }}>
+            Billing email <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>where bills go when this customer pays — blank uses the email above</span>
+          </label>
+          <input
+            id="edit-billing-email"
+            type="email"
+            value={billingEmail}
+            onChange={(e) => setBillingEmail(e.target.value)}
+            placeholder={email.trim() ? `blank = ${email.trim()}` : 'ap@builder.com'}
             style={{ width: '100%', padding: '0.5rem' }}
           />
         </div>

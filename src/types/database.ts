@@ -4947,6 +4947,7 @@ export type Database = {
           address: string | null
           archived_at: string | null
           archived_by: string | null
+          billing_email: string | null
           contact_info: Json | null
           created_at: string | null
           customer_type: string | null
@@ -4972,6 +4973,7 @@ export type Database = {
           address?: string | null
           archived_at?: string | null
           archived_by?: string | null
+          billing_email?: string | null
           contact_info?: Json | null
           created_at?: string | null
           customer_type?: string | null
@@ -4997,6 +4999,7 @@ export type Database = {
           address?: string | null
           archived_at?: string | null
           archived_by?: string | null
+          billing_email?: string | null
           contact_info?: Json | null
           created_at?: string | null
           customer_type?: string | null
@@ -9000,6 +9003,7 @@ export type Database = {
           account_manager_relationship: string | null
           account_manager_user_id: string | null
           bid_id: string | null
+          bill_to_party: string
           click_number: string
           collections_at: string | null
           collections_by: string | null
@@ -9045,6 +9049,7 @@ export type Database = {
           account_manager_relationship?: string | null
           account_manager_user_id?: string | null
           bid_id?: string | null
+          bill_to_party?: string
           click_number?: string
           collections_at?: string | null
           collections_by?: string | null
@@ -9090,6 +9095,7 @@ export type Database = {
           account_manager_relationship?: string | null
           account_manager_user_id?: string | null
           bid_id?: string | null
+          bill_to_party?: string
           click_number?: string
           collections_at?: string | null
           collections_by?: string | null
@@ -9341,6 +9347,7 @@ export type Database = {
           amount: number
           bill_to_email: string | null
           bill_to_name: string | null
+          bill_to_party: string | null
           bill_to_phone: string | null
           bill_to_stripe_customer_id: string | null
           billed_at: string | null
@@ -9370,6 +9377,7 @@ export type Database = {
           amount: number
           bill_to_email?: string | null
           bill_to_name?: string | null
+          bill_to_party?: string | null
           bill_to_phone?: string | null
           bill_to_stripe_customer_id?: string | null
           billed_at?: string | null
@@ -9399,6 +9407,7 @@ export type Database = {
           amount?: number
           bill_to_email?: string | null
           bill_to_name?: string | null
+          bill_to_party?: string | null
           bill_to_phone?: string | null
           bill_to_stripe_customer_id?: string | null
           billed_at?: string | null
