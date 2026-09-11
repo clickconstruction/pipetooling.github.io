@@ -3,6 +3,7 @@ import { Bar, CartesianGrid, ComposedChart, Line, ReferenceLine, ResponsiveConta
 import type { JobChargesTimelineInputsState } from '../../hooks/useJobChargesTimelineInputs'
 import type { JobBurnOverheadState } from '../../hooks/useJobBurnOverhead'
 import { buildJobBurn, resolveJobBurnBudget, type JobBurnModel } from '../../lib/jobs/jobBurn'
+import { budgetForBurn, JOB_BUDGET_SOURCE_WORDS, type ResolvedJobBudget } from '../../lib/jobs/jobBudget'
 import { JOB_SUMMARY_VIEW_STORAGE_KEY, readJobSummaryViewPrefs } from '../../lib/jobs/jobSummaryLedgerView'
 import { todayYmdInAppTz } from '../../utils/dateUtils'
 
@@ -95,13 +96,13 @@ export function firstEventYmdOf(inputsState: JobChargesTimelineInputsState): str
   return first
 }
 
-export function JobCostsBurnSection({ inputsState, overheadState }: { inputsState: JobChargesTimelineInputsState; /** The host runs `useJobBurnOverhead` once for Burn and the Cost Timeline (v2.3271). */ overheadState: JobBurnOverheadState }) {
+export function JobCostsBurnSection({ inputsState, overheadState, jobBudget }: { inputsState: JobChargesTimelineInputsState; /** The host runs `useJobBurnOverhead` once for Burn and the Cost Timeline (v2.3271). */ overheadState: JobBurnOverheadState; /** The job's resolved budget (v2.3299): ◆ bid / ✎ typed feed Burn's budget; ≈ assumed keeps price × (1 − target). */ jobBudget?: ResolvedJobBudget | null }) {
   const inputs = inputsState.kind === 'ready' ? inputsState.inputs : null
   const { loading: overheadLoading, overhead } = overheadState
 
   const model = useMemo(() => {
     if (!inputs) return null
-    const budget = resolveJobBurnBudget({ priceUsd: inputs.revenue, bidEstimateUsd: null, targetMarginPct: readTargetMarginPct() })
+    const budget = resolveJobBurnBudget({ priceUsd: inputs.revenue, bidEstimateUsd: jobBudget ? budgetForBurn(jobBudget) : null, targetMarginPct: readTargetMarginPct() })
     return buildJobBurn({
       chargeEvents: inputs.chargeEvents,
       valueEvents: inputs.valueEvents,
@@ -111,7 +112,7 @@ export function JobCostsBurnSection({ inputsState, overheadState }: { inputsStat
       overhead,
       todayYmd: todayYmdInAppTz(),
     })
-  }, [inputs, overhead])
+  }, [inputs, overhead, jobBudget])
 
   const header = (sub: string) => (
     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '0.5rem', flexWrap: 'wrap' }}>
@@ -134,7 +135,7 @@ export function JobCostsBurnSection({ inputsState, overheadState }: { inputsStat
     m.budget == null
       ? 'no job total yet — set the price on the Bill tab'
       : m.budget.source === 'bid_estimate'
-        ? 'bid estimate as budget'
+        ? `${jobBudget?.glyph ?? '◆'} budget ${JOB_BUDGET_SOURCE_WORDS[jobBudget?.source ?? 'bid']}`
         : `budget = price × ${100 - (m.budget.targetMarginPct ?? 0)}% (target margin ${m.budget.targetMarginPct}%)`
   const pctSub = m.percentSource === 'report' ? '% from the latest field report' : m.percentSource === 'job' ? '% from the job (no report %)' : 'no % complete yet'
   const hot = m.status === 'hot'
@@ -157,7 +158,7 @@ export function JobCostsBurnSection({ inputsState, overheadState }: { inputsStat
         <div style={tileStyle}>
           <div style={tileK}>Budget</div>
           <div style={tileV}>{m.budget ? usd0(m.budget.usd) : '—'}</div>
-          <div style={tileS}>{m.budget ? `price ${inputs && inputs.revenue != null ? usd0(inputs.revenue) : '—'}` : 'set the job total'}</div>
+          <div style={tileS}>{m.budget ? (m.budget.source === 'bid_estimate' ? `${jobBudget?.glyph ?? '◆'} ${JOB_BUDGET_SOURCE_WORDS[jobBudget?.source ?? 'bid']} · price ${inputs && inputs.revenue != null ? usd0(inputs.revenue) : '—'}` : `≈ assumed · price ${inputs && inputs.revenue != null ? usd0(inputs.revenue) : '—'}`) : 'set the job total'}</div>
         </div>
         <div style={{ ...tileStyle, ...hotTile }}>
           <div style={tileK}>% of budget vs % done</div>

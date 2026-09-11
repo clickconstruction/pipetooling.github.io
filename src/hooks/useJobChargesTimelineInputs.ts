@@ -23,6 +23,8 @@ export type JobChargesTimelineInputs = {
   revenue: number | null
   /** Job-level % when no dated report carries one. */
   fallbackPercent: number | null
+  /** Recorded team-labor hours on the job (v2.3298) — the Budget card's labor row reads hours before dollars. 0 when team labor is excluded. */
+  teamHours: number
   /** Mercury fetch failed (no Banking access) — the chart says so in its key. */
   cardChargesExcluded: boolean
 }
@@ -161,6 +163,7 @@ export function useJobChargesTimelineInputs(job: JobWithDetails, includeTeamLabo
               paymentEvents,
               revenue: job.revenue != null ? Number(job.revenue) : null,
               fallbackPercent: resolveJobCurrentPercentFallback(job),
+              teamHours: teamBreakdown.reduce((s, b) => s + b.byWorkDate.reduce((t, d) => t + (Number(d.hours) || 0), 0), 0),
               cardChargesExcluded: snapshot.mercuryFetchFailed,
             },
           })

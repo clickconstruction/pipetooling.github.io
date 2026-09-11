@@ -12,6 +12,7 @@ import StagesProgressPaymentCell from './StagesProgressPaymentCell'
 import { JobsStagesThreadPanel } from './JobsStagesThreadPanel'
 import { openInExternalBrowser } from '../../lib/openInExternalBrowser'
 import { buildClickToolingUrl } from '../../lib/jobs/jobAddressUrls'
+import { useTestReportModalOptional } from '../../contexts/TestReportModalContext'
 import { ShareJobButton } from './ShareJobButton'
 import { showAiaG702G703 } from '../../lib/aiaG702G703Eligibility'
 import { useChecklistAddModal } from '../../contexts/ChecklistAddModalContext'
@@ -132,6 +133,12 @@ export type JobsStagesTableProps = {
 }
 
 export default function JobsStagesTable(props: JobsStagesTableProps) {
+  // Test reports (v2.3298): the wrench opens the modal; without the provider (render smokes) it keeps the old site.
+  const testReportModal = useTestReportModalOptional()
+  const openTestReportFor = (job: JobWithDetails) => {
+    if (testReportModal) testReportModal.openTestReport({ job })
+    else openInExternalBrowser(buildClickToolingUrl(job))
+  }
   const {
     jobList,
     hideHeader,
@@ -467,9 +474,9 @@ export default function JobsStagesTable(props: JobsStagesTableProps) {
                             />
                             <button
                               type="button"
-                              onClick={() => openInExternalBrowser(buildClickToolingUrl(j))}
-                              title="Open Plumbing Tooling report (pre-fill customer info)"
-                              aria-label="Open Plumbing Tooling"
+                              onClick={() => openTestReportFor(j)}
+                              title="Test report — hydrostatic, pinpoint or gas"
+                              aria-label="Open Test report"
                               style={{ padding: '0.25rem', background: 'none', border: 'none', cursor: 'pointer', color: '#FF6600', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
                             >
                               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="16" height="16" fill="currentColor" aria-hidden="true">

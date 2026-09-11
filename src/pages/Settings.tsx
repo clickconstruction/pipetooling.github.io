@@ -59,6 +59,7 @@ import OfficeAddressSettingsBlock from '../components/settings/OfficeAddressSett
 import MapDefaultViewSettingsBlock from '../components/settings/MapDefaultViewSettingsBlock'
 import StripeInvoiceFooterDevSettingsBlock from '../components/settings/StripeInvoiceFooterDevSettingsBlock'
 import PhysicalInvoiceIssuerDevSettingsBlock from '../components/settings/PhysicalInvoiceIssuerDevSettingsBlock'
+import TestReportSettingsBlock from '../components/settings/TestReportSettingsBlock'
 import PhysicalInvoiceFooterDevSettingsBlock from '../components/settings/PhysicalInvoiceFooterDevSettingsBlock'
 import BillCustomerMemoDevSettingsBlock from '../components/settings/BillCustomerMemoDevSettingsBlock'
 import BidCoverLetterDefaultsSettingsBlock from '../components/settings/BidCoverLetterDefaultsSettingsBlock'
@@ -1498,6 +1499,8 @@ export default function Settings() {
       {(myRole === 'dev' || myRole === 'master_technician' || isAssistantLike(myRole)) && (
         <JobBookSettingsSection onDbError={(msg) => setError(msg)} />
       )}
+      {/* Test reports (v2.3298): the certifier and the paper's text — the office set that files them. */}
+      {(myRole === 'dev' || myRole === 'master_technician' || isAssistantLike(myRole)) && <TestReportSettingsBlock />}
       {myRole === 'dev' && (
         <>
           <StripeInvoiceFooterDevSettingsBlock />
