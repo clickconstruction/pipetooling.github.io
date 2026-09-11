@@ -114,7 +114,7 @@ when you send*.
 
 ## The robot icon on each row — can a robot bid this?
 
-Every row carries a small robot icon just left of the bid number:
+Every row carries a small robot icon just left of the bid number. The {{icon:help|?}} beside the **Bid #** header opens the key — each state, the reference grades, and why a robot's number stays sealed until you send:
 
 - **Grey** — a robot can't duplicate this bid yet. Click it to see exactly what's
   missing (plans link and service type are the blockers) with a fix hint for each,
