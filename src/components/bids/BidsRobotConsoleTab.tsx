@@ -12,6 +12,7 @@ import shadowOperatorPrompt from '../../../docs/twins/kickoffs/shadow-operator.m
 import pricingKickoffDoc from '../../../docs/twins/kickoffs/pricing-operator.md?raw'
 import { usePriceMatrixRequests } from '../../hooks/usePriceMatrixRequests'
 import { TwinPricerCard } from './TwinPricerCard'
+import { TwinSetupDialog, type TwinSetupTarget } from './TwinSetupDialog'
 import { TwinOperatorQuestionsCard } from './TwinOperatorQuestionsCard'
 import { TwinOwnerMemoCard } from './TwinOwnerMemoCard'
 import { TwinRunsLedger } from './TwinRunsLedger'
@@ -44,6 +45,8 @@ export function BidsRobotConsoleTab({ bids, twinBidBySourceId, onOpenQueue }: Pr
   const { showToast } = useToastContext()
   const [openPreview, setOpenPreview] = useState<'setup' | 'kickoff' | 'handoff' | 'pricing' | null>(null)
   const [fleet, setFleet] = useState<{ twins: TwinRow[]; creds: CredRow[] } | null>(null)
+  // PR 6: "Set up on this Mac" — which robot the one-command setup is for (null = closed).
+  const [setupTarget, setSetupTarget] = useState<TwinSetupTarget | null>(null)
   // Price Matrix PR 2: the pricing robot's queue, counted beside the bid robots'.
   const { requests: matrixQueued } = usePriceMatrixRequests({ enabled: true, statuses: ['queued', 'working', 'blocked'] })
 
@@ -141,11 +144,16 @@ export function BidsRobotConsoleTab({ bids, twinBidBySourceId, onOpenQueue }: Pr
               <span style={stepNo('1')}>1</span>
               <span style={stepText}>
                 Set up the connector
-                <span style={stepSub}>One Terminal command (Mac). It asks for the robot key, finds Node, and writes Desktop's config. Once per machine.</span>
+                <span style={stepSub}>One Terminal command (Mac), once per machine: it mints the key on the server and writes it straight into Desktop's config — nobody sees it — then restarts Desktop with the kickoff on the clipboard.</span>
               </span>
-              <button type="button" style={BTN_PRIMARY} onClick={() => void copy(setupCommand, 'the Desktop setup command')} title="Copies a Terminal command that asks for the key and configures Claude Desktop's twin-mcp connector">
-                Copy setup command
-              </button>
+              <span style={{ display: 'inline-flex', gap: '0.35rem', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                <button type="button" style={BTN_PRIMARY} onClick={() => setSetupTarget({ kind: 'estimator' })} title="One Terminal command that connects Claude Desktop to the robot estimator on this Mac. The key is minted server-side and never shown.">
+                  Set up on this Mac
+                </button>
+                <button type="button" style={BTN} onClick={() => void copy(setupCommand, 'the Desktop setup command')} title="The key-based command: it asks for a key you issued by hand on Settings → Digital twins">
+                  Key-based command
+                </button>
+              </span>
             </div>
             <div style={stepRow}>
               <span style={stepNo('2')}>2</span>
@@ -184,12 +192,17 @@ export function BidsRobotConsoleTab({ bids, twinBidBySourceId, onOpenQueue }: Pr
             <div style={stepRow}>
               <span style={stepNo('1')}>1</span>
               <span style={stepText}>
-                Issue the pricer its own key
-                <span style={stepSub}>Settings → Digital twins → Twin Pricer 1 → Issue key. Same setup command, a separate seat — revoking it never touches the bid robots.</span>
+                Connect this Mac to the pricer
+                <span style={stepSub}>Its own seat and key — revoking it never touches the bid robots. Estimators can do this themselves from Robots → Scoreboard.</span>
               </span>
-              <button type="button" style={BTN_PRIMARY} onClick={() => void copy(setupCommand, 'the Desktop setup command')} title="The same Terminal command — it asks for whichever key you paste">
-                Copy setup command
-              </button>
+              <span style={{ display: 'inline-flex', gap: '0.35rem', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                <button type="button" style={BTN_PRIMARY} onClick={() => setSetupTarget({ kind: 'pricer' })} title="One Terminal command that connects Claude Desktop to the pricing robot on this Mac. The key is minted server-side and never shown.">
+                  Set up on this Mac
+                </button>
+                <button type="button" style={BTN} onClick={() => void copy(setupCommand, 'the Desktop setup command')} title="The key-based command: it asks for a key you issued by hand on Settings → Digital twins → Twin Pricer 1">
+                  Key-based command
+                </button>
+              </span>
             </div>
             <div style={stepRow}>
               <span style={stepNo('2')}>2</span>
@@ -269,6 +282,7 @@ export function BidsRobotConsoleTab({ bids, twinBidBySourceId, onOpenQueue }: Pr
       <TwinOperatorQuestionsCard />
       {/* Price Matrix PR 5: the pricing robot's rulebook + undigested corrections. */}
       <TwinPricerCard variant="console" />
+      {setupTarget ? <TwinSetupDialog open onClose={() => setSetupTarget(null)} target={setupTarget} /> : null}
       <TwinRunsLedger />
     </div>
   )

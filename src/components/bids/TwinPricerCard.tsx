@@ -17,7 +17,10 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { supabase } from '../../lib/supabase'
 import { useToastContext } from '../../contexts/ToastContext'
 import { buildPricingScorecard, describeAgreement, type PricingCorrectionRow, type PricingRequestRow, type PricingRuleRow } from '../../lib/bids/pricingScorecard'
-import { BTN, CARD, CARD_TITLE, CHIP, MUTED, STEP_REF, TWIN_VIOLET } from './twinConsoleStyles'
+import { buildDesktopKickoff, twinMcpConnectorUrl } from '../../lib/bids/desktopKickoff'
+import pricingKickoffDoc from '../../../docs/twins/kickoffs/pricing-operator.md?raw'
+import { TwinSetupDialog } from './TwinSetupDialog'
+import { BTN, BTN_PRIMARY, CARD, CARD_TITLE, CHIP, MUTED, STEP_REF, TWIN_VIOLET } from './twinConsoleStyles'
 
 const db = supabase as unknown as SupabaseClient
 
@@ -28,6 +31,15 @@ export function TwinPricerCard({ variant }: { variant: 'scoreboard' | 'console' 
   const [rules, setRules] = useState<PricingRuleRow[]>([])
   const [available, setAvailable] = useState(true)
   const [busyRule, setBusyRule] = useState<string | null>(null)
+  // PR 6: the Scoreboard face is also where an estimator connects her own Mac to the pricer.
+  const [setupOpen, setSetupOpen] = useState(false)
+  const pricingKickoff = useMemo(() => {
+    try {
+      return buildDesktopKickoff(pricingKickoffDoc, { connectorUrl: twinMcpConnectorUrl((import.meta.env.VITE_SUPABASE_URL as string | undefined) ?? '') })
+    } catch {
+      return null
+    }
+  }, [])
 
   const load = useCallback(async () => {
     try {
@@ -69,31 +81,58 @@ export function TwinPricerCard({ variant }: { variant: 'scoreboard' | 'console' 
     }
   }
 
+  async function copyText(text: string, what: string) {
+    try {
+      await navigator.clipboard.writeText(text)
+      showToast(`Copied ${what}`, 'success')
+    } catch {
+      showToast('Could not copy', 'error')
+    }
+  }
+
   if (!available || requests === null) return null
   // Nothing to say until the pricer has run once or a rule exists.
   if (card.requestsFinished === 0 && rules.length === 0 && variant === 'console') return null
 
   if (variant === 'scoreboard') {
-    if (card.requestsFinished === 0) return null
+    const ran = card.requestsFinished > 0
     return (
       <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: '0.8rem 1rem', marginBottom: '1rem' }} data-testid="pricer-scorecard">
         <h4 style={{ margin: '0 0 0.45rem', fontSize: '0.72rem', letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-muted)', fontWeight: 700 }}>
           Pricing robot
         </h4>
-        <div style={{ display: 'flex', gap: '1.2rem', flexWrap: 'wrap', alignItems: 'baseline' }}>
+        {ran ? <div style={{ display: 'flex', gap: '1.2rem', flexWrap: 'wrap', alignItems: 'baseline' }}>
           <Stat label="matrices" value={String(card.requestsFinished)} />
           <Stat label="quotes read" value={String(card.housesRead)} />
           <Stat label="rows priced" value={`${card.rowsPricedByRobot} of ${card.rowsTotal}`} />
           <Stat label="asked instead of guessed" value={String(card.rowsAsked)} tone="amber" />
           <Stat label="agreement" value={card.agreementPct == null ? '—' : `${card.agreementPct}%`} tone={card.agreementPct != null && card.agreementPct >= 90 ? 'green' : undefined} />
           <Stat label="rules learned" value={String(card.rulesActive)} />
-        </div>
-        <div style={{ ...MUTED, marginTop: '0.35rem' }}>
+        </div> : null}
+        {ran ? <div style={{ ...MUTED, marginTop: '0.35rem' }}>
           {describeAgreement(card)}
           {card.choicesMade ? ` · ${card.choicesMade} option${card.choicesMade === 1 ? '' : 's'} settled by the estimator` : ''}
           {card.expiredQuotesSeen ? ` · ${card.expiredQuotesSeen} quote${card.expiredQuotesSeen === 1 ? '' : 's'} already expired when read` : ''}
           {card.correctionsUndigested ? ` · ${card.correctionsUndigested} correction${card.correctionsUndigested === 1 ? '' : 's'} waiting for the robot to digest` : ''}
+        </div> : null}
+        {/* PR 6: run it from your own Mac — one command connects Claude Desktop, then one paste starts a batch. */}
+        <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center', flexWrap: 'wrap', marginTop: ran ? '0.6rem' : 0, paddingTop: ran ? '0.55rem' : 0, borderTop: ran ? '1px solid var(--border)' : 'none' }} data-testid="pricer-setup-door">
+          <span style={{ fontSize: '0.84rem', color: 'var(--text-strong)' }}>
+            <b>Run it from your Mac.</b>{' '}
+            <span style={MUTED}>{ran ? 'Connect Claude Desktop once, then paste the kickoff into a new incognito chat for each batch.' : 'Nothing priced yet. Connect Claude Desktop to the pricing robot once (one command), then paste the kickoff into a new incognito chat and it works every queued request.'}</span>
+          </span>
+          <span style={{ display: 'inline-flex', gap: '0.4rem', marginLeft: 'auto' }}>
+            <button type="button" style={BTN_PRIMARY} onClick={() => setSetupOpen(true)} title="One Terminal command: connects Claude Desktop to the pricing robot on this Mac and puts the kickoff on your clipboard. The key is never shown.">
+              Set up on this Mac
+            </button>
+            {pricingKickoff ? (
+              <button type="button" style={BTN} onClick={() => void copyText(pricingKickoff, 'the pricing kickoff')} title="Copies the pricing robot's kickoff — paste it into a new incognito Claude Desktop chat">
+                Copy pricing kickoff
+              </button>
+            ) : null}
+          </span>
         </div>
+        <TwinSetupDialog open={setupOpen} onClose={() => setSetupOpen(false)} target={{ kind: 'pricer' }} />
       </div>
     )
   }

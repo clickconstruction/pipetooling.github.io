@@ -16,7 +16,7 @@ key_sections:
   - name: "Verification per PR"
 ---
 
-## Status: PR 1 (v2.3263) MERGED + migration pushed · PR 2 (v2.3267, the door) MERGED · PR 3 (v2.3270, the pricer twin + verbs) MERGED + deployed · PR 4 (v2.3274, the compare grid) open · PR 5 (v2.3275, the loop) in flight — the pricer's first live run on ZZ Test b398 went claim → Drive read → put_quote → ask → Settle → re-finish end to end on 2026-09-11
+## Status: PRs 1–5 (v2.3263 · v2.3267 · v2.3270 · v2.3274 · v2.3275) MERGED — migration `20260911023538` pushed, twin-mcp v1.4.1 + plan-fetch deployed; the pricer's first live run on ZZ Test b398 went claim → Drive read → put_quote → ask → Settle → re-finish end to end on 2026-09-11 · PR 6 (v2.3277, "Set up on this Mac") in flight — migration `20260911043553` to push and `twin-setup` to deploy after merge
 
 Design canvas (two pages — Wendi's view, Dev's view): https://claude.ai/code/artifact/fbeb5904-fefc-4fbc-bbb2-6ff03aa0a893
 
@@ -67,6 +67,7 @@ Kit math lives in `src/lib/rfq/quoteKits.ts` (pure, tested); `buildQuoteComparis
 | 3 · the pricer | Fleet: mint `twin-pricer-1` (kind `pricer`; every bid verb refused) · twin-mcp verbs `next_price_matrix`, `get_quote_documents`, `put_quote`, `finish_price_matrix`, `get_component_rules`, `extend_component_rules` · `docs/twins/kickoffs/pricing-operator.md` + `docs/twins/pricer.md` brief · Console third column **Pricing robot** · deploy twin-mcp · `EDGE_FUNCTIONS.md`. | 2 |
 | 4 · the matrix | `QuoteCompareModal`: kit rows with component lines, option rows ("needs a size"), robot reasons column, **Settle them** (answers the pricer's asks in place) · corrections written on every move/unpick/choose · receipts (rules with times used). | 3 |
 | 5 · the loop | Needs You card "The robot priced BP…" · Scoreboard axis (picks agreement %, rows asked, corrections per quote) · rule digest verb + receipts on the Console. | 4 |
+| 6 · set up on this Mac | `twin_setup_codes` + `twin-setup` edge function (mint a 10-minute one-time code; redeem mints the key server-side) · one Terminal command that writes Desktop's config, restarts Desktop, copies the kickoff — the key never shown · **Set up on this Mac** on Scoreboard (estimators, pricer only), Console, Settings fleet rows · kickoffs generated into `_shared/twinKickoffs.ts`. | 5 (any order; ships after) |
 
 ## Guardrails
 

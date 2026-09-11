@@ -171,6 +171,12 @@ The working loops, in the order a day usually runs:
    hands back picks with reasons plus estimator-lane asks. Console → Run the robots → **Pricing
    robot** column has its kickoff (`kickoffs/pricing-operator.md`); Queue lens → **Price
    matrices** lists open requests with a per-request prompt. Its key is refused every bid verb.
+   **Set up on this Mac** (v2.3277) is how a person connects Claude Desktop to it without ever
+   holding the key: Scoreboard → Pricing robot (estimators) or Console / Settings (devs) mints a
+   10-minute one-time code wrapped in a Terminal command; the command redeems it at `twin-setup`,
+   which mints the key server-side and the command writes it straight into Desktop's config,
+   restarts Desktop, and puts the kickoff on the clipboard. Same door exists for the estimator
+   robot on the Console (devs only).
 4. **Missions** — "run M<N>": the agent fetches the mission via `get_mission` and files
    `submit_report`; score against `missions/estimator.md` (the MCP bundle deliberately
    excludes verification sections).
