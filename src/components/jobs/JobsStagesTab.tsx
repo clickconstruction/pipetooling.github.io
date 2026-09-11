@@ -113,7 +113,7 @@ import { ManageJobPeopleModal } from './ManageJobPeopleModal'
 import { JobCalendarModal } from './JobCalendarModal'
 import { JobsStagesActivityExpandModal } from './JobsStagesActivityExpandModal'
 import NewReportModal from '../NewReportModal'
-import { calendarYmdInAppTzFromIso, companyWeekStartSundayContaining, getDefaultWeekRange } from '../../utils/dateUtils'
+import { APP_CALENDAR_TZ, calendarYmdInAppTzFromIso, companyWeekStartSundayContaining, getDefaultWeekRange } from '../../utils/dateUtils'
 import { fetchStagesUpcomingScheduleForJobs, type StagesUpcomingAppointment } from '../../lib/stagesUpcomingSchedule'
 import { scheduleTodayDateKey } from '../../lib/jobScheduleChicago'
 import JobsStagesTable from './JobsStagesTable'
@@ -126,6 +126,9 @@ import BilledAgingChartModal from './BilledAgingChartModal'
 import BilledPaymentForecastModal from './BilledPaymentForecastModal'
 import PaymentChaseModal from './PaymentChaseModal'
 import { buildPaymentChaseQueue, parseChaseTouchesRpc, summarizePaymentChase, type ChaseTouch } from '../../lib/jobs/paymentChase'
+import { buildCustomerPromiseRecords, classifyPromises, parsePromiseRecordsRpc, type CustomerPromiseRecord } from '../../lib/jobs/paymentPromises'
+import { buildReliabilityLine } from '../../lib/jobs/paymentReliability'
+import BilledReliabilityLine from './BilledReliabilityLine'
 import type { StagesMoneyMoveKey } from '../../lib/jobs/stagesMoneyMoveLink'
 import FixBillLinesModal from './FixBillLinesModal'
 import { buildFixBillLineItems } from '../../lib/jobs/fixBillLines'
@@ -968,6 +971,32 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
   useEffect(() => {
     void loadPromisedPayDates()
   }, [loadPromisedPayDates])
+  // Their Word PR 3: the per-customer promise record (keeps N of M · usual
+  // slip) behind the reliability line and the forecast's slip adjustment.
+  // Office roles only — primary sees the pay-speed spread, not the record.
+  // Fail-soft like the rest: a not-yet-pushed RPC just leaves it off.
+  const [promiseRecordsByCustomer, setPromiseRecordsByCustomer] = useState<Map<string, CustomerPromiseRecord> | null>(null)
+  const loadPromiseRecords = useCallback(async () => {
+    if (!canMarkPromisedPay) return
+    try {
+      const { data } = await supabase.rpc('list_payment_promise_records' as never)
+      const records = parsePromiseRecordsRpc(data as unknown)
+      if (!records) return
+      const today = new Date().toLocaleDateString('en-CA', { timeZone: APP_CALENDAR_TZ })
+      setPromiseRecordsByCustomer(buildCustomerPromiseRecords(classifyPromises(records, today)))
+    } catch {
+      // glanceable extra — never block the tab
+    }
+  }, [canMarkPromisedPay])
+  useEffect(() => {
+    void loadPromiseRecords()
+  }, [loadPromiseRecords])
+  const promiseSlipByCustomer = useMemo(() => {
+    if (!promiseRecordsByCustomer) return null
+    const out: Record<string, number> = {}
+    for (const [id, rec] of promiseRecordsByCustomer) if (rec.usualSlipDays != null && rec.usualSlipDays >= 1) out[id] = rec.usualSlipDays
+    return out
+  }, [promiseRecordsByCustomer])
   // Payment chase loop (v2.2025): the call log behind the follow-up queue.
   // Office-only (the marking roles); fail-soft like promises/pay-speeds — a
   // not-yet-deployed RPC just leaves the chase card hidden.
@@ -1060,10 +1089,18 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
               {promise ? 'They said… (new date)' : 'They said…'}
             </button>
           ) : null}
+          {!shell ? (
+            <BilledReliabilityLine
+              line={buildReliabilityLine(
+                row.job.customer_id ? billedPaySpeeds?.receipts[row.job.customer_id] : null,
+                canMarkPromisedPay ? promiseRecordsByCustomer?.get((row.job as { gc_customer_id?: string | null }).gc_customer_id ?? row.job.customer_id ?? '') ?? null : null,
+              )}
+            />
+          ) : null}
         </>
       )
     },
-    [billedPaySpeeds, promisedPayDates, canMarkPromisedPay],
+    [billedPaySpeeds, promisedPayDates, canMarkPromisedPay, promiseRecordsByCustomer],
   )
   const lienToolingSenderFallback = useMemo(() => {
     const job = lienToolingPrefillModal?.job
@@ -5384,6 +5421,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
           loading={!nonPaidScopesMerged}
           paySpeeds={billedPaySpeeds}
           promises={promisedPayDates}
+          slipByCustomer={promiseSlipByCustomer}
           todayYmd={calendarYmdInAppTzFromIso(new Date().toISOString())}
           onClose={() => setBilledPaymentForecastOpen(false)}
           onOpenInvoice={(invoiceId) => {
@@ -5459,7 +5497,10 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
           jobLabel={promisedPayModalJob.jobLabel}
           initialYmd={promisedPayModalJob.initialYmd}
           onClose={() => setPromisedPayModalJob(null)}
-          onSaved={() => void loadPromisedPayDates()}
+          onSaved={() => {
+            void loadPromisedPayDates()
+            void loadPromiseRecords()
+          }}
         />
       )}
       {paidProfitChartOpen && (
@@ -5630,6 +5671,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
         onSuccess={async () => {
           await loadJobs()
           void loadPromisedPayDates()
+          void loadPromiseRecords()
         }}
       />
       {sendBackInvoice && (

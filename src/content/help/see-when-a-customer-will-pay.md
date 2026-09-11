@@ -36,6 +36,10 @@ Statistics stop mattering the moment someone gives you an actual answer. When a 
 
 Anyone who can see the board sees promises; marking them is for dev, leaders, and assistant-type roles.
 
+## The line under the chip
+
+Below the chip, a small line reads how this customer actually pays: {{chip:gray|▂▅▃▇▂▁ Pays in 9–41d · keeps 3 of 7 · slips ~9d}}. The bars are their last six bills (days from bill to money), the range is their real spread over the last year, and the promise part appears once they have named dates — see *know whether a customer keeps their word*. The forecast uses the same record: a promise from a customer who usually slips nine days is filed nine days later than the date they gave.
+
 ## The payment forecast
 
 The {{button:green|Forecast}} button at the top of the Pipeline (next to {{button:blue|New Job}} and {{button:outline-amber|Follow-ups}}) rolls every chip up into one view — the same view also opens from the {{button:outline|Payment forecast}} button on the Billed Awaiting Payment header and from the stage strip's hamburger menu: open dollars bucketed by expected payment date — **Past expected** (your follow-up queue, listed first in red), **This week**, **Next week**, and beyond. It reads two ways:

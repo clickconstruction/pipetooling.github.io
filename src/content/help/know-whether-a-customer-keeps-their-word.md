@@ -41,7 +41,14 @@ Over time each customer builds a record: promises made, how many were kept, and 
 
 ## Where this shows up
 
-The customer's own date shows on the Billed row today. The next steps put the record to work: the kept-rate and usual slip on every Billed row, and payment terms on the customer that follow them onto new bids and jobs. Each will appear here as it ships.
+**Under the chip on every Billed row.** A small line reads the customer's record without anyone filling anything in:
+
+- {{chip:gray|▂▅▃▇▂▁ Pays in 9–41d · keeps 3 of 7 · slips ~9d}} — the six bars are their last bills, days from bill to money (green at or under their usual, yellow up to half again, red beyond). **Pays in 9–41d** is their real range over the last year, from payments already recorded, so it is there from day one. **keeps 3 of 7** and **slips ~9d** appear once promises exist: how many promised dates they kept, and how many days after their word the money usually lands. Hover for the sources.
+- Office roles see the whole line; primary sees the pay range only. A customer with fewer than two measured payments and no promises shows nothing — the row stays clean rather than pretending to a score.
+
+**In the Payment forecast.** A promised bill is filed by the promise *plus* that customer's usual slip, and the row says "usually slips ~9d". A promise from a customer who runs nine days late lands in the week the money actually tends to arrive, while the chip still shows the date they gave.
+
+Next: payment terms on the customer that follow them onto new bids and jobs.
 
 ## Who can do what
 

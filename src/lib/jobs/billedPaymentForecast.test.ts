@@ -146,3 +146,30 @@ describe('buildBilledPaymentForecast', () => {
     expect(f.skippedNoMoney).toBe(0)
   })
 })
+
+describe('usual slip (Their Word PR 3)', () => {
+  it('buckets a promised row by the promise plus the customer’s usual slip, and says so on the row', () => {
+    // Promised Fri Aug 21 (this week); Knight usually lands 5 days late → Wed Aug 26 = next week's bucket.
+    const rows = [invRow({ billed_at: '2026-07-20T12:00:00Z' })]
+    const promises = { j1: { promisedYmd: '2026-08-21', markedByName: 'Taunya' } }
+    const plain = buildBilledPaymentForecast(rows, speeds, TODAY, promises)
+    expect(plain.buckets.find((b) => b.key === 'thisWeek')!.rows).toHaveLength(1)
+    expect(plain.buckets.find((b) => b.key === 'thisWeek')!.rows[0]!.slipDays).toBeNull()
+
+    const slipped = buildBilledPaymentForecast(rows, speeds, TODAY, promises, { knight: 5 })
+    const row = slipped.buckets.find((b) => b.key === 'nextWeek')!.rows[0]!
+    expect(row).toBeDefined()
+    expect(row.slipDays).toBe(5)
+    expect(row.forecastYmd).toBe('2026-08-26')
+    expect(row.model?.expectedYmd).toBe('2026-08-21') // the chip still shows their word
+    expect(slipped.buckets.find((b) => b.key === 'thisWeek')!.rows).toHaveLength(0)
+  })
+  it('ignores the slip for unpromised rows and slips under a day', () => {
+    const rows = [invRow({ billed_at: '2026-07-20T12:00:00Z' })]
+    const noPromise = buildBilledPaymentForecast(rows, speeds, TODAY, null, { knight: 9 })
+    expect(noPromise.rowCount).toBe(1)
+    expect(noPromise.buckets.flatMap((b) => b.rows)[0]!.slipDays).toBeNull()
+    const tiny = buildBilledPaymentForecast(rows, speeds, TODAY, { j1: { promisedYmd: '2026-08-21', markedByName: 'Taunya' } }, { knight: 0.4 })
+    expect(tiny.buckets.find((b) => b.key === 'thisWeek')!.rows[0]!.slipDays).toBeNull()
+  })
+})
