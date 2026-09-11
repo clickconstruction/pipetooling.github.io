@@ -437,3 +437,94 @@ export function applyTargetJobTotal<T extends DiscountLineRow & { name?: string 
   const out = editable ? rows.map((r) => (r === editable ? next : r)) : [...rows, next]
   return { kind: 'ok', rows: out, discountDollars: wanted }
 }
+
+export type BillDiscountEntry = { mode: 'pct'; pct: number } | { mode: 'usd'; dollars: number } | { mode: 'total'; total: number }
+
+export type BillDiscountPlan = {
+  /** The row to write — name, live percent or null, derived dollars, basis ids (null = every work row), reason. */
+  row: { name: string; pct: number | null; dollars: number; basisIds: string[] | null; reason: string | null }
+  /** Cents of this discount that land on THIS bill. */
+  shareCents: number
+  /** The bill after the discount. */
+  newBillAmount: number
+  /** "$1,598.00 off Rough In · this draw only" / "10% off all 3 work lines · $1,509.80 of it rides this bill". */
+  sentence: string
+  /** The rest of the discount follows other draws. */
+  ridesElsewhereCents: number
+}
+
+/**
+ * Add a discount from inside Bill Customer (v2.3268). The bill lists
+ * `scopedIds` (a draw's linked rows; null = the whole job, the primary
+ * remainder). The basis is decided for the office: a draw discounts its own
+ * lines unless `wholeJob` flips it; the remainder discounts everything.
+ * "Make this bill $X" always discounts this bill's own lines so the number
+ * lands exactly. Returns null when nothing sensible can be made of the entry.
+ */
+export function planBillDiscount(args: {
+  rows: readonly DiscountLineRow[]
+  scopedIds: readonly string[] | null
+  billAmount: number
+  entry: BillDiscountEntry
+  wholeJob?: boolean
+  name?: string
+  reason?: string | null
+  newRowId: string
+}): BillDiscountPlan | null {
+  const { rows, scopedIds, billAmount, entry, newRowId } = args
+  const name = (args.name ?? '').trim() || 'Negotiated discount'
+  const reason = args.reason ?? null
+  const workRows = rows.filter((r) => !isDiscountRow(r) && workLineDollars(r) > 0)
+  const scoped = scopedIds ? workRows.filter((r) => scopedIds.includes(r.id)) : workRows
+  if (scoped.length === 0 || !(billAmount > 0)) return null
+  const thisBillOnly = entry.mode === 'total' || (scopedIds != null && !args.wholeJob)
+  const basisIds: string[] | null = thisBillOnly && scopedIds != null ? scoped.map((r) => r.id) : null
+  let draft: DiscountLineRow
+  if (entry.mode === 'pct') {
+    if (!(entry.pct > 0)) return null
+    draft = { ...newDiscountFixtureRow(newRowId), name, discount_pct: Math.min(100, round2(entry.pct)), discount_basis_ids: basisIds, discount_reason: reason }
+  } else if (entry.mode === 'usd') {
+    if (!(entry.dollars > 0)) return null
+    draft = { ...newDiscountFixtureRow(newRowId), name, discount_pct: null, line_unit_price: -round2(entry.dollars), discount_basis_ids: basisIds, discount_reason: reason }
+  } else {
+    const wanted = round2(billAmount - entry.total)
+    if (!(wanted > 0) || entry.total < 0) return null
+    draft = { ...newDiscountFixtureRow(newRowId), name, discount_pct: null, line_unit_price: -wanted, discount_basis_ids: basisIds, discount_reason: reason }
+  }
+  const all = [...rows, draft]
+  const dollars = derivedDiscountDollars(all, draft)
+  if (!(dollars > 0)) return null
+  const shares = discountSharesByWorkRow(all)
+  const billIds = new Set(scoped.map((r) => r.id))
+  let shareCents = 0
+  let totalCents = 0
+  for (const [rowId, list] of shares) {
+    for (const s of list) {
+      if (s.discountId !== draft.id) continue
+      totalCents += s.cents
+      if (billIds.has(rowId)) shareCents += s.cents
+    }
+  }
+  const newBillAmount = round2(Math.max(0, billAmount - shareCents / 100))
+  const ridesElsewhereCents = totalCents - shareCents
+  const basisWords =
+    basisIds == null
+      ? workRows.length === 1
+        ? (workRows[0]?.name ?? '').trim() || 'the work line'
+        : `all ${workRows.length} work lines`
+      : scoped.map((r) => (r.name ?? '').trim()).join(', ')
+  const head = draft.discount_pct != null ? `${formatPct(Number(draft.discount_pct))} off` : `$${fmtUsd(dollars)} off`
+  const tail =
+    scopedIds == null
+      ? 'follows each draw'
+      : basisIds != null
+        ? 'this draw only'
+        : `$${fmtUsd(shareCents / 100)} of it rides this bill; the rest follows the other draws`
+  return {
+    row: { name, pct: draft.discount_pct ?? null, dollars, basisIds, reason },
+    shareCents,
+    newBillAmount,
+    sentence: `${head} ${basisWords} · ${tail}`,
+    ridesElsewhereCents,
+  }
+}

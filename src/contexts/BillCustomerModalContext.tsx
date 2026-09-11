@@ -12,6 +12,8 @@ export type OpenBillCustomerOptions = {
   onSuccess?: () => void | Promise<void>
   onAfterEnsureSuccess?: () => void | Promise<void>
   onAfterOobUnwindSuccess?: () => void | Promise<void>
+  /** Discount tools (v2.3268): the modal added a discount row to the job — an open Edit Job form re-reads its line items. */
+  onDiscountApplied?: () => void | Promise<void>
 }
 
 type BillCustomerModalContextValue = {
@@ -28,13 +30,15 @@ export function BillCustomerModalProvider({ children }: { children: React.ReactN
     onSuccess: (() => void | Promise<void>) | null
     onAfterEnsureSuccess: (() => void | Promise<void>) | null
     onAfterOobUnwindSuccess: (() => void | Promise<void>) | null
-  }>({ onSuccess: null, onAfterEnsureSuccess: null, onAfterOobUnwindSuccess: null })
+    onDiscountApplied: (() => void | Promise<void>) | null
+  }>({ onSuccess: null, onAfterEnsureSuccess: null, onAfterOobUnwindSuccess: null, onDiscountApplied: null })
 
   const openBillCustomer = useCallback((opts: OpenBillCustomerOptions) => {
     callbacksRef.current = {
       onSuccess: opts.onSuccess ?? null,
       onAfterEnsureSuccess: opts.onAfterEnsureSuccess ?? null,
       onAfterOobUnwindSuccess: opts.onAfterOobUnwindSuccess ?? null,
+      onDiscountApplied: opts.onDiscountApplied ?? null,
     }
     setSession(opts.payload)
   }, [])
@@ -63,6 +67,9 @@ export function BillCustomerModalProvider({ children }: { children: React.ReactN
           }}
           onAfterOobUnwindSuccess={async () => {
             await callbacksRef.current.onAfterOobUnwindSuccess?.()
+          }}
+          onDiscountApplied={async () => {
+            await callbacksRef.current.onDiscountApplied?.()
           }}
           jobUpdating={false}
           invoiceUpdating={false}

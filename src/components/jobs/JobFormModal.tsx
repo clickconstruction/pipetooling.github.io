@@ -815,6 +815,28 @@ export default function JobFormModal({
   })
   const billingAutosaveStatus = billingAutosave.status
   const flushBillingAutosave = billingAutosave.flush
+  /**
+   * Discount tools (v2.3268): Bill Customer wrote a discount row straight to
+   * the DB (apply_job_discount) while this form is open. Re-read the rows so
+   * the next delete+reinsert keeps them, and re-baseline the billing slice on
+   * the render that carries the new rows — otherwise the autosave would fire
+   * on state that already matches the DB.
+   */
+  const [rebaselineBillingNonce, setRebaselineBillingNonce] = useState(0)
+  useEffect(() => {
+    if (rebaselineBillingNonce === 0) return
+    billingAutosave.markSavedNow()
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- the nonce is the trigger; the hook reads the latest slice JSON from its ref
+  }, [rebaselineBillingNonce])
+  const rehydrateFixturesFromDb = useCallback(async (jobId: string) => {
+    const found = await fetchJobWithDetailsById(jobId)
+    if (!found) return
+    setEditing(found)
+    const rows = fixtureRowsFromDb(found.fixtures)
+    setFixtures(rows.length > 0 ? rows : [{ id: crypto.randomUUID(), name: '', count: 1, line_unit_price: null, line_description: '', invoice_id: null }])
+    persistedDiscountSnapshotRef.current = discountSnapshot(rows)
+    setRebaselineBillingNonce((n) => n + 1)
+  }, [setFixtures])
 
   // ---- Identity / materials / team autosave slices (v2.1079) ---------------
 
@@ -4120,6 +4142,7 @@ export default function JobFormModal({
                   addDiscountRow()
                   setFixturesSectionHighlight(true)
                 }}
+                onFixturesChangedOutside={rehydrateFixturesFromDb}
                 nestedOverlayZIndex={JOB_FORM_NESTED_OVERLAY_Z_INDEX}
               />
             </>

@@ -72,6 +72,8 @@ import {
 import { openInvoiceEmailPreviewInNewTab } from '../../lib/openInvoiceEmailPreview'
 import { type JobBillingContext } from '../../lib/jobBillingContext'
 import { fixturesForInvoiceBill } from '../../lib/invoiceScopedFixtures'
+import { BillCustomerDiscountStrip } from './BillCustomerDiscountStrip'
+import type { BillDiscountPlan } from '../../lib/jobs/discountLine'
 import { buildPhysicalInvoiceDetailFromJob, jobContextForPhysicalDoc } from '../../lib/physicalInvoiceJobContext'
 import {
   buildPhysicalInvoicePdfBlob,
@@ -396,6 +398,7 @@ export default function SendRecordInvoiceModal({
   onSuccess,
   onAfterEnsureSuccess,
   onAfterOobUnwindSuccess,
+  onDiscountApplied,
   jobUpdating,
   invoiceUpdating,
   overlayZIndex = 60,
@@ -405,6 +408,8 @@ export default function SendRecordInvoiceModal({
   onSuccess: () => Promise<void>
   onAfterEnsureSuccess?: () => void | Promise<void>
   onAfterOobUnwindSuccess?: () => void | Promise<void>
+  /** Discount tools (v2.3268): after `apply_job_discount` wrote a discount row — the opener re-reads the job's line items. */
+  onDiscountApplied?: () => void | Promise<void>
   jobUpdating: boolean
   invoiceUpdating: boolean
   /** Use &gt; JobFormModal (1010) when opened from Edit Job */
@@ -414,6 +419,8 @@ export default function SendRecordInvoiceModal({
   onAfterEnsureSuccessRef.current = onAfterEnsureSuccess
   const onAfterOobUnwindSuccessRef = useRef(onAfterOobUnwindSuccess)
   onAfterOobUnwindSuccessRef.current = onAfterOobUnwindSuccess
+  const onDiscountAppliedRef = useRef(onDiscountApplied)
+  onDiscountAppliedRef.current = onDiscountApplied
 
   const { user: authUser, role: authRole } = useAuth()
   const { showToast } = useToastContext()
@@ -475,6 +482,9 @@ export default function SendRecordInvoiceModal({
   stripeSuccessInvoiceRef.current = stripeSuccessInvoice
 
   const [stripePreview, setStripePreview] = useState<StripeInvoicePreviewSuccess | null>(null)
+  // Discount tools (v2.3268): bumping this re-runs the Stripe preview after a
+  // discount row landed on the job (the edge function reads the rows itself).
+  const [discountPreviewNonce, setDiscountPreviewNonce] = useState(0)
   const [stripePreviewLoading, setStripePreviewLoading] = useState(false)
   const [stripePreviewError, setStripePreviewError] = useState<string | null>(null)
   /** Set when the invoice being billed is a hazmat rider — offers attaching the notice. */
@@ -1187,6 +1197,7 @@ export default function SendRecordInvoiceModal({
     includeHazmatRollIn,
     hazmatIncidentForInvoice,
     stripeFixtureMultiLineAvailable,
+    discountPreviewNonce,
   ])
 
   async function submitPhysicalInvoiceEmail() {
@@ -1780,6 +1791,63 @@ export default function SendRecordInvoiceModal({
     [job, physicalPreviewDbBacked, physicalMaterialEditRefs],
   )
 
+  /**
+   * Discount tools (v2.3268): the rows THIS bill lists — a draw's linked
+   * rows (ids), or null for the whole-job remainder / an unlinked carve — and
+   * the apply path: one RPC writes the row, revenue and this draft's amount
+   * together; then the opener re-reads its line items, the job details
+   * refresh (the physical preview and the primary's plan read them), the
+   * shown amount follows, and the Stripe preview re-runs.
+   */
+  const discountScopedIds = useMemo((): string[] | null => {
+    if (kind !== 'invoice' || !invoice?.id) return null
+    const linked = (billCustomerJobDetails?.fixtures ?? []).filter((f) => f.invoice_id === invoice.id).map((f) => f.id)
+    return linked.length > 0 ? linked : null
+  }, [kind, invoice?.id, billCustomerJobDetails?.fixtures])
+  const applyBillDiscount = useCallback(
+    async (plan: BillDiscountPlan) => {
+      if (!job?.id) throw new Error('Job missing')
+      const rows = billCustomerJobDetails?.fixtures ?? []
+      const basisPositions = plan.row.basisIds ? rows.filter((f) => plan.row.basisIds!.includes(f.id)).map((f) => f.sequence_order) : null
+      const draftAmounts = kind === 'invoice' && invoice?.id && invoice.status === 'ready_to_bill' ? [{ invoice_id: invoice.id, amount: plan.newBillAmount }] : []
+      const raw = await withSupabaseRetry(
+        async () =>
+          await supabase.rpc('apply_job_discount', {
+            p_job_id: job.id,
+            p_name: plan.row.name,
+            p_pct: plan.row.pct ?? undefined,
+            p_dollars: plan.row.dollars,
+            p_basis_positions: basisPositions ?? undefined,
+            p_reason: plan.row.reason ?? undefined,
+            p_draft_amounts: draftAmounts,
+            p_summary: `Discount added: ${plan.sentence}`,
+          }),
+        'apply discount from Bill Customer',
+      )
+      const obj = raw as unknown as { ok?: boolean; error?: string } | null
+      if (obj && typeof obj.error === 'string') throw new Error(obj.error)
+      try {
+        await onDiscountAppliedRef.current?.()
+      } catch {
+        /* the opener's refresh is best-effort */
+      }
+      await refreshBillCustomerJobDetails()
+      if (kind === 'invoice') setBillAmountStr(String(plan.newBillAmount))
+      setDiscountPreviewNonce((n) => n + 1)
+      showToast(`Discount added — ${plan.sentence}`, 'success')
+    },
+    [job?.id, billCustomerJobDetails?.fixtures, kind, invoice?.id, invoice?.status, refreshBillCustomerJobDetails, showToast],
+  )
+  const discountStrip =
+    job && billCustomerJobDetails && !shouldBlockBillOnPaidJob({ jobStatus: billCustomerJobDetails.status, allowRebill }) ? (
+      <BillCustomerDiscountStrip
+        rows={billCustomerJobDetails.fixtures ?? []}
+        scopedIds={discountScopedIds}
+        billAmount={Number(billAmountStr) || 0}
+        onApply={applyBillDiscount}
+      />
+    ) : null
+
   if (!open || !job) return null
 
   const busy = jobUpdating || invoiceUpdating || outsideSubmitting || stripeSubmitting || physicalSubmitting
@@ -1787,6 +1855,8 @@ export default function SendRecordInvoiceModal({
   const jobIsPaid = isPaidJobStatus(billCustomerJobDetails?.status)
   /** Paid and not explicitly overridden → every send button is off and the preview gives way to the notice. */
   const paidJobBlocked = shouldBlockBillOnPaidJob({ jobStatus: billCustomerJobDetails?.status, allowRebill })
+
+
   const stripeFallbackLedgerInvoiceId =
     kind === 'invoice' ? (invoice?.id ?? '') : (ensuredInvoice?.id ?? '')
 
@@ -2668,6 +2738,7 @@ export default function SendRecordInvoiceModal({
                 </div>
               </div>
             </div>
+            {discountStrip}
             {physicalDocPreview ? (
               <PhysicalInvoicePreview
                 document={physicalDocPreview}
@@ -3204,6 +3275,7 @@ export default function SendRecordInvoiceModal({
                   </div>
                   </div>
                 </div>
+                {discountStrip}
                 {job && !paidJobBlocked ? (
                   <StripeBillPreSubmitPreview
                     customerName={job.customer_name}
