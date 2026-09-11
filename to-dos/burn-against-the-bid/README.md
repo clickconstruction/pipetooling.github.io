@@ -1,6 +1,6 @@
 # Burn against the bid — a job budget with provenance
 
-Status: not started · designed 2026-09-11 (mock-up reviewed with the owner: "I think this is pretty good") · **held until the Bids → Labor refresh is designed** — the owner wants the two built together, because a budget is only as honest as the estimate that feeds it, and today's Labor tab is where that estimate is (not) made.
+Status: not started · designed 2026-09-11 (mock-up reviewed with the owner: "I think this is pretty good") · **held behind the Bids → Labor refresh** ([`to-dos/bids-labor-refresh/`](../bids-labor-refresh/README.md); its PR 1 shipped as v2.3276 — resume this after its PR 2 lands the estimate's `source` / completeness columns) — the owner wants the two built together, because a budget is only as honest as the estimate that feeds it, and today's Labor tab is where that estimate is (not) made.
 
 Mock-ups, kept here: [`mockup.html`](./mockup.html) (the design study, v2 after the "is this the best we can do?" pass; published as the artifact *Burn Against the Bid*) and [`mockup-burn-budget-stages-2026-09-09.html`](./mockup-burn-budget-stages-2026-09-09.html) (the earlier *Burn, Budget and Stages* study that produced v2.3189 / v2.3191 / v2.3192 — its "budget = bid estimate else price × (1 − target)" rule is the one this to-do finishes).
 
