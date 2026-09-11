@@ -3958,52 +3958,52 @@ export type Database = {
       }
       cost_estimate_labor_rows: {
         Row: {
-          kind: string
-          source: string | null
-          source_note: string | null
-          unit: string
           cost_estimate_id: string
           count: number
           created_at: string | null
           fixture: string
           id: string
           is_fixed: boolean
+          kind: string
           rough_in_hrs_per_unit: number
           sequence_order: number
+          source: string | null
+          source_note: string | null
           top_out_hrs_per_unit: number
           trim_set_hrs_per_unit: number
+          unit: string
         }
         Insert: {
-          kind?: string
-          source?: string | null
-          source_note?: string | null
-          unit?: string
           cost_estimate_id: string
           count?: number
           created_at?: string | null
           fixture: string
           id?: string
           is_fixed?: boolean
+          kind?: string
           rough_in_hrs_per_unit?: number
           sequence_order?: number
-          top_out_hrs_per_unit?: number
-          trim_set_hrs_per_unit?: number
-        }
-        Update: {
-          kind?: string
           source?: string | null
           source_note?: string | null
+          top_out_hrs_per_unit?: number
+          trim_set_hrs_per_unit?: number
           unit?: string
+        }
+        Update: {
           cost_estimate_id?: string
           count?: number
           created_at?: string | null
           fixture?: string
           id?: string
           is_fixed?: boolean
+          kind?: string
           rough_in_hrs_per_unit?: number
           sequence_order?: number
+          source?: string | null
+          source_note?: string | null
           top_out_hrs_per_unit?: number
           trim_set_hrs_per_unit?: number
+          unit?: string
         }
         Relationships: [
           {
@@ -9370,42 +9370,42 @@ export type Database = {
       }
       labor_book_entries: {
         Row: {
-          kind: string
-          unit: string
           alias_names: string[] | null
           created_at: string | null
           fixture_type_id: string
           id: string
+          kind: string
           rough_in_hrs: number
           sequence_order: number
           top_out_hrs: number
           trim_set_hrs: number
+          unit: string
           version_id: string
         }
         Insert: {
-          kind?: string
-          unit?: string
           alias_names?: string[] | null
           created_at?: string | null
           fixture_type_id: string
           id?: string
+          kind?: string
           rough_in_hrs?: number
           sequence_order?: number
           top_out_hrs?: number
           trim_set_hrs?: number
+          unit?: string
           version_id: string
         }
         Update: {
-          kind?: string
-          unit?: string
           alias_names?: string[] | null
           created_at?: string | null
           fixture_type_id?: string
           id?: string
+          kind?: string
           rough_in_hrs?: number
           sequence_order?: number
           top_out_hrs?: number
           trim_set_hrs?: number
+          unit?: string
           version_id?: string
         }
         Relationships: [
