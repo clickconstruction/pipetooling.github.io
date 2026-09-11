@@ -8,7 +8,8 @@
  * asGc=true plus the owner's name for the statement's AS GC tag.
  */
 
-import { jobCarriesOpenBills, jobPrintsShellRemainder } from './portalBillMembership.ts'
+import { jobCarriesOpenBills, jobPrintsShellRemainder, viewerOwesBill } from './portalBillMembership.ts'
+import { effectiveInvoiceParty, payerCustomerId } from './billToParty.ts'
 
 export type PortalJobRow = {
   id: string
@@ -25,6 +26,8 @@ export type PortalJobRow = {
   gc_customer_id?: string | null
   /** v2.2933: the job-level switch — nothing about stages reaches the GC until this is on. */
   gc_shares_stage_dates?: boolean | null
+  /** Who pays (v2.3346): customer | gc | split — the job's rule. */
+  bill_to_party?: string | null
 }
 
 export type PortalInvoiceRow = {
@@ -35,6 +38,10 @@ export type PortalInvoiceRow = {
   billed_at: string | null
   sequence_order: number | null
   hosted_invoice_url: string | null
+  /** Who pays (v2.3346): this invoice's own pick and the typed someone-else recipient. */
+  bill_to_party?: string | null
+  bill_to_email?: string | null
+  bill_to_name?: string | null
 }
 
 export type PortalPaymentRow = {
@@ -68,6 +75,13 @@ export type PortalBillOut = {
   checkRef: string
   asGc: boolean
   ownerName: string | null
+  /**
+   * Who pays (v2.3346): null when this viewer owes the bill; otherwise the
+   * name of the party it was sent to (the owner, the GC, or a typed recipient)
+   * — the statement lists it under "on your jobs, billed to someone else"
+   * and never counts it in the balance.
+   */
+  billedTo: string | null
   /** Payments already applied to this bill, oldest first (v2.2313). */
   payments: PortalBillPaymentOut[]
   /** Sum of `payments` (dollars). */
@@ -135,8 +149,20 @@ export function buildPortalBills(args: {
   markGcRows: boolean
   /** customer_id → display name, for AS GC owner labels. */
   ownerNames?: Record<string, string>
+  /** customer_id → display name for every other party on these jobs (owners and GCs) — the "billed to" label. */
+  partyNames?: Record<string, string>
 }): PortalBillOut[] {
-  const { jobs, invoices, payments, viewerCustomerId, markGcRows, ownerNames = {} } = args
+  const { jobs, invoices, payments, viewerCustomerId, markGcRows, ownerNames = {}, partyNames = {} } = args
+
+  // Who pays (v2.3346): the bill belongs to the viewer when the resolved payer
+  // is their customers row; otherwise name who it went to.
+  const billedToFor = (job: PortalJobRow, inv: PortalInvoiceRow | null): string | null => {
+    if (viewerOwesBill(job, inv, viewerCustomerId)) return null
+    const party = effectiveInvoiceParty(job, inv)
+    if (party === 'other') return (inv?.bill_to_name ?? '').trim() || 'someone else'
+    const payerId = payerCustomerId(job, party)
+    return (payerId ? partyNames[payerId] ?? ownerNames[payerId] ?? '' : '').trim() || (party === 'gc' ? 'the builder' : 'the owner')
+  }
 
   const openBillJobs = jobs.filter((j) => jobCarriesOpenBills(j.status))
   const jobById = new Map(openBillJobs.map((j) => [j.id, j]))
@@ -184,6 +210,7 @@ export function buildPortalBills(args: {
       payUrl: (inv.hosted_invoice_url ?? '').trim() || null,
       checkRef: jobNumber(job) || String(inv.sequence_order ?? ''),
       ...asGcFields(job),
+      billedTo: billedToFor(job, inv),
       payments: paymentRowsByInvoice.get(inv.id) ?? [],
       totalPaid: round2(paymentsByInvoice.get(inv.id) ?? 0),
     })
@@ -203,6 +230,7 @@ export function buildPortalBills(args: {
       payUrl: null,
       checkRef: jobNumber(job),
       ...asGcFields(job),
+      billedTo: billedToFor(job, null),
       payments: [],
       totalPaid: round2(Number(job.payments_made ?? 0)),
     })

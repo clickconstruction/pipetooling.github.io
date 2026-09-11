@@ -433,7 +433,9 @@ export default function JobFormModal({
   // Their Word PR 4: the payer's payment terms + promise record as a bar above the customer rows.
   const [termsRefresh, setTermsRefresh] = useState(0)
   const [termsModalOpen, setTermsModalOpen] = useState(false)
-  const customerTerms = useCustomerTermsWarning(gcCustomerId || customerId || null, termsRefresh)
+  // Who pays (v2.3346): the bar describes the party the bills go to — the GC only when the rule says so.
+  const termsPayerId = billToParty === 'gc' && gcCustomerId ? gcCustomerId : customerId || gcCustomerId || null
+  const customerTerms = useCustomerTermsWarning(termsPayerId, termsRefresh)
   /** Property record link (v2.2638): customer_addresses row this job sits at — feeds lien documents. */
   const [customerAddressId, setCustomerAddressId] = useState<string | null>(null)
   const [propertyCandidates, setPropertyCandidates] = useState<PropertyCandidateRow[]>([])
@@ -3949,15 +3951,15 @@ export default function JobFormModal({
             <CustomerTermsBar
               warning={customerTerms.warning}
               onEditTerms={
-                (authRole === 'dev' || authRole === 'master_technician' || authRole === 'assistant' || authRole === 'controller') && (gcCustomerId || customerId)
+                (authRole === 'dev' || authRole === 'master_technician' || authRole === 'assistant' || authRole === 'controller') && termsPayerId
                   ? () => setTermsModalOpen(true)
                   : undefined
               }
             />
-            {termsModalOpen && (gcCustomerId || customerId) ? (
+            {termsModalOpen && termsPayerId ? (
               <CustomerTermsModal
-                customerId={(gcCustomerId || customerId) as string}
-                customerName={customers.find((c) => c.id === (gcCustomerId || customerId))?.name ?? customerName ?? 'Customer'}
+                customerId={termsPayerId}
+                customerName={customers.find((c) => c.id === termsPayerId)?.name ?? customerName ?? 'Customer'}
                 record={customerTerms.record}
                 onClose={() => setTermsModalOpen(false)}
                 onSaved={() => setTermsRefresh((n) => n + 1)}

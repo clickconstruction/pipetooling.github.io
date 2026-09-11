@@ -1,3 +1,4 @@
+import { stageRowPayerCustomerId } from '../../lib/jobs/billToParty'
 import {
   Fragment,
   Suspense,
@@ -1110,7 +1111,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
             <BilledReliabilityLine
               line={buildReliabilityLine(
                 row.job.customer_id ? billedPaySpeeds?.receipts[row.job.customer_id] : null,
-                canMarkPromisedPay ? promiseRecordsByCustomer?.get((row.job as { gc_customer_id?: string | null }).gc_customer_id ?? row.job.customer_id ?? '') ?? null : null,
+                canMarkPromisedPay ? promiseRecordsByCustomer?.get(stageRowPayerCustomerId(row) ?? '') ?? null : null,
               )}
             />
           ) : null}

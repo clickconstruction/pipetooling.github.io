@@ -2,6 +2,7 @@ import type { StageRow } from '../jobsStagesBoard'
 import { effectiveInvoiceEstBillDate, stageRowBilledRemainingAmount } from './invoiceBilling'
 import { effectiveJobLedgerNumber } from '../ledgerDisplayPrefixes'
 import { slipAdjustedYmd } from './paymentReliability'
+import { effectiveInvoiceParty, payerCustomerId } from './billToParty'
 import {
   billedExpectedPayModel,
   daysBetweenYmd,
@@ -141,8 +142,8 @@ export function buildBilledPaymentForecast(
     )
     // A promise is bucketed by when the money usually lands after the date
     // this customer gives, not by the date itself (Their Word PR 3). The
-    // payer is the GC when there is one — that's whose word it is.
-    const payerId = (job as { gc_customer_id?: string | null }).gc_customer_id ?? job.customer_id
+    // payer is whoever the bill went to (v2.3346) — that's whose word it is.
+    const payerId = payerCustomerId(job, effectiveInvoiceParty(job, r.inv))
     const rawSlip = model?.source === 'promised' && payerId ? slipByCustomer?.[payerId] : undefined
     const slipDays = rawSlip != null && Number.isFinite(rawSlip) && rawSlip >= 1 ? Math.round(rawSlip) : null
     const forecastYmd = model ? (slipDays ? slipAdjustedYmd(model.expectedYmd, slipDays) : model.expectedYmd) : null

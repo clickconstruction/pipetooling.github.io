@@ -5,7 +5,7 @@ import { todayYmdInAppTz } from '../_shared/appTimeZone.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { sendEmailViaResend } from '../_shared/resendSendEmail.ts'
 import { resolvePortalCustomerPhone } from '../_shared/portalCustomerPhone.ts'
-import { openBillJobIds } from '../_shared/portalBillMembership.ts'
+import { owedJobIdsForViewer, PORTAL_OPEN_INVOICE_STATUS } from '../_shared/portalBillMembership.ts'
 import { PROMISE_MAX_PER_HOUR, promiseDateProblem } from '../_shared/portalPromise.ts'
 
 /**
@@ -140,21 +140,31 @@ serve(async (req) => {
       }
 
       // The same job scope the statement shows (customer-portal's rule).
-      const jobSelect = 'id, status'
-      let jobs: Array<{ id: string; status: string | null }> = []
+      // Who pays (v2.3346): a promise covers the jobs this viewer actually owes
+      // on — the job rule + each open bill's pick, the same test the statement uses.
+      const jobSelect = 'id, status, customer_id, gc_customer_id, bill_to_party'
+      type ScopeJob = { id: string; status: string | null; customer_id: string | null; gc_customer_id: string | null; bill_to_party: string | null }
+      let jobs: ScopeJob[] = []
       if (link.audience === 'all') {
         const { data } = await admin
           .from('jobs_ledger')
           .select(jobSelect)
           .or(`customer_id.eq.${link.customer_id},gc_customer_id.eq.${link.customer_id}`)
           .limit(500)
-        jobs = (data ?? []) as Array<{ id: string; status: string | null }>
+        jobs = (data ?? []) as ScopeJob[]
       } else {
         const col = link.audience === 'gc' ? 'gc_customer_id' : 'customer_id'
         const { data } = await admin.from('jobs_ledger').select(jobSelect).eq(col, link.customer_id).limit(500)
-        jobs = (data ?? []) as Array<{ id: string; status: string | null }>
+        jobs = (data ?? []) as ScopeJob[]
       }
-      const promiseJobIds = openBillJobIds(jobs)
+      const { data: scopeInvRaw } = jobs.length
+        ? await admin
+            .from('jobs_ledger_invoices')
+            .select('job_id, bill_to_party, bill_to_email')
+            .in('job_id', jobs.map((j) => j.id))
+            .eq('status', PORTAL_OPEN_INVOICE_STATUS)
+        : { data: [] }
+      const promiseJobIds = owedJobIdsForViewer(jobs, (scopeInvRaw ?? []) as Array<{ job_id: string; bill_to_party: string | null; bill_to_email: string | null }>, link.customer_id)
       if (promiseJobIds.length === 0) {
         return jsonResponse({ error: 'Nothing is open on your account right now — thank you!' }, 400)
       }

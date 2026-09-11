@@ -21,6 +21,8 @@
  * (src/lib/portal/portalBillMembership.test.ts).
  */
 
+import { effectiveInvoiceParty, payerCustomerId } from './billToParty.ts'
+
 /** The only invoice status the statement lists. */
 export const PORTAL_OPEN_INVOICE_STATUS = 'billed'
 
@@ -44,4 +46,40 @@ export function jobPrintsShellRemainder(status: string | null | undefined): bool
 /** Ids of the jobs whose billed invoices the payload should fetch. */
 export function openBillJobIds<T extends { id: string; status: string | null }>(jobs: T[]): string[] {
   return jobs.filter((j) => jobCarriesOpenBills(j.status)).map((j) => j.id)
+}
+
+export type OwedJobFields = { id: string; status: string | null; customer_id?: string | null; gc_customer_id?: string | null; bill_to_party?: string | null }
+export type OwedInvoiceFields = { job_id: string; bill_to_party?: string | null; bill_to_email?: string | null }
+
+/**
+ * Who pays (v2.3346): does this viewer owe this bill? The job's rule + the
+ * invoice's pick + a typed recipient resolve to a payer customers row; the
+ * bill is the viewer's when that row is theirs. A shell row (no invoice)
+ * follows the job rule alone.
+ */
+export function viewerOwesBill(job: OwedJobFields, invoice: OwedInvoiceFields | null, viewerCustomerId: string): boolean {
+  const party = effectiveInvoiceParty(job, invoice)
+  return payerCustomerId(job, party) === viewerCustomerId
+}
+
+/**
+ * Ids of the jobs on which the viewer owes at least one open bill (or the
+ * shell remainder) — the scope a portal promise covers. Jobs with no billed
+ * invoice yet fall back to the job rule.
+ */
+export function owedJobIdsForViewer(jobs: OwedJobFields[], invoices: OwedInvoiceFields[], viewerCustomerId: string): string[] {
+  const byJob = new Map<string, OwedInvoiceFields[]>()
+  for (const inv of invoices) {
+    const list = byJob.get(inv.job_id) ?? []
+    list.push(inv)
+    byJob.set(inv.job_id, list)
+  }
+  const out: string[] = []
+  for (const j of jobs) {
+    if (!jobCarriesOpenBills(j.status)) continue
+    const invs = byJob.get(j.id) ?? []
+    const owed = invs.length > 0 ? invs.some((inv) => viewerOwesBill(j, inv, viewerCustomerId)) : viewerOwesBill(j, null, viewerCustomerId)
+    if (owed) out.push(j.id)
+  }
+  return out
 }

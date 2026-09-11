@@ -882,13 +882,14 @@ export function JobFormEditFactRows(props: JobFormEditFactRowsProps) {
 function billToPartyRowValue(p: { billToParty: JobBillToParty; gcDistinct: boolean; gcName: string | null; gcBillingEmail: string }) {
   if (p.billToParty === 'gc' && p.gcDistinct) {
     return (
-      <>
-        <GcHardHatIcon size={11} style={{ flexShrink: 0, marginRight: 4 }} />
-        {(p.gcName ?? '').trim() || 'GC'}
-        {p.gcBillingEmail ? <span style={{ color: 'var(--text-muted)' }}>{` · ${p.gcBillingEmail}`}</span> : (
-          <span style={{ color: 'var(--text-amber-800)', fontSize: '0.75rem', marginLeft: 6 }}>no billing email</span>
-        )}
-      </>
+      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, minWidth: 0, maxWidth: '100%' }}>
+        <GcHardHatIcon size={11} style={{ flexShrink: 0 }} />
+        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {(p.gcName ?? '').trim() || 'GC'}
+          {p.gcBillingEmail ? <span style={{ color: 'var(--text-muted)' }}>{` · ${p.gcBillingEmail}`}</span> : null}
+        </span>
+        {!p.gcBillingEmail ? <span style={{ color: 'var(--text-amber-800)', fontSize: '0.75rem', flexShrink: 0 }}>no billing email</span> : null}
+      </span>
     )
   }
   if (p.billToParty === 'split') return 'Split by line — each invoice picks'
