@@ -6,6 +6,7 @@
 import type { Dispatch, SetStateAction } from 'react'
 import DeletedRecordsSection from './DeletedRecordsSection'
 import BulkDeleteAlertSettingsBlock from './BulkDeleteAlertSettingsBlock'
+import BidJobBackfillSettingsBlock from './BidJobBackfillSettingsBlock'
 import StaleDraftBillsOnPaidJobsSection from './StaleDraftBillsOnPaidJobsSection'
 
 export default function SettingsDataTab({
@@ -178,6 +179,7 @@ export default function SettingsDataTab({
     <StaleDraftBillsOnPaidJobsSection />
     <DeletedRecordsSection />
     <BulkDeleteAlertSettingsBlock />
+    <BidJobBackfillSettingsBlock />
     </>
   )
 }
