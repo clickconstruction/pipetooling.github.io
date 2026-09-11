@@ -29,6 +29,7 @@ import { useEditCustomerModal } from '../../../contexts/EditCustomerModalContext
 import { useToastContext } from '../../../contexts/ToastContext'
 import { legalRpc, type LegalMattersData } from '../../../hooks/useLegalMatters'
 import AgreedWriteDownModal from '../AgreedWriteDownModal'
+import LegalPortalLinkButton from './LegalPortalLinkButton'
 import { useLegalPacketData } from './useLegalPacketData'
 
 type JobsLedgerInvoice = Database['public']['Tables']['jobs_ledger_invoices']['Row']
@@ -374,6 +375,7 @@ export default function LegalDeskModal(props: LegalDeskModalProps) {
             <div style={{ fontWeight: 600 }}>Legal · Collections accounts</div>
             <div style={{ ...MUTED, fontSize: '0.78rem' }}>Two exits: attorney-ready (a dev — that is what puts it with the firm) or write it down. {firm ? `Firm: ${firm.name}.` : stored ? 'No firm yet — add one on Settings → Jobs & dispatch.' : ''}</div>
           </div>
+          {stored && firm && canEditReview ? <LegalPortalLinkButton firmId={firm.id} firmName={firm.name} /> : null}
           <button type="button" onClick={onClose} aria-label="Close" style={{ ...btn, height: 30, width: 30, justifyContent: 'center', padding: 0 }}>✕</button>
         </div>
 
