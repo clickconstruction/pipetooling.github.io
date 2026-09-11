@@ -16,7 +16,7 @@ key_sections:
   - name: "Verification per PR"
 ---
 
-## Status: PRs 1–5 (v2.3263 · v2.3267 · v2.3270 · v2.3274 · v2.3275) MERGED — migration `20260911023538` pushed, twin-mcp v1.4.1 + plan-fetch deployed; the pricer's first live run on ZZ Test b398 went claim → Drive read → put_quote → ask → Settle → re-finish end to end on 2026-09-11 · PR 6 (v2.3277, "Set up on this Mac") in flight — migration `20260911043553` to push and `twin-setup` to deploy after merge
+## Status: PRs 1–6 (v2.3263 · v2.3267 · v2.3270 · v2.3274 · v2.3275 · v2.3277) MERGED — migrations `20260911023538` and `20260911043553` pushed, twin-mcp v1.4.1 + plan-fetch + twin-setup deployed; the pricer's first live run on ZZ Test b398 went claim → Drive read → put_quote → ask → Settle → re-finish end to end, and "Set up on this Mac" minted and redeemed a code live (get_pricing_guide answered with the minted key) on 2026-09-11
 
 Design canvas (two pages — Wendi's view, Dev's view): https://claude.ai/code/artifact/fbeb5904-fefc-4fbc-bbb2-6ff03aa0a893
 
