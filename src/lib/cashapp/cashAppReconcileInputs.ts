@@ -6,7 +6,7 @@
  */
 
 import type { CashAppLane } from './cashAppLane'
-import type { CashAppMatchResult, RecordedPaymentForMatch } from './matchCashAppTransactions'
+import type { CashAppMatchResult, CashAppMatchRule, RecordedPaymentForMatch } from './matchCashAppTransactions'
 import { CASHAPP_LANE_LABEL } from './cashAppLane'
 
 export type StubForInputs = { id: string; person_name: string; period_start: string }
@@ -38,7 +38,7 @@ export function firstReportStarts(stubs: readonly StubForInputs[]): { byPerson: 
 }
 
 /** Where a match result files the transaction. Advances and pay stay in review until a person decides. */
-export function laneForMatchResult(r: CashAppMatchResult): { lane: CashAppLane; matchRule: 'id' | 'amount' | 'split' | null; paymentId: string | null } {
+export function laneForMatchResult(r: CashAppMatchResult): { lane: CashAppLane; matchRule: CashAppMatchRule | null; paymentId: string | null } {
   if (r.outcome === 'matched') return { lane: 'recorded', matchRule: r.rule, paymentId: r.paymentIds[0] ?? null }
   if (r.outcome === 'before_records') return { lane: 'before_records', matchRule: null, paymentId: null }
   if (r.noteKind === 'expense') return { lane: 'expense', matchRule: null, paymentId: null }

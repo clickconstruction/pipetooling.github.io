@@ -124,7 +124,7 @@ export default function PeopleOffsetsTab({ people, users, payStubs, loadPayStubs
 
   async function deleteOffset(o: PersonOffset) {
     const delTypeLabel =
-      o.type === 'backcharge' ? 'Backcharge' : o.type === 'damage' ? 'Damage' : o.type === 'employee_credit' ? 'Employee credit' : o.type
+      o.type === 'backcharge' ? 'Backcharge' : o.type === 'damage' ? 'Damage' : o.type === 'employee_credit' ? 'Employee credit' : o.type === 'advance' ? 'Advance' : o.type
     if (!(await confirmDialog({ message: `Delete ${delTypeLabel} $${formatCurrency(o.amount)} for ${o.person_name}?`, confirmLabel: 'Delete', danger: true }))) return
     const { error: err } = await supabase.from('person_offsets').delete().eq('id', o.id)
     if (err) setOffsetsError(err.message)
@@ -133,8 +133,8 @@ export default function PeopleOffsetsTab({ people, users, payStubs, loadPayStubs
 
   async function applyOffsetToPayStub() {
     if (!offsetToApply || !offsetApplyPayStubId) return
-    if (offsetToApply.type === 'employee_credit') {
-      setOffsetsError('Employee credit cannot be applied to a stub this way yet.')
+    if (offsetToApply.type === 'employee_credit' || offsetToApply.type === 'advance') {
+      setOffsetsError(offsetToApply.type === 'advance' ? 'Apply an advance from the Less step on the pay report — it becomes a deduction there.' : 'Employee credit cannot be applied to a stub this way yet.')
       return
     }
     const { error: err } = await supabase.from('person_offsets').update({ pay_stub_id: offsetApplyPayStubId }).eq('id', offsetToApply.id)
@@ -205,7 +205,9 @@ export default function PeopleOffsetsTab({ people, users, payStubs, loadPayStubs
           ? 'Damage'
           : o.type === 'employee_credit'
             ? 'Employee credit'
-            : o.type
+            : o.type === 'advance'
+              ? 'Advance'
+              : o.type
     }
     return offsets.filter((o) => {
       const stub = o.pay_stub_id ? payStubs.find((s) => s.id === o.pay_stub_id) : null
@@ -450,7 +452,7 @@ export default function PeopleOffsetsTab({ people, users, payStubs, loadPayStubs
                 {filteredOffsets.map((o) => {
                   const stub = o.pay_stub_id ? payStubs.find((s) => s.id === o.pay_stub_id) : null
                   const offsetTypeLabel =
-                    o.type === 'backcharge' ? 'Backcharge' : o.type === 'damage' ? 'Damage' : o.type === 'employee_credit' ? 'Employee credit' : o.type
+                    o.type === 'backcharge' ? 'Backcharge' : o.type === 'damage' ? 'Damage' : o.type === 'employee_credit' ? 'Employee credit' : o.type === 'advance' ? 'Advance' : o.type
                   return (
                     <tr key={o.id} style={{ borderBottom: '1px solid var(--border)' }}>
                       <td style={{ padding: '0.75rem' }}>{o.person_name}</td>
