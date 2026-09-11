@@ -16900,6 +16900,67 @@ export type Database = {
           },
         ]
       }
+      twin_setup_codes: {
+        Row: {
+          code_hash: string
+          created_at: string
+          created_by: string | null
+          credential_id: string | null
+          expires_at: string
+          id: string
+          label: string
+          redeemed_at: string | null
+          redeemed_from: string | null
+          twin_user_id: string
+        }
+        Insert: {
+          code_hash: string
+          created_at?: string
+          created_by?: string | null
+          credential_id?: string | null
+          expires_at: string
+          id?: string
+          label?: string
+          redeemed_at?: string | null
+          redeemed_from?: string | null
+          twin_user_id: string
+        }
+        Update: {
+          code_hash?: string
+          created_at?: string
+          created_by?: string | null
+          credential_id?: string | null
+          expires_at?: string
+          id?: string
+          label?: string
+          redeemed_at?: string | null
+          redeemed_from?: string | null
+          twin_user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "twin_setup_codes_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "twin_setup_codes_credential_id_fkey"
+            columns: ["credential_id"]
+            isOneToOne: false
+            referencedRelation: "twin_credentials"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "twin_setup_codes_twin_user_id_fkey"
+            columns: ["twin_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       twin_shadow_runs: {
         Row: {
           axis: string | null
