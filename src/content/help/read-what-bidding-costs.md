@@ -2,7 +2,7 @@
 title: read what bidding costs
 category: Office
 roles: dev, master_technician, controller, assistant, estimator
-keywords: bid costs, pursuit, cost to bid, estimating time, clocked against a bid, hours bidding, spent bidding, hit rate, won of decided, spent on lost, card charges, robot bids, estimator rail, per bid, window
+keywords: bid costs, pursuit, cost to bid, estimating time, clocked against a bid, hours bidding, spent bidding, hit rate, won of decided, spent on lost, card charges, robot bids, estimator rail, per bid, window, cost to win, by estimator, by GC, per $1k won, which GCs award
 order: 73
 ---
 **Bids → Bid Costs** is the pursuit ledger: what it costs us to bid. Every bid someone clocked time against (Clock In → pick the bid) shows its time, and the office roles see that time priced at recorded wages, plus any card charges or materials moved onto the bid from a job ([move a job's costs onto a bid](move-a-jobs-costs-onto-a-bid)).
@@ -38,6 +38,22 @@ Click a row to select that bid across the workflow tabs, the same as before.
 
 :::example Card charges count as cost
 A card charge moved onto a bid arrives with the bank's sign (a debit is negative). The ledger reads it as spend, so a $37.99 charge adds $37.99 — it no longer subtracts from the clocked labor.
+:::
+
+## Cost to win
+
+{{chip:blue|Pursuit}} {{chip:blue|Cost to win}} — the second lens at the top of the tab turns the same window into economics, one row per person or per GC.
+
+{{chip:blue|By estimator}} {{chip:gray|By GC}}
+
+Each row: **Bids** (every bid in the window, clocked or not), **With time**, **Hours**, **Spent bidding**, **Won / Lost / Open** counts, **Won value**, **Hit rate** (won ÷ won + lost, by value), and **$ per $1k won** — the pursuit dollars behind every thousand dollars of work that person or GC brought in. The **Everyone** row at the bottom is the whole window.
+
+**By GC** is the one to read when you're deciding who to keep bidding for: a GC with twenty bids, no wins and a 0% hit rate is costing estimating hours that another GC's plans would repay.
+
+Click a row to drop into the Pursuit ledger filtered to that person or GC — a {{chip:blue|Knight Contracting ×}} chip marks the filter; tap it to clear.
+
+:::example Counts read every bid; spend reads the clocked ones
+A bid nobody clocked against still won or lost, so it counts toward the hit rate. It just adds nothing to hours or spend. That keeps the rate honest while the bid clock is young.
 :::
 
 ## The rail

@@ -106,9 +106,9 @@ Each per-tab section lists: render location, **owned local state** (used only by
 ### `bid-costs` — Bid Costs
 
 - **Render location:** thin wrapper behind `canSeeBidCosts(myRole) && activeTab === 'bid-costs'` (dev, master_technician, controller, assistant, estimator — v2.3336); others redirected away (search the `bid-costs` redirect effect). The parent passes `showDollars={canSeeBidCostDollars(myRole)}` (dev / master / controller).
-- **Owned local state:** the `PursuitFilter` (window, outcome chips, show-empty, show-robots, estimator, search). Shared labor data loaded for it: `teamLaborDataForBids` (also used by Pricing).
+- **Owned local state:** the `PursuitFilter` (window, outcome chips, show-empty, show-robots, estimator, GC, search), the lens (`pursuit` | `cost-to-win`, v2.3341) and the Cost-to-win group (`estimator` | `gc`). Shared labor data loaded for it: `teamLaborDataForBids` (also used by Pricing).
 - **Cross-tab/shared state:** `activeTab` + `myRole` (gate + redirect); `setSharedBid(bid)` on row click (writes all `selectedBidFor*`); `bids` (read); URL `?tab=bid-costs`.
-- **Derived memos:** rows via `buildPursuitRows`, window via `pursuitRowsInWindow`, `pursuitSummary`, `pursuitByEstimator`, `pursuitByOutcome`, `filterPursuitRows` — all pure in [`bidPursuit.ts`](../src/lib/bids/bidPursuit.ts).
+- **Derived memos:** rows via `buildPursuitRows`, window via `pursuitRowsInWindow`, `pursuitSummary`, `pursuitByEstimator`, `pursuitByOutcome`, `filterPursuitRows` — all pure in [`bidPursuit.ts`](../src/lib/bids/bidPursuit.ts); `costToWinRows` / `costToWinTotal` in [`bidCostToWin.ts`](../src/lib/bids/bidCostToWin.ts).
 - **Handlers/functions:** filter setters, `setSharedBid` on row click. Fed by an effect calling `loadTeamLaborDataForBids` + `loadBidAssignedCosts`.
 - **Data dependencies:** `bids` (partitioned by outcome), `teamLaborDataForBids` (per-bid cost + breakdown from clock sessions).
 - **Supabase tables:** none directly in the tab (read-only UI). Via `loadTeamLaborDataForBids` ([`utils/teamLabor.ts`](../src/utils/teamLabor.ts)): `people_crew_bids`, `people_hours`, `people_pay_config`.
