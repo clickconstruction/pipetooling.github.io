@@ -131,11 +131,15 @@ describe('syncDiscountRows', () => {
     const bumped = synced.map((r) => (r.id === 'a' ? { ...r, line_unit_price: 20000 } : r))
     expect(syncDiscountRows(bumped)[3]!.line_unit_price).toBe(-4264.7)
   })
-  it('keeps a typed dollar amount above the basis as typed (the row shows the cap), prunes dead basis ids', () => {
+  it('clamps a typed dollar amount above the basis to the basis (the row shows the cap), prunes dead basis ids', () => {
     const rows = [...job892(), usd('d', 40000, { discount_basis_ids: ['a', 'zzz'] })]
     const out = syncDiscountRows(rows)
-    expect(out[3]!.line_unit_price).toBe(-40000)
+    expect(out[3]!.line_unit_price).toBe(-15098)
     expect(out[3]!.discount_basis_ids).toEqual(['a'])
+    // v2.3279: the overage never survives in state, so work − discount is the Job Total.
+    const whole = syncDiscountRows([...job892(), usd('d', 40000)])
+    expect(whole[3]!.line_unit_price).toBe(-37745)
+    expect(totalWorkDollars(whole) - totalDiscountDollars(whole)).toBe(0)
   })
   it('a percent row with no basis carries no price', () => {
     const out = syncDiscountRows([work('a', '', 100), pct('d', 10, { line_unit_price: -5 })])

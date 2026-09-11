@@ -108,9 +108,16 @@ describe('JobFormDiscountRow', () => {
     expect(update).toHaveBeenLastCalledWith('d', { name: 'Referral thank-you', discount_reason: 'Referral' })
   })
 
-  it('a dollar amount above the work shows the cap', () => {
-    renderSection([...work, discount({ discount_pct: null, line_unit_price: -40000 })])
-    expect(screen.getByTestId('discount-cap').textContent).toContain("Can't exceed $37,745.00")
+  it('typing more than the work asks for the capped price and keeps the cap message up (v2.3279)', () => {
+    const { update } = renderSection([...work, discount({ discount_pct: null, line_unit_price: -500 })])
+    const field = screen.getByLabelText('Discount amount') as HTMLInputElement
+    fireEvent.focus(field)
+    fireEvent.change(field, { target: { value: '40000' } })
+    expect(update).toHaveBeenLastCalledWith('d', { discount_pct: null, line_unit_price: -37745 })
+    expect(screen.getByTestId('discount-cap').textContent).toContain('Kept at $37,745.00')
+    fireEvent.change(field, { target: { value: '500' } })
+    expect(update).toHaveBeenLastCalledWith('d', { discount_pct: null, line_unit_price: -500 })
+    expect(screen.queryByTestId('discount-cap')).toBeNull()
   })
 
   it('the basis link opens a checklist and unticking a row narrows the basis', () => {

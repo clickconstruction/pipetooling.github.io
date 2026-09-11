@@ -168,10 +168,12 @@ export function syncDiscountRows<T extends DiscountLineRow & { stage_kind?: unkn
     const dollars = derivedDiscountDollars(rows, next)
     const price = dollars > 0 ? -dollars : null
     const priceNow = next.line_unit_price ?? null
-    // A typed dollar amount above the basis is kept as typed (the row shows
-    // the cap message); only a percent's derived dollars overwrite the price.
-    const keepTyped = next.discount_pct == null && discountRowDollars(next) > dollars
-    if (!keepTyped && (priceNow ?? null) !== price) next = { ...next, line_unit_price: price }
+    // The stored price is always the true, capped amount — every count×price
+    // reader (Job Total, revenue, the pipeline card) trusts it. A typed dollar
+    // amount above the basis is clamped here; the row remembers what was
+    // typed and shows the cap message itself (v2.3279 — before this the
+    // overage stayed in state and Job Total read work − typed, e.g. −$4,000).
+    if ((priceNow ?? null) !== price) next = { ...next, line_unit_price: price }
     if (Number(next.count) !== 1) next = { ...next, count: 1 }
     if (next.stage_kind !== null) next = { ...next, stage_kind: null }
     if (next.shared_with_gc !== false && next.shared_with_gc !== undefined) next = { ...next, shared_with_gc: false }
