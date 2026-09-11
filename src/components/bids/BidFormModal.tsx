@@ -3,6 +3,9 @@ import { LOSS_UNCATEGORIZED_NUDGE, suggestLossCategoryFromNote } from '../../lib
 import { BidLossCategoryChips } from './BidLossCategoryChips'
 import { useEffect, useState } from 'react'
 import { SearchableSelect } from '../SearchableSelect'
+import CustomerTermsBar from '../customers/CustomerTermsBar'
+import CustomerTermsModal from '../customers/CustomerTermsModal'
+import { useCustomerTermsWarning } from '../../hooks/useCustomerTermsWarning'
 import { openInExternalBrowser } from '../../lib/openInExternalBrowser'
 import type { Database } from '../../types/database'
 import type { BidWithBuilder, EstimatorUser } from '../../types/bidWithBuilder'
@@ -229,6 +232,12 @@ export function BidFormModal(props: BidFormModalProps) {
   useEffect(() => {
     setChangingPrimary(false)
   }, [props.editingBid?.id])
+  // Their Word PR 4: the payer's payment terms + promise record, as a bar
+  // above the GC row. Hooks live above the early return; the bar renders below.
+  const termsCustomerId = props.form.values.gcCustomerId || props.editingBid?.customer_id || null
+  const [termsRefresh, setTermsRefresh] = useState(0)
+  const [termsModalOpen, setTermsModalOpen] = useState(false)
+  const customerTerms = useCustomerTermsWarning(termsCustomerId, termsRefresh)
 
   if (!props.open) return null
   const {
@@ -343,6 +352,7 @@ export function BidFormModal(props: BidFormModalProps) {
   } = form.setters
   const bidFormCanSubmit = form.canSubmit
   const bidFormMissingFields = form.missingFields
+  const canEditTerms = myRole === 'dev' || myRole === 'master_technician' || isAssistantLike(myRole)
   const footerLabels = bidFormFooterLabels(!!editingBid)
   const autosaveLine = autosave ? bidAutosaveStatusLine({ status: autosave.status, dirty: autosave.dirty, missingFields: bidFormMissingFields }) : null
   const autosaveLineColor = autosaveLine?.tone === 'error' ? 'var(--text-red-700)' : autosaveLine?.tone === 'warn' ? '#FF6600' : 'var(--text-muted)'
@@ -1199,6 +1209,16 @@ export function BidFormModal(props: BidFormModalProps) {
               </div>
                 ) : null}
               
+              <CustomerTermsBar warning={customerTerms.warning} onEditTerms={canEditTerms && termsCustomerId ? () => setTermsModalOpen(true) : undefined} />
+              {termsModalOpen && termsCustomerId ? (
+                <CustomerTermsModal
+                  customerId={termsCustomerId}
+                  customerName={customers.find((c) => c.id === termsCustomerId)?.name ?? gcCustomerSearch ?? 'Customer'}
+                  record={customerTerms.record}
+                  onClose={() => setTermsModalOpen(false)}
+                  onSaved={() => setTermsRefresh((n) => n + 1)}
+                />
+              ) : null}
               <BidGcRecipientsRow
                 bidId={editingBid?.id ?? null}
                 bidCustomerId={gcCustomerId || editingBid?.customer_id || null}
