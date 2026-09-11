@@ -1,7 +1,7 @@
 ---
 title: see where money flows
 category: Billing & Money
-roles: assistant, controller, master_technician
+roles: dev, master_technician, controller
 keywords: banking, mercury, visuals, sankey, money flow, transfers, accounts, card spend, diagram
 ---
 Banking → Mercury → **Visuals** draws your money as rivers: the wider the band, the more dollars moved. Three views answer three different questions, and the buttons at the top switch the view and the time window ({{button:outline|This month}} · {{button:outline|Quarter}} · {{button:blue|YTD}} · {{button:outline|All time}}).

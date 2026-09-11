@@ -1,6 +1,7 @@
 import { useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { isAssistantLike } from '../../lib/subcontractorLikeRole'
+import { canAccessBanking } from '../../lib/bankingAccess'
 import { TALLY_STALE_MIN_AGE_DAYS } from '../../lib/tallyStaleMinAgeDays'
 import { useTallyUnlinkedCounts } from '../../hooks/useTallyUnlinkedCounts'
 import {
@@ -389,7 +390,8 @@ export function DashboardPinnedQuickRow({
   // Pending bank-label suggestions (journey-map Tier-2 #27) — same gate shape:
   // the RPC returns the zero row for anyone who cannot work the Banking →
   // Accounting queue, so the client enable is just the office set.
-  const labelApprovalsEnabled = !hideBanners && Boolean(authUserId) && officeEligible
+  // Banking is controller and above (v2.3305): the card opens Banking → Accounting.
+  const labelApprovalsEnabled = !hideBanners && Boolean(authUserId) && canAccessBanking(role)
   const { approvals: labelApprovals } = usePendingLabelApprovalsNudge(labelApprovalsEnabled)
 
   // Cleared payments behind conditional lien releases (v2.2582) — office set.

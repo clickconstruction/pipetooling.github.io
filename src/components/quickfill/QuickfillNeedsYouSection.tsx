@@ -28,6 +28,7 @@ import type { DispatchAgingSummary } from '../../lib/dispatchInboxAging'
 import { useCustomerWaitingOptional } from '../../contexts/CustomerWaitingContext'
 import { summarizeCustomerWaiting } from '../../lib/customerWaiting'
 import { isAssistantLike } from '../../lib/subcontractorLikeRole'
+import { canAccessBanking } from '../../lib/bankingAccess'
 import { buildNeedsYouItems } from '../../lib/dashboardNeedsYou'
 import { roadmapPath } from '../../lib/roadmapVisibility'
 import { DashboardNeedsYouCard } from '../dashboard/DashboardNeedsYouCard'
@@ -91,7 +92,9 @@ export function QuickfillNeedsYouSection({
   const { watch: lienWatch } = useLienWatchNudge(lienUnconditionalEnabled)
   // Bank-label approvals ARE close-ritual work (journey-map Tier-2 #27): the
   // same card the Dashboard shows, so the Quickfill twin never lags it.
-  const labelApprovalsEnabled = Boolean(authUser?.id) && tallyStaffEligible
+  // Banking is controller and above (v2.3305): the card opens Banking → Accounting,
+  // so only that audience is asked to clear it.
+  const labelApprovalsEnabled = Boolean(authUser?.id) && canAccessBanking(role)
   const { approvals: labelApprovals } = usePendingLabelApprovalsNudge(labelApprovalsEnabled)
   const hrReportsEnabled = Boolean(authUser?.id) && role === 'dev'
   const { aged: hrReportsAged } = usePendingHrReportsNudge(hrReportsEnabled)
