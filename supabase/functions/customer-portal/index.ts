@@ -262,6 +262,21 @@ serve(async (req) => {
       ownerNames,
     })
 
+    // Bank transfer details (v2.3308): the company's ACH / wire remittance
+    // details and the check mailing address, one row entered at Settings →
+    // Company and kept out of the public repo. Read with the service role
+    // (RLS admits office roles only); the client kernel decides whether the
+    // row is complete enough to show and honours show_on_portal.
+    let bankTransfer: Record<string, unknown> | null = null
+    {
+      const { data: bt } = await admin
+        .from('company_bank_transfer_details')
+        .select('payee_name, bank_name, bank_note, routing_number, account_number, account_kind, beneficiary_address, check_mailing_address, show_on_portal')
+        .eq('id', 'default')
+        .maybeSingle()
+      if (bt && (bt as { show_on_portal?: boolean }).show_on_portal !== false) bankTransfer = bt as Record<string, unknown>
+    }
+
     // Test reports (v2.3304): SENT hydrostatic / pinpoint / gas reports on the
     // company's jobs — the inline line on the job and the standing card. Never
     // drafts, never money, never the tech; the PDF opens through
@@ -493,6 +508,7 @@ serve(async (req) => {
       testReports,
       stages,
       promise,
+      bankTransfer,
     })
   } catch (e) {
     console.error('customer-portal error', e)

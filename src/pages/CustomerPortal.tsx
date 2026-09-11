@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { PortalStageAsk } from '../components/portal/PortalStageAsk'
 import { PortalPromiseAsk } from '../components/portal/PortalPromiseAsk'
+import { PortalBankTransferCard } from '../components/portal/PortalBankTransferCard'
+import { buildBankTransferMemo } from '../lib/bankTransferDetails'
 import { promiseAskVisible } from '../../supabase/functions/_shared/portalPromise'
 import { PortalStagesCard } from '../components/portal/PortalStagesCard'
 import { publicFunctionHeaders, sampleStateFromToken } from '../lib/customerSampleMode'
@@ -443,6 +445,17 @@ function PortalStatement({ payload, today, requestToken }: { payload: PortalPayl
           </div>
         </div>
       )}
+
+      {/* Bank transfer details (v2.3308): collapsed under the ledger — ACH / wire
+          details, the memo to write, where checks must go. From Supabase, never
+          the repo; absent until the office enters them. */}
+      {payload.bankTransfer ? (
+        <PortalBankTransferCard
+          details={payload.bankTransfer}
+          memo={buildBankTransferMemo(payload.customerName, payload.bills)}
+          phone={payload.company.phone}
+        />
+      ) : null}
 
       {/* The stage sequence (Stage Plan PR 5): GC viewers, jobs that share dates, the rows whose eye is on — in the company's voice. */}
       {payload.stages.length > 0 ? (

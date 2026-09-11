@@ -1613,3 +1613,7 @@ The certified paper after a hydrostatic (pre- or post-leveling, supply or sewer)
 ## Payment terms (customer)
 
 The office's standing decision about a customer (v2.3285, `customers.payment_terms`): **Standard** · **Deposit required** · **No new work past an unpaid promise** · **Winding down**, plus a free-text note and who set it when. Set on Edit customer or Customer review; read by New Bid / New Job as the amber (warn) or red (stop) `CustomerTermsBar`, folded with the customer's [[Payment promise (Their Word)]] record by `customerTermsWarning` in `src/lib/customerPaymentTerms.ts`. Warns, never blocks — a hard block is an owner decision.
+
+## Bank transfer details
+
+The company's ACH / wire remittance details (payee, routing, account, bank + a note, beneficiary address) and the address paper checks must be mailed to — one `company_bank_transfer_details` row entered at **Settings → Company → Bank transfer details** (v2.3308), kept out of the public repo on purpose. Customers open it as **"Prefer to pay by bank transfer?"** under Total due on their statement page (collapsed; the memo line names them and their open job numbers; *Checks sent anywhere else may need to be re-issued*; the guard line *These details never change by email*); the office reads it behind 🏦 **Bank transfer details** in the Accounts Receivable modal. Kernel `src/lib/bankTransferDetails.ts`.

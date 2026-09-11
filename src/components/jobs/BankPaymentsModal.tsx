@@ -1,3 +1,5 @@
+import BankTransferDetailsPanel from './BankTransferDetailsPanel'
+import { PORTAL_COMPANY } from '../../../supabase/functions/_shared/portalCompany'
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { SearchableSelect } from '../SearchableSelect'
 import { BankingSortingConfigModal } from '../BankingSortingConfigModal'
@@ -183,6 +185,7 @@ export default function BankPaymentsModal({
     () => loadBankPaymentsSortingConfigFromLocalCache() != null,
   )
   const [devFilterOpen, setDevFilterOpen] = useState(false)
+  const [bankDetailsOpen, setBankDetailsOpen] = useState(false)
   const [sortingConfigModalOpen, setSortingConfigModalOpen] = useState(false)
   const [kindChoices, setKindChoices] = useState<string[]>([])
   const [accountChoices, setAccountChoices] = useState<string[]>([])
@@ -1096,6 +1099,29 @@ export default function BankPaymentsModal({
           <h2 id="accounts-receivable-modal-title" style={{ margin: 0, fontSize: '1.125rem', fontWeight: 600 }}>
             Accounts Receivable
           </h2>
+          {/* Bank transfer details (v2.3308): the routing / account / check address
+              the customer on the phone is asking for — the same row the portal
+              statement shows, read here for the office. */}
+          <button
+            type="button"
+            onClick={() => setBankDetailsOpen((v) => !v)}
+            aria-expanded={bankDetailsOpen}
+            aria-controls="ar-bank-transfer-panel"
+            style={{
+              marginLeft: 'auto',
+              border: '1px solid var(--border)',
+              background: bankDetailsOpen ? 'var(--bg-muted)' : 'var(--surface)',
+              color: 'var(--text)',
+              borderRadius: 6,
+              padding: '0.35rem 0.65rem',
+              cursor: 'pointer',
+              fontSize: '0.8125rem',
+              fontWeight: 600,
+              whiteSpace: 'nowrap',
+            }}
+          >
+            🏦 Bank transfer details
+          </button>
           <button
             type="button"
             onClick={onClose}
@@ -1110,6 +1136,10 @@ export default function BankPaymentsModal({
           >
             Close
           </button>
+        </div>
+
+        <div id="ar-bank-transfer-panel">
+          <BankTransferDetailsPanel open={bankDetailsOpen} phone={PORTAL_COMPANY.phone} canEdit={authRole === 'dev' || authRole === 'master_technician'} />
         </div>
 
         <div style={{ padding: '0.75rem 1.25rem', borderBottom: '1px solid var(--border)', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
