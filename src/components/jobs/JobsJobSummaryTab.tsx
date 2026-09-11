@@ -601,6 +601,7 @@ export default function JobsJobSummaryTab({
               ledger={view.ledger}
               ledgerLoading={view.ledgerLoading}
               ledgerError={view.ledgerError}
+              allocation={view.overhead.allocation}
               jobLabelById={
                 new Map<string, JobSummaryDaysJobLabel>(
                   (jobSummaryLedgerAllJobs ?? []).map((j) => [

@@ -3,7 +3,7 @@ import { recordNavClick } from '../lib/navClickTelemetry'
 import { denverCalendarDayKey, ymdAddDays } from '../utils/dateUtils'
 import { loadJobDayLedger } from '../lib/jobs/loadJobDayLedger'
 import { deserializeJobDayLedger, serializeJobDayLedger, type JobDayLedger, type JobDayLedgerSerialized, type JobOverheadMethod } from '../lib/jobs/jobDayLedger'
-import { overheadAllocationSettingsEqual, type OverheadAllocationSettings } from '../lib/jobs/overheadAllocation'
+import { buildOverheadAllocation, overheadAllocationSettingsEqual, type OverheadAllocation, type OverheadAllocationSettings } from '../lib/jobs/overheadAllocation'
 import { useOverheadAllocationSettings } from './useOverheadAllocationSettings'
 import {
   JOB_SUMMARY_VIEW_STORAGE_KEY,
@@ -74,6 +74,8 @@ export type JobSummaryOverheadBundle = {
   explore: (s: OverheadAllocationSettings | null) => void
   /** Write the app default for everyone (devs; RLS enforces) and stop exploring. */
   saveAppDefault: (s: OverheadAllocationSettings) => Promise<void>
+  /** The window's allocation under the settings in force (v2.3260): per-day landings for the Days view. Null until the ledger loads. */
+  allocation: OverheadAllocation | null
 }
 
 export type JobSummaryCompareBundle = {
@@ -236,9 +238,10 @@ export function useJobSummaryView<R extends JobSummaryLedgerRowInput & { job: { 
     },
     [overheadApp, setPrefs],
   )
+  const allocation = useMemo(() => (ledgerForWindow ? buildOverheadAllocation(ledgerForWindow, overheadSettings) : null), [ledgerForWindow, overheadSettings])
   const overhead = useMemo<JobSummaryOverheadBundle>(
-    () => ({ settings: overheadSettings, appDefault: overheadApp.appDefault, isOverride: overheadIsOverride, appDefaultLoaded: overheadApp.loaded, saving: overheadApp.saving, explore, saveAppDefault }),
-    [overheadSettings, overheadApp.appDefault, overheadApp.loaded, overheadApp.saving, overheadIsOverride, explore, saveAppDefault],
+    () => ({ settings: overheadSettings, appDefault: overheadApp.appDefault, isOverride: overheadIsOverride, appDefaultLoaded: overheadApp.loaded, saving: overheadApp.saving, explore, saveAppDefault, allocation }),
+    [overheadSettings, overheadApp.appDefault, overheadApp.loaded, overheadApp.saving, overheadIsOverride, explore, saveAppDefault, allocation],
   )
   const enriched = useMemo(
     () => enrichJobSummaryRows({ rows, reportPctByJobId, ledger: ledgerForWindow, method, targetMarginPct: prefs.targetTrueMarginPct, settings: overheadSettings }),

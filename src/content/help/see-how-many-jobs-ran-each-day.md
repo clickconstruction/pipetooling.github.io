@@ -2,7 +2,7 @@
 title: see how many jobs ran each day
 category: Office
 roles: dev, master_technician, assistant, controller
-keywords: days view, job summary, jobs per day, simultaneous jobs, concurrency, workdays, crew, field hours, overhead per job-day
+keywords: days view, job summary, jobs per day, simultaneous jobs, concurrency, workdays, crew, field hours, overhead per job-day, charged, carry, smoothing, who received overhead
 order: 37
 ---
 
@@ -16,7 +16,7 @@ Go to **Jobs → Job Summary** and switch **View** from {{chip:blue|Jobs}} to {{
 
 - **Tiles**: workdays out of calendar days; jobs per workday (average, max, median, and the total job-days); overhead per job-day; field hours and people-days; and a small histogram of how many workdays carried 1, 2, 3… jobs.
 - **The chart**: one bar per day, stacked by job. Bar height is that day's approved field hours; the colors are the six jobs with the most hours in the window, everything else in gray. The number under a bar is how many jobs were worked that day. Hover a segment for the job and its hours.
-- **The table**: newest first. **Jobs** and **People** are distinct counts with approved time that day. **Pool** is the day's overhead (office labor, bid labor, office parts). **Per job-day** is pool ÷ jobs; a day with office cost but no field work shows {{chip:yellow|unallocated}} instead, because nobody is charged for it. **Worked** lists the jobs as chips with hours and how many people were on each; hover a chip for the names.
+- **The table**: newest first. **Jobs** and **People** are distinct counts with approved time that day. **Pool** is what the office spent that day (office labor, bid labor, office parts). **Charged** is what actually landed on that day's jobs after the smoothing window and carry share the app runs on (see *read true profit on Job Summary*), with the carry portion named beside it; hover it for the split, including any dollars with nobody to charge. **Per job-day** is pool ÷ jobs, the concurrency unit; a day with office cost but no field work shows {{chip:yellow|unallocated}} there. **Worked** lists the jobs as chips with hours, how many people were on each, and the dollars each received that day; hover a chip for the names.
 
 :::example Reading a day
 Wed Sep 2 · 5 jobs · 7 people · 33.0 h · pool $1,180 · $236 per job-day
@@ -31,7 +31,7 @@ Click any **day** in the table and **Session notes** opens pinned to that day an
 
 ## How it ties to true profit
 
-The Jobs view charges each job its share of every day it was worked, by hours. The per job-day figure here is the same pool over the same days, so a stretch of five-job days makes every job on them cheaper, and a week where one job had the crew to itself makes that job carry the whole week's office.
+The Jobs view charges each job its share of the pool by field hours over the app's smoothing window, plus a small daily carry while the job is open. The **Charged** column and the dollars on each chip are exactly those shares, day by day, so a stretch of five-job days makes every job on them cheaper, and a job that had the crew to itself pays for the office that week. The **Charged** column only appears once the app runs a smoothing window or carry share; under the original one-day method, charged equals pool.
 
 ## Watch-outs
 
