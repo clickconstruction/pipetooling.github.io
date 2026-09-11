@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   allocateCentsLargestRemainder,
   applyTargetJobTotal,
+  planBillDiscount,
   derivedDiscountDollars,
   discountBasisIdsFromPositions,
   discountBasisPositions,
@@ -266,5 +267,35 @@ describe('applyTargetJobTotal — "make the Job Total $X"', () => {
     const narrow = applyTargetJobTotal([...job892(), pct('d', 10, { discount_basis_ids: ['c'] })], 20000, 'new')
     expect(narrow).toEqual({ kind: 'unreachable', maxDiscount: 7549 })
     expect(applyTargetJobTotal(job892(), -1, 'new').kind).toBe('invalid')
+  })
+})
+
+describe('planBillDiscount — from inside Bill Customer', () => {
+  const rows = job892()
+  it('a draw: "take off 10%" discounts that draw\'s own line and lands on this bill', () => {
+    const plan = planBillDiscount({ rows, scopedIds: ['a'], billAmount: 15098, entry: { mode: 'pct', pct: 10 }, newRowId: 'n' })
+    expect(plan).toMatchObject({ shareCents: 150980, newBillAmount: 13588.2, ridesElsewhereCents: 0, sentence: '10% off Rough In · this draw only' })
+    expect(plan!.row).toEqual({ name: 'Negotiated discount', pct: 10, dollars: 1509.8, basisIds: ['a'], reason: null })
+  })
+  it('a draw with wholeJob: the discount follows every draw and only its share rides this bill', () => {
+    const plan = planBillDiscount({ rows, scopedIds: ['a'], billAmount: 15098, entry: { mode: 'pct', pct: 10 }, wholeJob: true, newRowId: 'n' })
+    expect(plan).toMatchObject({ shareCents: 150980, ridesElsewhereCents: 226470, newBillAmount: 13588.2 })
+    expect(plan!.row.basisIds).toBeNull()
+    expect(plan!.sentence).toBe('10% off all 3 work lines · $1,509.80 of it rides this bill; the rest follows the other draws')
+  })
+  it('"make this bill $13,500" lands exactly, on this draw\'s lines', () => {
+    const plan = planBillDiscount({ rows, scopedIds: ['a'], billAmount: 15098, entry: { mode: 'total', total: 13500 }, wholeJob: true, newRowId: 'n', reason: 'Negotiated' })
+    expect(plan).toMatchObject({ newBillAmount: 13500, shareCents: 159800, ridesElsewhereCents: 0 })
+    expect(plan!.row).toMatchObject({ pct: null, dollars: 1598, basisIds: ['a'], reason: 'Negotiated' })
+    expect(plan!.sentence).toBe('$1,598.00 off Rough In · this draw only')
+  })
+  it('the whole-job remainder: dollars off follow each draw', () => {
+    const plan = planBillDiscount({ rows, scopedIds: null, billAmount: 37745, entry: { mode: 'usd', dollars: 500 }, newRowId: 'n', name: 'Referral thank-you' })
+    expect(plan).toMatchObject({ shareCents: 50000, newBillAmount: 37245, sentence: '$500.00 off all 3 work lines · follows each draw' })
+  })
+  it('nothing sensible → null', () => {
+    expect(planBillDiscount({ rows, scopedIds: ['zzz'], billAmount: 100, entry: { mode: 'pct', pct: 10 }, newRowId: 'n' })).toBeNull()
+    expect(planBillDiscount({ rows, scopedIds: ['a'], billAmount: 15098, entry: { mode: 'total', total: 16000 }, newRowId: 'n' })).toBeNull()
+    expect(planBillDiscount({ rows, scopedIds: ['a'], billAmount: 15098, entry: { mode: 'pct', pct: 0 }, newRowId: 'n' })).toBeNull()
   })
 })

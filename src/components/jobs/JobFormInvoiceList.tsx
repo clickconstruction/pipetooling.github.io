@@ -60,6 +60,8 @@ type JobFormInvoiceListProps = {
    * that carries its work). Billed rows keep the agreed write-down.
    */
   onAddDiscountLine?: () => void
+  /** Discount tools (v2.3268): Bill Customer added a discount row — the form re-reads its line items from the DB. */
+  onFixturesChangedOutside?: (jobId: string) => Promise<void>
 }
 
 /**
@@ -85,6 +87,7 @@ export function JobFormInvoiceList({
   nestedOverlayZIndex,
   drawLabelByInvoiceId,
   onAddDiscountLine,
+  onFixturesChangedOutside,
 }: JobFormInvoiceListProps) {
   const navigate = useNavigate()
   const { showToast } = useToastContext()
@@ -372,6 +375,9 @@ export function JobFormInvoiceList({
                                   },
                                   onAfterOobUnwindSuccess: async () => {
                                     refreshEditingJobAndHydratePayments(editing.id)
+                                  },
+                                  onDiscountApplied: async () => {
+                                    await onFixturesChangedOutside?.(editing.id)
                                   },
                                 })
                               }}

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { parseStripeInvoiceLinesSnapshot } from './stripeInvoicePreview'
+import { formatStripeCents, parseStripeInvoiceLinesSnapshot } from './stripeInvoicePreview'
 
 describe('parseStripeInvoiceLinesSnapshot', () => {
   it('parses lines without source (legacy API)', () => {
@@ -63,5 +63,12 @@ describe('parseStripeInvoiceLinesSnapshot', () => {
     const out = parseStripeInvoiceLinesSnapshot(raw)
     expect(out).not.toBeNull()
     expect(out!.lines[0]!.source).toBeUndefined()
+  })
+})
+
+describe('formatStripeCents', () => {
+  it('prints a negative line with the minus before the dollar sign', () => {
+    expect(formatStripeCents(-150980, 'usd')).toBe('−$1,509.80')
+    expect(formatStripeCents(1358820, 'usd')).toBe('$13,588.20')
   })
 })

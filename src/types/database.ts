@@ -18678,6 +18678,19 @@ export type Database = {
         }
         Returns: string
       }
+      apply_job_discount: {
+        Args: {
+          p_basis_positions?: number[]
+          p_dollars: number
+          p_draft_amounts?: Json
+          p_job_id: string
+          p_name: string
+          p_pct?: number
+          p_reason?: string
+          p_summary?: string
+        }
+        Returns: Json
+      }
       apply_mercury_bank_payment_allocations: {
         Args: {
           p_allocations: Json
