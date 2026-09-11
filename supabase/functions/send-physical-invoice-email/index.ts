@@ -1,4 +1,5 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
+import { customerBillingEmail, effectiveInvoiceParty } from '../_shared/billToParty.ts'
 import { logEmailSendBestEffort } from '../_shared/logEmailSend.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { EMAIL_FROM } from '../_shared/emailFrom.ts'
@@ -189,7 +190,7 @@ serve(async (req) => {
 
     const { data: inv, error: invErr } = await userClient
       .from('jobs_ledger_invoices')
-      .select('id, job_id, status, amount, bill_to_email')
+      .select('id, job_id, status, amount, bill_to_email, bill_to_party')
       .eq('id', invoiceId)
       .single()
 
@@ -209,7 +210,7 @@ serve(async (req) => {
 
     const { data: jl, error: jlErr } = await userClient
       .from('jobs_ledger')
-      .select('id, customer_id, customer_email, status')
+      .select('id, customer_id, gc_customer_id, bill_to_party, customer_email, status')
       .eq('id', jobId)
       .single()
 
@@ -237,14 +238,39 @@ serve(async (req) => {
         ? ((inv as { bill_to_email?: string | null }).bill_to_email ?? '').trim()
         : ''
     const jobEmail = typeof jl.customer_email === 'string' ? jl.customer_email.trim() : ''
-    if (!jobEmail && !billToEmail) {
+    // Who pays (v2.3345): when the job + invoice resolve to the GC, the GC's
+    // billing email (or contact email) is the valid target instead.
+    const party = effectiveInvoiceParty(jl, inv)
+    let gcEmail = ''
+    if (party === 'gc' && jl.gc_customer_id) {
+      const serviceKeyForGc = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
+      const gcClient = serviceKeyForGc ? createClient(supabaseUrl, serviceKeyForGc) : userClient
+      const { data: gcRow } = await gcClient
+        .from('customers')
+        .select('id, billing_email, contact_info')
+        .eq('id', jl.gc_customer_id)
+        .maybeSingle()
+      gcEmail = customerBillingEmail(gcRow as { billing_email?: string | null; contact_info?: unknown } | null)
+    }
+    if (party === 'gc') {
+      if (!gcEmail) {
+        return jsonResponse({ error: 'The GC on this job has no billing email; add it on Edit Job → GC/Builder → Billing email' }, 400)
+      }
+    } else if (!jobEmail && !billToEmail) {
       return jsonResponse({ error: 'Job has no customer email; add it on Edit Job' }, 400)
     }
     const targetsBillTo = billToEmail && normalizeEmail(customerEmailIn) === normalizeEmail(billToEmail)
-    const targetsJobCustomer = jobEmail && normalizeEmail(customerEmailIn) === normalizeEmail(jobEmail)
-    if (!targetsBillTo && !targetsJobCustomer) {
+    const targetsJobCustomer = party !== 'gc' && jobEmail && normalizeEmail(customerEmailIn) === normalizeEmail(jobEmail)
+    const targetsGc = party === 'gc' && gcEmail && normalizeEmail(customerEmailIn) === normalizeEmail(gcEmail)
+    if (!targetsBillTo && !targetsJobCustomer && !targetsGc) {
       return jsonResponse(
-        { error: billToEmail ? 'customer_email must match the invoice bill-to email or the job customer email' : 'customer_email must match the job customer email' },
+        {
+          error: billToEmail
+            ? 'customer_email must match the invoice bill-to email or the job customer email'
+            : party === 'gc'
+              ? "customer_email must match the GC's billing email"
+              : 'customer_email must match the job customer email',
+        },
         400,
       )
     }

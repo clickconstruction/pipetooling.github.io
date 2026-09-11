@@ -12,6 +12,7 @@ import { formatWorkDateYmdMonthDayShort } from '../../utils/dateUtils'
 import { invoiceCreatedCalendarDayOffset } from '../../lib/invoiceCreatedRelative'
 import { jobLedgerHasCustomerForBilling } from '../../lib/jobLedgerCustomerForBilling'
 import { billToDisplayLabel, invoiceBillToFromRow } from '../../lib/jobs/invoiceBillTo'
+import { effectiveInvoiceParty, invoicePartyChip, parseJobBillToParty, type InvoiceBillToParty } from '../../lib/jobs/billToParty'
 import { fetchJobWithDetailsById } from '../../lib/fetchJobWithDetailsById'
 import { setReturnEditJobFromStages } from '../../lib/returnEditJobFromStages'
 import { sendBackBlockedByPayments } from '../../lib/jobs/editJobInvoiceSendBack'
@@ -99,8 +100,45 @@ export function JobFormInvoiceList({
   const [sendBackAcknowledged, setSendBackAcknowledged] = useState(false)
   const [sendingBack, setSendingBack] = useState(false)
   const [convertInvoice, setConvertInvoice] = useState<JobsLedgerInvoiceRow | null>(null)
+  /** Who pays (v2.3345): the "Bill to ▾" menu open on one draft row. */
+  const [billToMenuFor, setBillToMenuFor] = useState<string | null>(null)
+  const [billToPartySaving, setBillToPartySaving] = useState<string | null>(null)
+  const jobParty = {
+    bill_to_party: (editing as { bill_to_party?: string | null }).bill_to_party,
+    gc_customer_id: editing.gc_customer_id ?? null,
+    customer_id: editing.customer_id,
+  }
+  const jobRule = parseJobBillToParty(jobParty.bill_to_party)
+  const gcDistinct = Boolean(editing.gc_customer_id) && editing.gc_customer_id !== editing.customer_id
+  const gcName = (editing.gcCustomer?.name ?? '').trim() || null
   const invoices = editing.invoices ?? []
   if (!invoices.some((i) => i.status === 'ready_to_bill' || i.status === 'billed')) return null
+
+  /**
+   * Pick the party a draft bills (v2.3345). Writes the explicit pick and
+   * clears any typed "someone else" recipient (and its Stripe customer, so a
+   * later re-add starts fresh) — the same clearing the bill-to editor does.
+   */
+  async function pickInvoiceParty(inv: JobsLedgerInvoiceRow, party: InvoiceBillToParty) {
+    setBillToMenuFor(null)
+    setBillToPartySaving(inv.id)
+    try {
+      const { error } = await supabase
+        .from('jobs_ledger_invoices')
+        .update({ bill_to_party: party, bill_to_name: null, bill_to_email: null, bill_to_phone: null, bill_to_stripe_customer_id: null })
+        .eq('id', inv.id)
+        .eq('status', 'ready_to_bill')
+      if (error) throw error
+      const found = await fetchJobWithDetailsById(editing.id)
+      if (found) setEditing(found)
+      onSavedRef.current?.()
+      showToast(party === 'gc' ? `This bill goes to ${gcName ?? 'the GC'}.` : `This bill goes to ${editing.customer_name ?? 'the customer'}.`, 'success')
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : 'Could not change who this bill goes to', 'error')
+    } finally {
+      setBillToPartySaving(null)
+    }
+  }
 
   async function deleteDraftInvoice(inv: JobsLedgerInvoiceRow) {
     setDeletingDraft(true)
@@ -248,6 +286,15 @@ export function JobFormInvoiceList({
                 const hasDetailLine = isDraft ? Boolean(memoLine) : Boolean(noteLine || memoLine || footerLine)
                 const isHazmatRider = hazmatInvoiceIds?.has(inv.id) ?? false
                 const billTo = invoiceBillToFromRow(inv)
+                const party = effectiveInvoiceParty(jobParty, inv)
+                // The chip names the payer whenever it is not simply "the customer
+                // by default": a GC, someone else, or any row on a split job.
+                const showPartyChip = party !== 'customer' || jobRule === 'split'
+                const partyChipText = invoicePartyChip(party, {
+                  customer: editing.customer_name,
+                  gc: gcName,
+                  other: billTo ? billTo.name ?? billTo.email : null,
+                })
                 const rowSep = idx < arr.length - 1 ? '1px solid var(--border)' : 'none'
                 const parentCellPad = hasDetailLine ? '0.5rem 0.75rem 0.1rem' : '0.5rem 0.75rem'
                 const paidOnInv = payments.filter((p) => p.invoice_id === inv.id).reduce((s, p) => s + (Number(p.amount) || 0), 0)
@@ -300,9 +347,16 @@ export function JobFormInvoiceList({
                             ☣ Hazmat
                           </span>
                         ) : null}
-                        {billTo ? (
+                        {showPartyChip ? (
                           <span
-                            title={`This invoice bills ${billToDisplayLabel(billTo)} — not the job customer${editing.customer_name ? ` (${editing.customer_name})` : ''}.`}
+                            data-testid="invoice-party-chip"
+                            title={
+                              party === 'other' && billTo
+                                ? `This invoice bills ${billToDisplayLabel(billTo)} — not the job customer${editing.customer_name ? ` (${editing.customer_name})` : ''}.`
+                                : party === 'gc'
+                                  ? `This invoice bills the GC${gcName ? ` (${gcName})` : ''}${editing.customer_name ? ` — not ${editing.customer_name}` : ''}.`
+                                  : `This invoice bills the job customer${editing.customer_name ? ` (${editing.customer_name})` : ''}.`
+                            }
                             style={{
                               display: 'inline-block',
                               marginTop: '0.2rem',
@@ -310,8 +364,8 @@ export function JobFormInvoiceList({
                               borderRadius: 999,
                               fontSize: '0.6875rem',
                               fontWeight: 700,
-                              background: 'var(--bg-amber-tint)',
-                              color: 'var(--text-amber-800)',
+                              background: party === 'customer' ? 'var(--bg-blue-tint)' : 'var(--bg-amber-tint)',
+                              color: party === 'customer' ? 'var(--text-blue-800)' : 'var(--text-amber-800)',
                               border: '1px solid var(--border-strong)',
                               maxWidth: '100%',
                               overflow: 'hidden',
@@ -320,7 +374,7 @@ export function JobFormInvoiceList({
                               verticalAlign: 'bottom',
                             }}
                           >
-                            → {billTo.name ?? billTo.email}
+                            → {partyChipText}
                           </span>
                         ) : null}
                       </td>
@@ -387,18 +441,73 @@ export function JobFormInvoiceList({
                             </button>
                           ) : null}
                           {isDraft ? (
-                            <button
-                              type="button"
-                              onClick={() => onEditBillTo(inv)}
-                              title={
-                                billTo
-                                  ? `Billed to ${billToDisplayLabel(billTo)} — change or remove`
-                                  : 'Bill this invoice to someone other than the job customer (e.g. a tenant)'
-                              }
-                              style={btnGray}
-                            >
-                              Bill to…
-                            </button>
+                            <span style={{ position: 'relative', display: 'inline-block' }}>
+                              <button
+                                type="button"
+                                onClick={() => setBillToMenuFor((prev) => (prev === inv.id ? null : inv.id))}
+                                disabled={billToPartySaving === inv.id}
+                                aria-haspopup="menu"
+                                aria-expanded={billToMenuFor === inv.id}
+                                title={
+                                  billTo
+                                    ? `Billed to ${billToDisplayLabel(billTo)} — change or remove`
+                                    : 'Choose who this invoice bills — the customer, the GC, or someone else (e.g. a tenant)'
+                                }
+                                style={btnGray}
+                              >
+                                {billToPartySaving === inv.id ? 'Saving…' : 'Bill to ▾'}
+                              </button>
+                              {billToMenuFor === inv.id ? (
+                                <div
+                                  role="menu"
+                                  style={{
+                                    position: 'absolute',
+                                    right: 0,
+                                    top: '100%',
+                                    marginTop: 4,
+                                    zIndex: 20,
+                                    minWidth: 220,
+                                    background: 'var(--surface)',
+                                    border: '1px solid var(--border-strong)',
+                                    borderRadius: 6,
+                                    boxShadow: '0 6px 16px rgba(0, 0, 0, 0.12)',
+                                    padding: '0.25rem',
+                                    textAlign: 'left',
+                                  }}
+                                >
+                                  {(
+                                    [
+                                      { key: 'customer' as const, label: editing.customer_name?.trim() || 'The job customer', sub: 'Customer', on: party === 'customer' },
+                                      ...(gcDistinct ? [{ key: 'gc' as const, label: gcName ?? 'The GC', sub: 'GC on this job', on: party === 'gc' }] : []),
+                                    ] as Array<{ key: InvoiceBillToParty; label: string; sub: string; on: boolean }>
+                                  ).map((opt) => (
+                                    <button
+                                      key={opt.key}
+                                      type="button"
+                                      role="menuitemradio"
+                                      aria-checked={opt.on}
+                                      onClick={() => void pickInvoiceParty(inv, opt.key)}
+                                      style={{ display: 'block', width: '100%', textAlign: 'left', padding: '0.35rem 0.5rem', border: 'none', background: opt.on ? 'var(--bg-subtle)' : 'transparent', borderRadius: 4, cursor: 'pointer', fontSize: '0.8125rem' }}
+                                    >
+                                      <span style={{ fontWeight: 600 }}>{opt.on ? '✓ ' : ''}{opt.label}</span>
+                                      <span style={{ color: 'var(--text-muted)', marginLeft: 6, fontSize: '0.75rem' }}>{opt.sub}</span>
+                                    </button>
+                                  ))}
+                                  <button
+                                    type="button"
+                                    role="menuitem"
+                                    onClick={() => {
+                                      setBillToMenuFor(null)
+                                      onEditBillTo(inv)
+                                    }}
+                                    style={{ display: 'block', width: '100%', textAlign: 'left', padding: '0.35rem 0.5rem', border: 'none', borderTop: '1px solid var(--border)', background: party === 'other' ? 'var(--bg-subtle)' : 'transparent', borderRadius: 4, cursor: 'pointer', fontSize: '0.8125rem' }}
+                                  >
+                                    <span style={{ fontWeight: 600 }}>{party === 'other' ? '✓ ' : ''}Someone else…</span>
+                                    <span style={{ color: 'var(--text-muted)', marginLeft: 6, fontSize: '0.75rem' }}>{billTo ? billTo.name ?? billTo.email : 'a tenant, a property manager'}</span>
+                                  </button>
+                                </div>
+                              ) : null}
+                            </span>
                           ) : null}
                           {isDraft && onAddDiscountLine ? (
                             <button

@@ -48,6 +48,8 @@ function Harness({ initialCustomerName = '', onOpenCreate }: { initialCustomerNa
       setCustomerId={setCustomerId}
       gcCustomerId={null}
       setGcCustomerId={() => {}}
+      billToParty="customer"
+      setBillToParty={() => {}}
       linkedBidGc={null}
       customerSearch={customerSearch}
       setCustomerSearch={setCustomerSearch}

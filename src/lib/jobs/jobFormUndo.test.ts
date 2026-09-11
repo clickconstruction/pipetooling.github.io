@@ -18,6 +18,7 @@ const identity: JobIdentityFormFields = {
   customerEmail: '',
   customerPhone: '',
   gcCustomerId: null,
+  billToParty: 'customer',
   developmentId: null,
   googleDriveLink: '',
   jobPicturesLink: '',

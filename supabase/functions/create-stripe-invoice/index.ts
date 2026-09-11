@@ -18,6 +18,7 @@ import {
   stripeInvoiceDescriptionFromStripe,
   stripeInvoiceFooterFromStripe,
 } from '../_shared/stripeInvoiceMemoFromStripe.ts'
+import { effectiveInvoiceParty, payerCustomerId } from '../_shared/billToParty.ts'
 import { buildPipetoolingStripeInvoiceNumber } from '../_shared/pipetoolingStripeInvoiceNumber.ts'
 import { buildStripeInvoiceItemsFromFixtures, scopeFixturesToInvoice } from '../_shared/stripeInvoiceItemsFromFixtures.ts'
 import {
@@ -211,7 +212,7 @@ serve(async (req) => {
     const { data: invRow, error: invErr } = await userClient
       .from('jobs_ledger_invoices')
       .select(
-        'id, job_id, amount, status, stripe_invoice_id, hosted_invoice_url, stripe_invoice_status, stripe_invoice_memo, stripe_invoice_footer, bill_to_name, bill_to_email, bill_to_stripe_customer_id, is_primary_rtb_bundle',
+        'id, job_id, amount, status, stripe_invoice_id, hosted_invoice_url, stripe_invoice_status, stripe_invoice_memo, stripe_invoice_footer, bill_to_name, bill_to_email, bill_to_party, bill_to_stripe_customer_id, is_primary_rtb_bundle',
       )
       .eq('id', jobs_ledger_invoice_id)
       .maybeSingle()
@@ -288,7 +289,7 @@ serve(async (req) => {
 
     const { data: jobRow, error: jobErr } = await admin
       .from('jobs_ledger')
-      .select('id, master_user_id, hcp_number, click_number, job_name, customer_id, job_address, status')
+      .select('id, master_user_id, hcp_number, click_number, job_name, customer_id, gc_customer_id, bill_to_party, job_address, status')
       .eq('id', invRow.job_id)
       .single()
 
@@ -312,8 +313,16 @@ serve(async (req) => {
       return jsonResponse({ error: 'Job must be linked to a customer before creating a Stripe invoice.' }, 400)
     }
 
-    if (jobRow.customer_id !== customer_id) {
-      return jsonResponse({ error: 'Customer must match the job linked customer.' }, 400)
+    // Who pays (v2.3345): the job's rule + the invoice's pick name the payer —
+    // the job customer or the job's GC. The body's customer_id must be that
+    // party; its Stripe customer link lives on that customers row.
+    const party = effectiveInvoiceParty(jobRow, invRow)
+    const payerId = party === 'other' ? jobRow.customer_id : payerCustomerId(jobRow, party)
+    if (!payerId || payerId !== customer_id) {
+      return jsonResponse(
+        { error: party === 'gc' ? 'This bill goes to the GC on the job — reopen Bill Customer.' : 'Customer must match the job linked customer.' },
+        400,
+      )
     }
 
     const { data: custRow, error: custErr } = await admin

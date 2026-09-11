@@ -14,6 +14,7 @@
  * builders shared by autosave and the explicit save path, the identity-slice
  * validation gate, the team diff, and the paid→billed demote condition.
  */
+import type { JobBillToParty } from './billToParty'
 import {
   resolveCustomerIdForJobPayload,
   resolveGcCustomerIdForJobPayload,
@@ -71,6 +72,8 @@ export interface JobIdentityFormFields {
   customerPhone: string
   /** Optional GC (General Contractor) — a customers row id, like bids' GC/Builder (v2.1176). */
   gcCustomerId: string | null
+  /** Who pays (v2.3345): customer | gc | split — see `billToParty.ts`. */
+  billToParty: JobBillToParty
   /** Optional development (group of jobs) — a developments row id (v2.1199). */
   developmentId: string | null
   googleDriveLink: string
@@ -98,6 +101,7 @@ export function buildIdentitySliceJson(fields: JobIdentityFormFields): string {
     ce: fields.customerEmail.trim(),
     cp: fields.customerPhone.trim(),
     gc: fields.gcCustomerId,
+    bp: fields.billToParty,
     dv: fields.developmentId,
     gd: fields.googleDriveLink.trim(),
     jp: fields.jobPicturesLink.trim(),
@@ -245,6 +249,8 @@ export function buildEditJobIdentityUpdatePayload(params: {
     job_address: titleCaseAddress(fields.jobAddress.trim()),
     customer_id: resolvedCustomerId,
     gc_customer_id: resolvedGcCustomerId,
+    // A GC-pays rule with no GC left to bill falls back to the customer (v2.3345).
+    bill_to_party: fields.billToParty === 'gc' && !resolvedGcCustomerId ? 'customer' : fields.billToParty,
     development_id: resolvedDevelopmentId,
     customer_name: fields.customerName.trim() || null,
     customer_email: fields.customerEmail.trim() || null,

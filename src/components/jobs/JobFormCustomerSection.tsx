@@ -5,6 +5,8 @@ import { openInExternalBrowser } from '../../lib/openInExternalBrowser'
 import { filterActiveCustomersForPicker } from '../../lib/customerArchive'
 import { resolveCreateCustomerName } from '../../lib/jobs/jobFormCreateCustomerName'
 import GcHardHatIcon from '../icons/GcHardHatIcon'
+import { JobFormBillToPartyControl } from './JobFormBillToPartyControl'
+import { customerBillingEmail, type JobBillToParty } from '../../lib/jobs/billToParty'
 import {
   customerListImpliesLinkedRow,
   customerTypeShortLabel,
@@ -384,6 +386,9 @@ type JobFormCustomerSectionProps = {
   /** Optional GC (General Contractor) — a second customers link, like bids' GC/Builder (v2.1176). */
   gcCustomerId: string | null
   setGcCustomerId: (v: string | null) => void
+  /** Who pays (v2.3345): shown under the GC picker once a GC is set. */
+  billToParty: JobBillToParty
+  setBillToParty: (v: JobBillToParty) => void
   /** The linked bid's GC (bids.customer_id), when the job is linked to a bid — drives the "Use bid's GC" chip. */
   linkedBidGc: { id: string; name: string } | null
   /** Shell-owned: the create/link-similar handlers and the customerId sync effect also write it. */
@@ -441,6 +446,8 @@ export function JobFormCustomerSection({
   setCustomerId,
   gcCustomerId,
   setGcCustomerId,
+  billToParty,
+  setBillToParty,
   linkedBidGc,
   customerSearch,
   setCustomerSearch,
@@ -636,6 +643,20 @@ export function JobFormCustomerSection({
               customersLoading={customersLoading}
             />
           </div>
+          {gcCustomerId && gcCustomerId !== customerId ? (
+            <div style={{ marginBottom: '0.75rem' }}>
+              <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>Bills go to</label>
+              <JobFormBillToPartyControl
+                value={billToParty}
+                onChange={setBillToParty}
+                customerId={customerId}
+                gcCustomerId={gcCustomerId}
+                gcName={selectedGc?.name ?? null}
+                gcBillingEmail={selectedGc ? customerBillingEmail(selectedGc) || null : null}
+                customerName={customerName.trim() || null}
+              />
+            </div>
+          ) : null}
           <div style={{ marginBottom: '0.75rem' }}>
             <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>Customer Name</label>
             <input type="text" aria-label="Customer Name" value={customerName} onChange={(e) => setCustomerName(e.target.value)} style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }} />

@@ -54,6 +54,7 @@ const BASE_INVOICE_FIELDS = {
   bill_to_name: null,
   bill_to_phone: null,
   bill_to_stripe_customer_id: null,
+  bill_to_party: null,
   is_primary_rtb_bundle: null,
 }
 
