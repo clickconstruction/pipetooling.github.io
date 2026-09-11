@@ -20,6 +20,7 @@ import {
   type PaymentForInputs,
   type StubForInputs,
 } from '../../lib/cashapp/cashAppReconcileInputs'
+import { advanceOffsetInsert, cashAppPaymentMemo, clampRecordAmount, suggestReportForSend, type OpenReportForSend } from '../../lib/cashapp/cashAppDecisions'
 
 type TxRow = Database['public']['Tables']['cashapp_transactions']['Row']
 type TxInsert = Database['public']['Tables']['cashapp_transactions']['Insert']
@@ -27,20 +28,28 @@ type AliasRow = Database['public']['Tables']['cashapp_aliases']['Row']
 
 export type CashAppReconcileModalProps = {
   stubs: StubForInputs[]
+  /** Every report with what it can still take — the Record action's pick list. */
+  openReports: OpenReportForSend[]
   paymentsByStubId: Record<string, PaymentForInputs[]>
   users: { name: string | null }[]
   payConfigNames: string[]
   authUser: User | null
   zIndex: number
   onClose: () => void
+  /** A payment was recorded on a report — the tab reloads its reports and payments. */
+  onRecorded: () => Promise<unknown>
 }
 
 type Step = 'upload' | 'names' | 'summary'
+type AliasDraft = { personName: string; notStaff: boolean; proxy: boolean; noteContains: string; notePersonName: string }
 
 const btn: CSSProperties = { font: 'inherit', fontSize: '0.875rem', fontWeight: 600, padding: '0.45rem 0.9rem', borderRadius: 6, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-700)', cursor: 'pointer' }
 const btnPrimary: CSSProperties = { ...btn, background: 'var(--text-link)', borderColor: 'var(--text-link)', color: 'var(--surface)' }
+const btnSm: CSSProperties = { ...btn, fontSize: '0.75rem', padding: '0.2rem 0.55rem', whiteSpace: 'nowrap' }
+const btnSmGreen: CSSProperties = { ...btnSm, background: 'var(--text-green-700)', borderColor: 'var(--text-green-700)', color: 'var(--surface)' }
 const cellRight: CSSProperties = { padding: '0.4rem 0.6rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }
 const cell: CSSProperties = { padding: '0.4rem 0.6rem' }
+const inputStyle: CSSProperties = { font: 'inherit', fontSize: '0.8125rem', padding: '0.25rem 0.4rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', color: 'var(--text)' }
 
 function aliasFromRow(a: AliasRow): CashAppAlias {
   return { counterpartyKey: a.counterparty_key, personName: a.person_name, notStaff: a.not_staff, noteContains: a.note_contains, notePersonName: a.note_person_name }
@@ -63,21 +72,36 @@ async function loadAllTransactions(): Promise<TxRow[]> {
   )
 }
 
+/** Local noon on the send's calendar day, so paid_at lands on that day in any zone. */
+function paidAtFromDate(ymd: string): string {
+  return new Date(ymd + 'T12:00:00').toISOString()
+}
+
+function periodShort(start: string, end: string): string {
+  const s = new Date(start + 'T12:00:00'), e = new Date(end + 'T12:00:00')
+  const endLabel = s.getMonth() === e.getMonth() ? `${e.getDate()}` : `${e.getMonth() + 1}/${e.getDate()}`
+  return `${s.getMonth() + 1}/${s.getDate()}–${endLabel}`
+}
+
 /**
  * Import the Cash App activity export and reconcile it against recorded pay-report payments.
- * Three steps: upload (parse + what's new), names (tie unknown Cash App names to people), and
- * the summary (lanes + the to-review list + an agent-readable text). Every import re-runs the
- * matcher only over rows still in review, so decisions already made are never undone.
+ * Three steps: upload (parse + what's new), names (tie unknown Cash App names to people, with an
+ * optional proxy rule), and the summary (lanes, the to-review list with one-click decisions, and
+ * an agent-readable text). Every import re-runs the matcher only over rows still in review, so
+ * decisions already made are never undone.
  */
-export function CashAppReconcileModal({ stubs, paymentsByStubId, users, payConfigNames, authUser, zIndex, onClose }: CashAppReconcileModalProps) {
+export function CashAppReconcileModal({ stubs, openReports, paymentsByStubId, users, payConfigNames, authUser, zIndex, onClose, onRecorded }: CashAppReconcileModalProps) {
   const { showToast } = useToastContext()
   const [step, setStep] = useState<Step>('upload')
   const [existing, setExisting] = useState<TxRow[] | null>(null)
   const [aliasRows, setAliasRows] = useState<AliasRow[]>([])
   const [parsed, setParsed] = useState<{ fileName: string; rows: CashAppCsvRow[]; warnings: string[] } | null>(null)
-  const [aliasDraft, setAliasDraft] = useState<Record<string, { personName: string; notStaff: boolean }>>({})
+  const [aliasDraft, setAliasDraft] = useState<Record<string, AliasDraft>>({})
   const [busy, setBusy] = useState(false)
   const [copied, setCopied] = useState(false)
+  /** The review row whose Record editor is open, and its draft. */
+  const [recordFor, setRecordFor] = useState<{ txId: string; reportId: string; amount: string } | null>(null)
+  const [deciding, setDeciding] = useState<string | null>(null)
   const fileRef = useRef<HTMLInputElement | null>(null)
 
   const aliases = useMemo(() => new Map(aliasRows.map((a) => [a.counterparty_key, aliasFromRow(a)])), [aliasRows])
@@ -128,6 +152,9 @@ export function CashAppReconcileModal({ stubs, paymentsByStubId, users, payConfi
     setParsed({ fileName: file.name, rows: out.rows, warnings: out.warnings })
   }
 
+  const setDraft = (counterparty: string, patch: Partial<AliasDraft>) =>
+    setAliasDraft((prev) => ({ ...prev, [counterparty]: { ...(prev[counterparty] ?? { personName: '', notStaff: false, proxy: false, noteContains: '', notePersonName: '' }), ...patch } }))
+
   const saveAliasesAndImport = async () => {
     if (existing === null) return
     setBusy(true)
@@ -135,14 +162,19 @@ export function CashAppReconcileModal({ stubs, paymentsByStubId, users, payConfi
       // 1. aliases from the names step
       const upserts = Object.entries(aliasDraft)
         .filter(([, v]) => v.notStaff || v.personName.trim())
-        .map(([counterparty, v]) => ({
-          counterparty_key: aliasKey(counterparty),
-          counterparty: counterparty.trim(),
-          person_name: v.notStaff ? null : v.personName.trim(),
-          not_staff: v.notStaff,
-          updated_at: new Date().toISOString(),
-          updated_by: authUser?.id ?? null,
-        }))
+        .map(([counterparty, v]) => {
+          const proxyOn = !v.notStaff && v.proxy && v.noteContains.trim() && v.notePersonName.trim()
+          return {
+            counterparty_key: aliasKey(counterparty),
+            counterparty: counterparty.trim(),
+            person_name: v.notStaff ? null : v.personName.trim(),
+            not_staff: v.notStaff,
+            note_contains: proxyOn ? v.noteContains.trim() : null,
+            note_person_name: proxyOn ? v.notePersonName.trim() : null,
+            updated_at: new Date().toISOString(),
+            updated_by: authUser?.id ?? null,
+          }
+        })
       if (upserts.length) {
         await withSupabaseRetry(async () => await supabase.from('cashapp_aliases').upsert(upserts, { onConflict: 'counterparty_key' }), 'save cashapp aliases')
       }
@@ -199,7 +231,7 @@ export function CashAppReconcileModal({ stubs, paymentsByStubId, users, payConfi
         const personName = r.outcome === 'matched' ? r.personName : resolvedPerson
         const current = review.find((x) => x.id === r.txId)
         if (current && current.lane === lane && current.person_name === personName && current.match_rule === matchRule && current.pay_stub_payment_id === paymentId) continue
-        updates.push({ id: r.txId, lane, person_name: personName, match_rule: matchRule, pay_stub_payment_id: paymentId, decided_at: lane === 'review' ? null : now, decided_by: lane === 'review' ? null : null })
+        updates.push({ id: r.txId, lane, person_name: personName, match_rule: matchRule, pay_stub_payment_id: paymentId, decided_at: lane === 'review' ? null : now, decided_by: null })
       }
       // One upsert per 200 rows instead of one update per row (the first import files ~1,000).
       const byId = new Map(all.map((t) => [t.id, t]))
@@ -220,10 +252,90 @@ export function CashAppReconcileModal({ stubs, paymentsByStubId, users, payConfi
     }
   }
 
+  // ---- decisions on a review row ----
+  /** File a row without writing money anywhere: expense, skipped, or already on a report under another amount. */
+  const decideLane = async (t: TxRow, lane: 'expense' | 'ignored' | 'recorded') => {
+    setDeciding(t.id)
+    try {
+      const patch = { lane, match_rule: lane === 'recorded' ? ('manual' as const) : t.match_rule, decided_at: new Date().toISOString(), decided_by: authUser?.id ?? null }
+      await withSupabaseRetry(async () => await supabase.from('cashapp_transactions').update(patch).eq('id', t.id), 'file cashapp transaction')
+      setExisting((prev) => (prev ? prev.map((x) => (x.id === t.id ? { ...x, ...patch } : x)) : prev))
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : 'Could not file it', 'error')
+    } finally {
+      setDeciding(null)
+    }
+  }
+
+  const fileAdvance = async (t: TxRow) => {
+    if (!t.person_name) return
+    setDeciding(t.id)
+    try {
+      const ins = advanceOffsetInsert({ personName: t.person_name, txId: t.id, note: t.note, amountSent: Math.abs(Number(t.amount)), occurredDate: t.occurred_date })
+      const { data, error } = await supabase.from('person_offsets').insert(ins).select('id').single()
+      if (error) throw new Error(error.message)
+      const offsetId = (data as { id: string }).id
+      await withSupabaseRetry(
+        async () => await supabase.from('cashapp_transactions').update({ lane: 'advance', person_offset_id: offsetId, decided_at: new Date().toISOString(), decided_by: authUser?.id ?? null }).eq('id', t.id),
+        'file cashapp advance',
+      )
+      setExisting((prev) => (prev ? prev.map((x) => (x.id === t.id ? { ...x, lane: 'advance', person_offset_id: offsetId } : x)) : prev))
+      showToast(`Advance filed for ${t.person_name} — it will be offered as a Less line on their next report.`, 'success')
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : 'Could not file the advance', 'error')
+    } finally {
+      setDeciding(null)
+    }
+  }
+
+  const recordPayment = async (t: TxRow) => {
+    if (!recordFor || recordFor.txId !== t.id || !t.person_name) return
+    const report = openReports.find((r) => r.id === recordFor.reportId)
+    if (!report) return
+    const amount = clampRecordAmount(recordFor.amount, report.remaining)
+    if (amount === null) {
+      showToast('Enter an amount greater than zero.', 'warning')
+      return
+    }
+    setDeciding(t.id)
+    try {
+      const { data, error } = await supabase
+        .from('pay_stub_payments')
+        .insert({ pay_stub_id: report.id, amount, paid_at: paidAtFromDate(t.occurred_date), memo: cashAppPaymentMemo(t.id, t.note), created_by: authUser?.id ?? null })
+        .select('id')
+        .single()
+      if (error) throw new Error(error.message)
+      const paymentId = (data as { id: string }).id
+      await withSupabaseRetry(
+        async () =>
+          await supabase
+            .from('cashapp_transactions')
+            .update({ lane: 'recorded', match_rule: 'manual', pay_stub_payment_id: paymentId, decided_at: new Date().toISOString(), decided_by: authUser?.id ?? null })
+            .eq('id', t.id),
+        'link cashapp payment',
+      )
+      setExisting((prev) => (prev ? prev.map((x) => (x.id === t.id ? { ...x, lane: 'recorded', match_rule: 'manual', pay_stub_payment_id: paymentId } : x)) : prev))
+      setRecordFor(null)
+      showToast(`Recorded $${amount.toFixed(2)} on ${t.person_name}'s ${periodShort(report.periodStart, report.periodEnd)} report.`, 'success')
+      await onRecorded()
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : 'Could not record the payment', 'error')
+    } finally {
+      setDeciding(null)
+    }
+  }
+
   // Summary data
   const staffRows = useMemo(() => (existing ?? []).filter((t) => t.lane !== 'ignored'), [existing])
   const counts = useMemo(() => countLanes(staffRows.map((t) => ({ lane: t.lane as CashAppLane, amount: Number(t.amount) }))), [staffRows])
-  const reviewRows = useMemo(() => staffRows.filter((t) => t.lane === 'review'), [staffRows])
+  const reviewRows = useMemo(
+    // Known people first (A→Z), unknown names after them; oldest send first within a person.
+    () =>
+      [...staffRows.filter((t) => t.lane === 'review')].sort(
+        (a, b) => Number(!a.person_name) - Number(!b.person_name) || (a.person_name ?? a.counterparty).localeCompare(b.person_name ?? b.counterparty) || a.occurred_date.localeCompare(b.occurred_date),
+      ),
+    [staffRows],
+  )
   const latestDate = useMemo(() => (existing && existing.length ? existing.reduce((m, t) => (t.occurred_date > m ? t.occurred_date : m), existing[0]!.occurred_date) : null), [existing])
   const summaryText = useMemo(
     () =>
@@ -256,6 +368,16 @@ export function CashAppReconcileModal({ stubs, paymentsByStubId, users, payConfi
     <span style={{ fontSize: '0.75rem', fontWeight: 600, padding: '0.15rem 0.6rem', borderRadius: 999, background: step === s ? 'var(--text-link)' : 'var(--bg-subtle)', color: step === s ? 'var(--surface)' : 'var(--text-muted)' }}>{label}</span>
   )
 
+  const openRecordEditor = (t: TxRow) => {
+    if (!t.person_name) return
+    const s = suggestReportForSend({ personName: t.person_name, sendDate: t.occurred_date, amountSent: Math.abs(Number(t.amount)), reports: openReports })
+    if (!s.suggestedId) {
+      showToast(`${t.person_name} has no report with anything left to pay — file it as an advance, or generate their report first.`, 'warning')
+      return
+    }
+    setRecordFor({ txId: t.id, reportId: s.suggestedId, amount: s.suggestedAmount.toFixed(2) })
+  }
+
   return (
     <div
       role="presentation"
@@ -272,7 +394,7 @@ export function CashAppReconcileModal({ stubs, paymentsByStubId, users, payConfi
         onKeyDown={(e) => {
           if (e.key === 'Escape' && !busy) onClose()
         }}
-        style={{ background: 'var(--surface)', borderRadius: 8, maxWidth: 820, width: '100%', maxHeight: 'min(92vh, 100%)', overflow: 'auto', boxShadow: '0 10px 40px rgba(0,0,0,0.15)' }}
+        style={{ background: 'var(--surface)', borderRadius: 8, maxWidth: 960, width: '100%', maxHeight: 'min(92vh, 100%)', overflow: 'auto', boxShadow: '0 10px 40px rgba(0,0,0,0.15)' }}
       >
         <div style={{ padding: '1rem 1.25rem', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
           <div style={{ flex: 1, minWidth: 0 }}>
@@ -343,7 +465,7 @@ export function CashAppReconcileModal({ stubs, paymentsByStubId, users, payConfi
               ) : (
                 <>
                   <p style={{ margin: '0 0 0.6rem', fontSize: '0.875rem', color: 'var(--text-700)' }}>
-                    {unresolved.length} Cash App name{unresolved.length === 1 ? '' : 's'} not tied to a person yet. Pick who each one is, or mark it not staff. Leave one blank to decide later.
+                    {unresolved.length} Cash App name{unresolved.length === 1 ? '' : 's'} not tied to a person yet. Pick who each one is, or mark it not staff. Leave one blank to decide later. <b>Proxy</b> is for an account that also pays someone else when the note says so.
                   </p>
                   <datalist id="cashapp-person-names">
                     {names.map((n) => (
@@ -362,7 +484,7 @@ export function CashAppReconcileModal({ stubs, paymentsByStubId, users, payConfi
                     </thead>
                     <tbody>
                       {unresolved.map((u) => {
-                        const d = aliasDraft[u.counterparty] ?? { personName: '', notStaff: false }
+                        const d = aliasDraft[u.counterparty] ?? { personName: '', notStaff: false, proxy: false, noteContains: '', notePersonName: '' }
                         return (
                           <tr key={u.counterparty} style={{ borderBottom: '1px solid var(--border)' }}>
                             <td style={cell}>{u.counterparty}</td>
@@ -372,18 +494,22 @@ export function CashAppReconcileModal({ stubs, paymentsByStubId, users, payConfi
                             </td>
                             <td style={{ ...cell, color: 'var(--text-muted)', fontSize: '0.75rem' }}>{u.notes.join(' · ')}</td>
                             <td style={{ ...cell, whiteSpace: 'nowrap' }}>
-                              <input
-                                list="cashapp-person-names"
-                                value={d.personName}
-                                disabled={d.notStaff}
-                                placeholder="Person…"
-                                aria-label={`Person for ${u.counterparty}`}
-                                onChange={(e) => setAliasDraft((prev) => ({ ...prev, [u.counterparty]: { personName: e.target.value, notStaff: false } }))}
-                                style={{ font: 'inherit', fontSize: '0.8125rem', padding: '0.25rem 0.4rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', color: 'var(--text)', width: 150 }}
-                              />
+                              <input list="cashapp-person-names" value={d.personName} disabled={d.notStaff} placeholder="Person…" aria-label={`Person for ${u.counterparty}`} onChange={(e) => setDraft(u.counterparty, { personName: e.target.value, notStaff: false })} style={{ ...inputStyle, width: 150 }} />
                               <label style={{ marginLeft: '0.5rem', fontSize: '0.75rem', color: 'var(--text-muted)', cursor: 'pointer' }}>
-                                <input type="checkbox" checked={d.notStaff} onChange={(e) => setAliasDraft((prev) => ({ ...prev, [u.counterparty]: { personName: '', notStaff: e.target.checked } }))} /> not staff
+                                <input type="checkbox" checked={d.notStaff} onChange={(e) => setDraft(u.counterparty, { personName: '', notStaff: e.target.checked, proxy: false })} /> not staff
                               </label>
+                              {!d.notStaff ? (
+                                <label style={{ marginLeft: '0.5rem', fontSize: '0.75rem', color: 'var(--text-muted)', cursor: 'pointer' }}>
+                                  <input type="checkbox" checked={d.proxy} onChange={(e) => setDraft(u.counterparty, { proxy: e.target.checked })} /> proxy
+                                </label>
+                              ) : null}
+                              {d.proxy && !d.notStaff ? (
+                                <div style={{ marginTop: '0.3rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                                  when the note contains{' '}
+                                  <input value={d.noteContains} placeholder="tristen" aria-label={`Note word for ${u.counterparty}`} onChange={(e) => setDraft(u.counterparty, { noteContains: e.target.value })} style={{ ...inputStyle, width: 90 }} /> it's for{' '}
+                                  <input list="cashapp-person-names" value={d.notePersonName} placeholder="Person…" aria-label={`Note person for ${u.counterparty}`} onChange={(e) => setDraft(u.counterparty, { notePersonName: e.target.value })} style={{ ...inputStyle, width: 130 }} />
+                                </div>
+                              ) : null}
                             </td>
                           </tr>
                         )
@@ -429,10 +555,13 @@ export function CashAppReconcileModal({ stubs, paymentsByStubId, users, payConfi
                   </button>
                 </span>
               </div>
+              <p style={{ margin: '0 0 0.5rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                <b>Record</b> writes the send as a payment on one of the person's reports (the memo keeps the Cash App ID). <b>Advance</b> files it as a pending offset, offered as a Less line on their next report. <b>Already recorded</b> is for money that sits on a report under a different amount or date. <b>Not pay</b> and <b>Skip</b> just file it.
+              </p>
               {reviewRows.length === 0 ? (
                 <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>Nothing waiting. Every send to staff is recorded, filed, or before records began.</p>
               ) : (
-                <div style={{ maxHeight: 380, overflow: 'auto', border: '1px solid var(--border)', borderRadius: 6 }}>
+                <div style={{ maxHeight: 420, overflow: 'auto', border: '1px solid var(--border)', borderRadius: 6 }}>
                   <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8125rem' }}>
                     <thead>
                       <tr style={{ background: 'var(--bg-subtle)', borderBottom: '1px solid var(--border)' }}>
@@ -440,25 +569,69 @@ export function CashAppReconcileModal({ stubs, paymentsByStubId, users, payConfi
                         <th style={{ ...cell, textAlign: 'left' }}>Person</th>
                         <th style={cellRight}>Sent</th>
                         <th style={{ ...cell, textAlign: 'left' }}>Note</th>
-                        <th style={{ ...cell, textAlign: 'left' }}>Kind</th>
                         <th style={{ ...cell, textAlign: 'left' }}>Cash App ID</th>
+                        <th style={{ ...cell, textAlign: 'left' }}>Decide</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {[...reviewRows]
-                        .sort((a, b) => (a.person_name ?? '~').localeCompare(b.person_name ?? '~') || a.occurred_date.localeCompare(b.occurred_date))
-                        .map((t) => (
-                          <tr key={t.id} style={{ borderBottom: '1px solid var(--border)' }}>
+                      {reviewRows.map((t) => {
+                        const kind = classifyCashAppNote(t.note)
+                        const editing = recordFor?.txId === t.id ? recordFor : null
+                        const isBusy = deciding === t.id
+                        const options = editing ? suggestReportForSend({ personName: t.person_name ?? '', sendDate: t.occurred_date, amountSent: Math.abs(Number(t.amount)), reports: openReports }).options : []
+                        return (
+                          <tr key={t.id} style={{ borderBottom: '1px solid var(--border)', opacity: isBusy ? 0.6 : 1 }}>
                             <td style={{ ...cell, whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}>{t.occurred_date}</td>
                             <td style={cell}>{t.person_name ?? <span style={{ color: 'var(--text-amber-700)' }}>? {t.counterparty}</span>}</td>
                             <td style={cellRight}>
                               <AmountSmallCents value={Math.abs(Number(t.amount))} />
                             </td>
-                            <td style={cell}>{t.note}</td>
-                            <td style={{ ...cell, color: 'var(--text-muted)' }}>{classifyCashAppNote(t.note)}</td>
-                            <td style={{ ...cell, fontFamily: 'ui-monospace, Menlo, monospace', fontSize: '0.75rem', color: 'var(--text-muted)' }}>{t.id}</td>
+                            <td style={cell}>
+                              {t.note}
+                              {kind !== 'pay' ? <span style={{ marginLeft: 6, fontSize: '0.7rem', color: 'var(--text-muted)' }}>({kind})</span> : null}
+                            </td>
+                            <td style={{ ...cell, fontFamily: 'ui-monospace, Menlo, monospace', fontSize: '0.75rem', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>{t.id}</td>
+                            <td style={{ ...cell, whiteSpace: 'nowrap' }}>
+                              {editing ? (
+                                <span style={{ display: 'inline-flex', gap: '0.3rem', alignItems: 'center' }}>
+                                  <select value={editing.reportId} aria-label="Report to record on" onChange={(e) => setRecordFor({ ...editing, reportId: e.target.value })} style={{ ...inputStyle, maxWidth: 200 }}>
+                                    {options.map((o) => (
+                                      <option key={o.id} value={o.id}>
+                                        {periodShort(o.periodStart, o.periodEnd)} · ${o.remaining.toFixed(2)} left
+                                      </option>
+                                    ))}
+                                  </select>
+                                  <input value={editing.amount} aria-label="Amount to record" onChange={(e) => setRecordFor({ ...editing, amount: e.target.value })} style={{ ...inputStyle, width: 80, textAlign: 'right' }} />
+                                  <button type="button" style={btnSmGreen} disabled={isBusy} onClick={() => void recordPayment(t)}>
+                                    Save
+                                  </button>
+                                  <button type="button" style={btnSm} disabled={isBusy} onClick={() => setRecordFor(null)}>
+                                    Cancel
+                                  </button>
+                                </span>
+                              ) : (
+                                <span style={{ display: 'inline-flex', gap: '0.3rem' }}>
+                                  <button type="button" style={btnSmGreen} disabled={isBusy || !t.person_name} title={t.person_name ? 'Record this send as a payment on one of their reports' : 'Tie the name to a person first'} onClick={() => openRecordEditor(t)}>
+                                    Record
+                                  </button>
+                                  <button type="button" style={btnSm} disabled={isBusy || !t.person_name} title="File as an advance: a pending offset, offered as a Less line on their next report" onClick={() => void fileAdvance(t)}>
+                                    Advance
+                                  </button>
+                                  <button type="button" style={btnSm} disabled={isBusy} title="Its money is already on a report under a different amount or date — count it as recorded without writing a payment" onClick={() => void decideLane(t, 'recorded')}>
+                                    Already recorded
+                                  </button>
+                                  <button type="button" style={btnSm} disabled={isBusy} title="Not pay (gas, reimbursement, …)" onClick={() => void decideLane(t, 'expense')}>
+                                    Not pay
+                                  </button>
+                                  <button type="button" style={btnSm} disabled={isBusy} title="Leave it out of the estimate" onClick={() => void decideLane(t, 'ignored')}>
+                                    Skip
+                                  </button>
+                                </span>
+                              )}
+                            </td>
                           </tr>
-                        ))}
+                        )
+                      })}
                     </tbody>
                   </table>
                 </div>

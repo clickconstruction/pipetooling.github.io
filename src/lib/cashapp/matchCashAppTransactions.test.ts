@@ -56,9 +56,10 @@ describe('matchCashAppTransactions', () => {
     expect(results[2]).toMatchObject({ outcome: 'unmatched', personName: null, noteKind: 'expense' })
   })
 
-  it('a company-wide floor applies when a person has no reports', () => {
-    const { results } = matchCashAppTransactions([tx('t', '2026-02-01', 100, 'Week', 'Kyle')], [], { recordsBeginYmd: '2026-03-01' })
+  it('a company-wide floor applies when a person has no reports, and to unknown names', () => {
+    const { results } = matchCashAppTransactions([tx('t', '2026-02-01', 100, 'Week', 'Kyle'), tx('u', '2021-12-05', 440, 'ice', null)], [], { recordsBeginYmd: '2026-03-01' })
     expect(results[0]).toMatchObject({ outcome: 'before_records', firstReportStart: '2026-03-01' })
+    expect(results[1]).toMatchObject({ outcome: 'before_records', personName: null, firstReportStart: '2026-03-01' })
   })
 
   it('summarizes a batch', () => {

@@ -259,6 +259,20 @@ export default function PeoplePayStubsTab({
   const [upcomingModalOpen, setUpcomingModalOpen] = useState(false)
   /** Cash App reconcile (v2.3323): import the activity export and match sends to recorded payments. */
   const [cashAppOpen, setCashAppOpen] = useState(false)
+  /** Every report with what it can still take — the Record action's pick list (v2.3327). */
+  const cashAppOpenReports = useMemo(
+    () =>
+      payStubs.map((stub) => {
+        const net = stubNetPay(
+          stub.gross_pay,
+          sumPayStubDeductionAmounts(payStubDeductionsByStubId[stub.id] ?? []),
+          sumPayStubAdditionalAmounts(payStubAdditionalByStubId[stub.id] ?? []),
+        )
+        const paid = sumPayStubPaymentAmounts(payStubPaymentsByStubId[stub.id] ?? [])
+        return { id: stub.id, personName: stub.person_name.trim(), periodStart: stub.period_start, periodEnd: stub.period_end, remaining: Math.max(0, Math.round((net - paid) * 100) / 100) }
+      }),
+    [payStubs, payStubPaymentsByStubId, payStubDeductionsByStubId, payStubAdditionalByStubId],
+  )
   /** Person-week whose per-day drilldown modal is open (nested above the Upcoming payroll modal). */
   const [upcomingWeekDetail, setUpcomingWeekDetail] = useState<UpcomingPayrollLine | null>(null)
   /** Bumped after an approve/reject inside the week drilldown so the upcoming data refetches. */
@@ -1121,12 +1135,14 @@ export default function PeoplePayStubsTab({
       {cashAppOpen ? (
         <CashAppReconcileModal
           stubs={payStubs}
+          openReports={cashAppOpenReports}
           paymentsByStubId={payStubPaymentsByStubId}
           users={users}
           payConfigNames={Object.keys(payConfig)}
           authUser={authUser}
           zIndex={Z_PEOPLE_PAY_MODAL}
           onClose={() => setCashAppOpen(false)}
+          onRecorded={loadPayStubs}
         />
       ) : null}
 
