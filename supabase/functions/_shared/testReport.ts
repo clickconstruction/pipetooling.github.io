@@ -401,7 +401,8 @@ export function buildTestReportBlocks(data: TestReportData, job: TestReportJobIn
   if ((job.customerCompany ?? '').trim()) customerRows.push({ label: 'Company', value: job.customerCompany!.trim() })
   const locationLines = [addr.street, addr.rest].filter(Boolean)
   const locationRows: Array<{ label: string; value: string }> = []
-  if (!isHydrostaticType(data.testType)) locationRows.push({ label: 'Date', value: formatTestReportDate(data.testDateYmd) })
+  // Gas keeps its date under the location; hydrostatic dates it in Test details; pinpoint dates the results (owner, 2026-09-11).
+  if (data.testType === 'gas') locationRows.push({ label: 'Date', value: formatTestReportDate(data.testDateYmd) })
   blocks.push({
     kind: 'columns',
     left: { heading: 'Customer', rows: customerRows },
@@ -430,6 +431,7 @@ export function buildTestReportBlocks(data: TestReportData, job: TestReportJobIn
     blocks.push({
       kind: 'kv',
       rows: [
+        { label: 'Date', value: formatTestReportDate(data.testDateYmd) },
         { label: 'Pinpoint location', value: data.pinpointLocation.trim() || 'N/A' },
         { label: 'Test method', value: data.pinpointMethod.trim() || settings.pinpointMethodDefault || 'N/A' },
       ],
