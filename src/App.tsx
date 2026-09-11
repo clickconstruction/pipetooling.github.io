@@ -71,6 +71,7 @@ import { NewProjectModalProvider } from './contexts/NewProjectModalContext'
 import { EditCustomerModalProvider } from './contexts/EditCustomerModalContext'
 import { EditProjectModalProvider } from './contexts/EditProjectModalContext'
 import { BillCustomerModalProvider } from './contexts/BillCustomerModalContext'
+import { TestReportModalProvider } from './contexts/TestReportModalContext'
 import { JobDetailOpenerBridgeProvider } from './contexts/JobDetailOpenerBridgeContext'
 import { JobFormModalProvider } from './contexts/JobFormModalContext'
 import { BidPreviewModalProvider } from './contexts/BidPreviewModalContext'
@@ -250,6 +251,7 @@ function AppContent() {
                             <EditCustomerModalProvider>
                               <EditProjectModalProvider>
                                 <BillCustomerModalProvider>
+                                <TestReportModalProvider>
                                   <JobDetailOpenerBridgeProvider>
                                   <JobFormModalProvider>
                                     <BidPreviewModalProvider>
@@ -275,6 +277,7 @@ function AppContent() {
                                     </BidPreviewModalProvider>
                                   </JobFormModalProvider>
                                   </JobDetailOpenerBridgeProvider>
+                                </TestReportModalProvider>
                                 </BillCustomerModalProvider>
                               </EditProjectModalProvider>
                             </EditCustomerModalProvider>

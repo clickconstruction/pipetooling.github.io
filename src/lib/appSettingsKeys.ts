@@ -55,6 +55,13 @@ export const APP_SETTINGS_KEY_BILL_CUSTOMER_MEMO_PRESETS_V1 = 'bill_customer_mem
 export const APP_SETTINGS_KEY_PHYSICAL_INVOICE_ISSUER_V1 = 'physical_invoice_issuer_v1' as const
 
 /**
+ * JSON in `value_text`: `TestReportSettings` (v2.3298) — the certifier, the letterhead lines and the
+ * paper's text for hydrostatic / pinpoint / gas test reports. Office edits on Settings → Jobs & billing;
+ * every field falls back to the kernel default (`_shared/testReport.ts`).
+ */
+export const APP_SETTINGS_KEY_TEST_REPORT_SETTINGS_V1 = 'test_report_settings_v1' as const
+
+/**
  * JSON in `value_text`: `DispatchNoteRequirementsConfigV1` — org-wide per-user schedule-block note
  * requirements (require-note vs skip-note assignee lists). Dispatch staff write via the
  * /schedule-dispatch "Dispatch Settings" modal; all authenticated read.
