@@ -34,7 +34,7 @@ Customers queue **biggest late dollars first**. Each card shows the phone number
 - **Dispute — flag for review** — pulls the bill out of the ask queue (calling again won't fix a dispute) and parks it in the rail's Disputes group until someone resolves it or sends it to Collections.
 - **Can't reach / Left a message** — logged, snoozed, and back automatically.
 
-Type what they said in the note box first — it saves with whichever button you tap.
+Type what they said in the note box first — it saves with whichever button you tap. The small **who said it** box beside it is optional: "Dana, their AP" rides the promise into the customer's record as *by Dana by phone*, the same way *They said…* on the Billed row records it (see *know whether a customer keeps their word*). Leave it blank and the promise still records as a call.
 
 :::example One call, three answers
 Knight has six late bills. Dana says four are on Friday's run, one was never received, and one is retainage. Tap {{button:outline|Fri Aug 22}} for the four checked, hit Resend on the missing one, and note "retainage — holds till closeout" on the last. One call, everything recorded.

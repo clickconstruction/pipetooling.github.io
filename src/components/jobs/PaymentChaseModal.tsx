@@ -105,6 +105,8 @@ export default function PaymentChaseModal({
   // the day count and picked date clear per customer.
   const [promiseMode, setPromiseMode] = useState<PromiseDateMode>('today')
   const [promiseDays, setPromiseDays] = useState<number | null>(null)
+  // Their Word (v2.3286): who at the customer named the date — optional, rides the promise event.
+  const [saidBy, setSaidBy] = useState('')
   const [snoozeDays, setSnoozeDays] = useState(DEFAULT_SNOOZE_DAYS)
   const [saving, setSaving] = useState(false)
   const [finished, setFinished] = useState(false)
@@ -158,6 +160,7 @@ export default function PaymentChaseModal({
   const advance = (fromCustomerId: string) => {
     setDoneIds((prev) => new Set([...prev, fromCustomerId]))
     setNote('')
+    setSaidBy('')
     setCustomDate('')
     setPromiseDays(null)
     setSelectedId(null)
@@ -207,6 +210,8 @@ export default function PaymentChaseModal({
         customerId: current.customerId,
         jobYmds: [...resolved.byJob].map(([jobId, ymd]) => [jobId, ymd] as const),
         note: note.trim() || null,
+        saidBy: saidBy.trim() || null,
+        channel: 'phone',
       })
       setBillState((prev) => {
         const next = { ...prev }
@@ -1047,23 +1052,46 @@ export default function PaymentChaseModal({
                           : null}
                       </div>
                     ) : null}
-                    <input
-                      type="text"
-                      value={note}
-                      onChange={(e) => setNote(e.target.value)}
-                      placeholder="✎ what they said… (saves with whichever button you tap)"
-                      style={{
-                        border: '1px solid var(--border)',
-                        borderRadius: 8,
-                        padding: '0.45rem 0.6rem',
-                        fontSize: '0.78rem',
-                        background: 'var(--bg-muted)',
-                        color: 'var(--text)',
-                        fontFamily: 'inherit',
-                        width: '100%',
-                        boxSizing: 'border-box',
-                      }}
-                    />
+                    <div style={{ display: 'flex', gap: 6, alignItems: 'stretch' }}>
+                      <input
+                        type="text"
+                        value={note}
+                        onChange={(e) => setNote(e.target.value)}
+                        placeholder="✎ what they said… (saves with whichever button you tap)"
+                        style={{
+                          border: '1px solid var(--border)',
+                          borderRadius: 8,
+                          padding: '0.45rem 0.6rem',
+                          fontSize: '0.78rem',
+                          background: 'var(--bg-muted)',
+                          color: 'var(--text)',
+                          fontFamily: 'inherit',
+                          flex: '1 1 auto',
+                          minWidth: 0,
+                          boxSizing: 'border-box',
+                        }}
+                      />
+                      <input
+                        type="text"
+                        value={saidBy}
+                        onChange={(e) => setSaidBy(e.target.value.slice(0, 120))}
+                        placeholder="who said it"
+                        aria-label="Who said it"
+                        title="Who at the customer named the date — rides the promise as 'by Dana by phone' (optional)"
+                        style={{
+                          border: '1px solid var(--border)',
+                          borderRadius: 8,
+                          padding: '0.45rem 0.6rem',
+                          fontSize: '0.78rem',
+                          background: 'var(--bg-muted)',
+                          color: 'var(--text)',
+                          fontFamily: 'inherit',
+                          flex: '0 1 160px',
+                          minWidth: 90,
+                          boxSizing: 'border-box',
+                        }}
+                      />
+                    </div>
                   </div>
                 </>
               ) : (

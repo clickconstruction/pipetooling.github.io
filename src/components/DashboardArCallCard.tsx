@@ -89,6 +89,8 @@ export default function DashboardArCallCard({
   const { showToast } = useToastContext()
   const [promiseOpen, setPromiseOpen] = useState(false)
   const [promiseYmd, setPromiseYmd] = useState('')
+  // Their Word (v2.3286): who at the customer named the date — optional, rides the promise event.
+  const [promiseSaidBy, setPromiseSaidBy] = useState('')
   const [saving, setSaving] = useState(false)
 
   const customerId = row.customerId
@@ -114,10 +116,13 @@ export default function DashboardArCallCard({
       await recordPromiseForJobs({
         customerId,
         jobYmds: promiseJobIds.map((jobId) => [jobId, promiseYmd] as const),
+        saidBy: promiseSaidBy.trim() || null,
+        channel: 'phone',
       })
       showToast('Promise marked — their late bills now carry the date.', 'success')
       setPromiseOpen(false)
       setPromiseYmd('')
+      setPromiseSaidBy('')
       onChanged()
     } catch (e) {
       showToast(formatErrorMessage(e, 'Could not mark the promise'), 'error')
@@ -201,6 +206,15 @@ export default function DashboardArCallCard({
                 onChange={(e) => setPromiseYmd(e.target.value)}
                 aria-label="Promised payment date"
                 style={{ padding: '0.25rem 0.4rem', border: '1px solid var(--border)', borderRadius: 6, background: 'var(--surface)', color: 'inherit', font: 'inherit', fontSize: '0.75rem' }}
+              />
+              <input
+                type="text"
+                value={promiseSaidBy}
+                onChange={(e) => setPromiseSaidBy(e.target.value.slice(0, 120))}
+                placeholder="who said it"
+                aria-label="Who said it"
+                title="Who at the customer named the date — rides the promise as 'by Dana by phone' (optional)"
+                style={{ padding: '0.25rem 0.4rem', border: '1px solid var(--border)', borderRadius: 6, background: 'var(--surface)', color: 'inherit', font: 'inherit', fontSize: '0.8rem', width: 130 }}
               />
               <button type="button" disabled={saving} onClick={() => void savePromise()} style={{ ...ACTION_BTN, background: 'var(--text-link)', borderColor: 'var(--text-link)', color: '#fff' }}>
                 {saving ? 'Saving…' : `Save promise (${promiseJobIds.length} job${promiseJobIds.length === 1 ? '' : 's'})`}
