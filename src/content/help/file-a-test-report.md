@@ -2,7 +2,7 @@
 title: file a hydrostatic, pinpoint or gas test report
 category: Jobs & Scheduling
 roles: dev, master_technician, assistant, controller, primary
-keywords: test report, test reports, send test report, resend, hydrostatic, pre-test, post-test, pretest, pinpoint, gas test, BTU, house pressure, plumbing tooling, foundation, certification, RMP
+keywords: test report, test reports, send test report, resend, documents page, filed, hydrostatic, pre-test, post-test, pretest, pinpoint, gas test, BTU, house pressure, plumbing tooling, foundation, certification, RMP
 ---
 A **Test report** is the certified paper a foundation contractor or a homeowner gets after a hydrostatic, pinpoint or gas test. It lives on the job, prefilled from the job, and prints as a real PDF on the company letterhead. It replaces the old plumbingtooling.com form, where the same customer details had to be typed again and the PDF vanished into a browser tab.
 
@@ -60,6 +60,10 @@ Drafts pile up under **Needs you** as "3 test reports are ready to send" (office
 ## What the customer sees
 
 Once a report is sent it shows on the customer's (or the GC's) portal statement, on the job it belongs to — {{chip:green|PASS}} or {{chip:red|FAIL}}, the date, who certified — with a **View report** button that opens the exact PDF they were emailed. A **Test reports** card lower on the page keeps every sent report, paid jobs included. Drafts never appear there. Preview both on **Settings → What customers see**.
+
+## Where they are filed
+
+**Documents → Jobs** lists every test report under its job, next to the job's invoices and contracts — *Sewer Pre-Test Hydrostatic test report · tested Sep 10* with {{chip:green|PASS}} or {{chip:red|FAIL}} and {{chip:green|Sent Sep 11}} or {{chip:yellow|Draft}}. Click a sent one and the exact PDF the GC received opens; click a draft and the Test report modal opens on it. The search box at the top finds them by "test report", "hydrostatic", "gas", "PASS" or the job.
 
 ## The wording
 

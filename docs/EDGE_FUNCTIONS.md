@@ -2838,13 +2838,13 @@ If **`stripe_invoice_id`** and **`hosted_invoice_url`** are already set, returns
 
 Body: `{ report_id, to: string[], cc?: string[], subject, email_text, email_html?, pdf_base64, pdf_filename?, pay_url?, certifier_name?, certifier_license?, report_label?, recipient_label? }`. Guards: the row must be readable by the caller; 1–6 valid To, ≤ 6 cc (cc that repeat To are dropped); PDF ≤ 6 M base64 chars; `pay_url` must be https. Success: `{ ok: true, resend_email_id, pdf_path, pdf_version }`. A Resend failure returns 502 with the row unsent; a stamp failure after a successful send returns 500 "open it and check".
 
-**Deploy**: `supabase functions deploy send-test-report`. Bucket (once, out of band): `insert into storage.buckets (id, name, public) values ('job-test-reports', 'job-test-reports', false) on conflict (id) do nothing;` — no client policies.
+**Deploy**: `supabase functions deploy send-test-report`. Bucket (once, out of band): `insert into storage.buckets (id, name, public) values ('job-test-reports', 'job-test-reports', false) on conflict (id) do nothing;` — no client write policies; office reads arrived with v2.3331 (`20260911213000_job_test_report_docs_office_select.sql`) for the Documents page.
 
 ---
 
 ### open-test-report-pdf
 
-**Purpose** (v2.3304, Test reports PR 5): the portal's **View report** door — `GET /functions/v1/open-test-report-pdf?t=<portal token>&r=<report id>` answers **302** to a five-minute signed link (`LINK_SECONDS = 300`, the `open-contract-form-pdf` pattern) on the private `job-test-reports` bucket, with a download name like *Sewer Pre-Test Hydrostatic Report - 112 Seidel St - 2026-09-10.pdf*. The bucket has no client policies; this is the only customer-facing way to the file.
+**Purpose** (v2.3304, Test reports PR 5): the portal's **View report** door — `GET /functions/v1/open-test-report-pdf?t=<portal token>&r=<report id>` answers **302** to a five-minute signed link (`LINK_SECONDS = 300`, the `open-contract-form-pdf` pattern) on the private `job-test-reports` bucket, with a download name like *Sewer Pre-Test Hydrostatic Report - 112 Seidel St - 2026-09-10.pdf*. The bucket has no customer-side policies; this is the only customer-facing way to the file (staff open it from Documents → Jobs through a client signed URL, v2.3331).
 
 **Authentication**: none (`verify_jwt = false`) — the portal link is the capability, resolved exactly as `customer-portal` does (raw token, then the v1 sha256 hash; revoked → 404 text). Guards: the report must be `status = 'sent'` with a `pdf_path`, on a job the link's company pays for (`customer_id` for a customer link, `gc_customer_id` for a GC link, either for `all`); sample tokens get a plain 404 line. Errors are short `text/plain` sentences (the tab the customer opened shows them). **Secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`.
 
