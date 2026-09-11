@@ -9,6 +9,8 @@ export type LimitedJobDetailSnapshot = {
   job_plans_link: string | null
   revenue: number | null
   project_id: string | null
+  /** The customer row id (v2.3262) — the Job tab's portal globe keys on it; null on the placeholder/limited shapes. */
+  customer_id?: string | null
   customer_name: string | null
   customer_email: string | null
   customer_phone: string | null

@@ -73,6 +73,7 @@ import JobReportsModal from '../JobReportsModal'
 import { formatDispatchNoteDaysAgoShortPhrase } from '../../utils/dispatchNoteDisplay'
 import type { JobWithDetails } from '../../types/jobWithDetails'
 import type { LimitedJobDetailSnapshot } from '../../types/limitedJobDetailSnapshot'
+import CustomerPortalGlobeButton from '../customers/CustomerPortalGlobeButton'
 import GcHardHatIcon from '../icons/GcHardHatIcon'
 import DevelopmentHouseIcon from '../icons/DevelopmentHouseIcon'
 
@@ -274,18 +275,21 @@ const customerPanelMissingPlaceholderStyle: CSSProperties = {
   color: 'var(--text-faint)',
 }
 
-function DetailJobModalCustomerPanel({
+export function DetailJobModalCustomerPanel({
   customerName,
   customerPhone,
   customerEmail,
   gcCustomerName,
   developmentName,
+  customerId,
 }: {
   customerName: string | null | undefined
   customerPhone: string | null | undefined
   customerEmail: string | null | undefined
   gcCustomerName?: string | null
   developmentName?: string | null
+  /** The customer's portal globe (v2.3262) renders beside the name when set — office roles only (the button gates itself). */
+  customerId?: string | null
 }) {
   const name = customerName?.trim() ?? ''
   const phone = customerPhone?.trim() ?? ''
@@ -331,8 +335,18 @@ function DetailJobModalCustomerPanel({
 
   return (
     <div style={{ minWidth: 0 }}>
-      <div style={name ? { fontSize: '1.02rem', fontWeight: 600, wordBreak: 'break-word' } : customerPanelMissingPlaceholderStyle}>
-        {name || '[missing customer name]'}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', minWidth: 0 }}>
+        <span style={name ? { fontSize: '1.02rem', fontWeight: 600, wordBreak: 'break-word', minWidth: 0 } : customerPanelMissingPlaceholderStyle}>
+          {name || '[missing customer name]'}
+        </span>
+        {/* 🌐 the customer's portal (v2.3262) — the same globe + modal as the Edit
+            tab's Customer row and the Pipeline rows, in the same place: next to
+            the name it belongs to. */}
+        {customerId && name ? (
+          <span onClick={(e) => e.stopPropagation()} style={{ display: 'inline-flex', flexShrink: 0 }}>
+            <CustomerPortalGlobeButton customerId={customerId} customerName={name} size={15} />
+          </span>
+        ) : null}
       </div>
       {gcName ? (
         <div
@@ -545,6 +559,7 @@ function mergeLimitedFromAssignedAndLedger(
     job_plans_link: assigned.job_plans_link,
     revenue: assigned.revenue,
     project_id: assigned.project_id ?? null,
+    customer_id: (assigned as { customer_id?: string | null }).customer_id ?? null,
     customer_name: null,
     customer_email: null,
     customer_phone: null,
@@ -563,7 +578,7 @@ async function fetchLimitedLedgerRow(jobId: string): Promise<LimitedJobDetailSna
         await supabase
           .from('jobs_ledger')
           .select(
-            'id, hcp_number, job_name, job_address, google_drive_link, job_pictures_link, job_plans_link, revenue, project_id, customer_name, customer_email, customer_phone, last_work_date, status, account_manager_user_id, account_manager_relationship, account_manager:account_manager_user_id(name), gc_customer:gc_customer_id(name), development:development_id(name), service_types:service_type_id(name)',
+            'id, hcp_number, job_name, job_address, google_drive_link, job_pictures_link, job_plans_link, revenue, project_id, customer_id, customer_name, customer_email, customer_phone, last_work_date, status, account_manager_user_id, account_manager_relationship, account_manager:account_manager_user_id(name), gc_customer:gc_customer_id(name), development:development_id(name), service_types:service_type_id(name)',
           )
           .eq('id', jobId)
           .maybeSingle(),
@@ -580,6 +595,7 @@ async function fetchLimitedLedgerRow(jobId: string): Promise<LimitedJobDetailSna
       job_plans_link: string | null
       revenue: number | null
       project_id: string | null
+      customer_id: string | null
       customer_name: string | null
       customer_email: string | null
       customer_phone: string | null
@@ -1803,6 +1819,7 @@ export default function DetailJobModal({
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <DetailJobModalCustomerPanel
                     customerName={detailJob.customer_name}
+                    customerId={'customer_id' in detailJob ? (detailJob.customer_id ?? null) : null}
                     customerPhone={detailJob.customer_phone}
                     customerEmail={detailJob.customer_email}
                     gcCustomerName={'gc_customer_name' in detailJob ? detailJob.gc_customer_name : detailJob.gcCustomer?.name ?? null}
