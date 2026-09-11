@@ -81,7 +81,8 @@ describe('matchCashAppTransactions', () => {
   it('memoAmounts reads dollar-looking numbers and ignores Cash App ids', () => {
     expect(memoAmounts('Cashapp 500')).toEqual([500])
     expect(memoAmounts('CashApp in 300 and 100')).toEqual([300, 100])
-    expect(memoAmounts('-500 for motorcycle 1809.20 paid via cashapp')).toEqual([500, 1809.2])
+    expect(memoAmounts('-500 for motorcycle 1809.20 paid via cashapp')).toEqual([1809.2]) // -500 was withheld, not sent
+    expect(memoAmounts('969.89 - 500 = 369.89')).toEqual([969.89, 369.89])
     expect(memoAmounts('Paid out of 1,073.94 on cashapp')).toEqual([1073.94])
     expect(memoAmounts('Cash App #D-19JXG5RJ "Week"')).toEqual([])
     expect(memoAmounts(null)).toEqual([])
