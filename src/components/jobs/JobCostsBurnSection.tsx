@@ -86,11 +86,12 @@ function CumTooltip({ active, payload }: CumTipProps) {
   )
 }
 
-/** The first dated charge on the job — where the overhead window starts (shared by Burn and the Cost Timeline's band, v2.3271). */
-export function firstChargeYmdOf(inputsState: JobChargesTimelineInputsState): string | null {
+/** The first dated event on the job — charge, payment or report — which says whether the overhead window's start cut history off (v2.3289). */
+export function firstEventYmdOf(inputsState: JobChargesTimelineInputsState): string | null {
   if (inputsState.kind !== 'ready') return null
   let first: string | null = null
-  for (const e of inputsState.inputs.chargeEvents) if (e.dateKey && (first == null || e.dateKey < first)) first = e.dateKey
+  const i = inputsState.inputs
+  for (const e of [...i.chargeEvents, ...i.paymentEvents, ...i.valueEvents]) if (e.dateKey && (first == null || e.dateKey < first)) first = e.dateKey
   return first
 }
 

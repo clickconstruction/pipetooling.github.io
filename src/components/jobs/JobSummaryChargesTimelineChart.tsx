@@ -428,10 +428,13 @@ export function JobChargesTimelineChartView({
   revenue,
   cardChargesExcluded,
   teamLaborIncluded = true,
+  overheadSinceLabel = null,
 }: {
   data: JobChargesTimelineData
   revenue: number | null
   cardChargesExcluded: boolean
+  /** When the overhead window's floor cut off part of the job's history (v2.3289): the first day charged, e.g. "Feb 19, 2026". */
+  overheadSinceLabel?: string | null
   /** See `Props.teamLaborIncluded`; defaults to the owner's full-cost reading. */
   teamLaborIncluded?: boolean
 }) {
@@ -580,6 +583,7 @@ export function JobChargesTimelineChartView({
           <>
             {' · '}
             <span style={{ color: OVERHEAD_STROKE, fontWeight: 600 }}>Amber</span> = overhead landed so far, stacked on cost (true cost on top)
+            {overheadSinceLabel ? ` · since ${overheadSinceLabel}, where office cost begins` : ''}
           </>
         )}
         {valueShown && (

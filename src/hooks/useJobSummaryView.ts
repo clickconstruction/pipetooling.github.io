@@ -2,7 +2,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { recordNavClick } from '../lib/navClickTelemetry'
 import { denverCalendarDayKey, ymdAddDays } from '../utils/dateUtils'
 import { loadJobDayLedger } from '../lib/jobs/loadJobDayLedger'
-import { deserializeJobDayLedger, serializeJobDayLedger, type JobDayLedger, type JobDayLedgerSerialized, type JobOverheadMethod } from '../lib/jobs/jobDayLedger'
+import type { JobDayLedger, JobOverheadMethod } from '../lib/jobs/jobDayLedger'
+import { jobDayLedgerCacheKey, loadJobDayLedgerCached, readCachedJobDayLedger } from '../lib/jobs/jobDayLedgerSessionCache'
 import { buildOverheadAllocation, overheadAllocationSettingsEqual, type OverheadAllocation, type OverheadAllocationSettings } from '../lib/jobs/overheadAllocation'
 import { useOverheadAllocationSettings } from './useOverheadAllocationSettings'
 import {
@@ -92,13 +93,6 @@ export type JobSummaryCompareBundle = {
   ledgerError: string | null
 }
 
-type CacheEntry = { cachedAtMs: number; ledger: JobDayLedgerSerialized }
-const CACHE_TTL_MS = 60 * 60 * 1000
-
-function cacheKey(userId: string, startYmd: string, endYmd: string): string {
-  return `jobDayLedger:v5:${userId}:${startYmd}:${endYmd}`
-}
-
 /** One window's day ledger behind the sessionStorage cache; `enabled` false keeps it idle and null. */
 function useJobDayLedgerWindow(args: { enabled: boolean; userId: string | undefined; startYmd: string; endYmd: string; reloadTick: number }): {
   ledger: JobDayLedger | null
@@ -112,34 +106,21 @@ function useJobDayLedgerWindow(args: { enabled: boolean; userId: string | undefi
   useEffect(() => {
     if (!enabled || !userId) return
     let cancelled = false
-    const key = cacheKey(userId, startYmd, endYmd)
+    // The session cache is shared with the job window's Costs tab (v2.3289); a forced reload skips the read.
     if (reloadTick === 0) {
-      try {
-        const raw = sessionStorage.getItem(key)
-        if (raw) {
-          const entry = JSON.parse(raw) as CacheEntry
-          if (Date.now() - entry.cachedAtMs < CACHE_TTL_MS) {
-            setLedger(deserializeJobDayLedger(entry.ledger))
-            setError(null)
-            return
-          }
-        }
-      } catch {
-        /* storage unavailable or corrupt — live load */
+      const hit = readCachedJobDayLedger(jobDayLedgerCacheKey(userId, startYmd, endYmd))
+      if (hit) {
+        setLedger(hit)
+        setError(null)
+        return
       }
     }
     setLoading(true)
     setError(null)
-    void loadJobDayLedger({ startYmd, endYmd, isCancelled: () => cancelled })
+    void loadJobDayLedgerCached({ userId, startYmd, endYmd, bypassRead: true, load: () => loadJobDayLedger({ startYmd, endYmd }) })
       .then((l) => {
         if (cancelled || !l) return
         setLedger(l)
-        try {
-          const entry: CacheEntry = { cachedAtMs: Date.now(), ledger: serializeJobDayLedger(l) }
-          sessionStorage.setItem(key, JSON.stringify(entry))
-        } catch {
-          /* per-session nicety only */
-        }
       })
       .catch((e: unknown) => {
         if (!cancelled) setError(e instanceof Error ? e.message : String(e))
