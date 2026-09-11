@@ -27,7 +27,7 @@ Go to **Jobs → Job Summary**. Above the table:
 - **Overhead** — how each job's overhead share is figured. **Day-share** is the default (below); the grey chip beside it — {{chip:gray|30 days · 20% carry · 14-day idle cap}} — names the constants day-share runs on. A, B, and C are the same three lenses People → Overhead shows, applied to one job.
 - Click any column header to sort. Click again to flip. The table opens sorted by true profit.
 
-The strip under the controls totals what's showing: jobs, revenue, gross profit and margin, overhead charged, true profit and true margin, and true profit per field hour. The chips beside it say what would move the numbers: jobs with no contract $, jobs with no %, sessions still awaiting approval, overhead that had nobody to charge, and overhead still **in flight** (spread past today; it lands as the days arrive).
+The strip under the controls totals what's showing: jobs, revenue, gross profit and margin, overhead charged, true profit and true margin, and true profit per field hour. The chips beside it say what would move the numbers: jobs with no contract $, jobs with no %, sessions still awaiting approval, overhead that had nobody to charge, overhead still **in flight** (spread past today; it lands as the days arrive), and overhead that landed on jobs this list leaves out — the HCP # floor under the table hides older imported jobs, but their field hours still take their share of the pool, so *Overhead charged* (shown jobs only) reads lower than the dials strip by exactly that amount. Lower the floor to see those jobs.
 
 ## Compare to and Target
 
