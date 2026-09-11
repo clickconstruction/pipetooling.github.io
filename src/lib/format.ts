@@ -20,8 +20,10 @@ export function formatDollarsAsThousandsK(n: number): string {
 }
 
 export function decimalHoursToHhMm(h: number): string {
-  const hrs = Math.floor(h)
-  const mins = Math.round((h - hrs) * 60)
+  // Round to whole minutes first so 5.9999 reads 6:00, never 5:60.
+  const totalMins = Math.round(h * 60)
+  const hrs = Math.floor(totalMins / 60)
+  const mins = totalMins - hrs * 60
   return `${hrs}:${mins.toString().padStart(2, '0')}`
 }
 

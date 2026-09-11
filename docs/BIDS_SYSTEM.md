@@ -81,7 +81,7 @@ when_to_read:
 1. [Overview](#overview)
 2. [Bid Board Tab](#bid-board-tab)
 3. [Builder Review Tab](#builder-review-tab)
-4. [Bid Costs Tab](#bid-costs-tab-dev-only)
+4. [Bid Costs Tab](#bid-costs-tab)
 5. [Estimators Tab](#estimators-tab)
 6. [Counts Tab](#counts-tab)
 7. [Takeoff Tab](#takeoff-tab)
@@ -116,7 +116,7 @@ Bids now carry an **optional `project_id`** (FK → `projects`, `ON DELETE SET N
 
 ### Role Access
 The page gate (see the `UserRole` union and the render guard in [`Bids.tsx`](../src/pages/Bids.tsx)) admits **dev, master_technician, assistant, controller, estimator, primary, superintendent**. Helpers and subcontractors cannot open `/bids` at all.
-- **dev, master_technician, assistant, estimator**: Full access to all Bids tabs (Bid Costs stays dev-only)
+- **dev, master_technician, assistant, estimator**: Full access to all Bids tabs (Bid Costs since v2.3336: dollars for dev / master / controller, hours for assistant / estimator)
 - **controller**: Assistant-like — same Bids access as assistant (v2.662)
 - **primary**: Full tab access since the "Primaries unrestricted on Bids" change (see `RECENT_FEATURES.md`)
 - **superintendent**: Page access with service-type scoping (`superintendentServiceTypeIds`)
@@ -292,9 +292,9 @@ URL: **`?tab=builder-review`**. One expandable card per **customer** (GC/Builder
 
 ---
 
-## Bid Costs Tab (dev-only)
+## Bid Costs Tab
 
-URL: **`?tab=bid-costs`**; gate `myRole === 'dev'` (non-dev users are redirected away). Read-only rollup of **internal clocked cost per bid** — bids partitioned into Unsent / Pending / Won / Started-or-Complete / Lost collapsible sections, each row showing the bid, its clocked team-labor cost, and the people who clocked time (data from `loadTeamLaborDataForBids` in [`src/utils/teamLabor.ts`](../src/utils/teamLabor.ts): `people_crew_bids` × `people_hours` × `people_pay_config`). Clicking a row selects the bid across the workflow tabs (`setSharedBid`). Component: [`src/components/bids/BidsBidCostsTab.tsx`](../src/components/bids/BidsBidCostsTab.tsx). See [`BIDS_TABS_ARCHITECTURE.md`](./BIDS_TABS_ARCHITECTURE.md#bid-costs--bid-costs-dev-only).
+URL: **`?tab=bid-costs`**. The **pursuit ledger** (v2.3336): what it costs us to bid. Gate `canSeeBidCosts(role)` — dev, master_technician, controller, assistant, estimator (others are redirected to the board); `canSeeBidCostDollars(role)` — dev, master_technician, controller read wage-derived dollars, the rest read the same ledger in hours (both in [`src/lib/bids/bidPursuit.ts`](../src/lib/bids/bidPursuit.ts)). One table with the outcome as a filter (Open · Won incl. started/complete · Lost · Unsent), a window (90 d / year / all on the sent date, else created), "bids with no time" and "robot bids" (ZZ Twin / ZZ Shadow) folded by default, search, a totals row, four summary tiles (spend · per bid · won of decided by value · spent on lost) and an estimator rail (click filters). Pursuit cost = clocked team labor (`loadTeamLaborDataForBids` in [`src/utils/teamLabor.ts`](../src/utils/teamLabor.ts)) + card charges / supply splits / tally parts / materials moved onto the bid (`bidAssignedCostsByBidId`, Mercury allocations by absolute amount). Clicking a row selects the bid across the workflow tabs (`setSharedBid`). Component: [`src/components/bids/BidsBidCostsTab.tsx`](../src/components/bids/BidsBidCostsTab.tsx). See [`BIDS_TABS_ARCHITECTURE.md`](./BIDS_TABS_ARCHITECTURE.md#bid-costs--bid-costs).
 
 > The **Unsent/Working kanban** tab (`?tab=working`) is documented in the [Overview](#unsentworking-tab-kanban) above — per-user columns in `bid_working_board_columns`/`_placements`, the system **Working** column feeding Clock In quick picks (**v2.369**), and working-board archive (**v2.517**/**v2.518**). Component: [`src/components/bids/BidsWorkingBoard.tsx`](../src/components/bids/BidsWorkingBoard.tsx).
 

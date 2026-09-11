@@ -75,6 +75,7 @@ import { useBidAuditsPendingCount } from '../hooks/useBidAuditsPendingCount'
 import { canWorkRobotAudits, ROBOT_AUDIT_ROLES } from '../lib/bids/bidAudits'
 import { BidSubmissionFollowupTab } from '../components/bids/BidSubmissionFollowupTab'
 import { BidsBidCostsTab } from '../components/bids/BidsBidCostsTab'
+import { canSeeBidCostDollars, canSeeBidCosts } from '../lib/bids/bidPursuit'
 import { BidsCountsTab } from '../components/bids/BidsCountsTab'
 import { BidsLaborTab } from '../components/bids/BidsLaborTab'
 import { BidsPricingTab } from '../components/bids/BidsPricingTab'
@@ -1798,7 +1799,7 @@ export default function Bids() {
       setActiveTab('bid-board')
       return
     }
-    if (tab === 'bid-costs' && myRole != null && myRole !== 'dev') {
+    if (tab === 'bid-costs' && myRole != null && !canSeeBidCosts(myRole)) {
       setSearchParams((p) => {
         const next = new URLSearchParams(p)
         next.set('tab', 'bid-board')
@@ -3178,7 +3179,7 @@ export default function Bids() {
   )
 
   const bidsBidCostsTabButton =
-    myRole === 'dev' ? (
+    canSeeBidCosts(myRole) ? (
       <button
         type="button"
         data-tabkey="bid-costs"
@@ -4187,13 +4188,14 @@ export default function Bids() {
         </div>
       ) : null}
 
-      {/* Bid Costs Tab - Dev only */}
-      {myRole === 'dev' && activeTab === 'bid-costs' && (
+      {/* Bid Costs Tab — office roles; dollars for dev / master / controller (v2.3336) */}
+      {canSeeBidCosts(myRole) && activeTab === 'bid-costs' && (
         <BidsBidCostsTab
           bids={bids}
           teamLaborData={teamLaborDataForBids}
           bidAssignedCosts={bidAssignedCosts}
           onSelectBid={setSharedBid}
+          showDollars={canSeeBidCostDollars(myRole)}
         />
       )}
 
