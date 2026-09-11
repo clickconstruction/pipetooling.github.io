@@ -234,7 +234,7 @@ export default function PeoplePayLedgerView({ payStubs, payStubPaymentsByStubId,
             type="button"
             onClick={() => setRosterFilter(v)}
             aria-pressed={rosterFilter === v}
-            style={{ font: 'inherit', fontSize: '0.68rem', fontWeight: 700, padding: '0.15rem 0.4rem', whiteSpace: 'nowrap', borderRadius: 999, border: '1px solid var(--border)', background: rosterFilter === v ? 'var(--bg-muted)' : 'transparent', color: rosterFilter === v ? 'var(--text-strong)' : 'var(--text-muted)', cursor: 'pointer' }}
+            style={{ font: 'inherit', fontSize: '0.68rem', fontWeight: 700, padding: '0.15rem 0.4rem', whiteSpace: 'nowrap', borderRadius: 999, border: `1px solid ${rosterFilter === v ? 'var(--text-link)' : 'var(--border)'}`, boxShadow: rosterFilter === v ? 'inset 0 0 0 1px var(--text-link)' : 'none', background: rosterFilter === v ? 'var(--bg-muted)' : 'transparent', color: rosterFilter === v ? 'var(--text-strong)' : 'var(--text-muted)', cursor: 'pointer' }}
           >
             {label}
           </button>

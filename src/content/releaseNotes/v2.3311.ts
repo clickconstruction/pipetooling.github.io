@@ -8,6 +8,7 @@ const note: ReleaseNote = {
   highlights: [
     'On People → Pay → Payroll → Ledger, the company totals now read as two centered lines — what we owe, then what is owed to us — instead of one long sentence.',
     'The All / We owe / Owes us / Even chips are centered under them and always sit on one line; the even count lives on its chip.',
+    'The chip you have picked is outlined in blue, so the current filter is obvious at a glance.',
   ],
 }
 
