@@ -7,8 +7,9 @@
  *  c. `split`   — one Cash App payment equals the sum of 2–3 recorded payments for that person
  *                 within the window (one send covering several reports).
  *  d. otherwise — unmatched; `before_records` when the payment predates the first pay report
- *                 the app has for that person (money that went out before we started counting),
- *                 else the note lane (pay / advance / expense) says which queue it joins.
+ *                 the app has for that person — or, for an unknown name, the company's first
+ *                 report (money that went out before we started counting) — else the note lane
+ *                 (pay / advance / expense) says which queue it joins.
  *
  * Recorded payments are consumed at most once. Pure; the caller supplies both sides.
  */
@@ -39,7 +40,7 @@ export type CashAppMatchRule = 'id' | 'amount' | 'split'
 
 export type CashAppMatchResult =
   | { txId: string; outcome: 'matched'; rule: CashAppMatchRule; paymentIds: string[]; personName: string }
-  | { txId: string; outcome: 'before_records'; personName: string; firstReportStart: string; noteKind: CashAppNoteKind }
+  | { txId: string; outcome: 'before_records'; personName: string | null; firstReportStart: string; noteKind: CashAppNoteKind }
   | { txId: string; outcome: 'unmatched'; personName: string | null; noteKind: CashAppNoteKind }
 
 export type MatchCashAppOptions = {
@@ -104,7 +105,7 @@ export function matchCashAppTransactions(
     const person = tx.personName
     const first = person ? options.firstReportStartByPerson?.[person] : undefined
     const floor = first ?? options.recordsBeginYmd
-    if (person && floor && tx.occurredDate < floor) {
+    if (floor && tx.occurredDate < floor) {
       results.push({ txId: tx.id, outcome: 'before_records', personName: person, firstReportStart: floor, noteKind })
       continue
     }

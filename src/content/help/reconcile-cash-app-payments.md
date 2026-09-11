@@ -23,7 +23,7 @@ cash_app_report.csv · 2,360 rows · **31 new** (28 sends to staff) · 2,329 alr
 
 Cash App names rarely match app names ("Abe Whites" is Abraham). The second step lists every Cash App name not yet tied to a person: pick who it is, or tick **not staff**. The app remembers, so the next import already knows everyone. Leave one blank to decide later.
 
-A name can be a proxy: Tristen's pay goes to Taunya's account with "Tristen" in the note, and Malachi's to Jessica Whites. Those rules live on the alias and are applied on every import.
+A name can be a **proxy**: Tristen's pay goes to Taunya's account with "Tristen" in the note. Tick **proxy** on that name and fill in "when the note contains *tristen* it's for *Tristen*"; the rule is applied on every import. Malachi's pay goes to Jessica Whites with no note rule, so Jessica's name simply maps to Malachi.
 
 ## Read the summary
 
@@ -35,7 +35,21 @@ The third step files every send to staff into a lane:
 - {{chip:gray|Not pay}} — the note says gas, reimbursement, Home Depot and the like.
 - {{chip:gray|Not staff}} — names you marked as not staff.
 
-Recording and filing from the list itself (Record on a report, Advance, Skip) is the next step of this tool; until then, record a reviewed send with {{button:green|Record payment}} on its report and paste the Cash App ID into the memo — the next import will match it exactly.
+## Decide each send
+
+Every send in **To review** has four buttons:
+
+- {{button:green|Record}} — it was pay. The editor opens on the report the send most likely pays (the week that just ended), with the amount prefilled up to what that report can still take; change either and press Save. The payment is written with the Cash App ID in its memo, so the next import matches it exactly, and Paid to date / Balance update behind the modal.
+- {{button:outline|Advance}} — pay sent ahead of a report. It becomes a pending offset for that person, and the next time you generate their report the Less step offers it as a line.
+- {{button:outline|Already recorded}} — the money is on a report already, just under a different amount or date (you recorded the report's net while sending something else). Counts it as recorded without writing a second payment.
+- {{button:outline|Not pay}} — gas, a reimbursement, a loan: real money, not payroll.
+- {{button:outline|Skip}} — leave it out for now.
+
+:::example One row, decided
+2026-08-22 · Darren · $500.00 · "Week" · #D-1RM77EV8J → Record → 8/16–22 · $500.00 left → Save
+:::
+
+A row whose Cash App name is not tied to a person yet can only be skipped or marked not pay — tie the name first.
 
 ## Working with an agent
 
