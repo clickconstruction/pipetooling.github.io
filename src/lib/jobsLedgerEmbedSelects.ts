@@ -62,6 +62,7 @@ export const JOBS_LEDGER_MATERIALS_EMBED = ['amount', 'created_at', 'description
 
 /** `jobs_ledger_fixtures` — full row */
 export const JOBS_LEDGER_FIXTURES_EMBED = [
+  'bill_to_party',
   'count',
   'created_at',
   'discount_basis_positions',

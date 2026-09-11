@@ -199,6 +199,7 @@ import BilledBillViewModal, { type InvoiceWithJobForBillView } from './BilledBil
 import AgreedWriteDownModal from './AgreedWriteDownModal'
 import { JobFormBillToEditor, type BillToEditorInvoice } from './JobFormBillToEditor'
 import { parseJobBillToParty, type JobBillToParty } from '../../lib/jobs/billToParty'
+import { planPayerCarves } from '../../lib/jobs/splitByPayer'
 import { loadTeamLaborData, type TeamLaborRow } from '../../utils/teamLabor'
 import { laborItemsSubtotal } from '../../lib/peopleLaborJobItemLineCost'
 import {
@@ -2654,8 +2655,8 @@ export default function JobFormModal({
     }
   }
 
-  async function createInvoiceFromSegmentIds(selection: ReadonlySet<string>) {
-    if (!editing) return
+  async function createInvoiceFromSegmentIds(selection: ReadonlySet<string>): Promise<string | null> {
+    if (!editing) return null
     const fixturesNow = autosaveFixturesRef.current
     // The invoice bills the selection NET of dollar coverage — money already
     // paid or invoiced by amount against these rows is subtracted, so a
@@ -2667,7 +2668,7 @@ export default function JobFormModal({
     )
     if (count === 0 || !(netDollars > 0)) {
       setError('Select at least one unbilled segment first')
-      return
+      return null
     }
     // Cents-exact backstop for the UI clamp (v2.1132): never invoice past the
     // slider's Remaining — dollar invoices already cover that money.
@@ -2675,7 +2676,7 @@ export default function JobFormModal({
       setError(
         `This selection would bill more than the $${formatCurrency(segmentCoverage.remainingDollars)} left on the job — void or delete an existing bill first.`,
       )
-      return
+      return null
     }
     setCreatingSegmentInvoice(true)
     setError(null)
@@ -2744,13 +2745,52 @@ export default function JobFormModal({
           'success',
         )
       }
+      return newInvoiceId
     } catch (e: unknown) {
       const err = e as { message?: string; details?: string; hint?: string }
       const msg = err?.message || 'Failed to create invoice from segments'
       const extra = [err?.details, err?.hint].filter(Boolean).join(' ')
       setError(extra ? `${msg}. ${extra}` : msg)
+      return null
     } finally {
       setCreatingSegmentInvoice(false)
+    }
+  }
+
+  /**
+   * Split by line (v2.3349): one draft per payer from every unbilled work row,
+   * through the same segment-invoice path as a hand-picked selection, then
+   * each draft is stamped with its party so Bill Customer addresses it.
+   */
+  const [carvingByPayer, setCarvingByPayer] = useState(false)
+  const payerCarvePlan = useMemo(
+    () => (billToParty === 'split' ? planPayerCarves(fixtures, segmentCoverage) : []),
+    [billToParty, fixtures, segmentCoverage],
+  )
+  const gcNameForPayerTags = useMemo(
+    () => (gcCustomerId ? (customers.find((c) => c.id === gcCustomerId)?.name ?? editing?.gcCustomer?.name ?? '').trim() || null : null),
+    [gcCustomerId, customers, editing?.gcCustomer?.name],
+  )
+  async function carveInvoicesByPayer() {
+    if (!editing || carvingByPayer) return
+    setCarvingByPayer(true)
+    try {
+      let made = 0
+      for (const carve of planPayerCarves(autosaveFixturesRef.current, segmentCoverage)) {
+        const id = await createInvoiceFromSegmentIds(new Set(carve.fixtureIds))
+        if (!id) break
+        const { error: partyErr } = await supabase.from('jobs_ledger_invoices').update({ bill_to_party: carve.party }).eq('id', id)
+        if (partyErr) {
+          setError(`Bill created, but its payer did not save (${partyErr.message}) — pick it with Bill to ▾.`)
+        }
+        made += 1
+      }
+      if (made > 0) {
+        const found = await fetchJobWithDetailsById(editing.id)
+        if (found) setEditing(found)
+      }
+    } finally {
+      setCarvingByPayer(false)
     }
   }
 
@@ -4063,6 +4103,7 @@ export default function JobFormModal({
             onOpenStripeFixturePreview={() => setStripeFixturePreviewOpen(true)}
             jobTotalDollars={jobTotalBidDollars}
             plan={stagePlan}
+            payerTags={billToParty === 'split' ? { customerName: customerName.trim() || null, gcName: gcNameForPayerTags } : null}
           />
           {/* Job window (v2.1687): no divider and no "Billing" title — the Bill
               tab reads as ONE section from Line Items down. The standalone/New
@@ -4225,6 +4266,18 @@ export default function JobFormModal({
                 onCreateInvoiceFromSelection={createInvoiceFromSelectedSegments}
                 creatingFromSelection={creatingSegmentInvoice}
                 coverage={segmentCoverage}
+                payerCarves={
+                  billToParty === 'split'
+                    ? payerCarvePlan.map((c) => ({
+                        party: c.party,
+                        label: c.party === 'gc' ? gcNameForPayerTags ?? 'GC' : customerName.trim() || 'Customer',
+                        count: c.count,
+                        netDollars: c.netDollars,
+                      }))
+                    : null
+                }
+                onCarveByPayer={() => void carveInvoicesByPayer()}
+                carvingByPayer={carvingByPayer}
               />
               <JobFormUpcomingDraws
                 plan={stagePlan}

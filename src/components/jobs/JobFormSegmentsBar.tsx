@@ -500,9 +500,16 @@ export function JobFormSegmentsCreateAction({
   onCreateInvoiceFromSelection,
   creatingFromSelection,
   coverage,
+  payerCarves = null,
+  onCarveByPayer,
+  carvingByPayer = false,
 }: Omit<JobFormSegmentsBarProps, 'onToggleSegment' | 'trackSlot'> & {
   onCreateInvoiceFromSelection: () => void
   creatingFromSelection: boolean
+  /** Split by line (v2.3349): the per-payer carves the untagged rows would make; null on a job that is not split. */
+  payerCarves?: Array<{ party: 'customer' | 'gc'; label: string; count: number; netDollars: number }> | null
+  onCarveByPayer?: () => void
+  carvingByPayer?: boolean
 }) {
   const segments = useMemo(
     () => buildJobSegmentsBar({ fixtures, riderFeesDollars, invoiceStatusById }),
@@ -526,6 +533,31 @@ export function JobFormSegmentsCreateAction({
 
   return (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.75rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
+      {payerCarves && payerCarves.length > 0 && onCarveByPayer ? (
+        <button
+          type="button"
+          data-testid="carve-by-payer"
+          onClick={onCarveByPayer}
+          disabled={carvingByPayer || creatingFromSelection}
+          title="Split by line: one Ready-to-Bill draft per payer from every unbilled line, each already addressed"
+          style={{
+            padding: '0.4rem 0.75rem',
+            fontSize: '0.8125rem',
+            fontWeight: 600,
+            background: '#3b82f6',
+            color: 'white',
+            border: 'none',
+            borderRadius: 6,
+            cursor: carvingByPayer ? 'default' : 'pointer',
+          }}
+        >
+          {carvingByPayer
+            ? 'Making bills…'
+            : `Make ${payerCarves.length} bill${payerCarves.length === 1 ? '' : 's'} by payer — ${payerCarves
+                .map((c) => `${c.label} $${formatCurrency(c.netDollars)}`)
+                .join(' · ')}`}
+        </button>
+      ) : null}
       <button
         type="button"
         onClick={onCreateInvoiceFromSelection}

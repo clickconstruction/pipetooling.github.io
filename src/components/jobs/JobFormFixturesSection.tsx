@@ -77,6 +77,12 @@ type JobFormFixturesSectionProps = {
    * Omit to render the plain grid.
    */
   plan?: StagePlan | null
+  /**
+   * Split by line (v2.3349): when the job's "Bills go to" is `split`, every work
+   * row shows a Customer | GC payer toggle under its name; the Bill tab carves
+   * one draft per payer. Null hides the toggle.
+   */
+  payerTags?: { customerName: string | null; gcName: string | null } | null
 }
 
 /**
@@ -112,6 +118,7 @@ export function JobFormFixturesSection({
   riderRows,
   riderFeesDollars = 0,
   plan = null,
+  payerTags = null,
 }: JobFormFixturesSectionProps) {
   // Phone-width focus expansion (v2.1229): while a row's name field (or any
   // field in that row) holds focus on a narrow viewport, the name spans the
@@ -670,6 +677,57 @@ export function JobFormFixturesSection({
                             position: 'relative',
                           }}
                         >
+                          {payerTags && !isDiscountRow(row) && (row.name ?? '').trim() ? (
+                            <div
+                              data-testid="payer-line"
+                              style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '0.5rem',
+                                flexWrap: 'wrap',
+                                padding: `0 0.75rem 0.35rem calc(0.75rem + ${plan ? 34 : 0}px${fixtures.length > 1 ? ' + 22px' : ''})`,
+                                fontSize: '0.75rem',
+                              }}
+                            >
+                              <span style={{ color: 'var(--text-muted)' }}>Pays</span>
+                              <span role="radiogroup" aria-label={`Who pays ${(row.name ?? '').trim() || 'this line'}`} style={{ display: 'inline-flex', border: '1px solid var(--border-strong)', borderRadius: 6, overflow: 'hidden' }}>
+                                {(
+                                  [
+                                    { v: 'customer' as const, label: (payerTags.customerName ?? '').trim() || 'Customer' },
+                                    { v: 'gc' as const, label: (payerTags.gcName ?? '').trim() || 'GC' },
+                                  ]
+                                ).map((opt, i) => {
+                                  const on = (row.bill_to_party ?? 'customer') === opt.v
+                                  return (
+                                    <button
+                                      key={opt.v}
+                                      type="button"
+                                      role="radio"
+                                      aria-checked={on}
+                                      disabled={locked}
+                                      onClick={() => updateFixtureRow(row.id, { bill_to_party: opt.v })}
+                                      style={{
+                                        padding: '0.15rem 0.5rem',
+                                        fontSize: '0.75rem',
+                                        fontWeight: 600,
+                                        border: 'none',
+                                        borderRight: i === 0 ? '1px solid var(--border-strong)' : 'none',
+                                        background: on ? (opt.v === 'gc' ? 'var(--bg-amber-100)' : 'var(--bg-blue-tint)') : 'var(--surface)',
+                                        color: on ? (opt.v === 'gc' ? 'var(--text-amber-800)' : 'var(--text-blue-800)') : 'var(--text-muted)',
+                                        cursor: locked ? 'default' : 'pointer',
+                                        maxWidth: 180,
+                                        overflow: 'hidden',
+                                        textOverflow: 'ellipsis',
+                                        whiteSpace: 'nowrap',
+                                      }}
+                                    >
+                                      {opt.label}
+                                    </button>
+                                  )
+                                })}
+                              </span>
+                            </div>
+                          ) : null}
                           {plan && planRow && (
                             /* Stage Plan (PR 2): the second line IS the stage — the
                                Order / Any / — selector, then where the work and its
