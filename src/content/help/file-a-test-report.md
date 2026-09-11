@@ -2,9 +2,18 @@
 title: file a hydrostatic, pinpoint or gas test report
 category: Jobs & Scheduling
 roles: dev, master_technician, assistant, controller, primary
-keywords: test report, hydrostatic, pre-test, post-test, pretest, pinpoint, gas test, BTU, house pressure, plumbing tooling, foundation, certification, RMP
+keywords: test report, test reports, send test report, resend, hydrostatic, pre-test, post-test, pretest, pinpoint, gas test, BTU, house pressure, plumbing tooling, foundation, certification, RMP
 ---
 A **Test report** is the certified paper a foundation contractor or a homeowner gets after a hydrostatic, pinpoint or gas test. It lives on the job, prefilled from the job, and prints as a real PDF on the company letterhead. It replaces the old plumbingtooling.com form, where the same customer details had to be typed again and the PDF vanished into a browser tab.
+
+## How it works at a glance
+
+1. **The tech clocks out** with a Status Report or Job Complete that says the test was run — "Hydrostatic test passed." on a job named *Johnson Pretest*. That sentence becomes a **draft** on the job: type from the job name, PASS or FAIL from the wording, date from the report. Notes, EOD and Walk reports never draft one, and you can always start a report by hand.
+2. **The Dashboard says so** — {{chip:yellow|3 test reports are ready to send}} under **Needs you** for office roles. The card opens the first draft.
+3. **You glance and send** — the paper is already filled in; check the verdict and the notes, then {{button:amber|Send to GC…}}. The email goes out with the PDF, the job's Stripe pay link and the standing cc, and the job's activity gets a line.
+4. **The GC sees it** on their portal statement, with a **View report** button that opens the exact PDF they were emailed.
+
+Everything below is the detail of those four steps.
 
 ## Open it from the job
 
@@ -13,7 +22,7 @@ On **Jobs → Pipeline**, every row's action stack has the orange wrench, **Test
 ## Fill in the test
 
 - **Test type** — {{chip:blue|Pre-Test}} {{chip:blue|Post-Test}} {{chip:blue|Pinpoint}} {{chip:blue|Gas}}. Pre and post tests also take {{chip:yellow|Supply}} or {{chip:yellow|Sewer}}, which picks the "system tested" wording and the conclusion.
-- **Test date** — defaults to today; **Yesterday** and **Today** are one tap. **Duration** offers 20 / 40 / 60 minutes.
+- **Test date** — defaults to today; **Yesterday** and **Today** are one tap. **Duration** offers 20 / 40 / 60 minutes. On the paper the date sits in *Test details* for hydrostatic tests, leads *Test results* on a pinpoint, and rides under the address on a gas test.
 - **Result** — {{button:green|PASS}} or {{button:red|FAIL}} for hydrostatic tests. Pinpoint and gas tests carry no verdict; pinpoint takes the location, method and findings, gas takes the **house pressure** (type PSI, in WC, oz/in² or mm WC and the other three fill themselves) and the **house utilities** list with its BTU/hr total (the **×1,000** button turns 100 into 100,000).
 - **Notes** — pipe material, lead present, measured water loss, prior work by others, toilets re-installed.
 - The customer, the address, the phone and the GC come from the job. The **certifier** comes from Settings.
@@ -36,7 +45,9 @@ Pick **Pre-Test**, **Sewer**, today's date, 60 minutes, **PASS**, type "PVC. Toi
 - **Message** — "Attached is the … report for 112 Seidel St and below is the invoice link…" with the job's **Stripe pay link** and amount. Edit it freely; *Reset to the template* brings the wording back.
 - **The attachment** — the PDF, built from the report exactly as it is when you click Send.
 
-If the job has no Stripe bill yet the sheet says **Bill first**: open **Bill Customer** on the row, create the Stripe invoice, come back and Send — or use **Send without the link** on purpose. After a send the report reads {{chip:green|Sent Sep 11}} with who got it and whether the link rode along, and the job's activity gets a line. Change the report later and **Send again…** emails a new PDF; the first one stays on file, so what the GC received is always the exact file they were sent.
+The **Send** button itself is in the modal's bottom bar, next to Save draft — it is never further down the page than your thumb. It stays gray until the report has what it needs (a verdict, findings or a pressure, and a To address); the sheet names what is missing.
+
+If the job has no Stripe bill yet the sheet says **Bill first**: open **Bill Customer** on the row, create the Stripe invoice, come back and Send — or use **Send without the link** on purpose. After a send the report reads {{chip:green|Sent Sep 11}} with who got it and whether the link rode along, and the job's activity gets a line. Change the report later and **Send again…** emails a new PDF; the first one stays on file, so what the GC received is always the exact file they were sent. Sending the same report to someone else works the same way — **Send again…**, change To, Send.
 
 :::example the Dashboard card
 Drafts pile up under **Needs you** as "3 test reports are ready to send" (office roles). The card opens the first one; the ones still missing a verdict or findings are counted separately.
