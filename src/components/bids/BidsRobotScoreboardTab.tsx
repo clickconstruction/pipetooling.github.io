@@ -3,6 +3,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 
 import { supabase } from '../../lib/supabase'
 import { buildAxisCards, GATE_B_PCT, GATE_B_STREAK, type RunScoreRow } from '../../lib/bids/confidenceBoard'
+import { TwinPricerCard } from './TwinPricerCard'
 import type { RobotRowState } from '../../lib/bids/robotRowState'
 import {
   axisByRobotBidNumber,
@@ -350,6 +351,9 @@ export function BidsRobotScoreboardTab({
           ))}
         </div>
       ) : null}
+
+      {/* Price Matrix PR 5: the pricing robot's numbers — a different seat, its own card. */}
+      <TwinPricerCard variant="scoreboard" />
 
       <div style={sectionHead}>
         Job types

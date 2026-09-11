@@ -11,6 +11,7 @@ import desktopKickoffDoc from '../../../docs/twins/kickoffs/desktop-operator.md?
 import shadowOperatorPrompt from '../../../docs/twins/kickoffs/shadow-operator.md?raw'
 import pricingKickoffDoc from '../../../docs/twins/kickoffs/pricing-operator.md?raw'
 import { usePriceMatrixRequests } from '../../hooks/usePriceMatrixRequests'
+import { TwinPricerCard } from './TwinPricerCard'
 import { TwinOperatorQuestionsCard } from './TwinOperatorQuestionsCard'
 import { TwinOwnerMemoCard } from './TwinOwnerMemoCard'
 import { TwinRunsLedger } from './TwinRunsLedger'
@@ -244,7 +245,7 @@ export function BidsRobotConsoleTab({ bids, twinBidBySourceId, onOpenQueue }: Pr
               <div key={t.id} style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap', fontSize: '0.84rem' }}>
                 <span style={{ width: '2rem', height: '2rem', borderRadius: 8, background: 'var(--bg-violet-100)', display: 'grid', placeItems: 'center', flex: 'none' }}>🤖</span>
                 <b>{t.name ?? t.email}</b>
-                {'counttooling_user_id' in t ? (
+                {'counttooling_user_id' in t && !/^twin-pricer-\d+@/.test(t.email) ? (
                   <span style={{ ...CHIP, borderRadius: 999, background: t.counttooling_user_id ? 'var(--bg-green-tint)' : 'var(--bg-amber-tint)', color: t.counttooling_user_id ? 'var(--text-green-800)' : 'var(--text-amber-800)' }}>
                     CT seat · {t.counttooling_user_id ? 'linked' : 'missing'}
                   </span>
@@ -266,6 +267,8 @@ export function BidsRobotConsoleTab({ bids, twinBidBySourceId, onOpenQueue }: Pr
       {/* v2.3232: pre-rule multi-decision asks wait for the owner here, split into taps or dismissed. */}
       <TwinOwnerMemoCard />
       <TwinOperatorQuestionsCard />
+      {/* Price Matrix PR 5: the pricing robot's rulebook + undigested corrections. */}
+      <TwinPricerCard variant="console" />
       <TwinRunsLedger />
     </div>
   )

@@ -72,6 +72,7 @@ export type NeedsYouItem = {
     | 'job-account-unflagged'
     | 'job-account-no-packet'
     | 'customer-waiting'
+    | 'price-matrix-ready'
   severity: NeedsYouSeverity
   /** Product the item belongs to — omitted means `company`. See `NeedsYouKind`. */
   kind?: NeedsYouKind
@@ -135,6 +136,7 @@ export const NEEDS_YOU_RANK: Record<NeedsYouItem['key'], number> = {
   'd22-uncoded': 60,
   'job-account-unflagged': 60,
   'job-account-no-packet': 60,
+  'price-matrix-ready': 40,
 }
 
 /** "99+" reads as 100 so a capped figure still outranks anything two-digit. */
@@ -365,6 +367,19 @@ export type NeedsYouInputs = {
    */
   customerWaitingEnabled?: boolean
   customerWaiting?: { count: number; uncalled: number; oldestMinutes: number; leadName: string } | null
+  /**
+   * Robot price matrices ready to review (Price Matrix PR 5): requests the
+   * pricing twin finished that nobody has opened yet, from
+   * `bid_price_matrix_requests` (status ready, reviewed_at null). Revenue
+   * tier — a priced buyout waits on the estimator. Office set + estimator;
+   * the hook returns null when none.
+   */
+  priceMatrixEnabled?: boolean
+  priceMatrixReady?: {
+    count: number
+    /** The newest one, for the title and the deep link. */
+    first: { bidId: string; bidLabel: string; project: string | null; picks: number; toSettle: number; expiredHouses: number }
+  } | null
 }
 
 export function buildNeedsYouItems(inputs: NeedsYouInputs): NeedsYouItem[] {
@@ -905,6 +920,25 @@ export function buildNeedsYouItems(inputs: NeedsYouInputs): NeedsYouItem[] {
         'If the house opened the account by phone, nothing to do; otherwise send the packet from the job window.',
       figure: String(n),
       actionLabel: 'Review them',
+    })
+  }
+
+  if (inputs.priceMatrixEnabled && inputs.priceMatrixReady && inputs.priceMatrixReady.count > 0) {
+    const { count, first } = inputs.priceMatrixReady
+    const where = `${first.bidLabel}${first.project ? ` ${first.project}` : ''}`
+    const picks = `${first.picks} pick${first.picks === 1 ? '' : 's'}`
+    const settle = first.toSettle > 0 ? `, ${first.toSettle} to settle` : ''
+    items.push({
+      key: 'price-matrix-ready',
+      severity: first.toSettle > 0 ? 'amber' : 'blue',
+      kicker: 'Robot pricing',
+      title: count === 1 ? `The robot priced ${where} — ${picks} ready${settle}` : `${count} robot price matrices are ready — newest ${where}`,
+      detail:
+        (count === 1 ? 'The supply-house quotes are read and compared. ' : `${where}: ${picks}${settle}. `) +
+        (first.toSettle > 0 ? 'A carrier or a size waits on your call before those rows price. ' : '') +
+        (first.expiredHouses > 0 ? `${first.expiredHouses === 1 ? 'One quote was' : `${first.expiredHouses} quotes were`} already expired when read — ask for a re-issue before ordering.` : 'Review the picks, then Apply picks to costs.'),
+      figure: String(count),
+      actionLabel: 'Review matrix',
     })
   }
 

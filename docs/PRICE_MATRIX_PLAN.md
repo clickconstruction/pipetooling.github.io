@@ -16,7 +16,7 @@ key_sections:
   - name: "Verification per PR"
 ---
 
-## Status: PR 1 (v2.3263) MERGED + migration pushed · PR 2 (v2.3267, the door) MERGED · PR 3 (v2.3270, the pricer twin + verbs) open · PR 4 (v2.3274, the compare grid) in flight
+## Status: PR 1 (v2.3263) MERGED + migration pushed · PR 2 (v2.3267, the door) MERGED · PR 3 (v2.3270, the pricer twin + verbs) MERGED + deployed · PR 4 (v2.3274, the compare grid) open · PR 5 (v2.3275, the loop) in flight — the pricer's first live run on ZZ Test b398 went claim → Drive read → put_quote → ask → Settle → re-finish end to end on 2026-09-11
 
 Design canvas (two pages — Wendi's view, Dev's view): https://claude.ai/code/artifact/fbeb5904-fefc-4fbc-bbb2-6ff03aa0a893
 

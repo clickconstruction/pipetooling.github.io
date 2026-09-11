@@ -708,3 +708,27 @@ describe('job-account gap items', () => {
     expect(only.find((i) => i.key === 'job-account-unflagged')!.title).toBe('A job with a supply house job account has unflagged invoices')
   })
 })
+
+describe('price-matrix-ready (Price Matrix PR 5)', () => {
+  const first = { bidId: 'b359', bidLabel: 'BP359', project: 'SpaceX BA-2', picks: 23, toSettle: 4, expiredHouses: 1 }
+  it('one ready matrix reads as its own sentence, amber while rows wait on a choice', () => {
+    const items = buildNeedsYouItems(inputs({ priceMatrixEnabled: true, priceMatrixReady: { count: 1, first } }))
+    const it1 = items.find((i) => i.key === 'price-matrix-ready')!
+    expect(it1.severity).toBe('amber')
+    expect(it1.title).toBe('The robot priced BP359 SpaceX BA-2 — 23 picks ready, 4 to settle')
+    expect(it1.detail).toMatch(/already expired when read/)
+    expect(it1.figure).toBe('1')
+    expect(it1.actionLabel).toBe('Review matrix')
+  })
+  it('nothing to settle → blue; several ready → the count leads', () => {
+    const items = buildNeedsYouItems(inputs({ priceMatrixEnabled: true, priceMatrixReady: { count: 3, first: { ...first, toSettle: 0, expiredHouses: 0 } } }))
+    const it1 = items.find((i) => i.key === 'price-matrix-ready')!
+    expect(it1.severity).toBe('blue')
+    expect(it1.title).toBe('3 robot price matrices are ready — newest BP359 SpaceX BA-2')
+    expect(it1.detail).toMatch(/Apply picks to costs/)
+  })
+  it('disabled or empty → no item', () => {
+    expect(buildNeedsYouItems(inputs({ priceMatrixEnabled: false, priceMatrixReady: { count: 1, first } })).some((i) => i.key === 'price-matrix-ready')).toBe(false)
+    expect(buildNeedsYouItems(inputs({ priceMatrixEnabled: true, priceMatrixReady: null })).some((i) => i.key === 'price-matrix-ready')).toBe(false)
+  })
+})

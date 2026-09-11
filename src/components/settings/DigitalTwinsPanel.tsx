@@ -495,7 +495,7 @@ export default function DigitalTwinsPanel() {
                       </span>
                     )
                   ) : null}
-                  {ttSeatById !== null ? (
+                  {ttSeatById !== null && twinSeatKindFromEmail(t.email) !== 'pricer' ? (
                     ttSeatById[t.id] ? (
                       <span
                         style={{ fontSize: '0.62rem', fontWeight: 700, borderRadius: 999, padding: '0.08rem 0.5rem', background: 'var(--bg-green-tint)', color: 'var(--text-green-800)' }}
