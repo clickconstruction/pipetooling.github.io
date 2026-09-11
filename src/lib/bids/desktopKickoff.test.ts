@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import kickoffDoc from '../../../docs/twins/kickoffs/desktop-operator.md?raw'
+import pricingKickoffDoc from '../../../docs/twins/kickoffs/pricing-operator.md?raw'
 import { DESKTOP_KICKOFF_CONNECTOR_PLACEHOLDER, buildDesktopKickoff, buildDesktopSetupCommand, twinMcpConnectorUrl } from './desktopKickoff'
 
 describe('twinMcpConnectorUrl', () => {
@@ -91,5 +92,22 @@ describe('buildDesktopSetupCommand', () => {
   it('refuses anything but a twin-mcp connector URL', () => {
     expect(() => buildDesktopSetupCommand({ connectorUrl: 'https://abc.supabase.co' })).toThrow(/twin-mcp/)
     expect(() => buildDesktopSetupCommand({ connectorUrl: 'http://evil/functions/v1/twin-mcp' })).toThrow(/twin-mcp/)
+  })
+})
+
+describe('docs/twins/kickoffs/pricing-operator.md (the pricing robot’s template, Price Matrix PR 3)', () => {
+  it('carries the connector placeholder and builds', () => {
+    expect(pricingKickoffDoc).toContain(DESKTOP_KICKOFF_CONNECTOR_PLACEHOLDER)
+    const out = buildDesktopKickoff(pricingKickoffDoc, { connectorUrl: 'https://x/functions/v1/twin-mcp' })
+    expect(out).not.toContain(DESKTOP_KICKOFF_CONNECTOR_PLACEHOLDER)
+    expect(out).toContain('twin-pricer-1')
+  })
+  it('names the loop verbs and the owner’s hard rules', () => {
+    for (const verb of ['get_pricing_guide', 'get_component_rules', 'next_price_matrix', 'get_quote_documents', 'put_quote', 'finish_price_matrix']) {
+      expect(pricingKickoffDoc).toContain(verb)
+    }
+    expect(pricingKickoffDoc).toMatch(/Never sum an option group/)
+    expect(pricingKickoffDoc).toMatch(/Never guess a plan-decided choice/)
+    expect(pricingKickoffDoc).toMatch(/three requests in one conversation/)
   })
 })

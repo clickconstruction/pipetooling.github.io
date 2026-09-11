@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useToastContext } from '../../contexts/ToastContext'
 import { FunctionsHttpError } from '@supabase/supabase-js'
-import { nextTwinSeat, relativeTimeFrom } from '../../lib/twinConsoleDisplay'
+import { nextTwinSeat, relativeTimeFrom, twinSeatKindFromEmail, type TwinSeatKind } from '../../lib/twinConsoleDisplay'
 import { buildDesktopSetupCommand, twinMcpConnectorUrl } from '../../lib/bids/desktopKickoff'
 import { calibrationStandardSummary, calibrationStandardToast, teacherCandidates, type TeacherCandidate } from '../../lib/twinTeachers'
 import { updateRefused, refusedUpdateMessage } from '../../lib/refusedWrite'
@@ -237,11 +237,13 @@ export default function DigitalTwinsPanel() {
     }
   }
 
-  async function mintTwin() {
+  async function mintTwin(kind: TwinSeatKind = 'estimator') {
     setBusy(true)
     try {
-      const seat = nextTwinSeat(twins.map((t) => t.email))
-      const body = { email: seat.email, password: randomTokenHex(12), role: 'estimator', name: `Twin Estimator ${seat.n}` }
+      const seat = nextTwinSeat(twins.map((t) => t.email), kind)
+      // Price Matrix PR 3: the pricer is its own seat — role estimator (the quote store's
+      // RLS roles), twin_kind 'pricer' (twin-mcp refuses it every bid verb), no CT/TT seats.
+      const body = { email: seat.email, password: randomTokenHex(12), role: 'estimator', name: kind === 'pricer' ? `Twin Pricer ${seat.n}` : `Twin Estimator ${seat.n}` }
       const { error: eFn } = await supabase.functions.invoke('create-user', { body })
       if (eFn) {
         let msg = eFn.message
@@ -257,10 +259,14 @@ export default function DigitalTwinsPanel() {
         from: (t: string) => { update: (v: object) => { eq: (k: string, v: string) => Promise<{ error: { message: string } | null }> } }
       })
         .from('users')
-        .update({ is_digital_twin: true, read_only: true })
+        .update(kind === 'pricer' ? { is_digital_twin: true, read_only: true, twin_kind: 'pricer' } : { is_digital_twin: true, read_only: true })
         .eq('email', seat.email)
       if (flagErr) throw new Error(`Created but not flagged: ${flagErr.message} — flag ${seat.email} by hand`)
-      showToast(`Minted ${seat.email} (estimator, flagged, read-only)`, 'success')
+      showToast(kind === 'pricer' ? `Minted ${seat.email} (pricing robot — quotes only, no bids)` : `Minted ${seat.email} (estimator, flagged, read-only)`, 'success')
+      if (kind === 'pricer') {
+        await loadAll()
+        return
+      }
       // CT bridge: mint the CountTooling seat too. Fail-soft — the PT seat stands either
       // way, and the CT seat chip's link button is the retry.
       const { data: newRow } = await (supabase as never as {
@@ -370,6 +376,7 @@ export default function DigitalTwinsPanel() {
 
   const nowMs = Date.now()
   const seat = nextTwinSeat(twins.map((t) => t.email))
+  const pricerSeat = nextTwinSeat(twins.map((t) => t.email), 'pricer')
 
   return (
     <div>
@@ -426,15 +433,26 @@ export default function DigitalTwinsPanel() {
           <h4 style={{ ...CARD_TITLE, margin: 0 }}>
             <span style={STEP_REF}>1–2</span>Fleet · {twins.length} twin{twins.length === 1 ? '' : 's'}
           </h4>
-          <button
-            type="button"
-            style={BTN_PRIMARY}
-            disabled={busy}
-            title={`Creates ${seat.email} — estimator, flagged, read-only. Password random and unused; twins sign in by mint only.`}
-            onClick={() => void mintTwin()}
-          >
-            ＋ Mint estimator twin
-          </button>
+          <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
+            <button
+              type="button"
+              style={BTN_PRIMARY}
+              disabled={busy}
+              title={`Creates ${seat.email} — estimator, flagged, read-only. Password random and unused; twins sign in by mint only.`}
+              onClick={() => void mintTwin()}
+            >
+              ＋ Mint estimator twin
+            </button>
+            <button
+              type="button"
+              style={BTN}
+              disabled={busy}
+              title={`Creates ${pricerSeat.email} — the pricing robot: reads supply-house quotes, writes robot quotes; twin-mcp refuses it every bid verb. Its own key, revocable on its own.`}
+              onClick={() => void mintTwin('pricer')}
+            >
+              ＋ Mint pricing twin
+            </button>
+          </div>
         </div>
         {twins.length === 0 ? <p style={MUTED}>No twins yet — mint the first seat above.</p> : null}
         {twins.map((t) => {
@@ -449,7 +467,15 @@ export default function DigitalTwinsPanel() {
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
                   <code style={{ fontSize: '0.7rem', color: 'var(--text-muted)', overflowWrap: 'anywhere' }}>{t.email}</code>
                   <button type="button" style={COPY_CHIP} onClick={() => void copy(t.email, 'the seat email')}>copy</button>
-                  {ctSeatById !== null ? (
+                  {twinSeatKindFromEmail(t.email) === 'pricer' ? (
+                    <span
+                      style={{ fontSize: '0.62rem', fontWeight: 700, borderRadius: 999, padding: '0.08rem 0.5rem', background: 'var(--bg-violet-100)', color: VIOLET }}
+                      title="The pricing robot — reads supply-house quotes and writes robot quotes on the bid; every bid verb is refused to its key. No CountTooling or TakeoffTooling seat."
+                    >
+                      pricer · quotes only, no bids
+                    </span>
+                  ) : null}
+                  {ctSeatById !== null && twinSeatKindFromEmail(t.email) !== 'pricer' ? (
                     ctSeatById[t.id] ? (
                       <span
                         style={{ fontSize: '0.62rem', fontWeight: 700, borderRadius: 999, padding: '0.08rem 0.5rem', background: 'var(--bg-green-tint)', color: 'var(--text-green-800)' }}

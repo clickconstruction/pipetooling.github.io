@@ -16,7 +16,7 @@ key_sections:
   - name: "Verification per PR"
 ---
 
-## Status: PR 1 (v2.3263, schema + `quoteKits` kernel) in the merge queue · PR 2 (v2.3267, the door) in flight
+## Status: PR 1 (v2.3263, schema + `quoteKits` kernel) MERGED · PR 2 (v2.3267, the door) open · PR 3 (v2.3270, the pricer twin + verbs) in flight
 
 Design canvas (two pages — Wendi's view, Dev's view): https://claude.ai/code/artifact/fbeb5904-fefc-4fbc-bbb2-6ff03aa0a893
 

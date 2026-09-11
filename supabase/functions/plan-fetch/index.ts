@@ -309,6 +309,114 @@ serve(async (req) => {
       return json({ probed: (live ?? []).length, readable, unreadable })
     }
 
+    // --- Price-matrix quote sources (Price Matrix PR 3, docs/PRICE_MATRIX_PLAN.md) ---
+    // ?request=<uuid>&source=<n>[&part=<m>][&list=1]: the n-th quote link on a
+    // bid_price_matrix_requests row — a Drive file or folder the estimator pasted on
+    // the bid's Price-requests table. A twin may read only a request it claimed
+    // (working) or finished (ready); staff may read any. Same Drive plumbing as the
+    // plan set: folders list PDFs in name order, ?part streams one, several merge.
+    // Nothing is recorded on the bid — quotes are not plans.
+    const requestRef = params.get('request')?.trim() ?? ''
+    if (requestRef) {
+      const sourceN = Number(params.get('source') ?? '0')
+      const listOnly = params.get('list') === '1'
+      const { data: reqRow } = await admin
+        .from('bid_price_matrix_requests')
+        .select('id, bid_id, status, claimed_by, sources')
+        .eq('id', requestRef)
+        .maybeSingle()
+      if (!reqRow) return json({ error: `No price-matrix request "${requestRef}"` }, 404)
+      const rr = reqRow as { id: string; status: string; claimed_by: string | null; sources: unknown }
+      if (isTwin && (rr.claimed_by !== callerId || !['working', 'ready'].includes(rr.status))) {
+        return json({ error: 'Not your request — claim it with next_price_matrix first (working), or it is no longer open' }, 403)
+      }
+      const sources = Array.isArray(rr.sources) ? (rr.sources as Array<{ url?: string; house_name?: string }>) : []
+      if (!Number.isInteger(sourceN) || sourceN < 1 || sourceN > sources.length) {
+        return json({ error: `source must be 1..${sources.length}: ${sources.map((x, i) => `${i + 1}=${x.house_name ?? '?'}`).join(', ') || '(no sources on this request)'}` }, 400)
+      }
+      const src = sources[sourceN - 1]!
+      const link = String(src.url ?? '').trim()
+      const houseLabel = safeFilename(src.house_name ?? 'quote')
+      const gToken = await googleAccessToken(saJson)
+      const folderId = driveFolderIdFromUrl(link)
+      const fileId = folderId ? null : driveFileIdFromUrl(link)
+      if (!folderId && !fileId) return json({ error: `source ${sourceN} (${src.house_name ?? '?'}) is not a Drive file or folder link: ${link}` }, 422)
+      let files: DriveFile[]
+      if (folderId) {
+        const fp = await probeFolder(folderId, gToken)
+        if (!fp.readable) {
+          const status = fp.files.length === 0 && /holds no PDF/.test(fp.note ?? '') ? 404 : fp.note && /403/.test(fp.note) ? 403 : 404
+          return json({ error: `Drive folder for ${src.house_name ?? 'source ' + sourceN}: ${fp.note}` }, status)
+        }
+        files = fp.files
+      } else {
+        const meta = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?fields=id,name,size,mimeType&supportsAllDrives=true`, {
+          headers: { Authorization: `Bearer ${gToken}` },
+        })
+        if (!meta.ok) return json({ error: `Drive ${meta.status} on the ${src.house_name ?? 'source ' + sourceN} file — is it shared with the intake service account?` }, meta.status === 403 ? 403 : meta.status === 404 ? 404 : 502)
+        const m = (await meta.json().catch(() => ({}))) as { name?: string; size?: string; mimeType?: string }
+        if (m.mimeType && m.mimeType !== 'application/pdf') return json({ error: `The ${src.house_name ?? 'source'} link is a ${m.mimeType}, not a PDF — the robot reads PDFs only` }, 415)
+        files = [{ id: fileId!, name: m.name ?? 'quote.pdf', size: m.size != null ? Number(m.size) : null, modifiedTime: null }]
+      }
+      if (listOnly) {
+        return json({ request: rr.id, source: sourceN, house: src.house_name ?? null, files: files.map((f) => ({ name: f.name, size: f.size })) })
+      }
+      const quoteHeaders = { ...corsHeaders, 'Access-Control-Expose-Headers': 'Content-Disposition, X-Plan-Parts, X-Plan-Note' }
+      const streamQuote = async (f: DriveFile, filename: string, extra: Record<string, string> = {}): Promise<Response> => {
+        const srcRes = await fetch(`https://www.googleapis.com/drive/v3/files/${f.id}?alt=media&supportsAllDrives=true`, {
+          headers: { Authorization: `Bearer ${gToken}` },
+        })
+        if (!srcRes.ok || !srcRes.body) return json({ error: `Drive fetch failed (${srcRes.status}) on "${f.name}" — is it shared with the intake service account?` }, 502)
+        return new Response(srcRes.body, {
+          headers: {
+            ...quoteHeaders,
+            'Content-Type': srcRes.headers.get('content-type') ?? 'application/pdf',
+            ...(srcRes.headers.get('content-length') ? { 'Content-Length': srcRes.headers.get('content-length')! } : {}),
+            'Content-Disposition': `attachment; filename="${filename}"`,
+            'X-Plan-Parts': String(files.length),
+            ...extra,
+          },
+        })
+      }
+      const who = `${isTwin ? 'twin' : 'staff'} ${callerId}`
+      if (partRaw) {
+        const n = Number(partRaw)
+        if (!Number.isInteger(n) || n < 1 || n > files.length) {
+          return json({ error: `part must be 1..${files.length} (name order): ${files.map((f, i) => `${i + 1}=${f.name}`).join(', ')}` }, 400)
+        }
+        const f = files[n - 1]!
+        console.log(`[plan-fetch] ${who} ← request ${rr.id.slice(0, 8)} source ${sourceN} part ${n}/${files.length} "${f.name}"`)
+        return streamQuote(f, `${houseLabel} - ${safeFilename(f.name.replace(/\.pdf$/i, ''))} (part ${n} of ${files.length}).pdf`)
+      }
+      if (files.length === 1) {
+        console.log(`[plan-fetch] ${who} ← request ${rr.id.slice(0, 8)} source ${sourceN} single "${files[0]!.name}"`)
+        return streamQuote(files[0]!, `${houseLabel} - ${safeFilename(files[0]!.name.replace(/\.pdf$/i, ''))}.pdf`)
+      }
+      const total = files.reduce((acc, f) => acc + (f.size ?? 0), 0)
+      const largest = files.reduce((a, b) => ((b.size ?? 0) > (a.size ?? 0) ? b : a), files[0]!)
+      if (total > MERGE_CAP_BYTES) {
+        return streamQuote(largest, `${houseLabel} - ${safeFilename(largest.name.replace(/\.pdf$/i, ''))} (largest of ${files.length}).pdf`, { 'X-Plan-Note': 'merged set exceeds 60 MB; streamed largest part only — fetch the others with ?part=' })
+      }
+      try {
+        const merged = await PDFDocument.create()
+        for (const f of files) {
+          const partRes = await fetch(`https://www.googleapis.com/drive/v3/files/${f.id}?alt=media&supportsAllDrives=true`, { headers: { Authorization: `Bearer ${gToken}` } })
+          if (!partRes.ok) throw new Error(`Drive ${partRes.status} on "${f.name}"`)
+          const part = await PDFDocument.load(new Uint8Array(await partRes.arrayBuffer()), { ignoreEncryption: true })
+          const pages = await merged.copyPages(part, part.getPageIndices())
+          for (const pg of pages) merged.addPage(pg)
+        }
+        const bytes = await merged.save()
+        console.log(`[plan-fetch] ${who} ← request ${rr.id.slice(0, 8)} source ${sourceN} merged ${files.length} PDFs → ${merged.getPageCount()} pages`)
+        return new Response(bytes, {
+          headers: { ...quoteHeaders, 'Content-Type': 'application/pdf', 'Content-Length': String(bytes.byteLength), 'Content-Disposition': `attachment; filename="${houseLabel} - quotes (merged ${files.length}).pdf"`, 'X-Plan-Parts': String(files.length) },
+        })
+      } catch (e) {
+        const why = String(e instanceof Error ? e.message : e).slice(0, 160)
+        return streamQuote(largest, `${houseLabel} - ${safeFilename(largest.name.replace(/\.pdf$/i, ''))} (largest of ${files.length}).pdf`, { 'X-Plan-Note': `merge failed (${why.replace(/[^\x20-\x7e]/g, '?')}); streamed largest part only — fetch the others with ?part=` })
+      }
+    }
+
     if (!bidRef) return json({ error: 'bid required (?bid=b403 or POST {"bid":"b403"})' }, 400)
 
     const uuidRe = /^[0-9a-f-]{36}$/i

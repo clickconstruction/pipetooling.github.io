@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { describeTwinRun, nextTwinSeat, relativeTimeFrom } from './twinConsoleDisplay'
+import { describeTwinRun, nextTwinSeat, relativeTimeFrom, twinSeatKindFromEmail } from './twinConsoleDisplay'
 
 describe('describeTwinRun', () => {
   it('mint via per-twin token resolves the key label', () => {
@@ -70,6 +70,14 @@ describe('relativeTimeFrom', () => {
 describe('nextTwinSeat', () => {
   it('first seat on an empty fleet', () => {
     expect(nextTwinSeat([])).toEqual({ n: 1, email: 'twin-estimator-1@twins.pipetooling.local' })
+  })
+  it('the pricer numbers its own seats, unaffected by estimator seats', () => {
+    const fleet = ['twin-estimator-1@twins.pipetooling.local', 'twin-estimator-2@twins.pipetooling.local']
+    expect(nextTwinSeat(fleet, 'pricer')).toEqual({ n: 1, email: 'twin-pricer-1@twins.pipetooling.local' })
+    expect(nextTwinSeat([...fleet, 'twin-pricer-1@twins.pipetooling.local'], 'pricer')).toEqual({ n: 2, email: 'twin-pricer-2@twins.pipetooling.local' })
+    expect(nextTwinSeat([...fleet, 'twin-pricer-1@twins.pipetooling.local'])).toEqual({ n: 3, email: 'twin-estimator-3@twins.pipetooling.local' })
+    expect(twinSeatKindFromEmail('twin-pricer-1@twins.pipetooling.local')).toBe('pricer')
+    expect(twinSeatKindFromEmail('twin-estimator-1@twins.pipetooling.local')).toBe('estimator')
   })
   it('increments past the highest seat, ignoring non-fleet emails', () => {
     expect(

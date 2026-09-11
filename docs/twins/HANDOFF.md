@@ -164,6 +164,13 @@ The working loops, in the order a day usually runs:
    `mcpServers` block).
    Answer **Operator questions** on the Console while you're there — a blocked robot
    parks the machine problems (sandbox, fence, unreadable file) in that lane.
+3b. **Price matrices** (v2.3270, `docs/PRICE_MATRIX_PLAN.md`) — a second seat, **Twin Pricer 1**
+   (`twin-pricer-1@…`, `users.twin_kind = 'pricer'`), that never bids: it claims the estimator's
+   "Price it with the robot" requests (Bids → Pricing → Supply house prices ▾), reads the quote
+   PDFs behind the bid's Price-requests links, writes robot quotes as kits + option groups, and
+   hands back picks with reasons plus estimator-lane asks. Console → Run the robots → **Pricing
+   robot** column has its kickoff (`kickoffs/pricing-operator.md`); Queue lens → **Price
+   matrices** lists open requests with a per-request prompt. Its key is refused every bid verb.
 4. **Missions** — "run M<N>": the agent fetches the mission via `get_mission` and files
    `submit_report`; score against `missions/estimator.md` (the MCP bundle deliberately
    excludes verification sections).
