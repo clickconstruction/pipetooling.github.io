@@ -4570,27 +4570,31 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                   <span style={{ fontSize: '0.875rem', fontWeight: 400, color: 'var(--text-muted)' }}>
                     Billed jobs flagged difficult to collect — still awaiting payment
                   </span>
+                  {canManageCollections ? (() => {
+                    // ⚖ Legal (v2.3293): mirrors the Billed tier's Accounts Receivable button — a modal in place, `?legal=` deep link.
+                    // Gate on the header's cached count, not the tier's rows: Collections loads its rows lazily on expand, so on a
+                    // fresh page the rows are empty while the header already says "(8)" — the desk fetches the scope itself.
+                    const legalEmpty = collectionsHdr.count === '0'
+                    return (
+                      <button
+                        type="button"
+                        onClick={() => setLegalDesk({ payerKey: null })}
+                        disabled={legalEmpty}
+                        title="Review every Collections account the way an attorney would receive it — before anything is released"
+                        aria-label="Legal: review Collections accounts before release to an attorney"
+                        style={{
+                          ...billedHeaderActionStyle(legalEmpty),
+                          marginLeft: isMobile ? undefined : 'auto',
+                          color: legalEmpty ? undefined : 'var(--text-700)',
+                          borderColor: legalEmpty ? undefined : 'var(--border-strong)',
+                        }}
+                      >
+                        <span aria-hidden>{'⚖'}</span>
+                        Legal
+                      </button>
+                    )
+                  })() : null}
                 </div>
-                {canManageCollections ? (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', margin: '0 0 0.5rem' }}>
-                    {/* ⚖ Legal (v2.3293): mirrors the Billed tier's Accounts Receivable button — a modal in place, `?legal=` deep link. */}
-                    <button
-                      type="button"
-                      onClick={() => setLegalDesk({ payerKey: null })}
-                      disabled={collectionsRows.length === 0}
-                      title="Review every Collections account the way an attorney would receive it — before anything is released"
-                      aria-label="Legal: review Collections accounts before release to an attorney"
-                      style={{
-                        ...billedHeaderActionStyle(collectionsRows.length === 0),
-                        color: collectionsRows.length === 0 ? undefined : 'var(--text-700)',
-                        borderColor: collectionsRows.length === 0 ? undefined : 'var(--border-strong)',
-                      }}
-                    >
-                      <span aria-hidden>{'⚖'}</span>
-                      Legal
-                    </button>
-                  </div>
-                ) : null}
                 {sectionShown('collections') && !stagesSearchActive && !sectionMerged('collections') && sectionBodyLoading('Collections')}
                 {sectionShown('collections') && (stagesSearchActive || sectionMerged('collections')) && (collectionsRows.length === 0 ? (
                   <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: '0 0 0.75rem' }}>
