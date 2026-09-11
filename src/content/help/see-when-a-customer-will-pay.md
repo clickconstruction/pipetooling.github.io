@@ -28,11 +28,11 @@ Find the row on Billed Awaiting Payment — the chip says {{chip:blue|Expect pay
 
 ## When the customer names a real date
 
-Statistics stop mattering the moment someone gives you an actual answer. When a GC says "you're on the check run for the 25th," click **mark promised date…** under the row's chip and record it. The chip turns green — {{chip:green|✓ Promised Sep 25 · Malachi}} — showing the date *and who took the call*, so the next person with the question sees both.
+Statistics stop mattering the moment someone gives you an actual answer. When a GC says "you're on the check run for the 25th," click **They said…** under the row's chip and record it — the date, who said it, and how. The chip turns green — {{chip:green|✓ Promised Sep 25 · Malachi}} — showing the date *and who took the call*, so the next person with the question sees both. A date the customer named themselves from their portal statement shows as {{chip:green|✓ Promised Sep 25 · customer}}.
 
 - A promise **overrides** the estimate everywhere, including the forecast.
 - If the promised date passes unpaid, the chip flips to {{chip:red|5d past promise · Malachi}} — now you're following up on their word, not a statistic.
-- The same link becomes **edit promised date…** to change or clear it. Changing the date does not erase the first promise: every date a customer names stays on record, and the app works out whether each one was kept — see *know whether a customer keeps their word*.
+- The same link becomes **They said… (new date)** to record a new date, or clear the old one. A new date does not erase the first promise: every date a customer names stays on record, and the app works out whether each one was kept — see *know whether a customer keeps their word*.
 
 Anyone who can see the board sees promises; marking them is for dev, leaders, and assistant-type roles.
 

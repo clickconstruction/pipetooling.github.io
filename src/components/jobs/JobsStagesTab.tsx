@@ -1054,10 +1054,10 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                   initialYmd: promise?.promisedYmd ?? null,
                 })
               }
-              title="Record the payment date the customer named — it overrides the estimate"
+              title="Record the payment date the customer named, who said it and how — it overrides the estimate, and every date they name stays on record"
               style={{ padding: 0, border: 'none', background: 'none', cursor: 'pointer', fontSize: '0.7rem', color: 'var(--text-muted)', textDecoration: 'underline dotted', textUnderlineOffset: 2 }}
             >
-              {promise ? 'edit promised date…' : 'mark promised date…'}
+              {promise ? 'They said… (new date)' : 'They said…'}
             </button>
           ) : null}
         </>
@@ -5624,9 +5624,12 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
         payments={markPaidInvoice?.job.payments}
         job={null}
         stripeModeForBilling={stripeModeForBillingFromRole(authRole)}
+        billedYmd={markPaidInvoice?.billed_at ? markPaidInvoice.billed_at.slice(0, 10) : null}
+        existingPromiseYmd={markPaidInvoice ? (promisedPayDates?.[markPaidInvoice.job.id]?.promisedYmd ?? null) : null}
         onClose={() => setMarkPaidInvoice(null)}
         onSuccess={async () => {
           await loadJobs()
+          void loadPromisedPayDates()
         }}
       />
       {sendBackInvoice && (

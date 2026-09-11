@@ -8,6 +8,8 @@ import { stripeModeInvokeBody } from '../../lib/billingStripeModePref'
 import { readEdgeFunctionErrorBody } from '../../lib/readEdgeFunctionErrorBody'
 import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
 
+import { promiseBackfillChoices, shouldAskPromiseBackfill } from '../../lib/jobs/promiseBackfillPrompt'
+
 type JobsLedgerInvoice = Database['public']['Tables']['jobs_ledger_invoices']['Row']
 type JobsLedgerPayment = Database['public']['Tables']['jobs_ledger_payments']['Row']
 
@@ -67,6 +69,8 @@ export default function BilledPaymentConfirmationModal({
   payments,
   job,
   stripeModeForBilling,
+  billedYmd,
+  existingPromiseYmd,
   onClose,
   onSuccess,
 }: {
@@ -76,6 +80,10 @@ export default function BilledPaymentConfirmationModal({
   job: JobLikeForPayment | null
   /** Used when marking a Stripe-linked invoice paid out-of-band (Edge → Stripe + webhook). */
   stripeModeForBilling: BillingStripeModePref
+  /** The bill's reference date (YYYY-MM-DD) — enables the "Did they promise a date?" backfill on a late payment (Their Word PR 2). */
+  billedYmd?: string | null
+  /** A promise already on the job — the backfill prompt stays hidden. */
+  existingPromiseYmd?: string | null
   onClose: () => void
   onSuccess: () => void | Promise<void>
 }) {
@@ -85,8 +93,14 @@ export default function BilledPaymentConfirmationModal({
   const [paymentType, setPaymentType] = useState<(typeof PAYMENT_TYPES)[number]>('Cash')
   const [referenceNumber, setReferenceNumber] = useState('')
   const [internalNote, setInternalNote] = useState('')
+  // Their Word PR 2: '' = not asked / "No"; a YYYY-MM-DD = the promised date to backfill.
+  const [backfillYmd, setBackfillYmd] = useState('')
+  const [backfillCustom, setBackfillCustom] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
+  const askBackfill = open && !(mode === 'job' && job != null && Math.max(0, Number(job.revenue ?? 0) - Number(job.payments_made ?? 0)) <= 0)
+    && shouldAskPromiseBackfill({ billedYmd: billedYmd ?? null, paidOnYmd: paidOn.trim(), existingPromiseYmd: existingPromiseYmd ?? null })
+  const backfillChoices = askBackfill ? promiseBackfillChoices(paidOn.trim(), billedYmd ?? null) : []
 
   const inv = invoice
   const jb = job
@@ -117,8 +131,34 @@ export default function BilledPaymentConfirmationModal({
     setPaymentType('Cash')
     setReferenceNumber('')
     setInternalNote('')
+    setBackfillYmd('')
+    setBackfillCustom(false)
     setError(null)
   }, [open, inv?.id, jb?.id, defaultPayAmount])
+
+  /**
+   * The backfilled promise rides behind the payment, best-effort: the money is
+   * recorded either way, and a missing RPC (migration not pushed yet) or a
+   * gate refusal only costs the promise, never the payment.
+   */
+  async function backfillPromise(): Promise<void> {
+    const ymd = backfillYmd.trim()
+    if (!askBackfill || !/^\d{4}-\d{2}-\d{2}$/.test(ymd)) return
+    const jobId = mode === 'invoice' ? inv?.job.id : jb?.id
+    if (!jobId) return
+    try {
+      const { error: rpcErr } = await supabase.rpc('add_job_payment_promise' as never, {
+        p_job_id: jobId,
+        p_date: ymd,
+        p_said_by: null,
+        p_channel: 'backfill',
+        p_note: 'Recorded with the payment',
+      } as never)
+      if (rpcErr) console.warn('promise backfill skipped', rpcErr)
+    } catch (e) {
+      console.warn('promise backfill skipped', e)
+    }
+  }
 
   async function submit() {
     setSubmitting(true)
@@ -231,6 +271,7 @@ export default function BilledPaymentConfirmationModal({
         const result = data as { error?: string } | null
         if (result && typeof result === 'object' && result.error) throw new Error(result.error)
       }
+      await backfillPromise()
       await onSuccess()
       onClose()
     } catch (e: unknown) {
@@ -456,6 +497,76 @@ export default function BilledPaymentConfirmationModal({
           rows={2}
           style={{ width: '100%', padding: '0.35rem', marginBottom: '0.75rem', boxSizing: 'border-box', resize: 'vertical' }}
         />
+
+        {askBackfill && (
+          <div
+            data-testid="promise-backfill-prompt"
+            style={{ marginBottom: '0.75rem', padding: '0.6rem 0.75rem', border: '1px solid var(--border-violet)', background: 'var(--bg-subtle)', borderRadius: 6, fontSize: '0.8125rem' }}
+          >
+            <div style={{ fontWeight: 600, marginBottom: '0.4rem' }}>Did they promise a date for this?</div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem', alignItems: 'center' }}>
+              {[{ ymd: '', label: 'No' }, ...backfillChoices].map((c) => {
+                const on = !backfillCustom && backfillYmd === c.ymd
+                return (
+                  <button
+                    key={c.ymd || 'no'}
+                    type="button"
+                    aria-pressed={on}
+                    onClick={() => {
+                      setBackfillCustom(false)
+                      setBackfillYmd(c.ymd)
+                    }}
+                    style={{
+                      padding: '0.2rem 0.65rem',
+                      borderRadius: 9999,
+                      fontSize: '0.78rem',
+                      border: `1px solid ${on ? 'var(--text-link)' : 'var(--border-strong)'}`,
+                      background: on ? 'var(--text-link)' : 'var(--surface)',
+                      color: on ? '#fff' : 'var(--text-base)',
+                      fontWeight: on ? 600 : 400,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    {c.label}
+                  </button>
+                )
+              })}
+              <button
+                type="button"
+                aria-pressed={backfillCustom}
+                onClick={() => {
+                  setBackfillCustom(true)
+                  setBackfillYmd('')
+                }}
+                style={{
+                  padding: '0.2rem 0.65rem',
+                  borderRadius: 9999,
+                  fontSize: '0.78rem',
+                  border: `1px solid ${backfillCustom ? 'var(--text-link)' : 'var(--border-strong)'}`,
+                  background: backfillCustom ? 'var(--text-link)' : 'var(--surface)',
+                  color: backfillCustom ? '#fff' : 'var(--text-base)',
+                  cursor: 'pointer',
+                }}
+              >
+                Another date…
+              </button>
+              {backfillCustom && (
+                <input
+                  type="date"
+                  aria-label="Promised date"
+                  value={backfillYmd}
+                  onChange={(e) => setBackfillYmd(e.target.value)}
+                  style={{ padding: '0.25rem 0.4rem', fontSize: '0.8rem' }}
+                />
+              )}
+            </div>
+            <div style={{ color: 'var(--text-muted)', marginTop: '0.35rem', fontSize: '0.75rem' }}>
+              {backfillYmd
+                ? `Records a promise for ${backfillYmd} alongside the payment, judged by when the money landed.`
+                : 'Skip is fine — nothing is guessed. Answering records the promise from memory while it is fresh.'}
+            </div>
+          </div>
+        )}
           </>
         )}
 
