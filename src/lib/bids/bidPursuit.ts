@@ -33,6 +33,8 @@ export const PURSUIT_WINDOWS: ReadonlyArray<{ key: PursuitWindow; label: string;
   { key: 'year', label: 'Year', days: 365 },
   { key: 'all', label: 'All', days: null },
 ]
+/** The window as a phrase for headings — "Spent bidding by estimator · last 12 months" (v2.3352). */
+export const PURSUIT_WINDOW_WORDS: Record<PursuitWindow, string> = { '90d': 'last 90 days', year: 'last 12 months', all: 'all time' }
 
 /** The slice of a bid row the ledger reads — narrow so tests stay small. */
 export type PursuitBidInput = Pick<BidWithBuilder, 'id' | 'bid_number' | 'project_name' | 'outcome' | 'bid_date_sent' | 'created_at' | 'bid_value' | 'agreed_value' | 'working_board_archived_at'> & {

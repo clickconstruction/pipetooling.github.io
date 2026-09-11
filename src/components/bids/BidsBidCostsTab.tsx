@@ -9,6 +9,7 @@ import {
   PURSUIT_OUTCOMES,
   PURSUIT_OUTCOME_LABELS,
   PURSUIT_WINDOWS,
+  PURSUIT_WINDOW_WORDS,
   buildPursuitRows,
   filterPursuitRows,
   formatPursuitHours,
@@ -134,7 +135,7 @@ export function BidsBidCostsTab({ bids, teamLaborData, bidAssignedCosts, onSelec
       return { ...f, outcomes: next }
     })
 
-  const windowLabel = PURSUIT_WINDOWS.find((w) => w.key === filter.window)?.label ?? ''
+  const windowLabel = PURSUIT_WINDOW_WORDS[filter.window]
   const maxEstimator = byEstimator[0]?.usd || byEstimator[0]?.hours || 1
   const openLedgerFor = (row: CostToWinRow) => {
     setFilter((f) => ({ ...f, estimator: group === 'estimator' ? row.key : null, gc: group === 'gc' ? row.key : null, outcomes: new Set(PURSUIT_OUTCOMES), showEmpty: false }))
@@ -186,7 +187,7 @@ export function BidsBidCostsTab({ bids, teamLaborData, bidAssignedCosts, onSelec
         <div style={tileStyle}>
           <span style={tileN}>{showDollars ? formatUsdShort(summary.spendUsd) : `${Math.round(summary.hours)} h`}</span>
           <span style={tileL}>{showDollars ? `spent bidding · ${Math.round(summary.hours)} h` : 'clocked against bids'}</span>
-          <span style={{ ...tileL, display: 'block' }}>{windowLabel.toLowerCase()} · {summary.bidsWithTime} bid{summary.bidsWithTime === 1 ? '' : 's'} with time</span>
+          <span style={{ ...tileL, display: 'block' }}>{windowLabel} · {summary.bidsWithTime} bid{summary.bidsWithTime === 1 ? '' : 's'} with time</span>
         </div>
         <div style={tileStyle}>
           <span style={tileN}>{summary.perBidUsd == null ? '—' : showDollars ? `${usd(summary.perBidUsd)} · ${summary.perBidHours!.toFixed(1)} h` : `${summary.perBidHours!.toFixed(1)} h`}</span>
@@ -229,7 +230,7 @@ export function BidsBidCostsTab({ bids, teamLaborData, bidAssignedCosts, onSelec
             {filter.gc || 'No GC'} ×
           </button>
         )}
-        <input type="search" value={filter.query} onChange={(e) => setFilter((f) => ({ ...f, query: e.target.value }))} placeholder="Search bids…" aria-label="Search bids" style={{ marginLeft: 'auto', minWidth: 180, padding: '4px 10px', border: '1px solid var(--border)', borderRadius: 5, background: 'var(--surface)', color: 'inherit', fontSize: '0.8rem' }} />
+        <input type="search" value={filter.query} onChange={(e) => setFilter((f) => ({ ...f, query: e.target.value }))} placeholder="Search bids…" aria-label="Search bids" style={{ marginLeft: 'auto', flex: '1 1 180px', minWidth: 180, padding: '4px 10px', border: '1px solid var(--border)', borderRadius: 5, background: 'var(--surface)', color: 'inherit', fontSize: '0.8rem' }} />
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 250px', gap: 14, alignItems: 'start' }} className="bid-costs-grid">
@@ -274,7 +275,7 @@ export function BidsBidCostsTab({ bids, teamLaborData, bidAssignedCosts, onSelec
         </div>
 
         <div style={{ border: '1px solid var(--border)', borderRadius: 6, padding: '0.6rem 0.75rem', fontSize: '0.8rem' }}>
-          <div style={{ fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-muted)', fontWeight: 600, marginBottom: 6 }}>By estimator · {windowLabel.toLowerCase()}</div>
+          <div style={{ fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-muted)', fontWeight: 600, marginBottom: 6 }}>{showDollars ? 'Spent bidding' : 'Hours bidding'} by estimator · {windowLabel}</div>
           {byEstimator.length === 0 ? (
             <div style={{ color: 'var(--text-muted)' }}>No clocked time in this window.</div>
           ) : (
@@ -294,7 +295,7 @@ export function BidsBidCostsTab({ bids, teamLaborData, bidAssignedCosts, onSelec
               )
             })
           )}
-          <div style={{ fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-muted)', fontWeight: 600, margin: '14px 0 6px' }}>By outcome</div>
+          <div style={{ fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-muted)', fontWeight: 600, margin: '14px 0 6px' }}>{showDollars ? 'Spent bidding' : 'Hours bidding'} by outcome · {windowLabel}</div>
           {PURSUIT_OUTCOMES.map((o) => (
             <div key={o} style={{ display: 'flex', justifyContent: 'space-between', gap: 8, padding: '4px 4px', borderTop: '1px solid var(--border)' }}>
               <span><OutcomeChip outcome={o} /> <span style={{ color: 'var(--text-muted)', fontSize: '0.72rem' }}>{byOutcome[o].bids} bid{byOutcome[o].bids === 1 ? '' : 's'}</span></span>
@@ -388,7 +389,7 @@ function CostToWinView({ rows, total, group, onGroup, showDollars, windowSeg, ro
             )}
             {rows.length > 0 && (
               <tr style={{ background: 'var(--bg-subtle)', fontWeight: 600 }}>
-                <td style={cellStyle}>Everyone · {windowLabel.toLowerCase()}</td>
+                <td style={cellStyle}>Everyone · {windowLabel}</td>
                 <td style={numStyle}>{total.bids}</td>
                 <td style={numStyle}>{total.bidsWithTime}</td>
                 <td style={numStyle}>{Math.round(total.hours)}</td>

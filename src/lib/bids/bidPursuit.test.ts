@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   DEFAULT_PURSUIT_FILTER,
+  PURSUIT_WINDOW_WORDS,
   buildPursuitRows,
   canSeeBidCostDollars,
   canSeeBidCosts,
@@ -120,6 +121,7 @@ describe('pursuitSummary + rollups', () => {
 
 describe('words + roles', () => {
   it('formats tile dollars, people, and reads the role gates', () => {
+    expect(PURSUIT_WINDOW_WORDS).toEqual({ '90d': 'last 90 days', year: 'last 12 months', all: 'all time' })
     expect(formatUsdShort(1706726)).toBe('$1.71M')
     expect(formatUsdShort(564000)).toBe('$564k')
     expect(formatUsdShort(7003.4)).toBe('$7,003')
