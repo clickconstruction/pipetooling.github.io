@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { budgetCompletenessUsable, budgetForBurn, budgetWhyWords, componentBurn, parseJobBudgetCompleteness, resolveJobBudget } from './jobBudget'
+import { budgetCompletenessUsable, budgetForBurn, budgetWhyWords, componentBurn, parseJobBudgetCompleteness, resolveJobBudget, spendByComponent } from './jobBudget'
 
 const bidRow = {
   kind: 'bid',
@@ -84,12 +84,24 @@ describe('componentBurn + budgetWhyWords', () => {
       pctDone: 77,
       fmt,
     })
-    expect(words).toBe('Materials is $6,700 over the estimate with 23 % of the work left, and labor is 9 points ahead of progress, and subs are 20 points under.')
+    expect(words).toBe('Materials are $6,700 over the estimate with 23 % of the work left, labor is 9 points ahead of progress, and subs are 20 points under.')
   })
   it('has words for nothing to read and for everything on pace', () => {
     const none = componentBurn({ usedUsd: 0, budgetUsd: null, pctDone: null })
     expect(budgetWhyWords({ labor: none, materials: none, subs: none, pctDone: null, fmt })).toBe('No component budget to read against yet.')
     const on = componentBurn({ usedUsd: 50, budgetUsd: 100, pctDone: 50 })
     expect(budgetWhyWords({ labor: on, materials: on, subs: on, pctDone: 50, fmt })).toBe('Every component is on pace with the work.')
+  })
+})
+
+describe('spendByComponent', () => {
+  it('buckets team labor, sub labor and everything else', () => {
+    const s = spendByComponent([
+      { source: 'team_labor', amount: 100 },
+      { source: 'sub_labor', amount: 50 },
+      { source: 'mercury_card', amount: 20 },
+      { source: 'supply_house', amount: 30 } as never,
+    ])
+    expect(s).toEqual({ teamUsd: 100, subUsd: 50, partsUsd: 50, totalUsd: 200 })
   })
 })
