@@ -16,7 +16,7 @@ key_sections:
   - name: "Verification per PR"
 ---
 
-## Status: PR 1 in flight (schema + `quoteKits` kernel)
+## Status: PR 1 (v2.3263, schema + `quoteKits` kernel) in the merge queue · PR 2 (v2.3267, the door) in flight
 
 Design canvas (two pages — Wendi's view, Dev's view): https://claude.ai/code/artifact/fbeb5904-fefc-4fbc-bbb2-6ff03aa0a893
 
@@ -46,7 +46,7 @@ National Wholesale Supply quote S6277623 (SpaceX BA-2 Core & Shell, 2026-09-02, 
 - **Validity is 48 hours**; freight is a per-line "PLUS FREIGHT"; LAV-1's kit hides crating and freight & handling inside it. → expiry marked, never hidden; freight not stated stays labeled.
 - **Headings cover two tags** ("WC-1 & WC-2", "RD-1 & RD-3") while her rows are "WC1&2" (one row) and "RD-1" / "RD-3" (two rows). `fixtureKey()` alone cannot join those → `splitTagHeading` / `tagsInCommon` in `quoteKits.ts`.
 
-## Data model (PR 1, one migration — `20260911000000_price_matrix_requests.sql`)
+## Data model (PR 1, one migration — `20260911023538_price_matrix_requests.sql`)
 
 All additive and idempotent; every CREATE TABLE ends with the three fence appliers.
 

@@ -2,7 +2,7 @@
 title: get supply house prices on a bid
 category: Bids & Estimating
 roles: dev, estimator, master_technician, assistant
-keywords: supply house, quotes, vendor prices, compare quotes, plug in a quote, paste quote, rfq, price request, ferguson, moore supply, parts pricing, best price, quote comparison, requests I sent myself, edit bid, price requests table, requested date, quote link
+keywords: supply house, quotes, vendor prices, compare quotes, plug in a quote, paste quote, rfq, price request, ferguson, moore supply, parts pricing, best price, quote comparison, requests I sent myself, edit bid, price requests table, requested date, quote link, robot, price it with the robot, price matrix, robot pricing, kits, carriers
 ---
 
 Getting parts priced used to mean texting a list, getting prices back in three different shapes, and retyping them into a spreadsheet. Now the whole loop lives on **Bids → Pricing**: send the list, get the reply in whatever form the vendor likes, and compare houses part by part. Your sale prices never leave the building — vendors only ever see names and counts.
@@ -62,6 +62,21 @@ A request the app sent that is still waiting has {{button:blue|Nudge}} right on 
 
 - A vendor's best number is often a package — "carriers + bowls, $18,400 all in." Check those lines in Plug in quotes and **Group as a lot** with the one total; the compare shows them as a package, picks them together, and never lets a fake per-line price sneak in.
 - **Apply picks to costs** (in the compare footer) writes your picked prices onto the bid's row costs — materials only, labor untouched, with the margin change shown first. Package totals split across their rows proportionally (editable, and the total must hold). Applied rows wear a {{chip:green|Ferguson ↩}} tag on the workbench — one click reverts to the takeoff number, and package rows revert together.
+
+## Let the robot price it
+
+When the vendor quotes are PDFs — a fixture schedule with a carrier sheet stapled behind it — the robot can read them for you.
+
+1. Paste each vendor's quote link (the PDF or its Drive folder) on **Edit Bid → Files & Links → Price requests**, on that house's row.
+2. On **Bids → Pricing**, open {{button:green|▾}} → **Supply house prices** → **Price it with the robot**. The sheet lists every quote link on the bid; untick one to skip it. A house you asked that has nothing in the folder yet is listed as skipped — the robot never invents a quote.
+3. {{button:blue|Queue it for the robot}}. Nothing is sent to anyone and nothing on the bid changes. The **Price requests** chip reads {{chip:blue|Robot pricing · queued}} while it waits and while it works; tap it to see where it stands or, while it is still queued, to **Take it back**.
+4. When the chip turns {{chip:green|Matrix ready}}, tap it: the compare opens with the robot's picks on it. Where the plans decide — which carrier variant, which size — the robot asks you instead of guessing.
+
+The robot reads a fixture quote the way a vendor writes one: a group of parts under one "EACH" subtotal is a kit priced once; a carrier on the second sheet belongs to the fixture whose tag it sits under; a list of sizes is options, never added up. It never emails a vendor and never changes your costs — **Apply picks to costs** stays yours.
+
+:::example The SpaceX quote
+National Wholesale Supply sends a six-page fixture quote plus a carrier and drain sheet. Wendi pastes the link on the NWS row, queues the robot, and forty minutes later the chip says *Matrix ready · 23 picks, 4 to settle*. WC1&2 is priced as the $1,010 kit plus a Josam carrier; the robot asks which of the eight carrier variants the plan calls for rather than picking one.
+:::
 
 ## The honesty rules
 

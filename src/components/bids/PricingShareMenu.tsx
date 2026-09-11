@@ -11,7 +11,7 @@
 import { useEffect, useRef, useState } from 'react'
 
 type Item = {
-  key: 'print' | 'csv' | 'review' | 'fixtures' | 'd22audit' | 'plugquote'
+  key: 'print' | 'csv' | 'review' | 'fixtures' | 'd22audit' | 'plugquote' | 'robot'
   label: string
   hint?: string
   disabled?: boolean
@@ -38,6 +38,9 @@ export function PricingShareMenu({
   onCopyFixtures,
   onOpenD22Audit,
   onPlugInQuote,
+  onPriceWithRobot,
+  robotDisabled,
+  robotTitle,
 }: {
   canShare: boolean
   shareDisabled: boolean
@@ -55,6 +58,10 @@ export function PricingShareMenu({
   onOpenD22Audit?: () => void
   /** Cost-side roles only — omit to hide the "Plug in a quote" item (RFQ v2.2630). */
   onPlugInQuote?: () => void
+  /** Cost-side roles only — omit to hide "Price it with the robot" (Price Matrix PR 2). */
+  onPriceWithRobot?: () => void
+  robotDisabled?: boolean
+  robotTitle?: string
 }) {
   const [open, setOpen] = useState(false)
   // Phone fix: the menu hangs right-aligned off the button; near the screen's left edge that clips,
@@ -101,6 +108,9 @@ export function PricingShareMenu({
       : []),
     ...(onPlugInQuote
       ? [{ key: 'plugquote', label: 'Plug in a quote', hint: 'paste a supply house reply — prices land on each part', childOfPrevious: true, onPick: onPlugInQuote } satisfies Item]
+      : []),
+    ...(onPriceWithRobot
+      ? [{ key: 'robot', label: 'Price it with the robot', hint: 'reads the quotes in your folders, builds the best-price matrix', childOfPrevious: true, disabled: robotDisabled, title: robotDisabled ? robotTitle : undefined, onPick: onPriceWithRobot } satisfies Item]
       : []),
   ]
 
