@@ -20,6 +20,7 @@ Index (validated against code on 2026-09-06 at v2.2935 — the 2026-09-05 sweep 
 
 | To-do | Status | Summary |
 |---|---|---|
+| [`burn-against-the-bid/`](./burn-against-the-bid/README.md) | not started · held for the Labor refresh | A job budget with provenance (bid snapshot · typed · assumed) so Burn reads against the actual bid; linking as the feature (15 exact price matches waiting, 0 of 106 open jobs linked); per-component burn, hours first; Bid Board chips; mock-ups kept in the folder. |
 | [`stage-plan-residuals.md`](./stage-plan-residuals.md) | low | What the Stage Plan train (v2.3083–v2.3134) left: capable-to-bill reading `billable()`, retiring `offered_to_gc` / bundles, plain rows on the final draw, the Any-done rule, the drawer's mint door. |
 | [`bill-truth-shadow-beacon.md`](./bill-truth-shadow-beacon.md) | **shipped, delete me** | Done in v2.3218 (#2930): the beacon, the legacy sums and `billTruthShadow.ts` are gone. This row was left stale; delete the file on the next sweep. |
 | [`takeoffs-retire-old.md`](./takeoffs-retire-old.md) | blocked until ~2026-09-11 | Re-measure coverage after a week of One at a time / Sheet, then retire the Old takeoffs view. |

@@ -1,0 +1,321 @@
+<title>Burn Against the Bid</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+  :root {
+    --page: #eef1f5; --ink: #18202c; --muted: #5a6577; --faint: #97a1b1; --rule: #d6dbe3; --paper: #ffffff;
+    --app-bg: #121a27; --app-panel: #1a2333; --app-border: #2b3648; --app-ink: #e6ebf2; --app-muted: #9aa6b8; --app-faint: #667389; --app-subtle: #232e40;
+    --blue: #2563eb; --blue-ink: #93b4ff; --green: #16a34a; --green-ink: #4ade80; --amber: #f59e0b; --amber-ink: #fbbf24; --red: #dc2626; --red-ink: #f87171; --purple: #7c5cff;
+  }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --page: #0d1219; --ink: #e6ebf2; --muted: #9aa6b8; --faint: #667389; --rule: #263042; --paper: #141b26; } }
+  :root[data-theme="dark"] { --page: #0d1219; --ink: #e6ebf2; --muted: #9aa6b8; --faint: #667389; --rule: #263042; --paper: #141b26; }
+  body { background: var(--page); color: var(--ink); font-family: "IBM Plex Sans", -apple-system, "Segoe UI", system-ui, sans-serif; font-size: 14px; line-height: 1.5; }
+  .wrap { max-width: 1120px; margin: 0 auto; padding: 32px 24px 80px; }
+  .eyebrow { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+  h1 { font-size: 30px; line-height: 1.15; margin: 6px 0 10px; text-wrap: balance; font-weight: 700; letter-spacing: -.01em; }
+  h2 { font-size: 19px; margin: 0 0 6px; text-wrap: balance; font-weight: 600; }
+  h3 { font-size: 14px; margin: 0 0 4px; font-weight: 600; }
+  p { margin: 0 0 10px; max-width: 68ch; }
+  .lede { font-size: 15px; color: var(--muted); max-width: 78ch; }
+  .mono { font-family: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace; font-variant-numeric: tabular-nums; }
+  section { margin-top: 40px; padding-top: 24px; border-top: 1px solid var(--rule); display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 28px; align-items: start; }
+  section.full { display: block; }
+  .aside { font-size: 13px; color: var(--muted); }
+  .aside p { max-width: none; }
+  .aside b { color: var(--ink); }
+  .no { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--blue); font-weight: 700; margin-bottom: 6px; }
+  .decision { border-left: 3px solid var(--blue); padding: 8px 12px; margin-top: 12px; background: var(--paper); border-radius: 0 6px 6px 0; }
+  .decision b { display: block; margin-bottom: 2px; }
+  .facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px; margin: 18px 0 6px; }
+  .fact { background: var(--paper); border: 1px solid var(--rule); border-radius: 8px; padding: 12px 14px; }
+  .fact .n { font-size: 26px; font-weight: 600; line-height: 1; letter-spacing: -.01em; }
+  .fact .l { font-size: 12px; color: var(--muted); margin-top: 6px; }
+  .fact.bad .n { color: var(--red); }
+  .fact.good .n { color: var(--green); }
+  .src { font-size: 12px; color: var(--faint); margin-top: 4px; }
+
+  /* app frames */
+  .app { background: var(--app-bg); color: var(--app-ink); border: 1px solid var(--app-border); border-radius: 12px; padding: 16px 18px; font-size: 13px; }
+  .app .cap { font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--app-faint); font-weight: 600; margin-bottom: 10px; display: flex; justify-content: space-between; gap: 12px; }
+  .card { background: var(--app-panel); border: 1px solid var(--app-border); border-radius: 10px; padding: 12px 14px; }
+  .srcline { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin-bottom: 10px; }
+  .pill { display: inline-flex; align-items: center; gap: 5px; padding: 2px 9px; border-radius: 999px; border: 1px solid var(--app-border); font-size: 11.5px; font-weight: 600; color: var(--app-muted); white-space: nowrap; }
+  .pill.bid { border-color: var(--blue); color: var(--blue-ink); background: color-mix(in srgb, var(--blue) 14%, transparent); }
+  .pill.ok { border-color: var(--green); color: var(--green-ink); }
+  .pill.warn { border-color: var(--amber); color: var(--amber-ink); }
+  .pill.bad { border-color: var(--red); color: var(--red-ink); }
+  .pill.typed { border-color: var(--purple); color: #c4b5fd; }
+  .link { color: var(--blue-ink); font-weight: 600; cursor: pointer; }
+  .tiles { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin: 10px 0; }
+  .tile { background: var(--app-bg); border: 1px solid var(--app-border); border-radius: 8px; padding: 10px 12px; min-width: 0; }
+  .tile .k { font-size: 10.5px; letter-spacing: .06em; text-transform: uppercase; color: var(--app-faint); font-weight: 600; }
+  .tile .v { font-size: 20px; font-weight: 600; margin-top: 2px; letter-spacing: -.01em; }
+  .tile .s { font-size: 11.5px; color: var(--app-muted); margin-top: 2px; }
+  .comp { width: 100%; border-collapse: collapse; margin-top: 6px; }
+  .comp th { text-align: left; font-size: 10.5px; letter-spacing: .06em; text-transform: uppercase; color: var(--app-faint); font-weight: 600; padding: 4px 6px; border-bottom: 1px solid var(--app-border); }
+  .comp td { padding: 7px 6px; border-bottom: 1px solid var(--app-border); vertical-align: middle; }
+  .comp tr:last-child td { border-bottom: 0; }
+  .comp .num { text-align: right; white-space: nowrap; }
+  .bar { position: relative; height: 9px; border-radius: 4px; background: var(--app-subtle); overflow: visible; min-width: 120px; }
+  .bar i { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 4px; background: var(--blue); }
+  .bar i.hot { background: var(--red); }
+  .bar i.over { background: var(--red); }
+  .bar .mk { position: absolute; top: -3px; bottom: -3px; width: 2px; background: var(--amber); }
+  .bar .mk::after { content: attr(data-l); position: absolute; top: 12px; left: -10px; font-size: 9.5px; color: var(--amber-ink); white-space: nowrap; }
+  .why { font-size: 12px; color: var(--app-muted); margin-top: 22px; line-height: 1.55; }
+  .why b { color: var(--app-ink); font-weight: 600; }
+  .why .r { color: var(--red-ink); font-weight: 600; }
+  .why .g { color: var(--green-ink); font-weight: 600; }
+  .banner { border: 1px solid var(--amber); background: color-mix(in srgb, var(--amber) 10%, transparent); border-radius: 10px; padding: 12px 14px; }
+  .banner h4 { margin: 0 0 4px; font-size: 13.5px; }
+  .cand { display: grid; grid-template-columns: 1fr auto; gap: 6px 12px; align-items: center; padding: 8px 10px; border-radius: 8px; background: var(--app-bg); border: 1px solid var(--app-border); margin-top: 6px; }
+  .cand .m { font-size: 11.5px; color: var(--app-muted); }
+  .btn { display: inline-block; padding: 5px 11px; border-radius: 7px; font-weight: 600; font-size: 12px; border: 1px solid var(--app-border); color: var(--app-ink); background: var(--app-panel); white-space: nowrap; }
+  .btn.primary { background: var(--blue); border-color: var(--blue); color: #fff; }
+  .field { display: inline-flex; align-items: center; gap: 6px; padding: 4px 8px; border: 1px solid var(--app-border); border-radius: 7px; background: var(--app-bg); color: var(--app-ink); font-size: 12px; }
+  .field span { color: var(--app-faint); }
+  .table { width: 100%; border-collapse: collapse; }
+  .table th { text-align: left; font-size: 11px; color: var(--app-faint); letter-spacing: .05em; text-transform: uppercase; padding: 6px 8px; border-bottom: 1px solid var(--app-border); }
+  .table td { padding: 8px; border-bottom: 1px solid var(--app-border); }
+  .table .r { text-align: right; }
+  .hot { color: var(--red-ink); font-weight: 600; }
+  .okc { color: var(--green-ink); }
+  .glyph { display: inline-block; width: 1.1em; color: var(--app-faint); }
+  .grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 14px; }
+  .steps { counter-reset: s; list-style: none; padding: 0; margin: 12px 0 0; display: grid; gap: 10px; }
+  .steps li { background: var(--paper); border: 1px solid var(--rule); border-radius: 8px; padding: 12px 14px 12px 48px; position: relative; }
+  .steps li::before { counter-increment: s; content: "PR " counter(s); position: absolute; left: 12px; top: 13px; font-size: 10.5px; font-weight: 700; letter-spacing: .06em; color: var(--blue); }
+  .steps b { display: block; margin-bottom: 2px; }
+  .steps .t { font-size: 12.5px; color: var(--muted); }
+  .steps .t code, .aside code, p code { font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 12px; background: color-mix(in srgb, var(--ink) 7%, transparent); padding: 1px 5px; border-radius: 4px; }
+  .rev { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .rev > div { background: var(--paper); border: 1px solid var(--rule); border-radius: 8px; padding: 12px 14px; font-size: 13px; }
+  .rev h3 { font-size: 12px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+  .rev ul { margin: 6px 0 0; padding-left: 18px; }
+  .rev li { margin-bottom: 5px; }
+  .note { font-size: 12px; color: var(--faint); font-style: italic; }
+  .ill { font-size: 11px; color: var(--app-faint); font-style: italic; margin-top: 8px; }
+  @media (max-width: 900px) { section { grid-template-columns: 1fr; } .tiles { grid-template-columns: repeat(2, 1fr); } .rev { grid-template-columns: 1fr; } }
+</style>
+
+<div class="wrap">
+  <div class="eyebrow">ClickTooling · Job window → Costs · Burn · design study · 2026-09-11</div>
+  <h1>Burn against the bid</h1>
+  <p class="lede">Burn today compares spend to a budget the app <em>assumes</em>: price × 65 %. The plan was to swap in the bid's cost estimate. Reading the real data first changed the shape of the work: the pipe exists, the water doesn't. Below: what's true, the design that follows from it (v2, after a "best we can do" pass), and the build plan.</p>
+
+  <section class="full">
+    <div class="no">01 · What the data says</div>
+    <h2>The bid is not on the job, and the estimate is mostly not on the bid</h2>
+    <div class="facts">
+      <div class="fact bad"><div class="n">0 of 106</div><div class="l">open jobs carry a <span class="mono">bid_id</span> (0 of 805 jobs created in 2026)</div></div>
+      <div class="fact good"><div class="n">15</div><div class="l">open jobs whose price equals a bid's value to the cent — J1007 ↔ B375 SPACEX, J523 ↔ B66 Mission Hill Park, J804 ↔ B67 AutoZone, J650 ↔ B34 ATI…</div></div>
+      <div class="fact"><div class="n">33</div><div class="l">bids marked won since Sep 2025 · 27 carry a bid value · 23 have a Cost Estimate row</div></div>
+      <div class="fact bad"><div class="n">≈ 5</div><div class="l">of those estimates have labor hours; none has a labor rate; none has PO materials. B375 SPACEX ($249,716) costs out at $260.</div></div>
+    </div>
+    <div class="src">Read-only queries against prod on 2026-09-11 (jobs_ledger, bids, cost_estimates, cost_estimate_labor_rows, bid_pricing_history). "Won" = bids.outcome.</div>
+    <div class="grid2" style="margin-top:14px">
+      <div class="decision"><b>What this means</b>ClickTooling prices from the price book; it does not cost most bids. So "the actual bid" that exists for nearly every won job is its <b>price</b> and its <b>fixture counts</b> — not a cost. A budget that only works when the estimator filled the Cost Estimate tab would light up on a handful of jobs and stay dark on J1007.</div>
+      <div class="decision"><b>What we build instead</b>A <b>Budget</b> that is a first-class thing on the job with a <b>provenance</b>: where it came from, when, and how complete it is. The bid link is the doorway; the bid's estimate is the best filler when it exists; a typed budget (hours · materials · subs) is the honest filler when it doesn't; the 35 % assumption is the floor. Every Burn readout names which one it is standing on.</div>
+    </div>
+  </section>
+
+  <section>
+    <div>
+      <div class="no">02 · Frame A · Costs tab, a job with its bid linked</div>
+      <h2>The Budget card: source, breakdown, and the reason</h2>
+      <div class="app">
+        <div class="cap"><span>Job window · Costs · J523 TF Harper · Mission Hill Park</span><span>$123,600 price · 77 % done · 41 field days</span></div>
+        <div class="card">
+          <div class="srcline">
+            <span class="pill bid">◆ Budget from bid B66</span>
+            <span class="pill ok">bid $123,600 = job price</span>
+            <span class="pill">estimate taken Sep 11 · by Wendi</span>
+            <span class="pill warn">estimate complete · 3 fixtures without hours</span>
+            <span class="link" style="margin-left:auto">Refresh from bid ↻</span>
+          </div>
+          <div class="tiles">
+            <div class="tile"><div class="k">Spent to date</div><div class="v mono">$80,360</div><div class="s">team · subs · parts</div></div>
+            <div class="tile"><div class="k">Budget · bid estimate</div><div class="v mono">$85,440</div><div class="s">direct cost · 31 % margin at bid</div></div>
+            <div class="tile"><div class="k">% of budget vs % done</div><div class="v"><span class="mono hot">94 %</span> <span style="color:var(--app-faint);font-size:14px">vs</span> <span class="mono">77 %</span></div><div class="s hot">17 points ahead of the work</div></div>
+            <div class="tile"><div class="k">At completion</div><div class="v mono">$106,050</div><div class="s">margin $17,550 · 14 % · bid expected 31 %</div></div>
+          </div>
+          <table class="comp">
+            <thead><tr><th>Where it goes</th><th>Used</th><th>Budget</th><th style="width:34%">Burn · marker = % done</th><th class="num">At completion</th></tr></thead>
+            <tbody>
+              <tr>
+                <td><b>Labor</b><div style="font-size:11px;color:var(--app-muted)">hours first — wages differ from the bid rate</div></td>
+                <td class="mono">1,020 h<div style="font-size:11px;color:var(--app-muted)">$38,760</div></td>
+                <td class="mono">1,180 h<div style="font-size:11px;color:var(--app-muted)">$44,840 @ $38</div></td>
+                <td><div class="bar"><i class="hot" style="width:86%"></i><span class="mk" data-l="77%" style="left:77%"></span></div></td>
+                <td class="num mono hot">1,325 h · $50,350</td>
+              </tr>
+              <tr>
+                <td><b>Materials</b><div style="font-size:11px;color:var(--app-muted)">parts + supply-house invoices</div></td>
+                <td class="mono">$37,900</td>
+                <td class="mono">$31,200</td>
+                <td><div class="bar"><i class="over" style="width:100%"></i><span class="mk" data-l="77%" style="left:77%"></span></div></td>
+                <td class="num mono hot">$49,200</td>
+              </tr>
+              <tr>
+                <td><b>Subs</b><div style="font-size:11px;color:var(--app-muted)">excavation</div></td>
+                <td class="mono">$3,700</td>
+                <td class="mono">$6,500</td>
+                <td><div class="bar"><i style="width:57%"></i><span class="mk" data-l="77%" style="left:77%"></span></div></td>
+                <td class="num mono">$6,500</td>
+              </tr>
+              <tr>
+                <td><b>Other</b><div style="font-size:11px;color:var(--app-muted)">permits · equipment · driving</div></td>
+                <td class="mono">—</td>
+                <td class="mono">$2,900</td>
+                <td><div class="bar"><i style="width:0"></i><span class="mk" data-l="77%" style="left:77%"></span></div></td>
+                <td class="num mono">$2,900</td>
+              </tr>
+            </tbody>
+          </table>
+          <div class="why"><b>Why it's hot:</b> <span class="r">materials are $6,700 over the estimate</span> with 23 % of the work left, and <span class="r">labor is 9 points ahead of progress</span> (86 % of the hours for 77 % of the work). Subs are <span class="g">under</span>. If the crew finishes at today's pace the job lands at 14 % — the bid was priced at 31 %.</div>
+          <div class="ill">Illustrative estimate: B66 has no cost estimate today. This is what the card reads once the Cost Estimate tab is filled — the point of Frame D.</div>
+        </div>
+      </div>
+    </div>
+    <div class="aside">
+      <p><strong>Source line first.</strong> The chips say what the budget is standing on before any number is read: which bid, whether the bid's value matches the job's price (a scope change shows here), when the estimate was captured and by whom, and how complete it was.</p>
+      <p><strong>Hours before dollars for labor.</strong> The bid priced labor at a book rate; the job pays real wages. Comparing dollars mixes the two. Hours are what the crew controls and what the labor book estimated, so the labor row leads with <b>1,020 of 1,180 h</b> and keeps the dollars underneath.</p>
+      <p><strong>One bar per component, the % done as a marker.</strong> Fill past the amber marker is spend ahead of work. The Burn tiles above keep today's whole-job answer; the table says <em>where</em>.</p>
+      <p><strong>The "why" sentence is the product.</strong> A number says <em>that</em>; the sentence says materials blew the estimate while labor is only slightly behind — two different conversations.</p>
+      <div class="decision"><b>What "direct" means</b>Labor hours × rate, materials, subs, equipment, permits, waste, other, driving and travel. <b>Not</b> the estimator cost — bid time is already in the overhead pool (People → Overhead, "Bid labor"), and Burn keeps overhead out of the direct signal.</div>
+    </div>
+  </section>
+
+  <section>
+    <div>
+      <div class="no">03 · Frame B · Costs tab, no bid linked (every job today)</div>
+      <h2>The doorway: link the bid, or type what you expect</h2>
+      <div class="app">
+        <div class="cap"><span>Job window · Costs · J1007 Structura, Inc. – Austin</span><span>$249,716 price · 31 % done</span></div>
+        <div class="banner">
+          <h4>Burn is reading an <b>assumed</b> budget — price × 65 % (35 % target). No bid is linked to this job.</h4>
+          <div style="font-size:12.5px;color:var(--app-muted)">One bid matches this job's price to the cent:</div>
+          <div class="cand">
+            <div><b>B375 SPACEX BA-02N Architectural</b> <span class="pill ok" style="margin-left:6px">won</span><div class="m">$249,715.66 bid value · Structura, Inc. · sent Jun 2 · <span class="pill warn" style="padding:0 6px">no cost estimate</span></div></div>
+            <span class="btn primary">Link this bid</span>
+          </div>
+          <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:10px;font-size:12.5px">
+            <span class="btn">Find another bid…</span>
+            <span style="color:var(--app-faint)">or type a budget:</span>
+            <span class="field"><span>hours</span>2,400</span>
+            <span class="field"><span>materials $</span>68,000</span>
+            <span class="field"><span>subs $</span>12,500</span>
+            <span class="btn">Use this budget</span>
+          </div>
+          <div style="font-size:11.5px;color:var(--app-muted);margin-top:8px">Linking B375 stamps the job with the bid and takes a snapshot of its estimate. B375 has none, so Burn stays on the assumption until the estimator costs the bid — <span class="link">ask Wendi to cost B375 →</span> (opens the bid's Cost Estimate tab).</div>
+        </div>
+        <div class="tiles" style="margin-top:12px">
+          <div class="tile"><div class="k">Spent to date</div><div class="v mono">$61,420</div><div class="s">team · subs · parts</div></div>
+          <div class="tile"><div class="k">Budget · <span class="pill" style="padding:0 6px;font-size:10px">≈ assumed</span></div><div class="v mono">$162,315</div><div class="s">price × 65 %</div></div>
+          <div class="tile"><div class="k">% of budget vs % done</div><div class="v"><span class="mono">38 %</span> <span style="color:var(--app-faint);font-size:14px">vs</span> <span class="mono">31 %</span></div><div class="s">7 points ahead — against an assumption</div></div>
+          <div class="tile"><div class="k">At completion</div><div class="v mono">$198,130</div><div class="s">margin $51,585 · 21 %</div></div>
+        </div>
+      </div>
+    </div>
+    <div class="aside">
+      <p><strong>This is the frame every open job shows on day one</strong>, so it has to do the linking work itself. Candidates are ranked by evidence: price equal to a bid value (15 open jobs today), then same GC customer, then address. One tap links and snapshots; nothing to type.</p>
+      <p><strong>The typed budget is not a consolation prize.</strong> J1007 is a $250k job burning against a guess. Three numbers from the person who scoped it — hours, materials, subs — beat the 35 % rule, and the source chip says <span class="pill typed" style="padding:0 6px">✎ typed by Taunya · Sep 11</span> so nobody mistakes it for the bid.</p>
+      <p><strong>Linking without an estimate still pays.</strong> The bid value versus the job price, the bid's GC, and the bid → job trail on the Bid Board all land immediately; and the "ask Wendi" door turns the missing estimate into a task instead of a dead end.</p>
+      <div class="decision"><b>Ranking rule</b>1 · bid value or agreed value equals the job's price (± $1) · 2 · same GC customer and won · 3 · address prefix match · 4 · name similarity. Show at most three; never auto-link.</div>
+    </div>
+  </section>
+
+  <section>
+    <div>
+      <div class="no">04 · Frame C · Job Summary and the Pipeline card</div>
+      <h2>The same column, now honest about its footing</h2>
+      <div class="app">
+        <div class="cap"><span>Jobs · Job Summary · In progress</span><span>Budget: <b style="color:var(--app-ink)">any</b> · bid · typed · assumed</span></div>
+        <table class="table">
+          <thead><tr><th>Job</th><th class="r">Revenue</th><th class="r">Spent</th><th class="r">Burn</th><th class="r">Proj. margin</th><th>Budget</th></tr></thead>
+          <tbody>
+            <tr><td>J523 TF Harper</td><td class="r mono">$123,600</td><td class="r mono">$80,360</td><td class="r mono hot"><span class="glyph">◆</span>94 % · 77 %</td><td class="r mono hot">$17,550 · 14 %</td><td><span class="pill bid" style="padding:0 7px">◆ bid B66</span></td></tr>
+            <tr><td>J1007 Structura</td><td class="r mono">$249,716</td><td class="r mono">$61,420</td><td class="r mono"><span class="glyph">≈</span>38 % · 31 %</td><td class="r mono">$51,585 · 21 %</td><td><span class="pill" style="padding:0 7px">≈ assumed 35 %</span></td></tr>
+            <tr><td>J931 Heron Construction</td><td class="r mono">$48,700</td><td class="r mono">$19,860</td><td class="r mono okc"><span class="glyph">✎</span>66 % · 62 %</td><td class="r mono">$16,668 · 34 %</td><td><span class="pill typed" style="padding:0 7px">✎ typed · Taunya</span></td></tr>
+            <tr><td>J843 Michael Palmer</td><td class="r mono">$11,920</td><td class="r mono">$4,180</td><td class="r mono"><span class="glyph">◆</span>36 % · early</td><td class="r mono">—</td><td><span class="pill bid" style="padding:0 7px">◆ bid B75</span> <span class="pill warn" style="padding:0 7px">partial</span></td></tr>
+          </tbody>
+        </table>
+        <div style="margin-top:12px;border:1px solid var(--red);border-radius:10px;padding:10px 12px;background:color-mix(in srgb, var(--red) 8%, transparent)">
+          <b>🔥 3 jobs burning ahead of progress — $41,200 of margin at risk</b>
+          <div style="font-size:12px;color:var(--app-muted);margin-top:2px">J523 TF Harper 94 % spent at 77 % done <span class="pill bid" style="padding:0 6px;font-size:10px">vs its bid</span> · J1007 Structura 38 % at 31 % <span class="pill" style="padding:0 6px;font-size:10px">vs 35 % target</span> · J927 Mike Holub 133 % at 70 %. Each opens on its Costs tab.</div>
+        </div>
+      </div>
+    </div>
+    <div class="aside">
+      <p><strong>One glyph, three footings.</strong> ◆ the bid's estimate · ✎ a typed budget · ≈ the assumption. It rides the Burn cell and the card, so a red 94 % against a real bid is not confused with a red 68 % against a rule of thumb.</p>
+      <p><strong>Budget column + filter.</strong> Sort by it and the assumed jobs cluster — that list is the linking backlog. "Margin at risk" on the Pipeline card is measured against each job's own footing: the bid's margin when it has one, the target otherwise, and the subline says which.</p>
+      <p><strong>Partial estimates stay partial.</strong> B75's estimate has hours but no materials; the job burns labor against it and materials against the assumption, and the chip says so. Silently mixing the two would produce a budget nobody can explain.</p>
+    </div>
+  </section>
+
+  <section>
+    <div>
+      <div class="no">05 · Frame D · Closing the loop on the bid side</div>
+      <h2>Won bids know whether they have a job, and whether they were ever costed</h2>
+      <div class="app">
+        <div class="cap"><span>Bids · Bid Board · Won</span><span>and the New Job form when it starts from a bid</span></div>
+        <table class="table">
+          <thead><tr><th>Bid</th><th class="r">Value</th><th>Job</th><th>Estimate</th></tr></thead>
+          <tbody>
+            <tr><td>B66 Mission Hill Park</td><td class="r mono">$123,600</td><td><span class="pill ok" style="padding:0 7px">J523 linked</span></td><td><span class="pill ok" style="padding:0 7px">costed · 31 %</span></td></tr>
+            <tr><td>B375 SPACEX BA-02N Architectural</td><td class="r mono">$249,716</td><td><span class="pill warn" style="padding:0 7px">J1007 matches by value</span> <span class="link">Link</span></td><td><span class="pill bad" style="padding:0 7px">no cost estimate</span> <span class="link">Cost it</span></td></tr>
+            <tr><td>B67 AutoZone 1604</td><td class="r mono">$32,600</td><td><span class="pill warn" style="padding:0 7px">J804 matches by value</span> <span class="link">Link</span></td><td><span class="pill warn" style="padding:0 7px">hours only</span></td></tr>
+            <tr><td>B12 Baumgartner Barndo</td><td class="r mono">$23,600</td><td><span class="pill" style="padding:0 7px">no job yet</span></td><td><span class="pill bad" style="padding:0 7px">no cost estimate</span></td></tr>
+          </tbody>
+        </table>
+        <div class="card" style="margin-top:12px">
+          <div style="font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--app-faint);font-weight:600;margin-bottom:6px">New Job · from bid B66</div>
+          <div style="display:flex;gap:10px;align-items:flex-start"><span style="font-size:16px;line-height:1.1">☑</span><div><b>Carry the bid's estimate as this job's budget</b><div style="font-size:12px;color:var(--app-muted)">1,180 h labor · $31,200 materials · $6,500 subs · $2,900 other → $85,440 direct · the job's Burn will read against it from day one. Snapshot, not a live link: repricing the bid later won't move a running job's budget unless you refresh it.</div></div></div>
+        </div>
+      </div>
+    </div>
+    <div class="aside">
+      <p><strong>The Board is where the habit forms.</strong> A won bid with no job, or a job that matches by value but isn't linked, is a chip with a verb. A won bid with no cost estimate is the other chip — and that one is aimed at the estimator, because a job's Burn is only as honest as the bid it stands on.</p>
+      <p><strong>Snapshot, with a refresh.</strong> The budget is what the bid said when the job took it (or when you pressed Refresh), stamped with the bid version, the date and the person. Change orders and repricing produce a visible delta, never a silent drift.</p>
+      <div class="decision"><b>Later, not now</b>Persist the Pricing workbench's margin on the bid when it's priced, so a bid with no cost estimate can still hand the job "price × (1 − priced margin)" — a better assumption than 35 %. And earned value by stage (stage % × that stage's budget) once the estimate carries stage hours.</div>
+    </div>
+  </section>
+
+  <section class="full">
+    <div class="no">06 · The "is this the best we can do?" pass</div>
+    <h2>What changed between the first cut and this one</h2>
+    <div class="rev">
+      <div><h3>v1 — the plan as originally scoped</h3>
+        <ul>
+          <li>Snapshot column <code>jobs_ledger.bid_estimated_cost</code>, filled when a job is created from a bid; replace the two <code>null</code> arguments.</li>
+          <li>Burn header reads "bid estimate as budget"; tiles and charts unchanged.</li>
+          <li>Budget as one dollar figure; labor compared in dollars.</li>
+          <li>Nothing for existing jobs; nothing when the bid has no estimate; nothing on the Bid Board.</li>
+        </ul>
+        <p class="note">Honest about the arithmetic, blind to the data: it would have shipped and lit up zero jobs.</p>
+      </div>
+      <div><h3>v2 — what the review added</h3>
+        <ul>
+          <li><b>Provenance over a number.</b> A <code>job_budgets</code> row with kind (bid · typed), breakdown, completeness, bid version, taken-at and by. Every readout carries the glyph.</li>
+          <li><b>Linking is the feature.</b> Ranked candidates on the Costs tab (15 exact matches waiting today), one-tap link, Bid Board chips with verbs, the New Job carry box.</li>
+          <li><b>Hours first for labor</b>; components each get their own bar and at-completion; a written "why".</li>
+          <li><b>Typed budgets</b> so a $250k job never has to burn against a guess while the estimate is missing.</li>
+          <li><b>Partial estimates stay partial</b> (labor vs bid, materials vs assumption) instead of blending into one unexplainable figure.</li>
+          <li><b>Estimator cost excluded</b> from the direct budget — it is already overhead — and bid value ≠ job price surfaced, not hidden.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section class="full">
+    <div class="no">07 · Build plan</div>
+    <h2>Five PRs, each tested and shown live before the next</h2>
+    <ol class="steps">
+      <li><b>Data: the budget lives on the job</b><span class="t">Migration: <code>job_budgets</code> (job_id PK → jobs_ledger, kind <code>bid</code>|<code>typed</code>, bid_id, bid_version_id, labor_hours, labor_usd, labor_rate, materials_usd, subs_usd, other_usd, total_direct_usd, completeness jsonb, taken_at, taken_by, note) with RLS mirroring jobs_ledger writes; RPC <code>bid_estimate_breakdown(p_bid_id)</code> — the single-bid form of <code>bid_pricing_history</code>'s math, returning the breakdown, hours by stage and a completeness report (rows with hours / total rows, materials source, rate present); RPC <code>snapshot_job_budget_from_bid(p_job_id, p_bid_id)</code> that links and snapshots in one transaction; RPC <code>suggest_bids_for_job(p_job_id)</code> ranked by the rule in Frame B. Tests: scratch-pg replay of the RPCs against a dump; kernel test for the completeness rule. Docs fragment + migration doc. Pushed after the client deploy, per the standing OK.</span></li>
+      <li><b>Kernel + Costs tab</b><span class="t"><code>jobBudget.ts</code>: resolve budget → <code>{ source: bid|typed|assumed, direct, components, completeness }</code>; <code>resolveJobBurnBudget</code> takes it; per-component burn (used vs budget vs % done, at-completion per component, the "why" sentence as words the UI prints). <code>JobCostsBurnSection</code> gains the Budget card (Frame A), the link banner with candidates and the typed form (Frame B). <code>JobWithDetails</code> embeds the budget row (embed-select guard test updated). Live check: link J1007 → B375 in the UI with you watching, type a budget on it, screenshot both states.</span></li>
+      <li><b>Job Summary + Pipeline</b><span class="t">Glyph on the Burn cell, Budget column + filter, <code>projectJobSummaryBurn</code> takes the resolved budget, the Pipeline card measures "at risk" against each job's footing and says so. Tests on the kernel; live screenshots.</span></li>
+      <li><b>Bid side</b><span class="t">Bid Board won rows: job link chip (linked / matches by value → Link / none) and estimate chip (costed · N % / hours only / none → Cost it); New Job from bid: the carry checkbox that calls the snapshot RPC after insert. Help guides: <code>job-charges-timeline.md</code>, <code>read-true-profit-on-job-summary.md</code>, the Bid Board guide.</span></li>
+      <li><b>Backfill offer</b><span class="t">A one-time dev tool (Settings → Data) listing the 15 exact-value matches with Link all / per-row; nothing auto-links. Then the deferred pair: persist the workbench margin on the bid; earned value by stage.</span></li>
+    </ol>
+    <p class="note" style="margin-top:12px">Out of scope on purpose: changing how bids are costed. The Cost Estimate tab is the estimator's; this work makes its absence visible and its presence useful.</p>
+  </section>
+</div>

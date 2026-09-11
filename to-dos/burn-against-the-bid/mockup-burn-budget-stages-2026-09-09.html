@@ -1,0 +1,478 @@
+<title>Burn, Budget and Stages</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+  :root {
+    --page: #eef1f5;
+    --page-ink: #1a2230;
+    --page-muted: #5b6676;
+    --page-rule: #d6dce5;
+    --note: #fff7e0;
+    --note-ink: #6b4d00;
+    --accent: #2563eb;
+
+    /* the app's own dark surfaces, as the phone frames render them */
+    --app-bg: #161d2a;
+    --app-surface: #1f2937;
+    --app-subtle: #263243;
+    --app-border: #34405280;
+    --app-ink: #e8edf3;
+    --app-muted: #9aa6b6;
+    --app-faint: #6b7787;
+    --app-blue: #2563eb;
+    --app-blue-ink: #8fb3ff;
+    --good: #22c55e;
+    --good-ink: #4ade80;
+    --warn: #f59e0b;
+    --warn-ink: #fbbf24;
+    --bad: #ef4444;
+    --bad-ink: #f87171;
+    --violet: #a78bfa;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --page: #0d121c;
+      --page-ink: #e6ebf2;
+      --page-muted: #94a0b2;
+      --page-rule: #263042;
+      --note: #2a2410;
+      --note-ink: #f2d27a;
+    }
+  }
+  :root[data-theme="dark"] {
+    --page: #0d121c;
+    --page-ink: #e6ebf2;
+    --page-muted: #94a0b2;
+    --page-rule: #263042;
+    --note: #2a2410;
+    --note-ink: #f2d27a;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--page);
+    color: var(--page-ink);
+    font-family: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+    font-size: 15px;
+    line-height: 1.5;
+  }
+  .wrap { max-width: 1180px; margin: 0 auto; padding: 40px 24px 80px; }
+  header.top { display: grid; grid-template-columns: 1fr; gap: 10px; margin-bottom: 36px; max-width: 70ch; }
+  .eyebrow { font-family: "IBM Plex Mono", ui-monospace, Menlo, monospace; font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--page-muted); }
+  h1 { font-size: 34px; line-height: 1.15; margin: 0; font-weight: 700; letter-spacing: -0.01em; text-wrap: balance; }
+  .lede { color: var(--page-muted); margin: 0; font-size: 16px; }
+
+  section.part { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 32px; padding: 36px 0; border-top: 1px solid var(--page-rule); align-items: start; }
+  section.part.wide { grid-template-columns: 1fr; }
+  .partno { font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 12px; color: var(--page-muted); letter-spacing: 0.06em; }
+  h2 { font-size: 22px; margin: 4px 0 8px; line-height: 1.2; text-wrap: balance; }
+  .aside p { margin: 0 0 12px; color: var(--page-ink); max-width: 44ch; }
+  .aside p.muted { color: var(--page-muted); }
+  .decision { background: var(--note); color: var(--note-ink); border-radius: 6px; padding: 10px 12px; font-size: 14px; margin-top: 14px; }
+  .decision b { display: block; font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 4px; }
+
+  .frames { display: flex; gap: 24px; flex-wrap: wrap; align-items: flex-start; }
+  .frame { background: var(--app-bg); color: var(--app-ink); border-radius: 12px; width: 560px; max-width: 100%; box-shadow: 0 12px 40px rgba(0,0,0,0.22); font-family: -apple-system, "Segoe UI", system-ui, sans-serif; font-size: 14px; overflow: hidden; }
+  .frame.phone { width: 390px; }
+  .frame .cap { font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--app-muted); padding: 10px 14px 0; }
+  .tabs { display: flex; gap: 6px; align-items: center; padding: 10px 14px; border-bottom: 1px solid var(--app-border); }
+  .tab { padding: 4px 13px; border-radius: 999px; font-weight: 600; color: var(--app-muted); font-size: 14px; }
+  .tab.on { background: var(--app-blue); color: #fff; }
+  .tabs .esc { margin-left: auto; font-size: 11px; color: var(--app-faint); }
+  .body { padding: 14px 18px 18px; display: grid; gap: 14px; }
+  .jobtitle { font-size: 17px; font-weight: 700; }
+  .h { font-weight: 600; font-size: 15px; color: var(--app-ink); display: flex; justify-content: space-between; align-items: baseline; }
+  .h small { font-weight: 500; color: var(--app-muted); font-size: 12px; }
+
+  .tiles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+  .tile { background: var(--app-surface); border: 1px solid var(--app-border); border-radius: 8px; padding: 10px 12px; min-width: 0; }
+  .tile .k { font-size: 10.5px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--app-muted); }
+  .tile .v { font-size: 18px; font-weight: 700; font-variant-numeric: tabular-nums; margin-top: 2px; }
+  .tile .s { font-size: 11.5px; color: var(--app-muted); margin-top: 2px; }
+  .tile.hot { border-color: var(--bad); box-shadow: inset 3px 0 0 var(--bad); }
+  .tile.hot .v { color: var(--bad-ink); }
+  .tile.ok .v { color: var(--good-ink); }
+  .pair { display: flex; align-items: baseline; gap: 5px; flex-wrap: nowrap; }
+  .pair .vs { font-size: 10px; color: var(--app-muted); white-space: nowrap; }
+
+  .chart { background: var(--app-surface); border: 1px solid var(--app-border); border-radius: 8px; padding: 10px 10px 6px; }
+  .chart .t { font-size: 12px; font-weight: 600; color: var(--app-ink); margin: 0 0 4px 4px; display: flex; gap: 10px; align-items: baseline; }
+  .chart .t span { font-weight: 500; color: var(--app-muted); font-size: 11px; }
+  svg { display: block; width: 100%; height: auto; }
+  .lg { display: flex; flex-wrap: wrap; gap: 10px; font-size: 11px; color: var(--app-muted); padding: 6px 4px 2px; }
+  .lg i { display: inline-block; width: 14px; height: 3px; vertical-align: middle; margin-right: 5px; border-radius: 2px; }
+
+  .rows { background: var(--app-surface); border: 1px solid var(--app-border); border-radius: 8px; overflow: hidden; }
+  .row { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; padding: 9px 12px; border-top: 1px solid var(--app-border); font-size: 14px; }
+  .row:first-child { border-top: none; }
+  .row .l { min-width: 0; }
+  .row .l small { display: block; color: var(--app-muted); font-size: 11.5px; }
+  .row .r { font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .row .r.muted { color: var(--app-faint); font-weight: 500; }
+  .chip { display: inline-block; font-size: 10.5px; font-weight: 600; padding: 1px 8px; border-radius: 999px; background: var(--app-subtle); color: var(--app-muted); }
+  .chip.blue { background: #1e3a8a55; color: var(--app-blue-ink); }
+  .chip.red { background: #7f1d1d66; color: var(--bad-ink); }
+  .chip.green { background: #14532d66; color: var(--good-ink); }
+  .chip.amber { background: #78350f66; color: var(--warn-ink); }
+
+  /* Pipeline card + Job Summary table */
+  .card { background: var(--app-surface); border: 1px solid var(--app-border); border-radius: 10px; padding: 12px 14px; box-shadow: inset 3px 0 0 var(--bad); }
+  .card .ct { font-weight: 700; font-size: 14px; }
+  .card .cs { color: var(--app-muted); font-size: 12.5px; margin: 4px 0 10px; }
+  .btn { display: inline-block; border: 1px solid var(--app-blue-ink); color: var(--app-blue-ink); border-radius: 999px; padding: 4px 12px; font-size: 12.5px; font-weight: 600; }
+  .btn.solid { background: var(--app-blue); color: #fff; border-color: var(--app-blue); }
+  table.js { width: 100%; border-collapse: collapse; font-size: 13px; font-variant-numeric: tabular-nums; }
+  table.js th { text-align: right; font-weight: 600; color: var(--app-muted); font-size: 11.5px; padding: 8px 10px; border-bottom: 1px solid var(--app-border); }
+  table.js th:first-child, table.js td:first-child { text-align: left; }
+  table.js td { text-align: right; padding: 9px 10px; border-bottom: 1px solid var(--app-border); color: var(--app-ink); white-space: nowrap; }
+  table.js .bad { color: var(--bad-ink); font-weight: 600; }
+  table.js .good { color: var(--good-ink); font-weight: 600; }
+  .sortnote { font-size: 11px; color: var(--app-muted); padding: 6px 10px 0; }
+
+  /* report */
+  .stage { display: grid; grid-template-columns: 26px 1fr auto; gap: 10px; align-items: center; padding: 10px 12px; border-top: 1px solid var(--app-border); }
+  .stage:first-child { border-top: none; }
+  .stage .n { width: 22px; height: 22px; border-radius: 6px; display: grid; place-items: center; font-size: 11px; font-weight: 700; background: var(--app-subtle); color: var(--app-muted); }
+  .stage .n.done { background: #14532d66; color: var(--good-ink); }
+  .stage .n.on { background: var(--app-blue); color: #fff; }
+  .stage .nm { font-weight: 600; }
+  .stage .nm small { display: block; font-weight: 500; color: var(--app-muted); font-size: 11.5px; }
+  .stage .pc { font-variant-numeric: tabular-nums; font-weight: 600; color: var(--app-muted); }
+  .stage.sel { background: #1e3a8a33; }
+  .stage.sel .pc { color: var(--app-blue-ink); }
+  .slider { display: grid; gap: 6px; padding: 12px; background: var(--app-subtle); border-radius: 8px; }
+  .slider .sl { display: flex; justify-content: space-between; font-size: 13px; }
+  .slider input[type=range] { width: 100%; accent-color: var(--app-blue); }
+  .quick { display: flex; gap: 6px; }
+  .quick span { flex: 1; text-align: center; padding: 5px 0; border-radius: 6px; background: var(--app-surface); border: 1px solid var(--app-border); font-size: 12.5px; font-weight: 600; cursor: pointer; }
+  .quick span.on { background: var(--app-blue); border-color: var(--app-blue); color: #fff; }
+  .result { display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: center; padding: 12px; border-radius: 8px; background: #14532d33; border: 1px solid #16a34a55; }
+  .result .big { font-size: 22px; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--good-ink); }
+  .result .why { font-size: 12.5px; color: var(--app-muted); }
+  .bar { height: 8px; border-radius: 999px; background: var(--app-subtle); overflow: hidden; display: flex; }
+  .bar b { display: block; height: 100%; }
+  .post { background: var(--app-blue); color: #fff; text-align: center; border-radius: 8px; padding: 10px; font-weight: 600; }
+
+  .weights { font-size: 13px; }
+  .weights .row .l small { color: var(--app-faint); }
+  .kbd { font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 12px; background: var(--page-rule); padding: 1px 6px; border-radius: 4px; }
+  ul.plain { margin: 8px 0 0; padding-left: 18px; color: var(--page-ink); }
+  ul.plain li { margin-bottom: 6px; }
+  .grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 18px; }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  @media (max-width: 900px) { section.part { grid-template-columns: 1fr; } .tiles { grid-template-columns: repeat(2, 1fr); } }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <div class="eyebrow">ClickTooling · job window · mock-up · 2026-09-09</div>
+    <h1>Burn, Budget and Stages</h1>
+    <p class="lede">Two things in one mock-up: a Burn section on the Costs tab that measures daily spend against the bid and the percent complete, and a report that asks the tech which stage they are on so the percent has a real denominator. The assistant-visibility question is parked for later. The job throughout is J931 Heron Construction, worked figures, not live data.</p>
+  </header>
+
+  <!-- ─────────────────────────── PART 2 ─────────────────────────── -->
+  <section class="part">
+    <div>
+      <div class="partno">1 · THE COSTS TAB GAINS A BURN SECTION</div>
+      <h2>Are we spending faster than we are finishing?</h2>
+      <div class="frames">
+        <div class="frame" style="width:100%;max-width:720px">
+          <div class="tabs"><span class="tab">Job</span><span class="tab">Edit</span><span class="tab">Bill</span><span class="tab on">Costs</span><span class="tab">History</span><span class="esc">esc to close</span></div>
+          <div class="body">
+            <div class="jobtitle">Heron Construction <span class="chip amber" style="margin-left:6px">931 PLUM</span></div>
+
+            <div class="h">Burn <small>bid estimate as budget · % from the latest field report</small></div>
+            <div class="tiles">
+              <div class="tile"><div class="k">Spent to date</div><div class="v" id="t-spent">$19,860</div><div class="s">team · subs · parts</div></div>
+              <div class="tile"><div class="k">Budget</div><div class="v">$29,200</div><div class="s">bid estimate · price $48,700</div></div>
+              <div class="tile hot" id="t-pair"><div class="k">% of budget vs % done</div><div class="v pair"><span id="t-spentpct">68%</span><span class="vs">vs</span><span id="t-donepct">62%</span></div><div class="s" id="t-lead">spend leads progress by 6 pts</div></div>
+              <div class="tile hot" id="t-eac"><div class="k">At completion</div><div class="v" id="t-eacv">$32,032</div><div class="s" id="t-margin">margin $16,668 · 34% (bid 40%)</div></div>
+            </div>
+
+            <div class="slider" style="padding:8px 12px">
+              <div class="sl"><span>Try it: latest report says the job is</span><b id="pct-lbl">62% complete</b></div>
+              <input type="range" id="pct" min="10" max="100" value="62" aria-label="Percent complete">
+            </div>
+
+            <div class="chart">
+              <div class="t">Daily spend <span>last 14 days · bars are labor + subs + parts · line is the 7-day average</span></div>
+              <svg id="bars" viewBox="0 0 680 190" role="img" aria-label="Daily spend bars for the last 14 days"></svg>
+              <div class="lg"><span><i style="background:#f87171"></i>team labor</span><span><i style="background:#c084fc"></i>sub labor</span><span><i style="background:#fbbf24"></i>parts</span><span><i style="background:#9aa6b6"></i>7-day average</span></div>
+            </div>
+
+            <div class="chart">
+              <div class="t">Cost against the bid <span>cumulative · the value line steps at each report</span></div>
+              <svg id="cum" viewBox="0 0 680 230" role="img" aria-label="Cumulative cost against budget and earned value"></svg>
+              <div class="lg"><span><i style="background:#f87171"></i>actual cost</span><span><i style="background:#60a5fa"></i>earned value (% done × budget)</span><span><i style="background:#9aa6b6;height:0;border-top:2px dashed #9aa6b6"></i>budget</span><span><i style="background:#f87171;height:0;border-top:2px dotted #f87171"></i>forecast at today's burn</span></div>
+            </div>
+
+            <div class="rows">
+              <div class="row"><div class="l">Burn rate<small>7-day average, working days</small></div><div class="r">$1,120 / day</div></div>
+              <div class="row"><div class="l">Budget runs out<small>at that rate, with 38% of the work left</small></div><div class="r" style="color:var(--bad-ink)">Sep 17 · 8 working days</div></div>
+              <div class="row"><div class="l">Work left at the current pace<small>38% ÷ (progress per day, last 14 days)</small></div><div class="r">≈ 13 working days</div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="aside">
+      <p><strong>One number carries it.</strong> Spent ÷ percent complete is the cost at completion. Price minus that is the margin you will actually make. Every other element on the section exists to explain that number.</p>
+      <p>The middle tile is the tell. Two percentages side by side, spend and progress. Green when spend trails progress, red when it leads.</p>
+      <p class="muted">Daily bars show the week the cumulative chart hides. The forecast line just extends today's burn until it meets the budget.</p>
+      <div class="decision"><b>Decision needed · the budget</b>Bid estimate when the job came from a bid (labor hours × rate + materials, snapshotted at job creation), else price × target margin. The mock-up assumes this. The fallback keeps service jobs from going blank.</div>
+    </div>
+  </section>
+
+  <!-- ─────────────────────────── PART 3 ─────────────────────────── -->
+  <section class="part">
+    <div>
+      <div class="partno">2 · WHERE IT SURFACES BEYOND THE JOB</div>
+      <h2>A column on Job Summary and a card on the Pipeline, so it becomes a to-do</h2>
+      <div class="frames">
+        <div class="frame" style="width:100%;max-width:720px">
+          <div class="cap">Jobs → Job Summary · In progress · sorted by projected margin</div>
+          <div class="body" style="padding-top:8px">
+            <div style="overflow-x:auto">
+            <table class="js">
+              <thead><tr><th>Job</th><th>Revenue</th><th>Spent</th><th>Budget</th><th>Spent · done</th><th>At completion</th><th>Proj. margin ▾</th></tr></thead>
+              <tbody>
+                <tr><td>J927 Mike Holub</td><td>$12,400</td><td>$9,880</td><td>$7,440</td><td class="bad">133% · 70%</td><td class="bad">$14,114</td><td class="bad">−$1,714</td></tr>
+                <tr><td>J931 Heron Construction</td><td>$48,700</td><td>$19,860</td><td>$29,200</td><td class="bad">68% · 62%</td><td>$32,032</td><td>$16,668 · 34%</td></tr>
+                <tr><td>J1007 SPACEX BA-02N</td><td>$249,716</td><td>$991</td><td>$162,300</td><td class="good">1% · 2%</td><td>$49,600</td><td class="good">$200,116 · 80%</td></tr>
+                <tr><td>J650 ATI Schertz</td><td>$33,500</td><td>$31,008</td><td>$21,775</td><td class="bad">142% · 100%</td><td>$31,008</td><td>$2,492 · 7%</td></tr>
+              </tbody>
+            </table>
+            </div>
+            <div class="sortnote">Spent · done reads red when spend leads progress by more than 5 points. J1007 is too early to trust and says so in its tooltip: fewer than 10 working days.</div>
+          </div>
+        </div>
+        <div class="frame" style="width:100%;max-width:720px">
+          <div class="cap">Jobs → Pipeline · Today's money opportunities</div>
+          <div class="body" style="padding-top:8px">
+            <div class="card">
+              <div class="ct">🔥 3 jobs burning ahead of progress — $41,300 of margin at risk</div>
+              <div class="cs">J927 Mike Holub 133% spent at 70% done · J931 Heron 68% at 62% · J739 Lift Pump 91% at 55%. Each opens on its Costs tab.</div>
+              <div style="display:flex;gap:8px;flex-wrap:wrap"><span class="btn solid">Open the worst first →</span><span class="btn">Show all 3</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="aside">
+      <p>Job Summary already carries gross and true profit for finished work. Projected margin is the same idea pointed forward, so it belongs in the same table, sortable, worst first.</p>
+      <p class="muted">The Pipeline card follows the pattern the other money moves use: a count, a dollar figure, one button. A job that is both quiet and expensive shows up in the follow-ups deck with these tiles on its card.</p>
+    </div>
+  </section>
+
+  <!-- ─────────────────────────── PART 4 ─────────────────────────── -->
+  <section class="part">
+    <div>
+      <div class="partno">3 · YOUR IDEA · THE REPORT ASKS WHICH STAGE</div>
+      <h2>Stage weights from the Bill tab give the percent complete a denominator</h2>
+      <div class="frames">
+        <div class="frame phone">
+          <div class="cap">Field report · Job Mode · phone</div>
+          <div class="body">
+            <div class="jobtitle" style="font-size:15px">Heron Construction · J931</div>
+            <div class="h">Which stage did you work on today?</div>
+            <div class="rows" id="stages">
+              <div class="stage" data-w="25" data-p="100"><span class="n done">1</span><span class="nm">Underground<small>25% of the job · done Aug 21</small></span><span class="pc">100%</span></div>
+              <div class="stage sel" data-w="35" data-p="60"><span class="n on">2</span><span class="nm">Rough-in<small>35% of the job · in progress</small></span><span class="pc" id="st-pc">60%</span></div>
+              <div class="stage" data-w="15" data-p="0"><span class="n">3</span><span class="nm">Top-out<small>15% of the job</small></span><span class="pc">0%</span></div>
+              <div class="stage" data-w="25" data-p="0"><span class="n">4</span><span class="nm">Trim<small>25% of the job</small></span><span class="pc">0%</span></div>
+              <div class="stage" data-w="0" data-p="0" style="opacity:.55"><span class="n">—</span><span class="nm">Permit<small>not a stage · no progress to report</small></span><span class="pc"></span></div>
+            </div>
+            <div class="slider">
+              <div class="sl"><span>Rough-in is</span><b id="st-lbl">60% complete</b></div>
+              <input type="range" id="st" min="0" max="100" step="5" value="60" aria-label="Percent of the stage complete">
+              <div class="quick" id="quick"><span data-v="25">25%</span><span data-v="50">50%</span><span data-v="75">75%</span><span data-v="100">Done ✓</span></div>
+            </div>
+            <div class="result">
+              <div><div class="big" id="job-pct">46% of the job</div><div class="why" id="job-why">was 40% · Rough-in 60% × 35% = 21 pts, plus Underground's 25</div></div>
+              <div style="text-align:right;font-size:12px;color:var(--app-muted)">Bill tab<br>reads the same</div>
+            </div>
+            <div class="bar" id="jobbar"><b style="width:25%;background:#22c55e"></b><b id="bar-cur" style="width:21%;background:#2563eb"></b></div>
+            <div class="post">Post report</div>
+          </div>
+        </div>
+        <div class="frame" style="width:400px">
+          <div class="cap">Bill tab · line items · where the weights come from</div>
+          <div class="body">
+            <div class="rows weights">
+              <div class="row"><div class="l">Underground <span class="chip blue">Order 1</span><small>$12,175 · 25% of stage value</small></div><div class="r">✓ 100%</div></div>
+              <div class="row"><div class="l">Rough-in <span class="chip blue">Order 2</span><small>$17,045 · 35%</small></div><div class="r" style="color:var(--app-blue-ink)" id="w-ri">60%</div></div>
+              <div class="row"><div class="l">Top-out <span class="chip blue">Order 3</span><small>$7,305 · 15%</small></div><div class="r muted">0%</div></div>
+              <div class="row"><div class="l">Trim <span class="chip blue">Order 4</span><small>$12,175 · 25%</small></div><div class="r muted">0%</div></div>
+              <div class="row"><div class="l">Permit <span class="chip">—</span><small>$1,200 · not a stage · billed with the final draw</small></div><div class="r muted">n/a</div></div>
+            </div>
+            <div style="font-size:12.5px;color:var(--app-muted);display:grid;gap:6px">
+              <div>Weight = the line's price ÷ the price of all <em>stage</em> lines. The permit is billed, not built, so it sits outside the percent.</div>
+              <div>A job with one line item ("as per plans") has one stage worth 100%, so its report looks exactly like today's slider. Nothing breaks on old jobs.</div>
+              <div>An <span class="chip blue">Any</span> stage counts the same way; it just isn't held to the order.</div>
+              <div>A stage reported <strong>Done</strong> is a draw ready to bill. The stage kinds you shipped this week already decide whether it can go out now or must wait its turn.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="aside">
+      <p><strong>This is the right fix for the percent.</strong> Today a tech guesses a whole-job number. With stages the guess shrinks to "how far along is the piece I'm standing in", and the app does the weighting. 60% of a 35% stage is 21 points, and no one has to do that in their head.</p>
+      <p>It also makes the burn math honest. Earned value per stage means the Costs tab can say "Rough-in has burned 80% of its share of the budget at 60% done", which is where a job actually goes wrong.</p>
+      <p class="muted">The report keeps the free-text and photos it has. The stage list is one extra tap, pre-selected to the stage the crew's schedule block names.</p>
+      <div class="decision"><b>Two rules to confirm</b>Weights come from line-item prices, not from hours. A "—" line never carries progress. If you'd rather weight by estimated hours from the bid, say so; the mock-up uses price because every job has one.</div>
+    </div>
+  </section>
+
+  <section class="part wide">
+    <div>
+      <div class="partno">BUILD ORDER · IF YOU LIKE ALL OF IT</div>
+      <div class="grid2">
+                <div><h2 style="font-size:17px">A · Burn on Costs</h2><p class="lede" style="font-size:14px">Pure earned-value kernel with tests, the tiles, daily bars, the two reference lines, the forecast. Reads the report % the chart already resolves. One PR, client only, until the bid estimate snapshot lands. Two days.</p></div>
+        <div><h2 style="font-size:17px">B · Job Summary and Pipeline</h2><p class="lede" style="font-size:14px">The projected-margin column and sort, the burning-jobs card, the follow-ups tile. One PR. A day.</p></div>
+        <div><h2 style="font-size:17px">C · Stage-weighted reports</h2><p class="lede" style="font-size:14px">Stage progress stored per line item, the report picker and slider, the weighted % feeding everything that reads the report %. Migration plus two PRs. Two to three days. A and B get better the day C ships.</p></div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<script>
+(function () {
+  // ---- Part 2: burn tiles react to the % complete slider (worked figures) ----
+  const spent = 19860, budget = 29200, price = 48700, bidMarginPct = 40;
+  const fmt = n => '$' + Math.round(n).toLocaleString('en-US');
+  const pct = document.getElementById('pct');
+  function paintTiles() {
+    const done = Number(pct.value);
+    const spentPct = Math.round(spent / budget * 100);
+    const eac = spent / (done / 100);
+    const margin = price - eac;
+    const lead = spentPct - done;
+    document.getElementById('pct-lbl').textContent = done + '% complete';
+    document.getElementById('t-donepct').textContent = done + '%';
+    document.getElementById('t-spentpct').textContent = spentPct + '%';
+    document.getElementById('t-lead').textContent = lead > 0 ? 'spend leads progress by ' + lead + ' pts' : lead < 0 ? 'progress leads spend by ' + (-lead) + ' pts' : 'spend and progress level';
+    document.getElementById('t-eacv').textContent = fmt(eac);
+    document.getElementById('t-margin').textContent = 'margin ' + fmt(margin) + ' · ' + Math.round(margin / price * 100) + '% (bid ' + bidMarginPct + '%)';
+    const hot = lead > 5;
+    for (const id of ['t-pair', 't-eac']) { const el = document.getElementById(id); el.classList.toggle('hot', hot); el.classList.toggle('ok', !hot); }
+    drawCum(done);
+  }
+  pct.addEventListener('input', paintTiles);
+
+  // ---- daily bars ----
+  const days = ['Aug 25','26','27','28','29','Sep 1','2','3','4','5','8','9','10','11'];
+  const team = [560,640,720,480,0,880,960,1120,1040,720,1280,1360,1120,640];
+  const subs = [0,0,0,0,0,0,650,0,0,0,0,0,0,0];
+  const parts = [180,0,940,120,0,60,0,1420,200,0,310,880,0,140];
+  (function drawBars() {
+    const svg = document.getElementById('bars');
+    const W = 680, H = 190, padL = 44, padR = 10, padT = 14, padB = 28;
+    const iw = W - padL - padR, ih = H - padT - padB;
+    const totals = team.map((t, i) => t + subs[i] + parts[i]);
+    const max = 3000;
+    const y = v => padT + ih - v / max * ih;
+    let s = '';
+    for (const g of [0, 1000, 2000, 3000]) {
+      s += `<line x1="${padL}" x2="${W - padR}" y1="${y(g)}" y2="${y(g)}" stroke="#34405280" stroke-dasharray="3 3"/>`;
+      s += `<text x="${padL - 6}" y="${y(g) + 4}" text-anchor="end" font-size="10" fill="#9aa6b6">$${g/1000|0}${g?'k':''}</text>`;
+    }
+    const bw = iw / days.length;
+    days.forEach((d, i) => {
+      const x = padL + i * bw + bw * 0.18, w = bw * 0.64;
+      let base = 0;
+      for (const [arr, color] of [[team,'#f87171'],[subs,'#c084fc'],[parts,'#fbbf24']]) {
+        const v = arr[i]; if (!v) continue;
+        s += `<rect x="${x}" y="${y(base + v)}" width="${w}" height="${y(base) - y(base + v)}" fill="${color}" rx="1.5"/>`;
+        base += v;
+      }
+      s += `<text x="${x + w/2}" y="${H - 10}" text-anchor="middle" font-size="10" fill="#9aa6b6">${d}</text>`;
+    });
+    // 7-day average over working days
+    let pts = '';
+    totals.forEach((_, i) => {
+      const win = totals.slice(Math.max(0, i - 6), i + 1).filter(v => v > 0);
+      const avg = win.length ? win.reduce((a, b) => a + b, 0) / win.length : 0;
+      pts += `${padL + i * bw + bw/2},${y(avg)} `;
+    });
+    s += `<polyline points="${pts}" fill="none" stroke="#9aa6b6" stroke-width="2"/>`;
+    svg.innerHTML = s;
+  })();
+
+  // ---- cumulative: actual vs earned value vs budget, with forecast ----
+  const cumActual = [1800,3400,5300,6900,7600,9200,11400,13700,15400,16900,18400,19100,19600,19860];
+  const reportPcts = [[0,8],[3,22],[6,40],[9,52],[13,62]]; // [dayIndex, pct]
+  function drawCum(doneNow) {
+    const svg = document.getElementById('cum');
+    const W = 680, H = 230, padL = 44, padR = 60, padT = 12, padB = 26;
+    const iw = W - padL - padR, ih = H - padT - padB;
+    const nDays = 22; // 14 shown + 8 forecast
+    const max = 36000;
+    const x = i => padL + i / (nDays - 1) * iw;
+    const y = v => padT + ih - v / max * ih;
+    let s = '';
+    for (const g of [0, 10000, 20000, 30000]) {
+      s += `<line x1="${padL}" x2="${W - padR}" y1="${y(g)}" y2="${y(g)}" stroke="#34405280" stroke-dasharray="3 3"/>`;
+      s += `<text x="${padL - 6}" y="${y(g) + 4}" text-anchor="end" font-size="10" fill="#9aa6b6">$${g/1000|0}k</text>`;
+    }
+    // budget ceiling
+    s += `<line x1="${padL}" x2="${W - padR}" y1="${y(budget)}" y2="${y(budget)}" stroke="#9aa6b6" stroke-width="1.5" stroke-dasharray="6 4"/>`;
+    s += `<text x="${W - padR + 4}" y="${y(budget) + 4}" font-size="10" fill="#9aa6b6">budget</text>`;
+    // earned value steps (last report uses the slider value)
+    const rp = reportPcts.map(([i, p], k) => [i, k === reportPcts.length - 1 ? doneNow : p]);
+    let ev = `M${x(0)},${y(0)} `;
+    rp.forEach(([i, p]) => { ev += `L${x(i)},${y(0)} `.replace(/L[^ ]+ /, ''); });
+    let evPts = [[0, 0]];
+    rp.forEach(([i, p]) => evPts.push([i, p / 100 * budget]));
+    let evPath = '';
+    evPts.forEach(([i, v], k) => {
+      if (k === 0) evPath += `M${x(i)},${y(v)}`;
+      else { const prev = evPts[k - 1]; evPath += ` L${x(i)},${y(prev[1])} L${x(i)},${y(v)}`; }
+    });
+    evPath += ` L${x(13)},${y(evPts[evPts.length - 1][1])}`;
+    s += `<path d="${evPath}" fill="none" stroke="#60a5fa" stroke-width="2.5"/>`;
+    // actual
+    let ap = '';
+    cumActual.forEach((v, i) => { ap += `${i ? 'L' : 'M'}${x(i)},${y(v)} `; });
+    s += `<path d="${ap}" fill="none" stroke="#f87171" stroke-width="2.5"/>`;
+    // forecast: continue at 7-day burn (1120/day) until budget
+    const burn = 1120;
+    let fx = 13, fv = cumActual[13];
+    let fp = `M${x(fx)},${y(fv)}`;
+    while (fv < budget && fx < nDays - 1) { fx += 1; fv += burn; fp += ` L${x(fx)},${y(Math.min(fv, budget))}`; if (fv >= budget) break; }
+    s += `<path d="${fp}" fill="none" stroke="#f87171" stroke-width="2" stroke-dasharray="2 4"/>`;
+    s += `<circle cx="${x(fx)}" cy="${y(budget)}" r="4" fill="#f87171"/>`;
+    s += `<text x="${x(fx)}" y="${y(budget) - 8}" text-anchor="middle" font-size="10" fill="#f87171">budget gone</text>`;
+    // end labels
+    s += `<text x="${x(13) + 5}" y="${y(cumActual[13]) - 6}" font-size="10" fill="#f87171">${fmt(cumActual[13])}</text>`;
+    const evEnd = evPts[evPts.length - 1][1];
+    s += `<text x="${x(13) + 5}" y="${y(evEnd) + 12}" font-size="10" fill="#60a5fa">${doneNow}% × budget</text>`;
+    // x labels
+    [[0,'Aug 25'],[6,'Sep 2'],[13,'today'],[21,'Sep 23']].forEach(([i, l]) => {
+      s += `<text x="${x(i)}" y="${H - 8}" text-anchor="middle" font-size="10" fill="#9aa6b6">${l}</text>`;
+    });
+    s += `<line x1="${x(13)}" x2="${x(13)}" y1="${padT}" y2="${padT + ih}" stroke="#34405280"/>`;
+    svg.innerHTML = s;
+  }
+  paintTiles();
+
+  // ---- Part 4: stage slider → job % ----
+  const st = document.getElementById('st');
+  const quick = document.getElementById('quick');
+  function paintStage() {
+    const p = Number(st.value);
+    const contrib = 35 * p / 100;
+    const job = 25 + contrib;
+    document.getElementById('st-lbl').textContent = p + '% complete';
+    document.getElementById('st-pc').textContent = p + '%';
+    document.getElementById('w-ri').textContent = p + '%';
+    document.getElementById('job-pct').textContent = Math.round(job) + '% of the job';
+    document.getElementById('job-why').textContent = `was 40% · Rough-in ${p}% × 35% = ${Math.round(contrib)} pts, plus Underground's 25`;
+    document.getElementById('bar-cur').style.width = contrib + '%';
+    for (const q of quick.children) q.classList.toggle('on', Number(q.dataset.v) === p);
+  }
+  st.addEventListener('input', paintStage);
+  quick.addEventListener('click', e => { const v = e.target.dataset && e.target.dataset.v; if (v) { st.value = v; paintStage(); } });
+  paintStage();
+})();
+</script>
