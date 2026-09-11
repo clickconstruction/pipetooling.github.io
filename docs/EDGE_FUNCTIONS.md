@@ -168,6 +168,7 @@ when_to_read:
    - [send-lien-release-email](#send-lien-release-email)
    - [send-test-report](#send-test-report)
    - [open-test-report-pdf](#open-test-report-pdf)
+   - [auto-send-test-reports](#auto-send-test-reports)
    - [send-lien-filing-email](#send-lien-filing-email)
    - [send-stripe-invoice](#send-stripe-invoice)
    - [update-collect-payment-stripe-customer-email](#update-collect-payment-stripe-customer-email)
@@ -2837,6 +2838,14 @@ Body: `{ report_id, to: string[], cc?: string[], subject, email_text, email_html
 **Authentication**: none (`verify_jwt = false`) — the portal link is the capability, resolved exactly as `customer-portal` does (raw token, then the v1 sha256 hash; revoked → 404 text). Guards: the report must be `status = 'sent'` with a `pdf_path`, on a job the link's company pays for (`customer_id` for a customer link, `gc_customer_id` for a GC link, either for `all`); sample tokens get a plain 404 line. Errors are short `text/plain` sentences (the tab the customer opened shows them). **Secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`.
 
 **Used by**: the statement's inline *Test report* line and the *Test reports* card in [`CustomerPortal.tsx`](../src/pages/CustomerPortal.tsx) (`portalTestReportUrl`). `customer-portal`'s payload carries `testReports[]` (v2.3304) — the sent reports across the link's jobs, never drafts. **Deploy**: `supabase functions deploy open-test-report-pdf` (and redeploy `customer-portal`).
+
+---
+
+### auto-send-test-reports
+
+**Purpose** (v2.3316, Test reports dial B): every ten minutes pg_cron (`20260911201244_auto_send_test_reports_cron.sql`) calls this; when Settings → Test reports → Sending is *Send PASS reports automatically* (`app_settings.test_report_settings_v1.autoSend = 'pass'`, **off by default**), it takes up to ten hydrostatic **PASS** drafts older than the 15-minute grace period whose job has a **GC with an email** on the customer card and a **billed Stripe invoice with a pay link**, renders the paper server-side with pdf-lib ([`_shared/testReportPdfLib.ts`](../supabase/functions/_shared/testReportPdfLib.ts), the twin of the browser renderer), files it as the next version in `job-test-reports`, emails the GC (cc the standing copy, `email_type: 'test_report'`), stamps the row sent with `sent_by NULL` and the certifier snapshot (guarded by `status = 'draft'`), and posts *Sent automatically: …* on the job as the job's master. FAIL, pinpoint, gas, and anything missing a bill or a GC email are skipped with a reason in the response and stay on the Dashboard for a person.
+
+**Endpoint**: `POST /functions/v1/auto-send-test-reports` · **Authentication**: `X-Cron-Secret` must equal `CRON_SECRET` (`verify_jwt = false`); service role throughout. **Secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `RESEND_API_KEY`, `CRON_SECRET`. Response: `{ ok, skipped? | considered, results: [{ report, outcome }] }`. Shares `_shared/testReportSend.ts` with `send-test-report`. **Deploy**: `supabase functions deploy auto-send-test-reports`.
 
 ---
 

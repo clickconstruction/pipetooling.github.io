@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useToastContext } from '../../contexts/ToastContext'
 import { formatErrorMessage } from '../../utils/errorHandling'
-import { DEFAULT_TEST_REPORT_SETTINGS, type TestReportSettings } from '../../lib/jobs/testReport'
+import { DEFAULT_TEST_REPORT_SETTINGS, TEST_REPORT_AUTO_SEND_GRACE_MINUTES, type TestReportSettings } from '../../lib/jobs/testReport'
 import { cachedTestReportSettings, fetchTestReportSettings, saveTestReportSettings } from '../../lib/jobs/testReportSettings'
 
 /**
@@ -118,6 +118,23 @@ export default function TestReportSettingsBlock() {
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '0 1rem' }}>{TEXTS.map(renderField)}</div>
           <div style={{ fontSize: '0.8rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-muted)', margin: '0.5rem 0 0.6rem' }}>The email</div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '0 1rem' }}>{EMAIL.map(renderField)}</div>
+          <div style={{ fontSize: '0.8rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-muted)', margin: '0.5rem 0 0.6rem' }}>Sending</div>
+          <div style={{ display: 'grid', gap: '0.5rem', marginBottom: '0.9rem' }}>
+            {(
+              [
+                ['off', 'A person sends every report', 'Drafts wait on the Dashboard as "test reports ready to send"; the office opens each, glances, clicks Send.'],
+                ['pass', 'Send PASS reports automatically', `A hydrostatic PASS draft whose job has a Stripe bill and a GC with an email goes out on its own ${TEST_REPORT_AUTO_SEND_GRACE_MINUTES} minutes after the tech files it — cc the standing copy, noted on the job as "Sent automatically". FAIL, pinpoint and gas tests, and jobs missing a bill or a GC email, still wait for a person.`],
+              ] as Array<[string, string, string]>
+            ).map(([value, title, hint]) => (
+              <label key={value} style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '0.5rem', alignItems: 'start', border: '1px solid var(--border)', borderRadius: 8, padding: '0.6rem 0.75rem', cursor: 'pointer' }}>
+                <input type="radio" name="test-report-auto-send" checked={(draft.autoSend || 'off') === value} onChange={() => set('autoSend', value)} style={{ marginTop: 3 }} />
+                <span>
+                  <span style={{ fontWeight: 600, display: 'block' }}>{title}</span>
+                  <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{hint}</span>
+                </span>
+              </label>
+            ))}
+          </div>
           <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
             <button type="button" disabled={saving} onClick={() => void save()} style={{ padding: '0.5rem 1rem', borderRadius: 6, border: 'none', background: '#2563eb', color: '#fff', fontWeight: 600, cursor: saving ? 'wait' : 'pointer' }}>
               {saving ? 'Saving…' : 'Save'}

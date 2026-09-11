@@ -789,3 +789,7 @@ verify_jwt = false
 # Test reports in the portal (v2.3304): the portal token + report id → a 5-minute signed link to the stored PDF, as a redirect. No auth; the link is the capability.
 [functions.open-test-report-pdf]
 verify_jwt = false
+
+# Dial B (v2.3316): pg_cron every 10 minutes → sends hydrostatic PASS drafts whose job has a Stripe bill and a GC email; X-Cron-Secret in the function.
+[functions.auto-send-test-reports]
+verify_jwt = false

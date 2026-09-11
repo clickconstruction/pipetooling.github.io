@@ -2,6 +2,7 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { EMAIL_FROM } from '../_shared/emailFrom.ts'
 import { logEmailSendBestEffort } from '../_shared/logEmailSend.ts'
+import { TEST_REPORT_BUCKET, testReportActivityLine, testReportStoragePath } from '../_shared/testReportSend.ts'
 
 /**
  * Send a test report to the GC (v2.3301): the PDF the browser rendered
@@ -18,7 +19,7 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
-const BUCKET = 'job-test-reports'
+const BUCKET = TEST_REPORT_BUCKET
 const MAX_PDF_BASE64_CHARS = 6_000_000
 const MAX_RECIPIENTS = 6
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -111,7 +112,7 @@ serve(async (req) => {
 
     // Store the exact bytes that go out, versioned so a re-send never overwrites what the GC has.
     const version = (r.pdf_version ?? 0) + 1
-    const pdfPath = `${r.job_id}/${r.id}-v${version}.pdf`
+    const pdfPath = testReportStoragePath(r.job_id, r.id, version)
     const { error: upErr } = await admin.storage.from(BUCKET).upload(pdfPath, base64ToBytes(pdfBase64), { contentType: 'application/pdf', upsert: false })
     if (upErr) {
       console.error('test report upload', upErr)
@@ -163,7 +164,7 @@ serve(async (req) => {
     // The job's activity line: who got what, with or without the pay link.
     const reportLabel = (body.report_label ?? '').trim() || 'test'
     const who = (body.recipient_label ?? '').trim()
-    const noteBody = `Sent ${reportLabel} report${version > 1 ? ` (v${version})` : ''} to ${who ? `${who} (${to.join(', ')})` : to.join(', ')}${ccOnly.length ? `, cc ${ccOnly.join(', ')}` : ''}${payUrl ? ' with the invoice link' : ''}.`
+    const noteBody = testReportActivityLine({ reportLabel, version, to, cc: ccOnly, recipientLabel: who || null, withPayLink: Boolean(payUrl), automatic: false })
     const { error: noteErr } = await userClient.from('jobs_ledger_thread_notes').insert({ job_id: r.job_id, author_user_id: user.id, body: noteBody })
     if (noteErr) console.error('test report activity note', noteErr)
 
