@@ -741,6 +741,14 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
       void cacheFetchScopeIfNeeded(scope, customerFilterForFetch)
     }
   }, [billedMoneyModalOpen, cacheMergedScopes, cacheScopeLoading, customerFilterForFetch, cacheFetchScopeIfNeeded])
+  // The ⚖ Legal desk (v2.3293) reads Collections rows — billed-status jobs the
+  // board loads lazily — so opening it fetches the non-paid scopes the same way.
+  useEffect(() => {
+    if (legalDesk == null) return
+    for (const scope of NON_PAID_SCOPES) {
+      void cacheFetchScopeIfNeeded(scope, customerFilterForFetch)
+    }
+  }, [legalDesk, cacheMergedScopes, cacheScopeLoading, customerFilterForFetch, cacheFetchScopeIfNeeded])
   // Same retry-until-merged shape for the paid profit chart (v2.1879).
   const [paidProfitChartOpen, setPaidProfitChartOpen] = useState(false)
   useEffect(() => {
@@ -5551,6 +5559,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
         open={legalDesk != null}
         onClose={() => setLegalDesk(null)}
         collectionsJobs={stagesBoardLists.collectionsJobs}
+        jobsLoading={!NON_PAID_SCOPES.every((sc) => cacheMergedScopes.has(sc))}
         contractCoverage={jobContractCoverageByJobId}
         users={users}
         companyName={PORTAL_COMPANY.name}
@@ -5561,6 +5570,18 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
         onOpenLienInstruments={(job) => setLienInstrumentsModal({ job, invoice: null })}
         onOpenEditJob={(jobId) => tryOpenEditJob(jobId, { onSaved: () => void loadJobs() })}
         onOpenCallMode={() => setChaseModalOpen(true)}
+        onOpenAccountsReceivable={() => setBankPaymentsModalOpen(true)}
+        onOpenSessionNotes={(job) => openSessionNotes(job)}
+        onOpenReports={(job) => openJobActivityExpand(job)}
+        onOpenJobThread={(jobId) => openJobThreadFullscreen(jobId)}
+        onOpenPromisedPay={(args) => setPromisedPayModalJob(args)}
+        onFocusJob={(jobId) => {
+          setLegalDesk(null)
+          focusJobOnBoard(jobId)
+        }}
+        onAfterWriteDown={async () => {
+          await loadJobs()
+        }}
       />
       <BankPaymentsModal
         open={bankPaymentsModalOpen}

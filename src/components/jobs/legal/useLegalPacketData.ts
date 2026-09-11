@@ -6,6 +6,7 @@ import {
   buildLegalPacket,
   type LegalAccountSummary,
   type LegalClockSessionLike,
+  type LegalContactEntryLike,
   type LegalContactLike,
   type LegalCustomerLike,
   type LegalPacket,
@@ -34,38 +35,22 @@ export type LegalPacketData = {
   reload: () => void
 }
 
-type ClockSessionRow = {
-  job_ledger_id: string | null
-  work_date: string
-  clocked_in_at: string
-  clocked_out_at: string | null
-  clock_in_lat: number | null
-  approved_at: string | null
-  rejected_at: string | null
-  revoked_at: string | null
-}
-
-type ReportRow = {
-  created_at: string
-  created_by_name: string | null
-  template_name: string | null
-  reported_at_lat: number | null
-}
-
-type ThreadNoteRow = {
-  job_id: string
-  body: string
-  created_at: string
-  author: { name: string | null } | null
-}
+type ClockSessionRow = { job_ledger_id: string | null; work_date: string; clocked_in_at: string; clocked_out_at: string | null; clock_in_lat: number | null; approved_at: string | null; rejected_at: string | null; revoked_at: string | null }
+type ReportRow = { created_at: string; created_by_name: string | null; template_name: string | null; reported_at_lat: number | null }
+type ThreadNoteRow = { job_id: string; body: string; created_at: string; author: { name: string | null } | null }
+type ContactEntryRow = { id: string; contact_date: string; contact_method: string | null; details: string | null; created_by: string | null }
 
 /** PostgREST caps a plain select at 1,000 rows; Collections accounts sit far under it, and the cap is named here so a runaway one is a known shape. */
 const ROW_CAP = 1000
+
+const ADDRESS_COLUMNS =
+  'id, customer_id, address, county, county_source, legal_description, owner_mode, owner_name, owner_company, owner_mailing_address, parcel_id, parcel_source, parcel_tax_year, parcel_looked_up_at, homestead, property_kind, is_primary, note, sequence_order, created_at, updated_at'
 
 export function useLegalPacketData(
   account: LegalAccountSummary | null,
   users: ReadonlyArray<{ id: string; name: string | null }>,
   enabled: boolean,
+  holdOverrides?: Readonly<Record<string, boolean>>,
 ): LegalPacketData {
   const [packet, setPacket] = useState<LegalPacket | null>(null)
   const [loading, setLoading] = useState(false)
@@ -75,6 +60,7 @@ export function useLegalPacketData(
 
   const accountKey = account?.key ?? null
   const jobIdsKey = account ? account.jobs.map((j) => j.id).sort().join(',') : ''
+  const overridesKey = JSON.stringify(holdOverrides ?? {})
 
   useEffect(() => {
     if (!enabled || !account) {
@@ -94,202 +80,91 @@ export function useLegalPacketData(
         return fallback
       }
     }
+    const userName = (id: string | null) => (id ? (users.find((u) => u.id === id)?.name ?? null) : null)
 
     setLoading(true)
     void (async () => {
       const todayYmd = todayYmdInAppTz()
-      const [customer, contacts, addresses, contracts, estimates, demandLetters, lienFilings, promises, outcomes, touches, reports, sessions, notes] =
+      const [customer, contacts, contactEntries, addresses, contracts, estimates, demandLetters, lienFilings, promises, outcomes, touches, reports, sessions, notes] =
         await Promise.all([
-          src<LegalCustomerLike>(
-            'customer record',
-            async () => {
-              if (!customerId) return null
-              const row = await withSupabaseRetry<LegalCustomerLike>(
-                () =>
-                  supabase
-                    .from('customers')
-                    .select('id, name, address, contact_info, payment_terms, payment_terms_note')
-                    .eq('id', customerId)
-                    .maybeSingle(),
-                'load legal packet customer',
-              )
-              return row ?? null
-            },
-            null,
-          ),
-          src<LegalContactLike[]>(
-            'customer contacts',
-            async () => {
-              if (!customerId) return []
-              return (
-                (await withSupabaseRetry<LegalContactLike[]>(
-                  () => supabase.from('customer_contact_persons').select('name, email, phone, note').eq('customer_id', customerId).order('created_at'),
-                  'load legal packet contacts',
-                )) ?? []
-              )
-            },
-            [],
-          ),
-          src<CustomerAddressRow[]>(
-            'property record',
-            async () => {
-              if (!customerId) return []
-              return (
-                (await withSupabaseRetry<CustomerAddressRow[]>(
-                  () => supabase.from('customer_addresses').select('*').eq('customer_id', customerId).order('sequence_order'),
-                  'load legal packet property record',
-                )) ?? []
-              )
-            },
-            [],
-          ),
-          src<JobContractRowLike[]>(
-            'contracts',
-            async () =>
-              (await withSupabaseRetry<JobContractRowLike[]>(
-                () =>
-                  supabase
-                    .from('job_contracts')
-                    .select(
-                      'id, job_id, status, revision, recipient_email, sent_at, last_sent_at, view_count, signed_at, signer_printed_name, signer_mode, voided_at, signed_document_url',
-                    )
-                    .in('job_id', jobIds)
-                    .is('voided_at', null),
-                'load legal packet contracts',
-              )) ?? [],
-            [],
-          ),
-          src<SignedEstimateLike[]>(
-            'accepted estimates',
-            async () =>
-              (await withSupabaseRetry<SignedEstimateLike[]>(
-                () =>
-                  supabase
-                    .from('estimates')
-                    .select('id, job_ledger_id, bid_id, doc_kind, status, acceptor_consented_at, acceptor_printed_name, estimate_number, total_cents')
-                    .in('job_ledger_id', jobIds)
-                    .eq('status', 'customer_accepted')
-                    .not('acceptor_consented_at', 'is', null),
-                'load legal packet accepted estimates',
-              )) ?? [],
-            [],
-          ),
-          src<JobDemandLetterRow[]>(
-            'demand letters',
-            async () =>
-              (await withSupabaseRetry<JobDemandLetterRow[]>(
-                () => supabase.from('job_demand_letters').select('*').in('job_id', jobIds),
-                'load legal packet demand letters',
-              )) ?? [],
-            [],
-          ),
-          src<JobLienFilingRow[]>(
-            'lien filings',
-            async () =>
-              (await withSupabaseRetry<JobLienFilingRow[]>(
-                () => supabase.from('job_lien_filings').select('*').in('job_id', jobIds),
-                'load legal packet lien filings',
-              )) ?? [],
-            [],
-          ),
-          src(
-            'payment promises',
-            async () => {
-              const { data, error } = await supabase.rpc('list_job_payment_promises' as never)
-              if (error) throw error
-              return (parsePaymentPromisesRpc(data as unknown) ?? []).filter((p) => jobIds.includes(p.jobId))
-            },
-            [],
-          ),
-          src(
-            'promise record',
-            async () => {
-              const { data, error } = await supabase.rpc('list_payment_promise_records' as never)
-              if (error) throw error
-              const records = parsePromiseRecordsRpc(data as unknown) ?? []
-              return classifyPromises(records, todayYmd).filter((o) => jobIds.includes(o.jobId))
-            },
-            [],
-          ),
-          src(
-            'collection calls',
-            async () => {
-              const { data, error } = await supabase.rpc('list_payment_chase_touches' as never)
-              if (error) throw error
-              return parseChaseTouchesRpc(data as unknown) ?? []
-            },
-            [],
-          ),
-          src<LegalReportLike[]>(
-            'field reports',
-            async () => {
-              const lists = await Promise.all(
-                jobIds.map(async (jobId) => {
-                  const { data, error } = await supabase.rpc('list_reports_for_job_ledger', { p_job_id: jobId })
-                  if (error) throw error
-                  return ((data ?? []) as ReportRow[]).map(
-                    (r): LegalReportLike => ({
-                      jobId,
-                      createdAt: r.created_at,
-                      authorName: r.created_by_name ?? '',
-                      templateName: r.template_name ?? '',
-                      hasGps: r.reported_at_lat != null,
-                    }),
-                  )
-                }),
-              )
-              return lists.flat()
-            },
-            [],
-          ),
-          src<LegalClockSessionLike[]>(
-            'clock sessions',
-            async () => {
-              const rows =
-                (await withSupabaseRetry<ClockSessionRow[]>(
-                  () =>
-                    supabase
-                      .from('clock_sessions')
-                      .select('job_ledger_id, work_date, clocked_in_at, clocked_out_at, clock_in_lat, approved_at, rejected_at, revoked_at')
-                      .in('job_ledger_id', jobIds)
-                      .order('work_date')
-                      .limit(ROW_CAP),
-                  'load legal packet clock sessions',
-                )) ?? []
-              return rows
-                .filter((r) => r.job_ledger_id)
-                .map(
-                  (r): LegalClockSessionLike => ({
-                    jobId: r.job_ledger_id as string,
-                    workDate: r.work_date,
-                    clockedInAt: r.clocked_in_at,
-                    clockedOutAt: r.clocked_out_at,
-                    hasGps: r.clock_in_lat != null,
-                    approved: r.approved_at != null,
-                    disqualified: r.rejected_at != null || r.revoked_at != null,
-                  }),
-                )
-            },
-            [],
-          ),
-          src<LegalThreadNoteLike[]>(
-            'job notes',
-            async () => {
-              const rows =
-                (await withSupabaseRetry<ThreadNoteRow[]>(
-                  () =>
-                    supabase
-                      .from('jobs_ledger_thread_notes')
-                      .select('job_id, body, created_at, author:users!jobs_ledger_thread_notes_author_user_id_fkey(name)')
-                      .in('job_id', jobIds)
-                      .order('created_at', { ascending: false })
-                      .limit(ROW_CAP),
-                  'load legal packet job notes',
-                )) ?? []
-              return rows.map((r): LegalThreadNoteLike => ({ jobId: r.job_id, body: r.body, createdAt: r.created_at, authorName: r.author?.name ?? null }))
-            },
-            [],
-          ),
+          src<LegalCustomerLike>('customer record', async () => {
+            if (!customerId) return null
+            const row = await withSupabaseRetry<LegalCustomerLike>(
+              () => supabase.from('customers').select('id, name, address, contact_info, customer_type, payment_terms, payment_terms_note').eq('id', customerId).maybeSingle(),
+              'load legal packet customer',
+            )
+            return row ?? null
+          }, null),
+          src<LegalContactLike[]>('customer contacts', async () => {
+            if (!customerId) return []
+            return (await withSupabaseRetry<LegalContactLike[]>(() => supabase.from('customer_contact_persons').select('name, email, phone, note').eq('customer_id', customerId).order('created_at'), 'load legal packet contacts')) ?? []
+          }, []),
+          src<LegalContactEntryLike[]>('contact history', async () => {
+            if (!customerId) return []
+            const rows = (await withSupabaseRetry<ContactEntryRow[]>(
+              () => supabase.from('customer_contacts').select('id, contact_date, contact_method, details, created_by').eq('customer_id', customerId).order('contact_date').limit(ROW_CAP),
+              'load legal packet contact history',
+            )) ?? []
+            return rows.map((r): LegalContactEntryLike => ({ id: r.id, ymd: String(r.contact_date).slice(0, 10), method: r.contact_method, by: userName(r.created_by), text: (r.details ?? '').trim() }))
+          }, []),
+          src<CustomerAddressRow[]>('property record', async () => {
+            if (!customerId) return []
+            const rows = (await withSupabaseRetry<unknown[]>(() => supabase.from('customer_addresses').select(ADDRESS_COLUMNS).eq('customer_id', customerId).order('sequence_order'), 'load legal packet property record')) ?? []
+            return rows as CustomerAddressRow[]
+          }, []),
+          src<JobContractRowLike[]>('contracts', async () =>
+            (await withSupabaseRetry<JobContractRowLike[]>(
+              () => supabase.from('job_contracts').select('id, job_id, status, revision, recipient_email, sent_at, last_sent_at, view_count, signed_at, signer_printed_name, signer_mode, voided_at, signed_document_url').in('job_id', jobIds).is('voided_at', null),
+              'load legal packet contracts',
+            )) ?? [], []),
+          src<SignedEstimateLike[]>('accepted estimates', async () =>
+            (await withSupabaseRetry<SignedEstimateLike[]>(
+              () => supabase.from('estimates').select('id, job_ledger_id, bid_id, doc_kind, status, acceptor_consented_at, acceptor_printed_name, estimate_number, total_cents').in('job_ledger_id', jobIds).eq('status', 'customer_accepted').not('acceptor_consented_at', 'is', null),
+              'load legal packet accepted estimates',
+            )) ?? [], []),
+          src<JobDemandLetterRow[]>('demand letters', async () => (await withSupabaseRetry<JobDemandLetterRow[]>(() => supabase.from('job_demand_letters').select('*').in('job_id', jobIds), 'load legal packet demand letters')) ?? [], []),
+          src<JobLienFilingRow[]>('lien filings', async () => (await withSupabaseRetry<JobLienFilingRow[]>(() => supabase.from('job_lien_filings').select('*').in('job_id', jobIds), 'load legal packet lien filings')) ?? [], []),
+          src('payment promises', async () => {
+            const { data, error } = await supabase.rpc('list_job_payment_promises' as never)
+            if (error) throw error
+            return (parsePaymentPromisesRpc(data as unknown) ?? []).filter((p) => jobIds.includes(p.jobId))
+          }, []),
+          src('promise record', async () => {
+            const { data, error } = await supabase.rpc('list_payment_promise_records' as never)
+            if (error) throw error
+            return classifyPromises(parsePromiseRecordsRpc(data as unknown) ?? [], todayYmd).filter((o) => jobIds.includes(o.jobId))
+          }, []),
+          src('collection calls', async () => {
+            const { data, error } = await supabase.rpc('list_payment_chase_touches' as never)
+            if (error) throw error
+            return parseChaseTouchesRpc(data as unknown) ?? []
+          }, []),
+          src<LegalReportLike[]>('field reports', async () => {
+            const lists = await Promise.all(
+              jobIds.map(async (jobId) => {
+                const { data, error } = await supabase.rpc('list_reports_for_job_ledger', { p_job_id: jobId })
+                if (error) throw error
+                return ((data ?? []) as ReportRow[]).map((r): LegalReportLike => ({ jobId, createdAt: r.created_at, authorName: r.created_by_name ?? '', templateName: r.template_name ?? '', hasGps: r.reported_at_lat != null }))
+              }),
+            )
+            return lists.flat()
+          }, []),
+          src<LegalClockSessionLike[]>('clock sessions', async () => {
+            const rows = (await withSupabaseRetry<ClockSessionRow[]>(
+              () => supabase.from('clock_sessions').select('job_ledger_id, work_date, clocked_in_at, clocked_out_at, clock_in_lat, approved_at, rejected_at, revoked_at').in('job_ledger_id', jobIds).order('work_date').limit(ROW_CAP),
+              'load legal packet clock sessions',
+            )) ?? []
+            return rows
+              .filter((r) => r.job_ledger_id)
+              .map((r): LegalClockSessionLike => ({ jobId: r.job_ledger_id as string, workDate: r.work_date, clockedInAt: r.clocked_in_at, clockedOutAt: r.clocked_out_at, hasGps: r.clock_in_lat != null, approved: r.approved_at != null, disqualified: r.rejected_at != null || r.revoked_at != null }))
+          }, []),
+          src<LegalThreadNoteLike[]>('job notes', async () => {
+            const rows = (await withSupabaseRetry<ThreadNoteRow[]>(
+              () => supabase.from('jobs_ledger_thread_notes').select('job_id, body, created_at, author:users!jobs_ledger_thread_notes_author_user_id_fkey(name)').in('job_id', jobIds).order('created_at', { ascending: false }).limit(ROW_CAP),
+              'load legal packet job notes',
+            )) ?? []
+            return rows.map((r): LegalThreadNoteLike => ({ jobId: r.job_id, body: r.body, createdAt: r.created_at, authorName: r.author?.name ?? null }))
+          }, []),
         ])
       if (cancelled) return
       setPacket(
@@ -298,6 +173,7 @@ export function useLegalPacketData(
           account,
           customer,
           contacts,
+          contactEntries,
           addresses,
           contracts,
           signedEstimates: estimates,
@@ -310,6 +186,7 @@ export function useLegalPacketData(
           clockSessions: sessions,
           threadNotes: notes,
           users,
+          holdOverrides: holdOverrides ?? {},
         }),
       )
       setFailed(failures)
@@ -320,7 +197,7 @@ export function useLegalPacketData(
     }
     // `account` is re-derived every render by the caller; key on its identity fields instead.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [enabled, accountKey, jobIdsKey, tick, users])
+  }, [enabled, accountKey, jobIdsKey, tick, users, overridesKey])
 
   return { packet, loading, failed, reload }
 }
