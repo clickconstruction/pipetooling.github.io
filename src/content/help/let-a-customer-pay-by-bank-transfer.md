@@ -20,14 +20,18 @@ The **Show on the customer statement page** box turns the whole card on or off w
 
 ## What the customer sees
 
-Under **Total due** on their statement page sits one quiet line: **Prefer to pay by bank transfer?** Tapping it opens:
+Under **Total due** on their statement page sits one quiet line: **Prefer to pay by bank transfer?** Tapping it opens two halves — the transfer details, and a separate box for checks — so the bank's beneficiary address and the check mailing address are never confused for each other:
 
 :::example The opened card
-**Pay to** Sample Plumbing LLC {{button:outline|Copy}} · **Routing** 0000 0000 0 {{button:outline|Copy}} · **Account** 0000 1234 5678 · Checking {{button:outline|Copy}} · **Bank** Sample Bank — *Your bank may show this name instead of ours — that is correct.*
-
+**BY BANK TRANSFER — ACH (DIRECT DEPOSIT) OR WIRE**
+**Pay to** Sample Plumbing LLC {{button:outline|Copy}} · **Address** 100 Sample St, Kyle, TX 78640 · *for the wire form — not for mail* · **Routing** 000000000 {{button:outline|Copy}} · **Account** 0000 1234 5678 · Business checking {{button:outline|Copy}} · **Bank** Sample Bank
+*Your bank may show this name instead of ours — that is correct.*
 **Memo** `Sam Sample · PLUM 1001, 0994` so we can match your payment the day it lands.
 
-**Checks** All checks must be mailed to 12925 FM 20, Kingsbury, TX 78638. Checks sent anywhere else may need to be re-issued.
+**BY CHECK — MAIL IT HERE** (its own box beside the transfer details, under them on a phone)
+**Payable to** Sample Plumbing LLC
+**Mail to** 12925 FM 20 · Kingsbury, TX 78638
+*Only this address. Checks mailed anywhere else — the bank address is not a mailbox — may need to be re-issued.*
 
 ● **These details never change by email.** If anyone sends you different bank details in our name, call (512) 360-0599 before sending anything.
 :::

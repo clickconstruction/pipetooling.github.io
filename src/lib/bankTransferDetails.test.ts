@@ -7,6 +7,7 @@ import {
   buildBankTransferMemo,
   checkMailingSentence,
   groupDigits,
+  mailingAddressLines,
   parseBankTransferDetails,
   routingNumberProblem,
 } from './bankTransferDetails'
@@ -114,5 +115,13 @@ describe('sentences', () => {
     expect(groupDigits('0000123456')).toBe('0000 1234 56')
     expect(groupDigits('12345')).toBe('12345')
     expect(groupDigits('AB-12')).toBe('AB-12')
+  })
+})
+
+describe('mailingAddressLines', () => {
+  it('splits the street from the city line, and copes with no comma or nothing', () => {
+    expect(mailingAddressLines('12925 FM 20, Kingsbury, TX 78638')).toEqual(['12925 FM 20', 'Kingsbury, TX 78638'])
+    expect(mailingAddressLines('PO Box 9')).toEqual(['PO Box 9'])
+    expect(mailingAddressLines('  ')).toEqual([])
   })
 })
