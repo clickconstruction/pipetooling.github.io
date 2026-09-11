@@ -9,6 +9,7 @@ import { relativeTimeFrom } from '../../lib/twinConsoleDisplay'
 // The two operator prompts are markdown files in the repo — the source of truth — copied whole.
 import desktopKickoffDoc from '../../../docs/twins/kickoffs/desktop-operator.md?raw'
 import shadowOperatorPrompt from '../../../docs/twins/kickoffs/shadow-operator.md?raw'
+import { usePriceMatrixRequests } from '../../hooks/usePriceMatrixRequests'
 import { TwinOperatorQuestionsCard } from './TwinOperatorQuestionsCard'
 import { TwinOwnerMemoCard } from './TwinOwnerMemoCard'
 import { TwinRunsLedger } from './TwinRunsLedger'
@@ -41,6 +42,8 @@ export function BidsRobotConsoleTab({ bids, twinBidBySourceId, onOpenQueue }: Pr
   const { showToast } = useToastContext()
   const [openPreview, setOpenPreview] = useState<'setup' | 'kickoff' | 'handoff' | null>(null)
   const [fleet, setFleet] = useState<{ twins: TwinRow[]; creds: CredRow[] } | null>(null)
+  // Price Matrix PR 2: the pricing robot's queue, counted beside the bid robots'.
+  const { requests: matrixQueued } = usePriceMatrixRequests({ enabled: true, statuses: ['queued', 'working', 'blocked'] })
 
   const connectorUrl = useMemo(() => twinMcpConnectorUrl(import.meta.env.VITE_SUPABASE_URL), [])
   const setupCommand = useMemo(() => buildDesktopSetupCommand({ connectorUrl }), [connectorUrl])
@@ -191,12 +194,15 @@ export function BidsRobotConsoleTab({ bids, twinBidBySourceId, onOpenQueue }: Pr
           <span style={{ ...CHIP, background: 'var(--bg-amber-tint)', color: 'var(--text-amber-800)' }} title="Robot-able live bids nobody has asked about">
             Ready · {queue.ready.length}
           </span>
+          <span style={{ ...CHIP, background: 'var(--bg-violet-100)', color: TWIN_VIOLET }} title="Price-matrix requests waiting for the pricing robot (Bids → Pricing → Price it with the robot)">
+            Price matrices · {matrixQueued.length}
+          </span>
           <button type="button" style={{ ...BTN_PRIMARY, background: '#3b82f6', marginLeft: 'auto' }} onClick={onOpenQueue} title="Every robot-able bid, requested ones first, plus the backtest candidates grouped by the axis whose gate they would feed">
             Open the queue
           </button>
         </div>
         <p style={{ ...MUTED, margin: '0.35rem 0 0' }}>
-          Front-of-the-line requests first, then every robot-able live bid, then the backtest candidates by axis. Same rule as the Bid Board icons.
+          Front-of-the-line requests first, then every robot-able live bid, then the backtest candidates by axis. Same rule as the Bid Board icons. Price-matrix requests sit in their own section — the pricing robot's queue, not the bid robots'.
         </p>
       </div>
 

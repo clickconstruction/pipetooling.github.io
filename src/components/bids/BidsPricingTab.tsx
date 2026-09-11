@@ -55,10 +55,14 @@ import { bidPackageLabel } from '../../lib/bidPackageLabel'
 import { SpecSectionAuditModal } from './SpecSectionAuditModal'
 import { PrepareFixtureCopyModal } from './PrepareFixtureCopyModal'
 import { PlugInQuotesModal } from './PlugInQuotesModal'
+import { PriceWithRobotModal } from './PriceWithRobotModal'
+import { usePriceMatrixRequests } from '../../hooks/usePriceMatrixRequests'
+import { derivePricingChip, type RobotChip } from '../../lib/rfq/priceMatrixRequest'
+import type { SupabaseClient } from '@supabase/supabase-js'
 import { QuoteCompareModal } from './QuoteCompareModal'
 import { RfqDeskModal } from './RfqDeskModal'
 import { RfqComposeModal } from './RfqComposeModal'
-import { deriveRfqChip, type DeskRfq } from '../../lib/rfq/rfqDesk'
+import { type DeskRfq } from '../../lib/rfq/rfqDesk'
 import { AdoptBidModal } from './AdoptBidModal'
 import { PricingShareMenu } from './PricingShareMenu'
 import {
@@ -729,6 +733,8 @@ export function BidsPricingTab({
   // RFQ Phase 1 (v2.2630, docs/SUPPLY_HOUSE_RFQ_PLAN.md): plug in supply house
   // replies and compare them. Cost-side data — the same roles that can Share.
   const [plugInQuoteOpen, setPlugInQuoteOpen] = useState(false)
+  // Price Matrix PR 2: the robot door and its status sheet (PriceWithRobotModal).
+  const [priceWithRobotOpen, setPriceWithRobotOpen] = useState(false)
   const [quotesCompareOpen, setQuotesCompareOpen] = useState(false)
   const [quoteCount, setQuoteCount] = useState(0)
   const [quoteNonce, setQuoteNonce] = useState(0)
@@ -788,7 +794,31 @@ export function BidsPricingTab({
     }
   }, [selectedBidForPricing?.id, canPackageAndSendBidPricing, quoteNonce])
   const [openRfqHouseIds, setOpenRfqHouseIds] = useState<Set<string>>(new Set())
-  const rfqChip = deriveRfqChip(deskRfqs, quoteCount)
+  // Price Matrix PR 2: an open robot request wins the chip (queued / working /
+  // blocked / ready); once reviewed, the RFQ chip is back. The table may not be
+  // in the schema cache yet (client ahead of the migration) — then the door
+  // renders disabled and the chip ignores the robot.
+  const {
+    requests: priceMatrixRequests,
+    supported: priceMatrixSupported,
+    reload: reloadPriceMatrixRequests,
+  } = usePriceMatrixRequests({ enabled: canPackageAndSendBidPricing && !!selectedBidForPricing?.id, bidId: selectedBidForPricing?.id ?? null, nonce: quoteNonce })
+  const rfqChip = derivePricingChip(deskRfqs, quoteCount, priceMatrixRequests)
+  const activePriceMatrixRequest = rfqChip.kind === 'robot' ? (priceMatrixRequests.find((r) => r.id === rfqChip.requestId) ?? null) : null
+  const openRobotChip = async (chip: RobotChip) => {
+    if (chip.status === 'ready') {
+      // Opening the matrix is the review — the chip goes back to the RFQ states.
+      await (supabase as unknown as SupabaseClient)
+        .from('bid_price_matrix_requests')
+        .update({ reviewed_at: new Date().toISOString() })
+        .eq('id', chip.requestId)
+        .then(() => {}, () => {})
+      reloadPriceMatrixRequests()
+      setQuotesCompareOpen(true)
+      return
+    }
+    setPriceWithRobotOpen(true)
+  }
 
   // Deep link from the dashboard's Division 22 Needs You item (v2.2627):
   // /bids?tab=pricing&d22audit=1 opens the audit, then strips the param so a
@@ -2672,20 +2702,33 @@ export function BidsPricingTab({
                   <button
                     type="button"
                     id="pricing-price-requests"
-                    onClick={() => (rfqChip.kind === 'desk' ? setRfqDeskOpen(true) : setQuotesCompareOpen(true))}
-                    title={rfqChip.kind === 'desk' ? 'Open the price-request desk' : 'Compare supply house quotes on this bid'}
+                    onClick={() => {
+                      if (rfqChip.kind === 'robot') void openRobotChip(rfqChip)
+                      else if (rfqChip.kind === 'desk') setRfqDeskOpen(true)
+                      else setQuotesCompareOpen(true)
+                    }}
+                    title={rfqChip.kind === 'robot' ? (rfqChip.status === 'ready' ? 'The robot’s matrix is ready — open the compare' : 'Where the robot is on this bid') : rfqChip.kind === 'desk' ? 'Open the price-request desk' : 'Compare supply house quotes on this bid'}
                     style={{
                       padding: '0.45rem 0.8rem',
-                      background: rfqChip.kind === 'desk' && rfqChip.tone === 'amber' ? 'var(--bg-yellow-tint)' : 'var(--surface)',
+                      background:
+                        rfqChip.kind === 'robot'
+                          ? rfqChip.tone === 'green'
+                            ? 'var(--bg-green-tint)'
+                            : rfqChip.tone === 'amber'
+                              ? 'var(--bg-yellow-tint)'
+                              : 'var(--bg-blue-tint)'
+                          : rfqChip.kind === 'desk' && rfqChip.tone === 'amber'
+                            ? 'var(--bg-yellow-tint)'
+                            : 'var(--surface)',
                       color:
-                        rfqChip.kind === 'quotes'
+                        rfqChip.kind === 'quotes' || (rfqChip.kind === 'robot' && rfqChip.tone === 'blue')
                           ? 'var(--text-blue-500)'
                           : rfqChip.tone === 'red'
                             ? '#ef4444'
                             : rfqChip.tone === 'amber'
                               ? 'var(--text-amber-700)'
                               : '#15803d',
-                      border: `1px solid ${rfqChip.kind === 'quotes' ? '#3b82f6' : rfqChip.tone === 'red' ? '#ef4444' : rfqChip.tone === 'amber' ? '#f59e0b' : '#16a34a'}`,
+                      border: `1px solid ${rfqChip.kind === 'quotes' || (rfqChip.kind === 'robot' && rfqChip.tone === 'blue') ? '#3b82f6' : rfqChip.tone === 'red' ? '#ef4444' : rfqChip.tone === 'amber' ? '#f59e0b' : '#16a34a'}`,
                       borderRadius: 999,
                       cursor: 'pointer',
                       font: 'inherit',
@@ -2717,6 +2760,9 @@ export function BidsPricingTab({
                   onCopyFixtures={() => setPrepareCopyOpen(true)}
                   onOpenD22Audit={canPackageAndSendBidPricing ? () => setD22AuditOpen(true) : undefined}
                   onPlugInQuote={canPackageAndSendBidPricing ? () => setPlugInQuoteOpen(true) : undefined}
+                onPriceWithRobot={canPackageAndSendBidPricing ? () => setPriceWithRobotOpen(true) : undefined}
+                robotDisabled={!priceMatrixSupported || pricingCountRows.length === 0}
+                robotTitle={!priceMatrixSupported ? 'The robot queue switches on with the next database update' : 'Count some fixtures first — the robot prices your count rows'}
                 />
                 {!narrowViewport640 ? (
                   <button
@@ -5515,6 +5561,27 @@ export function BidsPricingTab({
           bidVersionId={selectedPricingVersionId ?? null}
           bidLabel={bidPackageLabel(selectedBidForPricing, ledgerPrefixMap)}
           rows={pricingCountRows.map((r) => ({ id: r.id, fixture: r.fixture, count: r.count, unit: r.unit }))}
+        />
+      ) : null}
+
+      {selectedBidForPricing ? (
+        <PriceWithRobotModal
+          open={priceWithRobotOpen}
+          onClose={() => setPriceWithRobotOpen(false)}
+          bidId={selectedBidForPricing.id}
+          bidVersionId={selectedPricingVersionId ?? null}
+          bidLabel={bidPackageLabel(selectedBidForPricing, ledgerPrefixMap)}
+          rows={pricingCountRows.map((r) => ({ id: r.id, fixture: r.fixture, count: r.count, unit: r.unit }))}
+          activeRequest={activePriceMatrixRequest}
+          supported={priceMatrixSupported}
+          onChanged={() => {
+            reloadPriceMatrixRequests()
+            setQuoteNonce((n) => n + 1)
+          }}
+          onOpenCompare={() => {
+            setPriceWithRobotOpen(false)
+            if (activePriceMatrixRequest && rfqChip.kind === 'robot') void openRobotChip(rfqChip)
+          }}
         />
       ) : null}
 

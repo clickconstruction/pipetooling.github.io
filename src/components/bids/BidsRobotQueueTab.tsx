@@ -17,6 +17,9 @@ import { buildAxisCards, type RunScoreRow } from '../../lib/bids/confidenceBoard
 import type { ShadowRunRow } from '../../lib/bids/shadowStory'
 import { todayYmdInAppTz } from '../../utils/dateUtils'
 import { BID_UPDATE_NOT_APPLIED_MESSAGE, bidUpdateRefused } from '../../lib/bids/updateGuard'
+import { usePriceMatrixRequests, type PriceMatrixRequestWithBid } from '../../hooks/usePriceMatrixRequests'
+import { useUserDisplayNames } from '../../hooks/useUserDisplayNames'
+import { buildPricerRequestPrompt, requestAgeLabel } from '../../lib/rfq/priceMatrixRequest'
 
 // twin_run_scores / bids.backtest_axis predate the generated types
 // (BidsAuditsTab pattern) — untyped until the post-push gen-types run.
@@ -61,6 +64,24 @@ export function BidsRobotQueueTab({ bids, twinBidBySourceId, referencePresence, 
   }, [bids, twinBidBySourceId])
   const [copiedBidId, setCopiedBidId] = useState<string | null>(null)
   const [requesterNames, setRequesterNames] = useState<Record<string, string>>({})
+
+  // Price Matrix PR 2: the pricing robot's list — a different seat, a different
+  // prompt. Open requests across every bid, newest ask last (oldest goes first).
+  const { requests: matrixRequests } = usePriceMatrixRequests({ enabled: true, statuses: ['queued', 'working', 'blocked', 'ready'] })
+  const matrixRequesterNames = useUserDisplayNames(matrixRequests.map((r) => r.requested_by))
+  const [copiedRequestId, setCopiedRequestId] = useState<string | null>(null)
+  const copyPricerPrompt = async (r: PriceMatrixRequestWithBid) => {
+    const who = r.requested_by ? (matrixRequesterNames[r.requested_by] ?? null) : null
+    const text = buildPricerRequestPrompt(r, r.bid ?? { bid_number: null, project_name: null }, who)
+    try {
+      await navigator.clipboard.writeText(text)
+      setCopiedRequestId(r.id)
+      showToast('Pricer prompt copied — paste it into a twin-mcp chat as twin-pricer-1.', 'success')
+      window.setTimeout(() => setCopiedRequestId((cur) => (cur === r.id ? null : cur)), 2000)
+    } catch {
+      showToast('Could not copy — the clipboard is blocked here.', 'error')
+    }
+  }
 
   // Backtest candidates (v2.2594, mockup Variant B): axis demand comes from the
   // same rows the Scoreboard reads, so the two lenses can never disagree.
@@ -273,6 +294,48 @@ export function BidsRobotQueueTab({ bids, twinBidBySourceId, referencePresence, 
         </p>
       ) : (
         <div style={{ marginBottom: '1rem' }}>{queue.requested.map((b) => renderRow(b, true))}</div>
+      )}
+
+      <h4 style={sectionHeadStyle}>
+        <span style={dotStyle('#8b5cf6')} />
+        Price matrices · {matrixRequests.length} — the pricing robot’s list (quotes in the folder, a different seat)
+      </h4>
+      {matrixRequests.length === 0 ? (
+        <p style={{ margin: '0 0 1rem', fontSize: '0.8rem', color: 'var(--text-faint, var(--text-muted))' }}>
+          Nothing queued — an estimator asks from Bids → Pricing → Supply house prices ▾ → Price it with the robot.
+        </p>
+      ) : (
+        <div style={{ marginBottom: '1rem' }}>
+          {[...matrixRequests].sort((a, b) => a.requested_at.localeCompare(b.requested_at)).map((r) => {
+            const bid = bids.find((b) => b.id === r.bid_id) ?? null
+            const who = r.requested_by ? (matrixRequesterNames[r.requested_by] ?? '…') : 'someone'
+            const tone = r.status === 'ready' ? 'var(--text-emerald-800)' : r.status === 'blocked' ? 'var(--text-amber-700)' : 'var(--text-blue-500)'
+            return (
+              <div key={r.id} style={{ ...rowStyle, borderColor: 'var(--border-violet)' }}>
+                <span style={{ color: 'var(--text-blue-500)', fontWeight: 600 }}>b{r.bid?.bid_number ?? bid?.bid_number ?? '?'}</span>
+                <span style={{ fontWeight: 600 }}>{r.bid?.project_name ?? bid?.project_name ?? 'Untitled'}</span>
+                <span style={{ color: tone, fontSize: '0.78rem', fontWeight: 600 }}>{r.status}</span>
+                <span style={{ color: 'var(--text-muted)', fontSize: '0.78rem' }}>
+                  asked by {who} · {requestAgeLabel(r.requested_at, Date.now())} · {r.sources.length} quote link{r.sources.length === 1 ? '' : 's'} · {r.scope.length} rows
+                </span>
+                <span style={{ flex: 1 }} />
+                <button
+                  type="button"
+                  onClick={() => void copyPricerPrompt(r)}
+                  style={r.status === 'queued' ? { ...btnStyle, background: '#8b5cf6', borderColor: '#8b5cf6', color: 'white', fontWeight: 600 } : btnStyle}
+                  title="The pricing kickoff pinned to this request — paste into a Claude Desktop chat on the twin-mcp connector as twin-pricer-1"
+                >
+                  {copiedRequestId === r.id ? 'Copied ✓' : 'Copy pricer prompt'}
+                </button>
+                {bid ? (
+                  <button type="button" onClick={() => onOpenBid(bid)} style={btnStyle}>
+                    Open bid
+                  </button>
+                ) : null}
+              </div>
+            )
+          })}
+        </div>
       )}
 
       <h4 style={sectionHeadStyle}>
