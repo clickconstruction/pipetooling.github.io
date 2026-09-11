@@ -6,7 +6,8 @@
  * `old` (today's HOURS grid) and `new` ("Hours that learn" — the completeness
  * meter and sanity strip, the queue of rows the book could not answer, and the
  * grid with a source chip on every row). The choice is per device and defaults
- * to `old` until retirement.
+ * to `new` (v2.3310 — the owner's call once the refresh's rungs 2–5 landed);
+ * a device that picked Old keeps Old until retirement.
  */
 
 export type LaborView = 'old' | 'new'
@@ -18,17 +19,17 @@ export const LABOR_VIEWS: ReadonlyArray<{ id: LaborView; label: string; title: s
   { id: 'new', label: 'New', title: 'Hours that learn: the rows the book could not answer first, a source on every row, and whether the whole bid makes sense' },
 ]
 
-/** Pure: a stored value → a view; anything unknown (or nothing) is `old`. */
+/** Pure: a stored value → a view; only an explicit `old` is Old — anything else (or nothing) is `new`. */
 export function parseLaborView(raw: string | null | undefined): LaborView {
-  return raw === 'new' ? 'new' : 'old'
+  return raw === 'old' ? 'old' : 'new'
 }
 
-/** Reads the device's remembered view; storage failures fall back to `old`. */
+/** Reads the device's remembered view; storage failures fall back to `new`. */
 export function readStoredLaborView(storage: Pick<Storage, 'getItem'> | null | undefined): LaborView {
   try {
     return parseLaborView(storage?.getItem(LABOR_VIEW_STORAGE_KEY))
   } catch {
-    return 'old'
+    return 'new'
   }
 }
 
