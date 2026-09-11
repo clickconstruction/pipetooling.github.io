@@ -2847,6 +2847,8 @@ If **`stripe_invoice_id`** and **`hosted_invoice_url`** are already set, returns
 
 Body: `{ report_id, to: string[], cc?: string[], subject, email_text, email_html?, pdf_base64, pdf_filename?, pay_url?, certifier_name?, certifier_license?, report_label?, recipient_label? }`. Guards: the row must be readable by the caller; 1–6 valid To, ≤ 6 cc (cc that repeat To are dropped); PDF ≤ 6 M base64 chars; `pay_url` must be https. Success: `{ ok: true, resend_email_id, pdf_path, pdf_version }`. A Resend failure returns 502 with the row unsent; a stamp failure after a successful send returns 500 "open it and check".
 
+**Sample mode** (v2.3338): `{ sample: true, subject, email_text, email_html?, pdf_base64, pdf_filename?, report_label? }` — the caller must be a **dev** (`users.role`, read with the service role); the only recipient is the caller's own login email (the body's `to` is ignored); the subject is forced to start with `[Sample] `; nothing is stored, stamped or posted, only the `email_send_log` line (`email_type: 'test_report'`). Door: Settings → What customers see → Test report (sample) → **✉ Email me** ([`TestReportSampleCard`](../src/components/settings/TestReportSampleCard.tsx) → [`sendTestReportSample`](../src/lib/jobs/sendTestReport.ts) → [`testReportSampleEmail`](../src/lib/jobs/testReportSample.ts)).
+
 **Deploy**: `supabase functions deploy send-test-report`. Bucket (once, out of band): `insert into storage.buckets (id, name, public) values ('job-test-reports', 'job-test-reports', false) on conflict (id) do nothing;` — no client write policies; office reads arrived with v2.3331 (`20260911213000_job_test_report_docs_office_select.sql`) for the Documents page.
 
 ---

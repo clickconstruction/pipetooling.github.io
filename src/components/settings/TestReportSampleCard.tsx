@@ -2,17 +2,38 @@ import { useState } from 'react'
 import { TEST_REPORT_SAMPLE_JOB, TEST_REPORT_SAMPLE_LABELS, testReportSample, type TestReportSampleId } from '../../lib/jobs/testReportSample'
 import { cachedTestReportSettings, fetchTestReportSettings } from '../../lib/jobs/testReportSettings'
 import { buildTestReportPdfBlob } from '../../lib/jobsDocuments/testReportPdf'
+import { sendTestReportSample } from '../../lib/jobs/sendTestReport'
+import { useAuth } from '../../hooks/useAuth'
 import { todayYmdInAppTz } from '../../utils/dateUtils'
 
 /**
  * Settings → What customers see → "Test report (sample)" (v2.3296): the paper
  * the test-report train produces, opened from invented data so the letterhead,
  * the certification block and the pagination get eyes before any job carries
- * one. Nothing here touches the database.
+ * one. Nothing here touches the database. "Email me" (v2.3338) sends the
+ * sample through the real send function to the dev's own address, so the
+ * email, the attachment and the inbox rendering get eyes too.
  */
 export function TestReportSampleCard() {
+  const { user } = useAuth()
   const [busy, setBusy] = useState<TestReportSampleId | null>(null)
+  const [mailing, setMailing] = useState<TestReportSampleId | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [sentNote, setSentNote] = useState<string | null>(null)
+
+  const emailMe = async (id: TestReportSampleId) => {
+    setMailing(id)
+    setError(null)
+    setSentNote(null)
+    try {
+      const settings = await fetchTestReportSettings()
+      const res = await sendTestReportSample(id, settings)
+      if (res.ok) setSentNote(`Sent ${TEST_REPORT_SAMPLE_LABELS[id]} to ${res.sentTo} — check your inbox.`)
+      else setError(res.message)
+    } finally {
+      setMailing(null)
+    }
+  }
 
   const open = async (id: TestReportSampleId) => {
     setBusy(id)
@@ -75,6 +96,31 @@ export function TestReportSampleCard() {
           </button>
         ))}
       </div>
+      <div style={{ flexBasis: '100%', display: 'flex', flexWrap: 'wrap', gap: '0.4rem 0.6rem', alignItems: 'center' }}>
+        <span style={{ fontSize: 12.5, color: 'var(--text-muted)' }}>Email me{user?.email ? ` (${user.email})` : ''} the real send — PDF attached, pay link in the body:</span>
+        {ids.map((id) => (
+          <button
+            key={`mail-${id}`}
+            type="button"
+            disabled={mailing != null || busy != null}
+            onClick={() => void emailMe(id)}
+            style={{
+              border: '1px solid var(--border)',
+              background: 'var(--surface)',
+              color: 'var(--text-strong)',
+              borderRadius: 999,
+              padding: '0.25rem 0.7rem',
+              fontSize: 12,
+              fontWeight: 600,
+              cursor: mailing ? 'wait' : 'pointer',
+              opacity: mailing && mailing !== id ? 0.6 : 1,
+            }}
+          >
+            {mailing === id ? 'Sending…' : `✉ ${TEST_REPORT_SAMPLE_LABELS[id]}`}
+          </button>
+        ))}
+      </div>
+      {sentNote ? <div style={{ flexBasis: '100%', fontSize: 12.5, color: 'var(--text-green-700)' }}>{sentNote}</div> : null}
       {error ? <div style={{ flexBasis: '100%', fontSize: 12.5, color: '#b42318' }}>{error}</div> : null}
     </div>
   )
