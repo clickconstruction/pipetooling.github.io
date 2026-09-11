@@ -29,7 +29,7 @@ A name can be a **proxy**: Tristen's pay goes to Taunya's account with "Tristen"
 
 The third step files every send to staff into a lane:
 
-- {{chip:green|Recorded}} — matched to a payment already on a pay report: the Cash App ID was in the memo, or the same person and amount within a week, or one send equalling two or three recorded splits.
+- {{chip:green|Recorded}} — matched to a payment already on a pay report: the Cash App ID was in the memo, or the same person and amount within a week, or one send equalling two or three recorded splits, or the send's amount written in the payment's memo ("Cashapp 500", "CashApp in 300 and 100") — the way pay split with Less | Additional was noted.
 - {{chip:yellow|To review}} — no recorded payment found. This is the "did I forget?" list, grouped by person, with the note and the Cash App ID on every row.
 - {{chip:gray|Before records began}} — sent before that person had any pay report in the app. Real money, but nothing here to reconcile against.
 - {{chip:gray|Not pay}} — the note says gas, reimbursement, Home Depot and the like.

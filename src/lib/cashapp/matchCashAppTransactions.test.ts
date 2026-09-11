@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { matchCashAppTransactions, summarizeCashAppMatches, type CashAppTxForMatch, type RecordedPaymentForMatch } from './matchCashAppTransactions'
+import { matchCashAppTransactions, memoAmounts, summarizeCashAppMatches, type CashAppTxForMatch, type RecordedPaymentForMatch } from './matchCashAppTransactions'
 
 const tx = (id: string, date: string, amt: number, note: string, person: string | null, alt?: string[]): CashAppTxForMatch => ({
   id,
@@ -62,12 +62,37 @@ describe('matchCashAppTransactions', () => {
     expect(results[1]).toMatchObject({ outcome: 'before_records', personName: null, firstReportStart: '2026-03-01' })
   })
 
+  it('rule e: a number in the payment memo equals the send; one memo can back two sends; the payment stays available for rule b', () => {
+    const { results } = matchCashAppTransactions(
+      [
+        tx('m1', '2026-04-06', 1809.2, 'advance', 'Malachi'),
+        tx('d1', '2026-05-07', 100, 'Last week', 'Darren'),
+        tx('d2', '2026-05-08', 300, 'Week', 'Darren'),
+        tx('d3', '2026-05-09', 300, 'Week', 'Darren'),
+      ],
+      [pay('pm', 'Malachi', 2309.2, '2026-04-06', '-500 for motorcycle 1809.20 paid via cashapp'), pay('pd', 'Darren', 400, '2026-05-10', 'CashApp in 300 and 100')],
+    )
+    expect(results[0]).toMatchObject({ outcome: 'matched', rule: 'memo', paymentIds: ['pm'] })
+    expect(results[1]).toMatchObject({ outcome: 'matched', rule: 'memo', paymentIds: ['pd'] })
+    expect(results[2]).toMatchObject({ outcome: 'matched', rule: 'memo', paymentIds: ['pd'] })
+    expect(results[3]).toMatchObject({ outcome: 'unmatched' })
+  })
+
+  it('memoAmounts reads dollar-looking numbers and ignores Cash App ids', () => {
+    expect(memoAmounts('Cashapp 500')).toEqual([500])
+    expect(memoAmounts('CashApp in 300 and 100')).toEqual([300, 100])
+    expect(memoAmounts('-500 for motorcycle 1809.20 paid via cashapp')).toEqual([500, 1809.2])
+    expect(memoAmounts('Paid out of 1,073.94 on cashapp')).toEqual([1073.94])
+    expect(memoAmounts('Cash App #D-19JXG5RJ "Week"')).toEqual([])
+    expect(memoAmounts(null)).toEqual([])
+  })
+
   it('summarizes a batch', () => {
     const { results } = matchCashAppTransactions(
       [tx('a', '2026-08-22', 500, 'Week', 'Darren'), tx('b', '2026-09-10', 500, 'Advance', 'Malachi'), tx('c', '2026-01-01', 10, 'Week', 'Paige'), tx('d', '2026-09-01', 5, 'gas', null)],
       [pay('p', 'Darren', 500, '2026-08-22')],
       { firstReportStartByPerson: { Paige: '2026-03-01' } },
     )
-    expect(summarizeCashAppMatches(results)).toEqual({ matched: 1, byRule: { id: 0, amount: 1, split: 0 }, beforeRecords: 1, unmatched: 2, unmatchedByKind: { pay: 0, advance: 1, expense: 1 }, unknownPerson: 1 })
+    expect(summarizeCashAppMatches(results)).toEqual({ matched: 1, byRule: { id: 0, amount: 1, split: 0, memo: 0 }, beforeRecords: 1, unmatched: 2, unmatchedByKind: { pay: 0, advance: 1, expense: 1 }, unknownPerson: 1 })
   })
 })
