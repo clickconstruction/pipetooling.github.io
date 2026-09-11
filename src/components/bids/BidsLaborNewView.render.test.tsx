@@ -151,3 +151,24 @@ describe('BidsLaborNewView · the crew rate and the bottom line (v2.3294)', () =
     expect(screen.getByText('no labor rate')).toBeTruthy()
   })
 })
+
+describe('BidsLaborNewView · calibration (v2.3307)', () => {
+  it('says no linked jobs yet on a book without evidence, and reads the multiplier off linked finished jobs', () => {
+    renderView({ appliedBookVersionId: 'book-1', calibrationJobs: [], calibrationLoaded: true })
+    expect(within(screen.getByTestId('labor-book-vs-jobs')).getByText('no linked jobs yet')).toBeTruthy()
+  })
+  it('the tile names the multiplier from the jobs that qualify', () => {
+    const rowOf = (fixture: string, count: number, h: number) => ({ fixture, count, is_fixed: false, rough_in_hrs_per_unit: h, top_out_hrs_per_unit: 0, trim_set_hrs_per_unit: 0 })
+    renderView({
+      appliedBookVersionId: 'book-1',
+      calibrationLoaded: true,
+      calibrationJobs: [
+        { jobId: 'j1', label: 'J650 ATI', bidId: 'b1', pctDone: 100, fieldDays: 22, actualHours: 118, rows: [rowOf('Toilets', 100, 1)] },
+        { jobId: 'j2', label: 'J1007 SPACEX', bidId: 'b2', pctDone: 31, fieldDays: 3, actualHours: 43, rows: [rowOf('Toilets', 10, 1)] },
+      ],
+    })
+    const tile = screen.getByTestId('labor-book-vs-jobs')
+    expect(within(tile).getByText('×1.18')).toBeTruthy()
+    expect(within(tile).getByText('book runs ×1.18 light · 1 job')).toBeTruthy()
+  })
+})
