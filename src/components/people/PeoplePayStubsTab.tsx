@@ -47,6 +47,7 @@ import {
 import { AmountSmallCents } from '../AmountSmallCents'
 import { UpcomingWeekSessionsModal } from './UpcomingWeekSessionsModal'
 import { UpcomingPayrollModal } from './UpcomingPayrollModal'
+import { bandsByStartIndex, buildPayRunWeekBands } from '../../lib/payRunWeekBands'
 import { PayStubAdditionalModal } from '../pay/PayStubAdditionalModal'
 import { PayStubLessModal } from '../pay/PayStubLessModal'
 import { PayStubDeleteIcon } from '../pay/PayStubDeleteIcon'
@@ -240,6 +241,13 @@ export default function PeoplePayStubsTab({
     [paidSegment, ledgerFilteredPayStubs, ledgerPaidStubIds],
   )
   const ledgerHiddenBySegment = hiddenBySegment(ledgerSegmentCounts, paidSegment)
+
+  // Week bands (v2.3318): a tinted row opens every run of consecutive same-period rows, carrying
+  // the run's subtotal. Rows keep their created order — the band only marks where the week changes.
+  const ledgerWeekBands = useMemo(
+    () => bandsByStartIndex(buildPayRunWeekBands(ledgerVisiblePayStubs, ledgerPaidStubIds)),
+    [ledgerVisiblePayStubs, ledgerPaidStubIds],
+  )
 
   // Local calendar day for the Payment Delay column's days-outstanding math.
   const todayYmd = localYmdFromDate(new Date())
@@ -749,7 +757,41 @@ export default function PeoplePayStubsTab({
                       </tr>
                     </thead>
                     <tbody>
-                      {ledgerVisiblePayStubs.map((stub) => {
+                      {ledgerVisiblePayStubs.flatMap((stub, rowIndex) => {
+                        const band = ledgerWeekBands.get(rowIndex)
+                        const bandRow = band ? (
+                          <tr key={`band:${rowIndex}`}>
+                            <td
+                              colSpan={11}
+                              style={{
+                                padding: '0.3rem 0.75rem',
+                                background: 'var(--bg-subtle)',
+                                borderTop: rowIndex === 0 ? 'none' : '1px solid var(--border)',
+                                borderBottom: '1px solid var(--border)',
+                                fontSize: '0.72rem',
+                                color: 'var(--text-700)',
+                                whiteSpace: 'nowrap',
+                              }}
+                            >
+                              <span style={{ fontWeight: 600, letterSpacing: '0.05em', textTransform: 'uppercase' }}>
+                                {ledgerPayPeriodShortLabel(band.periodStart, band.periodEnd, false)}
+                              </span>
+                              <span style={{ marginLeft: '0.6rem', fontFamily: 'ui-monospace, Menlo, monospace', color: 'var(--text-muted)' }}>
+                                {(() => {
+                                  const w = isoWeekNumberFromGregorianYmd(ymdAddDays(band.periodStart, 4))
+                                  return w === null ? '' : `w${w}`
+                                })()}
+                              </span>
+                              <span style={{ marginLeft: '0.75rem', color: 'var(--text-muted)' }}>
+                                {band.count} report{band.count === 1 ? '' : 's'} · <b style={{ color: 'var(--text-700)', fontVariantNumeric: 'tabular-nums' }}>{band.hours.toFixed(2)} h</b> ·{' '}
+                                <b style={{ color: 'var(--text-700)' }}>
+                                  <AmountSmallCents value={band.gross} />
+                                </b>{' '}
+                                gross · {band.openCount} open
+                              </span>
+                            </td>
+                          </tr>
+                        ) : null
                         const payRows = payStubPaymentsByStubId[stub.id] ?? []
                         const paidSum = sumPayStubPaymentAmounts(payRows)
                         const lessSum = sumPayStubDeductionAmounts(payStubDeductionsByStubId[stub.id] ?? [])
@@ -765,7 +807,7 @@ export default function PeoplePayStubsTab({
                         const paymentDelay = payStubPaymentDelay(stub.period_end, lastPaidAt, todayYmd)
                         const showPayDetail =
                           payRows.length > 0 || Boolean(stub.paid_note?.trim()) || Boolean(stub.paid_at)
-                        return (
+                        const rowEl = (
                         <tr key={stub.id} style={{ borderBottom: '1px solid var(--border)' }}>
                           <td style={{ padding: '0.5rem 0.75rem' }}>
                             <button
@@ -1024,6 +1066,7 @@ export default function PeoplePayStubsTab({
                           </td>
                         </tr>
                         )
+                        return bandRow ? [bandRow, rowEl] : [rowEl]
                       })}
                     </tbody>
                   </table>
