@@ -43,7 +43,7 @@ describe('laborRowHours (sum across stages)', () => {
   })
 })
 
-describe('unit and kind (v2.3289)', () => {
+describe('unit and kind (v2.3291)', () => {
   it('per_100ft reads count ÷ 100 × the stage hours — 719.46 ft of ½" water at 2.5 / 1.5 / 0 per 100 ft', () => {
     const r = laborRow({ count: 719.46, rough_in_hrs_per_unit: 2.5, top_out_hrs_per_unit: 1.5, trim_set_hrs_per_unit: 0, unit: 'per_100ft' })
     expect(laborRowMultiplier(r)).toBeCloseTo(7.1946, 4)

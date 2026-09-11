@@ -868,7 +868,7 @@ export function BidsLaborTab({
       prev.map((r) => {
         if (r.id !== rowId) return r
         const next = { ...r, ...updates }
-        // Old's "fixed" checkbox and the row's kind say the same thing (v2.3289): fixed on → task; fixed off a task → fixture. A sub line stays a sub.
+        // Old's "fixed" checkbox and the row's kind say the same thing (v2.3291): fixed on → task; fixed off a task → fixture. A sub line stays a sub.
         if (updates.is_fixed !== undefined && r.kind !== 'sub') next.kind = updates.is_fixed ? 'task' : 'fixture'
         return next
       })

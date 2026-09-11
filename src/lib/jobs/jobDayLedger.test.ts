@@ -6,6 +6,7 @@ import {
   jobOverheadByMethod,
   serializeJobDayLedger,
   unallocatedJobDayOverhead,
+  jobOverheadPerFieldDaySince,
 } from './jobDayLedger'
 import type { OtherJobsLaborDetailLine } from '../overheadDailyLabor'
 import { ymdAddDays } from '../../utils/dateUtils'
@@ -128,5 +129,18 @@ describe('serialization', () => {
     expect(back.jobs.get('j931')!.days).toBe(l.jobs.get('j931')!.days)
     expect(back.priorHoursByJob.get('j931')).toBe(22.1)
     expect(allocateJobOverheadDayShare(back, 'j904').overheadUsd).toBeCloseTo(allocateJobOverheadDayShare(l, 'j904').overheadUsd, 9)
+  })
+})
+
+describe('jobOverheadPerFieldDaySince (v2.3289)', () => {
+  const line = (ymd: string, jobHours: number, shareUsd: number) => ({ ymd, jobHours, fieldHours: 40, poolUsd: 500, shareUsd })
+  it('averages the share over the worked days on or after the cutoff; carry-only lines add dollars but no day', () => {
+    const lines = [line('2026-05-01', 8, 100), line('2026-06-01', 8, 50), line('2026-06-05', 0, 10), line('2026-06-10', 4, 30)]
+    expect(jobOverheadPerFieldDaySince(lines, '2026-06-01')).toBeCloseTo((50 + 10 + 30) / 2, 9)
+    expect(jobOverheadPerFieldDaySince(lines, '2026-01-01')).toBeCloseTo(190 / 3, 9)
+  })
+  it('null without a worked day in the span', () => {
+    expect(jobOverheadPerFieldDaySince([line('2026-06-05', 0, 10)], '2026-06-01')).toBeNull()
+    expect(jobOverheadPerFieldDaySince([], '2026-06-01')).toBeNull()
   })
 })

@@ -3,12 +3,13 @@ import type { ReleaseNote } from '../../lib/releaseNotes'
 const note: ReleaseNote = {
   version: 'v2.3289',
   date: '2026-09-11',
-  title: 'Bids → Labor: footage rows per 100 ft, tasks and sub lines, and every row says where its hours came from',
-  kind: 'feature',
+  title: 'Costs tab: overhead covers the whole job, and the ledger loads once per hour',
+  kind: 'fix',
   highlights: [
-    'A labor book entry can now read per 100 ft (for pipe rows like "ft of 2IN WASTE") or as a task with fixed hours. Set it on the entry in the Labor book panel; the New view’s queue and Fill from the book carry it onto the row, and the hours come out right on the sheet, the sub-sheet prints and Pricing.',
-    'Each queue row in New names what it is — Fixture, Task · fixed hours, or Sub. A sub’s line is answered without hours: it leaves the "rows need hours" count and points you to Direct costs → Subcontractors.',
-    'Every saved row now records its source (book, alias, typed, robot) and a note — which entry and book, or what was learned on which bid — so the chips in the grid are facts, not guesses. The head gains an Other direct tile summing equipment, permits, subs, waste and other.',
+    'The job window’s Costs tab charged overhead over the last 120 days only, so an older job’s amber band and Burn’s overhead-so-far read lower than Job Summary. It now covers the job from the day office cost begins (Feb 19, 2026), so every job window and Job Summary agree.',
+    'When that floor cuts off part of a job’s history, the chart legend says so: “since Feb 19, 2026, where office cost begins.”',
+    'Burn’s overhead per field day stays a recent rate (the last 120 days), so the projection keeps reflecting how the job runs now.',
+    'The overhead ledger is cached for the session and shared between Job Summary and every job window, so opening several jobs no longer rescans the company’s sessions each time.',
   ],
 }
 

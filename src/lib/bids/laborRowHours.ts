@@ -10,7 +10,7 @@ type CostEstimateLaborRow = Database['public']['Tables']['cost_estimate_labor_ro
  *   unit 'per_100ft'    → count ÷ 100 × the stage hours (footage rows)
  *   otherwise           → count × the stage hours
  *
- * Rows written before v2.3289 have kind 'fixture' and unit 'each', so the old
+ * Rows written before v2.3291 have kind 'fixture' and unit 'each', so the old
  * arithmetic is unchanged for them. The Old view, the sub sheets and Pricing
  * all read through here.
  */

@@ -1,6 +1,6 @@
 SET lock_timeout = '3s';
 
--- Bids → Labor refresh, PR 2 (v2.3289): the data the New view was pretending.
+-- Bids → Labor refresh, PR 2 (v2.3291): the data the New view was pretending.
 --
 --   1. labor_book_entries.unit  ('each' | 'per_100ft')  — footage rows carry labor per 100 ft.
 --      labor_book_entries.kind  ('fixture' | 'task')    — a task is fixed hours, not × count.
@@ -38,7 +38,7 @@ ALTER TABLE public.cost_estimate_labor_rows DROP CONSTRAINT IF EXISTS cost_estim
 ALTER TABLE public.cost_estimate_labor_rows ADD CONSTRAINT cost_estimate_labor_rows_source_check CHECK (source IS NULL OR source IN ('book', 'alias', 'typed', 'robot'));
 COMMENT ON COLUMN public.cost_estimate_labor_rows.kind IS 'fixture: count × hours per unit. task: fixed hours (is_fixed mirrors it). sub: a subcontractor line — no field hours of ours; priced under direct costs.';
 COMMENT ON COLUMN public.cost_estimate_labor_rows.unit IS 'each, or per_100ft for footage rows (hours × count ÷ 100).';
-COMMENT ON COLUMN public.cost_estimate_labor_rows.source IS 'Where the hours came from: book (matched by name), alias (matched by alias or code), typed (a person), robot. NULL = written before v2.3289.';
+COMMENT ON COLUMN public.cost_estimate_labor_rows.source IS 'Where the hours came from: book (matched by name), alias (matched by alias or code), typed (a person), robot. NULL = written before v2.3291.';
 COMMENT ON COLUMN public.cost_estimate_labor_rows.source_note IS 'Free text beside source: the entry and book, or what was learned and where.';
 
 UPDATE public.cost_estimate_labor_rows SET kind = 'task' WHERE is_fixed AND kind = 'fixture';
@@ -61,6 +61,6 @@ UNION ALL
 SELECT 'other'::text,     id, cost_estimate_id, note, rough_in, top_out, trim_set, sequence_order, created_at, updated_at FROM public.cost_estimate_other_rows;
 
 COMMENT ON VIEW public.cost_estimate_direct_costs IS
-  'The five direct-cost tables of a cost estimate (equipment, permit, sub, waste, other) as one list with a kind column (v2.3289). Read-only; write the underlying table. security_invoker — the caller''s RLS applies.';
+  'The five direct-cost tables of a cost estimate (equipment, permit, sub, waste, other) as one list with a kind column (v2.3291). Read-only; write the underlying table. security_invoker — the caller''s RLS applies.';
 
 GRANT SELECT ON public.cost_estimate_direct_costs TO authenticated;

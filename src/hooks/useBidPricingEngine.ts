@@ -588,7 +588,7 @@ export function useBidPricingEngine(deps: UseBidPricingEngineDeps) {
     return (data as FixtureLaborDefault[]) ?? []
   }
 
-  /** What a minted labor row takes from the applied book (v2.3289): hours, how to read them, and where they came from. */
+  /** What a minted labor row takes from the applied book (v2.3291): hours, how to read them, and where they came from. */
   type LaborMintDefault = FixtureLaborDefault & { unit?: LaborUnit; kind?: LaborEntryKind; source?: 'book' | 'alias'; source_note?: string | null }
 
   async function loadCostEstimateLaborRowsAndSync(estimateId: string, countRows: BidCountRow[], defaults: LaborMintDefault[]) {
@@ -615,7 +615,7 @@ export function useBidPricingEngine(deps: UseBidPricingEngineDeps) {
         const def = defaults.find((d) => d.fixture.toLowerCase() === (cr.fixture ?? '').toLowerCase())
         // If not found in primary defaults (labor book), fall back to fixture_labor_defaults
         let hours = { rough_in_hrs: 0, top_out_hrs: 0, trim_set_hrs: 0 }
-        // How the row reads and where its hours came from (v2.3289); a zero row says nothing.
+        // How the row reads and where its hours came from (v2.3291); a zero row says nothing.
         let reading: { unit: LaborUnit; kind: 'fixture' | 'task'; source: 'book' | 'alias' | null; source_note: string | null } = { unit: 'each', kind: 'fixture', source: null, source_note: null }
         if (def) {
           hours = { rough_in_hrs: def.rough_in_hrs, top_out_hrs: def.top_out_hrs, trim_set_hrs: def.trim_set_hrs }

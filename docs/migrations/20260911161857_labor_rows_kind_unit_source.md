@@ -1,4 +1,4 @@
-# 20260911161857_labor_rows_kind_unit_source.sql (2026-09-11, v2.3289)
+# 20260911161857_labor_rows_kind_unit_source.sql (2026-09-11, v2.3291)
 
 The Labor refresh's data rung (PR 2 of `to-dos/bids-labor-refresh/`). Additive, idempotent, no data loss:
 

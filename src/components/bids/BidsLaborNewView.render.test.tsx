@@ -68,7 +68,7 @@ describe('BidsLaborNewView', () => {
     expect(within(queue).getByText('SAWCUTTING')).toBeTruthy()
     expect(within(queue).getAllByLabelText(/^Read .* as$/)).toHaveLength(2)
     expect(within(queue).getAllByRole('button', { name: /^Save/ })).toHaveLength(2)
-    // Each queue row names its kind (v2.3289): Fixture · Task · Sub, Fixture pressed by default.
+    // Each queue row names its kind (v2.3291): Fixture · Task · Sub, Fixture pressed by default.
     expect(within(queue).getAllByRole('group', { name: /is a$/ })).toHaveLength(2)
     expect(within(queue).getAllByRole('button', { name: 'Fixture', pressed: true })).toHaveLength(2)
     expect(within(queue).getAllByRole('button', { name: 'Sub', pressed: false })).toHaveLength(2)
@@ -86,7 +86,7 @@ describe('BidsLaborNewView', () => {
   })
 })
 
-describe('BidsLaborNewView · kinds and units (v2.3289)', () => {
+describe('BidsLaborNewView · kinds and units (v2.3291)', () => {
   it('a sub line is answered without hours, a per-100-ft row says so, and a robot row wears its chip', () => {
     renderView({
       rows: [

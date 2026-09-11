@@ -76,7 +76,7 @@ describe('laborEstimateCompleteness', () => {
   })
 })
 
-describe('sub lines and per-100-ft rows (v2.3289)', () => {
+describe('sub lines and per-100-ft rows (v2.3291)', () => {
   const withSub = [...rows, row('sub', 'Ramirez excavation', 1, [0, 0, 0], false, { kind: 'sub' })]
   it('a sub line is answered without hours: it leaves the count and adds a muted pill', () => {
     const c = laborEstimateCompleteness({ rows: withSub, rateSet: true, materialsSource: 'takeoff' })
