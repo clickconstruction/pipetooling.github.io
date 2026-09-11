@@ -166,6 +166,7 @@ when_to_read:
    - [statement-round-email-dispatch](#statement-round-email-dispatch)
    - [send-hazmat-notice-email](#send-hazmat-notice-email)
    - [send-lien-release-email](#send-lien-release-email)
+   - [send-test-report](#send-test-report)
    - [send-lien-filing-email](#send-lien-filing-email)
    - [send-stripe-invoice](#send-stripe-invoice)
    - [update-collect-payment-stripe-customer-email](#update-collect-payment-stripe-customer-email)
@@ -2812,6 +2813,18 @@ If **`stripe_invoice_id`** and **`hosted_invoice_url`** are already set, returns
 
 ---
 
+### send-test-report
+
+**Purpose** (v2.3301, Test reports PR 3): email a job's hydrostatic / pinpoint / gas **test report** to the GC (or the customer) with the PDF attached and the job's Stripe pay link in the body — the hand-written Gmail the office sent from plumbingtooling.com, as one button. The PDF arrives from the client (jsPDF, [`sendTestReport.ts`](../src/lib/jobs/sendTestReport.ts)); the function **stores the exact bytes** in the private `job-test-reports` bucket as `<job_id>/<report_id>-v<n>.pdf` (a re-send is the next version, never an overwrite), sends through Resend (To + cc + attachment, `email_type: 'test_report'`), stamps the `job_test_reports` row sent (`sent_at/to/cc/by`, `sent_pay_url`, `pdf_path`, `pdf_version`, `certifier_name/license` snapshot), and posts the job activity line. Send surface: the Test report modal's send sheet ([`TestReportSendSheet`](../src/components/jobs/TestReportSendSheet.tsx)); email wording from [`_shared/testReportEmail.ts`](../supabase/functions/_shared/testReportEmail.ts).
+
+**Endpoint**: `POST /functions/v1/send-test-report` · **Authentication**: Bearer JWT, `auth.getUser` in-body, user-scoped client for the row read and the sent stamp (the table's RLS decides who may send — dev / master / assistant-like on a job they reach), `verify_jwt = false` on the gateway (send-physical-invoice-email pattern). Service role for the storage upload only. **Secrets**: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `RESEND_API_KEY`.
+
+Body: `{ report_id, to: string[], cc?: string[], subject, email_text, email_html?, pdf_base64, pdf_filename?, pay_url?, certifier_name?, certifier_license?, report_label?, recipient_label? }`. Guards: the row must be readable by the caller; 1–6 valid To, ≤ 6 cc (cc that repeat To are dropped); PDF ≤ 6 M base64 chars; `pay_url` must be https. Success: `{ ok: true, resend_email_id, pdf_path, pdf_version }`. A Resend failure returns 502 with the row unsent; a stamp failure after a successful send returns 500 "open it and check".
+
+**Deploy**: `supabase functions deploy send-test-report`. Bucket (once, out of band): `insert into storage.buckets (id, name, public) values ('job-test-reports', 'job-test-reports', false) on conflict (id) do nothing;` — no client policies.
+
+---
+
 ### send-lien-release-email
 
 **Purpose** (v2.2621, the lien-signing loop's send leg): email a **signed** lien release to the job's customer with the PDF attached, then stamp the release row **sent** (`sent_to_customer_at`, `sent_channel: 'email'`, `sent_by`). The PDF arrives from the client — the stored `signed.pdf` bytes from the `lien-release-documents` bucket when present, else a regeneration from the row snapshot with the typed signature. Client helper: [`sendLienReleaseEmail.ts`](../src/lib/sendLienReleaseEmail.ts); the send surface is the "Signed — ready to send" inbox lane ([`LienSignatureInboxSection`](../src/components/jobs/LienSignatureInboxSection.tsx)).
@@ -3560,7 +3573,7 @@ Migration **`20270605150000_sync_mercury_transactions_pg_cron.sql`** schedules t
 
 **Endpoint**: `POST /functions/v1/get-mercury-account-balances` (empty JSON body)
 
-**Authentication**: `verify_jwt = false`; in-handler JWT + Banking role gate (`dev` / `master_technician` / `assistant` / `controller` — `ALLOWED_ROLES` mirrors `public.is_banking_staff()`, v2.2920; controller was missing before, so the Balance Sheet cash line 403'd for the one non-dev role the Category Review tab admits).
+**Authentication**: `verify_jwt = false`; in-handler JWT + Banking role gate (`dev` / `master_technician` / `controller` — `ALLOWED_ROLES` mirrors `public.is_banking_staff()`; assistant dropped in v2.3305 when Banking became controller and above; v2.2920 had added controller, which was missing before, so the Balance Sheet cash line 403'd for the one non-dev role the Category Review tab admits).
 
 **Required Secrets**: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `MERCURY_API_KEY`
 
@@ -3586,7 +3599,7 @@ Migration **`20270605150000_sync_mercury_transactions_pg_cron.sql`** schedules t
 
 **Endpoint**: `POST /functions/v1/mercury-reconcile`
 
-**Authentication**: `verify_jwt = false`; in-handler JWT + Banking role gate (`dev` / `master_technician` / `assistant` / `controller` — `ALLOWED_ROLES` mirrors `public.is_banking_staff()`, v2.2920). Existence checks run service-role because `mercury_transactions` SELECT is dev-only.
+**Authentication**: `verify_jwt = false`; in-handler JWT + Banking role gate (`dev` / `master_technician` / `controller` — `ALLOWED_ROLES` mirrors `public.is_banking_staff()`; assistant dropped in v2.3305, Banking is controller and above). Existence checks run service-role because `mercury_transactions` SELECT is dev-only.
 
 **Required Secrets**: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `MERCURY_API_KEY`
 

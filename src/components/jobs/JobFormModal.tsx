@@ -442,6 +442,8 @@ export default function JobFormModal({
   const [projectId, setProjectId] = useState<string | null>(null)
   const [projects, setProjects] = useState<ProjectOption[]>([])
   const [bidId, setBidId] = useState<string | null>(null)
+  /** New job from a bid (v2.3302): snapshot the bid's estimate as the job's budget on save. On by default. */
+  const [carryBidBudget, setCarryBidBudget] = useState(true)
   const [linkedBidSummary, setLinkedBidSummary] = useState<{
     project_name: string | null
     bid_number: string | null
@@ -3519,6 +3521,11 @@ export default function JobFormModal({
         // tell the bid surfaces so the "J#### opened from this bid" chip appears without a reload.
         recordNavClick(authUser?.id, authRole, 'job_created', jobCreatedTelemetryTarget({ bidId, projectId }))
         if (bidId) window.dispatchEvent(new CustomEvent<JobCreatedFromBidDetail>(JOB_CREATED_FROM_BID_EVENT, { detail: { bidId, jobId } }))
+        // v2.3302: the bid's estimate becomes the job's budget (Burn against the bid) — best effort, the job is already saved.
+        if (bidId && carryBidBudget) {
+          const { error: budgetErr } = await supabase.rpc('snapshot_job_budget_from_bid', { p_job_id: jobId, p_bid_id: bidId })
+          if (budgetErr) showToast(`Job saved, but the bid's estimate could not be carried as its budget: ${budgetErr.message}`, 'info')
+        }
         // v2.3143: the Dispatch "open the job" to-do for this bid is done — close it and tell the requester
         // (a role RLS keeps from updating leaves it for the inbox's own sweep).
         if (bidId) void closeOpenJobFromBidRequests({ bidId, hcpNumber: hcpNumber.trim(), userId: authUser?.id, role: authRole, elsewhere: false })
@@ -3756,6 +3763,8 @@ export default function JobFormModal({
           onOpenBidLinkChoice={() => setJobBidLinkChoiceOpen(true)}
           onOpenProjectLinkChoice={() => setJobProjectLinkChoiceOpen(true)}
           nestedOverlayZIndex={JOB_FORM_NESTED_OVERLAY_Z_INDEX}
+          carryBidBudget={mode === 'new' ? carryBidBudget : undefined}
+          onCarryBidBudgetChange={mode === 'new' ? setCarryBidBudget : undefined}
         />
         <JobFormSourceEstimateBanner jobId={editing?.id ?? null} onOverlayOpenChange={setBannerOverlayOpen} />
         </div>

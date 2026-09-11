@@ -74,6 +74,18 @@ export const EMAIL_CATALOG: EmailCatalogEntry[] = [
     variants: ['re-send ("Email again — PDF attached")'],
   },
   {
+    id: 'test_report',
+    name: 'Test report (hydrostatic / pinpoint / gas)',
+    group: 'billing',
+    audience: 'customer',
+    attachment: 'test report PDF',
+    builtWhere: 'client',
+    sender: 'send-test-report',
+    editable: { kind: 'hardcoded' },
+    subjectExample: 'Sewer Pre-Test Hydrostatic Test Report — 112 Seidel St',
+    variants: ['re-send (a new PDF version, the old one kept)'],
+  },
+  {
     id: 'hazmat_notice',
     name: 'Biohazard remediation fee notice',
     group: 'billing',

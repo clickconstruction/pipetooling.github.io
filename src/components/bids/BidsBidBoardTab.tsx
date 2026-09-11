@@ -1,6 +1,7 @@
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { bidBoardJobLinkLabel, type BidBoardJobLink } from '../../lib/bids/bidBoardJobLinks'
+import { BID_ESTIMATE_STATUS_WORDS, isWonOutcome, type BidBoardBudgetChip } from '../../lib/bids/bidBoardBudgetChips'
 import { perGcSentSummary, type GcPacket } from '../../lib/bids/gcPackets'
 import { BidBoardGcLines, gcRowsWorthShowing } from './BidBoardGcRows'
 import type { BidRoomStateSummary } from '../../lib/bids/bidRoomState'
@@ -64,6 +65,10 @@ type BidsBidBoardTabProps = {
   showMap?: boolean
   /** v2.2741: jobs made from this bid's signed proposal (only passed for roles that can open Jobs). */
   jobsByBidId?: Map<string, BidBoardJobLink>
+  /** Won-row chips (v2.3302): the unlinked job matching the bid's value, and the estimate's state. */
+  budgetChips?: ReadonlyMap<string, BidBoardBudgetChip>
+  /** Link a value-matched job to its bid and snapshot the estimate (`snapshot_job_budget_from_bid`); resolves true when it landed. */
+  onLinkJobToBid?: (args: { jobId: string; bidId: string; jobLabel: string; bidLabel: string }) => Promise<boolean>
   ledgerPrefixMap: ReturnType<typeof useLedgerPrefixMap>
   bidPreview: ReturnType<typeof useBidPreview> | null
   sectionOpen: BidBoardSectionOpenState
@@ -185,6 +190,8 @@ export function BidsBidBoardTab({
   showEstimatingHealth = true,
   showMap = true,
   jobsByBidId,
+  budgetChips,
+  onLinkJobToBid,
   ledgerPrefixMap,
   bidPreview,
   sectionOpen,
@@ -727,9 +734,39 @@ export function BidsBidBoardTab({
     if (bid.count_tooling_plans_link) links.push({ href: bid.count_tooling_plans_link, title: 'CountTooling plans', d: BID_BOARD_ICON_PATHS.countTool })
     if (bid.bid_submission_link) links.push({ href: bid.bid_submission_link, title: 'Bid submission', d: BID_BOARD_ICON_PATHS.bidSend })
     const job = jobsByBidId?.get(bid.id) ?? null
-    if (links.length === 0 && !job) return <span style={{ color: 'var(--text-muted)' }}>—</span>
+    const budgetChip = isWonOutcome(bid.outcome) ? (budgetChips?.get(bid.id) ?? null) : null
+    if (links.length === 0 && !job && !budgetChip) return <span style={{ color: 'var(--text-muted)' }}>—</span>
+    const chipBase: React.CSSProperties = { display: 'inline-flex', alignItems: 'center', gap: '0.25rem', padding: '0.1rem 0.45rem', borderRadius: 9999, fontSize: '0.7rem', fontWeight: 700, whiteSpace: 'nowrap', lineHeight: 1.3, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-700)' }
     return (
-      <span style={{ display: 'inline-flex', gap: '0.45rem', alignItems: 'center', justifyContent: 'center' }}>
+      <span style={{ display: 'inline-flex', gap: '0.45rem', alignItems: 'center', justifyContent: 'center', flexWrap: 'wrap' }}>
+        {budgetChip && !job && budgetChip.valueMatch ? (
+          <span style={{ ...chipBase, borderColor: '#f59e0b', color: 'var(--text-amber-700)' }} title={`Job ${bidBoardJobLinkLabel(budgetChip.valueMatch.hcpNumber)} carries this bid's value to the dollar but is not linked to it. Link stamps the job with the bid and snapshots the estimate as its budget.`} data-testid="bid-board-value-match">
+            {bidBoardJobLinkLabel(budgetChip.valueMatch.hcpNumber)} matches by value
+            {onLinkJobToBid ? (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  void onLinkJobToBid({ jobId: budgetChip.valueMatch!.jobId, bidId: bid.id, jobLabel: bidBoardJobLinkLabel(budgetChip.valueMatch!.hcpNumber), bidLabel: bidDisplayName(bid) })
+                }}
+                style={{ background: 'none', border: 'none', padding: 0, color: 'var(--text-blue-700)', cursor: 'pointer', font: 'inherit', fontWeight: 700 }}
+              >
+                Link
+              </button>
+            ) : null}
+          </span>
+        ) : null}
+        {budgetChip ? (
+          budgetChip.estimate.kind === 'none' ? (
+            <Link to={`/bids?bidId=${encodeURIComponent(bid.id)}&tab=labor`} onClick={(e) => e.stopPropagation()} style={{ ...chipBase, borderColor: 'var(--border-red)', color: 'var(--text-red-700)', textDecoration: 'none' }} title="This won bid has no cost estimate — a job made from it burns against an assumed margin. Cost it on the Labor tab." data-testid="bid-board-estimate-chip">
+              no cost estimate · Cost it →
+            </Link>
+          ) : (
+            <span style={{ ...chipBase, borderColor: budgetChip.estimate.kind === 'costed' ? 'var(--border-green)' : '#f59e0b', color: budgetChip.estimate.kind === 'costed' ? 'var(--text-green-700)' : 'var(--text-amber-700)' }} title={budgetChip.estimate.kind === 'costed' ? "The Cost Estimate tab has hours and a labor rate — a linked job's budget reads from it" : 'Hours without a labor rate — set the rate on the Labor tab so the budget carries dollars'} data-testid="bid-board-estimate-chip">
+              {BID_ESTIMATE_STATUS_WORDS[budgetChip.estimate.kind](budgetChip.estimate.hours)}
+            </span>
+          )
+        ) : null}
         {job ? (
           <Link
             to={`/jobs?edit=${job.jobId}`}

@@ -1,7 +1,7 @@
 ---
 title: reconcile the books against bank statements
 category: Office
-roles: dev, master_technician, assistant, controller
+roles: dev, master_technician, controller
 keywords: reconcile, reconciliation, bank statements, mercury, books match the bank, receipt, last reconciled, missing transactions, live balance, presence only, sync
 order: 58
 ---

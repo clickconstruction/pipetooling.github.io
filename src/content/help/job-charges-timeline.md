@@ -2,10 +2,24 @@
 title: read the cost and value timeline on a job
 category: Billing & Money
 roles: dev, master_technician, assistant
-keywords: job summary, chart, timeline, cost, expense, value created, reports, card charges, supply house, tally, sub labor, payments, net, burn, budget, percent complete, at completion, projected margin, overhead
+keywords: job summary, chart, timeline, cost, expense, value created, reports, card charges, supply house, tally, sub labor, payments, net, burn, budget, percent complete, at completion, projected margin, overhead, budget, bid estimate, link this bid, typed budget, assumed, refresh from bid
 order: 30
 ---
 Every expanded job on **Jobs → Job Summary** starts with a timeline chart of the money on that job: what it has cost you so far, what the customer has paid back, and how much value the crew reports having created.
+
+## The Budget card — what is Burn measuring against?
+
+The Costs tab opens with the **Budget** card, and its first line says what the budget is standing on:
+
+- {{chip:yellow|≈ assumed}} — no bid is linked: Burn reads *price × 65 %* (the Job Summary Target chip, 35 % by default). The card lists the bids that could be this job's — a bid whose value equals the job's price to the dollar, the same GC and won, the same address — with the reason beside each. {{button:blue|Link this bid}} stamps the job with the bid and takes a snapshot of its estimate; **Find another bid** searches by number or name; **or type a budget…** takes hours, materials $ and subs $ from the person who scoped the job (hours are costed at the company crew rate).
+- {{chip:blue|◆ Budget from bid B66}} — the bid's estimate is the budget. The chips say whether the bid value matches the job price, when the estimate was taken and by whom, and how complete it was (*estimate complete* · *3 rows without hours* · *no labor rate on the bid* · *materials from takeoff*). {{button:gray|Refresh from bid ↻}} takes the estimate again — repricing shows as a visible change, never a silent drift. {{button:gray|Clear}} goes back to the assumption; the link stays.
+- {{chip:gray|✎ typed}} — the typed budget; **Edit** changes the three numbers.
+
+Under the source line, one row per component — **labor in hours first** (the bid priced a book rate, the job pays real wages), materials, subs, other — with used against budget, a bar whose amber marker is the job's % done (fill past the marker is spend ahead of the work, red past the budget), and where each lands at today's pace. A sentence says why: *Materials are $6,700 over the estimate with 23 % of the work left, labor is 9 points ahead of progress, and subs are 20 points under.* Components the bid never priced burn against the assumption, and the sentence says so.
+
+:::example A job that came from a bid, day one
+The SPACEX job opens with *≈ Burn is reading an assumed budget · price × 65 %*. One candidate: **B375 SPACEX BA-02N Architectural** · won · $249,716 bid value · *matches the job's price to the dollar* · estimate without hours. Link it: the job now carries the bid, and the card says the estimate has no hours yet — cost the bid on its Labor tab and press Refresh from bid.
+:::
 
 ## Burn — are we spending faster than we are finishing?
 

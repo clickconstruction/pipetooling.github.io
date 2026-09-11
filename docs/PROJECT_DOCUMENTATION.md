@@ -1311,6 +1311,19 @@ uuid3           | Supply House C    | 0
 - **Driving Cost Formula**: `(Total Man Hours / Hours Per Trip) × Rate Per Mile × Distance to Office`
 - **Migrations**: `create_cost_estimates.sql`, `add_cost_estimate_driving_cost_fields.sql`
 
+#### `public.job_budgets`
+- **Purpose**: The job's direct-cost budget with a provenance (v2.3297, Burn against the bid): a snapshot of the linked bid's estimate, or a typed budget; no row = Burn assumes price × (1 − target)
+- **Key Fields**:
+  - `job_id` (uuid, PK, FK → `jobs_ledger.id` ON DELETE CASCADE)
+  - `kind` (text, `bid` | `typed`)
+  - `bid_id` / `bid_version_id` (FK → `bids` / `bid_versions`, nullable)
+  - `labor_hours`, `labor_rate`, `labor_usd`, `materials_usd`, `subs_usd`, `other_usd` (equipment + permits + waste + other + driving + travel), `total_direct_usd` (numeric)
+  - `completeness` (jsonb: `rows_total`, `rows_with_hours`, `rate_set`, `materials_source`, `usable`)
+  - `taken_at`, `taken_by` (FK → `users`), `note`
+- **RLS**: reads mirror `jobs_ledger`; writes via `can_write_job_budget(job_id)` (dev, assistant-like, master technician)
+- **Written by**: `snapshot_job_budget_from_bid(job, bid)` (links + snapshots `bid_estimate_breakdown(bid)`), `set_typed_job_budget(…)`, `clear_job_budget(job)`; candidates from `suggest_bids_for_job(job)`
+- **Migrations**: `20260911175025_job_budgets.sql`
+
 #### `public.cost_estimate_labor_rows`
 - **Purpose**: Labor hours per fixture for cost estimates
 - **Key Fields**:

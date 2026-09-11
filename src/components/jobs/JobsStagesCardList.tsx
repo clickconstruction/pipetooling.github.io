@@ -34,6 +34,7 @@ import { StripeInvoiceSendFromStripeButton } from './StripeInvoiceSendFromStripe
 import { showAiaG702G703 } from '../../lib/aiaG702G703Eligibility'
 import { openInExternalBrowser } from '../../lib/openInExternalBrowser'
 import { buildClickToolingUrl, googleMapsSearchUrl } from '../../lib/jobs/jobAddressUrls'
+import { useTestReportModalOptional } from '../../contexts/TestReportModalContext'
 import { StagesCardMoreActionsSheet, type StagesCardMoreAction } from './StagesCardMoreActionsSheet'
 import { useShareJob } from './ShareJobButton'
 import { getDefaultWeekRange } from '../../utils/dateUtils'
@@ -568,6 +569,12 @@ function renderCardThreadPanel(p: StagesCardThreadProps, ctx: StagesRowRenderCon
 }
 
 export default function JobsStagesCardList(props: JobsStagesTableProps) {
+  // Test reports (v2.3298): the ⋯ sheet's entry opens the modal; without the provider (render smokes) it keeps the old site.
+  const testReportModal = useTestReportModalOptional()
+  const openTestReportFor = (job: JobWithDetails) => {
+    if (testReportModal) testReportModal.openTestReport({ job })
+    else openInExternalBrowser(buildClickToolingUrl(job))
+  }
   const {
     jobList,
     actionLabel,
@@ -650,7 +657,7 @@ export default function JobsStagesCardList(props: JobsStagesTableProps) {
         label: 'Share job',
         onClick: () => void shareJob(j.id, { hcpNumber: j.hcp_number, jobName: j.job_name, jobAddress: j.job_address }),
       },
-      { key: 'click-tooling', label: 'Plumbing Tooling report', onClick: () => openInExternalBrowser(buildClickToolingUrl(j)) },
+      { key: 'click-tooling', label: 'Test report', onClick: () => openTestReportFor(j) },
     ]
     if ((j.job_address ?? '').trim()) {
       items.push({ key: 'maps', label: 'Google Maps', onClick: () => openInExternalBrowser(googleMapsSearchUrl(j.job_address)) })
@@ -847,6 +854,12 @@ export function JobsStagesUnifiedCardList(props: JobsStagesUnifiedTableProps) {
   const checklistAddModal = useChecklistAddModal()
   const shareJob = useShareJob()
   const sessionNotesOpener = useSessionNotesOpener()
+  // Test reports (v2.3298): same door as the job cards; the old site without the provider.
+  const testReportModal = useTestReportModalOptional()
+  const openTestReportFor = (job: JobWithDetails) => {
+    if (testReportModal) testReportModal.openTestReport({ job })
+    else openInExternalBrowser(buildClickToolingUrl(job))
+  }
   const [moreActionsRow, setMoreActionsRow] = useState<(typeof rows)[number] | null>(null)
   const ctx: StagesRowRenderContext = {
     openJobHoursStory: jobHoursStoryModal?.openJobHoursStory,
@@ -898,7 +911,7 @@ export function JobsStagesUnifiedCardList(props: JobsStagesUnifiedTableProps) {
       items.push({ key: 'view-bill', label: 'View bill', onClick: () => onViewBill(invWithJob) })
     }
     if (props.showClickTooling !== false) {
-      items.push({ key: 'click-tooling', label: 'Plumbing Tooling report', onClick: () => openInExternalBrowser(buildClickToolingUrl(j)) })
+      items.push({ key: 'click-tooling', label: 'Test report', onClick: () => openTestReportFor(j) })
     }
     if ((j.job_address ?? '').trim()) {
       items.push({ key: 'maps', label: 'Google Maps', onClick: () => openInExternalBrowser(googleMapsSearchUrl(j.job_address)) })

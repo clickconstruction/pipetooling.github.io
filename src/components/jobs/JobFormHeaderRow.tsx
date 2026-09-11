@@ -17,6 +17,9 @@ type JobFormHeaderRowProps = {
   onJobDetailClick: () => void
   onOpenBidLinkChoice: () => void
   onOpenProjectLinkChoice: () => void
+  /** New job from a bid (v2.3302): carry the bid's estimate as the job's budget on save. Undefined hides the box. */
+  carryBidBudget?: boolean
+  onCarryBidBudgetChange?: (on: boolean) => void
   /** The shell's JOB_FORM_NESTED_OVERLAY_Z_INDEX — the help popover sits above the form. */
   nestedOverlayZIndex: number
   /**
@@ -47,6 +50,8 @@ export function JobFormHeaderRow({
   onJobDetailClick,
   onOpenBidLinkChoice,
   onOpenProjectLinkChoice,
+  carryBidBudget,
+  onCarryBidBudgetChange,
   nestedOverlayZIndex,
   embedded = false,
 }: JobFormHeaderRowProps) {
@@ -289,6 +294,12 @@ export function JobFormHeaderRow({
             Bid
           </button>
         )}
+        {mode === 'new' && bidId && carryBidBudget !== undefined && onCarryBidBudgetChange ? (
+          <label style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.78rem', color: 'var(--text-700)', cursor: 'pointer' }} title="On save, the bid's Cost Estimate (hours, materials, subs, driving, travel) becomes this job's budget with a provenance — Burn reads against it instead of an assumed margin">
+            <input type="checkbox" checked={carryBidBudget} onChange={(e) => onCarryBidBudgetChange(e.target.checked)} />
+            carry the bid's estimate as the budget
+          </label>
+        ) : null}
         <span style={{ color: 'var(--text-faint)', userSelect: 'none' }} aria-hidden>
           |
         </span>

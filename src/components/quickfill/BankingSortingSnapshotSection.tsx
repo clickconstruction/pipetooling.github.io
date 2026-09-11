@@ -22,7 +22,7 @@ import { useAuth } from '../../hooks/useAuth'
 import { useReportQuickfillSectionMetric } from '../../contexts/QuickfillSectionMetricsContext'
 import { fetchAttributionsByMercuryTxIds, fetchJobAllocationsByMercuryTxIds } from '../../lib/fetchMercuryRelationsByTxIds'
 import { withSupabaseRetry } from '../../utils/errorHandling'
-import { isAssistantLike } from '../../lib/subcontractorLikeRole'
+import { canAccessBanking as canAccessBankingRole } from '../../lib/bankingAccess'
 
 type MercuryTxRow = Database['public']['Tables']['mercury_transactions']['Row']
 
@@ -185,7 +185,7 @@ export function BankingSortingSnapshotSection() {
   const [error, setError] = useState<string | null>(null)
   const [page, setPage] = useState(0)
 
-  const canAccessBanking = role === 'dev' || role === 'master_technician' || isAssistantLike(role)
+  const canAccessBanking = canAccessBankingRole(role)
 
   const loadMercurySnapshot = useCallback(
     async (options?: { silent?: boolean }) => {

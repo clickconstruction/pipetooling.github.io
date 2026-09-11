@@ -2,7 +2,7 @@
 title: estimate labor hours on a bid with the New Labor view
 category: Bids & Estimating
 roles: dev, master_technician, estimator, assistant
-keywords: labor, hours, labor book, alias, plan code, queue, crew-days, revenue per field hour, usable as a budget, old, new, cost estimate, fill from the book, save and learn, per 100 ft, footage, task, fixed hours, sub line, source, crew rate, company rate, burden, overhead per field hour, bid labor, direct cost, margin
+keywords: labor, hours, labor book, alias, plan code, queue, crew-days, revenue per field hour, usable as a budget, old, new, cost estimate, fill from the book, save and learn, per 100 ft, footage, task, fixed hours, sub line, source, crew rate, company rate, burden, overhead per field hour, bid labor, direct cost, margin, calibration, book vs jobs, evidence, jobs agree, set, keep
 ---
 **Bids → Labor** turns a bid's count sheet into hours. Since v2.3276 the selected-bid card carries two pills beside {{button:blue|Print}}: {{chip:gray|Old}} — the HOURS grid you know — and {{chip:blue|New}}. Your pick is remembered on this device. Old stays the default until New has proved out.
 
@@ -48,6 +48,12 @@ Under the grid: **Direct cost of this bid** — labor at the effective rate, mat
 
 Under the labor, **DIRECT COSTS** is one list. Every row wears its kind — {{chip:gray|equipment}} {{chip:gray|permit}} {{chip:blue|sub}} {{chip:gray|waste}} {{chip:gray|other}} — with what it is for and the dollars by stage. Pick a kind and press {{button:blue|+ Add}} for a new row; the × removes one. The **driving** line sits on top, computed from the hours, the hours-per-trip and $/mile boxes and the bid's distance to the office, so it reads beside the rest: *88 crew-days · 176 trips (8 h each) · 41 mi · $0.70/mi*. One total closes the list.
 
+## The book checks itself against finished jobs
+
+The **Book vs jobs** tile reads the crews' recorded hours against what the book predicted, over every job linked to a bid that priced with this book: *book runs ×1.18 light · 3 jobs* means the crews ran 18 % over the book. A job counts once it is at least 25 % done with 8 or more field days; younger jobs say nothing yet, and the tile says so.
+
+Each filled row wears an evidence chip — {{chip:green|3 jobs agree}}, {{chip:yellow|2 jobs · wide}} (the jobs disagree by more than a third), {{chip:gray|no jobs yet}}. Tap it to open the evidence under the grid: one line per job — done %, what the book said for that entry, what the crew ran (the job's hours shared out by the book's own weights), the ratio — then *Median ×1.36 → set the entry to 1.25 / 1.25 / 1.25 h*. {{button:blue|Set}} writes those hours onto the book entry for every future bid; {{button:gray|Keep}} leaves it. Link jobs to their bids (the job's Costs tab, the Bid Board's *Link* chip, or Settings → Data) and the evidence fills in.
+
 ## Telling the book how an entry reads
 
 In the **Labor book** panel, an entry's form has two new fields: **Reads as** (*Fixture · hours × count* or *Task · fixed hours for the line*) and **Hours are per** (*each* or *per 100 ft*). Mark your pipe entries per 100 ft once and every bid's footage rows fill in right. The entries table tags them {{chip:gray|per 100 ft}} and {{chip:gray|task · fixed hours}}.
@@ -58,4 +64,4 @@ Add the entry *2" waste* · Reads as Fixture · Hours are per **per 100 ft** · 
 
 ## What is still Old-only for now
 
-The rate box, the sub-sheet prints, Vehicle Travel, Lodging and Meals, Direct Costs and the Labor book panel sit under both views unchanged (Old's grid reads per-100-ft and task rows correctly too; it just cannot set them). A company crew rate from People and the book checking itself against finished jobs come in later steps of this refresh.
+The rate box, the sub-sheet prints, Vehicle Travel, Lodging and Meals, Direct Costs and the Labor book panel sit under both views unchanged (Old's grid reads per-100-ft and task rows correctly too; it just cannot set them). Folding the human books into the robot's, and retiring Old, come last.

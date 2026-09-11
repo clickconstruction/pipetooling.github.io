@@ -1,6 +1,6 @@
 # Burn against the bid — a job budget with provenance
 
-Status: not started · designed 2026-09-11 (mock-up reviewed with the owner: "I think this is pretty good") · **held behind the Bids → Labor refresh** ([`to-dos/bids-labor-refresh/`](../bids-labor-refresh/README.md); its PR 1 shipped as v2.3276 — resume this after its PR 2 lands the estimate's `source` / completeness columns) — the owner wants the two built together, because a budget is only as honest as the estimate that feeds it, and today's Labor tab is where that estimate is (not) made.
+Status: **in progress** · PR 1 shipped as v2.3297 (`claude/burn-pr1-job-budgets`: `job_budgets`, the five RPCs, `jobBudget.ts`) · PR 2 shipped as v2.3299 (`claude/burn-pr2-budget-card`: the Costs-tab Budget card, link banner, typed form; Burn reads the footing) · designed 2026-09-11 (mock-up reviewed with the owner: "I think this is pretty good") · **held behind the Bids → Labor refresh** ([`to-dos/bids-labor-refresh/`](../bids-labor-refresh/README.md); its PR 1 shipped as v2.3276 — resume this after its PR 2 lands the estimate's `source` / completeness columns) — the owner wants the two built together, because a budget is only as honest as the estimate that feeds it, and today's Labor tab is where that estimate is (not) made.
 
 Mock-ups, kept here: [`mockup.html`](./mockup.html) (the design study, v2 after the "is this the best we can do?" pass; published as the artifact *Burn Against the Bid*) and [`mockup-burn-budget-stages-2026-09-09.html`](./mockup-burn-budget-stages-2026-09-09.html) (the earlier *Burn, Budget and Stages* study that produced v2.3189 / v2.3191 / v2.3192 — its "budget = bid estimate else price × (1 − target)" rule is the one this to-do finishes).
 
@@ -63,10 +63,10 @@ New:
 
 ## The plan (PR train, smallest shippable first)
 
-1. **Data** — migration (`job_budgets`, the three RPCs), `docs/migrations/` fragment, scratch-pg replay of the RPCs against a dump; kernel test for the completeness rule. Push after the client deploy (standing OK).
-2. **Kernel + Costs tab** — `jobBudget.ts` (+tests), `resolveJobBurnBudget` takes it, per-component burn, Budget card (Frame A), link banner + candidates + typed form (Frame B), `JobWithDetails` embeds the budget row (embed-select guard). Live: link J1007 → B375 in the UI with the owner watching, type a budget, screenshot both states.
+1. **Data — SHIPPED v2.3297.** Migration `20260911175025_job_budgets.sql` (`job_budgets`, `bid_estimate_breakdown`, `snapshot_job_budget_from_bid`, `set_typed_job_budget`, `clear_job_budget`, `suggest_bids_for_job`) + `src/lib/jobs/jobBudget.ts` (resolve · completeness rule · component burn · the why sentence). Rank 4 (name similarity) was left out — no `pg_trgm` in the schema; ranks 1–3 cover the 15 known matches.
+2. **Kernel + Costs tab — SHIPPED v2.3299.** `useJobBudget` + `JobBudgetCard` (Frame A / Frame B), `JobCostsBurnSection` reads `budgetForBurn(resolved)`, `teamHours` on the timeline inputs. Not yet: the "other" row's used figure; changing a linked bid (unlink is a job-edit action).
 3. **Job Summary + Pipeline** — glyph, Budget column + filter, `projectJobSummaryBurn` on the resolved budget, the card's footing wording. Kernel tests; live screenshots.
-4. **Bid side** — Bid Board chips; New Job carry checkbox → snapshot RPC after insert. Help guides: `job-charges-timeline.md`, `read-true-profit-on-job-summary.md`, the Bid Board guide.
+4. **Bid side — SHIPPED v2.3302.** `bidBoardBudgetChips.ts` + `useBidBoardBudgetChips` (two reads for the board), the won-row chips (*matches by value · Link*, *costed · N h* / *hours only* / *no cost estimate · Cost it →*), `linkJobToBidFromBoard` (confirm → `snapshot_job_budget_from_bid`), the New-Job *carry the bid's estimate as the budget* box (on by default).
 5. **Backfill offer** — dev-only Settings → Data list of exact matches; then the deferred pair: persist the Pricing workbench margin on the bid when priced (so an uncosted bid can still hand the job price × (1 − priced margin)); earned value by stage (stage % × that stage's budget) once estimates carry stage hours.
 
 Out of scope on purpose: changing how bids are costed — that is the Labor-tab refresh, its own to-do.
