@@ -116,6 +116,7 @@ when_to_read:
    - [bid-basis-grant](#bid-basis-grant)
    - [sub-portal](#sub-portal)
    - [submit-sub-portal](#submit-sub-portal)
+   - [legal-portal](#legal-portal)
    - [get-estimate-public-terms](#get-estimate-public-terms)
    - [accept-estimate](#accept-estimate)
    - [send-estimate-to-customer](#send-estimate-to-customer)
@@ -1406,6 +1407,16 @@ Devs: **Settings → Templates & testing → Workflow email (Edge Function)** (c
 **Behavior**: Contracts must be `signed`; the PDF is `signed_pdf_path` from `job-contract-documents` (rebuilt once with `_shared/jobContractPdf.ts` and stored when missing; paper records send `paper_upload_path`). Estimates must be `customer_accepted` with a consent stamp; their PDF is built once from the frozen line items / option / terms / acceptor fields and cached at `estimates/<id>/signed.pdf`. `pdf_url` → 1-hour signed URL. `email` → Resend with the attachment, reply-to = the sender, the durable link for contracts, optional note; then a `shared` `job_contract_events` row (contracts) and a `contract_shared` `job_activity_events` row (both, when a job is known) carrying `to`.
 
 ---
+
+### legal-portal
+
+**Purpose**: Payload for the collections law firm's no-login portal (`/legal?t=<token>`, Legal portal train PR 3, v2.3319): resolves the firm's capability token (raw lookup + sha256 fallback in `legal_portal_links`, revoked → 404; no slug) and returns the firm, Click's particulars for filing (`app_settings.legal_particulars_v1`) and every matter the office marked attorney-ready — `legal_matters.stage IN ('referred','demand','suit','judgment')` for that firm — with the raw records the packet kernel (`src/lib/legal/legalPacket.ts`, via `src/lib/legal/legalPortalPayload.ts`) assembles on the page: jobs (+ invoices, payments, the GC name), the customer, contact persons, `customer_addresses`, `job_contracts` (signed PDFs as **one-hour signed URLs** from `job-contract-documents`), accepted estimates, `job_demand_letters`, `job_lien_filings`, `job_payment_promises` (+ promise-record inputs so the page classifies kept/broken), `job_payment_chase_touches`, `customer_contacts`, `reports` (+ template names), `clock_sessions`, thread notes, and `legal_matter_entries`.
+
+**Held entries never leave.** The office's *to counsel* decisions (`legal_matters.held_overrides`) are applied under the service role with the desk's rule: an entry dated before the account's first bill is held unless the override says share; one on or after it goes unless the override says hold. Timeline keys `contact:<id>` · `promise:<id>` · `call:<id>` · `note:<job id>`; a held collections note is blanked on the job. The payload's `sharedOverrides` carries only the pre-bill entries the office shared.
+
+**View counting**: every validated load inserts a `public_page_views` row (`surface = 'legal_portal'`, `entity_id` = firm id) stamped by `publicViewDecision` — office previews (`?preview=1`) and staff sessions do not count.
+
+**Auth**: `verify_jwt = false` — the link is the capability. **Endpoint**: `GET /functions/v1/legal-portal?token=<opaque>`. **Deploy**: after the v2.3319 migration is pushed. No secrets beyond the standard ones. The firm's writes (fees, steps, questions, payments received) are `submit-legal-portal` (PR 4).
 
 ### get-estimate-public-terms
 

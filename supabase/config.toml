@@ -792,4 +792,7 @@ verify_jwt = false
 
 # Dial B (v2.3316): pg_cron every 10 minutes → sends hydrostatic PASS drafts whose job has a Stripe bill and a GC email; X-Cron-Secret in the function.
 [functions.auto-send-test-reports]
+# The collections law firm's no-login portal (Legal portal train, PR 3) — token-authenticated
+# like customer-portal / sub-portal; the handler resolves legal_portal_links itself.
+[functions.legal-portal]
 verify_jwt = false
