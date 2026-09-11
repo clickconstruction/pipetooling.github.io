@@ -2,7 +2,7 @@
 title: run the robot estimator from Claude Desktop
 category: Bids & Estimating
 roles: dev
-keywords: robot, twin, shadow, claude desktop, kickoff, connector, mcp, key, setup command, set up on this mac, setup code, console, queue, batch, coverage, incognito, memory
+keywords: robot, twin, shadow, backlog, needs you, robots have work waiting, claude desktop, kickoff, connector, mcp, key, setup command, set up on this mac, setup code, console, queue, batch, coverage, incognito, memory
 ---
 The one sentence: **Bids → 🤖 Robots → Console has a {{button:blue|Copy Desktop kickoff}} button; paste what it copies into a new Claude Desktop chat and the robot works the shadow queue one bid at a time, with you attaching the plans when it asks.**
 
@@ -24,6 +24,10 @@ The key is what lets a machine act as the robot. Handing it to a person to paste
 :::
 
 The long way — for a Claude Code operator, another harness, or a Mac where the short way failed — is a key you can see: **Settings → System → Digital twins → Fleet → Twin Estimator 1 → {{button:blue|Issue key}}**, then {{button:blue|Copy Desktop setup command}} on the card that shows it (on the Console it is {{button:gray|Key-based command}}); paste into Terminal and paste the key when the silent prompt asks; quit and reopen Claude Desktop yourself. Either way, *call get_brief on twin-mcp* in a new chat should return the brief. No twin-mcp tools at all means the connector didn't load — look under Settings → Developer for `twin-mcp` and its error. A 401 means the key is wrong or revoked; run the setup again.
+
+## Know when there is work
+
+You do not have to check the Console to know. When bids want a shadow or price matrices are queued, your Dashboard's **Needs you** card carries one line — {{chip:blue|Robots}} *Robots have work waiting · 4 bids want a shadow (oldest asked 3 days ago) · 2 price matrices queued (oldest 5 hours)* — naming the first of each. It turns {{chip:yellow|amber}} only when something is stuck: a matrix the robot went quiet on for over an hour, or a bid request older than a week. {{button:blue|Open the Console}} lands here. Snooze it for a day or dismiss it until the count rises; it disappears on its own when the robots are caught up.
 
 ## Run a batch
 

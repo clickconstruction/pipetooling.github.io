@@ -732,3 +732,40 @@ describe('price-matrix-ready (Price Matrix PR 5)', () => {
     expect(buildNeedsYouItems(inputs({ priceMatrixEnabled: true, priceMatrixReady: null })).some((i) => i.key === 'price-matrix-ready')).toBe(false)
   })
 })
+
+describe('robot-backlog (v2.3287, dev only)', () => {
+  const backlog = {
+    bidsWaiting: 4, bidsRequested: 2, oldestRequestMs: 3 * 86400000, firstBid: 'BP482 Marriott shell', requestOverdue: false,
+    matricesOpen: 2, matricesStuck: 0, oldestMatrixMs: 5 * 3600000, firstMatrix: 'BP359 SpaceX BA-2',
+  }
+  it('reads as one sentence with both piles, their ages, and the first of each — blue, hygiene tier', () => {
+    const items = buildNeedsYouItems(inputs({ robotBacklogEnabled: true, robotBacklog: backlog }))
+    const it1 = items.find((i) => i.key === 'robot-backlog')!
+    expect(it1.severity).toBe('blue')
+    expect(it1.title).toBe('Robots have work waiting')
+    expect(it1.detail).toBe('4 bids want a shadow (oldest asked 3 days ago) · 2 price matrices queued (oldest 5 hours) — BP482 Marriott shell · BP359 SpaceX BA-2 matrix.')
+    expect(it1.figure).toBe('6')
+    expect(it1.actionLabel).toBe('Open the Console')
+    expect(it1.secondary?.map((s) => s.key)).toEqual(['snooze', 'dismiss'])
+    expect(items[items.length - 1]!.key).toBe('robot-backlog')
+  })
+  it('amber only when something is stuck: a silent matrix, or a request over a week old', () => {
+    const stuck = buildNeedsYouItems(inputs({ robotBacklogEnabled: true, robotBacklog: { ...backlog, matricesStuck: 1 } })).find((i) => i.key === 'robot-backlog')!
+    expect(stuck.severity).toBe('amber')
+    expect(stuck.detail).toMatch(/^A matrix has been working with no heartbeat for over an hour, or sit blocked\. 4 bids/)
+    const overdue = buildNeedsYouItems(inputs({ robotBacklogEnabled: true, robotBacklog: { ...backlog, requestOverdue: true } })).find((i) => i.key === 'robot-backlog')!
+    expect(overdue.severity).toBe('amber')
+    expect(overdue.detail).toMatch(/^A bid request has waited over a week\. /)
+  })
+  it('one pile alone, singulars, and no request yet', () => {
+    const only = buildNeedsYouItems(inputs({ robotBacklogEnabled: true, robotBacklog: { ...backlog, bidsWaiting: 1, bidsRequested: 0, oldestRequestMs: null, matricesOpen: 0, oldestMatrixMs: null, firstMatrix: null } })).find((i) => i.key === 'robot-backlog')!
+    expect(only.detail).toBe('1 bid wants a shadow (nobody asked yet) — BP482 Marriott shell.')
+    const mx = buildNeedsYouItems(inputs({ robotBacklogEnabled: true, robotBacklog: { ...backlog, bidsWaiting: 0, bidsRequested: 0, oldestRequestMs: null, firstBid: null, matricesOpen: 1 } })).find((i) => i.key === 'robot-backlog')!
+    expect(mx.detail).toBe('1 price matrix queued (oldest 5 hours) — BP359 SpaceX BA-2 matrix.')
+  })
+  it('disabled, null, or empty → no item', () => {
+    expect(buildNeedsYouItems(inputs({ robotBacklogEnabled: false, robotBacklog: backlog })).some((i) => i.key === 'robot-backlog')).toBe(false)
+    expect(buildNeedsYouItems(inputs({ robotBacklogEnabled: true, robotBacklog: null })).some((i) => i.key === 'robot-backlog')).toBe(false)
+    expect(buildNeedsYouItems(inputs({ robotBacklogEnabled: true, robotBacklog: { ...backlog, bidsWaiting: 0, matricesOpen: 0 } })).some((i) => i.key === 'robot-backlog')).toBe(false)
+  })
+})
