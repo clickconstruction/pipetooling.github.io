@@ -3,6 +3,9 @@ import {
   allocateCentsLargestRemainder,
   applyTargetJobTotal,
   planBillDiscount,
+  applyStandingDiscount,
+  standingDiscountFromCustomer,
+  standingDiscountOffer,
   derivedDiscountDollars,
   discountBasisIdsFromPositions,
   discountBasisPositions,
@@ -297,5 +300,31 @@ describe('planBillDiscount — from inside Bill Customer', () => {
     expect(planBillDiscount({ rows, scopedIds: ['zzz'], billAmount: 100, entry: { mode: 'pct', pct: 10 }, newRowId: 'n' })).toBeNull()
     expect(planBillDiscount({ rows, scopedIds: ['a'], billAmount: 15098, entry: { mode: 'total', total: 16000 }, newRowId: 'n' })).toBeNull()
     expect(planBillDiscount({ rows, scopedIds: ['a'], billAmount: 15098, entry: { mode: 'pct', pct: 0 }, newRowId: 'n' })).toBeNull()
+  })
+})
+
+describe('standing discount (v2.3272)', () => {
+  it('reads the customer loosely: no columns, null, zero → none; a reason must be a preset', () => {
+    expect(standingDiscountFromCustomer(undefined)).toBeNull()
+    expect(standingDiscountFromCustomer({ standing_discount_pct: null })).toBeNull()
+    expect(standingDiscountFromCustomer({ standing_discount_pct: 0 })).toBeNull()
+    expect(standingDiscountFromCustomer({ standing_discount_pct: '5.0000', standing_discount_reason: 'Repeat customer' })).toEqual({ pct: 5, reason: 'Repeat customer' })
+    expect(standingDiscountFromCustomer({ standing_discount_pct: 5, standing_discount_reason: 'because' })).toEqual({ pct: 5, reason: null })
+  })
+  it('offers only when there is a rate, no wave-off, and no discount row yet', () => {
+    const standing = { pct: 5, reason: 'Repeat customer' as const }
+    const offer = standingDiscountOffer({ standing, rows: job892(), waived: false })
+    expect(offer).toEqual({ pct: 5, reason: 'Repeat customer', name: 'Repeat customer discount', dollars: 1887.25 })
+    expect(standingDiscountOffer({ standing, rows: job892(), waived: true })).toBeNull()
+    expect(standingDiscountOffer({ standing, rows: [...job892(), usd('e', 500)], waived: false })).toBeNull()
+    expect(standingDiscountOffer({ standing: null, rows: job892(), waived: false })).toBeNull()
+  })
+  it('apply appends the ordinary row (and reuses a lone empty placeholder)', () => {
+    const offer = standingDiscountOffer({ standing: { pct: 5, reason: 'Repeat customer' }, rows: job892(), waived: false })!
+    const rows = applyStandingDiscount(job892(), offer, 'n')
+    expect(rows).toHaveLength(4)
+    expect(rows[3]).toMatchObject({ id: 'n', name: 'Repeat customer discount', line_kind: 'discount', discount_pct: 5, discount_reason: 'Repeat customer' })
+    const fresh = applyStandingDiscount([{ id: 'p', name: '', count: 1, line_unit_price: null, invoice_id: null }], offer, 'n')
+    expect(fresh.map((r) => r.id)).toEqual(['n'])
   })
 })

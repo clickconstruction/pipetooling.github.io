@@ -34,6 +34,8 @@ type Props = {
   billAmount: number
   disabled?: boolean
   onApply: (plan: BillDiscountPlan) => Promise<void>
+  /** Standing discount (v2.3272): the customer's rate, offered as one tap that fills the fields. */
+  offer?: { pct: number; reason: DiscountReasonPreset | null; customerName: string } | null
 }
 
 const GROUP: React.CSSProperties = { display: 'inline-flex', alignItems: 'stretch', border: '1px solid var(--border-strong)', borderRadius: 6, overflow: 'hidden', height: 30, background: 'var(--surface)' }
@@ -50,7 +52,7 @@ const INPUT: React.CSSProperties = { boxSizing: 'border-box', padding: '0.3rem 0
  * Bill tab uses, through `apply_job_discount`; the parent re-syncs the amount
  * and the previews. Pure render + a promise to the parent.
  */
-export function BillCustomerDiscountStrip({ rows, scopedIds, billAmount, disabled = false, onApply }: Props) {
+export function BillCustomerDiscountStrip({ rows, scopedIds, billAmount, disabled = false, onApply, offer = null }: Props) {
   const [open, setOpen] = useState(false)
   const [takeOff, setTakeOff] = useState('')
   const [makeIt, setMakeIt] = useState('')
@@ -124,6 +126,27 @@ export function BillCustomerDiscountStrip({ rows, scopedIds, billAmount, disable
       data-testid="bill-discount-strip"
       style={{ margin: '0 0 0.75rem', padding: '0.55rem 0.7rem', border: '1px dashed #a7dcc2', borderRadius: 8, background: 'var(--bg-green-100)', fontSize: '0.8125rem', display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '0.4rem 0.6rem', alignItems: 'center' }}
     >
+      {offer ? (
+        <div data-testid="bill-discount-offer" style={{ gridColumn: '1 / span 2', display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+          <span style={{ flex: 1, minWidth: 0 }}>
+            <strong>{offer.customerName} gets {offer.pct}%</strong>
+            <span style={{ color: 'var(--text-muted)' }}>{offer.reason ? ` (${offer.reason.toLowerCase()}, set on their card)` : ' (set on their card)'}</span>
+          </span>
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => {
+              setTakeOff(`${offer.pct}%`)
+              setMakeIt('')
+              setReason(offer.reason)
+              setWholeJob(true)
+            }}
+            style={{ padding: '0.2rem 0.7rem', background: INK, color: '#ffffff', border: 'none', borderRadius: 5, fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}
+          >
+            Use it
+          </button>
+        </div>
+      ) : null}
       <span style={{ color: 'var(--text-700)', whiteSpace: 'nowrap' }}>Take off</span>
       <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
         <span style={GROUP}>

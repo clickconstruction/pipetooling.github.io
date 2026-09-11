@@ -73,7 +73,7 @@ import { openInvoiceEmailPreviewInNewTab } from '../../lib/openInvoiceEmailPrevi
 import { type JobBillingContext } from '../../lib/jobBillingContext'
 import { fixturesForInvoiceBill } from '../../lib/invoiceScopedFixtures'
 import { BillCustomerDiscountStrip } from './BillCustomerDiscountStrip'
-import type { BillDiscountPlan } from '../../lib/jobs/discountLine'
+import { standingDiscountFromCustomer, type BillDiscountPlan, type StandingDiscount } from '../../lib/jobs/discountLine'
 import { buildPhysicalInvoiceDetailFromJob, jobContextForPhysicalDoc } from '../../lib/physicalInvoiceJobContext'
 import {
   buildPhysicalInvoicePdfBlob,
@@ -1838,6 +1838,31 @@ export default function SendRecordInvoiceModal({
     },
     [job?.id, billCustomerJobDetails?.fixtures, kind, invoice?.id, invoice?.status, refreshBillCustomerJobDetails, showToast],
   )
+  // Standing discount (v2.3272): the customer's rate, offered in the strip
+  // while the job has no discount row and wasn't waved off. Read loosely.
+  const [customerStanding, setCustomerStanding] = useState<StandingDiscount | null>(null)
+  useEffect(() => {
+    let cancelled = false
+    const cid = job?.customer_id
+    if (!open || !cid) {
+      setCustomerStanding(null)
+      return
+    }
+    void (async () => {
+      const { data, error } = await supabase.from('customers').select('standing_discount_pct, standing_discount_reason').eq('id', cid).maybeSingle()
+      if (cancelled) return
+      setCustomerStanding(error ? null : standingDiscountFromCustomer(data))
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [open, job?.customer_id])
+  const billDiscountOffer = useMemo(() => {
+    if (!customerStanding || !billCustomerJobDetails) return null
+    if ((billCustomerJobDetails as { standing_discount_waived_at?: string | null }).standing_discount_waived_at != null) return null
+    if ((billCustomerJobDetails.fixtures ?? []).some((f) => f.line_kind === 'discount')) return null
+    return { pct: customerStanding.pct, reason: customerStanding.reason, customerName: (job?.customer_name ?? '').trim() || 'This customer' }
+  }, [customerStanding, billCustomerJobDetails, job?.customer_name])
   const discountStrip =
     job && billCustomerJobDetails && !shouldBlockBillOnPaidJob({ jobStatus: billCustomerJobDetails.status, allowRebill }) ? (
       <BillCustomerDiscountStrip
@@ -1845,6 +1870,7 @@ export default function SendRecordInvoiceModal({
         scopedIds={discountScopedIds}
         billAmount={Number(billAmountStr) || 0}
         onApply={applyBillDiscount}
+        offer={billDiscountOffer}
       />
     ) : null
 
