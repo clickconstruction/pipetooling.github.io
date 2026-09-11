@@ -81,8 +81,12 @@ describe('BidBestEffortCard', () => {
     await waitFor(() => expect(onRecorded).toHaveBeenCalledWith('h431'))
     expect(state.inserted[0]).toMatchObject({ bid_id: 'h431', value: 148200, recorded_by: 'wendi' })
 
-    // Recorded: the stamp and the envelope door (the run scored against it).
-    await waitFor(() => expect(screen.getByText(/best effort 9\/10 · Wendi/)).toBeTruthy())
+    // Recorded: the stamp and the envelope door (the run scored against it). The stamp carries the
+    // record's local calendar day (`bestEffortStamp` reads getMonth/getDate), so derive it the same
+    // way instead of hard-coding a date — CI runs in UTC and crossed midnight while this said "9/10".
+    const now = new Date()
+    const stamp = new RegExp(`best effort ${now.getMonth() + 1}/${now.getDate()} · Wendi`)
+    await waitFor(() => expect(screen.getByText(stamp)).toBeTruthy())
     fireEvent.click(screen.getByRole('button', { name: "Open the robot's envelope" }))
     expect(onOpenEnvelope).toHaveBeenCalledWith('h431')
   })
