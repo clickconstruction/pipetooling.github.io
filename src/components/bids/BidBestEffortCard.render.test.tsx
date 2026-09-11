@@ -9,6 +9,7 @@ import { fireEvent, screen, waitFor } from '@testing-library/react'
 
 import { renderWithProviders } from '../../test/renderSmokeMocks'
 import { BidBestEffortCard } from './BidBestEffortCard'
+import { bestEffortStamp } from '../../lib/bids/bestEffort'
 
 const state: { record: Record<string, unknown> | null; runStatus: string | null; missingTable: boolean; inserted: Record<string, unknown>[] } = {
   record: null,
@@ -82,7 +83,10 @@ describe('BidBestEffortCard', () => {
     expect(state.inserted[0]).toMatchObject({ bid_id: 'h431', value: 148200, recorded_by: 'wendi' })
 
     // Recorded: the stamp and the envelope door (the run scored against it).
-    await waitFor(() => expect(screen.getByText(/best effort 9\/10 · Wendi/)).toBeTruthy())
+    // The stamp carries today's date (the record is stamped at click time) —
+    // derive it from the same helper so the test doesn't expire at midnight.
+    const stamp = bestEffortStamp({ recorded_at: new Date().toISOString() }, 'Wendi')
+    await waitFor(() => expect(screen.getByText(stamp)).toBeTruthy())
     fireEvent.click(screen.getByRole('button', { name: "Open the robot's envelope" }))
     expect(onOpenEnvelope).toHaveBeenCalledWith('h431')
   })
