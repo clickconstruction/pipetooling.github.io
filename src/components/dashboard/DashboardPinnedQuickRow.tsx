@@ -33,6 +33,7 @@ import { useJobContractsNudge } from '../../hooks/useJobContractsNudge'
 import { useUnpricedWorkOrders } from '../../hooks/useUnpricedWorkOrders'
 import { useStaleOpenJobsNudge } from '../../hooks/useStaleOpenJobsNudge'
 import { useJobAccountFlagGapsNudge } from '../../hooks/useJobAccountFlagGapsNudge'
+import { usePriceMatrixReadyNudge } from '../../hooks/usePriceMatrixReadyNudge'
 import { useLienWatchNudge } from '../../hooks/useLienWatchNudge'
 import { CLAIM_DEV_LOOKBACK_DAYS, useClaimDevAttemptsNudge } from '../../hooks/useClaimDevAttemptsNudge'
 import { HOURS_APPROVALS_MIN_AGE_DAYS, usePendingHoursApprovalsNudge } from '../../hooks/usePendingHoursApprovalsNudge'
@@ -405,6 +406,9 @@ export function DashboardPinnedQuickRow({
   // Supply-house job-account gaps (v2.3161): packets on file with unflagged invoices, flags with no packet — office set.
   const jobAccountGapsEnabled = !hideBanners && Boolean(authUserId) && officeEligible
   const { gaps: jobAccountGaps } = useJobAccountFlagGapsNudge(jobAccountGapsEnabled)
+  // Robot price matrices ready to review (Price Matrix PR 5) — the pricing-sharer set; RLS scopes the rows.
+  const priceMatrixEnabled = !hideBanners && Boolean(authUserId) && (officeEligible || role === 'estimator')
+  const { ready: priceMatrixReady } = usePriceMatrixReadyNudge(priceMatrixEnabled)
 
   const needsYouItems = buildNeedsYouItems({
     role,
@@ -448,6 +452,8 @@ export function DashboardPinnedQuickRow({
     staleOpen,
     jobAccountGapsEnabled,
     jobAccountGaps,
+    priceMatrixEnabled,
+    priceMatrixReady,
     demandDeadlineEnabled: lienUnconditionalEnabled,
     demandDeadlineOverdue,
     lienWatchEnabled: lienUnconditionalEnabled,
@@ -565,6 +571,9 @@ export function DashboardPinnedQuickRow({
               navigate('/materials?tab=job-accounts&filter=needs_flag')
             } else if (item.key === 'job-account-no-packet') {
               navigate('/materials?tab=job-accounts&filter=no_packet')
+            } else if (item.key === 'price-matrix-ready') {
+              // Land on the bid's Pricing tab; the green chip opens the compare (and stamps the review).
+              navigate(priceMatrixReady ? `/bids?tab=pricing&bidId=${priceMatrixReady.first.bidId}` : '/bids?tab=pricing')
             } else if (item.key === 'team-reviews') {
               // Deep link (v2.1564): land the Rate deck ON the first due person, not on card 1 of N.
               const first = teamReviewsOverdue[0]

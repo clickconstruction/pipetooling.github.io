@@ -183,11 +183,17 @@ const TOOLS = [
     },
   },
   {
+    name: 'get_component_corrections',
+    description: "The estimator's teaching since your last digest (Price Matrix PR 5): every time she moved a part, unpicked or repicked your choice, or chose an option in the compare — with the bid, the row, the line and her words. Read at the START of a session, turn the patterns you are sure of into rules with extend_component_rules (pass digest_correction_ids so they are marked digested), and let the rest stand as one-offs (digest them with no rule).",
+    inputSchema: { type: 'object', properties: { limit: { type: 'number', description: 'Max rows (default 50)' } } },
+  },
+  {
     name: 'extend_component_rules',
-    description: 'Add rules you are confident of to the rulebook, each with where it came from (mirror_note) — the way the bid robot extends its price book. Pricer keys only; the estimator sees them as receipts and can retire one.',
+    description: 'Add rules you are confident of to the rulebook, each with where it came from (mirror_note) — the way the bid robot extends its price book. Pricer keys only; the estimator sees them as receipts and can retire one. Pass digest_correction_ids to mark the corrections these rules came from as digested (an empty rules list with ids = "read, nothing to generalize").',
     inputSchema: {
       type: 'object',
       properties: {
+        digest_correction_ids: { type: 'array', items: { type: 'string' }, description: 'fixture_component_corrections ids you have read and acted on (or decided are one-offs)' },
         rules: {
           type: 'array',
           items: {
@@ -686,7 +692,7 @@ async function resolveTwin(req: Request): Promise<ResolvedTwin | { error: string
 // for both. Everything the pricer writes is provenance-stamped robot.
 // ---------------------------------------------------------------------------
 const PRICER_VERBS: ReadonlySet<string> = new Set([
-  'get_pricing_guide', 'next_price_matrix', 'get_quote_documents', 'put_quote', 'finish_price_matrix', 'get_component_rules', 'extend_component_rules',
+  'get_pricing_guide', 'next_price_matrix', 'get_quote_documents', 'put_quote', 'finish_price_matrix', 'get_component_rules', 'extend_component_rules', 'get_component_corrections',
 ])
 const SHARED_VERBS: ReadonlySet<string> = new Set(['get_directory', 'get_harness_guide', 'get_answers', 'ask_question', 'heartbeat', 'add_bid_note', 'submit_report'])
 const PRICER_COMPONENT_ROLES: ReadonlySet<string> = new Set([
@@ -1372,7 +1378,8 @@ async function callTool(req: Request, name: string, args: Record<string, unknown
         expired_houses: expired,
         rows_total: request.scope.length,
       }
-      await admin.from('bid_price_matrix_requests').update({ status: 'ready', summary, result, finished_at: nowIso, heartbeat_at: nowIso, updated_at: nowIso }).eq('id', request.id)
+      // A (re-)finish is news for the estimator: clear the review stamp so the chip and the Needs You card show it again.
+      await admin.from('bid_price_matrix_requests').update({ status: 'ready', summary, result, finished_at: nowIso, heartbeat_at: nowIso, updated_at: nowIso, reviewed_at: null }).eq('id', request.id)
       await admin.from('bids_submission_entries').insert({
         bid_id: bid.id,
         notes: `[pricer STG-3] matrix ready — ${qRows.length} house${qRows.length === 1 ? '' : 's'} read (${qRows.map(houseName).join(', ')}), ${pickedKeys.size} of ${request.scope.length} rows picked, ${filed} ask${filed === 1 ? '' : 's'} for the estimator, $${(Math.round(totalCents) / 100).toLocaleString('en-US', { minimumFractionDigits: 2 })} at counts before freight${expired.length ? ` · expired: ${expired.join(', ')}` : ''}. ${summary.slice(0, 300)}`,
@@ -1383,11 +1390,44 @@ async function callTool(req: Request, name: string, args: Record<string, unknown
         next: 'heartbeat done, submit_report (label PRICE-<bid>), then next_price_matrix. The estimator sees "Matrix ready" on the bid; her taps on your asks come back through get_answers.',
       }, null, 2))
     }
+    case 'get_component_corrections': {
+      const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, { auth: { autoRefreshToken: false, persistSession: false } })
+      const limit = Math.min(Math.max(Number(args.limit ?? 50) || 50, 1), 200)
+      const { data, error } = await admin.from('fixture_component_corrections')
+        .select('id, request_id, bid_id, quote_line_id, action, from_fixture, to_fixture, from_role, to_role, remember, rule_text, created_at, bids(bid_number, project_name), bid_quote_lines(fixture, component_role, label, option_label, unit_price_each_cents)')
+        .is('digested_at', null).order('created_at', { ascending: true }).limit(limit)
+      if (error) return textContent(`Corrections not readable: ${error.message}`, true)
+      const rows = (data ?? []) as Array<Record<string, unknown>>
+      const one = <T,>(v: T | T[] | null | undefined): T | null => (Array.isArray(v) ? (v[0] ?? null) : (v ?? null))
+      return textContent(JSON.stringify({
+        ok: true,
+        count: rows.length,
+        corrections: rows.map((r) => {
+          const bid = one(r.bids as { bid_number: string | null; project_name: string | null } | null)
+          const line = one(r.bid_quote_lines as { fixture: string; component_role: string | null; label: string | null; option_label: string | null; unit_price_each_cents: number | null } | null)
+          return {
+            id: r.id, action: r.action, bid: bid?.bid_number ? `b${bid.bid_number}` : null, project: bid?.project_name ?? null,
+            fixture: r.from_fixture, to_fixture: r.to_fixture, from_role: r.from_role, to_role: r.to_role, remember: r.remember,
+            her_words: r.rule_text, line: line ? { fixture: line.fixture, role: line.component_role, label: line.label, option: line.option_label, cents: line.unit_price_each_cents } : null,
+            at: r.created_at,
+          }
+        }),
+        how: rows.length === 0
+          ? 'Nothing new to learn from. Carry on.'
+          : 'Look for the pattern, not the instance: a choice she made once is a one-off; the same choice on two bids, or a `remember: true`, is a rule. extend_component_rules with the rule(s) and every id you have read as digest_correction_ids — or with no rules and the ids, to mark one-offs as read.',
+      }, null, 2))
+    }
     case 'extend_component_rules': {
       const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, { auth: { autoRefreshToken: false, persistSession: false } })
       const mirror = String(args.mirror_note ?? '').trim()
       const rules = Array.isArray(args.rules) ? (args.rules as Array<Record<string, unknown>>) : []
-      if (!mirror || rules.length === 0 || rules.length > 20) return textContent('extend_component_rules needs 1..20 rules + a mirror_note naming where they came from', true)
+      const digestIds = Array.isArray(args.digest_correction_ids) ? (args.digest_correction_ids as unknown[]).map(String).filter((x) => /^[0-9a-f-]{36}$/i.test(x)).slice(0, 200) : []
+      if (!mirror || rules.length > 20 || (rules.length === 0 && digestIds.length === 0)) return textContent('extend_component_rules needs 1..20 rules (or digest_correction_ids alone) + a mirror_note naming where they came from', true)
+      if (rules.length === 0) {
+        const { error: dErr } = await admin.from('fixture_component_corrections').update({ digested_at: new Date().toISOString() }).in('id', digestIds).is('digested_at', null)
+        if (dErr) return textContent(`Corrections not digested: ${dErr.message}`, true)
+        return textContent(JSON.stringify({ ok: true, added: 0, digested: digestIds.length, note: 'Marked as read — one-offs, no rule.' }, null, 2))
+      }
       const KINDS = new Set(['placement', 'sheet', 'option_default', 'required_role'])
       const rows = rules.map((r) => ({
         rule: String(r.rule ?? '').trim().slice(0, 600),
@@ -1401,7 +1441,11 @@ async function callTool(req: Request, name: string, args: Record<string, unknown
       if (rows.length === 0) return textContent('Every rule needs text', true)
       const { data, error } = await admin.from('fixture_component_rules').insert(rows).select('id')
       if (error) return textContent(`Rules not saved: ${error.message}`, true)
-      return textContent(JSON.stringify({ ok: true, added: (data ?? []).length, note: 'The estimator sees these as receipts and can retire any of them; a retired rule stays out of get_component_rules.' }, null, 2))
+      const firstRuleId = ((data ?? []) as Array<{ id: string }>)[0]?.id ?? null
+      if (digestIds.length) {
+        await admin.from('fixture_component_corrections').update({ digested_at: new Date().toISOString(), ...(firstRuleId ? { rule_id: firstRuleId } : {}) }).in('id', digestIds).is('digested_at', null).then(() => {}, () => {})
+      }
+      return textContent(JSON.stringify({ ok: true, added: (data ?? []).length, digested: digestIds.length, note: 'The estimator sees these as receipts and can retire any of them; a retired rule stays out of get_component_rules.' }, null, 2))
     }
     case 'get_mission': {
       const m = MISSIONS[String(args.id ?? '').toUpperCase()]
@@ -3121,7 +3165,7 @@ async function handleRpc(req: Request, msg: { jsonrpc?: string; id?: unknown; me
       return rpcResult(id, {
         protocolVersion: version,
         capabilities: { tools: {} },
-        serverInfo: { name: 'pipetooling-twin-mcp', version: '1.4.0' },
+        serverInfo: { name: 'pipetooling-twin-mcp', version: '1.4.1' },
         instructions:
           "PipeTooling digital-twin seat (estimator-only). Call get_brief first, then get_directory; mint_session gives you a signed-in browser link to the real apps — PipeTooling by default, CountTooling (the PDF-takeoff tool) with app: 'counttooling'. The work happens there. Every call needs your per-twin token (X-Twin-Token or Bearer).",
       })
