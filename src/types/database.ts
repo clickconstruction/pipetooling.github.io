@@ -893,6 +893,88 @@ export type Database = {
           },
         ]
       }
+      bid_price_matrix_requests: {
+        Row: {
+          bid_id: string
+          bid_version_id: string | null
+          claimed_at: string | null
+          claimed_by: string | null
+          created_at: string
+          finished_at: string | null
+          heartbeat_at: string | null
+          id: string
+          requested_at: string
+          requested_by: string | null
+          result: Json | null
+          reviewed_at: string | null
+          scope: Json
+          sources: Json
+          status: string
+          summary: string | null
+          updated_at: string
+        }
+        Insert: {
+          bid_id: string
+          bid_version_id?: string | null
+          claimed_at?: string | null
+          claimed_by?: string | null
+          created_at?: string
+          finished_at?: string | null
+          heartbeat_at?: string | null
+          id?: string
+          requested_at?: string
+          requested_by?: string | null
+          result?: Json | null
+          reviewed_at?: string | null
+          scope?: Json
+          sources?: Json
+          status?: string
+          summary?: string | null
+          updated_at?: string
+        }
+        Update: {
+          bid_id?: string
+          bid_version_id?: string | null
+          claimed_at?: string | null
+          claimed_by?: string | null
+          created_at?: string
+          finished_at?: string | null
+          heartbeat_at?: string | null
+          id?: string
+          requested_at?: string
+          requested_by?: string | null
+          result?: Json | null
+          reviewed_at?: string | null
+          scope?: Json
+          sources?: Json
+          status?: string
+          summary?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bid_price_matrix_requests_bid_id_fkey"
+            columns: ["bid_id"]
+            isOneToOne: false
+            referencedRelation: "bids"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bid_price_matrix_requests_claimed_by_fkey"
+            columns: ["claimed_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bid_price_matrix_requests_requested_by_fkey"
+            columns: ["requested_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       bid_pricing_assignments: {
         Row: {
           bid_id: string
@@ -1245,13 +1327,21 @@ export type Database = {
           basis_price_cents: number | null
           basis_qty: number | null
           cant_supply: boolean
+          component_role: string | null
           created_at: string
           fixture: string
           id: string
+          label: string | null
           lot_id: string | null
           lot_total_cents: number | null
           match_confidence: string
           matched_from: string | null
+          option_chosen: boolean
+          option_group: string | null
+          option_label: string | null
+          page_ref: string | null
+          pick_reason: string | null
+          pick_source: string | null
           picked: boolean
           price_basis: string
           quote_id: string
@@ -1262,13 +1352,21 @@ export type Database = {
           basis_price_cents?: number | null
           basis_qty?: number | null
           cant_supply?: boolean
+          component_role?: string | null
           created_at?: string
           fixture: string
           id?: string
+          label?: string | null
           lot_id?: string | null
           lot_total_cents?: number | null
           match_confidence?: string
           matched_from?: string | null
+          option_chosen?: boolean
+          option_group?: string | null
+          option_label?: string | null
+          page_ref?: string | null
+          pick_reason?: string | null
+          pick_source?: string | null
           picked?: boolean
           price_basis?: string
           quote_id: string
@@ -1279,13 +1377,21 @@ export type Database = {
           basis_price_cents?: number | null
           basis_qty?: number | null
           cant_supply?: boolean
+          component_role?: string | null
           created_at?: string
           fixture?: string
           id?: string
+          label?: string | null
           lot_id?: string | null
           lot_total_cents?: number | null
           match_confidence?: string
           matched_from?: string | null
+          option_chosen?: boolean
+          option_group?: string | null
+          option_label?: string | null
+          page_ref?: string | null
+          pick_reason?: string | null
+          pick_source?: string | null
           picked?: boolean
           price_basis?: string
           quote_id?: string
@@ -1315,7 +1421,9 @@ export type Database = {
           raw_paste: string | null
           received_at: string
           rfq_id: string | null
+          robot_request_id: string | null
           source: string
+          source_doc_url: string | null
           supply_house_id: string | null
           valid_until: string | null
         }
@@ -1332,7 +1440,9 @@ export type Database = {
           raw_paste?: string | null
           received_at?: string
           rfq_id?: string | null
+          robot_request_id?: string | null
           source?: string
+          source_doc_url?: string | null
           supply_house_id?: string | null
           valid_until?: string | null
         }
@@ -1349,7 +1459,9 @@ export type Database = {
           raw_paste?: string | null
           received_at?: string
           rfq_id?: string | null
+          robot_request_id?: string | null
           source?: string
+          source_doc_url?: string | null
           supply_house_id?: string | null
           valid_until?: string | null
         }
@@ -6044,6 +6156,162 @@ export type Database = {
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      fixture_component_corrections: {
+        Row: {
+          action: string
+          bid_id: string
+          created_at: string
+          created_by: string | null
+          digested_at: string | null
+          from_fixture: string | null
+          from_role: string | null
+          id: string
+          quote_line_id: string | null
+          remember: boolean
+          request_id: string | null
+          rule_id: string | null
+          rule_text: string | null
+          to_fixture: string | null
+          to_role: string | null
+        }
+        Insert: {
+          action: string
+          bid_id: string
+          created_at?: string
+          created_by?: string | null
+          digested_at?: string | null
+          from_fixture?: string | null
+          from_role?: string | null
+          id?: string
+          quote_line_id?: string | null
+          remember?: boolean
+          request_id?: string | null
+          rule_id?: string | null
+          rule_text?: string | null
+          to_fixture?: string | null
+          to_role?: string | null
+        }
+        Update: {
+          action?: string
+          bid_id?: string
+          created_at?: string
+          created_by?: string | null
+          digested_at?: string | null
+          from_fixture?: string | null
+          from_role?: string | null
+          id?: string
+          quote_line_id?: string | null
+          remember?: boolean
+          request_id?: string | null
+          rule_id?: string | null
+          rule_text?: string | null
+          to_fixture?: string | null
+          to_role?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fixture_component_corrections_bid_id_fkey"
+            columns: ["bid_id"]
+            isOneToOne: false
+            referencedRelation: "bids"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fixture_component_corrections_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fixture_component_corrections_quote_line_id_fkey"
+            columns: ["quote_line_id"]
+            isOneToOne: false
+            referencedRelation: "bid_quote_lines"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fixture_component_corrections_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: false
+            referencedRelation: "bid_price_matrix_requests"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fixture_component_corrections_rule_id_fkey"
+            columns: ["rule_id"]
+            isOneToOne: false
+            referencedRelation: "fixture_component_rules"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      fixture_component_rules: {
+        Row: {
+          active: boolean
+          created_at: string
+          created_by: string | null
+          fixture_pattern: string | null
+          id: string
+          kind: string
+          last_used_at: string | null
+          mirror_note: string | null
+          role: string | null
+          rule: string
+          source: string
+          source_bid_id: string | null
+          times_used: number
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          created_by?: string | null
+          fixture_pattern?: string | null
+          id?: string
+          kind?: string
+          last_used_at?: string | null
+          mirror_note?: string | null
+          role?: string | null
+          rule: string
+          source?: string
+          source_bid_id?: string | null
+          times_used?: number
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          created_by?: string | null
+          fixture_pattern?: string | null
+          id?: string
+          kind?: string
+          last_used_at?: string | null
+          mirror_note?: string | null
+          role?: string | null
+          rule?: string
+          source?: string
+          source_bid_id?: string | null
+          times_used?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fixture_component_rules_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fixture_component_rules_source_bid_id_fkey"
+            columns: ["source_bid_id"]
+            isOneToOne: false
+            referencedRelation: "bids"
             referencedColumns: ["id"]
           },
         ]
@@ -17289,6 +17557,7 @@ export type Database = {
           subcontractor_service_type_ids: string[] | null
           superintendent_service_type_ids: string[] | null
           team_prospects_access: boolean
+          twin_kind: string | null
           updated_at: string | null
         }
         Insert: {
@@ -17314,6 +17583,7 @@ export type Database = {
           subcontractor_service_type_ids?: string[] | null
           superintendent_service_type_ids?: string[] | null
           team_prospects_access?: boolean
+          twin_kind?: string | null
           updated_at?: string | null
         }
         Update: {
@@ -17339,6 +17609,7 @@ export type Database = {
           subcontractor_service_type_ids?: string[] | null
           superintendent_service_type_ids?: string[] | null
           team_prospects_access?: boolean
+          twin_kind?: string | null
           updated_at?: string | null
         }
         Relationships: []
