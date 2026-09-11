@@ -1310,3 +1310,5 @@ Owner decision 2026-09-11: only a dev releases; the office asks with a note. A w
 
 **The firm's portal** (v2.3319): `legal_portal_links` is office-read; the link is minted/rotated/revoked by the Collections managers (`mint_legal_portal_link`, `revoke_legal_portal_link`). The public page (`/legal?t=`) has no session — the token is the capability — and the `legal-portal` function reads through the service role, returning only with-firm matters and only the entries the office marked to counsel.
 
+**The firm's acts** (v2.3322): `submit-legal-portal` writes `legal_matter_entries` rows (`via_portal = true`) under the service role — fees, costs, steps, questions, payments received — only on matters with the token's firm and in the with-firm set. The office (the same four roles) answers, applies and acknowledges them from the desk; the firm cannot mark anything paid or touch a job.
+

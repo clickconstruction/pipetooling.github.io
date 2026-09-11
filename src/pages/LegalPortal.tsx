@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type CSSProperties } from 'react'
+import { useEffect, useMemo, useState, type CSSProperties, type FormEvent } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { staffAwarePublicHeaders } from '../lib/publicFunctionStaffHeaders'
 import { PUBLIC_PREVIEW_PARAM, isPreviewFlag } from '../lib/publicViewCounting'
@@ -55,6 +55,31 @@ export default function LegalPortal() {
   const [state, setState] = useState<PageState>({ kind: 'loading' })
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [tab, setTab] = useState<Tab>('account')
+  const [reloadTick, setReloadTick] = useState(0)
+  const [busy, setBusy] = useState(false)
+  const [notice, setNotice] = useState<string | null>(null)
+
+  /** One POST to submit-legal-portal; reloads the payload on success. */
+  const act = async (payload: Record<string, unknown>): Promise<boolean> => {
+    setBusy(true)
+    setNotice(null)
+    try {
+      const res = await fetch(`${supabaseUrl}/functions/v1/submit-legal-portal`, { method: 'POST', headers: { 'Content-Type': 'application/json', ...(await staffAwarePublicHeaders()) }, body: JSON.stringify({ token, ...payload }) })
+      const body = (await res.json().catch(() => null)) as { ok?: boolean; error?: string } | null
+      if (!res.ok || !body?.ok) {
+        setNotice(body?.error ?? 'Could not save that. Please try again.')
+        return false
+      }
+      setReloadTick((t) => t + 1)
+      setNotice('Saved — the office sees it on their Needs You list.')
+      return true
+    } catch {
+      setNotice('Could not reach the office. Check your connection and try again.')
+      return false
+    } finally {
+      setBusy(false)
+    }
+  }
 
   useEffect(() => {
     if (!token) {
@@ -86,7 +111,7 @@ export default function LegalPortal() {
     return () => {
       cancelled = true
     }
-  }, [token, preview])
+  }, [token, preview, reloadTick])
 
   const payload = state.kind === 'ready' ? state.payload : null
   const fee = useMemo(() => (payload ? portalFeeModel(payload) : { contingencyPct: 0.33, filingCost: 350 }), [payload])
@@ -153,7 +178,7 @@ export default function LegalPortal() {
                     </button>
                   ))}
                 </div>
-                {packet ? <MatterTab tab={tab} packet={packet} matter={selected} /> : <p style={{ color: MUTED }}>Nothing to show on this matter.</p>}
+                {packet ? <MatterTab tab={tab} packet={packet} matter={selected} act={act} busy={busy} notice={notice} /> : <p style={{ color: MUTED }}>Nothing to show on this matter.</p>}
               </div>
               <div style={{ ...card, marginTop: 12 }}>
                 <div style={cap}>Exhibits</div>
@@ -203,7 +228,7 @@ export default function LegalPortal() {
               </div>
               <div style={{ ...card, marginTop: 12, fontSize: 12.5, color: MUTED }}>
                 <b style={{ color: INK }}>What you get</b><br />The account, every agreement and notice, Click’s contact history with the customer, their promises, the field evidence, and the steps so far — as one lettered packet. Print packet is the PDF.<br /><br />
-                <b style={{ color: INK }}>What is next</b><br />Adding fees and costs, recording steps and payments received, and asking the office arrive with the next release; until then, reply to the office by email.
+                <b style={{ color: INK }}>What you can do</b><br />On Fees &amp; steps: add fees and costs, record a step (demand · suit · judgment · settled), record a payment you received, ask the office. Each lands on the office's Needs You list.<br /><br /><b style={{ color: INK }}>What you cannot do</b><br />Mark anything paid, edit a job, email the customer through Click, or see any account not released to you.
               </div>
             </div>
           </div>
@@ -213,7 +238,7 @@ export default function LegalPortal() {
   )
 }
 
-function MatterTab({ tab, packet, matter }: { tab: Tab; packet: LegalPacket; matter: LegalPortalMatter }) {
+function MatterTab({ tab, packet, matter, act, busy, notice }: { tab: Tab; packet: LegalPacket; matter: LegalPortalMatter; act: (payload: Record<string, unknown>) => Promise<boolean>; busy: boolean; notice: string | null }) {
   const a = packet.account
   if (tab === 'account') {
     return (
@@ -275,11 +300,57 @@ function MatterTab({ tab, packet, matter }: { tab: Tab; packet: LegalPacket; mat
   return (
     <div>
       <div style={h}>Fees and costs</div>
-      <Table head={['Date', 'Kind', 'Note', 'Amount']} numCols={[3]} rows={fees.map((e) => [e.occurred_on, e.kind, e.body, formatLegalMoney(Number(e.amount ?? 0))])} empty="None yet — adding fees and costs arrives with the next release." />
+      <Table head={['Date', 'Kind', 'Note', 'Amount']} numCols={[3]} rows={fees.map((e) => [e.occurred_on, e.kind, e.body, formatLegalMoney(Number(e.amount ?? 0))])} empty="None yet." />
+      <FirmActs matter={matter} act={act} busy={busy} notice={notice} />
       <div style={h}>On this matter</div>
-      <Table head={['Date', 'Kind', 'What happened']} rows={steps.map((e) => [e.occurred_on, e.kind.replace('_', ' '), e.body])} empty="No steps recorded." />
+      <Table head={['Date', 'Kind', 'What happened', 'Office']} rows={steps.map((e) => [e.occurred_on, e.kind.replace('_', ' '), e.body, e.via_portal ? (e.acknowledged_at ? 'seen' : 'waiting on the office') : 'the office'])} empty="No steps recorded." />
       <div style={h}>What Click did, in order</div>
       <Table head={['Date', 'Job', 'Step', 'What happened']} rows={packet.feesAndSteps.steps.map((s) => [s.ymd ?? '—', s.jobLabel ?? '', s.kind, s.text])} empty="No steps recorded." />
+    </div>
+  )
+}
+
+/** The firm's four acts (PR 4): add a fee or cost, record a step, record a payment received, ask the office. */
+function FirmActs({ matter, act, busy, notice }: { matter: LegalPortalMatter; act: (payload: Record<string, unknown>) => Promise<boolean>; busy: boolean; notice: string | null }) {
+  const [feeKind, setFeeKind] = useState<'fee' | 'cost'>('fee')
+  const [feeAmount, setFeeAmount] = useState('')
+  const [feeNote, setFeeNote] = useState('')
+  const [stage, setStage] = useState<'demand' | 'suit' | 'judgment' | 'settled'>('demand')
+  const [stepNote, setStepNote] = useState('')
+  const [payAmount, setPayAmount] = useState('')
+  const [payNote, setPayNote] = useState('')
+  const [question, setQuestion] = useState('')
+  const input: CSSProperties = { font: 'inherit', fontSize: 13, padding: '5px 8px', border: `1px solid ${HAIR}`, borderRadius: 4, background: 'var(--surface)', color: INK, width: '100%' }
+  const lab: CSSProperties = { display: 'grid', gap: 3, fontSize: 11.5, color: MUTED }
+  const submit = (payload: Record<string, unknown>, after: () => void) => async (e: FormEvent) => {
+    e.preventDefault()
+    if (await act({ ...payload, matterId: matter.id })) after()
+  }
+  return (
+    <div style={{ marginTop: 12, display: 'grid', gap: 10 }}>
+      {notice ? <div style={{ fontSize: 12.5, padding: '6px 10px', background: NOTE_BAND, borderRadius: 4 }}>{notice}</div> : null}
+      <form onSubmit={submit({ kind: feeKind, amount: Number(feeAmount), note: feeNote }, () => { setFeeAmount(''); setFeeNote('') })} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 2fr auto', gap: 8, alignItems: 'end' }}>
+        <input type="text" name="website" tabIndex={-1} autoComplete="off" style={{ display: 'none' }} aria-hidden />
+        <label style={lab}>Kind<select value={feeKind} onChange={(e) => setFeeKind(e.target.value as 'fee' | 'cost')} style={input}><option value="fee">Attorney fee</option><option value="cost">Cost (filing, service)</option></select></label>
+        <label style={lab}>Amount<input type="number" min={1} step="0.01" value={feeAmount} onChange={(e) => setFeeAmount(e.target.value)} placeholder="450" required style={input} /></label>
+        <label style={lab}>Note<input value={feeNote} onChange={(e) => setFeeNote(e.target.value)} placeholder="Demand letter on firm letterhead" required style={input} /></label>
+        <button type="submit" disabled={busy} style={btn}>+ Add fee or cost</button>
+      </form>
+      <form onSubmit={submit({ kind: 'step', stage, note: stepNote }, () => setStepNote(''))} style={{ display: 'grid', gridTemplateColumns: '1fr 2fr auto', gap: 8, alignItems: 'end' }}>
+        <label style={lab}>Record a step<select value={stage} onChange={(e) => setStage(e.target.value as 'demand' | 'suit' | 'judgment' | 'settled')} style={input}><option value="demand">Demand sent on firm letterhead</option><option value="suit">Suit filed</option><option value="judgment">Judgment entered</option><option value="settled">Settled</option></select></label>
+        <label style={lab}>Detail<input value={stepNote} onChange={(e) => setStepNote(e.target.value)} placeholder="Court, cause no., amount, terms…" style={input} /></label>
+        <button type="submit" disabled={busy} style={btn}>Record step</button>
+      </form>
+      <form onSubmit={submit({ kind: 'payment_received', amount: Number(payAmount), note: payNote }, () => { setPayAmount(''); setPayNote('') })} style={{ display: 'grid', gridTemplateColumns: '1fr 2fr auto', gap: 8, alignItems: 'end' }}>
+        <label style={lab}>Payment received<input type="number" min={1} step="0.01" value={payAmount} onChange={(e) => setPayAmount(e.target.value)} placeholder="Amount" required style={input} /></label>
+        <label style={lab}>Check no., date, from whom<input value={payNote} onChange={(e) => setPayNote(e.target.value)} style={input} /></label>
+        <button type="submit" disabled={busy} style={btn}>Record payment</button>
+      </form>
+      <form onSubmit={submit({ kind: 'question', note: question }, () => setQuestion(''))} style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 8, alignItems: 'end' }}>
+        <label style={lab}>Ask the office<input value={question} onChange={(e) => setQuestion(e.target.value)} placeholder="e.g. Do you have the signed change order for the HVAC add?" required style={input} /></label>
+        <button type="submit" disabled={busy} style={btn}>Send</button>
+      </form>
+      <p style={{ fontSize: 11.5, color: FAINT, margin: 0 }}>You never mark anything paid: the office applies a payment you report to the job and records your share. Steps move the matter's stage on the office's board.</p>
     </div>
   )
 }
