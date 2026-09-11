@@ -108,9 +108,10 @@ describe('sentences', () => {
     expect(bankTransferGuardLine('(512) 360-0599')).toContain('call (512) 360-0599 before')
     expect(bankTransferGuardLine('')).toContain('call our office before')
   })
-  it('groups long digit strings for the eye and leaves everything else alone', () => {
+  it('groups ten-plus digit strings for the eye; nine-digit routing numbers and everything else stay whole', () => {
     expect(groupDigits('202511226605')).toBe('2025 1122 6605')
-    expect(groupDigits('091311229')).toBe('0913 1122 9')
+    expect(groupDigits('091311229')).toBe('091311229')
+    expect(groupDigits('0000123456')).toBe('0000 1234 56')
     expect(groupDigits('12345')).toBe('12345')
     expect(groupDigits('AB-12')).toBe('AB-12')
   })
