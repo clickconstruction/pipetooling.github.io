@@ -198,7 +198,7 @@ import { useNewProjectModal } from '../../contexts/NewProjectModalContext'
 import BilledBillViewModal, { type InvoiceWithJobForBillView } from './BilledBillViewModal'
 import AgreedWriteDownModal from './AgreedWriteDownModal'
 import { JobFormBillToEditor, type BillToEditorInvoice } from './JobFormBillToEditor'
-import { parseJobBillToParty, type JobBillToParty } from '../../lib/jobs/billToParty'
+import { parseJobBillToParty, shouldDefaultBillsToGc, type JobBillToParty } from '../../lib/jobs/billToParty'
 import { planPayerCarves } from '../../lib/jobs/splitByPayer'
 import { loadTeamLaborData, type TeamLaborRow } from '../../utils/teamLabor'
 import { laborItemsSubtotal } from '../../lib/peopleLaborJobItemLineCost'
@@ -431,6 +431,9 @@ export default function JobFormModal({
   const [gcCustomerId, setGcCustomerId] = useState<string | null>(null)
   /** Who pays (v2.3345): customer | gc | split — identity slice, see billToParty.ts. */
   const [billToParty, setBillToParty] = useState<JobBillToParty>('customer')
+  /** v2.3353: the GC id the standing-rule default was last applied for (or loaded with) — so a
+      saved job's deliberate choice is never overridden, and each new GC pick is judged once. */
+  const gcDefaultAppliedForRef = useRef<string | null>(null)
   // Their Word PR 4: the payer's payment terms + promise record as a bar above the customer rows.
   const [termsRefresh, setTermsRefresh] = useState(0)
   const [termsModalOpen, setTermsModalOpen] = useState(false)
@@ -858,6 +861,17 @@ export default function JobFormModal({
   }, [setFixtures])
 
   // ---- Identity / materials / team autosave slices (v2.1079) ---------------
+
+  // Who pays (v2.3353): a GC that "pays as GC by default" flips a fresh job to GC
+  // pays the moment it is picked (or imported from a won bid). Judged once per
+  // GC id, only when the customers row is loaded, never over a saved choice.
+  useEffect(() => {
+    if (!gcCustomerId || gcCustomerId === gcDefaultAppliedForRef.current) return
+    const gc = customers.find((c) => c.id === gcCustomerId)
+    if (!gc) return
+    gcDefaultAppliedForRef.current = gcCustomerId
+    if (shouldDefaultBillsToGc({ gc, customerId, current: billToParty })) setBillToParty('gc')
+  }, [gcCustomerId, customers, customerId, billToParty])
 
   // Identity: ONE scalar jobs_ledger UPDATE (no delete+reinsert). Gated on the
   // same required fields as the Save button so a half-cleared field mid-retype
@@ -1725,6 +1739,7 @@ export default function JobFormModal({
     setCustomerEmail(job.customer_email ?? '')
     setCustomerPhone(job.customer_phone ?? '')
     setCustomerId(job.customer_id ?? null)
+    gcDefaultAppliedForRef.current = job.gc_customer_id ?? null
     setGcCustomerId(job.gc_customer_id ?? null)
     setBillToParty(parseJobBillToParty((job as { bill_to_party?: string | null }).bill_to_party))
     setCustomerAddressId(job.customer_address_id ?? null)
@@ -1791,6 +1806,7 @@ export default function JobFormModal({
     setCustomerEmail('')
     setCustomerPhone('')
     setCustomerId(null)
+    gcDefaultAppliedForRef.current = null
     setGcCustomerId(null)
     setBillToParty('customer')
     setCustomerAddressId(null)
@@ -2164,7 +2180,7 @@ export default function JobFormModal({
               async () =>
                 await supabase
                   .from('customers')
-                  .select('id, name, address, contact_info, billing_email, date_met, date_met_source, master_user_id, customer_type, archived_at')
+                  .select('id, name, address, contact_info, billing_email, gc_pays_by_default, date_met, date_met_source, master_user_id, customer_type, archived_at')
                   .eq('id', estimateCustomerId)
                   .maybeSingle(),
               'job form import estimate customer',
@@ -2239,7 +2255,7 @@ export default function JobFormModal({
           { data: devData },
           twinIds,
         ] = await Promise.all([
-          supabase.from('customers').select('id, name, address, contact_info, billing_email, date_met, date_met_source, master_user_id, customer_type, archived_at').order('name'),
+          supabase.from('customers').select('id, name, address, contact_info, billing_email, gc_pays_by_default, date_met, date_met_source, master_user_id, customer_type, archived_at').order('name'),
           supabase.from('projects').select('id, name, customer_id, master_user_id, customers(name)').order('name'),
           supabase
             .from('bids')

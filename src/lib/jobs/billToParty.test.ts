@@ -8,6 +8,7 @@ import {
   parseJobBillToParty,
   payerCustomerId,
   payerRecipientFromCustomer,
+  shouldDefaultBillsToGc,
 } from './billToParty'
 
 const gcJob = { bill_to_party: 'gc', gc_customer_id: 'gc-1', customer_id: 'cust-1' }
@@ -142,5 +143,19 @@ describe('billPartyLabel', () => {
     expect(billPartyLabel('gc')).toBe('GC')
     expect(billPartyLabel('other')).toBe('Someone else')
     expect(billPartyLabel('split')).toBe('Split by line')
+  })
+})
+
+describe('shouldDefaultBillsToGc', () => {
+  const dr = { id: 'gc-dr', gc_pays_by_default: true }
+  it('flips a default-rule job to GC pays when the GC carries the standing rule', () => {
+    expect(shouldDefaultBillsToGc({ gc: dr, customerId: 'owner', current: 'customer' })).toBe(true)
+  })
+  it('never overrides a deliberate choice, a GC without the rule, or a GC that is the customer row', () => {
+    expect(shouldDefaultBillsToGc({ gc: dr, customerId: 'owner', current: 'split' })).toBe(false)
+    expect(shouldDefaultBillsToGc({ gc: dr, customerId: 'owner', current: 'gc' })).toBe(false)
+    expect(shouldDefaultBillsToGc({ gc: { id: 'gc-x', gc_pays_by_default: false }, customerId: 'owner', current: 'customer' })).toBe(false)
+    expect(shouldDefaultBillsToGc({ gc: dr, customerId: 'gc-dr', current: 'customer' })).toBe(false)
+    expect(shouldDefaultBillsToGc({ gc: null, customerId: 'owner', current: 'customer' })).toBe(false)
   })
 })

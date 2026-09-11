@@ -118,3 +118,20 @@ export function stageRowPayerCustomerId(row: { kind: string; job: JobPartyFields
   const inv = row.kind === 'job' ? null : row.inv ?? null
   return payerCustomerId(row.job, effectiveInvoiceParty(row.job, inv))
 }
+
+/**
+ * A standing rule on the GC (v2.3353): when the customer picked as a job's GC
+ * carries `gc_pays_by_default`, a job that still sits on the default rule
+ * flips to GC pays — once, when the GC is picked, never over a deliberate
+ * choice, and never when the GC is the job customer row itself.
+ */
+export function shouldDefaultBillsToGc(args: {
+  gc: { id: string; gc_pays_by_default?: boolean | null } | null | undefined
+  customerId: string | null
+  current: JobBillToParty
+}): boolean {
+  const { gc, customerId, current } = args
+  if (!gc || gc.gc_pays_by_default !== true) return false
+  if (customerId && gc.id === customerId) return false
+  return current === 'customer'
+}

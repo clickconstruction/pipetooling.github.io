@@ -2,7 +2,7 @@
 title: choose who gets the bill on a job
 category: Billing & Money
 roles: dev, master_technician, assistant, controller
-keywords: bills go to, GC pays, general contractor, homeowner, who pays, billing email, bill to, split, payer, split by line, one bill per payer, pays toggle
+keywords: bills go to, GC pays, general contractor, homeowner, who pays, billing email, bill to, split, payer, split by line, one bill per payer, pays toggle, pays as GC by default, done right
 order: 11
 ---
 Some jobs bill the homeowner. Some bill the GC. Some bill each of them for different work. Since v2.3345 the job says which, in one place, and every bill follows it — you never have to type the GC's address into the customer's email again.
@@ -29,6 +29,10 @@ A GC usually has two addresses: the estimator you bid to, and the accounts-payab
 Open {{button:blue|Send bill…}} on a GC-pays job and the window says so at the top: *Billing Loberg Contracting, the GC on this job — not ATI Schertz*. The **Send to** address is the GC's billing email, the contact list is the GC's people, and the PDF's *Bill to* line and the Stripe invoice name the GC. Tick **Copy ATI Schertz** to send the customer a copy of the emailed PDF.
 
 If the GC has no billing email yet, the window asks for it right there and saves it on the GC.
+
+## Make a GC pay by default
+
+Some builders always pay — Done Right Foundation pays for every pretest. Say it once on the builder instead of on each job: open the GC on **Customers → Edit customer** and tick **Pays as GC by default**. From then on, a new job that names them as GC starts with **Bills go to: GC**. It only sets the starting value — change it on a job and it stays changed, and jobs already on the books are not touched.
 
 ## Split a job by line
 
