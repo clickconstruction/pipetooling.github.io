@@ -35,6 +35,9 @@ import { useStaleOpenJobsNudge } from '../../hooks/useStaleOpenJobsNudge'
 import { useJobAccountFlagGapsNudge } from '../../hooks/useJobAccountFlagGapsNudge'
 import { usePriceMatrixReadyNudge } from '../../hooks/usePriceMatrixReadyNudge'
 import { useRobotBacklogNudge } from '../../hooks/useRobotBacklogNudge'
+import { useTestReportsReadyNudge } from '../../hooks/useTestReportsReadyNudge'
+import { useTestReportModalOptional } from '../../contexts/TestReportModalContext'
+import { fetchJobWithDetailsById } from '../../lib/fetchJobWithDetailsById'
 import { useLienWatchNudge } from '../../hooks/useLienWatchNudge'
 import { CLAIM_DEV_LOOKBACK_DAYS, useClaimDevAttemptsNudge } from '../../hooks/useClaimDevAttemptsNudge'
 import { HOURS_APPROVALS_MIN_AGE_DAYS, usePendingHoursApprovalsNudge } from '../../hooks/usePendingHoursApprovalsNudge'
@@ -413,6 +416,10 @@ export function DashboardPinnedQuickRow({
   // The robots' backlog (v2.3287): bids wanting a shadow + matrices waiting on the pricer — devs only; the Console is its door.
   const robotBacklogEnabled = !hideBanners && Boolean(authUserId) && role === 'dev'
   const robotBacklogNudge = useRobotBacklogNudge(robotBacklogEnabled, robotBacklogEnabled ? authUserId : undefined)
+  // Test reports drafted and not yet sent (v2.3301, dial A) — the office set; the card opens the first one in the modal.
+  const testReportsEnabled = !hideBanners && Boolean(authUserId) && officeEligible
+  const testReportsNudge = useTestReportsReadyNudge(testReportsEnabled)
+  const testReportModal = useTestReportModalOptional()
 
   const needsYouItems = buildNeedsYouItems({
     role,
@@ -460,6 +467,8 @@ export function DashboardPinnedQuickRow({
     priceMatrixReady,
     robotBacklogEnabled,
     robotBacklog: robotBacklogNudge.backlog,
+    testReportsEnabled,
+    testReportsReady: testReportsNudge.drafts,
     demandDeadlineEnabled: lienUnconditionalEnabled,
     demandDeadlineOverdue,
     lienWatchEnabled: lienUnconditionalEnabled,
@@ -577,6 +586,18 @@ export function DashboardPinnedQuickRow({
               navigate('/materials?tab=job-accounts&filter=needs_flag')
             } else if (item.key === 'job-account-no-packet') {
               navigate('/materials?tab=job-accounts&filter=no_packet')
+            } else if (item.key === 'test-reports-ready') {
+              // Open the first draft in the Test report modal; the Stages board is the fallback.
+              const first = testReportsNudge.drafts?.first ?? null
+              if (first && testReportModal) {
+                void (async () => {
+                  const job = await fetchJobWithDetailsById(first.jobId)
+                  if (job) testReportModal.openTestReport({ job, reportId: first.reportId, onChanged: () => testReportsNudge.reload() })
+                  else navigate('/jobs?tab=stages')
+                })()
+              } else {
+                navigate('/jobs?tab=stages')
+              }
             } else if (item.key === 'price-matrix-ready') {
               // Land on the bid's Pricing tab; the green chip opens the compare (and stamps the review).
               navigate(priceMatrixReady ? `/bids?tab=pricing&bidId=${priceMatrixReady.first.bidId}` : '/bids?tab=pricing')
