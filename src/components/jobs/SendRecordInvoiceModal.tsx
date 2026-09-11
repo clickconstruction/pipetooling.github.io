@@ -1815,10 +1815,12 @@ export default function SendRecordInvoiceModal({
           await supabase.rpc('apply_job_discount', {
             p_job_id: job.id,
             p_name: plan.row.name,
-            p_pct: plan.row.pct ?? undefined,
+            // The SQL takes NULL for a fixed-dollar discount / every work row / no reason; the
+            // generated types call these required because the function declares no defaults.
+            p_pct: (plan.row.pct ?? null) as unknown as number,
             p_dollars: plan.row.dollars,
-            p_basis_positions: basisPositions ?? undefined,
-            p_reason: plan.row.reason ?? undefined,
+            p_basis_positions: (basisPositions ?? null) as unknown as number[],
+            p_reason: (plan.row.reason ?? null) as unknown as string,
             p_draft_amounts: draftAmounts,
             p_summary: `Discount added: ${plan.sentence}`,
           }),
