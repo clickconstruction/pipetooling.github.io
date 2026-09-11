@@ -55,6 +55,20 @@ export type JobPaymentEvent = {
   label: string
 }
 
+/**
+ * One day's overhead landed on the job (v2.3271) — a Job Summary `JobOverheadDayLine`
+ * or the Burn hook's share lines. Stacks on the cost line as the amber band; between two
+ * event days it folds into the next event's bucket, and anything after the last event
+ * makes one trailing bucket so the band keeps growing while the job stays open.
+ */
+export type JobOverheadDayInput = {
+  /** YYYY-MM-DD in APP_CALENDAR_TZ. */
+  dateKey: string
+  amount: number
+  activityUsd?: number
+  carryUsd?: number
+}
+
 /** Flatten `jobs_ledger_payments` rows into payment events (note wins over payment_type for the label). */
 export function buildJobPaymentEvents(
   payments: Array<{
@@ -250,6 +264,16 @@ export type JobChargesTimelineChartRow = {
   chargeSources: JobChargeSource[]
   hasReportMarker: boolean
   hasPaymentMarker: boolean
+  /** Overhead landed on the job through this bucket (v2.3271); 0 when no overhead was supplied. */
+  overheadToDate: number
+  overheadActivityToDate: number
+  overheadCarryToDate: number
+  /** expense + overheadToDate — the amber band's top edge. */
+  trueCost: number
+  /** [expense, trueCost] — the recharts range the band fills. */
+  overheadBand: [number, number]
+  /** True for the trailing bucket that holds only overhead landed after the last event. */
+  overheadOnlyBucket: boolean
 }
 
 /** Inclusive row-index range whose profit-line stretch renders green (payment rise). */
@@ -272,6 +296,11 @@ export type JobChargesTimelineData = {
    */
   valueFromFallbackPercent: boolean
   hasUnknownDateBucket: boolean
+  /** True when any overhead landed — the view draws the band, the true-cost edge and the tooltip line. */
+  overheadSeriesAvailable: boolean
+  /** Σ of the supplied overhead days (equals the row's Overhead cell on Job Summary). */
+  endOverhead: number
+  endTrueCost: number
 }
 
 /** 'No date' for the unknown bucket; else e.g. "Jun 12", with ’YY appended when the year differs from the last row's. */
@@ -303,7 +332,7 @@ export type ChargesTimelineAxisDomains = {
  * the old single-axis domain (×1.15 + $5 headroom each side).
  */
 export function computeChargesTimelineAxisDomains(
-  rows: Array<Pick<JobChargesTimelineChartRow, 'expense' | 'profit' | 'value'>>,
+  rows: Array<Pick<JobChargesTimelineChartRow, 'expense' | 'profit' | 'value'> & Partial<Pick<JobChargesTimelineChartRow, 'trueCost'>>>,
 ): ChargesTimelineAxisDomains {
   let maxLeft = 0
   let minLeft = 0
@@ -311,6 +340,7 @@ export function computeChargesTimelineAxisDomains(
   for (const r of rows) {
     if (r.expense > maxLeft) maxLeft = r.expense
     if (r.profit > maxLeft) maxLeft = r.profit
+    if (r.trueCost != null && r.trueCost > maxLeft) maxLeft = r.trueCost
     if (r.profit < minLeft) minLeft = r.profit
     if (r.value != null && r.value > maxValue) maxValue = r.value
   }
@@ -336,6 +366,8 @@ export function buildJobChargesTimelineChartData(
    * appears wherever the % column shows a percent. No 🚩 marker is faked.
    */
   fallbackPercent: number | null = null,
+  /** Overhead landed per day (v2.3271); omit for the plain cost/cash chart. */
+  overheadDays: JobOverheadDayInput[] = [],
 ): JobChargesTimelineData {
   const bucketKey = (dateKey: string | null): string => dateKey ?? JOB_CHARGES_UNKNOWN_DATE_KEY
 
@@ -368,6 +400,18 @@ export function buildJobChargesTimelineChartData(
   ])
   const hasUnknownDateBucket = allKeys.has(JOB_CHARGES_UNKNOWN_DATE_KEY)
   const datedKeys = [...allKeys].filter((k) => k !== JOB_CHARGES_UNKNOWN_DATE_KEY).sort()
+
+  // Overhead (v2.3271): dated, positive days only, in date order. Days on or before an event
+  // bucket fold into that bucket; days after the last event make ONE trailing bucket (its
+  // date is the last landing) so the band keeps growing while the job stays open.
+  const overheadSorted = overheadDays
+    .filter((d) => /^\d{4}-\d{2}-\d{2}$/.test(d.dateKey) && Number.isFinite(d.amount) && d.amount > 0)
+    .sort((a, b) => a.dateKey.localeCompare(b.dateKey))
+  const lastEventKey = datedKeys.length > 0 ? datedKeys[datedKeys.length - 1]! : null
+  const lastOverheadKey = overheadSorted.length > 0 ? overheadSorted[overheadSorted.length - 1]!.dateKey : null
+  const trailingOverheadKey = lastOverheadKey != null && (lastEventKey == null || lastOverheadKey > lastEventKey) ? lastOverheadKey : null
+  if (trailingOverheadKey != null) datedKeys.push(trailingOverheadKey)
+
   const orderedKeys = hasUnknownDateBucket
     ? [JOB_CHARGES_UNKNOWN_DATE_KEY, ...datedKeys]
     : datedKeys
@@ -380,6 +424,10 @@ export function buildJobChargesTimelineChartData(
   let runningPayments = 0
   let runningValue: number | null = null
   let sawPercentReport = false
+  let runningOverhead = 0
+  let runningOverheadActivity = 0
+  let runningOverheadCarry = 0
+  let overheadCursor = 0
 
   const chartRows: JobChargesTimelineChartRow[] = orderedKeys.map((dateKey, index) => {
     const dayCharges = chargesByKey.get(dateKey) ?? []
@@ -387,6 +435,16 @@ export function buildJobChargesTimelineChartData(
     const dayPayments = paymentsByKey.get(dateKey) ?? []
     for (const e of dayCharges) runningExpense += e.amount
     for (const p of dayPayments) runningPayments += p.amount
+    // The unknown-date bucket takes no overhead; every dated bucket takes what landed on or before it.
+    if (dateKey !== JOB_CHARGES_UNKNOWN_DATE_KEY) {
+      while (overheadCursor < overheadSorted.length && overheadSorted[overheadCursor]!.dateKey <= dateKey) {
+        const o = overheadSorted[overheadCursor]!
+        runningOverhead += o.amount
+        runningOverheadActivity += o.activityUsd ?? o.amount
+        runningOverheadCarry += o.carryUsd ?? 0
+        overheadCursor += 1
+      }
+    }
     for (const v of dayValues) {
       if (v.percent != null) {
         sawPercentReport = true
@@ -399,6 +457,8 @@ export function buildJobChargesTimelineChartData(
     }
     const expense = Math.round(runningExpense * 100) / 100
     const paymentsToDate = Math.round(runningPayments * 100) / 100
+    const overheadToDate = Math.round(runningOverhead * 100) / 100
+    const trueCost = Math.round((expense + overheadToDate) * 100) / 100
     return {
       index,
       dateKey,
@@ -413,6 +473,12 @@ export function buildJobChargesTimelineChartData(
       chargeSources,
       hasReportMarker: dayValues.length > 0,
       hasPaymentMarker: dayPayments.length > 0,
+      overheadToDate,
+      overheadActivityToDate: Math.round(runningOverheadActivity * 100) / 100,
+      overheadCarryToDate: Math.round(runningOverheadCarry * 100) / 100,
+      trueCost,
+      overheadBand: [expense, trueCost],
+      overheadOnlyBucket: dateKey === trailingOverheadKey && dayCharges.length === 0 && dayValues.length === 0 && dayPayments.length === 0,
     }
   })
 
@@ -450,6 +516,7 @@ export function buildJobChargesTimelineChartData(
 
   const endExpense = Math.round(runningExpense * 100) / 100
   const endPayments = Math.round(runningPayments * 100) / 100
+  const endOverhead = Math.round(runningOverhead * 100) / 100
   return {
     chartRows,
     endExpense,
@@ -459,5 +526,8 @@ export function buildJobChargesTimelineChartData(
     valueSeriesAvailable: (revenueUsable && sawPercentReport) || valueFromFallbackPercent,
     valueFromFallbackPercent,
     hasUnknownDateBucket,
+    overheadSeriesAvailable: endOverhead > 0,
+    endOverhead,
+    endTrueCost: Math.round((endExpense + endOverhead) * 100) / 100,
   }
 }

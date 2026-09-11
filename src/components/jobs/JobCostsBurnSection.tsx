@@ -1,11 +1,10 @@
 import { useMemo, type CSSProperties } from 'react'
 import { Bar, CartesianGrid, ComposedChart, Line, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import type { JobChargesTimelineInputsState } from '../../hooks/useJobChargesTimelineInputs'
-import { useJobBurnOverhead } from '../../hooks/useJobBurnOverhead'
+import type { JobBurnOverheadState } from '../../hooks/useJobBurnOverhead'
 import { buildJobBurn, resolveJobBurnBudget, type JobBurnModel } from '../../lib/jobs/jobBurn'
 import { JOB_SUMMARY_VIEW_STORAGE_KEY, readJobSummaryViewPrefs } from '../../lib/jobs/jobSummaryLedgerView'
 import { todayYmdInAppTz } from '../../utils/dateUtils'
-import type { JobWithDetails } from '../../types/jobWithDetails'
 
 /**
  * Burn on the Costs tab (v2.3189): are we spending faster than we are finishing?
@@ -87,15 +86,17 @@ function CumTooltip({ active, payload }: CumTipProps) {
   )
 }
 
-export function JobCostsBurnSection({ job, inputsState }: { job: JobWithDetails; inputsState: JobChargesTimelineInputsState }) {
+/** The first dated charge on the job — where the overhead window starts (shared by Burn and the Cost Timeline's band, v2.3271). */
+export function firstChargeYmdOf(inputsState: JobChargesTimelineInputsState): string | null {
+  if (inputsState.kind !== 'ready') return null
+  let first: string | null = null
+  for (const e of inputsState.inputs.chargeEvents) if (e.dateKey && (first == null || e.dateKey < first)) first = e.dateKey
+  return first
+}
+
+export function JobCostsBurnSection({ inputsState, overheadState }: { inputsState: JobChargesTimelineInputsState; /** The host runs `useJobBurnOverhead` once for Burn and the Cost Timeline (v2.3271). */ overheadState: JobBurnOverheadState }) {
   const inputs = inputsState.kind === 'ready' ? inputsState.inputs : null
-  const firstChargeYmd = useMemo(() => {
-    if (!inputs) return null
-    let first: string | null = null
-    for (const e of inputs.chargeEvents) if (e.dateKey && (first == null || e.dateKey < first)) first = e.dateKey
-    return first
-  }, [inputs])
-  const { loading: overheadLoading, overhead } = useJobBurnOverhead(inputs != null, job.id, firstChargeYmd)
+  const { loading: overheadLoading, overhead } = overheadState
 
   const model = useMemo(() => {
     if (!inputs) return null

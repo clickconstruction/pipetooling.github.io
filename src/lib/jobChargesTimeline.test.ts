@@ -167,6 +167,101 @@ describe('reportCompletionPercent / buildJobValueEvents', () => {
   })
 })
 
+describe('overhead band (v2.3271)', () => {
+  const charges = [
+    charge({ dateKey: '2026-06-01', amount: 100, source: 'team_labor' }),
+    charge({ dateKey: '2026-06-10', amount: 50, source: 'mercury_card' }),
+  ]
+
+  it('without overhead days every row reads zero and the series is unavailable', () => {
+    const data = buildJobChargesTimelineChartData(charges, [], null)
+    expect(data.overheadSeriesAvailable).toBe(false)
+    expect(data.endOverhead).toBe(0)
+    expect(data.endTrueCost).toBe(150)
+    expect(data.chartRows.map((r) => r.overheadToDate)).toEqual([0, 0])
+    expect(data.chartRows.map((r) => r.trueCost)).toEqual([100, 150])
+    expect(data.chartRows.every((r) => !r.overheadOnlyBucket)).toBe(true)
+  })
+
+  it('folds overhead landed between events into the next event bucket, on-or-before an event into that bucket', () => {
+    const data = buildJobChargesTimelineChartData(charges, [], null, [], null, [
+      { dateKey: '2026-05-28', amount: 4, activityUsd: 4, carryUsd: 0 }, // before the first charge → first bucket
+      { dateKey: '2026-06-01', amount: 10, activityUsd: 8, carryUsd: 2 },
+      { dateKey: '2026-06-04', amount: 6, activityUsd: 0, carryUsd: 6 }, // between → the Jun 10 bucket
+      { dateKey: '2026-06-10', amount: 12.5, activityUsd: 12.5, carryUsd: 0 },
+    ])
+    expect(data.overheadSeriesAvailable).toBe(true)
+    expect(data.chartRows.map((r) => r.dateKey)).toEqual(['2026-06-01', '2026-06-10'])
+    expect(data.chartRows.map((r) => r.overheadToDate)).toEqual([14, 32.5])
+    expect(data.chartRows.map((r) => r.overheadActivityToDate)).toEqual([12, 24.5])
+    expect(data.chartRows.map((r) => r.overheadCarryToDate)).toEqual([2, 8])
+    expect(data.chartRows.map((r) => r.trueCost)).toEqual([114, 182.5])
+    expect(data.chartRows.map((r) => r.overheadBand)).toEqual([[100, 114], [150, 182.5]])
+    expect(data.endOverhead).toBe(32.5)
+    expect(data.endTrueCost).toBe(182.5)
+    // The cost and cash lines are untouched by the band.
+    expect(data.chartRows.map((r) => r.expense)).toEqual([100, 150])
+    expect(data.endExpense).toBe(150)
+  })
+
+  it('overhead landed after the last event makes one trailing bucket at the last landing, lines flat', () => {
+    const data = buildJobChargesTimelineChartData(charges, [], null, [payment({ dateKey: '2026-06-10', amount: 500 })], null, [
+      { dateKey: '2026-06-10', amount: 5 },
+      { dateKey: '2026-06-15', amount: 3 },
+      { dateKey: '2026-06-20', amount: 2 },
+    ])
+    expect(data.chartRows.map((r) => r.dateKey)).toEqual(['2026-06-01', '2026-06-10', '2026-06-20'])
+    const tail = data.chartRows[2]!
+    expect(tail.overheadOnlyBucket).toBe(true)
+    expect(tail.chargeSources).toEqual([])
+    expect(tail.expense).toBe(150)
+    expect(tail.paymentsToDate).toBe(500)
+    expect(tail.profit).toBe(350)
+    expect(tail.overheadToDate).toBe(10)
+    expect(tail.trueCost).toBe(160)
+    expect(tail.dateLabel).toBe('Jun 20')
+    // A trailing bucket adds no payment rise and does not disturb the earlier rows.
+    expect(data.paymentRiseSegments).toEqual([{ from: 0, to: 1 }])
+    expect(data.chartRows[1]!.overheadOnlyBucket).toBe(false)
+  })
+
+  it('ignores non-positive and undated overhead, and never puts overhead in the unknown-date bucket', () => {
+    const data = buildJobChargesTimelineChartData(
+      [charge({ dateKey: null, amount: 20 }), ...charges],
+      [],
+      null,
+      [],
+      null,
+      [
+        { dateKey: '2026-06-01', amount: 0 },
+        { dateKey: '2026-06-01', amount: -3 },
+        { dateKey: 'unknown', amount: 9 },
+        { dateKey: '2026-06-02', amount: 7 },
+      ],
+    )
+    expect(data.chartRows.map((r) => r.dateKey)).toEqual([JOB_CHARGES_UNKNOWN_DATE_KEY, '2026-06-01', '2026-06-10'])
+    expect(data.chartRows.map((r) => r.overheadToDate)).toEqual([0, 0, 7])
+    expect(data.endOverhead).toBe(7)
+  })
+
+  it('overhead with no dated events at all makes a single trailing bucket', () => {
+    const data = buildJobChargesTimelineChartData([], [], null, [], null, [{ dateKey: '2026-06-03', amount: 5 }])
+    expect(data.chartRows.map((r) => r.dateKey)).toEqual(['2026-06-03'])
+    expect(data.chartRows[0]!.overheadOnlyBucket).toBe(true)
+    expect(data.chartRows[0]!.trueCost).toBe(5)
+  })
+
+  it('the left axis domain reaches the true-cost top edge', () => {
+    const d = computeChargesTimelineAxisDomains([
+      { expense: 100, profit: -100, value: null, trueCost: 400 },
+      { expense: 150, profit: 350, value: null, trueCost: 420 },
+    ])
+    expect(d.left[1]).toBeGreaterThanOrEqual(420)
+    const plain = computeChargesTimelineAxisDomains([{ expense: 100, profit: -100, value: null }])
+    expect(plain.left[1]).toBeGreaterThanOrEqual(100)
+  })
+})
+
 describe('buildJobChargesTimelineChartData', () => {
   it('returns empty rows for empty input', () => {
     const data = buildJobChargesTimelineChartData([], [], 1000)
