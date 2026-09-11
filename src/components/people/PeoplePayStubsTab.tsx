@@ -46,6 +46,7 @@ import {
 } from '../../lib/people/ledgerPaidSegments'
 import { AmountSmallCents } from '../AmountSmallCents'
 import { UpcomingWeekSessionsModal } from './UpcomingWeekSessionsModal'
+import { UpcomingPayrollModal } from './UpcomingPayrollModal'
 import { PayStubAdditionalModal } from '../pay/PayStubAdditionalModal'
 import { PayStubLessModal } from '../pay/PayStubLessModal'
 import { PayStubDeleteIcon } from '../pay/PayStubDeleteIcon'
@@ -1054,131 +1055,17 @@ export default function PeoplePayStubsTab({
       </div>
 
       {upcomingModalOpen && upcomingSummary ? (
-        <div
-          role="presentation"
-          onClick={(e) => {
-            if (e.target === e.currentTarget) setUpcomingModalOpen(false)
-          }}
-          style={{
-            position: 'fixed',
-            inset: 0,
-            background: 'rgba(0,0,0,0.4)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: Z_PEOPLE_PAY_MODAL,
-            padding: 'calc(1rem + env(safe-area-inset-top, 0px)) 1rem calc(1rem + env(safe-area-inset-bottom, 0px))',
-            boxSizing: 'border-box',
-          }}
-        >
-          <div
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="upcoming-payroll-modal-title"
-            onClick={(e) => e.stopPropagation()}
-            onKeyDown={(e) => {
-              if (e.key === 'Escape') setUpcomingModalOpen(false)
-            }}
-            style={{
-              background: 'var(--surface)',
-              borderRadius: 8,
-              maxWidth: 640,
-              width: '100%',
-              maxHeight: 'min(90vh, 100%)',
-              overflow: 'auto',
-              boxShadow: '0 10px 40px rgba(0,0,0,0.15)',
-            }}
-          >
-            <div style={{ padding: '1rem 1.25rem', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'baseline', gap: '0.5rem' }}>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <h2 id="upcoming-payroll-modal-title" style={{ margin: 0, fontSize: '1.125rem', fontWeight: 600 }}>
-                  Upcoming payroll — not yet reported
-                </h2>
-                <p style={{ margin: '0.35rem 0 0', fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-700)' }}>
-                  {(() => {
-                    const weekStart = payWeekStartYmd(todayYmd)
-                    return `Current week: ${ledgerPayPeriodShortLabel(weekStart, ymdAddDays(weekStart, 6))}`
-                  })()}
-                </p>
-                <p
-                  style={{ margin: '0.35rem 0 0', fontSize: '0.8125rem', color: 'var(--text-muted)' }}
-                  title="Clocked time (including pending approval) with no pay report covering the week — estimate is hours × wage. Use Draft Payroll to generate these reports."
-                >
-                  {upcomingSummary.personWeekCount} person-week{upcomingSummary.personWeekCount === 1 ? '' : 's'} ·{' '}
-                  <AmountSmallCents value={upcomingSummary.estimatedGrossDollars} /> estimated
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setUpcomingModalOpen(false)}
-                title="Close"
-                aria-label="Close"
-                style={{ padding: '0.35rem 0.65rem', background: 'var(--surface)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer', fontSize: '0.875rem' }}
-              >
-                ×
-              </button>
-            </div>
-            <div style={{ padding: '1rem 1.25rem' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8125rem' }}>
-                <thead>
-                  <tr style={{ background: 'var(--bg-subtle)', borderBottom: '1px solid var(--border)' }}>
-                    <th style={{ padding: '0.5rem 0.65rem', textAlign: 'left' }}>Person</th>
-                    <th style={{ padding: '0.5rem 0.65rem', textAlign: 'left', whiteSpace: 'nowrap' }}>Period</th>
-                    <th style={{ padding: '0.5rem 0.65rem', textAlign: 'right' }}>Hours</th>
-                    <th style={{ padding: '0.5rem 0.65rem', textAlign: 'right', whiteSpace: 'nowrap' }}>Est. Gross</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {upcomingSummary.lines.map((l) => (
-                    <tr key={`${l.personName}:${l.weekStartYmd}`} style={{ borderBottom: '1px solid var(--border)' }}>
-                      <td style={{ padding: '0.45rem 0.65rem' }}>{l.personName}</td>
-                      <td style={{ padding: '0.45rem 0.65rem', whiteSpace: 'nowrap' }}>
-                        <button
-                          type="button"
-                          onClick={() => setUpcomingWeekDetail(l)}
-                          title="Show this week's contributing days"
-                          aria-label={`Show contributing days for ${l.personName}, ${ledgerPayPeriodShortLabel(l.weekStartYmd, l.weekEndYmd)}`}
-                          style={{
-                            background: 'none',
-                            border: 'none',
-                            padding: 0,
-                            margin: 0,
-                            font: 'inherit',
-                            color: 'var(--text-link)',
-                            textDecoration: 'underline dotted',
-                            textUnderlineOffset: '2px',
-                            cursor: 'pointer',
-                          }}
-                        >
-                          {ledgerPayPeriodShortLabel(l.weekStartYmd, l.weekEndYmd)}
-                        </button>
-                      </td>
-                      <td style={{ padding: '0.45rem 0.65rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
-                        {l.hours.toFixed(2)}
-                      </td>
-                      <td style={{ padding: '0.45rem 0.65rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
-                        <AmountSmallCents value={l.estimatedGrossDollars} />
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-                <tfoot>
-                  <tr style={{ borderTop: '2px solid var(--border)', fontWeight: 600 }}>
-                    <td style={{ padding: '0.5rem 0.65rem' }} colSpan={2}>
-                      Total
-                    </td>
-                    <td style={{ padding: '0.5rem 0.65rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
-                      {upcomingSummary.lines.reduce((s, l) => s + l.hours, 0).toFixed(2)}
-                    </td>
-                    <td style={{ padding: '0.5rem 0.65rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
-                      <AmountSmallCents value={upcomingSummary.estimatedGrossDollars} />
-                    </td>
-                  </tr>
-                </tfoot>
-              </table>
-            </div>
-          </div>
-        </div>
+        <UpcomingPayrollModal
+          lines={upcomingSummary.lines}
+          currentWeekLabel={(() => {
+            const weekStart = payWeekStartYmd(todayYmd)
+            return ledgerPayPeriodShortLabel(weekStart, ymdAddDays(weekStart, 6))
+          })()}
+          formatPeriod={(startYmd, endYmd) => ledgerPayPeriodShortLabel(startYmd, endYmd)}
+          zIndex={Z_PEOPLE_PAY_MODAL}
+          onClose={() => setUpcomingModalOpen(false)}
+          onOpenWeek={(l) => setUpcomingWeekDetail(l)}
+        />
       ) : null}
 
       {upcomingWeekDetail ? (
