@@ -63,6 +63,7 @@
 | [`RUN_SUBS_PLAN.md`](./RUN_SUBS_PLAN.md) | Phased plan to run subcontractors through Projects: person-id step assignment, step commitments, settlement into Sub Labor, sub-facing money view. |
 | [`PER_GC_BID_PLAN.md`](./PER_GC_BID_PLAN.md) | Phased plan to finish per-GC bids: contacts-ledger foundation, per-GC Won/Lost in Edit Bid, bid→job winning-GC flow, `bid_gcs` state table (due/submitted-to/ITB). |
 | [`RFI_LOOP_PLAN.md`](./RFI_LOOP_PLAN.md) | Phased plan for the cross-app RFI loop: persisted `bids_rfis` queue, CT canvas `RFI:` flags + clipboard seam, `twin_questions` internal lane, ct-bridge auto-pull, letter assumptions discipline. |
+| [`PRICE_MATRIX_PLAN.md`](./PRICE_MATRIX_PLAN.md) | Build plan for the robot price matrix: a pricing twin reads supply-house quote PDFs from the bid's Price-requests folders, structures them as kits + option groups on the quote store, and hands back a best-price compare with picks, reasons, and questions where the plans decide. |
 | [`SUPPLY_HOUSE_RFQ_PLAN.md`](./SUPPLY_HOUSE_RFQ_PLAN.md) | Phased plan for supply-house RFQs: shared quotes store, paste-back "Plug in quotes", per-part compare with price memory, then the quote-link lane; lane B (system-sent desk) deferred. |
 | [`FRAGILITY_REMEDIATION_PLAN.md`](./FRAGILITY_REMEDIATION_PLAN.md) | Staged, tested plan for the Stripe-mode, payments_made-invariant, and person-identity-completion workstreams (with status log). |
 | [`ESTIMATOR_TWIN_PIPELINE_PLAN.md`](./ESTIMATOR_TWIN_PIPELINE_PLAN.md) | Master build plan for the plans-to-proposal estimator-twin pipeline: five waves across PT/CT/twin-mcp/harness, each ending in a live LIVSTE test gate; RFI sub-plan in `RFI_LOOP_PLAN.md`. |
@@ -93,4 +94,4 @@
 - Docs ship with features: `recent-features/v2.NNNN.md` fragment + release note per PR, `migrations/<version>_<slug>.md` fragment per migration, `EDGE_FUNCTIONS.md` section per function, help guide per user-facing flow (all enforced by convention in `../CLAUDE.md`).
 - Migration files cited in docs may live in `supabase/archive/migrations-pre-baseline/` — history was squash-baselined at `20250101000000_baseline.sql` (2026-06-04); "2027"-dated filenames in the archive are typos from spring 2026.
 
-last_updated: 2026-09-09
+last_updated: 2026-09-10
