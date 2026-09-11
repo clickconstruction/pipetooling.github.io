@@ -1,5 +1,6 @@
 import { useMemo, useState, type CSSProperties } from 'react'
 import type { JobDayLedger } from '../../lib/jobs/jobDayLedger'
+import { isLegacyOverheadAllocation, overheadAllocationLabel, type OverheadAllocation } from '../../lib/jobs/overheadAllocation'
 import type { SessionNotesJobIdentity } from '../../lib/jobs/sessionNotesSearch'
 import SessionNotesModal from './SessionNotesModal'
 import { buildJobDaysChartSeries, buildJobDaysRows, orderJobDaysRows, summarizeJobDays } from '../../lib/jobs/jobDaysConcurrency'
@@ -21,6 +22,8 @@ type Props = {
   jobLabelById: ReadonlyMap<string, JobSummaryDaysJobLabel>
   /** Pay lockdown: pool $ / per job-day only for dev, master, controller. */
   showMoney: boolean
+  /** What actually landed on each day and job under the allocation in force (v2.3260); null until the ledger loads. */
+  allocation?: OverheadAllocation | null
   /** Click a day → Session notes pinned to it, grouped by job (v2.2699). Office roles only. */
   canOpenSessionNotes: boolean
   users: ReadonlyArray<{ id: string; name: string | null }>
@@ -47,7 +50,9 @@ function jobLabel(jobLabelById: ReadonlyMap<string, JobSummaryDaysJobLabel>, led
   return jobLabelById.get(jobId) ?? ledger?.jobLabels?.get(jobId) ?? { number: jobId.slice(0, 8), name: '' }
 }
 
-export default function JobSummaryDaysView({ ledger, ledgerLoading, ledgerError, jobLabelById, showMoney, canOpenSessionNotes, users, jobs }: Props) {
+export default function JobSummaryDaysView({ ledger, ledgerLoading, ledgerError, jobLabelById, showMoney, allocation = null, canOpenSessionNotes, users, jobs }: Props) {
+  // The Charged column and the chips' dollars show only when the allocation differs from the original day-share, where landed = pool and each chip's share is pool × hours ÷ field hours.
+  const smoothed = allocation != null && !isLegacyOverheadAllocation(allocation.settings)
   const [includeQuiet, setIncludeQuiet] = useState(false)
   const [sessionNotesDay, setSessionNotesDay] = useState<string | null>(null)
   const rows = useMemo(() => (ledger ? buildJobDaysRows(ledger) : []), [ledger])
@@ -211,9 +216,10 @@ export default function JobSummaryDaysView({ ledger, ledgerLoading, ledgerError,
               <th style={th}>Jobs</th>
               <th style={th}>People</th>
               <th style={th}>Field h</th>
-              {showMoney ? <th style={th}>Pool</th> : null}
-              {showMoney ? <th style={th}>Per job-day</th> : null}
-              <th style={{ ...th, textAlign: 'left' }}>Worked</th>
+              {showMoney ? <th style={th} title="What the office spent that day">Pool</th> : null}
+              {showMoney && smoothed ? <th style={th} title={`What landed on that day's jobs after the spread (${overheadAllocationLabel(allocation.settings)})`}>Charged</th> : null}
+              {showMoney ? <th style={th} title="Pool ÷ jobs worked that day — the concurrency unit; not the charge itself once smoothing is on">Per job-day</th> : null}
+              <th style={{ ...th, textAlign: 'left' }}>Worked{showMoney && smoothed ? ' · $ received' : ''}</th>
             </tr>
           </thead>
           <tbody>
@@ -238,6 +244,20 @@ export default function JobSummaryDaysView({ ledger, ledgerLoading, ledgerError,
                 <td style={{ ...td, color: r.people ? undefined : 'var(--text-faint)' }}>{r.people}</td>
                 <td style={{ ...td, color: r.fieldHours ? undefined : 'var(--text-faint)' }}>{r.fieldHours.toFixed(1)}</td>
                 {showMoney ? <td style={td}>{money(r.poolUsd)}</td> : null}
+                {showMoney && smoothed ? (
+                  <td style={td} title={(() => { const a = allocation.dayByYmd.get(r.ymd); return a ? `${money(a.activityUsd)} by hours · ${money(a.carryUsd)} carry across ${a.openJobs} open${a.unallocatedUsd > 0.5 ? ` · ${money(a.unallocatedUsd)} nobody to charge` : ''}` : '' })()}>
+                    {(() => {
+                      const a = allocation.dayByYmd.get(r.ymd)
+                      if (!a) return '—'
+                      return (
+                        <>
+                          {money(a.landedUsd)}
+                          {a.carryUsd > 0.5 ? <span style={{ marginLeft: 4, fontSize: '0.66rem', color: 'var(--text-amber-800)' }}>{money(a.carryUsd)} carry</span> : null}
+                        </>
+                      )
+                    })()}
+                  </td>
+                ) : null}
                 {showMoney ? (
                   <td style={td}>
                     {r.perJobDayUsd == null ? (
@@ -264,6 +284,12 @@ export default function JobSummaryDaysView({ ledger, ledgerLoading, ledgerError,
                         >
                           {l.number} {s.hours.toFixed(1)}h
                           <span style={{ opacity: 0.85, fontWeight: 400 }}>· {s.people.length}</span>
+                          {showMoney && smoothed
+                            ? (() => {
+                                const e = allocation.dayByYmd.get(r.ymd)?.byJob.get(s.jobId)
+                                return e ? <span style={{ opacity: 0.9, fontWeight: 400 }}>· {formatUsdNoCents(e.activityUsd + e.carryUsd)}</span> : null
+                              })()
+                            : null}
                         </span>
                       )
                     })

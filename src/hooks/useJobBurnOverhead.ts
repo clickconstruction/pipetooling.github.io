@@ -3,21 +3,26 @@ import { loadJobDayLedger } from '../lib/jobs/loadJobDayLedger'
 import { allocateJobOverheadDayShare } from '../lib/jobs/jobDayLedger'
 import type { JobBurnOverheadInput } from '../lib/jobs/jobBurn'
 import { todayYmdInAppTz, ymdAddDays } from '../utils/dateUtils'
+import { useOverheadAllocationSettings } from './useOverheadAllocationSettings'
 
 /** The day ledger scans company-wide sessions; cap the window so an old job stays cheap. */
 const MAX_WINDOW_DAYS = 120
 
 /**
  * This job's overhead day-share to date and per field day (v2.3189) — Job
- * Summary's method, over [first charge day … today] capped at 120 days. Feeds
+ * Summary's method and the app-wide allocation settings (v2.3260), over [first
+ * charge day … today] capped at 120 days. Feeds
  * ONLY the Burn section's at-completion projection. Fail-soft: any error or an
  * empty window yields null and the projection simply omits overhead.
  */
 export function useJobBurnOverhead(enabled: boolean, jobId: string | null, firstChargeYmd: string | null): { loading: boolean; overhead: JobBurnOverheadInput | null } {
   const [loading, setLoading] = useState(false)
   const [overhead, setOverhead] = useState<JobBurnOverheadInput | null>(null)
+  // The app-wide allocation (v2.3260): the same settings Job Summary charges from, so the projection agrees with the table.
+  const { appDefault: settings, loaded: settingsLoaded } = useOverheadAllocationSettings(enabled)
 
   useEffect(() => {
+    if (enabled && !settingsLoaded) return
     if (!enabled || !jobId) {
       setLoading(false)
       setOverhead(null)
@@ -36,7 +41,7 @@ export function useJobBurnOverhead(enabled: boolean, jobId: string | null, first
           setOverhead(null)
           return
         }
-        const share = allocateJobOverheadDayShare(ledger, jobId)
+        const share = allocateJobOverheadDayShare(ledger, jobId, settings)
         setOverhead({
           shareToDateUsd: share.overheadUsd,
           perFieldDayUsd: share.daysInWindow > 0 ? share.overheadUsd / share.daysInWindow : null,
@@ -50,7 +55,7 @@ export function useJobBurnOverhead(enabled: boolean, jobId: string | null, first
     return () => {
       cancelled = true
     }
-  }, [enabled, jobId, firstChargeYmd])
+  }, [enabled, jobId, firstChargeYmd, settings, settingsLoaded])
 
   return { loading, overhead }
 }
