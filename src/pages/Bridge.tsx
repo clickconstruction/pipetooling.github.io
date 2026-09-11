@@ -9,6 +9,7 @@ import { buildCourseModel } from '../lib/bridge/courseModel'
 import { buildNetPositionHistory, cashTodayFromAsOf } from '../lib/bridge/netPosition'
 import { DOUBTFUL_AFTER_DAYS, LATE_RECEIPT_GRACE_DAYS, buildCashForecast, scheduleReceipt, type CashEvent } from '../lib/bridge/cashForecast'
 import { billedExpectedPayModel } from '../lib/jobs/billedExpectedPay'
+import { buildTruthCheck, truthCheckVerdictText, type TruthCheck } from '../lib/bridge/truthCheck'
 import { BridgeCashChart, BridgeNetPositionChart } from '../components/bridge/BridgeCashCharts'
 
 /**
@@ -189,6 +190,34 @@ export default function Bridge() {
     }
   }, [floorDraft, showToast])
 
+  // Truth check: paper profit vs the net position change over the chart's days — flows only, so it reads before cash is typed.
+  const truth = useMemo<TruthCheck | null>(() => {
+    if (!data) return null
+    const assumedHalfEarnedUsd = data.earned.assumedHalfJobs.reduce((s, id) => s + (data.earned.earnedByJob.get(id) ?? 0), 0)
+    return buildTruthCheck({
+      windowStart: data.windowStart,
+      todayYmd: data.todayYmd,
+      earnedByDay: data.earnedByDay,
+      directByDay: data.directByDay,
+      overheadByDay: data.overheadByDay,
+      bankFlowByDay: data.bankFlowByDay,
+      invoicesSentByDay: data.invoicesSentByDay,
+      paymentsReceivedByDay: data.paymentsReceivedByDay,
+      supplyDatedByDay: data.supplyDatedByDay,
+      supplyPaidByDay: data.supplyPaidByDay,
+      pendingClosedHours: data.crew.pendingClosedHours,
+      pendingClosedSessions: data.crew.pendingClosedSessions,
+      fieldLaborUsd: data.totals.fieldLaborUsd,
+      fieldHoursWindow: data.crew.fieldHoursWindow,
+      assumedHalfEarnedUsd,
+      assumedHalfJobs: data.earned.assumedHalfJobs.length,
+      noContractJobs: data.earned.noRevenueJobs.length,
+      unattributedNoncard: data.hygiene.unattributedNoncard,
+      unlinkedCard: data.hygiene.unlinkedCard,
+    })
+  }, [data])
+
+
   if (authLoading) return null
   if (role !== 'dev') return <Navigate to="/dashboard" replace />
 
@@ -275,6 +304,9 @@ export default function Bridge() {
             )}
             <div style={det}>Payroll and sub-labor owed are carried flat in the history (they turn over weekly); supply invoices move it on their invoice and payment dates.</div>
           </div>
+
+          {/* Truth check (v2.3335) */}
+          {truth && <TruthCheckPanel truth={truth} windowStartLabel={windowStartLabel} />}
 
           {/* Cash forecast */}
           <div style={{ ...panel, marginTop: '0.6rem' }}>
@@ -430,4 +462,68 @@ function groupByDay<T extends { ymd: string; usd: number; label: string; source?
     m.set(r.ymd, cur)
   }
   return [...m.values()].sort((a, b) => (a.ymd < b.ymd ? -1 : a.ymd > b.ymd ? 1 : 0))
+}
+
+/**
+ * Truth check (v2.3335): paper profit and the net position change over the
+ * same days, the gap split exactly into billing lag + costs the paper doesn't
+ * see, and the signals that say where the cost side is dirty.
+ */
+function TruthCheckPanel({ truth, windowStartLabel }: { truth: TruthCheck; windowStartLabel: string }) {
+  const verdictColor =
+    truth.verdict === 'agree' ? 'var(--text-green-700)' : truth.verdict === 'billing_lag' ? 'var(--text-amber-800)' : truth.verdict === 'costs_disagree' ? 'var(--text-red-700)' : 'var(--text-muted)'
+  const signed = (n: number): string => `${n < 0 ? '−' : '+'}${shortK(Math.abs(n))}`
+  const cell: CSSProperties = { flex: '1 1 160px', minWidth: 0 }
+  return (
+    <div style={{ ...panel, marginTop: '0.6rem' }} data-testid="bridge-truth-check">
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.6rem', flexWrap: 'wrap' }}>
+        <span style={label}>Truth check — same {Math.round(truth.days / 7)} weeks</span>
+        <span style={det}>does the paper agree with the bank since {windowStartLabel}?</span>
+        <span style={{ marginLeft: 'auto', fontWeight: 700, fontSize: '0.85rem', color: verdictColor }}>{truthCheckVerdictText(truth)}</span>
+      </div>
+      <div style={{ display: 'flex', gap: '0.9rem', flexWrap: 'wrap', marginTop: '0.4rem' }}>
+        <div style={cell}>
+          <div style={det}>Profit on paper</div>
+          <div style={{ ...big, fontSize: '1.2rem' }}>{signed(truth.paper.profitUsd)}</div>
+          <div style={det}>
+            earned {shortK(truth.paper.earnedUsd)} − jobs {shortK(truth.paper.directUsd)} − overhead {shortK(truth.paper.overheadUsd)}
+          </div>
+        </div>
+        <div style={cell}>
+          <div style={det}>Net position moved</div>
+          <div style={{ ...big, fontSize: '1.2rem' }}>{signed(truth.net.deltaUsd)}</div>
+          <div style={det}>
+            invoiced {shortK(truth.net.invoicesSentUsd)} − what the bank and supply ledger charged {shortK(truth.net.costsUsd)}
+          </div>
+        </div>
+        <div style={{ ...cell, flex: '2 1 280px' }}>
+          <div style={det}>The {shortK(Math.abs(truth.gapUsd))} between them, exactly</div>
+          <div style={{ fontSize: '0.85rem', marginTop: '0.15rem' }}>
+            <b style={{ fontVariantNumeric: 'tabular-nums' }}>{signed(truth.billingLagUsd)}</b> earned but not invoiced
+            <span style={det}> — real on paper, invisible to the bank until it's billed</span>
+          </div>
+          <div style={{ fontSize: '0.85rem' }}>
+            <b style={{ fontVariantNumeric: 'tabular-nums', color: truth.verdict === 'costs_disagree' ? 'var(--text-red-700)' : 'var(--text)' }}>{signed(truth.costGapUsd)}</b> costs the paper doesn't see
+            {truth.costGapShare != null && <span style={det}> — {Math.round(truth.costGapShare * 100)}% of paper costs; under 15% counts as agreement</span>}
+          </div>
+        </div>
+      </div>
+      {truth.signals.length > 0 && (
+        <ul style={{ listStyle: 'none', margin: '0.5rem 0 0', padding: 0 }}>
+          {truth.signals.map((s) => (
+            <li key={s.key} style={listRow}>
+              <span>
+                {s.label}
+                <span style={{ display: 'block', fontSize: '0.72rem', color: 'var(--text-muted)' }}>{s.detail}</span>
+              </span>
+              <span style={{ marginLeft: 'auto', fontWeight: 700, fontSize: '0.78rem', fontVariantNumeric: 'tabular-nums', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>{s.usd != null ? `≈ ${shortK(s.usd)}` : `${s.count.toLocaleString('en-US')} rows`}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+      <div style={{ ...det, marginTop: '0.4rem' }}>
+        Net side = invoices sent − (payments received − bank net flow + supply invoices dated − supply invoices paid), the flows the line above walks. Money in that isn't a customer payment (a loan, an owner deposit) reads here as a negative cost; payroll and sub labor count when the bank pays them, not when the hours are worked.
+      </div>
+    </div>
+  )
 }
