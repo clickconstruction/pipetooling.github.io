@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
 import ResponsiveModalShell from '../ResponsiveModalShell'
 import TestReportPreview from './TestReportPreview'
+import TestReportSendSheet from './TestReportSendSheet'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../hooks/useAuth'
 import { useIsMobile } from '../../hooks/useIsMobile'
@@ -88,6 +89,7 @@ export default function TestReportModal({
   const [saving, setSaving] = useState(false)
   const [pdfBusy, setPdfBusy] = useState(false)
   const [showAdvanced, setShowAdvanced] = useState(false)
+  const [sendOpen, setSendOpen] = useState(false)
   const [pressureText, setPressureText] = useState<Record<GasPressureUnit, string>>({ psi: '', inWc: '', ozIn2: '', mmWc: '' })
 
   const jobInfo = useMemo(() => testReportJobInfoFromJob(job), [job])
@@ -138,6 +140,7 @@ export default function TestReportModal({
   }
 
   const pickReport = async (row: TestReportRow | null) => {
+    setSendOpen(false)
     if (dirty) {
       const ok = await confirmDialog({ title: 'Unsaved changes', message: 'Leave this report without saving?', confirmLabel: 'Leave', danger: true })
       if (!ok) return
@@ -208,6 +211,15 @@ export default function TestReportModal({
     }
   }
 
+  /** Send needs a saved row (the PDF is stored against it); save first when new or dirty. */
+  const openSend = async () => {
+    if (!selectedId || dirty) {
+      const row = await save()
+      if (!row) return
+    }
+    setSendOpen(true)
+  }
+
   const downloadPdf = async () => {
     setPdfBusy(true)
     try {
@@ -271,6 +283,15 @@ export default function TestReportModal({
         </button>
         <button type="button" style={primaryBtn} disabled={saving || loading} onClick={() => void save()}>
           {saving ? 'Saving…' : selected ? 'Save' : 'Save draft'}
+        </button>
+        <button
+          type="button"
+          style={{ ...primaryBtn, background: '#b0662f', border: '1px solid #b0662f' }}
+          disabled={saving || loading || sendOpen}
+          onClick={() => void openSend()}
+          title="Email the PDF to the GC with the job's Stripe pay link"
+        >
+          {selected?.status === 'sent' ? 'Send again…' : 'Send to GC…'}
         </button>
       </div>
     </div>
@@ -462,6 +483,35 @@ export default function TestReportModal({
           ) : (
             <div style={{ fontSize: 12.5, color: 'var(--text-muted)' }}>No Stripe bill on this job yet — Bill Customer first if the report email should carry a pay link.</div>
           )}
+
+          {selected?.status === 'sent' ? (
+            <div style={{ marginTop: 10, fontSize: 12.5, color: 'var(--text-muted)', borderLeft: '3px solid #1f7a3a', paddingLeft: 10 }}>
+              <strong style={{ color: 'var(--text-strong)' }}>{testReportStatusLabel(selected)}</strong> to {selected.sent_to.join(', ') || '—'}
+              {selected.sent_cc.length ? ` · cc ${selected.sent_cc.join(', ')}` : ''}
+              {selected.sent_pay_url ? ' · with the pay link' : ' · no pay link'}
+              {selected.pdf_version > 1 ? ` · v${selected.pdf_version}` : ''}
+              {selected.certifier_name ? ` · certified by ${selected.certifier_name}` : ''}
+              {dirty ? ' — unsaved edits here are not what the GC has; Send again to update them.' : ''}
+            </div>
+          ) : null}
+
+          {sendOpen && selected ? (
+            <TestReportSendSheet
+              reportId={selected.id}
+              data={data}
+              jobInfo={jobInfo}
+              job={job}
+              settings={settings}
+              payLink={payLink}
+              previouslySentTo={selected.sent_to ?? []}
+              onClose={() => setSendOpen(false)}
+              onSent={() => {
+                setSendOpen(false)
+                void loadReports()
+                onChanged()
+              }}
+            />
+          ) : null}
         </div>
 
         <div>

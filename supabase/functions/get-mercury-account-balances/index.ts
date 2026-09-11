@@ -10,9 +10,9 @@ const corsHeaders = {
 }
 
 // Roles that can view Banking (and therefore the Balance Sheet cash line).
-// Mirrors public.is_banking_staff() (20260906010000): dev, master_technician, and the
-// assistant-LIKE roles (assistant, controller — is_assistant() since v2.662).
-const ALLOWED_ROLES = new Set(['dev', 'master_technician', 'assistant', 'controller'])
+// Mirrors public.is_banking_staff() (20260911183606, v2.3305): controller and above —
+// dev, master_technician, controller. Plain assistants lost Banking on 2026-09-11.
+const ALLOWED_ROLES = new Set(['dev', 'master_technician', 'controller'])
 
 function jsonResponse(body: Record<string, unknown>, status = 200) {
   return new Response(JSON.stringify(body), {

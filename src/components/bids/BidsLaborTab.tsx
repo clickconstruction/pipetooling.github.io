@@ -26,6 +26,7 @@ import { LaborViewPills } from './LaborViewPills'
 import { BidsLaborNewView } from './BidsLaborNewView'
 import { buildCostEstimateAutosavePayload, laborRowAutosaveUpdate, stageAmountRowAutosaveUpdate } from '../../lib/bids/costEstimateAutosavePayload'
 import { useBidCrewRate } from '../../hooks/useBidCrewRate'
+import { useLaborBookCalibration } from '../../hooks/useLaborBookCalibration'
 import type { TeamLaborBidRow } from '../../utils/teamLabor'
 import { directCostRowsFromTables } from '../../lib/bids/bidTotalCostBreakdown'
 import { asLaborEntryKind, asLaborUnit, LABOR_UNIT_WORDS, type LaborEntryKind, type LaborUnit } from '../../lib/bids/laborBookMatch'
@@ -254,6 +255,8 @@ export function BidsLaborTab({
   const bidTeamLabor = useMemo(() => (selectedBidForCostEstimate ? teamLaborDataForBids.find((r) => r.bidId === selectedBidForCostEstimate.id) ?? null : null), [teamLaborDataForBids, selectedBidForCostEstimate])
   // The company crew rate (v2.3294) — only the New view reads it; the hook is fail-soft.
   const { crewRate, loading: crewRateLoading } = useBidCrewRate(laborView === 'new' && !!selectedBidForCostEstimate)
+  // Calibration (v2.3307): the jobs linked to bids that priced with the applied book — the New view's Book vs jobs tile and evidence chips.
+  const calibration = useLaborBookCalibration(selectedLaborBookVersionId, laborView === 'new' && !!selectedBidForCostEstimate)
   const focusLaborRate = () => {
     const el = laborRateInputRef.current
     if (!el) return
@@ -1205,6 +1208,8 @@ export function BidsLaborTab({
                     distanceFromOffice={selectedBidForCostEstimate.distance_from_office ?? null}
                     countRowsLength={costEstimateCountRows.length}
                     directCostTables={{ equipment: equipmentRows, permit: permitRows, sub: subcontractorRows, waste: wasteRows, other: otherRows }}
+                    calibrationJobs={calibration.jobs}
+                    calibrationLoaded={calibration.loaded}
                     laborBookVersions={laborBookVersions}
                     onChangeBook={(v) => {
                       if (v) handleLaborBookVersionChange(selectedBidForCostEstimate.id, v)

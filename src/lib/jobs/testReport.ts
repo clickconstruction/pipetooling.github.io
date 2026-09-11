@@ -25,6 +25,7 @@ export {
   gasPressureToPsi,
   inferTestReportDraft,
   isHydrostaticType,
+  parseEmailList,
   parseTestReportSettings,
   resolveTestReportText,
   splitTestReportAddress,
