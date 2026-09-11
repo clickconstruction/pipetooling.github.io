@@ -56,7 +56,7 @@ describe('BidsLaborNewView', () => {
     expect(screen.getByText('rate set')).toBeTruthy()
     // 4 toilets × 3 h + 5 gas drops × 4 h = 32 h → 2 crew-days → $1,144.32
     expect(screen.getAllByText('32').length).toBeGreaterThanOrEqual(1) // the Field hours tile (and the totals row)
-    expect(screen.getByText('$1,144.32')).toBeTruthy()
+    expect(screen.getAllByText('$1,144.32').length).toBeGreaterThanOrEqual(1) // the Labor $ tile and the bottom line
     expect(screen.getByText('$1,298')).toBeTruthy() // 41,550 ÷ 32
   })
 
@@ -112,5 +112,42 @@ describe('BidsLaborNewView · kinds and units (v2.3291)', () => {
     const t = screen.getByTestId('labor-other-direct')
     expect(within(t).getByText('Other direct')).toBeTruthy()
     expect(within(t).getByText('equipment · permits · subs · waste · other, below')).toBeTruthy()
+  })
+})
+
+describe('BidsLaborNewView · the crew rate and the bottom line (v2.3294)', () => {
+  const crewRate = { avgFieldWage: 29.8, fieldHours: 3_120, burden: 1.2, companyRate: 35.76, overheadPerFieldHour: 11.5, fromYmd: '2026-06-13', toYmd: '2026-09-11' }
+  it('with no rate on the bid, costs at the company rate and offers to save it; the overhead tile and bid labor are facts', () => {
+    const onUseCompanyRate = vi.fn()
+    renderView({ ratePerHour: null, crewRate, onUseCompanyRate, teamLabor: { hours: 12.5, cost: 446, people: ['Wendi'] }, materials: { rough: 40_000, top: 15_000, trim: 6_300 }, costEstimate: { driving_cost_rate: 0.7, hours_per_trip: 8 } as never, distanceFromOffice: '41', countRowsLength: 4, directCostTables: { sub: [{ rough_in: 6_500 }], permit: [{ rough_in: 1_240 }] } })
+    const card = screen.getByTestId('labor-crew-rate')
+    expect(within(card).getByText('$35.76/h')).toBeTruthy()
+    expect(within(card).getByText('= $29.80 avg recorded field wage (90 d, 3,120 h) × 1.20 burden')).toBeTruthy()
+    expect(within(card).getByText('company rate')).toBeTruthy()
+    within(card).getByRole('button', { name: 'save it on the bid' }).click()
+    expect(onUseCompanyRate).toHaveBeenCalledWith(35.76)
+    expect(within(screen.getByTestId('labor-bid-labor-recorded')).getByText('12.5 h · $446.00')).toBeTruthy()
+    expect(screen.getByText('rate set')).toBeTruthy() // completeness reads the effective rate
+    expect(within(screen.getByTestId('labor-overhead-per-hour')).getByText('$11.50')).toBeTruthy()
+    // 32 h × $35.76 = $1,144.32 labor; driving 32/8 × 0.7 × 41 = $114.80; other direct $7,740; materials $61,300 → $70,299.12; margin at $41,550 is negative
+    const line = screen.getByTestId('labor-bottom-line')
+    expect(within(line).getByText('$1,144.32')).toBeTruthy()
+    expect(within(line).getByText('$114.80')).toBeTruthy()
+    expect(within(line).getByText('$7,740.00')).toBeTruthy()
+    expect(within(line).getByText('$70,299.12')).toBeTruthy()
+    expect(within(line).getByText('-69% margin at $41,550.00')).toBeTruthy()
+  })
+  it('with a rate on the bid, the override wins and can be cleared back to the company rate', () => {
+    const onClearRate = vi.fn()
+    renderView({ ratePerHour: 35, crewRate, onClearRate })
+    const card = screen.getByTestId('labor-crew-rate')
+    expect(within(card).getByText('$35.00/h override')).toBeTruthy()
+    within(card).getByRole('button', { name: 'use company rate' }).click()
+    expect(onClearRate).toHaveBeenCalled()
+  })
+  it('with neither, asks for a rate', () => {
+    renderView({ ratePerHour: null, crewRate: null })
+    expect(within(screen.getByTestId('labor-crew-rate')).getByText('no rate')).toBeTruthy()
+    expect(screen.getByText('no labor rate')).toBeTruthy()
   })
 })

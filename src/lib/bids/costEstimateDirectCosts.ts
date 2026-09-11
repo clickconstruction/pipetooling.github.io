@@ -36,7 +36,7 @@ const money = (v: unknown): number => {
 }
 
 /** A row's three stage amounts added up; blanks and negatives count as 0 (same rule as `sumEquipmentRows`). */
-export const directCostRowTotal = (r: Pick<CostEstimateDirectCostRow, 'rough_in' | 'top_out' | 'trim_set'>): number => money(r.rough_in) + money(r.top_out) + money(r.trim_set)
+export const directCostRowTotal = (r: { rough_in?: unknown; top_out?: unknown; trim_set?: unknown }): number => money(r.rough_in) + money(r.top_out) + money(r.trim_set)
 
 export type DirectCostTotals = {
   byKind: Record<DirectCostKind, number>
@@ -45,7 +45,10 @@ export type DirectCostTotals = {
   rowCount: number
 }
 
-export function sumDirectCosts(rows: ReadonlyArray<CostEstimateDirectCostRow> | null | undefined): DirectCostTotals {
+/** What the summer reads off a row — the view row, or a table row tagged with its kind. */
+export type DirectCostRowInput = { kind: string | null; rough_in?: unknown; top_out?: unknown; trim_set?: unknown }
+
+export function sumDirectCosts(rows: ReadonlyArray<DirectCostRowInput> | null | undefined): DirectCostTotals {
   const byKind: Record<DirectCostKind, number> = { equipment: 0, permit: 0, sub: 0, waste: 0, other: 0 }
   const byStage = { rough: 0, top: 0, trim: 0 }
   let rowCount = 0

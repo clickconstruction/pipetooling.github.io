@@ -11,10 +11,14 @@
  *   materials     PO / takeoff totals by stage
  *   labor         Σ row hours × the labor rate
  *   driving       (hours ÷ hours per trip) × $/mile × distance to office
- *   estimator     flat, or $/count × count rows
  *   travel        people × nights × (meals + hotel)
- *   team labor    hours clocked on the bid itself (People → Bids), when known
  *   other direct  equipment · permits · subs · waste · other (stage amounts)
+ *
+ * Reported but NOT in the total (v2.3293, "estimator time retired"): the old
+ * estimator-time box (flat, or $/count × count rows) and the team labor
+ * clocked on the bid itself. Bid labor is a recorded fact that already sits in
+ * the overhead pool — the job's Burn treats overhead the same way — so the
+ * direct cost stops carrying an invented number for it.
  *
  * Pure. Row hours go through `costEstimateLaborRowHours` → `laborRowHours`, so
  * task, sub and per-100-ft rows read the same as on the Labor tab.
@@ -84,9 +88,9 @@ export type BidCostBreakdown = {
   otherCost: number
   /** equipment + permits + subs + waste + other. */
   otherDirectCost: number
-  /** labor + driving + estimator + travel — the Labor page's "Labor total". */
+  /** labor + driving + travel — the Labor page's "Labor total". Estimator time and team labor are reported above, not added (v2.3293). */
   laborCostWithDriving: number
-  /** Everything but materials. */
+  /** Everything but materials: laborCostWithDriving + otherDirectCost. */
   directCost: number
   totalCost: number
 }
@@ -110,8 +114,8 @@ export function computeBidCostBreakdown(i: BidCostBreakdownInput): BidCostBreakd
     byKind[r.kind] += amount(r.rough_in) + amount(r.top_out) + amount(r.trim_set)
   }
   const otherDirectCost = byKind.equipment + byKind.permit + byKind.sub + byKind.waste + byKind.other
-  const laborCostWithDriving = laborCost + drivingCost + estimatorCost + travelCost
-  const directCost = laborCostWithDriving + teamLaborCost + otherDirectCost
+  const laborCostWithDriving = laborCost + drivingCost + travelCost
+  const directCost = laborCostWithDriving + otherDirectCost
   return {
     totalMaterials,
     rate,

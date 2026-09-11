@@ -4349,6 +4349,7 @@ export default function Bids() {
           costEstimateMaterialTotalRoughIn={costEstimateMaterialTotalRoughIn}
           costEstimateMaterialTotalTopOut={costEstimateMaterialTotalTopOut}
           costEstimateMaterialTotalTrimSet={costEstimateMaterialTotalTrimSet}
+          teamLaborDataForBids={teamLaborDataForBids}
           laborRateInput={laborRateInput}
           setLaborRateInput={setLaborRateInput}
           drivingCostRate={drivingCostRate}

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type Dispatch, type SetStateAction } from 'react'
+import { useEffect, useMemo, useRef, useState, type Dispatch, type SetStateAction } from 'react'
 import { supabase } from '../../lib/supabase'
 import { BID_UPDATE_NOT_APPLIED_MESSAGE, bidUpdateRefused } from '../../lib/bids/updateGuard'
 import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
@@ -25,6 +25,8 @@ import { readStoredLaborView, writeStoredLaborView, type LaborView } from '../..
 import { LaborViewPills } from './LaborViewPills'
 import { BidsLaborNewView } from './BidsLaborNewView'
 import { buildCostEstimateAutosavePayload, laborRowAutosaveUpdate, stageAmountRowAutosaveUpdate } from '../../lib/bids/costEstimateAutosavePayload'
+import { useBidCrewRate } from '../../hooks/useBidCrewRate'
+import type { TeamLaborBidRow } from '../../utils/teamLabor'
 import { directCostRowsFromTables } from '../../lib/bids/bidTotalCostBreakdown'
 import { asLaborEntryKind, asLaborUnit, LABOR_UNIT_WORDS, type LaborEntryKind, type LaborUnit } from '../../lib/bids/laborBookMatch'
 import { BidWorkflowTabTitleWithPreview } from './BidWorkflowTabTitleWithPreview'
@@ -98,6 +100,8 @@ type BidsLaborTabProps = {
   costEstimateMaterialTotalRoughIn: number | null
   costEstimateMaterialTotalTopOut: number | null
   costEstimateMaterialTotalTrimSet: number | null
+  /** Hours clocked on each bid (People → Bids); the Labor tab shows this bid's as a fact (v2.3294). */
+  teamLaborDataForBids?: TeamLaborBidRow[]
   laborRateInput: string
   setLaborRateInput: Dispatch<SetStateAction<string>>
   drivingCostRate: string
@@ -179,6 +183,7 @@ export function BidsLaborTab({
   costEstimateMaterialTotalRoughIn,
   costEstimateMaterialTotalTopOut,
   costEstimateMaterialTotalTrimSet,
+  teamLaborDataForBids = [],
   laborRateInput,
   setLaborRateInput,
   drivingCostRate,
@@ -186,11 +191,8 @@ export function BidsLaborTab({
   hoursPerTrip,
   setHoursPerTrip,
   estimatorCostUseFlat,
-  setEstimatorCostUseFlat,
   estimatorCostPerCount,
-  setEstimatorCostPerCount,
   estimatorCostFlatAmount,
-  setEstimatorCostFlatAmount,
   travelPeople,
   setTravelPeople,
   travelNights,
@@ -249,6 +251,9 @@ export function BidsLaborTab({
     writeStoredLaborView(typeof window !== 'undefined' ? window.localStorage : null, next)
   }
   const laborRateInputRef = useRef<HTMLInputElement>(null)
+  const bidTeamLabor = useMemo(() => (selectedBidForCostEstimate ? teamLaborDataForBids.find((r) => r.bidId === selectedBidForCostEstimate.id) ?? null : null), [teamLaborDataForBids, selectedBidForCostEstimate])
+  // The company crew rate (v2.3294) — only the New view reads it; the hook is fail-soft.
+  const { crewRate, loading: crewRateLoading } = useBidCrewRate(laborView === 'new' && !!selectedBidForCostEstimate)
   const focusLaborRate = () => {
     const el = laborRateInputRef.current
     if (!el) return
@@ -281,7 +286,6 @@ export function BidsLaborTab({
   // Collapsible non-row Direct-Cost sections (collapsed by default; show total on the right).
   const [vehicleTravelCollapsed, setVehicleTravelCollapsed] = useState(true)
   const [lodgingCollapsed, setLodgingCollapsed] = useState(true)
-  const [estimatorTimeCollapsed, setEstimatorTimeCollapsed] = useState(true)
   const [laborVersionFormOpen, setLaborVersionFormOpen] = useState(false)
   const [editingLaborVersion, setEditingLaborVersion] = useState<LaborBookVersion | null>(null)
   const [laborVersionNameInput, setLaborVersionNameInput] = useState('')
@@ -1191,6 +1195,16 @@ export function BidsLaborTab({
                     appliedBookName={laborBookVersions.find((v) => v.id === selectedLaborBookVersionId)?.name ?? null}
                     costEstimateId={costEstimate?.id ?? null}
                     bidLabel={selectedBidForCostEstimate.bid_number ?? selectedBidForCostEstimate.project_name ?? null}
+                    crewRate={crewRate}
+                    crewRateLoading={crewRateLoading}
+                    onUseCompanyRate={(rate) => { markCell('rate:labor'); setLaborRateInput(rate.toFixed(2)) }}
+                    onClearRate={() => { markCell('rate:labor'); setLaborRateInput('') }}
+                    teamLabor={bidTeamLabor ? { hours: bidTeamLabor.manHours, cost: bidTeamLabor.bidCost, people: bidTeamLabor.people } : null}
+                    materials={{ rough: costEstimateMaterialTotalRoughIn, top: costEstimateMaterialTotalTopOut, trim: costEstimateMaterialTotalTrimSet }}
+                    costEstimate={costEstimate}
+                    distanceFromOffice={selectedBidForCostEstimate.distance_from_office ?? null}
+                    countRowsLength={costEstimateCountRows.length}
+                    directCostTables={{ equipment: equipmentRows, permit: permitRows, sub: subcontractorRows, waste: wasteRows, other: otherRows }}
                     laborBookVersions={laborBookVersions}
                     onChangeBook={(v) => {
                       if (v) handleLaborBookVersionChange(selectedBidForCostEstimate.id, v)
@@ -1679,80 +1693,20 @@ export function BidsLaborTab({
                 </>
                 )}
               </div>
-              {/* Estimators Time */}
-              <div style={{ marginTop: '1rem', padding: '0.75rem', background: 'var(--bg-amber-100)', borderRadius: 4, border: '1px solid var(--border-amber-soft)' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: estimatorTimeCollapsed ? 0 : '0.5rem', flexWrap: 'wrap', gap: '0.5rem' }}>
-                  <button type="button" onClick={() => setEstimatorTimeCollapsed((c) => !c)} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontSize: '0.875rem', fontWeight: 600 }}>
-                    <span aria-hidden style={{ fontSize: '0.7rem' }}>{estimatorTimeCollapsed ? '▶' : '▼'}</span>
-                    Estimators Time
-                  </button>
-                  {estimatorTimeCollapsed && (() => {
-                    const countRows = costEstimateCountRows.length
-                    const estimatorCost = estimatorCostUseFlat
-                      ? (estimatorCostFlatAmount.trim() !== '' ? parseFloat(estimatorCostFlatAmount) || 0 : 0)
-                      : countRows * (parseFloat(estimatorCostPerCount) || 10)
-                    return (
-                      <span style={{ fontSize: '0.875rem', color: 'var(--text-700)' }}>
-                        Estimator cost: {estimatorCostUseFlat ? '' : `${countRows} Count Types × $${(parseFloat(estimatorCostPerCount) || 10).toFixed(2)} = `}<span style={{ fontWeight: 700 }}>${formatCurrency(estimatorCost)}</span>
-                      </span>
-                    )
-                  })()}
-                </div>
-                {!estimatorTimeCollapsed && (
-                <>
-                <div style={{ display: 'flex', gap: '1rem', marginBottom: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontSize: '0.875rem' }}>
-                    <input
-                      type="checkbox"
-                      checked={estimatorCostUseFlat}
-                      onChange={(e) => setEstimatorCostUseFlat(e.target.checked)}
-                    />
-                    Use flat amount
-                  </label>
-                  <span style={{ color: 'var(--text-faint)', fontSize: '0.875rem' }}>|</span>
-                  {estimatorCostUseFlat ? (
-                    <div>
-                      <label style={{ marginRight: '0.5rem', fontSize: '0.875rem' }}>Flat amount ($)</label>
-                      <input
-                        type="number"
-                        min={0}
-                        step={0.01}
-                        value={estimatorCostFlatAmount}
-                        onChange={(e) => { markCell('estimator:flat'); setEstimatorCostFlatAmount(e.target.value) }}
-                        onWheel={(e) => e.currentTarget.blur()}
-                        {...cellA11y('estimator:flat', 'Estimator cost, flat amount in dollars')}
-                        style={{ width: '6rem', padding: '0.375rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.875rem', ...cellSaveStyle('estimator:flat') }}
-                      />
-                    </div>
+              {/* Bid labor recorded (v2.3294): estimator time is a fact off the clock, not an invented cost */}
+              <div style={{ marginTop: '1rem', padding: '0.75rem', background: 'var(--bg-amber-100)', borderRadius: 4, border: '1px solid var(--border-amber-soft)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }} data-testid="bid-labor-recorded">
+                <span style={{ fontSize: '0.875rem', fontWeight: 600 }}>Bid labor recorded</span>
+                <span style={{ fontSize: '0.875rem', color: 'var(--text-700)' }}>
+                  {bidTeamLabor && bidTeamLabor.manHours > 0 ? (
+                    <>
+                      {bidTeamLabor.manHours.toLocaleString('en-US', { maximumFractionDigits: 1 })} h · <span style={{ fontWeight: 700 }}>${formatCurrency(bidTeamLabor.bidCost)}</span>
+                      {bidTeamLabor.people.length > 0 ? <span style={{ color: 'var(--text-muted)' }}> · {bidTeamLabor.people.join(', ')}</span> : null}
+                      <span style={{ color: 'var(--text-muted)' }}> · clocked on this bid — already in the overhead pool, not in this bid's cost</span>
+                    </>
                   ) : (
-                    <div>
-                      <label style={{ marginRight: '0.5rem', fontSize: '0.875rem' }}>Per count row ($)</label>
-                      <input
-                        type="number"
-                        min={0}
-                        step={0.01}
-                        value={estimatorCostPerCount}
-                        onChange={(e) => { markCell('estimator:perCount'); setEstimatorCostPerCount(e.target.value) }}
-                        onWheel={(e) => e.currentTarget.blur()}
-                        {...cellA11y('estimator:perCount', 'Estimator cost per count row, dollars')}
-                        style={{ width: '6rem', padding: '0.375rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.875rem', ...cellSaveStyle('estimator:perCount') }}
-                      />
-                    </div>
+                    <span style={{ color: 'var(--text-muted)' }}>no hours clocked on this bid yet — bid labor sits in the overhead pool, not in this bid's cost</span>
                   )}
-                </div>
-                {(() => {
-                  const countRows = costEstimateCountRows.length
-                  const estimatorCost = estimatorCostUseFlat
-                    ? (estimatorCostFlatAmount.trim() !== '' ? parseFloat(estimatorCostFlatAmount) || 0 : 0)
-                    : countRows * (parseFloat(estimatorCostPerCount) || 10)
-                  return (
-                    <p style={{ margin: 0, fontWeight: 400, fontSize: '0.875rem', textAlign: 'right' }}>
-                      Estimator cost: {estimatorCostUseFlat ? '' : `${countRows} Count Types × $${(parseFloat(estimatorCostPerCount) || 10).toFixed(2)} = `}<span style={{ fontWeight: 700 }}>${formatCurrency(estimatorCost)}</span>
-                    </p>
-                  )
-                })()}
-                </>
-                )}
+                </span>
               </div>
                 <h3 id="labor-direct-costs" style={{ margin: '1.5rem 0 0.75rem', fontSize: '1rem', textAlign: 'center', scrollMarginTop: '1rem' }}>DIRECT COSTS</h3>
                 {/* Equipment and Tool Rental Section */}
