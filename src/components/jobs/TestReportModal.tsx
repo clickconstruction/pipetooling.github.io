@@ -90,6 +90,9 @@ export default function TestReportModal({
   const [pdfBusy, setPdfBusy] = useState(false)
   const [showAdvanced, setShowAdvanced] = useState(false)
   const [sendOpen, setSendOpen] = useState(false)
+  // The send sheet's button lives in the footer (v2.3326) — the sheet reports its state here.
+  const [sendState, setSendState] = useState<{ label: string; canSend: boolean; sending: boolean; send: () => void } | null>(null)
+  const onSendStateChange = useCallback((s: { label: string; canSend: boolean; sending: boolean; send: () => void } | null) => setSendState(s), [])
   const [pressureText, setPressureText] = useState<Record<GasPressureUnit, string>>({ psi: '', inWc: '', ozIn2: '', mmWc: '' })
 
   const jobInfo = useMemo(() => testReportJobInfoFromJob(job), [job])
@@ -284,15 +287,27 @@ export default function TestReportModal({
         <button type="button" style={primaryBtn} disabled={saving || loading} onClick={() => void save()}>
           {saving ? 'Saving…' : selected ? 'Save' : 'Save draft'}
         </button>
-        <button
-          type="button"
-          style={{ ...primaryBtn, background: '#b0662f', border: '1px solid #b0662f' }}
-          disabled={saving || loading || sendOpen}
-          onClick={() => void openSend()}
-          title="Email the PDF to the GC with the job's Stripe pay link"
-        >
-          {selected?.status === 'sent' ? 'Send again…' : 'Send to GC…'}
-        </button>
+        {sendOpen && sendState ? (
+          <button
+            type="button"
+            style={{ ...primaryBtn, background: '#b0662f', border: '1px solid #b0662f', opacity: sendState.canSend ? 1 : 0.55 }}
+            disabled={!sendState.canSend}
+            onClick={() => sendState.send()}
+            title={sendState.canSend ? 'Email the PDF now' : 'Finish the items the sheet lists first'}
+          >
+            {sendState.label}
+          </button>
+        ) : (
+          <button
+            type="button"
+            style={{ ...primaryBtn, background: '#b0662f', border: '1px solid #b0662f' }}
+            disabled={saving || loading || sendOpen}
+            onClick={() => void openSend()}
+            title="Email the PDF to the GC with the job's Stripe pay link"
+          >
+            {selected?.status === 'sent' ? 'Send again…' : 'Send to GC…'}
+          </button>
+        )}
       </div>
     </div>
   )
@@ -504,6 +519,7 @@ export default function TestReportModal({
               settings={settings}
               payLink={payLink}
               previouslySentTo={selected.sent_to ?? []}
+              onSendStateChange={onSendStateChange}
               onClose={() => setSendOpen(false)}
               onSent={() => {
                 setSendOpen(false)

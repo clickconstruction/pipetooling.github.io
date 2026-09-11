@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type CSSProperties } from 'react'
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { supabase } from '../../lib/supabase'
 import { formatErrorMessage, withSupabaseRetry } from '../../utils/errorHandling'
 import { useToastContext } from '../../contexts/ToastContext'
@@ -38,6 +38,7 @@ export default function TestReportSendSheet({
   previouslySentTo,
   onClose,
   onSent,
+  onSendStateChange,
 }: {
   reportId: string
   data: TestReportData
@@ -48,6 +49,12 @@ export default function TestReportSendSheet({
   previouslySentTo: string[]
   onClose: () => void
   onSent: () => void
+  /**
+   * The modal's sticky footer owns the Send button (v2.3326): the sheet reports
+   * what the button should say and do, so the primary action never scrolls out
+   * of sight below the message box.
+   */
+  onSendStateChange?: (state: { label: string; canSend: boolean; sending: boolean; send: () => void } | null) => void
 }) {
   const { showToast } = useToastContext()
   const [jobGcEmail, setJobGcEmail] = useState<string | null>(null)
@@ -201,6 +208,23 @@ export default function TestReportSendSheet({
     }
   }
 
+  const sendLabel = sending ? 'Sending…' : previouslySentTo.length ? 'Send again' : payLink && !includeLink ? 'Send without the link' : 'Send'
+  const canSend = !sending && blockers.length === 0 && !gcLoading
+  // Lift the button to the modal footer; clear it on unmount.
+  const sendRef = useRef(send)
+  sendRef.current = send
+  const onSendStateChangeRef = useRef(onSendStateChange)
+  onSendStateChangeRef.current = onSendStateChange
+  useEffect(() => {
+    onSendStateChangeRef.current?.({ label: sendLabel, canSend, sending, send: () => void sendRef.current() })
+  }, [sendLabel, canSend, sending])
+  useEffect(() => () => onSendStateChangeRef.current?.(null), [])
+  // Bring the sheet into view when it opens — it sits below the form.
+  const rootRef = useRef<HTMLDivElement | null>(null)
+  useEffect(() => {
+    rootRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }, [])
+
   const gcHint = (() => {
     if (gcLoading) return 'Looking up the GC…'
     if (effGcId && effGcEmail) return `${effGcName ?? 'GC'} · ${effGcEmail}`
@@ -210,7 +234,7 @@ export default function TestReportSendSheet({
   })()
 
   return (
-    <div style={{ border: '1px solid var(--border)', borderRadius: 12, padding: '1rem', background: 'var(--surface)', marginTop: 12 }}>
+    <div ref={rootRef} style={{ border: '1px solid var(--border)', borderRadius: 12, padding: '1rem', background: 'var(--surface)', marginTop: 12, scrollMarginTop: 12 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 10 }}>
         <div style={{ fontWeight: 700, fontSize: 15 }}>Send {reportLabel} report</div>
         <button type="button" onClick={onClose} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: 13 }}>Cancel</button>
@@ -332,12 +356,18 @@ export default function TestReportSendSheet({
         </ul>
       ) : null}
 
-      <div style={{ marginTop: 14, display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-        <button type="button" style={btn} onClick={onClose} disabled={sending}>Back</button>
-        <button type="button" style={{ ...btn, background: '#b0662f', border: '1px solid #b0662f', color: '#fff' }} onClick={() => void send()} disabled={sending || blockers.length > 0 || gcLoading}>
-          {sending ? 'Sending…' : previouslySentTo.length ? 'Send again' : payLink && !includeLink ? 'Send without the link' : 'Send'}
-        </button>
-      </div>
+      {onSendStateChange ? (
+        <div style={{ marginTop: 12, fontSize: 12.5, color: 'var(--text-muted)' }}>
+          {canSend ? `The ${sendLabel} button is in the bar at the bottom of this window.` : blockers.length ? 'Fix the items above and the Send button in the bottom bar wakes up.' : ''}
+        </div>
+      ) : (
+        <div style={{ marginTop: 14, display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+          <button type="button" style={btn} onClick={onClose} disabled={sending}>Back</button>
+          <button type="button" style={{ ...btn, background: '#b0662f', border: '1px solid #b0662f', color: '#fff' }} onClick={() => void send()} disabled={!canSend}>
+            {sendLabel}
+          </button>
+        </div>
+      )}
     </div>
   )
 }
