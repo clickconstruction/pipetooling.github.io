@@ -3836,23 +3836,6 @@ export default function JobFormModal({
                   onChanged={() => onSavedRef.current?.()}
                 />
               </div>
-            <CustomerTermsBar
-              warning={customerTerms.warning}
-              onEditTerms={
-                (authRole === 'dev' || authRole === 'master_technician' || authRole === 'assistant' || authRole === 'controller') && (gcCustomerId || customerId)
-                  ? () => setTermsModalOpen(true)
-                  : undefined
-              }
-            />
-            {termsModalOpen && (gcCustomerId || customerId) ? (
-              <CustomerTermsModal
-                customerId={(gcCustomerId || customerId) as string}
-                customerName={customers.find((c) => c.id === (gcCustomerId || customerId))?.name ?? customerName ?? 'Customer'}
-                record={customerTerms.record}
-                onClose={() => setTermsModalOpen(false)}
-                onSaved={() => setTermsRefresh((n) => n + 1)}
-              />
-            ) : null}
             <JobFormEditFactRows
               contractJob={initialJob ?? editing}
               workOrderJob={initialJob ?? editing}
@@ -3937,6 +3920,24 @@ export default function JobFormModal({
             </>
           )}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', marginBottom: '1rem' }}>
+            {/* Their Word PR 4: the payer's terms + record, above the customer rows in both modes. */}
+            <CustomerTermsBar
+              warning={customerTerms.warning}
+              onEditTerms={
+                (authRole === 'dev' || authRole === 'master_technician' || authRole === 'assistant' || authRole === 'controller') && (gcCustomerId || customerId)
+                  ? () => setTermsModalOpen(true)
+                  : undefined
+              }
+            />
+            {termsModalOpen && (gcCustomerId || customerId) ? (
+              <CustomerTermsModal
+                customerId={(gcCustomerId || customerId) as string}
+                customerName={customers.find((c) => c.id === (gcCustomerId || customerId))?.name ?? customerName ?? 'Customer'}
+                record={customerTerms.record}
+                onClose={() => setTermsModalOpen(false)}
+                onSaved={() => setTermsRefresh((n) => n + 1)}
+              />
+            ) : null}
             {!editing ? (
               <JobFormCustomerSection
               jobId={initialJob?.id ?? null}
