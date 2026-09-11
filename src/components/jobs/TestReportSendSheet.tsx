@@ -1,24 +1,32 @@
 import { useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { supabase } from '../../lib/supabase'
-import { withSupabaseRetry } from '../../utils/errorHandling'
+import { formatErrorMessage, withSupabaseRetry } from '../../utils/errorHandling'
 import { useToastContext } from '../../contexts/ToastContext'
+import CustomerSearchCombobox from '../customers/CustomerSearchCombobox'
 import { extractContactInfo } from '../../lib/bids/bidContactInfo'
 import { parseEmailList, testReportSendBlockers, testReportShortLabel, type TestReportData, type TestReportJobInfo, type TestReportSettings } from '../../lib/jobs/testReport'
 import { buildTestReportEmail } from '../../lib/jobs/testReportEmail'
+import { contactInfoWithEmail, gcPickWrites, prefillTestReportTo, testReportRecipientLabel } from '../../lib/jobs/testReportRecipients'
 import { sendTestReport } from '../../lib/jobs/sendTestReport'
 import type { JobWithDetails } from '../../types/jobWithDetails'
-import type { Json } from '../../types/database'
+import type { Database, Json } from '../../types/database'
+
+type CustomerRow = Database['public']['Tables']['customers']['Row']
 
 /**
- * The Send sheet (v2.3301) — what Taunya writes by hand today, prefilled: To
- * the GC on the job (else the customer), the settings' standing cc, the
- * subject, the body with the Stripe pay link, the PDF as the attachment.
- * "Bill first" when the job has no Stripe bill; sending without the link is a
- * deliberate second button.
+ * The Send sheet (v2.3301; GC picker v2.3309) — what Taunya writes by hand
+ * today, prefilled: To the GC on the job (else the customer), the settings'
+ * standing cc, the subject, the body with the Stripe pay link, the PDF as the
+ * attachment. When the job has no GC, pick one here: their email fills To,
+ * and the pick links them to the job so the next report — and the portal —
+ * already know. "Bill first" when the job has no Stripe bill; sending
+ * without the link is a deliberate second button.
  */
 const label: CSSProperties = { fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-muted)', marginBottom: 4, fontWeight: 600 }
 const input: CSSProperties = { width: '100%', boxSizing: 'border-box', padding: '0.45rem 0.6rem', fontSize: '0.9rem', border: '1px solid var(--border-strong)', borderRadius: 8, background: 'var(--surface)', color: 'var(--text-strong)', fontFamily: 'inherit' }
 const btn: CSSProperties = { border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-strong)', borderRadius: 8, padding: '0.5rem 0.9rem', fontSize: 13, fontWeight: 600, cursor: 'pointer' }
+const hint: CSSProperties = { fontSize: 11.5, color: 'var(--text-muted)', marginTop: 3 }
+const check: CSSProperties = { fontSize: 12.5, display: 'inline-flex', gap: 6, alignItems: 'center', marginTop: 6 }
 
 export default function TestReportSendSheet({
   reportId,
@@ -42,8 +50,15 @@ export default function TestReportSendSheet({
   onSent: () => void
 }) {
   const { showToast } = useToastContext()
-  const [gcEmail, setGcEmail] = useState<string | null>(null)
+  const [jobGcEmail, setJobGcEmail] = useState<string | null>(null)
   const [gcLoading, setGcLoading] = useState(Boolean(job.gc_customer_id))
+  // A GC picked here (v2.3309) — overrides the job's for this send and, when asked, becomes the job's.
+  const [pickedGc, setPickedGc] = useState<CustomerRow | null>(null)
+  const [pickerOpen, setPickerOpen] = useState(false)
+  const [customers, setCustomers] = useState<CustomerRow[] | null>(null)
+  const [customerSearch, setCustomerSearch] = useState('')
+  const [setAsGc, setSetAsGc] = useState(true)
+  const [saveEmailOnCard, setSaveEmailOnCard] = useState(true)
   const [to, setTo] = useState('')
   const [cc, setCc] = useState(settings.emailCc)
   const [includeLink, setIncludeLink] = useState(Boolean(payLink))
@@ -65,7 +80,7 @@ export default function TestReportSendSheet({
           'load gc email for test report',
         )) as { contact_info: Json | null } | null
         if (cancelled) return
-        setGcEmail(extractContactInfo(row?.contact_info ?? null).email.trim() || null)
+        setJobGcEmail(extractContactInfo(row?.contact_info ?? null).email.trim() || null)
       } finally {
         if (!cancelled) setGcLoading(false)
       }
@@ -75,11 +90,46 @@ export default function TestReportSendSheet({
     }
   }, [job.gc_customer_id])
 
+  // The customers list, only once the picker opens (the job form's own query).
+  useEffect(() => {
+    if (!pickerOpen || customers) return
+    let cancelled = false
+    void (async () => {
+      try {
+        const rows = (await withSupabaseRetry(
+          async () => supabase.from('customers').select('id, name, address, contact_info, date_met, date_met_source, master_user_id, customer_type, archived_at').is('archived_at', null).order('name'),
+          'load customers for gc pick',
+        )) as CustomerRow[] | null
+        if (!cancelled) setCustomers(rows ?? [])
+      } catch (e) {
+        if (!cancelled) {
+          setCustomers([])
+          showToast(formatErrorMessage(e, 'Could not load customers'), 'error')
+        }
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [pickerOpen, customers, showToast])
+
+  const effGcId = pickedGc?.id ?? job.gc_customer_id ?? null
+  const effGcName = (pickedGc?.name ?? job.gcCustomer?.name ?? '').trim() || null
+  const effGcEmail = pickedGc ? extractContactInfo(pickedGc.contact_info).email.trim() || null : jobGcEmail
+
   // Prefill To once the GC lookup settles: previous recipients → the GC → the customer.
   useEffect(() => {
     if (gcLoading) return
-    setTo((cur) => cur || previouslySentTo.join(', ') || gcEmail || jobInfo.customerEmail || '')
-  }, [gcLoading, gcEmail, jobInfo.customerEmail, previouslySentTo])
+    setTo((cur) => cur || prefillTestReportTo({ previous: previouslySentTo, gcEmail: effGcEmail, customerEmail: jobInfo.customerEmail }).to)
+  }, [gcLoading, effGcEmail, jobInfo.customerEmail, previouslySentTo])
+
+  const pickGc = (c: CustomerRow) => {
+    setPickedGc(c)
+    setPickerOpen(false)
+    setCustomerSearch(c.name)
+    const email = extractContactInfo(c.contact_info).email.trim()
+    if (email) setTo(email)
+  }
 
   const reportLabel = testReportShortLabel(data.testType, data.system)
   const amountLabel = payLink ? `$${payLink.amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : null
@@ -103,16 +153,34 @@ export default function TestReportSendSheet({
   const toList = parseEmailList(to)
   const ccList = parseEmailList(cc)
   const blockers = testReportSendBlockers(data, { toEmail: toList[0] ?? to.trim(), hasPayLink: Boolean(payLink && includeLink), requirePayLink: false })
-  const recipientLabel = gcEmail && toList.includes(gcEmail.toLowerCase()) ? (job.gcCustomer?.name ?? null) : toList.includes((jobInfo.customerEmail ?? '').toLowerCase()) ? jobInfo.customerName : null
+  const recipientLabel = testReportRecipientLabel({ toList, gcEmail: effGcEmail, gcName: effGcName, customerEmail: jobInfo.customerEmail, customerName: jobInfo.customerName })
+  const writes = gcPickWrites({ pickedGcId: pickedGc?.id ?? null, jobGcId: job.gc_customer_id ?? null, setAsGc, pickedGcEmail: effGcEmail, firstTo: toList[0] ?? null, saveEmailOnCard })
 
   const send = async () => {
     if (blockers.length) return
     setSending(true)
     try {
+      // The GC pick's writes go first so the recipient label and the next report are right; each fails soft.
+      if (writes.linkGcToJob) {
+        try {
+          await withSupabaseRetry(async () => supabase.from('jobs_ledger').update({ gc_customer_id: writes.linkGcToJob }).eq('id', job.id), 'link gc to job')
+        } catch (e) {
+          showToast(formatErrorMessage(e, 'Could not set the GC on the job — sending anyway'), 'error')
+        }
+      }
+      if (writes.saveEmailOnGc) {
+        try {
+          const target = writes.saveEmailOnGc
+          const current = pickedGc && pickedGc.id === target.customerId ? pickedGc.contact_info : null
+          await withSupabaseRetry(async () => supabase.from('customers').update({ contact_info: contactInfoWithEmail(current, target.email) }).eq('id', target.customerId), 'save gc email')
+        } catch (e) {
+          showToast(formatErrorMessage(e, "Could not save the email on the GC's card — sending anyway"), 'error')
+        }
+      }
       const res = await sendTestReport({
         reportId,
         data,
-        job: jobInfo,
+        job: { ...jobInfo, customerCompany: effGcName ?? jobInfo.customerCompany },
         settings,
         to: toList,
         cc: ccList,
@@ -133,6 +201,14 @@ export default function TestReportSendSheet({
     }
   }
 
+  const gcHint = (() => {
+    if (gcLoading) return 'Looking up the GC…'
+    if (effGcId && effGcEmail) return `${effGcName ?? 'GC'} · ${effGcEmail}`
+    if (effGcId) return `${effGcName ?? 'The GC'} has no email on file — type one below and it can be saved on their card.`
+    if (jobInfo.customerEmail) return `No GC on this job — the customer, ${jobInfo.customerName}. Pick the GC if a contractor ordered this test.`
+    return 'No GC on this job and no customer email — pick the GC or type the address.'
+  })()
+
   return (
     <div style={{ border: '1px solid var(--border)', borderRadius: 12, padding: '1rem', background: 'var(--surface)', marginTop: 12 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 10 }}>
@@ -140,18 +216,67 @@ export default function TestReportSendSheet({
         <button type="button" onClick={onClose} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: 13 }}>Cancel</button>
       </div>
 
+      {/* The GC (v2.3309): the job's, or one picked here. */}
+      <div style={{ marginBottom: 12 }}>
+        <div style={label}>GC</div>
+        {effGcId && !pickerOpen ? (
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
+            <span style={{ fontSize: 13.5, fontWeight: 600 }}>{effGcName ?? 'GC'}</span>
+            {pickedGc && pickedGc.id !== job.gc_customer_id ? <span style={{ fontSize: 11, fontWeight: 700, borderRadius: 999, padding: '1px 8px', background: '#fff6e0', color: '#b7791f' }}>picked here</span> : null}
+            <button type="button" onClick={() => setPickerOpen(true)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: 12.5, padding: 0, textDecoration: 'underline' }}>
+              change
+            </button>
+          </div>
+        ) : (
+          <div style={{ display: 'grid', gap: 6 }}>
+            <CustomerSearchCombobox
+              customers={customers ?? []}
+              loading={pickerOpen && customers === null}
+              valueId={pickedGc?.id ?? null}
+              searchText={customerSearch}
+              onSearchTextChange={(t) => {
+                setCustomerSearch(t)
+                if (!pickerOpen) setPickerOpen(true)
+              }}
+              onSelect={pickGc}
+              onClear={() => {
+                setPickedGc(null)
+                setCustomerSearch('')
+              }}
+              placeholder="Search for the GC — the contractor who ordered this test"
+              aria-label="Pick the GC for this report"
+            />
+            {pickerOpen && effGcId && job.gc_customer_id && !pickedGc ? (
+              <button type="button" onClick={() => setPickerOpen(false)} style={{ justifySelf: 'start', background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: 12.5, padding: 0 }}>
+                keep {job.gcCustomer?.name ?? 'the job’s GC'}
+              </button>
+            ) : null}
+          </div>
+        )}
+        <div style={hint}>{gcHint}</div>
+        {pickedGc && pickedGc.id !== job.gc_customer_id ? (
+          <label style={check}>
+            <input type="checkbox" checked={setAsGc} onChange={(e) => setSetAsGc(e.target.checked)} />
+            Set {pickedGc.name} as the GC on this job (the next report and the portal will know)
+          </label>
+        ) : null}
+      </div>
+
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
         <div>
           <div style={label}>To</div>
           <input type="text" value={to} onChange={(e) => setTo(e.target.value)} placeholder={gcLoading ? 'Looking up the GC…' : 'gc@example.com, second@example.com'} style={input} />
-          <div style={{ fontSize: 11.5, color: 'var(--text-muted)', marginTop: 3 }}>
-            {gcEmail ? `${job.gcCustomer?.name ?? 'GC'} · ${gcEmail}` : job.gc_customer_id ? `${job.gcCustomer?.name ?? 'The GC'} has no email on file — type one, and add it on their customer card.` : jobInfo.customerEmail ? `No GC on this job — the customer, ${jobInfo.customerName}.` : 'No GC on this job and no customer email — type the address.'}
-          </div>
+          {effGcId && !effGcEmail && toList[0] ? (
+            <label style={check}>
+              <input type="checkbox" checked={saveEmailOnCard} onChange={(e) => setSaveEmailOnCard(e.target.checked)} />
+              Save {toList[0]} on {effGcName ?? 'the GC'}’s customer card
+            </label>
+          ) : null}
         </div>
         <div>
           <div style={label}>cc</div>
           <input type="text" value={cc} onChange={(e) => setCc(e.target.value)} placeholder="malachi@example.com" style={input} />
-          <div style={{ fontSize: 11.5, color: 'var(--text-muted)', marginTop: 3 }}>The standing copy comes from Settings → Test reports → Always copy.</div>
+          <div style={hint}>The standing copy comes from Settings → Test reports → Always copy.</div>
         </div>
       </div>
 

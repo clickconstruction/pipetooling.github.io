@@ -30,7 +30,8 @@ Pick **Pre-Test**, **Sewer**, today's date, 60 minutes, **PASS**, type "PVC. Toi
 
 {{button:amber|Send to GC…}} opens the send sheet — the email the office used to write by hand, already filled in:
 
-- **To** — the GC on the job (their email from the customer card), else the customer. Add more addresses with commas.
+- **GC** — the contractor who ordered the test. If the job already has one, their name is here; if not, search for them: their email fills To and **Set … as the GC on this job** links them for good, so the next report and the portal already know. A GC with no email on file gets a **Save … on their customer card** checkbox under To.
+- **To** — the GC's email, else the customer's. Add more addresses with commas.
 - **cc** — the standing copy from Settings (the master who certifies, say).
 - **Message** — "Attached is the … report for 112 Seidel St and below is the invoice link…" with the job's **Stripe pay link** and amount. Edit it freely; *Reset to the template* brings the wording back.
 - **The attachment** — the PDF, built from the report exactly as it is when you click Send.
