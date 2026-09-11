@@ -2,7 +2,7 @@
 title: read true profit on Job Summary
 category: Office
 roles: dev, master_technician, controller
-keywords: burn, projected margin, spent vs done, money story, door, from pipeline, from job window, cut by, group by, by GC, by service type, by lead tech, concentration, revenue per hour, compare to, prior period, last year, target margin, job summary, true profit, overhead, day-share, margin, finished jobs, percent complete, earned revenue, sort, window, gross profit
+keywords: burn, projected margin, spent vs done, money story, door, from pipeline, from job window, cut by, group by, by GC, by service type, by lead tech, concentration, revenue per hour, compare to, prior period, last year, target margin, job summary, true profit, overhead, day-share, smoothing, carry share, idle cap, overhead dials, in flight, open jobs, margin, finished jobs, percent complete, earned revenue, sort, window, gross profit
 order: 36
 ---
 
@@ -24,10 +24,10 @@ Go to **Jobs → Job Summary**. Above the table:
 
 - **Show** — {{chip:blue|Finished (100%)}} opens by default: jobs whose % complete resolves to 100 — the work is done (the latest report or the job's own %) or the whole contract is billed and paid. One paid progress bill no longer marks a job finished, so a job still being worked stays under **In progress** with earned revenue. **In progress** is everything else; **All** is every job.
 - **Worked in** — 90d, 6 mo, **This year** (default), 12 mo, or All. A job is in the window when it has approved field hours there, or its last work date falls inside it.
-- **Overhead** — how each job's overhead share is figured. **Day-share** is the default (below). A, B, and C are the same three lenses People → Overhead shows, applied to one job.
+- **Overhead** — how each job's overhead share is figured. **Day-share** is the default (below); the grey chip beside it — {{chip:gray|30 days · 20% carry · 14-day idle cap}} — names the constants day-share runs on. A, B, and C are the same three lenses People → Overhead shows, applied to one job.
 - Click any column header to sort. Click again to flip. The table opens sorted by true profit.
 
-The strip under the controls totals what's showing: jobs, revenue, gross profit and margin, overhead charged, true profit and true margin, and true profit per field hour. The chips beside it say what would move the numbers: jobs with no contract $, jobs with no %, sessions still awaiting approval, and overhead that fell on days with no field work.
+The strip under the controls totals what's showing: jobs, revenue, gross profit and margin, overhead charged, true profit and true margin, and true profit per field hour. The chips beside it say what would move the numbers: jobs with no contract $, jobs with no %, sessions still awaiting approval, overhead that had nobody to charge, and overhead still **in flight** (spread past today; it lands as the days arrive).
 
 ## Compare to and Target
 
@@ -80,18 +80,28 @@ The same arithmetic runs on each job window's **Costs** tab (see *read the cost 
 
 ## How day-share works
 
-Every calendar day has an overhead pool: office labor, bid labor, and office parts, the same pool People → Overhead reports. Each day's pool goes to the jobs worked that day, split by that day's approved field hours.
+Every calendar day has an overhead pool: office labor, bid labor, and office parts, the same pool People → Overhead reports. Day-share hands each day's pool to jobs in two slices, on three constants a dev sets for the whole app:
 
-:::example One job, one day
-Sep 2: J931 had 25.9 of the crew's 33 field hours. The day's pool was $1,180.
-J931's share that day: $1,180 × 25.9 ÷ 33 = **$926**.
+- **Smoothing window** — each day's pool is shared by the field hours worked over the following N days (30 by default), not just that day. A one-hour Saturday no longer receives a whole day's office cost, and a lumpy office day is spread across the month's work instead of landing on whoever happened to be in the field.
+- **Carry share** — a slice of the pool (20% by default) that every **open** job carries equally per day, just for being open: scheduling, GC calls, billing. The rest follows field hours. A job is open from its Working move (or its first field day) to its Billed move.
+- **Idle cap** — an open job stops carrying after this many days with no field time (14 by default), with the same grace from its start, so a job left in Working for months cannot soak up office cost.
+
+:::example One job, one day, with the defaults
+Wed Sep 2: J931 had 25.9 of the crew's 33 field hours. After smoothing, $412 landed on that day: $330 by hours and $82 of carry across the 12 jobs open that day.
+J931 that day: $330 × 25.9 ÷ 33 = **$259** by hours, plus **$6.83** carry = **$266**.
 :::
 
-Add up a job's days and that's its overhead. The shares across every job on a day equal that day's pool exactly, so nothing is double-charged. A day with pool $ but no field hours (a weekend, a rain day) is charged to nobody; the strip shows how much that was.
+Add up a job's days and that's its overhead. Expand a row and open **Overhead — the math**: every day line, with *By hours* and *Carry* columns, and the days it was charged carry while nobody was on site marked *open, not worked*. The math always reconciles: what the office spent equals what jobs were charged plus what had nobody to charge plus what is still in flight.
+
+At **1 day · no carry** this is exactly the original day-share: each day's pool to the jobs worked that day, by hours, and a day with pool $ but no field hours charged to nobody.
+
+## Turn the dials (devs)
+
+Devs see {{icon:gear}} on the chip beside the Overhead control. It opens the dials: sliders for the smoothing window and carry share, the idle cap and what "open" means, and a live strip showing the window's pool tying to the dollar. Moving a dial changes **this device only** — the chip turns red and says *exploring on this device* — so you can watch a job's share move before deciding. {{button:blue|Use for everyone}} writes the app default (it asks once, since true profit changes on every Job Summary); {{button:outline|Back to the app default}} stops exploring. {{button:outline|Recommended}} sets 30 days · 20% · 14-day cap, the constants the 2026-09-10 study landed on; {{button:outline|Original day-share}} sets 1 day · no carry.
 
 ## Why the method matters
 
-Per-hour lenses barely touch a job that sold well on few hours; a per-revenue lens takes a big bite of it. Day-share lands where the calendar puts it: a job that was most of the field on a heavy office day pays for that day. Switch the method to see the spread on any job before you trust one number.
+Per-hour lenses barely touch a job that sold well on few hours; a per-revenue lens takes a big bite of it. Day-share lands where the calendar puts it, smoothed so no single heavy office day decides a job's margin, with a modest daily charge for staying open. Switch the method to see the spread on any job before you trust one number.
 
 ## Older imported jobs
 
@@ -103,6 +113,7 @@ Looking for a 2024 job that isn't in the table? Read the footer first: if it say
 
 ## Watch-outs
 
-- Only **approved, closed** sessions count, for hours and for overhead. Approve hours in People → Hours and the numbers move.
+- Only **approved, closed** sessions count, for hours and for overhead. Approve hours in People → Hours and the numbers move. The office's own sessions count the same way, so the last week or two always reads light until they are approved.
+- Jobs that were open but never clocked inside the window are not on the ledger and receive no carry.
 - Labor $ still comes from payroll crew-days × wage, as before; hours · days come from clock sessions. They agree when time is approved and assigned.
 - Overhead and true profit show for devs, leaders, and controllers, the same rule as labor $.

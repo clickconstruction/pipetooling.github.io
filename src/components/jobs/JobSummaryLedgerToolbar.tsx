@@ -1,6 +1,9 @@
+import { useState } from 'react'
 import type { CSSProperties, ReactNode } from 'react'
 import type { JobSummaryViewBundle } from '../../hooks/useJobSummaryView'
 import { JOB_OVERHEAD_METHODS } from '../../lib/jobs/jobDayLedger'
+import { overheadAllocationLabel } from '../../lib/jobs/overheadAllocation'
+import OverheadDialsPopover from './OverheadDialsPopover'
 import {
   JOB_SUMMARY_COMPARE_OPTIONS,
   JOB_SUMMARY_CUT_OPTIONS,
@@ -117,14 +120,18 @@ export default function JobSummaryLedgerToolbar({
   search,
   setSearch,
   showMoney,
+  canEditOverheadDials = false,
 }: {
   view: View
   search: string
   setSearch: (v: string) => void
   /** Pay lockdown: overhead / true profit / labor tiles only for dev, master, controller. */
   showMoney: boolean
+  /** The overhead dials (v2.3259): devs turn the allocation constants and set the app default. */
+  canEditOverheadDials?: boolean
 }) {
-  const { prefs, setPrefs, totals, hygiene, ledgerLoading, ledgerError, reloadLedger, compare, rows } = view
+  const { prefs, setPrefs, totals, hygiene, ledgerLoading, ledgerError, reloadLedger, compare, rows, overhead } = view
+  const [dialsOpen, setDialsOpen] = useState(false)
   const methodLabel = JOB_OVERHEAD_METHODS.find((m) => m.key === prefs.method)?.label ?? 'Day-share'
   const c = compare?.comparison ?? null
   const vs = prefs.compareTo === 'lastYear' ? 'last year' : 'prior period'
@@ -151,6 +158,37 @@ export default function JobSummaryLedgerToolbar({
         {prefs.view === 'months' ? <Segmented label="Book by" value={prefs.monthsBookBy} options={JOB_SUMMARY_MONTHS_BOOK_OPTIONS} onChange={(monthsBookBy) => setPrefs({ monthsBookBy })} /> : null}
         <Segmented label="Worked in" value={prefs.window} options={JOB_SUMMARY_WINDOW_OPTIONS} onChange={(window) => setPrefs({ window })} />
         {showMoney && prefs.view === 'jobs' ? <Segmented label="Overhead" value={prefs.method} options={JOB_OVERHEAD_METHODS} onChange={(method) => setPrefs({ method })} /> : null}
+        {showMoney && prefs.view === 'jobs' && prefs.method === 'day' ? (
+          <span style={{ position: 'relative', display: 'inline-flex' }}>
+            <button
+              type="button"
+              onClick={canEditOverheadDials ? () => setDialsOpen((o) => !o) : undefined}
+              title={
+                canEditOverheadDials
+                  ? 'Turn the overhead dials — smoothing window, carry share, idle cap — and set the app default'
+                  : `How day-share is figured: ${overheadAllocationLabel(overhead.settings)}. Each day's office cost is shared by the field hours of the following days; open jobs carry a slice per day.`
+              }
+              aria-expanded={canEditOverheadDials ? dialsOpen : undefined}
+              style={{ ...(overhead.isOverride ? chipRed : chipMuted), cursor: canEditOverheadDials ? 'pointer' : 'default', font: 'inherit', fontSize: '0.75rem' }}
+            >
+              {canEditOverheadDials ? '⚙ ' : ''}
+              {overheadAllocationLabel(overhead.settings)}
+              {overhead.isOverride ? ' · exploring on this device' : ''}
+            </button>
+            {dialsOpen && canEditOverheadDials ? (
+              <OverheadDialsPopover
+                settings={overhead.settings}
+                appDefault={overhead.appDefault}
+                isOverride={overhead.isOverride}
+                saving={overhead.saving}
+                hygiene={hygiene}
+                onExplore={overhead.explore}
+                onSaveAppDefault={overhead.saveAppDefault}
+                onClose={() => setDialsOpen(false)}
+              />
+            ) : null}
+          </span>
+        ) : null}
         {rowsView ? (
           <Segmented
             label="Compare to"
@@ -237,10 +275,16 @@ export default function JobSummaryLedgerToolbar({
         ) : null}
         {totals.priorHoursJobs > 0 ? <span style={chipMuted}>{totals.priorHoursJobs} {totals.priorHoursJobs === 1 ? 'job has' : 'jobs have'} hours before the window — not charged; widen the window to charge them</span> : null}
         {showMoney && hygiene && hygiene.unallocatedUsd > 0 ? (
-          <span style={chipMuted}>
-            {money(hygiene.unallocatedUsd)} of overhead fell on {hygiene.unallocatedDays} {hygiene.unallocatedDays === 1 ? 'day' : 'days'} with no field work — shown, not charged
+          <span style={chipMuted} title="Office cost with nobody to charge — days with no field hours (and, with carry on, no open job) inside the smoothing window">
+            {money(hygiene.unallocatedUsd)} of overhead had nobody to charge on {hygiene.unallocatedDays} {hygiene.unallocatedDays === 1 ? 'day' : 'days'} — shown, not charged
           </span>
         ) : null}
+        {showMoney && hygiene && hygiene.inFlightUsd > 0.5 ? (
+          <span style={chipMuted} title="Office cost from the last days of the window that the smoothing spreads past today — it lands on jobs as those days arrive">
+            {money(hygiene.inFlightUsd)} of overhead is in flight — spreads past today, lands as days arrive
+          </span>
+        ) : null}
+        {showMoney && hygiene && !hygiene.reconciles ? <span style={chipRed}>⚠ overhead does not reconcile to the pool — tell a dev</span> : null}
       </div>
       )}
     </div>
