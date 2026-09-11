@@ -15,7 +15,7 @@ import {
   type PortalPaymentRow,
 } from '../_shared/portalMergedBills.ts'
 import { buildPortalProperties } from '../_shared/portalProperties.ts'
-import { openBillJobIds, PORTAL_OPEN_INVOICE_STATUS } from '../_shared/portalBillMembership.ts'
+import { openBillJobIds, owedJobIdsForViewer, PORTAL_OPEN_INVOICE_STATUS } from '../_shared/portalBillMembership.ts'
 import { publicViewDecision } from '../_shared/publicViewCounting.ts'
 import { resolvePortalCustomerPhone } from '../_shared/portalCustomerPhone.ts'
 import { testReportShortLabel, testReportTitle, type TestReportSystem, type TestReportType } from '../_shared/testReport.ts'
@@ -174,7 +174,7 @@ serve(async (req) => {
     }
 
     const jobSelect =
-      'id, hcp_number, click_number, job_name, job_address, status, revenue, payments_made, customer_id, gc_customer_id, gc_shares_stage_dates, service_types:service_type_id(name)'
+      'id, hcp_number, click_number, job_name, job_address, status, revenue, payments_made, customer_id, gc_customer_id, gc_shares_stage_dates, bill_to_party, service_types:service_type_id(name)'
     let jobs: PortalJobRow[]
     if (link.audience === 'all') {
       const { data: jobsRaw } = await admin
@@ -206,7 +206,7 @@ serve(async (req) => {
     if (billJobIds.length > 0) {
       const { data: invRaw } = await admin
         .from('jobs_ledger_invoices')
-        .select('id, job_id, amount, status, billed_at, sequence_order, hosted_invoice_url')
+        .select('id, job_id, amount, status, billed_at, sequence_order, hosted_invoice_url, bill_to_party, bill_to_email, bill_to_name')
         .in('job_id', billJobIds)
         .eq('status', PORTAL_OPEN_INVOICE_STATUS)
       invoices = (invRaw ?? []) as PortalInvoiceRow[]
@@ -253,6 +253,25 @@ serve(async (req) => {
       }
     }
 
+    // Who pays (v2.3346): the other parties' names — owners AND GCs — so a
+    // bill the viewer does not owe can say who it went to.
+    const partyNames: Record<string, string> = { ...ownerNames }
+    {
+      const otherIds = [
+        ...new Set(
+          jobs
+            .flatMap((j) => [j.customer_id, j.gc_customer_id])
+            .filter((id): id is string => typeof id === 'string' && id !== link.customer_id && !(id in partyNames)),
+        ),
+      ]
+      if (otherIds.length > 0) {
+        const { data: others } = await admin.from('customers').select('id, name').in('id', otherIds)
+        for (const o of (others ?? []) as Array<{ id: string; name: string | null }>) {
+          if (o.name) partyNames[o.id] = o.name
+        }
+      }
+    }
+
     const bills = buildPortalBills({
       jobs,
       invoices,
@@ -260,7 +279,11 @@ serve(async (req) => {
       viewerCustomerId: link.customer_id,
       markGcRows: link.audience === 'all',
       ownerNames,
+      partyNames,
     })
+    const owedBills = bills.filter((b) => b.billedTo === null)
+    // The jobs this viewer owes on — the promise's scope (v2.3346).
+    const owedJobIds = owedJobIdsForViewer(jobs, invoices, link.customer_id)
 
     // Bank transfer details (v2.3308): the company's ACH / wire remittance
     // details and the check mailing address, one row entered at Settings →
@@ -377,7 +400,8 @@ serve(async (req) => {
       }
     }
 
-    const totalDue = Math.round(bills.reduce((s, b) => s + b.amount, 0) * 100) / 100
+    // Only what this viewer owes counts (v2.3346); bills sent to the other party ride along labeled.
+    const totalDue = Math.round(owedBills.reduce((s, b) => s + b.amount, 0) * 100) / 100
 
     // The stage sequence (Stage Plan PR 5): GC viewers, jobs that share stage dates with this
     // viewer, the line items whose eye is on — the company's voice (never a name), no money.
@@ -434,7 +458,7 @@ serve(async (req) => {
         via: rawToken ? 'token' : 'slug',
         return_from: returnFrom,
         statement_total_cents: Math.round(totalDue * 100),
-        bill_count: bills.length,
+        bill_count: owedBills.length,
       }),
     )
 
@@ -464,11 +488,11 @@ serve(async (req) => {
     // jobs, so the statement can say "You told us to expect payment by …".
     // marked_by NULL with a customer-sourced event is the customer's own date.
     let promise: { promisedYmd: string; source: 'office' | 'customer' } | null = null
-    if (billJobIds.length > 0) {
+    if (owedJobIds.length > 0) {
       const { data: promRows } = await admin
         .from('job_promised_pay_dates')
         .select('job_id, promised_date, marked_by, marked_at')
-        .in('job_id', billJobIds)
+        .in('job_id', owedJobIds)
         .order('marked_at', { ascending: false })
         .limit(1)
       const latest = (promRows ?? [])[0] as { job_id: string; promised_date: string; marked_by: string | null } | undefined

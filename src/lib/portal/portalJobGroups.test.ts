@@ -17,6 +17,7 @@ const bill = (over: Partial<PortalBill>): PortalBill => ({
   payUrl: null,
   checkRef: '',
   asGc: false,
+  billedTo: null,
   ownerName: null,
   payments: [],
   totalPaid: 0,

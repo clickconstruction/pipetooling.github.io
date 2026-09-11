@@ -38,4 +38,5 @@ On a **Split by line** job, or as a one-off on any job, use {{button:outline|Bil
 
 - The GC choice only appears when the job's GC is a different customer than the job customer. If you entered the GC as the customer too, the bills already go to the GC — nothing to change.
 - Changing **Bills go to** never touches a bill that has already been sent.
-- The GC statement round and the customer portal still list bills by the job's GC for now; they learn the rule in the next release.
+- **GC Review and the weekly statement** list only what each GC pays. A job whose GC is not the payer sits in the **Not billed to a GC** bucket.
+- **The portals** follow it too: a GC's balance is what the GC owes, and bills on their jobs that went to the owner show under *On your jobs, billed to someone else* with no Pay button. Owners see the same the other way round.

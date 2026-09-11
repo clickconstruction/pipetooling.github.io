@@ -30,6 +30,8 @@ export type PortalBill = {
   asGc: boolean
   /** Owner's name for the AS GC tag, when known. */
   ownerName: string | null
+  /** Who pays (v2.3346): null = you owe this; else the party it was sent to — listed apart, never in the balance. */
+  billedTo: string | null
   /** Payments already applied to this bill, oldest first (v2.2313). */
   payments: Array<{ date: string | null; method: string; amount: number }>
   /** Sum of payments (dollars); may exceed the rows when only the aggregate is known. */
@@ -139,6 +141,7 @@ export function parsePortalPayload(raw: unknown): PortalPayload | null {
         checkRef: str(b.checkRef),
         asGc: b.asGc === true,
         ownerName: typeof b.ownerName === 'string' && b.ownerName.trim() ? b.ownerName : null,
+        billedTo: typeof b.billedTo === 'string' && b.billedTo.trim() ? b.billedTo : null,
         payments: Array.isArray(b.payments)
           ? (b.payments as Array<Record<string, unknown>>)
               .filter((p) => p != null && typeof p === 'object' && num(p.amount) > 0)

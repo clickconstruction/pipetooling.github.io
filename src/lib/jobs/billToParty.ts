@@ -5,8 +5,8 @@
  * payer recipient built from a customers row, the Bill Customer overlay,
  * and the option list for the job's "Bills go to" control.
  */
-import type { EffectiveBillParty, JobBillToParty } from '../../../supabase/functions/_shared/billToParty'
-import { customerBillingEmail, customerContactPhone } from '../../../supabase/functions/_shared/billToParty'
+import type { EffectiveBillParty, InvoicePartyFields, JobBillToParty, JobPartyFields } from '../../../supabase/functions/_shared/billToParty'
+import { customerBillingEmail, customerContactPhone, effectiveInvoiceParty, payerCustomerId } from '../../../supabase/functions/_shared/billToParty'
 
 export {
   JOB_BILL_TO_PARTIES,
@@ -107,4 +107,14 @@ export function invoicePartyChip(party: EffectiveBillParty, names: { customer: s
   if (party === 'gc') return (names.gc ?? '').trim() || 'GC'
   if (party === 'other') return (names.other ?? '').trim() || 'Someone else'
   return (names.customer ?? '').trim() || 'Customer'
+}
+
+/**
+ * The customers row that pays a Stages-board row (v2.3346): invoice rows use
+ * the invoice's pick, job rows the job's rule. Null when a typed recipient
+ * (someone else) pays, or the job names nobody.
+ */
+export function stageRowPayerCustomerId(row: { kind: string; job: JobPartyFields; inv?: InvoicePartyFields }): string | null {
+  const inv = row.kind === 'job' ? null : row.inv ?? null
+  return payerCustomerId(row.job, effectiveInvoiceParty(row.job, inv))
 }

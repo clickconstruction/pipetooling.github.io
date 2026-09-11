@@ -298,7 +298,11 @@ function PortalStatement({ payload, today, requestToken }: { payload: PortalPayl
   // Same local-date basis as the header's date line, for the Billed age sub-lines.
   const d = new Date()
   const todayYmd = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-  const groups = groupPortalBillsByJob(payload.bills)
+  // Who pays (v2.3346): only the bills this viewer owes make the ledger and the
+  // balance; the rest of their jobs' bills are listed apart, named for who got them.
+  const owedBills = payload.bills.filter((b) => b.billedTo === null)
+  const billedElsewhere = payload.bills.filter((b) => b.billedTo !== null)
+  const groups = groupPortalBillsByJob(owedBills)
   return (
     <>
       {/* Print all (v2.2331): the statement re-lays for paper — cover, one
@@ -365,7 +369,7 @@ function PortalStatement({ payload, today, requestToken }: { payload: PortalPayl
 
       {/* Their Word PR 2: once a bill is a week old, the customer can name the
           date themselves. Screen only — paper asks for money, not a date. */}
-      {promiseAskVisible(payload.bills, todayYmd) && (
+      {promiseAskVisible(owedBills, todayYmd) && (
         <PortalPromiseAsk token={requestToken} todayYmd={todayYmd} existing={payload.promise} totalDue={payload.totalDue} formatUsd={formatPortalUsd} />
       )}
 
@@ -407,7 +411,7 @@ function PortalStatement({ payload, today, requestToken }: { payload: PortalPayl
       )}
 
       {/* Ledger */}
-      {payload.bills.length === 0 ? (
+      {owedBills.length === 0 ? (
         <div style={{ margin: '1.2rem 0', background: CARD, border: `1px solid ${HAIR}`, padding: '1.2rem 1.3rem', fontSize: 14.5 }}>
           <b>You&#8217;re all paid up.</b>{' '}
           <span style={{ color: MUTED }}>No open bills on your account — thank you.</span>
@@ -452,13 +456,35 @@ function PortalStatement({ payload, today, requestToken }: { payload: PortalPayl
         </div>
       )}
 
+      {/* Who pays (v2.3346): bills on this viewer's jobs that went to the other
+          party — the owner on a GC's statement, the builder on an owner's. Listed
+          so the statement matches what they know about the job; never in the
+          balance, never payable here. */}
+      {billedElsewhere.length > 0 ? (
+        <div data-portal-billed-elsewhere style={{ margin: '14px 0 4px', border: `1px solid ${HAIR}`, background: CARD, padding: '10px 14px 4px', fontSize: 12.5 }}>
+          <div style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: MUTED, marginBottom: 4 }}>
+            On your jobs, billed to someone else
+          </div>
+          {billedElsewhere.map((b, i) => (
+            <div key={i} style={{ display: 'flex', justifyContent: 'space-between', gap: 12, padding: '6px 0', borderTop: i === 0 ? 'none' : `1px solid ${HAIR}`, color: MUTED }}>
+              <span style={{ minWidth: 0 }}>
+                <span style={{ color: INK, fontWeight: 600 }}>{b.jobAddress ?? b.jobLabel}</span>
+                {' · '}billed to <span style={{ color: INK }}>{b.billedTo}</span>
+                {b.billedOn ? ` · ${formatPortalDate(b.billedOn)}` : ''}
+              </span>
+              <span style={{ fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{formatPortalUsd(b.amount)}</span>
+            </div>
+          ))}
+        </div>
+      ) : null}
+
       {/* Bank transfer details (v2.3308): collapsed under the ledger — ACH / wire
           details, the memo to write, where checks must go. From Supabase, never
           the repo; absent until the office enters them. */}
       {payload.bankTransfer ? (
         <PortalBankTransferCard
           details={payload.bankTransfer}
-          memo={buildBankTransferMemo(payload.customerName, payload.bills)}
+          memo={buildBankTransferMemo(payload.customerName, owedBills)}
           phone={payload.company.phone}
         />
       ) : null}

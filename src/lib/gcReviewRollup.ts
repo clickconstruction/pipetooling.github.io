@@ -1,6 +1,7 @@
 import type { StageRow } from './jobsStagesBoard'
 import { printBilledRowReferenceDate, stageRowBilledRemainingAmount } from './jobs/invoiceBilling'
 import { effectiveJobLedgerNumber } from './ledgerDisplayPrefixes'
+import { effectiveInvoiceParty } from './jobs/billToParty'
 
 /**
  * GC Review (v2.1181): group the Billed Awaiting Payment board rows by the
@@ -108,7 +109,8 @@ export function buildGcReviewRollup(
   const includeCollections = opts?.includeCollections === true
   const byDevelopment = opts?.groupBy === 'development'
   const noEntityKey = byDevelopment ? GC_REVIEW_NO_DEVELOPMENT_KEY : GC_REVIEW_NO_GC_KEY
-  const noEntityLabel = byDevelopment ? 'No development set' : 'No GC set'
+  // Who pays (v2.3346): the bucket holds jobs with no GC AND jobs whose GC is not the payer.
+  const noEntityLabel = byDevelopment ? 'No development set' : 'Not billed to a GC'
 
   let collectionsCount = 0
   let collectionsTotal = 0
@@ -124,7 +126,7 @@ export function buildGcReviewRollup(
 
   const byKey = new Map<string, GcReviewGroup>()
   for (const { row, inCollections } of sourceRows) {
-    const gc = (byDevelopment ? row.job.development : row.job.gcCustomer) ?? null
+    const gc = (byDevelopment ? row.job.development : gcThatPaysRow(row)) ?? null
     const gcName = (gc?.name ?? '').trim()
     const key = gc?.id ?? noEntityKey
     let group = byKey.get(key)
@@ -162,4 +164,19 @@ export function buildGcReviewRollup(
 
   const grandTotal = groups.reduce((s, g) => s + g.subtotal, 0)
   return { groups, grandTotal, collectionsCount, collectionsTotal }
+}
+
+/**
+ * Who pays (v2.3346): the GC this row files under — only when the GC pays it.
+ * The invoice's own pick, else the job's rule, never a typed someone-else
+ * recipient; a GC entered as the job customer pays by definition (the 72
+ * jobs recorded that way). Mirrors the CASE in get_gc_statement_email_payload.
+ */
+export function gcThatPaysRow(row: StageRow): { id: string; name: string | null } | null {
+  const gc = row.job.gcCustomer ?? null
+  if (!gc) return null
+  const gcId = row.job.gc_customer_id ?? gc.id
+  if (gcId === row.job.customer_id) return gc
+  const inv = row.kind === 'job' ? null : row.inv
+  return effectiveInvoiceParty({ ...row.job, gc_customer_id: gcId }, inv) === 'gc' ? gc : null
 }

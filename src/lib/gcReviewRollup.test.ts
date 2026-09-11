@@ -5,9 +5,11 @@ import type { JobWithDetails } from '../types/jobWithDetails'
 
 const NOW = new Date('2026-07-31T12:00:00Z')
 
+/** Fixture jobs with a GC are GC-pays jobs (v2.3346) unless the test says otherwise. */
 function job(over: Partial<JobWithDetails> & Pick<JobWithDetails, 'id'>): JobWithDetails {
   return {
     status: 'billed',
+    ...(over.gcCustomer ? { gc_customer_id: over.gcCustomer.id, bill_to_party: 'gc' } : {}),
     hcp_number: '100',
     click_number: '',
     job_name: 'Job',
@@ -43,6 +45,31 @@ const KNIGHT = { id: 'gc-knight', name: 'Knight Contracting' }
 const LOBERG = { id: 'gc-loberg', name: 'Loberg Contracting' }
 
 describe('buildGcReviewRollup', () => {
+  it('files a row under the GC only when the GC pays it (v2.3346)', () => {
+    const gcPays = job({ id: 'j1', gcCustomer: KNIGHT })
+    const ownerPays = job({ id: 'j2', gcCustomer: KNIGHT, bill_to_party: 'customer', customer_id: 'owner-2' })
+    const gcIsCustomer = job({ id: 'j3', gcCustomer: LOBERG, bill_to_party: 'customer', customer_id: LOBERG.id })
+    const invoicePick = job({ id: 'j4', gcCustomer: KNIGHT, bill_to_party: 'customer', customer_id: 'owner-4' })
+    const tenant = job({ id: 'j5', gcCustomer: KNIGHT })
+    const rollup = buildGcReviewRollup(
+      [
+        invRow({ id: 'i1', job: gcPays, amount: 100 }),
+        invRow({ id: 'i2', job: ownerPays, amount: 200 }),
+        invRow({ id: 'i3', job: gcIsCustomer, amount: 300 }),
+        invRow({ id: 'i4', job: invoicePick, amount: 400, bill_to_party: 'gc' }),
+        invRow({ id: 'i5', job: tenant, amount: 500, bill_to_email: 'tenant@x.com' }),
+      ],
+      [],
+      { now: NOW },
+    )
+    const byKey = Object.fromEntries(rollup.groups.map((g) => [g.key, g.rows.map((r) => r.key)]))
+    // rows sort largest-remaining first inside a group on equal dates
+    expect(byKey['gc-knight']).toEqual(['i4', 'i1'])
+    expect(byKey['gc-loberg']).toEqual(['i3'])
+    expect(byKey[GC_REVIEW_NO_GC_KEY]).toEqual(['i5', 'i2'])
+    expect(rollup.groups.find((g) => g.isNoGc)?.gcName).toBe('Not billed to a GC')
+  })
+
   it('groups by GC with the No-GC bucket last and reconciling grand total', () => {
     const a = job({ id: 'j1', gcCustomer: KNIGHT, customer_name: 'Rosemary Garza' })
     const b = job({ id: 'j2', gcCustomer: LOBERG })
@@ -57,7 +84,7 @@ describe('buildGcReviewRollup', () => {
       { now: NOW },
     )
     expect(rollup.groups.map((g) => g.key)).toEqual(['gc-knight', 'gc-loberg', GC_REVIEW_NO_GC_KEY])
-    expect(rollup.groups[2]!.gcName).toBe('No GC set')
+    expect(rollup.groups[2]!.gcName).toBe('Not billed to a GC')
     expect(rollup.grandTotal).toBe(1400)
     expect(rollup.groups[0]!.rows[0]!.customerName).toBe('Rosemary Garza')
   })

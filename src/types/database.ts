@@ -9887,6 +9887,438 @@ export type Database = {
           },
         ]
       }
+      legal_firm_recipients: {
+        Row: {
+          added_by: string | null
+          added_via_portal: boolean
+          confirm_token_hash: string | null
+          confirmed_at: string | null
+          created_at: string
+          digest_time: string
+          digest_weekday: number
+          email: string
+          firm_id: string
+          id: string
+          last_digest_at: string | null
+          mode: string
+          name: string
+          paused_at: string | null
+          removed_at: string | null
+          role: string
+          scope: string
+          unsubscribe_token_hash: string | null
+          updated_at: string
+        }
+        Insert: {
+          added_by?: string | null
+          added_via_portal?: boolean
+          confirm_token_hash?: string | null
+          confirmed_at?: string | null
+          created_at?: string
+          digest_time?: string
+          digest_weekday?: number
+          email: string
+          firm_id: string
+          id?: string
+          last_digest_at?: string | null
+          mode?: string
+          name: string
+          paused_at?: string | null
+          removed_at?: string | null
+          role?: string
+          scope?: string
+          unsubscribe_token_hash?: string | null
+          updated_at?: string
+        }
+        Update: {
+          added_by?: string | null
+          added_via_portal?: boolean
+          confirm_token_hash?: string | null
+          confirmed_at?: string | null
+          created_at?: string
+          digest_time?: string
+          digest_weekday?: number
+          email?: string
+          firm_id?: string
+          id?: string
+          last_digest_at?: string | null
+          mode?: string
+          name?: string
+          paused_at?: string | null
+          removed_at?: string | null
+          role?: string
+          scope?: string
+          unsubscribe_token_hash?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "legal_firm_recipients_added_by_fkey"
+            columns: ["added_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "legal_firm_recipients_firm_id_fkey"
+            columns: ["firm_id"]
+            isOneToOne: false
+            referencedRelation: "legal_firms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      legal_firms: {
+        Row: {
+          active: boolean
+          contingency_pct: number
+          created_at: string
+          created_by: string | null
+          email: string
+          filing_cost: number
+          handling_name: string
+          id: string
+          name: string
+          paused_at: string | null
+          phone: string
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          contingency_pct?: number
+          created_at?: string
+          created_by?: string | null
+          email?: string
+          filing_cost?: number
+          handling_name?: string
+          id?: string
+          name: string
+          paused_at?: string | null
+          phone?: string
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          contingency_pct?: number
+          created_at?: string
+          created_by?: string | null
+          email?: string
+          filing_cost?: number
+          handling_name?: string
+          id?: string
+          name?: string
+          paused_at?: string | null
+          phone?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "legal_firms_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      legal_matter_entries: {
+        Row: {
+          acknowledged_at: string | null
+          acknowledged_by: string | null
+          amount: number | null
+          body: string
+          created_at: string
+          created_by: string | null
+          id: string
+          kind: string
+          matter_id: string
+          meta: Json
+          occurred_on: string
+          via_portal: boolean
+        }
+        Insert: {
+          acknowledged_at?: string | null
+          acknowledged_by?: string | null
+          amount?: number | null
+          body?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          kind: string
+          matter_id: string
+          meta?: Json
+          occurred_on?: string
+          via_portal?: boolean
+        }
+        Update: {
+          acknowledged_at?: string | null
+          acknowledged_by?: string | null
+          amount?: number | null
+          body?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          kind?: string
+          matter_id?: string
+          meta?: Json
+          occurred_on?: string
+          via_portal?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "legal_matter_entries_acknowledged_by_fkey"
+            columns: ["acknowledged_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "legal_matter_entries_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "legal_matter_entries_matter_id_fkey"
+            columns: ["matter_id"]
+            isOneToOne: false
+            referencedRelation: "legal_matters"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      legal_matter_jobs: {
+        Row: {
+          job_id: string
+          matter_id: string
+        }
+        Insert: {
+          job_id: string
+          matter_id: string
+        }
+        Update: {
+          job_id?: string
+          matter_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "legal_matter_jobs_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs_ledger"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "legal_matter_jobs_matter_id_fkey"
+            columns: ["matter_id"]
+            isOneToOne: false
+            referencedRelation: "legal_matters"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      legal_matters: {
+        Row: {
+          closed_at: string | null
+          closed_reason: string
+          created_at: string
+          created_by: string | null
+          customer_id: string | null
+          fees_to_statement: boolean
+          firm_id: string | null
+          handling_name: string
+          held_overrides: Json
+          id: string
+          note_to_firm: string
+          payer_key: string
+          payer_name: string
+          ready_marked_at: string | null
+          ready_marked_by: string | null
+          released_at: string | null
+          review_request_note: string
+          review_requested_at: string | null
+          review_requested_by: string | null
+          stage: string
+          updated_at: string
+        }
+        Insert: {
+          closed_at?: string | null
+          closed_reason?: string
+          created_at?: string
+          created_by?: string | null
+          customer_id?: string | null
+          fees_to_statement?: boolean
+          firm_id?: string | null
+          handling_name?: string
+          held_overrides?: Json
+          id?: string
+          note_to_firm?: string
+          payer_key: string
+          payer_name?: string
+          ready_marked_at?: string | null
+          ready_marked_by?: string | null
+          released_at?: string | null
+          review_request_note?: string
+          review_requested_at?: string | null
+          review_requested_by?: string | null
+          stage?: string
+          updated_at?: string
+        }
+        Update: {
+          closed_at?: string | null
+          closed_reason?: string
+          created_at?: string
+          created_by?: string | null
+          customer_id?: string | null
+          fees_to_statement?: boolean
+          firm_id?: string | null
+          handling_name?: string
+          held_overrides?: Json
+          id?: string
+          note_to_firm?: string
+          payer_key?: string
+          payer_name?: string
+          ready_marked_at?: string | null
+          ready_marked_by?: string | null
+          released_at?: string | null
+          review_request_note?: string
+          review_requested_at?: string | null
+          review_requested_by?: string | null
+          stage?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "legal_matters_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "legal_matters_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "legal_matters_firm_id_fkey"
+            columns: ["firm_id"]
+            isOneToOne: false
+            referencedRelation: "legal_firms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "legal_matters_ready_marked_by_fkey"
+            columns: ["ready_marked_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "legal_matters_review_requested_by_fkey"
+            columns: ["review_requested_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      legal_notification_queue: {
+        Row: {
+          created_at: string
+          digested_at: string | null
+          firm_id: string
+          id: string
+          matter_id: string | null
+          payload: Json
+          sent_now_at: string | null
+          trigger: string
+        }
+        Insert: {
+          created_at?: string
+          digested_at?: string | null
+          firm_id: string
+          id?: string
+          matter_id?: string | null
+          payload?: Json
+          sent_now_at?: string | null
+          trigger: string
+        }
+        Update: {
+          created_at?: string
+          digested_at?: string | null
+          firm_id?: string
+          id?: string
+          matter_id?: string | null
+          payload?: Json
+          sent_now_at?: string | null
+          trigger?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "legal_notification_queue_firm_id_fkey"
+            columns: ["firm_id"]
+            isOneToOne: false
+            referencedRelation: "legal_firms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "legal_notification_queue_matter_id_fkey"
+            columns: ["matter_id"]
+            isOneToOne: false
+            referencedRelation: "legal_matters"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      legal_portal_links: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          firm_id: string
+          id: string
+          revoked_at: string | null
+          token: string | null
+          token_hash: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          firm_id: string
+          id?: string
+          revoked_at?: string | null
+          token?: string | null
+          token_hash?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          firm_id?: string
+          id?: string
+          revoked_at?: string | null
+          token?: string | null
+          token_hash?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "legal_portal_links_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "legal_portal_links_firm_id_fkey"
+            columns: ["firm_id"]
+            isOneToOne: false
+            referencedRelation: "legal_firms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       master_primaries: {
         Row: {
           created_at: string | null
@@ -20279,6 +20711,59 @@ export type Database = {
           inserted_ids: string[]
         }[]
       }
+      legal_acknowledge_entry: { Args: { p_entry_id: string }; Returns: Json }
+      legal_add_entry: {
+        Args: {
+          p_amount?: number
+          p_body?: string
+          p_kind: string
+          p_matter_id: string
+          p_meta?: Json
+          p_occurred_on?: string
+        }
+        Returns: Json
+      }
+      legal_close_matter: {
+        Args: { p_matter_id: string; p_note?: string; p_stage: string }
+        Returns: Json
+      }
+      legal_firm_recipient_remove: {
+        Args: { p_recipient_id: string }
+        Returns: Json
+      }
+      legal_firm_set_paused: {
+        Args: { p_firm_id: string; p_paused: boolean }
+        Returns: Json
+      }
+      legal_mark_attorney_ready: {
+        Args: {
+          p_customer_id: string
+          p_firm_id: string
+          p_handling_name?: string
+          p_job_ids: string[]
+          p_note?: string
+          p_payer_key: string
+          p_payer_name: string
+        }
+        Returns: Json
+      }
+      legal_matter_save_review: {
+        Args: {
+          p_customer_id: string
+          p_held_overrides?: Json
+          p_job_ids: string[]
+          p_payer_key: string
+          p_payer_name: string
+          p_request_review?: boolean
+          p_review_note?: string
+        }
+        Returns: Json
+      }
+      legal_office_can_read: { Args: never; Returns: boolean }
+      legal_pull_back: {
+        Args: { p_matter_id: string; p_note?: string }
+        Returns: Json
+      }
       link_hazmat_fee_incident_to_invoice: {
         Args: { p_incident_id: string; p_invoice_id: string }
         Returns: Json
@@ -21145,6 +21630,10 @@ export type Database = {
         Args: { p_audience?: string; p_customer_id: string; p_rotate?: boolean }
         Returns: Json
       }
+      mint_legal_portal_link: {
+        Args: { p_firm_id: string; p_rotate?: boolean }
+        Returns: Json
+      }
       mint_sub_portal_link: {
         Args: { p_person_id: string; p_rotate?: boolean }
         Returns: Json
@@ -21448,6 +21937,7 @@ export type Database = {
         Args: { p_audience?: string; p_customer_id: string }
         Returns: Json
       }
+      revoke_legal_portal_link: { Args: { p_firm_id: string }; Returns: Json }
       revoke_sub_portal_link: { Args: { p_person_id: string }; Returns: Json }
       salary_schedule_staff_or_self_target: {
         Args: { p_target_user_id: string }
