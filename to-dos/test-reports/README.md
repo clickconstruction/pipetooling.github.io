@@ -66,7 +66,14 @@ Dial B removes the two human clicks in the middle for pass results; dial C moves
 
 ## In the portal
 
-The portal (`/portal?t=<token>` and `/p/<slug>`, `customer-portal` fn, `src/pages/CustomerPortal.tsx`) is one page of cards in a fixed order: letterhead → **Balance due** (+ the Tell-us-when strip) → the open bills with PAY ONLINE → the GC's **Stages** card → **Your agreements** → Request a visit. A **Test reports** card slots in right after Your agreements and follows its rules exactly:
+Mock-up in the portal's own paper palette: [`mockup-portal.html`](./mockup-portal.html) (the GC statement with both placements, the phone, what View report opens, the rules). Owner 2026-09-11: "showing them in the portal is a good idea."
+
+The portal (`/portal?t=<token>` and `/p/<slug>`, `customer-portal` fn, `src/pages/CustomerPortal.tsx`) is one page of cards in a fixed order: letterhead → **Balance due** (+ the Tell-us-when strip) → the open bills with PAY ONLINE → the GC's **Stages** card → **Your agreements** → Request a visit. Two placements, shipped together:
+
+- **On the job, in the ledger** — a `TEST REPORT` line between the job band and its bill row, in the ledger's grid: "Sewer Pre-Test Hydrostatic · PASS · Sep 10, 2026 · certified by Malachi Whites, RMP #41130 · View report". The statement reads "job → what we found → what it costs → pay", which is what a foundation contractor wants when the pre-test bill arrives. Prints as a text line on the job's page (the button drops the way PAY ONLINE does).
+- **The Test reports card** after Your agreements — the standing record. Reports stay there after the bill is paid and the job leaves the statement (a paid job's pre-test is what they compare the post-test against). Newest first, "Showing N of M · All reports" past a handful.
+
+The card follows the agreements card's rules exactly:
 
 - It renders only when there is something to show; drafts and unsent reports never appear. One row per *sent* report: job label + address, "Sewer Pre-Test · PASS · Sep 10, 2026", certified-by line, and **View report**.
 - Audience follows the bills: on a GC link the GC sees reports for jobs where it is `gc_customer_id`; a homeowner link sees the jobs it owns; the merged `all` view dedupes by job, the same `portalBillMembership` shape.
@@ -136,4 +143,4 @@ Send, step by step: the modal renders the block model to a jsPDF blob → base64
 2. Should filing the Test report also satisfy the clock-out field report, so the tech files once (dial C), or stay two steps (A/B)?
 3. FAIL results: always a human Send, even on dial B? (Proposed: yes.)
 4. ~~Pay link in the same email~~ — **answered 2026-09-11: yes**, same email, matching what Taunya does.
-5. Portal visibility of test reports: on for the payer (proposed default), or a per-customer switch?
+5. ~~Portal visibility~~ — **answered 2026-09-11: yes, show them** (both placements in `mockup-portal.html`; on for the payer, no per-customer switch in v1).
