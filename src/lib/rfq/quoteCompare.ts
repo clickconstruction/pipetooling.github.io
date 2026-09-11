@@ -11,6 +11,7 @@
  */
 
 import { classifySpecSection, type SpecSectionMatchRule } from '../classifySpecSection'
+import { aggregateKit, expectedRoles, isStructured, type ComponentRole, type KitCell, type KitLineInput } from './quoteKits'
 
 export type CompareQuoteLine = {
   fixture: string
@@ -21,6 +22,15 @@ export type CompareQuoteLine = {
   /** Rung G (v2.2655): lines priced together as one package share a lotId + one total. */
   lotId?: string | null
   lotTotalCents?: number | null
+  /** Price Matrix PR 1 (docs/PRICE_MATRIX_PLAN.md): kit roles, option groups, provenance, the robot's reason. */
+  id?: string
+  componentRole?: ComponentRole | null
+  label?: string | null
+  optionGroup?: string | null
+  optionLabel?: string | null
+  optionChosen?: boolean
+  pageRef?: string | null
+  pickReason?: string | null
 }
 
 export type CompareQuote = {
@@ -43,6 +53,13 @@ export type CompareRowCell = {
   picked: boolean
   lotId?: string | null
   lotTotalCents?: number | null
+  /**
+   * Price Matrix PR 1: how this house priced the fixture when the quote was
+   * structured (a kit subtotal + roles, or size options). `unitPriceEachCents`
+   * above is the kit's $/each (null while incomplete or a choice is pending),
+   * so every existing reader keeps working; this carries the parts.
+   */
+  kit: KitCell | null
 }
 
 export type CompareRow = {
@@ -90,6 +107,27 @@ export type QuoteComparison = {
 
 const keyOf = (name: string) => name.trim().toLowerCase()
 
+let anonLineSeq = 0
+/** The kit kernel's view of a compare line (ids are only needed to tell components apart). */
+function toKitLine(l: CompareQuoteLine): KitLineInput {
+  return {
+    id: l.id ?? `line-${++anonLineSeq}`,
+    fixture: l.fixture,
+    unitPriceEachCents: l.unitPriceEachCents,
+    cantSupply: l.cantSupply,
+    componentRole: l.componentRole ?? null,
+    label: l.label ?? null,
+    optionGroup: l.optionGroup ?? null,
+    optionLabel: l.optionLabel ?? null,
+    optionChosen: l.optionChosen,
+    pageRef: l.pageRef ?? null,
+    picked: l.picked,
+    pickReason: l.pickReason ?? null,
+    lotId: l.lotId ?? null,
+    lotTotalCents: l.lotTotalCents ?? null,
+  }
+}
+
 export function buildQuoteComparison(args: {
   quotes: ReadonlyArray<CompareQuote>
   currentQtyByName: ReadonlyMap<string, number>
@@ -98,6 +136,8 @@ export function buildQuoteComparison(args: {
   lastQuotedEachCentsByName?: ReadonlyMap<string, number>
   rules?: ReadonlyArray<SpecSectionMatchRule>
   today?: string
+  /** Price Matrix PR 1: roles a rule says a fixture's kit must price, keyed like the qty maps ("a wall-hung WC needs a carrier"). */
+  requiredRolesByName?: ReadonlyMap<string, ReadonlyArray<ComponentRole>>
 }): QuoteComparison {
   // Latest quote per house wins.
   const latestByHouse = new Map<string, CompareQuote>()
@@ -118,22 +158,44 @@ export function buildQuoteComparison(args: {
     const perHouse: Record<string, CompareRowCell> = {}
     let bestHouseId: string | null = null
     let best = Number.POSITIVE_INFINITY
-    for (const q of houses) {
-      const line = q.lines.find((l) => keyOf(l.fixture) === key)
+    // Every house's lines for this fixture, so a kit knows which roles the
+    // other houses priced (a house that skipped the carrier is incomplete).
+    const linesByHouse = houses.map((q) => q.lines.filter((l) => keyOf(l.fixture) === key))
+    const structured = linesByHouse.some((ls) => isStructured(ls.map(toKitLine)))
+    const expected = structured ? expectedRoles(linesByHouse.map((ls) => ls.map(toKitLine)), args.requiredRolesByName?.get(key) ?? []) : []
+    for (let i = 0; i < houses.length; i++) {
+      const q = houses[i]!
+      const lines = linesByHouse[i]!
+      const line = lines[0]
       if (!line) continue
       const expired = isExpired(q)
-      perHouse[q.supplyHouseId] = {
-        quoteId: q.id,
-        unitPriceEachCents: line.unitPriceEachCents,
-        cantSupply: line.cantSupply,
-        alternateNote: line.alternateNote ?? null,
-        expired,
-        picked: Boolean(line.picked),
-        lotId: line.lotId ?? null,
-        lotTotalCents: line.lotTotalCents ?? null,
-      }
-      if (!expired && !line.cantSupply && line.unitPriceEachCents != null && line.unitPriceEachCents < best) {
-        best = line.unitPriceEachCents
+      const kit = structured ? aggregateKit(lines.map(toKitLine), expected) : null
+      const cell: CompareRowCell = kit
+        ? {
+            quoteId: q.id,
+            unitPriceEachCents: kit.kitEachCents,
+            cantSupply: kit.cantSupply,
+            alternateNote: lines.find((l) => l.alternateNote)?.alternateNote ?? null,
+            expired,
+            picked: kit.picked,
+            lotId: kit.lotId,
+            lotTotalCents: kit.lotTotalCents,
+            kit,
+          }
+        : {
+            quoteId: q.id,
+            unitPriceEachCents: line.unitPriceEachCents,
+            cantSupply: line.cantSupply,
+            alternateNote: line.alternateNote ?? null,
+            expired,
+            picked: Boolean(line.picked),
+            lotId: line.lotId ?? null,
+            lotTotalCents: line.lotTotalCents ?? null,
+            kit: null,
+          }
+      perHouse[q.supplyHouseId] = cell
+      if (!expired && !cell.cantSupply && cell.unitPriceEachCents != null && cell.unitPriceEachCents < best) {
+        best = cell.unitPriceEachCents
         bestHouseId = q.supplyHouseId
       }
     }
