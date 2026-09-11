@@ -104,7 +104,7 @@ import { JobFormUpcomingDraws } from './JobFormUpcomingDraws'
 import { useJobStagePlanInputs } from '../../hooks/useJobStagePlanInputs'
 import { drawLabelsByInvoiceId, stagePlanFromForm } from '../../lib/jobs/stagePlanForm'
 import { fixtureRowsFromDb, normalizeFormFixtureRows } from '../../lib/jobs/jobFormFixtureHydrate'
-import { derivedDiscountDollars, discountBillDescription, isDiscountRow, newDiscountFixtureRow, syncDiscountRows } from '../../lib/jobs/discountLine'
+import { applyTargetJobTotal, derivedDiscountDollars, discountBillDescription, discountRowIsLocked, isDiscountRow, newDiscountFixtureRow, syncDiscountRows } from '../../lib/jobs/discountLine'
 import { diffDiscountSnapshots, discountSnapshot, type DiscountSnapshotEntry } from '../../lib/jobs/discountActivity'
 import { todayYmdInAppTz } from '../../utils/dateUtils'
 import { JobFormStagesGroup } from './JobFormStagesGroup'
@@ -3169,6 +3169,19 @@ export default function JobFormModal({
     setFixtures((prev) => prev.map((r) => (r.id === id ? { ...r, ...updates } : r)))
   }
 
+  /**
+   * "Make the Job Total $X" (v2.3265): the typed total (riders included, as
+   * displayed) becomes a discount row of the difference. Reads the live rows
+   * synchronously so the footer can say what happened.
+   */
+  function setJobTotalFromTyped(dollars: number): 'ok' | 'cleared' | 'unreachable' | 'locked' | 'invalid' {
+    const rows = autosaveFixturesRef.current
+    const locked = new Set(rows.filter((r) => isDiscountRow(r) && discountRowIsLocked(rows, r)).map((r) => r.id))
+    const outcome = applyTargetJobTotal(rows, dollars - riderFeesDollars, crypto.randomUUID(), locked)
+    if (outcome.kind === 'ok' || outcome.kind === 'cleared') setFixtures(outcome.rows as FixtureRow[])
+    return outcome.kind
+  }
+
   /** Discount rows (v2.3252+): a typed row that reduces the work above it; the placeholder row is reused when it is the only, empty one. */
   function addDiscountRow() {
     setFixtures((prev) => {
@@ -3912,6 +3925,7 @@ export default function JobFormModal({
             updateFixtureRow={updateFixtureRow}
             addFixtureRow={addFixtureRow}
             addDiscountRow={addDiscountRow}
+            onSetJobTotal={setJobTotalFromTyped}
             removeFixtureRow={removeFixtureRow}
             moveFixtureRow={moveFixtureRowInList}
             invoiceStatusById={fixtureInvoiceStatusById}

@@ -389,3 +389,51 @@ export function discountRowsFromDb<T extends DbDiscountRowLike>(
     }
   })
 }
+
+export type TargetTotalOutcome =
+  | { kind: 'ok'; rows: unknown[]; discountDollars: number }
+  | { kind: 'cleared'; rows: unknown[] }
+  | { kind: 'unreachable'; maxDiscount: number }
+  | { kind: 'locked' }
+  | { kind: 'invalid' }
+
+/**
+ * "Make the Job Total $X" (v2.3265): the total the office agreed is the
+ * input; the discount row takes the difference. `targetWorkTotal` is the
+ * wanted total for the WORK lines (riders already subtracted by the caller).
+ *   - one unlocked discount row exists → it becomes a dollar discount of
+ *     (work − other discounts − target); a percent row switches to dollars
+ *   - none exists → one is added ("Negotiated discount", reason Negotiated)
+ *   - target ≥ work (after the other discounts) → the row is cleared (or not
+ *     added) and the caller shows "already above the work — no discount"
+ *   - the difference exceeds the row's basis → unreachable, with the max
+ *   - a locked discount row (its work is on a bill) → locked
+ * Rows are never mutated; the returned array is new.
+ */
+export function applyTargetJobTotal<T extends DiscountLineRow & { name?: string | null }>(
+  rows: readonly T[],
+  targetWorkTotal: number,
+  newRowId: string,
+  lockedIds: ReadonlySet<string> = new Set(),
+): TargetTotalOutcome {
+  if (!Number.isFinite(targetWorkTotal) || targetWorkTotal < 0) return { kind: 'invalid' }
+  const target = round2(targetWorkTotal)
+  const discounts = rows.filter((r) => isDiscountRow(r))
+  const editable = discounts.find((r) => !lockedIds.has(r.id)) ?? null
+  if (discounts.length > 0 && !editable) return { kind: 'locked' }
+  const others = discounts.filter((r) => r !== editable)
+  const work = totalWorkDollars(rows)
+  const otherDollars = round2(others.reduce((s, r) => s + derivedDiscountDollars(rows, r), 0))
+  const wanted = round2(work - otherDollars - target)
+  if (wanted <= 0) {
+    if (!editable) return { kind: 'cleared', rows: [...rows] }
+    return { kind: 'cleared', rows: rows.map((r) => (r === editable ? { ...r, discount_pct: null, line_unit_price: null } : r)) }
+  }
+  const row: T = editable ?? ({ ...(newDiscountFixtureRow(newRowId) as unknown as T), name: 'Negotiated discount', discount_reason: 'Negotiated' } as T)
+  const basis = discountBasisDollars(rows, row)
+  const basisForNew = editable ? basis : work
+  if (wanted > basisForNew + 0.005) return { kind: 'unreachable', maxDiscount: basisForNew }
+  const next = { ...row, discount_pct: null, line_unit_price: -wanted }
+  const out = editable ? rows.map((r) => (r === editable ? next : r)) : [...rows, next]
+  return { kind: 'ok', rows: out, discountDollars: wanted }
+}

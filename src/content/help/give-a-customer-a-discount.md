@@ -20,6 +20,10 @@ Rough In $15,098 · Top Out $15,098 · Trim Set $7,549 · **Negotiated discount 
 
 The row's second line says what it does: *10% off all 3 work lines · follows each draw · not on riders*.
 
+## Or type the total
+
+Agreed a number instead of a percent? Tap the **Job Total** under the list, type the total you promised — *33,500* — and press Enter. The discount row takes the difference (one is added for you if the job has none, as a *Negotiated discount*). A note under the total says what happened: type a total at or above the work and the discount clears; a discount that is already on a bill stays locked.
+
 ## What "follows each draw" means
 
 A discount follows the work it applies to. When you bill a stage, that stage's share of the discount rides on the same bill as a labeled line — *Negotiated discount (10%) −$1,509.80* with Rough In — and the draws together always add up to the whole discount to the cent. The customer sees the discount on every bill, never a mystery credit on the last one. The row itself shows the first few shares: *On the customer's bill: Negotiated discount (10%) −$1,509.80 with Rough In, −$1,509.80 with Top Out, −$754.90 with Trim Set*.
