@@ -10,7 +10,7 @@ Once a customer has a portal, every new Stripe bill's footer ends with *See your
 
 ## The portal address
 
-Click the **globe icon** next to any customer's name — on the **Customers** page, on **Jobs → Pipeline** rows, in **Job Detail**, in **Edit Job**, or beside each GC in **GC Review** (whose Share menu also offers **Copy portal link**, and whose Draft Message can carry a portal card).
+Click the **globe icon** next to any customer's name — on the **Customers** page, on **Jobs → Pipeline** rows, in the job window on both the **Job** tab (beside the customer's name, above their phone and email) and the **Edit** tab's Customer row, or beside each GC in **GC Review** (whose Share menu also offers **Copy portal link**, and whose Draft Message can carry a portal card).
 
 **The globe's colour is its state**, so you can tell who has a portal without opening anything: a **faint grey** globe means no link has ever been created, a **blue** globe means their portal is live, and a **red** globe means it was turned off. Hover it for the words ("portal is live"). The sub globe on People → Subs uses the very same colours.
 
