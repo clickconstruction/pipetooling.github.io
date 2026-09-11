@@ -131,13 +131,13 @@ export function PriceWithRobotModal({ open, onClose, bidId, bidVersionId, bidLab
     setError(null)
     void (async () => {
       const BASE = 'id, status, supply_house_id, sent_to, created_at'
-      const wide = await supabase.from('bid_rfqs').select(`${BASE}, sent_via, requested_on, quote_url`).eq('bid_id', bidId).order('created_at', { ascending: false })
+      const wide = await supabase.from('bid_rfqs').select(`${BASE}, sent_via, requested_on, request_url, quote_url`).eq('bid_id', bidId).order('created_at', { ascending: false })
       let rowsOut: PriceRequestLinkRow[]
       if (!wide.error) {
         rowsOut = (wide.data ?? []) as unknown as PriceRequestLinkRow[]
       } else {
         const legacy = await supabase.from('bid_rfqs').select(BASE).eq('bid_id', bidId).order('created_at', { ascending: false })
-        rowsOut = ((legacy.data ?? []) as unknown as PriceRequestLinkRow[]).map((r) => ({ ...r, sent_via: 'app', requested_on: null, quote_url: null }))
+        rowsOut = ((legacy.data ?? []) as unknown as PriceRequestLinkRow[]).map((r) => ({ ...r, sent_via: 'app', requested_on: null, request_url: null, quote_url: null }))
       }
       const houses = await fetchSupplyHousePickerRows().catch(() => [])
       if (cancelled) return
@@ -312,7 +312,7 @@ export function PriceWithRobotModal({ open, onClose, bidId, bidVersionId, bidLab
                 <span style={{ width: 16 }} />
                 <span style={{ fontWeight: 600, color: 'var(--text-muted)', minWidth: '9rem' }}>{w.house_name}</span>
                 <span style={{ ...smallMuted, flex: 1 }}>
-                  {w.requested_on ? `requested ${w.requested_on} · ` : ''}no quote link yet — the robot skips it
+                  {w.requested_on ? `requested ${w.requested_on} · ` : ''}no link yet — the robot skips it
                 </span>
               </div>
             ))}
@@ -321,7 +321,7 @@ export function PriceWithRobotModal({ open, onClose, bidId, bidVersionId, bidLab
             ) : null}
           </div>
           <div style={smallMuted}>
-            These are the quote links on this bid’s <strong style={{ color: 'var(--text-base)' }}>Price requests</strong> table
+            These are the links on this bid’s <strong style={{ color: 'var(--text-base)' }}>Price requests</strong> table
             {priceRequestsHref ? (
               <>
                 {' '}(<a href={priceRequestsHref} style={{ color: 'var(--text-link)' }}>Edit Bid → Files &amp; Links</a>)

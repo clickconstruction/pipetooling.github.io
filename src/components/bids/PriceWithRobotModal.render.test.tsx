@@ -92,7 +92,7 @@ describe('PriceWithRobotModal', () => {
     )
     expect(await screen.findByText('National Wholesale Supply')).toBeTruthy()
     expect(screen.getByText('Ferguson')).toBeTruthy()
-    expect(screen.getByText(/no quote link yet — the robot skips it/)).toBeTruthy()
+    expect(screen.getByText(/no link yet — the robot skips it/)).toBeTruthy()
     expect(screen.getByText(/2 fixture rows/)).toBeTruthy()
     const queue = screen.getByRole('button', { name: 'Queue it for the robot' })
     await waitFor(() => expect((queue as HTMLButtonElement).disabled).toBe(false))

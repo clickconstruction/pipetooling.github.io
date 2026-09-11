@@ -70,16 +70,19 @@ export type PriceRequestLinkRow = {
   sent_to: string | null
   created_at: string
   requested_on?: string | null
+  request_url?: string | null
   quote_url?: string | null
 }
 
 const HTTP_RE = /^https?:\/\//i
 
 /**
- * Which of the bid's Price-requests links the robot may read (a `quote_url`
- * the estimator pasted — the vendor's PDF or folder), and which houses were
- * asked but have nothing in the folder yet. Closed and draft requests drop
- * out; a house with several linked quotes gets several sources.
+ * Which of the bid's Price-requests links the robot may read, and which houses
+ * were asked but have nothing linked yet. A row's `quote_url` (the vendor's
+ * reply) wins; else its `request_url` — on a hand-sent request that link is
+ * usually the vendor's PDF or the Drive folder it landed in, and the table
+ * today offers only that one field. Closed and draft requests drop out; a
+ * house with several linked requests gets several sources.
  */
 export function buildPriceMatrixSources(
   rfqs: ReadonlyArray<PriceRequestLinkRow>,
@@ -91,7 +94,9 @@ export function buildPriceMatrixSources(
     if (r.status === 'closed' || r.status === 'draft') continue
     const houseName = (r.supply_house_id ? houseNameById.get(r.supply_house_id) : null) ?? r.sent_to?.trim() ?? 'Unknown house'
     const requestedOn = r.requested_on ?? (r.created_at ? r.created_at.slice(0, 10) : null)
-    const url = r.quote_url?.trim() ?? ''
+    const quote = r.quote_url?.trim() ?? ''
+    const request = r.request_url?.trim() ?? ''
+    const url = quote && HTTP_RE.test(quote) ? quote : request
     if (url && HTTP_RE.test(url)) {
       readable.push({ rfq_id: r.id, supply_house_id: r.supply_house_id, house_name: houseName, url, requested_on: requestedOn })
     } else {

@@ -62,10 +62,10 @@ describe('buildPriceMatrixScope', () => {
 
 describe('buildPriceMatrixSources', () => {
   const houses = new Map([['h-nws', 'National Wholesale Supply'], ['h-ferg', 'Ferguson']])
-  it('a pasted quote link is readable; a request with none is waiting; closed and draft drop out', () => {
+  it('a pasted quote link is readable, else the request link; a request with neither is waiting; closed and draft drop out', () => {
     const { readable, waiting } = buildPriceMatrixSources(
       [
-        { id: 'a', status: 'quoted', sent_via: 'outside', supply_house_id: 'h-nws', sent_to: null, created_at: '2026-09-09T10:00:00Z', requested_on: '2026-09-09', quote_url: 'https://drive.google.com/file/d/abc' },
+        { id: 'a', status: 'quoted', sent_via: 'outside', supply_house_id: 'h-nws', sent_to: null, created_at: '2026-09-09T10:00:00Z', requested_on: '2026-09-09', request_url: 'https://drive.google.com/file/d/list', quote_url: 'https://drive.google.com/file/d/abc' },
         { id: 'b', status: 'sent', sent_via: 'outside', supply_house_id: 'h-ferg', sent_to: null, created_at: '2026-09-03T10:00:00Z', requested_on: '2026-09-03', quote_url: null },
         { id: 'c', status: 'closed', sent_via: 'outside', supply_house_id: 'h-ferg', sent_to: null, created_at: '2026-09-01T10:00:00Z', quote_url: 'https://x.test/q.pdf' },
         { id: 'd', status: 'sent', sent_via: 'app', supply_house_id: null, sent_to: 'Hajoca', created_at: '2026-09-05T10:00:00Z', quote_url: 'not a link' },
@@ -77,6 +77,13 @@ describe('buildPriceMatrixSources', () => {
     ])
     expect(waiting.map((w) => w.house_name)).toEqual(['Ferguson', 'Hajoca'])
     expect(waiting[1]?.requested_on).toBe('2026-09-05')
+  })
+  it('a hand-sent request with only a request link is readable through that link', () => {
+    const { readable } = buildPriceMatrixSources(
+      [{ id: 'c', status: 'sent', sent_via: 'outside', supply_house_id: 'h-nws', sent_to: null, created_at: '2026-09-10T10:00:00Z', requested_on: '2026-09-10', request_url: 'https://drive.google.com/file/d/req', quote_url: null }],
+      houses,
+    )
+    expect(readable.map((r) => r.url)).toEqual(['https://drive.google.com/file/d/req'])
   })
 })
 
