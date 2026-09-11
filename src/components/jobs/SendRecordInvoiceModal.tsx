@@ -72,6 +72,7 @@ import {
 import { openInvoiceEmailPreviewInNewTab } from '../../lib/openInvoiceEmailPreview'
 import { type JobBillingContext } from '../../lib/jobBillingContext'
 import { fixturesForInvoiceBill } from '../../lib/invoiceScopedFixtures'
+import { buildLocalStripeBillPreview, stripePreviewBlocker, stripePreviewBlockerHint } from '../../lib/billing/localStripeBillPreview'
 import { BillCustomerDiscountStrip } from './BillCustomerDiscountStrip'
 import { standingDiscountFromCustomer, type BillDiscountPlan, type StandingDiscount } from '../../lib/jobs/discountLine'
 import { buildPhysicalInvoiceDetailFromJob, jobContextForPhysicalDoc } from '../../lib/physicalInvoiceJobContext'
@@ -1064,6 +1065,60 @@ export default function SendRecordInvoiceModal({
   function recordBillCustomerCommitted(channel: 'stripe' | 'housecallpro' | 'physical') {
     recordNavClick(authUser?.id, authRole, 'bill_customer_committed', `#${kind}:${channel}`)
   }
+
+  // "What the customer will see" from the job's own lines (v2.3288): the
+  // same builder, scoping and extras as the edge preview, so the bill shows
+  // the moment the modal opens — no email, no bill row, no Stripe round trip
+  // needed. Stripe's own preview replaces it whenever it can run.
+  const localStripePreview = useMemo(() => {
+    if (!open || !job || tab !== 'stripe') return null
+    const amt = Number(billAmountStr)
+    if (!Number.isFinite(amt) || amt <= 0) return null
+    const lineDescTrim = stripeLineDescription.trim()
+    const rollIns = includeHazmatRollIn && !hazmatIncidentForInvoice ? hazmatRollInLines : []
+    const folded = lineDescTrim.length > 0 ? [] : hazmatFeeLinesWithinAmount(foldedFeeLines, amt)
+    return buildLocalStripeBillPreview({
+      fixtures: billCustomerJobDetails?.id === job.id ? billCustomerJobDetails.fixtures : null,
+      invoiceId: kind === 'invoice' ? (invoice?.id ?? null) : (ensuredInvoice?.id ?? null),
+      isPrimaryRtbBundle: kind === 'invoice' ? invoice?.is_primary_rtb_bundle === true : true,
+      amountDollars: amt + hazmatRollInTotalDollars(rollIns),
+      lineDescriptionOverride: lineDescTrim,
+      extraLines: [...folded, ...rollIns].map((l) => ({ amountCents: l.amountCents, description: l.description })),
+      customerName: job.customer_name ?? null,
+      customerEmail: job.customer_email ?? null,
+      jobName: job.job_name ?? null,
+      jobNumber: effectiveJobLedgerNumber(job.hcp_number, job.click_number) || null,
+      dueDateYmd: stripeDueDate,
+    })
+  }, [
+    open,
+    job,
+    tab,
+    kind,
+    invoice?.id,
+    invoice?.is_primary_rtb_bundle,
+    ensuredInvoice?.id,
+    billAmountStr,
+    stripeLineDescription,
+    includeHazmatRollIn,
+    hazmatIncidentForInvoice,
+    hazmatRollInLines,
+    foldedFeeLines,
+    billCustomerJobDetails,
+    stripeDueDate,
+  ])
+  // Why Stripe's own preview is not running — the idle hint names it (v2.3288).
+  const stripePreviewIdleHint = job
+    ? stripePreviewBlockerHint(
+        stripePreviewBlocker({
+          ensureLoading: kind === 'job' && ensureLoading,
+          ensureError: kind === 'job' && Boolean(ensureError),
+          hasCustomer: jobLedgerHasCustomerForBilling(job.customer_id),
+          hasEmail: (job.customer_email ?? '').trim().length > 0,
+          hasBillRow: kind === 'invoice' ? invoice != null : Boolean(ensuredInvoice?.id),
+        }),
+      )
+    : null
 
   useEffect(() => {
     if (!open || !job || tab !== 'stripe' || stripeResult || stripeSuccessInvoice) {
@@ -3325,17 +3380,10 @@ export default function SendRecordInvoiceModal({
                       stripeLineDescription.trim() || defaultStripeLineDescriptionFromJob(job)
                     }
                     stripePreview={stripePreview}
+                    localPreview={localStripePreview}
                     stripePreviewLoading={stripePreviewLoading}
                     stripePreviewError={stripePreviewError}
-                    previewIdleHint={
-                      kind === 'job' && ensureLoading
-                        ? 'Preparing billing line…'
-                        : kind === 'job' && !ensureLoading && ensureError
-                          ? 'Fix the billing line error above, then edit due date in What the customer will see when ready.'
-                          : kind === 'job' && ensuredInvoice && !ensuredInvoice.id
-                            ? 'Nothing is saved until you send. Stripe\'s exact layout appears once the bill exists — the line below is what the customer will see.'
-                            : null
-                    }
+                    previewIdleHint={stripePreviewIdleHint}
                     onEditDueDate={() => {
                       setDraftDueYmd(stripeDueDate)
                       setEditDueDateOpen(true)
