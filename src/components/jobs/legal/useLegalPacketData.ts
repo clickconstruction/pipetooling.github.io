@@ -9,6 +9,7 @@ import {
   type LegalContactEntryLike,
   type LegalContactLike,
   type LegalCustomerLike,
+  type LegalFeeModel,
   type LegalPacket,
   type LegalReportLike,
   type LegalThreadNoteLike,
@@ -51,6 +52,7 @@ export function useLegalPacketData(
   users: ReadonlyArray<{ id: string; name: string | null }>,
   enabled: boolean,
   holdOverrides?: Readonly<Record<string, boolean>>,
+  fee?: LegalFeeModel,
 ): LegalPacketData {
   const [packet, setPacket] = useState<LegalPacket | null>(null)
   const [loading, setLoading] = useState(false)
@@ -61,6 +63,7 @@ export function useLegalPacketData(
   const accountKey = account?.key ?? null
   const jobIdsKey = account ? account.jobs.map((j) => j.id).sort().join(',') : ''
   const overridesKey = JSON.stringify(holdOverrides ?? {})
+  const feeKey = fee ? `${fee.contingencyPct}:${fee.filingCost}` : ''
 
   useEffect(() => {
     if (!enabled || !account) {
@@ -187,6 +190,7 @@ export function useLegalPacketData(
           threadNotes: notes,
           users,
           holdOverrides: holdOverrides ?? {},
+          fee,
         }),
       )
       setFailed(failures)
@@ -197,7 +201,7 @@ export function useLegalPacketData(
     }
     // `account` is re-derived every render by the caller; key on its identity fields instead.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [enabled, accountKey, jobIdsKey, tick, users, overridesKey])
+  }, [enabled, accountKey, jobIdsKey, tick, users, overridesKey, feeKey])
 
   return { packet, loading, failed, reload }
 }

@@ -70,7 +70,7 @@ describe('LegalDeskModal', () => {
     fireEvent.click(screen.getByRole('tab', { name: 'Paper' }))
     expect(screen.getByText('Lien clock')).toBeTruthy()
     fireEvent.click(screen.getByRole('tab', { name: 'Fees & steps' }))
-    expect(screen.getByText(/no firm is assigned/)).toBeTruthy()
+    expect(screen.getByText(/no firm is on this account/)).toBeTruthy()
   })
 
   it('renders an empty state when nothing is in Collections', () => {

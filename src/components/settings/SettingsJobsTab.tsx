@@ -7,6 +7,7 @@ import type { Dispatch, FormEvent, SetStateAction } from 'react'
 import TripChargeAmountsSettingsBlock from './TripChargeAmountsSettingsBlock'
 import HideHcpFieldSettingsBlock from './HideHcpFieldSettingsBlock'
 import SubPortalPaySettingsBlock from './SubPortalPaySettingsBlock'
+import LegalFirmSettingsBlock from './LegalFirmSettingsBlock'
 import JobAddressCityListSettingsBlock from './JobAddressCityListSettingsBlock'
 import TxCountyMapSettingsBlock from './TxCountyMapSettingsBlock'
 import DevelopmentsSettingsBlock from './DevelopmentsSettingsBlock'
@@ -68,6 +69,7 @@ export default function SettingsJobsTab({
     <>
       <HideHcpFieldSettingsBlock />
       <SubPortalPaySettingsBlock />
+      <LegalFirmSettingsBlock />
       {/* Company owner account (one company, v2.2972) + bulk job re-assign */}
       <div style={{ marginBottom: '2rem', border: '1px solid var(--border)', borderRadius: 8 }}>
         <button

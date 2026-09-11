@@ -76,6 +76,7 @@ export type NeedsYouItem = {
     | 'price-matrix-ready'
     | 'robot-backlog'
     | 'test-reports-ready'
+    | 'legal-review'
   severity: NeedsYouSeverity
   /** Product the item belongs to — omitted means `company`. See `NeedsYouKind`. */
   kind?: NeedsYouKind
@@ -141,6 +142,7 @@ export const NEEDS_YOU_RANK: Record<NeedsYouItem['key'], number> = {
   'job-account-no-packet': 60,
   'price-matrix-ready': 40,
   'robot-backlog': 60,
+  'legal-review': 40,
   // Revenue chasing tier: a test report is what the GC pays against.
   'test-reports-ready': 40,
 }
@@ -395,6 +397,9 @@ export type NeedsYouInputs = {
    */
   robotBacklogEnabled?: boolean
   robotBacklog?: import('./bids/robotBacklog').RobotBacklog | null
+  /** Legal portal PR 2 (v2.3313): Collections accounts a dev has not yet marked attorney-ready — devs only. */
+  legalReviewEnabled?: boolean
+  legalReview?: import('./legal/legalMatters').LegalReviewSummary | null
   /** Test reports drafted on jobs and not yet sent (v2.3301) — office roles; null while loading. */
   testReportsEnabled?: boolean
   testReportsReady?: import('../hooks/useTestReportsReadyNudge').TestReportsReady | null
@@ -957,6 +962,24 @@ export function buildNeedsYouItems(inputs: NeedsYouInputs): NeedsYouItem[] {
         (first.expiredHouses > 0 ? `${first.expiredHouses === 1 ? 'One quote was' : `${first.expiredHouses} quotes were`} already expired when read — ask for a re-issue before ordering.` : 'Review the picks, then Apply picks to costs.'),
       figure: String(count),
       actionLabel: 'Review matrix',
+    })
+  }
+
+  if (inputs.legalReviewEnabled && inputs.legalReview && inputs.legalReview.underReview > 0) {
+    const r = inputs.legalReview
+    const n = r.underReview
+    const asked = r.requested.length
+      ? `${r.requested.length} asked for your eyes: ${r.requested.slice(0, 2).map((q) => `${q.name} — ${q.by ?? 'the office'}${q.note ? ` “${q.note}”` : ''}`).join(' · ')}${r.requested.length > 2 ? ' · …' : ''}. `
+      : ''
+    const oldest = r.oldestDays != null && r.oldestDays > 0 ? `Oldest has sat ${r.oldestDays} day${r.oldestDays === 1 ? '' : 's'}. ` : ''
+    items.push({
+      key: 'legal-review',
+      severity: asked || (r.oldestDays ?? 0) > 30 ? 'amber' : 'blue',
+      kicker: 'Legal',
+      title: `${n} Collections account${n === 1 ? '' : 's'} await${n === 1 ? 's' : ''} your review before an attorney sees ${n === 1 ? 'it' : 'them'}`,
+      detail: `${asked}${oldest}Open each on the Legal desk, work the gaps, and mark it attorney-ready — that is the moment it reaches the firm — or write it down.${r.withFirm ? ` ${r.withFirm} already with the firm.` : ''}`,
+      figure: String(n),
+      actionLabel: 'Review',
     })
   }
 

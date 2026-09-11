@@ -2,7 +2,7 @@
 title: review a collections account before it goes to your attorney
 category: Billing & Money
 roles: dev, master_technician, assistant, controller
-keywords: legal, attorney, law firm, collections, packet, sworn account, lien clock, demand letter, worth it, write down, theory, exhibits, contact history
+keywords: legal, attorney, law firm, collections, packet, sworn account, lien clock, demand letter, worth it, write down, theory, exhibits, contact history, attorney ready, release, held back, ask a dev
 ---
 Before an account that will not pay reaches a law firm, someone at the office should see exactly what the firm would see — and fix what an attorney asks for first. The **⚖ Legal** desk on the Pipeline's Collections section is that review, one account at a time.
 
@@ -42,4 +42,18 @@ The Learning Experience has no signed contract on either job. With a sent Stripe
 
 {{button:outline|⎙ Print packet}} prints the cover sheet (theory, worth, the gap list), then the five sections with held entries left out — the browser's print-to-PDF is the PDF a firm receives today.
 
-{{button:outline|Write down…}} opens the agreed write-down on the account's largest open bill line, for the accounts the desk says are not worth pursuing. Marking an account **attorney-ready** — the step that puts it on a firm's portal — lands with the next release.
+{{button:outline|Write down…}} opens the agreed write-down on the account's largest open bill line, for the accounts the desk says are not worth pursuing. The matter closes as {{chip:gray|Written down}} and the row leaves Collections when the bill clears.
+
+{{button:blue|⚖ Mark attorney ready…}} is the release, and only a dev sees it. The sheet says what goes — jobs, balance, theory, exhibits, how many entries are held back — names the handling person at the firm and who hears about it, takes a note for the firm, and warns when red gaps are still open (you can mark anyway; the packet's cover sheet says so). Confirm and the account moves to **With the firm**; the row wears a {{chip:yellow|⚖ new}} chip and each job's Activity records the release. **Pull back** (dev) returns it to review; the firm's fees and steps stay on the record.
+
+## Curate what the firm sees
+
+On **Their word**, every entry has a **to counsel** box. Entries dated before the first bill are held unless you tick them; anything after goes unless you untick it. {{button:outline|Only after the first bill ↗}} clears every override; {{button:outline|Share all ↗}} sends everything. Held entries show struck through, never reach the printed packet, and never reach the firm.
+
+## Ask a dev to review
+
+Office staff can move a job to Collections but cannot release it. {{button:outline|Ask a dev to review…}} takes a short note and puts the account at the top of the dev's Needs You card — "N Collections accounts await your review before an attorney sees them" — which opens the desk on that account. The rail shows who asked and how many days ago; **Withdraw the request** takes it back.
+
+## The firm
+
+Settings → Jobs & dispatch → **Collections law firm** (dev) holds the firm's name, the handling person and their email — who hears about a release today — and the fee model (contingency %, filing cost) behind "Click keeps". The firm's own people and their email rules arrive with the portal.
