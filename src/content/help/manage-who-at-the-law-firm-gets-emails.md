@@ -14,7 +14,7 @@ On the portal's **Notifications** page each person at the firm has one rule:
 - **Every matter** or **Only my matters** — the matters where they are named as the handling person.
 - {{button:outline|Stop emails to this person}} and {{button:outline|Turn emails back on}}.
 
-**Add a person** sends that address one confirmation email and nothing else until they click *Yes, email me*. The handling person on a matter always hears about it right away, whatever their rule says.
+**Add a person** sends that address one confirmation email and nothing else until they click *Yes, email me*. The handling person on a matter hears about it under their own rule — right away or in their digest — even when they chose *only my matters*. Nobody hears anything until they are on this list and confirmed; the firm's contact email on the office's Settings page is a contact, not a subscription.
 
 ## What they hear about
 

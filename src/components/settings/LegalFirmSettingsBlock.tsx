@@ -130,7 +130,7 @@ export default function LegalFirmSettingsBlock() {
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 10, marginTop: '0.75rem' }}>
             <label style={label}>Firm<input style={input} value={form.name} onChange={set('name')} placeholder="Example Law Firm, PLLC" /></label>
             <label style={label}>Handling person<input style={input} value={form.handling_name} onChange={set('handling_name')} placeholder="A. Attorney" /></label>
-            <label style={label}>Email (hears about every release)<input style={input} type="email" value={form.email} onChange={set('email')} placeholder="attorney@firm.example" /></label>
+            <label style={label}>Email (contact — the firm’s people subscribe on their portal)<input style={input} type="email" value={form.email} onChange={set('email')} placeholder="attorney@firm.example" /></label>
             <label style={label}>Phone<input style={input} value={form.phone} onChange={set('phone')} /></label>
             <label style={label}>Contingency %<input style={input} type="number" min={0} max={100} step={1} value={form.contingency_pct} onChange={set('contingency_pct')} /></label>
             <label style={label}>Filing cost ($)<input style={input} type="number" min={0} step={1} value={form.filing_cost} onChange={set('filing_cost')} /></label>

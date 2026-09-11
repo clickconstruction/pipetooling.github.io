@@ -81,8 +81,8 @@ describe('feeModelOf / indexMatters / releaseRecipients', () => {
     expect(idx.jobIdsByMatter.get('m1')).toEqual(['j1', 'j2'])
     expect(idx.byJobId.has('j9')).toBe(false)
   })
-  it('with no recipients, the firm row is the fallback; with rules, each person lands in a bucket', () => {
-    expect(releaseRecipients(firm, '')).toEqual([{ name: 'A. Attorney', email: 'attorney@example.test', bucket: 'now', why: 'handling — always hears' }])
+  it('with no recipients nobody is emailed — the firm row is a contact, not a subscriber; with rules, each person lands in the dispatcher\'s bucket', () => {
+    expect(releaseRecipients(firm, '')).toEqual([])
     expect(releaseRecipients({ ...firm, email: '' }, '')).toEqual([])
     const rec = (over: Record<string, unknown>) => ({ id: 'r', name: 'X', email: 'x@f.test', role: '', mode: 'now', scope: 'all', digest_weekday: 1, digest_time: '07:00', confirmed_at: '2026-09-01T00:00:00Z', paused_at: null, ...over })
     const lines = releaseRecipients(firm, 'J. Paralegal', [
@@ -93,8 +93,10 @@ describe('feeModelOf / indexMatters / releaseRecipients', () => {
       rec({ id: '5', name: 'Other', email: 'o@f.test', scope: 'mine' }),
       rec({ id: '6', name: 'Removed', email: 'r@f.test', removed_at: '2026-09-10T00:00:00Z' }),
     ])
-    expect(lines.map((l) => [l.name, l.bucket])).toEqual([['A. Attorney', 'digest'], ['J. Paralegal', 'now'], ['Billing', 'unconfirmed'], ['Quiet', 'stopped'], ['Other', 'stopped']])
+    expect(lines.map((l) => [l.name, l.bucket])).toEqual([['A. Attorney', 'digest'], ['J. Paralegal', 'digest'], ['Billing', 'unconfirmed'], ['Quiet', 'stopped'], ['Other', 'stopped']])
     expect(lines[0]?.why).toBe('Mon 07:00 digest')
+    expect(lines[1]?.why).toBe('Mon 07:00 digest — handling')
+    expect(releaseRecipients(firm, 'J. Paralegal', [rec({ id: '7', name: 'J. Paralegal', email: 'j@f.test', scope: 'mine' })])[0]).toMatchObject({ bucket: 'now', why: 'handling — right away' })
   })
 })
 

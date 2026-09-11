@@ -208,26 +208,24 @@ export type ReleaseRecipientLine = { name: string; email: string; bucket: 'now' 
 export const WEEKDAY_LABELS = ['', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'] as const
 
 /**
- * Who at the firm hears about a release, by their own rules (PR 5): the handling
- * person always hears now; others by mode; scope 'mine' only when they handle it.
- * With no recipients yet, the firm row's handling email is the fallback.
+ * Who at the firm hears about a release, by their own rules (PR 5) — the same
+ * rules `legal-notify-dispatch` applies: only confirmed, unpaused people; mode
+ * `now` hears right away and `digest` on their day; scope `mine` only when they
+ * are the matter's handling person. Nobody is on the list → nobody is emailed
+ * (the firm row's email is a contact, not a subscriber — confirm-by-click is
+ * the rule, and the office never confirmed it).
  */
 export function releaseRecipients(firm: LegalFirmRow | null | undefined, handlingName: string, recipients: ReadonlyArray<LegalRecipientRow> = []): ReleaseRecipientLine[] {
   if (!firm) return []
   const handling = handlingName.trim() || firm.handling_name.trim()
   const live = recipients.filter((r) => !r.removed_at)
-  if (live.length === 0) {
-    const name = handling || firm.name
-    return firm.email.trim() ? [{ name, email: firm.email.trim(), bucket: 'now', why: 'handling — always hears' }] : []
-  }
   return live.map((r) => {
     const isHandling = handling !== '' && r.name.trim().toLowerCase() === handling.toLowerCase()
     if (!r.confirmed_at) return { name: r.name, email: r.email, bucket: 'unconfirmed', why: 'has not clicked their confirmation — nothing goes there' }
     if (r.paused_at) return { name: r.name, email: r.email, bucket: 'stopped', why: 'stopped their emails' }
-    if (isHandling) return { name: r.name, email: r.email, bucket: 'now', why: 'handling — always hears' }
-    if (r.scope === 'mine') return { name: r.name, email: r.email, bucket: 'stopped', why: 'only their own matters' }
-    if (r.mode === 'digest') return { name: r.name, email: r.email, bucket: 'digest', why: `${WEEKDAY_LABELS[r.digest_weekday] ?? 'Mon'} ${r.digest_time} digest` }
-    return { name: r.name, email: r.email, bucket: 'now', why: 'right away' }
+    if (r.scope === 'mine' && !isHandling) return { name: r.name, email: r.email, bucket: 'stopped', why: 'only their own matters' }
+    if (r.mode === 'digest') return { name: r.name, email: r.email, bucket: 'digest', why: `${WEEKDAY_LABELS[r.digest_weekday] ?? 'Mon'} ${r.digest_time} digest${isHandling ? ' — handling' : ''}` }
+    return { name: r.name, email: r.email, bucket: 'now', why: isHandling ? 'handling — right away' : 'right away' }
   })
 }
 
