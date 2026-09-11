@@ -110,7 +110,11 @@ export function JobFormDiscountRow({
   const pctMode = row.discount_pct != null
   const dollars = derivedDiscountDollars(fixtures, row)
   const basisDollars = discountBasisDollars(fixtures, row)
-  const overCap = discountExceedsBasis(fixtures, row)
+  // The kernel clamps the stored price at the basis (v2.3279), so the row
+  // remembers what was typed and shows the cap message from that; the
+  // kernel flag still covers a row that predates the clamp.
+  const [typedDollars, setTypedDollars] = useState<number | null>(null)
+  const overCap = discountExceedsBasis(fixtures, row) || (typedDollars != null && typedDollars > basisDollars + 0.005)
   const readout = discountReadout(fixtures, row)
   const twin = discountTwinLabel(fixtures, row)
   const workRows = fixtures.filter((f) => !isDiscountRow(f) && workLineDollars(f) > 0)
@@ -130,15 +134,17 @@ export function JobFormDiscountRow({
 
   const commit = (raw: string) => {
     const parsed = parseDiscountEntry(raw)
+    setTypedDollars(parsed?.mode === 'usd' ? parsed.dollars : null)
     if (!parsed) {
       updateFixtureRow(row.id, { discount_pct: null, line_unit_price: null })
       return
     }
     if (parsed.mode === 'pct') updateFixtureRow(row.id, { discount_pct: parsed.pct })
-    else updateFixtureRow(row.id, { discount_pct: null, line_unit_price: parsed.dollars > 0 ? -parsed.dollars : null })
+    else updateFixtureRow(row.id, { discount_pct: null, line_unit_price: parsed.dollars > 0 ? -Math.min(parsed.dollars, basisDollars) : null })
   }
   const swapMode = () => {
     if (locked) return
+    setTypedDollars(null)
     if (pctMode) {
       updateFixtureRow(row.id, { discount_pct: null, line_unit_price: dollars > 0 ? -dollars : null })
     } else {
