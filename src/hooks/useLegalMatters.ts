@@ -43,7 +43,7 @@ export function useLegalMatters(enabled: boolean): LegalMattersData {
     setLoading(true)
     try {
       const [f, m, l, e, r] = await Promise.all([
-        db.from('legal_firms').select('id, name, handling_name, email, phone, contingency_pct, filing_cost, active, paused_at').order('active', { ascending: false }).order('created_at'),
+        db.from('legal_firms').select('*').order('active', { ascending: false }).order('created_at'),
         db.from('legal_matters').select('*'),
         db.from('legal_matter_jobs').select('matter_id, job_id'),
         db.from('legal_matter_entries').select('*').order('created_at'),
