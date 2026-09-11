@@ -8,7 +8,7 @@ People → **Payroll** has two views (dev only for now): **Pay reports** — the
 
 ## The roster
 
-The left side lists everyone with payroll activity, ranked by what we owe them, then who owes us, then everyone who is even. The totals at the top are the company-wide picture ("We owe $X across N · owed to us $Y across M"). Under each name a short line says *why* — `6 unpaid · $13,855 · 4 partial`, `3 charges · 1 credit`, or `21 stubs · all paid`. Use the chips ({{chip:gray|We owe}} / {{chip:gray|Owes us}} / {{chip:gray|Even}}) or the search box to narrow it, and tap a name to open their ledger.
+The left side lists everyone with payroll activity, ranked by what we owe them, then who owes us, then everyone who is even. The two centered lines at the top are the company-wide picture ("We owe $X across N" over "owed to us $Y across M"). Under each name a short line says *why* — `6 unpaid · $13,855 · 4 partial`, `3 charges · 1 credit`, or `21 stubs · all paid`. Use the chips ({{chip:gray|We owe}} / {{chip:gray|Owes us}} / {{chip:gray|Even}}) or the search box to narrow it, and tap a name to open their ledger.
 
 **+ means we owe them, − means they owe us** — the same convention as the partner card (green plus / red minus).
 

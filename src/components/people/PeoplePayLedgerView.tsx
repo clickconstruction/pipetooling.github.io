@@ -213,12 +213,14 @@ export default function PeoplePayLedgerView({ payStubs, payStubPaymentsByStubId,
         <b style={{ fontSize: '0.95rem' }}>Balances</b>
         <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{roster.rows.length} people</span>
       </div>
-      <p style={{ margin: '0 0 0.6rem', fontSize: '0.74rem', color: 'var(--text-muted)', lineHeight: 1.45 }}>
-        We owe <b style={{ color: '#16a34a', fontVariantNumeric: 'tabular-nums' }}><MoneySC n={roster.totals.oweAmount} /></b> across {roster.totals.oweCount} · owed to us{' '}
-        <b style={{ color: 'var(--text-red-600)', fontVariantNumeric: 'tabular-nums' }}><MoneySC n={roster.totals.owedAmount} /></b> across {roster.totals.owedCount} · {roster.totals.evenCount} even
+      {/* Two centered lines (owner's ask): one for each direction; the even count lives on its chip below. */}
+      <p style={{ margin: '0 0 0.6rem', fontSize: '0.74rem', color: 'var(--text-muted)', lineHeight: 1.45, textAlign: 'center' }}>
+        We owe <b style={{ color: '#16a34a', fontVariantNumeric: 'tabular-nums' }}><MoneySC n={roster.totals.oweAmount} /></b> across {roster.totals.oweCount}
+        <br />
+        owed to us <b style={{ color: 'var(--text-red-600)', fontVariantNumeric: 'tabular-nums' }}><MoneySC n={roster.totals.owedAmount} /></b> across {roster.totals.owedCount}
       </p>
-      {/* One line on purpose: the roster column is 300px, and four chips at the old padding/gap wrapped the last one. */}
-      <div style={{ display: 'flex', gap: '0.25rem', flexWrap: 'nowrap', marginBottom: '0.55rem' }}>
+      {/* One centered line on purpose: the roster column is 300px, and four chips at the old padding/gap wrapped the last one. */}
+      <div style={{ display: 'flex', justifyContent: 'center', gap: '0.25rem', flexWrap: 'nowrap', marginBottom: '0.55rem' }}>
         {(
           [
             ['all', `All ${roster.rows.length}`],
