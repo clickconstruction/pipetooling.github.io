@@ -35,6 +35,18 @@ The **Who makes up overhead** table lists every person with office or bid time (
 
 Switch the window with the chips: {{chip:blue|Today}} {{chip:gray|Last 7 days}} {{chip:gray|Last 30 days}} {{chip:gray|Last 90 days}} — the numbers re-slice instantly, nothing reloads.
 
+### Behind any cell
+
+Every dollar in the table is a door. Click Taunya's office labor and a window opens with the days that add up to it: one row per day with its hours, the wage the dollars used, and the amount, and inside the row every punch's clock-in and clock-out — grouped by week, newest first, with a subtotal and a small bar per week so the shape reads at a glance. A punch under 15 minutes is marked {{chip:gray|stray punch}}: real time, just noisy. A purchase cell lists each purchase with its source ({{chip:gray|card · Malachi}}, {{chip:gray|supply invoice}}) and its accounting section. The Pool row's cells open the whole column grouped by person, collapsed to subtotals until you expand one.
+
+The header proves the number — hours × the average rate — and the footer says whether the lines tie to the cell. Pills across the top move between the person's columns without closing.
+
+Anything that needs a human is chipped on its line and counted in the header: {{chip:yellow|awaiting approval}} (counted as recorded time; a rejection removes it), {{chip:yellow|no wage on file}} (hours count, dollars read $0), and {{chip:yellow|13.2 h — forgotten clock-out?}} on any session over ten hours. Each flag links to where the fix lives: People → Hours, Pay config, or Banking → Accounting. Switch to {{chip:gray|Largest first}} to bring the outliers to the top, type in the filter box to find one note, bid, or merchant, and {{button:outline|Copy as CSV}} to take the lines to a spreadsheet.
+
+:::example Finding the odd one
+Malachi's office parts read high this month. Open the cell, sort largest first: the top line is a $900 Ferguson charge on the card that should have gone to a job. Banking → Accounting is one click away to move it.
+:::
+
 :::example Where purchases land
 A Mercury card purchase on the office job goes to the cardholder (by card nickname). Supply-house invoices, ACH/wire payments, and tally lines don't belong to a person, so they sit on an italic last row — that way the parts column still adds up to the pool instead of quietly shrinking.
 :::
