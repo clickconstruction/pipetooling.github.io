@@ -67,7 +67,7 @@ New:
 2. **Kernel + Costs tab** — `jobBudget.ts` (+tests), `resolveJobBurnBudget` takes it, per-component burn, Budget card (Frame A), link banner + candidates + typed form (Frame B), `JobWithDetails` embeds the budget row (embed-select guard). Live: link J1007 → B375 in the UI with the owner watching, type a budget, screenshot both states.
 3. **Job Summary + Pipeline** — glyph, Budget column + filter, `projectJobSummaryBurn` on the resolved budget, the card's footing wording. Kernel tests; live screenshots.
 4. **Bid side** — Bid Board chips; New Job carry checkbox → snapshot RPC after insert. Help guides: `job-charges-timeline.md`, `read-true-profit-on-job-summary.md`, the Bid Board guide.
-5. **Backfill offer** — dev-only Settings → Data list of exact matches; then the deferred pair: persist the Pricing workbench margin on the bid when priced (so an uncosted bid can still hand the job price × (1 − priced margin)); earned value by stage (stage % × that stage's budget) once estimates carry stage hours.
+5. **Backfill offer — SHIPPED v2.3306** (`bidJobValueMatches.ts`, `BidJobBackfillSettingsBlock` on Settings → Data). **Deferred, still open:** persist the Pricing workbench margin on the bid when priced (so an uncosted bid can hand the job price × (1 − priced margin)); earned value by stage (stage % × that stage's budget) once estimates carry stage hours.
 
 Out of scope on purpose: changing how bids are costed — that is the Labor-tab refresh, its own to-do.
 

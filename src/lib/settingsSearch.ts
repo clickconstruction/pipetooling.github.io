@@ -64,6 +64,7 @@ export const SETTINGS_SEARCH_INDEX: readonly SettingsSearchEntry[] = [
   { label: 'Backups & exports', keywords: ['backup', 'export data', 'csv'], tabId: 'settings-data' },
   { label: 'Recently deleted', keywords: ['trash', 'restore', 'undelete', 'deleted records'], tabId: 'settings-data', anchorId: 'settings-recently-deleted' },
   { label: 'Bulk-deletion alert', keywords: ['mass delete', 'deletion warning'], tabId: 'settings-data' },
+  { label: 'Link jobs to their bids', keywords: ['backfill', 'bid link', 'matches by value', 'job budget', 'burn'], tabId: 'settings-data', anchorId: 'settings-bid-job-backfill' },
   // Jobs & dispatch (dev)
   { label: 'Trip charge amounts', keywords: ['trip fee', 'travel charge'], tabId: 'settings-jobs' },
   { label: 'Re-assign jobs', keywords: ['transfer jobs', 'move jobs to another user'], tabId: 'settings-jobs' },
