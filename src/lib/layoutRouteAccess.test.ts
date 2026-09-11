@@ -105,3 +105,19 @@ describe('job-mode tab paths (v2.911 fix: allowlists bounced field roles)', () =
     }
   })
 })
+
+describe('Banking is controller and above (v2.3305)', () => {
+  it('bounces a plain assistant off /banking but nowhere else', () => {
+    expect(isPathAllowedForRole('assistant', '/banking', false)).toBe(false)
+    expect(isPathAllowedForRole('assistant', '/banking/', false)).toBe(false)
+    expect(isPathAllowedForRole('assistant', '/accounts-receivable', false)).toBe(true)
+    expect(isPathAllowedForRole('assistant', '/tally', false)).toBe(true)
+    expect(isPathAllowedForRole('assistant', '/quickfill', false)).toBe(true)
+  })
+
+  it('keeps /banking for dev, master_technician and controller', () => {
+    expect(isPathAllowedForRole('controller', '/banking', false)).toBe(true)
+    expect(isPathAllowedForRole('master_technician', '/banking', false)).toBe(true)
+    expect(isPathAllowedForRole('dev', '/banking', false)).toBe(true)
+  })
+})

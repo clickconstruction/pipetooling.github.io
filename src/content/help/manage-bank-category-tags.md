@@ -1,7 +1,7 @@
 ---
 title: tag bank purchases so rules and reports read them the same way
 category: Billing & Money
-roles: dev, master_technician, assistant, controller
+roles: dev, master_technician, controller
 keywords: banking, accounting, tags, tag, bank category, fuel, gas, rules, label, mercury, category, cost line, review, job summary
 order: 64
 ---

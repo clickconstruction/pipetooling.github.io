@@ -68,6 +68,7 @@ import { useToastContext } from '../contexts/ToastContext'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
 import { isAssistantLike } from '../lib/subcontractorLikeRole'
+import { canAccessBanking } from '../lib/bankingAccess'
 import { useDispatchInbox } from '../hooks/useDispatchInbox'
 import { useQuickfillCantReachProspects } from '../hooks/useQuickfillCantReachProspects'
 import { useQuickfillCompleteNoBillJobs } from '../hooks/useQuickfillCompleteNoBillJobs'
@@ -737,6 +738,8 @@ function QuickfillPage() {
       }
       if (sectionId === 'needs-you') return warningsSectionEligible
       if (sectionId === 'no-customer-stages') return quickfillNoCustomerStages.fetchEnabled
+      // Banking is controller and above (v2.3305); the snapshot is the Banking page in miniature.
+      if (sectionId === 'banking-sorting') return canAccessBanking(role)
       if (sectionId === 'undated-bills') {
         return role === 'dev' || role === 'master_technician' || isAssistantLike(role)
       }

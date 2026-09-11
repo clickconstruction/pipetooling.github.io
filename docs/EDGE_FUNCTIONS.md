@@ -3560,7 +3560,7 @@ Migration **`20270605150000_sync_mercury_transactions_pg_cron.sql`** schedules t
 
 **Endpoint**: `POST /functions/v1/get-mercury-account-balances` (empty JSON body)
 
-**Authentication**: `verify_jwt = false`; in-handler JWT + Banking role gate (`dev` / `master_technician` / `assistant` / `controller` — `ALLOWED_ROLES` mirrors `public.is_banking_staff()`, v2.2920; controller was missing before, so the Balance Sheet cash line 403'd for the one non-dev role the Category Review tab admits).
+**Authentication**: `verify_jwt = false`; in-handler JWT + Banking role gate (`dev` / `master_technician` / `controller` — `ALLOWED_ROLES` mirrors `public.is_banking_staff()`; assistant dropped in v2.3305 when Banking became controller and above; v2.2920 had added controller, which was missing before, so the Balance Sheet cash line 403'd for the one non-dev role the Category Review tab admits).
 
 **Required Secrets**: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `MERCURY_API_KEY`
 
@@ -3586,7 +3586,7 @@ Migration **`20270605150000_sync_mercury_transactions_pg_cron.sql`** schedules t
 
 **Endpoint**: `POST /functions/v1/mercury-reconcile`
 
-**Authentication**: `verify_jwt = false`; in-handler JWT + Banking role gate (`dev` / `master_technician` / `assistant` / `controller` — `ALLOWED_ROLES` mirrors `public.is_banking_staff()`, v2.2920). Existence checks run service-role because `mercury_transactions` SELECT is dev-only.
+**Authentication**: `verify_jwt = false`; in-handler JWT + Banking role gate (`dev` / `master_technician` / `controller` — `ALLOWED_ROLES` mirrors `public.is_banking_staff()`; assistant dropped in v2.3305, Banking is controller and above). Existence checks run service-role because `mercury_transactions` SELECT is dev-only.
 
 **Required Secrets**: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `MERCURY_API_KEY`
 

@@ -1,7 +1,7 @@
 ---
 title: sort the bank feed
 category: Billing & Money
-roles: dev, master_technician, assistant, controller
+roles: dev, master_technician, controller
 keywords: banking, bank feed, mercury, user sort, drag sort, accounting label, rules, approvals, approve themselves, job parts tally, tally, splits, card review, category review, reconciliation, bank statements, sync
 order: 58
 ---
@@ -35,3 +35,7 @@ Money that leaves by **ACH, wire or check** — rent, insurance, contract labor,
 ## Where the sorting shows up
 
 Sorted charges are job costs on the Bill tab's cost timeline, in Crew P&L and in the weekly money report; labels feed the overhead numbers and Banking → **Visuals**. Quickfill's **Banking sorting** station carries a {{chip:yellow|Close week: $1,206 open}} chip while the previous week still has unsorted charges or unlabeled transfers — the Monday close (see *close the money week*) is what finally empties it.
+
+## Who can open Banking
+
+Banking is controller-and-above work: {{chip:blue|dev}}, {{chip:blue|master technician}} and {{chip:blue|controller}} open it. Assistants do not see the Banking link or the "bank-label suggestions have waited" card — they sort their own purchases in **Job Parts Tally**, match bank deposits to bills on the **Jobs** board, and never see the bank feed itself. If a bank-label backlog needs clearing, it is the controller's queue.

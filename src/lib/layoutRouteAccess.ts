@@ -1,5 +1,6 @@
 import type { UserRole } from '../hooks/useAuth'
 import { isAssistantLike, isSubcontractorLikeRole } from './subcontractorLikeRole'
+import { canAccessBanking } from './bankingAccess'
 
 /**
  * The single source of truth for per-role route access (v2.2325). `Layout.tsx` imports
@@ -10,6 +11,9 @@ import { isAssistantLike, isSubcontractorLikeRole } from './subcontractorLikeRol
  * Every list matches by root: an entry allows the exact path plus any subpath under it
  * (`/estimates` also allows `/estimates/123`), except `/` which only matches itself.
  */
+/** Routes the office cohort reaches only with Banking access (`canAccessBanking`). */
+export const BANKING_ONLY_PATHS = ['/banking'] as const
+
 export const SUBCONTRACTOR_PATHS = ['/', '/dashboard', '/my-statement', '/calendar', '/checklist', '/settings', '/tally', '/help', '/job-mode/schedule', '/job-mode/inbox', '/job-mode/customers'] as const
 
 export const PRIMARY_PATHS = [
@@ -106,7 +110,11 @@ export function isPathAllowedForRole(
   estimatorProspectsAccess: boolean,
 ): boolean {
   if (role == null) return false
-  if (role === 'dev' || role === 'master_technician' || isAssistantLike(role)) return true
+  if (role === 'dev' || role === 'master_technician' || isAssistantLike(role)) {
+    // Banking is controller and above (v2.3305): a plain assistant is bounced
+    // off /banking like any other role outside its allow-list.
+    return canAccessBanking(role) || !matchesAllowedRoot(BANKING_ONLY_PATHS, pathname)
+  }
 
   if (role && isSubcontractorLikeRole(role)) {
     return matchesAllowedRoot(SUBCONTRACTOR_PATHS, pathname)

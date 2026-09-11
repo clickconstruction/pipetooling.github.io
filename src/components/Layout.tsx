@@ -63,6 +63,7 @@ import { appActivityPageKey } from '../lib/appActivityPage'
 import { hardReloadFromRoot } from '../lib/hardReload'
 import { prefetchDashboardPhase1 } from '../lib/dashboardPrefetch'
 import { isAssistantLike, isSubcontractorLikeRole } from '../lib/subcontractorLikeRole'
+import { canAccessBanking } from '../lib/bankingAccess'
 import { fieldJobLookupEligible, headerSearchEligibleForRole } from '../lib/fieldJobLookup'
 import { startDismissalSync, stopDismissalSync } from '../lib/dismissalSync'
 import { canLeaveJobFieldReport } from '../lib/canLeaveJobFieldReport'
@@ -1716,7 +1717,7 @@ export default function Layout() {
                     Map
                   </NavLink>
                 )}
-                {(role === 'dev' || isAssistantLike(role) || role === 'master_technician') && !farmModeActive && (
+                {canAccessBanking(role) && !farmModeActive && (
                   <NavLink
                     to="/banking"
                     onClick={() => setGearOpen(false)}
