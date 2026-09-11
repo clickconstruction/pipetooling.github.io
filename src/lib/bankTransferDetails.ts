@@ -161,10 +161,14 @@ export function bankTransferGuardLine(phone: string): string {
     : 'These details never change by email. If anyone sends you different bank details in our name, call our office before sending anything.'
 }
 
-/** Digits in readable groups for the screen: 202511226605 → "2025 1122 6605". Copy uses the raw value. */
+/**
+ * Digits in readable groups for the screen: 202511226605 → "2025 1122 6605".
+ * Copy uses the raw value. Nine digits — an ABA routing number — stay whole:
+ * every bank prints them as one run, and "0913 1122 9" reads as a typo.
+ */
 export function groupDigits(value: string): string {
   const v = value.replace(/\s+/g, '')
-  if (!/^\d{6,}$/.test(v)) return v
+  if (!/^\d{10,}$/.test(v)) return v
   const groups: string[] = []
   let rest = v
   while (rest.length > 4) {
