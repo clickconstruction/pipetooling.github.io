@@ -3964,10 +3964,14 @@ export type Database = {
           fixture: string
           id: string
           is_fixed: boolean
+          kind: string
           rough_in_hrs_per_unit: number
           sequence_order: number
+          source: string | null
+          source_note: string | null
           top_out_hrs_per_unit: number
           trim_set_hrs_per_unit: number
+          unit: string
         }
         Insert: {
           cost_estimate_id: string
@@ -3976,10 +3980,14 @@ export type Database = {
           fixture: string
           id?: string
           is_fixed?: boolean
+          kind?: string
           rough_in_hrs_per_unit?: number
           sequence_order?: number
+          source?: string | null
+          source_note?: string | null
           top_out_hrs_per_unit?: number
           trim_set_hrs_per_unit?: number
+          unit?: string
         }
         Update: {
           cost_estimate_id?: string
@@ -3988,10 +3996,14 @@ export type Database = {
           fixture?: string
           id?: string
           is_fixed?: boolean
+          kind?: string
           rough_in_hrs_per_unit?: number
           sequence_order?: number
+          source?: string | null
+          source_note?: string | null
           top_out_hrs_per_unit?: number
           trim_set_hrs_per_unit?: number
+          unit?: string
         }
         Relationships: [
           {
@@ -9362,10 +9374,12 @@ export type Database = {
           created_at: string | null
           fixture_type_id: string
           id: string
+          kind: string
           rough_in_hrs: number
           sequence_order: number
           top_out_hrs: number
           trim_set_hrs: number
+          unit: string
           version_id: string
         }
         Insert: {
@@ -9373,10 +9387,12 @@ export type Database = {
           created_at?: string | null
           fixture_type_id: string
           id?: string
+          kind?: string
           rough_in_hrs?: number
           sequence_order?: number
           top_out_hrs?: number
           trim_set_hrs?: number
+          unit?: string
           version_id: string
         }
         Update: {
@@ -9384,10 +9400,12 @@ export type Database = {
           created_at?: string | null
           fixture_type_id?: string
           id?: string
+          kind?: string
           rough_in_hrs?: number
           sequence_order?: number
           top_out_hrs?: number
           trim_set_hrs?: number
+          unit?: string
           version_id?: string
         }
         Relationships: [
@@ -18737,6 +18755,21 @@ export type Database = {
       }
     }
     Views: {
+      cost_estimate_direct_costs: {
+        Row: {
+          cost_estimate_id: string | null
+          created_at: string | null
+          id: string | null
+          kind: string | null
+          note: string | null
+          rough_in: number | null
+          sequence_order: number | null
+          top_out: number | null
+          trim_set: number | null
+          updated_at: string | null
+        }
+        Relationships: []
+      }
       master_assistants: {
         Row: {
           assistant_id: string | null

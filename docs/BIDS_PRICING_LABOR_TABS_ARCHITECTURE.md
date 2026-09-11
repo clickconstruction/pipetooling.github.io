@@ -5,7 +5,7 @@ file: docs/BIDS_PRICING_LABOR_TABS_ARCHITECTURE.md
 type: Architecture Map / Decomposition
 purpose: Step-0 sub-decomposition map (per PAGE_DECOMPOSITION_PLAYBOOK.md) for the two largest already-extracted Bids workflow tabs — src/components/bids/BidsPricingTab.tsx (~2,610 lines) and src/components/bids/BidsLaborTab.tsx (~2,365 lines) — which stay coupled through the shared useBidPricingEngine hook. Inventories every logical region's state, handlers, supabase tables/RPCs, and coupling so the next extraction can start without re-reading either file.
 audience: Developers, AI Agents
-last_updated: 2026-09-05
+last_updated: 2026-09-11
 sections:
   - What this surface is
   - The shared substrate
@@ -162,6 +162,7 @@ Mirror of P1: `costEstimateSearchQuery`, `bidsScopedForCostEstimate` → `filter
 - **Kernels:** `lib/bids/laborBookMatch.ts` (exact → alias → code prefix; `laborRowSource`), `lib/bids/bidLaborSummary.ts` (strip + completeness). Tested.
 - **Writes:** queue Save → `cost_estimate_labor_rows` UPDATE (immediate, then refetch → `setCostEstimateLaborRows`), optional `labor_book_entries` UPDATE (`alias_names` append) or INSERT (new entry via `getOrCreateFixtureTypeId`); Fill from the book → the same row UPDATE per matched zero row. Grid cell edits go through `setCostEstimateLaborRow` + `markCell` — the L2 autosave persists them exactly as Old's cells.
 - **Quirk #6, deliberately not carried:** the New view matches aliases (and code prefixes). Old's Apply keeps primary-name-only until retirement; the two can disagree on which rows "match" — that is the parallel run, not a bug.
+- **The row says how it reads (v2.3291, PR 2):** `cost_estimate_labor_rows.kind` (`fixture` | `task` | `sub`), `unit` (`each` | `per_100ft`), `source` (`book` | `alias` | `typed` | `robot`), `source_note`; `labor_book_entries.unit` + `kind`. [`lib/bids/laborRowHours.ts`](../src/lib/bids/laborRowHours.ts) `laborRowMultiplier` is the one reading rule (sub 0 · task/fixed 1 · per 100 ft count ÷ 100 · else count) — Old, the sub sheets, `costEstimatePage` and Pricing inherit it. `laborRowPatchFromMatch` (in `laborBookMatch.ts`) is the one write rule for fill-from-book and the engine's minting stamps the same columns. Old's fixed checkbox flips `kind` in `setCostEstimateLaborRow`; the L2 autosave and `saveLaborRows` carry `kind`. The queue's segmented control (Fixture · Task · Sub) replaces the old "Task · fixed hours" option in Read as…; a sub line is answered without hours (`laborRowAnswered`). The head's sixth tile reads the `cost_estimate_direct_costs` view ([`lib/bids/costEstimateDirectCosts.ts`](../src/lib/bids/costEstimateDirectCosts.ts)) — the amber sections of L5 still write their own tables. The Labor book panel's entry form (L6) gained *Reads as* / *Hours are per*.
 
 ### Region L4 — Cost-parameter boxes (Vehicle Travel / Lodging & Meals / Estimators Time)
 

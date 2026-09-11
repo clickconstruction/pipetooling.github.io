@@ -24,6 +24,7 @@ import type { LaborTabPanel } from '../../lib/bids/laborTabLoadGate'
 import { readStoredLaborView, writeStoredLaborView, type LaborView } from '../../lib/bids/laborView'
 import { LaborViewPills } from './LaborViewPills'
 import { BidsLaborNewView } from './BidsLaborNewView'
+import { asLaborEntryKind, asLaborUnit, LABOR_UNIT_WORDS, type LaborEntryKind, type LaborUnit } from '../../lib/bids/laborBookMatch'
 import { BidWorkflowTabTitleWithPreview } from './BidWorkflowTabTitleWithPreview'
 import { BidFlowStrip } from './BidFlowStrip'
 import { deriveBidFlow, type BidFlowDoor, type BidFlowStep } from '../../lib/bids/bidFlow'
@@ -289,6 +290,8 @@ export function BidsLaborTab({
   const [laborEntryRoughIn, setLaborEntryRoughIn] = useState('')
   const [laborEntryTopOut, setLaborEntryTopOut] = useState('')
   const [laborEntryTrimSet, setLaborEntryTrimSet] = useState('')
+  const [laborEntryUnit, setLaborEntryUnit] = useState<LaborUnit>('each')
+  const [laborEntryKind, setLaborEntryKind] = useState<LaborEntryKind>('fixture')
   const [savingLaborEntry, setSavingLaborEntry] = useState(false)
   const [applyingLaborBookHours, setApplyingLaborBookHours] = useState(false)
   const [laborBookApplyMessage, setLaborBookApplyMessage] = useState<string | null>(null)
@@ -364,6 +367,7 @@ export function BidsLaborTab({
             trim_set_hrs_per_unit: row.trim_set_hrs_per_unit,
             count: row.count,
             is_fixed: row.is_fixed ?? false,
+            kind: row.kind ?? 'fixture',
           })
           .eq('id', row.id)
       }
@@ -540,6 +544,8 @@ export function BidsLaborTab({
     setLaborEntryRoughIn('')
     setLaborEntryTopOut('')
     setLaborEntryTrimSet('')
+    setLaborEntryUnit('each')
+    setLaborEntryKind('fixture')
     setError(null)
     setLaborEntryFormOpen(true)
   }
@@ -551,6 +557,8 @@ export function BidsLaborTab({
     setLaborEntryRoughIn(String(entry.rough_in_hrs))
     setLaborEntryTopOut(String(entry.top_out_hrs))
     setLaborEntryTrimSet(String(entry.trim_set_hrs))
+    setLaborEntryUnit(asLaborUnit(entry.unit))
+    setLaborEntryKind(asLaborEntryKind(entry.kind))
     setError(null)
     setLaborEntryFormOpen(true)
   }
@@ -563,6 +571,8 @@ export function BidsLaborTab({
     setLaborEntryRoughIn('')
     setLaborEntryTopOut('')
     setLaborEntryTrimSet('')
+    setLaborEntryUnit('each')
+    setLaborEntryKind('fixture')
     setError(null)
   }
 
@@ -600,7 +610,7 @@ export function BidsLaborTab({
     if (editingLaborEntry) {
       const { error: err } = await supabase
         .from('labor_book_entries')
-        .update({ fixture_type_id: fixtureTypeId, alias_names: aliasNames, rough_in_hrs: rough, top_out_hrs: top, trim_set_hrs: trim })
+        .update({ fixture_type_id: fixtureTypeId, alias_names: aliasNames, rough_in_hrs: rough, top_out_hrs: top, trim_set_hrs: trim, unit: laborEntryKind === 'task' ? 'each' : laborEntryUnit, kind: laborEntryKind })
         .eq('id', editingLaborEntry.id)
       if (err) setError(err.message)
       else {
@@ -611,7 +621,7 @@ export function BidsLaborTab({
       const maxSeq = laborBookEntries.length === 0 ? 0 : Math.max(...laborBookEntries.map((e) => e.sequence_order))
       const { error: err } = await supabase
         .from('labor_book_entries')
-        .insert({ version_id: laborBookEntriesVersionId, fixture_type_id: fixtureTypeId, alias_names: aliasNames, rough_in_hrs: rough, top_out_hrs: top, trim_set_hrs: trim, sequence_order: maxSeq + 1 })
+        .insert({ version_id: laborBookEntriesVersionId, fixture_type_id: fixtureTypeId, alias_names: aliasNames, rough_in_hrs: rough, top_out_hrs: top, trim_set_hrs: trim, sequence_order: maxSeq + 1, unit: laborEntryKind === 'task' ? 'each' : laborEntryUnit, kind: laborEntryKind })
       if (err) setError(err.message)
       else {
         await loadLaborBookEntries(laborBookEntriesVersionId)
@@ -647,6 +657,7 @@ export function BidsLaborTab({
           trim_set_hrs_per_unit: row.trim_set_hrs_per_unit,
           count: row.count,
           is_fixed: row.is_fixed ?? false,
+          kind: row.kind ?? 'fixture',
         })
         .eq('id', row.id)
     }
@@ -854,7 +865,13 @@ export function BidsLaborTab({
 
   function setCostEstimateLaborRow(rowId: string, updates: Partial<Pick<CostEstimateLaborRow, 'rough_in_hrs_per_unit' | 'top_out_hrs_per_unit' | 'trim_set_hrs_per_unit' | 'is_fixed'>>) {
     setCostEstimateLaborRows((prev) =>
-      prev.map((r) => (r.id === rowId ? { ...r, ...updates } : r))
+      prev.map((r) => {
+        if (r.id !== rowId) return r
+        const next = { ...r, ...updates }
+        // Old's "fixed" checkbox and the row's kind say the same thing (v2.3291): fixed on → task; fixed off a task → fixture. A sub line stays a sub.
+        if (updates.is_fixed !== undefined && r.kind !== 'sub') next.kind = updates.is_fixed ? 'task' : 'fixture'
+        return next
+      })
     )
   }
 
@@ -1238,6 +1255,9 @@ export function BidsLaborTab({
                     ratePerHour={laborRateInput.trim() === '' ? null : parseFloat(laborRateInput) || null}
                     materialsSource={purchaseOrdersForCostEstimate.length > 0 || (costEstimateMaterialTotalRoughIn ?? 0) + (costEstimateMaterialTotalTopOut ?? 0) + (costEstimateMaterialTotalTrimSet ?? 0) > 0 ? 'takeoff' : 'none'}
                     appliedBookVersionId={selectedLaborBookVersionId}
+                    appliedBookName={laborBookVersions.find((v) => v.id === selectedLaborBookVersionId)?.name ?? null}
+                    costEstimateId={costEstimate?.id ?? null}
+                    bidLabel={selectedBidForCostEstimate.bid_number ?? selectedBidForCostEstimate.project_name ?? null}
                     laborBookVersions={laborBookVersions}
                     onChangeBook={(v) => {
                       if (v) handleLaborBookVersionChange(selectedBidForCostEstimate.id, v)
@@ -2271,6 +2291,11 @@ export function BidsLaborTab({
                       <tr key={entry.id} style={{ borderBottom: '1px solid var(--border)' }}>
                         <td style={{ padding: '0.5rem' }}>
                           {entry.fixture_types?.name ?? ''}
+                          {asLaborEntryKind(entry.kind) === 'task' ? (
+                            <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginLeft: '0.35rem', border: '1px solid var(--border)', borderRadius: 999, padding: '0 6px' }}>task · fixed hours</span>
+                          ) : asLaborUnit(entry.unit) === 'per_100ft' ? (
+                            <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginLeft: '0.35rem', border: '1px solid var(--border)', borderRadius: 999, padding: '0 6px' }}>per 100 ft</span>
+                          ) : null}
                           {entry.alias_names?.length ? (
                             <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginLeft: '0.25rem' }}>also: {entry.alias_names.join(', ')}</span>
                           ) : null}
@@ -2398,6 +2423,22 @@ export function BidsLaborTab({
                 placeholder="e.g. WC, Commode"
               />
               <p style={{ margin: '0 0 0.75rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>If any of these match a count row's Fixture or Tie-in, this labor rate is applied.</p>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', marginBottom: '0.75rem' }}>
+                <div>
+                  <label htmlFor="labor-entry-kind" style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem' }}>Reads as</label>
+                  <select id="labor-entry-kind" value={laborEntryKind} onChange={(e) => setLaborEntryKind(asLaborEntryKind(e.target.value))} style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, boxSizing: 'border-box', background: 'var(--surface)', color: 'inherit' }}>
+                    <option value="fixture">Fixture · hours × count</option>
+                    <option value="task">Task · fixed hours for the line</option>
+                  </select>
+                </div>
+                <div>
+                  <label htmlFor="labor-entry-unit" style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem' }}>Hours are per</label>
+                  <select id="labor-entry-unit" value={laborEntryKind === 'task' ? 'each' : laborEntryUnit} disabled={laborEntryKind === 'task'} onChange={(e) => setLaborEntryUnit(asLaborUnit(e.target.value))} style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, boxSizing: 'border-box', background: 'var(--surface)', color: 'inherit' }}>
+                    <option value="each">{LABOR_UNIT_WORDS.each} (one piece)</option>
+                    <option value="per_100ft">{LABOR_UNIT_WORDS.per_100ft} (footage rows)</option>
+                  </select>
+                </div>
+              </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.5rem', marginBottom: '0.75rem' }}>
                 <div>
                   <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem' }}>Rough In (hrs)</label>

@@ -1320,10 +1320,16 @@ uuid3           | Supply House C    | 0
   - `rough_in_hrs` (numeric(10,2), default 0)
   - `top_out_hrs` (numeric(10,2), default 0)
   - `trim_set_hrs` (numeric(10,2), default 0)
+  - `is_fixed` (boolean) - fixed hours for the line, not × count (Old's checkbox; mirrors `kind = 'task'`)
+  - `kind` (text, `fixture` | `task` | `sub`, default `fixture`; v2.3291) - a sub line carries none of our field hours
+  - `unit` (text, `each` | `per_100ft`, default `each`; v2.3291) - per 100 ft reads count ÷ 100 × hours
+  - `source` (text, nullable: `book` | `alias` | `typed` | `robot`; v2.3291) - where the hours came from; NULL = written before v2.3291
+  - `source_note` (text, nullable; v2.3291) - the entry and book, or what was learned on which bid
   - `sequence_order` (integer)
   - `created_at` (timestamptz)
 - **RLS**: Follows parent cost_estimate access
-- **Migrations**: `create_cost_estimate_labor_rows.sql`
+- **Reading the hours**: `src/lib/bids/laborRowHours.ts` (`laborRowMultiplier`) is the one rule — sub 0, task/fixed 1, per 100 ft count ÷ 100, else count
+- **Migrations**: `create_cost_estimate_labor_rows.sql`, `20260911161857_labor_rows_kind_unit_source.sql`
 
 #### Takeoff Book Tables
 
@@ -1381,12 +1387,14 @@ uuid3           | Supply House C    | 0
   - `rough_in_hrs` (numeric(10,2), required)
   - `top_out_hrs` (numeric(10,2), required)
   - `trim_set_hrs` (numeric(10,2), required)
+  - `unit` (text, `each` | `per_100ft`, default `each`; v2.3291) - footage entries carry hours per 100 ft
+  - `kind` (text, `fixture` | `task`, default `fixture`; v2.3291) - a task is fixed hours for the line
   - `sequence_order` (integer)
   - `created_at` (timestamptz)
   - **UNIQUE** `(version_id, fixture_type_id)`
 - **RLS**: dev, master_technician, assistant, estimator (full CRUD)
-- **Entry Creation**: Input field with autocomplete; auto-creates fixture types if they don't exist
-- **Migrations**: `create_labor_book_versions_and_entries.sql`, `add_labor_book_entries_alias_names.sql`
+- **Entry Creation**: Input field with autocomplete; auto-creates fixture types if they don't exist; *Reads as* and *Hours are per* selects (v2.3291)
+- **Migrations**: `create_labor_book_versions_and_entries.sql`, `add_labor_book_entries_alias_names.sql`, `20260911161857_labor_rows_kind_unit_source.sql`
 
 #### Price Book Tables
 
