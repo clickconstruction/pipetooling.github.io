@@ -40,6 +40,9 @@ import { effectiveJobLedgerNumber, formatJobLedgerDocTitle } from '../lib/ledger
 import { bidSearchStatusChip } from '../lib/jobSearchEvidence'
 import { jobPickerStatusChip } from '../lib/scheduleDispatchHub'
 import SettingsCompanyDocumentsSection from '../components/settings/SettingsCompanyDocumentsSection'
+import { useTestReportModalOptional } from '../contexts/TestReportModalContext'
+import { fetchJobWithDetailsById } from '../lib/fetchJobWithDetailsById'
+import { testReportDocumentChipColors, testReportDocumentRow, type TestReportDocumentRow, type TestReportDocumentRowSource } from '../lib/jobsDocuments/testReportDocumentRow'
 
 type LedgerEstimateRow = Tables<'estimates'> & {
   customers: { name: string | null; address: string | null; contact_info: unknown } | null
@@ -499,6 +502,8 @@ type LedgerJobRow = Pick<
 }
 
 type DocumentsJobLedgerInvoiceRow = Tables<'jobs_ledger_invoices'>
+/** The private bucket the send function files test-report PDFs in (v2.3331: office reads via a storage policy). */
+const TEST_REPORT_BUCKET = 'job-test-reports'
 
 function jobLedgerCustomerLines(r: LedgerJobRow): { primary: string; secondary: string | null } {
   const cust = r.customers
@@ -609,9 +614,11 @@ function documentsJobsRowMatchesSearch(
   r: LedgerJobRow,
   query: string,
   billedInvoices: DocumentsJobLedgerInvoiceRow[],
+  testReports: TestReportDocumentRow[] = [],
 ): boolean {
   const t = query.trim().toLowerCase()
   if (!t) return true
+  if (testReports.some((tr) => tr.searchText.includes(t))) return true
   if ((r.hcp_number ?? '').toLowerCase().includes(t)) return true
   if ((r.job_name ?? '').toLowerCase().includes(t)) return true
   if ((r.job_address ?? '').toLowerCase().includes(t)) return true
@@ -638,6 +645,9 @@ function DocumentsJobsLedger({ embedSearch }: DocumentsLedgerEmbedProps = {}) {
   // the page (not yet documents); voided ones stay listed, chipped.
   const [lienReleasesByJobId, setLienReleasesByJobId] = useState<Map<string, JobLienReleaseRow[]>>(() => new Map())
   const [contractsByJobId, setContractsByJobId] = useState<Map<string, JobContractRow[]>>(() => new Map())
+  // Test reports (v2.3331): sent ones are documents (the exact PDF the GC got); drafts open the modal.
+  const [testReportsByJobId, setTestReportsByJobId] = useState<Map<string, TestReportDocumentRow[]>>(() => new Map())
+  const testReportModal = useTestReportModalOptional()
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [addDriveLinkJob, setAddDriveLinkJob] = useState<{ id: string; title: string } | null>(null)
@@ -651,9 +661,9 @@ function DocumentsJobsLedger({ embedSearch }: DocumentsLedgerEmbedProps = {}) {
       return rows
     }
     return rows.filter((r) =>
-      documentsJobsRowMatchesSearch(r, effectiveSearch, invoicesByJobId.get(r.id) ?? []),
+      documentsJobsRowMatchesSearch(r, effectiveSearch, invoicesByJobId.get(r.id) ?? [], testReportsByJobId.get(r.id) ?? []),
     )
-  }, [rows, effectiveSearch, embedded, invoicesByJobId])
+  }, [rows, effectiveSearch, embedded, invoicesByJobId, testReportsByJobId])
 
   const load = useCallback(async () => {
     if (!user?.id) return
@@ -766,6 +776,29 @@ function DocumentsJobsLedger({ embedSearch }: DocumentsLedgerEmbedProps = {}) {
       } catch {
         setContractsByJobId(new Map())
       }
+
+      // Test reports (v2.3331) — sent and draft; RLS scopes them to the office set.
+      try {
+        const trData = await withSupabaseRetry(
+          async () =>
+            await supabase
+              .from('job_test_reports')
+              .select('id, job_id, test_type, system, result, test_date, status, sent_at, pdf_path, pdf_version')
+              .in('job_id', jobIds)
+              .order('test_date', { ascending: true })
+              .order('created_at', { ascending: true }),
+          'load documents test reports',
+        )
+        const trByJob = new Map<string, TestReportDocumentRow[]>()
+        for (const row of (trData ?? []) as Array<TestReportDocumentRowSource & { job_id: string }>) {
+          const arr = trByJob.get(row.job_id) ?? []
+          arr.push(testReportDocumentRow(row))
+          trByJob.set(row.job_id, arr)
+        }
+        setTestReportsByJobId(trByJob)
+      } catch {
+        setTestReportsByJobId(new Map())
+      }
     } catch (e) {
       showToast(formatErrorMessage(e, 'Could not load jobs'), 'error')
       setRows([])
@@ -779,6 +812,26 @@ function DocumentsJobsLedger({ embedSearch }: DocumentsLedgerEmbedProps = {}) {
   useEffect(() => {
     void load()
   }, [load])
+
+  const openTestReportDocument = async (jobId: string, tr: TestReportDocumentRow) => {
+    if (tr.door.kind === 'pdf') {
+      try {
+        const { data, error } = await supabase.storage.from(TEST_REPORT_BUCKET).createSignedUrl(tr.door.path, 300)
+        if (error || !data?.signedUrl) throw error ?? new Error('No link')
+        openInExternalBrowser(data.signedUrl)
+      } catch (e) {
+        showToast(formatErrorMessage(e, 'Could not open the report PDF'), 'error')
+      }
+      return
+    }
+    if (!testReportModal) return
+    const job = await fetchJobWithDetailsById(jobId)
+    if (!job) {
+      showToast('Could not load the job for this report', 'error')
+      return
+    }
+    testReportModal.openTestReport({ job, reportId: tr.id, onChanged: () => void load() })
+  }
 
   if (!user?.id) {
     return <p style={{ color: 'var(--text-muted)' }}>Sign in to view the ledger.</p>
@@ -872,6 +925,7 @@ function DocumentsJobsLedger({ embedSearch }: DocumentsLedgerEmbedProps = {}) {
                 const jobInvoices = invoicesByJobId.get(r.id) ?? []
                 const jobLienReleases = lienReleasesByJobId.get(r.id) ?? []
                 const jobContracts = contractsByJobId.get(r.id) ?? []
+                const jobTestReports = testReportsByJobId.get(r.id) ?? []
                 return (
                   <Fragment key={r.id}>
                     <tr>
@@ -1018,6 +1072,32 @@ function DocumentsJobsLedger({ embedSearch }: DocumentsLedgerEmbedProps = {}) {
                           ) : con.last_sent_at ? (
                             <span style={{ color: 'var(--text-muted)', marginLeft: '0.5rem', fontSize: '0.85rem' }}>Sent {formatContractStamp(con.last_sent_at)}</span>
                           ) : null}
+                        </td>
+                      </tr>
+                    ))}
+                    {jobTestReports.map((tr) => (
+                      <tr key={tr.id}>
+                        <td colSpan={6} style={{ ...tdStyle, paddingLeft: '1.75rem', background: 'var(--bg-page)' }}>
+                          <button
+                            type="button"
+                            onClick={() => void openTestReportDocument(r.id, tr)}
+                            title={tr.door.kind === 'pdf' ? 'Open the PDF the GC received' : 'Open in the Test report modal'}
+                            style={{ border: 'none', background: 'transparent', padding: 0, cursor: 'pointer', textAlign: 'left', font: 'inherit', color: 'var(--text-blue-700)', textDecoration: 'underline' }}
+                          >
+                            {tr.title}
+                          </button>
+                          <span style={{ color: 'var(--text-muted)', marginLeft: '0.5rem' }}>{tr.detail}</span>
+                          {tr.chips.map((c) => {
+                            const colors = testReportDocumentChipColors(c.tone)
+                            return (
+                              <span
+                                key={c.label}
+                                style={{ marginLeft: '0.5rem', fontSize: '0.68rem', fontWeight: 700, padding: '0.05rem 0.4rem', borderRadius: 9999, whiteSpace: 'nowrap', background: colors.background, color: colors.color }}
+                              >
+                                {c.label}
+                              </span>
+                            )
+                          })}
                         </td>
                       </tr>
                     ))}
