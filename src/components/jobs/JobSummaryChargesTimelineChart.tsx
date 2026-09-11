@@ -14,9 +14,10 @@
  */
 import { useMemo, useState } from 'react'
 import {
+  Area,
   CartesianGrid,
+  ComposedChart,
   Line,
-  LineChart,
   ReferenceLine,
   ResponsiveContainer,
   Tooltip,
@@ -35,6 +36,7 @@ import {
   type JobChargesTimelineChartRow,
   type JobChargesTimelineData,
 } from '../../lib/jobChargesTimeline'
+import type { JobOverheadDayLine } from '../../lib/jobs/jobDayLedger'
 import { formatCurrency, jobSummaryPartsCostIsZero } from '../../lib/jobs/jobFormatting'
 import { resolveJobCurrentPercentFallback } from '../../lib/jobSummaryPercentComplete'
 import { laborJobSubCost } from '../../lib/jobs/subLaborCost'
@@ -58,7 +60,13 @@ type Props = {
   teamLaborIncluded: boolean
   mileageCost: number
   timePerMile: number
+  /** The row's overhead day lines (v2.3271) — the amber band stacked on cost. Omit to draw the plain chart. */
+  overheadDays?: JobOverheadDayLine[]
 }
+
+/** Amber = overhead, the app's existing overhead ink (Days view carry note, hygiene chips). */
+const OVERHEAD_FILL = '#f59e0b'
+const OVERHEAD_STROKE = '#d97706'
 
 /** Loose shape recharts passes to custom dot renderers. */
 type TimelineDotProps = {
@@ -76,11 +84,12 @@ function signedCurrency(n: number): string {
 /** Dot renderer for the costs line: source icons (clamped inside the plot) at charge
  * buckets + a bold end-of-line total (anchored left of the point — the right axis owns
  * the gutter now). */
-function makeCostsDot(lastIndex: number) {
+function makeCostsDot(lastIndex: number, iconsOnTrueCost = false) {
   return function renderCostsDot(props: TimelineDotProps) {
     const { cx, cy, index, payload } = props
     const key = `costs-dot-${index ?? 'x'}`
-    const sources = payload?.chargeSources ?? []
+    // With the overhead band on, the icon row rides the band's top edge (see makeTrueCostDot).
+    const sources = iconsOnTrueCost ? [] : payload?.chargeSources ?? []
     const isLast = index === lastIndex && payload != null
     if (cx == null || cy == null || (sources.length === 0 && !isLast)) {
       return <g key={key} />
@@ -103,7 +112,7 @@ function makeCostsDot(lastIndex: number) {
         {isLast && payload && (
           <text
             x={cx - 8}
-            y={cy - 8}
+            y={iconsOnTrueCost ? cy + 15 : cy - 8}
             fontSize={13}
             fontWeight={700}
             textAnchor="end"
@@ -113,6 +122,34 @@ function makeCostsDot(lastIndex: number) {
             paintOrder="stroke"
           >
             ${formatCurrency(payload.expense)}
+          </text>
+        )}
+      </g>
+    )
+  }
+}
+
+/** Dot renderer for the true-cost edge (v2.3271): the source icons ride the band's top so they
+ * never sit inside the fill, and the last point carries the amber true-cost label. */
+function makeTrueCostDot(lastIndex: number) {
+  return function renderTrueCostDot(props: TimelineDotProps) {
+    const { cx, cy, index, payload } = props
+    const key = `true-cost-dot-${index ?? 'x'}`
+    const sources = payload?.chargeSources ?? []
+    const isLast = index === lastIndex && payload != null
+    if (cx == null || cy == null || (sources.length === 0 && !isLast)) return <g key={key} />
+    const iconRowY = Math.max(24, cy - 12)
+    return (
+      <g key={key}>
+        {sources.length > 0 && <circle cx={cx} cy={cy} r={2.5} fill={OVERHEAD_STROKE} />}
+        {sources.map((s, i) => (
+          <text key={s} x={cx + (i - (sources.length - 1) / 2) * 24} y={iconRowY} fontSize={22} textAnchor="middle">
+            {JOB_CHARGE_SOURCE_META[s].icon}
+          </text>
+        ))}
+        {isLast && payload && (
+          <text x={cx - 8} y={cy - 8} fontSize={13} fontWeight={700} textAnchor="end" fill={OVERHEAD_STROKE} stroke="var(--surface)" strokeWidth={2} paintOrder="stroke">
+            ${formatCurrency(payload.trueCost)} true cost
           </text>
         )}
       </g>
@@ -219,6 +256,7 @@ function JobChargesTimelineTooltip({ active, payload }: TimelineTooltipProps) {
     >
       <div style={{ fontWeight: 600, color: 'var(--text-700)', marginBottom: '0.25rem' }}>
         {row.dateLabel}
+        {row.overheadOnlyBucket ? <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}> · overhead landed since the last charge</span> : null}
       </div>
       {row.chargeEvents.map((e, i) => (
         <div key={`c-${i}`} style={{ color: 'var(--text-red-900)' }}>
@@ -238,6 +276,15 @@ function JobChargesTimelineTooltip({ active, payload }: TimelineTooltipProps) {
       ))}
       <div style={{ marginTop: '0.25rem', borderTop: '1px solid var(--border)', paddingTop: '0.25rem' }}>
         <div style={{ color: 'var(--text-red-600)' }}>Cost: ${formatCurrency(row.expense)}</div>
+        {row.overheadToDate > 0 && (
+          <>
+            <div style={{ color: 'var(--text-amber-800)' }}>
+              Overhead to date: ${formatCurrency(row.overheadToDate)}
+              {row.overheadCarryToDate > 0 ? ` · by hours $${formatCurrency(row.overheadActivityToDate)} · carry $${formatCurrency(row.overheadCarryToDate)}` : ''}
+            </div>
+            <div style={{ color: 'var(--text-amber-800)', fontWeight: 600 }}>True cost: ${formatCurrency(row.trueCost)}</div>
+          </>
+        )}
         {row.paymentsToDate > 0 && (
           <div style={{ color: '#15803d' }}>
             Paid: ${formatCurrency(row.paymentsToDate)}
@@ -270,6 +317,7 @@ export default function JobSummaryChargesTimelineChart({
   teamLaborIncluded,
   mileageCost,
   timePerMile,
+  overheadDays,
 }: Props) {
   // `> 0` mirrors the lazy-load gates in Jobs.tsx exactly — never wait on a fetch that won't fire.
   const mercuryNeeded = canAccessBankingForParts && row.cardCharges > 0
@@ -343,8 +391,9 @@ export default function JobSummaryChargesTimelineChart({
       revenue,
       paymentEvents,
       resolveJobCurrentPercentFallback(row.job),
+      (overheadDays ?? []).map((l) => ({ dateKey: l.ymd, amount: l.shareUsd, activityUsd: l.activityUsd, carryUsd: l.carryUsd })),
     )
-  }, [loading, row, mercuryRows, invoiceLines, reports, mercuryNeeded, invoicesNeeded, mileageCost, timePerMile])
+  }, [loading, row, mercuryRows, invoiceLines, reports, mercuryNeeded, invoicesNeeded, mileageCost, timePerMile, overheadDays])
 
   if (loading) {
     return (
@@ -387,7 +436,9 @@ export function JobChargesTimelineChartView({
   teamLaborIncluded?: boolean
 }) {
   const lastIndex = data.chartRows.length - 1
-  const costsDot = useMemo(() => makeCostsDot(lastIndex), [lastIndex])
+  const overheadShown = data.overheadSeriesAvailable
+  const costsDot = useMemo(() => makeCostsDot(lastIndex, overheadShown), [lastIndex, overheadShown])
+  const trueCostDot = useMemo(() => makeTrueCostDot(lastIndex), [lastIndex])
   const profitDot = useMemo(() => makeProfitDot(lastIndex), [lastIndex])
   const valueDot = useMemo(() => makeValueDot(lastIndex), [lastIndex])
   const axisDomains = useMemo(() => computeChargesTimelineAxisDomains(data.chartRows), [data])
@@ -422,7 +473,8 @@ export function JobChargesTimelineChartView({
       )}
       <div style={{ width: '100%', minWidth: 0, height: 320 }}>
         <ResponsiveContainer width="100%" height={320}>
-          <LineChart data={data.chartRows} margin={{ top: 36, right: 8, left: 8, bottom: 4 }}>
+          {/* ComposedChart (v2.3271): the overhead band is an Area under two Lines. */}
+          <ComposedChart data={data.chartRows} margin={{ top: 36, right: 8, left: 8, bottom: 4 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
             <XAxis
               dataKey="dateLabel"
@@ -450,6 +502,36 @@ export function JobChargesTimelineChartView({
             )}
             <ReferenceLine yAxisId="dollars" y={0} stroke="#9ca3af" strokeDasharray="4 4" />
             <Tooltip content={<JobChargesTimelineTooltip />} />
+            {overheadShown && (
+              // The overhead band (v2.3271): the fill between cost and true cost, drawn under both lines.
+              <Area
+                yAxisId="dollars"
+                type="stepAfter"
+                dataKey="overheadBand"
+                name="Overhead"
+                stroke="none"
+                fill={OVERHEAD_FILL}
+                fillOpacity={0.22}
+                activeDot={false}
+                isAnimationActive={false}
+                connectNulls
+                legendType="none"
+              />
+            )}
+            {overheadShown && (
+              <Line
+                yAxisId="dollars"
+                type="stepAfter"
+                dataKey="trueCost"
+                name="True cost"
+                stroke={OVERHEAD_STROKE}
+                strokeWidth={1.5}
+                dot={trueCostDot}
+                activeDot={{ r: 4 }}
+                isAnimationActive={false}
+                connectNulls
+              />
+            )}
             <Line
               yAxisId="dollars"
               type="stepAfter"
@@ -488,12 +570,18 @@ export function JobChargesTimelineChartView({
                 connectNulls
               />
             )}
-          </LineChart>
+          </ComposedChart>
         </ResponsiveContainer>
       </div>
       <p style={{ color: 'var(--text-700)', fontSize: '0.75rem', margin: '0.25rem 0 0', textAlign: 'center' }}>
         <span style={{ color: 'var(--text-red-600)', fontWeight: 600 }}>Red</span> = cost to date ·{' '}
         <span style={{ color: '#16a34a', fontWeight: 600 }}>Green</span> = {chartCashLegendLabel(teamLaborIncluded)}
+        {overheadShown && (
+          <>
+            {' · '}
+            <span style={{ color: OVERHEAD_STROKE, fontWeight: 600 }}>Amber</span> = overhead landed so far, stacked on cost (true cost on top)
+          </>
+        )}
         {valueShown && (
           <>
             {' · '}

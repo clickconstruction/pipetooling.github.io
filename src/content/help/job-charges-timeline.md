@@ -32,6 +32,10 @@ Go to **Jobs → Job Summary** and click any job row. The row expands with a qui
 
 The same chart opens the job window's **Costs** tab — the money-out tab beside Bill — with the **Team** and **Sub Labor** lines and the parts accordions under it; the Job tab's Costs card names the 👷 total in one number (owners, controllers and master techs). The marker key sits right under every chart, always visible. When a job has many transaction days, the chart widens and **scrolls left–right** instead of crushing the icons together.
 
+## The overhead band — true cost on top of cost
+
+If your role sees overhead on Job Summary, the chart stacks the job's overhead on the red line as an **amber band**. The band's top edge is **true cost** (charges plus the overhead landed on the job so far) and it is labeled at the end beside cost to date. Overhead lands day by day, so between two charges it folds into the next charge's step, and anything landed after the last charge adds one final point on the right — the band keeps growing while the job stays open, exactly as the Job Summary row charges it. The source icons sit on the band's top edge. The green line does not move: it is still cash, not a margin. Under the A / B / C overhead lenses, and for jobs before the office pool began (2026-02-19), there is no band.
+
 ## The cash position line — money out vs money in
 
 The main line is the job's **cash position: payments received minus what it has cost** — money in hand on the job so far, not a margin (Job Summary carries gross and true profit). It steps **down in red** every day money went into the job, and **up in green** every day a payment came in. A dashed line marks **$0** — above it, the job has collected more than it cost; the bold label at the end of the line is the job's current cash position (for example **+$166.21**). If your role can't see wages, the legend reads *cash position before team labor* — the same job reads higher for you than for the owner because crew wages are not charged on your chart.
@@ -78,4 +82,4 @@ In short: a job reads 100% when its work is done or when the whole contract is b
 
 ## Hover for detail
 
-Hover any point to see everything that happened that day: who charged what, which invoices were allocated, payments received, who filed a report and their completion percent, plus the running **Cost**, **Paid**, **Cash position**, and **Value created** totals.
+Hover any point to see everything that happened that day: who charged what, which invoices were allocated, payments received, who filed a report and their completion percent, plus the running **Cost**, **Overhead to date** (split into *by hours* and *carry*, with true cost), **Paid**, **Cash position**, and **Value created** totals.

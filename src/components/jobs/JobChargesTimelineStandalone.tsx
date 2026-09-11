@@ -6,8 +6,10 @@
  * `JobChargesTimelineChartView`. */
 import { useMemo } from 'react'
 import { useIsNarrowScreen } from '../../hooks/useIsNarrowScreen'
+import { useJobBurnOverhead, type JobBurnOverheadState } from '../../hooks/useJobBurnOverhead'
 import { useJobChargesTimelineInputs, type JobChargesTimelineInputsState } from '../../hooks/useJobChargesTimelineInputs'
 import { buildJobChargesTimelineChartData } from '../../lib/jobChargesTimeline'
+import { firstChargeYmdOf } from './JobCostsBurnSection'
 import { JobChargesTimelineChartView } from './JobSummaryChargesTimelineChart'
 import type { JobWithDetails } from '../../types/jobWithDetails'
 
@@ -15,6 +17,7 @@ export default function JobChargesTimelineStandalone({
   job,
   includeTeamLabor,
   inputsState,
+  overheadState,
 }: {
   job: JobWithDetails
   /** Gate per-person hours × wage events (see `showJobCostBreakdownTeamLabor`) — when false
@@ -22,16 +25,20 @@ export default function JobChargesTimelineStandalone({
   includeTeamLabor: boolean
   /** Preloaded by the host (the Costs tab runs the hook once for Burn + chart). */
   inputsState?: JobChargesTimelineInputsState
+  /** The job's overhead share by day (v2.3271), preloaded by the Costs tab; omitted = this component loads it (wage roles only). */
+  overheadState?: JobBurnOverheadState
 }) {
   const ownState = useJobChargesTimelineInputs(job, includeTeamLabor, !inputsState)
   const state = inputsState ?? ownState
+  const ownOverhead = useJobBurnOverhead(overheadState == null && includeTeamLabor && state.kind === 'ready', job.id, firstChargeYmdOf(state))
+  const overheadDays = includeTeamLabor ? (overheadState ?? ownOverhead).days : null
   const isNarrow = useIsNarrowScreen()
 
   const data = useMemo(() => {
     if (state.kind !== 'ready') return null
     const i = state.inputs
-    return buildJobChargesTimelineChartData(i.chargeEvents, i.valueEvents, i.revenue, i.paymentEvents, i.fallbackPercent)
-  }, [state])
+    return buildJobChargesTimelineChartData(i.chargeEvents, i.valueEvents, i.revenue, i.paymentEvents, i.fallbackPercent, overheadDays ?? [])
+  }, [state, overheadDays])
 
   return (
     <div style={{ marginTop: '1rem' }}>

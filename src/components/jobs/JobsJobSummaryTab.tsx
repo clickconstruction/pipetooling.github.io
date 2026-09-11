@@ -936,6 +936,7 @@ export default function JobsJobSummaryTab({
                                   teamLaborIncluded={showTeamLaborAndProfit}
                                   mileageCost={mileageCost}
                                   timePerMile={timePerMile}
+                                  overheadDays={showTeamLaborAndProfit && view.prefs.method === 'day' ? enriched.overheadLines : undefined}
                                 />
                                 {showTeamLaborAndProfit && enriched.overheadUsd != null ? (
                                   <details style={{ margin: '0.5rem 0 0.75rem' }} onClick={(e) => e.stopPropagation()}>

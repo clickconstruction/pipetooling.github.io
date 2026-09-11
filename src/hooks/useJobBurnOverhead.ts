@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { loadJobDayLedger } from '../lib/jobs/loadJobDayLedger'
 import { allocateJobOverheadDayShare } from '../lib/jobs/jobDayLedger'
 import type { JobBurnOverheadInput } from '../lib/jobs/jobBurn'
+import type { JobOverheadDayInput } from '../lib/jobChargesTimeline'
 import { todayYmdInAppTz, ymdAddDays } from '../utils/dateUtils'
 import { useOverheadAllocationSettings } from './useOverheadAllocationSettings'
 
@@ -15,9 +16,17 @@ const MAX_WINDOW_DAYS = 120
  * ONLY the Burn section's at-completion projection. Fail-soft: any error or an
  * empty window yields null and the projection simply omits overhead.
  */
-export function useJobBurnOverhead(enabled: boolean, jobId: string | null, firstChargeYmd: string | null): { loading: boolean; overhead: JobBurnOverheadInput | null } {
+export type JobBurnOverheadState = {
+  loading: boolean
+  overhead: JobBurnOverheadInput | null
+  /** The share's day lines (v2.3271) — the Cost Timeline's amber band; null with `overhead`. */
+  days: JobOverheadDayInput[] | null
+}
+
+export function useJobBurnOverhead(enabled: boolean, jobId: string | null, firstChargeYmd: string | null): JobBurnOverheadState {
   const [loading, setLoading] = useState(false)
   const [overhead, setOverhead] = useState<JobBurnOverheadInput | null>(null)
+  const [days, setDays] = useState<JobOverheadDayInput[] | null>(null)
   // The app-wide allocation (v2.3260): the same settings Job Summary charges from, so the projection agrees with the table.
   const { appDefault: settings, loaded: settingsLoaded } = useOverheadAllocationSettings(enabled)
 
@@ -26,6 +35,7 @@ export function useJobBurnOverhead(enabled: boolean, jobId: string | null, first
     if (!enabled || !jobId) {
       setLoading(false)
       setOverhead(null)
+      setDays(null)
       return
     }
     let cancelled = false
@@ -39,6 +49,7 @@ export function useJobBurnOverhead(enabled: boolean, jobId: string | null, first
         if (cancelled) return
         if (!ledger) {
           setOverhead(null)
+          setDays(null)
           return
         }
         const share = allocateJobOverheadDayShare(ledger, jobId, settings)
@@ -46,8 +57,12 @@ export function useJobBurnOverhead(enabled: boolean, jobId: string | null, first
           shareToDateUsd: share.overheadUsd,
           perFieldDayUsd: share.daysInWindow > 0 ? share.overheadUsd / share.daysInWindow : null,
         })
+        setDays(share.lines.map((l) => ({ dateKey: l.ymd, amount: l.shareUsd, activityUsd: l.activityUsd, carryUsd: l.carryUsd })))
       } catch {
-        if (!cancelled) setOverhead(null)
+        if (!cancelled) {
+          setOverhead(null)
+          setDays(null)
+        }
       } finally {
         if (!cancelled) setLoading(false)
       }
@@ -57,5 +72,5 @@ export function useJobBurnOverhead(enabled: boolean, jobId: string | null, first
     }
   }, [enabled, jobId, firstChargeYmd, settings, settingsLoaded])
 
-  return { loading, overhead }
+  return { loading, overhead, days }
 }
