@@ -20,6 +20,7 @@ type Row = Database['public']['Tables']['jobs_ledger_fixtures']['Row']
 /** Job 892 with a 10% negotiated discount over all three stages. */
 const row = (o: Partial<Row> & { id: string; sequence_order: number }): Row => ({
   job_id: 'job',
+  bill_to_party: null,
   name: 'Rough In',
   count: 1,
   line_unit_price: 15098,

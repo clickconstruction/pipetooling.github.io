@@ -56,6 +56,11 @@ export type FixtureRow = {
   /** The eye: this line item shows on the GC portal's stage sequence. */
   shared_with_gc?: boolean
   /**
+   * Who pays this line (v2.3349): on a split job, `customer` | `gc`; null / undefined
+   * = untagged (the job rule decides). Discount rows never carry one.
+   */
+  bill_to_party?: 'customer' | 'gc' | null
+  /**
    * Discount rows (v2.3252+): `discount` reduces the work rows it applies
    * to; `undefined` / 'work' is a normal line item. A discount row's
    * `line_unit_price` is the SIGNED amount (negative, count 1), re-derived by

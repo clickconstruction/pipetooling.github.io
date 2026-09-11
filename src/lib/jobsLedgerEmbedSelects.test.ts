@@ -35,7 +35,7 @@ const MATERIAL_COLS = ['amount', 'created_at', 'description', 'id', 'job_id', 's
 /** Deliberately not embedded: the Plug-in Quotes memory writes it and never reads it back off a job. */
 const MATERIAL_OMITTED = ['source_bid_id'] as const satisfies ReadonlyArray<keyof Row<'jobs_ledger_materials'>>
 
-const FIXTURE_COLS = ['count', 'created_at', 'discount_basis_positions', 'discount_pct', 'discount_reason', 'id', 'invoice_id', 'job_id', 'line_description', 'line_kind', 'line_unit_price', 'name', 'progress_at', 'progress_by', 'progress_pct', 'progress_report_id', 'sequence_order', 'shared_with_gc', 'stage_kind'] as const satisfies ReadonlyArray<keyof Row<'jobs_ledger_fixtures'>>
+const FIXTURE_COLS = ['bill_to_party', 'count', 'created_at', 'discount_basis_positions', 'discount_pct', 'discount_reason', 'id', 'invoice_id', 'job_id', 'line_description', 'line_kind', 'line_unit_price', 'name', 'progress_at', 'progress_by', 'progress_pct', 'progress_report_id', 'sequence_order', 'shared_with_gc', 'stage_kind'] as const satisfies ReadonlyArray<keyof Row<'jobs_ledger_fixtures'>>
 
 const TEAM_MEMBER_COLS = ['created_at', 'id', 'job_id', 'user_id'] as const satisfies ReadonlyArray<keyof Row<'jobs_ledger_team_members'>>
 

@@ -2,7 +2,7 @@
 title: choose who gets the bill on a job
 category: Billing & Money
 roles: dev, master_technician, assistant, controller
-keywords: bills go to, GC pays, general contractor, homeowner, who pays, billing email, bill to, split, payer
+keywords: bills go to, GC pays, general contractor, homeowner, who pays, billing email, bill to, split, payer, split by line, one bill per payer, pays toggle
 order: 11
 ---
 Some jobs bill the homeowner. Some bill the GC. Some bill each of them for different work. Since v2.3345 the job says which, in one place, and every bill follows it — you never have to type the GC's address into the customer's email again.
@@ -29,6 +29,17 @@ A GC usually has two addresses: the estimator you bid to, and the accounts-payab
 Open {{button:blue|Send bill…}} on a GC-pays job and the window says so at the top: *Billing Loberg Contracting, the GC on this job — not ATI Schertz*. The **Send to** address is the GC's billing email, the contact list is the GC's people, and the PDF's *Bill to* line and the Stripe invoice name the GC. Tick **Copy ATI Schertz** to send the customer a copy of the emailed PDF.
 
 If the GC has no billing email yet, the window asks for it right there and saves it on the GC.
+
+## Split a job by line
+
+When the owner pays for some of the work and the GC for the rest, keep it on **one job**:
+
+1. Set **Bills go to** to **Split by line** on the Edit tab.
+2. On the **Bill tab → ① Line Items**, every work line gets a **Pays** toggle under its name — {{chip:blue|Tommy Gillis}} or {{chip:yellow|Wildflower Springs}}. Tag each line. Untagged lines bill the customer.
+3. Click {{button:blue|Make 2 bills by payer — Wildflower Springs $8,400 · Tommy Gillis $3,150}} above the segment bar. One Ready-to-Bill draft per payer appears in the Invoices table, each already addressed, and the tagged lines lock to their draft.
+4. {{button:blue|Send bill…}} on each draft as usual — the Bill Customer window names the payer at the top.
+
+Hours, costs, Burn and the Job Summary stay on the one job number. A discount line follows the work it discounts, so it never needs a tag.
 
 ## One bill to a different party
 

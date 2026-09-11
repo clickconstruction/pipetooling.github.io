@@ -27,6 +27,8 @@ export type DbFixtureRowLike = {
   discount_reason?: string | null
   stage_kind?: unknown
   shared_with_gc?: unknown
+  /** Who pays this line (v2.3349): customer | gc | null. */
+  bill_to_party?: unknown
 }
 
 const num = (v: unknown): number | null => (v != null && Number.isFinite(Number(v)) ? Number(v) : null)
@@ -55,7 +57,12 @@ export function fixtureRowsFromDb(rows: readonly DbFixtureRowLike[]): FixtureRow
       }
     }
     if (price != null && price < 0) return legacyNegativeAsDiscount({ ...base, ...fixtureStageFields(f) })
-    return { ...base, line_kind: 'work', ...fixtureStageFields(f) }
+    return {
+      ...base,
+      line_kind: 'work',
+      ...fixtureStageFields(f),
+      bill_to_party: f.bill_to_party === 'gc' || f.bill_to_party === 'customer' ? f.bill_to_party : null,
+    }
   })
   return syncDiscountRows(mapped)
 }

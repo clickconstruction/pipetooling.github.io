@@ -42,6 +42,7 @@ export function buildBillingSliceJson(fixtures: FixtureRow[], payments: PaymentR
       i: f.invoice_id,
       k: f.stage_kind === undefined ? 'any' : f.stage_kind,
       g: f.shared_with_gc ?? false,
+      bp: f.line_kind === 'discount' ? null : (f.bill_to_party ?? null),
       // Discount rows (v2.3252+): kind, live percent, basis, reason.
       lk: f.line_kind === 'discount' ? 'discount' : 'work',
       dp: f.line_kind === 'discount' ? (f.discount_pct ?? null) : null,
@@ -181,6 +182,7 @@ export function fixtureInsertRows(jobId: string, fixtures: FixtureRow[]) {
           discount_reason: (f.discount_reason ?? '').trim() ? (f.discount_reason ?? '').trim() : null,
           stage_kind: null,
           shared_with_gc: false,
+          bill_to_party: null,
         }
       }
       return {
@@ -195,6 +197,8 @@ export function fixtureInsertRows(jobId: string, fixtures: FixtureRow[]) {
         // column default (any time); null is a deliberate plain line item.
         stage_kind: f.stage_kind === undefined ? 'any' : f.stage_kind,
         shared_with_gc: f.shared_with_gc ?? false,
+        // Who pays this line (v2.3349): the split-job tag rides the reinsert.
+        bill_to_party: f.bill_to_party ?? null,
       }
     })
 }

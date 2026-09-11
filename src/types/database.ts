@@ -9227,6 +9227,7 @@ export type Database = {
       jobs_ledger_fixtures: {
         Row: {
           count: number
+          bill_to_party: string | null
           created_at: string | null
           discount_basis_positions: number[] | null
           discount_pct: number | null
@@ -9248,6 +9249,7 @@ export type Database = {
         }
         Insert: {
           count?: number
+          bill_to_party?: string | null
           created_at?: string | null
           discount_basis_positions?: number[] | null
           discount_pct?: number | null
@@ -9269,6 +9271,7 @@ export type Database = {
         }
         Update: {
           count?: number
+          bill_to_party?: string | null
           created_at?: string | null
           discount_basis_positions?: number[] | null
           discount_pct?: number | null
