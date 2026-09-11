@@ -270,7 +270,9 @@ export function useJobSummaryView<R extends JobSummaryLedgerRowInput & { job: { 
     openRecordedRef.current = true
     recordNavClick(userId, role ?? null, 'job-summary-view', `/jobs?tab=job-summary&status=${prefs.status}&revenue=${totals.earnedRows > 0 ? 'earned' : 'contract'}`)
   }, [enabled, userId, role, rows.length, prefs.status, totals.earnedRows])
-  const hygiene = useMemo(() => jobSummaryHygiene(ledgerForWindow, overheadSettings), [ledgerForWindow, overheadSettings])
+  // The jobs this list holds (after the HCP # floor); overhead landed on any other job is reported, not hidden (v2.3266).
+  const listedJobIds = useMemo(() => new Set(rows.map((r) => r.job.id)), [rows])
+  const hygiene = useMemo(() => jobSummaryHygiene(ledgerForWindow, overheadSettings, listedJobIds), [ledgerForWindow, overheadSettings, listedJobIds])
 
   const cutCtx = useMemo(() => ({ userNameById }), [userNameById])
   const groups = useMemo(() => groupJobSummaryRows(visible, prefs.cutBy, cutCtx), [visible, prefs.cutBy, cutCtx])

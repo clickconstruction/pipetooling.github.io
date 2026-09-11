@@ -284,6 +284,11 @@ export default function JobSummaryLedgerToolbar({
             {money(hygiene.inFlightUsd)} of overhead is in flight — spreads past today, lands as days arrive
           </span>
         ) : null}
+        {showMoney && hygiene && prefs.method === 'day' && hygiene.offListUsd > 0.5 ? (
+          <span style={chipMuted} title="The pool spreads over every approved field hour, including hours on jobs this list leaves out — the HCP # floor under the table (Hide older imported jobs with HCP # at or below …) drops them before the table is built. Overhead charged counts shown jobs only, so it reads lower than the dials strip's by hours + carry by this amount. Lower the floor to see those jobs.">
+            {money(hygiene.offListUsd)} of overhead landed on {hygiene.offListJobs} {hygiene.offListJobs === 1 ? 'job' : 'jobs'} this list leaves out (HCP # floor) — charged, not shown
+          </span>
+        ) : null}
         {showMoney && hygiene && !hygiene.reconciles ? <span style={chipRed}>⚠ overhead does not reconcile to the pool — tell a dev</span> : null}
       </div>
       )}

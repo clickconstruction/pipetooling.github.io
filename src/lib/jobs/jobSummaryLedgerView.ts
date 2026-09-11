@@ -747,12 +747,29 @@ export type JobSummaryHygiene = {
   carryUsd: number
   inFlightUsd: number
   reconciles: boolean
+  /**
+   * Overhead the day-share landed on jobs that are not in this list at all (v2.3266) — the
+   * HCP # floor drops them before enrichment, so the "Overhead charged" tile (shown rows)
+   * reads lower than the strip's by hours + carry. 0 when the caller passes no list.
+   */
+  offListUsd: number
+  offListJobs: number
 }
 
-export function jobSummaryHygiene(ledger: JobDayLedger | null, settings?: OverheadAllocationSettings): JobSummaryHygiene | null {
+export function jobSummaryHygiene(ledger: JobDayLedger | null, settings?: OverheadAllocationSettings, listedJobIds?: ReadonlySet<string>): JobSummaryHygiene | null {
   if (!ledger) return null
-  const t = buildOverheadAllocation(ledger, settings).totals
+  const allocation = buildOverheadAllocation(ledger, settings)
+  const t = allocation.totals
   const reconciles = Math.abs(t.poolUsd + t.carriedInUsd - (t.chargedUsd + t.unallocatedUsd + t.inFlightUsd)) <= 0.01
+  let offListUsd = 0
+  let offListJobs = 0
+  if (listedJobIds) {
+    for (const [jobId, share] of allocation.perJob) {
+      if (listedJobIds.has(jobId) || !(share.overheadUsd > 0)) continue
+      offListUsd += share.overheadUsd
+      offListJobs += 1
+    }
+  }
   return {
     unallocatedUsd: t.unallocatedUsd,
     unallocatedDays: t.unallocatedDays,
@@ -764,6 +781,8 @@ export function jobSummaryHygiene(ledger: JobDayLedger | null, settings?: Overhe
     carryUsd: t.carryUsd,
     inFlightUsd: t.inFlightUsd,
     reconciles,
+    offListUsd,
+    offListJobs,
   }
 }
 

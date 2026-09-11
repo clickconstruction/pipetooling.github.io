@@ -20,6 +20,7 @@ import {
   type JobSummaryLedgerRowInput,
 } from './jobSummaryLedgerView'
 import { buildJobDayLedger } from './jobDayLedger'
+import { buildOverheadAllocation } from './overheadAllocation'
 import type { OtherJobsLaborDetailLine } from '../overheadDailyLabor'
 import { ymdAddDays } from '../../utils/dateUtils'
 
@@ -264,6 +265,26 @@ describe('filter + sort + totals', () => {
     expect(r.reconciles).toBe(true)
     expect(r.unallocatedUsd).toBeLessThan(90)
     expect(jobSummaryHygiene(null)).toBeNull()
+  })
+
+  it('names overhead landed on jobs the list leaves out — the HCP # floor (v2.3266)', () => {
+    // No list → nothing is off-list; every charged job listed → 0; drop one charged job → its share, counted once.
+    expect(jobSummaryHygiene(ledger)!).toMatchObject({ offListUsd: 0, offListJobs: 0 })
+    const charged = [...buildOverheadAllocation(ledger).perJob.entries()].filter(([, s]) => s.overheadUsd > 0)
+    expect(charged.length).toBeGreaterThan(1)
+    const all = new Set(charged.map(([id]) => id))
+    expect(jobSummaryHygiene(ledger, undefined, all)!).toMatchObject({ offListUsd: 0, offListJobs: 0 })
+    const [dropId, dropShare] = charged[0]!
+    const rest = new Set([...all].filter((id) => id !== dropId))
+    const h = jobSummaryHygiene(ledger, undefined, rest)!
+    expect(h.offListJobs).toBe(1)
+    expect(h.offListUsd).toBeCloseTo(dropShare.overheadUsd, 6)
+    // The reconciliation is unchanged: off-list dollars are part of "charged", just not of the shown rows.
+    expect(h.reconciles).toBe(true)
+    // Under the smoothed allocation the same job is still the only one off the list.
+    const r = jobSummaryHygiene(ledger, { smoothDays: 30, carryShare: 0.2, idleCapDays: 14, openDef: 'status' }, rest)!
+    expect(r.offListJobs).toBeGreaterThanOrEqual(1)
+    expect(r.offListUsd).toBeGreaterThan(0)
   })
 })
 
