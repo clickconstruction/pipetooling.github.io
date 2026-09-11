@@ -3,7 +3,7 @@ import { supabase } from '../../lib/supabase'
 import { withSupabaseRetry } from '../../utils/errorHandling'
 import { todayYmdInAppTz } from '../../utils/dateUtils'
 
-export type PersonOffsetKind = 'backcharge' | 'damage' | 'employee_credit'
+export type PersonOffsetKind = 'backcharge' | 'damage' | 'employee_credit' | 'advance'
 
 export type PersonOffsetInitialDraft = {
   personName: string
@@ -210,6 +210,7 @@ export function PersonOffsetFormModal({
             <option value="backcharge">Backcharge</option>
             <option value="damage">Damage</option>
             <option value="employee_credit">Employee credit (overpayment / advance)</option>
+            <option value="advance">Advance (pay sent ahead of a report)</option>
           </select>
         </div>
         <div style={{ marginBottom: '1rem' }}>

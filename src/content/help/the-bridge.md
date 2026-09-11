@@ -2,7 +2,7 @@
 title: read the Bridge
 category: Billing & Money
 roles: dev
-keywords: bridge, net position, cash forecast, cash on hand, cash floor, bills due, receipts expected, profit rate, overhead, earned revenue
+keywords: bridge, truth check, paper vs bank, net position, cash forecast, cash on hand, cash floor, bills due, receipts expected, profit rate, overhead, earned revenue
 order: 62
 ---
 **The Bridge** (devs only for now — the compass icon in the header, or **Bridge** in the ☰ menu; `/bridge`) answers three questions on one page: where we stand, where cash is going, and what would change it. One clock — days.
@@ -22,6 +22,21 @@ Set the **Floor** the same way — the cash level you never want to go under (it
 ## Net position — last 8 weeks
 
 The solid line is **cash + owed to you − owed by you**, today's real number, with the last 8 weeks rebuilt from dated flows: bank transactions, invoices sent, payments received, supply invoices dated and paid. The readout says where it is today and how much it moved since the start of the window. Hover any day for the split.
+
+## Truth check — does the paper agree with the bank?
+
+The profit rate is an accrual reading (earned − costs); net position is what the bank and the ledgers actually did. Over the same 8 weeks they should tell one story. The **Truth check** panel puts the two side by side — **Profit on paper** and **Net position moved** — and splits the difference between them exactly in two:
+
+- **Earned but not invoiced** — work that earned on paper and hasn't been billed yet. Real, and the biggest lever on the page: bill it and the net line catches up.
+- **Costs the paper doesn't see** — what the bank and the supply ledger charged beyond what the profit rate counted. Under 15% of paper costs reads as agreement.
+
+The sentence on the right is the verdict: *steer by the profit rate*, *bill it to see it*, or *not a number to steer by yet*. Under it, the rows that make the cost side dirty, sized where they can be: {{chip:yellow|186h awaiting approval}} (labor payroll pays that the paper hasn't counted), {{chip:yellow|bank transfers unsorted}} (rent, insurance, trucks that hit the bank and never the paper), {{chip:yellow|open jobs assumed half done}} (earned dollars resting on a guess), and worked jobs with no contract price.
+
+:::example Reading it
+Profit on paper +$194k · net position moved −$3.4k · the $197k between them: +$180k earned but not invoiced, +$17k costs the paper doesn't see. The verdict says the profit is real on paper — bill it to see it — and the cost side is close enough to trust.
+:::
+
+A loan or an owner deposit is money in that isn't a customer payment, so it shows here as a negative cost; payroll and sub labor count when the bank pays them, not when the hours are worked.
 
 ## Cash — next 8 weeks
 

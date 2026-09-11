@@ -1,5 +1,6 @@
 import type { ReferenceGradeLetter } from '../../lib/bids/referenceGrade'
 import type { RobotRowState } from '../../lib/bids/robotRowState'
+import { GATE_B_PCT, GATE_B_STREAK } from '../../lib/bids/confidenceBoard'
 import { RobotGlyph } from './RobotGlyph'
 import { GRADE_COLORS } from './RobotReferenceGradeModal'
 
@@ -44,6 +45,21 @@ export function RobotIconKeyModal({ onClose }: { onClose: () => void }) {
         <p style={{ margin: '0 0 0.75rem', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
           Every plumbing bid with readable plans gets a robot estimate on its own — nobody has to ask. The icon beside the bid number says how that’s going.
         </p>
+
+        {/* v2.3337: the sealed-envelope explainer, back from the deleted Shadows lens (v2.3222).
+            This key is where a new estimator looks when they ask why the number is hidden. */}
+        <div
+          data-testid="robot-key-envelope"
+          style={{ display: 'grid', gridTemplateColumns: '26px 1fr', gap: '0.55rem', padding: '0.6rem 0.7rem', margin: '0 0 0.9rem', borderRadius: 6, background: 'var(--bg-violet-100, var(--bg-muted))', border: '1px solid var(--border-violet)', fontSize: '0.8rem' }}
+        >
+          <span aria-hidden style={{ fontSize: '1rem', lineHeight: 1.2 }}>🔒</span>
+          <div>
+            <div style={{ fontWeight: 600, color: 'var(--text-strong)' }}>Why you can’t see the robot’s number yet</div>
+            <div style={{ color: 'var(--text-muted)' }}>
+              The robot does its own version of the bid <b style={{ color: 'var(--text-violet-700, var(--text-strong))' }}>in secret</b>. It can’t peek at our number, because ours doesn’t exist yet. It seals its price in an envelope. When we send the real bid, the envelope opens and the score is kept on its own. Close enough, often enough — {GATE_B_STREAK} in a row within {GATE_B_PCT}% — earns it first drafts for that kind of job.
+            </div>
+          </div>
+        </div>
 
         <div style={{ fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--text-faint)', fontWeight: 600, margin: '0 0 0.5rem' }}>On a live bid</div>
         <div style={{ display: 'grid', gridTemplateColumns: '32px 1fr', gap: '0.55rem 0.7rem', alignItems: 'start', fontSize: '0.85rem', marginBottom: '1rem' }}>

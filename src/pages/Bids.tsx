@@ -51,6 +51,7 @@ import { BidRfiTab } from '../components/bids/BidRfiTab'
 import { BidsAuditsTab } from '../components/bids/BidsAuditsTab'
 import { RobotStatusSheet } from '../components/bids/RobotStatusSheet'
 import { RobotNeedsSheet, type RobotOpenQuestion } from '../components/bids/RobotNeedsSheet'
+import { BID_FORM_FOCUS_ELEMENT_ID, type BidFormFocus } from '../lib/bids/bidFormFocus'
 import { effectiveTwinQuestionKind } from '../../supabase/functions/_shared/twinQuestionKind'
 import type { BidFlowDoor, BidFlowStep } from '../lib/bids/bidFlow'
 import { landOnBidFlowTarget, landOnElement, parseLandingParam } from '../lib/bids/bidFlowLanding'
@@ -75,6 +76,7 @@ import { useBidAuditsPendingCount } from '../hooks/useBidAuditsPendingCount'
 import { canWorkRobotAudits, ROBOT_AUDIT_ROLES } from '../lib/bids/bidAudits'
 import { BidSubmissionFollowupTab } from '../components/bids/BidSubmissionFollowupTab'
 import { BidsBidCostsTab } from '../components/bids/BidsBidCostsTab'
+import { canSeeBidCostDollars, canSeeBidCosts } from '../lib/bids/bidPursuit'
 import { BidsCountsTab } from '../components/bids/BidsCountsTab'
 import { BidsLaborTab } from '../components/bids/BidsLaborTab'
 import { BidsPricingTab } from '../components/bids/BidsPricingTab'
@@ -331,7 +333,7 @@ export default function Bids() {
   const [bidWindowInitialTab, setBidWindowInitialTab] = useState<'bid' | 'edit'>('edit')
   /** Projects for the bid form's linked-project picker; null = not fetched yet (lazy, on first form open). */
   const [projectsForPicker, setProjectsForPicker] = useState<Array<{ id: string; name: string | null; project_number: string | null }> | null>(null)
-  const [pendingBidFormFocus, setPendingBidFormFocus] = useState<'projectName' | 'gcBuilder' | 'bidValue' | null>(null)
+  const [pendingBidFormFocus, setPendingBidFormFocus] = useState<BidFormFocus | null>(null)
   const [editingBid, setEditingBid] = useState<BidWithBuilder | null>(null)
   const [viewingCustomer, setViewingCustomer] = useState<Customer | null>(null)
   const [viewingGcBuilder, setViewingGcBuilder] = useState<GcBuilder | null>(null)
@@ -1290,18 +1292,26 @@ export default function Bids() {
     if (!bidFormOpen || !pendingBidFormFocus) return
     const which = pendingBidFormFocus
     const timeoutId = window.setTimeout(() => {
-      const elId =
-        which === 'projectName'
-          ? 'bid-form-project-name'
-          : which === 'bidValue'
-            ? 'bid-form-bid-value'
-            : 'bid-form-gc-builder'
-      const el = document.getElementById(elId)
+      const el = document.getElementById(BID_FORM_FOCUS_ELEMENT_ID[which])
       if (el instanceof HTMLElement) {
         // One landing style (v2.3228): the same blue ring + fade the bid flow doors
         // use, instead of the amber outline this effect used to paint inline.
         landOnElement(el)
         if (el instanceof HTMLInputElement) el.select()
+        // v2.3334: one settle pass once the bid window has finished laying out its
+        // sections — an instant scroll to the same spot, a no-op when the smooth
+        // landing above already got there and the only scroll that runs at all in
+        // a hidden document (smooth scrolling is skipped there). Scheduled here,
+        // not in the effect, because resetting the pending focus below re-runs the
+        // effect and its cleanup.
+        window.setTimeout(() => {
+          if (!el.isConnected) return
+          try {
+            el.scrollIntoView({ behavior: 'auto', block: 'center' })
+          } catch {
+            /* jsdom */
+          }
+        }, 600)
       }
       setPendingBidFormFocus(null)
     }, 50)
@@ -1798,7 +1808,7 @@ export default function Bids() {
       setActiveTab('bid-board')
       return
     }
-    if (tab === 'bid-costs' && myRole != null && myRole !== 'dev') {
+    if (tab === 'bid-costs' && myRole != null && !canSeeBidCosts(myRole)) {
       setSearchParams((p) => {
         const next = new URLSearchParams(p)
         next.set('tab', 'bid-board')
@@ -2298,7 +2308,7 @@ export default function Bids() {
     setError(null)
   }
 
-  function openEditBid(bid: BidWithBuilder, opts?: { focus?: 'projectName' | 'gcBuilder' | 'bidValue'; tab?: 'bid' | 'edit' }) {
+  function openEditBid(bid: BidWithBuilder, opts?: { focus?: BidFormFocus; tab?: 'bid' | 'edit' }) {
     setBidWindowInitialTab(opts?.tab ?? 'edit')
     clearBidDateSentAttestationFlow()
     setEditingBid(bid)
@@ -3178,7 +3188,7 @@ export default function Bids() {
   )
 
   const bidsBidCostsTabButton =
-    myRole === 'dev' ? (
+    canSeeBidCosts(myRole) ? (
       <button
         type="button"
         data-tabkey="bid-costs"
@@ -3864,6 +3874,7 @@ export default function Bids() {
           // v2.3225: the live bids with no run list too, from the icon's own kernel, with their doors.
           rowStateFor={robotRowStateFor}
           onOpenNeeds={setRobotNeedsBid}
+          onPasteThePlans={(bid) => openEditBid(bid, { focus: 'plansLink' })}
           onOpenStatus={setRobotStatusBid}
           onAddBidValue={(bid) => openEditBid(bid, { focus: 'bidValue' })}
           onOpenScoreboard={canWorkRobotAudits(myRole) ? () => selectBidsTab('robot-scoreboard') : undefined}
@@ -3945,7 +3956,7 @@ export default function Bids() {
         bid={robotNeedsBid}
         questions={robotNeedsBid ? (openQuestionsByBidId.get(robotNeedsBid.id) ?? []) : []}
         onClose={() => setRobotNeedsBid(null)}
-        onEditBid={(bid) => openEditBid(bid as BidWithBuilder)}
+        onEditBid={(bid, opts) => openEditBid(bid as BidWithBuilder, opts)}
         onAnswer={answerRobotQuestion}
       />
 
@@ -4187,13 +4198,14 @@ export default function Bids() {
         </div>
       ) : null}
 
-      {/* Bid Costs Tab - Dev only */}
-      {myRole === 'dev' && activeTab === 'bid-costs' && (
+      {/* Bid Costs Tab — office roles; dollars for dev / master / controller (v2.3336) */}
+      {canSeeBidCosts(myRole) && activeTab === 'bid-costs' && (
         <BidsBidCostsTab
           bids={bids}
           teamLaborData={teamLaborDataForBids}
           bidAssignedCosts={bidAssignedCosts}
           onSelectBid={setSharedBid}
+          showDollars={canSeeBidCostDollars(myRole)}
         />
       )}
 

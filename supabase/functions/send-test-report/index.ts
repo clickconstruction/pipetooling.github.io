@@ -70,6 +70,7 @@ serve(async (req) => {
     const admin = createClient(supabaseUrl, serviceKey)
 
     const body = (await req.json()) as {
+      sample?: boolean
       report_id?: string
       to?: unknown
       cc?: unknown
@@ -83,6 +84,35 @@ serve(async (req) => {
       certifier_license?: string | null
       report_label?: string
       recipient_label?: string | null
+    }
+
+    // "Email me this sample" (v2.3338): a dev sends the sample paper to their own
+    // address — no row, no storage, no stamp, no activity line. The recipient is
+    // the caller's login email, never the body's; the subject arrives prefixed.
+    if (body.sample === true) {
+      const { data: me } = await admin.from('users').select('role').eq('id', user.id).maybeSingle()
+      if ((me as { role?: string } | null)?.role !== 'dev') return jsonResponse({ error: 'Samples are a dev-only door' }, 403)
+      const myEmail = (user.email ?? '').trim().toLowerCase()
+      if (!EMAIL_RE.test(myEmail)) return jsonResponse({ error: 'Your account has no email to send to' }, 400)
+      const sSubject = (body.subject ?? '').trim()
+      const sText = (body.email_text ?? '').trim()
+      const sHtml = (body.email_html ?? '').trim()
+      const sPdf = (body.pdf_base64 ?? '').trim()
+      if (!sSubject || !sText || !sPdf || sPdf.length > MAX_PDF_BASE64_CHARS) return jsonResponse({ error: 'subject, email_text and a PDF are required' }, 400)
+      const subjectOut = /^\[Sample\]/.test(sSubject) ? sSubject : `[Sample] ${sSubject}`
+      const sFilename = ((body.pdf_filename ?? '').trim() || 'test-report-sample.pdf').replace(/[^a-zA-Z0-9._-]/g, '_')
+      const r = await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${resendApiKey}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ from: EMAIL_FROM, to: [myEmail], subject: subjectOut, html: sHtml || undefined, text: sText, attachments: [{ filename: sFilename, content: sPdf }] }),
+      })
+      if (!r.ok) {
+        const errorData = await r.json().catch(() => ({} as { message?: string }))
+        return jsonResponse({ error: errorData.message || `Resend ${r.status}` }, 502)
+      }
+      const sent = (await r.json().catch(() => ({}))) as { id?: string }
+      await logEmailSendBestEffort({ resendEmailId: sent.id ?? null, to: [myEmail], from: EMAIL_FROM, subject: subjectOut, emailType: 'test_report' })
+      return jsonResponse({ ok: true, sample: true, sent_to: myEmail, resend_email_id: sent.id ?? null })
     }
 
     const reportId = typeof body.report_id === 'string' ? body.report_id.trim() : ''

@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import type { Bid } from '../../types/bids'
 import { robotGaps } from '../../lib/bids/robotRowState'
+import { focusForRobotGap, type BidFormFocus } from '../../lib/bids/bidFormFocus'
 import { ROBOT_INTAKE_ACCOUNT } from '../../lib/bids/robotReadinessLine'
 import { answerFromChoice, orderedChoices } from '../../lib/bids/twinQuestionChoices'
 import { PLANS_ASK_DEFAULT_CHOICES, PLANS_ASK_DEFAULT_RECOMMENDED, answerRequestsRerun, effectiveTwinQuestionKind } from '../../../supabase/functions/_shared/twinQuestionKind'
@@ -24,7 +25,8 @@ type RobotNeedsSheetProps = {
   bid: Bid | null
   questions: RobotOpenQuestion[]
   onClose: () => void
-  onEditBid: (bid: Bid) => void
+  /** v2.3334: opens Edit bid landed on the field that fixes the gap (`focus`), when one exists. */
+  onEditBid: (bid: Bid, opts?: { focus?: BidFormFocus }) => void
   /**
    * Answer one question; resolves true when the row was written. `rerunBidId`
    * (v2.3223) rides along when a plans ask was answered "go again": the page
@@ -57,6 +59,9 @@ export function RobotNeedsSheet({ bid, questions, onClose, onEditBid, onAnswer }
   const otherQuestions = questions.filter((q) => effectiveTwinQuestionKind(q) !== 'plans')
   const stops = blocking.length > 0 || plansAsks.length > 0
   const label = `b${bid.bid_number ?? '?'} · ${bid.project_name ?? 'bid'}`
+  // The footer's Edit bid lands on the first blocking fix; a plans ask alone is a plans-link fix.
+  const firstFix: BidFormFocus | null =
+    blocking.map((g) => focusForRobotGap(g.key)).find((f): f is BidFormFocus => f != null) ?? (plansAsks.length > 0 ? 'plansLink' : null)
 
   async function copyIntake() {
     try {
@@ -159,7 +164,7 @@ export function RobotNeedsSheet({ bid, questions, onClose, onEditBid, onAnswer }
                     </span>
                     <span style={{ display: 'inline-flex', gap: '0.35rem', flexWrap: 'wrap' }}>
                       <button type="button" onClick={() => void copyIntake()} style={smallBtn}>{copied ? 'Copied ✓' : 'Copy intake address'}</button>
-                      <button type="button" onClick={() => { onClose(); onEditBid(bid) }} style={smallBtn}>Edit bid</button>
+                      <button type="button" onClick={() => { onClose(); onEditBid(bid, { focus: 'plansLink' }) }} style={smallBtn}>Edit bid</button>
                     </span>
                   </div>
                   {answerRow(q, 'Tell the robot what changed — it reads it on its next run')}
@@ -189,7 +194,7 @@ export function RobotNeedsSheet({ bid, questions, onClose, onEditBid, onAnswer }
         ) : null}
 
         <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', justifyContent: 'flex-end', borderTop: '1px solid var(--border)', paddingTop: '0.75rem' }}>
-          <button type="button" onClick={() => { onClose(); onEditBid(bid) }} style={{ padding: '0.45rem 0.85rem', border: 'none', borderRadius: 4, background: '#3b82f6', color: 'white', fontWeight: 600, cursor: 'pointer', font: 'inherit', fontSize: '0.85rem' }}>
+          <button type="button" onClick={() => { onClose(); onEditBid(bid, firstFix ? { focus: firstFix } : undefined) }} style={{ padding: '0.45rem 0.85rem', border: 'none', borderRadius: 4, background: '#3b82f6', color: 'white', fontWeight: 600, cursor: 'pointer', font: 'inherit', fontSize: '0.85rem' }}>
             Edit bid
           </button>
           <button type="button" onClick={onClose} style={{ padding: '0.45rem 0.85rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--bg-subtle)', color: 'inherit', cursor: 'pointer', font: 'inherit', fontSize: '0.85rem' }}>
@@ -201,6 +206,7 @@ export function RobotNeedsSheet({ bid, questions, onClose, onEditBid, onAnswer }
   )
 
   function gapItem(g: ReturnType<typeof robotGaps>[number]) {
+    const gapFocus = focusForRobotGap(g.key)
     return (
       <li key={g.key} style={{ display: 'grid', gridTemplateColumns: '18px 1fr auto', gap: '0.5rem', alignItems: 'start', fontSize: '0.875rem' }}>
         <span aria-hidden style={{ fontWeight: 700, color: g.required ? 'var(--text-red-600)' : 'var(--text-muted)' }}>✗</span>
@@ -211,7 +217,7 @@ export function RobotNeedsSheet({ bid, questions, onClose, onEditBid, onAnswer }
         {g.copyIntake ? (
           <button type="button" onClick={() => void copyIntake()} style={smallBtn}>{copied ? 'Copied ✓' : 'Copy intake address'}</button>
         ) : (
-          <button type="button" onClick={() => { onClose(); if (bid) onEditBid(bid) }} style={smallBtn}>Edit bid</button>
+          <button type="button" onClick={() => { onClose(); if (bid) onEditBid(bid, gapFocus ? { focus: gapFocus } : undefined) }} style={smallBtn}>Edit bid</button>
         )}
       </li>
     )

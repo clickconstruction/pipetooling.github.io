@@ -190,16 +190,30 @@ describe('blocks', () => {
     ])
   })
 
-  it('gas still dates the location column', () => {
+  it('gas dates the House pressure section, not the location column (v2.3332)', () => {
     const blocks = buildTestReportBlocks(emptyTestReportData('gas', '2026-09-10'), job, DEFAULT_TEST_REPORT_SETTINGS)
     const cols = blocks[1]
     if (cols?.kind !== 'columns') throw new Error('columns')
-    expect(cols.right.rows).toEqual([{ label: 'Date', value: 'September 10, 2026' }])
+    expect(cols.right.rows).toEqual([])
+    expect(blocks[2]).toEqual({ kind: 'section', text: 'House pressure' })
+    const kv = blocks[3]
+    if (kv?.kind !== 'kv') throw new Error('kv')
+    expect(kv.rows).toEqual([{ label: 'Date', value: 'September 10, 2026' }])
+  })
+
+  it('hides House utilities until a fixture carries a BTU figure (v2.3332)', () => {
+    const named = buildTestReportBlocks(
+      { ...emptyTestReportData('gas', '2026-09-10'), gasFixtures: [{ name: 'Furnace', btuPerHour: null }, { name: 'Dryer', btuPerHour: 0 }] },
+      job,
+      DEFAULT_TEST_REPORT_SETTINGS,
+    )
+    expect(named.map((b) => b.kind)).toEqual(['letterhead', 'columns', 'section', 'kv', 'section', 'certification'])
+    expect(named.some((b) => b.kind === 'section' && b.text === 'House utilities')).toBe(false)
   })
 
   it('shows the gas sections only when they carry data, and totals the fixtures', () => {
     const none = buildTestReportBlocks(emptyTestReportData('gas', '2026-09-10'), job, DEFAULT_TEST_REPORT_SETTINGS)
-    expect(none.map((b) => b.kind)).toEqual(['letterhead', 'columns', 'section', 'certification'])
+    expect(none.map((b) => b.kind)).toEqual(['letterhead', 'columns', 'section', 'kv', 'section', 'certification'])
     const full = buildTestReportBlocks(
       { ...emptyTestReportData('gas', '2026-09-10'), gasPressurePsi: 0.5, gasFixtures: [{ name: 'Furnace', btuPerHour: 100_000 }, { name: '', btuPerHour: null }, { name: 'Range', btuPerHour: 65_000 }] },
       job,
@@ -215,7 +229,7 @@ describe('blocks', () => {
     ])
     const pressure = full[3]
     if (pressure?.kind !== 'kv') throw new Error('kv')
-    expect(pressure.rows.map((r) => r.value)).toEqual(['0.5', '13.84', '8', '351.5'])
+    expect(pressure.rows.map((r) => r.value)).toEqual(['September 10, 2026', '0.5', '13.84', '8', '351.5'])
   })
 })
 

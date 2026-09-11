@@ -6,9 +6,15 @@
  *  b. `amount`  — same person, same amount, paid within `windowDays` of the Cash App date.
  *  c. `split`   — one Cash App payment equals the sum of 2–3 recorded payments for that person
  *                 within the window (one send covering several reports).
+ *  e. `memo`    — a number written in a recorded payment's memo equals the send ("Cashapp 500",
+ *                 "CashApp in 300 and 100", "-500 for motorcycle 1809.20 paid via cashapp"): the
+ *                 owner recorded the report's figure and noted how the cash was actually split.
+ *                 Each memo number backs one send; the payment itself is not consumed, so a
+ *                 memo listing two amounts can back two sends.
  *  d. otherwise — unmatched; `before_records` when the payment predates the first pay report
- *                 the app has for that person (money that went out before we started counting),
- *                 else the note lane (pay / advance / expense) says which queue it joins.
+ *                 the app has for that person — or, for an unknown name, the company's first
+ *                 report (money that went out before we started counting) — else the note lane
+ *                 (pay / advance / expense) says which queue it joins.
  *
  * Recorded payments are consumed at most once. Pure; the caller supplies both sides.
  */
@@ -35,15 +41,17 @@ export type RecordedPaymentForMatch = {
   memo: string | null
 }
 
-export type CashAppMatchRule = 'id' | 'amount' | 'split'
+export type CashAppMatchRule = 'id' | 'amount' | 'split' | 'memo'
 
 export type CashAppMatchResult =
   | { txId: string; outcome: 'matched'; rule: CashAppMatchRule; paymentIds: string[]; personName: string }
-  | { txId: string; outcome: 'before_records'; personName: string; firstReportStart: string; noteKind: CashAppNoteKind }
+  | { txId: string; outcome: 'before_records'; personName: string | null; firstReportStart: string; noteKind: CashAppNoteKind }
   | { txId: string; outcome: 'unmatched'; personName: string | null; noteKind: CashAppNoteKind }
 
 export type MatchCashAppOptions = {
   windowDays?: number
+  /** Window for the memo rule — memos are written when the report is paid, often days after the send. */
+  memoWindowDays?: number
   /** Earliest pay-report period_start per person; a send before it is `before_records`. */
   firstReportStartByPerson?: Readonly<Record<string, string>>
   /** Company-wide floor when a person has no reports at all (defaults to none). */
@@ -56,13 +64,32 @@ function daysBetween(a: string, b: string): number {
 }
 const near = (a: number, b: number, tol = 0.011) => Math.abs(a - b) <= tol
 
+/**
+ * Dollar-looking numbers in a memo: "1,809.20", "500", "300 and 100" → [1809.2, 500, 300, 100].
+ * A number with a minus in front ("-500 for motorcycle") is money withheld, not sent, and is
+ * skipped. Cash App ids (#D-…) are removed first.
+ */
+export function memoAmounts(memo: string | null | undefined): number[] {
+  if (!memo) return []
+  const out: number[] = []
+  for (const m of memo.replace(/#D-[A-Z0-9]+/gi, ' ').matchAll(/(-\s*)?(?<![A-Za-z0-9])\$?(\d{1,3}(?:,\d{3})+(?:\.\d{1,2})?|\d+(?:\.\d{1,2})?)(?![A-Za-z0-9])/g)) {
+    if (m[1]) continue
+    const n = Number((m[2] ?? '').replace(/,/g, ''))
+    if (Number.isFinite(n) && n > 0) out.push(n)
+  }
+  return out
+}
+
 export function matchCashAppTransactions(
   txs: readonly CashAppTxForMatch[],
   payments: readonly RecordedPaymentForMatch[],
   options: MatchCashAppOptions = {},
 ): { results: CashAppMatchResult[]; unmatchedPaymentIds: string[] } {
   const windowDays = options.windowDays ?? 7
+  const memoWindowDays = options.memoWindowDays ?? 10
   const used = new Set<string>()
+  // rule (e): memo numbers, each consumable once, keyed by payment id
+  const memoNumbers = new Map<string, number[]>(payments.map((p) => [p.id, memoAmounts(p.memo)]))
   const results: CashAppMatchResult[] = []
   const byId = new Map(payments.map((p) => [p.id, p]))
 
@@ -96,15 +123,31 @@ export function matchCashAppTransactions(
         break
       }
     }
+    if (!matched) {
+      // (e) a number in a recorded payment's memo equals the send
+      for (const person of people) {
+        const hit = payments
+          .filter((p) => p.personName === person && daysBetween(p.paidAt, tx.occurredDate) <= memoWindowDays)
+          .map((p) => ({ p, nums: memoNumbers.get(p.id) ?? [] }))
+          .find(({ nums }) => nums.some((n) => near(n, tx.amountSent)))
+        if (hit) {
+          const nums = memoNumbers.get(hit.p.id) ?? []
+          nums.splice(nums.findIndex((n) => near(n, tx.amountSent)), 1)
+          matched = { txId: tx.id, outcome: 'matched', rule: 'memo', paymentIds: [hit.p.id], personName: person }
+          break
+        }
+      }
+    }
     if (matched) {
-      for (const id of matched.paymentIds) used.add(id)
+      // Rules a–c consume the payment; rule e consumed a memo number instead (one memo can back two sends).
+      if (matched.rule !== 'memo') for (const id of matched.paymentIds) used.add(id)
       results.push(matched)
       continue
     }
     const person = tx.personName
     const first = person ? options.firstReportStartByPerson?.[person] : undefined
     const floor = first ?? options.recordsBeginYmd
-    if (person && floor && tx.occurredDate < floor) {
+    if (floor && tx.occurredDate < floor) {
       results.push({ txId: tx.id, outcome: 'before_records', personName: person, firstReportStart: floor, noteKind })
       continue
     }
@@ -142,7 +185,7 @@ export function summarizeCashAppMatches(results: readonly CashAppMatchResult[]):
   unmatchedByKind: Record<CashAppNoteKind, number>
   unknownPerson: number
 } {
-  const s = { matched: 0, byRule: { id: 0, amount: 0, split: 0 }, beforeRecords: 0, unmatched: 0, unmatchedByKind: { pay: 0, advance: 0, expense: 0 }, unknownPerson: 0 }
+  const s = { matched: 0, byRule: { id: 0, amount: 0, split: 0, memo: 0 }, beforeRecords: 0, unmatched: 0, unmatchedByKind: { pay: 0, advance: 0, expense: 0 }, unknownPerson: 0 }
   for (const r of results) {
     if (r.outcome === 'matched') {
       s.matched++

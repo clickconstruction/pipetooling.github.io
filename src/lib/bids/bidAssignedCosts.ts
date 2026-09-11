@@ -67,7 +67,10 @@ export function bidAssignedCostsByBidId(rows: Partial<BidAssignedCostRows>): Map
   }
 
   for (const p of rows.parts ?? []) bump(p.bid_id, 'partsStyle', num(p.quantity) * num(p.fixture_cost))
-  for (const m of rows.mercury ?? []) bump(m.bid_id, 'partsStyle', num(m.amount))
+  // Card charges carry the bank's sign (a debit is negative), the same way the
+  // job side reads them (fetchJobMaterialsCostSnapshot sums |allocation|), so
+  // spend is the absolute amount — a $37.99 charge is $37.99 of cost, not −$37.99.
+  for (const m of rows.mercury ?? []) bump(m.bid_id, 'partsStyle', Math.abs(num(m.amount)))
   for (const s of rows.supply ?? []) bump(s.bid_id, 'partsStyle', (num(s.pct) / 100) * num(s.invoice_amount))
   for (const m of rows.materials ?? []) bump(m.bid_id, 'materials', num(m.amount))
 

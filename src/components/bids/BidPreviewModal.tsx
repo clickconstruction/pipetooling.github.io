@@ -10,6 +10,7 @@ import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 import { CustomerSnapshotModal } from '../customers/CustomerSnapshotModal'
 import { BidBoardNotesPanel, type BidBoardNotesTab } from './BidBoardNotesPanel'
 import { useLedgerPrefixMap } from '../../contexts/LedgerDisplayPrefixContext'
+import { canSeeBidCosts } from '../../lib/bids/bidPursuit'
 import { formatBidLedgerNumberLabel, resolveBidLedgerPrefix } from '../../lib/ledgerDisplayPrefixes'
 import { toAppTzYmd } from '../../utils/datetimeLocal'
 
@@ -221,7 +222,7 @@ function buildTabActionGroups(role: UserRole | null): TabActionGroup[] {
     { tab: 'builder-review', label: 'Builder Review' },
     { tab: 'working', label: 'Working' },
   ]
-  if (role === 'dev') scope.push({ tab: 'bid-costs', label: 'Bid Costs' })
+  if (canSeeBidCosts(role)) scope.push({ tab: 'bid-costs', label: 'Bid Costs' })
   scope.push({ tab: 'counts', label: 'Counts' })
 
   const price: TabActionGroup['items'] = []

@@ -531,6 +531,9 @@ Dev-only sweep section (v2.2846, journey-map Tier-1 #2a): lists never-sent `read
 
 ## Workflow Concepts
 
+### Cash App reconcile (People → Pay → Payroll → Pay run → Cash App…)
+The tool (v2.3321–v2.3327) that reads the owner's Cash App activity export and matches every send to staff against payments recorded on pay reports. Tables `cashapp_transactions` (the export, keyed by Cash App's Transaction ID) and `cashapp_aliases` (Cash App name → person, not-staff, proxy note rule). Lanes: **recorded** (matched by id in memo / person + amount ±7d / split-sum, or recorded from the list), **review**, **advance** (a pending `person_offsets` row of type `advance`), **expense** (not pay), **before_records** (sent before that person's first pay report), **not_staff**, **ignored**. Kernels in `src/lib/cashapp/`. Guide: `reconcile-cash-app-payments.md`.
+
 ### Pay run (People → Pay → Payroll)
 The weekly payroll work view (was **Pay reports** until v2.3317): Draft Payroll generates the week's pay reports, the table lists each report with its balance and **Record payment**, and the amber "N upcoming" link names weeks with clocked time and no report. Unit = the pay report, clock = the week. Sibling view: **Balances**.
 
