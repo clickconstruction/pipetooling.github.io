@@ -137,6 +137,8 @@ import PaidProfitChartModal from './PaidProfitChartModal'
 import BilledReportShareModal from './BilledReportShareModal'
 import PaymentForecastShareModal from './PaymentForecastShareModal'
 import JobBookModal from './JobBookModal'
+import LegalDeskModal from './legal/LegalDeskModal'
+import { PORTAL_COMPANY } from '../../../supabase/functions/_shared/portalCompany'
 import JobsCombineSeparateModal from './JobsCombineSeparateModal'
 import StagesNoCustomerJobsModal from './StagesNoCustomerJobsModal'
 import StagesAlertJobListModal from './StagesAlertJobListModal'
@@ -291,6 +293,8 @@ export type JobsStagesTabHandle = {
   showBilledTotalByName: () => void
   /** `?stagesMove=` deep link (v2.2145): open what a Today's Money Opportunities card opens (Quickfill → Jobs Cleanup). */
   openMoneyMove: (key: StagesMoneyMoveKey) => void
+  /** `?legal=<payer key | 1>` deep link (Legal desk PR 1, v2.3293): open the ⚖ Legal desk, on one account when a key is given. */
+  openLegalDesk: (payerKey?: string | null) => void
 }
 
 export type JobsStagesTabProps = {
@@ -708,6 +712,8 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
   const [markPaidJob, setMarkPaidJob] = useState<JobWithDetails | null>(null)
   const [markPaidInvoice, setMarkPaidInvoice] = useState<InvoiceWithJob | null>(null)
   const [bankPaymentsModalOpen, setBankPaymentsModalOpen] = useState(false)
+  /** ⚖ Legal desk (v2.3293): the office's pre-release review of every Collections account. `payerKey` = the account to open on. */
+  const [legalDesk, setLegalDesk] = useState<{ payerKey: string | null } | null>(null)
   /** ⚙ across from the Paid in Full header: "Customer paid" email recipients + preview/test (v2.965). */
   const [paidEmailSettingsOpen, setPaidEmailSettingsOpen] = useState(false)
   const [paymentEmailSettingsOpen, setPaymentEmailSettingsOpen] = useState(false)
@@ -2239,6 +2245,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
       focusJob: focusJobOnBoard,
       focusInvoice: applyStagesInvoiceFocus,
       openBankPayments: () => setBankPaymentsModalOpen(true),
+      openLegalDesk: (payerKey) => setLegalDesk({ payerKey: payerKey ?? null }),
       openWeeklyMovement: () => setWeeklyMovementModalOpen(true),
       openWeeklyMoney: (weekMonday) => {
         setWeeklyMoneyInitialMonday(weekMonday ?? null)
@@ -4552,6 +4559,26 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                     Billed jobs flagged difficult to collect — still awaiting payment
                   </span>
                 </div>
+                {canManageCollections ? (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', margin: '0 0 0.5rem' }}>
+                    {/* ⚖ Legal (v2.3293): mirrors the Billed tier's Accounts Receivable button — a modal in place, `?legal=` deep link. */}
+                    <button
+                      type="button"
+                      onClick={() => setLegalDesk({ payerKey: null })}
+                      disabled={collectionsRows.length === 0}
+                      title="Review every Collections account the way an attorney would receive it — before anything is released"
+                      aria-label="Legal: review Collections accounts before release to an attorney"
+                      style={{
+                        ...billedHeaderActionStyle(collectionsRows.length === 0),
+                        color: collectionsRows.length === 0 ? undefined : 'var(--text-700)',
+                        borderColor: collectionsRows.length === 0 ? undefined : 'var(--border-strong)',
+                      }}
+                    >
+                      <span aria-hidden>{'⚖'}</span>
+                      Legal
+                    </button>
+                  </div>
+                ) : null}
                 {sectionShown('collections') && !stagesSearchActive && !sectionMerged('collections') && sectionBodyLoading('Collections')}
                 {sectionShown('collections') && (stagesSearchActive || sectionMerged('collections')) && (collectionsRows.length === 0 ? (
                   <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: '0 0 0.75rem' }}>
@@ -5520,6 +5547,21 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
           printDisabled={stagesBoardLists.billedActiveRows.length === 0}
         />
       )}
+      <LegalDeskModal
+        open={legalDesk != null}
+        onClose={() => setLegalDesk(null)}
+        collectionsJobs={stagesBoardLists.collectionsJobs}
+        contractCoverage={jobContractCoverageByJobId}
+        users={users}
+        companyName={PORTAL_COMPANY.name}
+        initialPayerKey={legalDesk?.payerKey ?? null}
+        onOpenContract={(job) => {
+          if (openJobContract) openJobContract(job)
+        }}
+        onOpenLienInstruments={(job) => setLienInstrumentsModal({ job, invoice: null })}
+        onOpenEditJob={(jobId) => tryOpenEditJob(jobId, { onSaved: () => void loadJobs() })}
+        onOpenCallMode={() => setChaseModalOpen(true)}
+      />
       <BankPaymentsModal
         open={bankPaymentsModalOpen}
         onClose={() => setBankPaymentsModalOpen(false)}
