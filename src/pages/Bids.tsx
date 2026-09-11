@@ -4205,6 +4205,10 @@ export default function Bids() {
           teamLaborData={teamLaborDataForBids}
           bidAssignedCosts={bidAssignedCosts}
           onSelectBid={setSharedBid}
+          onCostIt={(bid) => {
+            setSharedBid(bid)
+            selectBidsTab('labor')
+          }}
           showDollars={canSeeBidCostDollars(myRole)}
         />
       )}

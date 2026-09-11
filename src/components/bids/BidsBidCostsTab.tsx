@@ -24,6 +24,9 @@ import {
   type PursuitWindow,
 } from '../../lib/bids/bidPursuit'
 import { COST_TO_WIN_GROUP_LABELS, costToWinRows, costToWinTotal, costToWinWords, type CostToWinGroup, type CostToWinRow } from '../../lib/bids/bidCostToWin'
+import { Link } from 'react-router-dom'
+import { BID_VS_ACTUAL_READ_LABELS, bidVsActualTiles, buildBidVsActualRows, type BidVsActualBidInput, type BidVsActualRead, type BidVsActualRow } from '../../lib/bids/bidVsActual'
+import { useBidVsActual } from '../../hooks/useBidVsActual'
 
 /**
  * Bids → Bid Costs — the Pursuit ledger (v2.3336). What it costs us to bid:
@@ -35,17 +38,26 @@ import { COST_TO_WIN_GROUP_LABELS, costToWinRows, costToWinTotal, costToWinWords
  * `showDollars` is the role gate for wages: dev, master and controller read
  * dollars; assistants and estimators read the same ledger in hours.
  *
- * Two lenses (v2.3341): **Pursuit** (the ledger) and **Cost to win** (the
- * economics by estimator or by GC — `bidCostToWin.ts`). A Cost-to-win row
- * opens the ledger filtered to that person or GC.
+ * Three lenses: **Pursuit** (the ledger), **Cost to win** (v2.3341 — the
+ * economics by estimator or by GC — `bidCostToWin.ts`; a row opens the ledger
+ * filtered to that person or GC) and **Bid vs actual** (v2.3342 — the jobs
+ * linked to their bids against the bid's predicted hours and direct cost —
+ * `bidVsActual.ts` + `useBidVsActual`; "Cost it →" opens the Labor tab on
+ * the bid).
  */
-type Lens = 'pursuit' | 'cost-to-win'
+type Lens = 'pursuit' | 'cost-to-win' | 'bid-vs-actual'
+const LENS_LABELS: Record<Lens, string> = { pursuit: 'Pursuit', 'cost-to-win': 'Cost to win', 'bid-vs-actual': 'Bid vs actual' }
+/** Settings → Data → Link jobs to their bids (the backfill block). */
+const SETTINGS_BACKFILL_HREF = '/settings?tab=settings-data#settings-bid-job-backfill'
+const jobWindowHref = (jobId: string) => `/jobs?jobDetail=${jobId}`
 type BidsBidCostsTabProps = {
   bids: BidWithBuilder[]
   teamLaborData: TeamLaborBidRow[]
   /** Costs migrated onto bids (v2.1165 mirrors), keyed by bid id. */
   bidAssignedCosts: Map<string, BidAssignedCosts>
   onSelectBid: (bid: BidWithBuilder) => void
+  /** "Cost it →" — select the bid and open the Labor tab. */
+  onCostIt: (bid: BidWithBuilder) => void
   showDollars: boolean
 }
 
@@ -74,7 +86,7 @@ function OutcomeChip({ outcome }: { outcome: PursuitOutcome }) {
   return <span style={{ ...chipBase, cursor: 'default', border: 'none', color: c.fg, background: c.bg, fontWeight: 500 }}>{PURSUIT_OUTCOME_LABELS[outcome]}</span>
 }
 
-export function BidsBidCostsTab({ bids, teamLaborData, bidAssignedCosts, onSelectBid, showDollars }: BidsBidCostsTabProps) {
+export function BidsBidCostsTab({ bids, teamLaborData, bidAssignedCosts, onSelectBid, onCostIt, showDollars }: BidsBidCostsTabProps) {
   const [filter, setFilter] = useState<PursuitFilter>(DEFAULT_PURSUIT_FILTER)
   const [lens, setLens] = useState<Lens>('pursuit')
   const [group, setGroup] = useState<CostToWinGroup>('estimator')
@@ -91,6 +103,16 @@ export function BidsBidCostsTab({ bids, teamLaborData, bidAssignedCosts, onSelec
   const shown = useMemo(() => filterPursuitRows(rows, filter, todayYmd), [rows, filter, todayYmd])
   const costToWin = useMemo(() => costToWinRows(inWindow, group), [inWindow, group])
   const costToWinAll = useMemo(() => costToWinTotal(inWindow), [inWindow])
+
+  const bva = useBidVsActual(lens === 'bid-vs-actual')
+  const bvaRows = useMemo(() => {
+    const byBid = new Map<string, BidVsActualBidInput>()
+    for (const r of rows) byBid.set(r.bidId, { id: r.bidId, bid_number: r.bidNumber, project_name: r.projectName, estimatorName: r.estimatorName })
+    for (const [id, b] of bva.bidsById) if (!byBid.has(id)) byBid.set(id, { id, bid_number: b.bid_number, project_name: b.project_name, estimatorName: null })
+    const pursuitByBid = new Map(rows.map((r) => [r.bidId, { usd: r.totalUsd, hours: r.hours }]))
+    return buildBidVsActualRows({ jobs: bva.jobs, budgets: bva.budgets, bids: byBid, hoursByJob: bva.hoursByJob, pursuitByBid })
+  }, [bva, rows])
+  const bvaTiles = useMemo(() => bidVsActualTiles(bvaRows), [bvaRows])
 
   const outcomeCounts = useMemo(() => {
     const counts: Record<PursuitOutcome, number> = { unsent: 0, open: 0, won: 0, lost: 0 }
@@ -139,15 +161,21 @@ export function BidsBidCostsTab({ bids, teamLaborData, bidAssignedCosts, onSelec
       <p style={{ margin: '0 0 0.75rem', color: 'var(--text-muted)', fontSize: '0.875rem' }}>
         {lens === 'pursuit'
           ? <>What it costs us to bid: clocked estimating time{showDollars ? ' at recorded wages' : ''}, plus card charges and materials moved onto a bid from a job (Edit Job → Delete → Reassign). Robot bids and bids with no time are folded.</>
-          : <>What bidding costs and what it wins, by estimator or by GC. Counts and values read every bid in the window; {showDollars ? 'spend and ' : ''}hours read the bids someone clocked against. Click a row to open the ledger for that {group === 'estimator' ? 'person' : 'GC'}.</>}
+          : lens === 'cost-to-win'
+            ? <>What bidding costs and what it wins, by estimator or by GC. Counts and values read every bid in the window; {showDollars ? 'spend and ' : ''}hours read the bids someone clocked against. Click a row to open the ledger for that {group === 'estimator' ? 'person' : 'GC'}.</>
+            : <>Every job linked to its bid: what it cost to bid, what we bid, what the bid predicted in hours{showDollars ? ' and direct cost' : ''}, and what the job has recorded. A bid that was never costed says so — <b>Cost it →</b> opens its Labor tab.</>}
       </p>
       <div role="tablist" aria-label="Bid Costs lens" style={{ display: 'flex', gap: 6, marginBottom: 12 }}>
-        {(['pursuit', 'cost-to-win'] as const).map((l) => (
+        {(['pursuit', 'cost-to-win', 'bid-vs-actual'] as const).map((l) => (
           <button key={l} type="button" role="tab" aria-selected={lens === l} onClick={() => setLens(l)} style={{ ...chipBase, padding: '4px 12px', fontSize: '0.8rem', color: lens === l ? 'var(--text-link)' : 'inherit', background: lens === l ? 'var(--bg-subtle)' : 'none', borderColor: lens === l ? 'var(--text-link)' : 'var(--border)', fontWeight: lens === l ? 600 : 400 }}>
-            {l === 'pursuit' ? 'Pursuit' : 'Cost to win'}
+            {LENS_LABELS[l]}
           </button>
         ))}
       </div>
+
+      {lens === 'bid-vs-actual' && (
+        <BidVsActualView rows={bvaRows} tiles={bvaTiles} loading={bva.loading && !bva.loaded} showDollars={showDollars} onCostIt={(bidId) => { const b = bidById.get(bidId); if (b) onCostIt(b) }} canCostIt={(bidId) => bidById.has(bidId)} />
+      )}
 
       {lens === 'cost-to-win' && (
         <CostToWinView rows={costToWin} total={costToWinAll} group={group} onGroup={setGroup} showDollars={showDollars} windowSeg={windowSeg} robotsBox={robotsBox} windowLabel={windowLabel} onOpen={openLedgerFor} />
@@ -399,5 +427,100 @@ function PursuitRowView({ row: r, showDollars, anyCards, anyMaterials, onClick }
       {showDollars && <td style={numStyle}>{r.usdPerThousandBid != null ? r.usdPerThousandBid.toFixed(2) : '—'}</td>}
       <td style={cellStyle}><OutcomeChip outcome={r.outcome} /></td>
     </tr>
+  )
+}
+
+const READ_COLORS: Record<BidVsActualRead, { fg: string; bg: string }> = {
+  'not-costed': { fg: 'var(--text-muted)', bg: 'var(--bg-subtle)' },
+  'hours-missing': OUTCOME_COLORS.open,
+  outlier: OUTCOME_COLORS.lost,
+  over: OUTCOME_COLORS.lost,
+  near: OUTCOME_COLORS.won,
+  under: { fg: 'var(--text-link)', bg: 'var(--bg-subtle)' },
+}
+
+function BidVsActualView({ rows, tiles, loading, showDollars, onCostIt, canCostIt }: {
+  rows: BidVsActualRow[]
+  tiles: ReturnType<typeof bidVsActualTiles>
+  loading: boolean
+  showDollars: boolean
+  onCostIt: (bidId: string) => void
+  canCostIt: (bidId: string) => boolean
+}) {
+  const hrs = (n: number) => (n > 0 ? Math.round(n).toLocaleString('en-US') : '—')
+  return (
+    <>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: 10, marginBottom: 14 }}>
+        <div style={tileStyle}>
+          <span style={tileN}>{tiles.linked}</span>
+          <span style={tileL}>jobs linked to a bid</span>
+          <span style={{ ...tileL, display: 'block' }}><Link to={SETTINGS_BACKFILL_HREF} style={{ color: 'var(--text-link)' }}>link more in Settings → Data</Link></span>
+        </div>
+        <div style={tileStyle}>
+          <span style={tileN}>{tiles.withPredictedHours}</span>
+          <span style={tileL}>bids with predicted hours</span>
+          <span style={{ ...tileL, display: 'block' }}>{tiles.rateSet} with a labor rate set</span>
+        </div>
+        <div style={tileStyle}>
+          <span style={tileN}>{hrs(tiles.recordedHours)} h</span>
+          <span style={tileL}>recorded on linked jobs</span>
+          <span style={{ ...tileL, display: 'block' }}>{tiles.withPredictedHours > 0 ? `${hrs(tiles.recordedHoursWhereAny)} h vs ${hrs(tiles.predictedHoursWhereAny)} h predicted where any` : 'nothing predicted yet'}</span>
+        </div>
+        <div style={tileStyle}>
+          <span style={tileN}>{tiles.notCosted}</span>
+          <span style={tileL}>won bids never costed</span>
+          <span style={{ ...tileL, display: 'block' }}>{tiles.over + tiles.outliers > 0 ? `${tiles.over} over the book · ${tiles.outliers} to check` : 'Cost it → opens the Labor tab'}</span>
+        </div>
+      </div>
+      <div style={{ border: '1px solid var(--border)', borderRadius: 6, overflowX: 'auto' }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem' }}>
+          <thead style={{ background: 'var(--bg-subtle)' }}>
+            <tr>
+              <th style={thStyle}>Job ← Bid</th>
+              <th style={thNum}>{showDollars ? 'Cost to bid' : 'Time to bid'}</th>
+              <th style={thNum}>Bid value</th>
+              <th style={thNum} title="Field hours the bid's count sheet predicted">Predicted h</th>
+              <th style={thNum} title="Recorded field hours on the job">Recorded h</th>
+              {showDollars && <th style={thNum} title="Direct cost the bid predicted (◆ snapshot at link time)">Predicted direct $</th>}
+              <th style={thNum}>Done</th>
+              <th style={thStyle}>Read</th>
+            </tr>
+          </thead>
+          <tbody>
+            {loading && rows.length === 0 ? (
+              <tr><td colSpan={8} style={{ ...cellStyle, color: 'var(--text-muted)' }}>Loading linked jobs…</td></tr>
+            ) : rows.length === 0 ? (
+              <tr><td colSpan={8} style={{ ...cellStyle, color: 'var(--text-muted)', whiteSpace: 'normal' }}>No job is linked to a bid yet. Link them in <Link to={SETTINGS_BACKFILL_HREF} style={{ color: 'var(--text-link)' }}>Settings → Data → Link jobs to their bids</Link>, or from a won bid's row on the Bid Board.</td></tr>
+            ) : (
+              rows.map((r) => {
+                const c = READ_COLORS[r.read]
+                const offer = (r.read === 'not-costed' || r.read === 'hours-missing') && canCostIt(r.bidId)
+                return (
+                  <tr key={r.jobId}>
+                    <td style={{ ...cellStyle, whiteSpace: 'normal' }}>
+                      <Link to={jobWindowHref(r.jobId)} style={{ color: 'inherit', textDecoration: 'none', fontWeight: 500 }}>{r.jobLabel}</Link>
+                      <span style={subStyle}>← {r.bidLabel}{r.estimatorName ? ` · ${r.estimatorName}` : ''}</span>
+                    </td>
+                    <td style={numStyle}>{showDollars ? (r.pursuitUsd > 0 ? usd(r.pursuitUsd) : '—') : (r.pursuitHours > 0 ? formatPursuitHours(r.pursuitHours) : '—')}</td>
+                    <td style={numStyle}>{r.revenue > 0 ? usd(r.revenue) : '—'}</td>
+                    <td style={numStyle}>{r.predictedHours != null ? hrs(r.predictedHours) : '—'}</td>
+                    <td style={numStyle}>{hrs(r.recordedHours)}</td>
+                    {showDollars && <td style={numStyle}>{r.predictedDirectUsd != null ? usd(r.predictedDirectUsd) : '—'}{r.materialsOnly && <span style={{ ...subStyle, textAlign: 'right' }}>materials only</span>}</td>}
+                    <td style={numStyle}>{r.pctDone != null ? `${Math.round(r.pctDone)}%` : '—'}</td>
+                    <td style={{ ...cellStyle, whiteSpace: 'normal', minWidth: 190 }}>
+                      <span style={{ ...chipBase, cursor: 'default', border: 'none', color: c.fg, background: c.bg, fontWeight: 500 }}>{r.read === 'near' || r.read === 'over' || r.read === 'under' ? r.words : BID_VS_ACTUAL_READ_LABELS[r.read]}</span>
+                      {offer && (
+                        <button type="button" onClick={() => onCostIt(r.bidId)} style={{ ...chipBase, marginLeft: 6, color: 'var(--text-link)', borderColor: 'var(--text-link)' }} title="Select the bid and open its Labor tab">Cost it →</button>
+                      )}
+                      {(r.detail || r.read === 'outlier') && <span style={subStyle}>{r.read === 'outlier' ? `${r.words} · ${r.detail}` : r.detail}</span>}
+                    </td>
+                  </tr>
+                )
+              })
+            )}
+          </tbody>
+        </table>
+      </div>
+    </>
   )
 }

@@ -2,7 +2,7 @@
 title: read what bidding costs
 category: Office
 roles: dev, master_technician, controller, assistant, estimator
-keywords: bid costs, pursuit, cost to bid, estimating time, clocked against a bid, hours bidding, spent bidding, hit rate, won of decided, spent on lost, card charges, robot bids, estimator rail, per bid, window, cost to win, by estimator, by GC, per $1k won, which GCs award
+keywords: bid costs, pursuit, cost to bid, estimating time, clocked against a bid, hours bidding, spent bidding, hit rate, won of decided, spent on lost, card charges, robot bids, estimator rail, per bid, window, cost to win, by estimator, by GC, per $1k won, which GCs award, bid vs actual, predicted hours, recorded hours, over the book, not costed, cost it, check the count sheet, linked jobs
 order: 73
 ---
 **Bids → Bid Costs** is the pursuit ledger: what it costs us to bid. Every bid someone clocked time against (Clock In → pick the bid) shows its time, and the office roles see that time priced at recorded wages, plus any card charges or materials moved onto the bid from a job ([move a job's costs onto a bid](move-a-jobs-costs-onto-a-bid)).
@@ -55,6 +55,27 @@ Click a row to drop into the Pursuit ledger filtered to that person or GC — a 
 :::example Counts read every bid; spend reads the clocked ones
 A bid nobody clocked against still won or lost, so it counts toward the hit rate. It just adds nothing to hours or spend. That keeps the rate honest while the bid clock is young.
 :::
+
+## Bid vs actual
+
+{{chip:gray|Pursuit}} {{chip:gray|Cost to win}} {{chip:blue|Bid vs actual}} — the third lens is for the jobs that are **linked to their bid** ([link bids to jobs](read-the-bid-board) from a won bid's row, or in bulk in Settings → Data → Link jobs to their bids). One row per linked job:
+
+- **Cost to bid** (or time to bid) — the pursuit spend from the ledger.
+- **Bid value** — the job's price.
+- **Predicted h** and **Recorded h** — the field hours the bid's count sheet predicted, and the hours the crew has actually recorded on the job.
+- **Predicted direct $** — what the bid's snapshot said the job would cost us directly (dollar roles only). *materials only* means a takeoff was priced but no count sheet was filled.
+- **Done** — the job's % complete (billed and paid jobs read 100%).
+- **Read** — the row's verdict.
+
+{{chip:green|95% of hours}} on the book · {{chip:red|138% of hours}} over · {{chip:blue|36% of hours}} under · {{chip:yellow|hours missing}} · {{chip:gray|not costed}} {{button:outline-blue|Cost it →}}
+
+The read compares recorded hours to the hours the work *done so far* should have used when the job's % complete is known, and to the whole prediction when it is not. **Over** means more than 110% of that. A bid that was never costed says **not costed** and offers {{button:outline-blue|Cost it →}}, which selects the bid and opens its Labor tab.
+
+:::example "check the count sheet"
+A count sheet that predicts more than 15 field hours for every $1,000 of price cannot be right — that is more labor than the whole job pays. The row says so in red instead of pretending a comparison, and the fix is on the bid's Labor tab.
+:::
+
+Click a job to open its window. The first tile links to Settings → Data when more jobs need linking.
 
 ## The rail
 
