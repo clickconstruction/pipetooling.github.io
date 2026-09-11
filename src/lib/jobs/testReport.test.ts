@@ -175,18 +175,26 @@ describe('blocks', () => {
     expect(lh.jobLabel).toBeNull()
   })
 
-  it('moves the date under the location for pinpoint and gas, and shows N/A for empty pinpoint fields', () => {
+  it('pinpoint dates the Test results section (v2.3324), not the location, and shows N/A for empty fields', () => {
     const blocks = buildTestReportBlocks({ ...emptyTestReportData('pinpoint', '2026-09-10'), pinpointFindings: 'Break at the second wye.' }, job, DEFAULT_TEST_REPORT_SETTINGS)
     expect(blocks.map((b) => b.kind)).toEqual(['letterhead', 'columns', 'section', 'kv', 'paragraph', 'section', 'certification'])
     const cols = blocks[1]
     if (cols?.kind !== 'columns') throw new Error('columns')
-    expect(cols.right.rows).toEqual([{ label: 'Date', value: 'September 10, 2026' }])
+    expect(cols.right.rows).toEqual([])
     const kv = blocks[3]
     if (kv?.kind !== 'kv') throw new Error('kv')
     expect(kv.rows).toEqual([
+      { label: 'Date', value: 'September 10, 2026' },
       { label: 'Pinpoint location', value: 'N/A' },
       { label: 'Test method', value: DEFAULT_TEST_REPORT_SETTINGS.pinpointMethodDefault },
     ])
+  })
+
+  it('gas still dates the location column', () => {
+    const blocks = buildTestReportBlocks(emptyTestReportData('gas', '2026-09-10'), job, DEFAULT_TEST_REPORT_SETTINGS)
+    const cols = blocks[1]
+    if (cols?.kind !== 'columns') throw new Error('columns')
+    expect(cols.right.rows).toEqual([{ label: 'Date', value: 'September 10, 2026' }])
   })
 
   it('shows the gas sections only when they carry data, and totals the fixtures', () => {
