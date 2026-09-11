@@ -14,6 +14,7 @@
  * bid and everything else against the assumption, and the words say so. Pure.
  */
 import { JOB_BURN_DEFAULT_TARGET_MARGIN_PCT } from './jobBurn'
+import type { JobChargeEvent } from '../jobChargesTimeline'
 
 export type JobBudgetSource = 'bid' | 'typed' | 'assumed'
 
@@ -189,14 +190,30 @@ export function budgetWhyWords(args: { labor: ComponentBurn; materials: Componen
   const left = args.pctDone != null ? Math.max(0, 100 - Math.min(args.pctDone, 100)) : null
   const say = (name: string, b: ComponentBurn) => {
     if (b.budgetUsd == null) return
-    if (b.overUsd != null && b.overUsd > 0) parts.push(`${name} ${name === 'subs' ? 'are' : 'is'} $${args.fmt(b.overUsd)} over the estimate${left != null ? ` with ${Math.round(left)} % of the work left` : ''}`)
-    else if (b.aheadPts != null && b.aheadPts >= 5) parts.push(`${name} ${name === 'subs' ? 'are' : 'is'} ${Math.round(b.aheadPts)} points ahead of progress`)
-    else if (b.aheadPts != null && b.aheadPts <= -5) parts.push(`${name} ${name === 'subs' ? 'are' : 'is'} ${Math.round(-b.aheadPts)} points under`)
+    const verb = name === 'labor' ? 'is' : 'are'
+    if (b.overUsd != null && b.overUsd > 0) parts.push(`${name} ${verb} $${args.fmt(b.overUsd)} over the estimate${left != null ? ` with ${Math.round(left)} % of the work left` : ''}`)
+    else if (b.aheadPts != null && b.aheadPts >= 5) parts.push(`${name} ${verb} ${Math.round(b.aheadPts)} points ahead of progress`)
+    else if (b.aheadPts != null && b.aheadPts <= -5) parts.push(`${name} ${verb} ${Math.round(-b.aheadPts)} points under`)
   }
   say('materials', args.materials)
   say('labor', args.labor)
   say('subs', args.subs)
   if (parts.length === 0) return args.labor.budgetUsd == null && args.materials.budgetUsd == null && args.subs.budgetUsd == null ? 'No component budget to read against yet.' : 'Every component is on pace with the work.'
-  const s = parts.join(', and ')
+  const s = parts.length > 1 ? `${parts.slice(0, -1).join(', ')}, and ${parts[parts.length - 1]}` : parts[0]!
   return s.charAt(0).toUpperCase() + s.slice(1) + '.'
+}
+
+export type SpendByComponent = { teamUsd: number; subUsd: number; partsUsd: number; totalUsd: number }
+
+/** Spend to date by the three buckets Burn draws: team labor, sub labor, everything else (parts, cards, supply-house invoices, mileage). */
+export function spendByComponent(events: ReadonlyArray<Pick<JobChargeEvent, 'source' | 'amount'>>): SpendByComponent {
+  const s = { teamUsd: 0, subUsd: 0, partsUsd: 0, totalUsd: 0 }
+  for (const e of events) {
+    const amt = Number(e.amount) || 0
+    if (e.source === 'team_labor') s.teamUsd += amt
+    else if (e.source === 'sub_labor') s.subUsd += amt
+    else s.partsUsd += amt
+    s.totalUsd += amt
+  }
+  return s
 }
