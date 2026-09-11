@@ -35,7 +35,9 @@ function escapeHtml(s: string): string {
 
 export function testReportEmailSubject(reportLabel: string, address: string): string {
   const street = address.split('\n')[0]?.split(',')[0]?.trim() ?? ''
-  return street ? `${reportLabel} Test Report — ${street}` : `${reportLabel} Test Report`
+  // "Gas Test" and "Pinpoint Test" already say Test; "Sewer Pre-Test Hydrostatic" does not (v2.3326).
+  const title = /\bTest$/i.test(reportLabel.trim()) ? `${reportLabel.trim()} Report` : `${reportLabel.trim()} Test Report`
+  return street ? `${title} — ${street}` : title
 }
 
 export function buildTestReportEmail(input: TestReportEmailInput): TestReportEmail {

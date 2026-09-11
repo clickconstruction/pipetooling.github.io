@@ -33,8 +33,10 @@ describe('buildTestReportEmail', () => {
     expect(e.html).toContain('&lt;attached&gt;')
   })
 
-  it('subjects fall back without an address and use the street only', () => {
-    expect(testReportEmailSubject('Gas Test', '')).toBe('Gas Test Test Report')
-    expect(testReportEmailSubject('Gas Test', '4419 Duval Rd\nAustin TX')).toBe('Gas Test Test Report — 4419 Duval Rd')
+  it('subjects fall back without an address, use the street only, and never say "Test Test" (v2.3326)', () => {
+    expect(testReportEmailSubject('Gas Test', '')).toBe('Gas Test Report')
+    expect(testReportEmailSubject('Gas Test', '4419 Duval Rd\nAustin TX')).toBe('Gas Test Report — 4419 Duval Rd')
+    expect(testReportEmailSubject('Pinpoint Test', '12925 FM 20, Kingsbury, TX')).toBe('Pinpoint Test Report — 12925 FM 20')
+    expect(testReportEmailSubject('Sewer Pre-Test Hydrostatic', '112 Seidel St, Marion')).toBe('Sewer Pre-Test Hydrostatic Test Report — 112 Seidel St')
   })
 })
