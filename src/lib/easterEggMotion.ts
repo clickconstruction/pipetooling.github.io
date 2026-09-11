@@ -45,6 +45,10 @@ export type EggInput = {
   viewportH: number
   dtSec: number
   nowMs: number
+  /** v2.3282: per-egg play length (default PLAY_MS) — the visit is tunable from Settings. */
+  playMs?: number
+  /** v2.3282: multiplier on flee acceleration + speed cap (default 1). */
+  fleeScale?: number
 }
 
 /** Spawn just off a random side edge, at a random upper-half height. */
@@ -76,7 +80,7 @@ export function stepEgg(s: EggState, input: EggInput): EggState {
   if (phase === 'enter' && elapsed > M.ENTER_MS) {
     phase = 'play'
     phaseStartMs = input.nowMs
-  } else if (phase === 'play' && elapsed >= M.PLAY_MS) {
+  } else if (phase === 'play' && elapsed >= (input.playMs ?? M.PLAY_MS)) {
     phase = 'leave'
     phaseStartMs = input.nowMs
   } else if (phase === 'leave' && elapsed > M.LEAVE_MS) {
@@ -106,9 +110,10 @@ export function stepEgg(s: EggState, input: EggInput): EggState {
   let cap: number
   if (phase === 'play' && dm < M.FLEE_R) {
     const f = (M.FLEE_R - dm) / M.FLEE_R
-    ax = (dxm / (dm || 1)) * M.FLEE_ACCEL * (0.4 + f)
-    ay = (dym / (dm || 1)) * M.FLEE_ACCEL * (0.4 + f)
-    cap = M.FLEE_SPEED
+    const flee = input.fleeScale ?? 1
+    ax = (dxm / (dm || 1)) * M.FLEE_ACCEL * (0.4 + f) * flee
+    ay = (dym / (dm || 1)) * M.FLEE_ACCEL * (0.4 + f) * flee
+    cap = M.FLEE_SPEED * flee
   } else {
     const dx = targetX - cx
     const dy = targetY - cy

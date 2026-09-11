@@ -80,3 +80,26 @@ describe('stepEgg steering', () => {
     expect(stepEgg(s, input({ nowMs: 16, mouseX: 1300, mouseY: 850 })).facing).toBe(-1)
   })
 })
+
+describe('v2.3282 injectable tuning', () => {
+  it('playMs shortens or lengthens the play phase', () => {
+    let s = createEggState(VP.viewportW, VP.viewportH, 0, () => 0.4)
+    s = stepEgg(s, input({ nowMs: EGG_MOTION.ENTER_MS + 1 }))
+    const playStart = s.phaseStartMs
+    expect(stepEgg(s, input({ nowMs: playStart + 3001, playMs: 3000 })).phase).toBe('leave')
+    expect(stepEgg(s, input({ nowMs: playStart + 3001, playMs: 12000 })).phase).toBe('play')
+  })
+
+  it('fleeScale scales the flee acceleration', () => {
+    let s = createEggState(VP.viewportW, VP.viewportH, 0, () => 0.4)
+    s = stepEgg(s, input({ nowMs: EGG_MOTION.ENTER_MS + 1 }))
+    // Park him and put the cursor right on top of him.
+    const at = { ...s, x: 600, y: 400, vx: 0, vy: 0 }
+    const over = { mouseX: 600 + EGG_MOTION.SPRITE_W / 2 - 20, mouseY: 400 + EGG_MOTION.SPRITE_H / 2 }
+    // One frame from rest: the flee acceleration (and so the speed) scales linearly.
+    const full = stepEgg(at, input({ ...over, nowMs: s.phaseStartMs + 16 }))
+    const half = stepEgg(at, input({ ...over, fleeScale: 0.5, nowMs: s.phaseStartMs + 16 }))
+    expect(Math.hypot(full.vx, full.vy)).toBeGreaterThan(0)
+    expect(Math.hypot(half.vx, half.vy)).toBeCloseTo(Math.hypot(full.vx, full.vy) * 0.5, 6)
+  })
+})
