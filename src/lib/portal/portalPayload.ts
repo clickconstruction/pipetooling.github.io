@@ -35,6 +35,22 @@ export type PortalBill = {
   totalPaid: number
 }
 
+export type PortalTestReport = {
+  id: string
+  jobId: string
+  jobNumber: string
+  jobLabel: string
+  jobAddress: string | null
+  /** "Sewer Pre-Test Hydrostatic" · "Gas Test". */
+  reportLabel: string
+  title: string
+  result: 'pass' | 'fail' | null
+  testDateYmd: string
+  certifierName: string | null
+  certifierLicense: string | null
+  sentAt: string | null
+}
+
 export type PortalPayload = {
   company: PortalCompany
   customerName: string
@@ -52,6 +68,8 @@ export type PortalPayload = {
   slug: string | null
   /** Job contracts (Contract Desk PR 5): signed records and open signing links. */
   agreements: PortalAgreement[]
+  /** Test reports (v2.3304): SENT hydrostatic / pinpoint / gas reports on the company's jobs — the PDF opens through open-test-report-pdf. */
+  testReports: PortalTestReport[]
   /** Stage Plan PR 5: the stage sequence on jobs that share dates with this GC — the company's voice, never a name, no money. */
   stages: PortalJobStages[]
   /** Their Word PR 2: the latest pay-by date on record across the open bills (office-marked or the customer's own), null when none. */
@@ -186,9 +204,38 @@ export function parsePortalPayload(raw: unknown): PortalPayload | null {
     requestToken: typeof r.requestToken === 'string' && r.requestToken.trim() ? r.requestToken : null,
     slug: typeof r.slug === 'string' && r.slug.trim() ? r.slug.trim() : null,
     agreements,
+    testReports: parsePortalTestReports(r.testReports),
     stages: Array.isArray(r.stages) ? r.stages.map(parseJobStages).filter((x): x is PortalJobStages => x != null) : [],
     promise: parsePortalPromise(r.promise),
   }
+}
+
+/** Test reports (v2.3304): a row needs an id, a label and a civil date; everything else degrades to null. */
+export function parsePortalTestReports(raw: unknown): PortalTestReport[] {
+  if (!Array.isArray(raw)) return []
+  const out: PortalTestReport[] = []
+  for (const t of raw as Array<Record<string, unknown>>) {
+    if (t == null || typeof t !== 'object') continue
+    const id = typeof t.id === 'string' ? t.id.trim() : ''
+    const reportLabel = typeof t.reportLabel === 'string' ? t.reportLabel.trim() : ''
+    const testDateYmd = typeof t.testDateYmd === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(t.testDateYmd) ? t.testDateYmd : ''
+    if (!id || !reportLabel || !testDateYmd) continue
+    out.push({
+      id,
+      jobId: str(t.jobId),
+      jobNumber: str(t.jobNumber),
+      jobLabel: str(t.jobLabel, 'Job'),
+      jobAddress: typeof t.jobAddress === 'string' && t.jobAddress.trim() ? t.jobAddress : null,
+      reportLabel,
+      title: str(t.title, `${reportLabel} Test Report`),
+      result: t.result === 'pass' || t.result === 'fail' ? t.result : null,
+      testDateYmd,
+      certifierName: typeof t.certifierName === 'string' && t.certifierName.trim() ? t.certifierName : null,
+      certifierLicense: typeof t.certifierLicense === 'string' && t.certifierLicense.trim() ? t.certifierLicense : null,
+      sentAt: typeof t.sentAt === 'string' && t.sentAt ? t.sentAt : null,
+    })
+  }
+  return out
 }
 
 function parsePortalPromise(raw: unknown): PortalPayload['promise'] {

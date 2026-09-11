@@ -1,6 +1,6 @@
 # Test reports — the hydrostatic / gas report and its email, inside PipeTooling
 
-Status: **not started** · owner picked 2026-09-11: **dial A (office sends) · Malachi certifies · pay link in the same email** · mock-up [`mockup.html`](./mockup.html) (six panels: the flow today vs proposed, the Test report modal, the Send sheet, the automation dial, the paper, the portal card)
+Status: **built 2026-09-11 — PRs 1–5 (v2.3296 · v2.3298 · v2.3301 · v2.3303 · v2.3304) on `claude/test-reports-pr1-kernel` … `-pr5-portal`**; owner picked dial A (office sends) · Malachi certifies · pay link in the same email · show them in the portal. What remains (delete this file when the last one lands): **dial B** (auto-send on PASS with a Stripe bill and a GC email — needs a server-side pdf-lib render), a **GC picker** on the send sheet when the job has no `gc_customer_id` (today: type the address), **"All reports"** past a handful on the portal card, and **retiring plumbingtooling.com** once a month shows no visits (drop the modal's footer link + `buildClickToolingUrl`, archive `clickconstruction/plumbingtooling.github.io`). Mock-ups: [`mockup.html`](./mockup.html), [`mockup-portal.html`](./mockup-portal.html).
 
 Replaces the external report app at plumbingtooling.com (repo `clickconstruction/plumbingtooling.github.io`, renamed from `clicktooling.github.io` on 2026-09-11; ~2,900 lines of vanilla JS + Bootstrap, no backend). The Stages door to it is `buildClickToolingUrl` in `src/lib/jobs/jobAddressUrls.ts`.
 
