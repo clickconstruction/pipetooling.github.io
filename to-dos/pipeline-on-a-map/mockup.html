@@ -1,0 +1,269 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pipeline on a Map</title>
+</head>
+<body>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;600;700&family=Source+Serif+4:opsz,wght@8..60,600&display=swap">
+<style>
+  :root {
+    --bg: #f7f6f2; --surface: #ffffff; --ink: #1f2430; --ink-2: #4b5261; --ink-3: #7b8190; --line: #dcdad2; --line-2: #ecebe5;
+    --accent: #2563eb; --accent-bg: #e8effc;
+    --waiting: #d97706; --working: #2563eb; --rtb: #7c3aed; --billed: #ea580c; --paid: #16a34a; --collections: #dc2626;
+    --map: #eef1ea; --map-road: #ffffff; --map-water: #d7e5ef;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #15171c; --surface: #1d2027; --ink: #e9e7e0; --ink-2: #b6b3aa; --ink-3: #8a8880; --line: #343841; --line-2: #2a2d35;
+      --accent: #7aa2ff; --accent-bg: #1f2a44;
+      --map: #232a24; --map-road: #2f382f; --map-water: #1f2e3a;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #15171c; --surface: #1d2027; --ink: #e9e7e0; --ink-2: #b6b3aa; --ink-3: #8a8880; --line: #343841; --line-2: #2a2d35;
+    --accent: #7aa2ff; --accent-bg: #1f2a44;
+    --map: #232a24; --map-road: #2f382f; --map-water: #1f2e3a;
+  }
+  body { background: var(--bg); color: var(--ink); font-family: "Source Sans 3", "Segoe UI", system-ui, sans-serif; font-size: 16px; line-height: 1.5; }
+  main { max-width: 920px; margin: 0 auto; padding: 2.5rem 1.25rem 4rem; }
+  h1 { font-family: "Source Serif 4", Georgia, serif; font-weight: 600; font-size: 2rem; line-height: 1.15; margin: 0 0 .35rem; text-wrap: balance; }
+  h2 { font-family: "Source Serif 4", Georgia, serif; font-weight: 600; font-size: 1.35rem; margin: 2.4rem 0 .6rem; text-wrap: balance; }
+  h3 { font-size: 1rem; font-weight: 700; margin: 1.4rem 0 .4rem; }
+  p, li { max-width: 66ch; }
+  p { margin: .5rem 0; }
+  ul, ol { padding-left: 1.25rem; margin: .4rem 0; }
+  li { margin: .25rem 0; }
+  .lede { color: var(--ink-2); font-size: 1.05rem; margin-bottom: 1.5rem; }
+  .eyebrow { font-size: .72rem; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-3); font-weight: 700; }
+  table { border-collapse: collapse; width: 100%; font-size: .93rem; margin: .6rem 0 1rem; }
+  th, td { text-align: left; padding: .45rem .6rem; border-bottom: 1px solid var(--line-2); vertical-align: top; }
+  th { font-size: .74rem; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-3); font-weight: 700; }
+  td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .scroll { overflow-x: auto; }
+  code { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: .85em; background: var(--line-2); padding: .05em .35em; border-radius: 3px; }
+  .callout { border-left: 3px solid var(--accent); background: var(--accent-bg); padding: .6rem .9rem; border-radius: 0 6px 6px 0; margin: 1rem 0; }
+  .callout p { margin: .25rem 0; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+  @media (max-width: 640px) { .grid2 { grid-template-columns: 1fr; } }
+  .card { border: 1px solid var(--line); border-radius: 8px; background: var(--surface); padding: .8rem 1rem; }
+  .card h3 { margin-top: 0; }
+  .pr { display: grid; grid-template-columns: 5.2rem 1fr; gap: .2rem 1rem; align-items: baseline; margin: .9rem 0; }
+  .pr .tag { font-weight: 700; color: var(--accent); white-space: nowrap; }
+  .pr .files { color: var(--ink-3); font-size: .85rem; }
+  .chip { display: inline-block; font-size: .74rem; font-weight: 600; border-radius: 999px; padding: 0 .55em; border: 1px solid currentColor; line-height: 1.5; vertical-align: middle; }
+  .decision { border: 1px solid var(--line); border-radius: 8px; padding: .7rem .9rem; margin: .6rem 0; background: var(--surface); }
+  .decision b { display: block; margin-bottom: .2rem; }
+  .decision .rec { color: var(--accent); font-weight: 600; }
+  /* mock-up */
+  .mock { border: 1px solid var(--line); border-radius: 8px; background: var(--surface); padding: .7rem .85rem; margin: 1rem 0 1.4rem; font-size: .82rem; }
+  .mock .hdr { display: flex; justify-content: space-between; align-items: center; gap: .5rem; flex-wrap: wrap; margin-bottom: .5rem; }
+  .mock .hdr b { font-size: .98rem; }
+  .mock .chips { display: flex; gap: .3rem; flex-wrap: wrap; }
+  .mock .link { color: var(--accent); }
+  .mock .body { display: grid; grid-template-columns: 3fr 2fr; gap: .6rem; }
+  @media (max-width: 640px) { .mock .body { grid-template-columns: 1fr; } }
+  .mock svg { width: 100%; height: auto; border-radius: 4px; display: block; }
+  .rail h4 { margin: 0 0 .3rem; font-size: .66rem; letter-spacing: .07em; text-transform: uppercase; color: var(--ink-3); }
+  .rail .buckets { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: .35rem; margin-bottom: .55rem; }
+  .rail .bucket { border: 1px solid var(--line); border-radius: 6px; padding: .3rem .45rem; line-height: 1.3; }
+  .rail .bucket.on { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+  .rail .bucket small { color: var(--ink-3); display: block; }
+  .rail .row { display: flex; justify-content: space-between; gap: .5rem; padding: .15rem 0; border-bottom: 1px solid var(--line-2); }
+  .rail .row span:last-child { color: var(--ink-3); white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .asof { margin-top: .6rem; display: flex; align-items: center; gap: .6rem; flex-wrap: wrap; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); padding: .4rem .7rem; }
+  .asof .btn { border: 1px solid var(--line); border-radius: 6px; padding: .1rem .5rem; background: var(--surface); font-weight: 600; }
+  .asof .date { font-weight: 700; font-variant-numeric: tabular-nums; }
+  .asof .track { flex: 1 1 10rem; height: 6px; border-radius: 3px; background: var(--line); position: relative; min-width: 8rem; }
+  .asof .track i { position: absolute; left: 62%; top: -5px; width: 16px; height: 16px; border-radius: 50%; background: var(--accent); }
+  .asof .jump { border: 1px solid var(--line); border-radius: 999px; padding: 0 .5rem; font-size: .74rem; }
+  .asof .jump.on { border-color: var(--accent); color: var(--accent); font-weight: 700; }
+  .since { font-size: .8rem; color: var(--ink-2); margin-top: .45rem; }
+  .since b { color: var(--ink); }
+</style>
+<main>
+  <div class="eyebrow">Plan · Jobs → Pipeline · 2026-09-12</div>
+  <h1>Pipeline on a Map</h1>
+  <p class="lede">The Bid Board's map, moved to the top of the Pipeline, plus one thing the bid map does not have: a slider that rewinds the map to any day since the Pipeline started recording moves.</p>
+
+  <h2>What we keep from the Bids map, and why it works</h2>
+  <p>The Bid Board card (v2.3162 → v2.3251) is productive for four reasons that carry straight over:</p>
+  <ul>
+    <li><b>It is a second view of the list, never a filter on it.</b> Pins follow the search and the trade pill; chips toggle pins only. On the Pipeline the pins will follow the search box, the GC / development / account-man filters and hidden groups.</li>
+    <li><b>A pin lands you on the row.</b> Click a pin, the row lights below and the popup carries Open, Edit, Directions. The Pipeline already has a row-jump mechanism (the job-number jump chip) to reuse.</li>
+    <li><b>The empty land became numbers.</b> The rail beside the map (v2.3206) turns distance into three buckets with counts and dollars, and lists what is due nearest first.</li>
+    <li><b>Everything underneath is shared.</b> The two canvases (Leaflet and Google), the office anchor with 25 / 50 mile rings, the geocode cache hook, clustering, Fit all, Hide map, the phone bar. None of that is rewritten; the new card is a kernel plus a component that composes them.</li>
+  </ul>
+
+  <h2>The card, drawn</h2>
+  <div class="mock" aria-label="Mock-up of the Pipeline map card">
+    <div class="hdr">
+      <div><b>Jobs on a map</b> <span style="color:var(--ink-3)">· follows the search and the filters</span> &nbsp; <span class="chip" style="color:var(--accent)">▶ Play</span></div>
+      <div class="chips">
+        <span class="chip" style="color:var(--waiting)">● Waiting 23</span>
+        <span class="chip" style="color:var(--working)">● Working 30</span>
+        <span class="chip" style="color:var(--rtb)">● Ready to bill 6</span>
+        <span class="chip" style="color:var(--billed)">● Billed 53</span>
+        <span class="chip" style="color:var(--ink-3);opacity:.5">○ Paid 723</span>
+        <span class="link">Fit all</span> <span class="link">Cluster</span> <span class="link">Hide map</span>
+      </div>
+    </div>
+    <div class="body">
+      <svg viewBox="0 0 540 300" role="img" aria-label="Map with colored job pins, an office diamond and two dashed rings">
+        <rect width="540" height="300" fill="var(--map)"/>
+        <path d="M0 210 Q120 170 260 230 T540 190 L540 300 L0 300Z" fill="var(--map-water)"/>
+        <path d="M0 120 L540 60 M60 0 L200 300 M300 0 L380 300 M0 250 L540 240" stroke="var(--map-road)" stroke-width="5" fill="none"/>
+        <g stroke="#1e3a8a" stroke-dasharray="5 4" fill="none" opacity=".7">
+          <circle cx="250" cy="150" r="62"/><circle cx="250" cy="150" r="124"/>
+        </g>
+        <rect x="243" y="143" width="14" height="14" transform="rotate(45 250 150)" fill="#1e3a8a"/>
+        <text x="262" y="146" font-size="11" fill="var(--ink)">Office</text>
+        <g stroke="#fff" stroke-width="1.5">
+          <circle cx="205" cy="120" r="7" fill="var(--working)"/><circle cx="228" cy="188" r="7" fill="var(--working)"/><circle cx="292" cy="112" r="7" fill="var(--working)"/>
+          <circle cx="170" cy="160" r="7" fill="var(--waiting)"/><circle cx="318" cy="176" r="7" fill="var(--waiting)"/>
+          <circle cx="272" cy="214" r="7" fill="var(--rtb)"/>
+          <circle cx="140" cy="95" r="7" fill="var(--billed)"/><circle cx="352" cy="128" r="7" fill="var(--billed)"/>
+          <circle cx="95" cy="222" r="7" fill="var(--billed)" stroke="var(--collections)" stroke-width="3"/>
+          <circle cx="430" cy="70" r="7" fill="var(--working)"/><circle cx="470" cy="248" r="7" fill="var(--billed)"/>
+          <circle cx="64" cy="48" r="7" fill="var(--waiting)"/>
+        </g>
+        <circle cx="228" cy="188" r="11" fill="none" stroke="#1d4ed8" stroke-width="2"/>
+        <g transform="translate(236 196)">
+          <rect width="176" height="70" rx="5" fill="var(--surface)" stroke="var(--line)"/>
+          <text x="8" y="16" font-size="10.5" font-weight="700" fill="var(--ink)">J1019 · Vasquez pretest</text>
+          <text x="8" y="30" font-size="9.5" fill="var(--ink-3)">Done Right Foundation · 173 Atlantis, Kyle</text>
+          <text x="8" y="43" font-size="9.5" fill="var(--ink-3)">Working · Rough-in 60% · 12 mi</text>
+          <rect x="8" y="50" width="48" height="13" rx="3" fill="none" stroke="var(--accent)"/><text x="14" y="60" font-size="8.5" fill="var(--accent)">Open job</text>
+          <rect x="62" y="50" width="36" height="13" rx="3" fill="none" stroke="var(--accent)"/><text x="70" y="60" font-size="8.5" fill="var(--accent)">Edit</text>
+          <rect x="104" y="50" width="56" height="13" rx="3" fill="none" stroke="var(--accent)"/><text x="109" y="60" font-size="8.5" fill="var(--accent)">Directions</text>
+        </g>
+      </svg>
+      <div class="rail">
+        <h4>By distance from the office · pinned jobs</h4>
+        <div class="buckets">
+          <div class="bucket on">Under 25 mi<br><b>58</b> · $412k<small>9 to ask for</small></div>
+          <div class="bucket on">25–50 mi<br><b>31</b> · $188k<small>3 to ask for</small></div>
+          <div class="bucket on">Over 50 mi<br><b>23</b> · $96k<small>1 to ask for</small></div>
+        </div>
+        <h4>Ask for money · nearest first</h4>
+        <div class="row"><span>J1014 · Summit GC bldg B <span class="chip" style="color:var(--billed)">Billed 46 d</span></span><span>8 mi</span></div>
+        <div class="row"><span>J996 · Coe remodel <span class="chip" style="color:var(--rtb)">Ready to bill</span></span><span>11 mi</span></div>
+        <div class="row"><span>J960 · Knight water leak <span class="chip" style="color:var(--billed)">Billed 30 d</span></span><span>19 mi</span></div>
+        <div class="row"><span>J945 · Aurora pretest <span class="chip" style="color:var(--billed)">Billed 22 d</span></span><span>27 mi</span></div>
+        <div class="row" style="border:0"><span style="color:var(--ink-3)">+ 9 more</span><span></span></div>
+        <p style="margin:.5rem 0 0;color:var(--ink-3)">112 pinned · $696k to collect · 3 jobs still placing…</p>
+      </div>
+    </div>
+    <div class="asof">
+      <span class="btn">▶ Play</span>
+      <span style="color:var(--ink-3)">As of</span>
+      <span class="date">Tue, Jun 2 · 102 days ago</span>
+      <div class="track"><i></i></div>
+      <span class="jump">Today</span><span class="jump">1 wk</span><span class="jump">1 mo</span><span class="jump on">3 mo</span><span class="jump">6 mo</span><span class="jump">Feb 22</span>
+    </div>
+    <p class="since">Since Jun 2: <b>+41 jobs started</b> · <b>38 billed</b> · <b>52 paid</b> · <b>2 sent to collections</b>. Pins wear the status they had on that day; jobs that did not exist yet are not drawn.</p>
+  </div>
+  <p>Desktop: map left, rail right, the As-of row underneath the pair. Phone: chips scroll sideways, map 220 px, the rail and the As-of row stack below, a tapped pin becomes a bar under the map (the canvases already do this).</p>
+
+  <h2>What is different about jobs</h2>
+  <div class="grid2">
+    <div class="card">
+      <h3>Sections and colors</h3>
+      <p>Pipeline sections, not bid sections: <span class="chip" style="color:var(--waiting)">Waiting</span> <span class="chip" style="color:var(--working)">Working</span> <span class="chip" style="color:var(--rtb)">Ready to bill</span> <span class="chip" style="color:var(--billed)">Billed</span> <span class="chip" style="color:var(--paid)">Paid</span>. A job in collections keeps its Billed color and wears a red ring, the way an overdue bid wears one on the Bid Board. <b>Paid starts off</b> (723 pins would bury the 112 live ones), exactly as Lost starts off on the bid map.</p>
+    </div>
+    <div class="card">
+      <h3>The popup</h3>
+      <p>Number and name, customer or GC (whoever the bills go to), status with the current stage and % done, address with miles from the office, and what is owed on a Billed job. Buttons: <b>Open job</b> (the job window), <b>Edit</b> (the window's Edit tab), <b>Directions</b>.</p>
+    </div>
+    <div class="card">
+      <h3>The rail</h3>
+      <p>Same three distance buckets, but the second number is <b>dollars still to collect</b> and the sub-line is <b>N to ask for</b> (Ready to bill + Billed). The list under it is <b>Ask for money · nearest first</b>: Ready-to-bill and Billed jobs, longest-waiting first, then nearest. Tapping a row selects the pin and lights the Pipeline row.</p>
+    </div>
+    <div class="card">
+      <h3>Coverage today</h3>
+      <p>All 829 jobs have an address. 542 are already in the geocode cache; the other 287 place themselves through the existing geocode function the first time the card opens (twenty per request, painting as each batch returns). No "no map location" sheet is needed; a geocode miss just lists the job with a link to its row.</p>
+    </div>
+  </div>
+
+  <h2>The addition: scroll back in time</h2>
+  <p>The precedent is the <b>As of</b> slider on Job Summary → Timeline (v2.2807): a slider walks back a day at a time, Play walks forward, jump chips for common distances, and a strip that says what changed since. The map takes the same control and the same words, so nobody learns a second grammar.</p>
+
+  <h3>What "as of a day" means for a pin</h3>
+  <ul>
+    <li><b>Its color is the status the job had on that day</b>, from the recorded moves: the last move at or before the day wins. Before a job's first recorded move it takes that move's <i>from</i> status. A job created after the day is not drawn.</li>
+    <li><b>The chips count that day's world.</b> Waiting 41 · Working 28 · … as they stood then, so the legend doubles as the day's Pipeline headline.</li>
+    <li><b>The rail follows.</b> Dollars to collect and "to ask for" are computed from the day's statuses and the bills that had been sent by then.</li>
+    <li><b>The "since then" strip</b> counts moves after the day: started, billed, paid, collections. It is the Timeline strip, reworded for jobs.</li>
+    <li><b>Play</b> walks forward one day per tick until today; any drag, chip or pin click pauses it. The section tour from the bid map (v2.3208) is <i>not</i> ported; the time walk is this card's Play.</li>
+  </ul>
+
+  <h3>Where the history comes from</h3>
+  <div class="scroll"><table>
+    <tr><th>Source</th><th class="num">Rows</th><th>Covers</th><th>Used for</th></tr>
+    <tr><td><code>job_status_events</code> (job, from, to, changed_at)</td><td class="num">2,561 on 786 jobs</td><td>Feb 22 → today</td><td>Status on the day; the since-then counts</td></tr>
+    <tr><td><code>jobs_ledger.created_at</code></td><td class="num">829</td><td>All jobs</td><td>Whether the job existed on the day</td></tr>
+    <tr><td><code>jobs_ledger_invoices.billed_at</code>, payments</td><td class="num">490 bills · 661 payments</td><td>Feb 27 → today (bills back to 2020)</td><td>Dollars to collect as of the day</td></tr>
+    <tr><td><code>clock_sessions.work_date</code> (optional, PR 4)</td><td class="num">2,033 on 186 jobs</td><td>Mar 15 → today</td><td>"A crew was here that day" pulse</td></tr>
+  </table></div>
+  <div class="callout">
+    <p><b>The floor is Feb 22, 2026</b>, the day the Pipeline started recording moves (the 551 jobs created in Q1 are the import). The slider stops there and the card says so: <i>History starts Feb 22, 2026, when the Pipeline began recording moves.</i> Older bills exist but cannot tell us a job's status on a day, so we do not pretend.</p>
+  </div>
+
+  <h3>Loading it without slowing the Pipeline</h3>
+  <ul>
+    <li>Nothing extra loads until <b>As of</b> is switched on. Then one light read of every job (id, numbers, name, address, status, created_at, GC, revenue) and the full move table, both paged past the 1,000-row cap, kept for the session in the same style as the day-ledger cache (<code>jobDayLedgerSessionCache</code>).</li>
+    <li>The Pipeline's own list is scoped (paid jobs load on demand), so the rewound map draws from this history set, not from the board's rows. Today's view still draws from the board's filtered rows so it stays a second view of the list.</li>
+    <li>Coordinates come from the same geocode hook; a rewound day only adds addresses the cache has not seen.</li>
+  </ul>
+
+  <h2>PR train</h2>
+  <p>Four small PRs, each shippable alone, each with its kernel tests, render smoke, help guide, release note and docs fragment. No migration and no edge-function change anywhere in the train.</p>
+
+  <div class="pr"><span class="tag">PR 1</span><div><b>Jobs on a map</b> — the card at the top of the Pipeline, today's view.
+    <ul>
+      <li>Kernel <code>src/lib/jobs/jobsMap.ts</code>: board rows → map jobs (label <code>J1019 · Vasquez pretest</code>, section, collections ring, payer name, address key, miles), pin resolution, legend, visibility with Paid off, popup lines, unmapped line, hide / cluster preferences.</li>
+      <li><code>JobsMapCard.tsx</code> composed from the shared canvases, <code>useOfficeAnchor</code>, <code>useAddressGeocodeCoords</code>, the section chips, Fit all, Cluster, Hide / Show, phone bar. Mounts in <code>JobsStagesTab</code> under the toolbar row and above the money strip; renders nothing with no pinnable job.</li>
+      <li>Map → row: pin click lights and scrolls the Pipeline row through the existing jump-chip path; popup buttons open the job window (Job / Edit tabs) and Directions.</li>
+      <li>Guide <i>see the pipeline on a map</i>. Tests: kernel (about 12) and render smoke (about 6, mirroring the bid card's).</li>
+    </ul>
+    <span class="files">Mirrors bidBoardMap.ts · BidBoardMapCard.tsx · BidsBidBoardTab mount</span></div></div>
+
+  <div class="pr"><span class="tag">PR 2</span><div><b>The rail</b> — distance buckets with dollars to collect and "to ask for", the Ask-for-money list, the pinned total; row hover on the Pipeline pulses the pin (the v2.3251 hover store, reused).
+    <br><span class="files">jobsMapRail.ts · JobsMapRail.tsx · hover store wiring in the Pipeline rows</span></div></div>
+
+  <div class="pr"><span class="tag">PR 3</span><div><b>As of</b> — the addition.
+    <ul>
+      <li>Kernel <code>jobsMapAsOf.ts</code>: status on a day from the moves, existed-on-day, day legend, since-then counts, jump chips, the Feb 22 floor.</li>
+      <li>Loader <code>loadJobsMapHistory.ts</code>: paged reads of jobs, moves, bills and payments; session cache with a TTL.</li>
+      <li>The As-of row (toggle, Play / Pause, date, slider, jumps) and the since-then strip; pins, chips and rail recolor to the day. Tests on the kernel's day arithmetic and boundaries (a move at 23:59, a job created the same day, the floor). Guide section <i>rewind the map</i>.</li>
+    </ul>
+    <span class="files">Precedent: JobSummaryTimelineView As-of row · jobDayLedgerSessionCache</span></div></div>
+
+  <div class="pr"><span class="tag">PR 4</span><div><b>Crews on the day</b> (optional) — a pulse on every pin that had a clock session on the shown day, and a rail line <i>5 crews out · 4 jobs</i>. Turns the rewind into "where were we on June 2", not only "what was the board".
+    <br><span class="files">clock_sessions by work_date, paged; reuses the day-ledger loader's session select</span></div></div>
+
+  <h2>Decisions for you</h2>
+  <div class="decision"><b>Shown or collapsed by default on the Pipeline?</b> The bid map shows by default and remembers Hide per device. The Pipeline is open all day in the office. <span class="rec">Recommend: shown, remembered per device, same as Bids.</span></div>
+  <div class="decision"><b>Which sections start on?</b> Waiting, Working, Ready to bill, Billed on; Paid off. <span class="rec">Recommend as listed.</span> A rewound day still shows a now-paid job in the color it had then, because the chips govern the day's status, not today's.</div>
+  <div class="decision"><b>Dollars on the rail.</b> "To collect" is billed minus paid plus ready-to-bill exposure, the Pipeline's own numbers. The Pipeline is office-only by RLS, so this stays inside the owner-only line already drawn.</div>
+  <div class="decision"><b>Play speed.</b> The Timeline walks a day per tick. <span class="rec">Recommend: one day per 150 ms, so six months plays in about 30 seconds.</span></div>
+  <div class="decision"><b>Rail list.</b> "Ask for money" (Ready to bill + Billed, longest first) is my pick for the list under the buckets. Alternatives: "Started this week", or "Working past billable progress" from the money strip.</div>
+
+  <h2>Not in this train</h2>
+  <ul>
+    <li>The bid map's section tour (Play through the sections) — Play means time here.</li>
+    <li>Pin size by revenue, area select for site walks, and the office Map page's polygon tools.</li>
+    <li>History before Feb 22, 2026.</li>
+  </ul>
+
+  <h2>Order of work if you say go</h2>
+  <ol>
+    <li>Mock-up of the card at desktop and phone width on live data, then your pick on the five decisions above.</li>
+    <li>PR 1, verified on dev against prod data and on clicktooling.com after merge.</li>
+    <li>PR 2 and PR 3 as separate PRs on fresh main, each verified the same way; PR 4 only if you want the crew layer.</li>
+  </ol>
+</main>
+</body>
+
+</html>
