@@ -35,6 +35,10 @@ Everyone sits on one axis. Bars grow to the right of the zero line for profit an
 
 Change the axis with **Rank by**: profit after overhead, profit per hour, gross revenue, or net revenue. Type in **Search by name** to narrow the list.
 
+## Coming here from the Bridge
+
+A name on the Bridge's Vectors panel opens this tab on that pay week with the person already expanded. The address carries the week and the name, so it can be shared; the tab reads it once and then behaves like any other visit — change the period or click another name freely.
+
 ## Where a number comes from
 
 Click a name. The drawer beside the list shows the formula with this period's figures:

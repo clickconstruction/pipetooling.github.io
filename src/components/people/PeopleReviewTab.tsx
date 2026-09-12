@@ -20,6 +20,7 @@ import { decimalToHms } from '../../lib/people/hoursGridTime'
 import { laborJobMatchesPerson } from '../../lib/people/laborJobPersonMatch'
 import { laborJobSubCost } from '../../lib/jobs/subLaborCost'
 import { reviewJobEarned, reviewShareRatio } from '../../lib/people/reviewEarned'
+import { parseReviewDoor, reviewDoorPersonIndex } from '../../lib/people/reviewDoor'
 import { computeReviewDateRange, ymdAddYears, type ReviewPeriod as ReviewPeriodKind } from '../../lib/people/reviewDateRange'
 import type { Person, UserRow } from '../../hooks/usePeopleRoster'
 import {
@@ -209,6 +210,22 @@ export default function PeopleReviewTab({
   // when the user first selects Custom from the dropdown (see UI below).
   const [reviewCustomRangeStart, setReviewCustomRangeStart] = useState<string>('')
   const [reviewCustomRangeEnd, setReviewCustomRangeEnd] = useState<string>('')
+  // The Vectors → Review door (v2.3366): `?tab=review&person=&from=&to=` sets the
+  // period once and selects the person once the roster is in. Read at mount so a
+  // later period change or click is never overridden.
+  const reviewDoorRef = useRef<{ person: string; applied: boolean } | null>(
+    typeof window === 'undefined' ? null : (() => { const d = parseReviewDoor(window.location.search); return d ? { person: d.person, applied: false } : null })(),
+  )
+  const [reviewDoorPeriodApplied, setReviewDoorPeriodApplied] = useState(false)
+  useEffect(() => {
+    if (reviewDoorPeriodApplied) return
+    const d = typeof window === 'undefined' ? null : parseReviewDoor(window.location.search)
+    setReviewDoorPeriodApplied(true)
+    if (!d) return
+    setReviewPeriod('custom')
+    setReviewCustomRangeStart(d.from)
+    setReviewCustomRangeEnd(d.to)
+  }, [reviewDoorPeriodApplied])
   const [reviewLoading, setReviewLoading] = useState(false)
   // Per-person panel failure surface + stale-response guard. The Team Summary
   // path has had `teamSummaryReqIdRef` for this since extraction; the panel
@@ -648,6 +665,13 @@ export default function PeopleReviewTab({
         .sort((a, b) => a.localeCompare(b)),
     [payConfig, archivedUserNames, externalOnlyPayConfigNamesLower]
   )
+  useEffect(() => {
+    const door = reviewDoorRef.current
+    if (!door || door.applied || showPeopleForReview.length === 0) return
+    const idx = reviewDoorPersonIndex(showPeopleForReview, door.person)
+    door.applied = true
+    if (idx >= 0) setSelectedReviewPersonIndex(idx)
+  }, [showPeopleForReview])
   // Stale-closure-safe mirror for the inline Team Summary callbacks
   // (handleInlineTogglePerson is created with `useCallback([])`) so it
   // can read the latest roster without a re-create churn.

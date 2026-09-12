@@ -1,6 +1,6 @@
 # People → Review folds into the Bridge
 
-Status: in progress · step 1 shipped v2.3360 (one earned convention) · step 2 next (the Vectors row is the door) · step 3 gated (retire Team Summary once the tables agree for a few weeks)
+Status: in progress · step 1 v2.3360 (#3091) · step 2 v2.3366 the deep-link door · step 3 gated (retire Team Summary once the tables agree for a few weeks)
 
 ## The ask, in the owner's words
 
