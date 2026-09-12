@@ -24,6 +24,9 @@ import {
   type LegalMatterRow,
 } from '../../../lib/legal/legalMatters'
 import { buildLegalPacketPrintHtml } from '../../../lib/legal/legalPacketPrint'
+import { FirmMatterView } from './LegalFirmMatterView'
+import type { FirmTab } from './legalFirmMatterViewShared'
+import { INK as PORTAL_INK, MUTED as PORTAL_MUTED, PAPER as PORTAL_PAPER, PORTAL_FONT } from '../../../lib/portal/portalTheme'
 import { openHtmlPrintWindow } from '../../../lib/jobsDocuments/printWindow'
 import { todayYmdInAppTz } from '../../../utils/dateUtils'
 import { useEditCustomerModal } from '../../../contexts/EditCustomerModalContext'
@@ -193,6 +196,9 @@ export default function LegalDeskModal(props: LegalDeskModalProps) {
   const [busy, setBusy] = useState(false)
   const [answerFor, setAnswerFor] = useState<{ entryId: string; text: string } | null>(null)
   const [emailsOpen, setEmailsOpen] = useState(false)
+  /** The Mark attorney ready sheet's preview: the firm's own view of this account, held entries left out (v2.3363). */
+  const [previewOpen, setPreviewOpen] = useState(false)
+  const [previewTab, setPreviewTab] = useState<FirmTab>('account')
 
   useEffect(() => {
     if (!open) return
@@ -545,7 +551,7 @@ export default function LegalDeskModal(props: LegalDeskModalProps) {
           <div role="dialog" aria-modal="true" aria-label="Mark attorney-ready" onClick={(e) => e.stopPropagation()} style={{ background: 'var(--surface)', color: 'var(--text)', borderRadius: 10, padding: 18, maxWidth: 620, width: '100%', boxShadow: '0 12px 40px rgba(0,0,0,0.28)' }}>
             <h3 style={{ margin: '0 0 8px', fontSize: '1rem' }}>Mark {selected.name} attorney-ready?</h3>
             {!firm ? (
-              <p style={{ fontSize: '0.86rem', color: '#b42318' }}>No firm is set up. Add the collections law firm on Settings → Jobs &amp; dispatch first.</p>
+              <p style={{ fontSize: '0.86rem', color: '#b42318' }}>No firm is set up. Add the collections law firm on Settings → Jobs &amp; billing first.</p>
             ) : (
               <>
                 <p style={{ ...MUTED, fontSize: '0.84rem', margin: '0 0 8px' }}>
@@ -554,6 +560,10 @@ export default function LegalDeskModal(props: LegalDeskModalProps) {
                 </p>
                 {packet.worth.verdict === 'not worth it' ? <p style={{ fontSize: '0.84rem', color: '#b42318', margin: '0 0 8px' }}><b>Click keeps {formatLegalMoney(packet.worth.net)}.</b> The firm’s cut and costs eat what is left. Write down / stop pursuing is the other exit.</p> : null}
                 {packet.readiness.stops ? <p style={{ fontSize: '0.84rem', color: '#b42318', margin: '0 0 8px' }}><b>{packet.readiness.stops} red gap{packet.readiness.stops === 1 ? '' : 's'} still open</b> — {packet.gaps.filter((g) => g.severity === 'stop').map((g) => g.label).join('; ')}. You can mark anyway; the packet says so on its cover sheet.</p> : null}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, margin: '0 0 10px' }}>
+                  <button type="button" onClick={() => { setPreviewTab('account'); setPreviewOpen(true) }} style={btn}>Preview what the firm sees ↗</button>
+                  <span style={{ ...MUTED, fontSize: '0.78rem' }}>Their page for this account, all five tabs, held entries left out.</span>
+                </div>
                 <label style={{ fontSize: '0.84rem', display: 'block' }}>Handling person at the firm<input value={sheet.handling} onChange={(e) => setSheet({ ...sheet, handling: e.target.value })} placeholder={firm.handling_name || 'Who at the firm takes it'} style={sheetInput} /></label>
                 <div style={{ fontSize: '0.72rem', letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-muted)', display: 'flex', justifyContent: 'space-between' }}><span>Who hears about it, by their own rules</span><button type="button" onClick={() => setEmailsOpen(true)} style={{ ...btn, height: 22, fontSize: '0.7rem', textTransform: 'none', letterSpacing: 0 }}>Firm’s emails ↗</button></div>
                 {recipients.length ? recipients.map((r) => <div key={r.email} style={{ fontSize: '0.84rem', padding: '5px 0', borderTop: '1px solid var(--border-subtle)' }}>{pill(r.bucket === 'now' ? 'Email now' : r.bucket === 'digest' ? 'In their digest' : r.bucket === 'unconfirmed' ? 'Not confirmed' : 'Not emailed', r.bucket === 'now' ? 'legal' : r.bucket === 'unconfirmed' ? 'warn' : 'neutral')} <b>{r.name}</b> <span style={MUTED}>{r.email} · {r.why}</span></div>) : <p style={{ ...MUTED, fontSize: '0.82rem' }}>Nobody at the firm is on the list — nobody is emailed; the matter still appears on their portal.</p>}
@@ -565,6 +575,31 @@ export default function LegalDeskModal(props: LegalDeskModalProps) {
               <button type="button" onClick={() => setSheet(null)} style={btn}>Cancel</button>
               <button type="button" onClick={() => void confirmReady()} disabled={!firm || busy} style={{ ...btnPrimary, opacity: !firm || busy ? 0.5 : 1 }}>{packet.readiness.stops ? 'Mark ready anyway' : 'Mark attorney ready'}</button>
             </div>
+          </div>
+        </div>
+      ) : null}
+
+      {previewOpen && sheet?.kind === 'ready' && selected && packet && firm ? (
+        <div role="presentation" onClick={() => setPreviewOpen(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: overlayZIndex + 12, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 14 }}>
+          <div role="dialog" aria-modal="true" aria-label="What the firm will see" data-theme="light" onClick={(e) => e.stopPropagation()} style={{ background: PORTAL_PAPER, color: PORTAL_INK, fontFamily: PORTAL_FONT, borderRadius: 8, padding: 16, maxWidth: 980, width: '100%', maxHeight: '92vh', overflow: 'auto', boxShadow: '0 12px 40px rgba(0,0,0,0.35)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10, marginBottom: 12 }}>
+              <div>
+                <div style={{ fontSize: 15, fontWeight: 700 }}>What {firm.name} will see the moment you confirm</div>
+                <div style={{ fontSize: 12.5, color: PORTAL_MUTED }}>
+                  Preview only — nothing is released yet. Same five tabs, same records, built the way their page builds them.
+                  {packet.theirWord.heldCount ? <> <b style={{ color: PORTAL_INK }}>{packet.theirWord.heldCount} held entr{packet.theirWord.heldCount === 1 ? 'y is' : 'ies are'} left out.</b></> : ' Nothing is held back.'}
+                  {sheet.note.trim() ? ' Your note for the firm shows under the matter.' : ''}
+                </div>
+              </div>
+              <button type="button" onClick={() => setPreviewOpen(false)} style={{ ...btn, color: PORTAL_INK, borderColor: PORTAL_MUTED, background: 'transparent' }}>Close preview</button>
+            </div>
+            <FirmMatterView
+              packet={packet}
+              matter={{ payerName: selected.name, noteToFirm: sheet.note, contracts: [], entries: matter ? (legal?.entriesByMatter.get(matter.id) ?? []) : [] }}
+              tab={previewTab}
+              onTab={setPreviewTab}
+              onPrint={printPacket}
+            />
           </div>
         </div>
       ) : null}

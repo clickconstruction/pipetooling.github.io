@@ -17,6 +17,7 @@ function makeUnion(partial: Partial<TeamReviewUnion>): TeamReviewUnion {
     laborItemsByJobId: new Map(),
     laborCostByJobId: new Map(),
     teamLaborCostByJobId: new Map(),
+    teamLaborHoursByJobId: new Map(),
     partsCostByJobId: new Map(),
     invoiceAmountByJob: {},
     billedMaterialsByJobId: new Map(),
@@ -86,9 +87,9 @@ describe('derivePersonTeamSummary', () => {
     const bobJob = bob.grossBreakdown.jobs[0]
     expect(aliceJob?.costInPeriod).toBeCloseTo(30, 10)
     expect(bobJob?.costInPeriod).toBeCloseTo(30, 10)
-    // The two halves reassemble the whole sheet: allocated revenue sums to
-    // the full-cost allocation (ratio 60/60 = 1 -> valueCreated 1000).
-    expect(alice.gross + bob.gross).toBeCloseTo(1000, 10)
+    // v2.3360: a sheet is a job cost, not a share of revenue — no clock hours, no gross.
+    expect(aliceJob?.ratio).toBe(0)
+    expect(alice.gross + bob.gross).toBe(0)
   })
 
   it('keeps single-assignee sheets at full weight (share 1 — answer-preserving)', () => {
@@ -137,39 +138,58 @@ describe('derivePersonTeamSummary', () => {
     expect(row.grossBreakdown.jobs.map((j) => j.hcp)).toEqual(['J1'])
   })
 
-  it('allocates revenue by the cost-based ratio costInPeriod / totalLaborOnJob', () => {
+  it('v2.3360: allocates revenue by the hours share — crew clock hours in the period ÷ the job’s lifetime crew hours — and a sheet earns no share', () => {
     const union = makeUnion({
       periodLaborRows: [
         { id: 'lr1', job_date: '2026-02-01', address: 'x', job_number: 'JX', labor_rate: 10, distance_miles: 0, assigned_to_name: 'Bob' },
       ],
-      // 2 units * 1 hr/unit = 2 hrs; laborCost = 2 * $10 = $20 -> costInPeriod
-      laborItemsByJobId: new Map([
-        ['lr1', [{ count: 2, hrs_per_unit: 1, is_fixed: false }]],
-      ]),
+      laborItemsByJobId: new Map([['lr1', [{ count: 2, hrs_per_unit: 1, is_fixed: false }]]]),
+      periodCrewRows: [{ work_date: '2026-02-01', person_name: 'Bob', job_assignments: [{ job_id: 'job-X', pct: 100 }] }],
+      crewByDatePerson: { '2026-02-01:Bob': { job_assignments: [{ job_id: 'job-X', pct: 100 }] } },
+      hoursMap: { 'Bob:2026-02-01': 8 },
       jobIdByHcp: new Map([['jx', 'job-X']]),
-      jobsById: new Map([
-        ['job-X', makeLedgerRow({ id: 'job-X', hcp_number: 'JX', revenue: 1000, pct_complete: 50 })],
-      ]),
-      // totalLaborOnJob = laborCostByJobId ($80) + teamLaborCostByJobId ($20) = $100
+      jobsById: new Map([['job-X', makeLedgerRow({ id: 'job-X', hcp_number: 'JX', revenue: 1000, pct_complete: 50, status: 'working' })]]),
       laborCostByJobId: new Map([['job-X', 80]]),
       teamLaborCostByJobId: new Map([['job-X', 20]]),
+      teamLaborHoursByJobId: new Map([['job-X', 40]]),
     })
 
     const row = derivePersonTeamSummary(union, 'Bob', hourlyPayConfig('Bob', 50), false, ['2026-02-01'])
 
-    // valueCreated = 1000 * 50% = 500; partsCost = 0
-    // revenueBeforeOverhead = 500 - 0 - 100 = 400
-    // ratio = costInPeriod / totalLaborOnJob = 20 / 100 = 0.2
+    // valueCreated = 1000 × 50% = 500; partsCost = 0; revenueBeforeOverhead = 500 − 0 − 100 = 400
+    // share = Bob's 8 crew hours ÷ 40 lifetime hours = 0.2 — the $20 sheet cost and his $400 wage cost play no part
     const job = row.grossBreakdown.jobs[0]
-    expect(job).toBeDefined()
     if (!job) throw new Error('expected one allocated job')
-    expect(job.costInPeriod).toBe(20)
-    expect(job.totalLaborOnJob).toBe(100)
+    expect(job.hoursInPeriod).toBe(8)
+    expect(job.lifetimeHours).toBe(40)
     expect(job.ratio).toBeCloseTo(0.2, 10)
     expect(job.valueCreated).toBe(500)
-    expect(job.allocatedRevenue).toBeCloseTo(100, 10) // 500 * 0.2
+    expect(job.pctCompleteSource).toBe('set')
+    expect(job.allocatedRevenue).toBeCloseTo(100, 10)
     expect(row.gross).toBeCloseTo(100, 10)
-    expect(row.profit).toBeCloseTo(80, 10) // 400 * 0.2
+    expect(row.profit).toBeCloseTo(80, 10)
+
+    // Same hours at double the wage: the same share.
+    const rich = derivePersonTeamSummary(union, 'Bob', hourlyPayConfig('Bob', 100), false, ['2026-02-01'])
+    expect(rich.gross).toBeCloseTo(100, 10)
+  })
+
+  it('v2.3360: a job with no % is assumed half done and marked; a finished job is 100% whatever its % says', () => {
+    const base = {
+      periodCrewRows: [{ work_date: '2026-02-01', person_name: 'Bob', job_assignments: [{ job_id: 'job-N', pct: 50 }, { job_id: 'job-F', pct: 50 }] }],
+      crewByDatePerson: { '2026-02-01:Bob': { job_assignments: [{ job_id: 'job-N', pct: 50 }, { job_id: 'job-F', pct: 50 }] } },
+      hoursMap: { 'Bob:2026-02-01': 8 },
+      jobsById: new Map([
+        ['job-N', makeLedgerRow({ id: 'job-N', hcp_number: 'JN', revenue: 1000, pct_complete: null, status: 'working' })],
+        ['job-F', makeLedgerRow({ id: 'job-F', hcp_number: 'JF', revenue: 1000, pct_complete: 30, status: 'billed' })],
+      ]),
+      teamLaborHoursByJobId: new Map([['job-N', 4], ['job-F', 4]]),
+    }
+    const row = derivePersonTeamSummary(makeUnion(base), 'Bob', hourlyPayConfig('Bob', 50), false, ['2026-02-01'])
+    const byHcp = Object.fromEntries(row.grossBreakdown.jobs.map((j) => [j.hcp, j]))
+    expect(byHcp.JN).toMatchObject({ pctComplete: 50, pctCompleteSource: 'assumed', valueCreated: 500, ratio: 1, allocatedRevenue: 500 })
+    expect(byHcp.JF).toMatchObject({ pctComplete: 100, pctCompleteSource: 'set', valueCreated: 1000, ratio: 1, allocatedRevenue: 1000 })
+    expect(row.gross).toBe(1500)
   })
 
   it('onlyPaidJobs restricts labor rows to HCPs present in jobIdByHcp', () => {
@@ -209,7 +229,7 @@ describe('derivePersonTeamSummary', () => {
     expect(allJobs.hoursBreakdown.totals.subLabor).toBe(10)
   })
 
-  it('crew allocations carry per-day Value Created (cost-share, null pct → 100%), reconciling with Gross', () => {
+  it('crew allocations carry per-day Value Created (hours share, null pct → 50%), reconciling with Gross', () => {
     const union = makeUnion({
       periodCrewRows: [
         { work_date: '2026-04-01', person_name: 'Dan', job_assignments: [{ job_id: 'job-C', pct: 100 }] },
@@ -219,22 +239,22 @@ describe('derivePersonTeamSummary', () => {
       },
       hoursMap: { 'Dan:2026-04-01': 8 },
       jobsById: new Map([
-        // pct_complete null -> treated as 100% (matches the Gross column).
-        ['job-C', makeLedgerRow({ id: 'job-C', hcp_number: 'JC', job_name: 'Job C', revenue: 1000, pct_complete: null })],
+        // pct_complete null -> assumed half done (v2.3360, the Bridge's rule).
+        ['job-C', makeLedgerRow({ id: 'job-C', hcp_number: 'JC', job_name: 'Job C', revenue: 1000, pct_complete: null, status: 'working' })],
       ]),
-      // Total lifetime labor on the job = $800. Dan's day cost = 8h × $50 = $400 (half).
+      // Lifetime crew hours on the job = 16. Dan's day = 8h (half).
       teamLaborCostByJobId: new Map([['job-C', 800]]),
+      teamLaborHoursByJobId: new Map([['job-C', 16]]),
     })
 
     const row = derivePersonTeamSummary(union, 'Dan', hourlyPayConfig('Dan', 50), false, ['2026-04-01'])
 
     const alloc = row.hoursBreakdown.dailyRows[0]?.crewAllocations[0]
-    expect(alloc).toBeDefined()
     if (!alloc) throw new Error('expected one crew allocation')
-    // valueCreated (1000, null→100%) × (dayCost 400 / totalLabor 800) = 500
-    expect(alloc.valueCreated).toBeCloseTo(500, 6)
+    // valueCreated (1000 × 50%) × (8h / 16h) = 250
+    expect(alloc.valueCreated).toBeCloseTo(250, 6)
     // Per-day Value Created reconciles with the Gross Revenue column.
-    expect(row.gross).toBeCloseTo(500, 6)
+    expect(row.gross).toBeCloseTo(250, 6)
   })
 })
 
@@ -260,8 +280,8 @@ describe('derivePersonTeamSummary — v2.2683 cost inputs', () => {
       laborCostByJobId: new Map([['job-1', 1440]]),
     })
     const row = derivePersonTeamSummary(union, 'Eve', hourlyPayConfig('Eve', 50), false, ['2026-03-01'])
-    // Cost 1440 ÷ lifetime 1440 → the whole job's value created is Eve's.
-    expect(row.gross).toBeCloseTo(10000)
+    // v2.3360: the sheet's cost is Eve's; the job's revenue is not (no clock hours → no share).
+    expect(row.gross).toBe(0)
     expect(row.grossBreakdown.jobs[0]?.costInPeriod).toBeCloseTo(1440)
     // Hours are still hours: 6 + 2 + 0.
     expect(row.hoursBreakdown.totals.subLabor).toBeCloseTo(8)
@@ -333,6 +353,8 @@ describe('derivePersonTeamSummary — v2.2687 hour basis under "only paid in ful
     })
     const row = derivePersonTeamSummary(union, 'Alice', hourlyPayConfig('Alice', 50), false, ['2026-04-03'])
     expect(row.grossBreakdown.jobs.map((j) => j.jobId).sort()).toEqual(['job-L', 'job-N'])
-    expect(row.gross).toBeCloseTo(500, 6)
+    // v2.3360: both sheets land on their jobs (cost side); neither earns a share of revenue.
+    expect(row.gross).toBe(0)
+    expect(row.hoursBreakdown.totals.subLabor).toBe(5)
   })
 })

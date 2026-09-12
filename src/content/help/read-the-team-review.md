@@ -20,7 +20,7 @@ An amber strip appears when something is quietly distorting the period. Each lin
 :::example What the strip looks like
 **119 sessions · 619.6 h awaiting approval** — 12 people, oldest 122 days ago — not counted anywhere until approved. {{button:blue|Approve in Hours ›}}
 **3 jobs have no bill amount** — labor there lands as pure loss. {{button:blue|Open Jobs ›}}
-**10 jobs have no % complete** — they count as 100% done, so their whole bill is treated as earned. {{button:blue|Set progress ›}}
+**10 jobs have no % complete** — they count as half done, so half the bill is treated as earned and the share is marked *(assumed)*. {{button:blue|Set progress ›}}
 **$478 of office-type charges on 3 field jobs** — 3 card charges the bank filed as software, utilities, insurance, internet or medical count as parts there — usually office spend, sometimes a dump fee or permit (Post Oak Landfill $397, City of Shavano Park $68, Dropbox $13). Confirm or re-sort. {{button:blue|Sort in Banking ›}}
 **Salaried hours are assumed for 2 people** — 8 h every weekday in the period, including today — not clock time.
 :::
@@ -57,9 +57,21 @@ Profit after overhead **$20,517** · ÷ 176 assumed hours = **$117/hr**
 
 Each person's **Vehicle** on Pay config decides one more line. {{chip:green|🚚 $8.32/h}} means a company truck: the truck they hold is priced all-in per field hour. {{chip:blue|🚗 $6.10/h}} means their own vehicle with fuel paid: their fuel per field hour, as part of employing them. Either way their fuel-tag card charges leave the job purchases, so nobody else carries them. The chip sits beside the name on every ranked bar; the rates come from People → Vehicles → Wheels.
 
+## How earned is counted
+
+Review counts a person's revenue the way the Bridge does, so the two agree to the dollar for the same hours:
+
+- **Value created on a job** = the contract × how far along it is. A job that is ready to bill, billed, or paid is 100% whatever its % says. A job with a % uses it. A job with no % is counted as **half done** and marked *(assumed)* — set the % and the mark goes away.
+- **Your share of that value** = your clock hours on the job in the period ÷ the job's lifetime clock hours, every person counted. Wages play no part, so two people with the same hours on the same job get the same share.
+- **Sub labor sheets** are a job cost. They have no clock hours, so they never earn a share of revenue; they show on the cost side.
+
+:::example The Gross drilldown
+Job · Total bill $10,000 · % complete 40% · Value created $4,000 · Your hours (period) 8.0 · Job hours (lifetime) 100.0 · Share 8.0% · Allocated $320
+:::
+
 ## Jobs worked, per job
 
-Below the drawer, **Jobs Worked** lists one line per job, best profit first: your hours and labor on it, your share of the job's lifetime labor, your revenue and profit, and the per-hour rates. The heading says how many day rows sit behind the lines and how many of those carry zero hours. Two chips call out jobs that distort the math: {{chip:yellow|no bill}} (labor there is pure loss until a bill amount is set) and {{chip:yellow|% assumed}} (no % complete on the ledger, so the whole bill is treated as earned).
+Below the drawer, **Jobs Worked** lists one line per job, best profit first: your hours and labor on it, your share of the job's lifetime hours, your revenue and profit, and the per-hour rates. The heading says how many day rows sit behind the lines and how many of those carry zero hours. Two chips call out jobs that distort the math: {{chip:yellow|no bill}} (labor there is pure loss until a bill amount is set) and {{chip:yellow|% assumed}} (no % complete on the ledger, so the job is counted as half done).
 
 Click a job line to open its days. Each day row is what it always was — click it again for the full breakdown of that day's revenue, costs, and the three overhead methods.
 

@@ -19,6 +19,7 @@ import type { PayConfigRow } from '../../types/peoplePayConfig'
 import { decimalToHms } from '../../lib/people/hoursGridTime'
 import { laborJobMatchesPerson } from '../../lib/people/laborJobPersonMatch'
 import { laborJobSubCost } from '../../lib/jobs/subLaborCost'
+import { reviewJobEarned, reviewShareRatio } from '../../lib/people/reviewEarned'
 import { computeReviewDateRange, ymdAddYears, type ReviewPeriod as ReviewPeriodKind } from '../../lib/people/reviewDateRange'
 import type { Person, UserRow } from '../../hooks/usePeopleRoster'
 import {
@@ -128,6 +129,23 @@ function laborRowJobId(r: { job_number: string | null; job_ledger_id?: string | 
   if (r.job_ledger_id) return r.job_ledger_id
   const hcp = (r.job_number ?? '').trim().toLowerCase()
   return hcp ? (jobIdByHcp.get(hcp) ?? null) : null
+}
+
+/** jobs_ledger.status for a set of ids (v2.3360) — the ledger RPCs don't carry it. Chunked and paged; a failure reads as "unknown" (not finished). */
+async function fetchJobStatusesByIds(jobIds: string[]): Promise<Map<string, string>> {
+  const out = new Map<string, string>()
+  if (jobIds.length === 0) return out
+  try {
+    const rows = (await fetchAllRowsChunkedIn(
+      jobIds,
+      (chunk, f, t) => supabase.from('jobs_ledger').select('id, status').in('id', chunk).order('id').range(f, t),
+      'load review job statuses',
+    )) as Array<{ id: string; status: string | null }>
+    for (const r of rows) if (r.status) out.set(r.id, r.status)
+  } catch (e) {
+    console.warn('[review] job statuses unavailable — finished jobs will not read as 100%', e)
+  }
+  return out
 }
 
 function signedCurrency(n: number): string {
@@ -1219,6 +1237,7 @@ export default function PeopleReviewTab({
       revenue: number | null
       pct_complete: number | null
       service_type_id: string | null
+      status?: string | null
     }>
     const laborJobsLedger = (laborJobsRes.data ?? []) as Array<{
       id: string
@@ -1229,6 +1248,7 @@ export default function PeopleReviewTab({
       revenue: number | null
       pct_complete: number | null
       service_type_id: string | null
+      status?: string | null
     }>
     const jobsById = new Map<string, (typeof crewJobsLedger)[0]>()
     const jobIdByHcp = new Map<string, string>()
@@ -1251,6 +1271,9 @@ export default function PeopleReviewTab({
       if (!jobsById.has(j.id)) jobsById.set(j.id, j)
       mapLedgerNumbers(j)
     }
+    // v2.3360: the ledger RPCs carry no status; finished jobs earn 100% under the Bridge's rule.
+    const statusByJobId = await fetchJobStatusesByIds([...jobsById.keys()])
+    for (const j of jobsById.values()) j.status = statusByJobId.get(j.id) ?? null
 
     // v2.3068: keyed by the sheet's job (link first) — built once the ledger maps exist.
     const laborCostByJobId = new Map<string, number>()
@@ -1427,8 +1450,10 @@ export default function PeopleReviewTab({
       const laborCost = laborJobSubCost({ labor_rate: r.labor_rate, items, distance_miles: r.distance_miles }, mileageCost, timePerMile)
       const partsCost = jobId ? (partsCostByJobId.get(jobId) ?? 0) + (invoiceAmountByJob[jobId] ?? 0) + (billedMaterialsByJobId.get(jobId) ?? 0) + (cardChargesByJobId.get(jobId) ?? 0) : 0
       const totalBill = job?.revenue != null ? Number(job.revenue) : 0
-      const pctComplete = job?.pct_complete ?? null
-      const valueCreated = totalBill * ((pctComplete ?? 100) / 100)
+      // The Bridge's rule (v2.3360): finished → 100%, a set % → that %, nothing → 50%.
+      const earned = reviewJobEarned({ revenue: totalBill, pctComplete: job?.pct_complete ?? null, status: job?.status ?? null, lifetimeHours: 0 })
+      const pctComplete = Math.round(earned.pctEffective * 100)
+      const valueCreated = earned.valueCreated
       const totalJobLabor = jobId ? (laborCostByJobId.get(jobId) ?? 0) + (teamLaborCostByJobId.get(jobId) ?? 0) : 0
       const revenueBeforeOverhead = valueCreated - partsCost - totalJobLabor
       return {
@@ -1465,9 +1490,9 @@ export default function PeopleReviewTab({
       }
     })
 
-    const jobsMap: Record<string, { hcp_number: string; click_number: string; job_name: string; job_address: string; revenue: number | null; pct_complete: number | null; service_type_id: string | null }> = {}
+    const jobsMap: Record<string, { hcp_number: string; click_number: string; job_name: string; job_address: string; revenue: number | null; pct_complete: number | null; service_type_id: string | null; status: string | null }> = {}
     for (const j of crewJobsLedger) {
-      jobsMap[j.id] = { hcp_number: j.hcp_number ?? '', click_number: j.click_number ?? '', job_name: j.job_name ?? '', job_address: j.job_address ?? '', revenue: j.revenue, pct_complete: j.pct_complete, service_type_id: j.service_type_id ?? null }
+      jobsMap[j.id] = { hcp_number: j.hcp_number ?? '', click_number: j.click_number ?? '', job_name: j.job_name ?? '', job_address: j.job_address ?? '', revenue: j.revenue, pct_complete: j.pct_complete, service_type_id: j.service_type_id ?? null, status: j.status ?? null }
     }
     const crewJobsWithLeadFiltered = usePaidOnly
       ? crewJobsWithLead.filter((c) => jobsById.has(c.job_id))
@@ -1481,8 +1506,9 @@ export default function PeopleReviewTab({
       const laborCost = hours * (cfg?.hourly_wage ?? 0)
       const partsCost = (partsCostByJobId.get(c.job_id) ?? 0) + (invoiceAmountByJob[c.job_id] ?? 0) + (billedMaterialsByJobId.get(c.job_id) ?? 0) + (cardChargesByJobId.get(c.job_id) ?? 0)
       const totalBill = j?.revenue != null ? Number(j.revenue) : 0
-      const pctComplete = j?.pct_complete ?? null
-      const valueCreated = totalBill * ((pctComplete ?? 100) / 100)
+      const earned = reviewJobEarned({ revenue: totalBill, pctComplete: j?.pct_complete ?? null, status: j?.status ?? null, lifetimeHours: 0 })
+      const pctComplete = Math.round(earned.pctEffective * 100)
+      const valueCreated = earned.valueCreated
       const jobId = c.job_id
       const totalJobLabor = (laborCostByJobId.get(jobId) ?? 0) + (teamLaborCostByJobId.get(jobId) ?? 0)
       const revenueBeforeOverhead = valueCreated - partsCost - totalJobLabor
@@ -1634,7 +1660,11 @@ export default function PeopleReviewTab({
       }
     }
 
-    const allocationJobsMap = new Map<string, { valueCreated: number; revenueBeforeOverhead: number; totalLaborOnJob: number }>()
+    // The Bridge's rule (v2.3360): value created = contract × (finished → 100% ·
+    // a set % → that % · nothing → 50%); this person's share = their crew clock
+    // hours on the job in the period ÷ the job's lifetime crew clock hours.
+    // Sub labor sheets are a job cost, not a share of revenue.
+    const allocationJobsMap = new Map<string, { valueCreated: number; revenueBeforeOverhead: number; totalLaborOnJob: number; lifetimeHours: number }>()
     const laborJobIdsSeen = new Set<string>()
     for (const r of laborRows) {
       const jobId = laborRowJobId(r, jobIdByHcp)
@@ -1645,11 +1675,10 @@ export default function PeopleReviewTab({
       const teamLaborCost = teamLaborCostByJobId.get(jobId) ?? 0
       const totalLaborOnJob = subLaborCost + teamLaborCost
       const partsCost = (partsCostByJobId.get(jobId) ?? 0) + (invoiceAmountByJob[jobId] ?? 0) + (billedMaterialsByJobId.get(jobId) ?? 0)
-      const totalBill = job?.revenue != null ? Number(job.revenue) : 0
-      const pctComplete = job?.pct_complete ?? null
-      const valueCreated = totalBill * ((pctComplete ?? 100) / 100)
+      const lifetimeHours = totalHoursOnJob.get(jobId) ?? 0
+      const valueCreated = reviewJobEarned({ revenue: job?.revenue != null ? Number(job.revenue) : null, pctComplete: job?.pct_complete ?? null, status: job?.status ?? null, lifetimeHours }).valueCreated
       const revenueBeforeOverhead = valueCreated - partsCost - totalLaborOnJob
-      allocationJobsMap.set(jobId, { valueCreated, revenueBeforeOverhead, totalLaborOnJob })
+      allocationJobsMap.set(jobId, { valueCreated, revenueBeforeOverhead, totalLaborOnJob, lifetimeHours })
     }
     for (const jobId of crewJobIds) {
       if (allocationJobsMap.has(jobId)) continue
@@ -1657,26 +1686,21 @@ export default function PeopleReviewTab({
       const subLaborCost = laborCostByJobId.get(jobId) ?? 0
       const totalLaborOnJob = subLaborCost + (teamLaborCostByJobId.get(jobId) ?? 0)
       const partsCost = (partsCostByJobId.get(jobId) ?? 0) + (invoiceAmountByJob[jobId] ?? 0) + (billedMaterialsByJobId.get(jobId) ?? 0)
-      const totalBill = j?.revenue != null ? Number(j.revenue) : 0
-      const pctComplete = j?.pct_complete ?? null
-      const valueCreated = totalBill * ((pctComplete ?? 100) / 100)
+      const lifetimeHours = totalHoursOnJob.get(jobId) ?? 0
+      const valueCreated = reviewJobEarned({ revenue: j?.revenue != null ? Number(j.revenue) : null, pctComplete: j?.pct_complete ?? null, status: j?.status ?? null, lifetimeHours }).valueCreated
       const revenueBeforeOverhead = valueCreated - partsCost - totalLaborOnJob
-      allocationJobsMap.set(jobId, { valueCreated, revenueBeforeOverhead, totalLaborOnJob })
+      allocationJobsMap.set(jobId, { valueCreated, revenueBeforeOverhead, totalLaborOnJob, lifetimeHours })
     }
 
-    const costOnJobInPeriod = new Map<string, number>()
-    for (const j of laborJobs) {
-      if (j.job_id) costOnJobInPeriod.set(j.job_id, (costOnJobInPeriod.get(j.job_id) ?? 0) + j.laborCost)
-    }
+    const crewHoursOnJobInPeriod = new Map<string, number>()
     for (const j of crewJobs) {
-      costOnJobInPeriod.set(j.job_id, (costOnJobInPeriod.get(j.job_id) ?? 0) + j.laborCost)
+      crewHoursOnJobInPeriod.set(j.job_id, (crewHoursOnJobInPeriod.get(j.job_id) ?? 0) + j.hours)
     }
 
     let allocatedRevenue = 0
     let allocatedProfit = 0
-    for (const [jobId, { valueCreated, revenueBeforeOverhead, totalLaborOnJob }] of allocationJobsMap) {
-      const costInPeriod = costOnJobInPeriod.get(jobId) ?? 0
-      const ratio = totalLaborOnJob > 0 ? costInPeriod / totalLaborOnJob : (costInPeriod > 0 ? 1 : 0)
+    for (const [jobId, { valueCreated, revenueBeforeOverhead, lifetimeHours }] of allocationJobsMap) {
+      const ratio = reviewShareRatio(crewHoursOnJobInPeriod.get(jobId) ?? 0, lifetimeHours)
       allocatedRevenue += valueCreated * ratio
       allocatedProfit += revenueBeforeOverhead * ratio
     }
@@ -1696,9 +1720,9 @@ export default function PeopleReviewTab({
       j.totalJobHours = j.job_id ? (totalHoursOnJob.get(j.job_id) ?? 0) : 0
       j.userTotalHoursOnJob = j.job_id ? (personHoursOnJobAllTime.get(j.job_id) ?? 0) : 0
       j.userTotalLaborOnJob = j.job_id ? (personLaborCostByJobId.get(j.job_id) ?? 0) : 0
-      const denominator = j.totalLaborOnJob
-      const costRatio = denominator > 0 ? j.laborCost / denominator : (j.laborCost > 0 ? 1 : 0)
-      const revenueCostRatio = denominator > 0 ? j.userTotalLaborOnJob / denominator : (j.userTotalLaborOnJob > 0 ? 1 : 0)
+      // A sheet has no clock hours: it is a job cost, not a share of revenue (v2.3360).
+      const costRatio = 0
+      const revenueCostRatio = reviewShareRatio(j.userTotalHoursOnJob, j.totalJobHours)
       j.userTotalContributionToBill = j.valueCreated * revenueCostRatio
       j.userTotalContributionToRevenue = j.revenueBeforeOverhead * revenueCostRatio
       j.allocatedTotalBill = j.valueCreated * costRatio
@@ -1709,9 +1733,9 @@ export default function PeopleReviewTab({
       j.totalJobHours = totalHoursOnJob.get(j.job_id) ?? 0
       j.userTotalHoursOnJob = personHoursOnJobAllTime.get(j.job_id) ?? 0
       j.userTotalLaborOnJob = personLaborCostByJobId.get(j.job_id) ?? 0
-      const denominator = j.totalLaborOnJob
-      const costRatio = denominator > 0 ? j.laborCost / denominator : (j.laborCost > 0 ? 1 : 0)
-      const revenueCostRatio = denominator > 0 ? j.userTotalLaborOnJob / denominator : (j.userTotalLaborOnJob > 0 ? 1 : 0)
+      // Hours share (v2.3360): this row's crew hours ÷ the job's lifetime crew hours.
+      const costRatio = reviewShareRatio(j.hours, j.totalJobHours)
+      const revenueCostRatio = reviewShareRatio(j.userTotalHoursOnJob, j.totalJobHours)
       j.userTotalContributionToBill = j.valueCreated * revenueCostRatio
       j.userTotalContributionToRevenue = j.revenueBeforeOverhead * revenueCostRatio
       j.allocatedTotalBill = j.valueCreated * costRatio
@@ -1973,6 +1997,7 @@ export default function PeopleReviewTab({
     // numerator in `derivePersonTeamSummary` and as the cost figures shown
     // on pay reports / Person Review.
     const teamLaborCostByJobId = new Map<string, number>()
+    const teamLaborHoursByJobId = new Map<string, number>()
     for (const r of allTimeCrewRows) {
       const row = crewByDatePersonAllTime[`${r.work_date}:${r.person_name}`]
       const assignments = row?.job_assignments ?? []
@@ -1984,6 +2009,7 @@ export default function PeopleReviewTab({
         const pctHrs = dayHoursRaw * (a.pct / 100)
         const cost = pctHrs * rate
         teamLaborCostByJobId.set(a.job_id, (teamLaborCostByJobId.get(a.job_id) ?? 0) + cost)
+        teamLaborHoursByJobId.set(a.job_id, (teamLaborHoursByJobId.get(a.job_id) ?? 0) + pctHrs)
       }
     }
 
@@ -2057,6 +2083,9 @@ export default function PeopleReviewTab({
       if (!jobsById.has(j.id)) jobsById.set(j.id, j)
       mapUnionLedgerNumbers(j)
     }
+    // v2.3360: the ledger RPCs carry no status; finished jobs earn 100% under the Bridge's rule.
+    const unionStatusByJobId = await fetchJobStatusesByIds([...jobsById.keys()])
+    for (const j of jobsById.values()) j.status = unionStatusByJobId.get(j.id) ?? null
 
     // Lifetime sub-labor cost per job (all assignees) — keyed by the sheet's link (v2.3068).
     const laborCostByJobId = new Map<string, number>()
@@ -2180,6 +2209,7 @@ export default function PeopleReviewTab({
       laborItemsByJobId,
       laborCostByJobId,
       teamLaborCostByJobId,
+      teamLaborHoursByJobId,
       partsCostByJobId,
       invoiceAmountByJob,
       billedMaterialsByJobId,

@@ -18,7 +18,7 @@ import type { VehicleArrangement } from './wheels'
 /** Wheels on Labor (v2.2735): a person's vehicle deal and the $/field-hour it implies (90-day, override wins). */
 export type TeamReviewVehicle = { arrangement: VehicleArrangement; rate: number | null; truckName: string | null; note: string }
 
-export type TeamLedgerRow = { id: string; hcp_number: string; click_number?: string; job_name: string; job_address: string; revenue: number | null; pct_complete: number | null; service_type_id: string | null }
+export type TeamLedgerRow = { id: string; hcp_number: string; click_number?: string; job_name: string; job_address: string; revenue: number | null; pct_complete: number | null; service_type_id: string | null; /** jobs_ledger.status (v2.3360) — finished jobs earn 100% under the Bridge's rule. */ status?: string | null }
 /**
  * Sub-labor sheet line. `labor_rate` (per-line override) and
  * `direct_labor_amount` (a flat $ line) are honored by `laborJobSubCost`, the
@@ -53,6 +53,8 @@ export type TeamReviewUnion = {
   /** Lifetime sub-labor cost per jobs_ledger id (keyed by the sheet's link, v2.3068). */
   laborCostByJobId: Map<string, number>
   teamLaborCostByJobId: Map<string, number>
+  /** Lifetime crew clock hours per job (every person, Convention 1) — the share denominator under the Bridge's earned rule (v2.3360). */
+  teamLaborHoursByJobId: Map<string, number>
   partsCostByJobId: Map<string, number>
   invoiceAmountByJob: Record<string, number>
   billedMaterialsByJobId: Map<string, number>

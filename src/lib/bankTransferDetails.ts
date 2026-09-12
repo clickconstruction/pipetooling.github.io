@@ -150,15 +150,15 @@ export function buildBankTransferMemo(customerName: string, bills: ReadonlyArray
 export function checkMailingSentence(address: string): string | null {
   const a = address.trim()
   if (!a) return null
-  return `All checks must be mailed to ${a}. Checks sent anywhere else may need to be re-issued.`
+  return `Checks can only be received at ${a}. Checks mailed anywhere else need to be re-issued.`
 }
 
-/** The guard line every reading of the details carries. */
+/** The closing line every reading of the details carries — the office phone, offered, not warned. */
 export function bankTransferGuardLine(phone: string): string {
   const p = phone.trim()
   return p
-    ? `These details never change by email. If anyone sends you different bank details in our name, call ${p} before sending anything.`
-    : 'These details never change by email. If anyone sends you different bank details in our name, call our office before sending anything.'
+    ? `You can always call ${p} before sending anything for clarity.`
+    : 'You can always call our office before sending anything for clarity.'
 }
 
 /**

@@ -26,7 +26,7 @@ const details: BankTransferDetails = {
 describe('PortalBankTransferCard', () => {
   it('is collapsed until tapped, then shows the numbers, memo, checks and guard lines', () => {
     renderWithProviders(<PortalBankTransferCard details={details} memo="Sam Sample · PLUM 1001, 0994" phone="(512) 360-0599" />)
-    const toggle = screen.getByRole('button', { name: /prefer to pay by bank transfer/i })
+    const toggle = screen.getByRole('button', { name: /prefer to pay with a different method/i })
     expect(toggle.getAttribute('aria-expanded')).toBe('false')
     // The print-only copy is always in the DOM (the page's print rules hide it on screen), so the
     // screen copy shows up as a second set of Copy buttons once the card opens.
@@ -37,8 +37,8 @@ describe('PortalBankTransferCard', () => {
     expect(screen.getAllByText('Sam Sample · PLUM 1001, 0994').length).toBeGreaterThan(0)
     expect(screen.getAllByText('12925 FM 20').length).toBeGreaterThan(0)
     expect(screen.getAllByText('Kingsbury, TX 78638').length).toBeGreaterThan(0)
-    expect(screen.getAllByText(/the bank address is not a mailbox/).length).toBeGreaterThan(0)
-    expect(screen.getAllByText(/for the wire form — not for mail/).length).toBeGreaterThan(0)
+    expect(screen.getAllByText(/Checks can only be received at this address/).length).toBeGreaterThan(0)
+    expect(screen.getAllByText(/for bank ACH and wires, not for mail/).length).toBeGreaterThan(0)
     expect(screen.getAllByText(/call \(512\) 360-0599 before sending anything/).length).toBeGreaterThan(0)
     expect(screen.getAllByLabelText('Copy 000012345678').length).toBe(2)
   })
