@@ -56,6 +56,8 @@ export type JobBurnOverheadInput = {
 }
 
 export type JobBurnInput = {
+  /** What the cumulative chart's earned-value line multiplies % done by (v2.3361): the budget (default) or the price — the honest basis when the budget is only an assumption. */
+  earnedBasis?: 'budget' | 'price'
   chargeEvents: readonly JobChargeEvent[]
   valueEvents: readonly JobValueEvent[]
   /** Job-level % when no dated report carries one (Edit-Job pct / paid invoices). */
@@ -278,7 +280,7 @@ export function buildJobBurn(i: JobBurnInput): JobBurnModel {
       cumulative.push({
         ymd: cur,
         actual: round2(cum),
-        earned: budget && pct != null ? round2((pct / 100) * budget.usd) : null,
+        earned: i.earnedBasis === 'price' ? (i.priceUsd != null && pct != null ? round2((pct / 100) * i.priceUsd) : null) : budget && pct != null ? round2((pct / 100) * budget.usd) : null,
         forecast: cur === i.todayYmd ? round2(cum) : null,
       })
       cur = ymdAddDays(cur, 1)

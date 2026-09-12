@@ -1,24 +1,34 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../hooks/useAuth'
 import { useBidCrewRate } from '../../hooks/useBidCrewRate'
 import { useJobBudget } from '../../hooks/useJobBudget'
 import { useJobBurnOverhead } from '../../hooks/useJobBurnOverhead'
 import { useJobChargesTimelineInputs } from '../../hooks/useJobChargesTimelineInputs'
-import { resolveJobBudget } from '../../lib/jobs/jobBudget'
+import { resolveJobBudget, spendByComponent } from '../../lib/jobs/jobBudget'
+import { buildCostsVerdict } from '../../lib/jobs/jobCostsVerdict'
 import { JOB_SUMMARY_VIEW_STORAGE_KEY, readJobSummaryViewPrefs } from '../../lib/jobs/jobSummaryLedgerView'
 import { resolveJobCurrentPercentFallback } from '../../lib/jobSummaryPercentComplete'
+import { todayYmdInAppTz } from '../../utils/dateUtils'
 import type { JobWithDetails } from '../../types/jobWithDetails'
 import JobChargesTimelineStandalone from './JobChargesTimelineStandalone'
 import { JobBudgetCard } from './JobBudgetCard'
-import { firstEventYmdOf, JobCostsBurnSection } from './JobCostsBurnSection'
+import { JobCostsVerdict } from './JobCostsVerdict'
+import { buildBurnForVerdict, firstEventYmdOf, JobCostsBurnSection } from './JobCostsBurnSection'
 
 /**
- * The Costs tab's charts (v2.3189): the Budget card (v2.3299) above the Burn
- * section above the Cost Timeline, all fed by ONE `useJobChargesTimelineInputs`
- * load. Burn and the Budget card render only for the wage roles
- * (`includeTeamLabor`) — without team labor the spend is not the spend the bid
- * estimated, so the projection would flatter every job.
+ * The Costs tab (v2.3361 — the honest tab): the verdict (true margin · spent ·
+ * earned off the price · time left, with the by-section build-up and the
+ * baseline strip) above one chart (cost against value earned) above the folded
+ * detail (daily spend · pace rows · the Cost Timeline), all fed by ONE
+ * `useJobChargesTimelineInputs` load. The verdict and chart render only for the
+ * wage roles (`includeTeamLabor`) — without team labor the spend is not the
+ * spend, so the margin would flatter every job. Replaces the Budget card + Burn
+ * tiles of v2.3189–v2.3299; the Budget card's link-a-bid doorway survives
+ * folded under the baseline strip.
  */
+const DETAIL_PREF_KEY = 'job_costs_detail_open_v1'
+
 function readTargetMarginPct(): number | null {
   try {
     const raw = typeof localStorage !== 'undefined' ? localStorage.getItem(JOB_SUMMARY_VIEW_STORAGE_KEY) : null
@@ -28,11 +38,19 @@ function readTargetMarginPct(): number | null {
     return null
   }
 }
+function readDetailPref(): boolean {
+  try {
+    return typeof localStorage !== 'undefined' && localStorage.getItem(DETAIL_PREF_KEY) === '1'
+  } catch {
+    return false
+  }
+}
 
-export function JobCostsTabCharts({ job, includeTeamLabor }: { job: JobWithDetails; includeTeamLabor: boolean }) {
+export function JobCostsTabCharts({ job, includeTeamLabor, teamPeople = null }: { job: JobWithDetails; includeTeamLabor: boolean; /** People who clocked on the job (the baseline strip). */ teamPeople?: number | null }) {
   const { user, role } = useAuth()
+  const navigate = useNavigate()
   const inputsState = useJobChargesTimelineInputs(job, includeTeamLabor)
-  // ONE overhead load (v2.3271): Burn's projection and the Cost Timeline's amber band read the same share.
+  // ONE overhead load (v2.3271): the verdict, the chart and the Cost Timeline read the same share.
   const overheadState = useJobBurnOverhead(includeTeamLabor && inputsState.kind === 'ready', job.id, firstEventYmdOf(inputsState))
   const budget = useJobBudget(job.id, job.bid_id ?? null, includeTeamLabor)
   const { crewRate } = useBidCrewRate(includeTeamLabor)
@@ -44,25 +62,67 @@ export function JobCostsTabCharts({ job, includeTeamLabor }: { job: JobWithDetai
     const reported = inputs?.valueEvents.filter((v) => v.percent != null).slice(-1)[0]?.percent ?? null
     return reported ?? inputs?.fallbackPercent ?? resolveJobCurrentPercentFallback(job)
   }, [inputs, job])
+  const [detailOpen, setDetailOpen] = useState(readDetailPref)
+  const toggleDetail = () => {
+    setDetailOpen((o) => {
+      try {
+        localStorage.setItem(DETAIL_PREF_KEY, o ? '0' : '1')
+      } catch {
+        /* per-device convenience only */
+      }
+      return !o
+    })
+  }
+
+  const finished = job.status === 'billed' || job.status === 'paid'
+  const verdict = useMemo(() => {
+    if (!inputs) return null
+    // A billed or paid job with no % anywhere is done — earned, at-completion and time left all read off 100.
+    const burnInputs = inputs.fallbackPercent == null && finished ? { ...inputs, fallbackPercent: 100 } : inputs
+    const burn = buildBurnForVerdict(burnInputs, overheadState.overhead, resolved)
+    // The report the burn model read: the latest DATED one carrying a % (array order is not date order).
+    const latestReportYmd = inputs.valueEvents.filter((v) => v.percent != null && v.dateKey).reduce<string | null>((best, v) => (best == null || v.dateKey! > best ? v.dateKey! : best), null)
+    return buildCostsVerdict({ burn, priceUsd, spend: spendByComponent(inputs.chargeEvents), teamHours: inputs.teamHours, teamPeople, resolved, bidLabel: job.linkedBid?.bid_number ?? null, latestReportYmd, jobPct: inputs.fallbackPercent ?? resolveJobCurrentPercentFallback(job), jobFinished: finished, todayYmd: todayYmdInAppTz() })
+  }, [inputs, overheadState.overhead, resolved, priceUsd, teamPeople, job.linkedBid?.bid_number, finished])
+
+  const linkedBid = job.linkedBid ? { id: job.linkedBid.id, bid_number: job.linkedBid.bid_number, project_name: job.linkedBid.project_name } : null
+  const doorway = (
+    <JobBudgetCard
+      jobId={job.id}
+      jobLabel={job.job_name ?? ''}
+      priceUsd={priceUsd}
+      pctDone={pctDone}
+      inputs={inputs}
+      budget={budget}
+      resolved={resolved}
+      companyRate={crewRate?.companyRate ?? null}
+      canWrite={canWrite}
+      currentUserId={user?.id ?? null}
+      linkedBid={linkedBid}
+    />
+  )
+
   return (
     <>
       {includeTeamLabor ? (
-        <JobBudgetCard
-          jobId={job.id}
-          jobLabel={job.job_name ?? ''}
-          priceUsd={priceUsd}
-          pctDone={pctDone}
-          inputs={inputs}
-          budget={budget}
-          resolved={resolved}
-          companyRate={crewRate?.companyRate ?? null}
-          canWrite={canWrite}
-          currentUserId={user?.id ?? null}
-          linkedBid={job.linkedBid ? { id: job.linkedBid.id, bid_number: job.linkedBid.bid_number, project_name: job.linkedBid.project_name } : null}
-        />
+        verdict ? (
+          <JobCostsVerdict verdict={verdict} canWrite={canWrite} budget={budget} linkedBid={linkedBid} onOpenBidCounts={linkedBid ? () => navigate(`/bids?tab=counts&bidId=${encodeURIComponent(linkedBid.id)}`) : null} doorway={doorway} />
+        ) : (
+          <p style={{ color: 'var(--text-muted)', fontSize: '0.75rem', margin: 0 }}>{inputsState.kind === 'error' ? 'Could not load the job’s costs.' : 'Loading…'}</p>
+        )
       ) : null}
-      {includeTeamLabor ? <JobCostsBurnSection inputsState={inputsState} overheadState={overheadState} jobBudget={resolved} /> : null}
-      <JobChargesTimelineStandalone job={job} includeTeamLabor={includeTeamLabor} inputsState={inputsState} overheadState={overheadState} />
+      {includeTeamLabor ? <JobCostsBurnSection inputsState={inputsState} overheadState={overheadState} jobBudget={resolved} mode="chart" /> : null}
+      <div>
+        <button type="button" onClick={toggleDetail} aria-expanded={detailOpen} style={{ background: 'none', border: '1px solid var(--border)', borderRadius: 6, padding: '0.3rem 0.7rem', fontSize: '0.78rem', color: 'var(--text-muted)', cursor: 'pointer', font: 'inherit' }} data-testid="costs-detail-toggle">
+          {detailOpen ? 'Hide' : 'Show'} the timeline · daily spend {detailOpen ? '▴' : '▾'}
+        </button>
+        {detailOpen ? (
+          <div style={{ marginTop: '0.6rem', display: 'grid', gap: '0.6rem' }}>
+            {includeTeamLabor ? <JobCostsBurnSection inputsState={inputsState} overheadState={overheadState} jobBudget={resolved} mode="detail" /> : null}
+            <JobChargesTimelineStandalone job={job} includeTeamLabor={includeTeamLabor} inputsState={inputsState} overheadState={overheadState} />
+          </div>
+        ) : null}
+      </div>
     </>
   )
 }

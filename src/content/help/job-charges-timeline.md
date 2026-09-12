@@ -7,20 +7,31 @@ order: 30
 ---
 Every expanded job on **Jobs → Job Summary** starts with a timeline chart of the money on that job: what it has cost you so far, what the customer has paid back, and how much value the crew reports having created.
 
-## The Budget card — what is Burn measuring against?
+## The verdict — four numbers that are always true
 
-The Costs tab opens with the **Budget** card, and its first line says what the budget is standing on:
+The Costs tab opens with what the job is doing, measured against the **price**, never against a guess:
 
-- {{chip:yellow|≈ assumed}} — no bid is linked: Burn reads *price × 65 %* (the Job Summary Target chip, 35 % by default). The card lists the bids that could be this job's — a bid whose value equals the job's price to the dollar, the same GC and won, the same address — with the reason beside each. {{button:blue|Link this bid}} stamps the job with the bid and takes a snapshot of its estimate; **Find another bid** searches by number or name; **or type a budget…** takes hours, materials $ and subs $ from the person who scoped the job (hours are costed at the company crew rate).
-- {{chip:blue|◆ Budget from bid B66}} — the bid's estimate is the budget. The chips say whether the bid value matches the job price, when the estimate was taken and by whom, and how complete it was (*estimate complete* · *3 rows without hours* · *no labor rate on the bid* · *materials from takeoff*). {{button:gray|Refresh from bid ↻}} takes the estimate again — repricing shows as a visible change, never a silent drift. {{button:gray|Clear}} goes back to the assumption; the link stays.
-- {{chip:gray|✎ typed}} — the typed budget; **Edit** changes the three numbers.
+{{chip:green|True margin at completion · $7,782 · 6%}} {{chip:gray|Spent so far · $80,600}} {{chip:gray|Earned so far · $95,172}} {{chip:gray|Time left · ≈ 22 working days}}
 
-Under the source line, one row per component — **labor in hours first** (the bid priced a book rate, the job pays real wages), materials, subs, other — with used against budget, a bar whose amber marker is the job's % done (fill past the marker is spend ahead of the work, red past the budget), and where each lands at today's pace. A sentence says why: *Materials are $6,700 over the estimate with 23 % of the work left, labor is 9 points ahead of progress, and subs are 20 points under.* Components the bid never priced burn against the assumption, and the sentence says so.
+- **True margin at completion** — the price, minus the direct cost the job will reach at today's pace (spent ÷ % done), minus the job's overhead share. The line under it shows the direct margin alone. Green when positive, red when not; *too early* until the job has three field days and 10 %.
+- **Spent so far** — direct cost to date and its share of the price, with the team hours and materials behind it.
+- **Earned so far** — % done × the price, and how far ahead or behind the spend that is. This is the honest yardstick: it needs no budget.
+- **Time left** — working days at the pace so far (the % of the work done per field day), with what a field day costs.
 
-:::example A job that came from a bid, day one
-The SPACEX job opens with *≈ Burn is reading an assumed budget · price × 65 %*. One candidate: **B375 SPACEX BA-02N Architectural** · won · $249,716 bid value · *matches the job's price to the dollar* · estimate without hours. Link it: the job now carries the bid, and the card says the estimate has no hours yet — cost the bid on its Labor tab and press Refresh from bid.
-:::
+The line above the tiles names the report that set the % and how old it is, and says when the job's own % disagrees.
 
+**Click the margin tile** to see how it builds by section: labor, materials, subs and other, each with spent so far, where it lands at completion, and what the bid carried for it — then overhead, true cost, price and the margin as the sum. When the bid was sent without hours, the bid column says so (*no hours on B66*) instead of pretending a budget.
+
+## The baseline strip — collecting instead of guessing
+
+Under the tiles, one strip says where this job stands with the labor book:
+
+- {{chip:yellow|No baseline for this job yet — bid B66 was sent without hours}} — most jobs today. What the job has taken so far *is* the baseline: **959 h** team · **7.8 h** per $1k of price · **$34.22/h** average wage · **13** people · **$46,376** materials (38 % of price). {{button:gray|Count sheet on B66 →}} opens the bid's Counts tab; {{button:gray|Take its estimate}} appears when the bid has an estimate. A job with no bid at all offers {{button:gray|Link the bid ▾}}, which folds open the bid finder and the typed budget.
+- {{chip:green|◆ Baseline from B76 · 36 h predicted}} — the bid carried hours: the strip reads the recorded hours against them for the work done so far ("17 % of the bid's hours at 50 % done · the book was heavy here"). {{button:gray|Refresh from bid ↻}} takes the estimate again; {{button:gray|Clear}} drops it.
+
+## The chart, and the detail behind the toggle
+
+One chart: **cost to date** against **value earned** (% done × price, stepping at each report), the price as a faint line, the bid figure as a dashed line only when one exists, and the forecast at today's pace. {{button:gray|Show the timeline · daily spend ▾}} reveals the 14-day daily spend, the burn rate and work-left rows, and the full Cost Timeline described below.
 ## Burn — are we spending faster than we are finishing?
 
 Owners, controllers and master techs see a **Burn** section at the top of the job window's **Costs** tab, above the chart. Four tiles:
