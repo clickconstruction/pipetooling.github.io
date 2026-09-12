@@ -7,7 +7,7 @@ const note: ReleaseNote = {
   kind: 'feature',
   highlights: [
     'When a bid with a count sheet is sent, its labor rows are created from the book right then — the same rows the Labor tab would have made — so the estimate carries hours without anyone opening Labor. Rows the book cannot answer wait in the Labor tab’s queue as before.',
-    'Every sent bid with a count sheet was back-filled. Nothing a person typed was touched.',
+    'Every sent bid with a count sheet was back-filled — 507 rows across 118 bids. Nothing a person typed was touched. What the book has no name for still waits in the queue; one alias saved there answers every future bid.',
   ],
 }
 
