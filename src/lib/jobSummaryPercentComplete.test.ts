@@ -8,6 +8,8 @@ import {
   resolveJobCurrentPercentFallback,
   resolveJobSummaryPercentComplete,
   resolveJobSummaryPercentCompleteWithSource,
+  reportPctIsCurrent,
+  currentReportPctByJobId,
   type JobSummaryPercentSource,
 } from './jobSummaryPercentComplete'
 import { percentProvenanceLabel } from './jobPercentProvenance'
@@ -207,5 +209,36 @@ describe('every % source has a provenance badge (v2.2852)', () => {
     expect(percentProvenanceLabel(progressBill.source, { reportedOn: '2026-08-27T19:00:00Z' })).toBe('crew report Aug 27')
     expect(percentProvenanceLabel(resolveJobSummaryPercentCompleteWithSource(null, 63).source)).toBe('set by office')
     expect(percentProvenanceLabel(resolveJobSummaryPercentCompleteWithSource(null, null).source)).toBeNull()
+  })
+})
+
+describe('the newest % wins (v2.3372)', () => {
+  it('a report stands when nothing was hand-set, or when it was filed after the last hand-set', () => {
+    expect(reportPctIsCurrent('2026-05-15T20:12:54Z', null)).toBe(true)
+    expect(reportPctIsCurrent('2026-09-04T10:00:00Z', '2026-09-03T18:53:56Z')).toBe(true)
+  })
+  it('a hand-set at or after the report makes the report stale (Mission Hills: May 15 report, Sep 3 hand-set)', () => {
+    expect(reportPctIsCurrent('2026-05-15T20:12:54Z', '2026-09-03T18:53:56Z')).toBe(false)
+    expect(reportPctIsCurrent('2026-09-03T18:53:56Z', '2026-09-03T18:53:56Z')).toBe(false)
+  })
+  it('an unparseable date on either side keeps the report (the old rule)', () => {
+    expect(reportPctIsCurrent(null, '2026-09-03T18:53:56Z')).toBe(true)
+    expect(reportPctIsCurrent('garbage', '2026-09-03T18:53:56Z')).toBe(true)
+    expect(reportPctIsCurrent('2026-05-15T20:12:54Z', 'garbage')).toBe(true)
+  })
+  it('the RPC rows become the report-% map with stale reports left out, so readers fall through to pct_complete', () => {
+    const map = currentReportPctByJobId([
+      { job_ledger_id: 'j523', pct: 77, reported_at: '2026-05-15T20:12:54Z', manual_at: '2026-09-03T18:53:56Z' },
+      { job_ledger_id: 'j949', pct: 100, reported_at: '2026-08-18T12:00:00Z', manual_at: null },
+      { job_ledger_id: 'j804', pct: 24, reported_at: '2026-05-26T12:00:00Z', manual_at: '2026-08-10T12:00:00Z' },
+      { job_ledger_id: 'jnull', pct: null, reported_at: '2026-08-18T12:00:00Z', manual_at: null },
+    ])
+    expect([...map.entries()]).toEqual([['j949', 100]])
+    // The pre-v2.3372 row shape (no dates) still maps.
+    expect([...currentReportPctByJobId([{ job_ledger_id: 'a', pct: 40 }]).entries()]).toEqual([['a', 40]])
+    // A later batch with a stale report clears an earlier entry for the same job.
+    const prev = new Map([['j523', 77]])
+    expect(currentReportPctByJobId([{ job_ledger_id: 'j523', pct: 77, reported_at: '2026-05-15T20:12:54Z', manual_at: '2026-09-03T18:53:56Z' }], prev).has('j523')).toBe(false)
+    expect(resolveJobSummaryPercentCompleteWithSource(map.get('j523') ?? null, 90)).toEqual({ pct: 90, source: 'office' })
   })
 })

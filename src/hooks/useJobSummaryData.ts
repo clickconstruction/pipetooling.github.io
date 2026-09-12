@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
+import { currentReportPctByJobId, type LatestReportPctRow } from '../lib/jobSummaryPercentComplete'
 import { withSupabaseRetry } from '../utils/errorHandling'
 import { fetchJobsLedgerWithDetailsForStages } from '../lib/fetchJobsLedgerWithDetailsForStages'
 import {
@@ -276,13 +277,11 @@ export function useJobSummaryData({
           async () => await supabase.rpc('list_latest_report_completion_pct', { p_job_ids: missing }),
           'job summary report completion pct',
         )
-        const rows = (data ?? []) as Array<{ job_ledger_id: string; pct: number }>
+        const rows = (data ?? []) as LatestReportPctRow[]
         if (rows.length === 0) return
-        setJobSummaryReportPctByJobId((prev) => {
-          const next = new Map(prev)
-          for (const r of rows) next.set(r.job_ledger_id, r.pct)
-          return next
-        })
+        // v2.3372: a report older than the office's last hand-set is dropped here, so the
+        // % column, the burn card and the Pipeline all fall through to pct_complete.
+        setJobSummaryReportPctByJobId((prev) => currentReportPctByJobId(rows, new Map(prev)))
       } catch {
         // Column falls back to jobs_ledger.pct_complete; un-mark so a later visit retries.
         for (const id of missing) jobSummaryReportPctRequestedRef.current.delete(id)

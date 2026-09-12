@@ -21123,7 +21123,9 @@ export type Database = {
         Args: { p_job_ids: string[] }
         Returns: {
           job_ledger_id: string
+          manual_at: string
           pct: number
+          reported_at: string
         }[]
       }
       list_manual_bank_accounts: {

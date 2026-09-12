@@ -53,6 +53,49 @@ export function paidInvoicesCoverContract(
   return invoiced >= revenue - tolerance
 }
 
+/** One row of `list_latest_report_completion_pct` (v2.3372: the dates came with it). */
+export type LatestReportPctRow = {
+  job_ledger_id: string
+  pct: number | null
+  /** When the latest report carrying a % was filed. */
+  reported_at?: string | null
+  /** When the office last set the job's % by hand (`job_pct_events`, source manual); null when never. */
+  manual_at?: string | null
+}
+
+/**
+ * The newest % wins, whoever set it (v2.3372). A report's % stands only when no
+ * hand-set is recorded or the report was filed after the last hand-set; a
+ * hand-set on the same instant or later means the office typed it knowing the
+ * report, so the job's own % (the resolver's fallback) is the current answer.
+ * An unparseable date on either side keeps the report — the pre-v2.3372 rule.
+ */
+export function reportPctIsCurrent(reportedAt: string | null | undefined, manualAt: string | null | undefined): boolean {
+  if (!manualAt) return true
+  if (!reportedAt) return true
+  const r = Date.parse(reportedAt)
+  const m = Date.parse(manualAt)
+  if (!Number.isFinite(r) || !Number.isFinite(m)) return true
+  return r > m
+}
+
+/**
+ * The RPC's rows → `job id → report %`, keeping only reports that are still the
+ * newest word on the job (`reportPctIsCurrent`). A job whose hand-set is newer is
+ * left out of the map so every reader falls through to `pct_complete`.
+ */
+export function currentReportPctByJobId(rows: ReadonlyArray<LatestReportPctRow>, into: Map<string, number> = new Map()): Map<string, number> {
+  for (const r of rows) {
+    if (r.pct == null || !Number.isFinite(r.pct)) continue
+    if (!reportPctIsCurrent(r.reported_at, r.manual_at)) {
+      into.delete(r.job_ledger_id)
+      continue
+    }
+    into.set(r.job_ledger_id, r.pct)
+  }
+  return into
+}
+
 /** Who said the %: fully paid invoices covering the contract · the latest crew report · the office's Edit-Job % · nobody. */
 export type JobSummaryPercentSource = 'paid-invoices' | 'crew-report' | 'office' | 'none'
 

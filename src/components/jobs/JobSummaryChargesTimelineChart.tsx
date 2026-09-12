@@ -270,7 +270,7 @@ function JobChargesTimelineTooltip({ active, payload }: TimelineTooltipProps) {
       ))}
       {row.valueEvents.map((e, i) => (
         <div key={`v-${i}`} style={{ color: 'var(--text-blue-800)' }}>
-          🚩 {e.label}
+          {e.kind === 'manual' ? '✎' : '🚩'} {e.label}
           {e.percent != null ? ` — ${e.percent}% complete` : ' — no completion %'}
         </div>
       ))}

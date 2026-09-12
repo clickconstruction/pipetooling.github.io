@@ -18,7 +18,7 @@ The Costs tab opens with what the job is doing, measured against the **price**, 
 - **Earned so far** — % done × the price, and how far ahead or behind the spend that is. This is the honest yardstick: it needs no budget.
 - **Time left** — working days at the pace so far (the % of the work done per field day), with what a field day costs.
 
-The line above the tiles names the report that set the % and how old it is, and says when the job's own % disagrees.
+The line above the tiles names the report that set the % and how old it is, and says when the job's own % disagrees. A % typed on the job after that report is the newer word, so the line reads "(set on the job)" instead and the chart's value line steps on the day it was typed — without a report flag.
 
 **Click the margin tile** to see how it builds by section: labor, materials, subs and other, each with spent so far, where it lands at completion, and what the bid carried for it — then overhead, true cost, price and the margin as the sum. When the bid was sent without hours, the bid column says so (*no hours on B66*) instead of pretending a budget.
 

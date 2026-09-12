@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useAuth } from './useAuth'
 import { useJobsListCache } from '../contexts/JobsListCacheContext'
 import { supabase } from '../lib/supabase'
+import { currentReportPctByJobId, type LatestReportPctRow } from '../lib/jobSummaryPercentComplete'
 import { withSupabaseRetry } from '../utils/errorHandling'
 import {
   buildJobClockSummaries,
@@ -57,13 +58,10 @@ export function useQuickfillCompleteNoBillJobs(minHcpNumber: number): {
           async () => await supabase.rpc('list_latest_report_completion_pct', { p_job_ids: missing }),
           'quickfill complete-no-bill report pct',
         )
-        const rows = (data ?? []) as Array<{ job_ledger_id: string; pct: number }>
+        const rows = (data ?? []) as LatestReportPctRow[]
         if (rows.length > 0) {
-          setReportPctByJobId((prev) => {
-            const next = new Map(prev)
-            for (const r of rows) next.set(r.job_ledger_id, r.pct)
-            return next
-          })
+          // v2.3372: a report older than the office's last hand-set does not count.
+          setReportPctByJobId((prev) => currentReportPctByJobId(rows, new Map(prev)))
         }
       } catch {
         // Fall back to pct_complete for these jobs; un-mark so a later render retries.
