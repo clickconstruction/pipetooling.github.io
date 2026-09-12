@@ -222,6 +222,8 @@ import JobsStagesHideGroupsModal from './JobsStagesHideGroupsModal'
 import { StagesJobNumberJumpChip } from './StagesJobNumberJumpChip'
 import { StagesSearchHighlightProvider, StagesSearchMark } from './StagesSearchMark'
 import SessionNotesModal from './SessionNotesModal'
+import { StagesCrewModalContext } from '../../contexts/StagesCrewModalContext'
+import { StagesCrewModal } from './StagesCrewModal'
 import { SessionNotesOpenerContext } from './sessionNotesOpenerContext'
 import type { SessionNotesJobIdentity } from '../../lib/jobs/sessionNotesSearch'
 import { findJobsByNumber, stagesSectionKeyForJobRow } from '../../lib/jobs/stagesJobNumberJump'
@@ -527,6 +529,8 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
   // Full-page Job activity modal — opened by the activity box's corner expand
   // button and the row's "N Reports" chip. One instance for the whole board.
   const [activityExpandJob, setActivityExpandJob] = useState<JobWithDetails | null>(null)
+  /** v2.3373: the crew modal — the Crew & Dates line (or the phone sheet's Crew and hours) opens it. */
+  const [crewModalJob, setCrewModalJob] = useState<JobWithDetails | null>(null)
   const openJobActivityExpand = useCallback(
     (job: JobWithDetails) => {
       if (loadJobThreadNotesForJob) void loadJobThreadNotesForJob(job.id)
@@ -2604,6 +2608,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
 
   return (
     <StagesSearchHighlightProvider query={stagesSearchQuery.trim() || null}>
+    <StagesCrewModalContext.Provider value={setCrewModalJob}>
     <SessionNotesOpenerContext.Provider value={canOpenSessionNotes ? openSessionNotes : null}>
       {active && (
         <div>
@@ -5282,6 +5287,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
           }}
         />
       ) : null}
+      {crewModalJob ? <StagesCrewModal job={crewModalJob} onClose={() => setCrewModalJob(null)} /> : null}
       {activityExpandJob && (
         <JobsStagesActivityExpandModal
           job={activityExpandJob}
@@ -6257,6 +6263,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
         </div>
       ) : null}
     </SessionNotesOpenerContext.Provider>
+    </StagesCrewModalContext.Provider>
     </StagesSearchHighlightProvider>
   )
 })

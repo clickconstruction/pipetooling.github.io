@@ -76,9 +76,15 @@ The stage headers down the board carry their own buttons — Capable of Being Bi
 
 The amber count on Accounts Receivable is the same unallocated-bank-deposits badge the header button wears, and every item follows the same permissions as the button it mirrors — if you can't use it on the header, it's disabled or hidden here too.
 
+The **Crew & Dates** cell names the people on the job whose accounts are live; crew whose accounts have been archived fold into *and 3 archived* so a long-running job does not stretch the line. Click the names to open **Everyone on the job**: each person with their role, status ({{chip:green|Active}} or *Archived Jul 12*), hours, days and last day on the job — live accounts first, then archived, each by hours — and, under a grey heading, anyone with hours here who was never put on the crew list. A name opens their Person desk.
+
+:::example Mission Hills
+The cell reads *Malachi, Tristen, Trace, Michael A, and 5 archived*. Click it: Mario and Jesse, both archived in July, carried 300 of the job's 959 hours; Tristen's last day was yesterday.
+:::
+
 At the start of each row, next to **Crew & Dates**, a small stack of shortcuts covers the common jump-offs: the green calendar opens **Assign work** — the same sheet Dispatch mode uses, with the job already picked, so you just choose the day, the people (whole crews in one tap), and a time window, and the row's green **Next** line updates in place without losing your spot on the board — the blue grid opens its **week dispatch**, the red pin opens the address in **Google Maps**, the phone icon **calls the customer** (it only appears when the job has a phone number on file), and the purple send arrow **sends the job to someone as a task** — it opens the New task form with the job attached as a link, you add your note and pick who it's for, and when they open the task, clicking the job's name takes them straight to its **Job Detail**. The same purple send arrow also sits in the **Job Detail** header, so you can send a job to someone while you're already looking at it.
 
-On the **mobile cards** view, the card's foot keeps just the **phone icon** and the **⋯** menu — everything else moved into the ⋯ sheet, which opens headed by the job and its crew and holds View job, Edit, Activity, Calendar, Share, Test report, Google Maps, **Assign work**, **Send to Dispatch**, **Send as task**, Week dispatch, and Send back.
+On the **mobile cards** view, the card's foot keeps just the **phone icon** and the **⋯** menu — everything else moved into the ⋯ sheet, which opens headed by the job and its crew and holds View job, Edit, **Crew and hours** (the same Everyone-on-the-job list), Activity, Calendar, Share, Test report, Google Maps, **Assign work**, **Send to Dispatch**, **Send as task**, Week dispatch, and Send back.
 
 ## Getting to Ready to bill
 

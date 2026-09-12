@@ -39,7 +39,8 @@ const FIXTURE_COLS = ['bill_to_party', 'count', 'created_at', 'discount_basis_po
 
 const TEAM_MEMBER_COLS = ['created_at', 'id', 'job_id', 'user_id'] as const satisfies ReadonlyArray<keyof Row<'jobs_ledger_team_members'>>
 
-const cols = (embed: string) => embed.split(',').map((c) => c.trim())
+/** Top-level columns of an embed: a nested `users(name,archived_at,role)` stays one entry (v2.3373). */
+const cols = (embed: string) => embed.split(/,(?![^(]*\))/).map((c) => c.trim())
 const embedsIn = (select: string) => [...select.matchAll(/([a-z_]+)(?::[a-z_]+)?\(([^()]*(?:\([^()]*\)[^()]*)*)\)/g)].map((m) => [m[1]!, m[2]!.replace(/\s+/g, ' ').trim()] as const)
 
 describe('child embeds', () => {
@@ -53,7 +54,8 @@ describe('child embeds', () => {
     expect(cols(JOBS_LEDGER_PAYMENTS_EMBED)).toEqual([...PAYMENT_COLS])
     expect(cols(JOBS_LEDGER_MATERIALS_EMBED)).toEqual([...MATERIAL_COLS])
     expect(cols(JOBS_LEDGER_FIXTURES_EMBED)).toEqual([...FIXTURE_COLS])
-    expect(cols(JOBS_LEDGER_TEAM_MEMBERS_EMBED)).toEqual([...TEAM_MEMBER_COLS, 'users(name)'])
+    // v2.3373: archived_at + role ride along for the Pipeline's crew line and modal.
+    expect(cols(JOBS_LEDGER_TEAM_MEMBERS_EMBED)).toEqual([...TEAM_MEMBER_COLS, 'users(name,archived_at,role)'])
     for (const e of [JOBS_LEDGER_INVOICES_EMBED, JOBS_LEDGER_PAYMENTS_EMBED, JOBS_LEDGER_MATERIALS_EMBED, JOBS_LEDGER_FIXTURES_EMBED]) {
       const c = cols(e)
       expect(c, e).toEqual([...c].sort())

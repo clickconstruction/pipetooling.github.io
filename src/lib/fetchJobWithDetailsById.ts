@@ -19,7 +19,7 @@ function mapRowToJobWithDetails(
     jobs_ledger_fixtures?: JobsLedgerFixture[]
     jobs_ledger_payments?: JobsLedgerPayment[]
     jobs_ledger_invoices?: JobsLedgerInvoice[]
-    jobs_ledger_team_members?: (JobsLedgerTeamMember & { users: { name: string } | null })[]
+    jobs_ledger_team_members?: (JobsLedgerTeamMember & { users: { name: string; archived_at?: string | null; role?: string | null } | null })[]
     reports?: Array<{
       job_ledger_id: string | null
       created_at: string | null
