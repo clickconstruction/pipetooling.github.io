@@ -8,6 +8,7 @@
  * for a second bill. Pure (no Deno, no Stripe); tested from
  * `src/lib/billing/stripeBillCopyEmail.test.ts`.
  */
+import { APP_CALENDAR_TZ } from './appTimeZone.ts'
 
 export type StripeBillCopyEmailInput = {
   /** Who the bill is addressed to — the payer's name. */
@@ -37,7 +38,7 @@ export function formatDueDate(unix: number | null): string | null {
   if (unix == null || !Number.isFinite(unix)) return null
   const d = new Date(unix * 1000)
   if (Number.isNaN(d.getTime())) return null
-  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'America/Chicago' })
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: APP_CALENDAR_TZ })
 }
 
 function esc(s: string): string {
