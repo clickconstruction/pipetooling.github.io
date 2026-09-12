@@ -37,7 +37,7 @@ export type JobsLedgerStatusScope =
 export type JobsLedgerStagesPrimaryRow = JobsLedgerRow & {
   jobs_ledger_payments?: JobsLedgerPayment[]
   jobs_ledger_invoices?: JobsLedgerInvoice[]
-  jobs_ledger_team_members?: (JobsLedgerTeamMember & { users: { name: string } | null })[]
+  jobs_ledger_team_members?: (JobsLedgerTeamMember & { users: { name: string; archived_at?: string | null; role?: string | null } | null })[]
   reports?: Array<{ job_ledger_id: string | null }>
   projects?: { id: string; name: string } | null
   bids?: { id: string; project_name: string | null; bid_number: string | null; service_type_id: string | null } | null

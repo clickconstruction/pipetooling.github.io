@@ -1,3 +1,4 @@
+import { StagesCrewLine } from './StagesCrewLine'
 import { Fragment, type ReactNode } from 'react'
 import { useCustomerProfileModal } from '../../contexts/CustomerProfileModalContext'
 import { useJobHoursStoryModal } from '../../contexts/JobHoursStoryModalContext'
@@ -323,7 +324,7 @@ export default function JobsStagesTable(props: JobsStagesTableProps) {
                   <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.35rem' }}>
                   {renderStagesQuickActionsStack(j)}
                   <div style={{ flex: 1, minWidth: 0 }}>
-                  <div>{(j.team_members ?? []).map((t) => t.users?.name?.trim()).filter(Boolean).join(', ') || '—'}</div>
+                  <StagesCrewLine job={j} />
                   {renderStagesJobHcpSubline(j, { marginTop: '0.15rem' }, props.stagesSortMode === 'added' ? stagesAddedStampLabel(j.created_at) : null)}
                   {renderStagesFieldAndBillingLines(j)}
                   </div>

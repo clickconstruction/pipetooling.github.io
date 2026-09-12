@@ -1,3 +1,5 @@
+import { useStagesCrewModalOpener } from '../../contexts/StagesCrewModalContext'
+import { stagesCrewSummary } from '../../lib/jobs/stagesCrew'
 import { useState } from 'react'
 import { JobContractChip } from './JobContractChip'
 import { legalRowChip } from '../../lib/legal/legalMatters'
@@ -132,10 +134,8 @@ const cardPrimaryActionStyle: CSSProperties = {
 
 /** Crew names for the ⋯ sheet header — the card body no longer spends a row on them (zoned card). */
 function crewNamesLabel(job: JobWithDetails): string | undefined {
-  const names = (job.team_members ?? [])
-    .map((t) => t.users?.name?.trim())
-    .filter(Boolean)
-    .join(', ')
+  // v2.3373: live names, archived accounts folded into "and N archived" — the table's rule.
+  const names = stagesCrewSummary(job.team_members)
   return names ? `Crew: ${names}` : undefined
 }
 
@@ -647,10 +647,13 @@ export default function JobsStagesCardList(props: JobsStagesTableProps) {
     onOpenJobContract: props.onOpenJobContract,
   }
 
+  const openCrew = useStagesCrewModalOpener()
   const moreActionsFor = (j: JobWithDetails): StagesCardMoreAction[] => {
     const items: StagesCardMoreAction[] = [
       { key: 'view', label: 'View job', onClick: () => openStagesDetailJobModal(j) },
       { key: 'edit', label: 'Edit job', onClick: () => openEdit(j) },
+      // v2.3373: the crew modal — everyone who has been on the job, with hours.
+      ...(openCrew && (j.team_members?.length ?? 0) > 0 ? [{ key: 'crew', label: 'Crew and hours', onClick: () => openCrew(j) }] : []),
       {
         key: 'activity',
         label: 'Activity and notes',
@@ -902,6 +905,7 @@ export function JobsStagesUnifiedCardList(props: JobsStagesUnifiedTableProps) {
     onOpenJobContract: props.onOpenJobContract,
   }
 
+  const openCrew = useStagesCrewModalOpener()
   const moreActionsForRow = (row: (typeof rows)[number]): StagesCardMoreAction[] => {
     const j = row.job
     const inv = row.kind === 'job' ? null : row.inv
@@ -909,6 +913,8 @@ export function JobsStagesUnifiedCardList(props: JobsStagesUnifiedTableProps) {
     const items: StagesCardMoreAction[] = [
       { key: 'view', label: 'View job', onClick: () => openStagesDetailJobModal(j) },
       { key: 'edit', label: 'Edit job', onClick: () => openEdit(j) },
+      // v2.3373: the crew modal — everyone who has been on the job, with hours.
+      ...(openCrew && (j.team_members?.length ?? 0) > 0 ? [{ key: 'crew', label: 'Crew and hours', onClick: () => openCrew(j) }] : []),
       { key: 'calendar', label: 'Calendar', onClick: () => props.openJobCalendar(j) },
       {
         key: 'share',

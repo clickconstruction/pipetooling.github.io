@@ -86,7 +86,8 @@ export const JOBS_LEDGER_FIXTURES_EMBED = [
 ].join(', ')
 
 /** `jobs_ledger_team_members` + users embed */
-export const JOBS_LEDGER_TEAM_MEMBERS_EMBED = ['created_at', 'id', 'job_id', 'user_id', 'users(name)'].join(', ')
+// v2.3373: archived_at + role so the Pipeline folds archived crew into "and N archived" and the crew modal can label rows.
+export const JOBS_LEDGER_TEAM_MEMBERS_EMBED = ['created_at', 'id', 'job_id', 'user_id', 'users(name, archived_at, role)'].join(', ')
 
 /**
  * Stages list: one query without materials/fixtures; those are batch-loaded and merged

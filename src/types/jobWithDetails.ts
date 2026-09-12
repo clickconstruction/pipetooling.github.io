@@ -19,7 +19,7 @@ export type JobWithDetails = JobsLedgerRow & {
   fixtures: JobsLedgerFixture[]
   payments: JobsLedgerPayment[]
   invoices: JobsLedgerInvoice[]
-  team_members: (JobsLedgerTeamMember & { users: { name: string } | null })[]
+  team_members: (JobsLedgerTeamMember & { users: { name: string; archived_at?: string | null; role?: string | null } | null })[]
   /** Embedded Account Man (jobs_ledger.account_manager_user_id → users, v2.1466). */
   account_manager?: { id: string; name: string | null } | null
   report_count?: number
