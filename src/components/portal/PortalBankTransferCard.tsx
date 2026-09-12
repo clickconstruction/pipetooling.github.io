@@ -179,7 +179,7 @@ export function PortalBankTransferCard(props: PortalBankTransferCardProps) {
       >
         <span style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: '0.2em', textTransform: 'uppercase', color: COPPER }}>{title}</span>
         <span style={{ fontSize: 12, color: MUTED, whiteSpace: 'nowrap' }}>
-          {open ? 'Hide' : c.transfer ? 'ACH (direct deposit) • wire • check' : 'Where to mail it'} <span aria-hidden style={{ display: 'inline-block', transform: open ? 'rotate(90deg)' : 'none', transition: 'transform .15s' }}>›</span>
+          {open ? 'Hide' : c.transfer ? 'ACH • WIRE • MAILED CHECK' : 'Where to mail it'} <span aria-hidden style={{ display: 'inline-block', transform: open ? 'rotate(90deg)' : 'none', transition: 'transform .15s' }}>›</span>
         </span>
       </button>
       {open ? (
