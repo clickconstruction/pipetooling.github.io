@@ -20,6 +20,7 @@ import { jobModeActiveSource, readJobModeStoredValue } from '../lib/jobModeToggl
 import { recordJobModeEnabledOncePerSession } from '../lib/jobModeTelemetry'
 import DashboardJobModeFirstRunCard from '../components/dashboard/DashboardJobModeFirstRunCard'
 import DashboardJobModeCard from '../components/jobMode/DashboardJobModeCard'
+import DashboardYourRecordCard from '../components/dashboard/DashboardYourRecordCard'
 import TurnawayModal from '../components/jobMode/TurnawayModal'
 import JobReportsModal from '../components/JobReportsModal'
 import AdditionalReportModal from '../components/AdditionalReportModal'
@@ -1149,6 +1150,8 @@ export default function Dashboard() {
           onTurnaway={(j) => setTurnawayJob(j)}
           canClockOut={!dashboardSelfIsSalary}
         />
+        {/* Your record (v2.3368): the three things only this person can put right, no money on it. */}
+        <DashboardYourRecordCard userId={authUser.id} role={role} displayName={clockDisplayName ?? ''} isSalary={dashboardSelfIsSalary} />
         <div style={{ marginTop: '0.75rem' }}>{myScheduleSection}</div>
         <div style={{ display: 'flex', justifyContent: 'center', marginTop: '0.75rem' }}>
           <button
@@ -1366,6 +1369,7 @@ export default function Dashboard() {
                 </button>
               </div>
             )}
+            {authUser?.id ? <DashboardYourRecordCard userId={authUser.id} role={role} displayName={clockDisplayName ?? ''} isSalary={dashboardSelfIsSalary} /> : null}
             {myScheduleSection}
           </>
         }
