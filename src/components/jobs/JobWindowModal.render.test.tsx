@@ -109,7 +109,8 @@ describe('JobWindowModal', () => {
   it('Costs is its own tab (v2.3182): the parts accordions and Cost Timeline live there, not on Bill', async () => {
     renderWindow(vi.fn(), 'bill')
     await screen.findByDisplayValue('Kitchen rough-in')
-    const partsRow = () => screen.getByText('Supply house invoices')
+    // v2.3361: the "Where the money went" table names the source too; the accordion row is the last match.
+    const partsRow = () => screen.getAllByText('Supply house invoices').slice(-1)[0]!
     // Hidden while Bill shows…
     expect(partsRow().closest('div[style*="none"]')).toBeTruthy()
     fireEvent.click(tab('Costs'))

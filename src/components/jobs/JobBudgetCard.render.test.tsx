@@ -71,8 +71,9 @@ describe('JobBudgetCard · Frame B', () => {
     const s = state({ candidates: [{ bid_id: 'b375', bid_number: '375', project_name: 'SPACEX BA-02N Architectural', bid_value: 249_715.66, agreed_value: null, outcome: 'won', customer_name: 'Structura, Inc.', rank: 1, reason: "matches the job's price to the dollar", has_estimate: true, estimate_hours: 0, linked_jobs: 0 }] })
     renderCard(s)
     const banner = screen.getByTestId('job-budget-banner')
-    expect(within(banner).getByText('≈ Burn is reading an assumed budget')).toBeTruthy()
-    expect(within(banner).getByText('price × 65 % (35 % target) = $80,340. No bid is linked to this job.')).toBeTruthy()
+    // v2.3361: the card is the folded "Link the bid ▾" doorway on the honest Costs tab — it no longer names an assumed budget.
+    expect(within(banner).getByText('Link the bid this job came from')).toBeTruthy()
+    expect(within(banner).getByText('No bid is linked to this job — its hours and materials will not reach the labor book until it is.')).toBeTruthy()
     expect(within(banner).getByText('One bid matches this job:')).toBeTruthy()
     const cand = within(banner).getByTestId('budget-candidate')
     expect(within(cand).getByText('B375 SPACEX BA-02N Architectural')).toBeTruthy()

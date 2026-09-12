@@ -10,6 +10,7 @@ vi.mock('../../lib/supabase', async () => {
 import { renderWithProviders } from '../../test/renderSmokeMocks'
 import { LienWaiverSendModal, type LienWaiverSendTarget } from './LienWaiverSendModal'
 
+const YESTERDAY = new Date(Date.now() - 86_400_000).toISOString().slice(0, 10)
 const target = (over: Partial<LienWaiverSendTarget> = {}): LienWaiverSendTarget => ({
   sheetId: 'sheet-1',
   personId: 'person-1',
@@ -20,7 +21,8 @@ const target = (over: Partial<LienWaiverSendTarget> = {}): LienWaiverSendTarget 
   project: 'Mission Pet Health',
   owner: 'Mission Pet Health',
   location: '415 Springtown Way, San Marcos, TX 78666',
-  payments: [{ amount: 17752.65, payment_date: '2026-09-07', created_at: '2026-09-07T15:00:00Z' }],
+  // Paid yesterday — a fixed date here rotted after five days (v2.3361 fix): "fresh" has to stay fresh as the calendar moves.
+  payments: [{ amount: 17752.65, payment_date: YESTERDAY, created_at: `${YESTERDAY}T15:00:00Z` }],
   balance: 22247.35,
   ...over,
 })
