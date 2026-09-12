@@ -44,7 +44,7 @@ The Learning Experience has no signed contract on either job. With a sent Stripe
 
 {{button:outline|Write down…}} opens the agreed write-down on the account's largest open bill line, for the accounts the desk says are not worth pursuing. The matter closes as {{chip:gray|Written down}} and the row leaves Collections when the bill clears.
 
-{{button:blue|⚖ Mark attorney ready…}} is the release, and only a dev sees it. The sheet says what goes — jobs, balance, theory, exhibits, how many entries are held back — names the handling person at the firm and who hears about it, takes a note for the firm, and warns when red gaps are still open (you can mark anyway; the packet's cover sheet says so). Confirm and the account moves to **With the firm**; the row wears a {{chip:yellow|⚖ new}} chip and each job's Activity records the release. **Pull back** (dev) returns it to review; the firm's fees and steps stay on the record.
+{{button:blue|⚖ Mark attorney ready…}} is the release, and only a dev sees it. The sheet says what goes — jobs, balance, theory, exhibits, how many entries are held back — names the handling person at the firm and who hears about it, takes a note for the firm, and warns when red gaps are still open (you can mark anyway; the packet's cover sheet says so). {{button:outline|Preview what the firm sees ↗}} opens their page for this account — all five tabs and the exhibits, held entries left out, your note in place — before anything is released. Confirm and the account moves to **With the firm**; the row wears a {{chip:yellow|⚖ new}} chip and each job's Activity records the release. **Pull back** (dev) returns it to review; the firm's fees and steps stay on the record.
 
 ## Curate what the firm sees
 
