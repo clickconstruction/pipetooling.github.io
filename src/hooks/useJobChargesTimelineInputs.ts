@@ -63,6 +63,12 @@ export function useJobChargesTimelineInputs(job: JobWithDetails, includeTeamLabo
             .select('id, created_at, field_values, users!reports_created_by_user_id_fkey(name)')
             .eq('job_ledger_id', job.id)
             .order('created_at', { ascending: true }),
+          supabase.from('app_settings').select('key, value_num').in('key', ['drive_mileage_cost', 'drive_time_per_mile']),
+          // v2.3060: the sheet's job link, not its number text.
+          supabase
+            .from('people_labor_jobs')
+            .select('id, assigned_to_name, job_date, created_at, labor_rate, distance_miles')
+            .eq('job_ledger_id', job.id),
           // v2.3372: the office's hand-set percents, so a % typed after the last report is the
           // current one (the trigger on jobs_ledger.pct_complete is the single writer; 'seed'
           // rows are the 2026-08-07 back-fill and 'service' rows are report-derived — neither is a hand-set).
@@ -72,12 +78,6 @@ export function useJobChargesTimelineInputs(job: JobWithDetails, includeTeamLabo
             .eq('job_id', job.id)
             .eq('source', 'manual')
             .order('changed_at', { ascending: true }),
-          supabase.from('app_settings').select('key, value_num').in('key', ['drive_mileage_cost', 'drive_time_per_mile']),
-          // v2.3060: the sheet's job link, not its number text.
-          supabase
-            .from('people_labor_jobs')
-            .select('id, assigned_to_name, job_date, created_at, labor_rate, distance_miles')
-            .eq('job_ledger_id', job.id),
         ])
 
         let mileageCost = 0.7
