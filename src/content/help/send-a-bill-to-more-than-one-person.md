@@ -42,6 +42,6 @@ Open {{button:blue|Send bill…}} on the job and the **Send to** list — on the
 
 - Copies never repeat the address the bill is sent to, and a bill to a typed one-off recipient (a tenant, via *Bill to ▾ → Someone else…*) never carries the customer's people — only an address you type on that bill.
 - Up to ten copies per bill.
-- **Stripe bills**: Stripe itself emails only the billing address. The others get a copy from ClickTooling — the amount, the due date, the same **Pay or view the bill** link, and a line saying who was billed — the moment you press {{button:blue|Send Email invoice}}. One email each, so nobody sees the other addresses. The confirm lists who will be copied; the toast afterward names who was.
+- **Stripe bills**: Stripe itself emails only the billing address. The others get a copy from ClickTooling — the amount, the due date, the same **Pay or view the bill** link, and a line saying who was billed — the moment you press {{button:blue|Send Email invoice}}. One email each, so nobody sees the other addresses, and each ends with a link to that person's own statement — the customer's people see the customer's, a GC sees theirs. The confirm lists who will be copied; the toast afterward names who was; and the confirm's send history shows, under each past send, who got a copy that time.
 - Sharing a Stripe bill by text or copied link emails nobody, so it copies nobody either.
 - **PDF invoices** go out as one email with everyone on it.

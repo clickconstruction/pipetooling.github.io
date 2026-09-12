@@ -31,6 +31,12 @@ describe('buildStripeBillCopyEmail', () => {
     expect(out.text).toContain('sent to Josh Peterson.')
     expect(out.html).not.toContain('Download the PDF')
   })
+  it('adds the recipient statement link only when given', () => {
+    const with_ = buildStripeBillCopyEmail({ ...base, portalUrl: 'https://my.clickplumbing.com/done-right-x7kq' })
+    expect(with_.text).toContain('See your statement any time: https://my.clickplumbing.com/done-right-x7kq')
+    expect(with_.html).toContain('href="https://my.clickplumbing.com/done-right-x7kq"')
+    expect(buildStripeBillCopyEmail(base).text).not.toContain('See your statement')
+  })
   it('escapes HTML in names', () => {
     const out = buildStripeBillCopyEmail({ ...base, payerName: 'A <b>&</b> Sons' })
     expect(out.html).toContain('A &lt;b&gt;&amp;&lt;/b&gt; Sons')
