@@ -16,13 +16,8 @@ import { findSimilarCustomerGroups } from '../lib/customerSimilarity'
 import BackfillHcpPaymentsModal from '../components/customers/BackfillHcpPaymentsModal'
 import ClassifyCustomersModal from '../components/customers/ClassifyCustomersModal'
 import LinkJobsToCustomersModal from '../components/customers/LinkJobsToCustomersModal'
-import {
-  customersListRollup,
-  type CustomerListRollup,
-  type LcvInvoiceRow,
-  type LcvJobRow,
-  type LcvPaymentRow,
-} from '../lib/customers/customersListLcv'
+import { type CustomerListRollup, type LcvInvoiceRow, type LcvJobRow, type LcvPaymentRow } from '../lib/customers/customersListLcv'
+import { deriveCustomersList, isMissingRpcError, parseCustomersListBundle, type CustomersListBundle } from '../lib/customers/customersListBundle'
 
 type Customer = Database['public']['Tables']['customers']['Row']
 type CustomerWithMaster = Customer & {
@@ -224,6 +219,8 @@ export default function Customers() {
   const [linkJobsOpen, setLinkJobsOpen] = useState(false)
   const [unlinkedJobsCount, setUnlinkedJobsCount] = useState<number | null>(null)
   const [unrecordedPaidCount, setUnrecordedPaidCount] = useState<number | null>(null)
+  /** The counts / money / signal behind the list are still on their way (the list itself is already shown). */
+  const [detailsLoading, setDetailsLoading] = useState(false)
   const [backfillOpen, setBackfillOpen] = useState(false)
 
   async function refreshNoteCountsForCustomers(ids: string[]) {
@@ -251,6 +248,96 @@ export default function Customers() {
     })
   }
 
+  /**
+   * The follow-up data behind the list — counts, money, the recent signal — as one
+   * bundle. One RPC round trip (v2.3365, get_customers_list_bundle); the chunked
+   * per-table reads stay as the fallback for the deploy window before the migration
+   * is pushed (PGRST202) so the page never shows less than it did.
+   */
+  async function loadCustomersListBundle(customerIds: string[]): Promise<CustomersListBundle> {
+    const rpc = await supabase.rpc('get_customers_list_bundle')
+    if (!rpc.error) {
+      const parsed = parseCustomersListBundle(rpc.data)
+      if (parsed) return parsed
+    } else if (!isMissingRpcError(rpc.error.message)) {
+      throw rpc.error
+    }
+    return loadCustomersListBundleChunked(customerIds)
+  }
+
+  /** Legacy loader (Phase 4 #3(c) — J34-N1/N2): chunked `.in()` + paged reads, one table at a time. */
+  async function loadCustomersListBundleChunked(customerIds: string[]): Promise<CustomersListBundle> {
+    const [projectRows, jobRows, bidRows, contactRows, estimateRows] = await Promise.all([
+      fetchAllRowsChunkedIn(
+        customerIds,
+        (chunk, from, to) => supabase.from('projects').select('customer_id').in('customer_id', chunk).order('id').range(from, to),
+        'customers list projects',
+      ),
+      fetchAllRowsChunkedIn(
+        customerIds,
+        (chunk, from, to) =>
+          supabase
+            .from('jobs_ledger')
+            .select('id, customer_id, status, revenue, payments_made, created_at')
+            .in('customer_id', chunk)
+            .order('id')
+            .range(from, to),
+        'customers list jobs',
+      ),
+      fetchAllRowsChunkedIn(
+        customerIds,
+        (chunk, from, to) => supabase.from('bids').select('customer_id, created_at').in('customer_id', chunk).order('id').range(from, to),
+        'customers list bids',
+      ),
+      fetchAllRowsChunkedIn(
+        customerIds,
+        (chunk, from, to) => supabase.from('customer_contacts').select('customer_id').in('customer_id', chunk).order('id').range(from, to),
+        'customers list contacts',
+      ),
+      fetchAllRowsChunkedIn(
+        customerIds,
+        (chunk, from, to) => supabase.from('estimates').select('customer_id, created_at').in('customer_id', chunk).order('id').range(from, to),
+        'customers list estimates',
+      ),
+    ])
+    const jobIds = jobRows.map((j) => j.id)
+    const [invoiceRows, paymentRows] = await Promise.all([
+      fetchAllRowsChunkedIn(
+        jobIds,
+        (chunk, from, to) => supabase.from('jobs_ledger_invoices').select('id, job_id, status, amount').in('job_id', chunk).order('id').range(from, to),
+        'customers list invoices',
+      ),
+      fetchAllRowsChunkedIn(
+        jobIds,
+        (chunk, from, to) =>
+          supabase.from('jobs_ledger_payments').select('job_id, invoice_id, amount, paid_on').in('job_id', chunk).order('id').range(from, to),
+        'customers list payments',
+      ),
+    ])
+    const count = (rows: Array<{ customer_id: string | null }>): Record<string, number> => {
+      const out: Record<string, number> = {}
+      for (const r of rows) if (r.customer_id) out[r.customer_id] = (out[r.customer_id] ?? 0) + 1
+      return out
+    }
+    const latestSignal: Record<string, string> = {}
+    for (const r of [...bidRows, ...estimateRows] as Array<{ customer_id: string | null; created_at: string | null }>) {
+      if (!r.customer_id || !r.created_at) continue
+      const prev = latestSignal[r.customer_id]
+      if (!prev || r.created_at > prev) latestSignal[r.customer_id] = r.created_at
+    }
+    const unlinkedRes = await supabase.from('jobs_ledger').select('id', { count: 'exact', head: true }).is('customer_id', null)
+    return {
+      jobs: jobRows as LcvJobRow[],
+      invoices: invoiceRows as LcvInvoiceRow[],
+      payments: paymentRows as LcvPaymentRow[],
+      projectCounts: count(projectRows),
+      bidCounts: count(bidRows),
+      noteCounts: count(contactRows),
+      latestSignal,
+      unlinkedJobs: unlinkedRes.count ?? null,
+    }
+  }
+
   async function fetchCustomers() {
     const { data, error: err } = await supabase
       .from('customers')
@@ -267,120 +354,28 @@ export default function Customers() {
       return { ...customer, master_user: users ?? null }
     })
     setCustomers(customersWithMasters)
-    const customerIds = customersWithMasters.map((c) => c.id)
-    if (customerIds.length > 0) {
-      try {
-        // Chunked `.in()` + paged (Phase 4 #3(c) — J34-N1/N2): the per-customer reads used to
-        // put every customer id in ONE URL, and the invoice/payment reads were whole-table
-        // and silently capped at PostgREST's 1,000 rows — every money chip, the header
-        // total, "Owes money" and "$ Top customers" drifted with no error and no chip.
-        const [projectRows, jobRows, bidRows, contactRows, estimateRows] = await Promise.all([
-          fetchAllRowsChunkedIn(
-            customerIds,
-            (chunk, from, to) => supabase.from('projects').select('customer_id').in('customer_id', chunk).order('id').range(from, to),
-            'customers list projects',
-          ),
-          fetchAllRowsChunkedIn(
-            customerIds,
-            (chunk, from, to) =>
-              supabase
-                .from('jobs_ledger')
-                .select('id, customer_id, status, revenue, payments_made, created_at')
-                .in('customer_id', chunk)
-                .order('id')
-                .range(from, to),
-            'customers list jobs',
-          ),
-          fetchAllRowsChunkedIn(
-            customerIds,
-            (chunk, from, to) => supabase.from('bids').select('customer_id, created_at').in('customer_id', chunk).order('id').range(from, to),
-            'customers list bids',
-          ),
-          fetchAllRowsChunkedIn(
-            customerIds,
-            (chunk, from, to) => supabase.from('customer_contacts').select('customer_id').in('customer_id', chunk).order('id').range(from, to),
-            'customers list contacts',
-          ),
-          fetchAllRowsChunkedIn(
-            customerIds,
-            (chunk, from, to) => supabase.from('estimates').select('customer_id, created_at').in('customer_id', chunk).order('id').range(from, to),
-            'customers list estimates',
-          ),
-        ])
-        // Money rows exist per job, so key them by the jobs just loaded — the same join
-        // `customersListRollup` makes — instead of reading the whole invoice/payment tables.
-        const jobIds = jobRows.map((j) => j.id)
-        const [invoiceRows, paymentRows] = await Promise.all([
-          fetchAllRowsChunkedIn(
-            jobIds,
-            (chunk, from, to) => supabase.from('jobs_ledger_invoices').select('id, job_id, status, amount').in('job_id', chunk).order('id').range(from, to),
-            'customers list invoices',
-          ),
-          fetchAllRowsChunkedIn(
-            jobIds,
-            (chunk, from, to) =>
-              supabase.from('jobs_ledger_payments').select('job_id, invoice_id, amount, paid_on').in('job_id', chunk).order('id').range(from, to),
-            'customers list payments',
-          ),
-        ])
-      const counts: Record<string, { projects: number; jobs: number; bids: number; notes: number }> = {}
-      for (const id of customerIds) counts[id] = { projects: 0, jobs: 0, bids: 0, notes: 0 }
-      for (const r of projectRows) {
-        const entry = r.customer_id ? counts[r.customer_id] : undefined
-        if (entry) entry.projects++
-      }
-      for (const r of jobRows) {
-        const entry = r.customer_id ? counts[r.customer_id] : undefined
-        if (entry) entry.jobs++
-      }
-      for (const r of bidRows) {
-        const entry = r.customer_id ? counts[r.customer_id] : undefined
-        if (entry) entry.bids++
-      }
-      for (const r of contactRows) {
-        const entry = r.customer_id ? counts[r.customer_id] : undefined
-        if (entry) entry.notes++
-      }
-      setCountsByCustomerId(counts)
-      const rollup = customersListRollup(
-        jobRows as LcvJobRow[],
-        invoiceRows as LcvInvoiceRow[],
-        paymentRows as LcvPaymentRow[],
-      )
-      setRollupByCustomerId(rollup)
-      // Paid jobs with zero payment rows (HCP imports): the money rail reads
-      // rows, so these show $0 collected until backfilled.
-      const jobIdsWithPaymentRows = new Set(
-        (paymentRows as LcvPaymentRow[]).map((p) => p.job_id),
-      )
-      setUnrecordedPaidCount(
-        (jobRows as LcvJobRow[]).filter(
-          (j) => j.status === 'paid' && Number(j.revenue ?? 0) > 0 && !jobIdsWithPaymentRows.has(j.id),
-        ).length,
-      )
-      const signal: Record<string, string> = {}
-      const stampSignal = (cid: string | null, iso: string | null) => {
-        if (!cid || !iso) return
-        const prev = signal[cid]
-        if (!prev || iso > prev) signal[cid] = iso
-      }
-      for (const r of bidRows as Array<{ customer_id: string | null; created_at: string | null }>) {
-        stampSignal(r.customer_id, r.created_at)
-      }
-      for (const r of estimateRows as Array<{ customer_id: string | null; created_at: string | null }>) {
-        stampSignal(r.customer_id, r.created_at)
-      }
-      setRecentSignalByCustomerId(signal)
-      } catch (e) {
-        setError(formatErrorMessage(e))
-      }
-    }
-    const unlinkedRes = await supabase
-      .from('jobs_ledger')
-      .select('id', { count: 'exact', head: true })
-      .is('customer_id', null)
-    setUnlinkedJobsCount(unlinkedRes.count ?? null)
+    // The list is readable now (v2.3365): show it, and let the counts and money
+    // chips arrive behind it instead of holding the whole page on them.
     setLoading(false)
+    const customerIds = customersWithMasters.map((c) => c.id)
+    if (customerIds.length === 0) {
+      setDetailsLoading(false)
+      return
+    }
+    setDetailsLoading(true)
+    try {
+      const bundle = await loadCustomersListBundle(customerIds)
+      const derived = deriveCustomersList(bundle, customerIds)
+      setCountsByCustomerId(derived.countsByCustomerId)
+      setRollupByCustomerId(derived.rollupByCustomerId)
+      setRecentSignalByCustomerId(derived.recentSignalByCustomerId)
+      setUnrecordedPaidCount(derived.unrecordedPaidCount)
+      setUnlinkedJobsCount(derived.unlinkedJobsCount)
+    } catch (e) {
+      setError(formatErrorMessage(e))
+    } finally {
+      setDetailsLoading(false)
+    }
   }
 
   async function loadBidsForCustomer(customerId: string) {
@@ -572,16 +567,18 @@ export default function Customers() {
           </div>
           <div style={{ padding: '10px 14px', borderRight: '1px solid var(--border)' }}>
             <div style={{ fontSize: '0.64rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-faint)' }}>Active last 90 days</div>
-            <div style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--text-strong)', fontVariantNumeric: 'tabular-nums' }}>{statTotals.active}</div>
+            <div style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--text-strong)', fontVariantNumeric: 'tabular-nums' }} title={detailsLoading ? 'Still loading' : undefined}>
+              {detailsLoading ? '…' : statTotals.active}
+            </div>
             <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>had a job, payment, bid, or estimate</div>
           </div>
           <div style={{ padding: '10px 14px', borderRight: '1px solid var(--border)' }}>
             <div style={{ fontSize: '0.64rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-faint)' }}>Total open balance</div>
             <div style={{ fontSize: '1.1rem', fontWeight: 700, color: statTotals.owesSum > 0.5 ? 'var(--text-amber-800)' : 'var(--text-strong)', fontVariantNumeric: 'tabular-nums' }}>
-              ${Math.round(statTotals.owesSum).toLocaleString('en-US')}
+              {detailsLoading ? '…' : `$${Math.round(statTotals.owesSum).toLocaleString('en-US')}`}
             </div>
             <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>
-              across {statTotals.owesCount} customer{statTotals.owesCount === 1 ? '' : 's'}
+              {detailsLoading ? 'loading balances…' : `across ${statTotals.owesCount} customer${statTotals.owesCount === 1 ? '' : 's'}`}
             </div>
           </div>
           {unlinkedJobsCount != null && unlinkedJobsCount > 0 ? (
