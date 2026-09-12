@@ -25,6 +25,8 @@ import { BidsLaborNewView } from './BidsLaborNewView'
 import { buildCostEstimateAutosavePayload, laborRowAutosaveUpdate, stageAmountRowAutosaveUpdate } from '../../lib/bids/costEstimateAutosavePayload'
 import { useBidCrewRate } from '../../hooks/useBidCrewRate'
 import { useLaborBookCalibration } from '../../hooks/useLaborBookCalibration'
+import { useJobBaselineRates } from '../../hooks/useJobBaselineRates'
+import { baselineReading, baselineReadingWords } from '../../lib/bids/bidBaselineRates'
 import type { TeamLaborBidRow } from '../../utils/teamLabor'
 import { computeBidCostBreakdown, directCostRowsFromTables } from '../../lib/bids/bidTotalCostBreakdown'
 import { BidsDirectCostsSection } from './BidsDirectCostsSection'
@@ -257,6 +259,13 @@ export function BidsLaborTab({
   const { crewRate, loading: crewRateLoading } = useBidCrewRate(laborView === 'new' && !!selectedBidForCostEstimate)
   // Calibration (v2.3307): the jobs linked to bids that priced with the applied book — the New view's Book vs jobs tile and evidence chips.
   const calibration = useLaborBookCalibration(selectedLaborBookVersionId, laborView === 'new' && !!selectedBidForCostEstimate)
+  // Baselines (v2.3367): every billed job's hours per $1k — the book's fallback when this bid has no count sheet.
+  const baselineRates = useJobBaselineRates(laborView === 'new' && !!selectedBidForCostEstimate)
+  const baselineWords = useMemo(() => {
+    if (baselineRates.loading && baselineRates.rates.length === 0) return null
+    const value = selectedBidForCostEstimate ? (Number(selectedBidForCostEstimate.agreed_value) > 0 ? Number(selectedBidForCostEstimate.agreed_value) : Number(selectedBidForCostEstimate.bid_value) || null) : null
+    return baselineReadingWords(baselineReading(baselineRates.rates, value), (h) => `${Math.round(h).toLocaleString('en-US')} h`)
+  }, [baselineRates.loading, baselineRates.rates, selectedBidForCostEstimate])
   const focusLaborRate = () => {
     const el = laborRateInputRef.current
     if (!el) return
@@ -1225,6 +1234,7 @@ export function BidsLaborTab({
                     costEstimateId={costEstimate?.id ?? null}
                     bidLabel={selectedBidForCostEstimate.bid_number ?? selectedBidForCostEstimate.project_name ?? null}
                     crewRate={crewRate}
+                    baselineWords={baselineWords}
                     crewRateLoading={crewRateLoading}
                     onUseCompanyRate={(rate) => { markCell('rate:labor'); setLaborRateInput(rate.toFixed(2)) }}
                     onClearRate={() => { markCell('rate:labor'); setLaborRateInput('') }}

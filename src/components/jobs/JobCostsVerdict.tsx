@@ -2,6 +2,7 @@ import { useState, type CSSProperties, type ReactNode } from 'react'
 import { formatCurrency } from '../../lib/format'
 import { baselineReadWords, pctDoneWords, timeLeftWords, type CostsVerdict } from '../../lib/jobs/jobCostsVerdict'
 import type { JobBudgetState } from '../../hooks/useJobBudget'
+import type { JobBaselineState } from '../../hooks/useJobBaseline'
 
 /**
  * The Costs tab's verdict (v2.3361 — the honest tab). Four tiles that are
@@ -21,6 +22,9 @@ type Props = {
   onOpenBidCounts: (() => void) | null
   /** The link-a-bid doorway (candidates · find · typed budget) for a job with no bid; folded under the strip. */
   doorway: ReactNode
+  /** The job's kept baseline (v2.3367) and the Keep now door. */
+  kept: JobBaselineState
+  jobFinished: boolean
 }
 
 const usd0 = (n: number) => `$${Math.round(n).toLocaleString('en-US')}`
@@ -39,7 +43,13 @@ const tdNum: CSSProperties = { ...td, textAlign: 'right', fontVariantNumeric: 't
 const muted: CSSProperties = { color: 'var(--text-muted)' }
 const btn = (primary = false): CSSProperties => ({ padding: '0.3rem 0.7rem', fontSize: '0.78rem', fontWeight: 600, border: `1px solid ${primary ? '#3b82f6' : 'var(--border-strong)'}`, borderRadius: 6, background: primary ? '#3b82f6' : 'var(--surface)', color: primary ? 'white' : 'inherit', cursor: 'pointer', whiteSpace: 'nowrap' })
 
-export function JobCostsVerdict({ verdict: v, canWrite, budget, linkedBid, onOpenBidCounts, doorway }: Props) {
+const keptWords = (k: JobBaselineState['row']): string => {
+  if (!k) return ''
+  const day = new Date(k.kept_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+  return `Baseline kept ${day}${k.kept_on === 'billed' ? ' on billing' : ''} · ${k.grade === 'fixture' ? 'by fixture' : 'per $1k'}`
+}
+
+export function JobCostsVerdict({ verdict: v, canWrite, budget, linkedBid, onOpenBidCounts, doorway, kept, jobFinished }: Props) {
   const [sectionsOpen, setSectionsOpen] = useState(false)
   const [doorOpen, setDoorOpen] = useState(false)
   const tl = timeLeftWords(v.timeLeft, usd0)
@@ -144,7 +154,12 @@ export function JobCostsVerdict({ verdict: v, canWrite, budget, linkedBid, onOpe
               {canWrite ? <button type="button" onClick={() => void budget.clear()} disabled={budget.busy} style={btn()}>Clear</button> : null}
             </span>
           </div>
-          <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>When the job bills, its hours go back to the labor book as this bid's calibration (Bids → Labor → Book vs jobs).</div>
+          <div style={{ display: 'flex', gap: '0.5rem 0.75rem', alignItems: 'center', flexWrap: 'wrap', fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+            <span>{kept.row ? keptWords(kept.row) : jobFinished ? 'No baseline kept — the job had no recorded hours when it billed.' : 'Kept for the labor book when the job bills.'}</span>
+            {canWrite && !kept.row && !jobFinished ? <button type="button" onClick={() => void kept.keepNow()} disabled={kept.busy} style={btn()} title="Keep what the job has taken so far as its baseline now">Keep now</button> : null}
+            {canWrite && kept.row ? <button type="button" onClick={() => void kept.keepNow()} disabled={kept.busy} style={btn()} title="Take the baseline again from today's hours">Keep again ↻</button> : null}
+            {kept.error ? <span style={{ color: 'var(--text-red-700)' }}>{kept.error}</span> : null}
+          </div>
         </div>
       ) : (
         <div style={{ border: '1px solid #f59e0b', background: 'var(--bg-amber-100)', borderRadius: 8, padding: '0.6rem 0.8rem', display: 'grid', gap: '0.4rem' }} data-testid="baseline-strip-none">
@@ -157,6 +172,23 @@ export function JobCostsVerdict({ verdict: v, canWrite, budget, linkedBid, onOpe
             {b.people != null ? <span><b>{b.people}</b> {b.people === 1 ? 'person' : 'people'}</span> : null}
             <span><b>{usd0(b.materialsUsd)}</b> materials{b.materialsPctOfPrice != null ? ` · ${Math.round(b.materialsPctOfPrice)}% of price` : ''}</span>
           </div>
+          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap', fontSize: '0.75rem', color: 'var(--text-muted)' }} data-testid="baseline-keep">
+            {kept.row ? <span style={{ color: 'var(--text-green-700)', fontWeight: 600 }}>{keptWords(kept.row)}</span> : null}
+            {canWrite && !kept.row && !jobFinished && b.teamHours > 0 ? <button type="button" onClick={() => void kept.keepNow()} disabled={kept.busy} style={btn(true)} title="Keep what the job has taken so far as its baseline now — billing keeps one on its own">Keep as baseline</button> : null}
+            {canWrite && kept.row && !jobFinished ? <button type="button" onClick={() => void kept.keepNow()} disabled={kept.busy} style={btn()} title="Take the baseline again from today's hours">Keep again ↻</button> : null}
+            {!kept.row && jobFinished ? <span>{b.teamHours > 0 ? 'Not kept yet.' : 'No recorded hours to keep.'}</span> : null}
+            {!kept.row && !jobFinished && b.teamHours > 0 ? <span>Kept automatically when the job bills.</span> : null}
+            {kept.error ? <span style={{ color: 'var(--text-red-700)' }}>{kept.error}</span> : null}
+          </div>
+          {kept.rows.length > 0 ? (
+            <details style={{ fontSize: '0.75rem' }}>
+              <summary style={{ cursor: 'pointer', color: 'var(--text-muted)' }}>By fixture · {kept.rows.length} rows · hours split by {kept.rows[0]!.weight_source === 'predicted' ? "the bid's predicted hours" : 'count'}</summary>
+              <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 2fr) auto auto', gap: '0.15rem 0.75rem', marginTop: 4, fontVariantNumeric: 'tabular-nums' }}>
+                {kept.rows.slice(0, 12).map((r) => <span key={r.fixture} style={{ display: 'contents' }}><span>{r.fixture}{r.unit ? <span style={{ color: 'var(--text-muted)' }}> · {r.unit}</span> : null}</span><span style={{ textAlign: 'right' }}>{Number(r.count).toLocaleString('en-US')}</span><span style={{ textAlign: 'right' }}>{Number(r.hours).toFixed(1)} h</span></span>)}
+                {kept.rows.length > 12 ? <span style={{ gridColumn: '1 / -1', color: 'var(--text-muted)' }}>+{kept.rows.length - 12} more</span> : null}
+              </div>
+            </details>
+          ) : null}
           <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
             {linkedBid ? (
               <>

@@ -73,6 +73,8 @@ export type BidsLaborNewViewProps = {
   /** The company crew rate (v2.3294): 90-day recorded field wage × burden, with lens-A overhead per field hour. Null while loading or when nothing is recorded. */
   crewRate?: CrewRate | null
   crewRateLoading?: boolean
+  /** The labor book's per-$1k reading from kept job baselines (v2.3367): the words for the Jobs baseline tile. */
+  baselineWords?: string | null
   /** Writes the company rate onto the bid's rate box (the tab's autosave persists it). */
   onUseCompanyRate?: (rate: number) => void
   /** Clears the bid's own rate so the company rate applies. */
@@ -475,6 +477,11 @@ export function BidsLaborNewView(p: BidsLaborNewViewProps) {
             <div style={tileK}>Book vs jobs</div>
             <div style={tileV}>{calibration.multiplier != null ? `×${calibration.multiplier.toFixed(2)}` : '—'}</div>
             <div style={tileS}>{p.appliedBookVersionId ? (p.calibrationLoaded || (p.calibrationJobs && p.calibrationJobs.length > 0) ? bookMultiplierWords(calibration) : p.calibrationJobs === undefined ? 'jobs’ hours are not yours to read' : 'reading linked jobs…') : 'pick a book to compare'}</div>
+          </div>
+          <div style={tile} data-testid="labor-jobs-baseline">
+            <div style={tileK}>Jobs baseline</div>
+            <div style={tileV}>{p.baselineWords && /^\d/.test(p.baselineWords) ? p.baselineWords.split(' · ')[0] : '—'}</div>
+            <div style={tileS}>{p.baselineWords ? (/^\d/.test(p.baselineWords) ? p.baselineWords.split(' · ').slice(1).join(' · ') : p.baselineWords) : 'reading billed jobs…'}</div>
           </div>
           <div style={tile} data-testid="labor-other-direct">
             <div style={tileK}>Other direct</div>
