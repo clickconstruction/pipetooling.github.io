@@ -38,6 +38,8 @@ export const PURSUIT_WINDOW_WORDS: Record<PursuitWindow, string> = { '90d': 'las
 
 /** The slice of a bid row the ledger reads — narrow so tests stay small. */
 export type PursuitBidInput = Pick<BidWithBuilder, 'id' | 'bid_number' | 'project_name' | 'outcome' | 'bid_date_sent' | 'created_at' | 'bid_value' | 'agreed_value' | 'working_board_archived_at'> & {
+  /** v2.3354 — the day the outcome was set; older rows may lack it. */
+  outcome_at?: string | null
   estimator?: EstimatorUser | EstimatorUser[] | null
   customers?: { name: string | null } | null
   bids_gc_builders?: { name: string | null } | null
@@ -56,6 +58,10 @@ export type PursuitRow = {
   outcome: PursuitOutcome
   /** The bid's sent date, else the day it was created (YYYY-MM-DD). */
   dateYmd: string | null
+  /** The sent date alone (YYYY-MM-DD); null when never sent. */
+  sentYmd: string | null
+  /** The day the outcome was set (YYYY-MM-DD, v2.3354); null while pending or for older decisions. */
+  outcomeAtYmd: string | null
   robot: boolean
   hours: number
   laborUsd: number
@@ -120,6 +126,8 @@ export function buildPursuitRows(args: {
       gcName: b.customers?.name?.trim() || b.bids_gc_builders?.name?.trim() || null,
       outcome,
       dateYmd: ymd(b.bid_date_sent) ?? ymd(b.created_at),
+      sentYmd: ymd(b.bid_date_sent),
+      outcomeAtYmd: ymd(b.outcome_at),
       robot: isRobotBidName(projectName),
       hours: labor ? num(labor.manHours) : 0,
       laborUsd,
