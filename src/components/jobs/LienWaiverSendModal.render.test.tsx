@@ -1,7 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, screen } from '@testing-library/react'
-import { todayYmdInAppTz } from '../../utils/dateUtils'
 
 vi.mock('../../lib/supabase', async () => {
   const { makeSupabaseStub } = await import('../../test/renderSmokeMocks')
@@ -10,6 +9,9 @@ vi.mock('../../lib/supabase', async () => {
 
 import { renderWithProviders } from '../../test/renderSmokeMocks'
 import { LienWaiverSendModal, type LienWaiverSendTarget } from './LienWaiverSendModal'
+import { todayYmdInAppTz, ymdAddDays } from '../../utils/dateUtils'
+
+const FRESH_YMD = ymdAddDays(todayYmdInAppTz(), -1)
 
 const target = (over: Partial<LienWaiverSendTarget> = {}): LienWaiverSendTarget => ({
   sheetId: 'sheet-1',
@@ -21,9 +23,8 @@ const target = (over: Partial<LienWaiverSendTarget> = {}): LienWaiverSendTarget 
   project: 'Mission Pet Health',
   owner: 'Mission Pet Health',
   location: '415 Springtown Way, San Marcos, TX 78666',
-  // "Fresh" is relative to today — the picker presumes a payment settled after
-  // LIEN_WAIVER_SETTLE_DAYS, so a fixed date here rots on the calendar (it did).
-  payments: [{ amount: 17752.65, payment_date: todayYmdInAppTz(), created_at: `${todayYmdInAppTz()}T15:00:00Z` }],
+  // Yesterday in the app's zone (v2.3362): a fixed 2026-09-07 aged past SETTLE_DAYS and flipped the guess to "settled".
+  payments: [{ amount: 17752.65, payment_date: FRESH_YMD, created_at: `${FRESH_YMD}T15:00:00Z` }],
   balance: 22247.35,
   ...over,
 })

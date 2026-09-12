@@ -5,6 +5,8 @@ import { customerEmailFromStripeInvoice } from '../_shared/stripeInvoiceCustomer
 import { sendEmailViaResend } from '../_shared/resendSendEmail.ts'
 import { buildStripeBillCopyEmail } from '../_shared/stripeBillCopyEmail.ts'
 import { PORTAL_COMPANY } from '../_shared/portalCompany.ts'
+import { loadPortalReturnUrl } from '../_shared/customerPortalReturnUrl.ts'
+import { customerBillingEmail, effectiveInvoiceParty, payerCustomerId } from '../_shared/billToParty.ts'
 import {
   anyStripeApiKeyConfigured,
   effectiveRowStripeMode,
@@ -87,7 +89,7 @@ async function sendBillCopies(args: {
 }): Promise<{ sent: string[]; failed: Array<{ email: string; error: string }>; skipped?: string }> {
   const { data: row } = await args.admin
     .from('jobs_ledger_invoices')
-    .select('copy_emails, job_id, bill_to_name')
+    .select('copy_emails, job_id, bill_to_name, bill_to_party, bill_to_email')
     .eq('id', args.jobsLedgerInvoiceId)
     .maybeSingle()
   const copyEmails = copyEmailsFromRow((row as { copy_emails?: unknown } | null)?.copy_emails)
@@ -103,20 +105,61 @@ async function sendBillCopies(args: {
   const jobId = (row as { job_id?: string | null } | null)?.job_id ?? null
   let jobLabel = ''
   let jobAddress = ''
+  // Whose statement each copy should point at (v2.3362): the payer's people get
+  // the payer's portal (the same link the Stripe footer carries), the other
+  // party (the GC on a customer-pays job, the customer on a GC-pays job) gets
+  // its own, a one-off address gets none. Resolved from the same who-pays rule
+  // create-stripe-invoice used; every lookup fails soft to "no link".
+  const portalByEmail = new Map<string, string | null>()
   if (jobId) {
     const { data: job } = await args.admin
       .from('jobs_ledger')
-      .select('job_name, job_address, hcp_number, click_number')
+      .select('job_name, job_address, hcp_number, click_number, customer_id, gc_customer_id, bill_to_party, customer_email')
       .eq('id', jobId)
       .maybeSingle()
-    const j = job as { job_name?: string | null; job_address?: string | null; hcp_number?: string | null; click_number?: string | null } | null
+    const j = job as {
+      job_name?: string | null
+      job_address?: string | null
+      hcp_number?: string | null
+      click_number?: string | null
+      customer_id?: string | null
+      gc_customer_id?: string | null
+      bill_to_party?: string | null
+      customer_email?: string | null
+    } | null
     const num = (j?.hcp_number ?? '').trim() || (j?.click_number ?? '').trim()
     jobLabel = [num ? `J${num.replace(/^J/i, '')}` : '', (j?.job_name ?? '').trim()].filter(Boolean).join(' · ')
     jobAddress = (j?.job_address ?? '').trim()
+    try {
+      const invParty = row as { bill_to_party?: string | null; bill_to_email?: string | null } | null
+      const party = effectiveInvoiceParty(j, invParty)
+      const payerId = payerCustomerId(j, party)
+      const custId = (j?.customer_id ?? '').trim() || null
+      const gcId = (j?.gc_customer_id ?? '').trim() || null
+      const otherId = party === 'other' || !gcId || gcId === custId ? null : party === 'gc' ? custId : gcId
+      const appOrigin = Deno.env.get('APP_ORIGIN')?.trim() || 'https://clicktooling.com'
+      const linkFor = async (id: string | null) => (id ? await loadPortalReturnUrl(args.admin, id, appOrigin, { paid: false }) : null)
+      const [payerLink, otherLink] = await Promise.all([linkFor(payerId), linkFor(otherId)])
+      // The other party's address: its billing email (a GC) or the job's customer email.
+      if (otherId) {
+        const { data: other } = await args.admin.from('customers').select('billing_email, contact_info').eq('id', otherId).maybeSingle()
+        const otherEmail = (party === 'gc' ? (j?.customer_email ?? '').trim() : customerBillingEmail(other as never)).toLowerCase()
+        if (otherEmail) portalByEmail.set(otherEmail, otherLink)
+      }
+      if (payerId) {
+        const { data: people } = await args.admin.from('customer_contact_persons').select('email').eq('customer_id', payerId)
+        for (const p of (people ?? []) as Array<{ email?: string | null }>) {
+          const e = (p.email ?? '').trim().toLowerCase()
+          if (e && !portalByEmail.has(e)) portalByEmail.set(e, payerLink)
+        }
+      }
+    } catch (e) {
+      console.error('send-stripe-invoice: portal links for copies skipped', e)
+    }
   }
   // The payer as the copy reads it: the typed bill-to name wins (someone else), else Stripe's customer name.
   const billToName = ((row as { bill_to_name?: string | null } | null)?.bill_to_name ?? '').trim()
-  const email = buildStripeBillCopyEmail({
+  const emailBase = {
     payerName: billToName || args.payerName,
     jobLabel,
     jobAddress,
@@ -126,10 +169,11 @@ async function sendBillCopies(args: {
     hostedInvoiceUrl: hosted,
     invoicePdfUrl: (args.inv.invoice_pdf ?? '').trim() || null,
     companyName: PORTAL_COMPANY.name,
-  })
+  }
   const sent: string[] = []
   const failed: Array<{ email: string; error: string }> = []
   for (const to of copyEmails) {
+    const email = buildStripeBillCopyEmail({ ...emailBase, portalUrl: portalByEmail.get(to) ?? null })
     const res = await sendEmailViaResend(to, email.subject, email.text, email.html, resendApiKey, {
       ...(args.callerEmail ? { replyTo: args.callerEmail } : {}),
       emailType: 'stripe_bill_copy',
@@ -378,21 +422,24 @@ serve(async (req) => {
       )
     }
 
-    const { error: logErr } = await admin.from('jobs_ledger_invoice_stripe_email_sends').insert({
-      jobs_ledger_invoice_id: jobsLedgerInvoiceId,
-      sent_at: sentAtIso,
-      stripe_invoice_id: stripeInvoiceId,
-    })
-    if (logErr) {
-      console.error('send-stripe-invoice: append send log failed (invoice row updated)', logErr)
-    }
-
     // Bills also go to (v2.3359): Stripe emails one address and has no CC, so
     // everyone on the bill's copy list — fixed when the office pressed Create
     // Stripe invoice — gets a copy from us with the same Pay link. One email
     // per address (a copy never shows the others), each logged to
     // email_send_log. A copy failure never fails the send Stripe already made.
     const copies = await sendBillCopies({ admin, jobsLedgerInvoiceId, inv: sent, payerName: payerNameFromStripe(sent), callerEmail: user.email ?? null })
+
+    // The send log row carries the copies that actually went out (v2.3362), so
+    // the confirm dialog's history answers "did DRF get it" per send.
+    const { error: logErr } = await admin.from('jobs_ledger_invoice_stripe_email_sends').insert({
+      jobs_ledger_invoice_id: jobsLedgerInvoiceId,
+      sent_at: sentAtIso,
+      stripe_invoice_id: stripeInvoiceId,
+      copy_emails: copies.sent.length ? copies.sent : null,
+    })
+    if (logErr) {
+      console.error('send-stripe-invoice: append send log failed (invoice row updated)', logErr)
+    }
 
     return jsonResponse({
       success: true,

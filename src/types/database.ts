@@ -9323,6 +9323,7 @@ export type Database = {
       jobs_ledger_invoice_stripe_email_sends: {
         Row: {
           created_at: string | null
+          copy_emails: string[] | null
           id: string
           jobs_ledger_invoice_id: string
           sent_at: string
@@ -9330,6 +9331,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string | null
+          copy_emails?: string[] | null
           id?: string
           jobs_ledger_invoice_id: string
           sent_at: string
@@ -9337,6 +9339,7 @@ export type Database = {
         }
         Update: {
           created_at?: string | null
+          copy_emails?: string[] | null
           id?: string
           jobs_ledger_invoice_id?: string
           sent_at?: string
