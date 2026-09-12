@@ -10,6 +10,7 @@ import { resolveJobBudget, spendByComponent } from '../../lib/jobs/jobBudget'
 import { buildCostsVerdict } from '../../lib/jobs/jobCostsVerdict'
 import { JOB_SUMMARY_VIEW_STORAGE_KEY, readJobSummaryViewPrefs } from '../../lib/jobs/jobSummaryLedgerView'
 import { resolveJobCurrentPercentFallback } from '../../lib/jobSummaryPercentComplete'
+import { newestPercentEvent } from '../../lib/jobChargesTimeline'
 import { todayYmdInAppTz } from '../../utils/dateUtils'
 import type { JobWithDetails } from '../../types/jobWithDetails'
 import JobChargesTimelineStandalone from './JobChargesTimelineStandalone'
@@ -61,7 +62,8 @@ export function JobCostsTabCharts({ job, includeTeamLabor, teamPeople = null }: 
   const resolved = useMemo(() => resolveJobBudget({ row: budget.row, priceUsd, targetMarginPct: readTargetMarginPct() }), [budget.row, priceUsd])
   const canWrite = role === 'dev' || role === 'assistant' || role === 'controller' || role === 'master_technician'
   const pctDone = useMemo(() => {
-    const reported = inputs?.valueEvents.filter((v) => v.percent != null).slice(-1)[0]?.percent ?? null
+    // v2.3372: the newest dated % — a report or the office's hand-set — else the job's own.
+    const reported = inputs ? newestPercentEvent(inputs.valueEvents)?.percent ?? null : null
     return reported ?? inputs?.fallbackPercent ?? resolveJobCurrentPercentFallback(job)
   }, [inputs, job])
   const [detailOpen, setDetailOpen] = useState(readDetailPref)
@@ -82,8 +84,10 @@ export function JobCostsTabCharts({ job, includeTeamLabor, teamPeople = null }: 
     // A billed or paid job with no % anywhere is done — earned, at-completion and time left all read off 100.
     const burnInputs = inputs.fallbackPercent == null && finished ? { ...inputs, fallbackPercent: 100 } : inputs
     const burn = buildBurnForVerdict(burnInputs, overheadState.overhead, resolved)
-    // The report the burn model read: the latest DATED one carrying a % (array order is not date order).
-    const latestReportYmd = inputs.valueEvents.filter((v) => v.percent != null && v.dateKey).reduce<string | null>((best, v) => (best == null || v.dateKey! > best ? v.dateKey! : best), null)
+    // The report the burn model read: the newest dated % when a REPORT set it; null when the
+    // office's hand-set is newer (v2.3372) so the verdict reads "(set on the job)".
+    const newest = newestPercentEvent(inputs.valueEvents)
+    const latestReportYmd = newest && newest.kind !== 'manual' ? newest.dateKey : null
     return buildCostsVerdict({ burn, priceUsd, spend: spendByComponent(inputs.chargeEvents), teamHours: inputs.teamHours, teamPeople, resolved, bidLabel: job.linkedBid?.bid_number ?? null, latestReportYmd, jobPct: inputs.fallbackPercent ?? resolveJobCurrentPercentFallback(job), jobFinished: finished, todayYmd: todayYmdInAppTz() })
   }, [inputs, overheadState.overhead, resolved, priceUsd, teamPeople, job.linkedBid?.bid_number, finished])
 

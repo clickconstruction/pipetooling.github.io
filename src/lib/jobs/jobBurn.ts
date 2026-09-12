@@ -1,4 +1,4 @@
-import type { JobChargeEvent, JobValueEvent } from '../jobChargesTimeline'
+import { newestPercentEvent, type JobChargeEvent, type JobValueEvent } from '../jobChargesTimeline'
 import { ymdAddDays } from '../../utils/dateUtils'
 
 /**
@@ -165,14 +165,9 @@ function sourceBucket(source: JobChargeEvent['source']): 'team' | 'sub' | 'parts
   return 'parts'
 }
 
+/** The newest dated % at or before the day — a report or a hand-set (v2.3372, `newestPercentEvent`). */
 function latestReportPercent(valueEvents: readonly JobValueEvent[], uptoYmd?: string): number | null {
-  let best: { ymd: string; pct: number } | null = null
-  for (const v of valueEvents) {
-    if (v.dateKey == null || v.percent == null) continue
-    if (uptoYmd && v.dateKey > uptoYmd) continue
-    if (!best || v.dateKey >= best.ymd) best = { ymd: v.dateKey, pct: v.percent }
-  }
-  return best ? best.pct : null
+  return newestPercentEvent(valueEvents, uptoYmd)?.percent ?? null
 }
 
 function round2(n: number): number {
@@ -200,9 +195,10 @@ export function buildJobBurn(i: JobBurnInput): JobBurnModel {
   const fieldDays = [...fieldDaySet].filter((d) => d <= i.todayYmd).sort()
 
   // ---- percent ----
-  const reportPct = latestReportPercent(i.valueEvents)
-  const percentDone = reportPct ?? i.fallbackPercent
-  const percentSource: JobBurnModel['percentSource'] = reportPct != null ? 'report' : i.fallbackPercent != null ? 'job' : null
+  // v2.3372: the newest dated % wins — a hand-set after the last report reads as the job's own %.
+  const newest = newestPercentEvent(i.valueEvents)
+  const percentDone = newest?.percent ?? i.fallbackPercent
+  const percentSource: JobBurnModel['percentSource'] = newest ? (newest.kind === 'manual' ? 'job' : 'report') : i.fallbackPercent != null ? 'job' : null
 
   // ---- burn rate: last ten field days, unless idle ----
   const recentFieldDays = fieldDays.slice(-BURN_WINDOW_FIELD_DAYS)

@@ -41,11 +41,45 @@ export type JobChargeEvent = {
   label: string
 }
 
-/** One field report on the job; `percent` null = report without a completion %. */
+/**
+ * One field report on the job; `percent` null = report without a completion %.
+ * v2.3372: a `kind: 'manual'` event is the office setting the job's % by hand
+ * (`job_pct_events`) — it steps the value line like a report but draws no 🚩,
+ * and the newest event by day wins the "% done" (a hand-set beats a report on
+ * the same day).
+ */
 export type JobValueEvent = {
   dateKey: string | null
   percent: number | null
   label: string
+  kind?: 'report' | 'manual'
+}
+
+/** The office's hand-set percents (`job_pct_events`, source manual) as value events — no 🚩, same value step. */
+export function buildJobManualPercentEvents(
+  rows: Array<{ dateKey: string | null; pct: number | null; changedByName: string | null }>,
+): JobValueEvent[] {
+  const out: JobValueEvent[] = []
+  for (const r of rows) {
+    if (r.pct == null || !Number.isFinite(r.pct) || r.pct < 0 || r.pct > 100) continue
+    out.push({ dateKey: r.dateKey, percent: r.pct, label: `Set on the job by ${r.changedByName || 'the office'}`, kind: 'manual' })
+  }
+  return out
+}
+
+/**
+ * The event that decides "% done" (v2.3372): the newest dated event carrying a
+ * percent, at or before `uptoYmd` when given; on the same day a hand-set beats
+ * a report. Null when no dated event carries a percent.
+ */
+export function newestPercentEvent(valueEvents: readonly JobValueEvent[], uptoYmd?: string): JobValueEvent | null {
+  let best: JobValueEvent | null = null
+  for (const v of valueEvents) {
+    if (v.dateKey == null || v.percent == null) continue
+    if (uptoYmd && v.dateKey > uptoYmd) continue
+    if (!best || v.dateKey > best.dateKey! || (v.dateKey === best.dateKey && v.kind === 'manual' && best.kind !== 'manual')) best = v
+  }
+  return best
 }
 
 /** One payment received on the job (`jobs_ledger_payments`); steps the net line DOWN. */
@@ -471,7 +505,8 @@ export function buildJobChargesTimelineChartData(
       valueEvents: dayValues,
       paymentEvents: dayPayments,
       chargeSources,
-      hasReportMarker: dayValues.length > 0,
+      // A hand-set % (v2.3372) steps the value line but is not a report — no 🚩 for it.
+      hasReportMarker: dayValues.some((v) => v.kind !== 'manual'),
       hasPaymentMarker: dayPayments.length > 0,
       overheadToDate,
       overheadActivityToDate: Math.round(runningOverheadActivity * 100) / 100,

@@ -171,3 +171,15 @@ describe('buildJobBurn — the series', () => {
     expect(onPrice.cumulative[0]!.earned).toBe(500)
   })
 })
+
+describe('buildJobBurn — the newest % wins (v2.3372)', () => {
+  it('a hand-set after the last report is the % done and reads as the job’s own', () => {
+    const manual: JobValueEvent = { dateKey: '2026-09-03', percent: 90, label: 'Set on the job by Taunya', kind: 'manual' }
+    const m = buildJobBurn({ chargeEvents: [team('2026-09-01', 12000)], valueEvents: [report('2026-05-15', 77), manual], fallbackPercent: 90, priceUsd: 20000, budget, overhead: null, todayYmd: TODAY })
+    expect(m.percentDone).toBe(90)
+    expect(m.percentSource).toBe('job')
+    const later = buildJobBurn({ chargeEvents: [team('2026-09-01', 12000)], valueEvents: [manual, report('2026-09-05', 95)], fallbackPercent: 90, priceUsd: 20000, budget, overhead: null, todayYmd: TODAY })
+    expect(later.percentDone).toBe(95)
+    expect(later.percentSource).toBe('report')
+  })
+})

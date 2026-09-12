@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import {
   buildJobChargeEvents,
+  buildJobManualPercentEvents,
   buildJobPaymentEvents,
   buildJobValueEvents,
   ymdFromDateOnlyOrIso,
@@ -54,7 +55,7 @@ export function useJobChargesTimelineInputs(job: JobWithDetails, includeTeamLabo
       try {
         const toYmd = (raw: string | null | undefined) => ymdFromDateOnlyOrIso(raw, calendarYmdInAppTzFromIso)
 
-        const [snapshot, teamBreakdown, reportsRes, settingsRes, laborJobsRes] = await Promise.all([
+        const [snapshot, teamBreakdown, reportsRes, settingsRes, laborJobsRes, pctEventsRes] = await Promise.all([
           fetchJobMaterialsCostSnapshot(job.id),
           includeTeamLabor ? fetchTeamLaborBreakdownForJob(supabase, job.id).catch(() => []) : Promise.resolve([]),
           supabase
@@ -62,6 +63,15 @@ export function useJobChargesTimelineInputs(job: JobWithDetails, includeTeamLabo
             .select('id, created_at, field_values, users!reports_created_by_user_id_fkey(name)')
             .eq('job_ledger_id', job.id)
             .order('created_at', { ascending: true }),
+          // v2.3372: the office's hand-set percents, so a % typed after the last report is the
+          // current one (the trigger on jobs_ledger.pct_complete is the single writer; 'seed'
+          // rows are the 2026-08-07 back-fill and 'service' rows are report-derived — neither is a hand-set).
+          supabase
+            .from('job_pct_events')
+            .select('pct, changed_at, users!job_pct_events_changed_by_user_id_fkey(name)')
+            .eq('job_id', job.id)
+            .eq('source', 'manual')
+            .order('changed_at', { ascending: true }),
           supabase.from('app_settings').select('key, value_num').in('key', ['drive_mileage_cost', 'drive_time_per_mile']),
           // v2.3060: the sheet's job link, not its number text.
           supabase
@@ -139,13 +149,23 @@ export function useJobChargesTimelineInputs(job: JobWithDetails, includeTeamLabo
           })),
         })
         type ReportRow = { created_at: string; field_values: Record<string, unknown> | null; users: { name: string | null } | null }
-        const valueEvents = buildJobValueEvents(
-          ((reportsRes.data ?? []) as unknown as ReportRow[]).map((r) => ({
-            dateKey: toYmd(r.created_at),
-            createdByName: r.users?.name ?? null,
-            fieldValues: r.field_values,
-          })),
-        )
+        type PctEventRow = { pct: number | null; changed_at: string; users: { name: string | null } | null }
+        const valueEvents = [
+          ...buildJobValueEvents(
+            ((reportsRes.data ?? []) as unknown as ReportRow[]).map((r) => ({
+              dateKey: toYmd(r.created_at),
+              createdByName: r.users?.name ?? null,
+              fieldValues: r.field_values,
+            })),
+          ),
+          ...buildJobManualPercentEvents(
+            ((pctEventsRes.data ?? []) as unknown as PctEventRow[]).map((e) => ({
+              dateKey: toYmd(e.changed_at),
+              pct: e.pct,
+              changedByName: e.users?.name ?? null,
+            })),
+          ),
+        ]
         const paymentEvents = buildJobPaymentEvents(
           (job.payments ?? []).map((p) => ({
             dateKey: toYmd(p.paid_on ?? p.created_at),

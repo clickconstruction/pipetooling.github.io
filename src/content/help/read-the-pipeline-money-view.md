@@ -41,7 +41,7 @@ When jobs are missing the data billing needs, a slim **Fix-ups** strip appears a
 
 ### Jobs burning ahead of progress
 
-For owners, controllers and master techs, a red-edged card appears a few seconds after the board when any open job has spent a bigger share of its budget than it has finished: {{chip:red|🔥 3 jobs burning ahead of progress — $41,300 of margin at risk}}. It names the worst three ("J927 Mike Holub 133% spent at 70% done"). {{button:outline-blue|Open the worst first →}} lands on that job's **Costs** tab; {{button:outline-blue|Show all N}} opens Job Summary on In progress, sorted worst projected margin first. Nothing hot, no card.
+For owners, controllers and master techs, a red-edged card appears a few seconds after the board when any open job has spent a bigger share of its budget than it has finished: {{chip:red|🔥 3 jobs burning ahead of progress — $41,300 of margin at risk}}. It names the worst three ("J927 Mike Holub 133% spent at 70% done"). The "% done" is the newest number on the job — the crew's latest report with a percent, or the % typed on the job when that came later. {{button:outline-blue|Open the worst first →}} lands on that job's **Costs** tab; {{button:outline-blue|Show all N}} opens Job Summary on In progress, sorted worst projected margin first. Nothing hot, no card.
 
 ## The board is still the board
 

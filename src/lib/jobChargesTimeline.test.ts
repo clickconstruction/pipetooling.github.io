@@ -4,6 +4,8 @@ import {
   buildJobChargesTimelineChartData,
   buildJobPaymentEvents,
   buildJobValueEvents,
+  buildJobManualPercentEvents,
+  newestPercentEvent,
   computeChargesTimelineAxisDomains,
   formatJobChargesDateLabel,
   JOB_CHARGES_UNKNOWN_DATE_KEY,
@@ -681,5 +683,39 @@ describe('computeChargesTimelineAxisDomains', () => {
     const d = computeChargesTimelineAxisDomains([])
     expect(d.left).toEqual([-5, 5])
     expect(d.right).toEqual([-5, 5])
+  })
+})
+
+describe('newestPercentEvent / buildJobManualPercentEvents (v2.3372)', () => {
+  const report = (dateKey: string | null, percent: number | null): JobValueEvent => ({ dateKey, percent, label: 'Report by A' })
+  it('picks the newest dated % whoever set it; a hand-set beats a report on the same day', () => {
+    const manual = buildJobManualPercentEvents([
+      { dateKey: '2026-09-03', pct: 90, changedByName: 'Taunya' },
+      { dateKey: '2026-09-03', pct: 120, changedByName: 'x' },
+      { dateKey: null, pct: 50, changedByName: null },
+    ])
+    expect(manual).toEqual([
+      { dateKey: '2026-09-03', percent: 90, label: 'Set on the job by Taunya', kind: 'manual' },
+      { dateKey: null, percent: 50, label: 'Set on the job by the office', kind: 'manual' },
+    ])
+    expect(newestPercentEvent([report('2026-05-15', 77), ...manual])?.percent).toBe(90)
+    expect(newestPercentEvent([report('2026-09-04', 95), ...manual])?.percent).toBe(95)
+    expect(newestPercentEvent([report('2026-09-03', 95), ...manual])?.kind).toBe('manual')
+    expect(newestPercentEvent([...manual, report('2026-09-03', 95)])?.kind).toBe('manual')
+    expect(newestPercentEvent([report('2026-05-15', 77), ...manual], '2026-06-01')?.percent).toBe(77)
+    expect(newestPercentEvent([report('2026-05-15', null), report(null, 40)])).toBeNull()
+  })
+  it('a hand-set steps the value line without a report flag', () => {
+    const data = buildJobChargesTimelineChartData(
+      [{ source: 'team_labor', dateKey: '2026-05-15', amount: 100, label: 'x' }],
+      [report('2026-05-15', 77), ...buildJobManualPercentEvents([{ dateKey: '2026-09-03', pct: 90, changedByName: 'Taunya' }])],
+      1000,
+    )
+    const may = data.chartRows.find((r) => r.dateKey === '2026-05-15')!
+    const sep = data.chartRows.find((r) => r.dateKey === '2026-09-03')!
+    expect(may.value).toBe(770)
+    expect(may.hasReportMarker).toBe(true)
+    expect(sep.value).toBe(900)
+    expect(sep.hasReportMarker).toBe(false)
   })
 })
