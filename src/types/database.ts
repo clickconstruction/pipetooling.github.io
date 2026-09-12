@@ -7332,6 +7332,126 @@ export type Database = {
           },
         ]
       }
+      job_baseline_rows: {
+        Row: {
+          count: number
+          fixture: string
+          hours: number
+          id: string
+          job_id: string
+          predicted_hours: number | null
+          unit: string | null
+          weight_source: string
+        }
+        Insert: {
+          count?: number
+          fixture: string
+          hours?: number
+          id?: string
+          job_id: string
+          predicted_hours?: number | null
+          unit?: string | null
+          weight_source: string
+        }
+        Update: {
+          count?: number
+          fixture?: string
+          hours?: number
+          id?: string
+          job_id?: string
+          predicted_hours?: number | null
+          unit?: string | null
+          weight_source?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "job_baseline_rows_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "job_baselines"
+            referencedColumns: ["job_id"]
+          },
+        ]
+      }
+      job_baselines: {
+        Row: {
+          avg_wage_usd: number | null
+          bid_id: string | null
+          created_at: string
+          grade: string
+          hours_per_thousand: number | null
+          job_id: string
+          job_status: string | null
+          kept_at: string
+          kept_by: string | null
+          kept_on: string
+          materials_usd: number
+          people_count: number
+          price_usd: number | null
+          team_hours: number
+          team_usd: number
+          updated_at: string
+        }
+        Insert: {
+          avg_wage_usd?: number | null
+          bid_id?: string | null
+          created_at?: string
+          grade: string
+          hours_per_thousand?: number | null
+          job_id: string
+          job_status?: string | null
+          kept_at?: string
+          kept_by?: string | null
+          kept_on: string
+          materials_usd?: number
+          people_count?: number
+          price_usd?: number | null
+          team_hours?: number
+          team_usd?: number
+          updated_at?: string
+        }
+        Update: {
+          avg_wage_usd?: number | null
+          bid_id?: string | null
+          created_at?: string
+          grade?: string
+          hours_per_thousand?: number | null
+          job_id?: string
+          job_status?: string | null
+          kept_at?: string
+          kept_by?: string | null
+          kept_on?: string
+          materials_usd?: number
+          people_count?: number
+          price_usd?: number | null
+          team_hours?: number
+          team_usd?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "job_baselines_bid_id_fkey"
+            columns: ["bid_id"]
+            isOneToOne: false
+            referencedRelation: "bids"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_baselines_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: true
+            referencedRelation: "jobs_ledger"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_baselines_kept_by_fkey"
+            columns: ["kept_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       job_book_entries: {
         Row: {
           created_at: string | null
@@ -9322,6 +9442,7 @@ export type Database = {
       }
       jobs_ledger_invoice_stripe_email_sends: {
         Row: {
+          copy_emails: string[] | null
           created_at: string | null
           copy_emails: string[] | null
           id: string
@@ -9330,6 +9451,7 @@ export type Database = {
           stripe_invoice_id: string | null
         }
         Insert: {
+          copy_emails?: string[] | null
           created_at?: string | null
           copy_emails?: string[] | null
           id?: string
@@ -9338,6 +9460,7 @@ export type Database = {
           stripe_invoice_id?: string | null
         }
         Update: {
+          copy_emails?: string[] | null
           created_at?: string | null
           copy_emails?: string[] | null
           id?: string
@@ -20692,6 +20815,20 @@ export type Database = {
         Returns: boolean
       }
       is_user_notes_editor: { Args: never; Returns: boolean }
+      job_baseline_rates: {
+        Args: never
+        Returns: {
+          bid_id: string
+          grade: string
+          hours_per_thousand: number
+          job_id: string
+          kept_at: string
+          kept_on: string
+          people_count: number
+          price_usd: number
+          team_hours: number
+        }[]
+      }
       jobs_ledger_row_visible_for_tally_assign: {
         Args: { p_job_id: string; p_user_id: string }
         Returns: boolean
@@ -20711,6 +20848,11 @@ export type Database = {
           report_count: number
         }[]
       }
+      keep_job_baseline: {
+        Args: { p_job_id: string; p_kept_by: string; p_kept_on: string }
+        Returns: boolean
+      }
+      keep_job_baseline_now: { Args: { p_job_id: string }; Returns: boolean }
       leader_replace_clock_session_cluster_mixed: {
         Args: { p_segments: Json; p_session_ids: string[] }
         Returns: {

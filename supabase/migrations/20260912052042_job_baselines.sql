@@ -102,7 +102,7 @@ BEGIN
   -- Materials the job side counts: supply-house splits and card charges (absolute; the bank signs debits negative).
   SELECT coalesce((SELECT sum(coalesce(i.amount, 0) * coalesce(a.pct, 0) / 100.0)
                      FROM public.supply_house_invoice_job_allocations a
-                     JOIN public.supply_house_invoices i ON i.id = a.supply_house_invoice_id
+                     JOIN public.supply_house_invoices i ON i.id = a.invoice_id
                     WHERE a.job_id = p_job_id), 0)
        + coalesce((SELECT sum(abs(coalesce(m.amount, 0))) FROM public.mercury_transaction_job_allocations m WHERE m.job_id = p_job_id), 0)
     INTO v_materials;
