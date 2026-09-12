@@ -154,7 +154,7 @@ function Body({ details, memo, phone }: PortalBankTransferCardProps) {
 export function PortalBankTransferCard(props: PortalBankTransferCardProps) {
   const [open, setOpen] = useState(false)
   const c = bankTransferDetailsComplete(props.details)
-  const title = c.transfer ? 'Prefer to pay by bank transfer?' : 'Paying by check?'
+  const title = c.transfer ? 'Prefer to pay with a different method?' : 'Paying by check?'
   return (
     <div data-testid="portal-bank-transfer" style={{ margin: '1.4rem 0 0', background: CARD, border: `1px solid ${HAIR}` }}>
       <button

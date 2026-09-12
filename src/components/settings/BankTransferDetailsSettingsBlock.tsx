@@ -68,7 +68,7 @@ export default function BankTransferDetailsSettingsBlock() {
       showToast(
         complete.transfer || complete.checks
           ? draft.showOnPortal
-            ? 'Saved. Customers see "Prefer to pay by bank transfer?" on their statement.'
+            ? 'Saved. Customers see "Prefer to pay with a different method?" on their statement.'
             : 'Saved. The statement card is off until you turn it on.'
           : 'Saved. Nothing shows to customers until the payee, routing and account are filled, or a check address is set.',
         'success',
@@ -99,7 +99,7 @@ export default function BankTransferDetailsSettingsBlock() {
       {open ? (
         <div style={{ padding: '0 1rem 1rem 1rem', borderTop: '1px solid var(--border)', background: 'var(--bg-page)' }}>
           <p style={{ margin: '0.75rem 0', color: 'var(--text-muted)', fontSize: '0.875rem', lineHeight: 1.5 }}>
-            What a customer sees when they open <strong>Prefer to pay by bank transfer?</strong> on their statement page, and what the office reads in
+            What a customer sees when they open <strong>Prefer to pay with a different method?</strong> on their statement page, and what the office reads in
             the Accounts Receivable modal. Stored in the database only — never in the app's source — and readable by office roles. A
             routing and account number is what is printed on every paper check; keep the receiving account swept and the guard line does the rest.
           </p>

@@ -26,7 +26,7 @@ const details: BankTransferDetails = {
 describe('PortalBankTransferCard', () => {
   it('is collapsed until tapped, then shows the numbers, memo, checks and guard lines', () => {
     renderWithProviders(<PortalBankTransferCard details={details} memo="Sam Sample · PLUM 1001, 0994" phone="(512) 360-0599" />)
-    const toggle = screen.getByRole('button', { name: /prefer to pay by bank transfer/i })
+    const toggle = screen.getByRole('button', { name: /prefer to pay with a different method/i })
     expect(toggle.getAttribute('aria-expanded')).toBe('false')
     // The print-only copy is always in the DOM (the page's print rules hide it on screen), so the
     // screen copy shows up as a second set of Copy buttons once the card opens.

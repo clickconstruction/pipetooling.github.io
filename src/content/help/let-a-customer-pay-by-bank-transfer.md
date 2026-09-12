@@ -20,7 +20,7 @@ The **Show on the customer statement page** box turns the whole card on or off w
 
 ## What the customer sees
 
-Under **Total due** on their statement page sits one quiet line: **Prefer to pay by bank transfer?** Tapping it opens two halves — the transfer details, and a separate box for checks — so the bank's beneficiary address and the check mailing address are never confused for each other:
+Under **Total due** on their statement page sits one quiet line: **Prefer to pay with a different method?** Tapping it opens two halves — the transfer details, and a separate box for checks — so the bank's beneficiary address and the check mailing address are never confused for each other:
 
 :::example The opened card
 **BY BANK TRANSFER — ACH (DIRECT DEPOSIT) OR WIRE**
