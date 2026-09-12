@@ -297,12 +297,15 @@ export function JobFormEditFactRows(props: JobFormEditFactRowsProps) {
   // offered as a one-tick copy (none on a split job: each draft picks there).
   const copyPayerId = billToParty === 'gc' && gcDistinct ? gcCustomerId : customerId
   const copyPayerName = billToParty === 'gc' && gcDistinct ? (gcCustomer?.name ?? '').trim() || 'the GC' : customerName.trim() || 'the customer'
-  const copyOtherParty: BillCopyOtherParty | null =
+  const copyPayerEmail = (billToParty === 'gc' && gcDistinct ? gcBillingEmail || (gcContact?.email ?? '').trim() : customerEmail.trim()).toLowerCase()
+  const copyOtherPartyRaw: BillCopyOtherParty | null =
     !gcDistinct || billToParty === 'split'
       ? null
       : billToParty === 'gc'
         ? { name: customerName.trim() || 'the customer', email: customerEmail.trim(), role: 'customer' }
         : { name: (gcCustomer?.name ?? '').trim() || 'the GC', email: gcBillingEmail || (gcContact?.email ?? '').trim(), role: 'gc' }
+  // The same address on both rows (a GC entered under its AP inbox twice) is not a second recipient.
+  const copyOtherParty = copyOtherPartyRaw && copyOtherPartyRaw.email.toLowerCase() === copyPayerEmail ? null : copyOtherPartyRaw
   const billCopy = useBillCopyContacts(copyPayerId)
   const [gcBillingEmailDraft, setGcBillingEmailDraft] = useState('')
   const [gcBillingEmailSaving, setGcBillingEmailSaving] = useState(false)

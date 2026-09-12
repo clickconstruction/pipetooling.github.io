@@ -270,7 +270,7 @@ The detailed version ends with a **Cost & payment timeline** — the same story 
 
 Commercial customers are usually several people — the PM, the AP clerk, the owner. Open the job in Edit Job and click **Bills also go to** under the customer's Email: tick the people at the customer who should get every bill, or add one with a name and email. It saves on the customer, so their next job already has them, and Bill Customer's **Send to** list starts with them ticked (untick to skip someone on one bill, or type a one-off address). The full walk-through is in *send a bill to more than one person*.
 
-The primary **Email** field stays the billing identity: **Stripe hosted invoices always go to that one address** — contacts get copies only on the emails the app sends itself.
+The primary **Email** field stays the billing identity: Stripe itself emails that one address, and everyone else on the Send to list gets a copy from ClickTooling with the same Pay link when you press **Send Email invoice**.
 
 ## When there's no customer email
 

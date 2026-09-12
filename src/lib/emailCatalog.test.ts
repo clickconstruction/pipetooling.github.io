@@ -36,7 +36,8 @@ describe('EMAIL_CATALOG', () => {
     // reminders, [TEST] twins) ride their parent row. +1 (v2.2664): the
     // § 53.056 notice email (send-lien-filing-email) the inventory missed.
     // +1 (v2.2743): the Signed agreements staff notice (accept-estimate · sign-bid-room).
-    expect(EMAIL_CATALOG).toHaveLength(38)
+    // +1 (v2.3359): the copy of a Stripe bill (send-stripe-invoice, one per address on copy_emails).
+    expect(EMAIL_CATALOG).toHaveLength(39)
     for (const e of EMAIL_CATALOG) {
       expect(e.sender.trim().length).toBeGreaterThan(0)
       expect(e.subjectExample.trim().length).toBeGreaterThan(0)
