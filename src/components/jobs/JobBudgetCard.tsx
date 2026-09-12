@@ -14,10 +14,13 @@ import type { JobChargesTimelineInputs } from '../../hooks/useJobChargesTimeline
  * materials, subs, other — each with used vs budget, the % done as a marker on
  * the bar, and where it lands at today's pace; then the "why" sentence.
  *
- * Frame B — no budget: the doorway. Burn is reading an assumption (price × (1 −
- * target)); the ranked candidates (price equal to a bid value · same GC and won ·
- * same address) with one-tap Link, a bid-number search, and the typed form
- * (hours · materials · subs). Nothing links on its own.
+ * Frame B — no budget: the doorway. The ranked candidates (price equal to a bid
+ * value · same GC and won · same address) with one-tap Link, a bid-number search,
+ * and the typed form (hours · materials · subs). Nothing links on its own.
+ *
+ * Since v2.3361 (the honest Costs tab) only Frame B is reached in the app — folded
+ * under the verdict's baseline strip as "Link the bid ▾" on a job with no bid.
+ * Frame A stays for the read-only Job Detail and for a future host.
  */
 
 const usd0 = (n: number) => `$${Math.round(n).toLocaleString('en-US')}`
@@ -280,14 +283,13 @@ export function JobBudgetCard(p: JobBudgetCardProps) {
     )
   }
 
-  const assumedWords = r.directUsd != null && r.targetMarginPct != null ? `price × ${100 - r.targetMarginPct} % (${r.targetMarginPct} % target) = ${usd0(r.directUsd)}` : 'no job price yet'
   const linked = p.linkedBid
   const bd = p.budget.linkedBreakdown
   return (
     <div style={{ ...card, borderColor: '#f59e0b', background: 'var(--bg-amber-100)' }} data-testid="job-budget-banner">
       <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.4rem 0.6rem', flexWrap: 'wrap' }}>
-        <b style={{ fontSize: '0.9375rem' }}>≈ Burn is reading an assumed budget</b>
-        <span style={{ fontSize: '0.78rem', color: 'var(--text-700)' }}>{assumedWords}.{linked ? '' : ' No bid is linked to this job.'}</span>
+        <b style={{ fontSize: '0.9375rem' }}>Link the bid this job came from</b>
+        <span style={{ fontSize: '0.78rem', color: 'var(--text-700)' }}>{linked ? `Linked to B${linked.bid_number ?? '?'}.` : 'No bid is linked to this job — its hours and materials will not reach the labor book until it is.'}</span>
       </div>
       {linked ? (
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem 0.75rem', flexWrap: 'wrap', fontSize: '0.8rem' }} data-testid="budget-linked-no-snapshot">

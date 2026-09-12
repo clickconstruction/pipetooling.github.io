@@ -1,6 +1,9 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useMercuryLedgerNicknames } from '../../hooks/useMercuryLedgerNicknames'
 import type { JobWithDetails } from '../../types/jobWithDetails'
+import type { TeamLaborRow } from '../../utils/teamLabor'
+import { buildMoneyRows, type MoneyRow } from '../../lib/jobs/jobMoneyTable'
 import type { MaterialRow } from '../../lib/jobs/jobFormTypes'
 import { formatCurrency } from '../../lib/jobs/jobFormMoney'
 import { materialRowHasUserContent } from '../../lib/jobs/jobFormRows'
@@ -36,6 +39,10 @@ type JobFormPartsCostSectionProps = {
   removeMaterialRow: (id: string) => void
   /** Hide the "Parts Cost" heading (edit mode — the Labor and Parts Cost panel above titles the combined block). */
   hideTitle?: boolean
+  /** v2.3361: the Team and Sub Labor lines join the parts in one "Where the money went" table (edit mode). */
+  teamLabor?: { loading: boolean; error: boolean; row: TeamLaborRow | null; showOpenLink: boolean }
+  subLabor?: { loading: boolean; error: boolean; data: { count: number; total: number } | null; effectiveHcp: string; showOpenLink: boolean }
+  onClose?: () => void
 }
 
 /**
@@ -68,8 +75,36 @@ export function JobFormPartsCostSection({
   updateMaterialRow,
   removeMaterialRow,
   hideTitle,
+  teamLabor,
+  subLabor,
+  onClose,
 }: JobFormPartsCostSectionProps) {
   const { nicknameByDebitCard } = useMercuryLedgerNicknames()
+  const navigate = useNavigate()
+  const moneyRows: MoneyRow[] | null = editing?.id && teamLabor && subLabor
+    ? buildMoneyRows({
+        supplyUsd: supplyInvoiceTotal, supplyCount: supplyInvoiceLines.length, supplyFailed: supplyInvoiceRpcFailed,
+        teamUsd: teamLabor.row?.jobCost ?? 0, teamHours: teamLabor.row?.manHours ?? 0, teamPeople: teamLabor.row?.people.length ?? 0, teamLoading: teamLabor.loading, teamFailed: teamLabor.error,
+        cardUsd: mercuryCardTotal, cardCount: mercuryAllocLines.length, cardFailed: mercuryFetchFailed,
+        subUsd: subLabor.data?.total ?? 0, subCount: subLabor.data?.count ?? 0, subLoading: subLabor.loading, subFailed: subLabor.error,
+        tallyUsd: tallyPartsTotal, tallyCount: tallyPartLines.length, tallyFailed: tallyFetchFailed,
+        otherUsd: materials.reduce((s, m) => s + (Number(m.amount) || 0), 0), otherCount: materials.filter(materialRowHasUserContent).length,
+      })
+    : null
+  const openRow = (r: MoneyRow) => {
+    if (r.key === 'team') {
+      if (!teamLabor?.showOpenLink || !editing?.id) return
+      onClose?.()
+      navigate(`/jobs?tab=combined-labor&teamLaborJob=${encodeURIComponent(editing.id)}`)
+    } else if (r.key === 'sub') {
+      if (!subLabor?.showOpenLink || !subLabor.effectiveHcp) return
+      onClose?.()
+      navigate(`/jobs?tab=subs&view=pay&editLabor=${encodeURIComponent(subLabor.effectiveHcp)}`)
+    } else if (r.accordion) {
+      toggleMaterialsAccordion(r.accordion)
+    }
+  }
+  const rowOpens = (r: MoneyRow) => (r.key === 'team' ? !!teamLabor?.showOpenLink : r.key === 'sub' ? !!subLabor?.showOpenLink && !!subLabor.effectiveHcp : !!r.accordion)
   // v2.1142: empty charge rows stay hidden until "+ Add other charge" summons
   // one — the accordion opens to just the button when nothing is entered yet.
   // (The shell's materials state always keeps >=1 row; this is presentation.)
@@ -77,6 +112,34 @@ export function JobFormPartsCostSection({
 
   return (
     <>
+          {moneyRows ? (
+            <div style={{ border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden', marginBottom: '0.5rem' }} data-testid="job-money-table">
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.82rem' }}>
+                <thead style={{ background: 'var(--bg-subtle)' }}>
+                  <tr>
+                    <th style={{ textAlign: 'left', padding: '0.4rem 0.75rem', fontSize: '0.66rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)' }}>Where the money went</th>
+                    <th style={{ textAlign: 'right', padding: '0.4rem 0.75rem', fontSize: '0.66rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)' }}>Hours</th>
+                    <th style={{ textAlign: 'right', padding: '0.4rem 0.75rem', fontSize: '0.66rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)' }}>Cost</th>
+                    <th style={{ textAlign: 'right', padding: '0.4rem 0.75rem', fontSize: '0.66rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)' }}>Share</th>
+                    <th style={{ padding: '0.4rem 0.75rem' }} />
+                  </tr>
+                </thead>
+                <tbody>
+                  {moneyRows.map((r) => (
+                    <tr key={r.key} onClick={rowOpens(r) ? () => openRow(r) : undefined} style={{ cursor: rowOpens(r) ? 'pointer' : 'default', ...(r.key === 'total' ? { background: 'var(--bg-subtle)', fontWeight: 600 } : {}) }} data-testid={`money-row-${r.key}`}>
+                      <td style={{ padding: '0.4rem 0.75rem', borderTop: '1px solid var(--border)' }}>{r.label}{r.sub ? <span style={{ color: 'var(--text-muted)', fontSize: '0.72rem' }}> {r.sub}</span> : null}</td>
+                      <td style={{ padding: '0.4rem 0.75rem', borderTop: '1px solid var(--border)', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{r.hours != null ? `${r.hours.toLocaleString('en-US', { maximumFractionDigits: 0 })} h` : '—'}</td>
+                      <td style={{ padding: '0.4rem 0.75rem', borderTop: '1px solid var(--border)', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{r.state === 'loading' ? 'Loading…' : r.state === 'failed' ? 'Couldn’t load' : `$${formatCurrency(r.usd)}`}</td>
+                      <td style={{ padding: '0.4rem 0.75rem', borderTop: '1px solid var(--border)', textAlign: 'right', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
+                        {r.sharePct != null ? <><i style={{ display: 'inline-block', height: 6, width: Math.max(2, Math.round(r.sharePct)), background: '#2563eb', opacity: 0.7, borderRadius: 3, verticalAlign: 'middle', marginRight: 6 }} />{Math.round(r.sharePct)}%</> : r.key === 'total' ? '100%' : '—'}
+                      </td>
+                      <td style={{ padding: '0.4rem 0.75rem', borderTop: '1px solid var(--border)', textAlign: 'right', whiteSpace: 'nowrap', fontSize: '0.75rem', color: 'var(--text-link)' }}>{rowOpens(r) ? (r.key === 'team' || r.key === 'sub' ? 'Open on Jobs →' : r.accordion === materialsAccordionOpen ? 'shown below ▾' : 'show below ›') : ''}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : null}
           {hideTitle ? null : (
             <div style={{ ...JOB_FORM_SECTION_HEADER_STYLE, marginBottom: '0.75rem' }}>Parts Cost</div>
           )}

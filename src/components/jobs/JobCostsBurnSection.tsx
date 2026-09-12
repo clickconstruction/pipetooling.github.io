@@ -87,6 +87,12 @@ function CumTooltip({ active, payload }: CumTipProps) {
   )
 }
 
+/** The burn model the Costs tab's verdict reads (v2.3361) — the same build the chart uses, earned off the price. */
+export function buildBurnForVerdict(inputs: NonNullable<Extract<JobChargesTimelineInputsState, { kind: 'ready' }>['inputs']>, overhead: JobBurnOverheadState['overhead'], jobBudget: ResolvedJobBudget | null | undefined): JobBurnModel {
+  const budget = resolveJobBurnBudget({ priceUsd: inputs.revenue, bidEstimateUsd: jobBudget ? budgetForBurn(jobBudget) : null, targetMarginPct: readTargetMarginPct() })
+  return buildJobBurn({ chargeEvents: inputs.chargeEvents, valueEvents: inputs.valueEvents, fallbackPercent: inputs.fallbackPercent, priceUsd: inputs.revenue, budget, overhead, todayYmd: todayYmdInAppTz(), earnedBasis: 'price' })
+}
+
 /** The first dated event on the job — charge, payment or report — which says whether the overhead window's start cut history off (v2.3289). */
 export function firstEventYmdOf(inputsState: JobChargesTimelineInputsState): string | null {
   if (inputsState.kind !== 'ready') return null
@@ -96,7 +102,7 @@ export function firstEventYmdOf(inputsState: JobChargesTimelineInputsState): str
   return first
 }
 
-export function JobCostsBurnSection({ inputsState, overheadState, jobBudget }: { inputsState: JobChargesTimelineInputsState; /** The host runs `useJobBurnOverhead` once for Burn and the Cost Timeline (v2.3271). */ overheadState: JobBurnOverheadState; /** The job's resolved budget (v2.3299): ◆ bid / ✎ typed feed Burn's budget; ≈ assumed keeps price × (1 − target). */ jobBudget?: ResolvedJobBudget | null }) {
+export function JobCostsBurnSection({ inputsState, overheadState, jobBudget, mode = 'all' }: { inputsState: JobChargesTimelineInputsState; /** The host runs `useJobBurnOverhead` once for Burn and the Cost Timeline (v2.3271). */ overheadState: JobBurnOverheadState; /** The job's resolved budget (v2.3299): ◆ bid / ✎ typed feed Burn's budget; ≈ assumed keeps price × (1 − target). */ jobBudget?: ResolvedJobBudget | null; /** v2.3361: 'chart' = the cumulative chart alone (earned off the price); 'detail' = the daily chart + pace rows, for the folded detail; 'all' = the pre-v2.3361 section. */ mode?: 'all' | 'chart' | 'detail' }) {
   const inputs = inputsState.kind === 'ready' ? inputsState.inputs : null
   const { loading: overheadLoading, overhead } = overheadState
 
@@ -111,8 +117,10 @@ export function JobCostsBurnSection({ inputsState, overheadState, jobBudget }: {
       budget,
       overhead,
       todayYmd: todayYmdInAppTz(),
+      // The honest tab (v2.3361) steps earned value off the price; the legacy section keeps the budget basis.
+      earnedBasis: mode === 'all' ? 'budget' : 'price',
     })
-  }, [inputs, overhead, jobBudget])
+  }, [inputs, overhead, jobBudget, mode])
 
   const header = (sub: string) => (
     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '0.5rem', flexWrap: 'wrap' }}>
@@ -144,6 +152,92 @@ export function JobCostsBurnSection({ inputsState, overheadState, jobBudget }: {
 
   const cumMax = Math.max(m.budget?.usd ?? 0, ...m.cumulative.map((r) => Math.max(r.actual ?? 0, r.earned ?? 0, r.forecast ?? 0)), 1)
   const budgetGoneRow = m.cumulative.find((r) => r.actual == null && m.budget && r.forecast != null && r.forecast >= m.budget.usd - 0.5)
+  // v2.3361: the honest tab draws the budget line only when a bid or typed figure stands behind it.
+  const realBudget = mode === 'all' || (jobBudget != null && jobBudget.source !== 'assumed')
+
+  if (mode === 'chart') {
+    return m.cumulative.length > 0 ? (
+      <div style={chartBox} data-testid="costs-cumulative-chart">
+        <div style={chartTitle}>
+          Cost against value earned <span style={chartSub}>cumulative · value earned = % done × price, stepping at each report · dashed = forecast at today's pace</span>
+        </div>
+        <div style={{ width: '100%', height: 200 }}>
+          <ResponsiveContainer>
+            <ComposedChart data={m.cumulative} margin={{ top: 14, right: 12, bottom: 0, left: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
+              <XAxis dataKey="ymd" tickFormatter={dayLabel} tick={{ fontSize: 10, fill: 'var(--text-muted)' }} tickLine={false} axisLine={{ stroke: 'var(--border)' }} minTickGap={28} />
+              <YAxis domain={[0, Math.ceil(Math.max(cumMax, inputs?.revenue ?? 0) * 1.08)]} tickFormatter={(v: number) => (v >= 1000 ? `$${Math.round(v / 1000)}k` : `$${v}`)} tick={{ fontSize: 10, fill: 'var(--text-muted)' }} tickLine={false} axisLine={false} width={44} />
+              <Tooltip content={<CumTooltip />} />
+              {realBudget && m.budget ? <ReferenceLine y={m.budget.usd} stroke="var(--text-muted)" strokeDasharray="6 4" label={{ value: `${jobBudget?.glyph ?? '◆'} bid figure`, position: 'insideTopRight', fontSize: 10, fill: 'var(--text-muted)' }} /> : null}
+              {inputs?.revenue != null ? <ReferenceLine y={inputs.revenue} stroke="var(--text-muted)" strokeDasharray="2 6" label={{ value: 'price', position: 'insideTopLeft', fontSize: 10, fill: 'var(--text-muted)' }} /> : null}
+              <Line type="stepAfter" dataKey="earned" stroke={BLUE} strokeWidth={2.2} dot={false} connectNulls isAnimationActive={false} />
+              <Line type="monotone" dataKey="actual" stroke={RED} strokeWidth={2.2} dot={false} isAnimationActive={false} />
+              <Line type="monotone" dataKey="forecast" stroke={RED} strokeWidth={1.8} strokeDasharray="2 4" dot={false} connectNulls isAnimationActive={false} />
+            </ComposedChart>
+          </ResponsiveContainer>
+        </div>
+        <div style={legendStyle}>
+          <span><i style={swatch(RED)} />cost to date</span>
+          <span><i style={swatch(BLUE)} />value earned (% done × price)</span>
+          {realBudget && m.budget ? <span><i style={swatch('var(--text-muted)', true)} />{jobBudget?.glyph ?? '◆'} bid figure</span> : null}
+          <span><i style={swatch(RED, true)} />forecast at today's pace</span>
+        </div>
+      </div>
+    ) : (
+      <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--text-muted)' }}>No dated spend yet.</p>
+    )
+  }
+
+  if (mode === 'detail') {
+    return (
+      <div style={{ display: 'grid', gap: '0.6rem' }} data-testid="costs-detail">
+        {m.daily.some((d) => d.total > 0) ? (
+          <div style={chartBox}>
+            <div style={chartTitle}>
+              Daily spend <span style={chartSub}>last 14 working days · bars are team labor + subs + parts · line is the 7-day average</span>
+            </div>
+            <div style={{ width: '100%', height: 170 }}>
+              <ResponsiveContainer>
+                <ComposedChart data={m.daily} margin={{ top: 8, right: 8, bottom: 0, left: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
+                  <XAxis dataKey="ymd" tickFormatter={dayLabel} tick={{ fontSize: 10, fill: 'var(--text-muted)' }} tickLine={false} axisLine={{ stroke: 'var(--border)' }} interval={1} />
+                  <YAxis tickFormatter={(v: number) => (v >= 1000 ? `$${Math.round(v / 1000)}k` : `$${v}`)} tick={{ fontSize: 10, fill: 'var(--text-muted)' }} tickLine={false} axisLine={false} width={40} />
+                  <Tooltip content={<DailyTooltip />} cursor={{ fill: 'var(--bg-muted)' }} />
+                  <Bar dataKey="team" stackId="d" fill={RED} isAnimationActive={false} />
+                  <Bar dataKey="sub" stackId="d" fill={VIOLET} isAnimationActive={false} />
+                  <Bar dataKey="parts" stackId="d" fill={AMBER} isAnimationActive={false} radius={[2, 2, 0, 0]} />
+                  <Line type="monotone" dataKey="avg7" stroke="var(--text-muted)" strokeWidth={2} dot={false} isAnimationActive={false} />
+                </ComposedChart>
+              </ResponsiveContainer>
+            </div>
+            <div style={legendStyle}>
+              <span><i style={swatch(RED)} />team labor</span><span><i style={swatch(VIOLET)} />sub labor</span><span><i style={swatch(AMBER)} />parts</span><span><i style={swatch('var(--text-muted)')} />7-day average</span>
+            </div>
+          </div>
+        ) : (
+          <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--text-muted)' }}>No spend in the last 14 working days.</p>
+        )}
+        <div style={{ background: 'var(--bg-subtle)', border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden' }}>
+          <div style={{ ...rowStyle, borderTop: 'none' }}>
+            <div>Burn rate<div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>direct $ per field day, last {Math.min(10, m.fieldDays)} field {Math.min(10, m.fieldDays) === 1 ? 'day' : 'days'}</div></div>
+            <div style={{ fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>{m.burnPerFieldDayUsd != null ? `${usd0(m.burnPerFieldDayUsd)} / day` : m.fieldDays === 0 ? 'no field days yet' : 'idle 30+ days'}</div>
+          </div>
+          {realBudget && m.budget ? (
+            <div style={rowStyle}>
+              <div>Bid figure runs out<div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{m.workLeftFieldDays === 0 ? 'the job is done' : `at that rate${m.percentDone != null ? `, with ${pct0(100 - m.percentDone)} of the work left` : ''}`}</div></div>
+              <div style={{ fontWeight: 600, fontVariantNumeric: 'tabular-nums', color: m.budgetGoneYmd && m.workLeftFieldDays != null && m.budgetGoneInFieldDays != null && m.budgetGoneInFieldDays < m.workLeftFieldDays ? 'var(--text-red-600)' : undefined }}>
+                {m.budgetRemainingUsd != null && m.budgetRemainingUsd <= 0 ? `already over by ${usd0(-m.budgetRemainingUsd)}` : m.workLeftFieldDays === 0 ? `not reached · ${usd0(m.budgetRemainingUsd ?? 0)} under` : m.budgetGoneYmd && m.budgetGoneInFieldDays != null ? `${dayLabel(m.budgetGoneYmd)} · ${days1(m.budgetGoneInFieldDays)}` : '—'}
+              </div>
+            </div>
+          ) : null}
+          <div style={rowStyle}>
+            <div>Work left at the current pace<div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{m.progressPerFieldDay != null ? `${Math.round(m.progressPerFieldDay * 10) / 10}% of the work per field day so far` : 'needs a % complete'}</div></div>
+            <div style={{ fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>{m.workLeftFieldDays != null ? (m.workLeftFieldDays === 0 ? 'done' : `≈ ${days1(m.workLeftFieldDays)}`) : '—'}</div>
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div style={{ marginTop: '0.25rem', display: 'grid', gap: '0.6rem' }}>

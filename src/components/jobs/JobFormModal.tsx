@@ -4350,22 +4350,13 @@ export default function JobFormModal({
               lines, and the parts accordions. Its own window tab (owner call);
               the standalone form still shows it after Bill. */}
           <div style={{ display: !embedded || embeddedRegion === 'costs' ? 'flex' : 'none', flexDirection: 'column', gap: '0.75rem' }}>
-          <JobFormLaborCostPanel
-            editing={editing}
-            editJobTeamLaborLoading={editJobTeamLaborLoading}
-            editJobTeamLaborError={editJobTeamLaborError}
-            editJobTeamLaborRow={editJobTeamLaborRow}
-            editJobSubLaborLoading={editJobSubLaborLoading}
-            editJobSubLaborError={editJobSubLaborError}
-            editJobSubLaborData={editJobSubLaborData}
-            editJobEffectiveHcp={editJobEffectiveHcp}
-            showTeamLaborOpenOnJobsLink={showTeamLaborOpenOnJobsLink}
-            showSubLaborOpenOnJobsLink={showSubLaborOpenOnJobsLink}
-            onClose={onClose}
-          />
+          <JobFormLaborCostPanel editing={editing} editJobTeamLaborRow={editJobTeamLaborRow} />
           <JobFormPartsCostSection
             editing={editing}
             hideTitle={!!editing?.id}
+            teamLabor={{ loading: editJobTeamLaborLoading, error: editJobTeamLaborError, row: editJobTeamLaborRow, showOpenLink: showTeamLaborOpenOnJobsLink }}
+            subLabor={{ loading: editJobSubLaborLoading, error: editJobSubLaborError, data: editJobSubLaborData, effectiveHcp: editJobEffectiveHcp, showOpenLink: showSubLaborOpenOnJobsLink }}
+            onClose={onClose}
             materialsAccordionOpen={materialsAccordionOpen}
             toggleMaterialsAccordion={toggleMaterialsAccordion}
             jobMaterialsSnapshotLoading={jobMaterialsSnapshotLoading}

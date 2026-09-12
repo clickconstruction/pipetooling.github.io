@@ -161,4 +161,13 @@ describe('buildJobBurn — the series', () => {
     expect(m.undatedUsd).toBe(400)
     expect(m.cumulative[0]!.actual).toBe(1600)
   })
+  it('earnedBasis: price steps the earned line at % done × price, not the budget (v2.3361)', () => {
+    const charges: JobChargeEvent[] = [{ dateKey: '2026-09-01', amount: 100, source: 'team_labor', label: 'a' } as JobChargeEvent]
+    const reports: JobValueEvent[] = [{ dateKey: '2026-09-01', percent: 50, label: 'r' }]
+    const budget = { usd: 500, source: 'target_margin' as const, targetMarginPct: 50 }
+    const onBudget = buildJobBurn({ chargeEvents: charges, valueEvents: reports, fallbackPercent: null, priceUsd: 1000, budget, overhead: null, todayYmd: '2026-09-01' })
+    const onPrice = buildJobBurn({ chargeEvents: charges, valueEvents: reports, fallbackPercent: null, priceUsd: 1000, budget, overhead: null, todayYmd: '2026-09-01', earnedBasis: 'price' })
+    expect(onBudget.cumulative[0]!.earned).toBe(250)
+    expect(onPrice.cumulative[0]!.earned).toBe(500)
+  })
 })
