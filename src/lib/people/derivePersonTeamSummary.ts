@@ -119,8 +119,8 @@ export function derivePersonTeamSummary(
     : crewJobsWithLead
 
   const crewJobs = crewJobsWithLeadFiltered.map((c) => {
-    const day = new Date(c.work_date + 'T12:00:00').getDay()
-    const dayHoursRaw = cfg?.is_salary ? (day >= 1 && day <= 5 ? 8 : 0) : (union.hoursMap[`${personName}:${c.work_date}`] ?? 0)
+    // Clocked hours for everyone (v2.3370): salaried people used to get a flat 8 h per weekday here; the Bridge reads their sessions, so Review does too.
+    const dayHoursRaw = union.hoursMap[`${personName}:${c.work_date}`] ?? 0
     // Convention 1 — pct is share of the total day; multiply by dayHoursRaw
     // so the period numerator stays on the same convention as the lifetime
     // denominator in `loadTeamReviewUnion.teamLaborCostByJobId`.
@@ -252,10 +252,7 @@ export function derivePersonTeamSummary(
   const personHoursRows = union.periodHoursRows.filter((r) => r.person_name === personName)
   const getHoursForDay = (d: string) => {
     if (!cfg) return 0
-    const dayOfWeek = new Date(d + 'T12:00:00').getDay()
-    return cfg.is_salary
-      ? (dayOfWeek >= 1 && dayOfWeek <= 5 ? 8 : 0)
-      : (personHoursRows.find((h) => h.work_date === d)?.hours ?? 0)
+    return personHoursRows.find((h) => h.work_date === d)?.hours ?? 0
   }
   const totalHoursPaidJobs = laborJobs.reduce((s, j) => s + j.hours, 0) + crewJobs.reduce((s, j) => s + j.hours, 0)
   // Hours keep ONE basis whatever the paid-only toggle says (v2.2688, audit
@@ -294,12 +291,7 @@ export function derivePersonTeamSummary(
   // assignment"). Revenue / profit math uses `crewJobsWithLeadFiltered`,
   // which still excludes Office and bids on purpose.
   const crewByDateForPerson = new Map<string, Array<{ hcp: string; jobName: string; address: string; pct: number; hours: number; valueCreated: number }>>()
-  const dayHoursForPerson = (workDate: string) => {
-    const dayOfWeek = new Date(workDate + 'T12:00:00').getDay()
-    return cfg?.is_salary
-      ? (dayOfWeek >= 1 && dayOfWeek <= 5 ? 8 : 0)
-      : (union.hoursMap[`${personName}:${workDate}`] ?? 0)
-  }
+  const dayHoursForPerson = (workDate: string) => union.hoursMap[`${personName}:${workDate}`] ?? 0
   for (const r of union.periodCrewRows) {
     if (r.person_name !== personName) continue
     const dayHoursRaw = dayHoursForPerson(r.work_date)

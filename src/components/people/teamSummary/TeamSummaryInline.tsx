@@ -482,19 +482,15 @@ function Row(props: {
 }) {
   const { rank, r, isSelected, onTogglePerson, onOpenDrilldown } = props
   const hasHours = r.totalHours > 0
-  // Salaried people earn 8 hrs/weekday regardless of clock — showing
-  // "40.0" in the Hours column reads like a measurement when it's
-  // actually an assumption. Render "(s)" instead, but keep r.totalHours
-  // intact so the footer total still sums their 40 and the drilldown
-  // shows the per-day breakdown.
+  // Salaried people's hours are their clocked sessions like everyone's
+  // (v2.3370 — the flat 8 hrs/weekday is gone), so the number is a
+  // measurement now; "(s)" beside it still says who is paid a salary.
   const isSalary = r.payConfigSource === 'salary'
-  const hoursContent = isSalary ? '(s)' : fmtH(r.totalHours)
+  const hoursContent = isSalary ? `${fmtH(r.totalHours)} (s)` : fmtH(r.totalHours)
   const hoursAriaLabel = isSalary
-    ? `Hours breakdown for ${r.name}: salary (${fmtH(r.totalHours)} hours assumed)`
+    ? `Hours breakdown for ${r.name}: salary (${fmtH(r.totalHours)} clocked hours)`
     : `Hours breakdown for ${r.name}: ${fmtH(r.totalHours)} hours`
-  const hoursTitle = isSalary
-    ? `Salaried — ${fmtH(r.totalHours)} hrs assumed (8 hrs/weekday). Click for breakdown.`
-    : 'Click for breakdown'
+  const hoursTitle = isSalary ? `Salaried — ${fmtH(r.totalHours)} clocked hrs. Click for breakdown.` : 'Click for breakdown'
   return (
     <tr className={isSelected ? 'selected-person' : undefined}>
       <td style={{ textAlign: 'center', color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}>{rank}</td>

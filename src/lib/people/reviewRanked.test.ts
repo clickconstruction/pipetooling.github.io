@@ -162,7 +162,7 @@ describe('buildReviewRankedBars', () => {
     const w = bars[3]!
     expect(w.widthPct).toBeCloseTo((1276 / span) * 100)
     expect(w.startPct).toBeCloseTo(0)
-    expect(m.sub).toBe('176.0 h assumed · $124/hr')
+    expect(m.sub).toBe('176.0 h · $124/hr')
     expect(w.sub).toBe('85.1 h · 85.1 h office/bid')
   })
   it('filters by name and sorts null values last', () => {
@@ -186,9 +186,10 @@ describe('buildReviewPersonMath', () => {
     expect(by.overheadLabor).toBe(-604)
     expect(by.burden).toBe(-828)
     expect(by.profit).toBe(21894)
-    expect(m.perHour).toEqual({ profit: 21894 / 176, hours: 176, basis: 'assumed' })
+    expect(m.perHour).toEqual({ profit: 21894 / 176, hours: 176, basis: 'clocked' })
     expect(m.lines.find((l) => l.key === 'burden')?.why).toContain('$5.00')
-    expect(m.watchouts.some((w) => w.includes('assumed'))).toBe(true)
+    // v2.3370: salaried hours are clocked like everyone's — no assumption to warn about.
+    expect(m.watchouts.some((w) => w.includes('assumed'))).toBe(false)
   })
   it('sizes the levers from the breakdowns: assumed pct, no bill, concentration, worst job, zero-hour rows', () => {
     const b = row({
@@ -226,20 +227,20 @@ describe('buildReviewPersonMath', () => {
 })
 
 describe('buildReviewHygiene', () => {
-  it('lists approvals, no-bill jobs, assumed-% jobs (deduped across people) and the salary assumption', () => {
+  it('lists approvals, no-bill jobs and assumed-% jobs (deduped across people); the old salary-assumption line is gone (v2.3370)', () => {
     const j1 = job({ jobId: 'x', hcp: 'JP950', totalBill: 0, valueCreated: 0, costInPeriod: 34 })
     const j2 = job({ jobId: 'y', hcp: 'JP273', pctCompleteSource: 'assumed' })
     const a = row({ name: 'A', payConfigSource: 'salary', totalHours: 8, gb: { total: 0, jobs: [j1, j2] } })
     const b = row({ name: 'B', totalHours: 8, gb: { total: 0, jobs: [j1, j2] } })
     const items = buildReviewHygiene([a, b], { sessions: 118, totalHours: 610.6, people: 9, oldestAgeDays: 21 })
-    expect(items.map((i) => i.key)).toEqual(['approvals', 'noBill', 'assumedPct', 'salaried'])
+    expect(items.map((i) => i.key)).toEqual(['approvals', 'noBill', 'assumedPct'])
     expect(items[0]!.headline).toBe('118 sessions · 610.6 h awaiting approval')
     expect(items[1]!.headline).toBe('1 job has no bill amount')
     expect(items[1]!.detail).toBe('Labor there lands as pure loss (JP950 Job).')
     const clickOnly = row({ name: 'C', totalHours: 8, gb: { total: 0, jobs: [job({ jobId: 'z', hcp: 'Unknown', jobName: 'Water Leak', totalBill: 0, valueCreated: 0, costInPeriod: 5 })] } })
     expect(buildReviewHygiene([clickOnly], null)[0]!.detail).toBe('Labor there lands as pure loss (Water Leak).')
     expect(items[2]!.headline).toBe('1 job has no % complete')
-    expect(items[3]!.headline).toBe('Salaried hours are assumed for 1 person')
+    expect(items[2]!.detail).toBe('They count as half done, so half the bill is treated as earned and the share is marked (assumed).')
   })
   it('returns nothing when the period is clean', () => {
     expect(buildReviewHygiene([row({ name: 'A', totalHours: 8 })], null)).toEqual([])

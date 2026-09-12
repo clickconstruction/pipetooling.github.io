@@ -79,7 +79,7 @@ export function PeopleReviewMathDrawer({ math }: { math: ReviewPersonMath | null
         <div style={{ color: 'var(--text-muted)' }}>
           ÷ Hours
           <div style={{ fontSize: '0.72rem', color: 'var(--text-faint)', marginTop: 1 }}>
-            {fmtH(math.perHour.hours)} {math.perHour.basis === 'assumed' ? 'assumed salaried hours (8 h × weekdays), not clock time' : 'clocked hours, office and bid time included'}
+            {fmtH(math.perHour.hours)} clocked hours, office and bid time included
           </div>
         </div>
         <div style={{ textAlign: 'right', fontWeight: 600, fontVariantNumeric: 'tabular-nums', alignSelf: 'start' }}>

@@ -152,13 +152,13 @@ export function HoursBreakdownBody(props: {
   const { hb, personName, clickableDay, onOpenDayEditor } = props
   const srcLabel =
     hb.source === 'salary'
-      ? 'Salaried (8 hrs/weekday)'
+      ? 'Salaried (clocked hours — from people_hours / clock sessions, like everyone)'
       : hb.source === 'hourly'
         ? 'Hourly (from people_hours / clock sessions)'
         : 'Unknown (no pay config row)'
   const modeLabel = hb.onlyPaidJobs
     ? 'Only paid jobs (sub labor + crew assignments)'
-    : 'All days in period (clocked / salary)'
+    : 'All days in period (clocked)'
   // Sort dailyRows by date asc so the day-by-day story reads naturally.
   const sortedDailyRows = hb.dailyRows
     .slice()
@@ -1038,9 +1038,9 @@ export function OverheadHoursBody(props: { entry: TeamSummaryBreakdown }) {
         </tfoot>
       </table>
       <p className="caption">
-        Field hrs = Total work hrs &minus; Overhead hrs. For salaried
-        people, total work is their weekday salary days (8 hrs/weekday);
-        for hourly, it is people_hours / clock sessions.{' '}
+        Field hrs = Total work hrs &minus; Overhead hrs. Total work is
+        people_hours / clock sessions for everyone &mdash; salaried people
+        included (their clocked time, not a flat weekday).{' '}
         <strong>
           Office and bid hours are charged as your own overhead labor in the
           &ldquo;Profit (after overhead)&rdquo; column
@@ -1166,7 +1166,7 @@ export function OverheadLaborBody(props: { entry: TeamSummaryBreakdown }) {
   const src = entry.payConfigSource
   const srcLabel =
     src === 'salary'
-      ? 'Salaried (weekday hrs × hourly_wage from people_pay_config)'
+      ? 'Salaried (clocked hrs × hourly_wage from people_pay_config)'
       : src === 'hourly'
         ? dualRate
           ? 'Hourly with an office rate (office/bid hrs × office_hourly_wage)'
@@ -1299,13 +1299,13 @@ export function FieldHoursBody(props: {
   const unaccountedFieldHrs = pb.unaccountedHours || 0
   const srcLabel =
     hb.source === 'salary'
-      ? 'Salaried (8 hrs/weekday)'
+      ? 'Salaried (clocked hours, like everyone)'
       : hb.source === 'hourly'
         ? 'Hourly (from people_hours / clock sessions)'
         : 'Unknown (no pay config row)'
   const modeLabel = hb.onlyPaidJobs
     ? 'Only paid jobs (sub labor + crew assignments on jobs marked paid in full)'
-    : 'All days in period (clocked / salary, minus office + bid)'
+    : 'All days in period (clocked, minus office + bid)'
   const ohRateNote =
     overheadRate != null
       ? `Field hours drive the Overhead Burden in "Profit (after overhead)" — your ${fmtH(
@@ -1435,9 +1435,7 @@ export function FieldHoursBody(props: {
               <tr>
                 <td>
                   Total work hrs (
-                  {hb.source === 'salary'
-                    ? 'salary days'
-                    : 'people_hours / clock sessions'}
+                  people_hours / clock sessions
                   )
                 </td>
                 <td className="num">{fmtH(totalWork)}</td>
@@ -1462,7 +1460,7 @@ export function FieldHoursBody(props: {
       </table>
       <p className="caption">
         Each crew assignment&rsquo;s hours = day total × pct. The day total
-        is <code>peopleHours</code> (or 8 hrs on a salary weekday). Office
+        is <code>peopleHours</code> for everyone, salaried included. Office
         time has its own crew row and is filtered from this field-revenue
         rollup; its share of the day appears as overhead. {ohRateNote}
       </p>
