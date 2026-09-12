@@ -431,6 +431,8 @@ export default function JobFormModal({
   const [gcCustomerId, setGcCustomerId] = useState<string | null>(null)
   /** Who pays (v2.3345): customer | gc | split — identity slice, see billToParty.ts. */
   const [billToParty, setBillToParty] = useState<JobBillToParty>('customer')
+  /** Bills also go to (v2.3358): the party not billed is copied on every bill — identity slice. */
+  const [billCopyOtherParty, setBillCopyOtherParty] = useState(false)
   /** v2.3353: the GC id the standing-rule default was last applied for (or loaded with) — so a
       saved job's deliberate choice is never overridden, and each new GC pick is judged once. */
   const gcDefaultAppliedForRef = useRef<string | null>(null)
@@ -887,6 +889,7 @@ export default function JobFormModal({
     customerPhone,
     gcCustomerId,
     billToParty,
+    billCopyOtherParty,
     developmentId,
     googleDriveLink,
     jobPicturesLink,
@@ -1212,6 +1215,7 @@ export default function JobFormModal({
     setCustomerPhone(s.identity.customerPhone)
     setGcCustomerId(s.identity.gcCustomerId)
     setBillToParty(s.identity.billToParty)
+    setBillCopyOtherParty(s.identity.billCopyOtherParty)
     setDevelopmentId(s.identity.developmentId)
     setGoogleDriveLink(s.identity.googleDriveLink)
     setJobPicturesLink(s.identity.jobPicturesLink)
@@ -1742,6 +1746,7 @@ export default function JobFormModal({
     gcDefaultAppliedForRef.current = job.gc_customer_id ?? null
     setGcCustomerId(job.gc_customer_id ?? null)
     setBillToParty(parseJobBillToParty((job as { bill_to_party?: string | null }).bill_to_party))
+    setBillCopyOtherParty((job as { bill_copy_other_party?: boolean | null }).bill_copy_other_party === true)
     setCustomerAddressId(job.customer_address_id ?? null)
     setDevelopmentId(job.development_id ?? null)
     setLinkedBidGc(
@@ -1809,6 +1814,7 @@ export default function JobFormModal({
     gcDefaultAppliedForRef.current = null
     setGcCustomerId(null)
     setBillToParty('customer')
+    setBillCopyOtherParty(false)
     setCustomerAddressId(null)
     setDevelopmentId(null)
     setLinkedBidGc(null)
@@ -3554,6 +3560,7 @@ export default function JobFormModal({
           gc_customer_id: resolveGcCustomerIdForJobPayload(gcCustomerId, effectiveMasterId, customers),
           bill_to_party:
             billToParty === 'gc' && !resolveGcCustomerIdForJobPayload(gcCustomerId, effectiveMasterId, customers) ? 'customer' : billToParty,
+          bill_copy_other_party: billCopyOtherParty,
           customer_address_id: customerAddressId,
           development_id: resolveDevelopmentIdForJobPayload(developmentId, effectiveMasterId, developments),
           customer_name: customerName.trim() || null,
@@ -3933,6 +3940,8 @@ export default function JobFormModal({
               setGcCustomerId={setGcCustomerId}
               billToParty={billToParty}
               setBillToParty={setBillToParty}
+              billCopyOtherParty={billCopyOtherParty}
+              setBillCopyOtherParty={setBillCopyOtherParty}
               onCustomerPatched={patchCustomerRow}
               linkedBidGc={linkedBidGc}
               customerSearch={customerSearch}

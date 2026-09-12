@@ -20,6 +20,8 @@ import TeamCrewIcon from '../icons/TeamCrewIcon'
 import { customerAddressLienReady, suggestCustomerAddressForJob } from '../../lib/jobs/lienProperty'
 import { JobFormFactRow } from './JobFormFactRow'
 import { JobFormBillToPartyControl } from './JobFormBillToPartyControl'
+import { JobFormBillCopyRecipientsControl, useBillCopyContacts } from './JobFormBillCopyRecipientsControl'
+import { billsAlsoGoToSummary, type BillCopyOtherParty } from '../../lib/jobs/billCopyRecipients'
 import { supabase } from '../../lib/supabase'
 import { customerBillingEmail, type JobBillToParty } from '../../lib/jobs/billToParty'
 import JobContractStrip from './JobContractStrip'
@@ -60,6 +62,7 @@ type RowKey =
   | 'bid'
   | 'development'
   | 'bill-to-party'
+  | 'bill-copies'
   | 'gc-billing-email'
 
 /**
@@ -98,6 +101,9 @@ type JobFormEditFactRowsProps = {
   /** Who pays (v2.3345) — the "Bills go to" row; identity autosave slice. */
   billToParty: JobBillToParty
   setBillToParty: (v: JobBillToParty) => void
+  /** Bills also go to (v2.3358) — the other party is copied on every bill; identity autosave slice. */
+  billCopyOtherParty: boolean
+  setBillCopyOtherParty: (v: boolean) => void
   /** The GC's billing email is saved straight to customers; the shell mirrors the patch into its list. */
   onCustomerPatched: (id: string, patch: Partial<CustomerRow>) => void
   linkedBidGc: { id: string; name: string } | null
@@ -187,6 +193,8 @@ export function JobFormEditFactRows(props: JobFormEditFactRowsProps) {
     setGcCustomerId,
     billToParty,
     setBillToParty,
+    billCopyOtherParty,
+    setBillCopyOtherParty,
     onCustomerPatched,
     linkedBidGc,
     customerSearch,
@@ -284,6 +292,18 @@ export function JobFormEditFactRows(props: JobFormEditFactRowsProps) {
   const gcContact = gcCustomer ? extractContactFromCustomer(gcCustomer) : null
   const gcBillingEmail = gcCustomer ? customerBillingEmail(gcCustomer) : ''
   const gcDistinct = Boolean(gcCustomerId) && gcCustomerId !== customerId
+  // Bills also go to (v2.3358): the copy list hangs off the PAYER — the GC's
+  // people when the GC pays, else the customer's — and the other party is
+  // offered as a one-tick copy (none on a split job: each draft picks there).
+  const copyPayerId = billToParty === 'gc' && gcDistinct ? gcCustomerId : customerId
+  const copyPayerName = billToParty === 'gc' && gcDistinct ? (gcCustomer?.name ?? '').trim() || 'the GC' : customerName.trim() || 'the customer'
+  const copyOtherParty: BillCopyOtherParty | null =
+    !gcDistinct || billToParty === 'split'
+      ? null
+      : billToParty === 'gc'
+        ? { name: customerName.trim() || 'the customer', email: customerEmail.trim(), role: 'customer' }
+        : { name: (gcCustomer?.name ?? '').trim() || 'the GC', email: gcBillingEmail || (gcContact?.email ?? '').trim(), role: 'gc' }
+  const billCopy = useBillCopyContacts(copyPayerId)
   const [gcBillingEmailDraft, setGcBillingEmailDraft] = useState('')
   const [gcBillingEmailSaving, setGcBillingEmailSaving] = useState(false)
   const [gcBillingEmailError, setGcBillingEmailError] = useState<string | null>(null)
@@ -597,6 +617,35 @@ export function JobFormEditFactRows(props: JobFormEditFactRowsProps) {
             gcName={gcCustomer?.name ?? null}
             gcBillingEmail={gcBillingEmail || null}
             customerName={customerName.trim() || null}
+          />
+        </JobFormFactRow>
+      ) : null}
+      {/* Bills also go to (v2.3358): who else is copied on every bill — the
+          payer's flagged contacts (saved on their customer record) and the
+          other party (a job flag). Collapsed it names them; Bill Customer
+          starts with the same people ticked. */}
+      {customerId ? (
+        <JobFormFactRow
+          label="Bills also go to"
+          labelIcon={CUSTOMER_SUBROW_INDENT}
+          value={
+            billsAlsoGoToSummary({ contacts: billCopy.contacts, otherParty: copyOtherParty, copyOtherParty: billCopyOtherParty }) ?? (
+              <span style={{ color: 'var(--text-muted)' }}>nobody else</span>
+            )
+          }
+          expanded={openRows.has('bill-copies')}
+          onToggle={() => toggleRow('bill-copies')}
+        >
+          <JobFormBillCopyRecipientsControl
+            payerName={copyPayerName}
+            contacts={billCopy.contacts}
+            loaded={billCopy.loaded}
+            onSetFlag={billCopy.setFlag}
+            onAdd={billCopy.add}
+            otherParty={copyOtherParty}
+            copyOtherParty={billCopyOtherParty}
+            setCopyOtherParty={setBillCopyOtherParty}
+            canAdd={Boolean(copyPayerId)}
           />
         </JobFormFactRow>
       ) : null}
