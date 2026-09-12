@@ -23,6 +23,8 @@ function job(over: Partial<Job> & { jobId: string }): Job {
     valueCreated: 1000,
     totalLaborOnJob: 500,
     costInPeriod: 250,
+    hoursInPeriod: 8,
+    lifetimeHours: 16,
     ratio: 0.5,
     allocatedRevenue: 500,
     ...over,

@@ -774,8 +774,8 @@ export function buildTeamSummaryHtml(ctx: TeamSummaryHtmlContext): string {
           html += '<th class="num" style="text-align:center;">Total Bill</th>';
           html += '<th class="num" style="text-align:center;">% Complete</th>';
           html += '<th class="num" style="text-align:center;">Value Created</th>';
-          html += '<th class="num" style="text-align:center;">Your cost<br>(period)</th>';
-          html += '<th class="num" style="text-align:center;">Total labor<br>(lifetime)</th>';
+          html += '<th class="num" style="text-align:center;">Your hours<br>(period)</th>';
+          html += '<th class="num" style="text-align:center;">Job hours<br>(lifetime)</th>';
           html += '<th class="num" style="text-align:center;">Share</th>';
           html += '<th class="num" style="text-align:center;">Allocated</th>';
           html += '</tr></thead><tbody>';
@@ -788,8 +788,8 @@ export function buildTeamSummaryHtml(ctx: TeamSummaryHtmlContext): string {
             html += '<td class="num" style="text-align:center;">' + fmtMoney(j.totalBill) + '</td>';
             html += '<td class="num" style="text-align:center;">' + fmtPct(j.pctComplete) + escH(pctSuffix) + '</td>';
             html += '<td class="num" style="text-align:center;">' + fmtMoney(j.valueCreated) + '</td>';
-            html += '<td class="num" style="text-align:center;">' + fmtMoney(j.costInPeriod) + '</td>';
-            html += '<td class="num" style="text-align:center;">' + fmtMoney(j.totalLaborOnJob) + '</td>';
+            html += '<td class="num" style="text-align:center;">' + fmtH(j.hoursInPeriod) + '</td>';
+            html += '<td class="num" style="text-align:center;">' + fmtH(j.lifetimeHours) + '</td>';
             html += '<td class="num" style="text-align:center;">' + fmtPct1(j.ratio * 100) + '</td>';
             html += '<td class="num" style="text-align:center;">' + fmtMoney(j.allocatedRevenue) + '</td>';
             html += '</tr>';
