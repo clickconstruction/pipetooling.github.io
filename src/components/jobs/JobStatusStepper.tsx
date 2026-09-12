@@ -207,7 +207,7 @@ export default function JobStatusStepper({ job, authRole, onChanged }: {
   // v2.3240 (mockup-approved "rail"): three states with three looks — black =
   // the job is here, blue outline = one tap away, dashed grey = not reachable
   // from here (tap it and the reason shows under the rail instead of hiding in
-  // a tooltip). Collections is the on/off switch it really is, on its own row.
+  // a tooltip). Collections is the on/off switch it really is, at the right end of the rail (v2.3371; it had its own row).
   const currentIdx = JOB_STEPPER_ORDER.indexOf(status)
   const last = JOB_STEPPER_ORDER.length - 1
   const stepBase: React.CSSProperties = {
@@ -279,60 +279,61 @@ export default function JobStatusStepper({ job, authRole, onChanged }: {
             </span>
           )
         })}
+        {/* v2.3371: the Collections switch rides the rail's own row, at the right end past Paid (owner ask); it wraps under the rail only when the window is narrow. */}
+        <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', marginLeft: 'auto', paddingLeft: '0.75rem', fontSize: '0.875rem' }}>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={inCollections}
+            aria-label={inCollections ? 'In Collections — switch off to return the job to plain Billed' : 'Collections — flag as difficult to collect'}
+            disabled={busy || status !== 'billed'}
+            onClick={() => (status === 'billed' ? setCollectionsConfirm(inCollections ? 'from' : 'to') : undefined)}
+            title={
+              status !== 'billed'
+                ? 'Collections applies to Billed jobs'
+                : inCollections
+                  ? 'Return the job to plain Billed Awaiting Payment'
+                  : 'Flag as difficult to collect — moves to the Collections section'
+            }
+            style={{
+              position: 'relative',
+              width: 34,
+              height: 20,
+              borderRadius: 999,
+              border: `1px solid ${inCollections ? '#dc2626' : 'var(--border-strong)'}`,
+              background: inCollections ? '#dc2626' : 'var(--bg-muted)',
+              cursor: busy || status !== 'billed' ? 'not-allowed' : 'pointer',
+              opacity: status !== 'billed' ? 0.55 : 1,
+              padding: 0,
+              flexShrink: 0,
+            }}
+          >
+            <span
+              aria-hidden
+              style={{
+                position: 'absolute',
+                top: 2,
+                left: inCollections ? 16 : 2,
+                width: 14,
+                height: 14,
+                borderRadius: '50%',
+                background: 'var(--surface)',
+                boxShadow: '0 1px 2px rgba(0,0,0,0.25)',
+                transition: 'left 0.15s ease',
+              }}
+            />
+          </button>
+          <span style={{ color: inCollections ? 'var(--text-red-700)' : status === 'billed' ? 'var(--text-700)' : 'var(--text-muted)', fontWeight: inCollections ? 700 : 500 }}>
+            {inCollections ? 'In Collections' : 'Collections'}
+          </span>
+          {status !== 'billed' ? <span style={{ color: 'var(--text-faint)', fontSize: '0.8125rem' }}>· applies once the job is Billed</span> : null}
+        </div>
       </div>
       {lockedNote ? (
         <div role="status" style={{ marginTop: '0.4rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
           {lockedNote}
         </div>
       ) : null}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.6rem', fontSize: '0.875rem' }}>
-        <button
-          type="button"
-          role="switch"
-          aria-checked={inCollections}
-          aria-label={inCollections ? 'In Collections — switch off to return the job to plain Billed' : 'Collections — flag as difficult to collect'}
-          disabled={busy || status !== 'billed'}
-          onClick={() => (status === 'billed' ? setCollectionsConfirm(inCollections ? 'from' : 'to') : undefined)}
-          title={
-            status !== 'billed'
-              ? 'Collections applies to Billed jobs'
-              : inCollections
-                ? 'Return the job to plain Billed Awaiting Payment'
-                : 'Flag as difficult to collect — moves to the Collections section'
-          }
-          style={{
-            position: 'relative',
-            width: 34,
-            height: 20,
-            borderRadius: 999,
-            border: `1px solid ${inCollections ? '#dc2626' : 'var(--border-strong)'}`,
-            background: inCollections ? '#dc2626' : 'var(--bg-muted)',
-            cursor: busy || status !== 'billed' ? 'not-allowed' : 'pointer',
-            opacity: status !== 'billed' ? 0.55 : 1,
-            padding: 0,
-            flexShrink: 0,
-          }}
-        >
-          <span
-            aria-hidden
-            style={{
-              position: 'absolute',
-              top: 2,
-              left: inCollections ? 16 : 2,
-              width: 14,
-              height: 14,
-              borderRadius: '50%',
-              background: 'var(--surface)',
-              boxShadow: '0 1px 2px rgba(0,0,0,0.25)',
-              transition: 'left 0.15s ease',
-            }}
-          />
-        </button>
-        <span style={{ color: inCollections ? 'var(--text-red-700)' : status === 'billed' ? 'var(--text-700)' : 'var(--text-muted)', fontWeight: inCollections ? 700 : 500 }}>
-          {inCollections ? 'In Collections' : 'Collections'}
-        </span>
-        {status !== 'billed' ? <span style={{ color: 'var(--text-faint)', fontSize: '0.8125rem' }}>· applies once the job is Billed</span> : null}
-      </div>
 
       {shellGuardOpen != null ? (
         <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center', flexWrap: 'wrap', marginTop: '0.5rem' }}>

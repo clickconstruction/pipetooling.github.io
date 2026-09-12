@@ -653,7 +653,7 @@ export function JobFormEditFactRows(props: JobFormEditFactRowsProps) {
         </JobFormFactRow>
       ) : null}
       {props.contractJob ? (
-        <JobFormFactRow label="Contract" labelIcon={CUSTOMER_SUBROW_INDENT} value={<JobContractStrip job={props.contractJob} variant="inline" />} />
+        <JobFormFactRow label="Customer Contract" labelIcon={CUSTOMER_SUBROW_INDENT} value={<JobContractStrip job={props.contractJob} variant="inline" />} />
       ) : null}
       {props.workOrderJob ? (
         <JobFormFactRow label="Sub work order" labelIcon={CUSTOMER_SUBROW_INDENT} value={<JobWorkOrderStrip job={props.workOrderJob} variant="inline" authUserId={props.workOrderAuthUserId} />} />
