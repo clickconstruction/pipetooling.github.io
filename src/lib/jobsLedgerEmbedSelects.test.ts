@@ -53,7 +53,8 @@ describe('child embeds', () => {
     expect(cols(JOBS_LEDGER_PAYMENTS_EMBED)).toEqual([...PAYMENT_COLS])
     expect(cols(JOBS_LEDGER_MATERIALS_EMBED)).toEqual([...MATERIAL_COLS])
     expect(cols(JOBS_LEDGER_FIXTURES_EMBED)).toEqual([...FIXTURE_COLS])
-    expect(cols(JOBS_LEDGER_TEAM_MEMBERS_EMBED)).toEqual([...TEAM_MEMBER_COLS, 'users(name)'])
+    // v2.3373: archived_at + role ride along for the Pipeline's crew line and modal.
+    expect(cols(JOBS_LEDGER_TEAM_MEMBERS_EMBED)).toEqual([...TEAM_MEMBER_COLS, 'users(name,archived_at,role)'])
     for (const e of [JOBS_LEDGER_INVOICES_EMBED, JOBS_LEDGER_PAYMENTS_EMBED, JOBS_LEDGER_MATERIALS_EMBED, JOBS_LEDGER_FIXTURES_EMBED]) {
       const c = cols(e)
       expect(c, e).toEqual([...c].sort())
