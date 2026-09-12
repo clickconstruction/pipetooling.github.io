@@ -1,8 +1,7 @@
 import { useMemo, useState, type CSSProperties } from 'react'
 import { Bar, CartesianGrid, ComposedChart, Line, ReferenceArea, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { Link } from 'react-router-dom'
-import { formatCurrency } from '../../lib/format'
-import { PURSUIT_OUTCOME_LABELS, formatUsdShort, type PursuitOutcome, type PursuitRow } from '../../lib/bids/bidPursuit'
+import { formatUsdShort, type PursuitRow } from '../../lib/bids/bidPursuit'
 import {
   COHORT_BUCKET_LABELS,
   DECISION_TIMES_MIN_SAMPLE,
@@ -21,6 +20,8 @@ import {
   type CohortBucket,
   type CohortMonth,
 } from '../../lib/bids/bidForecast'
+import { cohortDrill } from '../../lib/bids/bidDrill'
+import { BidListModal } from './BidListModal'
 
 /**
  * Bids → Bid Costs → History & forecast (v2.3355). Three panels from the pure
@@ -30,8 +31,9 @@ import {
  * each counted at the odds of its size, by person.
  *
  * Everything on the page opens: click a bar segment, an odds card, an age
- * bucket, or a person's row and the bids behind that number list below it;
- * click a bid there to select it across the workflow tabs.
+ * bucket, or a person's row and the bids behind that number open in
+ * `BidListModal` (v2.3357 — a bar slice's modal also steps months and
+ * switches slices); click a bid there to open the Bid window on top.
  */
 type Props = {
   rows: PursuitRow[]
@@ -40,25 +42,20 @@ type Props = {
   onToggleRobots: (on: boolean) => void
   robotCount: number
   onSelectBid: (bidId: string) => void
+  /** Open the Bid window for a bid picked in a drill list. */
+  onOpenBid: (bidId: string) => void
 }
 
 type Mode = 'count' | 'value'
-type Drill = { title: string; sub?: string; rows: PursuitRow[] } | null
+type Drill = { kind: 'list'; title: string; sub?: string; rows: PursuitRow[] } | { kind: 'cohort'; monthIndex: number; bucket: CohortBucket } | null
 
 const WON = '#1e8a57', LOST = '#c64b3a', OPEN = '#b8801f', OPEN_STALE = 'rgba(184, 128, 31, 0.42)', VALUE_LINE = '#2f6be0'
-const OUTCOME_COLORS: Record<PursuitOutcome, { fg: string; bg: string }> = {
-  open: { fg: OPEN, bg: 'rgba(184, 128, 31, 0.14)' },
-  won: { fg: WON, bg: 'rgba(30, 138, 87, 0.14)' },
-  lost: { fg: LOST, bg: 'rgba(198, 75, 58, 0.14)' },
-  unsent: { fg: 'var(--text-muted)', bg: 'var(--bg-subtle)' },
-}
 
-const usd = (n: number): string => `$${formatCurrency(n)}`
 const pct = (r: number | null): string => (r == null ? '—' : `${Math.round(r * 100)}%`)
 const panel: CSSProperties = { border: '1px solid var(--border)', borderRadius: 6, padding: '0.7rem 0.85rem', marginBottom: 12 }
 const h5: CSSProperties = { margin: '0 0 2px', fontSize: '0.85rem', fontWeight: 600 }
 const sub: CSSProperties = { color: 'var(--text-muted)', fontSize: '0.75rem', margin: '0 0 8px' }
-const chipBase: CSSProperties = { display: 'inline-flex', alignItems: 'center', gap: 4, borderRadius: 999, padding: '2px 9px', fontSize: '0.75rem', border: '1px solid var(--border)', background: 'none', color: 'inherit', cursor: 'pointer', whiteSpace: 'nowrap' }
+const chipBase: CSSProperties = { display: 'inline-flex', alignItems: 'center', gap: 4, borderRadius: 999, padding: '2px 9px', fontSize: '0.75rem', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)', background: 'none', color: 'inherit', cursor: 'pointer', whiteSpace: 'nowrap' }
 const tile: CSSProperties = { border: '1px solid var(--border)', borderRadius: 6, padding: '0.6rem 0.75rem', background: 'var(--surface)', textAlign: 'left', color: 'inherit', cursor: 'pointer', font: 'inherit' }
 const tileN: CSSProperties = { display: 'block', fontSize: '1.2rem', fontWeight: 600, fontVariantNumeric: 'tabular-nums', lineHeight: 1.2 }
 const tileL: CSSProperties = { fontSize: '0.74rem', color: 'var(--text-muted)' }
@@ -90,7 +87,7 @@ function CohortTooltip({ active, payload }: { active?: boolean; payload?: Array<
   )
 }
 
-export function BidsForecastLens({ rows, todayYmd, showRobots, onToggleRobots, robotCount, onSelectBid }: Props) {
+export function BidsForecastLens({ rows, todayYmd, showRobots, onToggleRobots, robotCount, onSelectBid, onOpenBid }: Props) {
   const [person, setPerson] = useState<string | null>(null)
   const [mode, setMode] = useState<Mode>('count')
   const [drill, setDrill] = useState<Drill>(null)
@@ -122,9 +119,16 @@ export function BidsForecastLens({ rows, todayYmd, showRobots, onToggleRobots, r
   const openBar = (bucket: CohortBucket) => (d: unknown) => {
     const p = (d as { payload?: Datum })?.payload ?? (d as Datum)
     if (!p?.cohort) return
-    const list = p.cohort.bids[bucket]
-    setDrill({ title: `${COHORT_BUCKET_LABELS[bucket]} · sent ${p.label}`, sub: `${list.length} bid${list.length === 1 ? '' : 's'} · ${formatUsdShort(list.reduce((s, r) => s + (r.bidValue ?? 0), 0))}`, rows: list })
+    const monthIndex = cohorts.findIndex((c) => c.month === p.cohort.month)
+    if (monthIndex >= 0) setDrill({ kind: 'cohort', monthIndex, bucket })
   }
+  const list = (o: { title: string; sub?: string; rows: PursuitRow[] }): Drill => ({ kind: 'list', ...o })
+  const cohortDrillState = drill?.kind === 'cohort' ? cohortDrill(cohorts, drill.monthIndex, drill.bucket) : null
+  const modal = drill == null ? null : drill.kind === 'list'
+    ? { title: drill.title, sub: drill.sub, rows: drill.rows, cohort: null }
+    : cohortDrillState
+      ? { title: `${COHORT_BUCKET_LABELS[cohortDrillState.bucket]} · sent ${cohortDrillState.label}`, sub: undefined, rows: cohortDrillState.rows, cohort: { drill: cohortDrillState, onBucket: (bucket: CohortBucket) => setDrill({ kind: 'cohort', monthIndex: cohortDrillState.monthIndex, bucket }), onMonth: (monthIndex: number) => setDrill({ kind: 'cohort', monthIndex, bucket: cohortDrillState.bucket }) } }
+      : null
   const bandOdds = personOdds.odds
   const whoWords = person == null ? 'everyone' : person || 'no estimator'
 
@@ -187,7 +191,7 @@ export function BidsForecastLens({ rows, todayYmd, showRobots, onToggleRobots, r
           {times.enough ? (
             <>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6 }}>
-                <button type="button" style={tile} onClick={() => setDrill({ title: 'Decided bids with a decision date', sub: `${times.n} bids`, rows: times.sample.map((s) => s.row) })}><span style={tileN}>{times.medianDays} d</span><span style={tileL}>median · {times.n} decided</span></button>
+                <button type="button" style={tile} onClick={() => setDrill(list({ title: 'Decided bids with a decision date', sub: `${times.n} bids`, rows: times.sample.map((s) => s.row) }))}><span style={tileN}>{times.medianDays} d</span><span style={tileL}>median · {times.n} decided</span></button>
                 <div style={{ ...tile, cursor: 'default' }}><span style={tileN}>{times.p10Days} d</span><span style={tileL}>fastest 10%</span></div>
                 <div style={{ ...tile, cursor: 'default' }}><span style={tileN}>{times.p90Days} d</span><span style={tileL}>slowest 10%</span></div>
               </div>
@@ -198,13 +202,13 @@ export function BidsForecastLens({ rows, todayYmd, showRobots, onToggleRobots, r
           ) : (
             <div style={{ border: '1px dashed var(--border)', borderRadius: 6, padding: '10px 12px', fontSize: '0.76rem', color: 'var(--text-muted)' }}>
               <b style={{ color: 'inherit' }}>Not enough yet.</b> Bids only started recording the day they were decided on 2026-09-11; {times.n} of {shown.filter((r) => r.outcome === 'won' || r.outcome === 'lost').length} decided bids carry a date so far. This fills in as bids are marked won or lost (it needs {DECISION_TIMES_MIN_SAMPLE}).
-              {times.n > 0 ? <span style={{ display: 'block', marginTop: 4 }}>So far: median {times.medianDays} days. <button type="button" onClick={() => setDrill({ title: 'Decided bids with a decision date', rows: times.sample.map((s) => s.row) })} style={{ ...chipBase, color: 'var(--text-link)', borderColor: 'var(--text-link)' }}>see them</button></span> : null}
+              {times.n > 0 ? <span style={{ display: 'block', marginTop: 4 }}>So far: median {times.medianDays} days. <button type="button" onClick={() => setDrill(list({ title: 'Decided bids with a decision date', rows: times.sample.map((s) => s.row) }))} style={{ ...chipBase, color: 'var(--text-link)', borderColor: 'var(--text-link)' }}>see them</button></span> : null}
             </div>
           )}
           <p style={{ ...sub, margin: '10px 0 4px' }}>Open bids, by how long they've waited. Past {FORECAST_MATURITY_DAYS} days a bid is more often forgotten than pending — the forecast leaves those out; Followup → Waiting to hear is where to chase or mark them.</p>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 6 }}>
             {ages.map((a) => (
-              <button key={a.key} type="button" onClick={() => setDrill({ title: `Open · waiting ${a.label}`, sub: `${a.n} bids · ${formatUsdShort(a.usd)}`, rows: a.bids })} style={{ ...tile, padding: '0.45rem 0.6rem', background: a.stale ? 'rgba(184, 128, 31, 0.12)' : 'var(--bg-subtle)', border: 'none' }}>
+              <button key={a.key} type="button" onClick={() => setDrill(list({ title: `Open · waiting ${a.label}`, sub: `${a.n} bids · ${formatUsdShort(a.usd)}`, rows: a.bids }))} style={{ ...tile, padding: '0.45rem 0.6rem', background: a.stale ? 'rgba(184, 128, 31, 0.12)' : 'var(--bg-subtle)', border: 'none' }}>
                 <span style={{ ...tileN, fontSize: '1rem' }}>{a.n}</span><span style={tileL}>{a.label}</span>
               </button>
             ))}
@@ -219,7 +223,7 @@ export function BidsForecastLens({ rows, todayYmd, showRobots, onToggleRobots, r
               const o = bandOdds.bands[b.key]
               const own = person == null || personOdds.ownBand[b.key]
               return (
-                <button key={b.key} type="button" onClick={() => setDrill({ title: `${b.label} · decided, sent ${FORECAST_MATURITY_DAYS}+ days ago`, sub: `${o.won} won · ${o.lost} lost`, rows: o.bids })} style={tile}>
+                <button key={b.key} type="button" onClick={() => setDrill(list({ title: `${b.label} · decided, sent ${FORECAST_MATURITY_DAYS}+ days ago`, sub: `${o.won} won · ${o.lost} lost`, rows: o.bids }))} style={tile}>
                   <span style={tileL}>{b.label}</span>
                   <span style={tileN}>{pct(o.byCount)}</span>
                   <span style={tileL}>{o.won} won · {o.lost} lost{!own ? ' · everyone’s' : ''}</span>
@@ -235,7 +239,7 @@ export function BidsForecastLens({ rows, todayYmd, showRobots, onToggleRobots, r
         <h5 style={h5}>What's open, and what to expect from it</h5>
         <p style={sub}>Open bids sent in the last {FORECAST_MATURITY_DAYS} days, each counted at the odds of its size. The range is one standard deviation — wide when a few bids are very large.</p>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: 10, marginBottom: 10 }}>
-          <button type="button" style={tile} onClick={() => setDrill({ title: `Open · sent in the last ${FORECAST_MATURITY_DAYS} days`, sub: `${forecast.n} bids · ${formatUsdShort(forecast.usd)}`, rows: forecast.fresh })}>
+          <button type="button" style={tile} onClick={() => setDrill(list({ title: `Open · sent in the last ${FORECAST_MATURITY_DAYS} days`, sub: `${forecast.n} bids · ${formatUsdShort(forecast.usd)}`, rows: forecast.fresh }))}>
             <span style={tileN}>{forecast.n} · {formatUsdShort(forecast.usd)}</span><span style={tileL}>open, sent in the last {FORECAST_MATURITY_DAYS} days</span>
             <span style={{ ...tileL, display: 'block' }}>{forecast.stale.n} more · {formatUsdShort(forecast.stale.usd)} open longer, left out</span>
           </button>
@@ -257,7 +261,7 @@ export function BidsForecastLens({ rows, todayYmd, showRobots, onToggleRobots, r
             </thead>
             <tbody>
               {[...people.people, people.everyone].map((p) => (
-                <tr key={p.key} onClick={() => setDrill({ title: `${p.label} · open, sent in the last ${FORECAST_MATURITY_DAYS} days`, sub: `${p.fresh} bids · ${formatUsdShort(p.freshUsd)}`, rows: p.freshBids })} style={{ cursor: 'pointer', ...(p.key === '*' ? { background: 'var(--bg-subtle)', fontWeight: 600 } : {}) }} title="List this person's fresh open bids">
+                <tr key={p.key} onClick={() => setDrill(list({ title: `${p.label} · open, sent in the last ${FORECAST_MATURITY_DAYS} days`, sub: `${p.fresh} bids · ${formatUsdShort(p.freshUsd)}`, rows: p.freshBids }))} style={{ cursor: 'pointer', ...(p.key === '*' ? { background: 'var(--bg-subtle)', fontWeight: 600 } : {}) }} title="List this person's fresh open bids">
                   <td style={{ ...cell, whiteSpace: 'normal' }}>{p.label}{p.key === '' ? <span style={subLine}>{p.sent} sent bids carry no estimator</span> : null}</td>
                   <td style={num}>{p.sent}</td>
                   <td style={num}>{p.matureDecided}</td>
@@ -275,36 +279,7 @@ export function BidsForecastLens({ rows, todayYmd, showRobots, onToggleRobots, r
         <p style={{ ...sub, margin: '8px 0 0' }}>A person with {FORECAST_MIN_DECIDED_FOR_OWN_RATE}+ decided mature bids uses their own odds per size; fewer uses everyone's. Assign the bids with no estimator (Edit Bid → Estimator) and they join a person's history. <Link to="/bids?tab=bid-board" style={{ color: 'var(--text-link)' }}>Estimating Health on the Bid Board</Link> keeps the weekly view.</p>
       </div>
 
-      {drill ? (
-        <div style={{ ...panel, marginTop: 12, borderColor: 'var(--text-link)' }} id="bid-forecast-drill">
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginBottom: 6 }}>
-            <h5 style={{ ...h5, margin: 0 }}>{drill.title}</h5>
-            {drill.sub ? <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>{drill.sub}</span> : null}
-            <button type="button" onClick={() => setDrill(null)} style={{ ...chipBase, marginLeft: 'auto' }} aria-label="Close this list">Close ×</button>
-          </div>
-          {drill.rows.length === 0 ? (
-            <p style={{ ...sub, margin: 0 }}>No bids here.</p>
-          ) : (
-            <div style={{ border: '1px solid var(--border)', borderRadius: 6, overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.78rem' }}>
-                <thead style={{ background: 'var(--bg-subtle)' }}><tr><th style={th}>Bid</th><th style={th}>Estimator</th><th style={th}>Sent</th><th style={thNum}>Value</th><th style={th}>Outcome</th><th style={th}>Decided</th></tr></thead>
-                <tbody>
-                  {[...drill.rows].sort((a, b) => (b.bidValue ?? 0) - (a.bidValue ?? 0)).map((r) => (
-                    <tr key={r.bidId} onClick={() => onSelectBid(r.bidId)} style={{ cursor: 'pointer' }} title="Select this bid across the workflow tabs">
-                      <td style={{ ...cell, whiteSpace: 'normal' }}>{r.label}{r.gcName ? <span style={subLine}>{r.gcName}</span> : null}</td>
-                      <td style={cell}>{r.estimatorName ?? '—'}</td>
-                      <td style={cell}>{r.sentYmd ?? r.dateYmd ?? '—'}</td>
-                      <td style={num}>{r.bidValue != null ? usd(r.bidValue) : '—'}</td>
-                      <td style={cell}><span style={{ ...chipBase, cursor: 'default', border: 'none', color: OUTCOME_COLORS[r.outcome].fg, background: OUTCOME_COLORS[r.outcome].bg, fontWeight: 500 }}>{PURSUIT_OUTCOME_LABELS[r.outcome]}</span></td>
-                      <td style={cell}>{r.outcomeAtYmd ?? (r.outcome === 'won' || r.outcome === 'lost' ? <span style={{ color: 'var(--text-muted)' }}>no date</span> : '—')}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
-      ) : null}
+      <BidListModal open={modal != null} onClose={() => setDrill(null)} title={modal?.title ?? ''} sub={modal?.sub} rows={modal?.rows ?? []} cohort={modal?.cohort ?? null} onOpenBid={onOpenBid} />
     </div>
   )
 }

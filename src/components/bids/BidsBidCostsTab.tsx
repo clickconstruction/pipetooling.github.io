@@ -62,6 +62,8 @@ type BidsBidCostsTabProps = {
   onSelectBid: (bid: BidWithBuilder) => void
   /** "Cost it →" — select the bid and open the Labor tab. */
   onCostIt: (bid: BidWithBuilder) => void
+  /** Open the Bid window (History & forecast drill lists, v2.3357). */
+  onOpenBid: (bid: BidWithBuilder) => void
   showDollars: boolean
 }
 
@@ -83,14 +85,14 @@ const subStyle: CSSProperties = { display: 'block', color: 'var(--text-muted)', 
 const tileStyle: CSSProperties = { border: '1px solid var(--border)', borderRadius: 6, padding: '0.6rem 0.75rem', background: 'var(--surface)' }
 const tileN: CSSProperties = { display: 'block', fontSize: '1.25rem', fontWeight: 600, fontVariantNumeric: 'tabular-nums', lineHeight: 1.2 }
 const tileL: CSSProperties = { fontSize: '0.75rem', color: 'var(--text-muted)' }
-const chipBase: CSSProperties = { display: 'inline-flex', alignItems: 'center', gap: 4, borderRadius: 999, padding: '2px 9px', fontSize: '0.75rem', border: '1px solid var(--border)', background: 'none', color: 'inherit', cursor: 'pointer', whiteSpace: 'nowrap' }
+const chipBase: CSSProperties = { display: 'inline-flex', alignItems: 'center', gap: 4, borderRadius: 999, padding: '2px 9px', fontSize: '0.75rem', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)', background: 'none', color: 'inherit', cursor: 'pointer', whiteSpace: 'nowrap' }
 
 function OutcomeChip({ outcome }: { outcome: PursuitOutcome }) {
   const c = OUTCOME_COLORS[outcome]
-  return <span style={{ ...chipBase, cursor: 'default', border: 'none', color: c.fg, background: c.bg, fontWeight: 500 }}>{PURSUIT_OUTCOME_LABELS[outcome]}</span>
+  return <span style={{ ...chipBase, cursor: 'default', borderWidth: 0, color: c.fg, background: c.bg, fontWeight: 500 }}>{PURSUIT_OUTCOME_LABELS[outcome]}</span>
 }
 
-export function BidsBidCostsTab({ bids, teamLaborData, bidAssignedCosts, onSelectBid, onCostIt, showDollars }: BidsBidCostsTabProps) {
+export function BidsBidCostsTab({ bids, teamLaborData, bidAssignedCosts, onSelectBid, onCostIt, onOpenBid, showDollars }: BidsBidCostsTabProps) {
   const [filter, setFilter] = useState<PursuitFilter>(DEFAULT_PURSUIT_FILTER)
   const [lens, setLens] = useState<Lens>('pursuit')
   const [group, setGroup] = useState<CostToWinGroup>('estimator')
@@ -180,7 +182,7 @@ export function BidsBidCostsTab({ bids, teamLaborData, bidAssignedCosts, onSelec
       </div>
 
       {lens === 'forecast' && (
-        <BidsForecastLens rows={rows} todayYmd={todayYmd} showRobots={filter.showRobots} onToggleRobots={(on) => setFilter((f) => ({ ...f, showRobots: on }))} robotCount={robotCount} onSelectBid={(bidId) => { const b = bidById.get(bidId); if (b) onSelectBid(b) }} />
+        <BidsForecastLens rows={rows} todayYmd={todayYmd} showRobots={filter.showRobots} onToggleRobots={(on) => setFilter((f) => ({ ...f, showRobots: on }))} robotCount={robotCount} onSelectBid={(bidId) => { const b = bidById.get(bidId); if (b) onSelectBid(b) }} onOpenBid={(bidId) => { const b = bidById.get(bidId); if (b) onOpenBid(b) }} />
       )}
 
       {lens === 'bid-vs-actual' && (
@@ -518,7 +520,7 @@ function BidVsActualView({ rows, tiles, loading, showDollars, onCostIt, canCostI
                     {showDollars && <td style={numStyle}>{r.predictedDirectUsd != null ? usd(r.predictedDirectUsd) : '—'}{r.materialsOnly && <span style={{ ...subStyle, textAlign: 'right' }}>materials only</span>}</td>}
                     <td style={numStyle}>{r.pctDone != null ? `${Math.round(r.pctDone)}%` : '—'}</td>
                     <td style={{ ...cellStyle, whiteSpace: 'normal', minWidth: 190 }}>
-                      <span style={{ ...chipBase, cursor: 'default', border: 'none', color: c.fg, background: c.bg, fontWeight: 500 }}>{r.read === 'near' || r.read === 'over' || r.read === 'under' ? r.words : BID_VS_ACTUAL_READ_LABELS[r.read]}</span>
+                      <span style={{ ...chipBase, cursor: 'default', borderWidth: 0, color: c.fg, background: c.bg, fontWeight: 500 }}>{r.read === 'near' || r.read === 'over' || r.read === 'under' ? r.words : BID_VS_ACTUAL_READ_LABELS[r.read]}</span>
                       {offer && (
                         <button type="button" onClick={() => onCostIt(r.bidId)} style={{ ...chipBase, marginLeft: 6, color: 'var(--text-link)', borderColor: 'var(--text-link)' }} title="Select the bid and open its Labor tab">Cost it →</button>
                       )}

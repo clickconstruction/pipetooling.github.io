@@ -4209,6 +4209,7 @@ export default function Bids() {
             setSharedBid(bid)
             selectBidsTab('labor')
           }}
+          onOpenBid={(bid) => openEditBid(bid, { tab: 'bid' })}
           showDollars={canSeeBidCostDollars(myRole)}
         />
       )}
