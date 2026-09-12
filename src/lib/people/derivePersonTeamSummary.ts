@@ -9,6 +9,7 @@ import { APP_CALENDAR_TZ } from '../../utils/dateUtils'
 import { laborJobShareForPerson } from './laborJobPersonMatch'
 import { laborJobSubCost } from '../jobs/subLaborCost'
 import { shouldUseDualRate } from '../officeJobRateSplit'
+import { reviewJobEarned, reviewShareRatio } from './reviewEarned'
 import type { PayConfigRow } from '../../types/peoplePayConfig'
 import type {
   GrossRevenueBreakdown,
@@ -128,7 +129,7 @@ export function derivePersonTeamSummary(
     return { jobId: c.job_id, hours, laborCost }
   })
 
-  const allocationJobsMap = new Map<string, { valueCreated: number; revenueBeforeOverhead: number; totalLaborOnJob: number; partsCost: number; tagCosts: ReadonlyMap<string, number> }>()
+  const allocationJobsMap = new Map<string, { valueCreated: number; revenueBeforeOverhead: number; totalLaborOnJob: number; partsCost: number; tagCosts: ReadonlyMap<string, number>; pctEffective: number; assumedHalf: boolean; lifetimeHours: number }>()
   const noTagCosts: ReadonlyMap<string, number> = new Map()
   const laborJobIdsSeen = new Set<string>()
   for (const r of laborRowsFiltered) {
@@ -140,11 +141,12 @@ export function derivePersonTeamSummary(
     const teamLaborCost = union.teamLaborCostByJobId.get(jobId) ?? 0
     const totalLaborOnJob = subLaborCost + teamLaborCost
     const partsCost = (union.partsCostByJobId.get(jobId) ?? 0) + (union.invoiceAmountByJob[jobId] ?? 0) + (union.billedMaterialsByJobId.get(jobId) ?? 0) + (union.cardChargesByJobId.get(jobId) ?? 0)
-    const totalBill = job?.revenue != null ? Number(job.revenue) : 0
-    const pctComplete = job?.pct_complete ?? null
-    const valueCreated = totalBill * ((pctComplete ?? 100) / 100)
+    // The Bridge's rule (v2.3360): finished → 100%, a set % → that %, nothing → 50% (marked ≈).
+    const lifetimeHours = union.teamLaborHoursByJobId.get(jobId) ?? 0
+    const earned = reviewJobEarned({ revenue: job?.revenue != null ? Number(job.revenue) : null, pctComplete: job?.pct_complete ?? null, status: job?.status ?? null, lifetimeHours })
+    const valueCreated = earned.valueCreated
     const revenueBeforeOverhead = valueCreated - partsCost - totalLaborOnJob
-    allocationJobsMap.set(jobId, { valueCreated, revenueBeforeOverhead, totalLaborOnJob, partsCost, tagCosts: union.tagChargesByJobId.get(jobId) ?? noTagCosts })
+    allocationJobsMap.set(jobId, { valueCreated, revenueBeforeOverhead, totalLaborOnJob, partsCost, tagCosts: union.tagChargesByJobId.get(jobId) ?? noTagCosts, pctEffective: earned.pctEffective, assumedHalf: earned.assumedHalf, lifetimeHours })
   }
   for (const jobId of crewJobIds) {
     if (allocationJobsMap.has(jobId)) continue
@@ -152,11 +154,11 @@ export function derivePersonTeamSummary(
     const subLaborCost = union.laborCostByJobId.get(jobId) ?? 0
     const totalLaborOnJob = subLaborCost + (union.teamLaborCostByJobId.get(jobId) ?? 0)
     const partsCost = (union.partsCostByJobId.get(jobId) ?? 0) + (union.invoiceAmountByJob[jobId] ?? 0) + (union.billedMaterialsByJobId.get(jobId) ?? 0) + (union.cardChargesByJobId.get(jobId) ?? 0)
-    const totalBill = j?.revenue != null ? Number(j.revenue) : 0
-    const pctComplete = j?.pct_complete ?? null
-    const valueCreated = totalBill * ((pctComplete ?? 100) / 100)
+    const lifetimeHours = union.teamLaborHoursByJobId.get(jobId) ?? 0
+    const earned = reviewJobEarned({ revenue: j?.revenue != null ? Number(j.revenue) : null, pctComplete: j?.pct_complete ?? null, status: j?.status ?? null, lifetimeHours })
+    const valueCreated = earned.valueCreated
     const revenueBeforeOverhead = valueCreated - partsCost - totalLaborOnJob
-    allocationJobsMap.set(jobId, { valueCreated, revenueBeforeOverhead, totalLaborOnJob, partsCost, tagCosts: union.tagChargesByJobId.get(jobId) ?? noTagCosts })
+    allocationJobsMap.set(jobId, { valueCreated, revenueBeforeOverhead, totalLaborOnJob, partsCost, tagCosts: union.tagChargesByJobId.get(jobId) ?? noTagCosts, pctEffective: earned.pctEffective, assumedHalf: earned.assumedHalf, lifetimeHours })
   }
 
   const costOnJobInPeriod = new Map<string, number>()
@@ -166,6 +168,14 @@ export function derivePersonTeamSummary(
   for (const j of crewJobs) {
     costOnJobInPeriod.set(j.jobId, (costOnJobInPeriod.get(j.jobId) ?? 0) + j.laborCost)
   }
+
+  // The share is HOURS (v2.3360 — the Bridge's rule): this person's crew clock
+  // hours on the job in the period ÷ the job's lifetime crew clock hours. It
+  // used to be their wage-weighted labor $ ÷ every contributor's labor $, sub
+  // sheets included; that credited a higher wage with more revenue for the same
+  // hours, and gave sheet labor a share of revenue it has no clock hours for.
+  const crewHoursOnJobInPeriod = new Map<string, number>()
+  for (const j of crewJobs) crewHoursOnJobInPeriod.set(j.jobId, (crewHoursOnJobInPeriod.get(j.jobId) ?? 0) + j.hours)
 
   let allocatedRevenue = 0
   let allocatedProfit = 0
@@ -177,9 +187,10 @@ export function derivePersonTeamSummary(
   const allocatedByTag: Record<string, number> = {}
   const grossBreakdownJobs: GrossRevenueBreakdown['jobs'] = []
   const netBreakdownJobs: NetRevenueBreakdown['jobs'] = []
-  for (const [jobId, { valueCreated, revenueBeforeOverhead, totalLaborOnJob, partsCost, tagCosts }] of allocationJobsMap) {
+  for (const [jobId, { valueCreated, revenueBeforeOverhead, totalLaborOnJob, partsCost, tagCosts, pctEffective, assumedHalf, lifetimeHours }] of allocationJobsMap) {
     const costInPeriod = costOnJobInPeriod.get(jobId) ?? 0
-    const ratio = totalLaborOnJob > 0 ? costInPeriod / totalLaborOnJob : (costInPeriod > 0 ? 1 : 0)
+    const hoursInPeriod = crewHoursOnJobInPeriod.get(jobId) ?? 0
+    const ratio = reviewShareRatio(hoursInPeriod, lifetimeHours)
     const jobAllocated = valueCreated * ratio
     const jobAllocatedNet = revenueBeforeOverhead * ratio
     allocatedRevenue += jobAllocated
@@ -196,17 +207,18 @@ export function derivePersonTeamSummary(
     const hcp = (job?.hcp_number ?? '').trim().toUpperCase() || 'Unknown'
     const jobName = job?.job_name ?? ''
     const totalBill = job?.revenue != null ? Number(job.revenue) : 0
-    const pctRaw = job?.pct_complete
     grossBreakdownJobs.push({
       jobId,
       hcp,
       jobName,
       totalBill,
-      pctComplete: pctRaw ?? 100,
-      pctCompleteSource: pctRaw == null ? 'assumed' : 'set',
+      pctComplete: Math.round(pctEffective * 100),
+      pctCompleteSource: assumedHalf ? 'assumed' : 'set',
       valueCreated,
       totalLaborOnJob,
       costInPeriod,
+      hoursInPeriod,
+      lifetimeHours,
       ratio,
       allocatedRevenue: jobAllocated,
     })
@@ -298,18 +310,13 @@ export function derivePersonTeamSummary(
       const address = (j?.job_address ?? '').trim()
       // Convention 1 -- pct is share of the total day; hours = day * pct/100.
       const hours = dayHoursRaw * (a.pct / 100)
-      // Value Created this day for this person: their cost-share of the job's
-      // Value Created, using the same `cost / total lifetime labor` ratio as
-      // the Gross Revenue column, so the per-day values for a job sum to that
-      // person's Gross for the job. pct_complete null is treated as 100% here
-      // too (via allocationJobsMap). Office/bids aren't in allocationJobsMap
-      // (no field revenue) -> $0.
+      // Value Created this day for this person: their hours-share of the job's
+      // Value Created (the same hours ÷ lifetime hours ratio as the Gross
+      // column, v2.3360), so the per-day values for a job sum to that person's
+      // Gross for the job. Office/bids aren't in allocationJobsMap (no field
+      // revenue) -> $0.
       const dayAlloc = allocationJobsMap.get(a.job_id)
-      const dayCost = hours * (cfg?.hourly_wage ?? 0)
-      const valueCreated =
-        dayAlloc && dayAlloc.totalLaborOnJob > 0
-          ? dayAlloc.valueCreated * (dayCost / dayAlloc.totalLaborOnJob)
-          : 0
+      const valueCreated = dayAlloc ? dayAlloc.valueCreated * reviewShareRatio(hours, dayAlloc.lifetimeHours) : 0
       const list = crewByDateForPerson.get(r.work_date) ?? []
       list.push({ hcp, jobName, address, pct: a.pct, hours, valueCreated })
       crewByDateForPerson.set(r.work_date, list)

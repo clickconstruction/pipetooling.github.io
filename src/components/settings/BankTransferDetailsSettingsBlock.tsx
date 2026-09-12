@@ -31,7 +31,7 @@ const FIELDS: Array<{ key: FieldKey; label: string; hint?: string; wide?: boolea
   { key: 'bankName', label: 'Bank name', hint: "The receiving bank's name — for a Mercury account, the partner bank." },
   { key: 'bankNote', label: 'Note under the bank name', hint: 'e.g. "Your bank may show this name instead of ours — that is correct."', wide: true },
   { key: 'beneficiaryAddress', label: 'Beneficiary address', hint: 'The address the bank has on the account (some wire forms require it).', wide: true },
-  { key: 'checkMailingAddress', label: 'Where checks must be mailed', hint: 'The statement reads "All checks must be mailed to … Checks sent anywhere else may need to be re-issued." Leave blank to hide the checks line.', wide: true },
+  { key: 'checkMailingAddress', label: 'Where checks must be mailed', hint: 'The statement reads "Checks can only be received at … Checks mailed anywhere else need to be re-issued." Leave blank to hide the checks box.', wide: true },
 ]
 
 export default function BankTransferDetailsSettingsBlock() {
@@ -68,7 +68,7 @@ export default function BankTransferDetailsSettingsBlock() {
       showToast(
         complete.transfer || complete.checks
           ? draft.showOnPortal
-            ? 'Saved. Customers see "Prefer to pay by bank transfer?" on their statement.'
+            ? 'Saved. Customers see "Prefer to pay with a different method?" on their statement.'
             : 'Saved. The statement card is off until you turn it on.'
           : 'Saved. Nothing shows to customers until the payee, routing and account are filled, or a check address is set.',
         'success',
@@ -99,7 +99,7 @@ export default function BankTransferDetailsSettingsBlock() {
       {open ? (
         <div style={{ padding: '0 1rem 1rem 1rem', borderTop: '1px solid var(--border)', background: 'var(--bg-page)' }}>
           <p style={{ margin: '0.75rem 0', color: 'var(--text-muted)', fontSize: '0.875rem', lineHeight: 1.5 }}>
-            What a customer sees when they open <strong>Prefer to pay by bank transfer?</strong> on their statement page, and what the office reads in
+            What a customer sees when they open <strong>Prefer to pay with a different method?</strong> on their statement page, and what the office reads in
             the Accounts Receivable modal. Stored in the database only — never in the app's source — and readable by office roles. A
             routing and account number is what is printed on every paper check; keep the receiving account swept and the guard line does the rest.
           </p>

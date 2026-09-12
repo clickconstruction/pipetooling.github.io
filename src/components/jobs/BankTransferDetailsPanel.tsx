@@ -75,7 +75,7 @@ export default function BankTransferDetailsPanel({ open, phone, canEdit }: BankT
               <span style={k}>Routing</span><span style={v}>{groupDigits(details.routingNumber)}</span><CopyChip value={details.routingNumber} />
               <span style={k}>Account</span><span style={v}>{groupDigits(details.accountNumber)} <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}>· {details.accountKind}</span></span><CopyChip value={details.accountNumber} />
               {details.bankName ? (<><span style={k}>Bank</span><span style={{ ...v, fontWeight: 500 }}>{details.bankName}{details.bankNote ? <span style={{ display: 'block', fontWeight: 400, color: 'var(--text-muted)', fontSize: '0.75rem' }}>{details.bankNote}</span> : null}</span><span /></>) : null}
-              {details.beneficiaryAddress ? (<><span style={k}>Address</span><span style={{ ...v, fontWeight: 400 }}>{details.beneficiaryAddress} <span style={{ color: 'var(--text-muted)' }}>· wire form only, not for mail</span></span><span /></>) : null}
+              {details.beneficiaryAddress ? (<><span style={k}>Address</span><span style={{ ...v, fontWeight: 400 }}>{details.beneficiaryAddress} <span style={{ color: 'var(--text-muted)' }}>· for bank ACH and wires, not for mail</span></span><span /></>) : null}
             </div>
           ) : <span />}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', color: 'var(--text-muted)' }}>

@@ -37,6 +37,8 @@ function makeBreakdown(overrides: Partial<TeamSummaryBreakdown> = {}): TeamSumma
           valueCreated: 1000,
           totalLaborOnJob: 400,
           costInPeriod: 400,
+          hoursInPeriod: 8,
+          lifetimeHours: 8,
           ratio: 1,
           allocatedRevenue: 1000,
         },
