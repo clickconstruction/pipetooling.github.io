@@ -103,6 +103,7 @@ import {
   type EffectiveBillParty,
   type PayerRecipient,
 } from '../../lib/jobs/billToParty'
+import { buildCopyEmails, defaultCopyContactIds, defaultCopyOtherParty, type BillCopyContact } from '../../lib/jobs/billCopyRecipients'
 import { planPrimaryRtbForBillCustomer } from '../../lib/billing/proposedPrimaryRtbAmount'
 import { recordNavClick } from '../../lib/navClickTelemetry'
 import { sendHazmatNoticeEmailToCustomer } from '../../lib/sendHazmatNoticeEmail'
@@ -623,15 +624,15 @@ export default function SendRecordInvoiceModal({
 
   /** Customer contact persons with emails (v2.940): offered as extra recipients on the
       physical-invoice email — one send, extra addresses in the same email's `to`. */
-  const [customerContacts, setCustomerContacts] = useState<Array<{ id: string; name: string; email: string }>>([])
+  const [customerContacts, setCustomerContacts] = useState<BillCopyContact[]>([])
   const [extraRecipientIds, setExtraRecipientIds] = useState<Set<string>>(() => new Set())
   const [oneOffEmail, setOneOffEmail] = useState('')
-  // The payer's contacts (v2.3345): the GC's people when the GC pays.
+  // The payer's contacts (v2.3345): the GC's people when the GC pays. Contacts
+  // flagged "gets every bill" (v2.3358) start ticked; the office unticks per bill.
   const contactsCustomerId = payerParty === 'gc' ? payerRecipient?.customerId ?? null : jobRaw?.customer_id ?? null
   useEffect(() => {
     setExtraRecipientIds(new Set())
     setOneOffEmail('')
-    setCopyOtherParty(false)
     if (!open || !contactsCustomerId) {
       setCustomerContacts([])
       return
@@ -639,39 +640,35 @@ export default function SendRecordInvoiceModal({
     let cancelled = false
     void supabase
       .from('customer_contact_persons')
-      .select('id, name, email')
+      .select('id, name, email, gets_bill_copies')
       .eq('customer_id', contactsCustomerId)
       .order('created_at', { ascending: true })
       .then(({ data }) => {
         if (cancelled) return
-        setCustomerContacts(
-          ((data ?? []) as Array<{ id: string; name: string | null; email: string | null }>)
-            .filter((c) => (c.email ?? '').trim())
-            .map((c) => ({ id: c.id, name: (c.name ?? '').trim() || 'Contact', email: (c.email ?? '').trim() })),
-        )
+        const list: BillCopyContact[] = ((data ?? []) as Array<{ id: string; name: string | null; email: string | null; gets_bill_copies?: boolean | null }>)
+          .filter((c) => (c.email ?? '').trim())
+          .map((c) => ({ id: c.id, name: (c.name ?? '').trim() || 'Contact', email: (c.email ?? '').trim(), getsBillCopies: c.gets_bill_copies === true }))
+        setCustomerContacts(list)
+        setExtraRecipientIds(defaultCopyContactIds(list))
       })
     return () => {
       cancelled = true
     }
   }, [open, contactsCustomerId])
 
+  /** The copy list this bill goes out with (v2.3358 kernel): ticked contacts, the
+      other party, the one-off — never the primary, never the customer's people on
+      a typed bill-to recipient (tenant), capped at the edge function's 10. */
   function physicalAdditionalEmails(): string[] {
-    // Bill-to override: the customer's contact persons must not ride on an
-    // invoice that bills someone else (e.g. a tenant). One-off extras still
-    // allowed — the office typed those deliberately.
-    const out: string[] = []
-    if (!billToOverride) {
-      for (const c of customerContacts) {
-        if (extraRecipientIds.has(c.id) && !out.includes(c.email.toLowerCase())) out.push(c.email.toLowerCase())
-      }
-    }
-    const oneOff = oneOffEmail.trim().toLowerCase()
-    if (oneOff && oneOff.includes('@') && !out.includes(oneOff)) out.push(oneOff)
-    // "Copy the other party" (v2.3345): one tick sends the customer a copy of
-    // the GC's bill, or the GC a copy of the customer's.
-    const copy = copyOtherParty && otherParty ? otherParty.email.trim().toLowerCase() : ''
-    if (copy && copy.includes('@') && !out.includes(copy)) out.push(copy)
-    return out.slice(0, 10)
+    return buildCopyEmails({
+      primaryEmail: job?.customer_email ?? '',
+      contacts: customerContacts,
+      tickedContactIds: extraRecipientIds,
+      otherParty,
+      copyOtherParty,
+      oneOffEmail,
+      billToOverride: billToOverride != null,
+    })
   }
 
   async function saveMissingCustomerEmail() {
@@ -746,6 +743,7 @@ export default function SendRecordInvoiceModal({
     setPayerParty('customer')
     setPayerRecipient(null)
     setOtherParty(null)
+    setCopyOtherParty(false)
     if (!open || !payerJobId) return
     let cancelled = false
     void (async () => {
@@ -753,7 +751,7 @@ export default function SendRecordInvoiceModal({
         const [{ data: jobRow }, { data: invRow }] = await Promise.all([
           supabase
             .from('jobs_ledger')
-            .select('id, bill_to_party, gc_customer_id, customer_id, customer_name, customer_email')
+            .select('id, bill_to_party, bill_copy_other_party, gc_customer_id, customer_id, customer_name, customer_email')
             .eq('id', payerJobId)
             .maybeSingle(),
           billToTargetInvoiceId
@@ -767,6 +765,7 @@ export default function SendRecordInvoiceModal({
         if (cancelled) return
         const jr = jobRow as {
           bill_to_party?: string | null
+          bill_copy_other_party?: boolean | null
           gc_customer_id?: string | null
           customer_id: string | null
           customer_name: string | null
@@ -783,14 +782,18 @@ export default function SendRecordInvoiceModal({
             ).data as { id: string; name: string | null; billing_email?: string | null; contact_info?: unknown } | null)
           : null
         if (cancelled) return
+        let other: { name: string; email: string; role: 'customer' | 'gc' } | null = null
         if (party === 'gc') {
           setPayerRecipient(payerRecipientFromCustomer(gcRow))
           const custEmail = (jr?.customer_email ?? '').trim()
-          setOtherParty(custEmail ? { name: (jr?.customer_name ?? '').trim() || 'the customer', email: custEmail, role: 'customer' } : null)
+          other = custEmail ? { name: (jr?.customer_name ?? '').trim() || 'the customer', email: custEmail, role: 'customer' } : null
         } else if (party === 'customer' && gcRow) {
           const gcEmail = customerBillingEmail(gcRow)
-          setOtherParty(gcEmail ? { name: (gcRow.name ?? '').trim() || 'the GC', email: gcEmail, role: 'gc' } : null)
+          other = gcEmail ? { name: (gcRow.name ?? '').trim() || 'the GC', email: gcEmail, role: 'gc' } : null
         }
+        setOtherParty(other)
+        // Bills also go to (v2.3358): the job remembers whether the other party is copied.
+        setCopyOtherParty(defaultCopyOtherParty(jr, other))
       } catch {
         if (!cancelled) {
           setBillToOverride(null)

@@ -75,6 +75,8 @@ export interface JobIdentityFormFields {
   gcCustomerId: string | null
   /** Who pays (v2.3345): customer | gc | split — see `billToParty.ts`. */
   billToParty: JobBillToParty
+  /** Bills also go to (v2.3358): the party not billed (GC or customer) is copied on every bill. */
+  billCopyOtherParty: boolean
   /** Optional development (group of jobs) — a developments row id (v2.1199). */
   developmentId: string | null
   googleDriveLink: string
@@ -103,6 +105,7 @@ export function buildIdentitySliceJson(fields: JobIdentityFormFields): string {
     cp: fields.customerPhone.trim(),
     gc: fields.gcCustomerId,
     bp: fields.billToParty,
+    bcp: fields.billCopyOtherParty,
     dv: fields.developmentId,
     gd: fields.googleDriveLink.trim(),
     jp: fields.jobPicturesLink.trim(),
@@ -255,6 +258,7 @@ export function buildEditJobIdentityUpdatePayload(params: {
     gc_customer_id: resolvedGcCustomerId,
     // A GC-pays rule with no GC left to bill falls back to the customer (v2.3345).
     bill_to_party: fields.billToParty === 'gc' && !resolvedGcCustomerId ? 'customer' : fields.billToParty,
+    bill_copy_other_party: fields.billCopyOtherParty,
     development_id: resolvedDevelopmentId,
     customer_name: fields.customerName.trim() || null,
     customer_email: fields.customerEmail.trim() || null,

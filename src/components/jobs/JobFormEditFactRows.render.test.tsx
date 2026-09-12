@@ -70,6 +70,8 @@ function Harness({
       gcCustomerId={gc?.id ?? null}
       setGcCustomerId={() => {}}
       billToParty="customer"
+      billCopyOtherParty={false}
+      setBillCopyOtherParty={() => {}}
       setBillToParty={() => {}}
       onCustomerPatched={() => {}}
       linkedBidGc={null}

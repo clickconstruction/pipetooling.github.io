@@ -4687,6 +4687,7 @@ export type Database = {
           created_at: string | null
           customer_id: string
           email: string | null
+          gets_bill_copies: boolean
           id: string
           name: string
           note: string | null
@@ -4697,6 +4698,7 @@ export type Database = {
           created_at?: string | null
           customer_id: string
           email?: string | null
+          gets_bill_copies?: boolean
           id?: string
           name: string
           note?: string | null
@@ -4707,6 +4709,7 @@ export type Database = {
           created_at?: string | null
           customer_id?: string
           email?: string | null
+          gets_bill_copies?: boolean
           id?: string
           name?: string
           note?: string | null
@@ -9009,6 +9012,7 @@ export type Database = {
           account_manager_relationship: string | null
           account_manager_user_id: string | null
           bid_id: string | null
+          bill_copy_other_party: boolean
           bill_to_party: string
           click_number: string
           collections_at: string | null
@@ -9055,6 +9059,7 @@ export type Database = {
           account_manager_relationship?: string | null
           account_manager_user_id?: string | null
           bid_id?: string | null
+          bill_copy_other_party?: boolean
           bill_to_party?: string
           click_number?: string
           collections_at?: string | null
@@ -9101,6 +9106,7 @@ export type Database = {
           account_manager_relationship?: string | null
           account_manager_user_id?: string | null
           bid_id?: string | null
+          bill_copy_other_party?: boolean
           bill_to_party?: string
           click_number?: string
           collections_at?: string | null

@@ -10,17 +10,17 @@ import { useToastContext } from '../../contexts/ToastContext'
  * (`customer_contact_persons`), independent of the form's Save.
  */
 
-type ContactRow = { id: string; name: string; phone: string | null; email: string | null; note: string | null }
-type ContactDraft = { name: string; phone: string; email: string; note: string }
+type ContactRow = { id: string; name: string; phone: string | null; email: string | null; note: string | null; gets_bill_copies: boolean | null }
+type ContactDraft = { name: string; phone: string; email: string; note: string; getsBillCopies: boolean }
 
-const EMPTY: ContactDraft = { name: '', phone: '', email: '', note: '' }
+const EMPTY: ContactDraft = { name: '', phone: '', email: '', note: '', getsBillCopies: false }
 
 const inputStyle: CSSProperties = { padding: '0.4rem 0.5rem', fontSize: '0.8125rem', minWidth: 0 }
 const smallBtn: CSSProperties = { padding: '0.25rem 0.7rem', fontSize: '0.8125rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', color: 'var(--text-700)', cursor: 'pointer' }
 const linkBtn: CSSProperties = { background: 'none', border: 'none', cursor: 'pointer', padding: '0 0.2rem', fontSize: '0.8125rem', color: 'var(--text-link)', fontWeight: 600 }
 
 function draftFromRow(c: ContactRow): ContactDraft {
-  return { name: c.name, phone: c.phone ?? '', email: c.email ?? '', note: c.note ?? '' }
+  return { name: c.name, phone: c.phone ?? '', email: c.email ?? '', note: c.note ?? '', getsBillCopies: c.gets_bill_copies === true }
 }
 
 export default function CustomerContactsSection({ customerId }: { customerId: string }) {
@@ -34,7 +34,7 @@ export default function CustomerContactsSection({ customerId }: { customerId: st
   const load = useCallback(async () => {
     const { data } = await supabase
       .from('customer_contact_persons')
-      .select('id, name, phone, email, note')
+      .select('id, name, phone, email, note, gets_bill_copies')
       .eq('customer_id', customerId)
       .order('created_at', { ascending: true })
     setContacts((data ?? []) as ContactRow[])
@@ -60,7 +60,14 @@ export default function CustomerContactsSection({ customerId }: { customerId: st
   async function save() {
     if (busy || !draft.name.trim()) return
     setBusy(true)
-    const payload = { name: draft.name.trim(), phone: draft.phone.trim() || null, email: draft.email.trim() || null, note: draft.note.trim() || null }
+    const payload = {
+      name: draft.name.trim(),
+      phone: draft.phone.trim() || null,
+      email: draft.email.trim() || null,
+      note: draft.note.trim() || null,
+      // Bills also go to (v2.3358): a copy recipient needs an address to copy.
+      gets_bill_copies: draft.getsBillCopies && draft.email.trim().length > 0,
+    }
     const { error } =
       editingId === 'new'
         ? await supabase.from('customer_contact_persons').insert({ customer_id: customerId, ...payload })
@@ -95,6 +102,13 @@ export default function CustomerContactsSection({ customerId }: { customerId: st
         <input type="email" value={draft.email} onChange={(e) => setDraft({ ...draft, email: e.target.value })} placeholder="Email" aria-label="Contact email" style={inputStyle} />
         <input type="text" value={draft.note} onChange={(e) => setDraft({ ...draft, note: e.target.value })} placeholder="Role (e.g. AP clerk, spouse, PM for 55 Pecan Ct)" aria-label="Contact role or note" style={inputStyle} />
       </div>
+      <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.8125rem', cursor: 'pointer' }} title={draft.email.trim() ? undefined : 'Needs an email'}>
+        <input type="checkbox" checked={draft.getsBillCopies} disabled={!draft.email.trim()} onChange={(e) => setDraft({ ...draft, getsBillCopies: e.target.checked })} />
+        <span>
+          Gets a copy of every bill{' '}
+          <span style={{ color: 'var(--text-muted)' }}>— Bill Customer starts with them ticked</span>
+        </span>
+      </label>
       <div style={{ display: 'flex', gap: '0.35rem', alignItems: 'center' }}>
         <button type="button" disabled={busy || !draft.name.trim()} onClick={() => void save()} style={{ ...smallBtn, background: '#3b82f6', color: 'white', border: 'none', fontWeight: 600 }}>
           {editingId === 'new' ? 'Add contact' : 'Done'}
@@ -139,6 +153,14 @@ export default function CustomerContactsSection({ customerId }: { customerId: st
                 <span style={{ fontWeight: 600, fontSize: '0.875rem' }}>{c.name}</span>
                 {(c.note ?? '').trim() ? (
                   <span style={{ fontSize: '0.6875rem', fontWeight: 500, background: 'var(--bg-muted)', borderRadius: 6, padding: '0.05rem 0.45rem', color: 'var(--text-muted)' }}>{c.note}</span>
+                ) : null}
+                {c.gets_bill_copies === true && (c.email ?? '').trim() ? (
+                  <span
+                    title="Copied on every bill sent to this customer"
+                    style={{ fontSize: '0.6875rem', fontWeight: 600, background: 'var(--bg-green-tint)', border: '1px solid var(--border-green-300)', borderRadius: 6, padding: '0.05rem 0.45rem', color: 'var(--text-green-700)' }}
+                  >
+                    gets every bill
+                  </span>
                 ) : null}
               </div>
               <button type="button" onClick={() => openEdit(c)} style={{ ...linkBtn, gridRow: '1 / span 2' }} aria-label={`Edit contact ${c.name}`}>

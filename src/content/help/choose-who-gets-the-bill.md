@@ -26,7 +26,7 @@ A GC usually has two addresses: the estimator you bid to, and the accounts-payab
 
 ## What Bill Customer does with it
 
-Open {{button:blue|Send bill…}} on a GC-pays job and the window says so at the top: *Billing Loberg Contracting, the GC on this job — not ATI Schertz*. The **Send to** address is the GC's billing email, the contact list is the GC's people, and the PDF's *Bill to* line and the Stripe invoice name the GC. Tick **Copy ATI Schertz** to send the customer a copy of the emailed PDF.
+Open {{button:blue|Send bill…}} on a GC-pays job and the window says so at the top: *Billing Loberg Contracting, the GC on this job — not ATI Schertz*. The **Send to** address is the GC's billing email, the contact list is the GC's people, and the PDF's *Bill to* line and the Stripe invoice name the GC. Tick **Copy ATI Schertz** to send the customer a copy of the emailed PDF — or set it once on the job's **Bills also go to** row and every bill starts with them ticked (see *send a bill to more than one person*).
 
 If the GC has no billing email yet, the window asks for it right there and saves it on the GC.
 

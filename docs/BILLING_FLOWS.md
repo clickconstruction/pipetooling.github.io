@@ -5,7 +5,7 @@ file: BILLING_FLOWS.md
 type: System Documentation
 purpose: End-to-end map of the billing system — job lifecycle, invoices, the three billing channels, Stripe test/live plumbing, payments, send-backs, routes, cleanup — plus a live-test safety brief and optimization candidates
 audience: Developers, AI Agents, anyone running a live end-to-end billing test (there is no staging)
-last_updated: 2026-09-05
+last_updated: 2026-09-12
 
 key_sections:
   - name: "Job billing lifecycle"
@@ -166,6 +166,8 @@ flowchart LR
 ```
 
 **Who pays (v2.3345)**: before any channel runs, the modal resolves the payer with the shared `_shared/billToParty.ts` rule — `jobs_ledger.bill_to_party` (`customer` · `gc` · `split`) + the invoice's own `bill_to_party` pick + the typed `bill_to_email` (which still wins) → `customer | gc | other`. A GC payer is overlaid onto the billing context (name, `customers.billing_email`, phone, **and** `customer_id`), so every channel below bills the GC and the edge functions verify the body's `customer_id` against the same resolution. Set on Edit Job → Bills go to; per draft via Bill to ▾. Glossary: "Bills go to".
+
+**Bills also go to (v2.3358)**: the copy list is built once by `src/lib/jobs/billCopyRecipients.ts` → `buildCopyEmails` (the payer's contacts flagged `gets_bill_copies` start ticked, the job's `bill_copy_other_party` pre-ticks *Copy <the other party>*, plus the one-off; never the primary, ≤10, no customer people on a typed bill-to recipient). The physical channel sends it as `additional_emails`; the Stripe channel's copies are PR 2 (`copy_emails` on the row, sent by `send-stripe-invoice`). Glossary: "Bills also go to".
 
 ### Stripe bill
 
