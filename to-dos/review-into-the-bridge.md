@@ -1,6 +1,6 @@
 # People → Review folds into the Bridge
 
-Status: in progress · step 1 shipped v2.3360 (one earned convention) · step 2 next (the Vectors row is the door) · step 3 gated (retire Team Summary once the tables agree for a few weeks)
+Status: in progress · step 1 v2.3360 (#3091) · step 2 v2.3366 the deep-link door · teammate card v2.3368 (#3095) · step 3 gated (retire Team Summary once the tables agree for a few weeks) (retire Team Summary once the tables agree for a few weeks)
 
 ## The ask, in the owner's words
 
@@ -14,7 +14,7 @@ Yes in direction, not in one move. Three steps, in order:
 2. **Make Vectors the door** — a person's row on the Bridge opens their Review panel for that pay week. Vectors is the scoreboard, Review's panel is the drilldown. No screen merges yet. (The mock-up's R1 "unfolds under the row" is the later merge; the first door is a deep link into People → Review with the person selected and the pay week as the custom range.)
 3. **Retire Team Summary** once the two tables agree for a few weeks. The per-person panel (jobs worked, hours & pay, reports, tasks) survives as the drilldown behind Vectors; overhead-after-profit, Wheels and the tag segments move onto Vectors as optional columns or stay in the panel. Then the Review tab redirects to the Bridge.
 
-Owner decision recorded the same day: no financial number reaches a teammate (`memory: finances-stay-owner-only`). The teammate side of this arc is the money-free Needs You items only (no % on your job · a clock left running · a missing report).
+Owner decision recorded the same day: no financial number reaches a teammate (`memory: finances-stay-owner-only`). The teammate side of this arc is the money-free **Your record** card (v2.3368, PR #3095): no % on your job · a clock left running · a missing report — its own three doors, on the Job Mode view and the full Dashboard.
 
 ## The mock-up
 

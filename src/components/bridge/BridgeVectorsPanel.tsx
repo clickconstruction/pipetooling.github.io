@@ -1,5 +1,7 @@
 import type { CSSProperties } from 'react'
+import { Link } from 'react-router-dom'
 import type { Vectors, VectorRow } from '../../lib/bridge/vectors'
+import { reviewDoorHref } from '../../lib/people/reviewDoor'
 
 /**
  * Vectors panel (v2.3344) — one row per person for one pay week: what they
@@ -109,7 +111,13 @@ export function BridgeVectorsPanel(props: { vectors: Vectors; weekLabel: string;
                 return (
                   <tr key={r.userId}>
                     <td style={{ ...td, textAlign: 'left' }}>
-                      <span style={{ fontWeight: 600 }}>{r.name}</span>
+                      <Link
+                        to={reviewDoorHref({ person: r.name, from: v.weekStart, to: v.weekEnd })}
+                        title={`Open ${r.name}'s week on People → Review`}
+                        style={{ fontWeight: 600, color: 'var(--text)', textDecorationLine: 'underline', textDecorationColor: 'var(--border-strong)', textUnderlineOffset: 3 }}
+                      >
+                        {r.name}
+                      </Link>
                       <span style={{ ...det, marginLeft: '0.4rem' }}>
                         {' '}
                         {r.role ? (ROLE_WORD[r.role] ?? r.role) : ''}
@@ -160,7 +168,7 @@ export function BridgeVectorsPanel(props: { vectors: Vectors; weekLabel: string;
         </div>
       )}
       <div style={{ ...det, marginTop: '0.4rem' }}>
-        Earned = approved field hours × the job's contract ÷ expected hours (the Bridge's own rate); labor = hours × the person's pay-config wage. Contribution is labor-only — materials and sub sheets are job costs, not a person's vector. Billed = invoices sent by that account; collected = payments they recorded; % reports = job % updates + field reports filed; bids by the estimator on the bid.
+        A name opens that person's week on People → Review (the same earned rule, v2.3360). Earned = approved field hours × the job's contract ÷ expected hours (the Bridge's own rate); labor = hours × the person's pay-config wage. Contribution is labor-only — materials and sub sheets are job costs, not a person's vector. Billed = invoices sent by that account; collected = payments they recorded; % reports = job % updates + field reports filed; bids by the estimator on the bid.
         {v.unattributed.billedUsd + v.unattributed.collectedUsd + v.unattributed.bidsWonUsd > 0 || v.unattributed.pctReports > 0 ? (
           <>
             {' '}

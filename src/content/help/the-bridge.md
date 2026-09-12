@@ -46,6 +46,8 @@ Under the Truth check, **Vectors** lists one row per person for one pay week (Su
 - **Office people** carry Billed (invoices they sent) and Collected (payments they recorded); everyone carries **% reports** (job % updates + field reports filed).
 - **The estimator** carries Bids sent and Bids won, by value.
 
+**A name is a door.** Click it and People → Review opens on that pay week with the person's panel expanded — jobs worked with day rows, hours and pay, reports, tasks. Review counts earned the same way, so its Gross is the Earned you clicked.
+
 An amber **≈** on Earned or Contribution means some of it rests on a job with no % complete — the kernel assumed it half done, so the rate is a guess. Set the % on the job and the mark goes away. Hover the Contribution cell for the split (earned, labor, guessed, hours on jobs with no contract price, no wage on file).
 
 :::example Reading a week
