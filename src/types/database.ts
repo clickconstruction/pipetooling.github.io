@@ -9444,7 +9444,6 @@ export type Database = {
         Row: {
           copy_emails: string[] | null
           created_at: string | null
-          copy_emails: string[] | null
           id: string
           jobs_ledger_invoice_id: string
           sent_at: string
@@ -9453,7 +9452,6 @@ export type Database = {
         Insert: {
           copy_emails?: string[] | null
           created_at?: string | null
-          copy_emails?: string[] | null
           id?: string
           jobs_ledger_invoice_id: string
           sent_at: string
@@ -9462,7 +9460,6 @@ export type Database = {
         Update: {
           copy_emails?: string[] | null
           created_at?: string | null
-          copy_emails?: string[] | null
           id?: string
           jobs_ledger_invoice_id?: string
           sent_at?: string
@@ -20506,6 +20503,7 @@ export type Database = {
         Args: { p_day: string; p_user_id: string }
         Returns: Json
       }
+      get_customers_list_bundle: { Args: never; Returns: Json }
       get_dashboard_payroll_totals: { Args: never; Returns: Json }
       get_gc_statement_email_payload: {
         Args: {
@@ -21793,6 +21791,7 @@ export type Database = {
         Args: { p_audience?: string; p_customer_id: string; p_rotate?: boolean }
         Returns: Json
       }
+      mint_labor_rows_from_book: { Args: { p_bid_id: string }; Returns: number }
       mint_legal_portal_link: {
         Args: { p_firm_id: string; p_rotate?: boolean }
         Returns: Json
