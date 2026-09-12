@@ -20383,6 +20383,7 @@ export type Database = {
         Args: { p_day: string; p_user_id: string }
         Returns: Json
       }
+      get_customers_list_bundle: { Args: never; Returns: Json }
       get_dashboard_payroll_totals: { Args: never; Returns: Json }
       get_gc_statement_email_payload: {
         Args: {
