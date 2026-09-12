@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, screen } from '@testing-library/react'
+import { todayYmdInAppTz } from '../../utils/dateUtils'
 
 vi.mock('../../lib/supabase', async () => {
   const { makeSupabaseStub } = await import('../../test/renderSmokeMocks')
@@ -20,7 +21,9 @@ const target = (over: Partial<LienWaiverSendTarget> = {}): LienWaiverSendTarget 
   project: 'Mission Pet Health',
   owner: 'Mission Pet Health',
   location: '415 Springtown Way, San Marcos, TX 78666',
-  payments: [{ amount: 17752.65, payment_date: '2026-09-07', created_at: '2026-09-07T15:00:00Z' }],
+  // "Fresh" is relative to today — the picker presumes a payment settled after
+  // LIEN_WAIVER_SETTLE_DAYS, so a fixed date here rots on the calendar (it did).
+  payments: [{ amount: 17752.65, payment_date: todayYmdInAppTz(), created_at: `${todayYmdInAppTz()}T15:00:00Z` }],
   balance: 22247.35,
   ...over,
 })
