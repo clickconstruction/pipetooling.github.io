@@ -83,7 +83,9 @@ Click a job to open its window. The first tile links to Settings → Data when m
 
 **Sent by month, and how each month turned out.** One bar per month: {{chip:green|Won}}, {{chip:red|Lost}}, {{chip:yellow|Still open}}, and a paler slice for bids still open after 120 days. The solid line is the win rate by count of the bids that have been decided; the dashed line is by value. The shaded months are inside the last 120 days — most of their bids haven't decided yet, so read their rate lightly. Switch {{chip:blue|By count}} / {{chip:gray|By value}} to size the bars by dollars.
 
-**Click any bar** and the bids in that slice list below the panels — bid, estimator, sent date, value, outcome, decided date. Click a bid there to select it across the workflow tabs.
+**Click any bar slice** and a window opens with the bids in it — bid and GC, estimator, sent date, value, outcome, decided date, largest first. Across the top, the month's {{chip:green|Won · 2 · $146k}} {{chip:red|Lost · 24 · $1.60M}} {{chip:yellow|Still open · 0}} chips switch slices in place, and {{button:outline|‹ month}} {{button:outline|month ›}} (or ← →) step to the neighbouring month keeping the same slice; the small bar under them shows the whole month with your slice outlined. A **By estimator · By GC** row says who the slice is made of; tap a name to narrow the list. Click a bid to open it on top — close it and you're back on the list. {{button:outline-blue|Copy list}} puts the bids on the clipboard as text. Esc closes.
+
+Every other number on the lens — the odds cards, the age buckets, the forecast tiles, a person's row — opens the same window.
 
 **How long a decision takes.** Days from sent to the day someone marked the bid won or lost. Bids only started recording that day on 2026-09-11, so this panel says *not enough yet* until five decisions carry a date, then shows the median, the fastest and slowest tenth, and a figure per month. Under it, the open bids by how long they've waited; the two amber buckets are past 120 days.
 
