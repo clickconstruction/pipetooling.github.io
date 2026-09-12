@@ -101,13 +101,13 @@ describe('buildBankTransferMemo', () => {
 describe('sentences', () => {
   it('builds the checks line from the address, or nothing', () => {
     expect(checkMailingSentence(' 12925 FM 20, Kingsbury, TX 78638 ')).toBe(
-      'All checks must be mailed to 12925 FM 20, Kingsbury, TX 78638. Checks sent anywhere else may need to be re-issued.',
+      'Checks can only be received at 12925 FM 20, Kingsbury, TX 78638. Checks mailed anywhere else need to be re-issued.',
     )
     expect(checkMailingSentence('')).toBeNull()
   })
   it('the guard line carries the phone when there is one', () => {
-    expect(bankTransferGuardLine('(512) 360-0599')).toContain('call (512) 360-0599 before')
-    expect(bankTransferGuardLine('')).toContain('call our office before')
+    expect(bankTransferGuardLine('(512) 360-0599')).toBe('You can always call (512) 360-0599 before sending anything for clarity.')
+    expect(bankTransferGuardLine('')).toContain('call our office before sending anything')
   })
   it('groups ten-plus digit strings for the eye; nine-digit routing numbers and everything else stay whole', () => {
     expect(groupDigits('202511226605')).toBe('2025 1122 6605')

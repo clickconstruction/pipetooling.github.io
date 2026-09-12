@@ -31,7 +31,7 @@ const FIELDS: Array<{ key: FieldKey; label: string; hint?: string; wide?: boolea
   { key: 'bankName', label: 'Bank name', hint: "The receiving bank's name — for a Mercury account, the partner bank." },
   { key: 'bankNote', label: 'Note under the bank name', hint: 'e.g. "Your bank may show this name instead of ours — that is correct."', wide: true },
   { key: 'beneficiaryAddress', label: 'Beneficiary address', hint: 'The address the bank has on the account (some wire forms require it).', wide: true },
-  { key: 'checkMailingAddress', label: 'Where checks must be mailed', hint: 'The statement reads "All checks must be mailed to … Checks sent anywhere else may need to be re-issued." Leave blank to hide the checks line.', wide: true },
+  { key: 'checkMailingAddress', label: 'Where checks must be mailed', hint: 'The statement reads "Checks can only be received at … Checks mailed anywhere else need to be re-issued." Leave blank to hide the checks box.', wide: true },
 ]
 
 export default function BankTransferDetailsSettingsBlock() {

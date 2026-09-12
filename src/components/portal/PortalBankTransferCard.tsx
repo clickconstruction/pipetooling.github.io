@@ -105,7 +105,7 @@ function Body({ details, memo, phone }: PortalBankTransferCardProps) {
             <div data-portal-bank-grid style={{ marginTop: 8, borderTop: `1px solid ${HAIR}` }}>
               {/* Payee then their address — the way a wire form asks for them — then the numbers, then the bank. */}
               <Row k="Pay to" v={details.payeeName} copy={details.payeeName} />
-              {details.beneficiaryAddress ? <Row k="Address" v={details.beneficiaryAddress} tail="for the wire form — not for mail" plain /> : null}
+              {details.beneficiaryAddress ? <Row k="Address" v={details.beneficiaryAddress} tail="for bank ACH and wires, not for mail" plain /> : null}
               <Row k="Routing" v={groupDigits(details.routingNumber)} copy={details.routingNumber} />
               <Row k="Account" v={groupDigits(details.accountNumber)} tail={details.accountKind} copy={details.accountNumber} />
               {details.bankName ? <Row k="Bank" v={details.bankName} /> : null}
@@ -136,7 +136,7 @@ function Body({ details, memo, phone }: PortalBankTransferCardProps) {
               ))}
             </div>
             <div style={{ marginTop: 10, fontSize: 12, color: MUTED, lineHeight: 1.45 }}>
-              Only this address. Checks mailed anywhere else — the bank address is not a mailbox — may need to be re-issued.
+              Checks can only be received at this address. Checks mailed anywhere else need to be re-issued.
             </div>
           </div>
         ) : null}
@@ -144,7 +144,7 @@ function Body({ details, memo, phone }: PortalBankTransferCardProps) {
       <div style={{ marginTop: 12, paddingTop: 9, borderTop: `1px dashed ${HAIR}`, fontSize: 12, color: MUTED, display: 'flex', gap: 8, alignItems: 'flex-start' }}>
         <span aria-hidden style={{ width: 8, height: 8, borderRadius: '50%', background: COPPER, flex: 'none', marginTop: 5 }} />
         <span>
-          <b style={{ color: INK }}>These details never change by email.</b> {bankTransferGuardLine(phone).replace('These details never change by email. ', '')}
+          {bankTransferGuardLine(phone)}
         </span>
       </div>
     </div>
