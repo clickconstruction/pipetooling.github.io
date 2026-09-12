@@ -33,16 +33,19 @@ export function resolvePortalReturnUrl(
   links: ReadonlyArray<PortalReturnLinkRow>,
   slug: string | null | undefined,
   appOrigin: string,
+  /** `paid: false` (v2.3362) — a plain statement link (the bill-copy email), not a receipt landing. */
+  opts: { paid?: boolean } = {},
 ): string | null {
+  const flag = (url: string) => (opts.paid === false ? url : withPaidFlag(url))
   const active = links.filter((l) => l.revoked_at == null && !!(l.token ?? '').trim())
   const origin = appOrigin.replace(/\/+$/, '')
   const all = active.find((l) => l.audience === 'all')
   if (all?.token) {
     const s = (slug ?? '').trim()
-    return withPaidFlag(s ? `${PORTAL_RETURN_SHORT_ORIGIN}${s}` : `${origin}/portal?t=${all.token.trim()}`)
+    return flag(s ? `${PORTAL_RETURN_SHORT_ORIGIN}${s}` : `${origin}/portal?t=${all.token.trim()}`)
   }
   const gc = active.find((l) => l.audience === 'gc')
-  if (gc?.token) return withPaidFlag(`${origin}/portal?t=${gc.token.trim()}`)
+  if (gc?.token) return flag(`${origin}/portal?t=${gc.token.trim()}`)
   return null
 }
 
@@ -52,14 +55,14 @@ export function resolvePortalReturnUrl(
  * no return line beats a bill that failed to create).
  */
 // deno-lint-ignore no-explicit-any
-export async function loadPortalReturnUrl(admin: any, customerId: string, appOrigin: string): Promise<string | null> {
+export async function loadPortalReturnUrl(admin: any, customerId: string, appOrigin: string, opts: { paid?: boolean } = {}): Promise<string | null> {
   try {
     const [{ data: links }, { data: slugRow }] = await Promise.all([
       admin.from('customer_portal_links').select('audience, token, revoked_at').eq('customer_id', customerId).is('revoked_at', null),
       admin.from('customer_portal_slugs').select('slug').eq('customer_id', customerId).maybeSingle(),
     ])
     const slug = typeof (slugRow as { slug?: unknown } | null)?.slug === 'string' ? (slugRow as { slug: string }).slug : null
-    return resolvePortalReturnUrl((links ?? []) as PortalReturnLinkRow[], slug, appOrigin)
+    return resolvePortalReturnUrl((links ?? []) as PortalReturnLinkRow[], slug, appOrigin, opts)
   } catch {
     return null
   }

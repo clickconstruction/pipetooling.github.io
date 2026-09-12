@@ -25,6 +25,8 @@ export type StripeBillCopyEmailInput = {
   /** Stripe's PDF link when it has one. */
   invoicePdfUrl: string | null
   companyName: string
+  /** The recipient's own portal statement (v2.3362) — the payer's for the payer's people, the other party's own; null for a one-off. */
+  portalUrl?: string | null
 }
 
 export type StripeBillCopyEmail = { subject: string; text: string; html: string }
@@ -52,6 +54,7 @@ export function buildStripeBillCopyEmail(input: StripeBillCopyEmailInput): Strip
   const job = input.jobLabel.trim()
   const addr = input.jobAddress.trim()
   const number = input.invoiceNumber.trim()
+  const portal = (input.portalUrl ?? '').trim()
   const subject = `Copy of invoice${number ? ` #${number}` : ''}${job ? ` — ${job}` : ''}`
 
   const lines: string[] = [
@@ -63,6 +66,7 @@ export function buildStripeBillCopyEmail(input: StripeBillCopyEmailInput): Strip
     '',
     `Pay or view the bill: ${input.hostedInvoiceUrl}`,
     input.invoicePdfUrl ? `PDF: ${input.invoicePdfUrl}` : '',
+    portal ? `See your statement any time: ${portal}` : '',
     '',
     `You are receiving this because you are on the copy list for ${payer}'s bills. ${payer} was billed directly by Stripe.`,
   ]
@@ -80,6 +84,7 @@ export function buildStripeBillCopyEmail(input: StripeBillCopyEmailInput): Strip
     `</table>`,
     `<p style="margin: 0 0 16px;"><a href="${esc(input.hostedInvoiceUrl)}" style="display: inline-block; background: #2563eb; color: #ffffff; text-decoration: none; padding: 10px 18px; border-radius: 6px; font-weight: 600;">Pay or view the bill</a></p>`,
     input.invoicePdfUrl ? `<p style="margin: 0 0 16px; font-size: 13px;"><a href="${esc(input.invoicePdfUrl)}" style="color: #2563eb;">Download the PDF</a></p>` : '',
+    portal ? `<p style="margin: 0 0 16px; font-size: 13px;">See your statement any time at <a href="${esc(portal)}" style="color: #2563eb;">${esc(portal)}</a></p>` : '',
     `<p style="margin: 0; color: #6b7280; font-size: 13px;">You are receiving this because you are on the copy list for ${esc(payer)}'s bills. ${esc(payer)} was billed directly by Stripe.</p>`,
     `</div>`,
   ]
