@@ -22,7 +22,6 @@ An amber strip appears when something is quietly distorting the period. Each lin
 **3 jobs have no bill amount** — labor there lands as pure loss. {{button:blue|Open Jobs ›}}
 **10 jobs have no % complete** — they count as half done, so half the bill is treated as earned and the share is marked *(assumed)*. {{button:blue|Set progress ›}}
 **$478 of office-type charges on 3 field jobs** — 3 card charges the bank filed as software, utilities, insurance, internet or medical count as parts there — usually office spend, sometimes a dump fee or permit (Post Oak Landfill $397, City of Shavano Park $68, Dropbox $13). Confirm or re-sort. {{button:blue|Sort in Banking ›}}
-**Salaried hours are assumed for 2 people** — 8 h every weekday in the period, including today — not clock time.
 :::
 
 The office-type line reads the bank's own category on each card purchase, so it is a prompt, not a verdict: a landfill fee filed under "Utilities" is a real job cost and can stay; a software subscription on a field job belongs on the office job. Both are fixed in {{button:blue|Banking → Sorting}}.
@@ -31,7 +30,7 @@ When the period is clean the strip disappears.
 
 ## The ranking
 
-Everyone sits on one axis. Bars grow to the right of the zero line for profit and to the left for losses. **Office & bids** people are negative by construction — their wages are the overhead pool, so a red bar there is the cost of running the office, not a bad job. The Overhead tab is where that pool is judged; here it only shows who it is. **(s)** marks a salaried person, whose hours are assumed rather than clocked.
+Everyone sits on one axis. Bars grow to the right of the zero line for profit and to the left for losses. **Office & bids** people are negative by construction — their wages are the overhead pool, so a red bar there is the cost of running the office, not a bad job. The Overhead tab is where that pool is judged; here it only shows who it is. **(s)** marks a salaried person; their hours are their clocked sessions, like everyone else's.
 
 Change the axis with **Rank by**: profit after overhead, profit per hour, gross revenue, or net revenue. Type in **Search by name** to narrow the list.
 
@@ -48,7 +47,7 @@ Net revenue **$23,326**
 − Own office / bid wages **−$604** — 10.5 h of office and bid sessions
 − Parts burden **−$828** — 165.5 field h × $5.00
 − 🚚 2019 Ford F-150 **−$1,377** — 165.5 field h × $8.32 (fuel + insurance + registration + service ÷ the holder's field hours, 90-day)
-Profit after overhead **$20,517** · ÷ 176 assumed hours = **$117/hr**
+Profit after overhead **$20,517** · ÷ 176 clocked hours = **$117/hr**
 :::
 
 **What moves it** lists the things that would change that number the most: jobs with no % complete and how much of his gross rides on them, jobs with no bill amount, one job carrying most of the total, the worst job in the period, hours that landed on no job, and crew assignments with zero hours. **Watch-outs** are the standing caveats — revenue uses today's % complete, so a period's number moves when a job progresses later, and only a person's own office time is charged as overhead here.

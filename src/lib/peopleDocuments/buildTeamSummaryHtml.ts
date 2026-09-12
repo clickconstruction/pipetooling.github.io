@@ -369,16 +369,16 @@ export function buildTeamSummaryHtml(ctx: TeamSummaryHtmlContext): string {
             + opts.content + '</td>';
         }
         function hoursClickableTd(n, idx, name, isSalary){
-          // For salaried people we render "(s)" instead of the assumed
-          // 8 hrs/weekday total — see TeamSummaryInline.Row for the
-          // matching inline-component logic. The numeric value still
-          // flows through r.totalHours, so the footer keeps summing.
-          var content = isSalary ? '(s)' : fmtH(n);
+          // For salaried people we render "(s)" beside their clocked
+          // total (v2.3370 — no flat 8 hrs/weekday any more) — see
+          // TeamSummaryInline.Row for the matching inline-component logic.
+          // The numeric value still flows through r.totalHours.
+          var content = isSalary ? fmtH(n) + ' (s)' : fmtH(n);
           var aria = isSalary
-            ? 'Hours breakdown for ' + name + ': salary (' + fmtH(n) + ' hours assumed)'
+            ? 'Hours breakdown for ' + name + ': salary (' + fmtH(n) + ' clocked hours)'
             : 'Hours breakdown for ' + name + ': ' + fmtH(n) + ' hours';
           var title = isSalary
-            ? 'Salaried \u2014 ' + fmtH(n) + ' hrs assumed (8 hrs/weekday). Click for breakdown.'
+            ? 'Salaried \u2014 ' + fmtH(n) + ' clocked hrs. Click for breakdown.'
             : 'Click for breakdown';
           return clickCellTd({ idx: idx, type: 'hours', content: content,
             ariaLabel: aria, title: title });
@@ -697,7 +697,7 @@ export function buildTeamSummaryHtml(ctx: TeamSummaryHtmlContext): string {
           var sectionOpts = function(showCounted){
             return { showCounted: showCounted, clickableDay: clickableDay, personName: personName };
           };
-          var srcLabel = hb.source === 'salary' ? 'Salaried (8 hrs/weekday)' : hb.source === 'hourly' ? 'Hourly (from people_hours / clock sessions)' : 'Unknown (no pay config row)';
+          var srcLabel = hb.source === 'salary' ? 'Salaried (clocked hours, like everyone)' : hb.source === 'hourly' ? 'Hourly (from people_hours / clock sessions)' : 'Unknown (no pay config row)';
           var modeLabel = hb.onlyPaidJobs ? 'Only paid jobs (sub labor + crew assignments)' : 'All days in period (clocked / salary)';
           var html = '';
           html += '<div style="margin-bottom:0.75rem;color:#374151;">';
@@ -1138,7 +1138,7 @@ export function buildTeamSummaryHtml(ctx: TeamSummaryHtmlContext): string {
           html += '</tbody>';
           html += '<tfoot><tr><td style="text-align:right;font-weight:600;">Total work</td><td class="num" style="font-weight:600;">' + fmtH(totalWork) + '</td><td></td></tr></tfoot>';
           html += '</table>';
-          html += '<p class="caption">Field hrs = Total work hrs &minus; Overhead hrs. For salaried people, total work is their weekday salary days (8 hrs/weekday); for hourly, it is people_hours / clock sessions. <strong>Every hour worked is charged the per-hour overhead in the &ldquo;Profit (after overhead)&rdquo; column</strong> &mdash; field, office, and bid hours all incur the same rate.</p>';
+          html += '<p class="caption">Field hrs = Total work hrs &minus; Overhead hrs. Total work is people_hours / clock sessions for everyone &mdash; salaried people included. <strong>Every hour worked is charged the per-hour overhead in the &ldquo;Profit (after overhead)&rdquo; column</strong> &mdash; field, office, and bid hours all incur the same rate.</p>';
           html += '<p class="caption">Overhead hours are approved clock sessions on the configured Office job or on any bid &mdash; the same buckets that feed the rolling 90-day overhead rate.</p>';
           return html;
         }
@@ -1150,7 +1150,7 @@ export function buildTeamSummaryHtml(ctx: TeamSummaryHtmlContext): string {
           var wage = entry.overheadWage || entry.hourlyWage || 0;
           var overheadLaborCost = entry.overheadLaborCost || 0;
           var src = entry.payConfigSource || 'unknown';
-          var srcLabel = src === 'salary' ? 'Salaried (weekday hrs \u00d7 hourly_wage from people_pay_config)' : src === 'hourly' ? 'Hourly (people_hours / clock sessions \u00d7 hourly_wage)' : 'Unknown (no people_pay_config row \u2014 wage treated as $0)';
+          var srcLabel = src === 'salary' ? 'Salaried (clocked hrs \u00d7 hourly_wage from people_pay_config)' : src === 'hourly' ? 'Hourly (people_hours / clock sessions \u00d7 hourly_wage)' : 'Unknown (no people_pay_config row \u2014 wage treated as $0)';
           var html = '';
           html += '<div style="margin-bottom:0.75rem;color:#374151;">';
           html += '<div><strong>Source:</strong> ' + escH(srcLabel) + '</div>';
@@ -1195,7 +1195,7 @@ export function buildTeamSummaryHtml(ctx: TeamSummaryHtmlContext): string {
           for (var i = 0; i < jobs.length; i++) allocatedFieldHrs += (jobs[i].hoursInPeriod || 0);
           var unaccountedFieldHrs = pb.unaccountedHours || 0;
           var srcLabel = hb.source === 'salary'
-            ? 'Salaried (8 hrs/weekday)'
+            ? 'Salaried (clocked hours, like everyone)'
             : hb.source === 'hourly'
               ? 'Hourly (from people_hours / clock sessions)'
               : 'Unknown (no pay config row)';
@@ -1216,7 +1216,7 @@ export function buildTeamSummaryHtml(ctx: TeamSummaryHtmlContext): string {
             html += '<tr><td>Sub labor + crew hours on paid-in-full jobs</td><td class="num">' + fmtH(totalWork) + '</td></tr>';
             html += '<tr><td><em>Office + bid hours are not in this mode by construction</em></td><td class="num"><span style="color:#9ca3af;">&mdash;</span></td></tr>';
           } else {
-            html += '<tr><td>Total work hrs (' + escH(hb.source === 'salary' ? 'salary days' : 'people_hours / clock sessions') + ')</td><td class="num">' + fmtH(totalWork) + '</td></tr>';
+            html += '<tr><td>Total work hrs (' + escH('people_hours / clock sessions') + ')</td><td class="num">' + fmtH(totalWork) + '</td></tr>';
             html += '<tr><td>&minus; Office hrs (clock on configured office job)</td><td class="num">' + fmtH(officeHrs) + '</td></tr>';
             html += '<tr><td>&minus; Bid hrs (clock on any bid)</td><td class="num">' + fmtH(bidHrs) + '</td></tr>';
           }

@@ -287,7 +287,7 @@ export function buildReviewRankedBars(
     const group = classifyReviewPerson(r)
     const widthPct = value == null || span <= 0 ? 0 : (Math.abs(value) / span) * 100
     const startPct = value == null || value >= 0 ? zeroPct : zeroPct - widthPct
-    const hoursText = `${fmtH1(r.totalHours)} h${r.payConfigSource === 'salary' ? ' assumed' : ''}`
+    const hoursText = `${fmtH1(r.totalHours)} h`
     const subParts: string[] = [hoursText]
     if (group === 'office') subParts.push(`${fmtH1(r.overheadHours)} h office/bid`)
     else if (rankBy !== 'profit' && r.profitAfterOverhead != null) subParts.push(`${fmtUsd0(r.profitAfterOverhead)} profit`)
@@ -326,7 +326,8 @@ export type ReviewPersonMath = {
   name: string
   group: ReviewGroup
   lines: ReviewMathLine[]
-  perHour: { profit: number | null; hours: number; basis: 'assumed' | 'clocked' }
+  /** `basis` is always clocked since v2.3370 (salaried people read their sessions, like everyone); kept for the drawer's copy. */
+  perHour: { profit: number | null; hours: number; basis: 'clocked' }
   levers: ReviewLever[]
   watchouts: string[]
 }
@@ -368,7 +369,6 @@ export function buildReviewPersonMath(
   const tagLines = (ctx.costLineTags ?? []).map((tag) => ({ tag, usd: b.allocatedByTag[tag.id] ?? 0 }))
   const tagTotal = tagLines.reduce((s, t) => s + t.usd, 0)
   const group = classifyReviewPerson(b)
-  const salaried = b.payConfigSource === 'salary'
   const jobs = b.gb.jobs
   const costs = b.gross - b.net
   const wageText =
@@ -443,7 +443,7 @@ export function buildReviewPersonMath(
   if (assumed.length > 0) {
     const riding = assumed.reduce((s, j) => s + j.allocatedRevenue, 0)
     levers.push({
-      text: `${assumed.length} ${assumed.length === 1 ? 'job has' : 'jobs have'} no % complete and count as 100% done — ${fmtUsd0(riding)} of gross rides on that`,
+      text: `${assumed.length} ${assumed.length === 1 ? 'job has' : 'jobs have'} no % complete and count as half done — ${fmtUsd0(riding)} of gross rides on that guess`,
       tone: 'warn',
     })
   }
@@ -485,7 +485,6 @@ export function buildReviewPersonMath(
   const watchouts: string[] = [
     'Revenue uses today\'s % complete, so this period\'s number moves when a job progresses later.',
   ]
-  if (salaried) watchouts.push('Hours are assumed: 8 h every weekday in the period, including today.')
   if (group === 'field') watchouts.push('Only this person\'s own office/bid wages are charged here; office staff wages sit on their own rows.')
   if (group === 'office') watchouts.push('Office & bids time is the overhead pool — a negative profit here is the cost of running the office, not a loss on a job.')
   if (ctx.partsRate == null) watchouts.push('The 90-day overhead rate is still loading; burden and profit after overhead are blank until it lands.')
@@ -494,7 +493,7 @@ export function buildReviewPersonMath(
     name: b.name,
     group,
     lines,
-    perHour: { profit: b.profitPerHourAfterOverhead, hours: b.totalHours, basis: salaried ? 'assumed' : 'clocked' },
+    perHour: { profit: b.profitPerHourAfterOverhead, hours: b.totalHours, basis: 'clocked' },
     levers,
     watchouts,
   }
@@ -505,7 +504,7 @@ export function buildReviewPersonMath(
 // ---------------------------------------------------------------------------
 
 export type ReviewHygieneItem = {
-  key: 'approvals' | 'noBill' | 'assumedPct' | 'officeLikeCharges' | 'salaried'
+  key: 'approvals' | 'noBill' | 'assumedPct' | 'officeLikeCharges'
   headline: string
   detail: string
   href?: string
@@ -539,9 +538,7 @@ export function buildReviewHygiene(
   }
   const noBill = new Map<string, string>()
   const assumed = new Map<string, string>()
-  let salaried = 0
   for (const r of rows) {
-    if (r.payConfigSource === 'salary' && r.totalHours > 0) salaried += 1
     for (const j of r.gb.jobs) {
       if (j.totalBill <= 0 && j.costInPeriod > 0) noBill.set(j.jobId, jobLabel(j))
       if (j.pctCompleteSource === 'assumed' && j.totalBill > 0) assumed.set(j.jobId, jobLabel(j))
@@ -561,7 +558,7 @@ export function buildReviewHygiene(
     items.push({
       key: 'assumedPct',
       headline: `${assumed.size} ${assumed.size === 1 ? 'job has' : 'jobs have'} no % complete`,
-      detail: 'They count as 100% done, so their whole bill is treated as earned.',
+      detail: 'They count as half done, so half the bill is treated as earned and the share is marked (assumed).',
       href: '/jobs',
       linkLabel: 'Set progress',
     })
@@ -576,12 +573,6 @@ export function buildReviewHygiene(
       linkLabel: 'Sort in Banking',
     })
   }
-  if (salaried > 0) {
-    items.push({
-      key: 'salaried',
-      headline: `Salaried hours are assumed for ${salaried} ${salaried === 1 ? 'person' : 'people'}`,
-      detail: '8 h every weekday in the period, including today — not clock time.',
-    })
-  }
+  // v2.3370: the 'salaried' item ("hours are assumed") is gone — salaried people read their clock sessions like everyone.
   return items
 }

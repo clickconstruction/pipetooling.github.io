@@ -963,10 +963,7 @@ export default function PeopleReviewTab({
     const cfg = payConfig[personName]
     const wage = cfg?.hourly_wage ?? 0
     if (!wage) return 0
-    const dayOfWeek = new Date(workDate + 'T12:00:00').getDay()
-    const hrs = cfg?.is_salary
-      ? (dayOfWeek >= 1 && dayOfWeek <= 5 ? 8 : 0)
-      : (reviewHours.find((h) => h.work_date === workDate)?.hours ?? 0)
+    const hrs = reviewHours.find((h) => h.work_date === workDate)?.hours ?? 0
     return hrs * wage
   }
 
@@ -1186,8 +1183,7 @@ export default function PeopleReviewTab({
       const row = crewByDatePersonAllTime[`${r.work_date}:${r.person_name}`]
       const assignments = row?.job_assignments ?? []
       const cfg = (r.person_id ? payConfigById[r.person_id] : undefined) ?? payConfig[r.person_name]
-      const day = new Date(r.work_date + 'T12:00:00').getDay()
-      const hours = cfg?.is_salary ? (day >= 1 && day <= 5 ? 8 : 0) : (hoursMapAllTime[`${r.person_name}:${r.work_date}`] ?? 0)
+      const hours = hoursMapAllTime[`${r.person_name}:${r.work_date}`] ?? 0
       const rate = cfg?.hourly_wage ?? 0
       for (const a of assignments) {
         const pctHrs = hours * (a.pct / 100)
@@ -1320,8 +1316,7 @@ export default function PeopleReviewTab({
       const row = crewByDatePersonAllTime[`${r.work_date}:${r.person_name}`]
       const assignments = row?.job_assignments ?? []
       const cfg = (r.person_id ? payConfigById[r.person_id] : undefined) ?? payConfig[r.person_name]
-      const day = new Date(r.work_date + 'T12:00:00').getDay()
-      const hours = cfg?.is_salary ? (day >= 1 && day <= 5 ? 8 : 0) : (hoursMapAllTime[`${r.person_name}:${r.work_date}`] ?? 0)
+      const hours = hoursMapAllTime[`${r.person_name}:${r.work_date}`] ?? 0
       const rate = cfg?.hourly_wage ?? 0
       for (const a of assignments) {
         const pctHrs = hours * (a.pct / 100)
@@ -1355,8 +1350,7 @@ export default function PeopleReviewTab({
       const row = crewByDatePersonAllTime[`${r.work_date}:${r.person_name}`]
       const assignments = row?.job_assignments ?? []
       const cfg = (r.person_id ? payConfigById[r.person_id] : undefined) ?? payConfig[r.person_name]
-      const day = new Date(r.work_date + 'T12:00:00').getDay()
-      const hours = cfg?.is_salary ? (day >= 1 && day <= 5 ? 8 : 0) : (hoursMapAllTime[`${r.person_name}:${r.work_date}`] ?? 0)
+      const hours = hoursMapAllTime[`${r.person_name}:${r.work_date}`] ?? 0
       const rate = cfg?.hourly_wage ?? 0
       for (const a of assignments) {
         const pctHrs = hours * (a.pct / 100)
@@ -1378,9 +1372,7 @@ export default function PeopleReviewTab({
       if (r.person_name !== personName) continue
       const row = crewByDatePersonAllTime[`${r.work_date}:${r.person_name}`]
       const assignments = row?.job_assignments ?? []
-      const cfg = (r.person_id ? payConfigById[r.person_id] : undefined) ?? payConfig[r.person_name]
-      const day = new Date(r.work_date + 'T12:00:00').getDay()
-      const hours = cfg?.is_salary ? (day >= 1 && day <= 5 ? 8 : 0) : (hoursMapAllTime[`${r.person_name}:${r.work_date}`] ?? 0)
+      const hours = hoursMapAllTime[`${r.person_name}:${r.work_date}`] ?? 0
       for (const a of assignments) {
         const pctHrs = hours * (a.pct / 100)
         personHoursOnJobAllTime.set(a.job_id, (personHoursOnJobAllTime.get(a.job_id) ?? 0) + pctHrs)
@@ -1500,8 +1492,7 @@ export default function PeopleReviewTab({
     const cfg = personName ? payConfig[personName] : undefined
     const crewJobs: ReviewCrewJob[] = crewJobsWithLeadFiltered.map((c) => {
       const j = jobsMap[c.job_id] ?? jobsById.get(c.job_id)
-      const day = new Date(c.work_date + 'T12:00:00').getDay()
-      const dayHours = cfg?.is_salary ? (day >= 1 && day <= 5 ? 8 : 0) : (hoursMap[`${personName}:${c.work_date}`] ?? 0)
+      const dayHours = hoursMap[`${personName}:${c.work_date}`] ?? 0
       const hours = dayHours * (c.pct / 100)
       const laborCost = hours * (cfg?.hourly_wage ?? 0)
       const partsCost = (partsCostByJobId.get(c.job_id) ?? 0) + (invoiceAmountByJob[c.job_id] ?? 0) + (billedMaterialsByJobId.get(c.job_id) ?? 0) + (cardChargesByJobId.get(c.job_id) ?? 0)
@@ -1647,9 +1638,7 @@ export default function PeopleReviewTab({
     for (const r of allCrewRows) {
       const row = allCrewByDatePerson[`${r.work_date}:${r.person_name}`]
       const assignments = row?.job_assignments ?? []
-      const cfg = (r.person_id ? payConfigById[r.person_id] : undefined) ?? payConfig[r.person_name]
-      const day = new Date(r.work_date + 'T12:00:00').getDay()
-      const hours = cfg?.is_salary ? (day >= 1 && day <= 5 ? 8 : 0) : (hoursMapAll[`${r.person_name}:${r.work_date}`] ?? 0)
+      const hours = hoursMapAll[`${r.person_name}:${r.work_date}`] ?? 0
       for (const a of assignments) {
         if (!jobIdsSet.has(a.job_id)) continue
         const pctHrs = hours * (a.pct / 100)
@@ -2002,8 +1991,7 @@ export default function PeopleReviewTab({
       const row = crewByDatePersonAllTime[`${r.work_date}:${r.person_name}`]
       const assignments = row?.job_assignments ?? []
       const cfg = (r.person_id ? payConfigSnapshotById[r.person_id] : undefined) ?? payConfigSnapshot[r.person_name]
-      const day = new Date(r.work_date + 'T12:00:00').getDay()
-      const dayHoursRaw = cfg?.is_salary ? (day >= 1 && day <= 5 ? 8 : 0) : (hoursMapAllTime[`${r.person_name}:${r.work_date}`] ?? 0)
+      const dayHoursRaw = hoursMapAllTime[`${r.person_name}:${r.work_date}`] ?? 0
       const rate = cfg?.hourly_wage ?? 0
       for (const a of assignments) {
         const pctHrs = dayHoursRaw * (a.pct / 100)
@@ -2721,10 +2709,7 @@ export default function PeopleReviewTab({
                 const days = getDaysInRange(start, end)
                 const getHoursForDay = (d: string) => {
                   if (!cfg) return 0
-                  const dayOfWeek = new Date(d + 'T12:00:00').getDay()
-                  return cfg.is_salary
-                    ? (dayOfWeek >= 1 && dayOfWeek <= 5 ? 8 : 0)
-                    : (reviewHours.find((h) => h.work_date === d)?.hours ?? 0)
+                  return reviewHours.find((h) => h.work_date === d)?.hours ?? 0
                 }
                 // Mirror the Team Summary table's per-person row so this panel
                 // headline matches the table exactly (same allocation engine +
@@ -3885,10 +3870,7 @@ export default function PeopleReviewTab({
                   const days = getDaysInRange(start, end)
                   const getHoursForDay = (d: string) => {
                     if (!cfg) return 0
-                    const dayOfWeek = new Date(d + 'T12:00:00').getDay()
-                    return cfg.is_salary
-                      ? (dayOfWeek >= 1 && dayOfWeek <= 5 ? 8 : 0)
-                      : (reviewHours.find((h) => h.work_date === d)?.hours ?? 0)
+                    return reviewHours.find((h) => h.work_date === d)?.hours ?? 0
                   }
                   // The Hours total ALWAYS sums the per-day rows rendered
                   // below (clocked/salary basis) — under "Only paid in full"
