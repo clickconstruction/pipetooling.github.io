@@ -14,6 +14,10 @@ The top of New answers two questions before you read a single row.
 
 **Does the whole bid make sense?** Five tiles: **Field hours** by stage, **Crew-days** (two techs, eight hours), **Labor $** at the rate, **Footage share** (how much of the labor sits on pipe rows), and **Revenue per field hour** — the bid value divided by the hours. A number far above what finished jobs run means the hours are light or the bid is fat; either way, look before it goes out.
 
+## Rows arrive with hours when the bid is sent
+
+You don't have to open Labor for a bid to have hours any more. The moment a bid with a count sheet is marked sent, its labor rows are made from the count sheet with the book's hours — the same rows this tab would have made — using the bid's book, or the first book for its trade when none is chosen. What the book can't answer still lands in the queue below. Nothing you typed is ever overwritten.
+
 ## The queue: answer once, the book learns
 
 Rows with no hours yet sit in an amber box at the top, in sheet order. Each row shows what the book thinks it is:
