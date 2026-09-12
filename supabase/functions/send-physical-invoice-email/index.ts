@@ -315,6 +315,8 @@ serve(async (req) => {
         external_send_channel: 'physical',
         external_send_note: externalNote,
         sent_to_customer_at: sentAt,
+        // Bills also go to (v2.3359): who this bill was copied to, on the record.
+        copy_emails: additionalEmails.length ? additionalEmails : null,
       })
       .eq('id', invoiceId)
       .eq('status', 'ready_to_bill')

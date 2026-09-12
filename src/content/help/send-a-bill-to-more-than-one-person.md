@@ -32,7 +32,7 @@ Tick it and every bill on this job copies them. It is a setting on the job, not 
 
 ## What Bill Customer does with it
 
-Open {{button:blue|Send bill…}} on the job and the **Send to** list starts with those people ticked under the primary address. Untick anyone to skip them on this one bill, or type a one-off address underneath. The setting on the job is untouched — the next bill starts ticked again.
+Open {{button:blue|Send bill…}} on the job and the **Send to** list — on the Stripe tab and the PDF tab alike — starts with those people ticked under the primary address. Untick anyone to skip them on this one bill, or type a one-off address underneath. The setting on the job is untouched — the next bill starts ticked again.
 
 ## Set it from the customer instead
 
@@ -42,4 +42,6 @@ Open {{button:blue|Send bill…}} on the job and the **Send to** list starts wit
 
 - Copies never repeat the address the bill is sent to, and a bill to a typed one-off recipient (a tenant, via *Bill to ▾ → Someone else…*) never carries the customer's people — only an address you type on that bill.
 - Up to ten copies per bill.
-- Right now the copies ride the **emailed PDF invoice**. A **Stripe** bill still goes to its one address; copies on Stripe bills are coming next.
+- **Stripe bills**: Stripe itself emails only the billing address. The others get a copy from ClickTooling — the amount, the due date, the same **Pay or view the bill** link, and a line saying who was billed — the moment you press {{button:blue|Send Email invoice}}. One email each, so nobody sees the other addresses. The confirm lists who will be copied; the toast afterward names who was.
+- Sharing a Stripe bill by text or copied link emails nobody, so it copies nobody either.
+- **PDF invoices** go out as one email with everyone on it.

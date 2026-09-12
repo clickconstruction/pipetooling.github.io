@@ -1637,6 +1637,8 @@ export default function SendRecordInvoiceModal({
         return
       }
       const invId = ensured.invoiceId
+      // Bills also go to (v2.3359): the copy list as ticked, fixed on the row.
+      const copyEmailsNow = physicalAdditionalEmails()
       const { data: invokeData, error: fnErr } = await withOperationTimeout(
         supabase.functions.invoke('create-stripe-invoice', {
           body: {
@@ -1646,6 +1648,7 @@ export default function SendRecordInvoiceModal({
             customer_email: (job.customer_email ?? '').trim(),
             customer_name: (job.customer_name ?? '').trim() || 'Customer',
             due_date: stripeDueDate.trim(),
+            ...(copyEmailsNow.length > 0 ? { copy_emails: copyEmailsNow } : {}),
             ...(allowRebill ? { allow_rebill: true } : {}),
             memo: stripeMemo.trim() || undefined,
             footer: stripeInvoiceFooter.trim() || undefined,
@@ -2173,6 +2176,74 @@ export default function SendRecordInvoiceModal({
     w.document.close()
   }
 
+  /** The Send to block (v2.940 physical, v2.3359 both channels): the primary
+      address, the payer's contacts (flagged ones start ticked), Copy the other
+      party, and a one-off. Both channels read the same ticks; the Stripe copies
+      go out from send-stripe-invoice, the physical ones ride the same email. */
+  function sendToBlock(channel: 'stripe' | 'physical') {
+    if (!job) return null
+    return (
+      <>
+        {(customerContacts.length > 0 || (job.customer_email ?? '').trim()) && (
+          <div style={{ marginBottom: '0.75rem' }}>
+            <div style={{ fontSize: '0.875rem', fontWeight: 500, marginBottom: '0.25rem' }}>Send to</div>
+            <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginBottom: customerContacts.length > 0 ? '0.25rem' : 0 }}>
+              {(job.customer_email ?? '').trim() || '—'}{' '}
+              <span style={{ color: 'var(--text-faint)' }}>
+                {billToOverride ? '(bill-to recipient)' : payerParty === 'gc' ? `(${payerRecipient?.name || 'GC'} · billing email)` : '(primary)'}
+              </span>
+            </div>
+            {channel === 'stripe' ? (
+              <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: '0 0 0.35rem', lineHeight: 1.4 }}>
+                Stripe emails that address. Everyone ticked below gets a copy from ClickTooling with the same Pay link when you press
+                <strong> Send Email invoice</strong>.
+              </div>
+            ) : null}
+            {/* Bill-to override: the customer's contact persons never ride on an
+                invoice that bills someone else. */}
+            {(billToOverride ? [] : customerContacts).map((c) => (
+              <label key={c.id} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.8125rem', cursor: 'pointer', padding: '0.1rem 0' }}>
+                <input
+                  type="checkbox"
+                  checked={extraRecipientIds.has(c.id)}
+                  onChange={(e) => {
+                    setExtraRecipientIds((prev) => {
+                      const next = new Set(prev)
+                      if (e.target.checked) next.add(c.id)
+                      else next.delete(c.id)
+                      return next
+                    })
+                  }}
+                />
+                <span>
+                  {c.name} <span style={{ color: 'var(--text-muted)' }}>{c.email}</span>
+                </span>
+              </label>
+            ))}
+            {/* No tick when the other party's address IS the billing address (a GC entered under
+              its own AP inbox on both rows) — the kernel would drop it anyway. */}
+          {otherParty && !billToOverride && otherParty.email.trim().toLowerCase() !== (job.customer_email ?? '').trim().toLowerCase() ? (
+              <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.8125rem', cursor: 'pointer', padding: '0.1rem 0' }}>
+                <input type="checkbox" checked={copyOtherParty} onChange={(e) => setCopyOtherParty(e.target.checked)} />
+                <span>
+                  Copy {otherParty.name} <span style={{ color: 'var(--text-muted)' }}>{otherParty.email} · {otherParty.role === 'gc' ? 'the GC, not billed' : 'the customer, not billed'}</span>
+                </span>
+              </label>
+            ) : null}
+            <input
+              type="email"
+              value={oneOffEmail}
+              onChange={(e) => setOneOffEmail(e.target.value)}
+              placeholder="Also send to… (one-off email)"
+              aria-label="Additional one-off email recipient"
+              style={{ width: '100%', padding: '0.35rem 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, marginTop: '0.25rem', boxSizing: 'border-box', fontSize: '0.8125rem' }}
+            />
+          </div>
+        )}
+      </>
+    )
+  }
+
   return (
     <Fragment>
       <div
@@ -2529,54 +2600,7 @@ export default function SendRecordInvoiceModal({
                   : 'Customer email is required to send a physical invoice by email. Add it on Edit Job.'}
               </p>
             ) : null}
-            {(customerContacts.length > 0 || (job.customer_email ?? '').trim()) && (
-              <div style={{ marginBottom: '0.75rem' }}>
-                <div style={{ fontSize: '0.875rem', fontWeight: 500, marginBottom: '0.25rem' }}>Send to</div>
-                <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginBottom: customerContacts.length > 0 ? '0.25rem' : 0 }}>
-                  {(job.customer_email ?? '').trim() || '—'}{' '}
-                  <span style={{ color: 'var(--text-faint)' }}>
-                    {billToOverride ? '(bill-to recipient)' : payerParty === 'gc' ? `(${payerRecipient?.name || 'GC'} · billing email)` : '(primary)'}
-                  </span>
-                </div>
-                {/* Bill-to override: the customer's contact persons never ride on an
-                    invoice that bills someone else. */}
-                {(billToOverride ? [] : customerContacts).map((c) => (
-                  <label key={c.id} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.8125rem', cursor: 'pointer', padding: '0.1rem 0' }}>
-                    <input
-                      type="checkbox"
-                      checked={extraRecipientIds.has(c.id)}
-                      onChange={(e) => {
-                        setExtraRecipientIds((prev) => {
-                          const next = new Set(prev)
-                          if (e.target.checked) next.add(c.id)
-                          else next.delete(c.id)
-                          return next
-                        })
-                      }}
-                    />
-                    <span>
-                      {c.name} <span style={{ color: 'var(--text-muted)' }}>{c.email}</span>
-                    </span>
-                  </label>
-                ))}
-                {otherParty && !billToOverride ? (
-                  <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.8125rem', cursor: 'pointer', padding: '0.1rem 0' }}>
-                    <input type="checkbox" checked={copyOtherParty} onChange={(e) => setCopyOtherParty(e.target.checked)} />
-                    <span>
-                      Copy {otherParty.name} <span style={{ color: 'var(--text-muted)' }}>{otherParty.email} · {otherParty.role === 'gc' ? 'the GC, not billed' : 'the customer, not billed'}</span>
-                    </span>
-                  </label>
-                ) : null}
-                <input
-                  type="email"
-                  value={oneOffEmail}
-                  onChange={(e) => setOneOffEmail(e.target.value)}
-                  placeholder="Also send to… (one-off email)"
-                  aria-label="Additional one-off email recipient"
-                  style={{ width: '100%', padding: '0.35rem 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, marginTop: '0.25rem', boxSizing: 'border-box', fontSize: '0.8125rem' }}
-                />
-              </div>
-            )}
+            {sendToBlock('physical')}
             <div style={BILL_CUSTOMER_INVOICE_MODIFICATIONS_SHELL_STYLE}>
               <div style={BILL_CUSTOMER_INVOICE_MODIFICATIONS_TITLE_STYLE}>
                 Invoice Modifications (optional)
@@ -3051,6 +3075,11 @@ export default function SendRecordInvoiceModal({
                     : ''}
                   .
                 </p>
+                {physicalAdditionalEmails().length > 0 ? (
+                  <p style={{ margin: '-0.35rem 0 0.75rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
+                    Copies to <strong>{physicalAdditionalEmails().join(', ')}</strong> go out from ClickTooling when you press Send Email invoice.
+                  </p>
+                ) : null}
                 {hazmatNoticeEmailStatus ? (
                   <p
                     role="status"
@@ -3484,6 +3513,7 @@ export default function SendRecordInvoiceModal({
                   </div>
                 </div>
                 {discountStrip}
+                {sendToBlock('stripe')}
                 {job && !paidJobBlocked ? (
                   <StripeBillPreSubmitPreview
                     customerName={job.customer_name}

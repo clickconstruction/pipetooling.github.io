@@ -25,7 +25,7 @@ type Row<T extends keyof Tables> = Tables[T]['Row']
 const coversEveryColumn = <T extends never>(..._missing: T[]): boolean => true
 type Missing<T extends keyof Tables, Covered extends string> = Exclude<keyof Row<T>, Covered>
 
-const INVOICE_COLS = ['agreed_write_down_at', 'agreed_write_down_previous_amount', 'amount', 'bill_to_email', 'bill_to_name', 'bill_to_party', 'bill_to_phone', 'bill_to_stripe_customer_id', 'billed_at', 'created_at', 'estimated_bill_date', 'external_send_channel', 'external_send_note', 'hosted_invoice_url', 'id', 'is_primary_rtb_bundle', 'job_id', 'sent_to_customer_at', 'sequence_order', 'status', 'stripe_invoice_footer', 'stripe_invoice_id', 'stripe_invoice_memo', 'stripe_invoice_status', 'stripe_mode'] as const satisfies ReadonlyArray<keyof Row<'jobs_ledger_invoices'>>
+const INVOICE_COLS = ['agreed_write_down_at', 'agreed_write_down_previous_amount', 'amount', 'bill_to_email', 'bill_to_name', 'bill_to_party', 'bill_to_phone', 'bill_to_stripe_customer_id', 'billed_at', 'copy_emails', 'created_at', 'estimated_bill_date', 'external_send_channel', 'external_send_note', 'hosted_invoice_url', 'id', 'is_primary_rtb_bundle', 'job_id', 'sent_to_customer_at', 'sequence_order', 'status', 'stripe_invoice_footer', 'stripe_invoice_id', 'stripe_invoice_memo', 'stripe_invoice_status', 'stripe_mode'] as const satisfies ReadonlyArray<keyof Row<'jobs_ledger_invoices'>>
 /** Deliberately not embedded: only the Dashboard billing units read these, through their own select. */
 const INVOICE_OMITTED = ['agreed_write_down_by', 'agreed_write_down_note', 'agreed_write_down_stripe_credit_note_id'] as const satisfies ReadonlyArray<keyof Row<'jobs_ledger_invoices'>>
 

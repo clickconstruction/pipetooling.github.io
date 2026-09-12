@@ -21,6 +21,7 @@ export const JOBS_LEDGER_INVOICES_EMBED = [
   'bill_to_phone',
   'bill_to_stripe_customer_id',
   'billed_at',
+  'copy_emails',
   'created_at',
   'estimated_bill_date',
   'external_send_channel',

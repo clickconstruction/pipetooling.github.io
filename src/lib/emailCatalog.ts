@@ -74,6 +74,17 @@ export const EMAIL_CATALOG: EmailCatalogEntry[] = [
     variants: ['re-send ("Email again — PDF attached")'],
   },
   {
+    id: 'stripe_bill_copy',
+    name: 'Copy of a Stripe bill',
+    group: 'billing',
+    audience: 'customer',
+    builtWhere: 'server',
+    sender: 'send-stripe-invoice',
+    editable: { kind: 'hardcoded' },
+    subjectExample: 'Copy of invoice #1013-2609121030 — J1013 · Peterson Pretest',
+    variants: ['one email per address on the bill’s copy list, sent beside Stripe’s own email (v2.3359)'],
+  },
+  {
     id: 'test_report',
     name: 'Test report (hydrostatic / pinpoint / gas)',
     group: 'billing',

@@ -67,6 +67,8 @@ export function StripeInvoiceSendFromStripeButton({
   const [sendHistoryLoading, setSendHistoryLoading] = useState(false)
   const [sendHistoryError, setSendHistoryError] = useState<string | null>(null)
   const [sendHistoryAt, setSendHistoryAt] = useState<string[]>([])
+  /** Bills also go to (v2.3359): who gets a copy from ClickTooling when Stripe sends. */
+  const [copyEmails, setCopyEmails] = useState<string[]>([])
 
   const emailHint = (customerEmail ?? '').trim()
   const canTry = jobsLedgerInvoiceId.trim() && stripeInvoiceId.trim()
@@ -129,6 +131,27 @@ export function StripeInvoiceSendFromStripeButton({
         if (!cancelled) setSendHistoryLoading(false)
       }
     })()
+    return () => {
+      cancelled = true
+    }
+  }, [confirmOpen, jobsLedgerInvoiceId])
+
+  useEffect(() => {
+    if (!confirmOpen) return
+    const jid = jobsLedgerInvoiceId.trim()
+    if (!jid) return
+    let cancelled = false
+    setCopyEmails([])
+    void supabase
+      .from('jobs_ledger_invoices')
+      .select('copy_emails')
+      .eq('id', jid)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (cancelled) return
+        const raw = (data as { copy_emails?: unknown } | null)?.copy_emails
+        setCopyEmails(Array.isArray(raw) ? raw.filter((e): e is string => typeof e === 'string' && e.includes('@')) : [])
+      })
     return () => {
       cancelled = true
     }
@@ -197,7 +220,14 @@ export function StripeInvoiceSendFromStripeButton({
         stripeModeForBilling === 'test'
           ? ' Test mode: Stripe does not deliver a real customer email, but the send succeeded.'
           : ''
-      showToast(`Stripe sent the invoice email.${testHint}`, 'success')
+      const copiesSent = Array.isArray(body.copies_sent) ? (body.copies_sent as unknown[]).filter((e) => typeof e === 'string') : []
+      const copiesFailed = Array.isArray(body.copies_failed) ? (body.copies_failed as unknown[]).length : 0
+      const copiesHint =
+        copiesSent.length > 0 ? ` Copies went to ${copiesSent.join(', ')}.` : ''
+      showToast(`Stripe sent the invoice email.${copiesHint}${testHint}`, 'success')
+      if (copiesFailed > 0) {
+        showToast(`${copiesFailed} copy email${copiesFailed === 1 ? '' : 's'} failed to send — Stripe's own email went out.`, 'error')
+      }
       try {
         const jid = jobsLedgerInvoiceId.trim()
         const sid = stripeInvoiceId.trim()
@@ -378,6 +408,12 @@ export function StripeInvoiceSendFromStripeButton({
                 <span>
                   Sent by <strong>Stripe</strong> to <strong style={{ wordBreak: 'break-all' }}>{emailLine}</strong> —
                   not from ClickTooling.
+                  {copyEmails.length > 0 ? (
+                    <>
+                      {' '}
+                      Copies from ClickTooling, same Pay link, to <strong style={{ wordBreak: 'break-all' }}>{copyEmails.join(', ')}</strong>.
+                    </>
+                  ) : null}
                 </span>
               </div>
               <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: 'var(--text-700)', lineHeight: 1.5 }}>

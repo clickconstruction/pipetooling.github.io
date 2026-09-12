@@ -5,7 +5,7 @@ file: EDGE_FUNCTIONS.md
 type: API Reference
 purpose: Complete API documentation for all 85 Supabase Edge Functions
 audience: Developers, DevOps, AI Agents
-last_updated: 2026-09-11
+last_updated: 2026-09-12
 estimated_read_time: 20-25 minutes
 difficulty: Intermediate
 
@@ -2854,6 +2854,8 @@ If **`stripe_invoice_id`** and **`hosted_invoice_url`** are already set, returns
 
 **extra_line_items** (v2.1002): optional `Array<{amount_cents, description}>` — validated (positive cents, description clamped 500); fixture lines allocate to `amount − extras` and each extra is appended as its own labeled invoice item (`source.kind: extra_line`). Used by the Bill Customer hazmat roll-in.
 
+**copy_emails** (v2.3359, Bills also go to): optional `string[]` — ≤10, each a plausible address, lowercased, deduped, the recipient's own address dropped; written to `jobs_ledger_invoices.copy_emails` (null when empty, so a re-create clears a stale list). Nothing is emailed here — [send-stripe-invoice](#send-stripe-invoice) reads the row when the office presses Send Email invoice.
+
 **Service address** (v2.998): the invoice is created with a `custom_fields` entry `Service address` from `jobs_ledger.job_address` (trimmed, capped 140 chars; omitted when blank) — renders in the header of the hosted page and PDF. Not shown by `preview-stripe-invoice` (`createPreview` lacks `custom_fields`).
 
 ---
@@ -2917,6 +2919,8 @@ Body: `{ job_id, to_email, recipient_label?, subject?, email_text?, pdf_base64, 
 > **v2.1085 — Bill-to override**: when the invoice row has `bill_to_email`, the target `customer_email` may match **either** that address or `jobs_ledger.customer_email` (a blank job customer email is fine in that case). Without the override, the job-customer-email match requirement is unchanged.
 
 > **v2.940**: accepts optional `additional_emails: string[]` (≤10, validated, deduped against `customer_email`) — extra recipients ride on the same Resend send (`to` array), so one email and one recorded send event regardless of recipient count.
+
+> **v2.3359**: the billed-flip UPDATE also records `additional_emails` on the row as `copy_emails` (null when none) — the same column the Stripe path fills, so "who was this bill copied to" reads the same for both channels. Redeploy required.
 
 **Purpose**: Email the customer a **PDF invoice** (generated in the app to match the on-screen preview) via **Resend**, then persist the **`jobs_ledger_invoices`** billing fields as a **Physical** send (**`status: billed`**, **`external_send_channel: physical`**, **`sent_to_customer_at`**, **`external_send_note`**, **`amount`**). It does **not** call **`update_job_status`** on **`jobs_ledger`**. After a **200** response, **[`SendRecordInvoiceModal`](../src/components/jobs/SendRecordInvoiceModal.tsx)** runs **`maybePromoteJobToBilledAfterCustomerInvoice`** ([`promoteJobToBilledIfFullyInvoiced.ts`](../src/lib/promoteJobToBilledIfFullyInvoiced.ts)) — the same helper used after **Stripe** **`create-stripe-invoice`** and **HouseCall Pro** manual bill — so when the job is **fully invoiced out** (no **`ready_to_bill`** rows; **`jobBillingUnallocatedDollars`** ~ 0), the **job** moves to **billed** together with the invoice line regardless of billing channel. The client may send a **detailed** multi-section PDF (Specific Work + materials + payment history) built from the job ledger; the Edge function only validates and attaches **`pdf_base64`**.
 
@@ -3151,6 +3155,8 @@ interface SendHazmatNoticeEmailBody {
 ---
 
 ### send-stripe-invoice
+
+> **v2.3359 — Bills also go to**: after Stripe accepts the send, the function reads the row's `copy_emails` (fixed by `create-stripe-invoice`) and sends **one Resend email per address** built by [`_shared/stripeBillCopyEmail.ts`](../supabase/functions/_shared/stripeBillCopyEmail.ts) — the payer's name, amount due, due date, invoice number, job, a *Pay or view the bill* button on the same `hosted_invoice_url`, the PDF link, reply-to the caller. Logged to `email_send_log` as `stripe_bill_copy`. Response adds `copies_sent: string[]`, `copies_failed: Array<{email, error}>`, and `copies_skipped: 'no_resend_key' | 'no_hosted_url'` when applicable; a copy failure never fails the Stripe send (already made). Needs `RESEND_API_KEY`. Redeploy required.
 
 > **v2.1116 — row-authoritative Stripe mode (A3)**: the invoice row's `stripe_mode` (v2.1114) now decides which Stripe mode this function operates in; an explicitly requested `stripe_mode` that disagrees returns **409 `stripe_mode_mismatch`** with no side effects. NULL-mode legacy rows fall back to the requested/default mode. Redeploy required.
 

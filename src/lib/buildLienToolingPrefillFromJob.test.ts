@@ -38,6 +38,7 @@ function makeInvoice(overrides: Partial<Inv> & Pick<Inv, 'id' | 'job_id'>): Inv 
     bill_to_email: overrides.bill_to_email ?? null,
     bill_to_phone: overrides.bill_to_phone ?? null,
     bill_to_party: null,
+    copy_emails: null,
     bill_to_stripe_customer_id: overrides.bill_to_stripe_customer_id ?? null,
     is_primary_rtb_bundle: overrides.is_primary_rtb_bundle ?? false,
   }

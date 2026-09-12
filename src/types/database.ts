@@ -9366,6 +9366,7 @@ export type Database = {
           bill_to_phone: string | null
           bill_to_stripe_customer_id: string | null
           billed_at: string | null
+          copy_emails: string[] | null
           created_at: string | null
           estimated_bill_date: string | null
           external_send_channel: string | null
@@ -9396,6 +9397,7 @@ export type Database = {
           bill_to_phone?: string | null
           bill_to_stripe_customer_id?: string | null
           billed_at?: string | null
+          copy_emails?: string[] | null
           created_at?: string | null
           estimated_bill_date?: string | null
           external_send_channel?: string | null
@@ -9426,6 +9428,7 @@ export type Database = {
           bill_to_phone?: string | null
           bill_to_stripe_customer_id?: string | null
           billed_at?: string | null
+          copy_emails?: string[] | null
           created_at?: string | null
           estimated_bill_date?: string | null
           external_send_channel?: string | null

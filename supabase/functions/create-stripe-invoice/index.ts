@@ -61,6 +61,12 @@ interface CreateStripeInvoiceBody {
    * renders as its own labeled row instead of being smeared across work lines.
    */
   extra_line_items?: Array<{ amount_cents: number; description: string }>
+  /**
+   * Bills also go to (v2.3359): the copy list Bill Customer showed ticked —
+   * stored on the row (`copy_emails`) so a later Send Email invoice copies the
+   * same people. ≤10, validated, deduped, never the recipient's own address.
+   */
+  copy_emails?: string[]
   /** Optional: `test` | `live`. Omit to use server default (legacy / non-UI callers). */
   stripe_mode?: StripeBillingMode
   /**
@@ -164,7 +170,23 @@ serve(async (req) => {
       stripe_mode: stripeModeRaw,
       issued_at_ms: issuedAtMsRaw,
       convert_billed: convertBilledRaw,
+      copy_emails: copyEmailsRaw,
     } = body
+
+    const copyEmailsIn = Array.isArray(copyEmailsRaw) ? copyEmailsRaw : []
+    if (copyEmailsIn.length > 10) {
+      return jsonResponse({ error: 'At most 10 copy emails allowed' }, 400)
+    }
+    const copyEmailRe = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    const copyEmails: string[] = []
+    for (const e of copyEmailsIn) {
+      if (typeof e !== 'string') continue
+      const n = e.trim().toLowerCase()
+      if (!copyEmailRe.test(n)) {
+        return jsonResponse({ error: `Invalid copy email: ${String(e).slice(0, 60)}` }, 400)
+      }
+      if (n !== (customer_email ?? '').trim().toLowerCase() && !copyEmails.includes(n)) copyEmails.push(n)
+    }
 
     const footerStr = typeof footerRaw === 'string' ? footerRaw : ''
     if (footerStr.length > STRIPE_INVOICE_FOOTER_MAX_CHARS) {
@@ -624,6 +646,9 @@ serve(async (req) => {
       // invoice's objects live in; A3 makes the row authoritative for later
       // row-bound operations (void/send/details/OOB/write-down).
       stripe_mode: stripeMode,
+      // Bills also go to (v2.3359): the copy list this bill goes out with,
+      // read by send-stripe-invoice. Null clears a stale list on a re-create.
+      copy_emails: copyEmails.length ? copyEmails : null,
     }
     if (Number(invRow.amount) !== amount_dollars) {
       patch.amount = amount_dollars

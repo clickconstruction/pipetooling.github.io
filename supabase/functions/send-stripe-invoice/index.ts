@@ -2,6 +2,9 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import Stripe from 'https://esm.sh/stripe@16.12.0?target=deno'
 import { customerEmailFromStripeInvoice } from '../_shared/stripeInvoiceCustomerEmail.ts'
+import { sendEmailViaResend } from '../_shared/resendSendEmail.ts'
+import { buildStripeBillCopyEmail } from '../_shared/stripeBillCopyEmail.ts'
+import { PORTAL_COMPANY } from '../_shared/portalCompany.ts'
 import {
   anyStripeApiKeyConfigured,
   effectiveRowStripeMode,
@@ -50,6 +53,92 @@ async function persistSendAfterStripeEmail(args: {
     }
   }
   return { ok: false, error: 'persist_failed' }
+}
+
+function payerNameFromStripe(inv: Stripe.Invoice): string {
+  const cust = inv.customer
+  if (cust != null && typeof cust === 'object' && !('deleted' in cust && (cust as { deleted?: boolean }).deleted)) {
+    const n = (cust as Stripe.Customer).name
+    if (typeof n === 'string' && n.trim()) return n.trim()
+  }
+  return typeof inv.customer_name === 'string' ? inv.customer_name.trim() : ''
+}
+
+const COPY_EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+
+/** The copy list on the row, cleaned the way the client kernel cleans it (≤10, lowercase, unique, plausible). */
+function copyEmailsFromRow(raw: unknown): string[] {
+  if (!Array.isArray(raw)) return []
+  const out: string[] = []
+  for (const v of raw) {
+    if (typeof v !== 'string') continue
+    const e = v.trim().toLowerCase()
+    if (e && COPY_EMAIL_RE.test(e) && !out.includes(e)) out.push(e)
+  }
+  return out.slice(0, 10)
+}
+
+async function sendBillCopies(args: {
+  admin: ReturnType<typeof createClient>
+  jobsLedgerInvoiceId: string
+  inv: Stripe.Invoice
+  payerName: string
+  callerEmail: string | null
+}): Promise<{ sent: string[]; failed: Array<{ email: string; error: string }>; skipped?: string }> {
+  const { data: row } = await args.admin
+    .from('jobs_ledger_invoices')
+    .select('copy_emails, job_id, bill_to_name')
+    .eq('id', args.jobsLedgerInvoiceId)
+    .maybeSingle()
+  const copyEmails = copyEmailsFromRow((row as { copy_emails?: unknown } | null)?.copy_emails)
+  if (copyEmails.length === 0) return { sent: [], failed: [] }
+  const resendApiKey = Deno.env.get('RESEND_API_KEY')
+  if (!resendApiKey) {
+    console.error('send-stripe-invoice: RESEND_API_KEY missing — bill copies not sent')
+    return { sent: [], failed: [], skipped: 'no_resend_key' }
+  }
+  const hosted = (args.inv.hosted_invoice_url ?? '').trim()
+  if (!hosted) return { sent: [], failed: [], skipped: 'no_hosted_url' }
+
+  const jobId = (row as { job_id?: string | null } | null)?.job_id ?? null
+  let jobLabel = ''
+  let jobAddress = ''
+  if (jobId) {
+    const { data: job } = await args.admin
+      .from('jobs_ledger')
+      .select('job_name, job_address, hcp_number, click_number')
+      .eq('id', jobId)
+      .maybeSingle()
+    const j = job as { job_name?: string | null; job_address?: string | null; hcp_number?: string | null; click_number?: string | null } | null
+    const num = (j?.hcp_number ?? '').trim() || (j?.click_number ?? '').trim()
+    jobLabel = [num ? `J${num.replace(/^J/i, '')}` : '', (j?.job_name ?? '').trim()].filter(Boolean).join(' · ')
+    jobAddress = (j?.job_address ?? '').trim()
+  }
+  // The payer as the copy reads it: the typed bill-to name wins (someone else), else Stripe's customer name.
+  const billToName = ((row as { bill_to_name?: string | null } | null)?.bill_to_name ?? '').trim()
+  const email = buildStripeBillCopyEmail({
+    payerName: billToName || args.payerName,
+    jobLabel,
+    jobAddress,
+    invoiceNumber: (args.inv.number ?? '').trim(),
+    amountDueCents: typeof args.inv.amount_remaining === 'number' ? args.inv.amount_remaining : args.inv.amount_due ?? 0,
+    dueDateUnix: typeof args.inv.due_date === 'number' ? args.inv.due_date : null,
+    hostedInvoiceUrl: hosted,
+    invoicePdfUrl: (args.inv.invoice_pdf ?? '').trim() || null,
+    companyName: PORTAL_COMPANY.name,
+  })
+  const sent: string[] = []
+  const failed: Array<{ email: string; error: string }> = []
+  for (const to of copyEmails) {
+    const res = await sendEmailViaResend(to, email.subject, email.text, email.html, resendApiKey, {
+      ...(args.callerEmail ? { replyTo: args.callerEmail } : {}),
+      emailType: 'stripe_bill_copy',
+    })
+    if (res.success) sent.push(to)
+    else failed.push({ email: to, error: res.error ?? 'send failed' })
+  }
+  if (failed.length) console.error('send-stripe-invoice: bill copies failed', failed)
+  return { sent, failed }
 }
 
 serve(async (req) => {
@@ -298,11 +387,21 @@ serve(async (req) => {
       console.error('send-stripe-invoice: append send log failed (invoice row updated)', logErr)
     }
 
+    // Bills also go to (v2.3359): Stripe emails one address and has no CC, so
+    // everyone on the bill's copy list — fixed when the office pressed Create
+    // Stripe invoice — gets a copy from us with the same Pay link. One email
+    // per address (a copy never shows the others), each logged to
+    // email_send_log. A copy failure never fails the send Stripe already made.
+    const copies = await sendBillCopies({ admin, jobsLedgerInvoiceId, inv: sent, payerName: payerNameFromStripe(sent), callerEmail: user.email ?? null })
+
     return jsonResponse({
       success: true,
       stripe_invoice_status: stripeStatus,
       customer_email: email,
       stripe_mode: stripeMode,
+      copies_sent: copies.sent,
+      copies_failed: copies.failed,
+      ...(copies.skipped ? { copies_skipped: copies.skipped } : {}),
     })
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e)
