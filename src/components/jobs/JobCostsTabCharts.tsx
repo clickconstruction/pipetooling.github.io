@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../hooks/useAuth'
 import { useBidCrewRate } from '../../hooks/useBidCrewRate'
+import { useJobBaseline } from '../../hooks/useJobBaseline'
 import { useJobBudget } from '../../hooks/useJobBudget'
 import { useJobBurnOverhead } from '../../hooks/useJobBurnOverhead'
 import { useJobChargesTimelineInputs } from '../../hooks/useJobChargesTimelineInputs'
@@ -53,6 +54,7 @@ export function JobCostsTabCharts({ job, includeTeamLabor, teamPeople = null }: 
   // ONE overhead load (v2.3271): the verdict, the chart and the Cost Timeline read the same share.
   const overheadState = useJobBurnOverhead(includeTeamLabor && inputsState.kind === 'ready', job.id, firstEventYmdOf(inputsState))
   const budget = useJobBudget(job.id, job.bid_id ?? null, includeTeamLabor)
+  const kept = useJobBaseline(job.id, includeTeamLabor)
   const { crewRate } = useBidCrewRate(includeTeamLabor)
   const inputs = inputsState.kind === 'ready' ? inputsState.inputs : null
   const priceUsd = inputs?.revenue ?? (job.revenue != null ? Number(job.revenue) : null)
@@ -106,7 +108,7 @@ export function JobCostsTabCharts({ job, includeTeamLabor, teamPeople = null }: 
     <>
       {includeTeamLabor ? (
         verdict ? (
-          <JobCostsVerdict verdict={verdict} canWrite={canWrite} budget={budget} linkedBid={linkedBid} onOpenBidCounts={linkedBid ? () => navigate(`/bids?tab=counts&bidId=${encodeURIComponent(linkedBid.id)}`) : null} doorway={doorway} />
+          <JobCostsVerdict verdict={verdict} canWrite={canWrite} budget={budget} linkedBid={linkedBid} onOpenBidCounts={linkedBid ? () => navigate(`/bids?tab=counts&bidId=${encodeURIComponent(linkedBid.id)}`) : null} doorway={doorway} kept={kept} jobFinished={finished} />
         ) : (
           <p style={{ color: 'var(--text-muted)', fontSize: '0.75rem', margin: 0 }}>{inputsState.kind === 'error' ? 'Could not load the job’s costs.' : 'Loading…'}</p>
         )

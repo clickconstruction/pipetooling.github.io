@@ -2,7 +2,7 @@
 title: estimate labor hours on a bid with the New Labor view
 category: Bids & Estimating
 roles: dev, master_technician, estimator, assistant
-keywords: labor, hours, labor book, alias, plan code, queue, crew-days, revenue per field hour, usable as a budget, old, new, cost estimate, fill from the book, save and learn, per 100 ft, footage, task, fixed hours, sub line, source, crew rate, company rate, burden, overhead per field hour, bid labor, direct cost, margin, calibration, book vs jobs, evidence, jobs agree, set, keep
+keywords: jobs baseline, hours per $1k, billed jobs, labor, hours, labor book, alias, plan code, queue, crew-days, revenue per field hour, usable as a budget, old, new, cost estimate, fill from the book, save and learn, per 100 ft, footage, task, fixed hours, sub line, source, crew rate, company rate, burden, overhead per field hour, bid labor, direct cost, margin, calibration, book vs jobs, evidence, jobs agree, set, keep
 ---
 **Bids → Labor** turns a bid's count sheet into hours. Since v2.3276 the selected-bid card carries two pills beside {{button:blue|Print}}: {{chip:gray|Old}} — the HOURS grid you know — and {{chip:blue|New}}. Your pick is remembered on this device. New is the default (since v2.3310); pick Old on a device to keep the classic grid there.
 
@@ -53,6 +53,10 @@ Under the labor, **DIRECT COSTS** is one list. Every row wears its kind — {{ch
 The **Book vs jobs** tile reads the crews' recorded hours against what the book predicted, over every job linked to a bid that priced with this book: *book runs ×1.18 light · 3 jobs* means the crews ran 18 % over the book. A job counts once it is at least 25 % done with 8 or more field days; younger jobs say nothing yet, and the tile says so.
 
 Each filled row wears an evidence chip — {{chip:green|3 jobs agree}}, {{chip:yellow|2 jobs · wide}} (the jobs disagree by more than a third), {{chip:gray|no jobs yet}}. Tap it to open the evidence under the grid: one line per job — done %, what the book said for that entry, what the crew ran (the job's hours shared out by the book's own weights), the ratio — then *Median ×1.36 → set the entry to 1.25 / 1.25 / 1.25 h*. {{button:blue|Set}} writes those hours onto the book entry for every future bid; {{button:gray|Keep}} leaves it. Link jobs to their bids (the job's Costs tab, the Bid Board's *Link* chip, or Settings → Data) and the evidence fills in.
+
+## The Jobs baseline tile: what billed jobs actually took
+
+{{chip:gray|Jobs baseline · 7.8 h per $1k}} — every job that bills keeps its baseline (recorded hours, wages, people, materials, price). This tile reads them all as **hours per $1,000 of price** — the median, with the middle half beside it — and says what that implies for this bid's value: *7.8 h per $1k (6.5–10.2 middle half) · 42 jobs · this bid ≈ 960 h*. It is the book's answer for a bid with no count sheet, and a sanity check for one with. Jobs under 8 recorded hours don't count (a visit is not a job); it needs three baselines before it speaks.
 
 ## Telling the book how an entry reads
 
