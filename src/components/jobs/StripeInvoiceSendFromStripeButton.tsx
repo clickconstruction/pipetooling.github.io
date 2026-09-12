@@ -67,6 +67,8 @@ export function StripeInvoiceSendFromStripeButton({
   const [sendHistoryLoading, setSendHistoryLoading] = useState(false)
   const [sendHistoryError, setSendHistoryError] = useState<string | null>(null)
   const [sendHistoryAt, setSendHistoryAt] = useState<string[]>([])
+  /** Copies each logged send reached (v2.3362), keyed by the send's sent_at. */
+  const [sendHistoryCopies, setSendHistoryCopies] = useState<Record<string, string[]>>({})
   /** Bills also go to (v2.3359): who gets a copy from ClickTooling when Stripe sends. */
   const [copyEmails, setCopyEmails] = useState<string[]>([])
 
@@ -112,15 +114,23 @@ export function StripeInvoiceSendFromStripeButton({
           () =>
             supabase
               .from('jobs_ledger_invoice_stripe_email_sends')
-              .select('sent_at')
+              .select('sent_at, copy_emails')
               .eq('jobs_ledger_invoice_id', jid)
               .order('sent_at', { ascending: false })
               .limit(20),
           'load stripe invoice send history',
         )
         if (!cancelled) {
-          const at = (rows ?? []).map((r) => r.sent_at).filter((s): s is string => !!s && String(s).trim() !== '')
+          const list = (rows ?? []) as Array<{ sent_at: string | null; copy_emails?: unknown }>
+          const at = list.map((r) => r.sent_at).filter((s): s is string => !!s && String(s).trim() !== '')
+          const copies: Record<string, string[]> = {}
+          for (const r of list) {
+            if (!r.sent_at || !Array.isArray(r.copy_emails)) continue
+            const c = r.copy_emails.filter((e): e is string => typeof e === 'string' && e.includes('@'))
+            if (c.length) copies[r.sent_at] = c
+          }
           setSendHistoryAt(at)
+          setSendHistoryCopies(copies)
         }
       } catch (e) {
         if (!cancelled) {
@@ -465,6 +475,11 @@ export function StripeInvoiceSendFromStripeButton({
                         <li key={`${iso}-${idx}`} style={{ marginBottom: '0.25rem' }}>
                           {meta.weekdayTimeChicago}{' '}
                           <span style={{ color: 'var(--text-muted)' }}>({meta.daysAgoLabel})</span>
+                          {sendHistoryCopies[iso]?.length ? (
+                            <span style={{ color: 'var(--text-muted)' }}>
+                              {' '}· copies to <span style={{ wordBreak: 'break-all' }}>{sendHistoryCopies[iso].join(', ')}</span>
+                            </span>
+                          ) : null}
                         </li>
                       )
                     })}

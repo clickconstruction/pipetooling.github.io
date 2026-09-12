@@ -3156,6 +3156,8 @@ interface SendHazmatNoticeEmailBody {
 
 ### send-stripe-invoice
 
+> **v2.3362**: each copy carries the recipient's own statement link (the payer's portal for the payer's contact persons, the other party's own portal for the GC/customer copy, none for a one-off — resolved with `effectiveInvoiceParty` + `loadPortalReturnUrl(…, { paid: false })`), and the send-log row (`jobs_ledger_invoice_stripe_email_sends.copy_emails`) records the copies that actually went out. Redeploy required after the migration.
+
 > **v2.3359 — Bills also go to**: after Stripe accepts the send, the function reads the row's `copy_emails` (fixed by `create-stripe-invoice`) and sends **one Resend email per address** built by [`_shared/stripeBillCopyEmail.ts`](../supabase/functions/_shared/stripeBillCopyEmail.ts) — the payer's name, amount due, due date, invoice number, job, a *Pay or view the bill* button on the same `hosted_invoice_url`, the PDF link, reply-to the caller. Logged to `email_send_log` as `stripe_bill_copy`. Response adds `copies_sent: string[]`, `copies_failed: Array<{email, error}>`, and `copies_skipped: 'no_resend_key' | 'no_hosted_url'` when applicable; a copy failure never fails the Stripe send (already made). Needs `RESEND_API_KEY`. Redeploy required.
 
 > **v2.1116 — row-authoritative Stripe mode (A3)**: the invoice row's `stripe_mode` (v2.1114) now decides which Stripe mode this function operates in; an explicitly requested `stripe_mode` that disagrees returns **409 `stripe_mode_mismatch`** with no side effects. NULL-mode legacy rows fall back to the requested/default mode. Redeploy required.
