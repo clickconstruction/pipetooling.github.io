@@ -342,8 +342,8 @@ export function GrossRevenueBody(props: { gb: GrossRevenueBreakdown }) {
             <th className="num" style={centerCell}>Total Bill</th>
             <th className="num" style={centerCell}>% Complete</th>
             <th className="num" style={centerCell}>Value Created</th>
-            <th className="num" style={centerCell}>Your cost<br />(period)</th>
-            <th className="num" style={centerCell}>Total labor<br />(lifetime)</th>
+            <th className="num" style={centerCell}>Your hours<br />(period)</th>
+            <th className="num" style={centerCell}>Job hours<br />(lifetime)</th>
             <th className="num" style={centerCell}>Share</th>
             <th className="num" style={centerCell}>Allocated</th>
           </tr>
@@ -381,8 +381,8 @@ export function GrossRevenueBody(props: { gb: GrossRevenueBreakdown }) {
                   ) : null}
                 </td>
                 <td className="num" style={centerCell}>{fmtMoney(j.valueCreated)}</td>
-                <td className="num" style={centerCell}>{fmtMoney(j.costInPeriod)}</td>
-                <td className="num" style={centerCell}>{fmtMoney(j.totalLaborOnJob)}</td>
+                <td className="num" style={centerCell}>{fmtH(j.hoursInPeriod)}</td>
+                <td className="num" style={centerCell}>{fmtH(j.lifetimeHours)}</td>
                 <td className="num" style={centerCell}>{fmtPct1(j.ratio * 100)}</td>
                 <td className="num" style={centerCell}>{fmtMoney(j.allocatedRevenue)}</td>
               </tr>
@@ -397,7 +397,7 @@ export function GrossRevenueBody(props: { gb: GrossRevenueBreakdown }) {
         </tfoot>
       </table>
       <p className="caption">
-        Allocated = Value Created &times; (Your cost &divide; Total labor).
+        Allocated = Value Created &times; (Your hours &divide; Job hours). Value Created = contract &times; % complete &mdash; finished jobs 100%, no % set 50% (assumed). Sub labor sheets are a job cost, not a share.
         Sorted by allocated revenue.
       </p>
       <p className="caption">
@@ -482,7 +482,7 @@ export function NetRevenueBody(props: { nb: NetRevenueBreakdown }) {
         </tfoot>
       </table>
       <p className="caption">
-        Allocated = Net Rev (job) &times; (Your cost &divide; Total labor).
+        Allocated = Net Rev (job) &times; (Your hours &divide; Job hours).
         Net Rev (job) = Value Created &minus; Parts &minus; Total labor.
         Sorted by allocated net.
       </p>

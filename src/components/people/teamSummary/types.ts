@@ -39,6 +39,10 @@ export type GrossRevenueBreakdown = {
     valueCreated: number
     totalLaborOnJob: number
     costInPeriod: number
+    /** This person's crew clock hours on the job in the period (v2.3360 — the share numerator). */
+    hoursInPeriod: number
+    /** The job's lifetime crew clock hours, every person (the share denominator). */
+    lifetimeHours: number
     ratio: number
     allocatedRevenue: number
   }>
