@@ -4956,6 +4956,7 @@ export type Database = {
           customer_type: string | null
           date_met: string | null
           date_met_source: string | null
+          gc_pays_by_default: boolean
           google_drive_link: string | null
           id: string
           job_pictures_link: string | null
@@ -4982,6 +4983,7 @@ export type Database = {
           customer_type?: string | null
           date_met?: string | null
           date_met_source?: string | null
+          gc_pays_by_default?: boolean
           google_drive_link?: string | null
           id?: string
           job_pictures_link?: string | null
@@ -5008,6 +5010,7 @@ export type Database = {
           customer_type?: string | null
           date_met?: string | null
           date_met_source?: string | null
+          gc_pays_by_default?: boolean
           google_drive_link?: string | null
           id?: string
           job_pictures_link?: string | null
