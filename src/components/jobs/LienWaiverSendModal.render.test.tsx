@@ -9,8 +9,10 @@ vi.mock('../../lib/supabase', async () => {
 
 import { renderWithProviders } from '../../test/renderSmokeMocks'
 import { LienWaiverSendModal, type LienWaiverSendTarget } from './LienWaiverSendModal'
+import { todayYmdInAppTz, ymdAddDays } from '../../utils/dateUtils'
 
-const YESTERDAY = new Date(Date.now() - 86_400_000).toISOString().slice(0, 10)
+const FRESH_YMD = ymdAddDays(todayYmdInAppTz(), -1)
+
 const target = (over: Partial<LienWaiverSendTarget> = {}): LienWaiverSendTarget => ({
   sheetId: 'sheet-1',
   personId: 'person-1',
@@ -21,8 +23,8 @@ const target = (over: Partial<LienWaiverSendTarget> = {}): LienWaiverSendTarget 
   project: 'Mission Pet Health',
   owner: 'Mission Pet Health',
   location: '415 Springtown Way, San Marcos, TX 78666',
-  // Paid yesterday — a fixed date here rotted after five days (v2.3361 fix): "fresh" has to stay fresh as the calendar moves.
-  payments: [{ amount: 17752.65, payment_date: YESTERDAY, created_at: `${YESTERDAY}T15:00:00Z` }],
+  // Yesterday in the app's zone (v2.3362): a fixed 2026-09-07 aged past SETTLE_DAYS and flipped the guess to "settled".
+  payments: [{ amount: 17752.65, payment_date: FRESH_YMD, created_at: `${FRESH_YMD}T15:00:00Z` }],
   balance: 22247.35,
   ...over,
 })
