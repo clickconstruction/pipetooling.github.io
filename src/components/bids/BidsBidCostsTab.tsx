@@ -28,6 +28,7 @@ import { COST_TO_WIN_GROUP_LABELS, costToWinRows, costToWinTotal, costToWinWords
 import { Link } from 'react-router-dom'
 import { BID_VS_ACTUAL_READ_LABELS, bidVsActualTiles, buildBidVsActualRows, type BidVsActualBidInput, type BidVsActualRead, type BidVsActualRow } from '../../lib/bids/bidVsActual'
 import { useBidVsActual } from '../../hooks/useBidVsActual'
+import { BidsForecastLens } from './BidsForecastLens'
 
 /**
  * Bids → Bid Costs — the Pursuit ledger (v2.3336). What it costs us to bid:
@@ -44,10 +45,12 @@ import { useBidVsActual } from '../../hooks/useBidVsActual'
  * filtered to that person or GC) and **Bid vs actual** (v2.3342 — the jobs
  * linked to their bids against the bid's predicted hours and direct cost —
  * `bidVsActual.ts` + `useBidVsActual`; "Cost it →" opens the Labor tab on
- * the bid).
+ * the bid). **History & forecast** (v2.3355 — `BidsForecastLens` over
+ * `bidForecast.ts`: sent bids by month, time to decision, the size-aware
+ * forecast by person; every bar and tile opens the bids behind it).
  */
-type Lens = 'pursuit' | 'cost-to-win' | 'bid-vs-actual'
-const LENS_LABELS: Record<Lens, string> = { pursuit: 'Pursuit', 'cost-to-win': 'Cost to win', 'bid-vs-actual': 'Bid vs actual' }
+type Lens = 'pursuit' | 'cost-to-win' | 'bid-vs-actual' | 'forecast'
+const LENS_LABELS: Record<Lens, string> = { pursuit: 'Pursuit', 'cost-to-win': 'Cost to win', 'bid-vs-actual': 'Bid vs actual', forecast: 'History & forecast' }
 /** Settings → Data → Link jobs to their bids (the backfill block). */
 const SETTINGS_BACKFILL_HREF = '/settings?tab=settings-data#settings-bid-job-backfill'
 const jobWindowHref = (jobId: string) => `/jobs?jobDetail=${jobId}`
@@ -164,15 +167,21 @@ export function BidsBidCostsTab({ bids, teamLaborData, bidAssignedCosts, onSelec
           ? <>What it costs us to bid: clocked estimating time{showDollars ? ' at recorded wages' : ''}, plus card charges and materials moved onto a bid from a job (Edit Job → Delete → Reassign). Robot bids and bids with no time are folded.</>
           : lens === 'cost-to-win'
             ? <>What bidding costs and what it wins, by estimator or by GC. Counts and values read every bid in the window; {showDollars ? 'spend and ' : ''}hours read the bids someone clocked against. Click a row to open the ledger for that {group === 'estimator' ? 'person' : 'GC'}.</>
-            : <>Every job linked to its bid: what it cost to bid, what we bid, what the bid predicted in hours{showDollars ? ' and direct cost' : ''}, and what the job has recorded. A bid that was never costed says so — <b>Cost it →</b> opens its Labor tab.</>}
+            : lens === 'bid-vs-actual'
+              ? <>Every job linked to its bid: what it cost to bid, what we bid, what the bid predicted in hours{showDollars ? ' and direct cost' : ''}, and what the job has recorded. A bid that was never costed says so — <b>Cost it →</b> opens its Labor tab.</>
+              : <>How our bids turn out month by month, how long a decision takes, and what the open ones should bring in — each open bid counted at the odds bids of its size have actually won. Click any bar or number to see the bids behind it.</>}
       </p>
       <div role="tablist" aria-label="Bid Costs lens" style={{ display: 'flex', gap: 6, marginBottom: 12 }}>
-        {(['pursuit', 'cost-to-win', 'bid-vs-actual'] as const).map((l) => (
+        {(['pursuit', 'cost-to-win', 'bid-vs-actual', 'forecast'] as const).map((l) => (
           <button key={l} type="button" role="tab" aria-selected={lens === l} onClick={() => setLens(l)} style={{ ...chipBase, padding: '4px 12px', fontSize: '0.8rem', color: lens === l ? 'var(--text-link)' : 'inherit', background: lens === l ? 'var(--bg-subtle)' : 'none', borderColor: lens === l ? 'var(--text-link)' : 'var(--border)', fontWeight: lens === l ? 600 : 400 }}>
             {LENS_LABELS[l]}
           </button>
         ))}
       </div>
+
+      {lens === 'forecast' && (
+        <BidsForecastLens rows={rows} todayYmd={todayYmd} showRobots={filter.showRobots} onToggleRobots={(on) => setFilter((f) => ({ ...f, showRobots: on }))} robotCount={robotCount} onSelectBid={(bidId) => { const b = bidById.get(bidId); if (b) onSelectBid(b) }} />
+      )}
 
       {lens === 'bid-vs-actual' && (
         <BidVsActualView rows={bvaRows} tiles={bvaTiles} loading={bva.loading && !bva.loaded} showDollars={showDollars} onCostIt={(bidId) => { const b = bidById.get(bidId); if (b) onCostIt(b) }} canCostIt={(bidId) => bidById.has(bidId)} />

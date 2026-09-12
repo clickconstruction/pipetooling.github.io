@@ -2,7 +2,7 @@
 title: read what bidding costs
 category: Office
 roles: dev, master_technician, controller, assistant, estimator
-keywords: bid costs, pursuit, cost to bid, estimating time, clocked against a bid, hours bidding, spent bidding, hit rate, won of decided, spent on lost, card charges, robot bids, estimator rail, per bid, window, cost to win, by estimator, by GC, per $1k won, which GCs award, bid vs actual, predicted hours, recorded hours, over the book, not costed, cost it, check the count sheet, linked jobs
+keywords: bid costs, pursuit, cost to bid, estimating time, clocked against a bid, hours bidding, spent bidding, hit rate, won of decided, spent on lost, card charges, robot bids, estimator rail, per bid, window, cost to win, by estimator, by GC, per $1k won, which GCs award, bid vs actual, predicted hours, recorded hours, over the book, not costed, cost it, check the count sheet, linked jobs, history, forecast, win rate by month, expected wins, odds by size, time to decision, still deciding, stale bids, click a bar
 order: 73
 ---
 **Bids → Bid Costs** is the pursuit ledger: what it costs us to bid. Every bid someone clocked time against (Clock In → pick the bid) shows its time, and the office roles see that time priced at recorded wages, plus any card charges or materials moved onto the bid from a job ([move a job's costs onto a bid](move-a-jobs-costs-onto-a-bid)).
@@ -76,6 +76,24 @@ A count sheet that predicts more than 15 field hours for every $1,000 of price c
 :::
 
 Click a job to open its window. The first tile links to Settings → Data when more jobs need linking.
+
+## History & forecast
+
+{{chip:gray|Pursuit}} {{chip:gray|Cost to win}} {{chip:gray|Bid vs actual}} {{chip:blue|History & forecast}} — the fourth lens answers three questions from the sent bids. Pick {{chip:blue|Everyone}} or one estimator at the top; {{chip:gray|No estimator · 64}} is the bids nobody is assigned to.
+
+**Sent by month, and how each month turned out.** One bar per month: {{chip:green|Won}}, {{chip:red|Lost}}, {{chip:yellow|Still open}}, and a paler slice for bids still open after 120 days. The solid line is the win rate by count of the bids that have been decided; the dashed line is by value. The shaded months are inside the last 120 days — most of their bids haven't decided yet, so read their rate lightly. Switch {{chip:blue|By count}} / {{chip:gray|By value}} to size the bars by dollars.
+
+**Click any bar** and the bids in that slice list below the panels — bid, estimator, sent date, value, outcome, decided date. Click a bid there to select it across the workflow tabs.
+
+**How long a decision takes.** Days from sent to the day someone marked the bid won or lost. Bids only started recording that day on 2026-09-11, so this panel says *not enough yet* until five decisions carry a date, then shows the median, the fastest and slowest tenth, and a figure per month. Under it, the open bids by how long they've waited; the two amber buckets are past 120 days.
+
+**The odds we use.** The win rate by count on bids sent 120+ days ago, split by size: under $50k, $50k–$500k, over $500k. Small bids win far more often than big ones, which is why the forecast doesn't use one blended rate. Click a card to see the bids behind it. A person with ten or more decided bids uses their own odds per size; fewer uses everyone's, and the heading says so.
+
+**What's open, and what to expect from it.** The open bids sent in the last 120 days, each counted at the odds of its size: how many wins to expect, how much value, a likely range, and the one bid that is the biggest share of it (counted at its own odds — if bids that size have never won, it counts for nothing until one does). The table breaks it down by estimator; click a row to list that person's fresh open bids.
+
+:::example Why 120 days?
+Bids open past 120 days are more often forgotten than pending — of the ones open today, most are past 90 days and a handful past half a year. Counting them would inflate the forecast, so the lens sets them aside and names them; Followup → Waiting to hear is where to chase or mark them.
+:::
 
 ## The rail
 

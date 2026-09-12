@@ -3,7 +3,7 @@ import { costToWinByEstimator, costToWinByGc, costToWinRows, costToWinTotal, cos
 import type { PursuitRow } from './bidPursuit'
 
 const row = (o: Partial<PursuitRow> & { bidId: string }): PursuitRow => ({
-  label: o.bidId, projectName: o.bidId, bidNumber: null, estimatorName: null, gcName: null, outcome: 'open', dateYmd: '2026-08-01', robot: false,
+  label: o.bidId, projectName: o.bidId, bidNumber: null, estimatorName: null, gcName: null, outcome: 'open', dateYmd: '2026-08-01', sentYmd: '2026-08-01', outcomeAtYmd: null, robot: false,
   hours: 0, laborUsd: 0, cardUsd: 0, materialsUsd: 0, totalUsd: 0, bidValue: null, usdPerThousandBid: null, people: [], ...o,
 })
 
