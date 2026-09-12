@@ -14,13 +14,17 @@ describe('baselineReading', () => {
       rate({ job_id: 'f', hours_per_thousand: 4.0, team_hours: 60, price_usd: 15000, kept_on: 'kept' }),
     ]
     expect(usableBaselineRates(rates)).toEqual([4, 6.5, 7.76, 10.2])
-    const b = baselineReading(rates, 50_000)
-    expect(b).toMatchObject({ n: 4, billed: 3 })
-    expect(b.medianHoursPerThousand).toBeCloseTo((6.5 + 7.76) / 2, 6)
-    expect(b.impliedHours).toBeCloseTo(50 * 7.13, 6)
-    expect(b.p25).toBe(6.5)
-    expect(b.p75).toBe(10.2)
-    expect(baselineReadingWords(b, (h) => `${Math.round(h)} h`)).toBe('7.1 h per $1k (6.5–10.2 middle half) · 4 jobs · this bid ≈ 357 h')
+    const b = baselineReading(rates, 50_000) // similar = $12.5k–$200k: a ($123.6k), c ($33.5k), f ($15k) — three, enough
+    expect(b).toMatchObject({ n: 3, billed: 2, scope: 'similar' })
+    expect(b.medianHoursPerThousand).toBeCloseTo(7.76, 6)
+    expect(baselineReadingWords(b, (h) => `${Math.round(h)} h`)).toBe('7.8 h per $1k (4.0–10.2 middle half) · 3 jobs of similar size · this bid ≈ 388 h')
+    const wide = baselineReading(rates, 1_000) // similar = $250–$4k: only b — too few, so every usable job speaks
+    expect(wide).toMatchObject({ n: 4, billed: 3, scope: 'all' })
+    expect(wide.medianHoursPerThousand).toBeCloseTo((6.5 + 7.76) / 2, 6)
+    expect(wide.impliedHours).toBeCloseTo(1 * 7.13, 6)
+    expect(wide.p25).toBe(6.5)
+    expect(wide.p75).toBe(10.2)
+    expect(baselineReadingWords(wide, (h) => `${Math.round(h)} h`)).toBe('7.1 h per $1k (6.5–10.2 middle half) · 4 jobs, all sizes · this bid ≈ 7 h')
   })
   it('says so with none or too few', () => {
     expect(baselineReadingWords(baselineReading([], 1000), (h) => `${h}`)).toBe('no baselines yet — they are kept when jobs bill')

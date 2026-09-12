@@ -26,9 +26,13 @@ export type BaselineReading = {
   impliedHours: number | null
   /** How many of the rates came from billed jobs (the rest were kept by hand mid-job). */
   billed: number
+  /** 'similar' = jobs within a quarter to four times this bid's value; 'all' = every usable baseline (too few similar ones). */
+  scope: 'similar' | 'all'
 }
 
 export const BASELINE_MIN_SAMPLE = 3
+/** "Jobs like this": price within this factor of the bid's value either way. A $450 repair says nothing about a $120k build. */
+export const BASELINE_SIZE_FACTOR = 4
 
 const num = (v: number | string | null | undefined): number => {
   const n = typeof v === 'number' ? v : v == null ? NaN : Number(v)
@@ -42,15 +46,19 @@ const median = (sorted: number[]): number | null => {
 }
 
 /** Rates worth reading: a positive price and hours, and a job big enough that one visit is not the whole story (≥ 8 h). */
+const usable = (r: BaselineRate): boolean => num(r.price_usd) > 0 && num(r.team_hours) >= 8 && num(r.hours_per_thousand) > 0
+const similar = (r: BaselineRate, value: number): boolean => num(r.price_usd) >= value / BASELINE_SIZE_FACTOR && num(r.price_usd) <= value * BASELINE_SIZE_FACTOR
+
 export function usableBaselineRates(rates: ReadonlyArray<BaselineRate>): number[] {
-  return rates
-    .filter((r) => num(r.price_usd) > 0 && num(r.team_hours) >= 8 && num(r.hours_per_thousand) > 0)
-    .map((r) => num(r.hours_per_thousand))
-    .sort((a, b) => a - b)
+  return rates.filter(usable).map((r) => num(r.hours_per_thousand)).sort((a, b) => a - b)
 }
 
 export function baselineReading(rates: ReadonlyArray<BaselineRate>, bidValueUsd: number | null): BaselineReading {
-  const xs = usableBaselineRates(rates)
+  const all = rates.filter(usable)
+  const near = bidValueUsd != null && bidValueUsd > 0 ? all.filter((r) => similar(r, bidValueUsd)) : []
+  const scope: BaselineReading['scope'] = near.length >= BASELINE_MIN_SAMPLE ? 'similar' : 'all'
+  const pick = scope === 'similar' ? near : all
+  const xs = pick.map((r) => num(r.hours_per_thousand)).sort((a, b) => a - b)
   const med = median(xs)
   return {
     n: xs.length,
@@ -58,7 +66,8 @@ export function baselineReading(rates: ReadonlyArray<BaselineRate>, bidValueUsd:
     p25: quantile(xs, 0.25),
     p75: quantile(xs, 0.75),
     impliedHours: med != null && bidValueUsd != null && bidValueUsd > 0 ? (bidValueUsd / 1000) * med : null,
-    billed: rates.filter((r) => r.kept_on === 'billed' && num(r.price_usd) > 0 && num(r.team_hours) >= 8).length,
+    billed: pick.filter((r) => r.kept_on === 'billed').length,
+    scope,
   }
 }
 
@@ -67,5 +76,5 @@ export function baselineReadingWords(b: BaselineReading, fmtHours: (h: number) =
   if (b.n === 0) return 'no baselines yet — they are kept when jobs bill'
   if (b.n < BASELINE_MIN_SAMPLE) return `${b.n} baseline${b.n === 1 ? '' : 's'} so far · needs ${BASELINE_MIN_SAMPLE}`
   const spread = b.p25 != null && b.p75 != null ? ` (${b.p25.toFixed(1)}–${b.p75.toFixed(1)} middle half)` : ''
-  return `${b.medianHoursPerThousand!.toFixed(1)} h per $1k${spread} · ${b.n} jobs${b.impliedHours != null ? ` · this bid ≈ ${fmtHours(b.impliedHours)}` : ''}`
+  return `${b.medianHoursPerThousand!.toFixed(1)} h per $1k${spread} · ${b.n} ${b.scope === 'similar' ? 'jobs of similar size' : 'jobs, all sizes'}${b.impliedHours != null ? ` · this bid ≈ ${fmtHours(b.impliedHours)}` : ''}`
 }
