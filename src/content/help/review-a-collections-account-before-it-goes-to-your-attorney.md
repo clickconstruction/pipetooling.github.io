@@ -8,7 +8,7 @@ Before an account that will not pay reaches a law firm, someone at the office sh
 
 ## Open the desk
 
-On **Jobs → Pipeline**, the **Collections** section has its own button tier, like Billed Awaiting Payment's. {{button:outline|⚖ Legal}} opens the desk on every Collections account, largest net first. The desk also opens from a link: `/jobs?tab=stages&legal=1` (or `legal=<payer key>` for one account).
+On **Jobs → Pipeline**, the **Collections** header carries {{button:outline|⚖ Legal}} beside the count, where Billed Awaiting Payment carries Accounts Receivable. It opens the desk on every Collections account, largest net first. The desk also opens from a link: `/jobs?tab=stages&legal=1` (or `legal=<payer key>` for one account).
 
 An **account is the payer** — the GC when one pays, otherwise the customer — and it spans every Collections job that payer owes on. Two jobs for the same customer are one account, because a petition names one defendant.
 
@@ -56,9 +56,10 @@ Office staff can move a job to Collections but cannot release it. {{button:outli
 
 ## The firm
 
-Settings → Jobs & dispatch → **Collections law firm** (dev) holds the firm's name, the handling person and their email — who hears about a release today — and the fee model (contingency %, filing cost) behind "Click keeps". The firm's own people and their email rules arrive with the portal.
+Settings → Jobs & billing → **Collections law firm** (dev) holds the firm's name, the handling person, a contact email and phone, and the fee model (contingency %, filing cost) behind "Click keeps". The contact email is not a subscription: the firm's own people and their email rules come from the portal's Notifications page, and nobody is emailed until they are on that list and confirmed.
 
 ## When the firm acts
 
 Once an account is with the firm, their fees, steps, questions and payments received arrive on the desk's **Fees & steps** tab marked {{chip:yellow|waiting on the office}} and on the Dashboard as "The law firm has N things for you". Answer a question inline, acknowledge a fee or step, or for a payment received: apply it on the job with Mark Paid, then press **Mark applied** so the recovery and the firm's cut are on the record.
 
+The whole path, from moving a job to Collections to the matter closing, is in [send a customer account to your attorney](/help/send-a-customer-account-to-your-attorney).
