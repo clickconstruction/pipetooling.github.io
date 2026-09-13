@@ -1,6 +1,6 @@
 # Accounts Receivable refresh — Option A, same two rooms, better furniture
 
-Status: **in progress** · PR 1 v2.3379 (#3108) header summary, ⋯ menu, deposit-row state chips · PR 2 v2.3380 the deposit header, remaining meter, memo fold, allocation rows · PR 3 matches as a list + the guard card · PR 4 the footer sentence + Apply & next · branch `feat/ar-refresh-pr*` · mock-up: [`mockup.html`](./mockup.html) (both options drawn with the modal's real states; also a Claude artifact, 2026-09-13)
+Status: **in progress** · PR 1 v2.3379 (#3108) header summary, ⋯ menu, deposit-row state chips · PR 2 v2.3380 the deposit header, remaining meter, memo fold, allocation rows · PR 3 v2.3381 matches as a list · PR 4 the footer sentence + Apply & next · branch `feat/ar-refresh-pr*` · mock-up: [`mockup.html`](./mockup.html) (both options drawn with the modal's real states; also a Claude artifact, 2026-09-13)
 
 ## The ask, in the owner's words
 

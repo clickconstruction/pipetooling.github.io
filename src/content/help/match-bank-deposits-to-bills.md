@@ -12,14 +12,14 @@ The rare controls live behind the {{button:outline|⋯}} button in the header: *
 
 ## The modal reads who paid you
 
-The deposit's bank name, note, and memo are checked against your customers and GCs, and when there's a clear match, their open bills lead the panel:
+The deposit's bank name, note, and memo are checked against your customers and GCs, and when there's a clear match, their open bills lead the panel as a list under **Who paid you** — amount, job, where, and a Stripe tag when the bill went out through Stripe:
 
 :::example a $250.00 check from DRF
 **From Done Right Foundation — their open bills**
 {{chip:green|$250.00 · 992 · Johnson Plumbing Test — matches this deposit}} {{chip:gray|$2,650.00 · 868 · Service Visit}}
 :::
 
-- Bills whose balance equals the deposit are green and listed first — one tap fills the allocation, then {{button:blue|Apply}}.
+- Bills whose balance equals the deposit are green and listed first — one tap fills the allocation, then {{button:blue|Apply}}. A second tap on another bill adds a second line, and bills already on a line leave the list.
 - Initials work: a check deposited as "DRF" finds **Done Right Foundation**. Check services often put the real customer in the deposit memo — that's read too, and the header says so ("Memo mentions…").
 - No clear match? You still get the **Matches deposit amount** row (any bill equal to the deposit, whoever it belongs to) and the full searchable picker.
 
