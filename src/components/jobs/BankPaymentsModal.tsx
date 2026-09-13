@@ -26,6 +26,7 @@ import {
 import { ArDepositRow } from './ar/ArDepositRow'
 import { ArHeaderMenu } from './ar/ArHeaderMenu'
 import { ArDepositHeader } from './ar/ArDepositHeader'
+import { ArPayerMatches } from './ar/ArPayerMatches'
 import { arAllocationProgress } from '../../lib/jobs/arAllocationProgress'
 import { arDepositRowStates, arDepositSummary, arDepositSummaryWords } from '../../lib/jobs/arDepositRowState'
 import { mercuryDebitCardIdFromRaw } from '../../lib/mercuryRawDebitCard'
@@ -506,6 +507,30 @@ export default function BankPaymentsModal({
     if (comboTargets.some((t) => t == null)) return null
     return comboTargets as BankPaymentTarget[]
   }, [depositPayerMatch, selected, depositPayerTargets, depositAmountMatchKeys, targetByKey])
+
+  /**
+   * AR refresh PR 3 (v2.3381): a bill picked from the "Who paid you" list lands on
+   * the first empty billed line, or on a new line when every line is taken — the
+   * same amount math as picking it in the row's own picker.
+   */
+  const pickTargetIntoLines = useCallback(
+    (targetKey: string) => {
+      setAllocLines((rows) => {
+        const mercuryCap = selected ? Number(selected.remaining_available) : 0
+        const target = targetByKey.get(targetKey)
+        const empty = rows.find((r) => r.kind === 'billed' && !r.targetKey.trim())
+        const others = rows.filter((r) => r.id !== empty?.id)
+        const otherSum = others.reduce((sum, r) => {
+          const n = parseBankPaymentAllocationAmount(r.amountStr)
+          return sum + (Number.isFinite(n) && n > 0 ? n : 0)
+        }, 0)
+        const amountStr = allocationAmountStrForTargetChange(target, mercuryCap, otherSum)
+        if (empty) return rows.map((r) => (r.id === empty.id ? { ...r, targetKey, amountStr } : r))
+        return [...rows, { id: crypto.randomUUID(), kind: 'billed' as const, targetKey, amountStr }]
+      })
+    },
+    [selected, targetByKey],
+  )
 
   /** Fill one allocation line per combo bill (replaces the single untouched line the chip renders next to). */
   const applyComboAllocation = useCallback((comboTargets: BankPaymentTarget[]) => {
@@ -1622,6 +1647,18 @@ export default function BankPaymentsModal({
 
                   {canAllocateRemaining ? (
                     <>
+                      {/* AR refresh PR 3 (v2.3381): the matches lead the pane as a list; bills already on a line are left out. */}
+                      <ArPayerMatches
+                        match={depositPayerMatch}
+                        payerTargets={depositPayerTargets.filter((t) => !allocLines.some((r) => r.kind === 'billed' && r.targetKey === t.key))}
+                        amountMatchKeys={depositAmountMatchKeys}
+                        combo={payerBillCombo && allocLines.length === 1 && !(allocLines[0]?.targetKey ?? '').trim() ? payerBillCombo : null}
+                        depositRemaining={Number(selected.remaining_available)}
+                        outsideTargets={quickMatchTargetsOutsidePayer.filter((t) => !allocLines.some((r) => r.kind === 'billed' && r.targetKey === t.key))}
+                        canApply={canApply}
+                        onPick={pickTargetIntoLines}
+                        onPickCombo={applyComboAllocation}
+                      />
                       <div style={{ fontWeight: 600, fontSize: '0.875rem', marginBottom: '0.35rem' }}>Allocations</div>
                       {targets.length === 0 && recordedPayments.length === 0 ? (
                         <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>
@@ -1773,173 +1810,6 @@ export default function BankPaymentsModal({
                                   <div style={{ fontWeight: 600 }}>{arRecordedPaymentSearchLabel(pickedPayment)}</div>
                                   <div style={{ color: 'var(--text-muted)' }}>
                                     Links the deposit to this recorded payment — amount locked, no new payment created.
-                                  </div>
-                                </div>
-                              ) : null}
-                              {line.kind === 'billed' &&
-                              allocLines[0]?.id === line.id &&
-                              !line.targetKey.trim() &&
-                              depositPayerTargets.length > 0 &&
-                              depositPayerMatch ? (
-                                <div style={{ marginTop: 8 }}>
-                                  <div
-                                    style={{
-                                      fontSize: '0.75rem',
-                                      color: 'var(--text-muted)',
-                                      marginBottom: 6,
-                                      fontWeight: 500,
-                                    }}
-                                  >
-                                    {depositPayerMatch.source === 'counterparty' ? (
-                                      <>
-                                        From{' '}
-                                        <strong style={{ color: 'var(--text-700)' }}>{depositPayerMatch.name}</strong>
-                                        {' — their open bills'}
-                                      </>
-                                    ) : (
-                                      <>
-                                        {depositPayerMatch.source === 'note' ? 'Note mentions ' : 'Memo mentions '}
-                                        <strong style={{ color: 'var(--text-700)' }}>{depositPayerMatch.name}</strong>
-                                        {' — their open bills'}
-                                      </>
-                                    )}
-                                  </div>
-                                  <div
-                                    style={{
-                                      display: 'flex',
-                                      flexWrap: 'wrap',
-                                      gap: '0.35rem',
-                                      alignItems: 'stretch',
-                                    }}
-                                  >
-                                    {payerBillCombo && allocLines.length === 1 ? (
-                                      <button
-                                        type="button"
-                                        disabled={!canApply}
-                                        onClick={() => applyComboAllocation(payerBillCombo)}
-                                        aria-label={`Fill ${payerBillCombo.length} allocations: ${payerBillCombo
-                                          .map((t) => `${formatBankPaymentTargetDollars(t.remaining)} ${t.hcpNumber}`)
-                                          .join(' + ')}`}
-                                        style={{
-                                          display: 'inline-flex',
-                                          flexDirection: 'column',
-                                          alignItems: 'flex-start',
-                                          gap: 1,
-                                          padding: '0.3rem 0.55rem',
-                                          fontSize: '0.75rem',
-                                          border: '1px dashed var(--border-green)',
-                                          borderRadius: 4,
-                                          background: 'var(--bg-green-tint)',
-                                          color: 'var(--text-700)',
-                                          cursor: !canApply ? 'not-allowed' : 'pointer',
-                                          textAlign: 'left',
-                                          maxWidth: '100%',
-                                          lineHeight: 1.35,
-                                        }}
-                                      >
-                                        <span style={{ fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>
-                                          {payerBillCombo.length} bills ={' '}
-                                          {formatBankPaymentTargetDollars(Number(selected.remaining_available))}
-                                        </span>
-                                        <span style={{ fontSize: '0.66rem', color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}>
-                                          {payerBillCombo
-                                            .map((t) => `${formatBankPaymentTargetDollars(t.remaining)} · ${t.hcpNumber || '—'}`)
-                                            .join('  +  ')}
-                                        </span>
-                                        <span style={{ fontSize: '0.66rem', color: 'var(--text-green-700)' }}>
-                                          fills {payerBillCombo.length} allocation lines
-                                        </span>
-                                      </button>
-                                    ) : null}
-                                    {depositPayerTargets.map((t) => {
-                                      const isAmountMatch = depositAmountMatchKeys.has(t.key)
-                                      const chipLabel = `${formatBankPaymentTargetDollars(t.remaining)} · ${bankPaymentTargetPrimaryLabel(t)}`
-                                      return (
-                                        <button
-                                          key={t.key}
-                                          type="button"
-                                          disabled={!canApply}
-                                          onClick={() => applyAllocationTarget(line.id, t.key)}
-                                          aria-label={`Apply allocation: ${chipLabel}`}
-                                          style={{
-                                            display: 'inline-flex',
-                                            flexDirection: 'column',
-                                            alignItems: 'flex-start',
-                                            gap: 1,
-                                            padding: '0.3rem 0.55rem',
-                                            fontSize: '0.75rem',
-                                            border: isAmountMatch
-                                              ? '1px solid var(--border-green)'
-                                              : '1px solid var(--border-strong)',
-                                            borderRadius: 4,
-                                            background: isAmountMatch ? 'var(--bg-green-tint)' : 'var(--surface)',
-                                            color: 'var(--text-700)',
-                                            cursor: !canApply ? 'not-allowed' : 'pointer',
-                                            textAlign: 'left',
-                                            maxWidth: '100%',
-                                            lineHeight: 1.35,
-                                          }}
-                                        >
-                                          <span style={{ fontVariantNumeric: 'tabular-nums' }}>{chipLabel}</span>
-                                          {isAmountMatch ? (
-                                            <span style={{ fontSize: '0.66rem', color: 'var(--text-green-700)' }}>
-                                              matches this deposit
-                                            </span>
-                                          ) : null}
-                                        </button>
-                                      )
-                                    })}
-                                  </div>
-                                </div>
-                              ) : null}
-                              {line.kind === 'billed' &&
-                              allocLines[0]?.id === line.id &&
-                              quickMatchTargetsOutsidePayer.length > 0 &&
-                              !line.targetKey.trim() ? (
-                                <div style={{ marginTop: 8 }}>
-                                  <div
-                                    style={{
-                                      fontSize: '0.75rem',
-                                      color: 'var(--text-muted)',
-                                      marginBottom: 6,
-                                      fontWeight: 500,
-                                    }}
-                                  >
-                                    Matches deposit amount
-                                  </div>
-                                  <div
-                                    style={{
-                                      display: 'flex',
-                                      flexWrap: 'wrap',
-                                      gap: '0.35rem',
-                                      alignItems: 'center',
-                                    }}
-                                  >
-                                    {quickMatchTargetsOutsidePayer.map((t) => {
-                                      const chipLabel = `${bankPaymentTargetPrimaryLabel(t)} · ${formatBankPaymentTargetDollars(t.remaining)}`
-                                      return (
-                                        <button
-                                          key={t.key}
-                                          type="button"
-                                          disabled={!canApply}
-                                          onClick={() => applyAllocationTarget(line.id, t.key)}
-                                          aria-label={`Apply allocation: ${chipLabel}`}
-                                          style={{
-                                            padding: '0.3rem 0.5rem',
-                                            fontSize: '0.75rem',
-                                            border: '1px solid var(--border-strong)',
-                                            borderRadius: 4,
-                                            background: 'var(--surface)',
-                                            color: 'var(--text-700)',
-                                            cursor: !canApply ? 'not-allowed' : 'pointer',
-                                            textAlign: 'left',
-                                            maxWidth: '100%',
-                                          }}
-                                        >
-                                          {chipLabel}
-                                        </button>
-                                      )
-                                    })}
                                   </div>
                                 </div>
                               ) : null}
