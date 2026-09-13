@@ -6,6 +6,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { sendEmailViaResend } from '../_shared/resendSendEmail.ts'
 import { resolvePortalCustomerPhone } from '../_shared/portalCustomerPhone.ts'
 import { owedJobIdsForViewer, PORTAL_OPEN_INVOICE_STATUS } from '../_shared/portalBillMembership.ts'
+import { statementRoleFor } from '../_shared/billVisibility.ts'
 import { PROMISE_MAX_PER_HOUR, promiseDateProblem } from '../_shared/portalPromise.ts'
 
 /**
@@ -78,6 +79,7 @@ serve(async (req) => {
       : body.kind === 'visit' ? 'visit'
       : body.kind === 'stage_window' ? 'stage_window'
       : body.kind === 'payment_promise' ? 'payment_promise'
+      : body.kind === 'share_bill_ask' ? 'share_bill_ask'
       : null
     const description = typeof body.description === 'string' ? body.description.trim() : ''
     const availability = typeof body.availability === 'string' ? body.availability.trim().slice(0, 300) : ''
@@ -88,7 +90,7 @@ serve(async (req) => {
     if (!token || token.length < 16 || token.length > 128 || !kind) {
       return jsonResponse({ error: 'Bad request' }, 400)
     }
-    if (kind !== 'stage_window' && kind !== 'payment_promise' && (description.length < 5 || description.length > 2000)) {
+    if (kind !== 'stage_window' && kind !== 'payment_promise' && kind !== 'share_bill_ask' && (description.length < 5 || description.length > 2000)) {
       return jsonResponse({ error: 'Please tell us a little more about what you need (a sentence or two).' }, 400)
     }
     if (plansLink && !/^https:\/\//.test(plansLink)) {
@@ -209,6 +211,58 @@ serve(async (req) => {
       jobLedgerId = job ? jobId : null
     }
 
+    // ── share_bill_ask (Share this bill PR 4, v2.3378): a GC asks about a customer's
+    // bill the office shared with them — bill it to us instead, or remind the owner.
+    // Only a bill that is actually shared with this viewer (statementRoleFor =
+    // 'shared') can be asked about; the ask is a sentence in the office's inbox,
+    // never an email to the owner and never a payment.
+    let shareAsk: { ask: 'bill_me' | 'remind_owner'; sentence: string; jobNumber: string; amount: number | null; ownerName: string } | null = null
+    if (kind === 'share_bill_ask') {
+      const ask = body.ask === 'bill_me' ? 'bill_me' : body.ask === 'remind_owner' ? 'remind_owner' : null
+      const note = typeof body.note === 'string' ? body.note.trim().slice(0, 500) : ''
+      if (!ask || !jobId) return jsonResponse({ error: 'Bad request' }, 400)
+      const { data: jobRaw } = await admin
+        .from('jobs_ledger')
+        .select('id, hcp_number, click_number, job_name, job_address, status, customer_id, customer_name, gc_customer_id, bill_to_party, show_bills_to_other_party')
+        .eq('id', jobId)
+        .eq('gc_customer_id', link.customer_id)
+        .maybeSingle()
+      const j = jobRaw as {
+        id: string
+        hcp_number: string | null
+        click_number: string | null
+        job_name: string | null
+        job_address: string | null
+        status: string | null
+        customer_id: string | null
+        customer_name: string | null
+        gc_customer_id: string | null
+        bill_to_party: string | null
+        show_bills_to_other_party: boolean | null
+      } | null
+      if (!j || !j.customer_id || j.customer_id === j.gc_customer_id) return jsonResponse({ error: 'That bill is not on your statement.' }, 403)
+      const { data: invRaw } = await admin
+        .from('jobs_ledger_invoices')
+        .select('id, amount, bill_to_party, bill_to_email, shown_to_party')
+        .eq('job_id', j.id)
+        .eq('status', PORTAL_OPEN_INVOICE_STATUS)
+      const invs = (invRaw ?? []) as Array<{ id: string; amount: number | null; bill_to_party: string | null; bill_to_email: string | null; shown_to_party: string | null }>
+      const sharedLine = invs.some((inv) => statementRoleFor(j, inv, link.customer_id) === 'shared')
+      const sharedShell = invs.length === 0 && j.status === 'billed' && statementRoleFor(j, null, link.customer_id) === 'shared'
+      if (!sharedLine && !sharedShell) return jsonResponse({ error: 'That bill is not on your statement.' }, 403)
+      const amount = typeof body.amount === 'number' && Number.isFinite(body.amount) && body.amount > 0 ? Math.round(body.amount * 100) / 100 : null
+      const jobNumber = (j.hcp_number ?? '').trim() || (j.click_number ?? '').trim()
+      const where = [jobNumber ? `J${jobNumber}` : null, (j.job_address ?? '').trim() || (j.job_name ?? '').trim() || null].filter(Boolean).join(' · ') || 'the job'
+      const ownerName = (j.customer_name ?? '').trim() || 'the owner'
+      const money = amount != null ? ` ($${amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })})` : ''
+      const sentence =
+        ask === 'bill_me'
+          ? `${customerName} asks to be billed for ${where}${money} instead of ${ownerName}.`
+          : `${customerName} asks us to remind ${ownerName} about ${where}${money}.`
+      shareAsk = { ask, sentence: note ? `${sentence} Note: ${note}` : sentence, jobNumber, amount, ownerName }
+      jobLedgerId = j.id
+    }
+
     // Attribution: configured portal inbox user, else whoever minted the link,
     // ── stage_window (v2.2934): the GC asks for other dates on an offered stage ──
     if (kind === 'stage_window') {
@@ -300,8 +354,13 @@ serve(async (req) => {
     const reachPhone = phone || phoneOnFile || null
     const phoneSource: 'typed' | 'on_file' | null = phone ? 'typed' : phoneOnFile ? 'on_file' : null
 
-    const kindLabel = kind === 'visit' ? 'asks for a visit' : 'asks for a bid'
-    const title = `Customer waiting — ${customerName} ${kindLabel}: ${description.slice(0, 120)}`
+    const kindLabel =
+      kind === 'visit' ? 'asks for a visit'
+      : kind === 'share_bill_ask' ? (shareAsk?.ask === 'bill_me' ? 'asks to be billed instead' : 'asks us to remind the owner')
+      : 'asks for a bid'
+    // The share ask's words are the sentence the function built (the GC picked a choice, not prose).
+    const descriptionOut = shareAsk ? shareAsk.sentence : description
+    const title = `Customer waiting — ${customerName} ${kindLabel}: ${descriptionOut.slice(0, 120)}`
     const pendingPayload = {
       source: 'portal',
       portalLinkId: link.id,
@@ -309,7 +368,8 @@ serve(async (req) => {
       kind,
       customerId: link.customer_id,
       customerName,
-      description,
+      description: descriptionOut,
+      ...(shareAsk ? { ask: shareAsk.ask, jobNumber: shareAsk.jobNumber, amount: shareAsk.amount, ownerName: shareAsk.ownerName } : {}),
       availability: availability || null,
       phone: reachPhone,
       phoneSource,

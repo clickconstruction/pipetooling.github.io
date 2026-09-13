@@ -8,10 +8,13 @@
  *     description, availability, phone, phoneSource, plansLink, portalLinkId }
  *   GC stage ask (source 'customer_portal', kind 'gc_stage_ask'): { gcName,
  *     start, end, note, phone, phoneSource, customerId }
+ *   share bill ask (source 'portal', kind 'share_bill_ask', v2.3378): the visit
+ *     shape plus { ask: 'bill_me' | 'remind_owner', jobNumber, amount, ownerName };
+ *     `description` is the sentence the intake built.
  */
 
 export type PortalRequestPayload = {
-  kind: 'visit' | 'bid' | 'gc_stage_ask' | 'other'
+  kind: 'visit' | 'bid' | 'gc_stage_ask' | 'share_bill_ask' | 'other'
   customerId: string | null
   customerName: string | null
   /** The customer's own words (visit/bid description, or the stage-ask note). */
@@ -50,7 +53,7 @@ export function parsePortalRequestPayload(raw: unknown): PortalRequestPayload | 
     }
   }
   return {
-    kind: kindRaw === 'visit' ? 'visit' : kindRaw === 'bid' ? 'bid' : 'other',
+    kind: kindRaw === 'visit' ? 'visit' : kindRaw === 'bid' ? 'bid' : kindRaw === 'share_bill_ask' ? 'share_bill_ask' : 'other',
     customerId: str(p.customerId),
     customerName: str(p.customerName),
     description: str(p.description),

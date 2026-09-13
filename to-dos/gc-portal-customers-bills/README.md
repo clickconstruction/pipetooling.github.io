@@ -1,6 +1,6 @@
 # GC portal: their customers' open bills — and the owner never sees the builder's
 
-Status: not started · planned 2026-09-13, revised the same day to **case by case** (see the Revision section — it supersedes the rule-based train below) · mock-ups: [`mockup-2-case-by-case.html`](./mockup-2-case-by-case.html) (current: the Bill Customer tick, the doors, the defaults, both portals) and [`mockup.html`](./mockup.html) (revision 1, the automatic rule, kept for the reading and the data facts)
+Status: **built 2026-09-13** — PR 1 v2.3375 (#3104, merged), PR 2 v2.3376 (#3105), PR 3 v2.3377, PR 4 v2.3378 (Ask the office) · remaining: `supabase db push` (20260913160748, 20260913163500), `supabase functions deploy customer-portal submit-portal-request`, the owner runs `scripts/sweeps/share-this-bill-done-right-repairs-2026-09-13.sql` · then **shipped, delete me** · planned 2026-09-13, revised the same day to **case by case** (see the Revision section — it supersedes the rule-based train below) · mock-ups: [`mockup-2-case-by-case.html`](./mockup-2-case-by-case.html) (current: the Bill Customer tick, the doors, the defaults, both portals) and [`mockup.html`](./mockup.html) (revision 1, the automatic rule, kept for the reading and the data facts)
 
 ## The ask, in the owner's words
 

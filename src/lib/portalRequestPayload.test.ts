@@ -47,6 +47,27 @@ describe('parsePortalRequestPayload', () => {
     expect(p?.phone).toBeNull()
   })
 
+  it('reads a share-bill ask (v2.3378): the kind, the built sentence, the phone on file', () => {
+    const p = parsePortalRequestPayload({
+      source: 'portal',
+      kind: 'share_bill_ask',
+      customerId: 'gc-1',
+      customerName: 'Done Right Foundation',
+      description: 'Done Right Foundation asks to be billed for J1017 · 4410 Cedar Hollow ($4,420.00) instead of Maria Delgado.',
+      ask: 'bill_me',
+      jobNumber: '1017',
+      amount: 4420,
+      ownerName: 'Maria Delgado',
+      phone: '(210) 555-1111',
+      phoneSource: 'on_file',
+    })!
+    expect(p.kind).toBe('share_bill_ask')
+    expect(p.customerName).toBe('Done Right Foundation')
+    expect(p.description).toMatch(/asks to be billed for J1017/)
+    expect(p.phoneSource).toBe('on_file')
+    expect(p.availability).toBeNull()
+  })
+
   it('pre-v2.3246 rows (no customerId / phoneSource) still parse; blanks become null', () => {
     const p = parsePortalRequestPayload({ source: 'portal', kind: 'bid', customerName: 'Acme', description: 'Remodel', phone: '  ' })
     expect(p).toMatchObject({ kind: 'bid', customerId: null, customerName: 'Acme', phone: null, phoneSource: null })
