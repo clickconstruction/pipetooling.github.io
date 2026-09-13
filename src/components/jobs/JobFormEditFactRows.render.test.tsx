@@ -47,10 +47,14 @@ function Harness({
   billingCustomerHighlight = false,
   customerId = 'cust-1',
   gc,
+  jobId = 'job-1',
+  showBillsToOtherParty = false,
 }: {
   billingCustomerHighlight?: boolean
   customerId?: string | null
   gc?: CustomerRow
+  jobId?: string | null
+  showBillsToOtherParty?: boolean
 }) {
   const [phone, setPhone] = useState('(210) 415-5375')
   const divRef = useRef<HTMLDivElement | null>(null)
@@ -72,6 +76,8 @@ function Harness({
       billToParty="customer"
       billCopyOtherParty={false}
       setBillCopyOtherParty={() => {}}
+      jobId={jobId}
+      showBillsToOtherParty={showBillsToOtherParty}
       setBillToParty={() => {}}
       onCustomerPatched={() => {}}
       linkedBidGc={null}
@@ -193,5 +199,30 @@ describe('JobFormEditFactRows', () => {
     const select = screen.getByLabelText('Project') as HTMLSelectElement
     expect(select.options.length).toBe(2)
     expect(select.options[1]?.textContent).toContain('Gun Dog Rough In')
+  })
+
+  it('share this bill (v2.3376): a two-party job shows the Show <GC> memory row; none without a GC or on an unsaved job', () => {
+    const gc = {
+      id: 'gc-1',
+      name: 'Done Right Foundation',
+      address: '99 Slab Way',
+      contact_info: { phone: '(210) 555-1111', email: 'ap@doneright.com' },
+      date_met: null,
+      master_user_id: 'master-1',
+      customer_type: 'commercial',
+      archived_at: null,
+    } as unknown as CustomerRow
+    renderWithProviders(<Harness gc={gc} showBillsToOtherParty />)
+    expect(screen.getByText('Show Done Right Foundation')).toBeTruthy()
+    expect(screen.getByText('on new bills')).toBeTruthy()
+    cleanup()
+    renderWithProviders(<Harness gc={gc} />)
+    expect(screen.getByText('not shared')).toBeTruthy()
+    cleanup()
+    renderWithProviders(<Harness />)
+    expect(screen.queryByText(/^Show /)).toBeNull()
+    cleanup()
+    renderWithProviders(<Harness gc={gc} jobId={null} />)
+    expect(screen.queryByText('Show Done Right Foundation')).toBeNull()
   })
 })

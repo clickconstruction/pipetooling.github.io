@@ -2,7 +2,7 @@
 title: share a customer their portal
 category: Office
 roles: dev, master_technician, assistant, controller
-keywords: customer portal, portal link, portal address, custom link, globe, pay online, statement, visit request, bid request, rotate link, as gc
+keywords: customer portal, portal link, portal address, custom link, globe, pay online, statement, visit request, bid request, rotate link, as gc, your customers' open bills, billed to your builder, shared bill
 ---
 Every customer (and GC) can have a private, no-login **portal page**: one merged account statement — their own jobs *and* the properties they GC, each of those tagged {{chip:yellow|AS GC}} with the owner's name — with {{button:blue|Pay online}} buttons, plus "request a visit" / "ask us to bid" forms that land straight in the dispatch inbox.
 
@@ -22,7 +22,7 @@ The top of the modal is their **portal address**, something like `my.clickplumbi
 - {{button:blue|Copy link}} — copies the address for a text or email, and **locks** it (printed and texted copies should never go stale). The link is the key, no password needed.
 - {{button:outline|Preview as customer}} — opens the page exactly as they see it, and a **live preview** sits right in the modal. Your previews (and any open from a signed-in staff browser) are never counted as the customer looking.
 - The preview's corner buttons **⤢ Expand** (grow it in place) and **Full screen ↗** (open the portal in a new tab) are yours too.
-- Under the preview, **Jobs on this statement** mirrors the statement row for row — same order, same dates — with **Pay ↗** (that bill's Stripe pay page, when it has one) and **Edit ↗** (straight into the job's Edit window). The dashed box is office chrome: customers never see any of it on their page.
+- Under the preview, **Jobs on this statement** mirrors the statement row for row — same order, same dates — with **Pay ↗** (that bill's Stripe pay page, when it has one) and **Edit ↗** (straight into the job's Edit window). A bill the office shared with this customer (one they do not pay) rides at the end with a {{chip:green|shared}} tag. The dashed box is office chrome: customers never see any of it on their page.
 
 ## Behind the gear
 
@@ -36,7 +36,7 @@ The {{icon:gear}} button opens one flat list:
 - **History** — every link and address change: what, when, and by whom.
 
 :::example What the customer sees
-A clean account statement: our letterhead, each open bill with the job name and amount — jobs on someone else's property carry a small copper AS GC tag naming the owner — only the bills **this customer pays** count toward the balance; bills on their jobs that went to the other party (the owner, or the builder) are listed below the ledger under *On your jobs, billed to someone else*, with no Pay button — a Pay online button for card-payable bills (check reference otherwise), and the two request forms. The visit form's "For" picker lists their **properties by address** (never job numbers or our internal job names). At the bottom, a **"Your account, any time"** card shows their short address with a **QR code**, so even a printed or screenshotted statement carries a way back in. No login, no other customers' data — only theirs.
+A clean account statement: our letterhead, each open bill with the job name and amount — jobs on someone else's property carry a small copper AS GC tag naming the owner — only the bills **this customer pays** are on the ledger and count toward the balance. A bill on their job that went to the other party is **not on the page at all** unless the office shared it (Bill Customer → *Show it on … statement*); a shared bill sits below the ledger in its own card — a GC reads *Your customers' open bills* (who owes it, where, billed when and how long ago, received so far, open), an owner reads *On your job, billed to your builder* — with no Pay button and never in the balance. Then a Pay online button for card-payable bills (check reference otherwise), and the two request forms. The visit form's "For" picker lists their **properties by address** (never job numbers or our internal job names). At the bottom, a **"Your account, any time"** card shows their short address with a **QR code**, so even a printed or screenshotted statement carries a way back in. No login, no other customers' data — only theirs.
 :::
 
 ## When they send a request

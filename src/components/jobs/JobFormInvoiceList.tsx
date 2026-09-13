@@ -13,6 +13,7 @@ import { invoiceCreatedCalendarDayOffset } from '../../lib/invoiceCreatedRelativ
 import { jobLedgerHasCustomerForBilling } from '../../lib/jobLedgerCustomerForBilling'
 import { billToDisplayLabel, invoiceBillToFromRow } from '../../lib/jobs/invoiceBillTo'
 import { effectiveInvoiceParty, invoicePartyChip, parseJobBillToParty, type InvoiceBillToParty } from '../../lib/jobs/billToParty'
+import { parseShownToParty, shownToChipText, type ShownToParty } from '../../lib/jobs/billVisibility'
 import { fetchJobWithDetailsById } from '../../lib/fetchJobWithDetailsById'
 import { setReturnEditJobFromStages } from '../../lib/returnEditJobFromStages'
 import { sendBackBlockedByPayments } from '../../lib/jobs/editJobInvoiceSendBack'
@@ -103,6 +104,9 @@ export function JobFormInvoiceList({
   /** Who pays (v2.3345): the "Bill to ▾" menu open on one draft row. */
   const [billToMenuFor, setBillToMenuFor] = useState<string | null>(null)
   const [billToPartySaving, setBillToPartySaving] = useState<string | null>(null)
+  /** Share this bill (v2.3376): the eye menu open on one row. */
+  const [shownToMenuFor, setShownToMenuFor] = useState<string | null>(null)
+  const [shownToSaving, setShownToSaving] = useState<string | null>(null)
   const jobParty = {
     bill_to_party: (editing as { bill_to_party?: string | null }).bill_to_party,
     gc_customer_id: editing.gc_customer_id ?? null,
@@ -137,6 +141,25 @@ export function JobFormInvoiceList({
       showToast(e instanceof Error ? e.message : 'Could not change who this bill goes to', 'error')
     } finally {
       setBillToPartySaving(null)
+    }
+  }
+
+  /** Share this bill (v2.3376): who else sees this bill on their statement — the non-paying party, or nobody. Any row, draft or sent. */
+  async function pickShownTo(inv: JobsLedgerInvoiceRow, shownTo: ShownToParty | null) {
+    setShownToMenuFor(null)
+    setShownToSaving(inv.id)
+    try {
+      const { error } = await supabase.from('jobs_ledger_invoices').update({ shown_to_party: shownTo }).eq('id', inv.id)
+      if (error) throw error
+      const found = await fetchJobWithDetailsById(editing.id)
+      if (found) setEditing(found)
+      onSavedRef.current?.()
+      const who = shownTo === 'gc' ? (gcName ?? 'the GC') : (editing.customer_name ?? 'the customer')
+      showToast(shownTo ? `${who} will see this bill on their statement.` : 'Only the payer sees this bill now.', 'success')
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : 'Could not change who sees this bill', 'error')
+    } finally {
+      setShownToSaving(null)
     }
   }
 
@@ -295,6 +318,10 @@ export function JobFormInvoiceList({
                   gc: gcName,
                   other: billTo ? billTo.name ?? billTo.email : null,
                 })
+                // Share this bill (v2.3376): the non-paying party this bill could be shown to.
+                const shownTo = parseShownToParty(inv.shown_to_party)
+                const shareOptions: ShownToParty[] = party === 'customer' ? (gcDistinct ? ['gc'] : []) : party === 'gc' ? ['customer'] : gcDistinct ? ['customer', 'gc'] : []
+                const shownToText = shownToChipText(shownTo, { customer: editing.customer_name, gc: gcName })
                 const rowSep = idx < arr.length - 1 ? '1px solid var(--border)' : 'none'
                 const parentCellPad = hasDetailLine ? '0.5rem 0.75rem 0.1rem' : '0.5rem 0.75rem'
                 const paidOnInv = payments.filter((p) => p.invoice_id === inv.id).reduce((s, p) => s + (Number(p.amount) || 0), 0)
@@ -375,6 +402,71 @@ export function JobFormInvoiceList({
                             }}
                           >
                             → {partyChipText}
+                          </span>
+                        ) : null}
+                        {shareOptions.length > 0 ? (
+                          <span style={{ position: 'relative', display: 'inline-block', marginTop: '0.2rem', marginLeft: showPartyChip ? '0.3rem' : 0, verticalAlign: 'bottom' }}>
+                            <button
+                              type="button"
+                              data-testid="invoice-shown-to-chip"
+                              onClick={() => setShownToMenuFor((prev) => (prev === inv.id ? null : inv.id))}
+                              disabled={shownToSaving === inv.id}
+                              aria-haspopup="menu"
+                              aria-expanded={shownToMenuFor === inv.id}
+                              title={shownTo ? 'Who else sees this bill on their statement — change or hide' : 'Show this bill on the other party’s statement (no Pay button, not in their balance)'}
+                              style={{
+                                padding: '0.05rem 0.4rem',
+                                borderRadius: 999,
+                                fontSize: '0.6875rem',
+                                fontWeight: 700,
+                                cursor: 'pointer',
+                                border: '1px solid var(--border-strong)',
+                                background: shownTo ? 'var(--bg-green-100)' : 'var(--bg-200)',
+                                color: shownTo ? 'var(--text-green-800)' : 'var(--text-muted)',
+                                whiteSpace: 'nowrap',
+                                maxWidth: '100%',
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                              }}
+                            >
+                              {shownToSaving === inv.id ? 'Saving…' : (shownToText ?? '👁 ▾')}
+                            </button>
+                            {shownToMenuFor === inv.id ? (
+                              <div
+                                role="menu"
+                                style={{ position: 'absolute', left: 0, top: '100%', marginTop: 4, zIndex: 20, minWidth: 250, background: 'var(--surface)', border: '1px solid var(--border-strong)', borderRadius: 6, boxShadow: '0 6px 16px rgba(0, 0, 0, 0.12)', padding: '0.25rem', textAlign: 'left' }}
+                              >
+                                <div style={{ fontSize: '0.6875rem', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-faint)', padding: '0.25rem 0.5rem' }}>Who else sees this bill</div>
+                                {shareOptions.map((opt) => {
+                                  const label = opt === 'gc' ? (gcName ?? 'The GC') : editing.customer_name?.trim() || 'The job customer'
+                                  const on = shownTo === opt
+                                  return (
+                                    <button
+                                      key={opt}
+                                      type="button"
+                                      role="menuitemradio"
+                                      aria-checked={on}
+                                      onClick={() => void pickShownTo(inv, opt)}
+                                      style={{ display: 'block', width: '100%', textAlign: 'left', padding: '0.35rem 0.5rem', border: 'none', background: on ? 'var(--bg-subtle)' : 'transparent', borderRadius: 4, cursor: 'pointer', fontSize: '0.8125rem' }}
+                                    >
+                                      <span style={{ fontWeight: 600 }}>{on ? '✓ ' : ''}Shown on {label}’s statement</span>
+                                      <span style={{ color: 'var(--text-muted)', marginLeft: 6, fontSize: '0.75rem' }}>{opt === 'gc' ? 'the GC, not billed' : 'the customer, not billed'}</span>
+                                    </button>
+                                  )
+                                })}
+                                <button
+                                  type="button"
+                                  role="menuitemradio"
+                                  aria-checked={shownTo == null}
+                                  onClick={() => void pickShownTo(inv, null)}
+                                  style={{ display: 'block', width: '100%', textAlign: 'left', padding: '0.35rem 0.5rem', border: 'none', borderTop: '1px solid var(--border)', background: shownTo == null ? 'var(--bg-subtle)' : 'transparent', borderRadius: 4, cursor: 'pointer', fontSize: '0.8125rem' }}
+                                >
+                                  <span style={{ fontWeight: 600 }}>{shownTo == null ? '✓ ' : ''}Only the payer</span>
+                                  <span style={{ color: 'var(--text-muted)', marginLeft: 6, fontSize: '0.75rem' }}>hide it from their statement</span>
+                                </button>
+                                <div style={{ color: 'var(--text-faint)', fontSize: '0.7rem', padding: '0.3rem 0.5rem 0.2rem' }}>Changes their portal on its next open. Never changes who pays or who was emailed.</div>
+                              </div>
+                            ) : null}
                           </span>
                         ) : null}
                       </td>

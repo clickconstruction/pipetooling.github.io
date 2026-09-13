@@ -5,8 +5,9 @@
  * Rules (keep in sync with supabase/functions/gc-statement-email-dispatch/index.ts
  * `resolveGcPortalUrl` — the scheduled sends resolve server-side):
  *  1. An active GC-scoped link ("Separate view — GC bills only", audience 'gc')
- *     wins: the office created it on purpose for this GC's AP desk, and it can
- *     never show them anything but the bills they owe.
+ *     wins: the office created it on purpose for this GC's AP desk. It shows
+ *     the bills they owe plus any bill the office chose to share with them
+ *     (Share this bill, v2.3375) — never an unshared bill on someone else's tab.
  *  2. Else the main link (audience 'all'): the short custom address when one is
  *     saved (`my.clickplumbing.com/<slug>`), otherwise the token link.
  *  3. Nothing active → null (portal turned off / never minted) — no card, and

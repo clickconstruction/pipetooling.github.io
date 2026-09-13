@@ -109,4 +109,42 @@ describe('JobFormInvoiceList billed send-back (v2.1653)', () => {
     expect((buttons[0] as HTMLButtonElement).disabled).toBe(true)
     expect((buttons[0] as HTMLButtonElement).title).toMatch(/Payments are applied/)
   })
+
+  it('share this bill (v2.3376): the eye chip names who else sees a stamped bill, and the menu offers the other party or only the payer', () => {
+    const job = makeJob({
+      customer_id: 'cust-1',
+      customer_name: 'Maria Delgado',
+      gc_customer_id: 'gc-1',
+      gcCustomer: { id: 'gc-1', name: 'Done Right Foundation' },
+      bill_to_party: 'customer',
+      invoices: [
+        makeInvoice({ id: 'inv-shared', status: 'billed', amount: 6420, is_primary_rtb_bundle: true, shown_to_party: 'gc' }),
+        makeInvoice({ id: 'inv-quiet', status: 'billed', amount: 1180, is_primary_rtb_bundle: false, shown_to_party: null }),
+      ],
+    })
+    renderWithProviders(
+      <JobFormInvoiceList
+        editing={job}
+        payments={[]}
+        canApplyAgreedWriteDown={false}
+        onClose={() => {}}
+        onSavedRef={createRef<(() => void) | undefined>()}
+        setEditing={() => {}}
+        setBillViewInvoice={() => {}}
+        setAgreedWriteDownInvoice={() => {}}
+        refreshEditingJobAndHydratePayments={() => {}}
+        onInvoiceDeleted={() => {}}
+        onEditBillTo={() => {}}
+        nestedOverlayZIndex={1000}
+      />,
+    )
+    const chips = screen.getAllByTestId('invoice-shown-to-chip')
+    expect(chips.map((c) => c.textContent)).toEqual(['👁 shown to Done Right Foundation', '👁 ▾'])
+    fireEvent.click(chips[0]!)
+    const menu = screen.getByRole('menu')
+    expect(within(menu).getByText('✓ Shown on Done Right Foundation’s statement')).toBeTruthy()
+    expect(within(menu).getByText('Only the payer')).toBeTruthy()
+    // A customer-pays job never offers the customer as the "other" party.
+    expect(within(menu).queryByText(/Maria Delgado/)).toBeNull()
+  })
 })

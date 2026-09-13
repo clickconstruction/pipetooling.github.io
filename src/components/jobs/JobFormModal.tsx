@@ -3942,6 +3942,8 @@ export default function JobFormModal({
               setBillToParty={setBillToParty}
               billCopyOtherParty={billCopyOtherParty}
               setBillCopyOtherParty={setBillCopyOtherParty}
+              jobId={editing?.id ?? null}
+              showBillsToOtherParty={(editing as { show_bills_to_other_party?: boolean | null } | null)?.show_bills_to_other_party === true}
               onCustomerPatched={patchCustomerRow}
               linkedBidGc={linkedBidGc}
               customerSearch={customerSearch}

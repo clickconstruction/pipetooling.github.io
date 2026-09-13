@@ -23,6 +23,7 @@ import { JobFormBillToPartyControl } from './JobFormBillToPartyControl'
 import { JobFormBillCopyRecipientsControl, useBillCopyContacts } from './JobFormBillCopyRecipientsControl'
 import { billsAlsoGoToSummary, type BillCopyOtherParty } from '../../lib/jobs/billCopyRecipients'
 import { supabase } from '../../lib/supabase'
+import { useToastContext } from '../../contexts/ToastContext'
 import { customerBillingEmail, type JobBillToParty } from '../../lib/jobs/billToParty'
 import JobContractStrip from './JobContractStrip'
 import JobWorkOrderStrip from './JobWorkOrderStrip'
@@ -49,6 +50,7 @@ type CustomerRow = Database['public']['Tables']['customers']['Row']
 
 type RowKey =
   | 'accountMan'
+  | 'show-other-party'
   | 'team'
   | 'customer'
   | 'phone'
@@ -104,6 +106,9 @@ type JobFormEditFactRowsProps = {
   /** Bills also go to (v2.3358) — the other party is copied on every bill; identity autosave slice. */
   billCopyOtherParty: boolean
   setBillCopyOtherParty: (v: boolean) => void
+  /** Share this bill (v2.3376): the job's memory for "Show it on <other party>'s statement" — written directly here and by Bill Customer, never through the autosave slice. Null id = a job not saved yet (no row to remember on). */
+  jobId: string | null
+  showBillsToOtherParty: boolean
   /** The GC's billing email is saved straight to customers; the shell mirrors the patch into its list. */
   onCustomerPatched: (id: string, patch: Partial<CustomerRow>) => void
   linkedBidGc: { id: string; name: string } | null
@@ -194,6 +199,8 @@ export function JobFormEditFactRows(props: JobFormEditFactRowsProps) {
     billToParty,
     setBillToParty,
     billCopyOtherParty,
+    jobId,
+    showBillsToOtherParty,
     setBillCopyOtherParty,
     onCustomerPatched,
     linkedBidGc,
@@ -307,6 +314,21 @@ export function JobFormEditFactRows(props: JobFormEditFactRowsProps) {
   // The same address on both rows (a GC entered under its AP inbox twice) is not a second recipient.
   const copyOtherParty = copyOtherPartyRaw && copyOtherPartyRaw.email.toLowerCase() === copyPayerEmail ? null : copyOtherPartyRaw
   const billCopy = useBillCopyContacts(copyPayerId)
+  // Share this bill (v2.3376): the job remembers whether the other party is shown
+  // its next bills. Optimistic; a refused write puts the tick back and says why.
+  const { showToast: showShareToast } = useToastContext()
+  const [showOther, setShowOther] = useState(showBillsToOtherParty)
+  useEffect(() => setShowOther(showBillsToOtherParty), [showBillsToOtherParty, jobId])
+  const shareOtherName = !gcDistinct ? null : billToParty === 'gc' ? customerName.trim() || 'the customer' : (gcCustomer?.name ?? '').trim() || 'the GC'
+  async function saveShowOther(on: boolean) {
+    if (!jobId) return
+    setShowOther(on)
+    const { error } = await supabase.from('jobs_ledger').update({ show_bills_to_other_party: on }).eq('id', jobId)
+    if (error) {
+      setShowOther(!on)
+      showShareToast(`Could not save who sees the bills: ${error.message}`, 'error')
+    }
+  }
   const [gcBillingEmailDraft, setGcBillingEmailDraft] = useState('')
   const [gcBillingEmailSaving, setGcBillingEmailSaving] = useState(false)
   const [gcBillingEmailError, setGcBillingEmailError] = useState<string | null>(null)
@@ -650,6 +672,38 @@ export function JobFormEditFactRows(props: JobFormEditFactRowsProps) {
             setCopyOtherParty={setBillCopyOtherParty}
             canAdd={Boolean(copyPayerId)}
           />
+        </JobFormFactRow>
+      ) : null}
+      {/* Share this bill (v2.3376): the job's memory for "Show it on <other party>'s
+          statement" — pre-ticks Bill Customer on the next bills. Bills already sent
+          change only from the Bill tab's eye chip. Hidden on a split job (each
+          draft picks) and on a job with one party. */}
+      {jobId && customerId && shareOtherName && billToParty !== 'split' ? (
+        <JobFormFactRow
+          label={`Show ${shareOtherName}`}
+          labelIcon={CUSTOMER_SUBROW_INDENT}
+          value={
+            showOther ? (
+              <span>
+                the bills they don’t pay
+                <span style={{ marginLeft: 6, padding: '0.05rem 0.4rem', borderRadius: 999, fontSize: '0.6875rem', fontWeight: 700, background: 'var(--bg-green-100)', color: 'var(--text-green-800)', border: '1px solid var(--border-strong)' }}>on new bills</span>
+              </span>
+            ) : (
+              <span style={{ color: 'var(--text-muted)' }}>not shared</span>
+            )
+          }
+          expanded={openRows.has('show-other-party')}
+          onToggle={() => toggleRow('show-other-party')}
+        >
+          <label style={{ display: 'flex', alignItems: 'flex-start', gap: '0.45rem', fontSize: '0.8125rem', cursor: 'pointer', padding: '0.15rem 0' }}>
+            <input type="checkbox" checked={showOther} onChange={(e) => void saveShowOther(e.target.checked)} style={{ marginTop: 2 }} aria-label={`Show ${shareOtherName} the bills they don't pay`} />
+            <span>
+              Show {shareOtherName} the bills they don’t pay
+              <span style={{ display: 'block', color: 'var(--text-muted)', fontSize: '0.75rem' }}>
+                Starts the tick in Bill Customer on this job’s next bills; their statement lists each one with no Pay button and outside their balance. Bills already sent are not changed — use the 👁 chip on the Bill tab.
+              </span>
+            </span>
+          </label>
         </JobFormFactRow>
       ) : null}
       {props.contractJob ? (

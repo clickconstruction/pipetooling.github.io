@@ -13,6 +13,8 @@ export type StatementBillPick = {
   amount: number
   billedOn?: string | null
   payUrl?: string | null
+  /** Share this bill (v2.3375): a bill this customer does not pay but was shown (rides after the owed rows). */
+  shared?: boolean
 }
 
 export type StatementJobPick = {
@@ -28,6 +30,7 @@ export type StatementBillRow = {
   amount: number
   billedOn: string | null
   payUrl: string | null
+  shared: boolean
 }
 
 /**
@@ -58,6 +61,7 @@ export function buildStatementBillRows(
       amount: b.amount,
       billedOn: b.billedOn ?? null,
       payUrl: b.payUrl ?? null,
+      shared: b.shared === true,
     })
   }
   return out

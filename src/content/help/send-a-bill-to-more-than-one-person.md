@@ -2,7 +2,7 @@
 title: send a bill to more than one person
 category: Billing & Money
 roles: dev, master_technician, assistant, controller
-keywords: second email, copy, cc, bills also go to, contacts, AP clerk, spouse, GC copy, send to, extra recipient, two emails, another email
+keywords: second email, copy, cc, bills also go to, contacts, AP clerk, spouse, GC copy, send to, extra recipient, two emails, another email, show it on their statement, share this bill
 order: 13
 ---
 A bill is addressed to one party — the job customer, or the GC when **Bills go to** says so. Often someone else needs a copy: the accounts-payable clerk at a builder, a spouse, the property manager, or the GC on a homeowner's job. Say it once and every bill on that customer's jobs starts with them ticked.
@@ -29,6 +29,8 @@ On a job with a GC who is not the customer, the row also offers the party who is
 - GC pays → *Copy Laura Shearer · the customer, not billed*
 
 Tick it and every bill on this job copies them. It is a setting on the job, not on the customer, because it depends on who pays this one. On a **Split by line** job the row does not offer it — each draft picks its own payer there.
+
+A copy is the email, once. If the other party should also **see the bill on their portal statement** — a builder keeping an eye on which homeowners still owe for repairs — that is the line right under *Copy* in Bill Customer: **Show it on Done Right Foundation's statement**. It is a separate tick with its own memory row on the job (**Show Done Right**), because an email and a standing statement are different promises. See *choose who gets the bill on a job* → Show the other party a bill they don't pay.
 
 ## What Bill Customer does with it
 
