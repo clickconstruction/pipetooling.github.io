@@ -9134,6 +9134,7 @@ export type Database = {
           bid_id: string | null
           bill_copy_other_party: boolean
           bill_to_party: string
+          show_bills_to_other_party: boolean
           click_number: string
           collections_at: string | null
           collections_by: string | null
@@ -9181,6 +9182,7 @@ export type Database = {
           bid_id?: string | null
           bill_copy_other_party?: boolean
           bill_to_party?: string
+          show_bills_to_other_party?: boolean
           click_number?: string
           collections_at?: string | null
           collections_by?: string | null
@@ -9228,6 +9230,7 @@ export type Database = {
           bid_id?: string | null
           bill_copy_other_party?: boolean
           bill_to_party?: string
+          show_bills_to_other_party?: boolean
           click_number?: string
           collections_at?: string | null
           collections_by?: string | null
@@ -9488,6 +9491,7 @@ export type Database = {
           bill_to_party: string | null
           bill_to_phone: string | null
           bill_to_stripe_customer_id: string | null
+          shown_to_party: string | null
           billed_at: string | null
           copy_emails: string[] | null
           created_at: string | null
@@ -9519,6 +9523,7 @@ export type Database = {
           bill_to_party?: string | null
           bill_to_phone?: string | null
           bill_to_stripe_customer_id?: string | null
+          shown_to_party?: string | null
           billed_at?: string | null
           copy_emails?: string[] | null
           created_at?: string | null
@@ -9550,6 +9555,7 @@ export type Database = {
           bill_to_party?: string | null
           bill_to_phone?: string | null
           bill_to_stripe_customer_id?: string | null
+          shown_to_party?: string | null
           billed_at?: string | null
           copy_emails?: string[] | null
           created_at?: string | null

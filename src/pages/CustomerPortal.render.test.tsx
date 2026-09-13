@@ -39,6 +39,9 @@ describe('CustomerPortal render smoke', () => {
     mountAt('/portal?t=abcdef1234567890abcdef')
     await waitFor(() => expect(screen.getByText('Michael Hageman')).toBeTruthy())
     expect(screen.getByText('Account statement')).toBeTruthy()
+    // Share this bill (v2.3375): nothing shared → no card, no "billed to someone else" strip.
+    expect(document.querySelector('[data-portal-shared-bills]')).toBeNull()
+    expect(screen.queryByText(/billed to someone else/i)).toBeNull()
     // Trade-first job line (v2.2041): TRADE tag + number + street; city on the quiet line.
     expect(screen.getByText('PLUM')).toBeTruthy()
     expect(screen.getByText('612')).toBeTruthy()
@@ -316,5 +319,52 @@ describe('test reports card (v2.3304, fold v2.3312)', () => {
     fireEvent.click(screen.getByText('Show all 7 reports'))
     expect(screen.getAllByText('View report').length).toBe(8)
     expect(screen.getByText('Show fewer')).toBeTruthy()
+  })
+
+  it('the GC’s shared card (v2.3375): the owner’s name, where, billed date and age, received so far, open amount — no Pay button', async () => {
+    const gcView = {
+      ...payload,
+      customerName: 'Done Right Foundation',
+      audience: 'all',
+      bills: [],
+      totalDue: 0,
+      sharedBills: [
+        { jobLabel: 'Sewer line repair · Job 1017', jobNumber: '1017', jobName: 'Sewer line repair', serviceTag: 'plum', jobAddress: '4410 Cedar Hollow, Kyle, TX 78640', amount: 4420, billedAmount: 6420, totalPaid: 2000, billedOn: '2026-08-03', billedTo: 'Maria Delgado', viewerRole: 'gc' },
+        { jobLabel: 'Slab leak reroute · Job 1031', jobNumber: '1031', jobName: 'Slab leak reroute', serviceTag: 'plum', jobAddress: '118 Mesquite Bend, Buda, TX', amount: 3150, billedAmount: 3150, totalPaid: 0, billedOn: '2026-08-22', billedTo: 'Trent & Ashley Okafor', viewerRole: 'gc' },
+      ],
+    }
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify(gcView), { status: 200 })))
+    mountAt('/portal?t=abcdef1234567890abcdef')
+    await waitFor(() => expect(screen.getByText('Done Right Foundation')).toBeTruthy())
+    expect(screen.getByText('You’re all paid up.')).toBeTruthy()
+    const card = document.querySelector('[data-portal-shared-bills][data-role="gc"]') as HTMLElement
+    expect(card).toBeTruthy()
+    expect(screen.getByText('Your customers’ open bills')).toBeTruthy()
+    expect(screen.getByText('Maria Delgado')).toBeTruthy()
+    expect(screen.getByText('Trent & Ashley Okafor')).toBeTruthy()
+    expect(screen.getByText('$4,420.00')).toBeTruthy()
+    expect(screen.getByText('of $6,420.00')).toBeTruthy()
+    expect(screen.getByText(/\$2,000\.00 received/)).toBeTruthy()
+    // The two owners' open bills total on the card's foot line; the summary counts owners.
+    expect(screen.getAllByText('$7,570.00').length).toBeGreaterThanOrEqual(1)
+    expect(screen.getByText(/2 owners/)).toBeTruthy()
+    expect(card.querySelectorAll('a').length).toBe(0)
+    // No owner-wording card renders for a GC-only payload.
+    expect(document.querySelector('[data-portal-shared-bills][data-role="customer"]')).toBeNull()
+  })
+
+  it('the owner’s shared card (v2.3375): the builder’s bill, shown for the record', async () => {
+    const ownerView = {
+      ...payload,
+      sharedBills: [{ jobLabel: 'Pretest · Job 1042', jobNumber: '1042', jobName: 'Pretest', jobAddress: null, amount: 250, billedAmount: 250, totalPaid: 0, billedOn: '2026-07-28', billedTo: 'Done Right Foundation', viewerRole: 'customer' }],
+    }
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify(ownerView), { status: 200 })))
+    mountAt('/portal?t=abcdef1234567890abcdef')
+    await waitFor(() => expect(screen.getByText('Michael Hageman')).toBeTruthy())
+    expect(screen.getByText('On your job, billed to your builder')).toBeTruthy()
+    expect(screen.getByText('Done Right Foundation')).toBeTruthy()
+    expect(screen.getByText('Shown for your records · not yours to pay')).toBeTruthy()
+    // The balance is the owner's own bills only.
+    expect(screen.getAllByText('$1,700.00').length).toBeGreaterThanOrEqual(2)
   })
 })

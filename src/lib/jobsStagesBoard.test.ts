@@ -68,6 +68,7 @@ function rtbInvoiceStub(overrides: Partial<Record<string, unknown>> & { id: stri
     bill_to_phone: null,
     bill_to_stripe_customer_id: null,
     bill_to_party: null,
+    shown_to_party: null,
     copy_emails: null,
     status: 'ready_to_bill' as const,
     is_primary_rtb_bundle: false,
@@ -204,6 +205,7 @@ describe('buildReadyToBillStageRows', () => {
       bill_to_phone: null,
       bill_to_stripe_customer_id: null,
       bill_to_party: null,
+      shown_to_party: null,
       copy_emails: null,
     }
     const invB = { ...invA, id: 'inv-b', amount: 3000, sequence_order: 1 }
@@ -309,6 +311,7 @@ describe('buildReadyToBillStageRows', () => {
       bill_to_phone: null,
       bill_to_stripe_customer_id: null,
       bill_to_party: null,
+      shown_to_party: null,
       copy_emails: null,
     }
     const invB = { ...invA, id: 'inv-b', amount: 3000, sequence_order: 1 }
@@ -669,6 +672,7 @@ describe('readyToBillRowsExposureTotal', () => {
       bill_to_phone: null,
       bill_to_stripe_customer_id: null,
       bill_to_party: null,
+      shown_to_party: null,
       copy_emails: null,
     }
     const invB = { ...invA, id: 'inv-b', amount: 3000, sequence_order: 1 }
@@ -774,6 +778,7 @@ describe('stagesMergedBillingInvoiceId', () => {
       bill_to_phone: null,
       bill_to_stripe_customer_id: null,
       bill_to_party: null,
+      shown_to_party: null,
       copy_emails: null,
     }
     const job = jobStub({ id: 'job-1', status: 'billed', invoices: [inv] })
@@ -810,6 +815,7 @@ describe('stagesMergedBillingInvoiceId', () => {
       bill_to_phone: null,
       bill_to_stripe_customer_id: null,
       bill_to_party: null,
+      shown_to_party: null,
       copy_emails: null,
     }
     const invB = { ...invA, id: 'inv-b', amount: 3000, sequence_order: 1 }
@@ -855,6 +861,7 @@ describe('buildBilledStageRows', () => {
       bill_to_phone: null,
       bill_to_stripe_customer_id: null,
       bill_to_party: null,
+      shown_to_party: null,
       copy_emails: null,
     }
     const job = jobStub({
@@ -901,6 +908,7 @@ describe('buildBilledStageRows', () => {
       bill_to_phone: null,
       bill_to_stripe_customer_id: null,
       bill_to_party: null,
+      shown_to_party: null,
       copy_emails: null,
     }
     const invB = { ...invA, id: 'inv-b', amount: 3000, sequence_order: 1 }

@@ -30,8 +30,6 @@ export type PortalBill = {
   asGc: boolean
   /** Owner's name for the AS GC tag, when known. */
   ownerName: string | null
-  /** Who pays (v2.3346): null = you owe this; else the party it was sent to — listed apart, never in the balance. */
-  billedTo: string | null
   /** Payments already applied to this bill, oldest first (v2.2313). */
   payments: Array<{ date: string | null; method: string; amount: number }>
   /** Sum of payments (dollars); may exceed the rows when only the aggregate is known. */
@@ -54,6 +52,28 @@ export type PortalTestReport = {
   sentAt: string | null
 }
 
+/**
+ * Share this bill (v2.3375): a bill on the viewer's job that someone else pays
+ * and the office chose to show them. Listed for their records — no Pay
+ * button, never in the balance.
+ */
+export type PortalSharedBill = {
+  jobLabel: string
+  jobNumber: string
+  jobName: string | null
+  serviceTag: PortalTradeTag | null
+  jobAddress: string | null
+  /** Still open (dollars). */
+  amount: number
+  billedAmount: number
+  totalPaid: number
+  billedOn: string | null
+  /** Who the bill went to. */
+  billedTo: string
+  /** The viewer's role on the job: the GC seeing a customer's bill, or the customer seeing the builder's. */
+  viewerRole: 'gc' | 'customer'
+}
+
 export type PortalPayload = {
   company: PortalCompany
   customerName: string
@@ -61,6 +81,8 @@ export type PortalPayload = {
   customerPhone: string | null
   audience: 'customer' | 'gc' | 'all'
   bills: PortalBill[]
+  /** Share this bill (v2.3375): what someone else pays and the office shared with this viewer. */
+  sharedBills: PortalSharedBill[]
   totalDue: number
   requestableJobs: Array<{ id: string; label: string }>
   /** Visit-picker rows (v2.2037): one per address, street + city only. */
@@ -141,7 +163,6 @@ export function parsePortalPayload(raw: unknown): PortalPayload | null {
         checkRef: str(b.checkRef),
         asGc: b.asGc === true,
         ownerName: typeof b.ownerName === 'string' && b.ownerName.trim() ? b.ownerName : null,
-        billedTo: typeof b.billedTo === 'string' && b.billedTo.trim() ? b.billedTo : null,
         payments: Array.isArray(b.payments)
           ? (b.payments as Array<Record<string, unknown>>)
               .filter((p) => p != null && typeof p === 'object' && num(p.amount) > 0)
@@ -152,6 +173,30 @@ export function parsePortalPayload(raw: unknown): PortalPayload | null {
               }))
           : [],
         totalPaid: num(b.totalPaid),
+      })
+    }
+  }
+  // Share this bill (v2.3375): tolerant of the field's absence (a function from before it).
+  const sharedBills: PortalSharedBill[] = []
+  if (Array.isArray(r.sharedBills)) {
+    for (const b of r.sharedBills as Array<Record<string, unknown>>) {
+      if (b == null || typeof b !== 'object') continue
+      const amount = num(b.amount)
+      if (amount <= 0) continue
+      const billedTo = typeof b.billedTo === 'string' ? b.billedTo.trim() : ''
+      if (!billedTo) continue
+      sharedBills.push({
+        jobLabel: str(b.jobLabel, 'Job'),
+        jobNumber: str(b.jobNumber),
+        jobName: typeof b.jobName === 'string' && b.jobName.trim() ? b.jobName : null,
+        serviceTag: b.serviceTag === 'plum' || b.serviceTag === 'elec' || b.serviceTag === 'hvac' ? b.serviceTag : null,
+        jobAddress: typeof b.jobAddress === 'string' && b.jobAddress.trim() ? b.jobAddress : null,
+        amount,
+        billedAmount: num(b.billedAmount) || amount,
+        totalPaid: num(b.totalPaid),
+        billedOn: typeof b.billedOn === 'string' && /^\d{4}-\d{2}-\d{2}/.test(b.billedOn) ? b.billedOn.slice(0, 10) : null,
+        billedTo,
+        viewerRole: b.viewerRole === 'gc' ? 'gc' : 'customer',
       })
     }
   }
@@ -204,6 +249,7 @@ export function parsePortalPayload(raw: unknown): PortalPayload | null {
     customerPhone: typeof r.customerPhone === 'string' && r.customerPhone.trim() ? r.customerPhone.trim() : null,
     audience: r.audience === 'gc' ? 'gc' : r.audience === 'all' ? 'all' : 'customer',
     bills,
+    sharedBills,
     totalDue: num(r.totalDue) || Math.round(bills.reduce((s, b) => s + b.amount, 0) * 100) / 100,
     requestableJobs,
     requestableProperties,

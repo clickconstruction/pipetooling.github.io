@@ -7,6 +7,7 @@ import { sampleCustomerPortalResponse } from '../_shared/customerSampleFixtures.
 import { todayYmdInAppTz } from '../_shared/appTimeZone.ts'
 import {
   buildPortalBills,
+  buildPortalSharedBills,
   dedupeJobsById,
   jobLabel,
   jobNumber,
@@ -174,7 +175,7 @@ serve(async (req) => {
     }
 
     const jobSelect =
-      'id, hcp_number, click_number, job_name, job_address, status, revenue, payments_made, customer_id, gc_customer_id, gc_shares_stage_dates, bill_to_party, service_types:service_type_id(name)'
+      'id, hcp_number, click_number, job_name, job_address, status, revenue, payments_made, customer_id, gc_customer_id, gc_shares_stage_dates, bill_to_party, show_bills_to_other_party, service_types:service_type_id(name)'
     let jobs: PortalJobRow[]
     if (link.audience === 'all') {
       const { data: jobsRaw } = await admin
@@ -206,7 +207,7 @@ serve(async (req) => {
     if (billJobIds.length > 0) {
       const { data: invRaw } = await admin
         .from('jobs_ledger_invoices')
-        .select('id, job_id, amount, status, billed_at, sequence_order, hosted_invoice_url, bill_to_party, bill_to_email, bill_to_name')
+        .select('id, job_id, amount, status, billed_at, sequence_order, hosted_invoice_url, bill_to_party, bill_to_email, bill_to_name, shown_to_party')
         .in('job_id', billJobIds)
         .eq('status', PORTAL_OPEN_INVOICE_STATUS)
       invoices = (invRaw ?? []) as PortalInvoiceRow[]
@@ -272,6 +273,10 @@ serve(async (req) => {
       }
     }
 
+    // Share this bill (v2.3375): `bills` is what the viewer owes and nothing
+    // else; `sharedBills` is what someone else pays and the office chose to
+    // show them. Every other bill on their jobs is filtered out HERE — it never
+    // reaches the payload, so nothing the page hides could be read from it.
     const bills = buildPortalBills({
       jobs,
       invoices,
@@ -279,9 +284,9 @@ serve(async (req) => {
       viewerCustomerId: link.customer_id,
       markGcRows: link.audience === 'all',
       ownerNames,
-      partyNames,
     })
-    const owedBills = bills.filter((b) => b.billedTo === null)
+    const owedBills = bills
+    const sharedBills = buildPortalSharedBills({ jobs, invoices, payments, viewerCustomerId: link.customer_id, partyNames })
     // The jobs this viewer owes on — the promise's scope (v2.3346).
     const owedJobIds = owedJobIdsForViewer(jobs, invoices, link.customer_id)
 
@@ -400,7 +405,7 @@ serve(async (req) => {
       }
     }
 
-    // Only what this viewer owes counts (v2.3346); bills sent to the other party ride along labeled.
+    // Only what this viewer owes counts (v2.3346); shared bills never do (v2.3375).
     const totalDue = Math.round(owedBills.reduce((s, b) => s + b.amount, 0) * 100) / 100
 
     // The stage sequence (Stage Plan PR 5): GC viewers, jobs that share stage dates with this
@@ -459,6 +464,7 @@ serve(async (req) => {
         return_from: returnFrom,
         statement_total_cents: Math.round(totalDue * 100),
         bill_count: owedBills.length,
+        shared_bill_count: sharedBills.length,
       }),
     )
 
@@ -519,6 +525,7 @@ serve(async (req) => {
       customerPhone,
       audience: link.audience,
       bills,
+      sharedBills,
       totalDue,
       requestableJobs,
       requestableProperties,

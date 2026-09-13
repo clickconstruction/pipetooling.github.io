@@ -32,6 +32,7 @@ export const JOBS_LEDGER_INVOICES_EMBED = [
   'job_id',
   'sent_to_customer_at',
   'sequence_order',
+  'shown_to_party',
   'status',
   'stripe_invoice_footer',
   'stripe_invoice_id',

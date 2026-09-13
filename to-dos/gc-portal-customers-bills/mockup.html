@@ -1,0 +1,247 @@
+<title>Who Sees Whose Bills</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+  :root{
+    --bg:#f2f4f7; --surface:#ffffff; --ink:#16283c; --muted:#5a6b7e; --faint:#8a97a6;
+    --line:#d7dde6; --accent:#b0662f; --accent-ink:#8a4d20; --band:#eaeef3;
+    --good:#1f7a3a; --bad:#b42318; --ghost:#c7ced8;
+    --paper:#f6f3ec; --card:#fdfcf9; --pink:#16283c; --pmuted:#5a6b7e; --pfaint:#8a97a6; --hair:#ddd6c8; --copper:#b0662f; --noteband:#f1ece2; --pgreen:#1f7a3a; --pred:#b42318;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#0f1823; --surface:#172333; --ink:#e7ecf3; --muted:#a3b0c0; --faint:#7c8a9b;
+      --line:#2b3a4f; --accent:#d48b56; --accent-ink:#e6a879; --band:#1d2b3d; --ghost:#3a4a5f;
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#0f1823; --surface:#172333; --ink:#e7ecf3; --muted:#a3b0c0; --faint:#7c8a9b;
+    --line:#2b3a4f; --accent:#d48b56; --accent-ink:#e6a879; --band:#1d2b3d; --ghost:#3a4a5f;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:'IBM Plex Sans',-apple-system,'Segoe UI',Roboto,sans-serif;font-size:15px;line-height:1.5}
+  .wrap{max-width:1180px;margin:0 auto;padding:36px 22px 72px}
+  h1,h2,h3{text-wrap:balance;margin:0}
+  h1{font-size:34px;font-weight:700;letter-spacing:-0.015em;line-height:1.15}
+  h2{font-size:21px;font-weight:600;margin-top:44px;padding-top:18px;border-top:1px solid var(--line)}
+  h3{font-size:15px;font-weight:600}
+  p{max-width:68ch;margin:10px 0}
+  .eyebrow{font-size:11px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--accent)}
+  .lede{font-size:17px;color:var(--muted);max-width:70ch}
+  .quote{border-left:3px solid var(--accent);padding:6px 16px;margin:16px 0;color:var(--muted);font-style:italic;max-width:74ch}
+  .quote b{color:var(--ink);font-style:normal}
+  .mono{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:13px}
+  table{border-collapse:collapse;width:100%;font-size:14px}
+  .tbl-wrap{overflow-x:auto;margin:14px 0}
+  th{font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--faint);text-align:left;padding:8px 10px;border-bottom:1.5px solid var(--ink)}
+  td{padding:9px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+  td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
+  .chip{display:inline-block;font-size:11px;font-weight:700;letter-spacing:.06em;padding:2px 8px;border-radius:3px;border:1px solid currentColor;white-space:nowrap}
+  .chip.show{color:var(--good)} .chip.hide{color:var(--bad)} .chip.ledger{color:var(--accent-ink)}
+  .cols{display:grid;grid-template-columns:1fr 1fr;gap:26px;margin-top:18px}
+  @media (max-width:900px){.cols{grid-template-columns:1fr}}
+  .exhibit-label{display:flex;justify-content:space-between;align-items:baseline;gap:12px;margin:0 0 8px}
+  .exhibit-label .who{font-weight:600}
+  .exhibit-label .link{font-size:12.5px;color:var(--muted)}
+  .exhibit-label .link code{font-family:'IBM Plex Mono',monospace;font-size:12px}
+  /* ---- The portal's own paper (pinned light, the real palette) ---- */
+  .paper{background:var(--paper);color:var(--pink);font-family:-apple-system,'Segoe UI',Roboto,sans-serif;padding:22px 20px 24px;border:1px solid var(--hair);box-shadow:0 1px 0 rgba(0,0,0,.04),0 12px 30px rgba(22,40,60,.10)}
+  .paper .lh{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;border-bottom:2px solid var(--pink);padding-bottom:10px}
+  .paper .lh .co{font-size:17px;font-weight:800;letter-spacing:-0.01em}
+  .paper .lh .sm{font-size:11px;color:var(--pmuted);line-height:1.45}
+  .paper .head{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap;padding:18px 0 6px}
+  .paper .peb{font-size:10.5px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:var(--copper)}
+  .paper .peb.m{color:var(--pmuted)}
+  .paper .name{font-size:19px;font-weight:700;margin-top:2px}
+  .paper .date{font-size:12px;color:var(--pmuted)}
+  .paper .due{font-size:34px;font-weight:900;letter-spacing:-0.02em;font-variant-numeric:tabular-nums;line-height:1.1}
+  .paper .rule{width:64px;height:3px;background:var(--copper);margin:6px 0 0 auto}
+  .paper .lhead{display:grid;grid-template-columns:76px 1fr auto auto;gap:0 14px;font-size:10px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--pfaint);padding:14px 0 7px;border-bottom:1.5px solid var(--pink)}
+  .paper .band{background:var(--noteband);display:flex;justify-content:space-between;align-items:baseline;gap:12px;flex-wrap:wrap;padding:8px 10px;margin-top:14px;font-size:13.5px}
+  .paper .band .tr{font-weight:800;letter-spacing:.04em;color:#e17235}
+  .paper .band .q{font-size:11.5px;color:var(--pfaint)}
+  .paper .asgc{margin-left:7px;vertical-align:1px;font-size:8.5px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--copper);border:1px solid var(--copper);border-radius:3px;padding:1.5px 5px;white-space:nowrap}
+  .paper .bill{display:grid;grid-template-columns:76px 1fr auto auto;gap:0 14px;align-items:center;padding:12px 0 12px 10px;border-bottom:1px solid var(--hair);font-size:13.5px}
+  .paper .bill .d{font-weight:600} .paper .bill .age{font-size:11.5px;color:var(--pfaint)}
+  .paper .bill .amt{font-weight:700;font-variant-numeric:tabular-nums}
+  .paper .pay{background:var(--copper);color:#fff;font-size:12.5px;font-weight:600;padding:7px 16px;letter-spacing:.02em;white-space:nowrap}
+  .paper .recap{display:grid;grid-template-columns:1fr auto;gap:2px 14px;font-size:12.5px;color:var(--pmuted);padding:8px 10px 2px;font-variant-numeric:tabular-nums}
+  .paper .recap b{color:var(--pink)}
+  .paper .paidup{margin:14px 0;background:var(--card);border:1px solid var(--hair);padding:14px 16px;font-size:14px}
+  /* the new section */
+  .paper .cust{margin:18px 0 4px;border:1px solid var(--hair);background:var(--card);padding:12px 14px 6px;font-size:12.5px}
+  .paper .cust .t{display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap}
+  .paper .cust .t .peb{color:var(--copper)}
+  .paper .cust .t .sum{font-size:12px;color:var(--pmuted);font-variant-numeric:tabular-nums}
+  .paper .cust .why{color:var(--pmuted);margin:4px 0 6px;font-size:12px}
+  .paper .crow{display:grid;grid-template-columns:1fr auto;gap:2px 14px;padding:9px 0;border-top:1px solid var(--hair);align-items:start}
+  .paper .crow .o{font-weight:700;color:var(--pink)}
+  .paper .crow .a{color:var(--pmuted)}
+  .paper .crow .meta{font-size:11.5px;color:var(--pfaint);margin-top:2px}
+  .paper .crow .meta .late{color:var(--pred);font-weight:700}
+  .paper .crow .amt{font-weight:700;font-variant-numeric:tabular-nums;font-size:14px;text-align:right}
+  .paper .crow .paidsofar{font-size:11px;color:var(--pfaint);text-align:right;font-variant-numeric:tabular-nums}
+  .paper .cust .foot{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;border-top:1.5px solid var(--pink);padding:8px 0 4px;font-size:12px;color:var(--pmuted)}
+  .paper .cust .foot .tot{font-weight:800;color:var(--pink);font-variant-numeric:tabular-nums}
+  .paper .cust .ask{font-size:12px;color:var(--pmuted);padding:6px 0 2px}
+  .paper .cust .ask a{color:var(--copper);font-weight:700;text-decoration:none}
+  /* ghost = what was removed */
+  .ghost{border:1.5px dashed var(--ghost);padding:10px 14px;margin-top:14px;color:var(--faint);font-size:12.5px;position:relative}
+  .ghost .gl{position:absolute;top:-9px;left:10px;background:var(--surface);padding:0 6px;font-size:10.5px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--bad)}
+  .ghost s{opacity:.7}
+  .paper .ghost{background:var(--card);border-color:#c9bfae;color:var(--pfaint)}
+  .paper .ghost .gl{background:var(--card)}
+  .note{font-size:13px;color:var(--muted);margin-top:10px;max-width:60ch}
+  .opt{border:1.5px dashed var(--accent);padding:8px 12px;margin-top:8px;font-size:12px;color:var(--muted);position:relative}
+  .opt .gl{position:absolute;top:-9px;left:10px;background:var(--card);padding:0 6px;font-size:10.5px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--accent)}
+  ol.train{padding-left:0;list-style:none;counter-reset:pr;margin:16px 0 0}
+  ol.train li{counter-increment:pr;display:grid;grid-template-columns:52px 1fr;gap:0 14px;padding:14px 0;border-bottom:1px solid var(--line)}
+  ol.train li::before{content:"PR " counter(pr);font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:500;color:var(--accent);padding-top:3px}
+  ol.train li b{display:block;font-size:15px}
+  ol.train li p{margin:4px 0 0;font-size:14px;color:var(--muted);max-width:80ch}
+  ul.plain{padding-left:18px;margin:8px 0}
+  ul.plain li{margin:6px 0;max-width:80ch}
+  .kv{display:grid;grid-template-columns:auto 1fr;gap:6px 18px;font-size:14px;margin-top:12px;max-width:80ch}
+  .kv dt{color:var(--muted)} .kv dd{margin:0}
+  .crit{background:var(--band);border:1px solid var(--line);padding:16px 20px;margin-top:16px;max-width:86ch}
+  .crit h3{margin-bottom:4px}
+  .crit p{margin:6px 0;font-size:14px}
+  .rec{font-weight:600;color:var(--accent-ink)}
+  code{font-family:'IBM Plex Mono',monospace;font-size:.92em}
+</style>
+
+<div class="wrap">
+  <div class="eyebrow">Customer portal · who-pays follow-up · plan &amp; mock-up · Sep 13, 2026</div>
+  <h1 style="margin-top:8px">Who Sees Whose Bills</h1>
+  <p class="lede">A GC's portal shows the bills their homeowners still owe us. A homeowner's portal never shows what their builder owes. One rule, applied on the server, drawn as two statements.</p>
+
+  <div class="quote">
+    <b>The ask, in the owner's words.</b> "Now that jobs can be paid by the customer or the GC I would like for GCs (not customers) to see jobs their customers need to pay us. At the same time if a bill is assigned to a customer and they look at their portal, they should not see bills their GCs need to pay."
+  </div>
+
+  <h2>What the portal does today</h2>
+  <p>Since v2.3346 the statement only <em>counts</em> what the viewer owes. Everything else on their jobs is listed under one shared strip, <em>On your jobs, billed to someone else</em>, in both directions: the builder sees the owner's bills there, and the owner sees the builder's. The strip is one code path (<code>billedToFor</code>), so the two directions cannot be changed independently without a viewer-role signal. And the amounts ride in the payload either way: hiding the strip in the page alone would leave the builder's invoices in the homeowner's JSON.</p>
+
+  <h2>The rule</h2>
+  <p>Per bill, two facts decide everything: <b>who the viewer is on that job</b> (the customer row, the GC row, or both when a GC was entered as the customer) and <b>who pays that bill</b> (<code>effectiveInvoiceParty</code>, unchanged).</p>
+  <div class="tbl-wrap"><table>
+    <thead><tr><th>Viewer on the job</th><th>The bill goes to</th><th>Shows as</th><th>Today</th></tr></thead>
+    <tbody>
+      <tr><td>Customer or GC</td><td>the viewer</td><td><span class="chip ledger">Ledger · balance · Pay</span></td><td>same</td></tr>
+      <tr><td>GC (owner is someone else)</td><td>the job's customer</td><td><span class="chip show">Your customers' open bills</span> — no Pay, not in the balance</td><td>the muted "billed to someone else" line</td></tr>
+      <tr><td>Customer</td><td>the GC</td><td><span class="chip hide">Nothing</span> — dropped on the server, never in the payload</td><td>the muted "billed to someone else" line</td></tr>
+      <tr><td>Either</td><td>a typed "someone else"</td><td><span class="chip hide">Nothing</span></td><td>"billed to someone else"</td></tr>
+      <tr><td>GC entered as the customer (72 jobs)</td><td>the GC</td><td><span class="chip ledger">Ledger</span> — they owe it; unchanged</td><td>same</td></tr>
+      <tr><td>Split by line</td><td>per invoice</td><td>each carve follows the rows above on its own</td><td>same idea, wrong strip</td></tr>
+    </tbody>
+  </table></div>
+  <p class="note">Portal links keep their audiences: <code>all</code> (their own jobs plus the ones they GC), <code>gc</code> (the scoped "GC bills only" link), <code>customer</code>. The new section appears wherever the viewer is the GC on a row, so it shows on <code>all</code> and <code>gc</code> links and never on a <code>customer</code> link.</p>
+
+  <h2>The two statements, after</h2>
+  <p>Done Right Foundation pays for pretests and its homeowners pay for repairs, so one company holds both roles. Left: Done Right's own statement. Right: one of their homeowners. Names and amounts below are examples.</p>
+
+  <div class="cols">
+    <!-- GC exhibit -->
+    <div>
+      <div class="exhibit-label"><span class="who">The GC's statement</span><span class="link">Link audience <code>all</code> · <code>my.clickplumbing.com/done-right-k3xq</code></span></div>
+      <div class="paper">
+        <div class="lh">
+          <div><div class="co">Click Plumbing</div><div class="sm">San Antonio, TX · Master lic. M-40112</div></div>
+          <div class="sm" style="text-align:right">(512) 360-0599<br>billing@clickplumbing.com</div>
+        </div>
+        <div class="head">
+          <div><div class="peb">Account statement</div><div class="name">Done Right Foundation</div><div class="date">September 13, 2026</div></div>
+          <div style="text-align:right"><div class="peb m">Balance due</div><div class="due">$250.00</div><div class="rule"></div></div>
+        </div>
+        <div class="lhead"><span>Billed</span><span></span><span style="text-align:right">Amount due</span><span></span></div>
+        <div class="band"><span><span class="tr">PLUM</span> <b>J1042</b> <span style="color:var(--pfaint)">&nbsp;•&nbsp;</span> <span style="font-weight:600">7712 Ranch Rd 12</span><span class="asgc">As GC</span></span><span class="q">Wimberley — owner: Lena Ortiz</span></div>
+        <div class="bill"><span><span class="d">Sep 2</span><br><span class="age">11 days ago</span></span><span style="color:var(--pmuted)">Pretest</span><span class="amt">$250.00</span><span class="pay">PAY ONLINE</span></div>
+        <div class="recap"><span>Billed to date</span><b>$250.00</b><span>Balance on this job</span><b>$250.00</b></div>
+
+        <div class="cust">
+          <div class="t"><span class="peb">Your customers' open bills</span><span class="sum">3 owners · $9,870.00 open · oldest 41 days</span></div>
+          <div class="why">Repairs on homes you sent us, billed to the owner — not to you, and not in your balance. Listed so you know where each one stands.</div>
+          <div class="crow"><div><div class="o">Maria Delgado</div><div class="a">4410 Cedar Hollow, Kyle · J1017 · Sewer line repair</div><div class="meta">Billed Aug 3 · <span class="late">41 days</span> · $2,000.00 received</div></div><div><div class="amt">$4,420.00</div><div class="paidsofar">of $6,420.00</div></div></div>
+          <div class="crow"><div><div class="o">Trent &amp; Ashley Okafor</div><div class="a">118 Mesquite Bend, Buda · J1031 · Slab leak reroute</div><div class="meta">Billed Aug 22 · 22 days</div></div><div><div class="amt">$3,150.00</div></div></div>
+          <div class="crow"><div><div class="o">R. Villanueva</div><div class="a">2205 Pecan Creek, Seguin · J1039 · Tunnel &amp; replace</div><div class="meta">Billed Sep 9 · 4 days</div></div><div><div class="amt">$2,300.00</div></div></div>
+          <div class="foot"><span>Open on your customers' jobs</span><span class="tot">$9,870.00</span></div>
+          <div class="opt"><span class="gl">PR 3 · optional</span>Need one of these billed to you instead, or want us to nudge the owner? <span style="color:var(--copper);font-weight:700">Ask the office ›</span> — lands in the dispatch inbox as a request; the office decides and flips the bill with <i>Bill to ▾</i>.</div>
+        </div>
+      </div>
+      <div class="ghost"><span class="gl">Replaced</span><s>On your jobs, billed to someone else — 4410 Cedar Hollow · billed to Maria Delgado · Aug 3 · $4,420.00</s> — the muted one-liner, three rows deep, no total, no age, no owner grouping.</div>
+    </div>
+
+    <!-- Owner exhibit -->
+    <div>
+      <div class="exhibit-label"><span class="who">The homeowner's statement</span><span class="link">Link audience <code>all</code> · <code>my.clickplumbing.com/delgado-7hpw</code></span></div>
+      <div class="paper">
+        <div class="lh">
+          <div><div class="co">Click Plumbing</div><div class="sm">San Antonio, TX · Master lic. M-40112</div></div>
+          <div class="sm" style="text-align:right">(512) 360-0599<br>billing@clickplumbing.com</div>
+        </div>
+        <div class="head">
+          <div><div class="peb">Account statement</div><div class="name">Maria Delgado</div><div class="date">September 13, 2026</div></div>
+          <div style="text-align:right"><div class="peb m">Balance due</div><div class="due">$4,420.00</div><div class="rule"></div></div>
+        </div>
+        <div class="lhead"><span>Billed</span><span></span><span style="text-align:right">Amount due</span><span></span></div>
+        <div class="band"><span><span class="tr">PLUM</span> <b>J1017</b> <span style="color:var(--pfaint)">&nbsp;•&nbsp;</span> <span style="font-weight:600">4410 Cedar Hollow</span></span><span class="q">Kyle</span></div>
+        <div class="bill"><span><span class="d">Aug 3</span><br><span class="age">41 days ago</span></span><span style="color:var(--pmuted)">Sewer line repair</span><span class="amt">$4,420.00</span><span class="pay">PAY ONLINE</span></div>
+        <div class="recap"><span>Billed to date</span><b>$6,420.00</b><span>Aug 20 · Check</span><b>$2,000.00</b><span>Balance on this job</span><b>$4,420.00</b></div>
+        <div class="ghost"><span class="gl">Removed</span><s>On your jobs, billed to someone else — 4410 Cedar Hollow · billed to Done Right Foundation · Jul 28 · $250.00</s><br>The pretest Done Right pays for is gone from this page <b>and from the payload</b> the page receives. Nothing replaces it: the owner sees only what they pay.</div>
+        <div class="paidup" style="margin-top:16px;font-size:12.5px;color:var(--pmuted)"><b style="color:var(--pink)">Prefer to pay with a different method?</b> ACH • WIRE • MAILED CHECK</div>
+      </div>
+      <div class="note">Everything else on the page is unchanged: the promise ask, the bank transfer card, the request forms, the QR card.</div>
+    </div>
+  </div>
+
+  <h2>What the data says (prod, read-only, Sep 13)</h2>
+  <div class="tbl-wrap"><table>
+    <thead><tr><th>Fact</th><th class="num">Count</th><th>Reading</th></tr></thead>
+    <tbody>
+      <tr><td>Jobs naming a GC</td><td class="num">326</td><td>72 with the GC entered as the customer row; 254 with a distinct GC</td></tr>
+      <tr><td>Distinct-GC jobs where the GC pays</td><td class="num">200</td><td>196 paid, 1 billed — the Done Right pretests</td></tr>
+      <tr><td>Distinct-GC jobs where the owner pays</td><td class="num">54</td><td>53 paid, 1 working, <b>0 billed</b> — the Done Right repairs</td></tr>
+      <tr><td>GC customers with an open owner-paid bill today</td><td class="num">1</td><td>the section starts nearly empty and fills as repairs are billed</td></tr>
+      <tr><td>Customer portal links</td><td class="num">18</td><td>audience mix not probed; slugs resolve only <code>all</code></td></tr>
+      <tr><td>Invoices with their own party pick · typed recipient · split jobs</td><td class="num">0 · 0 · 0</td><td>every bill follows the job rule today</td></tr>
+    </tbody>
+  </table></div>
+  <p class="note">So the rule change is cheap to prove live: Done Right's link is the GC exhibit, and any Done Right pretest homeowner with a portal is the owner exhibit. The 72 GC-as-customer jobs have no owner recorded, so they contribute nothing to the new section until the office puts the site owner back as the customer, which the who-pays rule now survives.</p>
+
+  <h2>Where it plugs in</h2>
+  <dl class="kv">
+    <dt>The rule</dt><dd><code>supabase/functions/_shared/portalBillMembership.ts</code> gains <code>portalBillRole(job, invoice, viewer)</code> → <code>owed</code> · <code>customers</code> · <code>hidden</code>; <code>viewerOwesBill</code> and <code>owedJobIdsForViewer</code> stay.</dd>
+    <dt>The builder</dt><dd><code>_shared/portalMergedBills.ts</code>: <code>buildPortalBills</code> returns owed rows only (no <code>billedTo</code>); new <code>buildPortalCustomerBills</code> returns the GC-side rows with owner name, age basis, received-so-far, sorted oldest first.</dd>
+    <dt>The function</dt><dd><code>customer-portal/index.ts</code>: same reads, filtered before the payload; new <code>customersBills</code> field; telemetry adds <code>customers_bill_count</code>. <code>submit-portal-request</code> unchanged (promise scope already owed-only).</dd>
+    <dt>The page</dt><dd><code>CustomerPortal.tsx</code>: the billed-elsewhere block goes; new <code>PortalCustomersBillsCard</code> under the ledger, prints as its own closing page. <code>portalPayload.ts</code> parses the new field, tolerating its absence.</dd>
+    <dt>The office mirror</dt><dd><code>portalStatementJobLinks.ts</code> (the globe modal's "Jobs on this statement") mirrors the new section with Edit ↗ links.</dd>
+    <dt>Docs</dt><dd>Guides <i>share a customer their portal</i> and <i>choose who gets the bill</i>; GLOSSARY "Bills go to"; the stale "never anything but the bills they owe" comment in <code>gcPortalLink.ts</code>.</dd>
+  </dl>
+
+  <h2>The train</h2>
+  <ol class="train">
+    <li><b>Close the leak, hide the builder's bills from the owner.</b><p>Kernel role function + tests · <code>buildPortalBills</code> owed-only · function filters before the payload and emits <code>customersBills</code> · payload parser tolerant. The page still renders from <code>bills</code>, so the old strip simply empties. Deploy the function first, then merge. Ships (b) and closes the payload leak in one step.</p></li>
+    <li><b>Your customers' open bills on the GC's statement.</b><p>The card (summary line, owner rows, age with the 30-day tint the ledger uses, received-so-far, total), the print page, the office mirror, the two guides, the glossary line. Render tests for present-on-GC / absent-on-owner / absent-on-<code>customer</code>-link. Ships (a).</p></li>
+    <li><b>Optional: Ask the office.</b><p>Two request kinds through <code>submit-portal-request</code> (<i>bill this to us instead</i> · <i>remind the owner</i>) landing as inbox requests; the office acts with Bill to ▾ or the Followup tools. Recommend waiting until the card has been seen live for a few weeks.</p></li>
+    <li><b>Decision: the same rule for the non-money cards.</b><p>Agreements (contract amounts), test reports and the visit picker still run over the whole customer-or-GC job union. Apply the viewer-role rule there too, or leave them as the shared job record. Not in the ask; raised because the exhibits made it visible.</p></li>
+  </ol>
+
+  <h2>Open decisions</h2>
+  <ul class="plain">
+    <li><b>Scoped <code>gc</code> links.</b> The office mints these to give a GC's AP inbox "only their GC bills". <span class="rec">Recommend</span> the customers' card shows there too, since the owner asked for GCs to see it, and the copy explains it is not theirs to pay.</li>
+    <li><b>How much of the owner's status the GC sees.</b> <span class="rec">Recommend</span> facts about the bill only: billed date, age, amount, received so far. Not the owner's promise, not collections, not the owner's contact details.</li>
+    <li><b>Paid repairs.</b> Only open bills are listed. A "paid this year" fold would make the card a ledger; <span class="rec">recommend</span> no.</li>
+    <li><b>Typed "someone else" bills.</b> Hidden from both parties. Unused in the data (0 of 524), so nothing changes today.</li>
+    <li><b>PR 4.</b> Yes or no on scoping agreements and reports by the same rule.</li>
+  </ul>
+
+  <h2>Is this the best we can do?</h2>
+  <div class="crit">
+    <h3>What holds up</h3>
+    <p>The rule is one function beside the one that already exists, decided per bill, so split jobs, invoice picks and the 72 GC-as-customer jobs all fall out without special cases. The owner side is a deletion. The leak closes on the server, not in CSS. Everything reuses the statement's own paper, grid and words.</p>
+    <h3>Where it is thin, honestly</h3>
+    <p><b>The card is nearly empty today.</b> One open owner-paid bill under a GC in all of prod. Its value depends on the office recording the site owner as the customer and the GC as the GC, which the 72 legacy jobs never did. The plan should ship with the data lever, not just the UI: the Customers page could flag GCs whose jobs carry no owner.</p>
+    <p><b>The GC cannot act.</b> A list of other people's debts with no verb is a report, not a tool. PR 3 is the fix, and it is small, but it is deferred on purpose so the first version cannot spam owners. If the card goes live and the first thing Done Right asks is "can we cover this," PR 3 moves up.</p>
+    <p><b>An adjacent bug the exhibits exposed.</b> The server writers for payment promises still snapshot the payer as "the GC when the job has one" (<code>add_job_payment_promise</code> and the trigger), while every client reader follows the who-pays rule. On exactly these repair jobs a homeowner's promise is filed under Done Right. Flagged as its own task; not part of this train.</p>
+    <p><b>Alternative considered and rejected:</b> a separate GC page (<code>/gc/:slug</code>) with its own function. It would duplicate the letterhead, the link machinery, view counting and the request forms for one extra card, and GCs already hold the merged link. The section belongs on the statement they already open.</p>
+  </div>
+</div>

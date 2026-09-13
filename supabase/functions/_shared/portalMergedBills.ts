@@ -8,8 +8,9 @@
  * asGc=true plus the owner's name for the statement's AS GC tag.
  */
 
-import { jobCarriesOpenBills, jobPrintsShellRemainder, viewerOwesBill } from './portalBillMembership.ts'
+import { jobCarriesOpenBills, jobPrintsShellRemainder } from './portalBillMembership.ts'
 import { effectiveInvoiceParty, payerCustomerId } from './billToParty.ts'
+import { shownToPartyFor, statementRoleFor } from './billVisibility.ts'
 
 export type PortalJobRow = {
   id: string
@@ -28,6 +29,8 @@ export type PortalJobRow = {
   gc_shares_stage_dates?: boolean | null
   /** Who pays (v2.3346): customer | gc | split — the job's rule. */
   bill_to_party?: string | null
+  /** Share this bill (v2.3375): the job's memory — decides the invoice-less shell remainder. */
+  show_bills_to_other_party?: boolean | null
 }
 
 export type PortalInvoiceRow = {
@@ -42,6 +45,8 @@ export type PortalInvoiceRow = {
   bill_to_party?: string | null
   bill_to_email?: string | null
   bill_to_name?: string | null
+  /** Share this bill (v2.3375): the non-paying party this bill is shown to — customer | gc | null. */
+  shown_to_party?: string | null
 }
 
 export type PortalPaymentRow = {
@@ -75,13 +80,6 @@ export type PortalBillOut = {
   checkRef: string
   asGc: boolean
   ownerName: string | null
-  /**
-   * Who pays (v2.3346): null when this viewer owes the bill; otherwise the
-   * name of the party it was sent to (the owner, the GC, or a typed recipient)
-   * — the statement lists it under "on your jobs, billed to someone else"
-   * and never counts it in the balance.
-   */
-  billedTo: string | null
   /** Payments already applied to this bill, oldest first (v2.2313). */
   payments: PortalBillPaymentOut[]
   /** Sum of `payments` (dollars). */
@@ -149,20 +147,8 @@ export function buildPortalBills(args: {
   markGcRows: boolean
   /** customer_id → display name, for AS GC owner labels. */
   ownerNames?: Record<string, string>
-  /** customer_id → display name for every other party on these jobs (owners and GCs) — the "billed to" label. */
-  partyNames?: Record<string, string>
 }): PortalBillOut[] {
-  const { jobs, invoices, payments, viewerCustomerId, markGcRows, ownerNames = {}, partyNames = {} } = args
-
-  // Who pays (v2.3346): the bill belongs to the viewer when the resolved payer
-  // is their customers row; otherwise name who it went to.
-  const billedToFor = (job: PortalJobRow, inv: PortalInvoiceRow | null): string | null => {
-    if (viewerOwesBill(job, inv, viewerCustomerId)) return null
-    const party = effectiveInvoiceParty(job, inv)
-    if (party === 'other') return (inv?.bill_to_name ?? '').trim() || 'someone else'
-    const payerId = payerCustomerId(job, party)
-    return (payerId ? partyNames[payerId] ?? ownerNames[payerId] ?? '' : '').trim() || (party === 'gc' ? 'the builder' : 'the owner')
-  }
+  const { jobs, invoices, payments, viewerCustomerId, markGcRows, ownerNames = {} } = args
 
   const openBillJobs = jobs.filter((j) => jobCarriesOpenBills(j.status))
   const jobById = new Map(openBillJobs.map((j) => [j.id, j]))
@@ -199,6 +185,9 @@ export function buildPortalBills(args: {
     jobsWithLines.add(inv.job_id)
     const open = round2(Number(inv.amount ?? 0) - (paymentsByInvoice.get(inv.id) ?? 0))
     if (open <= 0) continue
+    // Share this bill (v2.3375): the ledger carries what the viewer owes and
+    // nothing else — a bill sent to the other party never rides in this list.
+    if (statementRoleFor(job, inv, viewerCustomerId) !== 'owed') continue
     bills.push({
       jobLabel: jobLabel(job),
       jobNumber: jobNumber(job),
@@ -210,7 +199,6 @@ export function buildPortalBills(args: {
       payUrl: (inv.hosted_invoice_url ?? '').trim() || null,
       checkRef: jobNumber(job) || String(inv.sequence_order ?? ''),
       ...asGcFields(job),
-      billedTo: billedToFor(job, inv),
       payments: paymentRowsByInvoice.get(inv.id) ?? [],
       totalPaid: round2(paymentsByInvoice.get(inv.id) ?? 0),
     })
@@ -219,6 +207,7 @@ export function buildPortalBills(args: {
     if (jobsWithLines.has(job.id)) continue
     const open = round2(Number(job.revenue ?? 0) - Number(job.payments_made ?? 0))
     if (open <= 0) continue
+    if (statementRoleFor(job, null, viewerCustomerId) !== 'owed') continue
     bills.push({
       jobLabel: jobLabel(job),
       jobNumber: jobNumber(job),
@@ -230,11 +219,110 @@ export function buildPortalBills(args: {
       payUrl: null,
       checkRef: jobNumber(job),
       ...asGcFields(job),
-      billedTo: billedToFor(job, null),
       payments: [],
       totalPaid: round2(Number(job.payments_made ?? 0)),
     })
   }
   bills.sort((a, b) => (b.billedOn ?? '9999').localeCompare(a.billedOn ?? '9999'))
   return bills
+}
+
+/**
+ * Share this bill (v2.3375): the bills on this viewer's jobs that someone
+ * else pays and the office chose to show them — the GC's card ("Your
+ * customers' open bills") or the owner's ("On your job, billed to your
+ * builder"). Open amounts only, oldest billed first; never in the balance,
+ * never payable here. A bill with no stamp (or a stamp for the wrong party)
+ * is not in this list and not in the payload at all.
+ */
+export type PortalSharedBillOut = {
+  jobLabel: string
+  jobNumber: string
+  jobName: string | null
+  serviceTag: string | null
+  jobAddress: string | null
+  /** Still open (dollars). */
+  amount: number
+  /** What was billed (dollars) — the "of $6,420.00" sub-line. */
+  billedAmount: number
+  totalPaid: number
+  billedOn: string | null
+  /** Who the bill went to: the payer's name (or a typed recipient's). */
+  billedTo: string
+  /** The viewer's role on this job: the GC seeing a customer's bill, or the customer seeing the builder's. */
+  viewerRole: 'gc' | 'customer'
+}
+
+export function buildPortalSharedBills(args: {
+  jobs: PortalJobRow[]
+  invoices: PortalInvoiceRow[]
+  payments: PortalPaymentRow[]
+  viewerCustomerId: string
+  /** customer_id → display name for every party on these jobs (owners and GCs). */
+  partyNames?: Record<string, string>
+}): PortalSharedBillOut[] {
+  const { jobs, invoices, payments, viewerCustomerId, partyNames = {} } = args
+  const openBillJobs = jobs.filter((j) => jobCarriesOpenBills(j.status))
+  const jobById = new Map(openBillJobs.map((j) => [j.id, j]))
+  const paymentsByInvoice = new Map<string, number>()
+  for (const p of payments) {
+    if (!p.invoice_id) continue
+    paymentsByInvoice.set(p.invoice_id, (paymentsByInvoice.get(p.invoice_id) ?? 0) + Number(p.amount ?? 0))
+  }
+  const billedToFor = (job: PortalJobRow, inv: PortalInvoiceRow | null): string => {
+    const party = effectiveInvoiceParty(job, inv)
+    if (party === 'other') return (inv?.bill_to_name ?? '').trim() || 'someone else'
+    const payerId = payerCustomerId(job, party)
+    return (payerId ? partyNames[payerId] ?? '' : '').trim() || (party === 'gc' ? 'the builder' : 'the owner')
+  }
+  const viewerRoleFor = (job: PortalJobRow): 'gc' | 'customer' =>
+    (job.gc_customer_id ?? '') === viewerCustomerId && (job.customer_id ?? '') !== viewerCustomerId ? 'gc' : 'customer'
+
+  const out: PortalSharedBillOut[] = []
+  const jobsWithLines = new Set<string>()
+  for (const inv of invoices) {
+    const job = jobById.get(inv.job_id)
+    if (!job) continue
+    jobsWithLines.add(inv.job_id)
+    if (statementRoleFor(job, inv, viewerCustomerId) !== 'shared') continue
+    const paid = round2(paymentsByInvoice.get(inv.id) ?? 0)
+    const open = round2(Number(inv.amount ?? 0) - paid)
+    if (open <= 0) continue
+    out.push({
+      jobLabel: jobLabel(job),
+      jobNumber: jobNumber(job),
+      jobName: (job.job_name ?? '').trim() || null,
+      serviceTag: jobTradeTag(job),
+      jobAddress: (job.job_address ?? '').trim() || null,
+      amount: open,
+      billedAmount: round2(Number(inv.amount ?? 0)),
+      totalPaid: paid,
+      billedOn: inv.billed_at ? String(inv.billed_at).slice(0, 10) : null,
+      billedTo: billedToFor(job, inv),
+      viewerRole: viewerRoleFor(job),
+    })
+  }
+  for (const job of openBillJobs.filter((j) => jobPrintsShellRemainder(j.status))) {
+    if (jobsWithLines.has(job.id)) continue
+    if (shownToPartyFor(job, null) == null || statementRoleFor(job, null, viewerCustomerId) !== 'shared') continue
+    const paid = round2(Number(job.payments_made ?? 0))
+    const open = round2(Number(job.revenue ?? 0) - paid)
+    if (open <= 0) continue
+    out.push({
+      jobLabel: jobLabel(job),
+      jobNumber: jobNumber(job),
+      jobName: (job.job_name ?? '').trim() || null,
+      serviceTag: jobTradeTag(job),
+      jobAddress: (job.job_address ?? '').trim() || null,
+      amount: open,
+      billedAmount: round2(Number(job.revenue ?? 0)),
+      totalPaid: paid,
+      billedOn: null,
+      billedTo: billedToFor(job, null),
+      viewerRole: viewerRoleFor(job),
+    })
+  }
+  // Oldest billed first — the one the GC should ask about is on top; undated shells last.
+  out.sort((a, b) => (a.billedOn ?? '9999').localeCompare(b.billedOn ?? '9999'))
+  return out
 }
