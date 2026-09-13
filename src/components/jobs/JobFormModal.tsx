@@ -199,6 +199,7 @@ import BilledBillViewModal, { type InvoiceWithJobForBillView } from './BilledBil
 import AgreedWriteDownModal from './AgreedWriteDownModal'
 import { JobFormBillToEditor, type BillToEditorInvoice } from './JobFormBillToEditor'
 import { parseJobBillToParty, shouldDefaultBillsToGc, type JobBillToParty } from '../../lib/jobs/billToParty'
+import { shouldDefaultShowOtherParty } from '../../lib/jobs/billVisibility'
 import { planPayerCarves } from '../../lib/jobs/splitByPayer'
 import { loadTeamLaborData, type TeamLaborRow } from '../../utils/teamLabor'
 import { laborItemsSubtotal } from '../../lib/peopleLaborJobItemLineCost'
@@ -433,6 +434,8 @@ export default function JobFormModal({
   const [billToParty, setBillToParty] = useState<JobBillToParty>('customer')
   /** Bills also go to (v2.3358): the party not billed is copied on every bill — identity slice. */
   const [billCopyOtherParty, setBillCopyOtherParty] = useState(false)
+  /** Share this bill (v2.3377): a NEW job's memory (show_bills_to_other_party) — set by a flagged GC's pick, read by the create payload only; a saved job's memory lives on its Edit-tab row. */
+  const [newJobShowOtherParty, setNewJobShowOtherParty] = useState(false)
   /** v2.3353: the GC id the standing-rule default was last applied for (or loaded with) — so a
       saved job's deliberate choice is never overridden, and each new GC pick is judged once. */
   const gcDefaultAppliedForRef = useRef<string | null>(null)
@@ -873,7 +876,9 @@ export default function JobFormModal({
     if (!gc) return
     gcDefaultAppliedForRef.current = gcCustomerId
     if (shouldDefaultBillsToGc({ gc, customerId, current: billToParty })) setBillToParty('gc')
-  }, [gcCustomerId, customers, customerId, billToParty])
+    // Share this bill (v2.3377): the GC's card can start a fresh job's memory on.
+    if (!editing && shouldDefaultShowOtherParty({ gc, customerId, current: newJobShowOtherParty })) setNewJobShowOtherParty(true)
+  }, [gcCustomerId, customers, customerId, billToParty, editing, newJobShowOtherParty])
 
   // Identity: ONE scalar jobs_ledger UPDATE (no delete+reinsert). Gated on the
   // same required fields as the Save button so a half-cleared field mid-retype
@@ -1814,6 +1819,7 @@ export default function JobFormModal({
     gcDefaultAppliedForRef.current = null
     setGcCustomerId(null)
     setBillToParty('customer')
+    setNewJobShowOtherParty(false)
     setBillCopyOtherParty(false)
     setCustomerAddressId(null)
     setDevelopmentId(null)
@@ -2186,7 +2192,7 @@ export default function JobFormModal({
               async () =>
                 await supabase
                   .from('customers')
-                  .select('id, name, address, contact_info, billing_email, gc_pays_by_default, date_met, date_met_source, master_user_id, customer_type, archived_at')
+                  .select('id, name, address, contact_info, billing_email, gc_pays_by_default, sees_customer_bills, date_met, date_met_source, master_user_id, customer_type, archived_at')
                   .eq('id', estimateCustomerId)
                   .maybeSingle(),
               'job form import estimate customer',
@@ -2261,7 +2267,7 @@ export default function JobFormModal({
           { data: devData },
           twinIds,
         ] = await Promise.all([
-          supabase.from('customers').select('id, name, address, contact_info, billing_email, gc_pays_by_default, date_met, date_met_source, master_user_id, customer_type, archived_at').order('name'),
+          supabase.from('customers').select('id, name, address, contact_info, billing_email, gc_pays_by_default, sees_customer_bills, date_met, date_met_source, master_user_id, customer_type, archived_at').order('name'),
           supabase.from('projects').select('id, name, customer_id, master_user_id, customers(name)').order('name'),
           supabase
             .from('bids')
@@ -3561,6 +3567,7 @@ export default function JobFormModal({
           bill_to_party:
             billToParty === 'gc' && !resolveGcCustomerIdForJobPayload(gcCustomerId, effectiveMasterId, customers) ? 'customer' : billToParty,
           bill_copy_other_party: billCopyOtherParty,
+          show_bills_to_other_party: newJobShowOtherParty,
           customer_address_id: customerAddressId,
           development_id: resolveDevelopmentIdForJobPayload(developmentId, effectiveMasterId, developments),
           customer_name: customerName.trim() || null,
