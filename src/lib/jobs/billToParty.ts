@@ -135,3 +135,15 @@ export function shouldDefaultBillsToGc(args: {
   if (customerId && gc.id === customerId) return false
   return current === 'customer'
 }
+
+/**
+ * The customers row a job-level payment promise is filed under (v2.3374):
+ * the job's rule with no invoice pick in play — the GC when it is the job
+ * customer row or the rule says gc, else the job customer. Mirrors the SQL
+ * helper `job_bill_payer_customer_id` the promise writers use
+ * (`20260913150812_promise_payer_follows_bill_to_rule.sql`); keep the two
+ * in step.
+ */
+export function jobPromisePayerCustomerId(job: JobPartyFields | null | undefined): string | null {
+  return payerCustomerId(job, effectiveInvoiceParty(job, null))
+}
