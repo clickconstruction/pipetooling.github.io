@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { PortalStageAsk } from '../components/portal/PortalStageAsk'
 import { PortalPromiseAsk } from '../components/portal/PortalPromiseAsk'
 import { PortalBankTransferCard } from '../components/portal/PortalBankTransferCard'
+import { PortalSharedBillsCard } from '../components/portal/PortalSharedBillsCard'
 import { buildBankTransferMemo } from '../lib/bankTransferDetails'
 import { promiseAskVisible } from '../../supabase/functions/_shared/portalPromise'
 import { PortalStagesCard } from '../components/portal/PortalStagesCard'
@@ -298,10 +299,10 @@ function PortalStatement({ payload, today, requestToken }: { payload: PortalPayl
   // Same local-date basis as the header's date line, for the Billed age sub-lines.
   const d = new Date()
   const todayYmd = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-  // Who pays (v2.3346): only the bills this viewer owes make the ledger and the
-  // balance; the rest of their jobs' bills are listed apart, named for who got them.
-  const owedBills = payload.bills.filter((b) => b.billedTo === null)
-  const billedElsewhere = payload.bills.filter((b) => b.billedTo !== null)
+  // Who pays (v2.3346) + Share this bill (v2.3375): `bills` is what this viewer
+  // owes and nothing else — the function drops the rest before the payload.
+  // What someone else pays and the office chose to show them is `sharedBills`.
+  const owedBills = payload.bills
   const groups = groupPortalBillsByJob(owedBills)
   return (
     <>
@@ -456,27 +457,10 @@ function PortalStatement({ payload, today, requestToken }: { payload: PortalPayl
         </div>
       )}
 
-      {/* Who pays (v2.3346): bills on this viewer's jobs that went to the other
-          party — the owner on a GC's statement, the builder on an owner's. Listed
-          so the statement matches what they know about the job; never in the
-          balance, never payable here. */}
-      {billedElsewhere.length > 0 ? (
-        <div data-portal-billed-elsewhere style={{ margin: '14px 0 4px', border: `1px solid ${HAIR}`, background: CARD, padding: '10px 14px 4px', fontSize: 12.5 }}>
-          <div style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: MUTED, marginBottom: 4 }}>
-            On your jobs, billed to someone else
-          </div>
-          {billedElsewhere.map((b, i) => (
-            <div key={i} style={{ display: 'flex', justifyContent: 'space-between', gap: 12, padding: '6px 0', borderTop: i === 0 ? 'none' : `1px solid ${HAIR}`, color: MUTED }}>
-              <span style={{ minWidth: 0 }}>
-                <span style={{ color: INK, fontWeight: 600 }}>{b.jobAddress ?? b.jobLabel}</span>
-                {' · '}billed to <span style={{ color: INK }}>{b.billedTo}</span>
-                {b.billedOn ? ` · ${formatPortalDate(b.billedOn)}` : ''}
-              </span>
-              <span style={{ fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{formatPortalUsd(b.amount)}</span>
-            </div>
-          ))}
-        </div>
-      ) : null}
+      {/* Share this bill (v2.3375): what someone else pays and the office chose to
+          show this viewer — the GC's customers' bills, or the builder's bill on
+          the owner's job. Never in the balance, never payable here. */}
+      {payload.sharedBills.length > 0 ? <PortalSharedBillsCard bills={payload.sharedBills} todayYmd={todayYmd} /> : null}
 
       {/* Bank transfer details (v2.3308): collapsed under the ledger — ACH / wire
           details, the memo to write, where checks must go. From Supabase, never

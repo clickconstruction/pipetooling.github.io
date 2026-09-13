@@ -14,6 +14,23 @@ const good = {
 }
 
 describe('parsePortalPayload', () => {
+  it('parses sharedBills (v2.3375) and tolerates their absence', () => {
+    expect(parsePortalPayload(good)!.sharedBills).toEqual([])
+    const p = parsePortalPayload({
+      ...good,
+      sharedBills: [
+        { jobLabel: 'Sewer line repair · Job 1017', jobNumber: '1017', jobName: 'Sewer line repair', serviceTag: 'plum', jobAddress: '4410 Cedar Hollow, Kyle', amount: 4420, billedAmount: 6420, totalPaid: 2000, billedOn: '2026-08-03', billedTo: 'Maria Delgado', viewerRole: 'gc' },
+        { jobLabel: 'x', jobNumber: '1', amount: 100, billedTo: '', viewerRole: 'gc' },
+        { jobLabel: 'x', jobNumber: '2', amount: 0, billedTo: 'Nobody', viewerRole: 'customer' },
+        { jobLabel: 'Pretest · Job 1042', jobNumber: '1042', amount: 250, billedTo: 'Done Right Foundation', viewerRole: 'bogus' },
+      ],
+    })!
+    expect(p.sharedBills).toHaveLength(2)
+    expect(p.sharedBills[0]).toMatchObject({ jobNumber: '1017', amount: 4420, billedAmount: 6420, totalPaid: 2000, billedOn: '2026-08-03', billedTo: 'Maria Delgado', viewerRole: 'gc' })
+    // No billedAmount → the open amount; an unknown role reads as the customer's side.
+    expect(p.sharedBills[1]).toMatchObject({ jobNumber: '1042', billedAmount: 250, totalPaid: 0, billedOn: null, viewerRole: 'customer' })
+  })
+
   it('parses a full payload', () => {
     const p = parsePortalPayload(good)!
     expect(p.customerName).toBe('Michael Hageman')

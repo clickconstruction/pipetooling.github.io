@@ -1,0 +1,253 @@
+<title>Share This Bill</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+  :root{
+    --bg:#f2f4f7; --surface:#ffffff; --ink:#16283c; --muted:#5a6b7e; --faint:#8a97a6;
+    --line:#d7dde6; --line-strong:#b9c3d0; --accent:#b0662f; --accent-ink:#8a4d20; --band:#eaeef3;
+    --good:#1f7a3a; --bad:#b42318; --ghost:#c7ced8;
+    --amber-tint:#fdf3e3; --amber-700:#9a5b12; --amber-800:#7a4709; --amber-line:#efd3a6;
+    --blue:#2457a8; --blue-tint:#e8eef9; --green-tint:#e7f4ea;
+    --paper:#f6f3ec; --card:#fdfcf9; --pink:#16283c; --pmuted:#5a6b7e; --pfaint:#8a97a6; --hair:#ddd6c8; --copper:#b0662f; --noteband:#f1ece2; --pred:#b42318;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#0f1823; --surface:#172333; --ink:#e7ecf3; --muted:#a3b0c0; --faint:#7c8a9b;
+      --line:#2b3a4f; --line-strong:#3d4f68; --accent:#d48b56; --accent-ink:#e6a879; --band:#1d2b3d; --ghost:#3a4a5f;
+      --amber-tint:#3a2a12; --amber-700:#f0c07a; --amber-800:#f6d39c; --amber-line:#5c4420;
+      --blue:#8fb4f5; --blue-tint:#1d2c45; --green-tint:#183024;
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#0f1823; --surface:#172333; --ink:#e7ecf3; --muted:#a3b0c0; --faint:#7c8a9b;
+    --line:#2b3a4f; --line-strong:#3d4f68; --accent:#d48b56; --accent-ink:#e6a879; --band:#1d2b3d; --ghost:#3a4a5f;
+    --amber-tint:#3a2a12; --amber-700:#f0c07a; --amber-800:#f6d39c; --amber-line:#5c4420;
+    --blue:#8fb4f5; --blue-tint:#1d2c45; --green-tint:#183024;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:'IBM Plex Sans',-apple-system,'Segoe UI',Roboto,sans-serif;font-size:15px;line-height:1.5}
+  .wrap{max-width:1180px;margin:0 auto;padding:36px 22px 72px}
+  h1,h2,h3{text-wrap:balance;margin:0}
+  h1{font-size:34px;font-weight:700;letter-spacing:-0.015em;line-height:1.15}
+  h2{font-size:21px;font-weight:600;margin-top:44px;padding-top:18px;border-top:1px solid var(--line)}
+  h3{font-size:15px;font-weight:600}
+  p{max-width:68ch;margin:10px 0}
+  .eyebrow{font-size:11px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--accent)}
+  .lede{font-size:17px;color:var(--muted);max-width:70ch}
+  .quote{border-left:3px solid var(--accent);padding:6px 16px;margin:16px 0;color:var(--muted);font-style:italic;max-width:74ch}
+  .quote b{color:var(--ink);font-style:normal}
+  code{font-family:'IBM Plex Mono',monospace;font-size:.92em}
+  .note{font-size:13px;color:var(--muted);margin-top:10px;max-width:64ch}
+  .rec{font-weight:600;color:var(--accent-ink)}
+  .cols{display:grid;grid-template-columns:1fr 1fr;gap:26px;margin-top:18px}
+  @media (max-width:900px){.cols{grid-template-columns:1fr}}
+  .exl{display:flex;justify-content:space-between;align-items:baseline;gap:12px;margin:0 0 8px}
+  .exl .who{font-weight:600} .exl .w{font-size:12.5px;color:var(--muted)}
+  /* ---- app modal chrome (ClickTooling look: white card, 4px inputs, tokens) ---- */
+  .modal{background:var(--surface);border:1px solid var(--line);border-radius:8px;box-shadow:0 10px 30px rgba(22,40,60,.12);padding:16px 18px 18px;font-size:14px}
+  .modal .mh{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px}
+  .modal .mh b{font-size:16px}
+  .modal .x{color:var(--faint);font-size:18px}
+  .tabs{display:flex;gap:2px;border-bottom:1px solid var(--line);margin:6px 0 12px}
+  .tabs span{padding:6px 12px;font-size:13px;color:var(--muted)}
+  .tabs span.on{color:var(--ink);font-weight:600;border-bottom:2px solid var(--blue);margin-bottom:-1px}
+  .banner{background:var(--amber-tint);border:1px solid var(--amber-line);border-radius:6px;padding:8px 12px;font-size:13px;color:var(--amber-800);margin-bottom:12px}
+  .banner b{color:var(--amber-700)}
+  .lbl{font-size:14px;font-weight:500;margin-bottom:4px}
+  .addr{font-size:13px;color:var(--muted);margin-bottom:4px} .addr .f{color:var(--faint)}
+  .hint{font-size:12px;color:var(--muted);margin:0 0 6px;line-height:1.4}
+  .row{display:flex;align-items:flex-start;gap:7px;font-size:13px;padding:2px 0}
+  .row .box{width:14px;height:14px;border:1.5px solid var(--line-strong);border-radius:3px;margin-top:3px;flex:none;position:relative;background:var(--surface)}
+  .row .box.on{background:var(--blue);border-color:var(--blue)}
+  .row .box.on::after{content:"";position:absolute;left:4px;top:1px;width:4px;height:8px;border:solid #fff;border-width:0 2px 2px 0;transform:rotate(45deg)}
+  .row .m{color:var(--muted)} .row .sub{display:block;font-size:12px;color:var(--faint);margin-top:1px;max-width:52ch}
+  .row.new{background:var(--green-tint);margin:4px -8px;padding:6px 8px;border-radius:5px;position:relative}
+  .row.new .tag{position:absolute;right:8px;top:-9px;background:var(--surface);border:1px solid var(--good);color:var(--good);font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;padding:1px 6px;border-radius:3px}
+  .inp{border:1px solid var(--line-strong);border-radius:4px;padding:6px 8px;font-size:13px;color:var(--faint);margin-top:6px}
+  .foot{display:flex;justify-content:flex-end;gap:8px;margin-top:14px;padding-top:12px;border-top:1px solid var(--line)}
+  .btn{border:1px solid var(--line-strong);border-radius:5px;padding:7px 14px;font-size:13px;font-weight:600;color:var(--ink);background:var(--surface)}
+  .btn.p{background:var(--blue);color:#fff;border-color:var(--blue)}
+  /* bill tab rows */
+  .tbl{border:1px solid var(--line);border-radius:6px;overflow:hidden;font-size:13px}
+  .tr{display:grid;grid-template-columns:70px 90px 1fr auto;gap:0 12px;align-items:center;padding:9px 12px;border-top:1px solid var(--line)}
+  .tr:first-child{border-top:none;background:var(--band);font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--faint)}
+  .tr .amt{font-variant-numeric:tabular-nums;font-weight:600}
+  .chip{display:inline-block;font-size:11px;font-weight:700;letter-spacing:.04em;padding:2px 8px;border-radius:999px;white-space:nowrap;margin-right:4px}
+  .chip.b{background:var(--blue-tint);color:var(--blue)} .chip.a{background:var(--amber-tint);color:var(--amber-700)} .chip.g{background:var(--green-tint);color:var(--good)} .chip.q{background:var(--band);color:var(--muted)}
+  .menu{margin:10px 0 0 12px;display:inline-block;border:1px solid var(--line);border-radius:6px;background:var(--surface);box-shadow:0 6px 18px rgba(22,40,60,.12);font-size:13px;min-width:280px}
+  .menu div{padding:8px 12px;border-top:1px solid var(--line)} .menu div:first-child{border-top:none;font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--faint)}
+  .menu .on{color:var(--good);font-weight:600}
+  /* fact row (Edit tab) */
+  .fact{display:grid;grid-template-columns:130px 1fr;gap:0 14px;font-size:13.5px;border-top:1px solid var(--line);padding:9px 0}
+  .fact .k{color:var(--muted)}
+  /* portal paper */
+  .paper{background:var(--paper);color:var(--pink);font-family:-apple-system,'Segoe UI',Roboto,sans-serif;padding:16px 18px 18px;border:1px solid var(--hair);box-shadow:0 1px 0 rgba(0,0,0,.04),0 12px 30px rgba(22,40,60,.10);font-size:13px}
+  .paper .peb{font-size:10.5px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:var(--copper)}
+  .paper .cust{margin:6px 0 0;border:1px solid var(--hair);background:var(--card);padding:10px 12px 6px;font-size:12.5px}
+  .paper .cust .t{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:baseline}
+  .paper .cust .sum{font-size:12px;color:var(--pmuted);font-variant-numeric:tabular-nums}
+  .paper .why{color:var(--pmuted);margin:4px 0 6px;font-size:12px}
+  .paper .crow{display:grid;grid-template-columns:1fr auto;gap:2px 14px;padding:8px 0;border-top:1px solid var(--hair)}
+  .paper .crow .o{font-weight:700} .paper .crow .a{color:var(--pmuted)} .paper .crow .meta{font-size:11.5px;color:var(--pfaint)} .paper .crow .late{color:var(--pred);font-weight:700}
+  .paper .crow .amt{font-weight:700;font-variant-numeric:tabular-nums;font-size:14px;text-align:right}
+  .paper .foot2{display:flex;justify-content:space-between;border-top:1.5px solid var(--pink);padding:8px 0 2px;font-size:12px;color:var(--pmuted)} .paper .foot2 b{color:var(--pink)}
+  .paper .none{font-size:12.5px;color:var(--pfaint);font-style:italic}
+  /* layers */
+  .layers{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:14px}
+  @media (max-width:900px){.layers{grid-template-columns:1fr}}
+  .layer{border:1px solid var(--line);border-radius:6px;padding:12px 14px;background:var(--surface)}
+  .layer .n{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--accent);letter-spacing:.08em}
+  .layer b{display:block;margin:2px 0 4px}
+  .layer p{font-size:13px;color:var(--muted);margin:0}
+  .layer code{font-size:12px}
+  table{border-collapse:collapse;width:100%;font-size:14px}
+  .tbl-wrap{overflow-x:auto;margin:14px 0}
+  th{font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--faint);text-align:left;padding:8px 10px;border-bottom:1.5px solid var(--ink)}
+  td{padding:9px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+  ol.train{padding-left:0;list-style:none;counter-reset:pr;margin:16px 0 0}
+  ol.train li{counter-increment:pr;display:grid;grid-template-columns:52px 1fr;gap:0 14px;padding:14px 0;border-bottom:1px solid var(--line)}
+  ol.train li::before{content:"PR " counter(pr);font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--accent);padding-top:3px}
+  ol.train li b{display:block;font-size:15px} ol.train li p{margin:4px 0 0;font-size:14px;color:var(--muted);max-width:80ch}
+  .crit{background:var(--band);border:1px solid var(--line);padding:16px 20px;margin-top:16px;max-width:86ch}
+  .crit p{margin:6px 0;font-size:14px}
+  ul.plain{padding-left:18px;margin:8px 0} ul.plain li{margin:6px 0;max-width:80ch}
+</style>
+
+<div class="wrap">
+  <div class="eyebrow">Customer portal · who sees whose bills · revision 2 · Sep 13, 2026</div>
+  <h1 style="margin-top:8px">Share This Bill</h1>
+  <p class="lede">Instead of one rule deciding who sees a bill they don't pay, the office decides per bill, in the place it already decides who gets a copy. Nothing is shared unless someone ticked it.</p>
+  <div class="quote"><b>The revision, in the owner's words.</b> "Looking at this holistically, I think that maybe we should be able to set it on a case-by-case basis … what could that look like in the job bill modal?"</div>
+
+  <h2>Where it lives: the Send to block in Bill Customer</h2>
+  <p>Bill Customer already has the sibling decision: <em>Copy Done Right Foundation · the GC, not billed</em>, pre-ticked from the job's "Bills also go to" and stamped on the bill. The new line sits directly under it. Copy is the email, once. Show is the statement, standing.</p>
+
+  <div class="cols">
+    <div>
+      <div class="exl"><span class="who">Billing the owner · the GC is the other party</span><span class="w">J1017 · Bills go to: This customer</span></div>
+      <div class="modal">
+        <div class="mh"><b>Bill Customer · J1017 Delgado · $6,420.00</b><span class="x">✕</span></div>
+        <div class="tabs"><span class="on">Stripe</span><span>Physical</span><span>Record</span></div>
+        <div class="lbl">Send to</div>
+        <div class="addr">maria.delgado@gmail.com <span class="f">(primary)</span></div>
+        <div class="hint">Stripe emails that address. Everyone ticked below gets a copy from ClickTooling with the same Pay link when you press <b>Send Email invoice</b>.</div>
+        <div class="row"><span class="box"></span><span>Ashley Delgado <span class="m">ashley.d@gmail.com</span></span></div>
+        <div class="row"><span class="box on"></span><span>Copy Done Right Foundation <span class="m">ap@donerightfoundation.com · the GC, not billed</span></span></div>
+        <div class="row new"><span class="tag">New</span><span class="box on"></span><span>Show it on Done Right Foundation's statement<span class="sub">Their portal lists this bill as billed to Maria Delgado — no Pay button, not in their balance. Ticked because Done Right's card says <i>Sees their customers' bills</i>. Remembered for this job.</span></span></div>
+        <div class="inp">Also send to… (one-off email)</div>
+        <div class="foot"><span class="btn">Copy link</span><span class="btn p">Send Email invoice</span></div>
+      </div>
+      <p class="note">Untick it and this bill stays off Done Right's statement, whatever the job or the customer card says. The tick is the decision; the defaults only pre-fill it.</p>
+    </div>
+    <div>
+      <div class="exl"><span class="who">Billing the GC · the owner is the other party</span><span class="w">J1042 · Bills go to: GC · Done Right Foundation</span></div>
+      <div class="modal">
+        <div class="mh"><b>Bill Customer · J1042 Ortiz · $250.00</b><span class="x">✕</span></div>
+        <div class="tabs"><span class="on">Stripe</span><span>Physical</span><span>Record</span></div>
+        <div class="banner"><b>Billing Done Right Foundation, the GC on this job</b> — not Lena Ortiz.</div>
+        <div class="lbl">Send to</div>
+        <div class="addr">ap@donerightfoundation.com <span class="f">(Done Right Foundation · billing email)</span></div>
+        <div class="hint">Stripe emails that address. Everyone ticked below gets a copy from ClickTooling with the same Pay link when you press <b>Send Email invoice</b>.</div>
+        <div class="row"><span class="box"></span><span>Copy Lena Ortiz <span class="m">lena.ortiz@outlook.com · the customer, not billed</span></span></div>
+        <div class="row new"><span class="tag">New</span><span class="box"></span><span>Show it on Lena Ortiz's statement<span class="sub">Off unless you tick it — homeowners don't see their builder's bills. Tick it when the owner asked to see the pretest on their account.</span></span></div>
+        <div class="inp">Also send to… (one-off email)</div>
+        <div class="foot"><span class="btn">Copy link</span><span class="btn p">Send Email invoice</span></div>
+      </div>
+      <p class="note">Same control both ways. The direction the owner asked for (GC sees, owner doesn't) is the default, not a wall: the office can show an owner one bill when there's a reason.</p>
+    </div>
+  </div>
+
+  <h2>After the fact: the Bill tab row</h2>
+  <p>A bill already sent is changed from Edit Job → Bill, where each row already wears its payer chip (<em>→ Maria Delgado</em>). The eye chip beside it says who else sees it; clicking it is the only other door.</p>
+  <div class="tbl">
+    <div class="tr"><span>Billed</span><span>Amount</span><span>Status · party</span><span></span></div>
+    <div class="tr"><span>Aug 3</span><span class="amt">$6,420.00</span><span><span class="chip q">Billed</span><span class="chip b">→ Maria Delgado</span><span class="chip g">👁 shown to Done Right</span></span><span class="m" style="color:var(--faint)">Send Email invoice ▾</span></div>
+    <div class="tr"><span>Sep 9</span><span class="amt">$1,180.00</span><span><span class="chip q">Draft</span><span class="chip b">→ Maria Delgado</span><span class="chip q">👁 —</span></span><span class="m" style="color:var(--faint)">Bill to ▾</span></div>
+  </div>
+  <div class="menu">
+    <div>Who else sees this bill</div>
+    <div class="on">✓ Shown on Done Right Foundation's statement</div>
+    <div>Hide it from Done Right</div>
+    <div style="color:var(--faint);font-size:12px">Changes their portal on its next open. Never affects who pays or who was emailed.</div>
+  </div>
+
+  <h2>The default it starts from: three layers, one switch</h2>
+  <p>This is the same shape "Bills go to" and "Bills also go to" already use: a customer-level default, a job-level memory, the bill's own stamp. The bill's stamp is the only thing the portal reads.</p>
+  <div class="layers">
+    <div class="layer"><span class="n">LAYER 3 · THE BILL</span><b>The stamp the portal reads</b><p><code>jobs_ledger_invoices.shown_to_party</code> · <code>NULL</code> · <code>customer</code> · <code>gc</code>. Set by the Bill Customer tick at send, changed from the Bill tab. A billed job with no invoice row follows the job layer.</p></div>
+    <div class="layer"><span class="n">LAYER 2 · THE JOB</span><b>Remembered on Edit Job → Edit tab</b><p><code>jobs_ledger.show_bills_to_other_party</code>. A new line under <em>Bills also go to</em>: "Show Done Right the bills they don't pay · on new bills". The Bill Customer tick writes it back when you change it, the way the party picker does.</p></div>
+    <div class="layer"><span class="n">LAYER 1 · THE GC'S CARD</span><b>Once per GC, like <em>Pays as GC by default</em></b><p><code>customers.sees_customer_bills</code>. "Sees their customers' bills by default" on Edit customer. Done Right ticks it once; every new repair job where they are the GC starts with the job layer on. Optional PR, but it is what keeps this from being 200 ticks a year.</p></div>
+  </div>
+  <div class="fact" style="margin-top:18px;border-top:none"><span class="k">Bills go to</span><span>This customer · <span style="color:var(--faint)">GC · Done Right Foundation</span> · <span style="color:var(--faint)">Split by line</span></span></div>
+  <div class="fact"><span class="k">Bills also go to</span><span>Copy Done Right Foundation · ap@donerightfoundation.com <span class="chip a" style="margin-left:6px">the GC</span></span></div>
+  <div class="fact" style="background:var(--green-tint);margin:0 -8px;padding:9px 8px;border-radius:5px"><span class="k">Show Done Right</span><span>the bills they don't pay <span class="chip g" style="margin-left:6px">on new bills</span> <span style="color:var(--faint);font-size:12px">· from Done Right's card · change it here or per bill</span></span></div>
+  <p class="note">Edit Job → Edit tab, the three fact rows together. The third is the new one.</p>
+
+  <h2>What each portal then shows</h2>
+  <div class="cols">
+    <div>
+      <div class="exl"><span class="who">Done Right Foundation's statement</span><span class="w">two shared bills, one not</span></div>
+      <div class="paper">
+        <div class="peb">Your customers' open bills</div>
+        <div class="cust">
+          <div class="t"><span style="font-size:12px;color:var(--pmuted)">Bills on homes you sent us that our office shared with you</span><span class="sum">2 owners · $7,570.00 open</span></div>
+          <div class="crow"><div><div class="o">Maria Delgado</div><div class="a">4410 Cedar Hollow, Kyle · J1017 · Sewer line repair</div><div class="meta">Billed Aug 3 · <span class="late">41 days</span> · $2,000.00 received</div></div><div class="amt">$4,420.00</div></div>
+          <div class="crow"><div><div class="o">Trent &amp; Ashley Okafor</div><div class="a">118 Mesquite Bend, Buda · J1031 · Slab leak reroute</div><div class="meta">Billed Aug 22 · 22 days</div></div><div class="amt">$3,150.00</div></div>
+          <div class="foot2"><span>Open on your customers' jobs · not in your balance</span><b>$7,570.00</b></div>
+        </div>
+        <p class="none" style="margin:10px 0 0">R. Villanueva's $2,300 (billed Sep 9) is not here — the office left that tick off. Done Right cannot tell it exists.</p>
+      </div>
+    </div>
+    <div>
+      <div class="exl"><span class="who">Maria Delgado's statement</span><span class="w">nothing about the builder</span></div>
+      <div class="paper">
+        <div class="peb">Account statement · Balance due $4,420.00</div>
+        <p style="margin:8px 0 0;color:var(--pmuted);font-size:12.5px">Her ledger, her payment, her Pay button. The $250 pretest billed to Done Right is not on the page and not in the payload. If the office had ticked <i>Show it on Maria's statement</i> when billing that pretest, she would see one line under her ledger:</p>
+        <div class="cust" style="margin-top:10px">
+          <div class="t"><span class="peb">On your job, billed to your builder</span></div>
+          <div class="crow"><div><div class="o">Done Right Foundation</div><div class="a">4410 Cedar Hollow · J1042 · Pretest</div><div class="meta">Billed Jul 28</div></div><div class="amt">$250.00</div></div>
+          <div class="foot2"><span>Shown for your records · not yours to pay</span><b>$250.00</b></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <h2>The rule the portal runs</h2>
+  <div class="tbl-wrap"><table>
+    <thead><tr><th>Bill</th><th>Shows on the viewer's statement as</th></tr></thead>
+    <tbody>
+      <tr><td>the viewer pays it (<code>effectiveInvoiceParty</code> → the viewer)</td><td>the ledger, the balance, Pay — unchanged</td></tr>
+      <tr><td>someone else pays it and <code>shown_to_party</code> resolves to the viewer</td><td>the shared card — GC wording or owner wording by the viewer's role on the job; no Pay, never in the balance</td></tr>
+      <tr><td>someone else pays it and the stamp is <code>NULL</code> or resolves elsewhere</td><td>nothing — dropped on the server, never in the payload</td></tr>
+      <tr><td>a billed job with no invoice row (shell remainder)</td><td>follows <code>show_bills_to_other_party</code> on the job</td></tr>
+      <tr><td>a typed "someone else" recipient</td><td>the tick is still offered (the other party can see it); payer stays nobody</td></tr>
+    </tbody>
+  </table></div>
+  <p class="note">The v2.3346 strip "On your jobs, billed to someone else" goes away in both directions. Every existing bill starts with <code>NULL</code>, so on day one no portal shows anything it did not show before v2.3346. A one-off script can stamp <code>gc</code> on the open owner-paid bills under GCs whose card is ticked, if the owner wants the Done Right repairs visible without re-sending.</p>
+
+  <h2>The train, revised</h2>
+  <ol class="train">
+    <li><b>The stamp and the leak.</b><p>Migration: <code>jobs_ledger_invoices.shown_to_party</code>, <code>jobs_ledger.show_bills_to_other_party</code>. Kernel <code>billVisibility.ts</code> (shared with the edge functions like <code>billToParty.ts</code>): <code>shownToPartyFor</code>, <code>statementRoleFor(job, inv, viewer)</code> → owed · shared · hidden. <code>customer-portal</code> filters before the payload, drops <code>billedTo</code>, emits <code>sharedBills</code>. Bill Customer gets the tick, stamps at send on both channels (<code>create-stripe-invoice</code> body + the physical path), writes the job memory back. Deploy the functions first.</p></li>
+    <li><b>The doors and the card.</b><p>Bill tab eye chip + menu; Edit tab fact row; the shared card on the portal in both wordings; the office globe mirror; guides <em>share a customer their portal</em>, <em>choose who gets the bill</em>, <em>send a bill to more than one person</em>; glossary.</p></li>
+    <li><b>The GC's card default.</b><p><code>customers.sees_customer_bills</code>, "Sees their customers' bills by default" on Edit customer, <code>shouldDefaultShowOtherParty</code> judged once per GC pick the way <code>shouldDefaultBillsToGc</code> is. Plus the one-off stamp script for Done Right's open repairs (dry run, owner commits).</p></li>
+    <li><b>Optional, later: Ask the office</b> from the shared card (bill this to us · remind the owner) as inbox requests.</li>
+  </ol>
+
+  <h2>Is this the best we can do?</h2>
+  <div class="crit">
+    <h3>What the revision fixes</h3>
+    <p>Consent is explicit and per bill, in the modal the office is already in, beside the copy tick that means almost the same thing. Nothing leaks by default. The capability is symmetric while the defaults carry the owner's original intent, so the rare "show the homeowner this one" case needs no exception path. Every layer copies a shape the office already knows from Bills go to.</p>
+    <h3>What it costs</h3>
+    <p><b>One more tick in a busy modal.</b> Bill Customer's Send to block grows to four lines on a two-party job. Mitigation: the tick only renders when there is an other party, exactly like Copy, so single-party jobs never see it.</p>
+    <p><b>Copy and Show can disagree.</b> A GC copied on the email but not shown the bill on their statement has the amount in their inbox anyway. That is allowed on purpose (the email is a one-time act, the statement is standing), but the guide should say it plainly. The alternative, folding Show into Copy, was rejected: it would make "email the AP clerk" and "keep it on their portal" one decision, and it would retroactively expose every bill ever copied.</p>
+    <p><b>The office has to remember.</b> Without PR 3, Done Right's ~200 jobs a year each need the tick. PR 3 is small and is the difference between a feature and a chore; <span class="rec">recommend shipping it with PR 2, not after</span>.</p>
+    <p><b>Versus revision 1.</b> The automatic rule was one function and no schema; this is two columns, a tick, a chip and a fact row. What it buys is the ability to say no on one bill without touching anyone's data model, and a portal that never shows a number the office did not choose to show. For customer-facing money, that trade is right.</p>
+  </div>
+
+  <h2>Open decisions</h2>
+  <ul class="plain">
+    <li><b>Wording of the tick.</b> "Show it on Done Right Foundation's statement" (<span class="rec">recommended</span>) vs "Done Right can see this bill". The first names the surface they know.</li>
+    <li><b>Should the tick write the job memory back?</b> <span class="rec">Recommend yes</span>, mirroring Bill to ▾; a per-bill exception should not have to be repeated on the next bill unless it was meant as the new normal. Alternative: memory only from the Edit tab.</li>
+    <li><b>Stamp Done Right's existing open repairs</b> with the script, or let them roll forward as new bills are sent?</li>
+    <li><b>PR 3 in the first train</b> (recommended) or held?</li>
+  </ul>
+</div>

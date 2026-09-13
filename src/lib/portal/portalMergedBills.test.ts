@@ -47,7 +47,8 @@ describe('buildPortalBills', () => {
   it('marks GC rows with asGc + ownerName in the merged view only', () => {
     const jobs = [
       job({ id: 'own', job_name: 'Vet clinic', hcp_number: '963' }),
-      job({ id: 'gc', job_name: 'Bexar Lofts', hcp_number: '1302', customer_id: 'cust-lofts', gc_customer_id: VIEWER }),
+      // The GC owes this one (bill_to_party gc, v2.3345) — a GC-side job the OWNER pays never rides in the GC's ledger (v2.3375).
+      job({ id: 'gc', job_name: 'Bexar Lofts', hcp_number: '1302', customer_id: 'cust-lofts', gc_customer_id: VIEWER, bill_to_party: 'gc' }),
     ]
     const invoices = [
       { id: 'i1', job_id: 'own', amount: 2200, status: 'billed', billed_at: '2026-08-12', sequence_order: 1, hosted_invoice_url: null },
@@ -94,7 +95,7 @@ describe('buildPortalBills', () => {
   })
 
   it('falls back to the job-level remainder for billed jobs with no billed line', () => {
-    const jobs = [job({ id: 'shell', hcp_number: '77', revenue: 900, payments_made: 150, customer_id: 'other', gc_customer_id: VIEWER })]
+    const jobs = [job({ id: 'shell', hcp_number: '77', revenue: 900, payments_made: 150, customer_id: 'other', gc_customer_id: VIEWER, bill_to_party: 'gc' })]
     const bills = buildPortalBills({ jobs, invoices: [], payments: [], viewerCustomerId: VIEWER, markGcRows: true })
     expect(bills).toHaveLength(1)
     expect(bills[0]?.amount).toBe(750)
@@ -154,5 +155,70 @@ describe('jobTradeTag', () => {
       ownerNames: {},
     })
     expect(bills[0]).toMatchObject({ serviceTag: 'hvac', jobName: 'Vet clinic' })
+  })
+})
+
+// Share this bill (v2.3375): the ledger is owed-only; the shared card is the stamp.
+import { buildPortalSharedBills } from '../../../supabase/functions/_shared/portalMergedBills'
+
+describe('share this bill (v2.3375)', () => {
+  const GC = 'cust-gc'
+  const ownerPays = job({ id: 'j1', hcp_number: '1017', job_name: 'Sewer line repair', job_address: '4410 Cedar Hollow, Kyle, TX 78640', customer_id: VIEWER, gc_customer_id: GC, bill_to_party: 'customer' })
+  const gcPays = job({ id: 'j2', hcp_number: '1042', job_name: 'Pretest', job_address: '7712 Ranch Rd 12, Wimberley, TX', customer_id: VIEWER, gc_customer_id: GC, bill_to_party: 'gc' })
+  const line = (id: string, job_id: string, amount: number, billed_at: string, shown_to_party: string | null) => ({
+    id,
+    job_id,
+    amount,
+    status: 'billed',
+    billed_at,
+    sequence_order: 1,
+    hosted_invoice_url: `https://pay.example/${id}`,
+    shown_to_party,
+  })
+  const names = { [VIEWER]: 'Maria Delgado', [GC]: 'Done Right Foundation' }
+
+  it('the ledger carries only what the viewer owes — the other party’s bill is not in the list, stamped or not', () => {
+    const invoices = [line('i1', 'j1', 6420, '2026-08-03', 'gc'), line('i2', 'j2', 250, '2026-09-02', null)]
+    const ownerLedger = buildPortalBills({ jobs: [ownerPays, gcPays], invoices, payments: [], viewerCustomerId: VIEWER, markGcRows: true })
+    expect(ownerLedger.map((b) => b.jobNumber)).toEqual(['1017'])
+    const gcLedger = buildPortalBills({ jobs: [ownerPays, gcPays], invoices, payments: [], viewerCustomerId: GC, markGcRows: true })
+    expect(gcLedger.map((b) => b.jobNumber)).toEqual(['1042'])
+  })
+
+  it('the GC’s card lists the bill stamped for them: the owner’s name, what is open, what was received', () => {
+    const invoices = [line('i1', 'j1', 6420, '2026-08-03', 'gc'), line('i3', 'j1', 1180, '2026-09-09', null)]
+    const payments = [{ invoice_id: 'i1', amount: 2000 }]
+    const shared = buildPortalSharedBills({ jobs: [ownerPays], invoices, payments, viewerCustomerId: GC, partyNames: names })
+    expect(shared).toHaveLength(1)
+    expect(shared[0]).toMatchObject({ jobNumber: '1017', billedTo: 'Maria Delgado', amount: 4420, billedAmount: 6420, totalPaid: 2000, billedOn: '2026-08-03', viewerRole: 'gc' })
+    // The owner sees nothing shared on their own job's owner-paid bills.
+    expect(buildPortalSharedBills({ jobs: [ownerPays], invoices, payments, viewerCustomerId: VIEWER, partyNames: names })).toEqual([])
+  })
+
+  it('a GC-paid bill stamped for the customer shows on the owner’s card as the builder’s bill', () => {
+    const invoices = [line('i2', 'j2', 250, '2026-09-02', 'customer')]
+    const shared = buildPortalSharedBills({ jobs: [gcPays], invoices, payments: [], viewerCustomerId: VIEWER, partyNames: names })
+    expect(shared).toHaveLength(1)
+    expect(shared[0]).toMatchObject({ billedTo: 'Done Right Foundation', amount: 250, viewerRole: 'customer' })
+    expect(buildPortalSharedBills({ jobs: [gcPays], invoices: [line('i2', 'j2', 250, '2026-09-02', null)], payments: [], viewerCustomerId: VIEWER, partyNames: names })).toEqual([])
+  })
+
+  it('a billed job with no invoice row follows the job’s memory', () => {
+    const shell = job({ id: 'j3', hcp_number: '1031', status: 'billed', revenue: 3150, payments_made: 0, customer_id: VIEWER, gc_customer_id: GC, bill_to_party: 'customer', show_bills_to_other_party: true })
+    const shared = buildPortalSharedBills({ jobs: [shell], invoices: [], payments: [], viewerCustomerId: GC, partyNames: names })
+    expect(shared.map((b) => [b.jobNumber, b.amount, b.billedOn])).toEqual([['1031', 3150, null]])
+    const quiet = { ...shell, show_bills_to_other_party: false }
+    expect(buildPortalSharedBills({ jobs: [quiet], invoices: [], payments: [], viewerCustomerId: GC, partyNames: names })).toEqual([])
+    // A settled shell shows nothing.
+    expect(buildPortalSharedBills({ jobs: [{ ...shell, payments_made: 3150 }], invoices: [], payments: [], viewerCustomerId: GC, partyNames: names })).toEqual([])
+  })
+
+  it('oldest billed first, undated shells last, and a name fallback when the party is unknown', () => {
+    const other = job({ id: 'j4', hcp_number: '1039', customer_id: VIEWER, gc_customer_id: GC, bill_to_party: 'customer' })
+    const shell = job({ id: 'j5', hcp_number: '1050', status: 'billed', revenue: 900, payments_made: 0, customer_id: VIEWER, gc_customer_id: GC, bill_to_party: 'customer', show_bills_to_other_party: true })
+    const invoices = [line('a', 'j4', 2300, '2026-09-09', 'gc'), line('b', 'j1', 6420, '2026-08-03', 'gc')]
+    const shared = buildPortalSharedBills({ jobs: [ownerPays, other, shell], invoices, payments: [], viewerCustomerId: GC })
+    expect(shared.map((b) => b.jobNumber)).toEqual(['1017', '1039', '1050'])
+    expect(shared[0]!.billedTo).toBe('the owner')
   })
 })
