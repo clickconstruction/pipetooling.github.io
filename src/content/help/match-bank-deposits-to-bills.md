@@ -6,7 +6,9 @@ keywords: accounts receivable, bank deposits, mercury, allocate, apply payment, 
 ---
 When money lands in the bank, it isn't done — each deposit still has to be applied to the bill it pays so the job shows paid and the money stops being chased. That happens in **Accounts Receivable**: open it from Jobs → Pipeline, from the Dashboard's {{button:blue|Match deposits}} nudge, or at `/accounts-receivable`.
 
-The left side lists bank deposits that still have balance to apply. Pick one, and the right side is where you say which bill it pays.
+The header counts the pile — *4 deposits to match · $9,115.42 unapplied* — and the left side lists those deposits. Each row already says what the modal knows about it: {{chip:green|1 exact match}} (one open bill equals it to the cent), {{chip:yellow|probably recorded}} (a payment of that amount is on a job with no deposit linked — see *If the payment was already recorded by hand*), {{chip:yellow|same amount, several bills}}, {{chip:blue|payer known}}, or no chip when it is a pick-by-hand. **To match · All** above the list switches between the pile and everything, including deposits fully applied or marked returned. Pick a row, and the right side is where you say which bill it pays.
+
+The rare controls live behind the {{button:outline|⋯}} button in the header: **Mark returned deposits** puts a Returned tick on every row for bounced checks, and (dev only) the **Mercury filter**.
 
 ## The modal reads who paid you
 

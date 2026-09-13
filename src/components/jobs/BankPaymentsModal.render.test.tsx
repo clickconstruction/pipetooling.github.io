@@ -94,6 +94,12 @@ describe('BankPaymentsModal (render smoke)', () => {
       expect(screen.getByText(/their open bills/)).toBeTruthy()
     })
     expect(screen.getByText('Weiss Services LLC')).toBeTruthy()
+    // AR refresh PR 1 (v2.3379): the header counts the pile; the row wears the sweep's verdict.
+    expect(screen.getByTestId('ar-summary').textContent).toMatch(/1 deposit to match · \$1,625\.00 unapplied/)
+    expect(screen.getByTestId('ar-deposit-state').getAttribute('data-state')).toBe('exact')
+    expect(screen.getByText('1 exact match')).toBeTruthy()
+    expect(screen.getByRole('button', { name: /^To match · 1$/ }).getAttribute('aria-pressed')).toBe('true')
+    expect(screen.queryByText(/Show fully applied and returned/)).toBeNull()
     const chip = screen.getByRole('button', { name: /Apply allocation: \$1,625\.00 · 876 · American Eagle/ })
     expect(chip.textContent).toContain('matches this deposit')
 

@@ -16,16 +16,17 @@ import {
   upsertBankPaymentsSortingConfigToAppSettings,
 } from '../../lib/bankingSortingConfig'
 import {
-  defaultKindBadgeColor,
   fetchBankPaymentsKindBadgesFromAppSettings,
   loadBankPaymentsKindBadges,
   mercuryKindPaymentTypeLabel,
-  normalizeHexColor,
-  pickTextOnBackground,
   saveBankPaymentsKindBadgesLocalCache,
   upsertBankPaymentsKindBadgesToAppSettings,
   type MercuryKindBadge,
 } from '../../lib/bankPaymentsKindBadges'
+import { ArDepositRow } from './ar/ArDepositRow'
+import { ArHeaderMenu } from './ar/ArHeaderMenu'
+import { KindBadgePill } from './ar/KindBadgePill'
+import { arDepositRowStates, arDepositSummary, arDepositSummaryWords } from '../../lib/jobs/arDepositRowState'
 import { mercuryDebitCardIdFromRaw } from '../../lib/mercuryRawDebitCard'
 import { supabase } from '../../lib/supabase'
 import {
@@ -111,36 +112,17 @@ function canRoleApplyBankPayments(role: string | null): boolean {
   return role === 'dev' || role === 'master_technician' || isAssistantLike(role) || role === 'primary'
 }
 
-function KindBadgePill({
-  kind,
-  kindBadges,
-}: {
-  kind: string
-  kindBadges: Record<string, MercuryKindBadge>
-}) {
-  const b = kindBadges[kind]
-  const label = mercuryKindPaymentTypeLabel(kind, kindBadges)
-  const bg = normalizeHexColor(b?.color ?? '') ?? defaultKindBadgeColor()
-  const color = pickTextOnBackground(bg)
-  return (
-    <span
-      style={{
-        display: 'inline-block',
-        verticalAlign: 'middle',
-        maxWidth: '100%',
-        padding: '1px 6px',
-        borderRadius: 4,
-        fontSize: '0.7rem',
-        fontWeight: 600,
-        lineHeight: 1.35,
-        background: bg,
-        color,
-        wordBreak: 'break-word',
-      }}
-    >
-      {label}
-    </span>
-  )
+/** The To match · All switch on the deposit list (AR refresh, v2.3379). */
+function listSegStyle(active: boolean): CSSProperties {
+  return {
+    padding: '0.2rem 0.6rem',
+    fontSize: '0.75rem',
+    border: 'none',
+    background: active ? 'var(--bg-blue-tint)' : 'transparent',
+    color: active ? 'var(--text-link)' : 'var(--text-muted)',
+    cursor: 'pointer',
+    fontWeight: active ? 700 : 500,
+  }
 }
 
 export type BankPaymentsModalProps = {
@@ -184,7 +166,6 @@ export default function BankPaymentsModal({
   const [sortingConfigResolved, setSortingConfigResolved] = useState<boolean>(
     () => loadBankPaymentsSortingConfigFromLocalCache() != null,
   )
-  const [devFilterOpen, setDevFilterOpen] = useState(false)
   const [bankDetailsOpen, setBankDetailsOpen] = useState(false)
   const [sortingConfigModalOpen, setSortingConfigModalOpen] = useState(false)
   const [kindChoices, setKindChoices] = useState<string[]>([])
@@ -393,6 +374,12 @@ export default function BankPaymentsModal({
     () => buildArExactMatchSweep(candidates, targets),
     [candidates, targets],
   )
+  /** AR refresh (v2.3379): one state per row from the data above, and the header's summary. */
+  const rowStates = useMemo(
+    () => arDepositRowStates({ deposits: candidates, sweep: exactMatchSweep, targets, recordedPayments }),
+    [candidates, exactMatchSweep, targets, recordedPayments],
+  )
+  const depositSummary = useMemo(() => arDepositSummaryWords(arDepositSummary(candidates)), [candidates])
   const [sweepOpen, setSweepOpen] = useState(false)
   /** Deposit ids the user un-ticked in the review panel. */
   const [sweepExcluded, setSweepExcluded] = useState<Set<string>>(() => new Set())
@@ -1096,9 +1083,18 @@ export default function BankPaymentsModal({
             borderBottom: '1px solid var(--border)',
           }}
         >
-          <h2 id="accounts-receivable-modal-title" style={{ margin: 0, fontSize: '1.125rem', fontWeight: 600 }}>
+          <h2 id="accounts-receivable-modal-title" style={{ margin: 0, fontSize: '1.125rem', fontWeight: 600, whiteSpace: 'nowrap' }}>
             Accounts Receivable
           </h2>
+          {/* AR refresh (v2.3379): the header summarises the pile instead of explaining the modal. */}
+          {depositSummary ? (
+            <span data-testid="ar-summary" style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', flex: '1 1 auto', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              <strong style={{ color: 'var(--text-strong)' }}>{depositSummary.count}</strong> to match ·{' '}
+              <strong style={{ color: 'var(--text-strong)', fontVariantNumeric: 'tabular-nums' }}>{depositSummary.money}</strong> unapplied
+            </span>
+          ) : (
+            <span style={{ flex: '1 1 auto' }} />
+          )}
           {/* Bank transfer details (v2.3308): the routing / account / check address
               the customer on the phone is asking for — the same row the portal
               statement shows, read here for the office. */}
@@ -1108,7 +1104,6 @@ export default function BankPaymentsModal({
             aria-expanded={bankDetailsOpen}
             aria-controls="ar-bank-transfer-panel"
             style={{
-              marginLeft: 'auto',
               border: '1px solid var(--border)',
               background: bankDetailsOpen ? 'var(--bg-muted)' : 'var(--surface)',
               color: 'var(--text)',
@@ -1122,6 +1117,32 @@ export default function BankPaymentsModal({
           >
             🏦 Bank transfer details
           </button>
+          <ArHeaderMenu
+            ariaLabel="More Accounts Receivable options"
+            items={[
+              ...(canApply
+                ? [
+                    {
+                      key: 'mark',
+                      label: 'Mark returned deposits',
+                      hint: 'Tick bounced checks on the list so they leave the pile',
+                      checked: arBankReturnedMarkMode,
+                      onSelect: () => setArBankReturnedMarkMode((v) => !v),
+                    },
+                  ]
+                : []),
+              ...(authRole === 'dev'
+                ? [
+                    {
+                      key: 'filter',
+                      label: 'Mercury filter…',
+                      hint: `Start ${sortingConfig.startDateYmd} · kinds ${sortingConfig.kinds.length || 'all'} · accounts ${sortingConfig.accountIds.length || 'all'} · debit cards ${sortingConfig.debitCardIds.length || 'any'} · dev only`,
+                      onSelect: () => setSortingConfigModalOpen(true),
+                    },
+                  ]
+                : []),
+            ]}
+          />
           <button
             type="button"
             onClick={onClose}
@@ -1141,54 +1162,6 @@ export default function BankPaymentsModal({
         <div id="ar-bank-transfer-panel">
           <BankTransferDetailsPanel open={bankDetailsOpen} phone={PORTAL_COMPANY.phone} canEdit={authRole === 'dev' || authRole === 'master_technician'} />
         </div>
-
-        <div style={{ padding: '0.75rem 1.25rem', borderBottom: '1px solid var(--border)', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
-          Match Mercury deposits to <strong>Billed Awaiting Payment</strong> lines. Payments appear in Edit Job →
-          Payments received. Stripe-hosted bills are marked <strong>· Stripe</strong> — pick one only when the customer
-          paid outside Stripe (check, cash, ACH).
-        </div>
-
-        {authRole === 'dev' && (
-          <div style={{ padding: '0.5rem 1.25rem', background: 'var(--bg-page)', borderBottom: '1px solid var(--border)' }}>
-            <button
-              type="button"
-              onClick={() => setDevFilterOpen((v) => !v)}
-              style={{
-                border: 'none',
-                background: 'none',
-                cursor: 'pointer',
-                color: 'var(--text-link)',
-                fontSize: '0.8125rem',
-                fontWeight: 500,
-                padding: '0.25rem 0',
-              }}
-            >
-              {devFilterOpen ? '\u25BC' : '\u25B6'} Dev: Mercury filter (Banking Sorting)
-            </button>
-            {devFilterOpen && (
-              <div style={{ marginTop: '0.5rem', display: 'flex', flexWrap: 'wrap', gap: '0.5rem', alignItems: 'center' }}>
-                <span style={{ fontSize: '0.8125rem', color: 'var(--text-600)' }}>
-                  Start date {sortingConfig.startDateYmd}; kinds {sortingConfig.kinds.length || 'all'}; accounts{' '}
-                  {sortingConfig.accountIds.length || 'all'}; debit cards {sortingConfig.debitCardIds.length || 'any'}.
-                </span>
-                <button
-                  type="button"
-                  onClick={() => setSortingConfigModalOpen(true)}
-                  style={{
-                    padding: '0.35rem 0.65rem',
-                    borderRadius: 4,
-                    border: '1px solid var(--border-strong)',
-                    background: 'var(--surface)',
-                    cursor: 'pointer',
-                    fontSize: '0.8125rem',
-                  }}
-                >
-                  Edit sorting configuration…
-                </button>
-              </div>
-            )}
-          </div>
-        )}
 
         {!canApply && (
           <div style={{ padding: '0.5rem 1.25rem', background: 'var(--bg-amber-tint)', fontSize: '0.8125rem', color: 'var(--text-amber-800)' }}>
@@ -1410,28 +1383,22 @@ export default function BankPaymentsModal({
                 padding: '0.5rem 0.75rem 0.35rem',
               }}
             >
-              <span style={{ fontWeight: 600, fontSize: '0.8125rem', color: 'var(--text-700)' }}>Bank transactions</span>
-              {canApply ? (
+              <span style={{ fontWeight: 700, fontSize: '0.8125rem', color: 'var(--text-700)' }}>Deposits</span>
+              {/* AR refresh (v2.3379): To match · All replaces the "Show fully applied and returned" checkbox. */}
+              <div role="group" aria-label="Which deposits to list" style={{ display: 'inline-flex', border: '1px solid var(--border-strong)', borderRadius: 999, overflow: 'hidden' }}>
+                <button type="button" aria-pressed={!includeHiddenArDeposits} onClick={() => setIncludeHiddenArDeposits(false)} style={listSegStyle(!includeHiddenArDeposits)}>
+                  To match{depositSummary ? ` · ${depositSummary.count.split(' ')[0]}` : ''}
+                </button>
                 <button
                   type="button"
-                  onClick={() => setArBankReturnedMarkMode((v) => !v)}
-                  aria-pressed={arBankReturnedMarkMode}
-                  aria-label={arBankReturnedMarkMode ? 'Exit mark returned mode' : 'Mark deposits as returned'}
-                  style={{
-                    border: '1px solid var(--border-strong)',
-                    background: arBankReturnedMarkMode ? 'var(--bg-blue-tint)' : 'var(--surface)',
-                    borderRadius: 4,
-                    padding: '2px 8px',
-                    fontSize: '0.75rem',
-                    fontWeight: 600,
-                    color: 'var(--text-700)',
-                    cursor: 'pointer',
-                    flexShrink: 0,
-                  }}
+                  aria-pressed={includeHiddenArDeposits}
+                  onClick={() => setIncludeHiddenArDeposits(true)}
+                  title="Also list deposits already fully applied and those marked returned"
+                  style={listSegStyle(includeHiddenArDeposits)}
                 >
-                  Mark
+                  All
                 </button>
-              ) : null}
+              </div>
             </div>
             <div style={{ padding: '0 0.5rem 0.5rem', flexShrink: 0 }}>
               <input
@@ -1452,26 +1419,6 @@ export default function BankPaymentsModal({
                 }}
               />
             </div>
-            <label
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.35rem',
-                padding: '0 0.5rem 0.5rem',
-                fontSize: '0.75rem',
-                color: 'var(--text-600)',
-                cursor: 'pointer',
-                userSelect: 'none',
-              }}
-            >
-              <input
-                type="checkbox"
-                checked={includeHiddenArDeposits}
-                onChange={(e) => setIncludeHiddenArDeposits(e.target.checked)}
-                aria-label="Show fully applied and returned deposits"
-              />
-              Show fully applied and returned deposits
-            </label>
             {canApply && exactMatchSweep.pairs.length > 0 ? (
               <div
                 style={{
@@ -1527,116 +1474,20 @@ export default function BankPaymentsModal({
                   No bank transactions match this search.
                 </p>
               )}
-              {filteredCandidates.map((c) => {
-                const active = c.mercury_transaction_id === selectedId
-                const posted = c.posted_at
-                  ? new Date(c.posted_at).toLocaleDateString('en-US', { timeZone: APP_CALENDAR_TZ })
-                  : '—'
-                return (
-                  <button
-                    key={c.mercury_transaction_id}
-                    type="button"
-                    onClick={() => setSelectedId(c.mercury_transaction_id)}
-                    style={{
-                      display: 'flex',
-                      flexDirection: 'column',
-                      alignItems: 'stretch',
-                      width: '100%',
-                      textAlign: 'left',
-                      padding: '0.6rem 0.75rem',
-                      border: 'none',
-                      borderBottom: '1px solid var(--border)',
-                      background: active ? 'var(--bg-blue-tint)' : 'var(--surface)',
-                      cursor: 'pointer',
-                      fontSize: '0.8125rem',
-                      boxSizing: 'border-box',
-                    }}
-                  >
-                    <div
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        gap: '0.5rem',
-                        minWidth: 0,
-                      }}
-                    >
-                      <div
-                        style={{
-                          fontWeight: 600,
-                          color: 'var(--text-strong)',
-                          minWidth: 0,
-                          flex: '1 1 auto',
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                          whiteSpace: 'nowrap',
-                        }}
-                      >
-                        {formatMoney(Math.abs(Number(c.amount)))}
-                      </div>
-                      <div
-                        style={{
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: '0.35rem',
-                          flexShrink: 0,
-                        }}
-                      >
-                        {c.returned ? (
-                          <span
-                            style={{
-                              color: 'var(--text-red-700)',
-                              fontWeight: 600,
-                              fontSize: '0.72rem',
-                              flexShrink: 0,
-                            }}
-                          >
-                            Returned
-                          </span>
-                        ) : null}
-                        <KindBadgePill kind={c.kind} kindBadges={kindBadges} />
-                        <span style={{ fontSize: '0.75rem', color: 'var(--text-faint)' }}>{posted}</span>
-                        {canApply && arBankReturnedMarkMode ? (
-                          <label
-                            style={{
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: '0.25rem',
-                              marginLeft: 4,
-                              fontSize: '0.7rem',
-                              color: 'var(--text-600)',
-                              cursor: returnedToggleSavingId === c.mercury_transaction_id ? 'wait' : 'pointer',
-                            }}
-                            onClick={(e) => e.stopPropagation()}
-                            onPointerDown={(e) => e.stopPropagation()}
-                          >
-                            <input
-                              type="checkbox"
-                              checked={Boolean(c.returned)}
-                              disabled={returnedToggleSavingId === c.mercury_transaction_id}
-                              onChange={(e) => {
-                                e.stopPropagation()
-                                void toggleMercuryReturned(c.mercury_transaction_id, e.target.checked)
-                              }}
-                              aria-label={`Returned: ${c.counterparty_name?.trim() || formatMoney(Math.abs(Number(c.amount)))}`}
-                            />
-                            Returned
-                          </label>
-                        ) : null}
-                      </div>
-                    </div>
-                    <div style={{ color: 'var(--text-muted)', marginTop: 2 }}>{c.counterparty_name?.trim() || '—'}</div>
-                    <div style={{ color: 'var(--text-faint)', marginTop: 2, fontSize: '0.75rem' }}>
-                      rem. {formatMoney(Number(c.remaining_available))}
-                    </div>
-                    {Number(c.consumed) > AR_BANK_PAYMENT_CONSUMED_DISPLAY_EPS ? (
-                      <div style={{ color: 'var(--text-muted)', marginTop: 2, fontSize: '0.75rem' }}>
-                        <strong>Applied to jobs:</strong> {formatMoney(Number(c.consumed))}
-                      </div>
-                    ) : null}
-                  </button>
-                )
-              })}
+              {filteredCandidates.map((c) => (
+                <ArDepositRow
+                  key={c.mercury_transaction_id}
+                  deposit={c}
+                  active={c.mercury_transaction_id === selectedId}
+                  state={rowStates.get(c.mercury_transaction_id) ?? 'hand'}
+                  kindBadges={kindBadges}
+                  markMode={arBankReturnedMarkMode}
+                  canApply={canApply}
+                  savingReturned={returnedToggleSavingId === c.mercury_transaction_id}
+                  onSelect={() => setSelectedId(c.mercury_transaction_id)}
+                  onToggleReturned={(next) => void toggleMercuryReturned(c.mercury_transaction_id, next)}
+                />
+              ))}
             </div>
           </div>
 
