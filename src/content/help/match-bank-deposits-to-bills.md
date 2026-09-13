@@ -50,7 +50,7 @@ If a set of the matched customer's bills adds up to the deposit exactly, the pan
 
 Tapping it fills one allocation line per bill for you to review, then {{button:blue|Apply}} as usual. The chip only appears when exactly one combination works — if several could, nothing is suggested and you pick by hand.
 
-You can always split a deposit yourself: {{button:outline|Add Additional Allocation}} adds lines, and the matched customer's chips make it easy to pick their bills one at a time until the remaining hits zero.
+You can always split a deposit yourself: **+ Split across another bill** under the allocation rows adds a line, and the matched customer's chips make it easy to pick their bills one at a time until the meter under the deposit's name reads *Fully allocated ✓*. Each row is one ledger line — kind · bill or payment · amount — and **· Add a note** beside the split link opens the internal note that lands on the job's Payments received.
 
 ## If the payment was already recorded by hand
 
