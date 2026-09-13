@@ -25,7 +25,8 @@ import {
 } from '../../lib/bankPaymentsKindBadges'
 import { ArDepositRow } from './ar/ArDepositRow'
 import { ArHeaderMenu } from './ar/ArHeaderMenu'
-import { KindBadgePill } from './ar/KindBadgePill'
+import { ArDepositHeader } from './ar/ArDepositHeader'
+import { arAllocationProgress } from '../../lib/jobs/arAllocationProgress'
 import { arDepositRowStates, arDepositSummary, arDepositSummaryWords } from '../../lib/jobs/arDepositRowState'
 import { mercuryDebitCardIdFromRaw } from '../../lib/mercuryRawDebitCard'
 import { supabase } from '../../lib/supabase'
@@ -184,6 +185,8 @@ export default function BankPaymentsModal({
   const [allocLines, setAllocLines] = useState<AllocLine[]>([])
   const [recordedPayments, setRecordedPayments] = useState<ArRecordedPaymentCandidate[]>([])
   const [internalNote, setInternalNote] = useState('')
+  /** AR refresh (v2.3380): the memo is folded to "Add a note" until wanted. */
+  const [noteOpen, setNoteOpen] = useState(false)
   const [applyError, setApplyError] = useState<string | null>(null)
   const [applySubmitting, setApplySubmitting] = useState(false)
   const [kindBadges, setKindBadges] = useState<Record<string, MercuryKindBadge>>(() => loadBankPaymentsKindBadges())
@@ -380,6 +383,10 @@ export default function BankPaymentsModal({
     [candidates, exactMatchSweep, targets, recordedPayments],
   )
   const depositSummary = useMemo(() => arDepositSummaryWords(arDepositSummary(candidates)), [candidates])
+  const allocationProgress = useMemo(
+    () => arAllocationProgress({ amount: selected?.amount ?? 0, consumed: selected?.consumed ?? 0, remainingAvailable: selected?.remaining_available ?? 0, lines: allocLines }),
+    [selected, allocLines],
+  )
   const [sweepOpen, setSweepOpen] = useState(false)
   /** Deposit ids the user un-ticked in the review panel. */
   const [sweepExcluded, setSweepExcluded] = useState<Set<string>>(() => new Set())
@@ -675,6 +682,7 @@ export default function BankPaymentsModal({
   useEffect(() => {
     if (!open || !selectedId) return
     setAllocLines([{ id: crypto.randomUUID(), kind: 'billed', targetKey: '', amountStr: '' }])
+    setNoteOpen(false)
     setApplyError(null)
     setStripeOutOfBandConfirmed(false)
     setStripeCloseResults(null)
@@ -1497,36 +1505,18 @@ export default function BankPaymentsModal({
                 <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>Select a bank transaction.</p>
               ) : (
                 <>
-                  <div style={BANK_PAYMENTS_SUMMARY_CARD_STYLE}>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.35rem' }}>
-                      <strong>Amount:</strong> {formatMoney(Math.abs(Number(selected.amount)))} ·{' '}
-                      <strong>Remaining to allocate:</strong> {formatMoney(Number(selected.remaining_available))}
-                      {selected.returned ? (
-                        <>
-                          {' '}
-                          <span
-                            style={{
-                              color: 'var(--text-red-700)',
-                              fontWeight: 600,
-                              fontSize: '0.75rem',
-                            }}
-                          >
-                            Returned
-                          </span>
-                        </>
-                      ) : null}
-                    </div>
-                    {selected.note?.trim() ? (
-                      <div style={{ marginTop: 6 }}>
-                        <strong>Note:</strong> {selected.note}
-                      </div>
-                    ) : null}
-                    {selected.external_memo?.trim() ? (
-                      <div style={{ marginTop: 6 }}>
-                        <strong>Memo:</strong> {selected.external_memo}
-                      </div>
-                    ) : null}
-                  </div>
+                  <ArDepositHeader
+                    name={(selected.counterparty_name ?? '').trim() || 'Unnamed deposit'}
+                    amount={Math.abs(Number(selected.amount))}
+                    kind={selected.kind}
+                    kindBadges={kindBadges}
+                    postedLabel={paidOnYmdFromMercury ? formatWorkDateYmdFriendly(paidOnYmdFromMercury) : null}
+                    note={selected.note}
+                    memo={selected.external_memo}
+                    returned={Boolean(selected.returned)}
+                    consumed={Number(selected.consumed) || 0}
+                    progress={allocationProgress}
+                  />
 
                   {Number(selected.consumed) > AR_BANK_PAYMENT_CONSUMED_DISPLAY_EPS ? (
                     <div style={BANK_PAYMENTS_SUMMARY_CARD_STYLE}>
@@ -1630,49 +1620,9 @@ export default function BankPaymentsModal({
                     </div>
                   ) : null}
 
-                  <div style={{ marginBottom: '0.75rem', fontSize: '0.875rem', color: 'var(--text-700)' }}>
-                    <strong>Posted:</strong>{' '}
-                    {paidOnYmdFromMercury ? (
-                      <span>{formatWorkDateYmdFriendly(paidOnYmdFromMercury)}</span>
-                    ) : (
-                      <span style={{ color: 'var(--text-faint)' }}>—</span>
-                    )}
-                  </div>
-
-                  <div
-                    style={{
-                      marginBottom: '0.75rem',
-                      fontSize: '0.875rem',
-                      color: 'var(--text-700)',
-                      display: 'flex',
-                      flexWrap: 'wrap',
-                      alignItems: 'center',
-                      gap: '0.35rem',
-                    }}
-                  >
-                    <strong>Kind:</strong> <KindBadgePill kind={selected.kind} kindBadges={kindBadges} />
-                  </div>
-
-                  <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 500, marginBottom: '0.25rem' }}>
-                    Memo (optional)
-                  </label>
-                  <textarea
-                    value={internalNote}
-                    onChange={(e) => setInternalNote(e.target.value)}
-                    disabled={!canApply}
-                    rows={2}
-                    style={{
-                      width: '100%',
-                      padding: '0.35rem',
-                      marginBottom: '1rem',
-                      boxSizing: 'border-box',
-                      resize: 'vertical',
-                    }}
-                  />
-
                   {canAllocateRemaining ? (
                     <>
-                      <div style={{ fontWeight: 600, fontSize: '0.875rem', marginBottom: '0.5rem' }}>Allocations</div>
+                      <div style={{ fontWeight: 600, fontSize: '0.875rem', marginBottom: '0.35rem' }}>Allocations</div>
                       {targets.length === 0 && recordedPayments.length === 0 ? (
                         <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>
                           {billedTargetsLoading
@@ -1716,14 +1666,17 @@ export default function BankPaymentsModal({
                         return (
                           <div
                             key={line.id}
+                            data-testid="ar-allocation-row"
                             style={{
-                              display: 'flex',
-                              alignItems: 'flex-start',
-                              gap: '0.5rem',
-                              marginBottom: '0.75rem',
+                              display: 'grid',
+                              gridTemplateColumns: 'auto minmax(0, 1fr) 7.5rem 1.5rem',
+                              gap: '0 0.5rem',
+                              alignItems: 'start',
+                              padding: '0.5rem 0',
+                              borderTop: '1px solid var(--border)',
                             }}
                           >
-                            <div style={{ flex: '1 1 auto', minWidth: 0 }}>
+                            <div style={{ paddingTop: 2 }}>
                               {recordedPayments.length > 0 ? (
                                 <div
                                   role="group"
@@ -1733,8 +1686,7 @@ export default function BankPaymentsModal({
                                     border: '1px solid var(--border-strong)',
                                     borderRadius: 999,
                                     overflow: 'hidden',
-                                    marginBottom: 6,
-                                  }}
+                                    }}
                                 >
                                   <button
                                     type="button"
@@ -1757,6 +1709,11 @@ export default function BankPaymentsModal({
                                   </button>
                                 </div>
                               ) : null}
+                              {recordedPayments.length === 0 ? (
+                                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>Billed line</span>
+                              ) : null}
+                            </div>
+                            <div style={{ minWidth: 0 }}>
                               {line.kind === 'payment' ? (
                                 <SearchableSelect
                                   id={`ar-alloc-target-${line.id}`}
@@ -2093,12 +2050,13 @@ export default function BankPaymentsModal({
                               title={line.kind === 'payment' ? 'Amount is locked to the recorded payment' : undefined}
                               disabled={!canApply || line.kind === 'payment'}
                               style={{
-                                flexShrink: 0,
-                                alignSelf: 'flex-start',
-                                padding: '0.35rem',
-                                width: '7.5rem',
+                                padding: '0.35rem 0.5rem',
+                                width: '100%',
                                 boxSizing: 'border-box',
-                                marginTop: 2,
+                                textAlign: 'right',
+                                fontVariantNumeric: 'tabular-nums',
+                                border: '1px solid var(--border-strong)',
+                                borderRadius: 4,
                               }}
                             />
                             {allocLines.length > 1 ? (
@@ -2109,9 +2067,7 @@ export default function BankPaymentsModal({
                                 aria-label="Remove allocation"
                                 title="Remove allocation"
                                 style={{
-                                  flexShrink: 0,
-                                  alignSelf: 'flex-start',
-                                  marginTop: 2,
+                                  marginTop: 4,
                                   padding: '0.25rem',
                                   border: 'none',
                                   background: 'none',
@@ -2138,16 +2094,7 @@ export default function BankPaymentsModal({
                         )
                       })}
                       {canApply ? (
-                        <div
-                          style={{
-                            display: 'flex',
-                            flexWrap: 'wrap',
-                            alignItems: 'center',
-                            justifyContent: 'flex-end',
-                            gap: '0.5rem',
-                            marginTop: '0.15rem',
-                          }}
-                        >
+                        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.25rem 0.9rem', marginTop: '0.5rem', borderTop: '1px solid var(--border)', paddingTop: '0.5rem', fontSize: '0.8125rem' }}>
                           <button
                             type="button"
                             onClick={() =>
@@ -2156,17 +2103,35 @@ export default function BankPaymentsModal({
                                 { id: crypto.randomUUID(), kind: 'billed', targetKey: '', amountStr: '' },
                               ])
                             }
-                            style={{
-                              padding: '0.35rem 0.65rem',
-                              fontSize: '0.8125rem',
-                              border: '1px solid var(--border-strong)',
-                              borderRadius: 4,
-                              background: 'var(--surface)',
-                              cursor: 'pointer',
-                            }}
+                            style={{ border: 'none', background: 'none', padding: 0, color: 'var(--text-link)', fontWeight: 600, cursor: 'pointer', fontSize: '0.8125rem' }}
                           >
-                            Add Additional Allocation
+                            + Split across another bill
                           </button>
+                          {!noteOpen && !internalNote.trim() ? (
+                            <button
+                              type="button"
+                              onClick={() => setNoteOpen(true)}
+                              style={{ border: 'none', background: 'none', padding: 0, color: 'var(--text-muted)', cursor: 'pointer', fontSize: '0.8125rem' }}
+                            >
+                              · Add a note
+                            </button>
+                          ) : null}
+                        </div>
+                      ) : null}
+                      {noteOpen || internalNote.trim() ? (
+                        <div style={{ marginTop: '0.5rem' }}>
+                          <label htmlFor="ar-internal-note" style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: 3 }}>
+                            Note on this payment <span style={{ fontWeight: 400 }}>— internal, shows on the job's Payments received</span>
+                          </label>
+                          <textarea
+                            id="ar-internal-note"
+                            value={internalNote}
+                            onChange={(e) => setInternalNote(e.target.value)}
+                            disabled={!canApply}
+                            rows={2}
+                            autoFocus={noteOpen && !internalNote.trim()}
+                            style={{ width: '100%', padding: '0.35rem 0.5rem', boxSizing: 'border-box', resize: 'vertical', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.8125rem' }}
+                          />
                         </div>
                       ) : null}
                         </>
