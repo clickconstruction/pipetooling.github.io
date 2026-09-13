@@ -121,13 +121,19 @@ export default function CustomerPortalGlobeButton({
         if (cancelled || !res.ok) return
         setViewStats(parseOfficeViewStats(body))
         const payload = parsePortalPayload(body)
-        if (!payload || payload.bills.length === 0) return
+        if (!payload || (payload.bills.length === 0 && payload.sharedBills.length === 0)) return
         const { data: jobRows } = await supabase
           .from('jobs_ledger')
           .select('id, hcp_number, click_number')
           .or(`customer_id.eq.${customerId},gc_customer_id.eq.${customerId}`)
         if (cancelled || !jobRows) return
-        setBillRows(buildStatementBillRows(payload.bills, jobRows))
+        // Share this bill (v2.3375): the shared card's rows ride after the ledger's, tagged.
+        setBillRows(
+          buildStatementBillRows(
+            [...payload.bills, ...payload.sharedBills.map((b) => ({ jobNumber: b.jobNumber, serviceTag: b.serviceTag, amount: b.amount, billedOn: b.billedOn, payUrl: null, shared: true }))],
+            jobRows,
+          ),
+        )
       } catch {
         // Preview strip only — stay silent.
       }
@@ -874,6 +880,11 @@ export default function CustomerPortalGlobeButton({
                         )}
                         <span style={{ fontWeight: 700 }}>{l.jobNumber}</span>
                         <span style={{ color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}>{formatPortalUsd(l.amount)}</span>
+                        {l.shared ? (
+                          <span title="Shown to this customer for their records — someone else pays it" style={{ fontSize: '0.6rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', padding: '0 0.3rem', borderRadius: 999, background: 'var(--bg-green-100)', color: 'var(--text-green-800)' }}>
+                            shared
+                          </span>
+                        ) : null}
                         <span style={{ flex: 1 }} />
                         {l.payUrl ? (
                           <a

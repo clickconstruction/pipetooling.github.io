@@ -37,7 +37,21 @@ describe('buildStatementBillRows', () => {
       jobs,
     )
     expect(rows).toEqual([
-      { jobId: 'jC12', jobNumber: 'C12', serviceTag: null, amount: 7, billedOn: null, payUrl: null },
+      { jobId: 'jC12', jobNumber: 'C12', serviceTag: null, amount: 7, billedOn: null, payUrl: null, shared: false },
+    ])
+  })
+
+  it('a shared bill (v2.3375) keeps its flag; owed rows read false', () => {
+    const rows = buildStatementBillRows(
+      [
+        { jobNumber: '898', amount: 1200, billedOn: '2026-07-31', payUrl: 'https://pay/898a' },
+        { jobNumber: '789', amount: 4420, billedOn: '2026-08-03', payUrl: null, shared: true },
+      ],
+      jobs,
+    )
+    expect(rows.map((r) => [r.jobNumber, r.shared])).toEqual([
+      ['898', false],
+      ['789', true],
     ])
   })
 })

@@ -104,6 +104,7 @@ import {
   type PayerRecipient,
 } from '../../lib/jobs/billToParty'
 import { buildCopyEmails, defaultCopyContactIds, defaultCopyOtherParty, type BillCopyContact } from '../../lib/jobs/billCopyRecipients'
+import { defaultShowOtherParty, otherPartyOf, type ShownToParty } from '../../lib/jobs/billVisibility'
 import { planPrimaryRtbForBillCustomer } from '../../lib/billing/proposedPrimaryRtbAmount'
 import { recordNavClick } from '../../lib/navClickTelemetry'
 import { sendHazmatNoticeEmailToCustomer } from '../../lib/sendHazmatNoticeEmail'
@@ -577,6 +578,10 @@ export default function SendRecordInvoiceModal({
   /** The other party on the job (the customer when the GC pays, the GC when the customer pays) — offered as a copy recipient. */
   const [otherParty, setOtherParty] = useState<{ name: string; email: string; role: 'customer' | 'gc' } | null>(null)
   const [copyOtherParty, setCopyOtherParty] = useState(false)
+  /** Share this bill (v2.3376): the non-paying party this bill can be shown to (by role, email or not), the tick, and the job's memory the tick starts from. */
+  const [shareParty, setShareParty] = useState<{ name: string; role: ShownToParty } | null>(null)
+  const [showOtherParty, setShowOtherParty] = useState(false)
+  const [jobShowMemory, setJobShowMemory] = useState(false)
   const jobWithPayer = jobRaw && payerParty === 'gc' ? applyPayerToJobBillingContext(jobRaw, payerRecipient) : jobRaw
   const jobWithBillTo = jobWithPayer ? applyBillToToJobBillingContext(jobWithPayer, billToOverride) : jobWithPayer
   const job = jobWithBillTo && emailOverride ? { ...jobWithBillTo, customer_email: emailOverride } : jobWithBillTo
@@ -744,6 +749,9 @@ export default function SendRecordInvoiceModal({
     setPayerRecipient(null)
     setOtherParty(null)
     setCopyOtherParty(false)
+    setShareParty(null)
+    setShowOtherParty(false)
+    setJobShowMemory(false)
     if (!open || !payerJobId) return
     let cancelled = false
     void (async () => {
@@ -751,7 +759,7 @@ export default function SendRecordInvoiceModal({
         const [{ data: jobRow }, { data: invRow }] = await Promise.all([
           supabase
             .from('jobs_ledger')
-            .select('id, bill_to_party, bill_copy_other_party, gc_customer_id, customer_id, customer_name, customer_email')
+            .select('id, bill_to_party, bill_copy_other_party, show_bills_to_other_party, gc_customer_id, customer_id, customer_name, customer_email')
             .eq('id', payerJobId)
             .maybeSingle(),
           billToTargetInvoiceId
@@ -766,6 +774,7 @@ export default function SendRecordInvoiceModal({
         const jr = jobRow as {
           bill_to_party?: string | null
           bill_copy_other_party?: boolean | null
+          show_bills_to_other_party?: boolean | null
           gc_customer_id?: string | null
           customer_id: string | null
           customer_name: string | null
@@ -794,12 +803,25 @@ export default function SendRecordInvoiceModal({
         setOtherParty(other)
         // Bills also go to (v2.3358): the job remembers whether the other party is copied.
         setCopyOtherParty(defaultCopyOtherParty(jr, other))
+        // Share this bill (v2.3376): the other party by role — the tick needs no
+        // email address, only a statement to land on. Starts from the job's memory.
+        const shareRole = otherPartyOf(jr, party)
+        setShareParty(
+          shareRole === 'customer'
+            ? { name: (jr?.customer_name ?? '').trim() || 'the customer', role: 'customer' }
+            : shareRole === 'gc'
+              ? { name: (gcRow?.name ?? '').trim() || 'the GC', role: 'gc' }
+              : null,
+        )
+        setJobShowMemory(jr?.show_bills_to_other_party === true)
+        setShowOtherParty(defaultShowOtherParty(jr, shareRole))
       } catch {
         if (!cancelled) {
           setBillToOverride(null)
           setPayerParty('customer')
           setPayerRecipient(null)
           setOtherParty(null)
+          setShareParty(null)
         }
       }
     })()
@@ -1098,7 +1120,31 @@ export default function SendRecordInvoiceModal({
    * opened (a payment landed, a partial was carved) is shown, not silently
    * billed at the new number.
    */
+  /**
+   * Share this bill (v2.3376): the stamp the portal reads, written on the row
+   * the channel bills against, plus the job's memory when the tick changed it.
+   * A refused write is said, never fatal — the bill still goes out.
+   */
+  async function stampShareOnInvoice(invoiceId: string): Promise<void> {
+    if (!shareParty || billToOverride) return
+    const shownTo: ShownToParty | null = showOtherParty ? shareParty.role : null
+    const { error } = await supabase.from('jobs_ledger_invoices').update({ shown_to_party: shownTo }).eq('id', invoiceId)
+    if (error) showToast(`Could not save who sees this bill: ${error.message}`, 'error')
+    if (jobRaw && showOtherParty !== jobShowMemory) {
+      const { error: jobErr } = await supabase.from('jobs_ledger').update({ show_bills_to_other_party: showOtherParty }).eq('id', jobRaw.id)
+      if (!jobErr) setJobShowMemory(showOtherParty)
+    }
+  }
+
   async function ensurePrimaryRowForCommit(
+    amountShown: number,
+  ): Promise<{ ok: true; invoiceId: string } | { ok: false; error: string }> {
+    const ensured = await ensurePrimaryRowForCommitRaw(amountShown)
+    if (ensured.ok) await stampShareOnInvoice(ensured.invoiceId)
+    return ensured
+  }
+
+  async function ensurePrimaryRowForCommitRaw(
     amountShown: number,
   ): Promise<{ ok: true; invoiceId: string } | { ok: false; error: string }> {
     if (kind === 'invoice') {
@@ -2227,6 +2273,21 @@ export default function SendRecordInvoiceModal({
                 <input type="checkbox" checked={copyOtherParty} onChange={(e) => setCopyOtherParty(e.target.checked)} />
                 <span>
                   Copy {otherParty.name} <span style={{ color: 'var(--text-muted)' }}>{otherParty.email} · {otherParty.role === 'gc' ? 'the GC, not billed' : 'the customer, not billed'}</span>
+                </span>
+              </label>
+            ) : null}
+            {/* Share this bill (v2.3376): the standing statement, beside the one-time
+                copy. Offered whenever the job names a second party; the stamp is
+                written on the bill row the channel bills against (stampShareOnInvoice). */}
+            {shareParty && !billToOverride ? (
+              <label data-testid="bill-customer-share-tick" style={{ display: 'flex', alignItems: 'flex-start', gap: '0.4rem', fontSize: '0.8125rem', cursor: 'pointer', padding: '0.1rem 0' }}>
+                <input type="checkbox" checked={showOtherParty} onChange={(e) => setShowOtherParty(e.target.checked)} style={{ marginTop: 2 }} />
+                <span>
+                  Show it on {shareParty.name}&rsquo;s statement
+                  <span style={{ display: 'block', color: 'var(--text-muted)', fontSize: '0.75rem' }}>
+                    Their portal lists this bill as billed to {(job.customer_name ?? '').trim() || 'the payer'} &mdash; no Pay button, not in their balance.
+                    {showOtherParty && !jobShowMemory ? ' This job’s next bills will start ticked.' : !showOtherParty && jobShowMemory ? ' This job’s next bills will start unticked.' : ''}
+                  </span>
                 </span>
               </label>
             ) : null}

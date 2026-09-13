@@ -2,7 +2,7 @@
 title: choose who gets the bill on a job
 category: Billing & Money
 roles: dev, master_technician, assistant, controller
-keywords: bills go to, GC pays, general contractor, homeowner, who pays, billing email, bill to, split, payer, split by line, one bill per payer, pays toggle, pays as GC by default, done right
+keywords: bills go to, GC pays, general contractor, homeowner, who pays, billing email, bill to, split, payer, split by line, one bill per payer, pays toggle, pays as GC by default, done right, show it on their statement, share this bill, shown to, eye chip
 order: 11
 ---
 Some jobs bill the homeowner. Some bill the GC. Some bill each of them for different work. Since v2.3345 the job says which, in one place, and every bill follows it — you never have to type the GC's address into the customer's email again.
@@ -54,4 +54,23 @@ On a **Split by line** job, or as a one-off on any job, use {{button:outline|Bil
 - The GC choice only appears when the job's GC is a different customer than the job customer. If you entered the GC as the customer too, the bills already go to the GC — nothing to change.
 - Changing **Bills go to** never touches a bill that has already been sent.
 - **GC Review and the weekly statement** list only what each GC pays. A job whose GC is not the payer sits in the **Not billed to a GC** bucket.
-- **The portals** follow it too: a GC's balance is what the GC owes, and bills on their jobs that went to the owner show under *On your jobs, billed to someone else* with no Pay button. Owners see the same the other way round.
+- **The portals** follow it too: a GC's balance is what the GC owes, and an owner's is what the owner owes. A bill the other party does not pay is **not** on their statement unless you shared it — see the next section.
+
+## Show the other party a bill they don't pay
+
+Sometimes the party who is not billed still needs to see the bill: a builder wants to know which of the homeowners they sent you still owe for repairs, or an owner asked to see the pretest their builder paid for. That is a decision you make **per bill**, in the same place you decide who gets a copy:
+
+1. Open {{button:blue|Send bill…}} on the job. In the **Send to** block, under *Copy Done Right Foundation · the GC, not billed*, there is a second line: **Show it on Done Right Foundation's statement**.
+2. Tick it and send. Their portal lists this bill in its own card — for a GC, *Your customers' open bills*: who owes it, the address and job, when it was billed and how long ago, what has been received, and what is open; for an owner, *On your job, billed to your builder*. No Pay button, and it never counts in their balance.
+3. Leave it unticked and the bill stays between you and the payer. Nothing is shown unless someone ticked it.
+
+:::example the tick, and what it starts from
+☑ **Copy Done Right Foundation** ap@donerightfoundation.com · the GC, not billed
+☑ **Show it on Done Right Foundation's statement** — their portal lists this bill as billed to Maria Delgado. No Pay button, not in their balance.
+:::
+
+Copy is the email, once. Show is the statement, standing. They are separate ticks — a GC can be copied on a bill without it staying on their statement, and the other way round.
+
+**Changing it later.** On **Edit Job → Bill**, a shared bill wears a {{chip:green|👁 shown to Done Right Foundation}} chip beside its payer chip. Click the chip (or {{button:outline|👁 ▾}} on a bill nobody sees) to change who sees it or to hide it again. Their portal changes on its next open. It never changes who pays or who was emailed.
+
+**Remembering it on the job.** The tick starts from the job's memory: on **Edit Job → Edit tab**, under *Bills also go to*, the **Show Done Right** row says whether this job's next bills start ticked ({{chip:green|on new bills}}) or not. Changing the tick in Bill Customer updates that memory, so a decision carries to the next bill on the same job. Bills already sent are never changed by the memory — only the chip on the Bill tab changes a sent bill.
