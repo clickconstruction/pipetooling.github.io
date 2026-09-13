@@ -19,7 +19,7 @@ The deposit's bank name, note, and memo are checked against your customers and G
 {{chip:green|$250.00 · 992 · Johnson Plumbing Test — matches this deposit}} {{chip:gray|$2,650.00 · 868 · Service Visit}}
 :::
 
-- Bills whose balance equals the deposit are green and listed first — one tap fills the allocation, then {{button:blue|Apply}}. A second tap on another bill adds a second line, and bills already on a line leave the list.
+- Bills whose balance equals the deposit are green and listed first — one tap fills the allocation, then {{button:blue|Apply $250.00}}. A second tap on another bill adds a second line, and bills already on a line leave the list. The footer reads the plan back before you press it — *Applies $250.00 to 992 · Done Right Foundation. The bill is settled.* — and {{button:outline|Apply & next ›}} applies and moves you to the next deposit instead of closing.
 - Initials work: a check deposited as "DRF" finds **Done Right Foundation**. Check services often put the real customer in the deposit memo — that's read too, and the header says so ("Memo mentions…").
 - No clear match? You still get the **Matches deposit amount** row (any bill equal to the deposit, whoever it belongs to) and the full searchable picker.
 

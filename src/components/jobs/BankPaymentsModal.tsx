@@ -28,6 +28,7 @@ import { ArHeaderMenu } from './ar/ArHeaderMenu'
 import { ArDepositHeader } from './ar/ArDepositHeader'
 import { ArPayerMatches } from './ar/ArPayerMatches'
 import { arAllocationProgress } from '../../lib/jobs/arAllocationProgress'
+import { arApplySentence, arNextDepositId } from '../../lib/jobs/arApplySentence'
 import { arDepositRowStates, arDepositSummary, arDepositSummaryWords } from '../../lib/jobs/arDepositRowState'
 import { mercuryDebitCardIdFromRaw } from '../../lib/mercuryRawDebitCard'
 import { supabase } from '../../lib/supabase'
@@ -388,6 +389,11 @@ export default function BankPaymentsModal({
     () => arAllocationProgress({ amount: selected?.amount ?? 0, consumed: selected?.consumed ?? 0, remainingAvailable: selected?.remaining_available ?? 0, lines: allocLines }),
     [selected, allocLines],
   )
+  /** AR refresh PR 4 (v2.3382): the deposit "Apply & next" lands on — the row below, else above. */
+  const nextDepositId = useMemo(
+    () => arNextDepositId(filteredCandidates.map((c) => c.mercury_transaction_id), selectedId),
+    [filteredCandidates, selectedId],
+  )
   const [sweepOpen, setSweepOpen] = useState(false)
   /** Deposit ids the user un-ticked in the review panel. */
   const [sweepExcluded, setSweepExcluded] = useState<Set<string>>(() => new Set())
@@ -552,8 +558,8 @@ export default function BankPaymentsModal({
    */
   const listRequestSeqRef = useRef(0)
 
-  const refreshList = useCallback(async () => {
-    if (!open) return
+  const refreshList = useCallback(async (): Promise<MercuryCandidate[]> => {
+    if (!open) return []
     const seq = ++listRequestSeqRef.current
     setListLoading(true)
     setListError(null)
@@ -576,7 +582,7 @@ export default function BankPaymentsModal({
           }),
         'list_mercury_transactions_for_bank_payments',
       )
-      if (seq !== listRequestSeqRef.current) return
+      if (seq !== listRequestSeqRef.current) return []
       const rows = (data ?? []) as MercuryCandidate[]
       setCandidates(rows)
       setSelectedId((prev) => {
@@ -584,10 +590,12 @@ export default function BankPaymentsModal({
         const first = rows[0]
         return first?.mercury_transaction_id ?? null
       })
+      return rows
     } catch (e: unknown) {
-      if (seq !== listRequestSeqRef.current) return
+      if (seq !== listRequestSeqRef.current) return []
       setListError(e instanceof Error ? e.message : 'Failed to load bank transactions')
       setCandidates([])
+      return []
     } finally {
       if (seq === listRequestSeqRef.current) setListLoading(false)
     }
@@ -930,6 +938,19 @@ export default function BankPaymentsModal({
     !canAllocateRemaining ||
     (stripeAllocationSelected && !stripeOutOfBandConfirmed)
 
+  /** AR refresh PR 4 (v2.3382): the footer's words — what Apply will do, or why it can't yet. */
+  const applySentence = useMemo(
+    () =>
+      arApplySentence({
+        lines: allocLines,
+        targetByKey,
+        paymentById: recordedPaymentById,
+        depositRemaining: selected ? Number(selected.remaining_available) : 0,
+        validation: validationMessage,
+      }),
+    [allocLines, targetByKey, recordedPaymentById, selected, validationMessage],
+  )
+
   /**
    * v2.1639: mark one exactly-covered Stripe-hosted bill paid out-of-band in
    * Stripe (kills the emailed link). Runs AFTER the allocation RPC — the app
@@ -988,8 +1009,23 @@ export default function BankPaymentsModal({
     if (next.every((r) => r.ok)) onClose()
   }
 
-  async function submitApply() {
+  /**
+   * After a successful apply: close (the default), or stay open and move to the
+   * next deposit in the list ("Apply & next", v2.3382) — the list is refreshed
+   * first so a fully applied deposit has left the pile.
+   */
+  async function finishApply(mode: 'close' | 'next', nextId: string | null) {
+    if (mode === 'close') {
+      onClose()
+      return
+    }
+    const rows = await refreshList()
+    if (nextId && rows.some((r) => r.mercury_transaction_id === nextId)) setSelectedId(nextId)
+  }
+
+  async function submitApply(mode: 'close' | 'next' = 'close') {
     if (!selected || !canApply || !canAllocateRemaining) return
+    const nextId = mode === 'next' ? nextDepositId : null
     if (stripeAllocationSelected && !stripeOutOfBandConfirmed) return
     if (!paidOnYmdFromMercury) {
       setApplyError('Missing Mercury posted date for this transaction.')
@@ -1052,7 +1088,7 @@ export default function BankPaymentsModal({
         : []
       if (candidates.length === 0) {
         await onApplied()
-        onClose()
+        await finishApply(mode, nextId)
         return
       }
       const results: Array<ArStripeAutoCloseCandidate & { ok: boolean; error?: string }> = []
@@ -1062,7 +1098,7 @@ export default function BankPaymentsModal({
       }
       await onApplied()
       if (results.every((r) => r.ok)) {
-        onClose()
+        await finishApply(mode, nextId)
       } else {
         setStripeCloseResults(results)
       }
@@ -2093,9 +2129,6 @@ export default function BankPaymentsModal({
                       </button>
                     </div>
                   ) : null}
-                  {validationMessage && (
-                    <p style={{ marginTop: '0.75rem', fontSize: '0.8125rem', color: 'var(--text-amber-700)' }}>{validationMessage}</p>
-                  )}
                   {applyError && (
                     <p style={{ marginTop: '0.75rem', fontSize: '0.8125rem', color: 'var(--text-red-700)' }}>{applyError}</p>
                   )}
@@ -2104,14 +2137,24 @@ export default function BankPaymentsModal({
             </div>
 
             <div
+              data-testid="ar-footer"
               style={{
-                padding: '0.75rem 1.25rem',
+                padding: '0.65rem 1.25rem',
                 borderTop: '1px solid var(--border)',
+                background: 'var(--bg-subtle)',
                 display: 'flex',
-                justifyContent: 'flex-end',
+                alignItems: 'center',
                 gap: '0.5rem',
+                flexWrap: 'wrap',
               }}
             >
+              {/* AR refresh PR 4 (v2.3382): the footer says what Apply will do. */}
+              <span
+                data-testid="ar-apply-sentence"
+                style={{ flex: '1 1 240px', minWidth: 0, fontSize: '0.8125rem', lineHeight: 1.4, color: applySentence.tone === 'warn' ? 'var(--text-amber-700)' : applySentence.tone === 'ready' ? 'var(--text-strong)' : 'var(--text-muted)' }}
+              >
+                {selected ? applySentence.text : ''}
+              </span>
               <button
                 type="button"
                 onClick={onClose}
@@ -2125,6 +2168,24 @@ export default function BankPaymentsModal({
               >
                 Cancel
               </button>
+              {nextDepositId && !applyDisabled ? (
+                <button
+                  type="button"
+                  onClick={() => void submitApply('next')}
+                  title="Apply, then stay here on the next deposit in the list"
+                  style={{
+                    padding: '0.45rem 0.9rem',
+                    borderRadius: 4,
+                    border: '1px solid var(--border-strong)',
+                    background: 'var(--surface)',
+                    color: 'var(--text-link)',
+                    cursor: 'pointer',
+                    fontWeight: 600,
+                  }}
+                >
+                  Apply &amp; next ›
+                </button>
+              ) : null}
               <button
                 type="button"
                 disabled={applyDisabled}
@@ -2137,9 +2198,10 @@ export default function BankPaymentsModal({
                   color: 'white',
                   cursor: applyDisabled ? 'not-allowed' : 'pointer',
                   fontWeight: 600,
+                  fontVariantNumeric: 'tabular-nums',
                 }}
               >
-                {applySubmitting ? 'Applying…' : 'Apply'}
+                {applySubmitting ? 'Applying…' : applySentence.total > 0 && !applyDisabled ? `Apply $${formatMoney(applySentence.total)}` : 'Apply'}
               </button>
             </div>
           </div>
