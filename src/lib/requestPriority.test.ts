@@ -68,6 +68,7 @@ describe('firstName / portalKindLabel', () => {
     expect(firstName('  Taunya  Miller ')).toBe('Taunya')
     expect(firstName('')).toBeNull()
     expect(portalKindLabel('visit')).toBe('asks for a visit')
+    expect(portalKindLabel('share_bill_ask')).toBe('asks about a customer’s bill')
     expect(portalKindLabel('bid')).toBe('asks for a bid')
     expect(portalKindLabel('gc_stage_ask')).toBe('asks for other dates')
     expect(portalKindLabel(null)).toBe('sent a request')

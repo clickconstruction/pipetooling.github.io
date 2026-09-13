@@ -124,6 +124,8 @@ export function portalKindLabel(kind: string | null | undefined): string {
     case 'gc_stage_ask':
     case 'stage_window':
       return 'asks for other dates'
+    case 'share_bill_ask':
+      return 'asks about a customer’s bill'
     default:
       return 'sent a request'
   }

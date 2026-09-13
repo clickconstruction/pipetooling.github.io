@@ -5,7 +5,7 @@
  * rows, pay link vs check chip, double-rule total, error state.
  */
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import CustomerPortal from './CustomerPortal'
 
@@ -329,8 +329,8 @@ describe('test reports card (v2.3304, fold v2.3312)', () => {
       bills: [],
       totalDue: 0,
       sharedBills: [
-        { jobLabel: 'Sewer line repair · Job 1017', jobNumber: '1017', jobName: 'Sewer line repair', serviceTag: 'plum', jobAddress: '4410 Cedar Hollow, Kyle, TX 78640', amount: 4420, billedAmount: 6420, totalPaid: 2000, billedOn: '2026-08-03', billedTo: 'Maria Delgado', viewerRole: 'gc' },
-        { jobLabel: 'Slab leak reroute · Job 1031', jobNumber: '1031', jobName: 'Slab leak reroute', serviceTag: 'plum', jobAddress: '118 Mesquite Bend, Buda, TX', amount: 3150, billedAmount: 3150, totalPaid: 0, billedOn: '2026-08-22', billedTo: 'Trent & Ashley Okafor', viewerRole: 'gc' },
+        { jobId: 'j1017', jobLabel: 'Sewer line repair · Job 1017', jobNumber: '1017', jobName: 'Sewer line repair', serviceTag: 'plum', jobAddress: '4410 Cedar Hollow, Kyle, TX 78640', amount: 4420, billedAmount: 6420, totalPaid: 2000, billedOn: '2026-08-03', billedTo: 'Maria Delgado', viewerRole: 'gc' },
+        { jobId: 'j1031', jobLabel: 'Slab leak reroute · Job 1031', jobNumber: '1031', jobName: 'Slab leak reroute', serviceTag: 'plum', jobAddress: '118 Mesquite Bend, Buda, TX', amount: 3150, billedAmount: 3150, totalPaid: 0, billedOn: '2026-08-22', billedTo: 'Trent & Ashley Okafor', viewerRole: 'gc' },
       ],
     }
     vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify(gcView), { status: 200 })))
@@ -349,6 +349,11 @@ describe('test reports card (v2.3304, fold v2.3312)', () => {
     expect(screen.getAllByText('$7,570.00').length).toBeGreaterThanOrEqual(1)
     expect(screen.getByText(/2 owners/)).toBeTruthy()
     expect(card.querySelectorAll('a').length).toBe(0)
+    // Ask the office (v2.3378): one door per shared bill on the GC's card, closed until opened.
+    expect(screen.getAllByTestId('portal-share-ask-open')).toHaveLength(2)
+    fireEvent.click(screen.getAllByTestId('portal-share-ask-open')[0]!)
+    expect(screen.getByText('Bill this to us instead')).toBeTruthy()
+    expect(screen.getByText('Remind the owner for us')).toBeTruthy()
     // No owner-wording card renders for a GC-only payload.
     expect(document.querySelector('[data-portal-shared-bills][data-role="customer"]')).toBeNull()
   })
@@ -364,6 +369,7 @@ describe('test reports card (v2.3304, fold v2.3312)', () => {
     expect(screen.getByText('On your job, billed to your builder')).toBeTruthy()
     expect(screen.getByText('Done Right Foundation')).toBeTruthy()
     expect(screen.getByText('Shown for your records · not yours to pay')).toBeTruthy()
+    expect(screen.queryByTestId('portal-share-ask-open')).toBeNull()
     // The balance is the owner's own bills only.
     expect(screen.getAllByText('$1,700.00').length).toBeGreaterThanOrEqual(2)
   })

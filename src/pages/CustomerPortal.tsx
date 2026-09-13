@@ -460,7 +460,7 @@ function PortalStatement({ payload, today, requestToken }: { payload: PortalPayl
       {/* Share this bill (v2.3375): what someone else pays and the office chose to
           show this viewer — the GC's customers' bills, or the builder's bill on
           the owner's job. Never in the balance, never payable here. */}
-      {payload.sharedBills.length > 0 ? <PortalSharedBillsCard bills={payload.sharedBills} todayYmd={todayYmd} /> : null}
+      {payload.sharedBills.length > 0 ? <PortalSharedBillsCard bills={payload.sharedBills} todayYmd={todayYmd} token={requestToken} /> : null}
 
       {/* Bank transfer details (v2.3308): collapsed under the ledger — ACH / wire
           details, the memo to write, where checks must go. From Supabase, never

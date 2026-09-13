@@ -236,6 +236,8 @@ export function buildPortalBills(args: {
  * is not in this list and not in the payload at all.
  */
 export type PortalSharedBillOut = {
+  /** The job's id — the handle "Ask the office" (v2.3378) sends back; the visit picker already carries job ids. */
+  jobId: string
   jobLabel: string
   jobNumber: string
   jobName: string | null
@@ -289,6 +291,7 @@ export function buildPortalSharedBills(args: {
     const open = round2(Number(inv.amount ?? 0) - paid)
     if (open <= 0) continue
     out.push({
+      jobId: job.id,
       jobLabel: jobLabel(job),
       jobNumber: jobNumber(job),
       jobName: (job.job_name ?? '').trim() || null,
@@ -309,6 +312,7 @@ export function buildPortalSharedBills(args: {
     const open = round2(Number(job.revenue ?? 0) - paid)
     if (open <= 0) continue
     out.push({
+      jobId: job.id,
       jobLabel: jobLabel(job),
       jobNumber: jobNumber(job),
       jobName: (job.job_name ?? '').trim() || null,

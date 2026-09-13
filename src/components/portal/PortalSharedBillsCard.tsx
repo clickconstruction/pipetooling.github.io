@@ -10,10 +10,13 @@
  */
 import { CARD, COPPER, FAINT, HAIR, INK, MUTED, PAPER_RED } from '../../lib/portal/portalTheme'
 import { formatPortalDate, formatPortalUsd, portalDaysSinceBilled, splitPortalAddress, type PortalSharedBill } from '../../lib/portal/portalPayload'
+import { PortalShareAsk } from './PortalShareAsk'
 
 export type PortalSharedBillsCardProps = {
   bills: PortalSharedBill[]
   todayYmd: string
+  /** The request token (v2.3378): with it, a GC's rows offer "Ask the office". */
+  token?: string | null
 }
 
 const WORDING = {
@@ -33,7 +36,7 @@ function sum(list: PortalSharedBill[]): number {
   return Math.round(list.reduce((s, b) => s + b.amount, 0) * 100) / 100
 }
 
-function SharedGroup({ role, bills, todayYmd }: { role: 'gc' | 'customer'; bills: PortalSharedBill[]; todayYmd: string }) {
+function SharedGroup({ role, bills, todayYmd, token }: { role: 'gc' | 'customer'; bills: PortalSharedBill[]; todayYmd: string; token: string | null }) {
   const words = WORDING[role]
   const owners = new Set(bills.map((b) => b.billedTo)).size
   const oldest = bills.map((b) => portalDaysSinceBilled(b.billedOn, todayYmd)).find((d) => d != null) ?? null
@@ -77,6 +80,9 @@ function SharedGroup({ role, bills, todayYmd }: { role: 'gc' | 'customer'; bills
                   </span>
                 ))}
               </div>
+              {role === 'gc' && token && b.jobId ? (
+                <PortalShareAsk token={token} jobId={b.jobId} billLabel={[b.jobNumber ? `J${b.jobNumber}` : null, addr?.street ?? b.jobName ?? b.jobLabel].filter(Boolean).join(' · ')} amount={b.amount} formatUsd={formatPortalUsd} />
+              ) : null}
             </div>
             <div style={{ textAlign: 'right' }}>
               <div style={{ fontWeight: 700, fontVariantNumeric: 'tabular-nums', fontSize: 14, color: INK }}>{formatPortalUsd(b.amount)}</div>
@@ -93,13 +99,13 @@ function SharedGroup({ role, bills, todayYmd }: { role: 'gc' | 'customer'; bills
   )
 }
 
-export function PortalSharedBillsCard({ bills, todayYmd }: PortalSharedBillsCardProps) {
+export function PortalSharedBillsCard({ bills, todayYmd, token = null }: PortalSharedBillsCardProps) {
   const asGc = bills.filter((b) => b.viewerRole === 'gc')
   const asCustomer = bills.filter((b) => b.viewerRole === 'customer')
   return (
     <>
-      {asGc.length > 0 ? <SharedGroup role="gc" bills={asGc} todayYmd={todayYmd} /> : null}
-      {asCustomer.length > 0 ? <SharedGroup role="customer" bills={asCustomer} todayYmd={todayYmd} /> : null}
+      {asGc.length > 0 ? <SharedGroup role="gc" bills={asGc} todayYmd={todayYmd} token={token} /> : null}
+      {asCustomer.length > 0 ? <SharedGroup role="customer" bills={asCustomer} todayYmd={todayYmd} token={token} /> : null}
     </>
   )
 }

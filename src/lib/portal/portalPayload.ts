@@ -58,6 +58,8 @@ export type PortalTestReport = {
  * button, never in the balance.
  */
 export type PortalSharedBill = {
+  /** The job's id, the handle "Ask the office" sends back (v2.3378); null from a function that predates it. */
+  jobId: string | null
   jobLabel: string
   jobNumber: string
   jobName: string | null
@@ -186,6 +188,7 @@ export function parsePortalPayload(raw: unknown): PortalPayload | null {
       const billedTo = typeof b.billedTo === 'string' ? b.billedTo.trim() : ''
       if (!billedTo) continue
       sharedBills.push({
+        jobId: typeof b.jobId === 'string' && b.jobId.trim() ? b.jobId : null,
         jobLabel: str(b.jobLabel, 'Job'),
         jobNumber: str(b.jobNumber),
         jobName: typeof b.jobName === 'string' && b.jobName.trim() ? b.jobName : null,
