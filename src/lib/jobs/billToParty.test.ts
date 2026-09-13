@@ -5,6 +5,7 @@ import {
   customerBillingEmail,
   effectiveInvoiceParty,
   jobBillToPartyOptions,
+  jobPromisePayerCustomerId,
   parseJobBillToParty,
   payerCustomerId,
   payerRecipientFromCustomer,
@@ -157,5 +158,35 @@ describe('shouldDefaultBillsToGc', () => {
     expect(shouldDefaultBillsToGc({ gc: { id: 'gc-x', gc_pays_by_default: false }, customerId: 'owner', current: 'customer' })).toBe(false)
     expect(shouldDefaultBillsToGc({ gc: dr, customerId: 'gc-dr', current: 'customer' })).toBe(false)
     expect(shouldDefaultBillsToGc({ gc: null, customerId: 'owner', current: 'customer' })).toBe(false)
+  })
+})
+
+// Mirrors the SQL helper job_bill_payer_customer_id (v2.3374): one case per
+// branch of its CASE, so a change on either side fails here.
+describe('jobPromisePayerCustomerId', () => {
+  it('files a customer-rule job with a GC under the customer', () => {
+    expect(jobPromisePayerCustomerId(customerJob)).toBe('cust-1')
+  })
+
+  it('files a gc-rule job under the GC', () => {
+    expect(jobPromisePayerCustomerId(gcJob)).toBe('gc-1')
+  })
+
+  it('files a split job under the customer (a job-level promise has no invoice pick)', () => {
+    expect(jobPromisePayerCustomerId(splitJob)).toBe('cust-1')
+  })
+
+  it('the GC entered as the job customer pays by definition', () => {
+    expect(jobPromisePayerCustomerId({ bill_to_party: 'customer', gc_customer_id: 'gc-1', customer_id: 'gc-1' })).toBe('gc-1')
+    expect(jobPromisePayerCustomerId({ bill_to_party: 'gc', gc_customer_id: 'gc-1', customer_id: 'gc-1' })).toBe('gc-1')
+  })
+
+  it('a gc rule with no GC set falls back to the customer', () => {
+    expect(jobPromisePayerCustomerId({ bill_to_party: 'gc', gc_customer_id: null, customer_id: 'cust-1' })).toBe('cust-1')
+  })
+
+  it('a job naming nobody files under nobody', () => {
+    expect(jobPromisePayerCustomerId({ bill_to_party: 'customer', gc_customer_id: null, customer_id: null })).toBeNull()
+    expect(jobPromisePayerCustomerId(null)).toBeNull()
   })
 })
