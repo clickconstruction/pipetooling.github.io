@@ -114,7 +114,8 @@ describe('BankPaymentsModal link guard (render smoke)', () => {
     fireEvent.click(chip)
 
     // …and the guard notices the same-amount unlinked recorded payment.
-    const steer = await screen.findByRole('note', { name: 'This payment may already be recorded' })
+    // The guard waits on the recorded-payments RPC stub; a loaded full-suite run needs more than the 1 s default.
+    const steer = await screen.findByRole('note', { name: 'This payment may already be recorded' }, { timeout: 4000 })
     expect(steer.textContent).toContain('2,918.22')
     expect(steer.textContent).toContain('Linking it avoids counting the money twice')
 

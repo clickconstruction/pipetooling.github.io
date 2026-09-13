@@ -101,6 +101,11 @@ describe('BankPaymentsModal (render smoke)', () => {
     expect(screen.getByRole('button', { name: /^To match · 1$/ }).getAttribute('aria-pressed')).toBe('true')
     expect(screen.queryByText(/Show fully applied and returned/)).toBeNull()
     const chip = screen.getByRole('button', { name: /Apply allocation: \$1,625\.00 · 876 · American Eagle/ })
+    // AR refresh PR 4 (v2.3382): the footer says what Apply will do once a bill is picked.
+    expect(screen.getByTestId('ar-apply-sentence').textContent).toMatch(/^Remaining \$1,625\.00 — pick a bill/)
+    fireEvent.click(chip)
+    expect(screen.getByTestId('ar-apply-sentence').textContent).toMatch(/^Applies \$1,625\.00 to 876 · .*The bill is settled\./)
+    expect(screen.getByRole('button', { name: 'Apply $1,625.00' })).toBeTruthy()
     expect(chip.textContent).toContain('matches this deposit')
 
     // Variant C: the sweep bar sees the one unambiguous pair and opens the review panel.
