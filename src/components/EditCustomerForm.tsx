@@ -139,6 +139,8 @@ export default function EditCustomerForm({ customerId, onSaved, onCancel, onDele
   const [billingEmail, setBillingEmail] = useState('')
   /** Standing rule (v2.3353): new jobs naming this customer as GC start on Bills go to = GC. */
   const [gcPaysByDefault, setGcPaysByDefault] = useState(false)
+  /** Share this bill (v2.3377): as the GC on a new job, this customer starts the job's "Show <GC>" memory on. */
+  const [seesCustomerBills, setSeesCustomerBills] = useState(false)
   const [dateMet, setDateMet] = useState('')
   const [googleDriveLink, setGoogleDriveLink] = useState('')
   const [jobPicturesLink, setJobPicturesLink] = useState('')
@@ -307,6 +309,7 @@ export default function EditCustomerForm({ customerId, onSaved, onCancel, onDele
       setEmail(contactInfo.email || '')
       setBillingEmail(((row as { billing_email?: string | null }).billing_email ?? '').trim())
       setGcPaysByDefault((row as { gc_pays_by_default?: boolean | null }).gc_pays_by_default === true)
+      setSeesCustomerBills((row as { sees_customer_bills?: boolean | null }).sees_customer_bills === true)
       setDateMet(row.date_met ? (row.date_met.split('T')[0] || '') : '')
       setGoogleDriveLink(row.google_drive_link ?? '')
       setJobPicturesLink(row.job_pictures_link ?? '')
@@ -339,6 +342,7 @@ export default function EditCustomerForm({ customerId, onSaved, onCancel, onDele
       // Where bills go when this customer pays (v2.3345); blank = the contact email.
       billing_email: billingEmail.trim() || null,
       gc_pays_by_default: gcPaysByDefault,
+      sees_customer_bills: seesCustomerBills,
       customer_type: customerType,
       date_met: dateMet.trim() || null,
       // Typed = manual (never auto-overwritten); cleared = null so the
@@ -578,6 +582,13 @@ export default function EditCustomerForm({ customerId, onSaved, onCancel, onDele
             <span>
               Pays as GC by default
               <span style={{ color: 'var(--text-muted)' }}> — a new job with this customer as its GC starts on "Bills go to: GC" (Done Right and its pretests)</span>
+            </span>
+          </label>
+          <label style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', marginTop: '0.4rem', fontSize: '0.875rem', cursor: 'pointer' }}>
+            <input type="checkbox" checked={seesCustomerBills} onChange={(e) => setSeesCustomerBills(e.target.checked)} />
+            <span>
+              Sees their customers&rsquo; bills by default
+              <span style={{ color: 'var(--text-muted)' }}> — a new job with this customer as its GC starts with &ldquo;Show it on their statement&rdquo; ticked: the owner&rsquo;s bills list on their portal with no Pay button, outside their balance (Done Right and the repairs on homes it sends)</span>
             </span>
           </label>
         </div>

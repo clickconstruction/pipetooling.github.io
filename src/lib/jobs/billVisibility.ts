@@ -20,6 +20,23 @@ export type {
 } from '../../../supabase/functions/_shared/billVisibility'
 
 /**
+ * Share this bill (v2.3377): a GC whose card says "sees their customers'
+ * bills by default" starts a fresh job's memory on. Mirrors
+ * `shouldDefaultBillsToGc`: judged once per GC pick, only when the GC is not
+ * the job's customer row, and never over a memory already switched on.
+ */
+export function shouldDefaultShowOtherParty(args: {
+  gc: { id: string; sees_customer_bills?: boolean | null } | null | undefined
+  customerId: string | null
+  current: boolean
+}): boolean {
+  const gc = args.gc
+  if (!gc || gc.sees_customer_bills !== true) return false
+  if (args.customerId && gc.id === args.customerId) return false
+  return args.current === false
+}
+
+/**
  * The eye chip on a bill row (Edit Job → Bill): who else sees it. Null when
  * nobody does — the row wears no chip rather than a "—" that invites a click.
  */
