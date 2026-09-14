@@ -9,6 +9,7 @@ import { stagesAddedStampLabel, type StagesBoardSortMode } from '../../lib/jobsS
 import { jobBilledUnpaidDollars, stagesJobLevelStripeEmailedHintInvoice } from '../../lib/jobs/invoiceBilling'
 import { buildStagesMoneyBarModel } from '../../lib/stagesMoneyBar'
 import { buildPipelineStageBar } from '../../lib/jobs/pipelineStageBar'
+import { stagesBillSentPctAlert } from '../../lib/jobs/stagesBillSentPctAlert'
 import StagesProgressPaymentCell from './StagesProgressPaymentCell'
 import { JobsStagesThreadPanel } from './JobsStagesThreadPanel'
 import { openInExternalBrowser } from '../../lib/openInExternalBrowser'
@@ -367,6 +368,7 @@ export default function JobsStagesTable(props: JobsStagesTableProps) {
                     })}
                     stageBar={buildPipelineStageBar({ fixtures: j.fixtures, invoices: j.invoices, payments: j.payments, pctComplete: j.pct_complete ?? null })}
                     pctComplete={j.pct_complete ?? null}
+                    billSentAlert={stagesBillSentPctAlert(j)}
                     pctSaving={showPctComplete ? pctCompleteSavingId === j.id : undefined}
                     onPctCommit={showPctComplete ? (n) => updateJobPctComplete(j.id, n, j.pct_complete ?? null) : undefined}
                     onNoBidValueClick={() => openEdit(j, { fixturesSectionHighlight: true })}

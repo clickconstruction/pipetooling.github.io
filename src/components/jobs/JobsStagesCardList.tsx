@@ -18,6 +18,7 @@ import { jobBillingUnallocatedDollars, jobPartialInvoiceRemainingDollars } from 
 import type { InvoiceWithJob } from '../../lib/jobsStagesBoard'
 import { buildStagesMoneyBarModel } from '../../lib/stagesMoneyBar'
 import { buildPipelineStageBar } from '../../lib/jobs/pipelineStageBar'
+import { stagesBillSentPctAlert } from '../../lib/jobs/stagesBillSentPctAlert'
 import {
   deriveStagesBillingActivityDetail,
   deriveStagesFieldReferenceYmd,
@@ -806,6 +807,7 @@ export default function JobsStagesCardList(props: JobsStagesTableProps) {
                 })}
                 stageBar={buildPipelineStageBar({ fixtures: j.fixtures, invoices: j.invoices, payments: j.payments, pctComplete: j.pct_complete ?? null })}
                 pctComplete={j.pct_complete ?? null}
+                billSentAlert={stagesBillSentPctAlert(j)}
                 pctSaving={showPctComplete ? pctCompleteSavingId === j.id : undefined}
                 onPctCommit={showPctComplete && canEditJobPctComplete ? (n) => updateJobPctComplete(j.id, n, j.pct_complete ?? null) : undefined}
                 onNoBidValueClick={() => openEdit(j, { fixturesSectionHighlight: true })}
@@ -1106,6 +1108,7 @@ export function JobsStagesUnifiedCardList(props: JobsStagesUnifiedTableProps) {
                 })}
                 stageBar={buildPipelineStageBar({ fixtures: j.fixtures, invoices: j.invoices, payments: j.payments, pctComplete: j.pct_complete ?? null })}
                 pctComplete={j.pct_complete ?? null}
+                billSentAlert={stagesBillSentPctAlert(j)}
                 pctSaving={pctCompleteSavingId === j.id}
                 onPctCommit={canEditJobPctComplete ? (n) => updateJobPctComplete(j.id, n, j.pct_complete ?? null) : undefined}
                 onNoBidValueClick={() => openEdit(j, { fixturesSectionHighlight: true })}
