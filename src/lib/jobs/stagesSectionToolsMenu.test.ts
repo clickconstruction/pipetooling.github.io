@@ -21,7 +21,7 @@ describe('buildStagesSectionToolsMenu', () => {
       'Working',
       'Ready to Bill',
       'Billed Awaiting Payment',
-      'Paid in Full',
+      'Collections', 'Paid in Full',
     ])
     expect(keysOf(groups)).toEqual([
       'recently-added',
@@ -35,6 +35,7 @@ describe('buildStagesSectionToolsMenu', () => {
       'billed-aging-chart',
       'billed-payment-forecast',
       'paid-notifications',
+      'lien-desk',
       'paid-profit-chart',
       'paid-in-full-notifications',
     ])
@@ -90,7 +91,7 @@ describe('buildStagesSectionToolsMenu', () => {
 
   it('assistant and controller get Share / Print but not the notification settings', () => {
     const assistantKeys = keysOf(buildStagesSectionToolsMenu({ ...base, authRole: 'assistant' }))
-    expect(assistantKeys).toEqual(['recently-added', 'weekly-movement', 'capable-to-bill', 'gc-review', 'accounts-receivable', 'billed-share-print', 'billed-payment-forecast'])
+    expect(assistantKeys).toEqual(['recently-added', 'weekly-movement', 'capable-to-bill', 'gc-review', 'accounts-receivable', 'billed-share-print', 'billed-payment-forecast', 'lien-desk'])
     const controllerGroups = buildStagesSectionToolsMenu({ ...base, authRole: 'controller' })
     expect(keysOf(controllerGroups)).toEqual([
       'recently-added',
@@ -102,6 +103,7 @@ describe('buildStagesSectionToolsMenu', () => {
       'billed-share-print',
       'billed-aging-chart',
       'billed-payment-forecast',
+      'lien-desk',
       'paid-profit-chart',
     ])
     // Controller's Paid in Full group holds only the profit chart (no ⚙).

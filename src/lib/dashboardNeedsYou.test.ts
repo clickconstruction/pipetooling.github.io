@@ -484,12 +484,36 @@ describe('buildNeedsYouItems', () => {
         },
       }),
     )
-    expect(items.map((i) => i.key)).toEqual(['lien-serve-copy', 'lien-notice-window', 'lien-file-window'])
+    // v2.3405: the per-job notice card is gone — the Lien desk counts months (below).
+    expect(items.map((i) => i.key)).toEqual(['lien-serve-copy', 'lien-file-window'])
     expect(items[0]?.severity).toBe('red')
     expect(items[0]?.title).toBe('A filed lien has not been served')
-    expect(items[1]?.title).toBe('2 lien notice windows close soon (first: 2026-10-15)')
-    expect(items[1]?.detail).toContain('$3,612')
-    expect(items[2]?.title).toBe('A lien filing window closes 2026-11-16')
+    expect(items[1]?.title).toBe('A lien filing window closes 2026-11-16')
+  })
+
+  it('lien-notice-draft / lien-notice-approve (v2.3405): the office pile and the leader’s decisions, quiet when empty or loading', () => {
+    const desk = {
+      office: { jobs: 3, months: 5, dollars: 52_000, needsOwner: 2, earliestDeadline: '2099-01-15', ready: 1 },
+      leader: { jobs: 2, dollars: 40_304, earliestDeadline: '2099-01-15' },
+      held: 1,
+    }
+    expect(buildNeedsYouItems(inputs({ lienDeskEnabled: true, lienDesk: null }))).toEqual([])
+    expect(buildNeedsYouItems(inputs({ lienDeskEnabled: false, lienDesk: desk, lienDeskLeader: true }))).toEqual([])
+    const office = buildNeedsYouItems(inputs({ lienDeskEnabled: true, lienDesk: desk, lienDeskLeader: false }))
+    expect(office.map((i) => i.key)).toEqual(['lien-notice-draft'])
+    expect(office[0]?.title).toBe('3 lien notices to draft')
+    expect(office[0]?.severity).toBe('amber')
+    expect(office[0]?.detail).toContain('$52,000 open on 3 sub jobs with 5 unpaid work months')
+    expect(office[0]?.detail).toContain('2 need the owner of record first.')
+    expect(office[0]?.detail).toContain('1 approved and waiting to go out.')
+    expect(office[0]?.figure).toBe('$52,000')
+    const leader = buildNeedsYouItems(inputs({ lienDeskEnabled: true, lienDesk: desk, lienDeskLeader: true }))
+    expect(leader.map((i) => i.key)).toEqual(['lien-notice-draft', 'lien-notice-approve'])
+    expect(leader[1]?.title).toBe('Approve 2 lien notices the office drafted')
+    expect(leader[1]?.figure).toBe('2')
+    expect(leader[1]?.actionLabel).toBe('Decide')
+    const empty = { ...desk, office: { ...desk.office, jobs: 0 }, leader: { ...desk.leader, jobs: 0 } }
+    expect(buildNeedsYouItems(inputs({ lienDeskEnabled: true, lienDesk: empty, lienDeskLeader: true }))).toEqual([])
   })
 
   it('demand-deadline (v2.2640): red follow-through item, quiet at zero/disabled/loading', () => {
