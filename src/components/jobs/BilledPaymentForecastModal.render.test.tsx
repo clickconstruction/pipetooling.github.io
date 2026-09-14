@@ -10,6 +10,7 @@ import BilledPaymentForecastModal from './BilledPaymentForecastModal'
 import type { PaySpeedData } from '../../lib/jobs/billedExpectedPay'
 import type { StageRow } from '../../lib/jobsStagesBoard'
 import type { JobWithDetails } from '../../types/jobWithDetails'
+import { buildWorkMonthsByJob, type WorkSessionInput } from '../../lib/jobs/forecastWorkMonths'
 
 // jsdom has no matchMedia; useIsMobile (mobile restack, v2.2252) needs a stub.
 beforeAll(() => {
@@ -186,5 +187,147 @@ describe('BilledPaymentForecastModal render smoke', () => {
     expect(screen.queryByText('Pay speeds')).toBeNull()
     expect(screen.getByText(/964 · Pondhill demo/)).toBeTruthy()
     expect(screen.getByText('No pay history')).toBeTruthy()
+  })
+})
+
+// ---- Work months under a row (the lien clock's evidence) ----
+
+function subRow(): StageRow {
+  const job = {
+    id: 'j650',
+    hcp_number: '650',
+    click_number: null,
+    job_name: 'ATI Schertz',
+    customer_name: 'ATI Schertz',
+    customer_id: 'ati',
+    gc_customer_id: 'gc1',
+    revenue: 33500,
+    payments_made: 0,
+    payments: [],
+    invoices: [],
+  } as unknown as JobWithDetails
+  return {
+    kind: 'invoice',
+    job,
+    inv: { id: 'inv650', job_id: 'j650', amount: 26800, status: 'billed', sequence_order: 1, estimated_bill_date: null, billed_at: '2026-07-21T15:00:00Z' },
+  } as unknown as StageRow
+}
+
+function session(jobId: string, workDate: string, userId: string, hours: number, approved = true): WorkSessionInput {
+  return {
+    jobId,
+    userId,
+    workDate,
+    clockedInAt: `${workDate}T13:00:00Z`,
+    clockedOutAt: `${workDate}T${String(13 + hours).padStart(2, '0')}:00:00Z`,
+    approved,
+  }
+}
+
+const TODAY = '2026-09-14'
+const NAMES = { u1: 'Tristen Vela', u2: 'Malachi Ray' }
+const workMonths = buildWorkMonthsByJob(
+  [
+    session('j650', '2026-06-08', 'u1', 6),
+    session('j650', '2026-06-08', 'u2', 6),
+    session('j650', '2026-08-20', 'u1', 8),
+    session('j650', '2026-09-08', 'u2', 8, false),
+    session('j1', '2026-08-04', 'u1', 8),
+  ],
+  [
+    { jobId: 'j650', isSub: true, propertyKind: '', noticedMonths: new Set() },
+    { jobId: 'j1', isSub: false, propertyKind: '', noticedMonths: new Set() },
+  ],
+  NAMES,
+  TODAY,
+)
+
+describe('BilledPaymentForecastModal work months', () => {
+  it('shows the notice chip on a sub row whose month is closing, the quiet line above the buckets, and none on a direct row', () => {
+    render(
+      <BilledPaymentForecastModal
+        rows={[subRow(), billedRow()]}
+        paySpeeds={speeds}
+        todayYmd={TODAY}
+        onClose={vi.fn()}
+        onOpenInvoice={vi.fn()}
+        workMonths={workMonths}
+      />,
+    )
+    // June's notice (commercial: 15th of the 3rd month) is due tomorrow.
+    expect(screen.getByText('⏱ Jun notice due tomorrow')).toBeTruthy()
+    expect(screen.getByRole('note').textContent).toContain('1 work month on 1 sub job has a lien notice closing within 14 days')
+    expect(screen.getByRole('note').textContent).toContain('$26,800 open')
+    expect(screen.getByRole('note').textContent).toContain('650 · ATI Schertz Jun 2026 work, notice due tomorrow')
+    // Both rows have sessions → both get a chevron; the direct row has no chip.
+    expect(screen.getByRole('button', { name: 'Show work months for 650 · ATI Schertz' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Show work months for 964 · Pondhill demo' })).toBeTruthy()
+    expect(screen.getAllByText(/^⏱ /)).toHaveLength(1)
+  })
+
+  it('opening a sub row lists each month with people, hours, pending hours and its notice; Send notice… opens the Lien window for the job', () => {
+    const onOpenLienNotice = vi.fn()
+    render(
+      <BilledPaymentForecastModal
+        rows={[subRow()]}
+        paySpeeds={speeds}
+        todayYmd={TODAY}
+        onClose={vi.fn()}
+        onOpenInvoice={vi.fn()}
+        workMonths={workMonths}
+        onOpenLienNotice={onOpenLienNotice}
+      />,
+    )
+    expect(screen.queryByRole('region', { name: 'Work months' })).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Show work months for 650 · ATI Schertz' }))
+    const panel = screen.getByRole('region', { name: 'Work months' })
+    expect(panel.textContent).toContain('Jun2026')
+    expect(screen.getByTestId('work-month-2026-06').textContent).toContain('2 people · 12 h · 1 day · 43% of hours')
+    expect(screen.getByTestId('work-month-2026-06').textContent).toContain('due tomorrow')
+    expect(screen.getByTestId('work-month-2026-06').textContent).toContain('by Sep 15')
+    // September's session is unapproved → pending hours called out, week bar hatched (title says so).
+    expect(screen.getByTestId('work-month-2026-09').textContent).toContain('8 h pending')
+    expect(screen.getByTitle(/Week of Sep 7 \(7d ago\) · Malachi · 8 h · 1 day · 8 h awaiting approval/)).toBeTruthy()
+    // The role line teaches the rule and the affidavit date from the last month.
+    expect(panel.textContent).toContain('Sub job')
+    expect(panel.textContent).toContain('affidavit for all of it by Jan 15, 2027')
+    expect(panel.textContent).toContain('property kind unknown')
+    fireEvent.click(screen.getAllByRole('button', { name: 'Send notice…' })[0]!)
+    expect(onOpenLienNotice).toHaveBeenCalledWith('j650')
+    fireEvent.click(screen.getByRole('button', { name: 'Hide work months for 650 · ATI Schertz' }))
+    expect(screen.queryByRole('region', { name: 'Work months' })).toBeNull()
+  })
+
+  it('a direct-with-owner row explains it has no monthly notice and shows one affidavit date', () => {
+    render(
+      <BilledPaymentForecastModal
+        rows={[billedRow()]}
+        paySpeeds={speeds}
+        todayYmd={TODAY}
+        onClose={vi.fn()}
+        onOpenInvoice={vi.fn()}
+        workMonths={workMonths}
+      />,
+    )
+    fireEvent.click(screen.getByRole('button', { name: 'Show work months for 964 · Pondhill demo' }))
+    const panel = screen.getByRole('region', { name: 'Work months' })
+    expect(panel.textContent).toContain('Direct with owner')
+    expect(panel.textContent).toContain('no monthly notice')
+    expect(panel.textContent).toContain('one affidavit by Dec 15, 2026')
+    // Knight is commercial: the "set the GC on the job" prompt shows.
+    expect(panel.textContent).toContain('if Knight Contracting is a GC and someone else owns the site')
+    expect(screen.queryByRole('button', { name: 'Send notice…' })).toBeNull()
+  })
+
+  it('rows without sessions get no chevron, and the footer says when months are still loading', () => {
+    const { container, rerender } = render(
+      <BilledPaymentForecastModal rows={[billedRow()]} paySpeeds={speeds} todayYmd={TODAY} onClose={vi.fn()} onOpenInvoice={vi.fn()} workMonths={null} />,
+    )
+    expect(container.textContent).toContain('loading the months worked…')
+    rerender(
+      <BilledPaymentForecastModal rows={[billedRow()]} paySpeeds={speeds} todayYmd={TODAY} onClose={vi.fn()} onOpenInvoice={vi.fn()} workMonths={{}} />,
+    )
+    expect(container.textContent).not.toContain('loading the months worked')
+    expect(screen.queryByRole('button', { name: /work months for/ })).toBeNull()
   })
 })

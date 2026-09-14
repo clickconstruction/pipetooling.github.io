@@ -126,6 +126,7 @@ import BankPaymentsModal from './BankPaymentsModal'
 import PaidInFullEmailSettingsModal from './PaidInFullEmailSettingsModal'
 import BilledAgingChartModal from './BilledAgingChartModal'
 import BilledPaymentForecastModal from './BilledPaymentForecastModal'
+import { useForecastWorkMonths } from '../../hooks/useForecastWorkMonths'
 import PaymentChaseModal from './PaymentChaseModal'
 import { buildPaymentChaseQueue, parseChaseTouchesRpc, summarizePaymentChase, type ChaseTouch } from '../../lib/jobs/paymentChase'
 import { buildCustomerPromiseRecords, classifyPromises, parsePromiseRecordsRpc, type CustomerPromiseRecord } from '../../lib/jobs/paymentPromises'
@@ -792,6 +793,8 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
   const [lienInstrumentsModal, setLienInstrumentsModal] = useState<{
     job: JobWithDetails
     invoice: JobsLedgerInvoice | null
+    /** The forecast's Send notice… door lands on the § 53.056 tab. */
+    initialTab?: 'demand' | 'notice' | 'affidavit' | 'release_record'
   } | null>(null)
   // Jobs with a live SENT demand letter — the lien icon wears an amber box.
   const [demandOutJobIds, setDemandOutJobIds] = useState<ReadonlySet<string>>(() => new Set())
@@ -1466,6 +1469,19 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
    * money surface consumes this, never stagesBoardLists.
    */
   const unfilteredBoardLists = useMemo(() => buildJobsStagesBoardLists(jobs, ''), [jobs])
+  // Work months under the forecast's rows (the lien clock's evidence): one
+  // clock-sessions fetch for the open-bill jobs, only while the modal is open.
+  const forecastWorkMonthJobs = useMemo(() => {
+    if (!billedPaymentForecastOpen) return null
+    const seen = new Map<string, { id: string; gc_customer_id: string | null; customer_address_id: string | null }>()
+    for (const r of unfilteredBoardLists.billedActiveRows) {
+      if (r.kind === 'job' || seen.has(r.job.id)) continue
+      seen.set(r.job.id, { id: r.job.id, gc_customer_id: r.job.gc_customer_id ?? null, customer_address_id: r.job.customer_address_id ?? null })
+    }
+    return [...seen.values()]
+  }, [billedPaymentForecastOpen, unfilteredBoardLists])
+  const forecastTodayYmd = calendarYmdInAppTzFromIso(new Date().toISOString())
+  const { byJob: forecastWorkMonths } = useForecastWorkMonths(forecastWorkMonthJobs, forecastTodayYmd)
 
   /** Personal statement rounds (v2.2072): data for the two-stage money-opportunity cards. */
   const isRoundOfficeRole = authRole === 'dev' || authRole === 'master_technician' || isAssistantLike(authRole)
@@ -5550,6 +5566,15 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
               ? () => setForecastShareModalOpen(true)
               : undefined
           }
+          workMonths={forecastWorkMonths}
+          onOpenLienNotice={(jobId) => {
+            // The Lien window on the § 53.056 tab for that job; the forecast
+            // closes so the window has the screen (same as the other doors).
+            const row = unfilteredBoardLists.billedActiveRows.find((r) => r.job.id === jobId)
+            if (!row) return
+            setBilledPaymentForecastOpen(false)
+            setLienInstrumentsModal({ job: row.job, invoice: null, initialTab: 'notice' })
+          }}
         />
       )}
       {forecastShareModalOpen && <PaymentForecastShareModal onClose={() => setForecastShareModalOpen(false)} />}
@@ -5710,6 +5735,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
         onClose={() => setLienInstrumentsModal(null)}
         job={lienInstrumentsModal?.job ?? null}
         invoice={lienInstrumentsModal?.invoice ?? null}
+        initialTab={lienInstrumentsModal?.initialTab}
         signerNameFallback={lienReleaseSignerFallback}
         authEmail={authUser?.email?.trim() ?? ''}
         onOpenExternalPrefill={() => {

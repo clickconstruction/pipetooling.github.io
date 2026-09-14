@@ -72,6 +72,7 @@ export default function LienInstrumentsModal({
   authEmail,
   onOpenExternalPrefill,
   onRecorded,
+  initialTab,
 }: {
   open: boolean
   onClose: () => void
@@ -85,6 +86,8 @@ export default function LienInstrumentsModal({
   onOpenExternalPrefill: () => void
   /** Fired after a letter is recorded so openers can refresh badges/watches. */
   onRecorded?: () => void
+  /** Land on this tab when the window opens (the forecast's Send notice… door opens on 'notice'). */
+  initialTab?: 'demand' | 'notice' | 'affidavit' | 'release_record'
 }) {
   const { role: authRole, user: authUser } = useAuth()
   const { showToast } = useToastContext()
@@ -175,7 +178,7 @@ export default function LienInstrumentsModal({
     } else {
       setSelectedInvoiceIds(new Set(demandable.map((i) => i.id)))
     }
-    setActiveTab('demand')
+    setActiveTab(initialTab ?? 'demand')
     setRecordMethod('certified_mail')
     setRecordTracking('')
     setRecordSentOn(todayYmdLocal())

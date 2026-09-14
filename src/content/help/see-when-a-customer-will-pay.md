@@ -63,6 +63,20 @@ The {{button:outline|✉ Email…}} button in the forecast's header sends this e
 
 Sending is for dev, leaders, and assistant-type roles — the same people who can share the Billed report.
 
+## The months people worked, under a row
+
+Texas counts lien deadlines from the **month the work was done**, not from the bill date. So every forecast row whose job has clock sessions carries a small chevron at its left edge — tap it and the months worked open under the row, one line per month:
+
+- **The weeks as bars** — each bar is one week, sized by hours, with the number of people that week above it. Hover a bar for the names, the hours, and how many days ago that week was ("Week of Jun 8 (98d ago)"). A hatched bar has sessions still awaiting approval; only approved hours count toward the lien clock.
+- **What counts** — {{chip:gray|5 people · 82.7 h · 5 days · 24% of hours}}. The share is this month's part of the job's hours, a rough guide to how much of the open balance the month represents.
+- **The notice, on jobs with a GC** — every unpaid month has its own § 53.056 notice date: {{chip:red|due tomorrow}} inside a week, {{chip:yellow|closes in 12d}} inside two, {{chip:green|notice sent}} once the Lien window has recorded one for that month. {{button:outline|Send notice…}} opens the Lien instruments window on that tab. Direct-with-owner jobs say *no monthly notice* and show their single affidavit date instead.
+
+:::example You do not have to open anything to see the one that matters
+A sub row whose notice month closes within 14 days wears it on the row itself — {{chip:red|⏱ Jun notice due tomorrow}} — and one amber line above the buckets counts every month closing with the dollars riding on them. Rows with nothing closing look exactly as before.
+:::
+
+A {{chip:yellow|property kind unknown}} chip means no property record is linked, so the commercial dates are shown; a residential property is a month earlier on every line. Link the property on **Edit Job → Property record**. The rule itself is in *file a lien and never miss its deadlines*.
+
 ## The pay-speeds breakdown
 
 The strip is a door: click anywhere on it (**See the breakdown ›**) and a second view opens showing *who* is behind those averages.
