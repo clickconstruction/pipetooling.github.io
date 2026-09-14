@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type { PhysicalInvoiceIssuer } from '../../lib/physicalInvoiceIssuer'
 import { buildLienNoticeBlocks, filingDocHtml, filingLetterheadFromIssuer, type FilingDocExtras } from '../../lib/jobsDocuments/lienFilingDocuments'
 import { demandDate } from '../../lib/jobsDocuments/demandLetter'
@@ -34,6 +34,8 @@ import { useToastContext } from '../../contexts/ToastContext'
 import { useIsMobile } from '../../hooks/useIsMobile'
 import { buildLienDeskRun } from '../../lib/jobs/lienDeskRun'
 import LienDeskRunModal from './LienDeskRunModal'
+import LienDeskAffidavitPane, { affidavitDeadlineWords } from './LienDeskAffidavitPane'
+import { LIEN_AFFIDAVIT_PILES, type LienAffidavitPile } from '../../lib/jobs/lienDeskAffidavits'
 
 /**
  * The Lien desk: the queue of § 53.056 notices the law says are due per
@@ -69,6 +71,12 @@ export type LienDeskModalProps = {
   onOpenEditJob: (jobId: string) => void
   /** The send door until the run ships: the Lien window on its notice tab. */
   onOpenLienInstruments: (jobId: string) => void
+  /** Affidavits (v2.3412): the Lien window on its affidavit tab — print for notarization, file, record. */
+  onOpenLienAffidavit?: (jobId: string) => void
+  /** A filed affidavit still unpaid → the Legal desk. */
+  onOpenLegalDesk?: () => void
+  /** Open on the affidavit kind (the Dashboard's filing-window card). */
+  initialKind?: 'notice' | 'affidavit'
 }
 
 const PILE_ORDER: LienDeskPile[] = ['needs_owner', 'to_draft', 'awaiting', 'ready', 'held', 'sent', 'missed']
@@ -148,6 +156,9 @@ export default function LienDeskModal({
   onChanged,
   onOpenEditJob,
   onOpenLienInstruments,
+  onOpenLienAffidavit,
+  onOpenLegalDesk,
+  initialKind,
 }: LienDeskModalProps) {
   const { showToast } = useToastContext()
   const isMobile = useIsMobile()
@@ -168,6 +179,16 @@ export default function LienDeskModal({
   const [mobileListShown, setMobileListShown] = useState(true)
   // The run (v2.3410): every approved notice as one packet + one tracking form.
   const [runOpen, setRunOpen] = useState(false)
+  // The kind (v2.3412): notices per month, or the one affidavit per job.
+  const [kind, setKind] = useState<'notice' | 'affidavit'>(initialKind ?? 'notice')
+  const [affPile, setAffPile] = useState<LienAffidavitPile | null>(null)
+  const [affSelectedJobId, setAffSelectedJobId] = useState<string | null>(null)
+  const [affFooter, setAffFooter] = useState<React.ReactNode>(null)
+  const affFooterRef = useRef<React.ReactNode>(null)
+  const setAffFooterSafe = (node: React.ReactNode) => {
+    affFooterRef.current = node
+    queueMicrotask(() => setAffFooter(affFooterRef.current))
+  }
 
   const entries = data?.queue.entries ?? []
   const visible = useMemo(() => {
@@ -314,6 +335,10 @@ export default function LienDeskModal({
   if (!open) return null
 
   const counts = data?.queue.counts
+  const affEntries = data?.affidavits.entries ?? []
+  const affVisible = (['needs_property', 'to_draft', 'awaiting', 'ready', 'held', 'filed', 'missed'] as LienAffidavitPile[]).flatMap((p) => affEntries.filter((e) => e.pile === p && (affPile == null || affPile === p)))
+  const affSelected = affVisible.find((e) => e.jobId === affSelectedJobId) ?? (!isMobile ? affVisible[0] : undefined) ?? null
+  const affCount = affEntries.filter((e) => e.pile !== 'filed').length
   const wordSent = entries.filter((e) => e.item?.approval_mode === 'word' && (e.pile === 'ready' || e.pile === 'sent'))
 
   const list = (
@@ -543,6 +568,80 @@ export default function LienDeskModal({
     <div style={{ padding: '1.5rem', color: 'var(--text-muted)', fontSize: '0.8125rem' }}>{isMobile ? '' : 'Pick a job on the left.'}</div>
   )
 
+  // ---------- affidavits: the list and the pane (v2.3412) ----------
+  const affList = (
+    <div style={{ borderRight: isMobile ? 'none' : '1px solid var(--border)', overflow: 'auto', minWidth: 0 }}>
+      {affVisible.length === 0 ? (
+        <p style={{ padding: '1rem', color: 'var(--text-muted)', fontSize: '0.8125rem' }}>
+          {loading || data == null ? 'Looking at every unpaid job…' : affPile ? 'Nothing in this pile.' : 'No affidavit window closes within 30 days.'}
+        </p>
+      ) : null}
+      {LIEN_AFFIDAVIT_PILES.map((p) => {
+        const rows = affVisible.filter((e) => e.pile === p.key)
+        if (rows.length === 0) return null
+        return (
+          <div key={p.key}>
+            <div style={{ fontSize: '0.62rem', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-muted)', padding: '0.6rem 0.9rem 0.2rem' }}>{p.label}</div>
+            {rows.map((e) => {
+              const j = data?.jobsById[e.jobId]
+              const g = e.gcCustomerId ? data?.gcsById[e.gcCustomerId] : undefined
+              const sel = e.jobId === affSelected?.jobId
+              const missing = e.gates.filter((x) => !x.ok).map((x) => x.key)
+              return (
+                <button
+                  key={e.jobId}
+                  type="button"
+                  onClick={() => {
+                    setAffSelectedJobId(e.jobId)
+                    setMobileListShown(false)
+                  }}
+                  aria-current={sel ? 'true' : undefined}
+                  style={{ display: 'grid', gridTemplateColumns: '8px 1fr auto', gap: '0.2rem 0.6rem', width: '100%', textAlign: 'left', padding: '0.5rem 0.9rem', border: 'none', borderTop: '1px solid var(--border)', background: sel ? 'var(--bg-blue-tint)' : 'transparent', cursor: 'pointer', font: 'inherit', color: 'inherit', fontSize: '0.8125rem' }}
+                >
+                  <span aria-hidden style={{ width: 8, height: 8, borderRadius: '50%', marginTop: 6, background: e.severity === 'red' ? 'var(--text-red-600)' : e.severity === 'amber' ? 'var(--text-amber-800)' : 'var(--border-strong)' }} />
+                  <span style={{ minWidth: 0 }}>
+                    <strong>{jobLabel(j, e.jobId)}</strong>
+                    <span style={{ color: 'var(--text-muted)' }}> · {e.isSub ? `GC ${g?.name ?? ''}` : 'with the owner'}</span>
+                  </span>
+                  <span style={{ fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{formatUsdNoCents(e.openBalance)}</span>
+                  <span style={{ gridColumn: '2 / 4', display: 'flex', gap: '0.4rem', flexWrap: 'wrap', alignItems: 'center', fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                    <span style={chip(severityColors(e.severity).bg, severityColors(e.severity).fg)}>{affidavitDeadlineWords(e)}</span>
+                    <span>last work {workMonthShort(e.lastMonth)}</span>
+                    {missing.length ? <span>· missing {missing.join(', ')}</span> : null}
+                  </span>
+                </button>
+              )
+            })}
+          </div>
+        )
+      })}
+    </div>
+  )
+  const affPane =
+    affSelected && data ? (
+      <LienDeskAffidavitPane
+        key={affSelected.jobId}
+        entry={affSelected}
+        data={data}
+        todayYmd={todayYmd}
+        authRole={authRole}
+        authUserId={authUserId}
+        issuer={issuer}
+        signerNameFor={signerNameFor}
+        onChanged={onChanged}
+        onOpenEditJob={onOpenEditJob}
+        onOpenLienAffidavit={(jobId) => (onOpenLienAffidavit ?? onOpenLienInstruments)(jobId)}
+        onOpenLegalDesk={onOpenLegalDesk}
+        onShowNotices={(jobId) => {
+          setKind('notice')
+          setSelectedJobId(jobId)
+        }}
+        footerSlot={setAffFooterSafe}
+      />
+    ) : (
+      <div style={{ padding: '1.5rem', color: 'var(--text-muted)', fontSize: '0.8125rem' }}>{isMobile ? '' : 'Pick a job on the left.'}</div>
+    )
+
   // ---------- footer by state / role ----------
   let footer: React.ReactNode = null
   if (selected) {
@@ -706,7 +805,26 @@ export default function LienDeskModal({
           <button type="button" onClick={onClose} aria-label="Close" style={{ border: 'none', background: 'none', cursor: 'pointer', fontSize: '1.25rem', color: 'var(--text-muted)', padding: 4 }}>×</button>
         </div>
         <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', padding: '0.6rem 1.25rem 0.5rem', alignItems: 'center' }}>
-          {LIEN_DESK_PILES.map((p) => {
+          <div role="tablist" aria-label="Kind" style={{ display: 'inline-flex', border: '1px solid var(--border-strong)', borderRadius: 7, overflow: 'hidden', marginRight: '0.4rem' }}>
+            {(['notice', 'affidavit'] as const).map((k) => (
+              <button key={k} type="button" role="tab" aria-selected={kind === k} onClick={() => setKind(k)} style={{ padding: '2px 10px', border: 'none', background: kind === k ? 'var(--text-link)' : 'var(--surface)', color: kind === k ? '#fff' : 'var(--text-700)', fontSize: '0.78rem', fontWeight: 600, cursor: 'pointer' }}>
+                {k === 'notice' ? `Notices${counts ? ` · ${entries.filter((e) => e.pile !== 'sent').length}` : ''}` : `Affidavits${data ? ` · ${affCount}` : ''}`}
+              </button>
+            ))}
+          </div>
+          {kind === 'affidavit'
+            ? LIEN_AFFIDAVIT_PILES.map((p) => {
+                const n = data?.affidavits.counts[p.key] ?? 0
+                if (n === 0 && affPile !== p.key) return null
+                const on = affPile === p.key
+                return (
+                  <button key={p.key} type="button" aria-pressed={on} onClick={() => setAffPile(on ? null : p.key)} style={{ padding: '2px 10px', borderRadius: 999, border: `1px solid ${on ? 'var(--bg-blue-tint)' : 'var(--border-strong)'}`, background: on ? 'var(--bg-blue-tint)' : 'var(--surface)', color: on ? 'var(--text-blue-800)' : 'var(--text-700)', fontSize: '0.78rem', fontWeight: on ? 600 : 500, cursor: 'pointer' }}>
+                    {p.label} <strong>{n}</strong>
+                  </button>
+                )
+              })
+            : null}
+          {kind === 'notice' ? LIEN_DESK_PILES.map((p) => {
             const n = counts?.[p.key] ?? 0
             if (n === 0 && pile !== p.key) return null
             const on = pile === p.key
@@ -715,8 +833,8 @@ export default function LienDeskModal({
                 {p.label} <strong>{n}</strong>
               </button>
             )
-          })}
-          {office && (counts?.ready ?? 0) > 0 ? (
+          }) : null}
+          {kind === 'notice' && office && (counts?.ready ?? 0) > 0 ? (
             <button type="button" onClick={() => setRunOpen(true)} style={{ ...btn('primary'), marginLeft: 'auto' }} title="Every approved notice as one packet and one tracking form">
               Send the run · {counts?.ready}
             </button>
@@ -728,14 +846,22 @@ export default function LienDeskModal({
           ) : null}
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '380px 1fr', overflow: 'hidden', minHeight: 0 }}>
-          {isMobile ? (mobileListShown ? list : pane) : (
+          {kind === 'affidavit'
+            ? (isMobile ? (mobileListShown ? affList : affPane) : (
+                <>
+                  {affList}
+                  {affPane}
+                </>
+              ))
+            : isMobile ? (mobileListShown ? list : pane) : (
             <>
               {list}
               {pane}
             </>
           )}
         </div>
-        {footer ? <div style={{ display: 'grid', gap: '0.5rem', padding: '0.6rem 1.25rem 0.9rem', borderTop: '1px solid var(--border)', background: 'var(--bg-subtle)' }}>{footer}</div> : null}
+        {kind === 'affidavit' && affFooter ? <div style={{ display: 'grid', gap: '0.5rem', padding: '0.6rem 1.25rem 0.9rem', borderTop: '1px solid var(--border)', background: 'var(--bg-subtle)' }}>{affFooter}</div> : null}
+        {kind === 'notice' && footer ? <div style={{ display: 'grid', gap: '0.5rem', padding: '0.6rem 1.25rem 0.9rem', borderTop: '1px solid var(--border)', background: 'var(--bg-subtle)' }}>{footer}</div> : null}
       </div>
       {runOpen && data ? (
         <LienDeskRunModal

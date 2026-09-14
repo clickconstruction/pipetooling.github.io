@@ -52,6 +52,17 @@ Approved notices go out together. {{button:blue|Send the run · N}} in the desk'
 A ready item's footer also offers **Just this one, from the Lien window ›** — the § 53.056 tab with the desk's months filled in, for a single notice you want to print or email by hand. Recording it there moves the desk row too.
 :::
 
+## Affidavits
+
+The notice preserves a month; the **affidavit** is the lien. Its window is one date per job — the 15th of the fourth month after the last month worked (the third on a residential property). The desk's **Affidavits** switch lists every unpaid job whose window closes within 30 days:
+
+- {{chip:yellow|Needs the property facts}} — the affidavit's gate: owner of record, county and legal description on the property record, a recorded § 53.056 notice on a job with a GC, and not a homestead (a homestead lien needs a recorded pre-work contract — attorney territory). Each missing fact has its door.
+- The same flow as notices: {{button:blue|Send for approval ▸}} or **The leader said to file it ▸**; the master approves, holds, or sends it back.
+- {{chip:green|Ready to file}} — {{button:blue|Open the affidavit tab ›}} lands in the Lien window: print for notarization, sign before a notary, file it with the County Clerk, then **Record filing…** with the recording number. Recording it moves the row to **Filed**; a copy must reach the owner and the contractor within five days, and the Lien window records that too.
+- A filed affidavit that is still unpaid says so and offers **Refer to the Legal desk ›**.
+
+The Dashboard's *lien filing window closes* card opens the desk here.
+
 ## Who can do what
 
 - **Draft, send for approval, send on the leader's word, skip:** dev, assistant, controller (a master can draft and approve his own).
