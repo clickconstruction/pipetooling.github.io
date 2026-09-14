@@ -221,6 +221,7 @@ import JobsRecentlyAddedList from './JobsRecentlyAddedList'
 import { useJobDetailModal } from '../../contexts/JobDetailModalContext'
 import JobsStagesHideGroupsModal from './JobsStagesHideGroupsModal'
 import { StagesJobNumberJumpChip } from './StagesJobNumberJumpChip'
+import { JobsMapCard } from './JobsMapCard'
 import { StagesSearchHighlightProvider, StagesSearchMark } from './StagesSearchMark'
 import SessionNotesModal from './SessionNotesModal'
 import { StagesCrewModalContext } from '../../contexts/StagesCrewModalContext'
@@ -3350,6 +3351,20 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
             </div>
             </div>
           </div>
+          {/* Jobs on a map (v2.3396): the Bid Board's map card on the Pipeline — a
+              second view of the filtered rows, never a filter on them. Pins follow
+              the search and every filter; a pin click lands on the row through the
+              # jump's own path; the Paid chip asks the paid scope to load. */}
+          <JobsMapCard
+            jobs={stagesBoardLists.filtered}
+            isMobile={isMobile}
+            loading={jobsListLoading}
+            paidLoaded={cacheMergedScopes.has(scopeForStagesSection('paid'))}
+            onLoadPaid={() => void cacheFetchScopeIfNeeded(scopeForStagesSection('paid'), customerFilterForFetch)}
+            onOpenJob={(job) => jobDetailModal?.openJobDetail({ jobId: job.id })}
+            onEditJob={(job) => openEdit(job)}
+            onFocusRow={(job) => jumpToNumberMatches([job], (job.hcp_number ?? '').trim() || (job.click_number ?? '').trim())}
+          />
           {/* The Pipeline money story + Today's Money Opportunities (v2.1915,
               Old/New pills retired v2.2012 — this is the only view now).
               v2.3184: steps aside while the search box has text, so the

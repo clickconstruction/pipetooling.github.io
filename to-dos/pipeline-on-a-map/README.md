@@ -1,6 +1,6 @@
 # Pipeline on a map — the Bid Board's map at the top of Jobs → Pipeline, with an As-of slider
 
-Status: not started · planned 2026-09-12 · owner decisions below still open · mock-up: [`mockup.html`](./mockup.html) (the plan page with the drawn card, also published as a Claude artifact the same day)
+Status: **in progress** · PR 1 shipped v2.3396 (the card, today's view) · PR 2 the rail + hover pulse · PR 3 As of · PR 4 optional · owner decisions below taken as recommended for the build (flip any) · mock-ups: [`mockup.html`](./mockup.html) (the 2026-09-12 plan page) and the second-pass brief published 2026-09-14 as the artifact *Pipeline on a Map* (https://claude.ai/code/artifact/5f50a5b0-a6be-4353-8c99-bda98f145a80)
 
 ## The ask, in the owner's words
 
@@ -60,6 +60,10 @@ New:
 4. **PR 4 — Crews on the day (optional).** `clock_sessions` by `work_date`, paged: a pulse on every pin with a session that day, rail line *5 crews out · 4 jobs*.
 
 Each PR: `npm run claim`, release note `v2.NNNN.ts` + `docs/recent-features/v2.NNNN.md`, theme tokens only, guide with the feature, `gh pr merge --auto`.
+
+## The second pass (2026-09-14, "is this the best we can do?")
+
+Six changes from the first mock-up, all built or planned: the rail lists **longest waiting first, then nearest** (on the Pipeline the question is which invoice is oldest, not where to drive); **one ring only** — Collections, red (an amber aging ring on an orange pin read as nothing; age goes on the rail row and the popup); **the header carries the As-of toggle, Play sits in the As-of row** (on the bid map Play tours sections; a button meaning two things on two cards is a trap); **rewound, the rail replays money too** (bills minus payments dated at or before the day); **row hover → pin pulse by event delegation** on the rows' existing `data-stages-job-id` (no row component changes); **the since-then strip counts jobs deleted since the day** so a fallen count is explained. Held on purpose: Paid off by default, no pin sizing, no area select, hidden board groups do not hide pins (the chips own visibility).
 
 ## Owner decisions still open (recommendation first)
 
