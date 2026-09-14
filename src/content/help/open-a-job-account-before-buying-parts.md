@@ -42,6 +42,12 @@ If you would rather call the rep yourself, the number is on the sheet — the of
 **Open a job account at Reece for 951 · Shearer Pinpoint — asked from the counter, buying now** · Abraham · 1:40 PM · *"Rough-in for the slab, ~$1,800"* · **Reece** rep Curly Conley · 210-344-4950 {{button:outline|Call Curly}} {{button:green|Mark opened…}} {{button:outline|Send the packet}}
 :::
 
+## For the office: when the job is made
+
+Right after a new job saves (once the contract question is answered), a second question: **Job accounts for J1018?** Pick the houses the job will buy from — {{chip:blue|Ferguson}} {{chip:blue|Reece}} {{chip:gray|Moore Supply}} — and {{button:blue|Send to Dispatch}}. The ask lands in the Dispatch inbox that day, so the account is open before the first parts run. **None needed** records it for every house so nothing signals; **Later** just closes.
+
+If another job at the same address already has an open account at a house, a teal band offers to carry it over — {{chip:green|Same Ferguson account · JA-4114}} — with the reference, how it was opened and the rep copied, so the office never asks Curly twice for one property.
+
 ## For the office: the PO code is the moment
 
 Most parts runs start with a PO code minted by the office — **Materials → PO Generator**, or the **PO** tab in Dispatch Mode on a phone. Once the job and the supply house are picked, the status sits right under the house:
