@@ -43,7 +43,7 @@ Index (validated against code on 2026-09-14 at v2.3392; the 2026-09-06 validatio
 | [`weekly-money-later.md`](./weekly-money-later.md) | optional | Phase 6: drilldowns, GC lens, month roll-up, timeline feed, wider access. |
 | [`customer-waiting-residuals.md`](./customer-waiting-residuals.md) | not started | Callback-promise wording, sub-portal priority, auto-lower overnight (owner decisions); per-caller mute, one eligibility hook, the shared `tel:` sweep. |
 | [`robots-residuals.md`](./robots-residuals.md) | low | Client-side leftovers only; the twins program runs from `docs/twins/HANDOFF.md`. |
-| [`supply-house-job-account-aging.md`](./supply-house-job-account-aging.md) | waiting on Taunya | Job-account invoices in the aging heat map; bulk flag; the May follow-ups. |
+| [`supply-house-job-account-aging.md`](./supply-house-job-account-aging.md) | waiting on Taunya · items 4–6 added 2026-09-14 | Job-account invoices in the aging heat map; the May follow-ups; after the Job accounts train (v2.3423–v2.3440): Curly's missing phone, the *Job Accounts* tab rename question, a mark-all back-fill. |
 | [`engineering-hygiene.md`](./engineering-hygiene.md) | low | Decomposition inventory regrown again; two silent-no-op update sweeps. |
 | [`journey-map-tier-1.md`](./journey-map-tier-1.md) | pointer | Which drift rows are closed here; the list lives in the private repo. |
 | [`owner-decisions-pending.md`](./owner-decisions-pending.md) | standing list | Every yes/no the docs are waiting on, one line each. |

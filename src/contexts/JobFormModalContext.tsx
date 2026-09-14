@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useState } from 'react'
 import JobFormModal from '../components/jobs/JobFormModal'
 import JobContractAfterCreatePrompt from '../components/jobs/JobContractAfterCreatePrompt'
+import JobAccountsAfterCreatePrompt from '../components/jobs/JobAccountsAfterCreatePrompt'
 import type { JobWithDetails } from '../types/jobWithDetails'
 import { useJobDetailOpenerBridge } from './JobDetailOpenerBridgeContext'
 
@@ -65,6 +66,8 @@ export function JobFormModalProvider({ children }: { children: React.ReactNode }
   const openerBridge = useJobDetailOpenerBridge()
   /** Contract sweep PR 0c: the job a hand-made New Job just saved — the contract question opens for it once. */
   const [contractPromptJobId, setContractPromptJobId] = useState<string | null>(null)
+  /** Job accounts at the counter, PR 5 (v2.3440): the job-accounts question follows the contract question for the same job. */
+  const [jobAccountsPromptJobId, setJobAccountsPromptJobId] = useState<string | null>(null)
 
   const openEditJob = useCallback(
     (jobId: string, options?: OpenEditJobOptions) => {
@@ -157,7 +160,15 @@ export function JobFormModalProvider({ children }: { children: React.ReactNode }
           }}
         />
       ) : null}
-      <JobContractAfterCreatePrompt jobId={contractPromptJobId} onClose={() => setContractPromptJobId(null)} />
+      <JobContractAfterCreatePrompt
+        jobId={contractPromptJobId}
+        onClose={() => {
+          const next = contractPromptJobId
+          setContractPromptJobId(null)
+          if (next) setJobAccountsPromptJobId(next)
+        }}
+      />
+      <JobAccountsAfterCreatePrompt jobId={jobAccountsPromptJobId} onClose={() => setJobAccountsPromptJobId(null)} />
     </JobFormModalContext.Provider>
   )
 }
