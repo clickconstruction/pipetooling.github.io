@@ -8,6 +8,9 @@
  * only Ready rows, and says how many customers it will email. PR 3: the scope
  * and the amount are editable right above the document; edits autosave to the
  * job's draft — the row the send reuses — and the row's readiness follows.
+ * PR 4: filing a signed copy happens in the pane (Already signed? File it,
+ * File their subcontract) or by dropping a PDF / photo on a row; the shared
+ * JobContractFileSheet writes it and the row leaves the queue.
  */
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import type { JobWithDetails } from '../../types/jobWithDetails'
@@ -24,6 +27,8 @@ import { formatContractFloor } from '../../lib/jobs/jobContractFloor'
 import { buildJobContractDocumentHtml, buildJobContractPrefill, DEFAULT_JOB_CONTRACT_TERMS_PLAIN, jobContractHeading, parseJobContractFields, type EstimateLineForPrefill, type JobContractFields } from '../../lib/jobs/jobContractDocument'
 import { formatContractStamp, type JobContractRow } from '../../lib/jobs/jobContractLifecycle'
 import { buildJobContractDraftPayload, saveJobContractDraft } from '../../lib/jobs/jobContractDraftWrite'
+import { dispatchJobContractChanged } from '../../lib/jobs/jobContractNotNeeded'
+import JobContractFileSheet from './JobContractFileSheet'
 import { normalizeEstimateLineItemsFromJson } from '../../lib/estimateLineItemNormalize'
 import { renderContractBodyToSafeHtml } from '../../lib/renderContractBodyToSafeHtml'
 import { fetchPhysicalInvoiceIssuerFromAppSettings, getPhysicalInvoiceIssuerForDocument } from '../../lib/physicalInvoiceIssuer'
@@ -163,22 +168,28 @@ export default function JobsContractSweepModal({
   const [overrides, setOverrides] = useState<Record<string, { scopeLines: string[]; amountCents: number | null }>>({})
   const [saveState, setSaveState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
   const saveTimerRef = useRef<number | null>(null)
+  /** PR 4: the filing sheet open in the pane for a job, with a file when one was dropped on the row. */
+  const [filing, setFiling] = useState<{ jobId: string; file: File | null } | null>(null)
+  const [filedIds, setFiledIds] = useState<ReadonlySet<string>>(() => new Set())
+  const [dragOverId, setDragOverId] = useState<string | null>(null)
 
   const gapRows = useMemo(() => {
     const order: Record<string, number> = { working: 0, waiting: 1, ready_to_bill: 2, billed: 3 }
     return jobs
       .filter((j) => {
         const status = (j.status ?? '') as string
-        return status !== 'paid' && isContractGap(coverage.get(j.id), j.revenue, floorCents) && !sentIds.has(j.id)
+        return status !== 'paid' && isContractGap(coverage.get(j.id), j.revenue, floorCents) && !sentIds.has(j.id) && !filedIds.has(j.id)
       })
       .sort((a, b) => (order[a.status ?? ''] ?? 9) - (order[b.status ?? ''] ?? 9) || String(a.created_at ?? '').localeCompare(String(b.created_at ?? '')))
-  }, [jobs, coverage, sentIds, floorCents])
+  }, [jobs, coverage, sentIds, filedIds, floorCents])
 
   // Templates + the letterhead once per open; the accepted estimates for the
   // rows on screen (the same prefill the Contract modal uses) whenever the row set changes.
   useEffect(() => {
     if (!open) return
     setSentIds(new Set())
+    setFiledIds(new Set())
+    setFiling(null)
     setSendAllArmed(false)
     setFilter('to_send')
     setSelectedId(null)
@@ -397,6 +408,27 @@ export default function JobsContractSweepModal({
     }
   }
 
+  /** A file dropped on a row: select the job and open the filing sheet with the file in it — one click to record. */
+  const acceptDroppedFile = (j: JobWithDetails, file: File | null) => {
+    setDragOverId(null)
+    if (!file) return
+    const okType = /^(application\/pdf|image\/(png|jpeg))$/.test(file.type) || /\.(pdf|png|jpe?g)$/i.test(file.name)
+    if (!okType) {
+      showToast('Drop a PDF, PNG or JPG.', 'error')
+      return
+    }
+    setSelectedId(j.id)
+    setFiling({ jobId: j.id, file })
+  }
+  const onFiled = (j: JobWithDetails) => {
+    const next = nextRow
+    setFiling(null)
+    setFiledIds((prev) => new Set([...prev, j.id]))
+    dispatchJobContractChanged()
+    onSent()
+    setSelectedId(next?.id ?? null)
+  }
+
   // The document as the customer gets it — draft row first (that is what the send reuses), else the prefill + the chosen terms.
   const paneHtml = useMemo(() => {
     if (!selected) return ''
@@ -468,10 +500,14 @@ export default function JobsContractSweepModal({
         </button>
       </span>
     </div>
+  ) : selected && filing && filing.jobId === selected.id ? (
+    <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }} data-testid="sweep-pane-footer">
+      Filing replaces the send for this job — nothing goes to the customer.
+    </div>
   ) : selected ? (
     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.5rem 0.75rem', flexWrap: 'wrap' }} data-testid="sweep-pane-footer">
       <div style={{ display: 'flex', gap: '0.25rem', alignItems: 'center', flexWrap: 'wrap' }}>
-        <button type="button" style={btnGhost} disabled={busy} onClick={() => setDetail({ job: selected, filing: true })} title="Already signed on paper or in a Google Doc — file it instead of sending">
+        <button type="button" style={btnGhost} disabled={busy} onClick={() => setFiling({ jobId: selected.id, file: null })} title="Already signed on paper or in a Google Doc — file it instead of sending">
           Already signed? File it
         </button>
         <button type="button" style={{ ...btnGhost, color: 'var(--text-muted)' }} disabled={busy} onClick={() => setDetail({ job: selected, filing: false })} title="Dates, exclusions, extra recipients, a message — the full Contract modal">
@@ -490,7 +526,7 @@ export default function JobsContractSweepModal({
             <button type="button" style={btn} disabled={busy} onClick={() => void sendSelected(true)} title="Send our service agreement to the builder anyway">
               Send ours instead
             </button>
-            <button type="button" style={btnPrimary} disabled={busy} onClick={() => setDetail({ job: selected, filing: true })}>
+            <button type="button" style={btnPrimary} disabled={busy} onClick={() => setFiling({ jobId: selected.id, file: null })}>
               File their subcontract
             </button>
           </>
@@ -529,6 +565,7 @@ export default function JobsContractSweepModal({
         <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }} data-testid="sweep-summary">
           <b style={{ color: 'var(--text-strong)' }}>{summary.all} without a contract</b> · {formatUsdNoCents(summary.revenueTotal)} of work · {summary.needsLook} need{summary.needsLook === 1 ? 's' : ''} a look
           {sentIds.size > 0 ? ` · ${sentIds.size} sent this sweep` : ''}
+          {filedIds.size > 0 ? ` · ${filedIds.size} filed` : ''}
           {floorCents > 0 ? ` · under ${formatContractFloor(floorCents)} left out` : ''}
         </div>
         <div role="group" aria-label="Which rows to show" style={{ display: 'inline-flex', border: '1px solid var(--border)', borderRadius: 6, overflow: 'hidden' }}>
@@ -578,6 +615,21 @@ export default function JobsContractSweepModal({
                       }}
                       data-testid="sweep-row"
                       data-job={num}
+                      onDragOver={(e) => {
+                        if (e.dataTransfer?.types?.includes('Files')) {
+                          e.preventDefault()
+                          if (dragOverId !== j.id) setDragOverId(j.id)
+                        }
+                      }}
+                      onDragLeave={() => {
+                        if (dragOverId === j.id) setDragOverId(null)
+                      }}
+                      onDrop={(e) => {
+                        if (!e.dataTransfer?.files?.length) return
+                        e.preventDefault()
+                        acceptDroppedFile(j, e.dataTransfer.files[0] ?? null)
+                      }}
+                      title="Drop a PDF or photo of the signed contract here to file it"
                       style={{
                         display: 'grid',
                         gridTemplateColumns: 'minmax(0, 1fr) auto',
@@ -587,10 +639,18 @@ export default function JobsContractSweepModal({
                         borderBottom: '1px solid var(--border)',
                         fontSize: '0.8rem',
                         cursor: 'pointer',
-                        background: active ? 'var(--bg-blue-tint)' : 'transparent',
+                        background: dragOverId === j.id ? 'var(--bg-blue-tint)' : active ? 'var(--bg-blue-tint)' : 'transparent',
                         boxShadow: active ? 'inset 3px 0 0 var(--text-link)' : undefined,
+                        outline: dragOverId === j.id ? '2px dashed var(--text-link)' : undefined,
+                        outlineOffset: -3,
+                        position: 'relative',
                       }}
                     >
+                      {dragOverId === j.id ? (
+                        <span style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-link)', background: 'var(--surface)', padding: '2px 8px', borderRadius: 6, border: '1px solid var(--border-strong)', pointerEvents: 'none' }}>
+                          Drop to file as the signed copy
+                        </span>
+                      ) : null}
                       <div style={{ minWidth: 0, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                         <span style={{ color: 'var(--text-muted)', fontWeight: 500 }}>J{num}</span> · {(j.job_name ?? '').trim() || 'Job'}
                         {(j.customer_name ?? '').trim() ? <span style={{ color: 'var(--text-muted)', fontWeight: 500 }}> · {(j.customer_name ?? '').trim()}</span> : null}
@@ -647,7 +707,28 @@ export default function JobsContractSweepModal({
                   </div>
                 )}
               </div>
-              {paneEdit && paneEdit.jobId === selected.id ? (
+              {filing && filing.jobId === selected.id ? (
+                <JobContractFileSheet
+                  key={`${selected.id}:${filing.file?.name ?? ''}`}
+                  layout="inline"
+                  inlineTitle={selState?.flags.includes('gc_job') && gcName ? `File ${gcName}'s subcontract` : 'File a signed contract'}
+                  jobId={selected.id}
+                  defaultSignerName={(selected.customer_name ?? '').trim()}
+                  existingDraft={draftRow && draftRow.status === 'draft' ? draftRow : null}
+                  basePayload={buildJobContractDraftPayload({
+                    jobId: selected.id,
+                    fields: paneEdit && paneEdit.jobId === selected.id ? editedFields(selected, paneEdit) : buildJobContractPrefill({ job: selected }),
+                    template,
+                    recipientName: (selected.customer_name ?? '').trim(),
+                    recipientEmail: selEmail,
+                    recipientPhone: selected.customer_phone ?? null,
+                  })}
+                  initialFile={filing.file}
+                  onFiled={() => onFiled(selected)}
+                  onCancel={() => setFiling(null)}
+                />
+              ) : null}
+              {paneEdit && paneEdit.jobId === selected.id && !(filing && filing.jobId === selected.id) ? (
                 <div style={{ display: 'grid', gridTemplateColumns: '56px minmax(0, 1fr)', gap: '0.4rem 0.6rem', alignItems: 'start' }} data-testid="sweep-pane-edit">
                   <span style={{ ...kLabel, paddingTop: 6 }}>Scope</span>
                   <textarea
@@ -675,7 +756,7 @@ export default function JobsContractSweepModal({
                   </div>
                 </div>
               ) : null}
-              <div style={{ background: 'var(--bg-subtle)', border: '1px solid var(--border)', borderRadius: 8, padding: '0.5rem' }}>
+              <div style={{ background: 'var(--bg-subtle)', border: '1px solid var(--border)', borderRadius: 8, padding: '0.5rem', opacity: filing && filing.jobId === selected.id ? 0.45 : 1 }}>
                 <iframe title="The agreement as the customer will see it" srcDoc={paneHtml} sandbox="" style={{ width: '100%', height: isMobile ? '60vh' : '54vh', border: '1px solid var(--border)', borderRadius: 4, background: 'var(--surface)', display: 'block' }} />
                 <div style={{ fontSize: '0.7rem', color: 'var(--text-faint)', textAlign: 'center', marginTop: '0.3rem' }}>Exactly what the signing page and the PDF will show{draftRow ? '' : ' — from the job’s fixtures or its accepted estimate, and the terms above'}.</div>
               </div>

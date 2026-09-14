@@ -113,7 +113,8 @@ describe('JobsContractSweepModal', () => {
     fireEvent.click(look[2]!)
     expect(screen.getByTestId('sweep-footer-sentence').textContent).toBe("GC job · Summit GC's subcontract is the agreement")
     fireEvent.click(screen.getByRole('button', { name: 'File their subcontract' }))
-    expect(screen.getByTestId('contract-modal').textContent).toBe('filing')
+    expect(screen.getByTestId('contract-file-sheet')).toBeTruthy()
+    expect(screen.getByText("File Summit GC's subcontract")).toBeTruthy()
   })
 
   it('Send & next sends the selected job and lands on the next row', async () => {
@@ -150,6 +151,24 @@ describe('JobsContractSweepModal', () => {
     expect(screen.getByTestId('sweep-footer-sentence').textContent).toBe('Emails may@corewellpartners.com · then J778')
     expect((screen.getByRole('button', { name: 'Send & next' }) as HTMLButtonElement).disabled).toBe(false)
     expect(within(screen.getAllByTestId('sweep-row')[0]!).getByText('Ready')).toBeTruthy()
+  })
+
+  it('filing happens in the pane: Already signed? File it opens the sheet, and a file dropped on a row opens it with the file (PR 4)', async () => {
+    mount()
+    await waitFor(() => expect(screen.getByTestId('sweep-summary')).toBeTruthy())
+    fireEvent.click(screen.getByRole('button', { name: 'Already signed? File it' }))
+    expect(screen.getByTestId('contract-file-sheet')).toBeTruthy()
+    expect(screen.getByTestId('sweep-pane-footer').textContent).toContain('Filing replaces the send')
+    expect(screen.queryByTestId('sweep-pane-edit')).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
+    expect(screen.queryByTestId('contract-file-sheet')).toBeNull()
+
+    const rows = screen.getAllByTestId('sweep-row')
+    const file = new File(['%PDF'], 'Palmer subcontract (signed).pdf', { type: 'application/pdf' })
+    fireEvent.drop(rows[1]!, { dataTransfer: { files: [file], types: ['Files'] } })
+    await waitFor(() => expect(screen.getByTestId('contract-file-chosen').textContent).toContain('Palmer subcontract (signed).pdf'))
+    expect(screen.getAllByTestId('sweep-row')[1]!.getAttribute('aria-pressed')).toBe('true')
+    expect(screen.getByText('File a signed contract')).toBeTruthy()
   })
 
   it('Send all lives under ⋯, names the customers, and sends only the Ready rows after a confirm', async () => {

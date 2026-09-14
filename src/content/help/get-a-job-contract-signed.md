@@ -120,6 +120,8 @@ The header counts the pile — *104 without a contract · $1,349,981 of work · 
 On a builder's job the primary reads {{button:blue|File their subcontract}} (their paper is the agreement) with {{button:outline|Send ours instead}} beside it. A thin scope or no amount dims Send & next and offers {{button:outline|Send anyway}} — the sentence says what is unusual. No email? {{button:blue|Fix email on the job}}. **Already signed? File it** and **Open the full editor** sit at the left of the footer.
 :::
 
+**File a signed copy from the sweep.** {{button:outline|Already signed? File it}} at the left of the footer (or {{button:blue|File their subcontract}} on a builder's job) opens the filing sheet right in the pane: paste the Google Doc link or attach the scan, check who signed and when, {{button:blue|Record as signed}}. Faster still, **drag the PDF or photo onto the row** — the row lights up with *Drop to file as the signed copy*, the sheet opens with the file in it, and one click records it. The row leaves the queue and the header counts it.
+
 If the job already has a draft or a contract out for signature, the pane shows that one — the send reuses it rather than making a second — and the full editor is where to change it.
 
 **Send all** lives under **⋯** at the top right: it takes only {{chip:green|Ready}} rows and asks once with the real number — *Email 81 customers (87 agreements)?* — before anything goes out. Rows leave the list as they send, and the Dashboard count falls with them. On a phone the list is the screen; tap a job to see its agreement.
