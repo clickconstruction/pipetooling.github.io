@@ -204,9 +204,9 @@ import {
   stagesWorkingJobsWithoutPicturesFromWorking,
   type InvoiceWithJob,
   type StageRow,
-  buildCapableToBillBreakdownRows,
-  capableToBillTotalFromWorking,
 } from '../../lib/jobsStagesBoard'
+import { buildCapableToBillBreakdownRowsWithPlans, capableToBillTotalWithPlans } from '../../lib/jobs/capableToBillPlan'
+import { useWorkingStagePlanInputs } from '../../hooks/useWorkingStagePlanInputs'
 import {
   countStagesExclusions,
   filterJobsByExclusions,
@@ -1485,16 +1485,6 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
     [jobs, stagesExcludeFilters, stagesGcFilter, stagesDevelopmentFilter, stagesAccountManFilter, jobContractCoverageByJobId, stagesContractFilter, contractFloorCents, stagesSearchQuery, stagesCombinedExtraJobIds, stagesSortMode],
   )
 
-  // Capable of Being Billed dollars, shared by the Working section header and
-  // the jump-bar Section tools menu. Falls back to the lean header stats while
-  // the Working scope hasn't loaded — the live list is empty then, which used
-  // to make the menu say $0 while the collapsed section's header knew better.
-  const capableDisplay = cacheMergedScopes.has(scopeForStagesSection('working'))
-    ? formatCurrencyNoCents(capableToBillTotalFromWorking(stagesBoardLists.working))
-    : cacheHeaderStats
-      ? formatCurrencyNoCents(cacheHeaderStats.capableToBill)
-      : '…'
-
   /**
    * UNFILTERED board lists — the single "what's true" derivation, as opposed
    * to stagesBoardLists' "what's shown". Money surfaces (follow-up cards, the
@@ -1505,6 +1495,23 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
    * money surface consumes this, never stagesBoardLists.
    */
   const unfilteredBoardLists = useMemo(() => buildJobsStagesBoardLists(jobs, ''), [jobs])
+  // Capable of Being Billed reads each Working job's stage plan (stage-plan
+  // residuals item 1): the windows / orders / sheets for every Working job
+  // (the unfiltered list, so a search never refetches) land in one paged read;
+  // a job with Order stages reads its plan's `billable()`, the rest keep the
+  // % complete formula — and so does every job until the read lands.
+  const workingScopeLoaded = cacheMergedScopes.has(scopeForStagesSection('working'))
+  const workingStagePlanJobIds = useMemo(() => unfilteredBoardLists.working.map((j) => j.id), [unfilteredBoardLists])
+  const workingStageInputs = useWorkingStagePlanInputs(workingStagePlanJobIds, workingScopeLoaded)
+  // Capable of Being Billed dollars, shared by the Working section header and
+  // the jump-bar Section tools menu. Falls back to the lean header stats while
+  // the Working scope hasn't loaded — the live list is empty then, which used
+  // to make the menu say $0 while the collapsed section's header knew better.
+  const capableDisplay = workingScopeLoaded
+    ? formatCurrencyNoCents(capableToBillTotalWithPlans(stagesBoardLists.working, workingStageInputs))
+    : cacheHeaderStats
+      ? formatCurrencyNoCents(cacheHeaderStats.capableToBill)
+      : '…'
   // Work months under the forecast's rows (the lien clock's evidence): one
   // clock-sessions fetch for the open-bill jobs, only while the modal is open.
   const forecastWorkMonthJobs = useMemo(() => {
@@ -3957,7 +3964,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
 
             const workingTotal = working.reduce((s, j) => s + (Number(j.revenue ?? 0) - Number(j.payments_made ?? 0)), 0)
             const waitingTotal = waiting.reduce((s, j) => s + (Number(j.revenue ?? 0) - Number(j.payments_made ?? 0)), 0)
-            const capableToBillTotal = capableToBillTotalFromWorking(working)
+            const capableToBillTotal = capableToBillTotalWithPlans(working, workingStageInputs)
             const readyToBillTotal = readyToBillRowsExposureTotal(readyToBillRows)
             const billedTotal = billedActiveRows.reduce((s, r) => s + stageRowBilledRemainingAmount(r), 0)
             // Aging-chip filter (v2.1311): narrows the LIST only; the title count/total
@@ -5305,13 +5312,13 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                   )
                 })()}
                 {capableToBillModalOpen && (() => {
-                  const rows = buildCapableToBillBreakdownRows(working)
+                  const rows = buildCapableToBillBreakdownRowsWithPlans(working, workingStageInputs)
                   return (
                     <div role="dialog" aria-modal="true" aria-label="Capable of Being Billed — Breakdown" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 60 }}>
                       <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, width: 'min(720px, calc(100vw - 2rem))', maxWidth: 720, maxHeight: '80vh', overflow: 'auto' }}>
                         <h2 style={{ margin: '0 0 0.5rem', fontSize: '1.25rem' }}>Capable of Being Billed — Breakdown</h2>
                         <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
-                          Jobs in Working with value not yet paid, billed, or queued to bill. Sorted by amount.
+                          Jobs in Working with value not yet paid, billed, or queued to bill. Sorted by amount. A job split into stages reads its stage plan instead: the stages that passed inspection with nothing unbilled ahead of them, and the any-time rows that are done.
                         </p>
                         {rows.length === 0 ? (
                           <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>No jobs with billable amount</p>
@@ -5329,11 +5336,14 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                               </tr>
                             </thead>
                             <tbody>
-                              {rows.map(({ job, toBill, valueCreated, openBilling }) => (
+                              {rows.map(({ job, toBill, valueCreated, openBilling, source, billableRows }) => (
                                 <tr key={job.id} style={{ borderBottom: '1px solid var(--border)' }}>
                                   <td style={{ padding: '0.5rem 0.75rem' }}>
                                     <div>{job.job_name || '—'}</div>
                                     <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{effectiveJobLedgerNumber(job.hcp_number, job.click_number) || '—'}</div>
+                                    {source === 'plan' ? (
+                                      <div data-capable-plan-rows style={{ fontSize: '0.75rem', color: 'var(--text-amber-800)' }}>{billableRows.map((r) => r.why).join(' · ')}</div>
+                                    ) : null}
                                   </td>
                                   <td style={{ padding: '0.5rem 0.75rem', textAlign: 'center' }}>{job.pct_complete != null ? `${job.pct_complete}%` : '—'}</td>
                                   <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>{formatCurrency(valueCreated)}</td>
