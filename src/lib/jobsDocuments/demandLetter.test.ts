@@ -287,6 +287,15 @@ describe('buildDemandStatement — read from the bill, never typed', () => {
     expect(bare?.invoiceNumber).not.toMatch(/^[0-9a-f]{8}$/)
   })
 
+  it('dates: the bill date over the delivery date; the due date from Stripe when the row has none; never "#0" for the primary bill (v2.3445)', () => {
+    const [st] = buildDemandStatement(job, [{ inv: inv({ billed_at: '2026-08-18T14:28:00Z', sent_to_customer_at: '2026-09-04T09:28:00Z', estimated_bill_date: null, sequence_order: 0, stripe_invoice_id: null }), doc: doc({ invoiceNumberDisplay: '#0' }), stripe: { invoiceNumber: null, lines: [], dueYmd: '2026-09-05' } }])
+    expect(st?.sentYmd).toBe('2026-08-18')
+    expect(st?.dueYmd).toBe('2026-09-05')
+    expect(st?.invoiceNumber).toBe('#867')
+    const text = buildDemandLetterText({ ...FIELDS, statement: [STMT_867], outstanding: '1710.00' }, '2026-09-14')
+    expect(text).toContain("This letter is Click Plumbing and Electrical's final formal demand")
+  })
+
   it('paid and balance come from the payments applied to that invoice', () => {
     const paidJob = { ...job, payments: [{ invoice_id: 'inv-1', amount: 500 }, { invoice_id: 'other', amount: 999 }] } as unknown as JobWithDetails
     const [st] = buildDemandStatement(paidJob, [{ inv: inv({}), doc: null, stripe: null }])

@@ -249,7 +249,7 @@ export function buildDemandLetterModel(f: DemandLetterFields, todayYmd: string):
     const paidTotal = statement.reduce((a, i) => a + Number(i.paid || 0), 0)
     blocks.push({
       kind: 'paragraph',
-      text: `${billedClause} ${paidTotal > 0 ? `${demandMoney(String(paidTotal))} has been paid and ${out} remains.` : 'Nothing has been paid.'} This letter is ${f.businessName.trim() || 'our'} final formal demand for the balance of ${out}, and our presentment of the claim.`,
+      text: `${billedClause} ${paidTotal > 0 ? `${demandMoney(String(paidTotal))} has been paid and ${out} remains.` : 'Nothing has been paid.'} This letter is ${f.businessName.trim() ? `${f.businessName.trim()}'s` : 'our'} final formal demand for the balance of ${out}, and our presentment of the claim.`,
     })
     blocks.push({ kind: 'heading', text: 'Statement of account' })
     blocks.push({ kind: 'statement', invoices: statement, balance: out })
@@ -693,7 +693,15 @@ export async function buildDeliveryRecordPdfBlob(input: {
 export type DemandInvoiceSource = {
   inv: JobsLedgerInvoice
   doc: PhysicalInvoiceDocument | null
-  stripe: { invoiceNumber: string | null; lines: StripeInvoiceLineDetail[] } | null
+  /** What Stripe rendered (v2.3445: the due date too, for a row that never recorded one). */
+  stripe: { invoiceNumber: string | null; lines: StripeInvoiceLineDetail[]; dueYmd?: string | null } | null
+}
+
+/** The number a bill shows when nothing better is known: its sequence, or the job number for the primary bill (sequence 0) — never "#0" (v2.3445). */
+export function fallbackInvoiceNumber(inv: Pick<JobsLedgerInvoice, 'sequence_order'>, hcp: string | null | undefined): string {
+  if (inv.sequence_order > 0) return `#${inv.sequence_order}`
+  const h = (hcp ?? '').trim()
+  return h ? `#${h}` : '#1'
 }
 
 function ymdOf(raw: string | null | undefined): string {
@@ -726,11 +734,12 @@ export function buildDemandStatement(job: JobWithDetails, sources: DemandInvoice
     }
     const stripeNumber = (stripe?.invoiceNumber ?? '').trim()
     const docNumber = (doc?.invoiceNumberDisplay ?? '').trim()
-    const invoiceNumber = stripeNumber ? `#${stripeNumber.replace(/^#/, '')}` : docNumber && docNumber !== '—' ? docNumber : `#${inv.sequence_order}`
+    const invoiceNumber = stripeNumber ? `#${stripeNumber.replace(/^#/, '')}` : docNumber && docNumber !== '—' && docNumber !== '#0' ? docNumber : fallbackInvoiceNumber(inv, job.hcp_number)
     return {
       invoiceNumber,
-      sentYmd: ymdOf(inv.sent_to_customer_at) || ymdOf(inv.billed_at) || ymdOf(inv.created_at),
-      dueYmd: ymdOf(inv.estimated_bill_date),
+      // The day the bill went out (billed_at), not the day it was later delivered or re-sent (v2.3445).
+      sentYmd: ymdOf(inv.billed_at) || ymdOf(inv.sent_to_customer_at) || ymdOf(inv.created_at),
+      dueYmd: ymdOf(inv.estimated_bill_date) || ymdOf(stripe?.dueYmd ?? null),
       lines,
       total: moneyInput(total),
       paid: moneyInput(paid),

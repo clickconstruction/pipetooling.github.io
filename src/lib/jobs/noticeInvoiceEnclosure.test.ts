@@ -19,25 +19,27 @@ const job = {
   fixtures: [],
   materials: [],
   payments: [{ invoice_id: 'paid', amount: 500 }],
-  invoices: [inv('paid', 500, 1), inv('open', 1710, 2), inv('rtb', 300, 3, 'ready_to_bill')],
+  invoices: [inv('paid', 500, 1), inv('open', 1710, 2), inv('rtb', 300, 3, 'ready_to_bill'), inv('primary', 900, 0)],
 } as unknown as JobWithDetails
 
 describe('the invoice behind the notice (v2.3437)', () => {
   it('claims only billed invoices with money open, oldest first', () => {
-    expect(unpaidBilledInvoices(job).map((i) => i.id)).toEqual(['open'])
+    expect(unpaidBilledInvoices(job).map((i) => i.id)).toEqual(['primary', 'open'])
   })
 
   it('renders each unpaid bill as the app\'s own document, titled by the number the bill shows', () => {
     const docs = noticeInvoiceDocs(job)
-    expect(docs.map((d) => d.invoiceId)).toEqual(['open'])
-    expect(docs[0]?.title).toMatch(/^Invoice #2, /)
-    expect(noticeEnclosureRefItem(docs)).toMatch(/^Invoice #2, .* enclosed$/)
+    expect(docs.map((d) => d.invoiceId)).toEqual(['primary', 'open'])
+    // The primary bill (sequence 0) reads by the job number, never "#0"; the date is the day it went out.
+    expect(docs[0]?.title).toBe('Invoice #867, August 18, 2026')
+    expect(docs[1]?.title).toBe('Invoice #2, August 18, 2026')
+    expect(noticeEnclosureRefItem([docs[1]!])).toBe('Invoice #2, August 18, 2026 enclosed')
     expect(noticeEnclosureRefItem([])).toBe('')
-    expect(noticeEnclosureRefItem([docs[0]!, docs[0]!])).toBe('2 invoices enclosed')
+    expect(noticeEnclosureRefItem(docs)).toBe('2 invoices enclosed')
   })
 
   it('print sections stamp each enclosed invoice and cite § 53.056(a-3)', () => {
-    const d: NoticeInvoiceDoc = { invoiceId: 'x', title: 'Invoice #2', doc: noticeInvoiceDocs(job)[0]!.doc as PhysicalInvoiceDocument }
+    const d: NoticeInvoiceDoc = { invoiceId: 'x', title: 'Invoice #2', doc: noticeInvoiceDocs(job)[1]!.doc as PhysicalInvoiceDocument }
     const [html] = noticeInvoicePrintSections([d])
     expect(html).toContain('§ 53.056(a-3)')
     expect(html).toContain('INVOICE')
