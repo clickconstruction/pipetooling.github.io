@@ -15,7 +15,7 @@ The Job Summary train (v2.2817–v2.2832: Compare, Months, Cycle, Scatter, Capac
 
 1. **Capacity: PTO / holidays off available hours** — `src/lib/jobs/jobSummaryCapacity.ts` has no PTO/holiday handling; needs the salary work-schedule day overrides as the source.
 2. **Capacity: overtime as its own slice** — needs per-person hours per week; the day ledger does not carry it.
-3. **Needs you: "under 60% three weeks running"** — no such card in `src/lib/dashboardNeedsYou.ts`; the Capacity kernel can feed it.
+3. ~~**Needs you: "under 60% three weeks running"**~~ — shipped v2.3439: `capacity-under` card from `capacityUnderStreak` over the three complete weeks before this one (`useCapacityUnderNudge`), opening Job Summary → Capacity.
 4. **Travel on Days** — deferred: `job_travel_times` has pairs for ~55 jobs but the day ledger has no per-session start times, so a per-day windshield figure cannot be honest yet.
 5. ~~**Bid vs actual**~~ — shipped v2.3342 (Bids → Bid Costs → Bid vs actual reads the Burn train's `job_budgets` snapshots against recorded hours).
 6. ~~**Review vs Job Summary parts cost disagree on J963**~~ — fixed v2.3394: the difference was card charges only (Review counted internal transfers and double-counted invoice-linked card purchases; tally lines were priced identically everywhere). Review now applies Job Summary's one card rule. Still on their own conventions: Job Detail's profit band (gross card charges) and Crew P&L (no parts).
