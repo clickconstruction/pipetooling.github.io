@@ -1,6 +1,9 @@
 import type { Database } from '../../types/database'
 import type { JobWithDetails } from '../../types/jobWithDetails'
 import type { PhysicalInvoiceIssuer } from '../physicalInvoiceIssuer'
+import type { PhysicalInvoiceDocument } from '../physicalInvoiceDocument'
+import type { StripeInvoiceLineDetail } from '../stripeInvoiceDetailsResponse'
+import { effectiveInvoiceParty, type EffectiveBillParty } from '../../../supabase/functions/_shared/billToParty'
 import { loadJsPDF } from '../loadJsPDF'
 
 /**
@@ -17,6 +20,28 @@ type JobsLedgerInvoice = Database['public']['Tables']['jobs_ledger_invoices']['R
 
 export type DemandPriorNotice = { date: string; label: string }
 
+/** One line of the bill as the customer saw it (v2.3425). Money as raw dollar strings. */
+export type DemandStatementLine = { description: string; qty: string; amount: string }
+
+/**
+ * One covered invoice, read from the bill itself (v2.3425): the number the
+ * customer saw, when it went out and was due, its lines, and the money.
+ * The letter's "statement of account" is one of these per invoice — Rule 185
+ * wants the name, date and charge of each item with credits allowed, and
+ * Findlay v. Cave wants the demand to equal the bill, so nothing here is
+ * typed by hand.
+ */
+export type DemandStatementInvoice = {
+  invoiceNumber: string
+  /** YYYY-MM-DD; '' when unknown. */
+  sentYmd: string
+  dueYmd: string
+  lines: DemandStatementLine[]
+  total: string
+  paid: string
+  balance: string
+}
+
 export type DemandLetterFields = {
   businessName: string
   senderName: string
@@ -29,6 +54,12 @@ export type DemandLetterFields = {
   recipientName: string
   recipientEmail: string
   recipientAddress: string
+  /** Who the bill was addressed to, from the invoice's own who-pays rule (v2.3425); absent on older snapshots. */
+  debtorParty?: EffectiveBillParty
+  /** The bill, invoice by invoice (v2.3425). Absent on snapshots recorded before it; the four fields below still render those. */
+  statement?: DemandStatementInvoice[]
+  /** The job address the work went into (v2.3425). */
+  serviceAddress?: string
   invoiceNumber: string
   /** YYYY-MM-DD */
   invoiceDate: string
@@ -108,7 +139,16 @@ export type DemandLetterBlock =
   | { kind: 'heading'; text: string }
   | { kind: 'listItem'; text: string }
   | { kind: 'signature'; lines: string[] }
+  | { kind: 'statement'; invoices: DemandStatementInvoice[]; balance: string }
   | { kind: 'notarial' }
+
+/** "Invoice #A" / "Invoices #A and #B" / "Invoices #A, #B and #C". */
+export function demandInvoicesPhrase(statement: DemandStatementInvoice[]): string {
+  const nums = statement.map((i) => i.invoiceNumber.trim()).filter((n) => n)
+  if (nums.length === 0) return 'Invoice #—'
+  if (nums.length === 1) return `Invoice ${nums[0]}`
+  return `Invoices ${nums.slice(0, -1).join(', ')} and ${nums[nums.length - 1]}`
+}
 
 export function buildDemandLetterModel(f: DemandLetterFields, todayYmd: string): DemandLetterBlock[] {
   const out = demandMoney(f.outstanding)
@@ -128,16 +168,40 @@ export function buildDemandLetterModel(f: DemandLetterFields, todayYmd: string):
     kind: 'meta',
     text: `TO: ${f.recipientName.trim() || '—'}${f.recipientAddress.trim() ? ` — ${f.recipientAddress.trim()}` : ''}`,
   })
-  blocks.push({ kind: 'reLine', text: `Re: Final Demand for Payment — Invoice #${f.invoiceNumber.trim() || '—'}` })
-  blocks.push({
-    kind: 'paragraph',
-    text: `Dear ${f.recipientName.trim() || '—'}, this letter serves as a final formal demand for payment in the amount of ${out} for services rendered by ${f.businessName.trim() || '—'}, as agreed upon between the parties. Despite the notices listed below, this balance remains unpaid.`,
-  })
-  blocks.push({ kind: 'heading', text: 'Details of Debt' })
-  blocks.push({ kind: 'listItem', text: `Service provided: ${f.serviceDescription.trim() || '—'}` })
-  blocks.push({ kind: 'listItem', text: `Invoice total: ${demandMoney(f.invoiceTotal)}` })
-  blocks.push({ kind: 'listItem', text: `Payments received: ${demandMoney(f.paymentsReceived)}` })
-  blocks.push({ kind: 'listItem', text: `Outstanding balance: ${out}` })
+  const statement = (f.statement ?? []).filter((i) => i.lines.length > 0 || i.invoiceNumber.trim())
+  if (statement.length > 0) {
+    // v2.3425: the letter reads the bill. The Re line carries the number the
+    // customer saw, the opening names the dates, and the debt is a statement
+    // of account, one block per invoice — never a retyped summary.
+    blocks.push({ kind: 'reLine', text: `Re: Final Demand for Payment — ${demandInvoicesPhrase(statement)} · ${out}` })
+    const first = statement[0]!
+    const sentDates = statement.map((i) => i.sentYmd).filter((d) => d)
+    const dueDates = statement.map((i) => i.dueYmd).filter((d) => d)
+    const where = (f.serviceAddress ?? '').trim()
+    const billedClause =
+      statement.length === 1
+        ? `You were billed ${demandMoney(first.total)}${first.sentYmd ? ` on ${demandDate(first.sentYmd)}` : ''} for the work below${where ? ` at ${where}` : ''}.${first.dueYmd ? ` The bill was due ${demandDate(first.dueYmd)}.` : ''}`
+        : `You were billed ${statement.length} invoices totaling ${demandMoney(String(statement.reduce((a, i) => a + Number(i.total || 0), 0)))}${sentDates.length > 0 ? ` between ${demandDate(sentDates.slice().sort()[0]!)} and ${demandDate(sentDates.slice().sort()[sentDates.length - 1]!)}` : ''} for the work below${where ? ` at ${where}` : ''}.${dueDates.length > 0 ? ` The last of them was due ${demandDate(dueDates.slice().sort()[dueDates.length - 1]!)}.` : ''}`
+    const paidTotal = statement.reduce((a, i) => a + Number(i.paid || 0), 0)
+    blocks.push({
+      kind: 'paragraph',
+      text: `${billedClause} ${paidTotal > 0 ? `${demandMoney(String(paidTotal))} has been paid and ${out} remains.` : 'Nothing has been paid.'} This letter is ${f.businessName.trim() || 'our'} final formal demand for the balance of ${out}, and our presentment of the claim.`,
+    })
+    blocks.push({ kind: 'heading', text: 'Statement of account' })
+    blocks.push({ kind: 'statement', invoices: statement, balance: out })
+    blocks.push({ kind: 'paragraph', text: 'All payments and credits have been allowed.' })
+  } else {
+    blocks.push({ kind: 'reLine', text: `Re: Final Demand for Payment — Invoice #${f.invoiceNumber.trim() || '—'}` })
+    blocks.push({
+      kind: 'paragraph',
+      text: `Dear ${f.recipientName.trim() || '—'}, this letter serves as a final formal demand for payment in the amount of ${out} for services rendered by ${f.businessName.trim() || '—'}, as agreed upon between the parties. Despite the notices listed below, this balance remains unpaid.`,
+    })
+    blocks.push({ kind: 'heading', text: 'Details of Debt' })
+    blocks.push({ kind: 'listItem', text: `Service provided: ${f.serviceDescription.trim() || '—'}` })
+    blocks.push({ kind: 'listItem', text: `Invoice total: ${demandMoney(f.invoiceTotal)}` })
+    blocks.push({ kind: 'listItem', text: `Payments received: ${demandMoney(f.paymentsReceived)}` })
+    blocks.push({ kind: 'listItem', text: `Outstanding balance: ${out}` })
+  }
   blocks.push({ kind: 'heading', text: 'Notice History' })
   if (f.priorNotices.length === 0) {
     blocks.push({ kind: 'listItem', text: `Invoiced on ${demandDate(f.invoiceDate)}` })
@@ -237,12 +301,44 @@ export function buildDemandLetterEmailHtml(f: DemandLetterFields, todayYmd: stri
       case 'signature':
         parts.push(`<p style="margin:1.2em 0 0 0">${b.lines.map(esc).join('<br/>')}</p>`)
         break
+      case 'statement':
+        parts.push(statementHtml(b))
+        break
       case 'notarial':
         parts.push(`<p style="margin:2em 0 0 0">${NOTARIAL_TEXT_LINES.map(esc).join('<br/>')}</p>`)
         break
     }
   }
   return parts.join('')
+}
+
+/** The statement rows in reading order — shared by the HTML, text and PDF renderers. */
+export function statementRows(b: { invoices: DemandStatementInvoice[]; balance: string }): Array<{ kind: 'invoice' | 'line' | 'paid' | 'balance' | 'total'; left: string; right: string }> {
+  const rows: Array<{ kind: 'invoice' | 'line' | 'paid' | 'balance' | 'total'; left: string; right: string }> = []
+  for (const inv of b.invoices) {
+    const dates = [inv.sentYmd ? `sent ${demandDate(inv.sentYmd)}` : '', inv.dueYmd ? `due ${demandDate(inv.dueYmd)}` : ''].filter((d) => d).join(' · ')
+    rows.push({ kind: 'invoice', left: `${inv.invoiceNumber.trim() || 'Invoice'}${dates ? ` — ${dates}` : ''}`, right: '' })
+    for (const l of inv.lines) {
+      rows.push({ kind: 'line', left: `${l.description.trim() || '—'}${l.qty.trim() ? ` · Qty ${l.qty.trim()}` : ''}`, right: demandMoney(l.amount) })
+    }
+    rows.push({ kind: 'paid', left: 'Payments and credits', right: Number(inv.paid || 0) > 0 ? `−${demandMoney(inv.paid)}` : demandMoney('0') })
+    rows.push({ kind: 'balance', left: b.invoices.length > 1 ? 'Balance on this invoice' : 'Balance due', right: demandMoney(inv.balance) })
+  }
+  if (b.invoices.length > 1) rows.push({ kind: 'total', left: 'Balance due', right: demandMoney(b.balance) })
+  return rows
+}
+
+function statementHtml(b: { invoices: DemandStatementInvoice[]; balance: string }): string {
+  const tr = (left: string, right: string, style: string) =>
+    `<tr><td style="padding:0.25em 0.4em 0.25em 0;border-bottom:1px solid #e3ded2;${style}">${esc(left)}</td><td style="padding:0.25em 0 0.25em 0.6em;border-bottom:1px solid #e3ded2;text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums;${style}">${esc(right)}</td></tr>`
+  const rows = statementRows(b).map((r) => {
+    if (r.kind === 'invoice') return tr(r.left, r.right, 'font-weight:700;padding-top:0.6em')
+    if (r.kind === 'line') return tr(r.left, r.right, '')
+    if (r.kind === 'paid') return tr(r.left, r.right, 'color:#555')
+    if (r.kind === 'balance') return tr(r.left, r.right, b.invoices.length > 1 ? 'font-weight:600' : 'font-weight:700;border-bottom:2px solid #333')
+    return tr(r.left, r.right, 'font-weight:700;border-bottom:2px solid #333')
+  })
+  return `<table style="border-collapse:collapse;width:100%;margin:0.3em 0 0.8em 0;font-size:0.95em">${rows.join('')}</table>`
 }
 
 export function buildDemandLetterText(f: DemandLetterFields, todayYmd: string): string {
@@ -257,6 +353,13 @@ export function buildDemandLetterText(f: DemandLetterFields, todayYmd: string): 
         break
       case 'listItem':
         lines.push(`  • ${b.text}`)
+        break
+      case 'statement':
+        lines.push(
+          statementRows(b)
+            .map((r) => (r.kind === 'invoice' ? r.left : `  ${r.kind === 'line' ? '' : '  '}${r.left}${r.right ? ` ${'.'.repeat(Math.max(2, 58 - r.left.length - r.right.length))} ${r.right}` : ''}`))
+            .join('\n'),
+        )
         break
       case 'notarial':
         lines.push(NOTARIAL_TEXT_LINES.join('\n'))
@@ -377,6 +480,35 @@ export async function buildDemandLetterPdfBlob(f: DemandLetterFields, todayYmd: 
         doc.setFontSize(11)
         for (const l of b.lines) writeWrapped(l, 5.4)
         break
+      case 'statement': {
+        // Two columns: the item wraps in the left 138 mm, the money sits right-aligned.
+        const rightX = PAGE_MARGIN + MAX_TEXT_WIDTH_MM
+        const leftW = MAX_TEXT_WIDTH_MM - 38
+        y += 1
+        for (const r of statementRows(b)) {
+          const bold = r.kind === 'invoice' || r.kind === 'total' || (r.kind === 'balance' && b.invoices.length === 1)
+          doc.setFont('times', bold ? 'bold' : 'normal')
+          doc.setFontSize(r.kind === 'invoice' ? 10.5 : 10)
+          doc.setTextColor(r.kind === 'paid' ? 90 : 28, r.kind === 'paid' ? 90 : 26, r.kind === 'paid' ? 90 : 23)
+          if (r.kind === 'invoice') y += 1.5
+          const indent = r.kind === 'line' ? 4 : r.kind === 'invoice' ? 0 : 4
+          const wrapped = doc.splitTextToSize(r.left, leftW - indent) as string[]
+          ensureRoom(5 * wrapped.length + 1.5)
+          const top = y
+          for (const line of wrapped) {
+            doc.text(line, PAGE_MARGIN + indent, y)
+            y += 5
+          }
+          if (r.right) doc.text(r.right, rightX, top, { align: 'right' })
+          doc.setDrawColor(r.kind === 'total' || (r.kind === 'balance' && b.invoices.length === 1) ? 51 : 227, r.kind === 'total' || (r.kind === 'balance' && b.invoices.length === 1) ? 51 : 222, r.kind === 'total' || (r.kind === 'balance' && b.invoices.length === 1) ? 51 : 210)
+          doc.setLineWidth(r.kind === 'total' || (r.kind === 'balance' && b.invoices.length === 1) ? 0.5 : 0.2)
+          doc.line(PAGE_MARGIN, y - 1.6, rightX, y - 1.6)
+          y += 0.6
+        }
+        doc.setTextColor(28, 26, 23)
+        y += 2
+        break
+      }
       case 'notarial':
         y += 8
         doc.setFont('times', 'normal')
@@ -404,9 +536,77 @@ export async function buildDemandLetterPdfBlob(f: DemandLetterFields, todayYmd: 
 
 // ---------- prefill ----------
 
+/**
+ * What the modal knows about one covered invoice beyond its ledger row
+ * (v2.3425): the app's own document model (lines, number, dates) and, for a
+ * Stripe-hosted bill, what Stripe rendered — the number the customer saw and
+ * the lines as they saw them. Either may be missing; the statement degrades
+ * to the ledger row (one line: the memo, the amount).
+ */
+export type DemandInvoiceSource = {
+  inv: JobsLedgerInvoice
+  doc: PhysicalInvoiceDocument | null
+  stripe: { invoiceNumber: string | null; lines: StripeInvoiceLineDetail[] } | null
+}
+
+function ymdOf(raw: string | null | undefined): string {
+  const t = (raw ?? '').trim()
+  return /^\d{4}-\d{2}-\d{2}/.test(t) ? t.slice(0, 10) : ''
+}
+
+/** The bill, invoice by invoice, as the customer saw it — never typed. */
+export function buildDemandStatement(job: JobWithDetails, sources: DemandInvoiceSource[]): DemandStatementInvoice[] {
+  return sources.map(({ inv, doc, stripe }) => {
+    const total = Number(inv.amount ?? 0)
+    const paid = sumApplied(job, inv.id)
+    const stripeLines = (stripe?.lines ?? []).filter((l) => (l.description ?? '').trim())
+    let lines: DemandStatementLine[]
+    if (stripeLines.length > 0) {
+      lines = stripeLines.map((l) => ({
+        description: l.description.trim(),
+        qty: l.quantity != null && l.quantity !== 1 ? String(l.quantity) : '',
+        amount: moneyInput(l.amount / 100),
+      }))
+    } else if (doc && doc.layout === 'detailed' && doc.serviceLines.length + doc.materialLines.length > 0) {
+      lines = [...doc.serviceLines, ...doc.materialLines].map((l) => ({
+        description: l.description.trim(),
+        qty: l.qty !== 1 ? String(l.qty) : '',
+        amount: moneyInput(l.amount),
+      }))
+    } else {
+      const memo = (doc?.lineDescription ?? '').trim() || (inv.stripe_invoice_memo ?? '').trim() || (job.job_name ?? '').trim() || 'Plumbing services'
+      lines = [{ description: memo, qty: '', amount: moneyInput(total) }]
+    }
+    const stripeNumber = (stripe?.invoiceNumber ?? '').trim()
+    const docNumber = (doc?.invoiceNumberDisplay ?? '').trim()
+    const invoiceNumber = stripeNumber ? `#${stripeNumber.replace(/^#/, '')}` : docNumber && docNumber !== '—' ? docNumber : `#${inv.sequence_order}`
+    return {
+      invoiceNumber,
+      sentYmd: ymdOf(inv.sent_to_customer_at) || ymdOf(inv.billed_at) || ymdOf(inv.created_at),
+      dueYmd: ymdOf(inv.estimated_bill_date),
+      lines,
+      total: moneyInput(total),
+      paid: moneyInput(paid),
+      balance: moneyInput(Math.max(0, total - paid)),
+    }
+  })
+}
+
+/** Where the demand goes: the party the bill was addressed to, by the invoice's own rule (v2.3425). One letter per payer. */
+export function demandDebtorParty(job: JobWithDetails, invoices: JobsLedgerInvoice[]): EffectiveBillParty {
+  const first = invoices[0]
+  if (!first) return 'customer'
+  return effectiveInvoiceParty(
+    { gc_customer_id: job.gc_customer_id ?? null, customer_id: job.customer_id ?? null, bill_to_party: job.bill_to_party ?? null },
+    { bill_to_email: first.bill_to_email ?? null, bill_to_party: first.bill_to_party ?? null },
+  )
+}
+
 export type DemandLetterPrefillContext = {
   job: JobWithDetails
   invoices: JobsLedgerInvoice[]
+  /** The covered invoices with what the app and Stripe know about each (v2.3425). Omit to keep the older four-field debt block. */
+  sources?: DemandInvoiceSource[]
   issuer: PhysicalInvoiceIssuer | null
   senderName: string
   senderEmailFallback: string
@@ -430,6 +630,7 @@ function moneyInput(n: number): string {
 
 export function buildDemandLetterPrefill(ctx: DemandLetterPrefillContext): DemandLetterFields {
   const { job, invoices, issuer, senderName, senderEmailFallback, recipient, priorNotices, propertyKind, todayYmd } = ctx
+  const statement = ctx.sources ? buildDemandStatement(job, ctx.sources.filter((src) => invoices.some((i) => i.id === src.inv.id))) : []
   const total = invoices.reduce((s, i) => s + Number(i.amount ?? 0), 0)
   const applied = invoices.reduce((s, i) => s + sumApplied(job, i.id), 0)
   const outstanding = Math.max(0, total - applied)
@@ -449,7 +650,10 @@ export function buildDemandLetterPrefill(ctx: DemandLetterPrefillContext): Deman
     recipientName: recipient.name.trim(),
     recipientEmail: recipient.email.trim(),
     recipientAddress: recipient.address.trim(),
-    invoiceNumber: hcp ? `${hcp}` : invoices[0]?.id?.slice(0, 8) ?? '',
+    debtorParty: demandDebtorParty(job, invoices),
+    statement,
+    serviceAddress: (job.job_address ?? '').trim(),
+    invoiceNumber: statement.length > 0 ? statement.map((i) => i.invoiceNumber).join(', ') : hcp ? `${hcp}` : `#${invoices[0]?.sequence_order ?? 1}`,
     invoiceDate: firstBilled ?? todayYmd,
     serviceDescription: (job.job_name ?? '').trim() || 'Plumbing services',
     invoiceTotal: moneyInput(total),
