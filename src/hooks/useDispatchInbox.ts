@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { useToastContext } from '../contexts/ToastContext'
 import { useAuth } from './useAuth'
+import { DISPATCH_INBOX_GROUP, useInboxGroupEligibility } from './useInboxGroupEligibility'
 import { useRealtimeChannel } from './useRealtimeChannel'
 import type {
   DispatchInboxDismissedRow,
@@ -35,7 +36,8 @@ export function useDispatchInbox() {
   const { user: authUser, role } = useAuth()
   const { showToast } = useToastContext()
 
-  const [dispatchInboxEligible, setDispatchInboxEligible] = useState(false)
+  /** Dev, or a `dispatch_group_members` row — one shared read (`useInboxGroupEligibility`). */
+  const { dispatch: dispatchInboxEligible } = useInboxGroupEligibility(DISPATCH_INBOX_GROUP)
   const [dispatchRequests, setDispatchRequests] = useState<DispatchInboxRow[]>([])
   const [dispatchRequestsLoading, setDispatchRequestsLoading] = useState(false)
   /** True once the first load has settled — the footer badge waits for it before recording. */
@@ -67,29 +69,6 @@ export function useDispatchInbox() {
   const picturesSweepRunningRef = useRef(false)
   /** Breaks the sweep ↔ loader cycle (the loader triggers the sweep). */
   const loadDispatchRequestsRef = useRef<(() => void) | null>(null)
-
-  useEffect(() => {
-    if (!authUser?.id) {
-      setDispatchInboxEligible(false)
-      return
-    }
-    if (role === 'dev') {
-      setDispatchInboxEligible(true)
-      return
-    }
-    let cancelled = false
-    supabase
-      .from('dispatch_group_members')
-      .select('user_id')
-      .eq('user_id', authUser.id)
-      .maybeSingle()
-      .then(({ data }) => {
-        if (!cancelled) setDispatchInboxEligible(!!data)
-      })
-    return () => {
-      cancelled = true
-    }
-  }, [authUser?.id, role])
 
   /**
    * Won → Dispatch (v2.3143): retire open "open the job" to-dos whose bid
