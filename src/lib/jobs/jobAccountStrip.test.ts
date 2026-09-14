@@ -120,8 +120,8 @@ describe('poMomentLine', () => {
 
 describe('the errand', () => {
   const houses = [
-    { id: 'ferguson', name: 'Ferguson', repName: 'Curly Conley', repPhone: '210-344-4950' },
-    { id: 'reece', name: 'Reece', repName: null, repPhone: null },
+    { id: 'ferguson', name: 'Ferguson', repName: 'Curly Conley', repPhone: '210-344-4950', repContactId: 'c1' },
+    { id: 'reece', name: 'Reece', repName: null, repPhone: null, repContactId: null },
   ]
 
   it('builds and parses the payload, dropping junk', () => {
@@ -129,7 +129,7 @@ describe('the errand', () => {
     expect(payload).toEqual({ supply_houses: houses, from_counter: true, note: 'rough-in for the slab' })
     expect(parseOpenJobAccountPayload(payload)).toEqual(payload)
     expect(parseOpenJobAccountPayload({ supply_houses: [{ id: '', name: 'x' }, 'junk', { id: 'a', name: 'A' }], from_counter: 'yes' }))
-      .toEqual({ supply_houses: [{ id: 'a', name: 'A', repName: null, repPhone: null }], from_counter: false, note: '' })
+      .toEqual({ supply_houses: [{ id: 'a', name: 'A', repName: null, repPhone: null, repContactId: null }], from_counter: false, note: '' })
     expect(parseOpenJobAccountPayload(null).supply_houses).toEqual([])
     expect(buildOpenJobAccountPayload({ houses: [], fromCounter: false, note: '' })).toBeNull()
   })
