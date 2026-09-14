@@ -87,7 +87,12 @@ export default function StagesProgressPaymentCell({ model, pctComplete, pctSavin
   const amountStyle: React.CSSProperties = { fontSize: '0.75rem', fontVariantNumeric: 'tabular-nums' }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: compact ? '0.2rem' : '0.3rem', minWidth: compact ? 0 : '11rem', textAlign: 'left' }}>
+    // v2.3446: `width: 100%` + `maxWidth: 100%` — the unified table (Ready to
+    // Bill / Billed / Collections) centers this cell in a flex column, where a
+    // flex item's width is its content's; the words line is nowrap, so the cell
+    // grew to the sentence and spilled under the action buttons. Bounded to the
+    // wrapper, the bar and the sentence clip inside the column like the job table.
+    <div style={{ display: 'flex', flexDirection: 'column', gap: compact ? '0.2rem' : '0.3rem', minWidth: compact ? 0 : '11rem', width: '100%', maxWidth: '100%', boxSizing: 'border-box', textAlign: 'left' }}>
       <div style={rowStyle}>
         <span style={{ whiteSpace: 'nowrap' }}>
           {onPctCommit ? (
