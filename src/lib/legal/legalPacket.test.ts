@@ -224,7 +224,7 @@ describe('buildLegalPacket', () => {
   })
 
   it('a sent demand with a passed deadline shows on Paper; an open deadline warns; voided letters never count', () => {
-    const sent: JobDemandLetterRow = { id: 'd1', job_id: 'job-a', amount: 7502, created_at: '2026-08-12T00:00:00Z', created_by: null, deadline_date: '2026-08-26', fields: {}, invoice_ids: ['inv-a'], recipient_address: '', recipient_email: 'aaron@tle.test', recipient_name: 'The Learning Experience', sent_at: '2026-08-12T16:00:00Z', sent_method: 'certified_mail', tracking_number: '9407 1118 9922', voided_at: null }
+    const sent: JobDemandLetterRow = { id: 'd1', job_id: 'job-a', amount: 7502, created_at: '2026-08-12T00:00:00Z', created_by: null, deadline_date: '2026-08-26', fields: {}, invoice_ids: ['inv-a'], exhibits: [], debtor_party: '', recipient_address: '', recipient_email: 'aaron@tle.test', recipient_name: 'The Learning Experience', sent_at: '2026-08-12T16:00:00Z', sent_method: 'certified_mail', tracking_number: '9407 1118 9922', voided_at: null }
     const packet = buildLegalPacket(baseInput(account, { demandLetters: [sent] }))
     expect(packet.paper.demandLetters).toEqual([expect.objectContaining({ jobLabel: '717', method: 'Certified mail', deadlinePassed: true, sentYmd: '2026-08-12' })])
     expect(packet.gaps.map((g) => g.key)).not.toContain('demand')
