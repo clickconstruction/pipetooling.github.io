@@ -7,6 +7,7 @@ import { useNarrowViewport640 } from '../hooks/useNarrowViewport640'
 import { isUrlLikelyMapsOrDirectionsPortal, normalizeSupplyHouseWebsiteUrlForStorage } from '../lib/supplyHouseWebsite'
 import { VENDOR_KINDS, VENDOR_KIND_HINTS, vendorKindLabel, vendorKindOf, type VendorKind } from '../lib/materials/vendorKind'
 import type { TradeType } from '../lib/materials/supplyHouseTrades'
+import { JOB_ACCOUNT_POLICIES, JOB_ACCOUNT_POLICY_HINTS, JOB_ACCOUNT_POLICY_LABELS, jobAccountPolicyOf, type JobAccountPolicy } from '../lib/materials/jobSupplyHouseAccounts'
 
 type SupplyHouse = Database['public']['Tables']['supply_houses']['Row']
 type UserRole = 'dev' | 'master_technician' | 'assistant' | 'estimator' | 'primary' | 'superintendent'
@@ -23,6 +24,8 @@ export interface SupplyHouseFormData {
   vendor_kind: VendorKind
   /** v2.3173: trades this house serves (service_type ids). Empty = everyone. */
   service_type_ids: string[]
+  /** v2.3423: does the house open a job account per property (expects · optional · none)? */
+  job_accounts: JobAccountPolicy
 }
 
 interface SupplyHouseFormProps {
@@ -82,6 +85,8 @@ export function SupplyHouseForm({
   const [vendorKind, setVendorKind] = useState<VendorKind>(editingSupplyHouse ? vendorKindOf(editingSupplyHouse) : 'supply_house')
   // Estimators never reclassify a vendor: the row is hidden for them and stays what it was (or supply_house for a new one).
   const canPickKind = myRole !== 'estimator'
+  // Job accounts (v2.3423): office-only like Kind; a new supply house starts optional.
+  const [jobAccountPolicy, setJobAccountPolicy] = useState<JobAccountPolicy>(editingSupplyHouse ? jobAccountPolicyOf(editingSupplyHouse) : 'optional')
   // Trades served (v2.3173): the chips load the trade list and the house's links; the table may not exist before its push.
   const [tradeTypes, setTradeTypes] = useState<TradeType[]>([])
   const [tradeIds, setTradeIds] = useState<Set<string>>(new Set())
@@ -129,6 +134,7 @@ export function SupplyHouseForm({
       monthly_payment_day: day,
       vendor_kind: vendorKind,
       service_type_ids: tradeTypes.filter((t) => tradeIds.has(t.id)).map((t) => t.id),
+      job_accounts: jobAccountPolicy,
     })
   }
 
@@ -244,11 +250,42 @@ export function SupplyHouseForm({
             <p style={{ margin: '0.35rem 0 0', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>{VENDOR_KIND_HINTS[vendorKind]}</p>
           </FieldRow>
         ) : null}
+        {canPickKind && vendorKind === 'supply_house' ? (
+          <FieldRow label="Job accounts" narrow={narrow} alignTop>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }} role="group" aria-label="Job accounts">
+              {JOB_ACCOUNT_POLICIES.map((p) => {
+                const on = p === jobAccountPolicy
+                return (
+                  <button
+                    key={p}
+                    type="button"
+                    aria-pressed={on}
+                    onClick={() => setJobAccountPolicy(p)}
+                    style={{
+                      padding: '0.3rem 0.7rem',
+                      borderRadius: 999,
+                      border: `1px solid ${on ? '#0f766e' : 'var(--border-strong)'}`,
+                      background: on ? '#ccfbf1' : 'var(--surface)',
+                      color: on ? '#0f766e' : 'var(--text-700)',
+                      fontWeight: on ? 600 : 400,
+                      fontSize: '0.8125rem',
+                      cursor: 'pointer',
+                      font: 'inherit',
+                    }}
+                  >
+                    {JOB_ACCOUNT_POLICY_LABELS[p]}
+                  </button>
+                )
+              })}
+            </div>
+            <p style={{ margin: '0.35rem 0 0', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>{JOB_ACCOUNT_POLICY_HINTS[jobAccountPolicy]}</p>
+          </FieldRow>
+        ) : null}
         {editingSupplyHouse ? (
           <SupplyHouseContactsSection supplyHouseId={editingSupplyHouse.id} showAddedBy />
         ) : (
           <p style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--text-muted)', borderTop: '1px solid var(--border)', paddingTop: '0.7rem' }}>
-            Save the house, then add its reps — who price requests go to.
+            Save the house, then add its contacts — who price requests go to, and who opens job accounts.
           </p>
         )}
       </div>

@@ -12,10 +12,14 @@ import { withSupabaseRetry } from '../utils/errorHandling'
 import { useToastContext } from '../contexts/ToastContext'
 import { useAuth } from '../hooks/useAuth'
 import { fetchUserDisplayNames, userDisplayLabel } from '../lib/userDisplayNames'
+import { SUPPLY_HOUSE_CONTACT_ROLES, SUPPLY_HOUSE_CONTACT_ROLE_LABELS, contactRoleOf, type SupplyHouseContactRole } from '../lib/materials/jobSupplyHouseAccounts'
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
-type ContactRow = { id: string; name: string | null; email: string; label: string | null; is_default: boolean; created_by: string | null; created_at: string }
+type ContactRow = { id: string; name: string | null; email: string; label: string | null; is_default: boolean; created_by: string | null; created_at: string; role?: string | null; phone?: string | null }
+
+const ROLE_CHIP_ON: CSSProperties = { fontSize: '0.68rem', fontWeight: 700, color: '#0f766e', border: '1px solid #0f766e', background: '#ccfbf1', borderRadius: 999, padding: '0.05rem 0.5rem', cursor: 'pointer', font: 'inherit' }
+const ROLE_CHIP_OFF: CSSProperties = { fontSize: '0.68rem', fontWeight: 500, color: 'var(--text-muted)', border: '1px solid var(--border)', background: 'transparent', borderRadius: 999, padding: '0.05rem 0.5rem', cursor: 'pointer', font: 'inherit' }
 
 export function SupplyHouseContactsSection({
   supplyHouseId,
@@ -35,11 +39,25 @@ export function SupplyHouseContactsSection({
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [label, setLabel] = useState('')
+  const [phone, setPhone] = useState('')
+  const [role, setRole] = useState<SupplyHouseContactRole>('price_requests')
   const [busy, setBusy] = useState(false)
 
   const load = useCallback(async () => {
     try {
-      const data = await withSupabaseRetry(
+      // v2.3423: role + phone; before their push the select falls back to the old columns.
+      const { data, error } = await supabase
+        .from('supply_house_contacts')
+        .select('id, name, email, label, is_default, created_by, created_at, role, phone')
+        .eq('supply_house_id', supplyHouseId)
+        .is('archived_at', null)
+        .order('is_default', { ascending: false })
+        .order('name')
+      if (!error) {
+        setRows((data ?? []) as ContactRow[])
+        return
+      }
+      const legacy = await withSupabaseRetry(
         () =>
           supabase
             .from('supply_house_contacts')
@@ -50,7 +68,7 @@ export function SupplyHouseContactsSection({
             .order('name'),
         'load supply house contacts',
       )
-      setRows(data ?? [])
+      setRows((legacy ?? []) as ContactRow[])
     } catch {
       setRows([])
     }
@@ -91,11 +109,16 @@ export function SupplyHouseContactsSection({
         is_default: rows.length === 0,
         // v2.3243: the Directory's "added by" — the column has no default before its migration lands.
         created_by: authUser?.id ?? null,
+        // v2.3423: role + phone, sent only when set so the insert keeps working before their push.
+        ...(role !== 'price_requests' ? { role } : {}),
+        ...(phone.trim() ? { phone: phone.trim() } : {}),
       })
       if (error) throw error
       setName('')
       setEmail('')
       setLabel('')
+      setPhone('')
+      setRole('price_requests')
       await load()
       onChanged?.()
     } catch (err) {
@@ -124,6 +147,21 @@ export function SupplyHouseContactsSection({
     }
   }
 
+  /** v2.3423: the role is what the app dials — a Job accounts contact is who the field's Call button reaches. */
+  async function setContactRole(id: string, next: SupplyHouseContactRole) {
+    setBusy(true)
+    try {
+      const { error } = await supabase.from('supply_house_contacts').update({ role: next }).eq('id', id)
+      if (error) throw error
+      await load()
+      onChanged?.()
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Could not change the role.', 'error')
+    } finally {
+      setBusy(false)
+    }
+  }
+
   async function archive(id: string) {
     setBusy(true)
     try {
@@ -147,12 +185,22 @@ export function SupplyHouseContactsSection({
   return (
     <div style={{ borderTop: '1px solid var(--border)', paddingTop: '0.7rem', display: 'flex', flexDirection: 'column', gap: '0.45rem' }}>
       <span style={{ fontSize: '0.75rem', fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase', color: 'var(--text-muted)' }}>
-        Contacts — who price requests go to
+        Contacts — who price requests go to, who opens job accounts
       </span>
       {rows.map((r) => (
         <div key={r.id} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
           <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-strong)' }}>{r.name ?? r.email}</span>
-          <span style={mini}>{r.email}{r.label ? ` · ${r.label}` : ''}</span>
+          <span style={mini}>{r.email}{r.phone ? ` · ${r.phone}` : ''}{r.label ? ` · ${r.label}` : ''}</span>
+          <span role="group" aria-label={`Role for ${r.name ?? r.email}`} style={{ display: 'inline-flex', gap: '0.25rem' }}>
+            {SUPPLY_HOUSE_CONTACT_ROLES.map((ro) => {
+              const on = contactRoleOf(r) === ro
+              return (
+                <button key={ro} type="button" aria-pressed={on} disabled={busy || on} onClick={() => void setContactRole(r.id, ro)} style={on ? ROLE_CHIP_ON : ROLE_CHIP_OFF} title={ro === 'job_accounts' ? 'Who opens job accounts — the field’s Call button dials this contact' : ro === 'price_requests' ? 'Where price requests go' : 'Billing questions'}>
+                  {SUPPLY_HOUSE_CONTACT_ROLE_LABELS[ro]}
+                </button>
+              )
+            })}
+          </span>
           {showAddedBy && r.created_by && names[r.created_by] ? <span style={mini}>· added by {names[r.created_by]}</span> : null}
           {r.is_default ? (
             <span style={{ fontSize: '0.68rem', fontWeight: 700, color: '#15803d', border: '1px solid #16a34a', borderRadius: 999, padding: '0.05rem 0.5rem' }}>default</span>
@@ -171,6 +219,12 @@ export function SupplyHouseContactsSection({
         <input style={{ ...inp, width: '8rem' }} placeholder="name" value={name} onChange={(e) => setName(e.target.value)} />
         <input style={{ ...inp, flex: 1, minWidth: '11rem' }} placeholder="email" value={email} onChange={(e) => setEmail(e.target.value)} />
         <input style={{ ...inp, width: '7.5rem' }} placeholder="label (rep…)" value={label} onChange={(e) => setLabel(e.target.value)} />
+        <input style={{ ...inp, width: '8.5rem' }} type="tel" placeholder="phone" value={phone} onChange={(e) => setPhone(e.target.value)} aria-label="Contact phone" />
+        <select style={{ ...inp, width: '9.5rem' }} value={role} onChange={(e) => setRole(e.target.value as SupplyHouseContactRole)} aria-label="Contact role">
+          {SUPPLY_HOUSE_CONTACT_ROLES.map((ro) => (
+            <option key={ro} value={ro}>{SUPPLY_HOUSE_CONTACT_ROLE_LABELS[ro]}</option>
+          ))}
+        </select>
         <button type="button" disabled={busy || !EMAIL_RE.test(email.trim())} onClick={() => void add()} style={{ padding: '0.35rem 0.8rem', background: EMAIL_RE.test(email.trim()) ? '#2563eb' : 'var(--bg-200)', color: EMAIL_RE.test(email.trim()) ? 'white' : 'var(--text-faint)', border: 'none', borderRadius: 4, font: 'inherit', fontSize: '0.8125rem', fontWeight: 600, cursor: EMAIL_RE.test(email.trim()) ? 'pointer' : 'not-allowed' }}>
           + add contact
         </button>

@@ -4,6 +4,7 @@ import { supabase } from '../../lib/supabase'
 import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
 import { SupplyHouseForm, type SupplyHouseFormData } from '../SupplyHouseForm'
 import type { Database } from '../../types/database'
+import { jobAccountPolicyOf } from '../../lib/materials/jobSupplyHouseAccounts'
 
 type SupplyHouse = Database['public']['Tables']['supply_houses']['Row']
 type UserRole = 'dev' | 'master_technician' | 'assistant' | 'estimator' | 'primary' | 'superintendent'
@@ -89,6 +90,8 @@ export function useSupplyHouseEditor({
       notes: data.notes.trim() || null,
       monthly_payment_day: data.monthly_payment_day,
       vendor_kind: data.vendor_kind,
+      // v2.3423: sent only when it changed, so an untouched save keeps working before the column is pushed.
+      ...(data.job_accounts !== jobAccountPolicyOf(editing ?? {}) ? { job_accounts: data.job_accounts } : {}),
     }
     if (editing) {
       const { error: e } = await supabase.from('supply_houses').update(payload).eq('id', editing.id)

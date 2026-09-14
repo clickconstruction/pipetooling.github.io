@@ -1316,3 +1316,7 @@ Owner decision 2026-09-11: only a dev releases; the office asks with a note. A w
 
 **The firm's emails** (v2.3325): `legal_firm_recipients` and `legal_notification_queue` are office-read; the firm manages its people through `submit-legal-portal` (service role); confirm and unsubscribe are public token links on `legal-notify-dispatch`. The office's two overrides — `legal_firm_set_paused`, `legal_firm_recipient_remove` — are the Collections managers'.
 
+
+## Job accounts at a supply house (v2.3423)
+
+`job_supply_house_accounts` (one row per job × house: requested · open · not needed) is **readable by anyone who can read the job's operational activity** — `can_read_job_activity(job_id, false)`: dev, the job's master, adopted / shared assistants, primaries, and the crew on the job's team — because the field reads the status at the counter (PR 2's strip). **Writes:** the office (`is_office_staff()`: dev, master_technician, assistant, controller) inserts, updates and deletes any status; any job reader may insert a `requested` row attributed to themselves (`requested_by = auth.uid()`) — the field's one-tap ask. Marking an account opened or not needed is office-only. `supply_houses.job_accounts` and `supply_house_contacts.role / phone` follow their tables' existing office (+ estimator) write predicates; a new policy lets **every authenticated user read unarchived `job_accounts` contacts** (name + phone for the Call button) while other contacts stay office + estimator.

@@ -33,6 +33,10 @@ An unpaid $3,240.50 Reece invoice on J804's job account still shows in Reece's b
 
 Already have invoices sitting on job accounts? Open each one with the **Edit** pencil and check the box — the flag can be set any time.
 
+## The account itself lives on the house
+
+Whether a job **has** an account at a house is its own record, separate from this invoice flag: **Materials → Supply houses** → expand the house → **Job accounts** lists every job with an account there ({{chip:green|open}} with the house's reference, {{chip:purple|requested}}, {{chip:gray|not needed}}) and every job that bought there with none on record. {{button:green|Mark opened…}} records it in two taps after the call. See [find a supply house and its rep](?g=find-a-supply-house-and-its-rep).
+
 ## The Dashboard keeps an eye on it
 
 Two **Needs You** cards appear only when there's a gap, and clear themselves once you fix it:
