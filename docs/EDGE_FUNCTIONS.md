@@ -1145,6 +1145,8 @@ Devs: **Settings → Templates & testing → Workflow email (Edge Function)** (c
 
 ### submit-portal-request
 
+> **v2.3438 — the offered columns are gone**: the `stage_window` ask reads the window **by id only** (`.eq('id', stageId)`) and selects no `bundle_id` / `offered_to_gc` — migration `20260914250000` drops both plus `offered_to_gc_at`. **Redeploy before the push**: the old bundle selects those columns and would 400 once they are gone.
+
 > **v2.3346 — who pays**: `payment_promise` scopes its job ids with `owedJobIdsForViewer` (the job rule + each open `billed` invoice's pick) instead of every open-bill job the viewer is on, so a GC's promise never lands on a homeowner-paid job. **Redeploy with `customer-portal`.**
 
 **Purpose**: Portal form intake (portal train PR 2, v2.1986): validates a visit/bid request from `/portal` (honeypot, length caps, https-only plans link, job-in-scope check), rate-limits 5/hour per portal link, inserts a `dispatch_requests` row (details in `pending_payload.source = 'portal'`; `from_user_id` = `app_settings.portal_requests_from_user_id` → link minter → first dev), then triggers `notify-dispatch-request` and (v2.1988) emails the `portal_request_email_recipients_v1` app_settings list via Resend, best-effort.

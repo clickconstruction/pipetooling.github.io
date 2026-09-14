@@ -11,7 +11,6 @@ describe('StageCalendarModal', () => {
   it('draws the months the window touches, flags the days, and wires the side panel', () => {
     const onAccept = vi.fn()
     const onAnswer = vi.fn()
-    const onWithdraw = vi.fn()
     const onChange = vi.fn()
     const onClose = vi.fn()
     render(
@@ -37,7 +36,6 @@ describe('StageCalendarModal', () => {
         onChange={onChange}
         onAccept={onAccept}
         onAnswer={onAnswer}
-        onWithdraw={onWithdraw}
       />,
     )
     expect(screen.getByRole('dialog', { name: 'Top-out · #880 · Knight Contracting' })).toBeTruthy()
@@ -51,12 +49,13 @@ describe('StageCalendarModal', () => {
     expect(screen.getByText(/framing slipped/)).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'Accept Sep 29 – Oct 10' }))
     fireEvent.click(screen.getByRole('button', { name: 'Answer with…' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Take it off their portal' }))
     fireEvent.click(screen.getByRole('button', { name: 'Change our window…' }))
     expect(onAccept).toHaveBeenCalledTimes(1)
     expect(onAnswer).toHaveBeenCalledTimes(1)
-    expect(onWithdraw).toHaveBeenCalledTimes(1)
     expect(onChange).toHaveBeenCalledTimes(1)
+    // The per-window Offer / Withdraw moves are gone (the eye on the line item is the record).
+    expect(screen.queryByRole('button', { name: 'Take it off their portal' })).toBeNull()
+    expect(screen.queryByRole('button', { name: /^Offer to/ })).toBeNull()
     expect(screen.getByText('Rough-in · Behar Kraja')).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'Done' }))
     expect(onClose).toHaveBeenCalledTimes(1)

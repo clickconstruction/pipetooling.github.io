@@ -12,9 +12,6 @@ export type StageWindowLike = {
   window_end: string | null
   window_by: string | null
   note?: string | null
-  /** v2.2933: offered to the GC; stages offered together share a bundle id. */
-  offered_to_gc?: boolean | null
-  bundle_id?: string | null
   /** v2.2934: the GC's ask and the office's answer. */
   asked_start?: string | null
   asked_end?: string | null

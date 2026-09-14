@@ -275,12 +275,12 @@ serve(async (req) => {
       const todayYmd = todayYmdInAppTz()
       const problem = askProblem(start, end, todayYmd)
       if (problem) return jsonResponse({ error: problem }, 400)
-      // The window by id, or every window in the bundle.
+      // The window by id (bundles are gone since the eye became the record — v2.3132 / the offered-columns retirement).
       const { data: winRaw } = await admin
         .from('job_stage_windows')
-        .select('id, job_id, fixture_id, bundle_id, offered_to_gc, window_start, window_end, fixture:fixture_id(name), job:job_id(hcp_number, gc_customer_id, gc_shares_stage_dates)')
-        .or(`id.eq.${stageId},bundle_id.eq.${stageId}`)
-      const wins = (winRaw ?? []) as Array<{ id: string; job_id: string; bundle_id: string | null; offered_to_gc: boolean; fixture: { name: string | null } | { name: string | null }[] | null; job: { hcp_number: string | null; gc_customer_id: string | null; gc_shares_stage_dates: boolean } | { hcp_number: string | null; gc_customer_id: string | null; gc_shares_stage_dates: boolean }[] | null }>
+        .select('id, job_id, fixture_id, window_start, window_end, fixture:fixture_id(name), job:job_id(hcp_number, gc_customer_id, gc_shares_stage_dates)')
+        .eq('id', stageId)
+      const wins = (winRaw ?? []) as Array<{ id: string; job_id: string; fixture: { name: string | null } | { name: string | null }[] | null; job: { hcp_number: string | null; gc_customer_id: string | null; gc_shares_stage_dates: boolean } | { hcp_number: string | null; gc_customer_id: string | null; gc_shares_stage_dates: boolean }[] | null }>
       const jobOf = (w: (typeof wins)[number]) => (Array.isArray(w.job) ? w.job[0] ?? null : w.job)
       const mine = wins.filter((w) => jobOf(w)?.gc_customer_id === link.customer_id && jobOf(w)?.gc_shares_stage_dates === true)
       if (mine.length === 0) return jsonResponse({ error: 'Not found' }, 404)

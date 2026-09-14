@@ -8908,15 +8908,12 @@ export type Database = {
           asked_end: string | null
           asked_note: string | null
           asked_start: string | null
-          bundle_id: string | null
           created_at: string
           created_by: string | null
           fixture_id: string
           id: string
           job_id: string
           note: string | null
-          offered_to_gc: boolean
-          offered_to_gc_at: string | null
           updated_at: string
           window_by: string | null
           window_end: string | null
@@ -8930,15 +8927,12 @@ export type Database = {
           asked_end?: string | null
           asked_note?: string | null
           asked_start?: string | null
-          bundle_id?: string | null
           created_at?: string
           created_by?: string | null
           fixture_id: string
           id?: string
           job_id: string
           note?: string | null
-          offered_to_gc?: boolean
-          offered_to_gc_at?: string | null
           updated_at?: string
           window_by?: string | null
           window_end?: string | null
@@ -8952,15 +8946,12 @@ export type Database = {
           asked_end?: string | null
           asked_note?: string | null
           asked_start?: string | null
-          bundle_id?: string | null
           created_at?: string
           created_by?: string | null
           fixture_id?: string
           id?: string
           job_id?: string
           note?: string | null
-          offered_to_gc?: boolean
-          offered_to_gc_at?: string | null
           updated_at?: string
           window_by?: string | null
           window_end?: string | null
