@@ -11,13 +11,11 @@ import { useJobHoursStoryModal } from '../../contexts/JobHoursStoryModalContext'
 import { formatEstimatedCompletionDisplay, formatTimeSince, formatUsdNoCents } from '../../lib/jobs/jobFormatting'
 import {
   invoiceOpenRemainingOnJob,
-  jobBilledUnpaidDollars,
   jobStagesInvoiceJumpChipTargets,
 } from '../../lib/jobs/invoiceBilling'
 import { jobBillingUnallocatedDollars, jobPartialInvoiceRemainingDollars } from '../../lib/jobsStagesBoard'
 import type { InvoiceWithJob } from '../../lib/jobsStagesBoard'
-import { buildStagesMoneyBarModel } from '../../lib/stagesMoneyBar'
-import { buildPipelineStageBar } from '../../lib/jobs/pipelineStageBar'
+import { progressPaymentForJob } from '../../lib/jobs/progressPaymentForJob'
 import { stagesBillSentPctAlert } from '../../lib/jobs/stagesBillSentPctAlert'
 import {
   deriveStagesBillingActivityDetail,
@@ -623,6 +621,7 @@ export default function JobsStagesCardList(props: JobsStagesTableProps) {
     openEditJobAndCreateCustomerFlow: props.openEditJobAndCreateCustomerFlow,
     stagesManHoursByJobId: props.stagesManHoursByJobId,
     stagesManHoursLoading: props.stagesManHoursLoading,
+    crewByJobId: props.crewByJobId,
     stagesLaborBreakdownByJobId: props.stagesLaborBreakdownByJobId,
     expandedJobThreadId: props.expandedJobThreadId,
     toggleStagesJobThreadExpanded: props.toggleStagesJobThreadExpanded,
@@ -799,13 +798,8 @@ export default function JobsStagesCardList(props: JobsStagesTableProps) {
             <div style={cardMoneyZoneStyle}>
               <StagesProgressPaymentCell
                 compact
-                model={buildStagesMoneyBarModel({
-                  totalBill: j.revenue != null ? Number(j.revenue) : null,
-                  paymentsMade: j.payments_made != null ? Number(j.payments_made) : null,
-                  pctComplete: j.pct_complete ?? null,
-                  billedUnpaid: jobBilledUnpaidDollars(j),
-                })}
-                stageBar={buildPipelineStageBar({ fixtures: j.fixtures, invoices: j.invoices, payments: j.payments, pctComplete: j.pct_complete ?? null })}
+                model={progressPaymentForJob(j, ctx.crewByJobId.get(j.id) ?? null).model}
+                    view={progressPaymentForJob(j, ctx.crewByJobId.get(j.id) ?? null).view}
                 pctComplete={j.pct_complete ?? null}
                 billSentAlert={stagesBillSentPctAlert(j)}
                 pctSaving={showPctComplete ? pctCompleteSavingId === j.id : undefined}
@@ -882,6 +876,7 @@ export function JobsStagesUnifiedCardList(props: JobsStagesUnifiedTableProps) {
     openEditJobAndCreateCustomerFlow: props.openEditJobAndCreateCustomerFlow,
     stagesManHoursByJobId: props.stagesManHoursByJobId,
     stagesManHoursLoading: props.stagesManHoursLoading,
+    crewByJobId: props.crewByJobId,
     stagesLaborBreakdownByJobId: props.stagesLaborBreakdownByJobId,
     expandedJobThreadId: props.expandedJobThreadId,
     toggleStagesJobThreadExpanded: props.toggleStagesJobThreadExpanded,
@@ -1100,13 +1095,8 @@ export function JobsStagesUnifiedCardList(props: JobsStagesUnifiedTableProps) {
               ) : null}
               <StagesProgressPaymentCell
                 compact
-                model={buildStagesMoneyBarModel({
-                  totalBill: j.revenue != null ? Number(j.revenue) : null,
-                  paymentsMade: j.payments_made != null ? Number(j.payments_made) : null,
-                  pctComplete: j.pct_complete ?? null,
-                  billedUnpaid: jobBilledUnpaidDollars(j),
-                })}
-                stageBar={buildPipelineStageBar({ fixtures: j.fixtures, invoices: j.invoices, payments: j.payments, pctComplete: j.pct_complete ?? null })}
+                model={progressPaymentForJob(j, ctx.crewByJobId.get(j.id) ?? null).model}
+                    view={progressPaymentForJob(j, ctx.crewByJobId.get(j.id) ?? null).view}
                 pctComplete={j.pct_complete ?? null}
                 billSentAlert={stagesBillSentPctAlert(j)}
                 pctSaving={pctCompleteSavingId === j.id}

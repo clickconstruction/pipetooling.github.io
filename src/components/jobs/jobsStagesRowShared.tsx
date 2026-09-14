@@ -1,4 +1,5 @@
 import { type CSSProperties, type ReactNode } from 'react'
+import type { JobCrewPosition } from '../../lib/jobs/jobCrewPosition'
 import { Link, type NavigateFunction } from 'react-router-dom'
 import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
 import type { JobCalendarJobIdentity } from '../../lib/jobCalendarModal'
@@ -63,6 +64,8 @@ export type StagesRowRenderContext = {
   openJobHoursStory?: (target: { jobId: string; hcpNumber: string | null; clickNumber?: string | null; jobName: string | null }) => void
   stagesManHoursByJobId: Map<string, number>
   stagesManHoursLoading: boolean
+  /** v2.3419: where the crew is per job (`useJobCrewPositions`); empty until the feed answers. */
+  crewByJobId: ReadonlyMap<string, JobCrewPosition>
   stagesLaborBreakdownByJobId: Map<string, Array<{ personName: string; hours: number }>>
   expandedJobThreadId: string | null
   toggleStagesJobThreadExpanded: (id: string) => void

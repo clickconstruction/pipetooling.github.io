@@ -85,6 +85,7 @@ import { isAssistantLike } from '../../lib/subcontractorLikeRole'
 import JobContractModal from './JobContractModal'
 import JobSignedAgreementModal, { type SignedCoverage } from './JobSignedAgreementModal'
 import { useJobContractsNudge } from '../../hooks/useJobContractsNudge'
+import { useJobCrewPositions } from '../../hooks/useJobCrewPositions'
 import type { ContractStage } from '../../lib/jobs/jobContractNudge'
 import JobsContractSweepModal from './JobsContractSweepModal'
 import {
@@ -876,6 +877,9 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
   // Contract coverage card (v2.2738): company-wide counts per stage — the
   // board loads Billed/Collections lazily, so the card never reads off loaded rows.
   const { nudge: contractNudge } = useJobContractsNudge(canSeeJobContracts)
+  // v2.3419: where the crew is, per row (clock-ins, sub sheets, reports) — the Progress & payment cell reads it.
+  const crewJobIds = useMemo(() => jobs.map((j) => j.id), [jobs])
+  const { crewByJobId } = useJobCrewPositions(crewJobIds, active && !!authUser?.id)
   const pipelineContractCoverage = useMemo(
     () =>
       contractNudge
@@ -2470,6 +2474,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
       openEditJobAndCreateCustomerFlow,
       stagesManHoursByJobId,
       stagesManHoursLoading,
+      crewByJobId,
       stagesLaborBreakdownByJobId,
       expandedJobThreadId,
       toggleStagesJobThreadExpanded: (id: string) => setExpandedJobThreadId((prev) => (prev === id ? null : id)),
@@ -4110,6 +4115,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                     openEditJobAndCreateCustomerFlow={openEditJobAndCreateCustomerFlow}
                     stagesManHoursByJobId={stagesManHoursByJobId}
                     stagesManHoursLoading={stagesManHoursLoading}
+                    crewByJobId={crewByJobId}
                     stagesLaborBreakdownByJobId={stagesLaborBreakdownByJobId}
                     expandedJobThreadId={expandedJobThreadId}
                     toggleStagesJobThreadExpanded={toggleStagesJobThreadExpanded}
@@ -4204,6 +4210,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                     openEditJobAndCreateCustomerFlow={openEditJobAndCreateCustomerFlow}
                     stagesManHoursByJobId={stagesManHoursByJobId}
                     stagesManHoursLoading={stagesManHoursLoading}
+                    crewByJobId={crewByJobId}
                     stagesLaborBreakdownByJobId={stagesLaborBreakdownByJobId}
                     expandedJobThreadId={expandedJobThreadId}
                     toggleStagesJobThreadExpanded={toggleStagesJobThreadExpanded}
@@ -4363,6 +4370,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                     openEditJobAndCreateCustomerFlow={openEditJobAndCreateCustomerFlow}
                     stagesManHoursByJobId={stagesManHoursByJobId}
                     stagesManHoursLoading={stagesManHoursLoading}
+                    crewByJobId={crewByJobId}
                     stagesLaborBreakdownByJobId={stagesLaborBreakdownByJobId}
                     expandedJobThreadId={expandedJobThreadId}
                     toggleStagesJobThreadExpanded={toggleStagesJobThreadExpanded}
@@ -4691,6 +4699,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                     openEditJobAndCreateCustomerFlow={openEditJobAndCreateCustomerFlow}
                     stagesManHoursByJobId={stagesManHoursByJobId}
                     stagesManHoursLoading={stagesManHoursLoading}
+                    crewByJobId={crewByJobId}
                     stagesLaborBreakdownByJobId={stagesLaborBreakdownByJobId}
                     expandedJobThreadId={expandedJobThreadId}
                     toggleStagesJobThreadExpanded={toggleStagesJobThreadExpanded}
@@ -4840,6 +4849,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                     openEditJobAndCreateCustomerFlow={openEditJobAndCreateCustomerFlow}
                     stagesManHoursByJobId={stagesManHoursByJobId}
                     stagesManHoursLoading={stagesManHoursLoading}
+                    crewByJobId={crewByJobId}
                     stagesLaborBreakdownByJobId={stagesLaborBreakdownByJobId}
                     expandedJobThreadId={expandedJobThreadId}
                     toggleStagesJobThreadExpanded={toggleStagesJobThreadExpanded}
@@ -4987,6 +4997,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                       openEditJobAndCreateCustomerFlow={openEditJobAndCreateCustomerFlow}
                       stagesManHoursByJobId={stagesManHoursByJobId}
                       stagesManHoursLoading={stagesManHoursLoading}
+                      crewByJobId={crewByJobId}
                       stagesLaborBreakdownByJobId={stagesLaborBreakdownByJobId}
                       expandedJobThreadId={expandedJobThreadId}
                       toggleStagesJobThreadExpanded={toggleStagesJobThreadExpanded}
