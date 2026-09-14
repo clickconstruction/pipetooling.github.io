@@ -21398,6 +21398,26 @@ export type Database = {
           master_user_id: string
         }[]
       }
+      list_job_account_strip: {
+        Args: { p_job_ids: string[] }
+        Returns: {
+          account_id: string
+          account_note: string
+          account_ref: string
+          house_name: string
+          job_id: string
+          opened_at: string
+          opened_via: string
+          policy: string
+          rep_contact_id: string
+          rep_name: string
+          rep_phone: string
+          requested_at: string
+          requested_from_counter: boolean
+          status: string
+          supply_house_id: string
+        }[]
+      }
       list_job_crew_position: {
         Args: { p_job_ids: string[]; p_today: string }
         Returns: {

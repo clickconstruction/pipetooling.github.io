@@ -1,5 +1,7 @@
 import type { Dispatch, SetStateAction } from 'react'
-import { useRef, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
+import { JobAccountsStrip } from '../jobs/JobAccountsStrip'
+import { useJobAccountStrips } from '../../hooks/useJobAccountStrips'
 import CallCustomerModal from './CallCustomerModal'
 import CustomerContactCardIcon from '../icons/CustomerContactCardIcon'
 import { useJobCustomerPhones } from '../../hooks/useJobCustomerPhones'
@@ -91,6 +93,9 @@ export function DashboardAssignedJobsSection({
 }) {
   // v2.1006: phone icon -> CallCustomerModal (mis-click guard + call notes) on every row with a customer phone.
   const { phones, loaded: phonesLoaded } = useJobCustomerPhones(assignedJobs.map((j) => j.id))
+  // Job accounts at the counter (v2.3424): the strip under every assigned job's address.
+  const assignedJobIds = useMemo(() => assignedJobs.map((j) => j.id), [assignedJobs])
+  const jobAccountStrips = useJobAccountStrips(assignedJobIds)
   const { user: authUser } = useAuth()
   const { showToast } = useToastContext()
   const [callModal, setCallModal] = useState<{ phone: string; jobId: string; jobLabel: string } | null>(null)
@@ -227,6 +232,13 @@ export function DashboardAssignedJobsSection({
                           '—'
                         )}
                       </div>
+                      <JobAccountsStrip
+                        jobId={j.id}
+                        jobLabel={`${effectiveJobLedgerNumber(j.hcp_number, j.click_number) || '—'} · ${j.job_name || '—'}`}
+                        jobAddress={j.job_address}
+                        entries={jobAccountStrips.byJob.get(j.id)}
+                        onChanged={jobAccountStrips.reload}
+                      />
                       {(j.customer_name ?? '').trim() !== '' && (
                         <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginTop: 4, display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
                           <CustomerContactCardIcon size={13} style={{ flexShrink: 0 }} />

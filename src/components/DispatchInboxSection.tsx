@@ -17,6 +17,8 @@ import { RequestPrioritySheet } from './RequestPrioritySheet'
 import { isCustomerWaiting, portalKindLabel, type RequestPriority } from '../lib/requestPriority'
 import { parsePortalRequestPayload } from '../lib/portalRequestPayload'
 import { recordNavClick } from '../lib/navClickTelemetry'
+import { MarkJobAccountOpenedModal } from './materials/MarkJobAccountOpenedModal'
+import { OPEN_JOB_ACCOUNT_ACTION, openJobAccountCloseNote, parseOpenJobAccountPayload, telHref, type RequestedJobAccountHouse } from '../lib/jobs/jobAccountStrip'
 import {
   AGING_ITEM_OPENED_CONTROL,
   ageChipStyle,
@@ -110,6 +112,8 @@ type DispatchInboxSectionProps = {
   onLinkJobPictures?: (jobId: string) => void
   /** find_property_owner requests (v2.1610): opens Job Detail with the Share-with-supply-house modal on top. */
   onOpenSupplyHouseShare?: (jobId: string) => void
+  /** open_job_account errands (v2.3424): the office marked the account from the card — close the request with that note and tell the tech. */
+  onCloseRequestWithNote?: (requestId: string, note: string) => Promise<void> | void
   /** Opens the Create Trip Charge modal for a Turnaway request (pending_action 'trip_charge_turnaway'). */
   onCreateTripCharge?: (args: { requestId: string; jobId: string; referenceSummary: string | null }) => void
   /** Customer Waiting (v2.3247): raise or lower a request's priority (RPC set_request_priority). */
@@ -143,6 +147,7 @@ export function DispatchInboxSection({
   onOpenDismissedArchive,
   onLinkJobPictures,
   onOpenSupplyHouseShare,
+  onCloseRequestWithNote,
   onCreateTripCharge,
   onSetPriority,
   onLogCall,
@@ -154,6 +159,32 @@ export function DispatchInboxSection({
   const { user: authUser, role } = useAuth()
   // Customer Waiting (v2.3247): which row the lower/raise sheet is open for.
   const [prioritySheet, setPrioritySheet] = useState<{ requestId: string; direction: 'lower' | 'raise'; label: string } | null>(null)
+  // Job accounts at the counter (v2.3424): the Mark opened / Not needed sheet for an open_job_account errand.
+  const [jobAccountSheet, setJobAccountSheet] = useState<{
+    requestId: string
+    jobId: string
+    jobLabel: string
+    house: RequestedJobAccountHouse
+    mode: 'open' | 'not_needed'
+  } | null>(null)
+  const jobAccountSheetEl = jobAccountSheet ? (
+    <MarkJobAccountOpenedModal
+      jobId={jobAccountSheet.jobId}
+      jobLabel={jobAccountSheet.jobLabel}
+      house={{ id: jobAccountSheet.house.id, name: jobAccountSheet.house.name }}
+      existing={null}
+      reps={jobAccountSheet.house.repName ? [{ id: `payload-${jobAccountSheet.house.id}`, name: jobAccountSheet.house.repName, email: '', phone: jobAccountSheet.house.repPhone }] : []}
+      initialMode={jobAccountSheet.mode}
+      onClose={() => setJobAccountSheet(null)}
+      onSaved={(row) => {
+        const sheet = jobAccountSheet
+        setJobAccountSheet(null)
+        if (sheet && onCloseRequestWithNote) {
+          void onCloseRequestWithNote(sheet.requestId, openJobAccountCloseNote(sheet.house.name, row.status === 'not_needed' ? 'not_needed' : 'open', row.account_ref))
+        }
+      }}
+    />
+  ) : null
   const prioritySheetEl =
     prioritySheet && onSetPriority ? (
       <RequestPrioritySheet
@@ -365,6 +396,83 @@ export function DispatchInboxSection({
                     Open Share with supply house
                   </button>
                 ) : null
+                // Job accounts at the counter (v2.3424): the field's ask — one row per
+                // house with Call · Mark opened · Send the packet · Not needed.
+                const jobAccountAsk =
+                  !isClosed && req.pending_action === OPEN_JOB_ACCOUNT_ACTION && req.job_ledger_id
+                    ? parseOpenJobAccountPayload(req.pending_payload)
+                    : null
+                const jobAccountJobLabel = (req.reference_summary ?? '').split(' - ')[0]?.trim() || 'the job'
+                const jobAccountBtnStyle = {
+                  padding: '0.3rem 0.6rem',
+                  background: 'var(--surface)',
+                  border: '1px solid var(--border-strong)',
+                  borderRadius: 4,
+                  cursor: 'pointer',
+                  fontSize: '0.8125rem',
+                  color: 'var(--text-700)',
+                  fontWeight: 500,
+                  textDecoration: 'none',
+                  whiteSpace: 'nowrap' as const,
+                }
+                const jobAccountLines =
+                  jobAccountAsk && jobAccountAsk.supply_houses.length > 0 ? (
+                    <div style={{ marginTop: 6, display: 'flex', flexDirection: 'column', gap: 6 }} data-job-account-ask={req.id}>
+                      {jobAccountAsk.from_counter ? (
+                        <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-amber-800)' }}>At the counter now</span>
+                      ) : null}
+                      {jobAccountAsk.note ? (
+                        <span style={{ fontSize: '0.8125rem', color: 'var(--text-600)', fontStyle: 'italic' }}>“{jobAccountAsk.note}”</span>
+                      ) : null}
+                      {jobAccountAsk.supply_houses.map((h) => {
+                        const tel = telHref(h.repPhone)
+                        return (
+                          <div key={h.id} style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.4rem', fontSize: '0.8125rem' }}>
+                            <strong style={{ color: 'var(--text-strong)' }}>{h.name}</strong>
+                            <span style={{ color: 'var(--text-600)' }}>
+                              {h.repName ? `rep ${h.repName}${h.repPhone ? ` · ${h.repPhone}` : ''}` : 'no job-accounts rep on file'}
+                            </span>
+                            {tel ? (
+                              <a href={tel} onClick={(e) => e.stopPropagation()} style={jobAccountBtnStyle}>Call {h.repName?.split(' ')[0] ?? 'rep'}</a>
+                            ) : null}
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                if (req.job_ledger_id) setJobAccountSheet({ requestId: req.id, jobId: req.job_ledger_id, jobLabel: jobAccountJobLabel, house: h, mode: 'open' })
+                              }}
+                              style={{ ...jobAccountBtnStyle, background: '#0f766e', borderColor: '#0f766e', color: 'white', fontWeight: 600 }}
+                            >
+                              Mark opened…
+                            </button>
+                            {onOpenSupplyHouseShare ? (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  if (req.job_ledger_id) onOpenSupplyHouseShare(req.job_ledger_id)
+                                }}
+                                title="Open Job Detail with the Share-with-supply-house modal — the setup packet"
+                                style={jobAccountBtnStyle}
+                              >
+                                Send the packet
+                              </button>
+                            ) : null}
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                if (req.job_ledger_id) setJobAccountSheet({ requestId: req.id, jobId: req.job_ledger_id, jobLabel: jobAccountJobLabel, house: h, mode: 'not_needed' })
+                              }}
+                              style={{ ...jobAccountBtnStyle, border: 'none', color: 'var(--text-muted)', textDecoration: 'underline dotted' }}
+                            >
+                              Not needed
+                            </button>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  ) : null
                 // Quick Estimate (v2.2293): field write-up → open the draft the
                 // wizard created (links[0] is /estimates/<number>).
                 const fieldEstimateLink =
@@ -574,6 +682,7 @@ export function DispatchInboxSection({
                             Ref: {req.reference_summary.trim()}
                           </div>
                         ) : null}
+                        {jobAccountLines}
                         {req.location_lat != null && req.location_lng != null ? (
                           <div style={{ marginTop: 4, fontSize: '0.8125rem' }}>
                             <a
@@ -891,6 +1000,7 @@ export function DispatchInboxSection({
             </ul>
           )}
           {prioritySheetEl}
+          {jobAccountSheetEl}
         </div>
   )
 
