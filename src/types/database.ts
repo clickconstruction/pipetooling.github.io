@@ -4966,20 +4966,20 @@ export type Database = {
           date_met: string | null
           date_met_source: string | null
           gc_pays_by_default: boolean
-          sees_customer_bills: boolean
           google_drive_link: string | null
           id: string
           job_pictures_link: string | null
+          lien_notice_policy: string
+          lien_notice_policy_note: string | null
+          lien_notice_policy_set_at: string | null
+          lien_notice_policy_set_by: string | null
           master_user_id: string
           name: string
           payment_terms: string
           payment_terms_note: string | null
           payment_terms_set_at: string | null
-          lien_notice_policy: string
-          lien_notice_policy_note: string | null
-          lien_notice_policy_set_by: string | null
-          lien_notice_policy_set_at: string | null
           payment_terms_set_by: string | null
+          sees_customer_bills: boolean
           standing_discount_pct: number | null
           standing_discount_reason: string | null
           statement_sender_user_id: string | null
@@ -4998,20 +4998,20 @@ export type Database = {
           date_met?: string | null
           date_met_source?: string | null
           gc_pays_by_default?: boolean
-          sees_customer_bills?: boolean
           google_drive_link?: string | null
           id?: string
           job_pictures_link?: string | null
+          lien_notice_policy?: string
+          lien_notice_policy_note?: string | null
+          lien_notice_policy_set_at?: string | null
+          lien_notice_policy_set_by?: string | null
           master_user_id: string
           name: string
           payment_terms?: string
           payment_terms_note?: string | null
           payment_terms_set_at?: string | null
-          lien_notice_policy?: string
-          lien_notice_policy_note?: string | null
-          lien_notice_policy_set_by?: string | null
-          lien_notice_policy_set_at?: string | null
           payment_terms_set_by?: string | null
+          sees_customer_bills?: boolean
           standing_discount_pct?: number | null
           standing_discount_reason?: string | null
           statement_sender_user_id?: string | null
@@ -5030,20 +5030,20 @@ export type Database = {
           date_met?: string | null
           date_met_source?: string | null
           gc_pays_by_default?: boolean
-          sees_customer_bills?: boolean
           google_drive_link?: string | null
           id?: string
           job_pictures_link?: string | null
+          lien_notice_policy?: string
+          lien_notice_policy_note?: string | null
+          lien_notice_policy_set_at?: string | null
+          lien_notice_policy_set_by?: string | null
           master_user_id?: string
           name?: string
           payment_terms?: string
           payment_terms_note?: string | null
           payment_terms_set_at?: string | null
-          lien_notice_policy?: string
-          lien_notice_policy_note?: string | null
-          lien_notice_policy_set_by?: string | null
-          lien_notice_policy_set_at?: string | null
           payment_terms_set_by?: string | null
+          sees_customer_bills?: boolean
           standing_discount_pct?: number | null
           standing_discount_reason?: string | null
           statement_sender_user_id?: string | null
@@ -5055,6 +5055,13 @@ export type Database = {
           {
             foreignKeyName: "customers_archived_by_fkey"
             columns: ["archived_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "customers_lien_notice_policy_set_by_fkey"
+            columns: ["lien_notice_policy_set_by"]
             isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]
@@ -8173,90 +8180,133 @@ export type Database = {
       }
       job_lien_desk_items: {
         Row: {
+          approval_mode: string | null
+          approved_at: string | null
+          approved_by: string | null
+          cover_note: boolean
+          created_at: string
+          drafted_at: string
+          drafted_by: string | null
+          fields: Json
+          held_at: string | null
+          held_by: string | null
+          hold_reason: string
+          hold_until: string | null
           id: string
           job_id: string
           kind: string
           months: string[]
-          status: string
-          fields: Json
-          cover_note: boolean
-          drafted_by: string | null
-          drafted_at: string
-          submitted_at: string | null
-          approved_by: string | null
-          approved_at: string | null
-          approval_mode: string | null
-          word_note: string
-          word_channel: string
-          held_by: string | null
-          held_at: string | null
-          hold_reason: string
-          hold_until: string | null
-          sent_filing_id: string | null
-          sent_at: string | null
-          pulled_back_by: string | null
           pulled_back_at: string | null
-          created_at: string
+          pulled_back_by: string | null
+          sent_at: string | null
+          sent_filing_id: string | null
+          status: string
+          submitted_at: string | null
           updated_at: string
           voided_at: string | null
+          word_channel: string
+          word_note: string
         }
         Insert: {
+          approval_mode?: string | null
+          approved_at?: string | null
+          approved_by?: string | null
+          cover_note?: boolean
+          created_at?: string
+          drafted_at?: string
+          drafted_by?: string | null
+          fields?: Json
+          held_at?: string | null
+          held_by?: string | null
+          hold_reason?: string
+          hold_until?: string | null
           id?: string
           job_id: string
           kind?: string
           months?: string[]
-          status?: string
-          fields?: Json
-          cover_note?: boolean
-          drafted_by?: string | null
-          drafted_at?: string
-          submitted_at?: string | null
-          approved_by?: string | null
-          approved_at?: string | null
-          approval_mode?: string | null
-          word_note?: string
-          word_channel?: string
-          held_by?: string | null
-          held_at?: string | null
-          hold_reason?: string
-          hold_until?: string | null
-          sent_filing_id?: string | null
-          sent_at?: string | null
-          pulled_back_by?: string | null
           pulled_back_at?: string | null
-          created_at?: string
+          pulled_back_by?: string | null
+          sent_at?: string | null
+          sent_filing_id?: string | null
+          status?: string
+          submitted_at?: string | null
           updated_at?: string
           voided_at?: string | null
+          word_channel?: string
+          word_note?: string
         }
         Update: {
+          approval_mode?: string | null
+          approved_at?: string | null
+          approved_by?: string | null
+          cover_note?: boolean
+          created_at?: string
+          drafted_at?: string
+          drafted_by?: string | null
+          fields?: Json
+          held_at?: string | null
+          held_by?: string | null
+          hold_reason?: string
+          hold_until?: string | null
           id?: string
           job_id?: string
           kind?: string
           months?: string[]
-          status?: string
-          fields?: Json
-          cover_note?: boolean
-          drafted_by?: string | null
-          drafted_at?: string
-          submitted_at?: string | null
-          approved_by?: string | null
-          approved_at?: string | null
-          approval_mode?: string | null
-          word_note?: string
-          word_channel?: string
-          held_by?: string | null
-          held_at?: string | null
-          hold_reason?: string
-          hold_until?: string | null
-          sent_filing_id?: string | null
-          sent_at?: string | null
-          pulled_back_by?: string | null
           pulled_back_at?: string | null
-          created_at?: string
+          pulled_back_by?: string | null
+          sent_at?: string | null
+          sent_filing_id?: string | null
+          status?: string
+          submitted_at?: string | null
           updated_at?: string
           voided_at?: string | null
+          word_channel?: string
+          word_note?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "job_lien_desk_items_approved_by_fkey"
+            columns: ["approved_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_lien_desk_items_drafted_by_fkey"
+            columns: ["drafted_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_lien_desk_items_held_by_fkey"
+            columns: ["held_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_lien_desk_items_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs_ledger"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_lien_desk_items_pulled_back_by_fkey"
+            columns: ["pulled_back_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_lien_desk_items_sent_filing_id_fkey"
+            columns: ["sent_filing_id"]
+            isOneToOne: false
+            referencedRelation: "job_lien_filings"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       job_lien_filings: {
         Row: {
@@ -9242,10 +9292,6 @@ export type Database = {
           bid_id: string | null
           bill_copy_other_party: boolean
           bill_to_party: string
-          show_bills_to_other_party: boolean
-          contract_not_needed_at: string | null
-          contract_not_needed_by: string | null
-          contract_not_needed_reason: string | null
           click_number: string
           collections_at: string | null
           collections_by: string | null
@@ -9253,6 +9299,9 @@ export type Database = {
           completeness_marked_at: string | null
           completeness_marked_by: string | null
           completeness_pct: number | null
+          contract_not_needed_at: string | null
+          contract_not_needed_by: string | null
+          contract_not_needed_reason: string | null
           created_at: string | null
           customer_address_id: string | null
           customer_email: string | null
@@ -9283,6 +9332,7 @@ export type Database = {
           project_id: string | null
           revenue: number | null
           service_type_id: string
+          show_bills_to_other_party: boolean
           standing_discount_waived_at: string | null
           status: string
           updated_at: string | null
@@ -9293,10 +9343,6 @@ export type Database = {
           bid_id?: string | null
           bill_copy_other_party?: boolean
           bill_to_party?: string
-          show_bills_to_other_party?: boolean
-          contract_not_needed_at?: string | null
-          contract_not_needed_by?: string | null
-          contract_not_needed_reason?: string | null
           click_number?: string
           collections_at?: string | null
           collections_by?: string | null
@@ -9304,6 +9350,9 @@ export type Database = {
           completeness_marked_at?: string | null
           completeness_marked_by?: string | null
           completeness_pct?: number | null
+          contract_not_needed_at?: string | null
+          contract_not_needed_by?: string | null
+          contract_not_needed_reason?: string | null
           created_at?: string | null
           customer_address_id?: string | null
           customer_email?: string | null
@@ -9334,6 +9383,7 @@ export type Database = {
           project_id?: string | null
           revenue?: number | null
           service_type_id: string
+          show_bills_to_other_party?: boolean
           standing_discount_waived_at?: string | null
           status?: string
           updated_at?: string | null
@@ -9344,10 +9394,6 @@ export type Database = {
           bid_id?: string | null
           bill_copy_other_party?: boolean
           bill_to_party?: string
-          show_bills_to_other_party?: boolean
-          contract_not_needed_at?: string | null
-          contract_not_needed_by?: string | null
-          contract_not_needed_reason?: string | null
           click_number?: string
           collections_at?: string | null
           collections_by?: string | null
@@ -9355,6 +9401,9 @@ export type Database = {
           completeness_marked_at?: string | null
           completeness_marked_by?: string | null
           completeness_pct?: number | null
+          contract_not_needed_at?: string | null
+          contract_not_needed_by?: string | null
+          contract_not_needed_reason?: string | null
           created_at?: string | null
           customer_address_id?: string | null
           customer_email?: string | null
@@ -9385,6 +9434,7 @@ export type Database = {
           project_id?: string | null
           revenue?: number | null
           service_type_id?: string
+          show_bills_to_other_party?: boolean
           standing_discount_waived_at?: string | null
           status?: string
           updated_at?: string | null
@@ -9407,6 +9457,13 @@ export type Database = {
           {
             foreignKeyName: "jobs_ledger_completeness_marked_by_fkey"
             columns: ["completeness_marked_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "jobs_ledger_contract_not_needed_by_fkey"
+            columns: ["contract_not_needed_by"]
             isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]
@@ -9608,7 +9665,6 @@ export type Database = {
           bill_to_party: string | null
           bill_to_phone: string | null
           bill_to_stripe_customer_id: string | null
-          shown_to_party: string | null
           billed_at: string | null
           copy_emails: string[] | null
           created_at: string | null
@@ -9621,6 +9677,7 @@ export type Database = {
           job_id: string
           sent_to_customer_at: string | null
           sequence_order: number
+          shown_to_party: string | null
           status: string
           stripe_invoice_footer: string | null
           stripe_invoice_id: string | null
@@ -9640,7 +9697,6 @@ export type Database = {
           bill_to_party?: string | null
           bill_to_phone?: string | null
           bill_to_stripe_customer_id?: string | null
-          shown_to_party?: string | null
           billed_at?: string | null
           copy_emails?: string[] | null
           created_at?: string | null
@@ -9653,6 +9709,7 @@ export type Database = {
           job_id: string
           sent_to_customer_at?: string | null
           sequence_order?: number
+          shown_to_party?: string | null
           status?: string
           stripe_invoice_footer?: string | null
           stripe_invoice_id?: string | null
@@ -9672,7 +9729,6 @@ export type Database = {
           bill_to_party?: string | null
           bill_to_phone?: string | null
           bill_to_stripe_customer_id?: string | null
-          shown_to_party?: string | null
           billed_at?: string | null
           copy_emails?: string[] | null
           created_at?: string | null
@@ -9685,6 +9741,7 @@ export type Database = {
           job_id?: string
           sent_to_customer_at?: string | null
           sequence_order?: number
+          shown_to_party?: string | null
           status?: string
           stripe_invoice_footer?: string | null
           stripe_invoice_id?: string | null
@@ -20962,6 +21019,14 @@ export type Database = {
           team_hours: number
         }[]
       }
+      job_bill_payer_customer_id: {
+        Args: {
+          p_bill_to_party: string
+          p_customer_id: string
+          p_gc_customer_id: string
+        }
+        Returns: string
+      }
       jobs_ledger_row_visible_for_tally_assign: {
         Args: { p_job_id: string; p_user_id: string }
         Returns: boolean
@@ -21059,6 +21124,14 @@ export type Database = {
       legal_pull_back: {
         Args: { p_matter_id: string; p_note?: string }
         Returns: Json
+      }
+      lien_filing_deadline: {
+        Args: { p_month: string; p_property_kind: string }
+        Returns: string
+      }
+      lien_notice_deadline: {
+        Args: { p_month: string; p_property_kind: string }
+        Returns: string
       }
       link_hazmat_fee_incident_to_invoice: {
         Args: { p_incident_id: string; p_invoice_id: string }
@@ -21215,46 +21288,6 @@ export type Database = {
         }[]
       }
       list_job_payment_promises: { Args: never; Returns: Json }
-      lien_notice_deadline: { Args: { p_month: string; p_property_kind: string }; Returns: string }
-      lien_filing_deadline: { Args: { p_month: string; p_property_kind: string }; Returns: string }
-      list_lien_affidavit_windows: {
-        Args: { p_within_days?: number }
-        Returns: {
-          job_id: string
-          last_month: string
-          deadline: string
-          is_sub: boolean
-          noticed: boolean
-          filed: boolean
-          open_balance: number
-          customer_id: string | null
-          gc_customer_id: string | null
-          property_kind: string
-          has_owner: boolean
-          has_legal: boolean
-          homestead: boolean
-          desk_item_id: string | null
-          desk_status: string | null
-        }[]
-      }
-      list_lien_notice_months: {
-        Args: { p_within_days?: number }
-        Returns: {
-          job_id: string
-          work_month: string
-          approved_hours: number
-          deadline: string
-          noticed: boolean
-          open_balance: number
-          customer_id: string | null
-          gc_customer_id: string | null
-          property_kind: string
-          has_owner: boolean
-          desk_item_id: string | null
-          desk_status: string | null
-          desk_months: string[] | null
-        }[]
-      }
       list_job_promised_pay_dates: { Args: never; Returns: Json }
       list_job_schedule_blocks_for_schedule_email: {
         Args: { p_recipient: string; p_work_date: string }
@@ -21301,6 +21334,44 @@ export type Database = {
           manual_at: string
           pct: number
           reported_at: string
+        }[]
+      }
+      list_lien_affidavit_windows: {
+        Args: { p_within_days?: number }
+        Returns: {
+          customer_id: string
+          deadline: string
+          desk_item_id: string
+          desk_status: string
+          filed: boolean
+          gc_customer_id: string
+          has_legal: boolean
+          has_owner: boolean
+          homestead: boolean
+          is_sub: boolean
+          job_id: string
+          last_month: string
+          noticed: boolean
+          open_balance: number
+          property_kind: string
+        }[]
+      }
+      list_lien_notice_months: {
+        Args: { p_within_days?: number }
+        Returns: {
+          approved_hours: number
+          customer_id: string
+          deadline: string
+          desk_item_id: string
+          desk_months: string[]
+          desk_status: string
+          gc_customer_id: string
+          has_owner: boolean
+          job_id: string
+          noticed: boolean
+          open_balance: number
+          property_kind: string
+          work_month: string
         }[]
       }
       list_manual_bank_accounts: {
@@ -22423,7 +22494,10 @@ export type Database = {
         }
         Returns: Json
       }
-      set_customer_lien_notice_policy: { Args: { p_customer_id: string; p_policy: string; p_note?: string }; Returns: undefined }
+      set_customer_lien_notice_policy: {
+        Args: { p_customer_id: string; p_note?: string; p_policy: string }
+        Returns: undefined
+      }
       set_customer_portal_slug: {
         Args: { p_customer_id: string; p_slug: string }
         Returns: Json
