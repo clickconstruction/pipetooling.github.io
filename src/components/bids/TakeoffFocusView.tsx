@@ -1,3 +1,4 @@
+import { TakeoffOrderListPanel } from './TakeoffOrderListPanel'
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { formatCurrency } from '../../lib/format'
 import { effectiveCountUnit } from '../../lib/bids/countRowUnit'
@@ -48,6 +49,8 @@ export function TakeoffFocusView({
   fillButton,
   onFillAll,
   onSheetView,
+  partNameById,
+  onRefreshOrderRules = null,
   showToast,
   history,
   focusRequest,
@@ -70,6 +73,9 @@ export function TakeoffFocusView({
   fillButton: { label: string; disabled: boolean; title: string }
   onFillAll: () => void
   onSheetView: () => void
+  /** Sold in (v2.3409): names for the Materials-to-order list, and the catalog refresh. */
+  partNameById?: ReadonlyMap<string, string>
+  onRefreshOrderRules?: (() => Promise<{ updated: number; cleared: number }>) | null
   showToast: (message: string, kind?: 'success' | 'error' | 'info') => void
   /** From `useTakeoffFixtureHistory` — null while loading. */
   history: Map<string, TakeoffFixtureHistoryRow[]> | null
@@ -195,6 +201,12 @@ export function TakeoffFocusView({
           Sheet view
         </button>
       </TakeoffCoverageStrip>
+
+      {coverage.orderRounding.parts.length > 0 ? (
+        <div style={{ marginBottom: '1rem' }}>
+          <TakeoffOrderListPanel rounding={coverage.orderRounding} partNameById={partNameById ?? new Map()} onRefreshRules={onRefreshOrderRules} compact />
+        </div>
+      ) : null}
 
       {countRows.length === 0 ? (
         <p style={{ color: 'var(--text-muted)', margin: 0 }}>Add fixtures in the Counts tab first.</p>

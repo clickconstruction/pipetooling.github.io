@@ -1,4 +1,7 @@
 import type { CoverageLine, TakeoffCoverageSummary } from './takeoffCoverage'
+import { roughCountMultiplier } from './bidTakeoffHelpers'
+import { orderIncrementChip } from '../materials/orderIncrement'
+import type { TakeoffOrderRounding } from './takeoffOrderRounding'
 
 /**
  * New 2 — "Cost rail" (docs/TAKEOFFS_REFRESH_PLAN.md, mockup C): the pure
@@ -48,7 +51,11 @@ export function zeroPriceQueue(
  * unpriced part, and a note listing the parts to quote — so the supply house
  * knows exactly what is missing a price.
  */
-export function rfqScopeForZeroPrice(queue: ReadonlyArray<ZeroPriceQueueItem>): { lines: Array<{ fixture: string; count: number; unit?: string | null }>; text: string } {
+export function rfqScopeForZeroPrice(
+  queue: ReadonlyArray<ZeroPriceQueueItem>,
+  /** v2.3409: with the bid's rounding, a part sold in packs is quoted at its ORDERED quantity. */
+  rounding?: TakeoffOrderRounding | null,
+): { lines: Array<{ fixture: string; count: number; unit?: string | null }>; text: string } {
   const byRow = new Map<string, ZeroPriceQueueItem[]>()
   for (const q of queue) {
     const list = byRow.get(q.countRowId) ?? []
@@ -59,9 +66,25 @@ export function rfqScopeForZeroPrice(queue: ReadonlyArray<ZeroPriceQueueItem>): 
     const first = items[0]!
     return { fixture: first.fixture, count: Number(first.count) || 1, unit: first.unit ?? null }
   })
-  const parts = new Map<string, number>()
-  for (const q of queue) parts.set(q.partName, (parts.get(q.partName) ?? 0) + q.quantity)
-  const text = ['Please quote these parts (no catalog price on file):', ...[...parts].map(([name, qty]) => `• ${name} × ${qty}`)].join('\n')
+  // The bid's need per part — quantity × fixture count, summed — not the per-fixture quantity.
+  const parts = new Map<string, { name: string; needed: number }>()
+  for (const q of queue) {
+    const cur = parts.get(q.partId) ?? { name: q.partName, needed: 0 }
+    cur.needed += q.quantity * roughCountMultiplier(q.count)
+    parts.set(q.partId, cur)
+  }
+  const num = (n: number) => (Number.isInteger(n) ? String(n) : String(Math.round(n * 100) / 100))
+  const text = [
+    'Please quote these parts (no catalog price on file):',
+    ...[...parts].map(([partId, p]) => {
+      const r = rounding?.byPartId.get(partId)
+      if (r && r.ordered > 0) {
+        const ft = r.unit === 'ft_stick' || r.unit === 'ft_coil' ? ' ft' : ''
+        return `• ${p.name} × ${num(r.ordered)}${ft} (${num(r.needed)}${ft} needed · ${orderIncrementChip({ increment: r.increment, unit: r.unit })} ${r.unit === 'ft_stick' ? 'sticks' : r.unit === 'ft_coil' ? 'coils' : 'packs'})`
+      }
+      return `• ${p.name} × ${num(p.needed)}`
+    }),
+  ].join('\n')
   return { lines, text }
 }
 

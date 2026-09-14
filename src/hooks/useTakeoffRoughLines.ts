@@ -595,6 +595,29 @@ export function useTakeoffRoughLines<P extends { id: string; name: string }>(arg
     return result
   }
 
+  /**
+   * Sold in (v2.3409): re-snapshot every line's rule from the catalog — for bids costed before
+   * the rule existed, or after a Part Type's rule changed. Lines whose value already matches
+   * are left alone; a part whose rule was removed has its snapshot cleared.
+   */
+  async function refreshOrderIncrementsFromCatalog(): Promise<{ updated: number; cleared: number }> {
+    const partIds = Array.from(new Set(takeoffRoughPartLines.map((l) => l.partId).filter((id): id is string => !!id)))
+    if (partIds.length === 0) return { updated: 0, cleared: 0 }
+    const incMap = await orderIncrementsFor(partIds)
+    let updated = 0
+    let cleared = 0
+    for (const l of takeoffRoughPartLines) {
+      if (!l.partId || !l.isSaved) continue
+      const inc = incMap.get(l.partId) ?? null
+      const same = (inc?.increment ?? null) === (l.orderIncrement ?? null) && (inc ? inc.unit : null) === (l.orderIncrement != null ? (l.orderIncrementUnit ?? null) : null)
+      if (same) continue
+      updateTakeoffRoughPartLine(l.id, { orderIncrement: inc?.increment ?? null, orderIncrementUnit: inc?.unit ?? null })
+      if (inc) updated += 1
+      else cleared += 1
+    }
+    return { updated, cleared }
+  }
+
   return {
     persistTakeoffRoughPartLine,
     setRoughPartLinePartAndCatalogPrice,
@@ -609,5 +632,6 @@ export function useTakeoffRoughLines<P extends { id: string; name: string }>(arg
     applyRoughAddAssemblyBundle,
     fillRowsFromAssemblies,
     copyLinesToRow,
+    refreshOrderIncrementsFromCatalog,
   }
 }

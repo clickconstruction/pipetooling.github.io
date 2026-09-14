@@ -457,6 +457,7 @@ export function BidsTakeoffTab({
     applyRoughAddAssemblyBundle,
     fillRowsFromAssemblies,
     copyLinesToRow,
+    refreshOrderIncrementsFromCatalog,
   } = useTakeoffRoughLines<MaterialPartWithType>({
     selectedBidForTakeoff,
     selectedBidVersionId,
@@ -2049,6 +2050,8 @@ export function BidsTakeoffTab({
                     showToast={showToast}
                     history={takeoffHistory}
                     focusRequest={viewFocusRequest}
+                    partNameById={takeoffPartNameById}
+                    onRefreshOrderRules={refreshOrderIncrementsFromCatalog}
                   />
                 ) : (
                   <TakeoffByStageNotice onBackToOld={() => switchTakeoffView('old')} />
@@ -2077,6 +2080,7 @@ export function BidsTakeoffTab({
                     onRequestQuotes={(scope) => setTakeoffRfqScope(scope)}
                     onFocusView={() => switchTakeoffView('new1')}
                     focusRequest={viewFocusRequest}
+                    onRefreshOrderRules={refreshOrderIncrementsFromCatalog}
                   />
                 ) : (
                   <TakeoffByStageNotice onBackToOld={() => switchTakeoffView('old')} />

@@ -2,6 +2,7 @@ import { useEffect, useState, type Dispatch, type SetStateAction } from 'react'
 import { supabase } from '../../lib/supabase'
 import type { Database } from '../../types/database'
 import { SupplyHouseWebsiteLink } from '../SupplyHouseWebsiteLink'
+import { DEFAULT_ORDER_INCREMENT_UNIT, ORDER_INCREMENT_UNITS, effectiveOrderIncrement, formatOrderIncrement, parseOrderIncrementUnit, parseTypedOrderIncrement, type OrderIncrementFields, type OrderIncrementUnitKey } from '../../lib/materials/orderIncrement'
 
 type SupplyHouse = Database['public']['Tables']['supply_houses']['Row']
 
@@ -44,6 +45,47 @@ export function TakeoffPartPricesModal({
   const [partPricesModalAddSupplyHouseId, setPartPricesModalAddSupplyHouseId] = useState('')
   const [partPricesModalAddPrice, setPartPricesModalAddPrice] = useState('')
   const [partPricesModalAdding, setPartPricesModalAdding] = useState(false)
+  // Sold in (v2.3409): the part's own rule and its type's, editable here so the takeoff never leaves the sheet.
+  const [soldIn, setSoldIn] = useState<{ part: OrderIncrementFields; type: OrderIncrementFields | null; typeName: string | null } | null>(null)
+  const [soldInDraft, setSoldInDraft] = useState('')
+  const [soldInUnit, setSoldInUnit] = useState<OrderIncrementUnitKey>(DEFAULT_ORDER_INCREMENT_UNIT)
+  const [soldInSaving, setSoldInSaving] = useState(false)
+  useEffect(() => {
+    if (!partPricesModal) {
+      setSoldIn(null)
+      return
+    }
+    let cancelled = false
+    void supabase
+      .from('material_parts')
+      .select('order_increment, order_increment_unit, part_types(name, order_increment, order_increment_unit)')
+      .eq('id', partPricesModal.partId)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (cancelled || !data) return
+        const row = data as unknown as OrderIncrementFields & { part_types?: (OrderIncrementFields & { name?: string | null }) | (OrderIncrementFields & { name?: string | null })[] | null }
+        const t = Array.isArray(row.part_types) ? (row.part_types[0] ?? null) : (row.part_types ?? null)
+        setSoldIn({ part: row, type: t, typeName: t?.name ?? null })
+        const own = Number(row.order_increment)
+        setSoldInDraft(Number.isFinite(own) && own > 0 ? String(own) : '')
+        setSoldInUnit(parseOrderIncrementUnit(row.order_increment_unit ?? t?.order_increment_unit))
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [partPricesModal])
+  async function saveSoldIn() {
+    if (!partPricesModal || soldInSaving) return
+    const n = parseTypedOrderIncrement(soldInDraft)
+    setSoldInSaving(true)
+    const { error } = await supabase.from('material_parts').update({ order_increment: n, order_increment_unit: n != null ? soldInUnit : null }).eq('id', partPricesModal.partId)
+    setSoldInSaving(false)
+    if (error) {
+      setError(`Failed to save Sold in: ${error.message}`)
+      return
+    }
+    setSoldIn((prev) => (prev ? { ...prev, part: { order_increment: n, order_increment_unit: n != null ? soldInUnit : null } } : prev))
+  }
 
 
   useEffect(() => {
@@ -132,6 +174,44 @@ export function TakeoffPartPricesModal({
               <h3 style={{ margin: 0, fontSize: '1rem' }}>Prices: {partPricesModal.partName}</h3>
               <button type="button" onClick={() => setPartPricesModal(null)} style={{ background: 'none', border: 'none', fontSize: '1.25rem', cursor: 'pointer', color: 'var(--text-muted)' }}>×</button>
             </div>
+            {soldIn ? (
+              (() => {
+                const eff = effectiveOrderIncrement(soldIn.part, soldIn.type)
+                const typed = parseTypedOrderIncrement(soldInDraft)
+                return (
+                  <div data-testid="part-prices-sold-in" style={{ marginBottom: '0.9rem', padding: '0.5rem 0.65rem', border: '1px solid var(--border)', borderRadius: 6, background: 'var(--bg-subtle)', fontSize: '0.8125rem' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '0.5rem', flexWrap: 'wrap' }}>
+                      <span style={{ fontWeight: 600 }}>Sold in</span>
+                      <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>
+                        {eff.value ? `${formatOrderIncrement(eff.value)}${eff.source === 'type' ? ` · from the ${soldIn.typeName ?? 'part'} type` : ' · this part\'s own'}` : 'by the each — nothing rounds'}
+                      </span>
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '4.5rem 7.5rem auto', gap: '0.4rem', alignItems: 'center', marginTop: '0.4rem' }}>
+                      <input
+                        type="text"
+                        inputMode="decimal"
+                        value={soldInDraft}
+                        onChange={(e) => setSoldInDraft(e.target.value)}
+                        placeholder={eff.source === 'type' && eff.value ? String(eff.value.increment) : '—'}
+                        aria-label="Sold in: pack size for this part"
+                        style={{ padding: '0.35rem 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, textAlign: 'center' }}
+                      />
+                      <select value={typed != null ? soldInUnit : (eff.value?.unit ?? soldInUnit)} onChange={(e) => setSoldInUnit(parseOrderIncrementUnit(e.target.value))} aria-label="Sold in: how it is sold" style={{ padding: '0.35rem 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}>
+                        {ORDER_INCREMENT_UNITS.map((u) => (
+                          <option key={u.key} value={u.key}>
+                            {u.label}
+                          </option>
+                        ))}
+                      </select>
+                      <button type="button" onClick={() => void saveSoldIn()} disabled={soldInSaving} style={{ padding: '0.35rem 0.7rem', background: 'var(--surface)', color: 'var(--text-link)', border: '1px solid #2563eb', borderRadius: 4, cursor: 'pointer', fontSize: '0.8125rem' }}>
+                        {soldInSaving ? 'Saving…' : 'Save'}
+                      </button>
+                    </div>
+                    <p style={{ margin: '0.35rem 0 0', fontSize: '0.72rem', color: 'var(--text-muted)' }}>A number here is this part's own rule; blank falls back to the type. Lines already on the bid keep their snapshot until you Refresh Sold in rules on the sheet.</p>
+                  </div>
+                )
+              })()
+            ) : null}
             {partPricesModalData === 'loading' ? (
               <p style={{ margin: 0, color: 'var(--text-muted)' }}>Loading prices…</p>
             ) : (
