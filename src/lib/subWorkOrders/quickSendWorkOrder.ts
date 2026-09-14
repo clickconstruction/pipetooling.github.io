@@ -7,6 +7,7 @@
  * `WorkOrderAssemblerModal.persist('offered')` + `send()`; keep the two in
  * step when either changes.
  */
+import { jobPartyName } from '../jobs/jobPartyExclusive'
 import { supabase } from '../supabase'
 import { todayYmdInAppTz } from '../../utils/dateUtils'
 import type { StepCommitmentRow } from '../workflow/stepCommitments'
@@ -25,7 +26,7 @@ export type QuickSendJob = { id: string; hcp_number: string; customer_name: stri
 
 /** The slice of a Pipeline job the send needs. */
 export function quickSendJobOf(job: JobWithDetails): QuickSendJob {
-  return { id: job.id, hcp_number: job.hcp_number, customer_name: job.customer_name ?? null, job_address: job.job_address ?? null, service_type_id: job.service_type_id ?? null, serviceTypeName: (job as { serviceType?: { name?: string | null } | null }).serviceType?.name ?? null }
+  return { id: job.id, hcp_number: job.hcp_number, customer_name: jobPartyName(job), job_address: job.job_address ?? null, service_type_id: job.service_type_id ?? null, serviceTypeName: (job as { serviceType?: { name?: string | null } | null }).serviceType?.name ?? null }
 }
 export type QuickSendPerson = { id: string; name: string; email: string | null }
 
