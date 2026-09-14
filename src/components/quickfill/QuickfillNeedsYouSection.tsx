@@ -16,6 +16,8 @@ import { CLAIM_DEV_LOOKBACK_DAYS, useClaimDevAttemptsNudge } from '../../hooks/u
 import { useLienReleasesOwedNudge } from '../../hooks/useLienReleasesOwedNudge'
 import { useDemandDeadlinesNudge } from '../../hooks/useDemandDeadlinesNudge'
 import { useLienWatchNudge } from '../../hooks/useLienWatchNudge'
+import { todayYmdInAppTz } from '../../utils/dateUtils'
+import { useLienDeskData } from '../../hooks/useLienDeskData'
 import { LABEL_APPROVALS_MIN_AGE_DAYS, usePendingLabelApprovalsNudge } from '../../hooks/usePendingLabelApprovalsNudge'
 import { usePendingHrReportsNudge } from '../../hooks/usePendingHrReportsNudge'
 import {
@@ -90,6 +92,8 @@ export function QuickfillNeedsYouSection({
   const [lienReleaseQueueOpen, setLienReleaseQueueOpen] = useState(false)
   const { overdue: demandDeadlineOverdue } = useDemandDeadlinesNudge(lienUnconditionalEnabled)
   const { watch: lienWatch } = useLienWatchNudge(lienUnconditionalEnabled)
+  // The Lien desk (v2.3405): notices due per unpaid work month — the office's drafting pile, the leader's approvals.
+  const { data: lienDeskData } = useLienDeskData(lienUnconditionalEnabled, todayYmdInAppTz(), { light: true })
   // Bank-label approvals ARE close-ritual work (journey-map Tier-2 #27): the
   // same card the Dashboard shows, so the Quickfill twin never lags it.
   // Banking is controller and above (v2.3305): the card opens Banking → Accounting,
@@ -141,6 +145,9 @@ export function QuickfillNeedsYouSection({
     demandDeadlineOverdue,
     lienWatchEnabled: lienUnconditionalEnabled,
     lienWatch,
+    lienDeskEnabled: lienUnconditionalEnabled,
+    lienDesk: lienDeskData?.summary ?? null,
+    lienDeskLeader: role === 'dev' || role === 'master_technician',
     // Hours approvals are people-desk work — a Dashboard concern, not billing.
     hoursApprovalsEnabled: false,
     hoursApprovals: null,
@@ -196,7 +203,9 @@ export function QuickfillNeedsYouSection({
             setLienReleaseQueueOpen(true)
           } else if (item.key === 'demand-deadline') {
             navigate('/jobs?tab=stages')
-          } else if (item.key === 'lien-serve-copy' || item.key === 'lien-notice-window' || item.key === 'lien-file-window') {
+          } else if (item.key === 'lien-notice-draft' || item.key === 'lien-notice-approve') {
+            navigate('/jobs?tab=stages&liendesk=1')
+          } else if (item.key === 'lien-serve-copy' || item.key === 'lien-file-window') {
             navigate('/jobs?tab=stages')
           } else if (item.key === 'label-approvals') {
             navigate('/banking?tab=accounting')

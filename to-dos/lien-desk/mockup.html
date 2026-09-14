@@ -1,0 +1,534 @@
+<meta charset="utf-8">
+<title>The Lien Desk</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+:root{
+  --ground:#f3f4f2; --surface:#ffffff; --surface-2:#f7f8f7; --border:#e2e5e3; --border-strong:#c9cecb;
+  --ink:#1c2321; --muted:#667470; --faint:#98a39f;
+  --blue:#2563eb; --blue-soft:#e8efff; --blue-ink:#1d4ed8;
+  --red:#dc2626; --red-soft:#fdecec; --red-ink:#b91c1c;
+  --amber:#d97706; --amber-soft:#fff4e0; --amber-ink:#b45309;
+  --green:#16a34a; --green-soft:#e7f7ec; --green-ink:#15803d;
+  --purple-soft:#efe9ff; --purple-ink:#5b21b6;
+  --note:#fff9db; --note-ink:#6b5300;
+  --bar:#3b6ee8; --bar-pending:#b8c6ee;
+  --shadow:0 20px 50px rgba(20,30,26,.18);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --ground:#151917; --surface:#1e2422; --surface-2:#242b28; --border:#303835; --border-strong:#46504c;
+    --ink:#e9ede9; --muted:#a1aca7; --faint:#6f7a76;
+    --blue:#6b95ff; --blue-soft:#1d2a49; --blue-ink:#a9c0ff;
+    --red:#f27070; --red-soft:#3a1f1f; --red-ink:#ff9b9b;
+    --amber:#f0a03a; --amber-soft:#3a2c14; --amber-ink:#ffc46a;
+    --green:#4ecb75; --green-soft:#173424; --green-ink:#8ee6a8;
+    --purple-soft:#2b2344; --purple-ink:#c9b6ff;
+    --note:#3a3416; --note-ink:#ffe58a;
+    --bar:#6b95ff; --bar-pending:#3a4a6e;
+    --shadow:0 20px 50px rgba(0,0,0,.5);
+  }
+}
+:root[data-theme="dark"]{
+  --ground:#151917; --surface:#1e2422; --surface-2:#242b28; --border:#303835; --border-strong:#46504c;
+  --ink:#e9ede9; --muted:#a1aca7; --faint:#6f7a76;
+  --blue:#6b95ff; --blue-soft:#1d2a49; --blue-ink:#a9c0ff;
+  --red:#f27070; --red-soft:#3a1f1f; --red-ink:#ff9b9b;
+  --amber:#f0a03a; --amber-soft:#3a2c14; --amber-ink:#ffc46a;
+  --green:#4ecb75; --green-soft:#173424; --green-ink:#8ee6a8;
+  --purple-soft:#2b2344; --purple-ink:#c9b6ff;
+  --note:#3a3416; --note-ink:#ffe58a;
+  --bar:#6b95ff; --bar-pending:#3a4a6e;
+  --shadow:0 20px 50px rgba(0,0,0,.5);
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--ground);color:var(--ink);font:14px/1.5 "IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;padding-block:32px 80px;padding-inline:clamp(16px,4vw,48px)}
+.num{font-variant-numeric:tabular-nums}
+.mono{font-family:"IBM Plex Mono",ui-monospace,Menlo,monospace;font-variant-numeric:tabular-nums}
+.wrap{max-width:1160px;margin:0 auto;display:grid;gap:40px}
+h1{font-size:26px;line-height:1.2;margin:0 0 6px;font-weight:600;letter-spacing:-.01em;text-wrap:balance}
+h2{font-size:18px;margin:0;font-weight:600;text-wrap:balance}
+h3{font-size:14px;margin:0;font-weight:600}
+p{margin:0}
+.lede{max-width:70ch;color:var(--muted)}
+.eyebrow{font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.section{display:grid;gap:14px}
+.section-head{display:flex;flex-wrap:wrap;gap:6px 16px;align-items:baseline}
+.section-head .sub{color:var(--muted);max-width:74ch}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px 16px;display:grid;gap:8px}
+.card .eyebrow{margin-bottom:-2px}
+.card p{color:var(--muted);max-width:60ch}
+.card p b{color:var(--ink);font-weight:600}
+.rule{display:grid;grid-template-columns:auto 1fr;gap:6px 14px;align-items:baseline;font-size:13px}
+.rule dt{color:var(--muted);font-size:12px;white-space:nowrap}
+.rule dd{margin:0}
+
+/* chips + buttons */
+.chip{display:inline-block;border-radius:5px;padding:0 6px;font-size:11px;font-weight:600;line-height:18px;white-space:nowrap;vertical-align:middle}
+.chip.red{background:var(--red-soft);color:var(--red-ink)}
+.chip.amber{background:var(--amber-soft);color:var(--amber-ink)}
+.chip.green{background:var(--green-soft);color:var(--green-ink)}
+.chip.blue{background:var(--blue-soft);color:var(--blue-ink)}
+.chip.purple{background:var(--purple-soft);color:var(--purple-ink)}
+.chip.gray{background:var(--surface-2);color:var(--muted);border:1px solid var(--border)}
+.chip.comm{background:var(--amber-soft);color:var(--amber-ink)}
+.btn{border:1px solid var(--border-strong);background:var(--surface);color:var(--ink);border-radius:7px;padding:5px 10px;font:inherit;font-size:12.5px;cursor:pointer;white-space:nowrap}
+.btn.primary{background:var(--blue);border-color:var(--blue);color:#fff}
+.btn.green{background:var(--green);border-color:var(--green);color:#fff}
+.btn.amber{background:var(--amber);border-color:var(--amber);color:#fff}
+.btn.small{padding:2px 8px;font-size:11.5px;border-radius:6px}
+.btn.quiet{border-color:transparent;color:var(--blue);padding-inline:4px}
+.mark{display:inline-grid;place-items:center;width:18px;height:18px;border-radius:50%;background:var(--note);color:var(--note-ink);font-size:11px;font-weight:700;border:1px solid var(--note-ink);flex-shrink:0;vertical-align:middle}
+.notes{display:grid;gap:8px;padding:0;margin:0}
+.notes li{display:grid;grid-template-columns:22px 1fr;gap:10px;align-items:start;list-style:none;color:var(--muted);max-width:84ch}
+.notes li b{color:var(--ink);font-weight:600}
+
+/* dashboard card mock */
+.dash{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px 14px;display:grid;gap:6px}
+.dash .k{font-size:10.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase}
+.dash .t{font-weight:600;font-size:13.5px}
+.dash .d{font-size:12px;color:var(--muted)}
+.dash .row{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.dash .fig{font-size:20px;font-weight:700}
+.dash.amber{border-left:4px solid var(--amber)} .dash.amber .k{color:var(--amber-ink)}
+.dash.red{border-left:4px solid var(--red)} .dash.red .k{color:var(--red-ink)}
+.dash.blue{border-left:4px solid var(--blue)} .dash.blue .k{color:var(--blue-ink)}
+
+/* menu mock */
+.menu{background:var(--surface);border:1px solid var(--border);border-radius:8px;box-shadow:var(--shadow);padding:6px;width:260px;font-size:13px}
+.menu .mh{font-size:10.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);padding:6px 10px 2px}
+.menu .mi{padding:6px 10px;border-radius:6px;display:flex;justify-content:space-between;align-items:center;gap:8px}
+.menu .mi.hi{background:var(--blue-soft);color:var(--blue-ink);font-weight:600}
+.menu .mi .n{font-size:11px;color:var(--muted)}
+.menu .mi.hi .n{color:var(--blue-ink)}
+.menu .sep{height:1px;background:var(--border);margin:4px 6px}
+.bar-mock{display:flex;gap:8px;align-items:center;padding:8px 10px;background:var(--surface-2);border:1px solid var(--border);border-radius:8px;font-size:12.5px}
+.bar-mock .pill{padding:3px 9px;border-radius:6px;border:1px solid var(--border-strong);background:var(--surface)}
+.bar-mock .pill.blue{background:var(--blue);color:#fff;border-color:var(--blue)}
+.bar-mock .pill.green{background:var(--green-soft);color:var(--green-ink);border-color:var(--green-soft)}
+.bar-mock .dots{margin-left:auto;padding:3px 8px;border:1px solid var(--border-strong);border-radius:6px;background:var(--surface)}
+.dropwrap{position:relative;display:grid;gap:8px}
+
+/* the desk modal */
+.modal{background:var(--surface);border:1px solid var(--border);border-radius:12px;box-shadow:var(--shadow);overflow:hidden}
+.mhead{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;padding:16px 20px 10px;border-bottom:1px solid var(--border)}
+.mhead h3{font-size:18px}
+.mhead .desc{color:var(--muted);font-size:12.5px;max-width:78ch;margin-top:2px}
+.pills{display:flex;gap:6px;flex-wrap:wrap;padding:10px 20px 0}
+.pill2{padding:2px 10px;border-radius:999px;border:1px solid var(--border-strong);font-size:12px;background:var(--surface)}
+.pill2.on{background:var(--blue-soft);border-color:var(--blue-soft);color:var(--blue-ink);font-weight:600}
+.pill2 b{font-weight:700}
+.two{display:grid;grid-template-columns:400px 1fr;min-height:520px}
+.list{border-right:1px solid var(--border);display:grid;align-content:start}
+.lh{font-size:10.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);padding:12px 16px 4px}
+.li{display:grid;grid-template-columns:8px 1fr auto;gap:6px 10px;align-items:start;padding:8px 16px;border-top:1px solid var(--border);font-size:12.5px;cursor:pointer}
+.li.sel{background:var(--blue-soft)}
+.li .dot{width:8px;height:8px;border-radius:50%;margin-top:6px}
+.li .dot.red{background:var(--red)} .li .dot.amber{background:var(--amber)} .li .dot.blue{background:var(--blue)} .li .dot.gray{background:var(--border-strong)} .li .dot.green{background:var(--green)}
+.li .j{font-weight:600}
+.li .c{color:var(--muted)}
+.li .st{grid-column:2/4;color:var(--muted);font-size:11.5px;display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.li .amt{font-weight:700;text-align:right}
+.pane{padding:14px 20px;display:grid;gap:12px;align-content:start}
+.pane .ph{display:flex;flex-wrap:wrap;gap:4px 10px;align-items:baseline}
+.pane .ph .j{font-weight:700;font-size:15px}
+.pane .ph .c{color:var(--muted)}
+.pane .clock{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:12.5px;color:var(--muted)}
+.pane .clock b{color:var(--ink);font-weight:600}
+.box{border:1px solid var(--border);border-radius:9px;padding:10px 12px;display:grid;gap:6px;background:var(--surface)}
+.box .bh{font-size:10.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.ready{display:grid;gap:4px;font-size:12.5px}
+.ready div{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.ready .ok{color:var(--green-ink);font-weight:700} .ready .no{color:var(--red-ink);font-weight:700}
+.months{display:flex;gap:10px;flex-wrap:wrap;font-size:12.5px}
+.months label{display:inline-flex;gap:5px;align-items:center;padding:3px 8px;border:1px solid var(--border);border-radius:6px;background:var(--surface-2)}
+.months label.hot{border-color:var(--red);background:var(--red-soft)}
+.ctx{display:grid;grid-template-columns:1fr 1fr;gap:6px 16px;font-size:12.5px}
+.ctx div{display:flex;gap:6px;align-items:baseline;flex-wrap:wrap}
+.ctx .l{color:var(--muted);min-width:96px}
+.doc{border:1px solid var(--border);border-radius:8px;background:#fff;color:#111;padding:14px 18px;font-family:Georgia,"Times New Roman",serif;font-size:12px;line-height:1.45;display:grid;gap:6px}
+.doc .dh{display:flex;justify-content:space-between;gap:10px;font-size:11px;color:#444}
+.doc .title{font-weight:700;text-align:center;font-size:12.5px;margin-top:4px}
+.doc .fr{display:grid;grid-template-columns:150px 1fr;gap:2px 12px;font-size:11.5px}
+.doc .fr .k{color:#555}
+.doc .fr .v{border-bottom:1px solid #999;font-weight:600}
+.doc .fr .v.miss{color:#b91c1c;font-weight:600;border-bottom-color:#b91c1c}
+.doc .warn{font-size:10.5px;color:#333;border:1px solid #bbb;padding:6px 8px;margin-top:4px}
+.mfoot{display:grid;gap:8px;padding:10px 20px 14px;border-top:1px solid var(--border);background:var(--surface-2)}
+.mfoot .say{font-size:12.5px;color:var(--muted)}
+.mfoot .say b{color:var(--ink);font-weight:600}
+.mfoot .btns{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.mfoot .btns .sp{flex:1}
+.bypass{display:flex;gap:8px;align-items:center;font-size:12.5px;flex-wrap:wrap}
+.bypass input[type=text]{border:1px solid var(--border-strong);border-radius:6px;padding:3px 8px;font:inherit;font-size:12px;background:var(--surface);color:var(--ink);width:260px}
+.evidence{display:grid;grid-template-columns:78px 150px 1fr;gap:8px 16px;align-items:center;font-size:12.5px}
+.evidence .m{font-weight:600}
+.evidence .m small{display:block;font-weight:500;color:var(--faint);font-size:11px}
+.bars{display:flex;align-items:flex-end;gap:3px;height:26px}
+.bars .b{width:22px;background:var(--bar);border-radius:2px 2px 0 0;position:relative;min-height:2px}
+.bars .b .pp{position:absolute;top:-9px;left:0;right:0;text-align:center;font-size:8.5px;color:var(--muted);line-height:1}
+.evidence .stat{color:var(--muted)} .evidence .stat b{color:var(--ink);font-weight:600}
+.critique{background:var(--surface);border:1px solid var(--border);border-left:4px solid var(--amber);border-radius:10px;padding:18px 22px;display:grid;gap:12px}
+.critique .grid{display:grid;grid-template-columns:1fr 1fr;gap:14px 28px}
+.critique .col{display:grid;gap:8px}
+.critique p{color:var(--muted);max-width:60ch}
+.critique p b{color:var(--ink);font-weight:600}
+.phone{width:320px;border:10px solid var(--border-strong);border-radius:28px;background:var(--surface);overflow:hidden;font-size:12.5px}
+.phone .ph-h{padding:12px 14px 8px;border-bottom:1px solid var(--border);font-weight:600}
+.phone .ph-b{padding:10px 14px;display:grid;gap:8px}
+.phone .ph-f{padding:10px 14px 14px;display:grid;gap:8px;border-top:1px solid var(--border);background:var(--surface-2)}
+.phone .btn{width:100%;padding:8px}
+.fyi{font-size:12px;color:var(--muted);display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.plan ol{margin:0;padding-left:20px;color:var(--muted);max-width:86ch}
+.plan li{margin:4px 0}
+.plan li b{color:var(--ink);font-weight:600}
+table.dm{width:100%;border-collapse:collapse;font-size:12.5px}
+table.dm th{text-align:left;font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);padding:4px 8px 4px 0;border-bottom:1px solid var(--border)}
+table.dm td{padding:5px 8px 5px 0;border-bottom:1px solid var(--border);vertical-align:top;color:var(--muted)}
+table.dm td:first-child{color:var(--ink);font-weight:600;white-space:nowrap}
+.decisions{display:grid;gap:6px;color:var(--muted);max-width:86ch}
+.decisions div b{color:var(--ink);font-weight:600}
+@media (max-width:900px){
+  .grid2,.grid3,.critique .grid,.ctx{grid-template-columns:1fr}
+  .two{grid-template-columns:1fr}
+  .list{border-right:none;border-bottom:1px solid var(--border)}
+  .evidence{grid-template-columns:78px 1fr}
+}
+</style>
+
+<div class="wrap">
+
+  <header class="section">
+    <div class="eyebrow">Jobs → Pipeline · a proposal · Sep 14, 2026</div>
+    <h1>The Lien desk: from "a notice is due" to "it went out," with the leader's say-so on record</h1>
+    <p class="lede">The forecast now knows which job-months are unpaid and when each month's lien notice closes. The next step is to own the send. This page proposes one modal with three entry points: a queue of every notice the law says is due, drafted by the office, approved by the leader (or sent on his word, noted), then handed to the lien tools and recorded. Draft A is the direct reading of the ask. The critique asks whether that is the best we can do. Refined B is what came out of it. Numbers are today's, from the live forecast.</p>
+    <div class="grid3">
+      <div class="card">
+        <div class="eyebrow">What qualifies</div>
+        <p>A job with a GC on it (we are a sub), a month with approved clock sessions, money still open on the job, and no live § 53.056 notice naming that month. It appears <b>30 days before</b> the month's deadline (the 15th of the 3rd month after; 2nd for residential), turns amber at 14 and red at 7, and stays a week past as <b>missed</b> so the loss is seen, not silent.</p>
+      </div>
+      <div class="card">
+        <div class="eyebrow">Who does what</div>
+        <p><b>Office</b> (assistant, controller) drafts, fixes the data, sends, records the mail. <b>Leader</b> (master, dev) approves or holds, and can set a standing rule per GC. <b>Bypass</b>: the office may send on the leader's spoken word with a one-line note; the leader sees it as an FYI, not a decision.</p>
+      </div>
+      <div class="card">
+        <div class="eyebrow">Today, live</div>
+        <p><b>6 job-months</b> on 6 sub jobs have June's notice due <b>tomorrow</b>, $99,088 open: J650 ATI Schertz, J273 and J258 Dudley Mason, J878 Take 5 Seguin, J825 Palmer, J789 Knight. J789 also carries a promise for Sep 15. None has an owner of record on file.</p>
+      </div>
+    </div>
+  </header>
+
+  <!-- ================= ENTRY POINTS ================= -->
+  <section class="section">
+    <div class="section-head"><h2>Entry points</h2><p class="sub">Three doors into one modal, plus the forecast's existing Send notice… which routes here so the draft-and-approve step is never skipped.</p></div>
+    <div class="grid3">
+      <div class="card">
+        <div class="eyebrow">1 · Dashboard → Needs you (office)</div>
+        <div class="dash red">
+          <div class="k">Lien deadlines</div>
+          <div class="row"><div class="t">6 lien notices to draft — June work on 6 jobs</div><div class="fig num">$99,088</div></div>
+          <div class="d">Earliest closes <b>tomorrow, Sep 15</b>. 6 need the owner of record before they can go out. Sent on Robert's word this week: 0.</div>
+          <div class="row"><span class="btn primary small">Open the Lien desk</span><span class="chip red">due tomorrow</span></div>
+        </div>
+        <div class="dash blue">
+          <div class="k">Lien deadlines · leader</div>
+          <div class="row"><div class="t">Approve 2 lien notices Taunya drafted</div><div class="fig num">$40,304</div></div>
+          <div class="d">J650 ATI Schertz · J825 Palmer. J789 Knight is held: they promised Sep 15.</div>
+          <div class="row"><span class="btn green small">Approve</span><span class="chip amber">closes tomorrow</span></div>
+        </div>
+        <p>Same items on Quickfill's Needs you for phones. Replaces today's per-job "lien notice windows close" card, which keys on the last month worked. <span class="mark">1</span></p>
+      </div>
+      <div class="card">
+        <div class="eyebrow">2 · Pipeline → Collections ⋯</div>
+        <div class="dropwrap">
+          <div class="bar-mock"><span>▼ Collections (8) · $25.5k</span><span class="dots">⋯</span></div>
+          <div class="menu">
+            <div class="mh">Collections</div>
+            <div class="mi">⚖ Legal desk <span class="n">8 accounts</span></div>
+            <div class="mi hi">⏱ Lien desk <span class="n">6 to draft · 2 to approve</span></div>
+            <div class="mi">Share / Print</div>
+          </div>
+        </div>
+        <p>The section's tools menu already holds the Legal desk. The Lien desk sits beside it: paper we file ourselves, before the attorney. <span class="mark">2</span></p>
+      </div>
+      <div class="card">
+        <div class="eyebrow">3 · Pipeline tools ⋯ (page header)</div>
+        <div class="dropwrap">
+          <div class="bar-mock"><span class="pill blue">New Job</span><span class="pill">Follow-ups <b>10</b></span><span class="pill green">Forecast</span><span class="dots">⋯</span></div>
+          <div class="menu">
+            <div class="mh">Pipeline tools</div>
+            <div class="mi">Get contracts signed <span class="n">102</span></div>
+            <div class="mi">Ask when they'll pay <span class="n">15</span></div>
+            <div class="mi hi">⏱ Lien desk <span class="n">6 due · $99,088</span></div>
+            <div class="sep"></div>
+            <div class="mi">Accounts Receivable</div>
+          </div>
+        </div>
+        <p>Also: the forecast row's <b>Send notice…</b> opens the desk on that item; the row's orange lien icon still opens the per-job Lien window and shows "In the Lien desk · awaiting Robert" when an item exists; deep link <span class="mono">?tab=stages&amp;liendesk=1</span>.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= DRAFT A ================= -->
+  <section class="section">
+    <div class="section-head"><h2>Draft A · the queue and the approval gate</h2><p class="sub">The office view. The queue on the left, the selected notice on the right, a footer that either sends it to Robert or, with the bypass ticked, straight on to the tools.</p></div>
+    <div class="modal">
+      <div class="mhead">
+        <div><h3>Lien desk</h3><p class="desc">Notices and affidavits the law says are due on unpaid work — drafted by the office, approved by the leader, sent and recorded from here.</p></div>
+        <span style="color:var(--muted);font-size:18px">×</span>
+      </div>
+      <div class="pills"><span class="pill2 on">To draft <b>6</b></span><span class="pill2">Awaiting Robert <b>0</b></span><span class="pill2">Ready to send <b>0</b></span><span class="pill2">Sent · 30d <b>0</b></span></div>
+      <div class="two">
+        <div class="list">
+          <div class="lh">To draft · June work · due tomorrow</div>
+          <div class="li sel"><span class="dot red"></span><span><span class="j">650 · ATI Schertz</span> <span class="c">· GC Loberg Contracting</span></span><span class="amt num">$33,500</span><span class="st"><span class="chip red">due tomorrow</span> June · 82.6 h · 5 people</span></div>
+          <div class="li"><span class="dot red"></span><span><span class="j">878 · Take 5- Seguin</span> <span class="c">· Southern Post Construction</span></span><span class="amt num">$32,108</span><span class="st"><span class="chip red">due tomorrow</span> June · 35.3 h</span></div>
+          <div class="li"><span class="dot red"></span><span><span class="j">273 · Dudley (Lennox)</span> <span class="c">· RMC- Dudley Mason</span></span><span class="amt num">$17,585</span><span class="st"><span class="chip red">due tomorrow</span> June · 134.6 h · 6 people</span></div>
+          <div class="li"><span class="dot red"></span><span><span class="j">258 · Dudley Mason</span> <span class="c">· RMC- Dudley Mason</span></span><span class="amt num">$9,800</span><span class="st"><span class="chip red">due tomorrow</span> June</span></div>
+          <div class="li"><span class="dot red"></span><span><span class="j">825 · Palmer- 121 N Calvin Berrett</span> <span class="c">· Michael Palmer</span></span><span class="amt num">$3,850</span><span class="st"><span class="chip red">due tomorrow</span> June</span></div>
+          <div class="li"><span class="dot red"></span><span><span class="j">789 · Knight- Reliant Health</span> <span class="c">· Knight Contracting</span></span><span class="amt num">$2,245</span><span class="st"><span class="chip red">due tomorrow</span> June · <span class="chip green">✓ promised Sep 15</span></span></div>
+        </div>
+        <div class="pane">
+          <div class="ph"><span class="j">650 · ATI Schertz</span><span class="c">· GC Loberg Contracting · 1204 Elbel Rd, Schertz</span><span class="chip comm">Comm</span></div>
+          <div class="clock"><span>§ 53.056 notice for <b>June 2026</b> · by <b>Sep 15</b> (tomorrow)</span><span>· then July by Oct 15 · Aug by Nov 16 · Sep by Dec 15</span><span>· affidavit for all of it by <b>Jan 15, 2027</b></span></div>
+          <div class="doc">
+            <div class="dh"><span>Click Plumbing and Electrical · 5501 Balcones Dr A141, Austin, TX 78731</span><span>JOB #650 · WORK MONTH 2026-06</span></div>
+            <div class="title">NOTICE OF CLAIM FOR UNPAID LABOR OR MATERIALS<br>(TEX. PROP. CODE § 53.056)</div>
+            <div class="fr">
+              <span class="k">Date</span><span class="v">September 14, 2026</span>
+              <span class="k">Project description / address</span><span class="v">ATI Schertz — 1204 Elbel Rd, Schertz, TX 78154</span>
+              <span class="k">Claimant</span><span class="v">Click Plumbing and Electrical</span>
+              <span class="k">Type of labor or materials</span><span class="v">Plumbing labor and materials</span>
+              <span class="k">Original contractor</span><span class="v">Loberg Contracting</span>
+              <span class="k">Owner of record</span><span class="v miss">— missing</span>
+              <span class="k">Claim amount</span><span class="v">$33,500.00</span>
+              <span class="k">Month(s) covered</span><span class="v">June 2026</span>
+            </div>
+            <div class="warn">WARNING: the property may be subject to a lien if sufficient funds are not withheld from future payments to the original contractor to cover this debt.</div>
+          </div>
+          <div class="fyi"><span class="mark">3</span>Recipients: owner of record (missing) · Loberg Contracting, 2904 … · certified mail</div>
+        </div>
+      </div>
+      <div class="mfoot">
+        <div class="bypass"><input type="checkbox" id="a-bypass"><label for="a-bypass">Robert already said to send this</label><input type="text" id="a-note" placeholder="who / when — e.g. Robert, by phone, 9:10"><span class="mark">4</span></div>
+        <div class="btns"><span class="btn">Skip this month…</span><span class="btn">Save draft</span><span class="sp"></span><span class="btn quiet">Open the Lien window</span><span class="btn primary">Send to Robert for approval ▸</span></div>
+      </div>
+    </div>
+    <ul class="notes">
+      <li><span class="mark">1</span><span><b>The card counts months, not jobs.</b> Today's card says "6 lien notice windows close" and opens the Pipeline. This one opens the desk on the first item.</span></li>
+      <li><span class="mark">2</span><span><b>Two desks side by side.</b> Legal desk is the attorney's queue for Collections accounts. Lien desk is the paper we file ourselves. The order is Lien desk first, Legal desk when paper does not move the money.</span></li>
+      <li><span class="mark">3</span><span><b>The blocker is not approval, it is the owner's name.</b> All six live items have no owner of record. Draft A shows it as a red field and lets you send to Robert anyway. That is a draft going to the leader that cannot be mailed.</span></li>
+      <li><span class="mark">4</span><span><b>The bypass is a checkbox plus a typed note.</b> Two actions, on every item, for something the office will do most days once the leader trusts the flow.</span></li>
+    </ul>
+  </section>
+
+  <!-- ================= CRITIQUE ================= -->
+  <section class="critique">
+    <h2>Is this the best we can do?</h2>
+    <div class="grid">
+      <div class="col">
+        <div class="eyebrow">What Draft A gets right</div>
+        <p>It puts the statutory duty in a queue with a deadline, where today it lives in a per-job window nobody opens until the money is already old. It keeps the leader in the loop with a record. It reuses the notice the Lien window already renders.</p>
+        <p>The bypass is honest about how a plumbing office runs: the leader says "send it" in the truck, and the app should not pretend otherwise.</p>
+      </div>
+      <div class="col">
+        <div class="eyebrow">Where it falls short</div>
+        <p><b>Per-item approval becomes a rubber stamp.</b> Six today, a handful every month. Robert will click Approve all without reading. The click has to carry a decision, or not exist. A <b>standing rule per GC</b> ("always send to Loberg without asking") turns most items into an FYI and leaves the ask for the cases that need him: a live promise, a GC we have never noticed before, a hold he set last time.</p>
+        <p><b>The leader's pane shows the statute, not the relationship.</b> His decision is "send routine paper, or call first". He needs the promise, the pay record, the GC's other open jobs, and whether this is the first notice we have ever sent them.</p>
+        <p><b>Readiness comes before drafting.</b> The desk should refuse to send an unmailable notice to Robert and instead show the fix: the owner of record, one door away, with the county lookup.</p>
+        <p><b>Notices go out as a batch.</b> Six approved notices are a mail run: one PDF, one tracking form. Recording them one job at a time is the part the office skips.</p>
+        <p><b>One notice can name several months.</b> J650's June notice can carry July and August too, each still inside its window. The earliest month sets the deadline.</p>
+        <p><b>Fourteen days is too late to start.</b> Certified mail and the owner lookup take days. Surface at 30.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= REFINED B ================= -->
+  <section class="section">
+    <div class="section-head"><h2>Refined B · readiness first, a standing rule per GC, the mail run</h2><p class="sub">Two views of the same modal. The office pane fixes what blocks the send and drafts. The leader pane decides once per GC and only sees the exceptions. Sending is a run, not a row.</p></div>
+
+    <h3>The office, drafting J650</h3>
+    <div class="modal">
+      <div class="mhead">
+        <div><h3>Lien desk</h3><p class="desc">Notices the law says are due on unpaid work — the office readies and drafts, the leader approves once per GC or per item, the run goes out and is recorded here.</p></div>
+        <span style="color:var(--muted);font-size:18px">×</span>
+      </div>
+      <div class="pills"><span class="pill2 on">Needs the owner <b>4</b></span><span class="pill2">To draft <b>2</b></span><span class="pill2">Awaiting Robert <b>1</b></span><span class="pill2">Ready to send <b>2</b></span><span class="pill2">Held <b>1</b></span><span class="pill2">Sent · 30d <b>0</b></span><span class="mark" style="margin-left:6px">5</span></div>
+      <div class="two">
+        <div class="list">
+          <div class="lh">Needs the owner of record · due tomorrow</div>
+          <div class="li sel"><span class="dot red"></span><span><span class="j">650 · ATI Schertz</span> <span class="c">· GC Loberg Contracting</span></span><span class="amt num">$33,500</span><span class="st"><span class="chip red">due tomorrow</span> Jun + Jul + Aug · <span class="chip amber">owner missing</span></span></div>
+          <div class="li"><span class="dot red"></span><span><span class="j">878 · Take 5- Seguin</span> <span class="c">· Southern Post Construction</span></span><span class="amt num">$32,108</span><span class="st"><span class="chip red">due tomorrow</span> June · <span class="chip amber">owner missing</span> · <span class="chip gray">is Southern Post the GC?</span></span></div>
+          <div class="li"><span class="dot red"></span><span><span class="j">273 · Dudley (Lennox)</span> <span class="c">· RMC- Dudley Mason</span></span><span class="amt num">$17,585</span><span class="st"><span class="chip red">due tomorrow</span> Jun + Aug · <span class="chip amber">owner missing</span></span></div>
+          <div class="li"><span class="dot red"></span><span><span class="j">258 · Dudley Mason</span> <span class="c">· RMC- Dudley Mason</span></span><span class="amt num">$9,800</span><span class="st"><span class="chip red">due tomorrow</span> June · <span class="chip amber">owner missing</span></span></div>
+          <div class="lh">Ready to send · approved</div>
+          <div class="li"><span class="dot green"></span><span><span class="j">825 · Palmer- 121 N Calvin Berrett</span> <span class="c">· Michael Palmer</span></span><span class="amt num">$3,850</span><span class="st"><span class="chip green">approved · Robert 8:40</span> June · in the run</span></div>
+          <div class="li"><span class="dot green"></span><span><span class="j">1001 · Water Leak</span> <span class="c">· Knight Contracting</span></span><span class="amt num">$555</span><span class="st"><span class="chip blue">standing rule · Knight</span> Aug · in the run</span></div>
+          <div class="lh">Held</div>
+          <div class="li"><span class="dot gray"></span><span><span class="j">789 · Knight- Reliant Health</span> <span class="c">· Knight Contracting</span></span><span class="amt num">$2,245</span><span class="st"><span class="chip gray">held · they promised Sep 15</span> re-asks Sep 15 if unpaid</span></div>
+        </div>
+        <div class="pane">
+          <div class="ph"><span class="j">650 · ATI Schertz</span><span class="c">· GC Loberg Contracting · 1204 Elbel Rd, Schertz</span><span class="chip comm">Comm</span><span class="chip red">June notice due tomorrow</span></div>
+          <div class="box">
+            <div class="bh">Before it can go out</div>
+            <div class="ready">
+              <div><span class="no">✗</span> Owner of record with a mailing address <span class="btn small">Find the owner ›</span> <span style="color:var(--muted)">Guadalupe CAD ↗ · saves to the property record, every job at 1204 Elbel reuses it</span></div>
+              <div><span class="ok">✓</span> Original contractor: Loberg Contracting, 2904 Corporate Cr Ste 114, Flower Mound</div>
+              <div><span class="ok">✓</span> Property kind: commercial (from the property record) · county: Guadalupe</div>
+              <div><span class="ok">✓</span> Work months with approved hours: Jun, Jul, Aug (Sep has 39.5 h awaiting approval)</div>
+            </div>
+          </div>
+          <div class="box">
+            <div class="bh">Months this notice names <span class="mark">6</span></div>
+            <div class="months"><label class="hot"><input type="checkbox" checked> June · 82.6 h · by Sep 15</label><label><input type="checkbox" checked> July · 45.8 h · by Oct 15</label><label><input type="checkbox" checked> August · 135.6 h · by Nov 16</label><label><input type="checkbox" disabled> September · 39.5 h pending</label></div>
+            <div class="evidence">
+              <span class="m">Jun<small>2026</small></span><div class="bars"><div class="b" style="height:12px"><span class="pp">3</span></div><div class="b" style="height:20px"><span class="pp">3</span></div></div><span class="stat"><b>5</b> people · <b>82.6</b> h · 5 days · 24% of hours</span>
+              <span class="m">Jul<small>2026</small></span><div class="bars"><div class="b" style="height:14px"><span class="pp">2</span></div><div class="b" style="height:8px"><span class="pp">2</span></div></div><span class="stat"><b>2</b> people · <b>45.8</b> h · 3 days · 14% of hours</span>
+              <span class="m">Aug<small>2026</small></span><div class="bars"><div class="b" style="height:26px"><span class="pp">5</span></div><div class="b" style="height:24px"><span class="pp">6</span></div><div class="b" style="height:6px"><span class="pp">2</span></div></div><span class="stat"><b>7</b> people · <b>135.6</b> h · 8 days · 40% of hours</span>
+            </div>
+            <div class="fyi">Claim amount <b class="num">$33,500.00</b> (open on the job) · the notice reads the same as the Lien window's — this is the same document, filled from the same job.</div>
+          </div>
+          <div class="box">
+            <div class="bh">Send</div>
+            <div class="ready">
+              <div>Certified mail to the owner of record and to Loberg Contracting · <span class="chip gray">courtesy PDF by email to office@loberg… ✓</span></div>
+              <div><input type="checkbox" id="b-cover" checked><label for="b-cover">Add the cover note: "a routine notice to preserve our rights under Texas law; not a claim that you are in default"</label><span class="mark">7</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="mfoot">
+        <div class="say"><b>Blocked</b> until the owner of record is on the property record. Then: <b>Loberg has no standing rule</b>, so this goes to Robert · J825 and J1001 are in the run already.</div>
+        <div class="btns"><span class="btn">Skip these months…</span><span class="sp"></span><span class="btn amber">Robert said to send it ▸</span><span class="btn primary" style="opacity:.55">Send to Robert ▸</span></div>
+        <div class="bypass"><span class="mark">8</span><span style="color:var(--muted)">"Robert said to send it" records <b class="mono" style="font-weight:500">Taunya · on Robert's word · Sep 14 9:10</b> and asks one question: <span class="chip gray">by phone</span> <span class="chip gray">in person</span> <span class="chip gray">text</span> · the item lands in the run and Robert sees it in his FYI line, not his queue.</span></div>
+      </div>
+    </div>
+
+    <h3>Robert, deciding (desktop) and the same on his phone</h3>
+    <div class="grid2" style="grid-template-columns:1fr 340px;align-items:start">
+      <div class="modal">
+        <div class="mhead">
+          <div><h3>Lien desk</h3><p class="desc">Taunya drafted these. Approve, hold, or set a rule so she does not have to ask again.</p></div>
+          <span style="color:var(--muted);font-size:18px">×</span>
+        </div>
+        <div class="pills"><span class="pill2 on">Your decisions <b>2</b></span><span class="pill2">Held <b>1</b></span><span class="pill2">Sent on your word · 7d <b>1</b></span><span class="pill2">Standing rules <b>3</b></span></div>
+        <div class="two" style="grid-template-columns:320px 1fr">
+          <div class="list">
+            <div class="lh">Your decisions</div>
+            <div class="li sel"><span class="dot amber"></span><span><span class="j">650 · ATI Schertz</span> <span class="c">· Loberg Contracting</span></span><span class="amt num">$33,500</span><span class="st"><span class="chip amber">first notice to Loberg</span> Jun–Aug · Taunya, 9:12</span></div>
+            <div class="li"><span class="dot amber"></span><span><span class="j">878 · Take 5- Seguin</span> <span class="c">· Southern Post</span></span><span class="amt num">$32,108</span><span class="st"><span class="chip amber">first notice to Southern Post</span> June · Taunya, 9:20</span></div>
+            <div class="lh">Sent on your word</div>
+            <div class="li"><span class="dot blue"></span><span><span class="j">825 · Palmer</span> <span class="c">· Michael Palmer</span></span><span class="amt num">$3,850</span><span class="st">Taunya · by phone · Sep 14 8:40 <span class="btn quiet small">not what I said</span></span></div>
+          </div>
+          <div class="pane">
+            <div class="ph"><span class="j">650 · ATI Schertz</span><span class="c">· GC Loberg Contracting</span><span class="chip amber">first notice we've sent Loberg</span><span class="mark">9</span></div>
+            <div class="box">
+              <div class="bh">What you're deciding</div>
+              <div class="ctx">
+                <div><span class="l">Open with Loberg</span><span><b class="num">$33,500</b> on 1 job · billed Jul 21 · 55d past their expected date</span></div>
+                <div><span class="l">Their word</span><span>no promise on file · never asked <span class="btn quiet small">ask them first ›</span></span></div>
+                <div><span class="l">Pay record</span><span>no history with us — this is their first job</span></div>
+                <div><span class="l">Months</span><span>Jun · Jul · Aug — 264 h, 7 people · June closes <b>tomorrow</b></span></div>
+                <div><span class="l">If you hold</span><span style="color:var(--red-ink)">June's lien right ends Sep 15 · about $8,000 of the balance by hours</span></div>
+                <div><span class="l">Sends to</span><span>Owner of record (Elbel Holdings LLC — example) · Loberg Contracting · certified</span></div>
+              </div>
+            </div>
+            <div class="doc" style="max-height:120px;overflow:hidden;position:relative"><div class="title">NOTICE OF CLAIM FOR UNPAID LABOR OR MATERIALS (TEX. PROP. CODE § 53.056)</div><div class="fr"><span class="k">Owner of record</span><span class="v">Elbel Holdings LLC — 4 Example Way, Schertz (example)</span><span class="k">Original contractor</span><span class="v">Loberg Contracting</span><span class="k">Claim amount</span><span class="v">$33,500.00</span><span class="k">Months</span><span class="v">June, July, August 2026</span></div><div style="position:absolute;inset:auto 0 0 0;height:40px;background:linear-gradient(transparent,#fff)"></div></div>
+            <div class="box">
+              <div class="bh">Standing rule for Loberg Contracting <span class="mark">10</span></div>
+              <div class="months"><label><input type="radio" name="rule"> Ask me each time</label><label><input type="radio" name="rule" checked> Send notices without asking</label><label><input type="radio" name="rule"> Hold — I'll call first</label></div>
+              <div class="fyi">A rule sets the default for every future month on every Loberg job. You still see each send in your FYI line, and a live promise or a hold always comes back to you.</div>
+            </div>
+          </div>
+        </div>
+        <div class="mfoot">
+          <div class="say">Approves <b>June, July and August</b> on J650 and sets <b>Loberg: send without asking</b> · then J878 Take 5.</div>
+          <div class="btns"><span class="btn">Hold — they promised… </span><span class="btn">Hold — I'll call first</span><span class="sp"></span><span class="btn green">Approve &amp; next ▸</span></div>
+        </div>
+      </div>
+      <div class="phone">
+        <div class="ph-h">⏱ Approve 2 lien notices</div>
+        <div class="ph-b">
+          <div><b>650 · ATI Schertz</b> · Loberg Contracting<br><span style="color:var(--muted)">$33,500 open · Jun–Aug · June closes tomorrow</span></div>
+          <div class="chip amber">first notice to Loberg</div>
+          <div style="color:var(--muted)">No promise on file. Never asked. First job with us.</div>
+          <div style="color:var(--red-ink)">Hold = June's lien right ends Sep 15.</div>
+          <div class="months"><label><input type="checkbox" checked> Loberg: send without asking from now on</label></div>
+        </div>
+        <div class="ph-f">
+          <span class="btn green">Approve &amp; next</span>
+          <span class="btn">Hold — they promised…</span>
+          <span class="btn quiet">Open the document</span>
+        </div>
+      </div>
+    </div>
+
+    <h3>The run</h3>
+    <div class="modal">
+      <div class="mhead"><div><h3>Send the run · 3 notices</h3><p class="desc">One PDF with every approved notice, owner copy and GC copy, and one form for the tracking numbers. Recording the run writes each notice to its job with the months it named, and the items leave the desk.</p></div><span style="color:var(--muted);font-size:18px">×</span></div>
+      <div class="pane">
+        <table class="dm">
+          <thead><tr><th>Notice</th><th>Months</th><th>To</th><th>Method</th><th>Tracking #</th></tr></thead>
+          <tbody>
+            <tr><td>650 · ATI Schertz</td><td>Jun · Jul · Aug</td><td>Elbel Holdings LLC (owner, example)<br>Loberg Contracting (GC)</td><td>certified mail<br>certified mail + email</td><td><span class="mono">9407 1118 9922 …</span><br><span class="mono">9407 1118 9923 …</span></td></tr>
+            <tr><td>825 · Palmer</td><td>Jun</td><td>Owner of record<br>Michael Palmer (GC)</td><td>certified mail<br>certified mail</td><td><span class="mono">—</span><br><span class="mono">—</span></td></tr>
+            <tr><td>1001 · Water Leak</td><td>Aug</td><td>Owner of record<br>Knight Contracting (GC)</td><td>certified mail<br>email (consented)</td><td><span class="mono">—</span><br><span class="mono">sent 9:31 ✓</span></td></tr>
+          </tbody>
+        </table>
+        <div class="fyi"><span class="mark">11</span>Print the packet first (cover sheet lists the six envelopes). Type the tracking numbers when you're back from the post office. Each notice records with <span class="mono">months_covered</span> per month, so the forecast and the Dashboard read it as sent the moment it is saved.</div>
+      </div>
+      <div class="mfoot"><div class="btns"><span class="btn">Print the packet · 6 envelopes</span><span class="btn">Download PDF</span><span class="sp"></span><span class="btn primary">Record the run ▸</span></div></div>
+    </div>
+
+    <ul class="notes">
+      <li><span class="mark">5</span><span><b>Readiness is the first filter, not a red field.</b> "Needs the owner" is its own pile with a fix door into the property record, where the county appraisal link already lives. An unmailable notice never reaches Robert.</span></li>
+      <li><span class="mark">6</span><span><b>One notice, several months.</b> Every unpaid month with approved hours is a checkbox, on by default when its window is still open; the earliest sets the deadline. Pending hours are shown but never named.</span></li>
+      <li><span class="mark">7</span><span><b>The notice is routine paper, and the cover note says so.</b> The statutory text is untouched; the optional note keeps a good GC from reading it as a threat.</span></li>
+      <li><span class="mark">8</span><span><b>The bypass is one button.</b> "Robert said to send it" records who, when, and how, and puts the item in the run. He sees it in an FYI list with a "not what I said" link that pulls it back if it has not gone out.</span></li>
+      <li><span class="mark">9</span><span><b>Why this one reached Robert.</b> Every item in his queue says the reason: first notice to this GC, a live promise, a hold he set, or no rule yet. Items with a rule never appear.</span></li>
+      <li><span class="mark">10</span><span><b>The rule lives on the GC, next to payment terms.</b> Set it from the desk or from Bids → Customer review. "Hold — I'll call first" parks every month for that GC and re-asks three days before each deadline, with the forfeit spelled out.</span></li>
+      <li><span class="mark">11</span><span><b>Recording the run fixes the last-month bug.</b> Today the Lien window records only the last work month. The run writes each notice with every month it named, so the forecast's per-month state and the Dashboard agree.</span></li>
+    </ul>
+  </section>
+
+  <!-- ================= PLAN ================= -->
+  <section class="section plan">
+    <div class="section-head"><h2>The plan</h2><p class="sub">Small PRs, each shippable, kernel first. The forecast's kernel from v2.3400 is the spine.</p></div>
+    <div class="grid2">
+      <div class="card">
+        <div class="eyebrow">Data</div>
+        <table class="dm">
+          <tbody>
+            <tr><td>job_lien_desk_items</td><td>one row per (job, earliest month, kind) from <i>drafted</i> on; <span class="mono">months text[]</span>, <span class="mono">status</span> drafted · awaiting_approval · approved · held · sent · missed, <span class="mono">fields jsonb</span> (the draft), drafted_by/at, approved_by/at, <span class="mono">approval_mode</span> leader · word · rule, <span class="mono">word_note</span>, held reason/until, <span class="mono">sent_filing_id → job_lien_filings</span>. "Due" items are derived, never stored.</td></tr>
+            <tr><td>customers.lien_notice_policy</td><td><span class="mono">ask</span> (default) · <span class="mono">send</span> · <span class="mono">hold</span> + note; beside <span class="mono">payment_terms</span>; leader-write.</td></tr>
+            <tr><td>list_lien_notice_months()</td><td>RPC for the Dashboard count: sub jobs with open money × approved-session months × not noticed × deadline within 30 days. Office-gated, SECURITY DEFINER, cheap.</td></tr>
+            <tr><td>RLS</td><td>office reads/writes items; a trigger allows <span class="mono">approved_by</span> only for master/dev unless <span class="mono">approval_mode = 'word'</span> (then <span class="mono">word_note</span> required); both read-only appliers.</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="card">
+        <div class="eyebrow">PR train</div>
+        <ol>
+          <li><b>PR 1 — the queue and the card.</b> Kernel <span class="mono">lienDesk.ts</span> (derive due items from the v2.3400 work-months kernel + filings + policy; severity; readiness), RPC for the count, Dashboard keys <span class="mono">lien-notice-draft</span> / <span class="mono">lien-notice-approve</span> replacing the per-job card, deep link.</li>
+          <li><b>PR 2 — the desk, office side.</b> Migration (items + policy), the modal shell: piles, list, pane with readiness + months + evidence (reuse <span class="mono">ForecastWorkMonthsPanel</span>) + the notice preview (the Lien window's renderer, extracted), Save draft · Send to Robert · Robert said to send it; the three doors; the forecast's Send notice… routes here.</li>
+          <li><b>PR 3 — the leader side.</b> Your decisions with the why-line and context, Approve & next, Hold (promise · call first) with re-ask, standing rules + the Customer review column, the FYI list with pull-back.</li>
+          <li><b>PR 4 — the run.</b> Packet PDF (owner + GC copies, cover sheet), Record the run → <span class="mono">job_lien_filings</span> per notice with <span class="mono">months_covered</span> per month; the Lien window's notice tab shows desk state and records per month too.</li>
+          <li><b>PR 5 — affidavits.</b> The 4th-month window as a second item kind with the same flow (notarize · file · serve), and the hand-off line to the Legal desk when paper does not move the money.</li>
+        </ol>
+      </div>
+    </div>
+    <div class="card">
+      <div class="eyebrow">Decisions for the owner</div>
+      <div class="decisions">
+        <div><b>Lead time:</b> 30 days before the deadline (proposed), or the day the month's bill goes past its expected pay date?</div>
+        <div><b>Default rule for a new GC:</b> ask each time (proposed), or send without asking with an FYI?</div>
+        <div><b>The cover note:</b> on by default (proposed), off, or per GC?</div>
+        <div><b>Bypass reach:</b> assistant and controller (proposed), or controller only?</div>
+        <div><b>Held items:</b> re-ask 3 days before the deadline (proposed) or 7?</div>
+        <div><b>GC entered as the customer with no GC set</b> (J273, J258, J878): treat as sub jobs when the customer is a builder (proposed: a "who owns the site?" chip that sets the GC), or leave them direct?</div>
+      </div>
+    </div>
+  </section>
+
+</div>

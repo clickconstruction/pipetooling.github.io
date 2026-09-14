@@ -33,6 +33,7 @@ export type StagesSectionToolKey =
   | 'paid-notifications'
   | 'paid-profit-chart'
   | 'paid-in-full-notifications'
+  | 'lien-desk'
 
 export type StagesSectionToolItem = {
   key: StagesSectionToolKey
@@ -67,6 +68,8 @@ export type StagesSectionToolsMenuInput = {
   capableToBillTotalFormatted: string
   /** "Recently added" flat view currently open — flips that item's label to the exit (v2.1973). */
   recentViewOpen: boolean
+  /** Lien desk (v2.3405): notices to draft + approve; null while loading. Office roles only. */
+  lienDeskCount?: number | null
 }
 
 export function buildStagesSectionToolsMenu(input: StagesSectionToolsMenuInput): StagesSectionToolsGroup[] {
@@ -207,6 +210,22 @@ export function buildStagesSectionToolsMenu(input: StagesSectionToolsMenuInput):
     })
   }
   groups.push({ section: 'Billed Awaiting Payment', items: billedItems })
+  if (canOpenAccountsReceivable) {
+    // The Lien desk (v2.3405): § 53.056 notices due per unpaid work month on sub jobs.
+    groups.push({
+      section: 'Collections',
+      items: [
+        {
+          key: 'lien-desk',
+          label: 'Lien desk',
+          title: 'Lien notices due per unpaid work month — draft, approve, send',
+          disabled: false,
+          icon: '⏱',
+          ...(typeof input.lienDeskCount === 'number' && input.lienDeskCount > 0 ? { badgeCount: input.lienDeskCount } : {}),
+        },
+      ],
+    })
+  }
 
   const paidItems: StagesSectionToolItem[] = []
   // Profit chart is wage-derived (dev/controller, like the billed aging chart).
