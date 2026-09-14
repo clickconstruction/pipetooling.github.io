@@ -282,6 +282,46 @@ describe('JobsMapCard', () => {
     await waitFor(() => expect(screen.getByText(/^pin 1030 · Born yesterday$/)).toBeTruthy())
   })
 
+  it('v2.3397: the rail buckets hide pins by distance, and an ask row selects its pin and lights the row', async () => {
+    cacheRows.mockReturnValue([
+      { address_normalized: '173 atlantis, kyle', lat: 29.7, lng: -97.8 },
+      { address_normalized: '9 far rd, dallas', lat: 32.8, lng: -96.8 },
+    ])
+    renderCard([
+      job({ id: 'near', status: 'billed', invoices: [{ id: 'i1', status: 'billed', amount: 18400, billed_at: '2026-07-30T14:00:00Z', estimated_bill_date: null }] as unknown as JobWithDetails['invoices'] }),
+      job({ id: 'far', hcp_number: '700', job_name: 'Dallas one', job_address: '9 Far Rd, Dallas' }),
+    ])
+    await screen.findByText(/^pin 700 · Dallas one$/)
+    fireEvent.click(screen.getByTitle(/Hide the 50 mi \+ pins/))
+    expect(screen.queryByText(/^pin 700 · Dallas one$/)).toBeNull()
+    expect(screen.getByText(/^pin 1019 · Vasquez pretest$/)).toBeTruthy()
+    // the ask list names the oldest bill with its age and distance; tapping it selects the pin and lights the row
+    const askRow = screen.getByTitle(/1019 · Vasquez pretest — show it on the map/)
+    expect(askRow.textContent).toMatch(/Billed \d+ d/)
+    fireEvent.click(askRow)
+    expect(onFocusRow).toHaveBeenCalledWith(expect.objectContaining({ id: 'near' }))
+    expect(screen.getByTestId('popup').textContent).toContain('$18,400 owed')
+    expect(screen.getByText(/2 pinned · \$18\.4k to collect/)).toBeTruthy()
+  })
+
+  it('v2.3397: hovering a Pipeline row pulses its pin; leaving the rows clears it', async () => {
+    cacheRows.mockReturnValue([{ address_normalized: '173 atlantis, kyle', lat: 30.0, lng: -97.9 }])
+    renderCard([job({ id: 'a' })])
+    const canvas = await screen.findByTestId('canvas')
+    const row = document.createElement('div')
+    row.setAttribute('data-stages-job-id', 'a')
+    document.body.appendChild(row)
+    act(() => {
+      fireEvent.mouseOver(row)
+    })
+    expect(canvas.getAttribute('data-pulse')).toBe('a')
+    act(() => {
+      fireEvent.mouseOver(document.body)
+    })
+    expect(canvas.getAttribute('data-pulse')).toBe('')
+    row.remove()
+  })
+
   it('uses the Google canvas when a browser key is configured', async () => {
     vi.stubEnv('VITE_GOOGLE_MAPS_BROWSER_KEY', 'test-key')
     cacheRows.mockReturnValue([{ address_normalized: '173 atlantis, kyle', lat: 30.0, lng: -97.9 }])
