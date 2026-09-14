@@ -117,6 +117,16 @@ describe('LienInstrumentsModal · demand letter reads the bill', () => {
     expect(screen.queryByText(/late fees and interest may continue/)).toBeNull()
   })
 
+  it('offers Email with the PDF as a second channel, prefilled with the payer email (v2.3436)', async () => {
+    renderWithProviders(<LienInstrumentsModal {...baseProps} job={job({ gc_customer_id: null, gcCustomer: null, bill_to_party: 'customer' })} />)
+    await waitFor(() => expect(screen.getByText(/the customer on the job/)).toBeTruthy())
+    fireEvent.click(screen.getByRole('button', { name: 'Email with the PDF…' }))
+    const sheet = document.querySelector('[data-demand-email]') as HTMLElement
+    expect(sheet.textContent).toContain('A second channel, not the only one')
+    expect((sheet.querySelector('input[type="email"]') as HTMLInputElement).value).toBe('rizvi@example.test')
+    expect(screen.getByRole('button', { name: 'Send · 3 documents' })).toBeTruthy()
+  })
+
   it('unticking the delivery record drops Exhibit C from the letter and the preview', async () => {
     renderWithProviders(<LienInstrumentsModal {...baseProps} job={job()} />)
     await waitFor(() => expect(document.querySelector('[data-demand-exhibit="C"]')).toBeTruthy())
