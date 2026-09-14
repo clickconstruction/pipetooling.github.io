@@ -46,3 +46,31 @@ describe('StagesProgressPaymentCell % done input', () => {
     expect(onPctCommit).toHaveBeenCalledWith(null)
   })
 })
+
+describe('StagesProgressPaymentCell bill-sent alert (v2.3411)', () => {
+  const alert = { sentAt: '2026-09-02T15:00:00Z', label: 'Bill sent Sep 2 · set % done', title: 'A bill is out — how far along is the work?' }
+  const blankModel = buildStagesMoneyBarModel({ totalBill: 17_800, paymentsMade: 0, pctComplete: null, billedUnpaid: 9_000 })
+
+  it('editable: the empty box wears the red outline, aria-invalid, and the red line under it', () => {
+    render(<StagesProgressPaymentCell model={blankModel} pctComplete={null} onPctCommit={vi.fn()} billSentAlert={alert} />)
+    const input = screen.getByLabelText('Percent complete') as HTMLInputElement
+    expect(input.getAttribute('aria-invalid')).toBe('true')
+    expect(input.getAttribute('data-bill-sent-alert')).toBe('on')
+    expect(input.style.borderRadius).toBe('4px')
+    expect(screen.getByText('Bill sent Sep 2 · set % done')).toBeTruthy()
+  })
+
+  it('read-only viewer: the same red box and line, with no input', () => {
+    render(<StagesProgressPaymentCell model={blankModel} pctComplete={null} billSentAlert={alert} />)
+    expect(screen.queryByLabelText('Percent complete')).toBeNull()
+    expect(document.querySelector('[data-bill-sent-alert="on"]')).toBeTruthy()
+    expect(screen.getByText('Bill sent Sep 2 · set % done')).toBeTruthy()
+  })
+
+  it('no alert: the plain underline box and no line', () => {
+    render(<StagesProgressPaymentCell model={blankModel} pctComplete={null} onPctCommit={vi.fn()} />)
+    const input = screen.getByLabelText('Percent complete') as HTMLInputElement
+    expect(input.getAttribute('aria-invalid')).toBeNull()
+    expect(document.querySelector('[data-bill-sent-alert-line]')).toBeNull()
+  })
+})

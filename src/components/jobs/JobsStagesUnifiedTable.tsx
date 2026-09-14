@@ -23,6 +23,7 @@ import { jobBillingUnallocatedDollars, type InvoiceWithJob, type StageRow } from
 import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
 import { buildStagesMoneyBarModel } from '../../lib/stagesMoneyBar'
 import { buildPipelineStageBar } from '../../lib/jobs/pipelineStageBar'
+import { stagesBillSentPctAlert } from '../../lib/jobs/stagesBillSentPctAlert'
 import StagesProgressPaymentCell from './StagesProgressPaymentCell'
 import { ShareJobButton } from './ShareJobButton'
 import { JobsStagesThreadPanel } from './JobsStagesThreadPanel'
@@ -528,6 +529,7 @@ export default function JobsStagesUnifiedTable(props: JobsStagesUnifiedTableProp
                               })}
                               stageBar={buildPipelineStageBar({ fixtures: j.fixtures, invoices: j.invoices, payments: j.payments, pctComplete: j.pct_complete ?? null })}
                               pctComplete={j.pct_complete ?? null}
+                              billSentAlert={stagesBillSentPctAlert(j)}
                               pctSaving={pctCompleteSavingId === j.id}
                               onPctCommit={(n) => updateJobPctComplete(j.id, n, j.pct_complete ?? null)}
                               onNoBidValueClick={() => openEdit(j, { fixturesSectionHighlight: true })}
@@ -578,6 +580,7 @@ export default function JobsStagesUnifiedTable(props: JobsStagesUnifiedTableProp
                               })}
                               stageBar={buildPipelineStageBar({ fixtures: j.fixtures, invoices: j.invoices, payments: j.payments, pctComplete: j.pct_complete ?? null })}
                               pctComplete={j.pct_complete ?? null}
+                              billSentAlert={stagesBillSentPctAlert(j)}
                               pctSaving={pctCompleteSavingId === j.id}
                               onPctCommit={(n) => updateJobPctComplete(j.id, n, j.pct_complete ?? null)}
                               onNoBidValueClick={() => openEdit(j, { fixturesSectionHighlight: true })}
@@ -1054,6 +1057,7 @@ export default function JobsStagesUnifiedTable(props: JobsStagesUnifiedTableProp
                           })}
                           stageBar={buildPipelineStageBar({ fixtures: job.fixtures, invoices: job.invoices, payments: job.payments, pctComplete: job.pct_complete ?? null })}
                           pctComplete={job.pct_complete ?? null}
+                          billSentAlert={stagesBillSentPctAlert(job)}
                           pctSaving={pctCompleteSavingId === job.id}
                           onPctCommit={(n) => updateJobPctComplete(job.id, n, job.pct_complete ?? null)}
                           onNoBidValueClick={() => openEdit(job, { fixturesSectionHighlight: true })}

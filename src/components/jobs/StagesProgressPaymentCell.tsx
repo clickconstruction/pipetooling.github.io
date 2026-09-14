@@ -2,6 +2,7 @@ import { formatUsdNoCents } from '../../lib/jobs/jobFormatting'
 import type { StagesMoneyBarModel } from '../../lib/stagesMoneyBar'
 import type { PipelineStageBar } from '../../lib/jobs/pipelineStageBar'
 import StagesStageBar from './StagesStageBar'
+import type { StagesBillSentPctAlert } from '../../lib/jobs/stagesBillSentPctAlert'
 
 const PAID_COLOR = '#16a34a'
 const BILLED_COLOR = '#2563eb'
@@ -38,6 +39,12 @@ type StagesProgressPaymentCellProps = {
    * omitted = the classic money bar.
    */
   stageBar?: PipelineStageBar | null
+  /**
+   * v2.3411: a bill has gone out and no percent is recorded — the box wears a
+   * red outline, "% done" turns red, and one red line under it names the send
+   * day (`stagesBillSentPctAlert`). Null / omitted = the plain box.
+   */
+  billSentAlert?: StagesBillSentPctAlert | null
 }
 
 function swatch(color?: string) {
@@ -63,9 +70,11 @@ function swatch(color?: string) {
  * total on top, a paid/unbilled bar of the total bill, and a labeled legend.
  * Pure presentation — all math comes in via the model (see stagesMoneyBar.ts).
  */
-export default function StagesProgressPaymentCell({ model, pctComplete, pctSaving, onPctCommit, footnote, onNoBidValueClick, compact = false, stageBar = null }: StagesProgressPaymentCellProps) {
+export default function StagesProgressPaymentCell({ model, pctComplete, pctSaving, onPctCommit, footnote, onNoBidValueClick, compact = false, stageBar = null, billSentAlert = null }: StagesProgressPaymentCellProps) {
   const rowStyle: React.CSSProperties = { display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '0.5rem' }
   const labelStyle: React.CSSProperties = { fontSize: '0.75rem', color: 'var(--text-muted)' }
+  const alert = billSentAlert ?? null
+  const pctLabelStyle: React.CSSProperties = alert ? { ...labelStyle, color: 'var(--text-red-700)', fontWeight: 600 } : labelStyle
   const amountStyle: React.CSSProperties = { fontSize: '0.75rem', fontVariantNumeric: 'tabular-nums' }
 
   return (
@@ -102,22 +111,43 @@ export default function StagesProgressPaymentCell({ model, pctComplete, pctSavin
                 disabled={!!pctSaving}
                 placeholder=""
                 aria-label="Percent complete"
+                aria-invalid={alert ? true : undefined}
+                title={alert?.title}
+                data-bill-sent-alert={alert ? 'on' : undefined}
                 style={{
                   width: '2.75rem',
                   padding: '0.15rem 0.25rem',
                   fontSize: '0.8125rem',
                   textAlign: 'center',
-                  border: 'none',
-                  borderBottom: '1px solid var(--border-strong)',
-                  borderRadius: 0,
-                  background: 'transparent',
+                  border: alert ? '2px solid var(--text-red-600)' : 'none',
+                  borderBottom: alert ? '2px solid var(--text-red-600)' : '1px solid var(--border-strong)',
+                  borderRadius: alert ? 4 : 0,
+                  background: alert ? 'var(--bg-red-tint)' : 'transparent',
                 }}
               />
-              <span style={labelStyle}> % done</span>
+              <span style={pctLabelStyle}> % done</span>
             </>
           ) : pctComplete != null ? (
             <span style={labelStyle}>
               <span style={{ color: 'var(--text-strong)', fontVariantNumeric: 'tabular-nums' }}>{pctComplete}</span> % done
+            </span>
+          ) : alert ? (
+            // Read-only viewer (no edit right): the same red box, empty, so the
+            // board reads the same for everyone even if only the office can fill it.
+            <span style={pctLabelStyle} title={alert.title} data-bill-sent-alert="on">
+              <span
+                aria-hidden
+                style={{
+                  display: 'inline-block',
+                  width: '2.75rem',
+                  minHeight: '1.1em',
+                  verticalAlign: 'middle',
+                  border: '2px solid var(--text-red-600)',
+                  borderRadius: 4,
+                  background: 'var(--bg-red-tint)',
+                }}
+              />{' '}
+              % done
             </span>
           ) : (
             <span style={labelStyle}>&nbsp;</span>
@@ -150,6 +180,15 @@ export default function StagesProgressPaymentCell({ model, pctComplete, pctSavin
           <span style={{ ...labelStyle, whiteSpace: 'nowrap' }}>no bid value</span>
         )}
       </div>
+      {alert ? (
+        <div
+          data-bill-sent-alert-line
+          title={alert.title}
+          style={{ fontSize: '0.6875rem', color: 'var(--text-red-700)', lineHeight: 1.2 }}
+        >
+          {alert.label}
+        </div>
+      ) : null}
 
       {stageBar ? (
         <StagesStageBar bar={stageBar} compact={compact} />
