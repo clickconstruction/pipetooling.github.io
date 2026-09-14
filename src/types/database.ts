@@ -9138,6 +9138,9 @@ export type Database = {
           bill_copy_other_party: boolean
           bill_to_party: string
           show_bills_to_other_party: boolean
+          contract_not_needed_at: string | null
+          contract_not_needed_by: string | null
+          contract_not_needed_reason: string | null
           click_number: string
           collections_at: string | null
           collections_by: string | null
@@ -9186,6 +9189,9 @@ export type Database = {
           bill_copy_other_party?: boolean
           bill_to_party?: string
           show_bills_to_other_party?: boolean
+          contract_not_needed_at?: string | null
+          contract_not_needed_by?: string | null
+          contract_not_needed_reason?: string | null
           click_number?: string
           collections_at?: string | null
           collections_by?: string | null
@@ -9234,6 +9240,9 @@ export type Database = {
           bill_copy_other_party?: boolean
           bill_to_party?: string
           show_bills_to_other_party?: boolean
+          contract_not_needed_at?: string | null
+          contract_not_needed_by?: string | null
+          contract_not_needed_reason?: string | null
           click_number?: string
           collections_at?: string | null
           collections_by?: string | null

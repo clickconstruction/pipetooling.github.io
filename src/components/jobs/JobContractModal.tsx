@@ -48,6 +48,7 @@ import {
   jobContractStatus,
   type JobContractRow,
 } from '../../lib/jobs/jobContractLifecycle'
+import { CONTRACT_NOT_NEEDED_REASONS } from '../../lib/jobs/jobContractCoverage'
 
 type TemplateRow = Pick<
   Database['public']['Tables']['contract_template_documents']['Row'],
@@ -62,6 +63,8 @@ export type JobContractModalProps = {
   job: JobWithDetails | null
   /** Fires after any send / void / record so the board can refresh its chips. */
   onChanged?: () => void
+  /** Fires when the job row itself changed (Not needed answered or withdrawn, PR 0) — the caller reloads its jobs list. */
+  onJobChanged?: () => void
 }
 
 const labelStyle: React.CSSProperties = { fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 600 }
@@ -99,7 +102,7 @@ function dispatchChanged() {
   }
 }
 
-export default function JobContractModal({ open, onClose, job, onChanged }: JobContractModalProps) {
+export default function JobContractModal({ open, onClose, job, onChanged, onJobChanged }: JobContractModalProps) {
   const { user: authUser } = useAuth()
   const { showToast } = useToastContext()
 
@@ -130,6 +133,11 @@ export default function JobContractModal({ open, onClose, job, onChanged }: JobC
   const [paperAttachOpen, setPaperAttachOpen] = useState(false)
   const [paperBusy, setPaperBusy] = useState(false)
   const [recordRow, setRecordRow] = useState<JobContractRow | null>(null)
+  /** Not needed (PR 0): undefined = read the job; null = withdrawn this session; an object = answered this session. */
+  const [notNeededLocal, setNotNeededLocal] = useState<{ at: string; reason: string | null } | null | undefined>(undefined)
+  const [notNeededOpen, setNotNeededOpen] = useState(false)
+  const [notNeededReason, setNotNeededReason] = useState('')
+  const [notNeededBusy, setNotNeededBusy] = useState(false)
   /** Channel of the live row's latest send event: 'email' = the customer was emailed, 'link' = only minted/copied. */
   const [lastSendChannel, setLastSendChannel] = useState<'email' | 'link' | null>(null)
   const userTouchedRef = useRef(false)
@@ -184,6 +192,9 @@ export default function JobContractModal({ open, onClose, job, onChanged }: JobC
     setPaperLinkCommitted(false)
     setPaperAttachOpen(false)
     setRecordRow(null)
+    setNotNeededLocal(undefined)
+    setNotNeededOpen(false)
+    setNotNeededReason('')
     setRecipientName((job.customer_name ?? '').trim())
     setRecipientEmail((job.customer_email ?? '').trim())
     setRecipientPhone((job.customer_phone ?? '').trim())
@@ -601,6 +612,39 @@ export default function JobContractModal({ open, onClose, job, onChanged }: JobC
 
   const paperReady = isHttpUrl(paperLink) || paperFile != null
 
+  /** Not needed (PR 0): the office says this job needs no agreement of ours — a fact on the job, not a contract row. */
+  const notNeeded: { at: string; reason: string | null } | null =
+    notNeededLocal !== undefined ? notNeededLocal : job?.contract_not_needed_at ? { at: job.contract_not_needed_at, reason: (job.contract_not_needed_reason ?? '').trim() || null } : null
+  const writeNotNeeded = async (value: { reason: string } | null) => {
+    if (!job || notNeededBusy) return
+    setNotNeededBusy(true)
+    try {
+      const nowIso = new Date().toISOString()
+      await withSupabaseRetry(
+        () =>
+          supabase
+            .from('jobs_ledger')
+            .update(
+              value
+                ? { contract_not_needed_at: nowIso, contract_not_needed_by: authUser?.id ?? null, contract_not_needed_reason: value.reason.trim() || null }
+                : { contract_not_needed_at: null, contract_not_needed_by: null, contract_not_needed_reason: null },
+            )
+            .eq('id', job.id),
+        value ? 'mark job contract not needed' : 'clear job contract not needed',
+      )
+      setNotNeededLocal(value ? { at: nowIso, reason: value.reason.trim() || null } : null)
+      setNotNeededOpen(false)
+      showToast(value ? 'Marked not needed — this job leaves the contract count.' : 'Needed after all — this job is back in the count.', 'success')
+      dispatchChanged()
+      onChanged?.()
+      onJobChanged?.()
+    } catch {
+      showToast('Could not save that.', 'error')
+    } finally {
+      setNotNeededBusy(false)
+    }
+  }
+
   if (!open || !job) return null
 
   const historyRows = rows.filter((r) => !liveRow || r.id !== liveRow.id)
@@ -641,6 +685,17 @@ export default function JobContractModal({ open, onClose, job, onChanged }: JobC
         <button type="button" style={btn} disabled={busy != null} onClick={preview}>
           Preview as customer
         </button>
+        {!notNeeded && !notNeededOpen ? (
+          <button
+            type="button"
+            onClick={() => setNotNeededOpen(true)}
+            disabled={busy != null || notNeededBusy}
+            title="This job needs no agreement of ours (a builder's subcontract, a service call, warranty work) — it leaves the contract count"
+            style={{ ...btn, borderColor: 'transparent', background: 'transparent', color: 'var(--text-muted)', fontWeight: 500 }}
+          >
+            Not needed…
+          </button>
+        ) : null}
         <span style={{ fontSize: '0.75rem', color: autosaveState === 'error' ? 'var(--text-red-700)' : 'var(--text-muted)' }}>
           {!editable ? 'Locked — sent' : autosaveState === 'saving' ? 'Saving…' : autosaveState === 'saved' ? 'Draft saved' : autosaveState === 'error' ? 'Save failed' : ''}
         </span>
@@ -678,6 +733,57 @@ export default function JobContractModal({ open, onClose, job, onChanged }: JobC
           {jobContractHeading(job)} · {job.customer_name || '—'}
           {job.job_address ? ` · ${job.job_address}` : ''}
         </div>
+        {notNeeded ? (
+          <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem', padding: '0.5rem 0.75rem', borderRadius: 8, background: 'var(--bg-subtle)', border: '1px dashed var(--border)', color: 'var(--text-muted)', margin: '0.6rem 0', fontSize: '0.8rem' }}>
+            <span style={{ flex: 1, minWidth: 200 }}>
+              <b style={{ color: 'var(--text-700)' }}>Not needed</b>
+              {formatContractStamp(notNeeded.at) ? ` · marked ${formatContractStamp(notNeeded.at)}` : ''}
+              {notNeeded.reason ? ` · ${notNeeded.reason}` : ''}
+              {' — this job is out of the contract count. Sending or filing an agreement still works.'}
+            </span>
+            <button type="button" style={btn} disabled={notNeededBusy} onClick={() => void writeNotNeeded(null)}>
+              {notNeededBusy ? 'Saving…' : 'Needed after all'}
+            </button>
+          </div>
+        ) : null}
+        {notNeededOpen && !notNeeded ? (
+          <div style={{ display: 'grid', gap: '0.45rem', padding: '0.55rem 0.75rem', borderRadius: 8, background: 'var(--bg-subtle)', border: '1px solid var(--border)', margin: '0.6rem 0', fontSize: '0.8rem' }}>
+            <div>
+              <b>Why doesn&apos;t this job need an agreement of ours?</b>
+              <span style={{ color: 'var(--text-muted)' }}> It leaves the count; the row reads <i>No contract · not needed</i>.</span>
+            </div>
+            <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap' }}>
+              {CONTRACT_NOT_NEEDED_REASONS.map((r) => {
+                const on = notNeededReason === r
+                return (
+                  <button
+                    key={r}
+                    type="button"
+                    onClick={() => setNotNeededReason(on ? '' : r)}
+                    style={{ ...btn, padding: '0.25rem 0.6rem', fontSize: '0.75rem', borderRadius: 999, background: on ? 'var(--bg-blue-tint)' : 'var(--surface)', color: on ? 'var(--text-blue-700)' : 'var(--text-700)', borderColor: on ? 'var(--text-link)' : 'var(--border-strong)' }}
+                  >
+                    {r}
+                  </button>
+                )
+              })}
+            </div>
+            <input
+              style={inputStyle}
+              value={(CONTRACT_NOT_NEEDED_REASONS as ReadonlyArray<string>).includes(notNeededReason) ? '' : notNeededReason}
+              onChange={(e) => setNotNeededReason(e.target.value)}
+              placeholder="Or say it in your own words (optional)"
+              aria-label="Reason the job needs no contract"
+            />
+            <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
+              <button type="button" style={btn} disabled={notNeededBusy} onClick={() => setNotNeededOpen(false)}>
+                Cancel
+              </button>
+              <button type="button" style={btnPrimary} disabled={notNeededBusy} onClick={() => void writeNotNeeded({ reason: notNeededReason })}>
+                {notNeededBusy ? 'Saving…' : 'Mark not needed'}
+              </button>
+            </div>
+          </div>
+        ) : null}
         {sentStrip}
         {status === null && rows.some((r) => jobContractStatus(r) === 'signed') ? (
           <div style={{ padding: '0.5rem 0.75rem', borderRadius: 8, background: 'var(--bg-green-tint)', color: 'var(--text-green-700)', margin: '0.6rem 0', fontSize: '0.8rem' }}>

@@ -2,7 +2,7 @@
 title: get a job contract signed
 category: Office
 roles: dev, master_technician, assistant, controller
-keywords: contract, agreement, signature, sign, e-sign, no contract, contract chip, pipeline filter, customer signs, send contract, sign in person, void and redo, paper contract, upload signed copy, signed record, contract book audience, contract sweep, backlog, needs you
+keywords: contract, agreement, signature, sign, e-sign, no contract, contract chip, pipeline filter, customer signs, send contract, sign in person, void and redo, paper contract, upload signed copy, signed record, contract book audience, contract sweep, backlog, needs you, not needed, contract floor, small jobs, gc subcontract
 order: 74
 ---
 Every job should have a signed agreement with its customer on file — including jobs that already started. The app tells you which ones don't, and gives the office one place to send and track them.
@@ -24,6 +24,19 @@ Hover the chip for the full story (who it went to, whether it's been opened).
 ## Find the jobs without one
 
 **Jobs → Pipeline** opens with a card under **Today's money opportunities**: {{chip:yellow|✍ Get contracts signed — 58 live jobs without, $412k of work}}. It counts every stage except Paid in full, and accepted estimates and bid-room signatures already count. One chip per stage shows the gap — tap {{chip:yellow|Working 15}} and the board filters to those jobs and jumps to that section; a stage with nothing missing reads {{chip:green|Ready to Bill ✓}}. {{button:blue|Start the sweep →}} opens the sweep described below. When every live job is covered, the card becomes a single green line.
+
+## Not every job needs one
+
+Two things keep the count honest, and both show on the card's third line — {{chip:gray|Floor $2,500 · 9 small jobs not counted · 3 marked not needed}}:
+
+- **The floor.** A dev sets a dollar amount on the card ({{button:outline|change}} · type the amount · Enter; 0 removes it). A job whose amount is under the floor leaves the count, the **No contract** filter and the sweep. A job with **no amount** always stays in — unknown is not small.
+- **Not needed.** Open the job's Contract modal and press {{button:outline|Not needed…}} in the footer. Pick why — {{chip:blue|GC job — their subcontract}}, {{chip:gray|Service call}}, {{chip:gray|Warranty / no charge}} — or say it in your own words, then {{button:blue|Mark not needed}}. The row reads {{chip:gray|No contract · not needed}}, the job leaves the count, and nothing goes to the customer. Changed your mind? The modal shows the answer with {{button:outline|Needed after all}}.
+
+:::example A builder's job
+Summit GC sends you their subcontract; you don't send them a service agreement. Mark the job **Not needed · GC job — their subcontract**, or better, file their signed subcontract (below) so the row reads signed.
+:::
+
+Sending or filing an agreement still works on a not-needed job, and a signed record always wins over the Not needed answer.
 
 You can also set the filter by hand: open the **⋯** menu at the right end of the Pipeline search bar. Under **Filters**, the contract dropdown offers **No contract**, **Contract out for signature**, and **Contract signed**. Pick one and every section follows; a chip in the search bar shows the filter is on — tap its × to clear.
 

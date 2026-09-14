@@ -92,3 +92,33 @@ describe('byStage', () => {
   })
 })
 
+
+describe('the floor and Not needed (Contract sweep PR 0)', () => {
+  it('jobs under the floor and jobs marked Not needed leave the gap count, and the card can say how many', () => {
+    const s = summarizeContractNudge(
+      [
+        { id: 'big', bid_id: null, status: 'working', revenue: 123600 },
+        { id: 'small', bid_id: null, status: 'working', revenue: 450 },
+        { id: 'unknown', bid_id: null, status: 'working', revenue: null },
+        { id: 'gc', bid_id: null, status: 'working', revenue: 32600, contract_not_needed_at: '2026-09-13T15:00:00Z', contract_not_needed_reason: 'GC job — their subcontract' },
+      ],
+      [],
+      [],
+      NOW,
+      { floorCents: 250000 },
+    )
+    expect(s.missing).toEqual({ count: 2, jobIds: ['big', 'unknown'], revenueTotal: 123600 })
+    expect(s.underFloor).toEqual({ count: 1, revenueTotal: 450 })
+    expect(s.notNeeded).toEqual({ count: 1 })
+    expect(s.floorCents).toBe(250000)
+    expect(s.liveTotal).toBe(4)
+    expect(s.byStage.working).toEqual({ total: 4, missing: 2, revenueMissing: 123600 })
+  })
+
+  it('with no floor every live job without paper counts, as before', () => {
+    const s = summarizeContractNudge([{ id: 'small', bid_id: null, status: 'working', revenue: 450 }], [], [], NOW)
+    expect(s.missing.count).toBe(1)
+    expect(s.underFloor.count).toBe(0)
+    expect(s.floorCents).toBe(0)
+  })
+})
