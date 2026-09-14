@@ -54,7 +54,7 @@ import {
   buildGcStatementEmailText,
   gcStatementEmailSubject,
 } from '../../lib/jobsDocuments/gcStatementEmail'
-import { getPhysicalInvoiceIssuerForDocument } from '../../lib/physicalInvoiceIssuer'
+import { fetchPhysicalInvoiceIssuerFromAppSettings, getPhysicalInvoiceIssuerDraft, getPhysicalInvoiceIssuerForDocument } from '../../lib/physicalInvoiceIssuer'
 import { copyRichHtmlToClipboard } from '../../lib/copyRichHtmlToClipboard'
 import GcHardHatIcon from '../icons/GcHardHatIcon'
 import StagesSectionToolsIcon from '../icons/StagesSectionToolsIcon'
@@ -151,6 +151,9 @@ import BilledBillViewModal from './BilledBillViewModal'
 import { findInvoiceWithJobFromJobs } from '../../lib/invoiceWithJobFromJobList'
 import LienToolingPrefillModal from './LienToolingPrefillModal'
 import LienInstrumentsModal from './LienInstrumentsModal'
+import LienDeskModal from './LienDeskModal'
+import { useLienDeskData } from '../../hooks/useLienDeskData'
+import { syncLienDeskAfterRecord } from '../../lib/jobs/lienDeskIo'
 import LienReleaseModal from './LienReleaseModal'
 import AiaG702G703Modal from './AiaG702G703Modal'
 import { HazmatFeeModal, type HazmatFeeModalJob } from './HazmatFeeModal'
@@ -302,6 +305,8 @@ export type JobsStagesTabHandle = {
   openMoneyMove: (key: StagesMoneyMoveKey) => void
   /** `?legal=<payer key | 1>` deep link (Legal desk PR 1, v2.3293): open the ⚖ Legal desk, on one account when a key is given. */
   openLegalDesk: (payerKey?: string | null, tab?: 'fees_steps' | null) => void
+  /** The Lien desk (v2.3405), optionally landing on one job's item. */
+  openLienDesk: (jobId?: string | null) => void
 }
 
 export type JobsStagesTabProps = {
@@ -795,6 +800,8 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
     invoice: JobsLedgerInvoice | null
     /** The forecast's Send notice… door lands on the § 53.056 tab. */
     initialTab?: 'demand' | 'notice' | 'affidavit' | 'release_record'
+    /** The Lien desk's months for the notice (v2.3405). */
+    noticeMonths?: string[] | null
   } | null>(null)
   // Jobs with a live SENT demand letter — the lien icon wears an amber box.
   const [demandOutJobIds, setDemandOutJobIds] = useState<ReadonlySet<string>>(() => new Set())
@@ -1269,6 +1276,19 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
       navigate({ search: p.toString() }, { replace: true })
     }
   }, [searchParams, navigate])
+  /** `?liendesk=1` (+ `liendeskJob=<id>`) deep link (v2.3405): the Dashboard's Needs you cards open the Lien desk directly. */
+  const lienDeskParamConsumedRef = useRef(false)
+  useEffect(() => {
+    if (lienDeskParamConsumedRef.current) return
+    if (searchParams.get('liendesk') === '1') {
+      lienDeskParamConsumedRef.current = true
+      setLienDesk({ jobId: searchParams.get('liendeskJob') })
+      const p = new URLSearchParams(searchParams)
+      p.delete('liendesk')
+      p.delete('liendeskJob')
+      navigate({ search: p.toString() }, { replace: true })
+    }
+  }, [searchParams, navigate])
   /** `?round=1` deep link (v2.2771): the Dashboard Needs You row + the round email open GC Review straight into the round overlay. */
   const roundParamConsumedRef = useRef(false)
   useEffect(() => {
@@ -1482,6 +1502,39 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
   }, [billedPaymentForecastOpen, unfilteredBoardLists])
   const forecastTodayYmd = calendarYmdInAppTzFromIso(new Date().toISOString())
   const { byJob: forecastWorkMonths } = useForecastWorkMonths(forecastWorkMonthJobs, forecastTodayYmd)
+  // The Lien desk (v2.3405): § 53.056 notices due per unpaid work month on sub
+  // jobs. A light read keeps the menus' counts; the full read runs while open.
+  const [lienDesk, setLienDesk] = useState<{ jobId: string | null } | null>(null)
+  const lienDeskEligible = authRole === 'dev' || authRole === 'master_technician' || isAssistantLike(authRole)
+  const { data: lienDeskData, loading: lienDeskLoading, refetch: refetchLienDesk } = useLienDeskData(lienDeskEligible, forecastTodayYmd, { light: lienDesk == null })
+  const lienDeskCount = lienDeskData ? lienDeskData.summary.office.jobs + lienDeskData.summary.leader.jobs + lienDeskData.summary.office.ready : null
+  const lienDeskJobs = useMemo(
+    () => (lienDesk && lienDeskData ? Object.values(lienDeskData.jobsById).map((j) => ({ id: j.id, gc_customer_id: j.gc_customer_id, customer_address_id: j.customer_address_id })) : null),
+    [lienDesk, lienDeskData],
+  )
+  const { byJob: lienDeskWorkMonths } = useForecastWorkMonths(lienDeskJobs, forecastTodayYmd)
+  const [lienDeskIssuerGen, setLienDeskIssuerGen] = useState(0)
+  const lienDeskIssuer = useMemo(() => (lienDesk ? getPhysicalInvoiceIssuerDraft() : null), [lienDesk, lienDeskIssuerGen])
+  useEffect(() => {
+    if (!lienDesk) return
+    let cancelled = false
+    void (async () => {
+      await fetchPhysicalInvoiceIssuerFromAppSettings({ authRole })
+      if (!cancelled) setLienDeskIssuerGen((g) => g + 1)
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [lienDesk, authRole])
+  const lienDeskSignerFor = useCallback(
+    (masterUserId: string | null) => {
+      const sessionName = authProfileName?.trim() ?? ''
+      if (!masterUserId) return sessionName
+      const row = users.find((u) => u.id === masterUserId)
+      return row?.notes?.trim() || row?.name?.trim() || sessionName
+    },
+    [users, authProfileName],
+  )
 
   /** Personal statement rounds (v2.2072): data for the two-stage money-opportunity cards. */
   const isRoundOfficeRole = authRole === 'dev' || authRole === 'master_technician' || isAssistantLike(authRole)
@@ -2306,6 +2359,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
       focusInvoice: applyStagesInvoiceFocus,
       openBankPayments: () => setBankPaymentsModalOpen(true),
       openLegalDesk: (payerKey, tab) => setLegalDesk({ payerKey: payerKey ?? null, tab: tab ?? null }),
+      openLienDesk: (jobId) => setLienDesk({ jobId: jobId ?? null }),
       openWeeklyMovement: () => setWeeklyMovementModalOpen(true),
       openWeeklyMoney: (weekMonday) => {
         setWeeklyMoneyInitialMonday(weekMonday ?? null)
@@ -3082,6 +3136,22 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                       gap: 2,
                     }}
                   >
+                    {lienDeskEligible ? (
+                      <button
+                        type="button"
+                        role="menuitem"
+                        onClick={() => {
+                          setStagesToolsMenuOpen(false)
+                          setLienDesk({ jobId: null })
+                        }}
+                        title="Lien notices due per unpaid work month on sub jobs — draft, approve, send"
+                        style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.35rem 0.75rem', border: 'none', background: 'none', textAlign: 'left', cursor: 'pointer', font: 'inherit', color: 'inherit', borderRadius: 4, fontSize: '0.8125rem' }}
+                      >
+                        <span aria-hidden>⏱</span>
+                        <span>Lien desk</span>
+                        {typeof lienDeskCount === 'number' && lienDeskCount > 0 ? <span style={{ marginLeft: 'auto', fontSize: '0.72rem', color: 'var(--text-muted)' }}>{lienDeskCount}</span> : null}
+                      </button>
+                    ) : null}
                     {/* Sort group (v2.1807) — row order inside every section.
                         Picking keeps the menu open, matching the filters below. */}
                     <div style={{ fontSize: '0.6875rem', color: 'var(--text-muted)', padding: '0.25rem 0.75rem 0.1rem' }}>
@@ -3566,6 +3636,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                         typeof arBankTxUnallocatedCount === 'number' ? arBankTxUnallocatedCount : null,
                       capableToBillTotalFormatted: capableDisplay,
                       recentViewOpen: stagesRecentViewOpen,
+                      lienDeskCount,
                     }).map((group) => (
                       <div key={group.section} style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                         <div style={{ fontSize: '0.6875rem', fontWeight: 600, color: 'var(--text-muted)', padding: '0.25rem 0.75rem 0.1rem', textAlign: 'center' }}>
@@ -3586,6 +3657,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                             'billed-share-print': () => setBilledShareModalOpen(true),
                             'billed-aging-chart': () => setBilledAgingChartOpen(true),
                             'billed-payment-forecast': () => setBilledPaymentForecastOpen(true),
+                            'lien-desk': () => setLienDesk({ jobId: null }),
                             'paid-notifications': () => setPaymentEmailSettingsOpen(true),
                             'paid-profit-chart': () => setPaidProfitChartOpen(true),
                             'paid-in-full-notifications': () => setPaidEmailSettingsOpen(true),
@@ -4668,6 +4740,22 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                       </button>
                     )
                   })() : null}
+                  {lienDeskEligible ? (
+                    <button
+                      type="button"
+                      onClick={() => setLienDesk({ jobId: null })}
+                      title="Lien notices due per unpaid work month on sub jobs — draft, approve, send"
+                      aria-label="Lien desk: notices due per unpaid work month"
+                      style={{
+                        ...billedHeaderActionStyle(false),
+                        color: 'var(--text-700)',
+                        borderColor: 'var(--border-strong)',
+                      }}
+                    >
+                      <span aria-hidden>{'⏱'}</span>
+                      Lien desk{typeof lienDeskCount === 'number' && lienDeskCount > 0 ? ` · ${lienDeskCount}` : ''}
+                    </button>
+                  ) : null}
                 </div>
                 {sectionShown('collections') && !stagesSearchActive && !sectionMerged('collections') && sectionBodyLoading('Collections')}
                 {sectionShown('collections') && (stagesSearchActive || sectionMerged('collections')) && (collectionsRows.length === 0 ? (
@@ -5568,12 +5656,10 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
           }
           workMonths={forecastWorkMonths}
           onOpenLienNotice={(jobId) => {
-            // The Lien window on the § 53.056 tab for that job; the forecast
-            // closes so the window has the screen (same as the other doors).
-            const row = unfilteredBoardLists.billedActiveRows.find((r) => r.job.id === jobId)
-            if (!row) return
+            // The Lien desk on that job (v2.3405) — draft, approve, send; the
+            // forecast closes so the desk has the screen.
             setBilledPaymentForecastOpen(false)
-            setLienInstrumentsModal({ job: row.job, invoice: null, initialTab: 'notice' })
+            setLienDesk({ jobId })
           }}
         />
       )}
@@ -5730,12 +5816,39 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
           })()
         }}
       />
+      <LienDeskModal
+        open={lienDesk != null}
+        onClose={() => setLienDesk(null)}
+        data={lienDeskData}
+        loading={lienDeskLoading}
+        todayYmd={forecastTodayYmd}
+        authRole={authRole}
+        authUserId={authUser?.id ?? null}
+        authName={authProfileName?.trim() ?? ''}
+        workMonths={lienDeskWorkMonths}
+        issuer={lienDeskIssuer}
+        signerNameFor={lienDeskSignerFor}
+        initialJobId={lienDesk?.jobId ?? null}
+        onChanged={refetchLienDesk}
+        onOpenEditJob={(jobId) => tryOpenEditJob(jobId, { onSaved: () => refetchLienDesk() })}
+        onOpenLienInstruments={(jobId) => {
+          const job = jobs.find((j) => j.id === jobId)
+          if (!job) {
+            showToast('Open that job from the Pipeline board to send its notice — it is not loaded here yet.', 'info')
+            return
+          }
+          const months = lienDeskData?.queue.entries.find((e) => e.jobId === jobId)?.item?.months ?? []
+          setLienDesk(null)
+          setLienInstrumentsModal({ job, invoice: null, initialTab: 'notice', noticeMonths: months })
+        }}
+      />
       <LienInstrumentsModal
         open={lienInstrumentsModal != null}
         onClose={() => setLienInstrumentsModal(null)}
         job={lienInstrumentsModal?.job ?? null}
         invoice={lienInstrumentsModal?.invoice ?? null}
         initialTab={lienInstrumentsModal?.initialTab}
+        noticeMonths={lienInstrumentsModal?.noticeMonths ?? null}
         signerNameFallback={lienReleaseSignerFallback}
         authEmail={authUser?.email?.trim() ?? ''}
         onOpenExternalPrefill={() => {
@@ -5743,7 +5856,12 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
           setLienInstrumentsModal(null)
           if (ctx) setLienToolingPrefillModal(ctx)
         }}
-        onRecorded={() => void loadDemandOutJobIds()}
+        onRecorded={() => {
+          void loadDemandOutJobIds()
+          // A recorded notice that names the desk item's months sends the item (v2.3405).
+          const jobId = lienInstrumentsModal?.job.id
+          if (jobId) void syncLienDeskAfterRecord(jobId).finally(() => refetchLienDesk())
+        }}
       />
       <LienToolingPrefillModal
         open={lienToolingPrefillModal != null}

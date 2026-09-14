@@ -28,6 +28,18 @@ import type { RobotLockedShadow } from './bids/robotLockedShadows'
  */
 
 /** red (v2.2491) = a destructive event to investigate, not a work queue — loudest rail in the card. */
+import type { LienDeskNeedsYou } from './jobs/lienDesk'
+
+/** Whole days from today (app calendar) to a 'YYYY-MM-DD' — the Lien desk cards' urgency. */
+function daysUntilYmd(ymd: string): number | null {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(ymd)
+  if (!m) return null
+  const target = Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3]), 12)
+  const now = new Date()
+  const today = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate(), 12)
+  return Math.round((target - today) / 86_400_000)
+}
+
 export type NeedsYouSeverity = 'blue' | 'amber' | 'gray' | 'red'
 
 /**
@@ -59,7 +71,8 @@ export type NeedsYouItem = {
     | 'lien-unconditional'
     | 'demand-deadline'
     | 'lien-serve-copy'
-    | 'lien-notice-window'
+    | 'lien-notice-draft'
+    | 'lien-notice-approve'
     | 'lien-file-window'
     | 'd22-uncoded'
     | 'hours-approvals'
@@ -122,7 +135,8 @@ export const NEEDS_YOU_RANK: Record<NeedsYouItem['key'], number> = {
   'job-followups': 40,
   'demand-deadline': 40,
   'lien-serve-copy': 10,
-  'lien-notice-window': 40,
+  'lien-notice-draft': 40,
+  'lien-notice-approve': 40,
   'lien-file-window': 40,
   'team-reviews': 50,
   'statement-round': 30,
@@ -312,6 +326,15 @@ export type NeedsYouInputs = {
    * money: rights actively at risk), notice windows, filing windows. Null
    * while loading; the hook reports empties on error.
    */
+  /**
+   * The Lien desk (v2.3405): § 53.056 notices due per unpaid work month on
+   * sub jobs — the office's drafting pile and the leader's approvals. Null
+   * while loading; the hook reports empties on error.
+   */
+  lienDeskEnabled?: boolean
+  lienDesk?: LienDeskNeedsYou | null
+  /** The viewer approves (master / dev) — shows the approvals card. */
+  lienDeskLeader?: boolean
   lienWatchEnabled: boolean
   lienWatch: {
     noticeDue: { deadline: string; openBalance: number }[]
@@ -428,20 +451,33 @@ export function buildNeedsYouItems(inputs: NeedsYouInputs): NeedsYouItem[] {
     })
   }
 
-  if (inputs.lienWatchEnabled && (inputs.lienWatch?.noticeDue.length ?? 0) > 0) {
-    const rows = inputs.lienWatch?.noticeDue ?? []
-    const n = rows.length
-    const total = rows.reduce((s, r) => s + r.openBalance, 0)
-    const money = total.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 })
-    const worst = rows.map((r) => r.deadline).sort()[0] ?? ''
+  if (inputs.lienDeskEnabled && inputs.lienDesk && inputs.lienDesk.office.jobs > 0) {
+    const o = inputs.lienDesk.office
+    const money = o.dollars.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 })
+    const soon = o.earliestDeadline ? daysUntilYmd(o.earliestDeadline) : null
     items.push({
-      key: 'lien-notice-window',
-      severity: 'amber',
+      key: 'lien-notice-draft',
+      severity: soon != null && soon <= 7 ? 'red' : 'amber',
       kicker: 'Lien deadlines',
-      title: n === 1 ? `A lien notice window closes ${worst}` : `${n} lien notice windows close soon (first: ${worst})`,
-      detail: `${money} open on unpaid sub job${n === 1 ? '' : 's'} with no § 53.056 notice recorded for the work month — after the 15th, lien rights on that month weaken. Send the notice from the job's lien instruments.`,
-      figure: String(n),
-      actionLabel: n === 1 ? 'Open the job' : 'Review them',
+      title: o.jobs === 1 ? 'A lien notice to draft' : `${o.jobs} lien notices to draft`,
+      detail: `${money} open on ${o.jobs === 1 ? 'a sub job' : `${o.jobs} sub jobs`} with ${o.months} unpaid work ${o.months === 1 ? 'month' : 'months'} whose § 53.056 notice ${o.earliestDeadline ? `closes ${o.earliestDeadline}${soon === 0 ? ' — today' : soon === 1 ? ' — tomorrow' : soon != null && soon > 1 ? ` — in ${soon} days` : ''}` : 'is coming due'}.${o.needsOwner > 0 ? ` ${o.needsOwner} ${o.needsOwner === 1 ? 'needs' : 'need'} the owner of record first.` : ''}${o.ready > 0 ? ` ${o.ready} approved and waiting to go out.` : ''}`,
+      figure: money,
+      actionLabel: 'Open the Lien desk',
+    })
+  }
+
+  if (inputs.lienDeskEnabled && inputs.lienDeskLeader && inputs.lienDesk && inputs.lienDesk.leader.jobs > 0) {
+    const l = inputs.lienDesk.leader
+    const money = l.dollars.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 })
+    const soon = l.earliestDeadline ? daysUntilYmd(l.earliestDeadline) : null
+    items.push({
+      key: 'lien-notice-approve',
+      severity: soon != null && soon <= 7 ? 'red' : 'blue',
+      kicker: 'Lien deadlines · your call',
+      title: l.jobs === 1 ? 'Approve a lien notice the office drafted' : `Approve ${l.jobs} lien notices the office drafted`,
+      detail: `${money} open. ${l.earliestDeadline ? `The earliest window closes ${l.earliestDeadline}.` : ''} Approve, hold, or set a standing rule so the office stops asking for that GC.`,
+      figure: String(l.jobs),
+      actionLabel: 'Decide',
     })
   }
 

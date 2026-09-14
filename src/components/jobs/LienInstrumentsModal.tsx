@@ -73,6 +73,7 @@ export default function LienInstrumentsModal({
   onOpenExternalPrefill,
   onRecorded,
   initialTab,
+  noticeMonths,
 }: {
   open: boolean
   onClose: () => void
@@ -88,6 +89,8 @@ export default function LienInstrumentsModal({
   onRecorded?: () => void
   /** Land on this tab when the window opens (the forecast's Send notice… door opens on 'notice'). */
   initialTab?: 'demand' | 'notice' | 'affidavit' | 'release_record'
+  /** The Lien desk's months for the § 53.056 notice (v2.3405) — recorded as months_covered instead of the last work month alone. */
+  noticeMonths?: string[] | null
 }) {
   const { role: authRole, user: authUser } = useAuth()
   const { showToast } = useToastContext()
@@ -821,6 +824,7 @@ export default function LienInstrumentsModal({
           </>
         ) : (
           <LienFilingTabs
+            noticeMonths={noticeMonths ?? null}
             job={job}
             jobNumber={jobNumber}
             activeTab={activeTab}

@@ -77,6 +77,7 @@ export default function LienFilingTabs({
   ownerEmail,
   originalContractorEmail,
   onChanged,
+  noticeMonths,
 }: {
   job: JobWithDetails
   jobNumber: string
@@ -94,6 +95,8 @@ export default function LienFilingTabs({
   ownerEmail: string
   originalContractorEmail: string
   onChanged: () => void
+  /** Months the notice names (the Lien desk, v2.3405); null = the last work month, as before. */
+  noticeMonths?: string[] | null
 }) {
   const { user: authUser } = useAuth()
   const { showToast } = useToastContext()
@@ -185,11 +188,11 @@ export default function LienFilingTabs({
       letterhead: filingLetterheadFromIssuer(issuer),
       refItems: [
         `Job #${jobNumber}`,
-        ...(clock.workMonth ? [`Work month ${clock.workMonth}`] : []),
+        ...(noticeMonths && noticeMonths.length > 0 ? [`Work months ${noticeMonths.join(', ')}`] : clock.workMonth ? [`Work month ${clock.workMonth}`] : []),
         demandDate(todayYmd()),
       ],
     }),
-    [issuer, jobNumber, clock.workMonth],
+    [issuer, jobNumber, clock.workMonth, noticeMonths],
   )
 
   const currentDoc: { blocks: FilingDocBlock[]; title: string; kind: 'notice_53_056' | 'affidavit' | 'release_of_record' } | null = useMemo(() => {
@@ -321,7 +324,7 @@ export default function LienFilingTabs({
               created_by: authUser?.id ?? null,
               kind: 'notice_53_056',
               amount: openBalance,
-              months_covered: clock.workMonth ? [clock.workMonth] : [],
+              months_covered: noticeMonths && noticeMonths.length > 0 ? noticeMonths : clock.workMonth ? [clock.workMonth] : [],
               fields: JSON.parse(JSON.stringify(noticeFields)),
               sends: finalSends,
             } as never)
@@ -337,7 +340,7 @@ export default function LienFilingTabs({
     } finally {
       setBusy(false)
     }
-  }, [busy, ownerSend, ocSend, ownerEmail, originalContractorEmail, emailNoticeTo, job.id, authUser?.id, openBalance, clock.workMonth, noticeFields, showToast, onChanged])
+  }, [busy, ownerSend, ocSend, ownerEmail, originalContractorEmail, emailNoticeTo, job.id, authUser?.id, openBalance, clock.workMonth, noticeMonths, noticeFields, showToast, onChanged])
 
   const recordAffidavitFiling = () =>
     insertFiling(

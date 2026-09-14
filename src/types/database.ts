@@ -4969,6 +4969,10 @@ export type Database = {
           payment_terms: string
           payment_terms_note: string | null
           payment_terms_set_at: string | null
+          lien_notice_policy: string
+          lien_notice_policy_note: string | null
+          lien_notice_policy_set_by: string | null
+          lien_notice_policy_set_at: string | null
           payment_terms_set_by: string | null
           standing_discount_pct: number | null
           standing_discount_reason: string | null
@@ -4997,6 +5001,10 @@ export type Database = {
           payment_terms?: string
           payment_terms_note?: string | null
           payment_terms_set_at?: string | null
+          lien_notice_policy?: string
+          lien_notice_policy_note?: string | null
+          lien_notice_policy_set_by?: string | null
+          lien_notice_policy_set_at?: string | null
           payment_terms_set_by?: string | null
           standing_discount_pct?: number | null
           standing_discount_reason?: string | null
@@ -5025,6 +5033,10 @@ export type Database = {
           payment_terms?: string
           payment_terms_note?: string | null
           payment_terms_set_at?: string | null
+          lien_notice_policy?: string
+          lien_notice_policy_note?: string | null
+          lien_notice_policy_set_by?: string | null
+          lien_notice_policy_set_at?: string | null
           payment_terms_set_by?: string | null
           standing_discount_pct?: number | null
           standing_discount_reason?: string | null
@@ -8152,6 +8164,93 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      job_lien_desk_items: {
+        Row: {
+          id: string
+          job_id: string
+          kind: string
+          months: string[]
+          status: string
+          fields: Json
+          cover_note: boolean
+          drafted_by: string | null
+          drafted_at: string
+          submitted_at: string | null
+          approved_by: string | null
+          approved_at: string | null
+          approval_mode: string | null
+          word_note: string
+          word_channel: string
+          held_by: string | null
+          held_at: string | null
+          hold_reason: string
+          hold_until: string | null
+          sent_filing_id: string | null
+          sent_at: string | null
+          pulled_back_by: string | null
+          pulled_back_at: string | null
+          created_at: string
+          updated_at: string
+          voided_at: string | null
+        }
+        Insert: {
+          id?: string
+          job_id: string
+          kind?: string
+          months?: string[]
+          status?: string
+          fields?: Json
+          cover_note?: boolean
+          drafted_by?: string | null
+          drafted_at?: string
+          submitted_at?: string | null
+          approved_by?: string | null
+          approved_at?: string | null
+          approval_mode?: string | null
+          word_note?: string
+          word_channel?: string
+          held_by?: string | null
+          held_at?: string | null
+          hold_reason?: string
+          hold_until?: string | null
+          sent_filing_id?: string | null
+          sent_at?: string | null
+          pulled_back_by?: string | null
+          pulled_back_at?: string | null
+          created_at?: string
+          updated_at?: string
+          voided_at?: string | null
+        }
+        Update: {
+          id?: string
+          job_id?: string
+          kind?: string
+          months?: string[]
+          status?: string
+          fields?: Json
+          cover_note?: boolean
+          drafted_by?: string | null
+          drafted_at?: string
+          submitted_at?: string | null
+          approved_by?: string | null
+          approved_at?: string | null
+          approval_mode?: string | null
+          word_note?: string
+          word_channel?: string
+          held_by?: string | null
+          held_at?: string | null
+          hold_reason?: string
+          hold_until?: string | null
+          sent_filing_id?: string | null
+          sent_at?: string | null
+          pulled_back_by?: string | null
+          pulled_back_at?: string | null
+          created_at?: string
+          updated_at?: string
+          voided_at?: string | null
+        }
+        Relationships: []
       }
       job_lien_filings: {
         Row: {
@@ -21098,6 +21197,25 @@ export type Database = {
         }[]
       }
       list_job_payment_promises: { Args: never; Returns: Json }
+      lien_notice_deadline: { Args: { p_month: string; p_property_kind: string }; Returns: string }
+      list_lien_notice_months: {
+        Args: { p_within_days?: number }
+        Returns: {
+          job_id: string
+          work_month: string
+          approved_hours: number
+          deadline: string
+          noticed: boolean
+          open_balance: number
+          customer_id: string | null
+          gc_customer_id: string | null
+          property_kind: string
+          has_owner: boolean
+          desk_item_id: string | null
+          desk_status: string | null
+          desk_months: string[] | null
+        }[]
+      }
       list_job_promised_pay_dates: { Args: never; Returns: Json }
       list_job_schedule_blocks_for_schedule_email: {
         Args: { p_recipient: string; p_work_date: string }
@@ -22266,6 +22384,7 @@ export type Database = {
         }
         Returns: Json
       }
+      set_customer_lien_notice_policy: { Args: { p_customer_id: string; p_policy: string; p_note?: string }; Returns: undefined }
       set_customer_portal_slug: {
         Args: { p_customer_id: string; p_slug: string }
         Returns: Json
