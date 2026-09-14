@@ -1,6 +1,6 @@
 # Owner of record, asked at the right moment — three prompts so no lien notice is ever blocked on a missing owner
 
-Status: **not started** · planned 2026-09-14 · the prerequisite for [`gc-on-notice/`](./gc-on-notice/README.md) and the daily blocker on the Lien desk (every one of the seven jobs due on 2026-09-15 sat in *Needs the owner*) · build the Fix-ups count first (smallest piece; clears today's pile)
+Status: **not started** · planned 2026-09-14 · mock-up drawn 2026-09-14 for the owner's review before the build ([`mockup.html`](./mockup.html) — the three moments on today's seven desk jobs, the critique, the plan; also a Claude artifact) · the prerequisite for [`gc-on-notice/`](../gc-on-notice/README.md) and the daily blocker on the Lien desk (every one of the seven jobs due on 2026-09-15 sat in *Needs the owner*) · build the Fix-ups count first (smallest piece; clears today's pile)
 
 ## The ask, in the owner's words
 
@@ -38,6 +38,7 @@ Rejected: a hard block on Working or on billing; asking per job instead of per p
 
 ## Open decisions
 
+- Should the card count every GC job with approved hours and no owner (wider than the desk's 30-day notice window), or only the desk's due items? Proposed: the wider count — the point is to have the owner before the window opens.
 - Should the Fix-ups count include **Waiting** jobs with a GC (before any hours)? Proposed: no — hours are what the lien clock runs on.
 - Should the job-form prompt fire for **every** new job, or only when a GC is set / the customer is a builder? Proposed: only those.
 - When the CAD paste names a **homestead**, should the prompt say so on the spot ("a homestead lien needs a recorded pre-work contract — talk to the attorney before starting")? Proposed: yes, one line.

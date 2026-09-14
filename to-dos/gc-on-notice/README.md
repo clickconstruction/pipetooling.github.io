@@ -1,6 +1,6 @@
 # Put a GC on notice — every owner on every job with a failing GC, in one approved run
 
-Status: **not started** · planned 2026-09-14 · 4 owner decisions open (below), one of them for the attorney · depends on [`owner-of-record-prompts.md`](../owner-of-record-prompts.md) landing first (without owners on file the run cannot mail) · mock-up: [`mockup.html`](./mockup.html) (entry points, Draft A, the critique, Refined B, the plan; also a Claude artifact 2026-09-14) · built on the Lien desk (v2.3405 / v2.3410 / v2.3412)
+Status: **not started** · planned 2026-09-14 · 4 owner decisions open (below), one of them for the attorney · depends on [`owner-of-record-prompts/`](../owner-of-record-prompts/README.md) landing first (without owners on file the run cannot mail) · mock-up: [`mockup.html`](./mockup.html) (entry points, Draft A, the critique, Refined B, the plan; also a Claude artifact 2026-09-14) · built on the Lien desk (v2.3405 / v2.3410 / v2.3412)
 
 ## The ask, in the owner's words
 
