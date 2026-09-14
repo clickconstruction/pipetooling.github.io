@@ -1,6 +1,6 @@
 # Takeoffs: measure a week of One at a time / Sheet use, then retire Old
 
-Status: blocked on a week of real use (earliest 2026-09-11) · plan: [`docs/TAKEOFFS_REFRESH_PLAN.md`](../docs/TAKEOFFS_REFRESH_PLAN.md) PRs 8–9
+Status: **unblocked** — the week of real use has passed (2026-09-11); PR 8 (re-measure) is next · plan: [`docs/TAKEOFFS_REFRESH_PLAN.md`](../docs/TAKEOFFS_REFRESH_PLAN.md) PRs 8–9
 
 ## The ask, in the owner's words
 
