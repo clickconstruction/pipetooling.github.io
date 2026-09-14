@@ -156,15 +156,22 @@ export function runNoticeBlocks(n: RunNotice, r: RunRecipient): FilingDocBlock[]
   return buildLienNoticeBlocks(n.fields, extras)
 }
 
-/** The whole packet as one print document: the cover sheet, then per notice its cover note and a copy per recipient. */
-export function runPacketHtml(notices: ReadonlyArray<RunNotice>, todayYmd: string, issuer: PhysicalInvoiceIssuer | null): string {
+/**
+ * The whole packet as one print document: the cover sheet, then per notice its
+ * cover note and a copy per recipient — each copy followed by the job's unpaid
+ * invoices when `invoiceSectionsByJob` carries them (v2.3437, § 53.056(a-3)).
+ */
+export function runPacketHtml(notices: ReadonlyArray<RunNotice>, todayYmd: string, issuer: PhysicalInvoiceIssuer | null, invoiceSectionsByJob?: Readonly<Record<string, readonly string[]>>): string {
   const pages: string[] = []
   const letter = { letterhead: filingLetterheadFromIssuer(issuer) }
   pages.push(filingDocHtml(runCoverSheetBlocks(notices, todayYmd, letter)))
   for (const n of notices) {
     const note = runCoverNoteBlocks(n)
     if (note.length) pages.push(filingDocHtml(note))
-    for (const r of n.recipients) pages.push(filingDocHtml(runNoticeBlocks(n, r)))
+    for (const r of n.recipients) {
+      pages.push(filingDocHtml(runNoticeBlocks(n, r)))
+      for (const sec of invoiceSectionsByJob?.[n.jobId] ?? []) pages.push(sec)
+    }
   }
   const body = pages.map((p, i) => `<section style="${i < pages.length - 1 ? 'page-break-after:always;' : ''}">${p}</section>`).join('')
   return `<!doctype html><html data-theme="light"><head><meta charset="utf-8"><title>Lien notice run — ${demandDate(todayYmd)}</title>

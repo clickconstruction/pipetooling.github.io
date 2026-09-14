@@ -3,6 +3,9 @@ import { withSupabaseRetry } from '../../utils/errorHandling'
 import { filingDocFooter, filingDocPdfBlob, filingPdfFilename } from '../jobsDocuments/lienFilingDocuments'
 import { markLienDeskItemSent } from './lienDeskIo'
 import { runFilingPayload, runNoticeBlocks, type RunNotice, type RunSendRecord } from './lienDeskRun'
+import { buildDemandLetterPacket } from '../jobsDocuments/demandLetterPacket'
+import { buildPhysicalInvoicePdfBlob } from '../physicalInvoicePdf'
+import { noticeInvoiceExhibitInputs, type NoticeInvoiceDoc } from './noticeInvoiceEnclosure'
 
 /**
  * Recording the run: for every notice, email the courtesy copies that asked
@@ -11,9 +14,11 @@ import { runFilingPayload, runNoticeBlocks, type RunNotice, type RunSendRecord }
  * never stops the others; the caller gets both lists.
  */
 
-async function emailNoticePdf(n: RunNotice, recipientKey: 'owner' | 'original_contractor', toEmail: string): Promise<string> {
+async function emailNoticePdf(n: RunNotice, recipientKey: 'owner' | 'original_contractor', toEmail: string, invoiceDocs: readonly NoticeInvoiceDoc[]): Promise<string> {
   const r = n.recipients.find((x) => x.key === recipientKey)!
-  const blob = await filingDocPdfBlob(runNoticeBlocks(n, r), { footer: filingDocFooter('notice_53_056') })
+  const notice = await filingDocPdfBlob(runNoticeBlocks(n, r), { footer: filingDocFooter('notice_53_056') })
+  // The unpaid invoices ride behind the notice, stamped INVOICE (v2.3437, § 53.056(a-3)).
+  const blob = invoiceDocs.length > 0 ? (await buildDemandLetterPacket(notice, await noticeInvoiceExhibitInputs(invoiceDocs, buildPhysicalInvoicePdfBlob))).blob : notice
   const buf = new Uint8Array(await blob.arrayBuffer())
   let binary = ''
   for (let i = 0; i < buf.length; i += 0x8000) binary += String.fromCharCode(...buf.subarray(i, i + 0x8000))
@@ -26,7 +31,10 @@ async function emailNoticePdf(n: RunNotice, recipientKey: 'owner' | 'original_co
 
 export type RunRecordResult = { recorded: string[]; failed: { itemId: string; label: string; reason: string }[] }
 
-export async function recordLienDeskRun(notices: ReadonlyArray<RunNotice>, opts: { userId: string | null; todayYmd: string }): Promise<RunRecordResult> {
+export async function recordLienDeskRun(
+  notices: ReadonlyArray<RunNotice>,
+  opts: { userId: string | null; todayYmd: string; invoiceDocsByJob?: Readonly<Record<string, readonly NoticeInvoiceDoc[]>> },
+): Promise<RunRecordResult> {
   const result: RunRecordResult = { recorded: [], failed: [] }
   for (const n of notices) {
     try {
@@ -35,7 +43,7 @@ export async function recordLienDeskRun(notices: ReadonlyArray<RunNotice>, opts:
         let tracking = r.tracking.trim()
         if (r.method === 'email') {
           if (!r.email) throw new Error(`${r.label}: no email on file`)
-          const id = await emailNoticePdf(n, r.key, r.email)
+          const id = await emailNoticePdf(n, r.key, r.email, opts.invoiceDocsByJob?.[n.jobId] ?? [])
           tracking = `resend:${id} → ${r.email}`
         }
         sends.push({ recipient: r.key, method: r.method, tracking, sent_on: opts.todayYmd })

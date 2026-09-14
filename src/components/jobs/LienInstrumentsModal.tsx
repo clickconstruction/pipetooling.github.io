@@ -28,6 +28,7 @@ import { buildDemandLetterPacket, type DemandExhibit, type DemandExhibitInput, t
 import { buildPhysicalInvoicePdfBlob } from '../../lib/physicalInvoicePdf'
 import { PhysicalInvoicePreview } from './PhysicalInvoicePreview'
 import { JOB_CONTRACT_BUCKET } from '../../lib/jobs/jobContractFileWrite'
+import { noticeInvoiceDocs } from '../../lib/jobs/noticeInvoiceEnclosure'
 import { liveDemandLetters, type JobDemandLetterRow } from '../../lib/jobs/demandLetterTracking'
 import { parsePaymentPromisesRpc } from '../../lib/jobs/paymentPromises'
 import { computeJobLienClock, type JobLienFilingRow } from '../../lib/jobs/lienDeadlines'
@@ -459,6 +460,9 @@ export default function LienInstrumentsModal({
     const row = effJob.customer_id ? payerRows[effJob.customer_id] : undefined
     return { name: row?.name || (effJob.customer_name ?? '').trim(), email: row?.email || (effJob.customer_email ?? '').trim(), address: row?.address ?? customerAddress, label: 'the customer on the job' }
   }, [effJob, selectedInvoices, debtorParty, payerRows, gcEmail, customerAddress])
+
+  // The unpaid bills behind the § 53.056 notice (v2.3437) — every one, not just the demand's selection.
+  const noticeDocs = useMemo(() => (effJob ? noticeInvoiceDocs(effJob) : []), [effJob])
 
   const sources = useMemo<DemandInvoiceSource[]>(() => {
     if (!effJob) return []
@@ -1326,6 +1330,7 @@ export default function LienInstrumentsModal({
             issuer={issuer}
             signerNameFallback={signerNameFallback}
             linkedAddress={linkedAddress}
+            invoiceDocs={noticeDocs}
             jobOwnerRow={jobOwnerRow}
             filings={filings}
             clock={clock}

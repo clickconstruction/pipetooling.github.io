@@ -44,7 +44,7 @@ The desk shows him only what needs a decision: what is open with that GC, their 
 
 Approved notices go out together. {{button:blue|Send the run · N}} in the desk's header opens the run: one row per recipient — the owner of record and the original contractor for each notice — with the delivery method (certified mail by default; courier, hand, or a courtesy email where an address is on file) and a box for the tracking number.
 
-1. {{button:outline|Print the packet}} — one document: a cover sheet listing every envelope with a blank for its tracking number, then each notice twice, *Copy for: Owner of record* and *Copy for: Original contractor*, with the cover note on its own page when the draft asked for it.
+1. {{button:outline|Print the packet}} — one document: a cover sheet listing every envelope with a blank for its tracking number, then each notice twice, *Copy for: Owner of record* and *Copy for: Original contractor*, with the cover note on its own page when the draft asked for it, and the job's unpaid invoice behind each copy (the statute lets the notice include it; the emailed copies carry it too).
 2. Mail them. Type the tracking numbers when you are back, or leave them for later.
 3. {{button:blue|Record the run ▸}} — each notice is written to its job naming **every month it covered**, the courtesy emails go out, and the desk rows move to **Sent**. The forecast's month lines read *notice sent* the moment it saves.
 
