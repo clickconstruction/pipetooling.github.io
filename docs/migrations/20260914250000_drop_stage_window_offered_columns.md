@@ -1,4 +1,4 @@
-# 20260914230000_drop_stage_window_offered_columns.sql (2026-09-14, v2.3438)
+# 20260914250000_drop_stage_window_offered_columns.sql (2026-09-14, v2.3438)
 
 Retires the per-window *offered to the GC* record from v2.2933 (`20260906090000_gc_stage_offers.sql`): drops the partial index `job_stage_windows_offered_idx` and the columns `job_stage_windows.offered_to_gc`, `offered_to_gc_at` and `bundle_id`. Since Stage Plan PR 5 (v2.3132) the GC portal reads the eye on the line item (`jobs_ledger_fixtures.shared_with_gc`, backfilled from `offered_to_gc` by `20260908021501`); nothing read the three columns and v2.3438 removes the last writes. Every statement is `IF EXISTS`. The job-level switches on `jobs_ledger` (`gc_shares_stage_dates`, `gc_auto_offer_next`) stay.
 
