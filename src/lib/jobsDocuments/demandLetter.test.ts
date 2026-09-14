@@ -2,6 +2,11 @@ import { describe, expect, it } from 'vitest'
 import type { JobWithDetails } from '../../types/jobWithDetails'
 import {
   addBusinessDays,
+  addCalendarDays,
+  courtLineText,
+  feeClockDate,
+  interestBasisFor,
+  lienLineBlockedReason,
   buildDemandLetterModel,
   buildDemandLetterPrefill,
   buildDemandLetterText,
@@ -314,5 +319,96 @@ describe('buildDemandStatement — read from the bill, never typed', () => {
     expect(f.debtorParty).toBe('gc')
     expect(f.serviceAddress).toBe('628 Terrell Rd, San Antonio, TX 78209')
     expect(f.outstanding).toBe('1710.00')
+  })
+})
+
+// ---------- v2.3433: every line names its basis ----------
+
+describe('the legal lines (v2.3433)', () => {
+  it('fee clock: 30 calendar days after the letter (CPRC § 38.002)', () => {
+    expect(feeClockDate('2026-09-14')).toBe('2026-10-14')
+    expect(addCalendarDays('2026-12-25', 10)).toBe('2027-01-04')
+  })
+
+  it('interest: ch. 28 from the 36th day after the bill went out; the legal rate from the 30th day after due when it never went out; none otherwise', () => {
+    expect(interestBasisFor([STMT_867])).toEqual({ basis: 'ch28', fromYmd: '2026-09-23' })
+    expect(interestBasisFor([{ ...STMT_867, sentYmd: '' }])).toEqual({ basis: 'legal_rate', fromYmd: '2026-10-05' })
+    expect(interestBasisFor([{ ...STMT_867, sentYmd: '', dueYmd: '' }])).toEqual({ basis: 'none', fromYmd: '' })
+    // Several invoices: the earliest send sets the date.
+    expect(interestBasisFor([STMT_867, { ...STMT_867, sentYmd: '2026-07-01' }]).fromYmd).toBe('2026-08-06')
+  })
+
+  it('court: justice court to $20,000, county or district court above', () => {
+    expect(courtLineText('1710.00')).toBe('Filing suit in justice court, which hears claims to $20,000')
+    expect(courtLineText('20000')).toContain('justice court')
+    expect(courtLineText('20000.01')).toBe('Filing suit in county or district court')
+  })
+
+  it('the Chapter 53 line is offered only while a lien can be filed', () => {
+    expect(lienLineBlockedReason({ lienFilingDeadline: '2027-01-15', todayYmd: '2026-09-14', homestead: false, hasWorkMonth: true })).toBe('')
+    expect(lienLineBlockedReason({ lienFilingDeadline: '2026-09-01', todayYmd: '2026-09-14', homestead: false, hasWorkMonth: true })).toBe('the filing window closed September 1, 2026')
+    expect(lienLineBlockedReason({ lienFilingDeadline: '2027-01-15', todayYmd: '2026-09-14', homestead: true, hasWorkMonth: true })).toContain('homestead')
+    expect(lienLineBlockedReason({ lienFilingDeadline: '', todayYmd: '2026-09-14', homestead: false, hasWorkMonth: false })).toContain('no approved work month')
+  })
+
+  it('the letter names each basis, and drops a blocked lien line even when the switch is on', () => {
+    const f: DemandLetterFields = {
+      ...FIELDS,
+      statement: [STMT_867],
+      outstanding: '1710.00',
+      feeClockYmd: '2026-10-14',
+      interestBasis: 'ch28',
+      interestFromYmd: '2026-09-23',
+      lienFilingDeadline: '2027-01-15',
+      lienBlockedReason: '',
+    }
+    const text = buildDemandLetterText(f, '2026-09-14')
+    expect(text).toContain('Filing suit in justice court, which hears claims to $20,000')
+    expect(text).toContain("Filing a mechanic's lien under Chapter 53 of the Texas Property Code (our filing window for this work runs through January 15, 2027)")
+    expect(text).toContain('If the claim remains unpaid 30 days after this letter, on October 14, 2026, we will also seek our attorney\'s fees under Texas Civil Practice and Remedies Code § 38.001.')
+    expect(text).toContain('bears interest at 1.5 percent per month from September 23, 2026 under § 28.004')
+    expect(text).not.toContain('late fees and interest may continue')
+    expect(text).not.toContain('will be added')
+
+    const blocked = buildDemandLetterText({ ...f, lienBlockedReason: 'the filing window closed September 1, 2026' }, '2026-09-14')
+    expect(blocked).not.toContain("mechanic's lien")
+
+    const legal = buildDemandLetterText({ ...f, interestBasis: 'legal_rate', interestFromYmd: '2026-10-05' }, '2026-09-14')
+    expect(legal).toContain('legal rate of 6 percent a year from October 5, 2026 under Texas Finance Code § 302.002')
+    const none = buildDemandLetterText({ ...f, interestBasis: 'none', interestFromYmd: '' }, '2026-09-14')
+    expect(none).not.toContain('interest')
+  })
+
+  it('a snapshot from before v2.3433 keeps its old lines', () => {
+    const text = buildDemandLetterText(FIELDS, '2026-09-02')
+    expect(text).toContain('Initiating a small claims lawsuit')
+    expect(text).toContain('late fees and interest may continue to accrue')
+    expect(text).not.toContain('§ 38.001')
+  })
+
+  it('prefill sets the fee clock, the interest basis and the lien availability from the job', () => {
+    const base = {
+      job: { id: 'j', hcp_number: '867', job_name: 'x', job_address: '', last_work_date: '2026-06-28', payments: [], invoices: [] } as unknown as JobWithDetails,
+      invoices: [],
+      issuer: null,
+      senderName: 'M',
+      senderEmailFallback: '',
+      recipient: { name: '', email: '', address: '' },
+      priorNotices: [],
+      propertyKind: 'non_residential',
+      todayYmd: '2026-09-14',
+    }
+    const f = buildDemandLetterPrefill(base)
+    expect(f.feeClockYmd).toBe('2026-10-14')
+    expect(f.lienFilingDeadline).toBe('2026-10-15')
+    expect(f.lienBlockedReason).toBe('')
+    expect(f.includeLien).toBe(true)
+    expect(f.interestBasis).toBe('none')
+    expect(f.includeLateFees).toBe(false)
+    const home = buildDemandLetterPrefill({ ...base, homestead: true })
+    expect(home.includeLien).toBe(false)
+    expect(home.lienBlockedReason).toContain('homestead')
+    const closed = buildDemandLetterPrefill({ ...base, todayYmd: '2026-11-01' })
+    expect(closed.lienBlockedReason).toBe('the filing window closed October 15, 2026')
   })
 })

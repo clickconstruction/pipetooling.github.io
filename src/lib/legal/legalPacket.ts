@@ -31,6 +31,16 @@ import {
   type SignedEstimateLike,
 } from '../jobs/jobContractCoverage'
 import { type JobDemandLetterRow, liveDemandLetters } from '../jobs/demandLetterTracking'
+
+/** The letter's snapshot carries the fee clock (v2.3433) and the exhibits (v2.3429); older rows have neither. */
+function demandSnapshotFeeClock(fields: unknown): string | null {
+  const f = fields && typeof fields === 'object' ? (fields as { feeClockYmd?: unknown }) : null
+  return typeof f?.feeClockYmd === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(f.feeClockYmd) ? f.feeClockYmd : null
+}
+function demandSnapshotExhibits(fields: unknown): number {
+  const f = fields && typeof fields === 'object' ? (fields as { enclosures?: unknown }) : null
+  return Array.isArray(f?.enclosures) ? f.enclosures.length : 0
+}
 import { computeJobLienClock, type JobLienFilingRow, liveFilings } from '../jobs/lienDeadlines'
 import { customerAddressLienGaps, customerAddressLienReady, type CustomerAddressRow } from '../jobs/lienProperty'
 import type { PaymentPromise, PromiseOutcome } from '../jobs/paymentPromises'
@@ -255,6 +265,10 @@ export type LegalDemandLine = {
   deadlineYmd: string | null
   deadlinePassed: boolean
   recipient: string
+  /** 30 days after the letter — when fees become recoverable under CPRC § 38.002 (v2.3433; from the letter's snapshot). */
+  feeClockYmd: string | null
+  /** How many exhibits went out behind it (v2.3429; from the snapshot). */
+  exhibits: number
 }
 
 export type LegalFilingLine = {
@@ -670,6 +684,8 @@ export function buildLegalPacket(input: LegalPacketInput): LegalPacket {
     deadlineYmd: d.deadline_date,
     deadlinePassed: Boolean(d.sent_at && d.deadline_date && d.deadline_date < todayYmd),
     recipient: d.recipient_name,
+    feeClockYmd: demandSnapshotFeeClock(d.fields),
+    exhibits: demandSnapshotExhibits(d.fields),
   }))
 
   // --- Their word: one timeline ---------------------------------------------
@@ -768,7 +784,7 @@ export function buildLegalPacket(input: LegalPacketInput): LegalPacket {
       ymd: d.sentYmd,
       sortKey: d.sentYmd ?? '9999',
       kind: 'demand',
-      text: `Final demand ${d.sentYmd ? 'sent' : 'drafted'} · ${d.method}${d.tracking ? ` · ${d.tracking}` : ''}${d.deadlineYmd ? ` · deadline ${d.deadlineYmd}${d.deadlinePassed ? ' (passed)' : ''}` : ''}`,
+      text: `Final demand ${d.sentYmd ? 'sent' : 'drafted'} · ${d.method}${d.tracking ? ` · ${d.tracking}` : ''}${d.deadlineYmd ? ` · deadline ${d.deadlineYmd}${d.deadlinePassed ? ' (passed)' : ''}` : ''}${d.feeClockYmd ? ` · fees from ${d.feeClockYmd}` : ''}${d.exhibits > 0 ? ` · ${d.exhibits} exhibit${d.exhibits === 1 ? '' : 's'}` : ''}`,
       jobLabel: d.jobLabel,
     })
   }

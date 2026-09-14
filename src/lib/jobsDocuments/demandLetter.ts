@@ -63,6 +63,14 @@ export type DemandLetterFields = {
   serviceAddress?: string
   /** What goes out behind the letter (v2.3429): the invoice as Exhibit A, the agreement as B, the delivery record as C. */
   enclosures?: DemandExhibit[]
+  /** YYYY-MM-DD — 30 days after the letter: when attorney's fees become recoverable under CPRC § 38.002 (v2.3433). */
+  feeClockYmd?: string
+  /** Which statute the interest line rests on (v2.3433): ch. 28 after a written payment request, the legal rate otherwise, none when neither applies. */
+  interestBasis?: DemandInterestBasis
+  /** YYYY-MM-DD — the day interest starts under that basis. */
+  interestFromYmd?: string
+  /** Why the Chapter 53 line may not be offered (v2.3433): '' when a lien can be filed today. */
+  lienBlockedReason?: string
   invoiceNumber: string
   /** YYYY-MM-DD */
   invoiceDate: string
@@ -113,6 +121,59 @@ export function addBusinessDays(ymd: string, days: number): string {
     if (dow !== 0 && dow !== 6) left--
   }
   return base.toISOString().slice(0, 10)
+}
+
+export type DemandInterestBasis = 'ch28' | 'legal_rate' | 'none'
+
+/** ymd + n calendar days. */
+export function addCalendarDays(ymd: string, days: number): string {
+  const base = new Date(ymd + 'T12:00:00')
+  if (Number.isNaN(base.getTime())) return ymd
+  base.setDate(base.getDate() + days)
+  return base.toISOString().slice(0, 10)
+}
+
+/** CPRC § 38.002(3): fees follow a claim unpaid 30 days after it is presented — the letter is the presentment. */
+export function feeClockDate(todayYmd: string): string {
+  return addCalendarDays(todayYmd, 30)
+}
+
+/**
+ * The interest line's basis (v2.3433). A bill that went out is a written
+ * payment request under Prop. Code ch. 28 — owner or GC alike, the chapter
+ * has no residential carve-out — due by the 35th day after receipt, and
+ * § 28.004 runs 1.5 % a month from the day after. A bill that was never sent
+ * falls to the legal rate: 6 % a year from the 30th day after it was due
+ * (Fin. Code § 302.002). Neither date → no interest line at all; the letter
+ * never asserts a charge it cannot name (Fin. Code § 392.303(a)(2)).
+ */
+export function interestBasisFor(statement: readonly DemandStatementInvoice[]): { basis: DemandInterestBasis; fromYmd: string } {
+  const sent = statement.map((i) => i.sentYmd).filter((d) => /^\d{4}-\d{2}-\d{2}$/.test(d)).sort()[0]
+  if (sent) return { basis: 'ch28', fromYmd: addCalendarDays(sent, 36) }
+  const due = statement.map((i) => i.dueYmd).filter((d) => /^\d{4}-\d{2}-\d{2}$/.test(d)).sort()[0]
+  if (due) return { basis: 'legal_rate', fromYmd: addCalendarDays(due, 30) }
+  return { basis: 'none', fromYmd: '' }
+}
+
+/** Justice court hears claims to $20,000 exclusive of interest (Gov't Code § 27.031). */
+export const JUSTICE_COURT_LIMIT = 20_000
+
+export function courtLineText(outstanding: string): string {
+  const n = Number((outstanding ?? '').replace(/[$,\s]/g, ''))
+  return Number.isFinite(n) && n <= JUSTICE_COURT_LIMIT ? 'Filing suit in justice court, which hears claims to $20,000' : 'Filing suit in county or district court'
+}
+
+/**
+ * Whether the letter may threaten a Chapter 53 lien today (v2.3433) — a
+ * threatened action that is not available is what Fin. Code § 392.301(a)(8)
+ * forbids. '' when it can; else the reason, shown beside the switch.
+ */
+export function lienLineBlockedReason(input: { lienFilingDeadline: string; todayYmd: string; homestead: boolean; hasWorkMonth: boolean }): string {
+  if (input.homestead) return 'the property is a homestead — a homestead lien needs a contract signed by both spouses and recorded before the work; talk to the attorney'
+  if (!input.hasWorkMonth) return 'no approved work month on the job yet — the filing window cannot be computed'
+  if (!input.lienFilingDeadline) return 'no filing window on record'
+  if (input.lienFilingDeadline < input.todayYmd) return `the filing window closed ${demandDate(input.lienFilingDeadline)}`
+  return ''
 }
 
 /**
@@ -218,8 +279,8 @@ export function buildDemandLetterModel(f: DemandLetterFields, todayYmd: string):
     kind: 'paragraph',
     text: `Unless payment in full is received by ${demandDate(f.deadlineDate)}, we will pursue all legal remedies available, including but not limited to:`,
   })
-  if (f.includeSmallClaims) blocks.push({ kind: 'listItem', text: 'Initiating a small claims lawsuit' })
-  if (f.includeLien) {
+  if (f.includeSmallClaims) blocks.push({ kind: 'listItem', text: f.feeClockYmd ? courtLineText(f.outstanding) : 'Initiating a small claims lawsuit' })
+  if (f.includeLien && !(f.lienBlockedReason ?? '')) {
     blocks.push({
       kind: 'listItem',
       text:
@@ -243,11 +304,31 @@ export function buildDemandLetterModel(f: DemandLetterFields, todayYmd: string):
       (f.paymentMethod.trim() ? `${f.paymentMethod.trim()} ` : '') +
       'If you believe this balance is incorrect or disputed, you must notify us in writing before the deadline above.',
   })
-  if (f.includeLateFees) {
+  if (f.feeClockYmd) {
+    // CPRC § 38.001–.002: presented today; fees follow if unpaid 30 days on. "Seek", never "will be added" (Fin. Code § 392.304(a)(13)).
     blocks.push({
       kind: 'paragraph',
-      text: 'Note: late fees and interest may continue to accrue on the unpaid balance until payment is received in full.',
+      text: `If the claim remains unpaid 30 days after this letter, on ${demandDate(f.feeClockYmd)}, we will also seek our attorney's fees under Texas Civil Practice and Remedies Code § 38.001.`,
     })
+  }
+  if (f.includeLateFees) {
+    const basis = f.interestBasis ?? (f.feeClockYmd ? 'none' : 'legacy')
+    if (basis === 'ch28' && f.interestFromYmd) {
+      blocks.push({
+        kind: 'paragraph',
+        text: `The invoice was a written payment request under Texas Property Code chapter 28; the unpaid amount bears interest at 1.5 percent per month from ${demandDate(f.interestFromYmd)} under § 28.004 until it is paid.`,
+      })
+    } else if (basis === 'legal_rate' && f.interestFromYmd) {
+      blocks.push({
+        kind: 'paragraph',
+        text: `No rate of interest was agreed, so the unpaid amount bears interest at the legal rate of 6 percent a year from ${demandDate(f.interestFromYmd)} under Texas Finance Code § 302.002.`,
+      })
+    } else if (basis === 'legacy') {
+      blocks.push({
+        kind: 'paragraph',
+        text: 'Note: late fees and interest may continue to accrue on the unpaid balance until payment is received in full.',
+      })
+    }
   }
   blocks.push({
     kind: 'signature',
@@ -681,6 +762,8 @@ export type DemandLetterPrefillContext = {
   priorNotices: DemandPriorNotice[]
   /** '' | 'residential' | 'non_residential' from the linked property record. */
   propertyKind: string
+  /** The linked property record's homestead flag (v2.3433) — blocks the Chapter 53 line. */
+  homestead?: boolean
   todayYmd: string
 }
 
@@ -706,6 +789,10 @@ export function buildDemandLetterPrefill(ctx: DemandLetterPrefillContext): Deman
     .filter((d) => /^\d{4}-\d{2}-\d{2}$/.test(d))
     .sort()[0]
   const lastWork = (job.last_work_date ?? '').slice(0, 10)
+  const hasWorkMonth = /^\d{4}-\d{2}-\d{2}$/.test(lastWork)
+  const lienFilingDeadline = hasWorkMonth ? lienFilingDeadlineForMonth(lastWork, propertyKind) : ''
+  const lienBlockedReason = lienLineBlockedReason({ lienFilingDeadline, todayYmd, homestead: Boolean(ctx.homestead), hasWorkMonth })
+  const interest = interestBasisFor(statement)
   return {
     businessName: (issuer?.companyName ?? '').trim(),
     senderName: senderName.trim(),
@@ -728,10 +815,14 @@ export function buildDemandLetterPrefill(ctx: DemandLetterPrefillContext): Deman
     deadlineDate: addBusinessDays(todayYmd, 10),
     paymentMethod: '',
     includeSmallClaims: true,
-    includeLien: true,
-    lienFilingDeadline: /^\d{4}-\d{2}-\d{2}$/.test(lastWork) ? lienFilingDeadlineForMonth(lastWork, propertyKind) : '',
+    includeLien: !lienBlockedReason,
+    lienFilingDeadline,
+    lienBlockedReason,
+    feeClockYmd: feeClockDate(todayYmd),
+    interestBasis: interest.basis,
+    interestFromYmd: interest.fromYmd,
     includeTheftOfServices: false,
-    includeLateFees: true,
+    includeLateFees: interest.basis !== 'none',
     includeNotarial: false,
     priorNotices,
   }
