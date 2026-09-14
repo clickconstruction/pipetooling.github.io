@@ -20,7 +20,7 @@ The Job Summary train (v2.2817–v2.2832: Compare, Months, Cycle, Scatter, Capac
 5. ~~**Bid vs actual**~~ — shipped v2.3342 (Bids → Bid Costs → Bid vs actual reads the Burn train's `job_budgets` snapshots against recorded hours).
 6. ~~**Review vs Job Summary parts cost disagree on J963**~~ — fixed v2.3394: the difference was card charges only (Review counted internal transfers and double-counted invoice-linked card purchases; tally lines were priced identically everywhere). Review now applies Job Summary's one card rule. Still on their own conventions: Job Detail's profit band (gross card charges) and Crew P&L (no parts).
 7. ~~**Days tiles have no delta strip**~~ — shipped v2.3428: the strip moved to a shared `JobRunDeltaStrip`; Days renders it under the tiles from week chips (1 wk … 8 wk) over `jobDaysDelta.ts`.
-8. **v2.2852 follow-ups**: extend `list_latest_report_completion_pct` to return `created_at` (migration) so the badge carries the date before the row is expanded; one shared earned-revenue kernel for Job Summary, Crew P&L and the board (Tier-1 #5(c) remainder — Crew P&L still credits gross bill by hours); optionally stamp `job_pct_events.source = 'field_report'` from `set_job_pct_from_field`.
+8. **v2.2852 follow-ups**: ~~extend `list_latest_report_completion_pct` to return `created_at` (migration) so the badge carries the date before the row is expanded~~ — the RPC has returned `reported_at` since v2.3372; the client reads it for the collapsed-row badge since v2.3441; one shared earned-revenue kernel for Job Summary, Crew P&L and the board (Tier-1 #5(c) remainder — Crew P&L still credits gross bill by hours); optionally stamp `job_pct_events.source = 'field_report'` from `set_job_pct_from_field`.
 
 ## Where it plugs in
 
