@@ -10,6 +10,7 @@ import {
   resolveJobSummaryPercentCompleteWithSource,
   reportPctIsCurrent,
   currentReportPctByJobId,
+  currentReportDateByJobId,
   type JobSummaryPercentSource,
 } from './jobSummaryPercentComplete'
 import { percentProvenanceLabel } from './jobPercentProvenance'
@@ -240,5 +241,22 @@ describe('the newest % wins (v2.3372)', () => {
     const prev = new Map([['j523', 77]])
     expect(currentReportPctByJobId([{ job_ledger_id: 'j523', pct: 77, reported_at: '2026-05-15T20:12:54Z', manual_at: '2026-09-03T18:53:56Z' }], prev).has('j523')).toBe(false)
     expect(resolveJobSummaryPercentCompleteWithSource(map.get('j523') ?? null, 90)).toEqual({ pct: 90, source: 'office' })
+  })
+  it('the same rows date the badge before the row is expanded — only for the reports the % map keeps', () => {
+    const dates = currentReportDateByJobId([
+      { job_ledger_id: 'j523', pct: 77, reported_at: '2026-05-15T20:12:54Z', manual_at: '2026-09-03T18:53:56Z' },
+      { job_ledger_id: 'j949', pct: 100, reported_at: '2026-08-18T12:00:00Z', manual_at: null },
+      { job_ledger_id: 'jnull', pct: null, reported_at: '2026-08-18T12:00:00Z', manual_at: null },
+    ])
+    expect([...dates.entries()]).toEqual([['j949', '2026-08-18T12:00:00Z']])
+    // The pre-v2.3372 row shape carries no date: nothing is added, so the badge keeps today's expanded-row fallback.
+    expect(currentReportDateByJobId([{ job_ledger_id: 'a', pct: 40 }]).size).toBe(0)
+    // A later batch with a stale (or undated) report clears an earlier entry for the same job.
+    const prev = new Map([['j523', '2026-05-15T20:12:54Z'], ['a', '2026-01-01T00:00:00Z']])
+    const next = currentReportDateByJobId([
+      { job_ledger_id: 'j523', pct: 77, reported_at: '2026-05-15T20:12:54Z', manual_at: '2026-09-03T18:53:56Z' },
+      { job_ledger_id: 'a', pct: 40 },
+    ], prev)
+    expect(next.size).toBe(0)
   })
 })

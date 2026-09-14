@@ -195,6 +195,7 @@ export default function Jobs() {
     jobSummaryReportsByJobId,
     loadJobSummaryReportsForJob,
     jobSummaryReportPctByJobId,
+    jobSummaryReportDateByJobId,
   } = useJobSummaryData({ authUserId: authUser?.id, activeTab, extraReportPctJobIds: pipelineBurnReportIds })
   /** Debounce timer for post-Stages-mutation refresh (coalesce rapid moves into one fetch). */
   const loadJobsAfterMutationTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -2091,6 +2092,7 @@ export default function Jobs() {
           jobSummaryMercuryAllocationsByJobId={jobSummaryMercuryAllocationsByJobId}
           jobSummaryReportsByJobId={jobSummaryReportsByJobId}
           jobSummaryReportPctByJobId={jobSummaryReportPctByJobId}
+          jobSummaryReportDateByJobId={jobSummaryReportDateByJobId}
           jobThreadStatsByJobId={jobThreadStatsByJobId}
           onOpenJobDetail={(jobId) =>
             jobDetailModal?.openJobDetail({ jobId, onEditJobSaved: () => void loadJobSummaryLedger() })

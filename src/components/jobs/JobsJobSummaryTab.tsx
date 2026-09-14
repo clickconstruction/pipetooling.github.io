@@ -416,6 +416,8 @@ export type JobsJobSummaryTabProps = {
   jobSummaryReportsByJobId: Map<string, JobSummaryReportRow[]>
   /** Latest field-report completion % per job (RPC list_latest_report_completion_pct). */
   jobSummaryReportPctByJobId: Map<string, number>
+  /** When that report was filed (RPC `reported_at`) — dates the % badge before the row is expanded; the expanded row's report cache is the fallback. */
+  jobSummaryReportDateByJobId?: ReadonlyMap<string, string>
   /** Thread-note stats for expanded rows (same source as Stages Last activity). */
   jobThreadStatsByJobId: Record<string, JobThreadNoteStats>
   onOpenJobDetail: (jobId: string) => void
@@ -454,6 +456,8 @@ export type JobsJobSummaryTabProps = {
   }) => Promise<void>
 }
 
+const EMPTY_REPORT_DATES: ReadonlyMap<string, string> = new Map()
+
 export default function JobsJobSummaryTab({
   view,
   canOpenSessionNotes,
@@ -479,6 +483,7 @@ export default function JobsJobSummaryTab({
   jobSummaryInvoiceLinesByJobId,
   jobSummaryMercuryAllocationsByJobId,
   jobSummaryReportsByJobId,
+  jobSummaryReportDateByJobId = EMPTY_REPORT_DATES,
   jobThreadStatsByJobId,
   onOpenJobDetail,
   onOpenEditJob,
@@ -862,7 +867,7 @@ export default function JobsJobSummaryTab({
                               {enriched.pct != null ? (
                                 <PercentProvenanceChip
                                   source={enriched.pctSource}
-                                  reportedOn={enriched.pctSource === 'crew-report' ? latestReportPercent(jobSummaryReportsByJobId.get(job.id))?.createdAt ?? null : null}
+                                  reportedOn={enriched.pctSource === 'crew-report' ? jobSummaryReportDateByJobId.get(job.id) ?? latestReportPercent(jobSummaryReportsByJobId.get(job.id))?.createdAt ?? null : null}
                                   style={{ display: 'block', marginLeft: 0, marginTop: 2 }}
                                 />
                               ) : null}

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
-import { currentReportPctByJobId, type LatestReportPctRow } from '../lib/jobSummaryPercentComplete'
+import { currentReportDateByJobId, currentReportPctByJobId, type LatestReportPctRow } from '../lib/jobSummaryPercentComplete'
 import { withSupabaseRetry } from '../utils/errorHandling'
 import { fetchJobsLedgerWithDetailsForStages } from '../lib/fetchJobsLedgerWithDetailsForStages'
 import {
@@ -227,6 +227,8 @@ export function useJobSummaryData({
   const [jobSummaryReportPctByJobId, setJobSummaryReportPctByJobId] = useState<Map<string, number>>(
     () => new Map(),
   )
+  /** When that report was filed (RPC `reported_at`), for the % badge's date on the collapsed row; absent under the old RPC shape. */
+  const [jobSummaryReportDateByJobId, setJobSummaryReportDateByJobId] = useState<Map<string, string>>(() => new Map())
 
   const jobSummaryReportsLoadedRef = useRef<Set<string>>(new Set())
   const [jobSummaryReportsByJobId, setJobSummaryReportsByJobId] = useState<Map<string, JobSummaryReportRow[]>>(
@@ -282,6 +284,7 @@ export function useJobSummaryData({
         // v2.3372: a report older than the office's last hand-set is dropped here, so the
         // % column, the burn card and the Pipeline all fall through to pct_complete.
         setJobSummaryReportPctByJobId((prev) => currentReportPctByJobId(rows, new Map(prev)))
+        setJobSummaryReportDateByJobId((prev) => currentReportDateByJobId(rows, new Map(prev)))
       } catch {
         // Column falls back to jobs_ledger.pct_complete; un-mark so a later visit retries.
         for (const id of missing) jobSummaryReportPctRequestedRef.current.delete(id)
@@ -317,5 +320,6 @@ export function useJobSummaryData({
     jobSummaryReportsByJobId,
     loadJobSummaryReportsForJob,
     jobSummaryReportPctByJobId,
+    jobSummaryReportDateByJobId,
   }
 }

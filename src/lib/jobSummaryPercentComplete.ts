@@ -96,6 +96,25 @@ export function currentReportPctByJobId(rows: ReadonlyArray<LatestReportPctRow>,
   return into
 }
 
+/**
+ * The RPC's rows → `job id → reported_at` for the same reports `currentReportPctByJobId`
+ * keeps (Job Summary follow-up 8): the date the % cell's "crew report Aug 27" badge shows
+ * BEFORE the row is expanded. A row without `reported_at` (the pre-v2.3372 RPC shape)
+ * adds nothing, so the badge falls back to the expanded row's report cache as before;
+ * a stale report clears an earlier entry exactly as the % map does.
+ */
+export function currentReportDateByJobId(rows: ReadonlyArray<LatestReportPctRow>, into: Map<string, string> = new Map()): Map<string, string> {
+  for (const r of rows) {
+    if (r.pct == null || !Number.isFinite(r.pct) || !reportPctIsCurrent(r.reported_at, r.manual_at)) {
+      into.delete(r.job_ledger_id)
+      continue
+    }
+    if (r.reported_at) into.set(r.job_ledger_id, r.reported_at)
+    else into.delete(r.job_ledger_id)
+  }
+  return into
+}
+
 /** Who said the %: fully paid invoices covering the contract · the latest crew report · the office's Edit-Job % · nobody. */
 export type JobSummaryPercentSource = 'paid-invoices' | 'crew-report' | 'office' | 'none'
 
