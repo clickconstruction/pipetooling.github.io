@@ -69,6 +69,11 @@ export type ProgressPaymentView = {
   stale: boolean
   /** The percent the row shows, with its source and date, or null. */
   percent: { pct: number; source: 'typed' | 'report'; at: string | null } | null
+  /**
+   * v2.3421 (the door): a job with two or more priced lines the dictionary did
+   * not read as stages — offer *Set stages*, which opens Bill → ① Line Items.
+   */
+  offerSetStages: boolean
 }
 
 export type ProgressPaymentFixture = {
@@ -223,7 +228,7 @@ export function buildProgressPaymentView(input: ProgressPaymentInput): ProgressP
     const cc = crew && (crew.lastWorkYmd || crew.sheet) ? crewClause(crew, todayYmd) : null
     const onSiteNow = !!crew?.onSiteToday
     const text = onSiteNow ? `${cc} · no lines on the job · nothing to bill against` : cc ? `no lines on the job · ${cc}` : 'no lines on the job · nothing to bill against'
-    return { mode: 'nobid', stageBar: null, liveChipSuffix: null, segments: [], words: { text, tone: onSiteNow ? 'red' : 'muted' }, stale, percent }
+    return { mode: 'nobid', stageBar: null, liveChipSuffix: null, segments: [], words: { text, tone: onSiteNow ? 'red' : 'muted' }, stale, percent, offerSetStages: false }
   }
 
   const paidInFull = input.status === 'paid' || money.paid >= money.total - 0.005
@@ -304,6 +309,7 @@ export function buildProgressPaymentView(input: ProgressPaymentInput): ProgressP
       words: { text, tone },
       stale,
       percent,
+      offerSetStages: false,
     }
     return view
   }
@@ -345,5 +351,5 @@ export function buildProgressPaymentView(input: ProgressPaymentInput): ProgressP
   })
   const text = `${crewClause(crew, todayYmd)} · ${percentClause(percent)} · ${mc.text}`
   const tone: ProgressPaymentTone = paidInFull ? 'green' : mc.tone
-  return { mode: 'lines', stageBar: null, liveChipSuffix: null, segments, words: { text, tone }, stale, percent }
+  return { mode: 'lines', stageBar: null, liveChipSuffix: null, segments, words: { text, tone }, stale, percent, offerSetStages: priced.length >= 2 && !paidInFull }
 }

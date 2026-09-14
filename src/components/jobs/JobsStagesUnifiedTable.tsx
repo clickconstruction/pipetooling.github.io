@@ -529,6 +529,7 @@ export default function JobsStagesUnifiedTable(props: JobsStagesUnifiedTableProp
                               pctSaving={pctCompleteSavingId === j.id}
                               onPctCommit={(n) => updateJobPctComplete(j.id, n, j.pct_complete ?? null)}
                               onNoBidValueClick={() => openEdit(j, { fixturesSectionHighlight: true })}
+                              onSetStagesClick={() => openEdit(j, { fixturesSectionHighlight: true })}
                               footnote={showRemaining ? (() => {
                                 const u = jobBillingUnallocatedDollars(j)
                                 return u > 0 ? (
@@ -575,6 +576,7 @@ export default function JobsStagesUnifiedTable(props: JobsStagesUnifiedTableProp
                               pctSaving={pctCompleteSavingId === j.id}
                               onPctCommit={(n) => updateJobPctComplete(j.id, n, j.pct_complete ?? null)}
                               onNoBidValueClick={() => openEdit(j, { fixturesSectionHighlight: true })}
+                              onSetStagesClick={() => openEdit(j, { fixturesSectionHighlight: true })}
                               footnote={
                                 row.kind === 'job_with_merged_billed'
                                   ? (() => {
@@ -1047,6 +1049,7 @@ export default function JobsStagesUnifiedTable(props: JobsStagesUnifiedTableProp
                           pctSaving={pctCompleteSavingId === job.id}
                           onPctCommit={(n) => updateJobPctComplete(job.id, n, job.pct_complete ?? null)}
                           onNoBidValueClick={() => openEdit(job, { fixturesSectionHighlight: true })}
+                          onSetStagesClick={() => openEdit(job, { fixturesSectionHighlight: true })}
                           footnote={(() => {
                             const u = showRemaining ? jobBillingUnallocatedDollars(job) : 0
                             return (
