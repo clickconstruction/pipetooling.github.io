@@ -27,6 +27,9 @@ import {
   type JobPropertyOwnerLike,
 } from '../../lib/jobs/lienProperty'
 import { openHtmlPreviewWindow, openHtmlPrintWindow } from '../../lib/jobsDocuments/printWindow'
+import { buildDemandLetterPacket } from '../../lib/jobsDocuments/demandLetterPacket'
+import { buildPhysicalInvoicePdfBlob } from '../../lib/physicalInvoicePdf'
+import { noticeEnclosureRefItem, noticeInvoiceExhibitInputs, noticeInvoicePrintSections, type NoticeInvoiceDoc } from '../../lib/jobs/noticeInvoiceEnclosure'
 import { supabase } from '../../lib/supabase'
 import { withSupabaseRetry } from '../../utils/errorHandling'
 import { useToastContext } from '../../contexts/ToastContext'
@@ -78,6 +81,7 @@ export default function LienFilingTabs({
   originalContractorEmail,
   onChanged,
   noticeMonths,
+  invoiceDocs = [],
 }: {
   job: JobWithDetails
   jobNumber: string
@@ -97,10 +101,14 @@ export default function LienFilingTabs({
   onChanged: () => void
   /** Months the notice names (the Lien desk, v2.3405); null = the last work month, as before. */
   noticeMonths?: string[] | null
+  /** The unpaid bills as documents (v2.3437) — enclosed behind the § 53.056 notice (§ 53.056(a-3)). */
+  invoiceDocs?: NoticeInvoiceDoc[]
 }) {
   const { user: authUser } = useAuth()
   const { showToast } = useToastContext()
   const [pdfBusy, setPdfBusy] = useState(false)
+  const [encloseInvoice, setEncloseInvoice] = useState(true)
+  const enclosedDocs = useMemo(() => (encloseInvoice ? invoiceDocs : []), [encloseInvoice, invoiceDocs])
   const [voidPendingId, setVoidPendingId] = useState<string | null>(null)
   const [recordStep, setRecordStep] = useState<'notice_sends' | 'affidavit_filing' | 'affidavit_service' | null>(null)
   const [ownerSend, setOwnerSend] = useState<SendDraft>({ method: 'certified_mail', tracking: '', sentOn: todayYmd() })
@@ -190,9 +198,10 @@ export default function LienFilingTabs({
         `Job #${jobNumber}`,
         ...(noticeMonths && noticeMonths.length > 0 ? [`Work months ${noticeMonths.join(', ')}`] : clock.workMonth ? [`Work month ${clock.workMonth}`] : []),
         demandDate(todayYmd()),
+        ...(activeTab === 'notice' && enclosedDocs.length > 0 ? [noticeEnclosureRefItem(enclosedDocs)] : []),
       ],
     }),
-    [issuer, jobNumber, clock.workMonth, noticeMonths],
+    [issuer, jobNumber, clock.workMonth, noticeMonths, activeTab, enclosedDocs],
   )
 
   const currentDoc: { blocks: FilingDocBlock[]; title: string; kind: 'notice_53_056' | 'affidavit' | 'release_of_record' } | null = useMemo(() => {
@@ -221,17 +230,37 @@ export default function LienFilingTabs({
 
   // ---------- actions ----------
 
+  // The invoice behind the notice (v2.3437, § 53.056(a-3)): print pages after the notice, PDF pages merged behind it.
+  const noticeEnclosureHtml = useCallback(
+    (html: string): string => {
+      if (!currentDoc || currentDoc.kind !== 'notice_53_056' || enclosedDocs.length === 0) return html
+      const sections = noticeInvoicePrintSections(enclosedDocs)
+        .map((sec) => `<section style="page-break-before:always;margin-top:3rem">${sec}</section>`)
+        .join('')
+      return html.replace('</body>', `${sections}</body>`)
+    },
+    [currentDoc, enclosedDocs],
+  )
+  const withNoticeEnclosure = useCallback(
+    async (blob: Blob): Promise<Blob> => {
+      if (!currentDoc || currentDoc.kind !== 'notice_53_056' || enclosedDocs.length === 0) return blob
+      const inputs = await noticeInvoiceExhibitInputs(enclosedDocs, buildPhysicalInvoicePdfBlob)
+      return (await buildDemandLetterPacket(blob, inputs)).blob
+    },
+    [currentDoc, enclosedDocs],
+  )
+
   const printDoc = useCallback(() => {
     if (!currentDoc) return
-    const ok = openHtmlPrintWindow(filingDocPrintHtml(currentDoc.blocks, currentDoc.title, filingDocFooter(currentDoc.kind)))
+    const ok = openHtmlPrintWindow(noticeEnclosureHtml(filingDocPrintHtml(currentDoc.blocks, currentDoc.title, filingDocFooter(currentDoc.kind))))
     if (!ok) showToast('Popup blocked — allow popups to print.', 'error')
-  }, [currentDoc, showToast])
+  }, [currentDoc, noticeEnclosureHtml, showToast])
 
   const downloadPdf = useCallback(async () => {
     if (!currentDoc || pdfBusy) return
     setPdfBusy(true)
     try {
-      const blob = await filingDocPdfBlob(currentDoc.blocks, { footer: filingDocFooter(currentDoc.kind) })
+      const blob = await withNoticeEnclosure(await filingDocPdfBlob(currentDoc.blocks, { footer: filingDocFooter(currentDoc.kind) }))
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
@@ -276,7 +305,8 @@ export default function LienFilingTabs({
   /** Email a recipient the notice PDF via the send-lien-filing-email edge fn; returns the resend id. */
   const emailNoticeTo = useCallback(
     async (toEmail: string, recipientLabel: string): Promise<string> => {
-      const blob = await filingDocPdfBlob(buildLienNoticeBlocks(noticeFields, docExtras), { footer: filingDocFooter('notice_53_056') })
+      const notice = await filingDocPdfBlob(buildLienNoticeBlocks(noticeFields, docExtras), { footer: filingDocFooter('notice_53_056') })
+      const blob = enclosedDocs.length > 0 ? (await buildDemandLetterPacket(notice, await noticeInvoiceExhibitInputs(enclosedDocs, buildPhysicalInvoicePdfBlob))).blob : notice
       const buf = new Uint8Array(await blob.arrayBuffer())
       let binary = ''
       for (let i = 0; i < buf.length; i += 0x8000) binary += String.fromCharCode(...buf.subarray(i, i + 0x8000))
@@ -295,7 +325,7 @@ export default function LienFilingTabs({
       }
       return ((data as { resend_email_id?: string | null } | null)?.resend_email_id ?? '') || 'sent'
     },
-    [noticeFields, docExtras, job.id, jobNumber],
+    [noticeFields, docExtras, enclosedDocs, job.id, jobNumber],
   )
 
   const recordNoticeSends = useCallback(async () => {
@@ -524,6 +554,15 @@ export default function LienFilingTabs({
                 <br />
                 <b>Original contractor:</b> {originalContractorName || '—'}
               </div>
+              {invoiceDocs.length > 0 ? (
+                <label data-notice-enclose-invoice style={{ display: 'flex', alignItems: 'flex-start', gap: '0.4rem', fontSize: '0.8125rem', marginBottom: '0.6rem', cursor: 'pointer' }}>
+                  <input type="checkbox" checked={encloseInvoice} onChange={(e) => setEncloseInvoice(e.target.checked)} style={{ marginTop: '0.2rem' }} />
+                  <span>
+                    Enclose the {invoiceDocs.length === 1 ? 'invoice' : `${invoiceDocs.length} invoices`} — {invoiceDocs.map((d) => d.title).join(', ')}
+                    <span style={{ display: 'block', fontSize: '0.6875rem', color: 'var(--text-muted)' }}>§ 53.056(a-3) lets the notice include an invoice or billing statement; it prints after the notice and rides the emailed PDF, stamped INVOICE.</span>
+                  </span>
+                </label>
+              ) : null}
               {recordStep === 'notice_sends' ? (
                 <div style={{ border: '1px solid var(--border-strong)', borderRadius: 8, padding: '0.6rem 0.7rem', background: 'var(--bg-amber-tint)' }}>
                   <div style={{ fontSize: '0.78rem', fontWeight: 700, marginBottom: '0.45rem' }}>Record the sends — the statute names both recipients</div>

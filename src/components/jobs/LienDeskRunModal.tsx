@@ -1,4 +1,6 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import { fetchJobWithDetailsById } from '../../lib/fetchJobWithDetailsById'
+import { noticeInvoiceDocs, noticeInvoicePrintSections, type NoticeInvoiceDoc } from '../../lib/jobs/noticeInvoiceEnclosure'
 import type { PhysicalInvoiceIssuer } from '../../lib/physicalInvoiceIssuer'
 import { formatUsdNoCents } from '../../lib/jobs/jobFormatting'
 import { openHtmlPrintWindow } from '../../lib/jobsDocuments/printWindow'
@@ -33,6 +35,31 @@ export default function LienDeskRunModal({
   const { showToast } = useToastContext()
   const [notices, setNotices] = useState<RunNotice[]>(initial)
   const [busy, setBusy] = useState(false)
+  // The unpaid invoices behind each notice (v2.3437, § 53.056(a-3)) — loaded once per job.
+  const [invoiceDocsByJob, setInvoiceDocsByJob] = useState<Record<string, NoticeInvoiceDoc[]>>({})
+  useEffect(() => {
+    let cancelled = false
+    const jobIds = Array.from(new Set(initial.map((n) => n.jobId)))
+    void (async () => {
+      const next: Record<string, NoticeInvoiceDoc[]> = {}
+      await Promise.all(
+        jobIds.map(async (id) => {
+          try {
+            const job = await fetchJobWithDetailsById(id)
+            if (job) next[id] = noticeInvoiceDocs(job)
+          } catch {
+            // the notice goes without its invoice; the statute only permits the enclosure
+          }
+        }),
+      )
+      if (!cancelled) setInvoiceDocsByJob(next)
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [initial])
+  const invoiceSectionsByJob = useMemo(() => Object.fromEntries(Object.entries(invoiceDocsByJob).map(([id, docs]) => [id, noticeInvoicePrintSections(docs)])), [invoiceDocsByJob])
+  const invoicesEnclosed = notices.reduce((s, n) => s + (invoiceDocsByJob[n.jobId]?.length ?? 0), 0)
   const problems = useMemo(() => notices.map((n) => runNoticeProblems(n)), [notices])
   const blocked = problems.some((p) => p.length > 0)
   const envelopes = notices.reduce((s, n) => s + n.recipients.length, 0)
@@ -41,14 +68,14 @@ export default function LienDeskRunModal({
     setNotices((prev) => prev.map((n, i) => (i !== ni ? n : { ...n, recipients: n.recipients.map((r, j) => (j !== ri ? r : { ...r, ...patch })) })))
 
   const printPacket = () => {
-    if (!openHtmlPrintWindow(runPacketHtml(notices, todayYmd, issuer))) showToast('Popup blocked — allow popups to print the packet.', 'error')
+    if (!openHtmlPrintWindow(runPacketHtml(notices, todayYmd, issuer, invoiceSectionsByJob))) showToast('Popup blocked — allow popups to print the packet.', 'error')
   }
 
   const record = async () => {
     if (busy || blocked || notices.length === 0) return
     setBusy(true)
     try {
-      const result = await recordLienDeskRun(notices, { userId, todayYmd })
+      const result = await recordLienDeskRun(notices, { userId, todayYmd, invoiceDocsByJob })
       if (result.recorded.length) showToast(`${result.recorded.length} ${result.recorded.length === 1 ? 'notice' : 'notices'} recorded — the desk reads them as sent.`, 'success')
       if (result.failed.length) showToast(`${result.failed.length} not recorded: ${result.failed.map((f) => `${f.label} (${f.reason})`).join('; ')}`, 'error')
       onRecorded()
@@ -72,7 +99,7 @@ export default function LienDeskRunModal({
           <div>
             <h2 style={{ margin: 0, fontSize: '1.05rem' }}>Send the run · {notices.length} {notices.length === 1 ? 'notice' : 'notices'}</h2>
             <p style={{ margin: '0.2rem 0 0', fontSize: '0.8125rem', color: 'var(--text-muted)', maxWidth: '78ch' }}>
-              One packet with every approved notice — a cover sheet listing the {envelopes} envelopes, then each notice for the owner of record and for the original contractor, with its cover note. Print it first; type the tracking numbers when you are back from the post office. Recording the run writes each notice to its job with every month it named.
+              One packet with every approved notice — a cover sheet listing the {envelopes} envelopes, then each notice for the owner of record and for the original contractor, with its cover note{invoicesEnclosed > 0 ? ` and the job's unpaid ${invoicesEnclosed === 1 ? 'invoice' : 'invoices'} behind it (§ 53.056(a-3))` : ''}. Print it first; type the tracking numbers when you are back from the post office. Recording the run writes each notice to its job with every month it named.
             </p>
           </div>
           <button type="button" onClick={onClose} aria-label="Close" style={{ border: 'none', background: 'none', cursor: 'pointer', fontSize: '1.25rem', color: 'var(--text-muted)', padding: 4 }}>×</button>

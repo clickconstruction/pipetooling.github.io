@@ -17,6 +17,7 @@ The window header shows the job's two dates: **⏱ Notice by …** (subcontracto
 If the job has a GC, unpaid work months need a **notice of claim** — the statute's own form, filled in by the app — delivered to **both** the owner of record and the GC by the 15th of the 2nd (residential) / 3rd (commercial) month after the work.
 
 - Print it for certified mail, or pick **email** as a recipient's method and the app sends the PDF for you and keeps the send receipt.
+- **Enclose the invoice** is on by default when the job has unpaid bills: the statute lets the notice include the invoice, the owner learns exactly what to withhold from the GC, and the notice's reference strip says it is enclosed. It prints after the notice and rides the emailed PDF, stamped INVOICE.
 - {{button:blue|Save & record sends…}} captures a method + tracking number **per recipient** — that's what lets the affidavit later swear the notices went out.
 
 Jobs where you contracted directly with the owner skip this step — the tab says so.

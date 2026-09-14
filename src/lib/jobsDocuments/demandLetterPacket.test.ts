@@ -25,6 +25,12 @@ describe('demand letter packet (v2.3429)', () => {
     expect(packet.blob.type).toBe('application/pdf')
   })
 
+  it('a custom stamp (the notice\'s INVOICE) replaces EXHIBIT and keeps the page count (v2.3437)', async () => {
+    const packet = await buildDemandLetterPacket(await pdfWithPages(1), [{ label: 'A', stamp: 'INVOICE', title: 'Invoice #2, August 18, 2026', blob: await pdfWithPages(2) }])
+    expect(packet.exhibits).toEqual([{ label: 'A', title: 'Invoice #2, August 18, 2026', pages: 2 }])
+    expect(packet.totalPages).toBe(3)
+  })
+
   it('a letter with no exhibits is just the letter', async () => {
     const packet = await buildDemandLetterPacket(await pdfWithPages(1), [])
     expect(packet.totalPages).toBe(1)

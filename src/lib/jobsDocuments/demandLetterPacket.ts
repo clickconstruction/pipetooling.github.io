@@ -21,6 +21,8 @@ export type DemandExhibitInput = {
   title: string
   /** A rendered PDF (any page count). */
   blob: Blob
+  /** The stamp text; defaults to "EXHIBIT <label>". A § 53.056 notice stamps its invoice "INVOICE" (v2.3437). */
+  stamp?: string
 }
 
 export type DemandLetterPacket = {
@@ -101,7 +103,7 @@ export async function buildDemandLetterPacket(
       out.addPage(page)
       const w = page.getWidth()
       const h = page.getHeight()
-      const stamp = `EXHIBIT ${ex.label}`
+      const stamp = (ex.stamp ?? '').trim() || `EXHIBIT ${ex.label}`
       const size = 11
       const textW = bold.widthOfTextAtSize(stamp, size)
       const padX = 7
@@ -111,7 +113,7 @@ export async function buildDemandLetterPacket(
       const y = h - 30 - boxH
       page.drawRectangle({ x, y, width: boxW, height: boxH, borderColor: stampInk, borderWidth: 1.2, color: lib.rgb(1, 1, 1), opacity: 0.85 })
       page.drawText(stamp, { x: x + padX, y: y + 6, size, font: bold, color: stampInk })
-      const foot = `Exhibit ${ex.label} · ${ex.title} · page ${i + 1} of ${count}`
+      const foot = `${(ex.stamp ?? '').trim() ? ex.title : `Exhibit ${ex.label} · ${ex.title}`} · page ${i + 1} of ${count}`
       page.drawText(foot, { x: 36, y: 16, size: 7, font: regular, color: lib.rgb(0.45, 0.45, 0.45) })
     })
     recorded.push({ label: ex.label, title: ex.title, pages: count })
