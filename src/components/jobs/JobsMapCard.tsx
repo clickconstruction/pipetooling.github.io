@@ -17,8 +17,18 @@
  * asks the board to load them the first time it is turned on. The office
  * anchor and its 25 / 50 mile rings, the geocode cache, clustering and the
  * Google / OpenStreetMap provider rule are the Bid Board map's, shared.
+ *
+ * v2.3397: the rail on the right (`JobsMapRail`) — distance buckets that
+ * double as pin filters with the dollars still to collect, the ask-for-money
+ * list longest waiting first, the pinned total — and the row-hover pulse:
+ * every Pipeline row already carries `data-stages-job-id`, so the card
+ * listens once for mouse-over on the document and pulses the pin of the row
+ * under the pointer. No row component changes; the three table variants get
+ * it for free. Phones have no hover.
  */
 import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from 'react'
+import { JobsMapRail } from './JobsMapRail'
+import { DEFAULT_DISTANCE_BUCKETS, jobsMapPinsInBuckets, jobsMapRail, type DistanceBucketKey, type DistanceBucketVisibility } from '../../lib/jobs/jobsMapRail'
 import type { JobWithDetails } from '../../types/jobWithDetails'
 import { useAddressGeocodeCoords, type AddressToGeocode } from '../../hooks/useAddressGeocodeCoords'
 import { googleMapsBrowserKey, resolveDashboardMapProvider } from '../../lib/dashboardJobsMap'
@@ -298,7 +308,24 @@ export function JobsMapCard({
   const { coords, resolving } = useAddressGeocodeCoords(addresses, !hidden, 'jobs map address_geocodes')
   const { pins, unmapped } = useMemo(() => resolveJobsMapPins(mapJobs, coords), [mapJobs, coords])
   const legend = useMemo(() => jobsMapLegend(pins), [pins])
-  const visible = useMemo(() => jobsMapVisiblePins(pins, show), [pins, show])
+  const sectionVisible = useMemo(() => jobsMapVisiblePins(pins, show), [pins, show])
+  // The rail's distance buckets are a second filter over the section chips.
+  const [bucketsOn, setBucketsOn] = useState<DistanceBucketVisibility>(() => ({ ...DEFAULT_DISTANCE_BUCKETS }))
+  const toggleBucket = useCallback((key: DistanceBucketKey) => setBucketsOn((prev) => ({ ...prev, [key]: !prev[key] })), [])
+  const visible = useMemo(() => jobsMapPinsInBuckets(sectionVisible, anchor, bucketsOn), [sectionVisible, anchor, bucketsOn])
+  const rail = useMemo(() => jobsMapRail(sectionVisible, anchor), [sectionVisible, anchor])
+  // Row hover → pin pulse, by delegation on the rows' own `data-stages-job-id` (desktop only).
+  const [pulseId, setPulseId] = useState<string | null>(null)
+  useEffect(() => {
+    if (hidden || isMobile || typeof document === 'undefined') return
+    const onOver = (e: Event) => {
+      const t = e.target
+      const row = t instanceof Element ? t.closest('[data-stages-job-id]') : null
+      setPulseId(row?.getAttribute('data-stages-job-id') ?? null)
+    }
+    document.addEventListener('mouseover', onOver)
+    return () => document.removeEventListener('mouseover', onOver)
+  }, [hidden, isMobile])
   const paidOff = show.paid ? 0 : (legend.find((l) => l.section === 'paid')?.count ?? 0)
   const byId = useMemo(() => new Map(visible.map((p) => [p.id, p])), [visible])
   const canvasPins = useMemo<MapCanvasPin[]>(
@@ -425,6 +452,8 @@ export function JobsMapCard({
         <>
           {isMobile ? <SectionChips legend={legend} show={show} paidLoaded={paidLoaded} onToggle={toggleSection} isMobile /> : null}
 
+          {/* Map on the left, the rail on the right — the empty land becomes numbers. Phones stack. */}
+          <div style={isMobile ? { display: 'flex', flexDirection: 'column', gap: '0.5rem' } : { display: 'grid', gridTemplateColumns: 'minmax(0, 3fr) minmax(0, 2fr)', gap: '0.6rem', alignItems: 'stretch' }}>
           <div
             // isolation contains Leaflet's internal z-indexes (panes 200–700, controls 1000) so they can't paint over the sticky section strip
             style={{ position: 'relative', height: mapHeight, borderRadius: 4, overflow: 'hidden', isolation: 'isolate', background: 'var(--bg-muted)' }}
@@ -446,6 +475,7 @@ export function JobsMapCard({
                     fitPoints={fitPoints}
                     cluster={clustered}
                     clusterRingPriority={CLUSTER_RING_PRIORITY}
+                    pulseId={isMobile ? null : pulseId}
                     // Leaflet / Google ignore a height change after mount — remount when the form flips
                     key={isMobile ? 'phone' : 'desktop'}
                   />
@@ -462,6 +492,7 @@ export function JobsMapCard({
                     fitPoints={fitPoints}
                     cluster={clustered}
                     clusterRingPriority={CLUSTER_RING_PRIORITY}
+                    pulseId={isMobile ? null : pulseId}
                     // Leaflet / Google ignore a height change after mount — remount when the form flips
                     key={isMobile ? 'phone' : 'desktop'}
                   />
@@ -476,6 +507,22 @@ export function JobsMapCard({
                     : 'None of these jobs has a map location yet.'}
               </div>
             )}
+          </div>
+          {!isMobile ? (
+            <JobsMapRail
+              rail={rail}
+              bucketsOn={bucketsOn}
+              onToggleBucket={toggleBucket}
+              onPickPin={(pin) => select(pin.id)}
+              paidOff={paidOff}
+              unmappedLine={unmappedLine}
+              unmappedCount={unmappedAll.length}
+              unmappedRows={unmappedAll}
+              onFocusRow={onFocusRow}
+              resolving={resolving}
+              isMobile={false}
+            />
+          ) : null}
           </div>
 
           {isMobile && selected ? (
@@ -507,29 +554,21 @@ export function JobsMapCard({
             </div>
           ) : null}
 
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '1rem', flexWrap: 'wrap', fontSize: '0.78rem', color: 'var(--text-muted)' }}>
-            <span style={{ fontVariantNumeric: 'tabular-nums' }}>
-              {visible.length} pinned
-              {paidOff > 0 ? ` · Paid ${paidOff} off` : ''}
-            </span>
-            {resolving && unmappedAll.length > 0 ? (
-              <span>{unmappedAll.length === 1 ? 'Placing 1 more job…' : `Placing ${unmappedAll.length} more jobs…`}</span>
-            ) : unmappedLine ? (
-              <span>
-                {unmappedLine}
-                {unmappedAll.length <= 3
-                  ? unmappedAll.map((j) => (
-                      <span key={j.id}>
-                        {' · '}
-                        <button type="button" onClick={() => onFocusRow(j.row)} style={{ ...LINK_BUTTON_STYLE, fontSize: '0.78rem' }} title="Show this job's row on the board">
-                          {j.numberLabel}
-                        </button>
-                      </span>
-                    ))
-                  : null}
-              </span>
-            ) : null}
-          </div>
+          {isMobile ? (
+            <JobsMapRail
+              rail={rail}
+              bucketsOn={bucketsOn}
+              onToggleBucket={toggleBucket}
+              onPickPin={(pin) => select(pin.id)}
+              paidOff={paidOff}
+              unmappedLine={unmappedLine}
+              unmappedCount={unmappedAll.length}
+              unmappedRows={unmappedAll}
+              onFocusRow={onFocusRow}
+              resolving={resolving}
+              isMobile
+            />
+          ) : null}
         </>
       )}
     </section>

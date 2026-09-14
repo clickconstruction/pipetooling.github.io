@@ -3,6 +3,7 @@ import type { JobWithDetails } from '../../types/jobWithDetails'
 import {
   JOBS_MAP_DEFAULT_SECTIONS,
   JOBS_MAP_SECTION_COLOR,
+  jobBilledAgeDays,
   jobsMapDistanceLine,
   jobsMapJobs,
   jobsMapLegend,
@@ -76,6 +77,23 @@ describe('jobsMapJobs', () => {
   it('a job listed twice pins once', () => {
     const j = job({ id: 'x' })
     expect(jobsMapJobs([j, j]).jobs).toHaveLength(1)
+  })
+
+  it('billed age: whole days since the oldest open bill, by the board’s reference (hand-set bill date, else billed_at); nothing on other jobs', () => {
+    const now = new Date('2026-09-14T15:00:00Z')
+    const billed = job({
+      id: 'b',
+      status: 'billed',
+      invoices: [
+        { id: 'i1', status: 'billed', amount: 900, billed_at: '2026-08-23T14:00:00Z', estimated_bill_date: null },
+        { id: 'i2', status: 'billed', amount: 900, billed_at: '2026-09-10T14:00:00Z', estimated_bill_date: null },
+        { id: 'i3', status: 'paid', amount: 900, billed_at: '2026-01-01T14:00:00Z', estimated_bill_date: null },
+      ] as unknown as JobWithDetails['invoices'],
+    })
+    expect(jobBilledAgeDays(billed, now)).toBe(22)
+    expect(jobsMapJobs([billed], now).jobs[0]!.billedAgeDays).toBe(22)
+    expect(jobsMapJobs([job({ id: 'k' })], now).jobs[0]!.billedAgeDays).toBeNull()
+    expect(jobBilledAgeDays(job({ id: 'none', status: 'billed', invoices: [{ id: 'i', status: 'billed', amount: 1, billed_at: null, estimated_bill_date: null }] as unknown as JobWithDetails['invoices'] }), now)).toBeNull()
   })
 
   it('owed dollars: open bills minus payments, only on billed / ready-to-bill jobs', () => {

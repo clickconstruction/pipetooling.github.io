@@ -2,7 +2,7 @@
 title: see the pipeline on a map
 category: Jobs & Scheduling
 roles: dev, master_technician, assistant, controller, superintendent
-keywords: map, pipeline, jobs, pins, where is the job, distance, miles from the office, collections, directions, hide map, cluster, paid jobs, fit all
+keywords: map, pipeline, jobs, pins, where is the job, distance, miles from the office, collections, directions, hide map, cluster, paid jobs, fit all, to collect, ask for money, oldest bill, rail, hover
 order: 32
 ---
 **Jobs → Pipeline** has a **Jobs on a map** card under the toolbar. It plots the jobs the board is showing — the same list, so the search box and the GC, development, Account Man and contract filters all change the pins. Nobody sees a pin here they couldn't already open from the board.
@@ -34,6 +34,24 @@ On a phone, tapping a pin shows the job as a bar under the map instead of a pop-
 ## Paid jobs
 
 The board only loads Paid jobs when you open the Paid in Full section, so the Paid chip reads **…** until then. Tap it once and the board loads them and their pins appear; tap it again to hide them.
+
+## The rail beside the map
+
+On a desktop the map takes the left of the card and a rail on the right says what the map knows:
+
+- **By distance from the office** — three boxes: **≤ 25 mi**, **25–50 mi**, **50 mi +**, each with how many jobs are pinned there, the dollars still to collect on them (open bills minus what has been paid — the same numbers the Billed and Ready to Bill sections use), and how many jobs to ask. Tap a box to hide or show that band's pins, the same way the section chips work.
+- **Ask for money · longest waiting first** — the billed and ready-to-bill jobs, oldest bill first, then nearest. *Billed 46 d* reads red when the job is in Collections and amber once a bill is 30 days old. Tap a row to jump to its pin and light its row on the board. "+ N more" means the list is capped at five.
+- The last line reads the pinned total and what is still to collect — *112 pinned · $696k to collect · Paid 723 off* — and carries the **no map location** link.
+
+On a phone the rail sits under the map: the three boxes in a row, then the ask list.
+
+:::example Friday collections call
+Three amber rows and one red one at the top of Ask for money. Tap the red one — the pin lights, the Billed row scrolls into view under the map, and Open job takes you to the bill and the customer's number.
+:::
+
+## From a row to its pin
+
+On a desktop, rest the mouse on any job row on the board and that job's pin on the map wears a pulsing halo in its section colour, so you can find where a job is without clicking anything. If the pin is folded into a cluster disc, the disc pulses instead. A job whose section chip is off, or that has no map location yet, shows nothing. Phones have no hover, so there the link runs one way: tap a pin to light its row.
 
 ## Cluster, Fit all, Hide map
 
