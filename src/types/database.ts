@@ -21279,6 +21279,24 @@ export type Database = {
           master_user_id: string
         }[]
       }
+      list_job_crew_position: {
+        Args: { p_job_ids: string[]; p_today: string }
+        Returns: {
+          job_ledger_id: string
+          last_day_people: string[]
+          last_work_date: string
+          pct_manual_at: string
+          people_60d: number
+          report_at: string
+          report_pct: number
+          sessions_60d: number
+          sheet_date: string
+          sheet_names: string
+          sheet_progress_pct: number
+          sheet_stage: string
+          sheet_stage_changed_at: string
+        }[]
+      }
       list_job_followup_activity: {
         Args: { p_today: string }
         Returns: {
@@ -21303,24 +21321,6 @@ export type Database = {
           time_end: string
           time_start: string
           work_date: string
-        }[]
-      }
-      list_job_crew_position: {
-        Args: { p_job_ids: string[]; p_today: string }
-        Returns: {
-          job_ledger_id: string
-          last_work_date: string
-          last_day_people: string[]
-          sessions_60d: number
-          people_60d: number
-          sheet_stage: string
-          sheet_names: string
-          sheet_date: string
-          sheet_progress_pct: number
-          sheet_stage_changed_at: string
-          report_pct: number
-          report_at: string
-          pct_manual_at: string
         }[]
       }
       list_job_stage_progress: {
