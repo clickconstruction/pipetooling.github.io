@@ -489,9 +489,9 @@ export function buildNeedsYouItems(inputs: NeedsYouInputs): NeedsYouItem[] {
       severity: 'amber',
       kicker: 'Lien deadlines',
       title: n === 1 ? `A lien filing window closes ${worst}` : `${n} lien filing windows close soon (first: ${worst})`,
-      detail: `${money} is still open and the § 53.052 affidavit window is closing — after it, the lien right on this work is gone. The affidavit is ready behind its gate on the job's lien instruments.`,
+      detail: `${money} is still open and the § 53.052 affidavit window is closing — after it, the lien right on this work is gone. The Lien desk's Affidavits pile drafts, approves and files it.`,
       figure: String(n),
-      actionLabel: n === 1 ? 'Open the job' : 'Review them',
+      actionLabel: 'Open the Lien desk',
     })
   }
 

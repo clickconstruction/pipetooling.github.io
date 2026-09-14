@@ -24,6 +24,8 @@ export async function saveLienDeskDraft(input: {
   fields: LienDeskDraftFields
   coverNote: boolean
   userId: string | null
+  /** 'notice_53_056' (default) or 'affidavit'. */
+  kind?: 'notice_53_056' | 'affidavit'
 }): Promise<string> {
   const payload = { months: input.months, fields: draftJson(input.fields), cover_note: input.coverNote }
   if (input.itemId) {
@@ -37,7 +39,7 @@ export async function saveLienDeskDraft(input: {
     () =>
       supabase
         .from('job_lien_desk_items')
-        .insert({ job_id: input.jobId, kind: 'notice_53_056', status: 'drafted', drafted_by: input.userId, ...payload } as never)
+        .insert({ job_id: input.jobId, kind: input.kind ?? 'notice_53_056', status: 'drafted', drafted_by: input.userId, ...payload } as never)
         .select('id')
         .single(),
     'lien desk: create draft',
@@ -108,7 +110,7 @@ export async function pullBackLienDeskItem(itemId: string, userId: string | null
 }
 
 /** The office accepts the forfeit for these months (the row stays as the record of the decision). */
-export async function skipLienDeskItem(input: { itemId: string | null; jobId: string; months: string[]; fields: LienDeskDraftFields; reason: string; userId: string | null }): Promise<void> {
+export async function skipLienDeskItem(input: { itemId: string | null; jobId: string; months: string[]; fields: LienDeskDraftFields; reason: string; userId: string | null; kind?: 'notice_53_056' | 'affidavit' }): Promise<void> {
   const fields = draftJson({ ...input.fields, skipReason: input.reason.trim() })
   if (input.itemId) {
     await withSupabaseRetry(
@@ -121,7 +123,7 @@ export async function skipLienDeskItem(input: { itemId: string | null; jobId: st
     () =>
       supabase
         .from('job_lien_desk_items')
-        .insert({ job_id: input.jobId, kind: 'notice_53_056', status: 'missed', months: input.months, fields, drafted_by: input.userId } as never)
+        .insert({ job_id: input.jobId, kind: input.kind ?? 'notice_53_056', status: 'missed', months: input.months, fields, drafted_by: input.userId } as never)
         .select('id')
         .single(),
     'lien desk: skip',
@@ -150,11 +152,24 @@ export async function setCustomerLienNoticePolicy(customerId: string, policy: Li
  */
 export async function syncLienDeskAfterRecord(jobId: string): Promise<boolean> {
   const items = await withSupabaseRetry<LienDeskItemRow[]>(
-    () => supabase.from('job_lien_desk_items').select('*').eq('job_id', jobId).eq('kind', 'notice_53_056').is('voided_at', null).in('status', ['approved', 'drafted', 'awaiting_approval', 'held']),
+    () => supabase.from('job_lien_desk_items').select('*').eq('job_id', jobId).is('voided_at', null).in('status', ['approved', 'drafted', 'awaiting_approval', 'held']),
     'lien desk: sync items',
   )
-  const item = (items ?? [])[0]
-  if (!item) return false
+  let moved = false
+  // Affidavits (v2.3412): a filed affidavit (filed_at set) sends the item.
+  const affidavitItem = (items ?? []).find((i) => i.kind === 'affidavit')
+  if (affidavitItem) {
+    const filed = await withSupabaseRetry<{ id: string }[]>(
+      () => supabase.from('job_lien_filings').select('id').eq('job_id', jobId).eq('kind', 'affidavit').is('voided_at', null).not('filed_at', 'is', null).order('created_at', { ascending: false }).limit(1),
+      'lien desk: sync affidavit',
+    )
+    if (filed?.[0]) {
+      await markLienDeskItemSent(affidavitItem.id, filed[0].id)
+      moved = true
+    }
+  }
+  const item = (items ?? []).find((i) => i.kind === 'notice_53_056')
+  if (!item) return moved
   const filings = await withSupabaseRetry<{ id: string; months_covered: string[] | null; created_at: string }[]>(
     () => supabase.from('job_lien_filings').select('id, months_covered, created_at').eq('job_id', jobId).eq('kind', 'notice_53_056').is('voided_at', null).order('created_at', { ascending: false }),
     'lien desk: sync filings',

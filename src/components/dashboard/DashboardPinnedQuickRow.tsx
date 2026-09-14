@@ -657,7 +657,9 @@ export function DashboardPinnedQuickRow({
               navigate('/jobs?tab=stages')
             } else if (item.key === 'lien-notice-draft' || item.key === 'lien-notice-approve') {
               navigate('/jobs?tab=stages&liendesk=1')
-            } else if (item.key === 'lien-serve-copy' || item.key === 'lien-file-window') {
+            } else if (item.key === 'lien-file-window') {
+              navigate('/jobs?tab=stages&liendesk=1&kind=affidavit')
+            } else if (item.key === 'lien-serve-copy') {
               navigate('/jobs?tab=stages')
             } else if (item.key === 'hours-approvals') {
               navigate('/people?tab=hours&approvals=1')

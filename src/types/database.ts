@@ -21216,6 +21216,27 @@ export type Database = {
       }
       list_job_payment_promises: { Args: never; Returns: Json }
       lien_notice_deadline: { Args: { p_month: string; p_property_kind: string }; Returns: string }
+      lien_filing_deadline: { Args: { p_month: string; p_property_kind: string }; Returns: string }
+      list_lien_affidavit_windows: {
+        Args: { p_within_days?: number }
+        Returns: {
+          job_id: string
+          last_month: string
+          deadline: string
+          is_sub: boolean
+          noticed: boolean
+          filed: boolean
+          open_balance: number
+          customer_id: string | null
+          gc_customer_id: string | null
+          property_kind: string
+          has_owner: boolean
+          has_legal: boolean
+          homestead: boolean
+          desk_item_id: string | null
+          desk_status: string | null
+        }[]
+      }
       list_lien_notice_months: {
         Args: { p_within_days?: number }
         Returns: {

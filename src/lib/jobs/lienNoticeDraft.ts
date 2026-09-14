@@ -1,4 +1,4 @@
-import type { LienNoticeFields } from '../jobsDocuments/lienFilingDocuments'
+import type { LienAffidavitFields, LienNoticeFields } from '../jobsDocuments/lienFilingDocuments'
 import type { PhysicalInvoiceIssuer } from '../physicalInvoiceIssuer'
 import { workMonthLabel } from './forecastWorkMonths'
 
@@ -90,5 +90,51 @@ export function parseLienDeskDraftFields(raw: unknown): LienDeskDraftFields | nu
     },
     gcEmail: str(o.gcEmail),
     ...(typeof o.skipReason === 'string' ? { skipReason: o.skipReason } : {}),
+  }
+}
+
+/** The § 53.054 affidavit, filled from the job — the Lien window's affidavit tab's recipe. */
+export type LienAffidavitJobFacts = {
+  jobName: string | null | undefined
+  jobAddress: string | null | undefined
+  isSub: boolean
+  originalContractorName: string
+  originalContractorAddress: string
+  ownerName: string
+  ownerAddress: string
+  county: string
+  legalDescription: string
+  customerName: string | null | undefined
+  revenue: number
+  paymentsMade: number
+  /** 'YYYY-MM' — the last month worked; the affidavit swears the work span. */
+  lastMonth: string
+  noticesRecorded: boolean
+  contactPerson: string
+  issuer: PhysicalInvoiceIssuer | null
+}
+
+export function buildLienAffidavitFieldsForJob(f: LienAffidavitJobFacts): LienAffidavitFields {
+  const unpaid = Math.max(0, f.revenue - f.paymentsMade)
+  const monthEnd = /^\d{4}-\d{2}$/.test(f.lastMonth) ? `${f.lastMonth}-28` : ''
+  return {
+    county: f.county,
+    claimantPersonName: f.contactPerson,
+    claimantCompany: (f.issuer?.companyName ?? '').trim() || DEFAULT_CLAIMANT_NAME,
+    claimantAddress: (f.issuer?.addressText ?? '').replace(/\r?\n/g, ', ').trim(),
+    legalDescription: f.legalDescription,
+    propertyAddress: (f.jobAddress ?? '').trim(),
+    contractedWithName: f.isSub ? f.originalContractorName : f.ownerName || (f.customerName ?? '').trim(),
+    workDescription: (f.jobName ?? '').trim() || 'Plumbing labor and materials',
+    workStart: monthEnd,
+    workEnd: monthEnd,
+    ownerName: f.ownerName,
+    ownerAddress: f.ownerAddress,
+    originalContractorName: f.originalContractorName,
+    originalContractorAddress: f.originalContractorAddress,
+    contractAmount: f.revenue.toFixed(2),
+    paidAmount: f.paymentsMade.toFixed(2),
+    unpaidAmount: unpaid.toFixed(2),
+    includeNoticesSworn: !f.isSub || f.noticesRecorded,
   }
 }
