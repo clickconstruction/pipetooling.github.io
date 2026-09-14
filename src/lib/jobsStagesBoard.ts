@@ -497,7 +497,11 @@ export function buildJobsStagesBoardLists(
   // input order) shows the same order: by displayed number (C# interleaved with
   // HCP), or by time added when the ⋯ menu's sort says so (v2.1807).
   const filtered = [...filterJobsByStagesSearch(jobs, stagesSearchQuery, extraJobIds)].sort(
-    sortMode === 'added' ? sortStagesJobsByAddedDesc : sortStagesJobsByEffectiveNumberDesc,
+    sortMode === 'added'
+      ? sortStagesJobsByAddedDesc
+      : sortMode === 'progress'
+        ? sortStagesJobsByProgressAsc
+        : sortStagesJobsByEffectiveNumberDesc,
   )
   const status = (j: JobWithDetails) => (j.status ?? 'working') as string
   const waiting = filtered.filter((j) => status(j) === 'waiting')
@@ -562,6 +566,19 @@ export function buildJobsStagesBoardLists(
 export function sortStagesJobsByAddedDesc(a: JobWithDetails, b: JobWithDetails): number {
   const cmp = (b.created_at ?? '').localeCompare(a.created_at ?? '')
   if (cmp !== 0) return cmp
+  return sortStagesJobsByEffectiveNumberDesc(a, b)
+}
+
+/**
+ * Least done first (jobs_ledger.pct_complete asc, 0 → 100); effective number
+ * breaks ties. A job with no percent recorded sinks below 100% — the column
+ * shows it blank, so it must not read as a 0 (v2.3408).
+ */
+export function sortStagesJobsByProgressAsc(a: JobWithDetails, b: JobWithDetails): number {
+  const pa = a.pct_complete != null && Number.isFinite(Number(a.pct_complete)) ? Number(a.pct_complete) : null
+  const pb = b.pct_complete != null && Number.isFinite(Number(b.pct_complete)) ? Number(b.pct_complete) : null
+  if ((pa == null) !== (pb == null)) return pa == null ? 1 : -1
+  if (pa != null && pb != null && pa !== pb) return pa - pb
   return sortStagesJobsByEffectiveNumberDesc(a, b)
 }
 

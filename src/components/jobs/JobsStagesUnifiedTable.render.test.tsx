@@ -5,7 +5,7 @@
  * Jobs.tsx in v2.830.
  */
 import { describe, expect, it, vi } from 'vitest'
-import { screen } from '@testing-library/react'
+import { fireEvent, screen } from '@testing-library/react'
 
 vi.mock('../../lib/supabase', async () => {
   const { makeSupabaseStub } = await import('../../test/renderSmokeMocks')
@@ -112,6 +112,17 @@ describe('JobsStagesUnifiedTable render smoke', () => {
     const mergedRow = document.querySelector(`tr[data-stages-invoice-id="${billedInvoice.id}"]`)
     expect(mergedRow).toBeTruthy()
     expect(mergedRow!.getAttribute('data-stages-job-id')).toBe(billedJob.id)
+  })
+
+  it('the Progress & payment header sorts by % complete when the tab hands it a toggle (v2.3408)', () => {
+    const onToggleProgressSort = vi.fn()
+    const rows: StageRow[] = [{ kind: 'job', job: makeJob({ job_name: 'RTB Sortable', status: 'ready_to_bill' }) }]
+    renderWithProviders(<JobsStagesUnifiedTable {...makeProps({ rows, onToggleProgressSort, stagesSortMode: 'progress' })} />)
+    const header = screen.getByRole('button', { name: /Progress & payment/ })
+    expect(header.getAttribute('aria-pressed')).toBe('true')
+    expect(header.closest('th')!.getAttribute('aria-sort')).toBe('ascending')
+    fireEvent.click(header)
+    expect(onToggleProgressSort).toHaveBeenCalledTimes(1)
   })
 
   it('applies the flash styling branch to the row matching flashInvoiceId', () => {

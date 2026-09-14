@@ -4,7 +4,7 @@
  * (Waiting / Working / Paid in Full), extracted from Jobs.tsx in v2.830.
  */
 import { describe, expect, it, vi } from 'vitest'
-import { screen } from '@testing-library/react'
+import { fireEvent, screen } from '@testing-library/react'
 
 vi.mock('../../lib/supabase', async () => {
   const { makeSupabaseStub } = await import('../../test/renderSmokeMocks')
@@ -94,6 +94,31 @@ describe('JobsStagesTable render smoke', () => {
     expect(document.querySelector(`tr[data-stages-job-id="${b.id}"]`)).toBeTruthy()
     expect(screen.queryAllByLabelText('Percent complete')).toHaveLength(0)
     expect(screen.getByText('Tech One')).toBeTruthy()
+  })
+
+  it('the Progress & payment header is a sort button only when the tab hands it a toggle (v2.3408)', () => {
+    const onToggleProgressSort = vi.fn()
+    const { unmount } = renderWithProviders(
+      <JobsStagesTable {...makeProps({ jobList: [makeJob({ job_name: 'Sortable' })], onToggleProgressSort })} />,
+    )
+    const header = screen.getByRole('button', { name: /Progress & payment/ })
+    expect(header.getAttribute('aria-pressed')).toBe('false')
+    fireEvent.click(header)
+    expect(onToggleProgressSort).toHaveBeenCalledTimes(1)
+    unmount()
+    // Sorted: the header reads pressed and the column carries aria-sort.
+    renderWithProviders(
+      <JobsStagesTable {...makeProps({ jobList: [makeJob({ job_name: 'Sortable' })], onToggleProgressSort, stagesSortMode: 'progress' })} />,
+    )
+    const pressed = screen.getByRole('button', { name: /Progress & payment/ })
+    expect(pressed.getAttribute('aria-pressed')).toBe('true')
+    expect(pressed.closest('th')!.getAttribute('aria-sort')).toBe('ascending')
+  })
+
+  it('without a toggle the Progress & payment header is plain text', () => {
+    renderWithProviders(<JobsStagesTable {...makeProps({ jobList: [makeJob({ job_name: 'Plain' })] })} />)
+    expect(screen.queryByRole('button', { name: /Progress & payment/ })).toBeNull()
+    expect(screen.getByText('Progress & payment').tagName).toBe('TH')
   })
 
   it('renders a Share job button per row (v2.2613 — Waiting/Working join the every-row promise)', () => {

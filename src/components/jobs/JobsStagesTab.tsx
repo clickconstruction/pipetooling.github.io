@@ -211,10 +211,12 @@ import {
   type StagesExcludeFilters,
 } from '../../lib/jobsStagesExcludeFilters'
 import {
+  STAGES_SORT_MODE_ACTIVE_CHIP_LABELS,
   STAGES_SORT_MODE_LABELS,
   STAGES_SORT_MODES,
   loadStagesSortMode,
   saveStagesSortMode,
+  toggleStagesProgressSort,
   type StagesBoardSortMode,
 } from '../../lib/jobsStagesSortMode'
 import { stagesJumpStripCount } from '../../lib/jobs/stagesJumpStrip'
@@ -1425,6 +1427,15 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
   const setStagesSortMode = useCallback((mode: StagesBoardSortMode) => {
     setStagesSortModeState(mode)
     saveStagesSortMode(mode)
+  }, [])
+  // The "Progress & payment" header click (v2.3408): % complete 0 → 100, or back
+  // to job-number order. Session-only — saveStagesSortMode never stores it.
+  const onToggleProgressSort = useCallback(() => {
+    setStagesSortModeState((prev) => {
+      const next = toggleStagesProgressSort(prev)
+      saveStagesSortMode(next)
+      return next
+    })
   }, [])
   const stagesExclusionCount = countStagesExclusions(stagesExcludeFilters)
   const stagesBoardLists = useMemo(
@@ -2907,11 +2918,15 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                 <button
                   type="button"
                   onClick={() => setStagesSortMode('number')}
-                  title="Rows are sorted by time added (newest first) — tap to go back to job-number order"
-                  aria-label="Sorted by time added — tap to restore job-number order"
+                  title={
+                    stagesSortMode === 'progress'
+                      ? 'Rows are sorted by % complete (0 → 100) — tap to go back to job-number order'
+                      : 'Rows are sorted by time added (newest first) — tap to go back to job-number order'
+                  }
+                  aria-label={`Sorted by ${STAGES_SORT_MODE_ACTIVE_CHIP_LABELS[stagesSortMode]} — tap to restore job-number order`}
                   style={stagesActiveFilterChipStyle}
                 >
-                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0 }}>Sorted: time added</span>
+                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0 }}>Sorted: {STAGES_SORT_MODE_ACTIVE_CHIP_LABELS[stagesSortMode]}</span>
                   <span aria-hidden style={{ flexShrink: 0 }}>×</span>
                 </button>
               ) : null}
@@ -3984,6 +3999,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                   <StagesSectionList
                     jobList={waiting}
                     stagesSortMode={stagesSortMode}
+                    onToggleProgressSort={onToggleProgressSort}
                     actionLabel={'Move to Working'}
                     onAction={(j) => void updateJobStatus(j.id, 'working')}
                     showTimeOpen={true}
@@ -4071,6 +4087,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                   <StagesSectionList
                     jobList={working}
                     stagesSortMode={stagesSortMode}
+                    onToggleProgressSort={onToggleProgressSort}
                     actionLabel={'Ready to Bill'}
                     onAction={(j) =>
                       stagesHamMode
@@ -4170,6 +4187,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                   <StagesUnifiedSectionList
                     rows={readyToBillRows}
                     stagesSortMode={stagesSortMode}
+                    onToggleProgressSort={onToggleProgressSort}
                     actionLabel={'Bill Customer'}
                     onOpenLienRelease={openLienReleaseFromRow}
                     lienReleaseJobIds={lienReleaseJobIds}
@@ -4529,6 +4547,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                   <StagesUnifiedSectionList
                     rows={billedListRows}
                     stagesSortMode={stagesSortMode}
+                    onToggleProgressSort={onToggleProgressSort}
                     billedExpectedPayChip={billedExpectedPayChipRenderer}
                     actionLabel={'Mark Paid'}
                     onJobAction={(j) => setMarkPaidJob(j)}
@@ -4678,6 +4697,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                   <StagesUnifiedSectionList
                     rows={collectionsRows}
                     stagesSortMode={stagesSortMode}
+                    onToggleProgressSort={onToggleProgressSort}
                     actionLabel={'Mark Paid'}
                     onJobAction={(j) => setMarkPaidJob(j)}
                     onInvoiceAction={(inv) => setMarkPaidInvoice(inv)}
@@ -4839,6 +4859,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                     <StagesSectionList
                       jobList={paid}
                       stagesSortMode={stagesSortMode}
+                      onToggleProgressSort={onToggleProgressSort}
                       actionLabel={null}
                       onAction={() => {}}
                       showTimeOpen={true}

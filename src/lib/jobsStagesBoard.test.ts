@@ -499,6 +499,24 @@ describe('buildJobsStagesBoardLists sort modes (v2.1807)', () => {
     const { working } = buildJobsStagesBoardLists([twinA, dateless, twinB], '', null, 'added')
     expect(working.map((j) => j.id)).toEqual(['twin-b', 'twin-a', 'dateless'])
   })
+
+  it("'progress' orders 0 → 100 inside the section, ties by effective number, no percent sinks (v2.3408)", () => {
+    const done = jobStub({ id: 'done', status: 'working', invoices: [], hcp_number: '700', pct_complete: 100 })
+    const half = jobStub({ id: 'half', status: 'working', invoices: [], hcp_number: '710', pct_complete: 50 })
+    const fresh = jobStub({ id: 'fresh', status: 'working', invoices: [], hcp_number: '720', pct_complete: 0 })
+    const halfTwin = jobStub({ id: 'half-twin', status: 'working', invoices: [], hcp_number: '730', pct_complete: 50 })
+    const blank = jobStub({ id: 'blank', status: 'working', invoices: [], hcp_number: '999', pct_complete: null })
+    const { working } = buildJobsStagesBoardLists([done, blank, half, fresh, halfTwin], '', null, 'progress')
+    expect(working.map((j) => j.id)).toEqual(['fresh', 'half-twin', 'half', 'done', 'blank'])
+  })
+
+  it("'progress' never reorders sections — a paid job stays in paid", () => {
+    const paid = jobStub({ id: 'paid', status: 'paid', invoices: [], hcp_number: '1', pct_complete: 0 })
+    const working = jobStub({ id: 'working', status: 'working', invoices: [], hcp_number: '2', pct_complete: 100 })
+    const lists = buildJobsStagesBoardLists([working, paid], '', null, 'progress')
+    expect(lists.paid.map((j) => j.id)).toEqual(['paid'])
+    expect(lists.working.map((j) => j.id)).toEqual(['working'])
+  })
 })
 
 describe('buildJobsStagesBoardLists', () => {

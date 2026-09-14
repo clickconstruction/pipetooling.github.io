@@ -12,6 +12,7 @@ import {
   formatUsdNoCents,
 } from '../../lib/jobs/jobFormatting'
 import { stagesAddedStampLabel, type StagesBoardSortMode } from '../../lib/jobsStagesSortMode'
+import StagesProgressPaymentHeader from './StagesProgressPaymentHeader'
 import {
   effectiveInvoiceEstBillDate,
   invoiceOpenRemainingOnJob,
@@ -79,8 +80,10 @@ type JobsLedgerInvoice = Database['public']['Tables']['jobs_ledger_invoices']['R
  */
 export type JobsStagesUnifiedTableProps = {
   rows: StageRow[]
-  /** Board sort mode (v2.1807): 'added' shows an "added <date>" stamp beside each job number. */
+  /** Board sort mode (v2.1807): 'added' shows an "added <date>" stamp beside each job number; 'progress' (v2.3408) lights the column header. */
   stagesSortMode?: StagesBoardSortMode
+  /** Click on the "Progress & payment" header (v2.3408): flip the % complete sort. Omit to render a plain header. */
+  onToggleProgressSort?: () => void
   /** Follow-Up deck embed (v2.1740): the card names the columns' context itself, so skip the header row. */
   hideHeader?: boolean
   actionLabel: React.ReactNode | null
@@ -399,16 +402,10 @@ export default function JobsStagesUnifiedTable(props: JobsStagesUnifiedTableProp
               <span style={{ whiteSpace: 'nowrap' }}>Crew &amp; Dates</span>
             </th>
             <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Job</th>
-            <th
-              style={{
-                padding: '0.75rem',
-                textAlign: 'center',
-                borderBottom: '1px solid var(--border)',
-                minWidth: '12rem',
-              }}
-            >
-              Progress & payment
-            </th>
+            <StagesProgressPaymentHeader
+              sortedByProgress={props.stagesSortMode === 'progress'}
+              onToggleSort={props.onToggleProgressSort}
+            />
             <th style={{ padding: '0.75rem', width: 140, borderBottom: '1px solid var(--border)' }} />
           </tr>
         </thead>
