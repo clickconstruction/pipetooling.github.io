@@ -15,7 +15,8 @@ import ResponsiveModalShell from '../ResponsiveModalShell'
 import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
 import { formatUsdNoCents } from '../../lib/jobs/jobFormatting'
 import { quickSendJobContract, type QuickSendTemplate } from '../../lib/jobs/jobContractQuickSend'
-import type { JobContractCoverage } from '../../lib/jobs/jobContractCoverage'
+import { isContractGap, type JobContractCoverage } from '../../lib/jobs/jobContractCoverage'
+import { formatContractFloor } from '../../lib/jobs/jobContractFloor'
 import JobContractModal from './JobContractModal'
 
 type TemplateRow = NonNullable<QuickSendTemplate>
@@ -57,16 +58,22 @@ export default function JobsContractSweepModal({
   onClose,
   jobs,
   coverage,
+  floorCents = 0,
   onEditJob,
   onSent,
+  onJobChanged,
 }: {
   open: boolean
   onClose: () => void
   /** Every loaded job; the modal keeps the ones without an agreement. */
   jobs: JobWithDetails[]
   coverage: ReadonlyMap<string, JobContractCoverage>
+  /** The contract floor in cents (PR 0); jobs with an amount under it are not in the sweep. 0 = no floor. */
+  floorCents?: number
   onEditJob: (job: JobWithDetails) => void
   onSent: () => void
+  /** A job row itself changed (Not needed answered) — the caller reloads the jobs list. */
+  onJobChanged?: () => void
 }) {
   const { user: authUser } = useAuth()
   const { showToast } = useToastContext()
@@ -99,12 +106,11 @@ export default function JobsContractSweepModal({
     const order: Record<string, number> = { working: 0, waiting: 1, ready_to_bill: 2, billed: 3 }
     return jobs
       .filter((j) => {
-        const cov = coverage.get(j.id)
         const status = (j.status ?? '') as string
-        return status !== 'paid' && (!cov || cov.kind === 'none' || cov.kind === 'draft') && !sentIds.has(j.id)
+        return status !== 'paid' && isContractGap(coverage.get(j.id), j.revenue, floorCents) && !sentIds.has(j.id)
       })
       .sort((a, b) => (order[a.status ?? ''] ?? 9) - (order[b.status ?? ''] ?? 9) || String(a.created_at ?? '').localeCompare(String(b.created_at ?? '')))
-  }, [jobs, coverage, sentIds])
+  }, [jobs, coverage, sentIds, floorCents])
 
   const emailFor = (j: JobWithDetails) => emails[j.id] ?? (j.customer_email ?? '').trim()
   const template: QuickSendTemplate = templates.find((t) => t.id === templateId) ?? null
@@ -180,7 +186,8 @@ export default function JobsContractSweepModal({
     >
       <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '0.6rem' }}>
         {rows.length} job{rows.length === 1 ? '' : 's'} without a contract · {formatUsdNoCents(total)} of work
-        {sentIds.size > 0 ? ` · ${sentIds.size} sent this sweep` : ''}. Each row sends the job's own scope and amount with the terms chosen below; open a row to edit first or to upload a paper copy.
+        {sentIds.size > 0 ? ` · ${sentIds.size} sent this sweep` : ''}
+        {floorCents > 0 ? ` · jobs under ${formatContractFloor(floorCents)} left out` : ''}. Each row sends the job's own scope and amount with the terms chosen below; open a row to edit first or to upload a paper copy.
       </div>
       {rows.length === 0 ? (
         <p style={{ margin: 0, fontSize: '0.9rem' }}>Every live job has an agreement on file. 🎉</p>
@@ -230,6 +237,7 @@ export default function JobsContractSweepModal({
         onChanged={() => {
           onSent()
         }}
+        onJobChanged={onJobChanged}
       />
     </ResponsiveModalShell>
   )

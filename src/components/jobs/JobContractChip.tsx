@@ -17,6 +17,8 @@ const TONE_STYLES: Record<string, { bg: string; fg: string; border: string }> = 
   sent: { bg: 'var(--bg-amber-tint)', fg: 'var(--text-amber-700)', border: 'var(--border-amber)' },
   draft: { bg: 'var(--bg-subtle)', fg: 'var(--text-muted)', border: 'var(--border-strong)' },
   none: { bg: 'var(--bg-subtle)', fg: 'var(--text-muted)', border: 'var(--border-strong)' },
+  /** The office answered Not needed (PR 0): quieter than a gap — faint text, dashed edge. */
+  not_needed: { bg: 'transparent', fg: 'var(--text-faint)', border: 'var(--border)' },
 }
 
 export function JobContractChip({
@@ -37,7 +39,7 @@ export function JobContractChip({
     display: 'inline-block',
     background: t.bg,
     color: t.fg,
-    border: `1px solid ${t.border}`,
+    border: `1px ${tone === 'not_needed' ? 'dashed' : 'solid'} ${t.border}`,
     borderRadius: 999,
     padding: compact ? '0 0.4rem' : '0.08rem 0.5rem',
     fontSize: compact ? '0.62rem' : '0.68rem',

@@ -8,7 +8,9 @@ import { supabase } from '../lib/supabase'
 import { buildJobContractCoverage, type JobContractCoverage, type JobContractRowLike, type SignedEstimateLike } from '../lib/jobs/jobContractCoverage'
 import type { JobContractRow } from '../lib/jobs/jobContractLifecycle'
 
-export function useJobContractCoverage(job: { id: string; bid_id: string | null } | null): {
+export function useJobContractCoverage(
+  job: { id: string; bid_id: string | null; contract_not_needed_at?: string | null; contract_not_needed_reason?: string | null } | null,
+): {
   coverage: JobContractCoverage | null
   rows: JobContractRow[]
   reload: () => Promise<void>
@@ -17,6 +19,8 @@ export function useJobContractCoverage(job: { id: string; bid_id: string | null 
   const [rows, setRows] = useState<JobContractRow[]>([])
   const jobId = job?.id ?? null
   const bidId = job?.bid_id ?? null
+  const notNeededAt = job?.contract_not_needed_at ?? null
+  const notNeededReason = job?.contract_not_needed_reason ?? null
 
   const reload = useCallback(async () => {
     if (!jobId) {
@@ -42,7 +46,7 @@ export function useJobContractCoverage(job: { id: string; bid_id: string | null 
       const list = (contractsRes.data ?? []) as JobContractRow[]
       setRows(list)
       const cov = buildJobContractCoverage(
-        [{ id: jobId, bid_id: bidId }],
+        [{ id: jobId, bid_id: bidId, contract_not_needed_at: notNeededAt, contract_not_needed_reason: notNeededReason }],
         list as unknown as JobContractRowLike[],
         (estimatesRes.data ?? []) as SignedEstimateLike[],
       )
@@ -50,7 +54,7 @@ export function useJobContractCoverage(job: { id: string; bid_id: string | null 
     } catch {
       setCoverage(null)
     }
-  }, [jobId, bidId])
+  }, [jobId, bidId, notNeededAt, notNeededReason])
 
   useEffect(() => {
     void reload()

@@ -90,6 +90,7 @@ import JobsContractSweepModal from './JobsContractSweepModal'
 import {
   buildJobContractCoverage,
   filterJobsByContractCoverage,
+  isContractGap,
   parseStagesContractFilter,
   STAGES_CONTRACT_FILTER_LABELS,
   STAGES_CONTRACT_FILTERS,
@@ -863,9 +864,22 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
   // board loads Billed/Collections lazily, so the card never reads off loaded rows.
   const { nudge: contractNudge } = useJobContractsNudge(canSeeJobContracts)
   const pipelineContractCoverage = useMemo(
-    () => (contractNudge ? { missingCount: contractNudge.missing.count, missingRevenue: contractNudge.missing.revenueTotal, liveTotal: contractNudge.liveTotal, byStage: contractNudge.byStage } : null),
+    () =>
+      contractNudge
+        ? {
+            missingCount: contractNudge.missing.count,
+            missingRevenue: contractNudge.missing.revenueTotal,
+            liveTotal: contractNudge.liveTotal,
+            byStage: contractNudge.byStage,
+            underFloor: contractNudge.underFloor,
+            notNeeded: contractNudge.notNeeded,
+            floorCents: contractNudge.floorCents,
+          }
+        : null,
     [contractNudge],
   )
+  /** The contract floor (PR 0) the board, the filter and the sweep all read — 0 until the nudge loads. */
+  const contractFloorCents = contractNudge?.floorCents ?? 0
   const [contractSweepOpen, setContractSweepOpen] = useState<boolean>(() => {
     try {
       return new URLSearchParams(window.location.search).get('contractSweep') === '1'
@@ -878,11 +892,10 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
     let n = 0
     for (const j of jobs) {
       if ((j.status ?? '') === 'paid') continue
-      const cov = jobContractCoverageByJobId.get(j.id)
-      if (!cov || cov.kind === 'none' || cov.kind === 'draft') n++
+      if (isContractGap(jobContractCoverageByJobId.get(j.id), j.revenue, contractFloorCents)) n++
     }
     return n
-  }, [canSeeJobContracts, jobs, jobContractCoverageByJobId])
+  }, [canSeeJobContracts, jobs, jobContractCoverageByJobId, contractFloorCents])
   // ?contract=missing deep-links the board to the jobs with nothing on file
   // (Needs You, PR 4). Read-only init like ?view=recent — the tab never writes params.
   const [stagesContractFilter, setStagesContractFilter] = useState<StagesContractFilter | ''>(() => {
@@ -1410,12 +1423,13 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
           ),
           jobContractCoverageByJobId,
           stagesContractFilter,
+          contractFloorCents,
         ),
         stagesSearchQuery,
         stagesCombinedExtraJobIds,
         stagesSortMode,
       ),
-    [jobs, stagesExcludeFilters, stagesGcFilter, stagesDevelopmentFilter, stagesAccountManFilter, jobContractCoverageByJobId, stagesContractFilter, stagesSearchQuery, stagesCombinedExtraJobIds, stagesSortMode],
+    [jobs, stagesExcludeFilters, stagesGcFilter, stagesDevelopmentFilter, stagesAccountManFilter, jobContractCoverageByJobId, stagesContractFilter, contractFloorCents, stagesSearchQuery, stagesCombinedExtraJobIds, stagesSortMode],
   )
 
   // Capable of Being Billed dollars, shared by the Working section header and
@@ -5688,6 +5702,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
         onClose={() => setJobContractModalJob(null)}
         job={jobContractModalJob}
         onChanged={() => void loadJobContractCoverage()}
+        onJobChanged={() => void loadJobs()}
       />
       <JobSignedAgreementModal
         open={signedAgreement != null}
@@ -5702,8 +5717,10 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
         onClose={() => setContractSweepOpen(false)}
         jobs={jobs}
         coverage={jobContractCoverageByJobId}
+        floorCents={contractFloorCents}
         onEditJob={(j) => openEdit(j)}
         onSent={() => void loadJobContractCoverage()}
+        onJobChanged={() => void loadJobs()}
       />
       <AiaG702G703Modal
         open={aiaG702StagesJob != null}

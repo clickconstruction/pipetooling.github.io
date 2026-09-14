@@ -305,3 +305,19 @@ export function parseLaborBurdenFactor(value: number | string | null | undefined
   if (!Number.isFinite(n) || n < 1 || n > 3) return DEFAULT_LABOR_BURDEN_FACTOR
   return n
 }
+
+/**
+ * `value_num` — the contract floor in cents (Contract sweep PR 0): a live job whose amount is
+ * under it is not counted as a contract gap by the Needs You item, the Pipeline card, the
+ * No-contract filter or the sweep. 0 / missing = no floor (every live job counts). Dev writes
+ * from the Pipeline card; all authenticated read. A job with no amount is never "under" it.
+ */
+export const APP_SETTINGS_KEY_JOB_CONTRACT_FLOOR_CENTS_V1 = 'job_contract_floor_cents_v1' as const
+
+/** Parse the floor: missing, garbage or negative reads 0 (no floor); fractions round to whole cents. */
+export function parseJobContractFloorCents(value: number | string | null | undefined): number {
+  if (value === null || value === undefined || value === '') return 0
+  const n = typeof value === 'number' ? value : Number(String(value).trim())
+  if (!Number.isFinite(n) || n <= 0) return 0
+  return Math.round(n)
+}

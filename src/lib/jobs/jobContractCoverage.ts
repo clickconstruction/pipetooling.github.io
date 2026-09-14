@@ -11,6 +11,7 @@
  * "No contract" filter, and (PR 4) the Needs You count.
  */
 import { APP_CALENDAR_TZ } from '../../utils/dateUtils'
+import { isUnderContractFloor } from './jobContractFloor'
 
 export type JobContractRowLike = {
   id: string
@@ -42,11 +43,19 @@ export type SignedEstimateLike = {
   total_cents: number
 }
 
-export type JobForCoverage = { id: string; bid_id: string | null }
+export type JobForCoverage = {
+  id: string
+  bid_id: string | null
+  /** Contract sweep PR 0: the office answered "this job needs no agreement of ours". */
+  contract_not_needed_at?: string | null
+  contract_not_needed_reason?: string | null
+}
 
 export type JobContractCoverage =
   | { kind: 'none' }
   | { kind: 'draft'; contractId: string }
+  /** The office said no agreement of ours is needed here (a builder's subcontract, a service call…). Not a gap. */
+  | { kind: 'not_needed'; at: string; reason: string | null }
   | {
       kind: 'sent'
       contractId: string
@@ -81,7 +90,7 @@ function isLive(c: JobContractRowLike): boolean {
 
 /**
  * Per-job coverage. Precedence: signed contract → paper on file → accepted
- * estimate (e-signed) → signed bid-room proposal → sent → draft → none.
+ * estimate (e-signed) → signed bid-room proposal → not needed → sent → draft → none.
  */
 export function buildJobContractCoverage(
   jobs: ReadonlyArray<JobForCoverage>,
@@ -157,6 +166,10 @@ export function buildJobContractCoverage(
       })
       continue
     }
+    if (job.contract_not_needed_at) {
+      out.set(job.id, { kind: 'not_needed', at: job.contract_not_needed_at, reason: (job.contract_not_needed_reason ?? '').trim() || null })
+      continue
+    }
     const sent = rows.find((c) => c.status === 'sent')
     if (sent) {
       out.set(job.id, {
@@ -179,7 +192,10 @@ export function buildJobContractCoverage(
   return out
 }
 
-export type JobContractChipTone = 'none' | 'draft' | 'sent' | 'signed'
+export type JobContractChipTone = 'none' | 'draft' | 'sent' | 'signed' | 'not_needed'
+
+/** The reasons the Not needed door offers; the office may type its own. */
+export const CONTRACT_NOT_NEEDED_REASONS = ['GC job — their subcontract', 'Service call', 'Warranty / no charge'] as const
 
 export function jobContractChipTone(cov: JobContractCoverage | null | undefined): JobContractChipTone {
   if (!cov) return 'none'
@@ -215,6 +231,7 @@ export function daysSinceIso(iso: string | null | undefined, now: Date): number 
 export function jobContractChipLabel(cov: JobContractCoverage | null | undefined, now: Date = new Date()): string {
   if (!cov || cov.kind === 'none') return 'No contract'
   if (cov.kind === 'draft') return 'Contract draft'
+  if (cov.kind === 'not_needed') return 'No contract · not needed'
   if (cov.kind === 'sent') {
     const parts = ['Contract sent']
     if (cov.viewCount > 0) parts.push(`opened ${cov.viewCount}×`)
@@ -240,6 +257,10 @@ export function jobContractChipLabel(cov: JobContractCoverage | null | undefined
 export function jobContractChipTitle(cov: JobContractCoverage | null | undefined): string {
   if (!cov || cov.kind === 'none') return 'No signed agreement on file for this job'
   if (cov.kind === 'draft') return 'A contract draft is saved but has not been sent'
+  if (cov.kind === 'not_needed') {
+    const when = shortDate(cov.at)
+    return `The office marked this job as needing no agreement of ours${when ? ` on ${when}` : ''}${cov.reason ? ` — ${cov.reason}` : ''}`
+  }
   if (cov.kind === 'sent') {
     return `Contract rev ${cov.revision} sent${cov.recipientEmail ? ` to ${cov.recipientEmail}` : ''}${
       cov.viewCount > 0 ? ` · opened ${cov.viewCount} time${cov.viewCount === 1 ? '' : 's'}` : ' · not opened yet'
@@ -271,22 +292,37 @@ export function parseStagesContractFilter(raw: string | null | undefined): Stage
   return raw === 'missing' || raw === 'sent' || raw === 'signed' ? raw : ''
 }
 
+/**
+ * The one rule for "this job is a contract gap" (Contract sweep PR 0): nothing
+ * on file (none or draft), the office has not said Not needed, and the job is
+ * not under the floor. The nudge, the Pipeline card, the No-contract filter
+ * and the sweep all read this so the four counts agree.
+ */
+export function isContractGap(cov: JobContractCoverage | null | undefined, revenue: number | null | undefined, floorCents: number): boolean {
+  const kind = cov?.kind ?? 'none'
+  if (kind !== 'none' && kind !== 'draft') return false
+  return !isUnderContractFloor(revenue, floorCents)
+}
+
 export function contractCoverageMatchesFilter(
   cov: JobContractCoverage | null | undefined,
   filter: StagesContractFilter | '',
+  job?: { revenue?: number | null },
+  floorCents = 0,
 ): boolean {
   if (!filter) return true
   const kind = cov?.kind ?? 'none'
-  if (filter === 'missing') return kind === 'none' || kind === 'draft'
+  if (filter === 'missing') return isContractGap(cov, job?.revenue ?? null, floorCents)
   if (filter === 'sent') return kind === 'sent'
   return kind === 'signed'
 }
 
-export function filterJobsByContractCoverage<T extends { id: string }>(
+export function filterJobsByContractCoverage<T extends { id: string; revenue?: number | null }>(
   jobs: T[],
   coverage: ReadonlyMap<string, JobContractCoverage>,
   filter: StagesContractFilter | '',
+  floorCents = 0,
 ): T[] {
   if (!filter) return jobs
-  return jobs.filter((j) => contractCoverageMatchesFilter(coverage.get(j.id), filter))
+  return jobs.filter((j) => contractCoverageMatchesFilter(coverage.get(j.id), filter, j, floorCents))
 }
