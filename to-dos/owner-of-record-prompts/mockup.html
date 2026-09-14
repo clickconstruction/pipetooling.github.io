@@ -1,0 +1,248 @@
+<meta charset="utf-8">
+<title>Owner of Record</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+:root{
+  --ground:#f3f4f2; --surface:#ffffff; --surface-2:#f7f8f7; --border:#e2e5e3; --border-strong:#c9cecb;
+  --ink:#1c2321; --muted:#667470; --faint:#98a39f;
+  --blue:#2563eb; --blue-soft:#e8efff; --blue-ink:#1d4ed8;
+  --red:#dc2626; --red-soft:#fdecec; --red-ink:#b91c1c;
+  --amber:#d97706; --amber-soft:#fff4e0; --amber-ink:#b45309;
+  --green:#16a34a; --green-soft:#e7f7ec; --green-ink:#15803d;
+  --note:#fff9db; --note-ink:#6b5300; --shadow:0 20px 50px rgba(20,30,26,.18);
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --ground:#151917; --surface:#1e2422; --surface-2:#242b28; --border:#303835; --border-strong:#46504c;
+  --ink:#e9ede9; --muted:#a1aca7; --faint:#6f7a76; --blue:#6b95ff; --blue-soft:#1d2a49; --blue-ink:#a9c0ff;
+  --red:#f27070; --red-soft:#3a1f1f; --red-ink:#ff9b9b; --amber:#f0a03a; --amber-soft:#3a2c14; --amber-ink:#ffc46a;
+  --green:#4ecb75; --green-soft:#173424; --green-ink:#8ee6a8; --note:#3a3416; --note-ink:#ffe58a; --shadow:0 20px 50px rgba(0,0,0,.5); color-scheme: dark; } }
+:root[data-theme="dark"]{
+  --ground:#151917; --surface:#1e2422; --surface-2:#242b28; --border:#303835; --border-strong:#46504c;
+  --ink:#e9ede9; --muted:#a1aca7; --faint:#6f7a76; --blue:#6b95ff; --blue-soft:#1d2a49; --blue-ink:#a9c0ff;
+  --red:#f27070; --red-soft:#3a1f1f; --red-ink:#ff9b9b; --amber:#f0a03a; --amber-soft:#3a2c14; --amber-ink:#ffc46a;
+  --green:#4ecb75; --green-soft:#173424; --green-ink:#8ee6a8; --note:#3a3416; --note-ink:#ffe58a; --shadow:0 20px 50px rgba(0,0,0,.5); color-scheme: dark; }
+*{box-sizing:border-box}
+body{margin:0;background:var(--ground);color:var(--ink);font:14px/1.5 "IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;padding-block:32px 80px;padding-inline:24px}
+.num{font-variant-numeric:tabular-nums}.mono{font-family:"IBM Plex Mono",ui-monospace,Menlo,monospace}
+.wrap{max-width:1140px;margin:0 auto;display:grid;gap:40px}
+h1{font-size:26px;line-height:1.2;margin:0 0 6px;font-weight:600;letter-spacing:-.01em;text-wrap:balance}
+h2{font-size:18px;margin:0;font-weight:600;text-wrap:balance} h3{font-size:14px;margin:0;font-weight:600} p{margin:0}
+.lede{max-width:72ch;color:var(--muted)}
+.eyebrow{font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.section{display:grid;gap:14px}.section-head{display:flex;flex-wrap:wrap;gap:6px 16px;align-items:baseline}.section-head .sub{color:var(--muted);max-width:74ch}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px 16px;display:grid;gap:8px}.card p{color:var(--muted);max-width:62ch}
+.card p b, .lede b{color:var(--ink);font-weight:600}
+.chip{display:inline-block;border-radius:5px;padding:0 6px;font-size:11px;font-weight:600;line-height:18px;white-space:nowrap;vertical-align:middle}
+.chip.red{background:var(--red-soft);color:var(--red-ink)}.chip.amber{background:var(--amber-soft);color:var(--amber-ink)}.chip.green{background:var(--green-soft);color:var(--green-ink)}.chip.blue{background:var(--blue-soft);color:var(--blue-ink)}.chip.grey{background:var(--surface-2);color:var(--muted);border:1px solid var(--border)}
+.btn{border:1px solid var(--border-strong);background:var(--surface);color:var(--ink);border-radius:7px;padding:5px 10px;font:inherit;font-size:12.5px;cursor:default;white-space:nowrap}
+.btn.primary{background:var(--blue);border-color:var(--blue);color:#fff}.btn.small{padding:3px 8px;font-size:12px}.btn.link{border:0;background:none;color:var(--blue-ink);padding:0;text-decoration:underline dotted}
+.mark{display:inline-grid;place-items:center;width:18px;height:18px;border-radius:50%;background:var(--note);color:var(--note-ink);font-size:11px;font-weight:700}
+.notes{display:grid;gap:8px;padding:0;margin:0}.notes li{display:grid;grid-template-columns:22px 1fr;gap:10px;align-items:start;list-style:none;color:var(--muted)}.notes li b{color:var(--ink);font-weight:600}
+.modal{background:var(--surface);border:1px solid var(--border);border-radius:12px;box-shadow:var(--shadow);overflow:hidden}
+.mhead{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;padding:16px 20px 10px;border-bottom:1px solid var(--border)}.mhead h3{font-size:15px}.mhead .x{color:var(--faint);font-size:18px;line-height:1}
+.body{padding:12px 20px;display:grid;gap:12px}
+.mfoot{display:flex;gap:8px;justify-content:space-between;align-items:center;padding:10px 20px 14px;border-top:1px solid var(--border);background:var(--surface-2);font-size:12.5px;color:var(--muted)}
+.box{border:1px solid var(--border);border-radius:9px;padding:10px 12px;display:grid;gap:6px;background:var(--surface)}.box .bh{font-size:10.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.door{display:flex;justify-content:space-between;align-items:center;gap:10px;border:1px solid var(--border-strong);border-radius:8px;padding:8px 12px;font-size:13px}.door.primary{background:var(--blue);border-color:var(--blue);color:#fff}.door .sub{display:block;font-size:11.5px;opacity:.85;font-weight:400}.door b{font-weight:600}
+.paste{border:1px dashed var(--border-strong);border-radius:8px;padding:8px 10px;background:var(--surface-2);font-size:12px;color:var(--muted);min-height:54px}
+.found{display:grid;grid-template-columns:auto 1fr;gap:3px 12px;font-size:12.5px}.found dt{color:var(--muted)}.found dd{margin:0}
+table.jobs{width:100%;border-collapse:collapse;font-size:12.5px}table.jobs th{text-align:left;font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);padding:6px 8px;border-bottom:1px solid var(--border)}table.jobs td{padding:7px 8px;border-bottom:1px solid var(--border);vertical-align:top}table.jobs tr.done td{background:var(--green-soft)}table.jobs tr.done td:first-child{border-left:3px solid var(--green)}
+.fixcard{border:1px solid var(--border);border-left:3px solid var(--amber);border-radius:8px;background:var(--surface);padding:9px 11px;display:grid;gap:6px}.fixcard .t{font-size:13px;font-weight:600}.fixcard .chips{display:flex;gap:6px;flex-wrap:wrap}.fixcard .foot{font-size:11px;color:var(--muted)}
+.pill{border-radius:9999px;padding:2px 10px;font-size:12px;font-weight:500;border:1px solid transparent}.pill.red{background:var(--red-soft);color:var(--red-ink);border-color:#fecaca}.pill.amber{background:var(--amber-soft);color:var(--amber-ink);border-color:#fcd34d}
+.sendto{display:grid;gap:5px;font-size:13px}.sendto .h{font-weight:500}.sendto .addr{color:var(--muted);font-size:12.5px}.sendto label{display:flex;gap:6px;align-items:flex-start}.sendto label span.s{display:block;color:var(--muted);font-size:11.5px}
+.quiet{border-left:3px solid var(--amber);padding:6px 10px;background:var(--amber-soft);color:var(--amber-ink);border-radius:0 6px 6px 0;font-size:12.5px}
+.critique{background:var(--surface);border:1px solid var(--border);border-left:4px solid var(--amber);border-radius:10px;padding:18px 22px;display:grid;gap:12px}
+.critique .grid{display:grid;grid-template-columns:1fr 1fr;gap:10px 22px}.critique .grid div{color:var(--muted)}.critique .grid b{color:var(--ink);font-weight:600}
+.plan ol{margin:0;padding-left:20px;color:var(--muted);max-width:86ch}.plan li{margin:4px 0}.plan li b{color:var(--ink);font-weight:600}
+.decisions{display:grid;gap:6px;color:var(--muted);max-width:86ch}.decisions div b{color:var(--ink);font-weight:600}
+.shot{display:grid;gap:6px}.shot .cap{font-size:12px;color:var(--muted)}
+.twoq{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+@media (max-width:900px){.grid2,.grid3,.critique .grid,.twoq{grid-template-columns:1fr}}
+</style>
+
+<div class="wrap">
+  <header class="section">
+    <div>
+      <p class="eyebrow">Jobs · Pipeline · Bill Customer · the job form — planned 2026-09-14</p>
+      <h1>Owner of record, asked at the right moment</h1>
+      <p class="lede">The § 53.056 notice goes to the <b>owner of record</b> at a mailing address. On the Lien desk today every one of the seven notices due tomorrow sits in <b>Needs the owner</b> — not because anyone refused, but because nobody was ever asked. Three prompts, each lighter than the last, so the owner is saved once at the start and the desk never waits on it again.</p>
+    </div>
+    <div class="grid3">
+      <div class="card"><div class="eyebrow">What already exists</div><p>The property record's <b>Paste the CAD page</b> box (<span class="mono">cadPagePaste.ts</span>) reads the owner, mailing address, legal description and the homestead line out of a copied appraisal-district page; the record panel looks up county and parcel as it opens. A prompt is <b>one paste</b>, not a form.</p></div>
+      <div class="card"><div class="eyebrow">The owner belongs to the property</div><p>RMC Dudley Mason's jobs sit at a handful of addresses. One paste on 628 Terrell Rd covers every job at 628 Terrell Rd, now and later. So the count, the list and the prompt are all keyed on the <b>property</b>, never the job.</p></div>
+      <div class="card"><div class="eyebrow">Never a block</div><p>A late bill is worse than a late owner. Skipping is always allowed on the form; the Bill Customer line is one sentence, not a gate. The Lien desk's <b>Find the owner ›</b> stays as the exception path.</p></div>
+    </div>
+  </header>
+
+  <section class="section">
+    <div class="section-head"><h2>Today's pile, as the desk sees it</h2><p class="sub">Seven jobs with June work unpaid, notices due Sep 15 — read live from <span class="mono">list_lien_notice_months()</span> on 2026-09-14. None has a property record linked, so none has an owner.</p></div>
+    <div class="modal"><div class="body" style="padding-block:4px 8px">
+      <table class="jobs">
+        <thead><tr><th>Job</th><th>Site</th><th>Customer row · builder</th><th>Months due</th><th>Open</th><th>Owner of record</th></tr></thead>
+        <tbody>
+          <tr><td class="mono">J650</td><td>5498 Cibolo Valley Dr 200, Schertz</td><td>ATI Schertz · <b>Loberg Contracting</b></td><td class="num">Jun · Jul · Aug · Sep</td><td class="num">$33,500</td><td><span class="chip red">none</span></td></tr>
+          <tr><td class="mono">J258</td><td>628 Terrell Rd, San Antonio</td><td>Rizvi &amp; Kizilbash · <b>RMC- Dudley Mason</b></td><td class="num">Jun · Jul · Aug</td><td class="num">$9,800</td><td><span class="chip red">none</span></td></tr>
+          <tr><td class="mono">J273</td><td>9703 Lenox Hl, San Antonio</td><td><span class="chip amber">builder is the customer</span> RMC- Dudley Mason</td><td class="num">Jun · Jul · Aug</td><td class="num">$17,585</td><td><span class="chip red">none</span></td></tr>
+          <tr><td class="mono">J878</td><td>380 TX-123, Seguin</td><td><span class="chip amber">builder is the customer</span> Southern Post Construction</td><td class="num">Jun · Jul · Aug · Sep</td><td class="num">$40,135</td><td><span class="chip red">none</span></td></tr>
+          <tr><td class="mono">J789</td><td>150 E Sonterra Blvd 200B, San Antonio</td><td><span class="chip amber">builder is the customer</span> Knight Contracting</td><td class="num">Jun · Jul · Aug</td><td class="num">$2,245</td><td><span class="chip red">none</span></td></tr>
+          <tr><td class="mono">J843</td><td>102 Jacob Roberts, Blanco</td><td><span class="chip amber">builder is the customer</span> Michael Palmer</td><td class="num">Jun · Aug · Sep</td><td class="num">$7,152</td><td><span class="chip red">none</span></td></tr>
+          <tr><td class="mono">J825</td><td>121 North Calvin Barrett, Blanco</td><td><span class="chip amber">builder is the customer</span> Michael Palmer</td><td class="num">Jun</td><td class="num">$3,850</td><td><span class="chip red">none</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="mfoot"><span>7 jobs · 7 properties · $114,267 open · <b>5 of 7 have the builder in the customer row</b> — the second question below is not a corner case, it is most of the pile.</span></div></div>
+  </section>
+
+  <section class="section">
+    <div class="section-head"><h2>Moment 1 · The job form, once, when a GC is set</h2><p class="sub">Beside the contract question the form already asks after a New Job save (v2.3385). Only when a GC is set, or the customer is a builder. Skipping is a plain link.</p></div>
+    <div class="grid2">
+      <div class="shot">
+        <div class="modal">
+          <div class="mhead"><h3>Does J890 need a contract?</h3><span class="x">×</span></div>
+          <div class="body">
+            <p style="color:var(--muted);font-size:12.5px"><b style="color:var(--ink)">Lenox Hill remodel</b> · RMC- Dudley Mason · builder RMC- Dudley Mason · $17,585</p>
+            <div class="door primary"><span><b>File RMC- Dudley Mason's subcontract</b><span class="sub">The builder's paper is the agreement — paste the Google Doc or drop the PDF</span></span><span>→</span></div>
+            <div class="door"><span><b>Send our agreement</b><span class="sub">To RMC- Dudley Mason — the scope and amount from this job, signed on their phone</span></span><span>→</span></div>
+            <div class="box" style="border-color:var(--amber);background:var(--surface)">
+              <div class="bh"><span class="mark">1</span>&nbsp; Who owns the site? <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--muted)">— the lien notice goes to the owner of record</span></div>
+              <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;font-size:12.5px"><span>9703 Lenox Hl, San Antonio · Bexar County</span><span class="btn link">Bexar CAD ↗</span></div>
+              <div class="paste">Open the district's page for this address, select all, copy, and paste here. The app picks out the owner, mailing address, legal description and exemptions; you keep what is right.</div>
+              <dl class="found"><dt>Found</dt><dd><span class="chip green">owner</span> <span class="chip green">mailing address</span> <span class="chip green">legal description</span> <span class="chip green">homestead: no</span> <span class="chip grey">Prop ID 442365</span></dd><dt>Owner</dt><dd>Rizvi Syed Zulfiqar &amp; Kizilbash Quratulain Fatima</dd><dt>Mail to</dt><dd>628 Terrell Rd, San Antonio, TX 78209</dd></dl>
+              <div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><span class="btn link" style="color:var(--muted)">Skip for now</span><span class="btn primary small">Save the owner on 9703 Lenox Hl</span></div>
+            </div>
+            <div style="display:flex;justify-content:space-between;font-size:12.5px"><span class="btn link" style="color:var(--muted)">Not needed…</span><span class="btn link" style="color:var(--muted)">Later — it stays in the count</span></div>
+          </div>
+        </div>
+        <p class="cap">Saving creates or fills the property record and links the job to it (the v2.3401 add-as-property path). The row on the Lien desk moves from <i>Needs the owner</i> to <i>To draft</i> the same second.</p>
+      </div>
+      <div class="shot">
+        <div class="modal">
+          <div class="mhead"><h3>Does J891 need a contract?</h3><span class="x">×</span></div>
+          <div class="body">
+            <p style="color:var(--muted);font-size:12.5px"><b style="color:var(--ink)">Pretest</b> · Southern Post Construction · $2,400</p>
+            <div class="box" style="border-color:var(--amber)">
+              <div class="bh"><span class="mark">2</span>&nbsp; Is Southern Post Construction the owner of this site, or building it for someone?</div>
+              <div class="twoq">
+                <div class="door"><span><b>They own it</b><span class="sub">We contracted with the owner — no monthly notice clock</span></span></div>
+                <div class="door primary"><span><b>Building it for someone</b><span class="sub">Sets Southern Post as the GC on the job; then asks who owns the site</span></span><span>→</span></div>
+              </div>
+              <p style="font-size:11.5px;color:var(--muted)">Asked only when the customer row is a builder and no GC is set. Answering the second way is what fixes the notice clock — today those jobs read as "we contracted with the owner" and get no monthly notices at all.</p>
+            </div>
+            <div class="door"><span><b>Send our agreement</b><span class="sub">To Southern Post Construction — the scope and amount from this job</span></span><span>→</span></div>
+            <div style="display:flex;justify-content:space-between;font-size:12.5px"><span class="btn link" style="color:var(--muted)">Not needed…</span><span class="btn link" style="color:var(--muted)">Later</span></div>
+          </div>
+        </div>
+        <p class="cap">The builder-as-customer question. Five of today's seven jobs are this shape (J273, J878, J789, J843, J825): the builder sits in the customer row with no GC, so the desk cannot tell whose site it is.</p>
+      </div>
+    </div>
+    <ul class="notes">
+      <li><span class="mark">1</span><span><b>One paste, not a form.</b> The box is the property record's own paste box, reused. The county comes from the address (the record panel's parcel lookup already does this), so the CAD link is the right district's. A homestead answer surfaces on the spot: <i>"a homestead lien needs a recorded pre-work contract — talk to the attorney before starting"</i>, one line, no block.</span></li>
+      <li><span class="mark">2</span><span><b>The question that fixes the data model.</b> "Building it for someone" writes <span class="mono">gc_customer_id</span> and leaves the customer row alone, then runs question 1 for the owner. Skipping leaves the job as it is.</span></li>
+    </ul>
+  </section>
+
+  <section class="section">
+    <div class="section-head"><h2>Moment 2 · The Pipeline's Fix-ups card, while the job is Working</h2><p class="sub">The card that already lists <i>No customer</i> · <i>No customer pictures</i> · <i>No email</i> gains a fourth chip. The chip opens the same list the GC-on-notice modal's Step 1 will use. Clears today's pile in one sitting.</p></div>
+    <div class="grid2">
+      <div class="shot">
+        <div class="fixcard">
+          <div class="t">🔎 Fix-ups — missing data blocks billing</div>
+          <div class="chips"><span class="pill red">No customer pictures · 1</span><span class="pill amber">No owner of record · 7</span></div>
+          <div class="foot">each chip opens its fix-it list — this card disappears when the data is clean</div>
+        </div>
+        <p class="cap">Amber, like <i>No email</i>: it blocks a lien mailing, not a bill. Counts jobs with a GC (or a builder customer), approved hours, and no owner on the property record or the job override — the desk's own <span class="mono">has_owner</span> reading, so the chip and the desk's <i>Needs the owner</i> pile are always the same number.</p>
+      </div>
+      <div class="shot">
+        <div class="modal">
+          <div class="mhead"><div><h3>No owner of record · 7 jobs on 7 properties</h3><p style="font-size:12px;color:var(--muted)">Paste each county page once; every job at that address is covered.</p></div><span class="x">×</span></div>
+          <div class="body" style="padding-block:6px">
+            <table class="jobs">
+              <thead><tr><th>Property</th><th>Jobs</th><th>Builder</th><th>County</th><th></th></tr></thead>
+              <tbody>
+                <tr class="done"><td>9703 Lenox Hl, San Antonio<br><span style="color:var(--green-ink);font-size:11.5px">✓ Rizvi &amp; Kizilbash · saved just now</span></td><td class="mono">J273</td><td>RMC- Dudley Mason</td><td>Bexar</td><td><span class="chip green">owner saved</span></td></tr>
+                <tr><td>628 Terrell Rd, San Antonio</td><td class="mono">J258</td><td>RMC- Dudley Mason</td><td>Bexar <span class="btn link">CAD ↗</span></td><td><span class="btn small">Paste the page…</span></td></tr>
+                <tr><td>5498 Cibolo Valley Dr 200, Schertz</td><td class="mono">J650</td><td>Loberg Contracting</td><td>Guadalupe <span class="btn link">CAD ↗</span></td><td><span class="btn small">Paste the page…</span></td></tr>
+                <tr><td>380 TX-123, Seguin</td><td class="mono">J878</td><td>Southern Post Construction</td><td>Guadalupe <span class="btn link">CAD ↗</span></td><td><span class="btn small">Paste the page…</span></td></tr>
+                <tr><td>150 E Sonterra Blvd 200B, San Antonio</td><td class="mono">J789</td><td>Knight Contracting</td><td>Bexar <span class="btn link">CAD ↗</span></td><td><span class="btn small">Paste the page…</span></td></tr>
+                <tr><td>102 Jacob Roberts, Blanco</td><td class="mono">J843</td><td>Michael Palmer</td><td>Blanco <span class="btn link">CAD ↗</span></td><td><span class="btn small">Paste the page…</span></td></tr>
+                <tr><td>121 North Calvin Barrett, Blanco</td><td class="mono">J825</td><td>Michael Palmer</td><td>Blanco <span class="btn link">CAD ↗</span></td><td><span class="btn small">Paste the page…</span></td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="mfoot"><span><b>6 of 7</b> still need an owner · 5 rows also have the builder in the customer row — each asks <i>who owns the site?</i> first</span><span class="btn small">Done</span></div>
+        </div>
+        <p class="cap"><b>Paste the page…</b> unfolds the paste box under the row (the same box as Moment 1, prefilled with the address and county); a save turns the row green and moves the footer count. Rows never leave the list mid-sitting — the green stays so the office sees what it did.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="section-head"><h2>Moment 3 · One quiet line in Bill Customer</h2><p class="sub">When the first bill goes out on a GC job with no owner on file. Under the Send-to block, above the one-off email. A sentence and a door, never a gate.</p></div>
+    <div class="grid2">
+      <div class="shot">
+        <div class="modal"><div class="body">
+          <div class="sendto">
+            <div class="h">Send to</div>
+            <div class="addr">ap@loberg.com <span style="color:var(--faint)">(Loberg Contracting · billing email)</span></div>
+            <label><input type="checkbox" checked disabled> <span>Maria Torres <span style="color:var(--muted)">maria@loberg.com</span></span></label>
+            <label><input type="checkbox" disabled> <span>Copy ATI Schertz <span style="color:var(--muted)">frontdesk@atischertz.com · the customer, not billed</span></span></label>
+            <label><input type="checkbox" disabled> <span>Show it on ATI Schertz's statement<span class="s">Their portal lists this bill as billed to Loberg Contracting — no Pay button, not in their balance.</span></span></label>
+            <div class="quiet"><span class="mark" style="background:var(--surface);color:var(--amber-ink)">3</span>&nbsp; No owner of record on file for 5498 Cibolo Valley Dr — the lien notice for this job cannot be mailed until there is one. <span class="btn link" style="color:var(--amber-ink)">Paste the county's page…</span></div>
+            <div class="paste" style="min-height:34px;display:flex;align-items:center">Also send to… (one-off email)</div>
+          </div>
+        </div></div>
+        <p class="cap">Only on jobs with a GC (or a builder customer) and no owner. Once the owner is saved the line is gone for every job at that property.</p>
+      </div>
+      <div class="card">
+        <div class="eyebrow">Why this moment</div>
+        <p>Texas counts the notice clock from the <b>month labor was furnished</b>, not the bill date — by the time the first bill goes out, the first notice is often already in its window. The office is already in the modal thinking about who pays; the owner's name is the same thought, one line lower.</p>
+        <div class="eyebrow" style="margin-top:6px">Rejected</div>
+        <p>A hard block on Working or on billing (a late bill is worse than a late owner). Asking per job instead of per property. A free-text owner box (the paste is faster and gets the legal description too). A fourth surface — the desk's <i>Find the owner ›</i> is the exception path, and it stays.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="critique">
+    <h2>Is this the best we can do?</h2>
+    <p class="lede">The first draft asked the owner question on every new job, put a free-text box on the Fix-ups list, and counted jobs. Each one made the office do more for less. What changed, and why:</p>
+    <div class="grid">
+      <div><b>Properties, not jobs.</b> The list groups by address. RMC's two Bexar sites are two pastes, not two per job. The count reads "7 jobs on 7 properties" so the office knows how many pastes the sitting is.</div>
+      <div><b>One number everywhere.</b> The chip, the list's footer and the desk's <i>Needs the owner</i> pile all read <span class="mono">has_owner</span> from the same RPC. No second definition of "missing" to drift.</div>
+      <div><b>The builder-as-customer question comes first.</b> Five of seven jobs cannot even say whose site it is. Asking "who owns the site?" before "who is the owner of record?" fixes the GC and the notice clock in the same breath.</div>
+      <div><b>Ask only where the lien clock runs.</b> A direct residential job with no GC never sees the prompt; Waiting jobs with a GC but no hours yet stay out of the count (proposed — the owner may flip this).</div>
+      <div><b>The homestead line on the spot.</b> When the paste says homestead, the form says what that means for the lien before anyone starts work. One sentence; the attorney's words.</div>
+      <div><b>Green stays green.</b> A saved row on the list does not vanish; the office sees its own progress through the sitting, and the footer counts down.</div>
+    </div>
+  </section>
+
+  <section class="section plan">
+    <div class="section-head"><h2>The plan</h2><p class="sub">Three PRs, smallest first. No new table.</p></div>
+    <div class="grid2">
+      <div class="card">
+        <div class="eyebrow">Data</div>
+        <p><b>Nothing new to store.</b> The owner lives on <span class="mono">customer_addresses.owner_*</span> (the property record) with the per-job override in <span class="mono">job_property_owners</span>; the job links to its property by <span class="mono">customer_address_id</span> (v2.3401 adds the row from the job form). The paste parser and the county lookup exist.</p>
+        <p><b>One count.</b> <span class="mono">no-owner</span> in <span class="mono">buildPipelineFixups</span>, fed by the desk's <span class="mono">list_lien_notice_months().has_owner</span> (jobs with a GC or builder customer, approved hours, no owner) — or a sibling <span class="mono">list_jobs_without_owner()</span> if the desk's 30-day window is too narrow for the card (decision below).</p>
+      </div>
+      <div class="card">
+        <div class="eyebrow">PR train</div>
+        <ol>
+          <li><b>PR 1 — the Fix-ups count and the list.</b> The chip, the property-grouped list modal (<span class="mono">OwnerFixupListModal</span>: property · jobs · builder · county · CAD ↗ · the paste box per row), the save that writes the property record and links every job at the address. Shared with GC-on-notice's Step 1. Kernel + tests. Clears today's seven.</li>
+          <li><b>PR 2 — the job-form prompt.</b> The owner question beside the contract door when a GC is set (<span class="mono">JobFormOwnerPrompt</span>, reusing the paste box); the builder-as-customer question that sets the GC.</li>
+          <li><b>PR 3 — the Bill Customer line.</b> Under Send to, only on GC jobs with no owner, with the same paste door.</li>
+          <li><b>Guide.</b> <i>file a lien and never miss its deadlines</i> → "Save the owner once, at the start"; the Fix-ups card's help text.</li>
+        </ol>
+      </div>
+    </div>
+    <div class="card">
+      <div class="eyebrow">For the owner</div>
+      <div class="decisions">
+        <div><b>Waiting jobs:</b> should the count include Waiting jobs with a GC, before any hours? Proposed no — hours are what the lien clock runs on.</div>
+        <div><b>Which new jobs get the prompt:</b> every new job, or only when a GC is set / the customer is a builder? Proposed only those.</div>
+        <div><b>Homestead:</b> when the paste names a homestead, say so on the spot ("a homestead lien needs a recorded pre-work contract — talk to the attorney before starting")? Proposed yes, one line.</div>
+        <div><b>The card's window:</b> count every GC job with approved hours and no owner (wider than the desk's 30-day notice window), or only the desk's due items? Proposed the wider count — the point is to have the owner before the window opens.</div>
+      </div>
+    </div>
+  </section>
+</div>
