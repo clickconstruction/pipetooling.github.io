@@ -1,6 +1,6 @@
 # Takeoffs: measure a week of One at a time / Sheet use, then retire Old
 
-Status: **unblocked** — the week of real use has passed (2026-09-11); PR 8 (re-measure) is next · plan: [`docs/TAKEOFFS_REFRESH_PLAN.md`](../docs/TAKEOFFS_REFRESH_PLAN.md) PRs 8–9
+Status: **PR 8 done 2026-09-14** (re-measured; table in the plan's *Re-measure* section) · **PR 9 (retire Old) is an owner call** — the week produced 2 costed bids at 90% coverage but 17 new bids with counts and no takeoff, and the book learned nothing; ask Wendi which view the two were costed in, then decide · plan: [`docs/TAKEOFFS_REFRESH_PLAN.md`](../docs/TAKEOFFS_REFRESH_PLAN.md) PRs 8–9
 
 ## The ask, in the owner's words
 
@@ -24,7 +24,7 @@ Old stays the default and stays untouched until One at a time / Sheet have carri
 
 ## The plan
 
-1. **PR 8 — re-measure** (docs-only or a dev-only readout): after a week, re-run the plan's census queries through the app session; compare to the 2026-09-04 baseline; record in the plan's Status.
+1. ~~**PR 8 — re-measure**~~ — done 2026-09-14 (docs-only): the census re-run through the app session, both windows, in `docs/TAKEOFFS_REFRESH_PLAN.md` → *Re-measure*.
 2. **PR 9 — retire Old**: flip the default to One at a time (or Sheet, whichever the census says wins), remove the Old body, keep the print / PO / book-apply paths the hardening PR fenced, update `send-a-bid-pricing-package` and the takeoff guides, `docs/BIDS_TAKEOFF_TAB_ARCHITECTURE.md`.
 
 ## How to verify

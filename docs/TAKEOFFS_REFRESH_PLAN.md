@@ -5,7 +5,7 @@ file: docs/TAKEOFFS_REFRESH_PLAN.md
 type: Plan
 purpose: Build plan for the Bids → Takeoffs refresh: keep today's tab as "Old", ship the owner-picked mockups B ("One fixture at a time") as "New 1" and C ("Cost rail") as "New 2" behind per-device pills, on one shared substrate (coverage, a book that learns, fixture history, the RFQ door), then retire Old the way Counts / Pricing / Cover Letter did in v2.2707.
 audience: Developers, AI Agents
-last_updated: 2026-09-04
+last_updated: 2026-09-14
 key_sections:
   - name: "Status"
   - name: "Why (ground truth, 2026-09-04)"
@@ -25,6 +25,8 @@ key_sections:
 **View chooser 2026-09-07 (v2.3082)** — a Combined bid opened on Takeoffs asks which view to work in (Old / One at a time / Sheet, drawn previews, keys 1 · 2 · 3). **Asks once per device since v2.3165** (Wendi, 2026-09-08: "stop asking me every time"): the pick is stored in `bids_takeoff_view_v1` and later opens land in it; the pills switch. By Stage bids skip it and open as before.
 
 **Labels renamed 2026-09-07 (v2.2990)** — the pills now read **Old · One at a time · Sheet**. This plan keeps its build-time names: New 1 = One at a time, New 2 = Sheet; the stored ids `new1` / `new2` never changed.
+
+**PR 8 re-measured (2026-09-14)** — see *Re-measure* below: the week of real use moved the numbers little (17 of the 19 new bids with counts still have no takeoff; the book has not learned an entry since Sep 4); PR 9 (retire Old) is an owner call on that evidence.
 
 **PRs 1–7 built (2026-09-04)** — the parallel run is live; PR 8 (a week of real use, coverage re-measured) and PR 9 (retire Old) remain. Owner picked **B → New 1** and **C → New 2** from the "Takeoffs Refresh" canvas; Old is today's tab, untouched and still the default.
 
@@ -54,6 +56,30 @@ Numbers read from prod through the app's own session, bids created since 2026-06
 | Count rows matching the human takeoff book (3 entries, 13 names) | 92 of 4,733 |
 | Purchase orders created from a takeoff | 0 |
 | Rough lines · bundle lines · $0 lines · manual overrides | 1,418 · 250 · 18 · 22 |
+
+## Re-measure (2026-09-14, PR 8)
+
+Same queries as the *Why* table, read through the app's own session as dev (`bids.materials_model`, `bids_count_rows`, `bids_takeoff_rough_part_lines`, `takeoff_book_entries`; every read paged past 1,000). Two windows: the baseline window re-run, and the week of real use on its own.
+
+| Fact | 2026-09-04 (baseline) | 2026-09-14, bids since 06-01 | Bids created since 09-04 (the week) |
+|---|---|---|---|
+| Bids in the window | 113 | 133 | 22 |
+| Combined vs By Stage | 112 vs 1 | 132 vs 1 | 22 vs 0 |
+| Bids with counts | — | 123 | 19 |
+| Bids with counts but no takeoff at all | 57 | 80 | **17** |
+| Bids with a takeoff | 41 | 43 | **2** |
+| Fixture rows with any line, on bids that have a takeoff | 48% (1,126 of 2,368) | 50% (1,218 of 2,451) | 90% (38 of 42) |
+| Bids fully costed | 1 of 41 | 1 of 43 | 0 of 2 |
+| Count rows matching the human takeoff book | 92 of 4,733 (3 entries, 13 names) | 93 of 5,366 (3 entries, 14 names) | 8 of 797 |
+| Book entries learned since Sep 4 (Remember for the book) | — | **0** | 0 |
+| Bids with a takeoff book selected | — | 97 | 5 |
+| Rough lines · bundle lines · $0 lines · manual overrides | 1,418 · 250 · 18 · 22 | 1,522 · 284 · 19 · 26 | 50 · 12 · 1 · 4 |
+
+`purchase_orders` carries no `bid_id` column, so "POs created from a takeoff" cannot be re-read this way; `createPOFromTakeoff` still had 0 uses on the Sep 4 audit and nothing since has touched it.
+
+**Reading.** In the week, two bids got a takeoff and both were costed almost fully (90% of their rows have a line — well above the 48% baseline), which is the New 1 / New 2 shape working when someone sits down to cost. But 17 of the 19 new bids with counts were never costed at all, so the pile the refresh was built to shrink did not shrink, and the book did not learn a single entry (Remember for the book was never ticked). Which view the two bids were costed in is not recorded (the view pick lives in the device's `bids_takeoff_view_v1`), so the first retirement criterion cannot be read from data.
+
+**Against the retirement criteria:** coverage on costed bids — met on a sample of two; "every bid costed that week was costed in New 1 or New 2" — unknowable from data, ask Wendi and the owner; "no go-back-to-Old report open" — none is filed; "the owner says so" — open. PR 9 (retire Old) waits on the owner's read of this table; the numbers do not argue for it on their own yet, and a second week with the book actually learning would make the call easy.
 
 Two structural facts drive the design:
 
