@@ -14,8 +14,8 @@ type Props = {
   unmappedLine: string | null
   unmappedCount: number
   /** Unplaced jobs (≤ 3 are listed by number as row links). */
-  unmappedRows: readonly { id: string; numberLabel: string; row: JobsMapPin['row'] }[]
-  onFocusRow: (row: JobsMapPin['row']) => void
+  unmappedRows: readonly { id: string; numberLabel: string }[]
+  onFocusJob: (jobId: string, numberLabel: string) => void
   resolving: boolean
   isMobile: boolean
 }
@@ -35,7 +35,7 @@ const TONE_COLOR: Record<JobsMapAskTone, string> = {
  * pins, the ask-for-money list longest waiting first, the pinned total and the
  * dollars still to collect, and the unplaced-jobs line.
  */
-export function JobsMapRail({ rail, bucketsOn, onToggleBucket, onPickPin, paidOff, unmappedLine, unmappedCount, unmappedRows, onFocusRow, resolving, isMobile }: Props) {
+export function JobsMapRail({ rail, bucketsOn, onToggleBucket, onPickPin, paidOff, unmappedLine, unmappedCount, unmappedRows, onFocusJob, resolving, isMobile }: Props) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.45rem', minWidth: 0 }}>
       <h4 style={H4}>By distance from the office · pinned jobs</h4>
@@ -119,7 +119,7 @@ export function JobsMapRail({ rail, bucketsOn, onToggleBucket, onPickPin, paidOf
               ? unmappedRows.map((j) => (
                   <span key={j.id}>
                     {' · '}
-                    <button type="button" onClick={() => onFocusRow(j.row)} style={{ ...LINK, fontSize: '0.78rem', textDecoration: 'underline', minHeight: isMobile ? 44 : undefined }} title="Show this job's row on the board">
+                    <button type="button" onClick={() => onFocusJob(j.id, j.numberLabel)} style={{ ...LINK, fontSize: '0.78rem', textDecoration: 'underline', minHeight: isMobile ? 44 : undefined }} title="Show this job's row on the board">
                       {j.numberLabel}
                     </button>
                   </span>

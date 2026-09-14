@@ -25,9 +25,31 @@
  * listens once for mouse-over on the document and pulses the pin of the row
  * under the pointer. No row component changes; the three table variants get
  * it for free. Phones have no hover.
+ *
+ * v2.3398: **As of** — the header toggle opens a row (Play, the day, a slider,
+ * jump chips) that rewinds every pin to the status it had on that day,
+ * replayed from `job_status_events`, with the day's money on the rail and a
+ * since-then strip. Rewound, the map shows every job that existed that day
+ * (the board's filters are today's); nothing loads until the toggle is on.
  */
 import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from 'react'
 import { JobsMapRail } from './JobsMapRail'
+import { todayYmdInAppTz } from '../../utils/dateUtils'
+import { formatStagesNextDateLabel } from '../../lib/stagesUpcomingSchedule'
+import { loadJobsMapHistory } from '../../lib/jobs/loadJobsMapHistory'
+import {
+  JOBS_MAP_AS_OF_FLOOR_YMD,
+  JOBS_MAP_AS_OF_JUMPS,
+  JOBS_MAP_PLAY_MS_PER_DAY,
+  indexJobsMapHistory,
+  jobsMapAsOfMaxBack,
+  jobsMapAsOfYmd,
+  jobsMapDaysBackLabel,
+  jobsMapJobsAsOf,
+  jobsMapSinceThen,
+  jobsMapSinceThenLine,
+  type JobsMapHistory,
+} from '../../lib/jobs/jobsMapAsOf'
 import { DEFAULT_DISTANCE_BUCKETS, jobsMapPinsInBuckets, jobsMapRail, type DistanceBucketKey, type DistanceBucketVisibility } from '../../lib/jobs/jobsMapRail'
 import type { JobWithDetails } from '../../types/jobWithDetails'
 import { useAddressGeocodeCoords, type AddressToGeocode } from '../../hooks/useAddressGeocodeCoords'
@@ -139,8 +161,8 @@ function JobPinBody({
 }: {
   pin: JobsMapPin
   anchor: { lat: number; lng: number } | null
-  onOpenJob: (job: JobWithDetails) => void
-  onEditJob: (job: JobWithDetails) => void
+  onOpenJob: (jobId: string) => void
+  onEditJob: (jobId: string) => void
   onDirections: (pin: JobsMapPin) => void
 }) {
   const distance = jobsMapDistanceLine(pin, anchor)
@@ -172,10 +194,10 @@ function JobPinBody({
       </div>
       {owed ? <div style={{ color: 'var(--text-strong)', fontSize: '0.75rem', fontWeight: 600 }}>{owed}</div> : null}
       <div style={{ display: 'flex', gap: 6, marginTop: 2 }}>
-        <button type="button" onClick={() => onOpenJob(pin.row)} style={POPUP_BUTTON_STYLE}>
+        <button type="button" onClick={() => onOpenJob(pin.id)} style={POPUP_BUTTON_STYLE}>
           Open job
         </button>
-        <button type="button" onClick={() => onEditJob(pin.row)} style={POPUP_BUTTON_STYLE}>
+        <button type="button" onClick={() => onEditJob(pin.id)} style={POPUP_BUTTON_STYLE}>
           Edit
         </button>
         <button type="button" onClick={() => onDirections(pin)} style={POPUP_BUTTON_STYLE}>
@@ -260,7 +282,7 @@ export function JobsMapCard({
   onLoadPaid,
   onOpenJob,
   onEditJob,
-  onFocusRow,
+  onFocusJob,
 }: {
   /** The board's filtered rows — the map follows the search and every filter. */
   jobs: readonly JobWithDetails[]
@@ -270,10 +292,10 @@ export function JobsMapCard({
   paidLoaded: boolean
   /** Ask the board to load its Paid rows (the Paid chip's first tap). */
   onLoadPaid: () => void
-  onOpenJob: (job: JobWithDetails) => void
-  onEditJob: (job: JobWithDetails) => void
-  /** A pin (or an unmapped-job link) was clicked — light the row on the board. */
-  onFocusRow: (job: JobWithDetails) => void
+  onOpenJob: (jobId: string) => void
+  onEditJob: (jobId: string) => void
+  /** A pin (or an unmapped-job link) was clicked — light the row on the board (by number when the row is not loaded, e.g. a rewound paid job). */
+  onFocusJob: (jobId: string, numberLabel: string) => void
 }) {
   const [hidden, setHidden] = useState<boolean>(() => readJobsMapHidden())
   const [clustered, setClustered] = useState<boolean>(() => readJobsMapClustered())
@@ -297,13 +319,59 @@ export function JobsMapCard({
     setGoogleFailed(true)
   }, [])
 
+  // As of (v2.3398): the slider's world. Nothing loads until the toggle is on.
+  const [asOfOn, setAsOfOn] = useState(false)
+  const [daysBack, setDaysBack] = useState(0)
+  const [playing, setPlaying] = useState(false)
+  const [history, setHistory] = useState<JobsMapHistory | null>(null)
+  const [historyError, setHistoryError] = useState<string | null>(null)
+  const todayYmd = useMemo(() => todayYmdInAppTz(), [])
+  const maxBack = useMemo(() => jobsMapAsOfMaxBack(todayYmd), [todayYmd])
+  const effBack = asOfOn ? Math.min(daysBack, maxBack) : 0
+  const asOfYmd = useMemo(() => jobsMapAsOfYmd(todayYmd, effBack), [todayYmd, effBack])
+  const rewound = asOfOn && effBack > 0
+  useEffect(() => {
+    if (!asOfOn || history) return
+    let cancelled = false
+    setHistoryError(null)
+    void loadJobsMapHistory().then(
+      (h) => {
+        if (!cancelled) setHistory(h)
+      },
+      (e: unknown) => {
+        if (!cancelled) setHistoryError(e instanceof Error ? e.message : String(e))
+      },
+    )
+    return () => {
+      cancelled = true
+    }
+  }, [asOfOn, history])
+  useEffect(() => {
+    if (!asOfOn) setPlaying(false)
+  }, [asOfOn])
+  useEffect(() => {
+    if (!playing) return
+    if (effBack <= 0) {
+      setPlaying(false)
+      return
+    }
+    const t = window.setInterval(() => setDaysBack((d) => Math.max(0, d - 1)), JOBS_MAP_PLAY_MS_PER_DAY)
+    return () => window.clearInterval(t)
+  }, [playing, effBack])
+  const historyIndex = useMemo(() => (history ? indexJobsMapHistory(history) : null), [history])
+  const sinceThen = useMemo(() => (rewound && history ? jobsMapSinceThen(history, asOfYmd, todayYmd) : null), [rewound, history, asOfYmd, todayYmd])
+
   const anchor = useOfficeAnchor(!hidden)
   const canvasAnchor = useMemo<MapCanvasAnchor | null>(
     () => (anchor ? { lat: anchor.lat, lng: anchor.lng, label: 'Office', ringMiles: BID_BOARD_MAP_RING_MILES } : null),
     [anchor],
   )
 
-  const { jobs: mapJobs, noAddress } = useMemo(() => jobsMapJobs(jobs), [jobs])
+  const todayWorld = useMemo(() => jobsMapJobs(jobs), [jobs])
+  const { jobs: mapJobs, noAddress } = useMemo(
+    () => (rewound && history && historyIndex ? jobsMapJobsAsOf(history, historyIndex, asOfYmd) : todayWorld),
+    [rewound, history, historyIndex, asOfYmd, todayWorld],
+  )
   const addresses = useMemo<AddressToGeocode[]>(() => mapJobs.map((j) => ({ key: j.addressKey, display: j.address })), [mapJobs])
   const { coords, resolving } = useAddressGeocodeCoords(addresses, !hidden, 'jobs map address_geocodes')
   const { pins, unmapped } = useMemo(() => resolveJobsMapPins(mapJobs, coords), [mapJobs, coords])
@@ -364,9 +432,9 @@ export function JobsMapCard({
       setSelectedId(id)
       if (!id) return
       const p = byId.get(id)
-      if (p) onFocusRow(p.row)
+      if (p) onFocusJob(p.id, p.numberLabel)
     },
-    [byId, onFocusRow],
+    [byId, onFocusJob],
   )
   const directions = useCallback((p: JobsMapPin) => openInExternalBrowser(jobsMapDirectionsUrl(p.address)), [])
   const renderPopup = useCallback(
@@ -378,7 +446,7 @@ export function JobsMapCard({
   )
 
   const total = mapJobs.length + noAddress.length
-  if (!loading && total === 0) return null
+  if (!loading && !asOfOn && total === 0) return null
 
   const unmappedAll: JobsMapJob[] = [...unmapped, ...noAddress]
   const unmappedLine = jobsMapUnmappedLine(unmappedAll.length)
@@ -415,6 +483,30 @@ export function JobsMapCard({
               Jobs on a map
             </button>
           </h3>
+          {!hidden ? (
+            <button
+              type="button"
+              onClick={() => setAsOfOn((on) => !on)}
+              aria-pressed={asOfOn}
+              title="Walk the map back: every pin as it stood on an earlier day, replayed from the Pipeline's status moves"
+              style={{
+                ...LINK_BUTTON_STYLE,
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 4,
+                padding: '0.2rem 0.55rem',
+                minHeight: isMobile ? 36 : undefined,
+                border: `1px solid ${asOfOn ? '#2563eb' : 'var(--border-strong)'}`,
+                borderRadius: 6,
+                background: asOfOn ? 'var(--bg-blue-tint)' : 'var(--surface)',
+                color: asOfOn ? 'var(--text-link)' : 'var(--text-700)',
+                fontSize: '0.8rem',
+                fontWeight: 600,
+              }}
+            >
+              ⏮ As of
+            </button>
+          ) : null}
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? '0.5rem' : '0.875rem', flexWrap: 'wrap' }}>
           {!isMobile && !hidden ? <SectionChips legend={legend} show={show} paidLoaded={paidLoaded} onToggle={toggleSection} isMobile={false} /> : null}
@@ -518,7 +610,7 @@ export function JobsMapCard({
               unmappedLine={unmappedLine}
               unmappedCount={unmappedAll.length}
               unmappedRows={unmappedAll}
-              onFocusRow={onFocusRow}
+              onFocusJob={onFocusJob}
               resolving={resolving}
               isMobile={false}
             />
@@ -541,10 +633,10 @@ export function JobsMapCard({
                 </div>
               </div>
               <div style={{ display: 'flex', gap: '0.5rem' }}>
-                <button type="button" onClick={() => onOpenJob(selected.row)} style={MOBILE_ACTION_STYLE}>
+                <button type="button" onClick={() => onOpenJob(selected.id)} style={MOBILE_ACTION_STYLE}>
                   Open job
                 </button>
-                <button type="button" onClick={() => onEditJob(selected.row)} style={MOBILE_ACTION_STYLE}>
+                <button type="button" onClick={() => onEditJob(selected.id)} style={MOBILE_ACTION_STYLE}>
                   Edit
                 </button>
                 <button type="button" onClick={() => directions(selected)} style={MOBILE_ACTION_STYLE}>
@@ -564,10 +656,70 @@ export function JobsMapCard({
               unmappedLine={unmappedLine}
               unmappedCount={unmappedAll.length}
               unmappedRows={unmappedAll}
-              onFocusRow={onFocusRow}
+              onFocusJob={onFocusJob}
               resolving={resolving}
               isMobile
             />
+          ) : null}
+
+          {asOfOn ? (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap', border: '1px solid var(--border)', borderRadius: 8, background: 'var(--bg-subtle)', padding: '0.4rem 0.7rem', fontSize: '0.8rem' }}>
+              <button
+                type="button"
+                onClick={() => {
+                  if (playing) setPlaying(false)
+                  else {
+                    if (effBack === 0) setDaysBack(Math.min(182, maxBack))
+                    setPlaying(true)
+                  }
+                }}
+                disabled={maxBack === 0 || !history}
+                title={playing ? 'Pause' : 'Walk forward a day at a time to today'}
+                style={{ fontSize: '0.75rem', fontWeight: 600, padding: '0.2rem 0.6rem', borderRadius: 6, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-strong)', cursor: 'pointer', minHeight: isMobile ? 36 : undefined }}
+              >
+                {playing ? '❚❚ Pause' : '▶ Play'}
+              </button>
+              <span style={{ color: 'var(--text-muted)', fontWeight: 600 }}>As of</span>
+              <span style={{ fontWeight: 700, color: 'var(--text-strong)', fontVariantNumeric: 'tabular-nums', minWidth: '7.5rem' }}>{rewound ? formatStagesNextDateLabel(asOfYmd) : `Today · ${formatStagesNextDateLabel(todayYmd)}`}</span>
+              <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', minWidth: '4.5rem' }}>{jobsMapDaysBackLabel(effBack)}</span>
+              <input
+                type="range"
+                min={0}
+                max={maxBack}
+                value={maxBack - effBack}
+                onChange={(e) => {
+                  setPlaying(false)
+                  setDaysBack(maxBack - Number(e.currentTarget.value))
+                }}
+                aria-label="As-of day: left is earlier, right is today"
+                title="Drag, or use the arrow keys — one day per step"
+                style={{ flex: '1 1 10rem', minWidth: '8rem', accentColor: '#2563eb' }}
+              />
+              <span style={{ display: 'inline-flex', gap: 4, flexWrap: 'wrap' }}>
+                {[...JOBS_MAP_AS_OF_JUMPS.filter((j) => j.daysBack <= maxBack), { daysBack: maxBack, label: formatStagesNextDateLabel(JOBS_MAP_AS_OF_FLOOR_YMD).replace(/^\w+ /, '') }].map((j) => (
+                  <button
+                    key={j.label}
+                    type="button"
+                    aria-pressed={effBack === j.daysBack}
+                    onClick={() => {
+                      setPlaying(false)
+                      setDaysBack(j.daysBack)
+                    }}
+                    style={{ fontSize: '0.72rem', padding: '0.1rem 0.55rem', borderRadius: 999, border: `1px solid ${effBack === j.daysBack ? '#2563eb' : 'var(--border)'}`, background: effBack === j.daysBack ? 'var(--bg-blue-tint)' : 'var(--surface)', color: 'var(--text-strong)', cursor: 'pointer', minHeight: isMobile ? 32 : undefined }}
+                  >
+                    {j.label}
+                  </button>
+                ))}
+              </span>
+              <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }} title="Replayed from each job's status moves. A job created after the day is not drawn; the Pipeline began recording moves on Feb 22, 2026, so history starts there.">
+                {historyError ? `Couldn't load the history: ${historyError}` : !history ? 'Loading the history…' : effBack >= maxBack ? 'History starts Feb 22, 2026, when the Pipeline began recording moves' : 'replayed from status moves · every job that existed that day, filters aside'}
+              </span>
+            </div>
+          ) : null}
+          {sinceThen ? (
+            <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-muted)' }} data-testid="jobs-map-since-then">
+              <span style={{ fontWeight: 600, color: 'var(--text-strong)' }}>Since {formatStagesNextDateLabel(asOfYmd)}:</span> {jobsMapSinceThenLine(sinceThen) || 'nothing moved'}. Pins wear the status they had that day; a job created since is not drawn.
+            </p>
           ) : null}
         </>
       )}

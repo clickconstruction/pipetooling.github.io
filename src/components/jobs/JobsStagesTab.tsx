@@ -3361,9 +3361,18 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
             loading={jobsListLoading}
             paidLoaded={cacheMergedScopes.has(scopeForStagesSection('paid'))}
             onLoadPaid={() => void cacheFetchScopeIfNeeded(scopeForStagesSection('paid'), customerFilterForFetch)}
-            onOpenJob={(job) => jobDetailModal?.openJobDetail({ jobId: job.id })}
-            onEditJob={(job) => openEdit(job)}
-            onFocusRow={(job) => jumpToNumberMatches([job], (job.hcp_number ?? '').trim() || (job.click_number ?? '').trim())}
+            onOpenJob={(jobId) => jobDetailModal?.openJobDetail({ jobId })}
+            onEditJob={(jobId) => tryOpenEditJob(jobId)}
+            onFocusJob={(jobId, numberLabel) => {
+              // The loaded row lands directly; a row the board hasn't loaded (a rewound paid job)
+              // goes through the # jump's lean lookup, which fetches and merges it.
+              const hit = jobs.find((j) => j.id === jobId)
+              if (hit) {
+                jumpToNumberMatches([hit], numberLabel)
+                return
+              }
+              if (numberLabel && numberLabel !== '—') void jumpViaLeanLookup(numberLabel)
+            }}
           />
           {/* The Pipeline money story + Today's Money Opportunities (v2.1915,
               Old/New pills retired v2.2012 — this is the only view now).

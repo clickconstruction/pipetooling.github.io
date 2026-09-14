@@ -2,7 +2,7 @@
 title: see the pipeline on a map
 category: Jobs & Scheduling
 roles: dev, master_technician, assistant, controller, superintendent
-keywords: map, pipeline, jobs, pins, where is the job, distance, miles from the office, collections, directions, hide map, cluster, paid jobs, fit all, to collect, ask for money, oldest bill, rail, hover
+keywords: map, pipeline, jobs, pins, where is the job, distance, miles from the office, collections, directions, hide map, cluster, paid jobs, fit all, to collect, ask for money, oldest bill, rail, hover, as of, rewind, scroll back in time, history, play, slider
 order: 32
 ---
 **Jobs → Pipeline** has a **Jobs on a map** card under the toolbar. It plots the jobs the board is showing — the same list, so the search box and the GC, development, Account Man and contract filters all change the pins. Nobody sees a pin here they couldn't already open from the board.
@@ -52,6 +52,20 @@ Three amber rows and one red one at the top of Ask for money. Tap the red one �
 ## From a row to its pin
 
 On a desktop, rest the mouse on any job row on the board and that job's pin on the map wears a pulsing halo in its section colour, so you can find where a job is without clicking anything. If the pin is folded into a cluster disc, the disc pulses instead. A job whose section chip is off, or that has no map location yet, shows nothing. Phones have no hover, so there the link runs one way: tap a pin to light its row.
+
+## Scroll back in time
+
+{{button:outline-blue|⏮ As of}} beside the title opens a row under the map: **Play**, the day, a slider and jump chips (**today · 1 wk · 1 mo · 3 mo · 6 mo · Feb 22**). Drag the slider left and every pin wears the status the job had on that day — blue where it was still working, orange where the bill had already gone out — and a job that did not exist yet is not drawn. The chips, the distance boxes and Ask for money all read that day: the dollars to collect are the bills that had gone out minus the payments in by then.
+
+**Play** walks the map forward a day at a time to today; dragging the slider or tapping a chip pauses it.
+
+A line under the map says what happened since — *Since Jun 2: +41 jobs started · 38 billed · 52 paid · 2 sent to collections*.
+
+History starts on **Feb 22, 2026**, the day the Pipeline began recording moves; the slider stops there and says so. While you are rewound, the map shows every job that existed that day, whatever the search box and filters say — they describe today's rows. Two things are not replayed: the percent done, and a past stay in Collections that has since been paid off.
+
+:::example Was June as busy as it felt?
+Tap **3 mo** and count the blue pins, then press Play and watch the orange spread as the summer's bills go out. The since-then line gives the tally without counting.
+:::
 
 ## Cluster, Fit all, Hide map
 
