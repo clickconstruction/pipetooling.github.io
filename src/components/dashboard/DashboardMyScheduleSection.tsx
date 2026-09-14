@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
+import { JobAccountsStrip } from '../jobs/JobAccountsStrip'
+import { useJobAccountStrips } from '../../hooks/useJobAccountStrips'
 import { Link } from 'react-router-dom'
 import CallCustomerModal from './CallCustomerModal'
 import { supabase } from '../../lib/supabase'
@@ -237,6 +239,8 @@ export function DashboardMyScheduleSection({
   )
   const pctTodayByJobId = useMyScheduleJobPct(scheduleJobIds, subScheduleDayPartition.todayYmd, pctRefreshKey)
   const sendBackByJobId = useMyScheduleSendBacks(scheduleJobIds, pctRefreshKey)
+  // Job accounts at the counter (v2.3424): Ferguson ✓ · Reece none yet, on every card.
+  const jobAccountStrips = useJobAccountStrips(scheduleJobIds)
 
   return (
     <div
@@ -497,6 +501,15 @@ export function DashboardMyScheduleSection({
                               </div>
                             )
                           })()}
+                          {b.job_id ? (
+                            <JobAccountsStrip
+                              jobId={b.job_id}
+                              jobLabel={rowLabel}
+                              jobAddress={stripAddressZip(jobMeta.job_address ?? '')}
+                              entries={jobAccountStrips.byJob.get(b.job_id)}
+                              onChanged={jobAccountStrips.reload}
+                            />
+                          ) : null}
                           {/* Office send-back line (v2.2065): why this finished job is back. */}
                           {(() => {
                             const sb = blockJobId != null ? sendBackByJobId.get(blockJobId) : undefined

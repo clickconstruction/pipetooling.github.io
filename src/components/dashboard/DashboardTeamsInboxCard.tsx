@@ -67,6 +67,7 @@ export function DashboardTeamsInboxCard({
     toggleExpandDispatchRequest,
     submitDispatchNote,
     submitDispatchNoteAndClose,
+    closeDispatchRequestWithNote,
     dismissDispatchRequest,
     dispatchPrioritySavingId,
     setDispatchRequestPriority,
@@ -115,6 +116,7 @@ export function DashboardTeamsInboxCard({
           onNoteDraftChange={setDispatchNoteDraft}
           onSubmitNote={submitDispatchNote}
           onSubmitNoteAndClose={submitDispatchNoteAndClose}
+          onCloseRequestWithNote={closeDispatchRequestWithNote}
           onDismiss={dismissDispatchRequest}
           onOpenDismissedArchive={onOpenDismissedArchive}
           onLinkJobPictures={onLinkJobPictures}
