@@ -15,7 +15,7 @@ import { OfferSheetForm } from './rowForms'
 import { sendSheetOfferWithDefaults, sentLabel } from './rowFormsSend'
 import { SubsTileModal, HandledCell } from './SubsTileModal'
 import { useQueueState } from './useQueueState'
-import type { RosterContact, SubsTileActions } from './subsTileActions'
+import { WITHDRAWN_DRAFT_KEPT, type RosterContact, type SubsTileActions } from './subsTileActions'
 import type { StepCommitmentRow } from '../../../lib/workflow/stepCommitments'
 import { acts, btn, chip, door, expandedRow, handledRow, money, muted, red, shortDay, td, tdAct, tdNum, telHref, th, where, who } from './subsTileStyles'
 
@@ -40,8 +40,29 @@ export function HandshakeQueue({ board, jobs, contacts, authUserId, todayYmd, ac
 
   /** A row's order went out (from its form or the bulk send): mark it, offer Undo, move on. */
   function markSent(r: HandshakeQueueRow, order: StepCommitmentRow, subName: string) {
-    q.mark(r.row.key, { label: sentLabel({ order, emailed: true, subName }, 'out'), undo: async () => { await actions.withdraw(order); q.unmark(r.row.key) } })
+    q.mark(r.row.key, { label: sentLabel({ order, emailed: true, subName }, 'out'), undo: () => undoSend(r, order) })
     q.next()
+  }
+
+  /**
+   * Undo = withdraw, which leaves the order as a draft — the sheet moves to
+   * Drafted, not back onto a handshake. The mark says so and offers Discard;
+   * discarding the draft puts the row back in this queue.
+   */
+  async function undoSend(r: HandshakeQueueRow, order: StepCommitmentRow) {
+    const ok = await actions.withdraw(order)
+    if (!ok) return
+    q.mark(r.row.key, {
+      label: WITHDRAWN_DRAFT_KEPT,
+      action: {
+        label: 'Discard',
+        danger: true,
+        run: async () => {
+          const gone = await actions.discardDraft(order)
+          if (gone) q.unmark(r.row.key)
+        },
+      },
+    })
   }
 
   async function sendRest() {
@@ -182,7 +203,7 @@ export function HandshakeQueue({ board, jobs, contacts, authUserId, todayYmd, ac
               <td style={td}>{r.workingSince ? shortDay(r.workingSince) : '—'}</td>
               <td style={tdNum}>{money(r.row.agreed)}</td>
               <td style={tdAct}>
-                <HandledCell label={mark.label} onUndo={mark.undo ? () => void mark.undo!() : null} />
+                <HandledCell label={mark.label} onUndo={mark.undo ? () => void mark.undo!() : null} action={mark.action ? { label: mark.action.label, danger: mark.action.danger, run: () => void mark.action!.run() } : null} />
               </td>
             </tr>
           ))}

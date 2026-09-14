@@ -33,7 +33,7 @@ describe('buildSheetRail — the gap', () => {
   })
   it('an expired offer is a gap in the no-agreement group', () => {
     const r = rail({ coverage: sent({ expired: true, expiresOn: '2026-09-01' }) })
-    expect(r).toMatchObject({ gap: true, group: 'no_agreement', label: 'Offer expired · still working', sublabel: 'sent 2026-09-02' })
+    expect(r).toMatchObject({ gap: true, group: 'no_agreement', label: 'Offer expired · still working', sublabel: 'sent Sep 2' })
   })
   it('a job-anchored decline with no sheet yet has no sub dots lit', () => {
     const r = rail({ coverage: declined, sheetStage: null, agreed: 0, open: 0, unpriced: true })
@@ -51,7 +51,7 @@ describe('buildSheetRail — the office steps', () => {
   it('sent: drafted done, sent current, with the send date and the good-through date', () => {
     const r = rail({ coverage: sent(), agreed: 1208.97, open: 1208.97 })
     expect(states(r)).toBe('done now todo todo todo todo todo')
-    expect(r).toMatchObject({ group: 'sent', position: 2, label: 'Sent', sublabel: '2026-09-02 · good through 2026-09-09' })
+    expect(r).toMatchObject({ group: 'sent', position: 2, label: 'Sent', sublabel: 'Sep 2 · good through Sep 9' })
   })
 })
 
@@ -59,7 +59,7 @@ describe('buildSheetRail — signed, the sub’s four', () => {
   it('signed + working: office done, Work current', () => {
     const r = rail({ coverage: signed, agreed: 1750, open: 1750 })
     expect(states(r)).toBe('done done done now todo todo todo')
-    expect(r).toMatchObject({ group: 'signed', position: 3, label: 'Work', sublabel: 'signed 2026-09-05', current: 'work' })
+    expect(r).toMatchObject({ group: 'signed', position: 3, label: 'Work', sublabel: 'signed Sep 5', current: 'work' })
   })
   it('walk-through reads Pre-inspection (the portal word); customer_pay reads Post-inspection: Trigger draw', () => {
     expect(rail({ coverage: signed, sheetStage: 'walkthrough', agreed: 1750, open: 1750 })).toMatchObject({ current: 'inspection', position: 4, label: 'Pre-inspection' })
@@ -96,14 +96,14 @@ describe('sheetNextAction', () => {
   })
   it('sent → waiting on the sub; a nudge is due after three days', () => {
     const fresh = sent({ sentAt: '2026-09-04' })
-    expect(sheetNextAction(rail({ coverage: fresh }), fresh, { ...ctx, subName: 'Cale Yarbrough' })).toEqual({ label: 'Waiting on Cale Yarbrough · 1 day', hint: 'good through 2026-09-09', button: null, buttonLabel: null })
+    expect(sheetNextAction(rail({ coverage: fresh }), fresh, { ...ctx, subName: 'Cale Yarbrough' })).toEqual({ label: 'Waiting on Cale Yarbrough · 1 day', hint: 'good through Sep 9', button: null, buttonLabel: null })
     const stale = sent({ sentAt: '2026-09-02' })
     expect(sheetNextAction(rail({ coverage: stale }), stale, { ...ctx, subName: 'Cale Yarbrough' })).toEqual({ label: 'Waiting on Cale Yarbrough · 3 days', hint: 'a nudge is due', button: 'nudge', buttonLabel: 'Nudge' })
   })
   it('declined / expired → re-offer', () => {
     expect(sheetNextAction(rail({ coverage: declined }), declined, ctx)).toMatchObject({ label: 'Re-offer or re-price', button: 'reoffer', buttonLabel: 'Re-offer…' })
     const exp = sent({ expired: true })
-    expect(sheetNextAction(rail({ coverage: exp }), exp, ctx)).toMatchObject({ label: 'Offer expired — send it again', button: 'reoffer', buttonLabel: 'Re-send…' })
+    expect(sheetNextAction(rail({ coverage: exp }), exp, ctx)).toMatchObject({ label: 'Offer expired — send it again', hint: 'sent Sep 2', button: 'reoffer', buttonLabel: 'Re-send…' })
   })
   it('signed → the sub’s steps, no button', () => {
     const c = { ...ctx, subName: 'Miguel Rodriguez', agreed: 1750, open: 1750 }

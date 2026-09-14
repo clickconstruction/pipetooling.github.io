@@ -19,6 +19,10 @@
  */
 import type { JobWorkOrderCoverage } from './workOrderCoverage'
 import type { SubSheetStage } from '../subSheetStage'
+import { formatWorkDateYmdMonthDayShort } from '../../utils/dateUtils'
+
+/** A coverage date (YYYY-MM-DD) in the subs surfaces' short-day words — "Sep 8", never the raw ISO string. */
+const day = (ymd: string): string => formatWorkDateYmdMonthDayShort(ymd)
 
 export type SheetRailStepKey = 'drafted' | 'sent' | 'signed' | 'work' | 'inspection' | 'customer_pays' | 'paid'
 export type SheetRailStepState = 'done' | 'now' | 'todo' | 'gap'
@@ -162,11 +166,11 @@ export function buildSheetRail(input: SheetRailInput): SheetRail {
   let sublabel: string | null = null
   if (signed) {
     label = hasSheet ? moneyLabel : 'Signed'
-    sublabel = c.signedOn ? `signed ${c.signedOn}` : null
+    sublabel = c.signedOn ? `signed ${day(c.signedOn)}` : null
     if (hasSheet && moneyStep === 'paid' && input.sheetStage === 'customer_pay' && input.open > 0) sublabel = 'queued for the pay run'
   } else if (sentLive) {
     label = 'Sent'
-    sublabel = [c.sentAt ? c.sentAt : null, c.expiresOn ? `good through ${c.expiresOn}` : null].filter(Boolean).join(' · ') || null
+    sublabel = [c.sentAt ? day(c.sentAt) : null, c.expiresOn ? `good through ${day(c.expiresOn)}` : null].filter(Boolean).join(' · ') || null
   } else if (drafted) {
     label = 'Drafted'
     sublabel = c.unpriced ? 'no price yet' : null
@@ -175,7 +179,7 @@ export function buildSheetRail(input: SheetRailInput): SheetRail {
     sublabel = c.reason ? `“${c.reason}”` : null
   } else if (gapKind === 'expired' && c.kind === 'sent') {
     label = hasSheet ? 'Offer expired · still working' : 'Offer expired'
-    sublabel = c.sentAt ? `sent ${c.sentAt}` : null
+    sublabel = c.sentAt ? `sent ${day(c.sentAt)}` : null
   } else {
     label = hasSheet ? `${moneyLabel} · no agreement` : 'No agreement'
     sublabel = input.unpriced ? 'sheet never priced' : null
@@ -228,7 +232,7 @@ export function sheetNextAction(rail: SheetRail, coverage: JobWorkOrderCoverage,
     return { label: 'Re-offer or re-price', hint: coverage.reason ? `${sub} said “${coverage.reason}”` : `${sub} declined`, button: 'reoffer', buttonLabel: 'Re-offer…' }
   }
   if (coverage.kind === 'sent' && coverage.expired) {
-    return { label: 'Offer expired — send it again', hint: coverage.sentAt ? `sent ${coverage.sentAt}` : null, button: 'reoffer', buttonLabel: 'Re-send…' }
+    return { label: 'Offer expired — send it again', hint: coverage.sentAt ? `sent ${day(coverage.sentAt)}` : null, button: 'reoffer', buttonLabel: 'Re-send…' }
   }
   if (coverage.kind === 'none') {
     const hint = ctx.unpriced ? 'price the sheet, then send the order' : `${money(ctx.agreed)} of work on a handshake`
@@ -245,7 +249,7 @@ export function sheetNextAction(rail: SheetRail, coverage: JobWorkOrderCoverage,
     const label = `Waiting on ${sub}${days > 0 ? ` · ${days} day${days === 1 ? '' : 's'}` : ''}`
     return days >= after
       ? { label, hint: 'a nudge is due', button: 'nudge', buttonLabel: 'Nudge' }
-      : { label, hint: coverage.expiresOn ? `good through ${coverage.expiresOn}` : null, button: null, buttonLabel: null }
+      : { label, hint: coverage.expiresOn ? `good through ${day(coverage.expiresOn)}` : null, button: null, buttonLabel: null }
   }
   // Signed: the sheet's own steps.
   switch (rail.current) {

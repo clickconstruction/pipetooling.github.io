@@ -11,7 +11,7 @@ Every button in a queue is a move the board already has — sending a work order
 
 ## How a queue works
 
-- The **first row opens** as you arrive; click any row to open it instead. {{button:blue|Next row ↓}} in the footer (or **Enter** in the open row's form) moves to the next one.
+- The **first row that needs a form opens** as you arrive (in Offers out that is the first expired offer — live offers stay collapsed until you click them); click any row to open it instead. {{button:blue|Next row ↓}} in the footer (or **Enter** in the open row's form) moves to the next one.
 - A handled row turns {{chip:green|✓ green}}, keeps an **Undo** where the move can be taken back, and sinks below the rows still waiting. The bar under the header reads **1 of 2 handled**.
 - **Escape**, the ✕, or clicking the backdrop closes the queue. The tile re-counts when you get back to the board.
 - {{button:outline|Open the full assembler ›}} is always there when the pre-read is wrong — it opens on the same job, sub, price and dates.
@@ -21,7 +21,7 @@ Every button in a queue is a move the board already has — sending a work order
 Every row is a sub working with a balance open and nothing signed. The open row is a small work order pre-read from their sheet:
 
 - **Price** is the sheet total. **Window** runs from the day they started to about ten working days past today. **Takes about** and **Offer good for** (3 · 7 · 14 days) round it out. The scope is the trade library's default lines.
-- {{button:blue|Send}} writes the order, mints its WO number and sends the offer notice to their portal. The row turns green with **Undo** (which withdraws it).
+- {{button:blue|Send}} writes the order, mints its WO number and sends the offer notice to their portal. The row turns green with **Undo** (which withdraws it — the order stays as a draft, so the row then reads {{chip:green|✓ Withdrawn · draft kept}} with a **Discard** beside it).
 - A sheet whose job number has no Pipeline row shows {{chip:yellow|Not in Pipeline}} and a **Job** picker in the same form; the button becomes {{button:blue|Link and send}}. **New job…** opens Edit Job when the job doesn't exist yet.
 - {{button:outline|Send the rest as drafted · N}} sends every remaining ready row at its pre-read values, one confirm.
 

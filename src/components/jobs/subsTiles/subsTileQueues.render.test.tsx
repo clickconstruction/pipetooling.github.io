@@ -65,8 +65,9 @@ const jobs = [{ id: 'job-880', hcp_number: '880', customer_name: 'Knight Contrac
 const actions = (): SubsTileActions => ({
   changed: vi.fn(),
   openAssembler: vi.fn(),
-  withdraw: vi.fn(async () => {}),
+  withdraw: vi.fn(async () => true),
   withdrawQuiet: vi.fn(async () => true),
+  discardDraft: vi.fn(async () => true),
   nudge: vi.fn(async () => {}),
   markSignedOnPaper: vi.fn(async () => {}),
   print: vi.fn(),

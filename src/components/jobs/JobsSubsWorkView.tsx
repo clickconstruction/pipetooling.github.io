@@ -15,7 +15,8 @@ import { useToastContext } from '../../contexts/ToastContext'
 import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
 import { useJobFormModal } from '../../contexts/JobFormModalContext'
 import { formatErrorMessage } from '../../utils/errorHandling'
-import { todayYmdInAppTz } from '../../utils/dateUtils'
+import { formatWorkDateYmdMonthDayShort, todayYmdInAppTz } from '../../utils/dateUtils'
+import { calendarRowName } from '../../lib/subs/stageCalendar'
 import { formatCurrency } from '../../lib/jobs/jobFormatting'
 import { subLaborAssignPickerRows, subLaborJobNumberForStorage } from '../../lib/jobs/subLaborJobPicker'
 import type { JobWithDetails } from '../../types/jobWithDetails'
@@ -337,18 +338,19 @@ export function JobsSubsWorkView({ jobs, jobsLoading, authUserId, deepLinkWorkOr
     [board.rows, sheetsById, orderLabels],
   )
 
-  async function withdraw(r: StepCommitmentRow) {
+  async function withdraw(r: StepCommitmentRow): Promise<boolean> {
     const ok = await confirm({ title: 'Withdraw this offer?', message: `${r.record_id ?? 'The work order'} goes back to a draft. ${r.display_name} will no longer see it on their portal.`, confirmLabel: 'Withdraw' })
-    if (!ok) return
+    if (!ok) return false
     setBusyId(r.id)
     const { error: err } = await supabase.from('step_commitments').update({ status: 'draft', offered_at: null, offer_expires_at: null }).eq('id', r.id)
     setBusyId(null)
     if (err) {
       showToast(`Could not withdraw: ${formatErrorMessage(err)}`, 'error')
-      return
+      return false
     }
     showToast('Offer withdrawn — it is a draft again', 'success')
     emitWorkOrderChanged()
+    return true
   }
 
   /** Withdraw without the confirm — for callers that already asked (the tile queues, v2.2963). */
@@ -401,17 +403,18 @@ export function JobsSubsWorkView({ jobs, jobsLoading, authUserId, deepLinkWorkOr
     billCustomer.openBillCustomer({ payload: { kind: 'job', job: jobBillingContextFromJob(job) }, onSuccess: () => emitWorkOrderChanged(), onAfterEnsureSuccess: () => emitWorkOrderChanged() })
   }
 
-  async function discardDraft(r: StepCommitmentRow) {
+  async function discardDraft(r: StepCommitmentRow): Promise<boolean> {
     const ok = await confirm({ title: 'Discard this draft?', message: `The draft for ${r.display_name} is removed. Nothing was sent.`, confirmLabel: 'Discard', danger: true })
-    if (!ok) return
+    if (!ok) return false
     setBusyId(r.id)
     const { error: err } = await supabase.from('step_commitments').update({ status: 'cancelled' }).eq('id', r.id)
     setBusyId(null)
     if (err) {
       showToast(`Could not discard: ${formatErrorMessage(err)}`, 'error')
-      return
+      return false
     }
     emitWorkOrderChanged()
+    return true
   }
 
   async function markSignedOnPaper(r: StepCommitmentRow) {
@@ -915,12 +918,13 @@ export function JobsSubsWorkView({ jobs, jobsLoading, authUserId, deepLinkWorkOr
       if (!r) continue
       const d = windowDataFor(g, r)
       const w = r.window
-      const stageName = r.stage?.name ?? (r.kind === 'sheet' ? 'Sheet' : 'Stage')
+      const stageName = calendarRowName(r.stage?.name, r.kind)
       const c = r.board?.coverage
-      const subLine = !c ? null : c.kind === 'sent' ? `offer out${c.sentAt ? ` since ${c.sentAt}` : ''}${c.expired ? ' · expired' : ''} · ${d.pick ? 'picked' : 'no pick yet'}` : c.kind === 'signed' ? `signed${c.signedOn ? ` ${c.signedOn}` : ''}` : c.kind === 'draft' ? 'draft, not sent' : c.kind === 'declined' ? `declined${c.reason ? ` · “${c.reason}”` : ''}` : 'working on a handshake'
+      const subLine = !c ? null : c.kind === 'sent' ? `offer out${c.sentAt ? ` since ${formatWorkDateYmdMonthDayShort(c.sentAt)}` : ''}${c.expired ? ' · expired' : ''} · ${d.pick ? 'picked' : 'no pick yet'}` : c.kind === 'signed' ? `signed${c.signedOn ? ` ${formatWorkDateYmdMonthDayShort(c.signedOn)}` : ''}` : c.kind === 'draft' ? 'draft, not sent' : c.kind === 'declined' ? `declined${c.reason ? ` · “${c.reason}”` : ''}` : 'working on a handshake'
+      // The sibling line reads "<stage or Sheet> · <sub>" — the sub's name is never the stage name.
       const siblings: StageCalendarSibling[] = g.rows.map((x) => {
         const xd = windowDataFor(g, x)
-        return { key: x.key, name: x.stage?.name ?? (x.kind === 'sheet' ? x.board.subName || 'Sheet' : 'Stage'), subName: x.kind === 'sheet' ? x.board.subName || null : null, span: xd.window, pick: xd.pick, current: x.key === r.key }
+        return { key: x.key, name: calendarRowName(x.stage?.name, x.kind), subName: x.kind === 'sheet' ? x.board.subName || null : null, span: xd.window, pick: xd.pick, current: x.key === r.key }
       })
       const personId = r.board?.personId ?? null
       const answering = w && askAnswer && askAnswer.windowId === w.id ? askAnswer : null
@@ -1008,6 +1012,7 @@ export function JobsSubsWorkView({ jobs, jobsLoading, authUserId, deepLinkWorkOr
     linkSheetToJobQuiet,
     newJobForSheet,
     extendOffer,
+    discardDraft,
     openSheet: onOpenSheet,
     setSheetStage: onSetSheetStage,
     openMakePayment: onOpenMakePayment,

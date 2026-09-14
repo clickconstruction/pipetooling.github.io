@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { calendarDays, calendarMonthTitle, calendarMonthsFor, workingDaysIn } from './stageCalendar'
+import { calendarDays, calendarMonthTitle, calendarMonthsFor, calendarRowName, workingDaysIn } from './stageCalendar'
 
 const TODAY = '2026-09-07'
 
@@ -51,5 +51,14 @@ describe('titles and counts', () => {
     expect(calendarMonthTitle('2026-09')).toBe('September 2026')
     expect(workingDaysIn({ start: '2026-09-22', end: '2026-10-02' })).toBe(9)
     expect(workingDaysIn({ start: '2026-09-05', end: '2026-09-06' })).toBe(0)
+  })
+})
+
+describe('calendarRowName', () => {
+  it('names the stage when the order carries one, else the row kind — never the sub', () => {
+    expect(calendarRowName('Rough-in', 'sheet')).toBe('Rough-in')
+    expect(calendarRowName(null, 'sheet')).toBe('Sheet')
+    expect(calendarRowName('  ', 'sheet')).toBe('Sheet')
+    expect(calendarRowName(undefined, 'stage')).toBe('Stage')
   })
 })
