@@ -81,6 +81,22 @@ describe('newestPercent / percentIsStale — the v2.3372 rule on the row', () =>
     expect(newestPercent(p({}), null)).toBeNull()
   })
 
+  it('pct_set_at dates the typed number by the event that set it, worded by its source; the old RPC shape (no pct_set_at) keeps the manual/report reading', () => {
+    // Heron: 40% is the Aug 7 back-fill (source seed) — dated, and read as "set".
+    expect(newestPercent(p({ pct_set_at: '2026-08-07T05:10:00Z', pct_source: 'seed' }), 40)).toEqual({ pct: 40, source: 'seed', at: '2026-08-07T05:10:00Z' })
+    // SpaceX: the 12 came through the Sep 11 report's propagation (source service) — "reported Sep 11" even with an older hand-set on the job.
+    expect(newestPercent(p({ pct_manual_at: '2026-08-20T12:00:00Z', report_pct: 12, report_at: '2026-09-11T12:00:00Z', pct_set_at: '2026-09-11T12:00:05Z', pct_source: 'service' }), 12)).toEqual({ pct: 12, source: 'report', at: '2026-09-11T12:00:05Z' })
+    // Mission Hills: typed Sep 3 (source manual).
+    expect(newestPercent(p({ pct_manual_at: '2026-09-03T12:00:00Z', pct_set_at: '2026-09-03T12:00:00Z', pct_source: 'manual' }), 90)).toEqual({ pct: 90, source: 'typed', at: '2026-09-03T12:00:00Z' })
+    // An unknown source word falls back to "typed"; a null pct_set_at (no event, or the pre-column RPC) → today's rule.
+    expect(newestPercent(p({ pct_set_at: '2026-09-03T12:00:00Z', pct_source: 'weird' }), 90)).toEqual({ pct: 90, source: 'typed', at: '2026-09-03T12:00:00Z' })
+    expect(newestPercent(p({ pct_set_at: null, pct_source: null }), 40)).toEqual({ pct: 40, source: 'typed', at: null })
+    // A report stands alone only with no typed %: the event date does not apply to a report-only row.
+    expect(newestPercent(p({ report_pct: 12, report_at: '2026-09-11T12:00:00Z', pct_set_at: '2026-08-07T05:10:00Z', pct_source: 'seed' }), null)).toEqual({ pct: 12, source: 'report', at: '2026-09-11T12:00:00Z' })
+    expect(crewPositionsFromRpc([row({ job_ledger_id: 'q', pct_set_at: '2026-08-07T05:10:00Z', pct_source: 'seed' })], today).get('q')).toMatchObject({ pctSetAt: '2026-08-07T05:10:00Z', pctSource: 'seed' })
+    expect(crewPositionsFromRpc([row({ job_ledger_id: 'q' })], today).get('q')).toMatchObject({ pctSetAt: null, pctSource: null })
+  })
+
   it('stale = the percent on record predates the last clock-in', () => {
     // Heron: 40% seeded Aug 7 with no manual event; the crew was on site Sep 12 → stale.
     expect(percentIsStale(p({ last_work_date: '2026-09-12' }), 40)).toBe(true)
@@ -92,5 +108,13 @@ describe('newestPercent / percentIsStale — the v2.3372 rule on the row', () =>
     // Nobody clocked in: nothing to be stale against. No percent: nothing to be stale.
     expect(percentIsStale(p({}), 40)).toBe(false)
     expect(percentIsStale(p({ last_work_date: today }), null)).toBe(false)
+  })
+
+  it('with pct_set_at the stale rule is by date for every source: Heron\'s Aug 7 seed is stale against a Sep 12 clock-in; a report that landed after the last clock-in is fresh', () => {
+    expect(percentIsStale(p({ last_work_date: '2026-09-12', pct_set_at: '2026-08-07T05:10:00Z', pct_source: 'seed' }), 40)).toBe(true)
+    expect(percentIsStale(p({ last_work_date: '2026-09-12', report_pct: 12, report_at: '2026-09-13T12:00:00Z', pct_set_at: '2026-09-13T12:00:05Z', pct_source: 'service' }), 12)).toBe(false)
+    expect(percentIsStale(p({ last_work_date: '2026-09-11', pct_manual_at: '2026-09-03T12:00:00Z', pct_set_at: '2026-09-03T12:00:00Z', pct_source: 'manual' }), 90)).toBe(true)
+    // Set the same day the crew was last on site: not stale (the day is not before the clock-in day).
+    expect(percentIsStale(p({ last_work_date: '2026-09-12', pct_set_at: '2026-09-12T20:00:00Z', pct_source: 'manual' }), 55)).toBe(false)
   })
 })

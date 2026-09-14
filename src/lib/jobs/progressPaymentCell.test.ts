@@ -45,6 +45,10 @@ describe('the words', () => {
     expect(percentClause({ pct: 80, source: 'typed', at: '2026-09-03T12:00:00Z' })).toBe('80% typed Sep 3')
     expect(percentClause({ pct: 12, source: 'report', at: '2026-09-11T12:00:00Z' })).toBe('12% reported Sep 11')
     expect(percentClause({ pct: 40, source: 'typed', at: null })).toBe('40% typed')
+    // The three sources by the event that set the number: the back-fill reads "set", a report's propagation "reported", a hand-set "typed".
+    expect(percentClause({ pct: 40, source: 'seed', at: '2026-08-07T05:10:00Z' })).toBe('40% set Aug 7')
+    expect(percentClause({ pct: 12, source: 'report', at: '2026-09-11T12:00:05Z' })).toBe('12% reported Sep 11')
+    expect(percentClause({ pct: 90, source: 'typed', at: '2026-09-03T12:00:00Z' })).toBe('90% typed Sep 3')
     expect(moneyClause(buildStagesMoneyBarModel({ totalBill: 48_700, paymentsMade: 24_359.44, pctComplete: 40 }))).toEqual({ text: '$24,359 paid, nothing billed', tone: 'plain' })
     expect(moneyClause(buildStagesMoneyBarModel({ totalBill: 40_135, paymentsMade: 0, pctComplete: 60, billedUnpaid: 32_108.3 }))).toEqual({ text: '$32,108 billed, nothing paid', tone: 'amber' })
     expect(moneyClause(buildStagesMoneyBarModel({ totalBill: 40_000, paymentsMade: 13_412, pctComplete: 80, billedUnpaid: 11_770 }))).toEqual({ text: '$13,412 paid · $11,770 billed · $6,818 done, not billed', tone: 'amber' })
@@ -74,6 +78,32 @@ describe('buildProgressPaymentView — the five rows', () => {
     expect(v.stageBar?.liveNumber).toBe(2)
     expect(v.liveChipSuffix).toBe('Behar & Malachi')
     expect(v.words).toEqual({ text: 'Top Out · Behar & Malachi on site Sat · 40% typed · $24,359 paid, nothing billed', tone: 'plain' })
+  })
+
+  it('J931 Heron with pct_set_at: the seed carries its date — "40% set Aug 7", still stale and not drawn; SpaceX reads "12% reported Sep 11"', () => {
+    const fixtures = [line('r', 'Rough In', 19_480, 0), line('t', 'Top Out', 19_480, 1), line('s', 'Trim Set', 9_740, 2)]
+    const money = buildStagesMoneyBarModel({ totalBill: 48_700, paymentsMade: 24_359.44, pctComplete: 40 })
+    const stageBar = buildPipelineStageBar({ fixtures, invoices: [], payments: [], pctComplete: 40, todayYmd: today })
+    const crew = crewOf({ last_work_date: '2026-09-12', last_day_people: ['Behar Kraja', 'Malachi Jones'], pct_set_at: '2026-08-07T05:10:00Z', pct_source: 'seed' })
+    const v = buildProgressPaymentView({ money, stageBar, fixtures, invoices: [], crew, pctComplete: 40, status: 'working', todayYmd: today })
+    expect(v.stale).toBe(true)
+    expect(v.segments[1]).toMatchObject({ state: 'live', fillPct: 0, label: 'on site Sat' })
+    expect(v.percent).toEqual({ pct: 40, source: 'seed', at: '2026-08-07T05:10:00Z' })
+    expect(v.words).toEqual({ text: 'Top Out · Behar & Malachi on site Sat · 40% set Aug 7 · $24,359 paid, nothing billed', tone: 'plain' })
+
+    const spacex = buildProgressPaymentView({
+      money: buildStagesMoneyBarModel({ totalBill: 20_000, paymentsMade: 0, pctComplete: 12 }),
+      stageBar: null,
+      fixtures: [line('p', 'Plumbing per plans', 20_000, 0)],
+      invoices: [],
+      crew: crewOf({ last_work_date: '2026-09-10', last_day_people: ['Miguel Rodriguez'], report_pct: 12, report_at: '2026-09-11T12:00:00Z', pct_set_at: '2026-09-11T12:00:05Z', pct_source: 'service' }),
+      pctComplete: 12,
+      status: 'working',
+      todayYmd: today,
+    })
+    expect(spacex.stale).toBe(false)
+    expect(spacex.segments[0]).toMatchObject({ fillPct: 12, label: 'Plumbing per plans · 12%' })
+    expect(spacex.words.text).toBe('Miguel on site Thu · 12% reported Sep 11 · nothing billed · $2,400 done, not billed')
   })
 
   it('Michael Palmer · Moses Hughes: no % ever typed; paid = Rough In to the dollar and 3 on site today → Top Out, no office input', () => {

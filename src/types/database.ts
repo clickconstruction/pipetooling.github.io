@@ -21425,6 +21425,8 @@ export type Database = {
           last_day_people: string[]
           last_work_date: string
           pct_manual_at: string
+          pct_set_at: string
+          pct_source: string
           people_60d: number
           report_at: string
           report_pct: number
