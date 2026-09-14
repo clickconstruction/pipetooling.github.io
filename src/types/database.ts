@@ -9028,6 +9028,96 @@ export type Database = {
           },
         ]
       }
+      job_supply_house_accounts: {
+        Row: {
+          account_ref: string
+          created_at: string
+          id: string
+          job_id: string
+          note: string
+          opened_at: string | null
+          opened_by: string | null
+          opened_via: string | null
+          rep_contact_id: string | null
+          requested_at: string | null
+          requested_by: string | null
+          requested_from_counter: boolean
+          status: string
+          supply_house_id: string
+          updated_at: string
+        }
+        Insert: {
+          account_ref?: string
+          created_at?: string
+          id?: string
+          job_id: string
+          note?: string
+          opened_at?: string | null
+          opened_by?: string | null
+          opened_via?: string | null
+          rep_contact_id?: string | null
+          requested_at?: string | null
+          requested_by?: string | null
+          requested_from_counter?: boolean
+          status?: string
+          supply_house_id: string
+          updated_at?: string
+        }
+        Update: {
+          account_ref?: string
+          created_at?: string
+          id?: string
+          job_id?: string
+          note?: string
+          opened_at?: string | null
+          opened_by?: string | null
+          opened_via?: string | null
+          rep_contact_id?: string | null
+          requested_at?: string | null
+          requested_by?: string | null
+          requested_from_counter?: boolean
+          status?: string
+          supply_house_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "job_supply_house_accounts_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs_ledger"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_supply_house_accounts_opened_by_fkey"
+            columns: ["opened_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_supply_house_accounts_rep_contact_id_fkey"
+            columns: ["rep_contact_id"]
+            isOneToOne: false
+            referencedRelation: "supply_house_contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_supply_house_accounts_requested_by_fkey"
+            columns: ["requested_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_supply_house_accounts_supply_house_id_fkey"
+            columns: ["supply_house_id"]
+            isOneToOne: false
+            referencedRelation: "supply_houses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       job_test_reports: {
         Row: {
           certifier_license: string | null
@@ -16793,6 +16883,8 @@ export type Database = {
           is_default: boolean
           label: string
           name: string | null
+          phone: string | null
+          role: string
           supply_house_id: string | null
           updated_at: string
         }
@@ -16805,6 +16897,8 @@ export type Database = {
           is_default?: boolean
           label: string
           name?: string | null
+          phone?: string | null
+          role?: string
           supply_house_id?: string | null
           updated_at?: string
         }
@@ -16817,6 +16911,8 @@ export type Database = {
           is_default?: boolean
           label?: string
           name?: string | null
+          phone?: string | null
+          role?: string
           supply_house_id?: string | null
           updated_at?: string
         }
@@ -17002,6 +17098,7 @@ export type Database = {
       }
       supply_house_job_accounts: {
         Row: {
+          account_id: string | null
           contact_email: string
           contact_label: string
           id: string
@@ -17010,8 +17107,10 @@ export type Database = {
           sent_at: string
           sent_by: string | null
           sent_by_name: string
+          supply_house_id: string | null
         }
         Insert: {
+          account_id?: string | null
           contact_email: string
           contact_label: string
           id?: string
@@ -17020,8 +17119,10 @@ export type Database = {
           sent_at?: string
           sent_by?: string | null
           sent_by_name?: string
+          supply_house_id?: string | null
         }
         Update: {
+          account_id?: string | null
           contact_email?: string
           contact_label?: string
           id?: string
@@ -17030,13 +17131,28 @@ export type Database = {
           sent_at?: string
           sent_by?: string | null
           sent_by_name?: string
+          supply_house_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "supply_house_job_accounts_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "job_supply_house_accounts"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "supply_house_job_accounts_job_id_fkey"
             columns: ["job_id"]
             isOneToOne: false
             referencedRelation: "jobs_ledger"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "supply_house_job_accounts_supply_house_id_fkey"
+            columns: ["supply_house_id"]
+            isOneToOne: false
+            referencedRelation: "supply_houses"
             referencedColumns: ["id"]
           },
         ]
@@ -17079,6 +17195,7 @@ export type Database = {
           address: string | null
           created_at: string | null
           id: string
+          job_accounts: string
           monthly_payment_day: number | null
           name: string
           notes: string | null
@@ -17091,6 +17208,7 @@ export type Database = {
           address?: string | null
           created_at?: string | null
           id?: string
+          job_accounts?: string
           monthly_payment_day?: number | null
           name: string
           notes?: string | null
@@ -17103,6 +17221,7 @@ export type Database = {
           address?: string | null
           created_at?: string | null
           id?: string
+          job_accounts?: string
           monthly_payment_day?: number | null
           name?: string
           notes?: string | null

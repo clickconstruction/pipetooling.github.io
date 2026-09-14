@@ -62,6 +62,7 @@ when_to_read:
 - [Recurring job report emails (Jobs)](#recurring-job-report-emails-jobs)
 - [Bids System](#bids-system)
 - [Materials System](#materials-system)
+- [Job account (at a supply house)](#job-account-at-a-supply-house)
 - [Job Accounts (Materials tab)](#job-accounts-materials-tab)
 - [PO Generator ledger](#po-generator-ledger)
 - [Digital Twins & Robots](#digital-twins--robots)
@@ -1001,6 +1002,9 @@ Supplier or vendor where materials are purchased (Ferguson, HD Supply, local plu
 
 ### Job Accounts (Materials tab)
 Per-job money-flow rollup (v2.2652): **Materials → Job Accounts** joins **`supply_house_invoice_job_allocations`** × **`supply_house_invoices`** against **`jobs_ledger.revenue`** / **`payments_made`** to show, per job, what the customer has paid vs what is paid/owed to supply houses. Headline "holding for suppliers" = unpaid supplier balances on jobs the customer has paid (per job: min(owed, payments_made)). Statuses: **Owe suppliers**, **Floating** (houses paid, customer not), **Awaiting customer**, **Settled**; unpaid invoices allocated to neither a job nor a bid surface as an **unallocated** bucket. Office roles only (dev/master/assistant-like). Kernel: **[`src/lib/materials/jobAccountsFlow.ts`](../src/lib/materials/jobAccountsFlow.ts)**.
+
+### Job account (at a supply house)
+The per-property account a supply house (Ferguson, Reece, Moore) opens so a job's purchases land on their own statement; the house's lien rights run against the property, which is why the setup packet (v2.1605) carries the owner of record. Since v2.3423 it is a **record on the job, per house** — **`job_supply_house_accounts`** with status **requested** · **open** (`account_ref`, `opened_via` phone · packet · counter, the rep) · **not needed** (reason in `note`); no row = none yet. Which houses expect one: **`supply_houses.job_accounts`** (expects · optional · none). Who opens them: the contact with **`supply_house_contacts.role = 'job_accounts'`**. The office marks accounts opened from the house's **Job accounts** roster (Supply houses → Accounts payable → expanded house), the job window, the PO code, or the Dispatch errand (train PRs 2–5). Distinct from the **Job Accounts (Materials tab)** money lens below and from the **`on_job_account`** invoice flag (v2.2669), which classifies whose exposure an unpaid invoice is. Kernel: **[`src/lib/materials/jobSupplyHouseAccounts.ts`](../src/lib/materials/jobSupplyHouseAccounts.ts)**.
 
 ### PO Generator ledger
 Shop PO / reference codes (10000–99999) generated from **Materials → PO Generator** and stored in **`material_po_generator_entries`** with **`job_ledger_id`**, **`for_user_id`**, optional **`supply_house_id`**, and unique **`po_code`**. **Supply Houses** → expanded house → **Invoices** **Purchase Order #** can show a red warning when that field contains a parsed generator-style code not present on visible ledger rows for this supply house or with **null** **`supply_house_id`**. Parser: **[`parsePoGeneratorCodeFromPurchaseOrderName`](../src/lib/parsePoGeneratorCodeFromPurchaseOrderName.ts)** — treats strings like **`40326-1`** as shop refs, not **`40326`**.

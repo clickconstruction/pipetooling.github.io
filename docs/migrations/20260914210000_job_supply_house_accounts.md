@@ -1,0 +1,11 @@
+# 20260914210000_job_supply_house_accounts.sql (2026-09-14, v2.3423)
+
+Job accounts at the counter, PR 1 — a supply-house job account becomes a **status on the job, per house**, instead of a log of emailed packets.
+
+- **`job_supply_house_accounts`** (new): one row per `(job_id, supply_house_id)` once anyone has asked for or opened the house's job account for the property. `status` `requested` · `open` · `not_needed`; `account_ref` (the house's own number, optional); `opened_via` `phone` · `packet` · `counter`; `rep_contact_id` → `supply_house_contacts`; `requested_by/at` + `requested_from_counter`; `opened_by/at`; `note` (the not-needed reason lives here). No row means none yet. A `BEFORE` trigger fills the who/when stamps server-side and clears the opened stamps if a row goes back to `requested`.
+  - RLS: SELECT for anyone who can read the job's operational activity (`can_read_job_activity(job_id, false)` — office, the job's master, adopted/shared assistants, primaries, the crew on the team); INSERT by the office for any status, or by any job reader for a `requested` row attributed to themselves; UPDATE / DELETE office only (`is_office_staff()`). Both read-only fences re-applied.
+- **`supply_houses.job_accounts`** `expects` · `optional` · `none` (default `optional`): only `expects` houses raise a signal. Backfill: Ferguson, Reece and Moore Supply → `expects`; non-`supply_house` vendor kinds → `none`; only rows still at the default move, so a later hand change survives.
+- **`supply_house_contacts.role`** `price_requests` · `job_accounts` · `billing` (default `price_requests`) + **`phone`**. Backfill: a label containing "job acc" becomes the `job_accounts` role. New SELECT policy lets any authenticated user read unarchived `job_accounts` contacts (name + phone for the field's Call button); other contacts stay office + estimator.
+- **`supply_house_job_accounts`** (the v2.1606 send log): `supply_house_id` (the column deferred in v2.3161, backfilled from the addressed contact's house) and `account_id` → the new table.
+
+Apply order: push any time after the client merge — the roster and the form tolerate a missing column (they read defaults) until the push lands, and nothing in the old client writes the new columns.

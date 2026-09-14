@@ -82,10 +82,10 @@ export function SupplyHouseJobAccountsSection() {
           style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', border: 'none', background: 'none', cursor: 'pointer', font: 'inherit', fontWeight: 600, padding: 0 }}
         >
           <span aria-hidden style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{open ? '▼' : '▶'}</span>
-          Job accounts
+          Job account packets sent
         </button>
         <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
-          {loaded ? `${ledger.length} ${ledger.length === 1 ? 'job' : 'jobs'} shared with supply houses` : '…'}
+          {loaded ? `${ledger.length} ${ledger.length === 1 ? 'job' : 'jobs'} shared with supply houses · the accounts themselves live on each house above` : '…'}
         </span>
         {open ? (
           <input

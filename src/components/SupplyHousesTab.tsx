@@ -27,6 +27,7 @@ import type { Database } from '../types/database'
 import { isAssistantLike } from '../lib/subcontractorLikeRole'
 import { phoneSafeMinWidth } from '../lib/stickyModalHeaderStyle'
 import { SupplyHouseJobAccountsSection } from './materials/SupplyHouseJobAccountsSection'
+import { SupplyHouseJobAccountsRoster } from './materials/SupplyHouseJobAccountsRoster'
 import { useNarrowViewport640 } from '../hooks/useNarrowViewport640'
 import { useReportQuickfillSectionMetric } from '../contexts/QuickfillSectionMetricsContext'
 import { todayYmdInAppTz } from '../utils/dateUtils'
@@ -920,6 +921,11 @@ export function SupplyHousesTab({
                                       </div>
                                     )}
                                   </div>
+                                  <SupplyHouseJobAccountsRoster
+                                    house={selectedSupplyHouseForDetail}
+                                    invoices={supplyHouseInvoices}
+                                    jobDetails={supplyHouseJobDetailsMap}
+                                  />
                                   <section style={{ marginBottom: '1.5rem' }}>
                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
                                       <h3 style={{ margin: 0, fontSize: '1rem' }}>Invoices</h3>
