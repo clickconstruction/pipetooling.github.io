@@ -299,7 +299,7 @@ describe('JobsMapCard', () => {
     const askRow = screen.getByTitle(/1019 · Vasquez pretest — show it on the map/)
     expect(askRow.textContent).toMatch(/Billed \d+ d/)
     fireEvent.click(askRow)
-    expect(onFocusRow).toHaveBeenCalledWith(expect.objectContaining({ id: 'near' }))
+    expect(onFocusJob).toHaveBeenCalledWith('near', '1019')
     expect(screen.getByTestId('popup').textContent).toContain('$18,400 owed')
     expect(screen.getByText(/2 pinned · \$18\.4k to collect/)).toBeTruthy()
   })
