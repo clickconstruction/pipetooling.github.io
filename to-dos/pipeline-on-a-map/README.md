@@ -1,6 +1,6 @@
 # Pipeline on a map — the Bid Board's map at the top of Jobs → Pipeline, with an As-of slider
 
-Status: **in progress** · PR 1 shipped v2.3396 (the card, today's view) · PR 2 shipped v2.3397 (the rail + hover pulse) · PR 3 As of · PR 4 optional · owner decisions below taken as recommended for the build (flip any) · mock-ups: [`mockup.html`](./mockup.html) (the 2026-09-12 plan page) and the second-pass brief published 2026-09-14 as the artifact *Pipeline on a Map* (https://claude.ai/code/artifact/5f50a5b0-a6be-4353-8c99-bda98f145a80)
+Status: **built** · PR 1 v2.3396 (the card) · PR 2 v2.3397 (the rail + hover pulse) · PR 3 v2.3398 (As of) — the plan is built; PR 4 (crews on the day) stays optional, built only if the first three earn it · delete this to-do after a week of use unless PR 4 is wanted · owner decisions below taken as recommended for the build (flip any) · mock-ups: [`mockup.html`](./mockup.html) (the 2026-09-12 plan page) and the second-pass brief published 2026-09-14 as the artifact *Pipeline on a Map* (https://claude.ai/code/artifact/5f50a5b0-a6be-4353-8c99-bda98f145a80)
 
 ## The ask, in the owner's words
 

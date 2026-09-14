@@ -1403,6 +1403,19 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
     }
   })
   const jobDetailModal = useJobDetailModal()
+  // Jobs on a map (v2.3398): the board fetches a section's rows only while that section is open,
+  // so with the sections folded the map drew one pin. The card flags that it is showing; the
+  // effect asks for every live section's scope and re-asks as the snapshot / merged set changes —
+  // `fetchScopeIfNeeded` silently no-ops until the initial board load has landed, so a one-shot
+  // call from the card's mount was lost.
+  const [mapWantsLiveRows, setMapWantsLiveRows] = useState(false)
+  const requestLiveRowsForMap = useCallback(() => setMapWantsLiveRows(true), [])
+  useEffect(() => {
+    if (!active || !mapWantsLiveRows || jobsListLoading) return
+    for (const section of ['waiting', 'working', 'readyToBill', 'billed', 'collections'] as const) {
+      void cacheFetchScopeIfNeeded(scopeForStagesSection(section), customerFilterForFetch)
+    }
+  }, [active, mapWantsLiveRows, jobsListLoading, jobsListDataKey, cacheMergedScopes, customerFilterForFetch, cacheFetchScopeIfNeeded])
   // Row sort mode (v2.1807): classic newest-number-first, or by time added.
   // Lives in the ⋯ Pipeline tools menu; per-device persistence.
   const [stagesSortMode, setStagesSortModeState] = useState<StagesBoardSortMode>(() => loadStagesSortMode())
@@ -3361,9 +3374,19 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
             loading={jobsListLoading}
             paidLoaded={cacheMergedScopes.has(scopeForStagesSection('paid'))}
             onLoadPaid={() => void cacheFetchScopeIfNeeded(scopeForStagesSection('paid'), customerFilterForFetch)}
-            onOpenJob={(job) => jobDetailModal?.openJobDetail({ jobId: job.id })}
-            onEditJob={(job) => openEdit(job)}
-            onFocusRow={(job) => jumpToNumberMatches([job], (job.hcp_number ?? '').trim() || (job.click_number ?? '').trim())}
+            onNeedLiveRows={requestLiveRowsForMap}
+            onOpenJob={(jobId) => jobDetailModal?.openJobDetail({ jobId })}
+            onEditJob={(jobId) => tryOpenEditJob(jobId)}
+            onFocusJob={(jobId, numberLabel) => {
+              // The loaded row lands directly; a row the board hasn't loaded (a rewound paid job)
+              // goes through the # jump's lean lookup, which fetches and merges it.
+              const hit = jobs.find((j) => j.id === jobId)
+              if (hit) {
+                jumpToNumberMatches([hit], numberLabel)
+                return
+              }
+              if (numberLabel && numberLabel !== '—') void jumpViaLeanLookup(numberLabel)
+            }}
           />
           {/* The Pipeline money story + Today's Money Opportunities (v2.1915,
               Old/New pills retired v2.2012 — this is the only view now).

@@ -15,6 +15,7 @@ import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { JobsMapCard } from './JobsMapCard'
 import type { JobWithDetails } from '../../types/jobWithDetails'
 import type { PinsMapCanvasProps } from '../map/PinsMapCanvas'
+import { todayYmdInAppTz, ymdAddDays } from '../../utils/dateUtils'
 
 const cacheRows = vi.fn<() => { address_normalized: string; lat: number; lng: number }[]>(() => [])
 const invokeMock = vi.fn()
@@ -36,6 +37,18 @@ vi.mock('../../hooks/useOfficeAnchor', () => ({
 }))
 const openExternal = vi.fn()
 vi.mock('../../lib/openInExternalBrowser', () => ({ openInExternalBrowser: (u: string) => openExternal(u) }))
+// v2.3398: the As-of history — a small world with one job that did not exist yet on the rewound day.
+const historyMock = vi.fn(async () => ({
+  jobs: [
+    { id: 'a', hcp_number: '1019', click_number: null, job_name: 'Vasquez pretest', job_address: '173 Atlantis, Kyle', status: 'billed', created_ymd: '2026-03-01', collections_ymd: null, customer_id: 'c1', customer_name: 'Maria Vasquez', gc_customer_id: null, gc_name: null, bill_to_party: null },
+    { id: 'new', hcp_number: '1030', click_number: null, job_name: 'Born yesterday', job_address: '173 Atlantis, Kyle', status: 'working', created_ymd: ymdAddDays(todayYmdInAppTz(), -5), collections_ymd: null, customer_id: 'c2', customer_name: 'New One', gc_customer_id: null, gc_name: null, bill_to_party: null },
+  ],
+  moves: [{ job_id: 'a', from_status: 'working', to_status: 'billed', ymd: ymdAddDays(todayYmdInAppTz(), -5) }],
+  bills: [],
+  payments: [],
+  loadedAt: 0,
+}))
+vi.mock('../../lib/jobs/loadJobsMapHistory', () => ({ loadJobsMapHistory: () => historyMock() }))
 vi.mock('../map/PinsMapGoogleCanvas', () => ({
   default: (p: PinsMapCanvasProps & { apiKey: string; onUnavailable: (r: string) => void }) => <div data-testid="google-canvas" data-key={p.apiKey} />,
 }))
@@ -77,8 +90,9 @@ function job(p: Partial<JobWithDetails> & { id: string }): JobWithDetails {
 
 const onOpenJob = vi.fn()
 const onEditJob = vi.fn()
-const onFocusRow = vi.fn()
+const onFocusJob = vi.fn()
 const onLoadPaid = vi.fn()
+const onNeedLiveRows = vi.fn()
 
 function renderCard(jobs: JobWithDetails[], opts: { isMobile?: boolean; paidLoaded?: boolean } = {}) {
   return render(
@@ -88,9 +102,10 @@ function renderCard(jobs: JobWithDetails[], opts: { isMobile?: boolean; paidLoad
       loading={false}
       paidLoaded={opts.paidLoaded ?? false}
       onLoadPaid={onLoadPaid}
+      onNeedLiveRows={onNeedLiveRows}
       onOpenJob={onOpenJob}
       onEditJob={onEditJob}
-      onFocusRow={onFocusRow}
+      onFocusJob={onFocusJob}
     />,
   )
 }
@@ -104,8 +119,9 @@ beforeEach(() => {
   invokeMock.mockResolvedValue({ data: { results: [], failures: [] }, error: null })
   onOpenJob.mockReset()
   onEditJob.mockReset()
-  onFocusRow.mockReset()
+  onFocusJob.mockReset()
   onLoadPaid.mockReset()
+  onNeedLiveRows.mockReset()
   openExternal.mockReset()
 })
 
@@ -117,6 +133,16 @@ describe('JobsMapCard', () => {
   it('renders nothing when the board has no jobs', () => {
     const { container } = renderCard([])
     expect(container.innerHTML).toBe('')
+  })
+
+  it('asks the board for the live sections’ rows while it is showing, and not while hidden', async () => {
+    cacheRows.mockReturnValue([{ address_normalized: '173 atlantis, kyle', lat: 30.0, lng: -97.9 }])
+    renderCard([job({ id: 'a' })])
+    await screen.findByTestId('canvas')
+    expect(onNeedLiveRows).toHaveBeenCalledTimes(1)
+    fireEvent.click(screen.getByText('Hide map'))
+    fireEvent.click(screen.getByText('Show map'))
+    expect(onNeedLiveRows).toHaveBeenCalledTimes(2)
   })
 
   it('pins cached addresses in section colors with the office anchor and the Collections ring, and lists a job the geocoder could not place', async () => {
@@ -136,7 +162,7 @@ describe('JobsMapCard', () => {
     expect((invokeMock.mock.calls[0]![1] as { body: { addresses: string[] } }).body.addresses).toEqual(['5100 Pine Ridge Blvd'])
     await waitFor(() => expect(screen.getByText(/1 job has no map location yet/)).toBeTruthy())
     fireEvent.click(screen.getByRole('button', { name: /^1002$/ }))
-    expect(onFocusRow).toHaveBeenCalledWith(expect.objectContaining({ id: 'b' }))
+    expect(onFocusJob).toHaveBeenCalledWith('b', '1002')
   })
 
   it('legend chips toggle pins on the map only; Paid starts off and its first tap asks the board to load Paid rows', async () => {
@@ -158,15 +184,15 @@ describe('JobsMapCard', () => {
     cacheRows.mockReturnValue([{ address_normalized: '173 atlantis, kyle', lat: 30.0, lng: -97.9 }])
     renderCard([job({ id: 'a', gc_customer_id: 'g1', bill_to_party: 'gc', gcCustomer: { id: 'g1', name: 'Done Right Foundation' } } as Partial<JobWithDetails> & { id: string })])
     fireEvent.click(await screen.findByText(/^pin 1019 · Vasquez pretest$/))
-    expect(onFocusRow).toHaveBeenCalledWith(expect.objectContaining({ id: 'a' }))
+    expect(onFocusJob).toHaveBeenCalledWith('a', '1019')
     const popup = screen.getByTestId('popup')
     expect(popup.textContent).toContain('Bills go to Done Right Foundation')
     expect(popup.textContent).toContain('60% done')
     expect(popup.textContent).toContain('173 Atlantis, Kyle')
     fireEvent.click(screen.getByRole('button', { name: 'Open job' }))
-    expect(onOpenJob).toHaveBeenCalledWith(expect.objectContaining({ id: 'a' }))
+    expect(onOpenJob).toHaveBeenCalledWith('a')
     fireEvent.click(screen.getByRole('button', { name: 'Edit' }))
-    expect(onEditJob).toHaveBeenCalledWith(expect.objectContaining({ id: 'a' }))
+    expect(onEditJob).toHaveBeenCalledWith('a')
     fireEvent.click(screen.getByRole('button', { name: 'Directions' }))
     expect(openExternal).toHaveBeenCalledWith(expect.stringContaining('173%20Atlantis'))
   })
@@ -192,7 +218,7 @@ describe('JobsMapCard', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Directions' }))
     expect(openExternal).toHaveBeenCalledTimes(1)
     fireEvent.click(screen.getByRole('button', { name: 'Open job' }))
-    expect(onOpenJob).toHaveBeenCalledWith(expect.objectContaining({ id: 'a' }))
+    expect(onOpenJob).toHaveBeenCalledWith('a')
   })
 
   it('v2.3397: the rail buckets hide pins by distance, and an ask row selects its pin and lights the row', async () => {
@@ -212,7 +238,68 @@ describe('JobsMapCard', () => {
     const askRow = screen.getByTitle(/1019 · Vasquez pretest — show it on the map/)
     expect(askRow.textContent).toMatch(/Billed \d+ d/)
     fireEvent.click(askRow)
-    expect(onFocusRow).toHaveBeenCalledWith(expect.objectContaining({ id: 'near' }))
+    expect(onFocusJob).toHaveBeenCalledWith('near', '1019')
+    expect(screen.getByTestId('popup').textContent).toContain('$18,400 owed')
+    expect(screen.getByText(/2 pinned · \$18\.4k to collect/)).toBeTruthy()
+  })
+
+  it('v2.3397: hovering a Pipeline row pulses its pin; leaving the rows clears it', async () => {
+    cacheRows.mockReturnValue([{ address_normalized: '173 atlantis, kyle', lat: 30.0, lng: -97.9 }])
+    renderCard([job({ id: 'a' })])
+    const canvas = await screen.findByTestId('canvas')
+    const row = document.createElement('div')
+    row.setAttribute('data-stages-job-id', 'a')
+    document.body.appendChild(row)
+    act(() => {
+      fireEvent.mouseOver(row)
+    })
+    expect(canvas.getAttribute('data-pulse')).toBe('a')
+    act(() => {
+      fireEvent.mouseOver(document.body)
+    })
+    expect(canvas.getAttribute('data-pulse')).toBe('')
+    row.remove()
+  })
+
+  it('v2.3398: As of rewinds the pins to the day — a job created since is gone, a since-billed job reads Working, the strip says what moved', async () => {
+    cacheRows.mockReturnValue([{ address_normalized: '173 atlantis, kyle', lat: 30.0, lng: -97.9 }])
+    renderCard([job({ id: 'a', status: 'billed' }), job({ id: 'new', hcp_number: '1030', job_name: 'Born yesterday' })])
+    await screen.findByText(/^pin 1030 · Born yesterday$/)
+    fireEvent.click(screen.getByRole('button', { name: '⏮ As of' }))
+    await waitFor(() => expect(historyMock).toHaveBeenCalledTimes(1))
+    // today is the slider's right end; nothing changes until it moves
+    expect(screen.getByText(/^pin 1030 · Born yesterday$/)).toBeTruthy()
+    const slider = screen.getByLabelText(/As-of day/) as HTMLInputElement
+    const max = Number(slider.max)
+    fireEvent.change(slider, { target: { value: String(max - 30) } })
+    await waitFor(() => expect(screen.queryByText(/^pin 1030 · Born yesterday$/)).toBeNull())
+    const a = screen.getByText(/^pin 1019 · Vasquez pretest$/)
+    expect(a.getAttribute('data-color')).toBe('#3b82f6')
+    expect(screen.getByTestId('jobs-map-since-then').textContent).toContain('+1 job started · 1 billed')
+    expect(screen.getByText('30 d ago')).toBeTruthy()
+    // the jump chip back to today restores the world
+    fireEvent.click(screen.getByRole('button', { name: 'today' }))
+    await waitFor(() => expect(screen.getByText(/^pin 1030 · Born yesterday$/)).toBeTruthy())
+  })
+
+  it('v2.3397: the rail buckets hide pins by distance, and an ask row selects its pin and lights the row', async () => {
+    cacheRows.mockReturnValue([
+      { address_normalized: '173 atlantis, kyle', lat: 29.7, lng: -97.8 },
+      { address_normalized: '9 far rd, dallas', lat: 32.8, lng: -96.8 },
+    ])
+    renderCard([
+      job({ id: 'near', status: 'billed', invoices: [{ id: 'i1', status: 'billed', amount: 18400, billed_at: '2026-07-30T14:00:00Z', estimated_bill_date: null }] as unknown as JobWithDetails['invoices'] }),
+      job({ id: 'far', hcp_number: '700', job_name: 'Dallas one', job_address: '9 Far Rd, Dallas' }),
+    ])
+    await screen.findByText(/^pin 700 · Dallas one$/)
+    fireEvent.click(screen.getByTitle(/Hide the 50 mi \+ pins/))
+    expect(screen.queryByText(/^pin 700 · Dallas one$/)).toBeNull()
+    expect(screen.getByText(/^pin 1019 · Vasquez pretest$/)).toBeTruthy()
+    // the ask list names the oldest bill with its age and distance; tapping it selects the pin and lights the row
+    const askRow = screen.getByTitle(/1019 · Vasquez pretest — show it on the map/)
+    expect(askRow.textContent).toMatch(/Billed \d+ d/)
+    fireEvent.click(askRow)
+    expect(onFocusJob).toHaveBeenCalledWith('near', '1019')
     expect(screen.getByTestId('popup').textContent).toContain('$18,400 owed')
     expect(screen.getByText(/2 pinned · \$18\.4k to collect/)).toBeTruthy()
   })

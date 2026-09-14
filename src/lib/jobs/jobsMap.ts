@@ -80,8 +80,8 @@ export type JobsMapJob = {
   owedDollars: number
   /** Whole days since the oldest open bill went out (the board's own reference: the hand-set bill date, else `billed_at`); null on other jobs. */
   billedAgeDays: number | null
-  /** The board row this job came from — the openers take it back. */
-  row: JobWithDetails
+  /** The board row this job came from; null for a rewound (As of) job, which the openers reach by id. */
+  row: JobWithDetails | null
 }
 
 export type JobsMapPin = JobsMapJob & { lat: number; lng: number }
