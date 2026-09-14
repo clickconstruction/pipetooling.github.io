@@ -124,6 +124,8 @@ On a builder's job the primary reads {{button:blue|File their subcontract}} (the
 
 If the job already has a draft or a contract out for signature, the pane shows that one — the send reuses it rather than making a second — and the full editor is where to change it.
 
+**Already signed, but in Google Drive?** A dev can run **⋯ → Look in Drive for signed contracts…**: the app reads the jobs Shared Drive, matches contract-looking files to the jobs in the sweep by folder and file name, and shows {{chip:green|Confident}}, {{chip:yellow|Check}} and {{chip:gray|No match}} groups with the reason on every row. {{button:blue|File the 31 confident}} files them all with the Drive link as the signed copy; **File** on a Check row does one. Nobody is emailed.
+
 **Send all** lives under **⋯** at the top right: it takes only {{chip:green|Ready}} rows and asks once with the real number — *Email 81 customers (87 agreements)?* — before anything goes out. Rows leave the list as they send, and the Dashboard count falls with them. On a phone the list is the screen; tap a job to see its agreement.
 
 ## Reminders and the customer's account page

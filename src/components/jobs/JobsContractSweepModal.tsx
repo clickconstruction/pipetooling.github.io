@@ -29,6 +29,7 @@ import { formatContractStamp, type JobContractRow } from '../../lib/jobs/jobCont
 import { buildJobContractDraftPayload, saveJobContractDraft } from '../../lib/jobs/jobContractDraftWrite'
 import { dispatchJobContractChanged } from '../../lib/jobs/jobContractNotNeeded'
 import JobContractFileSheet from './JobContractFileSheet'
+import DriveContractsFoundModal from './DriveContractsFoundModal'
 import { normalizeEstimateLineItemsFromJson } from '../../lib/estimateLineItemNormalize'
 import { renderContractBodyToSafeHtml } from '../../lib/renderContractBodyToSafeHtml'
 import { fetchPhysicalInvoiceIssuerFromAppSettings, getPhysicalInvoiceIssuerForDocument } from '../../lib/physicalInvoiceIssuer'
@@ -145,9 +146,11 @@ export default function JobsContractSweepModal({
   /** ⋯ → Filter the Pipeline to these jobs: the caller closes the sweep and sets the No-contract filter. */
   onFilterBoard?: () => void
 }) {
-  const { user: authUser } = useAuth()
+  const { user: authUser, role: authRole } = useAuth()
   const { showToast } = useToastContext()
   const isMobile = useIsMobile()
+  /** The Drive pass (v2.3390): dev-run until it has been right a few times. */
+  const [driveOpen, setDriveOpen] = useState(false)
   const [templates, setTemplates] = useState<TemplateRow[]>([])
   const [templateId, setTemplateId] = useState(BUILTIN)
   const [emails, setEmails] = useState<Record<string, string>>({})
@@ -474,6 +477,9 @@ export default function JobsContractSweepModal({
         ]
       : []),
     ...(onFilterBoard ? [{ key: 'filter-board', label: 'Filter the Pipeline to these jobs', hint: 'The No-contract filter — the same rule as this list', onSelect: onFilterBoard }] : []),
+    ...(authRole === 'dev' && gapRows.length > 0
+      ? [{ key: 'drive', label: 'Look in Drive for signed contracts…', hint: 'The jobs Shared Drive — file what is already signed, nobody is emailed', onSelect: () => setDriveOpen(true) }]
+      : []),
   ]
 
   const selState = selected ? states.get(selected.id) : undefined
@@ -764,6 +770,16 @@ export default function JobsContractSweepModal({
           ) : null}
         </div>
       )}
+      <DriveContractsFoundModal
+        open={driveOpen}
+        onClose={() => setDriveOpen(false)}
+        jobs={gapRows}
+        onFiled={(ids) => {
+          setFiledIds((prev) => new Set([...prev, ...ids]))
+          dispatchJobContractChanged()
+          onSent()
+        }}
+      />
       <JobContractModal
         open={detail != null}
         onClose={() => {

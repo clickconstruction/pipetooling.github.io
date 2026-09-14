@@ -91,6 +91,7 @@ when_to_read:
    - [twin-mcp](#twin-mcp)
    - [twin-setup](#twin-setup)
    - [drive-intake](#drive-intake)
+   - [drive-contract-scan](#drive-contract-scan)
    - [plan-fetch](#plan-fetch)
    - [ct-bridge](#ct-bridge)
    - [tt-bridge](#tt-bridge)
@@ -901,6 +902,20 @@ The frontend (`src/pages/DevLogin.tsx`, v2.1526) no longer follows the returned 
 **Body**: `{ "bid": "b403" | uuid, "plans_url"?: string, "plans_file_name"?: string }` (bid number accepts `b`/`bp` prefixes) → `{ success, folder_id, folder_link, folder_created, plans_link, plans_reused, upload_note, stamped }`. Drive secrets unset → **503** with a setup pointer.
 
 **Required secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_ANON_KEY`, **`GOOGLE_SERVICE_ACCOUNT_JSON`**, **`DRIVE_JOBS_FOLDER_ID`** (the Jobs folder inside the Shared Drive). Optional `DRIVE_IMPERSONATE_USER` (domain-wide delegation) — leave unset unless the delegation grant actually exists; set-but-ungranted breaks every upload at token exchange.
+
+---
+
+### drive-contract-scan
+
+**Purpose**: The Contract sweep's **Drive pass** (v2.3390): lists the contract-looking files the jobs Shared Drive already holds so the office can file the signed copies that exist instead of emailing customers for new ones. Read-only against Drive (scope `drive.readonly`); it writes nothing — the client ([`src/lib/jobs/driveContractMatch.ts`](../src/lib/jobs/driveContractMatch.ts)) matches each file to a job by folder name (job number first, then street number + street, then job name, then customer/GC name) and file name (contract · agreement · subcontract · signed · executed strong; proposal · terms weak; invoices, plans, lien waivers, change orders excluded), states a confidence (Confident · Check · No match), and files confident rows through the normal paper-record write with the Drive link as the signed document (`✍ On file · Google Doc`).
+
+**Shape**: one name-contains query across everything the service account can see (paged, ≤ 20 000 files), the jobs root's child folders as the job-folder map, and one parent lookup per unknown parent (≤ 400) so a file one level down (a "Contracts" subfolder) is attributed to its job folder. Deeper files come back unattributed and are counted, not listed.
+
+**Endpoint**: `POST /functions/v1/drive-contract-scan` · **Auth**: staff JWT validated in-body — office roles only (dev / master / assistant / controller); `verify_jwt = false`. **Body**: `{}` → `{ ok, files: [{ id, name, mimeType, modifiedTime, webViewLink, size, folderId, folderName }], job_folders, scanned, unattributed }`. Drive secrets unset → **503** with a setup pointer (the same secrets as drive-intake; the SA must be shared into the Jobs folder — `docs/DRIVE_INTAKE_SETUP.md`).
+
+**Required secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_ANON_KEY`, `GOOGLE_SERVICE_ACCOUNT_JSON`, `DRIVE_JOBS_FOLDER_ID`. The Google auth helper is a local copy of drive-intake's (read-only scope) so the twins' intake path is untouched; converge into `_shared` when a third Drive function appears.
+
+**Door**: Jobs → Pipeline → Contract sweep → ⋯ → **Look in Drive for signed contracts…** (devs only until the matcher has been right a few times) → the *Found in Drive* review list ([`DriveContractsFoundModal`](../src/components/jobs/DriveContractsFoundModal.tsx)).
 
 ---
 
