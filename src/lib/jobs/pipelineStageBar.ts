@@ -19,6 +19,7 @@
 import { todayYmdInAppTz } from '../../utils/dateUtils'
 import { buildStagePlan, type StageDraw, type StagePlanInvoice, type StagePlanPayment, type StagePlanRow } from './stagePlan'
 import { fixtureStageFields } from './stagePlanForm'
+import { applyRecognizedStages, recognizeStages } from './stageRecognition'
 
 export type PipelineStageState = 'done' | 'live' | 'later'
 /** The edge: `ready` folds the plan's `waits` in (both are "passed, not billed"); `later` folds `none` / `open`. */
@@ -55,6 +56,12 @@ export type PipelineStageBar = {
   captionTone: 'plain' | 'amber' | 'green'
   /** Σ weight × stage % — the job % the stages imply (the report flow writes this same figure). */
   impliedJobPct: number | null
+  /**
+   * v2.3417: the stages were read from the line names (Rough In · Top Out ·
+   * Trim Set in order) rather than set as Order on the Bill tab. Draw rules
+   * on the Bill tab are untouched; the row and the report picker show them.
+   */
+  recognized: boolean
 }
 
 export type PipelineStageBarFixture = {
@@ -80,9 +87,26 @@ export type PipelineStageBarInput = {
   todayYmd?: string
 }
 
-/** True when the job has at least one Order stage — the only time the stage bar replaces the money bar. */
+/**
+ * True when the job has at least one Order stage, set on the Bill tab or
+ * recognized from the line names (v2.3417, `stageRecognition.ts`) — the only
+ * times the stage bar replaces the money bar.
+ */
 export function stageBarAvailable(fixtures: ReadonlyArray<unknown>): boolean {
-  return fixtures.some((f) => fixtureStageFields(f).stage_kind === 'order')
+  if (fixtures.some((f) => fixtureStageFields(f).stage_kind === 'order')) return true
+  return recognizeStages(fixtures.map(asRecognizable)).recognized
+}
+
+const asRecognizable = (f: unknown, i = 0) => {
+  const r = (f ?? {}) as Partial<PipelineStageBarFixture> & { id?: unknown }
+  return {
+    id: String(r.id ?? i),
+    name: r.name ?? null,
+    count: r.count ?? 1,
+    line_unit_price: r.line_unit_price ?? null,
+    sequence_order: r.sequence_order ?? i,
+    stage_kind: fixtureStageFields(f).stage_kind,
+  }
 }
 
 /**
@@ -154,10 +178,14 @@ const clampPct = (n: number) => Math.max(0, Math.min(100, n))
  */
 export function buildPipelineStageBar(input: PipelineStageBarInput): PipelineStageBar | null {
   if (!stageBarAvailable(input.fixtures)) return null
+  // Recognized rows (Rough In · Top Out · Trim Set, kind `any`) read as Order here
+  // and nowhere else — the Bill tab keeps its own selector and its draw rules.
+  const recognition = applyRecognizedStages(
+    input.fixtures.map((f, i) => ({ ...asRecognizable(f, i), invoice_id: f.invoice_id, progress_pct: (f as { progress_pct?: unknown }).progress_pct, shared_with_gc: fixtureStageFields(f).shared_with_gc })),
+  )
   const plan = buildStagePlan({
-    fixtures: input.fixtures.map((f, i) => {
-      const stage = fixtureStageFields(f)
-      const pp = (f as { progress_pct?: unknown }).progress_pct
+    fixtures: recognition.fixtures.map((f, i) => {
+      const pp = f.progress_pct
       return {
         id: f.id,
         name: f.name ?? '',
@@ -165,8 +193,8 @@ export function buildPipelineStageBar(input: PipelineStageBarInput): PipelineSta
         line_unit_price: f.line_unit_price,
         sequence_order: f.sequence_order ?? i,
         invoice_id: f.invoice_id,
-        stage_kind: stage.stage_kind,
-        shared_with_gc: stage.shared_with_gc,
+        stage_kind: f.stage_kind === 'order' ? 'order' : f.stage_kind === 'any' ? 'any' : null,
+        shared_with_gc: f.shared_with_gc,
         progress_pct: typeof pp === 'number' && Number.isFinite(pp) ? pp : null,
       }
     }),
@@ -257,7 +285,7 @@ export function buildPipelineStageBar(input: PipelineStageBarInput): PipelineSta
     caption = money ? `${head} · ${money}` : head
   }
 
-  return { segments, count: orders.length, liveNumber: live?.number ?? null, caption, captionTone, impliedJobPct }
+  return { segments, count: orders.length, liveNumber: live?.number ?? null, caption, captionTone, impliedJobPct, recognized: recognition.recognized }
 }
 
 // ── Chips ───────────────────────────────────────────────────────────────────

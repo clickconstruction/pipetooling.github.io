@@ -82,6 +82,29 @@ describe('stageReportSummary + the report field', () => {
   })
 })
 
+describe('stageProgressRowsFromRpc recognition (v2.3417)', () => {
+  it('numbers Rough In · Top Out · Trim Set as Order rows when the office never set the kind', () => {
+    const rows = stageProgressRowsFromRpc([
+      { fixture_id: 'r', name: 'Rough In', stage_kind: 'any', sequence_order: 0, weight_pct: 40, progress_pct: null, draw_paid: false },
+      { fixture_id: 't', name: 'Top Out', stage_kind: 'any', sequence_order: 1, weight_pct: 40, progress_pct: null, draw_paid: false },
+      { fixture_id: 's', name: 'Trim Set', stage_kind: 'any', sequence_order: 2, weight_pct: 20, progress_pct: null, draw_paid: false },
+      { fixture_id: 'c', name: 'Change order: hose bib', stage_kind: 'any', sequence_order: 3, weight_pct: 5, progress_pct: null, draw_paid: false },
+    ])
+    expect(rows.map((r) => r.kind)).toEqual(['order', 'order', 'order', 'any'])
+    expect(stageModeAvailable(rows)).toBe(true)
+    expect(rows.map((r) => stagePickerNumber(rows, r))).toEqual(['1', '2', '3', '◆'])
+    expect(defaultStageToReport(rows)?.fixtureId).toBe('r')
+  })
+  it('leaves a service job alone', () => {
+    const rows = stageProgressRowsFromRpc([
+      { fixture_id: 'a', name: 'Diagnostic', stage_kind: 'any', sequence_order: 0, weight_pct: 30, progress_pct: null, draw_paid: false },
+      { fixture_id: 'b', name: 'Parts and labor', stage_kind: 'any', sequence_order: 1, weight_pct: 70, progress_pct: null, draw_paid: false },
+    ])
+    expect(rows.map((r) => r.kind)).toEqual(['any', 'any'])
+    expect(stageModeAvailable(rows)).toBe(false)
+  })
+})
+
 describe('stageModeAvailable', () => {
   it('needs at least one Order row — legacy any-only jobs keep the plain slider', () => {
     expect(stageModeAvailable(heron)).toBe(true)
