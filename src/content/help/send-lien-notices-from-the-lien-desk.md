@@ -40,9 +40,17 @@ Robert opens J650 in Awaiting approval: $33,500 open with Loberg Contracting, fi
 
 The desk shows him only what needs a decision: what is open with that GC, their word, the months and hours, and what a hold costs — *June's lien right ends September 15*. He can {{button:green|Approve & next}}, **Hold — they promised…** (asks again on the promise date), **Hold — I'll call first** (asks again three days before the deadline), or send it **Back to the office**.
 
-## Sending
+## Sending the run
 
-A ready notice opens the **Lien window** on its § 53.056 tab with the desk's months filled in. Print it for certified mail (or email a recipient), then {{button:blue|Save & record sends…}} with the tracking numbers. Recording it moves the desk row to **Sent**, and the forecast's month lines read *notice sent* for every month the notice named.
+Approved notices go out together. {{button:blue|Send the run · N}} in the desk's header opens the run: one row per recipient — the owner of record and the original contractor for each notice — with the delivery method (certified mail by default; courier, hand, or a courtesy email where an address is on file) and a box for the tracking number.
+
+1. {{button:outline|Print the packet}} — one document: a cover sheet listing every envelope with a blank for its tracking number, then each notice twice, *Copy for: Owner of record* and *Copy for: Original contractor*, with the cover note on its own page when the draft asked for it.
+2. Mail them. Type the tracking numbers when you are back, or leave them for later.
+3. {{button:blue|Record the run ▸}} — each notice is written to its job naming **every month it covered**, the courtesy emails go out, and the desk rows move to **Sent**. The forecast's month lines read *notice sent* the moment it saves.
+
+:::example One notice on its own
+A ready item's footer also offers **Just this one, from the Lien window ›** — the § 53.056 tab with the desk's months filled in, for a single notice you want to print or email by hand. Recording it there moves the desk row too.
+:::
 
 ## Who can do what
 

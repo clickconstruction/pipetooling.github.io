@@ -1,6 +1,6 @@
 # Lien desk — from "a notice is due" to "it went out," with the leader's say-so on record
 
-Status: **in progress** · PR 1 v2.3405 (the migration, the queue kernel, the desk's office and leader sides, the doors, the Dashboard cards) · next: the run (PR 2), affidavits (PR 3) · the 6 decisions below taken as proposed on 2026-09-14 ("this should work, please build it all") · mock-up: [`mockup.html`](./mockup.html) (entry points, Draft A, the critique, Refined B: office pane, leader pane + phone, the run; also published as a Claude artifact 2026-09-14) · spine: the v2.3400 work-months kernel (`src/lib/jobs/forecastWorkMonths.ts`)
+Status: **in progress** · PR 1 v2.3405 (the migration, the queue kernel, the desk's office and leader sides, the doors, the Dashboard cards) · PR 2 v2.3410 (the run) · next: affidavits (PR 3) · the 6 decisions below taken as proposed on 2026-09-14 ("this should work, please build it all") · mock-up: [`mockup.html`](./mockup.html) (entry points, Draft A, the critique, Refined B: office pane, leader pane + phone, the run; also published as a Claude artifact 2026-09-14) · spine: the v2.3400 work-months kernel (`src/lib/jobs/forecastWorkMonths.ts`)
 
 ## The ask, in the owner's words
 
