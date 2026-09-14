@@ -6,7 +6,7 @@
  * only — the statement math lives in src/lib/jobsDocuments/demandLetter.test.ts.
  */
 import { describe, expect, it, vi } from 'vitest'
-import { screen, waitFor } from '@testing-library/react'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { makeInvoice, makeJob, renderWithProviders } from '../../test/renderSmokeMocks'
 import LienInstrumentsModal from './LienInstrumentsModal'
 
@@ -73,8 +73,8 @@ describe('LienInstrumentsModal · demand letter reads the bill', () => {
     expect(debtor.textContent).toContain('needs a mailing address')
     expect(debtor.textContent).toContain('The bill was addressed to the GC, so the demand goes there too.')
     expect(screen.getAllByRole('button', { name: '§ 53.056 notice' }).length).toBe(2) // the tab and the door in the debtor block
-    // The homeowner is not the debtor anywhere on the letter.
-    expect(screen.queryByText(/Rizvi Syed/)).toBeNull()
+    // The homeowner is not the debtor.
+    expect(debtor.textContent).not.toContain('Rizvi')
 
     const stmt = document.querySelector('[data-demand-statement]') as HTMLElement
     expect(stmt.textContent).toContain('#1 — sent August 18, 2026 · due September 5, 2026')
@@ -86,6 +86,29 @@ describe('LienInstrumentsModal · demand letter reads the bill', () => {
     expect(screen.getByText('Re: Final Demand for Payment — Invoice #1 · $1,710.00')).toBeTruthy()
     expect(screen.getByText('Statement of account')).toBeTruthy()
     expect(screen.queryByText(/Details of Debt/)).toBeNull()
+
+    // Exhibits (v2.3429): the invoice always, no agreement on this job, the delivery record by switch — named on the letter and drawn under it.
+    const enclosed = document.querySelector('[data-demand-enclosed]') as HTMLElement
+    expect(enclosed.textContent).toContain('Exhibit A · Invoice #1, as sent August 18, 2026')
+    expect(enclosed.textContent).toContain('always')
+    expect(enclosed.textContent).toContain('Signed agreement — none on this job')
+    expect(enclosed.textContent).toContain('Exhibit C · Delivery record')
+    expect(screen.getByText('The invoice is enclosed as Exhibit A and the delivery record as Exhibit C. All payments and credits have been allowed.')).toBeTruthy()
+    expect(document.querySelector('[data-demand-exhibit="A"]')).toBeTruthy()
+    expect(document.querySelector('[data-demand-exhibit="C"]')).toBeTruthy()
+    expect(document.querySelector('[data-demand-exhibit="B"]')).toBeNull()
+    expect(screen.getByRole('button', { name: 'Print packet' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Download PDF · 3 documents' })).toBeTruthy()
+  })
+
+  it('unticking the delivery record drops Exhibit C from the letter and the preview', async () => {
+    renderWithProviders(<LienInstrumentsModal {...baseProps} job={job()} />)
+    await waitFor(() => expect(document.querySelector('[data-demand-exhibit="C"]')).toBeTruthy())
+    const boxes = (document.querySelector('[data-demand-enclosed]') as HTMLElement).querySelectorAll('input[type="checkbox"]')
+    expect(boxes.length).toBe(1)
+    fireEvent.click(boxes[0]!)
+    await waitFor(() => expect(document.querySelector('[data-demand-exhibit="C"]')).toBeNull())
+    expect(screen.getByText('The invoice is enclosed as Exhibit A. All payments and credits have been allowed.')).toBeTruthy()
   })
 
   it('a bill addressed to the customer is demanded of the customer, with no notice pointer', async () => {

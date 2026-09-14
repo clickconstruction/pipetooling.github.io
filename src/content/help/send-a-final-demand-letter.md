@@ -23,6 +23,16 @@ On a **Billed Awaiting Payment** or **Collections** row, the orange lien icon no
 The theft-of-services escalation (Texas Penal Code § 31.04) is a checkbox that ships **off** until the attorney package signs off on it. Small claims, the mechanic's lien, and the late-fees note are on by default — every line is a toggle.
 :::
 
+## What goes out with it
+
+The letter never goes alone. Under **Enclosed**:
+
+- **Exhibit A — the invoice**, always: the bill as the customer received it, one per bill the demand covers, stamped on every page.
+- **Exhibit B — the signed agreement**, when the job has one on file (untick it to leave it out).
+- **Exhibit C — the delivery record**: the dated sends, re-sends, calls and promises the letter cites, on one page the debtor can check against their own inbox.
+
+The letter names them under the statement and in an *Enclosures* line at the foot. The preview shows each exhibit as the page it will be. {{button:outline-blue|Print packet}} opens one PDF — the letter, then every exhibit — and {{button:outline-blue|Download PDF}} saves the same file.
+
 ## Record the send
 
 {{button:blue|Save & record send…}} asks how it physically went out — **certified mail**, traceable courier, email, or hand-delivered — plus the tracking number and the mailing date (a notice is effective the day it's mailed). That creates the record; nothing sends from the app, so the legal path stays physical and provable.

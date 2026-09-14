@@ -4,6 +4,7 @@ import type { PhysicalInvoiceIssuer } from '../physicalInvoiceIssuer'
 import type { PhysicalInvoiceDocument } from '../physicalInvoiceDocument'
 import type { StripeInvoiceLineDetail } from '../stripeInvoiceDetailsResponse'
 import { effectiveInvoiceParty, type EffectiveBillParty } from '../../../supabase/functions/_shared/billToParty'
+import { enclosuresLine, exhibitsSentence, type DemandExhibit } from './demandLetterPacket'
 import { loadJsPDF } from '../loadJsPDF'
 
 /**
@@ -60,6 +61,8 @@ export type DemandLetterFields = {
   statement?: DemandStatementInvoice[]
   /** The job address the work went into (v2.3425). */
   serviceAddress?: string
+  /** What goes out behind the letter (v2.3429): the invoice as Exhibit A, the agreement as B, the delivery record as C. */
+  enclosures?: DemandExhibit[]
   invoiceNumber: string
   /** YYYY-MM-DD */
   invoiceDate: string
@@ -189,7 +192,8 @@ export function buildDemandLetterModel(f: DemandLetterFields, todayYmd: string):
     })
     blocks.push({ kind: 'heading', text: 'Statement of account' })
     blocks.push({ kind: 'statement', invoices: statement, balance: out })
-    blocks.push({ kind: 'paragraph', text: 'All payments and credits have been allowed.' })
+    const exhibitsText = exhibitsSentence(f.enclosures ?? [])
+    blocks.push({ kind: 'paragraph', text: `${exhibitsText ? `${exhibitsText} ` : ''}All payments and credits have been allowed.` })
   } else {
     blocks.push({ kind: 'reLine', text: `Re: Final Demand for Payment — Invoice #${f.invoiceNumber.trim() || '—'}` })
     blocks.push({
@@ -251,6 +255,8 @@ export function buildDemandLetterModel(f: DemandLetterFields, todayYmd: string):
       (l) => l,
     ),
   })
+  const enclosures = enclosuresLine(f.enclosures ?? [])
+  if (enclosures) blocks.push({ kind: 'meta', text: enclosures })
   if (f.includeNotarial) blocks.push({ kind: 'notarial' })
   return blocks
 }
@@ -531,6 +537,66 @@ export async function buildDemandLetterPdfBlob(f: DemandLetterFields, todayYmd: 
     if (footerLeft) doc.text(footerLeft, PAGE_MARGIN, 274)
     doc.text(`Page ${p} of ${pages}`, PAGE_MARGIN + MAX_TEXT_WIDTH_MM, 274, { align: 'right' })
   }
+  return doc.output('blob')
+}
+
+// ---------- Exhibit C: the delivery record (v2.3429) ----------
+
+/**
+ * One page: every dated send and touch the letter cites, as a record the
+ * debtor can check against their own inbox. Built from the same rows as the
+ * letter's Notice History, so the two never disagree.
+ */
+export async function buildDeliveryRecordPdfBlob(input: {
+  businessName: string
+  invoicesPhrase: string
+  recipientName: string
+  rows: DemandPriorNotice[]
+  todayYmd: string
+}): Promise<Blob> {
+  const JsPDF = await loadJsPDF()
+  const doc = new JsPDF({ unit: 'mm', format: 'letter' })
+  let y = PAGE_MARGIN + 6
+  doc.setFont('helvetica', 'bold')
+  doc.setFontSize(13)
+  doc.setTextColor(28, 26, 23)
+  doc.text('Delivery record', PAGE_MARGIN, y)
+  y += 6
+  doc.setFont('helvetica', 'normal')
+  doc.setFontSize(9)
+  doc.setTextColor(90, 90, 90)
+  doc.text(`${input.invoicesPhrase} · ${input.recipientName || '—'} · prepared ${demandDate(input.todayYmd)} by ${input.businessName || '—'}`, PAGE_MARGIN, y)
+  y += 4
+  doc.setDrawColor(207, 203, 194)
+  doc.setLineWidth(0.25)
+  doc.line(PAGE_MARGIN, y, PAGE_MARGIN + MAX_TEXT_WIDTH_MM, y)
+  y += 7
+  doc.setTextColor(28, 26, 23)
+  doc.setFont('times', 'normal')
+  doc.setFontSize(11)
+  if (input.rows.length === 0) {
+    doc.text('No sends or contacts are on record beyond the invoice itself.', PAGE_MARGIN, y)
+  }
+  for (const r of input.rows) {
+    if (y > PAGE_CONTENT_MAX_Y) {
+      doc.addPage()
+      y = PAGE_MARGIN
+    }
+    doc.setFont('times', 'bold')
+    doc.text(demandDate(r.date), PAGE_MARGIN, y)
+    doc.setFont('times', 'normal')
+    const lines = doc.splitTextToSize(r.label, MAX_TEXT_WIDTH_MM - 46) as string[]
+    for (const line of lines) {
+      doc.text(line, PAGE_MARGIN + 46, y)
+      y += 5.6
+    }
+    y += 1
+  }
+  y += 6
+  doc.setFont('helvetica', 'normal')
+  doc.setFontSize(8)
+  doc.setTextColor(90, 90, 90)
+  doc.text('Dates are from the sending system\u2019s own log (email sends, Stripe delivery events, recorded calls and promises).', PAGE_MARGIN, y)
   return doc.output('blob')
 }
 
