@@ -103,8 +103,9 @@ export function partyNamesAgree(a: string, b: string): boolean {
 /** Folder name mentions the job: by street, by number (J523 / 523 as a token), by job name, by customer/GC name. */
 export function folderMatchesJob(folderName: string, job: DriveMatchJob): { strength: 'street' | 'number' | 'name' | 'customer' | null; detail: string } {
   const f = normalizeName(folderName)
-  // The job number first: two jobs can share a street, never a number.
-  if (job.jobNumber && new RegExp(`(^|[^0-9])j?${job.jobNumber}([^0-9]|$)`, 'i').test(f)) return { strength: 'number', detail: `folder names J${job.jobNumber}` }
+  // The job number first: two jobs can share a street, never a number. Only a
+  // labelled number counts — "J105", "job 105", "#105" — a bare "105 Dover" is a street.
+  if (job.jobNumber && new RegExp(`(^|[^a-z0-9])(j|job|hcp|#)\\s?${job.jobNumber}([^0-9]|$)`, 'i').test(f)) return { strength: 'number', detail: `folder names J${job.jobNumber}` }
   const street = streetKey(job.jobAddress)
   if (street && f.includes(street)) return { strength: 'street', detail: `folder names ${job.jobAddress.split(',')[0]?.trim() ?? street}` }
   const jn = normalizeName(job.jobName)
