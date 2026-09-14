@@ -2,7 +2,7 @@
 title: get a job contract signed
 category: Office
 roles: dev, master_technician, assistant, controller
-keywords: contract, agreement, signature, sign, e-sign, no contract, contract chip, pipeline filter, customer signs, send contract, sign in person, void and redo, paper contract, upload signed copy, signed record, contract book audience, contract sweep, backlog, needs you, not needed, contract floor, small jobs, gc subcontract
+keywords: contract, agreement, signature, sign, e-sign, no contract, contract chip, pipeline filter, customer signs, send contract, sign in person, void and redo, paper contract, upload signed copy, signed record, contract book audience, contract sweep, backlog, needs you, not needed, contract floor, small jobs, gc subcontract, new job, does it need a contract
 order: 74
 ---
 Every job should have a signed agreement with its customer on file — including jobs that already started. The app tells you which ones don't, and gives the office one place to send and track them.
@@ -24,6 +24,17 @@ Hover the chip for the full story (who it went to, whether it's been opened).
 ## Find the jobs without one
 
 **Jobs → Pipeline** opens with a card under **Today's money opportunities**: {{chip:yellow|✍ Get contracts signed — 58 live jobs without, $412k of work}}. It counts every stage except Paid in full, and accepted estimates and bid-room signatures already count. One chip per stage shows the gap — tap {{chip:yellow|Working 15}} and the board filters to those jobs and jumps to that section; a stage with nothing missing reads {{chip:green|Ready to Bill ✓}}. {{button:blue|Start the sweep →}} opens the sweep described below. When every live job is covered, the card becomes a single green line.
+
+## A new job asks once
+
+Save a new job by hand and one small question follows — {{chip:blue|Does J523 need a contract?}} — with the job line and three doors:
+
+- {{button:blue|Send our agreement}} opens the Contract modal prefilled from the job.
+- {{button:outline|File a signed copy}} opens it straight onto the filing sheet. On a builder's job this door comes first and reads {{button:blue|File Summit GC's subcontract}} — their paper is the agreement, so file it rather than sending ours.
+- {{button:outline|Not needed…}} takes the reason and the job leaves the count.
+- **Later** leaves the job in the count for the sweep.
+
+Jobs created from a won bid or an accepted estimate are already covered and never ask; neither do jobs under the floor.
 
 ## Not every job needs one
 
