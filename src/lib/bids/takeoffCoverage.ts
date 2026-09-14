@@ -1,4 +1,5 @@
 import { roughCountMultiplier, sumRoughLinesPreTaxWithCount } from './bidTakeoffHelpers'
+import { summarizeOrderRounding, type TakeoffOrderRounding } from './takeoffOrderRounding'
 
 /**
  * Coverage math for the Takeoffs refresh (docs/TAKEOFFS_REFRESH_PLAN.md,
@@ -18,6 +19,9 @@ export type CoverageLine = {
   unitPrice: number
   sourceMaterialPartPriceId: string | null
   sourceTemplateId: string | null
+  /** Sold in (v2.3407): the line's snapshot; absent = never rounds. */
+  orderIncrement?: number | string | null
+  orderIncrementUnit?: string | null
 }
 
 export type FixtureCoverage = {
@@ -25,8 +29,10 @@ export type FixtureCoverage = {
   lineCount: number
   /** Cost of one unit of the fixture (Σ qty × price over its lines). */
   unitCost: number
-  /** unitCost × the row's count (feet for `ft of` rows). */
+  /** unitCost × the row's count (feet for `ft of` rows), plus this fixture's share of the order rounding. */
   total: number
+  /** This fixture's slice of the sticks' extra (v2.3407). */
+  roundingExtra: number
   hasZeroPriceLine: boolean
 }
 
@@ -36,7 +42,12 @@ export type TakeoffCoverageSummary = {
   uncostedIds: string[]
   /** 0–100, rounded; 0 when there are no fixtures. */
   costedPct: number
+  /** Σ count × qty × price PLUS the order rounding's extra — what Pricing uses (v2.3407). */
   materialsTotal: number
+  /** The same without the sticks. */
+  materialsBeforeRounding: number
+  /** Order rounding (v2.3407): per part, what the sticks add on this bid. */
+  orderRounding: TakeoffOrderRounding
   zeroPriceLineIds: string[]
   bundleLineCount: number
   overrideLineCount: number
@@ -60,7 +71,7 @@ export function summarizeTakeoffCoverage(
   const countByRowId = new Map<string, number | string | null | undefined>(countRows.map((r) => [r.id, r.count]))
   const perFixture = new Map<string, FixtureCoverage>()
   for (const r of countRows) {
-    perFixture.set(r.id, { countRowId: r.id, lineCount: 0, unitCost: 0, total: 0, hasZeroPriceLine: false })
+    perFixture.set(r.id, { countRowId: r.id, lineCount: 0, unitCost: 0, total: 0, roundingExtra: 0, hasZeroPriceLine: false })
   }
   const zeroPriceLineIds: string[] = []
   let bundleLineCount = 0
@@ -77,13 +88,15 @@ export function summarizeTakeoffCoverage(
     if (isBundleLine(l)) bundleLineCount += 1
     if (isOverrideLine(l)) overrideLineCount += 1
   }
+  const orderRounding = summarizeOrderRounding(countRows, lines)
   for (const f of perFixture.values()) {
-    f.total = f.unitCost * roughCountMultiplier(countByRowId.get(f.countRowId))
+    f.roundingExtra = orderRounding.extraByCountRow.get(f.countRowId) ?? 0
+    f.total = f.unitCost * roughCountMultiplier(countByRowId.get(f.countRowId)) + f.roundingExtra
   }
   const uncostedIds = countRows.filter((r) => (perFixture.get(r.id)?.lineCount ?? 0) === 0).map((r) => r.id)
   const fixtures = countRows.length
   const costed = fixtures - uncostedIds.length
-  const materialsTotal = sumRoughLinesPreTaxWithCount(
+  const materialsBeforeRounding = sumRoughLinesPreTaxWithCount(
     lines.map((l) => ({ count_row_id: l.countRowId, quantity: l.quantity, unit_price: l.unitPrice })),
     countByRowId,
   )
@@ -92,7 +105,9 @@ export function summarizeTakeoffCoverage(
     costed,
     uncostedIds,
     costedPct: fixtures === 0 ? 0 : Math.round((100 * costed) / fixtures),
-    materialsTotal,
+    materialsTotal: materialsBeforeRounding + orderRounding.extraCost,
+    materialsBeforeRounding,
+    orderRounding,
     zeroPriceLineIds,
     bundleLineCount,
     overrideLineCount,

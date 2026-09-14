@@ -1,3 +1,5 @@
+import { formatOrderIncrement, orderIncrementChip, parseOrderIncrement } from '../../lib/materials/orderIncrement'
+import { orderRoundingHover, type PartOrderRounding } from '../../lib/bids/takeoffOrderRounding'
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { MoneyDecimalAmountInput } from '../MoneyDecimalAmountInput'
@@ -65,6 +67,7 @@ export function SortableRoughPartLineRow({
   onRoughQtyBlur,
   onRoughQtyInputChange,
   onRoughQtyPadEscape,
+  orderRounding = null,
 }: {
   line: TakeoffRoughPartLineRow
   lineIdx: number
@@ -98,6 +101,8 @@ export function SortableRoughPartLineRow({
   onToggleBundleCollapsed: () => void
   openBidsPartFormForCreate: (initialName: string, roughLineId?: string) => void
   onOpenEditTakeoffPart: (partId: string) => void
+  /** Sold in (v2.3407): this part's rounding on the bid, for the chip; null when the line carries no rule. */
+  orderRounding?: PartOrderRounding | null
   materialTemplates: MaterialTemplateWithAssemblyType[]
   filterPartsByQuery: (parts: RoughTakeoffMaterialPart[], query: string, limit?: number) => RoughTakeoffMaterialPart[]
   partAssemblyCount: number
@@ -118,6 +123,7 @@ export function SortableRoughPartLineRow({
     ? (materialTemplates.find((t) => t.id === line.sourceTemplateId)?.name ?? 'Assembly')
     : ''
   const partName = line.partId ? (takeoffAddTemplateParts.find((p) => p.id === line.partId)?.name ?? '') : ''
+  const lineRule = line.partId ? parseOrderIncrement({ order_increment: line.orderIncrement, order_increment_unit: line.orderIncrementUnit }) : null
   const roughCatalogLow = line.partId ? takeoffRoughCatalogLowestByPartId[line.partId] : undefined
   const roughMatchesLowest =
     roughCatalogLow != null && catalogUnitPricesEffectivelyEqual(line.unitPrice, roughCatalogLow.price)
@@ -271,6 +277,18 @@ export function SortableRoughPartLineRow({
                 background: takeoffRoughPartPickerLineId !== line.id && line.partId ? 'var(--bg-muted)' : undefined,
               }}
             />
+            {lineRule ? (
+              // Sold in (v2.3407): the part rounds to packs once per bid — the chip says the pack,
+              // the hover says what this bid needs and buys. No per-line "ordered" number: a line
+              // is per fixture and multiplied by the count, so the one number lives on the part.
+              <span
+                data-testid="takeoff-line-sold-in"
+                title={orderRounding ? orderRoundingHover(orderRounding) : `Sold in ${formatOrderIncrement(lineRule)}`}
+                style={{ flexShrink: 0, fontSize: '0.68rem', fontWeight: 600, color: 'var(--text-violet-700)', background: 'var(--bg-violet-100)', borderRadius: 999, padding: '0.1rem 0.45rem', whiteSpace: 'nowrap', cursor: 'default' }}
+              >
+                {orderIncrementChip(lineRule)}
+              </span>
+            ) : null}
           </div>
           {takeoffRoughPartPickerLineId === line.id && (
             <ul

@@ -60,6 +60,10 @@ There is **no additional selection pointer inside the tab** — every region key
 
 ---
 
+### Order rounding (v2.3406 / v2.3407) — the sticks in every price
+
+A part's **Sold in** rule (`part_types.order_increment` → `material_parts` override; kernel `src/lib/materials/orderIncrement.ts`) is snapshotted onto each rough line when its part is picked (`orderIncrement` / `orderIncrementUnit`, written by `persistTakeoffRoughPartLine`, read back by the engine's mapper). `src/lib/bids/takeoffOrderRounding.ts` groups the lines by part, sums `quantity × count`, rounds up once per part per bid, and spreads the extra over the fixtures by footage share. **Every price reader goes through it** — `summarizeTakeoffCoverage` (`materialsTotal`, `perFixture.total`, the strip's Order rounding tile, the rail's *incl.* line), the engine's two rough reads (`costEstimateMaterialTotalRoughIn`, `pricingMaterialTotalRoughIn` + `fixtureMaterials`) and the Pricing tab's version compare via `roughMaterialsTotalWithRounding` — so the strip never disagrees with Pricing. The row's chip (`SortableRoughPartLineRow`, `orderRounding` prop from the tab's `takeoffCoverage`) is the only per-line surface, and it shows the pack, not an ordered number.
+
 ## Per-region dossiers
 
 ### Bid picker (no bid selected)

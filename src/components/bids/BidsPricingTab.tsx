@@ -18,7 +18,8 @@ import { cellEditSeed, impliedUnitPrice, type WorkbenchCellField } from '../../l
 import type { BidPricingHistoryRow } from '../../types/database-functions'
 import { countTabsMatchedOrBeaten, marginPctToMatchTabLow } from '../../lib/bidTabCapture'
 import { bidDetailCloseXStyle, bidDetailCloseFloatMobileStyle } from '../../lib/bids/bidStyles'
-import { normalizeMaterialsModel, sumRoughLinesPreTaxWithCount, type MaterialsModel } from '../../lib/bids/bidTakeoffHelpers'
+import { roughMaterialsTotalWithRounding, type RoughLineDbRow } from '../../lib/bids/takeoffOrderRounding'
+import { normalizeMaterialsModel, type MaterialsModel } from '../../lib/bids/bidTakeoffHelpers'
 import { alternateCardNumbers, sameGcAlternateVersions } from '../../lib/bids/ownTakeoffAlternates'
 import { nextSortOrder, pickActivePricing } from '../../lib/bids/pickActivePricing'
 import { versionStarringScenario } from '../../lib/bids/starredScenarioGuard'
@@ -2011,14 +2012,15 @@ export function BidsPricingTab({
           const [countsRes, roughRes] = await Promise.all([
             supabase.from('bids_count_rows').select('*').eq('bid_id', bid.id).eq('bid_version_id', v.id).order('sequence_order', { ascending: true }),
             mm === 'rough'
-              ? supabase.from('bids_takeoff_rough_part_lines').select('count_row_id, quantity, unit_price').eq('bid_id', bid.id).eq('bid_version_id', v.id)
+              ? supabase.from('bids_takeoff_rough_part_lines').select('count_row_id, part_id, quantity, unit_price, order_increment, order_increment_unit').eq('bid_id', bid.id).eq('bid_version_id', v.id)
               : Promise.resolve({ data: null }),
           ])
           const counts = (countsRes.data as BidCountRow[] | null) ?? []
           let materials: number | null = null
           if (mm === 'rough' && roughRes.data) {
-            const lines = roughRes.data as Array<{ count_row_id: string; quantity: number; unit_price: number }>
-            materials = sumRoughLinesPreTaxWithCount(lines, new Map(counts.map((c) => [c.id, c.count])))
+            const lines = roughRes.data as RoughLineDbRow[]
+            // v2.3407: with the sticks, the same number the engine and the strip show.
+            materials = roughMaterialsTotalWithRounding(lines, new Map(counts.map((c) => [c.id, c.count]))).total
           }
           let revenue: number | null = null
           const starId = v.starred_price_book_version_id ?? null
