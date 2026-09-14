@@ -49,6 +49,10 @@ describe('the Drive pass matcher', () => {
     expect(folderMatchesJob('Dudley Mason misc', JOBS[2]!).strength).toBe('name')
     expect(folderMatchesJob('TLE Bee Cave', JOBS[3]!).strength).toBeNull()
     expect(folderMatchesJob('15230 Independence', JOBS[0]!).strength).toBeNull()
+    // A bare number in a street is not a job number ("105 Dover" is not J105).
+    const j105: DriveMatchJob = { id: 'j105', jobNumber: '105', jobName: 'Jennifer Loehr', jobAddress: '9 Elm St, Austin, TX', customerName: 'Jennifer Loehr', gcName: null }
+    expect(folderMatchesJob('_Heron Construction / 105 Dover', j105).strength).toBeNull()
+    expect(folderMatchesJob('Job 105 - Loehr', j105).strength).toBe('number')
   })
 
   it('a strong file in a folder that names the street or number is confident; name-only folders and weak words are "check"; the rest none', () => {
