@@ -105,7 +105,16 @@ The built-in terms get you started. To use your own, open **People → Contracts
 
 The Dashboard's **Needs You** list shows {{chip:yellow|14 live jobs have no contract on file}} with {{button:blue|Start the sweep}}, and a second line for contracts out for signature a week without an answer. The sweep also lives in the Pipeline's **⋯** menu as **Contract sweep…**.
 
-Every live job without an agreement is one row: job, address, stage, amount, the customer's email, and {{button:blue|Send}}. Pick the terms once in the footer, then send row by row — or {{button:blue|Send all 9 ready}} for every row with a valid email (it asks once to confirm). Rows with no email get {{button:outline|Fix email}}, which opens the job. Click a job name to open the full Contract modal instead, for careful edits or to record a paper copy. Rows leave the list as they send, and the Dashboard count falls with them.
+The header counts the pile — *104 without a contract · $1,349,981 of work · 17 need a look* — and **To send · Needs a look · All** splits it. Every row is one job: job · customer, the amount, address · stage, the signer's email, and what the app already knows:
+
+- {{chip:green|Ready}} — the email parses, the scope says more than the job's name, the job has an amount. {{button:blue|Send}} sends it.
+- {{chip:yellow|Scope is just the name}} — no fixtures and no accepted-estimate lines, so the agreement would read *Work we'll do: Job*. {{button:outline|Add scope}} opens the Contract modal to type it.
+- {{chip:yellow|No amount}} — it would read *Billed at completion (time and materials)*. Send it one at a time if that is right; Send all skips it.
+- {{chip:red|No email}} — {{button:outline|Fix email}} opens the job.
+- {{chip:blue|GC job · file theirs}} — the customer is a builder; their subcontract is the agreement. {{button:blue|File theirs}} opens the filing sheet.
+- {{chip:blue|+ J798}} — this customer has another job in the sweep; each job sends its own agreement.
+
+Pick the terms once in the footer. **Send all** lives under **⋯** at the top right: it takes only {{chip:green|Ready}} rows and asks once with the real number — *Email 81 customers (87 agreements)?* — before anything goes out. Rows leave the list as they send, and the Dashboard count falls with them.
 
 ## Reminders and the customer's account page
 

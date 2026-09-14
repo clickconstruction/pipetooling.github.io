@@ -5721,6 +5721,10 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
         onEditJob={(j) => openEdit(j)}
         onSent={() => void loadJobContractCoverage()}
         onJobChanged={() => void loadJobs()}
+        onFilterBoard={() => {
+          setContractSweepOpen(false)
+          setStagesContractFilter('missing')
+        }}
       />
       <AiaG702G703Modal
         open={aiaG702StagesJob != null}

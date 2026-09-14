@@ -9,7 +9,7 @@ import { supabase } from '../supabase'
 import { withSupabaseRetry } from '../../utils/errorHandling'
 import type { Database } from '../../types/database'
 import type { JobWithDetails } from '../../types/jobWithDetails'
-import { buildJobContractPrefill, DEFAULT_JOB_CONTRACT_TERMS_PLAIN } from './jobContractDocument'
+import { buildJobContractPrefill, DEFAULT_JOB_CONTRACT_TERMS_PLAIN, type EstimateLineForPrefill } from './jobContractDocument'
 import type { JobContractRow } from './jobContractLifecycle'
 
 export type QuickSendTemplate = Pick<
@@ -26,6 +26,9 @@ export async function quickSendJobContract(input: {
   recipientName: string
   authUserId: string | null
   message?: string
+  /** The job's customer-accepted estimate, when it has one (PR 1): its lines become the scope and its total the amount — the same prefill the Contract modal uses. */
+  estimateLines?: ReadonlyArray<EstimateLineForPrefill>
+  acceptedTotalCents?: number | null
 }): Promise<QuickSendResult> {
   const { job, template } = input
   const email = input.recipientEmail.trim()
@@ -42,7 +45,7 @@ export async function quickSendJobContract(input: {
       .maybeSingle()
     let row = (existing ?? null) as JobContractRow | null
     if (!row) {
-      const fields = buildJobContractPrefill({ job })
+      const fields = buildJobContractPrefill({ job, estimateLines: input.estimateLines ?? [], acceptedTotalCents: input.acceptedTotalCents ?? null })
       row = await withSupabaseRetry<JobContractRow>(
         () =>
           supabase
