@@ -34,8 +34,6 @@ export type StageCalendarModalProps = {
   onChange?: () => void
   onAccept?: () => void
   onAnswer?: () => void
-  onOffer?: () => void
-  onWithdraw?: () => void
   /** The propose-dates form when Answer… is open — rendered under the GC fact. */
   answerForm?: ReactNode
   busy?: boolean
@@ -119,7 +117,7 @@ function Legend({ subName }: { subName: string | null }) {
 }
 
 export function StageCalendarModal(props: StageCalendarModalProps) {
-  const { open, onClose, title, subtitle, todayYmd, window: win, windowBy, pick, pickBy, ask, gc, subName, subLine, offDays, siblings, onChange, onAccept, onAnswer, onOffer, onWithdraw, answerForm, busy = false } = props
+  const { open, onClose, title, subtitle, todayYmd, window: win, windowBy, pick, pickBy, ask, gc, subName, subLine, offDays, siblings, onChange, onAccept, onAnswer, answerForm, busy = false } = props
   useEffect(() => {
     if (!open) return
     const onKey = (e: KeyboardEvent) => {
@@ -188,20 +186,6 @@ export function StageCalendarModal(props: StageCalendarModalProps) {
             <div style={{ display: 'grid', gap: 4 }}>
               <span style={kStyle}>{gc.state === 'off' ? 'GC portal' : `${gcName}'s portal`}</span>
               <span style={vStyle}>{gc.state === 'off' ? <span style={{ color: 'var(--text-muted)' }}>off for this job · Edit Job → GC/Builder → Share stage dates</span> : gc.state === 'offer' ? 'not shown yet' : gc.shownSince ? `shown since ${gc.shownSince}` : 'shown'}</span>
-              {gc.state === 'offer' && onOffer ? (
-                <div>
-                  <button type="button" style={btn('primary', busy)} disabled={busy} onClick={onOffer}>
-                    Offer to {gcName}
-                  </button>
-                </div>
-              ) : null}
-              {(gc.state === 'shown' || gc.state === 'asked') && onWithdraw ? (
-                <div>
-                  <button type="button" style={btn('ghost', busy)} disabled={busy} onClick={onWithdraw}>
-                    Take it off their portal
-                  </button>
-                </div>
-              ) : null}
             </div>
           ) : null}
           {subName ? (

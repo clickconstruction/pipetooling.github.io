@@ -74,8 +74,7 @@ export async function offerNextStageAfterPass(args: { sheetId: string; authUserI
   if (job.gc_auto_offer_next) {
     const { error } = await supabase.from('jobs_ledger_fixtures').update({ shared_with_gc: true }).eq('id', next.id)
     if (error) return { kind: 'nothing' }
-    // Until the portal reads the eye (PR 5), keep the window's offered flag in step.
-    if (next.windowId) await supabase.from('job_stage_windows').update({ offered_to_gc: true, offered_to_gc_at: new Date().toISOString() }).eq('id', next.windowId)
+    // The eye on the line item is the record (Stage Plan PR 5); the window carries no offered flag any more.
     return { kind: 'offered', stageName: next.name, gcName }
   }
   if (!args.authUserId) return { kind: 'nothing' }

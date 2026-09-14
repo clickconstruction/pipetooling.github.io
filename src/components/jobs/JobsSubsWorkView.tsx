@@ -174,7 +174,7 @@ export function JobsSubsWorkView({ jobs, jobsLoading, authUserId, deepLinkWorkOr
         supabase.from('people').select('id, name, kind, account_user_id, email, phone, end_date').order('id').limit(1000),
         supabase.from('users').select('id, role').order('id').limit(1000),
         // Stages: line items with a window (v2.2927).
-        supabase.from('job_stage_windows').select('id, job_id, fixture_id, window_start, window_end, window_by, note, offered_to_gc, bundle_id, asked_start, asked_end, asked_note, asked_at, answered_at, answer, answer_note').limit(2000),
+        supabase.from('job_stage_windows').select('id, job_id, fixture_id, window_start, window_end, window_by, note, asked_start, asked_end, asked_note, asked_at, answered_at, answer, answer_note').limit(2000),
       ])
       if (rowsErr) throw rowsErr
       if (sheetsErr) throw sheetsErr
@@ -550,8 +550,7 @@ export function JobsSubsWorkView({ jobs, jobsLoading, authUserId, deepLinkWorkOr
   async function answerGcAsk(w: StageWindowLike, a: Parameters<typeof answerPatch>[1], commitmentId: string | null) {
     const nowIso = new Date().toISOString()
     const patch = answerPatch(w as unknown as StageAskWindow, a, nowIso)
-    const q = supabase.from('job_stage_windows').update(patch)
-    const { error } = w.bundle_id ? await q.eq('bundle_id', w.bundle_id) : await q.eq('id', w.id)
+    const { error } = await supabase.from('job_stage_windows').update(patch).eq('id', w.id)
     if (error) {
       showToast(`Could not answer: ${formatErrorMessage(error)}`, 'error')
       return
