@@ -185,6 +185,18 @@ export const EMAIL_CATALOG: EmailCatalogEntry[] = [
     variants: ['owner-of-record and original-contractor recipients'],
   },
   {
+    id: 'demand_letter',
+    name: 'Final demand letter (email channel)',
+    group: 'lien',
+    audience: 'customer',
+    attachment: 'The letter and its exhibits as one PDF',
+    builtWhere: 'server',
+    sender: 'send-lien-filing-email',
+    editable: { kind: 'hardcoded' },
+    subjectExample: 'Final demand for payment — {{job_name}}',
+    variants: ['a second channel beside certified mail (v2.3436)'],
+  },
+  {
     id: 'lien_release_to_customer',
     name: 'Signed lien release to customer',
     group: 'lien',

@@ -3,9 +3,9 @@ import { logEmailSendBestEffort } from '../_shared/logEmailSend.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { EMAIL_FROM } from '../_shared/emailFrom.ts'
 
-// Email a lien-instrument PDF (v2.2645 — the § 53.056 notice today; the shape
-// is instrument-agnostic) to a named recipient about a job the caller can
-// access. Mirrors send-lien-release-email: Bearer JWT + user-scoped client so
+// Email a lien-instrument PDF (v2.2645 — the § 53.056 notice; v2.3436 — the
+// final demand letter packet, `email_type: 'demand_letter'`) to a named
+// recipient about a job the caller can access. Mirrors send-lien-release-email: Bearer JWT + user-scoped client so
 // RLS proves office/master access to the job; the PDF arrives from the client;
 // Resend sends; the caller records the send on its filing row afterward.
 // Email is a COURTESY copy — the statutory path stays certified mail /
@@ -59,7 +59,10 @@ serve(async (req) => {
       email_text?: string
       pdf_base64?: string
       pdf_filename?: string
+      /** v2.3436: which instrument — sets the log's email_type and the default subject/body. */
+      email_type?: string
     }
+    const emailType = body.email_type === 'demand_letter' ? 'demand_letter' : 'lien_filing_notice'
 
     const jobId = typeof body.job_id === 'string' ? body.job_id.trim() : ''
     const toEmail = typeof body.to_email === 'string' ? body.to_email.trim() : ''
@@ -84,11 +87,15 @@ serve(async (req) => {
     const subject =
       typeof body.subject === 'string' && body.subject.trim().length > 0
         ? body.subject.trim()
-        : `Notice of claim for unpaid labor or materials — ${jl.job_name ?? 'job'}`
+        : emailType === 'demand_letter'
+          ? `Final demand for payment — ${jl.job_name ?? 'job'}`
+          : `Notice of claim for unpaid labor or materials — ${jl.job_name ?? 'job'}`
     const textPlain =
       typeof body.email_text === 'string' && body.email_text.trim().length > 0
         ? body.email_text.trim()
-        : 'Please find the attached notice of claim for unpaid labor or materials (Tex. Prop. Code § 53.056). A copy is also being delivered by certified mail.'
+        : emailType === 'demand_letter'
+          ? 'Please find attached our final demand for payment, with the invoice and its exhibits, as one PDF.'
+          : 'Please find the attached notice of claim for unpaid labor or materials (Tex. Prop. Code § 53.056). A copy is also being delivered by certified mail.'
     const htmlBody = `<p>${textPlain.replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '<br/>')}</p>`
 
     const resendResponse = await fetch('https://api.resend.com/emails', {
@@ -111,7 +118,7 @@ serve(async (req) => {
       return jsonResponse({ error: errorData.message || `Resend ${resendResponse.status}` }, 502)
     }
     const sent = (await resendResponse.json().catch(() => ({}))) as { id?: string }
-    await logEmailSendBestEffort({ resendEmailId: sent.id ?? null, to: [toEmail], from: EMAIL_FROM, subject, emailType: 'lien_filing_notice' })
+    await logEmailSendBestEffort({ resendEmailId: sent.id ?? null, to: [toEmail], from: EMAIL_FROM, subject, emailType })
 
     return jsonResponse({ success: true, resend_email_id: sent.id ?? null })
   } catch (e) {

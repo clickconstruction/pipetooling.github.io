@@ -41,6 +41,10 @@ The letter never goes alone. Under **Enclosed**:
 
 The letter names them under the statement and in an *Enclosures* line at the foot. The preview shows each exhibit as the page it will be. {{button:outline-blue|Print packet}} opens one PDF — the letter, then every exhibit — and {{button:outline-blue|Download PDF}} saves the same file.
 
+## Email it too
+
+{{button:outline-blue|Email with the PDF…}} sends the letter and every exhibit as one attachment to the payer's email (prefilled from the bill) and records the send on the job with the message id as its tracking. It is a second channel, not a replacement: certified mail with a return receipt is what proves delivery, and it is what the § 31.04 presumption and a chapter 53 notice require.
+
 ## Record the send
 
 {{button:blue|Save & record send…}} asks how it physically went out — **certified mail**, traceable courier, email, or hand-delivered — plus the tracking number and the mailing date (a notice is effective the day it's mailed). That creates the record; nothing sends from the app, so the legal path stays physical and provable.

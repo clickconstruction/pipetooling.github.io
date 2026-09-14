@@ -143,6 +143,10 @@ export default function LienInstrumentsModal({
   const [signedAgreement, setSignedAgreement] = useState<{ path: string; title: string } | null>(null)
   const [includeAgreement, setIncludeAgreement] = useState(true)
   const [includeDeliveryRecord, setIncludeDeliveryRecord] = useState(true)
+  // v2.3436 — Email with the PDF: a second channel beside certified mail.
+  const [emailOpen, setEmailOpen] = useState(false)
+  const [emailTo, setEmailTo] = useState('')
+  const [emailBusy, setEmailBusy] = useState(false)
 
   const issuer = useMemo(() => (open ? getPhysicalInvoiceIssuerDraft() : null), [open, issuerGen])
 
@@ -222,6 +226,8 @@ export default function LienInstrumentsModal({
     setSignedAgreement(null)
     setIncludeAgreement(true)
     setIncludeDeliveryRecord(true)
+    setEmailOpen(false)
+    setEmailTo('')
     void loadHistory()
     void loadFilings()
     let cancelled = false
@@ -610,18 +616,20 @@ export default function LienInstrumentsModal({
     }
   }, [fields, jobNumber, pdfBusy, buildPacket, showToast])
 
-  const recordSend = useCallback(async () => {
+  const recordSend = useCallback(async (channel?: { method: string; tracking: string; sentOn: string; exhibits: DemandExhibit[] }) => {
     if (!fields || !job || recordBusy) return
     setRecordBusy(true)
     try {
       const amountNum = Number((fields.outstanding ?? '').replace(/[$,\s]/g, ''))
       // The exhibits with their page counts, as they went out (v2.3429).
-      let exhibits: DemandExhibit[] = fields.enclosures ?? []
-      try {
-        const packet = await buildPacket()
-        if (packet) exhibits = packet.exhibits
-      } catch {
-        // record what the letter named
+      let exhibits: DemandExhibit[] = channel?.exhibits ?? fields.enclosures ?? []
+      if (!channel) {
+        try {
+          const packet = await buildPacket()
+          if (packet) exhibits = packet.exhibits
+        } catch {
+          // record what the letter named
+        }
       }
       const fieldsSnapshot = JSON.parse(JSON.stringify({ ...fields, enclosures: exhibits })) as { [key: string]: never }
       const base = {
@@ -633,9 +641,9 @@ export default function LienInstrumentsModal({
         recipient_name: fields.recipientName.trim(),
         recipient_email: fields.recipientEmail.trim(),
         recipient_address: fields.recipientAddress.trim(),
-        sent_method: recordMethod,
-        tracking_number: recordTracking.trim(),
-        sent_at: recordSentOn || null,
+        sent_method: channel?.method ?? recordMethod,
+        tracking_number: (channel?.tracking ?? recordTracking).trim(),
+        sent_at: (channel?.sentOn ?? recordSentOn) || null,
         created_by: authUser?.id ?? null,
       }
       const withExhibits = { ...base, exhibits: exhibits as unknown as never, debtor_party: (fields.debtorParty ?? '') as never }
@@ -653,8 +661,9 @@ export default function LienInstrumentsModal({
           'record demand letter send',
         )
       }
-      showToast('Demand letter recorded — the deadline watch is armed.', 'success')
+      showToast(channel ? 'Demand letter emailed and recorded — the deadline watch is armed.' : 'Demand letter recorded — the deadline watch is armed.', 'success')
       setRecordOpen(false)
+      setEmailOpen(false)
       void loadHistory()
       onRecorded?.()
     } catch {
@@ -663,6 +672,49 @@ export default function LienInstrumentsModal({
       setRecordBusy(false)
     }
   }, [fields, job, selectedInvoiceIds, recordMethod, recordTracking, recordSentOn, authUser?.id, recordBusy, buildPacket, showToast, loadHistory, onRecorded])
+
+  // Email with the PDF (v2.3436): the packet goes through the notice's edge
+  // function as one attachment; the Resend id becomes the tracking string
+  // and the send is recorded as method `email`. Certified mail stays the
+  // default — this is the second channel, never the only one for a letter
+  // that has to be proven.
+  const emailPacket = useCallback(async () => {
+    if (!fields || !job || emailBusy) return
+    const to = emailTo.trim()
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(to)) {
+      showToast('Enter a valid email address.', 'error')
+      return
+    }
+    setEmailBusy(true)
+    try {
+      const packet = await buildPacket()
+      if (!packet) return
+      const buf = new Uint8Array(await packet.blob.arrayBuffer())
+      let binary = ''
+      for (let i = 0; i < buf.length; i += 0x8000) binary += String.fromCharCode(...buf.subarray(i, i + 0x8000))
+      const statement = fields.statement ?? []
+      const { data, error } = await supabase.functions.invoke('send-lien-filing-email', {
+        body: {
+          job_id: job.id,
+          to_email: to,
+          recipient_label: fields.recipientName.trim(),
+          email_type: 'demand_letter',
+          subject: `Final demand for payment — ${demandInvoicesPhrase(statement)} · ${demandMoney(fields.outstanding)}`,
+          email_text: `${fields.recipientName.trim() || 'To whom it may concern'},\n\nAttached is ${fields.businessName.trim() || 'our'} final demand for payment of ${demandMoney(fields.outstanding)} on ${demandInvoicesPhrase(statement)}, with the invoice and its exhibits, as one PDF. Payment is due by ${demandDate(fields.deadlineDate)}.\n\n${fields.senderName.trim()}\n${fields.businessName.trim()}${fields.businessPhone.trim() ? ` · ${fields.businessPhone.trim()}` : ''}`,
+          pdf_base64: btoa(binary),
+          pdf_filename: demandLetterPdfFilename(jobNumber),
+        },
+      })
+      const err = error ?? ((data as { error?: string } | null)?.error ? new Error((data as { error?: string }).error) : null)
+      if (err) throw err
+      const resendId = ((data as { resend_email_id?: string | null } | null)?.resend_email_id ?? '').trim()
+      await recordSend({ method: 'email', tracking: `${resendId ? `resend:${resendId}` : 'emailed'} → ${to}`, sentOn: todayYmdLocal(), exhibits: packet.exhibits })
+    } catch (e) {
+      showToast(e instanceof Error && e.message ? `Could not email the letter: ${e.message}` : 'Could not email the letter.', 'error')
+    } finally {
+      setEmailBusy(false)
+    }
+  }, [fields, job, emailBusy, emailTo, buildPacket, jobNumber, recordSend, showToast])
 
   const viewHistoryLetter = useCallback(
     (r: JobDemandLetterRow) => {
@@ -1186,6 +1238,26 @@ export default function LienInstrumentsModal({
           </div>
         </div>
 
+        {emailOpen ? (
+          <div data-demand-email style={{ padding: '0.9rem 1.25rem', borderTop: '1px solid var(--border)', background: 'var(--bg-subtle)' }}>
+            <div style={{ fontSize: '0.8125rem', fontWeight: 700, marginBottom: '0.2rem' }}>Email the letter and its exhibits as one PDF</div>
+            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>
+              A second channel, not the only one: certified mail with a return receipt is what proves delivery (and what § 31.04 and a chapter 53 notice require). The send is recorded on the job with the email's id as its tracking.
+            </div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.6rem', alignItems: 'flex-end' }}>
+              <label style={{ flex: '1 1 16rem', fontSize: '0.8125rem' }}>
+                <span style={{ display: 'block', fontWeight: 500, marginBottom: '0.2rem' }}>To</span>
+                <input type="email" value={emailTo} onChange={(e) => setEmailTo(e.target.value)} placeholder={fields.recipientEmail.trim() || 'no email on file for the payer'} style={{ width: '100%', boxSizing: 'border-box', padding: '0.45rem 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.875rem' }} />
+              </label>
+              <button type="button" onClick={() => setEmailOpen(false)} style={{ padding: '0.45rem 0.8rem', fontSize: '0.8125rem', background: 'var(--surface)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer' }}>
+                Back
+              </button>
+              <button type="button" onClick={() => void emailPacket()} disabled={emailBusy || recordBusy} style={{ padding: '0.45rem 0.9rem', fontSize: '0.8125rem', background: '#2563eb', color: 'white', border: 'none', borderRadius: 4, cursor: emailBusy ? 'wait' : 'pointer', fontWeight: 600 }}>
+                {emailBusy ? 'Sending…' : `Send · ${1 + (fields.enclosures ?? []).length} documents`}
+              </button>
+            </div>
+          </div>
+        ) : null}
         {recordOpen ? (
           <div style={{ padding: '0.9rem 1.25rem', borderTop: '1px solid var(--border)', background: 'var(--bg-subtle)' }}>
             <div style={{ fontSize: '0.8125rem', fontWeight: 700, marginBottom: '0.45rem' }}>Record the send — the letter only counts if it can be proven</div>
@@ -1226,6 +1298,18 @@ export default function LienInstrumentsModal({
             </button>
             <button type="button" onClick={() => void downloadPdf()} disabled={pdfBusy} style={{ padding: '0.5rem 1rem', fontSize: '0.875rem', background: 'var(--surface)', border: '1px solid #2563eb', color: 'var(--text-link)', borderRadius: 4, cursor: pdfBusy ? 'wait' : 'pointer' }}>
               {pdfBusy ? 'Building…' : 'Download PDF'}{pdfBusy ? '' : ` · ${1 + (fields.enclosures ?? []).length} documents`}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setEmailTo((prev) => prev || fields.recipientEmail.trim())
+                setEmailOpen(true)
+                setRecordOpen(false)
+              }}
+              disabled={pdfBusy || emailBusy}
+              style={{ padding: '0.5rem 1rem', fontSize: '0.875rem', background: 'var(--surface)', border: '1px solid #2563eb', color: 'var(--text-link)', borderRadius: 4, cursor: 'pointer' }}
+            >
+              Email with the PDF…
             </button>
             <button type="button" onClick={() => setRecordOpen(true)} style={{ padding: '0.5rem 1rem', fontSize: '0.875rem', background: '#b45309', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 600 }}>
               Save &amp; record send…
