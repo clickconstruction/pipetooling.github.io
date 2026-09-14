@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
 import { supabase } from '../lib/supabase'
 import { loadWholePartPricesCatalog } from '../lib/materials/partsCatalog'
+import { DEFAULT_ORDER_INCREMENT_UNIT, parseOrderIncrementUnit, parseTypedOrderIncrement, type OrderIncrementUnitKey } from '../lib/materials/orderIncrement'
 import { useConfirmDialog } from '../contexts/ConfirmDialogContext'
 import { useLedgerDisplayPrefixes } from '../contexts/LedgerDisplayPrefixContext'
 import {
@@ -79,6 +80,9 @@ export function useSettingsCatalogs({ setError }: { setError: (message: string |
   const [partTypeFormOpen, setPartTypeFormOpen] = useState(false)
   const [editingPartType, setEditingPartType] = useState<PartType | null>(null)
   const [partTypeName, setPartTypeName] = useState('')
+  // Sold in (v2.3406): the type's rule as typed — '' = sold by the each.
+  const [partTypeOrderIncrement, setPartTypeOrderIncrement] = useState('')
+  const [partTypeOrderIncrementUnit, setPartTypeOrderIncrementUnit] = useState<OrderIncrementUnitKey>(DEFAULT_ORDER_INCREMENT_UNIT)
   const [partTypeSaving, setPartTypeSaving] = useState(false)
   const [partTypeError, setPartTypeError] = useState<string | null>(null)
   const [partTypePartCounts, setPartTypePartCounts] = useState<Record<string, number>>({})
@@ -776,6 +780,8 @@ export function useSettingsCatalogs({ setError }: { setError: (message: string |
   function openEditPartType(partType: PartType | null) {
     setEditingPartType(partType)
     setPartTypeName(partType?.name || '')
+    setPartTypeOrderIncrement(partType?.order_increment != null && Number(partType.order_increment) > 0 ? String(Number(partType.order_increment)) : '')
+    setPartTypeOrderIncrementUnit(parseOrderIncrementUnit(partType?.order_increment_unit))
     setPartTypeError(null)
     setPartTypeFormOpen(true)
   }
@@ -811,6 +817,8 @@ export function useSettingsCatalogs({ setError }: { setError: (message: string |
         .update({
           name: partTypeName.trim(),
           category: null,
+          order_increment: parseTypedOrderIncrement(partTypeOrderIncrement),
+          order_increment_unit: parseTypedOrderIncrement(partTypeOrderIncrement) != null ? partTypeOrderIncrementUnit : null,
         } as any)
         .eq('id', editingPartType.id)
       
@@ -832,6 +840,8 @@ export function useSettingsCatalogs({ setError }: { setError: (message: string |
           name: partTypeName.trim(),
           category: null,
           sequence_order: maxSeq + 1,
+          order_increment: parseTypedOrderIncrement(partTypeOrderIncrement),
+          order_increment_unit: parseTypedOrderIncrement(partTypeOrderIncrement) != null ? partTypeOrderIncrementUnit : null,
         } as any)
       
       setPartTypeSaving(false)
@@ -1300,6 +1310,10 @@ export function useSettingsCatalogs({ setError }: { setError: (message: string |
     editingPartType,
     partTypeName,
     setPartTypeName,
+    partTypeOrderIncrement,
+    setPartTypeOrderIncrement,
+    partTypeOrderIncrementUnit,
+    setPartTypeOrderIncrementUnit,
     partTypeSaving,
     partTypeError,
     partTypePartCounts,

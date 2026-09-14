@@ -278,6 +278,8 @@ export function useBidPricingEngine(deps: UseBidPricingEngineDeps) {
         sequence_order: number
         source_material_part_price_id: string | null
         source_template_id: string | null
+        order_increment?: number | string | null
+        order_increment_unit?: string | null
       }>
       setTakeoffRoughPartLines(
         savedRough.map((r) => ({
@@ -288,6 +290,8 @@ export function useBidPricingEngine(deps: UseBidPricingEngineDeps) {
           unitPrice: Number(r.unit_price),
           sourceMaterialPartPriceId: r.source_material_part_price_id ?? null,
           sourceTemplateId: r.source_template_id ?? null,
+          orderIncrement: r.order_increment != null && Number(r.order_increment) > 0 ? Number(r.order_increment) : null,
+          orderIncrementUnit: r.order_increment_unit ?? null,
           sequenceOrder: r.sequence_order,
           isSaved: true,
         }))

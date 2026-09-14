@@ -15,6 +15,9 @@ export interface PartType {
   name: string
   category: string | null
   sequence_order: number
+  /** Sold in (v2.3406): the type's rule — 20 ft sticks — inherited by its parts. */
+  order_increment?: number | null
+  order_increment_unit?: string | null
   created_at: string
   updated_at: string
 }

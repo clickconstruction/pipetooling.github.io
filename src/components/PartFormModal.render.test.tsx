@@ -47,8 +47,8 @@ function makeProps(overrides: Partial<Parameters<typeof PartFormModal>[0]> = {})
 describe('PartFormModal (add mode)', () => {
   it('renders searchable comboboxes for Part Type and the seeded blank price row', () => {
     renderWithProviders(<PartFormModal {...makeProps()} />)
-    // 2 comboboxes: Part Type + one supply house (single seeded blank price row)
-    expect(screen.getAllByRole('combobox')).toHaveLength(2)
+    // 3 comboboxes: Part Type, the Sold in unit (v2.3406), and one supply house (single seeded blank price row)
+    expect(screen.getAllByRole('combobox')).toHaveLength(3)
     expect(screen.getAllByLabelText('Remove price')).toHaveLength(1)
   })
 
