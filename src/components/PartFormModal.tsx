@@ -6,6 +6,7 @@ import { SearchableSelect } from './SearchableSelect'
 import { useNarrowViewport640 } from '../hooks/useNarrowViewport640'
 import { applyPartPriceRowPatch, withTrailingBlankPartPriceRow, type PartPriceRowDraft } from '../lib/partPriceRows'
 import { todayYmdChicago } from '../lib/formatJobDetailModalDateYmd'
+import { DEFAULT_ORDER_INCREMENT_UNIT, ORDER_INCREMENT_UNITS, effectiveOrderIncrement, formatOrderIncrement, parseOrderIncrementUnit, parseTypedOrderIncrement, type OrderIncrementUnitKey } from '../lib/materials/orderIncrement'
 
 type SupplyHouse = Database['public']['Tables']['supply_houses']['Row']
 type MaterialPart = Database['public']['Tables']['material_parts']['Row']
@@ -27,6 +28,9 @@ interface PartType {
   service_type_id: string
   name: string
   category: string | null
+  /** Sold in (v2.3406): the type's rule, inherited by its parts. */
+  order_increment?: number | null
+  order_increment_unit?: string | null
 }
 
 interface PartFormModalProps {
@@ -73,6 +77,9 @@ export function PartFormModal({
   const [partPartTypeId, setPartPartTypeId] = useState('')
   const [partLink, setPartLink] = useState('')
   const [partNotes, setPartNotes] = useState('')
+  // Sold in (v2.3406): blank = inherit the type's rule (or sold by the each); a number = this part's own.
+  const [partOrderIncrement, setPartOrderIncrement] = useState('')
+  const [partOrderIncrementUnit, setPartOrderIncrementUnit] = useState<OrderIncrementUnitKey>(DEFAULT_ORDER_INCREMENT_UNIT)
   const [savingPart, setSavingPart] = useState(false)
   const [partPrices, setPartPrices] = useState<PartPriceRowDraft[]>([])
   const [error, setError] = useState<string | null>(null)
@@ -86,6 +93,8 @@ export function PartFormModal({
     setPartPartTypeId('')
     setPartLink('')
     setPartNotes('')
+    setPartOrderIncrement('')
+    setPartOrderIncrementUnit(DEFAULT_ORDER_INCREMENT_UNIT)
     // Fast-entry contract: the Prices list always ends with a blank row, so
     // tabbing out of a filled row lands in a ready one. Blank rows drop on save.
     setPartPrices(withTrailingBlankPartPriceRow([]))
@@ -102,6 +111,8 @@ export function PartFormModal({
         setPartPartTypeId((editingPart as any).part_type_id || '')
         setPartLink(editingPart.link || '')
         setPartNotes(editingPart.notes || '')
+        setPartOrderIncrement(editingPart.order_increment != null && Number(editingPart.order_increment) > 0 ? String(Number(editingPart.order_increment)) : '')
+        setPartOrderIncrementUnit(parseOrderIncrementUnit(editingPart.order_increment_unit))
         setPartPrices([])
         setDeleteConfirmOpen(false)
         setDeleteConfirmName('')
@@ -138,6 +149,8 @@ export function PartFormModal({
         link: partLink.trim() || null,
         notes: partNotes.trim() || null,
         service_type_id: selectedServiceTypeId,
+        order_increment: parseTypedOrderIncrement(partOrderIncrement),
+        order_increment_unit: parseTypedOrderIncrement(partOrderIncrement) != null ? partOrderIncrementUnit : null,
       })
       .select()
       .single()
@@ -185,6 +198,8 @@ export function PartFormModal({
           part_type_id: partPartTypeId || null,
           link: partLink.trim() || null,
           notes: partNotes.trim() || null,
+          order_increment: parseTypedOrderIncrement(partOrderIncrement),
+          order_increment_unit: parseTypedOrderIncrement(partOrderIncrement) != null ? partOrderIncrementUnit : null,
         })
         .eq('id', editingPart.id)
       if (e) {
@@ -381,6 +396,47 @@ export function PartFormModal({
               </div>
             </div>
           </div>
+          {(() => {
+            const selectedType = partTypes.find((t) => t.id === partPartTypeId) ?? null
+            const inherited = effectiveOrderIncrement(null, selectedType).value
+            const typed = parseTypedOrderIncrement(partOrderIncrement)
+            const hint = typed != null
+              ? `This part's own rule${inherited ? ` (the ${selectedType?.name ?? 'type'} rule is ${formatOrderIncrement(inherited)})` : ''}.`
+              : inherited
+                ? `From the ${selectedType?.name ?? 'type'} type. Type a number to make this part different — a 10 ft stick, a 100 ft coil.`
+                : 'Blank means sold by the each. A number rounds every takeoff up to whole packs — 105 ft needed buys 120 ft at 20 ft sticks.'
+            return (
+              <div style={{ marginBottom: '1.25rem' }}>
+                <label style={labelStyle}>
+                  Sold in <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}>(optional)</span>
+                </label>
+                <div style={{ display: 'grid', gridTemplateColumns: '6rem 9rem minmax(0, 1fr)', gap: '0.5rem', alignItems: 'center' }}>
+                  <input
+                    type="text"
+                    inputMode="decimal"
+                    value={partOrderIncrement}
+                    onChange={(e) => setPartOrderIncrement(e.target.value)}
+                    placeholder={inherited ? String(inherited.increment) : '—'}
+                    aria-label="Sold in: pack size"
+                    style={{ ...inputStyle, textAlign: 'center' }}
+                  />
+                  <select
+                    value={typed != null ? partOrderIncrementUnit : (inherited?.unit ?? partOrderIncrementUnit)}
+                    onChange={(e) => setPartOrderIncrementUnit(parseOrderIncrementUnit(e.target.value))}
+                    aria-label="Sold in: how it is sold"
+                    style={{ ...inputStyle, color: typed != null ? undefined : 'var(--text-muted)' }}
+                  >
+                    {ORDER_INCREMENT_UNITS.map((u) => (
+                      <option key={u.key} value={u.key}>
+                        {u.label}
+                      </option>
+                    ))}
+                  </select>
+                  <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{hint}</span>
+                </div>
+              </div>
+            )
+          })()}
           <div style={{ marginBottom: '1.25rem' }}>
             <label style={labelStyle}>Notes (SKU, etc.)</label>
             <textarea

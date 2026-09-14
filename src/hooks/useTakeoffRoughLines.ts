@@ -6,6 +6,7 @@ import { expandTemplate } from '../lib/materialPOUtils'
 import { fetchLowestPartPrice, fetchLowestPartPricesBatch } from '../lib/materialPartCatalogPrice'
 import { loadPartsByIds, missingPartIds, mergeCatalogParts } from '../lib/materials/partsCatalog'
 import { normalizeMaterialsModel } from '../lib/bids/bidTakeoffHelpers'
+import { effectiveOrderIncrement, type OrderIncrementFields } from '../lib/materials/orderIncrement'
 import { formatErrorMessage, withSupabaseRetry } from '../utils/errorHandling'
 import type { useToastContext } from '../contexts/ToastContext'
 import type { TakeoffRoughPartLineRow } from '../lib/bids/bidPricingEngineTypes'
@@ -74,6 +75,8 @@ export function useTakeoffRoughLines<P extends { id: string; name: string }>(arg
           sequence_order: line.sequenceOrder,
           source_material_part_price_id: src,
           source_template_id: line.sourceTemplateId ?? null,
+          order_increment: line.orderIncrement ?? null,
+          order_increment_unit: line.orderIncrement != null ? (line.orderIncrementUnit ?? null) : null,
         })
         .eq('id', line.id)
         .select('id')
@@ -96,6 +99,8 @@ export function useTakeoffRoughLines<P extends { id: string; name: string }>(arg
           sequence_order: line.sequenceOrder,
           source_material_part_price_id: src,
           source_template_id: line.sourceTemplateId ?? null,
+          order_increment: line.orderIncrement ?? null,
+          order_increment_unit: line.orderIncrement != null ? (line.orderIncrementUnit ?? null) : null,
         })
         .select('id')
         .single()
@@ -111,6 +116,36 @@ export function useTakeoffRoughLines<P extends { id: string; name: string }>(arg
     }
   }
 
+  type CatalogPartLike = OrderIncrementFields & { id: string; part_types?: OrderIncrementFields | null }
+  /**
+   * Sold in (v2.3406): the effective order increment per part — the part's own rule, else its
+   * type's — read off the loaded catalog rows, with a by-id read for parts not loaded yet
+   * (an assembly's parts, a copied bid's). The value is snapshotted onto the line.
+   */
+  async function orderIncrementsFor(partIds: readonly string[]): Promise<Map<string, { increment: number; unit: string }>> {
+    const out = new Map<string, { increment: number; unit: string }>()
+    const missing: string[] = []
+    for (const id of new Set(partIds)) {
+      const row = (takeoffAddTemplateParts as unknown as CatalogPartLike[]).find((p) => p.id === id)
+      if (row) {
+        const eff = effectiveOrderIncrement(row, row.part_types ?? null).value
+        if (eff) out.set(id, eff)
+      } else missing.push(id)
+    }
+    if (missing.length > 0) {
+      try {
+        const rows = await loadPartsByIds<CatalogPartLike>(supabase, missing)
+        for (const row of rows) {
+          const eff = effectiveOrderIncrement(row, row.part_types ?? null).value
+          if (eff) out.set(row.id, eff)
+        }
+      } catch {
+        /* the rule is a nicety at pick time — a later Refresh from the catalog can fill it */
+      }
+    }
+    return out
+  }
+
   async function setRoughPartLinePartAndCatalogPrice(lineId: string, partId: string) {
     let low: Awaited<ReturnType<typeof fetchLowestPartPrice>> = null
     try {
@@ -123,9 +158,10 @@ export function useTakeoffRoughLines<P extends { id: string; name: string }>(arg
     if (!low) {
       showToast('No catalog price for this part. Add prices in Materials or use Catalog prices.', 'info')
     }
+    const inc = (await orderIncrementsFor([partId])).get(partId) ?? null
     setTakeoffRoughPartLines((prev) => {
       const mapped = prev.map((l) =>
-        l.id === lineId ? { ...l, partId, unitPrice, sourceMaterialPartPriceId, sourceTemplateId: null } : l
+        l.id === lineId ? { ...l, partId, unitPrice, sourceMaterialPartPriceId, sourceTemplateId: null, orderIncrement: inc?.increment ?? null, orderIncrementUnit: inc?.unit ?? null } : l
       )
       const line = mapped.find((l) => l.id === lineId)
       if (line?.partId?.trim()) {
@@ -164,7 +200,7 @@ export function useTakeoffRoughLines<P extends { id: string; name: string }>(arg
     updates: Partial<
       Pick<
         TakeoffRoughPartLineRow,
-        'partId' | 'quantity' | 'unitPrice' | 'sequenceOrder' | 'sourceMaterialPartPriceId' | 'sourceTemplateId'
+        'partId' | 'quantity' | 'unitPrice' | 'sequenceOrder' | 'sourceMaterialPartPriceId' | 'sourceTemplateId' | 'orderIncrement' | 'orderIncrementUnit'
       >
     >
   ) {
@@ -280,7 +316,7 @@ export function useTakeoffRoughLines<P extends { id: string; name: string }>(arg
         mergedQty.set(part_id, (mergedQty.get(part_id) ?? 0) + quantity)
       }
       const partIds = Array.from(mergedQty.keys())
-      const priceMap = await fetchLowestPartPricesBatch(supabase, partIds)
+      const [priceMap, incMap] = await Promise.all([fetchLowestPartPricesBatch(supabase, partIds), orderIncrementsFor(partIds)])
 
       const forRow = takeoffRoughPartLines.filter((l) => l.countRowId === countRowId)
       let maxSeq = forRow.length === 0 ? 0 : Math.max(...forRow.map((l) => l.sequenceOrder), 0)
@@ -289,6 +325,7 @@ export function useTakeoffRoughLines<P extends { id: string; name: string }>(arg
       for (const [partId, qty] of mergedQty) {
         maxSeq += 1
         const low = priceMap.get(partId)
+        const inc = incMap.get(partId) ?? null
         newLines.push({
           id: crypto.randomUUID(),
           countRowId,
@@ -297,6 +334,8 @@ export function useTakeoffRoughLines<P extends { id: string; name: string }>(arg
           unitPrice: low != null ? low.price : 0,
           sourceMaterialPartPriceId: low != null ? low.priceId : null,
           sourceTemplateId: templateId,
+          orderIncrement: inc?.increment ?? null,
+          orderIncrementUnit: inc?.unit ?? null,
           sequenceOrder: maxSeq,
           isSaved: false,
         })
@@ -445,10 +484,11 @@ export function useTakeoffRoughLines<P extends { id: string; name: string }>(arg
           mergedQty.set(part_id, (mergedQty.get(part_id) ?? 0) + quantity)
         }
         const partIds = Array.from(mergedQty.keys())
-        const priceMap = await fetchLowestPartPricesBatch(supabase, partIds)
+        const [priceMap, incMap] = await Promise.all([fetchLowestPartPricesBatch(supabase, partIds), orderIncrementsFor(partIds)])
         for (const [partId, qty] of mergedQty) {
           seq += 1
           const low = priceMap.get(partId)
+          const inc = incMap.get(partId) ?? null
           if (low == null) result.partsWithoutPrice += 1
           allPartIds.add(partId)
           rowLines.push({
@@ -459,6 +499,8 @@ export function useTakeoffRoughLines<P extends { id: string; name: string }>(arg
             unitPrice: low != null ? low.price : 0,
             sourceMaterialPartPriceId: low != null ? low.priceId : null,
             sourceTemplateId: templateId,
+            orderIncrement: inc?.increment ?? null,
+            orderIncrementUnit: inc?.unit ?? null,
             sequenceOrder: seq,
             isSaved: false,
           })
@@ -498,6 +540,7 @@ export function useTakeoffRoughLines<P extends { id: string; name: string }>(arg
     let seq = forRow.length === 0 ? 0 : Math.max(...forRow.map((l) => l.sequenceOrder), 0)
     const partIds = Array.from(new Set(source.map((l) => l.part_id).filter((id): id is string => !!id)))
     const priceMap = partIds.length > 0 ? await fetchLowestPartPricesBatch(supabase, partIds) : new Map<string, { price: number; priceId: string }>()
+    const incMap = partIds.length > 0 ? await orderIncrementsFor(partIds) : new Map<string, { increment: number; unit: string }>()
     const bundleIds = Array.from(new Set(source.filter((l) => !l.part_id && l.source_template_id).map((l) => l.source_template_id as string)))
     const bundlePrice = new Map<string, number>()
     for (const tid of bundleIds) {
@@ -511,6 +554,7 @@ export function useTakeoffRoughLines<P extends { id: string; name: string }>(arg
       seq += 1
       if (src.part_id) {
         const low = priceMap.get(src.part_id)
+        const inc = incMap.get(src.part_id) ?? null
         if (low == null) result.partsWithoutPrice += 1
         newLines.push({
           id: crypto.randomUUID(),
@@ -520,6 +564,8 @@ export function useTakeoffRoughLines<P extends { id: string; name: string }>(arg
           unitPrice: low != null ? low.price : 0,
           sourceMaterialPartPriceId: low != null ? low.priceId : null,
           sourceTemplateId: src.source_template_id ?? null,
+          orderIncrement: inc?.increment ?? null,
+          orderIncrementUnit: inc?.unit ?? null,
           sequenceOrder: seq,
           isSaved: false,
         })

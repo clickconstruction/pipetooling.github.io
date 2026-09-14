@@ -42,6 +42,12 @@ export type TakeoffRoughPartLineRow = {
    * was created by expanding this assembly (Add assembly → expand to parts).
    */
   sourceTemplateId: string | null
+  /**
+   * Sold in (v2.3406): the part's effective order increment snapshotted when the part was picked
+   * (the unit_price pattern) — 20 = 20 ft sticks. Null / absent = the line never rounds.
+   */
+  orderIncrement?: number | null
+  orderIncrementUnit?: string | null
   sequenceOrder: number
   isSaved: boolean
 }

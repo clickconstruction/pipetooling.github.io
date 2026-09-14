@@ -55,6 +55,9 @@ export interface FixtureType {
 }
 
 export interface PartType {
+  /** Sold in (v2.3406): the type's rule — 20 ft sticks — inherited by its parts. */
+  order_increment?: number | null
+  order_increment_unit?: string | null
   id: string
   service_type_id: string
   name: string

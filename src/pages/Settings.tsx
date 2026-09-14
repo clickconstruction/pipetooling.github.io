@@ -331,6 +331,10 @@ export default function Settings() {
     editingPartType,
     partTypeName,
     setPartTypeName,
+    partTypeOrderIncrement,
+    setPartTypeOrderIncrement,
+    partTypeOrderIncrementUnit,
+    setPartTypeOrderIncrementUnit,
     partTypeSaving,
     partTypeError,
     partTypePartCounts,
@@ -1624,6 +1628,10 @@ export default function Settings() {
           partTypeError={partTypeError}
           partTypeFormOpen={partTypeFormOpen}
           partTypeName={partTypeName}
+          partTypeOrderIncrement={partTypeOrderIncrement}
+          partTypeOrderIncrementUnit={partTypeOrderIncrementUnit}
+          setPartTypeOrderIncrement={setPartTypeOrderIncrement}
+          setPartTypeOrderIncrementUnit={setPartTypeOrderIncrementUnit}
           partTypePartCounts={partTypePartCounts}
           partTypeSaving={partTypeSaving}
           partTypes={partTypes}

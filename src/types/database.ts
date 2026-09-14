@@ -2546,6 +2546,8 @@ export type Database = {
           count_row_id: string
           created_at: string | null
           id: string
+          order_increment: number | null
+          order_increment_unit: string | null
           part_id: string | null
           quantity: number
           sequence_order: number
@@ -2560,6 +2562,8 @@ export type Database = {
           count_row_id: string
           created_at?: string | null
           id?: string
+          order_increment?: number | null
+          order_increment_unit?: string | null
           part_id?: string | null
           quantity?: number
           sequence_order?: number
@@ -2574,6 +2578,8 @@ export type Database = {
           count_row_id?: string
           created_at?: string | null
           id?: string
+          order_increment?: number | null
+          order_increment_unit?: string | null
           part_id?: string | null
           quantity?: number
           sequence_order?: number
@@ -10662,6 +10668,8 @@ export type Database = {
           manufacturer: string | null
           name: string
           notes: string | null
+          order_increment: number | null
+          order_increment_unit: string | null
           part_type_id: string | null
           service_type_id: string
           updated_at: string | null
@@ -10674,6 +10682,8 @@ export type Database = {
           manufacturer?: string | null
           name: string
           notes?: string | null
+          order_increment?: number | null
+          order_increment_unit?: string | null
           part_type_id?: string | null
           service_type_id: string
           updated_at?: string | null
@@ -10686,6 +10696,8 @@ export type Database = {
           manufacturer?: string | null
           name?: string
           notes?: string | null
+          order_increment?: number | null
+          order_increment_unit?: string | null
           part_type_id?: string | null
           service_type_id?: string
           updated_at?: string | null
@@ -12118,6 +12130,8 @@ export type Database = {
           created_at: string | null
           id: string
           name: string
+          order_increment: number | null
+          order_increment_unit: string | null
           sequence_order: number
           service_type_id: string
           updated_at: string | null
@@ -12127,6 +12141,8 @@ export type Database = {
           created_at?: string | null
           id?: string
           name: string
+          order_increment?: number | null
+          order_increment_unit?: string | null
           sequence_order?: number
           service_type_id: string
           updated_at?: string | null
@@ -12136,6 +12152,8 @@ export type Database = {
           created_at?: string | null
           id?: string
           name?: string
+          order_increment?: number | null
+          order_increment_unit?: string | null
           sequence_order?: number
           service_type_id?: string
           updated_at?: string | null

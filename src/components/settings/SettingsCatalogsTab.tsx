@@ -6,6 +6,7 @@ import type { Dispatch, FormEvent, SetStateAction } from 'react'
 import type { OrphanedPriceRow } from '../../lib/settingsCatalogs'
 import { Link } from 'react-router-dom'
 import type { UserRole } from '../../hooks/useAuth'
+import { ORDER_INCREMENT_UNITS, formatOrderIncrement, parseOrderIncrement, parseOrderIncrementUnit, type OrderIncrementUnitKey } from '../../lib/materials/orderIncrement'
 import type {
   AssemblyType,
   CountsFixtureGroup,
@@ -77,6 +78,8 @@ type SettingsCatalogsTabProps = {
   partTypeError: string | null
   partTypeFormOpen: boolean
   partTypeName: string
+  partTypeOrderIncrement: string
+  partTypeOrderIncrementUnit: OrderIncrementUnitKey
   partTypePartCounts: Record<string, number>
   partTypeSaving: boolean
   partTypes: PartType[]
@@ -111,6 +114,8 @@ type SettingsCatalogsTabProps = {
   setFixtureTypeName: Dispatch<SetStateAction<string>>
   setManagePartsSectionOpen: Dispatch<SetStateAction<boolean>>
   setPartTypeName: Dispatch<SetStateAction<string>>
+  setPartTypeOrderIncrement: Dispatch<SetStateAction<string>>
+  setPartTypeOrderIncrementUnit: Dispatch<SetStateAction<OrderIncrementUnitKey>>
   setSelectedServiceTypeForAssemblies: Dispatch<SetStateAction<string>>
   setSelectedServiceTypeForCountsFixtures: Dispatch<SetStateAction<string>>
   setSelectedServiceTypeForFixtures: Dispatch<SetStateAction<string>>
@@ -194,6 +199,10 @@ export default function SettingsCatalogsTab({
   partTypeError,
   partTypeFormOpen,
   partTypeName,
+  partTypeOrderIncrement,
+  partTypeOrderIncrementUnit,
+  setPartTypeOrderIncrement,
+  setPartTypeOrderIncrementUnit,
   partTypePartCounts,
   partTypeSaving,
   partTypes,
@@ -576,6 +585,14 @@ export default function SettingsCatalogsTab({
                             >
                               {partTypePartCounts[pt.id] || 0} part{partTypePartCounts[pt.id] === 1 ? '' : 's'}
                             </span>
+                            {parseOrderIncrement(pt) ? (
+                              <span
+                                title="Sold in — every part of this type rounds a takeoff up to whole packs"
+                                style={{ padding: '0.125rem 0.5rem', fontSize: '0.75rem', background: 'var(--bg-violet-100)', color: 'var(--text-violet-700)', borderRadius: 999, fontWeight: 600 }}
+                              >
+                                {formatOrderIncrement(parseOrderIncrement(pt)!)}
+                              </span>
+                            ) : null}
                           </div>
                         </div>
                         <div style={{ display: 'flex', gap: '0.5rem' }}>
@@ -669,6 +686,39 @@ export default function SettingsCatalogsTab({
                       autoFocus
                       placeholder="e.g., Pipe, Fitting, Valve, Sink, Faucet"
                     />
+                  </div>
+
+                  {/* Sold in (v2.3406): the rule every part of this type rounds to. */}
+                  <div style={{ marginBottom: '1rem' }}>
+                    <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>
+                      Sold in <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}>(optional)</span>
+                    </label>
+                    <div style={{ display: 'grid', gridTemplateColumns: '6rem 9rem', gap: '0.5rem' }}>
+                      <input
+                        type="text"
+                        inputMode="decimal"
+                        value={partTypeOrderIncrement}
+                        onChange={(e) => setPartTypeOrderIncrement(e.target.value)}
+                        placeholder="—"
+                        aria-label="Sold in: pack size"
+                        style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, textAlign: 'center' }}
+                      />
+                      <select
+                        value={partTypeOrderIncrementUnit}
+                        onChange={(e) => setPartTypeOrderIncrementUnit(parseOrderIncrementUnit(e.target.value))}
+                        aria-label="Sold in: how it is sold"
+                        style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
+                      >
+                        {ORDER_INCREMENT_UNITS.map((u) => (
+                          <option key={u.key} value={u.key}>
+                            {u.label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <p style={{ margin: '0.35rem 0 0', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                      Every part of this type rounds a takeoff up to whole packs — 105 ft needed buys 120 ft at 20 ft sticks. Blank means sold by the each. A part can override this on its own form.
+                    </p>
                   </div>
                   
                   <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
