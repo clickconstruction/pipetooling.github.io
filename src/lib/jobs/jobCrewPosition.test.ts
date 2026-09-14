@@ -70,9 +70,12 @@ describe('names', () => {
 describe('newestPercent / percentIsStale — the v2.3372 rule on the row', () => {
   const p = (over: Partial<JobCrewPositionRpcRow>) => crewPositionsFromRpc([row({ job_ledger_id: 'j', ...over })], today).get('j')!
 
-  it('a hand-set at or after the newest report wins; an older hand-set loses to the report', () => {
+  it('the typed number is the number: dated by the hand-set, else by the report that carries it; a report stands alone only with no typed %', () => {
     expect(newestPercent(p({ report_pct: 77, report_at: '2026-05-15T12:00:00Z', pct_manual_at: '2026-09-03T12:00:00Z' }), 90)).toEqual({ pct: 90, source: 'typed', at: '2026-09-03T12:00:00Z' })
-    expect(newestPercent(p({ report_pct: 24, report_at: '2026-05-26T12:00:00Z', pct_manual_at: '2026-05-01T12:00:00Z' }), 10)).toEqual({ pct: 24, source: 'report', at: '2026-05-26T12:00:00Z' })
+    // Take 5 Seguin, live 2026-09-14: the box says 60, the only report (Jul 29) said 0 — the row must not read "0% reported".
+    expect(newestPercent(p({ report_pct: 0, report_at: '2026-07-29T12:00:00Z' }), 60)).toEqual({ pct: 60, source: 'typed', at: null })
+    // SpaceX: the box's 12 came from the Sep 11 report — that report dates it.
+    expect(newestPercent(p({ report_pct: 12, report_at: '2026-09-11T12:00:00Z' }), 12)).toEqual({ pct: 12, source: 'report', at: '2026-09-11T12:00:00Z' })
     expect(newestPercent(p({}), 40)).toEqual({ pct: 40, source: 'typed', at: null })
     expect(newestPercent(p({ report_pct: 12, report_at: '2026-09-11T12:00:00Z' }), null)).toEqual({ pct: 12, source: 'report', at: '2026-09-11T12:00:00Z' })
     expect(newestPercent(p({}), null)).toBeNull()
