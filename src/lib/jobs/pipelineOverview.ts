@@ -153,7 +153,7 @@ export function buildPipelineMoneyMoves(input: {
   return moves
 }
 
-export type PipelineFixupKey = 'no-customer' | 'no-pictures' | 'no-email' | 'no-job-account'
+export type PipelineFixupKey = 'no-customer' | 'no-pictures' | 'no-email' | 'no-job-account' | 'owner-confirm'
 
 export type PipelineFixup = {
   key: PipelineFixupKey
@@ -175,6 +175,8 @@ export function buildPipelineFixups(counts: {
   noEmail: number
   /** v2.3430 — jobs that bought at a house expecting a job account with none on record. */
   noJobAccount?: number
+  /** v2.3447 — GC jobs with approved hours whose owner of record is not yet confirmed. */
+  ownerConfirm?: number
 }): PipelineFixup[] {
   const out: PipelineFixup[] = []
   if (counts.noCustomer > 0) {
@@ -207,6 +209,14 @@ export function buildPipelineFixups(counts: {
       label: `No job account · ${counts.noJobAccount}`,
       tone: 'amber',
       title: 'Jobs that bought parts at a supply house expecting a job account, with none on record. Click to list them on Materials → Job Accounts.',
+    })
+  }
+  if ((counts.ownerConfirm ?? 0) > 0) {
+    out.push({
+      key: 'owner-confirm',
+      label: `Owner of record to confirm · ${counts.ownerConfirm}`,
+      tone: 'amber',
+      title: 'GC jobs with approved hours whose owner of record is not yet confirmed — the lien notice cannot be mailed without one. Click to look them all up.',
     })
   }
   return out

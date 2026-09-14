@@ -146,6 +146,7 @@ import { useLegalMatters } from '../../hooks/useLegalMatters'
 import { PORTAL_COMPANY } from '../../../supabase/functions/_shared/portalCompany'
 import JobsCombineSeparateModal from './JobsCombineSeparateModal'
 import StagesNoCustomerJobsModal from './StagesNoCustomerJobsModal'
+import OwnerConfirmListModal from './OwnerConfirmListModal'
 import StagesAlertJobListModal from './StagesAlertJobListModal'
 import BilledPaymentConfirmationModal from './BilledPaymentConfirmationModal'
 import BilledBillViewModal from './BilledBillViewModal'
@@ -263,6 +264,7 @@ import { JobsFollowupModal, type JobsFollowupStageRowResult } from './JobsFollow
 import { followupStagesCoveredByScopes } from '../../lib/jobs/jobFollowupQueue'
 import { revenueDollarsFromFixtures } from '../../lib/revenueFromJobFixtures'
 import { useJobAccountEvidenceGapsNudge } from '../../hooks/useJobAccountEvidenceGapsNudge'
+import { useOwnerConfirmRows } from '../../hooks/useOwnerConfirmRows'
 
 type JobsLedgerInvoice = Database['public']['Tables']['jobs_ledger_invoices']['Row']
 
@@ -539,6 +541,9 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
   const navigate = useNavigate()
   // Job accounts at the counter (v2.3430): the Fix-ups chip's count — the RPC gates on the office set itself.
   const { gaps: jobAccountEvidenceGaps } = useJobAccountEvidenceGapsNudge(active && Boolean(authUser))
+  // Owner of record to confirm (v2.3447): GC jobs with approved hours and no confirmed owner — office-gated in the RPC.
+  const { rows: ownerConfirmRows, reload: reloadOwnerConfirmRows } = useOwnerConfirmRows(active && Boolean(authUser))
+  const [ownerConfirmModalOpen, setOwnerConfirmModalOpen] = useState(false)
 
   // Full-page Job activity modal — opened by the activity box's corner expand
   // button and the row's "N Reports" chip. One instance for the whole board.
@@ -3544,9 +3549,11 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                 noPictures: stagesWorkingJobsWithoutPictures.length,
                 noEmail: stagesReadyToBillNoEmailJobs.length,
                 noJobAccount: jobAccountEvidenceGaps?.jobs ?? 0,
+                ownerConfirm: ownerConfirmRows.length,
               }}
               onFixup={(key) => {
                 if (key === 'no-customer') setStagesNoCustomerModalOpen(true)
+                else if (key === 'owner-confirm') setOwnerConfirmModalOpen(true)
                 else if (key === 'no-pictures') setStagesNoJobPicturesModalOpen(true)
                 else if (key === 'no-job-account') navigate('/materials?tab=job-accounts&filter=no_account')
                 else setStagesNoEmailModalOpen(true)
@@ -3920,6 +3927,13 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
             onClose={() => setStagesNoCustomerModalOpen(false)}
             jobs={stagesJobsWithoutCustomer}
             onSelectJob={openStagesNoCustomerEditJob}
+          />
+          <OwnerConfirmListModal
+            open={ownerConfirmModalOpen}
+            onClose={() => setOwnerConfirmModalOpen(false)}
+            rows={ownerConfirmRows}
+            onSaved={reloadOwnerConfirmRows}
+            userId={authUser?.id ?? null}
           />
           <StagesAlertJobListModal
             open={stagesNoJobPicturesModalOpen}

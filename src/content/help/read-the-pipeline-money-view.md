@@ -37,7 +37,7 @@ When there's nothing to do, the queue says so — an empty list means the pipeli
 
 ### The Fix-ups strip
 
-When jobs are missing the data billing needs, a slim **Fix-ups** strip appears at the bottom of the card: {{chip:red|No customer · 1}} (a job with no linked customer can't be billed at all), {{chip:red|No customer pictures · 3}}, and {{chip:yellow|No email · 2}} (Stripe and emailed invoices need one). Each chip opens the same fix-it job list as before — and when everything's clean, the strip disappears entirely.
+When jobs are missing the data billing needs, a slim **Fix-ups** strip appears at the bottom of the card: {{chip:red|No customer · 1}} (a job with no linked customer can't be billed at all), {{chip:red|No customer pictures · 3}}, {{chip:yellow|No email · 2}} (Stripe and emailed invoices need one), and {{chip:yellow|Owner of record to confirm · 35}} (GC jobs with approved hours whose property record has no confirmed owner — the lien notice cannot be mailed without one). Each chip opens its fix-it list — the owner chip's list looks every property up on the appraisal roll and confirms them with one **Use** each, or **Use all found** (see *file a lien and never miss its deadlines*) — and when everything's clean, the strip disappears entirely.
 
 ### Jobs burning ahead of progress
 
