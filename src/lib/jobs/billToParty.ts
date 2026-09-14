@@ -88,9 +88,11 @@ export function jobBillToPartyOptions(job: {
   gcName: string | null
 }): JobBillToPartyOption[] {
   const gcDistinct = Boolean(job.gcCustomerId) && job.gcCustomerId !== job.customerId
-  const out: JobBillToPartyOption[] = [
-    { value: 'customer', label: 'This customer', hint: 'Bills, the statement and the portal address the job customer.' },
-  ]
+  // A GC job (v2.3403): no customer link, so "This customer" is not a choice.
+  const gcOnly = gcDistinct && !job.customerId
+  const out: JobBillToPartyOption[] = gcOnly
+    ? []
+    : [{ value: 'customer', label: 'This customer', hint: 'Bills, the statement and the portal address the job customer.' }]
   if (gcDistinct) {
     out.push({
       value: 'gc',
@@ -98,7 +100,7 @@ export function jobBillToPartyOptions(job: {
       hint: 'Bills, the GC statement and the portal address the GC at its billing email.',
     })
   }
-  out.push({ value: 'split', label: 'Split by line', hint: 'Each draft invoice picks its payer — Customer, GC, or someone else.' })
+  if (!gcOnly) out.push({ value: 'split', label: 'Split by line', hint: 'Each draft invoice picks its payer — Customer, GC, or someone else.' })
   return out
 }
 

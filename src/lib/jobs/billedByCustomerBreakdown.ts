@@ -10,6 +10,7 @@
  * Paid (`settled`, $0, never aged) — so the bill count here equals the strip's
  * (journey J4-1 (b): Quickfill used to say 58 where the board said 59).
  */
+import { jobPartyName } from './jobPartyExclusive'
 import type { StageRow } from '../jobsStagesBoard'
 import { stageRowBilledAgeDays, stageRowBilledAgeReference, stageRowBilledRemainingAmount } from './invoiceBilling'
 import { effectiveJobLedgerNumber } from '../ledgerDisplayPrefixes'
@@ -103,8 +104,9 @@ export function buildBilledByCustomerBreakdown(
     const amount = stageRowBilledRemainingAmount(row)
     const settled = isSettledRemainder(amount)
     const job = row.job
-    const name = (job.customer_name ?? '').trim() || 'No customer'
-    const key = (job.customer_id ?? '').trim() || `name:${name.toLowerCase()}`
+    // A GC job (v2.3403) groups under the GC standing alone.
+    const name = jobPartyName(job) ?? 'No customer'
+    const key = (job.customer_id ?? '').trim() || (job.gc_customer_id ?? '').trim() || `name:${name.toLowerCase()}`
     const inv = row.kind === 'job' ? null : row.inv
     const bill: BilledBreakdownBill = {
       invoiceId: inv?.id ?? null,

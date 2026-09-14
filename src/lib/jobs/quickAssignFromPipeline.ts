@@ -1,3 +1,4 @@
+import { jobPartyName } from './jobPartyExclusive'
 import type { JobWithDetails } from '../../types/jobWithDetails'
 import type { ScheduleDispatchHubJobRow } from '../scheduleDispatchHub'
 
@@ -19,7 +20,7 @@ export function jobWithDetailsToQuickAssignHubRow(job: JobWithDetails): Schedule
     project_id: job.project_id ?? null,
     created_at: job.created_at ?? null,
     job_address: job.job_address ?? null,
-    customer_name: job.customer_name ?? null,
+    customer_name: jobPartyName(job),
     status: job.status ?? null,
     service_type: serviceTypeName != null ? { name: serviceTypeName } : null,
   }
