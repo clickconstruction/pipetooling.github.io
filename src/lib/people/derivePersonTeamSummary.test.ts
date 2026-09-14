@@ -174,6 +174,32 @@ describe('derivePersonTeamSummary', () => {
     expect(rich.gross).toBeCloseTo(100, 10)
   })
 
+  it('v2.3394: parts cost is tally + supply invoices + billed materials + the NET card charges the loader hands over (Job Summary’s composition)', () => {
+    const union = makeUnion({
+      periodCrewRows: [{ work_date: '2026-02-01', person_name: 'Bob', job_assignments: [{ job_id: 'job-963', pct: 100 }] }],
+      crewByDatePerson: { '2026-02-01:Bob': { job_assignments: [{ job_id: 'job-963', pct: 100 }] } },
+      hoursMap: { 'Bob:2026-02-01': 8 },
+      jobsById: new Map([['job-963', makeLedgerRow({ id: 'job-963', hcp_number: 'J963', revenue: 10000, pct_complete: 100, status: 'working' })]]),
+      teamLaborCostByJobId: new Map([['job-963', 400]]),
+      teamLaborHoursByJobId: new Map([['job-963', 8]]),
+      partsCostByJobId: new Map([['job-963', 100]]),
+      invoiceAmountByJob: { 'job-963': 200 },
+      billedMaterialsByJobId: new Map([['job-963', 50]]),
+      // The loader already applied the one card rule (internal transfers out, invoice-linked counted once) — $710, not the $1,465 gross.
+      cardChargesByJobId: new Map([['job-963', 710]]),
+    })
+
+    const row = derivePersonTeamSummary(union, 'Bob', hourlyPayConfig('Bob', 50), false, ['2026-02-01'])
+
+    const job = row.grossBreakdown.jobs[0]
+    if (!job) throw new Error('expected one allocated job')
+    // valueCreated = 10,000 × 100%; parts = 100 + 200 + 50 + 710 = 1,060; before overhead = 10,000 − 1,060 − 400 = 8,540; Bob's share = 8 ÷ 8 = 1
+    expect(job.valueCreated).toBe(10000)
+    expect(job.ratio).toBeCloseTo(1, 10)
+    expect(row.gross).toBeCloseTo(10000, 10)
+    expect(row.profit).toBeCloseTo(8540, 10)
+  })
+
   it('v2.3360: a job with no % is assumed half done and marked; a finished job is 100% whatever its % says', () => {
     const base = {
       periodCrewRows: [{ work_date: '2026-02-01', person_name: 'Bob', job_assignments: [{ job_id: 'job-N', pct: 50 }, { job_id: 'job-F', pct: 50 }] }],

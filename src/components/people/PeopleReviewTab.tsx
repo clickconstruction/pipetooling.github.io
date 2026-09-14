@@ -19,6 +19,9 @@ import type { PayConfigRow } from '../../types/peoplePayConfig'
 import { decimalToHms } from '../../lib/people/hoursGridTime'
 import { laborJobMatchesPerson } from '../../lib/people/laborJobPersonMatch'
 import { laborJobSubCost } from '../../lib/jobs/subLaborCost'
+import { summarizeCardChargeAllocations } from '../../lib/jobs/cardChargeAllocationFilter'
+import { loadCardChargeExclusions } from '../../lib/jobs/loadCardChargeExclusions'
+import { netCardChargesByJobId } from '../../lib/jobs/netCardChargesByJob'
 import { reviewJobEarned, reviewShareRatio } from '../../lib/people/reviewEarned'
 import { parseReviewDoor, reviewDoorPersonIndex } from '../../lib/people/reviewDoor'
 import { computeReviewDateRange, ymdAddYears, type ReviewPeriod as ReviewPeriodKind } from '../../lib/people/reviewDateRange'
@@ -1420,7 +1423,7 @@ export default function PeopleReviewTab({
       // bucket, overstating profit on card-heavy jobs.
       fetchAllRowsChunkedIn(
         jobIds,
-        (chunk, f, t) => supabase.from('mercury_transaction_job_allocations').select('job_id, amount').in('job_id', chunk).order('id').range(f, t),
+        (chunk, f, t) => supabase.from('mercury_transaction_job_allocations').select('job_id, amount, mercury_transaction_id').in('job_id', chunk).order('id').range(f, t),
         'load review card charges',
       ),
     ])
@@ -1433,10 +1436,13 @@ export default function PeopleReviewTab({
     for (const row of (materialsRes.data ?? []) as Array<{ job_id: string; amount: number }>) {
       billedMaterialsByJobId.set(row.job_id, (billedMaterialsByJobId.get(row.job_id) ?? 0) + Number(row.amount ?? 0))
     }
-    const cardChargesByJobId = new Map<string, number>()
-    for (const row of cardChargeRows as Array<{ job_id: string; amount: number }>) {
-      cardChargesByJobId.set(row.job_id, (cardChargesByJobId.get(row.job_id) ?? 0) + Math.abs(Number(row.amount)))
-    }
+    // The ONE card-charge rule Job Summary applies (v2.2692 via `cardChargeAllocationFilter`):
+    // Internal Transfers are not a cost, and a charge linked to a supply-house invoice is the
+    // purchase the invoice allocation already counts — counted once. Review summed gross rows
+    // until this, so the same job read a different parts cost on the two surfaces (J963).
+    const cardAllocRows = (cardChargeRows as Array<{ job_id: string; amount: number; mercury_transaction_id: string | null }>).map((r) => ({ ...r, mercury_transaction_id: r.mercury_transaction_id ?? '' }))
+    const cardExclusions = await loadCardChargeExclusions([...new Set(cardAllocRows.map((r) => r.mercury_transaction_id).filter((id) => id.length > 0))])
+    const cardChargesByJobId = netCardChargesByJobId(summarizeCardChargeAllocations(cardAllocRows, cardExclusions))
 
     const laborRowsOfficeFiltered = officeJobLedgerId
       ? laborRows.filter((r) => {
@@ -1687,7 +1693,7 @@ export default function PeopleReviewTab({
       const subLaborCost = laborCostByJobId.get(jobId) ?? 0
       const teamLaborCost = teamLaborCostByJobId.get(jobId) ?? 0
       const totalLaborOnJob = subLaborCost + teamLaborCost
-      const partsCost = (partsCostByJobId.get(jobId) ?? 0) + (invoiceAmountByJob[jobId] ?? 0) + (billedMaterialsByJobId.get(jobId) ?? 0)
+      const partsCost = (partsCostByJobId.get(jobId) ?? 0) + (invoiceAmountByJob[jobId] ?? 0) + (billedMaterialsByJobId.get(jobId) ?? 0) + (cardChargesByJobId.get(jobId) ?? 0)
       const lifetimeHours = totalHoursOnJob.get(jobId) ?? 0
       const valueCreated = reviewJobEarned({ revenue: job?.revenue != null ? Number(job.revenue) : null, pctComplete: job?.pct_complete ?? null, status: job?.status ?? null, lifetimeHours }).valueCreated
       const revenueBeforeOverhead = valueCreated - partsCost - totalLaborOnJob
@@ -1698,7 +1704,7 @@ export default function PeopleReviewTab({
       const j = jobsById.get(jobId)
       const subLaborCost = laborCostByJobId.get(jobId) ?? 0
       const totalLaborOnJob = subLaborCost + (teamLaborCostByJobId.get(jobId) ?? 0)
-      const partsCost = (partsCostByJobId.get(jobId) ?? 0) + (invoiceAmountByJob[jobId] ?? 0) + (billedMaterialsByJobId.get(jobId) ?? 0)
+      const partsCost = (partsCostByJobId.get(jobId) ?? 0) + (invoiceAmountByJob[jobId] ?? 0) + (billedMaterialsByJobId.get(jobId) ?? 0) + (cardChargesByJobId.get(jobId) ?? 0)
       const lifetimeHours = totalHoursOnJob.get(jobId) ?? 0
       const valueCreated = reviewJobEarned({ revenue: j?.revenue != null ? Number(j.revenue) : null, pctComplete: j?.pct_complete ?? null, status: j?.status ?? null, lifetimeHours }).valueCreated
       const revenueBeforeOverhead = valueCreated - partsCost - totalLaborOnJob
@@ -2154,7 +2160,10 @@ export default function PeopleReviewTab({
     // their fuel-tag card charges leave the job purchase sums — otherwise the
     // fuel would count twice and land on co-workers by labor share.
     const vehicleByPersonName: Record<string, TeamReviewVehicle> = {}
-    const wheels = await loadWheelsSnapshot({ todayYmd: denverCalendarDayKey(Date.now()), users }).catch(() => null)
+    const [wheels, cardExclusions] = await Promise.all([
+      loadWheelsSnapshot({ todayYmd: denverCalendarDayKey(Date.now()), users }).catch(() => null),
+      loadCardChargeExclusions(cardTxIds),
+    ])
     if (wheels) {
       for (const r of wheels.rows) {
         if (r.arrangement === 'none') continue
@@ -2195,14 +2204,19 @@ export default function PeopleReviewTab({
         }
       }
     }
-    const cardRows = excludedTxIds.size > 0 ? cardRowsAll.filter((r) => !r.mercury_transaction_id || !excludedTxIds.has(r.mercury_transaction_id)) : cardRowsAll
-    const cardChargesByJobId = new Map<string, number>()
-    for (const row of cardRows) {
-      cardChargesByJobId.set(row.job_id, (cardChargesByJobId.get(row.job_id) ?? 0) + Math.abs(Number(row.amount)))
-    }
+    const cardRowsAfterFuel = excludedTxIds.size > 0 ? cardRowsAll.filter((r) => !r.mercury_transaction_id || !excludedTxIds.has(r.mercury_transaction_id)) : cardRowsAll
+    // Then the ONE card-charge rule Job Summary applies (v2.2692, `cardChargeAllocationFilter`):
+    // Internal Transfers out; an invoice-linked charge counted once. The fuel removal above
+    // stays — it is Review's own pricing choice (Wheels), not a composition difference.
+    const cardSummary = summarizeCardChargeAllocations(
+      cardRowsAfterFuel.map((r) => ({ ...r, mercury_transaction_id: r.mercury_transaction_id ?? '' })),
+      cardExclusions,
+    )
+    const cardRows = cardSummary.counted
+    const cardChargesByJobId = netCardChargesByJobId(cardSummary)
     // Cost-line tags (v2.2725): a card charge belongs to its accounting label's
     // tag, else its bank category's tag; only tags flagged "show as cost line"
-    // become lines. Same classifier Jobs → Job Summary uses.
+    // become lines. Same classifier Jobs → Job Summary uses, over the rows that count.
     const tagChargesByJobId = new Map<string, ReadonlyMap<string, number>>()
     if (cardRows.length > 0 && tagLookups.tagsById.size > 0) {
       for (const [jobId, perTag] of sumTagChargesByJob(cardRows, labelIdByTxId, categoryByTxId, tagLookups)) tagChargesByJobId.set(jobId, perTag)

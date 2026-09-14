@@ -32,5 +32,5 @@ Same pay week on both: People → Review → Custom range Sun–Sat, Table view,
 
 ## Residue
 
-- The per-person panel's Net still excludes card charges from parts (the Team Summary includes them).
+- ~~The per-person panel's Net still excludes card charges from parts~~ — fixed v2.3394 (and both Review loaders now apply Job Summary's card rule: internal transfers out, invoice-linked counted once).
 - Job Summary and Crew P&L keep their own conventions (the friend's surfaces).
