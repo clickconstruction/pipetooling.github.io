@@ -36,7 +36,7 @@ The slider opens on the job's **current %**, and the line under it says where th
 
 ### On a job split into stages
 
-If the office split the job into **stages** on the Bill tab (an Order row or two — see *split a job into stages and bill stage by stage*), the percent-complete question turns into a stage list. Tap the stage you worked on, slide how far along **that stage** is, and the app does the weighting: each stage is worth its share of the job's value, so 60% of a stage worth 35% of the job moves the job 21 points. The green box shows the job's new percent and the arithmetic; a stage whose draw is already paid reads {{chip:green|✓ 100%}}. "—" lines like permits aren't stages and don't count.
+If the job is split into **stages** — the office set an **Order** row on the Bill tab (see *split a job into stages and bill stage by stage*), or the line items already read like a plan (**Rough In**, **Top Out**, **Trim Set**, in that order — the app recognizes the plumbing stages by name) — the percent-complete question turns into a stage list. Tap the stage you worked on, slide how far along **that stage** is, and the app does the weighting: each stage is worth its share of the job's value, so 60% of a stage worth 35% of the job moves the job 21 points. The green box shows the job's new percent and the arithmetic; a stage whose draw is already paid reads {{chip:green|✓ 100%}}. "—" lines like permits aren't stages and don't count.
 
 {{button:outline-blue|Set the whole-job % instead}} brings back the plain slider if you'd rather call the whole job. Jobs with one line item never see the list — they report exactly as before.
 

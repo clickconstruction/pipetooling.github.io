@@ -12,6 +12,8 @@
  * have no stage mode and keep the plain slider. Pure.
  */
 
+import { recognizeStages } from '../jobs/stageRecognition'
+
 export type StageProgressRow = {
   fixtureId: string
   name: string
@@ -25,7 +27,12 @@ export type StageProgressRow = {
   drawPaid: boolean
 }
 
-/** Raw RPC row → kernel row; drops rows without weight (unpriced) and unknown kinds. */
+/**
+ * Raw RPC row → kernel row; drops rows without weight (unpriced) and unknown
+ * kinds. v2.3417: rows that spell a plan in the plumbing vocabulary (Rough In
+ * · Top Out · Trim Set, kind `any`) come back as `order`, so the picker
+ * numbers them and stage mode opens without anyone touching the Bill tab.
+ */
 export function stageProgressRowsFromRpc(
   rows: ReadonlyArray<{
     fixture_id: string
@@ -52,14 +59,19 @@ export function stageProgressRowsFromRpc(
       drawPaid: r.draw_paid === true,
     })
   }
-  return out
+  const rec = recognizeStages(out.map((s) => ({ id: s.fixtureId, name: s.name, count: 1, line_unit_price: s.weightPct, sequence_order: s.sequenceOrder, stage_kind: s.kind })))
+  if (!rec.recognized) return out
+  const ids = new Set(rec.orderIds)
+  return out.map((s) => (ids.has(s.fixtureId) ? { ...s, kind: 'order' as const } : s))
 }
 
 /**
- * Stage mode needs a deliberate plan: at least one Order row. Every legacy line
- * item is kind `any` (the v2.3083 backfill), so keying on "any priced row" would
- * turn a three-line service job into a three-stage report nobody asked for.
- * Any rows join the picker beside the Order rows once one exists.
+ * Stage mode needs a plan: at least one Order row — set on the Bill tab, or
+ * recognized from the line names by `stageProgressRowsFromRpc` (v2.3417).
+ * Every legacy line item is kind `any` (the v2.3083 backfill), so keying on
+ * "any priced row" would turn a three-line service job into a three-stage
+ * report nobody asked for; recognition needs two rows in the plumbing
+ * vocabulary, in order. Any rows join the picker beside the Order rows.
  */
 export function stageModeAvailable(stages: ReadonlyArray<StageProgressRow>): boolean {
   return stages.some((s) => s.kind === 'order')

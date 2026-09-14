@@ -48,6 +48,24 @@ describe('buildPipelineStageBar', () => {
     expect(buildPipelineStageBar({ fixtures: [fx({ id: 'a', name: 'x', stage_kind: null })], invoices: [], payments: [], pctComplete: 40, todayYmd: today })).toBeNull()
   })
 
+  it('v2.3417 — J931 Heron: Rough In · Top Out · Trim Set, every row kind `any`, is recognized as three stages', () => {
+    // 2026-09-14: the generator's preset, never touched on the Bill tab — the way every split job in prod looks.
+    const anyRows = j892.map((f) => ({ ...f, stage_kind: 'any' }))
+    expect(stageBarAvailable(anyRows)).toBe(true)
+    const bar = buildPipelineStageBar({ fixtures: anyRows, invoices: [], payments: [], pctComplete: 40, todayYmd: today })!
+    expect(bar.recognized).toBe(true)
+    expect(bar.segments.map((s) => [s.number, s.short, s.state])).toEqual([
+      [1, 'Rough', 'live'],
+      [2, 'Top Out', 'later'],
+      [3, 'Trim', 'later'],
+    ])
+    // A change order beside them stays Any and off the bar; a service job is not a plan.
+    expect(buildPipelineStageBar({ fixtures: [...anyRows, fx({ id: 'co', name: 'CHANGE ORDER: hose bib', line_unit_price: 850, sequence_order: 3, stage_kind: 'any' })], invoices: [], payments: [], pctComplete: null, todayYmd: today })!.count).toBe(3)
+    expect(stageBarAvailable([fx({ id: 'd', name: 'Diagnostic', line_unit_price: 150, stage_kind: 'any' }), fx({ id: 'p', name: 'Parts', line_unit_price: 300, sequence_order: 1, stage_kind: 'any' })])).toBe(false)
+    // An explicit plan is not "recognized".
+    expect(buildPipelineStageBar({ fixtures: j892, invoices: [], payments: [], pctComplete: null, todayYmd: today })!.recognized).toBe(false)
+  })
+
   it('J892 today: three segments sized 40/40/20, stage 1 paid, stage 2 live, nothing reported yet', () => {
     const bar = buildPipelineStageBar({
       fixtures: [{ ...j892[0]!, invoice_id: 'inv1' }, j892[1]!, j892[2]!],
