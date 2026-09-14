@@ -19,6 +19,16 @@ On the **Jobs → Pipeline** board, each job has a progress percent (the "% done
 The percent feeds the Progress & payment bar — "value created" = the job's amount × percent done, minus what's already been paid. Setting it higher moves more of the job into the unbilled total. The percent also shows as a **yellow dot on the bar itself** (at 0% the dot sits at the far left, at 100% the far right), so field progress reads off the same track as Paid / Billed / Unbilled. The same percent can also be captured on a field report and in the job's detail window. In the Edit job window's Billing bar, jobs with more than one line item also get small **notches where each line item's share ends** — hover a notch to see which item ends there, so the dot reads against the job's actual scope ("past rough-in, into trim").
 :::
 
+## When the box turns red
+
+Once a bill has gone out on a job — it sits in **Billed Awaiting Payment** or **Collections**, or it is still in **Working** with a break-off bill already sent — a blank **% done** is a gap: the bar cannot show what is done but unbilled, and the Dashboard's **% Complete** reads empty. So the empty box wears a red outline, **% done** turns red, and one red line under it says when the first bill went out:
+
+:::example A billed job with no percent
+{{chip:red|Bill sent Sep 2 · set % done}}
+:::
+
+Type any number and it clears — **0** counts as an answer. A draft still sitting in **Ready to Bill** does not turn the box red, and **Paid** jobs never show it. People who can see the board but not edit the percent see the same red box, so the office and the field read the same thing.
+
 ## Who can change it
 
 Only office roles (dev, leader, assistant, primary) see the **Set % complete** button — the same people who can edit the job. Everyone else sees the current percent as read-only.

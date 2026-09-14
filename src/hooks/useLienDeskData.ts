@@ -1,0 +1,232 @@
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { supabase } from '../lib/supabase'
+import { withSupabaseRetry } from '../utils/errorHandling'
+import { chunkIds } from '../lib/supabasePaging'
+import {
+  buildLienDeskQueue,
+  parseLienNoticePolicy,
+  summarizeLienDeskForNeedsYou,
+  LIEN_DESK_LEAD_DAYS,
+  type LienDeskItemRow,
+  type LienDeskNeedsYou,
+  type LienDeskQueue,
+  type LienNoticeMonthRow,
+  type LienNoticePolicy,
+} from '../lib/jobs/lienDesk'
+import { parsePromisedPayDatesRpc, type PromisedPayDate } from '../lib/jobs/billedExpectedPay'
+import type { CustomerAddressRow, JobPropertyOwnerLike } from '../lib/jobs/lienProperty'
+
+/** The slice of jobs_ledger the desk shows and prints from. */
+export type LienDeskJob = {
+  id: string
+  hcp_number: string
+  click_number: string | null
+  job_name: string | null
+  job_address: string | null
+  customer_id: string | null
+  customer_name: string | null
+  gc_customer_id: string | null
+  customer_address_id: string | null
+  revenue: number | null
+  payments_made: number | null
+  master_user_id: string | null
+}
+
+export type LienDeskGc = {
+  id: string
+  name: string
+  address: string
+  email: string
+  policy: LienNoticePolicy
+  policyNote: string
+}
+
+export type LienDeskData = {
+  queue: LienDeskQueue
+  summary: LienDeskNeedsYou
+  rows: LienNoticeMonthRow[]
+  items: LienDeskItemRow[]
+  jobsById: Record<string, LienDeskJob>
+  gcsById: Record<string, LienDeskGc>
+  addressesById: Record<string, CustomerAddressRow>
+  ownerByJob: Record<string, JobPropertyOwnerLike>
+  promisesByJob: Record<string, PromisedPayDate>
+  /** GCs that already received at least one live § 53.056 notice from us (any job). */
+  gcsWithPriorNotice: ReadonlySet<string>
+  /** GCs with a held desk item, live or past (the leader held them before). */
+  gcsHeldBefore: ReadonlySet<string>
+}
+
+const EMPTY_QUEUE: LienDeskQueue = {
+  entries: [],
+  piles: { needs_owner: [], to_draft: [], awaiting: [], ready: [], held: [], sent: [], missed: [] },
+  counts: { needs_owner: 0, to_draft: 0, awaiting: 0, ready: 0, held: 0, sent: 0, missed: 0 },
+}
+
+/**
+ * Everything the Lien desk reads: the RPC's due months, the stored items,
+ * the jobs, the GCs (with their standing rule), the property records and
+ * owner overrides, the promises, and which GCs we have noticed or held
+ * before. `light` fetches only what the Dashboard count needs. Null while
+ * loading; an empty queue on error so the cards stay quiet.
+ */
+export function useLienDeskData(
+  enabled: boolean,
+  todayYmd: string,
+  opts?: { light?: boolean },
+): { data: LienDeskData | null; loading: boolean; refetch: () => void } {
+  const [data, setData] = useState<LienDeskData | null>(null)
+  const [loading, setLoading] = useState(false)
+  const [tick, setTick] = useState(0)
+  const light = opts?.light === true
+  const refetch = useCallback(() => setTick((t) => t + 1), [])
+
+  useEffect(() => {
+    if (!enabled) {
+      setData(null)
+      setLoading(false)
+      return
+    }
+    let cancelled = false
+    setLoading(true)
+    void (async () => {
+      try {
+        const [rowsRaw, itemsRaw] = await Promise.all([
+          withSupabaseRetry(() => supabase.rpc('list_lien_notice_months', { p_within_days: LIEN_DESK_LEAD_DAYS } as never), 'lien desk: due months'),
+          withSupabaseRetry(
+            () => supabase.from('job_lien_desk_items').select('*').eq('kind', 'notice_53_056').is('voided_at', null).order('created_at', { ascending: false }),
+            'lien desk: items',
+          ),
+        ])
+        if (cancelled) return
+        const rows = ((rowsRaw ?? []) as unknown as LienNoticeMonthRow[]).map((r) => ({
+          ...r,
+          approved_hours: Number(r.approved_hours) || 0,
+          open_balance: Number(r.open_balance) || 0,
+        }))
+        const items = (itemsRaw ?? []) as LienDeskItemRow[]
+        const jobIds = [...new Set([...rows.map((r) => r.job_id), ...items.map((i) => i.job_id)])]
+        const gcIds = new Set<string>(rows.map((r) => r.gc_customer_id).filter((v): v is string => Boolean(v)))
+
+        // The GCs' standing rules come with the jobs; everything else is the desk's own detail.
+        const jobs: LienDeskJob[] = []
+        for (const chunk of chunkIds(jobIds)) {
+          if (chunk.length === 0) continue
+          const part = await withSupabaseRetry(
+            () =>
+              supabase
+                .from('jobs_ledger')
+                .select('id, hcp_number, click_number, job_name, job_address, customer_id, customer_name, gc_customer_id, customer_address_id, revenue, payments_made, master_user_id')
+                .in('id', chunk),
+            'lien desk: jobs',
+          )
+          jobs.push(...((part ?? []) as LienDeskJob[]))
+        }
+        for (const j of jobs) if (j.gc_customer_id) gcIds.add(j.gc_customer_id)
+        const gcRows = gcIds.size
+          ? await withSupabaseRetry(
+              () => supabase.from('customers').select('id, name, address, contact_info, lien_notice_policy, lien_notice_policy_note').in('id', [...gcIds]),
+              'lien desk: GCs',
+            )
+          : []
+        if (cancelled) return
+        const gcsById: Record<string, LienDeskGc> = {}
+        const policyByCustomer: Record<string, LienNoticePolicy> = {}
+        for (const c of (gcRows ?? []) as { id: string; name: string | null; address: string | null; contact_info: unknown; lien_notice_policy: string | null; lien_notice_policy_note: string | null }[]) {
+          const ci = (c.contact_info ?? null) as { email?: unknown } | null
+          const policy = parseLienNoticePolicy(c.lien_notice_policy)
+          policyByCustomer[c.id] = policy
+          gcsById[c.id] = {
+            id: c.id,
+            name: (c.name ?? '').trim(),
+            address: (c.address ?? '').trim(),
+            email: typeof ci?.email === 'string' ? ci.email.trim() : '',
+            policy,
+            policyNote: (c.lien_notice_policy_note ?? '').trim(),
+          }
+        }
+        const queue = buildLienDeskQueue(rows, items, policyByCustomer, todayYmd)
+        const jobsById: Record<string, LienDeskJob> = {}
+        for (const j of jobs) jobsById[j.id] = j
+
+        let addressesById: Record<string, CustomerAddressRow> = {}
+        let ownerByJob: Record<string, JobPropertyOwnerLike> = {}
+        let promisesByJob: Record<string, PromisedPayDate> = {}
+        let gcsWithPriorNotice = new Set<string>()
+        let gcsHeldBefore = new Set<string>()
+        if (!light) {
+          const addressIds = [...new Set(jobs.map((j) => j.customer_address_id).filter((v): v is string => Boolean(v)))]
+          const [addrRows, ownerRows, promisesRaw, priorNoticeRows, heldRows] = await Promise.all([
+            addressIds.length
+              ? withSupabaseRetry(() => supabase.from('customer_addresses').select('*').in('id', addressIds), 'lien desk: property records')
+              : Promise.resolve([] as CustomerAddressRow[]),
+            jobIds.length
+              ? withSupabaseRetry(
+                  () => supabase.from('job_property_owners').select('job_id, owner_mode, owner_name, company_name, mailing_address, owner_email').in('job_id', jobIds),
+                  'lien desk: owner overrides',
+                )
+              : Promise.resolve([]),
+            withSupabaseRetry(() => supabase.rpc('list_job_promised_pay_dates' as never), 'lien desk: promises').catch(() => null),
+            withSupabaseRetry(
+              () => supabase.from('job_lien_filings').select('job_id, jobs_ledger!inner(gc_customer_id)').eq('kind', 'notice_53_056').is('voided_at', null),
+              'lien desk: prior notices',
+            ).catch(() => []),
+            withSupabaseRetry(
+              () => supabase.from('job_lien_desk_items').select('job_id, jobs_ledger!inner(gc_customer_id)').eq('status', 'held'),
+              'lien desk: prior holds',
+            ).catch(() => []),
+          ])
+          if (cancelled) return
+          addressesById = {}
+          for (const a of (addrRows ?? []) as CustomerAddressRow[]) addressesById[a.id] = a
+          ownerByJob = {}
+          for (const o of (ownerRows ?? []) as (NonNullable<JobPropertyOwnerLike> & { job_id: string })[]) ownerByJob[o.job_id] = o
+          promisesByJob = parsePromisedPayDatesRpc(promisesRaw) ?? {}
+          const gcOf = (r: unknown): string | null => {
+            const j = (r as { jobs_ledger?: { gc_customer_id?: string | null } | { gc_customer_id?: string | null }[] | null }).jobs_ledger
+            const one = Array.isArray(j) ? j[0] : j
+            return one?.gc_customer_id ?? null
+          }
+          gcsWithPriorNotice = new Set((priorNoticeRows as unknown[]).map(gcOf).filter((v): v is string => Boolean(v)))
+          gcsHeldBefore = new Set((heldRows as unknown[]).map(gcOf).filter((v): v is string => Boolean(v)))
+        }
+        if (cancelled) return
+        setData({
+          queue,
+          summary: summarizeLienDeskForNeedsYou(queue),
+          rows,
+          items,
+          jobsById,
+          gcsById,
+          addressesById,
+          ownerByJob,
+          promisesByJob,
+          gcsWithPriorNotice,
+          gcsHeldBefore,
+        })
+      } catch {
+        if (!cancelled)
+          setData({
+            queue: EMPTY_QUEUE,
+            summary: summarizeLienDeskForNeedsYou(EMPTY_QUEUE),
+            rows: [],
+            items: [],
+            jobsById: {},
+            gcsById: {},
+            addressesById: {},
+            ownerByJob: {},
+            promisesByJob: {},
+            gcsWithPriorNotice: new Set(),
+            gcsHeldBefore: new Set(),
+          })
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [enabled, todayYmd, light, tick])
+
+  return useMemo(() => ({ data, loading, refetch }), [data, loading, refetch])
+}

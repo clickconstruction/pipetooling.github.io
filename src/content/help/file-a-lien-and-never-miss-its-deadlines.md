@@ -22,7 +22,7 @@ If the job has a GC, unpaid work months need a **notice of claim** — the statu
 Jobs where you contracted directly with the owner skip this step — the tab says so.
 
 :::example Which months need a notice?
-The **Payment forecast** on Jobs → Pipeline shows it per month: open a row's chevron and every month the crew worked lists with its own notice date and state — {{chip:red|due tomorrow}}, {{chip:yellow|closes in 12d}}, {{chip:green|notice sent}} — with {{button:outline|Send notice…}} landing here on this tab. See *see when a customer will pay*.
+The **Payment forecast** on Jobs → Pipeline shows it per month: open a row's chevron and every month the crew worked lists with its own notice date and state — {{chip:red|due tomorrow}}, {{chip:yellow|closes in 12d}}, {{chip:green|notice sent}} — with {{button:outline|Send notice…}} opening the **Lien desk**, where the office drafts the notice, the master approves it (or the office records his spoken word), and it lands here to print and record. See *send lien notices from the Lien desk*.
 :::
 
 ## Step 2 — the affidavit, behind its gate

@@ -42,6 +42,8 @@ import { useTestReportsReadyNudge } from '../../hooks/useTestReportsReadyNudge'
 import { useTestReportModalOptional } from '../../contexts/TestReportModalContext'
 import { fetchJobWithDetailsById } from '../../lib/fetchJobWithDetailsById'
 import { useLienWatchNudge } from '../../hooks/useLienWatchNudge'
+import { todayYmdInAppTz } from '../../utils/dateUtils'
+import { useLienDeskData } from '../../hooks/useLienDeskData'
 import { CLAIM_DEV_LOOKBACK_DAYS, useClaimDevAttemptsNudge } from '../../hooks/useClaimDevAttemptsNudge'
 import { HOURS_APPROVALS_MIN_AGE_DAYS, usePendingHoursApprovalsNudge } from '../../hooks/usePendingHoursApprovalsNudge'
 import { LABEL_APPROVALS_MIN_AGE_DAYS, usePendingLabelApprovalsNudge } from '../../hooks/usePendingLabelApprovalsNudge'
@@ -402,6 +404,8 @@ export function DashboardPinnedQuickRow({
   const [lienReleaseQueueOpen, setLienReleaseQueueOpen] = useState(false)
   const { overdue: demandDeadlineOverdue } = useDemandDeadlinesNudge(lienUnconditionalEnabled)
   const { watch: lienWatch } = useLienWatchNudge(lienUnconditionalEnabled)
+  // The Lien desk (v2.3405): notices due per unpaid work month — the office's drafting pile, the leader's approvals.
+  const { data: lienDeskData } = useLienDeskData(lienUnconditionalEnabled, todayYmdInAppTz(), { light: true })
   // Contract Desk (PR 4): jobs with no agreement on file + sent contracts gone quiet — office set.
   const contractNudgeEnabled = !hideBanners && Boolean(authUserId) && officeEligible
   const { nudge: contractNudge } = useJobContractsNudge(contractNudgeEnabled)
@@ -487,6 +491,9 @@ export function DashboardPinnedQuickRow({
     demandDeadlineOverdue,
     lienWatchEnabled: lienUnconditionalEnabled,
     lienWatch,
+    lienDeskEnabled: lienUnconditionalEnabled,
+    lienDesk: lienDeskData?.summary ?? null,
+    lienDeskLeader: role === 'dev' || role === 'master_technician',
     hoursApprovalsEnabled,
     hoursApprovals,
     hoursApprovalsMinAgeDays: HOURS_APPROVALS_MIN_AGE_DAYS,
@@ -648,7 +655,9 @@ export function DashboardPinnedQuickRow({
               setLienReleaseQueueOpen(true)
             } else if (item.key === 'demand-deadline') {
               navigate('/jobs?tab=stages')
-            } else if (item.key === 'lien-serve-copy' || item.key === 'lien-notice-window' || item.key === 'lien-file-window') {
+            } else if (item.key === 'lien-notice-draft' || item.key === 'lien-notice-approve') {
+              navigate('/jobs?tab=stages&liendesk=1')
+            } else if (item.key === 'lien-serve-copy' || item.key === 'lien-file-window') {
               navigate('/jobs?tab=stages')
             } else if (item.key === 'hours-approvals') {
               navigate('/people?tab=hours&approvals=1')
