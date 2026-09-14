@@ -119,6 +119,16 @@ describe('buildPipelineFixups', () => {
     ])
   })
 
+  it('owner-confirm (v2.3447) is an amber chip after the others, counting jobs', () => {
+    const fixups = buildPipelineFixups({ noCustomer: 0, noPictures: 0, noEmail: 2, noJobAccount: 1, ownerConfirm: 35 })
+    expect(fixups.map((f) => f.key)).toEqual(['no-email', 'no-job-account', 'owner-confirm'])
+    const owner = fixups[2]!
+    expect(owner.label).toBe('Owner of record to confirm · 35')
+    expect(owner.tone).toBe('amber')
+    expect(owner.title).toContain('look them all up')
+    expect(buildPipelineFixups({ noCustomer: 0, noPictures: 0, noEmail: 0, ownerConfirm: 0 })).toEqual([])
+  })
+
   it('drops zero counts; all-clean yields an empty list (strip hides)', () => {
     expect(buildPipelineFixups({ noCustomer: 0, noPictures: 0, noEmail: 5 }).map((f) => f.key)).toEqual(['no-email'])
     expect(buildPipelineFixups({ noCustomer: 0, noPictures: 0, noEmail: 0 })).toEqual([])

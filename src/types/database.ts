@@ -4622,6 +4622,8 @@ export type Database = {
           note: string | null
           owner_company: string
           owner_mailing_address: string
+          owner_confirmed_at: string | null
+          owner_confirmed_by: string | null
           owner_mode: string
           owner_name: string
           parcel_id: string
@@ -4645,6 +4647,8 @@ export type Database = {
           note?: string | null
           owner_company?: string
           owner_mailing_address?: string
+          owner_confirmed_at?: string | null
+          owner_confirmed_by?: string | null
           owner_mode?: string
           owner_name?: string
           parcel_id?: string
@@ -4668,6 +4672,8 @@ export type Database = {
           note?: string | null
           owner_company?: string
           owner_mailing_address?: string
+          owner_confirmed_at?: string | null
+          owner_confirmed_by?: string | null
           owner_mode?: string
           owner_name?: string
           parcel_id?: string
@@ -21508,6 +21514,26 @@ export type Database = {
           noticed: boolean
           open_balance: number
           property_kind: string
+        }[]
+      }
+      list_jobs_owner_to_confirm: {
+        Args: never
+        Returns: {
+          click_number: string
+          customer_address_id: string
+          customer_id: string
+          customer_name: string
+          first_deadline: string
+          first_work_month: string
+          gc_customer_id: string
+          gc_name: string
+          has_owner: boolean
+          hcp_number: string
+          job_address: string
+          job_id: string
+          owner_confirmed: boolean
+          property_kind: string
+          status: string
         }[]
       }
       list_lien_notice_months: {

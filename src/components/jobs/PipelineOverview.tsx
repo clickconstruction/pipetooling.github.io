@@ -45,7 +45,7 @@ type PipelineOverviewProps = {
   /** "no bill line" money move: filter the Billed section to the shells (v2.1931). */
   onFixDates: () => void
   /** Fix-ups strip (v2.1961): the data-gap alert counts, docked at the card's foot. */
-  fixupCounts: { noCustomer: number; noPictures: number; noEmail: number; noJobAccount?: number }
+  fixupCounts: { noCustomer: number; noPictures: number; noEmail: number; noJobAccount?: number; ownerConfirm?: number }
   /** Opens the matching StagesAlertJobListModal (same modals the strip-row buttons open). */
   onFixup: (key: PipelineFixupKey) => void
   /** Payment chase card (v2.2025): null/undefined hides it (non-office roles, or nothing anywhere). */

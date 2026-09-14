@@ -37,6 +37,8 @@ function addressRow(overrides: Partial<CustomerAddressRow>): CustomerAddressRow 
     parcel_source: '',
     parcel_tax_year: '',
     parcel_looked_up_at: null,
+    owner_confirmed_at: null,
+    owner_confirmed_by: null,
     is_primary: false,
     ...overrides,
   }
