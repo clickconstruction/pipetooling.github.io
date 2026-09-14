@@ -28,8 +28,6 @@ The playbook's method still applies; the numbers, the "largest files" headline i
 
 - ~~**`toLocaleDateString('en-CA')` as a YYYY-MM-DD source**~~ — done v2.3061: 119 sites in 41 files swept (`todayYmdInAppTz()` for today, `localCalendarDayKey(d)` for a device-local Date), guard rule 5 in `check-app-calendar-tz.mjs` keeps it out.
 
-- **Edge `_shared/ipGeoValidation.ts` is not strict-clean** (v2.3026): it fails the app's tsconfig (`noUncheckedIndexedAccess`: a possibly-undefined octet at lines 8 and 30–35), so the client test for `ipGeolocationMaps.ts` cannot import it for a client↔edge parity guard the way the accounting-label parity tests do. Fix is type-narrowing only (no behaviour change), but it lives under `_shared`, so redeploy `resolve-ip-geolocation` afterwards (edge drift misses `_shared` importers).
-
 Mechanical sweeps merge alone (CLAUDE.md): cut from fresh main, merge before the next feature PR on those surfaces.
 
 ## The plan
