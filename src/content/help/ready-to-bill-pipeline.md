@@ -72,6 +72,8 @@ The stage headers down the board carry their own buttons — Capable of Being Bi
 **Paid in Full** &nbsp; Paid in Full notifications
 :::
 
+The Capable of Being Billed figure reads each Working job's stage plan when the job has Order stages — a stage counts once it passed inspection with nothing unbilled ahead of it, a done any-time row counts too — and the percent-complete formula for every other job.
+
 The amber count on Accounts Receivable is the same unallocated-bank-deposits badge the header button wears, and every item follows the same permissions as the button it mirrors — if you can't use it on the header, it's disabled or hidden here too.
 
 The **Crew & Dates** cell names the people on the job whose accounts are live; crew whose accounts have been archived fold into *and 3 archived* so a long-running job does not stretch the line. Click the names to open **Everyone on the job**: each person with their role, status ({{chip:green|Active}} or *Archived Jul 12*), hours, days and last day on the job — live accounts first, then archived, each by hours — and, under a grey heading, anyone with hours here who was never put on the crew list. A name opens their Person desk.
