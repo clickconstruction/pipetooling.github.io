@@ -6,7 +6,7 @@ Sold in sticks PR 1 — the minimum-order rule, three tables, six nullable colum
 - `material_parts.order_increment` + `order_increment_unit` — a part's own rule, overriding its type; NULL = inherit.
 - `bids_takeoff_rough_part_lines.order_increment` + `order_increment_unit` — the effective rule snapshotted when the part was picked, the `unit_price` pattern, so a later catalog change never re-costs a sent bid. NULL = the line never rounds.
 
-`order_increment_unit` is one of `ft_stick` · `ft_coil` · `box` · `bundle`; the client kernel [`src/lib/materials/orderIncrement.ts`](../../src/lib/materials/orderIncrement.ts) is the one reader (`effectiveOrderIncrement`, `formatOrderIncrement`, `roundUpToIncrement`).
+`order_increment_unit` is one of `ft_stick` · `ft_coil` · `pack` (v2.3414) · `box` · `bundle`; the client kernel [`src/lib/materials/orderIncrement.ts`](../../src/lib/materials/orderIncrement.ts) is the one reader (`effectiveOrderIncrement`, `formatOrderIncrement`, `roundUpToIncrement`).
 
 Additive and idempotent (`ADD COLUMN IF NOT EXISTS`); no CREATE TABLE, so no read-only-block calls; each table's existing RLS governs writes (part types and parts: the price-book roles; lines: the bid's editors).
 

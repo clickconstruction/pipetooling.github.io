@@ -7,11 +7,12 @@
  * `order_increment` / `order_increment_unit` columns.
  */
 
-export type OrderIncrementUnitKey = 'ft_stick' | 'ft_coil' | 'box' | 'bundle'
+export type OrderIncrementUnitKey = 'ft_stick' | 'ft_coil' | 'pack' | 'box' | 'bundle'
 
 export const ORDER_INCREMENT_UNITS: ReadonlyArray<{ key: OrderIncrementUnitKey; label: string }> = [
   { key: 'ft_stick', label: 'ft sticks' },
   { key: 'ft_coil', label: 'ft coils' },
+  { key: 'pack', label: 'per pack' },
   { key: 'box', label: 'per box' },
   { key: 'bundle', label: 'per bundle' },
 ]
@@ -63,20 +64,45 @@ export function formatOrderIncrement(v: OrderIncrement): string {
       return `${num(v.increment)} ft sticks`
     case 'ft_coil':
       return `${num(v.increment)} ft coils`
+    case 'pack':
+      return `packs of ${num(v.increment)}`
     case 'box':
-      return `box of ${num(v.increment)}`
+      return `boxes of ${num(v.increment)}`
     case 'bundle':
-      return `bundle of ${num(v.increment)}`
+      return `bundles of ${num(v.increment)}`
   }
 }
 
-/** `20 ft` · `100 ft coil` · `box of 10` — the chip on a takeoff line. */
+/** `sticks` · `coils` · `packs` · `boxes` · `bundles` — the plural pack word for a unit. */
+export function orderIncrementPackWord(unit: OrderIncrementUnitKey): string {
+  switch (unit) {
+    case 'ft_stick':
+      return 'sticks'
+    case 'ft_coil':
+      return 'coils'
+    case 'pack':
+      return 'packs'
+    case 'box':
+      return 'boxes'
+    case 'bundle':
+      return 'bundles'
+  }
+}
+
+/** True for the two footage units; the rest count pieces. */
+export function orderIncrementIsFeet(unit: OrderIncrementUnitKey): boolean {
+  return unit === 'ft_stick' || unit === 'ft_coil'
+}
+
+/** `20 ft` · `100 ft coil` · `pack of 5` · `box of 10` — the chip on a takeoff line. */
 export function orderIncrementChip(v: OrderIncrement): string {
   switch (v.unit) {
     case 'ft_stick':
       return `${num(v.increment)} ft`
     case 'ft_coil':
       return `${num(v.increment)} ft coil`
+    case 'pack':
+      return `pack of ${num(v.increment)}`
     case 'box':
       return `box of ${num(v.increment)}`
     case 'bundle':

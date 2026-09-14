@@ -1,6 +1,6 @@
 import type { CoverageLine, TakeoffCoverageSummary } from './takeoffCoverage'
 import { roughCountMultiplier } from './bidTakeoffHelpers'
-import { orderIncrementChip } from '../materials/orderIncrement'
+import { formatOrderIncrement, orderIncrementChip, orderIncrementIsFeet, orderIncrementPackWord } from '../materials/orderIncrement'
 import type { TakeoffOrderRounding } from './takeoffOrderRounding'
 
 /**
@@ -79,8 +79,10 @@ export function rfqScopeForZeroPrice(
     ...[...parts].map(([partId, p]) => {
       const r = rounding?.byPartId.get(partId)
       if (r && r.ordered > 0) {
-        const ft = r.unit === 'ft_stick' || r.unit === 'ft_coil' ? ' ft' : ''
-        return `• ${p.name} × ${num(r.ordered)}${ft} (${num(r.needed)}${ft} needed · ${orderIncrementChip({ increment: r.increment, unit: r.unit })} ${r.unit === 'ft_stick' ? 'sticks' : r.unit === 'ft_coil' ? 'coils' : 'packs'})`
+        const ft = orderIncrementIsFeet(r.unit) ? ' ft' : ''
+        // `20 ft sticks` for footage; `packs of 5` for pieces (never "box of 10 packs").
+        const how = orderIncrementIsFeet(r.unit) ? `${orderIncrementChip({ increment: r.increment, unit: r.unit })} ${orderIncrementPackWord(r.unit)}` : formatOrderIncrement({ increment: r.increment, unit: r.unit })
+        return `• ${p.name} × ${num(r.ordered)}${ft} (${num(r.needed)}${ft} needed · ${how})`
       }
       return `• ${p.name} × ${num(p.needed)}`
     }),
