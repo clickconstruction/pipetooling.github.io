@@ -29,12 +29,19 @@ import type { RobotLockedShadow } from './bids/robotLockedShadows'
 
 /** red (v2.2491) = a destructive event to investigate, not a work queue — loudest rail in the card. */
 import type { LienDeskNeedsYou } from './jobs/lienDesk'
+import type { CapacityUnderStreak } from './jobs/jobSummaryCapacity'
 import { daysBetweenYmd } from './jobs/billedExpectedPay'
 import { todayYmdInAppTz } from '../utils/dateUtils'
 
 /** Whole days from today (the company calendar) to a 'YYYY-MM-DD' — the Lien desk cards' urgency. */
 function daysUntilYmd(ymd: string): number | null {
   return daysBetweenYmd(todayYmdInAppTz(), ymd)
+}
+
+/** "Aug 24" for a 'YYYY-MM-DD' — the capacity card's week names (pure; no calendar-zone shift on a plain date). */
+function monthDayLabel(ymd: string): string {
+  const [y, m, d] = ymd.split('-').map(Number)
+  return new Date(Date.UTC(y || 1970, (m || 1) - 1, d || 1)).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' })
 }
 
 export type NeedsYouSeverity = 'blue' | 'amber' | 'gray' | 'red'
@@ -78,6 +85,7 @@ export type NeedsYouItem = {
     | 'contract-stale'
     | 'work-orders-unpriced'
     | 'jobs-stale-open'
+    | 'capacity-under'
     | 'dispatch-requests-aged'
     | 'hr-reports-pending'
     | 'job-account-unflagged'
@@ -146,6 +154,8 @@ export const NEEDS_YOU_RANK: Record<NeedsYouItem['key'], number> = {
   'contract-stale': 50,
   'work-orders-unpriced': 40,
   'jobs-stale-open': 40,
+  // People/planning tier: a crew running light for three weeks is a scheduling question, not a bill.
+  'capacity-under': 50,
   'dispatch-requests-aged': 40,
   'hr-reports-pending': 50,
   'lost-bids': 60,
@@ -240,6 +250,14 @@ export type NeedsYouInputs = {
    */
   staleOpenEnabled?: boolean
   staleOpen?: { count: number; total: number; mine: number; minIdleDays: number } | null
+  /**
+   * Field capacity under 60% three complete weeks running (Job Summary
+   * follow-up 3) — `capacityUnderStreak` over the Capacity view's kernel for
+   * the three weeks before this one. Null while loading, when three weeks
+   * cannot be rated, or when any week cleared the line. Office set.
+   */
+  capacityUnderEnabled?: boolean
+  capacityUnder?: CapacityUnderStreak | null
   /** Contract Desk (PR 4): jobs with no agreement on file + sent contracts gone quiet. */
   contractNudgeEnabled?: boolean
   contractNudge?: { missing: { count: number; revenueTotal: number }; stale: { count: number; oldestDays: number | null } } | null
@@ -551,6 +569,27 @@ export function buildNeedsYouItems(inputs: NeedsYouInputs): NeedsYouItem[] {
         'Each one needs a bill, an inspection, or to be closed. The Cycle view lists them longest-idle first.',
       figure: String(n),
       actionLabel: 'See them',
+    })
+  }
+
+  if (inputs.capacityUnderEnabled && inputs.capacityUnder && inputs.capacityUnder.weeks.length > 0) {
+    const c = inputs.capacityUnder
+    const pcts = c.weeks.map((w) => `${Math.round(w.utilizationPct)}%`)
+    const names = c.weeks.map((w) => monthDayLabel(w.weekStartYmd))
+    const weekList = names.length > 1 ? `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}` : (names[0] ?? '')
+    const hours = (v: number) => v.toLocaleString('en-US', { maximumFractionDigits: 0 })
+    const basis = c.source === 'roster' ? `a field roster of ${c.crewNow}` : 'who clocked in, since the roster could not be read'
+    const latest = c.weeks[c.weeks.length - 1]
+    items.push({
+      key: 'capacity-under',
+      severity: 'amber',
+      kicker: 'Capacity',
+      title: `Field capacity has run under ${c.thresholdPct}% ${c.weeks.length === 3 ? 'three' : String(c.weeks.length)} weeks running`,
+      detail:
+        `${pcts.join(' · ')} for the weeks of ${weekList} — ${hours(c.fieldHours)} of ${hours(c.availableHours)} available field hours, against ${basis}. ` +
+        'Either the board is short of work for the crew or hours are not being clocked; the Capacity view shows every week.',
+      figure: latest ? `${Math.round(latest.utilizationPct)}%` : `${c.weeks.length}`,
+      actionLabel: 'Open Capacity',
     })
   }
 

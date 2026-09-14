@@ -33,6 +33,7 @@ import { useDemandDeadlinesNudge } from '../../hooks/useDemandDeadlinesNudge'
 import { useJobContractsNudge } from '../../hooks/useJobContractsNudge'
 import { useUnpricedWorkOrders } from '../../hooks/useUnpricedWorkOrders'
 import { useStaleOpenJobsNudge } from '../../hooks/useStaleOpenJobsNudge'
+import { useCapacityUnderNudge } from '../../hooks/useCapacityUnderNudge'
 import { useJobAccountFlagGapsNudge } from '../../hooks/useJobAccountFlagGapsNudge'
 import { usePriceMatrixReadyNudge } from '../../hooks/usePriceMatrixReadyNudge'
 import { useRobotBacklogNudge } from '../../hooks/useRobotBacklogNudge'
@@ -415,6 +416,9 @@ export function DashboardPinnedQuickRow({
   // Open jobs idle 21+ days (v2.2825) — the office roles that bill and close jobs.
   const staleOpenEnabled = !hideBanners && Boolean(authUserId) && officeEligible
   const { nudge: staleOpen } = useStaleOpenJobsNudge(staleOpenEnabled, authUserId)
+  // Field capacity under 60% three complete weeks running (Job Summary follow-up 3) — the roles that see Job Summary.
+  const capacityUnderEnabled = !hideBanners && Boolean(authUserId) && officeEligible
+  const { streak: capacityUnder } = useCapacityUnderNudge(capacityUnderEnabled, authUserId)
   // Supply-house job-account gaps (v2.3161): packets on file with unflagged invoices, flags with no packet — office set.
   const jobAccountGapsEnabled = !hideBanners && Boolean(authUserId) && officeEligible
   const { gaps: jobAccountGaps } = useJobAccountFlagGapsNudge(jobAccountGapsEnabled)
@@ -475,6 +479,8 @@ export function DashboardPinnedQuickRow({
     unpricedWorkOrders,
     staleOpenEnabled,
     staleOpen,
+    capacityUnderEnabled,
+    capacityUnder,
     jobAccountGapsEnabled,
     jobAccountGaps,
     priceMatrixEnabled,
@@ -603,6 +609,8 @@ export function DashboardPinnedQuickRow({
               navigate('/jobs?tab=subs&wof=drafts')
             } else if (item.key === 'jobs-stale-open') {
               navigate('/jobs?tab=job-summary&view=cycle')
+            } else if (item.key === 'capacity-under') {
+              navigate('/jobs?tab=job-summary&view=capacity')
             } else if (item.key === 'job-account-unflagged') {
               navigate('/materials?tab=job-accounts&filter=needs_flag')
             } else if (item.key === 'job-account-no-packet') {

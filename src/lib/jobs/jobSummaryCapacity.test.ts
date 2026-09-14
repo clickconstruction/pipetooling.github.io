@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { buildJobDayLedger } from './jobDayLedger'
-import { buildCapacitySeries } from './jobSummaryCapacity'
+import { buildCapacitySeries, capacityNudgeWindow, capacityUnderStreak, type CapacitySeries, type CapacityWeek } from './jobSummaryCapacity'
 import type { OtherJobsLaborDetailLine } from '../overheadDailyLabor'
 import { ymdAddDays } from '../../utils/dateUtils'
 
@@ -54,5 +54,46 @@ describe('capacity (v2.2828)', () => {
 
   it('is empty without a ledger', () => {
     expect(buildCapacitySeries({ ledger: null, people: roster }).weeks).toEqual([])
+  })
+})
+
+describe('capacity under 60% three weeks running (Needs You)', () => {
+  const week = (weekStartYmd: string, utilizationPct: number | null, workdays = 5): CapacityWeek => ({
+    weekStartYmd,
+    weekEndYmd: ymdAddDays(weekStartYmd, 6),
+    workdays,
+    people: 2,
+    availableHours: 80,
+    fieldHours: utilizationPct == null ? 0 : (utilizationPct / 100) * 80,
+    peopleWorked: 2,
+    utilizationPct,
+  })
+  const series = (weeks: CapacityWeek[]): CapacitySeries => ({ source: 'roster', weeks, totals: { availableHours: 0, fieldHours: 0, utilizationPct: null }, peak: null, weeksUnder60: 0, weeksOver100: 0, crewNow: 2 })
+
+  it('names the three complete weeks before this one, never the current partial week', () => {
+    expect(capacityNudgeWindow('2026-09-14')).toEqual({ startYmd: '2026-08-24', endYmd: '2026-09-13' }) // a Monday
+    expect(capacityNudgeWindow('2026-09-16')).toEqual({ startYmd: '2026-08-24', endYmd: '2026-09-13' }) // mid-week, same window
+    expect(capacityNudgeWindow('2026-09-20')).toEqual({ startYmd: '2026-08-24', endYmd: '2026-09-13' }) // Sunday still belongs to this week
+    expect(capacityNudgeWindow('2026-09-14', 1)).toEqual({ startYmd: '2026-09-07', endYmd: '2026-09-13' })
+  })
+
+  it('returns the streak only when every one of the last three rated weeks is under the line', () => {
+    const under = capacityUnderStreak(series([week('2026-08-24', 48), week('2026-08-31', 52.4), week('2026-09-07', 41)]))
+    expect(under?.weeks.map((w) => w.weekStartYmd)).toEqual(['2026-08-24', '2026-08-31', '2026-09-07'])
+    expect(under?.weeks.map((w) => Math.round(w.utilizationPct))).toEqual([48, 52, 41])
+    expect(under).toMatchObject({ availableHours: 240, thresholdPct: 60, source: 'roster', crewNow: 2 })
+    expect(under?.fieldHours).toBeCloseTo(113.12)
+    // One week at 60 clears it — the line is strict.
+    expect(capacityUnderStreak(series([week('2026-08-24', 48), week('2026-08-31', 60), week('2026-09-07', 41)]))).toBeNull()
+    // The last three of a longer series are what count.
+    expect(capacityUnderStreak(series([week('2026-08-17', 95), week('2026-08-24', 48), week('2026-08-31', 52), week('2026-09-07', 41)]))).not.toBeNull()
+    expect(capacityUnderStreak(series([week('2026-08-17', 30), week('2026-08-24', 48), week('2026-08-31', 52), week('2026-09-07', 90)]))).toBeNull()
+  })
+
+  it('cannot say with fewer than three rated weeks — an unknown week is not a low one', () => {
+    expect(capacityUnderStreak(series([week('2026-08-31', 10), week('2026-09-07', 10)]))).toBeNull()
+    expect(capacityUnderStreak(series([week('2026-08-24', null), week('2026-08-31', 10), week('2026-09-07', 10)]))).toBeNull()
+    expect(capacityUnderStreak(series([week('2026-08-24', 10, 2), week('2026-08-31', 10), week('2026-09-07', 10)]))).toBeNull()
+    expect(capacityUnderStreak(series([]))).toBeNull()
   })
 })

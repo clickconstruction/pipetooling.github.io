@@ -45,6 +45,7 @@ Each item's button drops you exactly where the work happens. What you see depend
 - **N live jobs have no contract on file** — {{button:outline|Start the sweep}} on the Pipeline board; **N contracts have been out for signature a week** — {{button:outline|See them}}.
 - **N sub work orders are waiting for a price** — {{button:outline|Price them}} → Jobs → Work orders, drafts.
 - **N open jobs have sat idle N+ days** — {{button:outline|See them}} → Job Summary's cycle view.
+- **Field capacity has run under 60% three weeks running** — {{button:outline|Open Capacity}} → Job Summary's Capacity view. The card names the three complete weeks with each week's utilization (e.g. *48% · 52% · 41% for the weeks of Aug 24, Aug 31 and Sep 7*) and the field hours clocked against the roster's available hours; the current week never counts until it is over.
 - **N jobs are waiting on a follow-up** — {{button:outline|Start review}} starts the follow-up review on the Jobs board.
 - **Lien windows** — a notice or filing window closing soon, a filed lien not yet served, or a demand deadline: each opens the job(s) on the Pipeline board. A cleared payment behind a conditional release — {{button:outline|Issue releases}} — opens the **cleared releases list** right over the card, issuing the unconditional version from the row (see [give a customer a lien release](?g=give-a-customer-a-lien-release)).
 
