@@ -817,7 +817,7 @@ WHERE proname IN (
   - `master_user_id` (uuid, FK → `users.id` ON DELETE CASCADE)
   - `assigned_to_name` (text, required)
   - `address` (text, default '')
-  - `job_number` (varchar(10), nullable)
+  - `job_number` (text, nullable) - display text only; the sheet's job is `job_ledger_id` (widened off `varchar(10)` in v2.3435)
   - `job_date` (date, nullable)
   - `labor_rate` (numeric(10,2), nullable)
   - `distance_miles` (numeric(6,2), nullable) - round-trip miles for drive cost; editable inline in Sub Sheet Ledger

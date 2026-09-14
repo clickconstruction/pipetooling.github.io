@@ -20857,32 +20857,6 @@ export type Database = {
           source: string
         }[]
       }
-      get_jobs_ledger_by_hcp_numbers: {
-        Args: { p_hcp_numbers: string[] }
-        Returns: {
-          click_number: string
-          hcp_number: string
-          id: string
-          job_address: string
-          job_name: string
-          pct_complete: number
-          revenue: number
-          service_type_id: string
-        }[]
-      }
-      get_jobs_ledger_by_hcp_numbers_paid_only: {
-        Args: { p_hcp_numbers: string[] }
-        Returns: {
-          click_number: string
-          hcp_number: string
-          id: string
-          job_address: string
-          job_name: string
-          pct_complete: number
-          revenue: number
-          service_type_id: string
-        }[]
-      }
       get_jobs_ledger_by_ids: {
         Args: { p_job_ids: string[] }
         Returns: {

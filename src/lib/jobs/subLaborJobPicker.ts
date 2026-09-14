@@ -73,9 +73,9 @@ export function resolveSubLaborJobByNumber<T extends SubLaborPickerJobSlice>(
   return null
 }
 
-/** The job_number text the form stores for a picked job (schema caps at 10 chars). */
+/** The job_number text the form stores for a picked job — display text, no length cap (the sheet's job is job_ledger_id). */
 export function subLaborJobNumberForStorage(job: SubLaborPickerJobSlice): string {
-  return effectiveJobLedgerNumber(job.hcp_number, job.click_number ?? null).trim().slice(0, 10)
+  return effectiveJobLedgerNumber(job.hcp_number, job.click_number ?? null).trim()
 }
 
 export type SubLaborAssignPickerJobSlice = SubLaborPickerJobSlice & {

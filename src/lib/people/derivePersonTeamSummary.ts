@@ -39,11 +39,9 @@ function lookupByPersonName<T>(record: Record<string, T>, personName: string): T
   return undefined
 }
 
-/** A sheet row's job: its link (v2.3068), else — only for a sheet with no link — the number map. */
-function laborRowJobId(r: { job_number: string | null; job_ledger_id?: string | null }, jobIdByHcp: ReadonlyMap<string, string>): string | null {
-  if (r.job_ledger_id) return r.job_ledger_id
-  const hcp = (r.job_number ?? '').trim().toLowerCase()
-  return hcp ? (jobIdByHcp.get(hcp) ?? null) : null
+/** A sheet row's job: its link (`people_labor_jobs.job_ledger_id`, v2.3068). The number is display text — no number match. */
+function laborRowJobId(r: { job_ledger_id?: string | null }): string | null {
+  return r.job_ledger_id || null
 }
 
 export function derivePersonTeamSummary(
@@ -74,13 +72,13 @@ export function derivePersonTeamSummary(
       // job appears in "Where the field hrs went" and gets a (typically
       // negative) revenue allocation.
       if (!officeJobIdForFilter) return true
-      const jobId = laborRowJobId(r, union.jobIdByHcp)
+      const jobId = laborRowJobId(r)
       if (!jobId) return true
       return jobId !== officeJobIdForFilter
     })
   const laborRowsFiltered = onlyPaidJobs
     ? personPeriodLaborRows.filter((r) => {
-        const jobId = laborRowJobId(r, union.jobIdByHcp)
+        const jobId = laborRowJobId(r)
         return !!jobId && union.jobsById.has(jobId)
       })
     : personPeriodLaborRows
@@ -95,7 +93,7 @@ export function derivePersonTeamSummary(
       union.mileageCost,
       union.timePerMile,
     )
-    const jobId = laborRowJobId(r, union.jobIdByHcp)
+    const jobId = laborRowJobId(r)
     const share = laborShareByRowId.get(r.id) ?? 1
     return { jobId, hours: totalHrs * share, laborCost: laborCost * share }
   })
@@ -133,7 +131,7 @@ export function derivePersonTeamSummary(
   const noTagCosts: ReadonlyMap<string, number> = new Map()
   const laborJobIdsSeen = new Set<string>()
   for (const r of laborRowsFiltered) {
-    const jobId = laborRowJobId(r, union.jobIdByHcp)
+    const jobId = laborRowJobId(r)
     if (!jobId || laborJobIdsSeen.has(jobId)) continue
     laborJobIdsSeen.add(jobId)
     const job = union.jobsById.get(jobId)

@@ -126,13 +126,11 @@ function paged<T>(
  * legitimately go negative.
  */
 /**
- * A sheet row's job: its link (`people_labor_jobs.job_ledger_id`, v2.3068), else — only for a
- * sheet that never got one — the number map the ledger RPC fills.
+ * A sheet row's job: its link (`people_labor_jobs.job_ledger_id`, v2.3068). The number is
+ * display text — the number fallback was retired once every sheet carried a link.
  */
-function laborRowJobId(r: { job_number: string | null; job_ledger_id?: string | null }, jobIdByHcp: ReadonlyMap<string, string>): string | null {
-  if (r.job_ledger_id) return r.job_ledger_id
-  const hcp = (r.job_number ?? '').trim().toLowerCase()
-  return hcp ? (jobIdByHcp.get(hcp) ?? null) : null
+function laborRowJobId(r: { job_ledger_id?: string | null }): string | null {
+  return r.job_ledger_id || null
 }
 
 /** jobs_ledger.status for a set of ids (v2.3360) — the ledger RPCs don't carry it. Chunked and paged; a failure reads as "unknown" (not finished). */
@@ -1219,18 +1217,15 @@ export default function PeopleReviewTab({
       }
     }
 
-    // v2.3068: linked sheets resolve by id through the crew ledger RPC; the number RPC stays only
-    // for sheets with no link (none since the v2.3055 back-fill).
+    // v2.3068: sheets resolve by their link through the ledger-by-ids RPC — the same read the
+    // crew rows use. No number lookup: every sheet carries job_ledger_id (v2.3055 back-fill).
     const laborLinkIds = [...new Set([...laborRows, ...personLaborRowsAllTime].map((r) => r.job_ledger_id ?? '').filter(Boolean))]
     const allJobIds = [...new Set([...crewJobIds, ...laborLinkIds])]
-    const laborHcps = [...new Set(laborRows.filter((r) => !r.job_ledger_id && (r.job_number ?? '').trim()).map((r) => (r.job_number ?? '').trim().toLowerCase()))]
-    const personLaborHcps = [...new Set(personLaborRowsAllTime.filter((r) => !r.job_ledger_id && (r.job_number ?? '').trim()).map((r) => (r.job_number ?? '').trim().toLowerCase()))]
-    const allLaborHcps = [...new Set([...laborHcps, ...personLaborHcps])]
     const usePaidOnly = onlyPaidJobs ?? reviewOnlyPaidInFull
-    // Both ledger RPCs have a deterministic ORDER BY, so .range() pages are stable.
-    const [crewJobsRes, laborJobsRes] = await Promise.all([
+    // The ledger RPC has a deterministic ORDER BY, so .range() pages are stable.
+    const crewJobsRes =
       allJobIds.length > 0
-        ? paged(
+        ? await paged(
             (f, t) =>
               (usePaidOnly
                 ? supabase.rpc('get_jobs_ledger_by_ids_paid_only', { p_job_ids: allJobIds })
@@ -1238,19 +1233,8 @@ export default function PeopleReviewTab({
               ).range(f, t),
             'load review crew ledger jobs',
           )
-        : { data: [] },
-      allLaborHcps.length > 0
-        ? paged(
-            (f, t) =>
-              (usePaidOnly
-                ? supabase.rpc('get_jobs_ledger_by_hcp_numbers_paid_only', { p_hcp_numbers: allLaborHcps })
-                : supabase.rpc('get_jobs_ledger_by_hcp_numbers', { p_hcp_numbers: allLaborHcps })
-              ).range(f, t),
-            'load review labor ledger jobs',
-          )
-        : { data: [] },
-    ])
-    throwIfQueryError([crewJobsRes, laborJobsRes], 'load review ledger jobs')
+        : { data: [] }
+    throwIfQueryError([crewJobsRes], 'load review ledger jobs')
     const crewJobsLedger = (crewJobsRes.data ?? []) as Array<{
       id: string
       hcp_number: string
@@ -1262,38 +1246,8 @@ export default function PeopleReviewTab({
       service_type_id: string | null
       status?: string | null
     }>
-    const laborJobsLedger = (laborJobsRes.data ?? []) as Array<{
-      id: string
-      hcp_number: string
-      click_number?: string
-      job_name: string
-      job_address: string
-      revenue: number | null
-      pct_complete: number | null
-      service_type_id: string | null
-      status?: string | null
-    }>
     const jobsById = new Map<string, (typeof crewJobsLedger)[0]>()
-    const jobIdByHcp = new Map<string, string>()
-    // Click-only jobs: get_jobs_ledger_by_hcp_numbers deliberately resolves a
-    // job whose hcp is empty when its click_number matches (migration
-    // 20260619140000) — mapping only hcp_number here used to throw those rows
-    // away, rendering the job as "—"/$0. Guarded sets so the first (crew)
-    // resolution of a duplicate number wins consistently.
-    const mapLedgerNumbers = (j: { id: string; hcp_number?: string | null; click_number?: string | null }) => {
-      const hcp = (j.hcp_number ?? '').trim().toLowerCase()
-      if (hcp && !jobIdByHcp.has(hcp)) jobIdByHcp.set(hcp, j.id)
-      const click = (j.click_number ?? '').trim().toLowerCase()
-      if (click && !jobIdByHcp.has(click)) jobIdByHcp.set(click, j.id)
-    }
-    for (const j of crewJobsLedger) {
-      jobsById.set(j.id, j)
-      mapLedgerNumbers(j)
-    }
-    for (const j of laborJobsLedger) {
-      if (!jobsById.has(j.id)) jobsById.set(j.id, j)
-      mapLedgerNumbers(j)
-    }
+    for (const j of crewJobsLedger) jobsById.set(j.id, j)
     // v2.3360: the ledger RPCs carry no status; finished jobs earn 100% under the Bridge's rule.
     const statusByJobId = await fetchJobStatusesByIds([...jobsById.keys()])
     for (const j of jobsById.values()) j.status = statusByJobId.get(j.id) ?? null
@@ -1302,7 +1256,7 @@ export default function PeopleReviewTab({
     const laborCostByJobId = new Map<string, number>()
     const driveCostByJobId = new Map<string, number>()
     for (const r of allLaborRowsForCostAllTime) {
-      const jobId = laborRowJobId(r, jobIdByHcp)
+      const jobId = laborRowJobId(r)
       if (!jobId) continue
       const items = itemsByJob.get(r.id) ?? []
       const rate = r.labor_rate ?? 0
@@ -1328,7 +1282,7 @@ export default function PeopleReviewTab({
       perJob.set(personName, existing)
     }
     for (const r of allLaborRowsForCostAllTime) {
-      const jobId = laborRowJobId(r, jobIdByHcp)
+      const jobId = laborRowJobId(r)
       if (!jobId) continue
       const items = itemsByJob.get(r.id) ?? []
       const hrs = items.reduce((s, i) => s + (i.is_fixed ? i.hrs_per_unit : i.count * i.hrs_per_unit), 0)
@@ -1360,7 +1314,7 @@ export default function PeopleReviewTab({
     // and crew rows used to disagree: per-row vs whole-book subtraction).
     const personSubLaborCostByJobId = new Map<string, number>()
     for (const r of personLaborRowsAllTime) {
-      const jobId = laborRowJobId(r, jobIdByHcp)
+      const jobId = laborRowJobId(r)
       if (!jobId) continue
       const items = itemsByJob.get(r.id) ?? []
       const rate = r.labor_rate ?? 0
@@ -1389,7 +1343,7 @@ export default function PeopleReviewTab({
 
     const personHoursOnJobAllTime = new Map<string, number>()
     for (const r of personLaborRowsAllTime) {
-      const jobId = laborRowJobId(r, jobIdByHcp)
+      const jobId = laborRowJobId(r)
       if (!jobId) continue
       const items = itemsByJob.get(r.id) ?? []
       const hrs = items.reduce((s, i) => s + (i.is_fixed ? i.hrs_per_unit : i.count * i.hrs_per_unit), 0)
@@ -1448,14 +1402,14 @@ export default function PeopleReviewTab({
       ? laborRows.filter((r) => {
           // Mirror derivePersonTeamSummary: sub-labor rows pointing at the
           // configured office job are overhead, not field revenue.
-          const jobId = laborRowJobId(r, jobIdByHcp)
+          const jobId = laborRowJobId(r)
           if (!jobId) return true
           return jobId !== officeJobLedgerId
         })
       : laborRows
     const laborRowsFiltered = usePaidOnly
       ? laborRowsOfficeFiltered.filter((r) => {
-          const jobId = laborRowJobId(r, jobIdByHcp)
+          const jobId = laborRowJobId(r)
           return !!jobId && jobsById.has(jobId)
         })
       : laborRowsOfficeFiltered
@@ -1463,7 +1417,7 @@ export default function PeopleReviewTab({
       const items = itemsByJob.get(r.id) ?? []
       const totalHrs = items.reduce((s, i) => s + (i.is_fixed ? i.hrs_per_unit : i.count * i.hrs_per_unit), 0)
       const hoursInfo = items.length > 0 ? `${totalHrs.toFixed(2)} (${items.length} items)` : '—'
-      const jobId = laborRowJobId(r, jobIdByHcp)
+      const jobId = laborRowJobId(r)
       const job = jobId ? jobsById.get(jobId) : null
       const rate = r.labor_rate ?? 0
       const miles = Number(r.distance_miles) || 0
@@ -1617,7 +1571,7 @@ export default function PeopleReviewTab({
     const lookbackEnd = ymdAddYears(end, 1)
 
     const [allLaborRes, allCrewRes, allHoursRes2] = await Promise.all([
-      forTeamSummary || !(laborLinkIds.length > 0 || laborHcps.length > 0 || crewJobIds.size > 0) ? Promise.resolve({ data: [] }) : paged((f, t) => supabase.from('people_labor_jobs').select('id, job_number, job_ledger_id, job_date').gte('job_date', lookbackStart2Y).lte('job_date', lookbackEnd).order('id').range(f, t), 'load review windowed labor jobs'),
+      forTeamSummary || !(laborLinkIds.length > 0 || crewJobIds.size > 0) ? Promise.resolve({ data: [] }) : paged((f, t) => supabase.from('people_labor_jobs').select('id, job_number, job_ledger_id, job_date').gte('job_date', lookbackStart2Y).lte('job_date', lookbackEnd).order('id').range(f, t), 'load review windowed labor jobs'),
       forTeamSummary ? Promise.resolve({ data: [] }) : paged((f, t) => supabase.from('people_crew_jobs').select('work_date, person_name, person_id, job_assignments').gte('work_date', lookbackStart2Y).lte('work_date', lookbackEnd).order('work_date').order('person_name').range(f, t), 'load review windowed crew days'),
       forTeamSummary ? Promise.resolve({ data: [] }) : paged((f, t) => supabase.from('people_hours').select('person_name, work_date, hours').gte('work_date', lookbackStart2Y).lte('work_date', lookbackEnd).order('work_date').order('person_name').range(f, t), 'load review windowed hours'),
     ])
@@ -1644,11 +1598,11 @@ export default function PeopleReviewTab({
     }
 
     // v2.3068: a lifetime sheet counts when its job is one the review knows (link first).
-    const periodLaborJobIds = new Set(laborRows.map((r) => laborRowJobId(r, jobIdByHcp)).filter((id): id is string => !!id))
+    const periodLaborJobIds = new Set(laborRows.map((r) => laborRowJobId(r)).filter((id): id is string => !!id))
     const totalHoursOnJob = new Map<string, number>()
     const totalHoursOnJobInPeriod = new Map<string, number>()
     for (const r of allLaborRows) {
-      const jobId = laborRowJobId(r, jobIdByHcp)
+      const jobId = laborRowJobId(r)
       if (!jobId || !jobsById.has(jobId)) continue
       const items = itemsByLaborJobId.get(r.id) ?? []
       const hrs = items.reduce((s, i) => s + (i.is_fixed ? i.hrs_per_unit : i.count * i.hrs_per_unit), 0)
@@ -1686,7 +1640,7 @@ export default function PeopleReviewTab({
     const allocationJobsMap = new Map<string, { valueCreated: number; revenueBeforeOverhead: number; totalLaborOnJob: number; lifetimeHours: number }>()
     const laborJobIdsSeen = new Set<string>()
     for (const r of laborRows) {
-      const jobId = laborRowJobId(r, jobIdByHcp)
+      const jobId = laborRowJobId(r)
       if (!jobId || laborJobIdsSeen.has(jobId)) continue
       laborJobIdsSeen.add(jobId)
       const job = jobsById.get(jobId)
@@ -2031,10 +1985,9 @@ export default function PeopleReviewTab({
       }
     }
 
-    // Union of sheet links / crew jobIds across the whole team for the period (v2.3068);
-    // the number RPC stays only for sheets with no link.
+    // Union of sheet links / crew jobIds across the whole team for the period (v2.3068).
+    // No number lookup: every sheet carries job_ledger_id.
     const unionLaborLinkIds = [...new Set(periodLaborRows.map((r) => r.job_ledger_id ?? '').filter(Boolean))]
-    const unionLaborHcps = [...new Set(periodLaborRows.filter((r) => !r.job_ledger_id && (r.job_number ?? '').trim()).map((r) => (r.job_number ?? '').trim().toLowerCase()))]
     const unionCrewJobIds = new Set<string>()
     for (const r of periodCrewRows) {
       const row = crewByDatePerson[`${r.work_date}:${r.person_name}`]
@@ -2055,7 +2008,7 @@ export default function PeopleReviewTab({
     }
     const allBidIds = [...unionCrewBidIds]
     // The ledger RPCs have a deterministic ORDER BY, so .range() pages are stable.
-    const [crewJobsRes, laborJobsRes, crewBidsRes] = await Promise.all([
+    const [crewJobsRes, crewBidsRes] = await Promise.all([
       allJobIds.length > 0
         ? paged(
             (f, t) =>
@@ -2066,41 +2019,14 @@ export default function PeopleReviewTab({
             'load team summary crew ledger jobs',
           )
         : { data: [] },
-      unionLaborHcps.length > 0
-        ? paged(
-            (f, t) =>
-              (onlyPaidJobs
-                ? supabase.rpc('get_jobs_ledger_by_hcp_numbers_paid_only', { p_hcp_numbers: unionLaborHcps })
-                : supabase.rpc('get_jobs_ledger_by_hcp_numbers', { p_hcp_numbers: unionLaborHcps })
-              ).range(f, t),
-            'load team summary labor ledger jobs',
-          )
-        : { data: [] },
       allBidIds.length > 0
         ? paged((f, t) => supabase.rpc('get_bids_by_ids', { p_bid_ids: allBidIds }).range(f, t), 'load team summary bids')
         : { data: [] },
     ])
-    throwIfQueryError([crewJobsRes, laborJobsRes, crewBidsRes], 'load team summary ledger jobs')
+    throwIfQueryError([crewJobsRes, crewBidsRes], 'load team summary ledger jobs')
     const crewJobsLedger = (crewJobsRes.data ?? []) as TeamLedgerRow[]
-    const laborJobsLedger = (laborJobsRes.data ?? []) as TeamLedgerRow[]
     const jobsById = new Map<string, TeamLedgerRow>()
-    const jobIdByHcp = new Map<string, string>()
-    // Click-only jobs resolved + duplicate numbers guarded — see the
-    // identical mapLedgerNumbers in loadReviewDataCore.
-    const mapUnionLedgerNumbers = (j: TeamLedgerRow) => {
-      const hcp = (j.hcp_number ?? '').trim().toLowerCase()
-      if (hcp && !jobIdByHcp.has(hcp)) jobIdByHcp.set(hcp, j.id)
-      const click = (j.click_number ?? '').trim().toLowerCase()
-      if (click && !jobIdByHcp.has(click)) jobIdByHcp.set(click, j.id)
-    }
-    for (const j of crewJobsLedger) {
-      jobsById.set(j.id, j)
-      mapUnionLedgerNumbers(j)
-    }
-    for (const j of laborJobsLedger) {
-      if (!jobsById.has(j.id)) jobsById.set(j.id, j)
-      mapUnionLedgerNumbers(j)
-    }
+    for (const j of crewJobsLedger) jobsById.set(j.id, j)
     // v2.3360: the ledger RPCs carry no status; finished jobs earn 100% under the Bridge's rule.
     const unionStatusByJobId = await fetchJobStatusesByIds([...jobsById.keys()])
     for (const j of jobsById.values()) j.status = unionStatusByJobId.get(j.id) ?? null
@@ -2108,7 +2034,7 @@ export default function PeopleReviewTab({
     // Lifetime sub-labor cost per job (all assignees) — keyed by the sheet's link (v2.3068).
     const laborCostByJobId = new Map<string, number>()
     for (const r of allTimeLaborRows) {
-      const jobId = laborRowJobId(r, jobIdByHcp)
+      const jobId = laborRowJobId(r)
       if (!jobId) continue
       const items = laborItemsByJobId.get(r.id) ?? []
       // Jobs-page costing (v2.2686): line rate overrides + direct $ lines + drive.
@@ -2231,7 +2157,6 @@ export default function PeopleReviewTab({
       timePerMile,
       jobsById,
       bidsById,
-      jobIdByHcp,
       laborItemsByJobId,
       laborCostByJobId,
       teamLaborCostByJobId,
