@@ -15,7 +15,6 @@ Status: not started · shipped as v2.3246–v2.3249 on 2026-09-10 (design + revi
 ## Follow-ups the build noted
 
 - **Mute for the caller.** The banner is deliberately undismissable; the "called" state is the answer to a five-person group all seeing it. If that is still too loud, the next lever is hiding the strip for the viewer who made the call (they have the row open), never a dismiss. `CustomerWaitingBanner` + `last_called_by_user_id`.
-- **One eligibility hook.** `CustomerWaitingContext`, `useDispatchInbox` and `useEstimatorInbox` each read `dispatch_group_members` / `estimator_group_members`; fold into one shared hook.
 - **Shared call button sweep.** `CallPhoneButton` + `phoneContact.ts` are the first shared `tel:` affordance; ~35 hand-rolled `tel:` links with five sanitizers remain (Customers, Prospects, Bids call queue, People). Mechanical sweep — merge alone per CLAUDE.md.
 - **Squash titles.** The merge queue titled PR #2968's squash commit with the branch name; the release note carries the version, but `git log` on main reads "claude/customer waiting 2 inbox".
 
