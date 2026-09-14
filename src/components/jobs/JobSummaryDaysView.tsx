@@ -3,6 +3,8 @@ import type { JobDayLedger } from '../../lib/jobs/jobDayLedger'
 import { isLegacyOverheadAllocation, overheadAllocationLabel, type OverheadAllocation } from '../../lib/jobs/overheadAllocation'
 import type { SessionNotesJobIdentity } from '../../lib/jobs/sessionNotesSearch'
 import SessionNotesModal from './SessionNotesModal'
+import JobRunDeltaStrip from './JobRunDeltaStrip'
+import { jobDaysDeltaJumps, jobDaysDeltaSince } from '../../lib/jobs/jobDaysDelta'
 import { buildJobDaysChartSeries, buildJobDaysRows, orderJobDaysRows, summarizeJobDays } from '../../lib/jobs/jobDaysConcurrency'
 import { formatStagesNextDateLabel } from '../../lib/stagesUpcomingSchedule'
 import { formatUsdNoCents } from '../../lib/jobs/jobFormatting'
@@ -12,6 +14,10 @@ import { formatUsdNoCents } from '../../lib/jobs/jobFormatting'
  * the same job day ledger true profit charges from, so the "per job-day"
  * overhead here is exactly the unit the Jobs view's day-share spends. Rows are
  * newest first; the chart stacks each day's field hours by job.
+ *
+ * Since-then strip (Job Summary follow-up 7): the same delta strip Timeline
+ * shows under a rewound chart — jobs opened, billed, paid, still open — from a
+ * week chip under the tiles, derived from the ledger's own status spans.
  */
 export type JobSummaryDaysJobLabel = { number: string; name: string }
 
@@ -24,6 +30,10 @@ type Props = {
   showMoney: boolean
   /** What actually landed on each day and job under the allocation in force (v2.3260); null until the ledger loads. */
   allocation?: OverheadAllocation | null
+  /** jobs_ledger.status per job from the page's ledger list (wins over the day ledger's own snapshot) — the since-then strip's buckets. */
+  statusByJob?: ReadonlyMap<string, string | null | undefined>
+  /** The window's last day; the since-then strip counts up to it. Defaults to the ledger's end. */
+  todayYmd?: string
   /** Click a day → Session notes pinned to it, grouped by job (v2.2699). Office roles only. */
   canOpenSessionNotes: boolean
   users: ReadonlyArray<{ id: string; name: string | null }>
@@ -44,13 +54,17 @@ const td: CSSProperties = { padding: '0.45rem 0.6rem', textAlign: 'right', borde
 /** `formatUsdNoCents` already carries the "$". */
 const money = (v: number | null): string => (v == null ? '—' : formatUsdNoCents(v))
 
+const EMPTY_STATUS: ReadonlyMap<string, string | null | undefined> = new Map()
+const DEFAULT_DELTA_DAYS_BACK = 7
+const chipButton = (active: boolean): CSSProperties => ({ border: '1px solid var(--border)', borderRadius: 999, padding: '0.05rem 0.55rem', fontSize: '0.72rem', fontWeight: 600, background: active ? '#2563eb' : 'var(--surface)', color: active ? '#fff' : 'var(--text-700)', cursor: 'pointer', whiteSpace: 'nowrap' })
+
 /** The page's ledger list first (it carries service-type prefixes when set), then the ledger's own labels, then a short id. */
 function jobLabel(jobLabelById: ReadonlyMap<string, JobSummaryDaysJobLabel>, ledger: JobDayLedger | null, jobId: string): JobSummaryDaysJobLabel {
   // `jobLabels` is optional-chained too: a ledger deserialized by an older build has none.
   return jobLabelById.get(jobId) ?? ledger?.jobLabels?.get(jobId) ?? { number: jobId.slice(0, 8), name: '' }
 }
 
-export default function JobSummaryDaysView({ ledger, ledgerLoading, ledgerError, jobLabelById, showMoney, allocation = null, canOpenSessionNotes, users, jobs }: Props) {
+export default function JobSummaryDaysView({ ledger, ledgerLoading, ledgerError, jobLabelById, showMoney, allocation = null, statusByJob = EMPTY_STATUS, todayYmd, canOpenSessionNotes, users, jobs }: Props) {
   // The Charged column and the chips' dollars show only when the allocation differs from the original day-share, where landed = pool and each chip's share is pool × hours ÷ field hours.
   const smoothed = allocation != null && !isLegacyOverheadAllocation(allocation.settings)
   const [includeQuiet, setIncludeQuiet] = useState(false)
@@ -60,6 +74,12 @@ export default function JobSummaryDaysView({ ledger, ledgerLoading, ledgerError,
   const series = useMemo(() => buildJobDaysChartSeries(rows, SERIES_COLORS.length), [rows])
   const ordered = useMemo(() => orderJobDaysRows(rows, { includeQuiet }), [rows, includeQuiet])
   const colorByJob = useMemo(() => new Map(series.keyJobIds.map((id, i) => [id, SERIES_COLORS[i] ?? OTHER_COLOR])), [series.keyJobIds])
+  /** Since-then strip: which week chip is pressed; clamps to the chips the window offers. */
+  const [deltaDaysBack, setDeltaDaysBack] = useState(DEFAULT_DELTA_DAYS_BACK)
+  const deltaJumps = useMemo(() => jobDaysDeltaJumps(ledger?.days.length ?? 0), [ledger])
+  const effDeltaBack = deltaJumps.some((j) => j.daysBack === deltaDaysBack) ? deltaDaysBack : (deltaJumps[0]?.daysBack ?? 0)
+  const endYmd = todayYmd ?? ledger?.endYmd ?? ''
+  const sinceThen = useMemo(() => (ledger && effDeltaBack > 0 ? jobDaysDeltaSince({ ledger, statusByJob, todayYmd: endYmd, daysBack: effDeltaBack }) : null), [ledger, statusByJob, endYmd, effDeltaBack])
 
   if (!ledger) {
     return (
@@ -125,6 +145,19 @@ export default function JobSummaryDaysView({ ledger, ledgerLoading, ledgerError,
           </div>
         </div>
       </div>
+
+      {sinceThen ? (
+        <div data-days-since-then style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8 }}>
+          <JobRunDeltaStrip delta={sinceThen.delta} asOfYmd={sinceThen.asOfYmd} />
+          <span role="group" aria-label="Since" style={{ display: 'inline-flex', gap: 4, marginLeft: 'auto' }}>
+            {deltaJumps.map((j) => (
+              <button key={j.daysBack} type="button" aria-pressed={effDeltaBack === j.daysBack} title={`Count what changed in the last ${j.label}`} onClick={() => setDeltaDaysBack(j.daysBack)} style={chipButton(effDeltaBack === j.daysBack)}>
+                {j.label}
+              </button>
+            ))}
+          </span>
+        </div>
+      ) : null}
 
       <div style={{ border: '1px solid var(--border)', borderRadius: 8, background: 'var(--surface)', padding: '0.5rem 0.5rem 0.25rem' }}>
         <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', fontSize: '0.72rem', color: 'var(--text-700)', padding: '0 0.25rem 0.35rem' }}>
