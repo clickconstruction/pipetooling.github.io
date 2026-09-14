@@ -1,3 +1,5 @@
+import { effectiveInvoiceParty } from './jobs/billToParty'
+import { jobHasBillingParty } from './jobs/jobPartyExclusive'
 import type { Database } from '../types/database'
 import { billOnOpenJob, openRemainder } from './billing/billTruth'
 import type { JobWithDetails } from '../types/jobWithDetails'
@@ -587,7 +589,8 @@ export function jobLedgerJobPicturesLinkDefined(link: string | null | undefined)
 
 /** Jobs on the Stages board filter that lack a linked customer, sorted like the Jobs Stages modal. */
 export function stagesJobsWithoutCustomerFromFiltered(filtered: JobWithDetails[]): JobWithDetails[] {
-  const list = filtered.filter((j) => !jobLedgerHasCustomerForBilling(j.customer_id))
+  // A GC job (v2.3403) names its party — the GC standing alone — so it is not a gap.
+  const list = filtered.filter((j) => !jobLedgerHasCustomerForBilling(j.customer_id) && !jobHasBillingParty(j))
   return [...list].sort(sortStagesJobsByHcpThenName)
 }
 
@@ -736,6 +739,9 @@ export function stagesReadyToBillJobsWithoutEmail(readyToBillRows: readonly Stag
     const job = row.job
     if (seen.has(job.id)) continue
     seen.add(job.id)
+    // A job billed to its GC is emailed at the GC's record (billing email, else
+    // contact email — Bill Customer overlays it), not at the job's customer copy.
+    if (effectiveInvoiceParty(job, null) === 'gc') continue
     if (!(job.customer_email ?? '').trim()) out.push(job)
   }
   return out

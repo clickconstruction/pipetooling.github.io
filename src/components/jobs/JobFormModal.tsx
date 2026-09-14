@@ -20,6 +20,7 @@ import { fetchTwinUserIds } from '../../lib/fetchTwinUserIds'
 import { partitionBidsByScope } from '../../lib/bidBoardScope'
 import { titleCaseAddress } from '../../lib/addressTitleCase'
 import { type CustomerAddressRow } from '../../lib/jobs/lienProperty'
+import { jobPartyMoveNotice, pickJobCustomer, pickJobGc } from '../../lib/jobs/jobPartyExclusive'
 
 /** Slim customer_addresses row for the property-record picker (v2.2638). */
 type PropertyCandidateRow = Pick<
@@ -913,6 +914,40 @@ export default function JobFormModal({
   projectsRef.current = projects
   const customersRef = useRef(customers)
   customersRef.current = customers
+  const partyIdsRef = useRef({ customerId, gcCustomerId })
+  partyIdsRef.current = { customerId, gcCustomerId }
+  /**
+   * v2.3403: every customer / GC PICK goes through these two — a job's
+   * customer and GC are never the same party. Picking the GC that is the
+   * customer moves them (customer cleared, bills go to the GC); picking the
+   * customer that is the GC drops the GC. Load and undo paths use the raw
+   * setters so opening a job never rewrites it.
+   */
+  const pickGcCustomerId = useCallback((v: SetStateAction<string | null>) => {
+    const next = typeof v === 'function' ? v(partyIdsRef.current.gcCustomerId) : v
+    const r = pickJobGc(next, partyIdsRef.current)
+    setGcCustomerId(r.gcCustomerId)
+    if (r.moved === 'customer_to_gc') {
+      setCustomerId(null)
+      setCustomerSearch('')
+      setCustomerName('')
+      setCustomerEmail('')
+      setCustomerPhone('')
+      setDateMet('')
+      setBillToParty('gc')
+      showToast(jobPartyMoveNotice(r.moved, customersRef.current.find((c) => c.id === next)?.name) ?? '', 'info', 7000)
+    }
+  }, [showToast])
+  const pickCustomerId = useCallback((v: SetStateAction<string | null>) => {
+    const next = typeof v === 'function' ? v(partyIdsRef.current.customerId) : v
+    const r = pickJobCustomer(next, partyIdsRef.current)
+    setCustomerId(r.customerId)
+    if (r.moved === 'gc_cleared') {
+      setGcCustomerId(null)
+      setBillToParty((cur) => (cur === 'gc' ? 'customer' : cur))
+      showToast(jobPartyMoveNotice(r.moved, customersRef.current.find((c) => c.id === next)?.name) ?? '', 'info', 7000)
+    }
+  }, [showToast])
   const developmentsRef = useRef(developments)
   developmentsRef.current = developments
   const editingMasterUserIdRef = useRef<string | null>(null)
@@ -2052,38 +2087,11 @@ export default function JobFormModal({
               }
             : null,
         )
-        setGcCustomerId(effGcId ?? null)
-        if (effGcId) {
-          setCustomerId(effGcId)
-          let src: { name: string | null; contact_info: unknown; date_met: string | null } | null =
-            customers.find((c) => c.id === effGcId) ?? null
-          if (!src && effIsOwn) src = b.customers
-          if (!src) {
-            const fetched = await withSupabaseRetry(
-              async () => await supabase.from('customers').select('name, contact_info, date_met').eq('id', effGcId).maybeSingle(),
-              'job form import bid gc',
-            )
-            src = (fetched as { name: string | null; contact_info: unknown; date_met: string | null } | null) ?? null
-          }
-          if (src) {
-            setCustomerName(src.name ?? '')
-            setDateMet(src.date_met ? (src.date_met.split('T')[0] ?? '') : '')
-            const ci = src.contact_info as { phone?: string; email?: string } | null
-            setCustomerEmail(ci?.email ?? '')
-            setCustomerPhone(ci?.phone ?? '')
-          } else {
-            setCustomerName((chosen?.name ?? '').trim())
-            setCustomerEmail('')
-            setCustomerPhone('')
-            setDateMet('')
-          }
-        } else {
-          setCustomerId(null)
-          setCustomerName('')
-          setCustomerEmail('')
-          setCustomerPhone('')
-          setDateMet('')
-        }
+        // v2.3403: the GC is the GC, never also the customer. A job born from a
+        // won bid is a GC job — its bills go to the GC — and the customer link
+        // stays whatever the office set (usually nothing yet).
+        pickGcCustomerId(effGcId ?? null)
+        if (effGcId) setBillToParty('gc')
         setGoogleDriveLink((prev) => (prev.trim() ? prev : (b.drive_link ?? '').trim()))
         setJobPlansLink((prev) => (prev.trim() ? prev : (b.plans_link ?? '').trim()))
         showToast('Imported from bid.', 'success')
@@ -3942,9 +3950,9 @@ export default function JobFormModal({
               accountManagerRelationship={accountManagerRelationship}
               setAccountManagerRelationship={setAccountManagerRelationship}
               customerId={customerId}
-              setCustomerId={setCustomerId}
+              setCustomerId={pickCustomerId}
               gcCustomerId={gcCustomerId}
-              setGcCustomerId={setGcCustomerId}
+              setGcCustomerId={pickGcCustomerId}
               billToParty={billToParty}
               setBillToParty={setBillToParty}
               billCopyOtherParty={billCopyOtherParty}
@@ -4051,11 +4059,11 @@ export default function JobFormModal({
                 expanded={customerExpanded}
                 setExpanded={setCustomerExpanded}
                 customerId={customerId}
-                setCustomerId={setCustomerId}
+                setCustomerId={pickCustomerId}
                 billToParty={billToParty}
                 setBillToParty={setBillToParty}
                 gcCustomerId={gcCustomerId}
-                setGcCustomerId={setGcCustomerId}
+                setGcCustomerId={pickGcCustomerId}
                 linkedBidGc={linkedBidGc}
                 customerSearch={customerSearch}
                 setCustomerSearch={setCustomerSearch}
@@ -4097,7 +4105,7 @@ export default function JobFormModal({
                 projectId={projectId}
                 setProjectId={setProjectId}
                 customerId={customerId}
-                setCustomerId={setCustomerId}
+                setCustomerId={pickCustomerId}
                 projects={projects}
                 jobPlansLink={jobPlansLink}
                 setJobPlansLink={setJobPlansLink}
@@ -5028,9 +5036,6 @@ export default function JobFormModal({
                   }
                 : { project_name: null, bid_number: null, service_type_id: null },
             )
-            if (opt?.customer_id && !customerId) {
-              setCustomerId(opt.customer_id)
-            }
             setLinkedBidGc(
               opt?.customer_id
                 ? {
@@ -5042,7 +5047,7 @@ export default function JobFormModal({
             // Linking a bid to an EXISTING job: fill the GC only when empty —
             // never overwrite a GC someone set deliberately (v2.1182).
             if (opt?.customer_id) {
-              setGcCustomerId((prev) => prev ?? opt.customer_id)
+              pickGcCustomerId((prev) => prev ?? opt.customer_id)
             }
             setJobBidLinkChoiceOpen(false)
             setProjectFilesPlansExpanded(true)

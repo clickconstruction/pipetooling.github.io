@@ -57,6 +57,9 @@ export function effectiveInvoiceParty(
 ): EffectiveBillParty {
   if ((invoice?.bill_to_email ?? '').trim()) return 'other'
   const hasGc = Boolean((job?.gc_customer_id ?? '').trim())
+  // A GC job (v2.3403): a GC with no customer link is the only party, so the
+  // bills go to the GC whatever the rule or the invoice's pick says.
+  if (hasGc && !(job?.customer_id ?? '').trim()) return 'gc'
   const invoicePick = parseInvoiceBillToParty(invoice?.bill_to_party)
   if (invoicePick === 'gc') return hasGc ? 'gc' : 'customer'
   if (invoicePick === 'customer') return 'customer'

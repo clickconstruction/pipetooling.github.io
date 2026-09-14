@@ -8,6 +8,7 @@
  * a sheet row, and the assembler prefills its dates from the stage.
  * Crew pay sheets never appear here.
  */
+import { jobPartyName } from '../../lib/jobs/jobPartyExclusive'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { supabase } from '../../lib/supabase'
@@ -313,7 +314,7 @@ export function JobsSubsWorkView({ jobs, jobsLoading, authUserId, deepLinkWorkOr
     const fixtures = jobs.flatMap((j) => (j.fixtures ?? []).map((f) => ({ id: f.id, job_id: j.id, name: f.name, count: Number(f.count) || 0, line_unit_price: f.line_unit_price == null ? null : Number(f.line_unit_price), sequence_order: Number(f.sequence_order) || 0, ...fixtureStageFields(f) })))
     const windowIdByCommitmentId = new Map<string, string>()
     for (const r of rows) if (r.stage_window_id) windowIdByCommitmentId.set(r.id, r.stage_window_id)
-    return buildSubsTabGroups({ board: board.rows, windows, windowIdByCommitmentId, fixtures, jobs: jobs.map((j) => ({ id: j.id, hcp_number: j.hcp_number, customer_name: j.customer_name ?? null, job_address: j.job_address ?? null })) })
+    return buildSubsTabGroups({ board: board.rows, windows, windowIdByCommitmentId, fixtures, jobs: jobs.map((j) => ({ id: j.id, hcp_number: j.hcp_number, customer_name: jobPartyName(j), job_address: j.job_address ?? null })) })
   }, [board.rows, windows, rows, jobs])
 
   /** Groups after the search box and the rail-group chips; stage rows only show under All. */

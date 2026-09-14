@@ -1,3 +1,4 @@
+import { jobPartyName } from './jobPartyExclusive'
 import { burnProjectedMarginForSort, projectJobSummaryBurn, type JobBudgetFooting, type JobSummaryBurn } from './jobSummaryBurn'
 import { JOB_BUDGET_GLYPH, type JobBudgetSource } from './jobBudget'
 import {
@@ -847,7 +848,8 @@ export function jobSummaryCutKey(job: JobSummaryLedgerRowInput['job'], cutBy: Jo
     case 'accountManager':
       return named(job.account_manager_user_id, job.account_manager?.name, 'No Account Man')
     case 'customer':
-      return named(job.customer_id ?? (job.customer_name ? null : undefined), job.customer_name, 'No customer')
+      // A GC job (v2.3403) files under the GC standing alone.
+      return named(job.customer_id ?? (job.customer_name ? null : job.gc_customer_id ?? undefined), jobPartyName(job), 'No customer')
     case 'development':
       return named(job.development_id, job.development?.name, 'No development')
     case 'billMonth': {

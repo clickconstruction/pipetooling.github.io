@@ -51,7 +51,7 @@ On a **Split by line** job, or as a one-off on any job, use {{button:outline|Bil
 
 ## Good to know
 
-- The GC choice only appears when the job's GC is a different customer than the job customer. If you entered the GC as the customer too, the bills already go to the GC — nothing to change.
+- A job's customer and GC are never the same party. Pick a builder as the GC and it comes off the customer row (the bills go to the GC); pick it as the customer and it comes off GC. A job with a GC and no customer is a **GC job** — the Customer row reads *none · GC job*, **Bills go to** offers only the GC, and every bill, statement and portal treats the GC as the payer.
 - Changing **Bills go to** never touches a bill that has already been sent.
 - **GC Review and the weekly statement** list only what each GC pays. A job whose GC is not the payer sits in the **Not billed to a GC** bucket.
 - **The portals** follow it too: a GC's balance is what the GC owes, and an owner's is what the owner owes. A bill the other party does not pay is **not** on their statement unless you shared it — see the next section.
