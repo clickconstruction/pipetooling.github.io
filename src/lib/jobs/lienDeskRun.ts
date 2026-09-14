@@ -1,0 +1,191 @@
+import { buildLienNoticeBlocks, filingDocHtml, filingLetterheadFromIssuer, type FilingDocBlock, type FilingDocExtras, type LienNoticeFields } from '../jobsDocuments/lienFilingDocuments'
+import { demandDate, demandMoney } from '../jobsDocuments/demandLetter'
+import type { PhysicalInvoiceIssuer } from '../physicalInvoiceIssuer'
+import { effectiveJobLedgerNumber } from '../ledgerDisplayPrefixes'
+import { lienPropertyOwnerDisplayName, resolveLienProperty } from './lienProperty'
+import type { LienDeskEntry } from './lienDesk'
+import type { LienDeskData } from '../../hooks/useLienDeskData'
+import { buildLienNoticeFieldsForJob, describeNoticeMonths, lienNoticeCoverNote, parseLienDeskDraftFields } from './lienNoticeDraft'
+
+/**
+ * The run (pure kernel): every approved notice on the desk, its two
+ * statutory recipients (the owner of record and the original contractor),
+ * the packet to print (a cover sheet listing the envelopes, then each
+ * notice twice — one copy per recipient — with the optional cover note), and
+ * the `job_lien_filings` payload recording it with every month it named.
+ */
+
+export type RunSendMethod = 'certified_mail' | 'traceable_courier' | 'email' | 'hand'
+
+export const RUN_SEND_METHODS: ReadonlyArray<{ key: RunSendMethod; label: string }> = [
+  { key: 'certified_mail', label: 'certified mail, return receipt' },
+  { key: 'traceable_courier', label: 'traceable courier' },
+  { key: 'email', label: 'email (courtesy — mail it too)' },
+  { key: 'hand', label: 'hand delivery' },
+]
+
+export type RunRecipient = {
+  key: 'owner' | 'original_contractor'
+  label: string
+  name: string
+  address: string
+  email: string
+  method: RunSendMethod
+  tracking: string
+}
+
+export type RunNotice = {
+  itemId: string
+  jobId: string
+  /** "650 · ATI Schertz" */
+  label: string
+  jobNumber: string
+  months: string[]
+  amount: number
+  fields: LienNoticeFields
+  extras: FilingDocExtras
+  /** The cover note text, or null when the draft turned it off. */
+  coverNote: string | null
+  recipients: RunRecipient[]
+}
+
+/** Every Ready-to-send entry as a run notice. Entries with no live approved item are skipped. */
+export function buildLienDeskRun(
+  entries: ReadonlyArray<LienDeskEntry>,
+  data: LienDeskData,
+  issuer: PhysicalInvoiceIssuer | null,
+  signerNameFor: (masterUserId: string | null) => string,
+  todayYmd: string,
+): RunNotice[] {
+  const out: RunNotice[] = []
+  for (const e of entries) {
+    const item = e.item
+    if (!item || item.status !== 'approved') continue
+    const job = data.jobsById[e.jobId]
+    const gc = e.gcCustomerId ? data.gcsById[e.gcCustomerId] : undefined
+    const address = job?.customer_address_id ? data.addressesById[job.customer_address_id] ?? null : null
+    const property = resolveLienProperty(address, data.ownerByJob[e.jobId] ?? null)
+    const ownerName = lienPropertyOwnerDisplayName(property.owner)
+    const draft = parseLienDeskDraftFields(item.fields)
+    const months = item.months.length ? item.months.slice().sort() : e.dueMonths
+    const fields =
+      draft?.notice ??
+      buildLienNoticeFieldsForJob({
+        jobName: job?.job_name,
+        jobAddress: job?.job_address,
+        originalContractorName: gc?.name ?? '',
+        openBalance: e.openBalance,
+        contactPerson: signerNameFor(job?.master_user_id ?? null),
+        issuer,
+        todayYmd,
+      })
+    const jobNumber = job ? effectiveJobLedgerNumber(job.hcp_number, job.click_number) || '—' : '—'
+    const name = (job?.job_name ?? '').trim()
+    const ownerEmail = (data.ownerByJob[e.jobId]?.owner_email ?? '').trim()
+    out.push({
+      itemId: item.id,
+      jobId: e.jobId,
+      label: name ? `${jobNumber} · ${name}` : jobNumber,
+      jobNumber,
+      months,
+      amount: e.openBalance,
+      fields,
+      extras: {
+        letterhead: filingLetterheadFromIssuer(issuer),
+        refItems: [`Job #${jobNumber}`, months.length ? `Work months ${describeNoticeMonths(months)}` : '', demandDate(todayYmd)].filter(Boolean),
+      },
+      coverNote: item.cover_note ? lienNoticeCoverNote(fields.claimantName, months) : null,
+      recipients: [
+        { key: 'owner', label: 'Owner of record', name: ownerName, address: property.owner.mailingAddress, email: ownerEmail, method: 'certified_mail', tracking: '' },
+        { key: 'original_contractor', label: 'Original contractor', name: gc?.name ?? fields.originalContractorName, address: gc?.address ?? '', email: draft?.gcEmail || gc?.email || '', method: 'certified_mail', tracking: '' },
+      ],
+    })
+  }
+  return out
+}
+
+/** A recipient sent by email needs an address; everything else can go without a tracking number (typed later). */
+export function runNoticeProblems(n: RunNotice): string[] {
+  const out: string[] = []
+  for (const r of n.recipients) {
+    if (!r.name && !r.address) out.push(`${r.label}: nobody to send to`)
+    else if (r.method === 'email' && !r.email) out.push(`${r.label}: no email on file`)
+    else if (r.method !== 'email' && !r.address) out.push(`${r.label}: no mailing address`)
+  }
+  return out
+}
+
+/** The cover sheet: one line per envelope, with a blank for the tracking number. */
+export function runCoverSheetBlocks(notices: ReadonlyArray<RunNotice>, todayYmd: string, extras?: FilingDocExtras): FilingDocBlock[] {
+  const blocks: FilingDocBlock[] = [
+    { kind: 'title', lines: ['Lien notice run', demandDate(todayYmd)] },
+    { kind: 'paragraph', text: `${notices.length} ${notices.length === 1 ? 'notice' : 'notices'} · ${notices.reduce((s, n) => s + n.recipients.length, 0)} envelopes. Each § 53.056 notice goes to the owner of record and the original contractor (Tex. Prop. Code § 53.056(a-1)); certified mail with return receipt, or another traceable service, is the delivery the statute recognises (§ 53.003).` },
+  ]
+  let i = 0
+  for (const n of notices) {
+    for (const r of n.recipients) {
+      i++
+      blocks.push({
+        kind: 'numbered',
+        n: i,
+        text: `${n.label} — ${describeNoticeMonths(n.months)} — ${demandMoney(String(n.amount))} · ${r.label}: ${r.name || '—'}${r.address ? `, ${r.address}` : ''} · ${RUN_SEND_METHODS.find((m) => m.key === r.method)?.label ?? r.method}${r.tracking ? ` · ${r.tracking}` : ' · tracking # ________________'}`,
+      })
+    }
+  }
+  const head: FilingDocBlock[] = []
+  if (extras?.letterhead && extras.letterhead.company.trim()) head.push({ kind: 'letterhead', ...extras.letterhead })
+  return [...head, ...blocks]
+}
+
+/** The cover note as its own short page, signed by the contact person. */
+export function runCoverNoteBlocks(n: RunNotice): FilingDocBlock[] {
+  if (!n.coverNote) return []
+  const head: FilingDocBlock[] = []
+  if (n.extras.letterhead && n.extras.letterhead.company.trim()) head.push({ kind: 'letterhead', ...n.extras.letterhead })
+  return [
+    ...head,
+    { kind: 'title', lines: [`Re: ${n.label}`, describeNoticeMonths(n.months)] },
+    { kind: 'paragraph', text: n.coverNote },
+    { kind: 'signature', lines: [n.fields.contactPerson, n.fields.claimantName].filter((l) => l) },
+  ]
+}
+
+/** One notice's document for one recipient: the statutory form, the reference strip naming the copy. */
+export function runNoticeBlocks(n: RunNotice, r: RunRecipient): FilingDocBlock[] {
+  const extras: FilingDocExtras = { ...n.extras, refItems: [...(n.extras.refItems ?? []), `Copy for: ${r.label}`] }
+  return buildLienNoticeBlocks(n.fields, extras)
+}
+
+/** The whole packet as one print document: the cover sheet, then per notice its cover note and a copy per recipient. */
+export function runPacketHtml(notices: ReadonlyArray<RunNotice>, todayYmd: string, issuer: PhysicalInvoiceIssuer | null): string {
+  const pages: string[] = []
+  const letter = { letterhead: filingLetterheadFromIssuer(issuer) }
+  pages.push(filingDocHtml(runCoverSheetBlocks(notices, todayYmd, letter)))
+  for (const n of notices) {
+    const note = runCoverNoteBlocks(n)
+    if (note.length) pages.push(filingDocHtml(note))
+    for (const r of n.recipients) pages.push(filingDocHtml(runNoticeBlocks(n, r)))
+  }
+  const body = pages.map((p, i) => `<section style="${i < pages.length - 1 ? 'page-break-after:always;' : ''}">${p}</section>`).join('')
+  return `<!doctype html><html data-theme="light"><head><meta charset="utf-8"><title>Lien notice run — ${demandDate(todayYmd)}</title>
+<style>
+  body { font-family: Georgia, 'Times New Roman', serif; color: #1a1a1a; background: #fff; max-width: 44rem; margin: 2.5rem auto; padding: 0 1.5rem; font-size: 0.95rem; line-height: 1.75; }
+  section + section { margin-top: 3rem; }
+  @media print { body { margin: 0.5in auto; } section + section { margin-top: 0; } }
+</style></head><body>${body}</body></html>`
+}
+
+export type RunSendRecord = { recipient: 'owner' | 'original_contractor'; method: RunSendMethod; tracking: string; sent_on: string }
+
+/** The `job_lien_filings` insert for one notice — every month it named, both sends. */
+export function runFilingPayload(n: RunNotice, sends: ReadonlyArray<RunSendRecord>, userId: string | null): Record<string, unknown> {
+  return {
+    job_id: n.jobId,
+    created_by: userId,
+    kind: 'notice_53_056',
+    amount: n.amount,
+    months_covered: n.months,
+    fields: JSON.parse(JSON.stringify(n.fields)) as Record<string, unknown>,
+    sends: sends.map((s) => ({ ...s })),
+  }
+}
