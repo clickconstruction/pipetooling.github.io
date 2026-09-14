@@ -31,6 +31,14 @@ vi.mock('../../lib/jobs/jobContractQuickSend', () => ({
   quickSendJobContract: (input: { job: { id: string } }) => sendSpy(input),
 }))
 
+const saveSpy = vi.fn((input: { existing: unknown; payload: { job_id: string; fields: { scope_lines: string[]; amount_cents: number | null } } }) =>
+  Promise.resolve({ id: 'd1', job_id: input.payload.job_id, status: 'draft', revision: 1, fields: input.payload.fields, body_html: 'terms', body_format: 'plain', template_name: 'Built-in service agreement terms', recipient_name: null, recipient_email: null, created_at: '2026-09-14T00:00:00Z', updated_at: null, last_sent_at: null }),
+)
+vi.mock('../../lib/jobs/jobContractDraftWrite', async () => {
+  const actual = await vi.importActual<typeof import('../../lib/jobs/jobContractDraftWrite')>('../../lib/jobs/jobContractDraftWrite')
+  return { ...actual, saveJobContractDraft: (input: never) => saveSpy(input) }
+})
+
 vi.mock('./JobContractModal', () => ({
   default: ({ open, initialFilingOpen }: { open: boolean; initialFilingOpen?: boolean }) => (open ? <div data-testid="contract-modal">{initialFilingOpen ? 'filing' : 'sending'}</div> : null),
 }))
@@ -105,7 +113,8 @@ describe('JobsContractSweepModal', () => {
     fireEvent.click(look[2]!)
     expect(screen.getByTestId('sweep-footer-sentence').textContent).toBe("GC job · Summit GC's subcontract is the agreement")
     fireEvent.click(screen.getByRole('button', { name: 'File their subcontract' }))
-    expect(screen.getByTestId('contract-modal').textContent).toBe('filing')
+    expect(screen.getByTestId('contract-file-sheet')).toBeTruthy()
+    expect(screen.getByText("File Summit GC's subcontract")).toBeTruthy()
   })
 
   it('Send & next sends the selected job and lands on the next row', async () => {
@@ -119,6 +128,47 @@ describe('JobsContractSweepModal', () => {
     await waitFor(() => expect(screen.getAllByTestId('sweep-row').map((r) => r.getAttribute('data-job'))).toEqual(['363']))
     expect(screen.getAllByTestId('sweep-row')[0]!.getAttribute('aria-pressed')).toBe('true')
     expect(screen.getByTestId('sweep-summary').textContent).toContain('1 sent this sweep')
+  })
+
+  it('typing a scope and an amount for a thin row saves the draft, redraws the document, and makes the row Ready (PR 3)', async () => {
+    saveSpy.mockClear()
+    mount()
+    await waitFor(() => expect(screen.getByTestId('sweep-summary')).toBeTruthy())
+    fireEvent.click(screen.getByRole('button', { name: /^Needs a look · 3$/ }))
+    await waitFor(() => expect(screen.getByTestId('sweep-pane-edit')).toBeTruthy())
+    expect((screen.getByLabelText('Scope — one line per item') as HTMLTextAreaElement).value).toBe('Job')
+    fireEvent.change(screen.getByLabelText('Scope — one line per item'), { target: { value: 'Water heater swap\nHaul away the old unit' } })
+    fireEvent.change(screen.getByLabelText('Contract amount'), { target: { value: '2,400' } })
+    const frame = screen.getByTitle('The agreement as the customer will see it') as HTMLIFrameElement
+    expect(frame.getAttribute('srcdoc')).toContain('Water heater swap')
+    expect(frame.getAttribute('srcdoc')).toContain('$2,400.00')
+    await waitFor(() => expect(saveSpy).toHaveBeenCalled(), { timeout: 2000 })
+    const payload = saveSpy.mock.calls[0]![0].payload
+    expect(payload.job_id).toBe('j683')
+    expect(payload.fields.scope_lines).toEqual(['Water heater swap', 'Haul away the old unit'])
+    expect(payload.fields.amount_cents).toBe(240000)
+    await waitFor(() => expect(screen.getByTestId('sweep-save-state').textContent).toBe('Saved to the job’s draft'))
+    expect(screen.getByTestId('sweep-footer-sentence').textContent).toBe('Emails may@corewellpartners.com · then J778')
+    expect((screen.getByRole('button', { name: 'Send & next' }) as HTMLButtonElement).disabled).toBe(false)
+    expect(within(screen.getAllByTestId('sweep-row')[0]!).getByText('Ready')).toBeTruthy()
+  })
+
+  it('filing happens in the pane: Already signed? File it opens the sheet, and a file dropped on a row opens it with the file (PR 4)', async () => {
+    mount()
+    await waitFor(() => expect(screen.getByTestId('sweep-summary')).toBeTruthy())
+    fireEvent.click(screen.getByRole('button', { name: 'Already signed? File it' }))
+    expect(screen.getByTestId('contract-file-sheet')).toBeTruthy()
+    expect(screen.getByTestId('sweep-pane-footer').textContent).toContain('Filing replaces the send')
+    expect(screen.queryByTestId('sweep-pane-edit')).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
+    expect(screen.queryByTestId('contract-file-sheet')).toBeNull()
+
+    const rows = screen.getAllByTestId('sweep-row')
+    const file = new File(['%PDF'], 'Palmer subcontract (signed).pdf', { type: 'application/pdf' })
+    fireEvent.drop(rows[1]!, { dataTransfer: { files: [file], types: ['Files'] } })
+    await waitFor(() => expect(screen.getByTestId('contract-file-chosen').textContent).toContain('Palmer subcontract (signed).pdf'))
+    expect(screen.getAllByTestId('sweep-row')[1]!.getAttribute('aria-pressed')).toBe('true')
+    expect(screen.getByText('File a signed contract')).toBeTruthy()
   })
 
   it('Send all lives under ⋯, names the customers, and sends only the Ready rows after a confirm', async () => {

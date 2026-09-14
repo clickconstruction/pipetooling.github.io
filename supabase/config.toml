@@ -804,3 +804,7 @@ verify_jwt = false
 # The firm's emails (Legal portal train, PR 5): cron POST with X-Cron-Secret + public GET confirm/unsubscribe links.
 [functions.legal-notify-dispatch]
 verify_jwt = false
+
+# The Contract sweep's Drive pass (v2.3390): staff JWT validated in-body (office roles); read-only Drive listing with the intake service account.
+[functions.drive-contract-scan]
+verify_jwt = false

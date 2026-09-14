@@ -5,9 +5,14 @@
  * agreement on the right, rendered from the same fields the send will mint —
  * nothing sends unseen. The footer says what the primary will do and which
  * job comes next; Send & next is the fast path. Send all lives under ⋯, takes
- * only Ready rows, and says how many customers it will email.
+ * only Ready rows, and says how many customers it will email. PR 3: the scope
+ * and the amount are editable right above the document; edits autosave to the
+ * job's draft — the row the send reuses — and the row's readiness follows.
+ * PR 4: filing a signed copy happens in the pane (Already signed? File it,
+ * File their subcontract) or by dropping a PDF / photo on a row; the shared
+ * JobContractFileSheet writes it and the row leaves the queue.
  */
-import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import type { JobWithDetails } from '../../types/jobWithDetails'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../hooks/useAuth'
@@ -21,6 +26,10 @@ import { isContractGap, type JobContractCoverage } from '../../lib/jobs/jobContr
 import { formatContractFloor } from '../../lib/jobs/jobContractFloor'
 import { buildJobContractDocumentHtml, buildJobContractPrefill, DEFAULT_JOB_CONTRACT_TERMS_PLAIN, jobContractHeading, parseJobContractFields, type EstimateLineForPrefill, type JobContractFields } from '../../lib/jobs/jobContractDocument'
 import { formatContractStamp, type JobContractRow } from '../../lib/jobs/jobContractLifecycle'
+import { buildJobContractDraftPayload, saveJobContractDraft } from '../../lib/jobs/jobContractDraftWrite'
+import { dispatchJobContractChanged } from '../../lib/jobs/jobContractNotNeeded'
+import JobContractFileSheet from './JobContractFileSheet'
+import DriveContractsFoundModal from './DriveContractsFoundModal'
 import { normalizeEstimateLineItemsFromJson } from '../../lib/estimateLineItemNormalize'
 import { renderContractBodyToSafeHtml } from '../../lib/renderContractBodyToSafeHtml'
 import { fetchPhysicalInvoiceIssuerFromAppSettings, getPhysicalInvoiceIssuerForDocument } from '../../lib/physicalInvoiceIssuer'
@@ -137,9 +146,11 @@ export default function JobsContractSweepModal({
   /** ⋯ → Filter the Pipeline to these jobs: the caller closes the sweep and sets the No-contract filter. */
   onFilterBoard?: () => void
 }) {
-  const { user: authUser } = useAuth()
+  const { user: authUser, role: authRole } = useAuth()
   const { showToast } = useToastContext()
   const isMobile = useIsMobile()
+  /** The Drive pass (v2.3390): dev-run until it has been right a few times. */
+  const [driveOpen, setDriveOpen] = useState(false)
   const [templates, setTemplates] = useState<TemplateRow[]>([])
   const [templateId, setTemplateId] = useState(BUILTIN)
   const [emails, setEmails] = useState<Record<string, string>>({})
@@ -154,26 +165,41 @@ export default function JobsContractSweepModal({
   /** The selected job's live draft/sent row, when it has one — the send reuses it, so the pane shows it (PR 2). */
   const [draft, setDraft] = useState<{ jobId: string; row: JobContractRow | null } | null>(null)
   const [issuerReady, setIssuerReady] = useState(false)
+  /** PR 3: what the office typed for the selected job — scope one line per item, the amount as text. */
+  const [paneEdit, setPaneEdit] = useState<{ jobId: string; scopeText: string; amountText: string; dirty: boolean } | null>(null)
+  /** Saved edits per job, so the row's chips follow what was typed after the selection moves on. */
+  const [overrides, setOverrides] = useState<Record<string, { scopeLines: string[]; amountCents: number | null }>>({})
+  const [saveState, setSaveState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
+  const saveTimerRef = useRef<number | null>(null)
+  /** PR 4: the filing sheet open in the pane for a job, with a file when one was dropped on the row. */
+  const [filing, setFiling] = useState<{ jobId: string; file: File | null } | null>(null)
+  const [filedIds, setFiledIds] = useState<ReadonlySet<string>>(() => new Set())
+  const [dragOverId, setDragOverId] = useState<string | null>(null)
 
   const gapRows = useMemo(() => {
     const order: Record<string, number> = { working: 0, waiting: 1, ready_to_bill: 2, billed: 3 }
     return jobs
       .filter((j) => {
         const status = (j.status ?? '') as string
-        return status !== 'paid' && isContractGap(coverage.get(j.id), j.revenue, floorCents) && !sentIds.has(j.id)
+        return status !== 'paid' && isContractGap(coverage.get(j.id), j.revenue, floorCents) && !sentIds.has(j.id) && !filedIds.has(j.id)
       })
       .sort((a, b) => (order[a.status ?? ''] ?? 9) - (order[b.status ?? ''] ?? 9) || String(a.created_at ?? '').localeCompare(String(b.created_at ?? '')))
-  }, [jobs, coverage, sentIds, floorCents])
+  }, [jobs, coverage, sentIds, filedIds, floorCents])
 
   // Templates + the letterhead once per open; the accepted estimates for the
   // rows on screen (the same prefill the Contract modal uses) whenever the row set changes.
   useEffect(() => {
     if (!open) return
     setSentIds(new Set())
+    setFiledIds(new Set())
+    setFiling(null)
     setSendAllArmed(false)
     setFilter('to_send')
     setSelectedId(null)
     setDraft(null)
+    setPaneEdit(null)
+    setOverrides({})
+    setSaveState('idle')
     void (async () => {
       const { data } = await supabase
         .from('contract_template_documents')
@@ -223,21 +249,24 @@ export default function JobsContractSweepModal({
       gapRows.map((j) => {
         const est = accepted.get(j.id)
         const fields = buildJobContractPrefill({ job: j, estimateLines: est?.lines ?? [], acceptedTotalCents: est?.totalCents ?? null })
+        const ov = overrides[j.id]
+        const amountCents = ov ? ov.amountCents : fields.amount_cents
         return {
           id: j.id,
           jobNumber: effectiveJobLedgerNumber(j.hcp_number, j.click_number) || '—',
           jobName: (j.job_name ?? '').trim(),
           email: emailFor(j),
-          revenue: fields.amount_cents != null ? fields.amount_cents / 100 : null,
-          scopeLines: fields.scope_lines,
+          revenue: amountCents != null ? amountCents / 100 : null,
+          scopeLines: ov ? ov.scopeLines : fields.scope_lines,
           gcJob: sweepRowIsGcJob(j),
         }
       }),
-    [gapRows, accepted, emailFor],
+    [gapRows, accepted, emailFor, overrides],
   )
   const states = useMemo(() => assessContractSweepRows(inputs), [inputs])
   const summary = useMemo(() => contractSweepSummary(inputs, states), [inputs, states])
-  const visibleRows = useMemo(() => gapRows.filter((j) => contractSweepFilterMatches(states.get(j.id), filter)), [gapRows, states, filter])
+  // The selected row stays on screen even when an edit moves it out of the filter (a thin row that became Ready) — it leaves when the selection moves on.
+  const visibleRows = useMemo(() => gapRows.filter((j) => j.id === selectedId || contractSweepFilterMatches(states.get(j.id), filter)), [gapRows, states, filter, selectedId])
   const readyRows = gapRows.filter((j) => states.get(j.id)?.readyForBulk)
 
   // Selection follows the visible list: the first row on desktop, none until a tap on phones.
@@ -264,6 +293,68 @@ export default function JobsContractSweepModal({
     }
   }, [open, selected])
   const draftRow = draft && selected && draft.jobId === selected.id ? draft.row : null
+  const draftKnown = Boolean(draft && selected && draft.jobId === selected.id)
+
+  // PR 3: once the selected job's draft is known, the edit fields start from it (or the prefill).
+  useEffect(() => {
+    if (!open || !selected || !draftKnown) return
+    if (paneEdit && paneEdit.jobId === selected.id) return
+    const est = accepted.get(selected.id)
+    const f = draftRow ? parseJobContractFields(draftRow.fields) : buildJobContractPrefill({ job: selected, estimateLines: est?.lines ?? [], acceptedTotalCents: est?.totalCents ?? null })
+    setPaneEdit({ jobId: selected.id, scopeText: f.scope_lines.join('\n'), amountText: f.amount_cents != null ? (f.amount_cents / 100).toFixed(2) : '', dirty: false })
+    setSaveState(draftRow ? 'saved' : 'idle')
+    if (draftRow) setOverrides((prev) => (prev[selected.id] ? prev : { ...prev, [selected.id]: { scopeLines: f.scope_lines, amountCents: f.amount_cents } }))
+  }, [open, selected, draftKnown, draftRow, accepted, paneEdit])
+
+  const editedFields = useCallback(
+    (job: JobWithDetails, edit: { scopeText: string; amountText: string }): JobContractFields => {
+      const est = accepted.get(job.id)
+      const base = draftRow && draftRow.job_id === job.id ? parseJobContractFields(draftRow.fields) : buildJobContractPrefill({ job, estimateLines: est?.lines ?? [], acceptedTotalCents: est?.totalCents ?? null })
+      const n = Number(edit.amountText.replace(/[$,\s]/g, ''))
+      return {
+        ...base,
+        scope_lines: edit.scopeText.split('\n').map((l) => l.trim()).filter(Boolean),
+        amount_cents: edit.amountText.trim() && Number.isFinite(n) && n >= 0 ? Math.round(n * 100) : null,
+      }
+    },
+    [accepted, draftRow],
+  )
+
+  /** Write the pane's edits to the job's draft now (the send gate calls this too). */
+  const flushPaneEdit = useCallback(async (): Promise<JobContractRow | null> => {
+    if (!selected || !paneEdit || paneEdit.jobId !== selected.id) return draftRow
+    if (draftRow && draftRow.status === 'sent') return draftRow
+    if (!paneEdit.dirty) return draftRow
+    const fields = editedFields(selected, paneEdit)
+    setSaveState('saving')
+    try {
+      const row = await saveJobContractDraft({
+        existing: draftRow,
+        payload: buildJobContractDraftPayload({ jobId: selected.id, fields, template, recipientName: (selected.customer_name ?? '').trim(), recipientEmail: emailFor(selected), recipientPhone: selected.customer_phone ?? null }),
+        authUserId: authUser?.id ?? null,
+      })
+      if (row) setDraft({ jobId: selected.id, row })
+      setOverrides((prev) => ({ ...prev, [selected.id]: { scopeLines: fields.scope_lines, amountCents: fields.amount_cents } }))
+      setPaneEdit((prev) => (prev && prev.jobId === selected.id ? { ...prev, dirty: false } : prev))
+      setSaveState('saved')
+      return row
+    } catch {
+      setSaveState('error')
+      return null
+    }
+  }, [selected, paneEdit, draftRow, editedFields, template, emailFor, authUser?.id])
+  const flushRef = useRef(flushPaneEdit)
+  flushRef.current = flushPaneEdit
+
+  // Debounced autosave from the first real edit.
+  useEffect(() => {
+    if (!paneEdit?.dirty) return
+    if (saveTimerRef.current) window.clearTimeout(saveTimerRef.current)
+    saveTimerRef.current = window.setTimeout(() => void flushRef.current(), 600)
+    return () => {
+      if (saveTimerRef.current) window.clearTimeout(saveTimerRef.current)
+    }
+  }, [paneEdit])
 
   const sendOne = async (j: JobWithDetails): Promise<boolean> => {
     setBusyId(j.id)
@@ -294,6 +385,11 @@ export default function JobsContractSweepModal({
   const sendSelected = async (andNext: boolean) => {
     if (!selected) return
     const next = nextRow
+    if (paneEdit?.dirty) {
+      if (saveTimerRef.current) window.clearTimeout(saveTimerRef.current)
+      const row = await flushPaneEdit()
+      if (!row && saveState === 'error') return
+    }
     const sent = await sendOne(selected)
     if (!sent) return
     onSent()
@@ -315,12 +411,38 @@ export default function JobsContractSweepModal({
     }
   }
 
+  /** A file dropped on a row: select the job and open the filing sheet with the file in it — one click to record. */
+  const acceptDroppedFile = (j: JobWithDetails, file: File | null) => {
+    setDragOverId(null)
+    if (!file) return
+    const okType = /^(application\/pdf|image\/(png|jpeg))$/.test(file.type) || /\.(pdf|png|jpe?g)$/i.test(file.name)
+    if (!okType) {
+      showToast('Drop a PDF, PNG or JPG.', 'error')
+      return
+    }
+    setSelectedId(j.id)
+    setFiling({ jobId: j.id, file })
+  }
+  const onFiled = (j: JobWithDetails) => {
+    const next = nextRow
+    setFiling(null)
+    setFiledIds((prev) => new Set([...prev, j.id]))
+    dispatchJobContractChanged()
+    onSent()
+    setSelectedId(next?.id ?? null)
+  }
+
   // The document as the customer gets it — draft row first (that is what the send reuses), else the prefill + the chosen terms.
   const paneHtml = useMemo(() => {
     if (!selected) return ''
     const inp = inputs.find((x) => x.id === selected.id)
     const est = accepted.get(selected.id)
-    const fields: JobContractFields = draftRow ? parseJobContractFields(draftRow.fields) : buildJobContractPrefill({ job: selected, estimateLines: est?.lines ?? [], acceptedTotalCents: est?.totalCents ?? null })
+    const fields: JobContractFields =
+      paneEdit && paneEdit.jobId === selected.id
+        ? editedFields(selected, paneEdit)
+        : draftRow
+          ? parseJobContractFields(draftRow.fields)
+          : buildJobContractPrefill({ job: selected, estimateLines: est?.lines ?? [], acceptedTotalCents: est?.totalCents ?? null })
     const bodyHtml = draftRow ? (draftRow.body_html ?? '') : template ? (template.book_body_html ?? '') : DEFAULT_JOB_CONTRACT_TERMS_PLAIN
     const bodyFormat = draftRow ? draftRow.body_format : template ? template.book_body_format : 'plain'
     const issuer = issuerReady ? getPhysicalInvoiceIssuerForDocument() : null
@@ -338,7 +460,7 @@ export default function JobsContractSweepModal({
       issuer: issuer?.companyName ? issuer : null,
       signature: null,
     })
-  }, [selected, inputs, accepted, draftRow, template, templateName, issuerReady])
+  }, [selected, inputs, accepted, draftRow, template, templateName, issuerReady, paneEdit, editedFields])
 
   if (!open) return null
 
@@ -355,6 +477,9 @@ export default function JobsContractSweepModal({
         ]
       : []),
     ...(onFilterBoard ? [{ key: 'filter-board', label: 'Filter the Pipeline to these jobs', hint: 'The No-contract filter — the same rule as this list', onSelect: onFilterBoard }] : []),
+    ...(authRole === 'dev' && gapRows.length > 0
+      ? [{ key: 'drive', label: 'Look in Drive for signed contracts…', hint: 'The jobs Shared Drive — file what is already signed, nobody is emailed', onSelect: () => setDriveOpen(true) }]
+      : []),
   ]
 
   const selState = selected ? states.get(selected.id) : undefined
@@ -381,10 +506,14 @@ export default function JobsContractSweepModal({
         </button>
       </span>
     </div>
+  ) : selected && filing && filing.jobId === selected.id ? (
+    <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }} data-testid="sweep-pane-footer">
+      Filing replaces the send for this job — nothing goes to the customer.
+    </div>
   ) : selected ? (
     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.5rem 0.75rem', flexWrap: 'wrap' }} data-testid="sweep-pane-footer">
       <div style={{ display: 'flex', gap: '0.25rem', alignItems: 'center', flexWrap: 'wrap' }}>
-        <button type="button" style={btnGhost} disabled={busy} onClick={() => setDetail({ job: selected, filing: true })} title="Already signed on paper or in a Google Doc — file it instead of sending">
+        <button type="button" style={btnGhost} disabled={busy} onClick={() => setFiling({ jobId: selected.id, file: null })} title="Already signed on paper or in a Google Doc — file it instead of sending">
           Already signed? File it
         </button>
         <button type="button" style={{ ...btnGhost, color: 'var(--text-muted)' }} disabled={busy} onClick={() => setDetail({ job: selected, filing: false })} title="Dates, exclusions, extra recipients, a message — the full Contract modal">
@@ -403,7 +532,7 @@ export default function JobsContractSweepModal({
             <button type="button" style={btn} disabled={busy} onClick={() => void sendSelected(true)} title="Send our service agreement to the builder anyway">
               Send ours instead
             </button>
-            <button type="button" style={btnPrimary} disabled={busy} onClick={() => setDetail({ job: selected, filing: true })}>
+            <button type="button" style={btnPrimary} disabled={busy} onClick={() => setFiling({ jobId: selected.id, file: null })}>
               File their subcontract
             </button>
           </>
@@ -442,11 +571,21 @@ export default function JobsContractSweepModal({
         <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }} data-testid="sweep-summary">
           <b style={{ color: 'var(--text-strong)' }}>{summary.all} without a contract</b> · {formatUsdNoCents(summary.revenueTotal)} of work · {summary.needsLook} need{summary.needsLook === 1 ? 's' : ''} a look
           {sentIds.size > 0 ? ` · ${sentIds.size} sent this sweep` : ''}
+          {filedIds.size > 0 ? ` · ${filedIds.size} filed` : ''}
           {floorCents > 0 ? ` · under ${formatContractFloor(floorCents)} left out` : ''}
         </div>
         <div role="group" aria-label="Which rows to show" style={{ display: 'inline-flex', border: '1px solid var(--border)', borderRadius: 6, overflow: 'hidden' }}>
           {CONTRACT_SWEEP_FILTERS.map((f) => (
-            <button key={f} type="button" aria-pressed={filter === f} onClick={() => setFilter(f)} style={segStyle(filter === f)}>
+            <button
+              key={f}
+              type="button"
+              aria-pressed={filter === f}
+              onClick={() => {
+                setFilter(f)
+                setSelectedId(null)
+              }}
+              style={segStyle(filter === f)}
+            >
               {CONTRACT_SWEEP_FILTER_LABELS[f]} · {filterCounts[f]}
             </button>
           ))}
@@ -482,6 +621,21 @@ export default function JobsContractSweepModal({
                       }}
                       data-testid="sweep-row"
                       data-job={num}
+                      onDragOver={(e) => {
+                        if (e.dataTransfer?.types?.includes('Files')) {
+                          e.preventDefault()
+                          if (dragOverId !== j.id) setDragOverId(j.id)
+                        }
+                      }}
+                      onDragLeave={() => {
+                        if (dragOverId === j.id) setDragOverId(null)
+                      }}
+                      onDrop={(e) => {
+                        if (!e.dataTransfer?.files?.length) return
+                        e.preventDefault()
+                        acceptDroppedFile(j, e.dataTransfer.files[0] ?? null)
+                      }}
+                      title="Drop a PDF or photo of the signed contract here to file it"
                       style={{
                         display: 'grid',
                         gridTemplateColumns: 'minmax(0, 1fr) auto',
@@ -491,10 +645,18 @@ export default function JobsContractSweepModal({
                         borderBottom: '1px solid var(--border)',
                         fontSize: '0.8rem',
                         cursor: 'pointer',
-                        background: active ? 'var(--bg-blue-tint)' : 'transparent',
+                        background: dragOverId === j.id ? 'var(--bg-blue-tint)' : active ? 'var(--bg-blue-tint)' : 'transparent',
                         boxShadow: active ? 'inset 3px 0 0 var(--text-link)' : undefined,
+                        outline: dragOverId === j.id ? '2px dashed var(--text-link)' : undefined,
+                        outlineOffset: -3,
+                        position: 'relative',
                       }}
                     >
+                      {dragOverId === j.id ? (
+                        <span style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-link)', background: 'var(--surface)', padding: '2px 8px', borderRadius: 6, border: '1px solid var(--border-strong)', pointerEvents: 'none' }}>
+                          Drop to file as the signed copy
+                        </span>
+                      ) : null}
                       <div style={{ minWidth: 0, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                         <span style={{ color: 'var(--text-muted)', fontWeight: 500 }}>J{num}</span> · {(j.job_name ?? '').trim() || 'Job'}
                         {(j.customer_name ?? '').trim() ? <span style={{ color: 'var(--text-muted)', fontWeight: 500 }}> · {(j.customer_name ?? '').trim()}</span> : null}
@@ -551,7 +713,56 @@ export default function JobsContractSweepModal({
                   </div>
                 )}
               </div>
-              <div style={{ background: 'var(--bg-subtle)', border: '1px solid var(--border)', borderRadius: 8, padding: '0.5rem' }}>
+              {filing && filing.jobId === selected.id ? (
+                <JobContractFileSheet
+                  key={`${selected.id}:${filing.file?.name ?? ''}`}
+                  layout="inline"
+                  inlineTitle={selState?.flags.includes('gc_job') && gcName ? `File ${gcName}'s subcontract` : 'File a signed contract'}
+                  jobId={selected.id}
+                  defaultSignerName={(selected.customer_name ?? '').trim()}
+                  existingDraft={draftRow && draftRow.status === 'draft' ? draftRow : null}
+                  basePayload={buildJobContractDraftPayload({
+                    jobId: selected.id,
+                    fields: paneEdit && paneEdit.jobId === selected.id ? editedFields(selected, paneEdit) : buildJobContractPrefill({ job: selected }),
+                    template,
+                    recipientName: (selected.customer_name ?? '').trim(),
+                    recipientEmail: selEmail,
+                    recipientPhone: selected.customer_phone ?? null,
+                  })}
+                  initialFile={filing.file}
+                  onFiled={() => onFiled(selected)}
+                  onCancel={() => setFiling(null)}
+                />
+              ) : null}
+              {paneEdit && paneEdit.jobId === selected.id && !(filing && filing.jobId === selected.id) ? (
+                <div style={{ display: 'grid', gridTemplateColumns: '56px minmax(0, 1fr)', gap: '0.4rem 0.6rem', alignItems: 'start' }} data-testid="sweep-pane-edit">
+                  <span style={{ ...kLabel, paddingTop: 6 }}>Scope</span>
+                  <textarea
+                    style={{ ...input, minHeight: 64, resize: 'vertical', fontFamily: 'inherit' }}
+                    value={paneEdit.scopeText}
+                    disabled={Boolean(draftRow && draftRow.status === 'sent')}
+                    onChange={(e) => setPaneEdit((prev) => (prev ? { ...prev, scopeText: e.target.value, dirty: true } : prev))}
+                    placeholder="One line per item — what you'll do, in the customer's words"
+                    aria-label="Scope — one line per item"
+                  />
+                  <span style={kLabel}>Amount</span>
+                  <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                    <input
+                      style={{ ...input, maxWidth: 140 }}
+                      inputMode="decimal"
+                      value={paneEdit.amountText}
+                      disabled={Boolean(draftRow && draftRow.status === 'sent')}
+                      onChange={(e) => setPaneEdit((prev) => (prev ? { ...prev, amountText: e.target.value, dirty: true } : prev))}
+                      placeholder="Blank = time and materials"
+                      aria-label="Contract amount"
+                    />
+                    <span style={{ fontSize: '0.7rem', color: saveState === 'error' ? 'var(--text-red-700)' : 'var(--text-faint)' }} data-testid="sweep-save-state">
+                      {draftRow && draftRow.status === 'sent' ? 'Locked — sent; Void & redo in the full editor' : saveState === 'saving' ? 'Saving…' : saveState === 'saved' ? 'Saved to the job’s draft' : saveState === 'error' ? 'Save failed' : 'Edits save to the job’s draft as you type'}
+                    </span>
+                  </div>
+                </div>
+              ) : null}
+              <div style={{ background: 'var(--bg-subtle)', border: '1px solid var(--border)', borderRadius: 8, padding: '0.5rem', opacity: filing && filing.jobId === selected.id ? 0.45 : 1 }}>
                 <iframe title="The agreement as the customer will see it" srcDoc={paneHtml} sandbox="" style={{ width: '100%', height: isMobile ? '60vh' : '54vh', border: '1px solid var(--border)', borderRadius: 4, background: 'var(--surface)', display: 'block' }} />
                 <div style={{ fontSize: '0.7rem', color: 'var(--text-faint)', textAlign: 'center', marginTop: '0.3rem' }}>Exactly what the signing page and the PDF will show{draftRow ? '' : ' — from the job’s fixtures or its accepted estimate, and the terms above'}.</div>
               </div>
@@ -559,12 +770,23 @@ export default function JobsContractSweepModal({
           ) : null}
         </div>
       )}
+      <DriveContractsFoundModal
+        open={driveOpen}
+        onClose={() => setDriveOpen(false)}
+        jobs={gapRows}
+        onFiled={(ids) => {
+          setFiledIds((prev) => new Set([...prev, ...ids]))
+          dispatchJobContractChanged()
+          onSent()
+        }}
+      />
       <JobContractModal
         open={detail != null}
         onClose={() => {
           setDetail(null)
-          // The modal may have autosaved a draft or filed a copy — re-read the selected job's row.
+          // The modal may have autosaved a draft or filed a copy — re-read the selected job's row and the edit fields.
           setDraft(null)
+          setPaneEdit(null)
         }}
         job={detail?.job ?? null}
         initialFilingOpen={detail?.filing ?? false}

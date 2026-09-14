@@ -11,10 +11,9 @@ import type { Database } from '../../types/database'
 import { supabase } from '../../lib/supabase'
 import { withSupabaseRetry } from '../../utils/errorHandling'
 import { useAuth } from '../../hooks/useAuth'
-import { todayYmdInAppTz } from '../../utils/dateUtils'
 import { useToastContext } from '../../contexts/ToastContext'
 import ResponsiveModalShell from '../ResponsiveModalShell'
-import { JOB_CONTRACT_BUCKET } from './JobContractRecordModal'
+import JobContractFileSheet from './JobContractFileSheet'
 import JobSignedAgreementModal from './JobSignedAgreementModal'
 import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
 import { normalizeEstimateLineItemsFromJson } from '../../lib/estimateLineItemNormalize'
@@ -24,9 +23,6 @@ import { fetchPhysicalInvoiceIssuerFromAppSettings, getPhysicalInvoiceIssuerForD
 import {
   buildJobContractDocumentHtml,
   buildJobContractPrefill,
-  isGoogleDocsUrl,
-  isHttpUrl,
-  shortDocumentLabel,
   DEFAULT_JOB_CONTRACT_TERMS_PLAIN,
   EMPTY_JOB_CONTRACT_FIELDS,
   formatContractMoney,
@@ -127,14 +123,6 @@ export default function JobContractModal({ open, onClose, job, onChanged, onJobC
   const [voidArmed, setVoidArmed] = useState(false)
   const [lastLink, setLastLink] = useState<string | null>(null)
   const [paperOpen, setPaperOpen] = useState(false)
-  const [paperSignedOn, setPaperSignedOn] = useState('')
-  const [paperSignerName, setPaperSignerName] = useState('')
-  const [paperFile, setPaperFile] = useState<File | null>(null)
-  const [paperLink, setPaperLink] = useState('')
-  /** The green "linked" line only after a paste / Enter / blur — typing keeps the input mounted (v2.2744). */
-  const [paperLinkCommitted, setPaperLinkCommitted] = useState(false)
-  const [paperAttachOpen, setPaperAttachOpen] = useState(false)
-  const [paperBusy, setPaperBusy] = useState(false)
   const [recordRow, setRecordRow] = useState<JobContractRow | null>(null)
   /** Not needed (PR 0): undefined = read the job; null = withdrawn this session; an object = answered this session. */
   const [notNeededLocal, setNotNeededLocal] = useState<{ at: string; reason: string | null } | null | undefined>(undefined)
@@ -189,11 +177,6 @@ export default function JobContractModal({ open, onClose, job, onChanged, onJobC
     setLastLink(null)
     setMessage('')
     setPaperOpen(initialFilingOpen)
-    setPaperSignedOn(todayYmdInAppTz())
-    setPaperFile(null)
-    setPaperLink('')
-    setPaperLinkCommitted(false)
-    setPaperAttachOpen(false)
     setRecordRow(null)
     setNotNeededLocal(undefined)
     setNotNeededOpen(false)
@@ -544,76 +527,15 @@ export default function JobContractModal({ open, onClose, job, onChanged, onJobC
     }
   }
 
-  /** Upload signed copy / record a paper signature: a signed row with signer_mode 'paper' (no token, no email). */
-  const recordPaper = async () => {
-    if (!job || paperBusy) return
-    const name = paperSignerName.trim() || recipientName.trim() || (job.customer_name ?? '').trim()
-    if (!name) {
-      showToast('Enter who signed the contract.', 'error')
-      return
-    }
-    const link = paperLink.trim()
-    if (!isHttpUrl(link) && !paperFile) {
-      showToast('Paste the Google Doc link, or attach a scan.', 'error')
-      return
-    }
-    setPaperBusy(true)
-    try {
-      const nowIso = new Date().toISOString()
-      const base = {
-        ...(buildRowPayload() ?? { job_id: job.id }),
-        status: 'signed',
-        signed_at: paperSignedOn ? `${paperSignedOn}T12:00:00Z` : nowIso,
-        signer_printed_name: name,
-        signer_mode: 'paper',
-        signer_consented_at: null,
-        paper_signed_on: paperSignedOn || null,
-        signed_document_url: isHttpUrl(link) ? link : null,
-        recorded_by: authUser?.id ?? null,
-        public_token: null,
-        next_reminder_at: null,
-      }
-      let row: JobContractRow | null = null
-      if (liveRow && jobContractStatus(liveRow) === 'draft') {
-        row = await withSupabaseRetry<JobContractRow>(
-          () => supabase.from('job_contracts').update(base).eq('id', liveRow.id).eq('status', 'draft').select('*').single(),
-          'record paper contract (draft)',
-        )
-      } else {
-        row = await withSupabaseRetry<JobContractRow>(
-          () => supabase.from('job_contracts').insert({ ...base, created_by: authUser?.id ?? null }).select('*').single(),
-          'record paper contract',
-        )
-      }
-      if (row && paperFile) {
-        const ext = (paperFile.name.split('.').pop() || 'pdf').toLowerCase().replace(/[^a-z0-9]/g, '') || 'pdf'
-        const path = `${row.id}/paper.${ext}`
-        const { error: upErr } = await supabase.storage.from(JOB_CONTRACT_BUCKET).upload(path, paperFile, { contentType: paperFile.type || undefined, upsert: true })
-        if (upErr) {
-          showToast('Recorded the paper signature, but the file did not upload (storage bucket not ready).', 'error')
-        } else {
-          await withSupabaseRetry(() => supabase.from('job_contracts').update({ paper_upload_path: path }).eq('id', row!.id), 'attach paper upload')
-        }
-      }
-      if (row) {
-        await supabase.from('job_contract_events').insert({ contract_id: row.id, event_type: 'recorded', metadata: { paper_signed_on: paperSignedOn || null, file: !!paperFile }, actor_user_id: authUser?.id ?? null })
-      }
-      setPaperOpen(false)
-      setPaperFile(null)
-      hydratedRef.current = false
-      setLiveRow(null)
-      await loadRows()
-      showToast('Signed contract filed — the job now reads signed.', 'success')
-      dispatchChanged()
-      onChanged?.()
-    } catch {
-      showToast('Could not record the paper contract.', 'error')
-    } finally {
-      setPaperBusy(false)
-    }
+  /** The filing sheet recorded a signed row (paper / Google Doc) — reload and tell the board (the sheet itself writes through fileSignedJobContract). */
+  const onPaperFiled = async () => {
+    setPaperOpen(false)
+    hydratedRef.current = false
+    setLiveRow(null)
+    await loadRows()
+    dispatchChanged()
+    onChanged?.()
   }
-
-  const paperReady = isHttpUrl(paperLink) || paperFile != null
 
   /** Not needed (PR 0): the office says this job needs no agreement of ours — a fact on the job, not a contract row. */
   const notNeeded: { at: string; reason: string | null } | null =
@@ -905,101 +827,16 @@ export default function JobContractModal({ open, onClose, job, onChanged, onJobC
           </div>
         ) : null}
       </div>
-      {paperOpen ? (
-        <ResponsiveModalShell
-          title="File a signed contract"
-          onRequestClose={() => setPaperOpen(false)}
-          maxWidthDesktop={540}
-          zIndex={1300}
-          footer={
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
-              <button type="button" style={btn} disabled={paperBusy} onClick={() => setPaperOpen(false)}>
-                Cancel
-              </button>
-              <button type="button" style={{ ...btnPrimary, opacity: paperReady ? 1 : 0.55 }} disabled={paperBusy || !paperReady} onClick={() => void recordPaper()} title={paperReady ? undefined : 'Paste the Google Doc link, or attach a scan'}>
-                {paperBusy ? 'Recording…' : 'Record as signed'}
-              </button>
-            </div>
-          }
-        >
-          <div style={{ fontSize: '0.85rem', display: 'grid', gap: '0.7rem' }}>
-            <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>Already signed outside the app? Paste the Google Doc and the job reads signed. Nothing is sent to the customer.</div>
-            {paperLinkCommitted && isHttpUrl(paperLink) ? (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.55rem', padding: '0.5rem 0.7rem', borderRadius: 8, background: 'var(--bg-green-tint)', border: '1px solid var(--border)', color: 'var(--text-green-800)', fontSize: '0.8rem' }}>
-                <span aria-hidden style={{ width: 16, height: 20, borderRadius: 3, background: 'var(--text-link)', flexShrink: 0 }} />
-                <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                  <b>{isGoogleDocsUrl(paperLink) ? 'Google Doc linked' : 'Link filed'}</b> · {shortDocumentLabel(paperLink)}
-                </span>
-                <button type="button" onClick={() => { setPaperLink(''); setPaperLinkCommitted(false) }} style={{ ...btn, padding: '0.15rem 0.5rem', fontSize: '0.72rem', borderColor: 'transparent', background: 'transparent', color: 'var(--text-muted)' }}>
-                  change
-                </button>
-              </div>
-            ) : (
-              <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'flex-start', padding: '0.7rem 0.85rem', borderRadius: 10, border: '1.5px dashed var(--text-link)', background: 'var(--bg-blue-tint)' }}>
-                <span aria-hidden style={{ width: 30, height: 38, borderRadius: 4, background: 'var(--text-link)', flexShrink: 0, marginTop: 2 }} />
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontWeight: 700, color: 'var(--text-strong)', fontSize: '0.88rem' }}>Paste the Google Doc link</div>
-                  <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Share → Copy link in Google Docs, then paste it here.</div>
-                  <input
-                    style={{ ...inputStyle, marginTop: '0.4rem' }}
-                    value={paperLink}
-                    onChange={(e) => setPaperLink(e.target.value)}
-                    onBlur={() => { if (isHttpUrl(paperLink)) setPaperLinkCommitted(true) }}
-                    onKeyDown={(e) => { if (e.key === 'Enter' && isHttpUrl(paperLink)) { e.preventDefault(); setPaperLinkCommitted(true) } }}
-                    onPaste={(e) => {
-                      const t = e.clipboardData.getData('text')
-                      if (t) {
-                        e.preventDefault()
-                        setPaperLink(t.trim())
-                        setPaperLinkCommitted(isHttpUrl(t))
-                      }
-                    }}
-                    placeholder="https://docs.google.com/document/d/…"
-                    inputMode="url"
-                    aria-label="Google Doc link"
-                    autoFocus
-                  />
-                  {paperLink.trim() && !isHttpUrl(paperLink) ? (
-                    <div style={{ marginTop: '0.35rem', fontSize: '0.74rem', color: 'var(--text-orange-800)', background: 'var(--bg-orange-tint)', borderRadius: 6, padding: '0.3rem 0.5rem' }}>
-                      That isn&apos;t a link yet — paste the doc&apos;s Share link, or attach a file below.
-                    </div>
-                  ) : null}
-                </div>
-              </div>
-            )}
-            {paperLinkCommitted && isHttpUrl(paperLink) && !isGoogleDocsUrl(paperLink) ? (
-              <div style={{ fontSize: '0.74rem', color: 'var(--text-orange-800)', background: 'var(--bg-orange-tint)', borderRadius: 6, padding: '0.3rem 0.5rem' }}>
-                That isn&apos;t a Google link. It will be filed as-is — paste the doc&apos;s Share link if you have one.
-              </div>
-            ) : null}
-            <div style={rowStyle}>
-              <span style={labelStyle}>Signed by</span>
-              <input style={inputStyle} value={paperSignerName} onChange={(e) => setPaperSignerName(e.target.value)} placeholder={recipientName.trim() || job.customer_name || 'Customer name'} />
-              <span style={labelStyle}>Signed on</span>
-              <input style={{ ...inputStyle, maxWidth: 180 }} type="date" value={paperSignedOn} onChange={(e) => setPaperSignedOn(e.target.value)} aria-label="Date the contract was signed" />
-            </div>
-            {paperAttachOpen ? (
-              <div style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '0.5rem 0.7rem', background: 'var(--bg-subtle)', display: 'grid', gap: '0.35rem', fontSize: '0.8rem' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <b>Scan or photo</b>
-                  <button type="button" onClick={() => { setPaperAttachOpen(false); setPaperFile(null) }} style={{ ...btn, padding: '0.1rem 0.4rem', fontSize: '0.7rem', borderColor: 'transparent', background: 'transparent', color: 'var(--text-muted)' }}>
-                    optional · hide
-                  </button>
-                </div>
-                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
-                  <input type="file" accept="image/png,image/jpeg,application/pdf" onChange={(e) => setPaperFile(e.target.files?.[0] ?? null)} style={{ fontSize: '0.78rem' }} />
-                  <span style={{ color: 'var(--text-muted)', fontSize: '0.72rem' }}>PNG, JPG or PDF · kept with the job</span>
-                </div>
-              </div>
-            ) : (
-              <div style={{ textAlign: 'right' }}>
-                <button type="button" onClick={() => setPaperAttachOpen(true)} style={{ background: 'none', border: 'none', padding: 0, font: 'inherit', fontSize: '0.72rem', color: 'var(--text-faint)', textDecoration: 'underline dotted', cursor: 'pointer' }}>
-                  Have a scan or photo instead?
-                </button>
-              </div>
-            )}
-          </div>
-        </ResponsiveModalShell>
+      {paperOpen && job ? (
+        <JobContractFileSheet
+          layout="sheet"
+          jobId={job.id}
+          defaultSignerName={recipientName.trim() || (job.customer_name ?? '').trim()}
+          existingDraft={liveRow && jobContractStatus(liveRow) === 'draft' ? liveRow : null}
+          basePayload={buildRowPayload()}
+          onFiled={() => void onPaperFiled()}
+          onCancel={() => setPaperOpen(false)}
+        />
       ) : null}
       <JobSignedAgreementModal
         open={recordRow != null}

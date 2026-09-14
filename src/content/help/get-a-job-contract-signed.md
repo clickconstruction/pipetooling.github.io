@@ -114,13 +114,17 @@ The header counts the pile — *104 without a contract · $1,349,981 of work · 
 - {{chip:blue|GC job · file theirs}} — the customer is a builder; their subcontract is the agreement. {{button:blue|File theirs}} opens the filing sheet.
 - {{chip:blue|+ J798}} — this customer has another job in the sweep; each job sends its own agreement.
 
-**The sweep shows the agreement before it sends.** Tap a row and the right side shows that job's agreement exactly as the customer will see it — letterhead, the work, the amount and payment line, the terms — built from the job's fixtures (or its accepted estimate) and the terms you pick above it. Fix the signer's email in the **To** box. The footer says what the button will do — *Emails kcallison@tfharper.com · then J363* — and {{button:blue|Send & next}} sends it and lands you on the next job. {{button:outline|Skip}} moves on without sending.
+**The sweep shows the agreement before it sends.** Tap a row and the right side shows that job's agreement exactly as the customer will see it — letterhead, the work, the amount and payment line, the terms — built from the job's fixtures (or its accepted estimate) and the terms you pick above it. Fix the signer's email in the **To** box, and type the **Scope** (one line per item) and the **Amount** right above the document — the page redraws as you type and the edits save to the job's draft, so what you see is what goes out. A row that read {{chip:yellow|Scope is just the name}} turns {{chip:green|Ready}} once the scope says more. The footer says what the button will do — *Emails kcallison@tfharper.com · then J363* — and {{button:blue|Send & next}} sends it and lands you on the next job. {{button:outline|Skip}} moves on without sending.
 
 :::example The footer follows the row
 On a builder's job the primary reads {{button:blue|File their subcontract}} (their paper is the agreement) with {{button:outline|Send ours instead}} beside it. A thin scope or no amount dims Send & next and offers {{button:outline|Send anyway}} — the sentence says what is unusual. No email? {{button:blue|Fix email on the job}}. **Already signed? File it** and **Open the full editor** sit at the left of the footer.
 :::
 
+**File a signed copy from the sweep.** {{button:outline|Already signed? File it}} at the left of the footer (or {{button:blue|File their subcontract}} on a builder's job) opens the filing sheet right in the pane: paste the Google Doc link or attach the scan, check who signed and when, {{button:blue|Record as signed}}. Faster still, **drag the PDF or photo onto the row** — the row lights up with *Drop to file as the signed copy*, the sheet opens with the file in it, and one click records it. The row leaves the queue and the header counts it.
+
 If the job already has a draft or a contract out for signature, the pane shows that one — the send reuses it rather than making a second — and the full editor is where to change it.
+
+**Already signed, but in Google Drive?** A dev can run **⋯ → Look in Drive for signed contracts…**: the app reads the jobs Shared Drive, matches contract-looking files to the jobs in the sweep by folder and file name, and shows {{chip:green|Confident}}, {{chip:yellow|Check}} and {{chip:gray|No match}} groups with the reason on every row. {{button:blue|File the 31 confident}} files them all with the Drive link as the signed copy; **File** on a Check row does one. Nobody is emailed.
 
 **Send all** lives under **⋯** at the top right: it takes only {{chip:green|Ready}} rows and asks once with the real number — *Email 81 customers (87 agreements)?* — before anything goes out. Rows leave the list as they send, and the Dashboard count falls with them. On a phone the list is the screen; tap a job to see its agreement.
 

@@ -19,7 +19,9 @@ import { buildJobContractDocumentHtml, isGoogleDocsUrl, jobContractHeading, pars
 import { formatContractStamp, jobContractSignatureAuditLine, type JobContractRow } from '../../lib/jobs/jobContractLifecycle'
 import { signedRecordId } from '../../lib/signedRecordId'
 
-export const JOB_CONTRACT_BUCKET = 'job-contract-documents'
+import { JOB_CONTRACT_BUCKET } from '../../lib/jobs/jobContractFileWrite'
+
+export { JOB_CONTRACT_BUCKET }
 
 export type JobContractRecordJob = {
   hcp_number: string | null
