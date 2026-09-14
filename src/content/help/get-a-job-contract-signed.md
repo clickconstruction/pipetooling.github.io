@@ -2,7 +2,7 @@
 title: get a job contract signed
 category: Office
 roles: dev, master_technician, assistant, controller
-keywords: contract, agreement, signature, sign, e-sign, no contract, contract chip, pipeline filter, customer signs, send contract, sign in person, void and redo, paper contract, upload signed copy, signed record, contract book audience, contract sweep, backlog, needs you, not needed, contract floor, small jobs, gc subcontract
+keywords: contract, agreement, signature, sign, e-sign, no contract, contract chip, pipeline filter, customer signs, send contract, sign in person, void and redo, paper contract, upload signed copy, signed record, contract book audience, contract sweep, backlog, needs you, not needed, contract floor, small jobs, gc subcontract, new job, does it need a contract
 order: 74
 ---
 Every job should have a signed agreement with its customer on file — including jobs that already started. The app tells you which ones don't, and gives the office one place to send and track them.
@@ -24,6 +24,17 @@ Hover the chip for the full story (who it went to, whether it's been opened).
 ## Find the jobs without one
 
 **Jobs → Pipeline** opens with a card under **Today's money opportunities**: {{chip:yellow|✍ Get contracts signed — 58 live jobs without, $412k of work}}. It counts every stage except Paid in full, and accepted estimates and bid-room signatures already count. One chip per stage shows the gap — tap {{chip:yellow|Working 15}} and the board filters to those jobs and jumps to that section; a stage with nothing missing reads {{chip:green|Ready to Bill ✓}}. {{button:blue|Start the sweep →}} opens the sweep described below. When every live job is covered, the card becomes a single green line.
+
+## A new job asks once
+
+Save a new job by hand and one small question follows — {{chip:blue|Does J523 need a contract?}} — with the job line and three doors:
+
+- {{button:blue|Send our agreement}} opens the Contract modal prefilled from the job.
+- {{button:outline|File a signed copy}} opens it straight onto the filing sheet. On a builder's job this door comes first and reads {{button:blue|File Summit GC's subcontract}} — their paper is the agreement, so file it rather than sending ours.
+- {{button:outline|Not needed…}} takes the reason and the job leaves the count.
+- **Later** leaves the job in the count for the sweep.
+
+Jobs created from a won bid or an accepted estimate are already covered and never ask; neither do jobs under the floor.
 
 ## Not every job needs one
 
@@ -94,7 +105,24 @@ The built-in terms get you started. To use your own, open **People → Contracts
 
 The Dashboard's **Needs You** list shows {{chip:yellow|14 live jobs have no contract on file}} with {{button:blue|Start the sweep}}, and a second line for contracts out for signature a week without an answer. The sweep also lives in the Pipeline's **⋯** menu as **Contract sweep…**.
 
-Every live job without an agreement is one row: job, address, stage, amount, the customer's email, and {{button:blue|Send}}. Pick the terms once in the footer, then send row by row — or {{button:blue|Send all 9 ready}} for every row with a valid email (it asks once to confirm). Rows with no email get {{button:outline|Fix email}}, which opens the job. Click a job name to open the full Contract modal instead, for careful edits or to record a paper copy. Rows leave the list as they send, and the Dashboard count falls with them.
+The header counts the pile — *104 without a contract · $1,349,981 of work · 17 need a look* — and **To send · Needs a look · All** splits it. Every row is one job: job · customer, the amount, address · stage, the signer's email, and what the app already knows:
+
+- {{chip:green|Ready}} — the email parses, the scope says more than the job's name, the job has an amount. {{button:blue|Send}} sends it.
+- {{chip:yellow|Scope is just the name}} — no fixtures and no accepted-estimate lines, so the agreement would read *Work we'll do: Job*. {{button:outline|Add scope}} opens the Contract modal to type it.
+- {{chip:yellow|No amount}} — it would read *Billed at completion (time and materials)*. Send it one at a time if that is right; Send all skips it.
+- {{chip:red|No email}} — {{button:outline|Fix email}} opens the job.
+- {{chip:blue|GC job · file theirs}} — the customer is a builder; their subcontract is the agreement. {{button:blue|File theirs}} opens the filing sheet.
+- {{chip:blue|+ J798}} — this customer has another job in the sweep; each job sends its own agreement.
+
+**The sweep shows the agreement before it sends.** Tap a row and the right side shows that job's agreement exactly as the customer will see it — letterhead, the work, the amount and payment line, the terms — built from the job's fixtures (or its accepted estimate) and the terms you pick above it. Fix the signer's email in the **To** box. The footer says what the button will do — *Emails kcallison@tfharper.com · then J363* — and {{button:blue|Send & next}} sends it and lands you on the next job. {{button:outline|Skip}} moves on without sending.
+
+:::example The footer follows the row
+On a builder's job the primary reads {{button:blue|File their subcontract}} (their paper is the agreement) with {{button:outline|Send ours instead}} beside it. A thin scope or no amount dims Send & next and offers {{button:outline|Send anyway}} — the sentence says what is unusual. No email? {{button:blue|Fix email on the job}}. **Already signed? File it** and **Open the full editor** sit at the left of the footer.
+:::
+
+If the job already has a draft or a contract out for signature, the pane shows that one — the send reuses it rather than making a second — and the full editor is where to change it.
+
+**Send all** lives under **⋯** at the top right: it takes only {{chip:green|Ready}} rows and asks once with the real number — *Email 81 customers (87 agreements)?* — before anything goes out. Rows leave the list as they send, and the Dashboard count falls with them. On a phone the list is the screen; tap a job to see its agreement.
 
 ## Reminders and the customer's account page
 

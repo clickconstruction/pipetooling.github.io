@@ -49,6 +49,7 @@ import {
   type JobContractRow,
 } from '../../lib/jobs/jobContractLifecycle'
 import { CONTRACT_NOT_NEEDED_REASONS } from '../../lib/jobs/jobContractCoverage'
+import { clearJobContractNotNeeded, markJobContractNotNeeded } from '../../lib/jobs/jobContractNotNeeded'
 
 type TemplateRow = Pick<
   Database['public']['Tables']['contract_template_documents']['Row'],
@@ -65,6 +66,8 @@ export type JobContractModalProps = {
   onChanged?: () => void
   /** Fires when the job row itself changed (Not needed answered or withdrawn, PR 0) — the caller reloads its jobs list. */
   onJobChanged?: () => void
+  /** Open straight onto the File a signed contract sheet (PR 0c: the new-job door's "File the builder's subcontract"). */
+  initialFilingOpen?: boolean
 }
 
 const labelStyle: React.CSSProperties = { fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 600 }
@@ -102,7 +105,7 @@ function dispatchChanged() {
   }
 }
 
-export default function JobContractModal({ open, onClose, job, onChanged, onJobChanged }: JobContractModalProps) {
+export default function JobContractModal({ open, onClose, job, onChanged, onJobChanged, initialFilingOpen = false }: JobContractModalProps) {
   const { user: authUser } = useAuth()
   const { showToast } = useToastContext()
 
@@ -185,7 +188,7 @@ export default function JobContractModal({ open, onClose, job, onChanged, onJobC
     setVoidArmed(false)
     setLastLink(null)
     setMessage('')
-    setPaperOpen(false)
+    setPaperOpen(initialFilingOpen)
     setPaperSignedOn(todayYmdInAppTz())
     setPaperFile(null)
     setPaperLink('')
@@ -217,7 +220,7 @@ export default function JobContractModal({ open, onClose, job, onChanged, onJobC
       }
     })()
     void fetchPhysicalInvoiceIssuerFromAppSettings().catch(() => undefined)
-  }, [open, job, loadRows])
+  }, [open, job, loadRows, initialFilingOpen])
 
   // Resume the live row (draft or sent) — its saved fields ARE the document.
   useEffect(() => {
@@ -619,20 +622,12 @@ export default function JobContractModal({ open, onClose, job, onChanged, onJobC
     if (!job || notNeededBusy) return
     setNotNeededBusy(true)
     try {
-      const nowIso = new Date().toISOString()
-      await withSupabaseRetry(
-        () =>
-          supabase
-            .from('jobs_ledger')
-            .update(
-              value
-                ? { contract_not_needed_at: nowIso, contract_not_needed_by: authUser?.id ?? null, contract_not_needed_reason: value.reason.trim() || null }
-                : { contract_not_needed_at: null, contract_not_needed_by: null, contract_not_needed_reason: null },
-            )
-            .eq('id', job.id),
-        value ? 'mark job contract not needed' : 'clear job contract not needed',
-      )
-      setNotNeededLocal(value ? { at: nowIso, reason: value.reason.trim() || null } : null)
+      if (value) {
+        setNotNeededLocal(await markJobContractNotNeeded(job.id, value.reason, authUser?.id ?? null))
+      } else {
+        await clearJobContractNotNeeded(job.id)
+        setNotNeededLocal(null)
+      }
       setNotNeededOpen(false)
       showToast(value ? 'Marked not needed — this job leaves the contract count.' : 'Needed after all — this job is back in the count.', 'success')
       dispatchChanged()
