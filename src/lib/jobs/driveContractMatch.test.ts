@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { contractFileStrength, folderMatchesJob, matchDriveContracts, signedOnFromModified, streetKey, summarizeDriveMatches, type DriveMatchJob, type DriveScanFile } from './driveContractMatch'
+import { contractFileStrength, folderMatchesJob, matchDriveContracts, partyNamesAgree, signedOnFromModified, streetKey, summarizeDriveMatches, type DriveMatchJob, type DriveScanFile } from './driveContractMatch'
 
 function file(p: Partial<DriveScanFile> & { name: string; folderName: string }): DriveScanFile {
   return { id: `f-${p.name}`, mimeType: 'application/pdf', modifiedTime: '2026-06-14T15:00:00.000Z', webViewLink: 'https://drive.google.com/file/d/x/view', size: 1, folderId: 'fo', ...p }
@@ -20,6 +20,22 @@ describe('the Drive pass matcher', () => {
     expect(contractFileStrength('A-1.2 plans.pdf')).toBe('no')
     expect(contractFileStrength('signed change order 3.pdf')).toBe('no')
     expect(contractFileStrength('Lien waiver signed.pdf')).toBe('no')
+    expect(contractFileStrength('Signed Inspection Report (Mon Jun 29, 2026).pdf')).toBe('no')
+    expect(contractFileStrength('Kerrville TX (GEO Report) - signed.pdf')).toBe('no')
+    expect(contractFileStrength('Loberg Insurance Rider for Subcontractors.pdf')).toBe('no')
+    expect(contractFileStrength('Joeris Subcontract SAMPLE Template 2024.pdf')).toBe('no')
+    expect(contractFileStrength('CLICK PLUMBING - EST. #123 - 105 DOVER RD. - SIGNED (3.27.2026).pdf')).toBe('strong')
+  })
+
+  it('party names agree by their identifying words, in any order, ignoring RMC / LLC / Contracting', () => {
+    expect(partyNamesAgree('_Mason Dudley', 'RMC- Dudley Mason')).toBe(true)
+    expect(partyNamesAgree('_Knight Contracting', 'Knight Contracting')).toBe(true)
+    expect(partyNamesAgree('_Heron Construction', 'Heron Construction Group')).toBe(true)
+    expect(partyNamesAgree('Michael Hageman', 'Michael Palmer')).toBe(false)
+    expect(partyNamesAgree('Ryan Wilson', 'Suzy Wilson')).toBe(false)
+    const job: DriveMatchJob = { id: 'j651', jobNumber: '651', jobName: 'Dudley Mason', jobAddress: '233 Palomino Trail, Natalia, TX 78059', customerName: 'RMC- Dudley Mason', gcName: 'RMC- Dudley Mason' }
+    expect(folderMatchesJob('_Mason Dudley', job).strength).toBe('customer')
+    expect(folderMatchesJob('_Mason Dudley / 233 Palomino Trail / Contracts', job).strength).toBe('street')
   })
 
   it('keys an address by number + street and matches folders by street, number, job name or customer', () => {

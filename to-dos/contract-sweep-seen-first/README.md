@@ -44,6 +44,12 @@ Rejected: keeping Send all as the footer primary; treating "email parses" as rea
 - Is the builder's subcontract the agreement on a GC job, so Send all skips those rows?
 - May a dev run the first Drive pass and file the confident matches?
 
+## The first Drive pass (2026-09-14, live)
+
+Run as dev on the folder the owner shared: 422 contract-looking files, 267 job folders, 2 roots. Folders are named by **customer** (builders with a leading `_`), files sit 2–3 deep, and 300 of the 422 are a bids tree (proposals, spec divisions, sample subcontracts). Against the 104 jobs without a contract: **1 confident** (J931 Heron, a signed estimate for 105 Dover Rd — filed live through Found in Drive), 8 to check (J778 Austin Real Estate `austin sign signed contract.pdf` looks real; the rest are proposals), 114 unmatched (paid jobs' customers). So for these 104 jobs the pile is mostly not in Drive. Fixes shipped as v2.3392 (chain walk, customer-name words, report/rider/sample exclusions).
+
+**New owner decision — customer-level agreements**: Dudley Mason (22 live jobs), Knight (6), Palmer (5), Heron (4) share one email and one Drive folder each. One signed master subcontract per builder would cover every job at once; today each job needs its own record. Worth a small model change (`customer_contracts`, coverage reads it after job-level records) if the builders' paper is a master agreement.
+
 ## How to verify
 
 Dev login → Jobs → Pipeline. The Get contracts signed card's third line reads the floor and the two exclusions; **change** (dev) sets the floor and the count moves. Open any Working job's *No contract* chip → **Not needed…** → a reason → the row reads *No contract · not needed* and the card's count falls by one; **Needed after all** puts it back. `?contract=missing` and the sweep's ⋯ count agree with the card. Prod-safe: Not needed writes three columns on the job and nothing to the customer.
