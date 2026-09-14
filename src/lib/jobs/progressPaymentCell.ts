@@ -64,7 +64,16 @@ export type ProgressPaymentView = {
   /** Stages mode: the word after the live chip's name — "Behar", "today"; null = none. */
   liveChipSuffix: string | null
   segments: ProgressPaymentSegment[]
-  words: { text: string; tone: ProgressPaymentTone }
+  /**
+   * `text` is what the row PRINTS: the stage, the crew and the percent. It
+   * deliberately leaves the money out — the legend under the bar already
+   * prints Paid / Billed / Done, not billed / Not done, and repeating it made
+   * the sentence outrun a 176 px column (v2.3447; 40 of 92 live rows clipped).
+   * `full` adds the money clause for the tooltip and the bar's accessible
+   * name, where there is room and no legend beside it. The money still sets
+   * the `tone`.
+   */
+  words: { text: string; full: string; tone: ProgressPaymentTone }
   /** The percent on record predates the last clock-in: not drawn as a fill. */
   stale: boolean
   /** The percent the row shows, with its source and date, or null. */
@@ -230,7 +239,8 @@ export function buildProgressPaymentView(input: ProgressPaymentInput): ProgressP
     const cc = crew && (crew.lastWorkYmd || crew.sheet) ? crewClause(crew, todayYmd) : null
     const onSiteNow = !!crew?.onSiteToday
     const text = onSiteNow ? `${cc} · no lines on the job · nothing to bill against` : cc ? `no lines on the job · ${cc}` : 'no lines on the job · nothing to bill against'
-    return { mode: 'nobid', stageBar: null, liveChipSuffix: null, segments: [], words: { text, tone: onSiteNow ? 'red' : 'muted' }, stale, percent, offerSetStages: false }
+    // No bar and no money in the legend to repeat: the whole sentence prints.
+    return { mode: 'nobid', stageBar: null, liveChipSuffix: null, segments: [], words: { text, full: text, tone: onSiteNow ? 'red' : 'muted' }, stale, percent, offerSetStages: false }
   }
 
   const paidInFull = input.status === 'paid' || money.paid >= money.total - 0.005
@@ -301,14 +311,15 @@ export function buildProgressPaymentView(input: ProgressPaymentInput): ProgressP
     })
     const live = liveIdx === -1 ? null : segs[liveIdx]!
     const head = live ? live.name : `All ${segs.length} stages done`
-    const text = live ? `${head} · ${crewClause(crew, todayYmd)} · ${percentClause(percent)} · ${mc.text}` : `${head} · ${mc.text}`
+    const text = live ? `${head} · ${crewClause(crew, todayYmd)} · ${percentClause(percent)}` : head
+    const full = `${text} · ${mc.text}`
     const tone: ProgressPaymentTone = paidInFull ? 'green' : mc.tone === 'amber' || stageBar.captionTone === 'amber' ? 'amber' : 'plain'
     const view: ProgressPaymentView = {
       mode: 'stages',
       stageBar: { ...stageBar, liveNumber: live ? live.number : null, segments: segs.map((s, i) => ({ ...s, state: segments[i]!.state, workPct: segments[i]!.fillPct })) },
       liveChipSuffix: live ? liveSuffix : null,
       segments,
-      words: { text, tone },
+      words: { text, full, tone },
       stale,
       percent,
       offerSetStages: false,
@@ -351,7 +362,7 @@ export function buildProgressPaymentView(input: ProgressPaymentInput): ProgressP
       amount: l.amount,
     }
   })
-  const text = `${crewClause(crew, todayYmd)} · ${percentClause(percent)} · ${mc.text}`
+  const text = `${crewClause(crew, todayYmd)} · ${percentClause(percent)}`
   const tone: ProgressPaymentTone = paidInFull ? 'green' : mc.tone
-  return { mode: 'lines', stageBar: null, liveChipSuffix: null, segments, words: { text, tone }, stale, percent, offerSetStages: priced.length >= 2 && !paidInFull }
+  return { mode: 'lines', stageBar: null, liveChipSuffix: null, segments, words: { text, full: `${text} · ${mc.text}`, tone }, stale, percent, offerSetStages: priced.length >= 2 && !paidInFull }
 }
