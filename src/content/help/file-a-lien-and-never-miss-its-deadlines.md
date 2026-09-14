@@ -21,6 +21,10 @@ If the job has a GC, unpaid work months need a **notice of claim** — the statu
 
 Jobs where you contracted directly with the owner skip this step — the tab says so.
 
+:::example Which months need a notice?
+The **Payment forecast** on Jobs → Pipeline shows it per month: open a row's chevron and every month the crew worked lists with its own notice date and state — {{chip:red|due tomorrow}}, {{chip:yellow|closes in 12d}}, {{chip:green|notice sent}} — with {{button:outline|Send notice…}} landing here on this tab. See *see when a customer will pay*.
+:::
+
 ## Step 2 — the affidavit, behind its gate
 
 The **Mechanic's lien** tab refuses to generate until the paper trail is real: owner of record with mailing address ✓, county + legal description ✓ (from the property record), notice recorded ✓ (subs), and **not a homestead** — a homestead lien needs a pre-work contract signed by both spouses and recorded with the county, which is attorney territory the app won't paper over.

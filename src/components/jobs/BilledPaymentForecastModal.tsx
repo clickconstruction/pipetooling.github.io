@@ -9,6 +9,8 @@ import {
   type ForecastRow,
 } from '../../lib/jobs/billedPaymentForecast'
 import { formatUsdNoCents } from '../../lib/jobs/jobFormatting'
+import { summarizeNoticeMonths, noticeStateText, workMonthLabel, type JobWorkMonths } from '../../lib/jobs/forecastWorkMonths'
+import ForecastWorkMonthsPanel, { ForecastNoticeChip } from './ForecastWorkMonthsPanel'
 import PaySpeedsBreakdownModal from './PaySpeedsBreakdownModal'
 
 /**
@@ -97,6 +99,8 @@ export default function BilledPaymentForecastModal({
   canEmailMoneyWaiting,
   onOpenJobStacked,
   onPaySpeedsChanged,
+  workMonths,
+  onOpenLienNotice,
 }: {
   rows: StageRow[]
   /** True while any non-paid scope is still fetching — the totals can still grow. */
@@ -122,6 +126,14 @@ export default function BilledPaymentForecastModal({
   onPaySpeedsChanged?: () => void
   /** Opens the Email… share modal (v2.2226) — passed only for sender roles. */
   onEmail?: () => void
+  /**
+   * Work months per job (the lien clock's evidence): a chevron on rows that
+   * have sessions, a notice chip on sub rows with a month closing. Null while
+   * loading; a job absent from the map has no sessions.
+   */
+  workMonths?: Record<string, JobWorkMonths> | null
+  /** Opens the Lien instruments window on the § 53.056 notice tab for a job. */
+  onOpenLienNotice?: (jobId: string) => void
 }) {
   const forecast = useMemo(
     () => buildBilledPaymentForecast(rows, paySpeeds, todayYmd, promises, slipByCustomer),
@@ -134,6 +146,27 @@ export default function BilledPaymentForecastModal({
   // Pay-speeds drill-down (v2.2022): the strip is now the door.
   const [paySpeedsOpen, setPaySpeedsOpen] = useState(false)
   const [paySpeedsHover, setPaySpeedsHover] = useState(false)
+  // Work months (lien clock): which rows are open, and the one quiet line
+  // above the buckets when a sub job's notice month is closing.
+  const [openWorkMonths, setOpenWorkMonths] = useState<ReadonlySet<string>>(() => new Set())
+  const openByJob = useMemo(() => {
+    const out: Record<string, number> = {}
+    for (const b of forecast.buckets) for (const r of b.rows) out[r.jobId] = (out[r.jobId] ?? 0) + r.open
+    return out
+  }, [forecast])
+  const noticeSummary = useMemo(() => (workMonths ? summarizeNoticeMonths(workMonths, openByJob) : null), [workMonths, openByJob])
+  const jobLabelById = useMemo(() => {
+    const out: Record<string, string> = {}
+    for (const b of forecast.buckets) for (const r of b.rows) out[r.jobId] = r.label
+    return out
+  }, [forecast])
+  const toggleWorkMonths = (jobId: string) =>
+    setOpenWorkMonths((prev) => {
+      const next = new Set(prev)
+      if (next.has(jobId)) next.delete(jobId)
+      else next.add(jobId)
+      return next
+    })
   const listedBuckets = visibleBuckets.filter(
     (b) => b.rows.length > 0 && (bucketFilter == null || b.key === bucketFilter),
   )
@@ -323,6 +356,35 @@ export default function BilledPaymentForecastModal({
           />
         ) : null}
 
+        {noticeSummary && noticeSummary.monthCount > 0 && noticeSummary.first ? (
+          <div
+            role="note"
+            style={{
+              display: 'flex',
+              flexWrap: 'wrap',
+              alignItems: 'center',
+              gap: '0.35rem 0.6rem',
+              marginTop: '0.6rem',
+              padding: '0.4rem 0.75rem',
+              borderRadius: 8,
+              background: 'var(--bg-amber-tint)',
+              color: 'var(--text-amber-800)',
+              fontSize: '0.78rem',
+            }}
+          >
+            <span aria-hidden>⏱</span>
+            <strong>
+              {noticeSummary.monthCount} work {noticeSummary.monthCount === 1 ? 'month' : 'months'} on {noticeSummary.jobCount} sub{' '}
+              {noticeSummary.jobCount === 1 ? 'job has' : 'jobs have'} a lien notice closing within 14 days
+            </strong>
+            <span>· {formatUsdNoCents(noticeSummary.dollars)} open</span>
+            <span>
+              · {jobLabelById[noticeSummary.first.jobId] ?? noticeSummary.first.jobId} {workMonthLabel(noticeSummary.first.month.key)} work, notice{' '}
+              {noticeStateText(noticeSummary.first.notice)}
+            </span>
+          </div>
+        ) : null}
+
         {filteredTitle ? (
           <p style={{ margin: '0.75rem 0 0', fontSize: '0.8125rem', color: 'var(--text-muted)' }} role="status">
             Showing only {filteredTitle} ·{' '}
@@ -344,45 +406,94 @@ export default function BilledPaymentForecastModal({
               </div>
               {b.rows.map((r) => {
                 const d = rowDateLabel(r)
+                const wm = workMonths?.[r.jobId] ?? null
+                const expanded = wm != null && openWorkMonths.has(r.jobId)
                 return (
-                  <button
-                    key={r.invoiceId}
-                    type="button"
-                    onClick={() => onOpenInvoice(r.invoiceId)}
-                    title="Jump to this bill on the board"
-                    style={{
-                      display: 'flex',
-                      width: '100%',
-                      alignItems: 'baseline',
-                      justifyContent: 'space-between',
-                      gap: '0.75rem',
-                      padding: '0.4rem 0.25rem',
-                      border: 'none',
-                      borderBottom: '1px solid var(--border)',
-                      background: 'none',
-                      cursor: 'pointer',
-                      textAlign: 'left',
-                      fontSize: '0.8125rem',
-                      color: 'inherit',
-                    }}
-                  >
-                    <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {r.label}
-                      {r.customerName ? <span style={{ color: 'var(--text-muted)' }}> · {r.customerName}</span> : null}
-                      {r.segment ? <> {segmentTag(r.segment)}</> : null}
-                      {r.model?.source === 'customer' ? (
-                        <span style={{ color: 'var(--text-muted)' }}> · pays in ~{r.model.medianDays}d</span>
-                      ) : r.model?.source === 'promised' ? (
-                        <span style={{ color: 'var(--text-muted)' }}> · promised{r.slipDays ? ` · usually slips ~${r.slipDays}d` : ''}</span>
-                      ) : r.model ? (
-                        <span style={{ color: 'var(--text-muted)' }}> · company avg</span>
-                      ) : null}
-                    </span>
-                    <span style={{ display: 'inline-flex', gap: '0.6rem', alignItems: 'baseline', flexShrink: 0 }}>
-                      <span style={{ color: d.color, fontWeight: 600 }}>{d.text}</span>
-                      <span style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 600 }}>{formatUsdNoCents(r.open)}</span>
-                    </span>
-                  </button>
+                  <div key={r.invoiceId}>
+                    <div style={{ display: 'flex', alignItems: 'stretch', borderBottom: expanded ? 'none' : '1px solid var(--border)' }}>
+                      {wm ? (
+                        <button
+                          type="button"
+                          onClick={() => toggleWorkMonths(r.jobId)}
+                          aria-expanded={expanded}
+                          aria-label={`${expanded ? 'Hide' : 'Show'} work months for ${r.label}`}
+                          title={expanded ? 'Hide the months worked' : `Show the months worked — ${wm.months.length} ${wm.months.length === 1 ? 'month' : 'months'}`}
+                          style={{
+                            width: 22,
+                            flexShrink: 0,
+                            alignSelf: 'center',
+                            height: 18,
+                            marginRight: 4,
+                            border: '1px solid var(--border-strong)',
+                            borderRadius: 5,
+                            background: expanded ? 'var(--bg-blue-tint)' : 'var(--surface)',
+                            color: expanded ? 'var(--text-blue-800)' : 'var(--text-muted)',
+                            fontSize: '0.6rem',
+                            cursor: 'pointer',
+                            padding: 0,
+                            transform: expanded ? 'rotate(90deg)' : 'none',
+                          }}
+                        >
+                          ▶
+                        </button>
+                      ) : (
+                        <span aria-hidden style={{ width: 26, flexShrink: 0 }} />
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => onOpenInvoice(r.invoiceId)}
+                        title="Jump to this bill on the board"
+                        style={{
+                          display: 'flex',
+                          width: '100%',
+                          minWidth: 0,
+                          alignItems: 'baseline',
+                          justifyContent: 'space-between',
+                          gap: '0.75rem',
+                          padding: '0.4rem 0.25rem',
+                          border: 'none',
+                          background: 'none',
+                          cursor: 'pointer',
+                          textAlign: 'left',
+                          fontSize: '0.8125rem',
+                          color: 'inherit',
+                        }}
+                      >
+                        <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {r.label}
+                          {r.customerName ? <span style={{ color: 'var(--text-muted)' }}> · {r.customerName}</span> : null}
+                          {r.segment ? <> {segmentTag(r.segment)}</> : null}
+                          {r.model?.source === 'customer' ? (
+                            <span style={{ color: 'var(--text-muted)' }}> · pays in ~{r.model.medianDays}d</span>
+                          ) : r.model?.source === 'promised' ? (
+                            <span style={{ color: 'var(--text-muted)' }}> · promised{r.slipDays ? ` · usually slips ~${r.slipDays}d` : ''}</span>
+                          ) : r.model ? (
+                            <span style={{ color: 'var(--text-muted)' }}> · company avg</span>
+                          ) : null}
+                          {wm ? (
+                            <span style={{ color: 'var(--text-faint)', fontSize: '0.72rem' }}>
+                              {' '}
+                              · {wm.months.length} mo
+                            </span>
+                          ) : null}
+                          <ForecastNoticeChip job={wm} />
+                        </span>
+                        <span style={{ display: 'inline-flex', gap: '0.6rem', alignItems: 'baseline', flexShrink: 0 }}>
+                          <span style={{ color: d.color, fontWeight: 600 }}>{d.text}</span>
+                          <span style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 600 }}>{formatUsdNoCents(r.open)}</span>
+                        </span>
+                      </button>
+                    </div>
+                    {expanded && wm ? (
+                      <ForecastWorkMonthsPanel
+                        job={wm}
+                        customerName={r.customerName}
+                        isCommercial={r.segment === 'commercial'}
+                        todayYmd={todayYmd}
+                        onSendNotice={onOpenLienNotice}
+                      />
+                    ) : null}
+                  </div>
                 )
               })}
             </div>
@@ -392,6 +503,7 @@ export default function BilledPaymentForecastModal({
           {forecast.rowCount} open {forecast.rowCount === 1 ? 'bill' : 'bills'} · {formatUsdNoCents(forecast.openTotal)} total
           {forecast.skippedNoMoney > 0 ? ` · ${forecast.skippedNoMoney} paid-to-zero ${forecast.skippedNoMoney === 1 ? 'row' : 'rows'} not shown` : ''}
           {paySpeeds == null ? ' · pay speeds unavailable — dates need the pay-speed lookup' : ''}
+          {workMonths === null ? ' · loading the months worked…' : ''}
         </p>
       </div>
     </div>
