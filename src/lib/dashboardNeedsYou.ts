@@ -29,15 +29,12 @@ import type { RobotLockedShadow } from './bids/robotLockedShadows'
 
 /** red (v2.2491) = a destructive event to investigate, not a work queue — loudest rail in the card. */
 import type { LienDeskNeedsYou } from './jobs/lienDesk'
+import { daysBetweenYmd } from './jobs/billedExpectedPay'
+import { todayYmdInAppTz } from '../utils/dateUtils'
 
-/** Whole days from today (app calendar) to a 'YYYY-MM-DD' — the Lien desk cards' urgency. */
+/** Whole days from today (the company calendar) to a 'YYYY-MM-DD' — the Lien desk cards' urgency. */
 function daysUntilYmd(ymd: string): number | null {
-  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(ymd)
-  if (!m) return null
-  const target = Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3]), 12)
-  const now = new Date()
-  const today = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate(), 12)
-  return Math.round((target - today) / 86_400_000)
+  return daysBetweenYmd(todayYmdInAppTz(), ymd)
 }
 
 export type NeedsYouSeverity = 'blue' | 'amber' | 'gray' | 'red'

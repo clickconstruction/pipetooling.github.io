@@ -307,8 +307,8 @@ AS $$
     LIMIT 1
   ) i ON true
   WHERE d.deadline IS NOT NULL
-    AND d.deadline <= CURRENT_DATE + GREATEST(0, p_within_days)
-    AND d.deadline >= CURRENT_DATE - 7
+    AND d.deadline <= public.app_today() + GREATEST(0, p_within_days)
+    AND d.deadline >= public.app_today() - 7
   ORDER BY d.deadline, d.job_id, d.work_month;
 $$;
 
