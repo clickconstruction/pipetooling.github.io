@@ -528,6 +528,9 @@ export function JobFormEditFactRows(props: JobFormEditFactRowsProps) {
                 <span style={{ color: 'var(--text-muted)' }}>{` · ${customerSummary.address}`}</span>
               ) : null}
             </>
+          ) : gcCustomerId ? (
+            // A GC job (v2.3403): the builder is the only party; the customer link is empty by rule, not by omission.
+            <span style={{ color: 'var(--text-muted)' }}>{`none · GC job — ${(gcCustomer?.name ?? '').trim() || 'the GC'} is the party`}</span>
           ) : null
         }
         valueTail={

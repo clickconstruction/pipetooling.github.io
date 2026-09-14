@@ -44,6 +44,13 @@ describe('effectiveInvoiceParty', () => {
     expect(effectiveInvoiceParty(gcJob, { bill_to_email: '   ' })).toBe('gc')
   })
 
+  it('a GC job — a GC with no customer link — bills the GC whatever the rule or pick says (v2.3403)', () => {
+    const gcOnly = { bill_to_party: 'customer', gc_customer_id: 'gc-1', customer_id: null }
+    expect(effectiveInvoiceParty(gcOnly, null)).toBe('gc')
+    expect(effectiveInvoiceParty(gcOnly, { bill_to_party: 'customer' })).toBe('gc')
+    expect(effectiveInvoiceParty(gcOnly, { bill_to_email: 'tenant@x.com' })).toBe('other')
+    expect(payerCustomerId(gcOnly, effectiveInvoiceParty(gcOnly, null))).toBe('gc-1')
+  })
   it('a GC pick on a job with no GC falls back to the customer', () => {
     const noGc = { bill_to_party: 'gc', gc_customer_id: null, customer_id: 'cust-1' }
     expect(effectiveInvoiceParty(noGc, {})).toBe('customer')
@@ -131,6 +138,9 @@ describe('jobBillToPartyOptions', () => {
       'customer',
       'split',
     ])
+  })
+  it('a GC job offers only the GC (v2.3403)', () => {
+    expect(jobBillToPartyOptions({ gcCustomerId: 'gc-1', customerId: null, gcName: 'RMC' }).map((o) => o.value)).toEqual(['gc'])
   })
   it('names the GC on its option', () => {
     const gc = jobBillToPartyOptions({ gcCustomerId: 'gc-1', customerId: 'cust-1', gcName: 'Loberg' }).find((o) => o.value === 'gc')

@@ -63,7 +63,13 @@ function Harness({
   showBillsToOtherParty = false,
   propertyCandidates = [],
   customerAddressId = null,
+  customerName = 'Todd Cop',
+  customerEmail = 'Todd@CopProperties.com',
+  customerPhone = '(210) 415-5375',
 }: {
+  customerName?: string
+  customerEmail?: string
+  customerPhone?: string
   billingCustomerHighlight?: boolean
   customerId?: string | null
   gc?: CustomerRow
@@ -72,7 +78,7 @@ function Harness({
   propertyCandidates?: PropertyCandidate[]
   customerAddressId?: string | null
 }) {
-  const [phone, setPhone] = useState('(210) 415-5375')
+  const [phone, setPhone] = useState(customerPhone)
   const divRef = useRef<HTMLDivElement | null>(null)
   const inputRef = useRef<HTMLInputElement | null>(null)
   const buttonRef = useRef<HTMLButtonElement | null>(null)
@@ -99,9 +105,9 @@ function Harness({
       linkedBidGc={null}
       customerSearch=""
       setCustomerSearch={() => {}}
-      customerName="Todd Cop"
+      customerName={customerName}
       setCustomerName={() => {}}
-      customerEmail="Todd@CopProperties.com"
+      customerEmail={customerEmail}
       setCustomerEmail={() => {}}
       customerPhone={phone}
       setCustomerPhone={setPhone}
@@ -272,5 +278,12 @@ describe('JobFormEditFactRows', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Edit Property record' }))
     expect(screen.getByText('No saved properties on Todd Cop yet.')).toBeTruthy()
     expect(screen.getByRole('button', { name: '+ Add 10 Cascade Gln as a property on Todd Cop' })).toBeTruthy()
+  })
+
+  it('a GC job — GC set, no customer — reads the GC as the only party on the Customer row (v2.3403)', () => {
+    const gc = { ...CUSTOMERS[0]!, id: 'gc-1', name: 'RMC- Dudley Mason' } as CustomerRow
+    renderWithProviders(<Harness customerId={null} customerName="" customerEmail="" customerPhone="" gc={gc} />)
+    expect(screen.getByText('none · GC job — RMC- Dudley Mason is the party')).toBeTruthy()
+    expect(screen.queryByText('Not in Customers')).toBeNull()
   })
 })
