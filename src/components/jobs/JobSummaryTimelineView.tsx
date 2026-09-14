@@ -26,6 +26,7 @@ import {
 import type { SessionNotesJobIdentity } from '../../lib/jobs/sessionNotesSearch'
 import { formatStagesNextDateLabel } from '../../lib/stagesUpcomingSchedule'
 import SessionNotesModal from './SessionNotesModal'
+import JobRunDeltaStrip from './JobRunDeltaStrip'
 
 /**
  * Job Summary → Timeline (v2.2711, mock-up "C"): how many jobs were running at
@@ -463,7 +464,7 @@ export default function JobSummaryTimelineView({ ledger, ledgerLoading, ledgerEr
       </div>
       )}
 
-      {delta ? <DeltaStrip delta={delta} asOfYmd={asOfYmd} /> : null}
+      {delta ? <JobRunDeltaStrip delta={delta} asOfYmd={asOfYmd} /> : null}
 
       <details open={barsOpen} onToggle={(e) => setBarsOpen((e.currentTarget as HTMLDetailsElement).open)} style={{ border: '1px solid var(--border)', borderRadius: 8, background: 'var(--surface)', padding: '0.4rem 0.6rem' }}>
         <summary style={{ cursor: 'pointer', fontWeight: 600, color: 'var(--text-700)', fontSize: '0.85rem' }}>
@@ -670,31 +671,5 @@ function AxisTitle({ x, y, label }: { x: number; y: number; label: string }) {
     <text transform={`rotate(-90 ${x} ${y})`} x={x} y={y} textAnchor="middle" fontSize={10} fill="var(--text-muted)" style={{ pointerEvents: 'none' }}>
       {label}
     </text>
-  )
-}
-
-/** What changed between the as-of day and today (v2.2807), in the chart's own colors. */
-function DeltaStrip({ delta, asOfYmd }: { delta: JobRunDeltaSince; asOfYmd: string }) {
-  const pill: CSSProperties = { display: 'inline-flex', alignItems: 'center', gap: 5, border: '1px solid var(--border)', borderRadius: 999, padding: '0.1rem 0.6rem', background: 'var(--surface)', fontVariantNumeric: 'tabular-nums' }
-  const swatch = (color: string): CSSProperties => ({ display: 'inline-block', width: 8, height: 8, borderRadius: 2, background: color })
-  return (
-    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center', fontSize: '0.78rem', color: 'var(--text-700)' }}>
-      <span>Since {dayLabel(asOfYmd)}:</span>
-      <span style={pill}>
-        <i style={swatch(BAND_COLOR.working)} />
-        <b>{delta.opened}</b> {delta.opened === 1 ? 'job' : 'jobs'} opened
-      </span>
-      <span style={pill}>
-        <i style={swatch(BAND_COLOR.billed)} />
-        <b>{delta.billed}</b> billed
-      </span>
-      <span style={pill}>
-        <i style={swatch(BAND_COLOR.paid)} />
-        <b>{delta.paid}</b> paid
-      </span>
-      <span style={pill}>
-        <b>{delta.stillOpen}</b> open then and still open
-      </span>
-    </div>
   )
 }
