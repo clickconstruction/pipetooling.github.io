@@ -7937,6 +7937,8 @@ export type Database = {
           created_at: string
           created_by: string | null
           deadline_date: string | null
+          debtor_party: string
+          exhibits: Json
           fields: Json
           id: string
           invoice_ids: string[]
@@ -7954,6 +7956,8 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           deadline_date?: string | null
+          debtor_party?: string
+          exhibits?: Json
           fields?: Json
           id?: string
           invoice_ids?: string[]
@@ -7971,6 +7975,8 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           deadline_date?: string | null
+          debtor_party?: string
+          exhibits?: Json
           fields?: Json
           id?: string
           invoice_ids?: string[]
@@ -20452,6 +20458,15 @@ export type Database = {
         Args: { p_batch_id: string; p_reason?: string }
         Returns: Json
       }
+      count_job_account_evidence_gaps: {
+        Args: never
+        Returns: {
+          allocated_total: number
+          house_names: string
+          jobs: number
+          pairs: number
+        }[]
+      }
       count_job_account_flag_gaps: {
         Args: never
         Returns: {
@@ -21343,35 +21358,6 @@ export type Database = {
           shared_tag_count: number
         }[]
       }
-      list_job_activity_events: {
-        Args: { p_job_id: string }
-        Returns: {
-          actor_name: string
-          actor_user_id: string
-          detail: Json
-          event_type: string
-          financial: boolean
-          id: string
-          occurred_at: string
-          summary: string
-        }[]
-      }
-      list_job_counts_by_master_for_dev_settings: {
-        Args: never
-        Returns: {
-          job_count: number
-          master_user_id: string
-        }[]
-      }
-      count_job_account_evidence_gaps: {
-        Args: never
-        Returns: {
-          allocated_total: number
-          house_names: string
-          jobs: number
-          pairs: number
-        }[]
-      }
       list_job_account_evidence_gaps: {
         Args: never
         Returns: {
@@ -21405,6 +21391,26 @@ export type Database = {
           requested_from_counter: boolean
           status: string
           supply_house_id: string
+        }[]
+      }
+      list_job_activity_events: {
+        Args: { p_job_id: string }
+        Returns: {
+          actor_name: string
+          actor_user_id: string
+          detail: Json
+          event_type: string
+          financial: boolean
+          id: string
+          occurred_at: string
+          summary: string
+        }[]
+      }
+      list_job_counts_by_master_for_dev_settings: {
+        Args: never
+        Returns: {
+          job_count: number
+          master_user_id: string
         }[]
       }
       list_job_crew_position: {
