@@ -41,7 +41,7 @@ import { supabase } from '../../lib/supabase'
 import { withSupabaseRetry } from '../../utils/errorHandling'
 import { useToastContext } from '../../contexts/ToastContext'
 import { useAuth } from '../../hooks/useAuth'
-import { todayYmdInAppTz } from '../../utils/dateUtils'
+import { APP_CALENDAR_TZ, todayYmdInAppTz } from '../../utils/dateUtils'
 
 type JobsLedgerInvoice = Database['public']['Tables']['jobs_ledger_invoices']['Row']
 
@@ -65,6 +65,12 @@ const SENT_METHODS: Array<{ value: string; label: string }> = [
 
 function todayYmdLocal(): string {
   return todayYmdInAppTz()
+}
+
+/** A Stripe unix timestamp as a company-calendar day (v2.3445). */
+function unixToAppYmd(sec: number | null | undefined): string | null {
+  if (!sec || !Number.isFinite(sec)) return null
+  return new Intl.DateTimeFormat('en-CA', { timeZone: APP_CALENDAR_TZ, year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(sec * 1000))
 }
 
 /** "Invoice #867-2608180928, as sent August 18, 2026" (v2.3429). */
@@ -137,7 +143,7 @@ export default function LienInstrumentsModal({
   // v2.3425 — the letter reads the bill: the full job (fixtures for the
   // invoice document), what Stripe rendered per hosted invoice, the payer rows.
   const [fullJob, setFullJob] = useState<JobWithDetails | null>(null)
-  const [stripeByInvoice, setStripeByInvoice] = useState<Record<string, { invoiceNumber: string | null; lines: { description: string; quantity: number | null; amount: number }[] }>>({})
+  const [stripeByInvoice, setStripeByInvoice] = useState<Record<string, { invoiceNumber: string | null; lines: { description: string; quantity: number | null; amount: number }[]; dueYmd: string | null }>>({})
   const [payerRows, setPayerRows] = useState<Record<string, { name: string; address: string; email: string }>>({})
   const [addressTouched, setAddressTouched] = useState(false)
   // v2.3429 — the exhibits: the signed agreement when the job has one (Exhibit B), and the two switches.
@@ -341,7 +347,7 @@ export default function LienInstrumentsModal({
             })
             const parsed = parseStripeInvoiceDetailsResponse(data as Record<string, unknown> | null)
             if (!parsed || cancelled) return
-            setStripeByInvoice((prev) => ({ ...prev, [inv.id]: { invoiceNumber: parsed.invoice_number, lines: parsed.lines } }))
+            setStripeByInvoice((prev) => ({ ...prev, [inv.id]: { invoiceNumber: parsed.invoice_number, lines: parsed.lines, dueYmd: unixToAppYmd(parsed.due_date) } }))
           } catch {
             // the statement falls back to the app's own document
           }

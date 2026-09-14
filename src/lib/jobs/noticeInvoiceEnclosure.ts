@@ -11,6 +11,7 @@ import type { Database } from '../../types/database'
 import { buildPhysicalInvoiceEmailBodies, type PhysicalInvoiceDocument } from '../physicalInvoiceDocument'
 import { buildPhysicalInvoiceDocumentForBilledInvoice } from '../physicalInvoiceDocumentForBilledInvoice'
 import type { DemandExhibitInput } from '../jobsDocuments/demandLetterPacket'
+import { demandDate, fallbackInvoiceNumber } from '../jobsDocuments/demandLetter'
 
 type JobsLedgerInvoice = Database['public']['Tables']['jobs_ledger_invoices']['Row']
 
@@ -39,7 +40,10 @@ export function noticeInvoiceDocs(job: JobWithDetails): NoticeInvoiceDoc[] {
       doc = null
     }
     if (!doc) continue
-    out.push({ invoiceId: inv.id, title: `Invoice ${doc.invoiceNumberDisplay !== '—' ? doc.invoiceNumberDisplay : `#${inv.sequence_order}`}${doc.invoiceDateDisplay && doc.invoiceDateDisplay !== '—' ? `, ${doc.invoiceDateDisplay}` : ''}`, doc })
+    // The number the bill shows (never "#0" for the primary bill) and the day it went out (v2.3445).
+    const number = doc.invoiceNumberDisplay !== '—' && doc.invoiceNumberDisplay !== '#0' ? doc.invoiceNumberDisplay : fallbackInvoiceNumber(inv, job.hcp_number)
+    const billed = ((inv.billed_at ?? inv.sent_to_customer_at ?? '') as string).slice(0, 10)
+    out.push({ invoiceId: inv.id, title: `Invoice ${number}${/^\d{4}-\d{2}-\d{2}$/.test(billed) ? `, ${demandDate(billed)}` : ''}`, doc })
   }
   return out
 }
