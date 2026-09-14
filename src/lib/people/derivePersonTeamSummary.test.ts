@@ -13,7 +13,6 @@ function makeUnion(partial: Partial<TeamReviewUnion>): TeamReviewUnion {
     timePerMile: 0.02,
     jobsById: new Map(),
     bidsById: new Map(),
-    jobIdByHcp: new Map(),
     laborItemsByJobId: new Map(),
     laborCostByJobId: new Map(),
     teamLaborCostByJobId: new Map(),
@@ -63,12 +62,11 @@ describe('derivePersonTeamSummary', () => {
     // person, so this sheet vanished from every row of the Team Summary.
     const union = makeUnion({
       periodLaborRows: [
-        { id: 'lr-multi', job_date: '2026-04-01', address: 'm', job_number: 'JM', labor_rate: 10, distance_miles: 0, assigned_to_name: 'Alice | Bob' },
+        { id: 'lr-multi', job_date: '2026-04-01', address: 'm', job_number: 'JM', job_ledger_id: 'job-M', labor_rate: 10, distance_miles: 0, assigned_to_name: 'Alice | Bob' },
       ],
       laborItemsByJobId: new Map([
         ['lr-multi', [{ count: 1, hrs_per_unit: 6, is_fixed: true }]],
       ]),
-      jobIdByHcp: new Map([['jm', 'job-M']]),
       jobsById: new Map([
         ['job-M', makeLedgerRow({ id: 'job-M', hcp_number: 'JM', revenue: 1000, pct_complete: 100 })],
       ]),
@@ -95,10 +93,9 @@ describe('derivePersonTeamSummary', () => {
   it('keeps single-assignee sheets at full weight (share 1 — answer-preserving)', () => {
     const union = makeUnion({
       periodLaborRows: [
-        { id: 'lr-one', job_date: '2026-04-02', address: 's', job_number: 'JS', labor_rate: 10, distance_miles: 0, assigned_to_name: 'Alice' },
+        { id: 'lr-one', job_date: '2026-04-02', address: 's', job_number: 'JS', job_ledger_id: 'job-S', labor_rate: 10, distance_miles: 0, assigned_to_name: 'Alice' },
       ],
       laborItemsByJobId: new Map([['lr-one', [{ count: 1, hrs_per_unit: 4, is_fixed: true }]]]),
-      jobIdByHcp: new Map([['js', 'job-S']]),
       jobsById: new Map([['job-S', makeLedgerRow({ id: 'job-S', hcp_number: 'JS', revenue: 500, pct_complete: 100 })]]),
     })
     const row = derivePersonTeamSummary(union, 'Alice', hourlyPayConfig('Alice', 50), false, ['2026-04-02'])
@@ -106,20 +103,16 @@ describe('derivePersonTeamSummary', () => {
     expect(row.grossBreakdown.jobs[0]?.costInPeriod).toBe(40)
   })
 
-  it('excludes sub-labor rows that map (via jobIdByHcp) to the configured office job', () => {
+  it('excludes sub-labor rows linked to the configured office job', () => {
     const union = makeUnion({
       officeJobLedgerId: 'office-job-id',
       periodLaborRows: [
-        { id: 'lr-off', job_date: '2026-01-01', address: 'a', job_number: 'OFF1', labor_rate: 10, distance_miles: 0, assigned_to_name: 'Alice' },
-        { id: 'lr-j1', job_date: '2026-01-01', address: 'b', job_number: 'J1', labor_rate: 10, distance_miles: 0, assigned_to_name: 'Alice' },
+        { id: 'lr-off', job_date: '2026-01-01', address: 'a', job_number: 'OFF1', job_ledger_id: 'office-job-id', labor_rate: 10, distance_miles: 0, assigned_to_name: 'Alice' },
+        { id: 'lr-j1', job_date: '2026-01-01', address: 'b', job_number: 'J1', job_ledger_id: 'job-1', labor_rate: 10, distance_miles: 0, assigned_to_name: 'Alice' },
       ],
       laborItemsByJobId: new Map([
         ['lr-off', [{ count: 1, hrs_per_unit: 5, is_fixed: true }]],
         ['lr-j1', [{ count: 1, hrs_per_unit: 4, is_fixed: true }]],
-      ]),
-      jobIdByHcp: new Map([
-        ['off1', 'office-job-id'],
-        ['j1', 'job-1'],
       ]),
       jobsById: new Map([
         ['office-job-id', makeLedgerRow({ id: 'office-job-id', hcp_number: 'OFF1', revenue: 1000, pct_complete: 100 })],
@@ -141,13 +134,12 @@ describe('derivePersonTeamSummary', () => {
   it('v2.3360: allocates revenue by the hours share — crew clock hours in the period ÷ the job’s lifetime crew hours — and a sheet earns no share', () => {
     const union = makeUnion({
       periodLaborRows: [
-        { id: 'lr1', job_date: '2026-02-01', address: 'x', job_number: 'JX', labor_rate: 10, distance_miles: 0, assigned_to_name: 'Bob' },
+        { id: 'lr1', job_date: '2026-02-01', address: 'x', job_number: 'JX', job_ledger_id: 'job-X', labor_rate: 10, distance_miles: 0, assigned_to_name: 'Bob' },
       ],
       laborItemsByJobId: new Map([['lr1', [{ count: 2, hrs_per_unit: 1, is_fixed: false }]]]),
       periodCrewRows: [{ work_date: '2026-02-01', person_name: 'Bob', job_assignments: [{ job_id: 'job-X', pct: 100 }] }],
       crewByDatePerson: { '2026-02-01:Bob': { job_assignments: [{ job_id: 'job-X', pct: 100 }] } },
       hoursMap: { 'Bob:2026-02-01': 8 },
-      jobIdByHcp: new Map([['jx', 'job-X']]),
       jobsById: new Map([['job-X', makeLedgerRow({ id: 'job-X', hcp_number: 'JX', revenue: 1000, pct_complete: 50, status: 'working' })]]),
       laborCostByJobId: new Map([['job-X', 80]]),
       teamLaborCostByJobId: new Map([['job-X', 20]]),
@@ -218,17 +210,16 @@ describe('derivePersonTeamSummary', () => {
     expect(row.gross).toBe(1500)
   })
 
-  it('onlyPaidJobs restricts labor rows to HCPs present in jobIdByHcp', () => {
+  it('onlyPaidJobs restricts labor rows to sheets whose linked job is in jobsById', () => {
     const base = {
       periodLaborRows: [
-        { id: 'p', job_date: '2026-03-01', address: 'p', job_number: 'PAID', labor_rate: 10, distance_miles: 0, assigned_to_name: 'Carol' },
+        { id: 'p', job_date: '2026-03-01', address: 'p', job_number: 'PAID', job_ledger_id: 'job-paid', labor_rate: 10, distance_miles: 0, assigned_to_name: 'Carol' },
         { id: 'u', job_date: '2026-03-01', address: 'u', job_number: 'UNPAID', labor_rate: 10, distance_miles: 0, assigned_to_name: 'Carol' },
       ],
       laborItemsByJobId: new Map([
         ['p', [{ count: 1, hrs_per_unit: 3, is_fixed: true }]],
         ['u', [{ count: 1, hrs_per_unit: 7, is_fixed: true }]],
       ]),
-      jobIdByHcp: new Map([['paid', 'job-paid']]),
       jobsById: new Map([
         ['job-paid', makeLedgerRow({ id: 'job-paid', hcp_number: 'PAID', revenue: 0, pct_complete: 100 })],
       ]),
@@ -288,7 +279,7 @@ describe('derivePersonTeamSummary — v2.2683 cost inputs', () => {
   it('prices sub-labor sheets like the Jobs page: per-line rate overrides and direct $ lines count', () => {
     const union = makeUnion({
       periodLaborRows: [
-        { id: 's', job_date: '2026-03-01', address: 'a', job_number: 'J1', labor_rate: 60, distance_miles: 0, assigned_to_name: 'Eve' },
+        { id: 's', job_date: '2026-03-01', address: 'a', job_number: 'J1', job_ledger_id: 'job-1', labor_rate: 60, distance_miles: 0, assigned_to_name: 'Eve' },
       ],
       laborItemsByJobId: new Map([
         [
@@ -300,7 +291,6 @@ describe('derivePersonTeamSummary — v2.2683 cost inputs', () => {
           ],
         ],
       ]),
-      jobIdByHcp: new Map([['j1', 'job-1']]),
       jobsById: new Map([['job-1', makeLedgerRow({ id: 'job-1', hcp_number: 'J1', revenue: 10000, pct_complete: 100 })]]),
       // Lifetime labor on the job = this sheet alone, costed the same way.
       laborCostByJobId: new Map([['job-1', 1440]]),
@@ -335,14 +325,13 @@ describe('derivePersonTeamSummary — v2.2687 hour basis under "only paid in ful
   it('keeps total and field hours on the period basis and reports hours on paid jobs separately', () => {
     const union = makeUnion({
       periodLaborRows: [
-        { id: 'p', job_date: '2026-03-02', address: 'p', job_number: 'PAID', labor_rate: 10, distance_miles: 0, assigned_to_name: 'Hal' },
+        { id: 'p', job_date: '2026-03-02', address: 'p', job_number: 'PAID', job_ledger_id: 'job-paid', labor_rate: 10, distance_miles: 0, assigned_to_name: 'Hal' },
         { id: 'u', job_date: '2026-03-02', address: 'u', job_number: 'UNPAID', labor_rate: 10, distance_miles: 0, assigned_to_name: 'Hal' },
       ],
       laborItemsByJobId: new Map([
         ['p', [{ count: 1, hrs_per_unit: 3, is_fixed: true }]],
         ['u', [{ count: 1, hrs_per_unit: 7, is_fixed: true }]],
       ]),
-      jobIdByHcp: new Map([['paid', 'job-paid']]),
       jobsById: new Map([['job-paid', makeLedgerRow({ id: 'job-paid', hcp_number: 'PAID', revenue: 0, pct_complete: 100 })]]),
       periodHoursRows: [{ person_name: 'Hal', work_date: '2026-03-02', hours: 12 }],
       overheadHoursByPerson: { Hal: { office: 2, bid: 0 } },
@@ -360,7 +349,7 @@ describe('derivePersonTeamSummary — v2.2687 hour basis under "only paid in ful
     expect(paidOnly.hoursBreakdown.totals.totalHours).toBe(12)
   })
 
-  it('v2.3068: a sheet linked by job_ledger_id lands on that job with no number map at all; a link-less sheet still uses the number map', () => {
+  it('a sheet lands on its job_ledger_id whatever its number says; a link-less sheet lands on no job (the number fallback is retired)', () => {
     const union = makeUnion({
       periodLaborRows: [
         { id: 'lr-link', job_date: '2026-04-03', address: 'l', job_number: 'STALE', job_ledger_id: 'job-L', labor_rate: 10, distance_miles: 0, assigned_to_name: 'Alice' },
@@ -370,7 +359,6 @@ describe('derivePersonTeamSummary — v2.2687 hour basis under "only paid in ful
         ['lr-link', [{ count: 1, hrs_per_unit: 2, is_fixed: true }]],
         ['lr-num', [{ count: 1, hrs_per_unit: 3, is_fixed: true }]],
       ]),
-      jobIdByHcp: new Map([['jn', 'job-N']]),
       jobsById: new Map([
         ['job-L', makeLedgerRow({ id: 'job-L', hcp_number: 'JL', revenue: 200, pct_complete: 100 })],
         ['job-N', makeLedgerRow({ id: 'job-N', hcp_number: 'JN', revenue: 300, pct_complete: 100 })],
@@ -378,8 +366,9 @@ describe('derivePersonTeamSummary — v2.2687 hour basis under "only paid in ful
       laborCostByJobId: new Map([['job-L', 20], ['job-N', 30]]),
     })
     const row = derivePersonTeamSummary(union, 'Alice', hourlyPayConfig('Alice', 50), false, ['2026-04-03'])
-    expect(row.grossBreakdown.jobs.map((j) => j.jobId).sort()).toEqual(['job-L', 'job-N'])
-    // v2.3360: both sheets land on their jobs (cost side); neither earns a share of revenue.
+    expect(row.grossBreakdown.jobs.map((j) => j.jobId)).toEqual(['job-L'])
+    // v2.3360: the linked sheet lands on its job (cost side) and earns no share of revenue;
+    // the link-less sheet still counts as hours worked, on no job.
     expect(row.gross).toBe(0)
     expect(row.hoursBreakdown.totals.subLabor).toBe(5)
   })

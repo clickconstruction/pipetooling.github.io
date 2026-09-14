@@ -784,7 +784,7 @@ function JobsSubLaborFormModalInner(
         master_user_id: authUserId,
         assigned_to_name: assigned,
         address,
-        job_number: laborJobNumber.trim().slice(0, 10) || null,
+        job_number: laborJobNumber.trim() || null,
         // v2.3055: the picked job's id travels with the number (the number stays as display text).
         job_ledger_id: laborPickedJobId,
         labor_rate: firstRowRate,
@@ -1049,7 +1049,7 @@ function JobsSubLaborFormModalInner(
       .update({
         assigned_to_name: assigned,
         address,
-        job_number: laborJobNumber.trim().slice(0, 10) || null,
+        job_number: laborJobNumber.trim() || null,
         // v2.3055: only when a job is picked/resolved — a legacy number that resolves to
         // nothing leaves the link alone (the DB trigger follows a changed number itself).
         ...(laborPickedJobId ? { job_ledger_id: laborPickedJobId } : {}),

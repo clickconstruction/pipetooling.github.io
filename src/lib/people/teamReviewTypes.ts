@@ -48,7 +48,6 @@ export type TeamReviewUnion = {
   jobsById: Map<string, TeamLedgerRow>
   /** Bid id -> display fields, used by the Hours-breakdown modal only. */
   bidsById: Map<string, { bid_number: string; project_name: string; address: string }>
-  jobIdByHcp: Map<string, string>
   laborItemsByJobId: Map<string, TeamLaborItem[]>
   /** Lifetime sub-labor cost per jobs_ledger id (keyed by the sheet's link, v2.3068). */
   laborCostByJobId: Map<string, number>

@@ -58,7 +58,7 @@ describe('resolveSubLaborJobByNumber', () => {
 })
 
 describe('subLaborJobNumberForStorage', () => {
-  it('stores the effective number capped at 10 chars', () => {
+  it('stores the effective number as typed — no 10-char cap', () => {
     expect(subLaborJobNumberForStorage(keith)).toBe('925')
     expect(subLaborJobNumberForStorage(clickOnly)).toBe('961')
     expect(subLaborJobNumberForStorage(bare)).toBe('')
