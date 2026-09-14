@@ -280,6 +280,7 @@ export function JobsMapCard({
   loading,
   paidLoaded,
   onLoadPaid,
+  onNeedLiveRows,
   onOpenJob,
   onEditJob,
   onFocusJob,
@@ -292,6 +293,12 @@ export function JobsMapCard({
   paidLoaded: boolean
   /** Ask the board to load its Paid rows (the Paid chip's first tap). */
   onLoadPaid: () => void
+  /**
+   * Ask the board to load every live section's rows (waiting · working · ready to bill · billed ·
+   * collections). The board fetches a section's rows only while that section is open, so with the
+   * sections folded the map would draw one pin; the card asks once whenever it is showing.
+   */
+  onNeedLiveRows: () => void
   onOpenJob: (jobId: string) => void
   onEditJob: (jobId: string) => void
   /** A pin (or an unmapped-job link) was clicked — light the row on the board (by number when the row is not loaded, e.g. a rewound paid job). */
@@ -360,6 +367,10 @@ export function JobsMapCard({
   }, [playing, effBack])
   const historyIndex = useMemo(() => (history ? indexJobsMapHistory(history) : null), [history])
   const sinceThen = useMemo(() => (rewound && history ? jobsMapSinceThen(history, asOfYmd, todayYmd) : null), [rewound, history, asOfYmd, todayYmd])
+
+  useEffect(() => {
+    if (!hidden) onNeedLiveRows()
+  }, [hidden, onNeedLiveRows])
 
   const anchor = useOfficeAnchor(!hidden)
   const canvasAnchor = useMemo<MapCanvasAnchor | null>(

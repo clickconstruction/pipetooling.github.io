@@ -92,6 +92,7 @@ const onOpenJob = vi.fn()
 const onEditJob = vi.fn()
 const onFocusJob = vi.fn()
 const onLoadPaid = vi.fn()
+const onNeedLiveRows = vi.fn()
 
 function renderCard(jobs: JobWithDetails[], opts: { isMobile?: boolean; paidLoaded?: boolean } = {}) {
   return render(
@@ -101,6 +102,7 @@ function renderCard(jobs: JobWithDetails[], opts: { isMobile?: boolean; paidLoad
       loading={false}
       paidLoaded={opts.paidLoaded ?? false}
       onLoadPaid={onLoadPaid}
+      onNeedLiveRows={onNeedLiveRows}
       onOpenJob={onOpenJob}
       onEditJob={onEditJob}
       onFocusJob={onFocusJob}
@@ -119,6 +121,7 @@ beforeEach(() => {
   onEditJob.mockReset()
   onFocusJob.mockReset()
   onLoadPaid.mockReset()
+  onNeedLiveRows.mockReset()
   openExternal.mockReset()
 })
 
@@ -130,6 +133,16 @@ describe('JobsMapCard', () => {
   it('renders nothing when the board has no jobs', () => {
     const { container } = renderCard([])
     expect(container.innerHTML).toBe('')
+  })
+
+  it('asks the board for the live sections’ rows while it is showing, and not while hidden', async () => {
+    cacheRows.mockReturnValue([{ address_normalized: '173 atlantis, kyle', lat: 30.0, lng: -97.9 }])
+    renderCard([job({ id: 'a' })])
+    await screen.findByTestId('canvas')
+    expect(onNeedLiveRows).toHaveBeenCalledTimes(1)
+    fireEvent.click(screen.getByText('Hide map'))
+    fireEvent.click(screen.getByText('Show map'))
+    expect(onNeedLiveRows).toHaveBeenCalledTimes(2)
   })
 
   it('pins cached addresses in section colors with the office anchor and the Collections ring, and lists a job the geocoder could not place', async () => {

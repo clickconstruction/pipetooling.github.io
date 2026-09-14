@@ -1403,6 +1403,19 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
     }
   })
   const jobDetailModal = useJobDetailModal()
+  // Jobs on a map (v2.3398): the board fetches a section's rows only while that section is open,
+  // so with the sections folded the map drew one pin. The card flags that it is showing; the
+  // effect asks for every live section's scope and re-asks as the snapshot / merged set changes —
+  // `fetchScopeIfNeeded` silently no-ops until the initial board load has landed, so a one-shot
+  // call from the card's mount was lost.
+  const [mapWantsLiveRows, setMapWantsLiveRows] = useState(false)
+  const requestLiveRowsForMap = useCallback(() => setMapWantsLiveRows(true), [])
+  useEffect(() => {
+    if (!active || !mapWantsLiveRows || jobsListLoading) return
+    for (const section of ['waiting', 'working', 'readyToBill', 'billed', 'collections'] as const) {
+      void cacheFetchScopeIfNeeded(scopeForStagesSection(section), customerFilterForFetch)
+    }
+  }, [active, mapWantsLiveRows, jobsListLoading, jobsListDataKey, cacheMergedScopes, customerFilterForFetch, cacheFetchScopeIfNeeded])
   // Row sort mode (v2.1807): classic newest-number-first, or by time added.
   // Lives in the ⋯ Pipeline tools menu; per-device persistence.
   const [stagesSortMode, setStagesSortModeState] = useState<StagesBoardSortMode>(() => loadStagesSortMode())
@@ -3361,6 +3374,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
             loading={jobsListLoading}
             paidLoaded={cacheMergedScopes.has(scopeForStagesSection('paid'))}
             onLoadPaid={() => void cacheFetchScopeIfNeeded(scopeForStagesSection('paid'), customerFilterForFetch)}
+            onNeedLiveRows={requestLiveRowsForMap}
             onOpenJob={(jobId) => jobDetailModal?.openJobDetail({ jobId })}
             onEditJob={(jobId) => tryOpenEditJob(jobId)}
             onFocusJob={(jobId, numberLabel) => {
