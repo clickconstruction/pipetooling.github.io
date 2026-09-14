@@ -205,10 +205,16 @@ export function StagesStageBar({ view, compact = false }: { view: ProgressPaymen
           fontSize: '0.6875rem',
           color: TONE_COLOR[view.words.tone],
           fontWeight: view.words.tone === 'red' ? 600 : 400,
-          whiteSpace: 'nowrap',
+          // v2.3446: two lines, then an ellipsis — a 176 px desktop cell was
+          // cutting the sentence at "Top Out · Tristen on site Sat · 4…".
+          display: '-webkit-box',
+          WebkitLineClamp: 2,
+          WebkitBoxOrient: 'vertical',
+          whiteSpace: 'normal',
           overflow: 'hidden',
-          textOverflow: 'ellipsis',
+          lineHeight: 1.25,
           minWidth: 0,
+          maxWidth: '100%',
         }}
         title={view.words.text}
       >
