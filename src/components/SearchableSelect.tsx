@@ -23,6 +23,13 @@ export type SearchableSelectSelectableOption = {
   label: string
   /** When set, shown in the list and closed trigger instead of `label` (search still uses `label`). */
   labelContent?: ReactNode
+  /**
+   * When set, the closed trigger shows this instead of `labelContent` (v2.3383) — for
+   * list rows too tall for the trigger (e.g. the AR billed-line two-line row).
+   */
+  triggerContent?: ReactNode
+  /** Extra styles for this option's list row; the highlighted row keeps its own background. */
+  optionStyle?: React.CSSProperties
 }
 
 /** Non-interactive divider between option groups (e.g. Schedule assignee sections). */
@@ -126,6 +133,10 @@ export type SearchableSelectProps = {
   listOptionFontSize?: string
   /** Minimum dropdown width (px); list width is max(trigger, this, 120), capped to viewport. */
   listMinWidthPx?: number
+  /** Placeholder for the search field (default `Search…`) — say what the search matches. */
+  searchPlaceholder?: string
+  /** Rendered under the option list while it has rows (v2.3383) — a count, a total, a sort note. */
+  listFooter?: ReactNode
   /** Overrides merged onto the closed trigger button (v2.3215) — e.g. a compact header control. */
   triggerStyle?: React.CSSProperties
   /**
@@ -274,6 +285,8 @@ export function SearchableSelect({
   listOptionPadding = DEFAULT_LIST_OPTION_PADDING,
   listOptionFontSize = DEFAULT_LIST_OPTION_FONT_SIZE,
   listMinWidthPx,
+  searchPlaceholder = 'Search…',
+  listFooter,
   triggerStyle,
   minSearchChars = 0,
   triggerMinHeightPx = 44,
@@ -325,7 +338,7 @@ export function SearchableSelect({
     const hit = allOptions.find(
       (o): o is SearchableSelectSelectableOption => isSelectableOption(o) && o.value === value,
     )
-    if (hit) return hit.labelContent ?? hit.label
+    if (hit) return hit.triggerContent ?? hit.labelContent ?? hit.label
     return placeholder
   }, [allOptions, value, placeholder])
 
@@ -665,7 +678,7 @@ export function SearchableSelect({
               setActiveIndex(activeIndexForQuery(e.target.value))
             }}
             onKeyDown={onSearchKeyDown}
-            placeholder="Search…"
+            placeholder={searchPlaceholder}
             style={{
               width: '100%',
               boxSizing: 'border-box',
@@ -755,6 +768,7 @@ export function SearchableSelect({
                       background: idx === activeIndex ? 'var(--bg-blue-tint)' : 'var(--surface)',
                       cursor: 'pointer',
                       fontSize: listOptionFontSize,
+                      ...(idx === activeIndex ? undefined : o.optionStyle),
                     }}
                   >
                     {o.labelContent ?? o.label}
@@ -764,6 +778,22 @@ export function SearchableSelect({
             })}
           </ul>
         )}
+        {listFooter != null && filteredForRender.length > 0 ? (
+          <div
+            style={{
+              marginTop: DROPDOWN_MARGIN_PX,
+              padding: '0.3rem 0.75rem',
+              border: '1px solid var(--border)',
+              borderRadius: 6,
+              background: 'var(--bg-subtle)',
+              color: 'var(--text-faint)',
+              fontSize: '0.75rem',
+              fontVariantNumeric: 'tabular-nums',
+            }}
+          >
+            {listFooter}
+          </div>
+        ) : null}
       </div>,
       document.body
     )
@@ -800,7 +830,7 @@ export function SearchableSelect({
             setActiveIndex(-1)
           }}
           onKeyDown={onSearchKeyDown}
-          placeholder="Search…"
+          placeholder={searchPlaceholder}
           style={{
             width: '100%',
             minHeight: triggerMinHeight,

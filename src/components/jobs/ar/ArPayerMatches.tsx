@@ -48,7 +48,7 @@ const rowStyle = (highlight: boolean, disabled: boolean): CSSProperties => ({
 
 const eyebrow: CSSProperties = { fontSize: '0.6875rem', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-faint)', marginBottom: 2 }
 
-function StripeTag() {
+export function StripeTag() {
   return (
     <span title="Sent through Stripe — picking it asks for the paid-outside-Stripe confirmation" style={{ fontSize: '0.6875rem', fontWeight: 700, color: 'var(--text-purple-700, #635bff)', border: '1px solid currentColor', borderRadius: 999, padding: '0 6px', marginLeft: 6, verticalAlign: 1 }}>
       Stripe
