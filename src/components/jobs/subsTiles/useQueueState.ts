@@ -6,12 +6,18 @@
  * next load — the snapshot taken at open keeps it visible as handled.
  */
 import { useCallback, useMemo, useState } from 'react'
+import { initialOpenKey } from '../../../lib/subs/subsTileQueues'
 import type { HandledMark } from './subsTileActions'
 
-export function useQueueState<T>(rows: readonly T[], keyOf: (row: T) => string, goneLabel: string) {
+/**
+ * `wantsForm` says which rows open on their form when the modal arrives (the
+ * first such row opens); without it the first row opens. Rows that want no
+ * form stay collapsed until the office clicks them.
+ */
+export function useQueueState<T>(rows: readonly T[], keyOf: (row: T) => string, goneLabel: string, wantsForm?: (row: T) => boolean) {
   const [snapshot] = useState<readonly T[]>(() => rows)
   const [handled, setHandled] = useState<ReadonlyMap<string, HandledMark>>(() => new Map())
-  const [openKey, setOpenKey] = useState<string | null>(() => (rows[0] ? keyOf(rows[0]) : null))
+  const [openKey, setOpenKey] = useState<string | null>(() => initialOpenKey(rows, keyOf, wantsForm))
 
   const currentKeys = useMemo(() => new Set(rows.map(keyOf)), [rows, keyOf])
   /** Rows still needing the office, in the live order. */

@@ -23,9 +23,9 @@ describe('standingMovesForRow', () => {
   })
   it('sent: waiting, then a nudge after three days, then re-send once expired', () => {
     const sent = (sentAt: string, expired = false) => row({ coverage: { kind: 'sent', id: 'o', subName: 'S', amount: 1, sentAt, expiresOn: '2026-09-11', expired } })
-    expect(standingMovesForRow(sent('2026-09-05'), ctx).primary).toMatchObject({ kind: 'view', label: 'Waiting on Behar · 1 day', tone: 'ghost', hint: 'good through 2026-09-11' })
+    expect(standingMovesForRow(sent('2026-09-05'), ctx).primary).toMatchObject({ kind: 'view', label: 'Waiting on Behar · 1 day', tone: 'ghost', hint: 'good through Sep 11' })
     expect(standingMovesForRow(sent('2026-09-02'), ctx).primary).toMatchObject({ kind: 'nudge', label: 'Nudge Behar', tone: 'warn' })
-    expect(standingMovesForRow(sent('2026-08-28', true), ctx).primary).toMatchObject({ kind: 'resend', label: 'Re-send…', tone: 'warn', hint: 'expired 2026-09-11' })
+    expect(standingMovesForRow(sent('2026-08-28', true), ctx).primary).toMatchObject({ kind: 'resend', label: 'Re-send…', tone: 'warn', hint: 'expired Sep 11' })
   })
   it('signed: the sheet step decides, with two moves only at pre-inspection', () => {
     const signed = (current: SheetRail['current'], open = 1000) => row({ open, rail: rail(current), coverage: { kind: 'signed', id: 'o', subName: 'S', amount: 1000, signedOn: '2026-09-01', laborJobId: 's', recordId: 'WO' } })

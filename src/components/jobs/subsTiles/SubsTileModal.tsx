@@ -5,7 +5,7 @@
  * nobody has to guess why a row is or isn't here. Escape and ✕ close; the
  * primary footer button is the queue's "Next row ↓".
  */
-import { useEffect, type ReactNode } from 'react'
+import { useEffect, type CSSProperties, type ReactNode } from 'react'
 
 export type SubsTileModalProps = {
   ariaLabel: string
@@ -69,13 +69,20 @@ export function SubsTileModal({ ariaLabel, title, subtitle, big, queue, rule, fo
 }
 
 /** The green line a handled row reads. */
-export function HandledCell({ label, onUndo }: { label: string; onUndo?: (() => void) | null }) {
+const markLink = (danger: boolean): CSSProperties => ({ background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: danger ? 'var(--text-red-700)' : 'var(--text-blue-700)', fontWeight: 600, fontSize: '0.74rem' })
+
+export function HandledCell({ label, onUndo, action }: { label: string; onUndo?: (() => void) | null; action?: { label: string; run: () => void; danger?: boolean } | null }) {
   return (
     <span style={{ display: 'inline-flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
       <span style={{ display: 'inline-block', padding: '1px 8px', borderRadius: 999, fontSize: '0.68rem', fontWeight: 600, background: 'var(--bg-green-tint)', color: 'var(--text-green-700)', whiteSpace: 'nowrap' }}>✓ {label}</span>
       {onUndo ? (
-        <button type="button" onClick={onUndo} style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: 'var(--text-blue-700)', fontWeight: 600, fontSize: '0.74rem' }}>
+        <button type="button" onClick={onUndo} style={markLink(false)}>
           Undo
+        </button>
+      ) : null}
+      {action ? (
+        <button type="button" onClick={action.run} style={markLink(action.danger === true)}>
+          {action.label}
         </button>
       ) : null}
     </span>

@@ -28,6 +28,19 @@ export function addCalendarDays(ymd: string, days: number): string {
   return ymdOf(d)
 }
 
+// ── Which row opens on arrival ───────────────────────────────────────────────
+
+/**
+ * The row a queue opens on its form when the modal arrives: the first row that
+ * wants one. A queue whose rows all want a form (handshake, stages) opens its
+ * first; a queue where only some do (offers: the expired ones) leaves live
+ * rows collapsed until the office clicks them. Null when no row wants a form.
+ */
+export function initialOpenKey<T>(rows: readonly T[], keyOf: (row: T) => string, wantsForm?: (row: T) => boolean): string | null {
+  const first = wantsForm ? rows.find(wantsForm) : rows[0]
+  return first ? keyOf(first) : null
+}
+
 // ── 1 · On a handshake ────────────────────────────────────────────────────────
 
 export type HandshakeQueueRow = {
@@ -127,6 +140,9 @@ export type OffersQueueRow = {
   /** Calendar days until the offer lapses; null when it never does. Negative once expired. */
   daysLeft: number | null
 }
+
+/** An expired offer opens on Re-send; a live one has nothing to fill in until the office picks a move. */
+export const offerWantsForm = (r: OffersQueueRow): boolean => r.expired
 
 /** Sent offers, expired first, then the ones out longest. */
 export function buildOffersQueue(board: WorkOrderBoardRow[], todayYmd: string): { rows: OffersQueueRow[]; totalUsd: number; expiredCount: number } {

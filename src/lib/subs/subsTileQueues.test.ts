@@ -3,22 +3,7 @@ import type { WorkOrderBoardRow } from '../subWorkOrders/workOrderBoardRows'
 import type { SheetRail } from '../subWorkOrders/sheetRail'
 import type { SubsJobGroup, SubsStageRow } from './subsTabRows'
 import type { SubDispatchOrder } from './subDispatch'
-import {
-  addCalendarDays,
-  availabilityLabel,
-  availabilityTone,
-  buildHandshakeQueue,
-  buildOffersQueue,
-  buildSignedQueue,
-  buildStagesQueue,
-  monthName,
-  quickOfferDefaults,
-  quickOfferProblem,
-  shiftMonth,
-  signedCountForMonth,
-  signedNextKind,
-  subAvailabilityForSpan,
-} from './subsTileQueues'
+import { addCalendarDays, availabilityLabel, availabilityTone, buildHandshakeQueue, buildOffersQueue, buildSignedQueue, buildStagesQueue, initialOpenKey, monthName, offerWantsForm, quickOfferDefaults, quickOfferProblem, shiftMonth, signedCountForMonth, signedNextKind, subAvailabilityForSpan } from './subsTileQueues'
 
 const rail = (current: SheetRail['current'], group: SheetRail['group']): SheetRail => ({ steps: [], current, gap: group === 'no_agreement', group, position: 0, label: '', sublabel: null, tone: 'now', crewPay: false })
 
@@ -110,14 +95,24 @@ describe('buildStagesQueue', () => {
 })
 
 describe('buildOffersQueue', () => {
+  const sent = (key: string, sentAt: string, expiresOn: string, expired: boolean) => row({ key, group: 'sent', coverage: { kind: 'sent', id: key, subName: 'S', amount: 100, sentAt, expiresOn, expired } })
   it('lists sent offers, expired first, then the ones out longest, with days out and days left', () => {
-    const sent = (key: string, sentAt: string, expiresOn: string, expired: boolean) => row({ key, group: 'sent', coverage: { kind: 'sent', id: key, subName: 'S', amount: 100, sentAt, expiresOn, expired } })
     const q = buildOffersQueue([sent('fresh', '2026-09-04', '2026-09-11', false), sent('old', '2026-08-28', '2026-09-04', true), row({ key: 'none' })], '2026-09-06')
     expect(q.rows.map((r) => r.row.key)).toEqual(['old', 'fresh'])
     expect(q.rows[0]).toMatchObject({ expired: true, daysOut: 9, daysLeft: -2 })
     expect(q.rows[1]).toMatchObject({ expired: false, daysOut: 2, daysLeft: 5 })
     expect(q.totalUsd).toBe(200)
     expect(q.expiredCount).toBe(1)
+  })
+  it('opens on arrival only when the first row wants a form — an expired offer, never a live one', () => {
+    const keyOf = (r: { row: { key: string } }) => r.row.key
+    const withExpired = buildOffersQueue([sent('fresh', '2026-09-04', '2026-09-11', false), sent('old', '2026-08-28', '2026-09-04', true)], '2026-09-06').rows
+    expect(initialOpenKey(withExpired, keyOf, offerWantsForm)).toBe('old')
+    const allLive = buildOffersQueue([sent('fresh', '2026-09-04', '2026-09-11', false), sent('newer', '2026-09-05', '2026-09-12', false)], '2026-09-06').rows
+    expect(initialOpenKey(allLive, keyOf, offerWantsForm)).toBeNull()
+    // Queues whose every row wants a form still open the first one.
+    expect(initialOpenKey(allLive, keyOf)).toBe('fresh')
+    expect(initialOpenKey([], keyOf)).toBeNull()
   })
 })
 

@@ -13,12 +13,12 @@ import type { StepCommitmentRow } from '../../../lib/workflow/stepCommitments'
 import type { SubPortalVisitSummary } from '../../../lib/portal/subPortalVisits'
 import type { StageWindowSpan } from '../../../lib/subs/stageWindow'
 import type { WorkOrderBoardRow } from '../../../lib/subWorkOrders/workOrderBoardRows'
-import { addCalendarDays, buildOffersQueue, type OffersQueueRow } from '../../../lib/subs/subsTileQueues'
+import { addCalendarDays, buildOffersQueue, offerWantsForm, type OffersQueueRow } from '../../../lib/subs/subsTileQueues'
 import { ResendForm } from './rowForms'
 import { sentLabel } from './rowFormsSend'
 import { SubsTileModal, HandledCell } from './SubsTileModal'
 import { useQueueState } from './useQueueState'
-import type { RosterContact, SubsTileActions } from './subsTileActions'
+import { WITHDRAWN_DRAFT_KEPT, type RosterContact, type SubsTileActions } from './subsTileActions'
 import { acts, btn, chip, expandedRow, handledRow, money, muted, shortDay, spanLabel, td, tdAct, tdNum, telHref, th, where, who } from './subsTileStyles'
 
 export type OffersQueueProps = {
@@ -40,7 +40,8 @@ const keyOf = (r: OffersQueueRow) => r.row.key
 export function OffersQueue({ board, ordersById, stageByOrderId, jobs, contacts, visits, authUserId, todayYmd, actions, onClose }: OffersQueueProps) {
   const confirm = useConfirmDialog()
   const queue = useMemo(() => buildOffersQueue(board, todayYmd), [board, todayYmd])
-  const q = useQueueState(queue.rows, keyOf, 'Withdrawn or signed')
+  // Expired rows arrive open on Re-send; live rows stay collapsed until clicked.
+  const q = useQueueState(queue.rows, keyOf, 'Withdrawn or signed', offerWantsForm)
   const [busy, setBusy] = useState<string | null>(null)
 
   function orderOf(r: OffersQueueRow): StepCommitmentRow | null {
@@ -74,6 +75,23 @@ export function OffersQueue({ board, ordersById, stageByOrderId, jobs, contacts,
     } finally {
       setBusy(null)
     }
+  }
+
+  /** Undo a re-send = withdraw, which leaves a draft behind; the mark says so and offers Discard. */
+  async function undoResend(r: OffersQueueRow, sent: StepCommitmentRow) {
+    const ok = await actions.withdraw(sent)
+    if (!ok) return
+    q.mark(r.row.key, {
+      label: WITHDRAWN_DRAFT_KEPT,
+      action: {
+        label: 'Discard',
+        danger: true,
+        run: async () => {
+          const gone = await actions.discardDraft(sent)
+          if (gone) q.mark(r.row.key, { label: 'Draft discarded' })
+        },
+      },
+    })
   }
 
   async function offerSomeoneElse(r: OffersQueueRow) {
@@ -231,7 +249,7 @@ export function OffersQueue({ board, ordersById, stageByOrderId, jobs, contacts,
                         todayYmd={todayYmd}
                         actions={actions}
                         onSent={(sent) => {
-                          q.mark(r.row.key, { label: sentLabel(sent, 'Re-sent'), undo: async () => { await actions.withdraw(sent.order); q.unmark(r.row.key) } })
+                          q.mark(r.row.key, { label: sentLabel(sent, 'Re-sent'), undo: () => undoResend(r, sent.order) })
                           q.next()
                         }}
                       />
@@ -253,7 +271,7 @@ export function OffersQueue({ board, ordersById, stageByOrderId, jobs, contacts,
               <td style={td} />
               <td style={tdNum}>{money(r.row.coverage.kind === 'sent' ? r.row.coverage.amount : r.row.agreed)}</td>
               <td style={tdAct}>
-                <HandledCell label={mark.label} onUndo={mark.undo ? () => void mark.undo!() : null} />
+                <HandledCell label={mark.label} onUndo={mark.undo ? () => void mark.undo!() : null} action={mark.action ? { label: mark.action.label, danger: mark.action.danger, run: () => void mark.action!.run() } : null} />
               </td>
             </tr>
           ))}

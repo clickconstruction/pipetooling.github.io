@@ -6,6 +6,18 @@
  */
 import type { StageWindowSpan } from './stageWindow'
 
+/**
+ * A row's name on the calendar's "Stages on this job" list and in its title:
+ * the stage the order carries, else the row's kind. The sub's name rides
+ * separately on the sibling line — it is never the stage name (a sheet row
+ * once read "Claude Test Sub · Claude Test Sub").
+ */
+export function calendarRowName(stageName: string | null | undefined, kind: 'sheet' | 'stage'): string {
+  const name = (stageName ?? '').trim()
+  if (name) return name
+  return kind === 'sheet' ? 'Sheet' : 'Stage'
+}
+
 export type CalendarDay = {
   ymd: string
   day: number

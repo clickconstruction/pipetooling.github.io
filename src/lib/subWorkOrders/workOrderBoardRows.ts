@@ -14,6 +14,7 @@
  * anchored to a job (no sheet) covers every sheet on that job. Pure.
  */
 import { subLaborJobBalance } from '../subLaborOutstanding'
+import { laborItemsSubtotal } from '../peopleLaborJobItemLineCost'
 import { splitAssignedToNames } from '../people/laborJobPersonMatch'
 import { normalizePersonNameKey } from '../personNameKey'
 import { effectiveSubSheetStage, subSheetWorkEndYmd } from '../subSheetStageDerived'
@@ -98,6 +99,11 @@ function coverageOrderId(c: JobWorkOrderCoverage): string | null {
   return c.kind === 'none' ? null : c.id
 }
 
+/** The price on the agreement behind a sheet — only a sent or signed order carries one. */
+function coverageAmount(c: JobWorkOrderCoverage): number {
+  return c.kind === 'sent' || c.kind === 'signed' ? c.amount : 0
+}
+
 export function buildWorkOrderBoard(input: WorkOrderBoardInput): WorkOrderBoard {
   const personById = new Map(input.roster.map((p) => [p.id, p]))
   const personByNameKey = new Map<string, NeedsWorkOrderRosterPerson>()
@@ -120,12 +126,16 @@ export function buildWorkOrderBoard(input: WorkOrderBoardInput): WorkOrderBoard 
   for (const sheet of input.sheets) {
     if (!isRosterSubSheet(sheet, input.assigneesBySheetId, personById, personByNameKey)) continue
     const bal = subLaborJobBalance({ labor_rate: sheet.labor_rate, items: sheet.items, payments: sheet.payments })
-    const unpriced = bal.totalCost === 0 && bal.paid === 0 && bal.backcharges === 0
-    const open = Math.max(0, bal.balance)
     const job = sheetJob(sheet, jobsById, jobsByNumber)
     const covering = [...(bySheet.get(sheet.id) ?? []), ...(job ? (byJob.get(job.id) ?? []) : [])]
     for (const r of covering) represented.add(r.id)
     const coverage = buildJobWorkOrderCoverage(covering, input.todayYmd)
+    // Agreed is the sheet total; a sheet with no items yet borrows the amount its sent or signed order carries.
+    const orderAmount = coverageAmount(coverage)
+    const fromOrder = laborItemsSubtotal(sheet.items, sheet.labor_rate ?? 0) === 0 && orderAmount > 0
+    const agreed = fromOrder ? orderAmount : bal.totalCost
+    const unpriced = !fromOrder && bal.totalCost === 0 && bal.paid === 0 && bal.backcharges === 0
+    const open = Math.max(0, fromOrder ? agreed - bal.paid - bal.backcharges : bal.balance)
     const inPlay = unpriced || open > 0 || liveKind(coverage)
     if (!inPlay) continue
     const subNames = splitAssignedToNames(sheet.assigned_to_name)
@@ -133,8 +143,8 @@ export function buildWorkOrderBoard(input: WorkOrderBoardInput): WorkOrderBoard 
     const ids = input.assigneesBySheetId.get(sheet.id)
     const personId = ids && ids.length > 0 ? (ids.length === 1 ? ids[0]! : null) : subNames.length === 1 ? (personByNameKey.get(normalizePersonNameKey(subNames[0]!))?.id ?? null) : null
     const eff = effectiveSubSheetStage({ stage: sheet.stage, stageSource: sheet.stage_source, stageChangedAt: sheet.stage_changed_at ?? null, progressPct: sheet.progress_pct ?? null, progressAt: sheet.progress_at ?? null, workEndYmd: subSheetWorkEndYmd(covering), todayYmd: input.todayYmd })
-    const rail = buildSheetRail({ coverage, sheetStage: eff.stage, payableAfter: sheet.payable_after ?? null, agreed: bal.totalCost, open, unpriced })
-    const next = sheetNextAction(rail, coverage, { subName, agreed: bal.totalCost, open, unpriced, todayYmd: input.todayYmd, nudgeAfterDays: input.nudgeAfterDays })
+    const rail = buildSheetRail({ coverage, sheetStage: eff.stage, payableAfter: sheet.payable_after ?? null, agreed, open, unpriced })
+    const next = sheetNextAction(rail, coverage, { subName, agreed, open, unpriced, todayYmd: input.todayYmd, nudgeAfterDays: input.nudgeAfterDays })
     const jobNumber = (sheet.job_number ?? '').trim()
     rows.push({
       key: `sheet:${sheet.id}`,
@@ -149,7 +159,7 @@ export function buildWorkOrderBoard(input: WorkOrderBoardInput): WorkOrderBoard 
       subNames,
       subName,
       personId,
-      agreed: bal.totalCost,
+      agreed,
       paid: bal.paid,
       open,
       unpriced,

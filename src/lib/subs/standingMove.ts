@@ -7,6 +7,7 @@
  */
 import type { WorkOrderBoardRow } from '../subWorkOrders/workOrderBoardRows'
 import { daysBetweenYmd } from '../subWorkOrders/sheetRail'
+import { formatWorkDateYmdMonthDayShort } from '../../utils/dateUtils'
 
 export type MoveTone = 'primary' | 'ghost' | 'warn' | 'ok' | 'quiet'
 export type MoveKind = 'draft' | 'price' | 'send' | 'view' | 'nudge' | 'resend' | 'reoffer' | 'wait_sub' | 'inspection' | 'passed' | 'bill' | 'pay' | 'done' | 'offer_stage'
@@ -38,10 +39,10 @@ export function standingMovesForRow(row: WorkOrderBoardRow, ctx: StandingMoveCon
   if (c.kind === 'draft') return c.unpriced ? none({ kind: 'price', label: 'Price it and send', tone: 'primary', hint: row.next.hint }) : none({ kind: 'send', label: 'Send it', tone: 'primary', hint: row.next.hint })
   if (c.kind === 'declined') return none({ kind: 'reoffer', label: 'Re-offer…', tone: 'warn', hint: row.next.hint })
   if (c.kind === 'sent') {
-    if (c.expired) return none({ kind: 'resend', label: 'Re-send…', tone: 'warn', hint: c.expiresOn ? `expired ${c.expiresOn}` : row.next.hint })
+    if (c.expired) return none({ kind: 'resend', label: 'Re-send…', tone: 'warn', hint: c.expiresOn ? `expired ${formatWorkDateYmdMonthDayShort(c.expiresOn)}` : row.next.hint })
     const days = daysBetweenYmd(c.sentAt, ctx.todayYmd)
     if (days >= (ctx.nudgeAfterDays ?? 3)) return none({ kind: 'nudge', label: `Nudge ${first}`, tone: 'warn', hint: `out ${days} days · a nudge is due` })
-    return none({ kind: 'view', label: `Waiting on ${first}${days > 0 ? ` · ${days} day${days === 1 ? '' : 's'}` : ''}`, tone: 'ghost', hint: c.expiresOn ? `good through ${c.expiresOn}` : null })
+    return none({ kind: 'view', label: `Waiting on ${first}${days > 0 ? ` · ${days} day${days === 1 ? '' : 's'}` : ''}`, tone: 'ghost', hint: c.expiresOn ? `good through ${formatWorkDateYmdMonthDayShort(c.expiresOn)}` : null })
   }
   // Signed: the sheet's own step.
   switch (row.rail.current) {

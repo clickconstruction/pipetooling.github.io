@@ -73,6 +73,21 @@ describe('buildWorkOrderBoard — which sheets are rows', () => {
   })
 })
 
+describe('buildWorkOrderBoard — agreed on a sheet with no items', () => {
+  it('borrows the sent or signed order’s amount, and reads open against it', () => {
+    const b = board([sheet({ id: 's1', items: [] })], [order({ id: 'o1', status: 'offered', labor_job_id: 's1', amount: 1200, offered_at: '2026-09-04T00:00:00Z', offer_expires_at: '2026-09-11' })])
+    expect(b.rows[0]).toMatchObject({ group: 'sent', agreed: 1200, open: 1200, unpriced: false })
+    const paid = board([sheet({ id: 's2', items: [], payments: [{ amount: 500 }] })], [order({ id: 'o2', status: 'accepted', labor_job_id: 's2', amount: 1200, signed_at: '2026-09-05T10:00:00Z' })])
+    expect(paid.rows[0]).toMatchObject({ group: 'signed', agreed: 1200, paid: 500, open: 700, unpriced: false })
+  })
+  it('stays unpriced with no items and no priced order; items on the sheet win over the order', () => {
+    const drafted = board([sheet({ id: 's1', items: [] })], [order({ id: 'o1', status: 'draft', labor_job_id: 's1', amount: 1200 })])
+    expect(drafted.rows[0]).toMatchObject({ group: 'drafted', agreed: 0, unpriced: true })
+    const priced = board([sheet({ id: 's2' })], [order({ id: 'o2', status: 'offered', labor_job_id: 's2', amount: 1200, offered_at: '2026-09-04T00:00:00Z', offer_expires_at: '2026-09-11' })])
+    expect(priced.rows[0]).toMatchObject({ agreed: 1750, open: 1750, unpriced: false })
+  })
+})
+
 describe('buildWorkOrderBoard — the sub behind a row', () => {
   it('a single junction assignee hands the assembler its sub; a single legacy name resolves through the roster; two names give nothing', () => {
     expect(board([sheet({ id: 's1' })], [], [['s1', ['p-mig']]]).rows[0]!.personId).toBe('p-mig')

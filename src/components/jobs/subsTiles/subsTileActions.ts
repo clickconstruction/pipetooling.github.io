@@ -15,7 +15,8 @@ export type SubsTileActions = {
   /** The board changed under the modal — reload it. */
   changed: () => void
   openAssembler: (initial: WorkOrderAssemblerInitial) => void
-  withdraw: (order: StepCommitmentRow) => Promise<void>
+  /** Withdraw behind the board's confirm; resolves false when the office backed out or the write failed. */
+  withdraw: (order: StepCommitmentRow) => Promise<boolean>
   /** Withdraw without the board's confirm — the caller already asked. */
   withdrawQuiet: (order: StepCommitmentRow) => Promise<boolean>
   nudge: (order: StepCommitmentRow) => Promise<void>
@@ -29,6 +30,8 @@ export type SubsTileActions = {
   newJobForSheet: (row: WorkOrderBoardRow) => void
   /** Push an offer's good-through date out by N days. */
   extendOffer: (order: StepCommitmentRow, days: number) => Promise<boolean>
+  /** Cancel a draft behind the board's confirm — the row's Discard after an Undo left one behind. */
+  discardDraft: (order: StepCommitmentRow) => Promise<boolean>
   openSheet?: (sheetId: string) => void
   setSheetStage?: (sheetId: string, stage: SubSheetStage) => Promise<boolean> | boolean | void
   openMakePayment?: (target: SubLaborPaymentTarget, defaultAmount: string) => void
@@ -40,5 +43,8 @@ export type SubsTileActions = {
 /** A sub's contact card from the roster — the row shows the phone and the quick send needs the email. */
 export type RosterContact = { email: string | null; phone: string | null }
 
-/** What a row reads once the office has acted on it, and how to take it back. */
-export type HandledMark = { label: string; undo?: (() => void | Promise<void>) | null }
+/** What a row reads once the office has acted on it, how to take it back, and an optional second move the mark offers (Discard the draft an Undo left behind). */
+export type HandledMark = { label: string; undo?: (() => void | Promise<void>) | null; action?: { label: string; run: () => void | Promise<void>; danger?: boolean } | null }
+
+/** After Undo on a sent row: the withdraw leaves a draft behind, so the row moved to Drafted rather than back into this queue. */
+export const WITHDRAWN_DRAFT_KEPT = 'Withdrawn · draft kept'
