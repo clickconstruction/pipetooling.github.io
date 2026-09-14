@@ -7,6 +7,7 @@ import {
 } from '../lib/dispatchInboxBadge'
 import { useToastContext } from '../contexts/ToastContext'
 import { useAuth } from './useAuth'
+import { ESTIMATOR_INBOX_GROUP, useInboxGroupEligibility } from './useInboxGroupEligibility'
 import { useRealtimeChannel } from './useRealtimeChannel'
 import type { EstimatorInboxRow, EstimatorThreadNoteRow } from '../components/EstimatorInboxSection'
 import { formatErrorMessage, withSupabaseRetry } from '../utils/errorHandling'
@@ -16,10 +17,11 @@ const ESTIMATOR_REQUEST_SELECT =
   'id, title, links, created_at, from_user_id, reference_summary, location_lat, location_lng, status, closed_at, closed_by_user_id, closed_note, priority, priority_changed_at, last_called_at, pending_payload, sender:users!estimator_requests_from_user_id_fkey(name, email), closed_by:users!estimator_requests_closed_by_user_id_fkey(name), last_called_by:users!estimator_requests_last_called_by_user_id_fkey(name)'
 
 export function useEstimatorInbox() {
-  const { user: authUser, role } = useAuth()
+  const { user: authUser } = useAuth()
   const { showToast } = useToastContext()
 
-  const [estimatorInboxEligible, setEstimatorInboxEligible] = useState(false)
+  /** Dev, or an `estimator_group_members` row — one shared read (`useInboxGroupEligibility`). */
+  const { estimator: estimatorInboxEligible } = useInboxGroupEligibility(ESTIMATOR_INBOX_GROUP)
   const [estimatorRequests, setEstimatorRequests] = useState<EstimatorInboxRow[]>([])
   const [estimatorRequestsLoading, setEstimatorRequestsLoading] = useState(false)
   /** Footer-badge counts over every row (open ignores per-viewer dismissal) — see dispatchInboxBadge.ts. */
@@ -35,29 +37,6 @@ export function useEstimatorInbox() {
   const [estimatorNoteSubmitRequestId, setEstimatorNoteSubmitRequestId] = useState<string | null>(null)
   const [estimatorNoteDraft, setEstimatorNoteDraft] = useState('')
   const expandedEstimatorRequestIdRef = useRef<string | null>(null)
-
-  useEffect(() => {
-    if (!authUser?.id) {
-      setEstimatorInboxEligible(false)
-      return
-    }
-    if (role === 'dev') {
-      setEstimatorInboxEligible(true)
-      return
-    }
-    let cancelled = false
-    supabase
-      .from('estimator_group_members')
-      .select('user_id')
-      .eq('user_id', authUser.id)
-      .maybeSingle()
-      .then(({ data }) => {
-        if (!cancelled) setEstimatorInboxEligible(!!data)
-      })
-    return () => {
-      cancelled = true
-    }
-  }, [authUser?.id, role])
 
   const loadEstimatorRequests = useCallback(() => {
     if (!authUser?.id || !estimatorInboxEligible) {

@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
+import { BOTH_INBOX_GROUPS, useInboxGroupEligibility } from '../hooks/useInboxGroupEligibility'
 import { useIsDigitalTwin } from '../hooks/useIsDigitalTwin'
 import { useRealtimeChannel } from '../hooks/useRealtimeChannel'
 import { isAssistantLike } from '../lib/subcontractorLikeRole'
@@ -38,35 +39,10 @@ const OPEN_HIGH_SELECT = 'id, title, created_at, reference_summary, pending_payl
 export function CustomerWaitingProvider({ children }: { children: ReactNode }) {
   const { user: authUser, role } = useAuth()
   const isTwin = useIsDigitalTwin()
-  const [dispatchEligible, setDispatchEligible] = useState(false)
-  const [estimatorEligible, setEstimatorEligible] = useState(false)
+  /** Dev (both), else the two `*_group_members` rows — one shared read; twins never. */
+  const { dispatch: dispatchEligible, estimator: estimatorEligible } = useInboxGroupEligibility(BOTH_INBOX_GROUPS, { disabled: isTwin })
   const [rows, setRows] = useState<CustomerWaitingRow[]>([])
   const [loaded, setLoaded] = useState(false)
-
-  useEffect(() => {
-    if (!authUser?.id || isTwin) {
-      setDispatchEligible(false)
-      setEstimatorEligible(false)
-      return
-    }
-    if (role === 'dev') {
-      setDispatchEligible(true)
-      setEstimatorEligible(true)
-      return
-    }
-    let cancelled = false
-    void Promise.all([
-      supabase.from('dispatch_group_members').select('user_id').eq('user_id', authUser.id).maybeSingle(),
-      supabase.from('estimator_group_members').select('user_id').eq('user_id', authUser.id).maybeSingle(),
-    ]).then(([d, e]) => {
-      if (cancelled) return
-      setDispatchEligible(!!d.data)
-      setEstimatorEligible(!!e.data)
-    })
-    return () => {
-      cancelled = true
-    }
-  }, [authUser?.id, role, isTwin])
 
   const eligible = dispatchEligible || estimatorEligible
 

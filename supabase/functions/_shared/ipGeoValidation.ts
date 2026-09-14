@@ -5,7 +5,9 @@
 function ipv4Octets(s: string): number[] | null {
   const m = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/.exec(s.trim())
   if (!m) return null
-  const parts = [m[1], m[2], m[3], m[4]].map((x) => parseInt(x, 10))
+  const [, o1, o2, o3, o4] = m
+  if (o1 === undefined || o2 === undefined || o3 === undefined || o4 === undefined) return null
+  const parts = [o1, o2, o3, o4].map((x) => parseInt(x, 10))
   if (parts.some((n) => n < 0 || n > 255)) return null
   return parts
 }
@@ -26,6 +28,7 @@ export function isRoutablePublicIp(ip: string): { ok: true } | { ok: false; reas
   const v4 = ipv4Octets(s)
   if (v4) {
     const [a, b] = v4
+    if (a === undefined || b === undefined) return { ok: false, reason: 'Invalid IP address' }
     if (a === 10) return { ok: false, reason: 'Private or non-routable IP' }
     if (a === 172 && b >= 16 && b <= 31) return { ok: false, reason: 'Private or non-routable IP' }
     if (a === 192 && b === 168) return { ok: false, reason: 'Private or non-routable IP' }

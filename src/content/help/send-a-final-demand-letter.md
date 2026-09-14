@@ -12,15 +12,26 @@ On a **Billed Awaiting Payment** or **Collections** row, the orange lien icon no
 
 ## What fills itself in
 
-- **The debt** — from the billed lines you select: invoice total, payments received, outstanding balance.
+- **Who owes it** — read from the bill, never typed. A bill addressed to the GC is demanded of the GC; a bill to the customer, of the customer; a bill with a typed payer, of that payer. On a job with a GC the block says so and points you to the **§ 53.056 notice** tab — that is the paper the statute sends the property owner, not a demand. The mailing address fills from the payer's record and stays editable; a red {{chip:red|needs a mailing address}} means there is none on file.
+- **The debt** — a **statement of account**, one block per bill you select: the invoice number the customer saw (for a Stripe-hosted bill, the number Stripe printed), when it was sent and due, each line as billed, payments and credits, and the balance. It is read-only on purpose: a sworn-account claim wants the name, date and charge of each item with credits allowed, and a demand that does not match the bill costs you attorney's fees. Something wrong? Fix it on the bill and the letter re-reads it.
+- **One letter per payer** — the bill chips show who each bill went to when a job's bills go to different payers; picking a bill for another payer starts a letter for that payer.
 - **The notice history** — this is the part no form site can write. The letter lists, with dates, every invoice send, every Stripe re-send, and every collection call recorded in call mode: *"July 15 — Invoice sent · August 5 — Invoice re-sent by email · August 26 — Collection call."* A debtor reading a dated list knows you keep records.
-- **The recipient** — the bill-to override when the line carries one, otherwise the job's customer with their address on file.
 - **The deadline** — defaults to 10 business days out; one click resets it.
 - **The Chapter 53 line** — when the job is linked to a property record, the letter quotes your *actual* lien-filing window for the work. A threat with a date behind it reads differently.
 
 :::example The § 31.04 line
 The theft-of-services escalation (Texas Penal Code § 31.04) is a checkbox that ships **off** until the attorney package signs off on it. Small claims, the mechanic's lien, and the late-fees note are on by default — every line is a toggle.
 :::
+
+## What goes out with it
+
+The letter never goes alone. Under **Enclosed**:
+
+- **Exhibit A — the invoice**, always: the bill as the customer received it, one per bill the demand covers, stamped on every page.
+- **Exhibit B — the signed agreement**, when the job has one on file (untick it to leave it out).
+- **Exhibit C — the delivery record**: the dated sends, re-sends, calls and promises the letter cites, on one page the debtor can check against their own inbox.
+
+The letter names them under the statement and in an *Enclosures* line at the foot. The preview shows each exhibit as the page it will be. {{button:outline-blue|Print packet}} opens one PDF — the letter, then every exhibit — and {{button:outline-blue|Download PDF}} saves the same file.
 
 ## Record the send
 

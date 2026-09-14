@@ -25,6 +25,8 @@ Each of the three PO-named tabs carries a one-line signpost at the top saying wh
 
 {{button:blue|Generate}} mints a five-digit code (10000–99999) that is unique across the company. Read it across the counter; the ledger under the form lists every code with its job, person, supply house and who made it, newest first, so anyone can look a code up when the invoice arrives.
 
+**Before the code: the job account.** Once the job and the supply house are picked, a line under the house says whether the job has a **job account** there. Amber — *No job account at Ferguson for 964 yet. Ferguson expects one per property. Curly Conley opens them: 210-344-4950.* — with {{button:outline|Call Curly}}, {{button:green|Mark opened…}} (two taps after the call: how, the reference, a note), {{button:outline|Send the packet}} and *Not needed for this job*. Teal once it is open: *Ferguson job account open · ref JA-4114 · Sep 2 · by phone*. The code mints either way — the tech is standing at the counter — but this is the moment to make the call. See [open a job account before buying parts](?g=open-a-job-account-before-buying-parts).
+
 On a phone, turn on **Dispatch Mode** and use its **PO** tab — same numbering, same ledger, three taps (today's jobs are offered first, the job's crew floats to the top, your last supply house is pre-picked), with **Copy** and **Text to the tech** buttons under the big code ([run the day from your phone with Dispatch Mode](?g=dispatch-mode)).
 
 **Why the ledger matters:** when the supply house's invoice is entered under Materials → Supply Houses, its PO # is checked against this ledger — a code that isn't on file for that house lights a red warning. The number you read at the counter is how the bill finds its job.

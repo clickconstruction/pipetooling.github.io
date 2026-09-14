@@ -23,7 +23,13 @@ export type JobCrewPositionRpcRow = {
   report_pct: number | null
   report_at: string | null
   pct_manual_at: string | null
+  /** Newest job_pct_events row of ANY source — absent on the pre-pct_set_at RPC (the client deploys ahead of the push). */
+  pct_set_at?: string | null
+  /** That row's source: 'seed' (the 2026-08-07 back-fill) / 'manual' / 'service' (a field report). */
+  pct_source?: string | null
 }
+
+export type PctEventSource = 'seed' | 'manual' | 'service'
 
 export type SubSheetStage = 'working' | 'walkthrough' | 'customer_pay'
 
@@ -42,9 +48,14 @@ export type JobCrewPosition = {
   report: { pct: number; at: string } | null
   /** When the office last typed a percent on the job (job_pct_events, manual); null = never since the ledger began. */
   pctManualAt: string | null
+  /** When the job's current percent was set, whatever set it (newest job_pct_events row of any source); null = no event, or an RPC that predates the column. */
+  pctSetAt: string | null
+  /** The source of that event; null when unknown. */
+  pctSource: PctEventSource | null
 }
 
 const isSheetStage = (s: unknown): s is SubSheetStage => s === 'working' || s === 'walkthrough' || s === 'customer_pay'
+const isPctSource = (s: unknown): s is PctEventSource => s === 'seed' || s === 'manual' || s === 'service'
 
 /** `'Behar | Malachi | Abraham'` → `['Behar', 'Malachi', 'Abraham']`. */
 export function splitSheetNames(raw: string | null | undefined): string[] {
@@ -80,6 +91,8 @@ export function crewPositionFromRpcRow(r: JobCrewPositionRpcRow, todayYmd: strin
       : null,
     report: reportPct != null && r.report_at ? { pct: reportPct, at: r.report_at } : null,
     pctManualAt: r.pct_manual_at ?? null,
+    pctSetAt: r.pct_set_at ?? null,
+    pctSource: isPctSource(r.pct_source) ? r.pct_source : null,
   }
 }
 
@@ -110,20 +123,29 @@ export function crewShortName(p: JobCrewPosition | null | undefined): string {
   return ''
 }
 
+/** Where the row's percent came from: typed by the office · reported from the field · set by the 2026-08-07 back-fill. */
+export type PercentSource = 'typed' | 'report' | 'seed'
+
+const percentSourceOf = (s: PctEventSource | null): PercentSource => (s === 'service' ? 'report' : s === 'seed' ? 'seed' : 'typed')
+
 /**
  * The percent the row shows, with its provenance. **The job's own
  * `pct_complete` is the number** — it is what the % done box shows and what
- * reports propagate into (v2.3192) — dated by the newest hand-set
- * (`pct_manual_at`), or by the report that carries the same number when no
- * hand-set is on record. A report stands on its own only when the job has no
- * percent at all. (v2.3372's "newest wins" governs Job Summary, where reports
- * feed the %; on the Pipeline row the box and the words must agree.)
+ * reports propagate into (v2.3192) — dated by the event that set it
+ * (`pct_set_at`, the newest `job_pct_events` row of any source: a hand-set
+ * reads *typed*, a report's propagation *reported*, the back-fill *set*).
+ * On the older RPC shape without `pct_set_at` it is dated by the newest
+ * hand-set (`pct_manual_at`), or by the report that carries the same number
+ * when no hand-set is on record. A report stands on its own only when the
+ * job has no percent at all. (v2.3372's "newest wins" governs Job Summary,
+ * where reports feed the %; on the Pipeline row the box and the words must agree.)
  */
-export function newestPercent(p: JobCrewPosition | null | undefined, typedPct: number | null | undefined): { pct: number; source: 'typed' | 'report'; at: string | null } | null {
+export function newestPercent(p: JobCrewPosition | null | undefined, typedPct: number | null | undefined): { pct: number; source: PercentSource; at: string | null } | null {
   const typed = typedPct != null && Number.isFinite(Number(typedPct)) ? Math.round(Number(typedPct)) : null
   const report = p?.report ?? null
   const manualAt = p?.pctManualAt ?? null
   if (typed != null) {
+    if (p?.pctSetAt) return { pct: typed, source: percentSourceOf(p.pctSource), at: p.pctSetAt }
     if (manualAt) return { pct: typed, source: 'typed', at: manualAt }
     if (report && report.pct === typed) return { pct: typed, source: 'report', at: report.at }
     return { pct: typed, source: 'typed', at: null }

@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { useJobDetailModal } from '../../contexts/JobDetailModalContext'
+import { JobAccountsStrip } from '../jobs/JobAccountsStrip'
+import { useJobAccountStrips } from '../../hooks/useJobAccountStrips'
 import { denverCalendarDayKey, isoWeekNumberFromGregorianYmd, ymdAddDays } from '../../utils/dateUtils'
 import {
   formatBlockDurationMinutes,
@@ -229,6 +231,9 @@ export default function DispatchModeSchedule({ selfUserId }: { selfUserId?: stri
     () => (personFilter.size === 0 ? blocks : blocks.filter((b) => personFilter.has(b.assigneeUserId))),
     [blocks, personFilter],
   )
+  // Job accounts at the counter (v2.3424): the strip under every block's address.
+  const stripJobIds = useMemo(() => visibleBlocks.map((b) => b.jobId), [visibleBlocks])
+  const jobAccountStrips = useJobAccountStrips(stripJobIds)
 
   const togglePerson = (id: string) => {
     setPersonFilter((prev) => {
@@ -598,6 +603,14 @@ export default function DispatchModeSchedule({ selfUserId }: { selfUserId?: stri
                 {b.jobAddress ? (
                   <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>{b.jobAddress}</span>
                 ) : null}
+                <JobAccountsStrip
+                  jobId={b.jobId}
+                  jobLabel={jobTitleByJobId.get(b.jobId) ?? b.jobName}
+                  jobAddress={b.jobAddress}
+                  entries={jobAccountStrips.byJob.get(b.jobId)}
+                  onChanged={jobAccountStrips.reload}
+                  compact
+                />
                 {isMobile ? (
                   <span style={{ fontSize: '0.8125rem', color: 'var(--text-blue-700)', fontWeight: 600 }}>
                     {b.assigneeName}

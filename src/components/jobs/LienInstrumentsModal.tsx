@@ -9,16 +9,31 @@ import {
   buildDemandLetterPrintHtml,
   demandLetterPdfFilename,
   demandDate,
+  demandDebtorParty,
   demandMoney,
+  statementRows,
+  buildDeliveryRecordPdfBlob,
+  demandInvoicesPhrase,
+  type DemandInvoiceSource,
   type DemandLetterFields,
   type DemandPriorNotice,
 } from '../../lib/jobsDocuments/demandLetter'
+import { customerBillingEmail, effectiveInvoiceParty, type EffectiveBillParty } from '../../lib/jobs/billToParty'
+import { fetchJobWithDetailsById } from '../../lib/fetchJobWithDetailsById'
+import { buildPhysicalInvoiceDocumentForBilledInvoice } from '../../lib/physicalInvoiceDocumentForBilledInvoice'
+import { getAccessTokenForEdgeFunctions } from '../../lib/supabaseAccessTokenForEdge'
+import { getBillingStripeModePref, stripeModeInvokeBody } from '../../lib/billingStripeModePref'
+import { parseStripeInvoiceDetailsResponse } from '../../lib/stripeInvoiceDetailsResponse'
+import { buildDemandLetterPacket, type DemandExhibit, type DemandExhibitInput, type DemandLetterPacket } from '../../lib/jobsDocuments/demandLetterPacket'
+import { buildPhysicalInvoicePdfBlob } from '../../lib/physicalInvoicePdf'
+import { PhysicalInvoicePreview } from './PhysicalInvoicePreview'
+import { JOB_CONTRACT_BUCKET } from '../../lib/jobs/jobContractFileWrite'
 import { liveDemandLetters, type JobDemandLetterRow } from '../../lib/jobs/demandLetterTracking'
 import { parsePaymentPromisesRpc } from '../../lib/jobs/paymentPromises'
 import { computeJobLienClock, type JobLienFilingRow } from '../../lib/jobs/lienDeadlines'
 import { type CustomerAddressRow, type JobPropertyOwnerLike } from '../../lib/jobs/lienProperty'
 import LienFilingTabs from './LienFilingTabs'
-import { openHtmlPreviewWindow, openHtmlPrintWindow } from '../../lib/jobsDocuments/printWindow'
+import { openHtmlPreviewWindow } from '../../lib/jobsDocuments/printWindow'
 import { fetchPhysicalInvoiceIssuerFromAppSettings, getPhysicalInvoiceIssuerDraft } from '../../lib/physicalInvoiceIssuer'
 import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
 import { supabase } from '../../lib/supabase'
@@ -49,6 +64,11 @@ const SENT_METHODS: Array<{ value: string; label: string }> = [
 
 function todayYmdLocal(): string {
   return todayYmdInAppTz()
+}
+
+/** "Invoice #867-2608180928, as sent August 18, 2026" (v2.3429). */
+function exhibitATitle(invoiceNumber: string, sentYmd: string): string {
+  return `Invoice ${invoiceNumber}${sentYmd ? `, as sent ${demandDate(sentYmd)}` : ''}`
 }
 
 /** Billed lines with money still open — what a demand letter is about. */
@@ -113,6 +133,16 @@ export default function LienInstrumentsModal({
   const [recordTracking, setRecordTracking] = useState('')
   const [recordSentOn, setRecordSentOn] = useState(todayYmdLocal())
   const [recordBusy, setRecordBusy] = useState(false)
+  // v2.3425 — the letter reads the bill: the full job (fixtures for the
+  // invoice document), what Stripe rendered per hosted invoice, the payer rows.
+  const [fullJob, setFullJob] = useState<JobWithDetails | null>(null)
+  const [stripeByInvoice, setStripeByInvoice] = useState<Record<string, { invoiceNumber: string | null; lines: { description: string; quantity: number | null; amount: number }[] }>>({})
+  const [payerRows, setPayerRows] = useState<Record<string, { name: string; address: string; email: string }>>({})
+  const [addressTouched, setAddressTouched] = useState(false)
+  // v2.3429 — the exhibits: the signed agreement when the job has one (Exhibit B), and the two switches.
+  const [signedAgreement, setSignedAgreement] = useState<{ path: string; title: string } | null>(null)
+  const [includeAgreement, setIncludeAgreement] = useState(true)
+  const [includeDeliveryRecord, setIncludeDeliveryRecord] = useState(true)
 
   const issuer = useMemo(() => (open ? getPhysicalInvoiceIssuerDraft() : null), [open, issuerGen])
 
@@ -185,14 +215,58 @@ export default function LienInstrumentsModal({
     setRecordMethod('certified_mail')
     setRecordTracking('')
     setRecordSentOn(todayYmdLocal())
+    setAddressTouched(false)
+    setFullJob(null)
+    setStripeByInvoice({})
+    setPayerRows({})
+    setSignedAgreement(null)
+    setIncludeAgreement(true)
+    setIncludeDeliveryRecord(true)
     void loadHistory()
     void loadFilings()
     let cancelled = false
     void (async () => {
       try {
-        if (job.customer_id) {
-          const { data } = await supabase.from('customers').select('address').eq('id', job.customer_id).maybeSingle()
-          if (!cancelled) setCustomerAddress((data?.address ?? '').trim())
+        // The full job: fixtures and materials feed the invoice document the statement reads.
+        try {
+          const full = await fetchJobWithDetailsById(job.id)
+          if (!cancelled && full) setFullJob(full)
+        } catch {
+          // the board row is enough for a single-line statement
+        }
+        const payerIds = [job.customer_id, job.gc_customer_id].filter((id): id is string => Boolean(id))
+        if (payerIds.length > 0) {
+          const { data } = await supabase.from('customers').select('id, name, address, billing_email, contact_info').in('id', payerIds)
+          if (!cancelled) {
+            const next: Record<string, { name: string; address: string; email: string }> = {}
+            for (const r of (data ?? []) as { id: string; name: string | null; address: string | null; billing_email: string | null; contact_info: unknown }[]) {
+              next[r.id] = { name: (r.name ?? '').trim(), address: (r.address ?? '').trim(), email: customerBillingEmail(r) }
+            }
+            setPayerRows(next)
+            if (job.customer_id) setCustomerAddress(next[job.customer_id]?.address ?? '')
+          }
+        }
+        // Exhibit B: the job's signed agreement, when one exists as a PDF.
+        try {
+          const { data: contracts } = await supabase
+            .from('job_contracts')
+            .select('template_name, signed_at, signed_pdf_path, paper_upload_path, paper_signed_on, status, voided_at')
+            .eq('job_id', job.id)
+            .is('voided_at', null)
+            .order('signed_at', { ascending: false })
+          const rows = (contracts ?? []) as { template_name: string | null; signed_at: string | null; signed_pdf_path: string | null; paper_upload_path: string | null; paper_signed_on: string | null; status: string }[]
+          const signed = rows.find((r) => (r.signed_pdf_path ?? '').trim()) ?? rows.find((r) => /\.pdf$/i.test((r.paper_upload_path ?? '').trim()))
+          if (!cancelled) {
+            if (signed) {
+              const path = (signed.signed_pdf_path ?? '').trim() || (signed.paper_upload_path ?? '').trim()
+              const when = (signed.signed_at ?? '').slice(0, 10) || (signed.paper_signed_on ?? '').slice(0, 10)
+              setSignedAgreement({ path, title: `Signed agreement — ${(signed.template_name ?? '').trim() || 'contract'}${when ? `, signed ${demandDate(when)}` : ''}` })
+            } else {
+              setSignedAgreement(null)
+            }
+          }
+        } catch {
+          // no agreement to enclose
         }
         const linkedId = job.customer_address_id ?? null
         if (linkedId) {
@@ -238,7 +312,40 @@ export default function LienInstrumentsModal({
     }
   }, [open, job?.id, invoice?.id, loadHistory, loadFilings])
 
-  const demandable = useMemo(() => (job ? demandableInvoices(job) : []), [job])
+  const effJob = fullJob && job && fullJob.id === job.id ? fullJob : job
+  const demandable = useMemo(() => (effJob ? demandableInvoices(effJob) : []), [effJob])
+
+  // What Stripe rendered for each hosted bill: the number the customer saw and the lines as they saw them.
+  useEffect(() => {
+    if (!open || !job) return
+    const hosted = demandable.filter((i) => (i.stripe_invoice_id ?? '').trim() && !stripeByInvoice[i.id])
+    if (hosted.length === 0) return
+    let cancelled = false
+    void (async () => {
+      const token = await getAccessTokenForEdgeFunctions().catch(() => null)
+      if (!token || cancelled) return
+      const mode = authRole === 'dev' ? getBillingStripeModePref() : 'live'
+      await Promise.all(
+        hosted.map(async (inv) => {
+          try {
+            const { data } = await supabase.functions.invoke('get-stripe-invoice-details', {
+              body: { jobs_ledger_invoice_id: inv.id, ...stripeModeInvokeBody(mode) },
+              headers: { Authorization: `Bearer ${token}` },
+            })
+            const parsed = parseStripeInvoiceDetailsResponse(data as Record<string, unknown> | null)
+            if (!parsed || cancelled) return
+            setStripeByInvoice((prev) => ({ ...prev, [inv.id]: { invoiceNumber: parsed.invoice_number, lines: parsed.lines } }))
+          } catch {
+            // the statement falls back to the app's own document
+          }
+        }),
+      )
+    })()
+    return () => {
+      cancelled = true
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, job?.id, demandable.map((i) => i.id).join(','), authRole])
   const selectedInvoices = useMemo(
     () => demandable.filter((i) => selectedInvoiceIds.has(i.id)),
     [demandable, selectedInvoiceIds],
@@ -319,22 +426,56 @@ export default function LienInstrumentsModal({
     }
   }, [open, job?.id, selectedInvoices])
 
-  // Prefill rebuild — keeps user-typed recipient/deadline/paymentMethod edits.
+  // Who owes it (v2.3425): the party the bill was addressed to, by the
+  // invoice's own who-pays rule — the GC when the bill went to the GC, the
+  // customer when it went to the customer, a typed payer when one was typed.
+  const partyOf = useCallback(
+    (inv: JobsLedgerInvoice): EffectiveBillParty =>
+      effJob
+        ? effectiveInvoiceParty(
+            { gc_customer_id: effJob.gc_customer_id ?? null, customer_id: effJob.customer_id ?? null, bill_to_party: effJob.bill_to_party ?? null },
+            { bill_to_email: inv.bill_to_email ?? null, bill_to_party: inv.bill_to_party ?? null },
+          )
+        : 'customer',
+    [effJob],
+  )
+  const debtorParty: EffectiveBillParty = effJob ? demandDebtorParty(effJob, selectedInvoices) : 'customer'
+  const debtor = useMemo(() => {
+    if (!effJob) return { name: '', email: '', address: '', label: '' }
+    const first = selectedInvoices[0]
+    if (debtorParty === 'other' && first) {
+      return { name: (first.bill_to_name ?? '').trim() || (first.bill_to_email ?? '').trim(), email: (first.bill_to_email ?? '').trim(), address: '', label: 'the payer typed on the bill' }
+    }
+    if (debtorParty === 'gc' && effJob.gc_customer_id) {
+      const row = payerRows[effJob.gc_customer_id]
+      return { name: row?.name || (effJob.gcCustomer?.name ?? '').trim() || 'the GC', email: row?.email ?? gcEmail, address: row?.address ?? '', label: 'the GC on the job' }
+    }
+    const row = effJob.customer_id ? payerRows[effJob.customer_id] : undefined
+    return { name: row?.name || (effJob.customer_name ?? '').trim(), email: row?.email || (effJob.customer_email ?? '').trim(), address: row?.address ?? customerAddress, label: 'the customer on the job' }
+  }, [effJob, selectedInvoices, debtorParty, payerRows, gcEmail, customerAddress])
+
+  const sources = useMemo<DemandInvoiceSource[]>(() => {
+    if (!effJob) return []
+    return selectedInvoices.map((inv) => {
+      let doc = null
+      try {
+        doc = buildPhysicalInvoiceDocumentForBilledInvoice(effJob, inv)
+      } catch {
+        doc = null
+      }
+      return { inv, doc, stripe: stripeByInvoice[inv.id] ?? null }
+    })
+  }, [effJob, selectedInvoices, stripeByInvoice])
+
+  // Prefill rebuild — keeps user-typed deadline/paymentMethod edits and an address the user corrected.
   useEffect(() => {
-    if (!open || !job) return
-    const single = selectedInvoices.length === 1 ? selectedInvoices[0] : null
-    const recipient =
-      single?.bill_to_name?.trim()
-        ? { name: single.bill_to_name.trim(), email: (single.bill_to_email ?? '').trim(), address: '' }
-        : {
-            name: (job.customer_name ?? '').trim(),
-            email: (job.customer_email ?? '').trim(),
-            address: customerAddress,
-          }
+    if (!open || !effJob) return
+    const recipient = { name: debtor.name, email: debtor.email, address: debtor.address }
     setFields((prev) => {
       const next = buildDemandLetterPrefill({
-        job,
+        job: effJob,
         invoices: selectedInvoices,
+        sources,
         issuer,
         senderName: signerNameFallback,
         senderEmailFallback: authEmail,
@@ -343,12 +484,18 @@ export default function LienInstrumentsModal({
         propertyKind,
         todayYmd: todayYmdLocal(),
       })
-      if (!prev) return next
+      // The exhibits the letter names (v2.3429). Page counts arrive when the packet is built.
+      const enclosures: DemandExhibit[] = []
+      ;(next.statement ?? []).forEach((st, i) => {
+        if (sources[i]?.doc) enclosures.push({ label: 'A', title: exhibitATitle(st.invoiceNumber, st.sentYmd), pages: 0 })
+      })
+      if (signedAgreement && includeAgreement) enclosures.push({ label: 'B', title: signedAgreement.title, pages: 0 })
+      if (includeDeliveryRecord) enclosures.push({ label: 'C', title: 'Delivery record', pages: 0 })
+      const nextWithExhibits = { ...next, enclosures }
+      if (!prev) return nextWithExhibits
       return {
-        ...next,
-        recipientName: prev.recipientName.trim() ? prev.recipientName : next.recipientName,
-        recipientEmail: prev.recipientEmail.trim() ? prev.recipientEmail : next.recipientEmail,
-        recipientAddress: prev.recipientAddress.trim() ? prev.recipientAddress : next.recipientAddress,
+        ...nextWithExhibits,
+        recipientAddress: addressTouched && prev.recipientAddress.trim() ? prev.recipientAddress : next.recipientAddress,
         deadlineDate: prev.deadlineDate || next.deadlineDate,
         paymentMethod: prev.paymentMethod,
         includeSmallClaims: prev.includeSmallClaims,
@@ -358,7 +505,42 @@ export default function LienInstrumentsModal({
         includeNotarial: prev.includeNotarial,
       }
     })
-  }, [open, job, selectedInvoices, issuer, priorNotices, customerAddress, propertyKind, signerNameFallback, authEmail])
+  }, [open, effJob, selectedInvoices, sources, debtor, addressTouched, issuer, priorNotices, propertyKind, signerNameFallback, authEmail, signedAgreement, includeAgreement, includeDeliveryRecord])
+
+  // The packet (v2.3429): the letter, then Exhibit A per covered invoice (the
+  // invoice as the customer received it), B the signed agreement, C the
+  // delivery record — one PDF, every exhibit page stamped. Built twice so the
+  // letter's enclosures line can carry the page counts.
+  const buildPacket = useCallback(async (): Promise<DemandLetterPacket | null> => {
+    if (!fields) return null
+    const today = todayYmdLocal()
+    const statement = fields.statement ?? []
+    const inputs: DemandExhibitInput[] = []
+    for (let i = 0; i < sources.length; i++) {
+      const doc = sources[i]?.doc
+      const st = statement[i]
+      if (!doc || !st) continue
+      inputs.push({ label: 'A', title: exhibitATitle(st.invoiceNumber, st.sentYmd), blob: await buildPhysicalInvoicePdfBlob(doc) })
+    }
+    if (signedAgreement && includeAgreement) {
+      try {
+        const { data } = await supabase.storage.from(JOB_CONTRACT_BUCKET).download(signedAgreement.path)
+        if (data) inputs.push({ label: 'B', title: signedAgreement.title, blob: data })
+      } catch {
+        // the letter still goes without it; the enclosures line follows what was actually merged
+      }
+    }
+    if (includeDeliveryRecord) {
+      inputs.push({
+        label: 'C',
+        title: 'Delivery record',
+        blob: await buildDeliveryRecordPdfBlob({ businessName: fields.businessName, invoicesPhrase: demandInvoicesPhrase(statement), recipientName: fields.recipientName, rows: fields.priorNotices, todayYmd: today }),
+      })
+    }
+    const first = await buildDemandLetterPacket(await buildDemandLetterPdfBlob({ ...fields, enclosures: inputs.map((i) => ({ label: i.label, title: i.title, pages: 0 })) }, today), inputs)
+    const letter = await buildDemandLetterPdfBlob({ ...fields, enclosures: first.exhibits }, today)
+    return buildDemandLetterPacket(letter, inputs)
+  }, [fields, sources, signedAgreement, includeAgreement, includeDeliveryRecord])
 
   // Clamp: § 31.04 can never ride a letter for a job with payments (owner rule).
   useEffect(() => {
@@ -384,17 +566,31 @@ export default function LienInstrumentsModal({
     setFields((prev) => (prev ? { ...prev, [key]: value } : prev))
   }
 
-  const printLetter = useCallback(() => {
-    if (!fields) return
-    const ok = openHtmlPrintWindow(buildDemandLetterPrintHtml(fields, todayYmdLocal(), jobNumber))
-    if (!ok) showToast('Popup blocked — allow popups to print.', 'error')
-  }, [fields, jobNumber, showToast])
+  // Print opens the packet PDF (letter + exhibits) in a new tab — one print, every page.
+  const printLetter = useCallback(async () => {
+    if (!fields || pdfBusy) return
+    setPdfBusy(true)
+    try {
+      const packet = await buildPacket()
+      if (!packet) return
+      const url = URL.createObjectURL(packet.blob)
+      const win = window.open(url, '_blank', 'noopener')
+      if (!win) showToast('Popup blocked — allow popups to print.', 'error')
+      window.setTimeout(() => URL.revokeObjectURL(url), 60_000)
+    } catch {
+      showToast('Could not build the packet.', 'error')
+    } finally {
+      setPdfBusy(false)
+    }
+  }, [fields, pdfBusy, buildPacket, showToast])
 
   const downloadPdf = useCallback(async () => {
     if (!fields || pdfBusy) return
     setPdfBusy(true)
     try {
-      const blob = await buildDemandLetterPdfBlob(fields, todayYmdLocal())
+      const packet = await buildPacket()
+      if (!packet) return
+      const blob = packet.blob
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
@@ -408,36 +604,51 @@ export default function LienInstrumentsModal({
     } finally {
       setPdfBusy(false)
     }
-  }, [fields, jobNumber, pdfBusy, showToast])
+  }, [fields, jobNumber, pdfBusy, buildPacket, showToast])
 
   const recordSend = useCallback(async () => {
     if (!fields || !job || recordBusy) return
     setRecordBusy(true)
     try {
       const amountNum = Number((fields.outstanding ?? '').replace(/[$,\s]/g, ''))
-      const fieldsSnapshot = JSON.parse(JSON.stringify(fields)) as { [key: string]: never }
-      await withSupabaseRetry<{ id: string }>(
-        () =>
-          supabase
-            .from('job_demand_letters')
-            .insert({
-              job_id: job.id,
-              invoice_ids: [...selectedInvoiceIds],
-              amount: Number.isFinite(amountNum) ? Math.max(0, Math.round(amountNum * 100) / 100) : 0,
-              deadline_date: fields.deadlineDate || null,
-              fields: fieldsSnapshot,
-              recipient_name: fields.recipientName.trim(),
-              recipient_email: fields.recipientEmail.trim(),
-              recipient_address: fields.recipientAddress.trim(),
-              sent_method: recordMethod,
-              tracking_number: recordTracking.trim(),
-              sent_at: recordSentOn || null,
-              created_by: authUser?.id ?? null,
-            })
-            .select('id')
-            .single(),
-        'record demand letter send',
-      )
+      // The exhibits with their page counts, as they went out (v2.3429).
+      let exhibits: DemandExhibit[] = fields.enclosures ?? []
+      try {
+        const packet = await buildPacket()
+        if (packet) exhibits = packet.exhibits
+      } catch {
+        // record what the letter named
+      }
+      const fieldsSnapshot = JSON.parse(JSON.stringify({ ...fields, enclosures: exhibits })) as { [key: string]: never }
+      const base = {
+        job_id: job.id,
+        invoice_ids: [...selectedInvoiceIds],
+        amount: Number.isFinite(amountNum) ? Math.max(0, Math.round(amountNum * 100) / 100) : 0,
+        deadline_date: fields.deadlineDate || null,
+        fields: fieldsSnapshot,
+        recipient_name: fields.recipientName.trim(),
+        recipient_email: fields.recipientEmail.trim(),
+        recipient_address: fields.recipientAddress.trim(),
+        sent_method: recordMethod,
+        tracking_number: recordTracking.trim(),
+        sent_at: recordSentOn || null,
+        created_by: authUser?.id ?? null,
+      }
+      const withExhibits = { ...base, exhibits: exhibits as unknown as never, debtor_party: (fields.debtorParty ?? '') as never }
+      try {
+        await withSupabaseRetry<{ id: string }>(
+          () => supabase.from('job_demand_letters').insert(withExhibits).select('id').single(),
+          'record demand letter send',
+        )
+      } catch (e) {
+        // The v2.3429 columns are pushed right after the client deploys; until then, the old shape.
+        const msg = e instanceof Error ? e.message : String(e)
+        if (!/exhibits|debtor_party/.test(msg)) throw e
+        await withSupabaseRetry<{ id: string }>(
+          () => supabase.from('job_demand_letters').insert(base).select('id').single(),
+          'record demand letter send',
+        )
+      }
       showToast('Demand letter recorded — the deadline watch is armed.', 'success')
       setRecordOpen(false)
       void loadHistory()
@@ -447,7 +658,7 @@ export default function LienInstrumentsModal({
     } finally {
       setRecordBusy(false)
     }
-  }, [fields, job, selectedInvoiceIds, recordMethod, recordTracking, recordSentOn, authUser?.id, recordBusy, showToast, loadHistory, onRecorded])
+  }, [fields, job, selectedInvoiceIds, recordMethod, recordTracking, recordSentOn, authUser?.id, recordBusy, buildPacket, showToast, loadHistory, onRecorded])
 
   const viewHistoryLetter = useCallback(
     (r: JobDemandLetterRow) => {
@@ -615,25 +826,31 @@ export default function LienInstrumentsModal({
 
             {demandable.length > 0 ? (
               <div style={{ marginBottom: '0.9rem' }}>
-                <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '0.35rem' }}>Demand covers bill line(s)</div>
+                <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '0.35rem' }}>Demand covers bill(s)</div>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
-                  {demandable.map((i, idx) => {
+                  {demandable.map((i) => {
                     const on = selectedInvoiceIds.has(i.id)
+                    const party = partyOf(i)
+                    const samePayer = selectedInvoices.length === 0 || party === debtorParty
+                    const num = stripeByInvoice[i.id]?.invoiceNumber ? `#${(stripeByInvoice[i.id]?.invoiceNumber ?? '').replace(/^#/, '')}` : `#${i.sequence_order}`
                     return (
                       <button
                         key={i.id}
                         type="button"
+                        title={samePayer ? undefined : 'Billed to a different payer — one letter per payer; picking it starts a letter for that payer'}
                         onClick={() =>
                           setSelectedInvoiceIds((prev) => {
+                            if (!samePayer) return new Set([i.id])
                             const next = new Set(prev)
                             if (next.has(i.id)) next.delete(i.id)
                             else next.add(i.id)
                             return next
                           })
                         }
-                        style={{ padding: '0.3rem 0.6rem', fontSize: '0.8125rem', borderRadius: 6, border: on ? '2px solid #16a34a' : '1px solid var(--border-strong)', background: on ? 'var(--bg-green-tint)' : 'var(--surface)', cursor: 'pointer', fontWeight: on ? 600 : 400 }}
+                        style={{ padding: '0.3rem 0.6rem', fontSize: '0.8125rem', borderRadius: 6, border: on ? '2px solid #16a34a' : '1px solid var(--border-strong)', background: on ? 'var(--bg-green-tint)' : 'var(--surface)', cursor: 'pointer', fontWeight: on ? 600 : 400, opacity: samePayer ? 1 : 0.6 }}
                       >
-                        #{idx + 1} · ${Number(i.amount ?? 0).toLocaleString('en-US')}
+                        {num} · ${Number(i.amount ?? 0).toLocaleString('en-US')}
+                        {party !== debtorParty || demandable.some((d) => partyOf(d) !== party) ? <span style={{ marginLeft: '0.35rem', fontSize: '0.6875rem', color: 'var(--text-muted)' }}>· {party === 'gc' ? 'GC' : party === 'other' ? 'other payer' : 'customer'}</span> : null}
                       </button>
                     )
                   })}
@@ -645,14 +862,113 @@ export default function LienInstrumentsModal({
               </p>
             )}
 
+            {/* Who owes it (v2.3425): read from the bill, never typed — the demand goes where the bill went. */}
+            <div style={{ marginBottom: '0.65rem', fontSize: '0.875rem' }} data-demand-debtor>
+              <span style={{ display: 'block', fontWeight: 500, marginBottom: '0.2rem' }}>
+                Who owes it{' '}
+                <span style={{ display: 'inline-block', marginLeft: '0.3rem', padding: '0.05rem 0.45rem', borderRadius: 999, fontSize: '0.6875rem', fontWeight: 700, background: 'var(--bg-blue-tint)', color: 'var(--text-link)' }}>from the bill</span>
+              </span>
+              <div style={{ padding: '0.45rem 0.5rem', border: '1px solid var(--border)', borderRadius: 4, background: 'var(--bg-subtle)' }}>
+                <div style={{ fontWeight: 600 }}>
+                  {fields.recipientName.trim() || '—'}
+                  <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}> · {debtor.label}</span>
+                </div>
+                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                  {fields.recipientEmail.trim() || 'no email on file'}
+                  {!fields.recipientAddress.trim() ? (
+                    <span style={{ marginLeft: '0.4rem', padding: '0.05rem 0.45rem', borderRadius: 999, fontSize: '0.6875rem', fontWeight: 700, background: 'var(--bg-red-tint)', color: 'var(--text-red-700)' }}>needs a mailing address</span>
+                  ) : null}
+                </div>
+              </div>
+              {debtorParty === 'gc' && (effJob?.customer_id ?? '') ? (
+                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.3rem' }}>
+                  The bill was addressed to the GC, so the demand goes there too. The property owner gets the{' '}
+                  <button type="button" onClick={() => setActiveTab('notice')} style={{ background: 'none', border: 'none', padding: 0, color: 'var(--text-link)', fontWeight: 600, cursor: 'pointer', fontSize: '0.75rem' }}>
+                    § 53.056 notice
+                  </button>{' '}
+                  instead — that is the paper the statute sends an owner.
+                </div>
+              ) : null}
+            </div>
             <label style={{ display: 'block', marginBottom: '0.65rem', fontSize: '0.875rem' }}>
-              <span style={{ display: 'block', fontWeight: 500, marginBottom: '0.2rem' }}>To (the debtor)</span>
-              <input type="text" value={fields.recipientName} onChange={(e) => setField('recipientName', e.target.value)} style={{ width: '100%', boxSizing: 'border-box', padding: '0.45rem 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.875rem' }} />
+              <span style={{ display: 'block', fontWeight: 500, marginBottom: '0.2rem' }}>Mailing address</span>
+              <input
+                type="text"
+                value={fields.recipientAddress}
+                onChange={(e) => {
+                  setAddressTouched(true)
+                  setField('recipientAddress', e.target.value)
+                }}
+                placeholder="Where the letter is mailed — from the payer's record when one is on file"
+                style={{ width: '100%', boxSizing: 'border-box', padding: '0.45rem 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.875rem' }}
+              />
             </label>
-            <label style={{ display: 'block', marginBottom: '0.65rem', fontSize: '0.875rem' }}>
-              <span style={{ display: 'block', fontWeight: 500, marginBottom: '0.2rem' }}>Recipient mailing address</span>
-              <input type="text" value={fields.recipientAddress} onChange={(e) => setField('recipientAddress', e.target.value)} style={{ width: '100%', boxSizing: 'border-box', padding: '0.45rem 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.875rem' }} />
-            </label>
+
+            {/* The statement of account (v2.3425): the bill as sent, read-only. A wrong line is fixed on the bill, and the letter follows. */}
+            {(fields.statement ?? []).length > 0 ? (
+              <div style={{ marginBottom: '0.65rem', fontSize: '0.875rem' }} data-demand-statement>
+                <span style={{ display: 'block', fontWeight: 500, marginBottom: '0.2rem' }}>
+                  What the letter claims <span style={{ fontWeight: 400, fontSize: '0.75rem', color: 'var(--text-muted)' }}>· the bill as sent, read-only</span>
+                </span>
+                <div style={{ border: '1px solid var(--border)', borderRadius: 6, overflow: 'hidden', fontSize: '0.78rem' }}>
+                  {statementRows({ invoices: fields.statement ?? [], balance: fields.outstanding }).map((r, i) => (
+                    <div
+                      key={i}
+                      style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        gap: '0.6rem',
+                        padding: r.kind === 'invoice' ? '0.4rem 0.55rem 0.25rem' : '0.25rem 0.55rem',
+                        paddingLeft: r.kind === 'invoice' ? '0.55rem' : '1rem',
+                        borderTop: i === 0 ? 'none' : '1px solid var(--border)',
+                        background: r.kind === 'invoice' || r.kind === 'total' ? 'var(--bg-subtle)' : 'var(--surface)',
+                        fontWeight: r.kind === 'invoice' || r.kind === 'total' || (r.kind === 'balance' && (fields.statement ?? []).length === 1) ? 700 : 400,
+                        color: r.kind === 'paid' ? 'var(--text-muted)' : 'var(--text-base)',
+                      }}
+                    >
+                      <span>{r.left}</span>
+                      <span style={{ whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}>{r.right}</span>
+                    </div>
+                  ))}
+                </div>
+                <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
+                  Something wrong here? Fix it on the bill — the letter re-reads it, so the two never disagree.
+                </div>
+              </div>
+            ) : null}
+            {/* Enclosed (v2.3429): the invoice always, the agreement and the delivery record by switch. */}
+            <div style={{ marginBottom: '0.65rem', fontSize: '0.875rem' }} data-demand-enclosed>
+              <span style={{ display: 'block', fontWeight: 500, marginBottom: '0.2rem' }}>Enclosed</span>
+              <div style={{ border: '1px dashed var(--border-strong)', borderRadius: 6, padding: '0.45rem 0.55rem', display: 'flex', flexDirection: 'column', gap: '0.35rem', fontSize: '0.8125rem' }}>
+                {(fields.statement ?? []).map((st, i) =>
+                  sources[i]?.doc ? (
+                    <div key={`a-${i}`} style={{ display: 'flex', justifyContent: 'space-between', gap: '0.5rem', alignItems: 'center' }}>
+                      <span>
+                        <b>Exhibit A</b> · {exhibitATitle(st.invoiceNumber, st.sentYmd)}
+                      </span>
+                      <span style={{ padding: '0.05rem 0.45rem', borderRadius: 999, fontSize: '0.6875rem', fontWeight: 700, background: 'var(--bg-green-tint)', color: 'var(--text-green-700)' }}>always</span>
+                    </div>
+                  ) : (
+                    <div key={`a-${i}`} style={{ color: 'var(--text-muted)' }}>
+                      <b>Exhibit A</b> · {st.invoiceNumber} — the bill could not be rendered from this job; open it from Bill Customer and try again
+                    </div>
+                  ),
+                )}
+                <label style={{ display: 'flex', justifyContent: 'space-between', gap: '0.5rem', alignItems: 'center', cursor: signedAgreement ? 'pointer' : 'default', color: signedAgreement ? undefined : 'var(--text-muted)' }}>
+                  <span>
+                    <b>Exhibit B</b> · {signedAgreement ? signedAgreement.title : 'Signed agreement — none on this job'}
+                  </span>
+                  {signedAgreement ? <input type="checkbox" checked={includeAgreement} onChange={(e) => setIncludeAgreement(e.target.checked)} /> : <span style={{ padding: '0.05rem 0.45rem', borderRadius: 999, fontSize: '0.6875rem', fontWeight: 700, background: 'var(--bg-subtle)', color: 'var(--text-muted)', border: '1px solid var(--border)' }}>no contract</span>}
+                </label>
+                <label style={{ display: 'flex', justifyContent: 'space-between', gap: '0.5rem', alignItems: 'center', cursor: 'pointer' }}>
+                  <span>
+                    <b>Exhibit C</b> · Delivery record — {priorNotices.length === 0 ? 'the invoice date only' : `${priorNotices.length} dated send${priorNotices.length === 1 ? '' : 's'} and contact${priorNotices.length === 1 ? '' : 's'}`}
+                  </span>
+                  <input type="checkbox" checked={includeDeliveryRecord} onChange={(e) => setIncludeDeliveryRecord(e.target.checked)} />
+                </label>
+              </div>
+              <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>Print and Download PDF produce one file: the letter, then every exhibit, each page stamped.</div>
+            </div>
             <label style={{ display: 'block', marginBottom: '0.65rem', fontSize: '0.875rem' }}>
               <span style={{ display: 'block', fontWeight: 500, marginBottom: '0.2rem' }}>
                 Payment deadline{' '}
@@ -761,6 +1077,23 @@ export default function LienInstrumentsModal({
                         ))}
                       </p>
                     )
+                  case 'statement':
+                    return (
+                      <table key={i} style={{ borderCollapse: 'collapse', width: '100%', margin: '0.3em 0 0.8em', fontSize: '0.95em' }}>
+                        <tbody>
+                          {statementRows(b).map((r, j) => {
+                            const strong = r.kind === 'invoice' || r.kind === 'total' || (r.kind === 'balance' && b.invoices.length === 1)
+                            const rule = r.kind === 'total' || (r.kind === 'balance' && b.invoices.length === 1) ? '2px solid #333' : '1px solid #e3ded2'
+                            return (
+                              <tr key={j}>
+                                <td style={{ padding: r.kind === 'invoice' ? '0.6em 0.4em 0.25em 0' : '0.25em 0.4em 0.25em 0', borderBottom: rule, fontWeight: strong ? 700 : 400, color: r.kind === 'paid' ? '#555' : undefined }}>{r.left}</td>
+                                <td style={{ padding: '0.25em 0 0.25em 0.6em', borderBottom: rule, textAlign: 'right', whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums', fontWeight: strong ? 700 : 400, color: r.kind === 'paid' ? '#555' : undefined }}>{r.right}</td>
+                              </tr>
+                            )
+                          })}
+                        </tbody>
+                      </table>
+                    )
                   case 'notarial':
                     return (
                       <p key={i} style={{ margin: '1.6em 0 0', color: 'var(--text-muted)' }}>
@@ -772,6 +1105,49 @@ export default function LienInstrumentsModal({
                 }
               })}
             </div>
+            {/* The exhibits, as the pages they will be (v2.3429). */}
+            {(fields.enclosures ?? []).map((ex, i) => {
+              const stamp = (
+                <div style={{ position: 'absolute', top: 10, right: 12, border: '2px solid #8a1c1c', color: '#8a1c1c', fontFamily: "'Helvetica Neue', Arial, sans-serif", fontWeight: 700, fontSize: '0.68rem', letterSpacing: '0.08em', padding: '3px 6px', background: 'rgba(255,255,255,0.85)', transform: 'rotate(-4deg)' }}>
+                  EXHIBIT {ex.label}
+                </div>
+              )
+              const card = (children: React.ReactNode) => (
+                <div key={`${ex.label}-${i}`} data-demand-exhibit={ex.label} style={{ position: 'relative', marginTop: '1rem', background: 'var(--surface)', color: 'var(--text-base)', border: '1px solid var(--border)', borderRadius: 4, padding: '1.2rem 1.35rem', boxShadow: '0 4px 14px rgba(0,0,0,0.08)' }}>
+                  {stamp}
+                  {children}
+                </div>
+              )
+              if (ex.label === 'A') {
+                const aIndex = (fields.enclosures ?? []).slice(0, i).filter((e) => e.label === 'A').length
+                const doc = sources[aIndex]?.doc ?? null
+                return card(doc ? <PhysicalInvoicePreview document={doc} /> : <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{ex.title}</div>)
+              }
+              if (ex.label === 'B') {
+                return card(
+                  <div style={{ fontFamily: "'Helvetica Neue', Arial, sans-serif", fontSize: '0.8rem', paddingRight: '6rem' }}>
+                    <div style={{ fontWeight: 700 }}>{ex.title}</div>
+                    <div style={{ color: 'var(--text-muted)', marginTop: '0.3rem' }}>Attached from the job's contract file as stored — every page of the signed PDF follows the letter.</div>
+                  </div>,
+                )
+              }
+              return card(
+                <div style={{ fontFamily: "'Helvetica Neue', Arial, sans-serif", fontSize: '0.8rem', paddingRight: '6rem' }}>
+                  <div style={{ fontWeight: 700 }}>Delivery record</div>
+                  <div style={{ color: 'var(--text-muted)', margin: '0.15rem 0 0.5rem' }}>{demandInvoicesPhrase(fields.statement ?? [])} · {fields.recipientName || '—'}</div>
+                  {priorNotices.length === 0 ? (
+                    <div>No sends or contacts are on record beyond the invoice itself.</div>
+                  ) : (
+                    priorNotices.map((n, j) => (
+                      <div key={j} style={{ display: 'grid', gridTemplateColumns: '9rem 1fr', gap: '0.5rem', padding: '0.15rem 0', borderBottom: '1px solid #e3ded2' }}>
+                        <b>{demandDate(n.date)}</b>
+                        <span>{n.label}</span>
+                      </div>
+                    ))
+                  )}
+                </div>,
+              )
+            })}
           </div>
         </div>
 
@@ -810,11 +1186,11 @@ export default function LienInstrumentsModal({
             <button type="button" onClick={onClose} style={{ padding: '0.5rem 1rem', fontSize: '0.875rem', background: 'var(--surface)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer' }}>
               Cancel
             </button>
-            <button type="button" onClick={printLetter} style={{ padding: '0.5rem 1rem', fontSize: '0.875rem', background: 'var(--surface)', border: '1px solid #2563eb', color: 'var(--text-link)', borderRadius: 4, cursor: 'pointer' }}>
-              Print
+            <button type="button" onClick={() => void printLetter()} disabled={pdfBusy} style={{ padding: '0.5rem 1rem', fontSize: '0.875rem', background: 'var(--surface)', border: '1px solid #2563eb', color: 'var(--text-link)', borderRadius: 4, cursor: pdfBusy ? 'wait' : 'pointer' }}>
+              Print packet
             </button>
             <button type="button" onClick={() => void downloadPdf()} disabled={pdfBusy} style={{ padding: '0.5rem 1rem', fontSize: '0.875rem', background: 'var(--surface)', border: '1px solid #2563eb', color: 'var(--text-link)', borderRadius: 4, cursor: pdfBusy ? 'wait' : 'pointer' }}>
-              {pdfBusy ? 'Building…' : 'Download PDF'}
+              {pdfBusy ? 'Building…' : 'Download PDF'}{pdfBusy ? '' : ` · ${1 + (fields.enclosures ?? []).length} documents`}
             </button>
             <button type="button" onClick={() => setRecordOpen(true)} style={{ padding: '0.5rem 1rem', fontSize: '0.875rem', background: '#b45309', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 600 }}>
               Save &amp; record send…

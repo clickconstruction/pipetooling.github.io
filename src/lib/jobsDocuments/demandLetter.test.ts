@@ -5,11 +5,18 @@ import {
   buildDemandLetterModel,
   buildDemandLetterPrefill,
   buildDemandLetterText,
+  buildDemandStatement,
+  demandDebtorParty,
+  demandInvoicesPhrase,
   demandLetterPdfFilename,
   demandMoney,
   lienFilingDeadlineForMonth,
+  statementRows,
+  type DemandInvoiceSource,
   type DemandLetterFields,
+  type DemandStatementInvoice,
 } from './demandLetter'
+import type { PhysicalInvoiceDocument } from '../physicalInvoiceDocument'
 
 const FIELDS: DemandLetterFields = {
   businessName: 'Click Plumbing and Electrical',
@@ -129,5 +136,183 @@ describe('misc', () => {
   it('money + filename', () => {
     expect(demandMoney('2711.5')).toBe('$2,711.50')
     expect(demandLetterPdfFilename('915')).toBe('final-demand-letter-915.pdf')
+  })
+})
+
+// ---------- v2.3425: the letter reads the bill ----------
+
+const STMT_867: DemandStatementInvoice = {
+  invoiceNumber: '#867-2608180928',
+  sentYmd: '2026-08-18',
+  dueYmd: '2026-09-05',
+  lines: [{ description: 'Service Visit (HCP #867) Additional gas install and sidewalk bore under patio.', qty: '', amount: '1710.00' }],
+  total: '1710.00',
+  paid: '0.00',
+  balance: '1710.00',
+}
+
+describe('statement of account (v2.3425)', () => {
+  const withStatement: DemandLetterFields = {
+    ...FIELDS,
+    recipientName: 'RMC- Dudley Mason',
+    debtorParty: 'gc',
+    statement: [STMT_867],
+    serviceAddress: '628 Terrell Rd, San Antonio, TX 78209',
+    invoiceTotal: '1710.00',
+    paymentsReceived: '0.00',
+    outstanding: '1710.00',
+  }
+
+  it('the Re line carries the number the customer saw and the balance; the body reads the bill', () => {
+    const text = buildDemandLetterText(withStatement, '2026-09-14')
+    expect(text).toContain('Re: Final Demand for Payment — Invoice #867-2608180928 · $1,710.00')
+    expect(text).toContain('You were billed $1,710.00 on August 18, 2026 for the work below at 628 Terrell Rd, San Antonio, TX 78209. The bill was due September 5, 2026.')
+    expect(text).toContain('Nothing has been paid.')
+    expect(text).toContain('Statement of account')
+    expect(text).toContain('Service Visit (HCP #867) Additional gas install and sidewalk bore under patio.')
+    expect(text).toContain('All payments and credits have been allowed.')
+    expect(text).not.toContain('Details of Debt')
+    expect(text).not.toContain('Service provided:')
+    const kinds = buildDemandLetterModel(withStatement, '2026-09-14').map((b) => b.kind)
+    expect(kinds).toContain('statement')
+  })
+
+  it('names its exhibits under the statement and as enclosures at the foot (v2.3429)', () => {
+    const text = buildDemandLetterText(
+      { ...withStatement, enclosures: [{ label: 'A', title: 'Invoice #867-2608180928, as sent August 18, 2026', pages: 1 }, { label: 'C', title: 'Delivery record', pages: 1 }] },
+      '2026-09-14',
+    )
+    expect(text).toContain('The invoice is enclosed as Exhibit A and the delivery record as Exhibit C. All payments and credits have been allowed.')
+    expect(text.trim().endsWith('Enclosures: Exhibit A — Invoice #867-2608180928, as sent August 18, 2026 (1 page) · Exhibit C — Delivery record (1 page)')).toBe(true)
+    const plain = buildDemandLetterText(withStatement, '2026-09-14')
+    expect(plain).not.toContain('Exhibit')
+  })
+
+  it('a snapshot recorded before the statement still renders the four-line debt block', () => {
+    const text = buildDemandLetterText({ ...FIELDS, statement: undefined }, '2026-09-02')
+    expect(text).toContain('Details of Debt')
+    expect(text).toContain('Service provided: Reliant Health — plumbing')
+    expect(text).toContain('Re: Final Demand for Payment — Invoice #915')
+  })
+
+  it('two invoices: one block each, a total row, the phrase names both', () => {
+    const second: DemandStatementInvoice = { ...STMT_867, invoiceNumber: '#867-2609010800', sentYmd: '2026-09-01', dueYmd: '2026-09-15', lines: [{ description: 'Trim set', qty: '2', amount: '400.00' }], total: '400.00', paid: '100.00', balance: '300.00' }
+    const rows = statementRows({ invoices: [STMT_867, second], balance: '2010.00' })
+    expect(rows.map((r) => r.kind)).toEqual(['invoice', 'line', 'paid', 'balance', 'invoice', 'line', 'paid', 'balance', 'total'])
+    expect(rows[1]).toEqual({ kind: 'line', left: 'Service Visit (HCP #867) Additional gas install and sidewalk bore under patio.', right: '$1,710.00' })
+    expect(rows[5]?.left).toBe('Trim set · Qty 2')
+    expect(rows[6]?.right).toBe('−$100.00')
+    expect(rows[7]).toEqual({ kind: 'balance', left: 'Balance on this invoice', right: '$300.00' })
+    expect(rows[8]).toEqual({ kind: 'total', left: 'Balance due', right: '$2,010.00' })
+    expect(demandInvoicesPhrase([STMT_867, second])).toBe('Invoices #867-2608180928 and #867-2609010800')
+    const text = buildDemandLetterText({ ...withStatement, statement: [STMT_867, second], outstanding: '2010.00' }, '2026-09-14')
+    expect(text).toContain('You were billed 2 invoices totaling $2,110.00 between August 18, 2026 and September 1, 2026')
+    expect(text).toContain('$100.00 has been paid and $2,010.00 remains.')
+  })
+
+  it('a single invoice reads "Balance due" with no total row', () => {
+    const rows = statementRows({ invoices: [STMT_867], balance: '1710.00' })
+    expect(rows.map((r) => r.kind)).toEqual(['invoice', 'line', 'paid', 'balance'])
+    expect(rows[0]?.left).toBe('#867-2608180928 — sent August 18, 2026 · due September 5, 2026')
+    expect(rows[3]).toEqual({ kind: 'balance', left: 'Balance due', right: '$1,710.00' })
+  })
+})
+
+describe('buildDemandStatement — read from the bill, never typed', () => {
+  const inv = (over: Partial<DemandInvoiceSource['inv']>) =>
+    ({
+      id: 'inv-1',
+      amount: 1710,
+      sequence_order: 1,
+      status: 'billed',
+      billed_at: '2026-08-18T14:28:00Z',
+      sent_to_customer_at: '2026-08-18T14:28:10Z',
+      created_at: '2026-08-18T14:27:00Z',
+      estimated_bill_date: '2026-09-05',
+      stripe_invoice_id: 'in_1',
+      stripe_invoice_memo: 'Service Visit (HCP #867) Additional gas install and sidewalk bore under patio.',
+      bill_to_party: null,
+      bill_to_email: null,
+      ...over,
+    }) as unknown as DemandInvoiceSource['inv']
+  const job = {
+    id: 'j867',
+    hcp_number: '867',
+    job_name: 'Service Visit — 628 Terrell Rd (HCP 867)',
+    job_address: '628 Terrell Rd, San Antonio, TX 78209',
+    customer_id: 'cust-rizvi',
+    gc_customer_id: 'cust-rmc',
+    bill_to_party: 'gc',
+    payments: [{ invoice_id: 'inv-1', amount: 0 }],
+    invoices: [],
+  } as unknown as JobWithDetails
+  const doc = (over: Partial<PhysicalInvoiceDocument>) =>
+    ({
+      layout: 'simple',
+      invoiceNumberDisplay: '#1',
+      lineDescription: 'Service Visit (HCP #867) Additional gas install and sidewalk bore under patio.',
+      serviceLines: [],
+      materialLines: [],
+      ...over,
+    }) as unknown as PhysicalInvoiceDocument
+
+  it('prefers what Stripe rendered: the number the customer saw and the lines as they saw them', () => {
+    const [st] = buildDemandStatement(job, [
+      { inv: inv({}), doc: doc({}), stripe: { invoiceNumber: '867-2608180928', lines: [{ description: 'Service Visit (HCP #867) Additional gas install and sidewalk bore under patio.', quantity: 1, amount: 171000 }] } },
+    ])
+    expect(st).toEqual(STMT_867)
+  })
+
+  it('falls back to the app\'s own document lines, then to the memo and the amount', () => {
+    const [detailed] = buildDemandStatement(job, [
+      {
+        inv: inv({ stripe_invoice_id: null }),
+        doc: doc({ layout: 'detailed', invoiceNumberDisplay: '#2', serviceLines: [{ description: 'Rough-in labor', qty: 1, unitPrice: 1200, amount: 1200 }], materialLines: [{ description: 'PEX, fittings', qty: 3, unitPrice: 170, amount: 510 }] }),
+        stripe: null,
+      },
+    ])
+    expect(detailed?.invoiceNumber).toBe('#2')
+    expect(detailed?.lines).toEqual([
+      { description: 'Rough-in labor', qty: '', amount: '1200.00' },
+      { description: 'PEX, fittings', qty: '3', amount: '510.00' },
+    ])
+    const [bare] = buildDemandStatement(job, [{ inv: inv({ stripe_invoice_id: null, sequence_order: 3 }), doc: null, stripe: null }])
+    expect(bare?.invoiceNumber).toBe('#3')
+    expect(bare?.lines).toEqual([{ description: 'Service Visit (HCP #867) Additional gas install and sidewalk bore under patio.', qty: '', amount: '1710.00' }])
+    expect(bare?.invoiceNumber).not.toMatch(/^[0-9a-f]{8}$/)
+  })
+
+  it('paid and balance come from the payments applied to that invoice', () => {
+    const paidJob = { ...job, payments: [{ invoice_id: 'inv-1', amount: 500 }, { invoice_id: 'other', amount: 999 }] } as unknown as JobWithDetails
+    const [st] = buildDemandStatement(paidJob, [{ inv: inv({}), doc: null, stripe: null }])
+    expect(st?.paid).toBe('500.00')
+    expect(st?.balance).toBe('1210.00')
+  })
+
+  it('the debtor is the party the bill was addressed to, by the invoice\'s own rule', () => {
+    expect(demandDebtorParty(job, [inv({})])).toBe('gc')
+    expect(demandDebtorParty(job, [inv({ bill_to_party: 'customer' })])).toBe('customer')
+    expect(demandDebtorParty(job, [inv({ bill_to_email: 'tenant@x.com' })])).toBe('other')
+    expect(demandDebtorParty({ ...job, gc_customer_id: null } as unknown as JobWithDetails, [inv({})])).toBe('customer')
+  })
+
+  it('prefill with sources: the statement rides the fields and the invoice number is never an id fragment', () => {
+    const f = buildDemandLetterPrefill({
+      job,
+      invoices: [inv({})],
+      sources: [{ inv: inv({}), doc: doc({}), stripe: { invoiceNumber: '867-2608180928', lines: [] } }],
+      issuer: { companyName: 'Click Plumbing and Electrical', addressText: '5501 Balcones Dr', phone: '', email: '', tagline: '', licenseLine: '' },
+      senderName: 'Malachi',
+      senderEmailFallback: 'office@x.com',
+      recipient: { name: 'RMC- Dudley Mason', email: 'ap@rmc.com', address: '' },
+      priorNotices: [],
+      propertyKind: '',
+      todayYmd: '2026-09-14',
+    })
+    expect(f.statement?.[0]?.invoiceNumber).toBe('#867-2608180928')
+    expect(f.invoiceNumber).toBe('#867-2608180928')
+    expect(f.debtorParty).toBe('gc')
+    expect(f.serviceAddress).toBe('628 Terrell Rd, San Antonio, TX 78209')
+    expect(f.outstanding).toBe('1710.00')
   })
 })

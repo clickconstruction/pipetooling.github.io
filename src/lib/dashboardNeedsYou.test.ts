@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildNeedsYouItems, needsYouKind, rankNeedsYouItems, visibleNeedsYouItems, type NeedsYouInputs, type NeedsYouItem } from './dashboardNeedsYou'
+import { NEEDS_YOU_RANK, buildNeedsYouItems, needsYouKind, rankNeedsYouItems, visibleNeedsYouItems, type NeedsYouInputs, type NeedsYouItem } from './dashboardNeedsYou'
 
 function inputs(overrides: Partial<NeedsYouInputs> = {}): NeedsYouInputs {
   return {
@@ -125,6 +125,36 @@ describe('aging queues (journey-map #40): dispatch requests + HR reports', () =>
       lostBidNudge: { count: 50, value: 0 },
     }))
     expect(items.map((i) => i.key)).toEqual(['dispatch-requests-aged', 'hr-reports-pending', 'lost-bids'])
+  })
+})
+
+describe('capacity under 60% three weeks running (Job Summary follow-up 3)', () => {
+  const streak = {
+    weeks: [
+      { weekStartYmd: '2026-08-24', utilizationPct: 48.2, fieldHours: 38.6, availableHours: 80 },
+      { weekStartYmd: '2026-08-31', utilizationPct: 52.4, fieldHours: 41.9, availableHours: 80 },
+      { weekStartYmd: '2026-09-07', utilizationPct: 41, fieldHours: 32.8, availableHours: 80 },
+    ],
+    fieldHours: 113.3,
+    availableHours: 240,
+    thresholdPct: 60,
+    source: 'roster' as const,
+    crewNow: 2,
+  }
+  it('names the three weeks with their numbers, the hours behind them, and opens Capacity', () => {
+    const item = buildNeedsYouItems(inputs({ capacityUnderEnabled: true, capacityUnder: streak })).find((i) => i.key === 'capacity-under')
+    expect(item).toMatchObject({ severity: 'amber', kicker: 'Capacity', figure: '41%', actionLabel: 'Open Capacity' })
+    expect(item?.title).toBe('Field capacity has run under 60% three weeks running')
+    expect(item?.detail).toContain('48% · 52% · 41% for the weeks of Aug 24, Aug 31 and Sep 7')
+    expect(item?.detail).toContain('113 of 240 available field hours, against a field roster of 2')
+    expect(NEEDS_YOU_RANK['capacity-under']).toBe(50)
+  })
+  it('says when the crew was estimated from who clocked in; quiet while loading, with no streak, or off', () => {
+    const clocked = buildNeedsYouItems(inputs({ capacityUnderEnabled: true, capacityUnder: { ...streak, source: 'clocked' } })).find((i) => i.key === 'capacity-under')
+    expect(clocked?.detail).toContain('against who clocked in, since the roster could not be read')
+    expect(buildNeedsYouItems(inputs({ capacityUnderEnabled: true, capacityUnder: null })).some((i) => i.key === 'capacity-under')).toBe(false)
+    expect(buildNeedsYouItems(inputs({ capacityUnderEnabled: true })).some((i) => i.key === 'capacity-under')).toBe(false)
+    expect(buildNeedsYouItems(inputs({ capacityUnderEnabled: false, capacityUnder: streak })).some((i) => i.key === 'capacity-under')).toBe(false)
   })
 })
 

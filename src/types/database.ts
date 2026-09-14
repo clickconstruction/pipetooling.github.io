@@ -20848,32 +20848,6 @@ export type Database = {
           source: string
         }[]
       }
-      get_jobs_ledger_by_hcp_numbers: {
-        Args: { p_hcp_numbers: string[] }
-        Returns: {
-          click_number: string
-          hcp_number: string
-          id: string
-          job_address: string
-          job_name: string
-          pct_complete: number
-          revenue: number
-          service_type_id: string
-        }[]
-      }
-      get_jobs_ledger_by_hcp_numbers_paid_only: {
-        Args: { p_hcp_numbers: string[] }
-        Returns: {
-          click_number: string
-          hcp_number: string
-          id: string
-          job_address: string
-          job_name: string
-          pct_complete: number
-          revenue: number
-          service_type_id: string
-        }[]
-      }
       get_jobs_ledger_by_ids: {
         Args: { p_job_ids: string[] }
         Returns: {
@@ -21389,6 +21363,26 @@ export type Database = {
           master_user_id: string
         }[]
       }
+      list_job_account_strip: {
+        Args: { p_job_ids: string[] }
+        Returns: {
+          account_id: string
+          account_note: string
+          account_ref: string
+          house_name: string
+          job_id: string
+          opened_at: string
+          opened_via: string
+          policy: string
+          rep_contact_id: string
+          rep_name: string
+          rep_phone: string
+          requested_at: string
+          requested_from_counter: boolean
+          status: string
+          supply_house_id: string
+        }[]
+      }
       list_job_crew_position: {
         Args: { p_job_ids: string[]; p_today: string }
         Returns: {
@@ -21396,6 +21390,8 @@ export type Database = {
           last_day_people: string[]
           last_work_date: string
           pct_manual_at: string
+          pct_set_at: string
+          pct_source: string
           people_60d: number
           report_at: string
           report_pct: number

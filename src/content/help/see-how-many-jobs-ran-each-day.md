@@ -2,7 +2,7 @@
 title: see how many jobs ran each day
 category: Office
 roles: dev, master_technician, assistant, controller
-keywords: days view, job summary, jobs per day, simultaneous jobs, concurrency, workdays, crew, field hours, overhead per job-day, charged, carry, smoothing, who received overhead
+keywords: days view, job summary, jobs per day, simultaneous jobs, concurrency, workdays, crew, field hours, overhead per job-day, charged, carry, smoothing, who received overhead, since a week ago, opened billed paid
 order: 37
 ---
 
@@ -24,6 +24,14 @@ J931 25.9h · 2   J878 3.5h · 1   J983 2.3h · 1   …
 :::
 
 Tick **Show days with nothing on them** to include weekends and other days with no field work and no office cost.
+
+## Since a week ago
+
+Under the tiles a strip counts what changed since a day in the past: jobs **opened**, **billed**, **paid**, and how many open then are **still open** now — the same strip the Timeline view shows when you rewind it. Press {{chip:blue|1 wk}}, {{chip:gray|2 wk}}, {{chip:gray|3 wk}} … to pick how far back to count; only the chips that fit inside the **Worked in** window are offered, and it opens on 1 wk.
+
+:::example A week's movement
+Since Mon Sep 7: 2 jobs opened · 3 billed · 1 paid · 6 open then and still open
+:::
 
 ## Open a day's session notes
 

@@ -1,8 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { SupabaseClient } from '@supabase/supabase-js'
-// The edge twin (supabase/functions/_shared/ipGeoValidation.ts) is not imported here: it does
-// not typecheck under the app's strict tsconfig (noUncheckedIndexedAccess). Its gate is the
-// same table by construction; a parity guard can follow once that file is strict-clean.
+// The edge twin (supabase/functions/_shared/ipGeoValidation.ts) is held in step by
+// ipGeolocationMapsSharedParity.test.ts.
 import { fetchCallerIpGeoForMaps, fetchIpGeoForMaps, googleMapsUrlForLatLng, isRoutablePublicIp, openGoogleMapsAt } from './ipGeolocationMaps'
 
 /**

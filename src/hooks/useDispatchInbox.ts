@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { useToastContext } from '../contexts/ToastContext'
 import { useAuth } from './useAuth'
+import { DISPATCH_INBOX_GROUP, useInboxGroupEligibility } from './useInboxGroupEligibility'
 import { useRealtimeChannel } from './useRealtimeChannel'
 import type {
   DispatchInboxDismissedRow,
@@ -35,7 +36,8 @@ export function useDispatchInbox() {
   const { user: authUser, role } = useAuth()
   const { showToast } = useToastContext()
 
-  const [dispatchInboxEligible, setDispatchInboxEligible] = useState(false)
+  /** Dev, or a `dispatch_group_members` row — one shared read (`useInboxGroupEligibility`). */
+  const { dispatch: dispatchInboxEligible } = useInboxGroupEligibility(DISPATCH_INBOX_GROUP)
   const [dispatchRequests, setDispatchRequests] = useState<DispatchInboxRow[]>([])
   const [dispatchRequestsLoading, setDispatchRequestsLoading] = useState(false)
   /** True once the first load has settled — the footer badge waits for it before recording. */
@@ -67,29 +69,6 @@ export function useDispatchInbox() {
   const picturesSweepRunningRef = useRef(false)
   /** Breaks the sweep ↔ loader cycle (the loader triggers the sweep). */
   const loadDispatchRequestsRef = useRef<(() => void) | null>(null)
-
-  useEffect(() => {
-    if (!authUser?.id) {
-      setDispatchInboxEligible(false)
-      return
-    }
-    if (role === 'dev') {
-      setDispatchInboxEligible(true)
-      return
-    }
-    let cancelled = false
-    supabase
-      .from('dispatch_group_members')
-      .select('user_id')
-      .eq('user_id', authUser.id)
-      .maybeSingle()
-      .then(({ data }) => {
-        if (!cancelled) setDispatchInboxEligible(!!data)
-      })
-    return () => {
-      cancelled = true
-    }
-  }, [authUser?.id, role])
 
   /**
    * Won → Dispatch (v2.3143): retire open "open the job" to-dos whose bid
@@ -584,6 +563,47 @@ export function useDispatchInbox() {
     }
   }
 
+  /**
+   * Job accounts at the counter (v2.3424): the office marked the account opened
+   * (or not needed) from the errand's card — close it with that note and tell
+   * the tech, the same way Add & Close does, without a draft.
+   */
+  async function closeDispatchRequestWithNote(requestId: string, note: string): Promise<void> {
+    if (!authUser?.id) return
+    const body = note.trim().slice(0, 2000)
+    const row = dispatchRequests.find((r) => r.id === requestId)
+    if (!row || row.status === 'closed') return
+    setDispatchNoteSubmitRequestId(requestId)
+    try {
+      if (body) {
+        await withSupabaseRetry(
+          async () => supabase.from('dispatch_request_notes').insert({ request_id: requestId, author_user_id: authUser.id, body }),
+          'insert dispatch_request note',
+        )
+      }
+      await withSupabaseRetry(
+        async () =>
+          supabase
+            .from('dispatch_requests')
+            .update({ status: 'closed', closed_at: new Date().toISOString(), closed_by_user_id: authUser.id, closed_note: body || null })
+            .eq('id', requestId),
+        'close dispatch request',
+      )
+      void notifyDispatchRequestClosure({
+        request: { id: row.id, from_user_id: row.from_user_id, title: row.title },
+        note: body || null,
+        mode: 'closed',
+        userId: authUser.id,
+        role,
+      })
+      loadDispatchRequests()
+    } catch (e) {
+      showToast(formatErrorMessage(e, 'Marked on the job, but closing the request failed'), 'error')
+    } finally {
+      setDispatchNoteSubmitRequestId(null)
+    }
+  }
+
   async function dismissDispatchRequest(requestId: string) {
     if (!authUser?.id) return
     setDispatchRequestDismissingId(requestId)
@@ -663,6 +683,7 @@ export function useDispatchInbox() {
     toggleExpandDispatchRequest,
     submitDispatchNote,
     submitDispatchNoteAndClose,
+    closeDispatchRequestWithNote,
     dismissDispatchRequest,
     loadDispatchRequests,
     fetchDismissedDispatchInboxRows,

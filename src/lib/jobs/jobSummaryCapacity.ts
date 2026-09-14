@@ -117,3 +117,51 @@ export function buildCapacitySeries(args: { ledger: JobDayLedger | null; people:
 export function sundayOfYmd(ymd: string): string {
   return dayNumberToYmd(ymdToDayNumber(mondayOfYmd(ymd)) + 6)
 }
+
+/**
+ * The Needs You watch (Job Summary follow-up 3): field capacity under 60 % for
+ * three complete weeks running. The Dashboard loads only those three weeks.
+ */
+export const CAPACITY_UNDER_PCT = 60
+export const CAPACITY_UNDER_WEEKS = 3
+
+/** The `weeks` complete Mon–Sun weeks before the week holding `todayYmd` — the current, partial week never counts. */
+export function capacityNudgeWindow(todayYmd: string, weeks = CAPACITY_UNDER_WEEKS): { startYmd: string; endYmd: string } {
+  const thisMonday = ymdToDayNumber(mondayOfYmd(todayYmd))
+  return { startYmd: dayNumberToYmd(thisMonday - 7 * Math.max(1, weeks)), endYmd: dayNumberToYmd(thisMonday - 1) }
+}
+
+export type CapacityUnderWeek = { weekStartYmd: string; utilizationPct: number; fieldHours: number; availableHours: number }
+
+export type CapacityUnderStreak = {
+  /** Oldest first — the three weeks the card names. */
+  weeks: CapacityUnderWeek[]
+  fieldHours: number
+  availableHours: number
+  thresholdPct: number
+  source: CapacitySeries['source']
+  crewNow: number
+}
+
+/**
+ * The last `weeks` rated weeks of a series when EVERY one ran under
+ * `thresholdPct`; null when any week cleared it, when fewer than `weeks` weeks
+ * could be rated (no roster and nobody clocked → utilization unknown, not
+ * zero), or when the series is empty.
+ */
+export function capacityUnderStreak(series: CapacitySeries, opts: { thresholdPct?: number; weeks?: number } = {}): CapacityUnderStreak | null {
+  const thresholdPct = opts.thresholdPct ?? CAPACITY_UNDER_PCT
+  const n = opts.weeks ?? CAPACITY_UNDER_WEEKS
+  const rated = series.weeks.filter((w): w is CapacityWeek & { utilizationPct: number } => w.utilizationPct != null && w.workdays >= 3)
+  if (rated.length < n) return null
+  const last = rated.slice(-n)
+  if (!last.every((w) => w.utilizationPct < thresholdPct)) return null
+  return {
+    weeks: last.map((w) => ({ weekStartYmd: w.weekStartYmd, utilizationPct: w.utilizationPct, fieldHours: w.fieldHours, availableHours: w.availableHours })),
+    fieldHours: last.reduce((a, w) => a + w.fieldHours, 0),
+    availableHours: last.reduce((a, w) => a + w.availableHours, 0),
+    thresholdPct,
+    source: series.source,
+    crewNow: series.crewNow,
+  }
+}

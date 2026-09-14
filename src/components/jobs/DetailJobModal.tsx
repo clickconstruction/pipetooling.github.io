@@ -39,6 +39,9 @@ import { JobCalendarModal } from './JobCalendarModal'
 import { ShareJobButton } from './ShareJobButton'
 import { SupplyHouseShareModal } from './SupplyHouseShareModal'
 import { useJobAccountShares } from '../../hooks/useJobAccountShares'
+import { useJobAccountStrips } from '../../hooks/useJobAccountStrips'
+import { JobAccountsStrip } from './JobAccountsStrip'
+import { stripHasOpen } from '../../lib/jobs/jobAccountStrip'
 import { jobAccountShareIconTitle } from '../../lib/supplyHouseJobAccountsLedger'
 import { useChecklistAddModal } from '../../contexts/ChecklistAddModalContext'
 import { renderAccountManChip } from './jobsStagesRowShared'
@@ -1057,7 +1060,11 @@ export default function DetailJobModal({
   // file); re-read when the share modal closes — a send may have been logged.
   const [jobAccountSharesKey, setJobAccountSharesKey] = useState(0)
   const { shares: jobAccountShares } = useJobAccountShares(jobId, canShareSupplyHouse && Boolean(fullJob), jobAccountSharesKey)
-  const jobAccountOnFile = (jobAccountShares?.length ?? 0) > 0
+  // Job accounts at the counter (v2.3424): the strip on the Job tab; the icon is teal once any account is open too.
+  const jobAccountStripIds = useMemo(() => (jobId ? [jobId] : []), [jobId])
+  const jobAccountStrips = useJobAccountStrips(jobAccountStripIds, Boolean(fullJob ?? limitedJob), jobAccountSharesKey)
+  const jobAccountStripEntries = jobId ? jobAccountStrips.byJob.get(jobId) : undefined
+  const jobAccountOnFile = (jobAccountShares?.length ?? 0) > 0 || stripHasOpen(jobAccountStripEntries ?? [])
   // One-shot auto-open from the Dispatch inbox's find-owner action (v2.1610):
   // waits for the full job (the share modal needs it), fires once.
   const supplyShareAutoOpenedRef = useRef(false)
@@ -1841,6 +1848,15 @@ export default function DetailJobModal({
                 />
               </div>
             </div>
+            {jobId ? (
+              <JobAccountsStrip
+                jobId={jobId}
+                jobLabel={modalTitle}
+                jobAddress={mapsAddressLine || null}
+                entries={jobAccountStripEntries}
+                onChanged={jobAccountStrips.reload}
+              />
+            ) : null}
             {scheduleContext ? (
               <div
                 style={{

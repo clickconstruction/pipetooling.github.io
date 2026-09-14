@@ -24,7 +24,7 @@
  */
 import type { StagesMoneyBarModel } from '../stagesMoneyBar'
 import type { PipelineStageBar } from './pipelineStageBar'
-import { crewShortName, newestPercent, percentIsStale, type JobCrewPosition } from './jobCrewPosition'
+import { crewShortName, newestPercent, percentIsStale, type JobCrewPosition, type PercentSource } from './jobCrewPosition'
 import { formatUsdNoCents } from './jobFormatting'
 import { formatWorkDateYmdMonthDayShort, formatWorkDateYmdWeekdayShortFriendly } from '../../utils/dateUtils'
 
@@ -68,7 +68,7 @@ export type ProgressPaymentView = {
   /** The percent on record predates the last clock-in: not drawn as a fill. */
   stale: boolean
   /** The percent the row shows, with its source and date, or null. */
-  percent: { pct: number; source: 'typed' | 'report'; at: string | null } | null
+  percent: { pct: number; source: PercentSource; at: string | null } | null
   /**
    * v2.3421 (the door): a job with two or more priced lines the dictionary did
    * not read as stages — offer *Set stages*, which opens Bill → ① Line Items.
@@ -133,11 +133,13 @@ export function crewClause(crew: JobCrewPosition | null | undefined, todayYmd: s
   return 'nobody clocked in'
 }
 
-/** "80% typed Sep 3" · "12% reported Sep 11" · "40% typed" · "no % yet". */
+const PERCENT_SOURCE_WORD: Record<PercentSource, string> = { typed: 'typed', report: 'reported', seed: 'set' }
+
+/** "80% typed Sep 3" · "12% reported Sep 11" · "40% set Aug 7" (the back-fill) · "40% typed" · "no % yet". */
 export function percentClause(p: ProgressPaymentView['percent']): string {
   if (!p) return 'no % yet'
   const when = p.at ? ` ${formatWorkDateYmdMonthDayShort(p.at.slice(0, 10))}` : ''
-  return `${p.pct}% ${p.source === 'typed' ? 'typed' : 'reported'}${when}`
+  return `${p.pct}% ${PERCENT_SOURCE_WORD[p.source]}${when}`
 }
 
 /** "$24,359 paid, nothing billed" · "$32,108 billed, nothing paid" · "$13,412 paid · $11,770 billed · $6,818 done, not billed" · "paid in full". */
