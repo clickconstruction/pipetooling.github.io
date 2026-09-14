@@ -129,6 +129,75 @@ export function telHref(phone: string | null | undefined): string | null {
   return digits.length >= 7 ? `tel:${digits}` : null
 }
 
+// ---------- the PO moment (PR 3): the line under the supply house pick ----------
+
+export type PoMomentTone = 'amber' | 'teal' | 'muted'
+
+export interface PoMomentLine {
+  tone: PoMomentTone
+  text: string
+  /** Which actions the line offers. */
+  canCall: boolean
+  canMarkOpened: boolean
+  canSendPacket: boolean
+  canNotNeeded: boolean
+}
+
+function shortDay(iso: string | null): string {
+  if (!iso) return ''
+  const d = new Date(iso)
+  return Number.isNaN(d.getTime()) ? '' : d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+}
+
+/**
+ * The words under the supply house pick when a PO code is about to be minted
+ * (v2.3426). Null when the house neither expects an account nor has a row —
+ * nothing to say. Never a block: the code still mints.
+ */
+export function poMomentLine(entry: JobAccountStripEntry | null | undefined, jobLabel: string): PoMomentLine | null {
+  if (!entry) return null
+  const rep = entry.rep ? `${entry.rep.name} opens them${entry.rep.phone ? `: ${entry.rep.phone}` : ''}.` : 'No job-accounts rep on file for this house.'
+  switch (entry.state) {
+    case 'none':
+      return {
+        tone: 'amber',
+        text: `No job account at ${entry.houseName} for ${jobLabel} yet. ${entry.houseName} expects one per property. ${rep}`,
+        canCall: Boolean(entry.rep?.phone),
+        canMarkOpened: true,
+        canSendPacket: true,
+        canNotNeeded: true,
+      }
+    case 'requested': {
+      const when = shortDay(entry.requestedAt)
+      return {
+        tone: 'amber',
+        text: `${entry.houseName} job account asked for${when ? ` ${when}` : ''}${entry.requestedFromCounter ? ' from the counter' : ''} — not open yet. ${rep}`,
+        canCall: Boolean(entry.rep?.phone),
+        canMarkOpened: true,
+        canSendPacket: true,
+        canNotNeeded: true,
+      }
+    }
+    case 'open': {
+      const bits = [`${entry.houseName} job account open`]
+      if (entry.accountRef) bits.push(`ref ${entry.accountRef}`)
+      const when = shortDay(entry.openedAt)
+      bits.push(`${when ? `${when} · ` : ''}${entry.openedVia === 'phone' ? 'by phone' : entry.openedVia === 'packet' ? 'with the packet' : entry.openedVia === 'counter' ? 'at the counter' : 'opened'}`)
+      if (entry.rep) bits.push(`rep ${entry.rep.name}`)
+      return { tone: 'teal', text: bits.join(' · '), canCall: false, canMarkOpened: false, canSendPacket: false, canNotNeeded: false }
+    }
+    case 'not_needed':
+      return {
+        tone: 'muted',
+        text: `${entry.houseName} job account not needed${entry.note ? ` · ${entry.note}` : ''}.`,
+        canCall: false,
+        canMarkOpened: true,
+        canSendPacket: false,
+        canNotNeeded: false,
+      }
+  }
+}
+
 // ---------- the errand: dispatch_requests pending_action 'open_job_account' ----------
 
 export const OPEN_JOB_ACCOUNT_ACTION = 'open_job_account'

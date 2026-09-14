@@ -7,6 +7,7 @@ import { denverCalendarDayKey } from '../../utils/dateUtils'
 import { fetchDispatchModeDayBlocks, type DispatchModeAgendaBlock } from '../../lib/dispatchModeSchedule'
 import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
 import { useLedgerPrefixMap } from '../../contexts/LedgerDisplayPrefixContext'
+import { JobAccountPoLine } from '../materials/JobAccountPoLine'
 import { UnifiedSearchResultRow } from '../search/UnifiedSearchResultRow'
 import { useJobBidSearchEvidence } from '../../hooks/useJobBidSearchEvidence'
 import { buildServiceTypeTradePill } from '../../lib/serviceTypeTradePill'
@@ -409,6 +410,11 @@ export default function DispatchModePo() {
           for {result.personName}
           {result.supplyHouseName ? ` · ${result.supplyHouseName}` : ''}
         </div>
+        {job && supplyHouse ? (
+          <div style={{ width: '100%', maxWidth: 440 }}>
+            <JobAccountPoLine jobId={job.id} jobLabel={result.jobLabel} houseId={supplyHouse.id} compact />
+          </div>
+        ) : null}
         <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', justifyContent: 'center', marginTop: '0.5rem' }}>
           <button
             type="button"
@@ -599,6 +605,14 @@ export default function DispatchModePo() {
           </>
         )}
       </div>
+      {job && supplyHouse ? (
+        <JobAccountPoLine
+          jobId={job.id}
+          jobLabel={`${effectiveJobLedgerNumber(job.hcpNumber, job.clickNumber) || '—'} · ${job.jobName}`}
+          houseId={supplyHouse.id}
+          compact
+        />
+      ) : null}
 
       {stepLabel(4, 'Note (optional)')}
       <input

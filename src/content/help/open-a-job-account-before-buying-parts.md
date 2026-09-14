@@ -42,6 +42,15 @@ If you would rather call the rep yourself, the number is on the sheet — the of
 **Open a job account at Reece for 951 · Shearer Pinpoint — asked from the counter, buying now** · Abraham · 1:40 PM · *"Rough-in for the slab, ~$1,800"* · **Reece** rep Curly Conley · 210-344-4950 {{button:outline|Call Curly}} {{button:green|Mark opened…}} {{button:outline|Send the packet}}
 :::
 
+## For the office: the PO code is the moment
+
+Most parts runs start with a PO code minted by the office — **Materials → PO Generator**, or the **PO** tab in Dispatch Mode on a phone. Once the job and the supply house are picked, the status sits right under the house:
+
+- Amber — *No job account at Ferguson for 964 · Pondhill demo yet. Ferguson expects one per property. Curly Conley opens them: 210-344-4950.* with {{button:outline|Call Curly}}, {{button:green|Mark opened…}}, {{button:outline|Send the packet}} and *Not needed for this job*. Make the call, mark it opened, then mint the code.
+- Teal — *Ferguson job account open · ref JA-4114 · Sep 2 · by phone · rep Curly Conley*. Mint the code.
+
+A tech's open ask shows here too (*asked Sep 14 from the counter — not open yet*), so marking it opened from the PO tab closes their request and sends their push. The code always mints — this is a signal, never a gate.
+
 ## For the office: the errand card
 
 The ask lands in the **Dispatch inbox** (both Dashboard positions and Dispatch Mode) with a line per house:
