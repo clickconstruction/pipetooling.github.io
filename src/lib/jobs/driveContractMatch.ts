@@ -46,12 +46,16 @@ export type DriveContractMatch = {
 
 const STRONG_WORDS = /\b(contract|agreement|subcontract|sub-contract|signed|executed|countersigned)\b/i
 const WEAK_WORDS = /\b(proposal|terms|t&c|scope|work order)\b/i
-const NOT_CONTRACT = /\b(invoice|estimate|quote|plans?|drawings?|permit|w-?9|coi|insurance|lien|waiver|release|receipt|photo|img_|change order)\b/i
+/** Never a contract, whatever else the name says: samples, templates, riders, reports, lien paper, change orders. */
+const NEVER_CONTRACT = /\b(sample|template|exhibit|rider|registration|insurance|inspection|report|geotech|geo|specs?|division|procurement|budget|schedule|lien|waiver|release|change order)\b/i
+/** Not a contract unless the name also says contract / agreement. */
+const NOT_CONTRACT = /\b(invoice|quote|plans?|drawings?|permit|w-?9|coi|receipt|photo|img_)\b/i
 
-/** Does the file name read like a contract? Strong words beat exclusions only when both appear ("signed change order" is not). */
+/** Does the file name read like a contract? An exclusion word wins unless the name also says contract / agreement ("signed change order" and "signed inspection report" are not). */
 export function contractFileStrength(name: string): 'strong' | 'weak' | 'no' {
   const n = name.replace(/[_\-.]+/g, ' ')
-  if (NOT_CONTRACT.test(n) && !/\b(sub-?contract|agreement)\b/i.test(n)) return 'no'
+  if (NEVER_CONTRACT.test(n)) return 'no'
+  if (NOT_CONTRACT.test(n) && !/\b(sub-?contract|agreement|contract)\b/i.test(n)) return 'no'
   if (STRONG_WORDS.test(n)) return 'strong'
   if (WEAK_WORDS.test(n)) return 'weak'
   return 'no'
@@ -76,6 +80,26 @@ export function normalizeName(s: string): string {
   return s.toLowerCase().replace(/[^a-z0-9 ]+/g, ' ').replace(/\s+/g, ' ').trim()
 }
 
+const NAME_NOISE = new Set(['inc', 'llc', 'ltd', 'co', 'the', 'and', 'of', 'group', 'company', 'construction', 'contracting', 'contractors', 'homes', 'custom', 'general', 'services', 'solutions', 'rmc', 'dsi'])
+
+/** The words that identify a party: "RMC- Dudley Mason" → {dudley, mason}; "_Knight Contracting" → {knight}. */
+export function nameWords(s: string): Set<string> {
+  return new Set(
+    normalizeName(s)
+      .split(' ')
+      .filter((w) => w.length >= 3 && !NAME_NOISE.has(w)),
+  )
+}
+
+/** Two party names agree when one's identifying words all appear in the other's ("_Mason Dudley" ↔ "RMC- Dudley Mason"). */
+export function partyNamesAgree(a: string, b: string): boolean {
+  const wa = nameWords(a)
+  const wb = nameWords(b)
+  if (wa.size === 0 || wb.size === 0) return false
+  const subset = (x: Set<string>, y: Set<string>) => [...x].every((w) => y.has(w))
+  return subset(wa, wb) || subset(wb, wa)
+}
+
 /** Folder name mentions the job: by street, by number (J523 / 523 as a token), by job name, by customer/GC name. */
 export function folderMatchesJob(folderName: string, job: DriveMatchJob): { strength: 'street' | 'number' | 'name' | 'customer' | null; detail: string } {
   const f = normalizeName(folderName)
@@ -85,9 +109,12 @@ export function folderMatchesJob(folderName: string, job: DriveMatchJob): { stre
   if (street && f.includes(street)) return { strength: 'street', detail: `folder names ${job.jobAddress.split(',')[0]?.trim() ?? street}` }
   const jn = normalizeName(job.jobName)
   if (jn.length >= 6 && f.includes(jn)) return { strength: 'name', detail: `folder names the job "${job.jobName}"` }
+  // The customer folder is the top segment of the chain ("_Mason Dudley / 233 Palomino Trail / Contracts").
+  const top = folderName.split(' / ')[0] ?? folderName
   for (const who of [job.customerName, job.gcName ?? '']) {
+    if (!who.trim()) continue
     const c = normalizeName(who)
-    if (c.length >= 5 && f.includes(c)) return { strength: 'customer', detail: `folder names ${who}` }
+    if ((c.length >= 5 && f.includes(c)) || partyNamesAgree(top, who)) return { strength: 'customer', detail: `folder names ${who}` }
   }
   return { strength: null, detail: '' }
 }

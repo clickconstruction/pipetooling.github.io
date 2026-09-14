@@ -116,38 +116,58 @@ serve(async (req) => {
     const folderName = new Map<string, string>(jobFolders.map((f) => [f.id, f.name]))
     const rootSet = new Set(roots)
 
-    // 3. Files one level down: resolve unknown parents once, keep those whose parent is a job folder.
-    const unknownParents = new Set<string>()
-    for (const f of files) for (const p of f.parents ?? []) if (!folderName.has(p) && !rootSet.has(p)) unknownParents.add(p)
-    const subfolderJob = new Map<string, { id: string; name: string }>()
-    for (const pid of [...unknownParents].slice(0, 400)) {
-      const res = await fetch(`${DRIVE}/files/${pid}?fields=id,name,parents&supportsAllDrives=true`, { headers: { Authorization: `Bearer ${token}` } })
-      if (!res.ok) continue
-      const meta = (await res.json()) as { id: string; name: string; parents?: string[] }
-      const jobParent = (meta.parents ?? []).find((p) => folderName.has(p))
-      if (jobParent) subfolderJob.set(pid, { id: jobParent, name: folderName.get(jobParent)! })
+    // 3. Walk each file's parent chain up to the job folder (≤ 5 levels, one
+    // metadata GET per distinct folder, cached). The chain of names below the
+    // job folder rides along — "Josh Peterson / 105 Dover Rd / Contracts" — so a
+    // subfolder named for the address or the job number still matches.
+    const metaCache = new Map<string, { name: string; parent: string | null } | null>()
+    let lookups = 0
+    async function folderMeta(id: string): Promise<{ name: string; parent: string | null } | null> {
+      if (metaCache.has(id)) return metaCache.get(id)!
+      if (lookups >= 1500) return null
+      lookups++
+      const res = await fetch(`${DRIVE}/files/${id}?fields=id,name,parents&supportsAllDrives=true`, { headers: { Authorization: `Bearer ${token}` } })
+      const meta = res.ok ? ((await res.json()) as { name: string; parents?: string[] }) : null
+      const v = meta ? { name: meta.name, parent: (meta.parents ?? [])[0] ?? null } : null
+      metaCache.set(id, v)
+      return v
+    }
+    async function attribute(f: DriveFile): Promise<{ id: string; name: string } | null> {
+      let cur = (f.parents ?? [])[0] ?? null
+      const chain: string[] = []
+      for (let depth = 0; cur && depth < 5; depth++) {
+        if (rootSet.has(cur)) return chain.length > 0 ? { id: cur, name: chain.reverse().join(' / ') } : { id: cur, name: f.name }
+        if (folderName.has(cur)) return { id: cur, name: [folderName.get(cur)!, ...chain.reverse()].join(' / ') }
+        const m = await folderMeta(cur)
+        if (!m) return null
+        chain.push(m.name)
+        cur = m.parent
+      }
+      return null
     }
 
-    const out = files
-      .map((f) => {
-        const parent = (f.parents ?? [])[0] ?? ''
-        // Directly in a root: no job folder — the file's own name is what the matcher gets.
-        const direct = folderName.has(parent) ? { id: parent, name: folderName.get(parent)! } : rootSet.has(parent) ? { id: parent, name: f.name } : (subfolderJob.get(parent) ?? null)
-        if (!direct) return null
-        return {
-          id: f.id,
-          name: f.name,
-          mimeType: f.mimeType,
-          modifiedTime: f.modifiedTime ?? null,
-          webViewLink: f.webViewLink ?? null,
-          size: f.size != null ? Number(f.size) : null,
-          folderId: direct.id,
-          folderName: direct.name,
+    const out: Array<{ id: string; name: string; mimeType: string; modifiedTime: string | null; webViewLink: string | null; size: number | null; folderId: string; folderName: string }> = []
+    const unattributed: Array<{ name: string; chain: string }> = []
+    for (const f of files) {
+      const job = await attribute(f)
+      if (!job) {
+        if (unattributed.length < 40) {
+          const names: string[] = []
+          let cur = (f.parents ?? [])[0] ?? null
+          for (let d = 0; cur && d < 4; d++) {
+            const m = metaCache.get(cur) ?? null
+            if (!m) break
+            names.push(m.name)
+            cur = m.parent
+          }
+          unattributed.push({ name: f.name, chain: names.reverse().join(' / ') })
         }
-      })
-      .filter((x): x is NonNullable<typeof x> => x != null)
+        continue
+      }
+      out.push({ id: f.id, name: f.name, mimeType: f.mimeType, modifiedTime: f.modifiedTime ?? null, webViewLink: f.webViewLink ?? null, size: f.size != null ? Number(f.size) : null, folderId: job.id, folderName: job.name })
+    }
 
-    return json({ ok: true, files: out, job_folders: jobFolders.length, roots: roots.length, scanned: files.length, unattributed: files.length - out.length })
+    return json({ ok: true, files: out, job_folders: jobFolders.length, roots: roots.length, scanned: files.length, unattributed: files.length - out.length, unattributed_samples: unattributed, folder_lookups: lookups })
   } catch (e) {
     return json({ error: String(e instanceof Error ? e.message : e) }, 500)
   }
