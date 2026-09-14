@@ -1,6 +1,6 @@
 # Contract sweep, seen first — shrink the pile, file what is signed, then a sweep that shows the agreement
 
-Status: **in progress** · PR 0 v2.3384 (the floor + Not needed, #3114) · PR 0c v2.3385 (the job-form door, #3115) · PR 1 v2.3386 (the readiness kernel + list, #3116) · PR 2 v2.3387 (the pane, #3117) · PR 3 v2.3388 (editing in place, #3118) · PR 4 v2.3389 (filing, #3119) · Drive pass v2.3390 (built; `drive-contract-scan` deploys after the owner connects Drive, then a dev runs the first pass) — **everything in the plan is built**; when the Drive pass has been right a few times, open the door to the office set and delete this to-do · mock-up: [`mockup.html`](./mockup.html) (the brief with mock-ups A–D, also published as a Claude artifact 2026-09-13)
+Status: **in progress** · PR 0 v2.3384 (the floor + Not needed, #3114) · PR 0c v2.3385 (the job-form door) · PR 1 v2.3386 (the readiness kernel + list) · PR 2 v2.3387 (the pane) — the three landed on main in #3117's squash (#3115 / #3116 closed as superseded) · PR 3 v2.3388 (editing in place, #3118) · PR 4 v2.3389 (filing, #3119) · Drive pass v2.3390 (built; `drive-contract-scan` deploys after the owner connects Drive, then a dev runs the first pass) — **everything in the plan is built**; when the Drive pass has been right a few times, open the door to the office set and delete this to-do · mock-up: [`mockup.html`](./mockup.html) (the brief with mock-ups A–D, also published as a Claude artifact 2026-09-13)
 
 ## The ask, in the owner's words
 
