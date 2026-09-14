@@ -169,7 +169,7 @@ export default function JobAccountsAfterCreatePrompt({ jobId, onClose }: { jobId
           jobId: job!.id,
           jobLabel: label,
           jobAddress: job!.job_address,
-          houses: plan.ask.map((e) => ({ id: e.houseId, name: e.houseName, repName: e.rep?.name ?? null, repPhone: e.rep?.phone ?? null })),
+          houses: plan.ask.map((e) => ({ id: e.houseId, name: e.houseName, repName: e.rep?.name ?? null, repPhone: e.rep?.phone ?? null, repContactId: e.rep?.id ?? null })),
           fromCounter: false,
           note: 'New job — open before the first parts run',
         })

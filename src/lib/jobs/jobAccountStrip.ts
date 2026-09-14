@@ -202,7 +202,7 @@ export function poMomentLine(entry: JobAccountStripEntry | null | undefined, job
 
 export const OPEN_JOB_ACCOUNT_ACTION = 'open_job_account'
 
-export type RequestedJobAccountHouse = { id: string; name: string; repName: string | null; repPhone: string | null }
+export type RequestedJobAccountHouse = { id: string; name: string; repName: string | null; repPhone: string | null; repContactId?: string | null }
 
 /** A type alias (not an interface) so it stays assignable to the `Json` column type. */
 export type OpenJobAccountPayload = {
@@ -217,7 +217,7 @@ export function buildOpenJobAccountPayload(args: {
   note: string
 }): OpenJobAccountPayload | null {
   const houses = args.houses
-    .map((h) => ({ id: h.id.trim(), name: h.name.trim(), repName: (h.repName ?? '').trim() || null, repPhone: (h.repPhone ?? '').trim() || null }))
+    .map((h) => ({ id: h.id.trim(), name: h.name.trim(), repName: (h.repName ?? '').trim() || null, repPhone: (h.repPhone ?? '').trim() || null, repContactId: (h.repContactId ?? '').trim() || null }))
     .filter((h) => h.id && h.name)
   if (houses.length === 0) return null
   return { supply_houses: houses, from_counter: Boolean(args.fromCounter), note: args.note.trim().slice(0, 500) }
@@ -232,7 +232,7 @@ export function parseOpenJobAccountPayload(payload: unknown): OpenJobAccountPayl
   if (Array.isArray(p.supply_houses)) {
     for (const item of p.supply_houses) {
       if (!item || typeof item !== 'object') continue
-      const h = item as { id?: unknown; name?: unknown; repName?: unknown; repPhone?: unknown }
+      const h = item as { id?: unknown; name?: unknown; repName?: unknown; repPhone?: unknown; repContactId?: unknown }
       const id = typeof h.id === 'string' ? h.id.trim() : ''
       const name = typeof h.name === 'string' ? h.name.trim() : ''
       if (!id || !name) continue
@@ -241,6 +241,7 @@ export function parseOpenJobAccountPayload(payload: unknown): OpenJobAccountPayl
         name,
         repName: typeof h.repName === 'string' && h.repName.trim() ? h.repName.trim() : null,
         repPhone: typeof h.repPhone === 'string' && h.repPhone.trim() ? h.repPhone.trim() : null,
+        repContactId: typeof h.repContactId === 'string' && h.repContactId.trim() ? h.repContactId.trim() : null,
       })
     }
   }

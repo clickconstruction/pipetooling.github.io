@@ -48,7 +48,7 @@ export function JobAccountPoLine({
     background: 'transparent',
     color: 'inherit',
     cursor: 'pointer',
-    font: 'inherit',
+    fontFamily: 'inherit',
     fontWeight: 600,
     textDecoration: 'none',
     whiteSpace: 'nowrap',

@@ -32,12 +32,14 @@ function chipStyle(state: JobAccountStripState): CSSProperties {
     gap: '0.3rem',
     borderRadius: 6,
     padding: '0.1rem 0.5rem',
+    fontFamily: 'inherit',
     fontSize: '0.75rem',
     fontWeight: 600,
-    border: '1px solid transparent',
-    cursor: 'pointer',
-    font: 'inherit',
     lineHeight: 1.5,
+    borderWidth: 1,
+    borderStyle: 'solid',
+    borderColor: 'transparent',
+    cursor: 'pointer',
     whiteSpace: 'nowrap',
   }
   switch (state) {
@@ -252,7 +254,7 @@ function RequestJobAccountSheet({
   async function send() {
     if (sending || picked.size === 0) return
     setSending(true)
-    const houses = pickable.filter((e) => picked.has(e.houseId)).map((e) => ({ id: e.houseId, name: e.houseName, repName: e.rep?.name ?? null, repPhone: e.rep?.phone ?? null }))
+    const houses = pickable.filter((e) => picked.has(e.houseId)).map((e) => ({ id: e.houseId, name: e.houseName, repName: e.rep?.name ?? null, repPhone: e.rep?.phone ?? null, repContactId: e.rep?.id ?? null }))
     const res = await submitOpenJobAccountRequest(authUser?.id, showToast, { jobId, jobLabel, jobAddress, houses, fromCounter: atCounter, note })
     setSending(false)
     if (res) onSent()
@@ -279,7 +281,7 @@ function RequestJobAccountSheet({
                   type="button"
                   aria-pressed={on}
                   onClick={() => setPicked((prev) => { const next = new Set(prev); if (next.has(e.houseId)) next.delete(e.houseId); else next.add(e.houseId); return next })}
-                  style={{ padding: '0.3rem 0.75rem', borderRadius: 999, border: `1px solid ${on ? '#2563eb' : 'var(--border-strong)'}`, background: on ? 'var(--bg-blue-tint)' : 'var(--surface)', color: on ? 'var(--text-blue-700)' : 'var(--text-700)', fontWeight: on ? 600 : 400, fontSize: '0.8125rem', font: 'inherit', cursor: 'pointer' }}
+                  style={{ padding: '0.3rem 0.75rem', borderRadius: 999, border: `1px solid ${on ? '#2563eb' : 'var(--border-strong)'}`, background: on ? 'var(--bg-blue-tint)' : 'var(--surface)', color: on ? 'var(--text-blue-700)' : 'var(--text-700)', fontWeight: on ? 600 : 400, fontSize: '0.8125rem', fontFamily: 'inherit', cursor: 'pointer' }}
                 >
                   {e.houseName}
                 </button>

@@ -12,6 +12,9 @@ import {
   type JobSupplyHouseAccountRow,
 } from '../../lib/materials/jobSupplyHouseAccounts'
 
+/** A rep id must be a real supply_house_contacts id — a payload-only rep (name + phone) is never written as one. */
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
 /**
  * Job accounts at the counter (v2.3423): the one sheet that writes a job's
  * account at a house — **Mark opened** (how, the house's reference, the rep,
@@ -61,7 +64,7 @@ export function MarkJobAccountOpenedModal({
         status: mode,
         account_ref: mode === 'open' ? ref.trim() : '',
         opened_via: mode === 'open' ? via : null,
-        rep_contact_id: mode === 'open' && repId ? repId : null,
+        rep_contact_id: mode === 'open' && UUID_RE.test(repId) ? repId : null,
         note: note.trim(),
       }
       const { data, error } = await supabase
@@ -90,7 +93,7 @@ export function MarkJobAccountOpenedModal({
     fontWeight: on ? 600 : 400,
     fontSize: '0.8125rem',
     cursor: 'pointer',
-    font: 'inherit',
+    fontFamily: 'inherit',
   })
 
   return (

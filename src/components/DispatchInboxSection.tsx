@@ -173,7 +173,7 @@ export function DispatchInboxSection({
       jobLabel={jobAccountSheet.jobLabel}
       house={{ id: jobAccountSheet.house.id, name: jobAccountSheet.house.name }}
       existing={null}
-      reps={jobAccountSheet.house.repName ? [{ id: `payload-${jobAccountSheet.house.id}`, name: jobAccountSheet.house.repName, email: '', phone: jobAccountSheet.house.repPhone }] : []}
+      reps={jobAccountSheet.house.repName && jobAccountSheet.house.repContactId ? [{ id: jobAccountSheet.house.repContactId, name: jobAccountSheet.house.repName, email: '', phone: jobAccountSheet.house.repPhone }] : []}
       initialMode={jobAccountSheet.mode}
       onClose={() => setJobAccountSheet(null)}
       onSaved={(row) => {
