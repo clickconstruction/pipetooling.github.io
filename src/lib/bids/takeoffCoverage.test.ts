@@ -43,6 +43,25 @@ describe('summarizeTakeoffCoverage', () => {
     expect(s.perFixture.get('water')?.total).toBeCloseTo(656.37, 2)
   })
 
+  it('v2.3407: a line with a Sold in snapshot rounds its part once per bid; the extra lands in Materials and on the fixtures by footage share', () => {
+    const cu = { partId: 'cu', unitPrice: 2.75, sourceMaterialPartPriceId: 'p', sourceTemplateId: null, orderIncrement: 20, orderIncrementUnit: 'ft_stick' }
+    const r = summarizeTakeoffCoverage([{ id: 'a', count: 6 }, { id: 'b', count: 1 }], [
+      line({ id: 'a1', countRowId: 'a', quantity: 8, ...cu }),
+      line({ id: 'b1', countRowId: 'b', quantity: 57, ...cu }),
+      line({ id: 'b2', countRowId: 'b', quantity: 1, unitPrice: 10 }),
+    ])
+    // 48 + 57 = 105 ft → 120 ft; 15 ft × $2.75 = $41.25 extra
+    expect(r.materialsBeforeRounding).toBeCloseTo(48 * 2.75 + 57 * 2.75 + 10, 10)
+    expect(r.orderRounding.extraCost).toBeCloseTo(41.25, 10)
+    expect(r.materialsTotal).toBeCloseTo(r.materialsBeforeRounding + 41.25, 10)
+    expect(r.perFixture.get('a')?.roundingExtra).toBeCloseTo((41.25 * 48) / 105, 10)
+    expect(r.perFixture.get('a')?.total).toBeCloseTo(48 * 2.75 + (41.25 * 48) / 105, 10)
+    expect(r.perFixture.get('b')?.total).toBeCloseTo(57 * 2.75 + 10 + (41.25 * 57) / 105, 10)
+    // and without any snapshot nothing changes
+    expect(s.orderRounding.parts).toEqual([])
+    expect(s.materialsTotal).toBe(s.materialsBeforeRounding)
+  })
+
   it('surfaces $0 lines, bundles, and overrides', () => {
     expect(s.zeroPriceLineIds).toEqual(['wc1'])
     expect(s.perFixture.get('wc')?.hasZeroPriceLine).toBe(true)

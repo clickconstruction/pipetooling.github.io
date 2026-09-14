@@ -1671,6 +1671,7 @@ export function BidsTakeoffTab({
                                       showSaveAsAssembly={linesForRow.some((l) => l.partId?.trim())}
                                       onSaveAsAssembly={() => openSaveAsAssemblyFromRough(row.id, row)}
                                       takeoffAddTemplateParts={takeoffAddTemplateParts}
+                                      orderRounding={line.partId ? (takeoffCoverage.orderRounding.byPartId.get(line.partId) ?? null) : null}
                                       takeoffRoughPartPickerLineId={takeoffRoughPartPickerLineId}
                                       setTakeoffRoughPartPickerLineId={setTakeoffRoughPartPickerLineId}
                                       takeoffRoughPartSearchQuery={takeoffRoughPartSearchQuery}

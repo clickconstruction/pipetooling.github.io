@@ -2,7 +2,7 @@
 title: see what pricing sees on takeoffs
 category: Bids & Estimating
 roles: dev, master_technician, assistant, estimator
-keywords: takeoff, sheet, new 2, cost rail, what pricing sees, materials total, no takeoffs cost, needs a price, request quotes, copy from previous bid, book suggests
+keywords: sticks, order rounding, sold in, minimum order, 20 ft, takeoff, sheet, new 2, cost rail, what pricing sees, materials total, no takeoffs cost, needs a price, request quotes, copy from previous bid, book suggests
 order: 86
 ---
 **Sheet** on **Bids → Takeoffs** keeps the sheet you know and adds a rail that explains what Pricing is about to work from. The first time you open a bid on this device, a box asks **How do you want to cost this takeoff?** — click {{button:outline|Sheet}} (or press **3**) and it opens. Your pick is remembered, so the box does not come back: from then on bids open straight in the view you chose, and the {{chip:blue|Sheet}} pill beside the bid name switches any time ({{chip:gray|Old}} is the classic tab; {{chip:gray|One at a time}} is the guided pass).
@@ -17,6 +17,10 @@ The same fixtures and line editor as Old, with two additions:
 ## What Pricing sees
 
 The materials total here is exactly the number the Workbench uses as this bid's cost. When fixtures have no lines, the rail says so in red: Pricing shows those rows as **No Takeoffs cost**. **show** opens per-fixture unit costs; a fixture with a $0 line is marked **incomplete**.
+
+### Sticks are in the number
+
+A part sold in packs — {{chip:purple|20 ft}} sticks of copper, 100 ft coils of PEX — is rounded up **once per bid**, across every fixture that uses it: 105 ft needed buys 120 ft, and the 15 ft you will not use is in the materials total. The strip's **Order rounding** tile says what the sticks add; hover it for how many parts round. A line whose part rounds wears the pack as a small chip beside its name; hover the chip for *105 ft needed on this bid → 120 ft (6 × 20 ft sticks)*. The extra is spread over the fixtures that use the part, so the per-fixture costs still add up. The rule itself lives on the Part Type or the part — see *add a part and its prices fast*.
 
 ## Needs a price
 

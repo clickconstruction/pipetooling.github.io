@@ -1,3 +1,4 @@
+import { orderRoundingTitle } from '../../lib/bids/takeoffOrderRounding'
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { formatCurrency } from '../../lib/format'
 import type { TakeoffCoverageSummary } from '../../lib/bids/takeoffCoverage'
@@ -185,6 +186,12 @@ export function TakeoffCostRailView({
               <span>Materials on this bid</span>
               <span style={{ fontSize: '1.25rem', fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>${formatCurrency(coverage.materialsTotal)}</span>
             </div>
+            {coverage.orderRounding.extraCost > 0 ? (
+              <div style={{ ...kv, fontSize: '0.78rem' }} title={orderRoundingTitle(coverage.orderRounding)} data-testid="takeoff-rail-order-rounding">
+                <span style={{ color: 'var(--text-muted)' }}>incl. order rounding · {coverage.orderRounding.partsRounded} part{coverage.orderRounding.partsRounded === 1 ? '' : 's'} sold in packs</span>
+                <span style={{ fontWeight: 700, color: 'var(--text-violet-700)', fontVariantNumeric: 'tabular-nums' }}>+${formatCurrency(coverage.orderRounding.extraCost)}</span>
+              </div>
+            ) : null}
             <div style={kv}>
               <span style={{ color: 'var(--text-muted)' }}>Costed fixtures</span>
               <span style={{ fontWeight: 700, color: coverage.uncostedIds.length === 0 ? 'var(--text-green-700)' : 'var(--text-amber-700)' }}>

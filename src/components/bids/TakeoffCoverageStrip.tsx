@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import { formatCurrency } from '../../lib/format'
 import type { TakeoffCoverageSummary } from '../../lib/bids/takeoffCoverage'
+import { orderRoundingTitle } from '../../lib/bids/takeoffOrderRounding'
 
 /**
  * The coverage strip New 1 and New 2 share (docs/TAKEOFFS_REFRESH_PLAN.md):
@@ -78,7 +79,14 @@ export function TakeoffCoverageStrip({
         onClick: onClickUncosted,
         title: onClickUncosted ? `${coverage.uncostedIds.length} fixture${coverage.uncostedIds.length === 1 ? '' : 's'} with no lines yet` : undefined,
       })}
-      {tile('materials', 'Materials', `$${formatCurrency(coverage.materialsTotal)}`, { title: 'Σ count × qty × price — what Pricing uses as this bid\'s material cost' })}
+      {tile('materials', 'Materials', `$${formatCurrency(coverage.materialsTotal)}`, { title: 'Σ count × qty × price, plus the order rounding — what Pricing uses as this bid\'s material cost' })}
+      {coverage.orderRounding.parts.length > 0
+        ? tile('rounding', 'Order rounding', `+$${formatCurrency(coverage.orderRounding.extraCost)}`, {
+            color: coverage.orderRounding.extraCost > 0 ? 'var(--text-violet-700)' : undefined,
+            bg: coverage.orderRounding.extraCost > 0 ? 'var(--bg-violet-100)' : undefined,
+            title: orderRoundingTitle(coverage.orderRounding),
+          })
+        : null}
       {tile('zero', '$0 lines', String(coverage.zeroPriceLineIds.length), {
         color: coverage.zeroPriceLineIds.length > 0 ? 'var(--text-red-700)' : undefined,
         onClick: coverage.zeroPriceLineIds.length > 0 ? onClickZeroPrice : undefined,
