@@ -40,6 +40,12 @@ The review panel lists each pair — deposit on the left, the bill it pays on th
 
 The bill picker searches by amount, job number, job name, address — and now the **customer or GC name**, even when the job name doesn't mention them. Typing "weiss" finds Weiss Services' bills no matter what the jobs are called.
 
+Each bill in the list is two lines: the amount, then the job number and name, then who pays · the address · which line (*Invoice #2*, *Billed line*), with a {{chip:purple|Stripe}} tag when the bill went out through Stripe. The list opens in the deposit's order — the matched payer's bills first, the one equal to the deposit on top in green with **✓ matches this deposit**, then other bills equal to the deposit, then the rest — and the footer under it counts the open bills and what they add up to. After a pick, the control reads the bill back: *$250.00 · 1015 · Montolongo Post Test*.
+
+:::example Picking from the list
+{{chip:green|$1,855.70 · 1042 Giesber Master Bath · ✓ matches this deposit}} sits first because the deposit came from Elaine Giesber and equals her open bill; her other jobs follow, then any other bill equal to $1,855.70, then everything else. Type "giesber", "1042", "cibolo" or "1855" to narrow it.
+:::
+
 ## When a check covers several bills
 
 If a set of the matched customer's bills adds up to the deposit exactly, the panel offers it as one chip:

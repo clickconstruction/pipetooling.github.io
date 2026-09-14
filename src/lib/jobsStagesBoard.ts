@@ -265,6 +265,11 @@ export function formatBankPaymentTargetDollars(remaining: number): string {
   return `$${bankPaymentTargetMoneyStr(remaining)}`
 }
 
+/** The payer names worth showing beside a target's job name (customer, then GC; blanks, repeats and names already in the job name drop out). */
+export function bankPaymentTargetPayerNames(t: BankPaymentTarget): string[] {
+  return dedupedPayerNames(t.jobName, t.customerName, t.gcName)
+}
+
 /** Text after the leading amount: HCP, job name, payer(s), address, short line (matches `searchLabel` tail). */
 export function bankPaymentTargetCuesAfterAmount(t: BankPaymentTarget): string {
   const payers = dedupedPayerNames(t.jobName, t.customerName, t.gcName)

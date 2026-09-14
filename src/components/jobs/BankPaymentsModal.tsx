@@ -27,13 +27,19 @@ import { ArDepositRow } from './ar/ArDepositRow'
 import { ArHeaderMenu } from './ar/ArHeaderMenu'
 import { ArDepositHeader } from './ar/ArDepositHeader'
 import { ArPayerMatches } from './ar/ArPayerMatches'
+import { ArBilledLineOption, ArBilledLineTrigger } from './ar/ArBilledLineOption'
+import {
+  AR_BILLED_LINE_MATCH_ROW_STYLE,
+  arBilledLineFooterText,
+  arBilledLineRowParts,
+  orderArBilledLineTargets,
+} from '../../lib/jobs/arBilledLineOptions'
 import { arAllocationProgress } from '../../lib/jobs/arAllocationProgress'
 import { arApplySentence, arNextDepositId } from '../../lib/jobs/arApplySentence'
 import { arDepositRowStates, arDepositSummary, arDepositSummaryWords } from '../../lib/jobs/arDepositRowState'
 import { mercuryDebitCardIdFromRaw } from '../../lib/mercuryRawDebitCard'
 import { supabase } from '../../lib/supabase'
 import {
-  bankPaymentTargetCuesAfterAmount,
   bankPaymentTargetDetailLead,
   bankPaymentTargetPrimaryLabel,
   bankPaymentTargetsFromStageRows,
@@ -198,25 +204,6 @@ export default function BankPaymentsModal({
 
   const targets = useMemo(() => bankPaymentTargetsFromStageRows(billedRows), [billedRows])
   const targetByKey = useMemo(() => new Map(targets.map((t) => [t.key, t] as const)), [targets])
-  const targetSelectOptions = useMemo(
-    () =>
-      targets.map((t) => {
-        const cues = bankPaymentTargetCuesAfterAmount(t)
-        const dollars = formatBankPaymentTargetDollars(t.remaining)
-        return {
-          value: t.key,
-          label: t.searchLabel,
-          labelContent: (
-            <>
-              <strong style={{ fontWeight: 600 }}>{dollars}</strong>
-              {cues ? <span>{` · ${cues}`}</span> : null}
-            </>
-          ),
-        }
-      }),
-    [targets],
-  )
-
   const filteredCandidates = useMemo(() => {
     const q = bankTxSearchQuery.trim().toLowerCase()
     if (!q) return candidates
@@ -497,6 +484,28 @@ export default function BankPaymentsModal({
         .map((t) => t.key),
     )
   }, [selected, targets])
+
+  /**
+   * The billed-line picker's rows (v2.3383): the matched payer's bills first (the
+   * deposit match on top), then other bills equal to the deposit, then the rest.
+   * Each row is two lines (`ArBilledLineOption`); the closed trigger is one
+   * (`ArBilledLineTrigger`); `label` stays the full search string.
+   */
+  const targetSelectOptions = useMemo(() => {
+    const payerKeys = new Set(depositPayerMatch?.targetKeys ?? [])
+    return orderArBilledLineTargets(targets, { payerKeys, amountMatchKeys: depositAmountMatchKeys }).map((t) => {
+      const parts = arBilledLineRowParts(t)
+      const amountMatch = depositAmountMatchKeys.has(t.key)
+      return {
+        value: t.key,
+        label: t.searchLabel,
+        labelContent: <ArBilledLineOption parts={parts} amountMatch={amountMatch} />,
+        triggerContent: <ArBilledLineTrigger parts={parts} />,
+        optionStyle: amountMatch ? AR_BILLED_LINE_MATCH_ROW_STYLE : undefined,
+      }
+    })
+  }, [targets, depositPayerMatch, depositAmountMatchKeys])
+  const targetSelectFooter = useMemo(() => arBilledLineFooterText(targets), [targets])
 
   /**
    * One-check-several-bills suggestion: when none of the matched payer's bills
@@ -1812,6 +1821,14 @@ export default function BankPaymentsModal({
                                 placeholder="— Select billed line —"
                                 listAriaLabel="Billed line for allocation"
                                 portalZIndex={1200}
+                                // v2.3383: two-line rows want the row's width and the modal's
+                                // height, not the trigger's width and 140px.
+                                listMinWidthPx={560}
+                                listMaxHeightPx={320}
+                                fillViewportHeight
+                                listOptionPadding="0.45rem 0.75rem"
+                                searchPlaceholder="Name, job #, address or amount"
+                                listFooter={targetSelectFooter}
                                 // v2.2597: a fully-paid line (Mark Paid before the deposit was
                                 // allocated) has no billed-line row — steer the dead-ended
                                 // search to the recorded payment it should link instead.
