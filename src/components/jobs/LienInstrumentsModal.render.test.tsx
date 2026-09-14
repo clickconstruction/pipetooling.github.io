@@ -101,6 +101,22 @@ describe('LienInstrumentsModal · demand letter reads the bill', () => {
     expect(screen.getByRole('button', { name: 'Download PDF · 3 documents' })).toBeTruthy()
   })
 
+  it('names its basis on every line (v2.3433): the fee clock, the court, the interest, and a greyed lien line with the reason', async () => {
+    renderWithProviders(<LienInstrumentsModal {...baseProps} job={job()} />)
+    await waitFor(() => expect(document.querySelector('[data-demand-fee-clock]')).toBeTruthy())
+    expect((document.querySelector('[data-demand-fee-clock]') as HTMLElement).textContent).toContain('30 days after this letter')
+    // No approved work month on this job → the Chapter 53 line is not offered, and says why.
+    const blocked = document.querySelector('[data-demand-lien-blocked]') as HTMLElement
+    expect(blocked.textContent).toContain('not offered — no approved work month')
+    expect(screen.getByText(/is within the \$20,000 limit/)).toBeTruthy()
+    expect(screen.getByText(/Prop\. Code § 28\.004 — the bill was a written payment request; from September 23, 2026/)).toBeTruthy()
+    // The letter itself.
+    expect(screen.getByText(/we will also seek our attorney's fees under Texas Civil Practice and Remedies Code § 38\.001/)).toBeTruthy()
+    expect(screen.getByText(/bears interest at 1\.5 percent per month from September 23, 2026 under § 28\.004/)).toBeTruthy()
+    expect(screen.queryByText(/mechanic's lien under Chapter 53 of the Texas Property Code/)).toBeNull()
+    expect(screen.queryByText(/late fees and interest may continue/)).toBeNull()
+  })
+
   it('unticking the delivery record drops Exhibit C from the letter and the preview', async () => {
     renderWithProviders(<LienInstrumentsModal {...baseProps} job={job()} />)
     await waitFor(() => expect(document.querySelector('[data-demand-exhibit="C"]')).toBeTruthy())

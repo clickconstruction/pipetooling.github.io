@@ -482,6 +482,7 @@ export default function LienInstrumentsModal({
         recipient,
         priorNotices,
         propertyKind,
+        homestead: Boolean(linkedAddress?.homestead),
         todayYmd: todayYmdLocal(),
       })
       // The exhibits the letter names (v2.3429). Page counts arrive when the packet is built.
@@ -499,13 +500,16 @@ export default function LienInstrumentsModal({
         deadlineDate: prev.deadlineDate || next.deadlineDate,
         paymentMethod: prev.paymentMethod,
         includeSmallClaims: prev.includeSmallClaims,
-        includeLien: prev.includeLien,
+        // A switch keeps the user's setting while its basis is unchanged; when the
+        // basis changes (the first bills arrive, the property record loads), the
+        // default for the new basis wins (v2.3433).
+        includeLien: prev.lienBlockedReason === next.lienBlockedReason ? prev.includeLien && !next.lienBlockedReason : next.includeLien,
         includeTheftOfServices: prev.includeTheftOfServices,
-        includeLateFees: prev.includeLateFees,
+        includeLateFees: prev.interestBasis === next.interestBasis ? prev.includeLateFees : next.includeLateFees,
         includeNotarial: prev.includeNotarial,
       }
     })
-  }, [open, effJob, selectedInvoices, sources, debtor, addressTouched, issuer, priorNotices, propertyKind, signerNameFallback, authEmail, signedAgreement, includeAgreement, includeDeliveryRecord])
+  }, [open, effJob, selectedInvoices, sources, debtor, addressTouched, issuer, priorNotices, propertyKind, linkedAddress?.homestead, signerNameFallback, authEmail, signedAgreement, includeAgreement, includeDeliveryRecord])
 
   // The packet (v2.3429): the letter, then Exhibit A per covered invoice (the
   // invoice as the customer received it), B the signed agreement, C the
@@ -977,6 +981,11 @@ export default function LienInstrumentsModal({
                 </button>
               </span>
               <input type="date" value={fields.deadlineDate} onChange={(e) => setField('deadlineDate', e.target.value)} style={{ width: '100%', boxSizing: 'border-box', padding: '0.45rem 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.875rem' }} />
+              {fields.feeClockYmd ? (
+                <span data-demand-fee-clock style={{ display: 'block', fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
+                  Attorney's fees become recoverable if the claim is still unpaid 30 days after this letter — <b>{demandDate(fields.feeClockYmd)}</b> (CPRC § 38.002). The letter says both dates.
+                </span>
+              ) : null}
             </label>
             <label style={{ display: 'block', marginBottom: '0.65rem', fontSize: '0.875rem' }}>
               <span style={{ display: 'block', fontWeight: 500, marginBottom: '0.2rem' }}>Payment method line (optional)</span>
@@ -988,9 +997,23 @@ export default function LienInstrumentsModal({
               {priorNotices.length === 0 ? 'Just the invoice date — no re-sends or collection calls recorded yet.' : priorNotices.map((n) => `${demandDate(n.date)} — ${n.label}`).join(' · ')}
             </div>
 
-            <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '0.3rem' }}>Escalation lines</div>
-            {toggle('includeSmallClaims', 'Small-claims lawsuit')}
-            {toggle('includeLien', fields.lienFilingDeadline ? `Mechanic's lien under Chapter 53 (window through ${demandDate(fields.lienFilingDeadline)})` : "Mechanic's lien under Chapter 53")}
+            <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '0.3rem' }}>What the letter may say</div>
+            {toggle(
+              'includeSmallClaims',
+              Number((fields.outstanding ?? '').replace(/[$,\s]/g, '')) <= 20_000 ? 'Suit in justice court' : 'Suit in county or district court',
+              Number((fields.outstanding ?? '').replace(/[$,\s]/g, '')) <= 20_000 ? `${demandMoney(fields.outstanding)} is within the $20,000 limit` : 'above the $20,000 justice-court limit',
+            )}
+            {fields.lienBlockedReason ? (
+              <label data-demand-lien-blocked style={{ display: 'flex', alignItems: 'flex-start', gap: '0.4rem', fontSize: '0.8125rem', marginBottom: '0.3rem', cursor: 'not-allowed', opacity: 0.6 }}>
+                <input type="checkbox" checked={false} disabled readOnly style={{ marginTop: '0.2rem' }} />
+                <span>
+                  Mechanic's lien under Chapter 53
+                  <span style={{ display: 'block', color: 'var(--text-red-700)', fontSize: '0.6875rem', fontWeight: 700 }}>not offered — {fields.lienBlockedReason}</span>
+                </span>
+              </label>
+            ) : (
+              toggle('includeLien', 'Mechanic\'s lien under Chapter 53', fields.lienFilingDeadline ? `filing window open through ${demandDate(fields.lienFilingDeadline)}` : undefined)
+            )}
             {(() => {
               // Owner rule (2026-09-02): § 31.04 only applies when the client
               // has made NO payments on the job — a partial payment defeats it.
@@ -1010,7 +1033,19 @@ export default function LienInstrumentsModal({
                 </label>
               )
             })()}
-            {toggle('includeLateFees', 'Late-fees / interest note')}
+            {fields.interestBasis === 'ch28' && fields.interestFromYmd
+              ? toggle('includeLateFees', 'Interest at 1.5 % a month', `Prop. Code § 28.004 — the bill was a written payment request; from ${demandDate(fields.interestFromYmd)}`)
+              : fields.interestBasis === 'legal_rate' && fields.interestFromYmd
+                ? toggle('includeLateFees', 'Interest at 6 % a year', `Fin. Code § 302.002 — no rate agreed and the bill was never sent; from ${demandDate(fields.interestFromYmd)}`)
+                : fields.feeClockYmd
+                  ? (
+                    <label data-demand-interest-none style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.8125rem', marginBottom: '0.3rem', cursor: 'not-allowed', opacity: 0.6 }}>
+                      <input type="checkbox" checked={false} disabled readOnly />
+                      Interest
+                      <span style={{ color: 'var(--text-muted)', fontSize: '0.6875rem', fontWeight: 700 }}>not offered — the bill has no sent or due date to run from</span>
+                    </label>
+                  )
+                  : toggle('includeLateFees', 'Late-fees / interest note')}
             {toggle('includeNotarial', 'Notarial block (certified mail only)')}
           </div>
 
