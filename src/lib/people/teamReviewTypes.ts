@@ -58,7 +58,11 @@ export type TeamReviewUnion = {
   partsCostByJobId: Map<string, number>
   invoiceAmountByJob: Record<string, number>
   billedMaterialsByJobId: Map<string, number>
-  /** Mercury debit-card purchases allocated to jobs (abs amounts) — canonical parts composition includes this bucket. */
+  /**
+   * Mercury debit-card purchases allocated to jobs (abs amounts) — canonical parts
+   * composition includes this bucket. NET under the one card rule Job Summary applies
+   * (v2.3394): Internal Transfers out, an invoice-linked charge counted once.
+   */
   cardChargesByJobId: Map<string, number>
   /**
    * Slices of `cardChargesByJobId` by bank-category tag (abs amounts), for
