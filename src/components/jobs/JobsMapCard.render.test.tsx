@@ -49,6 +49,9 @@ const historyMock = vi.fn(async () => ({
   loadedAt: 0,
 }))
 vi.mock('../../lib/jobs/loadJobsMapHistory', () => ({ loadJobsMapHistory: () => historyMock() }))
+// v2.3399: the crew layer — one person on job 'a' on any day asked for.
+const crewMock = vi.fn(async (ymd: string) => ({ ymd, peopleByJob: new Map([['a', new Set(['u1', 'u2'])]]), peopleCount: 2 }))
+vi.mock('../../lib/jobs/loadJobsMapCrewDay', () => ({ loadJobsMapCrewDay: (ymd: string) => crewMock(ymd) }))
 vi.mock('../map/PinsMapGoogleCanvas', () => ({
   default: (p: PinsMapCanvasProps & { apiKey: string; onUnavailable: (r: string) => void }) => <div data-testid="google-canvas" data-key={p.apiKey} />,
 }))
@@ -320,6 +323,22 @@ describe('JobsMapCard', () => {
     })
     expect(canvas.getAttribute('data-pulse')).toBe('')
     row.remove()
+  })
+
+  it('v2.3399: the Crews layer rings the pins with a crew that day, says so in the popup and on the rail, and remembers the choice', async () => {
+    cacheRows.mockReturnValue([{ address_normalized: '173 atlantis, kyle', lat: 30.0, lng: -97.9 }])
+    renderCard([job({ id: 'a', status: 'billed', collections_at: '2026-08-01T00:00:00Z' }), job({ id: 'b', hcp_number: '1002', job_name: 'Quiet one' })])
+    const pinA = await screen.findByText(/^pin 1019 · Vasquez pretest$/)
+    expect(pinA.getAttribute('data-ring')).toBe('#dc2626')
+    expect(crewMock).not.toHaveBeenCalled()
+    fireEvent.click(screen.getByRole('button', { name: 'Crews' }))
+    await waitFor(() => expect(crewMock).toHaveBeenCalledTimes(1))
+    await waitFor(() => expect(screen.getByText(/^pin 1019 · Vasquez pretest$/).getAttribute('data-ring')).toBe('#8b5cf6'))
+    expect(screen.getByText(/^pin 1002 · Quiet one$/).getAttribute('data-ring')).toBe('')
+    expect(screen.getByTestId('jobs-map-crew-line').textContent).toContain('Crews today: 2 people on 1 job')
+    fireEvent.click(screen.getByText(/^pin 1019 · Vasquez pretest$/))
+    expect(screen.getByTestId('popup').textContent).toContain('2 people clocked in here today')
+    expect(localStorage.getItem('pipetooling_jobs_map_crews')).toBe('1')
   })
 
   it('uses the Google canvas when a browser key is configured', async () => {

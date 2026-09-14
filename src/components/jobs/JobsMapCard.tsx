@@ -31,12 +31,19 @@
  * replayed from `job_status_events`, with the day's money on the rail and a
  * since-then strip. Rewound, the map shows every job that existed that day
  * (the board's filters are today's); nothing loads until the toggle is on.
+ *
+ * v2.3399: **Crews** — an optional layer (off unless this device turned it
+ * on) that reads the shown day's clock sessions: a pin with someone on site
+ * wears a violet ring, the popup says how many, the rail says how many people
+ * on how many jobs. The day is today, or the As-of day when rewound.
  */
 import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from 'react'
 import { JobsMapRail } from './JobsMapRail'
 import { todayYmdInAppTz } from '../../utils/dateUtils'
 import { formatStagesNextDateLabel } from '../../lib/stagesUpcomingSchedule'
 import { loadJobsMapHistory } from '../../lib/jobs/loadJobsMapHistory'
+import { loadJobsMapCrewDay } from '../../lib/jobs/loadJobsMapCrewDay'
+import { JOBS_MAP_CREW_RING_COLOR, crewOnPin, crewPopupLine, jobsMapCrewLine, readJobsMapCrewsOn, writeJobsMapCrewsOn, type JobsMapCrewDay } from '../../lib/jobs/jobsMapCrewDay'
 import {
   JOBS_MAP_AS_OF_FLOOR_YMD,
   JOBS_MAP_AS_OF_JUMPS,
@@ -122,8 +129,8 @@ const MOBILE_ACTION_STYLE: React.CSSProperties = {
   fontFamily: 'inherit',
 }
 
-/** A cluster holding any job in Collections wears the red ring. */
-const CLUSTER_RING_PRIORITY: readonly string[] = [JOBS_MAP_COLLECTIONS_RING_COLOR]
+/** A cluster wears the crew ring when any member had a crew that day, else the Collections red. */
+const CLUSTER_RING_PRIORITY: readonly string[] = [JOBS_MAP_CREW_RING_COLOR, JOBS_MAP_COLLECTIONS_RING_COLOR]
 
 function PinGlyph() {
   return (
@@ -155,12 +162,15 @@ function CollectionsChip() {
 function JobPinBody({
   pin,
   anchor,
+  crewLine,
   onOpenJob,
   onEditJob,
   onDirections,
 }: {
   pin: JobsMapPin
   anchor: { lat: number; lng: number } | null
+  /** The crew layer's line for this pin, when the layer is on and someone clocked in. */
+  crewLine: string | null
   onOpenJob: (jobId: string) => void
   onEditJob: (jobId: string) => void
   onDirections: (pin: JobsMapPin) => void
@@ -193,6 +203,7 @@ function JobPinBody({
         {distance ? ` · ${distance}` : ''}
       </div>
       {owed ? <div style={{ color: 'var(--text-strong)', fontSize: '0.75rem', fontWeight: 600 }}>{owed}</div> : null}
+      {crewLine ? <div style={{ color: JOBS_MAP_CREW_RING_COLOR, fontSize: '0.75rem', fontWeight: 600 }}>{crewLine}</div> : null}
       <div style={{ display: 'flex', gap: 6, marginTop: 2 }}>
         <button type="button" onClick={() => onOpenJob(pin.id)} style={POPUP_BUTTON_STYLE}>
           Open job
@@ -365,6 +376,32 @@ export function JobsMapCard({
     const t = window.setInterval(() => setDaysBack((d) => Math.max(0, d - 1)), JOBS_MAP_PLAY_MS_PER_DAY)
     return () => window.clearInterval(t)
   }, [playing, effBack])
+  // Crews on the day (v2.3399): off unless this device turned it on; reads the shown day's sessions.
+  const [crewsOn, setCrewsOn] = useState<boolean>(() => readJobsMapCrewsOn())
+  const [crewDay, setCrewDay] = useState<JobsMapCrewDay | null>(null)
+  const shownYmd = asOfOn ? asOfYmd : todayYmd
+  useEffect(() => {
+    if (!crewsOn || hidden) return
+    let cancelled = false
+    void loadJobsMapCrewDay(shownYmd).then(
+      (d) => {
+        if (!cancelled) setCrewDay(d)
+      },
+      () => {
+        if (!cancelled) setCrewDay(null)
+      },
+    )
+    return () => {
+      cancelled = true
+    }
+  }, [crewsOn, hidden, shownYmd])
+  const crewDayShown = crewsOn && crewDay && crewDay.ymd === shownYmd ? crewDay : null
+  const toggleCrews = useCallback(() => {
+    setCrewsOn((on) => {
+      writeJobsMapCrewsOn(!on)
+      return !on
+    })
+  }, [])
   const historyIndex = useMemo(() => (history ? indexJobsMapHistory(history) : null), [history])
   const sinceThen = useMemo(() => (rewound && history ? jobsMapSinceThen(history, asOfYmd, todayYmd) : null), [rewound, history, asOfYmd, todayYmd])
 
@@ -414,10 +451,14 @@ export function JobsMapCard({
         lat: p.lat,
         lng: p.lng,
         color: JOBS_MAP_SECTION_COLOR[p.section],
-        ringColor: p.inCollections ? JOBS_MAP_COLLECTIONS_RING_COLOR : null,
+        ringColor: crewOnPin(crewDayShown, p) > 0 ? JOBS_MAP_CREW_RING_COLOR : p.inCollections ? JOBS_MAP_COLLECTIONS_RING_COLOR : null,
         title: p.label,
       })),
-    [visible],
+    [visible, crewDayShown],
+  )
+  const crewLine = useMemo(
+    () => jobsMapCrewLine(crewDayShown, sectionVisible, shownYmd === todayYmd ? 'today' : `on ${formatStagesNextDateLabel(shownYmd)}`),
+    [crewDayShown, sectionVisible, shownYmd, todayYmd],
   )
   const fitPoints = useMemo(() => (fitAll ? null : bidBoardMapHomeFitPoints(visible, anchor)), [fitAll, visible, anchor])
   const selected = selectedId ? (byId.get(selectedId) ?? null) : null
@@ -451,9 +492,9 @@ export function JobsMapCard({
   const renderPopup = useCallback(
     (id: string) => {
       const p = byId.get(id)
-      return p ? <JobPinBody pin={p} anchor={anchor} onOpenJob={onOpenJob} onEditJob={onEditJob} onDirections={directions} /> : null
+      return p ? <JobPinBody pin={p} anchor={anchor} crewLine={crewPopupLine(crewOnPin(crewDayShown, p), shownYmd === todayYmd)} onOpenJob={onOpenJob} onEditJob={onEditJob} onDirections={directions} /> : null
     },
-    [byId, anchor, onOpenJob, onEditJob, directions],
+    [byId, anchor, crewDayShown, shownYmd, todayYmd, onOpenJob, onEditJob, directions],
   )
 
   const total = mapJobs.length + noAddress.length
@@ -516,6 +557,31 @@ export function JobsMapCard({
               }}
             >
               ⏮ As of
+            </button>
+          ) : null}
+          {!hidden ? (
+            <button
+              type="button"
+              onClick={toggleCrews}
+              aria-pressed={crewsOn}
+              title={crewsOn ? 'Hide the crews layer' : 'Show who clocked in where: a pin with a crew on site that day wears a violet ring'}
+              style={{
+                ...LINK_BUTTON_STYLE,
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+                padding: '0.2rem 0.55rem',
+                minHeight: isMobile ? 36 : undefined,
+                border: `1px solid ${crewsOn ? JOBS_MAP_CREW_RING_COLOR : 'var(--border-strong)'}`,
+                borderRadius: 6,
+                background: 'var(--surface)',
+                color: crewsOn ? JOBS_MAP_CREW_RING_COLOR : 'var(--text-700)',
+                fontSize: '0.8rem',
+                fontWeight: 600,
+              }}
+            >
+              <span aria-hidden style={{ width: 9, height: 9, borderRadius: 999, border: `2px solid ${JOBS_MAP_CREW_RING_COLOR}`, display: 'inline-block', boxSizing: 'border-box' }} />
+              Crews
             </button>
           ) : null}
         </div>
@@ -618,6 +684,7 @@ export function JobsMapCard({
               onToggleBucket={toggleBucket}
               onPickPin={(pin) => select(pin.id)}
               paidOff={paidOff}
+              crewLine={crewLine}
               unmappedLine={unmappedLine}
               unmappedCount={unmappedAll.length}
               unmappedRows={unmappedAll}
@@ -641,6 +708,7 @@ export function JobsMapCard({
                     {jobsMapDistanceLine(selected, anchor) ? ` · ${jobsMapDistanceLine(selected, anchor)}` : ''}
                   </span>
                   {jobsMapOwedLine(selected) ? <span style={{ color: 'var(--text-strong)', fontWeight: 600 }}>{jobsMapOwedLine(selected)}</span> : null}
+                  {crewPopupLine(crewOnPin(crewDayShown, selected), shownYmd === todayYmd) ? <span style={{ color: JOBS_MAP_CREW_RING_COLOR, fontWeight: 600 }}>{crewPopupLine(crewOnPin(crewDayShown, selected), shownYmd === todayYmd)}</span> : null}
                 </div>
               </div>
               <div style={{ display: 'flex', gap: '0.5rem' }}>
@@ -664,6 +732,7 @@ export function JobsMapCard({
               onToggleBucket={toggleBucket}
               onPickPin={(pin) => select(pin.id)}
               paidOff={paidOff}
+              crewLine={crewLine}
               unmappedLine={unmappedLine}
               unmappedCount={unmappedAll.length}
               unmappedRows={unmappedAll}
