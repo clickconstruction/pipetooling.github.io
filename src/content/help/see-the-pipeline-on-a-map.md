@@ -2,7 +2,7 @@
 title: see the pipeline on a map
 category: Jobs & Scheduling
 roles: dev, master_technician, assistant, controller, superintendent
-keywords: map, pipeline, jobs, pins, where is the job, distance, miles from the office, collections, directions, hide map, cluster, paid jobs, fit all, to collect, ask for money, oldest bill, rail, hover, as of, rewind, scroll back in time, history, play, slider
+keywords: map, pipeline, jobs, pins, where is the job, distance, miles from the office, collections, directions, hide map, cluster, paid jobs, fit all, to collect, ask for money, oldest bill, rail, hover, as of, rewind, scroll back in time, history, play, slider, crews, who is where, clocked in, violet ring
 order: 32
 ---
 **Jobs → Pipeline** has a **Jobs on a map** card under the toolbar. It plots the jobs the board is showing — the same list, so the search box and the GC, development, Account Man and contract filters all change the pins. Nobody sees a pin here they couldn't already open from the board.
@@ -65,6 +65,14 @@ History starts on **Feb 22, 2026**, the day the Pipeline began recording moves; 
 
 :::example Was June as busy as it felt?
 Tap **3 mo** and count the blue pins, then press Play and watch the orange spread as the summer's bills go out. The since-then line gives the tally without counting.
+:::
+
+## Crews on the day
+
+**Crews** beside the title turns on a layer that reads the day's clock sessions: every pin where someone clocked in wears a **violet ring**, the pin's card says *2 people clocked in here today*, and the rail says *Crews today: 5 people on 4 jobs*. Rewound with **As of**, it shows who was where on that day instead. The layer is off until you turn it on, and the choice is remembered on this device.
+
+:::example Where did everyone go on Tuesday?
+Set **As of** to Tuesday, turn on **Crews**, and the violet rings are the jobs that had people on site. A blue pin with no ring was open but nobody was there.
 :::
 
 ## Cluster, Fit all, Hide map

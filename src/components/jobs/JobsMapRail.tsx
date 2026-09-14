@@ -1,5 +1,6 @@
 import type { CSSProperties } from 'react'
 import { JOBS_MAP_COLLECTIONS_RING_COLOR, JOBS_MAP_SECTION_COLOR, type JobsMapPin } from '../../lib/jobs/jobsMap'
+import { JOBS_MAP_CREW_RING_COLOR } from '../../lib/jobs/jobsMapCrewDay'
 import { bucketAskLine, type DistanceBucketKey, type DistanceBucketVisibility, type JobsMapAskTone, type JobsMapRailModel } from '../../lib/jobs/jobsMapRail'
 
 type Props = {
@@ -10,6 +11,8 @@ type Props = {
   onPickPin: (pin: JobsMapPin) => void
   /** "Paid 723 off" when the Paid chip is off and there are paid pins. */
   paidOff: number
+  /** The crew layer's line (v2.3399) — `Crews today: 5 people on 4 jobs`; null while the layer is off. */
+  crewLine: string | null
   /** The "N jobs have no map location yet" line, or the placing line while the geocoder runs. */
   unmappedLine: string | null
   unmappedCount: number
@@ -35,7 +38,7 @@ const TONE_COLOR: Record<JobsMapAskTone, string> = {
  * pins, the ask-for-money list longest waiting first, the pinned total and the
  * dollars still to collect, and the unplaced-jobs line.
  */
-export function JobsMapRail({ rail, bucketsOn, onToggleBucket, onPickPin, paidOff, unmappedLine, unmappedCount, unmappedRows, onFocusJob, resolving, isMobile }: Props) {
+export function JobsMapRail({ rail, bucketsOn, onToggleBucket, onPickPin, paidOff, crewLine, unmappedLine, unmappedCount, unmappedRows, onFocusJob, resolving, isMobile }: Props) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.45rem', minWidth: 0 }}>
       <h4 style={H4}>By distance from the office · pinned jobs</h4>
@@ -77,6 +80,13 @@ export function JobsMapRail({ rail, bucketsOn, onToggleBucket, onPickPin, paidOf
           )
         })}
       </div>
+
+      {crewLine ? (
+        <div data-testid="jobs-map-crew-line" style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.78rem', color: 'var(--text-strong)', fontWeight: 600 }}>
+          <span aria-hidden style={{ width: 10, height: 10, borderRadius: 999, border: `2px solid ${JOBS_MAP_CREW_RING_COLOR}`, display: 'inline-block', boxSizing: 'border-box' }} />
+          {crewLine}
+        </div>
+      ) : null}
 
       {rail.ask.length > 0 ? (
         <>
