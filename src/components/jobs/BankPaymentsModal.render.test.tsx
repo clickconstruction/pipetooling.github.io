@@ -93,6 +93,12 @@ describe('BankPaymentsModal (render smoke)', () => {
     await waitFor(() => {
       expect(screen.getByText(/their open bills/)).toBeTruthy()
     })
+    // The deposit's selection resets the allocation lines in a passive effect that
+    // flushes AFTER the render the waitFor above sees. Clicking the chip before that
+    // flush lets the reset land on top of the pick (CI saw the footer stay on
+    // "Remaining … pick a bill"). The empty allocation row only exists once the
+    // reset has run, so wait for it before touching the chips.
+    await screen.findByTestId('ar-allocation-row')
     expect(screen.getByText('Weiss Services LLC')).toBeTruthy()
     // AR refresh PR 1 (v2.3379): the header counts the pile; the row wears the sweep's verdict.
     expect(screen.getByTestId('ar-summary').textContent).toMatch(/1 deposit to match · \$1,625\.00 unapplied/)
@@ -104,7 +110,9 @@ describe('BankPaymentsModal (render smoke)', () => {
     // AR refresh PR 4 (v2.3382): the footer says what Apply will do once a bill is picked.
     expect(screen.getByTestId('ar-apply-sentence').textContent).toMatch(/^Remaining \$1,625\.00 — pick a bill/)
     fireEvent.click(chip)
-    expect(screen.getByTestId('ar-apply-sentence').textContent).toMatch(/^Applies \$1,625\.00 to 876 · .*The bill is settled\./)
+    await waitFor(() => {
+      expect(screen.getByTestId('ar-apply-sentence').textContent).toMatch(/^Applies \$1,625\.00 to 876 · .*The bill is settled\./)
+    })
     expect(screen.getByRole('button', { name: 'Apply $1,625.00' })).toBeTruthy()
     expect(chip.textContent).toContain('matches this deposit')
 
