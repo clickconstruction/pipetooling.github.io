@@ -49,11 +49,14 @@ describe('StagesProgressPaymentCell with the v2.3419 view', () => {
     expect(chips[1]!.textContent).toContain('Top Out')
     expect(chips[1]!.textContent).toContain('Behar & Malachi')
     expect(chips[2]!.textContent).toContain('Trim')
-    const words = 'Top Out · Behar & Malachi on site Sat · 40% typed · $24,359 paid, nothing billed'
-    const bar = screen.getByRole('img', { name: words })
+    // v2.3447: the row PRINTS the lead (the legend under it carries the money);
+    // the bar's accessible name and tooltip keep the whole sentence.
+    const printed = 'Top Out · Behar & Malachi on site Sat · 40% typed'
+    const full = `${printed} · $24,359 paid, nothing billed`
+    const bar = screen.getByRole('img', { name: full })
     expect(bar.querySelectorAll('[data-segment-state]')).toHaveLength(3)
     expect(bar.querySelector('[data-segment-state="live"]')).toBeTruthy()
-    expect(screen.getByText(words)).toBeTruthy()
+    expect(screen.getByText(printed)).toBeTruthy()
     expect(screen.queryByText(/Done, not billed/)).toBeNull()
     expect(screen.queryByText(/Not done/)).toBeNull()
     expect(screen.getByText('Left on Job')).toBeTruthy()
@@ -70,7 +73,8 @@ describe('StagesProgressPaymentCell with the v2.3419 view', () => {
     render(<StagesProgressPaymentCell model={model} pctComplete={80} view={view} />)
     expect(screen.queryByRole('list', { name: 'Stages' })).toBeNull()
     expect(screen.getByRole('img').querySelectorAll('[data-segment-state]')).toHaveLength(1)
-    expect(screen.getByText(/nobody clocked in · 80% typed · \$13,412 paid · \$11,770 billed · \$6,818 done, not billed/)).toBeTruthy()
+    expect(screen.getByText('nobody clocked in · 80% typed')).toBeTruthy()
+    expect(screen.getByRole('img', { name: /nobody clocked in · 80% typed · \$13,412 paid · \$11,770 billed · \$6,818 done, not billed/ })).toBeTruthy()
     expect(screen.getByText(/Done, not billed/)).toBeTruthy()
     expect(screen.getByText(/Not done/)).toBeTruthy()
   })

@@ -138,7 +138,7 @@ export function StagesStageBar({ view, compact = false }: { view: ProgressPaymen
         <div
           ref={barRef}
           role="img"
-          aria-label={view.words.text}
+          aria-label={view.words.full}
           title={view.segments.map((s) => s.title).join('\n')}
           style={{ display: 'flex', gap: gapPx, height: 14, minWidth: 0 }}
         >
@@ -216,7 +216,7 @@ export function StagesStageBar({ view, compact = false }: { view: ProgressPaymen
           minWidth: 0,
           maxWidth: '100%',
         }}
-        title={view.words.text}
+        title={view.words.full}
       >
         {view.words.text}
       </div>
