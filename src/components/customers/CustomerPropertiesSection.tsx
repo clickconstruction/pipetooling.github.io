@@ -4,7 +4,7 @@ import { useToastContext } from '../../contexts/ToastContext'
 import { customerAddressLienGaps, type CustomerAddressRow } from '../../lib/jobs/lienProperty'
 import { jobCountsByProperty, suggestPropertiesFromJobs, type JobAddressLike } from '../../lib/customers/customerPropertiesFromJobs'
 import CustomerPropertySheet from './CustomerPropertySheet'
-import { emptyPropertyDraft, type PropertyDraft } from '../../lib/customers/propertyDraft'
+import { emptyPropertyDraft, payloadFromDraft, type PropertyDraft } from '../../lib/customers/propertyDraft'
 
 /**
  * Properties on Edit customer (customer properties train, PR 3 — v2.3009):
@@ -46,27 +46,6 @@ function draftFromRow(a: CustomerAddressRow): PropertyDraft {
     parcel_source: a.parcel_source ?? '',
     parcel_tax_year: a.parcel_tax_year ?? '',
     parcel_looked_up_at: a.parcel_looked_up_at ?? '',
-  }
-}
-
-function payloadFromDraft(d: PropertyDraft) {
-  return {
-    address: d.address.trim(),
-    note: d.note.trim() || null,
-    county: d.county.trim(),
-    county_source: d.county.trim() ? d.county_source : '',
-    legal_description: d.legal_description.trim(),
-    property_kind: d.property_kind,
-    homestead: d.homestead,
-    owner_mode: d.owner_mode,
-    owner_name: d.owner_name.trim(),
-    owner_company: d.owner_company.trim(),
-    owner_mailing_address: d.owner_mailing_address.trim(),
-    parcel_id: d.parcel_id.trim(),
-    parcel_source: d.parcel_source.trim(),
-    parcel_tax_year: d.parcel_tax_year.trim(),
-    parcel_looked_up_at: d.parcel_looked_up_at.trim() || null,
-    updated_at: new Date().toISOString(),
   }
 }
 
