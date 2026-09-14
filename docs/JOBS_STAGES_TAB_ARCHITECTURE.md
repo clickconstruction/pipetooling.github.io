@@ -5,7 +5,7 @@ file: docs/JOBS_STAGES_TAB_ARCHITECTURE.md
 type: Architecture Map / Decomposition
 purpose: Step-0 sub-decomposition map (per PAGE_DECOMPOSITION_PLAYBOOK.md) for the already-extracted Pipeline board — src/components/jobs/JobsStagesTab.tsx (3,664 lines) plus its table/row sub-files JobsStagesUnifiedTable.tsx (1,407), JobsStagesTable.tsx (659), and jobsStagesRowShared.tsx (1,204). The v2.831 extraction moved the tab out of Jobs.tsx, but the surface kept growing (18 commits of churn since; the v2.96x–v2.108x feature run landed almost entirely here). This map inventories every region so the next round of extraction — toolbar, modal tail, inline modals, prop-bundle seam for the two tables — can start without re-deriving the strategy.
 audience: Developers, AI Agents
-last_updated: 2026-08-20
+last_updated: 2026-09-14
 ---
 
 ## What this surface is
@@ -67,6 +67,12 @@ Consequence for extraction: children are cheap to carve off *if* they take `stag
 - **Owned state:** `stagesToolsMenuOpen` only; everything else it touches is setters for tab-level state/localStorage toggles (`toggleStagesHamMode`, `toggleStagesIncludeScheduleTimeInSearch`, the follow-moves inline toggle) and modal openers (`setJobBookModalOpen`, `setBilledTotalByNameModalOpen`, `setCombineSeparateModalOpen`).
 - **Coupling:** low — props in: `openNew`, `shortNewJobButtonLabel`, `stagesSearchQuery`+setter, busy flags, the three mode values+toggles, three open callbacks, `authRole`/`myRole`.
 - **Extraction:** **low risk, do first** → `JobsStagesToolbar.tsx` (~215 lines out). Pure JSX move; no supabase, no effects.
+
+### 2b. Jobs on a map (v2.3396) — `JobsMapCard.tsx`, mounted between the toolbar and the money story
+
+- **Render:** the Bid Board's map card on the Pipeline: `jobsMapJobs(stagesBoardLists.filtered)` → pins in the rows' own dot colors (`jobsLedgerStatusDotColor`), Collections as Billed + a red ring, the office anchor with 25 / 50 mile rings, section chips (Paid off by default), Cluster / Fit all / Hide map with per-device memory, the popup (payer under the who-pays rule, section + percent, address + straight-line miles, owed) with Open job / Edit / Directions. Kernel `src/lib/jobs/jobsMap.ts`; shared substrate `PinsMapCanvas` / `PinsMapGoogleCanvas`, `useOfficeAnchor`, `useAddressGeocodeCoords`.
+- **Coupling:** props in only — `stagesBoardLists.filtered`, `isMobile`, `jobsListLoading`, `cacheMergedScopes` / `cacheFetchScopeIfNeeded` for the Paid scope (the Paid chip's first tap loads it), `jobDetailModal.openJobDetail`, `openEdit`, and `jumpToNumberMatches` as the pin → row path (section opens, row flashes and scrolls).
+- **Planned:** the rail (PR 2: distance buckets with dollars to collect, ask-for-money list, row hover → pin pulse by delegation on `data-stages-job-id`) and As of (PR 3: `job_status_events` replay) — `to-dos/pipeline-on-a-map/`.
 
 ### 3. Jump nav + alert chips + alert modals (~1305–1553)
 
