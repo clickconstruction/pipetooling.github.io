@@ -20,3 +20,5 @@ A {{chip:blue|Sorted: time added ×}} chip sits beside the ⋯ button whenever t
 :::example Your pick sticks
 The choice is remembered on your device, so the board opens the way you left it. It never changes for anyone else.
 :::
+
+There is a third order, **Percent complete (0 → 100)**, reached by clicking the **Progress & payment** column title — see *sort the pipeline by percent complete*. That one is a quick look and is never remembered.
