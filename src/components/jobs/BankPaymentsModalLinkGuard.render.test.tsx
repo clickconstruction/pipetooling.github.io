@@ -109,8 +109,11 @@ describe('BankPaymentsModal link guard (render smoke)', () => {
       />,
     )
 
-    // Payer chip fills the line…
+    // Payer chip fills the line… (wait for the empty allocation row first: the
+    // selection's line-reset effect flushes after the chip renders, and a click
+    // that beats it gets wiped — see BankPaymentsModal.render.test.tsx.)
     const chip = await screen.findByRole('button', { name: /Apply allocation: \$2,918\.22 · 883/ })
+    await screen.findByTestId('ar-allocation-row')
     fireEvent.click(chip)
 
     // …and the guard notices the same-amount unlinked recorded payment.
@@ -143,6 +146,7 @@ describe('BankPaymentsModal link guard (render smoke)', () => {
       />,
     )
     const chip = await screen.findByRole('button', { name: /Apply allocation: \$2,918\.22 · 883/ })
+    await screen.findByTestId('ar-allocation-row')
     fireEvent.click(chip)
     await screen.findByRole('note', { name: 'This payment may already be recorded' })
     fireEvent.click(screen.getByRole('button', { name: "It's a different payment" }))
