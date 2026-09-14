@@ -34,7 +34,7 @@ import { useJobContractsNudge } from '../../hooks/useJobContractsNudge'
 import { useUnpricedWorkOrders } from '../../hooks/useUnpricedWorkOrders'
 import { useStaleOpenJobsNudge } from '../../hooks/useStaleOpenJobsNudge'
 import { useCapacityUnderNudge } from '../../hooks/useCapacityUnderNudge'
-import { useJobAccountFlagGapsNudge } from '../../hooks/useJobAccountFlagGapsNudge'
+import { useJobAccountEvidenceGapsNudge } from '../../hooks/useJobAccountEvidenceGapsNudge'
 import { usePriceMatrixReadyNudge } from '../../hooks/usePriceMatrixReadyNudge'
 import { useRobotBacklogNudge } from '../../hooks/useRobotBacklogNudge'
 import { useLegalReviewNudge } from '../../hooks/useLegalReviewNudge'
@@ -419,9 +419,9 @@ export function DashboardPinnedQuickRow({
   // Field capacity under 60% three complete weeks running (Job Summary follow-up 3) — the roles that see Job Summary.
   const capacityUnderEnabled = !hideBanners && Boolean(authUserId) && officeEligible
   const { streak: capacityUnder } = useCapacityUnderNudge(capacityUnderEnabled, authUserId)
-  // Supply-house job-account gaps (v2.3161): packets on file with unflagged invoices, flags with no packet — office set.
+  // Supply-house job accounts (v2.3430): jobs that bought at a house expecting an account with none on record — office set.
   const jobAccountGapsEnabled = !hideBanners && Boolean(authUserId) && officeEligible
-  const { gaps: jobAccountGaps } = useJobAccountFlagGapsNudge(jobAccountGapsEnabled)
+  const { gaps: jobAccountGaps } = useJobAccountEvidenceGapsNudge(jobAccountGapsEnabled)
   // Robot price matrices ready to review (Price Matrix PR 5) — the pricing-sharer set; RLS scopes the rows.
   const priceMatrixEnabled = !hideBanners && Boolean(authUserId) && (officeEligible || role === 'estimator')
   const { ready: priceMatrixReady } = usePriceMatrixReadyNudge(priceMatrixEnabled)
@@ -611,10 +611,8 @@ export function DashboardPinnedQuickRow({
               navigate('/jobs?tab=job-summary&view=cycle')
             } else if (item.key === 'capacity-under') {
               navigate('/jobs?tab=job-summary&view=capacity')
-            } else if (item.key === 'job-account-unflagged') {
-              navigate('/materials?tab=job-accounts&filter=needs_flag')
-            } else if (item.key === 'job-account-no-packet') {
-              navigate('/materials?tab=job-accounts&filter=no_packet')
+            } else if (item.key === 'job-account-missing') {
+              navigate('/materials?tab=job-accounts&filter=no_account')
             } else if (item.key === 'test-reports-ready') {
               // Open the first draft in the Test report modal; the Stages board is the fallback.
               const first = testReportsNudge.drafts?.first ?? null

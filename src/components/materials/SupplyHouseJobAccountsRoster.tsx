@@ -91,11 +91,40 @@ export function SupplyHouseJobAccountsRoster({
   const counts = useMemo(() => countHouseRoster(rows), [rows])
   const policy = jobAccountPolicyOf(house)
 
+  // v2.3430: an account row for a job with no invoices here has no entry in the
+  // host's label map (built from allocations) — fetch those identities ourselves.
+  const [extraJobs, setExtraJobs] = useState<JobDetails>({})
+  const missingLabelIds = useMemo(
+    () => rows.map((r) => r.jobId).filter((id) => !jobDetails[id] && !extraJobs[id]),
+    [rows, jobDetails, extraJobs],
+  )
+  useEffect(() => {
+    if (missingLabelIds.length === 0) return
+    let cancelled = false
+    void supabase
+      .from('jobs_ledger')
+      .select('id, hcp_number, click_number, job_name')
+      .in('id', missingLabelIds)
+      .then(({ data }) => {
+        if (cancelled || !data) return
+        setExtraJobs((prev) => {
+          const next = { ...prev }
+          for (const j of data as Array<{ id: string; hcp_number: string | null; click_number: string | null; job_name: string | null }>) {
+            next[j.id] = { hcp_number: j.hcp_number ?? '', click_number: j.click_number ?? undefined, job_name: j.job_name ?? '' }
+          }
+          return next
+        })
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [missingLabelIds])
+
   // A house that never opens job accounts stays quiet unless something was recorded anyway.
   if (policy === 'none' && rows.length === 0) return null
 
   const jobLabel = (jobId: string): string => {
-    const d = jobDetails[jobId]
+    const d = jobDetails[jobId] ?? extraJobs[jobId]
     if (!d) return jobId.slice(0, 8)
     const num = effectiveJobLedgerNumber(d.hcp_number, d.click_number) || '—'
     return `${num} · ${(d.job_name ?? '').trim() || '—'}`

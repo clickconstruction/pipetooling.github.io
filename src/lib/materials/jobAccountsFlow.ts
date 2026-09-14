@@ -81,6 +81,12 @@ export interface JobAccountsRow {
   houses: JobAccountHouseGroup[]
   /** A supply-house job-account packet is on record for this job (supply_house_job_accounts). */
   hasJobAccountShare: boolean
+  /**
+   * v2.3430 — houses this job bought from (invoice allocated or PO code minted,
+   * last 180 days) that expect a job account and have none open / not needed
+   * on record (list_job_account_evidence_gaps). Empty when nothing is missing.
+   */
+  missingAccountHouses: string[]
 }
 
 export interface JobAccountsView {
@@ -109,6 +115,8 @@ export interface JobAccountsView {
   needsFlagJobs: number
   /** Unpaid flagged dollars on jobs with no packet on record — send it, or it was opened by phone. */
   noPacketJobs: number
+  /** v2.3430 — rows with at least one missing job account (the evidence rule). */
+  noAccountJobs: number
 }
 
 function emptyBuckets(): Record<AgingBucketKey, number> {
@@ -157,6 +165,8 @@ export function buildJobAccountsView(
   todayYmd: string,
   /** Jobs with a job-account share packet on record (default none). */
   sharedJobIds: Iterable<string> = [],
+  /** v2.3430 — job id → house names bought from with no account on record (default none). */
+  noAccountByJob: ReadonlyMap<string, string[]> = new Map(),
 ): JobAccountsView {
   const sharedJobs = new Set(sharedJobIds)
   const invoiceById = new Map(invoices.map((inv) => [inv.id, inv]))
@@ -266,6 +276,7 @@ export function buildJobAccountsView(
       invoiceCount: acc.invoiceCount,
       houses: houseGroups,
       hasJobAccountShare: sharedJobs.has(acc.job.id),
+      missingAccountHouses: noAccountByJob.get(acc.job.id) ?? [],
     })
   }
 
@@ -291,7 +302,9 @@ export function buildJobAccountsView(
   let holdingOnJobAccount = 0
   let needsFlagJobs = 0
   let noPacketJobs = 0
+  let noAccountJobs = 0
   for (const row of rows) {
+    if (row.missingAccountHouses.length > 0) noAccountJobs++
     if (row.owedOnJobAccount > EPSILON) {
       onJobAccountTotal += row.owedOnJobAccount
       onJobAccountJobs++
@@ -327,5 +340,6 @@ export function buildJobAccountsView(
     holdingOnJobAccount,
     needsFlagJobs,
     noPacketJobs,
+    noAccountJobs,
   }
 }

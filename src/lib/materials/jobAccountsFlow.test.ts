@@ -307,3 +307,24 @@ describe('buildJobAccountsView', () => {
     })
   })
 })
+
+describe('missing job accounts (v2.3430 evidence rule)', () => {
+  it('marks rows from the evidence map and counts them, defaulting to none', () => {
+    const jobs = [job({ id: 'j1', revenue: 1000, payments_made: 1000 }), job({ id: 'j2', revenue: 500, payments_made: 0 })]
+    const invoices = [invoice({ id: 'i1', supply_house_id: 'ferguson' }), invoice({ id: 'i2', supply_house_id: 'reece' })]
+    const allocations: JobAccountsAllocationInput[] = [
+      { invoice_id: 'i1', job_id: 'j1', pct: 100 },
+      { invoice_id: 'i2', job_id: 'j2', pct: 100 },
+    ]
+    const houses = [{ id: 'ferguson', name: 'Ferguson' }, { id: 'reece', name: 'Reece' }]
+    const missing = new Map([['j1', ['Ferguson', 'Moore Supply']]])
+    const view = buildJobAccountsView(jobs, invoices, allocations, houses, [], TODAY, [], missing)
+    const byId = new Map(view.rows.map((r) => [r.jobId, r]))
+    expect(byId.get('j1')!.missingAccountHouses).toEqual(['Ferguson', 'Moore Supply'])
+    expect(byId.get('j2')!.missingAccountHouses).toEqual([])
+    expect(view.noAccountJobs).toBe(1)
+    const plain = buildJobAccountsView(jobs, invoices, allocations, houses, [], TODAY)
+    expect(plain.noAccountJobs).toBe(0)
+    expect(plain.rows.every((r) => r.missingAccountHouses.length === 0)).toBe(true)
+  })
+})

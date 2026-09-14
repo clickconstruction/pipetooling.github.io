@@ -21363,6 +21363,30 @@ export type Database = {
           master_user_id: string
         }[]
       }
+      count_job_account_evidence_gaps: {
+        Args: never
+        Returns: {
+          allocated_total: number
+          house_names: string
+          jobs: number
+          pairs: number
+        }[]
+      }
+      list_job_account_evidence_gaps: {
+        Args: never
+        Returns: {
+          allocated_total: number
+          house_name: string
+          invoice_count: number
+          job_id: string
+          last_at: string
+          po_count: number
+          rep_name: string
+          rep_phone: string
+          supply_house_id: string
+          unpaid_total: number
+        }[]
+      }
       list_job_account_strip: {
         Args: { p_job_ids: string[] }
         Returns: {

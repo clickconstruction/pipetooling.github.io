@@ -262,6 +262,7 @@ import type { StagesRowRenderContext } from './jobsStagesRowShared'
 import { JobsFollowupModal, type JobsFollowupStageRowResult } from './JobsFollowupModal'
 import { followupStagesCoveredByScopes } from '../../lib/jobs/jobFollowupQueue'
 import { revenueDollarsFromFixtures } from '../../lib/revenueFromJobFixtures'
+import { useJobAccountEvidenceGapsNudge } from '../../hooks/useJobAccountEvidenceGapsNudge'
 
 type JobsLedgerInvoice = Database['public']['Tables']['jobs_ledger_invoices']['Row']
 
@@ -536,6 +537,8 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
   /** Read-only here (loading block + return-to-edit banner); the URL router that WRITES params stays in Jobs.tsx. */
   const [searchParams] = useSearchParams()
   const navigate = useNavigate()
+  // Job accounts at the counter (v2.3430): the Fix-ups chip's count — the RPC gates on the office set itself.
+  const { gaps: jobAccountEvidenceGaps } = useJobAccountEvidenceGapsNudge(active && Boolean(authUser))
 
   // Full-page Job activity modal — opened by the activity box's corner expand
   // button and the row's "N Reports" chip. One instance for the whole board.
@@ -3540,10 +3543,12 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                 noCustomer: stagesJobsWithoutCustomer.length,
                 noPictures: stagesWorkingJobsWithoutPictures.length,
                 noEmail: stagesReadyToBillNoEmailJobs.length,
+                noJobAccount: jobAccountEvidenceGaps?.jobs ?? 0,
               }}
               onFixup={(key) => {
                 if (key === 'no-customer') setStagesNoCustomerModalOpen(true)
                 else if (key === 'no-pictures') setStagesNoJobPicturesModalOpen(true)
+                else if (key === 'no-job-account') navigate('/materials?tab=job-accounts&filter=no_account')
                 else setStagesNoEmailModalOpen(true)
               }}
               gcRound={gcRoundCards}

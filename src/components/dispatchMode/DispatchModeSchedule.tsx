@@ -603,14 +603,6 @@ export default function DispatchModeSchedule({ selfUserId }: { selfUserId?: stri
                 {b.jobAddress ? (
                   <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>{b.jobAddress}</span>
                 ) : null}
-                <JobAccountsStrip
-                  jobId={b.jobId}
-                  jobLabel={jobTitleByJobId.get(b.jobId) ?? b.jobName}
-                  jobAddress={b.jobAddress}
-                  entries={jobAccountStrips.byJob.get(b.jobId)}
-                  onChanged={jobAccountStrips.reload}
-                  compact
-                />
                 {isMobile ? (
                   <span style={{ fontSize: '0.8125rem', color: 'var(--text-blue-700)', fontWeight: 600 }}>
                     {b.assigneeName}
@@ -750,6 +742,19 @@ export default function DispatchModeSchedule({ selfUserId }: { selfUserId?: stri
                     ) : null}
                   </div>
                 )}
+                {/* Job accounts at the counter (v2.3424): a sibling of the block's buttons — a button may not nest a button. */}
+                {jobAccountStrips.byJob.get(b.jobId)?.length ? (
+                  <div style={{ padding: '0 0.75rem 0.55rem calc(74px + 0.65rem + 0.75rem)', background: 'var(--surface)' }}>
+                    <JobAccountsStrip
+                      jobId={b.jobId}
+                      jobLabel={jobTitleByJobId.get(b.jobId) ?? b.jobName}
+                      jobAddress={b.jobAddress}
+                      entries={jobAccountStrips.byJob.get(b.jobId)}
+                      onChanged={jobAccountStrips.reload}
+                      compact
+                    />
+                  </div>
+                ) : null}
               </li>
             )
           })}

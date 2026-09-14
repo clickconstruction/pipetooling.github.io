@@ -742,24 +742,26 @@ describe('lost-bids card ↔ Why we lost lens scope gloss (J14-F6)', () => {
 })
 
 describe('job-account gap items', () => {
-  const gaps = { unflaggedJobs: 3, unflaggedTotal: 8921.73, noPacketInvoices: 2, noPacketTotal: 1500 }
-  it('builds both hygiene items from the RPC row, gated on the enable flag', () => {
+  const gaps = { jobs: 3, pairs: 4, allocatedTotal: 6340.25, houseNames: 'Ferguson, Moore Supply' }
+  it('builds the one evidence item from the RPC row, gated on the enable flag', () => {
     const items = buildNeedsYouItems(inputs({ jobAccountGapsEnabled: true, jobAccountGaps: gaps }))
-    const unflagged = items.find((i) => i.key === 'job-account-unflagged')!
-    const noPacket = items.find((i) => i.key === 'job-account-no-packet')!
-    expect(unflagged.title).toBe('3 jobs with supply house job accounts have unflagged invoices')
-    expect(unflagged.detail).toContain('$8,922')
-    expect(unflagged.figure).toBe('3')
-    expect(unflagged.severity).toBe('gray')
-    expect(noPacket.title).toBe('2 invoices are flagged on job accounts with no packet on record')
-    expect(noPacket.detail).toContain('$1,500')
+    const item = items.find((i) => i.key === 'job-account-missing')!
+    expect(item.title).toBe('3 jobs bought parts at a house with no job account')
+    expect(item.detail).toContain('$6,340')
+    expect(item.detail).toContain('at Ferguson, Moore Supply')
+    expect(item.detail).toContain('(4 job-and-house pairs)')
+    expect(item.figure).toBe('3')
+    expect(item.severity).toBe('gray')
+    expect(item.actionLabel).toBe('Review them')
     expect(buildNeedsYouItems(inputs({ jobAccountGapsEnabled: false, jobAccountGaps: gaps })).some((i) => i.key.startsWith('job-account'))).toBe(false)
     expect(buildNeedsYouItems(inputs({ jobAccountGapsEnabled: true, jobAccountGaps: null })).some((i) => i.key.startsWith('job-account'))).toBe(false)
+    expect(buildNeedsYouItems(inputs({ jobAccountGapsEnabled: true, jobAccountGaps: { ...gaps, jobs: 0, pairs: 0 } })).some((i) => i.key.startsWith('job-account'))).toBe(false)
   })
-  it('each queue shows independently and reads singular at one', () => {
-    const only = buildNeedsYouItems(inputs({ jobAccountGapsEnabled: true, jobAccountGaps: { ...gaps, noPacketInvoices: 0, unflaggedJobs: 1 } }))
-    expect(only.map((i) => i.key).filter((k) => k.startsWith('job-account'))).toEqual(['job-account-unflagged'])
-    expect(only.find((i) => i.key === 'job-account-unflagged')!.title).toBe('A job with a supply house job account has unflagged invoices')
+  it('reads singular at one and drops the pairs note when pairs equal jobs', () => {
+    const only = buildNeedsYouItems(inputs({ jobAccountGapsEnabled: true, jobAccountGaps: { jobs: 1, pairs: 1, allocatedTotal: 213.77, houseNames: 'Ferguson' } }))
+    const item = only.find((i) => i.key === 'job-account-missing')!
+    expect(item.title).toBe('A job bought parts at a house with no job account')
+    expect(item.detail).not.toContain('pairs')
   })
 })
 
