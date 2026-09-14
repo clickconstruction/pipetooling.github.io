@@ -7,6 +7,7 @@ import {
   openJobAccountCloseNote,
   openJobAccountRequestTitle,
   parseOpenJobAccountPayload,
+  poMomentLine,
   stripHasOpen,
   stripSummary,
   telHref,
@@ -73,6 +74,47 @@ describe('counterSentence and telHref', () => {
     expect(telHref('(512) 360-0599')).toBe('tel:5123600599')
     expect(telHref('ext 12')).toBeNull()
     expect(telHref(null)).toBeNull()
+  })
+})
+
+describe('poMomentLine', () => {
+  const base = groupJobAccountStrip([
+    row({ job_id: 'j1', supply_house_id: 'ferguson', house_name: 'Ferguson', rep_contact_id: 'c1', rep_name: 'Curly Conley', rep_phone: '210-344-4950' }),
+    row({ job_id: 'j1', supply_house_id: 'reece', house_name: 'Reece', status: 'open', account_ref: 'R-88214', opened_via: 'phone', opened_at: '2026-09-14T18:00:00Z' }),
+    row({ job_id: 'j1', supply_house_id: 'moore', house_name: 'Moore Supply', status: 'requested', requested_at: '2026-09-14T18:40:00Z', requested_from_counter: true }),
+    row({ job_id: 'j1', supply_house_id: 'hughes', house_name: 'Hughes', status: 'not_needed', account_note: 'service call' }),
+  ]).get('j1')!
+  const by = (name: string) => base.find((e) => e.houseName === name)!
+
+  it('says nothing for a house with no entry', () => {
+    expect(poMomentLine(null, '964 · Pondhill demo')).toBeNull()
+  })
+
+  it('nudges amber with the rep when there is no account, offering every action', () => {
+    const line = poMomentLine(by('Ferguson'), '964 · Pondhill demo')!
+    expect(line.tone).toBe('amber')
+    expect(line.text).toBe('No job account at Ferguson for 964 · Pondhill demo yet. Ferguson expects one per property. Curly Conley opens them: 210-344-4950.')
+    expect([line.canCall, line.canMarkOpened, line.canSendPacket, line.canNotNeeded]).toEqual([true, true, true, true])
+  })
+
+  it('reads teal with the reference and how when open, no actions', () => {
+    const line = poMomentLine(by('Reece'), 'x')!
+    expect(line.tone).toBe('teal')
+    expect(line.text).toContain('Reece job account open · ref R-88214 · ')
+    expect(line.text).toContain('by phone')
+    expect(line.canMarkOpened).toBe(false)
+  })
+
+  it('names the counter ask when requested, and the reason when not needed', () => {
+    const asked = poMomentLine(by('Moore Supply'), 'x')!
+    expect(asked.tone).toBe('amber')
+    expect(asked.text).toContain('from the counter — not open yet')
+    expect(asked.text).toContain('No job-accounts rep on file')
+    const no = poMomentLine(by('Hughes'), 'x')!
+    expect(no.tone).toBe('muted')
+    expect(no.text).toBe('Hughes job account not needed · service call.')
+    expect(no.canMarkOpened).toBe(true)
+    expect(no.canNotNeeded).toBe(false)
   })
 })
 

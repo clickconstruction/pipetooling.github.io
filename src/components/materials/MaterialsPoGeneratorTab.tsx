@@ -6,6 +6,7 @@ import { UnifiedSearchResultRow } from '../search/UnifiedSearchResultRow'
 import { useJobBidSearchEvidence } from '../../hooks/useJobBidSearchEvidence'
 import { isAssistantLike } from '../../lib/subcontractorLikeRole'
 import { MaterialsPoLaneSignpost } from './MaterialsPoLaneSignpost'
+import { JobAccountPoLine } from './JobAccountPoLine'
 import { withSupabaseRetry, formatErrorMessage } from '../../utils/errorHandling'
 import { useToastContext } from '../../contexts/ToastContext'
 import type { Database } from '../../types/database'
@@ -607,6 +608,13 @@ export function MaterialsPoGeneratorTab({
                 )}
               </div>
             )}
+            {poGenSelectedJob && poGenSelectedSupplyHouse ? (
+              <JobAccountPoLine
+                jobId={poGenSelectedJob.id}
+                jobLabel={`${effectiveJobLedgerNumber(poGenSelectedJob.hcp_number, poGenSelectedJob.click_number) || '—'} · ${poGenSelectedJob.job_name?.trim() || '—'}`}
+                houseId={poGenSelectedSupplyHouse.id}
+              />
+            ) : null}
           </div>
           <div style={{ gridColumn: '1 / -1' }}>
             <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, marginBottom: '0.35rem', color: 'var(--text-700)' }}>
