@@ -1,6 +1,6 @@
 # Contract sweep, seen first — shrink the pile, file what is signed, then a sweep that shows the agreement
 
-Status: **in progress** · PR 0 v2.3384 (the floor + Not needed, #3114) · PR 0c v2.3385 (the job-form door, #3115) · PR 1 v2.3386 (the readiness kernel + list) · next: PR 2 the pane → PR 3 editing in place → PR 4 filing → last, the Drive pass (the owner connects Drive first) · mock-up: [`mockup.html`](./mockup.html) (the brief with mock-ups A–D, also published as a Claude artifact 2026-09-13)
+Status: **in progress** · PR 0 v2.3384 (the floor + Not needed, #3114) · PR 0c v2.3385 (the job-form door, #3115) · PR 1 v2.3386 (the readiness kernel + list, #3116) · PR 2 v2.3387 (the pane) · next: PR 3 editing in place → PR 4 filing → last, the Drive pass (the owner connects Drive first) · mock-up: [`mockup.html`](./mockup.html) (the brief with mock-ups A–D, also published as a Claude artifact 2026-09-13)
 
 ## The ask, in the owner's words
 

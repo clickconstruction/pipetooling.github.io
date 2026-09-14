@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { assessContractSweepRows, contractSweepFilterMatches, contractSweepSummary, isThinScope, type ContractSweepRowInput } from './contractSweepRowState'
+import { assessContractSweepRows, contractSweepFilterMatches, contractSweepFooterSentence, contractSweepPrimary, contractSweepSummary, isThinScope, type ContractSweepRowInput } from './contractSweepRowState'
 
 function row(p: Partial<ContractSweepRowInput> & { id: string }): ContractSweepRowInput {
   return { jobNumber: p.id.replace(/^j/, ''), jobName: 'Mission Hills', email: 'kcallison@tfharper.com', revenue: 123600, scopeLines: ['14 × Water closet', '9 × Lavatory'], gcJob: false, ...p }
@@ -62,5 +62,27 @@ describe('assessContractSweepRows', () => {
     expect(rows.filter((r) => contractSweepFilterMatches(states.get(r.id), 'to_send')).map((r) => r.id)).toEqual(['j523', 'j363', 'j843'])
     expect(rows.filter((r) => contractSweepFilterMatches(states.get(r.id), 'needs_look')).map((r) => r.id)).toEqual(['j683', 'j804'])
     expect(rows.filter((r) => contractSweepFilterMatches(states.get(r.id), 'all')).length).toBe(5)
+  })
+})
+
+describe('the pane footer (PR 2)', () => {
+  it('names the primary and the sentence for each state', () => {
+    const states = assessContractSweepRows([
+      row({ id: 'j523' }),
+      row({ id: 'j363', email: 'palmer@example.com', revenue: 31400 }),
+      row({ id: 'j843', jobNumber: '843', email: 'palmer@example.com', revenue: 11920 }),
+      row({ id: 'j683', jobName: 'Job', scopeLines: ['Job'], revenue: null, email: 'may@x.com' }),
+      row({ id: 'j778', email: '' }),
+      row({ id: 'j804', gcJob: true, email: 'estimating@summitgc.net' }),
+    ])
+    expect(contractSweepPrimary(states.get('j523'))).toBe('send_next')
+    expect(contractSweepFooterSentence({ state: states.get('j523'), email: 'kcallison@tfharper.com', jobName: 'Mission Hills', gcName: null, nextJobNumber: '363' })).toBe('Emails kcallison@tfharper.com · then J363')
+    expect(contractSweepFooterSentence({ state: states.get('j363'), email: 'palmer@example.com', jobName: 'Michael Palmer', gcName: null, nextJobNumber: null })).toBe('Emails palmer@example.com · this customer also has J843 here')
+    expect(contractSweepPrimary(states.get('j683'))).toBe('blocked')
+    expect(contractSweepFooterSentence({ state: states.get('j683'), email: 'may@x.com', jobName: 'Job', gcName: null, nextJobNumber: '778' })).toBe("the scope is one line — “Work we'll do: Job” · sends as time and materials · then J778")
+    expect(contractSweepPrimary(states.get('j778'))).toBe('blocked')
+    expect(contractSweepFooterSentence({ state: states.get('j778'), email: '', jobName: 'X', gcName: null, nextJobNumber: null })).toMatch(/^No signer email/)
+    expect(contractSweepPrimary(states.get('j804'))).toBe('file_theirs')
+    expect(contractSweepFooterSentence({ state: states.get('j804'), email: 'e@summit.com', jobName: 'Auto Zone', gcName: 'Summit GC', nextJobNumber: null })).toBe("GC job · Summit GC's subcontract is the agreement")
   })
 })

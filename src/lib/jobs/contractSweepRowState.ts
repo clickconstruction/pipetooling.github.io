@@ -116,3 +116,37 @@ export function contractSweepSummary(rows: ReadonlyArray<ContractSweepRowInput>,
   }
   return { all: rows.length, toSend, needsLook: rows.length - toSend, revenueTotal, customersToEmail: emails.size }
 }
+
+/** What the pane's primary button does for a row (PR 2). */
+export type ContractSweepPrimary = 'send_next' | 'file_theirs' | 'blocked'
+
+export function contractSweepPrimary(state: ContractSweepRowState | undefined): ContractSweepPrimary {
+  if (!state) return 'blocked'
+  if (state.flags.includes('gc_job')) return 'file_theirs'
+  if (!state.emailOk) return 'blocked'
+  return state.readyForBulk ? 'send_next' : 'blocked'
+}
+
+/**
+ * The footer's one sentence (PR 2): what pressing the primary will do, or why
+ * it won't, and which job comes next.
+ */
+export function contractSweepFooterSentence(input: {
+  state: ContractSweepRowState | undefined
+  email: string
+  jobName: string
+  gcName: string | null
+  nextJobNumber: string | null
+}): string {
+  const { state } = input
+  const next = input.nextJobNumber ? ` · then J${input.nextJobNumber}` : ''
+  if (!state) return ''
+  if (state.flags.includes('gc_job')) return `GC job · ${input.gcName ? `${input.gcName}'s` : 'the builder’s'} subcontract is the agreement`
+  if (!state.emailOk) return 'No signer email on the job — fix it on the job, or open the full editor to copy a link'
+  const why: string[] = []
+  if (state.flags.includes('thin_scope')) why.push(`the scope is one line — “Work we'll do: ${input.jobName || 'Job'}”`)
+  if (state.flags.includes('no_amount')) why.push('sends as time and materials')
+  if (why.length > 0) return `${why.join(' · ')}${next}`
+  const same = state.sameEmailAs.length > 0 ? ` · this customer also has ${state.sameEmailAs.map((n) => `J${n}`).join(', ')} here` : ''
+  return `Emails ${input.email.trim()}${same}${next}`
+}

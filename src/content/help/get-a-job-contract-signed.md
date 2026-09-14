@@ -114,7 +114,15 @@ The header counts the pile — *104 without a contract · $1,349,981 of work · 
 - {{chip:blue|GC job · file theirs}} — the customer is a builder; their subcontract is the agreement. {{button:blue|File theirs}} opens the filing sheet.
 - {{chip:blue|+ J798}} — this customer has another job in the sweep; each job sends its own agreement.
 
-Pick the terms once in the footer. **Send all** lives under **⋯** at the top right: it takes only {{chip:green|Ready}} rows and asks once with the real number — *Email 81 customers (87 agreements)?* — before anything goes out. Rows leave the list as they send, and the Dashboard count falls with them.
+**The sweep shows the agreement before it sends.** Tap a row and the right side shows that job's agreement exactly as the customer will see it — letterhead, the work, the amount and payment line, the terms — built from the job's fixtures (or its accepted estimate) and the terms you pick above it. Fix the signer's email in the **To** box. The footer says what the button will do — *Emails kcallison@tfharper.com · then J363* — and {{button:blue|Send & next}} sends it and lands you on the next job. {{button:outline|Skip}} moves on without sending.
+
+:::example The footer follows the row
+On a builder's job the primary reads {{button:blue|File their subcontract}} (their paper is the agreement) with {{button:outline|Send ours instead}} beside it. A thin scope or no amount dims Send & next and offers {{button:outline|Send anyway}} — the sentence says what is unusual. No email? {{button:blue|Fix email on the job}}. **Already signed? File it** and **Open the full editor** sit at the left of the footer.
+:::
+
+If the job already has a draft or a contract out for signature, the pane shows that one — the send reuses it rather than making a second — and the full editor is where to change it.
+
+**Send all** lives under **⋯** at the top right: it takes only {{chip:green|Ready}} rows and asks once with the real number — *Email 81 customers (87 agreements)?* — before anything goes out. Rows leave the list as they send, and the Dashboard count falls with them. On a phone the list is the screen; tap a job to see its agreement.
 
 ## Reminders and the customer's account page
 

@@ -1,9 +1,10 @@
 // @vitest-environment jsdom
 /**
- * Render smoke for the Contract sweep list (Contract sweep PR 1): the header
- * counts the pile, rows wear their readiness, the row's button follows its
- * state, To send · Needs a look · All splits the list, and Send all lives
- * under ⋯, counts customers, and takes only Ready rows.
+ * Render smoke for the Contract sweep (Contract sweep PR 1 / PR 2): the
+ * header counts the pile, rows wear their readiness, the selected job's
+ * agreement renders in the pane with a footer that follows its state, Send &
+ * next lands on the next row, and Send all lives under ⋯, counts customers,
+ * and takes only Ready rows.
  */
 import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, screen, waitFor, within } from '@testing-library/react'
@@ -14,11 +15,16 @@ import JobsContractSweepModal from './JobsContractSweepModal'
 vi.mock('../../hooks/useAuth', () => ({
   useAuth: () => ({ user: { id: 'u1' }, role: 'dev' }),
 }))
+vi.mock('../../hooks/useIsMobile', () => ({ useIsMobile: () => false }))
 
 vi.mock('../../lib/supabase', async () => {
   const { makeSupabaseStub } = await import('../../test/renderSmokeMocks')
   return { supabase: makeSupabaseStub() }
 })
+vi.mock('../../lib/physicalInvoiceIssuer', () => ({
+  fetchPhysicalInvoiceIssuerFromAppSettings: () => Promise.resolve(),
+  getPhysicalInvoiceIssuerForDocument: () => ({ companyName: 'ClickTooling Plumbing', addressText: '', phone: '', email: '', tagline: '', licenseLine: '' }),
+}))
 
 const sendSpy = vi.fn((_input: { job: { id: string } }) => Promise.resolve({ ok: true, emailed: true, signUrl: 'https://x' }))
 vi.mock('../../lib/jobs/jobContractQuickSend', () => ({
@@ -54,51 +60,80 @@ function job(p: Partial<JobWithDetails> & { id: string; hcp_number: string }): J
 
 const JOBS: JobWithDetails[] = [
   job({ id: 'j523', hcp_number: '523' }),
+  job({ id: 'j363', hcp_number: '363', job_name: 'Michael Palmer', customer_name: 'Michael Palmer', customer_email: 'palmertexashomes@gmail.com', revenue: 31400, created_at: '2026-09-02T00:00:00Z' }),
   job({ id: 'j683', hcp_number: '683', job_name: 'Job', customer_name: 'The Learning Experience', customer_email: 'may@corewellpartners.com', revenue: null, fixtures: [] }),
   job({ id: 'j778', hcp_number: '778', job_name: 'Austin Real Estate', customer_email: null, revenue: null }),
-  job({ id: 'j804', hcp_number: '804', job_name: 'Auto Zone', customer_name: 'Summit GC', customer_email: 'estimating@summitgc.net', customer_id: 'c9', gc_customer_id: 'gc1', revenue: 32600 }),
+  job({ id: 'j804', hcp_number: '804', job_name: 'Auto Zone', customer_name: 'Summit GC', customer_email: 'estimating@summitgc.net', customer_id: 'c9', gc_customer_id: 'gc1', gcCustomer: { id: 'gc1', name: 'Summit GC' }, revenue: 32600 }),
   job({ id: 'jpaid', hcp_number: '900', status: 'paid' }),
 ]
 const COVERAGE = new Map(JOBS.map((j) => [j.id, { kind: 'none' as const }]))
 
-describe('JobsContractSweepModal', () => {
-  it('counts the pile, shows the Ready row first, and the row buttons follow the state', async () => {
-    renderWithProviders(<JobsContractSweepModal open onClose={() => undefined} jobs={JOBS} coverage={COVERAGE} onEditJob={() => undefined} onSent={() => undefined} />)
-    await waitFor(() => expect(screen.getByTestId('sweep-summary').textContent).toContain('4 without a contract'))
-    expect(screen.getByTestId('sweep-summary').textContent).toContain('3 need a look')
-    expect(screen.getByRole('button', { name: /^To send · 1$/ }).getAttribute('aria-pressed')).toBe('true')
-    const rows = screen.getAllByTestId('sweep-row')
-    expect(rows.map((r) => r.getAttribute('data-job'))).toEqual(['523'])
-    expect(within(rows[0]!).getByText('Ready')).toBeTruthy()
-    expect(within(rows[0]!).getByRole('button', { name: 'Send' })).toBeTruthy()
+function mount(onSent = vi.fn()) {
+  return renderWithProviders(<JobsContractSweepModal open onClose={() => undefined} jobs={JOBS} coverage={COVERAGE} onEditJob={() => undefined} onSent={onSent} />)
+}
 
+describe('JobsContractSweepModal', () => {
+  it('counts the pile, selects the first Ready row, and shows its agreement with a footer that says what Send will do', async () => {
+    mount()
+    await waitFor(() => expect(screen.getByTestId('sweep-summary').textContent).toContain('5 without a contract'))
+    expect(screen.getByTestId('sweep-summary').textContent).toContain('3 need a look')
+    expect(screen.getByRole('button', { name: /^To send · 2$/ }).getAttribute('aria-pressed')).toBe('true')
+    const rows = screen.getAllByTestId('sweep-row')
+    expect(rows.map((r) => r.getAttribute('data-job'))).toEqual(['523', '363'])
+    expect(rows[0]!.getAttribute('aria-pressed')).toBe('true')
+    expect(within(rows[0]!).getByText('Ready')).toBeTruthy()
+    const frame = screen.getByTitle('The agreement as the customer will see it') as HTMLIFrameElement
+    expect(frame.getAttribute('srcdoc')).toContain('Service agreement for 2100 Independence Dr')
+    expect(frame.getAttribute('srcdoc')).toContain('14 × Water closet')
+    expect(frame.getAttribute('srcdoc')).toContain('$123,600.00')
+    expect(screen.getByTestId('sweep-footer-sentence').textContent).toBe('Emails kcallison@tfharper.com · then J363')
+    expect(screen.getByRole('button', { name: 'Send & next' })).toBeTruthy()
+  })
+
+  it('the footer follows the state: a thin row dims the primary, a GC job leads with filing, no email asks for a fix', async () => {
+    mount()
+    await waitFor(() => expect(screen.getByTestId('sweep-summary')).toBeTruthy())
     fireEvent.click(screen.getByRole('button', { name: /^Needs a look · 3$/ }))
     const look = screen.getAllByTestId('sweep-row')
     expect(look.map((r) => r.getAttribute('data-job'))).toEqual(['683', '778', '804'])
-    expect(within(look[0]!).getByText('Scope is just the name')).toBeTruthy()
-    expect(within(look[0]!).getByText('No amount')).toBeTruthy()
-    expect(within(look[0]!).getByRole('button', { name: 'Add scope' })).toBeTruthy()
-    expect(within(look[1]!).getByText('No email')).toBeTruthy()
-    expect(within(look[1]!).getByRole('button', { name: 'Fix email' })).toBeTruthy()
-    expect(within(look[2]!).getByText('GC job · file theirs')).toBeTruthy()
-    fireEvent.click(within(look[2]!).getByRole('button', { name: 'File theirs' }))
+    // The first row of the new list is selected: thin scope + no amount.
+    expect(screen.getByTestId('sweep-footer-sentence').textContent).toContain("Work we'll do: Job")
+    expect(screen.getByRole('button', { name: 'Send anyway' })).toBeTruthy()
+    expect((screen.getByRole('button', { name: 'Send & next' }) as HTMLButtonElement).disabled).toBe(true)
+    fireEvent.click(look[1]!)
+    expect(screen.getByRole('button', { name: 'Fix email on the job' })).toBeTruthy()
+    fireEvent.click(look[2]!)
+    expect(screen.getByTestId('sweep-footer-sentence').textContent).toBe("GC job · Summit GC's subcontract is the agreement")
+    fireEvent.click(screen.getByRole('button', { name: 'File their subcontract' }))
     expect(screen.getByTestId('contract-modal').textContent).toBe('filing')
+  })
+
+  it('Send & next sends the selected job and lands on the next row', async () => {
+    sendSpy.mockClear()
+    const onSent = vi.fn()
+    mount(onSent)
+    await waitFor(() => expect(screen.getByTestId('sweep-summary')).toBeTruthy())
+    fireEvent.click(screen.getByRole('button', { name: 'Send & next' }))
+    await waitFor(() => expect(onSent).toHaveBeenCalled())
+    expect(sendSpy.mock.calls[0]![0].job.id).toBe('j523')
+    await waitFor(() => expect(screen.getAllByTestId('sweep-row').map((r) => r.getAttribute('data-job'))).toEqual(['363']))
+    expect(screen.getAllByTestId('sweep-row')[0]!.getAttribute('aria-pressed')).toBe('true')
+    expect(screen.getByTestId('sweep-summary').textContent).toContain('1 sent this sweep')
   })
 
   it('Send all lives under ⋯, names the customers, and sends only the Ready rows after a confirm', async () => {
     sendSpy.mockClear()
     const onSent = vi.fn()
-    renderWithProviders(<JobsContractSweepModal open onClose={() => undefined} jobs={JOBS} coverage={COVERAGE} onEditJob={() => undefined} onSent={onSent} />)
+    mount(onSent)
     await waitFor(() => expect(screen.getByTestId('sweep-summary')).toBeTruthy())
     fireEvent.click(screen.getByRole('button', { name: 'Contract sweep tools' }))
-    const item = screen.getByRole('menuitem', { name: /Send all 1 ready…/ })
-    expect(item.textContent).toContain('1 customer')
+    const item = screen.getByRole('menuitem', { name: /Send all 2 ready…/ })
+    expect(item.textContent).toContain('2 customers')
     fireEvent.click(item)
     const confirm = screen.getByTestId('sweep-send-all-confirm')
-    expect(confirm.textContent).toContain('Email 1 customer (1 agreement)')
-    fireEvent.click(within(confirm).getByRole('button', { name: /Confirm — send 1 now/ }))
+    expect(confirm.textContent).toContain('Email 2 customers (2 agreements)')
+    fireEvent.click(within(confirm).getByRole('button', { name: /Confirm — send 2 now/ }))
     await waitFor(() => expect(onSent).toHaveBeenCalled())
-    expect(sendSpy).toHaveBeenCalledTimes(1)
-    expect(sendSpy.mock.calls[0]![0].job.id).toBe('j523')
+    expect(sendSpy.mock.calls.map((c) => c[0].job.id)).toEqual(['j523', 'j363'])
   })
 })
