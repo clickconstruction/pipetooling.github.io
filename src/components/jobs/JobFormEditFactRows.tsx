@@ -27,6 +27,8 @@ import { useToastContext } from '../../contexts/ToastContext'
 import { customerBillingEmail, type JobBillToParty } from '../../lib/jobs/billToParty'
 import JobContractStrip from './JobContractStrip'
 import JobWorkOrderStrip from './JobWorkOrderStrip'
+import JobFormPropertyAddSheet from './JobFormPropertyAddSheet'
+import type { CustomerAddressRow } from '../../lib/jobs/lienProperty'
 import type { JobWithDetails } from '../../types/jobWithDetails'
 import { JobFormAccountManSection } from './JobFormAccountManSection'
 import { JobFormPeoplePicker } from './JobFormPeoplePicker'
@@ -131,6 +133,10 @@ type JobFormEditFactRowsProps = {
   /** Property record link (v2.2638): the customer_addresses row this job sits at. */
   customerAddressId: string | null
   setCustomerAddressId: (v: string | null) => void
+  /** v2.3401: the job address saved as a property on the customer (or the GC when there is no customer) — the shell appends it to the candidates and links the job. */
+  onPropertyAdded: (row: CustomerAddressRow) => void
+  /** The GC's name for the add-as-property line when the property's home is the GC (no customer on the job). */
+  gcCustomerName?: string | null
   propertyCandidates: Array<{
     id: string
     customer_id: string | null
@@ -222,6 +228,8 @@ export function JobFormEditFactRows(props: JobFormEditFactRowsProps) {
     setJobAddress,
     customerAddressId,
     setCustomerAddressId,
+    onPropertyAdded,
+    gcCustomerName,
     propertyCandidates,
     customers,
     customersLoading,
@@ -256,6 +264,8 @@ export function JobFormEditFactRows(props: JobFormEditFactRowsProps) {
   const prefixMap = useLedgerPrefixMap()
 
   const [openRows, setOpenRows] = useState<Set<RowKey>>(() => new Set(customerExpandedGate ? ['customer'] : []))
+  /** v2.3401: the add-as-property sheet is open under the Property record row. */
+  const [addingProperty, setAddingProperty] = useState(false)
   const toggleRow = useCallback((key: RowKey) => {
     setOpenRows((prev) => {
       const next = new Set(prev)
@@ -715,7 +725,11 @@ export function JobFormEditFactRows(props: JobFormEditFactRowsProps) {
       {/* Property record (v2.2638): which of the customer's/GC's saved
           addresses this job sits at — county / legal description / owner of
           record for lien documents. Collapsed shows the linked address (or
-          "not linked"); the editor is a picker over the loaded candidates. */}
+          "not linked"); the editor is a picker over the loaded candidates.
+          v2.3401: when none of them is the job address (a builder entered as
+          the customer only has its office on file), the job address can be
+          saved as a property right here — the sheet from Edit customer,
+          prefilled, lookup and all — and the job links to the new row. */}
       {(() => {
         const linked = propertyCandidates.find((r) => r.id === customerAddressId) ?? null
         const linkedReady = linked ? customerAddressLienReady(linked) : false
@@ -725,6 +739,14 @@ export function JobFormEditFactRows(props: JobFormEditFactRowsProps) {
               jobAddress,
               propertyCandidates as never,
             )
+        // The property's home: the job's customer; the GC only when there is no customer.
+        const propertyHomeId = customerId || gcCustomerId || null
+        const propertyHomeName = customerId
+          ? customerName.trim() || 'this customer'
+          : (gcCustomerName ?? '').trim() || 'the GC'
+        const jobAddressTrimmed = jobAddress.trim()
+        const canAddFromJob = Boolean(propertyHomeId) && jobAddressTrimmed.length > 0 && !linked && !suggested
+        const existingOnHome = propertyCandidates.filter((r) => r.customer_id === propertyHomeId).length
         return (
           <JobFormFactRow
             label="Property record"
@@ -737,7 +759,7 @@ export function JobFormEditFactRows(props: JobFormEditFactRowsProps) {
                 </span>
               ) : customerAddressId ? (
                 '…'
-              ) : propertyCandidates.length > 0 ? (
+              ) : propertyHomeId ? (
                 <span style={{ color: 'var(--text-muted)' }}>not linked</span>
               ) : null
             }
@@ -749,8 +771,9 @@ export function JobFormEditFactRows(props: JobFormEditFactRowsProps) {
             </label>
             {propertyCandidates.length === 0 ? (
               <p style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
-                No saved addresses on this job's customer or GC yet — add one (with its Property legal
-                info) on the customer's Edit form.
+                {propertyHomeId
+                  ? `No saved properties on ${propertyHomeName} yet.`
+                  : 'Link a customer first — the property record lives on the customer.'}
               </p>
             ) : (
               <>
@@ -779,6 +802,32 @@ export function JobFormEditFactRows(props: JobFormEditFactRowsProps) {
                 ) : null}
               </>
             )}
+            {addingProperty && propertyHomeId ? (
+              <JobFormPropertyAddSheet
+                customerId={propertyHomeId}
+                customerName={propertyHomeName}
+                jobAddress={jobAddressTrimmed}
+                existingCount={existingOnHome}
+                onAdded={(row) => {
+                  setAddingProperty(false)
+                  onPropertyAdded(row)
+                }}
+                onCancel={() => setAddingProperty(false)}
+              />
+            ) : canAddFromJob ? (
+              <div style={{ marginTop: '0.5rem' }}>
+                <button
+                  type="button"
+                  onClick={() => setAddingProperty(true)}
+                  style={{ background: 'none', border: 'none', color: 'var(--text-link)', fontSize: '0.8125rem', fontWeight: 600, cursor: 'pointer', padding: 0, textAlign: 'left' }}
+                >
+                  + Add {jobAddressTrimmed} as a property on {propertyHomeName}
+                </button>
+                <p style={{ margin: '0.2rem 0 0', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                  The job address is not one of {propertyHomeName}'s saved properties. Add it here and the county, legal description and owner of record are looked up for the lien paperwork.
+                </p>
+              </div>
+            ) : null}
           </JobFormFactRow>
         )
       })()}

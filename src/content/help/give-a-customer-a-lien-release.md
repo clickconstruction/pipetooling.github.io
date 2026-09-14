@@ -48,7 +48,7 @@ There's no Save button and nothing to cancel: from your first edit the release k
 On **Customers → Edit → Additional addresses**, every address now has a **Property legal info** panel: the county the paperwork files in (the app suggests it from the city — confirm it), the legal description from the county appraisal district (there's a direct **CAD ↗** link), residential/homestead classification, and the **owner of record with their mailing address** — where lien notices legally go, which is often not the job site.
 
 :::example Why bother?
-An address showing {{chip:green|✓ lien-ready}} has everything a lien filing needs, entered once and reused by every job at that property. Link a job to its property record from **Edit Job → Property record** or right in the Release of Lien window — the app suggests the match by address — and the owner of record, filing county, and legal description fill into the lien paperwork automatically.
+An address showing {{chip:green|✓ lien-ready}} has everything a lien filing needs, entered once and reused by every job at that property. Link a job to its property record from **Edit Job → Property record** or right in the Release of Lien window — the app suggests the match by address — and the owner of record, filing county, and legal description fill into the lien paperwork automatically. When none of the customer's saved properties is the job address (a builder entered as the customer only has its office on file), the row offers {{button:outline-blue|+ Add 628 Terrell Rd as a property on RMC- Dudley Mason}}: the property sheet opens with the job address, the lookup runs, and **Add property** saves it on the customer and links the job in one go.
 :::
 
 ## The signed release comes back to you

@@ -22,6 +22,18 @@ import { renderWithProviders } from '../../test/renderSmokeMocks'
 import type { Database } from '../../types/database'
 
 type CustomerRow = Database['public']['Tables']['customers']['Row']
+type PropertyCandidate = Parameters<typeof JobFormEditFactRows>[0]['propertyCandidates'][number]
+
+const OFFICE_PROPERTY: PropertyCandidate = {
+  id: 'addr-office',
+  customer_id: 'cust-1',
+  address: '574 Co Rd 660, Devine TX 78016',
+  county: 'Medina',
+  legal_description: 'ABS 1 SUR 2',
+  owner_name: 'Todd Cop',
+  owner_company: '',
+  owner_mailing_address: '574 Co Rd 660, Devine TX 78016',
+}
 
 afterEach(cleanup)
 
@@ -49,12 +61,16 @@ function Harness({
   gc,
   jobId = 'job-1',
   showBillsToOtherParty = false,
+  propertyCandidates = [],
+  customerAddressId = null,
 }: {
   billingCustomerHighlight?: boolean
   customerId?: string | null
   gc?: CustomerRow
   jobId?: string | null
   showBillsToOtherParty?: boolean
+  propertyCandidates?: PropertyCandidate[]
+  customerAddressId?: string | null
 }) {
   const [phone, setPhone] = useState('(210) 415-5375')
   const divRef = useRef<HTMLDivElement | null>(null)
@@ -96,9 +112,10 @@ function Harness({
       jobPicturesLink=""
       setJobPicturesLink={() => {}}
       jobAddress="10 Cascade Gln"
-      customerAddressId={null}
+      customerAddressId={customerAddressId}
       setCustomerAddressId={() => {}}
-      propertyCandidates={[]}
+      onPropertyAdded={() => {}}
+      propertyCandidates={propertyCandidates}
       setJobAddress={() => {}}
       customers={gc ? [...CUSTOMERS, gc] : CUSTOMERS}
       customersLoading={false}
@@ -224,5 +241,36 @@ describe('JobFormEditFactRows', () => {
     cleanup()
     renderWithProviders(<Harness gc={gc} jobId={null} />)
     expect(screen.queryByText('Show Done Right Foundation')).toBeNull()
+  })
+
+  it('Property record: the job address can be added as a property when no saved one matches (v2.3401)', () => {
+    renderWithProviders(<Harness propertyCandidates={[OFFICE_PROPERTY]} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Edit Property record' }))
+    // The picker still lists the builder's office…
+    expect(screen.getByRole('option', { name: '574 Co Rd 660, Devine TX 78016' })).toBeTruthy()
+    // …and the job address, which is not on it, is one click from becoming a property.
+    const add = screen.getByRole('button', { name: '+ Add 10 Cascade Gln as a property on Todd Cop' })
+    fireEvent.click(add)
+    expect(screen.getByTestId('job-form-property-add-sheet')).toBeTruthy()
+    expect((screen.getByLabelText('Address') as HTMLInputElement).value).toBe('10 Cascade Gln')
+    expect(screen.getByRole('button', { name: 'Add property' })).toBeTruthy()
+    // Cancel folds the sheet and the offer comes back.
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
+    expect(screen.queryByTestId('job-form-property-add-sheet')).toBeNull()
+    expect(screen.getByRole('button', { name: '+ Add 10 Cascade Gln as a property on Todd Cop' })).toBeTruthy()
+  })
+
+  it('Property record: a saved property matching the job address is offered to link, not re-added (v2.3401)', () => {
+    renderWithProviders(<Harness propertyCandidates={[{ ...OFFICE_PROPERTY, id: 'addr-site', address: '10 Cascade Gln, San Antonio, TX 78255' }]} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Edit Property record' }))
+    expect(screen.getByRole('button', { name: /Link 10 Cascade Gln, San Antonio, TX 78255 — matches the job address/ })).toBeTruthy()
+    expect(screen.queryByRole('button', { name: /as a property on/ })).toBeNull()
+  })
+
+  it('Property record: no saved properties yet still offers the job address (v2.3401)', () => {
+    renderWithProviders(<Harness />)
+    fireEvent.click(screen.getByRole('button', { name: 'Edit Property record' }))
+    expect(screen.getByText('No saved properties on Todd Cop yet.')).toBeTruthy()
+    expect(screen.getByRole('button', { name: '+ Add 10 Cascade Gln as a property on Todd Cop' })).toBeTruthy()
   })
 })

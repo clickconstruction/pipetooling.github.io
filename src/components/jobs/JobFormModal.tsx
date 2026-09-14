@@ -3970,6 +3970,12 @@ export default function JobFormModal({
               jobAddress={jobAddress}
               customerAddressId={customerAddressId}
               setCustomerAddressId={setCustomerAddressId}
+              onPropertyAdded={(row) => {
+                // v2.3401: the job address saved as a property from the row — it joins the candidates and the job links to it (autosave carries customer_address_id).
+                setPropertyCandidates((prev) => [...prev, row])
+                setCustomerAddressId(row.id)
+              }}
+              gcCustomerName={gcNameForPayerTags}
               propertyCandidates={propertyCandidates}
               setJobAddress={setJobAddress}
               customers={customers}
