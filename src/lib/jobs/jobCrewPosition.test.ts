@@ -1,0 +1,93 @@
+import { describe, expect, it } from 'vitest'
+import { crewPositionsFromRpc, crewShortName, firstName, newestPercent, percentIsStale, splitSheetNames, type JobCrewPositionRpcRow } from './jobCrewPosition'
+
+const today = '2026-09-14'
+const row = (over: Partial<JobCrewPositionRpcRow> & { job_ledger_id: string }): JobCrewPositionRpcRow => ({
+  last_work_date: null,
+  last_day_people: null,
+  sessions_60d: 0,
+  people_60d: 0,
+  sheet_stage: null,
+  sheet_names: null,
+  sheet_date: null,
+  sheet_progress_pct: null,
+  sheet_stage_changed_at: null,
+  report_pct: null,
+  report_at: null,
+  pct_manual_at: null,
+  ...over,
+})
+
+describe('crewPositionsFromRpc', () => {
+  // J931 Heron, 2026-09-14: Behar's crew clocked in Sep 12; the sheet dated Sep 10 still says working; 40% is the Aug 7 seed (no manual event).
+  const heron = row({
+    job_ledger_id: 'heron',
+    last_work_date: '2026-09-12',
+    last_day_people: ['Behar Kraja', 'Malachi Jones'],
+    sessions_60d: 14,
+    people_60d: 6,
+    sheet_stage: 'working',
+    sheet_names: 'Behar | Malachi | Abraham | Bryan | Behar Kraja',
+    sheet_date: '2026-09-10',
+  })
+
+  it('parses a row and knows whether the last clock-in was today', () => {
+    const m = crewPositionsFromRpc([heron, row({ job_ledger_id: 'palmer', last_work_date: today, last_day_people: ['Behar Kraja', 'Abraham Ruiz', 'Bryan Diaz'], sessions_60d: 3, people_60d: 3 })], today)
+    expect(m.get('heron')).toMatchObject({ lastWorkYmd: '2026-09-12', onSiteToday: false, sessions60d: 14, people60d: 6, lastDayPeople: ['Behar Kraja', 'Malachi Jones'] })
+    expect(m.get('heron')!.sheet).toMatchObject({ stage: 'working', names: ['Behar', 'Malachi', 'Abraham', 'Bryan', 'Behar Kraja'], ymd: '2026-09-10' })
+    expect(m.get('palmer')).toMatchObject({ onSiteToday: true, lastDayPeople: ['Behar Kraja', 'Abraham Ruiz', 'Bryan Diaz'] })
+    expect(crewPositionsFromRpc(null, today).size).toBe(0)
+  })
+
+  it('drops an unknown sheet stage and clamps the report percent', () => {
+    const m = crewPositionsFromRpc([row({ job_ledger_id: 'x', sheet_stage: 'weird', report_pct: 140, report_at: '2026-09-11T14:00:00Z' })], today)
+    expect(m.get('x')!.sheet).toBeNull()
+    expect(m.get('x')!.report).toEqual({ pct: 100, at: '2026-09-11T14:00:00Z' })
+  })
+})
+
+describe('names', () => {
+  it('splits a pipe-delimited sheet and takes first names', () => {
+    expect(splitSheetNames('Behar | Malachi | Abraham | Bryan | Behar Kraja')).toEqual(['Behar', 'Malachi', 'Abraham', 'Bryan', 'Behar Kraja'])
+    expect(splitSheetNames(null)).toEqual([])
+    expect(firstName('Behar Kraja')).toBe('Behar')
+    expect(firstName('  ')).toBe('')
+  })
+
+  it('crewShortName: one name, two names, a crew, or the sheet lead', () => {
+    const base = crewPositionsFromRpc([row({ job_ledger_id: 'a', last_work_date: today, last_day_people: ['Miguel Rodriguez'] })], today).get('a')!
+    expect(crewShortName(base)).toBe('Miguel')
+    expect(crewShortName({ ...base, lastDayPeople: ['Behar Kraja', 'Malachi Jones'] })).toBe('Behar & Malachi')
+    expect(crewShortName({ ...base, lastDayPeople: ['Behar Kraja', 'Malachi Jones', 'Abraham Ruiz'] })).toBe('Behar +2')
+    const sheetOnly = crewPositionsFromRpc([row({ job_ledger_id: 'b', sheet_stage: 'working', sheet_names: 'Behar | Malachi | Abraham' })], today).get('b')!
+    expect(crewShortName(sheetOnly)).toBe("Behar's crew")
+    expect(crewShortName(crewPositionsFromRpc([row({ job_ledger_id: 'c', sheet_stage: 'working', sheet_names: 'Texas Rooter' })], today).get('c'))).toBe('Texas Rooter')
+    expect(crewShortName(null)).toBe('')
+    expect(crewShortName(crewPositionsFromRpc([row({ job_ledger_id: 'd' })], today).get('d'))).toBe('')
+  })
+})
+
+describe('newestPercent / percentIsStale — the v2.3372 rule on the row', () => {
+  const p = (over: Partial<JobCrewPositionRpcRow>) => crewPositionsFromRpc([row({ job_ledger_id: 'j', ...over })], today).get('j')!
+
+  it('a hand-set at or after the newest report wins; an older hand-set loses to the report', () => {
+    expect(newestPercent(p({ report_pct: 77, report_at: '2026-05-15T12:00:00Z', pct_manual_at: '2026-09-03T12:00:00Z' }), 90)).toEqual({ pct: 90, source: 'typed', at: '2026-09-03T12:00:00Z' })
+    expect(newestPercent(p({ report_pct: 24, report_at: '2026-05-26T12:00:00Z', pct_manual_at: '2026-05-01T12:00:00Z' }), 10)).toEqual({ pct: 24, source: 'report', at: '2026-05-26T12:00:00Z' })
+    expect(newestPercent(p({}), 40)).toEqual({ pct: 40, source: 'typed', at: null })
+    expect(newestPercent(p({ report_pct: 12, report_at: '2026-09-11T12:00:00Z' }), null)).toEqual({ pct: 12, source: 'report', at: '2026-09-11T12:00:00Z' })
+    expect(newestPercent(p({}), null)).toBeNull()
+  })
+
+  it('stale = the percent on record predates the last clock-in', () => {
+    // Heron: 40% seeded Aug 7 with no manual event; the crew was on site Sep 12 → stale.
+    expect(percentIsStale(p({ last_work_date: '2026-09-12' }), 40)).toBe(true)
+    // Mission Hills: 90% typed Sep 3, last on site Sep 11 → stale (eight days of work since).
+    expect(percentIsStale(p({ last_work_date: '2026-09-11', pct_manual_at: '2026-09-03T12:00:00Z' }), 90)).toBe(true)
+    // SpaceX: 12% reported Sep 11, crew on site Sep 14 → stale; reported today → fresh.
+    expect(percentIsStale(p({ last_work_date: today, report_pct: 12, report_at: '2026-09-11T12:00:00Z' }), 12)).toBe(true)
+    expect(percentIsStale(p({ last_work_date: today, report_pct: 12, report_at: `${today}T12:00:00Z` }), 12)).toBe(false)
+    // Nobody clocked in: nothing to be stale against. No percent: nothing to be stale.
+    expect(percentIsStale(p({}), 40)).toBe(false)
+    expect(percentIsStale(p({ last_work_date: today }), null)).toBe(false)
+  })
+})

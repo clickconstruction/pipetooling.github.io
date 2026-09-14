@@ -21272,6 +21272,24 @@ export type Database = {
           work_date: string
         }[]
       }
+      list_job_crew_position: {
+        Args: { p_job_ids: string[]; p_today: string }
+        Returns: {
+          job_ledger_id: string
+          last_work_date: string
+          last_day_people: string[]
+          sessions_60d: number
+          people_60d: number
+          sheet_stage: string
+          sheet_names: string
+          sheet_date: string
+          sheet_progress_pct: number
+          sheet_stage_changed_at: string
+          report_pct: number
+          report_at: string
+          pct_manual_at: string
+        }[]
+      }
       list_job_stage_progress: {
         Args: { p_job_id: string }
         Returns: {
