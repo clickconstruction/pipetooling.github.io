@@ -13,10 +13,13 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 // folder in the "PipeTooling Jobs" Shared Drive.
 //
 // Shape: one name-contains query across everything the SA can see (paged),
-// then the root's child folders (paged) as the job-folder map; a file whose
-// parent is not a job folder is attributed through its parent's parent (one
-// level down — a "Contracts" subfolder inside a job folder). Deeper nesting is
-// reported under its own folder name, unmatched.
+// then each root's child folders (paged) as the job-folder map — the roots are
+// DRIVE_JOBS_FOLDER_ID plus DRIVE_CONTRACT_ROOTS (comma-separated folder ids the
+// owner shared with the SA: the tree the signed contracts actually live in). A
+// file whose parent is not a job folder is attributed through its parent's
+// parent (one level down — a "Contracts" subfolder inside a job folder). A file
+// sitting directly in a root has no job folder, so its own name stands in as the
+// folder name for matching (the address or job number is usually in it).
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -87,8 +90,10 @@ serve(async (req) => {
     const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
     const saJson = Deno.env.get('GOOGLE_SERVICE_ACCOUNT_JSON')
     const jobsFolderId = Deno.env.get('DRIVE_JOBS_FOLDER_ID')
+    const extraRoots = (Deno.env.get('DRIVE_CONTRACT_ROOTS') ?? '').split(',').map((s) => s.trim()).filter(Boolean)
     if (!serviceRoleKey) return json({ error: 'Server not configured' }, 500)
-    if (!saJson || !jobsFolderId) return json({ error: 'Drive is not connected yet: set GOOGLE_SERVICE_ACCOUNT_JSON and DRIVE_JOBS_FOLDER_ID (docs/DRIVE_INTAKE_SETUP.md), then redeploy.' }, 503)
+    if (!saJson || (!jobsFolderId && extraRoots.length === 0)) return json({ error: 'Drive is not connected yet: set GOOGLE_SERVICE_ACCOUNT_JSON and DRIVE_JOBS_FOLDER_ID (or DRIVE_CONTRACT_ROOTS) — docs/DRIVE_INTAKE_SETUP.md — then redeploy.' }, 503)
+    const roots = [...new Set([jobsFolderId, ...extraRoots].filter((x): x is string => Boolean(x)))]
 
     const auth = req.headers.get('Authorization') ?? ''
     const anon = createClient(supabaseUrl, Deno.env.get('SUPABASE_ANON_KEY')!, { global: { headers: { Authorization: auth } } })
@@ -105,13 +110,15 @@ serve(async (req) => {
     const nameQ = CONTRACT_WORDS.map((w) => `name contains '${w}'`).join(' or ')
     const files = await listAll(token, `(${nameQ}) and mimeType != '${FOLDER}' and trashed = false`, 'id,name,mimeType,modifiedTime,webViewLink,size,parents')
 
-    // 2. The job folders: the root's direct child folders.
-    const jobFolders = await listAll(token, `'${jobsFolderId}' in parents and mimeType = '${FOLDER}' and trashed = false`, 'id,name')
+    // 2. The job folders: each root's direct child folders.
+    const jobFolders: DriveFile[] = []
+    for (const root of roots) jobFolders.push(...(await listAll(token, `'${root}' in parents and mimeType = '${FOLDER}' and trashed = false`, 'id,name')))
     const folderName = new Map<string, string>(jobFolders.map((f) => [f.id, f.name]))
+    const rootSet = new Set(roots)
 
     // 3. Files one level down: resolve unknown parents once, keep those whose parent is a job folder.
     const unknownParents = new Set<string>()
-    for (const f of files) for (const p of f.parents ?? []) if (!folderName.has(p) && p !== jobsFolderId) unknownParents.add(p)
+    for (const f of files) for (const p of f.parents ?? []) if (!folderName.has(p) && !rootSet.has(p)) unknownParents.add(p)
     const subfolderJob = new Map<string, { id: string; name: string }>()
     for (const pid of [...unknownParents].slice(0, 400)) {
       const res = await fetch(`${DRIVE}/files/${pid}?fields=id,name,parents&supportsAllDrives=true`, { headers: { Authorization: `Bearer ${token}` } })
@@ -124,7 +131,8 @@ serve(async (req) => {
     const out = files
       .map((f) => {
         const parent = (f.parents ?? [])[0] ?? ''
-        const direct = folderName.has(parent) ? { id: parent, name: folderName.get(parent)! } : subfolderJob.get(parent) ?? null
+        // Directly in a root: no job folder — the file's own name is what the matcher gets.
+        const direct = folderName.has(parent) ? { id: parent, name: folderName.get(parent)! } : rootSet.has(parent) ? { id: parent, name: f.name } : (subfolderJob.get(parent) ?? null)
         if (!direct) return null
         return {
           id: f.id,
@@ -139,7 +147,7 @@ serve(async (req) => {
       })
       .filter((x): x is NonNullable<typeof x> => x != null)
 
-    return json({ ok: true, files: out, job_folders: jobFolders.length, scanned: files.length, unattributed: files.length - out.length })
+    return json({ ok: true, files: out, job_folders: jobFolders.length, roots: roots.length, scanned: files.length, unattributed: files.length - out.length })
   } catch (e) {
     return json({ error: String(e instanceof Error ? e.message : e) }, 500)
   }
