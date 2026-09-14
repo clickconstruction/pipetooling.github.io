@@ -14,12 +14,15 @@ Some supply houses put a job's materials on a **job account** — an account ope
 
 The checkbox needs **exactly one job** on the invoice — job accounts belong to one property. With no job allocated (or the amount split across jobs) it stays off and tells you why.
 
-## The app checks the paperwork for you
+## The box checks itself
 
-When you check the box, it looks up whether that job's account packet was ever [shared with a supply house](?g=share-job-with-supply-house):
+Once the job is allocated, the form looks up that job's **account at this house**:
 
-- {{chip:green|Job account on file}} — the packet went out; you'll see the desk, the date, and who sent it.
-- {{chip:yellow|No job-account setup on record}} — nothing was shared through the app. If the house opened the account by phone or in person, keep the flag — it's a nudge, not a block. Otherwise send the packet from **Job Detail → Share with supply house** (the storefront icon).
+- {{chip:green|Job account open at Reece · ref R-88214}} — the box is already checked on a new invoice. Untick it only if this invoice is not on the account.
+- {{chip:yellow|No job account at Reece on record for this job}} — with {{button:green|Mark opened…}} right there: if the house opened one, record it (how, the reference, a note) and the box checks itself from then on. Not marked, the flag stays a nudge — never a block.
+- {{chip:gray|Marked not needed}} — the office decided this job does not need one there, and why.
+
+How an account gets opened and recorded — the tech's ask at the counter, the office's call to the rep, the PO code moment — is in [open a job account before buying parts](?g=open-a-job-account-before-buying-parts).
 
 ## Where the flag shows up
 
@@ -39,7 +42,6 @@ Whether a job **has** an account at a house is its own record, separate from thi
 
 ## The Dashboard keeps an eye on it
 
-Two **Needs You** cards appear only when there's a gap, and clear themselves once you fix it:
+One **Needs You** card appears only when there's a gap, and clears itself as you fix it: **N jobs bought parts at a house with no job account** — a supplier invoice landed (or a PO code was minted) in the last 180 days at a house that expects a job account, and nothing is on record for that job there. It names the dollars and the houses. {{button:outline|Review them}} opens **Materials → Job Accounts** on the **Bought, no account** filter; the same count sits in the Pipeline's Fix-ups strip as {{chip:yellow|No job account · N}}. Clear a job by marking the account opened (or not needed) on the house's roster under **Supply houses**.
 
-- **Jobs with job accounts that have unflagged invoices** — the packet went out, but unpaid invoices on that job aren't flagged. If they're on the account, flag them. {{button:outline|Review them}} opens Job Accounts on the **Packet on file, unflagged** filter.
-- **Invoices flagged with no packet on record** — you flagged invoices on a job that was never shared from the app. If the house opened the account by phone, nothing to do; otherwise send the packet from the job window's storefront icon. {{button:outline|Review them}} opens the **Flagged, no packet** filter.
+The older **Packet on file, unflagged** and **Flagged, no packet** filters are still on the Job Accounts tab for the packet bookkeeping; they no longer raise Dashboard cards.

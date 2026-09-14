@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useMemo, useState } from 'react'
+import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { AlertCircle } from 'lucide-react'
 import { supabase } from '../lib/supabase'
@@ -28,6 +28,8 @@ import { isAssistantLike } from '../lib/subcontractorLikeRole'
 import { phoneSafeMinWidth } from '../lib/stickyModalHeaderStyle'
 import { SupplyHouseJobAccountsSection } from './materials/SupplyHouseJobAccountsSection'
 import { SupplyHouseJobAccountsRoster } from './materials/SupplyHouseJobAccountsRoster'
+import { MarkJobAccountOpenedModal } from './materials/MarkJobAccountOpenedModal'
+import { openedViaPhrase, type JobSupplyHouseAccountRow } from '../lib/materials/jobSupplyHouseAccounts'
 import { useNarrowViewport640 } from '../hooks/useNarrowViewport640'
 import { useReportQuickfillSectionMetric } from '../contexts/QuickfillSectionMetricsContext'
 import { todayYmdInAppTz } from '../utils/dateUtils'
@@ -145,36 +147,54 @@ export function SupplyHousesTab({
   /** Job accounts are per property — the flag applies only when the invoice is allocated to exactly one job. */
   const invoiceSingleAllocatedJobId =
     invoiceJobAllocations.length === 1 ? (invoiceJobAllocations[0]?.job_id ?? null) : null
-  /** Latest v2.1605 share-packet record for the allocated job, keyed so we fetch once per job. */
-  const [invoiceJobAccountShare, setInvoiceJobAccountShare] = useState<
-    { contact_label: string; sent_at: string; sent_by_name: string } | null
-  >(null)
-  const [invoiceJobAccountShareJobId, setInvoiceJobAccountShareJobId] = useState<string | null>(null)
+  /**
+   * v2.3430: the job's account at THIS house (job_supply_house_accounts), keyed so we
+   * fetch once per (job, house). Open → the flag defaults on for a new invoice; else a
+   * nudge with Mark opened. Replaces the v2.2669 share-packet cross-check.
+   */
+  const [invoiceJobAccount, setInvoiceJobAccount] = useState<JobSupplyHouseAccountRow | null>(null)
+  const [invoiceJobAccountKey, setInvoiceJobAccountKey] = useState<string | null>(null)
+  const [invoiceJobAccountReps, setInvoiceJobAccountReps] = useState<Array<{ id: string; name: string | null; email: string; phone: string | null }>>([])
+  const [invoiceMarkOpenedOpen, setInvoiceMarkOpenedOpen] = useState(false)
+  /** The user touched the checkbox this session — stop defaulting it. */
+  const invoiceOnJobAccountTouchedRef = useRef(false)
   useEffect(() => {
-    if (!invoiceFormOpen || !invoiceSingleAllocatedJobId) {
-      setInvoiceJobAccountShare(null)
-      setInvoiceJobAccountShareJobId(null)
+    const houseId = selectedSupplyHouseForDetail?.id ?? null
+    if (!invoiceFormOpen || !invoiceSingleAllocatedJobId || !houseId) {
+      setInvoiceJobAccount(null)
+      setInvoiceJobAccountKey(null)
       return
     }
-    if (invoiceJobAccountShareJobId === invoiceSingleAllocatedJobId) return
+    const key = `${invoiceSingleAllocatedJobId}:${houseId}`
+    if (invoiceJobAccountKey === key) return
     let cancelled = false
     void (async () => {
-      const { data } = await supabase
-        .from('supply_house_job_accounts')
-        .select('contact_label, sent_at, sent_by_name')
-        .eq('job_id', invoiceSingleAllocatedJobId)
-        .order('sent_at', { ascending: false })
-        .limit(1)
+      const [accRes, repRes] = await Promise.all([
+        supabase
+          .from('job_supply_house_accounts')
+          .select('id, job_id, supply_house_id, status, account_ref, opened_via, rep_contact_id, requested_by, requested_at, requested_from_counter, opened_by, opened_at, note')
+          .eq('job_id', invoiceSingleAllocatedJobId)
+          .eq('supply_house_id', houseId)
+          .maybeSingle(),
+        supabase
+          .from('supply_house_contacts')
+          .select('id, name, email, phone')
+          .eq('supply_house_id', houseId)
+          .eq('role', 'job_accounts')
+          .is('archived_at', null),
+      ])
       if (cancelled) return
-      setInvoiceJobAccountShare(
-        (data?.[0] as { contact_label: string; sent_at: string; sent_by_name: string } | undefined) ?? null,
-      )
-      setInvoiceJobAccountShareJobId(invoiceSingleAllocatedJobId)
+      const row = accRes.error ? null : ((accRes.data as JobSupplyHouseAccountRow | null) ?? null)
+      setInvoiceJobAccount(row)
+      setInvoiceJobAccountReps(repRes.error ? [] : ((repRes.data ?? []) as Array<{ id: string; name: string | null; email: string; phone: string | null }>))
+      setInvoiceJobAccountKey(key)
+      // The default: a new invoice on a job with an open account here is on the account.
+      if (!editingInvoice && !invoiceOnJobAccountTouchedRef.current && row?.status === 'open') setInvoiceOnJobAccount(true)
     })()
     return () => {
       cancelled = true
     }
-  }, [invoiceFormOpen, invoiceSingleAllocatedJobId, invoiceJobAccountShareJobId])
+  }, [invoiceFormOpen, invoiceSingleAllocatedJobId, invoiceJobAccountKey, selectedSupplyHouseForDetail?.id, editingInvoice])
   const [invoiceJobDetailsMap, setInvoiceJobDetailsMap] = useState<Record<string, { hcp_number: string; click_number?: string; job_name: string; job_address: string }>>({})
   const [supplyHouseJobDetailsMap, setSupplyHouseJobDetailsMap] = useState<Record<string, { hcp_number: string; click_number?: string; job_name: string }>>({})
   const [savingInvoice, setSavingInvoice] = useState(false)
@@ -461,6 +481,8 @@ export function SupplyHousesTab({
   }
 
   function openAddInvoice() {
+    invoiceOnJobAccountTouchedRef.current = false
+    setInvoiceJobAccountKey(null)
     setEditingInvoice(null)
     setInvoiceNumber('')
     const todayYmd = todayYmdInAppTz()
@@ -478,6 +500,8 @@ export function SupplyHousesTab({
   }
 
   function openEditInvoice(inv: SupplyHouseInvoice | SupplyHouseInvoiceWithAllocations) {
+    invoiceOnJobAccountTouchedRef.current = true
+    setInvoiceJobAccountKey(null)
     setEditingInvoice(inv)
     setInvoiceNumber(inv.invoice_number)
     setInvoiceDate(inv.invoice_date)
@@ -1263,7 +1287,10 @@ export function SupplyHousesTab({
                     type="checkbox"
                     checked={invoiceOnJobAccount && invoiceSingleAllocatedJobId != null}
                     disabled={!invoiceSingleAllocatedJobId}
-                    onChange={(e) => setInvoiceOnJobAccount(e.target.checked)}
+                    onChange={(e) => {
+                      invoiceOnJobAccountTouchedRef.current = true
+                      setInvoiceOnJobAccount(e.target.checked)
+                    }}
                     style={{ marginTop: 2, accentColor: '#0f766e' }}
                   />
                   <span>
@@ -1282,19 +1309,52 @@ export function SupplyHousesTab({
                       : 'Job accounts are per property — available when the invoice is allocated to a single job.'}
                   </div>
                 )}
-                {invoiceOnJobAccount && invoiceSingleAllocatedJobId && (
-                  invoiceJobAccountShareJobId !== invoiceSingleAllocatedJobId ? null : invoiceJobAccountShare ? (
-                    <div style={{ marginTop: '0.5rem', fontSize: '0.8125rem', padding: '0.4rem 0.55rem', borderRadius: 5, background: 'var(--bg-green-tint)', color: 'var(--text-green-800)' }}>
-                      <strong>Job account on file</strong> — packet sent to {invoiceJobAccountShare.contact_label}{' '}
-                      {new Date(invoiceJobAccountShare.sent_at).toLocaleDateString()} by {invoiceJobAccountShare.sent_by_name}.
+                {invoiceSingleAllocatedJobId && invoiceJobAccountKey === `${invoiceSingleAllocatedJobId}:${selectedSupplyHouseForDetail.id}` ? (
+                  invoiceJobAccount?.status === 'open' ? (
+                    <div style={{ marginTop: '0.5rem', fontSize: '0.8125rem', padding: '0.4rem 0.55rem', borderRadius: 5, background: 'var(--bg-green-tint)', color: 'var(--text-green-800)' }} data-invoice-job-account="open">
+                      <strong>Job account open at {selectedSupplyHouseForDetail.name}</strong>
+                      {invoiceJobAccount.account_ref ? ` · ref ${invoiceJobAccount.account_ref}` : ''}
+                      {invoiceJobAccount.opened_at ? ` · ${openedViaPhrase(invoiceJobAccount.opened_via)} ${new Date(invoiceJobAccount.opened_at).toLocaleDateString()}` : ''}.
+                      {!invoiceOnJobAccount ? ' The flag is off — untick only if this invoice is not on the account.' : ''}
+                    </div>
+                  ) : invoiceJobAccount?.status === 'not_needed' ? (
+                    <div style={{ marginTop: '0.5rem', fontSize: '0.8125rem', padding: '0.4rem 0.55rem', borderRadius: 5, background: 'var(--bg-muted)', color: 'var(--text-muted)' }} data-invoice-job-account="not_needed">
+                      Marked <strong>not needed</strong> at {selectedSupplyHouseForDetail.name}{invoiceJobAccount.note ? ` — ${invoiceJobAccount.note}` : ''}.
                     </div>
                   ) : (
-                    <div style={{ marginTop: '0.5rem', fontSize: '0.8125rem', padding: '0.4rem 0.55rem', borderRadius: 5, background: 'var(--bg-amber-tint)', color: 'var(--text-amber-800)' }}>
-                      <strong>No job-account setup on record for this job.</strong> If the house opened one anyway, keep this
-                      checked — or send the packet from Job Detail → Share with supply house (storefront icon).
+                    <div style={{ marginTop: '0.5rem', fontSize: '0.8125rem', padding: '0.4rem 0.55rem', borderRadius: 5, background: 'var(--bg-amber-tint)', color: 'var(--text-amber-800)', display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.5rem' }} data-invoice-job-account={invoiceJobAccount?.status === 'requested' ? 'requested' : 'none'}>
+                      <span>
+                        <strong>{invoiceJobAccount?.status === 'requested' ? 'Job account asked for, not open yet' : `No job account at ${selectedSupplyHouseForDetail.name} on record for this job`}.</strong>{' '}
+                        If the house opened one, mark it — the flag will default on from then.
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setInvoiceMarkOpenedOpen(true)}
+                        style={{ padding: '0.2rem 0.55rem', fontSize: '0.75rem', fontWeight: 600, background: '#0f766e', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', font: 'inherit' }}
+                      >
+                        Mark opened…
+                      </button>
                     </div>
                   )
-                )}
+                ) : null}
+                {invoiceMarkOpenedOpen && invoiceSingleAllocatedJobId ? (
+                  <MarkJobAccountOpenedModal
+                    jobId={invoiceSingleAllocatedJobId}
+                    jobLabel={(() => {
+                      const d = invoiceJobDetailsMap[invoiceSingleAllocatedJobId]
+                      return d ? `${effectiveJobLedgerNumber(d.hcp_number, d.click_number) || '—'} · ${d.job_name || '—'}` : 'this job'
+                    })()}
+                    house={{ id: selectedSupplyHouseForDetail.id, name: selectedSupplyHouseForDetail.name }}
+                    existing={invoiceJobAccount}
+                    reps={invoiceJobAccountReps}
+                    onClose={() => setInvoiceMarkOpenedOpen(false)}
+                    onSaved={(row) => {
+                      setInvoiceMarkOpenedOpen(false)
+                      setInvoiceJobAccount(row)
+                      if (row.status === 'open' && !invoiceOnJobAccountTouchedRef.current) setInvoiceOnJobAccount(true)
+                    }}
+                  />
+                ) : null}
               </div>
               <div style={{ marginBottom: '0.75rem' }}>
                 <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>Due Date</label>

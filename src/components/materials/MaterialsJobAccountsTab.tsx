@@ -74,8 +74,8 @@ const STATUS_CHIP: Record<JobAccountsStatus, { label: string; background: string
 
 type UserRole = 'dev' | 'master_technician' | 'assistant' | 'estimator' | 'primary' | 'superintendent'
 
-type FilterKey = 'all' | 'owe_suppliers' | 'awaiting' | 'settled' | 'job_account' | 'needs_flag' | 'no_packet'
-const FILTER_KEYS: readonly FilterKey[] = ['all', 'owe_suppliers', 'awaiting', 'settled', 'job_account', 'needs_flag', 'no_packet']
+type FilterKey = 'all' | 'owe_suppliers' | 'awaiting' | 'settled' | 'job_account' | 'no_account' | 'needs_flag' | 'no_packet'
+const FILTER_KEYS: readonly FilterKey[] = ['all', 'owe_suppliers', 'awaiting', 'settled', 'job_account', 'no_account', 'needs_flag', 'no_packet']
 
 /** `?filter=` deep link (the Dashboard's job-account cards land here); unknown values read as All. */
 function filterFromParam(value: string | null): FilterKey {
@@ -95,6 +95,7 @@ function matchesFilter(row: JobAccountsRow, filter: FilterKey): boolean {
   if (filter === 'owe_suppliers') return row.status === 'owe_suppliers'
   if (filter === 'awaiting') return row.status === 'floating' || row.status === 'awaiting_customer'
   if (filter === 'job_account') return row.owedOnJobAccount > 0.005
+  if (filter === 'no_account') return row.missingAccountHouses.length > 0
   if (filter === 'needs_flag') return row.hasJobAccountShare && row.suppliersOwed - row.owedOnJobAccount > 0.005
   if (filter === 'no_packet') return !row.hasJobAccountShare && row.owedOnJobAccount > 0.005
   return row.status === 'settled'
@@ -226,7 +227,21 @@ export function MaterialsJobAccountsTab({ active, myRole, onOpenSupplyHouse }: M
         }),
         'load job account shares',
       ).catch(() => [] as { job_id: string }[])
-      const jobIds = [...new Set(allocations.map((a) => a.job_id))]
+      // The evidence rule (v2.3430): jobs that bought at a house expecting an account with none on record.
+      const noAccountByJob = new Map<string, string[]>()
+      try {
+        const { data: gaps, error: gapsErr } = await supabase.rpc('list_job_account_evidence_gaps')
+        if (!gapsErr) {
+          for (const g of (gaps ?? []) as Array<{ job_id: string; house_name: string }>) {
+            const list = noAccountByJob.get(g.job_id) ?? []
+            if (!list.includes(g.house_name)) list.push(g.house_name)
+            noAccountByJob.set(g.job_id, list)
+          }
+        }
+      } catch {
+        // pre-push: no filter rows
+      }
+      const jobIds = [...new Set([...allocations.map((a) => a.job_id), ...noAccountByJob.keys()])]
       const jobs = await fetchAllRowsChunkedIn(
         jobIds,
         async (chunk, from, to) => ({
@@ -255,6 +270,7 @@ export function MaterialsJobAccountsTab({ active, myRole, onOpenSupplyHouse }: M
           bidAllocations.map((b) => b.invoice_id),
           today,
           new Set(shareRows.map((s) => s.job_id)),
+          noAccountByJob,
         ),
       )
     } catch (e) {
@@ -392,6 +408,9 @@ export function MaterialsJobAccountsTab({ active, myRole, onOpenSupplyHouse }: M
                 { key: 'settled' as FilterKey, label: 'Settled', count: view.settledJobs },
                 ...(view.onJobAccountJobs > 0
                   ? [{ key: 'job_account' as FilterKey, label: 'On job account', count: view.onJobAccountJobs }]
+                  : []),
+                ...(view.noAccountJobs > 0 || filter === 'no_account'
+                  ? [{ key: 'no_account' as FilterKey, label: 'Bought, no account', count: view.noAccountJobs }]
                   : []),
                 ...(view.needsFlagJobs > 0 || filter === 'needs_flag'
                   ? [{ key: 'needs_flag' as FilterKey, label: 'Packet on file, unflagged', count: view.needsFlagJobs }]
@@ -669,6 +688,14 @@ export function MaterialsJobAccountsTab({ active, myRole, onOpenSupplyHouse }: M
                                 </>
                               )}
                             </span>
+                            {row.missingAccountHouses.length > 0 ? (
+                              <span
+                                title="This job bought from these houses (an invoice or a PO code in the last 180 days) and no job account is on record there — mark it opened or not needed on the house's roster under Supply houses."
+                                style={{ padding: '1px 8px', background: 'var(--bg-amber-tint)', color: 'var(--text-amber-800)', fontSize: '0.6875rem', fontWeight: 600, borderRadius: 999, whiteSpace: 'nowrap' }}
+                              >
+                                No job account at {row.missingAccountHouses.join(', ')}
+                              </span>
+                            ) : null}
                             {row.hasJobAccountShare ? (
                               <span
                                 title="A job-account setup packet was shared with a supply house for this job (see the job window's storefront icon)."

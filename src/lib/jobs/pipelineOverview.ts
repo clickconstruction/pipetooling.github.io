@@ -153,7 +153,7 @@ export function buildPipelineMoneyMoves(input: {
   return moves
 }
 
-export type PipelineFixupKey = 'no-customer' | 'no-pictures' | 'no-email'
+export type PipelineFixupKey = 'no-customer' | 'no-pictures' | 'no-email' | 'no-job-account'
 
 export type PipelineFixup = {
   key: PipelineFixupKey
@@ -173,6 +173,8 @@ export function buildPipelineFixups(counts: {
   noCustomer: number
   noPictures: number
   noEmail: number
+  /** v2.3430 — jobs that bought at a house expecting a job account with none on record. */
+  noJobAccount?: number
 }): PipelineFixup[] {
   const out: PipelineFixup[] = []
   if (counts.noCustomer > 0) {
@@ -197,6 +199,14 @@ export function buildPipelineFixups(counts: {
       label: `No email · ${counts.noEmail}`,
       tone: 'amber',
       title: 'Ready to Bill jobs with no customer email — Stripe and emailed invoices need one. Click to list them.',
+    })
+  }
+  if ((counts.noJobAccount ?? 0) > 0) {
+    out.push({
+      key: 'no-job-account',
+      label: `No job account · ${counts.noJobAccount}`,
+      tone: 'amber',
+      title: 'Jobs that bought parts at a supply house expecting a job account, with none on record. Click to list them on Materials → Job Accounts.',
     })
   }
   return out
