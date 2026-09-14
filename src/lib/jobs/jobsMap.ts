@@ -22,7 +22,9 @@ import { effectiveJobLedgerNumber } from '../ledgerDisplayPrefixes'
 import { normalizeAddressForGeocodeKey } from '../map/normalizeAddressForGeocode'
 import { effectiveInvoiceParty } from './billToParty'
 import { milesBetween } from '../bids/bidBoardMap'
-import { formatCurrencyNoCents } from './jobFormatting'
+import { calendarDaysSinceDateUtc, formatCurrencyNoCents } from './jobFormatting'
+import { effectiveInvoiceEstBillDate } from './invoiceBilling'
+import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 
 export type JobsMapSection = 'waiting' | 'working' | 'readyToBill' | 'billed' | 'paid'
 
@@ -76,6 +78,8 @@ export type JobsMapJob = {
   pctComplete: number | null
   /** Open bills (ready-to-bill drafts + billed remainders) minus payments applied — the Pipeline's own number. */
   owedDollars: number
+  /** Whole days since the oldest open bill went out (the board's own reference: the hand-set bill date, else `billed_at`); null on other jobs. */
+  billedAgeDays: number | null
   /** The board row this job came from — the openers take it back. */
   row: JobWithDetails
 }
@@ -89,6 +93,22 @@ function sectionOf(job: JobWithDetails): { section: JobsMapSection; inCollection
   return { section: key, inCollections: false }
 }
 
+/** The oldest open billed invoice's age, by the Billed section's own reference rule (`stageRowBilledAgeReference`). */
+export function jobBilledAgeDays(job: Pick<JobWithDetails, 'invoices'>, now: Date = new Date()): number | null {
+  let oldest: number | null = null
+  for (const inv of job.invoices ?? []) {
+    if (inv.status !== 'billed') continue
+    const est = effectiveInvoiceEstBillDate(inv)
+    const billedAt = (inv.billed_at ?? '').trim()
+    const ymd = est ?? (billedAt ? calendarYmdInAppTzFromIso(billedAt) : '')
+    if (!ymd) continue
+    const days = calendarDaysSinceDateUtc(ymd, now)
+    if (days < 0) continue
+    if (oldest == null || days > oldest) oldest = days
+  }
+  return oldest
+}
+
 function payerNameOf(job: JobWithDetails): string | null {
   const party = effectiveInvoiceParty(job, null)
   const name = party === 'gc' ? job.gcCustomer?.name : job.customer_name
@@ -100,7 +120,7 @@ function payerNameOf(job: JobWithDetails): string | null {
  * same rule the # jump uses (`stagesSectionKeyForJobRow`). A job with no usable
  * address goes to `noAddress` — nothing to put on a map, but the footer names it.
  */
-export function jobsMapJobs(rows: readonly JobWithDetails[]): { jobs: JobsMapJob[]; noAddress: JobsMapJob[] } {
+export function jobsMapJobs(rows: readonly JobWithDetails[], now: Date = new Date()): { jobs: JobsMapJob[]; noAddress: JobsMapJob[] } {
   const jobs: JobsMapJob[] = []
   const noAddress: JobsMapJob[] = []
   const seen = new Set<string>()
@@ -125,6 +145,7 @@ export function jobsMapJobs(rows: readonly JobWithDetails[]): { jobs: JobsMapJob
       inCollections: bucket.inCollections,
       pctComplete: row.pct_complete != null && Number.isFinite(Number(row.pct_complete)) ? Number(row.pct_complete) : null,
       owedDollars: bucket.section === 'billed' || bucket.section === 'readyToBill' ? jobOpenBillingRemainderDollars(row) : 0,
+      billedAgeDays: bucket.section === 'billed' ? jobBilledAgeDays(row, now) : null,
       row,
     }
     if (addressKey.length < 3) noAddress.push(job)

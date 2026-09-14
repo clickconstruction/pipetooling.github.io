@@ -6,10 +6,12 @@
  * location yet" line whose number lights the row; legend chips toggle pins
  * only and Paid starts off (its first tap asks the board to load Paid rows);
  * a pin click focuses its row; Hide map collapses to the header and persists
- * per device; the phone bar's buttons.
+ * per device; the phone bar's buttons. v2.3397: the rail's distance buckets
+ * hide pins, an ask row selects its pin, and a Pipeline row hover pulses the
+ * pin by delegation on `data-stages-job-id`.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { JobsMapCard } from './JobsMapCard'
 import type { JobWithDetails } from '../../types/jobWithDetails'
 import type { PinsMapCanvasProps } from '../map/PinsMapCanvas'
@@ -40,7 +42,7 @@ vi.mock('../map/PinsMapGoogleCanvas', () => ({
 // The Leaflet canvas is lazy + heavy; stand in with a list of pin buttons that drive the same callbacks.
 vi.mock('../map/PinsMapCanvas', () => ({
   default: (p: PinsMapCanvasProps) => (
-    <div data-testid="canvas" data-anchor={p.anchor ? `${p.anchor.label}:${(p.anchor.ringMiles ?? []).join('/')}` : ''}>
+    <div data-testid="canvas" data-anchor={p.anchor ? `${p.anchor.label}:${(p.anchor.ringMiles ?? []).join('/')}` : ''} data-pulse={p.pulseId ?? ''}>
       {p.pins.map((pin) => (
         <button key={pin.id} type="button" onClick={() => p.onSelect(pin.id)} data-color={pin.color} data-ring={pin.ringColor ?? ''}>
           pin {pin.title}
@@ -144,7 +146,7 @@ describe('JobsMapCard', () => {
     expect(screen.queryByText(/^pin 900 · Paid One$/)).toBeNull()
     const paidChip = screen.getByTitle(/Paid jobs load when their section opens/)
     expect(paidChip.getAttribute('aria-pressed')).toBe('false')
-    expect(screen.getByText(/1 pinned · Paid 1 off/)).toBeTruthy()
+    expect(screen.getByText(/1 pinned · \$0 to collect · Paid 1 off/)).toBeTruthy()
     fireEvent.click(paidChip)
     expect(onLoadPaid).toHaveBeenCalledTimes(1)
     expect(screen.getByText(/^pin 900 · Paid One$/)).toBeTruthy()
@@ -191,6 +193,46 @@ describe('JobsMapCard', () => {
     expect(openExternal).toHaveBeenCalledTimes(1)
     fireEvent.click(screen.getByRole('button', { name: 'Open job' }))
     expect(onOpenJob).toHaveBeenCalledWith(expect.objectContaining({ id: 'a' }))
+  })
+
+  it('v2.3397: the rail buckets hide pins by distance, and an ask row selects its pin and lights the row', async () => {
+    cacheRows.mockReturnValue([
+      { address_normalized: '173 atlantis, kyle', lat: 29.7, lng: -97.8 },
+      { address_normalized: '9 far rd, dallas', lat: 32.8, lng: -96.8 },
+    ])
+    renderCard([
+      job({ id: 'near', status: 'billed', invoices: [{ id: 'i1', status: 'billed', amount: 18400, billed_at: '2026-07-30T14:00:00Z', estimated_bill_date: null }] as unknown as JobWithDetails['invoices'] }),
+      job({ id: 'far', hcp_number: '700', job_name: 'Dallas one', job_address: '9 Far Rd, Dallas' }),
+    ])
+    await screen.findByText(/^pin 700 · Dallas one$/)
+    fireEvent.click(screen.getByTitle(/Hide the 50 mi \+ pins/))
+    expect(screen.queryByText(/^pin 700 · Dallas one$/)).toBeNull()
+    expect(screen.getByText(/^pin 1019 · Vasquez pretest$/)).toBeTruthy()
+    // the ask list names the oldest bill with its age and distance; tapping it selects the pin and lights the row
+    const askRow = screen.getByTitle(/1019 · Vasquez pretest — show it on the map/)
+    expect(askRow.textContent).toMatch(/Billed \d+ d/)
+    fireEvent.click(askRow)
+    expect(onFocusRow).toHaveBeenCalledWith(expect.objectContaining({ id: 'near' }))
+    expect(screen.getByTestId('popup').textContent).toContain('$18,400 owed')
+    expect(screen.getByText(/2 pinned · \$18\.4k to collect/)).toBeTruthy()
+  })
+
+  it('v2.3397: hovering a Pipeline row pulses its pin; leaving the rows clears it', async () => {
+    cacheRows.mockReturnValue([{ address_normalized: '173 atlantis, kyle', lat: 30.0, lng: -97.9 }])
+    renderCard([job({ id: 'a' })])
+    const canvas = await screen.findByTestId('canvas')
+    const row = document.createElement('div')
+    row.setAttribute('data-stages-job-id', 'a')
+    document.body.appendChild(row)
+    act(() => {
+      fireEvent.mouseOver(row)
+    })
+    expect(canvas.getAttribute('data-pulse')).toBe('a')
+    act(() => {
+      fireEvent.mouseOver(document.body)
+    })
+    expect(canvas.getAttribute('data-pulse')).toBe('')
+    row.remove()
   })
 
   it('uses the Google canvas when a browser key is configured', async () => {
