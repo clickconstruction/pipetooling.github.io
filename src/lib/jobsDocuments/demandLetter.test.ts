@@ -177,6 +177,17 @@ describe('statement of account (v2.3425)', () => {
     expect(kinds).toContain('statement')
   })
 
+  it('names its exhibits under the statement and as enclosures at the foot (v2.3429)', () => {
+    const text = buildDemandLetterText(
+      { ...withStatement, enclosures: [{ label: 'A', title: 'Invoice #867-2608180928, as sent August 18, 2026', pages: 1 }, { label: 'C', title: 'Delivery record', pages: 1 }] },
+      '2026-09-14',
+    )
+    expect(text).toContain('The invoice is enclosed as Exhibit A and the delivery record as Exhibit C. All payments and credits have been allowed.')
+    expect(text.trim().endsWith('Enclosures: Exhibit A — Invoice #867-2608180928, as sent August 18, 2026 (1 page) · Exhibit C — Delivery record (1 page)')).toBe(true)
+    const plain = buildDemandLetterText(withStatement, '2026-09-14')
+    expect(plain).not.toContain('Exhibit')
+  })
+
   it('a snapshot recorded before the statement still renders the four-line debt block', () => {
     const text = buildDemandLetterText({ ...FIELDS, statement: undefined }, '2026-09-02')
     expect(text).toContain('Details of Debt')
