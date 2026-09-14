@@ -1,6 +1,6 @@
 # Owner of record, asked at the right moment — three prompts so no lien notice is ever blocked on a missing owner
 
-Status: **not started** · planned 2026-09-14 · mock-up drawn 2026-09-14 for the owner's review before the build ([`mockup.html`](./mockup.html) — the three moments on today's seven desk jobs, the critique, the plan; also a Claude artifact) · the prerequisite for [`gc-on-notice/`](../gc-on-notice/README.md) and the daily blocker on the Lien desk (every one of the seven jobs due on 2026-09-15 sat in *Needs the owner*) · build the Fix-ups count first (smallest piece; clears today's pile)
+Status: **not started** · planned 2026-09-14 · mock-up drawn 2026-09-14 for the owner's review before the build ([`mockup.html`](./mockup.html) — the three moments on today's seven desk jobs, the critique, the plan; also a Claude artifact) · the four open decisions drawn both ways with tonight's counts in [`mockup-decisions.html`](./mockup-decisions.html) (artifact *Owner of Record Decisions*; the owner's picks save on that page) · **data correction 2026-09-14:** six of the seven desk jobs have a GC set and no customer row (42 of the 62 open GC jobs are that shape); the builder-in-the-customer-row case is 3 open jobs · the prerequisite for [`gc-on-notice/`](../gc-on-notice/README.md) and the daily blocker on the Lien desk (every one of the seven jobs due on 2026-09-15 sat in *Needs the owner*) · build the Fix-ups count first (smallest piece; clears today's pile)
 
 ## The ask, in the owner's words
 
@@ -11,7 +11,7 @@ Status: **not started** · planned 2026-09-14 · mock-up drawn 2026-09-14 for th
 - The § 53.056 notice goes to the **owner of record** at a mailing address; without one the desk cannot mail, and the Lien window's affidavit gate stops too. Today the owner is entered on the property record (Customers → Properties, or Edit Job → Property record since v2.3401) — three doors from the Pipeline, and nobody is prompted.
 - The app already does the hard part: the property record's **paste-the-CAD-page** box (`cadPagePaste.ts`) picks out the owner name, mailing address, legal description and the homestead exemption from a copied appraisal-district page, and `CustomerPropertyRecordPanel` runs the parcel lookup (county, legal) as it opens. So a prompt is one paste, not a form.
 - The owner belongs to the **property**, not the job: RMC Dudley Mason's 16 jobs sit at a handful of addresses; one paste covers every job at an address, now and later.
-- A builder entered as the customer with no GC set reads as "we contracted with the owner" and gets no monthly-notice clock at all; the same prompt should ask which it is.
+- A builder entered as the customer with no GC set reads as "we contracted with the owner" and gets no monthly-notice clock at all; the same prompt should ask which it is. (Live count 2026-09-14: 3 open jobs. The larger gap is the other way round — 42 of the 62 open GC jobs have a GC and **no customer row at all**, so the owner slot is simply empty.)
 
 ## The decision — three moments, each lighter than the last
 

@@ -1,0 +1,228 @@
+<meta charset="utf-8">
+<title>Owner of Record Decisions</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+:root{
+  --ground:#f3f4f2; --surface:#ffffff; --surface-2:#f7f8f7; --border:#e2e5e3; --border-strong:#c9cecb;
+  --ink:#1c2321; --muted:#667470; --faint:#98a39f;
+  --blue:#2563eb; --blue-soft:#e8efff; --blue-ink:#1d4ed8;
+  --red:#dc2626; --red-soft:#fdecec; --red-ink:#b91c1c;
+  --amber:#d97706; --amber-soft:#fff4e0; --amber-ink:#b45309;
+  --green:#16a34a; --green-soft:#e7f7ec; --green-ink:#15803d;
+  --note:#fff9db; --note-ink:#6b5300; --shadow:0 20px 50px rgba(20,30,26,.18);
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --ground:#151917; --surface:#1e2422; --surface-2:#242b28; --border:#303835; --border-strong:#46504c;
+  --ink:#e9ede9; --muted:#a1aca7; --faint:#6f7a76; --blue:#6b95ff; --blue-soft:#1d2a49; --blue-ink:#a9c0ff;
+  --red:#f27070; --red-soft:#3a1f1f; --red-ink:#ff9b9b; --amber:#f0a03a; --amber-soft:#3a2c14; --amber-ink:#ffc46a;
+  --green:#4ecb75; --green-soft:#173424; --green-ink:#8ee6a8; --note:#3a3416; --note-ink:#ffe58a; --shadow:0 20px 50px rgba(0,0,0,.5); color-scheme: dark; } }
+:root[data-theme="dark"]{
+  --ground:#151917; --surface:#1e2422; --surface-2:#242b28; --border:#303835; --border-strong:#46504c;
+  --ink:#e9ede9; --muted:#a1aca7; --faint:#6f7a76; --blue:#6b95ff; --blue-soft:#1d2a49; --blue-ink:#a9c0ff;
+  --red:#f27070; --red-soft:#3a1f1f; --red-ink:#ff9b9b; --amber:#f0a03a; --amber-soft:#3a2c14; --amber-ink:#ffc46a;
+  --green:#4ecb75; --green-soft:#173424; --green-ink:#8ee6a8; --note:#3a3416; --note-ink:#ffe58a; --shadow:0 20px 50px rgba(0,0,0,.5); color-scheme: dark; }
+*{box-sizing:border-box}
+body{margin:0;background:var(--ground);color:var(--ink);font:14px/1.5 "IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;padding-block:32px 80px;padding-inline:24px}
+.num{font-variant-numeric:tabular-nums}.mono{font-family:"IBM Plex Mono",ui-monospace,Menlo,monospace}
+.wrap{max-width:1140px;margin:0 auto;display:grid;gap:40px}
+h1{font-size:26px;line-height:1.2;margin:0 0 6px;font-weight:600;letter-spacing:-.01em;text-wrap:balance}
+h2{font-size:18px;margin:0;font-weight:600;text-wrap:balance} h3{font-size:14px;margin:0;font-weight:600} p{margin:0}
+.lede{max-width:72ch;color:var(--muted)} .lede b{color:var(--ink);font-weight:600}
+.eyebrow{font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.section{display:grid;gap:14px}.section-head{display:grid;gap:4px}.section-head .sub{color:var(--muted);max-width:78ch}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px 16px;display:grid;gap:8px}.card p{color:var(--muted);max-width:62ch}.card p b{color:var(--ink);font-weight:600}
+.opt{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px 16px;display:grid;gap:10px;align-content:start}
+.opt.rec{border-color:var(--green);box-shadow:inset 3px 0 0 var(--green)}
+.opt .oh{display:flex;justify-content:space-between;align-items:baseline;gap:10px}.opt .oh .l{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.opt .cost{font-size:12.5px;color:var(--muted);display:grid;gap:3px}.opt .cost b{color:var(--ink);font-weight:600}
+.chip{display:inline-block;border-radius:5px;padding:0 6px;font-size:11px;font-weight:600;line-height:18px;white-space:nowrap;vertical-align:middle}
+.chip.red{background:var(--red-soft);color:var(--red-ink)}.chip.amber{background:var(--amber-soft);color:var(--amber-ink)}.chip.green{background:var(--green-soft);color:var(--green-ink)}.chip.grey{background:var(--surface-2);color:var(--muted);border:1px solid var(--border)}
+.btn{border:1px solid var(--border-strong);background:var(--surface);color:var(--ink);border-radius:7px;padding:5px 10px;font:inherit;font-size:12.5px;white-space:nowrap}
+.btn.primary{background:var(--blue);border-color:var(--blue);color:#fff}.btn.small{padding:3px 8px;font-size:12px}.btn.link{border:0;background:none;color:var(--blue-ink);padding:0;text-decoration:underline dotted}
+.mark{display:inline-grid;place-items:center;width:18px;height:18px;border-radius:50%;background:var(--note);color:var(--note-ink);font-size:11px;font-weight:700}
+.modal{background:var(--surface);border:1px solid var(--border);border-radius:12px;box-shadow:var(--shadow);overflow:hidden}
+.mhead{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;padding:12px 16px 8px;border-bottom:1px solid var(--border)}.mhead h3{font-size:14px}.mhead .x{color:var(--faint);font-size:18px;line-height:1}
+.body{padding:10px 16px;display:grid;gap:10px}
+.box{border:1px solid var(--border);border-radius:9px;padding:10px 12px;display:grid;gap:6px;background:var(--surface)}.box .bh{font-size:10.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.door{display:flex;justify-content:space-between;align-items:center;gap:10px;border:1px solid var(--border-strong);border-radius:8px;padding:7px 11px;font-size:12.5px}.door.primary{background:var(--blue);border-color:var(--blue);color:#fff}.door .sub{display:block;font-size:11px;opacity:.85;font-weight:400}.door b{font-weight:600}
+.paste{border:1px dashed var(--border-strong);border-radius:8px;padding:7px 10px;background:var(--surface-2);font-size:11.5px;color:var(--muted);min-height:44px}
+.fixcard{border:1px solid var(--border);border-left:3px solid var(--amber);border-radius:8px;background:var(--surface);padding:9px 11px;display:grid;gap:6px}.fixcard .t{font-size:13px;font-weight:600}.fixcard .chips{display:flex;gap:6px;flex-wrap:wrap}.fixcard .foot{font-size:11px;color:var(--muted)}
+.pill{border-radius:9999px;padding:2px 10px;font-size:12px;font-weight:500;border:1px solid transparent}.pill.red{background:var(--red-soft);color:var(--red-ink);border-color:#fecaca}.pill.amber{background:var(--amber-soft);color:var(--amber-ink);border-color:#fcd34d}.pill.grey{background:var(--surface-2);color:var(--muted);border-color:var(--border)}
+.quiet{border-left:3px solid var(--amber);padding:6px 10px;background:var(--amber-soft);color:var(--amber-ink);border-radius:0 6px 6px 0;font-size:12.5px}
+.quiet.red{border-color:var(--red);background:var(--red-soft);color:var(--red-ink)}
+.found{display:grid;grid-template-columns:auto 1fr;gap:3px 12px;font-size:12px}.found dt{color:var(--muted)}.found dd{margin:0}
+table.jobs{width:100%;border-collapse:collapse;font-size:12.5px}table.jobs th{text-align:left;font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);padding:6px 8px;border-bottom:1px solid var(--border)}table.jobs td{padding:6px 8px;border-bottom:1px solid var(--border);vertical-align:top}
+.strip{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}.tile{border:1px solid var(--border);border-radius:9px;padding:9px 10px;background:var(--surface)}.tile .t{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}.tile .v{font-size:22px;font-weight:600;line-height:1.2}.tile .s{font-size:12px;color:var(--muted)}
+.correction{background:var(--surface);border:1px solid var(--border);border-left:4px solid var(--amber);border-radius:10px;padding:16px 20px;display:grid;gap:8px}.correction p{color:var(--muted);max-width:86ch}.correction p b{color:var(--ink);font-weight:600}
+.pick{display:flex;gap:6px;align-items:center;flex-wrap:wrap;font-size:12.5px;color:var(--muted)}
+.pick button{font:inherit;font-size:12.5px;font-weight:600;padding:4px 12px;border-radius:999px;border:1px solid var(--border-strong);background:var(--surface);color:var(--ink);cursor:pointer}
+.pick button[aria-pressed="true"]{background:var(--ink);color:var(--ground);border-color:var(--ink)}
+.pick input{font:inherit;font-size:12.5px;padding:4px 8px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--ink);min-width:220px;flex:1}
+.sync{font-size:12px;color:var(--muted)}
+.timeline{display:grid;grid-template-columns:repeat(4,1fr);gap:0;font-size:12px}.timeline div{padding:8px 10px;border:1px solid var(--border);background:var(--surface);border-right:0}.timeline div:last-child{border-right:1px solid var(--border)}.timeline .on{background:var(--amber-soft);color:var(--amber-ink)}.timeline .off{color:var(--faint)}.timeline b{display:block;font-weight:600;color:inherit}
+@media (max-width:900px){.grid2{grid-template-columns:1fr}.strip,.timeline{grid-template-columns:1fr 1fr}}
+</style>
+
+<div class="wrap">
+  <header class="section">
+    <div>
+      <p class="eyebrow">Owner of record prompts · the four decisions · drawn 2026-09-14</p>
+      <h1>Four decisions, each drawn both ways</h1>
+      <p class="lede">Every number below was read from the live database tonight. Pick a side on each card; the picks save so the build can start from them. My recommendation is the green-edged option in each pair.</p>
+    </div>
+    <div class="strip">
+      <div class="tile"><div class="t">Open jobs with a GC</div><div class="v num">62</div><div class="s">of 107 open jobs</div></div>
+      <div class="tile"><div class="t">…with no customer row at all</div><div class="v num">42</div><div class="s">the GC is the only party on the job</div></div>
+      <div class="tile"><div class="t">…with no owner of record</div><div class="v num">59</div><div class="s">35 of them already have approved hours</div></div>
+      <div class="tile"><div class="t">On the Lien desk tonight</div><div class="v num">7</div><div class="s">the 30-day window; all 7 lack an owner</div></div>
+    </div>
+    <p class="sync" id="sync">Connecting to the shared picks…</p>
+  </header>
+
+  <section class="correction">
+    <h2>One correction to the first mock-up</h2>
+    <p>The first page read the five desk jobs with no customer name as "the builder is the customer." The database says otherwise: <b>on six of the seven, the GC is set and the customer row is empty</b> (J258 carries the owners' names as typed text, no customer record). Across the board it is the same shape — 42 of the 62 open GC jobs have no customer row. So the "who owns the site?" paste is the whole answer for most of the pile, and the separate builder-as-customer question (a builder in the customer row, no GC) is a smaller case: 3 open jobs today, 4 of the 57 jobs created in the last 30 days. Both prompts stay; the numbers just swap which one is the main door.</p>
+  </section>
+
+  <!-- Decision 1 -->
+  <section class="section">
+    <div class="section-head"><h2><span class="mark">1</span>&nbsp; Should the Fix-ups count include Waiting jobs with a GC, before any hours?</h2><p class="sub">Today: 22 Waiting jobs · 8 name a GC · 5 of those have no owner · <b>4 of the 5 already have approved hours</b> (crews clocked in while the job still reads Waiting). So the two rules differ by one job tonight — the argument is about what the count means, not its size.</p></div>
+    <div class="grid2">
+      <div class="opt rec">
+        <div class="oh"><span class="l">A · Hours only (recommended)</span><span class="chip green">count = 35</span></div>
+        <div class="fixcard"><div class="t">🔎 Fix-ups — missing data blocks billing</div><div class="chips"><span class="pill red">No customer pictures · 1</span><span class="pill amber">No owner of record · 35</span></div><div class="foot">GC jobs with approved hours and no owner — the lien clock is running on every one of these</div></div>
+        <div class="cost"><b>What it means</b><span>The count is a debt: every job in it has a notice month accruing. A Waiting job with a GC and no hours is not in it yet — it appears the day the first session is approved. The job-form prompt (decision 2) is what catches it earlier.</span><span>Tonight's one Waiting job with no hours — J372, RMC- Dudley Mason, 1780 FM 1343 in Castroville — stays out until someone clocks in.</span></div>
+      </div>
+      <div class="opt">
+        <div class="oh"><span class="l">B · Any GC job, Waiting included</span><span class="chip amber">count = 36</span></div>
+        <div class="fixcard"><div class="t">🔎 Fix-ups — missing data blocks billing</div><div class="chips"><span class="pill red">No customer pictures · 1</span><span class="pill amber">No owner of record · 36</span><span class="pill grey">1 not started</span></div><div class="foot">GC jobs with no owner, whether or not work has begun</div></div>
+        <div class="cost"><b>What it means</b><span>The count becomes a checklist: "every GC job should have an owner on file." Cleaner as a rule, noisier as a card — a job sold on Friday and starting in three weeks sits in the amber count all weekend.</span><span>If you pick B, the list should mark the not-started rows so the office does the running-clock ones first.</span></div>
+      </div>
+    </div>
+    <div class="pick" data-d="d1"><span>Your pick:</span><button data-v="A">A · Hours only</button><button data-v="B">B · Waiting too</button><input id="note-d1" placeholder="A note, if you want one…"></div>
+  </section>
+
+  <!-- Decision 2 -->
+  <section class="section">
+    <div class="section-head"><h2><span class="mark">2</span>&nbsp; Which new jobs get the owner question on the job form?</h2><p class="sub">The last 30 days: <b>57 new jobs</b> · 23 with a GC (14 of those with no customer row) · 4 with a builder in the customer row and no GC · 30 direct jobs with neither. The prompt rides on the contract question the form already asks after a New Job save.</p></div>
+    <div class="grid2">
+      <div class="opt rec">
+        <div class="oh"><span class="l">A · Only when a GC is set, or the customer is a builder (recommended)</span><span class="chip green">27 of 57 jobs asked</span></div>
+        <div class="timeline">
+          <div class="on"><b>GC set, no customer row</b>14 jobs · asks <i>who owns the site?</i></div>
+          <div class="on"><b>GC set, owner row present</b>9 jobs · asks for the paste on that owner</div>
+          <div class="on"><b>Builder as customer, no GC</b>4 jobs · asks <i>owner, or building for someone?</i></div>
+          <div class="off"><b>Direct job</b>30 jobs · no question</div>
+        </div>
+        <div class="cost"><b>What it means</b><span>The question appears exactly where a § 53.056 notice could ever be due. A homeowner who hired us directly is the owner of record already — asking would be asking them to paste their own tax page.</span><span>The 30 direct jobs still get the property record's benefits (county, legal description) if someone opens it, just not a prompt.</span></div>
+      </div>
+      <div class="opt">
+        <div class="oh"><span class="l">B · Every new job</span><span class="chip amber">57 of 57 jobs asked</span></div>
+        <div class="modal"><div class="mhead"><h3>Does J1021 need a contract?</h3><span class="x">×</span></div><div class="body">
+          <p style="color:var(--muted);font-size:12px"><b style="color:var(--ink)">Water heater swap</b> · Maria Delgado · $1,850</p>
+          <div class="door primary"><span><b>Send our agreement</b><span class="sub">To Maria Delgado — the scope and amount from this job</span></span><span>→</span></div>
+          <div class="box" style="border-color:var(--amber)"><div class="bh">Who owns the site? — the lien notice goes to the owner of record</div><div class="paste">Paste the county's page for 4410 Prue Rd… (Maria is the customer; on a direct job the affidavit names her, no monthly notice is due)</div><div style="display:flex;justify-content:space-between"><span class="btn link" style="color:var(--muted)">Skip for now</span><span class="btn primary small">Save the owner</span></div></div>
+        </div></div>
+        <div class="cost"><b>What it means</b><span>Consistent — every job has the same form. But on a direct residential job the box asks for something the customer record already knows, and thirty extra "Skip for now" clicks a month teach the office that the box is skippable, which is the one thing a prompt must never teach.</span></div>
+      </div>
+    </div>
+    <div class="pick" data-d="d2"><span>Your pick:</span><button data-v="A">A · GC / builder jobs only</button><button data-v="B">B · Every new job</button><input id="note-d2" placeholder="A note, if you want one…"></div>
+  </section>
+
+  <!-- Decision 3 -->
+  <section class="section">
+    <div class="section-head"><h2><span class="mark">3</span>&nbsp; When the paste names a homestead, say so on the spot?</h2><p class="sub">Today: 397 property rows on file, <b>0 flagged homestead</b> — not because there are none (281 of 425 customers are residential) but because only 7 rows have ever been pasted. The exposure is unknown until the pastes start, which is exactly when a one-line warning is cheapest.</p></div>
+    <div class="grid2">
+      <div class="opt rec">
+        <div class="oh"><span class="l">A · One line, on the spot (recommended)</span><span class="chip green">before work starts</span></div>
+        <div class="box" style="border-color:var(--amber)">
+          <div class="bh">Who owns the site?</div>
+          <dl class="found"><dt>Found</dt><dd><span class="chip green">owner</span> <span class="chip green">mailing address</span> <span class="chip green">legal description</span> <span class="chip red">homestead: yes</span></dd><dt>Owner</dt><dd>Daniel &amp; Priya Oakes</dd><dt>Mail to</dt><dd>1208 Cedar Elm Ln, Boerne, TX 78006</dd></dl>
+          <div class="quiet red">This is a homestead. A lien on a homestead needs a contract signed by both spouses and recorded with the county <b>before work starts</b> — talk to the attorney before the crew goes out. <span class="btn link" style="color:var(--red-ink)">Read the guide</span></div>
+          <div style="display:flex;justify-content:space-between"><span class="btn link" style="color:var(--muted)">Skip for now</span><span class="btn primary small">Save the owner on 1208 Cedar Elm Ln</span></div>
+        </div>
+        <div class="cost"><b>What it means</b><span>The one moment the warning is actionable is before the first day on site; the property record already stores the flag, so this costs nothing but the sentence. The wording is the attorney's — the mock-up's line is a placeholder for it.</span></div>
+      </div>
+      <div class="opt">
+        <div class="oh"><span class="l">B · Store the flag, say nothing here</span><span class="chip amber">surfaces at filing time</span></div>
+        <div class="box">
+          <div class="bh">Who owns the site?</div>
+          <dl class="found"><dt>Found</dt><dd><span class="chip green">owner</span> <span class="chip green">mailing address</span> <span class="chip green">legal description</span> <span class="chip grey">homestead: yes</span></dd><dt>Owner</dt><dd>Daniel &amp; Priya Oakes</dd></dl>
+          <div style="display:flex;justify-content:space-between"><span class="btn link" style="color:var(--muted)">Skip for now</span><span class="btn primary small">Save the owner</span></div>
+        </div>
+        <p style="font-size:12px;color:var(--muted)">…and weeks later, in the Lien window, when the affidavit is being prepared:</p>
+        <div class="quiet red">Homestead — a lien needs a recorded pre-work contract. None is on file for this job.</div>
+        <div class="cost"><b>What it means</b><span>Quieter form. But the flag is only useful before the work, and by the time the Lien window reads it the contract that would have saved the lien right could no longer be recorded "before work starts."</span></div>
+      </div>
+    </div>
+    <div class="pick" data-d="d3"><span>Your pick:</span><button data-v="A">A · Say it on the spot</button><button data-v="B">B · Flag only</button><input id="note-d3" placeholder="A note, if you want one…"></div>
+  </section>
+
+  <!-- Decision 4 -->
+  <section class="section">
+    <div class="section-head"><h2><span class="mark">4</span>&nbsp; The card's window: every GC job with hours and no owner, or only the desk's due items?</h2><p class="sub">The Lien desk lists notices whose deadline is inside 30 days — <b>7 tonight</b>. The wider read — every GC job with approved hours and no owner, whatever the deadline — is <b>35</b>. The 28 jobs the desk does not show split two ways: <b>13 whose first month's window has already closed</b> (later months on those jobs are still live, and still need an owner) and 15 whose first notice falls due between October and December.</p></div>
+    <div class="grid2">
+      <div class="opt rec">
+        <div class="oh"><span class="l">A · Every GC job with hours (recommended)</span><span class="chip green">35 tonight</span></div>
+        <div class="fixcard"><div class="t">🔎 Fix-ups — missing data blocks billing</div><div class="chips"><span class="pill red">No customer pictures · 1</span><span class="pill amber">No owner of record · 35</span></div><div class="foot">7 due within 30 days · 13 already past a first window · 15 due Oct–Dec</div></div>
+        <div class="modal"><div class="body" style="padding-block:6px">
+          <table class="jobs"><thead><tr><th>Property</th><th>Jobs</th><th>Builder</th><th>First notice</th><th></th></tr></thead><tbody>
+            <tr><td>5498 Cibolo Valley Dr 200, Schertz</td><td class="mono">J650</td><td>Loberg Contracting</td><td><span class="chip red">due Sep 15</span></td><td><span class="btn small">Paste the page…</span></td></tr>
+            <tr><td>628 Terrell Rd, San Antonio</td><td class="mono">J258</td><td>RMC- Dudley Mason</td><td><span class="chip red">due Sep 15</span></td><td><span class="btn small">Paste the page…</span></td></tr>
+            <tr><td>… 5 more due this month …</td><td></td><td></td><td></td><td></td></tr>
+            <tr><td>2100 Independence Dr, New Braunfels</td><td class="mono">J523 · J883</td><td>TF Harper</td><td><span class="chip amber">March's window closed · later months live</span></td><td><span class="btn small">Paste the page…</span></td></tr>
+            <tr><td>1200 Kenney Fort Blvd, Round Rock</td><td class="mono">J690</td><td>Knight Contracting</td><td><span class="chip amber">March's window closed · later months live</span></td><td><span class="btn small">Paste the page…</span></td></tr>
+            <tr><td>… 15 more with a first notice due Oct–Dec …</td><td></td><td></td><td></td><td></td></tr>
+          </tbody></table>
+        </div><div class="body" style="border-top:1px solid var(--border);background:var(--surface-2);font-size:12px;color:var(--muted)">Sorted by first deadline. Two jobs at 2100 Independence Dr are one paste — that is the property grouping paying off on the first row it meets.</div></div>
+        <div class="cost"><b>What it means</b><span>One sitting clears the whole backlog instead of this month's slice, and the desk stops finding empty owner slots on the day a notice is due. Kernel-wise it is the same RPC with the 30-day filter lifted, plus the deadline column for the sort.</span></div>
+      </div>
+      <div class="opt">
+        <div class="oh"><span class="l">B · Only the desk's due items</span><span class="chip amber">7 tonight</span></div>
+        <div class="fixcard"><div class="t">🔎 Fix-ups — missing data blocks billing</div><div class="chips"><span class="pill red">No customer pictures · 1</span><span class="pill amber">No owner of record · 7</span></div><div class="foot">the same seven the Lien desk shows in <i>Needs the owner</i></div></div>
+        <div class="cost"><b>What it means</b><span>The card and the desk are literally the same list, so nothing can disagree — but the card then only ever says what the desk already says, one page earlier. Next month's seven arrive as a surprise the same way this month's did.</span><span>Reasonable if the office would rather do owners in monthly slices than one big pass.</span></div>
+      </div>
+    </div>
+    <div class="pick" data-d="d4"><span>Your pick:</span><button data-v="A">A · Every GC job with hours</button><button data-v="B">B · Desk's due items only</button><input id="note-d4" placeholder="A note, if you want one…"></div>
+  </section>
+
+  <section class="section">
+    <div class="section-head"><h2>If you take all four recommendations</h2><p class="sub">The build order does not change: PR 1 the Fix-ups count and the property-grouped list (35 jobs tonight, sorted by first deadline), PR 2 the job-form question on GC and builder jobs only with the homestead line, PR 3 the Bill Customer sentence. The only new piece of data work is lifting the 30-day filter off the desk's RPC into a second reading for the card.</p></div>
+  </section>
+</div>
+
+<script>
+  const state = { picks: {} }; let db = null;
+  const LS = 'oor-decisions';
+  try { const raw = localStorage.getItem(LS); if (raw) state.picks = JSON.parse(raw) || {}; } catch (e) {}
+  const $ = (s, el = document) => el.querySelector(s);
+  function paint() {
+    document.querySelectorAll('.pick').forEach(p => {
+      const d = p.dataset.d, cur = state.picks[d] || {};
+      p.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.v === cur.pick)));
+      const n = $('input', p); if (document.activeElement !== n) n.value = cur.note || '';
+    });
+  }
+  async function save(d, patch) {
+    const cur = Object.assign({ pick: '', note: '' }, state.picks[d] || {}, patch, { at: new Date().toISOString() });
+    state.picks[d] = cur; try { localStorage.setItem(LS, JSON.stringify(state.picks)); } catch (e) {}
+    paint();
+    if (db) { try { await db.doc('decisions/' + d).set(cur); } catch (e) { $('#sync').textContent = 'Could not save to the shared picks (' + (e && e.code || 'error') + '). Kept on this device.'; } }
+  }
+  document.querySelectorAll('.pick').forEach(p => {
+    p.addEventListener('click', ev => { const b = ev.target.closest('button'); if (!b) return; const d = p.dataset.d; const cur = (state.picks[d] || {}).pick; save(d, { pick: cur === b.dataset.v ? '' : b.dataset.v }); });
+    $('input', p).addEventListener('change', ev => save(p.dataset.d, { note: ev.target.value.trim() }));
+  });
+  paint();
+  (async () => {
+    try { db = await window.claude?.use?.('db'); } catch (e) { db = null; }
+    if (!db) { $('#sync').textContent = 'Picks stay on this device only.'; return; }
+    db.collection('decisions').onSnapshot(snap => {
+      for (const d of snap.docs) if (d.exists) state.picks[d.id] = d.data();
+      try { localStorage.setItem(LS, JSON.stringify(state.picks)); } catch (e) {}
+      paint(); $('#sync').textContent = snap.metadata.fromCache ? 'Shared picks, syncing…' : 'Shared picks, live — Claude reads these back from the session.';
+    }, err => { $('#sync').textContent = 'Shared picks unavailable (' + err.code + '). Kept on this device.'; });
+  })();
+</script>

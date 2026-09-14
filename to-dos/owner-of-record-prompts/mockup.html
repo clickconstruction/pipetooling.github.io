@@ -84,15 +84,15 @@ table.jobs{width:100%;border-collapse:collapse;font-size:12.5px}table.jobs th{te
         <tbody>
           <tr><td class="mono">J650</td><td>5498 Cibolo Valley Dr 200, Schertz</td><td>ATI Schertz · <b>Loberg Contracting</b></td><td class="num">Jun · Jul · Aug · Sep</td><td class="num">$33,500</td><td><span class="chip red">none</span></td></tr>
           <tr><td class="mono">J258</td><td>628 Terrell Rd, San Antonio</td><td>Rizvi &amp; Kizilbash · <b>RMC- Dudley Mason</b></td><td class="num">Jun · Jul · Aug</td><td class="num">$9,800</td><td><span class="chip red">none</span></td></tr>
-          <tr><td class="mono">J273</td><td>9703 Lenox Hl, San Antonio</td><td><span class="chip amber">builder is the customer</span> RMC- Dudley Mason</td><td class="num">Jun · Jul · Aug</td><td class="num">$17,585</td><td><span class="chip red">none</span></td></tr>
-          <tr><td class="mono">J878</td><td>380 TX-123, Seguin</td><td><span class="chip amber">builder is the customer</span> Southern Post Construction</td><td class="num">Jun · Jul · Aug · Sep</td><td class="num">$40,135</td><td><span class="chip red">none</span></td></tr>
-          <tr><td class="mono">J789</td><td>150 E Sonterra Blvd 200B, San Antonio</td><td><span class="chip amber">builder is the customer</span> Knight Contracting</td><td class="num">Jun · Jul · Aug</td><td class="num">$2,245</td><td><span class="chip red">none</span></td></tr>
-          <tr><td class="mono">J843</td><td>102 Jacob Roberts, Blanco</td><td><span class="chip amber">builder is the customer</span> Michael Palmer</td><td class="num">Jun · Aug · Sep</td><td class="num">$7,152</td><td><span class="chip red">none</span></td></tr>
-          <tr><td class="mono">J825</td><td>121 North Calvin Barrett, Blanco</td><td><span class="chip amber">builder is the customer</span> Michael Palmer</td><td class="num">Jun</td><td class="num">$3,850</td><td><span class="chip red">none</span></td></tr>
+          <tr><td class="mono">J273</td><td>9703 Lenox Hl, San Antonio</td><td><span class="chip amber">no customer row</span> RMC- Dudley Mason</td><td class="num">Jun · Jul · Aug</td><td class="num">$17,585</td><td><span class="chip red">none</span></td></tr>
+          <tr><td class="mono">J878</td><td>380 TX-123, Seguin</td><td><span class="chip amber">no customer row</span> Southern Post Construction</td><td class="num">Jun · Jul · Aug · Sep</td><td class="num">$40,135</td><td><span class="chip red">none</span></td></tr>
+          <tr><td class="mono">J789</td><td>150 E Sonterra Blvd 200B, San Antonio</td><td><span class="chip amber">no customer row</span> Knight Contracting</td><td class="num">Jun · Jul · Aug</td><td class="num">$2,245</td><td><span class="chip red">none</span></td></tr>
+          <tr><td class="mono">J843</td><td>102 Jacob Roberts, Blanco</td><td><span class="chip amber">no customer row</span> Michael Palmer</td><td class="num">Jun · Aug · Sep</td><td class="num">$7,152</td><td><span class="chip red">none</span></td></tr>
+          <tr><td class="mono">J825</td><td>121 North Calvin Barrett, Blanco</td><td><span class="chip amber">no customer row</span> Michael Palmer</td><td class="num">Jun</td><td class="num">$3,850</td><td><span class="chip red">none</span></td></tr>
         </tbody>
       </table>
     </div>
-    <div class="mfoot"><span>7 jobs · 7 properties · $114,267 open · <b>5 of 7 have the builder in the customer row</b> — the second question below is not a corner case, it is most of the pile.</span></div></div>
+    <div class="mfoot"><span>7 jobs · 7 properties · $114,267 open · <b>6 of 7 have a GC set and no customer row at all</b> (J258 carries the owners' names as typed text only) — the "who owns the site?" paste is the whole answer for most of the pile. Corrected 2026-09-14 from the live data; the first draft read these as "the builder is the customer."</span></div></div>
   </section>
 
   <section class="section">
@@ -134,7 +134,7 @@ table.jobs{width:100%;border-collapse:collapse;font-size:12.5px}table.jobs th{te
             <div style="display:flex;justify-content:space-between;font-size:12.5px"><span class="btn link" style="color:var(--muted)">Not needed…</span><span class="btn link" style="color:var(--muted)">Later</span></div>
           </div>
         </div>
-        <p class="cap">The builder-as-customer question. Five of today's seven jobs are this shape (J273, J878, J789, J843, J825): the builder sits in the customer row with no GC, so the desk cannot tell whose site it is.</p>
+        <p class="cap">The builder-as-customer question — the smaller case: a builder in the customer row with no GC (3 open jobs today, 4 of the 57 jobs created in the last 30 days). Six of the seven desk jobs are the other shape: a GC set and an empty customer row, which the paste in Moment 1 answers directly.</p>
       </div>
     </div>
     <ul class="notes">
@@ -171,7 +171,7 @@ table.jobs{width:100%;border-collapse:collapse;font-size:12.5px}table.jobs th{te
               </tbody>
             </table>
           </div>
-          <div class="mfoot"><span><b>6 of 7</b> still need an owner · 5 rows also have the builder in the customer row — each asks <i>who owns the site?</i> first</span><span class="btn small">Done</span></div>
+          <div class="mfoot"><span><b>6 of 7</b> still need an owner · 6 rows have no customer row — the paste fills the owner and links the job in one step</span><span class="btn small">Done</span></div>
         </div>
         <p class="cap"><b>Paste the page…</b> unfolds the paste box under the row (the same box as Moment 1, prefilled with the address and county); a save turns the row green and moves the footer count. Rows never leave the list mid-sitting — the green stays so the office sees what it did.</p>
       </div>
@@ -210,7 +210,7 @@ table.jobs{width:100%;border-collapse:collapse;font-size:12.5px}table.jobs th{te
     <div class="grid">
       <div><b>Properties, not jobs.</b> The list groups by address. RMC's two Bexar sites are two pastes, not two per job. The count reads "7 jobs on 7 properties" so the office knows how many pastes the sitting is.</div>
       <div><b>One number everywhere.</b> The chip, the list's footer and the desk's <i>Needs the owner</i> pile all read <span class="mono">has_owner</span> from the same RPC. No second definition of "missing" to drift.</div>
-      <div><b>The builder-as-customer question comes first.</b> Five of seven jobs cannot even say whose site it is. Asking "who owns the site?" before "who is the owner of record?" fixes the GC and the notice clock in the same breath.</div>
+      <div><b>The empty customer row is the main door.</b> 42 of the 62 open GC jobs name only the GC; the paste fills the owner and links the property in one step. The builder-as-customer question stays for the smaller case (3 open jobs) and fixes the GC and the notice clock in the same breath.</div>
       <div><b>Ask only where the lien clock runs.</b> A direct residential job with no GC never sees the prompt; Waiting jobs with a GC but no hours yet stay out of the count (proposed — the owner may flip this).</div>
       <div><b>The homestead line on the spot.</b> When the paste says homestead, the form says what that means for the lien before anyone starts work. One sentence; the attorney's words.</div>
       <div><b>Green stays green.</b> A saved row on the list does not vanish; the office sees its own progress through the sitting, and the footer counts down.</div>
