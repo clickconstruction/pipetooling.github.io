@@ -7,7 +7,7 @@ order: 11
 ---
 A job's line items **are** its stages. Each line item says what kind of stage it is — **Order**, **Any**, or **—** — on the second line under its name in **① Line Items**, and the draws in **② Invoices** follow from that. Everything happens on the job's **Bill** tab.
 
-You often don't have to set anything: when the line items already read like a plan — **Rough In**, **Top Out**, **Trim Set** in order, the way the Multiple Segment Generator's preset writes them — the Pipeline row and the crew's report picker recognize the stages by name. Setting **Order** here is what makes the **draws** follow the stages too (a draw waits on the stage above it); recognition alone never changes how a job bills.
+You often don't have to set anything: when the line items already read like a plan — **Rough In**, **Top Out**, **Trim Set** in order, the way the Multiple Segment Generator's preset writes them — the Pipeline row and the crew's report picker recognize the stages by name. Setting **Order** here is what makes the **draws** follow the stages too (a draw waits on the stage above it); recognition alone never changes how a job bills. A job whose lines the board could not read as stages (*Phase A / Phase B*, *Beginning of Job / Final*) shows a small **Set stages** link under its bar on the Pipeline; it opens this tab with ① Line Items lit.
 
 ## The three kinds
 

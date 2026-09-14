@@ -197,5 +197,19 @@ describe('buildProgressPaymentView — the rules at the edges', () => {
     expect(v.segments[0]!.money.billedFrac).toBeCloseTo(1, 2)
     expect(v.segments[1]!.money.billedFrac).toBeCloseTo((3_052.5 - 1_980) / 1_650, 2)
     expect(v.words.text).toBe('nobody clocked in · no % yet · $3,053 billed, nothing paid')
+    // v2.3421: two priced lines the dictionary did not read as stages → the row offers Set stages.
+    expect(v.offerSetStages).toBe(true)
+  })
+
+  it('the Set stages door: offered on unrecognized multi-line jobs only — never on stages, a single line, no bid value, or a paid job', () => {
+    const one = buildProgressPaymentView({ money: buildStagesMoneyBarModel({ totalBill: 450, paymentsMade: 0, pctComplete: null }), stageBar: null, fixtures: [line('p', 'Pinpoint', 450, 0)], invoices: [], crew: null, pctComplete: null, status: 'working', todayYmd: today })
+    expect(one.offerSetStages).toBe(false)
+    const stages = buildProgressPaymentView({ money: buildStagesMoneyBarModel({ totalBill: 37_745, paymentsMade: 0, pctComplete: null }), stageBar: buildPipelineStageBar({ fixtures, invoices: [], payments: [], pctComplete: null, todayYmd: today }), fixtures, invoices: [], crew: null, pctComplete: null, status: 'working', todayYmd: today })
+    expect(stages.offerSetStages).toBe(false)
+    const twoLines = [line('a', 'Beginning of Job', 1_879.56, 0), line('b', 'Final', 1_879.56, 1)]
+    const coe = buildProgressPaymentView({ money: buildStagesMoneyBarModel({ totalBill: 3_759.12, paymentsMade: 1_879.56, pctComplete: null }), stageBar: null, fixtures: twoLines, invoices: [], crew: null, pctComplete: null, status: 'working', todayYmd: today })
+    expect(coe.offerSetStages).toBe(true)
+    const paid = buildProgressPaymentView({ money: buildStagesMoneyBarModel({ totalBill: 3_759.12, paymentsMade: 3_759.12, pctComplete: 100 }), stageBar: null, fixtures: twoLines, invoices: [], crew: null, pctComplete: 100, status: 'paid', todayYmd: today })
+    expect(paid.offerSetStages).toBe(false)
   })
 })

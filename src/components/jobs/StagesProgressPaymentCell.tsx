@@ -45,6 +45,12 @@ type StagesProgressPaymentCellProps = {
    * day (`stagesBillSentPctAlert`). Null / omitted = the plain box.
    */
   billSentAlert?: StagesBillSentPctAlert | null
+  /**
+   * v2.3421 (the door): when the view offers it — two or more priced lines the
+   * dictionary did not read as stages — a quiet *Set stages* link under the
+   * words opens Bill → ① Line Items with the selectors lit. Omit to hide it.
+   */
+  onSetStagesClick?: () => void
 }
 
 function swatch(color?: string) {
@@ -70,7 +76,7 @@ function swatch(color?: string) {
  * total on top, a paid/unbilled bar of the total bill, and a labeled legend.
  * Pure presentation — all math comes in via the model (see stagesMoneyBar.ts).
  */
-export default function StagesProgressPaymentCell({ model, pctComplete, pctSaving, onPctCommit, footnote, onNoBidValueClick, compact = false, view = null, billSentAlert = null }: StagesProgressPaymentCellProps) {
+export default function StagesProgressPaymentCell({ model, pctComplete, pctSaving, onPctCommit, footnote, onNoBidValueClick, compact = false, view = null, billSentAlert = null, onSetStagesClick }: StagesProgressPaymentCellProps) {
   // The legend's amber and empty rows belong to the classic money reading; on a
   // job drawn as stages the bar already says which stage the money is on.
   const stageBar = view?.mode === 'stages'
@@ -194,7 +200,20 @@ export default function StagesProgressPaymentCell({ model, pctComplete, pctSavin
       ) : null}
 
       {view ? (
-        <StagesStageBar view={view} compact={compact} />
+        <>
+          <StagesStageBar view={view} compact={compact} />
+          {view.offerSetStages && onSetStagesClick ? (
+            <button
+              type="button"
+              onClick={onSetStagesClick}
+              data-set-stages-door
+              title="These lines could be stages — open Bill → ① Line Items and set Order on the ones that wait their turn"
+              style={{ alignSelf: 'flex-start', padding: 0, border: 'none', background: 'none', color: 'var(--text-link)', fontSize: '0.6875rem', cursor: 'pointer', textDecoration: 'underline', textDecorationStyle: 'dotted', textUnderlineOffset: 2 }}
+            >
+              Set stages
+            </button>
+          ) : null}
+        </>
       ) : (
       <div
         title={
