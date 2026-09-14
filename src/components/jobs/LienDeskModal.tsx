@@ -32,6 +32,8 @@ import { buildLienNoticeFieldsForJob, describeNoticeMonths, lienNoticeCoverNote,
 import type { LienDeskData, LienDeskJob } from '../../hooks/useLienDeskData'
 import { useToastContext } from '../../contexts/ToastContext'
 import { useIsMobile } from '../../hooks/useIsMobile'
+import { buildLienDeskRun } from '../../lib/jobs/lienDeskRun'
+import LienDeskRunModal from './LienDeskRunModal'
 
 /**
  * The Lien desk: the queue of § 53.056 notices the law says are due per
@@ -164,6 +166,8 @@ export default function LienDeskModal({
   const [rulePick, setRulePick] = useState<LienNoticePolicy | null>(null)
   const [busy, setBusy] = useState(false)
   const [mobileListShown, setMobileListShown] = useState(true)
+  // The run (v2.3410): every approved notice as one packet + one tracking form.
+  const [runOpen, setRunOpen] = useState(false)
 
   const entries = data?.queue.entries ?? []
   const visible = useMemo(() => {
@@ -649,8 +653,11 @@ export default function LienDeskModal({
             <button type="button" onClick={pullBack} disabled={busy} style={btn('plain', busy)} title="Pull it back to the office's draft — it has not gone out">Not what I said</button>
           ) : null}
           <span style={{ flex: 1 }} />
-          <button type="button" onClick={() => onOpenLienInstruments(selected.jobId)} disabled={!office} style={btn('primary', !office)} title="Print or email the notice and record the sends — the desk marks it sent when a notice naming these months is on the job">
-            Send it from the Lien window ›
+          <button type="button" onClick={() => onOpenLienInstruments(selected.jobId)} disabled={!office} style={btn('plain', !office)} title="One notice on its own: print or email it and record the sends in the Lien window">
+            Just this one, from the Lien window ›
+          </button>
+          <button type="button" onClick={() => setRunOpen(true)} disabled={!office} style={btn('primary', !office)} title="Every approved notice as one packet and one tracking form">
+            Send the run · {counts?.ready ?? 0} ▸
           </button>
         </div>
       )
@@ -709,8 +716,13 @@ export default function LienDeskModal({
               </button>
             )
           })}
+          {office && (counts?.ready ?? 0) > 0 ? (
+            <button type="button" onClick={() => setRunOpen(true)} style={{ ...btn('primary'), marginLeft: 'auto' }} title="Every approved notice as one packet and one tracking form">
+              Send the run · {counts?.ready}
+            </button>
+          ) : null}
           {leader && wordSent.length > 0 ? (
-            <span style={{ marginLeft: 'auto', fontSize: '0.75rem', color: 'var(--text-muted)' }} title="Notices the office sent on your spoken word">
+            <span style={{ marginLeft: office && (counts?.ready ?? 0) > 0 ? 0 : 'auto', fontSize: '0.75rem', color: 'var(--text-muted)' }} title="Notices the office sent on your spoken word">
               Sent on your word: {wordSent.map((e) => jobLabel(data?.jobsById[e.jobId], e.jobId).split(' · ')[0]).join(', ')}
             </span>
           ) : null}
@@ -725,6 +737,16 @@ export default function LienDeskModal({
         </div>
         {footer ? <div style={{ display: 'grid', gap: '0.5rem', padding: '0.6rem 1.25rem 0.9rem', borderTop: '1px solid var(--border)', background: 'var(--bg-subtle)' }}>{footer}</div> : null}
       </div>
+      {runOpen && data ? (
+        <LienDeskRunModal
+          notices={buildLienDeskRun(data.queue.piles.ready, data, issuer, signerNameFor, todayYmd)}
+          issuer={issuer}
+          todayYmd={todayYmd}
+          userId={authUserId}
+          onClose={() => setRunOpen(false)}
+          onRecorded={onChanged}
+        />
+      ) : null}
     </div>
   )
 }
