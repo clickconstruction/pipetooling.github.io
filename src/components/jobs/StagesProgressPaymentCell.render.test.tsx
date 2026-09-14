@@ -74,3 +74,25 @@ describe('StagesProgressPaymentCell bill-sent alert (v2.3411)', () => {
     expect(document.querySelector('[data-bill-sent-alert-line]')).toBeNull()
   })
 })
+
+describe('StagesProgressPaymentCell legend (v2.3416 — the four rows sum to the bid)', () => {
+  it('prints the amber slice’s own dollars beside its percent, and names the empty track', () => {
+    // The owner's 2026-09-14 screenshot row: 80% of $40,000, $13,412 paid, $11,770 billed.
+    const m = buildStagesMoneyBarModel({ totalBill: 40_000, paymentsMade: 13_412, pctComplete: 80, billedUnpaid: 11_770 })
+    const { container } = render(<StagesProgressPaymentCell model={m} pctComplete={80} />)
+    expect(screen.getByText(/17% Done, not billed/)).toBeTruthy()
+    expect(container.querySelector('[data-done-not-billed]')?.textContent).toBe('$6,818')
+    expect(screen.getByText(/20% Not done/)).toBeTruthy()
+    expect(container.querySelector('[data-not-done]')?.textContent).toBe('$8,000')
+    expect(screen.queryByText(/\$18,588/)).toBeNull()
+  })
+
+  it('compact card says Done, not billed and omits it when billing runs ahead of the work', () => {
+    const ahead = buildStagesMoneyBarModel({ totalBill: 40_135, paymentsMade: 0, pctComplete: 60, billedUnpaid: 32_108 })
+    const { rerender } = render(<StagesProgressPaymentCell compact model={ahead} pctComplete={60} />)
+    expect(screen.queryByText(/Done, not billed/)).toBeNull()
+    const behind = buildStagesMoneyBarModel({ totalBill: 40_000, paymentsMade: 13_412, pctComplete: 80, billedUnpaid: 11_770 })
+    rerender(<StagesProgressPaymentCell compact model={behind} pctComplete={80} />)
+    expect(screen.getByText(/Done, not billed \$6,818/)).toBeTruthy()
+  })
+})

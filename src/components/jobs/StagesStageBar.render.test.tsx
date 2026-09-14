@@ -35,7 +35,7 @@ describe('StagesProgressPaymentCell with a stage bar', () => {
     expect(chips[2]!.textContent).toContain('Trim')
     expect(screen.getByRole('img', { name: 'Stage 2 of 3 · Top Out 60% · draw 1 paid' })).toBeTruthy()
     expect(screen.getByText('Stage 2 of 3 · Top Out 60% · draw 1 paid')).toBeTruthy()
-    expect(screen.queryByText(/Unbilled/)).toBeNull()
+    expect(screen.queryByText(/Done, not billed/)).toBeNull()
     expect(screen.getByText(/Paid/)).toBeTruthy()
     expect(screen.getByText('Left on Job')).toBeTruthy()
     expect(screen.getByText('$37,745 bid')).toBeTruthy()
@@ -44,13 +44,13 @@ describe('StagesProgressPaymentCell with a stage bar', () => {
   it('keeps the classic money bar when there is no stage bar', () => {
     render(<StagesProgressPaymentCell model={model} pctComplete={55} />)
     expect(screen.queryByRole('list', { name: 'Stages' })).toBeNull()
-    expect(screen.getByText(/Unbilled/)).toBeTruthy()
+    expect(screen.getByText(/Done, not billed/)).toBeTruthy()
   })
 
-  it('compact cards show the strip and the condensed line without Unbilled', () => {
+  it('compact cards show the strip and the condensed line without Done, not billed', () => {
     render(<StagesProgressPaymentCell compact model={model} pctComplete={55} stageBar={stageBar} />)
     expect(screen.getByRole('list', { name: 'Stages' })).toBeTruthy()
-    expect(screen.queryByText(/Unbilled/)).toBeNull()
+    expect(screen.queryByText(/Done, not billed/)).toBeNull()
     expect(screen.getByText(/Left/)).toBeTruthy()
   })
 })
