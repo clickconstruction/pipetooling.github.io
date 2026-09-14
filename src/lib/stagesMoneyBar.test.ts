@@ -107,4 +107,24 @@ describe('buildStagesMoneyBarModel', () => {
     expect(m.paid).toBe(0)
     expect(m.valueCreated).toBeNull()
   })
+
+  it('v2.3416 — the legend figures sum to the bid: paid + billed + done-not-billed + not-done', () => {
+    // The row from the owner's 2026-09-14 screenshot (J977): 80% of $40,000 done,
+    // $13,412 paid, $11,770 billed. The old legend printed "17% Unbilled $18,588" —
+    // the percent of the amber slice beside done − paid, which still held the billed money.
+    const m = buildStagesMoneyBarModel({ totalBill: 40_000, paymentsMade: 13_412, pctComplete: 80, billedUnpaid: 11_770 })
+    expect(m.unbilled).toBeCloseTo(18_588)
+    expect(m.doneNotBilled).toBeCloseTo(6_818)
+    expect(m.notDone).toBeCloseTo(8_000)
+    expect(m.paid + m.billedUnpaid + (m.doneNotBilled ?? 0) + (m.notDone ?? 0)).toBeCloseTo(40_000)
+    expect(Math.round(m.unbilledFrac * 100)).toBe(17)
+    expect(Math.round(((m.doneNotBilled ?? 0) / m.total) * 100)).toBe(17)
+  })
+
+  it('v2.3416 — done-not-billed floors at 0 when billing runs ahead of the work; not-done is null without a pct', () => {
+    expect(buildStagesMoneyBarModel({ totalBill: 40_135, paymentsMade: 0, pctComplete: 60, billedUnpaid: 32_108 }).doneNotBilled).toBe(0)
+    const m = buildStagesMoneyBarModel({ totalBill: 1000, paymentsMade: 250, pctComplete: null })
+    expect(m.doneNotBilled).toBeNull()
+    expect(m.notDone).toBeNull()
+  })
 })

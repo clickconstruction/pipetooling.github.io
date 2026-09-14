@@ -199,8 +199,8 @@ export default function StagesProgressPaymentCell({ model, pctComplete, pctSavin
             ? [
                 `Paid ${formatUsdNoCents(model.paid)}`,
                 model.billedUnpaid > 0 ? `billed but unpaid ${formatUsdNoCents(model.billedUnpaid)}` : null,
-                model.unbilled != null
-                  ? `done but unbilled ${formatUsdNoCents(model.unbilled)} · not done ${formatUsdNoCents(Math.max(0, model.total - (model.valueCreated ?? 0)))}`
+                model.doneNotBilled != null
+                  ? `done but not billed ${formatUsdNoCents(model.doneNotBilled)} · not done ${formatUsdNoCents(model.notDone ?? 0)}`
                   : 'set % complete to see unbilled work',
                 pctComplete != null ? `field progress ${Math.round(pctComplete)}% (yellow dot)` : null,
               ]
@@ -261,7 +261,7 @@ export default function StagesProgressPaymentCell({ model, pctComplete, pctSavin
       {compact ? (
         <div
           style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', gap: '0.1rem 0.3rem', fontSize: '0.75rem' }}
-          title="Payments received · invoiced but unpaid · done but unbilled · bid minus payments"
+          title="Payments received · invoiced but unpaid · done but not billed · bid minus payments"
         >
           <span style={{ color: '#15803d', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
             {swatch(PAID_COLOR)}Paid {model.paid > 0 ? formatUsdNoCents(model.paid) : '—'}
@@ -270,11 +270,11 @@ export default function StagesProgressPaymentCell({ model, pctComplete, pctSavin
           <span style={{ color: 'var(--text-blue-700)', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
             {swatch(BILLED_COLOR)}Billed {model.billedUnpaid > 0 ? formatUsdNoCents(model.billedUnpaid) : '—'}
           </span>
-          {!stageBar && model.unbilled != null && model.unbilled > 0 ? (
+          {!stageBar && model.doneNotBilled != null && model.doneNotBilled > 0 ? (
             <>
               <span aria-hidden style={{ color: 'var(--text-faint)' }}>·</span>
               <span style={{ color: 'var(--text-amber-700)', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
-                {swatch(UNBILLED_COLOR)}Unbilled {formatUsdNoCents(model.unbilled)}
+                {swatch(UNBILLED_COLOR)}Done, not billed {formatUsdNoCents(model.doneNotBilled)}
               </span>
             </>
           ) : null}
@@ -302,16 +302,30 @@ export default function StagesProgressPaymentCell({ model, pctComplete, pctSavin
           </span>
           <span style={amountStyle}>{model.billedUnpaid > 0 ? formatUsdNoCents(model.billedUnpaid) : '—'}</span>
         </div>
+        {/* v2.3416: the amber row prints the amber slice's OWN dollars (done − paid −
+            billed), and the empty track gets a row of its own, so the four rows and
+            their percents sum to the bid. The old row printed done − paid beside the
+            amber percent, which still held the billed money. */}
         {stageBar ? null : (
-        <div style={rowStyle} title="Work completed that hasn't been paid for yet (% done × bid − paid); the % is the amber slice's share of the job total">
+        <div style={rowStyle} title="Work finished but on no bill yet (% done × bid − paid − billed); the % is the amber slice's share of the job total">
           <span style={{ ...labelStyle, fontVariantNumeric: 'tabular-nums' }}>
             {swatch(UNBILLED_COLOR)}
-            {model.hasBar && model.unbilled != null
+            {model.hasBar && model.doneNotBilled != null
               ? `${Math.round(model.unbilledFrac * 100)}% `
               : ''}
-            Unbilled
+            Done, not billed
           </span>
-          <span style={amountStyle}>{model.unbilled != null ? formatUsdNoCents(model.unbilled) : '—'}</span>
+          <span style={amountStyle} data-done-not-billed>{model.doneNotBilled != null ? formatUsdNoCents(model.doneNotBilled) : '—'}</span>
+        </div>
+        )}
+        {stageBar || !model.hasBar || model.notDone == null ? null : (
+        <div style={rowStyle} title="Work not done yet (bid − % done × bid); the empty part of the bar">
+          <span style={{ ...labelStyle, fontVariantNumeric: 'tabular-nums' }}>
+            {swatch()}
+            {`${Math.max(0, 100 - Math.round(model.paidFrac * 100) - Math.round(model.billedFrac * 100) - Math.round(model.unbilledFrac * 100))}% `}
+            Not done
+          </span>
+          <span style={amountStyle} data-not-done>{formatUsdNoCents(model.notDone)}</span>
         </div>
         )}
         <div

@@ -39,8 +39,22 @@ export type StagesMoneyBarModel = {
   billedUnpaid: number
   /** Dollar value of work performed (total × pct); null when pct unknown. */
   valueCreated: number | null
-  /** Work done but not yet paid for, floored at 0; null when pct unknown. */
+  /**
+   * Work done but not yet paid for (value created − paid), floored at 0; null
+   * when pct unknown. Note this still INCLUDES the billed-unpaid dollars — it
+   * is "what the customer has not paid for yet", not the amber slice. The
+   * legend prints `doneNotBilled` (v2.3416); Dashboard-style totals keep this.
+   */
   unbilled: number | null
+  /**
+   * The amber slice in dollars: done − paid − billed-unpaid, floored at 0 —
+   * work that is finished but on no bill yet. null when pct unknown. This is
+   * the figure that belongs beside the amber percent (v2.3416: the legend
+   * printed `unbilled` next to `unbilledFrac`, so the four rows never summed).
+   */
+  doneNotBilled: number | null
+  /** The empty track in dollars: total − value created, floored at 0. null when pct unknown. */
+  notDone: number | null
   /** total − paid. Can be negative when payments exceed the bill. */
   owed: number
   /** Payments exceed the total bill. */
@@ -79,6 +93,8 @@ export function buildStagesMoneyBarModel(input: StagesMoneyBarInput): StagesMone
   const doneFrac = hasBar && valueCreated != null ? clamp01(valueCreated / total) : 0
   // Amber is only work done that is neither paid nor already billed.
   const unbilledFrac = Math.max(0, doneFrac - paidFrac - billedFrac)
+  const doneNotBilled = valueCreated != null ? Math.round(Math.max(0, valueCreated - paid - billedUnpaid) * 100) / 100 : null
+  const notDone = valueCreated != null ? Math.round(Math.max(0, total - valueCreated) * 100) / 100 : null
 
-  return { hasBar, paidFrac, billedFrac, unbilledFrac, total, paid, billedUnpaid, valueCreated, unbilled, owed, overpaid }
+  return { hasBar, paidFrac, billedFrac, unbilledFrac, total, paid, billedUnpaid, valueCreated, unbilled, doneNotBilled, notDone, owed, overpaid }
 }
