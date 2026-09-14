@@ -14,6 +14,7 @@ import {
   type LienNoticePolicy,
 } from '../lib/jobs/lienDesk'
 import { parsePromisedPayDatesRpc, type PromisedPayDate } from '../lib/jobs/billedExpectedPay'
+import { buildLienAffidavitQueue, type LienAffidavitQueue, type LienAffidavitRow } from '../lib/jobs/lienDeskAffidavits'
 import type { CustomerAddressRow, JobPropertyOwnerLike } from '../lib/jobs/lienProperty'
 
 /** The slice of jobs_ledger the desk shows and prints from. */
@@ -46,6 +47,9 @@ export type LienDeskData = {
   summary: LienDeskNeedsYou
   rows: LienNoticeMonthRow[]
   items: LienDeskItemRow[]
+  /** The affidavit kind (v2.3412): the § 53.052 window per job. */
+  affidavits: LienAffidavitQueue
+  affidavitRows: LienAffidavitRow[]
   jobsById: Record<string, LienDeskJob>
   gcsById: Record<string, LienDeskGc>
   addressesById: Record<string, CustomerAddressRow>
@@ -55,6 +59,12 @@ export type LienDeskData = {
   gcsWithPriorNotice: ReadonlySet<string>
   /** GCs with a held desk item, live or past (the leader held them before). */
   gcsHeldBefore: ReadonlySet<string>
+}
+
+const EMPTY_AFFIDAVITS: LienAffidavitQueue = {
+  entries: [],
+  piles: { needs_property: [], to_draft: [], awaiting: [], ready: [], held: [], filed: [], missed: [] },
+  counts: { needs_property: 0, to_draft: 0, awaiting: 0, ready: 0, held: 0, filed: 0, missed: 0 },
 }
 
 const EMPTY_QUEUE: LienDeskQueue = {
@@ -91,12 +101,13 @@ export function useLienDeskData(
     setLoading(true)
     void (async () => {
       try {
-        const [rowsRaw, itemsRaw] = await Promise.all([
+        const [rowsRaw, itemsRaw, affRaw] = await Promise.all([
           withSupabaseRetry(() => supabase.rpc('list_lien_notice_months', { p_within_days: LIEN_DESK_LEAD_DAYS } as never), 'lien desk: due months'),
           withSupabaseRetry(
-            () => supabase.from('job_lien_desk_items').select('*').eq('kind', 'notice_53_056').is('voided_at', null).order('created_at', { ascending: false }),
+            () => supabase.from('job_lien_desk_items').select('*').is('voided_at', null).order('created_at', { ascending: false }),
             'lien desk: items',
           ),
+          withSupabaseRetry(() => supabase.rpc('list_lien_affidavit_windows', { p_within_days: LIEN_DESK_LEAD_DAYS } as never), 'lien desk: affidavit windows').catch(() => []),
         ])
         if (cancelled) return
         const rows = ((rowsRaw ?? []) as unknown as LienNoticeMonthRow[]).map((r) => ({
@@ -104,8 +115,11 @@ export function useLienDeskData(
           approved_hours: Number(r.approved_hours) || 0,
           open_balance: Number(r.open_balance) || 0,
         }))
-        const items = (itemsRaw ?? []) as LienDeskItemRow[]
-        const jobIds = [...new Set([...rows.map((r) => r.job_id), ...items.map((i) => i.job_id)])]
+        const allItems = (itemsRaw ?? []) as LienDeskItemRow[]
+        const items = allItems.filter((i) => i.kind === 'notice_53_056')
+        const affidavitRows = ((affRaw ?? []) as unknown as LienAffidavitRow[]).map((r) => ({ ...r, open_balance: Number(r.open_balance) || 0 }))
+        const affidavits = buildLienAffidavitQueue(affidavitRows, allItems, todayYmd)
+        const jobIds = [...new Set([...rows.map((r) => r.job_id), ...allItems.map((i) => i.job_id), ...affidavitRows.map((r) => r.job_id)])]
         const gcIds = new Set<string>(rows.map((r) => r.gc_customer_id).filter((v): v is string => Boolean(v)))
 
         // The GCs' standing rules come with the jobs; everything else is the desk's own detail.
@@ -123,6 +137,7 @@ export function useLienDeskData(
           jobs.push(...((part ?? []) as LienDeskJob[]))
         }
         for (const j of jobs) if (j.gc_customer_id) gcIds.add(j.gc_customer_id)
+        for (const r of affidavitRows) if (r.gc_customer_id) gcIds.add(r.gc_customer_id)
         const gcRows = gcIds.size
           ? await withSupabaseRetry(
               () => supabase.from('customers').select('id, name, address, contact_info, lien_notice_policy, lien_notice_policy_note').in('id', [...gcIds]),
@@ -196,6 +211,8 @@ export function useLienDeskData(
           summary: summarizeLienDeskForNeedsYou(queue),
           rows,
           items,
+          affidavits,
+          affidavitRows,
           jobsById,
           gcsById,
           addressesById,
@@ -211,6 +228,8 @@ export function useLienDeskData(
             summary: summarizeLienDeskForNeedsYou(EMPTY_QUEUE),
             rows: [],
             items: [],
+            affidavits: EMPTY_AFFIDAVITS,
+            affidavitRows: [],
             jobsById: {},
             gcsById: {},
             addressesById: {},

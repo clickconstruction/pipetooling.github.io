@@ -1284,10 +1284,11 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
     if (lienDeskParamConsumedRef.current) return
     if (searchParams.get('liendesk') === '1') {
       lienDeskParamConsumedRef.current = true
-      setLienDesk({ jobId: searchParams.get('liendeskJob') })
+      setLienDesk({ jobId: searchParams.get('liendeskJob'), kind: searchParams.get('kind') === 'affidavit' ? 'affidavit' : 'notice' })
       const p = new URLSearchParams(searchParams)
       p.delete('liendesk')
       p.delete('liendeskJob')
+      p.delete('kind')
       navigate({ search: p.toString() }, { replace: true })
     }
   }, [searchParams, navigate])
@@ -1515,7 +1516,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
   const { byJob: forecastWorkMonths } = useForecastWorkMonths(forecastWorkMonthJobs, forecastTodayYmd)
   // The Lien desk (v2.3405): § 53.056 notices due per unpaid work month on sub
   // jobs. A light read keeps the menus' counts; the full read runs while open.
-  const [lienDesk, setLienDesk] = useState<{ jobId: string | null } | null>(null)
+  const [lienDesk, setLienDesk] = useState<{ jobId: string | null; kind?: 'notice' | 'affidavit' } | null>(null)
   const lienDeskEligible = authRole === 'dev' || authRole === 'master_technician' || isAssistantLike(authRole)
   const { data: lienDeskData, loading: lienDeskLoading, refetch: refetchLienDesk } = useLienDeskData(lienDeskEligible, forecastTodayYmd, { light: lienDesk == null })
   const lienDeskCount = lienDeskData ? lienDeskData.summary.office.jobs + lienDeskData.summary.leader.jobs + lienDeskData.summary.office.ready : null
@@ -5850,6 +5851,20 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
         issuer={lienDeskIssuer}
         signerNameFor={lienDeskSignerFor}
         initialJobId={lienDesk?.jobId ?? null}
+        initialKind={lienDesk?.kind ?? 'notice'}
+        onOpenLegalDesk={() => {
+          setLienDesk(null)
+          setLegalDesk({ payerKey: null })
+        }}
+        onOpenLienAffidavit={(jobId) => {
+          const job = jobs.find((j) => j.id === jobId)
+          if (!job) {
+            showToast('Open that job from the Pipeline board to file its affidavit — it is not loaded here yet.', 'info')
+            return
+          }
+          setLienDesk(null)
+          setLienInstrumentsModal({ job, invoice: null, initialTab: 'affidavit' })
+        }}
         onChanged={refetchLienDesk}
         onOpenEditJob={(jobId) => tryOpenEditJob(jobId, { onSaved: () => refetchLienDesk() })}
         onOpenLienInstruments={(jobId) => {

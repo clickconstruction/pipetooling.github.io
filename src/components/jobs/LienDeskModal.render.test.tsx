@@ -12,6 +12,7 @@ import { renderWithProviders } from '../../test/renderSmokeMocks'
 import LienDeskModal from './LienDeskModal'
 import { buildLienDeskQueue, summarizeLienDeskForNeedsYou, type LienDeskItemRow, type LienNoticeMonthRow } from '../../lib/jobs/lienDesk'
 import type { LienDeskData } from '../../hooks/useLienDeskData'
+import { buildLienAffidavitQueue, type LienAffidavitRow } from '../../lib/jobs/lienDeskAffidavits'
 
 vi.mock('../../hooks/useAuth', async () => {
   const { useAuthModuleMock } = await import('../../test/renderSmokeMocks')
@@ -35,6 +36,8 @@ function data(rows: LienNoticeMonthRow[], items: LienDeskItemRow[] = [], hasOwne
     summary: summarizeLienDeskForNeedsYou(queue),
     rows,
     items,
+    affidavits: { entries: [], piles: { needs_property: [], to_draft: [], awaiting: [], ready: [], held: [], filed: [], missed: [] }, counts: { needs_property: 0, to_draft: 0, awaiting: 0, ready: 0, held: 0, filed: 0, missed: 0 } },
+    affidavitRows: [],
     jobsById: {
       j650: { id: 'j650', hcp_number: '650', click_number: null, job_name: 'ATI Schertz', job_address: '1204 Elbel Rd, Schertz, TX', customer_id: 'ati', customer_name: 'ATI Schertz', gc_customer_id: 'loberg', customer_address_id: hasOwnerAddress ? 'addr1' : null, revenue: 33_500, payments_made: 0, master_user_id: null },
     },
@@ -119,5 +122,24 @@ describe('LienDeskModal', () => {
   it('the office sees an awaiting item as waiting on the leader, and nothing due reads calm', () => {
     renderWithProviders(<LienDeskModal {...baseProps} authRole="controller" data={data([])} />)
     expect(screen.getByText(/Nothing is due/)).toBeTruthy()
+  })
+})
+
+describe('LienDeskModal affidavits (v2.3412)', () => {
+  it('switches to the affidavit kind, lists the window with its missing gates, and offers the property door', () => {
+    const affRow: LienAffidavitRow = { job_id: 'j650', last_month: '2026-05', deadline: '2026-09-15', is_sub: true, noticed: false, filed: false, open_balance: 33_500, customer_id: 'ati', gc_customer_id: 'loberg', property_kind: '', has_owner: false, has_legal: false, homestead: false, desk_item_id: null, desk_status: null }
+    const d = data([])
+    d.affidavitRows = [affRow]
+    d.affidavits = buildLienAffidavitQueue([affRow], [], TODAY)
+    const onOpenEditJob = vi.fn()
+    renderWithProviders(<LienDeskModal {...baseProps} authRole="assistant" data={d} onOpenEditJob={onOpenEditJob} initialKind="affidavit" />)
+    expect(screen.getByRole('tab', { name: /Affidavits · 1/ })).toBeTruthy()
+    expect(screen.getByRole('button', { name: /Needs the property facts/ }).textContent).toContain('1')
+    expect(screen.getByText(/missing owner, legal, notice/)).toBeTruthy()
+    expect(screen.getByText(/affidavit · file by tomorrow/)).toBeTruthy()
+    expect(screen.getByText(/Before this affidavit can be generated/)).toBeTruthy()
+    fireEvent.click(screen.getAllByRole('button', { name: 'Property record ›' })[0]!)
+    expect(onOpenEditJob).toHaveBeenCalledWith('j650')
+    expect(screen.getByRole('button', { name: 'Send the notice first ›' })).toBeTruthy()
   })
 })
