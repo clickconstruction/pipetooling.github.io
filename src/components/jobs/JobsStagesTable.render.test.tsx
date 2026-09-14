@@ -55,6 +55,7 @@ function makeProps(overrides: Partial<JobsStagesTableProps> = {}): JobsStagesTab
     openEditJobAndCreateCustomerFlow: vi.fn(),
     stagesManHoursByJobId: new Map(),
     stagesManHoursLoading: false,
+    crewByJobId: new Map(),
     stagesLaborBreakdownByJobId: new Map(),
     expandedJobThreadId: null,
     toggleStagesJobThreadExpanded: vi.fn(),

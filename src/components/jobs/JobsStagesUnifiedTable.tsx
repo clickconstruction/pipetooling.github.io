@@ -16,13 +16,11 @@ import StagesProgressPaymentHeader from './StagesProgressPaymentHeader'
 import {
   effectiveInvoiceEstBillDate,
   invoiceOpenRemainingOnJob,
-  jobBilledUnpaidDollars,
   sumInvoiceAppliedFromJobPayments,
 } from '../../lib/jobs/invoiceBilling'
 import { jobBillingUnallocatedDollars, type InvoiceWithJob, type StageRow } from '../../lib/jobsStagesBoard'
 import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
-import { buildStagesMoneyBarModel } from '../../lib/stagesMoneyBar'
-import { buildPipelineStageBar } from '../../lib/jobs/pipelineStageBar'
+import { progressPaymentForJob } from '../../lib/jobs/progressPaymentForJob'
 import { stagesBillSentPctAlert } from '../../lib/jobs/stagesBillSentPctAlert'
 import StagesProgressPaymentCell from './StagesProgressPaymentCell'
 import { ShareJobButton } from './ShareJobButton'
@@ -156,6 +154,7 @@ export type JobsStagesUnifiedTableProps = {
   openEditJobAndCreateCustomerFlow: StagesRowRenderContext['openEditJobAndCreateCustomerFlow']
   stagesManHoursByJobId: StagesRowRenderContext['stagesManHoursByJobId']
   stagesManHoursLoading: StagesRowRenderContext['stagesManHoursLoading']
+  crewByJobId: StagesRowRenderContext['crewByJobId']
   stagesLaborBreakdownByJobId: StagesRowRenderContext['stagesLaborBreakdownByJobId']
   expandedJobThreadId: StagesRowRenderContext['expandedJobThreadId']
   toggleStagesJobThreadExpanded: StagesRowRenderContext['toggleStagesJobThreadExpanded']
@@ -239,6 +238,7 @@ export default function JobsStagesUnifiedTable(props: JobsStagesUnifiedTableProp
     openEditJobAndCreateCustomerFlow,
     stagesManHoursByJobId,
     stagesManHoursLoading,
+    crewByJobId,
     stagesLaborBreakdownByJobId,
     expandedJobThreadId,
     toggleStagesJobThreadExpanded,
@@ -283,6 +283,7 @@ export default function JobsStagesUnifiedTable(props: JobsStagesUnifiedTableProp
     openEditJobAndCreateCustomerFlow,
     stagesManHoursByJobId,
     stagesManHoursLoading,
+    crewByJobId,
     stagesLaborBreakdownByJobId,
     expandedJobThreadId,
     toggleStagesJobThreadExpanded,
@@ -521,13 +522,8 @@ export default function JobsStagesUnifiedTable(props: JobsStagesUnifiedTableProp
                         {!bundleInv ? (
                           <>
                             <StagesProgressPaymentCell
-                              model={buildStagesMoneyBarModel({
-                                totalBill: j.revenue != null ? Number(j.revenue) : null,
-                                paymentsMade: j.payments_made != null ? Number(j.payments_made) : null,
-                                pctComplete: j.pct_complete ?? null,
-                                billedUnpaid: jobBilledUnpaidDollars(j),
-                              })}
-                              stageBar={buildPipelineStageBar({ fixtures: j.fixtures, invoices: j.invoices, payments: j.payments, pctComplete: j.pct_complete ?? null })}
+                              model={progressPaymentForJob(j, stagesRowSharedCtx.crewByJobId.get(j.id) ?? null).model}
+                    view={progressPaymentForJob(j, stagesRowSharedCtx.crewByJobId.get(j.id) ?? null).view}
                               pctComplete={j.pct_complete ?? null}
                               billSentAlert={stagesBillSentPctAlert(j)}
                               pctSaving={pctCompleteSavingId === j.id}
@@ -572,13 +568,8 @@ export default function JobsStagesUnifiedTable(props: JobsStagesUnifiedTableProp
                         ) : (
                           <>
                             <StagesProgressPaymentCell
-                              model={buildStagesMoneyBarModel({
-                                totalBill: j.revenue != null ? Number(j.revenue) : null,
-                                paymentsMade: j.payments_made != null ? Number(j.payments_made) : null,
-                                pctComplete: j.pct_complete ?? null,
-                                billedUnpaid: jobBilledUnpaidDollars(j),
-                              })}
-                              stageBar={buildPipelineStageBar({ fixtures: j.fixtures, invoices: j.invoices, payments: j.payments, pctComplete: j.pct_complete ?? null })}
+                              model={progressPaymentForJob(j, stagesRowSharedCtx.crewByJobId.get(j.id) ?? null).model}
+                    view={progressPaymentForJob(j, stagesRowSharedCtx.crewByJobId.get(j.id) ?? null).view}
                               pctComplete={j.pct_complete ?? null}
                               billSentAlert={stagesBillSentPctAlert(j)}
                               pctSaving={pctCompleteSavingId === j.id}
@@ -1049,13 +1040,8 @@ export default function JobsStagesUnifiedTable(props: JobsStagesUnifiedTableProp
                     <td style={{ padding: '0.75rem', textAlign: 'center', verticalAlign: 'middle' }}>
                       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.25rem' }}>
                         <StagesProgressPaymentCell
-                          model={buildStagesMoneyBarModel({
-                            totalBill: job.revenue != null ? Number(job.revenue) : null,
-                            paymentsMade: job.payments_made != null ? Number(job.payments_made) : null,
-                            pctComplete: job.pct_complete ?? null,
-                            billedUnpaid: jobBilledUnpaidDollars(job),
-                          })}
-                          stageBar={buildPipelineStageBar({ fixtures: job.fixtures, invoices: job.invoices, payments: job.payments, pctComplete: job.pct_complete ?? null })}
+                          model={progressPaymentForJob(job, stagesRowSharedCtx.crewByJobId.get(job.id) ?? null).model}
+                          view={progressPaymentForJob(job, stagesRowSharedCtx.crewByJobId.get(job.id) ?? null).view}
                           pctComplete={job.pct_complete ?? null}
                           billSentAlert={stagesBillSentPctAlert(job)}
                           pctSaving={pctCompleteSavingId === job.id}

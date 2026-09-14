@@ -111,19 +111,23 @@ export function crewShortName(p: JobCrewPosition | null | undefined): string {
 }
 
 /**
- * The newest dated percent the row has: the office's typed % when it was set
- * at or after the newest report, else the report's %. Mirrors the v2.3372
- * "newest wins" rule; `typedPct` is the job's `pct_complete`.
+ * The percent the row shows, with its provenance. **The job's own
+ * `pct_complete` is the number** — it is what the % done box shows and what
+ * reports propagate into (v2.3192) — dated by the newest hand-set
+ * (`pct_manual_at`), or by the report that carries the same number when no
+ * hand-set is on record. A report stands on its own only when the job has no
+ * percent at all. (v2.3372's "newest wins" governs Job Summary, where reports
+ * feed the %; on the Pipeline row the box and the words must agree.)
  */
 export function newestPercent(p: JobCrewPosition | null | undefined, typedPct: number | null | undefined): { pct: number; source: 'typed' | 'report'; at: string | null } | null {
   const typed = typedPct != null && Number.isFinite(Number(typedPct)) ? Math.round(Number(typedPct)) : null
   const report = p?.report ?? null
   const manualAt = p?.pctManualAt ?? null
-  if (typed != null && report) {
-    if (manualAt && manualAt >= report.at) return { pct: typed, source: 'typed', at: manualAt }
-    return { pct: report.pct, source: 'report', at: report.at }
+  if (typed != null) {
+    if (manualAt) return { pct: typed, source: 'typed', at: manualAt }
+    if (report && report.pct === typed) return { pct: typed, source: 'report', at: report.at }
+    return { pct: typed, source: 'typed', at: null }
   }
-  if (typed != null) return { pct: typed, source: 'typed', at: manualAt }
   if (report) return { pct: report.pct, source: 'report', at: report.at }
   return null
 }

@@ -7,9 +7,8 @@ import { useNavigate } from 'react-router-dom'
 import { formatTimeSince } from '../../lib/jobs/jobFormatting'
 import { stagesAddedStampLabel, type StagesBoardSortMode } from '../../lib/jobsStagesSortMode'
 import StagesProgressPaymentHeader from './StagesProgressPaymentHeader'
-import { jobBilledUnpaidDollars, stagesJobLevelStripeEmailedHintInvoice } from '../../lib/jobs/invoiceBilling'
-import { buildStagesMoneyBarModel } from '../../lib/stagesMoneyBar'
-import { buildPipelineStageBar } from '../../lib/jobs/pipelineStageBar'
+import { stagesJobLevelStripeEmailedHintInvoice } from '../../lib/jobs/invoiceBilling'
+import { progressPaymentForJob } from '../../lib/jobs/progressPaymentForJob'
 import { stagesBillSentPctAlert } from '../../lib/jobs/stagesBillSentPctAlert'
 import StagesProgressPaymentCell from './StagesProgressPaymentCell'
 import { JobsStagesThreadPanel } from './JobsStagesThreadPanel'
@@ -112,6 +111,7 @@ export type JobsStagesTableProps = {
   openEditJobAndCreateCustomerFlow: StagesRowRenderContext['openEditJobAndCreateCustomerFlow']
   stagesManHoursByJobId: StagesRowRenderContext['stagesManHoursByJobId']
   stagesManHoursLoading: StagesRowRenderContext['stagesManHoursLoading']
+  crewByJobId: StagesRowRenderContext['crewByJobId']
   stagesLaborBreakdownByJobId: StagesRowRenderContext['stagesLaborBreakdownByJobId']
   expandedJobThreadId: StagesRowRenderContext['expandedJobThreadId']
   toggleStagesJobThreadExpanded: StagesRowRenderContext['toggleStagesJobThreadExpanded']
@@ -177,6 +177,7 @@ export default function JobsStagesTable(props: JobsStagesTableProps) {
     openEditJobAndCreateCustomerFlow,
     stagesManHoursByJobId,
     stagesManHoursLoading,
+    crewByJobId,
     stagesLaborBreakdownByJobId,
     expandedJobThreadId,
     toggleStagesJobThreadExpanded,
@@ -217,6 +218,7 @@ export default function JobsStagesTable(props: JobsStagesTableProps) {
     openEditJobAndCreateCustomerFlow,
     stagesManHoursByJobId,
     stagesManHoursLoading,
+    crewByJobId,
     stagesLaborBreakdownByJobId,
     expandedJobThreadId,
     toggleStagesJobThreadExpanded,
@@ -357,13 +359,8 @@ export default function JobsStagesTable(props: JobsStagesTableProps) {
                 </td>
                 <td style={{ padding: '0.75rem', textAlign: 'center', verticalAlign: 'middle' }}>
                   <StagesProgressPaymentCell
-                    model={buildStagesMoneyBarModel({
-                      totalBill: j.revenue != null ? Number(j.revenue) : null,
-                      paymentsMade: j.payments_made != null ? Number(j.payments_made) : null,
-                      pctComplete: j.pct_complete ?? null,
-                      billedUnpaid: jobBilledUnpaidDollars(j),
-                    })}
-                    stageBar={buildPipelineStageBar({ fixtures: j.fixtures, invoices: j.invoices, payments: j.payments, pctComplete: j.pct_complete ?? null })}
+                    model={progressPaymentForJob(j, stagesRowSharedCtx.crewByJobId.get(j.id) ?? null).model}
+                    view={progressPaymentForJob(j, stagesRowSharedCtx.crewByJobId.get(j.id) ?? null).view}
                     pctComplete={j.pct_complete ?? null}
                     billSentAlert={stagesBillSentPctAlert(j)}
                     pctSaving={showPctComplete ? pctCompleteSavingId === j.id : undefined}

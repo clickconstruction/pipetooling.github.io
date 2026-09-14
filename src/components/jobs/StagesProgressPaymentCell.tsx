@@ -1,6 +1,6 @@
 import { formatUsdNoCents } from '../../lib/jobs/jobFormatting'
 import type { StagesMoneyBarModel } from '../../lib/stagesMoneyBar'
-import type { PipelineStageBar } from '../../lib/jobs/pipelineStageBar'
+import type { ProgressPaymentView } from '../../lib/jobs/progressPaymentCell'
 import StagesStageBar from './StagesStageBar'
 import type { StagesBillSentPctAlert } from '../../lib/jobs/stagesBillSentPctAlert'
 
@@ -33,12 +33,12 @@ type StagesProgressPaymentCellProps = {
    */
   compact?: boolean
   /**
-   * v2.3198: on a job split into Order stages, the stage strip (chips + one
-   * bar: fill = work, edge = the draw) replaces the money bar and the yellow
-   * dot, and the legend drops Unbilled — the bar now says which stage. Null /
-   * omitted = the classic money bar.
+   * v2.3419 (Where the Job Is): the bar on every row — chips when the job has
+   * stages, one bar whose top channel is work and whose bottom channel is the
+   * money poured in order, and one line of words. Omitted = the classic money
+   * bar with the yellow dot (older callers and tests only).
    */
-  stageBar?: PipelineStageBar | null
+  view?: ProgressPaymentView | null
   /**
    * v2.3411: a bill has gone out and no percent is recorded — the box wears a
    * red outline, "% done" turns red, and one red line under it names the send
@@ -70,7 +70,10 @@ function swatch(color?: string) {
  * total on top, a paid/unbilled bar of the total bill, and a labeled legend.
  * Pure presentation — all math comes in via the model (see stagesMoneyBar.ts).
  */
-export default function StagesProgressPaymentCell({ model, pctComplete, pctSaving, onPctCommit, footnote, onNoBidValueClick, compact = false, stageBar = null, billSentAlert = null }: StagesProgressPaymentCellProps) {
+export default function StagesProgressPaymentCell({ model, pctComplete, pctSaving, onPctCommit, footnote, onNoBidValueClick, compact = false, view = null, billSentAlert = null }: StagesProgressPaymentCellProps) {
+  // The legend's amber and empty rows belong to the classic money reading; on a
+  // job drawn as stages the bar already says which stage the money is on.
+  const stageBar = view?.mode === 'stages'
   const rowStyle: React.CSSProperties = { display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '0.5rem' }
   const labelStyle: React.CSSProperties = { fontSize: '0.75rem', color: 'var(--text-muted)' }
   const alert = billSentAlert ?? null
@@ -190,8 +193,8 @@ export default function StagesProgressPaymentCell({ model, pctComplete, pctSavin
         </div>
       ) : null}
 
-      {stageBar ? (
-        <StagesStageBar bar={stageBar} compact={compact} />
+      {view ? (
+        <StagesStageBar view={view} compact={compact} />
       ) : (
       <div
         title={

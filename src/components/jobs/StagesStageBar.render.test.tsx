@@ -1,56 +1,100 @@
 // @vitest-environment jsdom
 /**
- * Wiring smoke for the Pipeline row's stage strip (v2.3198): with a stage bar
- * the cell shows the chips + segments and drops the Unbilled row; without one
- * it is the classic money bar.
+ * Wiring smoke for the Pipeline row's bar (v2.3198 chips; v2.3419 the two
+ * channels on every row): with stages the cell shows the chips, the segments
+ * and the words and drops the amber legend row; a single-line job shows one
+ * segment and the four-row legend; a job with no bid value shows the words
+ * alone; without a view it is the classic money bar.
  */
 import { describe, expect, it } from 'vitest'
 import { render, screen, within } from '@testing-library/react'
 import { buildStagesMoneyBarModel } from '../../lib/stagesMoneyBar'
-import { buildPipelineStageBar } from '../../lib/jobs/pipelineStageBar'
+import { crewPositionsFromRpc, type JobCrewPositionRpcRow } from '../../lib/jobs/jobCrewPosition'
+import { progressPaymentForJob } from '../../lib/jobs/progressPaymentForJob'
 import StagesProgressPaymentCell from './StagesProgressPaymentCell'
 
-const model = buildStagesMoneyBarModel({ totalBill: 37_745, paymentsMade: 13_211, pctComplete: 55 })
-const stageBar = buildPipelineStageBar({
-  fixtures: [
-    { id: 'r', name: 'Rough In', count: 1, line_unit_price: 15098, sequence_order: 0, invoice_id: 'inv1', stage_kind: 'order', progress_pct: null },
-    { id: 't', name: 'Top Out', count: 1, line_unit_price: 15098, sequence_order: 1, invoice_id: null, stage_kind: 'order', progress_pct: 60 },
-    { id: 's', name: 'Trim Set', count: 1, line_unit_price: 7549, sequence_order: 2, invoice_id: null, stage_kind: 'order', progress_pct: null },
-  ],
-  invoices: [{ id: 'inv1', status: 'paid' }],
-  payments: [{ invoice_id: 'inv1', paid_on: '2026-08-20' }],
-  pctComplete: 55,
-  todayYmd: '2026-09-09',
-})!
+const today = '2026-09-14'
+const line = (id: string, name: string, price: number, seq: number) => ({ id, name, count: 1, line_unit_price: price, sequence_order: seq, invoice_id: null, stage_kind: 'any', progress_pct: null })
+const crewRow = (over: Partial<JobCrewPositionRpcRow> & { job_ledger_id: string }): JobCrewPositionRpcRow => ({
+  last_work_date: null,
+  last_day_people: null,
+  sessions_60d: 0,
+  people_60d: 0,
+  sheet_stage: null,
+  sheet_names: null,
+  sheet_date: null,
+  sheet_progress_pct: null,
+  sheet_stage_changed_at: null,
+  report_pct: null,
+  report_at: null,
+  pct_manual_at: null,
+  ...over,
+})
+const heronCrew = crewPositionsFromRpc([crewRow({ job_ledger_id: 'heron', last_work_date: '2026-09-12', last_day_people: ['Behar Kraja', 'Malachi Jones'], sessions_60d: 14, people_60d: 6, sheet_stage: 'working', sheet_names: 'Behar | Malachi', sheet_date: '2026-09-10' })], today).get('heron')!
 
-describe('StagesProgressPaymentCell with a stage bar', () => {
-  it('renders the three chips, the caption and Paid / Billed / Left — no Unbilled row', () => {
-    render(<StagesProgressPaymentCell model={model} pctComplete={55} stageBar={stageBar} />)
+// J931 Heron Construction as it stood on 2026-09-14.
+const heron = progressPaymentForJob(
+  { id: 'heron', revenue: 48_700, payments_made: 24_359.44, pct_complete: 40, status: 'working', fixtures: [line('r', 'Rough In', 19_480, 0), line('t', 'Top Out', 19_480, 1), line('s', 'Trim Set', 9_740, 2)], invoices: [], payments: [] },
+  heronCrew,
+  today,
+)
+
+describe('StagesProgressPaymentCell with the v2.3419 view', () => {
+  it('stages: the three chips with the live crew, the segments, the words, and Paid / Billed / Left — no amber row', () => {
+    render(<StagesProgressPaymentCell model={heron.model} pctComplete={40} view={heron.view} />)
     const strip = screen.getByRole('list', { name: 'Stages' })
     const chips = within(strip).getAllByRole('listitem')
     expect(chips).toHaveLength(3)
     expect(chips[0]!.textContent).toContain('Rough')
     expect(chips[1]!.textContent).toContain('Top Out')
-    expect(chips[1]!.textContent).toContain('60%')
+    expect(chips[1]!.textContent).toContain('Behar & Malachi')
     expect(chips[2]!.textContent).toContain('Trim')
-    expect(screen.getByRole('img', { name: 'Stage 2 of 3 · Top Out 60% · draw 1 paid' })).toBeTruthy()
-    expect(screen.getByText('Stage 2 of 3 · Top Out 60% · draw 1 paid')).toBeTruthy()
+    const words = 'Top Out · Behar & Malachi on site Sat · 40% typed · $24,359 paid, nothing billed'
+    const bar = screen.getByRole('img', { name: words })
+    expect(bar.querySelectorAll('[data-segment-state]')).toHaveLength(3)
+    expect(bar.querySelector('[data-segment-state="live"]')).toBeTruthy()
+    expect(screen.getByText(words)).toBeTruthy()
     expect(screen.queryByText(/Done, not billed/)).toBeNull()
-    expect(screen.getByText(/Paid/)).toBeTruthy()
+    expect(screen.queryByText(/Not done/)).toBeNull()
     expect(screen.getByText('Left on Job')).toBeTruthy()
-    expect(screen.getByText('$37,745 bid')).toBeTruthy()
+    expect(screen.getByText('$48,700 bid')).toBeTruthy()
   })
 
-  it('keeps the classic money bar when there is no stage bar', () => {
-    render(<StagesProgressPaymentCell model={model} pctComplete={55} />)
+  it('a single-line job: one segment, no chips, the four-row legend', () => {
+    // J977 Springtown, the owner's screenshot.
+    const { model, view } = progressPaymentForJob(
+      { id: 'sp', revenue: 40_000, payments_made: 13_412, pct_complete: 80, status: 'working', fixtures: [line('e', 'Electrical', 40_000, 0)], invoices: [{ id: 'i1', status: 'billed', amount: 11_770 }], payments: [] },
+      null,
+      today,
+    )
+    render(<StagesProgressPaymentCell model={model} pctComplete={80} view={view} />)
     expect(screen.queryByRole('list', { name: 'Stages' })).toBeNull()
+    expect(screen.getByRole('img').querySelectorAll('[data-segment-state]')).toHaveLength(1)
+    expect(screen.getByText(/nobody clocked in · 80% typed · \$13,412 paid · \$11,770 billed · \$6,818 done, not billed/)).toBeTruthy()
     expect(screen.getByText(/Done, not billed/)).toBeTruthy()
+    expect(screen.getByText(/Not done/)).toBeTruthy()
   })
 
-  it('compact cards show the strip and the condensed line without Done, not billed', () => {
-    render(<StagesProgressPaymentCell compact model={model} pctComplete={55} stageBar={stageBar} />)
+  it('no bid value: the words alone, red when a crew is on site', () => {
+    const crew = crewPositionsFromRpc([crewRow({ job_ledger_id: 'drf', last_work_date: today, last_day_people: ['Edgar Lopez', 'Jose Cruz'], sessions_60d: 2, people_60d: 2 })], today).get('drf')!
+    const { model, view } = progressPaymentForJob({ id: 'drf', revenue: 0, payments_made: 0, pct_complete: null, status: 'working', fixtures: [], invoices: [], payments: [] }, crew, today)
+    render(<StagesProgressPaymentCell model={model} pctComplete={null} view={view} onNoBidValueClick={() => {}} />)
+    expect(screen.queryByRole('img')).toBeNull()
+    expect(screen.getByText('Edgar & Jose on site today · no lines on the job · nothing to bill against')).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'no bid value' })).toBeTruthy()
+  })
+
+  it('compact cards show the strip and the condensed line', () => {
+    render(<StagesProgressPaymentCell compact model={heron.model} pctComplete={40} view={heron.view} />)
     expect(screen.getByRole('list', { name: 'Stages' })).toBeTruthy()
     expect(screen.queryByText(/Done, not billed/)).toBeNull()
     expect(screen.getByText(/Left/)).toBeTruthy()
+  })
+
+  it('keeps the classic money bar when there is no view (older callers)', () => {
+    const model = buildStagesMoneyBarModel({ totalBill: 37_745, paymentsMade: 13_211, pctComplete: 55 })
+    render(<StagesProgressPaymentCell model={model} pctComplete={55} />)
+    expect(screen.queryByRole('list', { name: 'Stages' })).toBeNull()
+    expect(screen.getByText(/Done, not billed/)).toBeTruthy()
   })
 })

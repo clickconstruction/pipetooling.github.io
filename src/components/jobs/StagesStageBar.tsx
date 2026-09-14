@@ -1,21 +1,29 @@
 import { useLayoutEffect, useRef, useState } from 'react'
-import { fitStageChips, segmentLabel, type PipelineStageBar, type PipelineStageEdge, type PipelineStageState } from '../../lib/jobs/pipelineStageBar'
+import { fitStageChips, type PipelineStageState } from '../../lib/jobs/pipelineStageBar'
+import type { ProgressPaymentSegment, ProgressPaymentTone, ProgressPaymentView } from '../../lib/jobs/progressPaymentCell'
 
 /**
- * The Pipeline row's stage strip (v2.3198, mock-up A′): numbered chips, one
- * bar whose segments are the stages (fill = work, bottom edge = the draw), and
- * a one-line caption. Pure presentation over `buildPipelineStageBar`; the only
- * state is the measured width that picks how many chip names fit.
+ * The Pipeline row's bar (v2.3198 chips + bar; v2.3419 the two channels on
+ * every row): numbered chips when the job has stages, one bar whose segments
+ * are the stages or the line items — the top channel is WORK (fill), the 3 px
+ * bottom channel is MONEY poured in order (green paid · blue billed · amber
+ * done-not-billed) — and one line of words. Pure presentation over
+ * `buildProgressPaymentView`; the only state is the measured width that picks
+ * how many chip names fit and which segments can carry their label.
  */
 
 const WORK_FILL = '#2563eb'
-const EDGE_COLOR: Record<PipelineStageEdge, string> = {
-  paid: '#16a34a',
-  billed: '#1d4ed8',
-  ready: '#f59e0b',
-  later: 'var(--border-strong)',
+const PAID = '#16a34a'
+const BILLED = '#1d4ed8'
+const UNBILLED = '#f59e0b'
+
+const TONE_COLOR: Record<ProgressPaymentTone, string> = {
+  plain: 'var(--text-muted)',
+  muted: 'var(--text-faint)',
+  amber: 'var(--text-amber-700)',
+  green: 'var(--text-green-700)',
+  red: 'var(--text-red-700)',
 }
-const EDGE_WORD: Record<PipelineStageEdge, string> = { paid: 'paid', billed: 'billed', ready: 'ready to bill', later: 'not yet billed' }
 
 function useMeasuredWidth<T extends HTMLElement>(): [React.RefObject<T>, number | null] {
   const ref = useRef<T>(null)
@@ -44,134 +52,167 @@ function chipColors(state: PipelineStageState): { border: string; color: string;
   }
 }
 
-export function StagesStageBar({ bar, compact = false }: { bar: PipelineStageBar; compact?: boolean }) {
+/** ~11px system font: an average glyph is a shade over half an em. */
+const textPx = (text: string) => Math.ceil(text.length * 6.2) + 8
+
+/** The label a segment can carry at this width: the full label, a shorter one, or none. */
+function segmentLabelFor(seg: ProgressPaymentSegment, segPx: number | null): string | null {
+  if (!seg.label) return null
+  if (segPx == null) return seg.label
+  if (textPx(seg.label) <= segPx) return seg.label
+  // Try the tail of a "Name · 80%" / "Name 80%" label, then the check alone.
+  const tail = seg.label.match(/(\d{1,3}%|✓)$/)?.[1] ?? null
+  if (tail && textPx(tail) <= segPx) return tail
+  if (seg.state === 'done' && segPx >= 18) return '✓'
+  return null
+}
+
+export function StagesStageBar({ view, compact = false }: { view: ProgressPaymentView; compact?: boolean }) {
   const [stripRef, stripWidth] = useMeasuredWidth<HTMLDivElement>()
   const [barRef, barWidth] = useMeasuredWidth<HTMLDivElement>()
-  const fit = fitStageChips(bar.segments, stripWidth)
   const gapPx = 3
+  const chips = view.mode === 'stages' && view.stageBar ? fitStageChips(view.stageBar.segments, stripWidth).chips : []
+  const segCount = view.segments.length
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: compact ? '0.25rem' : '0.3rem', minWidth: 0 }}>
-      <div ref={stripRef} role="list" aria-label="Stages" style={{ display: 'flex', alignItems: 'center', gap: 4, minWidth: 0, overflow: 'hidden', fontSize: '0.6875rem', lineHeight: 1.2 }}>
-        {fit.chips.map((c, i) => {
-          const k = chipColors(c.state)
-          return (
-            <span key={c.number} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, minWidth: 0 }}>
-              {i > 0 ? (
-                <span aria-hidden style={{ color: 'var(--text-faint)', fontSize: '0.625rem' }}>
-                  →
-                </span>
-              ) : null}
-              <span
-                role="listitem"
-                title={`${c.title}${c.pctText ? ` · ${c.pctText} done` : c.state === 'done' ? ' · done' : ''}`}
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: 4,
-                  padding: c.text || c.pctText ? '1px 7px 1px 3px' : '1px 3px',
-                  borderRadius: 999,
-                  border: `1px solid ${k.border}`,
-                  color: k.color,
-                  background: k.bg,
-                  fontWeight: k.weight,
-                  whiteSpace: 'nowrap',
-                }}
-              >
+    <div style={{ display: 'flex', flexDirection: 'column', gap: compact ? '0.25rem' : '0.3rem', minWidth: 0 }} data-progress-mode={view.mode}>
+      {chips.length > 0 ? (
+        <div ref={stripRef} role="list" aria-label="Stages" style={{ display: 'flex', alignItems: 'center', gap: 4, minWidth: 0, overflow: 'hidden', fontSize: '0.6875rem', lineHeight: 1.2 }}>
+          {chips.map((c, i) => {
+            const k = chipColors(c.state)
+            const suffix = c.state === 'live' && c.text ? view.liveChipSuffix : null
+            return (
+              <span key={c.number} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, minWidth: 0 }}>
+                {i > 0 ? (
+                  <span aria-hidden style={{ color: 'var(--text-faint)', fontSize: '0.625rem' }}>
+                    →
+                  </span>
+                ) : null}
                 <span
-                  aria-hidden
+                  role="listitem"
+                  title={`${c.title}${c.pctText ? ` · ${c.pctText} done` : c.state === 'done' ? ' · done' : c.state === 'live' ? ' · the crew is here' : ''}`}
                   style={{
                     display: 'inline-flex',
                     alignItems: 'center',
-                    justifyContent: 'center',
-                    width: 14,
-                    height: 14,
-                    borderRadius: '50%',
-                    fontSize: 9,
-                    fontWeight: 700,
-                    background: k.disc,
-                    color: k.discInk,
-                    border: c.state === 'later' ? '1px solid var(--border-strong)' : `1px solid ${k.disc}`,
-                    boxSizing: 'border-box',
+                    gap: 4,
+                    padding: c.text || c.pctText ? '1px 7px 1px 3px' : '1px 3px',
+                    borderRadius: 999,
+                    border: `1px solid ${k.border}`,
+                    color: k.color,
+                    background: k.bg,
+                    fontWeight: k.weight,
+                    whiteSpace: 'nowrap',
                   }}
                 >
-                  {c.state === 'done' ? '✓' : c.number}
+                  <span
+                    aria-hidden
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      width: 14,
+                      height: 14,
+                      borderRadius: '50%',
+                      fontSize: 9,
+                      fontWeight: 700,
+                      background: k.disc,
+                      color: k.discInk,
+                      border: c.state === 'later' ? '1px solid var(--border-strong)' : `1px solid ${k.disc}`,
+                      boxSizing: 'border-box',
+                    }}
+                  >
+                    {c.state === 'done' ? '✓' : c.number}
+                  </span>
+                  <span style={{ position: 'absolute', width: 1, height: 1, overflow: 'hidden', clip: 'rect(0 0 0 0)' }}>{`Stage ${c.number} `}</span>
+                  {c.text ? <span>{c.text}</span> : null}
+                  {c.pctText ? <small style={{ fontWeight: 700, color: 'var(--text-blue-700)', fontSize: '0.625rem' }}>{c.pctText}</small> : null}
+                  {suffix && !c.pctText ? <small style={{ fontWeight: 500, color: 'var(--text-muted)', fontSize: '0.625rem' }}>{`· ${suffix}`}</small> : null}
                 </span>
-                <span style={{ position: 'absolute', width: 1, height: 1, overflow: 'hidden', clip: 'rect(0 0 0 0)' }}>{`Stage ${c.number} `}</span>
-                {c.text ? <span>{c.text}</span> : null}
-                {c.pctText ? <small style={{ fontWeight: 700, color: 'var(--text-blue-700)', fontSize: '0.625rem' }}>{c.pctText}</small> : null}
               </span>
-            </span>
-          )
-        })}
-      </div>
+            )
+          })}
+        </div>
+      ) : null}
 
-      <div
-        ref={barRef}
-        role="img"
-        aria-label={bar.caption}
-        title={bar.segments.map((s) => `${s.name} — ${s.stateLine}`).join('\n')}
-        style={{ display: 'flex', gap: gapPx, height: 13, minWidth: 0 }}
-      >
-        {bar.segments.map((s) => {
-          const segPx = barWidth != null ? Math.max(0, (barWidth - gapPx * (bar.segments.length - 1)) * (s.widthPct / 100)) : null
-          const label = segmentLabel(s, segPx)
-          const onFill = s.workPct >= 40
-          return (
-            <div
-              key={s.fixtureId}
-              title={`${s.name} — ${s.stateLine}${s.workSource === 'job' ? ' (fill from the job’s % done)' : ''} · draw ${EDGE_WORD[s.edge]}`}
-              style={{
-                flex: `${s.widthPct} 1 0px`,
-                position: 'relative',
-                minWidth: 14,
-                height: 13,
-                borderRadius: 4,
-                background: 'var(--bg-subtle)',
-                overflow: 'hidden',
-                boxSizing: 'border-box',
-              }}
-            >
-              {s.workPct > 0 ? (
-                <div aria-hidden style={{ position: 'absolute', left: 0, top: 0, bottom: 3, width: `${s.workPct}%`, background: WORK_FILL, opacity: s.state === 'later' ? 0.55 : 1 }} />
-              ) : null}
-              <div aria-hidden style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: 3, background: EDGE_COLOR[s.edge] }} />
-              {label ? (
-                <div
-                  aria-hidden
-                  style={{
-                    position: 'absolute',
-                    inset: '0 0 3px 0',
-                    display: 'flex',
-                    alignItems: 'center',
-                    paddingLeft: 4,
-                    fontSize: 9,
-                    fontWeight: 700,
-                    lineHeight: 1,
-                    color: onFill ? 'white' : 'var(--text-strong)',
-                    pointerEvents: 'none',
-                  }}
-                >
-                  {label}
+      {segCount > 0 ? (
+        <div
+          ref={barRef}
+          role="img"
+          aria-label={view.words.text}
+          title={view.segments.map((s) => s.title).join('\n')}
+          style={{ display: 'flex', gap: gapPx, height: 14, minWidth: 0 }}
+        >
+          {view.segments.map((s) => {
+            const segPx = barWidth != null ? Math.max(0, (barWidth - gapPx * (segCount - 1)) * (s.widthPct / 100)) : null
+            const label = segmentLabelFor(s, segPx)
+            const onFill = s.fillPct >= 40 && (label === '✓' || /^\d{1,3}%$/.test(label ?? '') || (segPx != null && (s.fillPct / 100) * segPx >= textPx(label ?? '')))
+            return (
+              <div
+                key={s.key}
+                title={s.title}
+                data-segment-state={s.state}
+                style={{
+                  flex: `${s.widthPct} 1 0px`,
+                  position: 'relative',
+                  minWidth: 14,
+                  height: 14,
+                  borderRadius: 4,
+                  background: 'var(--bg-subtle)',
+                  overflow: 'hidden',
+                  boxSizing: 'border-box',
+                  outline: s.state === 'live' ? `1px solid ${WORK_FILL}` : undefined,
+                  outlineOffset: -1,
+                }}
+              >
+                {s.fillPct > 0 ? (
+                  <div aria-hidden style={{ position: 'absolute', left: 0, top: 0, bottom: 3, width: `${s.fillPct}%`, background: WORK_FILL, opacity: s.state === 'later' ? 0.55 : 1 }} />
+                ) : null}
+                {/* The money channel: paid · billed · done-not-billed, poured left to right. */}
+                <div aria-hidden style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: 3, display: 'flex', background: 'var(--border)' }}>
+                  {s.money.paidFrac > 0 ? <span style={{ width: `${s.money.paidFrac * 100}%`, background: PAID }} /> : null}
+                  {s.money.billedFrac > 0 ? <span style={{ width: `${s.money.billedFrac * 100}%`, background: BILLED }} /> : null}
+                  {s.money.unbilledFrac > 0 ? <span style={{ width: `${s.money.unbilledFrac * 100}%`, background: UNBILLED }} /> : null}
                 </div>
-              ) : null}
-            </div>
-          )
-        })}
-      </div>
+                {label ? (
+                  <div
+                    aria-hidden
+                    style={{
+                      position: 'absolute',
+                      inset: '0 0 3px 0',
+                      display: 'flex',
+                      alignItems: 'center',
+                      paddingLeft: 4,
+                      fontSize: 9,
+                      fontWeight: 700,
+                      lineHeight: 1,
+                      color: onFill ? 'white' : 'var(--text-strong)',
+                      whiteSpace: 'nowrap',
+                      pointerEvents: 'none',
+                    }}
+                  >
+                    {label}
+                  </div>
+                ) : null}
+              </div>
+            )
+          })}
+        </div>
+      ) : null}
 
       <div
+        data-progress-words
         style={{
           fontSize: '0.6875rem',
-          color: bar.captionTone === 'amber' ? 'var(--text-amber-700)' : bar.captionTone === 'green' ? 'var(--text-green-700)' : 'var(--text-muted)',
+          color: TONE_COLOR[view.words.tone],
+          fontWeight: view.words.tone === 'red' ? 600 : 400,
           whiteSpace: 'nowrap',
           overflow: 'hidden',
           textOverflow: 'ellipsis',
           minWidth: 0,
         }}
-        title={bar.caption}
+        title={view.words.text}
       >
-        {bar.caption}
+        {view.words.text}
       </div>
     </div>
   )
