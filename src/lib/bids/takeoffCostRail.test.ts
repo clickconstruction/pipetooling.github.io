@@ -49,6 +49,16 @@ describe('rfqScopeForZeroPrice', () => {
     expect(rfqScopeForZeroPrice(q, rounding).text).toBe('Please quote these parts (no catalog price on file):\n• 3/4" Type L Copper × 120 ft (105 ft needed · 20 ft sticks)')
   })
 
+  it('v2.3414: pieces sold in packs quote as packs — 13 nuts in packs of 5 is 15', () => {
+    const q = zeroPriceQueue(
+      [{ id: 'wc', fixture: 'WC-12', count: 13, unit: null }],
+      [{ id: 'n', countRowId: 'wc', partId: 'p-nut', quantity: 1, unitPrice: 0, sourceMaterialPartPriceId: null, sourceTemplateId: null, orderIncrement: 5, orderIncrementUnit: 'pack' }],
+      new Map([['p-nut', '3/8" Brass flare nut']]),
+    )
+    const rounding = summarizeOrderRounding([{ id: 'wc', count: 13 }], [{ countRowId: 'wc', partId: 'p-nut', quantity: 1, unitPrice: 0, orderIncrement: 5, orderIncrementUnit: 'pack' }])
+    expect(rfqScopeForZeroPrice(q, rounding).text).toBe('Please quote these parts (no catalog price on file):\n• 3/8" Brass flare nut × 15 (13 needed · packs of 5)')
+  })
+
   it('is empty-safe', () => {
     expect(rfqScopeForZeroPrice([])).toEqual({ lines: [], text: 'Please quote these parts (no catalog price on file):' })
   })

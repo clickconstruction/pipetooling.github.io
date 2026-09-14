@@ -27,7 +27,7 @@ You're building a takeoff and hit five parts that aren't in the catalog yet. Ope
 
 ## Sold in: sticks, coils, boxes
 
-Pipe is sold in sticks, not by the foot. **Sold in** on the form says how a part comes — `20` · **ft sticks**, `100` · **ft coils**, `10` · **per box** — so a takeoff that needs 105 ft knows it buys 120 ft.
+Pipe is sold in sticks, not by the foot, and some fittings only come in batches. **Sold in** on the form says how a part comes — `20` · **ft sticks**, `100` · **ft coils**, `5` · **per pack**, `10` · **per box** — so a takeoff that needs 105 ft knows it buys 120 ft, and one that needs 13 nuts buys 15.
 
 - Most parts get it from their **Part Type**: a dev sets {{chip:purple|20 ft sticks}} once on *Copper pipe* in Settings → Catalogs → Material Part Types, and every copper part follows it. On the form the inherited number shows grey.
 - Type a number to make one part different — a 10 ft stick, a 100 ft coil. Blank with no type means sold by the each, and nothing rounds.

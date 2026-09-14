@@ -75,6 +75,9 @@ describe('summarizeOrderRounding', () => {
     expect(orderRoundingHover(exact)).toBe('40 ft needed on this bid — an exact 2 × 20 ft, nothing extra')
     const box = summarizeOrderRounding([{ id: 'a', count: 1 }], [{ countRowId: 'a', quantity: 13, partId: 'p', unitPrice: 1, orderIncrement: 10, orderIncrementUnit: 'box' }]).byPartId.get('p')!
     expect(orderRoundingHover(box)).toBe('13 needed on this bid → 20 (2 × 10 boxes) · +7 extra')
+    const pack = summarizeOrderRounding([{ id: 'a', count: 13 }], [{ countRowId: 'a', quantity: 1, partId: 'nut', unitPrice: 0.4, orderIncrement: 5, orderIncrementUnit: 'pack' }]).byPartId.get('nut')!
+    expect(pack).toMatchObject({ needed: 13, ordered: 15, packs: 3, extra: 2 })
+    expect(orderRoundingHover(pack)).toBe('13 needed on this bid → 15 (3 × 5 packs) · +2 extra')
     expect(orderRoundingTitle(r)).toBe('1 part sold in packs · 1 rounds up · the extra is included in Materials and spread over the fixtures that use the part')
     expect(orderRoundingTitle(summarizeOrderRounding([], []))).toBe('No part on this bid carries a Sold in rule')
   })

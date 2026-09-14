@@ -2,7 +2,7 @@
 title: price a takeoff in sticks
 category: Bids & Estimating
 roles: dev, master_technician, assistant, estimator
-keywords: sticks, sold in, minimum order, order rounding, 20 ft, coil, box, materials to order, request quotes, refresh sold in, takeoff, copper, pvc, pex
+keywords: sticks, sold in, minimum order, order rounding, 20 ft, coil, box, pack, batch, nuts, materials to order, request quotes, refresh sold in, takeoff, copper, pvc, pex
 order: 88
 ---
 Pipe comes in sticks, not by the foot. When a takeoff needs 105 ft of 3/4" copper and the house sells 20 ft sticks, you buy 120 ft — and the bid should carry the 15 ft you will not use. Takeoffs do that once the parts say how they are sold.
@@ -10,6 +10,8 @@ Pipe comes in sticks, not by the foot. When a takeoff needs 105 ft of 3/4" coppe
 ## Say how a part is sold, once
 
 Most of the catalog is covered by its **Part Types**: a dev sets {{chip:purple|20 ft sticks}} on *Copper pipe* in Settings → Catalogs → Material Part Types and every copper part follows it. Six entries cover a plumbing catalog — copper, PVC DWV, PEX coils, black iron, and the rest by the each. A part can be different on its own form (**Sold in** on Add Part / Edit Part, or in the part's **Prices** window from the sheet) — a 10 ft stick, a 100 ft coil. Blank means sold by the each, and nothing rounds.
+
+**It is not only pipe.** Anything the house will not split gets the same rule: a flare nut sold in fives is `5` · **per pack**, a box of 100 wax rings is `100` · **per box**. Thirteen nuts needed buys fifteen, and the sheet prices the two you will not use the same way it prices the sticks.
 
 {{gif:price-a-takeoff-in-sticks-1-part-type.gif|Settings → Catalogs → Manage Parts → Material Part Types: the Sold in pair on a type, and the rule as a chip in the list}}
 

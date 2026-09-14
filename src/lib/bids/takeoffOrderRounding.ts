@@ -13,7 +13,7 @@
  * up to the bid. Pure.
  */
 import { roughCountMultiplier, sumRoughLinesPreTaxWithCount } from './bidTakeoffHelpers'
-import { parseOrderIncrement, roundUpToIncrement, packsFor, type OrderIncrementUnitKey } from '../materials/orderIncrement'
+import { orderIncrementIsFeet, orderIncrementPackWord, parseOrderIncrement, roundUpToIncrement, packsFor, type OrderIncrementUnitKey } from '../materials/orderIncrement'
 
 export type RoundingCountRow = { id: string; count: number | string | null | undefined }
 
@@ -115,8 +115,8 @@ function num(n: number): string {
 
 /** `105 ft needed on this bid → 120 ft (6 × 20 ft sticks)` — the chip's hover. */
 export function orderRoundingHover(p: PartOrderRounding): string {
-  const unit = p.unit === 'ft_stick' || p.unit === 'ft_coil' ? 'ft' : ''
-  const packWord = p.unit === 'ft_stick' ? 'sticks' : p.unit === 'ft_coil' ? 'coils' : p.unit === 'box' ? 'boxes' : 'bundles'
+  const unit = orderIncrementIsFeet(p.unit) ? 'ft' : ''
+  const packWord = orderIncrementPackWord(p.unit)
   const of = (n: number) => `${num(n)}${unit ? ` ${unit}` : ''}`
   if (p.extra <= 0) return `${of(p.needed)} needed on this bid — an exact ${num(p.packs)} × ${of(p.increment)}, nothing extra`
   return `${of(p.needed)} needed on this bid → ${of(p.ordered)} (${num(p.packs)} × ${of(p.increment)} ${packWord}) · +${of(p.extra)} extra`
