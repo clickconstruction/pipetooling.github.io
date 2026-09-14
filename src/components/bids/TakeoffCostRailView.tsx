@@ -1,4 +1,5 @@
 import { orderRoundingTitle } from '../../lib/bids/takeoffOrderRounding'
+import { TakeoffOrderListPanel } from './TakeoffOrderListPanel'
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { formatCurrency } from '../../lib/format'
 import type { TakeoffCoverageSummary } from '../../lib/bids/takeoffCoverage'
@@ -54,6 +55,7 @@ export function TakeoffCostRailView({
   onCopyFromBid,
   onRequestQuotes,
   onFocusView,
+  onRefreshOrderRules = null,
   focusRequest,
 }: {
   countRows: BidCountRow[]
@@ -73,6 +75,8 @@ export function TakeoffCostRailView({
   onCopyFromBid: (candidate: CopyFromBidCandidate) => Promise<void>
   onRequestQuotes: (scope: { lines: Array<{ fixture: string; count: number; unit?: string | null }>; text: string }) => void
   onFocusView: () => void
+  /** Sold in (v2.3409): re-snapshot every line's rule from the catalog. */
+  onRefreshOrderRules?: (() => Promise<{ updated: number; cleared: number }>) | null
   /** A cross-tab row jump: show every row so the flash can find it. */
   focusRequest?: { countRowId: string; nonce: number } | null
 }) {
@@ -222,6 +226,8 @@ export function TakeoffCostRailView({
             ) : null}
           </div>
 
+          <TakeoffOrderListPanel rounding={coverage.orderRounding} partNameById={partNameById} onRefreshRules={onRefreshOrderRules ?? null} />
+
           <div style={panel}>
             <span style={panelK}>Needs a price</span>
             {queue.length === 0 ? (
@@ -235,7 +241,7 @@ export function TakeoffCostRailView({
                   </div>
                 ))}
                 {queue.length > 6 ? <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>+ {queue.length - 6} more</span> : null}
-                <button type="button" onClick={() => onRequestQuotes(rfqScopeForZeroPrice(queue))} style={mini(true)}>
+                <button type="button" onClick={() => onRequestQuotes(rfqScopeForZeroPrice(queue, coverage.orderRounding))} style={mini(true)}>
                   Request quotes · {queue.length} part{queue.length === 1 ? '' : 's'}
                 </button>
                 <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Opens a quote request to your supply houses; picked prices land back on these lines.</span>

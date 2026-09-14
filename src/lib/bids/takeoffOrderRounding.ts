@@ -156,3 +156,13 @@ export function roughMaterialsTotalWithRounding(rows: ReadonlyArray<RoughLineDbR
   const rounding = summarizeOrderRoundingFromDbRows(rows, countByRowId)
   return { base, extra: rounding.extraCost, total: base + rounding.extraCost, rounding }
 }
+
+export type OrderListRow = { partId: string; name: string; part: PartOrderRounding }
+
+/** The Materials-to-order rows: most expensive rounding first, then the most footage, capped. */
+export function orderListRows(r: TakeoffOrderRounding, partNameById: ReadonlyMap<string, string>, cap = 8): { rows: OrderListRow[]; more: number; totalExtra: number } {
+  const all = r.parts
+    .map((p) => ({ partId: p.partId, name: partNameById.get(p.partId) ?? 'Part', part: p }))
+    .sort((a, b) => b.part.extraCost - a.part.extraCost || b.part.needed - a.part.needed || a.name.localeCompare(b.name))
+  return { rows: all.slice(0, cap), more: Math.max(0, all.length - cap), totalExtra: r.extraCost }
+}

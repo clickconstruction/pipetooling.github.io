@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { orderRoundingHover, orderRoundingTitle, summarizeOrderRounding, type RoundingLine } from './takeoffOrderRounding'
+import { orderListRows, orderRoundingHover, orderRoundingTitle, summarizeOrderRounding, type RoundingLine } from './takeoffOrderRounding'
 
 const rows = [
   { id: 'lav', count: 6 },
@@ -77,5 +77,22 @@ describe('summarizeOrderRounding', () => {
     expect(orderRoundingHover(box)).toBe('13 needed on this bid → 20 (2 × 10 boxes) · +7 extra')
     expect(orderRoundingTitle(r)).toBe('1 part sold in packs · 1 rounds up · the extra is included in Materials and spread over the fixtures that use the part')
     expect(orderRoundingTitle(summarizeOrderRounding([], []))).toBe('No part on this bid carries a Sold in rule')
+  })
+})
+
+describe('orderListRows', () => {
+  it('orders by the extra’s cost, names the part, caps and counts the rest', () => {
+    const r = summarizeOrderRounding([{ id: 'a', count: 1 }], [
+      { countRowId: 'a', quantity: 105, partId: 'cu', unitPrice: 2.75, orderIncrement: 20, orderIncrementUnit: 'ft_stick' },
+      { countRowId: 'a', quantity: 40, partId: 'pvc', unitPrice: 3, orderIncrement: 20, orderIncrementUnit: 'ft_stick' },
+      { countRowId: 'a', quantity: 210, partId: 'pex', unitPrice: 0.65, orderIncrement: 100, orderIncrementUnit: 'ft_coil' },
+    ])
+    const names = new Map([['cu', '3/4" Copper'], ['pex', '1/2" PEX']])
+    const { rows, more, totalExtra } = orderListRows(r, names, 2)
+    // pex: 90 ft × $0.65 = $58.50 · cu: 15 × $2.75 = $41.25 · pvc: exact
+    expect(rows.map((x) => [x.name, x.part.ordered, x.part.extraCost])).toEqual([['1/2" PEX', 300, 58.5], ['3/4" Copper', 120, 41.25]])
+    expect(more).toBe(1)
+    expect(totalExtra).toBeCloseTo(99.75, 10)
+    expect(orderListRows(r, names, 8).rows[2]).toMatchObject({ name: 'Part', part: { extra: 0 } })
   })
 })

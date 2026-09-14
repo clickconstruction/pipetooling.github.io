@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { summarizeTakeoffCoverage } from './takeoffCoverage'
 import { fixtureUnitCosts, rfqScopeForZeroPrice, zeroPriceQueue } from './takeoffCostRail'
+import { summarizeOrderRounding } from './takeoffOrderRounding'
 
 const rows = [
   { id: 'wc', fixture: 'WC-12', count: 2, unit: null },
@@ -34,7 +35,18 @@ describe('rfqScopeForZeroPrice', () => {
       { fixture: 'WC-12', count: 2, unit: null },
       { fixture: 'L-4', count: 2, unit: null },
     ])
-    expect(scope.text).toBe('Please quote these parts (no catalog price on file):\n• K-25077-0 KINGSTON × 3')
+    // v2.3409: the bid's need — 1 × 2 on WC-12 plus 2 × 2 on L-4 — not the per-fixture quantities
+    expect(scope.text).toBe('Please quote these parts (no catalog price on file):\n• K-25077-0 KINGSTON × 6')
+  })
+
+  it('v2.3409: a part sold in packs is quoted at its ordered quantity', () => {
+    const q = zeroPriceQueue(
+      [{ id: 'w', fixture: 'ft of 3/4in water', count: 105, unit: 'ft' }],
+      [{ id: 'z', countRowId: 'w', partId: 'p-cu', quantity: 1, unitPrice: 0, sourceMaterialPartPriceId: null, sourceTemplateId: null, orderIncrement: 20, orderIncrementUnit: 'ft_stick' }],
+      new Map([['p-cu', '3/4" Type L Copper']]),
+    )
+    const rounding = summarizeOrderRounding([{ id: 'w', count: 105 }], [{ countRowId: 'w', partId: 'p-cu', quantity: 1, unitPrice: 0, orderIncrement: 20, orderIncrementUnit: 'ft_stick' }])
+    expect(rfqScopeForZeroPrice(q, rounding).text).toBe('Please quote these parts (no catalog price on file):\n• 3/4" Type L Copper × 120 ft (105 ft needed · 20 ft sticks)')
   })
 
   it('is empty-safe', () => {
