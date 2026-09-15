@@ -7,7 +7,7 @@ file: GLOSSARY.md
 type: Reference
 purpose: Comprehensive definitions of all domain-specific terms and technical concepts
 audience: All users (especially new developers and AI agents)
-last_updated: 2026-09-12
+last_updated: 2026-09-14
 estimated_read_time: 15-20 minutes (reference only)
 difficulty: Beginner
 
@@ -813,6 +813,13 @@ Who **else** sees a bill on their portal statement — decided per bill, by the 
 
 ### Development (v2.1198 + v2.1203–v2.1204)
 A named **group of jobs** — a subdivision/builder development like "Sagebrush Phase 2" — for finding and reviewing many jobs as one unit. A real row (`public.developments`, master-scoped, optional default GC + soft archive), NOT a free-text tag, so grouping can't fragment on typos; jobs link via `jobs_ledger.development_id` (FK, ON DELETE SET NULL — deleting a development un-groups its jobs). Set in **Edit Job → Project | Plans | Bid | Development** (select + inline "+ New development"; autosaves via the identity slice like Plans); shown with a house icon on **Jobs → Pipeline** (Job column, sharing the GC's muted line) and **Job Detail**; matched by the **Stages search**. Purely display/review — billing, scheduling, and the customer are untouched, and it's independent of **Projects** (multi-phase billing workflows). Same-master invariant: trigger `jobs_ledger_development_master_match` + client kernel `resolveDevelopmentIdForJobPayload` (`src/lib/jobs/jobDevelopments.ts`). Managed (rename / default GC / archive / delete) in **Settings → Jobs & dispatch → Manage developments** (dev-only tab, v2.1218).
+
+### Specified product · submitted product · alternate (Submittals, v2.3460 / v2.3464)
+The vocabulary of a submittal row, one per fixture **tag** from the plan's fixture schedule (`bid_specified_products`, pasted or typed on Bids → Pricing → *Plug in the fixture schedule*):
+- **Specified product** — the schedule's make and model for a tag. **Submitted product** — the picked quote line (`bid_quote_lines.picked`).
+- **As specified** — the same model (finish suffixes after `#` ignored; a one- or two-letter suffix reads *same unit · confirm*). **Alternate** — differs from specified; a reason is owed (`alternate_reason_kind`: lead time · discontinued · in stock · equal · cost · other, + a note). **Superseded** — the manufacturer replaced the model. **Equal** — the schedule's own "or equal" language admits it. **Design change** — a differing performance value (gpf, gallons, size); a reason is owed. **Missing** — specified, nobody quoted it. **Accessory** — required by the fixture, not on the schedule.
+- As specified / alternate / missing / accessory are derived (`deriveProductStatus`); superseded / equal / design change are the estimator's call (`product_status_override`, set from the status chip on the compare).
+- **Lead time** — days on the picked line (`lead_time_days`, 0 = in stock), typed by the estimator from the quote or the call; the house's own answer arrives only through the deferred written ask. **Cut sheet** — the manufacturer's page for the submitted product. **Submittal package** — the cover table plus the cut sheets in tag order, one per **revision**.
 
 ### Fixture / Fixture Type
 Installed plumbing fixture in a project (toilet, sink, faucet, shower, tub, water heater, etc.). Service-type-specific categorization used in Bids system for labor and pricing calculations.

@@ -32,6 +32,12 @@ export type CompareQuoteLine = {
   pageRef?: string | null
   pickReason?: string | null
   pickSource?: 'human' | 'robot' | null
+  /** Submittals stage 1c: the estimator's reason, lead time and status override on a picked line. */
+  alternateReasonKind?: string | null
+  alternateReasonNote?: string | null
+  leadTimeDays?: number | null
+  availability?: string | null
+  productStatusOverride?: string | null
 }
 
 export type CompareQuote = {
@@ -43,6 +49,28 @@ export type CompareQuote = {
   /** Order-level freight from the quote; null = the vendor never stated it (NOT free). */
   freightCents?: number | null
   lines: CompareQuoteLine[]
+}
+
+/** Submittals stage 1c: what the estimator said about a pick that differs from the schedule (typed as stored). */
+export type CellAnnotation = {
+  reasonKind: string | null
+  reasonNote: string | null
+  leadTimeDays: number | null
+  availability: string | null
+  statusOverride: string | null
+}
+
+/** The kit line's annotation, else the first line carrying any field; every field null when nothing was said. */
+export function annotationOf(lines: ReadonlyArray<CompareQuoteLine>): CellAnnotation {
+  const has = (l: CompareQuoteLine) => l.alternateReasonKind != null || l.alternateReasonNote != null || l.leadTimeDays != null || l.availability != null || l.productStatusOverride != null
+  const src = lines.find((l) => l.componentRole === 'kit' && has(l)) ?? lines.find(has) ?? null
+  return {
+    reasonKind: src?.alternateReasonKind ?? null,
+    reasonNote: src?.alternateReasonNote ?? null,
+    leadTimeDays: src?.leadTimeDays ?? null,
+    availability: src?.availability ?? null,
+    statusOverride: src?.productStatusOverride ?? null,
+  }
 }
 
 export type CompareRowCell = {
@@ -59,6 +87,8 @@ export type CompareRowCell = {
   lotTotalCents?: number | null
   /** Submittals stage 1 (v2.3460): the product name on this house's line (a kit's own label, else the line's), for the specified-vs-submitted status. */
   label?: string | null
+  /** Submittals stage 1c: the pick's reason, lead time and override (a kit reads its `kit` line, else the first line carrying one). */
+  annotation?: CellAnnotation
   /**
    * Price Matrix PR 1: how this house priced the fixture when the quote was
    * structured (a kit subtotal + roles, or size options). `unitPriceEachCents`
@@ -190,6 +220,7 @@ export function buildQuoteComparison(args: {
             lotId: kit.lotId,
             lotTotalCents: kit.lotTotalCents,
             label: lines.find((l) => l.componentRole === 'kit')?.label ?? lines.find((l) => l.label)?.label ?? null,
+            annotation: annotationOf(lines),
             kit,
           }
         : {
@@ -204,6 +235,7 @@ export function buildQuoteComparison(args: {
             lotId: line.lotId ?? null,
             lotTotalCents: line.lotTotalCents ?? null,
             label: line.label ?? null,
+            annotation: annotationOf(lines),
             kit: null,
           }
       perHouse[q.supplyHouseId] = cell
