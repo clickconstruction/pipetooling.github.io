@@ -238,3 +238,58 @@ export function groupByProperty(rows: OwnerToConfirmRow[], todayYmd: string): Ow
 export function fixupCount(rows: OwnerToConfirmRow[]): number {
   return rows.length
 }
+
+// ---------------------------------------------------------------------------
+// The job form (PR 2 of the train): where the silent lookup runs and when the
+// builder-as-customer question is asked.
+// ---------------------------------------------------------------------------
+
+/**
+ * The homestead line the Found box adds when `homesteadHint` says likely —
+ * one sentence shared by the job form, the Fix-ups list, PR 3's surfaces and
+ * the guide. Placeholder wording: the attorney confirms the sentence.
+ */
+export const HOMESTEAD_LINE =
+  'Likely a homestead — the owners get mail at the property. A lien on a homestead needs a contract signed by both spouses and recorded with the county before work starts. Confirm the exemption on the CAD page and talk to the attorney before the crew goes out.'
+
+/** A builder is a customer that sits in `gc_customer_id` on other jobs (the RPC's `builders` CTE); the caller feeds the ids it knows. */
+export function isBuilderCustomer(customerId: string | null | undefined, knownGcIds: Iterable<string>): boolean {
+  if (!customerId) return false
+  for (const id of knownGcIds) if (id === customerId) return true
+  return false
+}
+
+export type JobFormOwnerLookupInput = {
+  gcCustomerId: string | null | undefined
+  customerId: string | null | undefined
+  /** The customer row is a builder (`isBuilderCustomer`). */
+  customerIsBuilder: boolean
+  jobAddress: string
+  /** The job links a `customer_addresses` row. */
+  hasLinkedRow: boolean
+  /** That row's `owner_confirmed_at` is set. */
+  linkedOwnerConfirmed: boolean
+}
+
+/**
+ * Decision 2 (A): the Property record row looks the site up on GC and builder
+ * jobs only — the jobs a § 53.056 notice can ever be due on — when the job
+ * has an address and no confirmed owner yet. A direct job gets no lookup and
+ * no box; a confirmed row reads the linked property as before.
+ */
+export function jobFormOwnerLookupApplies(input: JobFormOwnerLookupInput): boolean {
+  if (input.jobAddress.trim().length < 5) return false
+  const gcJob = Boolean(input.gcCustomerId) || (Boolean(input.customerId) && input.customerIsBuilder)
+  if (!gcJob) return false
+  return !(input.hasLinkedRow && input.linkedOwnerConfirmed)
+}
+
+/**
+ * The builder-as-customer question ("Is <customer> building this for
+ * someone?") is asked on the after-create prompt only when a builder sits in
+ * the customer row and no GC is set — the shape that reads as "we contracted
+ * with the owner" and gets no notice clock.
+ */
+export function builderQuestionApplies(input: { customerId: string | null | undefined; gcCustomerId: string | null | undefined; customerIsBuilder: boolean }): boolean {
+  return Boolean(input.customerId) && !input.gcCustomerId && input.customerIsBuilder
+}

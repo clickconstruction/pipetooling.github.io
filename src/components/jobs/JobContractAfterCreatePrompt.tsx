@@ -6,11 +6,22 @@
  * estimate), jobs under the floor, and non-office roles never see it.
  * Mounted once by JobFormModalProvider; the door itself is the Contract
  * modal, opened here with the job just fetched.
+ *
+ * Owner of record (PR 2 of the train): the same prompt asks the one question
+ * the roll cannot answer — a builder in the customer row with no GC: "Is
+ * <customer> building this for someone?" — and, on a GC job, shows the
+ * Property record row's Found box (`JobFormOwnerLookupBox`) above the doors
+ * so the owner is confirmed the moment the job exists.
  */
 import { useEffect, useRef, useState } from 'react'
 import type { JobWithDetails } from '../../types/jobWithDetails'
 import { useAuth } from '../../hooks/useAuth'
 import { useToastContext } from '../../contexts/ToastContext'
+import { supabase } from '../../lib/supabase'
+import { withSupabaseRetry } from '../../utils/errorHandling'
+import { builderQuestionApplies } from '../../lib/jobs/ownerConfirm'
+import { fetchIsBuilderCustomer } from '../../lib/jobs/ownerConfirmJobFormClient'
+import JobFormOwnerLookupBox from './JobFormOwnerLookupBox'
 import { useJobContractCoverage } from '../../hooks/useJobContractCoverage'
 import { fetchJobWithDetailsById } from '../../lib/fetchJobWithDetailsById'
 import { isAssistantLike } from '../../lib/subcontractorLikeRole'
@@ -57,6 +68,10 @@ export default function JobContractAfterCreatePrompt({ jobId, onClose }: { jobId
   const [notNeededOpen, setNotNeededOpen] = useState(false)
   const [reason, setReason] = useState('')
   const [busy, setBusy] = useState(false)
+  // Owner of record (PR 2): is the customer a builder (the GC on other jobs)? null = still asking.
+  const [customerIsBuilder, setCustomerIsBuilder] = useState<boolean | null>(null)
+  const [builderAnswered, setBuilderAnswered] = useState(false)
+  const [builderBusy, setBuilderBusy] = useState(false)
   const { coverage } = useJobContractCoverage(job)
   const onCloseRef = useRef(onClose)
   onCloseRef.current = onClose
@@ -67,6 +82,8 @@ export default function JobContractAfterCreatePrompt({ jobId, onClose }: { jobId
     setContractOpen(null)
     setNotNeededOpen(false)
     setReason('')
+    setCustomerIsBuilder(null)
+    setBuilderAnswered(false)
     if (!jobId) return
     if (!eligible) {
       onCloseRef.current()
@@ -82,6 +99,10 @@ export default function JobContractAfterCreatePrompt({ jobId, onClose }: { jobId
       }
       setFloorCents(floor)
       setJob(j)
+      // The builder question needs one more read: is the customer the GC on other jobs?
+      const builder = j.customer_id && !j.gc_customer_id ? await fetchIsBuilderCustomer(j.customer_id) : false
+      if (cancelled) return
+      setCustomerIsBuilder(builder)
     })()
     return () => {
       cancelled = true
@@ -114,6 +135,35 @@ export default function JobContractAfterCreatePrompt({ jobId, onClose }: { jobId
       showToast('Could not save that.', 'error')
     } finally {
       setBusy(false)
+    }
+  }
+
+  /**
+   * The builder-as-customer question (owner of record, PR 2): "No — they own
+   * the site" records nothing; "Yes — they are the builder" sets the job's GC
+   * to the customer (the customer row stays — the office picks the site owner
+   * later) so the notice clock runs and the lookup below can find the owner.
+   */
+  const builderShape = builderQuestionApplies({ customerId: job.customer_id, gcCustomerId: job.gc_customer_id, customerIsBuilder: customerIsBuilder === true })
+  const askBuilder = !builderAnswered && builderShape
+  // The Found box: on a GC job (or once "Yes" set the GC). "No — they own the site" means the customer is the owner — no lookup.
+  const showOwnerBox = !askBuilder && !builderShape && customerIsBuilder !== null
+  const answerBuilder = async (isBuilder: boolean) => {
+    if (builderBusy) return
+    if (!isBuilder) {
+      setBuilderAnswered(true)
+      return
+    }
+    setBuilderBusy(true)
+    try {
+      await withSupabaseRetry(async () => await supabase.from('jobs_ledger').update({ gc_customer_id: job.customer_id }).eq('id', job.id), 'set the builder as the GC')
+      setJob({ ...job, gc_customer_id: job.customer_id, gcCustomer: { id: job.customer_id as string, name: job.customer_name ?? null } })
+      setBuilderAnswered(true)
+      showToast(`${customer || 'The customer'} is the builder on J${num} — the owner of record is being looked up.`, 'success')
+    } catch {
+      showToast('Could not set the builder on the job.', 'error')
+    } finally {
+      setBuilderBusy(false)
     }
   }
 
@@ -150,6 +200,39 @@ export default function JobContractAfterCreatePrompt({ jobId, onClose }: { jobId
           {customer ? ` · ${customer}` : ''}
           {isGcJob ? ` · builder ${gcName}` : ''} · {amount}
         </div>
+        {askBuilder ? (
+          <div style={{ display: 'grid', gap: '0.45rem', padding: '0.55rem 0.7rem', borderRadius: 8, background: 'var(--bg-subtle)', border: '1px solid var(--border)' }} data-testid="builder-question">
+            <div style={{ fontSize: '0.85rem' }}>
+              <b>Is {customer || 'the customer'} building this for someone?</b>
+            </div>
+            <button type="button" style={btn} disabled={builderBusy} onClick={() => void answerBuilder(false)} data-testid="builder-question-owner">
+              <span>
+                No — they own the site
+                <br />
+                <span style={sub}>We contracted with the owner; no monthly notice clock</span>
+              </span>
+            </button>
+            <button type="button" style={btnPrimary} disabled={builderBusy} onClick={() => void answerBuilder(true)} data-testid="builder-question-builder">
+              <span>
+                {builderBusy ? 'Saving…' : 'Yes — they are the builder'}
+                <br />
+                <span style={sub}>Sets {customer || 'them'} as the GC; the appraisal roll then fills the owner of record</span>
+              </span>
+              <span aria-hidden>→</span>
+            </button>
+          </div>
+        ) : showOwnerBox ? (
+          <JobFormOwnerLookupBox
+            jobId={job.id}
+            jobAddress={job.job_address ?? ''}
+            customerId={job.customer_id ?? null}
+            customerName={customer}
+            gcCustomerId={job.gc_customer_id ?? null}
+            gcCustomerName={gcName}
+            customerAddressId={job.customer_address_id ?? null}
+            onConfirmed={(row) => setJob((j) => (j ? { ...j, customer_address_id: row.id } : j))}
+          />
+        ) : null}
         {isGcJob ? fileBtn : sendBtn}
         {isGcJob ? sendBtn : fileBtn}
         {notNeededOpen ? (

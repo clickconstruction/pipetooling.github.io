@@ -28,6 +28,7 @@ import { customerBillingEmail, type JobBillToParty } from '../../lib/jobs/billTo
 import JobContractStrip from './JobContractStrip'
 import JobWorkOrderStrip from './JobWorkOrderStrip'
 import JobFormPropertyAddSheet from './JobFormPropertyAddSheet'
+import JobFormOwnerLookupBox from './JobFormOwnerLookupBox'
 import type { CustomerAddressRow } from '../../lib/jobs/lienProperty'
 import type { JobWithDetails } from '../../types/jobWithDetails'
 import { JobFormAccountManSection } from './JobFormAccountManSection'
@@ -135,6 +136,8 @@ type JobFormEditFactRowsProps = {
   setCustomerAddressId: (v: string | null) => void
   /** v2.3401: the job address saved as a property on the customer (or the GC when there is no customer) — the shell appends it to the candidates and links the job. */
   onPropertyAdded: (row: CustomerAddressRow) => void
+  /** Owner of record (PR 2): Use on the row's Found box confirmed (or created) this row — the shell upserts it into the candidates and links the job. */
+  onOwnerConfirmed: (row: CustomerAddressRow) => void
   /** The GC's name for the add-as-property line when the property's home is the GC (no customer on the job). */
   gcCustomerName?: string | null
   propertyCandidates: Array<{
@@ -146,6 +149,8 @@ type JobFormEditFactRowsProps = {
     owner_name: string
     owner_company: string
     owner_mailing_address: string
+    /** Owner of record (v2.3447); absent on older callers = unknown, the box loads it. */
+    owner_confirmed_at?: string | null
   }>
   customers: CustomerRow[]
   customersLoading: boolean
@@ -229,6 +234,7 @@ export function JobFormEditFactRows(props: JobFormEditFactRowsProps) {
     customerAddressId,
     setCustomerAddressId,
     onPropertyAdded,
+    onOwnerConfirmed,
     gcCustomerName,
     propertyCandidates,
     customers,
@@ -732,10 +738,15 @@ export function JobFormEditFactRows(props: JobFormEditFactRowsProps) {
           v2.3401: when none of them is the job address (a builder entered as
           the customer only has its office on file), the job address can be
           saved as a property right here — the sheet from Edit customer,
-          prefilled, lookup and all — and the job links to the new row. */}
+          prefilled, lookup and all — and the job links to the new row.
+          Owner of record (PR 2): on a GC or builder job with an address and
+          no confirmed owner, the row looks the site up by itself and shows the
+          roll's answer with Use under the row — nobody is asked; a direct job
+          gets no box (decision 2). */}
       {(() => {
         const linked = propertyCandidates.find((r) => r.id === customerAddressId) ?? null
         const linkedReady = linked ? customerAddressLienReady(linked) : false
+        const linkedOwnerConfirmedAt: string | null | undefined = linked ? (linked.owner_confirmed_at === undefined ? undefined : linked.owner_confirmed_at) : customerAddressId ? undefined : null
         const suggested = customerAddressId
           ? null
           : suggestCustomerAddressForJob(
@@ -751,6 +762,7 @@ export function JobFormEditFactRows(props: JobFormEditFactRowsProps) {
         const canAddFromJob = Boolean(propertyHomeId) && jobAddressTrimmed.length > 0 && !linked && !suggested
         const existingOnHome = propertyCandidates.filter((r) => r.customer_id === propertyHomeId).length
         return (
+          <>
           <JobFormFactRow
             label="Property record"
             labelIcon={CUSTOMER_SUBROW_INDENT}
@@ -832,6 +844,19 @@ export function JobFormEditFactRows(props: JobFormEditFactRowsProps) {
               </div>
             ) : null}
           </JobFormFactRow>
+          <JobFormOwnerLookupBox
+            jobId={jobId}
+            jobAddress={jobAddressTrimmed}
+            customerId={customerId}
+            customerName={customerName}
+            gcCustomerId={gcCustomerId}
+            gcCustomerName={(gcCustomerName ?? '').trim()}
+            customerAddressId={customerAddressId}
+            linkedOwnerConfirmedAt={linkedOwnerConfirmedAt}
+            onConfirmed={onOwnerConfirmed}
+            style={{ padding: '0.5rem 0.15rem 0.6rem 1.1rem', borderBottom: '1px solid var(--border)' }}
+          />
+          </>
         )
       })()}
       {/* Date met rides with the customer-contact sub-rows — it lives on the

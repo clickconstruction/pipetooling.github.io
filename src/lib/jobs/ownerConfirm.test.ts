@@ -1,7 +1,11 @@
 import { describe, expect, it } from 'vitest'
 import type { ParcelRecord } from '../customers/propertyRecord'
 import {
+  HOMESTEAD_LINE,
   builderName,
+  builderQuestionApplies,
+  isBuilderCustomer,
+  jobFormOwnerLookupApplies,
   fixupCount,
   groupByProperty,
   isLandlord,
@@ -152,5 +156,42 @@ describe('parseOwnerToConfirmRows · builderName · fixupCount · shortDay', () 
     expect(fixupCount([row(), row({ jobId: 'j2' })])).toBe(2)
     expect(shortDay('2026-09-15')).toBe('Sep 15')
     expect(shortDay('2026-12-01')).toBe('Dec 1')
+  })
+})
+
+describe('the job form (PR 2)', () => {
+  it('HOMESTEAD_LINE is one shared sentence naming the two-spouse recorded contract and the CAD check', () => {
+    expect(HOMESTEAD_LINE.startsWith('Likely a homestead')).toBe(true)
+    expect(HOMESTEAD_LINE).toContain('signed by both spouses')
+    expect(HOMESTEAD_LINE).toContain('recorded with the county before work starts')
+    expect(HOMESTEAD_LINE).toContain('CAD page')
+  })
+
+  it('isBuilderCustomer: a customer that is the GC on other jobs', () => {
+    expect(isBuilderCustomer('c-sp', ['c-loberg', 'c-sp'])).toBe(true)
+    expect(isBuilderCustomer('c-ati', new Set(['c-loberg']))).toBe(false)
+    expect(isBuilderCustomer(null, ['c-loberg'])).toBe(false)
+  })
+
+  it('jobFormOwnerLookupApplies: GC and builder jobs with an address and no confirmed owner; never a direct job', () => {
+    const base = { gcCustomerId: 'gc1', customerId: null, customerIsBuilder: false, jobAddress: '9703 Lenox Hl, San Antonio, TX', hasLinkedRow: false, linkedOwnerConfirmed: false }
+    expect(jobFormOwnerLookupApplies(base)).toBe(true)
+    // A builder in the customer row with no GC counts as a GC job.
+    expect(jobFormOwnerLookupApplies({ ...base, gcCustomerId: null, customerId: 'c-sp', customerIsBuilder: true })).toBe(true)
+    // A direct job: no lookup, no box.
+    expect(jobFormOwnerLookupApplies({ ...base, gcCustomerId: null, customerId: 'c-maria' })).toBe(false)
+    // No address: nothing to look up.
+    expect(jobFormOwnerLookupApplies({ ...base, jobAddress: '' })).toBe(false)
+    // A linked row whose owner is confirmed reads the property as before.
+    expect(jobFormOwnerLookupApplies({ ...base, hasLinkedRow: true, linkedOwnerConfirmed: true })).toBe(false)
+    // A linked row not yet confirmed still gets the box — Use confirms it.
+    expect(jobFormOwnerLookupApplies({ ...base, hasLinkedRow: true, linkedOwnerConfirmed: false })).toBe(true)
+  })
+
+  it('builderQuestionApplies: only a builder in the customer row with no GC', () => {
+    expect(builderQuestionApplies({ customerId: 'c-sp', gcCustomerId: null, customerIsBuilder: true })).toBe(true)
+    expect(builderQuestionApplies({ customerId: 'c-sp', gcCustomerId: 'gc1', customerIsBuilder: true })).toBe(false)
+    expect(builderQuestionApplies({ customerId: 'c-maria', gcCustomerId: null, customerIsBuilder: false })).toBe(false)
+    expect(builderQuestionApplies({ customerId: null, gcCustomerId: null, customerIsBuilder: true })).toBe(false)
   })
 })
