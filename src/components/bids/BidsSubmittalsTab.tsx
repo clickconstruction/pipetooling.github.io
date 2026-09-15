@@ -9,7 +9,10 @@
  * every cell can be edited in place; a new revision carries every row and
  * marks the diff. The package PDF (2c), the page strip (3a) and Share (4a)
  * hang off this same screen. Stage 2c adds the package: the cover table and
- * every row's sheet pages, stamped, as one PDF stored on the revision.
+ * every row's sheet pages, stamped, as one PDF stored on the revision. Stage
+ * 3a adds the sheet strip: the vendor PDF's pages as thumbnails, a tap per
+ * page onto a row, and Done with this file — the PDF trimmed to the pages on
+ * rows (`trimPdf`), the rows' page numbers rewritten from the map.
  */
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import type { SupabaseClient } from '@supabase/supabase-js'
@@ -30,6 +33,9 @@ import { MyBidsToggle } from './MyBidsToggle'
 import { BidWorkflowTabTitleWithPreview } from './BidWorkflowTabTitleWithPreview'
 import { ProductStatusChip } from './ProductStatusChip'
 import { SubmittalItemEditDialog, type SubmittalItemPatch } from './SubmittalItemEditDialog'
+import { SubmittalSheetStrip, type ThumbState } from './SubmittalSheetStrip'
+import { keptPages, remapAfterTrim } from '../../lib/submittals/sheetAssignment'
+import { assignmentsFromItems } from '../../lib/submittals/sheetStripModel'
 import { buildSubmittalRows, changeNoteFor, summarizeChanges, type PickInput, type SpecifiedInput } from '../../lib/submittals/buildSubmittalRows'
 import { needsReason, REASON_LABELS, type StatusOverride } from '../../lib/submittals/productStatus'
 import { describeLeadTime } from '../../lib/submittals/leadTime'
@@ -109,6 +115,8 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
   const [prevItems, setPrevItems] = useState<SubmittalItemRow[]>([])
   const [editing, setEditing] = useState<SubmittalItemRow | null>(null)
   const fileInput = useRef<HTMLInputElement | null>(null)
+  /** Stage 3a: page thumbnails per vendor file, keyed by bucket path; drawn on demand. */
+  const [thumbs, setThumbs] = useState<Record<string, ThumbState>>({})
 
   const bidId = selectedBid?.id ?? null
 
@@ -323,11 +331,11 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
       const path = `${bidId}/${selectedRev.id}/${index}.pdf`
       const up = await supabase.storage.from(SUBMITTALS_BUCKET).upload(path, bytes, { contentType: 'application/pdf', upsert: true })
       if (up.error) throw up.error
-      const next: SourceFile[] = [...sourceFiles, { path, houseId: null, houseName: null, name: file.name, pages, trimmedAt: null }]
+      const next: SourceFile[] = [...sourceFiles, { path, houseId: null, houseName: null, name: file.name, pages, trimmedAt: null, droppedPages: null }]
       const { error } = await db.from('bid_submittals').update({ source_files: serializeSourceFiles(next) }).eq('id', selectedRev.id)
       if (error) throw error
       await load(bidId)
-      showToast(`${file.name} · ${pages} page${pages === 1 ? '' : 's'} — name each row's pages with Edit.`, 'success')
+      showToast(`${file.name} · ${pages} page${pages === 1 ? '' : 's'} — tap Show the pages, then a page and its row.`, 'success')
     } catch (e) {
       showToast(e instanceof Error ? e.message : 'Could not store the file.', 'error')
     } finally {
@@ -411,6 +419,125 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
       return
     }
     window.open(url, '_blank', 'noopener')
+  }
+
+  // ---------- stage 3a · the sheet strip ----------
+
+  async function downloadFile(path: string): Promise<ArrayBuffer> {
+    const { data, error } = await supabase.storage.from(SUBMITTALS_BUCKET).download(path)
+    if (error || !data) throw error ?? new Error('Could not read the file.')
+    return data.arrayBuffer()
+  }
+
+  async function showPages(fileIndex: number) {
+    const f = sourceFiles[fileIndex]
+    if (!f) return
+    setThumbs((t) => ({ ...t, [f.path]: 'loading' }))
+    try {
+      const bytes = await downloadFile(f.path)
+      const { renderPdfThumbnails } = await import('../../lib/submittals/pdfThumbnails')
+      const urls = await renderPdfThumbnails(bytes)
+      setThumbs((t) => ({ ...t, [f.path]: urls }))
+    } catch {
+      setThumbs((t) => ({ ...t, [f.path]: 'error' }))
+      showToast('Could not draw the pages — the file may not be a readable PDF.', 'error')
+    }
+  }
+
+  async function writeItemPages(itemId: string, fileIndex: number | null, pages: number[]) {
+    const { error } = await db.from('bid_submittal_items').update({ sheet_file: pages.length > 0 ? fileIndex : null, sheet_pages: pages, sheet_source: pages.length > 0 ? 'estimator' : null }).eq('id', itemId)
+    if (error) throw error
+  }
+
+  /** A page joins the row's sheet; a row's sheet lives in one file, so a page from another file starts it over. */
+  async function assignPageToItem(fileIndex: number, page: number, itemId: string) {
+    const it = items.find((i) => i.id === itemId)
+    if (!it || !selectedRev) return
+    const sameFile = it.sheet_file === fileIndex
+    const pages = sameFile ? [...new Set([...(it.sheet_pages ?? []), page])].sort((a, b) => a - b) : [page]
+    try {
+      await writeItemPages(itemId, fileIndex, pages)
+      setItems(await loadItems(selectedRev.id))
+      if (!sameFile && (it.sheet_pages ?? []).length > 0) showToast(`${it.tag.trim() || 'The accessory'} now reads from ${sourceFiles[fileIndex]?.name ?? 'this file'}; its earlier pages were let go.`, 'info')
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : 'Could not save the page.', 'error')
+    }
+  }
+
+  async function unassignPageFromItem(fileIndex: number, page: number, itemId: string) {
+    const it = items.find((i) => i.id === itemId)
+    if (!it || !selectedRev || it.sheet_file !== fileIndex) return
+    const pages = (it.sheet_pages ?? []).filter((p) => p !== page)
+    try {
+      await writeItemPages(itemId, fileIndex, pages)
+      setItems(await loadItems(selectedRev.id))
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : 'Could not save the page.', 'error')
+    }
+  }
+
+  /** Done with this file: keep the pages on rows, let the rest go, rewrite the rows' page numbers. */
+  async function doneWithFile(fileIndex: number) {
+    const f = sourceFiles[fileIndex]
+    if (!f || !bidId || !selectedRev) return
+    const state = assignmentsFromItems(items)
+    const kept = keptPages(state, fileIndex)
+    if (kept.length === 0) return
+    setBusy(true)
+    try {
+      const bytes = await downloadFile(f.path)
+      const { trimPdf } = await import('../../lib/submittals/trimPdf')
+      const result = await trimPdf(bytes, kept)
+      const up = await supabase.storage.from(SUBMITTALS_BUCKET).upload(f.path, result.bytes, { contentType: 'application/pdf', upsert: true })
+      if (up.error) throw up.error
+      const next = remapAfterTrim(state, fileIndex, result.map)
+      for (const it of items) {
+        if (it.sheet_file !== fileIndex) continue
+        const pages = next.filter((a) => a.fileIndex === fileIndex && a.tag === it.id).map((a) => a.page)
+        await writeItemPages(it.id, fileIndex, pages)
+      }
+      const files: SourceFile[] = sourceFiles.map((sf, i) => (i === fileIndex ? { ...sf, pages: result.kept, trimmedAt: new Date().toISOString(), droppedPages: result.dropped } : sf))
+      const { error } = await db.from('bid_submittals').update({ source_files: serializeSourceFiles(files) }).eq('id', selectedRev.id)
+      if (error) throw error
+      setThumbs((t) => {
+        const copy = { ...t }
+        delete copy[f.path]
+        return copy
+      })
+      await load(bidId)
+      setItems(await loadItems(selectedRev.id))
+      showToast(`${f.name}: ${result.kept} page${result.kept === 1 ? '' : 's'} kept on rows · ${result.dropped} let go.`, 'success')
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : 'Could not trim the file.', 'error')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  /** Remove a file nothing landed from; later files shift down one and their rows follow. */
+  async function removeFile(fileIndex: number) {
+    const f = sourceFiles[fileIndex]
+    if (!f || !bidId || !selectedRev) return
+    const ok = await confirm({ title: `Remove ${f.name}`, message: 'Nothing from this file is on a row. The file leaves the revision.', confirmLabel: 'Remove', danger: true })
+    if (!ok) return
+    setBusy(true)
+    try {
+      await supabase.storage.from(SUBMITTALS_BUCKET).remove([f.path])
+      const files = sourceFiles.filter((_, i) => i !== fileIndex)
+      for (const it of items) {
+        if (it.sheet_file == null) continue
+        if (it.sheet_file > fileIndex) await writeItemPages(it.id, it.sheet_file - 1, it.sheet_pages ?? [])
+        else if (it.sheet_file === fileIndex) await writeItemPages(it.id, null, [])
+      }
+      const { error } = await db.from('bid_submittals').update({ source_files: serializeSourceFiles(files) }).eq('id', selectedRev.id)
+      if (error) throw error
+      await load(bidId)
+      setItems(await loadItems(selectedRev.id))
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : 'Could not remove the file.', 'error')
+    } finally {
+      setBusy(false)
+    }
   }
 
   async function saveItem(patch: SubmittalItemPatch) {
@@ -550,15 +677,7 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
           </p>
 
           {sourceFiles.length > 0 ? (
-            <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', alignItems: 'center' }} data-testid="source-files">
-              <span style={{ ...smallMuted, fontWeight: 600 }}>Vendor files:</span>
-              {sourceFiles.map((f, i) => (
-                <span key={f.path} style={{ ...smallMuted, border: '1px solid var(--border)', borderRadius: 999, padding: '0.1rem 0.55rem', background: 'var(--bg-subtle)' }}>
-                  {i + 1} · {f.name} · {f.pages} page{f.pages === 1 ? '' : 's'}
-                  {f.trimmedAt ? ' · trimmed' : ''}
-                </span>
-              ))}
-            </div>
+            <SubmittalSheetStrip files={sourceFiles} items={items} thumbnails={thumbs} busy={busy} onNeedThumbnails={(i) => void showPages(i)} onAssign={(f, p, id) => void assignPageToItem(f, p, id)} onUnassign={(f, p, id) => void unassignPageFromItem(f, p, id)} onDone={(i) => void doneWithFile(i)} onRemove={(i) => void removeFile(i)} />
           ) : null}
 
           <div style={{ border: '1px solid var(--border)', borderRadius: 6, overflowX: 'auto', background: 'var(--surface)' }}>

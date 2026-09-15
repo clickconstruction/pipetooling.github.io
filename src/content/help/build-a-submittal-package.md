@@ -31,7 +31,19 @@ Tap {{button:outline|Edit}} on any row. The editor takes the status (your call o
 
 ## Attach the cut sheets
 
-Tap {{button:outline|Drop a vendor PDF}} and give it the house's whole submittal PDF. It is stored once on the revision and listed above the table with its page count. Then, on each row's {{button:outline|Edit}}, pick the file and type the pages that are that tag's sheet (*3-4*, *7*). The next release makes that a tap on a page strip instead of a typed range.
+Tap {{button:outline|Drop a vendor PDF}} and give it the house's whole submittal PDF — the 31-page catalog is fine. It is stored once on the revision and appears above the table as a strip. Tap {{button:outline|Show the pages}} and every page draws as a thumbnail.
+
+Then it is one tap per page: tap the page, then the row it belongs to. Rows still owing a sheet come first in amber; a row nobody quoted never appears. The page wears the row's tag; tap the chip's **×** to take it off. Tap a second page for the same row and it joins the sheet. A page you put on two rows reads {{chip:red|2 rows}} — a page prints under one tag only — with a *keep it for* button per row.
+
+The footer counts as you go: *6 of 31 pages on rows · 25 not used*. If you would rather type, the row's {{button:outline|Edit}} still takes a page range.
+
+:::example Six rows from one file
+NWS's submittal PDF is 31 pages. Wendi drops it, taps Show the pages, and works down the amber list: page 1 and 2 onto WC-1, 3 onto the flush valve, 5 onto DWH-1, 8 onto FD-1, 12 onto HB-3. The footer reads *6 of 31 pages on rows · 25 not used*.
+:::
+
+## Done with a file
+
+The dropped PDF is a working file, not a record — the record is the pages on rows. When you are done with it, tap {{button:outline|Done with this file}}: the pages on rows stay, the rest go, the file shrinks in storage, and every row still points at its sheet. No dialog; the strip collapses to the kept pages and a quiet line reads *25 pages let go · Sep 15 · drop the file again if you need one*. A file with nothing on rows offers {{button:outline|Remove this file}} instead. Taking a page off after Done does not bring the others back; drop the file again if you need one.
 
 ## Rebuild, or start a new revision
 
@@ -48,4 +60,4 @@ Tap {{button:outline|Build package}}. One PDF: a cover table on our letterhead �
 
 ## What comes next
 
-A page strip for the sheets (tap the pages instead of typing a range, and let unused pages go), sharing the package with the GC for decisions on rows, and the GC's portal — each in its own release.
+Sharing the package with the GC for decisions on rows, the Needs You cards, and the GC's portal — each in its own release.

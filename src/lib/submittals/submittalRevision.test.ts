@@ -50,15 +50,15 @@ describe('source files', () => {
   it('round-trips the jsonb shape and drops malformed entries', () => {
     const parsed = parseSourceFiles([
       { path: 'b/s/0.pdf', house_id: 'h1', house_name: 'NWS', name: 'NWS-S6277623.pdf', pages: 31, trimmed_at: null },
-      { path: 'b/s/1.pdf', pages: '3' },
+      { path: 'b/s/1.pdf', pages: '3', trimmed_at: '2026-09-15T00:00:00Z', dropped_pages: 24 },
       { nope: true },
       null,
     ])
     expect(parsed).toEqual([
-      { path: 'b/s/0.pdf', houseId: 'h1', houseName: 'NWS', name: 'NWS-S6277623.pdf', pages: 31, trimmedAt: null },
-      { path: 'b/s/1.pdf', houseId: null, houseName: null, name: '1.pdf', pages: 0, trimmedAt: null },
+      { path: 'b/s/0.pdf', houseId: 'h1', houseName: 'NWS', name: 'NWS-S6277623.pdf', pages: 31, trimmedAt: null, droppedPages: null },
+      { path: 'b/s/1.pdf', houseId: null, houseName: null, name: '1.pdf', pages: 0, trimmedAt: '2026-09-15T00:00:00Z', droppedPages: 24 },
     ])
-    expect(serializeSourceFiles(parsed)[0]).toEqual({ path: 'b/s/0.pdf', house_id: 'h1', house_name: 'NWS', name: 'NWS-S6277623.pdf', pages: 31, trimmed_at: null })
+    expect(serializeSourceFiles(parsed)[0]).toEqual({ path: 'b/s/0.pdf', house_id: 'h1', house_name: 'NWS', name: 'NWS-S6277623.pdf', pages: 31, trimmed_at: null, dropped_pages: null })
     expect(parseSourceFiles(null)).toEqual([])
   })
 })
