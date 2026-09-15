@@ -4,6 +4,10 @@ import {
   addDaysYmd,
   buildMyEmailWeekGrid,
   currentWeekDays,
+  describeDays,
+  describeDigestSchedule,
+  describeDigestScope,
+  describeReportEmailSubscription,
   dowForYmd,
   formatMinutes,
   normalizeMyEmailSubscriptions,
@@ -133,6 +137,7 @@ describe('normalizeMyEmailSubscriptions', () => {
       readyToBill: true,
       estimateSpecificTotal: 7,
       estimateSpecificTitles: ['Askey remodel', 'Garza bath'],
+      reportEmails: [],
     })
   })
 
@@ -155,6 +160,7 @@ describe('normalizeMyEmailSubscriptions', () => {
       readyToBill: false,
       estimateSpecificTotal: 0,
       estimateSpecificTitles: [],
+      reportEmails: [],
     })
     const subs = normalizeMyEmailSubscriptions({
       events: { paid_in_full: false, payment_received: false },
@@ -162,5 +168,121 @@ describe('normalizeMyEmailSubscriptions', () => {
     })
     expect(subs.estimateSpecificTotal).toBe(0)
     expect(subs.estimateSpecificTitles).toEqual(['Real title'])
+  })
+})
+
+describe('field report emails (v2.3472)', () => {
+  it('normalizes report_emails, enabled first, dropping blank author names', () => {
+    const subs = normalizeMyEmailSubscriptions({
+      events: { paid_in_full: false, payment_received: false },
+      report_emails: [
+        { enabled: false, auto_send: true, all_authors: true, authors: [] },
+        { enabled: true, auto_send: false, all_authors: false, authors: ['Darren', '', '  Paige '] },
+      ],
+    })
+    expect(subs.reportEmails).toEqual([
+      { enabled: true, autoSend: false, allAuthors: false, authors: ['Darren', 'Paige'] },
+      { enabled: false, autoSend: true, allAuthors: true, authors: [] },
+    ])
+  })
+
+  it('defaults to no subscriptions when the RPC predates the key', () => {
+    expect(normalizeMyEmailSubscriptions({ events: { paid_in_full: false, payment_received: false } }).reportEmails).toEqual([])
+    expect(normalizeMyEmailSubscriptions(null).reportEmails).toEqual([])
+  })
+
+  it('describes a subscription', () => {
+    expect(describeReportEmailSubscription({ enabled: true, autoSend: true, allAuthors: true, authors: [] })).toBe(
+      'every report anyone files',
+    )
+    expect(
+      describeReportEmailSubscription({ enabled: true, autoSend: true, allAuthors: false, authors: ['Darren'] }),
+    ).toBe('reports from Darren')
+    expect(
+      describeReportEmailSubscription({ enabled: true, autoSend: true, allAuthors: false, authors: ['Darren', 'Paige'] }),
+    ).toBe('reports from Darren and Paige')
+    expect(
+      describeReportEmailSubscription({
+        enabled: true,
+        autoSend: true,
+        allAuthors: false,
+        authors: ['A', 'B', 'C', 'D', 'E'],
+      }),
+    ).toBe('reports from A, B, C and 2 more')
+    expect(
+      describeReportEmailSubscription({ enabled: false, autoSend: false, allAuthors: true, authors: [] }),
+    ).toBe('every report anyone files · sent on demand only · paused')
+    expect(
+      describeReportEmailSubscription({ enabled: true, autoSend: true, allAuthors: false, authors: [] }),
+    ).toBe('reports from nobody yet')
+  })
+})
+
+describe('digest descriptions (v2.3472)', () => {
+  it('describes days', () => {
+    expect(describeDays([1, 2, 3, 4, 5])).toBe('Mon–Fri')
+    expect(describeDays([5, 1, 3, 2, 4])).toBe('Mon–Fri')
+    expect(describeDays([0, 1, 2, 3, 4, 5, 6])).toBe('Every day')
+    expect(describeDays([1, 3, 5])).toBe('Mon, Wed, Fri')
+    expect(describeDays([])).toBe('no days')
+  })
+
+  it('describes the recipient scope, tolerating a pre-v2.3472 payload with no crew_filter', () => {
+    expect(describeDigestScope({ activity_scope: 'calendar_yesterday', crew_filter: 'my_team', include_costs: true })).toBe(
+      'jobs yesterday · my team · with costs',
+    )
+    expect(describeDigestScope({ activity_scope: 'calendar_last_week', crew_filter: 'all_users', include_costs: false })).toBe(
+      'jobs last week · all users',
+    )
+    expect(describeDigestScope({ activity_scope: 'calendar_today', include_costs: false })).toBe('jobs today')
+    expect(describeDigestScope({ activity_scope: 'weird', include_costs: false })).toBe('')
+  })
+
+  it('describes a whole schedule row', () => {
+    expect(
+      describeDigestSchedule({
+        name: 'Daily recap',
+        enabled: true,
+        time_local: '07:00',
+        days_of_week: [1, 2, 3, 4, 5],
+        timezone: APP_CALENDAR_TZ,
+        include_costs: false,
+        activity_scope: 'calendar_yesterday',
+        crew_filter: 'my_team',
+      }),
+    ).toBe('Daily recap — Mon–Fri · 7:00 AM · jobs yesterday · my team')
+    expect(
+      describeDigestSchedule({
+        name: 'Week wrap',
+        enabled: false,
+        time_local: '17:30',
+        days_of_week: [5],
+        timezone: APP_CALENDAR_TZ,
+        include_costs: true,
+        activity_scope: 'calendar_week',
+      }),
+    ).toBe('Week wrap — Fri · 5:30 PM · jobs this week · with costs (paused)')
+  })
+
+  it('puts the scope on the week-grid chip', () => {
+    const grid = buildMyEmailWeekGrid(
+      {
+        weekly: [
+          {
+            name: 'Daily recap',
+            enabled: true,
+            time_local: '07:00',
+            days_of_week: [1],
+            timezone: APP_CALENDAR_TZ,
+            include_costs: true,
+            activity_scope: 'calendar_yesterday',
+            crew_filter: 'all_users',
+          },
+        ],
+      },
+      [],
+      MONDAY,
+    )
+    expect(grid[0]?.entries[0]?.detail).toBe('Daily recap · jobs yesterday · all users · with costs')
   })
 })

@@ -20,6 +20,8 @@ export type MyEmailSchedulePayload = {
     timezone: string
     include_costs: boolean
     activity_scope: string
+    /** 'all_users' | 'my_team' (v2.3472; absent from pre-v2.3472 RPC payloads). */
+    crew_filter?: string
   }>
   one_offs: Array<{
     stream: 'billed_report' | 'schedule_day' | 'gc_statement' | 'weekly_movement' | 'weekly_money' | 'payment_forecast' | 'money_waiting' | 'crew_day' | 'statement_round'
@@ -39,6 +41,25 @@ export type MyEmailSchedulePayload = {
   }
   /** Per-estimate acceptance subscriptions (v2.1330; absent from pre-v2.1330 RPC payloads). */
   estimate_specific?: { total: number; titles: string[] }
+  /**
+   * Field report email subscriptions addressed to me (v2.3472; absent from
+   * pre-v2.3472 RPC payloads): one entry per report_email_subscriptions row —
+   * every report anyone files, or only reports from the named authors.
+   */
+  report_emails?: Array<{
+    enabled: boolean
+    auto_send: boolean
+    all_authors: boolean
+    authors: string[]
+  }>
+}
+
+/** One field-report subscription addressed to me, normalized. */
+export type MyReportEmailSubscription = {
+  enabled: boolean
+  autoSend: boolean
+  allAuthors: boolean
+  authors: string[]
 }
 
 /**
@@ -52,14 +73,26 @@ export type MyEmailSubscriptions = {
   readyToBill: boolean
   estimateSpecificTotal: number
   estimateSpecificTitles: string[]
+  /** Field report emails (v2.3472) — every subscription addressed to me, enabled ones first. */
+  reportEmails: MyReportEmailSubscription[]
 }
 
 export function normalizeMyEmailSubscriptions(
-  payload: Pick<MyEmailSchedulePayload, 'events' | 'estimate_specific'> | null | undefined,
+  payload: Pick<MyEmailSchedulePayload, 'events' | 'estimate_specific' | 'report_emails'> | null | undefined,
 ): MyEmailSubscriptions {
   const events = payload?.events
   const specific = payload?.estimate_specific
   const total = Number(specific?.total)
+  const reportEmails: MyReportEmailSubscription[] = (Array.isArray(payload?.report_emails) ? payload.report_emails : [])
+    .map((r) => ({
+      enabled: r?.enabled === true,
+      autoSend: r?.auto_send !== false,
+      allAuthors: r?.all_authors === true,
+      authors: Array.isArray(r?.authors)
+        ? r.authors.filter((a): a is string => typeof a === 'string' && a.trim() !== '').map((a) => a.trim())
+        : [],
+    }))
+    .sort((a, b) => Number(b.enabled) - Number(a.enabled))
   return {
     paidInFull: events?.paid_in_full === true,
     paymentReceived: events?.payment_received === true,
@@ -69,7 +102,69 @@ export function normalizeMyEmailSubscriptions(
     estimateSpecificTitles: Array.isArray(specific?.titles)
       ? specific.titles.filter((t): t is string => typeof t === 'string' && t.trim() !== '')
       : [],
+    reportEmails,
   }
+}
+
+/** "Darren", "Darren and Paige", "Darren, Paige and 3 more" (first `shown` names). */
+function joinNames(names: string[], shown = 3): string {
+  if (names.length <= shown) {
+    if (names.length <= 1) return names[0] ?? ''
+    return `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`
+  }
+  return `${names.slice(0, shown).join(', ')} and ${names.length - shown} more`
+}
+
+/**
+ * The trigger phrase for one field-report subscription: "every report anyone
+ * files" / "reports from Darren and Paige", with " · sent on demand only" when
+ * auto-send is off and " · paused" when the row is disabled.
+ */
+export function describeReportEmailSubscription(sub: MyReportEmailSubscription): string {
+  const who = sub.allAuthors
+    ? 'every report anyone files'
+    : sub.authors.length > 0
+      ? `reports from ${joinNames(sub.authors)}`
+      : 'reports from nobody yet'
+  const tail = [sub.autoSend ? null : 'sent on demand only', sub.enabled ? null : 'paused'].filter(Boolean)
+  return tail.length > 0 ? `${who} · ${tail.join(' · ')}` : who
+}
+
+const ACTIVITY_SCOPE_LABEL: Record<string, string> = {
+  calendar_yesterday: 'jobs yesterday',
+  calendar_today: 'jobs today',
+  calendar_week: 'jobs this week',
+  calendar_last_week: 'jobs last week',
+}
+
+/** "jobs yesterday · my team · with costs" — the recipient's own slice of a digest schedule. */
+export function describeDigestScope(w: { activity_scope: string; crew_filter?: string; include_costs: boolean }): string {
+  const parts = [
+    ACTIVITY_SCOPE_LABEL[w.activity_scope] ?? null,
+    w.crew_filter === 'my_team' ? 'my team' : w.crew_filter === 'all_users' ? 'all users' : null,
+    w.include_costs ? 'with costs' : null,
+  ].filter((p): p is string => p != null)
+  return parts.join(' · ')
+}
+
+/** "Mon–Fri", "Every day", "Mon, Wed, Fri". */
+export function describeDays(days: number[]): string {
+  const sorted = [...new Set(days)].sort((a, b) => a - b)
+  if (sorted.join(',') === '1,2,3,4,5') return 'Mon–Fri'
+  if (sorted.length === 7) return 'Every day'
+  if (sorted.length === 0) return 'no days'
+  return sorted.map((d) => DAY_LABELS[d] ?? '?').join(', ')
+}
+
+/**
+ * The standing-row phrase for one digest schedule I'm on:
+ * "Daily recap — Mon–Fri · 7:00 AM · jobs yesterday · my team (paused)".
+ */
+export function describeDigestSchedule(w: MyEmailSchedulePayload['weekly'][number]): string {
+  const minutes = parseHhMm(w.time_local)
+  const time = minutes == null ? w.time_local : formatMinutes(minutes)
+  const scope = describeDigestScope(w)
+  return `${w.name} — ${describeDays(w.days_of_week)} · ${time}${scope ? ` · ${scope}` : ''}${w.enabled ? '' : ' (paused)'}`
 }
 
 export type WeekGridEntry = {
@@ -163,7 +258,7 @@ export function buildMyEmailWeekGrid(
         label: 'Job report digest',
         timeLabel: formatMinutes(minutes),
         minutes,
-        detail: `${w.name}${w.enabled ? '' : ' (paused)'}`,
+        detail: `${w.name}${describeDigestScope(w) ? ` · ${describeDigestScope(w)}` : ''}${w.enabled ? '' : ' (paused)'}`,
         muted: !w.enabled,
         sent: false,
         weekly: true,

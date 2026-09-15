@@ -6,6 +6,8 @@ import { APP_CALENDAR_TZ } from '../../utils/dateUtils'
 import { denverWorkDateToday } from '../../lib/salaryScheduleSync'
 import {
   buildMyEmailWeekGrid,
+  describeDigestSchedule,
+  describeReportEmailSubscription,
   normalizeMyEmailSubscriptions,
   type MyEmailSchedulePayload,
   type PlacedOneOff,
@@ -15,8 +17,10 @@ import {
 /**
  * Settings → Your account → "My email schedule" (v2.1321): everything the app
  * is configured to email YOU — weekly report digests on their weekday/time
- * slots, pending one-off sends addressed to you, and the event-driven streams
- * you're on. Read-only; each stream links to where it's managed. Data comes
+ * slots, pending one-off sends addressed to you, and the standing streams
+ * you're on (event-driven ones, the digest schedules, and — v2.3472 — the
+ * field-report subscriptions that email you every report as it's filed).
+ * Read-only; each stream links to where it's managed. Data comes
  * from the self-scoped get_my_email_schedule() RPC (the recipient can't read
  * some sources directly — e.g. billed-report requests are sender-readable).
  */
@@ -193,12 +197,34 @@ export default function SettingsMyEmailScheduleSection() {
                 My email subscriptions
               </h3>
               <p style={{ color: 'var(--text-muted)', fontSize: '0.75rem', margin: '0 0 6px' }}>
-                Every event-driven email stream in the app, and whether you're on it.
+                Every standing email stream in the app, and whether you're on it.
               </p>
               {(() => {
                 const subs = normalizeMyEmailSubscriptions(payload)
+                const digestDescriptions = payload.weekly.map(describeDigestSchedule)
+                const activeReportSubs = subs.reportEmails.filter((r) => r.enabled)
+                const reportSubsShown = activeReportSubs.length > 0 ? activeReportSubs : subs.reportEmails
                 return (
                   <>
+                    <SubscriptionRow
+                      dot="#2563eb"
+                      subscribed={digestDescriptions.length > 0}
+                      name="Job report digest"
+                      trigger={digestDescriptions.join('; ')}
+                      managedFrom="Jobs → Reports → Recurring Email Reports"
+                    />
+                    <SubscriptionRow
+                      dot="#0891b2"
+                      subscribed={activeReportSubs.length > 0}
+                      name="Field reports"
+                      trigger={reportSubsShown.map(describeReportEmailSubscription).join('; ')}
+                      unsubscribedText={
+                        subs.reportEmails.length > 0
+                          ? `paused — ${reportSubsShown.map(describeReportEmailSubscription).join('; ')}`
+                          : undefined
+                      }
+                      managedFrom="Dashboard → Recent Reports → ✉ Report email recipients"
+                    />
                     <SubscriptionRow
                       dot="#16a34a"
                       subscribed={subs.paidInFull}
@@ -268,12 +294,15 @@ function SubscriptionRow({
   name,
   trigger,
   managedFrom,
+  unsubscribedText,
 }: {
   dot: string
   subscribed: boolean
   name: string
   trigger: string
   managedFrom: string
+  /** Replaces "not subscribed" — e.g. a stream you're on but which is paused. */
+  unsubscribedText?: string
 }) {
   return (
     <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, padding: '5px 0', fontSize: '0.85rem' }}>
@@ -292,7 +321,7 @@ function SubscriptionRow({
       />
       <span style={{ minWidth: 0, color: subscribed ? undefined : 'var(--text-muted)' }}>
         <strong style={{ fontWeight: 600 }}>{name}</strong>
-        {subscribed ? ` — ${trigger}` : ' — not subscribed'}
+        {subscribed ? ` — ${trigger}` : ` — ${unsubscribedText ?? 'not subscribed'}`}
         <span style={{ display: 'block', fontSize: '0.72rem', color: 'var(--text-faint)' }}>
           Managed from {managedFrom}
         </span>
