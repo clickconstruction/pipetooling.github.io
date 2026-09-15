@@ -72,7 +72,7 @@ You want this bid out the door at $42,000. Type 42000 in target total, Enter —
 
 ## See what the bid is made of
 
-Under the strip, one bar splits the bid into **Fixtures**, **Pipe** (line feet), **Fittings** (elbows, wyes, valves, cleanouts) and **Other** (allowances, travel, permits). The header says it in your units — *59 fixtures · 2,448 ft of pipe · 357 fittings* — and each bucket shows its margin in the strip's colors.
+At the foot of the Workbench, under **Where the profit lives**, one bar splits the bid into **Fixtures**, **Pipe** (line feet), **Fittings** (elbows, wyes, valves, cleanouts) and **Other** (allowances, travel, permits). The header says it in your units — *59 fixtures · 2,448 ft of pipe · 357 fittings* — and each bucket shows its margin in the strip's colors.
 
 1. {{chip:blue|Revenue}} / {{chip:gray|Cost}} flips the bar between share of the price you're viewing and share of our cost. Where the two disagree is where the pricing posture lives: pipe at 22% of revenue but 30% of cost is under-priced against the fixtures.
 2. Hover a segment or a bucket for its revenue, cost, profit and margin and its three biggest rows; a row name scrolls to that row and flashes it.
