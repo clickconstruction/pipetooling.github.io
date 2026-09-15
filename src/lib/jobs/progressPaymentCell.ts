@@ -128,17 +128,25 @@ export function dayWord(ymd: string, todayYmd: string): string {
 
 // ── the sentence ───────────────────────────────────────────────────────────
 
-/** "Behar & Malachi on site today" · "Behar's crew on site Fri" · "Texas Rooter on the sheet, no clock-ins" · "nobody clocked in". */
-export function crewClause(crew: JobCrewPosition | null | undefined, todayYmd: string): string {
+/**
+ * "Behar & Malachi on site today" · "Behar's crew on site Fri" · "Texas Rooter on the sheet, no clock-ins" · "nobody clocked in".
+ *
+ * `names: false` (v2.3459) drops who: "on site today" · "on site Fri" · "on the
+ * sheet, no clock-ins". The row's Crew & Dates column already lists the people,
+ * so the printed line under the bar says only when; the names stay in `full`
+ * (the tooltip and the bar's accessible name).
+ */
+export function crewClause(crew: JobCrewPosition | null | undefined, todayYmd: string, opts: { names?: boolean } = {}): string {
   if (!crew) return 'nobody clocked in'
+  const names = opts.names !== false
   const name = crewShortName(crew)
   if (crew.lastWorkYmd) {
     const n = crew.lastDayPeople.length
     const who = n <= 2 && name ? name : n > 0 ? `${n} people` : name || 'crew'
-    if (crew.onSiteToday) return n <= 2 && name ? `${name} on site today` : `${n} on site today`
-    return `${who} on site ${dayWord(crew.lastWorkYmd, todayYmd)}`
+    if (crew.onSiteToday) return !names ? 'on site today' : n <= 2 && name ? `${name} on site today` : `${n} on site today`
+    return names ? `${who} on site ${dayWord(crew.lastWorkYmd, todayYmd)}` : `on site ${dayWord(crew.lastWorkYmd, todayYmd)}`
   }
-  if (crew.sheet && name) return `${name} on the sheet, no clock-ins`
+  if (crew.sheet && name) return names ? `${name} on the sheet, no clock-ins` : 'on the sheet, no clock-ins'
   return 'nobody clocked in'
 }
 
@@ -236,11 +244,15 @@ export function buildProgressPaymentView(input: ProgressPaymentInput): ProgressP
   const statusOf = (invoiceId: string | null) => (invoiceId ? invoiceStatus.get(invoiceId) ?? null : null)
 
   if (!money.hasBar) {
-    const cc = crew && (crew.lastWorkYmd || crew.sheet) ? crewClause(crew, todayYmd) : null
+    const hasCrew = !!(crew && (crew.lastWorkYmd || crew.sheet))
     const onSiteNow = !!crew?.onSiteToday
-    const text = onSiteNow ? `${cc} · no lines on the job · nothing to bill against` : cc ? `no lines on the job · ${cc}` : 'no lines on the job · nothing to bill against'
-    // No bar and no money in the legend to repeat: the whole sentence prints.
-    return { mode: 'nobid', stageBar: null, liveChipSuffix: null, segments: [], words: { text, full: text, tone: onSiteNow ? 'red' : 'muted' }, stale, percent, offerSetStages: false }
+    const sentence = (cc: string | null) =>
+      onSiteNow ? `${cc} · no lines on the job · nothing to bill against` : cc ? `no lines on the job · ${cc}` : 'no lines on the job · nothing to bill against'
+    // No bar and no money in the legend to repeat: the whole sentence prints —
+    // minus the names (v2.3459), which the row's crew column already carries.
+    const text = sentence(hasCrew ? crewClause(crew, todayYmd, { names: false }) : null)
+    const full = sentence(hasCrew ? crewClause(crew, todayYmd) : null)
+    return { mode: 'nobid', stageBar: null, liveChipSuffix: null, segments: [], words: { text, full, tone: onSiteNow ? 'red' : 'muted' }, stale, percent, offerSetStages: false }
   }
 
   const paidInFull = input.status === 'paid' || money.paid >= money.total - 0.005
@@ -278,8 +290,9 @@ export function buildProgressPaymentView(input: ProgressPaymentInput): ProgressP
       segs.map((s) => ({ key: s.fixtureId, amount: s.amount, invoiceStatus: statusOf(fixtureById.get(s.fixtureId)?.invoice_id ?? null) })),
       money,
     )
-    const crewName = crewShortName(crew)
-    const liveSuffix = crew?.onSiteToday ? 'today' : crewName || null
+    // v2.3459: the live chip no longer carries the crew's name (the row's Crew &
+    // Dates column lists them); "today" stays — it says the crew is here now.
+    const liveSuffix = crew?.onSiteToday ? 'today' : null
     const segments: ProgressPaymentSegment[] = segs.map((s, i) => {
       const state: ProgressPaymentSegment['state'] = liveIdx === -1 || i < liveIdx ? 'done' : i === liveIdx ? 'live' : 'later'
       let fill = 0
@@ -311,8 +324,10 @@ export function buildProgressPaymentView(input: ProgressPaymentInput): ProgressP
     })
     const live = liveIdx === -1 ? null : segs[liveIdx]!
     const head = live ? live.name : `All ${segs.length} stages done`
-    const text = live ? `${head} · ${crewClause(crew, todayYmd)} · ${percentClause(percent)}` : head
-    const full = `${text} · ${mc.text}`
+    // The printed line (v2.3459) leaves out the stage name — the lit chip above
+    // it already says Top Out — and the crew's names; `full` keeps both.
+    const text = live ? `${crewClause(crew, todayYmd, { names: false })} · ${percentClause(percent)}` : head
+    const full = `${live ? `${head} · ${crewClause(crew, todayYmd)} · ${percentClause(percent)}` : head} · ${mc.text}`
     const tone: ProgressPaymentTone = paidInFull ? 'green' : mc.tone === 'amber' || stageBar.captionTone === 'amber' ? 'amber' : 'plain'
     const view: ProgressPaymentView = {
       mode: 'stages',
@@ -362,7 +377,8 @@ export function buildProgressPaymentView(input: ProgressPaymentInput): ProgressP
       amount: l.amount,
     }
   })
-  const text = `${crewClause(crew, todayYmd)} · ${percentClause(percent)}`
+  const text = `${crewClause(crew, todayYmd, { names: false })} · ${percentClause(percent)}`
+  const full = `${crewClause(crew, todayYmd)} · ${percentClause(percent)} · ${mc.text}`
   const tone: ProgressPaymentTone = paidInFull ? 'green' : mc.tone
-  return { mode: 'lines', stageBar: null, liveChipSuffix: null, segments, words: { text, full: `${text} · ${mc.text}`, tone }, stale, percent, offerSetStages: priced.length >= 2 && !paidInFull }
+  return { mode: 'lines', stageBar: null, liveChipSuffix: null, segments, words: { text, full, tone }, stale, percent, offerSetStages: priced.length >= 2 && !paidInFull }
 }

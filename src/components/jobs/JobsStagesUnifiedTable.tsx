@@ -362,6 +362,11 @@ export default function JobsStagesUnifiedTable(props: JobsStagesUnifiedTableProp
     maxWidth: '100%',
     boxSizing: 'border-box',
   }
+  /** Send back · Collections under the cell (v2.3459): one row, the two buttons
+   *  sharing the cell's width, never stacked — the column is 176px and the pair
+   *  at their natural widths wrapped onto two lines. */
+  const stagesCellButtonRowStyle: CSSProperties = { display: 'flex', gap: '0.35rem', justifyContent: 'center', flexWrap: 'nowrap', width: '100%' }
+  const stagesCellButtonStyle: CSSProperties = { ...stagesSecondaryOutlineButtonBase, flex: '1 1 0', minWidth: 0, width: 'auto', padding: '0.25rem 0.3rem', whiteSpace: 'nowrap' }
   const stagesInvoiceHcpBadgeStyle: CSSProperties = {
     display: 'inline-block',
     padding: '0.15rem 0.4rem',
@@ -538,14 +543,14 @@ export default function JobsStagesUnifiedTable(props: JobsStagesUnifiedTableProp
                               })() : null}
                             />
                             {((sendBackBelowRemaining && onJobSendBack) || onJobMoveToCollections) && (
-                              <div style={{ display: 'flex', gap: '0.35rem', justifyContent: 'center', flexWrap: 'wrap' }}>
+                              <div style={stagesCellButtonRowStyle}>
                                 {sendBackBelowRemaining && onJobSendBack && (
                                   <button
                                     type="button"
                                     onClick={() => onJobSendBack(j)}
                                     disabled={stagesStatusUpdatingId === j.id}
                                     style={{
-                                      ...stagesSecondaryOutlineButtonBase,
+                                      ...stagesCellButtonStyle,
                                       cursor: stagesStatusUpdatingId === j.id ? 'not-allowed' : 'pointer',
                                     }}
                                   >
@@ -557,7 +562,7 @@ export default function JobsStagesUnifiedTable(props: JobsStagesUnifiedTableProp
                                     type="button"
                                     onClick={() => onJobMoveToCollections(j)}
                                     title="Flag this job as difficult to collect (moves to the Collections section; stays Billed)"
-                                    style={{ ...stagesSecondaryOutlineButtonBase, color: 'var(--text-red-600)', border: '1px solid #dc2626', fontWeight: 600, cursor: 'pointer' }}
+                                    style={{ ...stagesCellButtonStyle, color: 'var(--text-red-600)', border: '1px solid #dc2626', fontWeight: 600, cursor: 'pointer' }}
                                   >
                                     Collections
                                   </button>
@@ -580,6 +585,10 @@ export default function JobsStagesUnifiedTable(props: JobsStagesUnifiedTableProp
                               footnote={
                                 row.kind === 'job_with_merged_billed'
                                   ? (() => {
+                                      // v2.3459: "This bill: $X paid · $Y left" only when the job carries
+                                      // more than one sent bill — with a single bill the legend above
+                                      // already prints the same two numbers.
+                                      if ((j.invoices ?? []).filter((i) => i.status === 'billed').length < 2) return null
                                       const ap = sumInvoiceAppliedFromJobPayments(j, bundleInv.id)
                                       return (
                                         <span title="This row's billed line">
@@ -593,7 +602,7 @@ export default function JobsStagesUnifiedTable(props: JobsStagesUnifiedTableProp
                               }
                             />
                             {((sendBackBelowRemaining && bundleInvWithJob != null) || onJobMoveToCollections) && (
-                              <div style={{ display: 'flex', gap: '0.35rem', justifyContent: 'center', flexWrap: 'wrap' }}>
+                              <div style={stagesCellButtonRowStyle}>
                                 {sendBackBelowRemaining && onInvoiceSendBack && bundleInvWithJob != null && (
                                   <button
                                     type="button"
@@ -601,7 +610,7 @@ export default function JobsStagesUnifiedTable(props: JobsStagesUnifiedTableProp
                                     disabled={stagesInvoiceUpdatingId === bundleInv.id}
                                     title="Remove this billing line (partial invoice row)"
                                     style={{
-                                      ...stagesSecondaryOutlineButtonBase,
+                                      ...stagesCellButtonStyle,
                                       cursor: stagesInvoiceUpdatingId === bundleInv.id ? 'not-allowed' : 'pointer',
                                     }}
                                   >
@@ -613,7 +622,7 @@ export default function JobsStagesUnifiedTable(props: JobsStagesUnifiedTableProp
                                     type="button"
                                     onClick={() => onJobMoveToCollections(j)}
                                     title="Flag this job as difficult to collect (moves to the Collections section; stays Billed)"
-                                    style={{ ...stagesSecondaryOutlineButtonBase, color: 'var(--text-red-600)', border: '1px solid #dc2626', fontWeight: 600, cursor: 'pointer' }}
+                                    style={{ ...stagesCellButtonStyle, color: 'var(--text-red-600)', border: '1px solid #dc2626', fontWeight: 600, cursor: 'pointer' }}
                                   >
                                     Collections
                                   </button>
@@ -1063,14 +1072,14 @@ export default function JobsStagesUnifiedTable(props: JobsStagesUnifiedTableProp
                           })()}
                         />
                         {(sendBackBelowRemaining || onJobMoveToCollections) && (
-                          <div style={{ display: 'flex', gap: '0.35rem', justifyContent: 'center', flexWrap: 'wrap' }}>
+                          <div style={stagesCellButtonRowStyle}>
                             {sendBackBelowRemaining && (
                               <button
                                 type="button"
                                 onClick={() => onInvoiceSendBack(invWithJob)}
                                 disabled={stagesInvoiceUpdatingId === inv.id}
                                 style={{
-                                  ...stagesSecondaryOutlineButtonBase,
+                                  ...stagesCellButtonStyle,
                                   cursor: stagesInvoiceUpdatingId === inv.id ? 'not-allowed' : 'pointer',
                                 }}
                               >
@@ -1082,7 +1091,7 @@ export default function JobsStagesUnifiedTable(props: JobsStagesUnifiedTableProp
                                 type="button"
                                 onClick={() => onJobMoveToCollections(job)}
                                 title="Flag this job as difficult to collect (moves all its billed lines to the Collections section; stays Billed)"
-                                style={{ ...stagesSecondaryOutlineButtonBase, color: 'var(--text-red-600)', border: '1px solid #dc2626', fontWeight: 600, cursor: 'pointer' }}
+                                style={{ ...stagesCellButtonStyle, color: 'var(--text-red-600)', border: '1px solid #dc2626', fontWeight: 600, cursor: 'pointer' }}
                               >
                                 Collections
                               </button>
