@@ -50,7 +50,7 @@ When the job has more than one work line, the words *all 3 work lines* are a lin
 - A change order's credit lines (a negative line on a signed change order) land on the job as a dollar discount when you apply the change order.
 - The Job tab, the Pipeline's money views, and Job Summary all read the Job Total after the discount. Job Summary also marks the job with a green {{chip:green|− discount}} chip, and its toolbar totals what was discounted across the jobs in view.
 - **Every change leaves a trail.** Adding, changing or removing a discount writes a **Discount** line in the job's activity feed — who, how much, on which lines — once per real change.
-- On a draft bill in **② Invoices**, {{button:gray|Add discount}} adds a discount line here; on a sent bill the same button is the agreed write-down.
+- In the **② Invoices** list, **Add discount** sits in each row's {{button:outline|⋯}} menu: on a draft it adds a discount line here; on a sent bill it is the agreed write-down (a credit note on Stripe).
 
 ## Related
 
