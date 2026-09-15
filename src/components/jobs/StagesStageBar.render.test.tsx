@@ -7,7 +7,7 @@
  * alone; without a view it is the classic money bar.
  */
 import { describe, expect, it } from 'vitest'
-import { render, screen, within } from '@testing-library/react'
+import { fireEvent, render, screen, within } from '@testing-library/react'
 import { buildStagesMoneyBarModel } from '../../lib/stagesMoneyBar'
 import { crewPositionsFromRpc, type JobCrewPositionRpcRow } from '../../lib/jobs/jobCrewPosition'
 import { progressPaymentForJob } from '../../lib/jobs/progressPaymentForJob'
@@ -52,7 +52,7 @@ describe('StagesProgressPaymentCell with the v2.3419 view', () => {
     // v2.3449: the row PRINTS the lead (the legend under it carries the money);
     // v2.3459: without the stage (the lit chip) or the names (the crew column).
     // The bar's accessible name and tooltip keep the whole sentence.
-    const printed = 'on site Sat · 40% typed'
+    const printed = 'Worked Sat · 40%'
     const full = 'Top Out · Behar & Malachi on site Sat · 40% typed · $24,359 paid, nothing billed'
     const bar = screen.getByRole('img', { name: full })
     expect(bar.querySelectorAll('[data-segment-state]')).toHaveLength(3)
@@ -74,7 +74,7 @@ describe('StagesProgressPaymentCell with the v2.3419 view', () => {
     render(<StagesProgressPaymentCell model={model} pctComplete={80} view={view} />)
     expect(screen.queryByRole('list', { name: 'Stages' })).toBeNull()
     expect(screen.getByRole('img').querySelectorAll('[data-segment-state]')).toHaveLength(1)
-    expect(screen.getByText('nobody clocked in · 80% typed')).toBeTruthy()
+    expect(screen.getByText('Nobody clocked in · 80%')).toBeTruthy()
     expect(screen.getByRole('img', { name: /nobody clocked in · 80% typed · \$13,412 paid · \$11,770 billed · \$6,818 done, not billed/ })).toBeTruthy()
     expect(screen.getByText(/Done, not billed/)).toBeTruthy()
     expect(screen.getByText(/Not done/)).toBeTruthy()
@@ -85,7 +85,7 @@ describe('StagesProgressPaymentCell with the v2.3419 view', () => {
     const { model, view } = progressPaymentForJob({ id: 'drf', revenue: 0, payments_made: 0, pct_complete: null, status: 'working', fixtures: [], invoices: [], payments: [] }, crew, today)
     render(<StagesProgressPaymentCell model={model} pctComplete={null} view={view} onNoBidValueClick={() => {}} />)
     expect(screen.queryByRole('img')).toBeNull()
-    expect(screen.getByText('on site today · no lines on the job · nothing to bill against')).toBeTruthy()
+    expect(screen.getByText('Worked today · no lines on the job · nothing to bill against')).toBeTruthy()
     expect(screen.getByTitle('Edgar & Jose on site today · no lines on the job · nothing to bill against')).toBeTruthy()
     expect(screen.getByRole('button', { name: 'no bid value' })).toBeTruthy()
   })
@@ -102,5 +102,24 @@ describe('StagesProgressPaymentCell with the v2.3419 view', () => {
     render(<StagesProgressPaymentCell model={model} pctComplete={55} />)
     expect(screen.queryByRole('list', { name: 'Stages' })).toBeNull()
     expect(screen.getByText(/Done, not billed/)).toBeTruthy()
+  })
+
+  it('v2.3461: with onStageClick every chip and the bar are buttons that open Bill; without it nothing is clickable', () => {
+    let opened = 0
+    render(<StagesProgressPaymentCell model={heron.model} pctComplete={40} view={heron.view} onStageClick={() => { opened += 1 }} />)
+    const strip = screen.getByRole('list', { name: 'Stages' })
+    const chipButtons = within(strip).getAllByRole('button')
+    expect(chipButtons).toHaveLength(3)
+    fireEvent.click(chipButtons[2]!)
+    expect(opened).toBe(1)
+    const bar = screen.getByRole('img', { name: /Top Out · Behar & Malachi on site Sat/ })
+    fireEvent.click(bar)
+    expect(opened).toBe(2)
+    expect(screen.queryByText('Set stages')).toBeNull()
+  })
+  it('v2.3461: a bar without onStageClick has no buttons', () => {
+    render(<StagesProgressPaymentCell model={heron.model} pctComplete={40} view={heron.view} />)
+    expect(within(screen.getByRole('list', { name: 'Stages' })).queryByRole('button')).toBeNull()
+    expect(screen.queryByRole('button', { name: /Open Bill/ })).toBeNull()
   })
 })

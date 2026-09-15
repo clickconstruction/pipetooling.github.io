@@ -78,11 +78,6 @@ export type ProgressPaymentView = {
   stale: boolean
   /** The percent the row shows, with its source and date, or null. */
   percent: { pct: number; source: PercentSource; at: string | null } | null
-  /**
-   * v2.3421 (the door): a job with two or more priced lines the dictionary did
-   * not read as stages — offer *Set stages*, which opens Bill → ① Line Items.
-   */
-  offerSetStages: boolean
 }
 
 export type ProgressPaymentFixture = {
@@ -143,8 +138,9 @@ export function crewClause(crew: JobCrewPosition | null | undefined, todayYmd: s
   if (crew.lastWorkYmd) {
     const n = crew.lastDayPeople.length
     const who = n <= 2 && name ? name : n > 0 ? `${n} people` : name || 'crew'
-    if (crew.onSiteToday) return !names ? 'on site today' : n <= 2 && name ? `${name} on site today` : `${n} on site today`
-    return names ? `${who} on site ${dayWord(crew.lastWorkYmd, todayYmd)}` : `on site ${dayWord(crew.lastWorkYmd, todayYmd)}`
+    // Without names the clause is a plain past tense — "worked Fri" (v2.3461).
+    if (crew.onSiteToday) return !names ? 'worked today' : n <= 2 && name ? `${name} on site today` : `${n} on site today`
+    return names ? `${who} on site ${dayWord(crew.lastWorkYmd, todayYmd)}` : `worked ${dayWord(crew.lastWorkYmd, todayYmd)}`
   }
   if (crew.sheet && name) return names ? `${name} on the sheet, no clock-ins` : 'on the sheet, no clock-ins'
   return 'nobody clocked in'
@@ -152,11 +148,21 @@ export function crewClause(crew: JobCrewPosition | null | undefined, todayYmd: s
 
 const PERCENT_SOURCE_WORD: Record<PercentSource, string> = { typed: 'typed', report: 'reported', seed: 'set' }
 
-/** "80% typed Sep 3" · "12% reported Sep 11" · "40% set Aug 7" (the back-fill) · "40% typed" · "no % yet". */
-export function percentClause(p: ProgressPaymentView['percent']): string {
+/**
+ * "80% typed Sep 3" · "12% reported Sep 11" · "40% set Aug 7" (the back-fill) · "40% typed" · "no % yet".
+ * `source: false` (v2.3461) drops the source word for the printed line — "80% Sep 3" · "40%";
+ * the tooltip keeps it.
+ */
+export function percentClause(p: ProgressPaymentView['percent'], opts: { source?: boolean } = {}): string {
   if (!p) return 'no % yet'
   const when = p.at ? ` ${formatWorkDateYmdMonthDayShort(p.at.slice(0, 10))}` : ''
+  if (opts.source === false) return `${p.pct}%${when}`
   return `${p.pct}% ${PERCENT_SOURCE_WORD[p.source]}${when}`
+}
+
+/** The printed line starts with a capital: "Worked Fri · 80% Sep 3", "Nobody clocked in · no % yet". */
+export function capFirst(text: string): string {
+  return text.charAt(0).toUpperCase() + text.slice(1)
 }
 
 /** "$24,359 paid, nothing billed" · "$32,108 billed, nothing paid" · "$13,412 paid · $11,770 billed · $6,818 done, not billed" · "paid in full". */
@@ -250,9 +256,9 @@ export function buildProgressPaymentView(input: ProgressPaymentInput): ProgressP
       onSiteNow ? `${cc} · no lines on the job · nothing to bill against` : cc ? `no lines on the job · ${cc}` : 'no lines on the job · nothing to bill against'
     // No bar and no money in the legend to repeat: the whole sentence prints —
     // minus the names (v2.3459), which the row's crew column already carries.
-    const text = sentence(hasCrew ? crewClause(crew, todayYmd, { names: false }) : null)
+    const text = capFirst(sentence(hasCrew ? crewClause(crew, todayYmd, { names: false }) : null))
     const full = sentence(hasCrew ? crewClause(crew, todayYmd) : null)
-    return { mode: 'nobid', stageBar: null, liveChipSuffix: null, segments: [], words: { text, full, tone: onSiteNow ? 'red' : 'muted' }, stale, percent, offerSetStages: false }
+    return { mode: 'nobid', stageBar: null, liveChipSuffix: null, segments: [], words: { text, full, tone: onSiteNow ? 'red' : 'muted' }, stale, percent }
   }
 
   const paidInFull = input.status === 'paid' || money.paid >= money.total - 0.005
@@ -326,7 +332,7 @@ export function buildProgressPaymentView(input: ProgressPaymentInput): ProgressP
     const head = live ? live.name : `All ${segs.length} stages done`
     // The printed line (v2.3459) leaves out the stage name — the lit chip above
     // it already says Top Out — and the crew's names; `full` keeps both.
-    const text = live ? `${crewClause(crew, todayYmd, { names: false })} · ${percentClause(percent)}` : head
+    const text = live ? capFirst(`${crewClause(crew, todayYmd, { names: false })} · ${percentClause(percent, { source: false })}`) : head
     const full = `${live ? `${head} · ${crewClause(crew, todayYmd)} · ${percentClause(percent)}` : head} · ${mc.text}`
     const tone: ProgressPaymentTone = paidInFull ? 'green' : mc.tone === 'amber' || stageBar.captionTone === 'amber' ? 'amber' : 'plain'
     const view: ProgressPaymentView = {
@@ -337,7 +343,6 @@ export function buildProgressPaymentView(input: ProgressPaymentInput): ProgressP
       words: { text, full, tone },
       stale,
       percent,
-      offerSetStages: false,
     }
     return view
   }
@@ -377,8 +382,8 @@ export function buildProgressPaymentView(input: ProgressPaymentInput): ProgressP
       amount: l.amount,
     }
   })
-  const text = `${crewClause(crew, todayYmd, { names: false })} · ${percentClause(percent)}`
+  const text = capFirst(`${crewClause(crew, todayYmd, { names: false })} · ${percentClause(percent, { source: false })}`)
   const full = `${crewClause(crew, todayYmd)} · ${percentClause(percent)} · ${mc.text}`
   const tone: ProgressPaymentTone = paidInFull ? 'green' : mc.tone
-  return { mode: 'lines', stageBar: null, liveChipSuffix: null, segments, words: { text, full, tone }, stale, percent, offerSetStages: priced.length >= 2 && !paidInFull }
+  return { mode: 'lines', stageBar: null, liveChipSuffix: null, segments, words: { text, full, tone }, stale, percent }
 }

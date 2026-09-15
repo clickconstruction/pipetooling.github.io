@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef, useState } from 'react'
+import { useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { fitStageChips, type PipelineStageState } from '../../lib/jobs/pipelineStageBar'
 import type { ProgressPaymentSegment, ProgressPaymentTone, ProgressPaymentView } from '../../lib/jobs/progressPaymentCell'
 
@@ -67,7 +67,54 @@ function segmentLabelFor(seg: ProgressPaymentSegment, segPx: number | null): str
   return null
 }
 
-export function StagesStageBar({ view, compact = false }: { view: ProgressPaymentView; compact?: boolean }) {
+/** A chip: a button when the bar opens Bill, a plain span otherwise. The list item stays the wrapper. */
+function ChipShell({ onClick, title, style, children }: { onClick?: () => void; title: string; style: CSSProperties; children: ReactNode }) {
+  if (!onClick) {
+    return (
+      <span role="listitem" title={title} style={style}>
+        {children}
+      </span>
+    )
+  }
+  return (
+    <span role="listitem">
+      <button
+        type="button"
+        onClick={onClick}
+        title={title}
+        data-stage-chip
+        style={{ ...style, fontFamily: 'inherit', fontSize: 'inherit', lineHeight: 'inherit', margin: 0, cursor: 'pointer' }}
+      >
+        {children}
+      </button>
+    </span>
+  )
+}
+
+/** The bar: a full-width unstyled button around it when it opens Bill. */
+function BarShell({ onClick, children }: { onClick?: () => void; children: ReactNode }) {
+  if (!onClick) return <>{children}</>
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      title={STAGE_CLICK_TITLE}
+      data-stage-bar
+      style={{ display: 'block', width: '100%', padding: 0, margin: 0, border: 'none', background: 'none', cursor: 'pointer', textAlign: 'left', minWidth: 0 }}
+    >
+      {children}
+    </button>
+  )
+}
+
+export const STAGE_CLICK_TITLE = 'Open Bill → ① Line Items'
+
+/**
+ * `onStageClick` (v2.3461): every chip and the bar itself open the job's Bill
+ * window at ① Line Items — the one place stages are set — so the *Set stages*
+ * link under the bar (v2.3421) is gone.
+ */
+export function StagesStageBar({ view, compact = false, onStageClick }: { view: ProgressPaymentView; compact?: boolean; onStageClick?: () => void }) {
   const [stripRef, stripWidth] = useMeasuredWidth<HTMLDivElement>()
   const [barRef, barWidth] = useMeasuredWidth<HTMLDivElement>()
   const gapPx = 3
@@ -88,9 +135,9 @@ export function StagesStageBar({ view, compact = false }: { view: ProgressPaymen
                     →
                   </span>
                 ) : null}
-                <span
-                  role="listitem"
-                  title={`${c.title}${c.pctText ? ` · ${c.pctText} done` : c.state === 'done' ? ' · done' : c.state === 'live' ? ' · the crew is here' : ''}`}
+                <ChipShell
+                  onClick={onStageClick}
+                  title={`${c.title}${c.pctText ? ` · ${c.pctText} done` : c.state === 'done' ? ' · done' : c.state === 'live' ? ' · the crew is here' : ''}${onStageClick ? ` · ${STAGE_CLICK_TITLE}` : ''}`}
                   style={{
                     display: 'inline-flex',
                     alignItems: 'center',
@@ -127,7 +174,7 @@ export function StagesStageBar({ view, compact = false }: { view: ProgressPaymen
                   {c.text ? <span>{c.text}</span> : null}
                   {c.pctText ? <small style={{ fontWeight: 700, color: 'var(--text-blue-700)', fontSize: '0.625rem' }}>{c.pctText}</small> : null}
                   {suffix && !c.pctText ? <small style={{ fontWeight: 500, color: 'var(--text-muted)', fontSize: '0.625rem' }}>{`· ${suffix}`}</small> : null}
-                </span>
+                </ChipShell>
               </span>
             )
           })}
@@ -135,11 +182,12 @@ export function StagesStageBar({ view, compact = false }: { view: ProgressPaymen
       ) : null}
 
       {segCount > 0 ? (
+        <BarShell onClick={onStageClick}>
         <div
           ref={barRef}
           role="img"
           aria-label={view.words.full}
-          title={view.segments.map((s) => s.title).join('\n')}
+          title={`${view.segments.map((s) => s.title).join('\n')}${onStageClick ? `\n${STAGE_CLICK_TITLE}` : ''}`}
           style={{ display: 'flex', gap: gapPx, height: 14, minWidth: 0 }}
         >
           {view.segments.map((s) => {
@@ -197,6 +245,7 @@ export function StagesStageBar({ view, compact = false }: { view: ProgressPaymen
             )
           })}
         </div>
+        </BarShell>
       ) : null}
 
       <div

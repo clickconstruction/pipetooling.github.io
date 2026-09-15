@@ -805,7 +805,7 @@ export default function JobsStagesCardList(props: JobsStagesTableProps) {
                 pctSaving={showPctComplete ? pctCompleteSavingId === j.id : undefined}
                 onPctCommit={showPctComplete && canEditJobPctComplete ? (n) => updateJobPctComplete(j.id, n, j.pct_complete ?? null) : undefined}
                 onNoBidValueClick={() => openEdit(j, { fixturesSectionHighlight: true })}
-                onSetStagesClick={() => openEdit(j, { fixturesSectionHighlight: true })}
+                onStageClick={() => openEdit(j, { fixturesSectionHighlight: true })}
               />
             </div>
             {cardFooterRow(ctx, j, () => setMoreActionsJob(j), showTimeOpen ? formatTimeSince(j.created_at ?? null) : null)}
@@ -1103,7 +1103,7 @@ export function JobsStagesUnifiedCardList(props: JobsStagesUnifiedTableProps) {
                 pctSaving={pctCompleteSavingId === j.id}
                 onPctCommit={canEditJobPctComplete ? (n) => updateJobPctComplete(j.id, n, j.pct_complete ?? null) : undefined}
                 onNoBidValueClick={() => openEdit(j, { fixturesSectionHighlight: true })}
-                onSetStagesClick={() => openEdit(j, { fixturesSectionHighlight: true })}
+                onStageClick={() => openEdit(j, { fixturesSectionHighlight: true })}
               />
               {props.billedExpectedPayChip?.(row)}
               {inv ? cardStripeEmailedHint(ctx, j, inv) : null}
