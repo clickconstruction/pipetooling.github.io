@@ -22,7 +22,7 @@ const thStyle: CSSProperties = {
   padding: '0.75rem',
   textAlign: 'center',
   borderBottom: '1px solid var(--border)',
-  minWidth: '12rem',
+  minWidth: '14.5rem',
 }
 
 export default function StagesProgressPaymentHeader({ sortedByProgress, onToggleSort }: StagesProgressPaymentHeaderProps) {
