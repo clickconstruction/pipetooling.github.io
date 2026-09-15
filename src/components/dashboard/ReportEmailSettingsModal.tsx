@@ -6,10 +6,12 @@ import { SearchableMultiSelect } from '../SearchableMultiSelect'
 import {
   deleteReportEmailSubscription,
   loadReportEmailSubscriptions,
+  loadReportEmailTeamLeadOptions,
   saveReportEmailSubscription,
   validateSubscriptionDraft,
   type RecipientKind,
   type SubscriptionDraft,
+  type TeamLeadOption,
 } from '../../lib/reportEmailSubscriptions'
 
 interface RosterUser {
@@ -89,6 +91,7 @@ function blankDraft(): SubscriptionDraft {
     label: '',
     allAuthors: true,
     authorUserIds: [],
+    teamLeadUserIds: [],
     autoSend: true,
     enabled: true,
   }
@@ -111,6 +114,7 @@ export function ReportEmailSettingsModal({
 }) {
   const { showToast } = useToastContext()
   const [roster, setRoster] = useState<RosterUser[]>([])
+  const [teamLeads, setTeamLeads] = useState<TeamLeadOption[]>([])
   const [editors, setEditors] = useState<EditorState[]>([])
   const [loading, setLoading] = useState(false)
   const [loadError, setLoadError] = useState<string | null>(null)
@@ -119,12 +123,15 @@ export function ReportEmailSettingsModal({
     setLoading(true)
     setLoadError(null)
     try {
-      const [{ data: rosterData, error: rosterErr }, subs] = await Promise.all([
+      const [{ data: rosterData, error: rosterErr }, subs, leads] = await Promise.all([
         supabase.from('users').select('id, name, email').is('archived_at', null).order('name').limit(500),
         loadReportEmailSubscriptions(),
+        // Pre-migration RPC (or a non-manager) reads as "no team leads yet" rather than an error.
+        loadReportEmailTeamLeadOptions().catch(() => [] as TeamLeadOption[]),
       ])
       if (rosterErr) throw rosterErr
       setRoster((rosterData ?? []) as RosterUser[])
+      setTeamLeads(leads)
       setEditors(
         subs.map((s) => ({
           key: nextEditorKey(),
@@ -136,6 +143,7 @@ export function ReportEmailSettingsModal({
             label: s.subscription.label ?? '',
             allAuthors: s.subscription.all_authors,
             authorUserIds: s.authorUserIds,
+            teamLeadUserIds: s.teamLeadUserIds,
             autoSend: s.subscription.auto_send,
             enabled: s.subscription.enabled,
           },
@@ -164,6 +172,15 @@ export function ReportEmailSettingsModal({
         label: u.email ? `${u.name} (${u.email})` : u.name,
       })),
     [roster],
+  )
+
+  const teamLeadOptions = useMemo(
+    () =>
+      teamLeads.map((l) => ({
+        value: l.user_id,
+        label: `${l.name} — leads ${l.member_count} ${l.member_count === 1 ? 'person' : 'people'}`,
+      })),
+    [teamLeads],
   )
 
   const patchEditor = useCallback((key: string, patch: Partial<EditorState>) => {
@@ -294,9 +311,9 @@ export function ReportEmailSettingsModal({
           </button>
         </div>
         <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
-          People here get reports emailed to them — every report, or only reports from selected people.
-          Reports are emailed automatically when filed (if “Auto-send” is on), and you can also send recent
-          ones now.
+          People here get reports emailed to them — every report, or only reports from selected people or
+          team leads (a team lead means everyone they lead, kept current as teams change). Reports are
+          emailed automatically when filed (if “Auto-send” is on), and you can also send recent ones now.
         </p>
 
         {loading ? (
@@ -379,18 +396,40 @@ export function ReportEmailSettingsModal({
                         checked={!editor.draft.allAuthors}
                         onChange={() => patchDraft(editor.key, { allAuthors: false })}
                       />
-                      Only from selected people
+                      Only from selected people or teams
                     </label>
                   </div>
                   {!editor.draft.allAuthors && (
-                    <SearchableMultiSelect
-                      options={rosterOptions}
-                      value={editor.draft.authorUserIds}
-                      onChange={(ids) => patchDraft(editor.key, { authorUserIds: ids })}
-                      listAriaLabel="Report authors"
-                      searchPlaceholder="Search people…"
-                      pinSelectedToTop
-                    />
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                      <div>
+                        <span style={LABEL_STYLE}>People</span>
+                        <SearchableMultiSelect
+                          options={rosterOptions}
+                          value={editor.draft.authorUserIds}
+                          onChange={(ids) => patchDraft(editor.key, { authorUserIds: ids })}
+                          listAriaLabel="Report authors"
+                          searchPlaceholder="Search people…"
+                          pinSelectedToTop
+                        />
+                      </div>
+                      <div>
+                        <span style={LABEL_STYLE}>Team leads — their whole team, kept current</span>
+                        {teamLeadOptions.length > 0 ? (
+                          <SearchableMultiSelect
+                            options={teamLeadOptions}
+                            value={editor.draft.teamLeadUserIds}
+                            onChange={(ids) => patchDraft(editor.key, { teamLeadUserIds: ids })}
+                            listAriaLabel="Team leads"
+                            searchPlaceholder="Search team leads…"
+                            pinSelectedToTop
+                          />
+                        ) : (
+                          <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
+                            No team leads set up yet — People → Users → Team leads.
+                          </span>
+                        )}
+                      </div>
+                    </div>
                   )}
                 </div>
 

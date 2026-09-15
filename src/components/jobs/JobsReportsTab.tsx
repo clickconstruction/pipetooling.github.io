@@ -5,6 +5,7 @@ import NewReportModal from '../NewReportModal'
 import { JobsReportsListView } from './JobsReportsListView'
 import { useIsMobile } from '../../hooks/useIsMobile'
 import RecurringEmailReportsModal from './RecurringEmailReportsModal'
+import { ReportEmailSettingsModal } from '../dashboard/ReportEmailSettingsModal'
 import type { UserRole } from '../../hooks/useAuth'
 import type { JobWithDetails } from '../../types/jobWithDetails'
 import type { OpenEditJobOptions } from '../../contexts/JobFormModalContext'
@@ -85,6 +86,8 @@ export default function JobsReportsTab({
   const [reportsViewMode, setReportsViewMode] = useState<'newest' | 'job' | 'person'>('newest')
   const [newReportModalOpen, setNewReportModalOpen] = useState(false)
   const [recurringEmailReportsModalOpen, setRecurringEmailReportsModalOpen] = useState(false)
+  /** v2.3480: the per-report recipients (the Dashboard's Recent Reports mail button) get a door here too. */
+  const [reportEmailRecipientsOpen, setReportEmailRecipientsOpen] = useState(false)
   const [reportsDeletingId, setReportsDeletingId] = useState<string | null>(null)
   const [reportTemplatesModalOpen, setReportTemplatesModalOpen] = useState(false)
   const [reportTemplatesList, setReportTemplatesList] = useState<
@@ -386,6 +389,14 @@ export default function JobsReportsTab({
               </button>
               <button
                 type="button"
+                onClick={() => setReportEmailRecipientsOpen(true)}
+                title="Who gets every report emailed as it's filed"
+                style={{ font: 'inherit', padding: '0.5rem 0.9rem', background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 10, cursor: 'pointer', color: 'var(--text-strong)' }}
+              >
+                Report email recipients
+              </button>
+              <button
+                type="button"
                 onClick={openReportTemplatesModal}
                 title="Manage templates"
                 aria-label="Manage report templates"
@@ -428,6 +439,9 @@ export default function JobsReportsTab({
             <>
               <button type="button" onClick={() => setRecurringEmailReportsModalOpen(true)} style={{ font: 'inherit', fontSize: '0.8rem', marginLeft: 'auto', background: 'none', border: 'none', color: 'var(--text-link)', cursor: 'pointer', padding: '0.3rem 0.2rem' }}>
                 Email reports
+              </button>
+              <button type="button" onClick={() => setReportEmailRecipientsOpen(true)} style={{ font: 'inherit', fontSize: '0.8rem', background: 'none', border: 'none', color: 'var(--text-link)', cursor: 'pointer', padding: '0.3rem 0.2rem' }}>
+                Recipients
               </button>
               <button type="button" onClick={openReportTemplatesModal} style={{ font: 'inherit', fontSize: '0.8rem', background: 'none', border: 'none', color: 'var(--text-link)', cursor: 'pointer', padding: '0.3rem 0.2rem' }}>
                 Templates
@@ -565,6 +579,13 @@ export default function JobsReportsTab({
         authUserId={authUserId}
         userRole={authRole}
       />
+      {canManageTemplates && (
+        <ReportEmailSettingsModal
+          open={reportEmailRecipientsOpen}
+          onClose={() => setReportEmailRecipientsOpen(false)}
+          authUserId={authUserId ?? undefined}
+        />
+      )}
       <RecurringEmailReportsModal
         open={recurringEmailReportsModalOpen}
         onClose={() => setRecurringEmailReportsModalOpen(false)}

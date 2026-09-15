@@ -5,6 +5,7 @@ import {
   recipientDisplayLabel,
   scopeSummary,
   subscriptionMatchesAuthor,
+  subscriptionMatchesReport,
   validateSubscriptionDraft,
   type SubscriptionDraft,
 } from './reportEmailSubscriptions'
@@ -16,6 +17,7 @@ const baseDraft = (over: Partial<SubscriptionDraft> = {}): SubscriptionDraft => 
   label: '',
   allAuthors: true,
   authorUserIds: [],
+  teamLeadUserIds: [],
   autoSend: true,
   enabled: true,
   ...over,
@@ -75,6 +77,44 @@ describe('validateSubscriptionDraft', () => {
   it('all_authors makes the author list irrelevant', () => {
     expect(validateSubscriptionDraft(baseDraft({ allAuthors: true, authorUserIds: [] })).ok).toBe(true)
   })
+  it('a team lead alone satisfies the scope (v2.3480)', () => {
+    expect(
+      validateSubscriptionDraft(baseDraft({ allAuthors: false, authorUserIds: [], teamLeadUserIds: ['lead1'] })).ok,
+    ).toBe(true)
+    const r = validateSubscriptionDraft(baseDraft({ allAuthors: false, authorUserIds: [], teamLeadUserIds: [] }))
+    expect(r.ok).toBe(false)
+    if (!r.ok) expect(r.error).toContain('team lead')
+  })
+})
+
+describe('subscriptionMatchesReport (v2.3480)', () => {
+  const sub = { enabled: true, all_authors: false }
+  it('matches a report by someone the team lead leads', () => {
+    expect(
+      subscriptionMatchesReport(sub, { authorUserIds: [], teamLeadUserIds: ['todd'] }, { authorUserId: 'sam', leaderUserIds: ['todd'] }),
+    ).toBe(true)
+  })
+  it("matches the team lead's own report", () => {
+    expect(
+      subscriptionMatchesReport(sub, { authorUserIds: [], teamLeadUserIds: ['todd'] }, { authorUserId: 'todd', leaderUserIds: [] }),
+    ).toBe(true)
+  })
+  it('does not match someone outside the team', () => {
+    expect(
+      subscriptionMatchesReport(sub, { authorUserIds: [], teamLeadUserIds: ['todd'] }, { authorUserId: 'sam', leaderUserIds: ['ana'] }),
+    ).toBe(false)
+    expect(
+      subscriptionMatchesReport(sub, { authorUserIds: [], teamLeadUserIds: ['todd'] }, { authorUserId: 'sam', leaderUserIds: [] }),
+    ).toBe(false)
+  })
+  it('named authors and team leads combine; disabled never matches', () => {
+    expect(
+      subscriptionMatchesReport(sub, { authorUserIds: ['sam'], teamLeadUserIds: ['todd'] }, { authorUserId: 'sam', leaderUserIds: [] }),
+    ).toBe(true)
+    expect(
+      subscriptionMatchesReport({ enabled: false, all_authors: false }, { authorUserIds: [], teamLeadUserIds: ['todd'] }, { authorUserId: 'todd', leaderUserIds: [] }),
+    ).toBe(false)
+  })
 })
 
 describe('subscriptionMatchesAuthor', () => {
@@ -132,5 +172,10 @@ describe('scopeSummary', () => {
   })
   it('handles empty author list', () => {
     expect(scopeSummary({ all_authors: false }, [], names)).toBe('No authors selected')
+  })
+  it('names team leads as teams (v2.3480)', () => {
+    expect(scopeSummary({ all_authors: false }, [], names, ['a'])).toBe("Reports from Ann's team")
+    expect(scopeSummary({ all_authors: false }, ['b'], names, ['a'])).toBe("Reports from Ben & Ann's team")
+    expect(scopeSummary({ all_authors: false }, ['b', 'c'], names, ['a'])).toBe('Reports from Ben, Cara +1 more')
   })
 })
