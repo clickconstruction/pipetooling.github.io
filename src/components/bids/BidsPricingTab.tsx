@@ -8,6 +8,7 @@ import { computeBidCostBreakdown, directCostRowsFromTables } from '../../lib/bid
 import { PricingCompositionBar } from './PricingCompositionBar'
 import { buildProfitLegend, clampTooltipLeft, formatProfitShare } from '../../lib/bids/profitBarLegend'
 import { matchCountRowsToBookEntries, type BookEntryMatch } from '../../lib/bids/bookEntryMatching'
+import { needsFreezeAfterWrite, resolvePricingWriteTarget } from '../../lib/bids/pricingWriteTarget'
 import { mapCountRowsByFixture } from '../../lib/bids/mapCountRowsByFixture'
 import { searchPriceBookEntries, seedPricingAssignmentSearch, type AssignMatchMode, type PriceBookSearchResult } from '../../lib/bids/priceBookAssignSearch'
 import { computeBidPricingRows, coverLetterTotalsFromPricingRows } from '../../lib/bidPricingRowCalculations'
@@ -322,6 +323,9 @@ export function BidsPricingTab({
   // Planning an offer awaits a sibling fetch; the token drops a result that lands after the
   // context it was planned for (pricing switched, drawer closed) is gone.
   const bookOfferTokenRef = useRef(0)
+  // The first price on a bid freezes it (frozen-bid-prices PR 1): a write that landed on a
+  // shared template is followed by taking the bid's own copy. One clone at a time.
+  const freezingPricingRef = useRef(false)
   useEffect(() => {
     if (!wbBookDrawerOpen) {
       bookOfferTokenRef.current++
@@ -637,6 +641,7 @@ export function BidsPricingTab({
         if (touched) setAndStashWbPreview(versionId, Object.keys(nextPreview).length > 0 ? nextPreview : null, nextVeto)
       }
       await loadBidPricingAssignments(bidId, versionId)
+      await freezeSharedPricingAfterWrite()
       if (m != null) {
         const nextRec = updateRecentMargins(recentMargins, m)
         setRecentMargins(nextRec)
@@ -665,6 +670,7 @@ export function BidsPricingTab({
         }
       }
       await loadBidPricingAssignments(bidId, versionId)
+      await freezeSharedPricingAfterWrite()
       setBrushUndo(null)
       showToast('Sweep undone.', 'success')
     } finally {
@@ -1104,13 +1110,19 @@ export function BidsPricingTab({
         .update({ price_book_entry_id: priceBookEntryId })
         .eq('id', existing.id)
       if (err) setError(err.message)
-      else await loadBidPricingAssignments(bidId, versionId)
+      else {
+        await loadBidPricingAssignments(bidId, versionId)
+        await freezeSharedPricingAfterWrite()
+      }
     } else {
       const { error: err } = await supabase
         .from('bid_pricing_assignments')
         .insert({ bid_id: bidId, count_row_id: countRowId, price_book_entry_id: priceBookEntryId, price_book_version_id: versionId })
       if (err) setError(err.message)
-      else await loadBidPricingAssignments(bidId, versionId)
+      else {
+        await loadBidPricingAssignments(bidId, versionId)
+        await freezeSharedPricingAfterWrite()
+      }
     }
   }
 
@@ -1122,7 +1134,10 @@ export function BidsPricingTab({
     if (!existing) return
     const { error: err } = await supabase.from('bid_pricing_assignments').delete().eq('id', existing.id)
     if (err) setError(err.message)
-    else await loadBidPricingAssignments(bidId, versionId)
+    else {
+      await loadBidPricingAssignments(bidId, versionId)
+      await freezeSharedPricingAfterWrite()
+    }
   }
 
   /** One row's price write (no reload) — shared by the single-row editor and the margin bulk apply (v2.1769). */
@@ -1178,7 +1193,10 @@ export function BidsPricingTab({
     const err = await writeUnitPriceOverrideRow(countRowId, value)
 
     if (err) setError(err.message)
-    else await loadBidPricingAssignments(bidId, versionId)
+    else {
+      await loadBidPricingAssignments(bidId, versionId)
+      await freezeSharedPricingAfterWrite()
+    }
     setSavingUnitPriceOverride(null)
   }
 
@@ -1564,8 +1582,10 @@ export function BidsPricingTab({
         .insert({ version_id: targetVersionId, fixture_type_id: fixtureTypeId, rough_in_price: rough, top_out_price: top, trim_set_price: trim, total_price: total, sequence_order: maxSeq + 1 })
       if (err) setError(err.message)
       else {
-        if (entryFormTargetPricing) await loadPriceBookEntries(selectedPricingVersionId)
-        else await reloadPanelEntries()
+        if (entryFormTargetPricing) {
+          await loadPriceBookEntries(selectedPricingVersionId)
+          await freezeSharedPricingAfterWrite()
+        } else await reloadPanelEntries()
         void noteBookEditForOpenBid(fixtureTypeId, fixtureName, { rough_in_price: rough, top_out_price: top, trim_set_price: trim, total_price: total })
         closePricingEntryForm()
       }
@@ -1616,6 +1636,33 @@ export function BidsPricingTab({
       setSelectedPricingVersionId(newId)
       await saveBidSelectedPriceBookVersion(bidId, newId)
       await loadPriceBookEntries(newId)
+    }
+  }
+
+  /**
+   * The first price on a bid freezes it. Until someone picks a book, `deriveActivePricingId`
+   * shows a shared template's prices and every write keys to that template — so a bid sent in
+   * that state re-priced with every book edit (BP483: 42 rows on the shared Default, no copy).
+   * Call this after any write keyed to `selectedPricingVersionId`: when that id is a shared
+   * template, clone it into the bid (the RPC carries the bid's template-keyed rows onto the
+   * copy, entry ids remapped) and make the copy the live pricing, so the next write — and every
+   * book edit from now on — stops at the copy. A bid-owned copy, a robot template (the twin
+   * fence lives there) and an id we cannot place are left alone. The template-keyed rows stay
+   * behind, inert, as the v2.2720 backfill left them.
+   */
+  async function freezeSharedPricingAfterWrite(): Promise<void> {
+    const bid = selectedBidForPricing
+    if (!bid || freezingPricingRef.current) return
+    const target = resolvePricingWriteTarget({ selectedPricingVersionId, bidPricings: priceBookVersions, templates: templatePriceBookVersions })
+    if (!needsFreezeAfterWrite(target)) return
+    freezingPricingRef.current = true
+    try {
+      const newId = await cloneTemplateIntoBidAndActivate(target.versionId, target.name)
+      if (!newId) return
+      await loadBidPricingAssignments(bid.id, newId)
+      showToast(`Took this bid's own copy of ${target.name} — edits to the shared book won't reach it.`, 'success')
+    } finally {
+      freezingPricingRef.current = false
     }
   }
 
@@ -2317,6 +2364,7 @@ export function BidsPricingTab({
         copied++
       }
       await loadBidPricingAssignments(bid.id, targetId)
+      await freezeSharedPricingAfterWrite()
       const sourceName = priceBookVersions.find((p) => p.id === sourceId)?.name ?? 'the other scenario'
       if (copied > 0 && dropped > 0) {
         showToast(`Copied ${copied} price${copied !== 1 ? 's' : ''} from "${sourceName}" — ${dropped} had no matching row in this packet's counts.`, 'info')
@@ -2348,6 +2396,7 @@ export function BidsPricingTab({
         return
       }
       await loadBidPricingAssignments(bidId, versionId)
+      await freezeSharedPricingAfterWrite()
       showToast(`Assigned ${matches.length} row${matches.length === 1 ? '' : 's'} from the book.`, 'success')
     } finally {
       setWbFillingBook(false)
@@ -2427,6 +2476,7 @@ export function BidsPricingTab({
         }
       }
       await loadBidPricingAssignments(bidId, versionId)
+      await freezeSharedPricingAfterWrite()
       setAndStashWbPreview(versionId, null)
       setWbSolveLanding(null)
       showToast('Prices applied.', 'success')
@@ -2480,6 +2530,7 @@ export function BidsPricingTab({
       setAndStashWbPreview(versionId, Object.keys(nextPreview).length > 0 ? nextPreview : null, nextVeto)
     }
     await loadBidPricingAssignments(bidId, versionId)
+    await freezeSharedPricingAfterWrite()
     setSavingUnitPriceOverride(null)
     clearDraft()
     setWbJustSaved((prev) => ({ ...prev, [countRowId]: true }))
@@ -4867,6 +4918,7 @@ export function BidsPricingTab({
           // v2.2444: the bid's OWN book — a frozen copy of a template that kept the template's
           // name. Naming it here is what stops "WENDI" in this drawer reading as "WENDI" on the bid.
           const bidBookName = priceBookVersions.find((v) => v.id === selectedPricingVersionId)?.name ?? null
+          const drawerWriteTarget = resolvePricingWriteTarget({ selectedPricingVersionId, bidPricings: priceBookVersions, templates: templatePriceBookVersions })
           const cell: CSSProperties = { padding: '0.4rem 0.55rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums', borderBottom: '1px solid var(--border)' }
           return (
             <div
@@ -4888,7 +4940,7 @@ export function BidsPricingTab({
                       <>
                         This bid still prices <strong>{pendingBookOffer.offer.fixtureName}</strong> at $
                         {formatCurrency(pendingBookOffer.offer.bidTotal)} — it holds its own copy of the book, taken when
-                        the bid started.
+                        it was first priced.
                         {pendingBookOffer.siblingPricingCount > 0 ? (
                           <>
                             {' '}
@@ -5003,7 +5055,12 @@ export function BidsPricingTab({
               {bidBookName ? (
                 <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', lineHeight: 1.45, marginBottom: '0.6rem' }}>
                   Edits here change the shared book. This bid prices from <strong>{bidBookName}</strong>, its own copy
-                  taken when the bid started — it keeps its prices until you carry a change across.
+                  taken when it was first priced — it keeps its prices until you carry a change across.
+                </div>
+              ) : drawerWriteTarget.kind === 'shared' ? (
+                <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', lineHeight: 1.45, marginBottom: '0.6rem' }}>
+                  Edits here change the shared book. This bid has no copy yet — it shows <strong>{drawerWriteTarget.name}</strong> as
+                  it stands today; the first price you assign takes this bid's own copy, and book edits stop reaching it.
                 </div>
               ) : null}
               {/* v2.2386 (Wendi): Add entry rides beside the price-mode toggle — always visible, no scroll to the list's foot. */}
