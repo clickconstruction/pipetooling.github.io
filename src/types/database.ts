@@ -1670,6 +1670,205 @@ export type Database = {
           },
         ]
       }
+      bid_submittal_items: {
+        Row: {
+          carried_from_item_id: string | null
+          created_at: string
+          id: string
+          lead_time_days: number | null
+          reason_kind: string | null
+          reason_note: string | null
+          review_decision: string | null
+          review_note: string | null
+          reviewed_at: string | null
+          reviewed_by_email: string | null
+          reviewed_by_name: string | null
+          sequence_order: number
+          sheet_file: number | null
+          sheet_pages: number[]
+          sheet_source: string | null
+          source_quote_line_id: string | null
+          specified_description: string | null
+          specified_manufacturer: string | null
+          specified_model: string | null
+          status: string
+          submittal_id: string
+          submitted_label: string | null
+          submitted_manufacturer: string | null
+          submitted_model: string | null
+          supply_house_id: string | null
+          tag: string
+          updated_at: string
+        }
+        Insert: {
+          carried_from_item_id?: string | null
+          created_at?: string
+          id?: string
+          lead_time_days?: number | null
+          reason_kind?: string | null
+          reason_note?: string | null
+          review_decision?: string | null
+          review_note?: string | null
+          reviewed_at?: string | null
+          reviewed_by_email?: string | null
+          reviewed_by_name?: string | null
+          sequence_order?: number
+          sheet_file?: number | null
+          sheet_pages?: number[]
+          sheet_source?: string | null
+          source_quote_line_id?: string | null
+          specified_description?: string | null
+          specified_manufacturer?: string | null
+          specified_model?: string | null
+          status?: string
+          submittal_id: string
+          submitted_label?: string | null
+          submitted_manufacturer?: string | null
+          submitted_model?: string | null
+          supply_house_id?: string | null
+          tag?: string
+          updated_at?: string
+        }
+        Update: {
+          carried_from_item_id?: string | null
+          created_at?: string
+          id?: string
+          lead_time_days?: number | null
+          reason_kind?: string | null
+          reason_note?: string | null
+          review_decision?: string | null
+          review_note?: string | null
+          reviewed_at?: string | null
+          reviewed_by_email?: string | null
+          reviewed_by_name?: string | null
+          sequence_order?: number
+          sheet_file?: number | null
+          sheet_pages?: number[]
+          sheet_source?: string | null
+          source_quote_line_id?: string | null
+          specified_description?: string | null
+          specified_manufacturer?: string | null
+          specified_model?: string | null
+          status?: string
+          submittal_id?: string
+          submitted_label?: string | null
+          submitted_manufacturer?: string | null
+          submitted_model?: string | null
+          supply_house_id?: string | null
+          tag?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bid_submittal_items_carried_from_item_id_fkey"
+            columns: ["carried_from_item_id"]
+            isOneToOne: false
+            referencedRelation: "bid_submittal_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bid_submittal_items_source_quote_line_id_fkey"
+            columns: ["source_quote_line_id"]
+            isOneToOne: false
+            referencedRelation: "bid_quote_lines"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bid_submittal_items_submittal_id_fkey"
+            columns: ["submittal_id"]
+            isOneToOne: false
+            referencedRelation: "bid_submittals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bid_submittal_items_supply_house_id_fkey"
+            columns: ["supply_house_id"]
+            isOneToOne: false
+            referencedRelation: "supply_houses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bid_submittals: {
+        Row: {
+          bid_id: string
+          created_at: string
+          created_by: string | null
+          id: string
+          job_ledger_id: string | null
+          note: string | null
+          package_path: string | null
+          rev_number: number
+          shared_at: string | null
+          shared_by: string | null
+          source_files: Json
+          status: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          bid_id: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          job_ledger_id?: string | null
+          note?: string | null
+          package_path?: string | null
+          rev_number: number
+          shared_at?: string | null
+          shared_by?: string | null
+          source_files?: Json
+          status?: string
+          title?: string
+          updated_at?: string
+        }
+        Update: {
+          bid_id?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          job_ledger_id?: string | null
+          note?: string | null
+          package_path?: string | null
+          rev_number?: number
+          shared_at?: string | null
+          shared_by?: string | null
+          source_files?: Json
+          status?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bid_submittals_bid_id_fkey"
+            columns: ["bid_id"]
+            isOneToOne: false
+            referencedRelation: "bids"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bid_submittals_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bid_submittals_job_ledger_id_fkey"
+            columns: ["job_ledger_id"]
+            isOneToOne: false
+            referencedRelation: "jobs_ledger"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bid_submittals_shared_by_fkey"
+            columns: ["shared_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       bid_tab_entries: {
         Row: {
           alternate_amount: number | null
