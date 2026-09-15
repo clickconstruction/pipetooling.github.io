@@ -1,11 +1,12 @@
-import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
+import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { AlertCircle } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
 import { formatCurrency } from '../lib/format'
 import { parsePoGeneratorCodeFromPurchaseOrderName } from '../lib/parsePoGeneratorCodeFromPurchaseOrderName'
-import { effectiveJobLedgerNumber } from '../lib/ledgerDisplayPrefixes'
+import { DEFAULT_JOB_LEDGER_PREFIX, effectiveJobLedgerNumber, formatJobLedgerNumberLabel } from '../lib/ledgerDisplayPrefixes'
+import { stripTrailingZip } from '../lib/displayAddress'
 import { useLedgerPrefixMap } from '../contexts/LedgerDisplayPrefixContext'
 import { useConfirmDialog } from '../contexts/ConfirmDialogContext'
 import { UnifiedSearchResultRow } from './search/UnifiedSearchResultRow'
@@ -25,7 +26,19 @@ import { useSupplyHouseEditor } from './materials/useSupplyHouseEditor'
 import { SupplyHouseWebsiteLink } from './SupplyHouseWebsiteLink'
 import type { Database } from '../types/database'
 import { isAssistantLike } from '../lib/subcontractorLikeRole'
-import { STICKY_MODAL_CLOSE_BUTTON_STYLE, phoneSafeMinWidth, stickyModalHeaderStyle, stickyModalPanelStyle } from '../lib/stickyModalHeaderStyle'
+import { STICKY_MODAL_CLOSE_BUTTON_STYLE, stickyModalHeaderStyle, stickyModalPanelStyle } from '../lib/stickyModalHeaderStyle'
+import {
+  addAllocation,
+  allocationTotal,
+  dueDateHint,
+  invoiceSaveLabel,
+  paidAtPayload,
+  paidOnYmdFromIso,
+  poCodeHint,
+  poCodeHintText,
+  removeAllocation,
+  setAllocationPct,
+} from '../lib/materials/supplyHouseInvoiceForm'
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock'
 import { SupplyHouseJobAccountsSection } from './materials/SupplyHouseJobAccountsSection'
 import { SupplyHouseJobAccountsRoster } from './materials/SupplyHouseJobAccountsRoster'
@@ -67,6 +80,19 @@ type SupplyHouseSummaryRow = {
 function formatYmdLocal(ymd: string): string {
   const d = /^\d{4}-\d{2}-\d{2}$/.test(ymd) ? new Date(ymd + 'T12:00:00') : new Date(ymd)
   return Number.isNaN(d.getTime()) ? ymd : d.toLocaleDateString()
+}
+
+const INVOICE_INPUT_STYLE = { width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, boxSizing: 'border-box' as const }
+const INVOICE_LABEL_STYLE = { display: 'block', marginBottom: '0.25rem', fontWeight: 500 }
+
+/** The Add / Edit Invoice form reads in the order the paper does — each group gets a small rule-off caption (v2.3474). */
+function InvoiceFormSection({ children }: { children: ReactNode }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.6875rem', letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-muted)', fontWeight: 600, margin: '0.25rem 0 0.5rem' }}>
+      {children}
+      <span aria-hidden style={{ flex: 1, height: 1, background: 'var(--border)' }} />
+    </div>
+  )
 }
 
 /** Heat colors for the aging map — green (not due) through deepening reds. */
@@ -133,9 +159,11 @@ export function SupplyHousesTab({
   const [invoicePurchaseOrderNumber, setInvoicePurchaseOrderNumber] = useState('')
   const [invoiceLink, setInvoiceLink] = useState('')
   const [invoiceIsPaid, setInvoiceIsPaid] = useState(false)
+  /** "Paid on" calendar day (company tz); '' lets the DB trigger stamp now() when the invoice flips to paid. */
+  const [invoicePaidOn, setInvoicePaidOn] = useState('')
   const [invoiceOnJobAccount, setInvoiceOnJobAccount] = useState(false)
   const [invoiceJobAllocations, setInvoiceJobAllocations] = useState<InvoiceJobAllocation[]>([])
-  const [invoiceJobSearchModal, setInvoiceJobSearchModal] = useState(false)
+  /** Inline job search inside the form (v2.3474) — replaces the stacked "Add job for invoice" modal. */
   const [invoiceJobSearchText, setInvoiceJobSearchText] = useState('')
   const [invoiceJobSearchResults, setInvoiceJobSearchResults] = useState<Array<{ id: string; hcp_number: string; click_number?: string; job_name: string; job_address: string; service_type_id?: string | null; service_type_name?: string | null }>>([])
   const invoiceJobPrefixMap = useLedgerPrefixMap()
@@ -390,15 +418,17 @@ export function SupplyHousesTab({
   }, [autoOpenHouseId, supplyHousesList])
 
   useEffect(() => {
+    if (!invoiceFormOpen || !invoiceJobSearchText.trim()) {
+      setInvoiceJobSearchResults([])
+      return
+    }
     const t = setTimeout(() => {
-      if (invoiceJobSearchModal && invoiceJobSearchText !== undefined) {
-        supabase.rpc('search_jobs_ledger', { search_text: invoiceJobSearchText }).then(({ data }) => {
-          setInvoiceJobSearchResults((data ?? []) as Array<{ id: string; hcp_number: string; click_number?: string; job_name: string; job_address: string }>)
-        })
-      }
+      supabase.rpc('search_jobs_ledger', { search_text: invoiceJobSearchText }).then(({ data }) => {
+        setInvoiceJobSearchResults((data ?? []) as Array<{ id: string; hcp_number: string; click_number?: string; job_name: string; job_address: string }>)
+      })
     }, 300)
     return () => clearTimeout(t)
-  }, [invoiceJobSearchModal, invoiceJobSearchText])
+  }, [invoiceFormOpen, invoiceJobSearchText])
 
   useEffect(() => {
     const jobIds = invoiceJobAllocations.map((a) => a.job_id).filter((id) => !invoiceJobDetailsMap[id])
@@ -496,9 +526,11 @@ export function SupplyHousesTab({
     setInvoiceAmount('')
     setInvoiceLink('')
     setInvoiceIsPaid(false)
+    setInvoicePaidOn('')
     setInvoiceOnJobAccount(false)
     setInvoicePurchaseOrderNumber('')
     setInvoiceJobAllocations([])
+    setInvoiceJobSearchText('')
     setInvoiceFormOpen(true)
   }
 
@@ -512,16 +544,19 @@ export function SupplyHousesTab({
     setInvoiceAmount(inv.amount.toString())
     setInvoiceLink(inv.link ?? '')
     setInvoiceIsPaid(inv.is_paid)
+    setInvoicePaidOn(inv.is_paid ? paidOnYmdFromIso(inv.paid_at) : '')
     // === true: pre-migration rows fetched before the column existed read as undefined.
     setInvoiceOnJobAccount(inv.on_job_account === true)
     setInvoicePurchaseOrderNumber(inv.purchase_order_number ?? '')
     setInvoiceJobAllocations((inv as SupplyHouseInvoiceWithAllocations).job_allocations ?? [])
+    setInvoiceJobSearchText('')
     setInvoiceFormOpen(true)
   }
 
   function closeInvoiceForm() {
     setInvoiceFormOpen(false)
     setEditingInvoice(null)
+    setInvoiceJobSearchText('')
   }
 
   function openApplyPaymentForm() {
@@ -577,6 +612,9 @@ export function SupplyHousesTab({
       amount: amt,
       link: invoiceLink.trim() || null,
       is_paid: invoiceIsPaid,
+      // Only when the office typed a day that differs from what's stored — the trigger
+      // stamps now() on the flip to paid and nulls it on the flip back.
+      ...paidAtPayload(invoiceIsPaid, invoicePaidOn, editingInvoice?.paid_at),
       purchase_order_number: invoicePurchaseOrderNumber.trim() || null,
       // Sent only when it changes, so untouched saves keep working in the
       // merge-to-db-push window before the column exists in prod.
@@ -1181,206 +1219,307 @@ export function SupplyHousesTab({
 
       {houseEditor.modal}
 
-      {invoiceFormOpen && selectedSupplyHouseForDetail && (
+      {invoiceFormOpen && selectedSupplyHouseForDetail && (() => {
+        const house = selectedSupplyHouseForDetail
+        const poHint = poCodeHintText(poCodeHint(invoicePurchaseOrderNumber, poGeneratorCodesForSelectedHouse), house.name)
+        const poHintTone = poCodeHint(invoicePurchaseOrderNumber, poGeneratorCodesForSelectedHouse).kind
+        const dueHint = dueDateHint(house.name, house.monthly_payment_day)
+        const showPct = invoiceJobAllocations.length >= 2
+        const flagOn = invoiceOnJobAccount && invoiceSingleAllocatedJobId != null
+        const pdfHref = /^https?:\/\//i.test(invoiceLink.trim()) ? invoiceLink.trim() : null
+        const searchOpen = invoiceJobSearchText.trim().length > 0
+        return (
         <div style={{ position: 'fixed', inset: 0, padding: 'calc(1rem + env(safe-area-inset-top, 0px)) 1rem calc(1rem + env(safe-area-inset-bottom, 0px))', background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1003 }}>
           {/* This panel is the scroller — the form outgrew short screens once the job-account block landed (v2.2669)
-              and a centered, unscrollable panel clipped both ends; the title bar sticks so × stays reachable (v2.990 pattern). */}
-          <div role="dialog" aria-modal="true" aria-label={editingInvoice ? 'Edit Invoice' : 'Add Invoice'} style={{ background: 'var(--surface)', borderRadius: 8, maxHeight: 'min(90vh, 100%)', overflow: 'auto', ...stickyModalPanelStyle(560) }}>
+              and a centered, unscrollable panel clipped both ends; the title bar and the Save footer stick (v2.990 pattern). */}
+          <div role="dialog" aria-modal="true" aria-label={editingInvoice ? 'Edit invoice' : 'Add invoice'} style={{ background: 'var(--surface)', borderRadius: 8, maxHeight: 'min(90vh, 100%)', overflow: 'auto', ...stickyModalPanelStyle(560) }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.75rem', ...stickyModalHeaderStyle() }}>
               <div>
-                <h3 style={{ margin: 0 }}>{editingInvoice ? 'Edit Invoice' : 'Add Invoice'}</h3>
-                <p style={{ margin: '0.25rem 0 0', fontSize: '0.875rem', color: 'var(--text-muted)' }}>{selectedSupplyHouseForDetail.name}</p>
+                <h3 style={{ margin: 0 }}>{editingInvoice ? 'Edit invoice' : 'Add invoice'}</h3>
+                <p style={{ margin: '0.25rem 0 0', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
+                  {house.name}{editingInvoice?.invoice_number ? ` · ${editingInvoice.invoice_number}` : ''}
+                </p>
               </div>
               <button type="button" onClick={closeInvoiceForm} style={STICKY_MODAL_CLOSE_BUTTON_STYLE} aria-label="Close">×</button>
             </div>
             <form onSubmit={saveInvoice}>
-              <div style={{ marginBottom: '0.75rem' }}>
-                <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>Invoice Number *</label>
-                <input type="text" value={invoiceNumber} onChange={(e) => setInvoiceNumber(e.target.value)} required style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, boxSizing: 'border-box' }} />
-              </div>
-              {/* Three short fields share a row; on a phone they stack. */}
+              {/* ① The fields in the order they sit on the paper: number · date · amount, then the PO. */}
+              <InvoiceFormSection>From the invoice</InvoiceFormSection>
               <div style={{ display: 'grid', gridTemplateColumns: narrowAging ? '1fr' : '1.2fr 1fr 1fr', gap: '0.75rem', marginBottom: '0.75rem' }}>
                 <div>
-                  <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>Purchase Order #</label>
-                  <input type="text" value={invoicePurchaseOrderNumber} onChange={(e) => setInvoicePurchaseOrderNumber(e.target.value)} placeholder="e.g. PO-12345" style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, boxSizing: 'border-box' }} />
+                  <label htmlFor="invoice-number" style={{ ...INVOICE_LABEL_STYLE, whiteSpace: 'nowrap' }}>Invoice # *</label>
+                  <input id="invoice-number" type="text" value={invoiceNumber} onChange={(e) => setInvoiceNumber(e.target.value)} required style={INVOICE_INPUT_STYLE} />
                 </div>
                 <div>
-                  <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>Invoice Date *</label>
-                  <input type="date" value={invoiceDate} onChange={(e) => setInvoiceDate(e.target.value)} required style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, boxSizing: 'border-box' }} />
+                  <label htmlFor="invoice-date" style={INVOICE_LABEL_STYLE}>Invoice date *</label>
+                  <input id="invoice-date" type="date" value={invoiceDate} onChange={(e) => setInvoiceDate(e.target.value)} required style={INVOICE_INPUT_STYLE} />
                 </div>
                 <div>
-                  <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>Amount *</label>
-                  <input type="number" step="0.01" min={0} value={invoiceAmount} onChange={(e) => setInvoiceAmount(e.target.value)} required style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, boxSizing: 'border-box' }} />
+                  <label htmlFor="invoice-amount" style={INVOICE_LABEL_STYLE}>Amount *</label>
+                  <div style={{ display: 'flex', alignItems: 'center', border: '1px solid var(--border-strong)', borderRadius: 4, paddingLeft: '0.5rem', background: 'var(--surface)' }}>
+                    <span aria-hidden style={{ color: 'var(--text-muted)' }}>$</span>
+                    <input
+                      id="invoice-amount"
+                      type="number"
+                      step="0.01"
+                      min={0}
+                      inputMode="decimal"
+                      value={invoiceAmount}
+                      onChange={(e) => setInvoiceAmount(e.target.value)}
+                      required
+                      style={{ flex: 1, minWidth: 0, padding: '0.5rem', border: 'none', background: 'transparent', textAlign: 'right', fontVariantNumeric: 'tabular-nums', font: 'inherit', color: 'inherit' }}
+                    />
+                  </div>
                 </div>
               </div>
               <div style={{ marginBottom: '1rem' }}>
-                <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 500 }}>
-                  <input type="checkbox" checked={invoiceIsPaid} onChange={(e) => setInvoiceIsPaid(e.target.checked)} />
-                  Paid
-                </label>
+                <label htmlFor="invoice-po" style={INVOICE_LABEL_STYLE}>Purchase order #</label>
+                <input id="invoice-po" type="text" value={invoicePurchaseOrderNumber} onChange={(e) => setInvoicePurchaseOrderNumber(e.target.value)} placeholder="e.g. PO-12345" style={INVOICE_INPUT_STYLE} />
+                {/* ② The PO Generator check, while she types — the table's red icon only ever showed after Save. */}
+                {poHint ? (
+                  <div
+                    data-invoice-po-hint={poHintTone}
+                    style={{ marginTop: '0.25rem', fontSize: '0.75rem', color: poHintTone === 'not_on_ledger' ? 'var(--text-red-800)' : poHintTone === 'on_ledger' ? 'var(--text-green-800)' : 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '0.3rem' }}
+                  >
+                    {poHintTone === 'not_on_ledger' ? <AlertCircle size={13} color="#dc2626" aria-hidden style={{ flexShrink: 0 }} /> : null}
+                    {poHint}
+                  </div>
+                ) : null}
               </div>
-              <div style={{ marginBottom: '1rem' }}>
-                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Job allocations</label>
-                <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.35rem' }}>
-                  {invoiceJobAllocations.map((a, idx) => {
-                    const details = invoiceJobDetailsMap[a.job_id]
-                    const label = details ? `${effectiveJobLedgerNumber(details.hcp_number, details.click_number) || '—'} · ${details.job_name || '—'}` : a.job_id.slice(0, 8)
-                    return (
-                      <span key={a.job_id} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem', padding: '0.2rem 0.4rem', background: 'var(--bg-muted)', borderRadius: 4, fontSize: '0.8125rem' }}>
-                        <span title={details?.job_address}>{label}</span>
-                        <input
-                          type="number"
-                          min={0}
-                          max={100}
-                          value={a.pct}
-                          onChange={(e) => {
-                            const v = parseFloat(e.target.value) || 0
-                            const rest = invoiceJobAllocations.filter((_, i) => i !== idx)
-                            const restSum = rest.reduce((s, x) => s + x.pct, 0)
-                            const scale = restSum > 0 ? (100 - v) / restSum : 1
-                            let newAllocations = invoiceJobAllocations.map((x, i) =>
-                              i === idx ? { ...x, pct: v } : { ...x, pct: Math.round(x.pct * scale * 10) / 10 }
-                            )
-                            const sum = newAllocations.reduce((s, x) => s + x.pct, 0)
-                            if (Math.abs(sum - 100) > 0.01 && newAllocations.length > 0) {
-                              const lastIdx = newAllocations.length - 1
-                              newAllocations = newAllocations.map((x, i) =>
-                                i === lastIdx ? { ...x, pct: Math.round((x.pct + (100 - sum)) * 10) / 10 } : x
-                              )
-                            }
-                            setInvoiceJobAllocations(newAllocations)
+
+              {/* ③ Inline job search; the job becomes a card. Percent fields only once there are two jobs to split. */}
+              <InvoiceFormSection>Which job</InvoiceFormSection>
+              <input
+                id="invoice-job-search"
+                type="search"
+                placeholder="Add a job — J#, name or address…"
+                aria-label="Add a job"
+                value={invoiceJobSearchText}
+                onChange={(e) => setInvoiceJobSearchText(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Escape' && invoiceJobSearchText) {
+                    e.preventDefault()
+                    e.stopPropagation()
+                    setInvoiceJobSearchText('')
+                  }
+                  // Enter in the search box must not submit the invoice.
+                  if (e.key === 'Enter') e.preventDefault()
+                }}
+                style={{ ...INVOICE_INPUT_STYLE, marginBottom: '0.5rem' }}
+              />
+              {searchOpen ? (
+                <div role="listbox" aria-label="Matching jobs" style={{ maxHeight: 240, overflow: 'auto', border: '1px solid var(--border)', borderRadius: 6, marginBottom: '0.5rem' }}>
+                  {invoiceJobSearchResults.length === 0 ? (
+                    <div style={{ padding: '0.5rem 0.75rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>Searching…</div>
+                  ) : (
+                    invoiceJobSearchResults.map((j) => {
+                      const already = invoiceJobAllocations.some((a) => a.job_id === j.id)
+                      return (
+                        <button
+                          key={j.id}
+                          type="button"
+                          role="option"
+                          aria-selected={already}
+                          disabled={already}
+                          onClick={() => {
+                            setInvoiceJobDetailsMap((prev) => ({ ...prev, [j.id]: { hcp_number: j.hcp_number, click_number: j.click_number, job_name: j.job_name, job_address: j.job_address } }))
+                            setInvoiceJobAllocations((prev) => addAllocation(prev, j.id))
+                            setInvoiceJobSearchText('')
                           }}
-                          style={{ width: 44, padding: '0.15rem', fontSize: '0.875rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
-                        />
-                        %
+                          style={{ display: 'block', width: '100%', padding: '0.5rem 0.75rem', textAlign: 'left', border: 'none', borderBottom: '1px solid var(--border)', background: 'none', cursor: already ? 'default' : 'pointer', fontSize: '0.875rem', opacity: already ? 0.5 : 1, font: 'inherit', color: 'inherit' }}
+                        >
+                          <UnifiedSearchResultRow
+                            result={{ source: 'job', ...j }}
+                            prefixMap={invoiceJobPrefixMap}
+                            jobEvidence={invoiceJobEvidence.get(j.id)}
+                            evidenceMode={invoiceJobEvidenceMode}
+                          />
+                        </button>
+                      )
+                    })
+                  )}
+                </div>
+              ) : null}
+              {invoiceJobAllocations.length === 0 ? (
+                <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginBottom: '1rem' }}>No job yet — until one is added this invoice sits on no job's costs.</div>
+              ) : null}
+              {invoiceJobAllocations.map((a, idx) => {
+                const details = invoiceJobDetailsMap[a.job_id]
+                // Plain J prefix, like the search row above it (the per-trade JP/JE prefixes belong on the ledger pages).
+                const label = details
+                  ? `${formatJobLedgerNumberLabel(DEFAULT_JOB_LEDGER_PREFIX, details.hcp_number, details.click_number)} · ${details.job_name || '—'}`
+                  : a.job_id.slice(0, 8)
+                const isSingle = invoiceSingleAllocatedJobId === a.job_id
+                return (
+                  <div
+                    key={a.job_id}
+                    data-invoice-job-card
+                    style={{ border: '1px solid var(--border)', borderLeft: `3px solid ${isSingle && flagOn ? '#0f766e' : 'var(--border-strong)'}`, borderRadius: 6, padding: '0.6rem 0.75rem', marginBottom: '0.5rem' }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '0.5rem' }}>
+                      <strong style={{ fontSize: '0.9375rem' }}>{label}</strong>
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', flexShrink: 0 }}>
+                        {showPct ? (
+                          <>
+                            <input
+                              type="number"
+                              min={0}
+                              max={100}
+                              step="0.1"
+                              aria-label={`Share of this invoice on ${label}`}
+                              value={a.pct}
+                              onChange={(e) => setInvoiceJobAllocations((prev) => setAllocationPct(prev, idx, parseFloat(e.target.value)))}
+                              style={{ width: 56, padding: '0.15rem 0.25rem', fontSize: '0.875rem', border: '1px solid var(--border-strong)', borderRadius: 4, textAlign: 'right' }}
+                            />
+                            <span style={{ fontSize: '0.875rem' }}>%</span>
+                          </>
+                        ) : null}
                         <button
                           type="button"
-                          onClick={() => {
-                            const rest = invoiceJobAllocations.filter((_, i) => i !== idx)
-                            if (rest.length === 0) {
-                              setInvoiceJobAllocations([])
-                              return
-                            }
-                            const n = rest.length
-                            const pctEach = Math.round((100 / n) * 10) / 10
-                            const newAllocations = rest.map((x, i) => ({
-                              ...x,
-                              pct: i === n - 1 ? Math.round((100 - (n - 1) * pctEach) * 10) / 10 : pctEach,
-                            }))
-                            setInvoiceJobAllocations(newAllocations)
-                          }}
-                          style={{ padding: '0.1rem 0.25rem', border: 'none', background: 'none', cursor: 'pointer', color: 'var(--text-muted)', fontSize: '0.875rem', lineHeight: 1 }}
+                          onClick={() => setInvoiceJobAllocations((prev) => removeAllocation(prev, idx))}
+                          style={{ padding: '0.1rem 0.3rem', border: 'none', background: 'none', cursor: 'pointer', color: 'var(--text-muted)', fontSize: '1rem', lineHeight: 1 }}
+                          aria-label={`Remove ${label}`}
                           title="Remove job"
                         >
                           ×
                         </button>
                       </span>
-                    )
-                  })}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setInvoiceJobSearchModal(true)
-                      setInvoiceJobSearchText('')
-                      setInvoiceJobSearchResults([])
-                    }}
-                    style={{ padding: '0.2rem 0.5rem', border: '1px dashed var(--border-strong)', borderRadius: 4, background: 'var(--surface)', cursor: 'pointer', fontSize: '0.875rem' }}
-                  >
-                    +
-                  </button>
-                </div>
-                {invoiceJobAllocations.length > 0 && (
-                  <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
-                    Total: {invoiceJobAllocations.reduce((s, a) => s + a.pct, 0).toFixed(1)}%
+                    </div>
+                    {details?.job_address ? <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{stripTrailingZip(details.job_address)}</div> : null}
+                    {/* ④ The job account is a fact about this job at this house, so it lives on the job card. */}
+                    {isSingle ? (
+                      <div style={{ marginTop: '0.5rem', paddingTop: '0.5rem', borderTop: '1px dashed var(--border)' }}>
+                        <label style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem', cursor: 'pointer' }}>
+                          <input
+                            type="checkbox"
+                            checked={flagOn}
+                            onChange={(e) => {
+                              invoiceOnJobAccountTouchedRef.current = true
+                              setInvoiceOnJobAccount(e.target.checked)
+                            }}
+                            style={{ marginTop: 2, accentColor: '#0f766e' }}
+                          />
+                          <span>
+                            <span style={{ fontWeight: 600, fontSize: '0.875rem', color: flagOn ? '#0f766e' : 'var(--text-base)' }}>On {house.name}'s job account</span>
+                            <span style={{ display: 'block', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>If this goes unpaid the house bills the property owner, not you.</span>
+                          </span>
+                        </label>
+                        {invoiceJobAccountKey === `${a.job_id}:${house.id}` ? (
+                          invoiceJobAccount?.status === 'open' ? (
+                            <div style={{ marginTop: '0.5rem', fontSize: '0.8125rem', padding: '0.4rem 0.55rem', borderRadius: 5, background: 'var(--bg-green-tint)', color: 'var(--text-green-800)' }} data-invoice-job-account="open">
+                              <strong>Job account open at {house.name}</strong>
+                              {invoiceJobAccount.account_ref ? ` · ref ${invoiceJobAccount.account_ref}` : ''}
+                              {invoiceJobAccount.opened_at ? ` · ${openedViaPhrase(invoiceJobAccount.opened_via)} ${new Date(invoiceJobAccount.opened_at).toLocaleDateString()}` : ''}.
+                              {!invoiceOnJobAccount ? ' The flag is off — untick only if this invoice is not on the account.' : ''}
+                            </div>
+                          ) : invoiceJobAccount?.status === 'not_needed' ? (
+                            <div style={{ marginTop: '0.5rem', fontSize: '0.8125rem', padding: '0.4rem 0.55rem', borderRadius: 5, background: 'var(--bg-muted)', color: 'var(--text-muted)' }} data-invoice-job-account="not_needed">
+                              Marked <strong>not needed</strong> at {house.name}{invoiceJobAccount.note ? ` — ${invoiceJobAccount.note}` : ''}.
+                            </div>
+                          ) : (
+                            <div style={{ marginTop: '0.5rem', fontSize: '0.8125rem', padding: '0.4rem 0.55rem', borderRadius: 5, background: 'var(--bg-amber-tint)', color: 'var(--text-amber-800)', display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.5rem' }} data-invoice-job-account={invoiceJobAccount?.status === 'requested' ? 'requested' : 'none'}>
+                              <span>
+                                <strong>{invoiceJobAccount?.status === 'requested' ? 'Job account asked for, not open yet' : `No job account at ${house.name} on record for this job`}.</strong>{' '}
+                                If the house opened one, mark it — the flag will default on from then.
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => setInvoiceMarkOpenedOpen(true)}
+                                style={{ padding: '0.2rem 0.55rem', fontSize: '0.75rem', fontWeight: 600, background: '#0f766e', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', font: 'inherit' }}
+                              >
+                                Mark opened…
+                              </button>
+                            </div>
+                          )
+                        ) : null}
+                      </div>
+                    ) : null}
                   </div>
-                )}
-              </div>
-              <div style={{ marginBottom: '1rem', border: '1px solid #99f6e4', background: 'var(--surface)', borderRadius: 6, padding: '0.6rem 0.7rem' }}>
-                <label style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem', cursor: invoiceSingleAllocatedJobId ? 'pointer' : 'not-allowed' }}>
-                  <input
-                    type="checkbox"
-                    checked={invoiceOnJobAccount && invoiceSingleAllocatedJobId != null}
-                    disabled={!invoiceSingleAllocatedJobId}
-                    onChange={(e) => {
-                      invoiceOnJobAccountTouchedRef.current = true
-                      setInvoiceOnJobAccount(e.target.checked)
-                    }}
-                    style={{ marginTop: 2, accentColor: '#0f766e' }}
-                  />
-                  <span>
-                    <span style={{ fontWeight: 600, fontSize: '0.875rem', color: invoiceSingleAllocatedJobId ? 'var(--text-base)' : 'var(--text-muted)' }}>
-                      On job account
-                    </span>
-                    <span style={{ display: 'block', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
-                      {selectedSupplyHouseForDetail.name} bills the property owner if this invoice goes unpaid — not you.
-                    </span>
-                  </span>
-                </label>
-                {!invoiceSingleAllocatedJobId && (
-                  <div style={{ marginTop: '0.4rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                    {invoiceJobAllocations.length === 0
-                      ? 'Allocate a job first — job accounts are per property.'
-                      : 'Job accounts are per property — available when the invoice is allocated to a single job.'}
+                )
+              })}
+              {showPct ? (
+                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: '0 0 1rem' }}>
+                  Total: {allocationTotal(invoiceJobAllocations).toFixed(1)}% · Job accounts are per property — available when the invoice is on a single job.
+                </div>
+              ) : (
+                <div style={{ height: '0.5rem' }} />
+              )}
+              {invoiceMarkOpenedOpen && invoiceSingleAllocatedJobId ? (
+                <MarkJobAccountOpenedModal
+                  jobId={invoiceSingleAllocatedJobId}
+                  jobLabel={(() => {
+                    const d = invoiceJobDetailsMap[invoiceSingleAllocatedJobId]
+                    return d ? `${effectiveJobLedgerNumber(d.hcp_number, d.click_number) || '—'} · ${d.job_name || '—'}` : 'this job'
+                  })()}
+                  house={{ id: house.id, name: house.name }}
+                  existing={invoiceJobAccount}
+                  reps={invoiceJobAccountReps}
+                  onClose={() => setInvoiceMarkOpenedOpen(false)}
+                  onSaved={(row) => {
+                    setInvoiceMarkOpenedOpen(false)
+                    setInvoiceJobAccount(row)
+                    if (row.status === 'open' && !invoiceOnJobAccountTouchedRef.current) setInvoiceOnJobAccount(true)
+                  }}
+                />
+              ) : null}
+
+              {/* ⑤ Paid is a status with a date (paid_at already exists); the due-date hint says where the prefill came from. */}
+              <InvoiceFormSection>Paying it</InvoiceFormSection>
+              <div style={{ display: 'grid', gridTemplateColumns: narrowAging ? '1fr' : '1fr 1.6fr', gap: '0.75rem', marginBottom: '1rem' }}>
+                <div>
+                  <label htmlFor="invoice-due" style={INVOICE_LABEL_STYLE}>Due date</label>
+                  <input id="invoice-due" type="date" value={invoiceDueDate} onChange={(e) => setInvoiceDueDate(e.target.value)} style={INVOICE_INPUT_STYLE} />
+                  {dueHint ? <div style={{ marginTop: '0.25rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>{dueHint}</div> : null}
+                </div>
+                <fieldset style={{ border: 'none', padding: 0, margin: 0, minWidth: 0 }}>
+                  <legend style={INVOICE_LABEL_STYLE}>Status</legend>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.5rem 1rem', minHeight: 36 }}>
+                    <label style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', cursor: 'pointer' }}>
+                      <input id="invoice-status-unpaid" type="radio" name="invoice-paid-status" checked={!invoiceIsPaid} onChange={() => { setInvoiceIsPaid(false); setInvoicePaidOn('') }} />
+                      Not paid yet
+                    </label>
+                    <label style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', cursor: 'pointer' }}>
+                      <input
+                        id="invoice-status-paid"
+                        type="radio"
+                        name="invoice-paid-status"
+                        checked={invoiceIsPaid}
+                        onChange={() => {
+                          setInvoiceIsPaid(true)
+                          if (!invoicePaidOn) setInvoicePaidOn(paidOnYmdFromIso(editingInvoice?.paid_at) || todayYmdInAppTz())
+                        }}
+                      />
+                      Paid on
+                    </label>
+                    <input
+                      id="invoice-paid-on"
+                      type="date"
+                      aria-label="Paid on"
+                      value={invoicePaidOn}
+                      disabled={!invoiceIsPaid}
+                      onChange={(e) => setInvoicePaidOn(e.target.value)}
+                      style={{ ...INVOICE_INPUT_STYLE, width: 'auto', padding: '0.3rem 0.4rem', marginLeft: '-0.5rem', opacity: invoiceIsPaid ? 1 : 0.5 }}
+                    />
                   </div>
-                )}
-                {invoiceSingleAllocatedJobId && invoiceJobAccountKey === `${invoiceSingleAllocatedJobId}:${selectedSupplyHouseForDetail.id}` ? (
-                  invoiceJobAccount?.status === 'open' ? (
-                    <div style={{ marginTop: '0.5rem', fontSize: '0.8125rem', padding: '0.4rem 0.55rem', borderRadius: 5, background: 'var(--bg-green-tint)', color: 'var(--text-green-800)' }} data-invoice-job-account="open">
-                      <strong>Job account open at {selectedSupplyHouseForDetail.name}</strong>
-                      {invoiceJobAccount.account_ref ? ` · ref ${invoiceJobAccount.account_ref}` : ''}
-                      {invoiceJobAccount.opened_at ? ` · ${openedViaPhrase(invoiceJobAccount.opened_via)} ${new Date(invoiceJobAccount.opened_at).toLocaleDateString()}` : ''}.
-                      {!invoiceOnJobAccount ? ' The flag is off — untick only if this invoice is not on the account.' : ''}
-                    </div>
-                  ) : invoiceJobAccount?.status === 'not_needed' ? (
-                    <div style={{ marginTop: '0.5rem', fontSize: '0.8125rem', padding: '0.4rem 0.55rem', borderRadius: 5, background: 'var(--bg-muted)', color: 'var(--text-muted)' }} data-invoice-job-account="not_needed">
-                      Marked <strong>not needed</strong> at {selectedSupplyHouseForDetail.name}{invoiceJobAccount.note ? ` — ${invoiceJobAccount.note}` : ''}.
-                    </div>
-                  ) : (
-                    <div style={{ marginTop: '0.5rem', fontSize: '0.8125rem', padding: '0.4rem 0.55rem', borderRadius: 5, background: 'var(--bg-amber-tint)', color: 'var(--text-amber-800)', display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.5rem' }} data-invoice-job-account={invoiceJobAccount?.status === 'requested' ? 'requested' : 'none'}>
-                      <span>
-                        <strong>{invoiceJobAccount?.status === 'requested' ? 'Job account asked for, not open yet' : `No job account at ${selectedSupplyHouseForDetail.name} on record for this job`}.</strong>{' '}
-                        If the house opened one, mark it — the flag will default on from then.
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => setInvoiceMarkOpenedOpen(true)}
-                        style={{ padding: '0.2rem 0.55rem', fontSize: '0.75rem', fontWeight: 600, background: '#0f766e', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', font: 'inherit' }}
-                      >
-                        Mark opened…
-                      </button>
-                    </div>
-                  )
-                ) : null}
-                {invoiceMarkOpenedOpen && invoiceSingleAllocatedJobId ? (
-                  <MarkJobAccountOpenedModal
-                    jobId={invoiceSingleAllocatedJobId}
-                    jobLabel={(() => {
-                      const d = invoiceJobDetailsMap[invoiceSingleAllocatedJobId]
-                      return d ? `${effectiveJobLedgerNumber(d.hcp_number, d.click_number) || '—'} · ${d.job_name || '—'}` : 'this job'
-                    })()}
-                    house={{ id: selectedSupplyHouseForDetail.id, name: selectedSupplyHouseForDetail.name }}
-                    existing={invoiceJobAccount}
-                    reps={invoiceJobAccountReps}
-                    onClose={() => setInvoiceMarkOpenedOpen(false)}
-                    onSaved={(row) => {
-                      setInvoiceMarkOpenedOpen(false)
-                      setInvoiceJobAccount(row)
-                      if (row.status === 'open' && !invoiceOnJobAccountTouchedRef.current) setInvoiceOnJobAccount(true)
-                    }}
-                  />
-                ) : null}
+                </fieldset>
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: narrowAging ? '1fr' : '1fr 2fr', gap: '0.75rem', marginBottom: '1rem' }}>
-                <div>
-                  <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>Due Date</label>
-                  <input type="date" value={invoiceDueDate} onChange={(e) => setInvoiceDueDate(e.target.value)} style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, boxSizing: 'border-box' }} />
-                </div>
-                <div>
-                  <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>Link (URL)</label>
-                  <input type="url" value={invoiceLink} onChange={(e) => setInvoiceLink(e.target.value)} placeholder="https://..." style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, boxSizing: 'border-box' }} />
+
+              {/* ⑥ Every link here is the scanned invoice on Drive — name it, and give her a way to glance at it. */}
+              <InvoiceFormSection>Paperwork</InvoiceFormSection>
+              <div style={{ marginBottom: '1rem' }}>
+                <label htmlFor="invoice-link" style={INVOICE_LABEL_STYLE}>Invoice PDF</label>
+                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'stretch' }}>
+                  <input id="invoice-link" type="url" value={invoiceLink} onChange={(e) => setInvoiceLink(e.target.value)} placeholder="https://drive.google.com/…" style={{ ...INVOICE_INPUT_STYLE, flex: 1, minWidth: 0 }} />
+                  {pdfHref ? (
+                    <a href={pdfHref} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', padding: '0 0.75rem', fontSize: '0.8125rem', fontWeight: 500, border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', color: 'var(--text-base)', textDecoration: 'none', whiteSpace: 'nowrap' }}>
+                      Open ↗
+                    </a>
+                  ) : null}
                 </div>
               </div>
-              <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'space-between', alignItems: 'center' }}>
+
+              {/* ⑦ Save never scrolls away — the footer sticks to the panel's bottom edge, mirroring the title bar. */}
+              <div style={{ position: 'sticky', bottom: 0, zIndex: 2, background: 'var(--surface)', borderTop: '1px solid var(--border)', margin: '0 -1.5rem -1.5rem', padding: '0.75rem 1.5rem', display: 'flex', gap: '0.5rem', justifyContent: 'space-between', alignItems: 'center' }}>
                 {editingInvoice ? (
                   <button
                     type="button"
@@ -1392,64 +1531,14 @@ export function SupplyHousesTab({
                 ) : null}
                 <div style={{ display: 'flex', gap: '0.5rem', marginLeft: 'auto' }}>
                   <button type="button" onClick={closeInvoiceForm} style={{ padding: '0.5rem 1rem', background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer' }}>Cancel</button>
-                  <button type="submit" disabled={savingInvoice} style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}>{savingInvoice ? 'Saving…' : 'Save'}</button>
+                  <button type="submit" disabled={savingInvoice} style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}>{invoiceSaveLabel(editingInvoice != null, savingInvoice)}</button>
                 </div>
               </div>
             </form>
           </div>
         </div>
-      )}
-
-      {invoiceJobSearchModal && (
-        /* Above the Add/Edit Invoice modal (1003) that spawns it — at 1001 it opened BEHIND its parent. */
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1004 }}>
-          <div role="dialog" aria-modal="true" style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: phoneSafeMinWidth(400), boxSizing: 'border-box', maxWidth: '90%' }}>
-            <h3 style={{ margin: '0 0 1rem 0', fontSize: '1.125rem' }}>Add job for invoice</h3>
-            <input
-              type="search"
-              placeholder="Search HCP, job name, address…"
-              value={invoiceJobSearchText}
-              onChange={(e) => setInvoiceJobSearchText(e.target.value)}
-              autoFocus
-              style={{ width: '100%', padding: '0.5rem 0.75rem', marginBottom: '1rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
-            />
-            <div style={{ maxHeight: 300, overflow: 'auto' }}>
-              {invoiceJobSearchResults.map((j) => (
-                <button
-                  key={j.id}
-                  type="button"
-                  onClick={() => {
-                    if (invoiceJobAllocations.some((a) => a.job_id === j.id)) {
-                      setInvoiceJobSearchModal(false)
-                      setInvoiceJobSearchText('')
-                      setInvoiceJobSearchResults([])
-                      return
-                    }
-                    const n = invoiceJobAllocations.length + 1
-                    const pct = Math.round((100 / n) * 10) / 10
-                    const newAllocations = invoiceJobAllocations.map((a) => ({ ...a, pct }))
-                    newAllocations.push({ job_id: j.id, pct: 100 - newAllocations.reduce((s, x) => s + x.pct, 0) })
-                    setInvoiceJobDetailsMap((prev) => ({ ...prev, [j.id]: { hcp_number: j.hcp_number, click_number: j.click_number, job_name: j.job_name, job_address: j.job_address } }))
-                    setInvoiceJobAllocations(newAllocations)
-                    setInvoiceJobSearchModal(false)
-                    setInvoiceJobSearchText('')
-                    setInvoiceJobSearchResults([])
-                  }}
-                  style={{ display: 'block', width: '100%', padding: '0.5rem', textAlign: 'left', border: 'none', borderBottom: '1px solid var(--border)', background: 'none', cursor: 'pointer', fontSize: '0.875rem' }}
-                >
-                  <UnifiedSearchResultRow
-                    result={{ source: 'job', ...j }}
-                    prefixMap={invoiceJobPrefixMap}
-                    jobEvidence={invoiceJobEvidence.get(j.id)}
-                    evidenceMode={invoiceJobEvidenceMode}
-                  />
-                </button>
-              ))}
-            </div>
-            <button type="button" onClick={() => { setInvoiceJobSearchModal(false); setInvoiceJobSearchText(''); setInvoiceJobSearchResults([]) }} style={{ marginTop: '1rem', padding: '0.5rem 1rem' }}>Cancel</button>
-          </div>
-        </div>
-      )}
+        )
+      })()}
 
       {applyPaymentFormOpen && selectedSupplyHouseForDetail && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1003 }}>
