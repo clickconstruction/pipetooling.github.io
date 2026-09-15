@@ -244,6 +244,21 @@ export function buildLienDeskQueue(
   return { entries, piles, counts }
 }
 
+// ---------- who may do what (v2.3470: one home; the desk and the affidavit pane read these) ----------
+
+/** The leader: approves, holds, sets a standing rule. */
+export function isLienLeader(role: string | null | undefined): boolean {
+  return role === 'dev' || role === 'master_technician'
+}
+/** The office: drafts, sends for approval, skips, runs. A master is office too. */
+export function isLienOffice(role: string | null | undefined): boolean {
+  return role === 'dev' || role === 'master_technician' || role === 'assistant' || role === 'controller'
+}
+/** Records the leader's spoken word. Deliberately not the master — he clicks Approve instead. */
+export function canSendLienOnWord(role: string | null | undefined): boolean {
+  return role === 'dev' || role === 'assistant' || role === 'controller'
+}
+
 // ---------- the leader's decision ----------
 
 export type LienAskReason = 'no_rule' | 'first_notice' | 'promise_live' | 'held_before'

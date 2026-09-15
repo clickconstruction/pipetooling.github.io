@@ -25,6 +25,7 @@ import {
 import { useNarrowViewport660 } from '../../hooks/useNarrowViewport660'
 import { ModalShell } from './ModalShell'
 import { useAuth } from '../../hooks/useAuth'
+import { useNavigate } from 'react-router-dom'
 import { isAssistantLike } from '../../lib/subcontractorLikeRole'
 import { APP_CALENDAR_TZ } from '../../utils/dateUtils'
 import { parsePaySpeedsRpc, type PaySpeedData } from '../../lib/jobs/billedExpectedPay'
@@ -118,6 +119,7 @@ export function BidBoardCustomerReviewModal({ onClose }: { onClose: () => void }
   // modal sees the pay range. All three loads fail soft (a not-yet-pushed RPC
   // or a missing column just leaves the column blank).
   const { role: myRole } = useAuth()
+  const navigate = useNavigate()
   const canSetTerms = myRole === 'dev' || myRole === 'master_technician' || isAssistantLike(myRole)
   const [paySpeeds, setPaySpeeds] = useState<PaySpeedData | null>(null)
   const [promiseRecords, setPromiseRecords] = useState<Map<string, CustomerPromiseRecord> | null>(null)
@@ -440,6 +442,16 @@ export function BidBoardCustomerReviewModal({ onClose }: { onClose: () => void }
                                         style={{ padding: 0, border: 'none', background: 'none', cursor: 'pointer', fontSize: '0.72rem', color: 'var(--text-link)', textDecoration: 'underline dotted', textUnderlineOffset: 2 }}
                                       >
                                         {nonStandard ? 'edit terms…' : 'set terms…'}
+                                      </button>
+                                    ) : null}
+                                    {canSetTerms ? (
+                                      <button
+                                        type="button"
+                                        onClick={() => navigate(`/jobs?tab=stages&gcnotice=${encodeURIComponent(cid)}`)}
+                                        title="Every owner on every job with this GC gets the § 53.056 notice for every unnoticed month, in one approved run (opens the Pipeline)"
+                                        style={{ padding: '1px 8px', border: '1px solid var(--border-amber)', borderRadius: 9999, background: 'var(--bg-amber-tint)', cursor: 'pointer', fontSize: '0.72rem', fontWeight: 600, color: 'var(--text-amber-800)' }}
+                                      >
+                                        ⚠ Put on notice…
                                       </button>
                                     ) : null}
                                   </span>

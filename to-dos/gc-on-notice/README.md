@@ -1,6 +1,6 @@
 # Put a GC on notice — every owner on every job with a failing GC, in one approved run
 
-Status: **in progress** · PR 0 (the first-notice rule) on `claude/gc-on-notice-0-first-notice-rule` (v2.3469) · PRs 1–3 follow on sibling branches · second-pass mock-ups 2026-09-15 at the Claude artifact *Put a GC on Notice* (four boards: the doors, the modal, the leader's phone card, the run) · the owner-of-record train shipped 2026-09-15 (v2.3447 / v2.3452 / v2.3450 — the app looks owners up on the appraisal roll; Step 1 is *Use all found*, not a paste per row) · 4 owner decisions open (below), one for the attorney · first mock-up: [`mockup.html`](./mockup.html) · built on the Lien desk (v2.3405 / v2.3410 / v2.3412)
+Status: **in progress** · PR 0 (the first-notice rule) v2.3469 on `claude/gc-on-notice-0-first-notice-rule` · PR 1 (the RPC, the kernel, the modal with Steps 1 · 2 · the decision, the three doors, Approve all → the run) v2.3470 on `claude/gc-on-notice-1-modal` · PR 2 (the cover letter) and PR 3 (the leader's card) follow · second-pass mock-ups 2026-09-15 at the Claude artifact *Put a GC on Notice* (four boards: the doors, the modal, the leader's phone card, the run) · the owner-of-record train shipped 2026-09-15 (v2.3447 / v2.3452 / v2.3450 — the app looks owners up on the appraisal roll; Step 1 is *Use all found*, not a paste per row) · 4 owner decisions open (below), one for the attorney · first mock-up: [`mockup.html`](./mockup.html) · built on the Lien desk (v2.3405 / v2.3410 / v2.3412)
 
 ## The ask, in the owner's words
 

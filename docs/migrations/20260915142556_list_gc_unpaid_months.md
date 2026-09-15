@@ -1,0 +1,5 @@
+# 20260915142556_list_gc_unpaid_months.sql (2026-09-15, v2.3470)
+
+`CREATE OR REPLACE FUNCTION public.list_gc_unpaid_months(p_gc_customer_id uuid)` — the Lien desk's month query (`list_lien_notice_months`, `20260914190000_lien_desk_affidavits.sql`) scoped to one GC and freed of the 30-day lead window, for *Put a GC on notice*. Jobs: `gc_customer_id = p_gc_customer_id`, status `waiting · working · ready_to_bill · billed`, `revenue − payments_made > 0`, at least one approved clock session. Rows: one per job and work month with approved hours, the § 53.056 date via `lien_notice_deadline()`, `noticed` (a non-voided notice names the month), the live desk item, and three new columns — `is_billed` (status billed or a billed invoice), `job_status`, `last_work_month` (the § 53.052 affidavit keys on it client-side). Office gate identical to the desk's (`is_dev() OR is_assistant() OR role = 'master_technician'`); `REVOKE … FROM PUBLIC, anon`, `GRANT … TO authenticated`. SECURITY DEFINER, STABLE.
+
+Ships with the v2.3470 client; deploy the client first or the migration first — the modal fails soft (an empty read) until both are live. No new table, so no read-only appliers.

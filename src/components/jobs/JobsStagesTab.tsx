@@ -154,6 +154,7 @@ import { findInvoiceWithJobFromJobs } from '../../lib/invoiceWithJobFromJobList'
 import LienToolingPrefillModal from './LienToolingPrefillModal'
 import LienInstrumentsModal from './LienInstrumentsModal'
 import LienDeskModal from './LienDeskModal'
+import GcOnNoticeModal from './GcOnNoticeModal'
 import { useLienDeskData } from '../../hooks/useLienDeskData'
 import { syncLienDeskAfterRecord } from '../../lib/jobs/lienDeskIo'
 import LienReleaseModal from './LienReleaseModal'
@@ -1290,6 +1291,19 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
       navigate({ search: p.toString() }, { replace: true })
     }
   }, [searchParams, navigate])
+  /** `?gcnotice=<customer id>` deep link (v2.3470): Bids → Customer review's Put on notice… lands here. */
+  const gcNoticeParamConsumedRef = useRef(false)
+  useEffect(() => {
+    if (gcNoticeParamConsumedRef.current) return
+    const id = searchParams.get('gcnotice')
+    if (id) {
+      gcNoticeParamConsumedRef.current = true
+      setGcNotice({ gcId: id })
+      const p = new URLSearchParams(searchParams)
+      p.delete('gcnotice')
+      navigate({ search: p.toString() }, { replace: true })
+    }
+  }, [searchParams, navigate])
   /** `?liendesk=1` (+ `liendeskJob=<id>`) deep link (v2.3405): the Dashboard's Needs you cards open the Lien desk directly. */
   const lienDeskParamConsumedRef = useRef(false)
   useEffect(() => {
@@ -1537,6 +1551,8 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
   // jobs. A light read keeps the menus' counts; the full read runs while open.
   const [lienDesk, setLienDesk] = useState<{ jobId: string | null; kind?: 'notice' | 'affidavit' } | null>(null)
   const lienDeskEligible = authRole === 'dev' || authRole === 'master_technician' || isAssistantLike(authRole)
+  /** Put a GC on notice (v2.3470): every owner on every job with a failing GC, one approved run. */
+  const [gcNotice, setGcNotice] = useState<{ gcId: string } | null>(null)
   const { data: lienDeskData, loading: lienDeskLoading, refetch: refetchLienDesk } = useLienDeskData(lienDeskEligible, forecastTodayYmd, { light: lienDesk == null })
   const lienDeskCount = lienDeskData ? lienDeskData.summary.office.jobs + lienDeskData.summary.leader.jobs + lienDeskData.summary.office.ready : null
   const lienDeskJobs = useMemo(
@@ -1545,9 +1561,9 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
   )
   const { byJob: lienDeskWorkMonths } = useForecastWorkMonths(lienDeskJobs, forecastTodayYmd)
   const [lienDeskIssuerGen, setLienDeskIssuerGen] = useState(0)
-  const lienDeskIssuer = useMemo(() => (lienDesk ? getPhysicalInvoiceIssuerDraft() : null), [lienDesk, lienDeskIssuerGen])
+  const lienDeskIssuer = useMemo(() => (lienDesk || gcNotice ? getPhysicalInvoiceIssuerDraft() : null), [lienDesk, gcNotice, lienDeskIssuerGen])
   useEffect(() => {
-    if (!lienDesk) return
+    if (!lienDesk && !gcNotice) return
     let cancelled = false
     void (async () => {
       await fetchPhysicalInvoiceIssuerFromAppSettings({ authRole })
@@ -1556,7 +1572,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
     return () => {
       cancelled = true
     }
-  }, [lienDesk, authRole])
+  }, [lienDesk, gcNotice, authRole])
   const lienDeskSignerFor = useCallback(
     (masterUserId: string | null) => {
       const sessionName = authProfileName?.trim() ?? ''
@@ -3186,6 +3202,21 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                         <span aria-hidden>⏱</span>
                         <span>Lien desk</span>
                         {typeof lienDeskCount === 'number' && lienDeskCount > 0 ? <span style={{ marginLeft: 'auto', fontSize: '0.72rem', color: 'var(--text-muted)' }}>{lienDeskCount}</span> : null}
+                      </button>
+                    ) : null}
+                    {lienDeskEligible && stagesGcFilter && stagesGcFilter !== STAGES_GC_FILTER_NO_GC ? (
+                      <button
+                        type="button"
+                        role="menuitem"
+                        onClick={() => {
+                          setStagesToolsMenuOpen(false)
+                          setGcNotice({ gcId: stagesGcFilter })
+                        }}
+                        title="Every owner on every job with this GC gets the § 53.056 notice for every unnoticed month, in one approved run"
+                        style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.35rem 0.75rem', border: 'none', background: 'var(--bg-amber-tint)', textAlign: 'left', cursor: 'pointer', font: 'inherit', color: 'var(--text-amber-800)', borderRadius: 4, fontWeight: 600 }}
+                      >
+                        <span aria-hidden>⚠</span>
+                        <span>Put {stagesGcFilterOptions.find((o) => o.id === stagesGcFilter)?.name ?? 'this GC'} on notice…</span>
                       </button>
                     ) : null}
                     {/* Sort group (v2.1807) — row order inside every section.
@@ -5917,6 +5948,23 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
           setLienDesk(null)
           setLienInstrumentsModal({ job, invoice: null, initialTab: 'notice', noticeMonths: months })
         }}
+        onPutGcOnNotice={(gcId) => {
+          setLienDesk(null)
+          setGcNotice({ gcId })
+        }}
+      />
+      <GcOnNoticeModal
+        open={gcNotice != null}
+        gcId={gcNotice?.gcId ?? null}
+        onClose={() => setGcNotice(null)}
+        todayYmd={forecastTodayYmd}
+        authRole={authRole}
+        authUserId={authUser?.id ?? null}
+        authName={authProfileName?.trim() ?? ''}
+        issuer={lienDeskIssuer}
+        signerNameFor={lienDeskSignerFor}
+        onOpenEditJob={(jobId) => tryOpenEditJob(jobId, { onSaved: () => refetchLienDesk() })}
+        onChanged={refetchLienDesk}
       />
       <LienInstrumentsModal
         open={lienInstrumentsModal != null}
