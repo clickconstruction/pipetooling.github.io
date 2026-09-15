@@ -17,6 +17,8 @@ export type DirectoryHouse = {
   notes: string | null
   /** v2.3172; an unknown or missing kind reads as a supply house (the legacy flag is gone since v2.3244). */
   vendor_kind?: string | null
+  /** v2.3454: expects · optional · none — whether the house opens a job account per property. */
+  job_accounts?: string | null
 }
 
 export type DirectoryRep = {
@@ -28,6 +30,9 @@ export type DirectoryRep = {
   is_default: boolean
   created_by: string | null
   created_at: string
+  /** v2.3454: price_requests · job_accounts · billing. */
+  role?: string | null
+  phone?: string | null
 }
 
 export type DirectoryRequestStatus = 'draft' | 'sent' | 'quoted' | 'closed'
