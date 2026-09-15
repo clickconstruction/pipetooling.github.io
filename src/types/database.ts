@@ -17155,6 +17155,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "supply_house_job_accounts_bid_id_fkey"
+            columns: ["bid_id"]
+            isOneToOne: false
+            referencedRelation: "bids"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "supply_house_job_accounts_job_id_fkey"
             columns: ["job_id"]
             isOneToOne: false
@@ -20711,6 +20718,10 @@ export type Database = {
         Args: { p_service_type_id: string }
         Returns: boolean
       }
+      estimator_can_reach_job_account: {
+        Args: { p_job_id: string }
+        Returns: boolean
+      }
       estimator_inbox_note_stats: {
         Args: { p_request_ids: string[] }
         Returns: {
@@ -21120,6 +21131,17 @@ export type Database = {
         Returns: boolean
       }
       is_user_notes_editor: { Args: never; Returns: boolean }
+      job_account_job_identity: {
+        Args: { p_job_id: string }
+        Returns: {
+          bid_id: string
+          click_number: string
+          hcp_number: string
+          id: string
+          job_address: string
+          job_name: string
+        }[]
+      }
       job_baseline_rates: {
         Args: never
         Returns: {
@@ -21311,6 +21333,30 @@ export type Database = {
           work_date: string
         }[]
       }
+      list_bid_job_account_strip: {
+        Args: { p_bid_ids: string[] }
+        Returns: {
+          account_ref: string
+          bid_id: string
+          house_name: string
+          job_address: string
+          job_click_number: string
+          job_hcp_number: string
+          job_id: string
+          job_name: string
+          opened_at: string
+          opened_via: string
+          policy: string
+          quoted: boolean
+          rep_contact_id: string
+          rep_email: string
+          rep_name: string
+          rep_phone: string
+          requested_at: string
+          status: string
+          supply_house_id: string
+        }[]
+      }
       list_bulk_deletion_alerts: {
         Args: never
         Returns: {
@@ -21387,41 +21433,6 @@ export type Database = {
           rep_phone: string
           supply_house_id: string
           unpaid_total: number
-        }[]
-      }
-      job_account_job_identity: {
-        Args: { p_job_id: string }
-        Returns: {
-          bid_id: string
-          click_number: string
-          hcp_number: string
-          id: string
-          job_address: string
-          job_name: string
-        }[]
-      }
-      list_bid_job_account_strip: {
-        Args: { p_bid_ids: string[] }
-        Returns: {
-          account_ref: string
-          bid_id: string
-          house_name: string
-          job_address: string
-          job_click_number: string
-          job_hcp_number: string
-          job_id: string
-          job_name: string
-          opened_at: string
-          opened_via: string
-          policy: string
-          quoted: boolean
-          rep_contact_id: string
-          rep_email: string
-          rep_name: string
-          rep_phone: string
-          requested_at: string
-          status: string
-          supply_house_id: string
         }[]
       }
       list_job_account_strip: {
