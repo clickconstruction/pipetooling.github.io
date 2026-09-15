@@ -103,4 +103,18 @@ describe('parseCountsImportText', () => {
     expect(skippedCount).toBe(0)
     expect(sourceLink).toBe('https://counttooling.com/?t=8f3c2a4e-1b9d-4c77-a0e2-6d5b1f0a9e21')
   })
+
+  it('treats CountTooling framed headings as structure, not rows (the D25 scope header)', () => {
+    // A project named "2026 …" used to import as fixture "--- Counts" × 2026 via the comma split.
+    const { rows, skippedCount } = parseCountsImportText(
+      '--- Counts, 2026 BA03 Metrology Lab · every sheet · every layer ---\nFD-1\t2\t\t31\n--- Duct ---\n'
+    )
+    expect(rows).toEqual([{ fixture: 'FD-1', count: 2, group_tag: null, page: '31', unit: 'ea' }])
+    expect(skippedCount).toBe(0)
+  })
+
+  it('still imports a fixture whose name merely starts with dashes', () => {
+    const { rows } = parseCountsImportText('--- not a heading\t3')
+    expect(rows).toHaveLength(1)
+  })
 })
