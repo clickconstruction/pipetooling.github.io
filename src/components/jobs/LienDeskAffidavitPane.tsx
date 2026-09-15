@@ -7,7 +7,7 @@ import { formatYmdMonthDay } from '../../lib/jobs/billedExpectedPay'
 import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
 import { lienPropertyOwnerDisplayName, resolveLienProperty } from '../../lib/jobs/lienProperty'
 import { workMonthLabel } from '../../lib/jobs/forecastWorkMonths'
-import { holdUntilFor, submitOutcome } from '../../lib/jobs/lienDesk'
+import { canSendLienOnWord, holdUntilFor, isLienLeader, isLienOffice, submitOutcome } from '../../lib/jobs/lienDesk'
 import type { LienAffidavitEntry } from '../../lib/jobs/lienDeskAffidavits'
 import { approveLienDeskItem, holdLienDeskItem, pullBackLienDeskItem, saveLienDeskDraft, sendLienDeskItemOnWord, submitLienDeskItem } from '../../lib/jobs/lienDeskIo'
 import { buildLienAffidavitFieldsForJob, buildLienNoticeFieldsForJob } from '../../lib/jobs/lienNoticeDraft'
@@ -80,9 +80,9 @@ export default function LienDeskAffidavitPane({
   footerSlot: (node: React.ReactNode) => void
 }) {
   const { showToast } = useToastContext()
-  const leader = authRole === 'dev' || authRole === 'master_technician'
-  const office = leader || authRole === 'assistant' || authRole === 'controller'
-  const canWord = authRole === 'dev' || authRole === 'assistant' || authRole === 'controller'
+  const leader = isLienLeader(authRole)
+  const office = isLienOffice(authRole)
+  const canWord = canSendLienOnWord(authRole)
   const [busy, setBusy] = useState(false)
   const [wordOpen, setWordOpen] = useState(false)
   const [wordNote, setWordNote] = useState('')

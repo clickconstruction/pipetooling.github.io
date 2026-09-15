@@ -14,6 +14,9 @@ import {
   PUBLIC_OWNER_DESK_SENTENCE,
   draftReadiness,
   holdUntilFor,
+  canSendLienOnWord,
+  isLienLeader,
+  isLienOffice,
   ruleWaitsOnFirstNotice,
   submitOutcome,
   type LienAskReason,
@@ -81,19 +84,15 @@ export type LienDeskModalProps = {
   onOpenLegalDesk?: () => void
   /** Open on the affidavit kind (the Dashboard's filing-window card). */
   initialKind?: 'notice' | 'affidavit'
+  /** Put a GC on notice (v2.3470): the header door — every owner on every job with this GC, one approved run. */
+  onPutGcOnNotice?: (gcId: string) => void
 }
 
 const PILE_ORDER: LienDeskPile[] = ['needs_owner', 'to_draft', 'awaiting', 'ready', 'held', 'sent', 'missed']
 
-function isLeader(role: string | null): boolean {
-  return role === 'dev' || role === 'master_technician'
-}
-function isOffice(role: string | null): boolean {
-  return role === 'dev' || role === 'master_technician' || role === 'assistant' || role === 'controller'
-}
-function canSendOnWord(role: string | null): boolean {
-  return role === 'dev' || role === 'assistant' || role === 'controller'
-}
+const isLeader = isLienLeader
+const isOffice = isLienOffice
+const canSendOnWord = canSendLienOnWord
 
 function jobLabel(j: LienDeskJob | undefined, jobId: string): string {
   if (!j) return jobId.slice(0, 8)
@@ -163,11 +162,26 @@ export default function LienDeskModal({
   onOpenLienAffidavit,
   onOpenLegalDesk,
   initialKind,
+  onPutGcOnNotice,
 }: LienDeskModalProps) {
   const { showToast } = useToastContext()
   const isMobile = useIsMobile()
   const leader = isLeader(authRole)
   const office = isOffice(authRole)
+  const [gcPickerOpen, setGcPickerOpen] = useState(false)
+  /** The GCs on the desk right now, by open dollars — the picker behind Put a GC on notice… (v2.3470). */
+  const gcPickerOptions = useMemo(() => {
+    const by = new Map<string, { id: string; name: string; jobs: number; open: number; policy: LienNoticePolicy }>()
+    for (const e of data?.queue.entries ?? []) {
+      if (!e.gcCustomerId || e.pile === 'sent') continue
+      const g = data?.gcsById[e.gcCustomerId]
+      const cur = by.get(e.gcCustomerId) ?? { id: e.gcCustomerId, name: g?.name || 'GC', jobs: 0, open: 0, policy: e.policy }
+      cur.jobs += 1
+      cur.open += e.openBalance
+      by.set(e.gcCustomerId, cur)
+    }
+    return [...by.values()].sort((a, b) => b.open - a.open)
+  }, [data])
   const [pile, setPile] = useState<LienDeskPile | null>(null)
   const [selectedJobId, setSelectedJobId] = useState<string | null>(null)
   const [checkedMonths, setCheckedMonths] = useState<ReadonlySet<string> | null>(null)
@@ -856,8 +870,29 @@ export default function LienDeskModal({
               </button>
             )
           }) : null}
+          {kind === 'notice' && office && onPutGcOnNotice && gcPickerOptions.length > 0 ? (
+            <div style={{ position: 'relative', marginLeft: 'auto' }}>
+              <button type="button" onClick={() => setGcPickerOpen((o) => !o)} aria-haspopup="menu" aria-expanded={gcPickerOpen} style={{ ...btn('plain'), background: 'var(--bg-amber-tint)', borderColor: 'var(--border-amber)', color: 'var(--text-amber-800)' }} title="Every owner on every job with a failing GC gets the § 53.056 notice for every unnoticed month, in one approved run">
+                ⚠ Put a GC on notice…
+              </button>
+              {gcPickerOpen ? (
+                <>
+                  <div onClick={() => setGcPickerOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 5 }} />
+                  <div role="menu" aria-label="GCs with unpaid work" style={{ position: 'absolute', right: 0, top: 'calc(100% + 4px)', zIndex: 6, minWidth: 300, background: 'var(--surface)', border: '1px solid var(--border-strong)', borderRadius: 8, boxShadow: '0 10px 25px -5px rgba(0,0,0,0.25)', overflow: 'hidden' }}>
+                    <div style={{ ...boxHead, padding: '0.4rem 0.75rem 0.1rem' }}>GCs with notices due · most open first</div>
+                    {gcPickerOptions.map((g) => (
+                      <button key={g.id} type="button" role="menuitem" onClick={() => { setGcPickerOpen(false); onPutGcOnNotice(g.id) }} style={{ display: 'flex', justifyContent: 'space-between', gap: '0.75rem', width: '100%', padding: '0.45rem 0.75rem', border: 'none', borderTop: '1px solid var(--border)', background: 'var(--surface)', textAlign: 'left', cursor: 'pointer', font: 'inherit', color: 'inherit', fontSize: '0.8125rem' }}>
+                        <span><strong>{g.name}</strong>{g.policy === 'send' ? <span style={{ ...chip('var(--bg-subtle)', 'var(--text-muted)'), marginLeft: 6 }}>rule: send</span> : null}</span>
+                        <span style={{ color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}>{g.jobs} job{g.jobs === 1 ? '' : 's'} · {formatUsdNoCents(g.open)}</span>
+                      </button>
+                    ))}
+                  </div>
+                </>
+              ) : null}
+            </div>
+          ) : null}
           {kind === 'notice' && office && (counts?.ready ?? 0) > 0 ? (
-            <button type="button" onClick={() => setRunOpen(true)} style={{ ...btn('primary'), marginLeft: 'auto' }} title="Every approved notice as one packet and one tracking form">
+            <button type="button" onClick={() => setRunOpen(true)} style={{ ...btn('primary'), marginLeft: onPutGcOnNotice && gcPickerOptions.length > 0 ? 0 : 'auto' }} title="Every approved notice as one packet and one tracking form">
               Send the run · {counts?.ready}
             </button>
           ) : null}

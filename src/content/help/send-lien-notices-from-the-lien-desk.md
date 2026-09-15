@@ -66,7 +66,34 @@ The notice preserves a month; the **affidavit** is the lien. Its window is one d
 
 The Dashboard's *lien filing window closes* card opens the desk here.
 
+## A GC in trouble
+
+When one GC stops paying everywhere at once, the desk's one-month-at-a-time queue is too slow. **Put a GC on notice** sends the § 53.056 notice to the owner of every job with unpaid work under that GC — billed or still working — naming every unnoticed month, in one run. Three doors, all opening the same modal with the GC already picked:
+
+- **Jobs → Pipeline → ⋯ Pipeline tools**, with the board filtered to a GC: {{button:amber|⚠ Put <GC> on notice…}} right under Lien desk.
+- **The Lien desk header**: {{button:amber|⚠ Put a GC on notice…}} opens a picker of the GCs on the desk, most open first.
+- **Bids → Customer review**: {{button:amber|⚠ Put on notice…}} beside *set terms…* on the GC's row.
+
+The modal goes in the order the work does:
+
+1. **The owners.** The app looks every property without an owner up on the appraisal roll as the modal opens. Each row shows the roll's answer — owner, mailing address, what it reads as, the CAD link — and {{button:blue|Use}} saves it; {{button:green|Use all found · N ▸}} takes every found row at once. A miss offers *Find the owner ›* or a typed owner and mailing address. A public owner (a city, a school district) is {{chip:red|public owner — bond claim, not a lien}} and left out of the run.
+2. **What each notice claims.** Every month with approved hours and no live notice, each with its date. A month whose window has passed is shown in red and named as information — its lien is gone, the owner still learns the balance. A job that is not billed yet claims its contract balance, says so with {{chip:yellow|unbilled · contract balance}}, and offers *Bill the finished work first ›*. The affidavit date sits beside each row.
+3. **The decision, once.** Why now (kept on every notice's record and on the GC), and three ticks: the GC's standing rule → *send notices without asking* (it starts the moment this run is recorded — this run is the first notice, approved by the master), payment terms → *Winding down*, and a Legal desk matter with every job.
+
+Then the footer says what the run takes — *2 ready now · 5 more the moment Use all found is pressed · 1 waits on an owner · 1 left out (public owner)* — and the buttons follow the role:
+
+- {{button:green|Approve all N and send the run ▸}} — dev, master technician. Every ready job's desk item is approved, the ticks apply, and the run opens with the notices, two envelopes each.
+- {{button:amber|The leader said to send them ▸}} — assistant, controller, dev: who said it, when and how, then every notice goes to Ready to send on his word.
+- {{button:blue|Send all N to the leader ▸}} — the office prepares Steps 1–2 and the master decides from his Needs you card.
+
+:::example Nine jobs, one Tuesday
+Taunya hears from Harborline's bookkeeper that the Harbor Ridge draw went to another job. She filters the Pipeline to Harborline, opens ⋯ → Put Harborline on notice. Six of nine owners are missing; the roll finds five, she presses Use all found, and types the sixth from the plat. One job is the city's fire station — excluded, bond claim. She picks *GC is not paying its subs*, writes what she heard, ticks the rule, Winding down and the Legal desk, and presses Send all 7 to the leader. Robert approves from his phone; the office prints the run.
+:::
+
+Nothing is mailed or recorded until *Record the run* — the same run as always.
+
 ## Who can do what
 
 - **Draft, send for approval, send on the leader's word, skip:** dev, assistant, controller (a master can draft and approve his own).
 - **Approve, hold, set a standing rule:** dev, master technician. The database refuses an approval from anyone else, and a spoken-word send without a note.
+- **Put a GC on notice:** the office opens it and readies the owners; Approve all is the master's or dev's; the spoken-word send is the assistant's, controller's or dev's.

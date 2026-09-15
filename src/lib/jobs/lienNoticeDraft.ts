@@ -68,11 +68,13 @@ export type LienDeskDraftFields = {
   gcEmail: string
   /** Free text the office leaves on a skip. */
   skipReason?: string
+  /** Put a GC on notice (v2.3470): the run's reason, kept on every notice in it — "GC is not paying its subs — <note>". */
+  batchReason?: string
 }
 
 export function parseLienDeskDraftFields(raw: unknown): LienDeskDraftFields | null {
   if (!raw || typeof raw !== 'object') return null
-  const o = raw as { notice?: unknown; gcEmail?: unknown; skipReason?: unknown }
+  const o = raw as { notice?: unknown; gcEmail?: unknown; skipReason?: unknown; batchReason?: unknown }
   const n = o.notice as Partial<LienNoticeFields> | undefined
   if (!n || typeof n !== 'object') return null
   const str = (v: unknown) => (typeof v === 'string' ? v : '')
@@ -90,6 +92,7 @@ export function parseLienDeskDraftFields(raw: unknown): LienDeskDraftFields | nu
     },
     gcEmail: str(o.gcEmail),
     ...(typeof o.skipReason === 'string' ? { skipReason: o.skipReason } : {}),
+    ...(typeof o.batchReason === 'string' && o.batchReason.trim() ? { batchReason: o.batchReason } : {}),
   }
 }
 
