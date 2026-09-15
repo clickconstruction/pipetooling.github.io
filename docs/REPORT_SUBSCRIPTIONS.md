@@ -5,7 +5,7 @@ file: REPORT_SUBSCRIPTIONS.md
 type: Architecture/Reference
 purpose: Names and defines the app's recurring/scheduled report-email pattern — streams, request tables, cron dispatchers, fresh-at-send builds, and the My Email Schedule surface — and the checklist for adding a new stream
 audience: Developers, AI Agents
-last_updated: 2026-09-05
+last_updated: 2026-09-15
 key_sections:
   - name: "What the system is"
   - name: "The five pieces"
@@ -30,13 +30,16 @@ Every full-featured stream is made of the same five parts:
 4. **A service-role payload RPC** — SECURITY DEFINER, EXECUTE revoked from clients, reproducing the client surface's math server-side (the dispatcher has no client to compute it). Fidelity is verified against the client surface before shipping — the billed-report RPC was verified against prod to the penny (v2.1316).
 5. **Schedule + subscriptions surfaces** — [`get_my_email_schedule()`](../supabase/migrations/20260803120000_my_email_schedule_rpc.sql) (self-scoped SECURITY DEFINER; only ever returns rows addressed to `auth.uid()`) aggregates every stream for the caller; `get_global_email_schedule()` is the dev-only global view. [`SettingsMyEmailScheduleSection.tsx`](../src/components/settings/SettingsMyEmailScheduleSection.tsx) renders the weekly grid ("My email schedule") and the standing-streams list ("My email subscriptions", normalized by [`emailScheduleWeek.ts`](../src/lib/emailSchedule/emailScheduleWeek.ts)).
 
-Not every stream carries all five pieces — event-driven streams (paid-in-full, payment-received, estimate-accepted) have no request table or scheduling UI; they appear only in the subscriptions list. The five-piece shape is the target for *report* streams.
+Not every stream carries all five pieces — event-driven streams (paid-in-full, payment-received, estimate-accepted, field-report emails) have no request table or scheduling UI; they appear only in the subscriptions list. The five-piece shape is the target for *report* streams.
+
+**Field report emails** (`report_email`, v2.746) are the per-report cousin of the digest: the digest bundles every field report in its window into one scheduled email; the field-report stream sends one email per report the moment it is filed, to recipients the office picks (all authors, or reports from named people), managed from the Dashboard's Recent Reports mail button ([`ReportEmailSettingsModal.tsx`](../src/components/dashboard/ReportEmailSettingsModal.tsx), kernel [`reportEmailSubscriptions.ts`](../src/lib/reportEmailSubscriptions.ts)). Since v2.3472 both schedule RPCs read it, so subscribers see it on Settings and devs on Email streams.
 
 ## Stream inventory
 
 | Stream key | Kind | Request table / source | Dispatcher | In schedule grid | In subscriptions list |
 |---|---|---|---|---|---|
-| `report_digest` | weekly digest | `recurring_job_report_schedules` + `_recipients` | `recurring-job-report-dispatch` | ✅ weekly slots | — |
+| `report_digest` | weekly digest | `recurring_job_report_schedules` + `_recipients` | `recurring-job-report-dispatch` | ✅ weekly slots (chip names the recipient's scope since v2.3472) | ✅ standing row per schedule (v2.3472) |
+| `report_email` | event | `report_email_subscriptions` + `_authors` (all authors or named authors; user or outside address; v2.746) + `report_email_dispatch_log` | `send-report-email` (fired by the report modals at filing; manual "Send now" for the last 14 days) | — | ✅ "Field reports" row (v2.3472; matched by user id or by an outside address equal to the account email) |
 | `billed_report` | scheduled report | `billed_report_email_requests` (`repeat_weekly`) | `billed-report-email` | ✅ one-offs + weekly chains | — |
 | `schedule_day` | scheduled report | `schedule_day_email_requests` | `schedule-day-email-dispatch` | ✅ | — |
 | `paid_in_full` | event | `app_settings.paid_job_email_recipients_v1` | `paid-job-email` (queue trigger) | — | ✅ |

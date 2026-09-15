@@ -66,6 +66,17 @@ type GlobalEmailSchedule = {
   gc_statement_requests?: Array<{ id: string; entity_name: string | null; sent_to: string; requested_by_name: string | null; send_at: string; repeat_weekly?: boolean }>
   weekly_movement_requests?: Array<{ id: string; recipient_name: string; requested_by_name: string | null; send_at: string; repeat_weekly?: boolean }>
   weekly_money_requests?: Array<{ id: string; recipient_name: string; requested_by_name: string | null; send_at: string; repeat_weekly?: boolean }>
+  /** Field report emails (v2.3472) — optional so either deploy order of client vs migration degrades gracefully. */
+  report_email_subscriptions?: Array<{
+    id: string
+    recipient_name: string
+    external: boolean
+    label: string | null
+    enabled: boolean
+    auto_send: boolean
+    all_authors: boolean
+    authors: string[]
+  }>
 }
 
 const DAY_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
@@ -125,6 +136,18 @@ function RecipientChip({ label, extra, onRemove, removeLabel }: { label: string;
       ) : (
         <span style={{ width: 6 }} />
       )}
+    </span>
+  )
+}
+
+function MiniTag({ tone, title, children }: { tone: 'muted' | 'amber'; title?: string; children: ReactNode }) {
+  const style: CSSProperties =
+    tone === 'amber'
+      ? { background: 'var(--bg-amber-tint)', color: 'var(--text-amber-800)' }
+      : { background: 'var(--surface)', color: 'var(--text-muted)', border: '1px solid var(--border)' }
+  return (
+    <span title={title} style={{ ...style, fontSize: '0.62rem', borderRadius: 9999, padding: '0 5px', whiteSpace: 'nowrap' }}>
+      {children}
     </span>
   )
 }
@@ -360,6 +383,16 @@ export default function SettingsEmailStreamsSection({ focus }: {
     }
   }
 
+  /** The same DELETE the Report email recipients modal's Remove does (RLS: report-email managers, devs included). */
+  async function removeReportEmailSubscription(id: string, name: string) {
+    const { error: e } = await supabase.from('report_email_subscriptions').delete().eq('id', id)
+    if (e) showToast(formatErrorMessage(e, 'Could not remove recipient'), 'error')
+    else {
+      showToast(`${name} no longer gets report emails.`, 'success')
+      await load()
+    }
+  }
+
   async function removeSettingRecipient(key: string, userId: string, name: string) {
     // Read-modify-write of the same JSON list the stream's gear modal manages.
     const { data: row, error: readErr } = await supabase.from('app_settings').select('value_text').eq('key', key).maybeSingle()
@@ -453,6 +486,7 @@ export default function SettingsEmailStreamsSection({ focus }: {
   )
 
   const none = <span style={{ fontSize: '0.75rem', color: 'var(--text-faint)' }}>No recipients — nothing sends.</span>
+  const reportEmailSubs = data.report_email_subscriptions ?? []
 
   return (
     <div>
@@ -491,6 +525,37 @@ export default function SettingsEmailStreamsSection({ focus }: {
               ))}
         </StreamCard>
       ))}
+
+      <StreamCard
+        count={reportEmailSubs.length}
+        noun="recipient"
+        open={!!openCards['report_emails']}
+        onToggle={() => toggleCard('report_emails')}
+        title="Field report emails"
+        cadence="event — a report is filed (one email per report)"
+        manage="full manager → Dashboard → Recent Reports ✉ Report email recipients"
+      >
+        {reportEmailSubs.length === 0
+          ? none
+          : reportEmailSubs.map((r) => (
+              <RecipientChip
+                key={r.id}
+                label={r.label ? `${r.recipient_name} (${r.label})` : r.recipient_name}
+                extra={
+                  <>
+                    {r.external ? <MiniTag tone="muted">outside</MiniTag> : null}
+                    <MiniTag tone="muted" title={r.all_authors ? undefined : r.authors.join(', ')}>
+                      {r.all_authors ? 'all reports' : `from ${r.authors.length} ${r.authors.length === 1 ? 'person' : 'people'}`}
+                    </MiniTag>
+                    {!r.auto_send ? <MiniTag tone="amber">on demand</MiniTag> : null}
+                    {!r.enabled ? <MiniTag tone="amber">paused</MiniTag> : null}
+                  </>
+                }
+                onRemove={() => void removeReportEmailSubscription(r.id, r.recipient_name)}
+                removeLabel={`Stop report emails to ${r.recipient_name}`}
+              />
+            ))}
+      </StreamCard>
 
       <StreamCard
         id={emailStreamCardId('paid')}
