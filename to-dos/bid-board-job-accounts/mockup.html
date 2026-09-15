@@ -1,0 +1,212 @@
+<meta charset="utf-8">
+<title>Job Accounts on the Bid Board</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+:root{
+  --ground:#f3f4f2; --surface:#ffffff; --surface-2:#f7f8f7; --border:#e2e5e3; --border-strong:#c9cecb;
+  --ink:#1c2321; --muted:#667470; --faint:#98a39f;
+  --blue:#2563eb; --blue-soft:#e8efff; --blue-ink:#1d4ed8;
+  --red:#dc2626; --red-soft:#fdecec; --red-ink:#b91c1c;
+  --amber:#d97706; --amber-soft:#fff4e0; --amber-ink:#b45309;
+  --green:#16a34a; --green-soft:#e7f7ec; --green-ink:#15803d;
+  --teal:#0f766e; --teal-soft:#d9f3ef; --teal-ink:#0b5e58;
+  --purple:#7c3aed; --purple-soft:#efe8ff; --purple-ink:#6027c4;
+  --note:#fff9db; --note-ink:#6b5300; --shadow:0 20px 50px rgba(20,30,26,.18);
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --ground:#151917; --surface:#1e2422; --surface-2:#242b28; --border:#303835; --border-strong:#46504c;
+  --ink:#e9ede9; --muted:#a1aca7; --faint:#6f7a76; --blue:#6b95ff; --blue-soft:#1d2a49; --blue-ink:#a9c0ff;
+  --red:#f27070; --red-soft:#3a1f1f; --red-ink:#ff9b9b; --amber:#f0a03a; --amber-soft:#3a2c14; --amber-ink:#ffc46a;
+  --green:#4ecb75; --green-soft:#173424; --green-ink:#8ee6a8; --teal:#3cc7b8; --teal-soft:#123632; --teal-ink:#8fe7dc;
+  --purple:#a98bff; --purple-soft:#2a2144; --purple-ink:#c9b6ff; --note:#3a3416; --note-ink:#ffe58a; --shadow:0 20px 50px rgba(0,0,0,.5); } }
+:root[data-theme="dark"]{
+  --ground:#151917; --surface:#1e2422; --surface-2:#242b28; --border:#303835; --border-strong:#46504c;
+  --ink:#e9ede9; --muted:#a1aca7; --faint:#6f7a76; --blue:#6b95ff; --blue-soft:#1d2a49; --blue-ink:#a9c0ff;
+  --red:#f27070; --red-soft:#3a1f1f; --red-ink:#ff9b9b; --amber:#f0a03a; --amber-soft:#3a2c14; --amber-ink:#ffc46a;
+  --green:#4ecb75; --green-soft:#173424; --green-ink:#8ee6a8; --teal:#3cc7b8; --teal-soft:#123632; --teal-ink:#8fe7dc;
+  --purple:#a98bff; --purple-soft:#2a2144; --purple-ink:#c9b6ff; --note:#3a3416; --note-ink:#ffe58a; --shadow:0 20px 50px rgba(0,0,0,.5); }
+*{box-sizing:border-box}
+body{margin:0;background:var(--ground);color:var(--ink);font:14px/1.5 "IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;padding-block:32px 80px;padding-inline:clamp(16px,4vw,48px)}
+.mono{font-family:"IBM Plex Mono",ui-monospace,Menlo,monospace}
+.wrap{max-width:1140px;margin:0 auto;display:grid;gap:44px}
+h1{font-size:26px;line-height:1.2;margin:0 0 6px;font-weight:600;letter-spacing:-.01em;text-wrap:balance}
+h2{font-size:18px;margin:0;font-weight:600;text-wrap:balance} h3{font-size:14px;margin:0;font-weight:600} p{margin:0}
+.lede{max-width:72ch;color:var(--muted)}
+.eyebrow{font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.section{display:grid;gap:14px}.section-head{display:flex;flex-wrap:wrap;gap:6px 16px;align-items:baseline}.section-head .sub{color:var(--muted);max-width:74ch}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px 16px;display:grid;gap:8px;align-content:start}.card p{color:var(--muted);max-width:62ch}.card p b{color:var(--ink);font-weight:600}
+.chip{display:inline-block;border-radius:5px;padding:0 6px;font-size:11px;font-weight:600;line-height:18px;white-space:nowrap;vertical-align:middle}
+.chip.amber{background:var(--amber-soft);color:var(--amber-ink)}.chip.green{background:var(--green-soft);color:var(--green-ink)}.chip.gray{background:var(--surface-2);color:var(--muted);border:1px solid var(--border)}.chip.teal{background:var(--teal-soft);color:var(--teal-ink)}.chip.purple{background:var(--purple-soft);color:var(--purple-ink)}.chip.blue{background:var(--blue-soft);color:var(--blue-ink)}
+.btn{border:1px solid var(--border-strong);background:var(--surface);color:var(--ink);border-radius:7px;padding:5px 10px;font:inherit;font-size:12.5px;cursor:pointer;white-space:nowrap;display:inline-block}
+.btn.primary{background:var(--blue);border-color:var(--blue);color:#fff}.btn.teal{background:var(--teal);border-color:var(--teal);color:#fff}.btn.quiet{border-color:transparent;color:var(--muted);text-decoration:underline dotted;padding-inline:4px}.btn.sm{font-size:11.5px;padding:3px 8px}
+.acct{display:inline-flex;align-items:center;gap:5px;border-radius:6px;padding:1px 7px;font-size:11.5px;font-weight:600;border:1px solid transparent}
+.acct.open{background:var(--teal-soft);color:var(--teal-ink)}.acct.req{background:var(--purple-soft);color:var(--purple-ink)}.acct.none{background:transparent;color:var(--muted);border-color:var(--border-strong);border-style:dashed;font-weight:500}
+.acct .dot{width:6px;height:6px;border-radius:50%;background:currentColor;opacity:.85}
+.panel{background:var(--surface);border:1px solid var(--border);border-radius:10px;overflow:hidden}
+.panel .pt{padding:8px 12px;border-bottom:1px solid var(--border);background:var(--surface-2);font-size:12px;color:var(--muted);display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.panel .pc{padding:12px;display:grid;gap:10px}
+/* board row */
+.brow{display:grid;grid-template-columns:34px 52px 72px 1.6fr 1.4fr 110px;gap:10px;align-items:start;padding:9px 12px;border-bottom:1px solid var(--border);font-size:12.5px}
+.brow.head{background:var(--surface-2);font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:600}
+.brow .grade{display:inline-grid;place-items:center;width:22px;height:22px;border-radius:6px;background:var(--green-soft);color:var(--green-ink);font-weight:700;font-size:12px}
+.brow .num{font-family:"IBM Plex Mono",monospace;font-size:12px}
+.brow .name{font-weight:600}.brow .sub{color:var(--muted);font-size:11.5px}
+.gcpill{display:inline-flex;align-items:center;gap:6px;flex-wrap:wrap}
+.won{display:inline-block;background:var(--green-soft);color:var(--green-ink);border-radius:999px;padding:0 7px;font-size:10.5px;font-weight:700;line-height:17px}
+.link{color:var(--green-ink);font-size:11px;font-weight:600;text-decoration:underline dotted}
+.chips{display:flex;flex-wrap:wrap;gap:4px;align-items:center;margin-top:4px}
+.chips .lbl{font-size:9.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-right:2px}
+/* flow strip */
+.strip{display:flex;flex-wrap:wrap;gap:6px;align-items:center;padding:10px 12px;background:var(--surface-2);border-top:1px dashed var(--border)}
+.step{display:inline-flex;align-items:center;gap:5px;border-radius:999px;padding:2px 9px 2px 5px;font-size:11.5px;border:1px solid var(--border);background:var(--surface);color:var(--muted)}
+.step .n{display:inline-grid;place-items:center;width:16px;height:16px;border-radius:50%;font-size:10px;font-weight:700;background:var(--border);color:var(--ink)}
+.step.done{color:var(--green-ink);border-color:var(--green-soft)}.step.done .n{background:var(--green);color:#fff}
+.step.next{color:var(--ink);border-color:var(--blue);background:var(--blue-soft);font-weight:600}.step.next .n{background:var(--blue);color:#fff}
+.step.new{outline:2px solid var(--teal);outline-offset:1px}
+.step .ph{font-size:9.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--faint);margin-left:2px}
+/* lens */
+.lensbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;padding:8px 12px;border-bottom:1px solid var(--border);font-size:12.5px}
+.lensbar .lens{border:1px solid var(--border-strong);border-radius:16px;padding:2px 10px}.lensbar .lens.on{background:var(--blue-soft);border-color:var(--blue);color:var(--blue-ink);font-weight:600}
+.lrow{display:grid;grid-template-columns:120px 1.5fr 1.4fr 1fr;gap:10px;align-items:start;padding:10px 12px;border-bottom:1px solid var(--border);font-size:12.5px}
+.lrow.head{background:var(--surface-2);font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:600}
+.lrow .days{font-weight:700}.lrow .days.red{color:var(--red-ink)}.lrow .days.amber{color:var(--amber-ink)}
+.lrow .sub{color:var(--muted);font-size:11.5px}
+.group{padding:8px 12px;background:var(--teal-soft);color:var(--teal-ink);font-size:12px;display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+.sheet{border:1px solid var(--border);border-radius:12px;background:var(--surface);box-shadow:var(--shadow);display:grid;gap:10px;padding:14px 16px}
+.sheet h4{margin:0;font-size:14px}
+.email{border:1px solid var(--border);border-radius:8px;background:#fff;color:#111;padding:12px 14px;font-size:12px;line-height:1.5;display:grid;gap:6px;font-family:Georgia,serif}
+.email .h{font-family:"IBM Plex Sans",sans-serif;color:#555;font-size:11px;border-bottom:1px solid #e5e7eb;padding-bottom:6px}
+.cap{font-size:12px;color:var(--muted);max-width:60ch}.stack{display:grid;gap:12px}
+.decisions{display:grid;gap:8px;color:var(--muted);max-width:86ch}.decisions div b{color:var(--ink);font-weight:600}
+.plan ol{margin:0;padding-left:20px;color:var(--muted);max-width:86ch}.plan li{margin:5px 0}.plan li b{color:var(--ink);font-weight:600}
+@media (max-width:900px){.grid2{grid-template-columns:1fr}.brow{grid-template-columns:1fr}.lrow{grid-template-columns:1fr}}
+</style>
+
+<div class="wrap">
+  <header class="section">
+    <div class="eyebrow">Bids · a proposal · Sep 14, 2026</div>
+    <h1>Job accounts on the Bid Board: the row, the strip, the lens</h1>
+    <p class="lede">The estimator lives on the board. Today the job-account tools sit one click away, in Edit Bid's Job block. These four screens bring them to the board using the three devices it already has — the won row's pill line, the "Where this bid is" step strip, and the lenses — plus one email that covers several properties at once.</p>
+  </header>
+
+  <section class="section">
+    <div class="section-head"><h2>1 · The won row carries the chips</h2><p class="sub">Beside the won GC pill and "open the job →", once a job exists. One RPC call loads every won row on the page. A chip opens Mark opened; "…" opens the Job accounts question.</p></div>
+    <div class="panel">
+      <div class="pt"><span>Bid Board · Plumbing · Won 18</span><span>search: (blank)</span></div>
+      <div class="brow head"><span></span><span>#</span><span>Sent</span><span>Bid</span><span>GC / Builder</span><span>Est · value</span></div>
+      <div class="brow">
+        <span class="grade">A</span><span class="num">b375</span><span>Mon 8/10</span>
+        <span><div class="name">SPACEX BA-02N Architectural</div><div class="sub">858 FM 1209, Bastrop · starts Sep 1</div></span>
+        <span>
+          <div class="gcpill">Structura, Inc. – Austin <span class="won">WON</span> <span class="link">J1007 · open →</span></div>
+          <div class="chips"><span class="lbl">Job accounts</span><span class="acct req"><span class="dot"></span>Ferguson · asked</span><span class="acct none">Moore Supply</span><span class="acct none">Reece</span><span class="btn quiet sm">…</span></div>
+        </span>
+        <span><div>Wendi</div><div class="sub">$250k · hours only 10 h</div></span>
+      </div>
+      <div class="brow">
+        <span class="grade">B</span><span class="num">b398</span><span>Thu 9/4</span>
+        <span><div class="name">Pondhill Building 2</div><div class="sub">4114 Pond Hill Rd, San Antonio · starts Sep 22</div></span>
+        <span>
+          <div class="gcpill">H &amp; I Construction <span class="won">WON</span> <span class="link">J1018 · open →</span></div>
+          <div class="chips"><span class="lbl">Job accounts</span><span class="acct open"><span class="dot"></span>Ferguson ✓</span><span class="acct open"><span class="dot"></span>Moore Supply ✓</span><span class="acct none">Reece · quoted</span><span class="btn quiet sm">…</span></div>
+        </span>
+        <span><div>Tristen</div><div class="sub">$48.7k · 62 h</div></span>
+      </div>
+      <div class="brow">
+        <span class="grade">A</span><span class="num">b402</span><span>Tue 9/9</span>
+        <span><div class="name">Take 5 · Liberty Hill</div><div class="sub">1420 US-183, Liberty Hill · starts Oct 6</div></span>
+        <span>
+          <div class="gcpill">Summit GC <span class="won">WON</span> <span class="link">open the job →</span></div>
+          <div class="chips"><span class="lbl">Job accounts</span><span class="sub">after the job is opened</span></div>
+        </span>
+        <span><div>Wendi</div><div class="sub">$112k · 140 h</div></span>
+      </div>
+    </div>
+    <p class="cap">Only won rows show the line. A won bid with no job yet says so in six words, because the account keys on the job the win moment creates. The chips are the same component the Job block uses.</p>
+  </section>
+
+  <section class="section">
+    <div class="section-head"><h2>2 · Two more steps on "Where this bid is"</h2><p class="sub">The opened row's strip runs ten steps and stops at Sent. For a won bid the lane keeps going, in the same voice the estimator already reads left to right.</p></div>
+    <div class="panel">
+      <div class="pt"><span>b398 · Pondhill Building 2 · opened row</span><span>Where this bid is</span></div>
+      <div class="strip">
+        <span class="step done"><span class="n">1</span>Plans in Drive</span>
+        <span class="step done"><span class="n">2</span>Send RFQ</span>
+        <span class="step done"><span class="n">3</span>Plans in Tooling</span>
+        <span class="step done"><span class="n">4</span>Count &amp; import</span>
+        <span class="step done"><span class="n">5</span>Takeoffs</span>
+        <span class="step done"><span class="n">6</span>Price</span>
+        <span class="step done"><span class="n">7</span>Review</span>
+        <span class="step done"><span class="n">8</span>Cover letter</span>
+        <span class="step done"><span class="n">9</span>PDF filed</span>
+        <span class="step done"><span class="n">10</span>Sent</span>
+        <span class="step done new"><span class="n">11</span>Job opened <span class="ph">Won</span></span>
+        <span class="step next new"><span class="n">12</span>Job accounts · Reece missing <span class="ph">Won</span></span>
+      </div>
+      <div class="pc">
+        <div class="grid2">
+          <div class="card"><div class="eyebrow">The proxy rule, like every step's</div><p><b>Done</b> when every house that quoted the bid or expects an account is open or not needed. <b>Next</b> when the job exists and a house is missing — the pill names it. <b>Untracked</b> before the job exists. A house nobody buys from never blocks the strip.</p></div>
+          <div class="card"><div class="eyebrow">The door</div><p>Step 11's door is the Job block ("Open the job"). Step 12's door is the Job accounts question for that job — a new door kind, <span class="mono">accounts</span>, beside <span class="mono">edit · pricing · cover-letter · review</span>. Same landing rule: open, scroll, ring the thing the step is about.</p></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="section-head"><h2>3 · The Job accounts lens is the queue</h2><p class="sub">Beside Waiting to hear, Why we lost and Forecast. Every won bid with a job whose houses are missing an account, soonest start first, grouped by house so one email covers several properties.</p></div>
+    <div class="panel">
+      <div class="lensbar"><span class="lens">Waiting to hear</span><span class="lens">Why we lost</span><span class="lens">Forecast</span><span class="lens on">Job accounts · 4</span><span class="sub" style="margin-left:auto;color:var(--muted)">by first parts run · quoted houses first</span></div>
+      <div class="group"><span><b>Ferguson</b> · Curly Conley · 210-344-4950 · 3 properties waiting</span><span><span class="btn sm teal">Ask Curly for all three</span> <span class="btn sm">Call Curly</span></span></div>
+      <div class="lrow head"><span>First parts run</span><span>Job · property</span><span>Missing at</span><span></span></div>
+      <div class="lrow"><span class="days red">in 3 days<br><span class="sub">Sep 17</span></span><span><b>J1018 · Pondhill Building 2</b><br><span class="sub">4114 Pond Hill Rd · H &amp; I Construction · your B398</span></span><span><span class="acct none">Ferguson · quoted</span> <span class="acct none">Reece · quoted</span><br><span class="sub">Moore ✓ from J951 at this address</span></span><span><span class="btn sm">Mark opened…</span> <span class="btn sm quiet">Not needed</span></span></div>
+      <div class="lrow"><span class="days amber">in 9 days<br><span class="sub">Sep 23</span></span><span><b>J1021 · Dudley · Lennox phase 2</b><br><span class="sub">301 Lennox Ave · Dudley Homes · your B401</span></span><span><span class="acct req"><span class="dot"></span>Ferguson · asked Sep 12</span> <span class="acct none">Reece</span></span><span><span class="btn sm">Mark opened…</span> <span class="btn sm quiet">Not needed</span></span></div>
+      <div class="lrow"><span class="days">in 22 days<br><span class="sub">Oct 6</span></span><span><b>J1024 · Take 5 · Liberty Hill</b><br><span class="sub">1420 US-183 · Summit GC · Wendi's B402</span></span><span><span class="acct none">Ferguson</span> <span class="acct none">Moore Supply · quoted</span></span><span><span class="btn sm">Mark opened…</span> <span class="btn sm quiet">Not needed</span></span></div>
+      <div class="lrow"><span class="days">no date<br><span class="sub">won Sep 2</span></span><span><b>J1007 · SPACEX BA-02N Architectural</b><br><span class="sub">858 FM 1209, Bastrop · Structura · Wendi's B375</span></span><span><span class="acct req"><span class="dot"></span>Ferguson · asked</span> <span class="acct none">Moore Supply</span> <span class="acct none">Reece</span></span><span><span class="btn sm">Mark opened…</span> <span class="btn sm quiet">Not needed</span></span></div>
+    </div>
+    <div class="grid2">
+      <div class="card"><div class="eyebrow">Why a lens and not a filter</div><p>Lenses on this board are work queues with their own sort and their own actions (Waiting to hear sorts by days waiting; Forecast by start). Job accounts sorts by first parts run and acts on the account, which no filter of the main list could do.</p></div>
+      <div class="card"><div class="eyebrow">Mine and everyone's</div><p>The lens shows every estimator's won bids, with the bidder named on each row, and a <b>Mine</b> toggle like Waiting to hear's. The office sees the same lens; the Won pill's count line gains "4 missing job accounts".</p></div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="section-head"><h2>4 · One email per house, several properties</h2><p class="sub">Curly opens accounts per property; an estimator wins in batches. The lens groups the missing accounts by house and drafts one note per rep, from the same composer the single email uses.</p></div>
+    <div class="grid2">
+      <div class="sheet">
+        <h4>Ask Curly to open three job accounts</h4>
+        <div class="email">
+          <div class="h">From: wendi@clickplumbing.com · To: curly.conley@ferguson.com · Subject: Job accounts — 3 new properties (Click Plumbing and Electrical)</div>
+          <div>Curly — three new ones for <b>Click Plumbing and Electrical</b>. Please open a job account at each; first parts runs are the weeks of Sep 15, Sep 22 and Oct 6.</div>
+          <div><b>1 · 4114 Pond Hill Rd, Building #2, San Antonio, TX 78231</b> — H &amp; I Construction, Marco Reyes, 210-555-0170 — owner of record to follow</div>
+          <div><b>2 · 301 Lennox Ave, Austin, TX 78745</b> — Dudley Homes, Sam Dudley, 512-555-0143 — owner: Dudley Homes LLC, PO Box 40, Austin TX</div>
+          <div><b>3 · 1420 US-183, Liberty Hill, TX 78642</b> — Summit GC, Ana Ortiz, 512-555-0188 — owner of record to follow</div>
+          <div>Reply here or call the office at (512) 360-0599. — Wendi</div>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap"><span class="btn primary">Email from my inbox</span><span class="btn">Copy for email</span><span class="btn quiet">Sent — log all three</span></div>
+      </div>
+      <div class="stack">
+        <div class="card"><div class="eyebrow">What logging does</div><p>One tap marks each of the three jobs <span class="chip purple">requested</span> at Ferguson and writes three send-log rows, each with its bid. The lens rows turn purple in place; the tech's card on each job reads "Ferguson · requested".</p></div>
+        <div class="card"><div class="eyebrow">When the GC differs</div><p>It does here, and the note lists each property with its own GC. The house wants the property and the buyer per account; one message with three numbered blocks is what a rep can work down a list with.</p></div>
+        <div class="card"><div class="eyebrow">Kernel change</div><p><span class="mono">composeRepEmail</span> takes one property today; it grows a <span class="mono">properties[]</span> form that numbers them and joins the start dates. The single-property note is the one-item case. Tests pin both.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section plan">
+    <div class="section-head"><h2>Build order</h2><p class="sub">Two client-only PRs; the RPCs already exist.</p></div>
+    <ol>
+      <li><b>The row and the lens.</b> Chips on the won GC line (one <span class="mono">list_bid_job_account_strip</span> call for the page's won bids) with Mark opened and the "…" door; the Job accounts lens with the by-house groups, the per-house email (the multi-property composer), Mark opened / Not needed per row, the Mine toggle, the count on the Won pill.</li>
+      <li><b>The strip steps.</b> Steps 11 and 12 on "Where this bid is" with the proxy rule and the <span class="mono">accounts</span> door.</li>
+    </ol>
+  </section>
+
+  <section class="section">
+    <div class="section-head"><h2>Decisions for the owner</h2></div>
+    <div class="decisions">
+      <div><b>Won bids with no job yet in the lens?</b> Proposed yes, as a row whose only action is "open the job first" — otherwise a won bid can wait unseen.</div>
+      <div><b>One email per house across properties, even when the GCs differ?</b> Proposed yes, numbered blocks with each GC.</div>
+      <div><b>Whose rows does the lens show by default?</b> Proposed everyone's, bidder named, with a Mine toggle.</div>
+    </div>
+  </section>
+</div>
