@@ -1,7 +1,7 @@
 import type { ReleaseNote } from '../../lib/releaseNotes'
 
 const note: ReleaseNote = {
-  version: 'v2.3449',
+  version: 'v2.3452',
   date: '2026-09-15',
   title: 'Owner of record: the job form finds it the moment a GC job exists',
   kind: 'feature',
