@@ -43,7 +43,8 @@ describe('the words', () => {
     expect(crewClause(crewOf({ last_work_date: today, last_day_people: ['Behar Kraja'] }), today, { names: false })).toBe('worked today')
     expect(crewClause(crewOf({ last_work_date: '2026-09-12', last_day_people: ['Behar Kraja', 'Malachi Jones'] }), today, { names: false })).toBe('worked Sat')
     expect(crewClause(crewOf({ sheet_stage: 'working', sheet_names: 'Texas Rooter' }), today, { names: false })).toBe('on the sheet, no clock-ins')
-    expect(crewClause(crewOf({}), today, { names: false })).toBe('nobody clocked in')
+    expect(crewClause(crewOf({}), today, { names: false })).toBe('no hours')
+    expect(crewClause(null, today, { names: false })).toBe('no hours')
   })
   it('percentClause and moneyClause', () => {
     expect(percentClause(null)).toBe('no % yet')
@@ -173,7 +174,7 @@ describe('buildProgressPaymentView — the five rows', () => {
     })
     expect(vecchio.mode).toBe('lines')
     expect(vecchio.segments[0]).toMatchObject({ name: 'Pinpoint', fillPct: 0, label: 'Pinpoint' })
-    expect(vecchio.words).toMatchObject({ text: 'Nobody clocked in · no % yet', full: 'nobody clocked in · no % yet · nothing billed', tone: 'plain' })
+    expect(vecchio.words).toMatchObject({ text: 'No hours · no % yet', full: 'nobody clocked in · no % yet · nothing billed', tone: 'plain' })
 
     const drf = buildProgressPaymentView({
       money: buildStagesMoneyBarModel({ totalBill: 0, paymentsMade: 0, pctComplete: null }),
@@ -240,7 +241,7 @@ describe('buildProgressPaymentView — the rules at the edges', () => {
     expect(v.segments.map((s) => s.name)).toEqual(['CHANGE ORDER: deep clean', 'HVAC to spec'])
     expect(v.segments[0]!.money.billedFrac).toBeCloseTo(1, 2)
     expect(v.segments[1]!.money.billedFrac).toBeCloseTo((3_052.5 - 1_980) / 1_650, 2)
-    expect(v.words.text).toBe('Nobody clocked in · no % yet')
+    expect(v.words.text).toBe('No hours · no % yet')
     expect(v.words.full).toBe('nobody clocked in · no % yet · $3,053 billed, nothing paid')
   })
 
