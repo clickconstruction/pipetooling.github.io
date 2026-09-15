@@ -1,0 +1,519 @@
+<title>PipeTooling Punch List</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo+Narrow:wght@600;700&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+  :root {
+    --ground: #EEF1F5;
+    --surface: #FFFFFF;
+    --surface-2: #F7F8FA;
+    --ink: #1B2430;
+    --muted: #5F6B7A;
+    --line: #D3D9E1;
+    --line-strong: #AEB8C4;
+    --copper: #B25A2B;
+    --copper-ink: #FFFFFF;
+    --ready: #2F7A52;
+    --ready-bg: #E3F1E8;
+    --gated: #A9711C;
+    --gated-bg: #F7EBD6;
+    --waiting: #4A6B8A;
+    --waiting-bg: #E2EAF1;
+    --close: #6B7280;
+    --close-bg: #E9ECF0;
+    --residual: #7A5A8F;
+    --residual-bg: #EEE6F3;
+    --do: #2F7A52;
+    --later: #A9711C;
+    --drop: #9E3B3B;
+    --focus: #B25A2B;
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground: #151920;
+      --surface: #1C222B;
+      --surface-2: #222933;
+      --ink: #E4E8EE;
+      --muted: #98A3B0;
+      --line: #2C3540;
+      --line-strong: #3E4956;
+      --copper: #D8804E;
+      --copper-ink: #151920;
+      --ready: #6FC393;
+      --ready-bg: #1E3328;
+      --gated: #E0A64E;
+      --gated-bg: #3A2E1A;
+      --waiting: #8FB3D3;
+      --waiting-bg: #1F2D3A;
+      --close: #A3ACB8;
+      --close-bg: #262D36;
+      --residual: #C4A3DB;
+      --residual-bg: #2E2537;
+      --do: #6FC393;
+      --later: #E0A64E;
+      --drop: #E07A7A;
+      --focus: #D8804E;
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground: #151920;
+    --surface: #1C222B;
+    --surface-2: #222933;
+    --ink: #E4E8EE;
+    --muted: #98A3B0;
+    --line: #2C3540;
+    --line-strong: #3E4956;
+    --copper: #D8804E;
+    --copper-ink: #151920;
+    --ready: #6FC393;
+    --ready-bg: #1E3328;
+    --gated: #E0A64E;
+    --gated-bg: #3A2E1A;
+    --waiting: #8FB3D3;
+    --waiting-bg: #1F2D3A;
+    --close: #A3ACB8;
+    --close-bg: #262D36;
+    --residual: #C4A3DB;
+    --residual-bg: #2E2537;
+    --do: #6FC393;
+    --later: #E0A64E;
+    --drop: #E07A7A;
+    --focus: #D8804E;
+    color-scheme: dark;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--ground);
+    color: var(--ink);
+    font-family: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+    font-size: 15px;
+    line-height: 1.5;
+    padding-block: 0 64px;
+    padding-inline: 20px;
+  }
+  .wrap { max-width: 1080px; margin: 0 auto; }
+  a { color: var(--copper); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  :focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+
+  /* Header */
+  header.top {
+    display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; flex-wrap: wrap;
+    padding-block: 28px 18px;
+    border-bottom: 2px solid var(--ink);
+  }
+  .eyebrow {
+    font-family: "Archivo Narrow", "Arial Narrow", sans-serif;
+    font-weight: 600; font-size: 13px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted);
+    margin: 0 0 4px;
+  }
+  h1 {
+    font-family: "Archivo Narrow", "Arial Narrow", sans-serif;
+    font-weight: 700; font-size: 40px; line-height: 1; margin: 0; letter-spacing: -.01em;
+    text-wrap: balance;
+  }
+  .stamp {
+    font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 12.5px; color: var(--muted);
+    text-align: right; line-height: 1.6;
+  }
+  .stamp b { color: var(--ink); font-weight: 500; }
+
+  /* Summary strip */
+  .strip {
+    display: grid; grid-template-columns: repeat(5, 1fr); gap: 0;
+    border: 1px solid var(--line); background: var(--surface); margin-top: 20px;
+    border-radius: 6px; overflow: hidden;
+  }
+  .strip > div { padding: 12px 16px; border-right: 1px solid var(--line); min-width: 0; }
+  .strip > div:last-child { border-right: 0; }
+  .strip .n {
+    font-family: "Archivo Narrow", "Arial Narrow", sans-serif; font-weight: 700; font-size: 30px; line-height: 1;
+    font-variant-numeric: tabular-nums;
+  }
+  .strip .l { font-size: 12px; color: var(--muted); letter-spacing: .06em; text-transform: uppercase; margin-top: 4px; }
+  .strip .picks { display: flex; gap: 14px; align-items: baseline; }
+  .strip .picks span { font-variant-numeric: tabular-nums; font-weight: 600; }
+  .strip .picks .do { color: var(--do); }
+  .strip .picks .later { color: var(--later); }
+  .strip .picks .drop { color: var(--drop); }
+
+  .sync { font-size: 12.5px; color: var(--muted); margin-top: 10px; display: flex; gap: 8px; align-items: center; }
+  .sync .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--line-strong); }
+  .sync.live .dot { background: var(--ready); }
+
+  /* Filters */
+  .filters { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 22px; align-items: center; }
+  .filters .lab { font-size: 12px; color: var(--muted); letter-spacing: .06em; text-transform: uppercase; margin-right: 4px; }
+  .chip {
+    font: inherit; font-size: 13px; font-weight: 500; padding: 5px 12px; border-radius: 999px;
+    border: 1px solid var(--line-strong); background: var(--surface); color: var(--ink); cursor: pointer;
+  }
+  .chip[aria-pressed="true"] { background: var(--ink); color: var(--ground); border-color: var(--ink); }
+  .chip .c { font-variant-numeric: tabular-nums; color: inherit; opacity: .7; margin-left: 4px; }
+
+  /* Groups */
+  section.group { margin-top: 34px; }
+  .ghead { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; margin-bottom: 8px; }
+  .ghead h2 {
+    font-family: "Archivo Narrow", "Arial Narrow", sans-serif; font-weight: 700; font-size: 22px; margin: 0;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .ghead h2 .sw { width: 12px; height: 12px; border-radius: 2px; display: inline-block; }
+  .ghead .count { font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 12.5px; color: var(--muted); }
+  .ghead p { margin: 0; color: var(--muted); font-size: 13.5px; flex-basis: 100%; max-width: 72ch; }
+
+  .list { border: 1px solid var(--line); border-radius: 6px; background: var(--surface); overflow: hidden; }
+  .row {
+    display: grid; grid-template-columns: 6px minmax(0, 1fr) 200px 260px; gap: 0;
+    border-top: 1px solid var(--line);
+  }
+  .row:first-child { border-top: 0; }
+  .row[hidden] { display: none; }
+  .row .stripe { background: var(--g); }
+  .row.done .name a { text-decoration: line-through; color: var(--muted); }
+  .row.done .sum { color: var(--muted); }
+  .chip-done { display: inline-block; font-size: 12px; font-weight: 600; color: var(--ready); background: var(--ready-bg); border-radius: 999px; padding: 3px 10px; }
+  .row .main { padding: 14px 16px; min-width: 0; }
+  .row .meta { padding: 14px 12px; border-left: 1px solid var(--line); font-size: 13px; color: var(--muted); background: var(--surface-2); }
+  .row .act { padding: 12px 14px; border-left: 1px solid var(--line); display: flex; flex-direction: column; gap: 8px; }
+
+  .row .name { font-weight: 600; font-size: 15.5px; display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+  .row .name code {
+    font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 11.5px; font-weight: 400; color: var(--muted);
+    background: var(--surface-2); border: 1px solid var(--line); border-radius: 3px; padding: 0 5px;
+  }
+  .row .sum { margin: 4px 0 0; color: var(--ink); max-width: 68ch; font-size: 14px; }
+  .row .next { margin: 6px 0 0; font-size: 13.5px; color: var(--muted); max-width: 68ch; }
+  .row .next b { color: var(--ink); font-weight: 600; }
+  .row .meta dl { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 3px 8px; }
+  .row .meta dt { font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+  .row .meta dd { margin: 0; color: var(--ink); font-size: 13px; }
+  .size { font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 12px; }
+
+  .seg { display: flex; border: 1px solid var(--line-strong); border-radius: 5px; overflow: hidden; }
+  .seg button {
+    flex: 1; font: inherit; font-size: 13px; font-weight: 600; padding: 6px 0; background: var(--surface); color: var(--muted);
+    border: 0; border-right: 1px solid var(--line-strong); cursor: pointer;
+  }
+  .seg button:last-child { border-right: 0; }
+  .seg button:hover { background: var(--surface-2); color: var(--ink); }
+  .seg button[aria-pressed="true"][data-pick="do"] { background: var(--do); color: var(--copper-ink); }
+  .seg button[aria-pressed="true"][data-pick="later"] { background: var(--later); color: var(--copper-ink); }
+  .seg button[aria-pressed="true"][data-pick="drop"] { background: var(--drop); color: var(--copper-ink); }
+  .note {
+    font: inherit; font-size: 13px; padding: 6px 8px; border: 1px solid var(--line); border-radius: 4px;
+    background: var(--surface); color: var(--ink); width: 100%;
+  }
+  .note::placeholder { color: var(--muted); }
+
+  footer.foot { margin-top: 40px; font-size: 13px; color: var(--muted); max-width: 72ch; }
+
+  @media (max-width: 860px) {
+    .strip { grid-template-columns: repeat(2, 1fr); }
+    .strip > div:nth-child(2n) { border-right: 0; }
+    .strip > div { border-bottom: 1px solid var(--line); }
+    .row { grid-template-columns: 6px minmax(0, 1fr); }
+    .row .meta, .row .act { border-left: 0; border-top: 1px dashed var(--line); grid-column: 2; }
+    h1 { font-size: 32px; }
+    .stamp { text-align: left; }
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    .seg button { transition: background .12s ease, color .12s ease; }
+  }
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <div>
+      <p class="eyebrow">PipeTooling · to-dos/ · read against main · a copy lives at to-dos/punch-list.html</p>
+      <h1>Punch List</h1>
+    </div>
+    <div class="stamp">
+      Validated against main <b>2026-09-15</b> at <b>v2.3456</b><br>
+      26 open items · 11 closed this week · picks are shared with whoever opens this page
+    </div>
+  </header>
+
+  <div class="strip" id="strip"></div>
+  <div class="sync" id="sync"><span class="dot"></span><span id="syncText">Connecting to the shared picks…</span></div>
+
+  <div class="filters" id="filters">
+    <span class="lab">Show</span>
+    <button class="chip" data-f="all" aria-pressed="true">All <span class="c" id="c-all"></span></button>
+    <button class="chip" data-f="unsorted" aria-pressed="false">Unsorted <span class="c" id="c-unsorted"></span></button>
+    <button class="chip" data-f="do" aria-pressed="false">Do <span class="c" id="c-do"></span></button>
+    <button class="chip" data-f="later" aria-pressed="false">Later <span class="c" id="c-later"></span></button>
+    <button class="chip" data-f="drop" aria-pressed="false">Drop <span class="c" id="c-drop"></span></button>
+  </div>
+
+  <div id="groups"></div>
+
+  <footer class="foot">
+    Sizes are a working estimate: XS is under an hour, S a sitting, M a day of PRs, L a multi-day train.
+    "Next" names the smallest shippable step from the to-do's own plan. Each item links to its file in the repo.
+  </footer>
+</div>
+
+<script>
+  const GROUPS = [
+    { key: "done", name: "Closed this week", color: "var(--ready)", blurb: "Shipped and on prod between Sep 14 and Sep 15. Kept here for one week so the picks page shows what moved; the release notes carry the record." },
+    { key: "ready", name: "Ready to build", color: "var(--ready)", blurb: "Planned, unblocked, the plan names the first PR. These can start today." },
+    { key: "close", name: "Close out", color: "var(--close)", blurb: "Built and on main. What is left is a deletion, a script the owner runs, or a dated wait." },
+    { key: "gated", name: "Needs an owner decision", color: "var(--gated)", blurb: "The code is ready to be written; a yes / no from the owner, Wendi, Taunya or the attorney comes first." },
+    { key: "waiting", name: "Waiting on time or usage", color: "var(--waiting)", blurb: "Deliberately parked until a measurement window passes." },
+    { key: "residual", name: "Residuals", color: "var(--residual)", blurb: "Small leftovers from shipped trains. Low priority by their own status line; cheap to pick off in a quiet hour." }
+  ];
+
+  const ITEMS = [
+    // Closed this week (no picks)
+    { slug: "owner-of-record-prompts", g: "done", name: "Owner of record prompts", file: "docs/recent-features/v2.3447.md", ver: "v2.3447 · 3452 · 3450 · 3455 · 3456",
+      sum: "The app looks every GC job up on the appraisal roll; the Fix-ups list, the job form, Bill Customer and the Lien desk confirm the owner with Use. Live-tested on real jobs Sep 15; the nightly auto-save switch is off until the first sitting proves the roll.", next: "Press Use all found on the Pipeline's Fix-ups chip (31 to confirm).", size: "shipped", blocker: "—" },
+    { slug: "lien-desk", g: "done", name: "Lien desk", file: "docs/recent-features/v2.3405.md", ver: "v2.3405 · 3410 · 3412", sum: "Folder deleted; every PR on main, both migrations pushed.", next: "—", size: "shipped", blocker: "—" },
+    { slug: "pipeline-on-a-map", g: "done", name: "Pipeline on a map", file: "docs/recent-features/v2.3396.md", ver: "v2.3396–3399", sum: "Folder deleted; the card, the rail, As of and crews on the day are all on main.", next: "—", size: "shipped", blocker: "—" },
+    { slug: "sub-sheet-job-link-followups", g: "done", name: "Sub sheet link cleanup", file: "docs/recent-features/v2.3435.md", ver: "v2.3435", sum: "Number fallbacks dropped, the two hcp RPCs retired, the 10-character cap gone; to-do deleted.", next: "—", size: "shipped", blocker: "—" },
+    { slug: "pipeline-cell-item-1", g: "done", name: "Pipeline cell: a percent carries its date and source", file: "docs/recent-features/v2.3432.md", ver: "v2.3432", sum: "A percent from a report or the back-fill reads *set Aug 7* / *reported Sep 11* on the row.", next: "—", size: "shipped", blocker: "—" },
+    { slug: "job-summary-shipped", g: "done", name: "Job Summary: Days delta · capacity card · badge date", file: "docs/recent-features/v2.3439.md", ver: "v2.3428 · 3439 · 3441", sum: "The Days tiles carry the since-then strip; Needs You warns when capacity runs under 60% three weeks running; the % badge carries the report's date before expand.", next: "—", size: "shipped", blocker: "—" },
+    { slug: "stage-plan-shipped", g: "done", name: "Stage Plan: capable-to-bill reads the plan · offered_to_gc retired", file: "docs/recent-features/v2.3431.md", ver: "v2.3431 · 3438", sum: "The Pipeline header reads each Working job's stage plan; the dead stage-window columns and the calendar's offer props are gone.", next: "—", size: "shipped", blocker: "—" },
+    { slug: "inbox-eligibility-hook", g: "done", name: "One inbox eligibility hook", file: "docs/recent-features/v2.3434.md", ver: "v2.3434", sum: "The dispatch and estimator group reads share one hook.", next: "—", size: "shipped", blocker: "—" },
+    { slug: "ipgeo-strict", g: "done", name: "ipGeo validation strict-clean + parity test", file: "docs/recent-features/v2.3427.md", ver: "v2.3427", sum: "The edge module type-checks under the app's tsconfig; a 38-address client-vs-edge parity test guards it.", next: "—", size: "shipped", blocker: "—" },
+    { slug: "takeoffs-pr8", g: "done", name: "Takeoffs PR 8: the re-measure", file: "docs/TAKEOFFS_REFRESH_PLAN.md", ver: "docs", sum: "The week of real use, measured: 2 costed bids at 90% coverage, 17 new bids with counts and no takeoff, the book learned nothing.", next: "PR 9 is your call — see the gated group.", size: "shipped", blocker: "—" },
+    { slug: "types-regen", g: "done", name: "Types regenerated after every push", file: "docs/recent-features/v2.3446.md", ver: "v2.3442 · 3446", sum: "Drift 579/579; the generated file matches prod.", next: "—", size: "shipped", blocker: "—" },
+
+    // Ready to build
+    { slug: "gc-on-notice", g: "ready", name: "Put a GC on notice", file: "to-dos/gc-on-notice/README.md",
+      sum: "One modal: every owner on every job with a failing GC gets the § 53.056 notice for every unnoticed month, with a cover letter written once and the decision recorded on the GC. Three doors (Pipeline, Customer review, the desk header). No longer blocked on owners.",
+      next: "Your four decisions (one for the attorney), then PR 1 the modal, the RPC, the doors, Approve all → the run.", size: "L (2 PRs)", blocker: "4 decisions open: unbilled jobs, closed windows, the cover letter's offer (attorney wording), who may press it.", ver: "planned 09-14 · unblocked 09-15" },
+    { slug: "submittals", g: "ready", name: "Submittals", file: "to-dos/submittals/README.md",
+      sum: "The product decision as one row per fixture tag from the plan's schedule to the GC's approval: a Specified column and status chips on the quote compare, a Submittals tab after Cover Letter, revisions, the package to the GC. Mock-up approved for v1; all seven decisions answered.",
+      next: "Stage 1 of six, with a live gate after each (the plan in the folder names them).", size: "L (6 stages)", blocker: "None. Planned by another session on 09-14.", ver: "planned 09-14" },
+    { slug: "job-summary-follow-ups", g: "ready", name: "Job Summary: what is left", file: "to-dos/job-summary-follow-ups.md",
+      sum: "Three of the eight shipped this week. Left: PTO / holidays off Capacity's available hours (needs the schedule day overrides), overtime as its own slice (needs per-person hours per week), travel on Days (no per-session start times yet), and the shared earned-revenue kernel for Job Summary, Crew P&L and the board.",
+      next: "PTO from the schedule overrides (M); the earned-revenue kernel (M). Overtime and travel wait on ledger fields.", size: "M + M", blocker: "None for PTO and the kernel.", ver: "3 of 8 shipped 09-15" },
+    { slug: "stage-plan-residuals", g: "ready", name: "Stage Plan: items 3–5", file: "to-dos/stage-plan-residuals.md",
+      sum: "Items 1–2 shipped. Left: plain (—) rows on the final draw (owner call: should Bill it on the last Order stage sweep them in?), an office-marked \"done\" instead of the sheet's 100% (one column, if wanted), a Mint-the-link door in the drawer.",
+      next: "Item 5, the Mint-the-link door (S), needs no decision. Items 3–4 are yours.", size: "S each", blocker: "Items 3–4 are owner calls.", ver: "2 of 5 shipped 09-15" },
+    { slug: "customer-waiting-residuals", g: "ready", name: "Customer Waiting: the tel: sweep and the mute", file: "to-dos/customer-waiting-residuals.md",
+      sum: "The eligibility hook shipped. Left: sweep ~35 hand-rolled tel: links onto CallPhoneButton (mechanical, merges alone), hide the banner for the person who made the call, and three wording decisions (the callback promise, sub-portal priority, auto-lower overnight).",
+      next: "The tel: sweep as one script-driven PR cut from fresh main.", size: "M + S", blocker: "None for the sweep; three decisions are yours.", ver: "hook shipped v2.3434" },
+    { slug: "engineering-hygiene", g: "ready", name: "Decompose JobsStagesTab / BidsPricingTab", file: "to-dos/engineering-hygiene.md",
+      sum: "The ipGeo item shipped. Left: JobsStagesTab (6.1k lines) and BidsPricingTab (5.5k) roughly doubled since July; the playbook's Stage-A extraction applies, one PR per region.",
+      next: "Pick one file, extract by the playbook's regions. Do it between feature trains on those surfaces.", size: "L", blocker: "Collides with every feature PR on those files.", ver: "inventory 09-06" },
+
+    // Close out
+    { slug: "gc-portal-customers-bills", g: "close", name: "Share this bill (GC portal)", file: "to-dos/gc-portal-customers-bills/README.md",
+      sum: "Built and deployed. The stamp script has nothing to stamp today (Done Right has no open owner-paid bills); the only thing left is the one \"sees their customers' bills by default\" tick on the Done Right card.",
+      next: "Tick it on Edit customer (or say the word and I will), then delete the folder.", size: "XS", blocker: "One click.", ver: "v2.3375–78" },
+    { slug: "contract-sweep-seen-first", g: "close", name: "Contract sweep, seen first", file: "to-dos/contract-sweep-seen-first/README.md",
+      sum: "Everything built; Drive connected; the first live pass filed two contracts. Left: open Found in Drive to the office set once the matcher has been right a few times. The customer-level agreements question is its own decision below.",
+      next: "Two or three more Drive passes, flip the dev-only gate, delete.", size: "XS", blocker: "A few more passes.", ver: "v2.3384–93" },
+    { slug: "test-reports", g: "close", name: "Test reports (retire plumbingtooling.com)", file: "to-dos/test-reports/README.md",
+      sum: "The hydrostatic / gas report lives inside PipeTooling. The external app stays up until a month shows no visits.",
+      next: "Around Oct 11: drop the footer link + buildClickToolingUrl, archive the repo.", size: "XS", blocker: "Dated ~2026-10-11.", ver: "v2.3296–3331" },
+
+    // Needs an owner decision
+    { slug: "takeoffs-retire-old", g: "gated", name: "Takeoffs PR 9: retire Old", file: "to-dos/takeoffs-retire-old.md",
+      sum: "The re-measure is in the plan: 2 costed bids at 90% coverage but 17 new bids with counts and no takeoff, and the book learned nothing. Which view the two were costed in is not recorded.",
+      next: "Ask Wendi which view she used; decide retire now or run a second week with Remember for the book ticked.", size: "M", blocker: "Your call.", ver: "PR 8 done 09-14" },
+    { slug: "pipeline-cell-residuals", g: "gated", name: "Pipeline cell item 2: a visit report's 100%", file: "to-dos/pipeline-cell-residuals.md",
+      sum: "Item 1 shipped. Left: J931 Heron's Jun 23 visit report says 100% on a $48,700 job in Top Out, and Job Summary, Burn and the Ready-to-bill prompt still read it wherever no newer hand-set exists.",
+      next: "Pick a, b or c in the file: whole-job reports only · reports before the last Working entry are out of scope · leave it.", size: "S", blocker: "Your call (a / b / c).", ver: "item 1 shipped v2.3432" },
+    { slug: "customer-level-agreements", g: "gated", name: "Customer-level (master) agreements", file: "to-dos/owner-decisions-pending.md",
+      sum: "Dudley Mason (22 live jobs), Knight, Palmer, Heron and Structura each sign one master subcontract, not one per job. A customer_contracts record that coverage reads after job-level records would clear ~22 open jobs / ~$520k in three filings.",
+      next: "Say build it → one migration + coverage reads it + a filing door on the customer.", size: "M", blocker: "Your call.", ver: "raised v2.3392" },
+    { slug: "bids-labor-refresh", g: "gated", name: "Labor refresh PR 6: one book", file: "to-dos/bids-labor-refresh/README.md",
+      sum: "Five PRs shipped; New is the default. PR 6 folds the human labor books into Robot Default as overrides, decides who may recalibrate, and retires Old.",
+      next: "Fold and retire, or keep the parallel run?", size: "M", blocker: "Your call.", ver: "v2.3276–3310 shipped" },
+    { slug: "burn-against-the-bid", g: "gated", name: "Burn against the bid: leftovers", file: "to-dos/burn-against-the-bid/README.md",
+      sum: "The train is built. You still link 10 ambiguous job ↔ bid pairs in Settings → Data. Two deferred pieces: the priced margin on the bid, earned value by stage.",
+      next: "Link the 10 pairs (UI, no code). Then decide on the two deferred pieces.", size: "S + M", blocker: "Your action + decision.", ver: "v2.3297–3306 shipped" },
+    { slug: "division-22-rules-manager", g: "gated", name: "Division 22 rules manager", file: "to-dos/division-22-rules-manager.md",
+      sum: "Pinning from the audit modal exists; no screen lists, edits or deletes the rules. RH / EDF unseeded; med gas parked.",
+      next: "Wendi: is pinning enough? You: seed RH / EDF, rule on med gas?", size: "M", blocker: "Wendi + you.", ver: "coverage 73%" },
+    { slug: "supply-house-job-account-aging", g: "gated", name: "Supply houses: aging heat map + the Job accounts leftovers", file: "to-dos/supply-house-job-account-aging.md",
+      sum: "The heat map still counts job-account invoices in past-due buckets; three May follow-ups; after the Job accounts train: Curly's missing phone, the tab-rename question, a mark-all back-fill.",
+      next: "Taunya: exclude or shade job-account invoices? The May follow-ups need no decision.", size: "S", blocker: "Taunya's read.", ver: "items 4–6 added 09-14" },
+    { slug: "partnerships-off-toggles", g: "gated", name: "Partnerships: the off toggles", file: "to-dos/partnerships-off-toggles.md",
+      sum: "Notice delivery, the estimating cap, the W2 watch and the runway floor exist only as config keys defaulting off.",
+      next: "You + the attorney first; then one scoped PR per toggle.", size: "M each", blocker: "You + attorney.", ver: "plan decision 6" },
+    { slug: "crew-pnl-and-wheels", g: "gated", name: "Crew P&L: wheels and the $50 default", file: "to-dos/crew-pnl-and-wheels.md",
+      sum: "Should Crew P&L and Bids price the vehicle deal per field hour the way Review does? Derive the sub-equivalent rate instead of a literal 50.",
+      next: "Wheels PR 3 yes / no.", size: "S + S", blocker: "Optional, your call.", ver: "from v2.2735" },
+    { slug: "weekly-money-later", g: "gated", name: "Weekly Money phase 6", file: "to-dos/weekly-money-later.md",
+      sum: "Drilldowns, a GC lens, a month roll-up, the timeline feed, wider access. Job Summary's Months view may already cover the roll-up.",
+      next: "Any of these wanted?", size: "M", blocker: "Optional, your call.", ver: "plan phase 6" },
+    { slug: "owner-decisions-pending", g: "gated", name: "Owner decisions pending (the standing list)", file: "to-dos/owner-decisions-pending.md",
+      sum: "14 open yes / no lines: the Parts Book duplicate rows, the Gun Dog Trail placeholder jobs, the blanket REVOKE on public functions, Wendi's travel bands, controller on the Dispatch PO tab, the Edgar roster orphan, twins phase 2…",
+      next: "Walk the table in one sitting; each answer deletes a line.", size: "a sitting", blocker: "You.", ver: "re-verified 09-06" },
+
+    // Waiting on time or usage
+    { slug: "review-into-the-bridge", g: "waiting", name: "Review folds into the Bridge: step 3", file: "to-dos/review-into-the-bridge.md",
+      sum: "Steps 1–2 shipped. Step 3 retires Team Summary once Review and Vectors agree for a few weeks.",
+      next: "Re-check two more pay weeks; if they agree, ship the redirect.", size: "M", blocker: "Two more weeks.", ver: "v2.3360 / 66 / 68" },
+    { slug: "per-gc-bid-retirement", g: "waiting", name: "Per-GC bids: retire submitted_to / itb_links", file: "to-dos/per-gc-bid-retirement.md",
+      sum: "bid_gcs carries the per-GC state, but 39 + 24 references to the old columns are still live.",
+      next: "One mechanical PR after real per-GC usage.", size: "M", blocker: "Usage.", ver: "v2.2416 base" },
+    { slug: "person-identity-phase-e", g: "waiting", name: "Person identity phase E", file: "to-dos/person-identity-phase-e.md",
+      sum: "NOT NULL on person_id, re-PK off person_name, retire the name cascade. Gated on a quarter with zero fallback hits.",
+      next: "Revisit in December.", size: "M", blocker: "A quiet quarter.", ver: "phases A–D done" },
+    { slug: "journey-map-tier-1", g: "waiting", name: "Journey map: J31-N4", file: "to-dos/journey-map-tier-1.md",
+      sum: "A pointer file; one row still open here (the primary-role steps branch).", next: "Read _DRIFT-2 in the private repo first.", size: "S", blocker: "Private repo context.", ver: "tiers 1–4 mostly closed" },
+
+    // Residuals
+    { slug: "subs-residuals", g: "residual", name: "Subs residuals", file: "to-dos/subs-residuals.md",
+      sum: "Spanish strings in the signature form; benched subs in the crew list; compliance chips and offer templates.", next: "The bench flag (S); the Spanish pass with the next portal change.", size: "S each", blocker: "None.", ver: "board polish done v2.3395" },
+    { slug: "dispatch-residuals", g: "residual", name: "Dispatch residuals", file: "to-dos/dispatch-residuals.md",
+      sum: "Self-heal for add_job_phone requests; dispatch blocks on sheet rows; server-side tag sums.", next: "The phone self-heal is one kernel change.", size: "S", blocker: "None.", ver: "from v2.2880 / 83" },
+    { slug: "robots-residuals", g: "residual", name: "Robots residuals (client side)", file: "to-dos/robots-residuals.md",
+      sum: "A CI test that the twins app directory routes and help slugs exist; the rest waits on CountTooling.", next: "The CI route / slug test (S).", size: "S", blocker: "CT-side work for the rest.", ver: "program in HANDOFF" }
+  ];
+
+  const $ = (s, el = document) => el.querySelector(s);
+  const REPO = "https://github.com/clickconstruction/pipetooling.github.io/blob/main/";
+  const state = { picks: {}, filter: "all", live: false };
+  let db = null;
+
+  // Local fallback so the page works alone
+  const LS = "pt-punch-picks";
+  try { const raw = localStorage.getItem(LS); if (raw) state.picks = JSON.parse(raw) || {}; } catch (e) {}
+
+  function pickOf(slug) { return (state.picks[slug] && state.picks[slug].pick) || ""; }
+  function noteOf(slug) { return (state.picks[slug] && state.picks[slug].note) || ""; }
+
+  function render() {
+    const groupsEl = $("#groups");
+    groupsEl.innerHTML = "";
+    for (const g of GROUPS) {
+      const items = ITEMS.filter(i => i.g === g.key);
+      const sec = document.createElement("section");
+      sec.className = "group";
+      sec.innerHTML = `
+        <div class="ghead">
+          <h2><span class="sw" style="background:${g.color}"></span>${g.name}</h2>
+          <span class="count">${items.length} item${items.length === 1 ? "" : "s"}</span>
+          <p>${g.blurb}</p>
+        </div>
+        <div class="list"></div>`;
+      const list = $(".list", sec);
+      for (const it of items) {
+        const row = document.createElement("article");
+        row.className = "row";
+        row.dataset.slug = it.slug;
+        row.style.setProperty("--g", g.color);
+        const done = g.key === "done";
+        row.classList.toggle("done", done);
+        row.innerHTML = `
+          <div class="stripe"></div>
+          <div class="main">
+            <div class="name"><a href="${REPO}${it.file}" target="_blank" rel="noopener">${it.name}</a><code>${it.ver}</code></div>
+            <p class="sum">${it.sum}</p>
+            <p class="next"><b>Next:</b> ${it.next}</p>
+          </div>
+          <div class="meta">
+            <dl>
+              <dt>Size</dt><dd class="size">${it.size}</dd>
+              <dt>Blocks</dt><dd>${it.blocker}</dd>
+            </dl>
+          </div>
+          ${done ? '<div class="act"><span class="chip-done">shipped</span></div>' : `<div class="act">
+            <div class="seg" role="group" aria-label="Pick for ${it.name}">
+              <button type="button" data-pick="do" aria-pressed="false">Do</button>
+              <button type="button" data-pick="later" aria-pressed="false">Later</button>
+              <button type="button" data-pick="drop" aria-pressed="false">Drop</button>
+            </div>
+            <input class="note" id="note-${it.slug}" type="text" placeholder="A note for the session…" value="">
+          </div>`}`;
+        list.appendChild(row);
+      }
+      groupsEl.appendChild(sec);
+    }
+    groupsEl.addEventListener("click", onPickClick);
+    groupsEl.addEventListener("change", onNoteChange);
+    paint();
+  }
+
+  function paint() {
+    const open = ITEMS.filter(i => i.g !== "done");
+    const counts = { all: open.length, unsorted: 0, do: 0, later: 0, drop: 0 };
+    for (const it of ITEMS) {
+      const p = it.g === "done" ? "" : pickOf(it.slug);
+      if (it.g !== "done") { if (p) counts[p]++; else counts.unsorted++; }
+      const row = document.querySelector(`.row[data-slug="${it.slug}"]`);
+      if (!row) continue;
+      row.querySelectorAll(".seg button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.pick === p)));
+      const note = $(".note", row);
+      if (document.activeElement !== note) note.value = noteOf(it.slug);
+      const show = it.g === "done" ? state.filter === "all" : (state.filter === "all" || (state.filter === "unsorted" ? !p : p === state.filter));
+      row.hidden = !show;
+    }
+    for (const k of Object.keys(counts)) { const el = $("#c-" + k); if (el) el.textContent = counts[k]; }
+    document.querySelectorAll(".group").forEach(sec => {
+      const visible = sec.querySelectorAll(".row:not([hidden])").length;
+      sec.hidden = visible === 0;
+    });
+    const byGroup = {};
+    for (const g of GROUPS) byGroup[g.key] = ITEMS.filter(i => i.g === g.key).length;
+    $("#strip").innerHTML = `
+      <div><div class="n">${byGroup.ready}</div><div class="l">Ready to build</div></div>
+      <div><div class="n">${byGroup.close}</div><div class="l">Close out</div></div>
+      <div><div class="n">${byGroup.gated}</div><div class="l">Owner decision</div></div>
+      <div><div class="n">${byGroup.done}</div><div class="l">Closed this week</div></div>
+      <div><div class="picks"><span class="do">${counts.do} do</span><span class="later">${counts.later} later</span><span class="drop">${counts.drop} drop</span></div><div class="l">${counts.unsorted} unsorted</div></div>`;
+  }
+
+  async function save(slug, patch) {
+    const cur = Object.assign({ pick: "", note: "" }, state.picks[slug] || {}, patch, { at: new Date().toISOString() });
+    state.picks[slug] = cur;
+    try { localStorage.setItem(LS, JSON.stringify(state.picks)); } catch (e) {}
+    paint();
+    if (db) {
+      try { await db.doc("picks/" + slug).set(cur); }
+      catch (e) { setSync(false, "Could not save to the shared picks (" + (e && e.code || "error") + "). Kept on this device."); }
+    }
+  }
+
+  function onPickClick(ev) {
+    const b = ev.target.closest(".seg button");
+    if (!b) return;
+    const slug = b.closest(".row").dataset.slug;
+    const next = pickOf(slug) === b.dataset.pick ? "" : b.dataset.pick;
+    save(slug, { pick: next });
+  }
+  function onNoteChange(ev) {
+    const n = ev.target.closest(".note");
+    if (!n) return;
+    const slug = n.closest(".row").dataset.slug;
+    save(slug, { note: n.value.trim() });
+  }
+
+  function setSync(live, text) {
+    state.live = live;
+    const s = $("#sync"); s.classList.toggle("live", live);
+    $("#syncText").textContent = text;
+  }
+
+  $("#filters").addEventListener("click", ev => {
+    const c = ev.target.closest(".chip"); if (!c) return;
+    state.filter = c.dataset.f;
+    document.querySelectorAll(".chip").forEach(x => x.setAttribute("aria-pressed", String(x === c)));
+    paint();
+  });
+
+  render();
+
+  (async () => {
+    try {
+      db = await window.claude?.use?.("db");
+    } catch (e) { db = null; }
+    if (!db) { setSync(false, "Picks stay on this device only."); return; }
+    db.collection("picks").onSnapshot(snap => {
+      for (const d of snap.docs) { if (d.exists) state.picks[d.id] = d.data(); }
+      for (const ch of snap.docChanges()) { if (ch.type === "removed") delete state.picks[ch.doc.id]; }
+      try { localStorage.setItem(LS, JSON.stringify(state.picks)); } catch (e) {}
+      paint();
+      setSync(true, snap.metadata.fromCache ? "Shared picks, syncing…" : "Shared picks, live. Claude reads these back from the session.");
+    }, err => setSync(false, "Shared picks unavailable (" + err.code + "). Kept on this device."));
+  })();
+</script>
