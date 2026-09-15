@@ -127,6 +127,16 @@ describe('LienDeskModal', () => {
     expect(screen.getByRole('button', { name: /Record it and send/ })).toBeTruthy()
   })
 
+  it('a "send" rule with no notice recorded to the GC still sends the first one to the leader (v2.3469)', () => {
+    const d = data(J650.map((r) => ({ ...r, has_owner: true })), [], true)
+    const loberg = { id: 'loberg', name: 'Loberg Contracting', address: '2904 Corporate Cr, Flower Mound, TX', email: 'office@loberg.test', policy: 'send' as const, policyNote: '' }
+    const withRule: LienDeskData = { ...d, gcsById: { loberg }, queue: buildLienDeskQueue(d.rows, d.items, { loberg: 'send' }, TODAY) }
+    renderWithProviders(<LienDeskModal {...baseProps} authRole="assistant" data={withRule} />)
+    expect(screen.getByRole('button', { name: /Send for approval/ })).toBeTruthy()
+    expect(screen.queryByRole('button', { name: /Put it in the run/ })).toBeNull()
+    expect(screen.getByText(/first notice we've sent them — it goes to the leader; the rule starts with the next one/)).toBeTruthy()
+  })
+
   it('the leader sees what he is deciding, the standing rule, and Approve & next / Hold on an awaiting item', () => {
     const awaiting = {
       id: 'it1', job_id: 'j650', kind: 'notice_53_056', months: ['2026-06', '2026-07', '2026-08'], status: 'awaiting_approval', fields: {}, cover_note: true, drafted_by: 'u-taunya', drafted_at: '2026-09-14T14:00:00Z', submitted_at: '2026-09-14T14:12:00Z', approved_by: null, approved_at: null, approval_mode: null, word_note: '', word_channel: '', held_by: null, held_at: null, hold_reason: '', hold_until: null, sent_filing_id: null, sent_at: null, pulled_back_by: null, pulled_back_at: null, created_at: '2026-09-14T14:00:00Z', updated_at: '2026-09-14T14:12:00Z', voided_at: null,

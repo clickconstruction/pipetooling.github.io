@@ -14,6 +14,7 @@ import {
   PUBLIC_OWNER_DESK_SENTENCE,
   draftReadiness,
   holdUntilFor,
+  ruleWaitsOnFirstNotice,
   submitOutcome,
   type LienAskReason,
   type LienDeskEntry,
@@ -220,6 +221,9 @@ export default function LienDeskModal({
   const property = useMemo(() => resolveLienProperty(address ?? null, ownerRow ?? null), [address, ownerRow])
   const ownerName = lienPropertyOwnerDisplayName(property.owner)
   const promise = selected ? data?.promisesByJob[selected.jobId] ?? null : null
+  const gcHasPriorNotice = Boolean(selected?.gcCustomerId && data?.gcsWithPriorNotice.has(selected.gcCustomerId))
+  /** The GC's "send" rule is live: a notice has been recorded to them before (v2.3469). */
+  const ruleLive = selected ? selected.policy === 'send' && !ruleWaitsOnFirstNotice(selected.policy, gcHasPriorNotice) : false
   const wm = selected ? workMonths?.[selected.jobId] ?? null : null
   const item = selected?.item && selected.item.status !== 'sent' && selected.item.status !== 'missed' ? selected.item : null
   const storedDraft = useMemo(() => (selected?.item ? parseLienDeskDraftFields(selected.item.fields) : null), [selected?.item])
@@ -310,7 +314,7 @@ export default function LienDeskModal({
         const outcome = submitOutcome(selected, { promiseYmd: promise?.promisedYmd ?? null, gcHasPriorNotice: Boolean(selected.gcCustomerId && data.gcsWithPriorNotice.has(selected.gcCustomerId)), gcHeldBefore: Boolean(selected.gcCustomerId && data.gcsHeldBefore.has(selected.gcCustomerId)) }, todayYmd)
         await submitLienDeskItem(id, outcome)
       },
-      selected?.policy === 'send' && !promise ? 'Approved by the standing rule — it is in the run.' : selected?.policy === 'hold' ? 'Held by the standing rule — it re-asks before the deadline.' : 'Sent for approval.',
+      ruleLive && !promise ? 'Approved by the standing rule — it is in the run.' : selected?.policy === 'hold' ? 'Held by the standing rule — it re-asks before the deadline.' : 'Sent for approval.',
     )
   const sendOnWord = () =>
     run(
@@ -574,7 +578,7 @@ export default function LienDeskModal({
               </label>
             ))}
           </div>
-          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>A rule sets the default for every future month on every {gc?.name ?? 'GC'} job. You still see each send in your FYI list, and a live promise always comes back to you.</div>
+          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>A rule sets the default for every future month on every {gc?.name ?? 'GC'} job. You still see each send in your FYI list, and a live promise always comes back to you.{gcHasPriorNotice ? '' : ' “Send” starts with the second notice — this first one comes to you either way, so the office proves the addresses on real mail first.'}</div>
         </div>
       ) : null}
     </div>
@@ -671,8 +675,10 @@ export default function LienDeskModal({
             : readiness.reason === 'public_owner'
               ? PUBLIC_OWNER_DESK_SENTENCE
               : 'Pick at least one month.'
-        : selected.policy === 'send' && !promise
+        : ruleLive && !promise
           ? `${gc?.name} has a standing "send" rule — this goes straight to the run.`
+          : selected.policy === 'send' && !promise
+            ? `${gc?.name} has a standing "send" rule, but this is the first notice we've sent them — it goes to the leader; the rule starts with the next one.`
           : selected.policy === 'hold'
             ? `${gc?.name} has a standing "hold" rule — this parks and re-asks before the deadline.`
             : promise
@@ -719,7 +725,7 @@ export default function LienDeskModal({
                 </button>
               ) : (
                 <button type="button" onClick={sendToLeader} disabled={busy || blocked || !office} style={btn('primary', busy || blocked || !office)}>
-                  {selected.policy === 'send' && !promise ? 'Put it in the run ▸' : 'Send for approval ▸'}
+                  {ruleLive && !promise ? 'Put it in the run ▸' : 'Send for approval ▸'}
                 </button>
               )}
             </div>

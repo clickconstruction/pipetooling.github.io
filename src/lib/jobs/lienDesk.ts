@@ -40,7 +40,7 @@ export type LienNoticePolicy = 'ask' | 'send' | 'hold'
 
 export const LIEN_NOTICE_POLICIES: ReadonlyArray<{ key: LienNoticePolicy; label: string; hint: string }> = [
   { key: 'ask', label: 'Ask me each time', hint: 'Every notice for this GC comes to you before it goes out.' },
-  { key: 'send', label: 'Send notices without asking', hint: 'The office sends on schedule; you see each send in your FYI list.' },
+  { key: 'send', label: 'Send notices without asking', hint: 'From the second notice on — the first one to a GC always comes to you. The office sends on schedule; you see each send in your FYI list.' },
   { key: 'hold', label: "Hold — I'll call first", hint: 'Every month parks until you say so; the desk re-asks three days before each deadline.' },
 ]
 
@@ -261,9 +261,20 @@ export type LienSubmitOutcome =
   | { status: 'held'; hold_reason: 'rule'; hold_until: string }
 
 /**
+ * A "send" rule waits on a first notice (v2.3469): the rule only takes effect
+ * once a notice to that GC has actually gone out and been recorded — the
+ * office has then proved the owner, the addresses and the GC's copy on real
+ * mail. Until then the desk asks the leader, naming the first notice as why.
+ */
+export function ruleWaitsOnFirstNotice(policy: LienNoticePolicy, gcHasPriorNotice: boolean): boolean {
+  return policy === 'send' && !gcHasPriorNotice
+}
+
+/**
  * What submitting a draft does, given the GC's standing rule. A live promise
  * always comes back to the leader, even under "send" — the decision is
- * "paper, or their word". "hold" parks it with a re-ask date.
+ * "paper, or their word"; so does the first notice we have ever sent the GC
+ * (`ruleWaitsOnFirstNotice`). "hold" parks it with a re-ask date.
  */
 export function submitOutcome(
   entry: Pick<LienDeskEntry, 'policy' | 'earliestDeadline'>,
@@ -274,6 +285,7 @@ export function submitOutcome(
     return { status: 'held', hold_reason: 'rule', hold_until: holdUntilFor('call_first', entry.earliestDeadline, null, todayYmd) }
   }
   if (ctx.promiseYmd) return { status: 'awaiting_approval', reason: 'promise_live' }
+  if (ruleWaitsOnFirstNotice(entry.policy, ctx.gcHasPriorNotice)) return { status: 'awaiting_approval', reason: 'first_notice' }
   if (entry.policy === 'send') return { status: 'approved', approval_mode: 'rule' }
   if (ctx.gcHeldBefore) return { status: 'awaiting_approval', reason: 'held_before' }
   if (!ctx.gcHasPriorNotice) return { status: 'awaiting_approval', reason: 'first_notice' }
