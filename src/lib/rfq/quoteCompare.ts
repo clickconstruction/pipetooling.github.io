@@ -57,6 +57,8 @@ export type CompareRowCell = {
   pickReason?: string | null
   lotId?: string | null
   lotTotalCents?: number | null
+  /** Submittals stage 1 (v2.3460): the product name on this house's line (a kit's own label, else the line's), for the specified-vs-submitted status. */
+  label?: string | null
   /**
    * Price Matrix PR 1: how this house priced the fixture when the quote was
    * structured (a kit subtotal + roles, or size options). `unitPriceEachCents`
@@ -187,6 +189,7 @@ export function buildQuoteComparison(args: {
             pickReason: kit.pickReason,
             lotId: kit.lotId,
             lotTotalCents: kit.lotTotalCents,
+            label: lines.find((l) => l.componentRole === 'kit')?.label ?? lines.find((l) => l.label)?.label ?? null,
             kit,
           }
         : {
@@ -200,6 +203,7 @@ export function buildQuoteComparison(args: {
             pickReason: line.pickReason ?? null,
             lotId: line.lotId ?? null,
             lotTotalCents: line.lotTotalCents ?? null,
+            label: line.label ?? null,
             kit: null,
           }
       perHouse[q.supplyHouseId] = cell

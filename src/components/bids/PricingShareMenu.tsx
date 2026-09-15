@@ -11,7 +11,7 @@
 import { useEffect, useRef, useState } from 'react'
 
 type Item = {
-  key: 'print' | 'csv' | 'review' | 'fixtures' | 'd22audit' | 'plugquote' | 'robot'
+  key: 'print' | 'csv' | 'review' | 'fixtures' | 'd22audit' | 'plugquote' | 'plugschedule' | 'robot'
   label: string
   hint?: string
   disabled?: boolean
@@ -38,6 +38,7 @@ export function PricingShareMenu({
   onCopyFixtures,
   onOpenD22Audit,
   onPlugInQuote,
+  onPlugInSchedule,
   onPriceWithRobot,
   robotDisabled,
   robotTitle,
@@ -58,6 +59,8 @@ export function PricingShareMenu({
   onOpenD22Audit?: () => void
   /** Cost-side roles only — omit to hide the "Plug in a quote" item (RFQ v2.2630). */
   onPlugInQuote?: () => void
+  /** Cost-side roles only — omit to hide "Plug in the fixture schedule" (Submittals stage 1, v2.3460). */
+  onPlugInSchedule?: () => void
   /** Cost-side roles only — omit to hide "Price it with the robot" (Price Matrix PR 2). */
   onPriceWithRobot?: () => void
   robotDisabled?: boolean
@@ -108,6 +111,9 @@ export function PricingShareMenu({
       : []),
     ...(onPlugInQuote
       ? [{ key: 'plugquote', label: 'Plug in a quote', hint: 'paste a supply house reply — prices land on each part', childOfPrevious: true, onPick: onPlugInQuote } satisfies Item]
+      : []),
+    ...(onPlugInSchedule
+      ? [{ key: 'plugschedule', label: 'Plug in the fixture schedule', hint: 'paste the plan’s schedule — the compare then says which picks are as specified', childOfPrevious: true, onPick: onPlugInSchedule } satisfies Item]
       : []),
     ...(onPriceWithRobot
       ? [{ key: 'robot', label: 'Price it with the robot', hint: 'reads the quotes in your folders, builds the best-price matrix', childOfPrevious: true, disabled: robotDisabled, title: robotDisabled ? robotTitle : undefined, onPick: onPriceWithRobot } satisfies Item]

@@ -1324,6 +1324,10 @@ export type Database = {
       bid_quote_lines: {
         Row: {
           alternate_note: string | null
+          alternate_reason_kind: string | null
+          alternate_reason_note: string | null
+          availability: string | null
+          lead_time_days: number | null
           basis_price_cents: number | null
           basis_qty: number | null
           cant_supply: boolean
@@ -1349,6 +1353,10 @@ export type Database = {
         }
         Insert: {
           alternate_note?: string | null
+          alternate_reason_kind?: string | null
+          alternate_reason_note?: string | null
+          availability?: string | null
+          lead_time_days?: number | null
           basis_price_cents?: number | null
           basis_qty?: number | null
           cant_supply?: boolean
@@ -1374,6 +1382,10 @@ export type Database = {
         }
         Update: {
           alternate_note?: string | null
+          alternate_reason_kind?: string | null
+          alternate_reason_note?: string | null
+          availability?: string | null
+          lead_time_days?: number | null
           basis_price_cents?: number | null
           basis_qty?: number | null
           cant_supply?: boolean
@@ -1595,6 +1607,62 @@ export type Database = {
             columns: ["supply_house_id"]
             isOneToOne: false
             referencedRelation: "supply_houses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bid_specified_products: {
+        Row: {
+          bid_id: string
+          confirmed_at: string | null
+          confirmed_by: string | null
+          created_at: string
+          created_by: string | null
+          description: string | null
+          fixture: string | null
+          id: string
+          manufacturer: string | null
+          model: string | null
+          source: string
+          tag: string
+          updated_at: string
+        }
+        Insert: {
+          bid_id: string
+          confirmed_at?: string | null
+          confirmed_by?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          fixture?: string | null
+          id?: string
+          manufacturer?: string | null
+          model?: string | null
+          source?: string
+          tag: string
+          updated_at?: string
+        }
+        Update: {
+          bid_id?: string
+          confirmed_at?: string | null
+          confirmed_by?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          fixture?: string | null
+          id?: string
+          manufacturer?: string | null
+          model?: string | null
+          source?: string
+          tag?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bid_specified_products_bid_id_fkey"
+            columns: ["bid_id"]
+            isOneToOne: false
+            referencedRelation: "bids"
             referencedColumns: ["id"]
           },
         ]

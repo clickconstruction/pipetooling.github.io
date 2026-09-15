@@ -21,7 +21,8 @@ import { createPortal } from 'react-dom'
 import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
 import type { SupabaseClient } from '@supabase/supabase-js'
 
-import { buildQuoteComparison, type CompareQuote, type CompareQuoteLine, type CompareRowCell } from '../../lib/rfq/quoteCompare'
+import { buildQuoteComparison, type CompareQuote, type CompareQuoteLine, type CompareRow, type CompareRowCell } from '../../lib/rfq/quoteCompare'
+import { deriveProductStatus, normalizeModel, statusCounts, statusSummaryLine, STATUS_LABELS, type ProductStatus } from '../../lib/submittals/productStatus'
 import { COMPONENT_ROLE_LABELS, describeKitBasis, isComponentRole, type ComponentRole } from '../../lib/rfq/quoteKits'
 import { describeChoiceRange, describeIncomplete, robotColumnText, summarizeRobotWork } from '../../lib/rfq/compareRobotSummary'
 import { ApplyPicksToCostsModal, type ApplyPickItem } from './ApplyPicksToCostsModal'
@@ -101,6 +102,37 @@ type RawQuote = {
 
 type RobotRequestSummary = { id: string; status: string; summary: string | null; result: Record<string, unknown> | null; finished_at: string | null }
 
+/** Submittals stage 1 (v2.3460): the schedule's specified product, keyed by the count-row name it maps to. */
+type SpecifiedRow = { tag: string; fixture: string | null; manufacturer: string | null; model: string | null; description: string | null }
+const keyOfName = (name: string) => name.trim().toLowerCase()
+
+const STATUS_STYLE: Record<ProductStatus, { color: string; bg: string }> = {
+  as_specified: { color: 'var(--text-green-700)', bg: 'var(--bg-green-tint)' },
+  superseded: { color: 'var(--text-blue-700)', bg: 'var(--bg-blue-tint)' },
+  equal: { color: 'var(--text-blue-700)', bg: 'var(--bg-blue-tint)' },
+  alternate: { color: 'var(--text-amber-700)', bg: 'var(--bg-yellow-tint)' },
+  design_change: { color: 'var(--text-red-700)', bg: 'var(--bg-red-tint)' },
+  missing: { color: 'var(--text-red-700)', bg: 'var(--bg-red-tint)' },
+  accessory: { color: 'var(--text-muted)', bg: 'var(--bg-muted)' },
+}
+
+function ProductStatusChip({ status, near }: { status: ProductStatus; near: boolean }) {
+  const st = STATUS_STYLE[status]
+  return (
+    <span data-testid="product-status" style={{ fontSize: '0.62rem', fontWeight: 700, color: st.color, background: st.bg, borderRadius: 999, padding: '0.05rem 0.4rem', whiteSpace: 'nowrap' }} title={near ? 'Same unit, suffix only — confirm' : undefined}>
+      {STATUS_LABELS[status]}{near ? ' · confirm' : ''}
+    </span>
+  )
+}
+
+/** The submitted model from a quote line's label: when the label carries the specified model, it IS the specified model. */
+function submittedModelFromLabel(label: string | null, spec: SpecifiedRow): string | null {
+  if (!label) return null
+  const specModel = normalizeModel(spec.model)
+  if (specModel && normalizeModel(label).includes(specModel)) return spec.model
+  return label
+}
+
 const LINE_COLS_BASE = 'id, fixture, unit_price_each_cents, cant_supply, alternate_note, picked, lot_id, lot_total_cents'
 const LINE_COLS_KIT = `${LINE_COLS_BASE}, component_role, label, option_group, option_label, option_chosen, page_ref, pick_reason, pick_source`
 
@@ -108,6 +140,7 @@ export function QuoteCompareModal({
   open,
   onClose,
   onPlugIn,
+  onPlugInSchedule,
   bidId,
   bidLabel,
   rows,
@@ -120,6 +153,8 @@ export function QuoteCompareModal({
   onClose: () => void
   /** Open the Plug-in modal for another quote. */
   onPlugIn: () => void
+  /** Submittals stage 1 (v2.3460): open "Plug in the fixture schedule". */
+  onPlugInSchedule?: () => void
   bidId: string
   bidLabel: string
   rows: Array<{ id: string; fixture: string; count: number }>
@@ -143,6 +178,8 @@ export function QuoteCompareModal({
   // before it get called out in the header.
   const [neededBy, setNeededBy] = useState<string | null>(null)
   const [snapshotQty, setSnapshotQty] = useState<Map<string, number> | null>(null)
+  /** Submittals stage 1: specified products by count-row key; empty until a schedule is plugged in. */
+  const [specified, setSpecified] = useState<Map<string, SpecifiedRow>>(() => new Map())
   const [applyOpen, setApplyOpen] = useState(false)
   const [expanded, setExpanded] = useState<ReadonlySet<string>>(() => new Set())
   /** The Settle popover: which row + house is choosing an option. */
@@ -192,6 +229,15 @@ export function QuoteCompareModal({
         }
         setSnapshotQty(m)
       } else setSnapshotQty(null)
+      // Submittals stage 1: the schedule's specified products (a checkout ahead of the migration reads none).
+      try {
+        const { data: spec } = await supabase.from('bid_specified_products').select('tag, fixture, manufacturer, model, description').eq('bid_id', bidId)
+        const m = new Map<string, SpecifiedRow>()
+        for (const r of (spec ?? []) as SpecifiedRow[]) if (r.fixture) m.set(keyOfName(r.fixture), r)
+        setSpecified(m)
+      } catch {
+        setSpecified(new Map())
+      }
       // Price Matrix PR 4: the newest robot request with a result — the banner's facts.
       try {
         const { data: req } = await db
@@ -425,9 +471,21 @@ export function QuoteCompareModal({
   const smallMuted: CSSProperties = { fontSize: '0.75rem', color: 'var(--text-muted)' }
   const houseCols = comparison.houses
   const showRobotCol = robot.hasRobotWork || robotQuoteCount > 0
+  const showSpecCol = specified.size > 0
+  /** Submittals stage 1: the row's specified product and the status of its pick. */
+  const rowSpec = (r: CompareRow): { spec: SpecifiedRow; status: ProductStatus; near: boolean; pickedLabel: string | null } | null => {
+    const spec = specified.get(keyOfName(r.fixture))
+    if (!spec) return null
+    const pickedCell = houseCols.map((h) => r.perHouse[h.supplyHouseId]).find((c) => c?.picked)
+    const label = pickedCell?.label ?? null
+    const submitted = pickedCell ? { manufacturer: null, model: submittedModelFromLabel(label, spec), label } : null
+    const d = deriveProductStatus({ specified: { manufacturer: spec.manufacturer, model: spec.model }, submitted })
+    return { spec, status: d.status, near: d.near, pickedLabel: label }
+  }
+  const statusRows = showSpecCol ? comparison.rows.map(rowSpec).filter((x): x is NonNullable<typeof x> => x != null) : []
   const grid: CSSProperties = {
     display: 'grid',
-    gridTemplateColumns: `minmax(0, 1.5fr) 4.5rem repeat(${Math.max(1, houseCols.length)}, minmax(6.5rem, 1fr)) minmax(6rem, 0.9fr)${showRobotCol ? ' minmax(8rem, 1fr)' : ''}`,
+    gridTemplateColumns: `minmax(0, 1.5fr)${showSpecCol ? ' minmax(7rem, 0.9fr)' : ''} 4.5rem repeat(${Math.max(1, houseCols.length)}, minmax(6.5rem, 1fr)) minmax(6rem, 0.9fr)${showRobotCol ? ' minmax(8rem, 1fr)' : ''}`,
     gap: '0.5rem',
     alignItems: 'center',
     padding: '0.3rem 0.6rem',
@@ -452,6 +510,11 @@ export function QuoteCompareModal({
             </p>
           </div>
           <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+            {onPlugInSchedule ? (
+              <button type="button" onClick={onPlugInSchedule} style={{ padding: '0.4rem 0.7rem', background: 'var(--surface)', color: 'var(--text-base)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer', font: 'inherit', fontSize: '0.8125rem' }}>
+                {specified.size > 0 ? 'Fixture schedule' : 'Plug in the fixture schedule'}
+              </button>
+            ) : null}
             <button type="button" onClick={onPlugIn} style={{ padding: '0.4rem 0.85rem', background: '#2563eb', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', font: 'inherit', fontSize: '0.8125rem', fontWeight: 600 }}>
               + Plug in a quote
             </button>
@@ -515,9 +578,20 @@ export function QuoteCompareModal({
               ))}
             </div>
 
+            {showSpecCol ? (
+              <p data-testid="spec-summary" style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--text-base)' }}>
+                <span style={{ fontWeight: 600 }}>Against the schedule:</span> {statusSummaryLine(statusCounts(statusRows.map((x) => ({ status: x.status, reasonKind: null }))))}
+                {comparison.rows.length > statusRows.length ? <span style={{ color: 'var(--text-muted)' }}> · {comparison.rows.length - statusRows.length} quoted row{comparison.rows.length - statusRows.length === 1 ? '' : 's'} with no tag on the schedule</span> : null}
+              </p>
+            ) : onPlugInSchedule ? (
+              <p style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
+                No fixture schedule on this bid yet — <button type="button" onClick={onPlugInSchedule} style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', font: 'inherit', color: 'var(--text-link)', textDecoration: 'underline' }}>plug in the schedule</button> and the compare says which picks are as specified.
+              </p>
+            ) : null}
             <div style={{ border: '1px solid var(--border)', borderRadius: 6, overflow: 'hidden' }}>
               <div style={{ ...grid, background: 'var(--bg-subtle)', borderBottom: '1px solid var(--border)', fontSize: '0.7rem', fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase', color: 'var(--text-muted)' }}>
                 <span>Part</span>
+                {showSpecCol ? <span>Specified</span> : null}
                 <span>Qty</span>
                 {houseCols.map((h) => (<span key={h.supplyHouseId}>{h.houseName}</span>))}
                 <span>Last quoted</span>
@@ -554,6 +628,20 @@ export function QuoteCompareModal({
                           </span>
                           {isKit ? <span style={{ ...smallMuted, fontSize: '0.7rem' }}>kit</span> : null}
                         </span>
+                        {showSpecCol ? (() => {
+                          const rs = rowSpec(r)
+                          return rs ? (
+                            <span style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0, fontSize: '0.72rem', lineHeight: 1.25 }}>
+                              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={[rs.spec.tag, rs.spec.manufacturer, rs.spec.model, rs.spec.description].filter(Boolean).join(' · ')}>
+                                <span style={{ fontWeight: 700, color: 'var(--text-strong)' }}>{rs.spec.tag}</span>{' '}
+                                <span style={{ color: 'var(--text-muted)' }}>{[rs.spec.manufacturer, rs.spec.model].filter(Boolean).join(' ') || rs.spec.description || ''}</span>
+                              </span>
+                              <span><ProductStatusChip status={rs.status} near={rs.near} />{rs.status === 'alternate' && rs.pickedLabel ? <span style={{ ...smallMuted, fontSize: '0.65rem' }}> {rs.pickedLabel}</span> : null}</span>
+                            </span>
+                          ) : (
+                            <span style={{ color: 'var(--text-faint)', fontSize: '0.72rem' }}>no tag</span>
+                          )
+                        })() : null}
                         <span style={{ ...smallMuted, fontVariantNumeric: 'tabular-nums' }}>{r.qtyNow || '—'}</span>
                         {houseCols.map((h) => {
                           const cell = r.perHouse[h.supplyHouseId]
@@ -588,6 +676,7 @@ export function QuoteCompareModal({
                                     {Object.values(r.perHouse).map((c) => c.kit?.components.find((x) => (rs.role ? x.role === rs.role : x.label === rs.label))?.label).find(Boolean) ?? ''}
                                   </span>
                                 </span>
+                                {showSpecCol ? <span /> : null}
                                 <span />
                                 {houseCols.map((h) => {
                                   const comp = r.perHouse[h.supplyHouseId]?.kit?.components.find((x) => (rs.role ? x.role === rs.role : x.label === rs.label))

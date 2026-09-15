@@ -2,7 +2,7 @@
 title: get supply house prices on a bid
 category: Bids & Estimating
 roles: dev, estimator, master_technician, assistant
-keywords: set up on this mac, pricing robot, supply house, quotes, vendor prices, compare quotes, plug in a quote, paste quote, rfq, price request, ferguson, moore supply, parts pricing, best price, quote comparison, requests I sent myself, edit bid, price requests table, requested date, quote link, robot, price it with the robot, price matrix, robot pricing, kits, carriers, needs a choice, incomplete kit, option, settle
+keywords: fixture schedule, specified, as specified, alternate, superseded, design change, submittal, set up on this mac, pricing robot, supply house, quotes, vendor prices, compare quotes, plug in a quote, paste quote, rfq, price request, ferguson, moore supply, parts pricing, best price, quote comparison, requests I sent myself, edit bid, price requests table, requested date, quote link, robot, price it with the robot, price matrix, robot pricing, kits, carriers, needs a choice, incomplete kit, option, settle
 ---
 
 Getting parts priced used to mean texting a list, getting prices back in three different shapes, and retyping them into a spreadsheet. Now the whole loop lives on **Bids → Pricing**: send the list, get the reply in whatever form the vendor likes, and compare houses part by part. Your sale prices never leave the building — vendors only ever see names and counts.
@@ -34,6 +34,14 @@ If the vendor used the quote link, you're done — their quote is already on the
 The Ferguson rep reads prices over the phone. Wendi types them as rough lines in the paste box — "4 inch cast iron 18.90 a foot", "floor drains 148" — hits Match, confirms two guesses, and saves. Thirty seconds, structured quote.
 :::
 
+## Step 2½ — Plug in the fixture schedule
+
+The plans say what is *specified*; the houses quote what they stock. So the compare can tell the two apart, give it the schedule once: open the same {{button:green|▾}} menu and pick **Plug in the fixture schedule** (it is also a button on the compare itself). Paste the plan's PLUMBING FIXTURE SCHEDULE as text, tap {{button:blue|Match to tags}}, and each line becomes one row: the tag (WC-1, LAV-2, DWH-1), the make and model, the description, and the count row it belongs to — a green ✓ where the match is sure, a **?** where it wants a look. Fix anything in place, add a tag by hand, and {{button:green|Save}}.
+
+:::example One paste, eighteen tags
+Wendi copies the schedule off P002 and pastes it. Eighteen tags come back; sixteen matched their count rows on their own, two want a look (the hose bibb and the expansion tank). She picks the two rows, saves, and opens the compare.
+:::
+
 ## Step 3 — Compare and pick
 
 Once any quote is saved, a {{chip:blue|Quotes (1)}} chip sits beside Share — it turns **green** when a quote link comes back. Open it:
@@ -41,6 +49,7 @@ Once any quote is saved, a {{chip:blue|Quotes (1)}} chip sits beside Share — i
 - Parts run down the left, **grouped by Division 22 section**, one column per supply house. The best live price wears a ★.
 - **Tap a price to pick it** for that part — split the order across houses line by line. The picked total at the bottom recomputes at today's counts, and picks are saved for a future PO handoff.
 - A **Last quoted** column shows what each house said the last time anyone asked about that part name, on any bid — a high number smells wrong before you commit.
+- Once the schedule is on the bid, a **Specified** column names the tag and the specified make and model, and each row wears a status for the house you picked: {{chip:green|As specified}}, {{chip:blue|Superseded}}, {{chip:blue|Equal}}, {{chip:yellow|Alternate}}, {{chip:red|Design change}}, {{chip:red|Missing}} (specified, nobody quoted it). A line above the grid counts them — *6 as specified · 8 alternates · 1 design change · 1 missing* — so the alternates are visible the day you pick a house, not the day the GC asks. A row whose pick reads *Same unit · confirm* differs only by a suffix (B74-CH against B74C).
 
 ### Kits, options, and the robot's picks
 
