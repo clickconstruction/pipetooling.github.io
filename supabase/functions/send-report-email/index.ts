@@ -10,9 +10,13 @@ import { APP_CALENDAR_TZ } from "../_shared/appTimeZone.ts"
  *  - auto   { report_id }                         — fired fire-and-forget right
  *                                                    after a report is created;
  *                                                    emails every enabled + auto_send
- *                                                    subscription whose author scope
- *                                                    matches, skipping any already in
- *                                                    the dispatch log.
+ *                                                    subscription whose scope matches
+ *                                                    (all authors · the author is named
+ *                                                    · the author is, or is led by, a
+ *                                                    named team lead — v2.3480, read
+ *                                                    from team_leader_assignments at
+ *                                                    send time), skipping any already
+ *                                                    in the dispatch log.
  *  - manual { mode:'manual', subscription_id,      — "Send now" from the dashboard;
  *             since_days? }                          emails recent in-scope reports not
  *                                                    yet dispatched to that subscription.
@@ -302,6 +306,23 @@ serve(async (req) => {
         ((scopedData ?? []) as Array<{ subscription_id: string }>).map((r) => r.subscription_id),
       )
 
+      // Subscriptions scoped to a team lead of this report's author — or to the
+      // author as a lead (a lead's own reports count for their team). Mirrors
+      // subscriptionMatchesReport in src/lib/reportEmailSubscriptions.ts.
+      const { data: leaderData } = await admin
+        .from('team_leader_assignments')
+        .select('leader_user_id')
+        .eq('member_user_id', report.created_by_user_id)
+      const leaderIds = new Set<string>([report.created_by_user_id])
+      for (const r of (leaderData ?? []) as Array<{ leader_user_id: string }>) leaderIds.add(r.leader_user_id)
+      const { data: teamScopedData } = await admin
+        .from('report_email_subscription_team_leads')
+        .select('subscription_id')
+        .in('leader_user_id', [...leaderIds])
+      const teamScoped = new Set(
+        ((teamScopedData ?? []) as Array<{ subscription_id: string }>).map((r) => r.subscription_id),
+      )
+
       // Already-dispatched for this report.
       const { data: dispatchedData } = await admin
         .from('report_email_dispatch_log')
@@ -312,7 +333,7 @@ serve(async (req) => {
       )
 
       const matched = subs.filter(
-        (s) => (s.all_authors || authorScoped.has(s.id)) && !dispatched.has(s.id),
+        (s) => (s.all_authors || authorScoped.has(s.id) || teamScoped.has(s.id)) && !dispatched.has(s.id),
       )
       if (matched.length === 0) return json({ ok: true, sent: 0, message: 'No matching subscriptions' })
 
@@ -353,6 +374,20 @@ serve(async (req) => {
         .select('author_user_id')
         .eq('subscription_id', sub.id)
       authorIds = ((authorData ?? []) as Array<{ author_user_id: string }>).map((r) => r.author_user_id)
+      // Team leads (v2.3480): the lead and everyone they lead, as of now.
+      const { data: leadData } = await admin
+        .from('report_email_subscription_team_leads')
+        .select('leader_user_id')
+        .eq('subscription_id', sub.id)
+      const leadIds = ((leadData ?? []) as Array<{ leader_user_id: string }>).map((r) => r.leader_user_id)
+      if (leadIds.length > 0) {
+        const { data: memberData } = await admin
+          .from('team_leader_assignments')
+          .select('member_user_id')
+          .in('leader_user_id', leadIds)
+        const memberIds = ((memberData ?? []) as Array<{ member_user_id: string }>).map((r) => r.member_user_id)
+        authorIds = [...new Set([...authorIds, ...leadIds, ...memberIds])]
+      }
       if (authorIds.length === 0) return json({ ok: true, sent: 0, message: 'No authors in scope' })
     }
 

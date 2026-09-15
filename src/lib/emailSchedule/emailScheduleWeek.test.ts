@@ -181,8 +181,8 @@ describe('field report emails (v2.3472)', () => {
       ],
     })
     expect(subs.reportEmails).toEqual([
-      { enabled: true, autoSend: false, allAuthors: false, authors: ['Darren', 'Paige'] },
-      { enabled: false, autoSend: true, allAuthors: true, authors: [] },
+      { enabled: true, autoSend: false, allAuthors: false, authors: ['Darren', 'Paige'], teamLeads: [] },
+      { enabled: false, autoSend: true, allAuthors: true, authors: [], teamLeads: [] },
     ])
   })
 
@@ -192,29 +192,51 @@ describe('field report emails (v2.3472)', () => {
   })
 
   it('describes a subscription', () => {
-    expect(describeReportEmailSubscription({ enabled: true, autoSend: true, allAuthors: true, authors: [] })).toBe(
+    expect(describeReportEmailSubscription({ enabled: true, autoSend: true, allAuthors: true, authors: [], teamLeads: [] })).toBe(
       'every report anyone files',
     )
     expect(
-      describeReportEmailSubscription({ enabled: true, autoSend: true, allAuthors: false, authors: ['Darren'] }),
+      describeReportEmailSubscription({ enabled: true, autoSend: true, allAuthors: false, authors: ['Darren'], teamLeads: [] }),
     ).toBe('reports from Darren')
     expect(
-      describeReportEmailSubscription({ enabled: true, autoSend: true, allAuthors: false, authors: ['Darren', 'Paige'] }),
+      describeReportEmailSubscription({ enabled: true, autoSend: true, allAuthors: false, authors: ['Darren', 'Paige'], teamLeads: [] }),
     ).toBe('reports from Darren and Paige')
     expect(
       describeReportEmailSubscription({
         enabled: true,
         autoSend: true,
-        allAuthors: false,
-        authors: ['A', 'B', 'C', 'D', 'E'],
+        allAuthors: false, authors: ['A', 'B', 'C', 'D', 'E'], teamLeads: [],
       }),
     ).toBe('reports from A, B, C and 2 more')
     expect(
-      describeReportEmailSubscription({ enabled: false, autoSend: false, allAuthors: true, authors: [] }),
+      describeReportEmailSubscription({ enabled: false, autoSend: false, allAuthors: true, authors: [], teamLeads: [] }),
     ).toBe('every report anyone files · sent on demand only · paused')
     expect(
-      describeReportEmailSubscription({ enabled: true, autoSend: true, allAuthors: false, authors: [] }),
+      describeReportEmailSubscription({ enabled: true, autoSend: true, allAuthors: false, authors: [], teamLeads: [] }),
     ).toBe('reports from nobody yet')
+  })
+
+  it('describes team leads (v2.3480)', () => {
+    expect(
+      describeReportEmailSubscription({ enabled: true, autoSend: true, allAuthors: false, authors: [], teamLeads: ['Todd'] }),
+    ).toBe('reports from everyone Todd leads')
+    expect(
+      describeReportEmailSubscription({ enabled: true, autoSend: true, allAuthors: false, authors: [], teamLeads: ['Todd', 'Sam'] }),
+    ).toBe('reports from everyone Todd and Sam lead')
+    expect(
+      describeReportEmailSubscription({
+        enabled: true,
+        autoSend: true,
+        allAuthors: false,
+        authors: ['Darren', 'Paige'],
+        teamLeads: ['Todd'],
+      }),
+    ).toBe('reports from Darren and Paige, and everyone Todd leads')
+    const subs = normalizeMyEmailSubscriptions({
+      events: { paid_in_full: false, payment_received: false },
+      report_emails: [{ enabled: true, auto_send: true, all_authors: false, authors: [], team_leads: ['Todd', ''] }],
+    })
+    expect(subs.reportEmails[0]?.teamLeads).toEqual(['Todd'])
   })
 })
 

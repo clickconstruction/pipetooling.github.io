@@ -15924,6 +15924,42 @@ export type Database = {
           },
         ]
       }
+      report_email_subscription_team_leads: {
+        Row: {
+          created_at: string | null
+          id: string
+          leader_user_id: string
+          subscription_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          leader_user_id: string
+          subscription_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          leader_user_id?: string
+          subscription_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "report_email_subscription_team_leads_leader_user_id_fkey"
+            columns: ["leader_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "report_email_subscription_team_leads_subscription_id_fkey"
+            columns: ["subscription_id"]
+            isOneToOne: false
+            referencedRelation: "report_email_subscriptions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       report_email_subscriptions: {
         Row: {
           all_authors: boolean
@@ -22132,6 +22168,7 @@ export type Database = {
           has_pricing: boolean
         }[]
       }
+      list_report_email_team_leads: { Args: never; Returns: Json }
       list_reports_for_bid: {
         Args: { p_bid_id: string }
         Returns: {
