@@ -21745,6 +21745,27 @@ export type Database = {
           shared_tag_count: number
         }[]
       }
+      list_gc_unpaid_months: {
+        Args: { p_gc_customer_id: string }
+        Returns: {
+          approved_hours: number
+          customer_id: string
+          deadline: string
+          desk_item_id: string
+          desk_months: string[]
+          desk_status: string
+          gc_customer_id: string
+          has_owner: boolean
+          is_billed: boolean
+          job_id: string
+          job_status: string
+          last_work_month: string
+          noticed: boolean
+          open_balance: number
+          property_kind: string
+          work_month: string
+        }[]
+      }
       list_job_account_evidence_gaps: {
         Args: never
         Returns: {
