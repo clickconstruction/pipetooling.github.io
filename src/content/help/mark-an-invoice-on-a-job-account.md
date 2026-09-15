@@ -9,7 +9,7 @@ Some supply houses put a job's materials on a **job account** — an account ope
 ## Flag it when you enter the invoice
 
 1. **Materials → Supply Houses** → open the house → {{button:blue|Add Invoice}} (or edit an existing one).
-2. Fill the invoice as usual and allocate the **J#** under Job allocations.
+2. Fill the invoice as usual — Invoice Number on its own line, then **Purchase Order #**, **Invoice Date** and **Amount** side by side (they stack on a phone) — and allocate the **J#** under Job allocations. The form scrolls inside its own panel on a short screen; the title bar and its × stay put, and **Due Date** and **Link** sit together just above {{button:blue|Save}}.
 3. Check **On job account** — it sits right under the job allocations and reads "*{house} bills the property owner if this invoice goes unpaid — not you.*"
 
 The checkbox needs **exactly one job** on the invoice — job accounts belong to one property. With no job allocated (or the amount split across jobs) it stays off and tells you why.
