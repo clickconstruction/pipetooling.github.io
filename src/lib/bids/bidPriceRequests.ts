@@ -208,7 +208,7 @@ export function validateOutsideRequest(d: OutsideRequestDraft): { ok: true; requ
   if (!d.supplyHouseId) return { ok: false, error: 'Pick a supply house.' }
   if (!/^\d{4}-\d{2}-\d{2}$/.test(d.requestedOn)) return { ok: false, error: 'When was it requested?' }
   const r = normalizePastedLink(d.requestUrl)
-  if (r.error) return { ok: false, error: `Request link: ${r.error}` }
+  if (r.error) return { ok: false, error: `Quote link: ${r.error}` }
   const q = normalizePastedLink(d.quoteUrl)
   if (q.error) return { ok: false, error: `Quote link: ${q.error}` }
   return { ok: true, requestUrl: r.url, quoteUrl: q.url }

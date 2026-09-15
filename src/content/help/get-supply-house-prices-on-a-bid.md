@@ -72,7 +72,7 @@ NWS quoted the RPZ in six sizes. The row reads *needs a choice · $2,864.85 – 
 
 Every bid keeps a list of who you asked: **Edit Bid → Files & Links → Price requests**, right under the plans. Requests the app sent fill in on their own — one row per request, grouped by house, with the day it was requested, the vendor's page, whether they have viewed it, and the quote once it is plugged in. Needed-by sits under the requested date: {{chip:green|✓}} once a quote is in, amber while you wait.
 
-Sent one by email or phone instead? {{button:blue|+ Add a request}} records it: pick the house (or add a new one right there), keep or change the date, and paste a link to the request you sent — a Drive copy, a PDF. That is the whole row: the supply house, when you asked, and the link. When the quote lands, plug it in on Pricing; it does not go in this table.
+Sent one by email or phone instead? {{button:blue|+ Add a request}} records it: pick the house (or add a new one right there), keep or change the date, and paste the link to the quote you received from the supply house — a Drive copy, a PDF. That is the whole row: the supply house, when you asked, and the quote link. Pricing the quote still happens on Pricing: plug it in there so the compare can read it.
 
 :::example One house, two requests
 Ferguson · Sep 2 · Vendor page · needed by Sep 5 ✓

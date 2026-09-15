@@ -443,8 +443,8 @@ export function BidPriceRequestsTable({ bidId, serviceTypeId, pricingHref }: Pro
         <div style={meta}>when it went out</div>
       </td>
       <td style={td}>
-        <input type="url" inputMode="url" value={draft.requestUrl} onChange={(e) => setDraft((d) => ({ ...d, requestUrl: e.target.value }))} placeholder="https://…" aria-label="Request link" style={{ ...mini, width: '100%', boxSizing: 'border-box' }} />
-        <div style={meta}>the link to the request you sent — a Drive copy, a PDF</div>
+        <input type="url" inputMode="url" value={draft.requestUrl} onChange={(e) => setDraft((d) => ({ ...d, requestUrl: e.target.value }))} placeholder="https://…" aria-label="Quote link" style={{ ...mini, width: '100%', boxSizing: 'border-box' }} />
+        <div style={meta}>the link to the quote received from the supply house — a Drive copy, a PDF</div>
       </td>
       <td style={{ ...td, whiteSpace: 'nowrap', textAlign: 'right' }}>
         <span style={{ display: 'inline-flex', gap: '0.4rem' }}>
@@ -504,7 +504,7 @@ export function BidPriceRequestsTable({ bidId, serviceTypeId, pricingHref }: Pro
             <tr>
               <th style={{ ...th, width: '26%' }}>Supply house</th>
               <th style={{ ...th, width: '18%' }}>Requested</th>
-              <th style={{ ...th, width: '40%' }}>Request link</th>
+              <th style={{ ...th, width: '40%' }}>Quote link</th>
               <th style={th}></th>
             </tr>
           </thead>
