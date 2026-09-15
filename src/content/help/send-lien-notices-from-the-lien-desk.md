@@ -85,13 +85,13 @@ Then the footer says what the run takes — *2 ready now · 5 more the moment Us
 
 - {{button:green|Approve all N and send the run ▸}} — dev, master technician. Every ready job's desk item is approved, the ticks apply, and the run opens with the notices, two envelopes each.
 - {{button:amber|The leader said to send them ▸}} — assistant, controller, dev: who said it, when and how, then every notice goes to Ready to send on his word.
-- {{button:blue|Send all N to the leader ▸}} — the office prepares Steps 1–2 and the master decides from his Needs you card.
+- {{button:blue|Send all N to the leader ▸}} — the office prepares Steps 1–3 and the master gets **one card** on his Dashboard (and Quickfill): {{chip:blue|Approve the run for Harborline Builders · 7}} with the reason and the claimed total. It opens the same modal on his phone; {{button:green|Approve all 7 and send the run ▸}} takes the set and applies the ticks. The office then sees {{button:blue|Send the run · 7}} on the desk and prints it.
 
 :::example Nine jobs, one Tuesday
 Taunya hears from Harborline's bookkeeper that the Harbor Ridge draw went to another job. She filters the Pipeline to Harborline, opens ⋯ → Put Harborline on notice. Six of nine owners are missing; the roll finds five, she presses Use all found, and types the sixth from the plat. One job is the city's fire station — excluded, bond claim. She picks *GC is not paying its subs*, writes what she heard, ticks the rule, Winding down and the Legal desk, and presses Send all 7 to the leader. Robert approves from his phone; the office prints the run.
 :::
 
-Nothing is mailed or recorded until *Record the run* — the same run as always.
+Nothing is mailed or recorded until *Record the run* — the same run as always. Afterwards the GC's row on **Bids → Customer review** reads {{chip:red|on notice since Sep 15 · 7}} beside its terms, and the desk's Affidavits pile carries the same jobs with their windows.
 
 ## Who can do what
 

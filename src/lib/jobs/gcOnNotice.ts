@@ -10,8 +10,9 @@
  * a contract balance, the owner state, the affidavit date, and whether the row
  * is ready for the run. Pure; the hook resolves owners and the modal writes.
  */
-import type { LienDeskItemRow, LienNoticeMonthRow } from './lienDesk'
+import type { LienDeskBatch, LienDeskItemRow, LienDeskQueue, LienNoticeMonthRow } from './lienDesk'
 import { filingDeadlineForMonth } from './lienDeadlines'
+import { parseLienDeskDraftFields } from './lienNoticeDraft'
 
 export type GcUnpaidMonthRow = LienNoticeMonthRow & {
   is_billed: boolean
@@ -290,4 +291,26 @@ export function daysUntil(ymd: string | null, todayYmd: string): number | null {
   const b = new Date(`${ymd}T12:00:00Z`).getTime()
   if (Number.isNaN(a) || Number.isNaN(b)) return null
   return Math.round((b - a) / 86400000)
+}
+
+// ---------- the leader's card (v2.3479, PR 3) ----------
+
+/**
+ * The runs the office prepared and sent to the leader: every awaiting item
+ * whose draft carries a `batchReason`, grouped by GC — one Needs You card
+ * each, opening the GC-on-notice modal where Approve all takes the set.
+ */
+export function lienDeskBatches(queue: Pick<LienDeskQueue, 'piles'>, gcNames: Readonly<Record<string, string>> = {}): LienDeskBatch[] {
+  const by = new Map<string, LienDeskBatch>()
+  for (const e of queue.piles.awaiting) {
+    if (!e.item || !e.gcCustomerId) continue
+    const reason = parseLienDeskDraftFields(e.item.fields)?.batchReason ?? ''
+    if (!reason) continue
+    const cur = by.get(e.gcCustomerId) ?? { gcId: e.gcCustomerId, gcName: gcNames[e.gcCustomerId] ?? '', jobs: 0, dollars: 0, reason, earliestDeadline: null }
+    cur.jobs += 1
+    cur.dollars += e.openBalance
+    if (e.earliestDeadline && (!cur.earliestDeadline || e.earliestDeadline < cur.earliestDeadline)) cur.earliestDeadline = e.earliestDeadline
+    by.set(e.gcCustomerId, cur)
+  }
+  return [...by.values()].sort((a, b) => b.dollars - a.dollars)
 }

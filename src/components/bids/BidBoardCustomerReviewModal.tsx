@@ -31,6 +31,7 @@ import { APP_CALENDAR_TZ } from '../../utils/dateUtils'
 import { parsePaySpeedsRpc, type PaySpeedData } from '../../lib/jobs/billedExpectedPay'
 import { buildCustomerPromiseRecords, classifyPromises, formatKeptRecord, formatUsualSlip, parsePromiseRecordsRpc, type CustomerPromiseRecord } from '../../lib/jobs/paymentPromises'
 import { formatPaysIn, paySpeedSpread } from '../../lib/jobs/paymentReliability'
+import { formatYmdMonthDay } from '../../lib/jobs/billedExpectedPay'
 import { parseCustomerTerms, paymentTermsLabel, type CustomerTermsRow } from '../../lib/customerPaymentTerms'
 import CustomerTermsModal from '../customers/CustomerTermsModal'
 
@@ -124,6 +125,8 @@ export function BidBoardCustomerReviewModal({ onClose }: { onClose: () => void }
   const [paySpeeds, setPaySpeeds] = useState<PaySpeedData | null>(null)
   const [promiseRecords, setPromiseRecords] = useState<Map<string, CustomerPromiseRecord> | null>(null)
   const [termsById, setTermsById] = useState<Record<string, CustomerTermsRow>>({})
+  /** Put a GC on notice (v2.3479): GCs whose notices went out as a run — the first sent date and the count. */
+  const [onNoticeById, setOnNoticeById] = useState<Record<string, { since: string; notices: number }>>({})
   const [termsFor, setTermsFor] = useState<{ id: string; name: string } | null>(null)
   const customerIds = useMemo(() => rows.map((r) => (r.key.startsWith('c:') ? r.key.slice(2) : null)).filter((x): x is string => x != null), [rows])
   useEffect(() => {
@@ -163,6 +166,24 @@ export function BidBoardCustomerReviewModal({ onClose }: { onClose: () => void }
           for (const row of (data ?? []) as unknown as Array<Record<string, unknown> & { id: string }>) out[row.id] = parseCustomerTerms(row)
         }
         setTermsById(out)
+        const notice: Record<string, { since: string; notices: number }> = {}
+        for (let i = 0; i < customerIds.length; i += 200) {
+          const { data: sent } = await supabase
+            .from('job_lien_desk_items')
+            .select('sent_at, fields, jobs_ledger!inner(gc_customer_id)' as never)
+            .eq('status', 'sent')
+            .in('jobs_ledger.gc_customer_id', customerIds.slice(i, i + 200))
+          for (const r of (sent ?? []) as unknown as Array<{ sent_at: string | null; fields: unknown; jobs_ledger: { gc_customer_id: string | null } | { gc_customer_id: string | null }[] | null }>) {
+            const jl = Array.isArray(r.jobs_ledger) ? r.jobs_ledger[0] : r.jobs_ledger
+            const gcId = jl?.gc_customer_id
+            const reason = (r.fields as { batchReason?: unknown } | null)?.batchReason
+            if (!gcId || typeof reason !== 'string' || !reason || !r.sent_at) continue
+            const since = r.sent_at.slice(0, 10)
+            const cur = notice[gcId]
+            notice[gcId] = { since: cur && cur.since < since ? cur.since : since, notices: (cur?.notices ?? 0) + 1 }
+          }
+        }
+        setOnNoticeById(notice)
       } catch {
         /* fail-soft */
       }
@@ -444,6 +465,11 @@ export function BidBoardCustomerReviewModal({ onClose }: { onClose: () => void }
                                         {nonStandard ? 'edit terms…' : 'set terms…'}
                                       </button>
                                     ) : null}
+                                    {onNoticeById[cid] ? (
+                                      <span title={`${onNoticeById[cid]!.notices} § 53.056 notice${onNoticeById[cid]!.notices === 1 ? '' : 's'} sent as one run`} style={{ padding: '1px 8px', borderRadius: 9999, fontSize: '0.72rem', fontWeight: 600, background: 'var(--bg-red-tint)', color: 'var(--text-red-700)' }}>
+                                        on notice since {formatYmdMonthDay(onNoticeById[cid]!.since)} · {onNoticeById[cid]!.notices}
+                                      </span>
+                                    ) : null}
                                     {canSetTerms ? (
                                       <button
                                         type="button"
@@ -451,7 +477,7 @@ export function BidBoardCustomerReviewModal({ onClose }: { onClose: () => void }
                                         title="Every owner on every job with this GC gets the § 53.056 notice for every unnoticed month, in one approved run (opens the Pipeline)"
                                         style={{ padding: '1px 8px', border: '1px solid var(--border-amber)', borderRadius: 9999, background: 'var(--bg-amber-tint)', cursor: 'pointer', fontSize: '0.72rem', fontWeight: 600, color: 'var(--text-amber-800)' }}
                                       >
-                                        ⚠ Put on notice…
+                                        {onNoticeById[cid] ? 'the run ›' : '⚠ Put on notice…'}
                                       </button>
                                     ) : null}
                                   </span>

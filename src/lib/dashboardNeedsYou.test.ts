@@ -542,6 +542,15 @@ describe('buildNeedsYouItems', () => {
     expect(leader[1]?.title).toBe('Approve 2 lien notices the office drafted')
     expect(leader[1]?.figure).toBe('2')
     expect(leader[1]?.actionLabel).toBe('Decide')
+    // Put a GC on notice (v2.3479): a prepared run is one card per GC, taken out of the per-notice count.
+    const withBatch = { ...desk, leader: { ...desk.leader, jobs: 9, dollars: 100_000, batches: [{ gcId: 'harborline', gcName: 'Harborline Builders', jobs: 7, dollars: 76_000, reason: 'GC is not paying its subs — the draw was spent', earliestDeadline: '2099-01-10' }] } }
+    const batched = buildNeedsYouItems(inputs({ lienDeskEnabled: true, lienDesk: withBatch, lienDeskLeader: true }))
+    expect(batched.map((i) => i.key)).toEqual(['lien-notice-draft', 'lien-notice-batch', 'lien-notice-approve'])
+    expect(batched[1]?.title).toBe('Approve the run for Harborline Builders')
+    expect(batched[1]?.detail).toContain('$76,000 claimed on 7 notices. GC is not paying its subs — the draw was spent. The earliest window closes 2099-01-10.')
+    expect(batched[1]?.figure).toBe('7')
+    expect(batched[2]?.title).toBe('Approve 2 lien notices the office drafted')
+    expect(buildNeedsYouItems(inputs({ lienDeskEnabled: true, lienDesk: withBatch, lienDeskLeader: false })).map((i) => i.key)).toEqual(['lien-notice-draft'])
     const empty = { ...desk, office: { ...desk.office, jobs: 0 }, leader: { ...desk.leader, jobs: 0 } }
     expect(buildNeedsYouItems(inputs({ lienDeskEnabled: true, lienDesk: empty, lienDeskLeader: true }))).toEqual([])
   })

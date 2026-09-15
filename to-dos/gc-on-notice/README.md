@@ -1,6 +1,6 @@
 # Put a GC on notice — every owner on every job with a failing GC, in one approved run
 
-Status: **in progress** · PR 0 (the first-notice rule) v2.3469 on `claude/gc-on-notice-0-first-notice-rule` · PR 1 (the RPC, the kernel, the modal with Steps 1 · 2 · the decision, the three doors, Approve all → the run) v2.3470 on `claude/gc-on-notice-1-modal` · PR 2 (the cover letter, Step 3) v2.3478 on `claude/gc-on-notice-2-cover-letter` · PR 3 (the leader's card) follows · second-pass mock-ups 2026-09-15 at the Claude artifact *Put a GC on Notice* (four boards: the doors, the modal, the leader's phone card, the run) · the owner-of-record train shipped 2026-09-15 (v2.3447 / v2.3452 / v2.3450 — the app looks owners up on the appraisal roll; Step 1 is *Use all found*, not a paste per row) · 4 owner decisions open (below), one for the attorney · first mock-up: [`mockup.html`](./mockup.html) · built on the Lien desk (v2.3405 / v2.3410 / v2.3412)
+Status: **built** 2026-09-15 — PR 0 v2.3469 (#3214) · PR 1 v2.3470 (#3217) · PR 2 v2.3478 (#3228) · PR 3 v2.3479 · both migrations pushed · live pass of the modal on real data (read-only) in the PR 2 notes · left: the residuals below (a GC-wide demand letter, one envelope for two notices, the attorney's § 53.081 wording) and the first real run on a TEST GC — then delete this file · second-pass mock-ups at the Claude artifact *Put a GC on Notice* · first mock-up: [`mockup.html`](./mockup.html) · built on the Lien desk (v2.3405 / v2.3410 / v2.3412)
 
 ## The ask, in the owner's words
 
@@ -57,12 +57,12 @@ Read against the code on 2026-09-15 (before PR 0), five corrections to the table
 - **A demand letter to the GC for the whole balance** as a fourth tick on the decision. The demand letter (v2.3425–v2.3437) is per job — one bill, one letter, its own basis lines; a GC-wide letter for $74,900 across nine jobs is a new instrument (one statement of account across jobs, one fee clock). Owner decision: build it, or send the per-job letters from Bill Customer as today.
 - **One envelope for two notices** to the same owner at the same address (1016 + 1031 in the mock-up) — the run lists an envelope per notice; merging is a run-modal change.
 
-## Open decisions
+## Decisions taken as proposed (2026-09-15; the owner can flip any)
 
-- **Unbilled jobs:** claim the unpaid contract balance (proposed) or require billing first?
-- **Closed windows:** include the month in the notice as information (proposed) or leave it out?
-- **The cover letter's offer** to be paid directly by the owner — keep it (proposed)? **Attorney:** the wording of the § 53.081 withholding paragraph for homeowners on residential projects.
-- **Who may press it:** master and dev only (proposed), with the office able to prepare Steps 1–3 and send on the leader's word.
+- **Unbilled jobs** claim the unpaid contract balance, said out loud on the row with *Bill the finished work first ›*.
+- **Closed windows** are named in the notice as information, in red on the row.
+- **The cover letter's offer** to be paid directly stays. **Attorney:** the § 53.081 paragraph prints as written until replaced (`owner-decisions-pending.md`).
+- **Who may press it:** Approve all is master / dev; the office prepares Steps 1–3 and sends to the leader (one card) or on his word.
 
 ## How to verify
 

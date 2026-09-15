@@ -16,7 +16,7 @@ When you pick one up: put your branch name on the `Status:` line, drop a session
 
 When a plan doc or a release-notes fragment defers something, add it here (one file, or a line in an existing file) and leave a one-line pointer in the source — each fact has one home.
 
-**The punch list** — [`punch-list.html`](./punch-list.html) is the same index as a board: every open to-do by readiness (ready to build · close out · owner decision · waiting · residuals), what closed this week, a size and a next step per row, and a Do / Later / Drop pick per row (the picks save on the published artifact, not in this file). Regenerate it from this table when the index changes; the artifact is *PipeTooling Punch List*.
+**The punch list** — [`punch-list.html`](./punch-list.html) is the same index as a board: every open to-do by readiness (ready to build · close out · owner decision · waiting · residuals), a size and a next step per row — shipped work is not on it; the release notes carry that record, and a Do / Later / Drop pick per row (the picks save on the published artifact, not in this file). Regenerate it from this table when the index changes; the artifact is *PipeTooling Punch List*.
 
 Index (validated against code on 2026-09-14 at v2.3392; the 2026-09-06 validation was at v2.2935 — the 2026-09-05 sweep record is deleted; what it dropped is carried by the release notes and `docs/recent-features/`):
 

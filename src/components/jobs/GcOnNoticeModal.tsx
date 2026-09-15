@@ -454,7 +454,7 @@ export default function GcOnNoticeModal({ open, gcId, onClose, todayYmd, authRol
                         const proposal = l?.ok ? l.proposal : null
                         const parcel = l?.ok ? l.parcel : null
                         const chips = proposal?.found && row ? readsAs(row, parcel) : []
-                        const county = proposal?.county.county ?? ''
+                        const county = proposal?.county.county || data.countyByJob[j.jobId] || ''
                         const propId = proposal?.provenance?.propId ?? ''
                         const cadUrl = txCountyCadPropertyUrl(county, propId) || txCountyCadSearchUrl(county)
                         const provenance = proposal?.provenance ? parcelProvenanceLine({ parcel_source: proposal.provenance.source, parcel_tax_year: proposal.provenance.taxYear, parcel_id: '' }) : ''

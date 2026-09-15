@@ -77,6 +77,7 @@ export type NeedsYouItem = {
     | 'lien-serve-copy'
     | 'lien-notice-draft'
     | 'lien-notice-approve'
+    | 'lien-notice-batch'
     | 'lien-file-window'
     | 'd22-uncoded'
     | 'hours-approvals'
@@ -141,6 +142,7 @@ export const NEEDS_YOU_RANK: Record<NeedsYouItem['key'], number> = {
   'lien-serve-copy': 10,
   'lien-notice-draft': 40,
   'lien-notice-approve': 40,
+  'lien-notice-batch': 40,
   'lien-file-window': 40,
   'team-reviews': 50,
   'statement-round': 30,
@@ -480,17 +482,38 @@ export function buildNeedsYouItems(inputs: NeedsYouInputs): NeedsYouItem[] {
     })
   }
 
-  if (inputs.lienDeskEnabled && inputs.lienDeskLeader && inputs.lienDesk && inputs.lienDesk.leader.jobs > 0) {
+  // Put a GC on notice (v2.3479): a run the office prepared is one card per GC, not N notices.
+  const batches = inputs.lienDeskEnabled && inputs.lienDeskLeader ? inputs.lienDesk?.leader.batches ?? [] : []
+  const batchJobs = batches.reduce((s, b) => s + b.jobs, 0)
+  if (batches.length > 0) {
+    const first = batches[0]!
+    const money = batches.reduce((s, b) => s + b.dollars, 0).toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 })
+    const earliest = batches.map((b) => b.earliestDeadline).filter((d): d is string => Boolean(d)).sort()[0] ?? null
+    const soon = earliest ? daysUntilYmd(earliest) : null
+    const names = batches.map((b) => b.gcName || 'a GC')
+    items.push({
+      key: 'lien-notice-batch',
+      severity: soon != null && soon <= 7 ? 'red' : 'blue',
+      kicker: 'Lien deadlines · your call',
+      title: batches.length === 1 ? `Approve the run for ${first.gcName || 'a GC'}` : `Approve ${batches.length} runs the office prepared`,
+      detail: `${money} claimed on ${batchJobs} notice${batchJobs === 1 ? '' : 's'}${batches.length > 1 ? ` (${names.join(', ')})` : ''}. ${first.reason}.${earliest ? ` The earliest window closes ${earliest}.` : ''} One approval sends every owner the notice and hands the run to the office.`,
+      figure: String(batchJobs),
+      actionLabel: 'Decide',
+    })
+  }
+
+  if (inputs.lienDeskEnabled && inputs.lienDeskLeader && inputs.lienDesk && inputs.lienDesk.leader.jobs - batchJobs > 0) {
     const l = inputs.lienDesk.leader
+    const jobs = l.jobs - batchJobs
     const money = l.dollars.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 })
     const soon = l.earliestDeadline ? daysUntilYmd(l.earliestDeadline) : null
     items.push({
       key: 'lien-notice-approve',
       severity: soon != null && soon <= 7 ? 'red' : 'blue',
       kicker: 'Lien deadlines · your call',
-      title: l.jobs === 1 ? 'Approve a lien notice the office drafted' : `Approve ${l.jobs} lien notices the office drafted`,
+      title: jobs === 1 ? 'Approve a lien notice the office drafted' : `Approve ${jobs} lien notices the office drafted`,
       detail: `${money} open. ${l.earliestDeadline ? `The earliest window closes ${l.earliestDeadline}.` : ''} Approve, hold, or set a standing rule so the office stops asking for that GC.`,
-      figure: String(l.jobs),
+      figure: String(jobs),
       actionLabel: 'Decide',
     })
   }

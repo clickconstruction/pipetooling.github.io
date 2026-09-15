@@ -16,6 +16,7 @@ import {
 import { parsePromisedPayDatesRpc, type PromisedPayDate } from '../lib/jobs/billedExpectedPay'
 import { buildLienAffidavitQueue, type LienAffidavitQueue, type LienAffidavitRow } from '../lib/jobs/lienDeskAffidavits'
 import type { CustomerAddressRow, JobPropertyOwnerLike } from '../lib/jobs/lienProperty'
+import { lienDeskBatches } from '../lib/jobs/gcOnNotice'
 
 /** The slice of jobs_ledger the desk shows and prints from. */
 export type LienDeskJob = {
@@ -161,6 +162,10 @@ export function useLienDeskData(
           }
         }
         const queue = buildLienDeskQueue(rows, items, policyByCustomer, todayYmd)
+        const gcNames: Record<string, string> = {}
+        for (const g of Object.values(gcsById)) gcNames[g.id] = g.name
+        const summaryWithBatches = summarizeLienDeskForNeedsYou(queue)
+        summaryWithBatches.leader.batches = lienDeskBatches(queue, gcNames)
         const jobsById: Record<string, LienDeskJob> = {}
         for (const j of jobs) jobsById[j.id] = j
 
@@ -208,7 +213,7 @@ export function useLienDeskData(
         if (cancelled) return
         setData({
           queue,
-          summary: summarizeLienDeskForNeedsYou(queue),
+          summary: summaryWithBatches,
           rows,
           items,
           affidavits,
