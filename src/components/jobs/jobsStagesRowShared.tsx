@@ -107,13 +107,15 @@ export type StagesRowRenderContext = {
 
 /**
  * Minimum width for both Stages tables (JobsStagesTable + JobsStagesUnifiedTable).
- * They use table-layout: fixed with a colgroup whose sized columns total 476px;
- * the single flexible column (Job — the Activity column was removed in
- * v2.1555) takes all of the remaining `minWidth − 476` and keeps growing as
- * the page widens. 760 keeps the Job column ≥ ~284px at the floor (the table
- * scrolls sideways inside its own wrapper on phones instead).
+ * They use table-layout: fixed with a colgroup whose sized columns total 516px
+ * (9rem + 14.5rem + 140px — the Progress & payment column widened to 14.5rem in
+ * v2.3462 so its legend never wraps); the single flexible column (Job — the
+ * Activity column was removed in v2.1555) takes all of the remaining
+ * `minWidth − 516` and keeps growing as the page widens. 800 keeps the Job
+ * column ≥ ~284px at the floor (the table scrolls sideways inside its own
+ * wrapper on phones instead).
  */
-export const STAGES_TABLE_MIN_WIDTH = 760
+export const STAGES_TABLE_MIN_WIDTH = 800
 
 /**
  * Edit mode rail (v2.1236): with the ⋯ tools menu's "Edit mode" on, every

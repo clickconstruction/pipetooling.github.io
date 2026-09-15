@@ -263,7 +263,8 @@ export default function JobsStagesTable(props: JobsStagesTableProps) {
         <colgroup>
           <col style={{ width: '9rem' }} />
           <col />
-          <col style={{ width: '12rem' }} />
+          {/* v2.3462: 14.5rem — wide enough that the legend's widest row ("100% Done, not billed" beside a six-figure amount) never wraps. */}
+          <col style={{ width: '14.5rem' }} />
           <col style={{ width: 140 }} />
         </colgroup>
         {hideHeader ? null : (

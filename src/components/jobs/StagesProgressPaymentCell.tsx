@@ -81,7 +81,8 @@ export default function StagesProgressPaymentCell({ model, pctComplete, pctSavin
   // job drawn as stages the bar already says which stage the money is on.
   const stageBar = view?.mode === 'stages'
   const rowStyle: React.CSSProperties = { display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '0.5rem' }
-  const labelStyle: React.CSSProperties = { fontSize: '0.75rem', color: 'var(--text-muted)' }
+  // whiteSpace nowrap (v2.3462): a legend label never wraps — "Done, not billed" used to break onto two lines in the 12rem column; the column is 14.5rem now.
+  const labelStyle: React.CSSProperties = { fontSize: '0.75rem', color: 'var(--text-muted)', whiteSpace: 'nowrap' }
   const alert = billSentAlert ?? null
   const pctLabelStyle: React.CSSProperties = alert ? { ...labelStyle, color: 'var(--text-red-700)', fontWeight: 600 } : labelStyle
   const amountStyle: React.CSSProperties = { fontSize: '0.75rem', fontVariantNumeric: 'tabular-nums' }
