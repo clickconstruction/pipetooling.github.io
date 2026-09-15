@@ -934,6 +934,7 @@ Converted so far: Jobs Crew P&L / Team Labor / off-strip tabs (primary, superint
 | Cost Estimate tab | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ | ✅ |
 | Pricing tab | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ | ❌ |
 | Cover Letter tab | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ | ❌ |
+| Submittals tab (v2.3466) | ✅ | ✅ | ✅ | ❌ | ✅ | ❌ | ❌ |
 | Submission tab | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ | ❌ |
 | Manage book versions | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ | ✅ |
 

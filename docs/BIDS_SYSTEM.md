@@ -89,6 +89,7 @@ when_to_read:
 9. [Pricing Tab](#pricing-tab)
 10. [Bid Versions & Pricings](#bid-versions--pricings)
 11. [Cover Letter Tab](#cover-letter-tab)
+11½. [Submittals Tab](#submittals-tab)
 12. [Submission & Followup Tab](#submission--followup-tab)
 13. [RFI Tab](#rfi-tab)
 14. [Change Order Tab](#change-order-tab)
@@ -1428,6 +1429,20 @@ When the issued drawings are too rough to bid to, the office bids to its own mar
 
 ---
 
+## Submittals Tab
+
+### Purpose
+The submittal package as **rows, built from the picks** (Submittals stage 2b, v2.3466; plan and stages in [`to-dos/submittals/README.md`](../to-dos/submittals/README.md)): one revision at a time, one row per tag on the plan's fixture schedule — the specified product (`bid_specified_products`, plugged in on Pricing, v2.3460), the submitted product (the picked `bid_quote_lines` row), the status against the schedule, the reason and lead time typed at the pick (v2.3464), the cut-sheet pages, and, from the second revision on, what changed. The tab is a lens on decisions made on the Pricing compare; nothing here is typed from scratch.
+
+### Surface
+[`BidsSubmittalsTab`](../src/components/bids/BidsSubmittalsTab.tsx) (after Cover Letter; office and estimator roles — superintendents and primaries never see it, like Pricing). The standard bid picker, then: the title with preview, *N tags on the schedule · N picked lines* with a door to Pricing; **Build Rev 1 from the picks** when no revision exists; the revision strip (`Rev N · status · date`); **Rebuild rows from picks** (draft), **Drop a vendor PDF** (stored once at `<bid_id>/<submittal_id>/<index>.pdf` in the private `bid-submittals` bucket, page count via pdf-lib, listed in `source_files`), **Delete draft**, **New revision** (carries every row, marks the diff, supersedes an unshared draft); six tiles (`revisionTiles`); the table — Tag · Specified · Submitted · Status ([`ProductStatusChip`](../src/components/bids/ProductStatusChip.tsx)) · Reason (*say why* when owed) · Lead time · Sheet (*✓ p.1–2* or *sheet needed*) · Since Rev N-1 · Edit. [`SubmittalItemEditDialog`](../src/components/bids/SubmittalItemEditDialog.tsx) edits a row: status, reason chips + note, lead time, the sheet as a file + typed page range.
+
+### Kernels
+`src/lib/submittals/`: `buildSubmittalRows` (specified × picks → rows; carry-forward; the diff), `submittalRevision` (stored rows ↔ kernel inputs, tiles, pages, chip words), `picksFromQuotes` (latest quote per house → one pick per fixture), `productStatus`, `leadTime`, `parseFixtureSchedule`, `trimPdf`. Help: *build a submittal package*.
+
+### Next
+The package PDF (2c), the page strip with Done with this file (3a), Share and the GC's decisions on rows (4a), the Needs You cards and the won question (4b, 4c), the portal (stage 5), the robots (stage 6).
+
 ## Submission & Followup Tab
 
 > Renders as the **By status** lens of the merged **Followup** tab (see the note atop [Builder Review Tab](#builder-review-tab)); tab key `submission-followup` unchanged.
@@ -2049,6 +2064,13 @@ Bids table access:
 - **estimator**: Full CRUD
 
 ---
+
+### Submittals tables (v2.3460 · v2.3464 · v2.3465)
+- `bid_specified_products` — one row per (bid, tag): the schedule's `manufacturer · model · description`, `fixture` (the count-row name it maps to), `source` (`pasted · robot · typed`), `confirmed_by/at`. UNIQUE (bid_id, tag).
+- `bid_quote_lines` + `alternate_reason_kind` · `alternate_reason_note` · `lead_time_days` · `availability` · `product_status_override` — the estimator's answer at the pick, written to every line of the picked cell.
+- `bid_submittals` — one revision per (bid, `rev_number`): `status` (`draft · shared · reviewed · superseded`), `title`, `note`, `package_path`, `source_files` jsonb (the dropped vendor PDFs), `shared_at/by`, `job_ledger_id`.
+- `bid_submittal_items` — one row per tag on a revision: specified × submitted, `status`, `reason_kind/note`, `lead_time_days`, `sheet_file` + `sheet_pages[]` + `sheet_source`, `carried_from_item_id`, the reviewer's `review_decision/note`, name, email, time.
+- Bucket `bid-submittals` (private): `<bid_id>/<submittal_id>/<index>.pdf`, `package-rev<N>.pdf`. RLS and the bucket policies: the pricing-side roles on bids `can_access_bid_for_pricing` admits (`ACCESS_CONTROL.md` → Submittals).
 
 ## Integration with Materials
 

@@ -23,6 +23,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 
 import { buildQuoteComparison, type CellAnnotation, type CompareQuote, type CompareQuoteLine, type CompareRow, type CompareRowCell } from '../../lib/rfq/quoteCompare'
 import { deriveProductStatus, needsReason, normalizeModel, statusCounts, statusSummaryLine, REASON_LABELS, STATUS_LABELS, type ProductStatus, type ReasonKind, type StatusOverride } from '../../lib/submittals/productStatus'
+import { ProductStatusChip } from './ProductStatusChip'
 import { describeLeadTime, LEAD_TIME_PRESETS, parseLeadTime, pickAnnotationPatch, type PickAnnotation } from '../../lib/submittals/leadTime'
 import { COMPONENT_ROLE_LABELS, describeKitBasis, isComponentRole, type ComponentRole } from '../../lib/rfq/quoteKits'
 import { describeChoiceRange, describeIncomplete, robotColumnText, summarizeRobotWork } from '../../lib/rfq/compareRobotSummary'
@@ -111,25 +112,6 @@ type RobotRequestSummary = { id: string; status: string; summary: string | null;
 /** Submittals stage 1 (v2.3460): the schedule's specified product, keyed by the count-row name it maps to. */
 type SpecifiedRow = { tag: string; fixture: string | null; manufacturer: string | null; model: string | null; description: string | null }
 const keyOfName = (name: string) => name.trim().toLowerCase()
-
-const STATUS_STYLE: Record<ProductStatus, { color: string; bg: string }> = {
-  as_specified: { color: 'var(--text-green-700)', bg: 'var(--bg-green-tint)' },
-  superseded: { color: 'var(--text-blue-700)', bg: 'var(--bg-blue-tint)' },
-  equal: { color: 'var(--text-blue-700)', bg: 'var(--bg-blue-tint)' },
-  alternate: { color: 'var(--text-amber-700)', bg: 'var(--bg-yellow-tint)' },
-  design_change: { color: 'var(--text-red-700)', bg: 'var(--bg-red-tint)' },
-  missing: { color: 'var(--text-red-700)', bg: 'var(--bg-red-tint)' },
-  accessory: { color: 'var(--text-muted)', bg: 'var(--bg-muted)' },
-}
-
-function ProductStatusChip({ status, near }: { status: ProductStatus; near: boolean }) {
-  const st = STATUS_STYLE[status]
-  return (
-    <span data-testid="product-status" style={{ fontSize: '0.62rem', fontWeight: 700, color: st.color, background: st.bg, borderRadius: 999, padding: '0.05rem 0.4rem', whiteSpace: 'nowrap' }} title={near ? 'Same unit, suffix only — confirm' : undefined}>
-      {STATUS_LABELS[status]}{near ? ' · confirm' : ''}
-    </span>
-  )
-}
 
 /** The submitted model from a quote line's label: when the label carries the specified model, it IS the specified model. */
 function submittedModelFromLabel(label: string | null, spec: SpecifiedRow): string | null {

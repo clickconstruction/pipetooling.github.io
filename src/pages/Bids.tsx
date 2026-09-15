@@ -81,6 +81,7 @@ import { BidsCountsTab } from '../components/bids/BidsCountsTab'
 import { BidsLaborTab } from '../components/bids/BidsLaborTab'
 import { BidsPricingTab } from '../components/bids/BidsPricingTab'
 import { BidsCoverLetterTab } from '../components/bids/BidsCoverLetterTab'
+import { BidsSubmittalsTab } from '../components/bids/BidsSubmittalsTab'
 import { BidsTakeoffTab } from '../components/bids/BidsTakeoffTab'
 import { BidVersionPicker } from '../components/bids/BidVersionPicker'
 import { BidsPricingCalculator } from '../components/bids/BidsPricingCalculator'
@@ -251,7 +252,7 @@ export default function Bids() {
   const { bounce: roleGateBounce } = useRoleGate(myRole, authUser?.id)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [activeTab, setActiveTab] = useState<'bid-board' | 'robot-board' | 'audits' | 'robot-shadows' | 'robot-queue' | 'robot-scoreboard' | 'robot-console' | 'builder-review' | 'call-queue' | 'working' | 'bid-costs' | 'estimators' | 'counts' | 'takeoffs' | 'labor' | 'pricing' | 'cover-letter' | 'submission-followup' | 'why-we-lost' | 'waiting-to-hear' | 'rfi' | 'change-order' | 'lien-release'>('bid-board')
+  const [activeTab, setActiveTab] = useState<'bid-board' | 'robot-board' | 'audits' | 'robot-shadows' | 'robot-queue' | 'robot-scoreboard' | 'robot-console' | 'builder-review' | 'call-queue' | 'working' | 'bid-costs' | 'estimators' | 'counts' | 'takeoffs' | 'labor' | 'pricing' | 'cover-letter' | 'submittals' | 'submission-followup' | 'why-we-lost' | 'waiting-to-hear' | 'rfi' | 'change-order' | 'lien-release'>('bid-board')
   
   // Service Types state
   const [serviceTypes, setServiceTypes] = useState<ServiceType[]>([])
@@ -1714,7 +1715,7 @@ export default function Bids() {
 
   /** Journey map P-B1: the only Bids tabs a primary (customer-side principal) may hold. */
   const PRIMARY_BIDS_TABS = ['bid-board', 'rfi', 'change-order', 'lien-release'] as const
-  const BIDS_TABS = ['bid-board', 'robot-board', 'audits', 'robot-shadows', 'robot-queue', 'robot-scoreboard', 'robot-console', 'builder-review', 'call-queue', 'working', 'bid-costs', 'estimators', 'counts', 'takeoffs', 'labor', 'pricing', 'cover-letter', 'submission-followup', 'why-we-lost', 'waiting-to-hear', 'rfi', 'change-order', 'lien-release'] as const
+  const BIDS_TABS = ['bid-board', 'robot-board', 'audits', 'robot-shadows', 'robot-queue', 'robot-scoreboard', 'robot-console', 'builder-review', 'call-queue', 'working', 'bid-costs', 'estimators', 'counts', 'takeoffs', 'labor', 'pricing', 'cover-letter', 'submittals', 'submission-followup', 'why-we-lost', 'waiting-to-hear', 'rfi', 'change-order', 'lien-release'] as const
 
   // Lazy projects fetch for the bid form's linked-project picker (first open only).
   useEffect(() => {
@@ -1830,7 +1831,7 @@ export default function Bids() {
       setActiveTab('bid-board')
       return
     }
-    if (myRole === 'superintendent' && tab && ['pricing', 'cover-letter', 'submission-followup', 'why-we-lost', 'waiting-to-hear', 'call-queue'].includes(tab)) {
+    if (myRole === 'superintendent' && tab && ['pricing', 'cover-letter', 'submittals', 'submission-followup', 'why-we-lost', 'waiting-to-hear', 'call-queue'].includes(tab)) {
       // v2.2882 (C25 J10-F12): say so, then land on the board.
       roleGateBounce('bids-office-tab', `/bids?tab=${tab}`)
       setSearchParams((p) => {
@@ -3652,6 +3653,14 @@ export default function Bids() {
         >
           Cover Letter
         </button>
+        <button
+          type="button"
+          data-tabkey="submittals"
+          onClick={() => selectBidsTab('submittals')}
+          style={tabStyle(activeTab === 'submittals')}
+        >
+          Submittals
+        </button>
         </>
         )}
         {/* v2.1387: Submission & Followup lives inside the merged Followup tab
@@ -4615,6 +4624,22 @@ export default function Bids() {
           onSaveBidSubmissionQuickAdd={saveBidSubmissionQuickAdd}
         />
         </>
+      )}
+
+      {/* Submittals Tab (Submittals stage 2b): a lens on the product decisions made on the Pricing compare */}
+      {activeTab === 'submittals' && (
+        <BidsSubmittalsTab
+          bids={bidsTyped}
+          selectedBid={selectedBidForPricing}
+          narrowViewport640={narrowViewport640}
+          bidPreview={bidPreviewOnBidsPage}
+          onSelectBid={(bid) => selectBidAndSyncUrl(bid, 'submittals')}
+          onClose={closeSharedBidAndClearUrl}
+          onOpenPricing={(bid) => selectBidAndSyncUrl(bid, 'pricing')}
+          onlyMyBids={onlyMyBids}
+          setOnlyMyBids={setOnlyMyBids}
+          isMyBid={isMyBid}
+        />
       )}
 
       {/* Submission & Followup Tab */}
