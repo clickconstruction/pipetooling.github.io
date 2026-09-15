@@ -2,7 +2,8 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { geocodeWithGoogle } from '../_shared/googleGeocode.ts'
 import { geocodeWithCensus } from '../_shared/censusGeocode.ts'
-import { parseTxParcelIdentify, TX_PARCEL_IDENTIFY_URL, type ParcelRecord } from '../_shared/txParcelRecord.ts'
+import type { ParcelRecord } from '../_shared/txParcelRecord.ts'
+import { identifyParcel } from '../_shared/txParcelIdentify.ts'
 
 /**
  * property-lookup (customer properties train, PR 1 — v2.3004).
@@ -28,7 +29,6 @@ const corsHeaders = {
 }
 
 const MIN_ADDRESS_LEN = 5
-const IDENTIFY_TIMEOUT_MS = 12_000
 const ALLOWED_ROLES = new Set(['dev', 'master_technician', 'assistant', 'controller', 'estimator'])
 
 function normalizeKey(address: string): string {
@@ -56,48 +56,8 @@ type Ok = {
 }
 type Fail = { ok: false; address_normalized: string; error: string; detail?: string }
 
-/**
- * Identify the parcel under the point. The layer is scale-dependent: a very
- * tight extent returns nothing, so the extent is ±0.005° at 400px (≈2.7 m per
- * pixel). Tolerance 1px first (the containing polygon only), then 3px (≈8 m)
- * for a pin that landed a few metres onto the street — measured 2026-09-07
- * across Comal, Hays and Bexar (v2.3016).
- */
-async function identifyOnce(lat: number, lng: number, tolerance: number): Promise<{ parcel: ParcelRecord | null; error?: string }> {
-  const d = 0.005
-  const params = new URLSearchParams({
-    geometry: `${lng},${lat}`,
-    geometryType: 'esriGeometryPoint',
-    sr: '4326',
-    layers: 'all:0',
-    tolerance: String(tolerance),
-    mapExtent: `${lng - d},${lat - d},${lng + d},${lat + d}`,
-    imageDisplay: '400,400,96',
-    returnGeometry: 'false',
-    f: 'json',
-  })
-  const ctrl = new AbortController()
-  const timer = setTimeout(() => ctrl.abort(), IDENTIFY_TIMEOUT_MS)
-  try {
-    const r = await fetch(`${TX_PARCEL_IDENTIFY_URL}?${params.toString()}`, { signal: ctrl.signal })
-    if (!r.ok) return { parcel: null, error: `parcel service HTTP ${r.status}` }
-    const j: unknown = await r.json()
-    const err = (j as { error?: { message?: string } } | null)?.error
-    if (err) return { parcel: null, error: `parcel service: ${err.message ?? 'error'}` }
-    return { parcel: parseTxParcelIdentify(j) }
-  } catch (e) {
-    const msg = e instanceof Error && e.name === 'AbortError' ? 'parcel service timed out' : 'parcel service unreachable'
-    return { parcel: null, error: msg }
-  } finally {
-    clearTimeout(timer)
-  }
-}
-
-async function identifyParcel(lat: number, lng: number): Promise<{ parcel: ParcelRecord | null; error?: string }> {
-  const tight = await identifyOnce(lat, lng, 1)
-  if (tight.parcel || tight.error) return tight
-  return identifyOnce(lat, lng, 3)
-}
+// The parcel identify (tolerance ladder, timeout) lives in `_shared/txParcelIdentify.ts`
+// since v2.3450 so the nightly `owner-confirm-nightly` function asks the same way.
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {

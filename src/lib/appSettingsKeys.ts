@@ -4,6 +4,14 @@ export const APP_SETTINGS_KEY_JOB_TALLY_MIN_POSTED_YMD = 'job_tally_min_posted_y
 /** `app_settings.key` — 'true' in `value_text` hides dev-role staff transactions in the Stale tally follow-up (list + banner count) for everyone. Dev writes; all authenticated read. */
 export const APP_SETTINGS_KEY_HIDE_DEV_TALLY_TRANSACTIONS = 'hide_dev_tally_transactions' as const
 
+/**
+ * `app_settings.key` — 'true' in `value_text` lets the nightly `owner-confirm-nightly` edge function save the
+ * appraisal roll's owner of record on every GC job with approved hours and no owner, as *from the roll ·
+ * unconfirmed* (owner of record decision 5, v2.3450). Off on day one. Master + dev write (key-scoped UPDATE
+ * policy); all authenticated read. @see `src/lib/ownerAutoConfirmSetting.ts`
+ */
+export const APP_SETTINGS_KEY_OWNER_AUTO_CONFIRM_FROM_ROLL_V1 = 'owner_auto_confirm_from_roll_v1' as const
+
 /** JSON map in `value_text`: Mercury kind → `{ nickname, color }` for Jobs → Bank Payments. Dev writes; all authenticated read. */
 export const APP_SETTINGS_KEY_BANK_PAYMENTS_KIND_BADGES = 'bank_payments_kind_badges_v1' as const
 

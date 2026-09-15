@@ -11,6 +11,8 @@ import {
   LIEN_ASK_REASON_LABELS,
   LIEN_DESK_PILES,
   LIEN_NOTICE_POLICIES,
+  PUBLIC_OWNER_DESK_SENTENCE,
+  draftReadiness,
   holdUntilFor,
   submitOutcome,
   type LienAskReason,
@@ -35,6 +37,7 @@ import { useIsMobile } from '../../hooks/useIsMobile'
 import { buildLienDeskRun } from '../../lib/jobs/lienDeskRun'
 import LienDeskRunModal from './LienDeskRunModal'
 import LienDeskAffidavitPane, { affidavitDeadlineWords } from './LienDeskAffidavitPane'
+import LienDeskOwnerPane from './LienDeskOwnerPane'
 import { LIEN_AFFIDAVIT_PILES, type LienAffidavitPile } from '../../lib/jobs/lienDeskAffidavits'
 
 /**
@@ -261,7 +264,9 @@ export default function LienDeskModal({
   const docHtml = useMemo(() => filingDocHtml(buildLienNoticeBlocks(noticeFields, docExtras)), [noticeFields, docExtras])
 
   const draftFields = (): LienDeskDraftFields => ({ notice: noticeFields, gcEmail: gc?.email ?? '' })
-  const ready = Boolean(ownerName && property.owner.mailingAddress) && Boolean(gc?.name) && monthsList.length > 0
+  // Readiness (v2.3450 kernel): GC, owner with a mailing address, months — and never a public owner.
+  const readiness = draftReadiness({ gcName: gc?.name ?? '', ownerName, ownerMailingAddress: property.owner.mailingAddress, monthsCount: monthsList.length })
+  const ready = readiness.ready
 
   const askReason: LienAskReason | null = useMemo(() => {
     if (!selected || !data) return null
@@ -466,12 +471,21 @@ export default function LienDeskModal({
           <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
             <span style={{ fontWeight: 700, color: ownerName && property.owner.mailingAddress ? 'var(--text-green-800)' : 'var(--text-red-600)' }}>{ownerName && property.owner.mailingAddress ? '✓' : '✗'}</span>
             <span>Owner of record with a mailing address{ownerName ? ` — ${ownerName}${property.owner.mailingAddress ? `, ${property.owner.mailingAddress}` : ' (mailing address missing)'}` : ''}</span>
-            {!(ownerName && property.owner.mailingAddress) ? (
-              <button type="button" onClick={() => onOpenEditJob(selected.jobId)} style={{ ...btn('plain'), padding: '1px 8px', fontSize: '0.72rem' }} title="Edit Job → Property record: link or add the property, then its owner of record">
-                Find the owner ›
-              </button>
-            ) : null}
           </div>
+          {/* The roll's answer with Use, the Confirm on an unconfirmed nightly save, or the bond-claim sentence (v2.3450). */}
+          <LienDeskOwnerPane
+            key={selected.jobId}
+            job={job}
+            jobId={selected.jobId}
+            gcName={gc?.name ?? ''}
+            gcCustomerId={selected.gcCustomerId}
+            address={address}
+            owner={property.owner}
+            ownerName={ownerName}
+            userId={authUserId}
+            onChanged={onChanged}
+            onOpenEditJob={onOpenEditJob}
+          />
           <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
             <span style={{ fontWeight: 700, color: gc?.name ? 'var(--text-green-800)' : 'var(--text-red-600)' }}>{gc?.name ? '✓' : '✗'}</span>
             <span>Original contractor{gc?.name ? `: ${gc.name}${gc.address ? `, ${gc.address}` : ' — no address on the customer'}` : ' — set the GC on the job'}</span>
@@ -650,11 +664,13 @@ export default function LienDeskModal({
     if (state === 'needs_owner' || state === 'to_draft' || (state === 'missed' && selected.dueMonths.length > 0)) {
       const blocked = !ready
       const say = blocked
-        ? !gc?.name
+        ? readiness.reason === 'no_gc'
           ? 'Blocked until the GC is on the job.'
-          : !(ownerName && property.owner.mailingAddress)
+          : readiness.reason === 'no_owner'
             ? 'Blocked until the owner of record is on the property record.'
-            : 'Pick at least one month.'
+            : readiness.reason === 'public_owner'
+              ? PUBLIC_OWNER_DESK_SENTENCE
+              : 'Pick at least one month.'
         : selected.policy === 'send' && !promise
           ? `${gc?.name} has a standing "send" rule — this goes straight to the run.`
           : selected.policy === 'hold'

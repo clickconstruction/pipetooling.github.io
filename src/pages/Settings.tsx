@@ -61,6 +61,7 @@ import MapDefaultViewSettingsBlock from '../components/settings/MapDefaultViewSe
 import StripeInvoiceFooterDevSettingsBlock from '../components/settings/StripeInvoiceFooterDevSettingsBlock'
 import PhysicalInvoiceIssuerDevSettingsBlock from '../components/settings/PhysicalInvoiceIssuerDevSettingsBlock'
 import TestReportSettingsBlock from '../components/settings/TestReportSettingsBlock'
+import OwnerAutoConfirmSettingsBlock from '../components/settings/OwnerAutoConfirmSettingsBlock'
 import PhysicalInvoiceFooterDevSettingsBlock from '../components/settings/PhysicalInvoiceFooterDevSettingsBlock'
 import BillCustomerMemoDevSettingsBlock from '../components/settings/BillCustomerMemoDevSettingsBlock'
 import BidCoverLetterDefaultsSettingsBlock from '../components/settings/BidCoverLetterDefaultsSettingsBlock'
@@ -1507,6 +1508,8 @@ export default function Settings() {
       )}
       {/* Test reports (v2.3298): the certifier and the paper's text — the office set that files them. */}
       {(myRole === 'dev' || myRole === 'master_technician' || isAssistantLike(myRole)) && <TestReportSettingsBlock />}
+      {/* Owner of record (v2.3450): the nightly save-from-the-roll switch, off on day one — master + dev. */}
+      {(myRole === 'dev' || myRole === 'master_technician') && <OwnerAutoConfirmSettingsBlock />}
       {myRole === 'dev' && (
         <>
           <StripeInvoiceFooterDevSettingsBlock />

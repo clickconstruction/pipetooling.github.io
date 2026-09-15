@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import {
   buildLienDeskQueue,
+  draftReadiness,
   holdExpired,
+  PUBLIC_OWNER_DESK_SENTENCE,
   holdUntilFor,
   severityForDaysLeft,
   submitOutcome,
@@ -169,5 +171,24 @@ describe('summarizeLienDeskForNeedsYou', () => {
     expect(s.office).toEqual({ jobs: 2, months: 4, dollars: 37_350, needsOwner: 1, earliestDeadline: '2026-09-15', ready: 0 })
     expect(s.leader).toEqual({ jobs: 1, dollars: 2_245, earliestDeadline: '2026-09-15' })
     expect(s.held).toBe(0)
+  })
+})
+
+describe('draftReadiness (v2.3450)', () => {
+  const ok = { gcName: 'Loberg Contracting', ownerName: 'Elbel Holdings LLC', ownerMailingAddress: '4 Example Way, Schertz, TX', monthsCount: 2 }
+  it('is ready with a GC, an owner with a mailing address, and at least one month', () => {
+    expect(draftReadiness(ok)).toEqual({ ready: true, reason: null })
+  })
+  it('names the first block in pane order: GC, owner, months', () => {
+    expect(draftReadiness({ ...ok, gcName: '' })).toEqual({ ready: false, reason: 'no_gc' })
+    expect(draftReadiness({ ...ok, ownerName: '' })).toEqual({ ready: false, reason: 'no_owner' })
+    expect(draftReadiness({ ...ok, ownerMailingAddress: ' ' })).toEqual({ ready: false, reason: 'no_owner' })
+    expect(draftReadiness({ ...ok, monthsCount: 0 })).toEqual({ ready: false, reason: 'no_months' })
+  })
+  it('a public owner is never draftable — the remedy is a bond claim', () => {
+    expect(draftReadiness({ ...ok, ownerName: 'CITY OF ROUND ROCK', ownerMailingAddress: '221 E Main St, Round Rock, TX' })).toEqual({ ready: false, reason: 'public_owner' })
+    expect(draftReadiness({ ...ok, ownerName: 'Comal ISD' })).toEqual({ ready: false, reason: 'public_owner' })
+    expect(draftReadiness({ ...ok, ownerName: 'USA Properties LLC' })).toEqual({ ready: true, reason: null })
+    expect(PUBLIC_OWNER_DESK_SENTENCE).toMatch(/payment bond/)
   })
 })

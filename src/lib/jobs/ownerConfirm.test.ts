@@ -11,9 +11,13 @@ import {
   isLandlord,
   normalizeOwnerName,
   ownerKind,
+  ownerFromRollUnconfirmed,
   parseOwnerToConfirmRows,
   readsAs,
+  rollProvenanceShort,
+  rowHasOwner,
   shortDay,
+  shouldShowBillCustomerOwnerLine,
   eligibleForUseAll,
   type OwnerToConfirmRow,
 } from './ownerConfirm'
@@ -193,5 +197,34 @@ describe('the job form (PR 2)', () => {
     expect(builderQuestionApplies({ customerId: 'c-sp', gcCustomerId: 'gc1', customerIsBuilder: true })).toBe(false)
     expect(builderQuestionApplies({ customerId: 'c-maria', gcCustomerId: null, customerIsBuilder: false })).toBe(false)
     expect(builderQuestionApplies({ customerId: null, gcCustomerId: null, customerIsBuilder: true })).toBe(false)
+  })
+})
+
+describe('Bill Customer owner line and the unconfirmed reader (v2.3450)', () => {
+  const typed = { owner_name: '', owner_company: 'Elbel Holdings LLC', owner_mailing_address: '4 Example Way', owner_confirmed_at: '2026-09-14T00:00:00Z', parcel_source: '' }
+  const fromRoll = { owner_name: '', owner_company: 'SCHERTZ STATION LTD', owner_mailing_address: '4040 Broadway', owner_confirmed_at: null, parcel_source: 'Guadalupe Appraisal District' }
+  it('reads "from the roll · unconfirmed" only when provenance is on the row and nobody stamped it', () => {
+    expect(ownerFromRollUnconfirmed(fromRoll)).toBe(true)
+    expect(ownerFromRollUnconfirmed({ ...fromRoll, owner_confirmed_at: '2026-09-15T00:00:00Z' })).toBe(false)
+    expect(ownerFromRollUnconfirmed(typed)).toBe(false)
+    expect(ownerFromRollUnconfirmed({ ...fromRoll, owner_mailing_address: '' })).toBe(false)
+    expect(ownerFromRollUnconfirmed(null)).toBe(false)
+    expect(rowHasOwner({ owner_name: 'Jane Doe', owner_mailing_address: '1 Main St' })).toBe(true)
+    expect(rowHasOwner({ owner_name: 'Jane Doe', owner_mailing_address: '' })).toBe(false)
+  })
+  it('shows on a GC job (or a builder customer) with no confirmed owner; never on a direct job, a confirmed owner, or a job override', () => {
+    const base = { hasGc: true, customerIsBuilder: false, hasJobOwnerOverride: false, record: null }
+    expect(shouldShowBillCustomerOwnerLine(base)).toBe(true)
+    expect(shouldShowBillCustomerOwnerLine({ ...base, record: { owner_name: '', owner_company: '', owner_mailing_address: '' } })).toBe(true)
+    expect(shouldShowBillCustomerOwnerLine({ ...base, record: fromRoll })).toBe(true)
+    expect(shouldShowBillCustomerOwnerLine({ ...base, record: typed })).toBe(false)
+    expect(shouldShowBillCustomerOwnerLine({ ...base, hasJobOwnerOverride: true })).toBe(false)
+    expect(shouldShowBillCustomerOwnerLine({ ...base, hasGc: false })).toBe(false)
+    expect(shouldShowBillCustomerOwnerLine({ ...base, hasGc: false, customerIsBuilder: true })).toBe(true)
+  })
+  it('the provenance in the line reads district and tax year', () => {
+    expect(rollProvenanceShort({ source: 'Guadalupe Appraisal District', taxYear: '2025' })).toBe('Guadalupe Appraisal District 2025')
+    expect(rollProvenanceShort({ source: '', taxYear: '' })).toBe('')
+    expect(rollProvenanceShort(null)).toBe('')
   })
 })

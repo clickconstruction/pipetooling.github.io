@@ -58,6 +58,15 @@ Owner of record **Khan Umar & Bangash Shazmeena** · Mail to 3203 Spider Lily, S
 
 **The one question you are asked.** When a new job's customer is a builder and no GC is set, the *Does this job need a contract?* prompt first asks **Is <customer> building this for someone?** {{button:outline|No — they own the site}} records nothing. {{button:blue|Yes — they are the builder}} sets them as the job's GC — which is what starts the monthly notice clock — and the appraisal roll then fills the owner of record on the spot. The customer row stays as it is; pick the site owner as the customer later if you want them on the job.
 
+The same answer meets you in two more places, so no notice is ever blocked on a missing owner:
+
+- **Bill Customer** — the first bill on a GC job is the last net. When the job has no confirmed owner, the Send-to block shows one green line: *Owner of record for 5498 Cibolo Valley Dr: Schertz Station Ltd (Guadalupe Appraisal District 2025) — not yet on the job.* {{button:green|Use}} *it so the lien notice can be mailed when it is due.* It never holds up the bill. A roll miss reads *No owner of record on file — paste the county's page…* and opens the paste box right there.
+- **The Lien desk** — an item in *Needs the owner* shows *The roll says: …* with the chips, the provenance, the CAD link and {{button:blue|Use}}; {{button:outline|Find the owner ›}} stays as the fallback. Once Use is pressed the row moves to *To draft* on its own.
+
+:::example Save owners from the appraisal roll automatically (Settings → Jobs & billing, master and dev)
+Off on day one. When it is on, every night the app looks up every GC job with approved hours and **no owner at all** and saves the roll's answer as *from the roll · unconfirmed* — the property record fills in with its provenance, but nobody has looked at it yet. The Lien desk drafts on it and says so — *Owner from the roll (2025) · unconfirmed · confirm on Guadalupe CAD ↗* {{button:blue|Confirm}} — and **Record the run refuses** until a person presses Confirm on every notice in the run. Owners someone typed or pressed Use on are never touched. Turn it on after the first sitting shows the roll is right.
+:::
+
 ## Step 2 — the affidavit, behind its gate
 
 The **Mechanic's lien** tab refuses to generate until the paper trail is real: owner of record with mailing address ✓, county + legal description ✓ (from the property record), notice recorded ✓ (subs), and **not a homestead** — a homestead lien needs a pre-work contract signed by both spouses and recorded with the county, which is attorney territory the app won't paper over.

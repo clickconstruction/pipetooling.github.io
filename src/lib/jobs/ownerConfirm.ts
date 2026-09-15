@@ -293,3 +293,64 @@ export function jobFormOwnerLookupApplies(input: JobFormOwnerLookupInput): boole
 export function builderQuestionApplies(input: { customerId: string | null | undefined; gcCustomerId: string | null | undefined; customerIsBuilder: boolean }): boolean {
   return Boolean(input.customerId) && !input.gcCustomerId && input.customerIsBuilder
 }
+
+// ---------- PR 3 (v2.3450): Bill Customer's line, the desk's pane, the nightly save ----------
+
+/** The slice of a `customer_addresses` row the confirmation state is read from. */
+export type OwnerConfirmStateRow = {
+  owner_name?: string | null
+  owner_company?: string | null
+  owner_mailing_address?: string | null
+  owner_confirmed_at?: string | null
+  parcel_source?: string | null
+}
+
+/** An owner with a mailing address is on the record (the desk's `has_owner`, read client-side). */
+export function rowHasOwner(row: OwnerConfirmStateRow | null | undefined): boolean {
+  if (!row) return false
+  const named = Boolean((row.owner_name ?? '').trim() || (row.owner_company ?? '').trim())
+  return named && Boolean((row.owner_mailing_address ?? '').trim())
+}
+
+/**
+ * *From the roll · unconfirmed*: the nightly run (or any machine) wrote the
+ * owner from the appraisal roll — parcel provenance is on the row — and no
+ * person has pressed Use or Confirm. A hand-typed owner carries no provenance
+ * and was backfilled as confirmed, so it never reads this way.
+ */
+export function ownerFromRollUnconfirmed(row: OwnerConfirmStateRow | null | undefined): boolean {
+  if (!row || !rowHasOwner(row)) return false
+  return row.owner_confirmed_at == null && Boolean((row.parcel_source ?? '').trim())
+}
+
+export type BillCustomerOwnerLineInput = {
+  /** The job names a GC. */
+  hasGc: boolean
+  /** The customer row is a builder (the GC on some other job) and the job names no GC. */
+  customerIsBuilder: boolean
+  /** A per-job owner override (`job_property_owners`) with a mailing address — a person wrote it. */
+  hasJobOwnerOverride: boolean
+  /** The linked property record, null when the job links none. */
+  record: OwnerConfirmStateRow | null
+}
+
+/**
+ * When Bill Customer's quiet owner line shows (mock-up moment 3): a GC job (or
+ * a builder in the customer row) whose owner of record is not yet confirmed —
+ * no owner at all, or one the nightly run saved from the roll that nobody has
+ * looked at. Never on a direct job, never once a person confirmed the owner or
+ * wrote a job override. The line is never a gate on sending.
+ */
+export function shouldShowBillCustomerOwnerLine(input: BillCustomerOwnerLineInput): boolean {
+  if (!input.hasGc && !input.customerIsBuilder) return false
+  if (input.hasJobOwnerOverride) return false
+  if (!input.record) return true
+  if (!rowHasOwner(input.record)) return true
+  return input.record.owner_confirmed_at == null
+}
+
+/** "Guadalupe Appraisal District 2025" — the provenance in the line's parentheses ('' without a parcel). */
+export function rollProvenanceShort(parcel: Pick<ParcelRecord, 'source' | 'taxYear'> | null): string {
+  if (!parcel) return ''
+  return [parcel.source.trim(), parcel.taxYear.trim()].filter(Boolean).join(' ')
+}

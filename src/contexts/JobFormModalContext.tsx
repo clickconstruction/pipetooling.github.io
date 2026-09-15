@@ -33,6 +33,8 @@ type JobFormModalContextValue = {
   openEditJob: (jobId: string, options?: OpenEditJobOptions) => void
   openNewJob: (options?: OpenNewJobOptions) => void
   closeJobForm: () => void
+  /** Job accounts from the bid (v2.3451): reopen the Job accounts question for a job — the bid's Job block door. */
+  openJobAccountsPrompt: (jobId: string) => void
 }
 
 type InternalOpenState =
@@ -122,6 +124,7 @@ export function JobFormModalProvider({ children }: { children: React.ReactNode }
     openEditJob,
     openNewJob,
     closeJobForm,
+    openJobAccountsPrompt: setJobAccountsPromptJobId,
   }
 
   return (

@@ -1,6 +1,7 @@
 import type { Database } from '../../types/database'
 import { daysBetweenYmd } from './billedExpectedPay'
 import { NOTICE_CLOSING_DAYS, NOTICE_DUE_DAYS } from './forecastWorkMonths'
+import { ownerKind } from './ownerConfirm'
 
 /**
  * The Lien desk (pure kernel): the queue of § 53.056 notices the law says
@@ -343,3 +344,27 @@ export function summarizeLienDeskForNeedsYou(queue: LienDeskQueue): LienDeskNeed
     held: queue.piles.held.length,
   }
 }
+
+// ---------- the office's draft: what blocks it (v2.3450) ----------
+
+export type LienDraftBlockReason = 'no_gc' | 'no_owner' | 'public_owner' | 'no_months'
+
+export type LienDraftReadiness = { ready: true; reason: null } | { ready: false; reason: LienDraftBlockReason }
+
+/**
+ * Whether a notice can be drafted and sent for this entry, and the first
+ * reason it cannot. A public owner (a city, county, ISD, the State — see
+ * `ownerKind`) is never drafted: a mechanic's lien does not attach to public
+ * property; the remedy is a claim on the GC's payment bond. The order is the
+ * order the pane lists its checks: GC, owner, months.
+ */
+export function draftReadiness(input: { gcName: string; ownerName: string; ownerMailingAddress: string; monthsCount: number }): LienDraftReadiness {
+  if (!input.gcName.trim()) return { ready: false, reason: 'no_gc' }
+  if (!input.ownerName.trim() || !input.ownerMailingAddress.trim()) return { ready: false, reason: 'no_owner' }
+  if (ownerKind(input.ownerName) === 'public') return { ready: false, reason: 'public_owner' }
+  if (input.monthsCount <= 0) return { ready: false, reason: 'no_months' }
+  return { ready: true, reason: null }
+}
+
+/** The sentence the desk shows on a public-owner item (attorney-facing wording from the second-pass design). */
+export const PUBLIC_OWNER_DESK_SENTENCE = "Public property — a mechanic's lien does not attach; the remedy is a claim on the GC's payment bond. Talk to the attorney."
