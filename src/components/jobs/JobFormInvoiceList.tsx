@@ -1,4 +1,4 @@
-import { Fragment, useState, type CSSProperties, type RefObject } from 'react'
+import { useEffect, useRef, useState, type CSSProperties, type RefObject } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { withSupabaseRetry } from '../../utils/errorHandling'
@@ -8,11 +8,9 @@ import type { JobWithDetails } from '../../types/jobWithDetails'
 import type { JobsLedgerInvoiceRow, PaymentRow } from '../../lib/jobs/jobFormTypes'
 import { ensureRemainderResyncOutcome } from '../../lib/jobs/ensureRtbRemainderResult'
 import { formatCurrency } from '../../lib/jobs/jobFormMoney'
-import { formatWorkDateYmdMonthDayShort } from '../../utils/dateUtils'
-import { invoiceCreatedCalendarDayOffset } from '../../lib/invoiceCreatedRelative'
 import { jobLedgerHasCustomerForBilling } from '../../lib/jobLedgerCustomerForBilling'
 import { billToDisplayLabel, invoiceBillToFromRow } from '../../lib/jobs/invoiceBillTo'
-import { effectiveInvoiceParty, invoicePartyChip, parseJobBillToParty, type InvoiceBillToParty } from '../../lib/jobs/billToParty'
+import { effectiveInvoiceParty, invoicePartyChip, type InvoiceBillToParty } from '../../lib/jobs/billToParty'
 import { parseShownToParty, shownToChipText, type ShownToParty } from '../../lib/jobs/billVisibility'
 import { fetchJobWithDetailsById } from '../../lib/fetchJobWithDetailsById'
 import { setReturnEditJobFromStages } from '../../lib/returnEditJobFromStages'
@@ -31,6 +29,8 @@ import type { InvoiceWithJobForBillView } from './BilledBillViewModal'
 import { StripeInvoiceSharePanel } from './StripeInvoiceSharePanel'
 import { convertToStripeEligibility } from '../../lib/jobs/convertBillToStripe'
 import { ConvertBillToStripeModal } from './ConvertBillToStripeModal'
+import { compareInvoiceLedgerRows, invoiceLedgerRow, invoiceLedgerTotals, type InvoiceLedgerState } from '../../lib/jobs/invoiceLedgerRow'
+import { useJobBilledExpectedPay } from '../../hooks/useJobBilledExpectedPay'
 
 type JobFormInvoiceListProps = {
   editing: JobWithDetails
@@ -67,11 +67,15 @@ type JobFormInvoiceListProps = {
 }
 
 /**
- * The unified "Invoices" table in the Edit-Job billing section — one list of the
- * job's drafts (ready_to_bill) and sent bills (billed) with a Status/Date/Amount/
- * Actions layout. Drafts get an inline "Send bill…"; billed rows keep view/share/
- * discount. Extracted verbatim from JobFormModal; self-sources its router/toast/
- * bill-customer hooks, takes the job + payments + a few setters as props.
+ * The "Invoices" list in the Edit-Job billing section (v2.3478): one row per
+ * bill — drafts (ready_to_bill), open bills (billed) and paid bills — each
+ * three lines: chip · amount · actions / who / money (`invoiceLedgerRow`).
+ * The action follows the money: a draft gets Send bill…, an open Stripe bill
+ * the Text · Copy link · Email cluster, a paid bill just View; everything rare
+ * or destructive sits under ⋯. Layout is decided by a container query in
+ * index.css (`.jobInvoiceLedger`), not the viewport. Self-sources its
+ * router/toast/bill-customer hooks, takes the job + payments + a few setters
+ * as props.
  */
 export function JobFormInvoiceList({
   editing,
@@ -104,19 +108,32 @@ export function JobFormInvoiceList({
   /** Who pays (v2.3345): the "Bill to ▾" menu open on one draft row. */
   const [billToMenuFor, setBillToMenuFor] = useState<string | null>(null)
   const [billToPartySaving, setBillToPartySaving] = useState<string | null>(null)
-  /** Share this bill (v2.3376): the eye menu open on one row. */
-  const [shownToMenuFor, setShownToMenuFor] = useState<string | null>(null)
+  /** Share this bill (v2.3376): saving who else sees one row (now a ⋯ section). */
   const [shownToSaving, setShownToSaving] = useState<string | null>(null)
   const jobParty = {
     bill_to_party: (editing as { bill_to_party?: string | null }).bill_to_party,
     gc_customer_id: editing.gc_customer_id ?? null,
     customer_id: editing.customer_id,
   }
-  const jobRule = parseJobBillToParty(jobParty.bill_to_party)
   const gcDistinct = Boolean(editing.gc_customer_id) && editing.gc_customer_id !== editing.customer_id
   const gcName = (editing.gcCustomer?.name ?? '').trim() || null
   const invoices = editing.invoices ?? []
-  if (!invoices.some((i) => i.status === 'ready_to_bill' || i.status === 'billed')) return null
+  /** ⋯ open on one row; the memo/footer fold open on any rows. */
+  const [menuFor, setMenuFor] = useState<string | null>(null)
+  const [detailOpenFor, setDetailOpenFor] = useState<Set<string>>(() => new Set())
+  const ledgerRef = useRef<HTMLDivElement | null>(null)
+  useEffect(() => {
+    if (!menuFor) return
+    const onDown = (e: MouseEvent) => {
+      const t = e.target
+      if (t instanceof Element && t.closest('[data-inv-menu]')) return
+      setMenuFor(null)
+    }
+    document.addEventListener('mousedown', onDown)
+    return () => document.removeEventListener('mousedown', onDown)
+  }, [menuFor])
+  const expectedFor = useJobBilledExpectedPay({ id: editing.id, customer_id: editing.customer_id })
+  if (!invoices.some((i) => i.status === 'ready_to_bill' || i.status === 'billed' || i.status === 'paid')) return null
 
   /**
    * Pick the party a draft bills (v2.3345). Writes the explicit pick and
@@ -146,7 +163,6 @@ export function JobFormInvoiceList({
 
   /** Share this bill (v2.3376): who else sees this bill on their statement — the non-paying party, or nobody. Any row, draft or sent. */
   async function pickShownTo(inv: JobsLedgerInvoiceRow, shownTo: ShownToParty | null) {
-    setShownToMenuFor(null)
     setShownToSaving(inv.id)
     try {
       const { error } = await supabase.from('jobs_ledger_invoices').update({ shown_to_party: shownTo }).eq('id', inv.id)
@@ -270,499 +286,372 @@ export function JobFormInvoiceList({
     }
   }
 
+  const rows = invoices
+    .map((inv) => {
+      const invPayments = payments.filter((p) => p.invoice_id === inv.id)
+      const party = effectiveInvoiceParty(jobParty, inv)
+      const billTo = invoiceBillToFromRow(inv)
+      const billsTo = invoicePartyChip(party, {
+        customer: editing.customer_name,
+        gc: gcName,
+        other: billTo ? billTo.name ?? billTo.email : null,
+      })
+      const sentIso = (inv.sent_to_customer_at ?? inv.billed_at ?? '').trim()
+      const row = invoiceLedgerRow({
+        status: inv.status,
+        amount: Number(inv.amount ?? 0),
+        sentYmd: sentIso ? sentIso.slice(0, 10) : null,
+        payments: invPayments.map((p) => ({ amount: Number(p.amount) || 0, paidOnYmd: p.paid_on ? String(p.paid_on).slice(0, 10) : null })),
+        billsTo,
+        drawLabel: drawLabelByInvoiceId?.[inv.id] ?? null,
+        isAutoRemainder: inv.status === 'ready_to_bill' && Boolean(inv.is_primary_rtb_bundle),
+        expected: inv.status === 'billed' ? expectedFor(inv) : null,
+      })
+      return row ? { inv, row, party, billTo, invPayments, sentYmd: row.state === 'draft' ? null : sentIso.slice(0, 10) || null } : null
+    })
+    .filter((r): r is NonNullable<typeof r> => r != null)
+    .sort((a, b) => compareInvoiceLedgerRows({ state: a.row.state, sentYmd: a.sentYmd }, { state: b.row.state, sentYmd: b.sentYmd }))
+  const listedIds = new Set(rows.map((r) => r.inv.id))
+  const unappliedPaid = payments.reduce((s, p) => (p.invoice_id && listedIds.has(p.invoice_id) ? s : s + (Number(p.amount) || 0)), 0)
+  const totals = invoiceLedgerTotals(rows.map((r) => r.row), unappliedPaid)
+
+  function openBillCustomerForDraft(inv: JobsLedgerInvoiceRow) {
+    if (!editing) return
+    if (!jobLedgerHasCustomerForBilling(editing.customer_id)) {
+      showToast('Link this job to a customer before billing.', 'error')
+      return
+    }
+    const ctx: JobBillingContext = {
+      id: editing.id,
+      master_user_id: editing.master_user_id,
+      hcp_number: editing.hcp_number,
+      click_number: editing.click_number,
+      job_name: editing.job_name,
+      customer_id: editing.customer_id,
+      customer_name: editing.customer_name,
+      customer_email: editing.customer_email,
+      job_address: editing.job_address,
+      customer_phone: editing.customer_phone,
+      last_work_date: editing.last_work_date,
+    }
+    billCustomer?.openBillCustomer({
+      payload: {
+        kind: 'invoice',
+        job: ctx,
+        // Memo + bundle flag drive the modal's standalone-charge
+        // pre-fill (riders: hazmat fee, trip charge).
+        invoice: {
+          id: inv.id,
+          amount: inv.amount,
+          status: inv.status,
+          stripe_invoice_memo: inv.stripe_invoice_memo ?? null,
+          is_primary_rtb_bundle: inv.is_primary_rtb_bundle ?? null,
+        },
+      },
+      onSuccess: async () => {
+        onSavedRef.current?.()
+        const found = await fetchJobWithDetailsById(editing.id)
+        if (found) setEditing(found)
+      },
+      onAfterEnsureSuccess: async () => {
+        const found = await fetchJobWithDetailsById(editing.id)
+        if (found) setEditing(found)
+      },
+      onAfterOobUnwindSuccess: async () => {
+        refreshEditingJobAndHydratePayments(editing.id)
+      },
+      onDiscountApplied: async () => {
+        await onFixturesChangedOutside?.(editing.id)
+      },
+    })
+  }
+
+  function goToPipeline(inv: JobsLedgerInvoiceRow, isDraft: boolean) {
+    if (editing?.id && isDraft) setReturnEditJobFromStages(editing.id)
+    onClose()
+    navigate(`/jobs?tab=stages&stagesInvoice=${encodeURIComponent(inv.id)}`)
+  }
+
+  const chipStyle = (state: InvoiceLedgerState): CSSProperties => ({
+    display: 'inline-block',
+    padding: '0.05rem 0.45rem',
+    borderRadius: 999,
+    fontSize: '0.6875rem',
+    fontWeight: 700,
+    whiteSpace: 'nowrap',
+    background: state === 'draft' ? 'var(--bg-amber-tint)' : state === 'paid' ? 'var(--bg-green-100)' : 'var(--bg-blue-tint)',
+    color: state === 'draft' ? 'var(--text-amber-800)' : state === 'paid' ? 'var(--text-green-800)' : 'var(--text-blue-800)',
+  })
+  const btnGray: CSSProperties = { padding: '0.2rem 0.5rem', fontSize: '0.75rem', background: 'var(--bg-200)', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 500 }
+  const menuPanel: CSSProperties = { position: 'absolute', right: 0, top: '100%', marginTop: 4, zIndex: 20, minWidth: 240, background: 'var(--surface)', border: '1px solid var(--border-strong)', borderRadius: 6, boxShadow: '0 6px 16px rgba(0, 0, 0, 0.12)', padding: '0.25rem', textAlign: 'left' }
+  const menuItem = (opts: { on?: boolean; danger?: boolean; disabled?: boolean; top?: boolean }): CSSProperties => ({
+    display: 'block',
+    width: '100%',
+    textAlign: 'left',
+    padding: '0.4rem 0.5rem',
+    // Longhands only — a `border` shorthand next to `borderTop` leaves a stray
+    // 1px top edge on every item (the React inline-style shorthand gotcha).
+    borderWidth: 0,
+    borderTopWidth: opts.top ? 1 : 0,
+    borderTopStyle: 'solid',
+    borderTopColor: 'var(--border)',
+    background: opts.on ? 'var(--bg-subtle)' : 'transparent',
+    borderRadius: 4,
+    cursor: opts.disabled ? 'not-allowed' : 'pointer',
+    opacity: opts.disabled ? 0.55 : 1,
+    fontSize: '0.8125rem',
+    color: opts.danger ? 'var(--text-red-600)' : undefined,
+  })
+  const menuSection: CSSProperties = { fontSize: '0.6875rem', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-faint)', padding: '0.3rem 0.5rem 0.15rem' }
+  const menuSub = (text: string) => <span style={{ color: 'var(--text-muted)', marginLeft: 6, fontSize: '0.75rem' }}>{text}</span>
+
   return (
-    <div style={{ marginBottom: '1rem' }}>
-      <div style={{ overflowX: 'auto' }}>
-        <table style={{ width: '100%', minWidth: 480, borderCollapse: 'collapse', fontSize: '0.875rem', tableLayout: 'fixed' }}>
-          <colgroup>
-            <col style={{ width: '15%' }} />
-            <col style={{ width: '20%' }} />
-            <col style={{ width: '18%' }} />
-            <col style={{ width: '47%' }} />
-          </colgroup>
-          <thead style={{ background: 'var(--bg-subtle)' }}>
-            <tr>
-              <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)', fontWeight: 600 }}>Status</th>
-              <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)', fontWeight: 600 }}>Date</th>
-              <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right', borderBottom: '1px solid var(--border)', fontWeight: 600 }}>Amount</th>
-              <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right', borderBottom: '1px solid var(--border)', fontWeight: 600 }}>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {[...invoices]
-              .filter((i) => i.status === 'ready_to_bill' || i.status === 'billed')
-              .sort((a, b) => (a.status === 'ready_to_bill' ? 0 : 1) - (b.status === 'ready_to_bill' ? 0 : 1))
-              .map((inv, idx, arr) => {
-                const isDraft = inv.status === 'ready_to_bill'
-                const sent =
-                  inv.sent_to_customer_at != null && String(inv.sent_to_customer_at).trim()
-                    ? String(inv.sent_to_customer_at).slice(0, 10)
-                    : '—'
-                const hasStripeShare =
-                  (inv.stripe_invoice_id ?? '').trim().length > 0 && (inv.hosted_invoice_url ?? '').trim().length > 0
-                const createdDayOffset = invoiceCreatedCalendarDayOffset(inv.created_at)
-                const noteLine = (inv.external_send_note ?? '').trim()
-                const memoLine = (inv.stripe_invoice_memo ?? '').trim()
-                const footerLine = (inv.stripe_invoice_footer ?? '').trim()
-                // Drafts show their memo too: riders (hazmat fee, trip charge) pre-set it,
-                // and it is the only thing distinguishing them from an ordinary draft.
-                const hasDetailLine = isDraft ? Boolean(memoLine) : Boolean(noteLine || memoLine || footerLine)
-                const isHazmatRider = hazmatInvoiceIds?.has(inv.id) ?? false
-                const billTo = invoiceBillToFromRow(inv)
-                const party = effectiveInvoiceParty(jobParty, inv)
-                // The chip names the payer whenever it is not simply "the customer
-                // by default": a GC, someone else, or any row on a split job.
-                const showPartyChip = party !== 'customer' || jobRule === 'split'
-                const partyChipText = invoicePartyChip(party, {
-                  customer: editing.customer_name,
-                  gc: gcName,
-                  other: billTo ? billTo.name ?? billTo.email : null,
-                })
-                // Share this bill (v2.3376): the non-paying party this bill could be shown to.
-                const shownTo = parseShownToParty(inv.shown_to_party)
-                const shareOptions: ShownToParty[] = party === 'customer' ? (gcDistinct ? ['gc'] : []) : party === 'gc' ? ['customer'] : gcDistinct ? ['customer', 'gc'] : []
-                const shownToText = shownToChipText(shownTo, { customer: editing.customer_name, gc: gcName })
-                const rowSep = idx < arr.length - 1 ? '1px solid var(--border)' : 'none'
-                const parentCellPad = hasDetailLine ? '0.5rem 0.75rem 0.1rem' : '0.5rem 0.75rem'
-                const paidOnInv = payments.filter((p) => p.invoice_id === inv.id).reduce((s, p) => s + (Number(p.amount) || 0), 0)
-                const writeDownRoom = Number(inv.amount ?? 0) - paidOnInv
-                const btnGray: CSSProperties = { padding: '0.15rem 0.45rem', fontSize: '0.75rem', background: 'var(--bg-200)', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 500 }
-                const dateText = isDraft
-                  ? 'not sent'
-                  : sent === '—'
-                    ? '—'
-                    : createdDayOffset !== null
-                      ? `${formatWorkDateYmdMonthDayShort(sent)} (+${createdDayOffset})`
-                      : formatWorkDateYmdMonthDayShort(sent)
-                return (
-                  <Fragment key={inv.id}>
-                    <tr style={{ borderBottom: hasDetailLine ? 'none' : rowSep }}>
-                      <td style={{ padding: parentCellPad, verticalAlign: 'top' }}>
-                        <span
-                          style={{
-                            display: 'inline-block',
-                            padding: '0.05rem 0.4rem',
-                            borderRadius: 999,
-                            fontSize: '0.6875rem',
-                            fontWeight: 700,
-                            background: isDraft ? 'var(--bg-amber-tint)' : 'var(--bg-blue-tint)',
-                            color: isDraft ? 'var(--text-amber-800)' : 'var(--text-blue-800)',
-                          }}
-                        >
-                          {isDraft ? 'Draft' : 'Billed'}
-                        </span>
-                        {drawLabelByInvoiceId?.[inv.id] ? (
-                          <div data-testid="invoice-draw-label" style={{ fontSize: '0.75rem', color: 'var(--text-700)', marginTop: 2 }}>
-                            {drawLabelByInvoiceId[inv.id]}
-                          </div>
-                        ) : null}
-                        {isHazmatRider ? (
-                          <span
-                            title="Hazmat rider — biohazard remediation fee (see Riders above)"
-                            style={{
-                              display: 'inline-block',
-                              marginLeft: '0.3rem',
-                              padding: '0.05rem 0.4rem',
-                              borderRadius: 999,
-                              fontSize: '0.6875rem',
-                              fontWeight: 700,
-                              background: 'var(--bg-red-tint)',
-                              color: 'var(--text-red-600)',
-                              border: '1px solid #dc2626',
-                            }}
-                          >
-                            ☣ Hazmat
-                          </span>
-                        ) : null}
-                        {showPartyChip ? (
-                          <span
-                            data-testid="invoice-party-chip"
-                            title={
-                              party === 'other' && billTo
-                                ? `This invoice bills ${billToDisplayLabel(billTo)} — not the job customer${editing.customer_name ? ` (${editing.customer_name})` : ''}.`
-                                : party === 'gc'
-                                  ? `This invoice bills the GC${gcName ? ` (${gcName})` : ''}${editing.customer_name ? ` — not ${editing.customer_name}` : ''}.`
-                                  : `This invoice bills the job customer${editing.customer_name ? ` (${editing.customer_name})` : ''}.`
-                            }
-                            style={{
-                              display: 'inline-block',
-                              marginTop: '0.2rem',
-                              padding: '0.05rem 0.4rem',
-                              borderRadius: 999,
-                              fontSize: '0.6875rem',
-                              fontWeight: 700,
-                              background: party === 'customer' ? 'var(--bg-blue-tint)' : 'var(--bg-amber-tint)',
-                              color: party === 'customer' ? 'var(--text-blue-800)' : 'var(--text-amber-800)',
-                              border: '1px solid var(--border-strong)',
-                              maxWidth: '100%',
-                              overflow: 'hidden',
-                              textOverflow: 'ellipsis',
-                              whiteSpace: 'nowrap',
-                              verticalAlign: 'bottom',
-                            }}
-                          >
-                            → {partyChipText}
-                          </span>
-                        ) : null}
-                        {shareOptions.length > 0 ? (
-                          <span style={{ position: 'relative', display: 'inline-block', marginTop: '0.2rem', marginLeft: showPartyChip ? '0.3rem' : 0, verticalAlign: 'bottom' }}>
-                            <button
-                              type="button"
-                              data-testid="invoice-shown-to-chip"
-                              onClick={() => setShownToMenuFor((prev) => (prev === inv.id ? null : inv.id))}
-                              disabled={shownToSaving === inv.id}
-                              aria-haspopup="menu"
-                              aria-expanded={shownToMenuFor === inv.id}
-                              title={shownTo ? 'Who else sees this bill on their statement — change or hide' : 'Show this bill on the other party’s statement (no Pay button, not in their balance)'}
-                              style={{
-                                padding: '0.05rem 0.4rem',
-                                borderRadius: 999,
-                                fontSize: '0.6875rem',
-                                fontWeight: 700,
-                                cursor: 'pointer',
-                                border: '1px solid var(--border-strong)',
-                                background: shownTo ? 'var(--bg-green-100)' : 'var(--bg-200)',
-                                color: shownTo ? 'var(--text-green-800)' : 'var(--text-muted)',
-                                whiteSpace: 'nowrap',
-                                maxWidth: '100%',
-                                overflow: 'hidden',
-                                textOverflow: 'ellipsis',
-                              }}
-                            >
-                              {shownToSaving === inv.id ? 'Saving…' : (shownToText ?? '👁 ▾')}
-                            </button>
-                            {shownToMenuFor === inv.id ? (
-                              <div
-                                role="menu"
-                                style={{ position: 'absolute', left: 0, top: '100%', marginTop: 4, zIndex: 20, minWidth: 250, background: 'var(--surface)', border: '1px solid var(--border-strong)', borderRadius: 6, boxShadow: '0 6px 16px rgba(0, 0, 0, 0.12)', padding: '0.25rem', textAlign: 'left' }}
-                              >
-                                <div style={{ fontSize: '0.6875rem', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-faint)', padding: '0.25rem 0.5rem' }}>Who else sees this bill</div>
-                                {shareOptions.map((opt) => {
-                                  const label = opt === 'gc' ? (gcName ?? 'The GC') : editing.customer_name?.trim() || 'The job customer'
-                                  const on = shownTo === opt
-                                  return (
-                                    <button
-                                      key={opt}
-                                      type="button"
-                                      role="menuitemradio"
-                                      aria-checked={on}
-                                      onClick={() => void pickShownTo(inv, opt)}
-                                      style={{ display: 'block', width: '100%', textAlign: 'left', padding: '0.35rem 0.5rem', border: 'none', background: on ? 'var(--bg-subtle)' : 'transparent', borderRadius: 4, cursor: 'pointer', fontSize: '0.8125rem' }}
-                                    >
-                                      <span style={{ fontWeight: 600 }}>{on ? '✓ ' : ''}Shown on {label}’s statement</span>
-                                      <span style={{ color: 'var(--text-muted)', marginLeft: 6, fontSize: '0.75rem' }}>{opt === 'gc' ? 'the GC, not billed' : 'the customer, not billed'}</span>
-                                    </button>
-                                  )
-                                })}
-                                <button
-                                  type="button"
-                                  role="menuitemradio"
-                                  aria-checked={shownTo == null}
-                                  onClick={() => void pickShownTo(inv, null)}
-                                  style={{ display: 'block', width: '100%', textAlign: 'left', padding: '0.35rem 0.5rem', border: 'none', borderTop: '1px solid var(--border)', background: shownTo == null ? 'var(--bg-subtle)' : 'transparent', borderRadius: 4, cursor: 'pointer', fontSize: '0.8125rem' }}
-                                >
-                                  <span style={{ fontWeight: 600 }}>{shownTo == null ? '✓ ' : ''}Only the payer</span>
-                                  <span style={{ color: 'var(--text-muted)', marginLeft: 6, fontSize: '0.75rem' }}>hide it from their statement</span>
-                                </button>
-                                <div style={{ color: 'var(--text-faint)', fontSize: '0.7rem', padding: '0.3rem 0.5rem 0.2rem' }}>Changes their portal on its next open. Never changes who pays or who was emailed.</div>
-                              </div>
-                            ) : null}
-                          </span>
-                        ) : null}
-                      </td>
-                      <td style={{ padding: parentCellPad, verticalAlign: 'top', wordBreak: 'break-word', color: isDraft ? 'var(--text-muted)' : undefined }}>{dateText}</td>
-                      <td style={{ padding: parentCellPad, textAlign: 'right', verticalAlign: 'top' }}>${formatCurrency(Number(inv.amount ?? 0))}</td>
-                      <td style={{ padding: parentCellPad, verticalAlign: 'top', textAlign: 'right' }}>
-                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem', alignItems: 'center', justifyContent: 'flex-end', width: '100%' }}>
-                          {isDraft ? (
-                            <button
-                              type="button"
-                              onClick={() => {
-                                if (!editing) return
-                                if (!jobLedgerHasCustomerForBilling(editing.customer_id)) {
-                                  showToast('Link this job to a customer before billing.', 'error')
-                                  return
-                                }
-                                const ctx: JobBillingContext = {
-                                  id: editing.id,
-                                  master_user_id: editing.master_user_id,
-                                  hcp_number: editing.hcp_number,
-                                  click_number: editing.click_number,
-                                  job_name: editing.job_name,
-                                  customer_id: editing.customer_id,
-                                  customer_name: editing.customer_name,
-                                  customer_email: editing.customer_email,
-                                  job_address: editing.job_address,
-                                  customer_phone: editing.customer_phone,
-                                  last_work_date: editing.last_work_date,
-                                }
-                                billCustomer?.openBillCustomer({
-                                  payload: {
-                                    kind: 'invoice',
-                                    job: ctx,
-                                    // Memo + bundle flag drive the modal's standalone-charge
-                                    // pre-fill (riders: hazmat fee, trip charge).
-                                    invoice: {
-                                      id: inv.id,
-                                      amount: inv.amount,
-                                      status: inv.status,
-                                      stripe_invoice_memo: inv.stripe_invoice_memo ?? null,
-                                      is_primary_rtb_bundle: inv.is_primary_rtb_bundle ?? null,
-                                    },
-                                  },
-                                  onSuccess: async () => {
-                                    onSavedRef.current?.()
-                                    const found = await fetchJobWithDetailsById(editing.id)
-                                    if (found) setEditing(found)
-                                  },
-                                  onAfterEnsureSuccess: async () => {
-                                    const found = await fetchJobWithDetailsById(editing.id)
-                                    if (found) setEditing(found)
-                                  },
-                                  onAfterOobUnwindSuccess: async () => {
-                                    refreshEditingJobAndHydratePayments(editing.id)
-                                  },
-                                  onDiscountApplied: async () => {
-                                    await onFixturesChangedOutside?.(editing.id)
-                                  },
-                                })
-                              }}
-                              style={{ padding: '0.15rem 0.55rem', fontSize: '0.75rem', background: '#2563eb', border: 'none', borderRadius: 4, cursor: 'pointer', color: '#ffffff', fontWeight: 600 }}
-                            >
-                              Send bill…
-                            </button>
-                          ) : null}
-                          {isDraft ? (
-                            <span style={{ position: 'relative', display: 'inline-block' }}>
-                              <button
-                                type="button"
-                                onClick={() => setBillToMenuFor((prev) => (prev === inv.id ? null : inv.id))}
-                                disabled={billToPartySaving === inv.id}
-                                aria-haspopup="menu"
-                                aria-expanded={billToMenuFor === inv.id}
-                                title={
-                                  billTo
-                                    ? `Billed to ${billToDisplayLabel(billTo)} — change or remove`
-                                    : 'Choose who this invoice bills — the customer, the GC, or someone else (e.g. a tenant)'
-                                }
-                                style={btnGray}
-                              >
-                                {billToPartySaving === inv.id ? 'Saving…' : 'Bill to ▾'}
-                              </button>
-                              {billToMenuFor === inv.id ? (
-                                <div
-                                  role="menu"
-                                  style={{
-                                    position: 'absolute',
-                                    right: 0,
-                                    top: '100%',
-                                    marginTop: 4,
-                                    zIndex: 20,
-                                    minWidth: 220,
-                                    background: 'var(--surface)',
-                                    border: '1px solid var(--border-strong)',
-                                    borderRadius: 6,
-                                    boxShadow: '0 6px 16px rgba(0, 0, 0, 0.12)',
-                                    padding: '0.25rem',
-                                    textAlign: 'left',
-                                  }}
-                                >
-                                  {(
-                                    [
-                                      { key: 'customer' as const, label: editing.customer_name?.trim() || 'The job customer', sub: 'Customer', on: party === 'customer' },
-                                      ...(gcDistinct ? [{ key: 'gc' as const, label: gcName ?? 'The GC', sub: 'GC on this job', on: party === 'gc' }] : []),
-                                    ] as Array<{ key: InvoiceBillToParty; label: string; sub: string; on: boolean }>
-                                  ).map((opt) => (
-                                    <button
-                                      key={opt.key}
-                                      type="button"
-                                      role="menuitemradio"
-                                      aria-checked={opt.on}
-                                      onClick={() => void pickInvoiceParty(inv, opt.key)}
-                                      style={{ display: 'block', width: '100%', textAlign: 'left', padding: '0.35rem 0.5rem', border: 'none', background: opt.on ? 'var(--bg-subtle)' : 'transparent', borderRadius: 4, cursor: 'pointer', fontSize: '0.8125rem' }}
-                                    >
-                                      <span style={{ fontWeight: 600 }}>{opt.on ? '✓ ' : ''}{opt.label}</span>
-                                      <span style={{ color: 'var(--text-muted)', marginLeft: 6, fontSize: '0.75rem' }}>{opt.sub}</span>
-                                    </button>
-                                  ))}
-                                  <button
-                                    type="button"
-                                    role="menuitem"
-                                    onClick={() => {
-                                      setBillToMenuFor(null)
-                                      onEditBillTo(inv)
-                                    }}
-                                    style={{ display: 'block', width: '100%', textAlign: 'left', padding: '0.35rem 0.5rem', border: 'none', borderTop: '1px solid var(--border)', background: party === 'other' ? 'var(--bg-subtle)' : 'transparent', borderRadius: 4, cursor: 'pointer', fontSize: '0.8125rem' }}
-                                  >
-                                    <span style={{ fontWeight: 600 }}>{party === 'other' ? '✓ ' : ''}Someone else…</span>
-                                    <span style={{ color: 'var(--text-muted)', marginLeft: 6, fontSize: '0.75rem' }}>{billTo ? billTo.name ?? billTo.email : 'a tenant, a property manager'}</span>
-                                  </button>
-                                </div>
-                              ) : null}
-                            </span>
-                          ) : null}
-                          {isDraft && onAddDiscountLine ? (
-                            <button
-                              type="button"
-                              onClick={onAddDiscountLine}
-                              title="Add a discount row in ① Line Items — it prints on this and every bill that carries the work it applies to"
-                              style={btnGray}
-                            >
-                              Add discount
-                            </button>
-                          ) : null}
-                          {!isDraft && hasStripeShare ? (
-                            <button type="button" onClick={() => { if (!editing) return; setBillViewInvoice({ ...inv, job: editing }) }} style={btnGray}>Bill</button>
-                          ) : null}
-                          {!isDraft && hasStripeShare ? (
-                            <StripeInvoiceSharePanel
-                              hostedInvoiceUrl={inv.hosted_invoice_url!.trim()}
-                              stripeInvoiceId={(inv.stripe_invoice_id ?? '').trim()}
-                              customerEmail={editing.customer_email}
-                              customerName={editing.customer_name}
-                              jobName={editing.job_name}
-                              hcpNumber={editing.hcp_number}
-                              amountLabel={`$${formatCurrency(Number(inv.amount ?? 0))}`}
-                              compact
-                              paymentLinkActionsAsIcons
-                              omitPaymentLinksLabel
-                              unboxed
-                              inlineRow
-                              omitCustomerPayPage
-                              omitOpenInStripe
-                            />
-                          ) : null}
-                          {!isDraft && canApplyAgreedWriteDown ? (
-                            <button
-                              type="button"
-                              disabled={writeDownRoom <= 0.005}
-                              title={
-                                writeDownRoom <= 0.005
-                                  ? 'No room for a discount (billed amount equals payments on this line).'
-                                  : 'Lower billed amount (agreed discount; Stripe uses a credit note).'
-                              }
-                              onClick={() => setAgreedWriteDownInvoice(inv)}
-                              style={{ padding: '0.15rem 0.45rem', fontSize: '0.75rem', borderRadius: 4, border: 'none', fontWeight: 600, cursor: writeDownRoom <= 0.005 ? 'not-allowed' : 'pointer', background: writeDownRoom <= 0.005 ? '#93c5fd' : '#2563eb', color: '#ffffff', opacity: writeDownRoom <= 0.005 ? 0.85 : 1 }}
-                            >
-                              Add discount
-                            </button>
-                          ) : null}
-                          {!isDraft && !inv.stripe_invoice_id && inv.external_send_channel !== 'stripe' && inv.status === 'billed' ? (
-                            (() => {
-                              // v2.2045: one button turns a non-Stripe bill into a hosted
-                              // Stripe invoice — billed date preserved by construction.
-                              const elig = convertToStripeEligibility(inv, payments, editing)
-                              return (
-                                <button
-                                  type="button"
-                                  disabled={!elig.ok}
-                                  title={
-                                    elig.ok
-                                      ? 'Create the hosted Stripe invoice for this bill — pay link, card payment. Billed date stays put; nothing is emailed.'
-                                      : elig.reason
-                                  }
-                                  onClick={() => setConvertInvoice(inv)}
-                                  style={{ padding: '0.15rem 0.55rem', fontSize: '0.75rem', background: '#635bff', border: 'none', borderRadius: 4, cursor: elig.ok ? 'pointer' : 'not-allowed', color: '#ffffff', fontWeight: 600, opacity: elig.ok ? 1 : 0.55 }}
-                                >
-                                  ⚡ Make Stripe bill
-                                </button>
-                              )
-                            })()
-                          ) : null}
-                          {!isDraft ? (
-                            (() => {
-                              const blocked = sendBackBlockedByPayments(inv.id, payments)
-                              return (
-                                <button
-                                  type="button"
-                                  disabled={blocked}
-                                  title={
-                                    blocked
-                                      ? 'Payments are applied to this bill — unlink them first (Payments received below).'
-                                      : 'Remove this bill and return its amount to unbilled. A Stripe payment link is voided so the customer cannot pay it.'
-                                  }
-                                  onClick={() => {
-                                    setSendBackAcknowledged(false)
-                                    setConfirmSendBackInvoice(inv)
-                                  }}
-                                  style={{ ...btnGray, cursor: blocked ? 'not-allowed' : 'pointer', opacity: blocked ? 0.6 : 1 }}
-                                >
-                                  Send back
-                                </button>
-                              )
-                            })()
-                          ) : null}
-                          <button
-                            type="button"
-                            onClick={() => {
-                              if (editing?.id && isDraft) setReturnEditJobFromStages(editing.id)
-                              onClose()
-                              navigate(`/jobs?tab=stages&stagesInvoice=${encodeURIComponent(inv.id)}`)
-                            }}
-                            title="Go to this invoice row on Pipeline"
-                            // Same green as the Stages board's invoice jump chips this lands on.
-                            style={{ padding: '0.15rem 0.45rem', fontSize: '0.75rem', background: '#16a34a', border: 'none', borderRadius: 4, cursor: 'pointer', color: '#ffffff', fontWeight: 600 }}
-                          >
-                            See in Pipeline
+    <div className="jobInvoiceLedger" ref={ledgerRef}>
+      <div className="jobInvoiceLedgerHdr">
+        <span>Bills</span>
+        <span>Next</span>
+      </div>
+      {rows.map(({ inv, row, party, billTo }) => {
+        const isDraft = row.state === 'draft'
+        const isPaid = row.state === 'paid'
+        const hasStripeShare = (inv.stripe_invoice_id ?? '').trim().length > 0 && (inv.hosted_invoice_url ?? '').trim().length > 0
+        const noteLine = (inv.external_send_note ?? '').trim()
+        const memoLine = (inv.stripe_invoice_memo ?? '').trim()
+        const footerLine = (inv.stripe_invoice_footer ?? '').trim()
+        // Drafts show their memo too: riders (hazmat fee, trip charge) pre-set it,
+        // and it is the only thing distinguishing them from an ordinary draft.
+        const hasDetailLine = isDraft ? Boolean(memoLine) : Boolean(noteLine || memoLine || footerLine)
+        const detailOpen = detailOpenFor.has(inv.id)
+        const isHazmatRider = hazmatInvoiceIds?.has(inv.id) ?? false
+        const shownTo = parseShownToParty(inv.shown_to_party)
+        const shareOptions: ShownToParty[] = party === 'customer' ? (gcDistinct ? ['gc'] : []) : party === 'gc' ? ['customer'] : gcDistinct ? ['customer', 'gc'] : []
+        const shownToText = shownToChipText(shownTo, { customer: editing.customer_name, gc: gcName })
+        const writeDownRoom = row.amount - row.paid
+        const sendBackBlocked = !isDraft && sendBackBlockedByPayments(inv.id, payments)
+        const convertElig = !isDraft && !inv.stripe_invoice_id && inv.external_send_channel !== 'stripe' && inv.status === 'billed' ? convertToStripeEligibility(inv, payments, editing) : null
+        const menuOpen = menuFor === inv.id
+        const menuId = `invoice-menu-${inv.id}`
+        return (
+          <div key={inv.id} className="jobInvoiceRow" data-testid="invoice-row" data-state={row.state}>
+            <span style={chipStyle(row.state)}>{isDraft ? 'Draft' : isPaid ? 'Paid' : 'Billed'}</span>
+            {isHazmatRider ? (
+              <span
+                title="Hazmat rider — biohazard remediation fee (see Riders above)"
+                style={{ display: 'inline-block', padding: '0.05rem 0.4rem', borderRadius: 999, fontSize: '0.6875rem', fontWeight: 700, background: 'var(--bg-red-tint)', color: 'var(--text-red-600)', border: '1px solid #dc2626' }}
+              >
+                ☣ Hazmat
+              </span>
+            ) : null}
+            <span className={`jobInvoiceAmt${isPaid ? ' soft' : ''}`}>${formatCurrency(row.amount)}</span>
+            <span className="jobInvoiceSp" />
+
+            {isDraft ? (
+              <button type="button" className="jobInvoiceSend" onClick={() => openBillCustomerForDraft(inv)} style={{ padding: '0.2rem 0.6rem', fontSize: '0.75rem', background: '#2563eb', border: 'none', borderRadius: 4, cursor: 'pointer', color: '#ffffff', fontWeight: 600 }}>
+                Send bill…
+              </button>
+            ) : null}
+            {isDraft ? (
+              <span style={{ position: 'relative', display: 'inline-block' }} className="jobInvoiceBillTo">
+                <button
+                  type="button"
+                  onClick={() => setBillToMenuFor((prev) => (prev === inv.id ? null : inv.id))}
+                  disabled={billToPartySaving === inv.id}
+                  aria-haspopup="menu"
+                  aria-expanded={billToMenuFor === inv.id}
+                  title={billTo ? `Billed to ${billToDisplayLabel(billTo)} — change or remove` : 'Choose who this invoice bills — the customer, the GC, or someone else (e.g. a tenant)'}
+                  style={btnGray}
+                >
+                  {billToPartySaving === inv.id ? 'Saving…' : 'Bill to ▾'}
+                </button>
+                {billToMenuFor === inv.id ? (
+                  <div role="menu" style={{ ...menuPanel, minWidth: 220 }}>
+                    {(
+                      [
+                        { key: 'customer' as const, label: editing.customer_name?.trim() || 'The job customer', sub: 'Customer', on: party === 'customer' },
+                        ...(gcDistinct ? [{ key: 'gc' as const, label: gcName ?? 'The GC', sub: 'GC on this job', on: party === 'gc' }] : []),
+                      ] as Array<{ key: InvoiceBillToParty; label: string; sub: string; on: boolean }>
+                    ).map((opt) => (
+                      <button key={opt.key} type="button" role="menuitemradio" aria-checked={opt.on} onClick={() => void pickInvoiceParty(inv, opt.key)} style={menuItem({ on: opt.on })}>
+                        <span style={{ fontWeight: 600 }}>{opt.on ? '✓ ' : ''}{opt.label}</span>
+                        {menuSub(opt.sub)}
+                      </button>
+                    ))}
+                    <button
+                      type="button"
+                      role="menuitem"
+                      onClick={() => {
+                        setBillToMenuFor(null)
+                        onEditBillTo(inv)
+                      }}
+                      style={menuItem({ on: party === 'other', top: true })}
+                    >
+                      <span style={{ fontWeight: 600 }}>{party === 'other' ? '✓ ' : ''}Someone else…</span>
+                      {menuSub(billTo ? billTo.name ?? billTo.email : 'a tenant, a property manager')}
+                    </button>
+                  </div>
+                ) : null}
+              </span>
+            ) : null}
+
+            {!isDraft && !isPaid && hasStripeShare ? (
+              <StripeInvoiceSharePanel
+                hostedInvoiceUrl={inv.hosted_invoice_url!.trim()}
+                stripeInvoiceId={(inv.stripe_invoice_id ?? '').trim()}
+                customerEmail={editing.customer_email}
+                customerName={editing.customer_name}
+                jobName={editing.job_name}
+                hcpNumber={editing.hcp_number}
+                amountLabel={`$${formatCurrency(row.amount)}`}
+                labeledCluster
+              />
+            ) : null}
+            {!isDraft && hasStripeShare ? (
+              <button type="button" className="jobInvoiceLink" onClick={() => { if (!editing) return; setBillViewInvoice({ ...inv, job: editing }) }} title="Open this bill">
+                View
+              </button>
+            ) : null}
+
+            <span style={{ position: 'relative', display: 'inline-block' }} data-inv-menu>
+              <button
+                type="button"
+                className="jobInvoiceMore"
+                data-testid="invoice-row-menu"
+                aria-haspopup="menu"
+                aria-expanded={menuOpen}
+                aria-controls={menuOpen ? menuId : undefined}
+                aria-label={`More for the $${formatCurrency(row.amount)} ${isDraft ? 'draft' : 'bill'}`}
+                onClick={() => setMenuFor((prev) => (prev === inv.id ? null : inv.id))}
+              >
+                ⋯
+              </button>
+              {menuOpen ? (
+                <div role="menu" id={menuId} style={menuPanel}>
+                  <div style={menuSection}>This bill</div>
+                  {isDraft && onAddDiscountLine ? (
+                    <button type="button" role="menuitem" onClick={() => { setMenuFor(null); onAddDiscountLine() }} title="Add a discount row in ① Line Items — it prints on this and every bill that carries the work it applies to" style={menuItem({})}>
+                      Add discount{menuSub('line item')}
+                    </button>
+                  ) : null}
+                  {!isDraft && !isPaid && canApplyAgreedWriteDown ? (
+                    <button
+                      type="button"
+                      role="menuitem"
+                      disabled={writeDownRoom <= 0.005}
+                      aria-disabled={writeDownRoom <= 0.005}
+                      title={writeDownRoom <= 0.005 ? 'No room for a discount (billed amount equals payments on this line).' : 'Lower billed amount (agreed discount; Stripe uses a credit note).'}
+                      onClick={() => { setMenuFor(null); setAgreedWriteDownInvoice(inv) }}
+                      style={menuItem({ disabled: writeDownRoom <= 0.005 })}
+                    >
+                      Add discount{menuSub('credit note')}
+                    </button>
+                  ) : null}
+                  {convertElig ? (
+                    <button
+                      type="button"
+                      role="menuitem"
+                      disabled={!convertElig.ok}
+                      title={convertElig.ok ? 'Create the hosted Stripe invoice for this bill — pay link, card payment. Billed date stays put; nothing is emailed.' : convertElig.reason}
+                      onClick={() => { setMenuFor(null); setConvertInvoice(inv) }}
+                      style={menuItem({ disabled: !convertElig.ok })}
+                    >
+                      ⚡ Make Stripe bill{menuSub('pay link')}
+                    </button>
+                  ) : null}
+                  <button type="button" role="menuitem" onClick={() => { setMenuFor(null); goToPipeline(inv, isDraft) }} title="Go to this invoice row on Pipeline" style={menuItem({})}>
+                    See in Pipeline
+                  </button>
+                  {hasDetailLine ? (
+                    <button
+                      type="button"
+                      role="menuitemcheckbox"
+                      aria-checked={detailOpen}
+                      onClick={() => {
+                        setMenuFor(null)
+                        setDetailOpenFor((prev) => {
+                          const next = new Set(prev)
+                          if (next.has(inv.id)) next.delete(inv.id)
+                          else next.add(inv.id)
+                          return next
+                        })
+                      }}
+                      style={menuItem({ on: detailOpen })}
+                    >
+                      {detailOpen ? 'Hide ' : 'Show '}{isDraft ? 'memo' : noteLine ? 'note' : 'memo & footer'}
+                    </button>
+                  ) : null}
+
+                  {shareOptions.length > 0 ? (
+                    <>
+                      <div style={{ ...menuSection, borderTop: '1px solid var(--border)', marginTop: 2, paddingTop: '0.4rem' }}>Who else sees this bill</div>
+                      {shareOptions.map((opt) => {
+                        const label = opt === 'gc' ? (gcName ?? 'The GC') : editing.customer_name?.trim() || 'The job customer'
+                        const on = shownTo === opt
+                        return (
+                          <button key={opt} type="button" role="menuitemradio" aria-checked={on} data-testid="invoice-shown-to-option" disabled={shownToSaving === inv.id} onClick={() => { setMenuFor(null); void pickShownTo(inv, opt) }} style={menuItem({ on })}>
+                            <span style={{ fontWeight: 600 }}>{on ? '✓ ' : ''}Shown on {label}’s statement</span>
+                            {menuSub(opt === 'gc' ? 'the GC, not billed' : 'the customer, not billed')}
                           </button>
-                          {isDraft && inv.is_primary_rtb_bundle ? (
-                            // The auto-maintained remainder bundle has no delete ✕ on
-                            // purpose — say so instead of leaving a silent gap (v2.1134).
-                            <span
-                              title="Auto-maintained remainder — the part of the job not on any other bill. It resizes as other bills change and can't be deleted while the job is Ready to Bill; send it, or bill the rest another way and it shrinks on its own."
-                              style={{
-                                fontSize: '0.6875rem',
-                                fontWeight: 600,
-                                color: 'var(--text-muted)',
-                                background: 'var(--bg-subtle)',
-                                border: '1px solid var(--border)',
-                                borderRadius: 999,
-                                padding: '0.05rem 0.5rem',
-                                whiteSpace: 'nowrap',
-                                cursor: 'help',
-                              }}
-                            >
-                              auto
-                            </span>
-                          ) : null}
-                          {isDraft && !inv.is_primary_rtb_bundle ? (
-                            <button
-                              type="button"
-                              onClick={() => setConfirmDeleteInvoice(inv)}
-                              title="Delete this draft invoice"
-                              aria-label={`Delete draft invoice for $${formatCurrency(Number(inv.amount ?? 0))}`}
-                              style={{
-                                padding: '0.15rem 0.4rem',
-                                fontSize: '0.8125rem',
-                                fontWeight: 700,
-                                lineHeight: 1,
-                                background: 'transparent',
-                                border: 'none',
-                                borderRadius: 4,
-                                cursor: 'pointer',
-                                color: 'var(--text-red-600)',
-                              }}
-                            >
-                              ✕
-                            </button>
-                          ) : null}
-                        </div>
-                      </td>
-                    </tr>
-                    {hasDetailLine ? (
-                      <tr style={{ borderBottom: rowSep }}>
-                        <td colSpan={4} style={{ paddingTop: 0, paddingRight: '0.75rem', paddingBottom: '0.5rem', paddingLeft: '3.5rem', fontSize: '0.75rem', color: 'var(--text-muted)', wordBreak: 'break-word', lineHeight: 1.35 }}>
-                          {noteLine ? (<div style={{ marginBottom: memoLine || footerLine ? '0.15rem' : 0 }}><span style={{ fontWeight: 600, color: 'var(--text-600)' }}>Note: </span>{noteLine}</div>) : null}
-                          {memoLine ? (<div style={{ marginBottom: footerLine ? '0.15rem' : 0 }}><span style={{ fontWeight: 600, color: 'var(--text-600)' }}>Memo: </span>{memoLine}</div>) : null}
-                          {footerLine ? (<div><span style={{ fontWeight: 600, color: 'var(--text-600)' }}>Footer: </span>{footerLine}</div>) : null}
-                        </td>
-                      </tr>
-                    ) : null}
-                  </Fragment>
-                )
-              })}
-          </tbody>
-        </table>
+                        )
+                      })}
+                      <button type="button" role="menuitemradio" aria-checked={shownTo == null} data-testid="invoice-shown-to-option" disabled={shownToSaving === inv.id} onClick={() => { setMenuFor(null); void pickShownTo(inv, null) }} style={menuItem({ on: shownTo == null })}>
+                        <span style={{ fontWeight: 600 }}>{shownTo == null ? '✓ ' : ''}Only the payer</span>
+                        {menuSub('hide it from their statement')}
+                      </button>
+                      <div style={{ color: 'var(--text-faint)', fontSize: '0.7rem', padding: '0.2rem 0.5rem 0.3rem' }}>Changes their portal on its next open. Never changes who pays or who was emailed.</div>
+                    </>
+                  ) : null}
+
+                  {isDraft && !inv.is_primary_rtb_bundle ? (
+                    <button type="button" role="menuitem" aria-label={`Delete draft invoice for $${formatCurrency(row.amount)}`} onClick={() => { setMenuFor(null); setConfirmDeleteInvoice(inv) }} style={menuItem({ danger: true, top: true })}>
+                      Delete draft
+                    </button>
+                  ) : null}
+                  {!isDraft && !isPaid ? (
+                    <button
+                      type="button"
+                      role="menuitem"
+                      disabled={sendBackBlocked}
+                      title={sendBackBlocked ? 'Payments are applied to this bill — unlink them first (Payments received below).' : 'Remove this bill and return its amount to unbilled. A Stripe payment link is voided so the customer cannot pay it.'}
+                      onClick={() => { setMenuFor(null); setSendBackAcknowledged(false); setConfirmSendBackInvoice(inv) }}
+                      style={menuItem({ danger: true, top: true, disabled: sendBackBlocked })}
+                    >
+                      Send back{menuSub(`unbills $${formatCurrency(row.amount)}`)}
+                    </button>
+                  ) : null}
+                </div>
+              ) : null}
+            </span>
+
+            <div className="jobInvoiceWords">
+              <span className="l1">
+                {row.whoLine}
+                {row.whoNote ? <span className="mut" data-testid="invoice-draw-label"> · {row.whoNote}</span> : null}
+                {shownToText ? <span className="mut" data-testid="invoice-shown-to-chip"> · 👁 {shownToText.replace(/^👁\s*/, '')}</span> : null}
+              </span>
+              <span className="l2">
+                <span className="keep">
+                  <b>{row.moneyLead}</b>
+                  {row.moneyDetail ? <span className={row.moneyTone === 'late' ? 'late' : 'mut'}>{row.moneyDetail}</span> : null}
+                </span>
+                {row.promise ? <span className="said">{row.promise}</span> : null}
+              </span>
+            </div>
+            {hasDetailLine && detailOpen ? (
+              <div className="jobInvoiceDetail">
+                {noteLine ? (<div><b>Note: </b>{noteLine}</div>) : null}
+                {memoLine ? (<div><b>Memo: </b>{memoLine}</div>) : null}
+                {footerLine ? (<div><b>Footer: </b>{footerLine}</div>) : null}
+              </div>
+            ) : null}
+          </div>
+        )
+      })}
+      <div className="jobInvoiceSum" data-testid="invoice-sum">
+        {totals.toBill > 0 ? <span>to bill <b>${formatCurrency(totals.toBill)}</b></span> : null}
+        {totals.paid > 0 ? <span>paid <b>${formatCurrency(totals.paid)}</b></span> : null}
+        <span>open <b>${formatCurrency(totals.open)}</b></span>
+        {totals.paid > 0 ? <span>= billed <b>${formatCurrency(totals.billed)}</b></span> : null}
+        {totals.unapplied > 0 ? <span title="Money received on this job that is not applied to any bill listed here">+ <b>${formatCurrency(totals.unapplied)}</b> on no bill</span> : null}
       </div>
       {confirmDeleteInvoice ? (
         <div

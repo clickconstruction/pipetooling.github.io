@@ -71,7 +71,7 @@ Sometimes the party who is not billed still needs to see the bill: a builder wan
 
 Copy is the email, once. Show is the statement, standing. They are separate ticks — a GC can be copied on a bill without it staying on their statement, and the other way round.
 
-**Changing it later.** On **Edit Job → Bill**, a shared bill wears a {{chip:green|👁 shown to Done Right Foundation}} chip beside its payer chip. Click the chip (or {{button:outline|👁 ▾}} on a bill nobody sees) to change who sees it or to hide it again. Their portal changes on its next open. It never changes who pays or who was emailed.
+**Changing it later.** On **Edit Job → Bill**, a shared bill says *👁 shown to Done Right Foundation* at the end of its second line (*sent Sep 4 to Maria Delgado · 👁 shown to Done Right Foundation*). Open the row's {{button:outline|⋯}} menu — under **Who else sees this bill**, pick the other party's statement or **Only the payer** to hide it again. Their portal changes on its next open. It never changes who pays or who was emailed.
 
 **Remembering it on the job.** The tick starts from the job's memory: on **Edit Job → Edit tab**, under *Bills also go to*, the **Show Done Right** row says whether this job's next bills start ticked ({{chip:green|on new bills}}) or not. Changing the tick in Bill Customer updates that memory, so a decision carries to the next bill on the same job. Bills already sent are never changed by the memory — only the chip on the Bill tab changes a sent bill.
 
