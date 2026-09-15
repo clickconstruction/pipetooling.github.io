@@ -91,7 +91,7 @@ export function SupplyHouseDirectory({ supplyHouses, audience, onAddHouse, onEdi
         () =>
           supabase
             .from('supply_house_contacts')
-            .select('id, supply_house_id, label, name, email, is_default, created_by, created_at')
+            .select('id, supply_house_id, label, name, email, is_default, created_by, created_at, role, phone')
             .not('supply_house_id', 'is', null)
             .is('archived_at', null),
         'load supply house reps',
@@ -257,10 +257,18 @@ export function SupplyHouseDirectory({ supplyHouses, audience, onAddHouse, onEdi
               <a href={`mailto:${r.email}`} style={{ ...muted, color: 'var(--text-muted)' }}>
                 · {r.email}
               </a>
+              {r.role === 'job_accounts' ? (
+                <span title="Opens job accounts — the person to call before the first parts run" style={{ fontSize: '0.68rem', fontWeight: 700, color: '#0f766e', background: '#ccfbf1', borderRadius: 999, padding: '0 0.45rem' }}>
+                  Job accounts{r.phone ? ` · ${r.phone}` : ''}
+                </span>
+              ) : null}
             </div>
           )
         })}
         {more > 0 ? <span style={muted}>+ {more} more</span> : null}
+        {row.house.job_accounts === 'expects' && !row.reps.some((r) => r.role === 'job_accounts') ? (
+          <span style={{ color: 'var(--text-amber-700)', fontSize: '0.75rem' }}>expects a job account per property — no job-accounts rep yet; give one the role when you next call</span>
+        ) : null}
       </div>
     )
   }

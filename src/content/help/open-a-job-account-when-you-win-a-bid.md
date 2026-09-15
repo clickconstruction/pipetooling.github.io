@@ -31,6 +31,6 @@ No rep with an email on file? The sheet says so and points you to **Materials �
 
 ## See it on the bid, mark it opened
 
-Under the Job block the **Job accounts** line reads the state per house — {{chip:green|Ferguson ✓}} {{chip:purple|Reece · requested}} {{chip:gray|Moore · none yet · quoted}} — and **Job accounts…** reopens the question whenever you want to come back to it. When the rep says yes, {{button:green|Mark opened…}} takes the reference and how it was opened; the tech's card reads ✓ at the counter from then on.
+Under the Job block the **Job accounts** line reads the state per house — {{chip:green|Ferguson ✓}} {{chip:purple|Reece · requested}} {{chip:gray|Moore · none yet · quoted}} — and **Job accounts…** reopens the question whenever you want to come back to it. When the rep says yes, **tap the house's chip** — it opens {{button:green|Mark opened…}} for that house: how it was opened, the reference, a note. The tech's card reads ✓ at the counter from then on.
 
 What you cannot see stays the same: invoices, balances and the Job Accounts money view are the office's. See [open a job account before buying parts](?g=open-a-job-account-before-buying-parts) for the field's and the office's side.

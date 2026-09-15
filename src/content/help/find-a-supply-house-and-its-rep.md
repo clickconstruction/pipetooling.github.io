@@ -26,7 +26,7 @@ Expand a house (tap its name) and use the **Contacts** box: name, email, an opti
 
 The role says what the app does with the contact:
 
-- {{chip:green|Job accounts}} — the person who opens a **job account** for a property. Their name and phone show wherever a job needs one: the house's Job accounts roster, the job window, the PO code. One per house is enough.
+- {{chip:green|Job accounts}} — the person who opens a **job account** for a property. Their name and phone show wherever a job needs one: the house's Job accounts roster, the job window, the PO code, and as a teal tag on the Directory row itself. One per house is enough; a house that expects accounts with no such rep says so under its reps.
 - {{chip:gray|Price requests}} — the default; where price requests go.
 - {{chip:gray|Billing}} — statement and payment questions.
 

@@ -18,6 +18,7 @@ import { isCustomerWaiting, portalKindLabel, type RequestPriority } from '../lib
 import { parsePortalRequestPayload } from '../lib/portalRequestPayload'
 import { recordNavClick } from '../lib/navClickTelemetry'
 import { MarkJobAccountOpenedModal } from './materials/MarkJobAccountOpenedModal'
+import { JobAccountBidByline } from './JobAccountBidByline'
 import { OPEN_JOB_ACCOUNT_ACTION, openJobAccountCloseNote, parseOpenJobAccountPayload, telHref, type RequestedJobAccountHouse } from '../lib/jobs/jobAccountStrip'
 import {
   AGING_ITEM_OPENED_CONTROL,
@@ -418,6 +419,7 @@ export function DispatchInboxSection({
                 const jobAccountLines =
                   jobAccountAsk && jobAccountAsk.supply_houses.length > 0 ? (
                     <div style={{ marginTop: 6, display: 'flex', flexDirection: 'column', gap: 6 }} data-job-account-ask={req.id}>
+                      {req.job_ledger_id ? <JobAccountBidByline jobId={req.job_ledger_id} /> : null}
                       {jobAccountAsk.from_counter ? (
                         <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-amber-800)' }}>At the counter now</span>
                       ) : null}
