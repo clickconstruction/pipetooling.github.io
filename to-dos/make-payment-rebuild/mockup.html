@@ -1,0 +1,210 @@
+<title>Supply House Make Payment</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>
+  :root {
+    --page: #f2f4f7; --ink: #1c2430; --ink-2: #5b6675; --rule: #d9dee6;
+    --note: #fff7e0; --note-ink: #6b4d00; --warn: #fdecec; --warn-ink: #8a1c1c; --accent: #2f6fdb; --panel: #ffffff;
+    --app-surface: #ffffff; --app-bg-muted: #f3f4f6; --app-border: #e5e7eb; --app-border-strong: #d1d5db;
+    --app-text: #111827; --app-muted: #6b7280; --app-green: #059669; --app-green-tint: #dcfce7; --app-green-ink: #166534;
+    --app-teal: #0f766e; --app-teal-tint: #ccfbf1; --app-amber-tint: #fef3c7; --app-amber-ink: #92400e;
+    --app-red-tint: #fee2e2; --app-red-ink: #991b1b;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) { --page: #151a21; --ink: #e6eaf0; --ink-2: #9aa5b4; --rule: #2b333e; --note: #2c2410; --note-ink: #f0d58a; --warn: #3a1d1d; --warn-ink: #f3b4b4; --accent: #7aa7f2; --panel: #1d232c; }
+  }
+  :root[data-theme="dark"] { --page: #151a21; --ink: #e6eaf0; --ink-2: #9aa5b4; --rule: #2b333e; --note: #2c2410; --note-ink: #f0d58a; --warn: #3a1d1d; --warn-ink: #f3b4b4; --accent: #7aa7f2; --panel: #1d232c; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--page); color: var(--ink); font-family: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif; font-size: 15px; line-height: 1.5; padding-block: 40px 64px; padding-inline: 24px; }
+  .wrap { max-width: 1180px; margin: 0 auto; }
+  header { max-width: 64ch; margin-bottom: 36px; }
+  .eyebrow { font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-2); font-weight: 600; margin: 0 0 8px; }
+  h1 { font-size: 28px; line-height: 1.2; margin: 0 0 12px; font-weight: 600; text-wrap: balance; }
+  header p { margin: 0 0 10px; color: var(--ink-2); }
+  .warnbox { background: var(--warn); color: var(--warn-ink); border-radius: 8px; padding: 12px 16px; font-size: 14px; margin-top: 14px; }
+  .warnbox b { font-weight: 600; }
+  .warnbox code { font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 12.5px; }
+
+  .compare { display: grid; grid-template-columns: 1fr 1.15fr; gap: 28px; align-items: start; }
+  @media (max-width: 900px) { .compare { grid-template-columns: 1fr; } }
+  .col-label { display: flex; align-items: baseline; gap: 10px; margin: 0 0 12px; }
+  .col-label h2 { font-size: 16px; margin: 0; font-weight: 600; }
+  .col-label span { font-size: 13px; color: var(--ink-2); }
+
+  .frame { background: #4a5566; border-radius: 12px; padding: 28px 22px; box-shadow: 0 1px 2px rgba(0,0,0,.15); }
+  .dialog { background: var(--app-surface); color: var(--app-text); border-radius: 8px; width: 100%; margin: 0 auto; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; font-size: 14px; line-height: 1.45; overflow: hidden; }
+  .dialog.before { max-width: 480px; }
+  .dialog.after { max-width: 620px; }
+  .bar { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; padding: 20px 24px 12px; border-bottom: 1px solid var(--app-border); }
+  .bar h3 { margin: 0; font-size: 18px; font-weight: 600; }
+  .bar p { margin: 3px 0 0; font-size: 13px; color: var(--app-muted); }
+  .x { font-size: 24px; line-height: 1; color: var(--app-muted); padding: 0 4px; }
+  .body { padding: 16px 24px 20px; }
+  .lbl { display: block; font-weight: 500; margin-bottom: 4px; }
+  .in { border: 1px solid var(--app-border-strong); border-radius: 4px; padding: 8px; background: #fff; min-height: 36px; display: flex; align-items: center; gap: 6px; font-variant-numeric: tabular-nums; }
+  .in .ph { color: #9ca3af; }
+  .in .ico { margin-left: auto; color: var(--app-muted); font-size: 12px; }
+  .chk { display: inline-flex; align-items: center; gap: 8px; font-weight: 500; }
+  .box { width: 15px; height: 15px; border: 1px solid #8a919c; border-radius: 3px; background: #fff; display: inline-block; flex: none; }
+  .box.on { background: var(--app-green); border-color: var(--app-green); position: relative; }
+  .box.on::after { content: ""; position: absolute; left: 4px; top: 1px; width: 5px; height: 9px; border: solid #fff; border-width: 0 2px 2px 0; transform: rotate(45deg); }
+  .box.mixed { background: var(--app-green); border-color: var(--app-green); position: relative; }
+  .box.mixed::after { content: ""; position: absolute; left: 3px; top: 6px; width: 7px; height: 2px; background: #fff; }
+  .list { border: 1px solid var(--app-border); border-radius: 4px; padding: 8px; max-height: 200px; overflow: hidden; }
+  .li { display: flex; align-items: center; gap: 8px; padding: 4px 0; }
+  .li .d { color: var(--app-muted); font-size: 13px; }
+  .li .amt { margin-left: auto; font-variant-numeric: tabular-nums; }
+  .pill { padding: 1px 8px; border-radius: 999px; font-size: 11px; font-weight: 600; white-space: nowrap; }
+  .pill.teal { background: var(--app-teal-tint); color: var(--app-teal); }
+  .pill.amber { background: var(--app-amber-tint); color: var(--app-amber-ink); }
+  .pill.red { background: var(--app-red-tint); color: var(--app-red-ink); }
+  .pill.gray { background: var(--app-bg-muted); color: var(--app-muted); }
+  .btns { display: flex; gap: 8px; align-items: center; }
+  .btn { padding: 8px 16px; border-radius: 4px; border: 1px solid transparent; font-weight: 500; white-space: nowrap; }
+  .btn.green { background: var(--app-green); color: #fff; }
+  .btn.gray { background: var(--app-bg-muted); border-color: var(--app-border-strong); }
+  .btn.ghost { background: #fff; border-color: var(--app-border-strong); font-size: 13px; padding: 5px 10px; }
+
+  /* after */
+  .sec { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--app-muted); font-weight: 600; margin: 6px 0 8px; display: flex; align-items: center; gap: 8px; }
+  .sec::after { content: ""; flex: 1; height: 1px; background: var(--app-border); }
+  .row2 { display: grid; grid-template-columns: 1fr 1.6fr; gap: 12px; margin-bottom: 12px; }
+  @media (max-width: 480px) { .row2 { grid-template-columns: 1fr; } }
+  .hint { font-size: 12px; color: var(--app-muted); margin-top: 4px; }
+  .chips { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 8px; }
+  .chip { padding: 3px 10px; border-radius: 999px; font-size: 12px; border: 1px solid var(--app-border-strong); background: #fff; color: var(--app-text); }
+  .chip.on { background: var(--app-text); color: #fff; border-color: var(--app-text); }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { text-align: left; font-weight: 600; color: var(--app-muted); font-size: 11px; letter-spacing: .04em; text-transform: uppercase; padding: 6px 8px; border-bottom: 1px solid var(--app-border); }
+  td { padding: 7px 8px; border-bottom: 1px solid var(--app-border); vertical-align: top; }
+  td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  tr.sel td { background: #f0fdf4; }
+  tr.over td:first-child { box-shadow: inset 3px 0 0 #f59e0b; }
+  tr.over90 td:first-child { box-shadow: inset 3px 0 0 #dc2626; }
+  .sub { color: var(--app-muted); font-size: 12px; display: block; }
+  .tablewrap { overflow-x: auto; margin-bottom: 8px; }
+  .foot { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 12px 24px; border-top: 1px solid var(--app-border); background: var(--app-surface); }
+  .foot .sum { font-size: 13px; color: var(--app-muted); }
+  .foot .sum b { color: var(--app-text); font-weight: 600; font-variant-numeric: tabular-nums; }
+
+  .k { display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; border-radius: 50%; background: var(--accent); color: #fff; font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 11px; font-weight: 500; flex: none; vertical-align: middle; margin-left: 6px; }
+  .keys { margin-top: 36px; display: grid; grid-template-columns: 1fr 1fr; gap: 8px 32px; }
+  @media (max-width: 900px) { .keys { grid-template-columns: 1fr; } }
+  .keys div { display: flex; gap: 12px; align-items: flex-start; padding: 12px 0; border-top: 1px solid var(--rule); }
+  .keys .k { margin: 3px 0 0; }
+  .keys b { font-weight: 600; }
+  .keys p { margin: 2px 0 0; color: var(--ink-2); font-size: 14px; }
+  .cost { margin-top: 32px; background: var(--note); color: var(--note-ink); border-radius: 8px; padding: 14px 18px; max-width: 72ch; font-size: 14px; }
+  .cost b { font-weight: 600; }
+  .rest { margin-top: 32px; max-width: 72ch; }
+  .rest h2 { font-size: 16px; margin: 0 0 10px; }
+  .rest ul { margin: 0; padding-left: 20px; color: var(--ink-2); font-size: 14px; }
+  .rest li { margin: 4px 0; }
+  .ex { font-size: 12px; color: var(--ink-2); margin-top: 8px; }
+</style>
+
+<div class="wrap">
+  <header>
+    <p class="eyebrow">Materials → Supply Houses → Make Payment</p>
+    <h1>Make Payment, the same pass</h1>
+    <p>Left is the modal as it ships today (the page button says <b>Make Payment</b>; the dialog says <b>Apply Payment</b>). Right is a proposal built the way Taunya pays a house: one cheque or ACH on the house's payment day, covering a batch of invoices off the statement. Rows on the right are illustrative — Reece's real unpaid balance ($58,148.96 across four aging buckets) is the number they add up to.</p>
+    <div class="warnbox"><b>Found while reading the code:</b> the blank <b>Link (optional)</b> field is written to every invoice you pay — <code>update({ is_paid: true, link: null })</code>. Paying an invoice with the field empty <b>erases its Invoice PDF link</b>. That's worth fixing whether or not the rest ships.</div>
+  </header>
+
+  <div class="compare">
+    <section>
+      <div class="col-label"><h2>Today</h2><span>no scroll cap, no total, no date, link overwrites</span></div>
+      <div class="frame">
+        <div class="dialog before">
+          <div class="body" style="padding-top:20px">
+            <h3 style="margin:0 0 16px;font-size:18px">Apply Payment</h3>
+            <span class="lbl">Link (optional)</span>
+            <div class="in" style="margin-bottom:12px"><span class="ph">Payment or receipt link...</span></div>
+            <div style="margin-bottom:12px"><span class="chk"><span class="box"></span>Show all invoices</span></div>
+            <span class="lbl">Select invoices to mark as paid</span>
+            <div class="list">
+              <div class="li"><span class="box on"></span><span>1044821</span><span class="d">7/28/2026</span><span class="amt">$2,537.29</span></div>
+              <div class="li"><span class="box on"></span><span>1051903</span><span class="pill teal">Job acct</span><span class="d">8/6/2026</span><span class="amt">$6,088.15</span></div>
+              <div class="li"><span class="box"></span><span>1058277</span><span class="d">8/19/2026</span><span class="amt">$14,210.60</span></div>
+              <div class="li"><span class="box"></span><span>1058402</span><span class="d">8/20/2026</span><span class="amt">$9,940.14</span></div>
+              <div class="li"><span class="box"></span><span>1059116</span><span class="d">8/24/2026</span><span class="amt">$5,211.67</span></div>
+              <div class="li"><span class="box"></span><span>1063540</span><span class="pill teal">Job acct</span><span class="d">9/3/2026</span><span class="amt">$12,884.30</span></div>
+              <div class="li"><span class="box"></span><span>1064218</span><span class="d">9/9/2026</span><span class="amt">$7,276.81</span></div>
+            </div>
+            <div class="btns" style="justify-content:flex-end;margin-top:16px"><span class="btn gray">Cancel</span><span class="btn green">Apply</span></div>
+          </div>
+        </div>
+      </div>
+      <p class="ex">Two invoices ticked and nothing tells you it's $8,625.44. The date it "cleared" will be the moment you click Apply.</p>
+    </section>
+
+    <section>
+      <div class="col-label"><h2>Proposed</h2><span>one payment, the invoices it covers, the total you're about to write</span></div>
+      <div class="frame">
+        <div class="dialog after">
+          <div class="bar">
+            <div><h3>Record a payment to Reece</h3><p>$58,148.96 unpaid across 7 invoices · 2 past 60 days</p></div>
+            <span class="x">×</span>
+          </div>
+          <div class="body">
+            <div class="sec">The payment <span class="k">1</span></div>
+            <div class="row2">
+              <div>
+                <span class="lbl">Paid on</span>
+                <div class="in">09/15/2026 <span class="ico">▦</span></div>
+                <div class="hint">Reece's payment day is the 10th.</div>
+              </div>
+              <div>
+                <span class="lbl">Receipt or remittance link <span class="k">2</span></span>
+                <div class="in"><span class="ph">https://drive.google.com/…</span></div>
+                <div class="hint">Kept alongside each invoice's PDF — never in place of it.</div>
+              </div>
+            </div>
+
+            <div class="sec">Which invoices <span class="k">3</span></div>
+            <div class="chips"><span class="chip on">Unpaid · 7</span><span class="chip">Past due · 4</span><span class="chip">On job account · 2</span><span class="chip">Paid too</span></div>
+            <div class="tablewrap">
+              <table>
+                <thead><tr><th style="width:28px"><span class="box mixed"></span></th><th>Invoice</th><th>Due</th><th>Job</th><th class="num">Amount</th></tr></thead>
+                <tbody>
+                  <tr class="sel over90"><td><span class="box on"></span></td><td>1044821<span class="sub">PO 40188 · 7/28</span></td><td><span class="pill red">49 days over</span></td><td>J1007 · SPACEX<span class="sub">Bastrop</span></td><td class="num">$2,537.29</td></tr>
+                  <tr class="sel over"><td><span class="box on"></span></td><td>1051903 <span class="pill teal">Job acct</span><span class="sub">PO 40342 · 8/6</span></td><td><span class="pill amber">36 days over</span></td><td>J964 · Pondhill<span class="sub">San Antonio</span></td><td class="num">$6,088.15</td></tr>
+                  <tr class="over"><td><span class="box"></span></td><td>1058277<span class="sub">PO 40501 · 8/19</span></td><td><span class="pill amber">26 days over</span></td><td>J1012 · Knight Contracting<span class="sub">Kyle</span></td><td class="num">$14,210.60</td></tr>
+                  <tr class="over"><td><span class="box"></span></td><td>1058402<span class="sub">PO 40509 · 8/20</span></td><td><span class="pill amber">26 days over</span></td><td>J1012 · Knight Contracting<span class="sub">Kyle</span></td><td class="num">$9,940.14</td></tr>
+                  <tr><td><span class="box"></span></td><td>1059116<span class="sub">Serv Chrg · 8/24</span></td><td><span class="pill gray">due 10/10</span></td><td>—</td><td class="num">$5,211.67</td></tr>
+                  <tr><td><span class="box"></span></td><td>1063540 <span class="pill teal">Job acct</span><span class="sub">PO 40712 · 9/3</span></td><td><span class="pill gray">due 10/10</span></td><td>J1007 · SPACEX<span class="sub">Bastrop</span></td><td class="num">$12,884.30</td></tr>
+                  <tr><td><span class="box"></span></td><td>1064218<span class="sub">PO 40790 · 9/9</span></td><td><span class="pill gray">due 10/10</span></td><td>J273 · Dudley (Lennox)<span class="sub">San Antonio</span></td><td class="num">$7,276.81</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="hint" style="margin-bottom:4px">Oldest due first. <span class="k">4</span> The header box ticks everything showing; the <b>Past due</b> chip then ticks just the four that are late.</div>
+          </div>
+          <div class="foot">
+            <span class="sum">2 invoices · <b>$8,625.44</b> · leaves $49,523.52 unpaid <span class="k">5</span></span>
+            <span class="btns"><span class="btn gray">Cancel</span><span class="btn green">Record $8,625.44 paid</span></span>
+          </div>
+        </div>
+      </div>
+      <p class="ex">After Apply: a toast — <i>2 invoices marked paid 9/15 · $8,625.44 to Reece</i> — and the house's table refreshes with the same Paid On dates.</p>
+    </section>
+  </div>
+
+  <div class="keys">
+    <div><span class="k">1</span><div><b>The payment comes first, with the day it cleared.</b><p>Today <code>paid_at</code> is whatever moment you click Apply. A <b>Paid on</b> date (default today, hint = the house's payment day) is written to every invoice in the batch through the same <code>paidAtPayload</code> path the invoice form now uses — one date for the cheque, not seven timestamps.</p></div></div>
+    <div><span class="k">2</span><div><b>The link stops overwriting the PDF.</b><p>Rename it for what it is (the remittance or receipt), and only write it to invoices that have <em>no</em> link — blank leaves every invoice's Drive PDF untouched. That's the bug fix; the rest is polish.</p></div></div>
+    <div><span class="k">3</span><div><b>A table, not a checkbox list.</b><p>Due date with an over-by-N-days pill (red past 60), the job each invoice sits on, the PO — the things she cross-checks against the statement. Filter chips replace "Show all invoices": <b>Unpaid</b> (default), <b>Past due</b>, <b>On job account</b>, <b>Paid too</b>.</p></div></div>
+    <div><span class="k">4</span><div><b>Select all, select the late ones.</b><p>A header checkbox for everything showing; the Past due chip narrows first so "pay everything overdue" is two clicks. Sorted oldest due first, which is also the order the statement lists them.</p></div></div>
+    <div><span class="k">5</span><div><b>The total is the button.</b><p>A pinned footer shows count · sum · what's left unpaid, and the green button says the amount it's about to record. Today you tick boxes and hope the arithmetic matches the cheque.</p></div></div>
+    <div><span class="k">6</span><div><b>Panel scrolls, header and footer stick.</b><p>The same v2.3473 / v2.3476 pattern — this modal has the same un-capped panel that clipped the invoice form; a house with forty unpaid invoices already scrolls the inner list inside a dialog that itself can't.</p></div></div>
+  </div>
+
+  <div class="cost"><b>What it would take:</b> one client PR on <code>SupplyHousesTab.tsx</code> plus a small kernel (<code>supplyHousePayment.ts</code>: selection sums, over-by days from <code>due_date</code>, the link-preserving payload) — no migration. <code>due_date</code>, <code>paid_at</code>, <code>on_job_account</code> and the job allocations are all already loaded for the table. The link fix alone is a five-line change and could ship first as its own PR.</div>
+
+  <div class="rest">
+    <h2>Deliberately left alone</h2>
+    <ul>
+      <li>No new "payment" table or amount field — the app records which invoices are paid and when, not the cheque itself. Banking already has the Mercury transaction; this stays the invoice-side view.</li>
+      <li>Green for Apply — it's the app's "money went out" colour on this page already (the Make Payment button).</li>
+      <li>Partial payments — not modeled today (an invoice is paid or not), and nobody has asked.</li>
+    </ul>
+  </div>
+</div>
