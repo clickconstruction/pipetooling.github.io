@@ -187,6 +187,19 @@ body{padding:32px clamp(16px,4vw,48px) 80px}.mock-wrap{display:grid;gap:56px;max
         <div style="width:64px"><div style="height:82px;border:1px solid var(--border);border-radius:4px;background:#fff"></div><div class="xs muted" style="text-align:center"><b>10</b> —</div></div>
         <div style="width:64px;display:grid;place-items:center" class="xs muted">… 31</div>
       </div>
+      <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap;border-top:1px solid var(--border);padding-top:8px"><span class="small"><b>6 of 31 pages on rows</b> <span class="muted">· 25 not used</span></span><span class="btn">Done with this file</span></div>
+    </div>
+    <div class="box" style="background:var(--surface-2);gap:6px">
+      <div class="bh">After Done · the same file, a moment later</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap">
+        <div style="width:52px"><div style="height:66px;border:1px solid var(--green);border-radius:4px;background:#fff"></div><div class="xs" style="text-align:center"><span class="chip green" style="font-size:9px;padding:0 4px">WC-1</span></div></div>
+        <div style="width:52px"><div style="height:66px;border:1px solid var(--green);border-radius:4px;background:#fff"></div><div class="xs" style="text-align:center"><span class="chip green" style="font-size:9px;padding:0 4px">WC-1</span></div></div>
+        <div style="width:52px"><div style="height:66px;border:1px solid var(--green);border-radius:4px;background:#fff"></div><div class="xs" style="text-align:center"><span class="chip green" style="font-size:9px;padding:0 4px">WC-1 fv</span></div></div>
+        <div style="width:52px"><div style="height:66px;border:1px solid var(--green);border-radius:4px;background:#fff"></div><div class="xs" style="text-align:center"><span class="chip green" style="font-size:9px;padding:0 4px">LAV-1</span></div></div>
+        <div style="width:52px"><div style="height:66px;border:1px solid var(--green);border-radius:4px;background:#fff"></div><div class="xs" style="text-align:center"><span class="chip green" style="font-size:9px;padding:0 4px">DWH-1</span></div></div>
+        <div style="width:52px"><div style="height:66px;border:1px solid var(--green);border-radius:4px;background:#fff"></div><div class="xs" style="text-align:center"><span class="chip green" style="font-size:9px;padding:0 4px">FD-1</span></div></div>
+      </div>
+      <p class="xs muted">25 pages let go · Sep 15 · drop the file again if you need one. The file in the bucket is now six pages; every row still points at its sheet.</p>
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
       <div class="box"><div class="bh">Page 5 is picked · which row?</div><div class="pillrow"><span class="chip amber">DWH-1 · sheet needed</span><span class="chip amber">RPZ-1 · sheet needed</span><span class="chip amber">ET-1 · sheet needed</span><span class="chip gray">HB-3 · has p.12</span></div><p class="xs muted">Tap a row; the page joins its sheet. Tap again to add a second page.</p></div>
@@ -200,7 +213,8 @@ body{padding:32px clamp(16px,4vw,48px) 80px}.mock-wrap{display:grid;gap:56px;max
     </tbody></table>
   </div>
   <div class="card" style="gap:6px;border-style:dashed"><div class="eyebrow">Deferred · stage 3b · the written ask to the house (owner-gated, decision 4)</div><p class="xs muted">When you say so: <b>Ask NWS in writing</b> sends the picked rows with a link; the house attaches sheets and types lead time and availability on a phone page; the trail reads Sent · Delivered · Viewed · Answered. Sent only after the win. The artboard is drawn on the Design page (the house's cut-sheet page).</p></div>
-  <p class="xs muted"><b>Ships:</b> `source_files` on the revision · `sheetAssignment` (pages → rows, overlaps, missing) · the page strip · guide "Attach the sheets". <b>Not yet:</b> the robot's split by tag (stage 6); anything the house can do.</p>
+  <div class="card" style="gap:6px"><div class="eyebrow">If she never taps Done · Share does it for her (stage 4)</div><label class="small" style="display:flex;gap:8px;align-items:center"><input type="checkbox" checked> <span>Keep only the pages on rows for <b>2 files</b>, let <b>41 pages</b> go</span></label><p class="xs muted">What ships is always small; a draft never leaves unused pages in the bucket. A file with nothing on rows reads <b>Remove this file</b> instead of Done.</p></div>
+  <p class="xs muted"><b>Ships:</b> `source_files` on the revision · `sheetAssignment` (pages → rows, overlaps, missing) · `trimPdf` (pdf-lib copyPages in the browser; rows' page numbers rewritten from the old→new map) · the page strip · Done with this file · guide "Attach the sheets" and "Done with a file". <b>Not yet:</b> the robot's split by tag (stage 6); anything the house can do.</p>
 </div>
 </div></section>
 <section><p class="board-title">Stage 4 · share and decide</p><div class="board"><div style="width:1180px;background:var(--ground);padding:20px 24px 26px;display:grid;gap:14px">
