@@ -76,6 +76,7 @@ function data(): GcOnNoticeData {
     summary: folded.summary,
     desk: { queue, summary: summarizeLienDeskForNeedsYou(queue), rows, items: [], affidavits: { entries: [], piles: { needs_property: [], to_draft: [], awaiting: [], ready: [], held: [], filed: [], missed: [] }, counts: { needs_property: 0, to_draft: 0, awaiting: 0, ready: 0, held: 0, filed: 0, missed: 0 } }, affidavitRows: [], jobsById, gcsById: {}, addressesById: {}, ownerByJob: {}, promisesByJob: {}, gcsWithPriorNotice: new Set(), gcsHeldBefore: new Set() },
     ownerRowByJob: { j994: ownerRow('j994'), j1016: ownerRow('j1016'), j1002: ownerRow('j1002'), j1031: ownerRow('j1031') },
+    countyByJob: { j994: 'Hays' },
     ownerLineByJob: { j994: 'D. & A. Miller · mail to 212 Kettle Dr, Buda', j1002: 'City of Kyle · mail to PO Box 40, Kyle', j1031: 'Harbor Ridge Homes LP · mail to PO Box 1180, Kyle' },
     gcHasPriorNotice: false,
     gcHeldBefore: false,
@@ -114,7 +115,12 @@ describe('GcOnNoticeModal', () => {
     expect(screen.getByText(/May is named as information/)).toBeTruthy()
     expect(screen.getByText('unbilled · contract balance')).toBeTruthy()
     expect(screen.getAllByTestId('gc-notice-claim-row')).toHaveLength(3)
-    // Step 3: the reason and the ticks
+    // Step 3: the letter, seeded for the GC, with its fills and the attorney note
+    const letter = screen.getByLabelText('Cover letter') as HTMLTextAreaElement
+    expect(letter.value).toContain('working under Harborline Builders')
+    expect(letter.value).toContain('{{months}}')
+    expect(screen.getByText(/Attorney wording pending/)).toBeTruthy()
+    // Step 4: the reason and the ticks
     expect(screen.getByText('GC is not paying its subs')).toBeTruthy()
     expect(screen.getByText(/starts the moment this run is recorded/)).toBeTruthy()
     // the footer: 2 ready (994, 1031), 1 waits on the roll, 1 public

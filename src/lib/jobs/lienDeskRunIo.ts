@@ -2,8 +2,8 @@ import { supabase } from '../supabase'
 import { withSupabaseRetry } from '../../utils/errorHandling'
 import { filingDocFooter, filingDocPdfBlob, filingPdfFilename } from '../jobsDocuments/lienFilingDocuments'
 import { markLienDeskItemSent } from './lienDeskIo'
-import { runFilingPayload, runNoticeBlocks, type RunNotice, type RunSendRecord } from './lienDeskRun'
-import { buildDemandLetterPacket } from '../jobsDocuments/demandLetterPacket'
+import { runCoverNoteBlocks, runFilingPayload, runNoticeBlocks, type RunNotice, type RunSendRecord } from './lienDeskRun'
+import { buildDemandLetterPacket, mergePdfBlobs } from '../jobsDocuments/demandLetterPacket'
 import { buildPhysicalInvoicePdfBlob } from '../physicalInvoicePdf'
 import { noticeInvoiceExhibitInputs, type NoticeInvoiceDoc } from './noticeInvoiceEnclosure'
 
@@ -16,7 +16,9 @@ import { noticeInvoiceExhibitInputs, type NoticeInvoiceDoc } from './noticeInvoi
 
 async function emailNoticePdf(n: RunNotice, recipientKey: 'owner' | 'original_contractor', toEmail: string, invoiceDocs: readonly NoticeInvoiceDoc[]): Promise<string> {
   const r = n.recipients.find((x) => x.key === recipientKey)!
-  const notice = await filingDocPdfBlob(runNoticeBlocks(n, r), { footer: filingDocFooter('notice_53_056') })
+  const form = await filingDocPdfBlob(runNoticeBlocks(n, r), { footer: filingDocFooter('notice_53_056') })
+  // The run's cover letter (v2.3482) rides in front of the owner's copy, as the printed packet prints it.
+  const notice = recipientKey === 'owner' && n.coverLetter ? await mergePdfBlobs([await filingDocPdfBlob(runCoverNoteBlocks(n)), form]) : form
   // The unpaid invoices ride behind the notice, stamped INVOICE (v2.3437, § 53.056(a-3)).
   const blob = invoiceDocs.length > 0 ? (await buildDemandLetterPacket(notice, await noticeInvoiceExhibitInputs(invoiceDocs, buildPhysicalInvoicePdfBlob))).blob : notice
   const buf = new Uint8Array(await blob.arrayBuffer())

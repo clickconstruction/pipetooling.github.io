@@ -31,6 +31,8 @@ export type GcOnNoticeData = {
   ownerRowByJob: Record<string, OwnerToConfirmRow>
   /** "D. & A. Miller · mail to 212 Kettle Dr" per job with an owner on file. */
   ownerLineByJob: Record<string, string>
+  /** The property record's county per job, when it has one (v2.3479). */
+  countyByJob: Record<string, string>
   gcHasPriorNotice: boolean
   gcHeldBefore: boolean
   /** The latest live promise across this GC's jobs, if any. */
@@ -152,12 +154,14 @@ export function useGcOnNoticeData(gcId: string | null, todayYmd: string): { data
         const folded = buildGcOnNotice(rows, items, ownerStateOf, todayYmd)
         const ownerRowByJob: Record<string, OwnerToConfirmRow> = {}
         const ownerLineByJob: Record<string, string> = {}
+        const countyByJob: Record<string, string> = {}
         for (const j of folded.jobs) {
           const job = jobsById[j.jobId]
           const address = job?.customer_address_id ? addressesById[job.customer_address_id] ?? null : null
           const property = resolveLienProperty(address, ownerByJob[j.jobId] ?? null)
           const name = lienPropertyOwnerDisplayName(property.owner)
           if (name && property.owner.mailingAddress) ownerLineByJob[j.jobId] = `${name} · mail to ${property.owner.mailingAddress}`
+          if (property.county) countyByJob[j.jobId] = property.county
           const first = j.months[0]
           ownerRowByJob[j.jobId] = {
             jobId: j.jobId,
@@ -192,6 +196,7 @@ export function useGcOnNoticeData(gcId: string | null, todayYmd: string): { data
           desk,
           ownerRowByJob,
           ownerLineByJob,
+          countyByJob,
           gcHasPriorNotice,
           gcHeldBefore,
           promise,

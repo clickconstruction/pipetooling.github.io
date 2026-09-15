@@ -661,6 +661,9 @@ export function DashboardPinnedQuickRow({
               setLienReleaseQueueOpen(true)
             } else if (item.key === 'demand-deadline') {
               navigate('/jobs?tab=stages')
+            } else if (item.key === 'lien-notice-batch') {
+              const gcId = lienDeskData?.summary.leader.batches?.[0]?.gcId
+              navigate(gcId ? `/jobs?tab=stages&gcnotice=${encodeURIComponent(gcId)}` : '/jobs?tab=stages&liendesk=1')
             } else if (item.key === 'lien-notice-draft' || item.key === 'lien-notice-approve') {
               navigate('/jobs?tab=stages&liendesk=1')
             } else if (item.key === 'lien-file-window') {

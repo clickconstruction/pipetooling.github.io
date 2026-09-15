@@ -10,8 +10,9 @@
  * a contract balance, the owner state, the affidavit date, and whether the row
  * is ready for the run. Pure; the hook resolves owners and the modal writes.
  */
-import type { LienDeskItemRow, LienNoticeMonthRow } from './lienDesk'
+import type { LienDeskBatch, LienDeskItemRow, LienDeskQueue, LienNoticeMonthRow } from './lienDesk'
 import { filingDeadlineForMonth } from './lienDeadlines'
+import { parseLienDeskDraftFields } from './lienNoticeDraft'
 
 export type GcUnpaidMonthRow = LienNoticeMonthRow & {
   is_billed: boolean
@@ -222,6 +223,42 @@ export function summarizeGcOnNotice(jobs: ReadonlyArray<GcNoticeJob>): GcNoticeS
   return s
 }
 
+// ---------- the cover letter, written once for all (v2.3482, PR 2) ----------
+
+/** The blue fields the letter fills per notice. */
+export const COVER_LETTER_FILLS = { property: '{{property}}', months: '{{months}}', job: '{{job}}' } as const
+
+/**
+ * The letter to owners who paid the GC in good faith: what happened, what
+ * § 53.081 lets them do, that we release the moment we are paid, and the
+ * offer to be paid directly. One text for the whole run; `fillCoverLetter`
+ * resolves the fills per notice. The § 53.081 paragraph prints as written
+ * until the attorney replaces it (owner-decisions-pending).
+ */
+export function defaultGcNoticeCoverLetter(input: { gcName: string; claimantName: string }): string {
+  const gc = input.gcName.trim() || 'the general contractor'
+  const us = input.claimantName.trim() || 'we'
+  return [
+    `To the owner of ${COVER_LETTER_FILLS.property},`,
+    `We are the plumbing contractor on your project, working under ${gc}. ${gc} has not paid us for work we completed in ${COVER_LETTER_FILLS.months}, and we have reason to believe it is not paying its subcontractors generally.`,
+    `Texas law asks us to send you the enclosed notice. It is not a claim against you, and it does not say you have done anything wrong. What it does is let you protect yourself: under Texas Property Code § 53.081, once you have this notice you may withhold from any further payment to ${gc} the amount we are owed, and you will not owe it twice.`,
+    `We would rather be paid than file a lien. The moment we are, we will send you a release. If you would like to pay us directly and deduct it from what you owe ${gc}, call ${us === 'we' ? 'our office' : us} and we will arrange it.`,
+  ].join('\n\n')
+}
+
+/** Resolve the fills for one notice. Unknown fills are left as typed. */
+export function fillCoverLetter(template: string, fills: { property: string; months: string; job: string }): string {
+  return template
+    .split(COVER_LETTER_FILLS.property).join(fills.property || 'your property')
+    .split(COVER_LETTER_FILLS.months).join(fills.months || 'the months named')
+    .split(COVER_LETTER_FILLS.job).join(fills.job || '')
+}
+
+/** The letter's paragraphs — blank lines split them; whitespace-only ones drop. */
+export function coverLetterParagraphs(text: string): string[] {
+  return text.split(/\n\s*\n/).map((p) => p.replace(/\s*\n\s*/g, ' ').trim()).filter(Boolean)
+}
+
 /** "May · was due Jul 15 · window closed" style words for a month chip. */
 export function gcNoticeMonthWords(m: GcNoticeMonth, monthLabel: (key: string) => string, dayLabel: (ymd: string) => string): string {
   const name = monthLabel(m.key)
@@ -254,4 +291,26 @@ export function daysUntil(ymd: string | null, todayYmd: string): number | null {
   const b = new Date(`${ymd}T12:00:00Z`).getTime()
   if (Number.isNaN(a) || Number.isNaN(b)) return null
   return Math.round((b - a) / 86400000)
+}
+
+// ---------- the leader's card (v2.3479, PR 3) ----------
+
+/**
+ * The runs the office prepared and sent to the leader: every awaiting item
+ * whose draft carries a `batchReason`, grouped by GC — one Needs You card
+ * each, opening the GC-on-notice modal where Approve all takes the set.
+ */
+export function lienDeskBatches(queue: Pick<LienDeskQueue, 'piles'>, gcNames: Readonly<Record<string, string>> = {}): LienDeskBatch[] {
+  const by = new Map<string, LienDeskBatch>()
+  for (const e of queue.piles.awaiting) {
+    if (!e.item || !e.gcCustomerId) continue
+    const reason = parseLienDeskDraftFields(e.item.fields)?.batchReason ?? ''
+    if (!reason) continue
+    const cur = by.get(e.gcCustomerId) ?? { gcId: e.gcCustomerId, gcName: gcNames[e.gcCustomerId] ?? '', jobs: 0, dollars: 0, reason, earliestDeadline: null }
+    cur.jobs += 1
+    cur.dollars += e.openBalance
+    if (e.earliestDeadline && (!cur.earliestDeadline || e.earliestDeadline < cur.earliestDeadline)) cur.earliestDeadline = e.earliestDeadline
+    by.set(e.gcCustomerId, cur)
+  }
+  return [...by.values()].sort((a, b) => b.dollars - a.dollars)
 }
