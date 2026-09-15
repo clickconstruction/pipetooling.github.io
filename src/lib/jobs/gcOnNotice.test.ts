@@ -138,3 +138,21 @@ describe('the words', () => {
     expect(daysUntil(null, TODAY)).toBeNull()
   })
 })
+
+describe('the cover letter (v2.3478)', () => {
+  it('the default names the GC and the claimant, carries the three fills, and fills per notice', async () => {
+    const { defaultGcNoticeCoverLetter, fillCoverLetter, coverLetterParagraphs, COVER_LETTER_FILLS } = await import('./gcOnNotice')
+    const t = defaultGcNoticeCoverLetter({ gcName: 'Harborline Builders', claimantName: 'Click Plumbing and Electrical' })
+    expect(t).toContain(COVER_LETTER_FILLS.property)
+    expect(t).toContain(COVER_LETTER_FILLS.months)
+    expect(t).toContain('§ 53.081')
+    expect(t).toContain('working under Harborline Builders')
+    const filled = fillCoverLetter(t, { property: '212 Kettle Dr, Buda', months: 'May, June, July and August 2026', job: '994' })
+    expect(filled.startsWith('To the owner of 212 Kettle Dr, Buda,')).toBe(true)
+    expect(filled).toContain('completed in May, June, July and August 2026')
+    expect(filled).not.toContain('{{')
+    expect(coverLetterParagraphs(filled)).toHaveLength(4)
+    expect(coverLetterParagraphs('one\n\n\n  \ntwo\nstill two\n')).toEqual(['one', 'two still two'])
+    expect(fillCoverLetter('{{property}} {{months}} {{job}}', { property: '', months: '', job: '' })).toBe('your property the months named ')
+  })
+})

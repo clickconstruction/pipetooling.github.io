@@ -127,3 +127,16 @@ export async function buildDemandLetterPacket(
     totalPages: out.getPageCount(),
   }
 }
+
+/** Concatenate PDFs in order, no stamps, no footers (v2.3478: the cover letter in front of an emailed notice). */
+export async function mergePdfBlobs(blobs: readonly Blob[], loadPdfLib: () => Promise<PdfLibLike> = async () => (await import('pdf-lib')) as unknown as PdfLibLike): Promise<Blob> {
+  const lib = await loadPdfLib()
+  const out = await lib.PDFDocument.create()
+  for (const b of blobs) {
+    const src = await lib.PDFDocument.load(await b.arrayBuffer(), { ignoreEncryption: true })
+    const pages = await out.copyPages(src, src.getPageIndices())
+    for (const p of pages) out.addPage(p)
+  }
+  const bytes = await out.save()
+  return new Blob([bytes as BlobPart], { type: 'application/pdf' })
+}

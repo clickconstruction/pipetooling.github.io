@@ -29,6 +29,7 @@ function notice(partial: Partial<RunNotice> = {}): RunNotice {
     amount: 33_500,
     fields: { noticeDate: '2026-09-14', projectDescription: 'ATI Schertz — 1204 Elbel Rd', claimantName: 'Click Plumbing and Electrical', laborMaterialsType: 'Plumbing labor and materials', originalContractorName: 'Loberg Contracting', contractedWithIfDifferent: '', claimAmount: '33500.00', contactPerson: 'Robert', claimantAddress: '5501 Balcones Dr' },
     extras: { refItems: ['Job #650'] },
+    coverLetter: null,
     coverNote: 'This is a routine notice…',
     ownerUnconfirmed: false,
     recipients: [
