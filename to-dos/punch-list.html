@@ -232,7 +232,7 @@
       <h1>Punch List</h1>
     </div>
     <div class="stamp">
-      Validated against main <b>2026-09-15</b> at <b>v2.3456</b><br>
+      Validated against main <b>2026-09-15</b> at <b>v2.3464</b><br>
       26 open items · 11 closed this week · picks are shared with whoever opens this page
     </div>
   </header>
@@ -284,11 +284,11 @@
 
     // Ready to build
     { slug: "gc-on-notice", g: "ready", name: "Put a GC on notice", file: "to-dos/gc-on-notice/README.md",
-      sum: "One modal: every owner on every job with a failing GC gets the § 53.056 notice for every unnoticed month, with a cover letter written once and the decision recorded on the GC. Three doors (Pipeline, Customer review, the desk header). No longer blocked on owners.",
-      next: "Your four decisions (one for the attorney), then PR 1 the modal, the RPC, the doors, Approve all → the run.", size: "L (2 PRs)", blocker: "4 decisions open: unbilled jobs, closed windows, the cover letter's offer (attorney wording), who may press it.", ver: "planned 09-14 · unblocked 09-15" },
+      sum: "One modal: every owner on every job with a failing GC gets the § 53.056 notice for every unnoticed month, with a cover letter written once and the decision recorded on the GC. Second-pass mock-ups (the doors, the modal, the leader's phone card, the run) at the Claude artifact Put a GC on Notice. PR 0 — a 'send' rule waits on a first recorded notice — is in flight (v2.3469).",
+      next: "PR 1 the RPC, kernel, modal and doors; PR 2 the cover letter; PR 3 the leader's card. Four decisions stay open (unbilled jobs, closed windows, the letter's offer, who may press it).", size: "L (3 PRs)", blocker: "None for the build; 4 decisions for the wording.", ver: "PR 0 in flight 09-15" },
     { slug: "submittals", g: "ready", name: "Submittals", file: "to-dos/submittals/README.md",
-      sum: "The product decision as one row per fixture tag from the plan's schedule to the GC's approval: a Specified column and status chips on the quote compare, a Submittals tab after Cover Letter, revisions, the package to the GC. Mock-up approved for v1; all seven decisions answered.",
-      next: "Stage 1 of six, with a live gate after each (the plan in the folder names them).", size: "L (6 stages)", blocker: "None. Planned by another session on 09-14.", ver: "planned 09-14" },
+      sum: "The product decision as one row per fixture tag from the plan's schedule to the GC's approval. Stages 1 and 1c shipped (v2.3460, v2.3464): the fixture-schedule paste-in, bid_specified_products, the quote compare's Specified column with a status per pick, the reason and lead time at the pick. Stage 2 (the tab) and stage 3 (the sheets) are in flight on their own branches.",
+      next: "Stage 2a–2c (schema · the tab · the package) and 3a (sheets) — claimed v2.3465–v2.3468; then the live gate on BP398.", size: "L (4 stages left)", blocker: "None. Another session is on it.", ver: "stages 1 · 1c shipped" },
     { slug: "job-summary-follow-ups", g: "ready", name: "Job Summary: what is left", file: "to-dos/job-summary-follow-ups.md",
       sum: "Three of the eight shipped this week. Left: PTO / holidays off Capacity's available hours (needs the schedule day overrides), overtime as its own slice (needs per-person hours per week), travel on Days (no per-session start times yet), and the shared earned-revenue kernel for Job Summary, Crew P&L and the board.",
       next: "PTO from the schedule overrides (M); the earned-revenue kernel (M). Overtime and travel wait on ledger fields.", size: "M + M", blocker: "None for PTO and the kernel.", ver: "3 of 8 shipped 09-15" },

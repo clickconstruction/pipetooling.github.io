@@ -6,6 +6,7 @@ import {
   PUBLIC_OWNER_DESK_SENTENCE,
   holdUntilFor,
   severityForDaysLeft,
+  ruleWaitsOnFirstNotice,
   submitOutcome,
   summarizeLienDeskForNeedsYou,
   type LienDeskItemRow,
@@ -134,6 +135,13 @@ describe('the leader’s decision', () => {
   it('a standing "send" rule approves on submit; a live promise always comes back to the leader', () => {
     expect(submitOutcome({ ...entry, policy: 'send' }, { promiseYmd: null, gcHasPriorNotice: true, gcHeldBefore: false }, TODAY)).toEqual({ status: 'approved', approval_mode: 'rule' })
     expect(submitOutcome({ ...entry, policy: 'send' }, { promiseYmd: '2026-09-15', gcHasPriorNotice: true, gcHeldBefore: false }, TODAY)).toEqual({ status: 'awaiting_approval', reason: 'promise_live' })
+  })
+  it('a "send" rule waits on the first notice (v2.3469): until one is recorded to the GC, the first comes to the leader, held-before or not', () => {
+    expect(ruleWaitsOnFirstNotice('send', false)).toBe(true)
+    expect(ruleWaitsOnFirstNotice('send', true)).toBe(false)
+    expect(ruleWaitsOnFirstNotice('ask', false)).toBe(false)
+    expect(submitOutcome({ ...entry, policy: 'send' }, { promiseYmd: null, gcHasPriorNotice: false, gcHeldBefore: false }, TODAY)).toEqual({ status: 'awaiting_approval', reason: 'first_notice' })
+    expect(submitOutcome({ ...entry, policy: 'send' }, { promiseYmd: null, gcHasPriorNotice: false, gcHeldBefore: true }, TODAY)).toEqual({ status: 'awaiting_approval', reason: 'first_notice' })
   })
   it('"ask" names the reason: first notice, held before, else no rule', () => {
     expect(submitOutcome(entry, { promiseYmd: null, gcHasPriorNotice: false, gcHeldBefore: false }, TODAY)).toEqual({ status: 'awaiting_approval', reason: 'first_notice' })

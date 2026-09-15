@@ -1,6 +1,6 @@
 # Put a GC on notice — every owner on every job with a failing GC, in one approved run
 
-Status: **not started** · planned 2026-09-14 · 4 owner decisions open (below), one of them for the attorney · the owner-of-record train shipped 2026-09-15 (v2.3447 / v2.3452 / v2.3450 — the app looks owners up on the appraisal roll; the Fix-ups list confirms them in one sitting), so the run is no longer blocked on owners · mock-up: [`mockup.html`](./mockup.html) (entry points, Draft A, the critique, Refined B, the plan; also a Claude artifact 2026-09-14) · built on the Lien desk (v2.3405 / v2.3410 / v2.3412)
+Status: **in progress** · PR 0 (the first-notice rule) on `claude/gc-on-notice-0-first-notice-rule` (v2.3469) · PRs 1–3 follow on sibling branches · second-pass mock-ups 2026-09-15 at the Claude artifact *Put a GC on Notice* (four boards: the doors, the modal, the leader's phone card, the run) · the owner-of-record train shipped 2026-09-15 (v2.3447 / v2.3452 / v2.3450 — the app looks owners up on the appraisal roll; Step 1 is *Use all found*, not a paste per row) · 4 owner decisions open (below), one for the attorney · first mock-up: [`mockup.html`](./mockup.html) · built on the Lien desk (v2.3405 / v2.3410 / v2.3412)
 
 ## The ask, in the owner's words
 
@@ -37,8 +37,17 @@ Rejected: a bare confirm dialog (Draft A); hiding closed windows; a per-job cove
 
 Nothing new to store: a run for a GC is N desk items with the same `approval_mode` and a shared reason; the cover letter rides in each item's `fields`.
 
+Read against the code on 2026-09-15 (before PR 0), five corrections to the table above:
+
+- `list_lien_notice_months` has one parameter (`p_within_days`) and hard-filters billed status / a billed invoice / `revenue − payments_made > 0`, so an unbilled Working job is excluded three ways — build the sibling `list_gc_unpaid_months(p_gc_customer_id)` rather than widening it.
+- `parseLienDeskDraftFields` whitelists `notice · gcEmail · skipReason`; a `batch_reason` or `cover_letter` written into `fields` is dropped on read until the type and the parser learn them.
+- The run's cover note is generated from the boolean `cover_note` column (`buildLienDeskRun`, not only `runCoverNoteBlocks`) — the letter needs the change where the run is built.
+- `job_lien_desk_items_live_uniq` allows one live row per job and kind: the batch upserts a job's existing draft / awaiting / held item, never inserts beside it.
+- `legal_matter_save_review` replaces the matter's job list — pass existing jobs ∪ the new ones. Payment terms have no RPC (a direct `customers` update under RLS); the Winding-down tick wants a guard like `set_customer_lien_notice_policy`'s. The leader / office role helpers are file-local in `LienDeskModal.tsx` and `LienDeskAffidavitPane.tsx` — hoist to `lienDesk.ts` before a third copy. `canSendOnWord` deliberately excludes the master (he clicks Approve).
+
 ## The plan
 
+0. **PR 0 — the first-notice rule** (v2.3469, shipped ahead of the feature because it fixes the desk as it stands). Owner, 2026-09-14: a standing rule of *send without asking* only takes effect once a notice to that GC has gone out and been recorded — the office has then proved the owner, the addresses and the GC's copy on real mail. The kernel checks *first notice we've sent this GC* before honoring the rule; the desk's approval trigger refuses a rule approval on a GC with no recorded notice; the desk and the rule picker say so. In the modal the run **is** the first notice, approved by the leader, so the Step 4 tick reads *starts the moment this run is recorded*.
 1. **PR 1 — the modal and the doors.** The GC picker, Steps 1–2 (owners list with CAD links and inline entry; months and claim amounts; closed windows named; the unbilled chip with the *Bill the finished work* door), Step 4 (reason + the three ticks), **Approve all** → N approved items → the run. Kernel + tests; the RPC.
 2. **PR 2 — the cover letter.** The one-letter editor stored per item, printed as the cover page of each notice in the run (the run's `runCoverNoteBlocks` reads `fields.cover_letter` when present), the master's signature block, the demand-letter tick.
 3. A guide section under *send lien notices from the Lien desk* ("A GC in trouble") and a line in *understand how liens work…*.
