@@ -2292,8 +2292,6 @@ export default function SendRecordInvoiceModal({
                 </span>
               </label>
             ) : null}
-            {/* Owner of record (v2.3450): on a GC job with no confirmed owner, what the roll says and Use — never a gate. */}
-            <BillCustomerOwnerLine jobId={job.id} userId={authUser?.id ?? null} />
             <input
               type="email"
               value={oneOffEmail}
@@ -2304,6 +2302,10 @@ export default function SendRecordInvoiceModal({
             />
           </div>
         )}
+        {/* Owner of record (v2.3450): on a GC job with no confirmed owner, what the roll says and Use —
+            never a gate, and outside the email-gated Send-to block so a job whose customer row has no
+            email still sees it (found in the 2026-09-15 live pass). */}
+        <BillCustomerOwnerLine jobId={job.id} userId={authUser?.id ?? null} />
       </>
     )
   }
