@@ -4621,9 +4621,9 @@ export type Database = {
           legal_description: string
           note: string | null
           owner_company: string
-          owner_mailing_address: string
           owner_confirmed_at: string | null
           owner_confirmed_by: string | null
+          owner_mailing_address: string
           owner_mode: string
           owner_name: string
           parcel_id: string
@@ -4646,9 +4646,9 @@ export type Database = {
           legal_description?: string
           note?: string | null
           owner_company?: string
-          owner_mailing_address?: string
           owner_confirmed_at?: string | null
           owner_confirmed_by?: string | null
+          owner_mailing_address?: string
           owner_mode?: string
           owner_name?: string
           parcel_id?: string
@@ -4671,9 +4671,9 @@ export type Database = {
           legal_description?: string
           note?: string | null
           owner_company?: string
-          owner_mailing_address?: string
           owner_confirmed_at?: string | null
           owner_confirmed_by?: string | null
+          owner_mailing_address?: string
           owner_mode?: string
           owner_name?: string
           parcel_id?: string
@@ -4690,6 +4690,13 @@ export type Database = {
             columns: ["customer_id"]
             isOneToOne: false
             referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "customer_addresses_owner_confirmed_by_fkey"
+            columns: ["owner_confirmed_by"]
+            isOneToOne: false
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
         ]
@@ -21487,6 +21494,26 @@ export type Database = {
           job_name: string
         }[]
       }
+      list_jobs_owner_to_confirm: {
+        Args: never
+        Returns: {
+          click_number: string
+          customer_address_id: string
+          customer_id: string
+          customer_name: string
+          first_deadline: string
+          first_work_month: string
+          gc_customer_id: string
+          gc_name: string
+          has_owner: boolean
+          hcp_number: string
+          job_address: string
+          job_id: string
+          owner_confirmed: boolean
+          property_kind: string
+          status: string
+        }[]
+      }
       list_latest_report_completion_pct: {
         Args: { p_job_ids: string[] }
         Returns: {
@@ -21514,26 +21541,6 @@ export type Database = {
           noticed: boolean
           open_balance: number
           property_kind: string
-        }[]
-      }
-      list_jobs_owner_to_confirm: {
-        Args: never
-        Returns: {
-          click_number: string
-          customer_address_id: string
-          customer_id: string
-          customer_name: string
-          first_deadline: string
-          first_work_month: string
-          gc_customer_id: string
-          gc_name: string
-          has_owner: boolean
-          hcp_number: string
-          job_address: string
-          job_id: string
-          owner_confirmed: boolean
-          property_kind: string
-          status: string
         }[]
       }
       list_lien_notice_months: {
