@@ -1327,8 +1327,6 @@ export type Database = {
           alternate_reason_kind: string | null
           alternate_reason_note: string | null
           availability: string | null
-          lead_time_days: number | null
-          product_status_override: string | null
           basis_price_cents: number | null
           basis_qty: number | null
           cant_supply: boolean
@@ -1337,6 +1335,7 @@ export type Database = {
           fixture: string
           id: string
           label: string | null
+          lead_time_days: number | null
           lot_id: string | null
           lot_total_cents: number | null
           match_confidence: string
@@ -1349,6 +1348,7 @@ export type Database = {
           pick_source: string | null
           picked: boolean
           price_basis: string
+          product_status_override: string | null
           quote_id: string
           unit_price_each_cents: number | null
         }
@@ -1357,8 +1357,6 @@ export type Database = {
           alternate_reason_kind?: string | null
           alternate_reason_note?: string | null
           availability?: string | null
-          lead_time_days?: number | null
-          product_status_override?: string | null
           basis_price_cents?: number | null
           basis_qty?: number | null
           cant_supply?: boolean
@@ -1367,6 +1365,7 @@ export type Database = {
           fixture: string
           id?: string
           label?: string | null
+          lead_time_days?: number | null
           lot_id?: string | null
           lot_total_cents?: number | null
           match_confidence?: string
@@ -1379,6 +1378,7 @@ export type Database = {
           pick_source?: string | null
           picked?: boolean
           price_basis?: string
+          product_status_override?: string | null
           quote_id: string
           unit_price_each_cents?: number | null
         }
@@ -1387,8 +1387,6 @@ export type Database = {
           alternate_reason_kind?: string | null
           alternate_reason_note?: string | null
           availability?: string | null
-          lead_time_days?: number | null
-          product_status_override?: string | null
           basis_price_cents?: number | null
           basis_qty?: number | null
           cant_supply?: boolean
@@ -1397,6 +1395,7 @@ export type Database = {
           fixture?: string
           id?: string
           label?: string | null
+          lead_time_days?: number | null
           lot_id?: string | null
           lot_total_cents?: number | null
           match_confidence?: string
@@ -1409,6 +1408,7 @@ export type Database = {
           pick_source?: string | null
           picked?: boolean
           price_basis?: string
+          product_status_override?: string | null
           quote_id?: string
           unit_price_each_cents?: number | null
         }
@@ -1666,6 +1666,20 @@ export type Database = {
             columns: ["bid_id"]
             isOneToOne: false
             referencedRelation: "bids"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bid_specified_products_confirmed_by_fkey"
+            columns: ["confirmed_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bid_specified_products_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
         ]
@@ -20652,6 +20666,10 @@ export type Database = {
         Args: { p_job_id: string; p_labor_job_id: string; p_step_id: string }
         Returns: boolean
       }
+      can_access_submittal: {
+        Args: { p_submittal_id: string }
+        Returns: boolean
+      }
       can_define_task_style_checklist_items: { Args: never; Returns: boolean }
       can_edit_checklist_tech_tree_structure_for_roadmap: {
         Args: { p_roadmap_id: string }
@@ -21389,6 +21407,7 @@ export type Database = {
       is_office_or_estimator: { Args: never; Returns: boolean }
       is_office_staff: { Args: never; Returns: boolean }
       is_pay_approved_master: { Args: never; Returns: boolean }
+      is_pricing_sharer: { Args: never; Returns: boolean }
       is_primary: { Args: never; Returns: boolean }
       is_read_only: { Args: never; Returns: boolean }
       is_superintendent: { Args: never; Returns: boolean }
