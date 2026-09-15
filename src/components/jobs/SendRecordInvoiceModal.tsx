@@ -46,6 +46,7 @@ import {
   shouldBlockBillOnPaidJob,
 } from '../../../supabase/functions/_shared/paidJobBillGuard'
 import BillCustomerLienReleaseStrip from './BillCustomerLienReleaseStrip'
+import BillCustomerOwnerLine from './BillCustomerOwnerLine'
 import JobContractStrip from './JobContractStrip'
 import { StripeBillPreSubmitPreview } from './StripeBillPreSubmitPreview'
 import StripeBillingModeToggle from './StripeBillingModeToggle'
@@ -2291,6 +2292,8 @@ export default function SendRecordInvoiceModal({
                 </span>
               </label>
             ) : null}
+            {/* Owner of record (v2.3450): on a GC job with no confirmed owner, what the roll says and Use — never a gate. */}
+            <BillCustomerOwnerLine jobId={job.id} userId={authUser?.id ?? null} />
             <input
               type="email"
               value={oneOffEmail}

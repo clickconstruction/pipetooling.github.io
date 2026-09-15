@@ -137,6 +137,7 @@ when_to_read:
    - [geocode-address-batch](#geocode-address-batch)
    - [geocode-one](#geocode-one)
    - [property-lookup](#property-lookup)
+   - [owner-confirm-nightly](#owner-confirm-nightly)
    - [driving-distance](#driving-distance)
    - [travel-time-batch](#travel-time-batch)
    - [send-bid-pricing-package](#send-bid-pricing-package)
@@ -1860,7 +1861,25 @@ curl -sS "${SUPABASE_URL}/functions/v1/get-estimate-public-terms" \
 
 **Deploy**: `supabase functions deploy property-lookup` (and redeploy **`geocode-one`** / **`geocode-address-batch`** whenever `_shared/googleGeocode.ts` changes — v2.3004 added `county` to its result).
 
-**Implementation**: [`supabase/functions/property-lookup/index.ts`](../supabase/functions/property-lookup/index.ts); kernel [`supabase/functions/_shared/txParcelRecord.ts`](../supabase/functions/_shared/txParcelRecord.ts) (client re-export [`src/lib/customers/propertyRecord.ts`](../src/lib/customers/propertyRecord.ts)); client invoke [`src/lib/customers/propertyLookupClient.ts`](../src/lib/customers/propertyLookupClient.ts).
+**Implementation**: [`supabase/functions/property-lookup/index.ts`](../supabase/functions/property-lookup/index.ts); kernel [`supabase/functions/_shared/txParcelRecord.ts`](../supabase/functions/_shared/txParcelRecord.ts) (client re-export [`src/lib/customers/propertyRecord.ts`](../src/lib/customers/propertyRecord.ts)); the parcel identify (tolerance ladder, timeout) in [`_shared/txParcelIdentify.ts`](../supabase/functions/_shared/txParcelIdentify.ts) since **v2.3450**, shared with `owner-confirm-nightly`; client invoke [`src/lib/customers/propertyLookupClient.ts`](../src/lib/customers/propertyLookupClient.ts).
+
+---
+
+### owner-confirm-nightly
+
+**Purpose**: The nightly save-from-the-roll (owner of record PR 3, **v2.3450**; decision 5 — built as a switch, **off on day one**). When Settings → Jobs & billing → *Save owners from the appraisal roll automatically* (`app_settings.owner_auto_confirm_from_roll_v1` = 'true') is on, every row of **`list_jobs_owner_to_confirm()`** with **`has_owner` false** — a GC job (or a builder in the customer row) with approved hours whose property record names nobody — is grouped by property, looked up on the statewide parcel roll the way `property-lookup` does (the `address_geocodes` cache → Google → US Census, then the parcel under the pin via `_shared/txParcelIdentify.ts`), and the roll's answer is written **exactly as a person's Use would write it** (`_shared/ownerConfirmPlan.ts` — fill-blanks on a linked record, else one new `customer_addresses` row per home (customer, else GC) linking every job at the property) **except that `owner_confirmed_at` stays NULL**: the record reads *from the roll · unconfirmed*, the Lien desk drafts on it and shows the provenance, and *Record the run* refuses until a person presses **Confirm**. A row that already names an owner is never touched. Public owners are saved too — the desk reads them and refuses to draft (bond claim). Up to **40 properties** a night, earliest § 53.056 deadline first (the RPC's order); the rest wait for tomorrow. One summary line is logged per run (`owner-confirm-nightly: N ownerless jobs on M properties · k looked up · f found · …`).
+
+**Endpoint**: `POST /functions/v1/owner-confirm-nightly` — body `{}`; **`{ "dry_run": true }`** looks everything up, writes nothing, and returns what a night would save (the live-pass tool). Scheduled by pg_cron **`owner-confirm-nightly`** at `15 8 * * *` UTC (migration `20260914270000`).
+
+**Auth**: `X-Cron-Secret` header (or `cron_secret` in the body) must equal `CRON_SECRET`; **`verify_jwt = false`**. Runs as the **service role** (`list_jobs_owner_to_confirm()` answers `auth.role() = 'service_role'` since the same migration).
+
+**Response** (**200** JSON): `{ ok: true, dry_run, summary, jobs, properties, looked_up, found, misses, no_mailing, updated, inserted, linked, failed, remaining, details: [{ address, outcome }] }`; `{ ok: true, skipped: 'switch off' }` when the setting is off; **401** on a bad secret; **500** with `error` when the RPC or a required secret fails.
+
+**Required secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `CRON_SECRET`; optional `GOOGLE_MAPS_API_KEY` (without it the Census geocoder is the only miss path for addresses not already in the geocode cache).
+
+**Deploy**: `supabase functions deploy owner-confirm-nightly` — before `db push` of `20260914270000` (the cron row calls it; a 404 until then is harmless). `property-lookup` may be redeployed at leisure (its identify moved to `_shared`; behaviour unchanged).
+
+**Implementation**: [`supabase/functions/owner-confirm-nightly/index.ts`](../supabase/functions/owner-confirm-nightly/index.ts); kernels [`_shared/ownerConfirmPlan.ts`](../supabase/functions/_shared/ownerConfirmPlan.ts) (client re-export from [`src/lib/jobs/ownerConfirmWrite.ts`](../src/lib/jobs/ownerConfirmWrite.ts), tested in `ownerConfirmWrite.test.ts`), [`_shared/txParcelIdentify.ts`](../supabase/functions/_shared/txParcelIdentify.ts), [`_shared/txParcelRecord.ts`](../supabase/functions/_shared/txParcelRecord.ts).
 
 ---
 

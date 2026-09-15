@@ -4,7 +4,8 @@ import CustomerPropertyRecordPanel, { type PropertyRecordDraft } from '../custom
 import { useToastContext } from '../../contexts/ToastContext'
 import { openInExternalBrowser } from '../../lib/openInExternalBrowser'
 import { txCountyCadPropertyUrl, txCountyCadSearchUrl } from '../../lib/txCountyLookup'
-import { lookupPropertyRecord, propertyLookupErrorMessage, type PropertyLookupOutcome } from '../../lib/customers/propertyLookupClient'
+import { propertyLookupErrorMessage, type PropertyLookupOutcome } from '../../lib/customers/propertyLookupClient'
+import { cachedLookupPropertyRecord, getCachedPropertyLookup, resetPropertyLookupCache } from '../../lib/customers/propertyLookupCache'
 import { emptyPropertyDraft } from '../../lib/customers/propertyDraft'
 import { applyProposalToFields, parcelProvenanceLine, titleCaseUpperWords } from '../../lib/customers/propertyRecord'
 import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
@@ -45,12 +46,9 @@ type Props = {
   userId: string | null
 }
 
-/** Session cache keyed by the property key: the roll does not change between chip clicks. */
-const LOOKUP_CACHE = new Map<string, PropertyLookupOutcome>()
-
-/** Test seam: clear the session cache. */
+/** Test seam: clear the session lookup cache (shared with Bill Customer and the Lien desk since v2.3450). */
 export function resetOwnerConfirmLookupCache(): void {
-  LOOKUP_CACHE.clear()
+  resetPropertyLookupCache()
 }
 
 const btn: CSSProperties = { padding: '0.4rem 0.9rem', fontSize: '0.8125rem', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', color: 'var(--text-700)', cursor: 'pointer', fontWeight: 600 }
@@ -103,11 +101,11 @@ export default function OwnerConfirmListModal({ open, onClose, rows, onSaved, us
     setBusyAll(null)
     const seeded: Record<string, PropertyLookupOutcome> = {}
     for (const p of props) {
-      const hit = LOOKUP_CACHE.get(p.key)
+      const hit = getCachedPropertyLookup(p.address)
       if (hit) seeded[p.key] = hit
     }
     setLookups(seeded)
-    const todo = props.filter((p) => !LOOKUP_CACHE.has(p.key))
+    const todo = props.filter((p) => !getCachedPropertyLookup(p.address))
     if (todo.length === 0) {
       setProgress(null)
       return
@@ -117,10 +115,9 @@ export default function OwnerConfirmListModal({ open, onClose, rows, onSaved, us
       let done = 0
       for (const p of todo) {
         if (cancelRef.current) return
-        const res = await lookupPropertyRecord(p.address)
+        // Only a real answer (found, or a clean miss) is remembered; a network error retries next open.
+        const res = await cachedLookupPropertyRecord(p.address)
         if (cancelRef.current) return
-        // Only a real answer (found, or a clean miss) is worth remembering; a network error retries next open.
-        if (res.ok) LOOKUP_CACHE.set(p.key, res)
         done += 1
         setLookups((prev) => ({ ...prev, [p.key]: res }))
         setProgress({ done, total: todo.length })

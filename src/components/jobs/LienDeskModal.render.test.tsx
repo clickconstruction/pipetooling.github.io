@@ -6,13 +6,15 @@
  * spoken-word form, and the leader's decision footer. Wiring-level only —
  * the queue math lives in src/lib/jobs/lienDesk.test.ts.
  */
-import { describe, expect, it, vi } from 'vitest'
-import { fireEvent, screen } from '@testing-library/react'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react'
 import { renderWithProviders } from '../../test/renderSmokeMocks'
 import LienDeskModal from './LienDeskModal'
 import { buildLienDeskQueue, summarizeLienDeskForNeedsYou, type LienDeskItemRow, type LienNoticeMonthRow } from '../../lib/jobs/lienDesk'
 import type { LienDeskData } from '../../hooks/useLienDeskData'
 import { buildLienAffidavitQueue, type LienAffidavitRow } from '../../lib/jobs/lienDeskAffidavits'
+import { proposalFromLookupPayload } from '../../lib/customers/propertyLookupClient'
+import { resetPropertyLookupCache } from '../../lib/customers/propertyLookupCache'
 
 vi.mock('../../hooks/useAuth', async () => {
   const { useAuthModuleMock } = await import('../../test/renderSmokeMocks')
@@ -22,6 +24,29 @@ vi.mock('../../lib/supabase', async () => {
   const { makeSupabaseStub } = await import('../../test/renderSmokeMocks')
   return { supabase: makeSupabaseStub() }
 })
+// The desk's owner pane reads the roll (v2.3450): the lookup and the two writes are seams here.
+const lookupMock = vi.fn()
+vi.mock('../../lib/customers/propertyLookupClient', async () => {
+  const actual = await vi.importActual<typeof import('../../lib/customers/propertyLookupClient')>('../../lib/customers/propertyLookupClient')
+  return { ...actual, lookupPropertyRecord: (address: string) => lookupMock(address) }
+})
+const confirmMock = vi.fn()
+const stampMock = vi.fn()
+vi.mock('../../lib/jobs/ownerConfirmWrite', () => ({
+  confirmOwnerForProperty: (input: unknown) => confirmMock(input),
+  stampOwnerConfirmed: (id: string, userId: string | null) => stampMock(id, userId),
+}))
+
+afterEach(cleanup)
+beforeEach(() => {
+  resetPropertyLookupCache()
+  lookupMock.mockReset()
+  lookupMock.mockResolvedValue({ ok: false, error: 'not_found' })
+  confirmMock.mockReset()
+  confirmMock.mockResolvedValue({ updated: [], inserted: [{ customerAddressId: 'addr-new', jobIds: ['j650'] }], skipped: [] })
+  stampMock.mockReset()
+  stampMock.mockResolvedValue(undefined)
+})
 
 const TODAY = '2026-09-14'
 
@@ -29,7 +54,7 @@ function row(job_id: string, work_month: string, deadline: string, extra: Partia
   return { job_id, work_month, deadline, approved_hours: 82.6, noticed: false, open_balance: 33_500, customer_id: 'ati', gc_customer_id: 'loberg', property_kind: '', has_owner: false, desk_item_id: null, desk_status: null, desk_months: null, ...extra }
 }
 
-function data(rows: LienNoticeMonthRow[], items: LienDeskItemRow[] = [], hasOwnerAddress = false): LienDeskData {
+function data(rows: LienNoticeMonthRow[], items: LienDeskItemRow[] = [], hasOwnerAddress = false, addr: Record<string, unknown> = {}): LienDeskData {
   const queue = buildLienDeskQueue(rows, items, { loberg: 'ask' }, TODAY)
   return {
     queue,
@@ -43,7 +68,7 @@ function data(rows: LienNoticeMonthRow[], items: LienDeskItemRow[] = [], hasOwne
     },
     gcsById: { loberg: { id: 'loberg', name: 'Loberg Contracting', address: '2904 Corporate Cr, Flower Mound, TX', email: 'office@loberg.test', policy: 'ask', policyNote: '' } },
     addressesById: hasOwnerAddress
-      ? ({ addr1: { id: 'addr1', county: 'Guadalupe', legal_description: 'Lot 1', property_kind: 'non_residential', homestead: false, owner_mode: 'building_owner', owner_name: '', owner_company: 'Elbel Holdings LLC', owner_mailing_address: '4 Example Way, Schertz, TX' } } as unknown as LienDeskData['addressesById'])
+      ? ({ addr1: { id: 'addr1', address: '1204 Elbel Rd, Schertz, TX', county: 'Guadalupe', legal_description: 'Lot 1', property_kind: 'non_residential', homestead: false, owner_mode: 'building_owner', owner_name: '', owner_company: 'Elbel Holdings LLC', owner_mailing_address: '4 Example Way, Schertz, TX', ...addr } } as unknown as LienDeskData['addressesById'])
       : {},
     ownerByJob: {},
     promisesByJob: {},
@@ -122,6 +147,57 @@ describe('LienDeskModal', () => {
   it('the office sees an awaiting item as waiting on the leader, and nothing due reads calm', () => {
     renderWithProviders(<LienDeskModal {...baseProps} authRole="controller" data={data([])} />)
     expect(screen.getByText(/Nothing is due/)).toBeTruthy()
+  })
+})
+
+describe('LienDeskModal reads the roll (v2.3450)', () => {
+  function payload(owner: string, mailing: string) {
+    return { ok: true, county_geocoder: 'Guadalupe', parcel: { propId: '12345', ownerName: owner, nameCare: '', legalDescription: 'LOT 1', situsAddress: '1204 ELBEL RD, SCHERTZ, TX', mailingAddress: mailing, county: 'Guadalupe', source: 'Guadalupe Appraisal District', taxYear: '2025' } }
+  }
+
+  it('an ownerless item shows the roll’s answer with its chips and Use, keeps the door, and Use writes the property and re-reads', async () => {
+    lookupMock.mockImplementation(async (address: string) => proposalFromLookupPayload(address, payload('SCHERTZ STATION LTD', '4040 BROADWAY STE 600, SAN ANTONIO, TX 78209')))
+    const onChanged = vi.fn()
+    renderWithProviders(<LienDeskModal {...baseProps} authRole="assistant" data={data(J650)} onChanged={onChanged} />)
+    await waitFor(() => expect(screen.getByTestId('lien-desk-owner-pane').getAttribute('data-state')).toBe('found'))
+    expect(screen.getByText('Schertz Station Ltd')).toBeTruthy()
+    expect(screen.getByText(/landlord · ATI Schertz is the tenant/)).toBeTruthy()
+    expect(screen.getByText(/Guadalupe Appraisal District 2025/)).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Find the owner ›' })).toBeTruthy()
+    // Still blocked until Use — the roll's answer is a proposal, not the record.
+    expect((screen.getByRole('button', { name: /Send for approval/ }) as HTMLButtonElement).disabled).toBe(true)
+    fireEvent.click(screen.getByTestId('lien-desk-owner-use'))
+    await waitFor(() => expect(confirmMock).toHaveBeenCalledTimes(1))
+    const input = confirmMock.mock.calls[0]![0] as { address: string; jobs: { jobId: string; customerId: string | null; gcCustomerId: string | null }[]; source: { kind: string }; userId: string | null }
+    expect(input.address).toBe('1204 Elbel Rd, Schertz, TX')
+    expect(input.jobs).toEqual([{ jobId: 'j650', customerId: 'ati', gcCustomerId: 'loberg', customerAddressId: null }])
+    expect(input.source.kind).toBe('proposal')
+    expect(input.userId).toBe('u-taunya')
+    await waitFor(() => expect(onChanged).toHaveBeenCalled())
+  })
+
+  it('a public owner on the record reads the bond-claim sentence and is not draftable', () => {
+    renderWithProviders(<LienDeskModal {...baseProps} authRole="assistant" data={data(J650.map((r) => ({ ...r, has_owner: true })), [], true, { owner_company: 'CITY OF ROUND ROCK', owner_mailing_address: '221 E Main St, Round Rock, TX', owner_confirmed_at: '2026-09-14T00:00:00Z' })} />)
+    expect(screen.getByRole('button', { name: /To draft/ }).textContent).toContain('1')
+    expect(screen.getByTestId('lien-desk-owner-pane').getAttribute('data-state')).toBe('public')
+    expect(screen.getAllByText(/a mechanic's lien does not attach; the remedy is a claim on the GC's payment bond/).length).toBeGreaterThanOrEqual(2)
+    expect((screen.getByRole('button', { name: /Send for approval/ }) as HTMLButtonElement).disabled).toBe(true)
+    expect((screen.getByRole('button', { name: /The leader said to send it/ }) as HTMLButtonElement).disabled).toBe(true)
+    expect(lookupMock).not.toHaveBeenCalled()
+  })
+
+  it('an owner the nightly run saved from the roll drafts, shows the provenance and the CAD check, and Confirm stamps the record', async () => {
+    const onChanged = vi.fn()
+    renderWithProviders(<LienDeskModal {...baseProps} authRole="assistant" data={data(J650.map((r) => ({ ...r, has_owner: true })), [], true, { owner_confirmed_at: null, parcel_source: 'Guadalupe Appraisal District', parcel_tax_year: '2025', parcel_id: '12345' })} onChanged={onChanged} />)
+    expect(screen.getByTestId('lien-desk-owner-pane').getAttribute('data-state')).toBe('unconfirmed')
+    expect(screen.getByText(/Owner from the roll \(2025\) · unconfirmed/)).toBeTruthy()
+    expect(screen.getByRole('button', { name: /confirm on Guadalupe CAD/ })).toBeTruthy()
+    // Drafting is allowed on it; only the run refuses (lienDeskRun.test.ts).
+    expect((screen.getByRole('button', { name: /Send for approval/ }) as HTMLButtonElement).disabled).toBe(false)
+    fireEvent.click(screen.getByTestId('lien-desk-owner-confirm'))
+    await waitFor(() => expect(stampMock).toHaveBeenCalledWith('addr1', 'u-taunya'))
+    await waitFor(() => expect(onChanged).toHaveBeenCalled())
+    expect(lookupMock).not.toHaveBeenCalled()
   })
 })
 

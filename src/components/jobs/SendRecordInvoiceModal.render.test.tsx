@@ -67,6 +67,11 @@ vi.mock('../../lib/fetchJobWithDetailsById', () => ({
   fetchJobWithDetailsById: async () => detailJob,
 }))
 
+// The owner-of-record line (v2.3450) has its own render smoke; here only its mount point is checked.
+vi.mock('./BillCustomerOwnerLine', () => ({
+  default: ({ jobId }: { jobId: string }) => <div data-testid="owner-line-marker" data-job={jobId} />,
+}))
+
 vi.mock('../../lib/promoteJobToBilledIfFullyInvoiced', async (importOriginal) => ({
   ...(await importOriginal<Record<string, unknown>>()),
   maybePromoteJobToBilledAfterCustomerInvoice: async () => ({ ok: true }),
@@ -146,5 +151,24 @@ describe('SendRecordInvoiceModal — write after confirm (kind:job)', () => {
     expect(onSuccess).toHaveBeenCalledTimes(1)
     // The commit's own write follows the ensure, on the row it returned.
     expect(calls.writes.filter((w) => w === 'jobs_ledger_invoices.update')).toHaveLength(1)
+  })
+
+  it('the Send-to block carries the owner-of-record line for the open job (v2.3450; the line itself is BillCustomerOwnerLine.render.test.tsx)', async () => {
+    renderWithProviders(
+      <SendRecordInvoiceModal
+        payload={{
+          kind: 'job',
+          job: { id: 'job-978', master_user_id: SMOKE_AUTH_USER_ID, hcp_number: '978', click_number: null, job_name: 'Pondhill demo', customer_id: 'cust-1', customer_name: 'Knight Contracting', customer_email: 'ap@knight.test' },
+        }}
+        onClose={() => {}}
+        onSuccess={async () => {}}
+        jobUpdating={false}
+        invoiceUpdating={false}
+      />,
+    )
+    await waitFor(() => {
+      expect(screen.getByText('Send to')).toBeTruthy()
+    })
+    expect(screen.getByTestId('owner-line-marker').getAttribute('data-job')).toBe('job-978')
   })
 })

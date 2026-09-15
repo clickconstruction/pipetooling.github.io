@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { buildLienDeskQueue, type LienDeskItemRow, type LienNoticeMonthRow } from './lienDesk'
-import { buildLienDeskRun, runCoverSheetBlocks, runCoverNoteBlocks, runFilingPayload, runNoticeBlocks, runNoticeProblems, runPacketHtml } from './lienDeskRun'
+import { buildLienDeskRun, RUN_OWNER_UNCONFIRMED_PROBLEM, runCoverSheetBlocks, runCoverNoteBlocks, runFilingPayload, runNoticeBlocks, runNoticeProblems, runPacketHtml } from './lienDeskRun'
 import type { LienDeskData } from '../../hooks/useLienDeskData'
 
 const TODAY = '2026-09-14'
@@ -64,6 +64,25 @@ describe('buildLienDeskRun', () => {
     n.recipients[0]!.method = 'certified_mail'
     n.recipients[0]!.address = ''
     expect(runNoticeProblems(n)).toEqual(['Owner of record: no mailing address'])
+  })
+
+  it('an owner the nightly run saved from the roll blocks Record the run until a person confirms it (v2.3450)', () => {
+    const d = data([approved])
+    const addr = d.addressesById.addr1 as unknown as Record<string, unknown>
+    // Hand-typed owner (no provenance, backfilled confirmed): clean.
+    expect(buildLienDeskRun(d.queue.piles.ready, d, null, () => '', TODAY)[0]!.ownerUnconfirmed).toBe(false)
+    // From the roll, nobody looked: the run refuses.
+    d.addressesById.addr1 = { ...addr, parcel_source: 'Guadalupe Appraisal District', parcel_tax_year: '2025', owner_confirmed_at: null } as unknown as LienDeskData['addressesById'][string]
+    const n = buildLienDeskRun(d.queue.piles.ready, d, null, () => '', TODAY)[0]!
+    expect(n.ownerUnconfirmed).toBe(true)
+    expect(runNoticeProblems(n)).toEqual([RUN_OWNER_UNCONFIRMED_PROBLEM])
+    // Confirmed: clean again.
+    d.addressesById.addr1 = { ...addr, parcel_source: 'Guadalupe Appraisal District', owner_confirmed_at: '2026-09-15T14:00:00Z' } as unknown as LienDeskData['addressesById'][string]
+    expect(buildLienDeskRun(d.queue.piles.ready, d, null, () => '', TODAY)[0]!.ownerUnconfirmed).toBe(false)
+    // A job override is a person's own writing — never "from the roll".
+    d.addressesById.addr1 = { ...addr, parcel_source: 'Guadalupe Appraisal District', owner_confirmed_at: null } as unknown as LienDeskData['addressesById'][string]
+    d.ownerByJob.j650 = { owner_mode: 'building_owner', owner_name: '', company_name: 'Typed Owner LLC', mailing_address: '1 Main St', owner_email: '' }
+    expect(buildLienDeskRun(d.queue.piles.ready, d, null, () => '', TODAY)[0]!.ownerUnconfirmed).toBe(false)
   })
 
   it('the packet is one document: cover sheet with an envelope line per recipient, the cover note page, a copy per recipient', () => {
