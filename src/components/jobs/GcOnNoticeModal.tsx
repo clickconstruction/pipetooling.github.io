@@ -10,6 +10,7 @@ import {
   GC_NOTICE_REASONS,
   closedWindowsSentence,
   daysUntil,
+  defaultGcNoticeCoverLetter,
   gcNoticeBatchReason,
   gcNoticeFooterWords,
   gcNoticeMonthWords,
@@ -17,7 +18,7 @@ import {
   type GcNoticeReasonKey,
 } from '../../lib/jobs/gcOnNotice'
 import { approveLienDeskItem, saveLienDeskDraft, sendLienDeskItemOnWord, setCustomerLienNoticePolicy, submitLienDeskItem } from '../../lib/jobs/lienDeskIo'
-import { buildLienNoticeFieldsForJob } from '../../lib/jobs/lienNoticeDraft'
+import { buildLienNoticeFieldsForJob, DEFAULT_CLAIMANT_NAME } from '../../lib/jobs/lienNoticeDraft'
 import { buildLienDeskRun } from '../../lib/jobs/lienDeskRun'
 import { eligibleForUseAll, propertyKey, readsAs, type OwnerToConfirmRow } from '../../lib/jobs/ownerConfirm'
 import { confirmOwnerForProperty, stampOwnerConfirmed } from '../../lib/jobs/ownerConfirmWrite'
@@ -134,6 +135,10 @@ export default function GcOnNoticeModal({ open, gcId, onClose, todayYmd, authRol
   const [reason, setReason] = useState<GcNoticeReasonKey>('not_paying_subs')
   const [note, setNote] = useState('')
   const [ticks, setTicks] = useState<Tick>({ rule: true, terms: true, legal: true })
+  // Step 3 (v2.3478): the letter written once for all; seeded from the GC's name the first time the data lands.
+  const [letter, setLetter] = useState('')
+  const [includeLetter, setIncludeLetter] = useState(true)
+  const letterSeededFor = useRef<string | null>(null)
   const [wordOpen, setWordOpen] = useState(false)
   const [wordNote, setWordNote] = useState('')
   const [wordChannel, setWordChannel] = useState<'phone' | 'in_person' | 'text'>('phone')
@@ -200,6 +205,12 @@ export default function GcOnNoticeModal({ open, gcId, onClose, todayYmd, authRol
       setProgress(null)
     })()
   }, [open, missingByProperty])
+
+  useEffect(() => {
+    if (!data?.gc || letterSeededFor.current === data.gc.id) return
+    letterSeededFor.current = data.gc.id
+    setLetter(defaultGcNoticeCoverLetter({ gcName: data.gc.name, claimantName: (issuer?.companyName ?? '').trim() || DEFAULT_CLAIMANT_NAME }))
+  }, [data, issuer])
 
   // The run opens once the re-read after Approve all has landed.
   useEffect(() => {
@@ -320,6 +331,7 @@ export default function GcOnNoticeModal({ open, gcId, onClose, todayYmd, authRol
           }),
           gcEmail: gc.email,
           batchReason,
+          ...(includeLetter && letter.trim() ? { coverLetter: letter.trim() } : {}),
         }
         const id = await saveLienDeskDraft({ itemId: j.item?.id ?? null, jobId: j.jobId, months: j.months.map((m) => m.key), fields, coverNote: true, userId: authUserId })
         if (mode === 'leader') await approveLienDeskItem(id)
@@ -549,12 +561,49 @@ export default function GcOnNoticeModal({ open, gcId, onClose, todayYmd, authRol
                     </tbody>
                   </table>
                 </div>
-                <div style={faint}>Each row is the same document the Lien window prints, filled from the same job; the unpaid invoices ride behind it as the statute allows (§ 53.056(a-3)). The standard cover note goes with each.</div>
+                <div style={faint}>Each row is the same document the Lien window prints, filled from the same job; the unpaid invoices ride behind it as the statute allows (§ 53.056(a-3)).</div>
               </div>
 
-              {/* STEP 4 (the cover letter, Step 3, is the next PR) */}
+              {/* STEP 3 — the cover letter, written once for all (v2.3478) */}
               <div style={boxStyle}>
-                <div style={boxHead}>Step 3 · The decision, once</div>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem', flexWrap: 'wrap' }}>
+                  <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.6rem', flexWrap: 'wrap' }}>
+                    <div style={boxHead}>Step 3 · The cover letter, written once for all {s.ready}</div>
+                    <span style={faint}>replaces the standard cover note on these notices · printed as the first page of each owner's copy, on the letterhead, signed by the master</span>
+                  </div>
+                  <label style={{ display: 'inline-flex', gap: 6, alignItems: 'center', fontSize: '0.75rem', color: 'var(--text-700)' }}>
+                    <input type="checkbox" checked={includeLetter} onChange={(ev) => setIncludeLetter(ev.target.checked)} disabled={!office} /> Include the cover letter
+                  </label>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'minmax(0, 1fr) 280px', gap: '0.75rem' }}>
+                  <textarea
+                    value={letter}
+                    onChange={(ev) => setLetter(ev.target.value)}
+                    disabled={!office || !includeLetter}
+                    aria-label="Cover letter"
+                    rows={12}
+                    style={{ width: '100%', fontFamily: 'Georgia, "Times New Roman", serif', fontSize: '0.8125rem', lineHeight: 1.55, padding: '0.6rem 0.75rem', border: '1px solid var(--border-strong)', borderRadius: 8, background: includeLetter ? 'var(--surface)' : 'var(--bg-muted)', color: 'var(--text-base)', resize: 'vertical' }}
+                  />
+                  <div style={{ display: 'grid', gap: '0.5rem', alignContent: 'start', fontSize: '0.75rem', color: 'var(--text-700)' }}>
+                    <div style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '0.5rem 0.65rem', background: 'var(--bg-subtle)', display: 'grid', gap: 3 }}>
+                      <div style={boxHead}>Fills per notice</div>
+                      <div><code>{'{{property}}'}</code> the job's address · <code>{'{{months}}'}</code> the months named · <code>{'{{job}}'}</code> the job number. Everything else prints the same on all {s.ready}.</div>
+                    </div>
+                    <div style={{ border: '1px solid var(--border-amber)', borderRadius: 8, padding: '0.5rem 0.65rem', background: 'var(--bg-amber-tint)', color: 'var(--text-amber-800)', display: 'grid', gap: 3 }}>
+                      <div style={{ ...boxHead, color: 'var(--text-amber-800)' }}>Attorney wording pending</div>
+                      <div>The § 53.081 withholding paragraph prints as written until the attorney replaces it for homeowners on residential projects.</div>
+                    </div>
+                    <div style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '0.5rem 0.65rem', background: 'var(--bg-subtle)', display: 'grid', gap: 3 }}>
+                      <div style={boxHead}>Kept</div>
+                      <div>The letter is saved on every notice's record, so the office sees exactly what each owner read. The GC's copy carries the statutory form only.</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* STEP 4 — the decision */}
+              <div style={boxStyle}>
+                <div style={boxHead}>Step 4 · The decision, once</div>
                 <div style={{ display: 'grid', gap: '0.3rem' }}>
                   <div style={faint}>Why now — kept on every notice's record and on {gcName}'s card:</div>
                   <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', fontSize: '0.8125rem' }}>

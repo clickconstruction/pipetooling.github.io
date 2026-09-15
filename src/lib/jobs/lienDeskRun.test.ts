@@ -109,3 +109,26 @@ describe('buildLienDeskRun', () => {
     expect((payload.fields as { originalContractorName: string }).originalContractorName).toBe('Loberg Contracting')
   })
 })
+
+describe('the run carries the GC-on-notice cover letter (v2.3478)', () => {
+  it('fills the letter per notice from the stored template and prints it as the cover page instead of the note', () => {
+    const template = 'To the owner of {{property}},\n\nWork in {{months}} on job {{job}} is unpaid.\n\nWe would rather be paid than file a lien.'
+    const fields = { notice: { noticeDate: TODAY, projectDescription: 'ATI Schertz', claimantName: 'Click Plumbing and Electrical', laborMaterialsType: 'Plumbing labor and materials', originalContractorName: 'Loberg Contracting', contractedWithIfDifferent: '', claimAmount: '33500.00', contactPerson: 'Robert Douglas, Master Plumber', claimantAddress: '5501 Balcones Dr' }, gcEmail: '', batchReason: 'GC is not paying its subs — Sarah said the draw was spent', coverLetter: template }
+    const d = data([{ ...approved, fields }])
+    const run = buildLienDeskRun(d.queue.piles.ready, d, null, () => 'Robert', TODAY)
+    const n = run[0]!
+    expect(n.coverLetter).toBe('To the owner of 1204 Elbel Rd, Schertz, TX,\n\nWork in June and July 2026 on job 650 is unpaid.\n\nWe would rather be paid than file a lien.')
+    const blocks = runCoverNoteBlocks(n)
+    expect(blocks.filter((b) => b.kind === 'paragraph').map((b) => (b as { text: string }).text)).toEqual([
+      'To the owner of 1204 Elbel Rd, Schertz, TX,',
+      'Work in June and July 2026 on job 650 is unpaid.',
+      'We would rather be paid than file a lien.',
+      'Enclosed: Notice of claim for unpaid labor or materials (Tex. Prop. Code § 53.056).',
+    ])
+    expect(blocks.find((b) => b.kind === 'signature')).toMatchObject({ lines: ['Robert Douglas, Master Plumber', 'Click Plumbing and Electrical'] })
+    // without a letter the standard note still prints
+    const plain = buildLienDeskRun(data([approved]).queue.piles.ready, data([approved]), null, () => 'Robert', TODAY)[0]!
+    expect(plain.coverLetter).toBeNull()
+    expect(runCoverNoteBlocks(plain).some((b) => b.kind === 'paragraph' && (b as { text: string }).text.includes('routine notice'))).toBe(true)
+  })
+})

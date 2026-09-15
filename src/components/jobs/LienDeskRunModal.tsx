@@ -121,7 +121,7 @@ export default function LienDeskRunModal({
                     {ri === 0 ? (
                       <td rowSpan={n.recipients.length} style={{ padding: '0.45rem 0.5rem 0.45rem 0', borderBottom: '1px solid var(--border)', verticalAlign: 'top', fontWeight: 600 }}>
                         {n.label}
-                        <div style={{ fontWeight: 500, color: 'var(--text-muted)', fontSize: '0.75rem' }}>{formatUsdNoCents(n.amount)}{n.coverNote ? ' · cover note' : ''}</div>
+                        <div style={{ fontWeight: 500, color: 'var(--text-muted)', fontSize: '0.75rem' }}>{formatUsdNoCents(n.amount)}{n.coverLetter ? ' · cover letter' : n.coverNote ? ' · cover note' : ''}</div>
                         {problems[ni]!.length ? <div style={{ color: 'var(--text-red-600)', fontSize: '0.72rem' }}>{problems[ni]!.join(' · ')}</div> : null}
                       </td>
                     ) : null}
