@@ -1118,12 +1118,12 @@ export default function LienInstrumentsModal({
                 switch (b.kind) {
                   case 'senderBlock':
                     return (
-                      <div key={i} style={{ display: 'flex', justifyContent: 'space-between', gap: '1.5rem', margin: '0 0 0.9em', paddingBottom: '0.6em', borderBottom: '1px solid #cfcbc2' }}>
+                      <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1.5rem', margin: '0 0 0.9em', paddingBottom: '0.6em', borderBottom: '1px solid #cfcbc2' }}>
                         <div>
                           <div style={{ fontWeight: 700, fontSize: '1.12em' }}>{b.company}</div>
                           {b.licenseLine ? <div style={{ fontFamily: "'Helvetica Neue', Arial, sans-serif", fontSize: '0.72em', color: '#7a756c', marginTop: '0.15em' }}>{b.licenseLine}</div> : null}
                         </div>
-                        <div style={{ fontFamily: "'Helvetica Neue', Arial, sans-serif", textAlign: 'right', fontSize: '0.74em', color: '#7a756c', lineHeight: 1.5 }}>
+                        <div style={{ fontFamily: "'Helvetica Neue', Arial, sans-serif", flex: '0 0 auto', whiteSpace: 'nowrap', textAlign: 'right', fontSize: '0.8em', color: '#5f5a52', lineHeight: 1.45 }}>
                           {b.contactLines.map((l, j) => (
                             <span key={j}>
                               {l}

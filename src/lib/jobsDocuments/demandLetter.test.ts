@@ -7,10 +7,12 @@ import {
   feeClockDate,
   interestBasisFor,
   lienLineBlockedReason,
+  buildDemandLetterEmailHtml,
   buildDemandLetterModel,
   buildDemandLetterPrefill,
   buildDemandLetterText,
   buildDemandStatement,
+  letterheadContactLines,
   demandDebtorParty,
   demandInvoicesPhrase,
   demandLetterPdfFilename,
@@ -100,6 +102,25 @@ describe('buildDemandLetterModel', () => {
   it('model starts with the sender block and ends with signature', () => {
     expect(model[0]?.kind).toBe('senderBlock')
     expect(model[model.length - 1]?.kind).toBe('signature')
+  })
+  it('letterhead contact column is the return address line for line — no sender name, nothing joined (v2.3474)', () => {
+    const sender = model[0]
+    if (sender?.kind !== 'senderBlock') throw new Error('expected senderBlock')
+    expect(sender.company).toBe('Click Plumbing and Electrical')
+    expect(sender.contactLines).toEqual(['5501 Balcones Dr Ste A141', 'Austin, TX 78731', '+1 512 360 0599', 'office@clickplumbing.com'])
+    expect(sender.contactLines.join('\n')).not.toContain('Malachi')
+    // The sender still signs the letter.
+    const sig = model[model.length - 1]
+    if (sig?.kind !== 'signature') throw new Error('expected signature')
+    expect(sig.lines).toContain('Malachi Whites, Master Plumber (#RMP41130)')
+    // Blanks and CRLF drop cleanly.
+    expect(letterheadContactLines('1 Main St\r\n\r\nAustin, TX', ' ', 'a@b.c')).toEqual(['1 Main St', 'Austin, TX', 'a@b.c'])
+    expect(letterheadContactLines('', '', '')).toEqual([])
+  })
+  it('email html keeps the contact column on one unbroken line each', () => {
+    const html = buildDemandLetterEmailHtml(FIELDS, '2026-09-02')
+    expect(html).toContain('white-space:nowrap')
+    expect(html).toContain('5501 Balcones Dr Ste A141<br/>Austin, TX 78731<br/>+1 512 360 0599<br/>office@clickplumbing.com')
   })
 })
 

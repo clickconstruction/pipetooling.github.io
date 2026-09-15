@@ -1,5 +1,5 @@
 import { loadJsPDF } from '../loadJsPDF'
-import { demandDate, demandMoney } from './demandLetter'
+import { demandDate, demandMoney, letterheadContactLines } from './demandLetter'
 
 /**
  * The three statutory lien instruments (v2.2645, Lien Instruments phase 3):
@@ -59,6 +59,8 @@ function esc(s: string): string {
 }
 
 const HTML_MUTED = '#7a756c'
+/** Letterhead return address (v2.3474): a shade darker than labels — it is the reply address, not a footnote. */
+const HTML_CONTACT = '#5f5a52'
 const HTML_RULE = '#cfcbc2'
 const HTML_LABEL_FONT = "font-family:'Helvetica Neue',Arial,sans-serif"
 
@@ -68,11 +70,11 @@ export function filingDocHtml(blocks: FilingDocBlock[]): string {
     switch (b.kind) {
       case 'letterhead':
         parts.push(
-          `<div style="display:flex;justify-content:space-between;gap:1.5rem;margin:0 0 0.5em">` +
+          `<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:1.5rem;margin:0 0 0.5em">` +
             `<div><div style="font-weight:700;font-size:1.12em">${esc(b.company)}</div>` +
             (b.licenseLine ? `<div style="${HTML_LABEL_FONT};font-size:0.72em;color:${HTML_MUTED};margin-top:0.15em">${esc(b.licenseLine)}</div>` : '') +
             `</div>` +
-            `<div style="${HTML_LABEL_FONT};text-align:right;font-size:0.74em;color:${HTML_MUTED};line-height:1.5">${b.contactLines.map(esc).join('<br/>')}</div>` +
+            `<div style="${HTML_LABEL_FONT};flex:0 0 auto;white-space:nowrap;text-align:right;font-size:0.8em;color:${HTML_CONTACT};line-height:1.45">${b.contactLines.map(esc).join('<br/>')}</div>` +
             `</div>`,
         )
         break
@@ -193,6 +195,7 @@ const VALUE_COL_MM = RIGHT_EDGE - VALUE_COL_X
 
 const INK: [number, number, number] = [28, 26, 23]
 const MUTED: [number, number, number] = [122, 117, 108]
+const CONTACT: [number, number, number] = [95, 90, 82]
 const RULE: [number, number, number] = [207, 203, 194]
 
 export async function filingDocPdfBlob(blocks: FilingDocBlock[], opts?: { footer?: string }): Promise<Blob> {
@@ -233,14 +236,14 @@ export async function filingDocPdfBlob(blocks: FilingDocBlock[], opts?: { footer
           doc.text(b.licenseLine, PAGE_MARGIN, leftY)
         }
         doc.setFont('helvetica', 'normal')
-        doc.setFontSize(7.5)
-        doc.setTextColor(...MUTED)
+        doc.setFontSize(8)
+        doc.setTextColor(...CONTACT)
         let rightY = y + 3
         for (const l of b.contactLines) {
           doc.text(l, RIGHT_EDGE, rightY, { align: 'right' })
-          rightY += 3.6
+          rightY += 3.7
         }
-        y = Math.max(leftY, rightY - 3.6) + 5
+        y = Math.max(leftY, rightY - 3.7) + 5
         break
       }
       case 'refstrip': {
@@ -536,12 +539,11 @@ export function filingLetterheadFromIssuer(
 ): FilingDocExtras['letterhead'] | undefined {
   const company = (issuer?.companyName ?? '').trim()
   if (!company) return undefined
-  const address = (issuer?.addressText ?? '').replace(/\r?\n/g, ', ').trim()
-  const phoneEmail = [(issuer?.phone ?? '').trim(), (issuer?.email ?? '').trim()].filter((l) => l).join(' · ')
   return {
     company,
     licenseLine: (issuer?.licenseLine ?? '').trim(),
-    contactLines: [address, phoneEmail].filter((l) => l),
+    // v2.3474: line for line as typed — street, city/state/ZIP, phone, email.
+    contactLines: letterheadContactLines(issuer?.addressText ?? '', issuer?.phone ?? '', issuer?.email ?? ''),
   }
 }
 
