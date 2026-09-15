@@ -8,7 +8,8 @@
  * BUILT from the picks (`buildSubmittalRows`), never typed from scratch;
  * every cell can be edited in place; a new revision carries every row and
  * marks the diff. The package PDF (2c), the page strip (3a) and Share (4a)
- * hang off this same screen.
+ * hang off this same screen. Stage 2c adds the package: the cover table and
+ * every row's sheet pages, stamped, as one PDF stored on the revision.
  */
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import type { SupabaseClient } from '@supabase/supabase-js'
@@ -20,7 +21,7 @@ import { useAuth } from '../../hooks/useAuth'
 import { useLedgerPrefixMap } from '../../contexts/LedgerDisplayPrefixContext'
 import type { useBidPreview } from '../../contexts/BidPreviewModalContext'
 import type { BidWithBuilder } from '../../types/bidWithBuilder'
-import { bidDisplayName } from '../../lib/bids/bidFormatting'
+import { bidDisplayName, bidWorkflowTabHeading } from '../../lib/bids/bidFormatting'
 import { bidDetailCloseXStyle } from '../../lib/bids/bidStyles'
 import { bidNumberMatchesQuery } from '../../lib/ledgerDisplayPrefixes'
 import { BidPickerStandardList } from './BidPickerStandardList'
@@ -32,6 +33,9 @@ import { SubmittalItemEditDialog, type SubmittalItemPatch } from './SubmittalIte
 import { buildSubmittalRows, changeNoteFor, summarizeChanges, type PickInput, type SpecifiedInput } from '../../lib/submittals/buildSubmittalRows'
 import { needsReason, REASON_LABELS, type StatusOverride } from '../../lib/submittals/productStatus'
 import { describeLeadTime } from '../../lib/submittals/leadTime'
+import { buildCoverModel, buildSubmittalPackage, packageFileName, planPackage, renderCoverPdf, type PackageRowInput } from '../../lib/submittals/submittalPackage'
+import { fetchTestReportSettings } from '../../lib/jobs/testReportSettings'
+import { APP_CALENDAR_TZ } from '../../utils/dateUtils'
 import { fixtureKey, PICK_COLS_ANNOTATED, PICK_COLS_BASE, picksFromQuotes, type RawQuote } from '../../lib/submittals/picksFromQuotes'
 import {
   asReason,
@@ -331,6 +335,84 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
     }
   }
 
+  /** The package (stage 2c): cover table + every row's sheet pages, stamped; stored at package-rev<N>.pdf and opened. */
+  async function buildPackage() {
+    if (!bidId || !selectedRev) return
+    setBusy(true)
+    try {
+      const settings = await fetchTestReportSettings()
+      const rowsIn: PackageRowInput[] = items.map((it) => {
+        const reason = asReason(it.reason_kind)
+        return {
+          tag: it.tag,
+          status: asStatus(it.status),
+          specified: [it.specified_manufacturer, it.specified_model].filter(Boolean).join(' ') || it.specified_description || '',
+          submitted: it.submitted_label ?? it.submitted_model ?? '',
+          house: null,
+          reason: [reason ? REASON_LABELS[reason] : '', it.reason_note ?? ''].filter(Boolean).join(' · '),
+          leadTime: describeLeadTime(it.lead_time_days) ?? '',
+          sheetFile: it.sheet_file != null && sourceFiles[it.sheet_file] ? it.sheet_file : null,
+          sheetPages: [...(it.sheet_pages ?? [])],
+        }
+      })
+      const coverInput = {
+        companyName: settings.companyName,
+        companyTagline: settings.companyTagline,
+        officePhone: settings.officePhone,
+        bidLabel: bidWorkflowTabHeading(bid, prefixMap),
+        projectAddress: bid.address ?? null,
+        gcName: bid.customers?.name ?? bid.bids_gc_builders?.name ?? null,
+        revNumber: selectedRev.rev_number,
+        dateLabel: new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric', timeZone: APP_CALENDAR_TZ }),
+        note: selectedRev.note,
+      }
+      // The cover's page count decides the sheets' page numbers; render twice only if the cover ran long.
+      let plan = planPackage(rowsIn, 1)
+      let cover = await renderCoverPdf(buildCoverModel(coverInput, plan), settings)
+      if (cover.pages !== plan.coverPages) {
+        plan = planPackage(rowsIn, cover.pages)
+        cover = await renderCoverPdf(buildCoverModel(coverInput, plan), settings)
+      }
+      const needed = new Set(plan.rows.filter((r) => r.startPage != null).map((r) => r.sheetFile as number))
+      const files: Array<Uint8Array | ArrayBuffer> = []
+      for (const i of needed) {
+        const f = sourceFiles[i]
+        if (!f) continue
+        const { data, error } = await supabase.storage.from(SUBMITTALS_BUCKET).download(f.path)
+        if (error || !data) continue
+        files[i] = await data.arrayBuffer()
+      }
+      const sheets = plan.rows.filter((r) => r.startPage != null).map((r) => ({ tag: r.tag, status: r.status, title: r.submitted, fileIndex: r.sheetFile as number, pages: r.sheetPages }))
+      const result = await buildSubmittalPackage(cover.blob, files, sheets)
+      const path = `${bidId}/${selectedRev.id}/package-rev${selectedRev.rev_number}.pdf`
+      const up = await supabase.storage.from(SUBMITTALS_BUCKET).upload(path, result.blob, { contentType: 'application/pdf', upsert: true })
+      if (up.error) throw up.error
+      const { error } = await db.from('bid_submittals').update({ package_path: path }).eq('id', selectedRev.id)
+      if (error) throw error
+      const skipped = result.skipped.length > 0 ? ` · could not read the sheet for ${result.skipped.join(', ')}` : ''
+      const owed = plan.rowsWithoutSheet.length > 0 ? ` · ${plan.rowsWithoutSheet.length} row${plan.rowsWithoutSheet.length === 1 ? '' : 's'} still owe a sheet` : ''
+      showToast(`Rev ${selectedRev.rev_number} package · ${result.totalPages} page${result.totalPages === 1 ? '' : 's'} · ${result.manifest.length} sheet${result.manifest.length === 1 ? '' : 's'}${owed}${skipped}`, 'success')
+      await openStoredPackage(path, selectedRev.rev_number, result.blob)
+      await load(bidId)
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : 'Could not build the package.', 'error')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  /** A five-minute signed link to the stored package; the fresh blob as the fallback when the link cannot be minted. */
+  async function openStoredPackage(path: string, revNumber: number, fallback?: Blob) {
+    const name = packageFileName(revNumber, bidWorkflowTabHeading(bid, prefixMap))
+    const { data } = await supabase.storage.from(SUBMITTALS_BUCKET).createSignedUrl(path, 300, { download: name })
+    const url = data?.signedUrl ?? (fallback ? URL.createObjectURL(fallback) : null)
+    if (!url) {
+      showToast('The package is stored, but the link could not be opened right now.', 'error')
+      return
+    }
+    window.open(url, '_blank', 'noopener')
+  }
+
   async function saveItem(patch: SubmittalItemPatch) {
     if (!editing || !selectedRev) return
     try {
@@ -431,6 +513,16 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
                 Drop a vendor PDF
               </button>
               <input ref={fileInput} type="file" accept="application/pdf,.pdf" aria-label="Vendor PDF" style={{ display: 'none' }} onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ''; if (f) void dropVendorPdf(f) }} />
+              {items.length > 0 ? (
+                <button type="button" disabled={busy} onClick={() => void buildPackage()} style={btn} title="The cover table, then every row's sheet pages stamped with tag and status — stored on this revision and opened">
+                  {selectedRev.package_path ? 'Rebuild package' : 'Build package'}
+                </button>
+              ) : null}
+              {selectedRev.package_path ? (
+                <button type="button" disabled={busy} onClick={() => void openStoredPackage(selectedRev.package_path as string, selectedRev.rev_number)} style={btn}>
+                  Open package
+                </button>
+              ) : null}
               {isDraft && isNewest ? (
                 <button type="button" disabled={busy} onClick={() => void deleteDraft()} style={{ ...btn, color: 'var(--text-red-700)' }}>
                   Delete draft
@@ -454,6 +546,7 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
           <p style={{ margin: 0, ...smallMuted }} data-testid="revision-line">
             <b style={{ color: 'var(--text-strong)' }}>{describeRevisionChip(selectedRev)}</b> · {describeRevision(tiles)}
             {selectedRev.note ? ` · ${selectedRev.note}` : ''}
+            {selectedRev.package_path ? <span style={{ color: 'var(--text-green-700)', fontWeight: 600 }}> · package built</span> : null}
           </p>
 
           {sourceFiles.length > 0 ? (

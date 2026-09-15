@@ -38,6 +38,14 @@ Tap {{button:outline|Drop a vendor PDF}} and give it the house's whole submittal
 - {{button:outline|Rebuild rows from picks}} (on a draft): you changed picks on the compare, or added a tag to the schedule. Rows are rebuilt from today's picks; sheets, reasons and lead times carry wherever the product is unchanged.
 - {{button:green|New revision}}: the GC sent rows back, or the products changed after a share. Every row carries into the new draft and a **Since Rev N** column says what changed — *product changed*, *status changed*, *reason added*, *now missing*, *new row* — or *carried*. An unshared draft you revise reads *superseded*. Only the newest revision can be revised; older ones stay as the record.
 
+## Build the package
+
+Tap {{button:outline|Build package}}. One PDF: a cover table on our letterhead — every row with its tag, specified and submitted product, status, reason, lead time, and the page its cut sheet starts on — then the sheets in tag order, each page stamped **TAG · STATUS** and footed with the product. Rows still owing a sheet read *to follow* on the cover. The package is stored on the revision and opens in a new tab; {{button:outline|Open package}} brings it back, {{button:outline|Rebuild package}} refreshes it after you edit rows or pages.
+
+:::example Rev 3 on SpaceX
+22 rows, 14 sheets attached. The cover runs two pages, so DWH-1's sheet reads *p. 3*; the package is 31 pages. Wendi downloads it and sends it her own way — Share, with the GC's decisions coming back onto the rows, is the next release.
+:::
+
 ## What comes next
 
-The package PDF (a cover table, then every sheet in tag order stamped with its tag and status), a page strip for the sheets, sharing it with the GC for decisions on rows, and the GC's portal — each in its own release.
+A page strip for the sheets (tap the pages instead of typing a range, and let unused pages go), sharing the package with the GC for decisions on rows, and the GC's portal — each in its own release.

@@ -14,7 +14,24 @@ import type { BidWithBuilder } from '../../types/bidWithBuilder'
 import { BidsSubmittalsTab } from './BidsSubmittalsTab'
 
 type Rec = { table: string; op: string; payload: unknown; filters: Array<[string, unknown]> }
-const state: { revisions: Record<string, unknown>[]; items: Record<string, unknown>[]; writes: Rec[] } = { revisions: [], items: [], writes: [] }
+const state: { revisions: Record<string, unknown>[]; items: Record<string, unknown>[]; writes: Rec[]; storage: string[]; packageCalls: Array<{ files: number; sheets: string[] }> } = { revisions: [], items: [], writes: [], storage: [], packageCalls: [] }
+
+vi.mock('../../lib/jobs/testReportSettings', () => ({
+  fetchTestReportSettings: () => Promise.resolve({ companyName: 'Click Plumbing', companyTagline: 'Plumbing', officePhone: '(512) 555-0100' }),
+}))
+
+// The package kernels run jsPDF and pdf-lib; the smoke checks the orchestration, not the ink.
+vi.mock('../../lib/submittals/submittalPackage', async (importOriginal) => {
+  const real = await importOriginal<typeof import('../../lib/submittals/submittalPackage')>()
+  return {
+    ...real,
+    renderCoverPdf: () => Promise.resolve({ blob: new Blob(['cover'], { type: 'application/pdf' }), pages: 1 }),
+    buildSubmittalPackage: (_cover: Blob, files: unknown[], sheets: Array<{ tag: string }>) => {
+      state.packageCalls.push({ files: files.length, sheets: sheets.map((s) => s.tag) })
+      return Promise.resolve({ blob: new Blob(['pkg'], { type: 'application/pdf' }), coverPages: 1, sheetPages: 2, totalPages: 3, manifest: sheets.map((s) => ({ tag: s.tag, status: 'as_specified', pages: [2] })), skipped: [] })
+    },
+  }
+})
 
 vi.mock('../../hooks/useAuth', () => ({
   useAuth: () => ({ user: { id: 'wendi', email: 'wendi@x.test' }, profileName: 'Wendi', role: 'estimator' }),
@@ -109,7 +126,22 @@ function builder(table: string) {
 vi.mock('../../lib/supabase', () => ({
   supabase: {
     from: (table: string) => builder(table),
-    storage: { from: () => ({ upload: () => Promise.resolve({ data: null, error: null }) }) },
+    storage: {
+      from: () => ({
+        upload: (path: string) => {
+          state.storage.push(`upload ${path}`)
+          return Promise.resolve({ data: null, error: null })
+        },
+        download: (path: string) => {
+          state.storage.push(`download ${path}`)
+          return Promise.resolve({ data: { arrayBuffer: () => Promise.resolve(new ArrayBuffer(8)) }, error: null })
+        },
+        createSignedUrl: (path: string) => {
+          state.storage.push(`sign ${path}`)
+          return Promise.resolve({ data: { signedUrl: `https://signed.test/${path}` }, error: null })
+        },
+      }),
+    },
   },
 }))
 
@@ -223,5 +255,29 @@ describe('BidsSubmittalsTab', () => {
     expect(screen.getByText('Since Rev 1')).toBeTruthy()
     await waitFor(() => expect(screen.getByTestId('submittal-rows').textContent).toMatch(/product changed/))
     expect(screen.getByTestId('submittal-rows').textContent).toMatch(/new row/)
+  })
+
+  it('Build package downloads only the files the rows use, stores package-rev<N>.pdf, stamps the revision, and opens the signed link', async () => {
+    state.revisions = [{ id: 'rev-1', bid_id: 'b398', rev_number: 1, status: 'draft', title: 'Plumbing fixtures & equipment', note: null, package_path: null, source_files: [{ path: 'b398/rev-1/0.pdf', name: 'NWS.pdf', pages: 12, house_id: null, house_name: null, trimmed_at: null }, { path: 'b398/rev-1/1.pdf', name: 'Moore.pdf', pages: 4, house_id: null, house_name: null, trimmed_at: null }], shared_at: null, created_at: '2026-09-15T00:00:00Z' }]
+    state.items = [
+      item({ id: 'it-1', tag: 'DWH-1', sequence_order: 1, specified_manufacturer: 'Rheem', specified_model: 'RH375', submitted_label: 'BRADFORD WHITE RE2HP50 50 GAL', status: 'alternate', reason_kind: 'lead_time' }),
+      item({ id: 'it-3', tag: 'WC-1', sequence_order: 2, specified_manufacturer: 'TOTO', specified_model: 'CT708UVG', submitted_label: 'TOTO CT708UVG#01 WALL HUNG', submitted_model: 'CT708UVG', status: 'as_specified', sheet_file: 0, sheet_pages: [1, 2] }),
+    ]
+    state.writes = []
+    state.storage = []
+    state.packageCalls = []
+    const open = vi.spyOn(window, 'open').mockImplementation(() => null)
+    mount()
+    await screen.findAllByTestId('submittal-row')
+    fireEvent.click(screen.getByRole('button', { name: 'Build package' }))
+    await waitFor(() => expect(state.writes.some((w) => w.op === 'update' && w.table === 'bid_submittals')).toBe(true))
+    expect(state.packageCalls).toEqual([{ files: 1, sheets: ['WC-1'] }])
+    expect(state.storage).toEqual(['download b398/rev-1/0.pdf', 'upload b398/rev-1/package-rev1.pdf', 'sign b398/rev-1/package-rev1.pdf'])
+    const upd = state.writes.find((w) => w.op === 'update' && w.table === 'bid_submittals')!
+    expect(upd.payload).toEqual({ package_path: 'b398/rev-1/package-rev1.pdf' })
+    expect(open).toHaveBeenCalledWith('https://signed.test/b398/rev-1/package-rev1.pdf', '_blank', 'noopener')
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Open package' })).toBeTruthy())
+    expect(screen.getByTestId('revision-line').textContent).toMatch(/package built/)
+    open.mockRestore()
   })
 })

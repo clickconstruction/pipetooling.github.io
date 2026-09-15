@@ -1437,11 +1437,14 @@ The submittal package as **rows, built from the picks** (Submittals stage 2b, v2
 ### Surface
 [`BidsSubmittalsTab`](../src/components/bids/BidsSubmittalsTab.tsx) (after Cover Letter; office and estimator roles — superintendents and primaries never see it, like Pricing). The standard bid picker, then: the title with preview, *N tags on the schedule · N picked lines* with a door to Pricing; **Build Rev 1 from the picks** when no revision exists; the revision strip (`Rev N · status · date`); **Rebuild rows from picks** (draft), **Drop a vendor PDF** (stored once at `<bid_id>/<submittal_id>/<index>.pdf` in the private `bid-submittals` bucket, page count via pdf-lib, listed in `source_files`), **Delete draft**, **New revision** (carries every row, marks the diff, supersedes an unshared draft); six tiles (`revisionTiles`); the table — Tag · Specified · Submitted · Status ([`ProductStatusChip`](../src/components/bids/ProductStatusChip.tsx)) · Reason (*say why* when owed) · Lead time · Sheet (*✓ p.1–2* or *sheet needed*) · Since Rev N-1 · Edit. [`SubmittalItemEditDialog`](../src/components/bids/SubmittalItemEditDialog.tsx) edits a row: status, reason chips + note, lead time, the sheet as a file + typed page range.
 
+### The package (v2.3467)
+**Build package** renders the revision as one PDF (`src/lib/submittals/submittalPackage.ts`: `planPackage` → `buildCoverModel` → `renderCoverPdf` (jsPDF, landscape letter, the test-report letterhead) → `buildSubmittalPackage` (pdf-lib: the cover, then every row's sheet pages stamped `TAG · STATUS`)), stores it at `<bid>/<rev>/package-rev<N>.pdf` (`bid_submittals.package_path`) and opens a 300-second client-minted signed link; **Open package** / **Rebuild package** afterwards. Only the vendor files the rows use are downloaded. Nothing is sent.
+
 ### Kernels
-`src/lib/submittals/`: `buildSubmittalRows` (specified × picks → rows; carry-forward; the diff), `submittalRevision` (stored rows ↔ kernel inputs, tiles, pages, chip words), `picksFromQuotes` (latest quote per house → one pick per fixture), `productStatus`, `leadTime`, `parseFixtureSchedule`, `trimPdf`. Help: *build a submittal package*.
+`src/lib/submittals/`: `submittalPackage` (the plan, the cover model, the render, the merge), `buildSubmittalRows` (specified × picks → rows; carry-forward; the diff), `submittalRevision` (stored rows ↔ kernel inputs, tiles, pages, chip words), `picksFromQuotes` (latest quote per house → one pick per fixture), `productStatus`, `leadTime`, `parseFixtureSchedule`, `trimPdf`. Help: *build a submittal package*.
 
 ### Next
-The package PDF (2c), the page strip with Done with this file (3a), Share and the GC's decisions on rows (4a), the Needs You cards and the won question (4b, 4c), the portal (stage 5), the robots (stage 6).
+The page strip with Done with this file (3a), Share and the GC's decisions on rows (4a), the Needs You cards and the won question (4b, 4c), the portal (stage 5), the robots (stage 6).
 
 ## Submission & Followup Tab
 
