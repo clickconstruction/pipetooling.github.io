@@ -15,6 +15,12 @@ export type ParsedCountImportRow = {
 export const COUNT_SOURCE_LINK_RE =
   /https?:\/\/\S*[?&]t=[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}/
 
+// CountTooling frames headings as `--- <text> ---` (the D25 scope header
+// `--- Counts, <project> · every sheet · every layer ---` since 2026-09-13, and
+// `--- Duct ---`). A heading is never a row: without this, a project named
+// "2026 …" parsed as fixture "--- Counts" × 2026 (the comma split).
+export const COUNT_HEADING_LINE_RE = /^---\s.*\s---$/
+
 export function parseCountsImportText(text: string): {
   rows: ParsedCountImportRow[]
   skippedCount: number
@@ -31,6 +37,8 @@ export function parseCountsImportText(text: string): {
     // Skip the footer line carrying the source link — it is not a count row and
     // must not be reported as "skipped".
     if (COUNT_SOURCE_LINK_RE.test(trimmed)) continue
+    // Framed headings are structure, not counts — and not "skipped" either.
+    if (COUNT_HEADING_LINE_RE.test(trimmed)) continue
     const delimiter = trimmed.includes('\t') ? '\t' : ','
     const cells = trimmed.split(delimiter).map((c) => c.trim())
     const fixture = cells[0] ?? ''
