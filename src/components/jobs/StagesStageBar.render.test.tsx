@@ -74,7 +74,7 @@ describe('StagesProgressPaymentCell with the v2.3419 view', () => {
     render(<StagesProgressPaymentCell model={model} pctComplete={80} view={view} />)
     expect(screen.queryByRole('list', { name: 'Stages' })).toBeNull()
     expect(screen.getByRole('img').querySelectorAll('[data-segment-state]')).toHaveLength(1)
-    expect(screen.getByText('Nobody clocked in · 80%')).toBeTruthy()
+    expect(screen.getByText('No hours · 80%')).toBeTruthy()
     expect(screen.getByRole('img', { name: /nobody clocked in · 80% typed · \$13,412 paid · \$11,770 billed · \$6,818 done, not billed/ })).toBeTruthy()
     expect(screen.getByText(/Done, not billed/)).toBeTruthy()
     expect(screen.getByText(/Not done/)).toBeTruthy()

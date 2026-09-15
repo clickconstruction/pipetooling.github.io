@@ -126,14 +126,16 @@ export function dayWord(ymd: string, todayYmd: string): string {
 /**
  * "Behar & Malachi on site today" · "Behar's crew on site Fri" · "Texas Rooter on the sheet, no clock-ins" · "nobody clocked in".
  *
- * `names: false` (v2.3459) drops who: "on site today" · "on site Fri" · "on the
- * sheet, no clock-ins". The row's Crew & Dates column already lists the people,
+ * `names: false` (v2.3459) drops who: "worked today" · "worked Fri" · "on the
+ * sheet, no clock-ins" · "no hours". The row's Crew & Dates column already lists the people,
  * so the printed line under the bar says only when; the names stay in `full`
  * (the tooltip and the bar's accessible name).
  */
 export function crewClause(crew: JobCrewPosition | null | undefined, todayYmd: string, opts: { names?: boolean } = {}): string {
-  if (!crew) return 'nobody clocked in'
   const names = opts.names !== false
+  // The printed line says "no hours" (v2.3463); the tooltip keeps "nobody clocked in".
+  const none = names ? 'nobody clocked in' : 'no hours'
+  if (!crew) return none
   const name = crewShortName(crew)
   if (crew.lastWorkYmd) {
     const n = crew.lastDayPeople.length
@@ -143,7 +145,7 @@ export function crewClause(crew: JobCrewPosition | null | undefined, todayYmd: s
     return names ? `${who} on site ${dayWord(crew.lastWorkYmd, todayYmd)}` : `worked ${dayWord(crew.lastWorkYmd, todayYmd)}`
   }
   if (crew.sheet && name) return names ? `${name} on the sheet, no clock-ins` : 'on the sheet, no clock-ins'
-  return 'nobody clocked in'
+  return none
 }
 
 const PERCENT_SOURCE_WORD: Record<PercentSource, string> = { typed: 'typed', report: 'reported', seed: 'set' }
@@ -160,7 +162,7 @@ export function percentClause(p: ProgressPaymentView['percent'], opts: { source?
   return `${p.pct}% ${PERCENT_SOURCE_WORD[p.source]}${when}`
 }
 
-/** The printed line starts with a capital: "Worked Fri · 80% Sep 3", "Nobody clocked in · no % yet". */
+/** The printed line starts with a capital: "Worked Fri · 80% Sep 3", "No hours · no % yet". */
 export function capFirst(text: string): string {
   return text.charAt(0).toUpperCase() + text.slice(1)
 }
