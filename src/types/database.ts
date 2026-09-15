@@ -17109,6 +17109,7 @@ export type Database = {
       supply_house_job_accounts: {
         Row: {
           account_id: string | null
+          bid_id: string | null
           contact_email: string
           contact_label: string
           id: string
@@ -17121,6 +17122,7 @@ export type Database = {
         }
         Insert: {
           account_id?: string | null
+          bid_id?: string | null
           contact_email: string
           contact_label: string
           id?: string
@@ -17133,6 +17135,7 @@ export type Database = {
         }
         Update: {
           account_id?: string | null
+          bid_id?: string | null
           contact_email?: string
           contact_label?: string
           id?: string
@@ -21384,6 +21387,41 @@ export type Database = {
           rep_phone: string
           supply_house_id: string
           unpaid_total: number
+        }[]
+      }
+      job_account_job_identity: {
+        Args: { p_job_id: string }
+        Returns: {
+          bid_id: string
+          click_number: string
+          hcp_number: string
+          id: string
+          job_address: string
+          job_name: string
+        }[]
+      }
+      list_bid_job_account_strip: {
+        Args: { p_bid_ids: string[] }
+        Returns: {
+          account_ref: string
+          bid_id: string
+          house_name: string
+          job_address: string
+          job_click_number: string
+          job_hcp_number: string
+          job_id: string
+          job_name: string
+          opened_at: string
+          opened_via: string
+          policy: string
+          quoted: boolean
+          rep_contact_id: string
+          rep_email: string
+          rep_name: string
+          rep_phone: string
+          requested_at: string
+          status: string
+          supply_house_id: string
         }[]
       }
       list_job_account_strip: {

@@ -5,16 +5,19 @@
  * Reece, Moore — so the ask is filed the day the job is made, not the morning
  * of the first parts run. When another job at the same address already has an
  * open account at a house, the app offers to reuse it instead of asking Curly
- * twice. Office roles only; jobs with no expecting house never see it.
- * Mounted once by JobFormModalProvider, chained after JobContractAfterCreatePrompt.
+ * twice. Office roles and estimators (v2.3451 — the estimator who won the bid
+ * gets the same question, with the houses that quoted the bid first and an
+ * "Ask {rep} by email" lane); jobs with no expecting house never see it.
+ * Mounted once by JobFormModalProvider, chained after JobContractAfterCreatePrompt,
+ * and reopened from a won bid's Job block (openJobAccountsPrompt).
  */
 import { useEffect, useMemo, useRef, useState } from 'react'
-import type { JobWithDetails } from '../../types/jobWithDetails'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../hooks/useAuth'
 import { useToastContext } from '../../contexts/ToastContext'
-import { fetchJobWithDetailsById } from '../../lib/fetchJobWithDetailsById'
 import { isAssistantLike } from '../../lib/subcontractorLikeRole'
+import { orderHousesForBid } from '../../lib/jobs/jobAccountRepEmail'
+import { JobAccountRepEmailSheet } from './JobAccountRepEmailSheet'
 import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
 import { normalizeAddressForMatch } from '../../lib/jobs/lienProperty'
 import { groupJobAccountStrip, type JobAccountStripEntry, type JobAccountStripRow } from '../../lib/jobs/jobAccountStrip'
@@ -47,8 +50,11 @@ const quiet: React.CSSProperties = { background: 'none', border: 'none', padding
 const primary: React.CSSProperties = { padding: '0.5rem 1rem', borderRadius: 8, border: 'none', background: 'var(--text-link)', color: 'white', font: 'inherit', fontSize: '0.85rem', fontWeight: 600, cursor: 'pointer' }
 
 function promptEligibleRole(role: string | null | undefined): boolean {
-  return role === 'dev' || role === 'master_technician' || isAssistantLike(role)
+  return role === 'dev' || role === 'master_technician' || isAssistantLike(role) || role === 'estimator'
 }
+
+/** What the question needs of the job — through job_account_job_identity, which an estimator may call (v2.3451). */
+type PromptJob = { id: string; hcp_number: string | null; click_number: string | null; job_name: string | null; job_address: string | null; bid_id: string | null }
 
 function jobLabelOf(j: { hcp_number: string | null; click_number: string | null; job_name: string | null }): string {
   return `${effectiveJobLedgerNumber(j.hcp_number, j.click_number) || '—'} · ${(j.job_name ?? '').trim() || '—'}`
@@ -58,8 +64,10 @@ export default function JobAccountsAfterCreatePrompt({ jobId, onClose }: { jobId
   const { role, user: authUser } = useAuth()
   const { showToast } = useToastContext()
   const eligible = promptEligibleRole(role)
-  const [job, setJob] = useState<JobWithDetails | null>(null)
+  const [job, setJob] = useState<PromptJob | null>(null)
   const [entries, setEntries] = useState<JobAccountStripEntry[] | null>(null)
+  const [quotedHouseIds, setQuotedHouseIds] = useState<Set<string>>(() => new Set())
+  const [emailOpen, setEmailOpen] = useState(false)
   const [others, setOthers] = useState<SamePropertyJob[]>([])
   const [picks, setPicks] = useState<Map<string, NewJobAccountsChoice>>(() => new Map())
   const [busy, setBusy] = useState(false)
@@ -71,6 +79,8 @@ export default function JobAccountsAfterCreatePrompt({ jobId, onClose }: { jobId
     setEntries(null)
     setOthers([])
     setPicks(new Map())
+    setQuotedHouseIds(new Set())
+    setEmailOpen(false)
     if (!jobId) return
     if (!eligible) {
       onCloseRef.current()
@@ -78,19 +88,31 @@ export default function JobAccountsAfterCreatePrompt({ jobId, onClose }: { jobId
     }
     let cancelled = false
     void (async () => {
-      const j = await fetchJobWithDetailsById(jobId).catch(() => null)
+      const { data: idRows } = await supabase.rpc('job_account_job_identity', { p_job_id: jobId })
       if (cancelled) return
+      const j = ((idRows ?? []) as PromptJob[])[0] ?? null
       if (!j) {
         onCloseRef.current()
         return
       }
       const { data: rows, error } = await supabase.rpc('list_job_account_strip', { p_job_ids: [jobId] })
       if (cancelled) return
-      const mine = error ? [] : (groupJobAccountStrip((rows ?? []) as JobAccountStripRow[]).get(jobId) ?? [])
+      let mine = error ? [] : (groupJobAccountStrip((rows ?? []) as JobAccountStripRow[]).get(jobId) ?? [])
       if (mine.filter((e) => e.state === 'none').length === 0) {
         onCloseRef.current()
         return
       }
+      // From a bid (v2.3451): the houses that quoted it come first and start picked.
+      let quoted = new Set<string>()
+      if (j.bid_id) {
+        const { data: rfqs } = await supabase.from('bid_rfqs').select('supply_house_id').eq('bid_id', j.bid_id)
+        if (cancelled) return
+        quoted = new Set(((rfqs ?? []) as Array<{ supply_house_id: string | null }>).map((r) => r.supply_house_id).filter((id): id is string => !!id))
+        const ordered = orderHousesForBid(mine, quoted)
+        mine = ordered.entries
+        if (ordered.preselected.size > 0) setPicks(new Map([...ordered.preselected].map((id) => [id, 'ask' as NewJobAccountsChoice])))
+      }
+      setQuotedHouseIds(quoted)
       // Same property: other jobs whose address starts with this one's street line.
       const street = normalizeAddressForMatch(j.job_address ?? '').split(',')[0]?.trim() ?? ''
       let sameJobs: SamePropertyJob[] = []
@@ -235,15 +257,16 @@ export default function JobAccountsAfterCreatePrompt({ jobId, onClose }: { jobId
               const reused = picks.get(e.houseId) === 'reuse' && offers.some((o) => o.houseId === e.houseId)
               const on = picks.get(e.houseId) === 'ask'
               return (
-                <button key={e.houseId} type="button" aria-pressed={on} disabled={reused} onClick={() => toggle(e.houseId, 'ask')} style={{ ...chip(on), opacity: reused ? 0.45 : 1, cursor: reused ? 'not-allowed' : 'pointer' }} title={reused ? 'Carried over from the same property' : e.rep ? `${e.rep.name} opens them` : undefined}>
-                  {e.houseName}
+                <button key={e.houseId} type="button" aria-pressed={on} disabled={reused} onClick={() => toggle(e.houseId, 'ask')} style={{ ...chip(on), opacity: reused ? 0.45 : 1, cursor: reused ? 'not-allowed' : 'pointer' }} title={reused ? 'Carried over from the same property' : quotedHouseIds.has(e.houseId) ? `${e.houseName} quoted the bid${e.rep ? ` — ${e.rep.name} opens job accounts` : ''}` : e.rep ? `${e.rep.name} opens them` : undefined}>
+                  {e.houseName}{quotedHouseIds.has(e.houseId) ? <span style={{ fontWeight: 400, opacity: 0.75 }}> · quoted</span> : null}
                 </button>
               )
             })}
           </div>
         </div>
         <div style={{ display: 'flex', gap: '0.6rem', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', marginTop: '0.2rem' }}>
-          <span style={{ display: 'flex', gap: '0.8rem' }}>
+          <span style={{ display: 'flex', gap: '0.8rem', flexWrap: 'wrap' }}>
+            <button type="button" disabled={busy || askable.length === 0} onClick={() => setEmailOpen(true)} style={{ ...quiet, color: '#0f766e', textDecoration: 'underline dotted' }} data-testid="job-accounts-prompt-email" title="A draft to the house's job-accounts rep from your own inbox, composed from the bid">Ask the rep by email…</button>
             <button type="button" disabled={busy} onClick={() => void noneNeeded()} style={quiet} data-testid="job-accounts-prompt-none">None needed</button>
             <button type="button" disabled={busy} onClick={onClose} style={{ ...quiet, textDecoration: 'none' }}>Later</button>
           </span>
@@ -252,6 +275,20 @@ export default function JobAccountsAfterCreatePrompt({ jobId, onClose }: { jobId
           </button>
         </div>
       </div>
+      {emailOpen ? (
+        <JobAccountRepEmailSheet
+          jobId={job.id}
+          jobLabel={label}
+          jobAddress={job.job_address}
+          bidId={job.bid_id}
+          houses={askable}
+          onClose={() => setEmailOpen(false)}
+          onLogged={() => {
+            setEmailOpen(false)
+            onClose()
+          }}
+        />
+      ) : null}
     </ResponsiveModalShell>
   )
 }
