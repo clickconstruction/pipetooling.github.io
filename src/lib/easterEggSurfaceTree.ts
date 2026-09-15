@@ -76,6 +76,7 @@ export const EGG_BIDS_TABS: { key: string; label: string; section?: 'Followup' }
   { key: 'labor', label: 'Labor' },
   { key: 'pricing', label: 'Pricing' },
   { key: 'cover-letter', label: 'Cover Letter' },
+  { key: 'submittals', label: 'Submittals' },
   { key: 'rfi', label: 'RFI' },
   { key: 'change-order', label: 'Change Order' },
   { key: 'lien-release', label: 'Lien Release' },
