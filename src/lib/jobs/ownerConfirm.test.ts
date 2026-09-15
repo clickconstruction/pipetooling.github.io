@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { ParcelRecord } from '../customers/propertyRecord'
 import {
+  careOfLine,
   HOMESTEAD_LINE,
   builderName,
   builderQuestionApplies,
@@ -226,5 +227,15 @@ describe('Bill Customer owner line and the unconfirmed reader (v2.3450)', () => 
     expect(rollProvenanceShort({ source: 'Guadalupe Appraisal District', taxYear: '2025' })).toBe('Guadalupe Appraisal District 2025')
     expect(rollProvenanceShort({ source: '', taxYear: '' })).toBe('')
     expect(rollProvenanceShort(null)).toBe('')
+  })
+})
+
+describe('careOfLine (the c/o beside the owner)', () => {
+  it('drops a c/o that only echoes the owner, keeps one that adds a name', () => {
+    expect(careOfLine({ ownerName: 'KHAN UMAR & BANGASH SHAZMEENA', nameCare: 'KHAN UMAR & BANGASH SHAZMEENA' })).toBe('')
+    expect(careOfLine({ ownerName: 'Khan Umar & Bangash Shazmeena', nameCare: 'KHAN UMAR AND BANGASH SHAZMEENA' })).toBe('KHAN UMAR AND BANGASH SHAZMEENA')
+    expect(careOfLine({ ownerName: 'SABRA TEXAS HOLDINGS LP', nameCare: '% SABRA HEALTH CARE REIT INC' })).toBe('% SABRA HEALTH CARE REIT INC')
+    expect(careOfLine({ ownerName: 'X', nameCare: '' })).toBe('')
+    expect(careOfLine(null)).toBe('')
   })
 })

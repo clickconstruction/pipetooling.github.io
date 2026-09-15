@@ -354,3 +354,17 @@ export function rollProvenanceShort(parcel: Pick<ParcelRecord, 'source' | 'taxYe
   if (!parcel) return ''
   return [parcel.source.trim(), parcel.taxYear.trim()].filter(Boolean).join(' ')
 }
+
+/**
+ * The roll's "name care" (c/o) beside the owner — only when it says something
+ * the owner name does not. Several districts echo the owner into the c/o
+ * field, which printed the same name twice on the job form and the list
+ * (found in the 2026-09-15 live pass).
+ */
+export function careOfLine(parcel: { ownerName?: string | null; nameCare?: string | null } | null | undefined): string {
+  if (!parcel) return ''
+  const care = (parcel.nameCare ?? '').trim()
+  if (!care) return ''
+  const norm = (v: string) => v.toUpperCase().replace(/[^A-Z0-9]+/g, ' ').trim()
+  return norm(care) === norm(parcel.ownerName ?? '') ? '' : care
+}

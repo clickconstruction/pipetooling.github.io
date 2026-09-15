@@ -1,6 +1,6 @@
 # Put a GC on notice — every owner on every job with a failing GC, in one approved run
 
-Status: **not started** · planned 2026-09-14 · 4 owner decisions open (below), one of them for the attorney · depends on [`owner-of-record-prompts/`](../owner-of-record-prompts/README.md) landing first (without owners on file the run cannot mail) · mock-up: [`mockup.html`](./mockup.html) (entry points, Draft A, the critique, Refined B, the plan; also a Claude artifact 2026-09-14) · built on the Lien desk (v2.3405 / v2.3410 / v2.3412)
+Status: **not started** · planned 2026-09-14 · 4 owner decisions open (below), one of them for the attorney · the owner-of-record train shipped 2026-09-15 (v2.3447 / v2.3452 / v2.3450 — the app looks owners up on the appraisal roll; the Fix-ups list confirms them in one sitting), so the run is no longer blocked on owners · mock-up: [`mockup.html`](./mockup.html) (entry points, Draft A, the critique, Refined B, the plan; also a Claude artifact 2026-09-14) · built on the Lien desk (v2.3405 / v2.3410 / v2.3412)
 
 ## The ask, in the owner's words
 

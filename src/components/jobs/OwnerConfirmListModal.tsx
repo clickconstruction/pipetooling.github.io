@@ -10,6 +10,7 @@ import { emptyPropertyDraft } from '../../lib/customers/propertyDraft'
 import { applyProposalToFields, parcelProvenanceLine, titleCaseUpperWords } from '../../lib/customers/propertyRecord'
 import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
 import {
+  careOfLine,
   HOMESTEAD_LINE,
   builderName,
   groupByProperty,
@@ -307,7 +308,7 @@ export default function OwnerConfirmListModal({ open, onClose, rows, onSaved, us
                     <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-strong)' }}>{ownerText(l)}</div>
                     <div style={faint}>
                       {proposal.ownerMailingAddress ? `Mail to ${titleCaseUpperWords(proposal.ownerMailingAddress)}` : 'No mailing address on the roll'}
-                      {parcel?.nameCare ? ` · ${titleCaseUpperWords(parcel.nameCare)}` : ''}
+                      {careOfLine(parcel) ? ` · ${titleCaseUpperWords(careOfLine(parcel))}` : ''}
                     </div>
                     <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap', alignItems: 'center', marginTop: 4 }}>
                       {chips.map((c) => (

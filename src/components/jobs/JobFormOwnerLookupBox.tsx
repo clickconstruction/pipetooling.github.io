@@ -7,7 +7,7 @@ import { txCountyCadPropertyUrl, txCountyCadSearchUrl } from '../../lib/txCounty
 import { propertyLookupErrorMessage, type PropertyLookupOutcome } from '../../lib/customers/propertyLookupClient'
 import { emptyPropertyDraft } from '../../lib/customers/propertyDraft'
 import { applyProposalToFields, parcelProvenanceLine, titleCaseUpperWords } from '../../lib/customers/propertyRecord'
-import { HOMESTEAD_LINE, jobFormOwnerLookupApplies, propertyKey, readsAs, type ReadsAsChip } from '../../lib/jobs/ownerConfirm'
+import { HOMESTEAD_LINE, jobFormOwnerLookupApplies, propertyKey, readsAs, type ReadsAsChip, careOfLine } from '../../lib/jobs/ownerConfirm'
 import { confirmOwnerForProperty, type OwnerConfirmSource } from '../../lib/jobs/ownerConfirmWrite'
 import { fetchCustomerAddressRow, fetchIsBuilderCustomer, fetchJobsAtProperty, lookupPropertyRecordCached } from '../../lib/jobs/ownerConfirmJobFormClient'
 import type { CustomerAddressRow } from '../../lib/jobs/lienProperty'
@@ -225,7 +225,7 @@ export default function JobFormOwnerLookupBox({ jobId, jobAddress, customerId, c
             <span style={faint}>Owner of record</span>
             <span style={{ fontWeight: 600, color: 'var(--text-strong)' }} data-testid="owner-lookup-owner">
               {ownerLabel}
-              {parcel?.nameCare ? <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}> · {titleCaseUpperWords(parcel.nameCare)}</span> : null}
+              {careOfLine(parcel) ? <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}> · {titleCaseUpperWords(careOfLine(parcel))}</span> : null}
             </span>
             <span style={faint}>Mail to</span>
             <span>{proposal.ownerMailingAddress ? titleCaseUpperWords(proposal.ownerMailingAddress) : <span style={{ color: 'var(--text-amber-700)' }}>No mailing address on the roll</span>}</span>
