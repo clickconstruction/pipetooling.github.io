@@ -47,12 +47,13 @@ describe('StagesProgressPaymentCell with the v2.3419 view', () => {
     expect(chips).toHaveLength(3)
     expect(chips[0]!.textContent).toContain('Rough')
     expect(chips[1]!.textContent).toContain('Top Out')
-    expect(chips[1]!.textContent).toContain('Behar & Malachi')
+    expect(chips[1]!.textContent).not.toContain('Behar') // v2.3459: no name on the chip
     expect(chips[2]!.textContent).toContain('Trim')
-    // v2.3447: the row PRINTS the lead (the legend under it carries the money);
-    // the bar's accessible name and tooltip keep the whole sentence.
-    const printed = 'Top Out · Behar & Malachi on site Sat · 40% typed'
-    const full = `${printed} · $24,359 paid, nothing billed`
+    // v2.3449: the row PRINTS the lead (the legend under it carries the money);
+    // v2.3459: without the stage (the lit chip) or the names (the crew column).
+    // The bar's accessible name and tooltip keep the whole sentence.
+    const printed = 'on site Sat · 40% typed'
+    const full = 'Top Out · Behar & Malachi on site Sat · 40% typed · $24,359 paid, nothing billed'
     const bar = screen.getByRole('img', { name: full })
     expect(bar.querySelectorAll('[data-segment-state]')).toHaveLength(3)
     expect(bar.querySelector('[data-segment-state="live"]')).toBeTruthy()
@@ -84,7 +85,8 @@ describe('StagesProgressPaymentCell with the v2.3419 view', () => {
     const { model, view } = progressPaymentForJob({ id: 'drf', revenue: 0, payments_made: 0, pct_complete: null, status: 'working', fixtures: [], invoices: [], payments: [] }, crew, today)
     render(<StagesProgressPaymentCell model={model} pctComplete={null} view={view} onNoBidValueClick={() => {}} />)
     expect(screen.queryByRole('img')).toBeNull()
-    expect(screen.getByText('Edgar & Jose on site today · no lines on the job · nothing to bill against')).toBeTruthy()
+    expect(screen.getByText('on site today · no lines on the job · nothing to bill against')).toBeTruthy()
+    expect(screen.getByTitle('Edgar & Jose on site today · no lines on the job · nothing to bill against')).toBeTruthy()
     expect(screen.getByRole('button', { name: 'no bid value' })).toBeTruthy()
   })
 
