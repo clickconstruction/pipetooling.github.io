@@ -25,7 +25,7 @@ import { jobPartyMoveNotice, pickJobCustomer, pickJobGc } from '../../lib/jobs/j
 /** Slim customer_addresses row for the property-record picker (v2.2638). */
 type PropertyCandidateRow = Pick<
   CustomerAddressRow,
-  'id' | 'customer_id' | 'address' | 'county' | 'legal_description' | 'owner_name' | 'owner_company' | 'owner_mailing_address'
+  'id' | 'customer_id' | 'address' | 'county' | 'legal_description' | 'owner_name' | 'owner_company' | 'owner_mailing_address' | 'owner_confirmed_at'
 >
 import { fetchUserDisplayNames, userDisplayLabel } from '../../lib/userDisplayNames'
 import { billsAheadRemedyHint } from '../../lib/jobs/editJobInvoiceSendBack'
@@ -974,7 +974,7 @@ export default function JobFormModal({
       try {
         const { data, error } = await supabase
           .from('customer_addresses')
-          .select('id, customer_id, address, county, legal_description, owner_name, owner_company, owner_mailing_address')
+          .select('id, customer_id, address, county, legal_description, owner_name, owner_company, owner_mailing_address, owner_confirmed_at')
           .in('customer_id', ids)
           .order('sequence_order', { ascending: true })
         if (error || cancelled) return
@@ -3981,6 +3981,11 @@ export default function JobFormModal({
               onPropertyAdded={(row) => {
                 // v2.3401: the job address saved as a property from the row — it joins the candidates and the job links to it (autosave carries customer_address_id).
                 setPropertyCandidates((prev) => [...prev, row])
+                setCustomerAddressId(row.id)
+              }}
+              onOwnerConfirmed={(row) => {
+                // Owner of record (PR 2): Use on the row's Found box wrote the record (and jobs_ledger.customer_address_id on every job at the address); the candidate is refreshed and this job links to it.
+                setPropertyCandidates((prev) => (prev.some((r) => r.id === row.id) ? prev.map((r) => (r.id === row.id ? { ...r, ...row } : r)) : [...prev, row]))
                 setCustomerAddressId(row.id)
               }}
               gcCustomerName={gcNameForPayerTags}

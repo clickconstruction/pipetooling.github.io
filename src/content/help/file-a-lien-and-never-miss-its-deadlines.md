@@ -43,6 +43,21 @@ A § 53.056 notice goes to the **owner of record** at a mailing address — and 
 
 The roll lags sales and carries no exemptions, so the CAD link sits on every row for the day-of-filing check.
 
+**Earlier still — on the job itself.** You do not have to wait for the Fix-ups chip. Open a GC job (or a job whose customer is a builder — one that is the GC on other jobs) and the **Property record** row on the Edit tab looks the site up by itself, the moment the job has an address and no confirmed owner. Nobody is asked; the answer just appears under the row:
+
+:::example The Property record row on a GC job
+**Found on the appraisal roll · from the job address**
+Owner of record **Khan Umar & Bangash Shazmeena** · Mail to 3203 Spider Lily, San Antonio, TX 78258 · Legal CB 4696A (Cantera Hills UT-3), Block 3 Lot 35 · Bexar Appraisal District · 2025 · County Bexar {{chip:gray|mail elsewhere}}
+{{button:blue|Use — save the owner on 9703 Lenox Hl}} *Not right — paste the CAD page…* *this parcel on Bexar CAD ↗*
+:::
+
+- {{button:blue|Use}} does exactly what it does on the list: saves the owner with its provenance on the property record (creating one on the GC when the job has no customer row), links this job and every other job at that address, and marks the owner confirmed. The row then reads the linked property with its ✓ lien-ready mark.
+- *Not right — paste the CAD page…* opens the same paste box; a site the roll cannot place reads *No parcel under the pin — paste the CAD page…*.
+- A direct job — a homeowner who hired you — gets no box. They are the owner of record already.
+- When the roll suggests the site is the owner's home, the box says so right there: {{chip:red|likely homestead}} *Likely a homestead — the owners get mail at the property. A lien on a homestead needs a contract signed by both spouses and recorded with the county before work starts. Confirm the exemption on the CAD page and talk to the attorney before the crew goes out.* It is a hint, not a finding — the roll carries no exemptions — which is why the CAD link sits beside it.
+
+**The one question you are asked.** When a new job's customer is a builder and no GC is set, the *Does this job need a contract?* prompt first asks **Is <customer> building this for someone?** {{button:outline|No — they own the site}} records nothing. {{button:blue|Yes — they are the builder}} sets them as the job's GC — which is what starts the monthly notice clock — and the appraisal roll then fills the owner of record on the spot. The customer row stays as it is; pick the site owner as the customer later if you want them on the job.
+
 The same answer meets you in two more places, so no notice is ever blocked on a missing owner:
 
 - **Bill Customer** — the first bill on a GC job is the last net. When the job has no confirmed owner, the Send-to block shows one green line: *Owner of record for 5498 Cibolo Valley Dr: Schertz Station Ltd (Guadalupe Appraisal District 2025) — not yet on the job.* {{button:green|Use}} *it so the lien notice can be mailed when it is due.* It never holds up the bill. A roll miss reads *No owner of record on file — paste the county's page…* and opens the paste box right there.

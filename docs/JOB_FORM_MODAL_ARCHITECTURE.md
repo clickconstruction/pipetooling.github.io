@@ -5,7 +5,7 @@ file: docs/JOB_FORM_MODAL_ARCHITECTURE.md
 type: Engineering / Refactor Map
 purpose: Step-0 map for the JobFormModal.tsx decomposition (per PAGE_DECOMPOSITION_PLAYBOOK.md, adapted from tabs to form sections) — inventory what every section of the New/Edit Job modal touches (state, handlers, supabase tables/RPCs, sub-components, coupling) to drive the multi-PR extraction, with a deep-dive on the money-path save engine.
 audience: Developers, AI Agents
-last_updated: 2026-09-05
+last_updated: 2026-09-15
 ---
 
 
@@ -215,6 +215,7 @@ If `customerId && dateMet` and the cached customer row lacks `date_met`: `UPDATE
 - **Archived customers (v2.736):** the dropdown filters through `filterActiveCustomersForPicker(customers, customerId)` — archived rows are excluded from linking **except** the currently-linked row (`keepId`) so an existing link stays editable (in-code comment at ~3815).
 - **Supabase:** none directly in the section (cache from init); but see §21 — `handleCreateCustomerFromJob` / `handleLinkToSimilarCustomer` **write `customers` and `jobs_ledger.customer_id` immediately in edit mode** (before Save), then refetch `editing` + fire `onSaved` (quirk #18/#19).
 - **Extraction:** `JobFormCustomerSection` after Stage A; the create-customer modal (§21) and its two handlers move with it. **Medium risk** — prefill appliers and §6's project-implies-customer also write these fields (they stay shell-side; section receives setters).
+- **Owner of record (v2.3452):** the Edit tab's Property record row (`JobFormEditFactRows`) mounts [`JobFormOwnerLookupBox`](../src/components/jobs/JobFormOwnerLookupBox.tsx) beneath it. On a GC job — or a customer that is a builder (`fetchIsBuilderCustomer`, one cached head count) — with an address and no linked row stamped `owner_confirmed_at`, the box runs the parcel lookup by itself (`lookupPropertyRecordCached`, once per property key) and offers **Use**, which calls the shared `confirmOwnerForProperty` for this job and every job at the address (`fetchJobsAtProperty`). The shell's `propertyCandidates` select now carries `owner_confirmed_at`, and a new `onOwnerConfirmed(row)` upserts the saved row into the candidates and sets `customerAddressId` (the identity autosave carries the link, which the helper already wrote). Direct jobs render nothing (`jobFormOwnerLookupApplies`). The same box, plus the builder-as-customer question, sits on `JobContractAfterCreatePrompt` (§22 tail) for the just-created job.
 
 ### 6. Project | Plans | Bid links
 

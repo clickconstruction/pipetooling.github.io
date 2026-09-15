@@ -5,7 +5,7 @@
  * editor for that field. These smokes cover the resting read-out, row
  * expansion, and the billing-highlight gate force-opening the Customer row.
  */
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('../../hooks/useAuth', async () => {
   const { useAuthModuleMock } = await import('../../test/renderSmokeMocks')
@@ -15,9 +15,18 @@ vi.mock('../../lib/supabase', async () => {
   const { makeSupabaseStub } = await import('../../test/renderSmokeMocks')
   return { supabase: makeSupabaseStub() }
 })
-import { cleanup, fireEvent, screen } from '@testing-library/react'
+// Owner of record (PR 2): the row's Found box reads the roll and the ledger; here it answers "found" for the GC case so the box is covered by one smoke below.
+const lookupMock = vi.fn()
+vi.mock('../../lib/jobs/ownerConfirmJobFormClient', () => ({
+  fetchIsBuilderCustomer: () => Promise.resolve(false),
+  lookupPropertyRecordCached: (address: string) => lookupMock(address),
+  fetchJobsAtProperty: (_a: string, self: unknown) => Promise.resolve([self]),
+  fetchCustomerAddressRow: () => Promise.resolve(null),
+}))
+import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react'
 import { useRef, useState } from 'react'
 import { JobFormEditFactRows } from './JobFormEditFactRows'
+import { proposalFromLookupPayload } from '../../lib/customers/propertyLookupClient'
 import { renderWithProviders } from '../../test/renderSmokeMocks'
 import type { Database } from '../../types/database'
 
@@ -36,6 +45,10 @@ const OFFICE_PROPERTY: PropertyCandidate = {
 }
 
 afterEach(cleanup)
+beforeEach(() => {
+  // The roll answers "no parcel" unless a case says otherwise — the older GC cases mount the box and must not care.
+  lookupMock.mockReset().mockImplementation(async (a: string) => proposalFromLookupPayload(a, { ok: true, county_geocoder: '', parcel: null }))
+})
 
 const CUSTOMERS: CustomerRow[] = [
   {
@@ -121,6 +134,7 @@ function Harness({
       customerAddressId={customerAddressId}
       setCustomerAddressId={() => {}}
       onPropertyAdded={() => {}}
+      onOwnerConfirmed={() => {}}
       propertyCandidates={propertyCandidates}
       setJobAddress={() => {}}
       customers={gc ? [...CUSTOMERS, gc] : CUSTOMERS}
@@ -285,5 +299,25 @@ describe('JobFormEditFactRows', () => {
     renderWithProviders(<Harness customerId={null} customerName="" customerEmail="" customerPhone="" gc={gc} />)
     expect(screen.getByText('none · GC job — RMC- Dudley Mason is the party')).toBeTruthy()
     expect(screen.queryByText('Not in Customers')).toBeNull()
+  })
+
+  it('Property record on a GC job: the row looks the site up by itself and shows the roll’s owner with Use; a direct job gets no box (owner of record, PR 2)', async () => {
+    lookupMock.mockImplementation(async (address: string) =>
+      proposalFromLookupPayload(address, {
+        ok: true,
+        county_geocoder: 'Bexar',
+        parcel: { propId: '1', ownerName: 'KHAN UMAR & BANGASH SHAZMEENA', nameCare: '', legalDescription: 'CB 4696A BLK 3 LOT 35', situsAddress: '10 CASCADE GLN', mailingAddress: '3203 SPIDER LILY, SAN ANTONIO, TX 78258', county: 'Bexar', source: 'Bexar Appraisal District', taxYear: '2025' },
+      }),
+    )
+    const gc = { ...CUSTOMERS[0]!, id: 'gc-1', name: 'RMC- Dudley Mason' } as CustomerRow
+    const { unmount } = renderWithProviders(<Harness customerId={null} customerName="" customerEmail="" customerPhone="" gc={gc} />)
+    await waitFor(() => expect(screen.getByTestId('owner-lookup-box').getAttribute('data-state')).toBe('found'))
+    expect(screen.getByText('Khan Umar & Bangash Shazmeena')).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Use — save the owner on 10 Cascade Gln' })).toBeTruthy()
+    unmount()
+    // A direct job (customer, no GC, not a builder): no lookup, no box.
+    renderWithProviders(<Harness />)
+    await new Promise((r) => setTimeout(r, 0))
+    expect(screen.queryByTestId('owner-lookup-box')).toBeNull()
   })
 })

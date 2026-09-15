@@ -10,6 +10,7 @@ import { emptyPropertyDraft } from '../../lib/customers/propertyDraft'
 import { applyProposalToFields, parcelProvenanceLine, titleCaseUpperWords } from '../../lib/customers/propertyRecord'
 import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
 import {
+  HOMESTEAD_LINE,
   builderName,
   groupByProperty,
   readsAs,
@@ -322,9 +323,7 @@ export default function OwnerConfirmListModal({ open, onClose, rows, onSaved, us
                       ) : null}
                     </div>
                     {chips.some((c) => c.key === 'homestead') ? (
-                      <div style={{ ...faint, color: 'var(--text-red-700)', marginTop: 4 }}>
-                        Likely a homestead — a lien needs a contract signed by both spouses and recorded before work starts; confirm the exemption on the CAD page and talk to the attorney.
-                      </div>
+                      <div style={{ ...faint, color: 'var(--text-red-700)', marginTop: 4 }}>{HOMESTEAD_LINE}</div>
                     ) : null}
                     {chips.some((c) => c.key === 'public') ? (
                       <div style={{ ...faint, color: 'var(--text-red-700)', marginTop: 4 }}>
