@@ -808,3 +808,7 @@ verify_jwt = false
 # The Contract sweep's Drive pass (v2.3390): staff JWT validated in-body (office roles); read-only Drive listing with the intake service account.
 [functions.drive-contract-scan]
 verify_jwt = false
+
+# Owner of record, the nightly save-from-the-roll (v2.3450): cron POST with X-Cron-Secret + service role; no-op while the Settings switch is off.
+[functions.owner-confirm-nightly]
+verify_jwt = false

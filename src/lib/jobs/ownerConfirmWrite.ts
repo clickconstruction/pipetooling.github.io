@@ -15,51 +15,20 @@
  *   EVERY job at the property that shares that home, so one Use covers them
  *   all, now and later.
  *
- * `planOwnerConfirmWrites` is the pure branch logic, tested on its own.
+ * `planOwnerConfirmWrites` is the pure branch logic, tested on its own; it
+ * lives in `supabase/functions/_shared/ownerConfirmPlan.ts` (PR 3) so the
+ * nightly `owner-confirm-nightly` function plans the same rows.
  */
 import { supabase } from '../supabase'
 import { withRetry, withSupabaseRetry } from '../../utils/errorHandling'
+import { planOwnerConfirmWrites } from '../../../supabase/functions/_shared/ownerConfirmPlan'
 import { applyProposalToFields, type ProposedPropertyRecord, type PropertyRecordFields } from '../customers/propertyRecord'
 import { emptyPropertyDraft, payloadFromDraft, type PropertyDraft } from '../customers/propertyDraft'
 import type { PropertyRecordDraft } from '../../components/customers/CustomerPropertyRecordPanel'
 import type { OwnerToConfirmRow } from './ownerConfirm'
 
-export type OwnerConfirmPlan = {
-  /** Linked rows to update; each carries the jobs that point at it. */
-  updates: { customerAddressId: string; jobIds: string[] }[]
-  /** One insert per home (customer, else GC); every unlinked job at the property with that home links to it. */
-  inserts: { homeCustomerId: string; jobIds: string[] }[]
-  /** Jobs with no row and no home at all — nothing to write to. */
-  skipped: string[]
-}
-
-/** Which rows a Use on this property touches, and which jobs each new row will link. */
-export function planOwnerConfirmWrites(jobs: Pick<OwnerToConfirmRow, 'jobId' | 'customerId' | 'gcCustomerId' | 'customerAddressId'>[]): OwnerConfirmPlan {
-  const updates = new Map<string, string[]>()
-  const inserts = new Map<string, string[]>()
-  const skipped: string[] = []
-  for (const j of jobs) {
-    if (j.customerAddressId) {
-      const list = updates.get(j.customerAddressId) ?? []
-      list.push(j.jobId)
-      updates.set(j.customerAddressId, list)
-      continue
-    }
-    const home = j.customerId ?? j.gcCustomerId
-    if (!home) {
-      skipped.push(j.jobId)
-      continue
-    }
-    const list = inserts.get(home) ?? []
-    list.push(j.jobId)
-    inserts.set(home, list)
-  }
-  return {
-    updates: [...updates.entries()].map(([customerAddressId, jobIds]) => ({ customerAddressId, jobIds })),
-    inserts: [...inserts.entries()].map(([homeCustomerId, jobIds]) => ({ homeCustomerId, jobIds })),
-    skipped,
-  }
-}
+export type { OwnerConfirmPlan, OwnerConfirmPlanJob } from '../../../supabase/functions/_shared/ownerConfirmPlan'
+export { planOwnerConfirmWrites } from '../../../supabase/functions/_shared/ownerConfirmPlan'
 
 /** What Use writes: the roll's proposal (the lookup path) or a finished draft (the paste path). */
 export type OwnerConfirmSource = { kind: 'proposal'; proposal: ProposedPropertyRecord } | { kind: 'record'; record: PropertyRecordDraft }
@@ -209,4 +178,17 @@ export async function confirmOwnerForProperty(input: {
     result.inserted.push({ customerAddressId: newId, jobIds: ins.jobIds })
   }
   return result
+}
+
+/**
+ * A person looked at an owner the nightly run saved *from the roll ·
+ * unconfirmed* (v2.3450) and pressed Confirm on the Lien desk: stamp the
+ * record confirmed. Nothing else on the row changes.
+ */
+export async function stampOwnerConfirmed(customerAddressId: string, userId: string | null, now: Date = new Date()): Promise<void> {
+  const stamp = now.toISOString()
+  await withSupabaseRetry(
+    async () => await supabase.from('customer_addresses').update({ owner_confirmed_at: stamp, owner_confirmed_by: userId, updated_at: stamp }).eq('id', customerAddressId),
+    'confirm owner of record',
+  )
 }

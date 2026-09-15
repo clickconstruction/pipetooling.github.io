@@ -3,6 +3,7 @@ import { demandDate, demandMoney } from '../jobsDocuments/demandLetter'
 import type { PhysicalInvoiceIssuer } from '../physicalInvoiceIssuer'
 import { effectiveJobLedgerNumber } from '../ledgerDisplayPrefixes'
 import { lienPropertyOwnerDisplayName, resolveLienProperty } from './lienProperty'
+import { ownerFromRollUnconfirmed } from './ownerConfirm'
 import type { LienDeskEntry } from './lienDesk'
 import type { LienDeskData } from '../../hooks/useLienDeskData'
 import { buildLienNoticeFieldsForJob, describeNoticeMonths, lienNoticeCoverNote, parseLienDeskDraftFields } from './lienNoticeDraft'
@@ -47,6 +48,8 @@ export type RunNotice = {
   /** The cover note text, or null when the draft turned it off. */
   coverNote: string | null
   recipients: RunRecipient[]
+  /** The owner came from the appraisal roll (the nightly save, v2.3450) and no person has confirmed it — the run refuses until someone does. */
+  ownerUnconfirmed: boolean
 }
 
 /** Every Ready-to-send entry as a run notice. Entries with no live approved item are skipped. */
@@ -95,6 +98,7 @@ export function buildLienDeskRun(
         refItems: [`Job #${jobNumber}`, months.length ? `Work months ${describeNoticeMonths(months)}` : '', demandDate(todayYmd)].filter(Boolean),
       },
       coverNote: item.cover_note ? lienNoticeCoverNote(fields.claimantName, months) : null,
+      ownerUnconfirmed: property.owner.source === 'property_record' && ownerFromRollUnconfirmed(address),
       recipients: [
         { key: 'owner', label: 'Owner of record', name: ownerName, address: property.owner.mailingAddress, email: ownerEmail, method: 'certified_mail', tracking: '' },
         { key: 'original_contractor', label: 'Original contractor', name: gc?.name ?? fields.originalContractorName, address: gc?.address ?? '', email: draft?.gcEmail || gc?.email || '', method: 'certified_mail', tracking: '' },
@@ -104,9 +108,12 @@ export function buildLienDeskRun(
   return out
 }
 
-/** A recipient sent by email needs an address; everything else can go without a tracking number (typed later). */
+export const RUN_OWNER_UNCONFIRMED_PROBLEM = 'Owner of record: from the roll, unconfirmed — press Confirm on the desk first'
+
+/** A recipient sent by email needs an address; everything else can go without a tracking number (typed later). An owner nobody confirmed (v2.3450) blocks the record. */
 export function runNoticeProblems(n: RunNotice): string[] {
   const out: string[] = []
+  if (n.ownerUnconfirmed) out.push(RUN_OWNER_UNCONFIRMED_PROBLEM)
   for (const r of n.recipients) {
     if (!r.name && !r.address) out.push(`${r.label}: nobody to send to`)
     else if (r.method === 'email' && !r.email) out.push(`${r.label}: no email on file`)
