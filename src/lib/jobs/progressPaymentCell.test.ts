@@ -40,8 +40,8 @@ describe('the words', () => {
     expect(crewClause(crewOf({}), today)).toBe('nobody clocked in')
     expect(crewClause(null, today)).toBe('nobody clocked in')
     // v2.3459: the printed line leaves the names to the row's Crew & Dates column.
-    expect(crewClause(crewOf({ last_work_date: today, last_day_people: ['Behar Kraja'] }), today, { names: false })).toBe('on site today')
-    expect(crewClause(crewOf({ last_work_date: '2026-09-12', last_day_people: ['Behar Kraja', 'Malachi Jones'] }), today, { names: false })).toBe('on site Sat')
+    expect(crewClause(crewOf({ last_work_date: today, last_day_people: ['Behar Kraja'] }), today, { names: false })).toBe('worked today')
+    expect(crewClause(crewOf({ last_work_date: '2026-09-12', last_day_people: ['Behar Kraja', 'Malachi Jones'] }), today, { names: false })).toBe('worked Sat')
     expect(crewClause(crewOf({ sheet_stage: 'working', sheet_names: 'Texas Rooter' }), today, { names: false })).toBe('on the sheet, no clock-ins')
     expect(crewClause(crewOf({}), today, { names: false })).toBe('nobody clocked in')
   })
@@ -54,6 +54,11 @@ describe('the words', () => {
     expect(percentClause({ pct: 40, source: 'seed', at: '2026-08-07T05:10:00Z' })).toBe('40% set Aug 7')
     expect(percentClause({ pct: 12, source: 'report', at: '2026-09-11T12:00:05Z' })).toBe('12% reported Sep 11')
     expect(percentClause({ pct: 90, source: 'typed', at: '2026-09-03T12:00:00Z' })).toBe('90% typed Sep 3')
+    // v2.3461: the printed line drops the source word; the tooltip keeps it.
+    expect(percentClause({ pct: 90, source: 'typed', at: '2026-09-03T12:00:00Z' }, { source: false })).toBe('90% Sep 3')
+    expect(percentClause({ pct: 40, source: 'seed', at: '2026-08-07T05:10:00Z' }, { source: false })).toBe('40% Aug 7')
+    expect(percentClause({ pct: 40, source: 'typed', at: null }, { source: false })).toBe('40%')
+    expect(percentClause(null, { source: false })).toBe('no % yet')
     expect(moneyClause(buildStagesMoneyBarModel({ totalBill: 48_700, paymentsMade: 24_359.44, pctComplete: 40 }))).toEqual({ text: '$24,359 paid, nothing billed', tone: 'plain' })
     expect(moneyClause(buildStagesMoneyBarModel({ totalBill: 40_135, paymentsMade: 0, pctComplete: 60, billedUnpaid: 32_108.3 }))).toEqual({ text: '$32,108 billed, nothing paid', tone: 'amber' })
     expect(moneyClause(buildStagesMoneyBarModel({ totalBill: 40_000, paymentsMade: 13_412, pctComplete: 80, billedUnpaid: 11_770 }))).toEqual({ text: '$13,412 paid · $11,770 billed · $6,818 done, not billed', tone: 'amber' })
@@ -83,7 +88,7 @@ describe('buildProgressPaymentView — the five rows', () => {
     expect(v.stageBar?.liveNumber).toBe(2)
     // v2.3459: the chip carries no name and the printed line no stage or name — both sit elsewhere on the row.
     expect(v.liveChipSuffix).toBeNull()
-    expect(v.words).toMatchObject({ text: 'on site Sat · 40% typed', full: 'Top Out · Behar & Malachi on site Sat · 40% typed · $24,359 paid, nothing billed', tone: 'plain' })
+    expect(v.words).toMatchObject({ text: 'Worked Sat · 40%', full: 'Top Out · Behar & Malachi on site Sat · 40% typed · $24,359 paid, nothing billed', tone: 'plain' })
   })
 
   it('J931 Heron with pct_set_at: the seed carries its date — "40% set Aug 7", still stale and not drawn; SpaceX reads "12% reported Sep 11"', () => {
@@ -95,7 +100,7 @@ describe('buildProgressPaymentView — the five rows', () => {
     expect(v.stale).toBe(true)
     expect(v.segments[1]).toMatchObject({ state: 'live', fillPct: 0, label: 'on site Sat' })
     expect(v.percent).toEqual({ pct: 40, source: 'seed', at: '2026-08-07T05:10:00Z' })
-    expect(v.words).toMatchObject({ text: 'on site Sat · 40% set Aug 7', full: 'Top Out · Behar & Malachi on site Sat · 40% set Aug 7 · $24,359 paid, nothing billed', tone: 'plain' })
+    expect(v.words).toMatchObject({ text: 'Worked Sat · 40% Aug 7', full: 'Top Out · Behar & Malachi on site Sat · 40% set Aug 7 · $24,359 paid, nothing billed', tone: 'plain' })
 
     const spacex = buildProgressPaymentView({
       money: buildStagesMoneyBarModel({ totalBill: 20_000, paymentsMade: 0, pctComplete: 12 }),
@@ -109,7 +114,7 @@ describe('buildProgressPaymentView — the five rows', () => {
     })
     expect(spacex.stale).toBe(false)
     expect(spacex.segments[0]).toMatchObject({ fillPct: 12, label: 'Plumbing per plans · 12%' })
-    expect(spacex.words.text).toBe('on site Thu · 12% reported Sep 11')
+    expect(spacex.words.text).toBe('Worked Thu · 12% Sep 11')
     expect(spacex.words.full).toBe('Miguel on site Thu · 12% reported Sep 11 · nothing billed · $2,400 done, not billed')
   })
 
@@ -126,7 +131,7 @@ describe('buildProgressPaymentView — the five rows', () => {
     ])
     expect(v.liveChipSuffix).toBe('today')
     expect(v.percent).toBeNull()
-    expect(v.words.text).toBe('on site today · no % yet')
+    expect(v.words.text).toBe('Worked today · no % yet')
     expect(v.words.full).toBe('Top Out · 3 on site today · no % yet · $16,620 paid, nothing billed')
   })
 
@@ -142,7 +147,7 @@ describe('buildProgressPaymentView — the five rows', () => {
     expect(v.segments[0]!.money.paidFrac).toBeCloseTo(0.3353, 3)
     expect(v.segments[0]!.money.billedFrac).toBeCloseTo(0.29425, 3)
     expect(v.segments[0]!.money.unbilledFrac).toBeCloseTo(0.17045, 3)
-    expect(v.words).toMatchObject({ text: 'on the sheet, no clock-ins · 80% typed Sep 3', full: 'Texas Rooter on the sheet, no clock-ins · 80% typed Sep 3 · $13,412 paid · $11,770 billed · $6,818 done, not billed', tone: 'amber' })
+    expect(v.words).toMatchObject({ text: 'On the sheet, no clock-ins · 80% Sep 3', full: 'Texas Rooter on the sheet, no clock-ins · 80% typed Sep 3 · $13,412 paid · $11,770 billed · $6,818 done, not billed', tone: 'amber' })
   })
 
   it('Take 5 Seguin: billed ahead of the work, Miguel’s crew on site Friday, amber', () => {
@@ -152,7 +157,7 @@ describe('buildProgressPaymentView — the five rows', () => {
     const v = buildProgressPaymentView({ money, stageBar: null, fixtures, invoices: [], crew, pctComplete: 60, status: 'working', todayYmd: today })
     expect(v.segments[0]).toMatchObject({ fillPct: 60, label: 'Fixtures per plans · 60%' })
     expect(v.segments[0]!.money.billedFrac).toBeCloseTo(0.8, 2)
-    expect(v.words).toMatchObject({ text: 'on site Fri · 60% typed Sep 12', full: '3 people on site Fri · 60% typed Sep 12 · $32,108 billed, nothing paid', tone: 'amber' })
+    expect(v.words).toMatchObject({ text: 'Worked Fri · 60% Sep 12', full: '3 people on site Fri · 60% typed Sep 12 · $32,108 billed, nothing paid', tone: 'amber' })
   })
 
   it('the empty rows: Vecchio Pinpoint says what is missing; DRF with a crew on site and no lines reads red', () => {
@@ -168,7 +173,7 @@ describe('buildProgressPaymentView — the five rows', () => {
     })
     expect(vecchio.mode).toBe('lines')
     expect(vecchio.segments[0]).toMatchObject({ name: 'Pinpoint', fillPct: 0, label: 'Pinpoint' })
-    expect(vecchio.words).toMatchObject({ text: 'nobody clocked in · no % yet', full: 'nobody clocked in · no % yet · nothing billed', tone: 'plain' })
+    expect(vecchio.words).toMatchObject({ text: 'Nobody clocked in · no % yet', full: 'nobody clocked in · no % yet · nothing billed', tone: 'plain' })
 
     const drf = buildProgressPaymentView({
       money: buildStagesMoneyBarModel({ totalBill: 0, paymentsMade: 0, pctComplete: null }),
@@ -183,7 +188,7 @@ describe('buildProgressPaymentView — the five rows', () => {
     expect(drf.mode).toBe('nobid')
     expect(drf.segments).toEqual([])
     // A no-bid row has no legend money to repeat, so the whole sentence prints — minus the names (v2.3459).
-    expect(drf.words).toEqual({ text: 'on site today · no lines on the job · nothing to bill against', full: 'Edgar & Jose on site today · no lines on the job · nothing to bill against', tone: 'red' })
+    expect(drf.words).toEqual({ text: 'Worked today · no lines on the job · nothing to bill against', full: 'Edgar & Jose on site today · no lines on the job · nothing to bill against', tone: 'red' })
     const quiet = buildProgressPaymentView({ ...drf, money: buildStagesMoneyBarModel({ totalBill: null, paymentsMade: null, pctComplete: null }), stageBar: null, fixtures: [], invoices: [], crew: null, pctComplete: null, todayYmd: today } as never)
     expect(quiet.words.tone).toBe('muted')
   })
@@ -204,7 +209,7 @@ describe('buildProgressPaymentView — the rules at the edges', () => {
       ['live', 38, '38%'],
       ['later', 0, null],
     ])
-    expect(v.words).toMatchObject({ text: 'on site Thu · 55% typed Sep 13', full: 'Top Out · Miguel on site Thu · 55% typed Sep 13 · $15,098 paid, nothing billed · $5,662 done, not billed', tone: 'amber' })
+    expect(v.words).toMatchObject({ text: 'Worked Thu · 55% Sep 13', full: 'Top Out · Miguel on site Thu · 55% typed Sep 13 · $15,098 paid, nothing billed · $5,662 done, not billed', tone: 'amber' })
   })
 
   it('a stage report beats the money floor when it points further along; a paid invoice on a line covers that line outright', () => {
@@ -235,21 +240,8 @@ describe('buildProgressPaymentView — the rules at the edges', () => {
     expect(v.segments.map((s) => s.name)).toEqual(['CHANGE ORDER: deep clean', 'HVAC to spec'])
     expect(v.segments[0]!.money.billedFrac).toBeCloseTo(1, 2)
     expect(v.segments[1]!.money.billedFrac).toBeCloseTo((3_052.5 - 1_980) / 1_650, 2)
-    expect(v.words.text).toBe('nobody clocked in · no % yet')
+    expect(v.words.text).toBe('Nobody clocked in · no % yet')
     expect(v.words.full).toBe('nobody clocked in · no % yet · $3,053 billed, nothing paid')
-    // v2.3421: two priced lines the dictionary did not read as stages → the row offers Set stages.
-    expect(v.offerSetStages).toBe(true)
   })
 
-  it('the Set stages door: offered on unrecognized multi-line jobs only — never on stages, a single line, no bid value, or a paid job', () => {
-    const one = buildProgressPaymentView({ money: buildStagesMoneyBarModel({ totalBill: 450, paymentsMade: 0, pctComplete: null }), stageBar: null, fixtures: [line('p', 'Pinpoint', 450, 0)], invoices: [], crew: null, pctComplete: null, status: 'working', todayYmd: today })
-    expect(one.offerSetStages).toBe(false)
-    const stages = buildProgressPaymentView({ money: buildStagesMoneyBarModel({ totalBill: 37_745, paymentsMade: 0, pctComplete: null }), stageBar: buildPipelineStageBar({ fixtures, invoices: [], payments: [], pctComplete: null, todayYmd: today }), fixtures, invoices: [], crew: null, pctComplete: null, status: 'working', todayYmd: today })
-    expect(stages.offerSetStages).toBe(false)
-    const twoLines = [line('a', 'Beginning of Job', 1_879.56, 0), line('b', 'Final', 1_879.56, 1)]
-    const coe = buildProgressPaymentView({ money: buildStagesMoneyBarModel({ totalBill: 3_759.12, paymentsMade: 1_879.56, pctComplete: null }), stageBar: null, fixtures: twoLines, invoices: [], crew: null, pctComplete: null, status: 'working', todayYmd: today })
-    expect(coe.offerSetStages).toBe(true)
-    const paid = buildProgressPaymentView({ money: buildStagesMoneyBarModel({ totalBill: 3_759.12, paymentsMade: 3_759.12, pctComplete: 100 }), stageBar: null, fixtures: twoLines, invoices: [], crew: null, pctComplete: 100, status: 'paid', todayYmd: today })
-    expect(paid.offerSetStages).toBe(false)
-  })
 })
