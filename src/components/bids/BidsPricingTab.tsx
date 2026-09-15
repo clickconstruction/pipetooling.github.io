@@ -49,6 +49,7 @@ import { bidPackageLabel } from '../../lib/bidPackageLabel'
 import { SpecSectionAuditModal } from './SpecSectionAuditModal'
 import { PrepareFixtureCopyModal } from './PrepareFixtureCopyModal'
 import { PlugInQuotesModal } from './PlugInQuotesModal'
+import { PlugInScheduleModal } from './PlugInScheduleModal'
 import { PriceWithRobotModal } from './PriceWithRobotModal'
 import { usePriceMatrixRequests } from '../../hooks/usePriceMatrixRequests'
 import { derivePricingChip, type RobotChip } from '../../lib/rfq/priceMatrixRequest'
@@ -727,6 +728,8 @@ export function BidsPricingTab({
   // RFQ Phase 1 (v2.2630, docs/SUPPLY_HOUSE_RFQ_PLAN.md): plug in supply house
   // replies and compare them. Cost-side data — the same roles that can Share.
   const [plugInQuoteOpen, setPlugInQuoteOpen] = useState(false)
+  // Submittals stage 1 (v2.3460): the plan's fixture schedule → bid_specified_products.
+  const [plugInScheduleOpen, setPlugInScheduleOpen] = useState(false)
   // Price Matrix PR 2: the robot door and its status sheet (PriceWithRobotModal).
   const [priceWithRobotOpen, setPriceWithRobotOpen] = useState(false)
   const [quotesCompareOpen, setQuotesCompareOpen] = useState(false)
@@ -2755,6 +2758,7 @@ export function BidsPricingTab({
                   onCopyFixtures={() => setPrepareCopyOpen(true)}
                   onOpenD22Audit={canPackageAndSendBidPricing ? () => setD22AuditOpen(true) : undefined}
                   onPlugInQuote={canPackageAndSendBidPricing ? () => setPlugInQuoteOpen(true) : undefined}
+                  onPlugInSchedule={canPackageAndSendBidPricing ? () => setPlugInScheduleOpen(true) : undefined}
                 onPriceWithRobot={canPackageAndSendBidPricing ? () => setPriceWithRobotOpen(true) : undefined}
                 robotDisabled={!priceMatrixSupported || pricingCountRows.length === 0}
                 robotTitle={!priceMatrixSupported ? 'The robot queue switches on with the next database update' : 'Count some fixtures first — the robot prices your count rows'}
@@ -5560,6 +5564,17 @@ export function BidsPricingTab({
       ) : null}
 
       {selectedBidForPricing ? (
+        <PlugInScheduleModal
+          open={plugInScheduleOpen}
+          onClose={() => setPlugInScheduleOpen(false)}
+          onSaved={() => setQuoteNonce((n) => n + 1)}
+          bidId={selectedBidForPricing.id}
+          bidLabel={bidPackageLabel(selectedBidForPricing, ledgerPrefixMap)}
+          rows={pricingCountRows.map((r) => ({ id: r.id, fixture: r.fixture, count: r.count }))}
+        />
+      ) : null}
+
+      {selectedBidForPricing ? (
         <PriceWithRobotModal
           open={priceWithRobotOpen}
           onClose={() => setPriceWithRobotOpen(false)}
@@ -5587,6 +5602,10 @@ export function BidsPricingTab({
           onPlugIn={() => {
             setQuotesCompareOpen(false)
             setPlugInQuoteOpen(true)
+          }}
+          onPlugInSchedule={() => {
+            setQuotesCompareOpen(false)
+            setPlugInScheduleOpen(true)
           }}
           bidId={selectedBidForPricing.id}
           bidLabel={bidPackageLabel(selectedBidForPricing, ledgerPrefixMap)}
