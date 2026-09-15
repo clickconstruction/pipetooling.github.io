@@ -214,6 +214,11 @@ export function demandInvoicesPhrase(statement: DemandStatementInvoice[]): strin
   return `Invoices ${nums.slice(0, -1).join(', ')} and ${nums[nums.length - 1]}`
 }
 
+/** Letterhead contact column: one entry per address line, then phone, then email (blanks dropped). */
+export function letterheadContactLines(address: string, phone: string, email: string): string[] {
+  return [...address.split(/\r?\n/).map((l) => l.trim()), phone.trim(), email.trim()].filter((l) => l)
+}
+
 export function buildDemandLetterModel(f: DemandLetterFields, todayYmd: string): DemandLetterBlock[] {
   const out = demandMoney(f.outstanding)
   const blocks: DemandLetterBlock[] = []
@@ -221,11 +226,10 @@ export function buildDemandLetterModel(f: DemandLetterFields, todayYmd: string):
     kind: 'senderBlock',
     company: f.businessName.trim() || f.senderName.trim(),
     licenseLine: (f.businessLicense ?? '').trim(),
-    contactLines: [
-      f.businessName.trim() ? f.senderName.trim() : '',
-      f.businessAddress.replace(/\r?\n/g, ', ').trim(),
-      [f.businessPhone.trim(), f.businessEmail.trim()].filter((l) => l).join(' · '),
-    ].filter((l) => l),
+    // v2.3474: a return address, line for line as typed in Settings — street,
+    // city/state/ZIP, phone, email — never joined and re-wrapped by the column.
+    // The sender's name is not up here; it signs the letter at the bottom.
+    contactLines: letterheadContactLines(f.businessAddress, f.businessPhone, f.businessEmail),
   })
   blocks.push({ kind: 'meta', text: `Date: ${demandDate(todayYmd)}` })
   blocks.push({
@@ -362,11 +366,11 @@ export function buildDemandLetterEmailHtml(f: DemandLetterFields, todayYmd: stri
     switch (b.kind) {
       case 'senderBlock':
         parts.push(
-          `<div style="display:flex;justify-content:space-between;gap:1.5rem;margin:0 0 1em 0;padding-bottom:0.6em;border-bottom:1px solid #cfcbc2">` +
+          `<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:1.5rem;margin:0 0 1em 0;padding-bottom:0.6em;border-bottom:1px solid #cfcbc2">` +
             `<div><div style="font-weight:700;font-size:1.12em">${esc(b.company)}</div>` +
             (b.licenseLine ? `<div style="font-family:'Helvetica Neue',Arial,sans-serif;font-size:0.72em;color:#7a756c;margin-top:0.15em">${esc(b.licenseLine)}</div>` : '') +
             `</div>` +
-            `<div style="font-family:'Helvetica Neue',Arial,sans-serif;text-align:right;font-size:0.74em;color:#7a756c;line-height:1.5">${b.contactLines.map(esc).join('<br/>')}</div>` +
+            `<div style="font-family:'Helvetica Neue',Arial,sans-serif;flex:0 0 auto;white-space:nowrap;text-align:right;font-size:0.8em;color:#5f5a52;line-height:1.45">${b.contactLines.map(esc).join('<br/>')}</div>` +
             `</div>`,
         )
         break
@@ -517,14 +521,14 @@ export async function buildDemandLetterPdfBlob(f: DemandLetterFields, todayYmd: 
           doc.text(b.licenseLine, PAGE_MARGIN, leftY)
         }
         doc.setFont('helvetica', 'normal')
-        doc.setFontSize(7.5)
-        doc.setTextColor(122, 117, 108)
+        doc.setFontSize(8)
+        doc.setTextColor(95, 90, 82)
         let rightY = y + 3
         for (const l of b.contactLines) {
           doc.text(l, PAGE_MARGIN + MAX_TEXT_WIDTH_MM, rightY, { align: 'right' })
-          rightY += 3.6
+          rightY += 3.7
         }
-        y = Math.max(leftY, rightY - 3.6) + 4
+        y = Math.max(leftY, rightY - 3.7) + 4
         doc.setDrawColor(207, 203, 194)
         doc.setLineWidth(0.25)
         doc.line(PAGE_MARGIN, y, PAGE_MARGIN + MAX_TEXT_WIDTH_MM, y)
