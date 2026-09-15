@@ -1328,6 +1328,7 @@ export type Database = {
           alternate_reason_note: string | null
           availability: string | null
           lead_time_days: number | null
+          product_status_override: string | null
           basis_price_cents: number | null
           basis_qty: number | null
           cant_supply: boolean
@@ -1357,6 +1358,7 @@ export type Database = {
           alternate_reason_note?: string | null
           availability?: string | null
           lead_time_days?: number | null
+          product_status_override?: string | null
           basis_price_cents?: number | null
           basis_qty?: number | null
           cant_supply?: boolean
@@ -1386,6 +1388,7 @@ export type Database = {
           alternate_reason_note?: string | null
           availability?: string | null
           lead_time_days?: number | null
+          product_status_override?: string | null
           basis_price_cents?: number | null
           basis_qty?: number | null
           cant_supply?: boolean

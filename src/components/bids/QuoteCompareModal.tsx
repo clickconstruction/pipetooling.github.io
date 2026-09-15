@@ -21,8 +21,9 @@ import { createPortal } from 'react-dom'
 import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
 import type { SupabaseClient } from '@supabase/supabase-js'
 
-import { buildQuoteComparison, type CompareQuote, type CompareQuoteLine, type CompareRow, type CompareRowCell } from '../../lib/rfq/quoteCompare'
-import { deriveProductStatus, normalizeModel, statusCounts, statusSummaryLine, STATUS_LABELS, type ProductStatus } from '../../lib/submittals/productStatus'
+import { buildQuoteComparison, type CellAnnotation, type CompareQuote, type CompareQuoteLine, type CompareRow, type CompareRowCell } from '../../lib/rfq/quoteCompare'
+import { deriveProductStatus, needsReason, normalizeModel, statusCounts, statusSummaryLine, REASON_LABELS, STATUS_LABELS, type ProductStatus, type ReasonKind, type StatusOverride } from '../../lib/submittals/productStatus'
+import { describeLeadTime, LEAD_TIME_PRESETS, parseLeadTime, pickAnnotationPatch, type PickAnnotation } from '../../lib/submittals/leadTime'
 import { COMPONENT_ROLE_LABELS, describeKitBasis, isComponentRole, type ComponentRole } from '../../lib/rfq/quoteKits'
 import { describeChoiceRange, describeIncomplete, robotColumnText, summarizeRobotWork } from '../../lib/rfq/compareRobotSummary'
 import { ApplyPicksToCostsModal, type ApplyPickItem } from './ApplyPicksToCostsModal'
@@ -87,6 +88,11 @@ type RawLine = {
   page_ref?: string | null
   pick_reason?: string | null
   pick_source?: string | null
+  alternate_reason_kind?: string | null
+  alternate_reason_note?: string | null
+  lead_time_days?: number | null
+  availability?: string | null
+  product_status_override?: string | null
 }
 
 type RawQuote = {
@@ -135,6 +141,8 @@ function submittedModelFromLabel(label: string | null, spec: SpecifiedRow): stri
 
 const LINE_COLS_BASE = 'id, fixture, unit_price_each_cents, cant_supply, alternate_note, picked, lot_id, lot_total_cents'
 const LINE_COLS_KIT = `${LINE_COLS_BASE}, component_role, label, option_group, option_label, option_chosen, page_ref, pick_reason, pick_source`
+/** Submittals stage 1c: the pick's reason, lead time and status override — a checkout ahead of the push falls back to the kit shape. */
+const LINE_COLS_ANNOTATED = `${LINE_COLS_KIT}, alternate_reason_kind, alternate_reason_note, lead_time_days, availability, product_status_override`
 
 export function QuoteCompareModal({
   open,
@@ -184,17 +192,23 @@ export function QuoteCompareModal({
   const [expanded, setExpanded] = useState<ReadonlySet<string>>(() => new Set())
   /** The Settle popover: which row + house is choosing an option. */
   const [settling, setSettling] = useState<{ fixtureKey: string; houseId: string } | null>(null)
+  /** Stage 1c: which row's pick is saying why (the reason chips, the lead time, the status override). */
+  const [annotating, setAnnotating] = useState<{ fixtureKey: string; houseId: string } | null>(null)
 
   const load = useCallback(async () => {
     setLoading(true)
     try {
       // Kit columns first; a checkout ahead of the migration falls back to the legacy shape.
       let quoteRows: RawQuote[] | null = null
-      const wide = await supabase
-        .from('bid_quotes')
-        .select(`id, supply_house_id, received_at, valid_until, freight_cents, source, supply_house:supply_houses(name), bid_quote_lines(${LINE_COLS_KIT})`)
-        .eq('bid_id', bidId)
-        .order('received_at')
+      const selectQuotes = (lineCols: string) =>
+        supabase
+          .from('bid_quotes')
+          .select(`id, supply_house_id, received_at, valid_until, freight_cents, source, supply_house:supply_houses(name), bid_quote_lines(${lineCols})`)
+          .eq('bid_id', bidId)
+          .order('received_at')
+      // Widest shape first (stage 1c's annotation columns), then the kit shape a checkout ahead of that push still has.
+      let wide = await selectQuotes(LINE_COLS_ANNOTATED)
+      if (wide.error) wide = await selectQuotes(LINE_COLS_KIT)
       if (!wide.error) quoteRows = wide.data as unknown as RawQuote[]
       else {
         quoteRows = await withSupabaseRetry(
@@ -278,6 +292,11 @@ export function QuoteCompareModal({
               pageRef: l.page_ref ?? null,
               pickReason: l.pick_reason ?? null,
               pickSource: l.pick_source === 'human' || l.pick_source === 'robot' ? l.pick_source : null,
+              alternateReasonKind: l.alternate_reason_kind ?? null,
+              alternateReasonNote: l.alternate_reason_note ?? null,
+              leadTimeDays: l.lead_time_days ?? null,
+              availability: l.availability ?? null,
+              productStatusOverride: l.product_status_override ?? null,
             }
           })
           return {
@@ -330,13 +349,14 @@ export function QuoteCompareModal({
     if (!open) return
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
-        if (settling) setSettling(null)
+        if (annotating) setAnnotating(null)
+        else if (settling) setSettling(null)
         else onClose()
       }
     }
     document.addEventListener('keydown', onKey)
     return () => document.removeEventListener('keydown', onKey)
-  }, [open, onClose, settling])
+  }, [open, onClose, settling, annotating])
 
   const currentQtyByName = useMemo(() => {
     const m = new Map<string, number>()
@@ -379,6 +399,19 @@ export function QuoteCompareModal({
     }
   }
 
+  /** Stage 1c: a pick that differs from the schedule asks why, once — the reason chips open the moment the price is tapped. */
+  function maybeAskWhy(fixtureKey: string, houseId: string, cell: CompareRowCell) {
+    const spec = specified.get(fixtureKey)
+    if (!spec) return
+    const label = cell.label ?? null
+    const d = deriveProductStatus({
+      specified: { manufacturer: spec.manufacturer, model: spec.model },
+      submitted: { manufacturer: null, model: submittedModelFromLabel(label, spec), label },
+      override: overrideOf(cell.annotation),
+    })
+    if (needsReason(d.status) && reasonOf(cell.annotation) == null) setAnnotating({ fixtureKey, houseId })
+  }
+
   async function pick(fixtureKey: string, houseId: string) {
     const row = comparison.rows.find((r) => r.fixture.trim().toLowerCase() === fixtureKey)
     if (!row) return
@@ -404,6 +437,7 @@ export function QuoteCompareModal({
           if (error) throw error
         }
       }
+      if (!target.picked) maybeAskWhy(fixtureKey, houseId, target)
       if (wasRobotPick) {
         const unpicking = target.picked
         await recordCorrection({
@@ -436,6 +470,23 @@ export function QuoteCompareModal({
       await load()
     } catch (err) {
       showToast(err instanceof Error ? err.message : 'Could not save the choice.', 'error')
+    }
+  }
+
+  /** Stage 1c: write the reason, lead time and override onto every line of the picked cell (a kit's lines take it together, like `picked`). */
+  async function saveAnnotation(fixtureKey: string, houseId: string, a: PickAnnotation) {
+    const row = comparison.rows.find((r) => r.fixture.trim().toLowerCase() === fixtureKey)
+    const cell = row?.perHouse[houseId]
+    if (!row || !cell) return
+    const lineIds = lineIdsByCell.get(`${cell.quoteId}|${fixtureKey}`) ?? []
+    if (lineIds.length === 0) return
+    try {
+      const { error } = await db.from('bid_quote_lines').update(pickAnnotationPatch(a)).in('id', lineIds)
+      if (error) throw error
+      setAnnotating(null)
+      await load()
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Could not save the reason.', 'error')
     }
   }
 
@@ -473,16 +524,21 @@ export function QuoteCompareModal({
   const showRobotCol = robot.hasRobotWork || robotQuoteCount > 0
   const showSpecCol = specified.size > 0
   /** Submittals stage 1: the row's specified product and the status of its pick. */
-  const rowSpec = (r: CompareRow): { spec: SpecifiedRow; status: ProductStatus; near: boolean; pickedLabel: string | null } | null => {
+  const rowSpec = (r: CompareRow): RowSpec | null => {
     const spec = specified.get(keyOfName(r.fixture))
     if (!spec) return null
-    const pickedCell = houseCols.map((h) => r.perHouse[h.supplyHouseId]).find((c) => c?.picked)
+    const pickedHouse = houseCols.find((h) => r.perHouse[h.supplyHouseId]?.picked)
+    const pickedCell = pickedHouse ? r.perHouse[pickedHouse.supplyHouseId] : undefined
     const label = pickedCell?.label ?? null
     const submitted = pickedCell ? { manufacturer: null, model: submittedModelFromLabel(label, spec), label } : null
-    const d = deriveProductStatus({ specified: { manufacturer: spec.manufacturer, model: spec.model }, submitted })
-    return { spec, status: d.status, near: d.near, pickedLabel: label }
+    const annotation = pickedCell?.annotation ?? null
+    // The override only means something while that pick stands; an unpicked row derives again.
+    const d = deriveProductStatus({ specified: { manufacturer: spec.manufacturer, model: spec.model }, submitted, override: pickedCell ? overrideOf(annotation) : null })
+    return { spec, status: d.status, near: d.near, pickedLabel: label, pickedHouseId: pickedHouse?.supplyHouseId ?? null, annotation, reasonKind: pickedCell ? reasonOf(annotation) : null }
   }
   const statusRows = showSpecCol ? comparison.rows.map(rowSpec).filter((x): x is NonNullable<typeof x> => x != null) : []
+  const specCounts = statusCounts(statusRows.map((x) => ({ status: x.status, reasonKind: x.reasonKind })))
+  const unreasoned = specCounts.alternatesWithoutReason + specCounts.designChangesWithoutReason
   const grid: CSSProperties = {
     display: 'grid',
     gridTemplateColumns: `minmax(0, 1.5fr)${showSpecCol ? ' minmax(7rem, 0.9fr)' : ''} 4.5rem repeat(${Math.max(1, houseCols.length)}, minmax(6.5rem, 1fr)) minmax(6rem, 0.9fr)${showRobotCol ? ' minmax(8rem, 1fr)' : ''}`,
@@ -580,7 +636,7 @@ export function QuoteCompareModal({
 
             {showSpecCol ? (
               <p data-testid="spec-summary" style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--text-base)' }}>
-                <span style={{ fontWeight: 600 }}>Against the schedule:</span> {statusSummaryLine(statusCounts(statusRows.map((x) => ({ status: x.status, reasonKind: null }))))}
+                <span style={{ fontWeight: 600 }}>Against the schedule:</span> {statusSummaryLine(specCounts)}
                 {comparison.rows.length > statusRows.length ? <span style={{ color: 'var(--text-muted)' }}> · {comparison.rows.length - statusRows.length} quoted row{comparison.rows.length - statusRows.length === 1 ? '' : 's'} with no tag on the schedule</span> : null}
               </p>
             ) : onPlugInSchedule ? (
@@ -636,7 +692,29 @@ export function QuoteCompareModal({
                                 <span style={{ fontWeight: 700, color: 'var(--text-strong)' }}>{rs.spec.tag}</span>{' '}
                                 <span style={{ color: 'var(--text-muted)' }}>{[rs.spec.manufacturer, rs.spec.model].filter(Boolean).join(' ') || rs.spec.description || ''}</span>
                               </span>
-                              <span><ProductStatusChip status={rs.status} near={rs.near} />{rs.status === 'alternate' && rs.pickedLabel ? <span style={{ ...smallMuted, fontSize: '0.65rem' }}> {rs.pickedLabel}</span> : null}</span>
+                              <span style={{ display: 'flex', alignItems: 'center', gap: 4, flexWrap: 'wrap' }}>
+                                {rs.pickedHouseId ? (
+                                  <button
+                                    type="button"
+                                    data-testid="product-status-door"
+                                    onClick={() => setAnnotating({ fixtureKey: key, houseId: rs.pickedHouseId ?? '' })}
+                                    title="Say why this pick, set its lead time, or set the status"
+                                    style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', font: 'inherit', display: 'inline-flex' }}
+                                  >
+                                    <ProductStatusChip status={rs.status} near={rs.near} />
+                                  </button>
+                                ) : (
+                                  <ProductStatusChip status={rs.status} near={rs.near} />
+                                )}
+                                {rs.status === 'alternate' && rs.pickedLabel ? <span style={{ ...smallMuted, fontSize: '0.65rem' }}>{rs.pickedLabel}</span> : null}
+                                {rs.pickedHouseId ? (
+                                  <span data-testid="pick-annotation" style={{ ...smallMuted, fontSize: '0.65rem' }} title={rs.annotation?.reasonNote ?? undefined}>
+                                    {rs.reasonKind ? `· ${REASON_LABELS[rs.reasonKind].toLowerCase()}` : ''}
+                                    {describeLeadTime(rs.annotation?.leadTimeDays) ? ` · ${describeLeadTime(rs.annotation?.leadTimeDays)}` : ''}
+                                    {needsReason(rs.status) && !rs.reasonKind ? <span style={{ color: 'var(--text-amber-700)', fontWeight: 700 }}> · why?</span> : null}
+                                  </span>
+                                ) : null}
+                              </span>
                             </span>
                           ) : (
                             <span style={{ color: 'var(--text-faint)', fontSize: '0.72rem' }}>no tag</span>
@@ -728,6 +806,11 @@ export function QuoteCompareModal({
                 )}{' '}
                 at today’s counts · picks are saved and ready for a future PO handoff.
                 {robot.hasRobotWork ? ` · robot picked ${robot.robotPicked}, you changed ${robot.humanChanged}.` : ''}
+                {unreasoned > 0 ? (
+                  <span data-testid="unreasoned-footer" style={{ color: 'var(--text-amber-700)', fontWeight: 600 }}>
+                    {' '}· {unreasoned} pick{unreasoned === 1 ? '' : 's'} off the schedule with no reason yet — tap the status on the row to say why.
+                  </span>
+                ) : null}
               </span>
               <div style={{ display: 'flex', gap: '0.5rem' }}>
                 <button
@@ -781,6 +864,29 @@ export function QuoteCompareModal({
                   </div>
                 </div>
               </div>
+            )
+          })()
+        : null}
+      {annotating
+        ? (() => {
+            const row = comparison.rows.find((r) => r.fixture.trim().toLowerCase() === annotating.fixtureKey)
+            const cell = row?.perHouse[annotating.houseId]
+            const spec = specified.get(annotating.fixtureKey)
+            if (!row || !cell || !spec) return null
+            const houseName = comparison.houses.find((h) => h.supplyHouseId === annotating.houseId)?.houseName ?? 'this house'
+            const label = cell.label ?? null
+            const derived = deriveProductStatus({ specified: { manufacturer: spec.manufacturer, model: spec.model }, submitted: { manufacturer: null, model: submittedModelFromLabel(label, spec), label } })
+            return (
+              <PickAnnotationDialog
+                fixture={row.fixture}
+                houseName={houseName}
+                spec={spec}
+                pickedLabel={label}
+                derivedStatus={derived.status}
+                initial={{ reasonKind: reasonOf(cell.annotation), reasonNote: cell.annotation?.reasonNote ?? null, leadTimeDays: cell.annotation?.leadTimeDays ?? null, statusOverride: overrideOf(cell.annotation) }}
+                onSave={(a) => void saveAnnotation(annotating.fixtureKey, annotating.houseId, a)}
+                onClose={() => setAnnotating(null)}
+              />
             )
           })()
         : null}
@@ -856,5 +962,184 @@ function CellButton({ cell, best, onPick, onSettle }: { cell: CompareRowCell; be
           : money(cell.unitPriceEachCents)}
       {best && !cell.expired ? ' ★' : ''}
     </button>
+  )
+}
+
+// ---------- Submittals stage 1c: the reason at the pick, the lead time, the estimator's override ----------
+
+type RowSpec = {
+  spec: SpecifiedRow
+  status: ProductStatus
+  near: boolean
+  pickedLabel: string | null
+  pickedHouseId: string | null
+  annotation: CellAnnotation | null
+  reasonKind: ReasonKind | null
+}
+
+const REASON_KINDS: ReadonlySet<string> = new Set(Object.keys(REASON_LABELS))
+/** The chips read as reasons, so "Equal" the reason never sits beside "Equal" the status. */
+const REASON_CHIP_LABELS: Record<ReasonKind, string> = {
+  lead_time: 'Long lead time',
+  discontinued: 'Discontinued',
+  in_stock: 'In stock',
+  equal: 'Or-equal clause',
+  cost: 'Cost',
+  other: 'Other',
+}
+const OVERRIDES: ReadonlyArray<Exclude<StatusOverride, null>> = ['superseded', 'equal', 'design_change']
+
+function reasonOf(a: CellAnnotation | null | undefined): ReasonKind | null {
+  return a?.reasonKind && REASON_KINDS.has(a.reasonKind) ? (a.reasonKind as ReasonKind) : null
+}
+
+function overrideOf(a: CellAnnotation | null | undefined): StatusOverride {
+  return a?.statusOverride && (OVERRIDES as ReadonlyArray<string>).includes(a.statusOverride) ? (a.statusOverride as Exclude<StatusOverride, null>) : null
+}
+
+const chipButton = (on: boolean): CSSProperties => ({
+  padding: '0.3rem 0.7rem',
+  borderRadius: 999,
+  border: on ? '2px solid #16a34a' : '1px solid var(--border-strong)',
+  background: on ? 'var(--bg-green-tint)' : 'var(--surface)',
+  color: 'var(--text-strong)',
+  cursor: 'pointer',
+  font: 'inherit',
+  fontSize: '0.8125rem',
+  fontWeight: on ? 700 : 500,
+})
+
+const fieldLabel: CSSProperties = { fontSize: '0.7rem', fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', color: 'var(--text-muted)' }
+
+/**
+ * The popover behind the status chip. Three questions, none required: what is
+ * this pick against the schedule (the derived status, or the estimator's
+ * superseded / equal / design change), why (the six reason chips + a note —
+ * asked of alternates and design changes), and when it lands (In stock · 1 wk
+ * · 2 wk · 4+ wk, or typed). Save writes every line of the picked cell.
+ */
+function PickAnnotationDialog({
+  fixture,
+  houseName,
+  spec,
+  pickedLabel,
+  derivedStatus,
+  initial,
+  onSave,
+  onClose,
+}: {
+  fixture: string
+  houseName: string
+  spec: SpecifiedRow
+  pickedLabel: string | null
+  derivedStatus: ProductStatus
+  initial: PickAnnotation
+  onSave: (a: PickAnnotation) => void
+  onClose: () => void
+}) {
+  const [statusOverride, setStatusOverride] = useState<StatusOverride>(initial.statusOverride)
+  const [reasonKind, setReasonKind] = useState<ReasonKind | null>(initial.reasonKind)
+  const [note, setNote] = useState(initial.reasonNote ?? '')
+  const presetDays = new Set(LEAD_TIME_PRESETS.map((p) => p.days))
+  const [leadDays, setLeadDays] = useState<number | null>(initial.leadTimeDays)
+  const [leadText, setLeadText] = useState(initial.leadTimeDays != null && !presetDays.has(initial.leadTimeDays) ? (describeLeadTime(initial.leadTimeDays) ?? '') : '')
+  const status: ProductStatus = statusOverride ?? derivedStatus
+  const askWhy = needsReason(status)
+  const leadTextBad = leadText.trim() !== '' && parseLeadTime(leadText) == null
+  const specText = [spec.manufacturer, spec.model].filter(Boolean).join(' ') || spec.description || '—'
+  const smallMuted: CSSProperties = { fontSize: '0.75rem', color: 'var(--text-muted)' }
+
+  return (
+    <div style={{ ...overlay, zIndex: MODAL_Z + 5, alignItems: 'center' }} role="presentation" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose() }}>
+      <div role="dialog" aria-modal="true" aria-label={`${fixture} against the schedule`} style={{ ...panel, maxWidth: 560 }} onMouseDown={(e) => e.stopPropagation()}>
+        <div>
+          <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 600, color: 'var(--text-strong)' }}>
+            {spec.tag} · {fixture}
+          </h3>
+          <p style={{ margin: '0.25rem 0 0', fontSize: '0.8125rem', color: 'var(--text-base)', lineHeight: 1.4 }}>
+            <span style={{ color: 'var(--text-muted)' }}>Specified</span> {specText}
+            <br />
+            <span style={{ color: 'var(--text-muted)' }}>Picked from {houseName}</span> {pickedLabel ?? '—'}
+          </p>
+        </div>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+          <span style={fieldLabel}>Against the schedule</span>
+          <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
+            <button type="button" aria-pressed={statusOverride === null} onClick={() => setStatusOverride(null)} style={chipButton(statusOverride === null)}>
+              As derived · {STATUS_LABELS[derivedStatus]}
+            </button>
+            {OVERRIDES.map((o) => (
+              <button key={o} type="button" aria-pressed={statusOverride === o} onClick={() => setStatusOverride(o)} style={chipButton(statusOverride === o)}>
+                {STATUS_LABELS[o]}
+              </button>
+            ))}
+          </div>
+          <span style={smallMuted}>Superseded: the maker replaced the model. Equal: the schedule’s own “or equal” admits it. Design change: a performance value differs (gpf, gallons, size).</span>
+        </div>
+
+        {askWhy ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+            <span style={fieldLabel}>Why this pick</span>
+            <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
+              {(Object.keys(REASON_LABELS) as ReasonKind[]).map((k) => (
+                <button key={k} type="button" aria-pressed={reasonKind === k} onClick={() => setReasonKind(reasonKind === k ? null : k)} style={chipButton(reasonKind === k)}>
+                  {REASON_CHIP_LABELS[k]}
+                </button>
+              ))}
+            </div>
+          </div>
+        ) : null}
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+          <span style={fieldLabel}>Lead time</span>
+          <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', alignItems: 'center' }}>
+            {LEAD_TIME_PRESETS.map((p) => {
+              const on = leadText.trim() === '' && leadDays === p.days
+              return (
+                <button key={p.days} type="button" aria-pressed={on} onClick={() => { setLeadText(''); setLeadDays(on ? null : p.days) }} style={chipButton(on)}>
+                  {p.label}
+                </button>
+              )
+            })}
+            <input
+              type="text"
+              aria-label="Lead time, typed"
+              placeholder="or type it: 3 wk · 10 days"
+              value={leadText}
+              onChange={(e) => { setLeadText(e.target.value); setLeadDays(parseLeadTime(e.target.value)) }}
+              style={{ flex: '1 1 9rem', minWidth: '8rem', padding: '0.3rem 0.5rem', border: `1px solid ${leadTextBad ? '#dc2626' : 'var(--border-strong)'}`, borderRadius: 4, font: 'inherit', fontSize: '0.8125rem', background: 'var(--surface)', color: 'var(--text-strong)' }}
+            />
+          </div>
+          <span style={smallMuted}>{leadTextBad ? 'Weeks or days — “3 wk”, “10 days”, or “stock”.' : 'From the quote or the call. The house’s own answer comes with the written ask, after the win.'}</span>
+        </div>
+
+        <label style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+          <span style={fieldLabel}>Note</span>
+          <textarea
+            aria-label="Note"
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+            rows={2}
+            placeholder="What the GC will ask — the spec model is 8 weeks out, the house stocks this one…"
+            style={{ padding: '0.4rem 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, font: 'inherit', fontSize: '0.8125rem', background: 'var(--surface)', color: 'var(--text-strong)', resize: 'vertical' }}
+          />
+        </label>
+
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', borderTop: '1px solid var(--border)', paddingTop: '0.6rem' }}>
+          <button type="button" onClick={onClose} style={{ padding: '0.45rem 0.85rem', background: 'var(--bg-muted)', color: 'var(--text-strong)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer', font: 'inherit' }}>
+            Not now
+          </button>
+          <button
+            type="button"
+            disabled={leadTextBad}
+            onClick={() => onSave({ reasonKind: askWhy ? reasonKind : null, reasonNote: note, leadTimeDays: leadText.trim() === '' ? leadDays : parseLeadTime(leadText), statusOverride })}
+            style={{ padding: '0.45rem 0.9rem', background: leadTextBad ? 'var(--bg-200)' : '#16a34a', color: leadTextBad ? 'var(--text-faint)' : 'white', border: 'none', borderRadius: 4, cursor: leadTextBad ? 'not-allowed' : 'pointer', font: 'inherit', fontWeight: 600 }}
+          >
+            Save
+          </button>
+        </div>
+      </div>
+    </div>
   )
 }

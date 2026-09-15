@@ -175,3 +175,26 @@ describe('lots (Rung G, v2.2655)', () => {
     expect(c.rows[0]?.perHouse['ferguson']?.lotTotalCents).toBe(1000)
   })
 })
+
+describe('pick annotation (Submittals 1c)', () => {
+  it('a kit cell reads its reason, lead time and override off the kit line; a plain cell off its line; nothing said → all null', () => {
+    const q: CompareQuote = {
+      id: 'q3',
+      supplyHouseId: 'h-nws',
+      houseName: 'NWS',
+      receivedAt: '2026-09-10T10:00:00Z',
+      validUntil: null,
+      lines: [
+        { id: 'k', fixture: 'WC-1', unitPriceEachCents: 100000, cantSupply: false, picked: true, componentRole: 'kit', label: 'kit', alternateReasonKind: 'lead_time', leadTimeDays: 14, availability: 'lead_time', productStatusOverride: null },
+        { id: 'b', fixture: 'WC-1', unitPriceEachCents: null, cantSupply: false, picked: true, componentRole: 'bowl', label: 'TOTO CT728', alternateReasonKind: 'cost' },
+        { id: 'l', fixture: 'LAV-1', unitPriceEachCents: 5000, cantSupply: false, picked: true, label: 'Kohler K-2210', productStatusOverride: 'equal', alternateReasonNote: 'or-equal clause' },
+        { id: 'x', fixture: 'HB-1', unitPriceEachCents: 1200, cantSupply: false },
+      ],
+    }
+    const out = buildQuoteComparison({ quotes: [q], currentQtyByName: new Map([['wc-1', 2], ['lav-1', 1], ['hb-1', 1]]) })
+    const cell = (f: string) => out.rows.find((r) => r.fixture === f)!.perHouse['h-nws']!
+    expect(cell('WC-1').annotation).toEqual({ reasonKind: 'lead_time', reasonNote: null, leadTimeDays: 14, availability: 'lead_time', statusOverride: null })
+    expect(cell('LAV-1').annotation).toEqual({ reasonKind: null, reasonNote: 'or-equal clause', leadTimeDays: null, availability: null, statusOverride: 'equal' })
+    expect(cell('HB-1').annotation).toEqual({ reasonKind: null, reasonNote: null, leadTimeDays: null, availability: null, statusOverride: null })
+  })
+})
