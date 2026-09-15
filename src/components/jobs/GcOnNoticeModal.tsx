@@ -135,7 +135,7 @@ export default function GcOnNoticeModal({ open, gcId, onClose, todayYmd, authRol
   const [reason, setReason] = useState<GcNoticeReasonKey>('not_paying_subs')
   const [note, setNote] = useState('')
   const [ticks, setTicks] = useState<Tick>({ rule: true, terms: true, legal: true })
-  // Step 3 (v2.3478): the letter written once for all; seeded from the GC's name the first time the data lands.
+  // Step 3 (v2.3482): the letter written once for all; seeded from the GC's name the first time the data lands.
   const [letter, setLetter] = useState('')
   const [includeLetter, setIncludeLetter] = useState(true)
   const letterSeededFor = useRef<string | null>(null)
@@ -564,7 +564,7 @@ export default function GcOnNoticeModal({ open, gcId, onClose, todayYmd, authRol
                 <div style={faint}>Each row is the same document the Lien window prints, filled from the same job; the unpaid invoices ride behind it as the statute allows (§ 53.056(a-3)).</div>
               </div>
 
-              {/* STEP 3 — the cover letter, written once for all (v2.3478) */}
+              {/* STEP 3 — the cover letter, written once for all (v2.3482) */}
               <div style={boxStyle}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem', flexWrap: 'wrap' }}>
                   <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.6rem', flexWrap: 'wrap' }}>

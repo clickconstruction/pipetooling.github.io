@@ -110,7 +110,7 @@ describe('buildLienDeskRun', () => {
   })
 })
 
-describe('the run carries the GC-on-notice cover letter (v2.3478)', () => {
+describe('the run carries the GC-on-notice cover letter (v2.3482)', () => {
   it('fills the letter per notice from the stored template and prints it as the cover page instead of the note', () => {
     const template = 'To the owner of {{property}},\n\nWork in {{months}} on job {{job}} is unpaid.\n\nWe would rather be paid than file a lien.'
     const fields = { notice: { noticeDate: TODAY, projectDescription: 'ATI Schertz', claimantName: 'Click Plumbing and Electrical', laborMaterialsType: 'Plumbing labor and materials', originalContractorName: 'Loberg Contracting', contractedWithIfDifferent: '', claimAmount: '33500.00', contactPerson: 'Robert Douglas, Master Plumber', claimantAddress: '5501 Balcones Dr' }, gcEmail: '', batchReason: 'GC is not paying its subs — Sarah said the draw was spent', coverLetter: template }

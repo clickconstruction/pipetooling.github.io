@@ -48,7 +48,7 @@ export type RunNotice = {
   extras: FilingDocExtras
   /** The cover note text, or null when the draft turned it off. */
   coverNote: string | null
-  /** Put a GC on notice (v2.3478): the run's letter, fills resolved for this notice — replaces the cover note on the owner's copy. Null when the item carries none. */
+  /** Put a GC on notice (v2.3482): the run's letter, fills resolved for this notice — replaces the cover note on the owner's copy. Null when the item carries none. */
   coverLetter: string | null
   recipients: RunRecipient[]
   /** The owner came from the appraisal roll (the nightly save, v2.3450) and no person has confirmed it — the run refuses until someone does. */
@@ -150,7 +150,7 @@ export function runCoverSheetBlocks(notices: ReadonlyArray<RunNotice>, todayYmd:
 
 /**
  * The cover page as its own short page, signed by the contact person: the
- * run's letter when the item carries one (v2.3478 — every paragraph, the
+ * run's letter when the item carries one (v2.3482 — every paragraph, the
  * first line as the salutation), else the standard cover note.
  */
 export function runCoverNoteBlocks(n: RunNotice): FilingDocBlock[] {

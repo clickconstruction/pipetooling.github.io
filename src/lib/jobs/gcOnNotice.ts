@@ -223,7 +223,7 @@ export function summarizeGcOnNotice(jobs: ReadonlyArray<GcNoticeJob>): GcNoticeS
   return s
 }
 
-// ---------- the cover letter, written once for all (v2.3478, PR 2) ----------
+// ---------- the cover letter, written once for all (v2.3482, PR 2) ----------
 
 /** The blue fields the letter fills per notice. */
 export const COVER_LETTER_FILLS = { property: '{{property}}', months: '{{months}}', job: '{{job}}' } as const

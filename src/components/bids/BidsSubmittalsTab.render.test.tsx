@@ -33,6 +33,18 @@ vi.mock('../../lib/submittals/submittalPackage', async (importOriginal) => {
   }
 })
 
+vi.mock('../../lib/submittals/pdfThumbnails', () => ({
+  renderPdfThumbnails: (bytes: ArrayBuffer) => Promise.resolve(Array.from({ length: Math.max(1, bytes.byteLength / 2) }, (_, i) => `data:page${i + 1}`)),
+}))
+
+vi.mock('../../lib/submittals/trimPdf', () => ({
+  pageCount: () => Promise.resolve(3),
+  trimPdf: (_bytes: ArrayBuffer, keep: number[]) => {
+    const sorted = [...new Set(keep)].sort((a, b) => a - b)
+    return Promise.resolve({ bytes: new Uint8Array([1]), map: Object.fromEntries(sorted.map((p, i) => [p, i + 1])), kept: sorted.length, dropped: 4 - sorted.length })
+  },
+}))
+
 vi.mock('../../hooks/useAuth', () => ({
   useAuth: () => ({ user: { id: 'wendi', email: 'wendi@x.test' }, profileName: 'Wendi', role: 'estimator' }),
 }))
@@ -136,6 +148,10 @@ vi.mock('../../lib/supabase', () => ({
           state.storage.push(`download ${path}`)
           return Promise.resolve({ data: { arrayBuffer: () => Promise.resolve(new ArrayBuffer(8)) }, error: null })
         },
+        remove: (paths: string[]) => {
+          state.storage.push(`remove ${paths.join(',')}`)
+          return Promise.resolve({ data: null, error: null })
+        },
         createSignedUrl: (path: string) => {
           state.storage.push(`sign ${path}`)
           return Promise.resolve({ data: { signedUrl: `https://signed.test/${path}` }, error: null })
@@ -205,7 +221,7 @@ describe('BidsSubmittalsTab', () => {
     expect(within(rows[0]!).getByText('sheet needed')).toBeTruthy()
     expect(within(rows[2]!).getByText(/✓ p\.1–2/)).toBeTruthy()
     expect(screen.getAllByTestId('product-status').map((c) => c.textContent)).toEqual(['Alternate', 'Missing', 'As specified'])
-    expect(screen.getByTestId('source-files').textContent).toMatch(/1 · NWS\.pdf · 12 pages/)
+    expect(screen.getByTestId('sheet-strip').textContent).toMatch(/NWS\.pdf · 12 pages/)
 
     fireEvent.click(within(rows[0]!).getByRole('button', { name: 'Edit DWH-1' }))
     const dialog = await screen.findByRole('dialog', { name: 'Edit DWH-1' })
@@ -279,5 +295,39 @@ describe('BidsSubmittalsTab', () => {
     await waitFor(() => expect(screen.getByRole('button', { name: 'Open package' })).toBeTruthy())
     expect(screen.getByTestId('revision-line').textContent).toMatch(/package built/)
     open.mockRestore()
+  })
+
+  it('the sheet strip: Show the pages draws them, a tap on a page then a row writes the pages, Done trims the file and rewrites the rows', async () => {
+    state.revisions = [{ id: 'rev-1', bid_id: 'b398', rev_number: 1, status: 'draft', title: 'Plumbing fixtures & equipment', note: null, package_path: null, source_files: [{ path: 'b398/rev-1/0.pdf', name: 'NWS.pdf', pages: 4, house_id: null, house_name: null, trimmed_at: null }], shared_at: null, created_at: '2026-09-15T00:00:00Z' }]
+    state.items = [
+      item({ id: 'it-1', tag: 'DWH-1', sequence_order: 1, specified_manufacturer: 'Rheem', specified_model: 'RH375', submitted_label: 'BW RE2HP50', status: 'alternate', reason_kind: 'lead_time' }),
+      item({ id: 'it-3', tag: 'WC-1', sequence_order: 2, specified_manufacturer: 'TOTO', specified_model: 'CT708UVG', submitted_label: 'TOTO CT708UVG#01', submitted_model: 'CT708UVG', status: 'as_specified', sheet_file: 0, sheet_pages: [4] }),
+    ]
+    state.writes = []
+    state.storage = []
+    mount()
+    await screen.findAllByTestId('submittal-row')
+    fireEvent.click(screen.getByRole('button', { name: 'Show the pages' }))
+    expect(await screen.findByRole('button', { name: 'Page 1' })).toBeTruthy()
+    expect(screen.getAllByRole('button', { name: /^Page \d$/ })).toHaveLength(4)
+    expect(screen.getByTestId('strip-footer').textContent).toBe('1 of 4 pages on rows · 3 not used')
+    fireEvent.click(screen.getByRole('button', { name: 'Page 2' }))
+    fireEvent.click(within(screen.getByTestId('row-chooser')).getByRole('button', { name: 'DWH-1 · sheet needed' }))
+    await waitFor(() => expect(state.writes.some((w) => w.op === 'update' && w.table === 'bid_submittal_items')).toBe(true))
+    expect(state.writes.find((w) => w.op === 'update' && w.table === 'bid_submittal_items')!.payload).toEqual({ sheet_file: 0, sheet_pages: [2], sheet_source: 'estimator' })
+    await waitFor(() => expect(screen.getByTestId('strip-footer').textContent).toBe('2 of 4 pages on rows · 2 not used'))
+    state.writes = []
+    fireEvent.click(screen.getByRole('button', { name: 'Done with this file' }))
+    await waitFor(() => expect(state.writes.some((w) => w.table === 'bid_submittals' && w.op === 'update')).toBe(true))
+    // Pages 2 and 4 kept → renumbered 1 and 2; the file record reads 2 pages, 2 let go.
+    const pageWrites = state.writes.filter((w) => w.table === 'bid_submittal_items').map((w) => [w.filters[0]?.[1], (w.payload as { sheet_pages: number[] }).sheet_pages])
+    expect(pageWrites).toEqual([
+      ['it-1', [1]],
+      ['it-3', [2]],
+    ])
+    const files = (state.writes.find((w) => w.table === 'bid_submittals')!.payload as { source_files: Array<Record<string, unknown>> }).source_files
+    expect(files[0]).toMatchObject({ path: 'b398/rev-1/0.pdf', pages: 2, dropped_pages: 2 })
+    expect(typeof files[0]!.trimmed_at).toBe('string')
+    expect(state.storage).toContain('upload b398/rev-1/0.pdf')
   })
 })

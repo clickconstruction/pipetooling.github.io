@@ -37,6 +37,14 @@ export type StripeInvoiceSharePanelProps = {
   unboxed?: boolean
   /** When true with `unboxed`, no top margin and inner row does not stretch full width (toolbar next to sibling buttons). */
   inlineRow?: boolean
+  /**
+   * Job window Invoices list (v2.3478): the three share actions as one labeled,
+   * bordered segment — Text · Copy link · Email — that the list's container
+   * query turns into a full-width 44px row on phones. Email is dimmed with the
+   * "add a customer email" hint as its title instead of a line of prose. Renders
+   * only the cluster (no pay page / Stripe buttons, no panel chrome).
+   */
+  labeledCluster?: boolean
   /** Z-index for SMS Bill Draft modal (above parent overlays). */
   smsDraftModalZIndex?: number
   /** Z-index for Email Bill Draft modal; defaults to `smsDraftModalZIndex` or 1300. */
@@ -117,6 +125,37 @@ export function StripeInvoiceSharePanel(p: StripeInvoiceSharePanelProps) {
 
   const hasEmail = Boolean((p.customerEmail ?? '').trim())
   const iconSize = p.compact ? 22 : 24
+
+  const labeledCluster = p.labeledCluster ? (
+    <span className="jobInvoiceChase" role="group" aria-label="Payment link">
+      <button type="button" onClick={openSmsBillDraft} title="Text the customer the payment link">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width={14} height={14} fill="none" stroke="currentColor" strokeWidth={2} aria-hidden>
+          <path d="M21 12a8 8 0 0 1-11.6 7.1L4 21l1.9-5.4A8 8 0 1 1 21 12z" />
+        </svg>
+        Text
+      </button>
+      <button type="button" onClick={() => void copyText(url, showToast, 'Payment link copied')} title="Copy the payment link">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width={14} height={14} fill="none" stroke="currentColor" strokeWidth={2} aria-hidden>
+          <rect x="9" y="9" width="11" height="11" rx="2" />
+          <path d="M5 15V5a2 2 0 0 1 2-2h10" />
+        </svg>
+        Copy link
+      </button>
+      <button
+        type="button"
+        onClick={hasEmail ? openEmailBillDraft : undefined}
+        aria-disabled={!hasEmail}
+        className={hasEmail ? undefined : 'off'}
+        title={hasEmail ? emailLabel : 'No customer email on the job — add one on the Job tab to use "Send email…"'}
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width={14} height={14} fill="none" stroke="currentColor" strokeWidth={2} aria-hidden>
+          <rect x="3" y="5" width="18" height="14" rx="2" />
+          <path d="m3 7 9 6 9-6" />
+        </svg>
+        Email
+      </button>
+    </span>
+  ) : null
 
   const paymentLinkCluster = p.paymentLinkActionsAsIcons ? (
     <span style={{ display: 'inline-flex', alignItems: 'center', flexWrap: 'wrap', gap: '0.35rem' }}>
@@ -227,8 +266,8 @@ export function StripeInvoiceSharePanel(p: StripeInvoiceSharePanelProps) {
   const emailZ = p.emailDraftModalZIndex ?? p.smsDraftModalZIndex ?? 1300
   const emailCopyText = `Subject: ${emailDraftSubject}\n\n${emailDraftBody}`
 
-  return (
-    <div style={outerStyle}>
+  const modals = (
+    <>
       <SmsBillDraftModal
         open={smsDraftOpen}
         onClose={() => setSmsDraftOpen(false)}
@@ -248,6 +287,21 @@ export function StripeInvoiceSharePanel(p: StripeInvoiceSharePanelProps) {
         onOpenMailto={openMailtoWithDraft}
         onCopy={() => void copyText(emailCopyText, showToast, 'Email draft copied')}
       />
+    </>
+  )
+
+  if (labeledCluster) {
+    return (
+      <>
+        {modals}
+        {labeledCluster}
+      </>
+    )
+  }
+
+  return (
+    <div style={outerStyle}>
+      {modals}
       <div style={rowStyle}>
         {paymentLinkCluster}
         {!p.omitCustomerPayPage ? (

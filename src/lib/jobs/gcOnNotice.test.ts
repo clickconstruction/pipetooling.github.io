@@ -139,7 +139,7 @@ describe('the words', () => {
   })
 })
 
-describe('the cover letter (v2.3478)', () => {
+describe('the cover letter (v2.3482)', () => {
   it('the default names the GC and the claimant, carries the three fills, and fills per notice', async () => {
     const { defaultGcNoticeCoverLetter, fillCoverLetter, coverLetterParagraphs, COVER_LETTER_FILLS } = await import('./gcOnNotice')
     const t = defaultGcNoticeCoverLetter({ gcName: 'Harborline Builders', claimantName: 'Click Plumbing and Electrical' })

@@ -128,7 +128,7 @@ export async function buildDemandLetterPacket(
   }
 }
 
-/** Concatenate PDFs in order, no stamps, no footers (v2.3478: the cover letter in front of an emailed notice). */
+/** Concatenate PDFs in order, no stamps, no footers (v2.3482: the cover letter in front of an emailed notice). */
 export async function mergePdfBlobs(blobs: readonly Blob[], loadPdfLib: () => Promise<PdfLibLike> = async () => (await import('pdf-lib')) as unknown as PdfLibLike): Promise<Blob> {
   const lib = await loadPdfLib()
   const out = await lib.PDFDocument.create()

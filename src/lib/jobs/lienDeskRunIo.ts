@@ -17,7 +17,7 @@ import { noticeInvoiceExhibitInputs, type NoticeInvoiceDoc } from './noticeInvoi
 async function emailNoticePdf(n: RunNotice, recipientKey: 'owner' | 'original_contractor', toEmail: string, invoiceDocs: readonly NoticeInvoiceDoc[]): Promise<string> {
   const r = n.recipients.find((x) => x.key === recipientKey)!
   const form = await filingDocPdfBlob(runNoticeBlocks(n, r), { footer: filingDocFooter('notice_53_056') })
-  // The run's cover letter (v2.3478) rides in front of the owner's copy, as the printed packet prints it.
+  // The run's cover letter (v2.3482) rides in front of the owner's copy, as the printed packet prints it.
   const notice = recipientKey === 'owner' && n.coverLetter ? await mergePdfBlobs([await filingDocPdfBlob(runCoverNoteBlocks(n)), form]) : form
   // The unpaid invoices ride behind the notice, stamped INVOICE (v2.3437, § 53.056(a-3)).
   const blob = invoiceDocs.length > 0 ? (await buildDemandLetterPacket(notice, await noticeInvoiceExhibitInputs(invoiceDocs, buildPhysicalInvoicePdfBlob))).blob : notice

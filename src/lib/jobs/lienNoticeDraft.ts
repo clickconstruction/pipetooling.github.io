@@ -70,7 +70,7 @@ export type LienDeskDraftFields = {
   skipReason?: string
   /** Put a GC on notice (v2.3470): the run's reason, kept on every notice in it — "GC is not paying its subs — <note>". */
   batchReason?: string
-  /** Put a GC on notice (v2.3478): the cover letter written once for the run, with its fills unresolved; replaces the standard cover note on this item. */
+  /** Put a GC on notice (v2.3482): the cover letter written once for the run, with its fills unresolved; replaces the standard cover note on this item. */
   coverLetter?: string
 }
 

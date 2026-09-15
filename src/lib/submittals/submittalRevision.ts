@@ -30,6 +30,8 @@ export type SourceFile = {
   pages: number
   /** Set once "Done with this file" let the unused pages go (stage 3). */
   trimmedAt: string | null
+  /** How many pages Done let go, for the quiet line under the strip. */
+  droppedPages: number | null
 }
 
 const STATUSES: ReadonlySet<string> = new Set(['as_specified', 'superseded', 'equal', 'alternate', 'design_change', 'missing', 'accessory'])
@@ -61,6 +63,7 @@ export function parseSourceFiles(json: unknown): SourceFile[] {
       name: typeof r.name === 'string' && r.name ? r.name : r.path.split('/').pop() ?? 'file.pdf',
       pages: typeof r.pages === 'number' && Number.isFinite(r.pages) && r.pages >= 0 ? Math.floor(r.pages) : 0,
       trimmedAt: typeof r.trimmed_at === 'string' ? r.trimmed_at : null,
+      droppedPages: typeof r.dropped_pages === 'number' && Number.isFinite(r.dropped_pages) ? Math.max(0, Math.floor(r.dropped_pages)) : null,
     })
   }
   return out
@@ -68,7 +71,7 @@ export function parseSourceFiles(json: unknown): SourceFile[] {
 
 /** Typed files → the jsonb column. */
 export function serializeSourceFiles(files: ReadonlyArray<SourceFile>): Array<Record<string, unknown>> {
-  return files.map((f) => ({ path: f.path, house_id: f.houseId, house_name: f.houseName, name: f.name, pages: f.pages, trimmed_at: f.trimmedAt }))
+  return files.map((f) => ({ path: f.path, house_id: f.houseId, house_name: f.houseName, name: f.name, pages: f.pages, trimmed_at: f.trimmedAt, dropped_pages: f.droppedPages }))
 }
 
 /** A stored item as the row kernel's "previous revision" input. */

@@ -1,6 +1,6 @@
 # Put a GC on notice — every owner on every job with a failing GC, in one approved run
 
-Status: **built** 2026-09-15 — PR 0 v2.3469 (#3214) · PR 1 v2.3470 (#3217) · PR 2 v2.3478 (#3228) · PR 3 v2.3479 · both migrations pushed · live pass of the modal on real data (read-only) in the PR 2 notes · left: the residuals below (a GC-wide demand letter, one envelope for two notices, the attorney's § 53.081 wording) and the first real run on a TEST GC — then delete this file · second-pass mock-ups at the Claude artifact *Put a GC on Notice* · first mock-up: [`mockup.html`](./mockup.html) · built on the Lien desk (v2.3405 / v2.3410 / v2.3412)
+Status: **built** 2026-09-15 — PR 0 v2.3469 (#3214) · PR 1 v2.3470 (#3217) · PR 2 v2.3482 (#3228) · PR 3 v2.3479 · both migrations pushed · live pass of the modal on real data (read-only) in the PR 2 notes · left: the residuals below (a GC-wide demand letter, one envelope for two notices, the attorney's § 53.081 wording) and the first real run on a TEST GC — then delete this file · second-pass mock-ups at the Claude artifact *Put a GC on Notice* · first mock-up: [`mockup.html`](./mockup.html) · built on the Lien desk (v2.3405 / v2.3410 / v2.3412)
 
 ## The ask, in the owner's words
 
