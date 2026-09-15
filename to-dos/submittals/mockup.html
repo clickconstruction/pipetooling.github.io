@@ -1,0 +1,585 @@
+<meta charset="utf-8">
+<title>Submittals — mock-up (static copy of the design canvas)</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+:root{
+  --ground:#f0f2f5; --surface:#ffffff; --surface-2:#f9fafb; --muted-bg:#f3f4f6; --border:#e5e7eb; --border-strong:#d1d5db;
+  --ink:#1a1a1a; --strong:#111827; --muted:#6b7280; --faint:#767f8d;
+  --blue:#2563eb; --blue-soft:#eff6ff; --blue-ink:#1d4ed8;
+  --red:#dc2626; --red-soft:#fef2f2; --red-ink:#b91c1c;
+  --amber:#d97706; --amber-soft:#fffbeb; --amber-ink:#b45309;
+  --green:#16a34a; --green-soft:#ecfdf5; --green-ink:#15803d;
+  --violet:#7c3aed; --violet-soft:#f5f3ff; --violet-ink:#5b21b6;
+  --teal-soft:#f0fdfa; --teal-ink:#0f766e;
+  --shadow:0 20px 50px rgba(20,30,26,.14);
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--ground);color:var(--ink);font:14px/1.5 "IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif}
+a{color:var(--blue)} a:hover{color:var(--blue-ink)}
+.num{font-variant-numeric:tabular-nums}
+.mono{font-family:"IBM Plex Mono",ui-monospace,Menlo,monospace}
+h1{font-size:22px;line-height:1.2;margin:0;font-weight:600;letter-spacing:-.01em}
+h2{font-size:17px;margin:0;font-weight:600} h3{font-size:14px;margin:0;font-weight:600} p{margin:0}
+.eyebrow{font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.muted{color:var(--muted)} .small{font-size:12px} .xs{font-size:11.5px}
+.chip{display:inline-block;border-radius:999px;padding:0 8px;font-size:11px;font-weight:600;line-height:18px;white-space:nowrap;vertical-align:middle}
+.chip.red{background:var(--red-soft);color:var(--red-ink)} .chip.amber{background:var(--amber-soft);color:var(--amber-ink)}
+.chip.green{background:var(--green-soft);color:var(--green-ink)} .chip.blue{background:var(--blue-soft);color:var(--blue-ink)}
+.chip.gray{background:var(--muted-bg);color:var(--muted)} .chip.violet{background:var(--violet-soft);color:var(--violet-ink)}
+.chip.teal{background:var(--teal-soft);color:var(--teal-ink)}
+.chip.solid-green{background:var(--green);color:#fff} .chip.solid-blue{background:var(--blue);color:#fff}
+.btn{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--border-strong);background:var(--surface);color:var(--ink);border-radius:8px;padding:6px 12px;font:inherit;font-size:12.5px;font-weight:500;white-space:nowrap;line-height:1.3}
+.btn.primary{background:var(--blue);border-color:var(--blue);color:#fff} .btn.green{background:var(--green);border-color:var(--green);color:#fff}
+.btn.amber{background:var(--amber);border-color:var(--amber);color:#fff} .btn.ghost{border-color:transparent;color:var(--blue)}
+.btn.big{padding:12px 16px;font-size:15px;font-weight:600;border-radius:10px}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px 16px;display:grid;gap:8px}
+.box{border:1px solid var(--border);border-radius:9px;padding:10px 12px;display:grid;gap:6px;background:var(--surface)}
+.box .bh{font-size:10.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+table.t{width:100%;border-collapse:collapse;font-size:12.5px}
+table.t th{text-align:left;font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);padding:6px 8px 6px 0;border-bottom:1px solid var(--border);font-weight:600}
+table.t td{padding:8px 8px 8px 0;border-bottom:1px solid var(--border);vertical-align:top}
+table.t td .sub{color:var(--muted);font-size:11.5px}
+table.t tr.dim td{color:var(--faint)}
+.r{text-align:right}
+.mark{display:inline-grid;place-items:center;width:18px;height:18px;border-radius:50%;background:#fff9db;color:#6b5300;font-size:11px;font-weight:700;border:1px solid #6b5300;flex-shrink:0;vertical-align:middle}
+.notes{display:grid;gap:8px;padding:0;margin:0}
+.notes li{display:grid;grid-template-columns:22px 1fr;gap:10px;align-items:start;list-style:none;color:var(--muted);font-size:12.5px}
+.notes li b{color:var(--ink);font-weight:600}
+.tabs{display:flex;gap:2px;border-bottom:1px solid var(--border);font-size:12.5px}
+.tabs span{padding:8px 12px;color:var(--muted)} .tabs span.on{color:var(--ink);font-weight:600;border-bottom:2px solid var(--blue);margin-bottom:-1px}
+.tabs span.new{color:var(--violet-ink)}
+.strip{display:grid;gap:10px}
+.tile{border:1px solid var(--border);border-radius:9px;padding:9px 10px;background:var(--surface)}
+.tile .t{font-size:11px;color:var(--muted)} .tile .v{font-size:19px;font-weight:700;line-height:1.2} .tile .n{font-size:11px;color:var(--muted)}
+.tile.red{border-color:#fecaca;background:var(--red-soft)} .tile.amber{border-color:#fde68a;background:var(--amber-soft)} .tile.green{border-color:#bbf7d0;background:var(--green-soft)}
+.pillrow{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.seg{display:inline-flex;border:1px solid var(--border-strong);border-radius:7px;overflow:hidden;font-size:11.5px}
+.seg span{padding:4px 9px;color:var(--muted)} .seg span.on{background:var(--strong);color:#fff}
+.seg span.g.on{background:var(--green)} .seg span.a.on{background:var(--amber)} .seg span.r.on{background:var(--red)}
+.input{border:1px solid var(--border-strong);border-radius:7px;padding:6px 9px;font-size:12.5px;background:var(--surface);color:var(--ink);min-height:32px}
+.input.ph{color:var(--faint)}
+.letter{border:1px solid var(--border);border-radius:8px;background:#fff;color:#111;padding:14px 18px;font-family:Georgia,serif;font-size:12.5px;line-height:1.5;display:grid;gap:6px}
+.svg{width:16px;height:16px;vertical-align:-3px}
+.pp{--ink:#16283c;--paper:#f6f3ec;--card:#fdfcf9;--muted:#5a6b7e;--faint:#8a97a6;--hair:#ddd6c8;--copper:#b0662f;--band:#f1ece2;--pgreen:#1f7a3a;--pred:#b42318;--plum:#e17235;
+  background:var(--paper);color:var(--ink);font-family:-apple-system,"Segoe UI",Roboto,sans-serif;font-size:13.5px;line-height:1.5}
+.pp .wrap{max-width:730px;margin:0 auto}
+.pp .logo{font-size:27px;font-weight:900;letter-spacing:-.03em;line-height:1}
+.pp .tag{font-size:11px;font-weight:600;letter-spacing:.22em;text-transform:uppercase;color:var(--muted);margin-top:4px}
+.pp .rule{height:3px;background:var(--ink)}
+.pp .lbl{font-size:10.5px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:var(--muted)}
+.pp .lbl.copper{color:var(--copper);letter-spacing:.14em}
+.pp .band{background:var(--band);display:flex;justify-content:space-between;align-items:baseline;gap:14px;flex-wrap:wrap;padding:8px 10px;margin-top:16px;font-size:13.5px}
+.pp .asgc{margin-left:7px;vertical-align:1px;font-size:8.5px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--copper);border:1px solid var(--copper);border-radius:3px;padding:1.5px 5px;white-space:nowrap}
+.pp .line{display:grid;grid-template-columns:84px 1fr auto;gap:0 18px;align-items:center;padding:7px 10px 9px;border-bottom:1px solid var(--hair);font-size:12.5px}
+.pp .line .m{color:var(--muted)} .pp .line .m b{color:var(--ink)}
+.pp .pcard{background:var(--card);border:1px solid var(--hair);padding:1rem 1.3rem;margin-top:12px}
+.pp .pbtn{display:inline-block;border:1px solid var(--ink);color:var(--ink);background:transparent;border-radius:3px;padding:5px 12px;font-size:12px;font-weight:700;white-space:nowrap}
+.pp .pbtn.fill{background:var(--ink);color:#fff}
+.pp .pbtn.copper{border:none;color:var(--copper);padding:5px 0}
+.pp .step{display:flex;gap:12px;align-items:flex-start;position:relative;padding-bottom:14px}
+.pp .dot{width:26px;height:26px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0;box-sizing:border-box}
+.pp .dot.done{background:var(--pgreen);color:#fff} .pp .dot.now{background:var(--ink);color:#fff} .pp .dot.next{border:1.5px solid #c9d2dc;color:var(--muted)} .pp .dot.later{border:1.5px solid var(--hair);color:var(--faint)}
+.pp table.rv{width:100%;border-collapse:collapse;font-size:12.5px}
+.pp table.rv th{text-align:left;font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);padding:6px 8px 6px 0;border-bottom:1px solid var(--hair);font-weight:700}
+.pp table.rv td{padding:8px 8px 8px 0;border-bottom:1px solid var(--hair);vertical-align:top}
+.pp .pseg{display:inline-flex;border:1px solid var(--hair);border-radius:3px;overflow:hidden;font-size:11px}
+.pp .pseg span{padding:3px 8px;color:var(--muted)} .pp .pseg span.on{background:var(--ink);color:#fff} .pp .pseg span.g.on{background:var(--pgreen)} .pp .pseg span.a.on{background:var(--copper)} .pp .pseg span.r.on{background:var(--pred)}
+.pp .pinput{border:1px solid var(--hair);background:#fff;border-radius:3px;padding:6px 9px;font-size:12.5px;color:var(--faint)}
+.pp .need{background:var(--card);border:1px solid var(--copper);border-left-width:4px;padding:10px 14px;margin-top:14px}
+.pp .need .row{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center;padding:7px 0;border-top:1px solid var(--hair)}
+.pp .need .row:first-of-type{border-top:none}
+.pp .thread{display:grid;gap:10px;margin-top:8px}
+.pp .msg{display:grid;grid-template-columns:110px 1fr;gap:12px;font-size:12.5px}
+.pp .msg .who{color:var(--muted);font-size:11.5px;line-height:1.4} .pp .msg .who b{color:var(--ink);display:block}
+.pp .msg.us .who b{color:var(--copper)}
+.pp .quiet{font-size:11.5px;color:var(--faint)}
+body{padding:32px clamp(16px,4vw,48px) 80px}.mock-wrap{display:grid;gap:56px;max-width:1300px;margin:0 auto}.mock-head h1{font-size:26px;margin:0 0 6px}.mock-head p{color:var(--muted);max-width:80ch}.board{overflow-x:auto;border:1px solid var(--border);border-radius:12px;background:var(--surface)}.board>div{margin:0 auto}.board-title{font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:0 0 8px}
+</style>
+<div class="mock-wrap">
+<div class="mock-head"><h1>Submittals — the product decision, one row per tag</h1><p>Static copy of the design canvas (https://claude.ai/artifact/2tUmSFQPqNaedEhQbeJVaX), 2026-09-14. Read top to bottom: Draft A (the literal ask), the critique, Draft B, the moments, then the portal (Draft A, the critique, Draft C). Every product row is SpaceX BA-02N as the thread and the NWS quote describe them. The plan is in README.md beside this file.</p></div>
+<section><p class="board-title">Draft A · the Submittals desk on the bid</p><div class="board"><div style="width:1240px;background:var(--ground);padding:20px 24px 28px;display:grid;gap:14px">
+  <div class="eyebrow">Draft A · Bids → a new tab after Cover Letter · SpaceX BA-02N Architectural · B375</div>
+  <div class="tabs"><span>Counts</span><span>Takeoffs</span><span>Labor</span><span>Pricing</span><span>Cover Letter</span><span class="on new">Submittals</span><span>RFI</span><span>Change Order</span><span>Lien Release</span></div>
+
+  <div class="card" style="gap:12px">
+    <div style="display:flex;justify-content:space-between;gap:16px;align-items:flex-start;flex-wrap:wrap">
+      <div style="display:grid;gap:4px">
+        <h1>Submittals · plumbing fixtures &amp; equipment</h1>
+        <p class="muted small">Products from the picked quote: <b style="color:var(--ink)">National Wholesale Supply · S6277623 · Sep 2</b> · Moore Supply's Aug 26 quote superseded · reviewer <b style="color:var(--ink)">Structura</b> · won Aug 25 → J1007 · both quotes taken after the win</p>
+      </div>
+      <div class="pillrow">
+        <span class="btn">Ask NWS for cut sheets</span>
+        <span class="btn">Drop the vendor's PDF</span>
+        <span class="btn primary">Build rev 3 &amp; share with Structura</span>
+      </div>
+    </div>
+
+    <div class="strip" style="grid-template-columns:repeat(6,1fr)">
+      <div class="tile"><div class="t">Rows</div><div class="v">22</div><div class="n">18 scheduled · 4 accessories</div></div>
+      <div class="tile green"><div class="t">As specified</div><div class="v">6</div><div class="n">+ 1 superseded · 1 equal per note</div></div>
+      <div class="tile amber"><div class="t">Alternates</div><div class="v">8</div><div class="n">5 still need a reason</div></div>
+      <div class="tile red"><div class="t">Design change</div><div class="v">1</div><div class="n">WC flush valve · 1.28 vs 1.0 gpf</div></div>
+      <div class="tile red"><div class="t">Missing</div><div class="v">1</div><div class="n">PRV-1 · ¾" LF223</div></div>
+      <div class="tile"><div class="t">Cut sheets in</div><div class="v">14 of 22</div><div class="n">8 waiting on NWS</div></div>
+    </div>
+
+    <div class="box" style="background:var(--surface-2)">
+      <div class="bh">Package history</div>
+      <div style="display:grid;grid-template-columns:auto 1fr auto;gap:8px 14px;font-size:12.5px;align-items:center">
+        <span class="chip gray">Rev 1</span><span>Aug 28 · built from <b>Moore Supply</b> quote · sent to Gabriel M. · <span class="chip red">10 rows redlined by Logan P. · Sep 1</span></span><span class="muted xs">PDF on file</span>
+        <span class="chip gray">Rev 2</span><span>Sep 10 · built from <b>NWS</b> quote · <span class="chip amber">sent by Mail Drop · no copy on file</span> · Steven R. asked for the alternates list Sep 14</span><span class="muted xs">missing <span class="mark">1</span></span>
+        <span class="chip blue">Rev 3</span><span class="muted">draft · reasons and lead times still filling in · 2 of Logan's 10 rows carried, each with an answer</span><span></span>
+      </div>
+    </div>
+
+    <table class="t">
+      <thead><tr><th style="width:70px">Tag</th><th>Specified <span class="muted" style="text-transform:none;letter-spacing:0;font-weight:500">(schedule)</span></th><th>Submitted <span class="muted" style="text-transform:none;letter-spacing:0;font-weight:500">(picked line)</span></th><th style="width:120px">Status</th><th>Reason</th><th style="width:90px">Lead time</th><th style="width:80px">Sheet</th><th style="width:70px">Rev 1 note</th></tr></thead>
+      <tbody>
+        <tr><td><b>WC-1, 2</b><div class="sub">bowl</div></td><td>TOTO CT708UVG#01</td><td>TOTO CT728CUVG#01<div class="sub">NWS · p.2</div></td><td><span class="chip blue">Superseded</span></td><td>CT708 discontinued by TOTO; CT728 is the current Tornado Flush replacement.<div class="sub">drafted from the TOTO sheet · <span style="color:var(--blue)">attach notice</span></div></td><td class="num">2 wk</td><td><span class="chip green">✓ p.2</span></td><td><span class="chip gray">resolved</span></td></tr>
+        <tr><td><b>WC-1, 2</b><div class="sub">flush valve</div></td><td>TOTO TET2UA31#SS · 1.0 gpf</td><td>TOTO TET2LB31#SS · 1.28 gpf<div class="sub">NWS · p.2</div></td><td><span class="chip red">Design change</span></td><td><span class="input ph" style="display:block">1.28 gpf changes the water use the engineer designed to — say why, or resubmit TET2UB31 at 1.0</span></td><td class="num">3 wk</td><td><span class="chip green">✓ p.3</span></td><td><span class="chip red">carried</span></td></tr>
+        <tr><td><b>DWH-1</b></td><td>Rheem PROPH40 RH375 · 40 gal</td><td>Bradford White RE2HP50 · 50 gal<div class="sub">NWS · p.5</div></td><td><span class="chip amber">Alternate</span></td><td><span class="pillrow"><span class="chip amber">lead time</span><span class="chip gray">discontinued</span><span class="chip gray">in stock</span><span class="chip gray">equal</span></span><div class="sub">tap one; the quote says 3–4 weeks on the specified unit, the BW is in stock</div></td><td class="num">1 wk</td><td><span class="chip green">✓ p.5</span></td><td><span class="chip red">carried</span></td></tr>
+        <tr><td><b>RPZ-1</b></td><td>Zurn-Wilkins 375 · 4"</td><td>Watts 957-NRS-FS · 4"<div class="sub">NWS · p.6</div></td><td><span class="chip amber">Alternate</span></td><td><span class="input ph" style="display:block">reason from Kim</span></td><td class="muted">ask</td><td><span class="chip amber">waiting</span></td><td></td></tr>
+        <tr><td><b>PRV-1</b></td><td>Watts LFF116 4" + LF223 ¾"</td><td>LFF116 4" only</td><td><span class="chip red">Missing</span></td><td>¾" LF223 not on the quote — <span style="color:var(--blue)">ask NWS to add it</span></td><td class="muted">—</td><td><span class="chip gray">—</span></td><td></td></tr>
+        <tr><td><b>LAV-1, 2</b><div class="sub">mixing valve</div></td><td>Webstone H-77201W <i>or similar</i></td><td>Leonard 170D-LF · ASSE 1070<div class="sub">NWS · p.4</div></td><td><span class="chip green">Equal · per note</span></td><td>Schedule says "similar to". Set to 110 °F.</td><td class="num">1 wk</td><td><span class="chip green">✓ p.4</span></td><td></td></tr>
+        <tr><td><b>FD-1, FD-2</b></td><td>JR Smith 2005 series</td><td>Josam 30000-6A / 30000-7E1<div class="sub">NWS · p.8</div></td><td><span class="chip amber">Alternate</span></td><td>Single-source Josam drainage package with the roof drains.<div class="sub">Rev 1 had JR Smith; the switch is new in Rev 3</div></td><td class="num">2 wk</td><td><span class="chip green">✓ p.8</span></td><td></td></tr>
+        <tr><td><b>HB-3</b></td><td>Woodford B74-CH</td><td>Woodford B74C<div class="sub">NWS · p.9</div></td><td><span class="chip green">As specified</span></td><td class="muted">suffix only — confirm with Kim <span class="mark">2</span></td><td class="num">stock</td><td><span class="chip green">✓ p.9</span></td><td></td></tr>
+        <tr><td><b>ET-1</b></td><td>Amtrol ST-12</td><td>Amtrol ST-12<div class="sub">NWS · p.5</div></td><td><span class="chip green">As specified</span></td><td class="muted">—</td><td class="num">stock</td><td><span class="chip green">✓ p.5</span></td><td></td></tr>
+        <tr class="dim"><td><b>—</b><div class="sub">carriers</div></td><td class="muted">not on schedule</td><td>Josam WC / urinal / cooler carriers</td><td><span class="chip gray">Accessory</span></td><td>Required by the fixture; the schedule leaves it to the contractor. <span class="mark">3</span></td><td class="num">4 wk</td><td><span class="chip green">✓ p.7</span></td><td></td></tr>
+        <tr><td colspan="8" class="muted xs" style="padding:8px 0">+ 12 more rows · the same eight columns · 22 rows: 6 as specified · 1 superseded · 1 equal · 8 alternates · 1 design change · 1 missing · 4 accessories · sort by <b>needs a reason</b> first, then by lead time against the Top-out window (Oct 2)</td></tr>
+      </tbody>
+    </table>
+
+    <div style="display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap;border-top:1px solid var(--border);padding-top:10px">
+      <p class="muted small"><b style="color:var(--ink)">Rev 3 renders as one PDF:</b> this table as the cover sheet, then the cut sheets in tag order, each stamped with its tag and status. The copy lands on the bid, the job, and the Drive job folder.</p>
+      <div class="pillrow"><span class="btn">Preview PDF</span><span class="btn primary">Share with Structura</span></div>
+    </div>
+  </div>
+
+  <ul class="notes">
+    <li><span class="mark">1</span><span><b>The record that was never in the building.</b> Rev 2 went out by iCloud Mail Drop; neither the office nor Robert's mailbox ever had it. The desk makes the app the sender, so a revision exists before it can be sent.</span></li>
+    <li><span class="mark">2</span><span><b>Status is derived, reason is typed.</b> Specified and submitted are compared by model number; the estimator only writes where the status says so. A "reason from Kim" is one email, sent from the row.</span></li>
+    <li><span class="mark">3</span><span><b>Accessories are named, not hidden.</b> Carriers, pans, stops and traps were the rows Steven read as unexplained alternates. One category and one standing sentence answers that forever.</span></li>
+  </ul>
+</div>
+</div></section>
+<section><p class="board-title">Draft A · the house's cut-sheet page</p><div class="board"><div style="width:390px;background:#fff;min-height:1060px;padding:18px 16px 24px;display:grid;gap:14px;align-content:start;color:#1a1a1a">
+  <div class="eyebrow">Draft A · the house's page · no login · like the quote page</div>
+  <div style="display:grid;gap:3px">
+    <h1 style="font-size:19px">Cut sheets for SpaceX BA-02N</h1>
+    <p class="muted small">Click Plumbing · from your quote <span class="mono">S6277623</span> · 21 items you priced · 1 we still need</p>
+  </div>
+
+  <div class="box" style="background:var(--blue-soft);border-color:#bfdbfe;gap:8px">
+    <div style="font-size:13px"><b>Drop your whole submittal PDF here</b></div>
+    <p class="xs muted">We split it by tag and file each sheet on its line. Or attach sheets one at a time below.</p>
+    <span class="btn primary" style="justify-content:center">Choose a file</span>
+  </div>
+
+  <div style="display:grid;gap:8px">
+    <div class="box" style="gap:6px">
+      <div style="display:flex;justify-content:space-between;gap:8px;align-items:baseline"><b>WC-1, 2 · bowl</b><span class="chip green">sheet in</span></div>
+      <div class="small">TOTO CT728CUVG#01 <span class="muted">· you quoted $410 ea</span></div>
+      <div class="xs muted">Plans call for <b>CT708UVG</b>. Why yours instead?</div>
+      <div class="pillrow"><span class="chip gray">in stock</span><span class="chip solid-blue">discontinued</span><span class="chip gray">lead time</span><span class="chip gray">equal</span></div>
+      <div class="xs muted">Lead time <span class="seg"><span>stock</span><span>1 wk</span><span class="on">2 wk</span><span>4 wk+</span></span></div>
+    </div>
+
+    <div class="box" style="gap:6px">
+      <div style="display:flex;justify-content:space-between;gap:8px;align-items:baseline"><b>RPZ-1 · backflow</b><span class="chip amber">sheet needed</span></div>
+      <div class="small">Watts 957-NRS-FS · 4"</div>
+      <div class="xs muted">Plans call for <b>Zurn-Wilkins 375 · 4"</b>. Why yours instead?</div>
+      <div class="pillrow"><span class="chip gray">in stock</span><span class="chip gray">discontinued</span><span class="chip gray">lead time</span><span class="chip gray">equal</span></div>
+      <div class="xs muted">Lead time <span class="seg"><span>stock</span><span>1 wk</span><span>2 wk</span><span>4 wk+</span></span></div>
+      <span class="btn" style="justify-content:center">Attach the sheet</span>
+    </div>
+
+    <div class="box" style="gap:6px">
+      <div style="display:flex;justify-content:space-between;gap:8px;align-items:baseline"><b>PRV-1 · ¾" LF223</b><span class="chip red">not on your quote</span></div>
+      <div class="xs muted">The plans want a ¾" Watts LF223 beside the 4". Can you add it?</div>
+      <div class="pillrow"><span class="btn" style="font-size:12px">Add a price</span><span class="btn" style="font-size:12px">Can't supply</span></div>
+    </div>
+
+    <div class="box" style="gap:6px">
+      <div style="display:flex;justify-content:space-between;gap:8px;align-items:baseline"><b>HB-3 · hose bibb</b><span class="chip green">sheet in</span></div>
+      <div class="small">Woodford B74C</div>
+      <div class="xs muted">Plans call for <b>B74-CH</b>. Same unit? <span class="seg"><span class="on g">yes</span><span>no</span></span></div>
+    </div>
+
+    <div class="muted xs" style="text-align:center">+ 18 more · specified rows first, accessories last</div>
+  </div>
+
+  <div class="box" style="background:var(--surface-2);gap:6px;position:sticky;bottom:0">
+    <div class="small"><b>14 of 22 sheets in</b> · 5 reasons still blank — partial is fine</div>
+    <div class="xs muted">Saves on this phone as you go · nothing of ours is priced on this page</div>
+    <span class="btn green big" style="justify-content:center">Send what's here</span>
+  </div>
+</div>
+</div></section>
+<section><p class="board-title">Draft A · the GC's review page</p><div class="board"><div style="width:1100px;background:#fff;padding:22px 26px 28px;display:grid;gap:14px;color:#1a1a1a">
+  <div class="eyebrow">Draft A · the GC's review page · a Bid Room-style link · what Structura opens</div>
+  <div style="display:flex;justify-content:space-between;gap:16px;align-items:flex-start;flex-wrap:wrap">
+    <div style="display:grid;gap:3px">
+      <h1>Submittal · Plumbing fixtures &amp; equipment · Rev 3</h1>
+      <p class="muted small">SpaceX BA-02N Architectural · Click Plumbing · issued Sep 15 · replaces Rev 2 (Sep 10) · <b style="color:var(--ink)">12 of 22 rows unchanged since your Rev 1 comments</b></p>
+    </div>
+    <div class="pillrow"><span class="btn">Download PDF</span><span class="btn">Print</span></div>
+  </div>
+
+  <div class="strip" style="grid-template-columns:repeat(4,1fr)">
+    <div class="tile green"><div class="t">As specified</div><div class="v">8</div><div class="n">incl. 1 superseded · 1 equal per note</div></div>
+    <div class="tile amber"><div class="t">Proposed alternates</div><div class="v">8</div><div class="n">reason on every row · plus 1 item added: PRV-1 ¾"</div></div>
+    <div class="tile red"><div class="t">Needs your call</div><div class="v">1</div><div class="n">WC flush valve · 1.28 vs 1.0 gpf · 4 accessories listed</div></div>
+    <div class="tile"><div class="t">Your Rev 1 comments</div><div class="v">10</div><div class="n">8 resolved · 2 carried with an answer</div></div>
+  </div>
+
+  <table class="t">
+    <thead><tr><th style="width:80px">Tag</th><th>Specified</th><th>Submitted</th><th>Reason · lead time</th><th style="width:160px">Sheet</th><th style="width:230px">Your decision</th></tr></thead>
+    <tbody>
+      <tr><td><b>ET-1</b></td><td>Amtrol ST-12</td><td>Amtrol ST-12</td><td class="muted">as specified · stock</td><td><span class="chip green">p.5 · view</span></td><td><span class="seg"><span class="g on">Approve</span><span>Revise</span><span>Reject</span></span></td></tr>
+      <tr><td><b>WC-1, 2</b><div class="sub">bowl</div></td><td>TOTO CT708UVG#01</td><td>TOTO CT728CUVG#01</td><td><span class="chip blue">superseded</span> CT708 discontinued; CT728 is TOTO's replacement · TOTO notice attached · 2 wk<div class="sub">Rev 1: "CT708 per specs?" → answered</div></td><td><span class="chip green">p.2 · view</span></td><td><span class="seg"><span class="g on">Approve</span><span>Revise</span><span>Reject</span></span></td></tr>
+      <tr style="background:var(--red-soft)"><td><b>WC-1, 2</b><div class="sub">flush valve</div></td><td>TOTO TET2UA31 · 1.0 gpf</td><td>TOTO TET2LB31 · 1.28 gpf</td><td><span class="chip red">design change</span> Specified valve shows limited inventory. If 1.0 gpf is required we resubmit TET2UB31 at 1.0 · 3 wk<div class="sub">Rev 1 had TET2UB31 at 1.0 gpf, flagged → carried with the offer</div></td><td><span class="chip green">p.3 · view</span></td><td><div style="display:grid;gap:4px"><span class="seg"><span>Approve</span><span class="a on">Revise</span><span>Reject</span></span><span class="input xs" style="min-height:28px">Hold 1.0 gpf — SpaceX water budget. Resubmit TET2UB31.</span></div></td></tr>
+      <tr><td><b>DWH-1</b></td><td>Rheem PROPH40 RH375 · 40 gal</td><td>Bradford White RE2HP50 · 50 gal</td><td><span class="chip amber">alternate</span> Specified unit 3–4 wk out at every house; BW in stock, same recovery, larger tank · 1 wk<div class="sub">Rev 1 had the Rheem RH400: "RH375 per specs?" → answered</div></td><td><span class="chip green">p.5 · view</span></td><td><span class="seg"><span class="g on">Approve</span><span>Revise</span><span>Reject</span></span></td></tr>
+      <tr><td><b>RD-2, RD-4</b></td><td>Josam 21512 / 215 overflow</td><td>Josam 29100-AER-174 + 4" dam collar</td><td><span class="chip amber">alternate</span> Same body with a dam collar in place of the overflow series; 21500 available on request · 2 wk</td><td><span class="chip green">p.8 · view</span></td><td><div style="display:grid;gap:4px"><span class="seg"><span>Approve</span><span>Revise</span><span class="r on">Reject</span></span><span class="input xs" style="min-height:28px">Use the 21500 series as drawn.</span></div></td></tr>
+      <tr class="dim"><td><b>—</b><div class="sub">carriers</div></td><td class="muted">not on schedule</td><td>Josam WC / urinal / cooler carriers</td><td class="muted">required accessory the schedule leaves to the contractor · 4 wk</td><td><span class="chip green">p.7 · view</span></td><td><span class="seg"><span class="g on">Approve</span><span>Revise</span><span>Reject</span></span></td></tr>
+      <tr><td colspan="6" class="muted xs" style="padding:8px 0">+ 16 more rows · comment on any row; a decision on every row is not required to send</td></tr>
+    </tbody>
+  </table>
+
+  <div class="box" style="background:var(--surface-2);gap:10px">
+    <div style="display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap">
+      <div class="small"><b>19 approved · 2 revise · 1 rejected</b> <span class="muted">· Click Plumbing sees each decision the moment you send; Rev 4 will carry only the 3 rows you sent back.</span></div>
+      <div class="pillrow"><span class="btn">Save and come back</span><span class="btn primary">Send my review</span></div>
+    </div>
+    <p class="xs muted">Reviewed as <b>Logan Parsons · Structura</b> · your decisions and notes are recorded with your name and the time. <span class="mark">4</span></p>
+  </div>
+
+  <ul class="notes">
+    <li><span class="mark">4</span><span><b>Redlines become rows, not annotations in a PDF.</b> Logan's Sep 1 Bluebeam comments were the most useful thing in the thread and the hardest to find. Here each is a decision on a row, with a name and a time, and the next revision answers it in place.</span></li>
+  </ul>
+</div>
+</div></section>
+<section><p class="board-title">Is this the best we can do?</p><div class="board"><div style="width:760px;background:var(--surface);border-left:4px solid var(--amber);padding:22px 26px 28px;display:grid;gap:14px;color:#1a1a1a">
+  <div class="eyebrow">Second pass</div>
+  <h1>Is this the best we can do?</h1>
+
+  <div style="display:grid;gap:6px">
+    <div class="eyebrow">What Draft A gets right</div>
+    <p class="small muted">One table with both columns, statuses derived from model numbers, a revision that exists before it is sent, the house asked from the row, the GC's redlines as rows. Rev 2's Mail Drop and Steven's Sep 14 email could not happen on Draft A.</p>
+  </div>
+
+  <div style="display:grid;gap:10px">
+    <div class="eyebrow">Where it falls short</div>
+    <p class="small"><b>It starts too late.</b> A tab after Cover Letter documents alternates that were created weeks earlier, at the moment a quote line was picked. The eleven rows on SpaceX that differ from the schedule (eight alternates, a superseded model, an equal, a design change) were all decided on the Pricing compare, and nothing on that screen said so. On SpaceX the picks came after the win; on a bid priced from quotes they come before the price goes out, and the screen is just as silent. The fix belongs where the decision is made: a <b>Specified</b> column on the compare, a status chip the moment a pick differs from it. Wendi would have seen "8 alternates" the day she picked NWS, not heard about them from Steven on Sep 14.</p>
+    <p class="small"><b>A submittal is not a document, it is the state of the product decisions.</b> Draft A makes a package the artifact. The truer object is one row per tag that lives from the fixture schedule to the purchase order: specified → quoted → picked → priced → sent (in lieu of) → won → submitted → approved → ordered. The "Submittals" tab is a lens on those rows at one moment, the PDF a render of the lens. Switching from Moore to NWS is then a re-pick, and the revision diff writes itself.</p>
+    <p class="small"><b>The reason belongs to the pick, not to the house.</b> Draft A asks Kim why, on the desk and on the house's page; Kim can only say what NWS stocks. "Josam over JR Smith because one drainage package" and "50-gallon because the 40 is four weeks out" are Wendi's reasons at pick time. One chip when she taps a price that differs from spec. So Draft B changes the house's page: the "why yours instead?" question goes, and it asks only what the house knows — the sheet, the lead time, whether the specified model is still made.</p>
+    <p class="small"><b>Lead time is the schedule question, and the app never asks it.</b> Caleb's real worry was fixtures on site in two to three weeks. Quotes carry a good-until date and no lead time. Add it to the quote line and the vendor page; then the Stage Plan can say "DWH-1 lands Oct 10, Top-out is Oct 2" without anyone doing arithmetic.</p>
+    <p class="small"><b>Disclose at bid time or carry the risk.</b> The tough situation you described is priced in silently today. If the cover letter carries a short "in lieu of the schedule" block, the GC accepts the alternates when they accept the number, and a rejected alternate later is a change order, not our cost. That is a policy call, and it is the biggest lever on this page.</p>
+  </div>
+
+  <div style="display:grid;gap:6px">
+    <div class="eyebrow">Where it still goes wrong</div>
+    <p class="small muted"><b style="color:var(--ink)">The specified column is only as good as the schedule read.</b> The robot can read most schedules; a hand paste is the fallback, and both need a person to confirm before a bid goes out on it. <b style="color:var(--ink)">"Equal" is the engineer's word, not ours:</b> every alternate stays "proposed" until the GC page says approved. <b style="color:var(--ink)">Some GCs review in their own system</b> (Procore and the like): the PDF export stays first-class, and their decisions get typed back onto the rows by us. <b style="color:var(--ink)">Old redlines in old PDFs:</b> the robot can lift Bluebeam comments into row decisions, and will sometimes misfile one; show its work.</p>
+  </div>
+
+  <div style="display:grid;gap:6px">
+    <div class="eyebrow">What robots back-fill</div>
+    <p class="small muted">Read the fixture schedule off the plans (the twin substrate already locates it). Split a vendor submittal PDF by tag and file the pages. Draft reasons from supersession notices and "limited inventory" marks on the sheets. Turn a redlined PDF's annotations into row decisions on the older revision. Ask, never decide: each lands as a suggestion with its source page.</p>
+  </div>
+
+  <div class="box" style="background:var(--amber-soft);border-color:#fde68a">
+    <div class="bh">So: Draft B</div>
+    <p class="small">Keep the desk and the GC's page from Draft A; the house's page loses its "why". Move the beginning of the story onto the Pricing compare and the Cover Letter, make the row the object, and let the tab be the lens. Next artboard.</p>
+  </div>
+</div>
+</div></section>
+<section><p class="board-title">Draft B · the product decision is the object</p><div class="board"><div style="width:1240px;background:var(--ground);padding:20px 24px 28px;display:grid;gap:16px">
+  <div class="eyebrow">Draft B · the product decision is the object · one row per tag, from the schedule to the PO</div>
+
+  <div class="card" style="gap:10px">
+    <div class="bh eyebrow">The life of one row · WC-1 flush valve · on a bid priced from quotes</div>
+    <div style="display:grid;grid-template-columns:repeat(9,1fr);gap:6px;font-size:11.5px">
+      <div class="tile" style="background:var(--green-soft);border-color:#bbf7d0"><div class="t">Specified</div><div style="font-weight:600">TET2UA31 · 1.0 gpf</div><div class="n">schedule P002 · read by robot · confirmed by Wendi</div></div>
+      <div class="tile"><div class="t">Quoted</div><div style="font-weight:600">2 houses</div><div class="n">Moore: TET2UB31 1.0 · NWS: TET2LB31 1.28</div></div>
+      <div class="tile" style="background:var(--amber-soft);border-color:#fde68a"><div class="t">Picked</div><div style="font-weight:600">NWS · $148</div><div class="n">design change · reason: <i>spec valve limited inventory</i></div></div>
+      <div class="tile"><div class="t">Priced</div><div style="font-weight:600">on the bid</div><div class="n">cost applied from the pick</div></div>
+      <div class="tile" style="background:var(--blue-soft);border-color:#bfdbfe"><div class="t">Sent</div><div style="font-weight:600">in lieu of</div><div class="n">named on the cover letter</div></div>
+      <div class="tile"><div class="t">Won</div><div style="font-weight:600">J1007</div><div class="n">rows carry to the job</div></div>
+      <div class="tile"><div class="t">Submitted</div><div style="font-weight:600">Rev 3</div><div class="n">sheet p.3 · 3 wk</div></div>
+      <div class="tile" style="background:var(--red-soft);border-color:#fecaca"><div class="t">Reviewed</div><div style="font-weight:600">Revise</div><div class="n">"hold 1.0 gpf" · Logan · Sep 16</div></div>
+      <div class="tile"><div class="t">Ordered</div><div style="font-weight:600">—</div><div class="n">PO waits on approval</div></div>
+    </div>
+    <p class="xs muted">Every stage reads an existing column where one exists (quotes, picks, applied costs, the sent date, the job link, the PO) and adds only four new facts: the specified product, the pick's reason, the lead time on the quote line, and the reviewer's decision. <span class="mark">5</span></p>
+  </div>
+
+  <div style="display:grid;grid-template-columns:1.35fr 1fr;gap:16px;align-items:start">
+    <div class="card" style="gap:10px">
+      <div class="eyebrow">1 · Bids → Pricing → Quotes compare, with a Specified column</div>
+      <p class="xs muted">The screen that exists today, plus one column and one chip. Tapping a price that differs from spec asks for the reason right there.</p>
+      <table class="t">
+        <thead><tr><th>Tag · fixture</th><th>Specified</th><th>Moore</th><th>NWS</th><th>Pick</th></tr></thead>
+        <tbody>
+          <tr><td><b>WC-1, 2</b> bowl</td><td class="xs">TOTO CT708UVG</td><td>CT728 · <span class="num">$392</span> <span class="chip blue">superseded</span></td><td>CT728 · <span class="num">$410</span> <span class="chip blue">superseded</span></td><td><span class="chip solid-green">★ NWS</span></td></tr>
+          <tr style="background:var(--amber-soft)"><td><b>WC-1, 2</b> flush valve</td><td class="xs">TET2UA31 · 1.0 gpf</td><td>TET2UB31 1.0 · <span class="num">$162</span> <span class="chip amber">alternate</span></td><td>TET2LB31 1.28 · <span class="num">$148</span></td><td><span class="chip solid-green">★ NWS</span> <span class="chip red">design change</span><div class="pillrow" style="margin-top:4px"><span class="chip gray">lead time</span><span class="chip solid-blue">discontinued</span><span class="chip gray">in stock</span><span class="chip gray">equal</span></div><div class="xs muted">spec valve: limited inventory</div></td></tr>
+          <tr><td><b>DWH-1</b></td><td class="xs">Rheem RH375 · 40 gal</td><td>Rheem RH400 · <span class="num">$1,840</span> · 4 wk <span class="chip amber">alternate</span></td><td>BW RE2HP50 · <span class="num">$1,610</span> · 1 wk</td><td><span class="chip solid-green">★ NWS</span> <span class="chip amber">alternate · lead time</span></td></tr>
+          <tr><td><b>HB-3</b></td><td class="xs">Woodford B74-CH</td><td>B74-CH · <span class="num">$96</span></td><td>B74C · <span class="num">$91</span></td><td><span class="chip solid-green">★ NWS</span> <span class="chip green">same unit</span></td></tr>
+          <tr><td colspan="5" class="xs muted" style="padding:8px 0">Footer strip: <b>6 as specified · 1 superseded · 1 equal · 8 alternates · 1 design change · 1 not quoted</b> · a bid with unreasoned alternates cannot Mark reviewed</td></tr>
+        </tbody>
+      </table>
+      <p class="xs muted"><b>Lead time</b> is a new field on the quote line and the vendor's quote page ("stock · 1 · 2 · 4+ wk"). It rides every row from here on. <span class="mark">6</span></p>
+    </div>
+
+    <div style="display:grid;gap:16px">
+      <div class="card" style="gap:8px">
+        <div class="eyebrow">2 · Cover Letter → a new block, off by default</div>
+        <div class="letter">
+          <div><b>Products proposed in lieu of the fixture schedule</b></div>
+          <div class="xs">Our price is based on the following, submitted for approval with our submittal package:</div>
+          <div class="xs">· WC-1/2 bowl — TOTO CT728CUVG in lieu of CT708UVG (superseded by manufacturer)</div>
+          <div class="xs">· DWH-1 — Bradford White RE2HP50, 50 gal, in lieu of Rheem RH375 (specified unit 4 weeks out)</div>
+          <div class="xs">· FD-1/2, FS-1, FCO — Josam drainage package in lieu of JR Smith / Zurn</div>
+          <div class="xs" style="color:#555">· 5 more · specified products available at the difference in cost and lead time on request.</div>
+        </div>
+        <p class="xs muted">A toggle in step 2 of the studio: <b>Name the alternates</b>. Written from the rows, never by hand. The policy call. <span class="mark">7</span></p>
+      </div>
+
+      <div class="card" style="gap:8px">
+        <div class="eyebrow">3 · The Submittals tab becomes a lens</div>
+        <p class="xs muted">Draft A's table, minus the typed reason and the Rev 1 column, and it fills itself: specified from the schedule, submitted from the pick, reason from the pick, lead time from the quote, sheet from the house. What is left for Wendi is the eight sheets NWS has not sent and one design-change sentence. The house's page asks one question less; the GC's page stays as drawn.</p>
+        <div class="pillrow"><span class="chip green">7 as spec</span><span class="chip amber">8 alternates · 0 without a reason</span><span class="chip red">1 design change</span><span class="chip gray">8 sheets waiting</span></div>
+      </div>
+    </div>
+  </div>
+
+  <ul class="notes">
+    <li><span class="mark">5</span><span><b>Four new facts, not a new system.</b> Specified product per tag (a small table keyed on bid + tag, robot-read or pasted, confirmed by a person). Reason on the pick and lead time (two columns on the quote line). Reviewer decision per row per revision (the GC page's table). Everything else is a read of what the app already records.</span></li>
+    <li><span class="mark">6</span><span><b>Lead time from the source.</b> The vendor types it once on their quote page or their cut-sheet page; the estimator never retypes it, and the Stage Plan can compare it to the stage window.</span></li>
+    <li><span class="mark">7</span><span><b>Disclosure moves the risk.</b> Alternates accepted with the price are the GC's to reject at their cost. Off by default so nothing changes until you say so; when on, it is one paragraph the rows already know how to write.</span></li>
+  </ul>
+</div>
+</div></section>
+<section><p class="board-title">Draft B · the moments that ask</p><div class="board"><div style="width:900px;background:var(--ground);padding:20px 24px 28px;display:grid;gap:16px">
+  <div class="eyebrow">Draft B · the moments that ask · the won question and the Needs You cards</div>
+
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start">
+    <div class="card" style="gap:10px;box-shadow:var(--shadow)">
+      <div class="eyebrow">Won → the job is made → one question</div>
+      <h2 style="font-size:16px">Submittals for J1007 · SpaceX BA-02N</h2>
+      <p class="small muted">Structura will ask for them. The bid carries 22 product rows from the NWS pick: 8 as or equal to specified, 8 alternates with reasons, 1 design change, 1 not quoted, 4 accessories.</p>
+      <div class="box" style="gap:6px">
+        <label class="small" style="display:flex;gap:8px;align-items:center"><input type="radio" checked> <span><b>Ask NWS for cut sheets now</b> <span class="muted">· Kim A. · one email, the page above</span></span></label>
+        <label class="small" style="display:flex;gap:8px;align-items:center"><input type="radio"> <span><b>I have the vendor's PDF</b> <span class="muted">· drop it, the robot files it by tag</span></span></label>
+        <label class="small" style="display:flex;gap:8px;align-items:center"><input type="radio"> <span><b>Later</b></span></label>
+      </div>
+      <div class="pillrow" style="justify-content:flex-end"><span class="btn">Not needed on this job</span><span class="btn primary">Ask NWS</span></div>
+      <p class="xs muted">Same pattern as the contract question and the job-accounts question: asked once, the moment the job saves, office roles only. <span class="mark">8</span></p>
+    </div>
+
+    <div style="display:grid;gap:10px">
+      <div class="eyebrow">Dashboard → Needs you · four cards, all derived</div>
+      <div class="card" style="border-left:4px solid var(--amber);gap:4px">
+        <div style="display:flex;justify-content:space-between;gap:10px"><b>Won 5 days, no submittal started</b><span class="chip amber">2</span></div>
+        <p class="xs muted">J1018 DRF Apartment Repairs · J990 Vaughn — the GC usually asks in the first week.</p>
+      </div>
+      <div class="card" style="border-left:4px solid var(--blue);gap:4px">
+        <div style="display:flex;justify-content:space-between;gap:10px"><b>Submittal waiting on the GC 6 days</b><span class="chip blue">1</span></div>
+        <p class="xs muted">J523 Mission Hill Park · Rev 1 · opened by the GC Sep 12, no decisions sent · <span style="color:var(--blue)">Nudge</span></p>
+      </div>
+      <div class="card" style="border-left:4px solid var(--red);gap:4px">
+        <div style="display:flex;justify-content:space-between;gap:10px"><b>3 rows sent back, no resubmit</b><span class="chip red">1</span></div>
+        <p class="xs muted">J1007 SpaceX · Logan P. sent 3 back Sep 16: WC flush valve, RD-2/4, FCO 2" · Rev 4 is three rows.</p>
+      </div>
+      <div class="card" style="border-left:4px solid var(--red);gap:4px">
+        <div style="display:flex;justify-content:space-between;gap:10px"><b>A lead time runs past its stage</b><span class="chip red">1</span></div>
+        <p class="xs muted">J1007 SpaceX · carriers · 4 wk from approval → Oct 14 · Top-out window Oct 2. Order now, or move the window.</p>
+      </div>
+    </div>
+  </div>
+
+  <ul class="notes">
+    <li><span class="mark">8</span><span><b>Ask at the moment, never as a step.</b> The bid flow strip does not grow an eleventh step; won bids show one chip, "Submittals · Rev 3 · waiting on Structura", and the card list does the nagging.</span></li>
+  </ul>
+</div>
+</div></section>
+<section><p class="board-title">Portal · Draft A · the customer portal, plus one line and one card</p><div class="board"><div class="pp" style="width:780px;padding:28px 25px 40px">
+  <div class="wrap">
+    <div class="eyebrow" style="margin-bottom:14px;font-family:'IBM Plex Sans',system-ui,sans-serif;color:#6b7280">Portal · Draft A · the customer portal as it is today, plus one line and one card</div>
+    <div style="display:flex;justify-content:space-between;align-items:flex-end;gap:16px;padding:0 0 1.1rem">
+      <div><div class="logo">CLICK<span style="color:var(--copper)">.</span></div><div class="tag">Plumbing, Electrical, and HVAC</div></div>
+      <div style="text-align:right;font-size:11.5px;color:var(--muted);line-height:1.7">Austin, TX · M-12345<br>(512) 555-0100 · office@clickplumbing.com</div>
+    </div>
+    <div class="rule"></div>
+
+    <div style="display:flex;justify-content:space-between;align-items:baseline;gap:12px;margin-top:18px;flex-wrap:wrap">
+      <div><div class="lbl">Account statement</div><div style="font-size:18px;font-weight:700">Structura</div></div>
+      <div style="text-align:right"><div class="lbl">Balance</div><div style="font-size:18px;font-weight:700" class="num">$84,200.00</div></div>
+    </div>
+
+    <div class="band"><span><span style="font-weight:800;letter-spacing:.04em;color:var(--plum)">PLUMBING</span> <span style="font-weight:700">1007</span><span style="color:var(--faint);padding:0 2px">&nbsp;•&nbsp;</span><span style="font-weight:600">SpaceX BA-02N Architectural</span><span class="asgc">As GC</span></span><span class="quiet">Bastrop — owner: SpaceX</span></div>
+
+    <div class="line" style="background:#fff8ee"><span class="lbl copper">Submittal</span><span class="m"><b>Plumbing fixtures &amp; equipment · Rev 3</b> · issued Sep 15 · 22 items · <b style="color:var(--pred)">1 needs your call</b> · your Rev 1 comments answered</span><span style="display:flex;gap:8px"><span class="pbtn copper">PDF</span><span class="pbtn fill">Review ›</span></span></div>
+    <div class="line"><span class="lbl copper">Test report</span><span class="m"><b>Hydrostatic · supply</b> · <strong style="color:var(--pgreen)">PASS</strong> · Sep 3</span><span class="pbtn copper">View</span></div>
+
+    <div class="pcard">
+      <div class="lbl" style="margin-bottom:8px">Where the job is</div>
+      <div style="font-weight:700">1007 · SpaceX BA-02N <span style="color:var(--muted);font-weight:400">· Bastrop</span></div>
+      <div style="color:var(--muted);font-size:12.5px;margin-bottom:10px">Stage 2 of 3 · Top-out · on site now</div>
+      <div class="step"><span style="position:absolute;left:12.5px;top:26px;bottom:0;width:1px;background:#c9d2dc"></span><span class="dot done">✓</span><div><div style="font-weight:600">Rough-in</div><div style="font-size:12.5px;color:var(--muted)">done Aug 29</div></div></div>
+      <div class="step"><span style="position:absolute;left:12.5px;top:26px;bottom:0;width:1px;background:#c9d2dc"></span><span class="dot now">2</span><div><div style="font-weight:700;font-size:14.5px">Top-out</div><div style="font-size:12.5px;color:var(--muted)">about half way · fixtures set the week of Oct 2</div></div></div>
+      <div class="step" style="padding-bottom:0"><span class="dot next">3</span><div><div style="font-weight:600;color:var(--muted)">Trim</div><div style="font-size:12.5px;color:var(--muted)">after your submittal approval · <span style="color:var(--copper);font-weight:700">Need other dates? ›</span></div></div></div>
+    </div>
+
+    <div class="pcard" style="border-color:var(--copper)">
+      <div style="display:flex;justify-content:space-between;gap:12px;align-items:baseline;flex-wrap:wrap">
+        <div><div class="lbl copper">Submittal · Rev 3</div><div style="font-weight:700;font-size:15px">Plumbing fixtures &amp; equipment</div><div style="font-size:12.5px;color:var(--muted)">Everything not listed here is exactly as your schedule specifies. 8 alternates and 1 superseded model carry a reason; 4 accessories are ours to supply.</div></div>
+        <span class="pbtn copper">Open the PDF</span>
+      </div>
+      <table class="rv" style="margin-top:10px">
+        <thead><tr><th style="width:70px">Tag</th><th>Submitted · in lieu of</th><th>Why · lead time</th><th style="width:200px">Your call</th></tr></thead>
+        <tbody>
+          <tr style="background:#fff3f1"><td><b>WC-1, 2</b><div class="quiet">flush valve</div></td><td>TOTO TET2LB31 · 1.28 gpf<div class="quiet">in lieu of TET2UA31 · 1.0 gpf</div></td><td>Specified valve is limited inventory. If 1.0 gpf is required we resubmit TET2UB31 · 3 wk</td><td><div style="display:grid;gap:4px"><span class="pseg"><span>Approve</span><span class="a on">Revise</span><span>Reject</span></span><span class="pinput" style="color:var(--ink)">Hold 1.0 gpf. Resubmit TET2UB31.</span></div></td></tr>
+          <tr><td><b>DWH-1</b></td><td>Bradford White RE2HP50 · 50 gal<div class="quiet">in lieu of Rheem RH375 · 40 gal</div></td><td>Specified unit 3–4 wk out everywhere; this one is in stock · 1 wk</td><td><span class="pseg"><span class="g on">Approve</span><span>Revise</span><span>Reject</span></span></td></tr>
+          <tr><td><b>WC-1, 2</b><div class="quiet">bowl</div></td><td>TOTO CT728CUVG<div class="quiet">in lieu of CT708UVG</div></td><td>Superseded by TOTO · notice attached · 2 wk</td><td><span class="pseg"><span class="g on">Approve</span><span>Revise</span><span>Reject</span></span></td></tr>
+          <tr><td><b>RD-2, 4</b></td><td>Josam 29100 + dam collar<div class="quiet">in lieu of Josam 21512</div></td><td>Same body, dam collar in place of the overflow series · 2 wk</td><td><span class="pseg"><span>Approve</span><span>Revise</span><span class="r on">Reject</span></span></td></tr>
+          <tr><td colspan="4" class="quiet" style="padding:8px 0">+ 18 more rows: 6 alternates with their reasons, the ¾" PRV we added, 7 as specified, 4 accessories · Approve all as marked, or open each · nothing is required to send</td></tr>
+        </tbody>
+      </table>
+      <div style="display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap;margin-top:12px">
+        <div style="font-size:12.5px;color:var(--muted)">Reviewing as <span class="pinput" style="color:var(--ink);padding:3px 8px">Logan Parsons</span> <span class="pinput" style="padding:3px 8px">your email, for our reply</span> <span class="mark" style="font-family:'IBM Plex Sans',system-ui,sans-serif">9</span></div>
+        <span class="pbtn fill">Send my review</span>
+      </div>
+      <div class="quiet" style="margin-top:8px">Your decisions reach our estimator the moment you send. Forward this page to your engineer if the flush valve is their call.</div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr auto;gap:0 18px;align-items:center;padding:10px 10px;border-bottom:1px solid var(--hair);font-size:12.5px;margin-top:12px"><span class="m" style="color:var(--muted)"><b style="color:var(--ink)">Progress bill 2</b> · billed Sep 12 · due Sep 26</span><span style="display:flex;gap:12px;align-items:center"><b class="num">$84,200.00</b><span class="pbtn fill">Pay online</span></span></div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:18px">
+      <div class="pcard" style="margin:0"><div class="lbl">Request a visit</div><div style="font-size:12.5px;color:var(--muted)">We'll call you back to confirm a time.</div></div>
+      <div class="pcard" style="margin:0"><div class="lbl">Ask us to bid your work</div><div style="font-size:12.5px;color:var(--muted)">Send plans or an address; an estimator calls you.</div></div>
+    </div>
+    <div style="display:flex;justify-content:space-between;gap:12px;margin-top:22px;font-size:12px;color:var(--muted)"><span>Thank you for your business — <i>the Click team</i></span><span class="quiet">This link is private to you · requests go straight to our dispatch desk</span></div>
+
+    <ul class="notes" style="margin-top:22px;font-family:'IBM Plex Sans',system-ui,sans-serif">
+      <li><span class="mark">9</span><span><b>The portal has no idea who is reading.</b> The link is the key, like a mailed invoice. A submittal decision needs a name and a way to reply, so the review asks for both once, the way the bid room asks a signer. Typed, not verified: right for a submittal, not for a lien waiver.</span></li>
+    </ul>
+  </div>
+</div>
+</div></section>
+<section><p class="board-title">Is this the best we can do? · the portal</p><div class="board"><div style="width:760px;background:var(--surface);border-left:4px solid var(--amber);padding:22px 26px 28px;display:grid;gap:14px;color:#1a1a1a">
+  <div class="eyebrow">Second pass · the portal</div>
+  <h1>Is this the best we can do?</h1>
+
+  <div style="display:grid;gap:6px">
+    <div class="eyebrow">What the portal draft gets right</div>
+    <p class="small muted">It is the page the GC already opens for bills and stage dates, not a fifth link. The submittal reads in the portal's own voice, decisions land on rows with a name, and the review is one card under the job it belongs to.</p>
+  </div>
+
+  <div style="display:grid;gap:10px">
+    <div class="eyebrow">Where it falls short</div>
+    <p class="small"><b>Nobody knows it is there.</b> The portal is pulled, never pushed: a customer opens it when a bill's footer sends them. A submittal revision that sits unread for six days is the SpaceX thread again. Every revision needs to go out as an email or text with the link and the three-line summary, the way the bid room link goes out, and the office needs to see <i>opened Sep 16 by Logan</i> the way it sees room views.</p>
+    <p class="small"><b>The portal has five asks and no list.</b> Request a visit, ask us to bid, need other dates, ask the office about a bill, and now decide on a submittal, each in its own corner. The customer has no answer to "what does Click need from me?" We built that list for ourselves and called it Needs You. The GC deserves the mirror: a <b>We need you</b> strip at the top of the portal with every open ask on their jobs, and nothing else until there is one.</p>
+    <p class="small"><b>A decision is half a conversation.</b> Logan says <i>hold 1.0 gpf</i>; Wendi answers <i>Rev 4, TET2UB31, 3 weeks</i>; Caleb asks about carriers. Today that exchange lives in an email thread the office loses. The app already keeps customer contacts, bid notes and inbox requests; the portal should show one conversation per job, both sides, with the office replying from the inbox it already works. Every decision is then an entry in that thread, not a form result.</p>
+    <p class="small"><b>Not every customer is a GC.</b> A homeowner's portal is a statement and a stage card. A submittal card, review columns and tag numbers are noise there. The card appears only when the job carries a package, and the words stay plain: <i>the products we will install, and the ones that differ from your plans</i>.</p>
+    <p class="small"><b>Some GCs review in their own system.</b> Structura may run submittals through Procore or a PM's inbox, and no portal changes that. So the PDF stays first-class, the decisions summary is copyable, the portal takes their redlined PDF back in a drop zone, and the office can type their decisions onto the rows from the email they sent instead.</p>
+  </div>
+
+  <div style="display:grid;gap:6px">
+    <div class="eyebrow">Where it still goes wrong</div>
+    <p class="small muted"><b style="color:var(--ink)">Links travel.</b> The page is forwarded to an engineer, then to someone at SpaceX; the name typed on the decision is whoever typed it. Fine for a submittal, and each forward should be a scoped link with its own opened record, the way the portal already mints separate views. <b style="color:var(--ink)">Two reviewers disagree.</b> The last decision wins and the earlier one stays in the thread with its name. <b style="color:var(--ink)">A reply is only as good as the office's inbox habit.</b> The conversation works if the estimator inbox is worked daily; the Needs You card for a GC message waiting is what keeps it honest.</p>
+  </div>
+
+  <div style="display:grid;gap:6px">
+    <div class="eyebrow">What robots back-fill here</div>
+    <p class="small muted">Draft the reply to a GC decision from the row's own facts (the resubmit product, its lead time). Lift decisions out of a redlined PDF the GC drops back. Write the revision email's three-line summary. Never send, never decide.</p>
+  </div>
+
+  <div class="box" style="background:var(--amber-soft);border-color:#fde68a">
+    <div class="bh">So: Draft C</div>
+    <p class="small">Keep the submittal line and its review card as drawn. Add the We need you strip at the top of the portal, one conversation per job under the submittal line, a push when a revision lands, and a way in for the GC who reviews in their own system. Next artboard.</p>
+  </div>
+</div>
+</div></section>
+<section><p class="board-title">Draft C · the portal that asks</p><div class="board"><div style="width:1180px;background:var(--ground);padding:20px 24px 28px;display:grid;gap:16px">
+  <div class="eyebrow">Draft C · the portal that asks · a We need you strip, one conversation per job, a push when something lands</div>
+  <div style="display:grid;grid-template-columns:780px 1fr;gap:16px;align-items:start">
+
+    <div class="pp" style="padding:24px 25px 28px;border:1px solid var(--border)">
+      <div class="wrap">
+        <div style="display:flex;justify-content:space-between;align-items:flex-end;gap:16px;padding:0 0 1rem">
+          <div><div class="logo">CLICK<span style="color:var(--copper)">.</span></div><div class="tag">Plumbing, Electrical, and HVAC</div></div>
+          <div style="text-align:right;font-size:11.5px;color:var(--muted);line-height:1.7">Austin, TX · M-12345<br>(512) 555-0100 · office@clickplumbing.com</div>
+        </div>
+        <div class="rule"></div>
+
+        <div class="need">
+          <div style="display:flex;justify-content:space-between;gap:10px;align-items:baseline"><div class="lbl copper">We need you · 3</div><span class="quiet">across your 4 open jobs</span></div>
+          <div class="row"><span><b>Approve Rev 4 · 3 resubmitted rows</b> <span class="quiet">· 1007 SpaceX · WC flush valve at 1.0 gpf, Josam 21500 drains, 2" cleanouts · issued Sep 17</span></span><span class="pbtn fill">Review ›</span></div>
+          <div class="row"><span><b>Confirm the new Top-out dates</b> <span class="quiet">· 1007 SpaceX · week of Oct 14, was Oct 2 · carriers land Oct 14</span></span><span class="pbtn">Dates ›</span></div>
+          <div class="row"><span><b>Progress bill 2 due Sep 26</b> <span class="quiet">· 1007 SpaceX · $84,200</span></span><span class="pbtn">Pay ›</span></div>
+          <div class="quiet" style="margin-top:6px">Answered items drop off. Nothing here means nothing waits on you. <span class="mark" style="font-family:'IBM Plex Sans',system-ui,sans-serif">10</span></div>
+        </div>
+
+        <div class="band"><span><span style="font-weight:800;letter-spacing:.04em;color:var(--plum)">PLUMBING</span> <span style="font-weight:700">1007</span><span style="color:var(--faint);padding:0 2px">&nbsp;•&nbsp;</span><span style="font-weight:600">SpaceX BA-02N Architectural</span><span class="asgc">As GC</span></span><span class="quiet">Bastrop — owner: SpaceX</span></div>
+        <div class="line" style="background:#fff8ee"><span class="lbl copper">Submittal</span><span class="m"><b>Plumbing fixtures &amp; equipment · Rev 4</b> · 3 rows resubmitted · <b style="color:var(--pred)">waiting on you</b> · Rev 3: 19 approved · 2 revise · 1 rejected</span><span style="display:flex;gap:8px"><span class="pbtn copper">PDF</span><span class="pbtn fill">Review ›</span></span></div>
+        <div class="line"><span class="lbl copper">Test report</span><span class="m"><b>Hydrostatic · supply</b> · <strong style="color:var(--pgreen)">PASS</strong> · Sep 3</span><span class="pbtn copper">View</span></div>
+
+        <div class="pcard">
+          <div style="display:flex;justify-content:space-between;gap:10px;align-items:baseline"><div class="lbl">On this job</div><span class="quiet">you, your team, and ours · everything on the record</span></div>
+          <div class="thread">
+            <div class="msg us"><div class="who"><b>Wendi · Click</b>Sep 15 · 9:40 am</div><div><b>Submittal Rev 3 issued.</b> 10 rows changed since your Rev 1 comments, most from the switch to National Wholesale, and the ¾" PRV is added. One row is a design change we need your call on. <span class="quiet">· Rev 3 PDF</span></div></div>
+            <div class="msg"><div class="who"><b>Logan · Structura</b>Sep 16 · 2:12 pm</div><div><b>Revise WC-1, 2 flush valve</b> — hold 1.0 gpf, SpaceX water budget. Resubmit TET2UB31. <b>Revise FCO</b> — add the 2" cleanouts as drawn. <b>Reject RD-2, 4</b> — use the 21500 series. Everything else approved. <span class="quiet">· 22 decisions · copy as text</span></div></div>
+            <div class="msg us"><div class="who"><b>Wendi · Click</b>Sep 16 · 3:05 pm</div><div><b>Rev 4 on its way</b> with TET2UB31 at 1.0 gpf, 3 weeks from NWS, the Josam 21500 series and the 2" cleanouts. Carriers are 4 weeks: ordered today, on site Oct 14, so Top-out moves to the week of Oct 14 — new dates on your page to confirm. <span class="quiet">· drafted by the robot from the rows, sent by Wendi</span></div></div>
+            <div class="msg"><div class="who"><b>Caleb · Structura</b>Sep 16 · 4:48 pm</div><div>Confirm the carriers are in the wall by Oct 14, then?</div></div>
+            <div class="msg us"><div class="who"><b>Wendi · Click</b>Sep 17 · 8:15 am</div><div><b>Rev 4 issued</b> — the three rows you sent back, nothing else. <span class="quiet">· Rev 4 PDF · 3 rows to approve</span></div></div>
+          </div>
+          <div style="display:flex;gap:8px;margin-top:12px;align-items:center"><span class="pinput" style="flex:1">Reply — we answer during office hours</span><span class="pbtn fill">Send</span></div>
+          <div class="quiet" style="margin-top:6px">Writing as <b style="color:var(--ink)">Logan Parsons · logan@structura.com</b> · change</div>
+        </div>
+
+        <div class="quiet" style="margin-top:14px">+ the review card from the portal draft, the bills, payments and stage card, as today</div>
+      </div>
+    </div>
+
+    <div style="display:grid;gap:14px">
+      <div class="card" style="gap:8px">
+        <div class="eyebrow">The push · when a revision lands</div>
+        <div class="letter" style="font-family:'IBM Plex Sans',system-ui,sans-serif;font-size:12px">
+          <div><b>Subject:</b> Plumbing submittal Rev 3 · SpaceX BA-02N · 1 decision needed</div>
+          <div>Logan — Rev 3 is on your Click page. 10 rows changed since your Rev 1 comments, most from the switch to National Wholesale, and the ¾" PRV is added. One row needs your call: the WC flush valve, 1.28 gpf in lieu of 1.0.</div>
+          <div><span class="btn primary" style="font-size:12px">Open the review</span> <span class="muted">· or reply to this email and we will record it</span></div>
+        </div>
+        <p class="xs muted">Sent from the Submittals tab the moment Rev 3 is shared; the office sees <b>opened Sep 16 · Logan</b> and a Nudge that rests 24 hours, the RFQ desk's rules. A reply by email lands in the same conversation. <span class="mark">11</span></p>
+      </div>
+
+      <div class="card" style="gap:8px">
+        <div class="eyebrow">How the office sees it · Estimator inbox</div>
+        <div class="box" style="border-left:4px solid var(--red);gap:4px">
+          <div style="display:flex;justify-content:space-between;gap:8px"><b>Structura sent 22 decisions on SpaceX Rev 3</b><span class="chip red">2 revise · 1 reject</span></div>
+          <p class="xs muted">Logan P. · Sep 16 2:12 pm · "hold 1.0 gpf, SpaceX water budget"</p>
+          <div class="pillrow"><span class="btn" style="font-size:12px">Open the rows</span><span class="btn primary" style="font-size:12px">Reply with Rev 4 draft</span></div>
+        </div>
+        <div class="box" style="border-left:4px solid var(--amber);gap:4px">
+          <div style="display:flex;justify-content:space-between;gap:8px"><b>Caleb asked about carriers</b><span class="chip amber">waiting 2 h</span></div>
+          <p class="xs muted">"Confirm the carriers are in the wall by Oct 14, then?" · the robot's draft: <i>ordered Sep 16, 4 weeks, on site Oct 14, set that week — Top-out the week of Oct 14, confirmed once you accept the dates</i></p>
+        </div>
+        <div class="box" style="border-left:4px solid var(--blue);gap:4px">
+          <div style="display:flex;justify-content:space-between;gap:8px"><b>A GC who reviews in their own system</b><span class="chip blue">drop zone</span></div>
+          <p class="xs muted">Structura sends a redlined PDF or an email instead of using the page: drop it on Rev 3. The robot lifts each decision with its page reference — <i>6 read, 2 unsure</i> — and the estimator confirms them onto the rows. The decisions summary on the page is copyable for a GC pasting into their own tool.</p>
+        </div>
+        <p class="xs muted">The same inbox the dispatch and estimator groups already work; a portal message is a customer waiting, the way a visit request is. <span class="mark">12</span></p>
+      </div>
+
+      <div class="card" style="gap:6px">
+        <div class="eyebrow">A homeowner's portal, the same week</div>
+        <p class="xs muted">No strip (nothing waits on them), no submittal line (no package on the job), the stage card and one bill. The portal grows only for the customer who has something to answer.</p>
+      </div>
+    </div>
+  </div>
+
+  <ul class="notes">
+    <li><span class="mark">10</span><span><b>Their Needs You.</b> One list, built from the same facts as ours: open submittal decisions, a stage date the office asked about, a bill inside its terms, a document to sign. Empty when nothing waits, and the strip is not drawn.</span></li>
+    <li><span class="mark">11</span><span><b>Pushed, then watched.</b> The email is the door; the page is the record. Opened stamps and the 24-hour nudge are the RFQ desk's rules reused, so the office never wonders whether Structura saw it.</span></li>
+    <li><span class="mark">12</span><span><b>One conversation, two inboxes.</b> The GC reads it on the job; the office reads it where it already reads customer requests. Decisions, replies and the robot's drafts are entries in the same thread, each with a name and a time.</span></li>
+  </ul>
+</div>
+</div></section>
+</div>
