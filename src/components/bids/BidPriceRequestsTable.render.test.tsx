@@ -85,6 +85,27 @@ describe('BidPriceRequestsTable — the add block (v2.3495)', () => {
     await waitFor(() => expect(screen.getByRole('button', { name: 'Add request' })).toBeTruthy())
   })
 
+  it('Add N requests writes every card as one insert, each with its own day and link', async () => {
+    renderTable()
+    fireEvent.click(await screen.findByRole('button', { name: '+ Add a request' }))
+    fireEvent.click(await screen.findByRole('button', { name: /Ferguson/ }))
+    fireEvent.change(await screen.findByLabelText('Quote link for Ferguson'), { target: { value: 'drive.google.com/file/d/abc' } })
+    fireEvent.click(screen.getByRole('button', { name: '+ Add another supply house' }))
+    fireEvent.click(await screen.findByRole('button', { name: /Moore Supply/ }))
+    fireEvent.change(await screen.findByLabelText('When the Moore Supply request went out'), { target: { value: '2026-09-14' } })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Add 2 requests' }))
+
+    await waitFor(() => expect(inserted).toHaveLength(1))
+    const rows = inserted[0] as Array<Record<string, unknown>>
+    expect(rows).toHaveLength(2)
+    expect(rows[0]).toMatchObject({ bid_id: 'bid-1', supply_house_id: 'ferguson', sent_via: 'outside', status: 'sent', quote_url: null, request_url: 'https://drive.google.com/file/d/abc', created_by: 'robert' })
+    expect(rows[1]).toMatchObject({ supply_house_id: 'moore', requested_on: '2026-09-14', request_url: null, status: 'sent' })
+    // The block closes once the write lands.
+    await waitFor(() => expect(screen.getByRole('button', { name: '+ Add a request' })).toBeTruthy())
+    inserted.length = 0
+  })
+
   it('Cancel closes the block and writes nothing', async () => {
     renderTable()
     fireEvent.click(await screen.findByRole('button', { name: '+ Add a request' }))

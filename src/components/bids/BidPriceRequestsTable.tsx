@@ -278,12 +278,10 @@ export function BidPriceRequestsTable({ bidId, serviceTypeId, pricingHref }: Pro
   }
 
   function removeEntry(id: string) {
-    setEntries((prev) => {
-      const next = prev.filter((e) => e.supplyHouseId !== id)
-      // Never leave the block with nothing to do.
-      if (next.length === 0) setPickerOpen(true)
-      return next
-    })
+    const next = entries.filter((e) => e.supplyHouseId !== id)
+    setEntries(next)
+    // Never leave the block with nothing to do.
+    if (next.length === 0) setPickerOpen(true)
     setError(null)
   }
 
