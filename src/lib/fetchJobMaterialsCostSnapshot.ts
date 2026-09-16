@@ -1,3 +1,4 @@
+import { cardChargeCostUsd } from './jobs/cardChargeAllocationFilter'
 import { supabase } from './supabase'
 import type { Database, Json } from '../types/database'
 import { mercuryDebitCardIdFromRaw } from './mercuryRawDebitCard'
@@ -67,7 +68,7 @@ export type JobMaterialsCostSnapshot = {
 }
 
 export function mercuryCardTotalFromLines(lines: JobMercuryAllocLine[]): number {
-  return lines.reduce((s, l) => s + Math.abs(Number(l.allocationAmount)), 0)
+  return lines.reduce((s, l) => s + cardChargeCostUsd(l.allocationAmount), 0)
 }
 
 export function tallyPartsTotalFromLines(lines: JobTallyPartLine[]): number {

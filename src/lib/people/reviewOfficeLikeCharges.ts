@@ -5,6 +5,7 @@
 // crew member's profit share there. The fix is a sorting decision in Banking,
 // so the line points there. Pure kernel + a thin loader.
 
+import { cardChargeCostUsd } from '../jobs/cardChargeAllocationFilter'
 import { supabase } from '../supabase'
 import { fetchAllRows, fetchAllRowsChunkedIn } from '../supabasePaging'
 import { withSupabaseRetry } from '../../utils/errorHandling'
@@ -65,15 +66,15 @@ export function summarizeOfficeLikeCharges(
   for (const r of rows) {
     if (!r.category || !set.has(r.category)) continue
     if (officeJobLedgerId && r.jobId === officeJobLedgerId) continue
-    const abs = Math.abs(Number(r.amount)) || 0
-    if (abs <= 0) continue
-    usd += abs
+    const cost = cardChargeCostUsd(r.amount)
+    if (cost === 0) continue
+    usd += cost
     charges += 1
     jobs.add(r.jobId)
     const counterparty = (r.counterparty ?? '').trim() || 'Unknown'
     const key = `${r.category}|${counterparty}`
     const cur = byKey.get(key) ?? { category: r.category, counterparty, usd: 0 }
-    cur.usd += abs
+    cur.usd += cost
     byKey.set(key, cur)
   }
   const top = [...byKey.values()].sort((a, b) => b.usd - a.usd || a.counterparty.localeCompare(b.counterparty))

@@ -3,6 +3,7 @@ import {
   EMPTY_CARD_CHARGE_EXCLUSIONS,
   cardChargeAllocationCounts,
   cardChargeAllocationIsInvoiceLinked,
+  cardChargeCostUsd,
   sumCardChargeAllocationsForJob,
   summarizeCardChargeAllocations,
   type CardChargeExclusions,
@@ -11,7 +12,7 @@ import {
 const plain = { id: 'a1', job_id: 'J1', mercury_transaction_id: 'tx-plain', amount: -100 }
 const internal = { id: 'a2', job_id: 'J1', mercury_transaction_id: 'tx-internal', amount: -500 }
 const linked = { id: 'a3', job_id: 'J1', mercury_transaction_id: 'tx-linked', amount: -40 }
-const fuel = { id: 'a4', job_id: 'J2', mercury_transaction_id: 'tx-fuel', amount: 25 }
+const fuel = { id: 'a4', job_id: 'J2', mercury_transaction_id: 'tx-fuel', amount: -25 }
 const rows = [plain, internal, linked, fuel]
 
 const exclusions: CardChargeExclusions = {
@@ -48,6 +49,20 @@ describe('cardChargeAllocationFilter', () => {
     )
     expect(j1.charges).toBe(bulk.chargesByJobId.get('J1'))
     expect(j1.invoiceLinked).toBe(bulk.invoiceLinkedByJobId.get('J1'))
+  })
+
+  it('a refund nets: the bank signs money back positive, cost is the negated amount (v2.3519)', () => {
+    expect(cardChargeCostUsd(-37.99)).toBeCloseTo(37.99, 2) // a purchase
+    expect(cardChargeCostUsd(40)).toBe(-40) // a refund at the counter
+    expect(cardChargeCostUsd('-9')).toBe(9)
+    expect(cardChargeCostUsd(0)).toBe(0)
+    expect(Object.is(cardChargeCostUsd(-0), 0)).toBe(true)
+    expect(cardChargeCostUsd(null)).toBe(0)
+    expect(cardChargeCostUsd('x')).toBe(0)
+    const refund = { id: 'a5', job_id: 'J1', mercury_transaction_id: 'tx-refund', amount: 40 }
+    const s = summarizeCardChargeAllocations([plain, refund], exclusions)
+    expect(s.chargesByJobId.get('J1')).toBe(60) // $100 spent, $40 back — not $140
+    expect(sumCardChargeAllocationsForJob([refund], exclusions)).toEqual({ charges: -40, invoiceLinked: 0 })
   })
 
   it('degrades to "everything counts, nothing linked" with empty exclusions', () => {

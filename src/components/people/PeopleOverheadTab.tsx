@@ -156,7 +156,10 @@ function OverheadPartsSectionsList({
                       {cardLabel ? (
                         <span style={{ color: 'var(--text-muted)' }}> · on {cardLabel}</span>
                       ) : null}
-                      {' — '}${formatCurrency(ln.amountUsd)}
+                      {' — '}
+                      {ln.amountUsd < 0 ? '−$' : '$'}
+                      {formatCurrency(Math.abs(ln.amountUsd))}
+                      {ln.amountUsd < 0 ? <span style={{ color: 'var(--text-muted)' }}> refund</span> : null}
                     </li>
                   )
                 })}

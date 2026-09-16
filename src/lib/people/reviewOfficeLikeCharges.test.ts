@@ -17,7 +17,7 @@ describe('summarizeOfficeLikeCharges', () => {
     { jobId: 'j1', amount: -1700, category: 'Software', counterparty: 'Auto Group' },
     { jobId: 'j1', amount: -364, category: 'Utilities', counterparty: 'City Of Kyle' },
     { jobId: 'j2', amount: -150, category: 'Medical', counterparty: 'Vital Psych MD' },
-    { jobId: 'j2', amount: 40, category: 'Medical', counterparty: 'CVS' }, // refund still a charge by abs — flagged for sorting
+    { jobId: 'j2', amount: 40, category: 'Medical', counterparty: 'CVS' }, // a refund: nets against the spend (v2.3519)
     { jobId: 'j3', amount: -500, category: 'FuelAndGas', counterparty: 'Shell' }, // not office-like
     { jobId: office, amount: -900, category: 'Software', counterparty: 'Adobe' }, // office job — fine
     { jobId: 'j4', amount: -20, category: null, counterparty: 'Unknown Co' },
@@ -25,14 +25,14 @@ describe('summarizeOfficeLikeCharges', () => {
 
   it('sums only office-type categories on non-office jobs and ranks the lines', () => {
     const s = summarizeOfficeLikeCharges(rows, office)
-    expect(s.usd).toBe(1700 + 364 + 150 + 40)
+    expect(s.usd).toBe(1700 + 364 + 150 - 40)
     expect(s.charges).toBe(4)
     expect(s.jobs).toBe(2)
     expect(s.top.map((t) => `${t.category} · ${t.counterparty} $${t.usd}`)).toEqual([
       'Software · Auto Group $1700',
       'Utilities · City Of Kyle $364',
       'Medical · Vital Psych MD $150',
-      'Medical · CVS $40',
+      'Medical · CVS $-40',
     ])
   })
 

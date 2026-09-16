@@ -12,6 +12,8 @@
  * before the mirrors existed. {@link bidRealCostTotal} combines the two.
  */
 
+import { cardChargeCostUsd } from '../jobs/cardChargeAllocationFilter'
+
 /** Numeric columns come back from PostgREST as strings; nulls are real. */
 function num(v: number | string | null | undefined): number {
   if (v == null) return 0
@@ -68,9 +70,9 @@ export function bidAssignedCostsByBidId(rows: Partial<BidAssignedCostRows>): Map
 
   for (const p of rows.parts ?? []) bump(p.bid_id, 'partsStyle', num(p.quantity) * num(p.fixture_cost))
   // Card charges carry the bank's sign (a debit is negative), the same way the
-  // job side reads them (fetchJobMaterialsCostSnapshot sums |allocation|), so
-  // spend is the absolute amount — a $37.99 charge is $37.99 of cost, not −$37.99.
-  for (const m of rows.mercury ?? []) bump(m.bid_id, 'partsStyle', Math.abs(num(m.amount)))
+  // job side reads them (`cardChargeCostUsd`): cost is the negated amount, so a
+  // $37.99 charge is $37.99 of cost and a $40 refund nets −$40 (v2.3519).
+  for (const m of rows.mercury ?? []) bump(m.bid_id, 'partsStyle', cardChargeCostUsd(m.amount))
   for (const s of rows.supply ?? []) bump(s.bid_id, 'partsStyle', (num(s.pct) / 100) * num(s.invoice_amount))
   for (const m of rows.materials ?? []) bump(m.bid_id, 'materials', num(m.amount))
 

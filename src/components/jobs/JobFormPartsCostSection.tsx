@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { CardChargeCostAmount } from './CardChargeCostAmount'
 import { useNavigate } from 'react-router-dom'
 import { useMercuryLedgerNicknames } from '../../hooks/useMercuryLedgerNicknames'
 import type { JobWithDetails } from '../../types/jobWithDetails'
@@ -227,7 +228,7 @@ export function JobFormPartsCostSection({
                                   : '—'}
                               </td>
                               <td style={{ padding: '0.5rem 0.625rem' }}>{ln.counterpartyName ?? '—'}</td>
-                              <td style={{ padding: '0.5rem 0.625rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{formatCurrency(Math.abs(ln.allocationAmount))}</td>
+                              <td style={{ padding: '0.5rem 0.625rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}><CardChargeCostAmount amount={ln.allocationAmount} /></td>
                               <td style={{ padding: '0.5rem 0.625rem', color: 'var(--text-600)' }}>{ln.note ?? '—'}</td>
                             </tr>
                           ))}

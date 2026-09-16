@@ -8,15 +8,18 @@
  * gross allocations with neither exclusion, so the two disagreed on any job with
  * an internal transfer or an invoice-linked card purchase (J963: $1,465 vs $710).
  * Both now read this.
+ *
+ * Signs (v2.3519): the summary is signed cost — a refund at the counter is a
+ * negative row — so the net can be below zero on a job whose parts all went
+ * back. It is not clamped: a net credit is real and belongs on the job.
  */
 import type { CardChargeSummary } from './cardChargeAllocationFilter'
 
-/** job id → card charges that count toward parts (gross counted − invoice-linked, clamped at 0). */
+/** job id → card charges that count toward parts (gross counted − invoice-linked; a net refund stays negative). */
 export function netCardChargesByJobId(summary: Pick<CardChargeSummary<unknown>, 'chargesByJobId' | 'invoiceLinkedByJobId'>): Map<string, number> {
   const out = new Map<string, number>()
   for (const [jobId, gross] of summary.chargesByJobId) {
-    const linked = Math.min(gross, summary.invoiceLinkedByJobId.get(jobId) ?? 0)
-    out.set(jobId, gross - linked)
+    out.set(jobId, gross - (summary.invoiceLinkedByJobId.get(jobId) ?? 0))
   }
   return out
 }

@@ -9,9 +9,9 @@
  *      session's own clock-in / clock-out (matches the "Man hours" summary above the costs
  *      panel). Wage is looked up by normalized `users.name` against `people_pay_config`, the
  *      same convention `overheadDailyLabor` / `bidBoardWeeklyEstimatorLaborCost` use.
- *   2. **Card charges (Mercury)** — sum of `Math.abs(amount)` on
- *      `mercury_transaction_job_allocations` rows whose underlying transaction's `posted_at`
- *      falls on the modal's Chicago `work_date`.
+ *   2. **Card charges (Mercury)** — sum of `cardChargeCostUsd(amount)` (the bank's sign negated,
+ *      so a purchase adds and a refund nets) on `mercury_transaction_job_allocations` rows whose
+ *      underlying transaction's `posted_at` falls on the modal's Chicago `work_date`.
  *   3. **Supply invoices** — sum of `pct × invoice_amount / 100` on
  *      `supply_house_invoice_job_allocations` rows whose invoice's `invoice_date` equals the
  *      modal's `work_date`.
@@ -23,6 +23,7 @@
  * Pure: no Supabase, no React. The modal's loader queries the raw rows and passes them in.
  */
 
+import { cardChargeCostUsd } from './jobs/cardChargeAllocationFilter'
 import { calendarYmdInAppTzFromIso } from '../utils/dateUtils'
 import {
   hourlyWageForUserName,
@@ -102,7 +103,7 @@ export type DayCostBreakdown = {
   laborIncomplete: boolean
   /** Per-person labor detail rows (sorted alphabetically by `userName`). */
   laborLines: DayLaborLine[]
-  /** Sum of `Math.abs(amount)` for Mercury job allocations posted on `workDateYmd`. */
+  /** Signed card cost (a refund nets) for Mercury job allocations posted on `workDateYmd`. */
   mercuryUsd: number
   /** Per-allocation Mercury detail rows for the day (sorted newest first by `postedAt`). */
   mercuryLines: DayMercuryLine[]
@@ -185,7 +186,7 @@ export function computeDayMercuryCost(
     if (ymd !== workDateYmd) continue
     const amt = Number(a.amount)
     if (!Number.isFinite(amt)) continue
-    usd += Math.abs(amt)
+    usd += cardChargeCostUsd(amt)
   }
   return usd
 }
@@ -276,7 +277,7 @@ export function computeDayMercuryLines(
     lines.push({
       counterpartyName: a.counterparty_name ?? null,
       postedAt: a.posted_at,
-      amountUsd: Math.abs(amt),
+      amountUsd: cardChargeCostUsd(amt),
       note: a.note ?? null,
     })
   }

@@ -93,7 +93,7 @@ beforeEach(() => {
 })
 
 describe('fetchOverheadOfficePartsByDay', () => {
-  it('unwraps object AND array nested embeds, Math.abs-es amounts, and buckets by Chicago wall date', async () => {
+  it('unwraps object AND array nested embeds, reads amounts as signed cost (a refund nets), and buckets by Chicago wall date', async () => {
     handlers.set('mercury_transaction_job_allocations', () => ({
       data: [
         // 03:30Z on the 3rd = 22:30 on the 2nd in America/Chicago (CDT).
@@ -106,7 +106,7 @@ describe('fetchOverheadOfficePartsByDay', () => {
     }))
     const r = await fetchOverheadOfficePartsByDay({ officeJobLedgerId: OFFICE, startYmd: '2026-06-01', endYmd: '2026-06-10' })
     expect(r.partsUsdByDay.get('2026-06-02')).toBe(125.5)
-    expect(r.partsUsdByDay.get('2026-06-04')).toBe(40)
+    expect(r.partsUsdByDay.get('2026-06-04')).toBe(-40) // the Home Depot row is a refund
     expect(r.partsUsdByDay.size).toBe(2)
     const lines = r.partsDetailByDay.get('2026-06-02') ?? []
     expect(lines[0]?.label).toBe('Lowes')
@@ -116,7 +116,7 @@ describe('fetchOverheadOfficePartsByDay', () => {
   it('excludes allocations whose transaction is duplicate-marked (splits survive the marking)', async () => {
     handlers.set('mercury_transaction_job_allocations', () => ({
       data: [
-        mercuryRow({ id: 'm1', amount: 60, postedAt: '2026-06-04T18:00:00Z', counterparty: 'Lowes' }),
+        mercuryRow({ id: 'm1', amount: -60, postedAt: '2026-06-04T18:00:00Z', counterparty: 'Lowes' }),
         // Marked duplicate of another tx AFTER being split to the office job —
         // the allocation row still exists but must not count into the pool.
         mercuryRow({
@@ -138,7 +138,7 @@ describe('fetchOverheadOfficePartsByDay', () => {
 
   it('drops lines whose Chicago day falls outside the requested range (fetch is a day wide)', async () => {
     handlers.set('mercury_transaction_job_allocations', () => ({
-      data: [mercuryRow({ id: 'm1', amount: 10, postedAt: '2026-05-31T18:00:00Z' })],
+      data: [mercuryRow({ id: 'm1', amount: -10, postedAt: '2026-05-31T18:00:00Z' })],
       error: null,
     }))
     const r = await fetchOverheadOfficePartsByDay({ officeJobLedgerId: OFFICE, startYmd: '2026-06-01', endYmd: '2026-06-10' })
@@ -307,7 +307,7 @@ describe('fetchOtherJobsPartsByDay', () => {
   it('excludes allocations whose transaction is duplicate-marked (splits survive the marking)', async () => {
     handlers.set('mercury_transaction_job_allocations', () => ({
       data: [
-        mercuryRow({ id: 'm1', amount: 80, postedAt: '2026-06-04T18:00:00Z', counterparty: 'Lowes' }),
+        mercuryRow({ id: 'm1', amount: -80, postedAt: '2026-06-04T18:00:00Z', counterparty: 'Lowes' }),
         // Marked duplicate of another tx AFTER being split to a field job —
         // the allocation row still exists but must not count into materials.
         mercuryRow({
@@ -336,7 +336,7 @@ describe('fetchOtherJobsPartsByDay', () => {
 
   it('sorts detail lines by source then sortKey within a day', async () => {
     handlers.set('mercury_transaction_job_allocations', () => ({
-      data: [mercuryRow({ id: 'm9', amount: 5, postedAt: '2026-06-05T18:00:00Z', counterparty: 'Shell' })],
+      data: [mercuryRow({ id: 'm9', amount: -5, postedAt: '2026-06-05T18:00:00Z', counterparty: 'Shell' })],
       error: null,
     }))
     handlers.set('rpc:list_tally_parts_with_po', () => ({

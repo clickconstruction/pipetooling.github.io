@@ -1,4 +1,5 @@
 import { useCallback, useMemo, useState } from 'react'
+import { CardChargeCostAmount } from './CardChargeCostAmount'
 import { useMercuryLedgerNicknames } from '../../hooks/useMercuryLedgerNicknames'
 import { formatMercuryCardChargesPostedDate } from '../../lib/formatMercuryCardChargesPostedDate'
 import {
@@ -239,7 +240,7 @@ export function JobDetailMaterialsCostSection({ loading, snapshot, canExpand, bi
                         : '—'}
                     </td>
                     <td style={{ padding: '0.5rem 0.625rem' }}>{ln.counterpartyName ?? '—'}</td>
-                    <td style={{ padding: '0.5rem 0.625rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{formatCurrency(Math.abs(ln.allocationAmount))}</td>
+                    <td style={{ padding: '0.5rem 0.625rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}><CardChargeCostAmount amount={ln.allocationAmount} /></td>
                     <td style={{ padding: '0.5rem 0.625rem', color: 'var(--text-600)' }}>{ln.note ?? '—'}</td>
                   </tr>
                 ))}
