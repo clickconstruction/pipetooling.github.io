@@ -9,6 +9,7 @@ import { PricingCompositionBar } from './PricingCompositionBar'
 import { buildProfitLegend, clampTooltipLeft, formatProfitShare } from '../../lib/bids/profitBarLegend'
 import { matchCountRowsToBookEntries, type BookEntryMatch } from '../../lib/bids/bookEntryMatching'
 import { needsFreezeAfterWrite, resolvePricingWriteTarget } from '../../lib/bids/pricingWriteTarget'
+import { compareSentVsToday, sentVsTodayText } from '../../lib/bids/sentVsToday'
 import { mapCountRowsByFixture } from '../../lib/bids/mapCountRowsByFixture'
 import { searchPriceBookEntries, seedPricingAssignmentSearch, type AssignMatchMode, type PriceBookSearchResult } from '../../lib/bids/priceBookAssignSearch'
 import { computeBidPricingRows, coverLetterTotalsFromPricingRows } from '../../lib/bidPricingRowCalculations'
@@ -3922,6 +3923,21 @@ export function BidsPricingTab({
                           </button>
                         </div>
                       ) : null}
+                    {/* Frozen bid prices, PR 2: on a sent bid the grid is a recomputation, not the quote —
+                        `bid_value` (stamped at send) is the honest number; say both wherever the live one is read. */}
+                    {(() => {
+                      const cmp = compareSentVsToday({ bidDateSent: selectedBidForPricing?.bid_date_sent, bidValue: selectedBidForPricing?.bid_value, today: effRevenue })
+                      if (!cmp) return null
+                      const differs = cmp.kind === 'differs'
+                      return (
+                        <div
+                          data-testid="pricing-sent-vs-today"
+                          style={{ marginTop: '0.4rem', fontSize: '0.74rem', fontVariantNumeric: 'tabular-nums', color: differs ? 'var(--text-amber-700)' : 'var(--text-muted)', fontWeight: differs ? 600 : 400 }}
+                        >
+                          {sentVsTodayText(cmp, { where: 'grid', currentYear: new Date().getFullYear() })}
+                        </div>
+                      )
+                    })()}
                     </div>
                     </div>
 

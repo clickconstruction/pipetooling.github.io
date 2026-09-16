@@ -8,6 +8,7 @@ import { recordBidSentLane } from '../../lib/bids/bidSentTelemetry'
 import { formatErrorMessage, withSupabaseRetry } from '../../utils/errorHandling'
 import { BID_UPDATE_NOT_APPLIED_MESSAGE, bidUpdateRefused } from '../../lib/bids/updateGuard'
 import { formatCurrency } from '../../lib/format'
+import { compareSentVsToday, sentVsTodayText } from '../../lib/bids/sentVsToday'
 import { bidDisplayName, formatDesignDrawingPlanDate, formatDesignDrawingPlanDateLabel } from '../../lib/bids/bidFormatting'
 import { bidDetailCloseXStyle, bidDetailCloseFloatMobileStyle } from '../../lib/bids/bidStyles'
 import { BidPickerStandardList } from './BidPickerStandardList'
@@ -1367,6 +1368,20 @@ export function BidsCoverLetterTab({
                           {useCustomAmount ? 'custom amount' : alternateLeadsLetter ? `letter amount · ★ alternate leads · ${bundleSummary(bundlePricings)}` : newBundleActive ? `${boardValueRule === 'active_star' ? "active bid's ★" : 'letter total'} · ${bundleSummary(bundlePricings)}` : activePricingName ? `from Pricing · ${activePricingName}` : 'from Pricing'}
                         </span>
                       </div>
+                      {/* Frozen bid prices, PR 2: the letter recomputes from the price copy; the quote is what went out. */}
+                      {(() => {
+                        const cmp = compareSentVsToday({ bidDateSent: bid.bid_date_sent, bidValue: bid.bid_value, today: displayHeadlineAmount })
+                        if (!cmp) return null
+                        const differs = cmp.kind === 'differs'
+                        return (
+                          <div
+                            data-testid="cover-letter-sent-vs-today"
+                            style={{ marginTop: '0.35rem', fontSize: '0.74rem', fontVariantNumeric: 'tabular-nums', color: differs ? 'var(--text-amber-700)' : 'var(--text-muted)', fontWeight: differs ? 600 : 400 }}
+                          >
+                            {sentVsTodayText(cmp, { where: 'letter', currentYear: new Date().getFullYear() })}
+                          </div>
+                        )
+                      })()}
                       <div style={{ marginTop: '0.45rem', display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
                         <label style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', cursor: 'pointer', fontSize: '0.8125rem' }}>
                           <input
