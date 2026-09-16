@@ -1,6 +1,24 @@
-# Which bill does an unlinked payment pay?
+---
+name: Which bill does an unlinked payment pay?
+group: gated
+status: not started · found 2026-09-16 while fixing v2.3498 · owner picks the rule before any code
+summary: >
+  **Which bill does an unlinked payment pay?** 191 payments worth $2.32M carry no `invoice_id`,
+  and the two readers disagree in opposite directions: the invoice shows them on *every* open
+  bill, the demand letter's claim counts *none* of them (job 102 reads $5,355 open against a real
+  $2,355). Three candidate rules; one kernel must answer for the invoice, the letter and the lien
+  claim. The other half of Taunya's report — the bill-borrows-another-bill's-payment half —
+  shipped as v2.3498.
+next: >
+  Pick one of the three candidate rules in the file; then one kernel answers for the invoice's
+  payment history, the demand letter's claim and the lien claim together. Also decide whether the
+  11 bills already sent with the old rendering are re-sent or corrected in place.
+size: M once decided
+blocker: An owner rule — guessing reintroduces the double credit v2.3498 removed.
+ver: found at v2.3498
+---
 
-Status: **not started · found 2026-09-16 while fixing v2.3498 · needs an owner rule before any code**
+# Which bill does an unlinked payment pay?
 
 ## The ask
 

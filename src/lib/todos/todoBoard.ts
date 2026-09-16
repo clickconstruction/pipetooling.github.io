@@ -101,7 +101,16 @@ export function parseFrontMatter(markdown: string): FrontMatter {
 }
 
 function stripQuotes(value: string): string {
-  const m = /^"([\s\S]*)"$/.exec(value) ?? /^'([\s\S]*)'$/.exec(value)
+  // `renderFrontMatter` writes a scalar that needs quoting with JSON.stringify, so an inner
+  // quote or backslash arrives escaped; read it back the same way so the pair round-trips.
+  if (value.length >= 2 && value.startsWith('"') && value.endsWith('"')) {
+    try {
+      return JSON.parse(value) as string
+    } catch {
+      return value.slice(1, -1)
+    }
+  }
+  const m = /^'([\s\S]*)'$/.exec(value)
   return m?.[1] ?? value
 }
 

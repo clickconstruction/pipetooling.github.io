@@ -103,6 +103,12 @@ describe('parseFrontMatter', () => {
     expect(parsed.meta.blocker).toBe(long.blocker)
   })
 
+  it('round-trips a scalar the writer had to JSON-quote (an inner quote and a colon)', () => {
+    const tricky: TodoMeta = { ...META, name: 'Say "hi": the C:\\ path', blocker: 'none' }
+    const parsed = readTodoDoc('to-dos/q.md', fileWith(tricky))
+    expect(isParseError(parsed) ? null : parsed.meta.name).toBe(tricky.name)
+  })
+
   it('round-trips a pointer flag', () => {
     const parsed = readTodoDoc('to-dos/p.md', fileWith(POINTER.meta))
     expect(isParseError(parsed) ? null : parsed.meta.pointer).toBe(true)
