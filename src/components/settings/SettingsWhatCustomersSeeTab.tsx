@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type CSSProperties } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../hooks/useAuth'
 import { withSupabaseRetry } from '../../utils/errorHandling'
@@ -9,6 +9,9 @@ import { CUSTOMER_SAMPLE_SETTING_KEYS, buildSampleEmail, type AppSettingRow, typ
 import { SAMPLE_GC, SAMPLE_HOMEOWNER, SAMPLE_SUB } from '../../lib/customerSample'
 import { TestReportSampleCard } from './TestReportSampleCard'
 import { coverageLine, journeyCoverage } from '../../lib/customerSurfaceRegistry'
+import { PersonPicker } from '../journeys/PersonPicker'
+import { PersonJourneyStrips } from '../journeys/PersonJourneyStrips'
+import type { PersonSubject } from '../../lib/journeys/personJourney'
 
 /**
  * Settings → What customers see (dev-only, v2.2758; owner pick B "Journeys" from the
@@ -19,6 +22,22 @@ import { coverageLine, journeyCoverage } from '../../lib/customerSurfaceRegistry
  */
 
 type Device = 'phone' | 'desktop'
+type Mode = 'sample' | 'person'
+
+/** `?who=customer:<id>:<name>` — the Customer page's door into a person's journey (v2.3508). */
+export function parseWhoParam(raw: string | null): PersonSubject | null {
+  if (!raw) return null
+  const [kind, id, ...rest] = raw.split(':')
+  const name = rest.join(':')
+  if (!id || !name) return null
+  if (kind === 'customer' || kind === 'sub' || kind === 'house' || kind === 'firm') return { kind, id, name }
+  return null
+}
+
+export function whoParam(s: PersonSubject): string {
+  // URLSearchParams encodes the value once; the name is carried as-is.
+  return `${s.kind}:${s.id}:${s.name}`
+}
 const PHONE_WIDTH = 390
 const THUMB_SCALE = 0.4
 const THUMB_W = Math.round(PHONE_WIDTH * THUMB_SCALE)
@@ -37,6 +56,17 @@ export function SettingsWhatCustomersSeeTab() {
   const [rows, setRows] = useState<AppSettingRow[] | null>(null)
   const [senderPhone, setSenderPhone] = useState('')
   const [device, setDevice] = useState<Device>('phone')
+  const [searchParams, setSearchParams] = useSearchParams()
+  // v2.3508: Sample is the default; a person from the search box or the ?who= door turns every step into what actually happened.
+  const [person, setPerson] = useState<PersonSubject | null>(() => parseWhoParam(searchParams.get('who')))
+  const mode: Mode = person ? 'person' : 'sample'
+  const choosePerson = (s: PersonSubject | null) => {
+    setPerson(s)
+    const next = new URLSearchParams(searchParams)
+    if (s) next.set('who', whoParam(s))
+    else next.delete('who')
+    setSearchParams(next, { replace: true })
+  }
   const journeys = useMemo(() => customerJourneys(), [])
   const [selected, setSelected] = useState<{ journeyId: JourneyId; stepId: string } | null>(() => firstRenderableStep(customerJourneys()))
   const [reloadNonce, setReloadNonce] = useState(0)
@@ -80,7 +110,30 @@ export function SettingsWhatCustomersSeeTab() {
 
   return (
     <div>
-      <div style={{ ...CARD, display: 'flex', flexWrap: 'wrap', gap: '0.6rem 1rem', alignItems: 'center' }}>
+      {/* v2.3508: the mode bar — Sample (the fixture, every surface) or A person (their journey as it actually went). */}
+      <div style={{ ...CARD, display: 'flex', flexWrap: 'wrap', gap: '0.6rem 1rem', alignItems: 'center' }} data-testid="wcs-mode">
+        <div style={{ display: 'flex', gap: '0.35rem' }} role="radiogroup" aria-label="Show">
+          <button type="button" role="radio" aria-checked={mode === 'sample'} style={mode === 'sample' ? PILL_ON : PILL} onClick={() => choosePerson(null)}>Sample</button>
+          <button type="button" role="radio" aria-checked={mode === 'person'} style={mode === 'person' ? PILL_ON : PILL} onClick={() => document.getElementById('person-picker-search')?.focus()}>A person</button>
+        </div>
+        <div style={{ flex: '1 1 320px' }}>
+          <PersonPicker value={person} onChange={choosePerson} />
+        </div>
+      </div>
+      {person ? (
+        <>
+          <div style={{ ...CARD, padding: '0.55rem 1rem', fontSize: '0.82rem', display: 'flex', flexWrap: 'wrap', gap: '0.4rem 0.9rem', alignItems: 'center' }}>
+            <strong style={{ color: 'var(--text-strong)' }}>{person.name}</strong>
+            <span style={MUTED}>What was sent, when they opened it, where they stopped. Each card opens the page they hold, as they see it; nothing here writes.</span>
+            <Link to={person.kind === 'customer' ? `/customers/${person.id}` : person.kind === 'sub' ? '/people?tab=subs' : person.kind === 'house' ? '/materials' : '/customers'} style={{ ...PILL, marginLeft: 'auto', textDecoration: 'none' }}>
+              Open their record →
+            </Link>
+          </div>
+          <PersonJourneyStrips subject={person} />
+        </>
+      ) : null}
+
+      <div style={{ ...CARD, display: person ? 'none' : 'flex', flexWrap: 'wrap', gap: '0.6rem 1rem', alignItems: 'center' }}>
         <div style={{ display: 'flex', gap: '0.35rem' }}>
           <button type="button" style={device === 'phone' ? PILL_ON : PILL} onClick={() => setDevice('phone')}>Phone</button>
           <button type="button" style={device === 'desktop' ? PILL_ON : PILL} onClick={() => setDevice('desktop')}>Desktop</button>
@@ -100,6 +153,7 @@ export function SettingsWhatCustomersSeeTab() {
         <strong style={{ color: 'var(--text-strong)' }}>{coverageLine(journeyCoverage(journeys))}</strong>
         <span style={MUTED}>Every public page and every email the app sends to someone outside the company has a place on this tab — a test checks it on every change. <em>Next release</em> cards name the surface and the PR that renders it.</span>
       </div>
+      <div style={{ display: person ? 'none' : 'block' }}>
       {/* Test reports PR 1 (v2.3296): the paper, before any job carries one. */}
       <TestReportSampleCard />
 
@@ -118,6 +172,7 @@ export function SettingsWhatCustomersSeeTab() {
           ) : null}
         </JourneyStrip>
       ))}
+      </div>
     </div>
   )
 }

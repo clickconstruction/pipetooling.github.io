@@ -18,6 +18,9 @@ import {
   customerMoneyStats,
 } from '../lib/customers/customerProfileStats'
 import { fetchCustomerProfile, type CustomerProfileData } from '../lib/customers/fetchCustomerProfile'
+import { useAuth } from '../hooks/useAuth'
+import { canSeeWhatCustomersSee } from '../lib/settingsGroups'
+import { PersonJourneyStrips } from '../components/journeys/PersonJourneyStrips'
 import {
   buildCustomerActivityFeed,
   filterActivityFeed,
@@ -159,6 +162,7 @@ function TypeChip({ label, bg, fg }: { label: string; bg: string; fg: string }) 
 
 export default function CustomerDetail() {
   const { id: customerId } = useParams<{ id: string }>()
+  const { role: myRole } = useAuth()
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
   const editCustomer = useEditCustomerModal()
@@ -468,6 +472,25 @@ export default function CustomerDetail() {
               {estimateOutcomes ? `${estimateOutcomes.accepted} / ${estimateOutcomes.decided}` : '—'}
             </MoneyCell>
           </div>
+
+          {/* v2.3508: Their journey — the What-customers-see strips for this customer, as it actually went. Office roles only; reads only. */}
+          {canSeeWhatCustomersSee(myRole) ? (
+            <div style={{ border: '1px solid var(--border)', borderRadius: 8, background: 'var(--surface)', marginBottom: 16 }} data-testid="their-journey">
+              <div style={{ display: 'flex', alignItems: 'center', padding: '9px 13px', borderBottom: '1px solid var(--border)', fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-strong)' }}>
+                Their journey
+                <span style={{ marginLeft: 8, fontWeight: 400, color: 'var(--text-muted)' }}>what was sent, opened, signed and paid — each card opens the page they hold</span>
+                <Link
+                  to={`/settings?tab=settings-what-customers-see&who=customer:${customerId}:${encodeURIComponent(data.customer.name)}`}
+                  style={{ marginLeft: 'auto', fontSize: '0.74rem', fontWeight: 600, color: 'var(--text-link)', textDecoration: 'none' }}
+                >
+                  See it beside the sample →
+                </Link>
+              </div>
+              <div style={{ padding: '10px 13px 0' }}>
+                <PersonJourneyStrips subject={{ kind: 'customer', id: customerId ?? '', name: data.customer.name }} compact />
+              </div>
+            </div>
+          ) : null}
 
           <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start', flexWrap: 'wrap' }}>
           {/* open jobs */}
