@@ -17585,6 +17585,7 @@ export type Database = {
         Row: {
           amount: number
           created_at: string | null
+          document_kind: string
           due_date: string | null
           id: string
           invoice_date: string
@@ -17600,6 +17601,7 @@ export type Database = {
         Insert: {
           amount: number
           created_at?: string | null
+          document_kind?: string
           due_date?: string | null
           id?: string
           invoice_date: string
@@ -17615,6 +17617,7 @@ export type Database = {
         Update: {
           amount?: number
           created_at?: string | null
+          document_kind?: string
           due_date?: string | null
           id?: string
           invoice_date?: string

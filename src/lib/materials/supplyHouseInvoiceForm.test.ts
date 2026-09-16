@@ -12,6 +12,12 @@ import {
   poCodeHintText,
   removeAllocation,
   setAllocationPct,
+  amountProblem,
+  creditEffectSentence,
+  documentKindFromRow,
+  documentWords,
+  signedAmountForSave,
+  typedAmountFromStored,
 } from './supplyHouseInvoiceForm'
 
 describe('poCodeHint', () => {
@@ -145,5 +151,103 @@ describe('invoiceSaveLabel', () => {
     expect(invoiceSaveLabel(false, false)).toBe('Save invoice')
     expect(invoiceSaveLabel(true, false)).toBe('Save changes')
     expect(invoiceSaveLabel(true, true)).toBe('Saving…')
+  })
+})
+
+describe('what the paper is (v2.3503)', () => {
+  describe('signedAmountForSave', () => {
+    it('stores an invoice as typed and a credit as its negative', () => {
+      expect(signedAmountForSave('invoice', '888.10')).toBeCloseTo(888.1, 2)
+      expect(signedAmountForSave('credit', '888.10')).toBeCloseTo(-888.1, 2)
+    })
+
+    it('never lets a typed minus decide the sign', () => {
+      // A slipped minus key on an invoice must not become a credit.
+      expect(signedAmountForSave('invoice', '-888.10')).toBeCloseTo(888.1, 2)
+      // And a missing minus on a credit must not become a charge.
+      expect(signedAmountForSave('credit', '888.10')).toBeCloseTo(-888.1, 2)
+    })
+
+    it('refuses a zero credit and anything unparseable', () => {
+      expect(signedAmountForSave('credit', '0')).toBeNull()
+      expect(signedAmountForSave('credit', '')).toBeNull()
+      expect(signedAmountForSave('invoice', 'abc')).toBeNull()
+      expect(signedAmountForSave('invoice', '0')).toBe(0)
+    })
+  })
+
+  describe('typedAmountFromStored', () => {
+    it('shows a positive magnitude whichever kind the row is', () => {
+      expect(typedAmountFromStored(888.1)).toBe('888.1')
+      expect(typedAmountFromStored(-888.1)).toBe('888.1')
+      expect(typedAmountFromStored(0)).toBe('0')
+      expect(typedAmountFromStored(null)).toBe('0')
+    })
+  })
+
+  describe('amountProblem', () => {
+    it('passes a good amount and explains a bad one', () => {
+      expect(amountProblem('invoice', '250')).toBeNull()
+      expect(amountProblem('credit', '250')).toBeNull()
+      expect(amountProblem('invoice', 'abc')).toContain('number')
+      expect(amountProblem('credit', '0')).toContain('zero credit')
+      expect(amountProblem('invoice', '-5')).toContain('positive number')
+    })
+  })
+
+  describe('documentKindFromRow', () => {
+    it('reads the column when it is there', () => {
+      expect(documentKindFromRow({ document_kind: 'credit', amount: -5 })).toBe('credit')
+      expect(documentKindFromRow({ document_kind: 'invoice', amount: 5 })).toBe('invoice')
+    })
+
+    it('falls back to the sign for a row written before the column existed', () => {
+      expect(documentKindFromRow({ amount: -5 })).toBe('credit')
+      expect(documentKindFromRow({ amount: 5 })).toBe('invoice')
+      expect(documentKindFromRow({ document_kind: null, amount: -5 })).toBe('credit')
+    })
+  })
+
+  describe('documentWords', () => {
+    it('relabels every field that names the document', () => {
+      const credit = documentWords('credit')
+      expect(credit.title(false)).toBe('Add credit')
+      expect(credit.numberLabel).toBe('Credit #')
+      expect(credit.statusCaption).toBe('Applying it')
+      expect(credit.saveLabel(false, false)).toBe('Save credit')
+      expect(credit.amountAdornment).toBe('− $')
+      expect(credit.noJobLine).toContain('credit')
+      expect(credit.documentPdfLabel).toBe('Credit PDF')
+
+      const invoice = documentWords('invoice')
+      expect(invoice.title(false)).toBe('Add invoice')
+      expect(invoice.numberLabel).toBe('Invoice #')
+      expect(invoice.statusCaption).toBe('Paying it')
+      expect(invoice.documentPdfLabel).toBe('Invoice PDF')
+      // Nothing on screen may call a credit memo an invoice.
+      expect(documentWords('credit').noJobLine).not.toContain('invoice')
+      // The invoice path keeps the existing label helper exactly.
+      expect(invoice.saveLabel(true, false)).toBe(invoiceSaveLabel(true, false))
+      expect(invoice.saveLabel(false, true)).toBe(invoiceSaveLabel(false, true))
+    })
+  })
+
+  describe('creditEffectSentence', () => {
+    it('names both consequences when a job is on the credit', () => {
+      const s = creditEffectSentence({ amountTyped: '888.10', houseName: 'Reece', jobLabel: 'J878' })
+      expect(s).toContain('$888.10')
+      expect(s).toContain('Reece')
+      expect(s).toContain('J878')
+    })
+
+    it('says plainly that no job gets money back when none is named', () => {
+      const s = creditEffectSentence({ amountTyped: '888.10', houseName: 'Reece', jobLabel: null })
+      expect(s).toContain('No job gets money back')
+    })
+
+    it('says nothing until there is an amount to say it about', () => {
+      expect(creditEffectSentence({ amountTyped: '', houseName: 'Reece', jobLabel: 'J878' })).toBeNull()
+      expect(creditEffectSentence({ amountTyped: '0', houseName: 'Reece', jobLabel: 'J878' })).toBeNull()
+    })
   })
 })

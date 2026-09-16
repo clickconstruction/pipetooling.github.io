@@ -169,3 +169,118 @@ export function invoiceSaveLabel(editing: boolean, saving: boolean): string {
   if (saving) return 'Saving…'
   return editing ? 'Save changes' : 'Save invoice'
 }
+
+// ---------------------------------------------------------------------------
+// What the paper is (v2.3503)
+//
+// A supply house document is an invoice or a credit memo. The DATABASE stores a credit with a
+// negative amount, because job allocations are percentages and every reader sums `amount × pct`.
+// The FORM never asks anyone to type a minus: the amount box stays positive and the sign is derived
+// from the choice, so a slipped minus key cannot invent a credit and a real credit cannot be lost
+// to a missing one.
+// ---------------------------------------------------------------------------
+
+export type SupplyDocumentKind = 'invoice' | 'credit'
+
+export type SupplyDocumentWords = {
+  /** Dialog title verb-phrase, e.g. "Add credit". */
+  title: (editing: boolean) => string
+  numberLabel: string
+  dateLabel: string
+  /** Caption over the due-date / status block. */
+  statusCaption: string
+  openLabel: string
+  closedLabel: string
+  saveLabel: (editing: boolean, saving: boolean) => string
+  /** Amount adornment: '$' for an invoice, '− $' for a credit. */
+  amountAdornment: string
+  /** The empty-state line under "Which job". */
+  noJobLine: string
+  /** The Paperwork field label. */
+  documentPdfLabel: string
+}
+
+/** Every label that follows the document, so nothing on screen calls a credit memo an invoice. */
+export function documentWords(kind: SupplyDocumentKind): SupplyDocumentWords {
+  if (kind === 'credit') {
+    return {
+      title: (editing) => (editing ? 'Edit credit' : 'Add credit'),
+      numberLabel: 'Credit #',
+      dateLabel: 'Credit date',
+      statusCaption: 'Applying it',
+      openLabel: 'Open — still on the account',
+      closedLabel: 'Applied on',
+      saveLabel: (editing, saving) => (saving ? 'Saving…' : editing ? 'Save changes' : 'Save credit'),
+      amountAdornment: '− $',
+      noJobLine: 'No job yet — until one is added this credit comes off no job’s costs.',
+      documentPdfLabel: 'Credit PDF',
+    }
+  }
+  return {
+    title: (editing) => (editing ? 'Edit invoice' : 'Add invoice'),
+    numberLabel: 'Invoice #',
+    dateLabel: 'Invoice date',
+    statusCaption: 'Paying it',
+    openLabel: 'Not paid yet',
+    closedLabel: 'Paid on',
+    saveLabel: invoiceSaveLabel,
+    amountAdornment: '$',
+    noJobLine: "No job yet — until one is added this invoice sits on no job's costs.",
+    documentPdfLabel: 'Invoice PDF',
+  }
+}
+
+/**
+ * The amount to store, from the kind and what the office typed. Returns null when the box does not
+ * hold a usable number — the caller shows `amountProblem`. A credit comes back negative; this is the
+ * ONLY place the sign is applied.
+ */
+export function signedAmountForSave(kind: SupplyDocumentKind, typed: string): number | null {
+  const n = parseFloat(typed)
+  if (!Number.isFinite(n)) return null
+  const magnitude = Math.abs(n)
+  if (kind === 'credit') return magnitude > 0 ? -magnitude : null
+  return magnitude
+}
+
+/** What the box shows for a stored row — always a positive magnitude, whichever kind it is. */
+export function typedAmountFromStored(amount: number | null | undefined): string {
+  const n = Number(amount ?? 0)
+  if (!Number.isFinite(n) || n === 0) return n === 0 ? '0' : ''
+  return String(Math.abs(n))
+}
+
+/** null when the amount is fine, otherwise the sentence to show. */
+export function amountProblem(kind: SupplyDocumentKind, typed: string): string | null {
+  const n = parseFloat(typed)
+  if (!Number.isFinite(n)) return 'Amount must be a number.'
+  if (n < 0) return 'Type the amount as a positive number — picking Credit is what takes it off the balance.'
+  if (kind === 'credit' && n === 0) return 'A credit needs an amount. A zero credit is not a document.'
+  return null
+}
+
+/** The kind a stored row reads as. Falls back to the sign for a row written before the column existed. */
+export function documentKindFromRow(row: { document_kind?: string | null; amount: number | null }): SupplyDocumentKind {
+  if (row.document_kind === 'credit') return 'credit'
+  if (row.document_kind === 'invoice') return 'invoice'
+  return Number(row.amount ?? 0) < 0 ? 'credit' : 'invoice'
+}
+
+/**
+ * The effect stated in the office's own words before the credit is saved — the sentence that makes
+ * a wrong house or a wrong job obvious while it can still be fixed.
+ */
+export function creditEffectSentence(args: {
+  amountTyped: string
+  houseName: string
+  jobLabel: string | null
+}): string | null {
+  const n = parseFloat(args.amountTyped)
+  if (!Number.isFinite(n) || n <= 0) return null
+  const dollars = `$${Math.abs(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+  const house = args.houseName.trim() || 'this supply house'
+  if (!args.jobLabel) {
+    return `Takes ${dollars} off what we owe ${house}. No job gets money back — add one above if these parts went back from a job.`
+  }
+  return `Takes ${dollars} off what we owe ${house}, and ${dollars} off ${args.jobLabel}’s parts cost.`
+}
