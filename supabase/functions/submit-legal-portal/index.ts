@@ -2,6 +2,7 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient, type SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { todayYmdInAppTz } from '../_shared/appTimeZone.ts'
 import { sendEmailViaResend } from '../_shared/resendSendEmail.ts'
+import { buildLegalConfirmEmail } from '../_shared/legalEmails.ts'
 import { PORTAL_COMPANY } from '../_shared/portalCompany.ts'
 
 /**
@@ -83,9 +84,9 @@ serve(async (req) => {
         const key = Deno.env.get('RESEND_API_KEY')
         if (!key) return false
         const confirmUrl = `${Deno.env.get('SUPABASE_URL')}/functions/v1/legal-notify-dispatch?confirm=${raw}`
-        const subject = `Confirm your email for ${PORTAL_COMPANY.name}'s legal portal`
-        const html = `<div style="font:15px/1.5 -apple-system,'Segoe UI',Roboto,sans-serif;color:#16283c;max-width:600px"><p>Someone at your firm added <b>${email}</b> to hear from ${PORTAL_COMPANY.name} about accounts referred to counsel.</p><p><a href="${confirmUrl}" style="display:inline-block;background:#b0662f;color:#fff;padding:8px 14px;border-radius:5px;text-decoration:none">Yes, email me</a></p><p style="color:#8a97a6;font-size:12px">Nothing else is sent to this address unless you click. If this wasn't you, ignore this email.</p></div>`
-        const res = await sendEmailViaResend(email, subject, `${subject}\n\n${confirmUrl}`, html, key)
+        // v2.3512: one builder for the sender and Settings → What customers see (_shared/legalEmails.ts).
+        const mail = buildLegalConfirmEmail({ companyName: PORTAL_COMPANY.name, email, confirmUrl })
+        const res = await sendEmailViaResend(email, mail.subject, mail.text, mail.html, key)
         return res.success
       }
       if (kind === 'recipient_add') {

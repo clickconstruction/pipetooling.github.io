@@ -15,9 +15,9 @@ describe('customerJourneys (What customers see)', () => {
   it('page steps open the real public routes with the sample tokens', () => {
     const pages = journeys.flatMap((j) => j.steps).filter((s) => s.render.kind === 'page')
     for (const s of pages) {
-      const path = (s.render as { path: string }).path
-      expect(path.startsWith('/')).toBe(true)
-      expect(path.endsWith(`t=${SAMPLE_TOKEN}`) || path.endsWith(`t=${SAMPLE_TOKEN_DONE}`) || path.endsWith(`t=${SAMPLE_TOKEN_GC}`)).toBe(true)
+      const { path, absolute } = s.render as { path: string; absolute?: boolean }
+      expect(absolute ? /^(https?:)?\/\//.test(path) || path.startsWith('/functions/v1/') : path.startsWith('/')).toBe(true)
+      expect([SAMPLE_TOKEN, SAMPLE_TOKEN_DONE, SAMPLE_TOKEN_GC].some((tok) => path.endsWith(`=${tok}`) || path.endsWith(`/${tok}`)), path).toBe(true)
     }
     expect(findStep(journeys, 'homeowner', 'estimate-thankyou')?.render).toEqual({ kind: 'page', path: `/estimate/accept?t=${SAMPLE_TOKEN_DONE}` })
     expect(findStep(journeys, 'gc', 'gc-portal')?.render).toEqual({ kind: 'page', path: `/portal?t=${SAMPLE_TOKEN_GC}` })
@@ -31,9 +31,11 @@ describe('customerJourneys (What customers see)', () => {
     expect(subIds.indexOf('sub-contract-email')).toBe(subIds.indexOf('sub-contract') - 1)
     expect(findStep(journeys, 'sub', 'sub-contract-email')?.render).toEqual({ kind: 'email', email: 'contract' })
     // v2.3505: the surfaces that shipped after the tab are on it as Next-release cards, each naming the PR that renders it.
+    // v2.3512: every surface renders, opens as a PDF, or is named as sent by another system — no step waits on a release. A new one may
+    // be added as `soon` while its release is built, but it must name the PR that renders it.
     const soon = journeys.flatMap((j) => j.steps).filter((s) => s.render.kind === 'soon')
-    expect(soon.length).toBeGreaterThan(0)
     for (const s of soon) expect((s.render as { note: string }).note).toMatch(/Planned as PR \d/)
+    expect(soon.length).toBe(0)
     // The customer's agreement sits in the homeowner journey between the thank-you and the bill — it is not the sub's contract.
     const homeIds = journeys.find((j) => j.id === 'homeowner')!.steps.map((s) => s.id)
     expect(homeIds.indexOf('job-contract-page')).toBeGreaterThan(homeIds.indexOf('estimate-thankyou'))

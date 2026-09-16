@@ -19,6 +19,11 @@ import { testReportSampleEmail } from './jobs/testReportSample'
 import { buildBidPricingPackageEmailHtml, buildBidPricingPackagePlainText, buildBidPricingPackageTableHtml, type PackageExternalRow } from './buildBidPricingPackageHtml'
 import { buildGcStatementEmailHtml, buildGcStatementEmailText, gcStatementEmailSubject } from './jobsDocuments/gcStatementEmail'
 import type { GcReviewGroup } from './gcReviewRollup'
+import { buildRfqEmail } from './rfqEmail'
+import { composeJobAccountEmail } from './supplyHouseJobAccount'
+import { buildLegalConfirmEmail, buildLegalDigestEmail, buildLegalNowEmail } from './legalEmails'
+import { SAMPLE_FIRM, SAMPLE_HOUSE, SAMPLE_RFQ_LINES } from '../../supabase/functions/_shared/customerSampleFixtures'
+import { LEGAL_CONFIRMED_SAMPLE_URL, LEGAL_PORTAL_SAMPLE_PATH } from './customerJourneys'
 
 export type { AppSettingRow }
 
@@ -167,6 +172,73 @@ export function buildSampleGcStatementEmail(ctx: SampleEmailContext): BuiltEmail
   return { subject: gcStatementEmailSubject(group, ctx.dateLabel), html: buildGcStatementEmailHtml(group, opts), text: buildGcStatementEmailText(group, opts) }
 }
 
+/** The price-request email a supply house gets (v2.3512): the sender's own builder over the sample scope. */
+export function buildSampleRfqEmail(ctx: SampleEmailContext): BuiltEmail {
+  return buildRfqEmail({
+    kind: 'request',
+    viewed: false,
+    bidLabel: `BP482 · ${SAMPLE_BID.projectName}`,
+    houseName: SAMPLE_HOUSE.name,
+    itemCount: SAMPLE_RFQ_LINES.length,
+    neededBy: ymdPlusDays(ctx.todayYmd, 5),
+    vendorNote: null,
+    senderName: ctx.sender?.name || null,
+    listText: SAMPLE_RFQ_LINES.map((l) => `${l.count} ${l.unit ?? 'ea'} — ${l.fixture}`).join('\n'),
+    token: 'sample',
+    plansLink: null,
+    appOrigin: ctx.origin,
+  })
+}
+
+/** The job-account set-up email (v2.3512): the Share-with-supply-house modal's own composer over the sample building owner. */
+export function buildSampleJobAccountEmail(ctx: SampleEmailContext): BuiltEmail {
+  return composeJobAccountEmail(
+    {
+      propertyName: SAMPLE_BID.projectName,
+      address: '4400 Sample Pkwy, Kyle, TX 78640',
+      sitePhone: '(512) 555-0142',
+      gcCompany: SAMPLE_GC.company,
+      gcPhone: '(512) 555-0120',
+      gcEmail: SAMPLE_GC.email,
+      ownerMode: 'building_owner',
+      ownerName: 'Pat Owner',
+      companyName: 'Sample Owner LLC',
+      mailingAddress: '1 Sample Owner Way, Austin, TX 78701',
+      ownerEmail: 'ap@sampleowner.example.com',
+    },
+    `J1042 — ${SAMPLE_BID.projectName}`,
+    ctx.sender?.name ?? '',
+    { companyName: PORTAL_COMPANY.name, officePhone: PORTAL_COMPANY.phone },
+  )
+}
+
+const LEGAL_UNSUBSCRIBE_SAMPLE_URL = LEGAL_CONFIRMED_SAMPLE_URL.replace('confirm=', 'unsubscribe=')
+
+/** The firm's three emails (v2.3512): the senders' own builders over the sample firm. */
+export function buildSampleLegalEmail(id: 'legal-confirm' | 'legal-now' | 'legal-digest', ctx: SampleEmailContext): BuiltEmail {
+  const portalUrl = `${ctx.origin}${LEGAL_PORTAL_SAMPLE_PATH}`
+  if (id === 'legal-confirm') return buildLegalConfirmEmail({ companyName: PORTAL_COMPANY.name, email: SAMPLE_FIRM.recipients[1].email, confirmUrl: LEGAL_CONFIRMED_SAMPLE_URL })
+  if (id === 'legal-now')
+    return buildLegalNowEmail({
+      companyName: PORTAL_COMPANY.name,
+      firmName: SAMPLE_FIRM.name,
+      trigger: 'referred',
+      payer: SAMPLE_HOMEOWNER.name,
+      handling: SAMPLE_FIRM.handling,
+      note: 'Two bills, 74 days past due; the office\'s calls went unanswered.',
+      portalUrl,
+      unsubscribeUrl: LEGAL_UNSUBSCRIBE_SAMPLE_URL,
+    })
+  return buildLegalDigestEmail({
+    companyName: PORTAL_COMPANY.name,
+    recipientName: SAMPLE_FIRM.recipients[1].name,
+    matters: [{ payerName: SAMPLE_HOMEOWNER.name, stage: 'with_firm', handlingName: SAMPLE_FIRM.handling, releasedAt: ymdPlusDays(ctx.todayYmd, -3) }],
+    events: [{ createdAt: ymdPlusDays(ctx.todayYmd, -1), trigger: 'referred', payer: SAMPLE_HOMEOWNER.name }],
+    portalUrl,
+    unsubscribeUrl: LEGAL_UNSUBSCRIBE_SAMPLE_URL,
+  })
+}
+
 export function buildSampleEmail(id: SampleEmailId, ctx: SampleEmailContext): { subject: string; html: string; text: string } {
   if (id === 'estimate') return buildSampleEstimateEmail(ctx)
   if (id === 'contract') return buildSampleContractEmail(ctx)
@@ -175,5 +247,8 @@ export function buildSampleEmail(id: SampleEmailId, ctx: SampleEmailContext): { 
   if (id === 'test-report') return buildSampleTestReportEmail(ctx) ?? { subject: 'Test report', html: '<p>Loading the test-report settings…</p>', text: '' }
   if (id === 'pricing-package') return buildSamplePricingPackageEmail(ctx)
   if (id === 'gc-statement') return buildSampleGcStatementEmail(ctx)
+  if (id === 'rfq-request') return buildSampleRfqEmail(ctx)
+  if (id === 'job-account') return buildSampleJobAccountEmail(ctx)
+  if (id === 'legal-confirm' || id === 'legal-now' || id === 'legal-digest') return buildSampleLegalEmail(id, ctx)
   return buildSampleBidRoomEmail(ctx, id === 'bid-room-revised')
 }

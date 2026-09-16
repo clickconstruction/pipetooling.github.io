@@ -4,6 +4,8 @@ import { PORTAL_COMPANY } from '../_shared/portalCompany.ts'
 import { todayYmdInAppTz } from '../_shared/appTimeZone.ts'
 import { publicViewDecision } from '../_shared/publicViewCounting.ts'
 import { JOB_CONTRACT_BUCKET } from '../_shared/jobContract.ts'
+import { sampleStateFromToken } from '../_shared/customerSample.ts'
+import { sampleLegalPortalResponse } from '../_shared/customerSampleFixtures.ts'
 
 /**
  * Legal portal payload (Legal portal train, PR 3): resolves the collections law
@@ -55,6 +57,8 @@ serve(async (req) => {
   try {
     const url = new URL(req.url)
     const rawToken = url.searchParams.get('token')?.trim()
+    // What customers see (v2.3512): the sample token answers with the sample firm's empty portal — no link lookup, no view row, never a real matter.
+    if (sampleStateFromToken(rawToken)) return jsonResponse(sampleLegalPortalResponse(PORTAL_COMPANY, todayYmdInAppTz()))
     if (!rawToken || rawToken.length < 16 || rawToken.length > 128) return jsonResponse({ error: 'Missing token' }, 400)
 
     const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, { auth: { persistSession: false } })

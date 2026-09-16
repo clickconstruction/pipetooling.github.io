@@ -19,13 +19,13 @@
 import { SAMPLE_TOKEN, SAMPLE_TOKEN_DONE, SAMPLE_TOKEN_GC } from './customerSample'
 import type { PaperId } from './journeys/paperSamples'
 
-export type SampleEmailId = 'estimate' | 'bid-room' | 'bid-room-revised' | 'contract' | 'job-contract' | 'job-contract-reminder' | 'test-report' | 'pricing-package' | 'gc-statement'
+export type SampleEmailId = 'estimate' | 'bid-room' | 'bid-room-revised' | 'contract' | 'job-contract' | 'job-contract-reminder' | 'test-report' | 'pricing-package' | 'gc-statement' | 'rfq-request' | 'job-account' | 'legal-confirm' | 'legal-now' | 'legal-digest'
 
 /** Every email the tab builds in the browser — the order it builds them in. */
-export const SAMPLE_EMAIL_IDS: readonly SampleEmailId[] = ['estimate', 'bid-room', 'bid-room-revised', 'contract', 'job-contract', 'job-contract-reminder', 'test-report', 'pricing-package', 'gc-statement']
+export const SAMPLE_EMAIL_IDS: readonly SampleEmailId[] = ['estimate', 'bid-room', 'bid-room-revised', 'contract', 'job-contract', 'job-contract-reminder', 'test-report', 'pricing-package', 'gc-statement', 'rfq-request', 'job-account', 'legal-confirm', 'legal-now', 'legal-digest']
 
 export type JourneyStepRender =
-  | { kind: 'page'; path: string }
+  | { kind: 'page'; path: string; /** v2.3512: `path` is a full URL on another origin (a page an edge function serves). */ absolute?: boolean }
   | { kind: 'email'; email: SampleEmailId }
   | { kind: 'paper'; paper: PaperId }
   | { kind: 'external'; note: string }
@@ -68,6 +68,13 @@ export const JOB_CONTRACT_SAMPLE_DONE_PATH = `/contract/sign?t=${SAMPLE_TOKEN_DO
 /** The GC's submittal review room (v2.3511): open, and after the architect's review. */
 export const SUBMITTAL_ROOM_SAMPLE_PATH = `/submittal?t=${SAMPLE_TOKEN}`
 export const SUBMITTAL_ROOM_SAMPLE_DONE_PATH = `/submittal?t=${SAMPLE_TOKEN_DONE}`
+/** The supply house's quote page (v2.3512): open, and with the house's own last prices on offer. */
+export const RFQ_SAMPLE_PATH = `/q/${SAMPLE_TOKEN}`
+export const RFQ_SAMPLE_DONE_PATH = `/q/${SAMPLE_TOKEN_DONE}`
+/** The collections law firm's portal (v2.3512) — before its first matter. */
+export const LEGAL_PORTAL_SAMPLE_PATH = `/legal?t=${SAMPLE_TOKEN}`
+/** The confirmed page the firm's confirm link lands on — served by the edge function, so the path is a full URL (v2.3512). */
+export const LEGAL_CONFIRMED_SAMPLE_URL = `${(import.meta.env.VITE_SUPABASE_URL as string | undefined) ?? ''}/functions/v1/legal-notify-dispatch?confirm=${SAMPLE_TOKEN}`
 
 export function customerJourneys(): Journey[] {
   return [
@@ -405,7 +412,7 @@ export function customerJourneys(): Journey[] {
           customerCan: 'Open the quote page from the link.',
           guide: 'send-a-supply-house-a-quote-link',
           reflects: ['RFQ email wording', 'Sender name and email'],
-          render: { kind: 'soon', note: 'The email a supply house gets with the quote link. Staff can also paste the link into their own email or text. Planned as PR 6.' },
+          render: { kind: 'email', email: 'rfq-request' },
         },
         {
           id: 'quote-page',
@@ -415,7 +422,7 @@ export function customerJourneys(): Journey[] {
           customerCan: 'Price each line on their phone, one at a time, and send the quote back.',
           guide: 'send-a-supply-house-a-quote-link',
           reflects: ['Scope lines', 'Needed-by date'],
-          render: { kind: 'soon', note: 'The mobile page the counter fills in one line at a time. Needs a sample branch in get-rfq-quote-page. Planned as PR 6.' },
+          render: { kind: 'page', path: RFQ_SAMPLE_PATH },
         },
         {
           id: 'quote-submitted',
@@ -425,7 +432,7 @@ export function customerJourneys(): Journey[] {
           customerCan: 'See that the quote went through.',
           guide: 'send-a-supply-house-a-quote-link',
           reflects: ['Thank-you wording'],
-          render: { kind: 'soon', note: 'The page after the house sends its quote. Planned as PR 6.' },
+          render: { kind: 'page', path: RFQ_SAMPLE_DONE_PATH },
         },
         {
           id: 'job-account-email',
@@ -435,7 +442,7 @@ export function customerJourneys(): Journey[] {
           customerCan: 'Read which job is opening an account, who to bill, and the company particulars.',
           guide: 'share-job-with-supply-house',
           reflects: ['Job account email wording', 'Company particulars'],
-          render: { kind: 'soon', note: 'The set-up email a supply house receives when a job opens an account with them, one email per house. Planned as PR 6.' },
+          render: { kind: 'email', email: 'job-account' },
         },
       ],
     },
@@ -452,7 +459,7 @@ export function customerJourneys(): Journey[] {
           customerCan: 'Confirm their email address so matters can reach them.',
           guide: 'manage-who-at-the-law-firm-gets-emails',
           reflects: ['Firm email wording', 'Portal link'],
-          render: { kind: 'soon', note: 'The one email a firm recipient must confirm before any matter reaches them. Sample mode on the dispatcher renders it. Planned as PR 6.' },
+          render: { kind: 'email', email: 'legal-confirm' },
         },
         {
           id: 'firm-confirmed-page',
@@ -462,7 +469,7 @@ export function customerJourneys(): Journey[] {
           customerCan: 'See that the address is confirmed, or paused after unsubscribe.',
           guide: 'manage-who-at-the-law-firm-gets-emails',
           reflects: ['Confirmed / unsubscribed page wording'],
-          render: { kind: 'soon', note: 'The small page that says the address is confirmed, or paused after unsubscribe. Planned as PR 6.' },
+          render: { kind: 'page', path: LEGAL_CONFIRMED_SAMPLE_URL, absolute: true },
         },
         {
           id: 'firm-portal',
@@ -472,7 +479,7 @@ export function customerJourneys(): Journey[] {
           customerCan: 'Read every attorney-ready matter as one packet, record fees and steps, and ask the office a question.',
           guide: 'share-your-attorney-their-portal',
           reflects: ['Company particulars for filing', 'Held entries never leave'],
-          render: { kind: 'soon', note: 'The firm\'s no-login portal: every attorney-ready matter as Account · Paper · Their word · Evidence · Fees & steps. The sample must be built from the fixture only; no real matter can reach this frame. Planned as PR 6.' },
+          render: { kind: 'page', path: LEGAL_PORTAL_SAMPLE_PATH },
         },
         {
           id: 'firm-now-email',
@@ -482,7 +489,7 @@ export function customerJourneys(): Journey[] {
           customerCan: 'Learn that something moved on a matter and open the portal.',
           guide: 'manage-who-at-the-law-firm-gets-emails',
           reflects: ['Event wording'],
-          render: { kind: 'soon', note: 'The short factual email a firm recipient on "now" gets per event. Planned as PR 6.' },
+          render: { kind: 'email', email: 'legal-now' },
         },
         {
           id: 'firm-digest-email',
@@ -492,7 +499,7 @@ export function customerJourneys(): Journey[] {
           customerCan: 'Read the day\'s digest of every open matter and what changed.',
           guide: 'manage-who-at-the-law-firm-gets-emails',
           reflects: ['Digest wording', 'Digest weekdays and time'],
-          render: { kind: 'soon', note: 'The daily digest: every open matter plus the events since the last one. Planned as PR 6.' },
+          render: { kind: 'email', email: 'legal-digest' },
         },
       ],
     },
