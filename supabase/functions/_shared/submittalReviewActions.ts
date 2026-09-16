@@ -112,3 +112,69 @@ export function decisionCounts(decisions: ReadonlyArray<{ decision: DecisionKind
   for (const d of decisions) c[d.decision] += 1
   return c
 }
+
+// ---------- stage 5a: the conversation ----------
+
+/** Asks from one person on one room, per hour. Read the count from bid_submittal_messages. */
+export const MESSAGES_PER_HOUR = 5
+export const MESSAGE_MAX = 4000
+export const MESSAGE_TAGS_MAX = 12
+
+export type MessageBody = { token: string; submittalId: string | null; body: string; tags: string[]; honeypot: boolean }
+
+/** `{ token (personal or room), submittalId?, body, tags?, website (honeypot) }` — the body trimmed and capped, tags cleaned and deduped. */
+export function parseMessageBody(body: unknown): { ok: true; value: MessageBody } | { ok: false; error: string } {
+  if (!body || typeof body !== 'object') return { ok: false, error: 'Bad request' }
+  const b = body as Record<string, unknown>
+  const token = typeof b.token === 'string' ? b.token.trim() : ''
+  if (!token) return { ok: false, error: 'Missing token' }
+  const text = typeof b.body === 'string' ? b.body.trim() : ''
+  if (!text) return { ok: false, error: 'Write what you need first.' }
+  const tags: string[] = []
+  if (Array.isArray(b.tags)) {
+    for (const t of b.tags) {
+      const tag = typeof t === 'string' ? t.trim().slice(0, 40) : ''
+      if (tag && !tags.includes(tag)) tags.push(tag)
+      if (tags.length >= MESSAGE_TAGS_MAX) break
+    }
+  }
+  return {
+    ok: true,
+    value: {
+      token,
+      submittalId: typeof b.submittalId === 'string' && b.submittalId.trim() ? b.submittalId.trim() : null,
+      body: text.slice(0, MESSAGE_MAX),
+      tags,
+      honeypot: typeof b.website === 'string' && b.website.trim() !== '',
+    },
+  }
+}
+
+export type MessageContext = {
+  roomStatus: string
+  personClosed: boolean
+  /** Asks this person made in the last hour, before this one. */
+  askedThisHour: number
+}
+export type MessageVerdict = { ok: true } | { ok: false; status: 410 | 429; code: 'closed' | 'rate_limited'; error: string }
+
+/** A watcher may ask (decision 10); a closed room or a closed link may not; five an hour is the limit. */
+export function messageVerdict(c: MessageContext): MessageVerdict {
+  if (c.roomStatus === 'closed' || c.personClosed) return { ok: false, status: 410, code: 'closed', error: 'This review is closed.' }
+  if (c.askedThisHour >= MESSAGES_PER_HOUR) return { ok: false, status: 429, code: 'rate_limited', error: 'Five an hour is the limit — call the office if it cannot wait.' }
+  return { ok: true }
+}
+
+/** The system entry a decision posts into the thread: "decided 3 rows · 2 revise · 1 reject". */
+export function decisionEntryBody(counts: { approved: number; revise: number; rejected: number }): string {
+  const n = counts.approved + counts.revise + counts.rejected
+  const parts = [counts.approved ? `${counts.approved} approve` : '', counts.revise ? `${counts.revise} revise` : '', counts.rejected ? `${counts.rejected} reject` : ''].filter(Boolean)
+  return `decided ${n} row${n === 1 ? '' : 's'}${parts.length ? ` · ${parts.join(' · ')}` : ''}`
+}
+
+/** The inbox row's title: "Dana Whitfield (architect) asked about WC-1 on B398 Rev 2". */
+export function askTitle(args: { personName: string; roleLabel: string; tags: string[]; bidLabel: string; revNumber: number | null }): string {
+  const about = args.tags.length ? ` about ${args.tags.slice(0, 3).join(', ')}${args.tags.length > 3 ? '…' : ''}` : ''
+  const rev = args.revNumber ? ` Rev ${args.revNumber}` : ''
+  return `${args.personName} (${args.roleLabel}) asked${about} on ${args.bidLabel}${rev}`
+}

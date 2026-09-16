@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { APP_CALENDAR_TZ } from '../../utils/dateUtils'
 
-import { anonymousOpens, describeHow, describeRoomLine, describeTrail, newRoomToken, parseSubmittalRoomPayload, personTrail, roomLink } from './submittalRoom'
+import { anonymousOpens, describeHow, describeRoomLine, describeTrail, newRoomToken, parseSubmittalRoomPayload, personTrail, roomLink, describeThreadEntry, parseRoomMessage, summarizeThread, threadOrder } from './submittalRoom'
 
 const TZ = APP_CALENDAR_TZ
 
@@ -46,5 +46,34 @@ describe('parseSubmittalRoomPayload', () => {
     expect(p?.person).toEqual({ id: 'p1', name: 'Dana', role: 'architect', mayDecide: true })
     expect(p?.revisions).toHaveLength(1)
     expect(p?.revisions[0]?.hasPackage).toBe(true)
+  })
+})
+
+describe('stage 5a — the thread', () => {
+  const tz = APP_CALENDAR_TZ
+  const ask = { id: 'm2', at: '2026-09-16T20:10:00Z', authorKind: 'reviewer', authorName: 'Dana Whitfield', body: 'Is the 50 gal ok?', kind: 'message', revNumber: 2, tags: ['DWH-1'] }
+  const sys = { id: 'm1', at: '2026-09-16T19:00:00Z', authorKind: 'system', authorName: 'Dana Whitfield', body: 'Dana Whitfield decided 3 rows · 2 revise · 1 reject', kind: 'decision', revNumber: 2, tags: [] }
+  const reply = { id: 'm3', at: '2026-09-17T14:00:00Z', authorKind: 'office', authorName: 'Click Plumbing', body: 'Yes — same footprint.', kind: 'reply', revNumber: 2, tags: ['DWH-1'] }
+
+  it('parses an entry defensively and orders the thread oldest first', () => {
+    expect(parseRoomMessage(ask)).toEqual(ask)
+    expect(parseRoomMessage({ id: 'x', body: '' })).toBeNull()
+    expect(parseRoomMessage({ id: 'x', body: 'hi', authorKind: 'alien', kind: 'weird' })).toMatchObject({ authorKind: 'system', kind: 'message', tags: [] })
+    expect(threadOrder([reply, ask, sys].map((m) => parseRoomMessage(m)!)).map((m) => m.id)).toEqual(['m1', 'm2', 'm3'])
+  })
+
+  it('the payload carries the thread and the person\'s hourly count', () => {
+    const p = parseSubmittalRoomPayload({ status: 'open', bid: { label: 'B398' }, company: { name: 'Click' }, person: { id: 'p', name: 'Dana', role: 'architect', mayDecide: true, messagesThisHour: 2 }, revisions: [], messages: [reply, ask] })
+    expect(p?.messages?.map((m) => m.id)).toEqual(['m2', 'm3'])
+    expect(p?.person?.messagesThisHour).toBe(2)
+    expect(parseSubmittalRoomPayload({ status: 'open', bid: {}, company: {}, revisions: [] })?.messages).toEqual([])
+  })
+
+  it('words the name line and the office tab\'s summary', () => {
+    expect(describeThreadEntry(parseRoomMessage(ask)!, tz)).toEqual({ who: 'Dana Whitfield', when: 'Sep 16', quiet: false })
+    expect(describeThreadEntry(parseRoomMessage(sys)!, tz)).toEqual({ who: null, when: 'Sep 16', quiet: true })
+    expect(summarizeThread([], tz)).toBe('No conversation yet')
+    expect(summarizeThread([sys, ask].map((m) => parseRoomMessage(m)!), tz)).toBe('2 entries · last: Dana Whitfield asked Sep 16')
+    expect(summarizeThread([ask, reply].map((m) => parseRoomMessage(m)!), tz)).toBe('2 entries · last: you answered Sep 17')
   })
 })

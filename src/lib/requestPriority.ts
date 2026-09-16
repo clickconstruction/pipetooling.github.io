@@ -126,6 +126,8 @@ export function portalKindLabel(kind: string | null | undefined): string {
       return 'asks for other dates'
     case 'share_bill_ask':
       return 'asks about a customer’s bill'
+    case 'submittal_message':
+      return 'asked on a submittal'
     default:
       return 'sent a request'
   }

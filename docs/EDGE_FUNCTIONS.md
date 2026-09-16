@@ -112,6 +112,7 @@ when_to_read:
    - [sign-job-contract](#sign-job-contract)
    - [remind-job-contracts](#remind-job-contracts)
    - [share-job-contract](#share-job-contract)
+   - [send-submittal-reply-email](#send-submittal-reply-email)
    - [get-rfq-quote-page](#get-rfq-quote-page)
    - [submit-rfq-quote](#submit-rfq-quote)
    - [send-rfq-email](#send-rfq-email)
@@ -1299,6 +1300,8 @@ Devs: **Settings → Templates & testing → Workflow email (Edge Function)** (c
 
 **Used by**: [`SubmittalRoom.tsx`](../src/pages/SubmittalRoom.tsx). **Deploy**: `bash scripts/deploy-functions.sh get-submittal-room` after `20260916015805` is applied.
 
+
+**Stage 5a (v2.3528)** — the payload gains `messages: RoomMessage[]` (oldest first: `{ id, at, authorKind, authorName, body, kind, revNumber, tags }`; the office reads as the company name, system lines carry the person's name only inside the body) and `person.messagesThisHour`, so the page greys *Ask* at the cap. A missing table (before the migration is pushed) reads as no messages.
 ---
 
 **v2.3511 (What customers see PR 4):** the sample tokens (`sample` open, `sample-done` reviewed) answer from `sampleSubmittalRoomResponse` in `_shared/customerSampleFixtures.ts` before any database read — no row, no view stamp, no person. The room page shows the Sample banner; identify and decide stay on the page.
@@ -1323,6 +1326,8 @@ Devs: **Settings → Templates & testing → Workflow email (Edge Function)** (c
 
 **Used by**: [`SubmittalRoom.tsx`](../src/pages/SubmittalRoom.tsx). **Deploy**: `bash scripts/deploy-functions.sh submit-submittal-review` (after `20260916015805`).
 
+
+**Stage 5a (v2.3528) — `action: 'message'`** `{ token (personal or room), submittalId?, body, tags?, website }`: one `bid_submittal_messages` row (`reviewer` or `watcher` — a watcher may ask), an `asked` event, and one high-priority inbox row (`estimator_requests` when the estimating group has anyone, else `dispatch_requests`) with `pending_payload.kind = 'submittal_message'` carrying the question, the room, the message and the person. A room-token caller who has not identified gets 403 `identify_first`; a closed room or link 410; **five asks an hour per person**, then 429. The `decide` branch now also posts a `system` entry (`kind: 'decision'`, *Dana decided 3 rows · 2 revise · 1 reject*) so the thread is the timeline.
 ---
 ### get-rfq-quote-page
 
@@ -1481,6 +1486,20 @@ Devs: **Settings → Templates & testing → Workflow email (Edge Function)** (c
 **Gateway**: `verify_jwt = false` (JWT validated in-body; rows read as the caller).
 
 **Behavior**: Contracts must be `signed`; the PDF is `signed_pdf_path` from `job-contract-documents` (rebuilt once with `_shared/jobContractPdf.ts` and stored when missing; paper records send `paper_upload_path`). Estimates must be `customer_accepted` with a consent stamp; their PDF is built once from the frozen line items / option / terms / acceptor fields and cached at `estimates/<id>/signed.pdf`. `pdf_url` → 1-hour signed URL. `email` → Resend with the attachment, reply-to = the sender, the durable link for contracts, optional note; then a `shared` `job_contract_events` row (contracts) and a `contract_shared` `job_activity_events` row (both, when a job is known) carrying `to`.
+
+---
+
+### send-submittal-reply-email
+
+**Purpose**: The office's answer to a question asked on a bid's review room reaches the person who asked (Submittals stage 5a, v2.3528).
+
+**Endpoint**: `POST /functions/v1/send-submittal-reply-email` — `{ message_id, public_origin? }`; staff user JWT in `Authorization`.
+
+**Secrets**: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `RESEND_API_KEY`, `APP_ORIGIN`
+
+**Gateway**: `verify_jwt = false` (JWT validated in-body; the reply row is read as the caller, so RLS admits only pricing sharers on bids they can price).
+
+**Behavior**: The row must be an `office` `reply` whose `metadata.answers_message_id` names the ask; the ask's person gets one letterhead email (`_shared/submittalReplyEmail.ts`: the subject names the bid and the tags, the body is the reply with the question quoted, the button is the person's **personal** room link — minted here if they never had one; never a staff name; reply-to is the sender's address). Writes a `reply` event with the Resend id. The client calls it from `src/lib/submittals/replyToRoom.ts` after inserting the reply; a failed email leaves the reply on the thread and says so.
 
 ---
 

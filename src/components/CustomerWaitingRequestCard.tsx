@@ -50,6 +50,9 @@ export function CustomerWaitingRequestCard({
   const kind = portalKindLabel(portal?.kind ?? (row.pending_action === 'gc_stage_ask' ? 'gc_stage_ask' : null))
   const phone = portal?.phone ?? null
   const description = portal?.description ?? null
+  // Stage 5a: a question from a submittal room — no phone to call; the answer lives on the bid's Submittals tab.
+  const raw = row.pending_payload && typeof row.pending_payload === 'object' ? (row.pending_payload as Record<string, unknown>) : null
+  const submittalAsk = portal?.kind === 'submittal_message' && raw ? { bidId: typeof raw.bidId === 'string' ? raw.bidId : null, bidLabel: typeof raw.bidLabel === 'string' ? raw.bidLabel : null, tags: Array.isArray(raw.tags) ? (raw.tags as unknown[]).filter((t): t is string => typeof t === 'string') : [], revNumber: typeof raw.revNumber === 'number' ? raw.revNumber : null } : null
 
   return (
     <div
@@ -95,7 +98,7 @@ export function CustomerWaitingRequestCard({
         ) : null}
         <span>Reach them at</span>
         <span style={{ color: 'var(--text-strong)' }}>
-          {phone ? (phoneContact(phone)?.display ?? phone) : 'No number on file'}
+          {submittalAsk ? 'By email, once you answer — the reply goes to their inbox with their own room link' : phone ? (phoneContact(phone)?.display ?? phone) : 'No number on file'}
           {phone && portal?.phoneSource === 'on_file' ? <span style={{ color: 'var(--text-muted)' }}> · from the customer record</span> : null}
         </span>
         {portal?.plansLink ? (
@@ -108,6 +111,17 @@ export function CustomerWaitingRequestCard({
         ) : null}
       </div>
       {phone ? <CallPhoneButton phone={phone} size="big" onUsed={() => onCall(phone)} /> : null}
+      {submittalAsk ? (
+        <a
+          href={submittalAsk.bidId ? `/bids?tab=submittals&bidId=${encodeURIComponent(submittalAsk.bidId)}` : '/bids?tab=submittals'}
+          onClick={(e) => e.stopPropagation()}
+          data-testid="customer-waiting-submittal-door"
+          title="The whole conversation, the rows they asked about, and the reply box"
+          style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', padding: '0.45rem 0.9rem', borderRadius: 6, background: '#b0662f', color: 'white', fontWeight: 700, fontSize: '0.875rem', textDecoration: 'none', alignSelf: 'flex-start' }}
+        >
+          Answer on {submittalAsk.bidLabel ?? 'the bid'}{submittalAsk.revNumber ? ` · Rev ${submittalAsk.revNumber}` : ''}{submittalAsk.tags.length ? ` · ${submittalAsk.tags.slice(0, 3).join(', ')}` : ''} →
+        </a>
+      ) : null}
       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', flexDirection: narrow ? 'row' : 'row' }}>
         {phone ? <CallPhoneButton phone={phone} mode="text" onUsed={() => onCall(phone)} /> : null}
         <button

@@ -184,7 +184,20 @@ export function roomSubline(c: RoomRevision['counts']): string {
   return parts.length ? `${parts.join('. ')}.` : ''
 }
 
-export type RoomPerson = { id: string; name: string; role: RoomRole; mayDecide: boolean }
+export type RoomPerson = { id: string; name: string; role: RoomRole; mayDecide: boolean; /** Asks in the last hour (stage 5a) — the page greys Ask at the cap. */ messagesThisHour?: number }
+
+/** One entry of the room's thread (stage 5a): an ask, the office's answer, or a system line. Never a staff name. */
+export type RoomMessage = {
+  id: string
+  at: string
+  authorKind: 'office' | 'reviewer' | 'watcher' | 'system' | 'robot'
+  /** The person's name; the company for office entries; null for system entries. */
+  authorName: string | null
+  body: string
+  kind: 'message' | 'reply' | 'decision' | 'shared'
+  revNumber: number | null
+  tags: string[]
+}
 
 export type SubmittalRoomPayload = {
   status: 'open' | 'closed'
@@ -193,4 +206,6 @@ export type SubmittalRoomPayload = {
   company: { name: string; tagline: string; phone: string }
   person: RoomPerson | null
   revisions: RoomRevision[]
+  /** Oldest first. Absent on a closed room. */
+  messages?: RoomMessage[]
 }

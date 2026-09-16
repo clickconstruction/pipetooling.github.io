@@ -5,6 +5,11 @@
  *     → the person on the room (attached to a pre-named row by email, the same person again
  *     on their own link, or a new row — `forwarded` when they arrived on someone else's
  *     personal link) and their personal token. An `identified` event.
+ *   - `message`  { token (personal or room), submittalId?, body, tags?, website (honeypot) } (stage 5a)
+ *     → one bid_submittal_messages row (reviewer or watcher — a watcher may ask), an `asked`
+ *     event, and one high-priority inbox row (estimator when the group has anyone, else
+ *     dispatch) carrying the question. A room-token caller who has not identified gets 403
+ *     `identify_first`; a closed room 410; five asks an hour per person, then 429.
  *   - `decide`   { token (personal), submittalId, decisions: [{ itemId, decision, note? }] }
  *     → the items' review columns with the person's name, email and id; refused when the
  *     room or the person's link is closed (410), the person is marked watching (403), the
@@ -15,7 +20,8 @@
  */
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-import { decideVerdict, decisionCounts, IDENTIFY_PER_HOUR, parseDecideBody, parseIdentifyBody, resolveIdentify } from '../_shared/submittalReviewActions.ts'
+import { askTitle, decideVerdict, decisionCounts, decisionEntryBody, IDENTIFY_PER_HOUR, messageVerdict, parseDecideBody, parseIdentifyBody, parseMessageBody, resolveIdentify } from '../_shared/submittalReviewActions.ts'
+import { asRoomRole, ROOM_ROLE_LABELS } from '../_shared/submittalRoomPayload.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -139,8 +145,83 @@ serve(async (req) => {
       }
       const counts = decisionCounts(applied)
       await admin.from('bid_submittal_events').insert({ room_id: room.id, person_id: person.id, submittal_id: v.submittalId, event_type: 'decided', metadata: { ...counts, rev_number: s?.rev_number ?? null }, client_ip: clientIp(req), user_agent: req.headers.get('user-agent') })
+      // Stage 5a: the decision is a line in the thread, so the thread is the timeline.
+      await admin.from('bid_submittal_messages').insert({
+        room_id: room.id,
+        submittal_id: v.submittalId,
+        person_id: person.id,
+        author_kind: 'system',
+        body: `${person.name} ${decisionEntryBody(counts)}`,
+        kind: 'decision',
+        metadata: { counts, rev_number: s?.rev_number ?? null, by_person_id: person.id },
+      })
       await admin.from('bid_submittal_people').update({ last_seen_at: now }).eq('id', person.id)
       return json({ ok: true, decided: applied.length, counts })
+    }
+
+    if (action === 'message') {
+      const parsed = parseMessageBody(body)
+      if (!parsed.ok) return json({ error: parsed.error }, 400)
+      const v = parsed.value
+      if (v.honeypot) return json({ ok: true, message: { id: 'x' } })
+      const { room, person } = await roomByToken(v.token)
+      if (!room) return json({ error: 'This link is no longer active.' }, 404)
+      if (!person) return json({ error: 'Tell us who you are first.', code: 'identify_first' }, 403)
+      const since = new Date(Date.now() - 3600_000).toISOString()
+      const { count: asked } = await admin.from('bid_submittal_messages').select('id', { count: 'exact', head: true }).eq('person_id', person.id).in('author_kind', ['reviewer', 'watcher']).gte('created_at', since)
+      const verdict = messageVerdict({ roomStatus: room.closed_at ? 'closed' : room.status, personClosed: !!person.closed_at, askedThisHour: asked ?? 0 })
+      if (!verdict.ok) return json({ error: verdict.error, code: verdict.code }, verdict.status)
+      // The revision the ask is about: the one named when it is this bid's, else the newest shared one.
+      let submittalId: string | null = null
+      let revNumber: number | null = null
+      if (v.submittalId) {
+        const { data: sub } = await admin.from('bid_submittals').select('id, bid_id, rev_number').eq('id', v.submittalId).maybeSingle()
+        const su = sub as { id: string; bid_id: string; rev_number: number } | null
+        if (su && su.bid_id === room.bid_id) {
+          submittalId = su.id
+          revNumber = su.rev_number
+        }
+      }
+      if (!submittalId) {
+        const { data: newest } = await admin.from('bid_submittals').select('id, rev_number').eq('bid_id', room.bid_id).not('shared_at', 'is', null).order('rev_number', { ascending: false }).limit(1).maybeSingle()
+        const n = newest as { id: string; rev_number: number } | null
+        submittalId = n?.id ?? null
+        revNumber = n?.rev_number ?? null
+      }
+      const { data: bid } = await admin.from('bids').select('bid_number, project_name').eq('id', room.bid_id).maybeSingle()
+      const b = bid as { bid_number: string | null; project_name: string | null } | null
+      const bidLabel = [b?.bid_number ? `B${b.bid_number}` : '', b?.project_name ?? ''].filter(Boolean).join(' ') || 'the bid'
+      const roleLabel = ROOM_ROLE_LABELS[asRoomRole(person.role)].toLowerCase()
+      const now = new Date().toISOString()
+      const ip = clientIp(req)
+      const { data: msg, error: msgErr } = await admin
+        .from('bid_submittal_messages')
+        .insert({ room_id: room.id, submittal_id: submittalId, person_id: person.id, author_kind: person.may_decide ? 'reviewer' : 'watcher', body: v.body, kind: 'message', tags: v.tags, client_ip: ip })
+        .select('id, created_at')
+        .single()
+      if (msgErr) throw msgErr
+      const m = msg as { id: string; created_at: string }
+      // The inbox row: the estimator's when that group has anyone, else Dispatch (never vanishes).
+      const { count: estimators } = await admin.from('estimator_group_members').select('user_id', { count: 'exact', head: true })
+      const inbox: 'estimator' | 'dispatch' = (estimators ?? 0) > 0 ? 'estimator' : 'dispatch'
+      const { data: firstDev } = await admin.from('users').select('id').eq('role', 'dev').order('created_at').limit(1).maybeSingle()
+      const fromUserId = (firstDev as { id: string } | null)?.id ?? null
+      const title = askTitle({ personName: person.name, roleLabel, tags: v.tags, bidLabel, revNumber })
+      const pendingPayload = { source: 'portal', kind: 'submittal_message', customerName: person.name, description: v.body, roomId: room.id, messageId: m.id, personId: person.id, personRole: person.role, tags: v.tags, bidId: room.bid_id, bidLabel, revNumber, phone: null, phoneSource: null }
+      let requestId: string | null = null
+      if (fromUserId) {
+        const { data: ins, error: insErr } = await admin
+          .from(inbox === 'estimator' ? 'estimator_requests' : 'dispatch_requests')
+          .insert({ from_user_id: fromUserId, title, bid_id: room.bid_id, priority: 'high', pending_payload: pendingPayload })
+          .select('id')
+          .single()
+        if (insErr) console.error('submit-submittal-review: inbox row', insErr)
+        else requestId = (ins as { id: string }).id
+      }
+      if (requestId) await admin.from('bid_submittal_messages').update({ metadata: { inbox, request_id: requestId } }).eq('id', m.id)
+      await admin.from('bid_submittal_events').insert({ room_id: room.id, person_id: person.id, submittal_id: submittalId, event_type: 'asked', metadata: { message_id: m.id, tags: v.tags, rev_number: revNumber, inbox, request_id: requestId }, client_ip: ip, user_agent: req.headers.get('user-agent') })
+      await admin.from('bid_submittal_people').update({ last_seen_at: now }).eq('id', person.id)
+      return json({ ok: true, message: { id: m.id, at: m.created_at, authorKind: person.may_decide ? 'reviewer' : 'watcher', authorName: person.name, body: v.body, kind: 'message', revNumber, tags: v.tags } })
     }
 
     return json({ error: 'Unknown action' }, 400)
