@@ -1,0 +1,479 @@
+<title>Signing it on paper</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=Source+Sans+3:ital,wght@0,400;0,600;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+  :root {
+    --ground:#f4f6f8; --surface:#ffffff; --surface-2:#fafbfd; --sunken:#eef1f5;
+    --ink:#17212c; --ink-soft:#3d4b5a; --muted:#6b7a89; --faint:#95a2b0;
+    --line:#dde3ea; --line-strong:#c4cfd9;
+    --accent:#22609f; --accent-soft:#e7effa; --accent-line:#b9d0ea;
+    --good:#16704a; --good-soft:#e2f1e9; --good-line:#b3d9c7;
+    --warn:#95590a; --warn-soft:#fbf0db; --warn-line:#e8d0a0;
+    --bad:#a62d20; --bad-soft:#fbe8e6; --bad-line:#eeb9b3;
+    --new:#65409c; --new-soft:#f1ebfb; --new-line:#cdb9ec;
+    --ui-font:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground:#0e1319; --surface:#161d25; --surface-2:#1a222b; --sunken:#111820;
+      --ink:#e7edf3; --ink-soft:#c3ced9; --muted:#96a4b3; --faint:#74828f;
+      --line:#28323d; --line-strong:#3a4753;
+      --accent:#75aeeb; --accent-soft:#132638; --accent-line:#28425e;
+      --good:#5cc190; --good-soft:#112a20; --good-line:#22493a;
+      --warn:#dba04c; --warn-soft:#2a2013; --warn-line:#4b3a1d;
+      --bad:#e5887e; --bad-soft:#2c1816; --bad-line:#4e2a26;
+      --new:#b89ded; --new-soft:#1f1930; --new-line:#3b2e59;
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground:#0e1319; --surface:#161d25; --surface-2:#1a222b; --sunken:#111820;
+    --ink:#e7edf3; --ink-soft:#c3ced9; --muted:#96a4b3; --faint:#74828f;
+    --line:#28323d; --line-strong:#3a4753;
+    --accent:#75aeeb; --accent-soft:#132638; --accent-line:#28425e;
+    --good:#5cc190; --good-soft:#112a20; --good-line:#22493a;
+    --warn:#dba04c; --warn-soft:#2a2013; --warn-line:#4b3a1d;
+    --bad:#e5887e; --bad-soft:#2c1816; --bad-line:#4e2a26;
+    --new:#b89ded; --new-soft:#1f1930; --new-line:#3b2e59;
+  }
+
+  body {
+    background: var(--ground); color: var(--ink);
+    font-family:"Source Sans 3",system-ui,sans-serif; font-size:16px; line-height:1.55;
+    margin:0; padding-inline:20px; padding-block:0;
+  }
+  .wrap { max-width:1120px; margin-inline:auto; padding-block:48px 72px; }
+  h1,h2,h3,.eyebrow { font-family:Archivo,system-ui,sans-serif; text-wrap:balance; }
+  h1 { font-size:clamp(2rem,5vw,2.9rem); line-height:1.08; font-weight:700; letter-spacing:-0.02em; margin:.2em 0 .35em; }
+  h2 { font-size:clamp(1.3rem,3vw,1.65rem); font-weight:600; letter-spacing:-0.01em; margin:0 0 .15em; }
+  h3 { font-size:1.02rem; font-weight:600; margin:0 0 .3em; }
+  p { margin:0 0 .85em; max-width:68ch; }
+  .eyebrow { font-size:.72rem; font-weight:600; letter-spacing:.13em; text-transform:uppercase; color:var(--muted); }
+  .lede { font-size:1.12rem; color:var(--ink-soft); max-width:60ch; }
+  .num { font-family:"IBM Plex Mono",ui-monospace,monospace; font-variant-numeric:tabular-nums; }
+
+  section { margin-top:56px; }
+  .sechead { display:flex; flex-direction:column; gap:.1rem; margin-bottom:1.3rem; padding-bottom:.8rem; border-bottom:1px solid var(--line); }
+
+  /* ---- quote ---- */
+  .ask { border-left:3px solid var(--accent); padding:.1rem 0 .1rem 1.1rem; margin:1.6rem 0 0; }
+  .ask q { font-size:1.22rem; font-style:italic; color:var(--ink); quotes:"\201C" "\201D"; }
+  .ask .by { display:block; margin-top:.4rem; font-size:.85rem; color:var(--muted); }
+
+  /* ---- evidence ---- */
+  .tablewrap { overflow-x:auto; border:1px solid var(--line); border-radius:6px; background:var(--surface); }
+  table { border-collapse:collapse; width:100%; font-size:.94rem; }
+  th,td { text-align:left; padding:.62rem .9rem; border-bottom:1px solid var(--line); }
+  tr:last-child td { border-bottom:0; }
+  th { font-family:Archivo,sans-serif; font-weight:600; font-size:.74rem; letter-spacing:.09em; text-transform:uppercase; color:var(--muted); }
+  td.v { text-align:right; font-family:"IBM Plex Mono",monospace; font-variant-numeric:tabular-nums; font-weight:500; white-space:nowrap; }
+  td.v.zero { color:var(--bad); }
+  .story { margin-top:1.4rem; background:var(--surface); border:1px solid var(--line); border-radius:6px; padding:1.1rem 1.2rem; }
+  .story ol { margin:.6rem 0 0; padding-left:1.1rem; }
+  .story li { margin-bottom:.3rem; }
+  .story li::marker { color:var(--faint); font-family:"IBM Plex Mono",monospace; font-size:.85em; }
+
+  /* ---- screens ---- */
+  .screens { display:grid; grid-template-columns:1fr; gap:2rem; align-items:start; }
+  @media (min-width:920px) { .screens.two { grid-template-columns:1fr 1fr; } }
+  .screen { border:1px solid var(--line-strong); border-radius:8px; background:var(--surface); overflow:hidden; box-shadow:0 1px 2px rgba(20,32,44,.05); }
+  .screen-bar { display:flex; align-items:center; gap:.5rem; padding:.5rem .8rem; background:var(--surface-2); border-bottom:1px solid var(--line); }
+  .screen-bar .dot { width:9px; height:9px; border-radius:50%; background:var(--line-strong); }
+  .screen-bar .t { font-family:Archivo,sans-serif; font-weight:600; font-size:.82rem; }
+  .screen-bar .tag { margin-left:auto; font-size:.68rem; letter-spacing:.1em; text-transform:uppercase; font-weight:600; padding:.12rem .45rem; border-radius:3px; }
+  .tag.now { background:var(--sunken); color:var(--muted); }
+  .tag.v1 { background:var(--warn-soft); color:var(--warn); }
+  .tag.v2 { background:var(--new-soft); color:var(--new); }
+  .ui { font-family:var(--ui-font); font-size:13px; line-height:1.45; padding:.85rem .9rem 1rem; }
+
+  .sweephead { font-size:12px; color:var(--muted); padding-bottom:.55rem; border-bottom:1px solid var(--line); margin-bottom:.6rem; }
+  .filters { display:flex; gap:.3rem; flex-wrap:wrap; margin-bottom:.75rem; }
+  .filters span { font-size:11.5px; padding:.2rem .5rem; border-radius:4px; border:1px solid transparent; color:var(--muted); }
+  .filters span.on { background:var(--accent-soft); color:var(--accent); border-color:var(--accent-line); font-weight:600; }
+
+  .jobrow { border:1px solid var(--line); border-left:3px solid var(--accent); border-radius:5px; padding:.5rem .6rem; background:var(--surface-2); margin-bottom:.8rem; }
+  .jobrow .l1 { display:flex; gap:.5rem; align-items:baseline; }
+  .jobrow .who { font-weight:600; }
+  .jobrow .amt { margin-left:auto; font-family:"IBM Plex Mono",monospace; font-weight:500; }
+  .jobrow .l2 { font-size:11.5px; color:var(--muted); display:flex; gap:.4rem; align-items:center; flex-wrap:wrap; margin-top:.15rem; }
+  .chip { font-size:10.5px; font-weight:600; padding:.08rem .4rem; border-radius:3px; border:1px solid; white-space:nowrap; }
+  .chip.ready { background:var(--good-soft); color:var(--good); border-color:var(--good-line); }
+  .chip.gc { background:var(--accent-soft); color:var(--accent); border-color:var(--accent-line); }
+  .chip.look { background:var(--warn-soft); color:var(--warn); border-color:var(--warn-line); }
+
+  .frow { display:grid; grid-template-columns:62px minmax(0,1fr); gap:.4rem .6rem; align-items:center; margin-bottom:.45rem; }
+  .flab { font-size:10.5px; letter-spacing:.08em; text-transform:uppercase; color:var(--faint); font-weight:600; }
+  .fin { border:1px solid var(--line-strong); border-radius:4px; padding:.32rem .5rem; background:var(--surface); font-size:12.5px; color:var(--ink); min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .fin.sel { display:flex; justify-content:space-between; gap:.5rem; align-items:center; }
+  .fin.sel::after { content:"▾"; color:var(--muted); font-size:11px; }
+  .hint { font-size:11px; color:var(--faint); }
+  .hint.warnhint { color:var(--warn); }
+
+  .doc { border:1px solid var(--line); border-radius:5px; background:var(--surface-2); padding:.7rem .8rem; margin:.7rem 0; font-size:11.5px; color:var(--ink-soft); }
+  .doc p { margin:0 0 .5em; max-width:none; }
+  .sigframe { border:1.5px solid var(--bad); border-radius:3px; padding:.55rem .6rem; margin-top:.55rem; position:relative; }
+  .sigframe .cap { font-size:9px; letter-spacing:.1em; text-transform:uppercase; font-weight:700; color:var(--bad); }
+  .sigframe .val { color:var(--faint); font-style:italic; margin-top:.15rem; }
+  .sigframe.blank { border-color:var(--line-strong); }
+  .sigframe.blank .cap { color:var(--muted); }
+  .sigline { display:flex; gap:1rem; margin-top:.45rem; }
+  .sigline div { flex:1; border-bottom:1px solid var(--ink-soft); height:20px; position:relative; }
+  .sigline div::after { content:attr(data-l); position:absolute; bottom:-14px; left:0; font-size:9px; color:var(--muted); letter-spacing:.06em; text-transform:uppercase; }
+
+  .foot { border-top:1px solid var(--line); margin-top:.8rem; padding-top:.65rem; display:flex; gap:.4rem; flex-wrap:wrap; align-items:center; }
+  .btn { font-size:12px; padding:.32rem .6rem; border-radius:4px; border:1px solid var(--line-strong); background:var(--surface); color:var(--ink-soft); white-space:nowrap; }
+  .btn.ghost { border-color:transparent; color:var(--accent); }
+  .btn.primary { background:var(--accent); border-color:var(--accent); color:#fff; font-weight:600; }
+  :root[data-theme="dark"] .btn.primary, :root:not([data-theme="light"]) .btn.primary { color:#0e1319; }
+  @media (prefers-color-scheme: light) { :root:not([data-theme="dark"]) .btn.primary { color:#fff; } }
+  .btn.newthing { border-color:var(--new-line); background:var(--new-soft); color:var(--new); font-weight:600; }
+  .footnote { font-size:10.5px; color:var(--faint); margin-left:auto; }
+
+  /* the "ways" block in v2 */
+  .ways { border:1px solid var(--new-line); border-radius:5px; background:var(--new-soft); padding:.6rem .65rem; margin-top:.8rem; }
+  .ways > .wh { font-size:10.5px; letter-spacing:.08em; text-transform:uppercase; font-weight:700; color:var(--new); margin-bottom:.45rem; }
+  .way { display:flex; gap:.55rem; align-items:flex-start; padding:.42rem .5rem; border-radius:4px; border:1px solid transparent; background:var(--surface); margin-bottom:.35rem; }
+  .way:last-child { margin-bottom:0; }
+  .way.pick { border-color:var(--accent-line); background:var(--accent-soft); }
+  .way .mark { width:13px; height:13px; border-radius:50%; border:1.5px solid var(--line-strong); flex:none; margin-top:2px; }
+  .way.pick .mark { border-color:var(--accent); background:var(--accent); box-shadow:inset 0 0 0 2.5px var(--accent-soft); }
+  .way .wt { font-weight:600; font-size:12.5px; }
+  .way .wd { font-size:11px; color:var(--muted); }
+  .way .why { font-size:10px; color:var(--accent); font-weight:600; margin-left:auto; white-space:nowrap; padding-top:2px; }
+
+  .twolever { display:grid; gap:.4rem; margin-top:.7rem; }
+  .lever { border:1px solid var(--line); border-radius:5px; padding:.5rem .6rem; background:var(--surface-2); }
+  .lever .lt { font-size:10.5px; letter-spacing:.08em; text-transform:uppercase; font-weight:700; color:var(--muted); }
+  .lever .lb { font-size:12px; margin-top:.2rem; display:flex; gap:.5rem; align-items:baseline; flex-wrap:wrap; }
+  .lever .scope { font-size:10.5px; color:var(--warn); font-weight:600; }
+
+  /* callouts */
+  .calls { margin-top:1rem; display:grid; gap:.6rem; }
+  .call { display:grid; grid-template-columns:auto minmax(0,1fr); gap:.6rem; align-items:start; font-size:.93rem; }
+  .call .pin { font-family:"IBM Plex Mono",monospace; font-size:.7rem; font-weight:500; color:var(--surface); background:var(--ink-soft); border-radius:3px; padding:.12rem .32rem; margin-top:.18rem; }
+  .call.bad .pin { background:var(--bad); color:var(--surface); }
+  .call.good .pin { background:var(--good); color:var(--surface); }
+  .call.newc .pin { background:var(--new); color:var(--surface); }
+  .call b { font-weight:600; }
+  .call p { margin:0; color:var(--ink-soft); }
+
+  /* critique */
+  .crit { display:grid; gap:1.1rem; margin-top:1.2rem; }
+  .miss { border:1px solid var(--line); border-radius:6px; background:var(--surface); padding:.95rem 1.1rem; border-top:2px solid var(--warn); }
+  .miss h3 { color:var(--ink); }
+  .miss p:last-child { margin-bottom:0; }
+  .fix { margin-top:.5rem; font-size:.9rem; color:var(--new); font-weight:600; }
+  .fix::before { content:"→ "; }
+
+  /* build order */
+  .steps { counter-reset:s; display:grid; gap:.55rem; margin-top:1rem; padding:0; list-style:none; }
+  .steps li { counter-increment:s; display:grid; grid-template-columns:auto minmax(0,1fr); gap:.7rem; align-items:baseline; background:var(--surface); border:1px solid var(--line); border-radius:5px; padding:.6rem .8rem; }
+  .steps li::before { content:counter(s); font-family:"IBM Plex Mono",monospace; font-size:.8rem; font-weight:500; color:var(--accent); background:var(--accent-soft); border-radius:3px; padding:.1rem .4rem; }
+  .steps b { font-weight:600; }
+  .steps span { color:var(--ink-soft); }
+
+  .calls-list { padding-left:1.1rem; margin-top:.8rem; }
+  .calls-list li { margin-bottom:.5rem; color:var(--ink-soft); }
+  .calls-list b { color:var(--ink); font-weight:600; }
+
+  footer.end { margin-top:64px; padding-top:1rem; border-top:1px solid var(--line); font-size:.85rem; color:var(--faint); }
+</style>
+
+<div class="wrap">
+
+  <header>
+    <div class="eyebrow">Jobs → Pipeline → Contract sweep</div>
+    <h1>Signing it on paper</h1>
+    <p class="lede">Taunya asked for two things. Both are right. Neither should be built the way it was asked for, and the reason is sitting in the contract table.</p>
+    <div class="ask">
+      <q>I want to be able to Export as pdf and ability to update terms</q>
+      <span class="by">Taunya, assistant, working the sweep of 105 jobs</span>
+    </div>
+  </header>
+
+  <section>
+    <div class="sechead">
+      <div class="eyebrow">The evidence</div>
+      <h2>What the app has actually signed</h2>
+    </div>
+    <p>The sweep offers one way to close a contract: email a link the customer signs on screen, with terms picked from a list. Read against production, that is not how this office has ever finished one.</p>
+
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>In production today</th><th style="text-align:right">Count</th></tr></thead>
+        <tbody>
+          <tr><td>Contract records in the app, all time</td><td class="v">6</td></tr>
+          <tr><td>Ever signed through the e-signing link</td><td class="v zero">0</td></tr>
+          <tr><td>Signed on paper, then filed by hand</td><td class="v">3</td></tr>
+          <tr><td>Customer terms documents in the Contract Book</td><td class="v zero">0</td></tr>
+          <tr><td>Options in the Terms dropdown</td><td class="v">1</td></tr>
+          <tr><td>Live jobs with no agreement on file</td><td class="v">105</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="story">
+      <h3>The only real attempt, one day long</h3>
+      <p style="margin-bottom:.2rem;color:var(--ink-soft)">A Michael Palmer job, the same builder sitting at the top of the sweep today.</p>
+      <ol>
+        <li><span class="num">Sep 3</span> — revision 1 sent. Opened once. Not signed.</li>
+        <li><span class="num">Sep 3</span> — revised, sent again. Never opened.</li>
+        <li><span class="num">Sep 3</span> — revised, sent a third time. Never opened.</li>
+        <li><span class="num">Sep 4</span> — revision 4 signed <b>on paper</b> and filed by hand.</li>
+      </ol>
+      <p style="margin:.7rem 0 0;font-size:.93rem;color:var(--muted)">Three sends, three revisions, one day, and it still finished on paper. That day is what both halves of the ask are describing.</p>
+    </div>
+  </section>
+
+  <section>
+    <div class="sechead">
+      <div class="eyebrow">Before</div>
+      <h2>The pane as it is</h2>
+    </div>
+
+    <div class="screens two">
+      <div class="screen">
+        <div class="screen-bar"><span class="dot"></span><span class="t">Contract sweep</span><span class="tag now">Today</span></div>
+        <div class="ui">
+          <div class="sweephead"><b>105 without a contract</b> · <span class="num">$1,302,646</span> of work · 81 need a look</div>
+          <div class="filters"><span class="on">To send · 24</span><span>Needs a look · 81</span><span>All · 105</span></div>
+          <div class="jobrow">
+            <div class="l1"><span class="who">J363 · Michael Palmer</span><span class="amt">$31,400</span></div>
+            <div class="l2">534 S Calvin Barrett, Blanco, TX · Working<span class="chip ready">Ready</span></div>
+          </div>
+          <div class="frow"><span class="flab">To</span><span class="fin">palmertexashomes@gmail.com</span></div>
+          <div class="frow"><span class="flab">Terms</span><span class="fin sel">Built-in service agreement terms</span></div>
+          <div class="frow"><span class="flab"></span><span class="hint">applies to every job in this sweep</span></div>
+          <div class="frow"><span class="flab">Scope</span><span class="fin">Job total (migrated)</span></div>
+          <div class="frow"><span class="flab">Amount</span><span class="fin">31400.00</span></div>
+          <div class="doc">
+            <p>7. Cancellation. Either party may cancel before work begins with written notice.</p>
+            <p>8. Electronic signature. The parties agree to conduct this transaction electronically.</p>
+            <div class="sigframe">
+              <div class="cap">Customer signature · signed electronically</div>
+              <div class="val">Not yet signed</div>
+            </div>
+          </div>
+          <div class="foot">
+            <span class="btn ghost">Already signed? File it</span>
+            <span class="btn ghost">Open the full editor</span>
+            <span class="btn">Skip</span>
+            <span class="btn">Send</span>
+            <span class="btn primary">Send &amp; next</span>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <h3>What is wrong with it</h3>
+        <div class="calls">
+          <div class="call bad"><span class="pin">1</span><p><b>A dropdown with nothing to drop down to.</b> Terms lists one option because no customer document has ever been put in the Contract Book. The wording is a constant in the source code. Taunya cannot change a word of it from anywhere in the app she can reach.</p></div>
+          <div class="call bad"><span class="pin">2</span><p><b>Every outcome is an email nobody signs.</b> Send, Send &amp; next and Skip. There is no way to put this agreement on paper, and paper is the only way this office has ever finished one.</p></div>
+          <div class="call bad"><span class="pin">3</span><p><b>Paper only goes one direction.</b> The app happily takes a signed contract in, through <i>Already signed? File it</i> and the Drive pass. It cannot produce the page to sign.</p></div>
+          <div class="call"><span class="pin">4</span><p><b>Terms is sweep-wide and then it locks.</b> One choice covers all 105 jobs, and the moment a draft exists the row goes read-only and says to change it in the full editor. The full editor offers the same one-option dropdown.</p></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="sechead">
+      <div class="eyebrow">After, first pass</div>
+      <h2>The obvious build</h2>
+    </div>
+    <p>Give her the two things she named. A Download PDF button in the footer, an Edit these terms link under the dropdown, and a stamp so a job that goes out on paper leaves the pile of 105 instead of sitting in it forever.</p>
+
+    <div class="screens two">
+      <div class="screen">
+        <div class="screen-bar"><span class="dot"></span><span class="t">Contract sweep</span><span class="tag v1">First pass</span></div>
+        <div class="ui">
+          <div class="jobrow">
+            <div class="l1"><span class="who">J363 · Michael Palmer</span><span class="amt">$31,400</span></div>
+            <div class="l2">534 S Calvin Barrett, Blanco, TX · Working<span class="chip ready">Ready</span></div>
+          </div>
+          <div class="frow"><span class="flab">To</span><span class="fin">palmertexashomes@gmail.com</span></div>
+          <div class="frow"><span class="flab">Terms</span><span class="fin sel">Service agreement · v. Sep 15</span></div>
+          <div class="frow"><span class="flab"></span><span class="hint"><span style="color:var(--new);font-weight:600">Edit these terms →</span> &nbsp;applies to every job in this sweep</span></div>
+          <div class="frow"><span class="flab">Scope</span><span class="fin">Job total (migrated)</span></div>
+          <div class="doc">
+            <p>8. Electronic signature. The parties agree to conduct this transaction electronically.</p>
+            <div class="sigframe blank">
+              <div class="cap">Customer signature</div>
+              <div class="sigline"><div data-l="Sign"></div><div data-l="Date"></div></div>
+            </div>
+          </div>
+          <div class="foot">
+            <span class="btn ghost">Already signed? File it</span>
+            <span class="btn newthing">Download PDF</span>
+            <span class="btn">Skip</span>
+            <span class="btn primary">Send &amp; next</span>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <h3>What it adds</h3>
+        <div class="calls">
+          <div class="call newc"><span class="pin">A</span><p><b>An unsigned PDF, from the renderer that already exists.</b> One change matters: the signature block on the current renderer is hard-coded <i>signed electronically</i>. A draft must print blank signature and date rules instead, or we hand a customer a page claiming a signature that does not exist.</p></div>
+          <div class="call newc"><span class="pin">B</span><p><b>Taking the PDF marks it handed over.</b> Without this the button quietly corrupts the sweep's own count: a job only leaves the 105 when its contract is marked sent.</p></div>
+          <div class="call newc"><span class="pin">C</span><p><b>The built-in wording becomes a real Book document</b> with a version date, so the dropdown finally has something in it and an edit door beneath it.</p></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="sechead">
+      <div class="eyebrow">The hard look</div>
+      <h2>Is this the best we can do?</h2>
+    </div>
+    <p>No. It answers Taunya literally and leaves the real shape of the problem untouched. Five things it gets wrong.</p>
+
+    <div class="crit">
+      <div class="miss">
+        <h3>It leaves the button that has never worked as the main one</h3>
+        <p>Send &amp; next stays the blue primary, and the paper lane gets a quieter button beside it. That is hedging. Zero of the sends have ever been signed and three of three finished contracts are paper. The pane should not present one house style and a workaround.</p>
+        <p class="fix">Make <i>how this one gets signed</i> an explicit choice on the row, the way the sweep already decides that a builder's row wants a different door.</p>
+      </div>
+
+      <div class="miss">
+        <h3>Download is a step, not an outcome</h3>
+        <p>What Taunya wants is a signed agreement. If she downloads the PDF and sends it from her own mail, the app loses the record, the reminder and the signature, and we have built a button whose success we cannot see. The first pass missed the option in the middle entirely.</p>
+        <p class="fix">The app emails the PDF as an attachment. Same paper document, still sent and tracked by the app.</p>
+      </div>
+
+      <div class="miss">
+        <h3>"Edit these terms" walks her into a shared document, mid-sweep</h3>
+        <p>That link opens the Contract library, which lives under People, and edits a document every one of the 105 agreements uses. Nothing in the first pass says so. Someone fixing a sentence for one homeowner would change the contract language for the whole pile without being told.</p>
+        <p class="fix">Two clearly separate levers: this job's wording, and the standard terms, labelled with what an edit touches.</p>
+      </div>
+
+      <div class="miss">
+        <h3>It ignores what actually happened that day</h3>
+        <p>The pain on Sep 3 was not the absence of a PDF. It was sending, needing to change it, and having no way to do that except void the contract and generate a new revision with a new email. Three times. Nothing in the first pass helps.</p>
+        <p class="fix">While a sent agreement is still unopened, <i>Edit &amp; re-send</i> should be one action.</p>
+      </div>
+
+      <div class="miss">
+        <h3>It treats a builder's row like a homeowner's</h3>
+        <p>81 of the 105 need a look, and many are builders whose own subcontract is the agreement. Our service agreement as a PDF is the wrong document on those rows. A button bar that looks identical everywhere invites sending the wrong paper.</p>
+        <p class="fix">On a GC row, filing theirs is the whole block, and our three ways step back.</p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="sechead">
+      <div class="eyebrow">After, revised</div>
+      <h2>Three ways, chosen per row</h2>
+    </div>
+    <p>The row already knows what it is. Instead of one primary button and a workaround, the pane asks how this one gets signed and pre-picks the answer, leaving the other two one tap away.</p>
+
+    <div class="screens two">
+      <div class="screen">
+        <div class="screen-bar"><span class="dot"></span><span class="t">Contract sweep · homeowner row</span><span class="tag v2">Revised</span></div>
+        <div class="ui">
+          <div class="jobrow">
+            <div class="l1"><span class="who">J363 · Michael Palmer</span><span class="amt">$31,400</span></div>
+            <div class="l2">534 S Calvin Barrett, Blanco, TX · Working<span class="chip ready">Ready</span></div>
+          </div>
+          <div class="frow"><span class="flab">To</span><span class="fin">palmertexashomes@gmail.com</span></div>
+
+          <div class="twolever">
+            <div class="lever">
+              <div class="lt">This job</div>
+              <div class="lb"><span class="fin" style="flex:1">Job total (migrated)</span><span class="num">$31,400</span><span class="fin sel" style="width:120px">50% down</span></div>
+            </div>
+            <div class="lever">
+              <div class="lt">Standard terms</div>
+              <div class="lb"><span class="fin sel" style="flex:1">Service agreement · v. Sep 15</span><span style="color:var(--new);font-weight:600;font-size:11.5px">Edit</span></div>
+              <div class="scope">Editing changes the wording on all 105 agreements</div>
+            </div>
+          </div>
+
+          <div class="ways">
+            <div class="wh">How this one gets signed</div>
+            <div class="way pick">
+              <span class="mark"></span>
+              <span><span class="wt">Email the PDF to sign by hand</span><br><span class="wd">We send it, they print and sign, we file it back</span></span>
+              <span class="why">last one came back on paper</span>
+            </div>
+            <div class="way">
+              <span class="mark"></span>
+              <span><span class="wt">Email a signing link</span><br><span class="wd">They sign on screen, no printing</span></span>
+            </div>
+            <div class="way">
+              <span class="mark"></span>
+              <span><span class="wt">Download to print</span><br><span class="wd">For the counter or the mail — marks it handed over</span></span>
+            </div>
+          </div>
+
+          <div class="foot">
+            <span class="btn ghost">Already signed? File it</span>
+            <span class="btn">Skip</span>
+            <span class="btn primary">Send &amp; next</span>
+            <span class="footnote">then J737</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="screen">
+        <div class="screen-bar"><span class="dot"></span><span class="t">Contract sweep · builder row</span><span class="tag v2">Revised</span></div>
+        <div class="ui">
+          <div class="jobrow" style="border-left-color:var(--accent)">
+            <div class="l1"><span class="who">J804 · Summit GC- Auto Zone</span><span class="amt">$32,600</span></div>
+            <div class="l2">3915 N Loop 1604 E, San Antonio, TX · Working<span class="chip gc">GC job · file theirs</span></div>
+          </div>
+          <div class="ways" style="border-color:var(--accent-line);background:var(--accent-soft)">
+            <div class="wh" style="color:var(--accent)">How this one gets signed</div>
+            <div class="way pick">
+              <span class="mark"></span>
+              <span><span class="wt">File Summit's subcontract</span><br><span class="wd">A builder sends us their paper — ours is the wrong document</span></span>
+              <span class="why">drop a file or pick from Drive</span>
+            </div>
+            <div class="way" style="opacity:.62">
+              <span class="mark"></span>
+              <span><span class="wt">Send ours anyway</span><br><span class="wd">Email the PDF, or a signing link</span></span>
+            </div>
+          </div>
+          <div class="foot">
+            <span class="btn ghost">Open the full editor</span>
+            <span class="btn">Skip</span>
+            <span class="btn primary">File &amp; next</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="calls" style="margin-top:1.6rem">
+      <div class="call good"><span class="pin">✓</span><p><b>The middle way is the one most likely to work.</b> A paper document the customer can print and sign, sent and remembered by the app. It is the option the first pass did not think of, and it fits every finished contract in the table above.</p></div>
+      <div class="call good"><span class="pin">✓</span><p><b>Nothing is hidden behind a workaround.</b> Downloading is still there, now as a stated way of working rather than an escape hatch, and it says what it does to the job.</p></div>
+      <div class="call good"><span class="pin">✓</span><p><b>The terms question is answered without a free-text box.</b> Per-job wording and shared legal language sit in different boxes, and the shared one says out loud how far an edit reaches.</p></div>
+    </div>
+  </section>
+
+  <section>
+    <div class="sechead">
+      <div class="eyebrow">If we build it</div>
+      <h2>Order, smallest first</h2>
+    </div>
+    <ol class="steps">
+      <li><span><b>Ask Taunya which terms she means</b> <span>— the legal paragraphs, or the payment line. One message. It decides whether step 4 is needed at all.</span></span></li>
+      <li><span><b>The unsigned PDF</b> <span>— teach the shared renderer a blank signature block, add a draft mode to the function that already returns contract PDFs, put Download in the pane.</span></span></li>
+      <li><span><b>Email the PDF, and record the hand-off</b> <span>— the middle way, plus the stamp that moves a job out of the 105 when it goes out on paper.</span></span></li>
+      <li><span><b>Terms as two levers</b> <span>— seed the built-in wording into the Book as a versioned document, split per-job from shared, say what an edit touches.</span></span></li>
+      <li><span><b>How this one gets signed</b> <span>— the three-way block with a default per row, and the builder row collapsing to file theirs.</span></span></li>
+      <li><span><b>Edit &amp; re-send while unopened</b> <span>— the Sep 3 fix. Worth doing even though nobody asked for it.</span></span></li>
+    </ol>
+
+    <h3 style="margin-top:2rem">Yours to decide</h3>
+    <ul class="calls-list">
+      <li><b>Does handing over paper count as sent?</b> It would move the job out of the pile of 105 and into waiting on a signature. I think yes, because the pile's question is whether the customer has been asked.</li>
+      <li><b>Which way is the default on a plain homeowner row?</b> The mock-up pre-picks emailing the PDF because that is what the record supports. Picking the signing link instead is defensible and easy to change.</li>
+      <li><b>Should a builder row be able to send ours at all?</b> Shown here demoted rather than removed.</li>
+      <li><b>Who may edit the standard terms?</b> Anyone in the office can write to the Book today. Contract language may deserve a narrower door.</li>
+    </ul>
+  </section>
+
+  <footer class="end">
+    Figures read from the live database this session, read-only, nothing written. Job numbers, addresses and amounts are the real rows in the sweep.
+  </footer>
+</div>
