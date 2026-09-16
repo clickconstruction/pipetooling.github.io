@@ -4,7 +4,7 @@ category: Billing & Money
 roles: dev, master_technician, assistant, controller
 keywords: lien, mechanic's lien, Texas, Property Code, chapter 53, notice, 53.056, affidavit, 53.052, release, waiver, work month, GC, subcontractor, owner of record, deadline, Lien desk, Lien instruments, homestead, retainage
 ---
-A lien is how Texas lets a plumber who has not been paid put a claim on the property the work went into. The rules are strict about **when** and **to whom**, and the app does the counting. This page is the map: how the law works, which paper goes out at each step, and which tool in the app does it. The step-by-step guides are linked at the end.
+A lien is how Texas lets a plumber who has not been paid put a claim on the property the work went into. The rules are strict about **when** and **to whom**, and the app does the counting. This page is the map: how the law works, which paper goes out at each step, and which tool in the app does it. The rules themselves, each with its cite and what the app does about it, are on [read the Texas lien rules the app follows](/help/texas-lien-rules-the-app-follows). The step-by-step guides are linked at the end.
 
 ## The one rule under everything
 

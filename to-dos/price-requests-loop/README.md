@@ -8,11 +8,11 @@ summary: >
   **Price requests, asked to priced**: the Edit Bid table is already the robot's intake tray
   (`buildPriceMatrixSources` reads its links) — so **+ Ask houses** pre-picks the estimator's
   usual houses, each chip *app emails* or *I'll send it*; a Status column (waiting / late / quote
-  in) with Nudge or Call; drop the quote PDF on the row; **Price with robot · N quotes in** on the
+  in) with Nudge or Call; paste the quote link on the row (no PDF drop — owner call 2026-09-16); **Price with robot · N quotes in** on the
   header. Two mock-ups (the loop; the rejected plus-only options). Three owner questions open.
 next: >
   PR 1 the pre-picked + Ask houses (hand-sent rows only); PR 2 app-sends per chip; PR 3 status +
-  drop-zone + Call; PR 4 the header button + Needs You card. Three wording/rule questions are the
+  link box + Call; PR 4 the header button + Needs You card. Three wording/rule questions are the
   owner's.
 size: L (4 PRs, each alone)
 blocker: None for PR 2; the owner said save it, so ask before starting the next one.
@@ -20,6 +20,10 @@ ver: proposed 09-15 · PR 1 v2.3495
 ---
 
 # Price requests, asked to priced — the plus that asks the houses, and the row that carries each one to the robot
+
+## Owner call, 2026-09-16
+
+**The quote lands as a pasted link, not a dropped PDF.** Grace, reviewing the before/after mock-up: *"I would only like to have a link pasted for the PDF and no drop the quote PDF here."* Every "drop-zone" below reads as the paste-a-link box on a waiting row; no upload path, no storage bucket for quotes.
 
 ## The ask, in the owner's words
 
