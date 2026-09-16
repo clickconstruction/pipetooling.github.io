@@ -2047,7 +2047,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
   /** Rails render only for the roles that can see the toggle — a stale
       localStorage flag on a shared browser must not surface them elsewhere. */
   const stagesEditModeActive =
-    stagesEditMode && stagesGates.canUseStagesEditModeRails(authRole, myRole)
+    stagesEditMode && stagesGates.canSeeStagesPowerToggles(authRole, myRole)
 
   function toggleStagesIncludeScheduleTimeInSearch() {
     setStagesIncludeScheduleTimeInSearch((prev) => {
@@ -3428,7 +3428,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                       <span>Follow cards I move</span>
                       {renderStagesToolsMenuToggleState(stagesFollowMoves)}
                     </button>
-                    {(['dev', 'assistant', 'controller'] as const).includes((authRole || myRole) as 'dev' | 'assistant' | 'controller') ? (
+                    {stagesGates.canSeeStagesPowerToggles(authRole, myRole) ? (
                       <>
                         <button
                           type="button"

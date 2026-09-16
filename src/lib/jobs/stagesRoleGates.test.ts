@@ -8,7 +8,7 @@ import {
   canRecordArPayments,
   canSeeBilledExpectedPay,
   canSeeStagesMoneyCharts,
-  canUseStagesEditModeRails,
+  canSeeStagesPowerToggles,
   canUseStagesOfficeTools,
   isStagesOfficeRole,
   isStagesOwnerRole,
@@ -75,12 +75,12 @@ describe('the two-role gates', () => {
     expect(canUseStagesOfficeTools('estimator', 'primary')).toBe(false)
     expect(canUseStagesOfficeTools(null, undefined)).toBe(false)
   })
-  it('edit-mode rails judge the first known role only — a known non-office auth role is not rescued by myRole', () => {
-    expect(canUseStagesEditModeRails('dev', null)).toBe(true)
-    expect(canUseStagesEditModeRails(null, 'controller')).toBe(true)
-    expect(canUseStagesEditModeRails('', 'assistant')).toBe(true)
-    expect(canUseStagesEditModeRails('estimator', 'assistant')).toBe(false)
-    expect(canUseStagesEditModeRails('master_technician', null)).toBe(false)
-    expect(canUseStagesEditModeRails(null, null)).toBe(false)
+  it('the Ham / Edit toggles (and their rails) judge the first known role only — a known non-office auth role is not rescued by myRole', () => {
+    expect(canSeeStagesPowerToggles('dev', null)).toBe(true)
+    expect(canSeeStagesPowerToggles(null, 'controller')).toBe(true)
+    expect(canSeeStagesPowerToggles('', 'assistant')).toBe(true)
+    expect(canSeeStagesPowerToggles('estimator', 'assistant')).toBe(false)
+    expect(canSeeStagesPowerToggles('master_technician', null)).toBe(false)
+    expect(canSeeStagesPowerToggles(null, null)).toBe(false)
   })
 })

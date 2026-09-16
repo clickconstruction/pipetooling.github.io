@@ -88,11 +88,12 @@ export function canUseStagesOfficeTools(authRole: Role, myRole: Role): boolean {
 }
 
 /**
- * Edit-mode rails (v2.1236): dev / assistant / controller, judged on whichever of the two
- * roles is known first — a stale localStorage flag on a shared browser must not surface
- * rails for anyone else.
+ * The ⋯ menu's Ham mode and Edit mode toggles (and the edit-mode rails they turn on,
+ * v2.1236): dev / assistant / controller, judged on whichever of the two roles is known
+ * first — a stale localStorage flag on a shared browser must not surface rails for
+ * anyone who cannot see the toggle.
  */
-export function canUseStagesEditModeRails(authRole: Role, myRole: Role): boolean {
+export function canSeeStagesPowerToggles(authRole: Role, myRole: Role): boolean {
   const role = authRole || myRole
   return role === 'dev' || role === 'assistant' || role === 'controller'
 }
