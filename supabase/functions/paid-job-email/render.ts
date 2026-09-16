@@ -475,8 +475,13 @@ const CHARGE_SOURCE_ICON: Record<string, string> = {
 
 type TimelineRowEvent = {
   dateKey: string | null
-  /** Charges negative, payments positive. */
+  /**
+   * Charges negative, payments positive — EXCEPT a supply-house credit memo (v2.3500), which is a
+   * charge carrying a positive delta because the house gave money back. Split the two on `kind`,
+   * never on the sign: before v2.3500 a credit read as a customer payment on a green row.
+   */
   delta: number
+  kind: 'charge' | 'payment'
   icon: string
   label: string
 }
@@ -531,12 +536,13 @@ function renderChargeTimeline(p: PaidJobEmailPayload): string {
         laborByPersonWeek.set(key, {
           dateKey: e.date_key,
           delta: -amount,
+          kind: 'charge',
           icon,
           label: `${person} — team labor (week of ${shortDayLabel(wk)})`,
         })
       }
     } else {
-      events.push({ dateKey: e.date_key, delta: -amount, icon, label: String(e.label) })
+      events.push({ dateKey: e.date_key, delta: -amount, kind: 'charge', icon, label: String(e.label) })
     }
   }
   events.push(...laborByPersonWeek.values())
@@ -546,6 +552,7 @@ function renderChargeTimeline(p: PaidJobEmailPayload): string {
     events.push({
       dateKey: pay.payment_date ? String(pay.payment_date).slice(0, 10) : null,
       delta: amount,
+      kind: 'payment',
       icon: '💵',
       label: pay.method ? `Payment — ${pay.method}` : 'Payment',
     })
@@ -582,7 +589,7 @@ function renderChargeTimeline(p: PaidJobEmailPayload): string {
   const signedMoney = (n: number) => `${n >= 0 ? '+' : '−'}${money(Math.abs(n)).replace('-', '')}`
 
   const eventRow = (e: TimelineRowEvent) => `
-    <tr${e.delta > 0 ? ' style="background:#f0fdf4;"' : ''}>
+    <tr${e.kind === 'payment' ? ' style="background:#f0fdf4;"' : ''}>
       <td style="${CHILD_TD}padding-left:18px;white-space:nowrap;">${e.dateKey ? shortDayLabel(e.dateKey) : '—'} &middot; ${e.icon} ${esc(e.label)}</td>
       <td colspan="2" style="padding:0;"></td>
       <td style="${NUM_TD}color:${netColor(e.delta)};">${signedMoney(e.delta)}</td>
@@ -592,9 +599,9 @@ function renderChargeTimeline(p: PaidJobEmailPayload): string {
     const inMonth = events
       .filter((e) => e.dateKey?.slice(0, 7) === m.month)
       .sort((a, b) => (a.dateKey! < b.dateKey! ? -1 : a.dateKey! > b.dateKey! ? 1 : 0))
-    const paymentsInMonth = inMonth.filter((e) => e.delta > 0)
+    const paymentsInMonth = inMonth.filter((e) => e.kind === 'payment')
     const charges = inMonth
-      .filter((e) => e.delta <= 0)
+      .filter((e) => e.kind === 'charge')
       .sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta))
     const chargeBudget = Math.max(1, MAX_ROWS_PER_MONTH - paymentsInMonth.length)
     const kept = new Set(charges.slice(0, chargeBudget))

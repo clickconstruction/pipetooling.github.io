@@ -609,6 +609,14 @@ export function MaterialsJobAccountsTab({ active, myRole, onOpenSupplyHouse }: M
                               ) : (
                                 ' · $0.00 owed'
                               )}
+                              {row.suppliersCredits < -0.005 ? (
+                                <>
+                                  {' · '}
+                                  <span style={{ color: 'var(--text-green-700)', fontWeight: 600 }}>
+                                    ${formatCurrency(Math.abs(row.suppliersCredits))} credit
+                                  </span>
+                                </>
+                              ) : null}
                             </span>
                           </div>
                         </div>

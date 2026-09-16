@@ -136,6 +136,23 @@ describe('buildApBucket', () => {
     expect(bucket.oldestDateYmd).toBe('2026-06-15')
   })
 
+  it('lets a supply credit reduce payables instead of dropping it (v2.3500)', () => {
+    const bucket = buildApBucket(
+      [
+        { id: 's1', amount: 2000, invoice_date: '2026-06-15', supply_houses: { name: 'Reece' } },
+        { id: 'c1', amount: -888.1, invoice_date: '2026-09-04', supply_houses: { name: 'Reece' } },
+        { id: 's2', amount: 0, invoice_date: null, supply_houses: null }, // a true zero is still dropped
+      ],
+      [],
+    )
+    expect(bucket.supplyTotal).toBeCloseTo(1111.9)
+    expect(bucket.count).toBe(2)
+    const credit = bucket.items.find((i) => i.key === 'supply:c1')
+    expect(credit).toBeDefined()
+    expect(credit!.sublabel).toBe('Supply credit')
+    expect(credit!.amount).toBeCloseTo(-888.1)
+  })
+
   it('includes outstanding sub-labor balances in items, total, count, and oldest', () => {
     const bucket = buildApBucket(
       [{ id: 's1', amount: 250, invoice_date: '2026-06-15', supply_houses: { name: 'Ferguson' } }],

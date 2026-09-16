@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
+  countSupplyHousesPastDue60,
+  supplyHouseAgingPhoneNote,
   agingBucketFor,
   buildSupplyHouseAgingMatrix,
   daysPastDue,
@@ -94,10 +96,12 @@ describe('phone helpers (v2.2191)', async () => {
     supplyHouseId: 'x',
     name: 'X',
     total: 0,
+    creditsOpen: 0,
+    net: 0,
     buckets: { current: 0, past1_30: 0, past30_60: 0, past60_90: 0, past90plus: 0, noDueDate: 0, ...buckets },
   })
   it('counts houses 60+ past due', () => {
-    const m = { rows: [row({ past60_90: 5 }), row({ past90plus: 1 }), row({ past1_30: 100 })], totals: row({}).buckets, grandTotal: 0, missingDueDateCount: 0 }
+    const m = { rows: [row({ past60_90: 5 }), row({ past90plus: 1 }), row({ past1_30: 100 })], totals: row({}).buckets, grandTotal: 0, creditsTotal: 0, netTotal: 0, missingDueDateCount: 0 }
     expect(countSupplyHousesPastDue60(m)).toBe(2)
   })
   it('writes the phone note: 90+ first, else largest bucket, else all current', () => {
@@ -105,5 +109,83 @@ describe('phone helpers (v2.2191)', async () => {
     expect(supplyHouseAgingPhoneNote(row({ past90plus: 13184, past30_60: 192 }))).toBe('$13,184 at 90+')
     expect(supplyHouseAgingPhoneNote(row({ current: 8524 }))).toBe('all current')
     expect(supplyHouseAgingPhoneNote(row({ noDueDate: 2 }))).toBe('most in no due date')
+  })
+})
+
+describe('credit memos in the aging matrix (v2.3500)', () => {
+  const HOUSES = [
+    { id: 'ced', name: 'CED' },
+    { id: 'reece', name: 'Reece' },
+  ]
+  // CED's real shape on 2026-09-15: $36 at 30–60 and $2,409 past 60.
+  const CED_INVOICES = [
+    { supply_house_id: 'ced', amount: 36, due_date: '2026-06-03' },
+    { supply_house_id: 'ced', amount: 2409, due_date: '2026-04-04' },
+  ]
+
+  it('keeps a house on the table when its credits outweigh its invoices', () => {
+    const credit = { supply_house_id: 'ced', amount: -2500, due_date: null }
+    const m = buildSupplyHouseAgingMatrix(HOUSES, [...CED_INVOICES, credit], TODAY)
+    const ced = m.rows.find((r) => r.supplyHouseId === 'ced')
+    expect(ced).toBeDefined()
+    // The past-due exposure is still visible, and still owed.
+    expect(ced!.buckets.past90plus).toBe(2409)
+    expect(ced!.total).toBe(2445)
+    expect(ced!.creditsOpen).toBe(-2500)
+    expect(ced!.net).toBe(-55)
+  })
+
+  it('lists a house that holds only credits', () => {
+    const m = buildSupplyHouseAgingMatrix(HOUSES, [{ supply_house_id: 'reece', amount: -888.1, due_date: null }], TODAY)
+    const reece = m.rows.find((r) => r.supplyHouseId === 'reece')
+    expect(reece).toBeDefined()
+    expect(reece!.total).toBe(0)
+    expect(reece!.creditsOpen).toBeCloseTo(-888.1, 2)
+  })
+
+  it('never lets a credit into a bucket, so the 60+ count and the phone note stay true', () => {
+    // A credit dated inside the 60–90 window must not cancel a real 90+ balance.
+    const credit = { supply_house_id: 'ced', amount: -2409, due_date: '2026-05-04' }
+    const m = buildSupplyHouseAgingMatrix(HOUSES, [...CED_INVOICES, credit], TODAY)
+    const ced = m.rows.find((r) => r.supplyHouseId === 'ced')!
+    expect(ced.buckets.past60_90).toBe(0)
+    expect(ced.buckets.past90plus).toBe(2409)
+    expect(countSupplyHousesPastDue60(m)).toBe(1)
+    expect(supplyHouseAgingPhoneNote(ced)).toContain('2,409 at 90+')
+  })
+
+  it('does not ask the office to put a due date on a credit memo', () => {
+    const withCredit = buildSupplyHouseAgingMatrix(
+      HOUSES,
+      [...CED_INVOICES, { supply_house_id: 'ced', amount: -500, due_date: null }],
+      TODAY,
+    )
+    expect(withCredit.missingDueDateCount).toBe(0)
+    // An invoice with no due date still counts.
+    const withInvoice = buildSupplyHouseAgingMatrix(
+      HOUSES,
+      [...CED_INVOICES, { supply_house_id: 'ced', amount: 500, due_date: null }],
+      TODAY,
+    )
+    expect(withInvoice.missingDueDateCount).toBe(1)
+  })
+
+  it('reports owed and credits separately, and nets them', () => {
+    const m = buildSupplyHouseAgingMatrix(
+      HOUSES,
+      [...CED_INVOICES, { supply_house_id: 'reece', amount: -888.1, due_date: null }],
+      TODAY,
+    )
+    expect(m.grandTotal).toBe(2445)
+    expect(m.creditsTotal).toBeCloseTo(-888.1, 2)
+    expect(m.netTotal).toBeCloseTo(1556.9, 2)
+  })
+
+  it('is unchanged for a book with no credits in it', () => {
+    const m = buildSupplyHouseAgingMatrix(HOUSES, CED_INVOICES, TODAY)
+    expect(m.grandTotal).toBe(2445)
+    expect(m.creditsTotal).toBe(0)
+    expect(m.netTotal).toBe(2445)
+    expect(m.rows).toHaveLength(1)
   })
 })

@@ -41,16 +41,27 @@ export function agingBucketFor(dueDateYmd: string | null, todayYmd: string): Agi
 export type SupplyHouseAgingRow = {
   supplyHouseId: string
   name: string
+  /** Invoices only. A credit never enters a bucket — it has a size but not an age. */
   buckets: Record<AgingBucketKey, number>
+  /** Owed across the buckets. Invoices only, so it is never negative. */
   total: number
+  /** Open credit memos on this house, stored negative (v2.3500). */
+  creditsOpen: number
+  /** `total + creditsOpen` — what the balance with this house actually nets to. */
+  net: number
 }
 
 export type SupplyHouseAgingMatrix = {
-  /** Only houses with unpaid balance, total desc. */
+  /** Houses holding either kind of paper, owed desc. */
   rows: SupplyHouseAgingRow[]
   totals: Record<AgingBucketKey, number>
   grandTotal: number
-  /** Unpaid invoices with no due_date — surfaced as a data-entry nudge. */
+  /** Open credits across every house, stored negative. */
+  creditsTotal: number
+  /** `grandTotal + creditsTotal`. */
+  netTotal: number
+  /** Unpaid INVOICES with no due_date — surfaced as a data-entry nudge. A credit memo has no
+   *  due date because nobody owes it on a day, so it must never be counted here. */
   missingDueDateCount: number
 }
 
@@ -65,15 +76,30 @@ export function buildSupplyHouseAgingMatrix(
 ): SupplyHouseAgingMatrix {
   const byHouse = new Map<string, SupplyHouseAgingRow>()
   for (const h of houses) {
-    byHouse.set(h.id, { supplyHouseId: h.id, name: h.name, buckets: emptyBuckets(), total: 0 })
+    byHouse.set(h.id, {
+      supplyHouseId: h.id,
+      name: h.name,
+      buckets: emptyBuckets(),
+      total: 0,
+      creditsOpen: 0,
+      net: 0,
+    })
   }
   const totals = emptyBuckets()
   let grandTotal = 0
+  let creditsTotal = 0
   let missingDueDateCount = 0
   for (const inv of unpaidInvoices) {
     const row = byHouse.get(inv.supply_house_id)
     if (!row) continue
     const amount = Number(inv.amount ?? 0)
+    // A credit memo (v2.3500) is money the house owes us, not a debt with an age. It stays out of
+    // every bucket, out of `total`, and out of the missing-due-date nudge, and rides alongside.
+    if (amount < 0) {
+      row.creditsOpen += amount
+      creditsTotal += amount
+      continue
+    }
     const bucket = agingBucketFor(inv.due_date, todayYmd)
     if (bucket === 'noDueDate') missingDueDateCount++
     row.buckets[bucket] += amount
@@ -81,8 +107,14 @@ export function buildSupplyHouseAgingMatrix(
     totals[bucket] += amount
     grandTotal += amount
   }
-  const rows = [...byHouse.values()].filter((r) => r.total > EPSILON).sort((a, b) => b.total - a.total)
-  return { rows, totals, grandTotal, missingDueDateCount }
+  // A house stays listed while it holds either kind of paper. Before v2.3500 the filter was
+  // `total > EPSILON` against a total that credits could drag to zero, which took the house's
+  // genuinely past-due invoices off the table with it.
+  const rows = [...byHouse.values()]
+    .filter((r) => r.total > EPSILON || r.creditsOpen < -EPSILON)
+    .sort((a, b) => b.total - a.total)
+  for (const r of rows) r.net = r.total + r.creditsOpen
+  return { rows, totals, grandTotal, creditsTotal, netTotal: grandTotal + creditsTotal, missingDueDateCount }
 }
 
 /**
