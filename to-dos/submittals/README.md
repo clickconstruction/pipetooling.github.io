@@ -3,7 +3,8 @@ name: Submittals
 group: ready
 status: >
   stages 1 → 4c on main (v2.3460–v2.3490; the 4c migration is pushed) · live gate 4 passed on
-  BP398 2026-09-16, the won question checked live the same day · left: stage 5 (the conversation), stages 6 and 3b (owner-gated) · live gates
+  BP398 2026-09-16, the won question checked live the same day · left: stages 5 and 6 (brief in
+  STAGES-5-6-BUILD.md; the owner lifted stage 6's gate 2026-09-16), 3b owner-gated · live gates
   owed on Wendi's live bid and the SpaceX Rev 3 on B375
 summary: >
   **Submittals**: the product decision as one row per fixture tag from the plan's schedule to the
@@ -14,7 +15,8 @@ summary: >
   lands; robots read the schedule, split PDFs by tag and lift redlines. Nine artboards in the
   folder.
 next: >
-  Stage 5 (one conversation per job) is the next build; stages 6 and 3b when the owner says so.
+  Stages 5 and 6 are the next build, in order 5a → 5b → 6b → 6c, from the brief in
+  STAGES-5-6-BUILD.md (owner 2026-09-16); 3b when the owner says so.
   Owed live checks: Wendi pastes the schedule on one live bid she is pricing this week (gate 1's
   second half) and the SpaceX Rev 3 rebuild on B375 (gate 2's second half).
 size: M (stage 5 left; 6 and 3b gated)
@@ -160,6 +162,8 @@ Every PR ships alone (branch → PR → auto-merge): `npm run claim` for the ver
 
 ### Stage 5 — the conversation and the trail · 2 PRs (the portal PRs are dropped)
 
+**Build brief for stages 5 and 6, with the boards and the patterns to copy: [`STAGES-5-6-BUILD.md`](STAGES-5-6-BUILD.md)** (owner 2026-09-16: "Build all of Stage 5 and 6, stage by stage, testing along the way" — stage 6's gate is lifted; 3b stays gated).
+
 12. **PR 5a — the conversation.** `bid_submittal_messages`; decisions post a system entry so the thread is the timeline; `submit-submittal-review` gains a `message` action (same token, honeypot, 5/h) → one `estimator_requests` row `pending_action='submittal_message'` at high priority (or `dispatch_requests` when nobody is in the estimating group); the room's **On this submittal** card (watchers may ask, reviewers may ask, nobody's question is a decision); the office replies from the inbox (`CustomerWaitingRequestCard` gains **Reply**), which writes the message and closes the request; `send-submittal-reply-email` sends the reply to the person with their link — the one email the room always sends. *Tests:* kernels (thread ordering, who may reply), inbox render smoke. Guide: `answer-a-customer-waiting-request.md` gains "A question from a submittal room".
 13. **PR 5b — the trail and the drop zone.** The tab reads per person *opened Sep 17 · 3 times · decided 22 · asked 1* so the office knows what to say on the phone (no nudge email, decision 5); the revision takes a reviewer's **redlined PDF or forwarded email** as a drop zone (stored on the share; the robot lift is stage 6; until then the estimator types their decisions onto the rows, recorded as *from Dana's PDF, entered by Wendi*). *Tests:* `submittalTrail.test.ts`.
 
@@ -167,7 +171,7 @@ Dropped 2026-09-15: the portal line and review card (old 5a), the We need you st
 
 *Live gate 5:* in a private window as the architect, ask a question on BP398's room; answer it from the estimator inbox; see the answer on the room and the email to your own address. Then SpaceX's room with Wendi watching the inbox.
 
-### Stage 6 — the robots, Drive · 2 PRs (owner-gated)
+### Stage 6 — the robots, Drive · 2 PRs (gate lifted 2026-09-16 — see `STAGES-5-6-BUILD.md`)
 
 No cover-letter block (decision 2). If that ever changes, it is one toggle in the studio's step 2 (`includeSignature` pattern) writing a new builder argument beside the priced `alternatesBlock`; the rows already know how to write it.
 
