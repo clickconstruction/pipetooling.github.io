@@ -5,7 +5,7 @@ file: docs/JOBS_STAGES_TAB_ARCHITECTURE.md
 type: Architecture Map / Decomposition
 purpose: Step-0 sub-decomposition map (per PAGE_DECOMPOSITION_PLAYBOOK.md) for the already-extracted Pipeline board — src/components/jobs/JobsStagesTab.tsx (3,664 lines) plus its table/row sub-files JobsStagesUnifiedTable.tsx (1,407), JobsStagesTable.tsx (659), and jobsStagesRowShared.tsx (1,204). The v2.831 extraction moved the tab out of Jobs.tsx, but the surface kept growing (18 commits of churn since; the v2.96x–v2.108x feature run landed almost entirely here). This map inventories every region so the next round of extraction — toolbar, modal tail, inline modals, prop-bundle seam for the two tables — can start without re-deriving the strategy.
 audience: Developers, AI Agents
-last_updated: 2026-09-14
+last_updated: 2026-09-16
 ---
 
 ## What this surface is
@@ -99,7 +99,7 @@ Consequence for extraction: children are cheap to carve off *if* they take `stag
 - **Total by Name modal** (`billedTotalByNameModalOpen`, opened from ⋯ menu + the `showBilledTotalByName` handle for `?showBilledTotalByName=true`): groups `billedActiveRows` by `job.job_name` into `byNameRows`, sorts entries by total desc, expandable per-name detail (`billedTotalByNameExpandedName`, reset-on-close effect) using `sortStageRowsForTotalByNameDetail`/`stageRowBilledRemainingAmount`/`stageRowBilledAgeDays`/`stageRowBilledLineLabel` (all lib); Print button (same `printBilledAwaitingPaymentReport`); "take me to Job: Stages: Billed" opens+scrolls the billed section.
 - **Capable of Being Billed modal** (`capableToBillModalOpen`): `buildCapableToBillBreakdownRows(working)` (lib) table with View → `tryOpenEditJob(job.id, { initialJob, onSaved: loadJobs + refreshCustomersAfterJobFormSave })`; "take me to … Working" scroll. (Note: its `aria-label` says "Billed Awaiting Payment by Job Name" — copy/paste quirk, preserve or fix in a separate a11y PR, not during a move.)
 - **Est-bill-date modal** (`whenInvoiceBillModal` + `whenInvoiceBillModalDate`, opened from the unified table's ham pencil): date input → `setInvoiceEstimatedBillDate(invoiceId, jobId, date)` (mutation-hook prop).
-- **Extraction:** all three are **low risk single-opener components** → `StagesBilledTotalByNameModal.tsx`, `StagesCapableToBillModal.tsx`, `StagesEstBillDateModal.tsx` (~325 lines out). Total-by-Name's grouping is a Stage-A candidate first (below).
+- **Extraction — done v2.3530:** `StagesBilledTotalByNameModal.tsx` (props: `rows`, `expandedName`/`onToggleName`, `onPrint`, `onGoToBilled`, `onClose`), `StagesCapableToBillModal.tsx` (`rows` from `buildCapableToBillBreakdownRowsWithPlans`, `total`, `onView`, `onGoToWorking`, `onClose`), `StagesEstBillDateModal.tsx` (`target`, `date`/`onDateChange`, `saving`, `onSave`, `onCancel`). Stage A first: the grouping became `buildBilledTotalByNameEntries` in `lib/jobs/invoiceBilling.ts` (+ tests). What stayed in the tab: the three open flags, `billedTotalByNameExpandedName` and its reset-on-close effect, `whenInvoiceBillModal` + `whenInvoiceBillModalDate`, `printBilledAwaitingPaymentReport`, the View door (`tryOpenEditJob` + reload callbacks) and both section scrolls — all read or written by the handle, the ⋯ menu or the unified table. `JobsStagesTab.tsx` 6,598 → 6,328 lines.
 
 ### 6. The modal tail (~2688–3294, rendered regardless of `active`)
 
@@ -183,7 +183,7 @@ Single-opener state → component pairs, all opened only from this surface:
 | Toolbar + ⋯ tools menu | `JobsStagesTab` ~1094–1304 | ~215 | low | low | inline → `JobsStagesToolbar` |
 | Jump nav + alert chips/modals | `JobsStagesTab` ~1305–1553 | ~250 | low-med | low | inline → `JobsStagesJumpNavAndAlerts` |
 | Section wiring IIFE (6 sections) | `JobsStagesTab` ~1576–2356 | ~780 (≈650 = repeated props) | highest | med | stays; **prop-bundle seam** |
-| Inline modals (Total by Name / Capable / est-bill-date) | `JobsStagesTab` ~2357–2682 | ~325 | low-med | low | inline → 3 components |
+| Inline modals (Total by Name / Capable / est-bill-date) | `StagesBilledTotalByNameModal.tsx` · `StagesCapableToBillModal.tsx` · `StagesEstBillDateModal.tsx` | ~330 moved out (v2.3530) | low-med | low | **extracted** — the tab keeps the open flags, `billedTotalByNameExpandedName` + its reset-on-close effect, `whenInvoiceBillModal` + date, and the openers |
 | Modal tail (6 inline confirms + 13 extracted modals + banner) | `JobsStagesTab` ~2688–3294 | ~610 | med | low-med | inline confirms → per-modal components |
 | Job-only table | `JobsStagesTable.tsx` | 644 (58 props) | high (prop fan-in) | low-med | extracted; shrink via bundle + `StagesAssignedEditCell` |
 | Unified job/invoice table | `JobsStagesUnifiedTable.tsx` | 1,381 (75 props) | highest | med | extracted; split row-kind branches |
@@ -195,7 +195,7 @@ Single-opener state → component pairs, all opened only from this surface:
 
 | Candidate | Currently | Target |
 |---|---|---|
-| Total-by-Name grouping (`byNameRows` map + entries sort by total desc) | inline IIFE in the Total by Name modal (`JobsStagesTab` ~2358–2371) | `lib/jobs/invoiceBilling.ts` `buildBilledTotalByNameEntries(rows)` + tests (sibling of `sortStageRowsForTotalByNameDetail`) |
+| ~~Total-by-Name grouping~~ | done v2.3530 | `lib/jobs/invoiceBilling.ts` `buildBilledTotalByNameEntries(rows)` + tests |
 | Section exposure totals (`waitingTotal`/`workingTotal` = Σ `revenue − payments_made`; `billedTotal`/`collectionsTotal` = Σ `stageRowBilledRemainingAmount`) | inline reduces in the IIFE | `lib/jobsStagesBoard.ts` (join `readyToBillRowsExposureTotal`/`capableToBillTotalFromWorking`) + tests |
 | Pipeline role gates (`canOpenJobScheduleModal`, `canEditJobPctComplete`, `canManageJobPeople`, `canCreateHazmatFee`, `canManageCollections`, the tools-menu role arrays, the AR-button role check ×3 copies) | memos/consts + repeated inline boolean chains | `lib/jobs/stagesRoleGates.ts` + tests — **keep the RLS-mirroring comments with each gate** |
 | `accountsReceivableButtonAccessibleName` composer | `useMemo` over role/count/rows | pure `(canRecordPayments, unallocatedCount, billedRowCount) => string` + test |
@@ -233,7 +233,7 @@ Already-extracted lib (do NOT re-derive; add tests only if missing): `buildJobsS
 
 1. **Stage-A sweep** — the table above; each independently shippable. Highest leverage: `pickStagesLastActivity`, `buildBilledTotalByNameEntries`, `stagesRoleGates`.
 2. **Toolbar → `JobsStagesToolbar`** (~215 lines, smallest prop surface; validates the intra-tab seam).
-3. **Inline modals → components**: `StagesBilledTotalByNameModal`, `StagesCapableToBillModal`, `StagesEstBillDateModal`, then the modal-tail confirms (`StagesReadyForBillingConfirmModal`, `StagesSendBackJobModal`, `StagesSendBackInvoiceModal`, `StagesSendBackSimpleConfirmModal`, `StagesCollectionsConfirmModal`, `StagesCreatePartialInvoiceModal` — this last after its Stage-A kernel). ~935 lines out of `JobsStagesTab` in total.
+3. **Inline modals → components**: ~~`StagesBilledTotalByNameModal`, `StagesCapableToBillModal`, `StagesEstBillDateModal`~~ (done v2.3530), then the modal-tail confirms (`StagesReadyForBillingConfirmModal`, `StagesSendBackJobModal`, `StagesSendBackInvoiceModal`, `StagesSendBackSimpleConfirmModal`, `StagesCollectionsConfirmModal`, `StagesCreatePartialInvoiceModal` — this last after its Stage-A kernel). ~935 lines out of `JobsStagesTab` in total.
 4. **Jump nav + alerts → `JobsStagesJumpNavAndAlerts`** (~250 lines).
 5. **Prop-bundle seam** — one `stagesTableShared` object (superset of `StagesRowRenderContext`) built once in `JobsStagesTab` and passed as a single prop to both tables; collapse the six ~50-prop call sites. Behavior-identical, wide diff — land alone.
 6. **Row dedupe inside the tables** — `StagesAssignedEditCell`, `StagesRowActionIcons`, `StagesExpandedThreadRow`; then split `JobsStagesUnifiedTable` into `StagesUnifiedJobRow` / `StagesUnifiedInvoiceRow`; componentize `renderStagesFieldAndBillingLines` in `jobsStagesRowShared`.
