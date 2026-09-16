@@ -252,7 +252,7 @@ Tables/RPCs in the baseline migration; `job_collect_payment_flows` (one row per 
 
 ### Shape
 
-Baseline: `job_id` FK CASCADE, `amount`, `sequence_order`, `paid_on` (user-entered date), `note`, `invoice_id` FK **SET NULL** (NULL = job-level payment), `payment_type`, `reference_number`, `mercury_transaction_id` FK SET NULL. **No `created_by`/source column** — provenance is inferred (`mercury_transaction_id`, `invoice_id`, note `'Stripe'`). RLS allows direct writes by dev/master_technician/assistant/primary with job access. Triggers: activity mirror (`payment_added`/`payment_removed`, `supabase/migrations/20260608010000_job_activity_events.sql`) and delete-archive.
+Baseline: `job_id` FK CASCADE, `amount`, `sequence_order`, `paid_on` (user-entered date), `note`, `invoice_id` FK **SET NULL** (NULL = job-level payment), `payment_type`, `reference_number`, `mercury_transaction_id` FK SET NULL. **No `created_by`/source column** — provenance is inferred (`mercury_transaction_id`, `invoice_id`, note `'Stripe'`). RLS allows direct writes by dev/master_technician/assistant/primary with job access. Triggers: activity mirror (`payment_added`/`payment_removed`, `supabase/migrations/20260608010000_job_activity_events.sql`), delete-archive, and (v2.3514) `jobs_ledger_payments_ar_income_label` — a payment with a bank link labels that deposit *Income* in Banking behind the org switch `ar_applied_deposits_count_as_income`, never overwriting an existing label (`docs/migrations/20260916150000_ar_applied_deposits_income.md`).
 
 ### Every insert path
 

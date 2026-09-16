@@ -23,6 +23,8 @@ Card holders sort their own purchases to jobs in **Job Parts Tally → Transacti
 
 :::example The org-wide switch
 {{chip:gray|Rule matches approve themselves (org-wide · on)}} — every new rule match is approved the moment it is created, as the bank feed arrives or when someone clicks **Apply rules**. Off, matches wait in Approvals. One switch for the whole company; a dev or leader flips it. Two things always wait for a person even when it is on: an Internal Transfers suggestion on a transaction that already has job splits, and anything created before the switch was turned on.
+
+{{chip:gray|Deposits applied in Accounts Receivable count as Income (org-wide · on)}} — the second switch. A deposit the office matches to a bill in Accounts Receivable is labelled **Income** the moment the payment is recorded, unless a rule or a person already labelled it (a hand-set label is never overwritten). Turning it on also labels every deposit that was applied before today, once, and says how many. Turn it off and new deposits wait for a rule or a person again; labels already set stay.
 :::
 
 - **Card Review** and **Category Review** — read-only pivots of the labels above (who spent what, by card and by category). Card Review's **Unassigned** row counts transfers and payouts too until you set its {{chip:gray|Kind}} filter to **Card charges only**.

@@ -70,6 +70,16 @@ import { findExactBillCombos } from '../../lib/jobs/arPayerBillCombos'
 import { findRecordedPaymentCollisions } from '../../lib/jobs/arLinkCollision'
 import { readEdgeFunctionErrorBody } from '../../lib/readEdgeFunctionErrorBody'
 import { buildArTipOffer } from '../../lib/jobs/arTipOffer'
+import {
+  AR_APPLIED_INCOME_SETTING_KEY,
+  arAppliedToast,
+  arApplyBooksIncome,
+  arBankLabelNote,
+  arBankLabelStays,
+  parseArIncomeSettingValue,
+  type ArBankLabelSlice,
+} from '../../lib/jobs/arBankLabel'
+import { useToastContext } from '../../contexts/ToastContext'
 import { ArTipOffer } from './ar/ArTipOffer'
 import { isMissingRpcError } from '../../lib/customers/customersListBundle'
 
@@ -204,6 +214,9 @@ export default function BankPaymentsModal({
   const [arAllocations, setArAllocations] = useState<ArAllocationRow[]>([])
   const [arAllocationsLoading, setArAllocationsLoading] = useState(false)
   const [arAllocationsError, setArAllocationsError] = useState<string | null>(null)
+  /** Applied-means-Income: the org switch (read once per open) and the selected deposit's Banking label. */
+  const [arIncomeSwitchOn, setArIncomeSwitchOn] = useState<boolean>(false)
+  const [bankLabel, setBankLabel] = useState<ArBankLabelSlice | null>(null)
   // The tip offer (v2.3496): money left on a deposit whose bills are settled.
   const [tipJobId, setTipJobId] = useState<string | null>(null)
   const [tipConfirming, setTipConfirming] = useState(false)
@@ -260,6 +273,7 @@ export default function BankPaymentsModal({
     }
   }, [selected])
 
+  const { showToast } = useToastContext()
   const canApply = canRoleApplyBankPayments(authRole)
 
   /** List is loading OR the first fetch is still held for the org sorting config (cold cache). */
@@ -1018,6 +1032,78 @@ export default function BankPaymentsModal({
     !canAllocateRemaining ||
     (stripeAllocationSelected && !stripeOutOfBandConfirmed)
 
+  // Applied-means-Income: the org switch, once per open. A failed read means
+  // "off", which only hides the clause — the database decides the label either way.
+  useEffect(() => {
+    if (!open) return
+    let cancelled = false
+    void (async () => {
+      try {
+        const { data } = await supabase
+          .from('app_settings')
+          .select('value_text')
+          .eq('key', AR_APPLIED_INCOME_SETTING_KEY)
+          .maybeSingle()
+        if (!cancelled) setArIncomeSwitchOn(parseArIncomeSettingValue((data as { value_text: string | null } | null)?.value_text))
+      } catch {
+        if (!cancelled) setArIncomeSwitchOn(false)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [open])
+
+  // The selected deposit's Banking label. Office staff can read the assignment
+  // and label tables; a role that cannot simply sees no clause (null), never a
+  // wrong one — an unlabelled read is only trusted when the query succeeded.
+  useEffect(() => {
+    const txId = selected?.mercury_transaction_id
+    if (!open || !txId) {
+      setBankLabel(null)
+      return
+    }
+    let cancelled = false
+    void (async () => {
+      try {
+        const [assign, ar] = await Promise.all([
+          supabase
+            .from('mercury_transaction_drag_sort_assignments')
+            .select('label_id, mercury_drag_sort_labels(name, default_key)')
+            .eq('mercury_transaction_id', txId)
+            .maybeSingle(),
+          supabase
+            .from('mercury_transaction_ar_income_labels')
+            .select('mercury_transaction_id')
+            .eq('mercury_transaction_id', txId)
+            .maybeSingle(),
+        ])
+        if (cancelled) return
+        if (assign.error) {
+          setBankLabel(null)
+          return
+        }
+        const row = assign.data as
+          | { label_id: string; mercury_drag_sort_labels: { name: string; default_key: string | null } | null }
+          | null
+        setBankLabel({
+          switchOn: arIncomeSwitchOn,
+          labelName: row?.mercury_drag_sort_labels?.name ?? null,
+          labelDefaultKey: row?.mercury_drag_sort_labels?.default_key ?? null,
+          setByAr: !ar.error && ar.data != null,
+        })
+      } catch {
+        if (!cancelled) setBankLabel(null)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [open, selected?.mercury_transaction_id, arIncomeSwitchOn])
+
+  /** The one-line deviation note under the header — only when the label is something other than Income. */
+  const bankLabelNote = useMemo(() => arBankLabelNote(bankLabel), [bankLabel])
+
   /** AR refresh PR 4 (v2.3382): the footer's words — what Apply will do, or why it can't yet. */
   const applySentence = useMemo(
     () =>
@@ -1028,8 +1114,10 @@ export default function BankPaymentsModal({
         depositRemaining: selected ? Number(selected.remaining_available) : 0,
         validation: validationMessage,
         tipOffered: tipOffer != null,
+        booksIncome: arApplyBooksIncome(bankLabel),
+        bankLabelStays: arBankLabelStays(bankLabel),
       }),
-    [allocLines, targetByKey, recordedPaymentById, selected, validationMessage, tipOffer],
+    [allocLines, targetByKey, recordedPaymentById, selected, validationMessage, tipOffer, bankLabel],
   )
 
   /**
@@ -1161,6 +1249,9 @@ export default function BankPaymentsModal({
       if (payload && typeof payload === 'object' && typeof payload.error === 'string') {
         throw new Error(payload.error)
       }
+      // Applied-means-Income: the trigger inside that RPC labelled the deposit
+      // when the switch was on and nothing had labelled it — say so, once.
+      showToast(arAppliedToast(applySentence.total, arApplyBooksIncome(bankLabel)), 'success')
       // v2.1639: allocation applied — now close exactly-covered Stripe-hosted
       // bills in Stripe so the emailed links die. Failures keep the modal open
       // on a retry panel (the allocation itself already stands).
@@ -1659,6 +1750,15 @@ export default function BankPaymentsModal({
                     consumed={Number(selected.consumed) || 0}
                     progress={allocationProgress}
                   />
+                  {bankLabelNote ? (
+                    <div
+                      data-testid="ar-bank-label-note"
+                      style={{ marginBottom: '0.75rem', fontSize: '0.8125rem', color: 'var(--text-amber-700)', display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}
+                    >
+                      <span aria-hidden style={{ width: 7, height: 7, borderRadius: '50%', background: 'var(--text-amber-700)', display: 'inline-block', flex: 'none' }} />
+                      {bankLabelNote.text}
+                    </div>
+                  ) : null}
 
                   {Number(selected.consumed) > AR_BANK_PAYMENT_CONSUMED_DISPLAY_EPS ? (
                     <div style={BANK_PAYMENTS_SUMMARY_CARD_STYLE}>

@@ -33,6 +33,10 @@ export function arApplySentence(args: {
   validation: string | null
   /** v2.3496: the tip strip is on screen, so the waiting text names that way out too. */
   tipOffered?: boolean
+  /** Applied-means-Income: the switch is on and the deposit is unlabelled, so Apply will book it as Income in Banking. */
+  booksIncome?: boolean
+  /** Applied-means-Income: the deposit already carries this other label, which Apply leaves alone. */
+  bankLabelStays?: string | null
 }): ArApplySentence {
   if (args.validation) return { text: args.validation, tone: 'warn', total: 0 }
   const remaining = Math.max(0, Number(args.depositRemaining) || 0)
@@ -74,13 +78,18 @@ export function arApplySentence(args: {
   }
   const unapplied = Math.round((remaining - total) * 100) / 100
   const tail = unapplied > 0.005 ? ` ${money(unapplied)} of the deposit stays unapplied.` : ''
+  // Applied-means-Income: one clause, said once, at the moment of the act.
+  const stays = (args.bankLabelStays ?? '').trim()
+  const incomeTail = args.booksIncome ? ' Books the deposit as Income.' : stays ? ` Stays ${stays} in Banking.` : ''
   if (parts.length === 1 && onlyPayment && billedCount === 0) {
-    return { text: `Links this deposit to the ${money(onlyPayment.amt)} payment already on ${onlyPayment.where} — no new payment is created.${tail}`, tone: 'ready', total }
+    return { text: `Links this deposit to the ${money(onlyPayment.amt)} payment already on ${onlyPayment.where} — no new payment is created.${tail}${incomeTail}`, tone: 'ready', total }
   }
   if (parts.length === 1) {
-    return { text: `Applies ${parts[0]}.${settledTail}${tail}`, tone: 'ready', total }
+    const act = args.booksIncome ? `Applies ${parts[0]} and books it as Income.` : `Applies ${parts[0]}.`
+    const staysTail = args.booksIncome ? '' : incomeTail
+    return { text: `${act}${settledTail}${tail}${staysTail}`, tone: 'ready', total }
   }
-  return { text: `Applies ${money(total)} across ${parts.length} lines — ${parts.join(', ')}.${tail}`, tone: 'ready', total }
+  return { text: `Applies ${money(total)} across ${parts.length} lines — ${parts.join(', ')}.${tail}${incomeTail}`, tone: 'ready', total }
 }
 
 /** The deposit to land on after "Apply & next": the one below the current row, else the one above; null when alone. */
