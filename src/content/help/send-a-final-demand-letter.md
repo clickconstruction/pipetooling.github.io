@@ -19,6 +19,8 @@ On a **Billed Awaiting Payment** or **Collections** row, the orange lien icon no
 - **The notice history** — this is the part no form site can write. The letter lists, with dates, every invoice send, every Stripe re-send, and every collection call recorded in call mode: *"July 15 — Invoice sent · August 5 — Invoice re-sent by email · August 26 — Collection call."* A debtor reading a dated list knows you keep records.
 - **The two dates** — the pay-by date defaults to 10 business days out (one click resets it). Under it the app shows the date **attorney's fees become recoverable**: 30 days after the letter, because the letter is the "presentment" Texas requires before fees can be claimed. The letter says both.
 
+**What counts as paid.** The claim subtracts every payment recorded against the bill it covers. On a job with only one bill, a payment recorded on the job without a bill attached counts too — there is nothing else it could be paying — so the letter and the enclosed invoice read the same balance. On a job with several bills, a payment that is not attached to a bill is not guessed onto one; open the bill and link the payment to it, and the letter re-reads it.
+
 ## What the letter may say
 
 Every line the letter threatens has to be one you can actually do, and every charge it names has to rest on a statute or the agreement — the Texas Debt Collection Act applies to you when the debtor is a homeowner. So each switch shows its basis, and a line that is not available is greyed with the reason:
@@ -26,7 +28,7 @@ Every line the letter threatens has to be one you can actually do, and every cha
 - **Suit in justice court** — offered while the balance is within the $20,000 limit; above it the line reads county or district court.
 - **Mechanic's lien under Chapter 53** — offered only while the filing window is open and the property is not a homestead, with the window's last day on the letter. When it cannot be filed the switch says why: {{chip:red|not offered — the filing window closed …}}.
 - **Interest** — {{chip:gray|1.5 % a month}} under the Prompt Payment chapter from the 36th day after the bill went out (the bill is the written payment request), or {{chip:gray|6 % a year}} at the legal rate when the bill was never sent. No date to run from, no interest line.
-- **Theft of services (§ 31.04)** stays **off** until the attorney package signs off on it.
+- **Theft of services (§ 31.04)** stays **off** until the attorney package signs off on it, and it is {{chip:gray|not applicable}} the moment anything has been paid on the job — on any bill, or recorded on the job with no bill — because a partial payment defeats it.
 
 :::example The lawyer's date
 A letter sent September 14 names September 28 as the pay-by and October 14 as the day fees become recoverable. The Legal desk shows the same October date on the account's Paper tab, so a matter referred after it arrives with the presentment already done.

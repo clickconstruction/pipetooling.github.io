@@ -117,6 +117,27 @@ describe('LienInstrumentsModal · demand letter reads the bill', () => {
     expect(screen.queryByText(/late fees and interest may continue/)).toBeNull()
   })
 
+  // v2.3515: the § 31.04 gate reads every payment on the job, not the letter's claim sum.
+  it('a payment on the job — even on another bill — makes the theft-of-services report not applicable', async () => {
+    const paidElsewhere = job({ payments: [{ id: 'p1', job_id: 'job-867', invoice_id: 'inv-other', amount: 8000, paid_on: '2026-06-04', sequence_order: 0 }] })
+    renderWithProviders(<LienInstrumentsModal {...baseProps} job={paidElsewhere} />)
+    await waitFor(() => expect(screen.getByText(/not applicable — payments have been made on this job/)).toBeTruthy())
+    // The letter's own claim still reads the covered bill in full: the $8,000 is another bill's.
+    expect(screen.getByText(/Nothing has been paid\./)).toBeTruthy()
+  })
+
+  it('a single-bill job with an unlinked payment claims the difference, and the gate closes', async () => {
+    const paidUnlinked = job({ payments: [{ id: 'p1', job_id: 'job-867', invoice_id: null, amount: 1000, paid_on: '2026-08-20', sequence_order: 0 }] })
+    renderWithProviders(<LienInstrumentsModal {...baseProps} job={paidUnlinked} />)
+    await waitFor(() => expect(screen.getByText(/\$1,000\.00 has been paid and \$710\.00 remains\./)).toBeTruthy())
+    expect(screen.getByText(/not applicable — payments have been made on this job/)).toBeTruthy()
+  })
+
+  it('no payments at all leaves the theft-of-services report available (and off)', async () => {
+    renderWithProviders(<LienInstrumentsModal {...baseProps} job={job()} />)
+    await waitFor(() => expect(screen.getByText(/available — no payments made on this job/)).toBeTruthy())
+  })
+
   it('offers Email with the PDF as a second channel, prefilled with the payer email (v2.3436)', async () => {
     renderWithProviders(<LienInstrumentsModal {...baseProps} job={job({ gc_customer_id: null, gcCustomer: null, bill_to_party: 'customer' })} />)
     await waitFor(() => expect(screen.getByText(/the customer on the job/)).toBeTruthy())
