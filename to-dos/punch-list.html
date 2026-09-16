@@ -232,7 +232,7 @@
       <h1>Punch List</h1>
     </div>
     <div class="stamp">
-      Validated against main <b>2026-09-16</b> at <b>v2.3530</b><br>
+      Validated against main <b>2026-09-16</b> at <b>v2.3532</b><br>
       35 open items · shipped work lives in the release notes · picks are shared with whoever opens this page
     </div>
   </header>
@@ -273,7 +273,7 @@
       next: "The tel: sweep as one script-driven PR cut from fresh main, merged alone when the queue is quiet.", size: "S", blocker: "None for the sweep; three decisions are yours.", ver: "hook v2.3434 · hide for me v2.3524" },
     { slug: "engineering-hygiene", g: "ready", name: "Decompose JobsStagesTab / BidsPricingTab", file: "to-dos/engineering-hygiene.md",
       sum: "Two decomposition trains — JobsStagesTab then BidsPricingTab — one map region per PR, each shippable on its own; the three mechanical sweeps already ran.",
-      next: "PR 1 of the Stages train: the Stage-A kernels (role gates, section exposure totals, the AR button name, the section-id map, the customer-link heuristic) — tests only, no JSX moves. Then PRs 2–9 in order; then the Pricing train.", size: "L", blocker: "Collides with every feature PR on those files.", ver: "inventory 09-06 · region 5 v2.3530 · train written 09-16" },
+      next: "PR 3 of the Stages train: the command bar (New Job, Follow-ups, Forecast, search, # jump, the applied-filter chips) → JobsStagesCommandBar, with the ⋯ menu as its child. Then PRs 4–10 in order; then the Pricing train.", size: "L", blocker: "Collides with every feature PR on those files.", ver: "inventory 09-06 · region 5 v2.3530 · PR 1 v2.3531 · PR 2 v2.3532" },
     { slug: "email-reports-one-modal", g: "ready", name: "Email reports, one modal", file: "to-dos/email-reports-one-modal/README.md",
       sum: "Email reports, one modal: fold Jobs → Reports' two buttons — Recurring Email Reports (digests on a schedule) and Report email recipients (one email per report, as filed) — into one Email reports button and modal. Option A keeps both bodies under two tabs; Option B shows one row per person with a Digest chip and an Every-report chip. Client-only, no migration. Mock-up in the folder.",
       next: "PR 1 — the one button and the tabbed modal shell (Option A), the Dashboard mail button opening it on Every report, the Settings \"managed from\" strings. PR 2–3 only if the owner picks Option B.", size: "S (A) · M (B)", blocker: "None for PR 1. Option B's PRs wait on the owner's pick.", ver: "mock-up 09-16" },
