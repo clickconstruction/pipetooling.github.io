@@ -12,6 +12,10 @@ describe('arApplySentence', () => {
     const s = arApplySentence({ lines: [{ kind: 'billed', targetKey: '', amountStr: '' }], targetByKey: targets, paymentById: payments, depositRemaining: 1855.7, validation: null })
     expect(s).toEqual({ text: 'Remaining $1,855.70 — pick a bill, or link a recorded payment.', tone: 'waiting', total: 0 })
   })
+  it('names the tip as a third way out when the strip is on screen (v2.3496)', () => {
+    const s = arApplySentence({ lines: [{ kind: 'billed', targetKey: '', amountStr: '' }], targetByKey: targets, paymentById: payments, depositRemaining: 50, validation: null, tipOffered: true })
+    expect(s).toEqual({ text: 'Remaining $50.00 — pick a bill, link a recorded payment, or add it as a tip.', tone: 'waiting', total: 0 })
+  })
   it('one bill, settled', () => {
     const s = arApplySentence({ lines: [{ kind: 'billed', targetKey: 'inv-992', amountStr: '250.00' }], targetByKey: targets, paymentById: payments, depositRemaining: 250, validation: null })
     expect(s.text).toBe('Applies $250.00 to 992 · Done Right Foundation. The bill is settled.')
