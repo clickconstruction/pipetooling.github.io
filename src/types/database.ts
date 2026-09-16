@@ -12266,6 +12266,45 @@ export type Database = {
           },
         ]
       }
+      mercury_transaction_ar_closed: {
+        Row: {
+          closed_at: string
+          closed_by: string | null
+          mercury_transaction_id: string
+          note: string | null
+          reason: string
+        }
+        Insert: {
+          closed_at?: string
+          closed_by?: string | null
+          mercury_transaction_id: string
+          note?: string | null
+          reason: string
+        }
+        Update: {
+          closed_at?: string
+          closed_by?: string | null
+          mercury_transaction_id?: string
+          note?: string | null
+          reason?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mercury_transaction_ar_closed_closed_by_fkey"
+            columns: ["closed_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mercury_transaction_ar_closed_mercury_transaction_id_fkey"
+            columns: ["mercury_transaction_id"]
+            isOneToOne: true
+            referencedRelation: "mercury_transactions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       mercury_transaction_ar_returned: {
         Row: {
           mercury_transaction_id: string
@@ -23402,6 +23441,14 @@ export type Database = {
       }
       set_job_promised_pay_date: {
         Args: { p_date: string; p_job_id: string }
+        Returns: Json
+      }
+      set_mercury_transaction_ar_closed: {
+        Args: {
+          p_mercury_transaction_id: string
+          p_note?: string
+          p_reason: string
+        }
         Returns: Json
       }
       set_mercury_transaction_ar_returned: {

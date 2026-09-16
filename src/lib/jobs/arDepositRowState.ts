@@ -9,6 +9,7 @@
  * that same data so the list is the map:
  *
  *   returned   — flagged as bounced (Mark returned)
+ *   closed     — closed out with a reason (v2.3529): not a customer's payment
  *   applied    — nothing left to allocate
  *   exact      — the sweep pairs it with exactly one open bill
  *   recorded   — a recorded, unlinked payment carries the same amount: the
@@ -23,12 +24,14 @@
 import { matchArDepositToPayer, type ArDepositTextSlice, type PayerTargetSlice } from './arDepositCustomerMatch'
 import type { ArExactMatchSweep } from './arExactMatchSweep'
 
-export type ArDepositRowState = 'returned' | 'applied' | 'exact' | 'recorded' | 'ambiguous' | 'payer' | 'hand'
+export type ArDepositRowState = 'returned' | 'closed' | 'applied' | 'exact' | 'recorded' | 'ambiguous' | 'payer' | 'hand'
 
 export type ArDepositRowSlice = ArDepositTextSlice & {
   mercury_transaction_id: string
   remaining_available: number | string | null
   returned?: boolean | null
+  /** v2.3529: a close-out row exists for this deposit. */
+  closed?: boolean | null
 }
 
 const REMAINING_EPS = 0.0005
@@ -49,6 +52,7 @@ export function arDepositRowStates(args: {
     const remaining = Number(d.remaining_available) || 0
     let state: ArDepositRowState
     if (d.returned) state = 'returned'
+    else if (d.closed) state = 'closed'
     else if (remaining <= REMAINING_EPS) state = 'applied'
     else if (exact.has(d.mercury_transaction_id)) state = 'exact'
     else if (recordedCents.has(toCents(remaining))) state = 'recorded'
@@ -67,6 +71,8 @@ export function arDepositRowStateLabel(state: ArDepositRowState): { text: string
   switch (state) {
     case 'returned':
       return { text: 'returned', tone: 'red' }
+    case 'closed':
+      return { text: 'closed out', tone: 'muted' }
     case 'applied':
       return { text: 'applied', tone: 'muted' }
     case 'exact':

@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { arDepositRowStateLabel, arDepositRowStates, arDepositSummary, arDepositSummaryWords } from './arDepositRowState'
 import type { ArExactMatchSweep } from './arExactMatchSweep'
 
-const dep = (id: string, remaining: number, over: Partial<{ returned: boolean; counterparty_name: string | null; note: string | null; external_memo: string | null }> = {}) => ({
+const dep = (id: string, remaining: number, over: Partial<{ returned: boolean; closed: boolean; counterparty_name: string | null; note: string | null; external_memo: string | null }> = {}) => ({
   mercury_transaction_id: id,
   remaining_available: remaining,
   returned: false,
@@ -89,5 +89,19 @@ describe('arDepositSummary', () => {
     expect(arDepositSummaryWords(s)).toEqual({ count: '3 deposits', money: '$6,197.20' })
     expect(arDepositSummaryWords({ toMatch: 1, unappliedCents: 100 })).toEqual({ count: '1 deposit', money: '$1.00' })
     expect(arDepositSummaryWords({ toMatch: 0, unappliedCents: 0 })).toBeNull()
+  })
+})
+
+describe('closed-out deposits (v2.3529)', () => {
+  it('a close-out row wears its own chip, outranked only by returned', () => {
+    const states = arDepositRowStates({
+      deposits: [dep('d-refund', 312.48, { closed: true }), dep('d-both', 10, { closed: true, returned: true })],
+      sweep: noSweep,
+      targets,
+      recordedPayments: [],
+    })
+    expect(states.get('d-refund')).toBe('closed')
+    expect(states.get('d-both')).toBe('returned')
+    expect(arDepositRowStateLabel('closed')).toEqual({ text: 'closed out', tone: 'muted' })
   })
 })
