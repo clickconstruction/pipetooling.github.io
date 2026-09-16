@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest'
+import { APP_CALENDAR_TZ } from '../../utils/dateUtils'
 
 import { anonymousOpens, describeHow, describeRoomLine, describeTrail, newRoomToken, parseSubmittalRoomPayload, personTrail, roomLink } from './submittalRoom'
 
-const TZ = 'America/Chicago'
+const TZ = APP_CALENDAR_TZ
 
 describe('the room link', () => {
   it('mints 48 hex characters and builds the page address', () => {
