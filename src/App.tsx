@@ -49,6 +49,7 @@ import HazmatNoticePublic from './pages/HazmatNoticePublic'
 import CustomerPortal from './pages/CustomerPortal'
 import SubPortal from './pages/SubPortal'
 import LegalPortal from './pages/LegalPortal'
+import LegalConfirm from './pages/LegalConfirm'
 import SupplyHouseQuotePage from './pages/SupplyHouseQuotePage'
 import PartnerStatement from './pages/PartnerStatement'
 import ContractAccept from './pages/ContractAccept'
@@ -225,6 +226,7 @@ function AppContent() {
         <Route path="/sub" element={<SubPortal />} />
         <Route path="/s/:slug" element={<SubPortal />} />
         <Route path="/legal" element={<LegalPortal />} />
+        <Route path="/legal/confirm" element={<LegalConfirm />} />
         <Route
           path="/estimate/customer-accept-preview/:id"
           element={

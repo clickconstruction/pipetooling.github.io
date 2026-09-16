@@ -21,9 +21,9 @@ import { buildGcStatementEmailHtml, buildGcStatementEmailText, gcStatementEmailS
 import type { GcReviewGroup } from './gcReviewRollup'
 import { buildRfqEmail } from './rfqEmail'
 import { composeJobAccountEmail } from './supplyHouseJobAccount'
-import { buildLegalConfirmEmail, buildLegalDigestEmail, buildLegalNowEmail, legalConfirmedPageBody, legalPageHtml } from './legalEmails'
+import { buildLegalConfirmEmail, buildLegalDigestEmail, buildLegalNowEmail } from './legalEmails'
 import { SAMPLE_FIRM, SAMPLE_HOUSE, SAMPLE_RFQ_LINES } from '../../supabase/functions/_shared/customerSampleFixtures'
-import { LEGAL_CONFIRMED_SAMPLE_URL, LEGAL_PORTAL_SAMPLE_PATH, type SampleHtmlId } from './customerJourneys'
+import { LEGAL_CONFIRMED_SAMPLE_PATH, LEGAL_PORTAL_SAMPLE_PATH } from './customerJourneys'
 
 export type { AppSettingRow }
 
@@ -212,12 +212,14 @@ export function buildSampleJobAccountEmail(ctx: SampleEmailContext): BuiltEmail 
   )
 }
 
-const LEGAL_UNSUBSCRIBE_SAMPLE_URL = LEGAL_CONFIRMED_SAMPLE_URL.replace('confirm=', 'unsubscribe=')
+
 
 /** The firm's three emails (v2.3512): the senders' own builders over the sample firm. */
 export function buildSampleLegalEmail(id: 'legal-confirm' | 'legal-now' | 'legal-digest', ctx: SampleEmailContext): BuiltEmail {
   const portalUrl = `${ctx.origin}${LEGAL_PORTAL_SAMPLE_PATH}`
-  if (id === 'legal-confirm') return buildLegalConfirmEmail({ companyName: PORTAL_COMPANY.name, email: SAMPLE_FIRM.recipients[1].email, confirmUrl: LEGAL_CONFIRMED_SAMPLE_URL })
+  const confirmUrl = `${ctx.origin}${LEGAL_CONFIRMED_SAMPLE_PATH}`
+  const unsubscribeUrl = `${confirmUrl}&stop=1`
+  if (id === 'legal-confirm') return buildLegalConfirmEmail({ companyName: PORTAL_COMPANY.name, email: SAMPLE_FIRM.recipients[1].email, confirmUrl })
   if (id === 'legal-now')
     return buildLegalNowEmail({
       companyName: PORTAL_COMPANY.name,
@@ -227,7 +229,7 @@ export function buildSampleLegalEmail(id: 'legal-confirm' | 'legal-now' | 'legal
       handling: SAMPLE_FIRM.handling,
       note: 'Two bills, 74 days past due; the office\'s calls went unanswered.',
       portalUrl,
-      unsubscribeUrl: LEGAL_UNSUBSCRIBE_SAMPLE_URL,
+      unsubscribeUrl,
     })
   return buildLegalDigestEmail({
     companyName: PORTAL_COMPANY.name,
@@ -235,14 +237,8 @@ export function buildSampleLegalEmail(id: 'legal-confirm' | 'legal-now' | 'legal
     matters: [{ payerName: SAMPLE_HOMEOWNER.name, stage: 'with_firm', handlingName: SAMPLE_FIRM.handling, releasedAt: ymdPlusDays(ctx.todayYmd, -3) }],
     events: [{ createdAt: ymdPlusDays(ctx.todayYmd, -1), trigger: 'referred', payer: SAMPLE_HOMEOWNER.name }],
     portalUrl,
-    unsubscribeUrl: LEGAL_UNSUBSCRIBE_SAMPLE_URL,
+    unsubscribeUrl,
   })
-}
-
-/** A plain page built from the same builder the function serves it with (v2.3518): the firm's confirmed page, for Ann Sample. */
-export function buildSampleHtml(id: SampleHtmlId): string {
-  if (id === 'legal-confirmed-page') return legalPageHtml(PORTAL_COMPANY.name, legalConfirmedPageBody(PORTAL_COMPANY.name, SAMPLE_FIRM.recipients[0].name, SAMPLE_FIRM.recipients[0].email))
-  return ''
 }
 
 export function buildSampleEmail(id: SampleEmailId, ctx: SampleEmailContext): { subject: string; html: string; text: string } {

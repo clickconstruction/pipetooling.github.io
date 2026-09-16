@@ -55,6 +55,7 @@ export const CUSTOMER_SURFACES: readonly SurfaceEntry[] = [
   { kind: 'route', ref: '/contract/accept', audience: 'sub', steps: [S('sub-contract'), S('sub-contract-signed')] },
   { kind: 'route', ref: '/q/:token', audience: 'house', steps: [HS('quote-page'), HS('quote-submitted')] },
   { kind: 'route', ref: '/legal', audience: 'firm', steps: [F('firm-portal')] },
+  { kind: 'route', ref: '/legal/confirm', audience: 'firm', steps: [F('firm-confirmed-page')] },
 
   // ---- email senders (supabase/functions/*/index.ts that call Resend) ----
   { kind: 'sender', ref: 'send-estimate-to-customer', audience: 'homeowner', steps: [H('estimate-email')] },
@@ -170,7 +171,7 @@ export function journeyCoverage(journeys: Journey[]): JourneyCoverage {
   return {
     audiences: journeys.length,
     steps: steps.length,
-    rendered: count('page') + count('email') + count('html'),
+    rendered: count('page') + count('email'),
     paper: count('paper'),
     soon: count('soon'),
     external: count('external'),

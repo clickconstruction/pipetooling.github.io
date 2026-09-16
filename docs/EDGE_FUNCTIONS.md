@@ -1508,6 +1508,8 @@ Devs: **Settings → Templates & testing → Workflow email (Edge Function)** (c
 
 **v2.3512 (What customers see PR 6):** the confirm email comes from `_shared/legalEmails.ts` → `buildLegalConfirmEmail`; the send path is unchanged.
 
+**v2.3521:** the confirm email links to `${APP_ORIGIN}/legal/confirm?t=<raw>` (the app page), not the function.
+
 ### legal-notify-dispatch
 
 _v2.3351:_ an event is heard by whoever is subscribed when it happens and never replayed to whoever joins later — with no confirmed recipients (or no digest people) the open queue rows are stamped consumed on each tick instead of waiting.
@@ -1519,6 +1521,8 @@ _v2.3351:_ an event is heard by whoever is subscribed when it happens and never 
 **Auth**: `verify_jwt = false`; cron `POST` is gated by `CRON_SECRET`, `GET` by the tokens. **Deploy**: after the v2.3325 migration (tables, triggers, cron). **Required secrets**: `CRON_SECRET`, `RESEND_API_KEY`; optional `APP_ORIGIN`.
 
 **v2.3512 (What customers see PR 6):** the now and digest emails and the confirm / unsubscribe pages are built by `_shared/legalEmails.ts`; `GET ?confirm=sample` / `?unsubscribe=sample` render the two pages for Ann Sample without touching a row.
+
+**v2.3521:** the confirm / unsubscribe pages moved to the app (`/legal/confirm?t=…`, `&stop=1`) because the platform relays this function's HTML as text/plain. `GET ?confirm=<t>&json=1` / `?unsubscribe=<t>&json=1` do the work and answer JSON for that page; the bare link shape 302-redirects there. `unsubscribeLink` builds the app URL.
 
 ### get-estimate-public-terms
 

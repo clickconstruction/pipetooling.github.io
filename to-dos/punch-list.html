@@ -232,7 +232,7 @@
       <h1>Punch List</h1>
     </div>
     <div class="stamp">
-      Validated against main <b>2026-09-16</b> at <b>v2.3518</b><br>
+      Validated against main <b>2026-09-16</b> at <b>v2.3521</b><br>
       36 open items · shipped work lives in the release notes · picks are shared with whoever opens this page
     </div>
   </header>
@@ -384,7 +384,7 @@
       sum: "What the supply-house credits train left. The feature is done: a return is recorded as its own document with a negative amount and a document_kind, the aging table carries credits in their own column, and the two edges that would double-count a credit refuse it. Two things outlive it — pairing a credit to the invoice it credits (deferred until the office says it wants the field), and a separate real bug on the Mercury side where card refunds from pay-at-the-counter houses are added to job cost rather than taken off.",
       next: "Nothing urgent. The card-refund sign bug is the one worth picking up, and it starts as a decision about the convention, not as a patch.", size: "S (pairing) · M (the card-refund convention)", blocker: "The pairing waits on real usage. The card-refund fix waits on an owner or dev deciding whether a refund nets against cost or is counted as spend — two readers disagree today.", ver: "v2.3500 · 3501 · 3502 · 3503 shipped" },
     { slug: "what-customers-see-residuals", g: "residual", name: "What customers see — residuals", file: "to-dos/what-customers-see-residuals.md",
-      sum: "What the What-customers-see train left: a full sample matter on the law firm's portal (today the sample is the portal before its first matter), the signed-copy agreement email as its own step, the Job window's Their journey door (the Customer page has it), and a real bug: the firm's confirm / unsubscribe pages are served as text/plain by the platform and render as raw HTML.",
+      sum: "What the What-customers-see train left: a full sample matter on the law firm's portal (today the sample is the portal before its first matter), the signed-copy agreement email as its own step, and the Job window's Their journey door (the Customer page has it).",
       next: "Any of the three in a quiet hour; the firm's sample matter is the largest (a fixture that satisfies parseLegalPortalPayload).", size: "S each", blocker: "None.", ver: "shipped 09-16" },
   ];
 
