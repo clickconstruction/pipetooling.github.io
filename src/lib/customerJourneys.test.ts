@@ -47,7 +47,7 @@ describe('customerJourneys (What customers see)', () => {
   })
   it('every renderable step names what it reflects; external and soon steps carry a note', () => {
     for (const s of journeys.flatMap((j) => j.steps)) {
-      if (s.render.kind === 'page' || s.render.kind === 'email' || s.render.kind === 'paper') expect(s.reflects.length).toBeGreaterThan(0)
+      if (s.render.kind === 'page' || s.render.kind === 'email' || s.render.kind === 'paper' || s.render.kind === 'html') expect(s.reflects.length).toBeGreaterThan(0)
       else expect(s.render.note.length).toBeGreaterThan(10)
     }
   })
@@ -60,5 +60,12 @@ describe('customerJourneys (What customers see)', () => {
   it('lands on the estimate email first', () => {
     expect(firstRenderableStep(journeys)).toEqual({ journeyId: 'homeowner', stepId: 'estimate-email' })
     expect(findStep(journeys, 'sub', 'nope')).toBeNull()
+  })
+  it('captions read in office words — no function names or route paths where the office reads them (v2.3518)', () => {
+    for (const s of journeys.flatMap((j) => j.steps)) {
+      expect(s.sublabel, s.id).not.toMatch(/\b[a-z]+(-[a-z]+){2,}\b/) // a function folder name like send-job-contract
+      expect(s.sublabel, s.id).not.toMatch(/^\/[a-z]/) // a route path
+    }
+    expect(findStep(journeys, 'firm', 'firm-confirmed-page')?.render).toEqual({ kind: 'html', html: 'legal-confirmed-page' })
   })
 })

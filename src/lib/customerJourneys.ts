@@ -9,6 +9,7 @@
  *   external — sent by another system (Stripe), or typed by staff; named, not rendered
  *   paper    — a document built in the browser from the sample by the app's own builder (v2.3509):
  *              an HTML preview in the frame and the PDF the customer would open
+ *   html     — a plain page built in the browser from the same builder the function serves it with (v2.3518)
  *   soon     — a surface this tab does not render yet (a "Next release" card)
  *
  * Every public route and every outside-facing email sender must have a step here or a named
@@ -19,6 +20,8 @@
 import { SAMPLE_TOKEN, SAMPLE_TOKEN_DONE, SAMPLE_TOKEN_GC } from './customerSample'
 import type { PaperId } from './journeys/paperSamples'
 
+export type SampleHtmlId = 'legal-confirmed-page'
+
 export type SampleEmailId = 'estimate' | 'bid-room' | 'bid-room-revised' | 'contract' | 'job-contract' | 'job-contract-reminder' | 'test-report' | 'pricing-package' | 'gc-statement' | 'rfq-request' | 'job-account' | 'legal-confirm' | 'legal-now' | 'legal-digest'
 
 /** Every email the tab builds in the browser — the order it builds them in. */
@@ -28,6 +31,7 @@ export type JourneyStepRender =
   | { kind: 'page'; path: string; /** v2.3512: `path` is a full URL on another origin (a page an edge function serves). */ absolute?: boolean }
   | { kind: 'email'; email: SampleEmailId }
   | { kind: 'paper'; paper: PaperId }
+  | { kind: 'html'; html: SampleHtmlId }
   | { kind: 'external'; note: string }
   | { kind: 'soon'; note: string }
 
@@ -106,7 +110,7 @@ export function customerJourneys(): Journey[] {
         {
           id: 'estimate-terms',
           label: 'Terms page',
-          sublabel: '/estimate/terms — the link on the accept page',
+          sublabel: 'the Terms link on the accept page',
           when: 'Days 0–14',
           customerCan: 'Read the standard terms the estimate is offered under, in full.',
           guide: 'send-an-estimate-and-turn-it-into-a-job',
@@ -126,7 +130,7 @@ export function customerJourneys(): Journey[] {
         {
           id: 'job-contract-email',
           label: 'Agreement email',
-          sublabel: 'Jobs → Contract sweep → Send · send-job-contract',
+          sublabel: 'Jobs → Contract sweep → Send',
           when: 'Before work starts',
           customerCan: 'Open the service agreement from the link in the email.',
           guide: 'get-a-job-contract-signed',
@@ -136,7 +140,7 @@ export function customerJourneys(): Journey[] {
         {
           id: 'job-contract-page',
           label: 'Agreement to sign',
-          sublabel: '/contract/sign — the link in that email',
+          sublabel: 'the link in that email',
           when: 'Same day',
           customerCan: 'Read the scope, the amount and the payment line, open the full terms, and sign on the page.',
           guide: 'get-a-job-contract-signed',
@@ -146,7 +150,7 @@ export function customerJourneys(): Journey[] {
         {
           id: 'job-contract-reminder',
           label: 'Reminder',
-          sublabel: 'remind-job-contracts — unsigned after a few days',
+          sublabel: 'sent by the app when an agreement sits unsigned a few days',
           when: 'Days later',
           customerCan: 'Be reminded that the agreement is still waiting, with the same link.',
           guide: 'get-a-job-contract-signed',
@@ -186,7 +190,7 @@ export function customerJourneys(): Journey[] {
         {
           id: 'hazmat-notice',
           label: 'Hazmat notice',
-          sublabel: 'send-hazmat-notice-email + /hazmat-notice, from the invoice footer',
+          sublabel: 'the notice link on the invoice, and its companion email',
           when: 'With the bill',
           customerCan: 'Read why a biohazard remediation fee is on the bill, and what the fee covers.',
           guide: 'charge-a-hazmat-fee',
@@ -206,7 +210,7 @@ export function customerJourneys(): Journey[] {
         {
           id: 'demand-letter',
           label: 'Demand letter',
-          sublabel: 'when it goes wrong · Legal desk → Email with the PDF (send-lien-filing-email)',
+          sublabel: 'when it goes wrong · Legal desk → Email with the PDF',
           when: 'Past due',
           customerCan: 'Read the final demand, the statement of account and the invoice, and pay or respond by the deadline.',
           guide: 'send-a-final-demand-letter',
@@ -216,7 +220,7 @@ export function customerJourneys(): Journey[] {
         {
           id: 'lien-release',
           label: 'Lien release',
-          sublabel: 'when it is over · send-lien-release-email',
+          sublabel: 'when it is over · Lien release → Send',
           when: 'After payment',
           customerCan: 'Receive the signed lien release once the account is settled.',
           guide: 'give-a-customer-a-lien-release',
@@ -253,7 +257,7 @@ export function customerJourneys(): Journey[] {
         {
           id: 'pricing-package-email',
           label: 'Pricing package email',
-          sublabel: 'Bids → Pricing → Send package (send-bid-pricing-package)',
+          sublabel: 'Bids → Pricing → Send package',
           when: 'Bid day, when asked for the breakdown',
           customerCan: 'Open the Job Plans link and read the four-column pricing breakdown.',
           guide: 'send-a-bid-pricing-package',
@@ -283,7 +287,7 @@ export function customerJourneys(): Journey[] {
         {
           id: 'submittal-room',
           label: 'Submittal review room',
-          sublabel: '/submittal — the one link the GC forwards to the architect',
+          sublabel: 'Bids → Submittals → Share — the one link the GC forwards to the architect',
           when: 'After award',
           customerCan: 'Read the product decisions in plain words, see which rows match the plans, and download the package.',
           guide: 'build-a-submittal-package',
@@ -303,7 +307,7 @@ export function customerJourneys(): Journey[] {
         {
           id: 'test-report-email',
           label: 'Test report email',
-          sublabel: 'Stages → Test report → Send to the GC (send-test-report)',
+          sublabel: 'Stages → Test report → Send to the GC',
           when: 'Each test',
           customerCan: 'Read the test report and pay the bill from the link in the email.',
           guide: 'file-a-test-report',
@@ -323,7 +327,7 @@ export function customerJourneys(): Journey[] {
         {
           id: 'gc-statement-email',
           label: 'Statement email',
-          sublabel: 'GC Review → Certify → send-gc-statement-email · the monthly round',
+          sublabel: 'GC Review → Certify, or the monthly round',
           when: 'Monthly',
           customerCan: 'Read the certified statement of what they owe across their jobs and pay from the link.',
           guide: 'run-your-gc-statement-round',
@@ -333,7 +337,7 @@ export function customerJourneys(): Journey[] {
         {
           id: 'owner-notice',
           label: 'Notice to the owner of record',
-          sublabel: 'when it goes wrong · Lien desk → the § 53.056 notice (send-lien-filing-email)',
+          sublabel: 'when it goes wrong · Lien desk → the § 53.056 notice',
           when: 'Unpaid month',
           customerCan: 'Read the notice that their contractor has not paid, the months it covers, and the invoice enclosed.',
           guide: 'send-lien-notices-from-the-lien-desk',
@@ -407,7 +411,7 @@ export function customerJourneys(): Journey[] {
         {
           id: 'quote-email',
           label: 'Quote request email',
-          sublabel: 'Bids → Price requests → Ask houses (send-rfq-email), or the link pasted by hand',
+          sublabel: 'Bids → Price requests → Ask houses, or the link pasted by hand',
           when: 'Bid week',
           customerCan: 'Open the quote page from the link.',
           guide: 'send-a-supply-house-a-quote-link',
@@ -417,7 +421,7 @@ export function customerJourneys(): Journey[] {
         {
           id: 'quote-page',
           label: 'Quote page',
-          sublabel: '/q/:token — fixture names and counts, never prices',
+          sublabel: 'the link in that email — names and counts, never prices',
           when: 'Same day',
           customerCan: 'Price each line on their phone, one at a time, and send the quote back.',
           guide: 'send-a-supply-house-a-quote-link',
@@ -437,7 +441,7 @@ export function customerJourneys(): Journey[] {
         {
           id: 'job-account-email',
           label: 'Job account email',
-          sublabel: 'Jobs → Share with supply house (send-supply-house-job-account)',
+          sublabel: 'Jobs → Share with supply house',
           when: 'When a job opens an account',
           customerCan: 'Read which job is opening an account, who to bill, and the company particulars.',
           guide: 'share-job-with-supply-house',
@@ -454,7 +458,7 @@ export function customerJourneys(): Journey[] {
         {
           id: 'firm-confirm-email',
           label: 'Confirm email',
-          sublabel: 'submit-legal-portal — nothing is sent before this is confirmed',
+          sublabel: 'sent when the firm adds a person on its portal — nothing else goes out until they confirm',
           when: 'Once, on setup',
           customerCan: 'Confirm their email address so matters can reach them.',
           guide: 'manage-who-at-the-law-firm-gets-emails',
@@ -464,17 +468,17 @@ export function customerJourneys(): Journey[] {
         {
           id: 'firm-confirmed-page',
           label: 'Confirmed page',
-          sublabel: '?confirm=<token> — the plain page behind that link',
+          sublabel: 'the page behind the Yes, email me button',
           when: 'Once',
           customerCan: 'See that the address is confirmed, or paused after unsubscribe.',
           guide: 'manage-who-at-the-law-firm-gets-emails',
           reflects: ['Confirmed / unsubscribed page wording'],
-          render: { kind: 'page', path: LEGAL_CONFIRMED_SAMPLE_URL, absolute: true },
+          render: { kind: 'html', html: 'legal-confirmed-page' },
         },
         {
           id: 'firm-portal',
           label: 'Firm portal',
-          sublabel: '/legal — the five-section packet per matter',
+          sublabel: 'the one link the office shares with the firm — every matter as one packet',
           when: 'Any time',
           customerCan: 'Read every attorney-ready matter as one packet, record fees and steps, and ask the office a question.',
           guide: 'share-your-attorney-their-portal',
@@ -484,7 +488,7 @@ export function customerJourneys(): Journey[] {
         {
           id: 'firm-now-email',
           label: 'Now email',
-          sublabel: 'one per event, for recipients on "now"',
+          sublabel: 'one per event, for people on "now"',
           when: 'As things move',
           customerCan: 'Learn that something moved on a matter and open the portal.',
           guide: 'manage-who-at-the-law-firm-gets-emails',
@@ -494,7 +498,7 @@ export function customerJourneys(): Journey[] {
         {
           id: 'firm-digest-email',
           label: 'Digest email',
-          sublabel: 'one a day, for recipients on "digest"',
+          sublabel: 'one a day, for people on "digest"',
           when: 'Chosen weekdays',
           customerCan: 'Read the day\'s digest of every open matter and what changed.',
           guide: 'manage-who-at-the-law-firm-gets-emails',
@@ -510,7 +514,7 @@ export function customerJourneys(): Journey[] {
 export function firstRenderableStep(journeys: Journey[]): { journeyId: JourneyId; stepId: string } | null {
   for (const j of journeys) {
     for (const s of j.steps) {
-      if (s.render.kind === 'page' || s.render.kind === 'email' || s.render.kind === 'paper') return { journeyId: j.id, stepId: s.id }
+      if (s.render.kind === 'page' || s.render.kind === 'email' || s.render.kind === 'paper' || s.render.kind === 'html') return { journeyId: j.id, stepId: s.id }
     }
   }
   return null
