@@ -1,6 +1,15 @@
-# Robots (digital twins): client-side residuals
+---
+name: Robots residuals (client side)
+group: residual
+status: low
+summary: Client-side leftovers only; the twins program runs from `docs/twins/HANDOFF.md`.
+next: The CI route / slug test (S).
+size: S
+blocker: CT-side work for the rest.
+ver: program in HANDOFF
+---
 
-Status: not started · the program itself is run from [`docs/twins/HANDOFF.md`](../docs/twins/HANDOFF.md) → "Open threads, prioritized" (updated daily — do not duplicate it here)
+# Robots (digital twins): client-side residuals
 
 ## What this file holds
 

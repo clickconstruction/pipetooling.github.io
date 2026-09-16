@@ -1,6 +1,21 @@
-# Job Summary: the follow-ups the view train left behind
+---
+name: "Job Summary: what is left"
+group: ready
+status: >
+  items 3, 7 and the badge date shipped v2.3439 / v2.3428 / v2.3441 · left: PTO, overtime, travel,
+  the earned-revenue kernel
+summary: >
+  Days delta strip, the under-60% Needs-you card, PTO / overtime on Capacity, the J963 loader
+  reconcile, the earned-revenue kernel.
+next: >
+  PTO from the schedule overrides (M); the earned-revenue kernel (M). Overtime and travel wait on
+  ledger fields.
+size: M + M
+blocker: None for PTO and the kernel.
+ver: 3 of 8 shipped 09-15
+---
 
-Status: not started · sources: fragments v2.2828, v2.2832, v2.2840, v2.2852; the train's tail (PR #2591, v2.2844) is merged
+# Job Summary: the follow-ups the view train left behind
 
 ## The ask
 

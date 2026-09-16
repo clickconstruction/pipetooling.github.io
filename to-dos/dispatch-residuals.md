@@ -1,6 +1,17 @@
-# Dispatch: the small reads the inbox and the sheet rows never make
+---
+name: Dispatch residuals
+group: residual
+status: low
+summary: >
+  Phone-request self-heal, dispatch blocks / nudge history on the sheet rows, the tag-slice
+  refresh.
+next: The phone self-heal is one kernel change.
+size: S
+blocker: None.
+ver: from v2.2880 / 83
+---
 
-Status: not started, low · sources: fragments v2.2880 "Not changed / follow-ups", v2.2883 "Deferred (small)"
+# Dispatch: the small reads the inbox and the sheet rows never make
 
 ## The items (validated 2026-09-06)
 

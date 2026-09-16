@@ -1,6 +1,27 @@
+---
+name: Contract sweep, seen first
+group: close
+status: >
+  **built** 2026-09-14 (v2.3384–v2.3393, seven PRs + two Drive fixes) · Drive connected, first
+  live pass run and two contracts filed from it · left: open Found in Drive to the office set once
+  the matcher has been right a few times, then delete · new owner decision: customer-level
+  (master) agreements for builders
+summary: >
+  The Contract sweep rebuilt after "is this the best we can do?": shrink the pile (a dollar floor,
+  *Not needed* on a job, a contract question on new jobs), file what is already signed (a Drive
+  pass over the jobs Shared Drive), then a sweep that shows the agreement before it sends and
+  knows a GC job wants *file theirs*. Mock-ups A–D in the folder.
+next: Two or three more Drive passes, flip the dev-only gate, delete.
+size: XS
+blocker: A few more passes.
+ver: v2.3384–93
+---
+
 # Contract sweep, seen first — shrink the pile, file what is signed, then a sweep that shows the agreement
 
-Status: **built** · PR 0 v2.3384 (the floor + Not needed, #3114) · PR 0c v2.3385 (the job-form door) · PR 1 v2.3386 (the readiness kernel + list) · PR 2 v2.3387 (the pane) — the three landed on main in #3117's squash (#3115 / #3116 closed as superseded) · PR 3 v2.3388 (editing in place, #3118) · PR 4 v2.3389 (filing, #3119) · Drive pass v2.3390 + v2.3391 (the shared folder) + v2.3392 / v2.3393 (what the first live pass taught) — `drive-contract-scan` deployed, Drive connected, the first pass run 2026-09-14 — **everything in the plan is built**; when the Drive pass has been right a few times, open the door to the office set and delete this to-do · mock-up: [`mockup.html`](./mockup.html) (the brief with mock-ups A–D, also published as a Claude artifact 2026-09-13)
+## Where it stands
+
+**built** · PR 0 v2.3384 (the floor + Not needed, #3114) · PR 0c v2.3385 (the job-form door) · PR 1 v2.3386 (the readiness kernel + list) · PR 2 v2.3387 (the pane) — the three landed on main in #3117's squash (#3115 / #3116 closed as superseded) · PR 3 v2.3388 (editing in place, #3118) · PR 4 v2.3389 (filing, #3119) · Drive pass v2.3390 + v2.3391 (the shared folder) + v2.3392 / v2.3393 (what the first live pass taught) — `drive-contract-scan` deployed, Drive connected, the first pass run 2026-09-14 — **everything in the plan is built**; when the Drive pass has been right a few times, open the door to the office set and delete this to-do · mock-up: [`mockup.html`](./mockup.html) (the brief with mock-ups A–D, also published as a Claude artifact 2026-09-13)
 
 ## The ask, in the owner's words
 

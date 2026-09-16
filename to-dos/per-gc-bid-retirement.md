@@ -1,6 +1,15 @@
-# Per-GC bids: the retirement pass and the auto-derive question
+---
+name: "Per-GC bids: retire submitted_to / itb_links"
+group: waiting
+status: low
+summary: Retire `bids.submitted_to` / `itb_links` behind `bid_gcs`; the auto-derive question.
+next: One mechanical PR after real per-GC usage.
+size: M
+blocker: Usage.
+ver: v2.2416 base
+---
 
-Status: revisit once per-GC editing has real usage · plan: [`docs/PER_GC_BID_PLAN.md`](../docs/PER_GC_BID_PLAN.md) → Open questions
+# Per-GC bids: the retirement pass and the auto-derive question
 
 ## Open questions (validated 2026-09-06)
 

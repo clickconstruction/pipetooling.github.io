@@ -1,6 +1,23 @@
+---
+name: "Labor refresh PR 6: one book"
+group: gated
+status: >
+  PRs 1–5 shipped (v2.3276–v2.3307); New is the default view since v2.3310 · PR 6 owner-gated
+summary: >
+  "Hours that learn": the queue of rows the book could not answer, alias learning, source chips,
+  the crew rate, one direct-costs list, calibration against linked jobs. Left (PR 6): fold the
+  human labor books into Robot Default as overrides, who may recalibrate, retire Old.
+next: Fold and retire, or keep the parallel run?
+size: M
+blocker: Your call.
+ver: v2.3276–3310 shipped
+---
+
 # Bids → Labor refresh — "Hours that learn"
 
-Status: **in progress** · PR 1 shipped as v2.3276 (`claude/labor-new-view`, the New view beside Old) · PR 2 shipped as v2.3291 (`claude/labor-refresh-pr2-data`, the columns, the burden key, the direct-costs view) · PR 3 shipped as v2.3292 (`claude/labor-refresh-pr3-kernels`, the autosave payload + one cost total) · PR 4a shipped as v2.3294 (`claude/labor-refresh-pr4a-rate`, crew rate + overhead fact + estimator time retired + the bottom line) · PR 4b shipped as v2.3295 (`claude/labor-refresh-pr4b-direct-costs`, one direct-costs list) · PR 5 shipped as v2.3307 (`claude/labor-refresh-pr5-calibration`, the book against linked jobs: multiplier tile, evidence chips, Set / Keep) · New is the default view since v2.3310 (owner call 2026-09-11) · **PR 6 remains, owner-gated** · designed 2026-09-11 · mock-up [`mockup.html`](./mockup.html) (published as the artifact *Hours That Learn*; v1 → "best we can do" → v2 → a second pass, both recorded in its §06).
+## Where it stands
+
+**in progress** · PR 1 shipped as v2.3276 (`claude/labor-new-view`, the New view beside Old) · PR 2 shipped as v2.3291 (`claude/labor-refresh-pr2-data`, the columns, the burden key, the direct-costs view) · PR 3 shipped as v2.3292 (`claude/labor-refresh-pr3-kernels`, the autosave payload + one cost total) · PR 4a shipped as v2.3294 (`claude/labor-refresh-pr4a-rate`, crew rate + overhead fact + estimator time retired + the bottom line) · PR 4b shipped as v2.3295 (`claude/labor-refresh-pr4b-direct-costs`, one direct-costs list) · PR 5 shipped as v2.3307 (`claude/labor-refresh-pr5-calibration`, the book against linked jobs: multiplier tile, evidence chips, Set / Keep) · New is the default view since v2.3310 (owner call 2026-09-11) · **PR 6 remains, owner-gated** · designed 2026-09-11 · mock-up [`mockup.html`](./mockup.html) (published as the artifact *Hours That Learn*; v1 → "best we can do" → v2 → a second pass, both recorded in its §06).
 
 Pairs with [`to-dos/burn-against-the-bid/`](../burn-against-the-bid/README.md): a job's budget is only as honest as the estimate that feeds it, and calibration (PR 5 here) needs that to-do's bid ↔ job link.
 

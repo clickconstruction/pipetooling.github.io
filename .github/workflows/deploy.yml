@@ -54,6 +54,9 @@ jobs:
       - name: App calendar timezone check
         run: npm run check:timezone
 
+      - name: To-do drift check (index == punch list)
+        run: npm run check:todo-drift
+
       - name: Test
         run: npm test
         env:

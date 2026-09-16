@@ -1,6 +1,26 @@
-# Supply house credits — returns and credit memos
+---
+name: Supply house credits
+group: close
+status: >
+  shipping 2026-09-16 · steps 1–3 on main (v2.3500, v2.3501, v2.3502 — the migration, pushed),
+  step 4 (the form) next · PR 5 (pairing) deferred · delete once step 4 is live-tested
+summary: >
+  **Supply house credits**: Taunya cannot enter a return — three gates reject a negative amount,
+  so credit memos get netted into an invoice, zeroed, or left positive on a job that kept nothing
+  (all three shapes are on prod). Record a credit as its own document with a negative amount and
+  a `document_kind`; allocations are percentages, so job cost credits itself and needs no code.
+  The work is that ~25 readers assume the amount is positive, and this is the one money stream
+  with no sign guard — so the readers are hardened first, the two unsafe edges closed second, and
+  the constraint opens last. Mock-up in the folder; four owner decisions open.
+next: >
+  Step 4 (the form) lands from `claude/app-review-docs-27dda1`; live-test it on a real credit
+  memo; then delete the to-do. PR 5 (pairing a credit with its invoice) is deferred.
+size: S (one PR left)
+blocker: None — the train is mid-flight. Four owner decisions open, none block it.
+ver: v2.3500 · 3501 · 3502 shipped
+---
 
-Status: **shipping 2026-09-16** as v2.3500 → v2.3501 → v2.3502 (migration `20260916120000`, pushed right after its merge) → v2.3503, in that order, from `claude/app-review-docs-27dda1` (built on `claude/determined-goldwasser-8d11e4`, renumbered from the unclaimed v2.3490–v2.3493) · all gates green, step 1 live-verified inert, the form walked live on real data · PR 5 (pairing) deliberately deferred · delete this to-do once v2.3503 is live-tested
+# Supply house credits — returns and credit memos
 
 ---
 

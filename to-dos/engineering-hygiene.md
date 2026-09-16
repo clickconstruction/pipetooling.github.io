@@ -1,6 +1,17 @@
-# Engineering hygiene: the decomposition inventory has regrown, plus three mechanical sweeps
+---
+name: Decompose JobsStagesTab / BidsPricingTab
+group: ready
+status: "the ipGeo item shipped v2.3427 · left: the JobsStagesTab / BidsPricingTab decomposition"
+summary: Decomposition inventory regrown again; two silent-no-op update sweeps.
+next: >
+  Pick one file, extract by the playbook's regions. Do it between feature trains on those
+  surfaces.
+size: L
+blocker: Collides with every feature PR on those files.
+ver: inventory 09-06
+---
 
-Status: not started, low priority · sources: [`docs/PAGE_DECOMPOSITION_PLAYBOOK.md`](../docs/PAGE_DECOMPOSITION_PLAYBOOK.md) inventory (last_updated 2026-08-02), fragments v2.2461 / v2.2466
+# Engineering hygiene: the decomposition inventory has regrown, plus three mechanical sweeps
 
 ## The inventory is stale (measured 2026-09-06, non-test files)
 

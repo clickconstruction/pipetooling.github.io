@@ -1,6 +1,34 @@
-# Signing it on paper — the Contract sweep's missing lane, and terms the office can change
+---
+name: Signing it on paper
+group: ready
+status: >
+  not started · proposed 2026-09-15 · Taunya asked · Grace endorsed the revised design 2026-09-16;
+  the owner's approval is pending · six PRs, one migration · reaches 24 of the 105 rows today
+summary: >
+  **Signing it on paper**: prod says the sweep's only outcome is the one that has never worked — 0
+  contracts ever signed through the e-signing link, 3 of 3 finished ones signed on paper, 0
+  customer documents in the Contract Book so the Terms dropdown has exactly one option (a source
+  constant). The lane runs one way: the app files signed paper but cannot produce the page to
+  sign. Proposed: *How this one gets signed* per row (email the PDF to sign by hand · email a
+  signing link · download to print), a `gc_job` row collapsing to *File their subcontract*, terms
+  as two labelled levers with the built-in wording seeded into the Book, and **Edit & re-send**
+  while a sent agreement is still unopened. Reach, counted live 2026-09-16: 24 of the 105 rows
+  are ready and are what this sends; 21 need an email or amount first; 59 are builder rows that
+  nothing here sends to — their lever is the owner's customer-level agreements decision. Mock-up
+  carries the rejected first pass and the five-point critique.
+next: >
+  Ask Taunya which terms she means (legal paragraphs or the payment line) — one message, it
+  resizes PR 4. Then PR 1 the unsigned PDF (client + one function, no migration); PR 2 the
+  hand-off stamp (one migration); PR 3 email the PDF; PR 4 terms as two levers; PR 5 the
+  three-way block; PR 6 Edit & re-send.
+size: L (6 PRs, PR 1 alone is useful)
+blocker: >
+  None for PR 1. Grace endorsed the design 09-16; the owner's approval is pending. Five owner
+  decisions listed, none block PR 1.
+ver: proposed 09-15 · endorsed 09-16
+---
 
-Status: **not started** · proposed 2026-09-15 · Taunya asked · Grace endorsed the revised design 2026-09-16 ("I think your idea is really good"); the owner's approval is still pending · six PRs, one migration · reaches 24 of the 105 rows today (see *Reach*) · the evidence below was read live from prod, read-only
+# Signing it on paper — the Contract sweep's missing lane, and terms the office can change
 
 ## The ask, in the owner's words
 

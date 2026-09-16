@@ -1,6 +1,16 @@
-# Owner decisions the docs are waiting on
+---
+name: Owner decisions pending (the standing list)
+group: gated
+status: standing list
+summary: Every yes/no the docs are waiting on, one line each.
+next: Walk the table in one sitting; each answer deletes a line.
+size: a sitting
+blocker: You.
+ver: re-verified 09-06
+pointer: true
+---
 
-Status: standing list · each line is a yes/no or a number; answer it here or in the source and delete the line · every line re-verified 2026-09-06 against code and the live database (read-only) — none had been answered elsewhere
+# Owner decisions the docs are waiting on
 
 | Decision | Asked by | Source |
 |---|---|---|
