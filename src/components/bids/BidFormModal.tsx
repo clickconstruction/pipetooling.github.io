@@ -1007,6 +1007,7 @@ export function BidFormModal(props: BidFormModalProps) {
                 {editingBid?.id ? (
                   <BidPriceRequestsTable
                     bidId={editingBid.id}
+                    bidLabel={`B${(editingBid.bid_number ?? '').trim() || '—'}${(editingBid.project_name ?? '').trim() ? ` · ${(editingBid.project_name ?? '').trim()}` : ''}`}
                     serviceTypeId={formServiceTypeId || null}
                     pricingHref={`/bids?tab=pricing&bidId=${editingBid.id}`}
                   />

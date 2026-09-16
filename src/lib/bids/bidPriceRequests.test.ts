@@ -10,6 +10,9 @@ import {
   planOutsideRequests,
   priceRequestSummaryLine,
   quoteCellFor,
+  planAskHouses,
+  defaultAskHow,
+  askButtonLabel,
   requestedYmdOf,
   nudgeStateFor,
   shapePriceRequest,
@@ -17,8 +20,7 @@ import {
   validateOutsideRequest,
   vendorQuotePageUrl,
   type PriceRequestQuote,
-  type PriceRequestRow,
-} from './bidPriceRequests'
+  type PriceRequestRow, } from './bidPriceRequests'
 
 const isoToYmd = (iso: string) => iso.slice(0, 10)
 const TODAY = '2026-09-08'
@@ -254,5 +256,53 @@ describe('askedHouseSummary (v2.3495)', () => {
 
   it('is empty on a bid that has asked nobody', () => {
     expect(askedHouseSummary([]).size).toBe(0)
+  })
+})
+
+
+describe('PR 2 — the card\'s how (v2.3526)', () => {
+  const app = (id: string, email = 'dan@ferguson.com') => ({ supplyHouseId: id, requestedOn: '2026-09-16', requestUrl: '', how: 'app' as const, email })
+  const out = (id: string, url = '') => ({ supplyHouseId: id, requestedOn: '2026-09-16', requestUrl: url, how: 'outside' as const, email: '' })
+
+  it('splits the block into app-sent and hand-sent, each side in order', () => {
+    const p = planAskHouses([app('ferg'), out('nws', 'https://drive.google.com/x'), app('moore', 'rep@moore.com')])
+    expect(p.ok).toBe(true)
+    if (!p.ok) return
+    expect(p.app).toEqual([{ supplyHouseId: 'ferg', email: 'dan@ferguson.com' }, { supplyHouseId: 'moore', email: 'rep@moore.com' }])
+    expect(p.outside).toEqual([{ supplyHouseId: 'nws', requestedOn: '2026-09-16', requestUrl: 'https://drive.google.com/x' }])
+  })
+
+  it('refuses an app-sent house with no usable address, and names it', () => {
+    const p = planAskHouses([out('nws'), app('ferg', '')])
+    expect(p.ok).toBe(false)
+    if (p.ok) return
+    expect(p.atHouseId).toBe('ferg')
+    expect(p.error).toContain('I’ll send it')
+  })
+
+  it('keeps the hand-sent rules word for word (a bad link, a duplicate house)', () => {
+    const bad = planAskHouses([app('ferg'), out('nws', 'not a link')])
+    expect(bad.ok).toBe(false)
+    if (!bad.ok) expect(bad.atHouseId).toBe('nws')
+    const dup = planAskHouses([app('ferg'), out('ferg')])
+    expect(dup.ok).toBe(false)
+    if (!dup.ok) expect(dup.error).toContain('already in this batch')
+    expect(planAskHouses([]).ok).toBe(false)
+  })
+
+  it('defaults to the app when the rep has an address, else to I’ll send it', () => {
+    expect(defaultAskHow('dan@ferguson.com')).toBe('app')
+    expect(defaultAskHow('')).toBe('outside')
+    expect(defaultAskHow(null)).toBe('outside')
+    expect(defaultAskHow('not-an-email')).toBe('outside')
+  })
+
+  it('labels the button by what the press will do', () => {
+    expect(askButtonLabel([])).toBe('Add request')
+    expect(askButtonLabel([out('a')])).toBe('Add request')
+    expect(askButtonLabel([out('a'), out('b')])).toBe('Add 2 requests')
+    expect(askButtonLabel([app('a')])).toBe('Ask by email')
+    expect(askButtonLabel([app('a'), app('b'), app('c')])).toBe('Ask 3 houses')
+    expect(askButtonLabel([app('a'), out('b')])).toBe('Ask 2 houses · 1 by email')
   })
 })
