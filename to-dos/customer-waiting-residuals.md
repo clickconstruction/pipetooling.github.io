@@ -1,16 +1,16 @@
 ---
-name: "Customer Waiting: the tel: sweep and the mute"
+name: "Customer Waiting: the tel: sweep"
 group: ready
 status: >
-  the eligibility hook shipped v2.3434 · left: the `tel:` sweep, the caller mute, three wording
-  decisions
+  the eligibility hook shipped v2.3434 · the per-caller mute shipped as Hide for me v2.3524 ·
+  left: the `tel:` sweep, three wording decisions
 summary: >
-  Callback-promise wording, sub-portal priority, auto-lower overnight (owner decisions);
-  per-caller mute, one eligibility hook, the shared `tel:` sweep.
-next: "The tel: sweep as one script-driven PR cut from fresh main."
-size: M + S
+  Callback-promise wording, sub-portal priority, auto-lower overnight (owner decisions); the
+  shared `tel:` sweep. The per-caller mute and the eligibility hook are done.
+next: "The tel: sweep as one script-driven PR cut from fresh main, merged alone when the queue is quiet."
+size: S
 blocker: None for the sweep; three decisions are yours.
-ver: hook shipped v2.3434
+ver: hook v2.3434 · hide for me v2.3524
 ---
 
 # Customer Waiting — residuals
@@ -27,7 +27,7 @@ ver: hook shipped v2.3434
 
 ## Follow-ups the build noted
 
-- **Mute for the caller.** The banner is deliberately undismissable; the "called" state is the answer to a five-person group all seeing it. If that is still too loud, the next lever is hiding the strip for the viewer who made the call (they have the row open), never a dismiss. `CustomerWaitingBanner` + `last_called_by_user_id`.
+- ~~**Mute for the caller.**~~ Shipped v2.3524: on the called state the caller alone gets *Hide for me* — hides the strip on their device (`localStorage`, per viewer), never for the team; the row stays open, and a later call by someone else brings the strip back. `canHideForMe` / `rowsVisibleToViewer` in `customerWaiting.ts`.
 - **Shared call button sweep.** `CallPhoneButton` + `phoneContact.ts` are the first shared `tel:` affordance; ~35 hand-rolled `tel:` links with five sanitizers remain (Customers, Prospects, Bids call queue, People). Mechanical sweep — merge alone per CLAUDE.md.
 - **Squash titles.** The merge queue titled PR #2968's squash commit with the branch name; the release note carries the version, but `git log` on main reads "claude/customer waiting 2 inbox".
 
