@@ -115,7 +115,7 @@ export function JobFormStagesDrawer({ open, onClose, plan, gcName, jobLabel, job
                 {mintBusy ? 'Creating…' : 'Create their link'}
               </button>
             )}
-            {mintError ? <div style={{ color: '#b91c1c' }}>{mintError}</div> : null}
+            {mintError ? <div style={{ color: 'var(--text-red-700)' }}>{mintError}</div> : null}
           </div>
         ) : null}
       </div>
