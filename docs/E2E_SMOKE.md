@@ -36,3 +36,5 @@ There is no staging environment, so production is the only real render target. T
 - CI: automatic (post-deploy + nightly), or `gh workflow run e2e-smoke.yml`.
 - Locally: `npm run e2e` — the config auto-loads `E2E_TEST_EMAIL` / `E2E_TEST_PASSWORD` from gitignored `.env.local` (or set them in your shell; explicit env vars win). Needs Node ≥ 20.6 (this repo is ESM; Playwright's TS loader uses `module.register`) and `npx playwright install chromium` once.
 - Auth: `e2e/auth.setup.ts` signs in once and stores the Supabase session as `storageState` (`e2e/.auth/`, gitignored); every spec reuses it.
+
+- `e2e/submittal-room.spec.ts` (v2.3485): `/submittal` with no token renders *This link is incomplete.* — the review room's public route is wired and does not bounce to sign-in. Read-only.

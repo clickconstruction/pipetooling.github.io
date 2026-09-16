@@ -39,3 +39,7 @@ The **Test report (sample)** card sits above the strips. Its first row opens eac
 ## After a Settings change
 
 Press {{button:outline|Refresh all}}. The tab re-reads Settings and reloads every frame.
+
+## The submittal review room
+
+A bid's submittals travel as one link, `/submittal?t=…`, that the GC forwards to the customer's architect (Bids → Submittals → Share). Open it from the tab's {{button:outline|Copy link}} in a private window to see it the way they do: the product rows in plain words, the package download, no money anywhere. Your own signed-in opens never count as theirs. There is no sample token for the room yet; use BP398 ZZ Test.

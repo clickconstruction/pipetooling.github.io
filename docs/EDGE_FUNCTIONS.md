@@ -102,6 +102,8 @@ when_to_read:
    - [get-estimate-for-customer](#get-estimate-for-customer)
    - [log-estimate-option-view](#log-estimate-option-view)
    - [get-bid-proposal-room](#get-bid-proposal-room)
+   - [get-submittal-room](#get-submittal-room)
+   - [open-submittal-pdf](#open-submittal-pdf)
    - [send-bid-room-link](#send-bid-room-link)
    - [sign-bid-room](#sign-bid-room)
    - [send-job-contract](#send-job-contract)
@@ -1286,6 +1288,27 @@ Devs: **Settings → Templates & testing → Workflow email (Edge Function)** (c
 
 ---
 
+### get-submittal-room
+
+**Purpose** (v2.3485, Submittals stage 4a-i): the **review room**'s public fetch — the one link per bid at `/submittal?t=…` that the GC forwards to the customer's architect or designer. Serves every *shared* submittal revision of the bid in the customer's words (which rows match the plans, which differ and why; never a price, a quote, a supply house, a bill or a stage date), newest first, plus the person when the token is a personal one.
+
+**Endpoint**: `GET /functions/v1/get-submittal-room?t=<room token | personal token>[&preview=1]` → `{ status: 'open', closedAt, bid: { label, projectName, address }, company: { name, tagline, phone }, person: { id, name, role, mayDecide } | null, revisions: [{ id, rev, sharedAt, current, hasPackage, rows: RoomRow[], counts }] }`. A closed room or a closed personal link answers **410** with the same shape and `status: 'closed'`; nothing shared yet answers 404 `{ code: 'empty' }`; an unknown token 404. Rows are built by [`_shared/submittalRoomPayload.ts`](../supabase/functions/_shared/submittalRoomPayload.ts) (`roomRowsFrom`, `whySentence`, `roomCounts`), tested from the app as a twin (`src/lib/submittals/submittalRoomPayload.test.ts`). The company comes from the test-report settings row (`test_report_settings_v1`).
+
+**Authentication**: none (`verify_jwt = false`) — the token is the credential; service role behind it. A `view` event is written unless the request is a staff session or carries `?preview=1` (`_shared/publicViewCounting.ts`); a personal token's view also bumps `bid_submittal_people.open_count` / `last_seen_at`. **Secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_ANON_KEY`.
+
+**Used by**: [`SubmittalRoom.tsx`](../src/pages/SubmittalRoom.tsx). **Deploy**: `bash scripts/deploy-functions.sh get-submittal-room` after `20260916015805` is applied.
+
+---
+
+### open-submittal-pdf
+
+**Purpose** (v2.3485, Submittals stage 4a-i): the room's **Download the PDF** door — `GET /functions/v1/open-submittal-pdf?t=<room or personal token>&r=<submittal id>` answers **302** to a five-minute signed link (`LINK_SECONDS = 300`, the `open-test-report-pdf` pattern) on the private `bid-submittals` bucket, with a download name like *Submittal Rev 2 - B398 ZZ Test.pdf*. The revision must belong to the token's bid, have been shared, and carry a `package_path`. The bucket has no outsider policy; this is the only customer-facing way to the file (staff open packages from the tab through a client-minted signed URL, v2.3467).
+
+**Authentication**: none (`verify_jwt = false`); a closed personal link is refused. Errors are short `text/plain` sentences. **Secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`.
+
+**Used by**: the room page's *Download Rev N PDF* link. **Deploy**: `bash scripts/deploy-functions.sh open-submittal-pdf`.
+
+---
 ### get-rfq-quote-page
 
 **Purpose**: Public fetch for the **supply house quote page** (RFQ Phase 2, v2.2631) — the `/q/<token>` link a "Copy with quote link" paste carries (`docs/SUPPLY_HOUSE_RFQ_PLAN.md`).

@@ -461,6 +461,12 @@ verify_jwt = false
 [functions.get-bid-proposal-room]
 verify_jwt = false
 
+[functions.get-submittal-room]
+verify_jwt = false
+
+[functions.open-submittal-pdf]
+verify_jwt = false
+
 [functions.send-bid-room-link]
 verify_jwt = false
 
