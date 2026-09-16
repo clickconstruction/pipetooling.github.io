@@ -1,6 +1,30 @@
+---
+name: Put a GC on notice
+group: close
+status: >
+  **built** 2026-09-15 (v2.3469, v2.3470, v2.3482, v2.3479) · both migrations pushed · left: the
+  first real run on a TEST GC, then delete · the attorney still owns the § 53.081 wording
+summary: >
+  **Put a GC on notice**: one modal that sends the § 53.056 notice (the notice of intent to lien —
+  fund trapping, § 53.081) to every owner on every job with a failing GC, for every unnoticed
+  month, no 30-day window: find the owners first, months and claim amounts named, one cover letter
+  for all, one decision (reason on the record + the GC's standing rule, payment terms, a Legal
+  desk account) → the run. Three doors (Pipeline GC filter ⋯, Customer review, the desk header).
+  Mock-up in the folder.
+next: >
+  The first real run on a TEST GC (approve, print, record), then delete the folder. Residuals stay
+  listed: a GC-wide demand letter, one envelope for two notices to one owner, the attorney's §
+  53.081 wording.
+size: XS
+blocker: A live run.
+ver: v2.3469 · 3470 · 3482 · 3479
+---
+
 # Put a GC on notice — every owner on every job with a failing GC, in one approved run
 
-Status: **built** 2026-09-15 — PR 0 v2.3469 (#3214) · PR 1 v2.3470 (#3217) · PR 2 v2.3482 (#3228) · PR 3 v2.3479 · both migrations pushed · live pass of the modal on real data (read-only) in the PR 2 notes · left: the residuals below (a GC-wide demand letter, one envelope for two notices, the attorney's § 53.081 wording) and the first real run on a TEST GC — then delete this file · second-pass mock-ups at the Claude artifact *Put a GC on Notice* · first mock-up: [`mockup.html`](./mockup.html) · built on the Lien desk (v2.3405 / v2.3410 / v2.3412)
+## Where it stands
+
+**built** 2026-09-15 — PR 0 v2.3469 (#3214) · PR 1 v2.3470 (#3217) · PR 2 v2.3482 (#3228) · PR 3 v2.3479 · both migrations pushed · live pass of the modal on real data (read-only) in the PR 2 notes · left: the residuals below (a GC-wide demand letter, one envelope for two notices, the attorney's § 53.081 wording) and the first real run on a TEST GC — then delete this file · second-pass mock-ups at the Claude artifact *Put a GC on Notice* · first mock-up: [`mockup.html`](./mockup.html) · built on the Lien desk (v2.3405 / v2.3410 / v2.3412)
 
 ## The ask, in the owner's words
 

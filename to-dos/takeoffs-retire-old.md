@@ -1,6 +1,19 @@
-# Takeoffs: measure a week of One at a time / Sheet use, then retire Old
+---
+name: "Takeoffs PR 9: retire Old"
+group: gated
+status: PR 8 re-measured 2026-09-14 · PR 9 (retire Old) is an owner call
+summary: >
+  The week of real use: 2 costed bids at 90% coverage, 17 new bids with counts and no takeoff, the
+  book learned nothing (table in the plan). Retire Old, or run a second week?
+next: >
+  Ask Wendi which view she used; decide retire now or run a second week with Remember for the book
+  ticked.
+size: M
+blocker: Your call.
+ver: PR 8 done 09-14
+---
 
-Status: **PR 8 done 2026-09-14** (re-measured; table in the plan's *Re-measure* section) · **PR 9 (retire Old) is an owner call** — the week produced 2 costed bids at 90% coverage but 17 new bids with counts and no takeoff, and the book learned nothing; ask Wendi which view the two were costed in, then decide · plan: [`docs/TAKEOFFS_REFRESH_PLAN.md`](../docs/TAKEOFFS_REFRESH_PLAN.md) PRs 8–9
+# Takeoffs: measure a week of One at a time / Sheet use, then retire Old
 
 ## The ask, in the owner's words
 

@@ -1,6 +1,20 @@
-# People → Review folds into the Bridge
+---
+name: "Review folds into the Bridge: step 3"
+group: waiting
+status: >
+  steps 1–2 shipped (v2.3360, v2.3366, teammate card v2.3368) · step 3 gated on the tables
+  agreeing for a few weeks
+summary: >
+  People → Review folds into the Bridge: one earned convention + the Vectors row as the door
+  (v2.3360, v2.3366), retire Team Summary once the tables agree (gated). Teammates get money-free
+  Needs You items only.
+next: Re-check two more pay weeks; if they agree, ship the redirect.
+size: M
+blocker: Two more weeks.
+ver: v2.3360 / 66 / 68
+---
 
-Status: in progress · step 1 v2.3360 (#3091) · step 2 v2.3366 the deep-link door · teammate card v2.3368 (#3095) · step 3 gated (retire Team Summary once the tables agree for a few weeks)
+# People → Review folds into the Bridge
 
 ## The ask, in the owner's words
 

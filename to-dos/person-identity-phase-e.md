@@ -1,6 +1,15 @@
-# Person identity, Phase E: enforce (gated)
+---
+name: Person identity phase E
+group: waiting
+status: gated
+summary: NOT NULL, re-PK off `person_name`, retire the name cascade — after a quiet quarter.
+next: Revisit in December.
+size: M
+blocker: A quiet quarter.
+ver: phases A–D done
+---
 
-Status: gated — do not start before a quarter with zero name-fallback hits worth keeping · plan: [`docs/PERSON_IDENTITY_PLAN.md`](../docs/PERSON_IDENTITY_PLAN.md) → Phase E; [`docs/FRAGILITY_REMEDIATION_PLAN.md`](../docs/FRAGILITY_REMEDIATION_PLAN.md) C2/C3
+# Person identity, Phase E: enforce (gated)
 
 ## Where it stands (validated 2026-09-05)
 

@@ -1,6 +1,22 @@
-# The Texas lien rules, exposed in the app — so the office can read the code the app is following
+---
+name: The Texas lien rules, in the app
+group: ready
+status: not started · noted 2026-09-14 · owner picks where it lives
+summary: >
+  **The Texas lien rules, exposed in the app** for the office to read: the verified rules table
+  (chapter 53, CPRC ch. 38, Rule 185, Fin. Code ch. 392 and § 302.002, Prop. Code ch. 28, § 31.04,
+  § 27.031) with what the app does about each; proposed as a help guide *the Texas lien rules the
+  app follows* plus a `§ The rules` door on the Lien desk and the Lien window.
+next: >
+  PR 1 the help guide 'the Texas lien rules the app follows' with per-row anchors — unblocked,
+  write it today. PR 2 the § The rules doors on the Lien desk header and the Lien window, plus a
+  LIEN_RULE_CITES constant.
+size: S + S
+blocker: "PR 2 only: you pick where it lives and who sees it."
+ver: noted 09-14
+---
 
-Status: **not started** · noted 2026-09-14 · one owner decision open (where it lives) · the rules below were verified against the statute text on 2026-09-14 (the demand-letter train, v2.3425–v2.3445) and are the single copy to keep current
+# The Texas lien rules, exposed in the app — so the office can read the code the app is following
 
 ## The ask, in the owner's words
 

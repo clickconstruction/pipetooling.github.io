@@ -1,6 +1,30 @@
+---
+name: "Frozen bid prices: the last two calls"
+group: gated
+status: >
+  PRs 1–2 shipped 2026-09-15 (v2.3481 the write-target guard, v2.3484 the sent-vs-today line) · PR
+  3 (lock pricing after send) and the backfill re-run are owner calls
+summary: >
+  **Frozen bid prices**: a bid only freezes once it owns a copy of the price book, and nothing
+  takes that copy before the first price is written — a new bid prices straight on the shared
+  template and every assignment keys to it (BP483 today), so book edits re-price it after it is
+  sent; the 2026-09-03 backfill froze 188 older bids at *that day's* book, not their send day
+  (BP315: sent $379,895.70, reads $385,506.07; 105 of 165 priced sent bids differ). Clone before
+  the first write + re-run the backfill; a *Sent … · today …* line on sent bids; lock-after-send
+  is the owner's call.
+next: >
+  Two calls are yours. (1) Re-run scripts/backfill-legacy-template-pricing.sql for BP483 and the
+  seven robot/twin bids? (2) PR 3, lock pricing after send?
+size: XS once decided
+blocker: Both remaining items are owner decisions.
+ver: v2.3481 · 3484 shipped
+---
+
 # Frozen bid prices — a bid only freezes once it owns a copy of the book, and nothing guarantees it owns one before it is sent
 
-Status: **not started** · found 2026-09-15 · proof gathered read-only against prod the same day (see [`drift-report-2026-09-15.md`](./drift-report-2026-09-15.md)) · one live bug (PR 1), one display fix (PR 2), one owner decision (PR 3) · handed off — another session builds it
+## Where it stands
+
+**PRs 1–2 shipped 2026-09-15** — v2.3481 (the write-target kernel + `freezeSharedPricingAfterWrite` at 11 write sites) and v2.3484 (the *Sent … · the book prices it at … today* line) are on main · **what is left is two owner calls: re-run the backfill for BP483 and the seven robot/twin bids, and PR 3 (lock pricing after send)** · found 2026-09-15 · proof gathered read-only against prod the same day (see [`drift-report-2026-09-15.md`](./drift-report-2026-09-15.md)) · one live bug (PR 1), one display fix (PR 2), one owner decision (PR 3) · handed off — another session builds it
 
 ## The ask, in the owner's words
 

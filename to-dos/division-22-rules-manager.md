@@ -1,6 +1,15 @@
-# Division 22 (Copy fixtures for text): the rules manager and the unseeded sections
+---
+name: Division 22 rules manager
+group: gated
+status: owner-gated
+summary: Rules manager UI; RH / EDF / med-gas seed call. Gas and the Needs You card shipped.
+next: "Wendi: is pinning enough? You: seed RH / EDF, rule on med gas?"
+size: M
+blocker: Wendi + you.
+ver: coverage 73%
+---
 
-Status: not started, owner-gated · sources: fragments v2.2587, v2.2598, v2.2606, v2.2624, v2.2626, v2.2627
+# Division 22 (Copy fixtures for text): the rules manager and the unseeded sections
 
 ## The ask
 

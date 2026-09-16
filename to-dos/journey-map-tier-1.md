@@ -1,6 +1,16 @@
-# Journey map: the Tier-1 / Tier-2 drift list
+---
+name: "Journey map: J31-N4"
+group: waiting
+status: pointer
+summary: Which drift rows are closed here; the list lives in the private repo.
+next: Read _DRIFT-2 in the private repo first.
+size: S
+blocker: Private repo context.
+ver: tiers 1–4 mostly closed
+pointer: true
+---
 
-Status: in progress across many PRs · the list itself lives in the PRIVATE repo `clickconstruction/pipetooling-journey-map` (drift sweep `_DRIFT-2`, Phase 4 ledger `docs/journeys/_PHASE4.md`); it holds unfixed security findings and customer identifiers, so it is not copied here
+# Journey map: the Tier-1 / Tier-2 drift list
 
 ## What this pointer is for
 
