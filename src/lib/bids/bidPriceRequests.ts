@@ -257,6 +257,70 @@ export function planOutsideRequests(d: OutsideRequestBatchDraft): PlanOutsideReq
   return { ok: true, rows }
 }
 
+/**
+ * PR 2 of the price-requests loop (v2.3526): each house card in the add block
+ * carries a HOW. `app` — the app emails the house's rep through send-rfq-email
+ * (the row, the token and the email are the function's); `outside` — the
+ * estimator sends it themselves and the app records the row (today's path).
+ */
+export type AskHouseHow = 'app' | 'outside'
+
+export type AskHouseEntry = OutsideRequestBatchEntry & {
+  how: AskHouseHow
+  /** The address the app emails (the default rep's, or one typed in). Ignored for `outside`. */
+  email: string
+}
+
+const ASK_EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+
+export type PlannedAppRequest = { supplyHouseId: string; email: string }
+
+export type PlanAskHousesResult =
+  | { ok: true; outside: PlannedOutsideRequest[]; app: PlannedAppRequest[] }
+  | { ok: false; error: string; atHouseId?: string }
+
+/**
+ * Validate the whole block: the hand-sent cards exactly as `planOutsideRequests`
+ * does, the app-sent cards for a usable address. Entry order is preserved on
+ * each side. A house with no rep and no typed address cannot be app-sent —
+ * the message says so and names the house.
+ */
+export function planAskHouses(entries: readonly AskHouseEntry[]): PlanAskHousesResult {
+  if (entries.length === 0) return { ok: false, error: 'Pick a supply house.' }
+  const outsideEntries = entries.filter((e) => e.how !== 'app')
+  const appEntries = entries.filter((e) => e.how === 'app')
+  const seen = new Set<string>()
+  for (const e of entries) {
+    if (!e.supplyHouseId) return { ok: false, error: 'Pick a supply house.' }
+    if (seen.has(e.supplyHouseId)) return { ok: false, error: 'That house is already in this batch.', atHouseId: e.supplyHouseId }
+    seen.add(e.supplyHouseId)
+  }
+  const outside: PlanOutsideRequestsResult = outsideEntries.length ? planOutsideRequests({ entries: outsideEntries }) : { ok: true, rows: [] }
+  if (!outside.ok) return outside
+  const app: PlannedAppRequest[] = []
+  for (const e of appEntries) {
+    const email = e.email.trim()
+    if (!ASK_EMAIL_RE.test(email)) return { ok: false, error: 'No address to email — type one, or switch this house to I’ll send it.', atHouseId: e.supplyHouseId }
+    app.push({ supplyHouseId: e.supplyHouseId, email })
+  }
+  return { ok: true, outside: outside.rows, app }
+}
+
+/** The default how for a house: the app emails it when a rep with an address is on file. */
+export function defaultAskHow(repEmail: string | null | undefined): AskHouseHow {
+  return repEmail && ASK_EMAIL_RE.test(repEmail.trim()) ? 'app' : 'outside'
+}
+
+/** The Ask button's label: what the press will do. */
+export function askButtonLabel(entries: readonly Pick<AskHouseEntry, 'how'>[]): string {
+  const n = entries.length
+  const app = entries.filter((e) => e.how === 'app').length
+  if (n === 0) return 'Add request'
+  if (app === 0) return n > 1 ? `Add ${n} requests` : 'Add request'
+  if (app === n) return n > 1 ? `Ask ${n} houses` : 'Ask by email'
+  return `Ask ${n} houses · ${app} by email`
+}
+
 export type AskedHouse = { count: number; lastYmd: string }
 
 /**

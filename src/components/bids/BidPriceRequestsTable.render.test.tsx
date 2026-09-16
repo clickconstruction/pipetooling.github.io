@@ -12,6 +12,7 @@ import { renderWithProviders } from '../../test/renderSmokeMocks'
 import { BidPriceRequestsTable } from './BidPriceRequestsTable'
 
 const inserted: unknown[] = []
+const invoked: Array<{ fn: string; body: Record<string, unknown> }> = []
 
 vi.mock('../../hooks/useAuth', () => ({
   useAuth: () => ({ user: { id: 'robert', email: 'robert@x.test' }, profileName: 'Robert', role: 'dev' }),
@@ -37,15 +38,28 @@ vi.mock('../../lib/supabase', () => {
     ;(builder as { then: unknown }).then = (res: (v: unknown) => unknown) => Promise.resolve({ data, error: null }).then(res)
     return builder
   }
+  const versionResult = () => {
+    const builder: Record<string, unknown> = {}
+    for (const m of ['select', 'eq', 'order', 'limit']) builder[m] = () => builder
+    builder.maybeSingle = () => Promise.resolve({ data: null, error: null })
+    return builder
+  }
   return {
     supabase: {
       from: (table: string) => ({
-        ...listResult([]),
+        ...(table === 'bid_versions' ? versionResult() : listResult([])),
         insert: (rows: unknown) => {
           if (table === 'bid_rfqs') inserted.push(rows)
           return Promise.resolve({ error: null })
         },
       }),
+      functions: {
+        invoke: (fn: string, opts: { body: Record<string, unknown> }) => {
+          invoked.push({ fn, body: opts.body })
+          if (opts.body.mode === 'preview') return Promise.resolve({ data: { ok: true, previews: [{ subject: 'Price request · B1 · 0 items', text: 'Bid: B1' }] }, error: null })
+          return Promise.resolve({ data: { ok: true, results: [{ ok: true }] }, error: null })
+        },
+      },
     },
   }
 })
@@ -115,5 +129,35 @@ describe('BidPriceRequestsTable — the add block (v2.3495)', () => {
     await waitFor(() => expect(screen.getByRole('button', { name: '+ Add a request' })).toBeTruthy())
     expect(screen.queryByLabelText('Quote link for Ferguson')).toBeNull()
     expect(inserted).toHaveLength(0)
+  })
+
+  it('v2.3526: a house with no rep starts as I’ll send it; flipped to the app with an address, Ask emails it and records nothing itself', async () => {
+    renderTable()
+    fireEvent.click(await screen.findByRole('button', { name: '+ Add a request' }))
+    fireEvent.click(await screen.findByRole('button', { name: /Ferguson/ }))
+    const group = await screen.findByRole('group', { name: 'How Ferguson is asked' })
+    const app = group.querySelector('[data-ask-how="app"]') as HTMLButtonElement
+    const outside = group.querySelector('[data-ask-how="outside"]') as HTMLButtonElement
+    expect(outside.getAttribute('aria-pressed')).toBe('true')
+    expect(screen.getByRole('button', { name: 'Add request' })).toBeTruthy()
+
+    fireEvent.click(app)
+    expect(app.getAttribute('aria-pressed')).toBe('true')
+    expect(screen.getByRole('button', { name: 'Ask by email' })).toBeTruthy()
+    // No address yet: Ask refuses and names the way out.
+    fireEvent.click(screen.getByRole('button', { name: 'Ask by email' }))
+    expect(await screen.findByText(/No address to email/)).toBeTruthy()
+    expect(invoked).toHaveLength(0)
+
+    fireEvent.change(screen.getByLabelText('Address the app emails for Ferguson'), { target: { value: 'dan@ferguson.com' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Preview the email' }))
+    expect(await screen.findByTestId('ask-preview')).toBeTruthy()
+    expect(invoked[0]!).toMatchObject({ fn: 'send-rfq-email', body: { mode: 'preview', bidId: 'bid-1' } })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Ask by email' }))
+    await waitFor(() => expect(invoked).toHaveLength(2))
+    expect(invoked[1]!.body).toMatchObject({ mode: 'send', bidId: 'bid-1', requests: [{ supplyHouseId: 'ferguson', email: 'dan@ferguson.com' }] })
+    expect(inserted).toHaveLength(0)
+    await waitFor(() => expect(screen.getByRole('button', { name: '+ Add a request' })).toBeTruthy())
   })
 })

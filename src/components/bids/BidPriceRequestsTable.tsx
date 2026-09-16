@@ -9,18 +9,20 @@ import { fetchSupplyHousePickerRows, type SupplyHousePickerRow } from '../../lib
 import { housesForBidTrade, tradesByHouse, type HouseTradeLink } from '../../lib/materials/supplyHouseTrades'
 import { calendarYmdInAppTzFromIso, formatWorkDateYmdMonthDayShort, todayYmdInAppTz } from '../../utils/dateUtils'
 import {
+  askButtonLabel,
   askedHouseSummary,
+  defaultAskHow,
   groupPriceRequests,
   linkDisplayText,
   linkHostLabel,
   nudgeStateFor,
-  planOutsideRequests,
+  planAskHouses,
   priceRequestSummaryLine,
   showsNudge,
   validateOutsideRequest,
-  type OutsideRequestBatchEntry,
+  type AskHouseEntry,
   type OutsideRequestDraft,
-  type PlanOutsideRequestsResult,
+  type PlanAskHousesResult,
   type PriceRequestGroup,
   type PriceRequestQuote,
   type PriceRequestRow,
@@ -28,9 +30,12 @@ import {
 } from '../../lib/bids/bidPriceRequests'
 import { useNarrowViewport640 } from '../../hooks/useNarrowViewport640'
 import { RfqNudgePreview, useRfqNudge } from './RfqNudge'
+import { loadBidRfqScope } from '../../lib/bids/bidRfqScope'
 
 type Props = {
   bidId: string
+  /** What the email calls the bid (v2.3526) — the caller's display name; falls back to the id. */
+  bidLabel?: string
   /** The bid's trade — houses that serve it (or are untagged) list first in the picker. */
   serviceTypeId: string | null
   /** Where the desk lives; the header link opens Pricing for this bid. */
@@ -77,7 +82,7 @@ function neededByLine(r: PriceRequestShaped): { text: string; color: string } | 
  * per house — each with its own day and its own quote link — and one Save
  * inserts every row. Editing a saved row is still one row, one house.
  */
-export function BidPriceRequestsTable({ bidId, serviceTypeId, pricingHref }: Props) {
+export function BidPriceRequestsTable({ bidId, bidLabel, serviceTypeId, pricingHref }: Props) {
   const { user } = useAuth()
   const { showToast } = useToastContext()
   const confirmDialog = useConfirmDialog()
@@ -97,7 +102,10 @@ export function BidPriceRequestsTable({ bidId, serviceTypeId, pricingHref }: Pro
   const [editingId, setEditingId] = useState<string | null>(null)
   const [draft, setDraft] = useState<OutsideRequestDraft>({ supplyHouseId: null, requestedOn: todayYmdInAppTz(), requestUrl: '', quoteUrl: '' })
   /** v2.3495: the add path records several houses at once; `draft` stays the edit path's. */
-  const [entries, setEntries] = useState<OutsideRequestBatchEntry[]>([])
+  const [entries, setEntries] = useState<AskHouseEntry[]>([])
+  /** v2.3526: a per-card email preview (the exact email a press of Ask would send), or null. */
+  const [askPreview, setAskPreview] = useState<{ supplyHouseId: string; subject: string; text: string } | null>(null)
+  const [previewingId, setPreviewingId] = useState<string | null>(null)
   const [pickerOpen, setPickerOpen] = useState(false)
   const [houseQuery, setHouseQuery] = useState('')
   const [showAllHouses, setShowAllHouses] = useState(false)
@@ -267,13 +275,18 @@ export function BidPriceRequestsTable({ bidId, serviceTypeId, pricingHref }: Pro
 
   /** Picking a house closes the picker; "+ Add another supply house" reopens it. */
   function pickHouse(id: string) {
-    setEntries((prev) => (prev.some((e) => e.supplyHouseId === id) ? prev : [...prev, { supplyHouseId: id, requestedOn: todayYmdInAppTz(), requestUrl: '' }]))
+    const rep = defaultRepByHouse.get(id)
+    setEntries((prev) =>
+      prev.some((e) => e.supplyHouseId === id)
+        ? prev
+        : [...prev, { supplyHouseId: id, requestedOn: todayYmdInAppTz(), requestUrl: '', how: defaultAskHow(rep?.email), email: rep?.email ?? '' }],
+    )
     setHouseQuery('')
     setPickerOpen(false)
     setError(null)
   }
 
-  function updateEntry(id: string, patch: Partial<OutsideRequestBatchEntry>) {
+  function updateEntry(id: string, patch: Partial<AskHouseEntry>) {
     setEntries((prev) => prev.map((e) => (e.supplyHouseId === id ? { ...e, ...patch } : e)))
   }
 
@@ -324,7 +337,7 @@ export function BidPriceRequestsTable({ bidId, serviceTypeId, pricingHref }: Pro
   }
 
   /** Name the house a batch error belongs to, so "Quote link: …" says whose. */
-  function batchErrorText(p: Extract<PlanOutsideRequestsResult, { ok: false }>): string {
+  function batchErrorText(p: Extract<PlanAskHousesResult, { ok: false }>): string {
     const name = p.atHouseId ? houses.find((h) => h.id === p.atHouseId)?.name : null
     return name ? `${name} — ${p.error}` : p.error
   }
@@ -334,8 +347,36 @@ export function BidPriceRequestsTable({ bidId, serviceTypeId, pricingHref }: Pro
    * written as 'sent' outright: the old ternary read `quote_url`, which this
    * surface has never had an input for.
    */
-  async function saveBatch() {
-    const p = planOutsideRequests({ entries })
+  const labelForEmail = bidLabel?.trim() || `bid ${bidId.slice(0, 8)}`
+
+  /** v2.3526: the exact email a press of Ask would send this house — preview mode, no writes. */
+  async function previewAsk(e: AskHouseEntry) {
+    setPreviewingId(e.supplyHouseId)
+    setError(null)
+    try {
+      const scope = await loadBidRfqScope(bidId, labelForEmail)
+      const { data, error: fnErr } = await supabase.functions.invoke('send-rfq-email', {
+        body: { mode: 'preview', bidId, neededBy: null, vendorNote: null, plansLink: null, scope, requests: [{ supplyHouseId: e.supplyHouseId, email: e.email.trim(), name: null, cc: [] }] },
+      })
+      const res = (data ?? {}) as { ok?: boolean; previews?: Array<{ subject: string; text: string }>; error?: string }
+      if (fnErr || !res.ok || !res.previews?.[0]) throw new Error(res.error ?? fnErr?.message ?? 'Could not build the preview')
+      setAskPreview({ supplyHouseId: e.supplyHouseId, subject: res.previews[0].subject, text: res.previews[0].text })
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not build the preview.')
+    } finally {
+      setPreviewingId(null)
+    }
+  }
+
+  /**
+   * Ask (v2.3526): the app-sent cards go through send-rfq-email exactly as the
+   * compose modal sends them (the function mints the row, the token and the
+   * email per house; scope = the bid's Base count rows); the hand-sent cards are
+   * recorded as before. Emails first — if the send fails nothing is recorded,
+   * so the block can be retried whole.
+   */
+  async function askHouses() {
+    const p = planAskHouses(entries)
     if (!p.ok) {
       setError(batchErrorText(p))
       return
@@ -343,22 +384,48 @@ export function BidPriceRequestsTable({ bidId, serviceTypeId, pricingHref }: Pro
     setBusy(true)
     setError(null)
     try {
-      const { error: e } = await supabase.from('bid_rfqs').insert(
-        p.rows.map((r) => ({
-          bid_id: bidId,
-          supply_house_id: r.supplyHouseId,
-          sent_via: 'outside',
-          status: 'sent',
-          scope: {},
-          requested_on: r.requestedOn,
-          request_url: r.requestUrl,
-          quote_url: null,
-          created_by: user?.id ?? null,
-        })) as never,
-      )
-      if (e) throw e
-      const n = p.rows.length
-      showToast(`Added ${n} ${n === 1 ? 'request' : 'requests'}.`, 'success')
+      let sent = 0
+      if (p.app.length > 0) {
+        const scope = await loadBidRfqScope(bidId, labelForEmail)
+        const { data, error: fnErr } = await supabase.functions.invoke('send-rfq-email', {
+          body: {
+            mode: 'send',
+            bidId,
+            bidVersionId: null,
+            neededBy: null,
+            vendorNote: null,
+            plansLink: null,
+            scope,
+            requests: p.app.map((r) => ({ supplyHouseId: r.supplyHouseId, email: r.email, name: null, cc: [] })),
+          },
+        })
+        const res = (data ?? {}) as { ok?: boolean; results?: Array<{ ok: boolean; error?: string }>; error?: string }
+        if (fnErr || !res.ok) throw new Error(res.error ?? fnErr?.message ?? res.results?.find((r) => !r.ok)?.error ?? 'Send failed')
+        const failed = (res.results ?? []).filter((r) => !r.ok).length
+        if (failed > 0) throw new Error(`${failed} of ${p.app.length} emails did not go — nothing else was recorded; fix the address and Ask again.`)
+        sent = p.app.length
+      }
+      if (p.outside.length > 0) {
+        const { error: e } = await supabase.from('bid_rfqs').insert(
+          p.outside.map((r) => ({
+            bid_id: bidId,
+            supply_house_id: r.supplyHouseId,
+            sent_via: 'outside',
+            status: 'sent',
+            scope: {},
+            requested_on: r.requestedOn,
+            request_url: r.requestUrl,
+            quote_url: null,
+            created_by: user?.id ?? null,
+          })) as never,
+        )
+        if (e) throw e
+      }
+      const parts: string[] = []
+      if (sent > 0) parts.push(`asked ${sent} ${sent === 1 ? 'house' : 'houses'} by email`)
+      if (p.outside.length > 0) parts.push(`recorded ${p.outside.length} ${p.outside.length === 1 ? 'request' : 'requests'}`)
+      showToast(`${parts.join(' · ').replace(/^./, (c) => c.toUpperCase())}.`, 'success')
+      setAskPreview(null)
       cancel()
       await load()
     } catch (err) {
@@ -591,7 +658,52 @@ export function BidPriceRequestsTable({ bidId, serviceTypeId, pricingHref }: Pro
                       )}
                       <button type="button" style={removeX} aria-label={`Remove ${name}`} title={`Remove ${name}`} onClick={() => removeEntry(e.supplyHouseId)}>×</button>
                     </div>
-                    <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap', alignItems: 'flex-start' }}>
+                    {/* v2.3526: the how — the app emails the rep, or the estimator sends it and records it here. */}
+                    <div role="group" aria-label={`How ${name} is asked`} style={{ display: 'inline-flex', border: '1px solid var(--border-strong)', borderRadius: 6, overflow: 'hidden', alignSelf: 'flex-start' }}>
+                      {(['app', 'outside'] as const).map((how) => {
+                        const on = e.how === how
+                        const label = how === 'app' ? `app emails ${rep?.name?.trim() || (rep?.label && !/^(primary|default|main)$/i.test(rep.label.trim()) ? rep.label.trim() : '') || (e.email.trim() ? e.email.trim() : 'the house')}` : 'I’ll send it'
+                        return (
+                          <button
+                            key={how}
+                            type="button"
+                            aria-pressed={on}
+                            data-ask-how={how}
+                            onClick={() => updateEntry(e.supplyHouseId, { how })}
+                            style={{ padding: '0.2rem 0.6rem', border: 'none', font: 'inherit', fontSize: '0.75rem', fontWeight: on ? 600 : 500, cursor: 'pointer', background: on ? 'var(--bg-blue-tint)' : 'var(--surface)', color: on ? 'var(--text-blue-800)' : 'var(--text-muted)' }}
+                          >
+                            {label}
+                          </button>
+                        )
+                      })}
+                    </div>
+                    {e.how === 'app' ? (
+                      <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap', alignItems: 'flex-start' }}>
+                        <div style={{ flex: '1 1 220px', minWidth: 0 }}>
+                          <input
+                            type="email"
+                            inputMode="email"
+                            value={e.email}
+                            onChange={(ev) => updateEntry(e.supplyHouseId, { email: ev.target.value })}
+                            placeholder="rep@house.com"
+                            aria-label={`Address the app emails for ${name}`}
+                            style={{ ...mini, width: '100%', boxSizing: 'border-box' }}
+                          />
+                          <div style={meta}>{rep?.email && e.email.trim() === rep.email ? 'the house’s job-accounts rep on file' : 'who the app emails — the list of counts, a quote link, nothing about money'}</div>
+                        </div>
+                        <button type="button" style={{ ...textBtn, marginTop: '0.4rem' }} disabled={previewingId != null} onClick={() => void previewAsk(e)}>
+                          {previewingId === e.supplyHouseId ? 'Building…' : 'Preview the email'}
+                        </button>
+                      </div>
+                    ) : null}
+                    {askPreview && askPreview.supplyHouseId === e.supplyHouseId ? (
+                      <div data-testid="ask-preview" style={{ border: '1px solid var(--border)', borderRadius: 6, background: 'var(--surface)', padding: '0.5rem 0.6rem', display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
+                        <div style={{ fontSize: '0.8125rem', fontWeight: 600 }}>{askPreview.subject}</div>
+                        <pre style={{ margin: 0, whiteSpace: 'pre-wrap', fontSize: '0.75rem', lineHeight: 1.45, color: 'var(--text-700)', maxHeight: 220, overflow: 'auto', fontFamily: 'inherit' }}>{askPreview.text}</pre>
+                        <button type="button" style={{ ...textBtn, alignSelf: 'flex-start' }} onClick={() => setAskPreview(null)}>Close preview</button>
+                      </div>
+                    ) : null}
+                    <div style={{ display: e.how === 'app' ? 'none' : 'flex', gap: '0.6rem', flexWrap: 'wrap', alignItems: 'flex-start' }}>
                       <div>
                         <input
                           type="date"
@@ -631,10 +743,10 @@ export function BidPriceRequestsTable({ bidId, serviceTypeId, pricingHref }: Pro
             <button
               type="button"
               style={entries.length === 0 || busy ? { ...blue, opacity: 0.55, cursor: 'not-allowed' } : blue}
-              onClick={() => void saveBatch()}
+              onClick={() => void askHouses()}
               disabled={busy || entries.length === 0}
             >
-              {entries.length > 1 ? `Add ${entries.length} requests` : 'Add request'}
+              {busy ? 'Working…' : askButtonLabel(entries)}
             </button>
           </div>
         </div>

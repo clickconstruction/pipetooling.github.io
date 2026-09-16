@@ -76,7 +76,9 @@ Sent them by email or phone instead? {{button:blue|+ Add a request}} records the
 
 The picker tells you where you already stand: a house you have just added reads *already in this batch* and cannot be picked twice, and a house this bid has asked before reads *asked Sep 2 · already on this bid*. That second one is still pickable, because asking again on a revised scope is a real thing.
 
-{{button:blue|Add 3 requests}} counts what it is about to record and writes all three at once. Pricing the quote still happens on Pricing: plug it in there so the compare can read it.
+Each card also says **how** the house is asked. A house with a job-accounts rep on file defaults to {{chip:blue|app emails Dan}} — the app sends the same price-request email Pricing's **Send by email** sends (the bid's list of counts, a quote link, nothing about money) and the row fills in as *sent by app* with **Nudge** on it. {{button:outline|Preview the email}} shows the exact message before anything goes. Flip it to {{chip:gray|I'll send it}} when you are emailing or phoning them yourself; that card keeps its day and its link box and is recorded as *sent outside*. A house with no rep on file starts as *I'll send it*; type an address to let the app send it instead. The list the app emails is the bid's **Base** counts — a named version's counts still go out from Pricing, where the version is chosen.
+
+{{button:blue|Ask 3 houses}} sends what needs sending and records the rest in one press; when every card is *I'll send it* the button reads **Add 3 requests** as before. Pricing the quote still happens on Pricing: plug it in there so the compare can read it.
 
 :::example One house, two requests
 Ferguson · Sep 2 · Vendor page · needed by Sep 5 ✓
