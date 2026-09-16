@@ -15,6 +15,7 @@ import * as pdfLib from 'https://esm.sh/pdf-lib@1.17.1'
 import { sendEmailViaResend } from '../_shared/resendSendEmail.ts'
 import { APP_CALENDAR_TZ } from '../_shared/appTimeZone.ts'
 import { buildJobContractPdf, contractBodyToPlainText, type JobContractPdfInput, type PdfLibLike } from '../_shared/jobContractPdf.ts'
+import { encodeBase64 } from 'https://deno.land/std@0.224.0/encoding/base64.ts'
 import { amountCentsFromFields, appOrigin, contractHeading, corsHeaders, escapeHtml, formatMoney, isValidEmail, JOB_CONTRACT_BUCKET, jobNumberLabel, json, signingUrl } from '../_shared/jobContract.ts'
 
 type Body = {
@@ -22,7 +23,21 @@ type Body = {
   estimate_id?: string
   /** For estimate-sourced shares: the job the agreement covers (bid-room proposals carry no job_ledger_id). */
   job_id?: string
-  mode?: 'email' | 'pdf_url'
+  /**
+   * `draft_pdf` (v2.3527, Signing it on paper PR 1): the UNSIGNED agreement as
+   * bytes — from a contract row in any status, or, with `job_id` + `draft`,
+   * from the fields the sweep pane / full editor hold, so a download writes
+   * nothing. Returns `{ ok, pdf_base64, filename }`; never a link, never a token.
+   */
+  mode?: 'email' | 'pdf_url' | 'draft_pdf'
+  draft?: {
+    fields?: unknown
+    body_html?: string | null
+    body_format?: string | null
+    template_name?: string | null
+    recipient_name?: string | null
+    revision?: number | null
+  }
   to?: string[]
   note?: string
   public_origin?: string
@@ -72,13 +87,78 @@ serve(async (req) => {
     const admin = createClient(supabaseUrl, serviceKey, { auth: { autoRefreshToken: false, persistSession: false } })
 
     const body = (await req.json().catch(() => ({}))) as Body
-    const mode: 'email' | 'pdf_url' = body.mode === 'pdf_url' ? 'pdf_url' : 'email'
+    const mode: 'email' | 'pdf_url' | 'draft_pdf' = body.mode === 'pdf_url' ? 'pdf_url' : body.mode === 'draft_pdf' ? 'draft_pdf' : 'email'
     const to = (Array.isArray(body.to) ? body.to : []).map((e) => String(e ?? '').trim()).filter(isValidEmail).slice(0, 10)
     if (mode === 'email' && to.length === 0) return json({ error: 'Add at least one valid email.' }, 400)
     const note = (body.note ?? '').trim().slice(0, 4000)
 
     const { data: setting } = await admin.from('app_settings').select('value_text').eq('key', 'physical_invoice_issuer_v1').maybeSingle()
     const issuer = parseIssuer((setting as { value_text?: string | null } | null)?.value_text)
+
+    if (mode === 'draft_pdf') {
+      // The unsigned agreement, bytes only. From the row when there is one (any status —
+      // a draft, a sent-and-unopened, even a signed one prints the same page without the
+      // mark), else from the fields the client holds for a job with no row yet.
+      let jobId: string | null = null
+      let draft: { fields: Record<string, unknown>; body_html: string | null; body_format: string; template_name: string | null; recipient_name: string | null; revision: number } | null = null
+      if (body.contract_id) {
+        const { data: row } = await userClient.from('job_contracts').select('job_id, fields, body_html, body_format, template_name, recipient_name, revision').eq('id', body.contract_id).maybeSingle()
+        if (!row) return json({ error: 'Contract not found or access denied' }, 403)
+        const c = row as { job_id: string; fields: unknown; body_html: string | null; body_format: string; template_name: string | null; recipient_name: string | null; revision: number }
+        jobId = c.job_id
+        draft = { fields: (c.fields && typeof c.fields === 'object' ? c.fields : {}) as Record<string, unknown>, body_html: c.body_html, body_format: c.body_format, template_name: c.template_name, recipient_name: c.recipient_name, revision: c.revision }
+      } else if (body.job_id && body.draft) {
+        jobId = body.job_id
+        const d = body.draft
+        draft = {
+          fields: (d.fields && typeof d.fields === 'object' ? d.fields : {}) as Record<string, unknown>,
+          body_html: typeof d.body_html === 'string' ? d.body_html.slice(0, 60_000) : null,
+          body_format: typeof d.body_format === 'string' ? d.body_format : 'plain',
+          template_name: typeof d.template_name === 'string' ? d.template_name.slice(0, 200) : null,
+          recipient_name: typeof d.recipient_name === 'string' ? d.recipient_name.slice(0, 200) : null,
+          revision: typeof d.revision === 'number' && d.revision > 0 ? d.revision : 1,
+        }
+      } else {
+        return json({ error: 'draft_pdf needs a contract_id, or a job_id with the draft fields.' }, 400)
+      }
+      const { data: j } = await userClient.from('jobs_ledger').select('id, hcp_number, click_number, job_name, job_address, customer_name, master_user_id').eq('id', jobId).maybeSingle()
+      const jobRow = (j ?? null) as JobLite | null
+      if (!jobRow) return json({ error: 'Job not found or access denied' }, 404)
+      const f = draft.fields
+      const amount = amountCentsFromFields(draft.fields)
+      const key = typeof f.payment_terms_key === 'string' ? f.payment_terms_key : 'half_down'
+      const paymentLine =
+        key === 'half_down'
+          ? amount != null
+            ? `50% down (${formatMoney(Math.round(amount / 2))}) to begin work, balance due on completion.`
+            : '50% down to begin work, balance due on completion.'
+          : key === 'on_completion'
+            ? 'Full amount due on completion of the work.'
+            : key === 'progress'
+              ? 'Progress billing: invoiced as work completes; each invoice is due on receipt.'
+              : (typeof f.payment_terms_text === 'string' && f.payment_terms_text.trim()) || 'Payment terms as agreed.'
+      const bytes = await buildJobContractPdf(pdfLib as unknown as PdfLibLike, {
+        heading: contractHeading(jobRow),
+        jobNumber: jobNumberLabel(jobRow),
+        jobAddress: jobRow.job_address,
+        customerName: jobRow.customer_name,
+        recipientName: draft.recipient_name,
+        dateLabel: dateOnly(new Date().toISOString()),
+        revision: draft.revision,
+        templateName: draft.template_name,
+        scopeLines: Array.isArray(f.scope_lines) ? (f.scope_lines as unknown[]).filter((x): x is string => typeof x === 'string') : [],
+        exclusions: typeof f.exclusions === 'string' ? f.exclusions : '',
+        note: typeof f.note === 'string' ? f.note : '',
+        amountCents: amount,
+        paymentLine,
+        dates: [typeof f.start_date === 'string' && f.start_date ? `Start: ${f.start_date}` : '', typeof f.completion_date === 'string' && f.completion_date ? `Estimated completion: ${f.completion_date}` : ''].filter(Boolean).join(' · '),
+        termsText: contractBodyToPlainText(draft.body_html, draft.body_format),
+        issuer,
+        signature: null,
+      })
+      const jobNo = jobNumberLabel(jobRow).replace(/[^a-zA-Z0-9-]/g, '')
+      return json({ ok: true, filename: `Agreement-J${jobNo}-to-sign.pdf`, pdf_base64: encodeBase64(bytes) })
+    }
 
     let pdf: Uint8Array | null = null
     let pdfPath = ''

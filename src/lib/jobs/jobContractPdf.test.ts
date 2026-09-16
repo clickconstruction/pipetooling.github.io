@@ -4,7 +4,7 @@
  */
 import { describe, expect, it } from 'vitest'
 import * as pdfLib from 'pdf-lib'
-import { buildJobContractPdf, contractBodyToPlainText, formatPdfMoney, type PdfLibLike } from '../../../supabase/functions/_shared/jobContractPdf'
+import { buildJobContractPdf, contractBodyToPlainText, formatPdfMoney, UNSIGNED_BLOCK, type PdfLibLike } from '../../../supabase/functions/_shared/jobContractPdf'
 
 const input = {
   heading: 'Service agreement for 138 W Pat Dolan',
@@ -56,5 +56,23 @@ describe('buildJobContractPdf', () => {
     const bytes = await buildJobContractPdf(pdfLib as unknown as PdfLibLike, { ...input, termsText: 'Short.', signature: { ...input.signature, png } })
     const doc = await pdfLib.PDFDocument.load(bytes)
     expect(doc.getPageCount()).toBe(1)
+  })
+
+  it('renders the UNSIGNED variant (v2.3527): the same document with pen rules, and it parses', async () => {
+    const bytes = await buildJobContractPdf(pdfLib as unknown as PdfLibLike, { ...input, termsText: 'Short.', signature: null })
+    expect(String.fromCharCode(...bytes.slice(0, 5))).toBe('%PDF-')
+    const doc = await pdfLib.PDFDocument.load(bytes)
+    expect(doc.getPageCount()).toBe(1)
+    expect(doc.getTitle()).toBe(input.heading)
+    // The words the block prints are the shared constant — the guide and the page agree.
+    expect(UNSIGNED_BLOCK.signLabel).toBe('Sign')
+    expect(UNSIGNED_BLOCK.dateLabel).toBe('Date')
+    expect(UNSIGNED_BLOCK.hint).toMatch(/Sign and date here/)
+  })
+
+  it('the signed and unsigned variants are different documents', async () => {
+    const signed = await buildJobContractPdf(pdfLib as unknown as PdfLibLike, { ...input, termsText: 'Short.' })
+    const unsigned = await buildJobContractPdf(pdfLib as unknown as PdfLibLike, { ...input, termsText: 'Short.', signature: null })
+    expect(unsigned.length).not.toBe(signed.length)
   })
 })

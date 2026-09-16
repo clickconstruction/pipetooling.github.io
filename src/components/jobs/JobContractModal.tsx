@@ -19,6 +19,7 @@ import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
 import { normalizeEstimateLineItemsFromJson } from '../../lib/estimateLineItemNormalize'
 import { renderContractBodyToSafeHtml } from '../../lib/renderContractBodyToSafeHtml'
 import { openHtmlPreviewWindow } from '../../lib/jobsDocuments/printWindow'
+import { fetchContractDraftPdf, saveBytesAsFile } from '../../lib/jobs/contractDraftPdf'
 import { fetchPhysicalInvoiceIssuerFromAppSettings, getPhysicalInvoiceIssuerForDocument } from '../../lib/physicalInvoiceIssuer'
 import {
   buildJobContractDocumentHtml,
@@ -119,7 +120,7 @@ export default function JobContractModal({ open, onClose, job, onChanged, onJobC
   const [scopeText, setScopeText] = useState('')
   const [amountText, setAmountText] = useState('')
   const [autosaveState, setAutosaveState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
-  const [busy, setBusy] = useState<null | 'send' | 'link' | 'void' | 'preview'>(null)
+  const [busy, setBusy] = useState<null | 'send' | 'link' | 'void' | 'preview' | 'pdf'>(null)
   const [voidArmed, setVoidArmed] = useState(false)
   const [lastLink, setLastLink] = useState<string | null>(null)
   const [paperOpen, setPaperOpen] = useState(false)
@@ -596,11 +597,47 @@ export default function JobContractModal({ open, onClose, job, onChanged, onJobC
       </div>
     ) : null
 
+  /** Download PDF (v2.3527): the unsigned agreement from what the editor holds — nothing written. */
+  const downloadPdf = async () => {
+    if (!job) return
+    setBusy('pdf')
+    try {
+      const payload = buildRowPayload()
+      if (!payload) return
+      const { filename, bytes } = await fetchContractDraftPdf({
+        jobId: job.id,
+        draft: {
+          fields: payload.fields,
+          body_html: liveRow && !editable ? liveRow.body_html : (payload.body_html ?? null),
+          body_format: liveRow && !editable ? liveRow.body_format : (payload.body_format ?? 'plain'),
+          template_name: liveRow && !editable ? liveRow.template_name : (payload.template_name ?? null),
+          recipient_name: payload.recipient_name ?? null,
+          revision: liveRow?.revision ?? 1,
+        },
+      })
+      saveBytesAsFile(bytes, filename)
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Could not build the PDF.', 'error')
+    } finally {
+      setBusy(null)
+    }
+  }
+
   const footer = (
     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
       <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
         <button type="button" style={btn} disabled={busy != null} onClick={preview}>
           Preview as customer
+        </button>
+        <button
+          type="button"
+          style={btn}
+          disabled={busy != null}
+          onClick={() => void downloadPdf()}
+          title="The agreement as it reads right now, with blank Sign and Date rules for a pen — nothing is sent or recorded"
+          data-testid="contract-download-pdf"
+        >
+          {busy === 'pdf' ? 'Building…' : 'Download PDF'}
         </button>
         {!notNeeded && !notNeededOpen ? (
           <button

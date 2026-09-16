@@ -1474,7 +1474,7 @@ Devs: **Settings → Templates & testing → Workflow email (Edge Function)** (c
 
 **Purpose**: Share a signed agreement — the stored signed PDF — by email, or hand back a download URL (Signed agreement view PR B, v2.2712).
 
-**Endpoint**: `POST /functions/v1/share-job-contract` — `{ contract_id } | { estimate_id, job_id? }`, `mode: 'email' | 'pdf_url'`, `to?: string[]` (≤10; first To, rest CC), `note?`, `public_origin?`; staff user JWT in `Authorization`.
+**Endpoint**: `POST /functions/v1/share-job-contract` — `{ contract_id } | { estimate_id, job_id? }`, `mode: 'email' | 'pdf_url' | 'draft_pdf'`, `to?: string[]` (≤10; first To, rest CC), `note?`, `public_origin?`; staff user JWT in `Authorization`. **`draft_pdf`** (v2.3527, Signing it on paper PR 1): the UNSIGNED agreement as `{ ok, filename, pdf_base64 }` — from `contract_id` (any status) or from `job_id` + `draft: { fields, body_html, body_format, template_name, recipient_name, revision? }` (the pane's own fields, so a download writes nothing); blank Sign / Date rules, no SIGNED ELECTRONICALLY tag, never a link or a token. Imports `_shared/jobContractPdf.ts` — redeploy `sign-job-contract` too when that file changes.
 
 **Secrets**: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `RESEND_API_KEY`, `APP_ORIGIN`
 

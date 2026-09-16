@@ -66,6 +66,7 @@ Then pick a door:
 - {{button:blue|Send by email}} — the customer gets a short email with a **Review & sign** button. Your address is the reply-to.
 - {{button:outline|Copy link}} — paste it anywhere. {{button:outline|Text link}} opens your phone's messages with the link ready to send.
 - {{button:outline|Sign in person}} — opens the signing page on this device so the customer can sign at the kitchen table.
+- {{button:outline|Download PDF}} — the same agreement with blank **Sign** and **Date** rules for a pen, for a customer who signs on paper. It sends nothing and records nothing; print it or attach it to your own email, and when the signed copy comes back, **Already signed? File it** on the sweep (or the Google Doc door below) puts it on the job. The Contract sweep's pane has the same button.
 
 :::example While it's out
 The row reads {{chip:yellow|Contract sent · opened 2× · 6d}} and the modal shows an amber strip with the same facts, plus **Resend email**, **Copy link**, **Text link**, **Sign in person**, and **Void & redo**. Need to change the scope or amount? Void & redo voids the sent copy and opens a fresh draft on the **same link** — the customer's bookmark keeps working and shows the new revision.
