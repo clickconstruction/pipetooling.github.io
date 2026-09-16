@@ -550,7 +550,7 @@ export default function SettingsEmailStreamsSection({ focus }: {
         onToggle={() => toggleCard('report_emails')}
         title="Field report emails"
         cadence="event — a report is filed (one email per report)"
-        manage="full manager → Dashboard → Recent Reports ✉ Report email recipients"
+        manage="full manager → Jobs → Reports → Report email recipients"
       >
         {reportEmailSubs.length === 0
           ? none

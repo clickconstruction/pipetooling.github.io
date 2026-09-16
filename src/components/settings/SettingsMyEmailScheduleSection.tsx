@@ -223,7 +223,7 @@ export default function SettingsMyEmailScheduleSection() {
                           ? `paused — ${reportSubsShown.map(describeReportEmailSubscription).join('; ')}`
                           : undefined
                       }
-                      managedFrom="Dashboard → Recent Reports → ✉ Report email recipients"
+                      managedFrom="Jobs → Reports → Report email recipients (or the Dashboard's Recent Reports ✉)"
                     />
                     <SubscriptionRow
                       dot="#16a34a"
