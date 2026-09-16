@@ -22946,6 +22946,16 @@ export type Database = {
         }
         Returns: undefined
       }
+      record_job_tip_from_deposit: {
+        Args: {
+          p_amount: number
+          p_job_id: string
+          p_mercury_transaction_id: string
+          p_note?: string | null
+          p_payment_type?: string | null
+        }
+        Returns: Json
+      }
       record_ncns_and_reject_sessions_for_day: {
         Args: {
           p_details?: string

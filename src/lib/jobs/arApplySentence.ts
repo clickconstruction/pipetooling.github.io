@@ -31,6 +31,8 @@ export function arApplySentence(args: {
   paymentById: ReadonlyMap<string, ArApplyPaymentSlice>
   depositRemaining: number
   validation: string | null
+  /** v2.3496: the tip strip is on screen, so the waiting text names that way out too. */
+  tipOffered?: boolean
 }): ArApplySentence {
   if (args.validation) return { text: args.validation, tone: 'warn', total: 0 }
   const remaining = Math.max(0, Number(args.depositRemaining) || 0)
@@ -65,7 +67,10 @@ export function arApplySentence(args: {
   }
   total = Math.round(total * 100) / 100
   if (parts.length === 0) {
-    return { text: `Remaining ${money(remaining)} — pick a bill, or link a recorded payment.`, tone: 'waiting', total: 0 }
+    const ways = args.tipOffered
+      ? 'pick a bill, link a recorded payment, or add it as a tip'
+      : 'pick a bill, or link a recorded payment'
+    return { text: `Remaining ${money(remaining)} — ${ways}.`, tone: 'waiting', total: 0 }
   }
   const unapplied = Math.round((remaining - total) * 100) / 100
   const tail = unapplied > 0.005 ? ` ${money(unapplied)} of the deposit stays unapplied.` : ''

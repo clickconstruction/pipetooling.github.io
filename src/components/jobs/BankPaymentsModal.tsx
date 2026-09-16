@@ -69,6 +69,9 @@ import { buildArExactMatchSweep } from '../../lib/jobs/arExactMatchSweep'
 import { findExactBillCombos } from '../../lib/jobs/arPayerBillCombos'
 import { findRecordedPaymentCollisions } from '../../lib/jobs/arLinkCollision'
 import { readEdgeFunctionErrorBody } from '../../lib/readEdgeFunctionErrorBody'
+import { buildArTipOffer } from '../../lib/jobs/arTipOffer'
+import { ArTipOffer } from './ar/ArTipOffer'
+import { isMissingRpcError } from '../../lib/customers/customersListBundle'
 
 type MercuryCandidate =
   Database['public']['Functions']['list_mercury_transactions_for_bank_payments']['Returns'][number]
@@ -201,6 +204,11 @@ export default function BankPaymentsModal({
   const [arAllocations, setArAllocations] = useState<ArAllocationRow[]>([])
   const [arAllocationsLoading, setArAllocationsLoading] = useState(false)
   const [arAllocationsError, setArAllocationsError] = useState<string | null>(null)
+  // The tip offer (v2.3496): money left on a deposit whose bills are settled.
+  const [tipJobId, setTipJobId] = useState<string | null>(null)
+  const [tipConfirming, setTipConfirming] = useState(false)
+  const [tipBusy, setTipBusy] = useState(false)
+  const [tipError, setTipError] = useState<string | null>(null)
 
   const targets = useMemo(() => bankPaymentTargetsFromStageRows(billedRows), [billedRows])
   const targetByKey = useMemo(() => new Map(targets.map((t) => [t.key, t] as const)), [targets])
@@ -822,6 +830,65 @@ export default function BankPaymentsModal({
     }
   }, [open, selected?.mercury_transaction_id, selected?.consumed])
 
+  /**
+   * The tip offer (v2.3496): a matched deposit that still carries money. The rule and the words
+   * live in `arTipOffer`; the write is `record_job_tip_from_deposit`.
+   */
+  const tipOffer = useMemo(
+    () =>
+      selected
+        ? buildArTipOffer({
+            remaining: Number(selected.remaining_available),
+            allocations: arAllocations,
+            returned: Boolean(selected.returned),
+          })
+        : null,
+    [selected, arAllocations],
+  )
+
+  /** Reset the offer's own state whenever the deposit or the available jobs change. */
+  useEffect(() => {
+    setTipConfirming(false)
+    setTipBusy(false)
+    setTipError(null)
+    setTipJobId(tipOffer?.jobId ?? null)
+  }, [selected?.mercury_transaction_id, tipOffer?.jobId, tipOffer?.jobChoices.length])
+
+  const addTipLine = useCallback(async () => {
+    const txId = selected?.mercury_transaction_id
+    if (!txId || !tipOffer || !tipJobId) return
+    setTipBusy(true)
+    setTipError(null)
+    try {
+      const data = await withSupabaseRetry(
+        async () =>
+          supabase.rpc('record_job_tip_from_deposit', {
+            p_mercury_transaction_id: txId,
+            p_job_id: tipJobId,
+            p_amount: tipOffer.amount,
+            p_payment_type: kindPaymentTypeLabel || null,
+            p_note: null,
+          }),
+        'record_job_tip_from_deposit',
+      )
+      const payload = data as { error?: string; ok?: boolean } | null
+      if (payload && typeof payload === 'object' && typeof payload.error === 'string') {
+        throw new Error(payload.error)
+      }
+      setTipConfirming(false)
+      await onApplied()
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : 'Could not add the tip'
+      setTipError(
+        isMissingRpcError(msg)
+          ? 'This is not live in the database yet — the change still has to be pushed.'
+          : msg,
+      )
+    } finally {
+      setTipBusy(false)
+    }
+  }, [selected?.mercury_transaction_id, tipOffer, tipJobId, kindPaymentTypeLabel, onApplied])
+
   /** Keep selection on the filtered bank list; when the filter hides the current row, select the first visible row. */
   useEffect(() => {
     if (!open) return
@@ -956,8 +1023,9 @@ export default function BankPaymentsModal({
         paymentById: recordedPaymentById,
         depositRemaining: selected ? Number(selected.remaining_available) : 0,
         validation: validationMessage,
+        tipOffered: tipOffer != null,
       }),
-    [allocLines, targetByKey, recordedPaymentById, selected, validationMessage],
+    [allocLines, targetByKey, recordedPaymentById, selected, validationMessage, tipOffer],
   )
 
   /**
@@ -1704,6 +1772,24 @@ export default function BankPaymentsModal({
                         onPick={pickTargetIntoLines}
                         onPickCombo={applyComboAllocation}
                       />
+                      {tipOffer ? (
+                        <div style={{ marginBottom: '0.6rem' }}>
+                          <ArTipOffer
+                            offer={tipOffer}
+                            chosenJobId={tipJobId}
+                            busy={tipBusy}
+                            confirming={tipConfirming}
+                            error={tipError}
+                            onChooseJob={(id) => setTipJobId(id || null)}
+                            onRequest={() => {
+                              setTipError(null)
+                              setTipConfirming(true)
+                            }}
+                            onConfirm={() => void addTipLine()}
+                            onCancel={() => setTipConfirming(false)}
+                          />
+                        </div>
+                      ) : null}
                       <div style={{ fontWeight: 600, fontSize: '0.875rem', marginBottom: '0.35rem' }}>Allocations</div>
                       {targets.length === 0 && recordedPayments.length === 0 ? (
                         <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>

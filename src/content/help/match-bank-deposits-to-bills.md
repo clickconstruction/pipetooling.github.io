@@ -2,7 +2,7 @@
 title: match bank deposits to the bills they pay
 category: Billing & Money
 roles: dev, master_technician, assistant, controller, primary
-keywords: accounts receivable, bank deposits, mercury, allocate, apply payment, counterparty, check, match
+keywords: accounts receivable, bank deposits, mercury, allocate, apply payment, counterparty, check, match, tip, overpaid, paid too much, leftover
 ---
 When money lands in the bank, it isn't done — each deposit still has to be applied to the bill it pays so the job shows paid and the money stops being chased. That happens in **Accounts Receivable**: open it from Jobs → Pipeline, from the Dashboard's {{button:blue|Match deposits}} nudge, or at `/accounts-receivable`.
 
@@ -57,6 +57,26 @@ If a set of the matched customer's bills adds up to the deposit exactly, the pan
 Tapping it fills one allocation line per bill for you to review, then {{button:blue|Apply}} as usual. The chip only appears when exactly one combination works — if several could, nothing is suggested and you pick by hand.
 
 You can always split a deposit yourself: **+ Split across another bill** under the allocation rows adds a line, and the matched customer's chips make it easy to pick their bills one at a time until the meter under the deposit's name reads *Fully allocated ✓*. Each row is one ledger line — kind · bill or payment · amount — and **· Add a note** beside the split link opens the internal note that lands on the job's Payments received.
+
+## If they paid more than the bills
+
+Sometimes a customer rounds up, or adds something for the crew. Once the bills on a deposit are settled and money is still left on it, a strip appears above the allocation rows:
+
+:::example the tip strip
+**$50.00 more than the bills.**
+They paid over. Record it as a tip on 960 · Elaine Giesber-Installations Pcv & Lavatory Sink.
+{{button:blue|Add a $50.00 Tip line}}
+:::
+
+There is nothing to type — the tip is the difference. Pressing it asks you once to confirm, then adds a line called **Tip** to that job and records the leftover as a payment on the deposit, so the deposit reads *Fully allocated ✓* and leaves the list. The tip is revenue on the job, the same way tips that came across from HouseCall Pro are recorded, so it shows on Job Summary and in the crew's numbers. It attaches to the job rather than to any single bill, so no invoice reads as overpaid.
+
+When a deposit paid bills on more than one job, a short list of those jobs appears first so you can say which one earned it.
+
+The strip never shows on a deposit nobody has matched yet — money on an untouched deposit is unmatched, not a tip. It also never shows on one marked returned.
+
+:::example taking one back
+Removing a tip takes two steps in Edit Job: delete the **Tip** line, and remove the payment from **Payments received**. That is why the button asks before it writes.
+:::
 
 ## If the payment was already recorded by hand
 
