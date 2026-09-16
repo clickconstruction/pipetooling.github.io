@@ -103,9 +103,9 @@ describe('customerSurfaceRegistry — every outside surface has a place on What 
   it('the count line names five audiences and says how many steps still wait on a release', () => {
     const c = journeyCoverage(journeys)
     expect(c.audiences).toBe(5)
-    expect(c.steps).toBe(c.rendered + c.soon + c.external)
-    expect(coverageLine(c)).toBe(`${c.steps} steps across 5 audiences · ${c.rendered} rendered live · ${c.soon} next release · ${c.external} sent by another system`)
-    expect(coverageLine({ audiences: 3, steps: 4, rendered: 4, soon: 0, external: 0 })).toBe('4 steps across 3 audiences · 4 rendered live')
+    expect(c.steps).toBe(c.rendered + c.paper + c.soon + c.external)
+    expect(coverageLine(c)).toBe(`${c.steps} steps across 5 audiences · ${c.rendered} rendered live · ${c.paper} open as the PDF · ${c.soon} next release · ${c.external} sent by another system`)
+    expect(coverageLine({ audiences: 3, steps: 4, rendered: 4, paper: 0, soon: 0, external: 0 })).toBe('4 steps across 3 audiences · 4 rendered live')
   })
 
   it('catches every kind of disagreement', () => {

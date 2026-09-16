@@ -22,6 +22,10 @@ describe('customerJourneys (What customers see)', () => {
     expect(findStep(journeys, 'homeowner', 'estimate-thankyou')?.render).toEqual({ kind: 'page', path: `/estimate/accept?t=${SAMPLE_TOKEN_DONE}` })
     expect(findStep(journeys, 'gc', 'gc-portal')?.render).toEqual({ kind: 'page', path: `/portal?t=${SAMPLE_TOKEN_GC}` })
     expect(findStep(journeys, 'sub', 'sub-contract')?.render).toEqual({ kind: 'page', path: `/contract/accept?t=${SAMPLE_TOKEN}` })
+    // v2.3509: the paper steps render from the sample by the app's own builders; the terms page is the live page.
+    expect(findStep(journeys, 'homeowner', 'bill-by-email')?.render).toEqual({ kind: 'paper', paper: 'bill-by-email' })
+    expect(findStep(journeys, 'gc', 'owner-notice')?.render).toEqual({ kind: 'paper', paper: 'owner-notice' })
+    expect(findStep(journeys, 'homeowner', 'estimate-terms')?.render).toEqual({ kind: 'page', path: `/estimate/terms?t=${SAMPLE_TOKEN}` })
     // The contract email comes right before the page it links to (v2.2777).
     const subIds = journeys.find((j) => j.id === 'sub')!.steps.map((s) => s.id)
     expect(subIds.indexOf('sub-contract-email')).toBe(subIds.indexOf('sub-contract') - 1)
@@ -41,7 +45,7 @@ describe('customerJourneys (What customers see)', () => {
   })
   it('every renderable step names what it reflects; external and soon steps carry a note', () => {
     for (const s of journeys.flatMap((j) => j.steps)) {
-      if (s.render.kind === 'page' || s.render.kind === 'email') expect(s.reflects.length).toBeGreaterThan(0)
+      if (s.render.kind === 'page' || s.render.kind === 'email' || s.render.kind === 'paper') expect(s.reflects.length).toBeGreaterThan(0)
       else expect(s.render.note.length).toBeGreaterThan(10)
     }
   })

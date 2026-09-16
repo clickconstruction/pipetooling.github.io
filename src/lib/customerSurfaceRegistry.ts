@@ -162,7 +162,7 @@ export function surfaceRegistryProblems(input: {
   return problems
 }
 
-export type JourneyCoverage = { audiences: number; steps: number; rendered: number; soon: number; external: number }
+export type JourneyCoverage = { audiences: number; steps: number; rendered: number; paper: number; soon: number; external: number }
 
 export function journeyCoverage(journeys: Journey[]): JourneyCoverage {
   const steps = journeys.flatMap((j) => j.steps)
@@ -171,14 +171,16 @@ export function journeyCoverage(journeys: Journey[]): JourneyCoverage {
     audiences: journeys.length,
     steps: steps.length,
     rendered: count('page') + count('email'),
+    paper: count('paper'),
     soon: count('soon'),
     external: count('external'),
   }
 }
 
-/** "37 steps across 5 audiences · 18 rendered live · 17 next release · 2 sent by another system" */
+/** "39 steps across 5 audiences · 14 rendered live · 5 open as the PDF · 18 next release · 2 sent by another system" */
 export function coverageLine(c: JourneyCoverage): string {
   const parts = [`${c.steps} steps across ${c.audiences} audiences`, `${c.rendered} rendered live`]
+  if (c.paper > 0) parts.push(`${c.paper} open as the PDF`)
   if (c.soon > 0) parts.push(`${c.soon} next release`)
   if (c.external > 0) parts.push(`${c.external} sent by another system`)
   return parts.join(' · ')

@@ -28,6 +28,7 @@ Each strip is one audience. Each step names what sends it (*Estimates → Send t
 - A step with a small picture is **live**: the real page, or the real email, at phone width.
 - **Sent by another system** means it is not built by this app (the bill email comes from Stripe), or staff type it themselves (the sub's portal link, a quote link pasted into your own email).
 - **Next release** means the surface is real and named here, and renders with a later release.
+- A step that **opens as the PDF** — the bill by email, the hazmat notice, the demand letter, the notice to a property owner, the lien release — shows a preview in the frame and {{button:outline|Open the PDF ↗}} builds the document the customer would receive, from the sample.
 
 :::example The homeowner's agreement is its own lane
 {{chip:gray|Thank-you}} → {{chip:gray|Agreement email}} → {{chip:gray|Agreement to sign}} → {{chip:gray|Reminder}} → {{chip:gray|Signed}} → {{chip:gray|Bill email}}

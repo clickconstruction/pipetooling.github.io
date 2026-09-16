@@ -12,6 +12,7 @@ import { coverageLine, journeyCoverage } from '../../lib/customerSurfaceRegistry
 import { PersonPicker } from '../journeys/PersonPicker'
 import { PersonJourneyStrips } from '../journeys/PersonJourneyStrips'
 import type { PersonSubject } from '../../lib/journeys/personJourney'
+import { paperSample, type PaperSample } from '../../lib/journeys/paperSamples'
 
 /**
  * Settings → What customers see (dev-only, v2.2758; owner pick B "Journeys" from the
@@ -106,6 +107,20 @@ export function SettingsWhatCustomersSeeTab() {
     return out
   }, [rows, origin, user?.email, profileName, senderPhone])
 
+  // v2.3509: the paper a customer receives, built from the sample by the app's own builders — the HTML preview now, the PDF on demand.
+  const papers = useMemo((): Partial<Record<string, PaperSample>> => {
+    const today = todayYmdInAppTz()
+    const out: Partial<Record<string, PaperSample>> = {}
+    for (const j of journeys) for (const st of j.steps) if (st.render.kind === 'paper') {
+      try {
+        out[st.render.paper] = paperSample(st.render.paper, today)
+      } catch {
+        /* a builder that throws leaves its card reading "could not build" */
+      }
+    }
+    return out
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [journeys, reloadNonce])
   const selectedStep = selected ? findStep(journeys, selected.journeyId, selected.stepId) : null
 
   return (
@@ -166,9 +181,10 @@ export function SettingsWhatCustomersSeeTab() {
           reloadNonce={reloadNonce}
           selectedStepId={selected?.journeyId === j.id ? selected.stepId : null}
           onSelect={(stepId) => setSelected({ journeyId: j.id, stepId })}
+          papers={papers}
         >
           {selected?.journeyId === j.id && selectedStep ? (
-            <ExpandedStep step={selectedStep} device={device} emails={emails} origin={origin} reloadNonce={reloadNonce} />
+            <ExpandedStep step={selectedStep} device={device} emails={emails} origin={origin} reloadNonce={reloadNonce} papers={papers} />
           ) : null}
         </JourneyStrip>
       ))}
@@ -180,6 +196,7 @@ export function SettingsWhatCustomersSeeTab() {
 function JourneyStrip(props: {
   journey: Journey
   emails: SampleEmails | null
+  papers: Partial<Record<string, PaperSample>>
   origin: string
   reloadNonce: number
   selectedStepId: string | null
@@ -201,6 +218,7 @@ function JourneyStrip(props: {
             first={i === 0}
             selected={props.selectedStepId === s.id}
             emails={props.emails}
+            papers={props.papers}
             origin={props.origin}
             reloadNonce={props.reloadNonce}
             onSelect={() => props.onSelect(s.id)}
@@ -212,9 +230,9 @@ function JourneyStrip(props: {
   )
 }
 
-function StepCard(props: { step: JourneyStep; first: boolean; selected: boolean; emails: SampleEmails | null; origin: string; reloadNonce: number; onSelect: () => void }) {
+function StepCard(props: { step: JourneyStep; first: boolean; selected: boolean; emails: SampleEmails | null; papers: Partial<Record<string, PaperSample>>; origin: string; reloadNonce: number; onSelect: () => void }) {
   const { step, selected } = props
-  const renderable = step.render.kind === 'page' || step.render.kind === 'email'
+  const renderable = step.render.kind === 'page' || step.render.kind === 'email' || step.render.kind === 'paper'
   // v2.3507: every card opens — a Next-release or sent-elsewhere step expands to its note and what the person can do there.
   return (
     <div style={{ display: 'grid', gridTemplateRows: 'auto 1fr auto', gap: '0.35rem', width: 188, flex: '0 0 auto', padding: '0 0.5rem', position: 'relative', borderLeft: props.first ? 'none' : '1px dashed var(--border)' }}>
@@ -240,7 +258,7 @@ function StepCard(props: { step: JourneyStep; first: boolean; selected: boolean;
         }}
       >
         {renderable ? (
-          <StepThumb step={step} emails={props.emails} origin={props.origin} reloadNonce={props.reloadNonce} />
+          <StepThumb step={step} emails={props.emails} papers={props.papers} origin={props.origin} reloadNonce={props.reloadNonce} />
         ) : (
           <span style={{ ...MUTED, textAlign: 'left', fontSize: '0.72rem', lineHeight: 1.35 }}>
             {step.render.kind === 'external' ? 'Sent by another system' : 'Next release'}
@@ -255,8 +273,8 @@ function StepCard(props: { step: JourneyStep; first: boolean; selected: boolean;
 }
 
 /** A live thumbnail: the real frame at phone width, scaled down, inert. */
-function StepThumb(props: { step: JourneyStep; emails: SampleEmails | null; origin: string; reloadNonce: number }) {
-  const frame = frameProps(props.step, props.emails, props.origin, props.reloadNonce)
+function StepThumb(props: { step: JourneyStep; emails: SampleEmails | null; papers: Partial<Record<string, PaperSample>>; origin: string; reloadNonce: number }) {
+  const frame = frameProps(props.step, props.emails, props.papers, props.origin, props.reloadNonce)
   return (
     <div style={{ width: THUMB_W, height: THUMB_H, overflow: 'hidden', borderRadius: 4, background: 'var(--surface)', pointerEvents: 'none' }} aria-hidden="true">
       {frame ? (
@@ -274,16 +292,20 @@ function StepThumb(props: { step: JourneyStep; emails: SampleEmails | null; orig
   )
 }
 
-function ExpandedStep(props: { step: JourneyStep; device: Device; emails: SampleEmails | null; origin: string; reloadNonce: number }) {
+function ExpandedStep(props: { step: JourneyStep; device: Device; emails: SampleEmails | null; papers: Partial<Record<string, PaperSample>>; origin: string; reloadNonce: number }) {
   const { step, device } = props
-  const frame = frameProps(step, props.emails, props.origin, props.reloadNonce)
+  const frame = frameProps(step, props.emails, props.papers, props.origin, props.reloadNonce)
   const email = step.render.kind === 'email' ? props.emails?.[step.render.email] ?? null : null
+  const paper = step.render.kind === 'paper' ? props.papers[step.render.paper] ?? null : null
   const openUrl = step.render.kind === 'page' ? `${props.origin}${step.render.path}` : null
   return (
     <div style={{ marginTop: '0.75rem', border: '1px solid var(--border-blue)', borderRadius: 10, padding: '0.75rem 0.9rem', background: 'var(--surface)' }}>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem 0.9rem', alignItems: 'center', marginBottom: '0.6rem', fontSize: '0.8rem' }}>
         <strong style={{ color: 'var(--text-strong)' }}>{step.label}</strong>
         {email ? <span style={{ color: 'var(--text-700)' }}>Subject: {email.subject}</span> : null}
+        {paper?.subject ? <span style={{ color: 'var(--text-700)' }}>Subject: {paper.subject}</span> : null}
+        {paper ? <OpenPdfButton paper={paper} /> : null}
+        {step.render.kind === 'paper' && !paper ? <span style={{ color: 'var(--text-red-700)' }}>This sample could not be built — see the console.</span> : null}
         {openUrl ? (
           <a href={openUrl} target="_blank" rel="noopener noreferrer" style={{ ...PILL, textDecoration: 'none' }}>
             Open in new tab
@@ -331,8 +353,41 @@ function ExpandedStep(props: { step: JourneyStep; device: Device; emails: Sample
   )
 }
 
-/** iframe props for a renderable step: a same-origin page URL, or the built email as srcDoc. */
-function frameProps(step: JourneyStep, emails: SampleEmails | null, origin: string, reloadNonce: number): { key: string; attrs: { src?: string; srcDoc?: string; sandbox?: string; title: string } } | null {
+/** The PDF the customer would open (v2.3509): built on demand, in a new tab — the test-report card's door. */
+function OpenPdfButton({ paper }: { paper: PaperSample }) {
+  const [busy, setBusy] = useState(false)
+  return (
+    <button
+      type="button"
+      style={PILL}
+      disabled={busy}
+      onClick={() => {
+        setBusy(true)
+        void paper
+          .pdf()
+          .then((blob) => {
+            const url = URL.createObjectURL(blob)
+            const win = window.open(url, '_blank', 'noopener')
+            if (!win) window.location.assign(url)
+            setTimeout(() => URL.revokeObjectURL(url), 60_000)
+          })
+          .catch((e: unknown) => console.error('sample pdf', e))
+          .finally(() => setBusy(false))
+      }}
+      title={paper.filename}
+    >
+      {busy ? 'Building the PDF…' : 'Open the PDF ↗'}
+    </button>
+  )
+}
+
+/** iframe props for a renderable step: a same-origin page URL, the built email as srcDoc, or the paper's preview as srcDoc. */
+function frameProps(step: JourneyStep, emails: SampleEmails | null, papers: Partial<Record<string, PaperSample>>, origin: string, reloadNonce: number): { key: string; attrs: { src?: string; srcDoc?: string; sandbox?: string; title: string } } | null {
+  if (step.render.kind === 'paper') {
+    const p = papers[step.render.paper]
+    if (!p) return null
+    return { key: `${step.id}-${reloadNonce}`, attrs: { srcDoc: p.html, sandbox: '', title: step.label } }
+  }
   if (step.render.kind === 'page') {
     return { key: `${step.id}-${reloadNonce}`, attrs: { src: `${origin}${step.render.path}&v=${reloadNonce}`, title: step.label } }
   }
