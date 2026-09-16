@@ -8,6 +8,10 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { clientIp, contractHeading, corsHeaders, JOB_CONTRACT_BUCKET, jobNumberLabel, json } from '../_shared/jobContract.ts'
+import { sampleStateFromToken } from '../_shared/customerSample.ts'
+import { sampleJobContractResponse } from '../_shared/customerSampleFixtures.ts'
+import { PORTAL_COMPANY } from '../_shared/portalCompany.ts'
+import { todayYmdInAppTz } from '../_shared/appTimeZone.ts'
 
 const ISSUER_KEY = 'physical_invoice_issuer_v1'
 
@@ -35,6 +39,10 @@ serve(async (req) => {
   try {
     const token = new URL(req.url).searchParams.get('t')?.trim()
     if (!token) return json({ error: 'Missing token' }, 400)
+    // What customers see (v2.3510): the sample tokens answer with the hard-coded sample agreement
+    // laid over the company particulars — no row, no view stamp, no event.
+    const sample = sampleStateFromToken(token)
+    if (sample) return json(sampleJobContractResponse(sample, PORTAL_COMPANY, todayYmdInAppTz()))
     const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, {
       auth: { autoRefreshToken: false, persistSession: false },
     })

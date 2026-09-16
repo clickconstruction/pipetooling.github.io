@@ -3,7 +3,7 @@
  * see, Settings dev tab). Each one lays the live Settings over `customerSample.ts` so the page
  * renders exactly what a real customer would get with today's copy, terms, footer and brand.
  */
-import { SAMPLE_BID, SAMPLE_CHANGE_ORDER, SAMPLE_CONTRACT, SAMPLE_ESTIMATE, SAMPLE_GC, SAMPLE_HOMEOWNER, SAMPLE_SUB, SAMPLE_TOKEN, ymdPlusDays, type SampleState } from './customerSample.ts'
+import { SAMPLE_BID, SAMPLE_CHANGE_ORDER, SAMPLE_CONTRACT, SAMPLE_ESTIMATE, SAMPLE_GC, SAMPLE_HOMEOWNER, SAMPLE_SUB, SAMPLE_TOKEN, ymdPlusDays, type SampleState, SAMPLE_JOB_CONTRACT } from './customerSample.ts'
 import { gcPortalStages } from './gcStages.ts'
 import { resolveEstimateCustomerExperience, toClientCustomerExperience } from './estimateCustomerExperience.ts'
 import type { SharedBidRoomPayload } from './bidRoomPayload.ts'
@@ -321,5 +321,51 @@ export function sampleContractResponse(state: SampleState): { status: number; bo
       signing_body_format: 'html',
       canonical_document_url: null,
     },
+  }
+}
+
+/**
+ * get-job-contract's answer for the sample tokens (v2.3510): the shape the customer's signing
+ * page reads. `live` is out for signature; `done` is signed on the page by Sam Sample. No row,
+ * no view stamp, no event.
+ */
+export function sampleJobContractResponse(state: SampleState, company: SamplePortalCompany, todayYmd: string): Record<string, unknown> {
+  const done = state === 'done'
+  const sentAt = `${ymdPlusDays(todayYmd, -1)}T15:00:00.000Z`
+  const signedAt = `${todayYmd}T14:30:00.000Z`
+  return {
+    contract: {
+      id: SAMPLE_JOB_CONTRACT.id,
+      status: done ? 'signed' : 'sent',
+      revision: 1,
+      heading: SAMPLE_JOB_CONTRACT.heading,
+      job_number: SAMPLE_JOB_CONTRACT.jobNumber,
+      job_address: SAMPLE_JOB_CONTRACT.jobAddress,
+      customer_name: SAMPLE_HOMEOWNER.name,
+      recipient_name: SAMPLE_HOMEOWNER.name,
+      fields: {
+        scope_lines: [...SAMPLE_JOB_CONTRACT.scopeLines],
+        exclusions: 'Drywall repair after the work; upgrades to the gas line beyond the heater connection.',
+        amount_cents: SAMPLE_JOB_CONTRACT.amountCents,
+        payment_terms_key: 'half_down',
+        payment_terms_text: '',
+        start_date: ymdPlusDays(todayYmd, 3),
+        completion_date: ymdPlusDays(todayYmd, 4),
+        note: '',
+      },
+      body_html: SAMPLE_JOB_CONTRACT.bodyHtml,
+      body_format: 'html',
+      template_name: 'Service agreement',
+      template_version_date: todayYmd,
+      sent_at: sentAt,
+      signed_at: done ? signedAt : null,
+      signer_printed_name: done ? SAMPLE_HOMEOWNER.name : null,
+      signer_mode: done ? 'type' : null,
+      signer_consented_at: done ? signedAt : null,
+      signature_url: null,
+      signed_pdf_url: null,
+    },
+    issuer: { companyName: company.name, addressText: '', phone: company.phone, email: company.email, tagline: company.cityLine, licenseLine: company.licenseLine },
+    brand: 'plum',
   }
 }

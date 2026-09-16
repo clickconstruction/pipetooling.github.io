@@ -9,12 +9,12 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { sendEmailViaResend } from '../_shared/resendSendEmail.ts'
+import { buildJobContractSendEmail } from '../_shared/jobContractEmail.ts'
 import {
   amountCentsFromFields,
   appOrigin,
   contractHeading,
   corsHeaders,
-  escapeHtml,
   formatMoney,
   isValidEmail,
   JOB_CONTRACT_LINK_DAYS,
@@ -164,24 +164,17 @@ serve(async (req) => {
     const senderName = ((senderRow as { name?: string | null } | null)?.name ?? '').trim()
 
     const message = (body.message ?? '').trim().slice(0, 4000)
-    const greeting = recipientName ? `Hi ${recipientName.split(' ')[0]},` : 'Hello,'
-    const subject = `Please sign: ${heading} — Job #${jobNo}`
-    const amountLine = amount != null ? `Contract amount: ${formatMoney(amount)}` : ''
-    const textPlain =
-      `${greeting}\n\n` +
-      `${message || `Here is your service agreement for ${job.job_address || 'your project'}. It takes about a minute to review and sign on your phone.`}\n\n` +
-      `${heading}\nJob #${jobNo}${amountLine ? `\n${amountLine}` : ''}\n\n` +
-      `Review and sign here:\n${url}\n\n` +
-      `Rather sign on paper? Reply to this email or call the office and we will bring a copy, no charge.\n\n` +
-      `Questions? Just reply to this email.${senderName ? `\n\n— ${senderName}` : ''}\n`
-    const html =
-      `<p>${escapeHtml(greeting)}</p>` +
-      `<p>${escapeHtml(message || `Here is your service agreement for ${job.job_address || 'your project'}. It takes about a minute to review and sign on your phone.`).replace(/\n/g, '<br>')}</p>` +
-      `<p><strong>${escapeHtml(heading)}</strong><br>Job #${escapeHtml(jobNo)}${amountLine ? `<br>${escapeHtml(amountLine)}` : ''}</p>` +
-      `<p><a href="${escapeHtml(url)}" style="display:inline-block;background:#c2410c;color:#fff;padding:10px 18px;border-radius:8px;text-decoration:none;font-weight:600">Review &amp; sign</a></p>` +
-      `<p style="color:#6b7280;font-size:13px">Or open this link: <a href="${escapeHtml(url)}">${escapeHtml(url)}</a></p>` +
-      `<p style="color:#6b7280;font-size:13px">Rather sign on paper? Reply to this email or call the office and we will bring a copy, no charge.</p>` +
-      `<p>Questions? Just reply to this email.${senderName ? `<br>— ${escapeHtml(senderName)}` : ''}</p>`
+    // v2.3510: one builder for the sender and Settings → What customers see (_shared/jobContractEmail.ts).
+    const { subject, text: textPlain, html } = buildJobContractSendEmail({
+      recipientName: recipientName || null,
+      message,
+      jobAddress: job.job_address,
+      heading,
+      jobNo,
+      amountLine: amount != null ? `Contract amount: ${formatMoney(amount)}` : '',
+      url,
+      senderName,
+    })
 
     const sent = await sendEmailViaResend(recipientEmail, subject, textPlain, html, resendKey, {
       ...(senderEmail ? { replyTo: senderEmail } : {}),

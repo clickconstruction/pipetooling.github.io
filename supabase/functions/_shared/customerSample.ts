@@ -153,6 +153,28 @@ export const SAMPLE_BID = {
 } as const
 
 /** `YYYY-MM-DD` + n days, civil arithmetic (no zone). */
+/**
+ * The homeowner's service agreement (v2.3510 — What customers see PR 2): the Contract sweep's
+ * document over Sam Sample's water-heater job. `sample` is out for signature; `sample-done` is
+ * signed on the page.
+ */
+export const SAMPLE_JOB_CONTRACT = {
+  id: 'sample-job-contract',
+  jobNumber: '1042',
+  jobName: 'Water heater replacement',
+  jobAddress: SAMPLE_HOMEOWNER.address,
+  heading: `Service agreement for ${SAMPLE_HOMEOWNER.address}`,
+  amountCents: 185000,
+  scopeLines: ['Replace the 50-gallon gas water heater', 'Haul away the old unit', 'New supply lines, pan and drain to code', 'Permit and inspection'],
+  bodyHtml:
+    '<h3>Standard terms</h3>' +
+    '<p>This is a sample agreement. Nothing here exists in the database. The wording below stands in for the standard terms the office keeps in the Contract Book.</p>' +
+    '<p><strong>Scope.</strong> We perform the work described above at the address named, in a workmanlike manner and to code.</p>' +
+    '<p><strong>Payment.</strong> Half is due when this agreement is signed and the balance when the work is complete. Bills not paid within 30 days accrue interest as the law allows.</p>' +
+    '<p><strong>Changes.</strong> Work not listed above is quoted separately before it starts.</p>' +
+    '<p><strong>Warranty.</strong> Our labor is warranted for one year; manufacturer warranties pass through to you.</p>',
+} as const
+
 export function ymdPlusDays(ymd: string, days: number): string {
   const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(ymd)
   if (!m) return ymd

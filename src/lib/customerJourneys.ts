@@ -19,7 +19,10 @@
 import { SAMPLE_TOKEN, SAMPLE_TOKEN_DONE, SAMPLE_TOKEN_GC } from './customerSample'
 import type { PaperId } from './journeys/paperSamples'
 
-export type SampleEmailId = 'estimate' | 'bid-room' | 'bid-room-revised' | 'contract'
+export type SampleEmailId = 'estimate' | 'bid-room' | 'bid-room-revised' | 'contract' | 'job-contract' | 'job-contract-reminder'
+
+/** Every email the tab builds in the browser — the order it builds them in. */
+export const SAMPLE_EMAIL_IDS: readonly SampleEmailId[] = ['estimate', 'bid-room', 'bid-room-revised', 'contract', 'job-contract', 'job-contract-reminder']
 
 export type JourneyStepRender =
   | { kind: 'page'; path: string }
@@ -59,6 +62,9 @@ export const GC_PORTAL_SAMPLE_PATH = `/portal?t=${SAMPLE_TOKEN_GC}`
 export const SUB_PORTAL_SAMPLE_PATH = `/sub?t=${SAMPLE_TOKEN}`
 export const CONTRACT_SAMPLE_PATH = `/contract/accept?t=${SAMPLE_TOKEN}`
 export const CONTRACT_SAMPLE_DONE_PATH = `/contract/accept?t=${SAMPLE_TOKEN_DONE}`
+/** The customer's own agreement (v2.3510) — not the sub's contract above. */
+export const JOB_CONTRACT_SAMPLE_PATH = `/contract/sign?t=${SAMPLE_TOKEN}`
+export const JOB_CONTRACT_SAMPLE_DONE_PATH = `/contract/sign?t=${SAMPLE_TOKEN_DONE}`
 
 export function customerJourneys(): Journey[] {
   return [
@@ -115,7 +121,7 @@ export function customerJourneys(): Journey[] {
           customerCan: 'Open the service agreement from the link in the email.',
           guide: 'get-a-job-contract-signed',
           reflects: ['Standard terms (the customer Contract Book document, or the built-in wording)', 'Sender name and email'],
-          render: { kind: 'soon', note: 'The service-agreement email the Contract sweep sends. The function builds it inline; a sample mode on the sender renders it here. Planned as PR 2.' },
+          render: { kind: 'email', email: 'job-contract' },
         },
         {
           id: 'job-contract-page',
@@ -125,7 +131,7 @@ export function customerJourneys(): Journey[] {
           customerCan: 'Read the scope, the amount and the payment line, open the full terms, and sign on the page.',
           guide: 'get-a-job-contract-signed',
           reflects: ['Standard terms', 'Payment line (50% down · on completion · progress)', 'Letterhead'],
-          render: { kind: 'soon', note: 'The customer\'s own signing page (not the sub\'s contract below). Needs a sample branch in get-job-contract. Planned as PR 2.' },
+          render: { kind: 'page', path: JOB_CONTRACT_SAMPLE_PATH },
         },
         {
           id: 'job-contract-reminder',
@@ -135,7 +141,7 @@ export function customerJourneys(): Journey[] {
           customerCan: 'Be reminded that the agreement is still waiting, with the same link.',
           guide: 'get-a-job-contract-signed',
           reflects: ['Reminder cadence', 'Sender name and email'],
-          render: { kind: 'soon', note: 'The nudge an unsigned agreement gets. Same sample mode as the agreement email. Planned as PR 2.' },
+          render: { kind: 'email', email: 'job-contract-reminder' },
         },
         {
           id: 'job-contract-signed',
@@ -145,7 +151,7 @@ export function customerJourneys(): Journey[] {
           customerCan: 'See the signed agreement, and receive the signed PDF when the office emails it.',
           guide: 'get-a-job-contract-signed',
           reflects: ['Signed banner wording', 'The signed-copy email (share-job-contract)'],
-          render: { kind: 'soon', note: 'The page after the customer signs, and the signed PDF the office can email them. Planned as PR 2.' },
+          render: { kind: 'page', path: JOB_CONTRACT_SAMPLE_DONE_PATH },
         },
         {
           id: 'bill-email',
