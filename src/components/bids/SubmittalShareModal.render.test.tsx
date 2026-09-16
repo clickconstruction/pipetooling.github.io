@@ -65,7 +65,7 @@ describe('SubmittalShareModal', () => {
     const room = state.writes.find((w) => w.table === 'bid_submittal_rooms' && w.op === 'insert')!.payload as { token: string; status: string; shared_by: string }
     expect(room.token).toMatch(/^[0-9a-f]{48}$/)
     expect(room).toMatchObject({ status: 'open', shared_by: 'wendi' })
-    const people = state.writes.find((w) => w.table === 'bid_submittal_people')!.payload as Array<Record<string, unknown>>
+    const people = state.writes.find((w) => w.table === 'bid_submittal_people' && w.op === 'insert')!.payload as Array<Record<string, unknown>>
     expect(people.map((p) => [p.name, p.email, p.role, p.may_decide, p.how])).toEqual([
       ['Dana Whitfield', 'dana@whitfield-arch.com', 'architect', true, 'named'],
       ['Logan Parsons', 'logan@structura.com', 'builder', false, 'named'],
@@ -88,6 +88,6 @@ describe('SubmittalShareModal', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Share Rev 3' }))
     await waitFor(() => expect(state.writes.some((w) => w.table === 'bid_submittals')).toBe(true))
     expect(state.writes.some((w) => w.table === 'bid_submittal_rooms' && w.op === 'insert')).toBe(false)
-    expect(state.writes.some((w) => w.table === 'bid_submittal_people')).toBe(false)
+    expect(state.writes.some((w) => w.table === 'bid_submittal_people' && w.op === 'insert')).toBe(false)
   })
 })

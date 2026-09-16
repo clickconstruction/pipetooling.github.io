@@ -40,6 +40,7 @@ import { useRobotBacklogNudge } from '../../hooks/useRobotBacklogNudge'
 import { useLegalReviewNudge } from '../../hooks/useLegalReviewNudge'
 import { useLegalFirmActivityNudge } from '../../hooks/useLegalFirmActivityNudge'
 import { useTestReportsReadyNudge } from '../../hooks/useTestReportsReadyNudge'
+import { useSubmittalsNudge } from '../../hooks/useSubmittalsNudge'
 import { useTestReportModalOptional } from '../../contexts/TestReportModalContext'
 import { fetchJobWithDetailsById } from '../../lib/fetchJobWithDetailsById'
 import { useLienWatchNudge } from '../../hooks/useLienWatchNudge'
@@ -437,6 +438,9 @@ export function DashboardPinnedQuickRow({
   // Test reports drafted and not yet sent (v2.3301, dial A) — the office set; the card opens the first one in the modal.
   const testReportsEnabled = !hideBanners && Boolean(authUserId) && officeEligible
   const testReportsNudge = useTestReportsReadyNudge(testReportsEnabled)
+  // Submittals (stage 4b, v2.3488): the office and the estimators see the four cards.
+  const submittalsEnabled = !hideBanners && Boolean(authUserId) && (officeEligible || role === 'estimator')
+  const submittalsNudge = useSubmittalsNudge(submittalsEnabled)
   const testReportModal = useTestReportModalOptional()
 
   const needsYouItems = buildNeedsYouItems({
@@ -493,6 +497,8 @@ export function DashboardPinnedQuickRow({
     legalFirmActivity,
     testReportsEnabled,
     testReportsReady: testReportsNudge.drafts,
+    submittalsEnabled,
+    submittalNudge: submittalsNudge.nudge,
     demandDeadlineEnabled: lienUnconditionalEnabled,
     demandDeadlineOverdue,
     lienWatchEnabled: lienUnconditionalEnabled,
@@ -613,6 +619,10 @@ export function DashboardPinnedQuickRow({
               navigate('/jobs?tab=job-summary&view=capacity')
             } else if (item.key === 'job-account-missing') {
               navigate('/materials?tab=job-accounts&filter=no_account')
+            } else if (item.key.startsWith('submittal-')) {
+              const n = submittalsNudge.nudge
+              const first = item.key === 'submittal-lead-time' ? n?.leadTime.first : item.key === 'submittal-sent-back' ? n?.sentBack.first : item.key === 'submittal-unopened' ? n?.unopened.first : n?.notStarted.first
+              navigate(first ? `/bids?tab=submittals&bidId=${encodeURIComponent(first.bidId)}` : '/bids?tab=submittals')
             } else if (item.key === 'test-reports-ready') {
               // Open the first draft in the Test report modal; the Stages board is the fallback.
               const first = testReportsNudge.drafts?.first ?? null
