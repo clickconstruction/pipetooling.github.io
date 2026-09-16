@@ -6,7 +6,7 @@
  * state, and the dead link. The fetch is mocked; the page's own tokens ride the URL.
  */
 import { describe, expect, it, vi, afterEach } from 'vitest'
-import { fireEvent, render, screen, within } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 
 import SubmittalRoom from './SubmittalRoom'
@@ -51,7 +51,10 @@ function mount(path: string) {
   )
 }
 
-afterEach(() => vi.unstubAllGlobals())
+afterEach(() => {
+  vi.unstubAllGlobals()
+  localStorage.clear()
+})
 
 describe('SubmittalRoom', () => {
   it('draws the room in the customer\'s words: the differing rows first, the matches folded, the PDF door, the strip', async () => {
@@ -74,15 +77,15 @@ describe('SubmittalRoom', () => {
     expect(screen.getByText('Everything matches the plans')).toBeTruthy()
   })
 
-  it('a decision opens the identify stub; a personal link names its person', async () => {
+  it('a personal link names its person; a watching person can tap but not send', async () => {
     mockFetch(200, payload({ person: { id: 'p1', name: 'Dana Whitfield', role: 'architect', mayDecide: false } }))
     mount('/submittal?t=persontoken')
     await screen.findByText('1 row needs a call')
     expect(screen.getByText(/This link was made for/).textContent).toMatch(/Dana Whitfield · architect · watching/)
+    expect(screen.getByTestId('room-send').textContent).toMatch(/Reviewing as Dana Whitfield · architect · watching/)
     fireEvent.click(within(screen.getByRole('group', { name: 'Your call on DWH-1' })).getByRole('button', { name: 'Approve' }))
-    expect(await screen.findByRole('dialog', { name: 'Before you decide' })).toBeTruthy()
-    fireEvent.click(screen.getByRole('button', { name: 'Just looking' }))
     expect(screen.queryByRole('dialog')).toBeNull()
+    expect((screen.getByRole('button', { name: 'Watching only' }) as HTMLButtonElement).disabled).toBe(true)
   })
 
   it('a closed room says so; a dead link says so; no token says so', async () => {
@@ -95,5 +98,73 @@ describe('SubmittalRoom', () => {
     expect(await screen.findByText('This link is no longer active. Please contact our office for a new one.')).toBeTruthy()
     mount('/submittal')
     expect(await screen.findByText('This link is incomplete.')).toBeTruthy()
+  })
+})
+
+describe('SubmittalRoom · identify and decide (4a-ii)', () => {
+  function mockRoomAndPosts(personToken = 'ptok') {
+    const calls: Array<{ url: string; body: unknown }> = []
+    const f = vi.fn((url: string, init?: RequestInit) => {
+      if (String(url).includes('get-submittal-room')) return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(payload()) } as Response)
+      const body = JSON.parse(String(init?.body ?? '{}')) as { action?: string }
+      calls.push({ url: String(url), body })
+      if (body.action === 'identify') return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({ ok: true, personToken, person: { id: 'p9', name: 'Tom Reyes', role: 'owners_rep', mayDecide: true } }) } as Response)
+      if (body.action === 'decide') return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({ ok: true, decided: 2, counts: { approved: 1, revise: 1, rejected: 0 } }) } as Response)
+      return Promise.resolve({ ok: false, status: 400, json: () => Promise.resolve({ error: 'x' }) } as Response)
+    })
+    vi.stubGlobal('fetch', f)
+    return calls
+  }
+
+  it('the first decision asks who you are; That\'s me identifies, rewrites the address, and Send my review records the decisions with the name', async () => {
+    const calls = mockRoomAndPosts()
+    const replace = vi.spyOn(window.history, 'replaceState').mockImplementation(() => {})
+    mount('/submittal?t=roomtoken')
+    await screen.findByText('1 row needs a call')
+    fireEvent.click(within(screen.getByRole('group', { name: 'Your call on DWH-1' })).getByRole('button', { name: 'Approve' }))
+    const sheet = await screen.findByRole('dialog', { name: 'Before you decide' })
+    fireEvent.change(within(sheet).getByLabelText('Your name'), { target: { value: 'Tom Reyes' } })
+    fireEvent.change(within(sheet).getByLabelText('Your email'), { target: { value: 'tom@spacex.com' } })
+    fireEvent.click(within(sheet).getByRole('button', { name: "owner's rep" }))
+    fireEvent.click(within(sheet).getByRole('button', { name: "That's me" }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+    expect(calls[0]?.body).toMatchObject({ action: 'identify', token: 'roomtoken', name: 'Tom Reyes', email: 'tom@spacex.com', role: 'owners_rep', viaToken: null, website: '' })
+    expect(replace).toHaveBeenCalledWith(null, '', '/submittal?t=ptok')
+    expect(screen.getByTestId('room-send').textContent).toMatch(/Reviewing as Tom Reyes · owner's rep/)
+    // A second decision needs no sheet; a note goes with it; Send posts both with the personal token.
+    fireEvent.click(within(screen.getByRole('group', { name: 'Your call on FV-1' })).getByRole('button', { name: 'Revise' }))
+    expect(screen.queryByRole('dialog')).toBeNull()
+    fireEvent.change(screen.getByLabelText('Note on FV-1'), { target: { value: 'hold 1.0 gpf' } })
+    expect(screen.getByTestId('room-footer').textContent).toMatch(/2 to send/)
+    fireEvent.click(screen.getByRole('button', { name: 'Send my review' }))
+    await screen.findByRole('status')
+    expect(calls[1]?.body).toEqual({ action: 'decide', token: 'ptok', submittalId: 'rev-2', decisions: [{ itemId: 'a', decision: 'approved' }, { itemId: 'b', decision: 'revise', note: 'hold 1.0 gpf' }] })
+    expect(screen.getByRole('status').textContent).toBe('2 recorded as Tom Reyes. Thank you.')
+    expect(screen.getAllByTestId('room-row')[0]!.textContent).toMatch(/Approved · Tom Reyes/)
+    replace.mockRestore()
+  })
+
+  it('Just looking clears the tapped decision; Approve all marks every open differing row', async () => {
+    mockRoomAndPosts()
+    mount('/submittal?t=roomtoken')
+    await screen.findByText('1 row needs a call')
+    fireEvent.click(within(screen.getByRole('group', { name: 'Your call on DWH-1' })).getByRole('button', { name: 'Reject' }))
+    fireEvent.click(within(await screen.findByRole('dialog', { name: 'Before you decide' })).getByRole('button', { name: 'Just looking' }))
+    expect(screen.queryByTestId('room-pending')).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Approve all 1 as marked' }))
+    expect(await screen.findByRole('dialog', { name: 'Before you decide' })).toBeTruthy()
+    expect(screen.getByTestId('room-pending').textContent).toMatch(/DWH-1 · Approve/)
+  })
+
+  it('a watching person cannot send; a stale revision answer shows the office\'s words', async () => {
+    const f = vi.fn((url: string, _init?: RequestInit) => {
+      if (String(url).includes('get-submittal-room')) return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(payload({ person: { id: 'p1', name: 'Logan Parsons', role: 'builder', mayDecide: false } })) } as Response)
+      return Promise.resolve({ ok: false, status: 409, json: () => Promise.resolve({ error: 'A newer revision has been shared since you opened this page. Reload to see it.', code: 'stale_revision' }) } as Response)
+    })
+    vi.stubGlobal('fetch', f)
+    mount('/submittal?t=logantoken')
+    await screen.findByText('1 row needs a call')
+    expect(screen.getByRole('button', { name: 'Watching only' })).toBeTruthy()
+    expect(screen.queryByRole('button', { name: /Approve all/ })).toBeNull()
   })
 })

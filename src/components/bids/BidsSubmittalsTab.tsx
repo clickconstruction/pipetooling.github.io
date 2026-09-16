@@ -14,7 +14,8 @@
  * page onto a row, and Done with this file — the PDF trimmed to the pages on
  * rows (`trimPdf`), the rows' page numbers rewritten from the map. Stage 4a
  * adds Share: the bid's one review room (a durable link the GC forwards),
- * the people on it, the trail, and Close.
+ * the people on it, the trail, and Close; 4a-ii reads their decisions back
+ * onto the rows and builds the next revision from the rows sent back.
  */
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import type { SupabaseClient } from '@supabase/supabase-js'
@@ -39,6 +40,7 @@ import { SubmittalSheetStrip, type ThumbState } from './SubmittalSheetStrip'
 import { SubmittalShareModal } from './SubmittalShareModal'
 import { anonymousOpens, asPersonHow, describeHow, describeRoomLine, describeTrail, personTrail, roomLink, ROOM_ROLE_LABELS, asRoomRole, type SubmittalEventRow, type SubmittalPersonRow, type SubmittalRoomRow } from '../../lib/submittals/submittalRoom'
 import { APP_CALENDAR_TZ as ROOM_TZ } from '../../utils/dateUtils'
+import { DECISION_LABELS, decisionsAsText, describeDecisions, itemsSentBack, summarizeDecisions } from '../../lib/submittals/reviewDecisions'
 import { keptPages, remapAfterTrim } from '../../lib/submittals/sheetAssignment'
 import { assignmentsFromItems } from '../../lib/submittals/sheetStripModel'
 import { buildSubmittalRows, changeNoteFor, summarizeChanges, type PickInput, type SpecifiedInput } from '../../lib/submittals/buildSubmittalRows'
@@ -49,6 +51,7 @@ import { fetchTestReportSettings } from '../../lib/jobs/testReportSettings'
 import { APP_CALENDAR_TZ } from '../../utils/dateUtils'
 import { fixtureKey, PICK_COLS_ANNOTATED, PICK_COLS_BASE, picksFromQuotes, type RawQuote } from '../../lib/submittals/picksFromQuotes'
 import {
+  asDecision,
   asReason,
   asRevisionStatus,
   asStatus,
@@ -56,6 +59,7 @@ import {
   describeRevisionChip,
   draftToItemInsert,
   formatPages,
+  formatShortDate,
   itemToPrevious,
   needsSheet,
   parseSourceFiles,
@@ -240,6 +244,7 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
 
   const sourceFiles: SourceFile[] = useMemo(() => parseSourceFiles(selectedRev?.source_files ?? null), [selectedRev])
   const tiles = useMemo(() => revisionTiles(items), [items])
+  const decisions = useMemo(() => summarizeDecisions(items), [items])
   const prevById = useMemo(() => new Map(prevItems.map((p) => [p.id, p])), [prevItems])
   const overridesByTag = useMemo(() => {
     const out: Record<string, StatusOverride> = {}
@@ -277,13 +282,17 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
     }
   }
 
-  async function newRevision() {
+  async function newRevision(onlySentBack = false) {
     if (!bidId || !newestRev) return
     const previous = newestRev.id === selectedRev?.id ? items : await loadItems(newestRev.id)
+    const sentBack = itemsSentBack(previous)
     const preview = buildSubmittalRows({ specified, picks, previous: previous.map(itemToPrevious), overrides: overridesByTag })
+    const kept = onlySentBack ? preview.filter((r) => sentBack.some((it) => (r.tag.trim() ? it.tag === r.tag : it.submitted_label === r.submittedLabel))) : preview
     const ok = await confirm({
-      title: `Rev ${newestRev.rev_number + 1} from today's picks`,
-      message: `${summarizeChanges(preview)} against Rev ${newestRev.rev_number}. Sheets, reasons and lead times carry where the product is unchanged.${asRevisionStatus(newestRev.status) === 'draft' ? ` Rev ${newestRev.rev_number} was never shared and will read superseded.` : ''}`,
+      title: onlySentBack ? `Rev ${newestRev.rev_number + 1} from the ${sentBack.length} row${sentBack.length === 1 ? '' : 's'} sent back` : `Rev ${newestRev.rev_number + 1} from today's picks`,
+      message: onlySentBack
+        ? `Only the rows the reviewer marked Revise or Reject on Rev ${newestRev.rev_number} carry into the new draft — ${kept.length} row${kept.length === 1 ? '' : 's'}. The rest stand as approved on Rev ${newestRev.rev_number}.`
+        : `${summarizeChanges(preview)} against Rev ${newestRev.rev_number}. Sheets, reasons and lead times carry where the product is unchanged.${asRevisionStatus(newestRev.status) === 'draft' ? ` Rev ${newestRev.rev_number} was never shared and will read superseded.` : ''}`,
       confirmLabel: `Build Rev ${newestRev.rev_number + 1}`,
     })
     if (!ok) return
@@ -296,7 +305,12 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
         .single()
       if (error) throw error
       const revId = (data as { id: string }).id
-      await writeRows(revId, previous)
+      if (onlySentBack) {
+        if (kept.length > 0) {
+          const { error: insErr } = await db.from('bid_submittal_items').insert(kept.map((r, i) => draftToItemInsert({ ...r, sequenceOrder: i + 1 }, revId)))
+          if (insErr) throw insErr
+        }
+      } else await writeRows(revId, previous)
       if (asRevisionStatus(newestRev.status) === 'draft') {
         const { error: supErr } = await db.from('bid_submittals').update({ status: 'superseded' }).eq('id', newestRev.id)
         if (supErr) throw supErr
@@ -833,7 +847,12 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
                   {asRevisionStatus(selectedRev.status) === 'shared' ? 'Shared · share again' : 'Share'}
                 </button>
               ) : null}
-              <button type="button" disabled={busy || !isNewest} onClick={() => void newRevision()} style={{ ...btnGreen, opacity: !isNewest ? 0.5 : 1 }} title={isNewest ? 'Carry every row into a new draft and mark what changed' : 'Only the newest revision can be revised'}>
+              {isNewest && decisions.sentBack > 0 ? (
+                <button type="button" disabled={busy} onClick={() => void newRevision(true)} style={btnGreen} title="A new draft carrying only the rows marked Revise or Reject">
+                  Rev {selectedRev.rev_number + 1} from the {decisions.sentBack} row{decisions.sentBack === 1 ? '' : 's'} sent back
+                </button>
+              ) : null}
+              <button type="button" disabled={busy || !isNewest} onClick={() => void newRevision()} style={{ ...btnGreen, opacity: !isNewest ? 0.5 : 1, ...(decisions.sentBack > 0 ? { background: 'var(--surface)', color: 'var(--text-strong)', borderColor: 'var(--border-strong)', fontWeight: 500 } : {}) }} title={isNewest ? 'Carry every row into a new draft and mark what changed' : 'Only the newest revision can be revised'}>
                 New revision
               </button>
             </div>
@@ -853,6 +872,17 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
             {selectedRev.note ? ` · ${selectedRev.note}` : ''}
             {selectedRev.package_path ? <span style={{ color: 'var(--text-green-700)', fontWeight: 600 }}> · package built</span> : null}
           </p>
+          {decisions.decided > 0 ? (
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap', border: '1px solid var(--border)', borderRadius: 6, background: 'var(--bg-subtle)', padding: '0.4rem 0.7rem' }} data-testid="decisions-line">
+              <span style={{ fontSize: '0.8125rem', color: 'var(--text-strong)' }}>
+                <b>Their call:</b> {describeDecisions(decisions)}
+                {decisions.open > 0 ? <span style={smallMuted}> · {decisions.open} still open</span> : null}
+              </span>
+              <button type="button" onClick={() => void navigator.clipboard.writeText(decisionsAsText(items, `${describeRevisionChip(selectedRev)} · ${bidWorkflowTabHeading(bid, prefixMap)}`, ROOM_TZ)).then(() => showToast('Decisions copied as text.', 'success'), () => showToast('Could not copy.', 'error'))} style={{ ...btn, padding: '0.2rem 0.55rem', fontSize: '0.75rem' }}>
+                Copy their decisions as text
+              </button>
+            </div>
+          ) : null}
 
           {sourceFiles.length > 0 ? (
             <SubmittalSheetStrip files={sourceFiles} items={items} thumbnails={thumbs} busy={busy} onNeedThumbnails={(i) => void showPages(i)} onAssign={(f, p, id) => void assignPageToItem(f, p, id)} onUnassign={(f, p, id) => void unassignPageFromItem(f, p, id)} onDone={(i) => void doneWithFile(i)} onRemove={(i) => void removeFile(i)} />
@@ -870,6 +900,7 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
                   <th style={th}>Lead time</th>
                   <th style={th}>Sheet</th>
                   {previousRev ? <th style={th}>Since Rev {previousRev.rev_number}</th> : null}
+                  {decisions.decided > 0 ? <th style={th}>Their call</th> : null}
                   <th style={th} />
                 </tr>
               </thead>
@@ -921,6 +952,22 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
                         )}
                       </td>
                       {previousRev ? <td style={{ ...td, color: note ? 'var(--text-amber-700)' : 'var(--text-faint)', fontWeight: note ? 600 : 400 }}>{note ?? 'carried'}</td> : null}
+                      {decisions.decided > 0 ? (
+                        <td style={td} data-testid="their-call">
+                          {(() => {
+                            const d = asDecision(it.review_decision)
+                            if (!d) return <span style={{ color: 'var(--text-faint)' }}>—</span>
+                            const color = d === 'approved' ? 'var(--text-green-700)' : d === 'revise' ? 'var(--text-amber-700)' : 'var(--text-red-700)'
+                            return (
+                              <span style={{ color, fontWeight: 600 }}>
+                                {DECISION_LABELS[d]}
+                                <span style={sub}>{[it.reviewed_by_name, formatShortDate(it.reviewed_at)].filter(Boolean).join(' · ')}</span>
+                                {it.review_note ? <span style={sub}>“{it.review_note}”</span> : null}
+                              </span>
+                            )
+                          })()}
+                        </td>
+                      ) : null}
                       <td style={{ ...td, textAlign: 'right', whiteSpace: 'nowrap' }}>
                         <button type="button" aria-label={`Edit ${it.tag.trim() || 'accessory'}`} onClick={() => setEditing(it)} style={{ ...btn, padding: '0.2rem 0.55rem', fontSize: '0.75rem' }}>
                           Edit
