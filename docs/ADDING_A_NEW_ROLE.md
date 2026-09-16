@@ -219,6 +219,7 @@ Use this when adding a new role:
 - [ ] Dashboard.tsx: Add `NEW_ROLE_PATHS` and `getPathsForRole` branch
 - [ ] Role pickers: Add to `ROLES` in `src/lib/userRoles.ts`; add `PAGE_ACCESS` column in `SettingsPeopleTab.tsx`
 - [ ] **Capability functions first**: if the new role piggybacks on an existing capability, extend the single-point DB functions (`is_assistant()`, `has_payroll_access()`, client `isAssistantLike()`, …) instead of editing dozens of per-table policies — the controller rollout (`20260714213000_controller_capabilities.sql`) landed this way in ~3 function edits
+- [ ] Pipeline board (Jobs → Pipeline): add the role to the right sets in `src/lib/jobs/stagesRoleGates.ts` — every who-may on that board reads from it, and its matrix test pins the admitted roles per gate (v2.3531)
 - [ ] RLS: Update remaining policies on bids, materials, reports, jobs ledger, users (see table categories above)
 - [ ] Helper function: Create `is_new_role()` if needed
 - [ ] Adoption table: Create `master_new_roles` if role uses adoption

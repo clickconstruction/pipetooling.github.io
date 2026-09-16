@@ -117,6 +117,11 @@ export function stagesMergedBillingInvoiceId(job: JobWithDetails): string | null
 }
 
 /** Sum of billable exposure for Ready to Bill: job row = unallocated; merged primary = line amount; each invoice row = line amount. */
+/** Σ (revenue − payments_made) over jobs — the Waiting and Working header totals: what those jobs still stand to collect. */
+export function stagesJobsOpenBalanceTotal(jobs: readonly JobWithDetails[]): number {
+  return jobs.reduce((s, j) => s + (Number(j.revenue ?? 0) - Number(j.payments_made ?? 0)), 0)
+}
+
 export function readyToBillRowsExposureTotal(rows: StageRow[]): number {
   let sum = 0
   for (const r of rows) {

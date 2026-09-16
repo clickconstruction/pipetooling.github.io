@@ -18,6 +18,25 @@ export type StagesSectionOpenState = {
 
 export const STAGES_SECTION_PREFS_KEY = 'pipetooling_stages_sections_v2'
 
+/**
+ * The DOM id each section header carries — the scroll target for `focusStagesSection`,
+ * the "take me to" buttons and the e2e deep-link spec (`#stages-billed`). One map so a
+ * header and the scroll that looks for it can never disagree.
+ */
+export const STAGES_SECTION_ELEMENT_ID: Record<keyof StagesSectionOpenState, string> = {
+  waiting: 'stages-waiting',
+  working: 'stages-working',
+  readyToBill: 'stages-ready-to-bill',
+  billed: 'stages-billed',
+  collections: 'stages-collections',
+  paid: 'stages-paid',
+}
+
+export function stagesSectionElementId(key: keyof StagesSectionOpenState): string {
+  return STAGES_SECTION_ELEMENT_ID[key]
+}
+
+
 export const STAGES_SECTION_DEFAULT_OPEN: StagesSectionOpenState = {
   waiting: false,
   working: false,

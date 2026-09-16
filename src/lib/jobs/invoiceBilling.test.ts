@@ -14,6 +14,7 @@ import {
   stageRowBilledAgeReference,
   stageRowBilledLineLabel,
   stageRowBilledRemainingAmount,
+  billedRowsRemainingTotal,
   stagesJobLevelStripeEmailedHintInvoice,
   sumInvoiceAppliedFromJobPayments,
   billedStageRowAgingBucket,
@@ -360,5 +361,16 @@ describe('buildBilledTotalByNameEntries (v2.3530)', () => {
 
   it('is empty for no rows', () => {
     expect(buildBilledTotalByNameEntries([])).toEqual([])
+  })
+})
+
+describe('billedRowsRemainingTotal', () => {
+  it('sums each row\'s remaining — job rows by revenue less payments, invoice rows by the bill', () => {
+    const rows = [
+      { kind: 'job', job: job({ revenue: 1000, payments_made: 300 }) },
+      { kind: 'job', job: job({ revenue: 500, payments_made: 500 }) },
+    ] as StageRow[]
+    expect(billedRowsRemainingTotal(rows)).toBe(700)
+    expect(billedRowsRemainingTotal([])).toBe(0)
   })
 })

@@ -196,11 +196,11 @@ Single-opener state → component pairs, all opened only from this surface:
 | Candidate | Currently | Target |
 |---|---|---|
 | ~~Total-by-Name grouping~~ | done v2.3530 | `lib/jobs/invoiceBilling.ts` `buildBilledTotalByNameEntries(rows)` + tests |
-| Section exposure totals (`waitingTotal`/`workingTotal` = Σ `revenue − payments_made`; `billedTotal`/`collectionsTotal` = Σ `stageRowBilledRemainingAmount`) | inline reduces in the IIFE | `lib/jobsStagesBoard.ts` (join `readyToBillRowsExposureTotal`/`capableToBillTotalFromWorking`) + tests |
-| Pipeline role gates (`canOpenJobScheduleModal`, `canEditJobPctComplete`, `canManageJobPeople`, `canCreateHazmatFee`, `canManageCollections`, the tools-menu role arrays, the AR-button role check ×3 copies) | memos/consts + repeated inline boolean chains | `lib/jobs/stagesRoleGates.ts` + tests — **keep the RLS-mirroring comments with each gate** |
-| `accountsReceivableButtonAccessibleName` composer | `useMemo` over role/count/rows | pure `(canRecordPayments, unallocatedCount, billedRowCount) => string` + test |
-| `focusStagesSection` key → element-id mapping (`stages-waiting`…`stages-billed`) | nested ternary | `stagesSectionElementId(key)` const map + test (also used by the two "take me to" modal buttons' hardcoded ids) |
-| `customerListImpliesLinkedRow` (exactly-one-name-match heuristic, master_user_id preference) | module-private in `jobsStagesRowShared.tsx` | `lib/jobs/customerLinkHeuristics.ts` + tests |
+| ~~Section exposure totals~~ | done v2.3531 | `stagesJobsOpenBalanceTotal` in `lib/jobsStagesBoard.ts` (Waiting / Working), `billedRowsRemainingTotal` in `lib/jobs/invoiceBilling.ts` (Billed / Collections) + tests |
+| ~~Pipeline role gates~~ | done v2.3531 | `lib/jobs/stagesRoleGates.ts` — twelve named gates (`isStagesOfficeRole`, `isStagesOwnerRole`, `canSeeStagesMoneyCharts`, `canOpenJobScheduleModal`, `canEditJobPctComplete`, `canManageJobPeople`, `canCreateHazmatFee`, `canManageCollections`, `canRecordArPayments`, `canSeeBilledExpectedPay`, `canUseStagesOfficeTools`, `canUseStagesEditModeRails`), each with its RLS / RPC-mirror comment, read as `stagesGates.*` in the tab; the matrix test pins every gate for every role. Only the three `authRole === 'dev'` reads stay inline |
+| ~~`accountsReceivableButtonAccessibleName` composer~~ | done v2.3531 | `accountsReceivableButtonName({ canRecordPayments, unallocatedCount, billedRowCount })` in `lib/jobs/stagesAccountsReceivableButton.ts` + tests |
+| ~~`focusStagesSection` key → element-id mapping~~ | done v2.3531 | `STAGES_SECTION_ELEMENT_ID` / `stagesSectionElementId(key)` in `lib/jobs/stagesSectionPrefs.ts` + test; the six header `id=`s and every `getElementById` scroll read it |
+| ~~`customerListImpliesLinkedRow`~~ | done v2.3531 | `lib/jobs/customerLinkHeuristics.ts` + tests (structural `CustomerLinkCandidate` input) |
 | Partial-invoice decision (clamp → adjust-toast → full-remaining-RTB ⇒ Bill Customer vs INSERT path; `nextOrder`/`estBillModal` derivation) | inside `createInvoiceFromModal` | pure `planPartialInvoice(job, amount)` returning a discriminated action + tests (the IO stays in the modal) |
 
 Already-extracted lib (do NOT re-derive; add tests only if missing): `buildJobsStagesBoardLists` + friends, `buildBilledAgingBuckets`, `stagesMoneyBar`, `stagesJobReferenceDates`, `jobsStagesScheduleSessionSearch`, `stagesUpcomingSchedule` formatters, `billedAwaitingPaymentReport` HTML builder, `returnEditJobFromStages`, `setJobCollectionsFlag`, `voidStripeInvoiceForRevert`.
@@ -231,7 +231,7 @@ Already-extracted lib (do NOT re-derive; add tests only if missing): `buildJobsS
 
 ## Recommended extraction order (value ÷ risk)
 
-1. **Stage-A sweep** — the table above; each independently shippable. Highest leverage: `pickStagesLastActivity`, `buildBilledTotalByNameEntries`, `stagesRoleGates`.
+1. ~~**Stage-A sweep**~~ — done: `buildBilledTotalByNameEntries` (v2.3530), the role gates, totals, AR name, section ids and customer-link heuristic (v2.3531). Left in the table on purpose: `planPartialInvoice`, which ships with its modal in step 3.
 2. **Toolbar → `JobsStagesToolbar`** (~215 lines, smallest prop surface; validates the intra-tab seam).
 3. **Inline modals → components**: ~~`StagesBilledTotalByNameModal`, `StagesCapableToBillModal`, `StagesEstBillDateModal`~~ (done v2.3530), then the modal-tail confirms (`StagesReadyForBillingConfirmModal`, `StagesSendBackJobModal`, `StagesSendBackInvoiceModal`, `StagesSendBackSimpleConfirmModal`, `StagesCollectionsConfirmModal`, `StagesCreatePartialInvoiceModal` — this last after its Stage-A kernel). ~935 lines out of `JobsStagesTab` in total.
 4. **Jump nav + alerts → `JobsStagesJumpNavAndAlerts`** (~250 lines).

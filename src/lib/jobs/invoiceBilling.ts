@@ -67,6 +67,11 @@ export function stageRowBilledRemainingAmount(r: StageRow): number {
  * Every age on the board — Who owes what, the 30+/90+ chips, the money card's
  * age bar, the "Chase the 90+ tail" move — reads this one function.
  */
+/** Σ remaining over billed-style rows — the Billed Awaiting Payment and Collections header totals. */
+export function billedRowsRemainingTotal(rows: readonly StageRow[]): number {
+  return rows.reduce((s, r) => s + stageRowBilledRemainingAmount(r), 0)
+}
+
 export function stageRowBilledAgeReference(r: StageRow): { ymd: string; handSet: boolean; source?: 'collections' } | null {
   if (r.kind === 'job') {
     if (!jobInCollections(r.job)) return null
