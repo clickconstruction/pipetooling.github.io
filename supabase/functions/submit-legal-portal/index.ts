@@ -83,7 +83,8 @@ serve(async (req) => {
         await admin.from('legal_firm_recipients').update({ confirm_token_hash: await sha256Hex(raw), updated_at: nowIso }).eq('id', id)
         const key = Deno.env.get('RESEND_API_KEY')
         if (!key) return false
-        const confirmUrl = `${Deno.env.get('SUPABASE_URL')}/functions/v1/legal-notify-dispatch?confirm=${raw}`
+        // v2.3521: the link lands on the app's page; the function's GET is what that page calls.
+        const confirmUrl = `${Deno.env.get('APP_ORIGIN') ?? 'https://clicktooling.com'}/legal/confirm?t=${raw}`
         // v2.3512: one builder for the sender and Settings → What customers see (_shared/legalEmails.ts).
         const mail = buildLegalConfirmEmail({ companyName: PORTAL_COMPANY.name, email, confirmUrl })
         const res = await sendEmailViaResend(email, mail.subject, mail.text, mail.html, key)

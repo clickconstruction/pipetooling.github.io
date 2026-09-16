@@ -2,7 +2,7 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient, type SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { APP_CALENDAR_TZ, todayYmdInAppTz } from '../_shared/appTimeZone.ts'
 import { sendEmailViaResend } from '../_shared/resendSendEmail.ts'
-import { buildLegalDigestEmail, buildLegalNowEmail, legalConfirmedPageBody, legalPageHtml, legalUnsubscribedPageBody, legalWrapHtml, type LegalNowTrigger } from '../_shared/legalEmails.ts'
+import { buildLegalDigestEmail, buildLegalNowEmail, legalPageHtml, legalWrapHtml, type LegalNowTrigger } from '../_shared/legalEmails.ts'
 import { PORTAL_COMPANY } from '../_shared/portalCompany.ts'
 
 /**
@@ -63,16 +63,17 @@ type Recipient = { id: string; firm_id: string; name: string; email: string; mod
 
 async function unsubscribeLink(admin: SupabaseClient, r: Recipient): Promise<string> {
   // The unsubscribe token is minted once per recipient, hashed at rest; the raw value lives only in the emails.
-  const base = `${Deno.env.get('SUPABASE_URL')}/functions/v1/legal-notify-dispatch`
+  // v2.3521: the link lands on the app's page (the platform relays this function's HTML as text/plain).
+  const base = `${Deno.env.get('APP_ORIGIN') ?? 'https://clicktooling.com'}/legal/confirm`
   const raw = crypto.randomUUID().replace(/-/g, '') + crypto.randomUUID().replace(/-/g, '')
   if (!r.unsubscribe_token_hash) {
     await admin.from('legal_firm_recipients').update({ unsubscribe_token_hash: await sha256Hex(raw), updated_at: new Date().toISOString() }).eq('id', r.id)
     r.unsubscribe_token_hash = await sha256Hex(raw)
-    return `${base}?unsubscribe=${raw}`
+    return `${base}?t=${raw}&stop=1`
   }
   // An existing hash cannot be reversed; rotate it so this email's link works (older emails' links stop — acceptable).
   await admin.from('legal_firm_recipients').update({ unsubscribe_token_hash: await sha256Hex(raw), updated_at: new Date().toISOString() }).eq('id', r.id)
-  return `${base}?unsubscribe=${raw}`
+  return `${base}?t=${raw}&stop=1`
 }
 
 function portalLink(token: string | null): string {
@@ -90,29 +91,39 @@ serve(async (req) => {
   const url = new URL(req.url)
 
   // --- GET: confirm / unsubscribe --------------------------------------------
+  // v2.3521: the platform relays this function's HTML as text/plain (recipients saw page source), so
+  // the pages live in the app at /legal/confirm. `&json=1` is what that page calls; a bare link — the
+  // ones in emails already sent — is redirected there with the same token. The work is the same.
   if (req.method === 'GET') {
     const confirm = url.searchParams.get('confirm')?.trim()
     const unsub = url.searchParams.get('unsubscribe')?.trim()
-    // What customers see (v2.3512): the sample tokens render the two pages for Ann Sample — no row is read or written.
-    if (confirm === 'sample') return html(legalConfirmedPageBody(PORTAL_COMPANY.name, 'Ann Sample', 'ann@samplepartner.example.com'))
-    if (unsub === 'sample') return html(legalUnsubscribedPageBody(PORTAL_COMPANY.name, 'Ann Sample'))
+    const wantsJson = url.searchParams.get('json') === '1'
+    const appPage = `${Deno.env.get('APP_ORIGIN') ?? 'https://clicktooling.com'}/legal/confirm`
+    if (!wantsJson) {
+      if (confirm) return Response.redirect(`${appPage}?t=${encodeURIComponent(confirm)}`, 302)
+      if (unsub) return Response.redirect(`${appPage}?t=${encodeURIComponent(unsub)}&stop=1`, 302)
+      return html('<h1>Nothing to do.</h1><p>This address only answers the links in the firm\'s emails.</p>', 400)
+    }
+    // What customers see (v2.3512): the sample token answers for Ann Sample — no row is read or written.
+    if (confirm === 'sample') return json({ kind: 'confirmed', name: 'Ann Sample', email: 'ann@samplepartner.example.com' })
+    if (unsub === 'sample') return json({ kind: 'unsubscribed', name: 'Ann Sample' })
     if (confirm && confirm.length >= 16) {
       const hash = await sha256Hex(confirm)
       const { data } = await admin.from('legal_firm_recipients').select('id, name, email, confirmed_at').eq('confirm_token_hash', hash).is('removed_at', null).maybeSingle()
       const r = data as { id: string; name: string; email: string; confirmed_at: string | null } | null
-      if (!r) return html('<h1>That link has expired.</h1><p>Ask someone at the firm to add you again from the portal.</p>', 404)
+      if (!r) return json({ kind: 'expired', reason: 'Ask someone at the firm to add you again from the portal.' }, 404)
       if (!r.confirmed_at) await admin.from('legal_firm_recipients').update({ confirmed_at: new Date().toISOString(), updated_at: new Date().toISOString() }).eq('id', r.id)
-      return html(legalConfirmedPageBody(PORTAL_COMPANY.name, r.name, r.email))
+      return json({ kind: 'confirmed', name: r.name, email: r.email })
     }
     if (unsub && unsub.length >= 16) {
       const hash = await sha256Hex(unsub)
       const { data } = await admin.from('legal_firm_recipients').select('id, name').eq('unsubscribe_token_hash', hash).maybeSingle()
       const r = data as { id: string; name: string } | null
-      if (!r) return html('<h1>That link has expired.</h1><p>Use the link in a newer email, or stop emails from the portal.</p>', 404)
+      if (!r) return json({ kind: 'expired', reason: 'Use the link in a newer email, or stop emails from the portal.' }, 404)
       await admin.from('legal_firm_recipients').update({ paused_at: new Date().toISOString(), updated_at: new Date().toISOString() }).eq('id', r.id)
-      return html(legalUnsubscribedPageBody(PORTAL_COMPANY.name, r.name))
+      return json({ kind: 'unsubscribed', name: r.name })
     }
-    return html('<h1>Nothing to do.</h1><p>This address only answers the links in the firm\'s emails.</p>', 400)
+    return json({ kind: 'expired', reason: 'This address only answers the links in the firm\'s emails.' }, 400)
   }
 
   // --- POST: the cron tick -----------------------------------------------------

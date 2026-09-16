@@ -9,7 +9,6 @@
  *   external — sent by another system (Stripe), or typed by staff; named, not rendered
  *   paper    — a document built in the browser from the sample by the app's own builder (v2.3509):
  *              an HTML preview in the frame and the PDF the customer would open
- *   html     — a plain page built in the browser from the same builder the function serves it with (v2.3518)
  *   soon     — a surface this tab does not render yet (a "Next release" card)
  *
  * Every public route and every outside-facing email sender must have a step here or a named
@@ -20,8 +19,6 @@
 import { SAMPLE_TOKEN, SAMPLE_TOKEN_DONE, SAMPLE_TOKEN_GC } from './customerSample'
 import type { PaperId } from './journeys/paperSamples'
 
-export type SampleHtmlId = 'legal-confirmed-page'
-
 export type SampleEmailId = 'estimate' | 'bid-room' | 'bid-room-revised' | 'contract' | 'job-contract' | 'job-contract-reminder' | 'test-report' | 'pricing-package' | 'gc-statement' | 'rfq-request' | 'job-account' | 'legal-confirm' | 'legal-now' | 'legal-digest'
 
 /** Every email the tab builds in the browser — the order it builds them in. */
@@ -31,7 +28,6 @@ export type JourneyStepRender =
   | { kind: 'page'; path: string; /** v2.3512: `path` is a full URL on another origin (a page an edge function serves). */ absolute?: boolean }
   | { kind: 'email'; email: SampleEmailId }
   | { kind: 'paper'; paper: PaperId }
-  | { kind: 'html'; html: SampleHtmlId }
   | { kind: 'external'; note: string }
   | { kind: 'soon'; note: string }
 
@@ -77,8 +73,8 @@ export const RFQ_SAMPLE_PATH = `/q/${SAMPLE_TOKEN}`
 export const RFQ_SAMPLE_DONE_PATH = `/q/${SAMPLE_TOKEN_DONE}`
 /** The collections law firm's portal (v2.3512) — before its first matter. */
 export const LEGAL_PORTAL_SAMPLE_PATH = `/legal?t=${SAMPLE_TOKEN}`
-/** The confirmed page the firm's confirm link lands on — served by the edge function, so the path is a full URL (v2.3512). */
-export const LEGAL_CONFIRMED_SAMPLE_URL = `${(import.meta.env.VITE_SUPABASE_URL as string | undefined) ?? ''}/functions/v1/legal-notify-dispatch?confirm=${SAMPLE_TOKEN}`
+/** The page the firm's confirm link lands on (v2.3521 — the app serves it; the function's HTML was relayed as text/plain). */
+export const LEGAL_CONFIRMED_SAMPLE_PATH = `/legal/confirm?t=${SAMPLE_TOKEN}`
 
 export function customerJourneys(): Journey[] {
   return [
@@ -473,7 +469,7 @@ export function customerJourneys(): Journey[] {
           customerCan: 'See that the address is confirmed, or paused after unsubscribe.',
           guide: 'manage-who-at-the-law-firm-gets-emails',
           reflects: ['Confirmed / unsubscribed page wording'],
-          render: { kind: 'html', html: 'legal-confirmed-page' },
+          render: { kind: 'page', path: LEGAL_CONFIRMED_SAMPLE_PATH },
         },
         {
           id: 'firm-portal',
@@ -514,7 +510,7 @@ export function customerJourneys(): Journey[] {
 export function firstRenderableStep(journeys: Journey[]): { journeyId: JourneyId; stepId: string } | null {
   for (const j of journeys) {
     for (const s of j.steps) {
-      if (s.render.kind === 'page' || s.render.kind === 'email' || s.render.kind === 'paper' || s.render.kind === 'html') return { journeyId: j.id, stepId: s.id }
+      if (s.render.kind === 'page' || s.render.kind === 'email' || s.render.kind === 'paper') return { journeyId: j.id, stepId: s.id }
     }
   }
   return null
