@@ -43,11 +43,13 @@ export function buildJobSummaryPersonSummaryRows(args: {
   for (const r of ppRows) {
     if (r.key === 'g:job') continue
     const k = normalizePersonNameKey(r.displayName)
-    const cardAmt = Math.abs(Number(r.cardCharges) || 0)
+    // Signed cost already (v2.3519): a refund is a negative row and must net here
+    // too, or the per-person footer stops matching the job's card total.
+    const cardAmt = Number(r.cardCharges) || 0
     const ex = map.get(k)
     if (ex) {
       ex.card += cardAmt
-    } else if (cardAmt > 0) {
+    } else if (cardAmt !== 0) {
       map.set(k, {
         displayName: (r.displayName ?? '').trim() || 'Unknown',
         hours: 0,
@@ -90,7 +92,7 @@ export function partitionUnattributedFromJobSummaryPersonRows(
   const out: JobSummaryPersonSummaryRow[] = []
   for (const r of rows) {
     if (isUnattributedJobSummaryName(r.displayName)) {
-      unattributedCard += Math.abs(Number(r.card) || 0)
+      unattributedCard += Number(r.card) || 0
     } else {
       out.push(r)
     }

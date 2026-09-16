@@ -11,6 +11,10 @@
  *   allocation already counts. They stay in the gross card total (so the
  *   detail rows still sum to the card) and are tracked separately so Job
  *   Summary's parts cost can count them once (`Jobs.tsx`, v2.2692).
+ * - **Sign** (v2.3519): an allocation carries the bank's sign, so a purchase is
+ *   negative and a refund positive. Cost is money out — `cardChargeCostUsd`
+ *   negates, and a refund NETS against the job. Every reader took `Math.abs`
+ *   before, which agreed on purchases and counted a refund as more spend.
  *
  * Pure — the lookups arrive pre-loaded (`loadCardChargeExclusions`), so the
  * rule is unit-testable and every caller sees identical numbers.
@@ -34,6 +38,18 @@ export const EMPTY_CARD_CHARGE_EXCLUSIONS: CardChargeExclusions = {
   invoiceLinkedTxIds: new Set(),
 }
 
+/**
+ * The ONE sign rule for a Mercury job allocation. The row carries the bank's
+ * sign — the allocation rows sum to the signed transaction amount, so a purchase
+ * is negative and a refund positive. Cost is money OUT: a $37.99 purchase is
+ * $37.99 of cost and a $40.00 refund is −$40.00 of cost. Never `Math.abs` this
+ * (that counted a refund as $40.00 more spend). NaN and null read as 0.
+ */
+export function cardChargeCostUsd(amount: number | string | null | undefined): number {
+  const n = Number(amount)
+  return Number.isFinite(n) ? 0 - n : 0
+}
+
 /** Bucket key that removes an allocation from every card-charge number. */
 export const CARD_CHARGE_EXCLUDED_BUCKET = 'internal_transfer' as const
 
@@ -53,7 +69,7 @@ export function cardChargeAllocationIsInvoiceLinked(
 export type CardChargeSummary<T> = {
   /** Rows that count (Internal Transfers removed), in input order. */
   counted: T[]
-  /** job id → gross card charges (abs amounts, invoice-linked included). */
+  /** job id → gross card charges as signed cost (a purchase adds, a refund nets; invoice-linked included). */
   chargesByJobId: Map<string, number>
   /** job id → the slice of `chargesByJobId` that is also invoice-linked. */
   invoiceLinkedByJobId: Map<string, number>
@@ -70,7 +86,7 @@ export function summarizeCardChargeAllocations<T extends CardChargeAllocationLik
   for (const row of rows) {
     if (!cardChargeAllocationCounts(row, exclusions)) continue
     counted.push(row)
-    const usd = Math.abs(Number(row.amount))
+    const usd = cardChargeCostUsd(row.amount)
     chargesByJobId.set(row.job_id, (chargesByJobId.get(row.job_id) ?? 0) + usd)
     if (cardChargeAllocationIsInvoiceLinked(row, exclusions)) {
       invoiceLinkedByJobId.set(row.job_id, (invoiceLinkedByJobId.get(row.job_id) ?? 0) + usd)
@@ -88,7 +104,7 @@ export function sumCardChargeAllocationsForJob(
   let invoiceLinked = 0
   for (const row of rows) {
     if (!cardChargeAllocationCounts(row, exclusions)) continue
-    const usd = Math.abs(Number(row.amount))
+    const usd = cardChargeCostUsd(row.amount)
     charges += usd
     if (cardChargeAllocationIsInvoiceLinked(row, exclusions)) invoiceLinked += usd
   }

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
   fetchJobMaterialsCostSnapshot,
+  mercuryCardTotalFromLines,
   type JobMercuryAllocLine,
   type JobSupplyInvoiceLine,
   type JobTallyPartLine,
@@ -67,7 +68,7 @@ export function useJobCostSnapshot(jobId: string | null) {
   }, [jobId])
 
   const mercuryCardTotal = useMemo(
-    () => mercuryAllocLines.reduce((s, l) => s + Math.abs(Number(l.allocationAmount)), 0),
+    () => mercuryCardTotalFromLines(mercuryAllocLines), // signed cost — a refund nets (v2.3519)
     [mercuryAllocLines],
   )
 

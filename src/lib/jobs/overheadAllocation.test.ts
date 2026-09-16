@@ -306,3 +306,40 @@ describe('settings', () => {
     expect(buildOverheadAllocation(l, REC)).not.toBe(buildOverheadAllocation(l, { ...REC, smoothDays: 29 }))
   })
 })
+
+describe('a refund day (v2.3519)', () => {
+  // Card refunds net (v2.3519), so an office day can pool BELOW zero — the O'Reilly refund on a quiet
+  // Saturday, May 9 2026, is the live case. Before, the engine skipped any non-positive day but still
+  // counted it in the pool total, and the toolbar lit "does not reconcile".
+  const refunded = () => {
+    const l = fixture()
+    const sunday = l.days.find((d) => d.ymd === '2026-09-06')!
+    sunday.poolUsd = -120 // was +120: nobody in the field, the office got $120 back
+    return l
+  }
+  const grid: OverheadAllocationSettings[] = [
+    OVERHEAD_ALLOCATION_LEGACY,
+    REC,
+    { smoothDays: 60, carryShare: 1, idleCapDays: null, openDef: 'status' },
+    { smoothDays: 3, carryShare: 0.2, idleCapDays: 30, openDef: 'status' },
+  ]
+  for (const s of grid) {
+    it(`still ties to the cent with a negative pool: ${overheadAllocationLabel(s)}`, () => {
+      const a = buildOverheadAllocation(refunded(), s)
+      expect(overheadAllocationReconciles(a.totals, 1e-6)).toBe(true)
+      expect(sum([...a.perJob.values()].map((j) => j.overheadUsd))).toBeCloseTo(a.totals.chargedUsd, 6)
+    })
+  }
+  it('the refund lowers the pool by twice the old reading and lowers what jobs are charged', () => {
+    const before = buildOverheadAllocation(fixture(), REC).totals
+    const after = buildOverheadAllocation(refunded(), REC).totals
+    expect(after.poolUsd).toBeCloseTo(before.poolUsd - 240, 6)
+    expect(after.chargedUsd).toBeLessThan(before.chargedUsd)
+  })
+  it('under the original day-share the quiet Sunday books its refund as negative unallocated, nobody to credit', () => {
+    const before = buildOverheadAllocation(fixture(), OVERHEAD_ALLOCATION_LEGACY).totals
+    const after = buildOverheadAllocation(refunded(), OVERHEAD_ALLOCATION_LEGACY).totals
+    expect(after.unallocatedUsd).toBeCloseTo(before.unallocatedUsd - 240, 6)
+    expect(after.chargedUsd).toBeCloseTo(before.chargedUsd, 6)
+  })
+})

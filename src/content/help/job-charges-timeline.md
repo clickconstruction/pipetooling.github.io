@@ -74,7 +74,7 @@ Each red step is tagged with an icon for where the cost came from:
 
 🔧 **Sub labor** — sub sheet ledger jobs matched by HCP #
 
-💳 **Card charge** — Mercury card purchases allocated to the job
+💳 **Card charge** — Mercury card purchases allocated to the job. A refund at the counter (Lowe's, Home Depot, O'Reilly) comes back through the same card and shows as a negative charge marked *refund* — it nets off the job's parts instead of adding to them.
 
 🧾 **Supply house invoice** — the job's share of allocated supply invoices
 

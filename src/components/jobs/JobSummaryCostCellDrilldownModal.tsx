@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, type CSSProperties, type ReactNode } from 'react'
+import { CardChargeCostAmount } from './CardChargeCostAmount'
 import type { Json } from '../../types/database'
 import { useToastContext } from '../../contexts/ToastContext'
 import { elementToLikelyCsv, sanitizeFilenameSegment } from '../../lib/domTableToCsv'
@@ -207,7 +208,6 @@ type MercuryTableProps = {
 export function JobSummaryDrilldownMercuryTable({
   rows,
   formatPosted,
-  formatCurrency,
   nicknameByDebitCard,
   canEditAllocations = false,
   onReassignJob,
@@ -235,7 +235,6 @@ export function JobSummaryDrilldownMercuryTable({
         {rows.map((row) => {
           const tx = row.mercury_transactions
           const posted = tx?.posted_at ? formatPosted(tx.posted_at) : '—'
-          const allocAbs = Math.abs(Number(row.amount ?? 0))
           const debitCardId = mercuryDebitCardIdFromRaw(tx?.raw ?? null)
           const debitCardLabel =
             debitCardId != null ? nicknameByDebitCard[debitCardId] ?? formatMercuryDebitCardIdCompact(debitCardId) : '—'
@@ -245,7 +244,9 @@ export function JobSummaryDrilldownMercuryTable({
               <td style={{ padding: '0.3rem 0.45rem' }}>{tx?.counterparty_name ?? '—'}</td>
               <td style={{ padding: '0.3rem 0.45rem' }}>{row.attributionDisplayName ?? '—'}</td>
               <td style={{ padding: '0.3rem 0.45rem' }}>{debitCardLabel}</td>
-              <td style={{ padding: '0.3rem 0.45rem', textAlign: 'right' }}>${formatCurrency(allocAbs)}</td>
+              <td style={{ padding: '0.3rem 0.45rem', textAlign: 'right' }}>
+                <CardChargeCostAmount amount={row.amount} dollarSign />
+              </td>
               <td style={{ padding: '0.3rem 0.45rem', color: 'var(--text-600)' }}>
                 {[row.note, tx?.note, tx?.external_memo].filter(Boolean).join(' · ') || '—'}
               </td>

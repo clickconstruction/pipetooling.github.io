@@ -126,26 +126,26 @@ describe('computeDayMercuryCost', () => {
     // 2026-05-19T03:00:00Z is 10:00 PM Chicago on 2026-05-18 (CDT).
     // 2026-05-19T06:00:00Z is 01:00 AM Chicago on 2026-05-19.
     const allocations = [
-      { amount: 100, posted_at: '2026-05-18T16:00:00.000Z' },
-      { amount: 75.5, posted_at: '2026-05-19T03:00:00.000Z' },
-      { amount: 9999, posted_at: '2026-05-19T06:00:00.000Z' },
+      { amount: -100, posted_at: '2026-05-18T16:00:00.000Z' },
+      { amount: -75.5, posted_at: '2026-05-19T03:00:00.000Z' },
+      { amount: -9999, posted_at: '2026-05-19T06:00:00.000Z' },
     ]
     expect(computeDayMercuryCost(allocations, '2026-05-18')).toBeCloseTo(175.5, 6)
   })
 
-  it('uses absolute value so negative (refund) and positive (debit) both add to the magnitude', () => {
+  it('a refund (positive at the bank) nets against the day: cost is the negated amount (v2.3519)', () => {
     const allocations = [
-      { amount: 100, posted_at: '2026-05-18T16:00:00.000Z' },
-      { amount: -25, posted_at: '2026-05-18T17:00:00.000Z' },
+      { amount: -100, posted_at: '2026-05-18T16:00:00.000Z' },
+      { amount: 25, posted_at: '2026-05-18T17:00:00.000Z' },
     ]
-    expect(computeDayMercuryCost(allocations, '2026-05-18')).toBeCloseTo(125, 6)
+    expect(computeDayMercuryCost(allocations, '2026-05-18')).toBeCloseTo(75, 6)
   })
 
   it('skips rows missing posted_at or with bad amounts silently', () => {
     const allocations = [
-      { amount: 50, posted_at: '2026-05-18T16:00:00.000Z' },
+      { amount: -50, posted_at: '2026-05-18T16:00:00.000Z' },
       { amount: 'not a number' as unknown as string, posted_at: '2026-05-18T17:00:00.000Z' },
-      { amount: 75, posted_at: null },
+      { amount: -75, posted_at: null },
     ]
     expect(computeDayMercuryCost(allocations, '2026-05-18')).toBeCloseTo(50, 6)
   })
@@ -276,19 +276,19 @@ describe('computeDayMercuryLines', () => {
   it('emits one row per matching allocation, sorted newest-first by posted_at', () => {
     const allocations = [
       {
-        amount: 100,
+        amount: -100,
         posted_at: '2026-05-18T16:00:00.000Z',
         counterparty_name: 'Home Depot',
         note: 'PVC',
       },
       {
-        amount: 50,
+        amount: -50,
         posted_at: '2026-05-18T18:00:00.000Z',
         counterparty_name: 'Ferguson',
         note: null,
       },
       {
-        amount: 9999,
+        amount: -9999,
         posted_at: '2026-05-19T06:00:00.000Z',
         counterparty_name: 'Should be filtered',
         note: null,
@@ -382,7 +382,7 @@ describe('buildDayCostBreakdown', () => {
       userNamesById: new Map([['u1', 'Abraham']]),
       wageByNormalizedName: new Map<string, number | null>([['abraham', 25]]),
       mercuryAllocations: [
-        { amount: 75, posted_at: '2026-05-18T16:00:00.000Z', counterparty_name: 'Home Depot' },
+        { amount: -75, posted_at: '2026-05-18T16:00:00.000Z', counterparty_name: 'Home Depot' },
       ],
       supplyAllocations: [
         {

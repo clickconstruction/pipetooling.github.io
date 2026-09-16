@@ -259,9 +259,12 @@ function computeOverheadAllocation(ledger: JobDayLedger, settings: OverheadAlloc
   /** Window days whose pool found nobody to charge, at the source or after landing. */
   const unallocatedDayIdx = new Set<number>()
   const inWin = (t: number) => t >= iS && t <= iE
+  // A day's pool can be NEGATIVE (v2.3519): the office got more back than it spent — a card refund on a
+  // quiet day. It spreads exactly like a positive pool, as a negative share, so a refund lowers what the
+  // jobs are charged and the identity (pool + carried in = charged + unallocated + in flight) still ties.
   for (let i = 0; i < n; i++) {
     const P = all[i]!.poolUsd
-    if (!(P > 0)) continue
+    if (!Number.isFinite(P) || P === 0) continue
     const srcIn = inWin(i)
     const lo = i
     const hi = i + N - 1
@@ -291,14 +294,14 @@ function computeOverheadAllocation(ledger: JobDayLedger, settings: OverheadAlloc
       a += c
       c = 0
     }
-    if (H <= 0 && a > 0) {
+    if (H <= 0 && a !== 0) {
       if (srcIn) {
         unallocatedAtSource += a
         unallocatedDayIdx.add(i)
       }
       a = 0
     }
-    if (O <= 0 && c > 0) {
+    if (O <= 0 && c !== 0) {
       if (srcIn) {
         unallocatedAtSource += c
         unallocatedDayIdx.add(i)
@@ -307,17 +310,17 @@ function computeOverheadAllocation(ledger: JobDayLedger, settings: OverheadAlloc
     }
     for (let t = lo; t <= Math.min(n - 1, hi); t++) {
       let share = 0
-      if (a > 0 && hoursByIdx[t]! > 0) {
+      if (a !== 0 && hoursByIdx[t]! > 0) {
         const s = (a * hoursByIdx[t]!) / H
         landedAct[t]! += s
         share += s
       }
-      if (c > 0 && openCount[t]! > 0) {
+      if (c !== 0 && openCount[t]! > 0) {
         const s = (c * openCount[t]!) / O
         landedCarry[t]! += s
         share += s
       }
-      if (share > 0 && !srcIn && inWin(t)) carriedInUsd += share
+      if (share !== 0 && !srcIn && inWin(t)) carriedInUsd += share
     }
   }
 
@@ -360,13 +363,13 @@ function computeOverheadAllocation(ledger: JobDayLedger, settings: OverheadAlloc
     const byJob = new Map<string, { hours: number; activityUsd: number; carryUsd: number }>()
     let chargedCarry = 0
     let chargedAct = 0
-    if (open.length > 0 && carryEach > 0) {
+    if (open.length > 0 && carryEach !== 0) {
       for (const id of open) {
         byJob.set(id, { hours: 0, activityUsd: 0, carryUsd: carryEach })
         chargedCarry += carryEach
       }
     }
-    if (fieldHours > 0 && actPerHour > 0) {
+    if (fieldHours > 0 && actPerHour !== 0) {
       for (const [id, h] of worked) {
         const e = byJob.get(id) ?? { hours: 0, activityUsd: 0, carryUsd: 0 }
         e.hours = h
@@ -384,8 +387,9 @@ function computeOverheadAllocation(ledger: JobDayLedger, settings: OverheadAlloc
     }
     const landed = act + carry
     const charged = chargedAct + chargedCarry
-    const unallocated = Math.max(0, landed - charged)
-    if (unallocated > 1e-6) {
+    // Signed (v2.3519): a refund that found nobody to charge is negative unallocated, not zero.
+    const unallocated = landed - charged
+    if (Math.abs(unallocated) > 1e-6) {
       totals.unallocatedUsd += unallocated
       unallocatedDayIdx.add(i)
     }
@@ -403,7 +407,7 @@ function computeOverheadAllocation(ledger: JobDayLedger, settings: OverheadAlloc
         r.hoursInWindow += e.hours
         r.daysInWindow += 1
       }
-      if (e.carryUsd > 0) r.openDays += 1
+      if (e.carryUsd !== 0) r.openDays += 1
     }
     const row: OverheadAllocationDay = { ymd: d.ymd, rawPoolUsd: d.poolUsd, landedUsd: landed, activityUsd: act, carryUsd: carry, unallocatedUsd: unallocated, fieldHours, workedJobs: worked.length, openJobs: open.length, activityPerHourUsd: actPerHour, carryPerOpenJobUsd: carryEach, byJob }
     days.push(row)

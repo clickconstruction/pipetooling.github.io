@@ -116,8 +116,8 @@ describe('loadOfficePartsUsdByDayExcludingInternalTransfer', () => {
   it('excludes Internal Transfer Mercury lines from the per-day sums but keeps them in the detail', async () => {
     handlers.set('mercury_transaction_job_allocations', () => ({
       data: [
-        mercuryAllocRow({ id: 'm1', amount: 100, postedAt: '2026-06-03T18:00:00Z', counterparty: 'Transfer', txId: 'tx-it' }),
-        mercuryAllocRow({ id: 'm2', amount: 40, postedAt: '2026-06-03T18:00:00Z', counterparty: 'Lowes', txId: 'tx-cogs' }),
+        mercuryAllocRow({ id: 'm1', amount: -100, postedAt: '2026-06-03T18:00:00Z', counterparty: 'Transfer', txId: 'tx-it' }),
+        mercuryAllocRow({ id: 'm2', amount: -40, postedAt: '2026-06-03T18:00:00Z', counterparty: 'Lowes', txId: 'tx-cogs' }),
       ],
       error: null,
     }))
@@ -170,7 +170,7 @@ describe('loadOfficePartsUsdByDayExcludingInternalTransfer', () => {
   it('degrades to "everything counted" (empty bucket map) when the bucket fetch fails', async () => {
     handlers.set('mercury_transaction_job_allocations', () => ({
       data: [
-        mercuryAllocRow({ id: 'm1', amount: 100, postedAt: '2026-06-03T18:00:00Z', counterparty: 'Transfer', txId: 'tx-it' }),
+        mercuryAllocRow({ id: 'm1', amount: -100, postedAt: '2026-06-03T18:00:00Z', counterparty: 'Transfer', txId: 'tx-it' }),
       ],
       error: null,
     }))

@@ -50,7 +50,7 @@ describe('bidAssignedCostsByBidId', () => {
   it('groups parts, card charges and supply splits into one parts-style total', () => {
     const m = bidAssignedCostsByBidId({
       parts: [{ bid_id: A, quantity: 2, fixture_cost: 10 }],
-      mercury: [{ bid_id: A, amount: 35 }],
+      mercury: [{ bid_id: A, amount: -35 }],
       supply: [{ bid_id: A, pct: 50, invoice_amount: 100 }],
     })
     expect(m.get(A)?.partsStyle).toBe(105)
@@ -89,14 +89,15 @@ describe('bidAssignedCostsByBidId', () => {
     expect(m.size).toBe(0)
   })
 
-  it('reads card charges by absolute amount — the bank signs a debit negative, like the job side', () => {
+  it('reads card charges as signed cost — the bank signs a debit negative, and a refund nets (v2.3519)', () => {
     const m = bidAssignedCostsByBidId({
       mercury: [
         { bid_id: A, amount: -37.99 },
         { bid_id: A, amount: -26.48 },
+        { bid_id: A, amount: 10 }, // returned at the counter
       ],
     })
-    expect(m.get(A)?.partsStyle).toBeCloseTo(64.47, 2)
+    expect(m.get(A)?.partsStyle).toBeCloseTo(54.47, 2)
   })
 })
 

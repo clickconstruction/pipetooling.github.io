@@ -106,9 +106,9 @@ describe('fetchJobMaterialsCostSnapshot', () => {
     expect(snap).toMatchObject({ supplyInvoiceRpcFailed: false, mercuryFetchFailed: false, tallyFetchFailed: false })
   })
 
-  it('the totals helpers sum absolute card allocations and tally line totals', async () => {
+  it('the totals helpers sum card allocations as signed cost — the two positive rows are refunds and net — and tally line totals', async () => {
     const snap = await fetchJobMaterialsCostSnapshot('j1')
-    expect(mercuryCardTotalFromLines(snap.mercuryAllocLines)).toBe(60.25)
+    expect(mercuryCardTotalFromLines(snap.mercuryAllocLines)).toBe(30.25) // 45.25 spent − 10 − 5 refunded
     expect(tallyPartsTotalFromLines(snap.tallyPartLines)).toBe(134)
     expect(mercuryCardTotalFromLines([])).toBe(0)
   })

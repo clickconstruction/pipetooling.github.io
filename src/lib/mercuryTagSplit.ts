@@ -4,6 +4,7 @@
 // Only tags flagged `show_as_cost_line` become lines on Review / Job Summary.
 // Pure; every surface that draws cost lines calls this one function.
 
+import { cardChargeCostUsd } from './jobs/cardChargeAllocationFilter'
 import { categoryTagForCharge, type CategoryTagLookups, type CategoryTagRow } from './banking/categoryTags'
 
 export type TagSplitAllocationRow = {
@@ -18,7 +19,7 @@ export function costLineTags(lookups: CategoryTagLookups): CategoryTagRow[] {
 }
 
 /**
- * job id → (tag id → Σ|amount|) over the allocation rows, for cost-line tags
+ * job id → (tag id → Σ signed cost, refunds netting) over the allocation rows, for cost-line tags
  * only. Always a slice of the plain card-charge sum for the same rows.
  */
 export function sumTagChargesByJob(
@@ -39,10 +40,10 @@ export function sumTagChargesByJob(
       })(),
     )
     if (!tag || !tag.show_as_cost_line) continue
-    const abs = Math.abs(Number(r.amount)) || 0
-    if (abs <= 0) continue
+    const cost = cardChargeCostUsd(r.amount)
+    if (cost === 0) continue
     const perTag = out.get(r.job_id) ?? new Map<string, number>()
-    perTag.set(tag.id, (perTag.get(tag.id) ?? 0) + abs)
+    perTag.set(tag.id, (perTag.get(tag.id) ?? 0) + cost)
     out.set(r.job_id, perTag)
   }
   return out

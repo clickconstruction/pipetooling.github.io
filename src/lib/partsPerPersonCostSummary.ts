@@ -1,3 +1,4 @@
+import { cardChargeCostUsd } from './jobs/cardChargeAllocationFilter'
 import type { MercuryJobAllocationWithAttributionRow } from './fetchMercuryJobAllocationsWithAttributionForJob'
 
 const JOB_LEVEL_LABEL = 'Job (no per-person split)'
@@ -73,7 +74,7 @@ export function buildPartsPerPersonCostRows(args: {
     const cell = get(key)
     cell.displayName = name
     cell.kind = 'card'
-    cell.c += Math.abs(Number(m.amount ?? 0))
+    cell.c += cardChargeCostUsd(m.amount)
   }
 
   if (billedMaterialsSum > 0 || invoiceJobTotal > 0) {
@@ -128,7 +129,7 @@ export function buildPartsPerPersonCostRows(args: {
   const sumC = (r: (typeof out)[0]) => r.cardCharges
 
   const partsTotal = parts.reduce((s, p) => s + tallyLineTotal(p), 0)
-  const mCard = mercuryRows.reduce((s, m) => s + Math.abs(Number(m.amount ?? 0)), 0)
+  const mCard = mercuryRows.reduce((s, m) => s + cardChargeCostUsd(m.amount), 0)
 
   const footer: PartsPerPersonCostRow = {
     key: 'footer',

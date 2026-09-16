@@ -1,3 +1,4 @@
+import { cardChargeCostUsd } from './jobs/cardChargeAllocationFilter'
 import { supabase } from './supabase'
 import type { Database, Json } from '../types/database'
 import { calendarYmdInAppTzFromIso, ymdAddDays } from '../utils/dateUtils'
@@ -150,8 +151,8 @@ export async function fetchOverheadOfficePartsByDay(args: {
       if (!posted) continue
       const ymd = calendarYmdInAppTzFromIso(posted)
       if (!ymd) continue
-      const amt = Math.abs(Number(row.amount))
-      if (!Number.isFinite(amt) || amt <= 0) continue
+      const amt = cardChargeCostUsd(row.amount)
+      if (amt === 0) continue
       const cp = tx?.counterparty_name?.trim() || row.note?.trim() || 'Mercury'
       const debitCardId = mercuryDebitCardIdFromRaw(tx?.raw ?? null)
       addLine(ymd, {
@@ -284,8 +285,8 @@ export async function fetchOtherJobsPartsByDay(args: {
       if (!posted) continue
       const ymd = calendarYmdInAppTzFromIso(posted)
       if (!ymd) continue
-      const amt = Math.abs(Number(row.amount))
-      if (!Number.isFinite(amt) || amt <= 0) continue
+      const amt = cardChargeCostUsd(row.amount)
+      if (amt === 0) continue
       const cp = tx?.counterparty_name?.trim() || row.note?.trim() || 'Mercury'
       const debitCardId = mercuryDebitCardIdFromRaw(tx?.raw ?? null)
       addLine(ymd, {

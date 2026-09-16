@@ -1,3 +1,4 @@
+import { cardChargeCostUsd } from '../jobs/cardChargeAllocationFilter'
 import { supabase } from '../supabase'
 import { withSupabaseRetry } from '../../utils/errorHandling'
 import { calendarYmdInAppTzFromIso, denverCalendarDayKey, ymdAddDays } from '../../utils/dateUtils'
@@ -224,7 +225,7 @@ export async function loadBridgeData(): Promise<BridgeData> {
   for (const a of txAllocRows) {
     if (!a.job_id || a.job_id === officeJobLedgerId) continue
     const d = txDay.get(a.mercury_transaction_id)
-    if (d && d >= windowStart && d <= todayYmd) addTo(materialsByDay, d, Math.abs(Number(a.amount ?? 0)))
+    if (d && d >= windowStart && d <= todayYmd) addTo(materialsByDay, d, cardChargeCostUsd(a.amount))
   }
   // Materials: supply-house invoices allocated to non-office jobs, by invoice date.
   type SupplyInvRow = { id: string; amount: number | null; invoice_date: string; paid_at: string | null }

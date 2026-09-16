@@ -1,5 +1,6 @@
 /** Jobs → Job Summary tab: per-job cost rollup ledger with team-labor / parts / Mercury drilldowns.
  * Presentational — all data/state/loaders/modals live in the parent (Jobs.tsx) and arrive as props. */
+import { cardChargeCostUsd } from '../../lib/jobs/cardChargeAllocationFilter'
 import { jobSummaryRowDomId } from '../../lib/jobs/moneyStoryDoor'
 import { burnProjectedMarginForSort } from '../../lib/jobs/jobSummaryBurn'
 import type { CategoryTagColor } from '../../lib/banking/categoryTags'
@@ -2895,7 +2896,8 @@ export default function JobsJobSummaryTab({
                                                     const posted = tx?.posted_at
                                                       ? formatJobSummaryMercuryPostedAt(tx.posted_at)
                                                       : '—'
-                                                    const allocAbs = Math.abs(Number(row.amount ?? 0))
+                                                    // Signed cost (v2.3519): a refund reads −$ and nets in the total above it.
+                                                    const allocCost = cardChargeCostUsd(row.amount)
                                                     const debitCardId = mercuryDebitCardIdFromRaw(tx?.raw ?? null)
                                                     const debitCardLabel =
                                                       debitCardId != null
@@ -2911,7 +2913,10 @@ export default function JobsJobSummaryTab({
                                                         </td>
                                                         <td style={{ padding: '0.25rem 0.4rem' }}>{debitCardLabel}</td>
                                                         <td style={{ padding: '0.25rem 0.4rem', textAlign: 'right' }}>
-                                                          <AmountSmallCents value={allocAbs} />
+                                                          <AmountSmallCents value={Math.abs(allocCost)} prefix={allocCost < 0 ? '−$' : '$'} />
+                                                          {allocCost < 0 ? (
+                                                            <span style={{ marginLeft: '0.3rem', fontSize: '0.72em', color: 'var(--text-muted)' }}>refund</span>
+                                                          ) : null}
                                                         </td>
                                                         <td style={{ padding: '0.25rem 0.4rem', color: 'var(--text-600)' }}>
                                                           {[row.note, tx?.note, tx?.external_memo].filter(Boolean).join(' · ') || '—'}

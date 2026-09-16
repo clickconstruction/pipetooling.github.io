@@ -30,24 +30,25 @@ describe('partsPerPersonCostSummary', () => {
       billedMaterialsSum: 20,
       invoiceJobTotal: 30,
       mercuryRows: [
-        { amount: 5, attributionDisplayName: 'Bob' },
-        { amount: -3, attributionDisplayName: null },
+        { amount: -5, attributionDisplayName: 'Bob' }, // a purchase: the bank signs it negative
+        { amount: 3, attributionDisplayName: null }, // a refund nobody is matched to
       ],
-      parentCardTotal: 8,
+      parentCardTotal: 2,
     })
     const alice = rows.find((r) => r.key === 't:u1')
     expect(alice?.partsFromTally).toBe(10)
     const bob = rows.find((r) => r.displayName === 'Bob')
     expect(bob?.cardCharges).toBe(5)
     const u = rows.find((r) => r.displayName === 'Unattributed')
-    expect(u?.cardCharges).toBe(3)
+    expect(u?.cardCharges).toBe(-3) // the refund nets (v2.3519)
     expect(rows.some((r) => r.key === 'g:job')).toBe(false)
     expect(footer.otherJobCharges).toBe(20)
     expect(footer.invoicesFromSupply).toBe(30)
     expect(sumsOk).toBe(true)
     expect(footer.partsFromTally + footer.invoicesFromSupply + footer.cardCharges + footer.otherJobCharges).toBe(
-      10 + 30 + 8 + 20,
+      10 + 30 + 2 + 20,
     )
+
   })
 
   it('hides g:job when it is the only body row (duplicates Total)', () => {
