@@ -25,10 +25,17 @@ export function useSubmittalsNudge(enabled: boolean): { nudge: SubmittalNudge | 
     }
     try {
       const since = new Date(Date.now() - 120 * 86_400_000).toISOString()
+      // submittals_not_needed_at arrives with the 4c migration; the client deploys first, so a
+      // read that names it falls back to the columns every checkout has.
+      const BID_COLS = 'id, bid_number, project_name, outcome, outcome_at, updated_at'
+      const selectBids = async (build: (cols: string) => PromiseLike<{ data: unknown; error: unknown }>) => {
+        const first = await build(`${BID_COLS}, submittals_not_needed_at`)
+        return first.error ? build(BID_COLS) : first
+      }
       const [{ data: wonRows }, { data: revRows }, { data: roomRows }] = await Promise.all([
         // outcome_at is trigger-stamped since v2.3354; a bid marked won before that carries null,
         // so the window falls back to updated_at for those. started_or_complete is won with a job.
-        db.from('bids').select('id, bid_number, project_name, outcome, outcome_at, updated_at, submittals_not_needed_at').in('outcome', ['won', 'started_or_complete']).or(`outcome_at.gte.${since},and(outcome_at.is.null,updated_at.gte.${since})`).order('updated_at', { ascending: false }).limit(200),
+        selectBids((cols) => db.from('bids').select(cols).in('outcome', ['won', 'started_or_complete']).or(`outcome_at.gte.${since},and(outcome_at.is.null,updated_at.gte.${since})`).order('updated_at', { ascending: false }).limit(200)),
         db.from('bid_submittals').select('id, bid_id, rev_number, shared_at, status').order('rev_number', { ascending: false }).limit(1000),
         db.from('bid_submittal_rooms').select('id, bid_id, shared_at, status'),
       ])
@@ -39,7 +46,7 @@ export function useSubmittalsNudge(enabled: boolean): { nudge: SubmittalNudge | 
       // Every bid in play: the won ones, plus any with a room or a revision (labels come from a second read).
       const bidIds = new Set<string>([...((wonRows ?? []) as Array<{ id: string }>).map((b) => b.id), ...revisions.map((r) => r.bidId), ...rooms.map((r) => r.bidId)])
       const [{ data: bidRows }, { data: jobRows }, { data: viewRows }, { data: peopleRows }] = await Promise.all([
-        bidIds.size ? db.from('bids').select('id, bid_number, project_name, outcome, outcome_at, updated_at, submittals_not_needed_at').in('id', [...bidIds]) : Promise.resolve({ data: [] }),
+        bidIds.size ? selectBids((cols) => db.from('bids').select(cols).in('id', [...bidIds])) : Promise.resolve({ data: [] }),
         bidIds.size ? db.from('jobs_ledger').select('id, bid_id').in('bid_id', [...bidIds]) : Promise.resolve({ data: [] }),
         roomList.length ? db.from('bid_submittal_events').select('room_id, occurred_at').eq('event_type', 'view').in('room_id', roomList.map((r) => r.id)).order('occurred_at', { ascending: false }).limit(2000) : Promise.resolve({ data: [] }),
         roomList.length ? db.from('bid_submittal_people').select('room_id, name, open_count, may_decide, closed_at').in('room_id', roomList.map((r) => r.id)) : Promise.resolve({ data: [] }),
