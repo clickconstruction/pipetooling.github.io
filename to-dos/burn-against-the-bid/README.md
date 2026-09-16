@@ -1,6 +1,25 @@
+---
+name: "Burn against the bid: leftovers"
+group: gated
+status: >
+  built (PRs 1–5, v2.3297–v2.3306) · left: the owner links the 10 ambiguous job ↔ bid pairs
+  (Settings → Data); two deferred pieces (priced margin on the bid, earned value by stage)
+summary: >
+  A job budget with provenance (bid snapshot · typed · assumed) so Burn reads against the actual
+  bid; linking as the feature (the 15 exact matches were linked 2026-09-11; 10 ambiguous pairs
+  wait for a hand pick); per-component burn, hours first; Bid Board chips; mock-ups kept in the
+  folder.
+next: Link the 10 pairs (UI, no code). Then decide on the two deferred pieces.
+size: S + M
+blocker: Your action + decision.
+ver: v2.3297–3306 shipped
+---
+
 # Burn against the bid — a job budget with provenance
 
-Status: **in progress** · PR 1 shipped as v2.3297 (`claude/burn-pr1-job-budgets`: `job_budgets`, the five RPCs, `jobBudget.ts`) · PR 2 shipped as v2.3299 (`claude/burn-pr2-budget-card`: the Costs-tab Budget card, link banner, typed form; Burn reads the footing) · PR 3 shipped as v2.3300 (`claude/burn-pr3-summary-footing`: the glyph on Job Summary's Burn, the Budget chip + assumed count, the Pipeline card's footing) · PR 4 shipped as v2.3302 (`claude/burn-pr4-bid-side`: Bid Board won-row chips with Link / Cost it, the New-Job carry box) · PR 5 shipped as v2.3306 (`claude/burn-pr5-backfill`: the dev backfill list) — **the train is built; what remains is the owner pressing Link, plus the deferred pair below** · designed 2026-09-11 (mock-up reviewed with the owner: "I think this is pretty good") · **held behind the Bids → Labor refresh** ([`to-dos/bids-labor-refresh/`](../bids-labor-refresh/README.md); its PR 1 shipped as v2.3276 — resume this after its PR 2 lands the estimate's `source` / completeness columns) — the owner wants the two built together, because a budget is only as honest as the estimate that feeds it, and today's Labor tab is where that estimate is (not) made.
+## Where it stands
+
+**in progress** · PR 1 shipped as v2.3297 (`claude/burn-pr1-job-budgets`: `job_budgets`, the five RPCs, `jobBudget.ts`) · PR 2 shipped as v2.3299 (`claude/burn-pr2-budget-card`: the Costs-tab Budget card, link banner, typed form; Burn reads the footing) · PR 3 shipped as v2.3300 (`claude/burn-pr3-summary-footing`: the glyph on Job Summary's Burn, the Budget chip + assumed count, the Pipeline card's footing) · PR 4 shipped as v2.3302 (`claude/burn-pr4-bid-side`: Bid Board won-row chips with Link / Cost it, the New-Job carry box) · PR 5 shipped as v2.3306 (`claude/burn-pr5-backfill`: the dev backfill list) — **the train is built; what remains is the owner pressing Link, plus the deferred pair below** · designed 2026-09-11 (mock-up reviewed with the owner: "I think this is pretty good") · **held behind the Bids → Labor refresh** ([`to-dos/bids-labor-refresh/`](../bids-labor-refresh/README.md); its PR 1 shipped as v2.3276 — resume this after its PR 2 lands the estimate's `source` / completeness columns) — the owner wants the two built together, because a budget is only as honest as the estimate that feeds it, and today's Labor tab is where that estimate is (not) made.
 
 Mock-ups, kept here: [`mockup.html`](./mockup.html) (the design study, v2 after the "is this the best we can do?" pass; published as the artifact *Burn Against the Bid*) and [`mockup-burn-budget-stages-2026-09-09.html`](./mockup-burn-budget-stages-2026-09-09.html) (the earlier *Burn, Budget and Stages* study that produced v2.3189 / v2.3191 / v2.3192 — its "budget = bid estimate else price × (1 − target)" rule is the one this to-do finishes).
 

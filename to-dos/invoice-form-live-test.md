@@ -1,6 +1,18 @@
-# Live-test the rebuilt supply house invoice form (v2.3476)
+---
+name: Live-test the rebuilt invoice form
+group: close
+status: close out · v2.3476 is live (deployed 2026-09-15) · the signed-in pass on prod is owed
+summary: >
+  **Live-test the rebuilt supply house invoice form**: the eight-step script (PO hint, in-line job
+  search, cards and the % split, Paid on, Open ↗, the Edit path on 3594445, phone width) — cancel
+  everything, record nothing on a real house; delete the file when clean.
+next: Sign in, run the script, note the date on the v2.3476 fragment, delete the file.
+size: S
+blocker: None — needs a signed-in prod session.
+ver: v2.3476 live
+---
 
-Status: not started · deployed 2026-09-15 (PR #3222, Pages run for `74af854` succeeded; the live chunk `SupplyHousesTab-*.js` carries the new form) · the signed-in pass on clicktooling.com is still owed — the proposing session could only test the local preview (the Chrome tab it was handed sat on `/sign-in`)
+# Live-test the rebuilt supply house invoice form (v2.3476)
 
 ## The ask, in the owner's words
 

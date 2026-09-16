@@ -1,6 +1,17 @@
-# Partnerships: the deal terms that exist only as off toggles
+---
+name: "Partnerships: the off toggles"
+group: gated
+status: owner + attorney gated
+summary: >
+  Notice delivery, estimating cap, W2 watch (modeled); runway floor (not modeled); the notes
+  preview.
+next: You + the attorney first; then one scoped PR per toggle.
+size: M each
+blocker: You + attorney.
+ver: plan decision 6
+---
 
-Status: owner + attorney gated · plan: [`docs/PARTNERSHIPS_PLAN.md`](../docs/PARTNERSHIPS_PLAN.md) → Out of scope / Decision 6
+# Partnerships: the deal terms that exist only as off toggles
 
 ## Where it stands (validated 2026-09-06)
 

@@ -1,6 +1,17 @@
-# Subs: portal, work-order and notification residuals
+---
+name: Subs residuals
+group: residual
+status: not started
+summary: >
+  Derived sheet stage (now unblocked), Spanish signature form, compliance chips, offer templates,
+  benched subs in the sheet form, roster hygiene.
+next: The bench flag (S); the Spanish pass with the next portal change.
+size: S each
+blocker: None.
+ver: board polish done v2.3395
+---
 
-Status: not started · sources: fragments v2.2667, v2.2844, v2.2860; [`docs/RUN_SUBS_PLAN.md`](../docs/RUN_SUBS_PLAN.md) status log deviations. The one-row spine (v2.2865–v2.2876) and the three-party scheduling train (v2.2927–v2.2934) have shipped; these are what they left.
+# Subs: portal, work-order and notification residuals
 
 ## Closed since the 2026-09-05 sweep
 

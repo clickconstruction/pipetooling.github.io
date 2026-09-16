@@ -20,6 +20,7 @@
     "check:edge-drift": "node scripts/check-edge-function-drift.mjs",
     "check:workflow-parity": "node scripts/check-workflow-parity.mjs",
     "check:migration-drift": "node scripts/check-migration-drift.mjs",
+    "check:todo-drift": "vite-node scripts/check-todo-drift.ts",
     "claim": "vite-node scripts/claim-version.ts",
     "forms:inspect": "vite-node scripts/forms/inspect.ts",
     "forms:draft": "vite-node scripts/forms/draft.ts",

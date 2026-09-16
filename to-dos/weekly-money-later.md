@@ -1,6 +1,15 @@
-# Weekly Money report: Phase 6 (later)
+---
+name: Weekly Money phase 6
+group: gated
+status: optional
+summary: "Phase 6: drilldowns, GC lens, month roll-up, timeline feed, wider access."
+next: Any of these wanted?
+size: M
+blocker: Optional, your call.
+ver: plan phase 6
+---
 
-Status: not started, owner-optional · plan: [`docs/WEEKLY_MONEY_PLAN.md`](../docs/WEEKLY_MONEY_PLAN.md) → Phase 6
+# Weekly Money report: Phase 6 (later)
 
 ## What was left for later (validated 2026-09-05: none of it is in `JobsWeeklyMoneyModal.tsx`)
 

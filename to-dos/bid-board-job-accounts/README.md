@@ -1,6 +1,20 @@
-# Job accounts on the Bid Board — the row, the strip, the lens, one email per house
+---
+name: Job accounts on the Bid Board
+group: ready
+status: not started · approved 2026-09-14 · two client-only PRs (the RPCs exist)
+summary: >
+  **Job accounts on the Bid Board**: chips on the won row, steps 11–12 *Job opened* / *Job
+  accounts* on "Where this bid is", a Job accounts lens sorted by first parts run and grouped by
+  house, and one email per house covering several properties. Mock-up in the folder.
+next: >
+  PR 1 the batch hook, the row chips, the BidsJobAccountsLens and the multi-property email
+  composer; PR 2 the bid-flow steps 11–12 in a new Won phase.
+size: M (2 client-only PRs)
+blocker: None. Decisions were taken 2026-09-14.
+ver: approved 09-14
+---
 
-Status: not started · owner approved 2026-09-14 ("I like all of this") · two client-only PRs, the RPCs exist · after the estimator lane (v2.3451, v2.3454)
+# Job accounts on the Bid Board — the row, the strip, the lens, one email per house
 
 ## The ask, in the owner's words
 

@@ -1,6 +1,19 @@
-# Bill tab Invoices list (v2.3478) — test it live
+---
+name: "Bill tab Invoices list: test it live"
+group: close
+status: "not started · **unblocked**: the Pages deploy landed 2026-09-16 · quick"
+summary: >
+  **Test the v2.3478 Invoices list on clicktooling.com**: J258's three rows and sum line, a
+  promised job, a draft, the 375 px sheet, dark theme — verified on the local preview only.
+next: >
+  J258's three rows + sum line = tiles, a promised job, a draft, the 375 px sheet, dark theme.
+  Anything off is a fresh-branch fix. Then delete the file.
+size: S (an hour, read-only)
+blocker: None — needs a signed-in prod session.
+ver: v2.3478 live
+---
 
-Status: not started · waiting on the Pages deploy of main ≥ `6857dfe20` (the 19:12 and 19:14 UTC runs on 2026-09-15 were cancelled by later merges) · quick · source: PR #3227
+# Bill tab Invoices list (v2.3478) — test it live
 
 ## The ask, in the owner's words
 

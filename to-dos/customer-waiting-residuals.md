@@ -1,6 +1,19 @@
-# Customer Waiting — residuals
+---
+name: "Customer Waiting: the tel: sweep and the mute"
+group: ready
+status: >
+  the eligibility hook shipped v2.3434 · left: the `tel:` sweep, the caller mute, three wording
+  decisions
+summary: >
+  Callback-promise wording, sub-portal priority, auto-lower overnight (owner decisions);
+  per-caller mute, one eligibility hook, the shared `tel:` sweep.
+next: "The tel: sweep as one script-driven PR cut from fresh main."
+size: M + S
+blocker: None for the sweep; three decisions are yours.
+ver: hook shipped v2.3434
+---
 
-Status: not started · shipped as v2.3246–v2.3249 on 2026-09-10 (design + review: https://claude.ai/code/artifact/a4b6cba5-7d7d-42aa-93c2-26c54a391877)
+# Customer Waiting — residuals
 
 ## The ask, in the owner's words
 

@@ -1,6 +1,18 @@
-# Stage Plan residuals — what the six-PR train left for later
+---
+name: "Stage Plan: items 3–5"
+group: ready
+status: items 1–2 shipped v2.3431 / v2.3438 · items 3–4 owner calls · item 5 open
+summary: >
+  What the Stage Plan train (v2.3083–v2.3134) left: capable-to-bill reading `billable()`, retiring
+  `offered_to_gc` / bundles, plain rows on the final draw, the Any-done rule, the drawer's mint
+  door.
+next: Item 5, the Mint-the-link door (S), needs no decision. Items 3–4 are yours.
+size: S each
+blocker: Items 3–4 are owner calls.
+ver: 2 of 5 shipped 09-15
+---
 
-Status: not started, low priority · source: the Stage Plan train (v2.3083 data + kernel, v2.3100 Bill tab, v2.3127 generator, v2.3128 Edit read-out + drawer, v2.3132 GC card, v2.3134 guides), `docs/recent-features/v2.31*.md` · the design that shipped is recorded in those fragments; the mock-ups lived in `to-dos/stage-plan/` (deleted with v2.3134 — `git show 9d5284b6:to-dos/stage-plan/` brings them back).
+# Stage Plan residuals — what the six-PR train left for later
 
 ## Deferred, in order of value
 

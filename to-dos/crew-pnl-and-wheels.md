@@ -1,6 +1,17 @@
-# Crew P&L: vehicle rates, the $50 sub-equivalent, and the backlog that is still true
+---
+name: "Crew P&L: wheels and the $50 default"
+group: gated
+status: not started, optional
+summary: >
+  Vehicle rates on Crew P&L and Bids; the $50 sub-equivalent default; the backlog lines still
+  true.
+next: Wheels PR 3 yes / no.
+size: S + S
+blocker: Optional, your call.
+ver: from v2.2735
+---
 
-Status: not started, owner-optional · sources: [`docs/CREW_PNL_DATA_FLOW.md`](../docs/CREW_PNL_DATA_FLOW.md) §5, fragment v2.2735 "Not in this PR"
+# Crew P&L: vehicle rates, the $50 sub-equivalent, and the backlog that is still true
 
 ## The ask
 

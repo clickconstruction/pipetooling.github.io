@@ -1,6 +1,27 @@
+---
+name: Share this bill (GC portal)
+group: close
+status: >
+  built 2026-09-13 (PRs 1–4, v2.3375–v2.3378) · migrations pushed and both functions deployed
+  (drift checks clean 2026-09-14) · remaining: the owner runs
+  `scripts/sweeps/share-this-bill-done-right-repairs-2026-09-13.sql` · then shipped, delete me
+summary: >
+  Share this bill, case by case: "Show it on <other party>'s statement" in Bill Customer, the eye
+  chip on the Bill tab, the job memory on the Edit tab, the GC card default; the portal shows a
+  stamped bill in its own card (GC: *Your customers' open bills*; owner: *On your job, billed to
+  your builder*), no Pay, not in the balance; the v2.3346 symmetric strip retired. Both mock-ups
+  in the folder.
+next: Tick it on Edit customer (or say the word and I will), then delete the folder.
+size: XS
+blocker: One click.
+ver: v2.3375–78
+---
+
 # GC portal: their customers' open bills — and the owner never sees the builder's
 
-Status: **built 2026-09-13** — PR 1 v2.3375 (#3104, merged), PR 2 v2.3376 (#3105), PR 3 v2.3377, PR 4 v2.3378 (Ask the office) · both migrations (20260913160748, 20260913163500) pushed and `customer-portal` + `submit-portal-request` deployed (migration + edge drift checks clean 2026-09-14) · remaining: the owner runs `scripts/sweeps/share-this-bill-done-right-repairs-2026-09-13.sql` · then **shipped, delete me** · planned 2026-09-13, revised the same day to **case by case** (see the Revision section — it supersedes the rule-based train below) · mock-ups: [`mockup-2-case-by-case.html`](./mockup-2-case-by-case.html) (current: the Bill Customer tick, the doors, the defaults, both portals) and [`mockup.html`](./mockup.html) (revision 1, the automatic rule, kept for the reading and the data facts)
+## Where it stands
+
+**built 2026-09-13** — PR 1 v2.3375 (#3104, merged), PR 2 v2.3376 (#3105), PR 3 v2.3377, PR 4 v2.3378 (Ask the office) · both migrations (20260913160748, 20260913163500) pushed and `customer-portal` + `submit-portal-request` deployed (migration + edge drift checks clean 2026-09-14) · remaining: the owner runs `scripts/sweeps/share-this-bill-done-right-repairs-2026-09-13.sql` · then **shipped, delete me** · planned 2026-09-13, revised the same day to **case by case** (see the Revision section — it supersedes the rule-based train below) · mock-ups: [`mockup-2-case-by-case.html`](./mockup-2-case-by-case.html) (current: the Bill Customer tick, the doors, the defaults, both portals) and [`mockup.html`](./mockup.html) (revision 1, the automatic rule, kept for the reading and the data facts)
 
 ## The ask, in the owner's words
 

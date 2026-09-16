@@ -1,6 +1,18 @@
-# Supply houses: job-account invoices in the aging heat map, and the old small follow-ups
+---
+name: "Supply houses: aging heat map + the Job accounts leftovers"
+group: gated
+status: waiting on Taunya · items 4–6 added 2026-09-14
+summary: >
+  Job-account invoices in the aging heat map; the May follow-ups; after the Job accounts train
+  (v2.3423–v2.3440): Curly's missing phone, the *Job Accounts* tab rename question, a mark-all
+  back-fill.
+next: "Taunya: exclude or shade job-account invoices? The May follow-ups need no decision."
+size: S
+blocker: Taunya's read.
+ver: items 4–6 added 09-14
+---
 
-Status: waiting on Taunya's read · source: fragment v2.2669 "Open questions" · items 4–5 added 2026-09-14 by the Job accounts train (v2.3423–v2.3440)
+# Supply houses: job-account invoices in the aging heat map, and the old small follow-ups
 
 ## The items (validated 2026-09-05)
 

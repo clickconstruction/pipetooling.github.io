@@ -1,6 +1,26 @@
-# Money that arrives with no bill to match (tips, overpayments, remainders)
+---
+name: "Money with no bill: PR 2, the reason-coded close-out"
+group: ready
+status: >
+  PR 1 shipped 2026-09-16 (v2.3496 + v2.3499) and live-tested on the real $50 · PR 2 not started
+  · 2 small decisions open
+summary: >
+  A deposit's leftover becomes a **Tip** line on the job that earned it (PR 1, shipped — the
+  Office job J000 was rejected: the allocation RPC refuses it, J000 is load-bearing, and a
+  payment there books no income). Left: a reason-coded close-out for money that belongs to no
+  job — bank interest, a vendor refund, an owner deposit — modelled on the AR *returned* flag,
+  so the deposit leaves *To match* with the reason on the record.
+next: >
+  PR 2: the reason-coded close-out (a sidecar like `mercury_transaction_ar_returned` carrying a
+  reason, one RPC, a door beside the tip strip). Decide first whether a tip line prints on the
+  customer's bill, and PR 2's reason list. Label Taunya's deposit *Income* in Banking today —
+  that books the $1,855.70 in the P&L with no code.
+size: M (one migration, one RPC, the strip)
+blocker: Two small decisions (the tip on the printed bill; the reason list) — neither blocks the write.
+ver: v2.3496 · 3499 shipped
+---
 
-Status: **PR 1 SHIPPED 2026-09-16 (v2.3496 + v2.3499) and live-tested on the real $50 · PR 2 not started · 2 small decisions open**
+# Money that arrives with no bill to match (tips, overpayments, remainders)
 
 Mock-up: *Where the tip goes* — https://claude.ai/artifact/BhvMmduuHGaUExmYJcLxTP
 

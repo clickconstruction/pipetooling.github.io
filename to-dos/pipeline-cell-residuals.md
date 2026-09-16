@@ -1,6 +1,20 @@
-# Pipeline Progress & payment cell — what the Where the Job Is train left
+---
+name: "Pipeline cell item 2: a visit report's 100%"
+group: gated
+status: item 1 shipped v2.3432 · item 2 is an owner decision (a / b / c)
+summary: >
+  What the *Where the Job Is* train (v2.3416–v2.3421) left: date a report- or back-fill-sourced
+  percent on the row (`pct_set_at` of any source), and whether a service-visit report's 100%
+  should feed Job Summary (owner decision).
+next: >
+  Pick a, b or c in the file: whole-job reports only · reports before the last Working entry are
+  out of scope · leave it.
+size: S
+blocker: Your call (a / b / c).
+ver: item 1 shipped v2.3432
+---
 
-Status: item 1 shipped (v2.3432, 2026-09-14 — migration `20260914230000_job_crew_position_pct_set_at.sql`, pending push + types regen) · item 2 open, awaiting the owner's decision · low · source: the *Where the Job Is* train (v2.3416 legend · v2.3417 recognition · v2.3418 crew feed · v2.3419 the cell · v2.3421 the Set stages door), all on main 2026-09-14; both items surfaced in the live pass on that day's Working rows
+# Pipeline Progress & payment cell — what the Where the Job Is train left
 
 ## The ask, in the owner's words
 
