@@ -272,7 +272,7 @@ export default function LienDeskAffidavitPane({
           Claim: <strong style={{ color: 'var(--text-700)' }}>{formatUsdNoCents(entry.openBalance)}</strong> unpaid of {formatUsdNoCents(Number(job?.revenue ?? 0))} · {entry.propertyKind === 'residential' ? 'residential (3rd-month window)' : entry.propertyKind ? 'commercial (4th-month window)' : 'property kind unknown — commercial window shown'}
         </div>
       </div>
-      <div data-theme="light" style={{ border: '1px solid var(--border)', borderRadius: 8, background: 'var(--surface)', padding: '0.9rem 1.1rem', maxHeight: 420, overflow: 'auto' }}>
+      <div data-theme="light" style={{ border: '1px solid var(--border)', borderRadius: 8, background: 'var(--surface)', padding: '1.1rem 1.4rem' }}>
         <div dangerouslySetInnerHTML={{ __html: docHtml }} />
       </div>
     </div>

@@ -39,6 +39,14 @@ Pick the row. The pane shows what has to be true before it can go out, the **mon
 Robert opens J650 in Awaiting approval: $33,500 open with Loberg Contracting, first notice we have sent them, no promise on file, June closes tomorrow. He ticks **Send notices without asking** under *Standing rule for Loberg Contracting* and clicks {{button:green|Approve & next ▸}}. From now on Loberg's months go to Ready to send by themselves; he still sees every send in his list, and a live promise always comes back to him.
 :::
 
+## Reading the notice before it goes
+
+The pane is the paper. Under the job's line sit the gates (*Before it can go out · 3 of 4*, each missing fact with its door), the **months** with the claim beside them, and one **Wording** line; the notice itself takes the rest and scrolls with the pane. Once you scroll into it, a one-line strip stays pinned at the top — the gates count, the months, the claim, and {{button:outline|Show gates ▴}} — so the facts are one glance away while you read.
+
+{{button:outline|Preview in a new window ↗}} opens the notice as the packet prints it, in its own tab, with the values marked: {{chip:yellow|yellow}} means you can change it on the desk, {{chip:blue|blue}} means it is filled from the job — the date, the GC, the claim amount, the claimant — and is changed at its source, where the desk's rule for the demand letter holds: fix it there and the paper re-reads it. Everything else is the statute's form and prints as shown; the marks never print. Click a yellow value and the desk opens **Wording** on that field.
+
+**Wording** holds the four values you may change: the type of labor or materials (the default says plumbing — an electrical job says so here), the project description, the party contracted with if different from the GC, and the contact person who signs. The line reads *Wording · standard* until something differs, then *Wording · edited (1) by Taunya*; the leader sees the same line under *What you're deciding*, so an edited notice never reaches approval unannounced. {{button:outline|Back to the job's wording}} puts the defaults back.
+
 ## The master's decisions
 
 The desk shows him only what needs a decision: what is open with that GC, their word, the months and hours, and what a hold costs — *June's lien right ends September 15*. He can {{button:green|Approve & next}}, **Hold — they promised…** (asks again on the promise date), **Hold — I'll call first** (asks again three days before the deadline), or send it **Back to the office**.
