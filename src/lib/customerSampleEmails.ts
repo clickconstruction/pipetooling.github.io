@@ -21,9 +21,9 @@ import { buildGcStatementEmailHtml, buildGcStatementEmailText, gcStatementEmailS
 import type { GcReviewGroup } from './gcReviewRollup'
 import { buildRfqEmail } from './rfqEmail'
 import { composeJobAccountEmail } from './supplyHouseJobAccount'
-import { buildLegalConfirmEmail, buildLegalDigestEmail, buildLegalNowEmail } from './legalEmails'
+import { buildLegalConfirmEmail, buildLegalDigestEmail, buildLegalNowEmail, legalConfirmedPageBody, legalPageHtml } from './legalEmails'
 import { SAMPLE_FIRM, SAMPLE_HOUSE, SAMPLE_RFQ_LINES } from '../../supabase/functions/_shared/customerSampleFixtures'
-import { LEGAL_CONFIRMED_SAMPLE_URL, LEGAL_PORTAL_SAMPLE_PATH } from './customerJourneys'
+import { LEGAL_CONFIRMED_SAMPLE_URL, LEGAL_PORTAL_SAMPLE_PATH, type SampleHtmlId } from './customerJourneys'
 
 export type { AppSettingRow }
 
@@ -237,6 +237,12 @@ export function buildSampleLegalEmail(id: 'legal-confirm' | 'legal-now' | 'legal
     portalUrl,
     unsubscribeUrl: LEGAL_UNSUBSCRIBE_SAMPLE_URL,
   })
+}
+
+/** A plain page built from the same builder the function serves it with (v2.3518): the firm's confirmed page, for Ann Sample. */
+export function buildSampleHtml(id: SampleHtmlId): string {
+  if (id === 'legal-confirmed-page') return legalPageHtml(PORTAL_COMPANY.name, legalConfirmedPageBody(PORTAL_COMPANY.name, SAMPLE_FIRM.recipients[0].name, SAMPLE_FIRM.recipients[0].email))
+  return ''
 }
 
 export function buildSampleEmail(id: SampleEmailId, ctx: SampleEmailContext): { subject: string; html: string; text: string } {

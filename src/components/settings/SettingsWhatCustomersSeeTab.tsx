@@ -5,7 +5,7 @@ import { useAuth } from '../../hooks/useAuth'
 import { withSupabaseRetry } from '../../utils/errorHandling'
 import { APP_CALENDAR_TZ, todayYmdInAppTz } from '../../utils/dateUtils'
 import { SAMPLE_EMAIL_IDS, customerJourneys, findStep, firstRenderableStep, type Journey, type JourneyId, type JourneyStep } from '../../lib/customerJourneys'
-import { CUSTOMER_SAMPLE_SETTING_KEYS, buildSampleEmail, type AppSettingRow, type SampleEmailContext } from '../../lib/customerSampleEmails'
+import { CUSTOMER_SAMPLE_SETTING_KEYS, buildSampleEmail, buildSampleHtml, type AppSettingRow, type SampleEmailContext } from '../../lib/customerSampleEmails'
 import { SAMPLE_GC, SAMPLE_HOMEOWNER, SAMPLE_SUB } from '../../lib/customerSample'
 import { TestReportSampleCard } from './TestReportSampleCard'
 import { fetchTestReportSettings } from '../../lib/jobs/testReportSettings'
@@ -241,7 +241,7 @@ function JourneyStrip(props: {
 
 function StepCard(props: { step: JourneyStep; first: boolean; selected: boolean; emails: SampleEmails | null; papers: Partial<Record<string, PaperSample>>; origin: string; reloadNonce: number; onSelect: () => void }) {
   const { step, selected } = props
-  const renderable = step.render.kind === 'page' || step.render.kind === 'email' || step.render.kind === 'paper'
+  const renderable = step.render.kind === 'page' || step.render.kind === 'email' || step.render.kind === 'paper' || step.render.kind === 'html'
   // v2.3507: every card opens — a Next-release or sent-elsewhere step expands to its note and what the person can do there.
   return (
     <div style={{ display: 'grid', gridTemplateRows: 'auto 1fr auto', gap: '0.35rem', width: 188, flex: '0 0 auto', padding: '0 0.5rem', position: 'relative', borderLeft: props.first ? 'none' : '1px dashed var(--border)' }}>
@@ -396,6 +396,9 @@ function frameProps(step: JourneyStep, emails: SampleEmails | null, papers: Part
     const p = papers[step.render.paper]
     if (!p) return null
     return { key: `${step.id}-${reloadNonce}`, attrs: { srcDoc: p.html, sandbox: '', title: step.label } }
+  }
+  if (step.render.kind === 'html') {
+    return { key: `${step.id}-${reloadNonce}`, attrs: { srcDoc: buildSampleHtml(step.render.html), sandbox: '', title: step.label } }
   }
   if (step.render.kind === 'page') {
     const base = step.render.absolute ? step.render.path : `${origin}${step.render.path}`

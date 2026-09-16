@@ -170,7 +170,7 @@ export function journeyCoverage(journeys: Journey[]): JourneyCoverage {
   return {
     audiences: journeys.length,
     steps: steps.length,
-    rendered: count('page') + count('email'),
+    rendered: count('page') + count('email') + count('html'),
     paper: count('paper'),
     soon: count('soon'),
     external: count('external'),
