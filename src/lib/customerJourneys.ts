@@ -7,6 +7,8 @@
  *   page     — the real public page in an iframe, opened with the sample token
  *   email    — the real email builder, run in the browser over the live Settings
  *   external — sent by another system (Stripe), or typed by staff; named, not rendered
+ *   paper    — a document built in the browser from the sample by the app's own builder (v2.3509):
+ *              an HTML preview in the frame and the PDF the customer would open
  *   soon     — a surface this tab does not render yet (a "Next release" card)
  *
  * Every public route and every outside-facing email sender must have a step here or a named
@@ -15,12 +17,14 @@
  * the collections law firm. Collections paper sits at the end of the journey it belongs to.
  */
 import { SAMPLE_TOKEN, SAMPLE_TOKEN_DONE, SAMPLE_TOKEN_GC } from './customerSample'
+import type { PaperId } from './journeys/paperSamples'
 
 export type SampleEmailId = 'estimate' | 'bid-room' | 'bid-room-revised' | 'contract'
 
 export type JourneyStepRender =
   | { kind: 'page'; path: string }
   | { kind: 'email'; email: SampleEmailId }
+  | { kind: 'paper'; paper: PaperId }
   | { kind: 'external'; note: string }
   | { kind: 'soon'; note: string }
 
@@ -46,6 +50,8 @@ export type Journey = { id: JourneyId; title: string; subtitle: string; steps: J
 
 export const ESTIMATE_SAMPLE_PATH = `/estimate/accept?t=${SAMPLE_TOKEN}`
 export const ESTIMATE_SAMPLE_DONE_PATH = `/estimate/accept?t=${SAMPLE_TOKEN_DONE}`
+/** The public terms page reads the live Settings; the token is only so the tab treats it like every other sample page. */
+export const ESTIMATE_TERMS_SAMPLE_PATH = `/estimate/terms?t=${SAMPLE_TOKEN}`
 export const BID_ROOM_SAMPLE_PATH = `/bid-room?t=${SAMPLE_TOKEN}`
 export const BID_ROOM_SAMPLE_DONE_PATH = `/bid-room?t=${SAMPLE_TOKEN_DONE}`
 export const CUSTOMER_PORTAL_SAMPLE_PATH = `/portal?t=${SAMPLE_TOKEN}`
@@ -89,7 +95,7 @@ export function customerJourneys(): Journey[] {
           customerCan: 'Read the standard terms the estimate is offered under, in full.',
           guide: 'send-an-estimate-and-turn-it-into-a-job',
           reflects: ['Estimate public terms'],
-          render: { kind: 'soon', note: 'The public terms page, as the accept page links it. Reads the live Settings, so the sample is the real page. Planned as PR 3 of the What customers see train.' },
+          render: { kind: 'page', path: ESTIMATE_TERMS_SAMPLE_PATH },
         },
         {
           id: 'estimate-thankyou',
@@ -159,7 +165,7 @@ export function customerJourneys(): Journey[] {
           customerCan: 'Read the bill as a PDF and pay it the way the payment instructions say.',
           guide: 'choose-who-gets-the-bill',
           reflects: ['Invoice letterhead and footer', 'Payment instructions', 'Sender name and email'],
-          render: { kind: 'soon', note: 'The bill sent as an email with the PDF attached, when a job is not billed through Stripe. Built in the browser already; renders here as the email and the PDF. Planned as PR 3.' },
+          render: { kind: 'paper', paper: 'bill-by-email' },
         },
         {
           id: 'hazmat-notice',
@@ -169,7 +175,7 @@ export function customerJourneys(): Journey[] {
           customerCan: 'Read why a biohazard remediation fee is on the bill, and what the fee covers.',
           guide: 'charge-a-hazmat-fee',
           reflects: ['Biohazard Remediation Fee Notice wording', 'Testimonials on the notice'],
-          render: { kind: 'soon', note: 'The fee notice a customer opens from the Stripe invoice footer, and its companion email. Planned as PR 3.' },
+          render: { kind: 'paper', paper: 'hazmat-notice' },
         },
         {
           id: 'customer-portal',
@@ -189,7 +195,7 @@ export function customerJourneys(): Journey[] {
           customerCan: 'Read the final demand, the statement of account and the invoice, and pay or respond by the deadline.',
           guide: 'send-a-final-demand-letter',
           reflects: ['Demand letter wording and the legal lines', 'Statement of account', 'Collections law firm named'],
-          render: { kind: 'soon', note: 'The final demand packet a past-due customer receives, with the statement and the invoice as exhibits. Built in the browser already; renders here as the PDF. Planned as PR 5.' },
+          render: { kind: 'paper', paper: 'demand-letter' },
         },
         {
           id: 'lien-release',
@@ -199,7 +205,7 @@ export function customerJourneys(): Journey[] {
           customerCan: 'Receive the signed lien release once the account is settled.',
           guide: 'give-a-customer-a-lien-release',
           reflects: ['Lien release form (Contract Forms)'],
-          render: { kind: 'soon', note: 'The signed lien release emailed to the customer once the account is settled. Planned as PR 5.' },
+          render: { kind: 'paper', paper: 'lien-release' },
         },
       ],
     },
@@ -316,7 +322,7 @@ export function customerJourneys(): Journey[] {
           customerCan: 'Read the notice that their contractor has not paid, the months it covers, and the invoice enclosed.',
           guide: 'send-lien-notices-from-the-lien-desk',
           reflects: ['Notice wording and the cover letter', 'The invoice enclosed'],
-          render: { kind: 'soon', note: 'The notice the property owner receives when a GC has not paid, with the cover letter and the invoice. Built in the browser already; renders here as the PDF. Planned as PR 5.' },
+          render: { kind: 'paper', paper: 'owner-notice' },
         },
       ],
     },
@@ -488,7 +494,7 @@ export function customerJourneys(): Journey[] {
 export function firstRenderableStep(journeys: Journey[]): { journeyId: JourneyId; stepId: string } | null {
   for (const j of journeys) {
     for (const s of j.steps) {
-      if (s.render.kind === 'page' || s.render.kind === 'email') return { journeyId: j.id, stepId: s.id }
+      if (s.render.kind === 'page' || s.render.kind === 'email' || s.render.kind === 'paper') return { journeyId: j.id, stepId: s.id }
     }
   }
   return null
