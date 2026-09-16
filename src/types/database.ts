@@ -1835,17 +1835,17 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "bid_submittal_items_reviewed_by_person_id_fkey"
-            columns: ["reviewed_by_person_id"]
-            isOneToOne: false
-            referencedRelation: "bid_submittal_people"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "bid_submittal_items_carried_from_item_id_fkey"
             columns: ["carried_from_item_id"]
             isOneToOne: false
             referencedRelation: "bid_submittal_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bid_submittal_items_reviewed_by_person_id_fkey"
+            columns: ["reviewed_by_person_id"]
+            isOneToOne: false
+            referencedRelation: "bid_submittal_people"
             referencedColumns: ["id"]
           },
           {
@@ -1981,7 +1981,7 @@ export type Database = {
           {
             foreignKeyName: "bid_submittal_rooms_bid_id_fkey"
             columns: ["bid_id"]
-            isOneToOne: false
+            isOneToOne: true
             referencedRelation: "bids"
             referencedColumns: ["id"]
           },
@@ -20904,6 +20904,10 @@ export type Database = {
         Args: { p_submittal_id: string }
         Returns: boolean
       }
+      can_access_submittal_room: {
+        Args: { p_room_id: string }
+        Returns: boolean
+      }
       can_define_task_style_checklist_items: { Args: never; Returns: boolean }
       can_edit_checklist_tech_tree_structure_for_roadmap: {
         Args: { p_roadmap_id: string }
@@ -22951,8 +22955,8 @@ export type Database = {
           p_amount: number
           p_job_id: string
           p_mercury_transaction_id: string
-          p_note?: string | null
-          p_payment_type?: string | null
+          p_note?: string
+          p_payment_type?: string
         }
         Returns: Json
       }

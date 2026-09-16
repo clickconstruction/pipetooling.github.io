@@ -866,8 +866,8 @@ export default function BankPaymentsModal({
             p_mercury_transaction_id: txId,
             p_job_id: tipJobId,
             p_amount: tipOffer.amount,
-            p_payment_type: kindPaymentTypeLabel || null,
-            p_note: null,
+            p_payment_type: kindPaymentTypeLabel || undefined,
+            p_note: undefined,
           }),
         'record_job_tip_from_deposit',
       )
@@ -876,7 +876,11 @@ export default function BankPaymentsModal({
         throw new Error(payload.error)
       }
       setTipConfirming(false)
+      // Both halves: onApplied refreshes the caller's jobs (the billed rows), refreshList
+      // refetches the deposits so this one's remainder reads zero and it leaves To match.
+      // Without the second the strip stays up until the page is reloaded.
       await onApplied()
+      await refreshList()
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : 'Could not add the tip'
       setTipError(
@@ -887,7 +891,7 @@ export default function BankPaymentsModal({
     } finally {
       setTipBusy(false)
     }
-  }, [selected?.mercury_transaction_id, tipOffer, tipJobId, kindPaymentTypeLabel, onApplied])
+  }, [selected?.mercury_transaction_id, tipOffer, tipJobId, kindPaymentTypeLabel, onApplied, refreshList])
 
   /** Keep selection on the filtered bank list; when the filter hides the current row, select the first visible row. */
   useEffect(() => {
